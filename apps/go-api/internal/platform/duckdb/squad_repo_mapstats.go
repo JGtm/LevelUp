@@ -63,7 +63,7 @@ func (r *SquadRepo) LoadMapStatsForSquad(ctx context.Context, mainXUID string, s
 
 	result := make(map[string]domain.MapSquadStats, len(aggs))
 	for mapID, a := range aggs {
-		s := domain.MapSquadStats{Wins: a.wins, Total: a.total}
+		s := domain.MapSquadStats{Wins: a.wins, Total: a.total, PerfCount: a.perfCount}
 		if a.perfCount > 0 {
 			v := a.perfSum / float64(a.perfCount)
 			s.PerfAvg = &v

@@ -80,6 +80,8 @@ type TeammatesService struct {
 	// lister les matchs ayant un artefact (colonne « Rejeu » du tableau historique de
 	// l'escouade). Nil → aucune ligne ne porte de rejeu (dégradation gracieuse).
 	replaySvc port.ReplayService
+	// mapGroups (optionnel) : groupes de cartes (variantes comptées sous leur base). nil : cartes seules.
+	mapGroups port.MapGroupReader
 	// radarRange / placementRepo (optionnels) : la table des portées de radar du titre et le
 	// lecteur du placement des vies, les deux entrées du bloc « Groupés ou isolés » de
 	// l'Emprise, cf. teammates_service_emprise_placement.go.

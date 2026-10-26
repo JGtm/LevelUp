@@ -98,7 +98,22 @@ SELECT mr.match_id, COALESCE(mp.outcome, ?) AS outcome, ` + colonneEligible + `,
        ` + colonneT0 + ` AS t0_ms
 FROM match_registry mr
 JOIN match_participants mp ON mp.match_id = mr.match_id
-WHERE mp.xuid = ? AND (? = '' OR mr.map_id = ?)` + clausePvEExclu + campaignExclusionToken
+WHERE mp.xuid = ?` + jetonCartes + clausePvEExclu + campaignExclusionToken
+
+// jetonCartes : le jeton que `universSQL` remplace par la restriction a UNE carte (`clauseCartes`) — vide
+// quand aucune carte n'est demandee. Un jeton et non un assemblage, pour la meme raison que
+// `colonneEligible` : `QTacticalUnivers` reste une constante entiere.
+const jetonCartes = "%CARTES%"
+
+// clauseCartes rend la restriction a UNE carte, designee par tous les identifiants de son groupe
+// (`q.MapIDs`), avec ses arguments LIES. Aucune carte : aucune restriction, comme avant (l'ecran
+// d'entree et le bloc de coordination lisent l'univers de toutes les cartes).
+func clauseCartes(q domain.TacticalQuery) (string, []any) {
+	if len(q.MapIDs) == 0 {
+		return "", nil
+	}
+	return "\n  AND mr.map_id IN (" + Placeholders(len(q.MapIDs)) + ")", ToAnySlice(q.MapIDs)
+}
 
 // journalPerimetre : le jeton que `universSQL` remplace par la liste blanche recopiee dans
 // le EXISTS (cf. QTacticalUnivers) — `AND FALSE` quand la liste est vide.
@@ -205,7 +220,7 @@ func clauseJournalPerimetre(q domain.TacticalQuery) (string, []any) {
 }
 
 // universSQL assemble le SELECT de l'univers et ses arguments, token Campagne
-// resolu pour le titre du joueur. `q.MapID` vide = toutes les cartes.
+// resolu pour le titre du joueur. `q.MapIDs` vide = toutes les cartes.
 func (r *TacticalRepo) universSQL(q domain.TacticalQuery) (string, []any) {
 	perim, perimArgs := clausePerimetre(q)
 	journal, journalArgs := clauseJournalPerimetre(q)
@@ -226,9 +241,12 @@ func (r *TacticalRepo) universSQL(q domain.TacticalQuery) (string, []any) {
 	args = append(args, domain.OutcomeUnknown)
 	args = append(args, predArgs...)
 	args = append(args, journalArgs...)
-	args = append(args, q.PlayerXUID, q.MapID, q.MapID)
+	cartes, cartesArgs := clauseCartes(q)
+	args = append(args, q.PlayerXUID)
+	args = append(args, cartesArgs...)
 	args = append(args, perimArgs...)
 	sql := strings.Replace(QTacticalUnivers, colonneEligible, "("+predicat+") AS eligible_cuisson", 1)
+	sql = strings.Replace(sql, jetonCartes, cartes, 1)
 	sql = strings.Replace(sql, journalPerimetre, journal, 1)
 	sql = strings.Replace(sql, colonneT0, T0MsSQL("mr"), 1)
 	return resolveCampaignExclusion(sql, r.pdb.TitleSlug, "mr") + perim, args
@@ -329,7 +347,7 @@ func (r *TacticalRepo) chargerUnivers(ctx context.Context, db *sql.DB, q domain.
 //
 // C'est le MEME `chargerUnivers` que les trois autres lectures, expose : deux definitions
 // de l'univers auraient mesure sur deux populations differentes sous le meme nom de
-// filtre. `q.MapID` vide = toutes les cartes, comme partout ici.
+// filtre. `q.MapIDs` vide = toutes les cartes, comme partout ici.
 func (r *TacticalRepo) Univers(ctx context.Context, q domain.TacticalQuery) (domain.TacticalUnivers, error) {
 	ctx, cancel := context.WithTimeout(ctx, tacticalReadTimeout)
 	defer cancel()

@@ -11,6 +11,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/games/mappings"
 )
 
 func BuildSquadHeader(
@@ -336,26 +337,31 @@ func modeLabelForFilter(r canonical.PlayerMatchRow) string {
 }
 
 // FilterRowsByCascade filtre une slice de PlayerMatchRow selon les critères
-// experience_types, playlists, maps et modes. Slices vides = pas de filtre sur ce critère.
+// experience_types, playlists, maps et modes de `c`. Slices vides = pas de filtre sur ce critère.
+//
+// Cartes : une carte de groupe (variante de carte, domain.GroupesDeCartes) est comparée par le libellé
+// de sa carte de BASE, le même que celui des options du filtre : choisir « Thunderhead » retient aussi
+// les parties jouées sur « Thunderhead Heavies ». `groups` est obligatoire pour que chaque appelant
+// décide du regroupement ; la valeur zéro laisse chaque carte seule.
 //
 // Modes : PairMode prioritaire (pair_name_fr COALESCE pair_name), sinon game_variant
 // normalisé pour les titres sans pair (Halo 5) — via modeLabelForFilter, même
 // convention que filtersResolve. Fallback sur DefaultLabel (EN) si Labels["fr"] absent.
-func FilterRowsByCascade(rows []canonical.PlayerMatchRow, expTypes, playlists, maps, modes []string) []canonical.PlayerMatchRow {
-	expSet := make(map[string]struct{}, len(expTypes))
-	for _, e := range expTypes {
+func FilterRowsByCascade(rows []canonical.PlayerMatchRow, c domain.CascadeFilter, groups domain.GroupesDeCartes) []canonical.PlayerMatchRow {
+	expSet := make(map[string]struct{}, len(c.ExperienceTypes))
+	for _, e := range c.ExperienceTypes {
 		expSet[e] = struct{}{}
 	}
-	plSet := make(map[string]struct{}, len(playlists))
-	for _, p := range playlists {
+	plSet := make(map[string]struct{}, len(c.Playlists))
+	for _, p := range c.Playlists {
 		plSet[p] = struct{}{}
 	}
-	mapSet := make(map[string]struct{}, len(maps))
-	for _, m := range maps {
+	mapSet := make(map[string]struct{}, len(c.Maps))
+	for _, m := range c.Maps {
 		mapSet[m] = struct{}{}
 	}
-	modeSet := make(map[string]struct{}, len(modes))
-	for _, m := range modes {
+	modeSet := make(map[string]struct{}, len(c.Modes))
+	for _, m := range c.Modes {
 		modeSet[m] = struct{}{}
 	}
 	out := rows[:0:0]
@@ -371,7 +377,7 @@ func FilterRowsByCascade(rows []canonical.PlayerMatchRow, expTypes, playlists, m
 			}
 		}
 		if len(mapSet) > 0 {
-			if _, ok := mapSet[assetLabelForFilter(r.Summary.Map)]; !ok {
+			if _, ok := mapSet[mapLabelForFilter(r.Summary.Map, groups)]; !ok {
 				continue
 			}
 		}
@@ -400,3 +406,15 @@ func assetLabelForFilter(ref *canonical.AssetReference) string {
 
 // loadAllPlayers charge les matchs du joueur principal + des coéquipiers en
 // parallèle. Capability absente -> exclu de perPlayer + ajouté à capGaps.
+
+// mapLabelForFilter est le libellé de carte comparé au filtre de cartes : celui de la carte de BASE
+// pour une carte de groupe (groups.Libelle, mêmes valeurs que les options du filtre), sinon le libellé
+// propre de la carte (assetLabelForFilter).
+func mapLabelForFilter(ref *canonical.AssetReference, groups domain.GroupesDeCartes) string {
+	if ref != nil {
+		if base, ok := groups.Libelle(ref.ID, mappings.LocaleFR); ok {
+			return base
+		}
+	}
+	return assetLabelForFilter(ref)
+}

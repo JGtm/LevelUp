@@ -17,6 +17,7 @@ import (
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/service/mapgroups"
 	"levelup/go-api/internal/service/squadagg"
 )
 
@@ -77,7 +78,7 @@ func (s *TimeseriesService) attachEmprise(
 	resp.Emprise = buildSoloEmpriseBlock(ctx, soloEmpriseQuery{
 		Page: "timeseries", Player: s.gamertag, PlayerXUID: s.playerXUID,
 		RepoRoot: s.repoRoot, TitleSlug: s.titleSlug, Locale: locale,
-		Current: timeseriesEmpriseMatches(filteredCanon, locale), Lectures: lu,
+		Current: timeseriesEmpriseMatches(filteredCanon, locale, mapgroups.Load(ctx, s.mapGroups)), Lectures: lu,
 		UsageRepo: s.sessionUsageRepo, EmpriseRepo: s.usages.empriseRepo, VehicleRepo: s.usages.vehicleRepo,
 		WithMaps: true, Pending: s.usages.analysisPending,
 	})
@@ -95,15 +96,13 @@ func (s *TimeseriesService) attachEmblem(ctx context.Context, resp *domain.Times
 // timeseriesEmpriseMatches projette la fenêtre en matchs de l'Emprise : carte (identifiant et nom
 // dans la langue de la requête, depuis le canonique déjà chargé — même arbitrage que
 // timeseriesFormesMetas) et résultat du joueur. L'ordre est rétabli par le calcul (chronologique).
-func timeseriesEmpriseMatches(rows []canonical.PlayerMatchRow, locale string) []squademprise.Match {
+func timeseriesEmpriseMatches(rows []canonical.PlayerMatchRow, locale string, groups domain.GroupesDeCartes) []squademprise.Match {
 	out := make([]squademprise.Match, 0, len(rows))
 	for _, r := range rows {
 		m := squademprise.Match{
 			MatchID: r.Summary.MatchID, StartTime: r.Summary.StartedAtUTC, Outcome: r.Self.Outcome,
-			MapLabel: labelPourLocale(r.Summary.Map, locale),
-		}
-		if r.Summary.Map != nil {
-			m.MapKey = r.Summary.Map.ID
+			MapLabel: mapgroups.RefLabel(r.Summary.Map, groups, locale, labelPourLocale(r.Summary.Map, locale)),
+			MapKey:   mapgroups.RefKey(r.Summary.Map, groups),
 		}
 		if r.Enrichment.SessionLabel != nil {
 			m.SessionLabel = *r.Enrichment.SessionLabel

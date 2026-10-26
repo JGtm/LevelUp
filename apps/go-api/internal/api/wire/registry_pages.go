@@ -352,7 +352,9 @@ func (r *ServiceRegistry) Timeseries(ctx context.Context, slug string) (port.Tim
 		WithMatchRange(duckdb.NewWeaponRangeRepo(pdb, r.killSourceClassifierFor(pdb)), pdb.XUID).
 		// « Analyse du film en cours » de l'Emprise (onglet Usages) : MÊME règle et MÊME porte de titre que
 		// l'accueil, la vue match et l'Escouade (film.kill_source) ; nil pour un titre sans elle.
-		WithAnalysisPending(r.analysisPendingFor(pdb))
+		WithAnalysisPending(r.analysisPendingFor(pdb)).
+		// Une variante de carte compte sous sa carte de base : découpage par carte et Emprise par carte.
+		WithMapGroups(r.mapGroupsFor(pdb))
 	svc = r.cablerUsagesTimeseries(svc, pdb) // onglet « Usages » : registry_pages_timeseries.go
 	if a := r.dataAdapterForPDB(pdb); a != nil {
 		svc = svc.WithDataAdapter(a)

@@ -255,7 +255,7 @@ func (r *TacticalRepo) KillPositions(ctx context.Context, q domain.TacticalQuery
 	// La lecture SPATIALE exige une carte : sans elle, la requete balaierait
 	// `kill_positions` sur tout l'historique du joueur pour une grille qui n'a de
 	// sens que carte par carte.
-	if q.MapID == "" {
+	if len(q.MapIDs) == 0 {
 		return out, fmt.Errorf("TacticalRepo.KillPositions: map_id vide")
 	}
 	ctx, cancel := context.WithTimeout(ctx, tacticalReadTimeout)

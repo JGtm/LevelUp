@@ -206,14 +206,19 @@ func (e *breakdownTally) performance() (*float64, int) {
 	return &avg, int(analysis.PerfTier(avg))
 }
 
-// breakdownMapLabel est le libellé de carte d'un match (vide si inconnu).
-func breakdownMapLabel(r canonical.PlayerMatchRow) string {
+// breakdownMapLabel est le libellé de carte d'un match, qui sert aussi de clé de ligne (vide si
+// inconnu). Une carte de groupe (variante de carte, domain.GroupesDeCartes) prend le libellé de sa
+// carte de BASE : base et variante font une seule ligne, sans mention de la variante.
+func breakdownMapLabel(r canonical.PlayerMatchRow, groups domain.GroupesDeCartes) string {
 	m := r.Summary.Map
 	if m == nil {
 		return ""
 	}
+	if base, ok := groups.Libelle(m.ID, libellesDeCartesFR); ok {
+		return base
+	}
 	// Préférer le label FR si disponible (noms de carte identiques EN/FR pour Halo Infinite).
-	if fr := m.Labels["fr"]; fr != "" {
+	if fr := m.Labels[libellesDeCartesFR]; fr != "" {
 		return fr
 	}
 	return m.DefaultLabel
@@ -237,11 +242,11 @@ func breakdownModeLabel(r canonical.PlayerMatchRow) string {
 // buildBreakdownsFromCanonical agrège les rows canoniques filtrés en breakdowns
 // carte et mode, avec décompte complet des outcomes (wins/losses/ties/unfinished)
 // et score de performance moyen des matchs notés de chaque ligne.
-func buildBreakdownsFromCanonical(rows []canonical.PlayerMatchRow) domain.SynthesisBreakdowns {
+func buildBreakdownsFromCanonical(rows []canonical.PlayerMatchRow, groups domain.GroupesDeCartes) domain.SynthesisBreakdowns {
 	maps := map[string]*breakdownTally{}
 	modes := map[string]*breakdownTally{}
 	for _, r := range rows {
-		if name := breakdownMapLabel(r); name != "" {
+		if name := breakdownMapLabel(r, groups); name != "" {
 			tallyBreakdownInto(maps, name, r)
 		}
 		if name := breakdownModeLabel(r); name != "" {

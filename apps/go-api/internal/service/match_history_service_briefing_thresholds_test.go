@@ -28,7 +28,7 @@ func briefingMapGroups(counts ...int) []domain.MatchHistoryRawRow {
 
 func briefingMapDimension(t *testing.T, scope []domain.MatchHistoryRawRow) *domain.ExplorerBriefingDimension {
 	t.Helper()
-	for _, d := range buildBriefingDimensions(scope, scope) {
+	for _, d := range buildBriefingDimensions(scope, scope, domain.GroupesDeCartes{}) {
 		if d.Dimension == "map" {
 			d := d
 			return &d

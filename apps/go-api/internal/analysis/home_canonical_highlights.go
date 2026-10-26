@@ -21,7 +21,9 @@ import (
 //
 // `locale` ("fr"/"en") sélectionne les libellés de carte/mode composés dans les
 // champs Detail/Value (GH2-B5 : sans elle, labelFR forçait le FR sous UI EN).
-func BuildHighlightsFromCanonical(rows []canonical.PlayerMatchRow, locale string) []domain.HighlightItem {
+// `groups` rattache une variante de carte à sa carte de base pour la tuile « carte favorite » (valeur zéro :
+// chaque carte reste seule).
+func BuildHighlightsFromCanonical(rows []canonical.PlayerMatchRow, locale string, groups domain.GroupesDeCartes) []domain.HighlightItem {
 	if len(rows) == 0 {
 		return nil
 	}
@@ -175,7 +177,7 @@ func BuildHighlightsFromCanonical(rows []canonical.PlayerMatchRow, locale string
 	}
 
 	// Highlight 8 : Série.
-	if serie := buildSerieHighlightCanonical(window, locale); serie != nil {
+	if serie := buildSerieHighlightCanonical(window, locale, groups); serie != nil {
 		highlights = append(highlights, *serie)
 	}
 

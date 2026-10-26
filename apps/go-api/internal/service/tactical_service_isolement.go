@@ -42,7 +42,7 @@ func (s *TacticalService) rasterIsole(ctx context.Context, out *domain.TacticalR
 	}
 	debut := time.Now()
 
-	lecture, err := s.repo.MortsAvecContexte(ctx, requeteDuScope(s.xuid, out.MapID, scope))
+	lecture, err := s.repo.MortsAvecContexte(ctx, requeteDuScope(s.xuid, s.cartesDe(ctx, out.MapID), scope))
 	if err != nil {
 		s.logger.ErrorContext(ctx, "tactique: lecture d'isolement en echec",
 			"player", s.xuid, "map_id", out.MapID, "err", err)

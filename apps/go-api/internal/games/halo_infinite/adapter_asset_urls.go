@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/assets/static"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/games/halo_infinite/film/damagetag"
@@ -41,9 +42,6 @@ var uuidRe = regexp.MustCompile(`(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-
 // Sentry Defense, Firefight sur une map). Les variantes "- Ranked" sont filtrées
 // en amont par SQL (NOT LIKE '% - %').
 var mapVariantSuffixes = []string{" Heavies", " Sentry Defense", " Firefight"}
-
-// rankedMapSuffix marque la variante classée d'une carte (« Vacancy - Ranked »).
-const rankedMapSuffix = " - Ranked"
 
 // weaponIconSentinelFiles couvre les SENTINELLES produit : des weapon_id
 // conventionnels (0 grenade, 1 mêlée, 2 véhicule) qui ne désignent aucun objet du
@@ -87,11 +85,21 @@ var weaponIconConceptFiles = map[uint32]string{
 type AssetURLAdapter struct {
 	titleSlug    string
 	mapImageExts map[string]string // name → ".jpg"|".png" ; nil = mode permissif (tests)
+	// variantSuffixes : suffixes de nom qui font d'une carte la variante d'une autre
+	// (mappings/map_variants.toml), lus par analysis.BaseMapName. Vide : aucune variante.
+	variantSuffixes []string
 }
 
 // NewAssetURLAdapter construit un AssetURLAdapter pour Halo Infinite.
 func NewAssetURLAdapter() *AssetURLAdapter {
 	return &AssetURLAdapter{titleSlug: TitleSlug}
+}
+
+// WithMapVariantSuffixes injecte les suffixes de variante de carte du titre (map_variants.toml) : une
+// variante sans fichier image dédié prend la miniature de sa carte de base. Retourne l'adapter.
+func (a *AssetURLAdapter) WithMapVariantSuffixes(suffixes []string) *AssetURLAdapter {
+	a.variantSuffixes = append([]string(nil), suffixes...)
+	return a
 }
 
 // WithMapImagesDir scanne dir et construit la liste autorisée des images de map.
@@ -156,7 +164,7 @@ func (a *AssetURLAdapter) MapImageURL(mapName string) string {
 	if a.mapImageExts != nil {
 		return a.mapImageURLFromDir(mapName)
 	}
-	ext := defaultMapImageExt(mapName)
+	ext := a.defaultMapImageExt(mapName)
 	return static.URL(static.KindMap, a.titleSlug, encodeSpaces(mapName), ext)
 }
 
@@ -173,8 +181,8 @@ func (a *AssetURLAdapter) mapImageURLFromDir(mapName string) string {
 	if ext, ok := a.mapImageExts[mapName]; ok {
 		return static.URL(static.KindMap, a.titleSlug, encodeSpaces(mapName), ext)
 	}
-	base, ranked := strings.CutSuffix(mapName, rankedMapSuffix)
-	if !ranked {
+	base, variant := analysis.BaseMapName(mapName, a.variantSuffixes)
+	if !variant {
 		return ""
 	}
 	if ext, ok := a.mapImageExts[base]; ok {
@@ -184,12 +192,12 @@ func (a *AssetURLAdapter) mapImageURLFromDir(mapName string) string {
 }
 
 // defaultMapImageExt retourne l'extension par défaut en mode permissif (sans répertoire).
-// .png pour les maps connues, .jpg sinon.
-func defaultMapImageExt(mapName string) string {
+// .png pour les maps connues et pour les variantes déclarées, .jpg sinon.
+func (a *AssetURLAdapter) defaultMapImageExt(mapName string) string {
 	if _, ok := pngMapNames[mapName]; ok {
 		return ".png"
 	}
-	if strings.HasSuffix(mapName, rankedMapSuffix) {
+	if _, variant := analysis.BaseMapName(mapName, a.variantSuffixes); variant {
 		return ".png"
 	}
 	return ".jpg"

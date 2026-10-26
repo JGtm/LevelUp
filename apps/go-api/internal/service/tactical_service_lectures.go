@@ -136,7 +136,7 @@ func (s *TacticalService) perimetreDuSpawn(ctx context.Context, carte string,
 			"player", s.xuid, "map_id", carte, "spawn", scope.Spawn)
 		return perimetreSpawn{}, games.ErrCapabilityNotSupported
 	}
-	univers, err := s.repo.Univers(ctx, s.requeteAvecRetention(carte, scope))
+	univers, err := s.repo.Univers(ctx, s.requeteAvecRetention(s.cartesDe(ctx, carte), scope))
 	if err != nil {
 		s.logger.ErrorContext(ctx, "tactique: univers du filtre de spawn en echec",
 			"player", s.xuid, "map_id", carte, "err", err)

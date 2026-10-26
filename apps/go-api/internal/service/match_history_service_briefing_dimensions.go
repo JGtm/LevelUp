@@ -16,7 +16,7 @@ import (
 // distinctes dans le scope, DEC-8) parmi carte / mode / playlist. Par dimension :
 // top 3 + flop 3 des groupes qualifiés (≥ MinDimensionGroupMatches), triés par
 // delta winrate vs baseline ; moins de 2 groupes qualifiés → carte Insufficient.
-func buildBriefingDimensions(scope, all []domain.MatchHistoryRawRow) []domain.ExplorerBriefingDimension {
+func buildBriefingDimensions(scope, all []domain.MatchHistoryRawRow, groups domain.GroupesDeCartes) []domain.ExplorerBriefingDimension {
 	if len(scope) == 0 {
 		return nil
 	}
@@ -28,7 +28,7 @@ func buildBriefingDimensions(scope, all []domain.MatchHistoryRawRow) []domain.Ex
 	// bascule sur le taux de victoire (P-8, cf. buildDimension).
 	fullHistory := len(scope) == len(all)
 	out := make([]domain.ExplorerBriefingDimension, 0, 3)
-	if d := buildDimension("map", mapKeyed(breakdown.ByMap(scopeRows)), mapKeyed(breakdown.ByMap(allRows)), fullHistory); d != nil {
+	if d := buildDimension("map", mapKeyed(breakdown.ByMap(scopeRows, groups, libellesDeCartesFR)), mapKeyed(breakdown.ByMap(allRows, groups, libellesDeCartesFR)), fullHistory); d != nil {
 		out = append(out, *d)
 	}
 	if d := buildDimension("mode", modeKeyed(breakdown.ByMode(scopeRows)), modeKeyed(breakdown.ByMode(allRows)), fullHistory); d != nil {

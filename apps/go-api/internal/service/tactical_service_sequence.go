@@ -94,7 +94,7 @@ func (s *TacticalService) Sequence(ctx context.Context, req domain.TacticalSeque
 func (s *TacticalService) matchDeLaSequence(ctx context.Context, req domain.TacticalSequenceRequest,
 ) (domain.TacticalMatch, float64, error) {
 	univers, err := s.repo.Univers(ctx, domain.TacticalQuery{
-		PlayerXUID: s.xuid, MapID: req.MapID, Matchs: domain.RestreindreAux([]string{req.MatchID}),
+		PlayerXUID: s.xuid, MapIDs: s.cartesDe(ctx, req.MapID), Matchs: domain.RestreindreAux([]string{req.MatchID}),
 	})
 	if err != nil {
 		s.logger.ErrorContext(ctx, "tactique: univers de la sequence en echec",
@@ -217,7 +217,7 @@ const sourceJournal = "journal"
 func (s *TacticalService) lireLeJournal(ctx context.Context, mapID, matchID string) []domain.KillDuJournal {
 	stop := timing.FromContext(ctx).Section("tactical_sequence_journal")
 	kills, err := s.repo.JournalDesKills(ctx, domain.TacticalQuery{
-		PlayerXUID: s.xuid, MapID: mapID, Matchs: domain.RestreindreAux([]string{matchID}),
+		PlayerXUID: s.xuid, MapIDs: s.cartesDe(ctx, mapID), Matchs: domain.RestreindreAux([]string{matchID}),
 	})
 	stop()
 	if err != nil {

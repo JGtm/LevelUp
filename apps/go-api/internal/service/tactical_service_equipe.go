@@ -113,7 +113,7 @@ func (s *TacticalService) lireLesMates(ctx context.Context, mapID string,
 	}
 	stop := timing.FromContext(ctx).Section("tactical_cellule_coequipiers")
 	lignes, err := s.repo.MatesDesMorts(ctx, domain.TacticalQuery{
-		PlayerXUID: s.xuid, MapID: mapID, Matchs: domain.RestreindreAux(ids),
+		PlayerXUID: s.xuid, MapIDs: s.cartesDe(ctx, mapID), Matchs: domain.RestreindreAux(ids),
 	}, cles)
 	stop()
 	if err != nil {

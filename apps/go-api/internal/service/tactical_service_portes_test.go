@@ -122,8 +122,8 @@ func TestTacticalService_MapsPlayed_PerimetreTransmis(t *testing.T) {
 	if repo.vuMaps.PlayerXUID != tsMoi {
 		t.Errorf("joueur transmis = %q, want %q", repo.vuMaps.PlayerXUID, tsMoi)
 	}
-	if repo.vuMaps.MapID != "" {
-		t.Errorf("MapID = %q, want vide : la grille porte sur TOUTES les cartes", repo.vuMaps.MapID)
+	if len(repo.vuMaps.MapIDs) != 0 {
+		t.Errorf("MapIDs = %v, want vide : la grille porte sur TOUTES les cartes", repo.vuMaps.MapIDs)
 	}
 }
 

@@ -150,7 +150,7 @@ func (s semantiqueDeTest) Outcomes() *mappings.OutcomeMappingSet { return s.outc
 // texte, et elle ne dépend PAS de la locale (contrairement à l'ancien résolveur figé sur fr).
 func TestRowFormatters_CleDIssue(t *testing.T) {
 	svc := NewMatchHistoryService(nil, "").WithSemantic(semantiqueDeTest{outcomes: outcomesDeTest()})
-	f := svc.rowFormatters(nil)
+	f := svc.rowFormatters(nil, domain.GroupesDeCartes{})
 	if got := f.outcomeKeyFor(domain.OutcomeWin); got != "win" {
 		t.Errorf("ligne d'historique : %q, attendu %q", got, "win")
 	}
@@ -162,7 +162,7 @@ func TestRowFormatters_CleDIssue(t *testing.T) {
 // Service sans adapter sémantique : repli Halo-only (outcomeKeyFromHaloCode), jamais de champ
 // vide alors qu'on connaît le code brut Halo.
 func TestRowFormatters_SansAdapterSemantique(t *testing.T) {
-	f := NewMatchHistoryService(nil, "").rowFormatters(nil)
+	f := NewMatchHistoryService(nil, "").rowFormatters(nil, domain.GroupesDeCartes{})
 	if got := f.outcomeKeyFor(domain.OutcomeLoss); got != "loss" {
 		t.Errorf("ligne sans adapter : %q, attendu %q", got, "loss")
 	}

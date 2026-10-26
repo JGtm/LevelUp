@@ -345,7 +345,7 @@ func TestOccupation_NePasseJamaisParKillPositions(t *testing.T) {
 	if repo.vuPos.PlayerXUID != "" {
 		t.Fatalf("KillPositions a ete appele pour une lecture d'occupation : %+v", repo.vuPos)
 	}
-	if repo.vuUniv.MapID != "streets" || !repo.vuUniv.Matchs.Restreint() {
+	if len(repo.vuUniv.MapIDs) != 1 || repo.vuUniv.MapIDs[0] != "streets" || !repo.vuUniv.Matchs.Restreint() {
 		t.Fatalf("l'univers n'a pas recu le perimetre : %+v", repo.vuUniv)
 	}
 	if len(store.vus) != 1 || store.vus[0] != "m1" {

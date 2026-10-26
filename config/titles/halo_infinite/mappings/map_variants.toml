@@ -2,16 +2,19 @@
 #
 # Suffixes de NOM qui font d'une carte la VARIANTE d'une autre : meme terrain, identifiant d'asset
 # propre (« Thunderhead Heavies » est une carte distincte de « Thunderhead » au registre des matchs).
-# Les filtres de cartes regroupent une variante sous sa carte de base : une recherche « Thunderhead »
-# ramene aussi les parties jouees sur la variante. Les identifiants ne bougent pas : les agregats par
-# carte (vignettes Tactique, taux de victoire par carte) restent par identifiant.
+# Une variante est COMPTEE SOUS SA CARTE DE BASE partout : filtres de cartes, et toute statistique par
+# carte (vignettes et lectures de la Tactique, taux de victoire par carte, briefing, Synthese, Escouade,
+# Coequipiers, motifs, series temporelles). Les identifiants ne bougent pas : le regroupement est une
+# table map_id -> carte de base (domain.GroupesDeCartes), construite sur le nom retenu du registre.
 #
 # Regle : un nom EN du registre qui se termine par l'un de ces suffixes, precede d'une espace, est la
-# variante de la carte dont le nom est le reste du nom. Sans carte de base de ce nom au catalogue
-# (maps_catalog), la carte reste seule dans les filtres. Aucune heuristique de nombre de mots.
+# variante de la carte dont le nom est le reste du nom, A CONDITION qu'un map_id du registre porte ce nom
+# de base. Sans carte de base au registre, la carte reste seule. Aucune heuristique de nombre de mots.
+# Le groupe reunit tous les identifiants qui portent le nom de base et ceux de ses variantes.
 #
-# Consommation : mappings.LoadMapVariantsFromFile -> Registry.GetMapVariants(slug) -> repos de
-# filtres et d'historique -> analysis.BaseMapName.
+# Consommation : mappings.LoadMapVariantsFromFile -> Registry.GetMapVariants(slug) -> analysis.BaseMapName,
+# analysis.GroupMapsByBase -> duckdb.MapGroupsRepo (port.MapGroupReader) -> services. Garde-rail :
+# archlint/no_map_variant_suffix_literal_test.go (aucun suffixe en dur ailleurs).
 
 [meta]
 title_slug     = "halo_infinite"

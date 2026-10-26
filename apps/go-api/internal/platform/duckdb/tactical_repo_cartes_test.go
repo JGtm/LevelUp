@@ -180,7 +180,7 @@ func TestTacticalRepo_EntreesVides_Refus(t *testing.T) {
 	if _, err := repo.MapsPlayed(ctx, domain.TacticalQuery{}); err == nil {
 		t.Error("MapsPlayed sans xuid : attendu un refus")
 	}
-	if _, err := repo.KillPositions(ctx, domain.TacticalQuery{MapID: tacCarteA}); err == nil {
+	if _, err := repo.KillPositions(ctx, domain.TacticalQuery{MapIDs: []string{tacCarteA}}); err == nil {
 		t.Error("KillPositions sans xuid : attendu un refus")
 	}
 	if _, err := repo.KillPositions(ctx, tacQuery("")); err == nil {
@@ -190,7 +190,7 @@ func TestTacticalRepo_EntreesVides_Refus(t *testing.T) {
 		t.Error("Univers sans xuid : attendu un refus")
 	}
 
-	sansListe := domain.TacticalQuery{PlayerXUID: tacXUIDMoi, MapID: tacCarteA}
+	sansListe := domain.TacticalQuery{PlayerXUID: tacXUIDMoi, MapIDs: []string{tacCarteA}}
 	lectures := map[string]func() error{
 		"Univers":           func() error { _, err := repo.Univers(ctx, sansListe); return err },
 		"MapsPlayed":        func() error { _, err := repo.MapsPlayed(ctx, sansListe); return err },

@@ -43,6 +43,8 @@ type HomeService struct {
 	// Si nil, le service retombe sur l'ancien chemin (repo.LoadSpartanIdentity)
 	// — utilisé par les tests et les bootstraps minimaux sans auth.
 	careerLive homeSpartanIdentityProvider
+	// mapGroups (optionnel) : groupes de cartes (la carte favorite compte une variante sous sa base). nil : cartes seules.
+	mapGroups port.MapGroupReader
 	// demoMode : en démo, certaines sections sans source réelle (défis : pas d'API
 	// live + cache TTL 24h) sont servies depuis des fixtures embarquées au lieu de
 	// renvoyer vide. Cf. home_service_demo.go.

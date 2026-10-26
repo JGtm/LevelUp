@@ -30,7 +30,7 @@ func TestTacticalService_PerimetreTransmis(t *testing.T) {
 		t.Fatalf("Raster: %v", err)
 	}
 	vu := repo.vuPos
-	if vu.MapID != tsCarte || vu.PlayerXUID != tsMoi {
+	if len(vu.MapIDs) != 1 || vu.MapIDs[0] != tsCarte || vu.PlayerXUID != tsMoi {
 		t.Errorf("demande = %+v, want carte/joueur inchanges", vu)
 	}
 	if !vu.Matchs.Restreint() || !egalesXUID(vu.Matchs.IDs(), []string{"m1", "m2"}) {

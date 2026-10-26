@@ -107,7 +107,7 @@ func (s *TacticalService) rasterArtefact(ctx context.Context, out *domain.Tactic
 		return games.ErrCapabilityNotSupported
 	}
 	debut := time.Now()
-	univers, err := s.repo.Univers(ctx, s.requeteAvecRetention(out.MapID, scope))
+	univers, err := s.repo.Univers(ctx, s.requeteAvecRetention(s.cartesDe(ctx, out.MapID), scope))
 	if err != nil {
 		s.logger.ErrorContext(ctx, "tactique: univers de la lecture d'artefact en echec",
 			"player", s.xuid, "map_id", out.MapID, "err", err)

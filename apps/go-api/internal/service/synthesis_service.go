@@ -39,6 +39,7 @@ import (
 	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/fragdist"
+	"levelup/go-api/internal/service/mapgroups"
 )
 
 // SynthesisService orchestre les données de la page Synthèse.
@@ -84,6 +85,8 @@ type SynthesisService struct {
 	// analysisPending : l'avancement de l'analyse du film, pour dire « en cours » quand les records de
 	// distance manquent faute de frag mesuré. nil = « non analysé ».
 	analysisPending port.AnalysisPendingMatches
+	// mapGroups : groupes de cartes (variantes comptées sous leur base). nil : cartes seules.
+	mapGroups port.MapGroupReader
 	// titleSlug est nécessaire pour appeler PlayerMatchesRepo.LoadPlayerMatches.
 	// Si "" et playerMatchesRepo != nil, fallback sur le repo legacy.
 	titleSlug  string
@@ -200,8 +203,8 @@ func (s *SynthesisService) GetSynthesisPage(
 		return nil, err
 	}
 	filteredCanon, filtersApplied, filtersIgnored := filterSynthesisByPeriodCanonical(canonicalRows, period, req.StartDate, req.EndDate)
-	c := req.Filters.Cascade
-	filteredCanon = filterRowsByCascade(filteredCanon, c.ExperienceTypes, c.Playlists, c.Maps, c.Modes)
+	groups := mapgroups.Load(ctx, s.mapGroups)
+	filteredCanon = filterRowsByCascade(filteredCanon, req.Filters.Cascade, groups)
 
 	hp := games.EffectiveHpToKill(s.titleSlug)
 	soloKPIs := analysis.ComputeSynthesisKPIsFromCanonical(filteredCanon, false, hp)
@@ -232,7 +235,7 @@ func (s *SynthesisService) GetSynthesisPage(
 	// Les Labels["fr"] des AssetReference ont été hydratés par
 	// EnrichCanonicalAssetTranslations en amont, donc buildBreakdownsFromCanonical
 	// lit directement les noms FR.
-	breakdowns := buildBreakdownsFromCanonical(filteredCanon)
+	breakdowns := buildBreakdownsFromCanonical(filteredCanon, groups)
 
 	// P9 : stats détaillées (combat, tir, dégâts, fun)
 	detailedStats := buildSynthesisDetailedStatsFromCanonical(filteredCanon, provideSpree)

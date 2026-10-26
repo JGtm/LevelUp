@@ -60,12 +60,12 @@ func filterStatsMatchRowsByContext(rows []legacymatch.StatsMatchRow, ctx string)
 // StartTime minimal des matchs courants de la carte), tie-break MapUI pour un
 // ordre déterministe — même stratégie que computeMapBreakdown
 // (teammates_service_assets.go, commit 59e705690, I12).
-func buildSoloMapBreakdown(current, historicalSolo []legacymatch.StatsMatchRow) []domain.MapBreakdownRow {
+func buildSoloMapBreakdown(current, historicalSolo []legacymatch.StatsMatchRow, groups domain.GroupesDeCartes) []domain.MapBreakdownRow {
 	if len(current) == 0 {
 		return []domain.MapBreakdownRow{}
 	}
-	currentByMap := aggregateMapStats(current)
-	historicalByMap := aggregateMapStats(historicalSolo)
+	currentByMap := aggregateMapStats(current, groups)
+	historicalByMap := aggregateMapStats(historicalSolo, groups)
 
 	out := make([]domain.MapBreakdownRow, 0, len(currentByMap))
 	for key, s := range currentByMap {
@@ -113,7 +113,7 @@ type mapAgg struct {
 	firstSeen   time.Time
 }
 
-func aggregateMapStats(rows []legacymatch.StatsMatchRow) map[string]*mapAgg {
+func aggregateMapStats(rows []legacymatch.StatsMatchRow, groups domain.GroupesDeCartes) map[string]*mapAgg {
 	m := make(map[string]*mapAgg, 16)
 	for _, r := range rows {
 		label := r.MapNameFR
@@ -123,9 +123,14 @@ func aggregateMapStats(rows []legacymatch.StatsMatchRow) map[string]*mapAgg {
 		if label == "" {
 			label = tsLabelUnknown
 		}
-		// Clé = label affiché (StatsMatchRow n'expose pas de map_id).
-		// Cohérent avec le fallback de computeMapBreakdown côté squad.
+		// Clé = label affiché, sauf pour une carte de groupe : le groupe de son identifiant (une variante
+		// compte sous sa carte de base, libellé de la base). Cohérent avec computeMapBreakdown côté squad.
 		key := label
+		if r.MapID != "" {
+			if base, ok := groups.Libelle(r.MapID, libellesDeCartesFR); ok {
+				key, label = "groupe:"+groups.Groupe(r.MapID), base
+			}
+		}
 		a, ok := m[key]
 		if !ok {
 			a = &mapAgg{label: label, firstSeen: r.StartTime}

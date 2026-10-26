@@ -17,6 +17,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/service/mapgroups"
 )
 
 func filterMatchHistoryRowsBySoloSessions(
@@ -405,10 +406,11 @@ func (s *MatchHistoryService) ExportCSV(
 	filtered = filterByOutcome(filtered, req.OutcomeFilter)
 	filtered = filterBySkillTier(filtered, req.SkillTiers, req.RankedContext)
 	filtered = filterByPerfTiers(filtered, req.PerfTiers)
-	mapWinRates := computeMapWinRates(rawRows)
+	groups := mapgroups.Load(ctx, s.mapGroups)
+	mapWinRates := computeMapWinRates(rawRows, groups)
 	// Rejeu 2D : l'export CSV ne porte pas de colonne « Rejeu » (cf. availableColumns)
 	// — inutile de lister le dossier d'artefacts pour un fichier qui ne l'affiche pas.
-	items := enrichRows(filtered, mapWinRates, s.rowFormatters(nil))
+	items := enrichRows(filtered, mapWinRates, s.rowFormatters(nil, groups))
 	sortItems(items, req.SortField, req.SortDir)
 
 	return items, nil

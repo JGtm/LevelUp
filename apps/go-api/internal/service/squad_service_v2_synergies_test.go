@@ -32,7 +32,7 @@ func fptrSyn(v float64) *float64 { return &v }
 
 func TestBuildMapBreakdownLollipop_Empty(t *testing.T) {
 	t.Parallel()
-	got := BuildMapBreakdownLollipop(nil, 0)
+	got := BuildMapBreakdownLollipop(nil, 0, domain.GroupesDeCartes{})
 	if len(got.Datapoints) != 0 {
 		t.Errorf("nil input: want 0 dp, got %d", len(got.Datapoints))
 	}
@@ -51,7 +51,7 @@ func TestBuildMapBreakdownLollipop_TopByPlayed(t *testing.T) {
 		// aquarius : 1 match
 		mkRowMap("m4", "aquarius", "Aquarius", canonical.OutcomeTie, nil),
 	}
-	got := BuildMapBreakdownLollipop(rows, 0)
+	got := BuildMapBreakdownLollipop(rows, 0, domain.GroupesDeCartes{})
 	if len(got.Datapoints) != 2 {
 		t.Fatalf("want 2 maps, got %d", len(got.Datapoints))
 	}
@@ -72,7 +72,7 @@ func TestBuildMapBreakdownLollipop_LimitsApplied(t *testing.T) {
 		mapID := string(rune('a' + i%25))
 		rows = append(rows, mkRowMap("m"+mapID, mapID, mapID, canonical.OutcomeWin, nil))
 	}
-	got := BuildMapBreakdownLollipop(rows, 5)
+	got := BuildMapBreakdownLollipop(rows, 5, domain.GroupesDeCartes{})
 	if len(got.Datapoints) != 5 {
 		t.Errorf("limit 5: got %d", len(got.Datapoints))
 	}
@@ -89,7 +89,7 @@ func TestBuildBulletWinrate_SessionVsHistorical(t *testing.T) {
 	historical := map[string]domain.MapSquadStats{
 		"bazaar": {Wins: 3, Total: 4}, // 75% sur 4 matchs avec le squad strict
 	}
-	got := BuildBulletWinrate(session, historical, 0)
+	got := BuildBulletWinrate(session, historical, 0, domain.GroupesDeCartes{})
 	if len(got.Datapoints) != 1 {
 		t.Fatalf("want 1 map, got %d", len(got.Datapoints))
 	}
@@ -107,7 +107,7 @@ func TestBuildBulletWinrate_MapAbsentFromHistorical(t *testing.T) {
 	session := []canonical.PlayerMatchRow{
 		mkRowMap("m1", "newmap", "NewMap", canonical.OutcomeWin, nil),
 	}
-	got := BuildBulletWinrate(session, nil, 0)
+	got := BuildBulletWinrate(session, nil, 0, domain.GroupesDeCartes{})
 	if len(got.Datapoints) != 1 {
 		t.Fatalf("want 1 map, got %d", len(got.Datapoints))
 	}
@@ -127,7 +127,7 @@ func TestBuildPerfVsHistorical_DeltaCorrect(t *testing.T) {
 	historical := map[string]domain.MapSquadStats{
 		"bazaar": {Wins: 1, Total: 2, PerfAvg: &histPerf},
 	}
-	got := BuildPerfVsHistorical(session, historical, 0)
+	got := BuildPerfVsHistorical(session, historical, 0, domain.GroupesDeCartes{})
 	if len(got.Datapoints) != 1 {
 		t.Fatalf("want 1 dp, got %d", len(got.Datapoints))
 	}
@@ -146,7 +146,7 @@ func TestBuildPerfVsHistorical_SkipsCardWithNoPerf(t *testing.T) {
 	historical := map[string]domain.MapSquadStats{
 		"bazaar": {Wins: 1, Total: 1, PerfAvg: &histPerf},
 	}
-	got := BuildPerfVsHistorical(session, historical, 0)
+	got := BuildPerfVsHistorical(session, historical, 0, domain.GroupesDeCartes{})
 	if len(got.Datapoints) != 0 {
 		t.Errorf("session sans perf -> dp skip, got %d", len(got.Datapoints))
 	}
@@ -164,7 +164,7 @@ func TestBuildHeatmapPlayerMap_BasicAggregation(t *testing.T) {
 			mkRowMap("m2", "aquarius", "Aquarius", canonical.OutcomeLoss, fptrSyn(40)),
 		},
 	}
-	got := BuildHeatmapPlayerMap(rowsByPlayer, 0)
+	got := BuildHeatmapPlayerMap(rowsByPlayer, 0, domain.GroupesDeCartes{})
 	// 2 maps × 2 joueurs avec perf = 4 cellules
 	if len(got.Datapoints) != 4 {
 		t.Errorf("want 4 cells, got %d", len(got.Datapoints))
@@ -194,7 +194,7 @@ func TestBuildHeatmapPlayerMap_OmitsCellsWithoutPerf(t *testing.T) {
 			mkRowMap("m1", "bazaar", "Bazaar", canonical.OutcomeWin, nil), // pas de perf
 		},
 	}
-	got := BuildHeatmapPlayerMap(rowsByPlayer, 0)
+	got := BuildHeatmapPlayerMap(rowsByPlayer, 0, domain.GroupesDeCartes{})
 	// Seul main/Bazaar doit etre present
 	if len(got.Datapoints) != 1 {
 		t.Errorf("cells without perf should be omitted, got %d", len(got.Datapoints))
@@ -203,7 +203,7 @@ func TestBuildHeatmapPlayerMap_OmitsCellsWithoutPerf(t *testing.T) {
 
 func TestBuildHeatmapPlayerMap_Empty(t *testing.T) {
 	t.Parallel()
-	got := BuildHeatmapPlayerMap(map[string][]canonical.PlayerMatchRow{}, 0)
+	got := BuildHeatmapPlayerMap(map[string][]canonical.PlayerMatchRow{}, 0, domain.GroupesDeCartes{})
 	if len(got.Datapoints) != 0 {
 		t.Errorf("empty input: want 0 dp, got %d", len(got.Datapoints))
 	}

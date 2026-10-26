@@ -88,8 +88,9 @@ func TestComputeMapWinRates(t *testing.T) {
 		{MapName: &map1, Outcome: 2},
 		{MapName: &map1, Outcome: 3},
 	}
-	rates := computeMapWinRates(rows)
-	entry, ok := rates[map1]
+	rates := computeMapWinRates(rows, domain.GroupesDeCartes{})
+	// Sans identifiant de carte, la ligne est comptée sous son nom.
+	entry, ok := rates["name:"+map1]
 	if !ok {
 		t.Fatal("expected entry for Aquarius")
 	}

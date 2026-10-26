@@ -167,7 +167,7 @@ func (s *TacticalService) celluleDeKills(ctx context.Context, req domain.Tactica
 			"player", s.xuid, "map_id", req.MapID, "question", req.Question)
 		return nil, domain.TacticalUnivers{}, games.ErrCapabilityNotSupported
 	}
-	lecture, err := s.repo.KillPositions(ctx, requeteDuScope(s.xuid, req.MapID, scope))
+	lecture, err := s.repo.KillPositions(ctx, requeteDuScope(s.xuid, s.cartesDe(ctx, req.MapID), scope))
 	if err != nil {
 		s.logger.ErrorContext(ctx, "tactique: lecture des positions en echec (detail de cellule)",
 			"player", s.xuid, "map_id", req.MapID, "question", req.Question, "err", err)
@@ -225,7 +225,7 @@ func (s *TacticalService) celluleIsole(ctx context.Context, req domain.TacticalC
 			"player", s.xuid, "map_id", req.MapID)
 		return nil, domain.TacticalUnivers{}, games.ErrCapabilityNotSupported
 	}
-	lecture, err := s.repo.MortsAvecContexte(ctx, requeteDuScope(s.xuid, req.MapID, scope))
+	lecture, err := s.repo.MortsAvecContexte(ctx, requeteDuScope(s.xuid, s.cartesDe(ctx, req.MapID), scope))
 	if err != nil {
 		s.logger.ErrorContext(ctx, "tactique: lecture d'isolement en echec (detail de cellule)",
 			"player", s.xuid, "map_id", req.MapID, "err", err)
@@ -311,7 +311,7 @@ func (s *TacticalService) celluleArtefact(ctx context.Context, req domain.Tactic
 			"player", s.xuid, "map_id", req.MapID, "question", req.Question)
 		return nil, domain.TacticalUnivers{}, games.ErrCapabilityNotSupported
 	}
-	univers, err := s.repo.Univers(ctx, s.requeteAvecRetention(req.MapID, scope))
+	univers, err := s.repo.Univers(ctx, s.requeteAvecRetention(s.cartesDe(ctx, req.MapID), scope))
 	if err != nil {
 		s.logger.ErrorContext(ctx, "tactique: univers du detail de cellule en echec",
 			"player", s.xuid, "map_id", req.MapID, "err", err)

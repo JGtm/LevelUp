@@ -96,7 +96,7 @@ func buildPerMinuteHighlightCanonical(window []canonical.PlayerMatchRow) *domain
 }
 
 // buildSerieHighlightCanonical : tuile Série.
-func buildSerieHighlightCanonical(window []canonical.PlayerMatchRow, locale string) *domain.HighlightItem {
+func buildSerieHighlightCanonical(window []canonical.PlayerMatchRow, locale string, groups domain.GroupesDeCartes) *domain.HighlightItem {
 	var slides []domain.HighlightSlide
 	if s := sliceBestKillingSpreeCanonical(window, locale); s != nil {
 		slides = append(slides, *s)
@@ -104,7 +104,7 @@ func buildSerieHighlightCanonical(window []canonical.PlayerMatchRow, locale stri
 	if s := sliceBestWinStreakCanonical(window); s != nil {
 		slides = append(slides, *s)
 	}
-	if s := sliceFavoriteMapCanonical(window, locale); s != nil {
+	if s := sliceFavoriteMapCanonical(window, locale, groups); s != nil {
 		slides = append(slides, *s)
 	}
 	if len(slides) == 0 {
@@ -167,7 +167,9 @@ func sliceBestWinStreakCanonical(window []canonical.PlayerMatchRow) *domain.High
 	}
 }
 
-func sliceFavoriteMapCanonical(window []canonical.PlayerMatchRow, locale string) *domain.HighlightSlide {
+// sliceFavoriteMapCanonical : la carte la mieux gagnée (>= 2 parties). Une variante de carte compte sous sa
+// carte de BASE (domain.GroupesDeCartes) : parties et victoires cumulées, libellé de la base.
+func sliceFavoriteMapCanonical(window []canonical.PlayerMatchRow, locale string, groups domain.GroupesDeCartes) *domain.HighlightSlide {
 	type stat struct {
 		name   string
 		nameFR string
@@ -180,10 +182,17 @@ func sliceFavoriteMapCanonical(window []canonical.PlayerMatchRow, locale string)
 			continue
 		}
 		mapEN, mapFR := assetLabels(r.Summary.Map)
-		s, ok := byMap[r.Summary.Map.ID]
+		if en, ok := groups.Libelle(r.Summary.Map.ID, domain.LocaleLibelleParDefaut); ok {
+			mapEN = en
+		}
+		if fr, ok := groups.Libelle(r.Summary.Map.ID, "fr"); ok {
+			mapFR = fr
+		}
+		key := groups.Groupe(r.Summary.Map.ID)
+		s, ok := byMap[key]
 		if !ok {
 			s = &stat{name: mapEN, nameFR: mapFR}
-			byMap[r.Summary.Map.ID] = s
+			byMap[key] = s
 		}
 		s.plays++
 		if r.Self.Outcome == canonical.OutcomeWin {

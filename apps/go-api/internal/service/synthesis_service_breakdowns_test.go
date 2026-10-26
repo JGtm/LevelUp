@@ -56,7 +56,7 @@ func TestBuildBreakdownsFromCanonical_PerformanceAvgOnlyScoredMatches(t *testing
 		// Autre carte, autre mode, un seul match noté.
 		breakdownRow("Streets", "CTF", canonical.OutcomeTie, 72),
 	}
-	b := buildBreakdownsFromCanonical(rows)
+	b := buildBreakdownsFromCanonical(rows, domain.GroupesDeCartes{})
 
 	recharge := mapEntryByName(t, b.TopMaps, "Recharge")
 	if recharge.PerformanceAvg == nil || *recharge.PerformanceAvg != 70 {
@@ -88,7 +88,7 @@ func TestBuildBreakdownsFromCanonical_NoScoreMeansNilAndTierZero(t *testing.T) {
 		breakdownRow("Bazaar", "Slayer", canonical.OutcomeWin, 0),
 		breakdownRow("Bazaar", "Slayer", canonical.OutcomeDNF, 0),
 	}
-	b := buildBreakdownsFromCanonical(rows)
+	b := buildBreakdownsFromCanonical(rows, domain.GroupesDeCartes{})
 
 	bazaar := mapEntryByName(t, b.TopMaps, "Bazaar")
 	if bazaar.PerformanceAvg != nil || bazaar.PerfTier != 0 {
@@ -117,7 +117,7 @@ func TestBuildBreakdownsFromCanonical_PerfTierAtThresholds(t *testing.T) {
 	for _, tc := range cases {
 		b := buildBreakdownsFromCanonical([]canonical.PlayerMatchRow{
 			breakdownRow("Aquarius", "Slayer", canonical.OutcomeWin, tc.perf),
-		})
+		}, domain.GroupesDeCartes{})
 		if got := mapEntryByName(t, b.TopMaps, "Aquarius").PerfTier; got != int(tc.want) {
 			t.Errorf("carte, score %v : PerfTier = %d, want %d", tc.perf, got, tc.want)
 		}
@@ -135,7 +135,7 @@ func TestBuildBreakdownsFromCanonical_OutcomesUnchanged(t *testing.T) {
 		breakdownRow("Prism", "Slayer", canonical.OutcomeTie, 0),
 		breakdownRow("Prism", "Slayer", canonical.OutcomeDNF, 0),
 	}
-	b := buildBreakdownsFromCanonical(rows)
+	b := buildBreakdownsFromCanonical(rows, domain.GroupesDeCartes{})
 
 	check := func(label string, total, wins, losses, ties, unfinished int, winRate float64) {
 		t.Helper()
@@ -153,7 +153,7 @@ func TestBuildBreakdownsFromCanonical_OutcomesUnchanged(t *testing.T) {
 }
 
 func TestBuildBreakdownsFromCanonical_UnlabelledRowsAreSkippedAndEmptyIsNotNil(t *testing.T) {
-	empty := buildBreakdownsFromCanonical(nil)
+	empty := buildBreakdownsFromCanonical(nil, domain.GroupesDeCartes{})
 	if empty.TopMaps == nil || empty.TopModes == nil {
 		t.Fatalf("liste vide : TopMaps=%v TopModes=%v, want des slices non nil", empty.TopMaps, empty.TopModes)
 	}
@@ -162,7 +162,7 @@ func TestBuildBreakdownsFromCanonical_UnlabelledRowsAreSkippedAndEmptyIsNotNil(t
 	b := buildBreakdownsFromCanonical([]canonical.PlayerMatchRow{
 		breakdownRow("", "Slayer", canonical.OutcomeWin, 60),
 		breakdownRow("Prism", "", canonical.OutcomeWin, 60),
-	})
+	}, domain.GroupesDeCartes{})
 	if len(b.TopMaps) != 1 || len(b.TopModes) != 1 {
 		t.Fatalf("TopMaps=%d TopModes=%d, want 1 et 1", len(b.TopMaps), len(b.TopModes))
 	}
