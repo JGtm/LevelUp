@@ -170,7 +170,7 @@ func registerHalo5Adapters(
 			return a
 		}
 		if pdb != nil {
-			src := halo5db.NewHalo5MatchHistorySource(pdb.SharedReadDB(), pdb.Gamertag)
+			src := halo5db.NewHalo5MatchHistorySource(pdb.SharedReadDB(), pdb.Gamertag, td.ModeSource)
 			da = da.WithMatchHistorySource(src)
 			// Totaux à vie des commendations : keyés par XUID (≠ historique keyé
 			// gamertag) — match_commendations.xuid = l'xuid Xbox résolu au sync.

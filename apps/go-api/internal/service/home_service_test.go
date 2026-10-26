@@ -69,17 +69,22 @@ func (m *mockHomePlayerMatches) LoadPlayerMatches(_ context.Context, _, _ string
 		if mm.PlaylistName != "" {
 			playlistRef.Labels["en"] = mm.PlaylistName
 		}
-		// PairName composite Halo-only → projeté sur GameVariant pour
-		// préserver la compat des tests legacy qui peuplaient PairName/FR.
-		var variantRef *canonical.AssetReference
-		if mm.PairName != "" || mm.PairNameFR != "" {
-			variantRef = &canonical.AssetReference{Kind: "game_variant", DefaultLabel: mm.PairName, Labels: map[string]string{}}
+		// PairName composite Halo-only → mode du match (PairMode, comme le fournit la source de
+		// lecture) ET type de jeu (GameVariant), pour les tests legacy qui peuplaient PairName/FR.
+		newModeRef := func(kind string) *canonical.AssetReference {
+			ref := &canonical.AssetReference{Kind: kind, DefaultLabel: mm.PairName, Labels: map[string]string{}}
 			if mm.PairNameFR != "" {
-				variantRef.Labels["fr"] = mm.PairNameFR
+				ref.Labels["fr"] = mm.PairNameFR
 			}
 			if mm.PairName != "" {
-				variantRef.Labels["en"] = mm.PairName
+				ref.Labels["en"] = mm.PairName
 			}
+			return ref
+		}
+		var variantRef, modeRef *canonical.AssetReference
+		if mm.PairName != "" || mm.PairNameFR != "" {
+			variantRef = newModeRef("game_variant")
+			modeRef = newModeRef("pair_mode")
 		}
 		out[i] = canonical.PlayerMatchRow{
 			Summary: canonical.MatchSummary{
@@ -91,6 +96,7 @@ func (m *mockHomePlayerMatches) LoadPlayerMatches(_ context.Context, _, _ string
 				Map:          mapRef,
 				Playlist:     playlistRef,
 				GameVariant:  variantRef,
+				PairMode:     modeRef,
 			},
 			Self: canonical.MatchParticipant{
 				Kills: &k, Deaths: &d, Assists: &a, KDA: mm.KDA, Outcome: outcome,

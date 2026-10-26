@@ -243,6 +243,10 @@ type TitleDescriptor struct {
 	// Vide = le titre ne revendique aucun motif (ses fichiers « génériques » restent
 	// indexés par tous, comportement historique).
 	MediaFilenamePrefixes []string `json:"media_filename_prefixes"`
+
+	// ModeSource déclare où le registre du titre porte le mode de ses matchs (cf. ModeSource).
+	// Zéro = ModeSourcePair (Halo Infinite). Interne à la lecture : non exposé à l'API.
+	ModeSource ModeSource `json:"-"`
 }
 
 // HasCapability vérifie si le titre supporte une fonctionnalité.

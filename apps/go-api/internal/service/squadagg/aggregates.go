@@ -324,16 +324,10 @@ func canonicalRowExperienceLabel(r canonical.PlayerMatchRow) string {
 	return ExpTypePVPUnranked
 }
 
-// modeLabelForFilter : PairMode prioritaire ; sinon game_variant normalisé —
-// aligné sur la convention centralisée analysis.ResolveModeUIWithVariant (les
-// types canonical n'exposent pas de *string, d'où ce miroir local minimal).
-// Couvre les titres sans pair (Halo 5, PairMode nil) dont le mode vient du
-// game_variant, tout en restant iso-comportement pour les rows avec pair.
+// modeLabelForFilter : libellé du mode comparé au filtre de modes — Summary.PairMode, fourni par la
+// source de lecture du titre (partie ou type de jeu). Aucun repli sur GameVariant.
 func modeLabelForFilter(r canonical.PlayerMatchRow) string {
-	if lbl := assetLabelForFilter(r.Summary.PairMode); lbl != "" {
-		return lbl
-	}
-	return analysis.NormalizeModeLabel(assetLabelForFilter(r.Summary.GameVariant))
+	return assetLabelForFilter(r.Summary.PairMode)
 }
 
 // FilterRowsByCascade filtre une slice de PlayerMatchRow selon les critères
@@ -344,9 +338,8 @@ func modeLabelForFilter(r canonical.PlayerMatchRow) string {
 // les parties jouées sur « Thunderhead Heavies ». `groups` est obligatoire pour que chaque appelant
 // décide du regroupement ; la valeur zéro laisse chaque carte seule.
 //
-// Modes : PairMode prioritaire (pair_name_fr COALESCE pair_name), sinon game_variant
-// normalisé pour les titres sans pair (Halo 5) — via modeLabelForFilter, même
-// convention que filtersResolve. Fallback sur DefaultLabel (EN) si Labels["fr"] absent.
+// Modes : le mode du match (PairMode, via modeLabelForFilter). Fallback sur DefaultLabel (EN) si
+// Labels["fr"] absent.
 func FilterRowsByCascade(rows []canonical.PlayerMatchRow, c domain.CascadeFilter, groups domain.GroupesDeCartes) []canonical.PlayerMatchRow {
 	expSet := make(map[string]struct{}, len(c.ExperienceTypes))
 	for _, e := range c.ExperienceTypes {

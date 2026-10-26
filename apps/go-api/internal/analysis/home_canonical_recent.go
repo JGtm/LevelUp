@@ -15,7 +15,7 @@ import (
 // BuildRecentMatchesWithFavoritesFromCanonical : full canonical (P4.3 finale).
 //
 // Lit Map/Playlist/GameVariant labels via Summary.AssetReference.Labels.
-// PairName (composite Halo-only) substitué par GameVariant FR/Default.
+// Le mode vient de modeLabels (PairMode, fourni par la source du titre).
 // Ce que la couche service injecte — locale, létalité du titre, résolveur de badge de
 // palier, table des variantes qui se décident aux manches — voyage dans
 // RecentMatchesOptions, ci-dessous.
@@ -74,8 +74,7 @@ func BuildRecentMatchesWithFavoritesFromCanonical(
 		t := r.Summary.StartedAtUTC
 
 		mapName, mapNameFR := assetLabels(r.Summary.Map)
-		// modeLabels privilégie PairMode (FR/EN dispo en DB) puis fallback
-		// GameVariant (FR jamais peuplé). Bug #7.
+		// modeLabels lit le mode fourni par la source du titre (PairMode).
 		modeEN, modeFR := modeLabels(r)
 		playlistName, playlistNameFR := assetLabels(r.Summary.Playlist)
 

@@ -91,16 +91,11 @@ func assetLabels(ref *canonical.AssetReference) (en, fr string) {
 	return en, fr
 }
 
-// modeLabels privilégie PairMode (FR/EN dispo en DB) puis fallback GameVariant
-// (FR jamais peuplé en DB). Bug #7.
+// modeLabels rend les libellés (EN, FR) du mode du match : Summary.PairMode, fourni par la
+// source de lecture du titre (partie pour Halo Infinite, type de jeu pour Halo 5). Aucun repli
+// sur GameVariant : un mode sans libellé reste vide (ratchet archlint/mode_gamevariant_fallback_test.go).
 func modeLabels(r canonical.PlayerMatchRow) (en, fr string) {
-	if r.Summary.PairMode != nil {
-		en, fr = assetLabels(r.Summary.PairMode)
-		if en != "" || fr != "" {
-			return en, fr
-		}
-	}
-	return assetLabels(r.Summary.GameVariant)
+	return assetLabels(r.Summary.PairMode)
 }
 
 // dominantNameFromRows agrège la fréquence d'un label par row et retourne le

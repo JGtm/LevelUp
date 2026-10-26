@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
 )
 
@@ -48,8 +49,27 @@ func (r *HomeRepo) EnrichCanonicalAssetTranslations(ctx context.Context, rows []
 		r.applyCanonicalPlaylistDisplay(rows[i].Summary.Playlist)
 		r.applyCanonicalMapIconURL(rows[i].Summary.Map, t)
 		applyCanonicalPairModeFR(rows[i].Summary.PairMode, t)
+		normalizeGameVariantMode(rows[i].Summary.PairMode)
 	}
 	return nil
+}
+
+// normalizeGameVariantMode ramène les libellés d'un mode porté par le type de jeu à la forme d'un mode
+// (analysis.NormalizeModeLabel : préfixe technique « Conteneur:Mode », suffixe de carte), la forme des
+// valeurs d'option des filtres. Fait ICI, une fois, pour que toute page lise le même libellé ; un libellé
+// que la normalisation viderait reste tel quel. Sans effet sur une partie (pair) ni sur un mode sans nom.
+func normalizeGameVariantMode(mode *canonical.AssetReference) {
+	if !modeIsGameVariant(mode) {
+		return
+	}
+	if n := analysis.NormalizeModeLabel(mode.DefaultLabel); n != "" {
+		mode.DefaultLabel = n
+	}
+	for lang, label := range mode.Labels {
+		if n := analysis.NormalizeModeLabel(label); n != "" {
+			mode.Labels[lang] = n
+		}
+	}
 }
 
 // applyCanonicalPlaylistDisplay applique le CHOKEPOINT UNIQUE de libellé de
@@ -122,7 +142,7 @@ func (r *HomeRepo) loadCanonicalModeNamesFR(
 	modeENSet := map[string]struct{}{}
 	for i := range rows {
 		pair := rows[i].Summary.PairMode
-		if pair == nil {
+		if pair == nil || modeIsGameVariant(pair) {
 			continue
 		}
 		if en := analysis.NormalizeModeLabel(pair.DefaultLabel); en != "" {
@@ -146,18 +166,26 @@ func (r *HomeRepo) loadCanonicalModeNamesFR(
 }
 
 // applyCanonicalAssetFRBatch applique applyCanonicalAssetFR aux 3 assets Map/Playlist/GameVariant.
+// Un mode porté par le type de jeu prend le dictionnaire des types de jeu.
 func applyCanonicalAssetFRBatch(row *canonical.PlayerMatchRow, t canonicalAssetTranslations) {
 	applyCanonicalAssetFR(row.Summary.Map, t.mapNames)
 	applyCanonicalAssetFR(row.Summary.Playlist, t.playlistNames)
 	applyCanonicalAssetFR(row.Summary.GameVariant, t.variantNames)
+	if modeIsGameVariant(row.Summary.PairMode) {
+		applyCanonicalAssetFR(row.Summary.PairMode, t.variantNames)
+	}
 }
 
-// applyCanonicalAssetENBatch applique applyCanonicalAssetEN aux 4 assets.
+// applyCanonicalAssetENBatch applique applyCanonicalAssetEN aux 4 assets (le mode selon son type d'asset).
 func applyCanonicalAssetENBatch(row *canonical.PlayerMatchRow, t canonicalAssetTranslations) {
 	applyCanonicalAssetEN(row.Summary.Map, t.mapNamesEN)
 	applyCanonicalAssetEN(row.Summary.Playlist, t.playlistNamesEN)
 	applyCanonicalAssetEN(row.Summary.GameVariant, t.variantNamesEN)
-	applyCanonicalAssetEN(row.Summary.PairMode, t.pairNamesEN)
+	if modeIsGameVariant(row.Summary.PairMode) {
+		applyCanonicalAssetEN(row.Summary.PairMode, t.variantNamesEN)
+	} else {
+		applyCanonicalAssetEN(row.Summary.PairMode, t.pairNamesEN)
+	}
 }
 
 // applyCanonicalMapIconURL hydrate Map.IconURL via cascade :
@@ -193,8 +221,10 @@ func (r *HomeRepo) applyCanonicalMapIconURL(m *canonical.AssetReference, t canon
 }
 
 // applyCanonicalPairModeFR applique la cascade ResolvePairNameFR (mode_name_tr → asset → raw).
+// Sans effet sur un mode porté par le type de jeu : ses libellés viennent des dictionnaires des types
+// de jeu (applyCanonicalAssetFRBatch), pas de mode_name_tr.
 func applyCanonicalPairModeFR(pair *canonical.AssetReference, t canonicalAssetTranslations) {
-	if pair == nil {
+	if pair == nil || modeIsGameVariant(pair) {
 		return
 	}
 	if pair.Labels == nil {
@@ -210,30 +240,49 @@ func applyCanonicalPairModeFR(pair *canonical.AssetReference, t canonicalAssetTr
 	}
 }
 
+// canonicalAssetRefs rend les références d'un match qui se traduisent par le type d'asset
+// `kind` (map|playlist|game_variant|pair). Le mode (PairMode) se traduit par le type de SA
+// référence : « game_variant » quand le titre porte son mode dans le type de jeu
+// (ModeAssetReference), « pair » sinon. Nil pour un kind inconnu.
+func canonicalAssetRefs(s *canonical.MatchSummary, kind string) []*canonical.AssetReference {
+	modeIsVariant := modeIsGameVariant(s.PairMode)
+	switch kind {
+	case "map":
+		return []*canonical.AssetReference{s.Map}
+	case "playlist":
+		return []*canonical.AssetReference{s.Playlist}
+	case games.AssetKindGameVariant:
+		if modeIsVariant {
+			return []*canonical.AssetReference{s.GameVariant, s.PairMode}
+		}
+		return []*canonical.AssetReference{s.GameVariant}
+	case "pair":
+		if modeIsVariant {
+			return nil
+		}
+		return []*canonical.AssetReference{s.PairMode}
+	}
+	return nil
+}
+
+// modeIsGameVariant : le mode est une copie de la référence du type de jeu (cf. ModeAssetReference).
+func modeIsGameVariant(mode *canonical.AssetReference) bool {
+	return mode != nil && mode.Kind == games.AssetKindGameVariant
+}
+
 // collectAllCanonicalAssetIDs retourne les asset_ids distincts non-vides pour
 // le kind donné. Sans filtre needsTranslation : utilisé pour les lookups par
 // ID stable (registry, traductions canoniques en-US).
 func collectAllCanonicalAssetIDs(rows []canonical.PlayerMatchRow, kind string) []string {
 	ids := map[string]struct{}{}
 	for i := range rows {
-		var ref *canonical.AssetReference
-		switch kind {
-		case "map":
-			ref = rows[i].Summary.Map
-		case "playlist":
-			ref = rows[i].Summary.Playlist
-		case "game_variant":
-			ref = rows[i].Summary.GameVariant
-		case "pair":
-			ref = rows[i].Summary.PairMode
-		default:
-			return nil
-		}
-		if ref == nil {
-			continue
-		}
-		if id := strings.TrimSpace(ref.ID); id != "" {
-			ids[id] = struct{}{}
+		for _, ref := range canonicalAssetRefs(&rows[i].Summary, kind) {
+			if ref == nil {
+				continue
+			}
+			if id := strings.TrimSpace(ref.ID); id != "" {
+				ids[id] = struct{}{}
+			}
 		}
 	}
 	out := make([]string, 0, len(ids))
@@ -267,30 +316,21 @@ func collectAllCanonicalMapIDs(rows []canonical.PlayerMatchRow) []string {
 func collectCanonicalAssetIDsNeedingFR(rows []canonical.PlayerMatchRow, kind string) []string {
 	ids := map[string]struct{}{}
 	for i := range rows {
-		var ref *canonical.AssetReference
-		switch kind {
-		case "map":
-			ref = rows[i].Summary.Map
-		case "playlist":
-			ref = rows[i].Summary.Playlist
-		case "game_variant":
-			ref = rows[i].Summary.GameVariant
-		case "pair":
-			ref = rows[i].Summary.PairMode
-		}
-		if ref == nil || strings.TrimSpace(ref.ID) == "" {
-			continue
-		}
-		fr := ""
-		en := ref.DefaultLabel
-		if ref.Labels != nil {
-			fr = ref.Labels["fr"]
-			if v, ok := ref.Labels["en"]; ok && v != "" {
-				en = v
+		for _, ref := range canonicalAssetRefs(&rows[i].Summary, kind) {
+			if ref == nil || strings.TrimSpace(ref.ID) == "" {
+				continue
 			}
-		}
-		if needsHomeAssetTranslation(fr, en) {
-			ids[ref.ID] = struct{}{}
+			fr := ""
+			en := ref.DefaultLabel
+			if ref.Labels != nil {
+				fr = ref.Labels["fr"]
+				if v, ok := ref.Labels["en"]; ok && v != "" {
+					en = v
+				}
+			}
+			if needsHomeAssetTranslation(fr, en) {
+				ids[ref.ID] = struct{}{}
+			}
 		}
 	}
 	out := make([]string, 0, len(ids))

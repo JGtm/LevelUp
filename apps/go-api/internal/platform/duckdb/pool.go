@@ -17,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/migration"
 
 	"golang.org/x/sync/singleflight"
@@ -24,9 +25,12 @@ import (
 
 // PlayerPoolConfig contient les chemins nécessaires pour ouvrir un PlayerDB.
 type PlayerPoolConfig struct {
-	Gamertag           string
-	XUID               string
-	TitleSlug          string // Sprint 44 : namespace titre (ex: "halo_infinite")
+	Gamertag  string
+	XUID      string
+	TitleSlug string // Sprint 44 : namespace titre (ex: "halo_infinite")
+	// ModeSource : où le registre du titre porte le mode d'un match (manifeste du titre,
+	// title.Registry.ModeSourceFor). Zéro = la partie.
+	ModeSource         title.ModeSource
 	PlayerDBPath       string
 	SharedDBPath       string
 	MetaDBPath         string
@@ -96,6 +100,10 @@ type PlayerDB struct {
 	XUID      string
 	Gamertag  string
 	TitleSlug string // Sprint 44 : titre associé
+
+	// ModeSource : où le registre du titre porte le mode d'un match (cf. title.ModeSource) ; lue par
+	// PlayerMatchesRepo pour remplir canonical.MatchSummary.PairMode. Zéro = la partie.
+	ModeSource title.ModeSource
 }
 
 // ReadDB retourne la connexion de lecture (Player RW — connexion unique par joueur).
@@ -318,6 +326,7 @@ func openPlayerDB(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) 
 		XUID:            cfg.XUID,
 		Gamertag:        cfg.Gamertag,
 		TitleSlug:       cfg.TitleSlug,
+		ModeSource:      cfg.ModeSource,
 	}, nil
 }
 

@@ -103,9 +103,6 @@ func buildSharedMatch(matchID string, indexed map[string]map[string]canonical.Pl
 			sm.StartedAt = row.Summary.StartedAtUTC
 			sm.Map = row.Summary.Map
 			sm.Mode = row.Summary.PairMode
-			if sm.Mode == nil {
-				sm.Mode = row.Summary.GameVariant
-			}
 			sm.Playlist = row.Summary.Playlist
 			sm.Outcome = row.Summary.Outcome
 		}

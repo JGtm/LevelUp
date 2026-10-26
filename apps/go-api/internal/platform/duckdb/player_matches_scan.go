@@ -74,9 +74,10 @@ func (r *PlayerMatchesRepo) mergePlayerMatchRows(
 		}
 	}
 
+	modeSource := r.pdb.ModeSource
 	out := make([]canonical.PlayerMatchRow, 0, len(shared))
 	for _, s := range shared {
-		out = append(out, projectPlayerMatchRow(s))
+		out = append(out, projectPlayerMatchRow(s, modeSource))
 	}
 	return out
 }

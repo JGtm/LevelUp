@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/platform/duckdb"
 )
@@ -30,15 +31,17 @@ import (
 // Halo5MatchHistorySource lit l'historique h5 d'un joueur (fixé à la construction)
 // depuis le shared via un SharedReader title-aware.
 type Halo5MatchHistorySource struct {
-	shared   duckdb.SharedReader
-	gamertag string
+	shared     duckdb.SharedReader
+	gamertag   string
+	modeSource title.ModeSource
 }
 
 // NewHalo5MatchHistorySource construit la source liée à un joueur (gamertag) et au
 // SharedReader du titre h5. Le gamertag est normalisé (trim) ; la comparaison SQL
-// est insensible à la casse (LOWER), h5 étant gamertag-keyé.
-func NewHalo5MatchHistorySource(shared duckdb.SharedReader, gamertag string) *Halo5MatchHistorySource {
-	return &Halo5MatchHistorySource{shared: shared, gamertag: strings.TrimSpace(gamertag)}
+// est insensible à la casse (LOWER), h5 étant gamertag-keyé. modeSource est la source du mode
+// déclarée par le manifeste du titre (TitleDescriptor.ModeSource).
+func NewHalo5MatchHistorySource(shared duckdb.SharedReader, gamertag string, modeSource title.ModeSource) *Halo5MatchHistorySource {
+	return &Halo5MatchHistorySource{shared: shared, gamertag: strings.TrimSpace(gamertag), modeSource: modeSource}
 }
 
 // h5DefaultHistoryLimit borne le nombre de matchs renvoyés quand matchIDs est vide
@@ -112,9 +115,9 @@ func (s *Halo5MatchHistorySource) GetMatchSummaries(ctx context.Context, matchID
 		return nil, err
 	}
 	if len(matchIDs) == 0 {
-		return projectH5Summaries(rows), nil
+		return projectH5Summaries(rows, s.modeSource), nil
 	}
-	return orderH5SummariesByIDs(rows, matchIDs), nil
+	return orderH5SummariesByIDs(rows, matchIDs, s.modeSource), nil
 }
 
 // loadRows exécute la query shared (filtre IDs optionnel) et retourne les lignes brutes.
@@ -164,17 +167,17 @@ func (s *Halo5MatchHistorySource) loadRows(ctx context.Context, matchIDs []strin
 }
 
 // projectH5Summaries mappe les lignes (déjà ordonnées par la query) vers MatchSummary.
-func projectH5Summaries(rows []h5MatchSummaryRow) []canonical.MatchSummary {
+func projectH5Summaries(rows []h5MatchSummaryRow, modeSource title.ModeSource) []canonical.MatchSummary {
 	out := make([]canonical.MatchSummary, 0, len(rows))
 	for i := range rows {
-		out = append(out, projectH5MatchSummary(rows[i]))
+		out = append(out, projectH5MatchSummary(rows[i], modeSource))
 	}
 	return out
 }
 
 // orderH5SummariesByIDs réordonne les lignes selon l'ordre d'entrée de matchIDs.
 // Un ID demandé absent du shared est omis (pas de trou nil dans la liste).
-func orderH5SummariesByIDs(rows []h5MatchSummaryRow, matchIDs []string) []canonical.MatchSummary {
+func orderH5SummariesByIDs(rows []h5MatchSummaryRow, matchIDs []string, modeSource title.ModeSource) []canonical.MatchSummary {
 	byID := make(map[string]h5MatchSummaryRow, len(rows))
 	for i := range rows {
 		byID[rows[i].matchID] = rows[i]
@@ -182,7 +185,7 @@ func orderH5SummariesByIDs(rows []h5MatchSummaryRow, matchIDs []string) []canoni
 	out := make([]canonical.MatchSummary, 0, len(matchIDs))
 	for _, id := range matchIDs {
 		if r, ok := byID[id]; ok {
-			out = append(out, projectH5MatchSummary(r))
+			out = append(out, projectH5MatchSummary(r, modeSource))
 		}
 	}
 	return out
@@ -192,13 +195,17 @@ func orderH5SummariesByIDs(rows []h5MatchSummaryRow, matchIDs []string) []canoni
 // Réutilise les helpers partagés du package (assetReference, outcomeFromInt,
 // matchTypeFromFlags, projectTeamScores via team scores -1=absent).
 //
+// Mode (PairMode) : partie du registre si présente, sinon type de jeu — règle du titre
+// (modeSource du manifeste, duckdb.ModeAssetReference), identique à la source générique
+// qui sert les pages.
+//
 // Champs canonical non couverts par le substrat h5 :
-//   - PairMode : pair_name h5 souvent absent → nil quand vide (assetReference le gère) ;
 //   - T0Ms : pas de countdown/real_start_time exploité côté summary h5 → nil ;
 //   - Teams.MMR / ParticipantsXUIDs : indisponibles en h5 (cf. mapping live).
-func projectH5MatchSummary(r h5MatchSummaryRow) canonical.MatchSummary {
+func projectH5MatchSummary(r h5MatchSummaryRow, modeSource title.ModeSource) canonical.MatchSummary {
 	isRanked := r.isRanked
 	isFirefight := r.isFirefight
+	gameVariant := duckdb.AssetReference("game_variant", r.variantID, r.variantName, "")
 	return canonical.MatchSummary{
 		MatchID:         r.matchID,
 		StartedAtUTC:    r.startTime,
@@ -206,13 +213,14 @@ func projectH5MatchSummary(r h5MatchSummaryRow) canonical.MatchSummary {
 		MatchType:       duckdb.MatchTypeFromFlags(r.isRanked, r.isFirefight),
 		Playlist:        duckdb.AssetReference("playlist", r.playlistID, r.playlistName, r.playlistNameFR),
 		Map:             duckdb.AssetReference("map", r.mapID, r.mapName, r.mapNameFR),
-		GameVariant:     duckdb.AssetReference("game_variant", r.variantID, r.variantName, ""),
-		PairMode:        duckdb.AssetReference("pair_mode", r.pairID, r.pairName, r.pairNameFR),
-		IsRanked:        &isRanked,
-		IsPvE:           &isFirefight,
-		Outcome:         duckdb.OutcomeFromInt(r.outcomeCode),
-		Teams:           h5TeamScores(r.team0Score, r.team1Score),
-		T0Ms:            nil,
+		GameVariant:     gameVariant,
+		PairMode: duckdb.ModeAssetReference(modeSource,
+			duckdb.AssetReference("pair_mode", r.pairID, r.pairName, r.pairNameFR), gameVariant),
+		IsRanked: &isRanked,
+		IsPvE:    &isFirefight,
+		Outcome:  duckdb.OutcomeFromInt(r.outcomeCode),
+		Teams:    h5TeamScores(r.team0Score, r.team1Score),
+		T0Ms:     nil,
 	}
 }
 

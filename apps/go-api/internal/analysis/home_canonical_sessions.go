@@ -90,8 +90,8 @@ func earliestStartTimeCanonical(rows []canonical.PlayerMatchRow) *time.Time {
 // Liste des N dernières sessions solo ou squad avec KPIs agrégés.
 //
 // Note ADR 0011 : legacymatch.HomeMatchRow.PairNameFR (composite Halo-only)
-// n'a pas d'équivalent canonical. dominantMode est dérivé de
-// Summary.GameVariant.Labels["fr"] || DefaultLabel comme proxy.
+// n'a pas d'équivalent canonical. dominantMode est dérivé du mode du match
+// (Summary.PairMode, via modeLabels).
 func BuildSessionSummariesFromCanonical(rows []canonical.PlayerMatchRow, squadMode bool, limit int, locale string, effectiveHpToKill float64) []domain.SessionSummaryItem {
 	if len(rows) == 0 {
 		return nil
@@ -208,8 +208,7 @@ func BuildSessionSummariesFromCanonical(rows []canonical.PlayerMatchRow, squadMo
 			}
 		}
 
-		// Mode dominant : PairMode FR le plus joué (fallback GameVariant).
-		// Bug #7 — PairMode expose pair_name_fr en DB.
+		// Mode dominant : le mode (PairMode) le plus joué, dans la langue demandée.
 		// Normalisation appliquée (strip " on Bazaar", extraction sous-mode
 		// "Arena:Slayer" → "Slayer") pour aligner sur BuildRecentMatchesWith…
 		// et fusionner les fréquences cross-map. Sans ça les sessions solo
