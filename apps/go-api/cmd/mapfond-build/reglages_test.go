@@ -134,3 +134,21 @@ func TestSansLevierReconnaitChaqueLevier(t *testing.T) {
 		t.Fatalf("%d leviers balayés : le témoin ne lit pas la structure", leviers)
 	}
 }
+
+// La garde des ancres n'agit qu'avec le rognage aux positions jouees : seule, elle est ignoree
+// (rien a garder d'un rognage qui n'a pas lieu).
+func TestGardeAutourDesAncresDe(t *testing.T) {
+	e := &environnement{reglages: &reglagesFond{Cartes: map[string]reglageCarte{
+		"avec":  {RogneAuxPositionsJouees: true, GardeAutourDesAncres: 2},
+		"seule": {GardeAutourDesAncres: 2},
+		"sans":  {RogneAuxPositionsJouees: true},
+	}}}
+	for cle, attendu := range map[string]float64{"avec": 2, "seule": 0, "sans": 0, "inconnue": 0} {
+		if got := e.gardeAutourDesAncresDe(cle); got != attendu {
+			t.Errorf("gardeAutourDesAncresDe(%q) = %v, attendu %v", cle, got, attendu)
+		}
+	}
+	if (&environnement{}).gardeAutourDesAncresDe("x") != 0 {
+		t.Error("sans reglages, la garde doit etre nulle")
+	}
+}
