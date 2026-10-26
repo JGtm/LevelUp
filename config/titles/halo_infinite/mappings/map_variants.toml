@@ -12,11 +12,12 @@
 # ce nom de base. Sans carte de base au registre, la carte reste seule. Aucune heuristique de nombre de
 # mots. Le groupe reunit tous les identifiants qui portent le nom de base et ceux de ses variantes.
 #
-# Regle de republication (independante des suffixes) : une carte INTEGREE au jeu republiee sous un nouvel
-# asset a plusieurs map_id du meme nom ; ils forment un groupe quand ils se resolvent vers la meme cle de
-# MODULE (mapcatalog.SourcesDeZones.CleDeModule : catalogue des bornes + zones versionnees). Le nom seul ne
-# suffit jamais. Une carte Forge n'a aucune cle de module (le catalogue des bornes l'envoie vers un
-# canevas) : cette regle ne reunit jamais deux versions Forge de meme nom.
+# Regle de republication (independante des suffixes) : les map_id d'un meme nom forment un groupe, qu'il
+# s'agisse d'une carte INTEGREE au jeu republiee sous un nouvel asset ou des versions successives d'une
+# carte Forge (trace peu change d'une version a l'autre). Exception : quand ces map_id se resolvent vers
+# plusieurs cles de MODULE differentes (mapcatalog.SourcesDeZones.CleDeModule : catalogue des bornes +
+# zones versionnees), le nom couvre plusieurs cartes integrees ; un groupe par cle, les map_id sans cle
+# restent seuls.
 #
 # Consommation : mappings.LoadMapVariantsFromFile -> Registry.GetMapVariants(slug) -> analysis.BaseMapName,
 # analysis.GroupMapsByBase (+ service.MapModuleResolverFor) -> duckdb.MapGroupsRepo

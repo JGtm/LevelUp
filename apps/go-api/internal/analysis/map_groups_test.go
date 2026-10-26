@@ -14,7 +14,7 @@ func TestGroupMapsByBase_VarianteEtBaseADeuxIdentifiants(t *testing.T) {
 		{MapID: "live-a", Name: "Live Fire", Matches: 432},
 		{MapID: "live-rk", Name: "Live Fire - Ranked", Matches: 512},
 		{MapID: "pit", Name: "The Pit", Matches: 26},
-		{MapID: "pit2", Name: "The Pit", Matches: 10}, // deux identifiants sans variante : pas de groupe
+		{MapID: "pit2", Name: "The Pit", Matches: 10}, // deux identifiants sans variante : republication
 	}, suffixesGroupes)
 
 	for _, id := range []string{"live-a", "live-b", "live-rk"} {
@@ -29,8 +29,8 @@ func TestGroupMapsByBase_VarianteEtBaseADeuxIdentifiants(t *testing.T) {
 	if !ok || base.Name != "Live Fire" || !reflect.DeepEqual(base.IDs, []string{"live-a", "live-b"}) {
 		t.Errorf("base = %+v, attendu Live Fire sur [live-a live-b]", base)
 	}
-	if g.Groups.Regroupe("pit") || g.Groups.Regroupe("pit2") {
-		t.Error("deux identifiants de même nom SANS variante ne forment pas un groupe")
+	if g.Groups.Groupe("pit2") != "pit" {
+		t.Errorf("deux identifiants de même nom SANS variante forment un groupe de republication : %q", g.Groups.Groupe("pit2"))
 	}
 }
 
@@ -135,36 +135,38 @@ func TestGroupMapsByBase_RepublieeSansSuffixe(t *testing.T) {
 	}
 }
 
-// Deux versions d'une carte Forge portent le même nom et aucune clé de module : elles restent deux
-// cartes, quel que soit leur nom.
-func TestGroupMapsByBase_DeuxVersionsForgeRestentSeparees(t *testing.T) {
+// Deux versions d'une carte Forge portent le même nom et aucune clé de module : elles forment un
+// groupe, représenté par la version la plus jouée.
+func TestGroupMapsByBase_VersionsForgeReunies(t *testing.T) {
 	g := GroupMapsByBase([]MapNameCount{
 		{MapID: "sh-1", Name: "Shogun", Matches: 15},
 		{MapID: "sh-2", Name: "Shogun", Matches: 2},
+		{MapID: "solo", Name: "Solution", Matches: 9},
 	}, suffixesGroupes)
-	if g.Groups.Regroupe("sh-1") || g.Groups.Regroupe("sh-2") || !g.Groups.Vide() {
-		t.Error("deux identifiants Forge de même nom sans clé de module ne forment pas un groupe")
+	if g.Groups.Groupe("sh-2") != "sh-1" || !g.Groups.Regroupe("sh-1") {
+		t.Errorf("les versions Forge de Shogun forment un groupe : %q / %q", g.Groups.Groupe("sh-1"), g.Groups.Groupe("sh-2"))
+	}
+	if g.Groups.Regroupe("solo") {
+		t.Error("un identifiant seul sous son nom ne forme pas de groupe")
 	}
 }
 
-// Une clé absente d'un côté : l'identifiant sans clé reste seul, les autres se réunissent. Deux clés
-// différentes sous un même nom restent deux groupes.
+// Une seule clé de module : les identifiants sans clé rejoignent le groupe. Deux clés différentes sous
+// un même nom : un groupe par clé, et l'identifiant sans clé reste seul.
 func TestGroupMapsByBase_CleAbsenteOuDifferente(t *testing.T) {
 	g := GroupMapsByBase([]MapNameCount{
 		{MapID: "x1", Name: "Forest", Matches: 10, Module: "forest"},
 		{MapID: "x2", Name: "Forest", Matches: 8, Module: "forest"},
-		{MapID: "x3", Name: "Forest", Matches: 7}, // pas de clé : reste seule
+		{MapID: "x3", Name: "Forest", Matches: 7}, // pas de clé, une seule clé sous ce nom : rejoint
 		{MapID: "y1", Name: "Pit", Matches: 4, Module: "m1"},
 		{MapID: "y2", Name: "Pit", Matches: 3, Module: "m2"}, // clé différente : reste seule
+		{MapID: "y3", Name: "Pit", Matches: 2},               // sans clé, plusieurs clés : reste seule
 	}, suffixesGroupes)
-	if !g.Groups.Regroupe("x1") || g.Groups.Groupe("x2") != "x1" {
-		t.Errorf("x1 et x2 (même clé) doivent former un groupe : %q / %q", g.Groups.Groupe("x1"), g.Groups.Groupe("x2"))
+	if g.Groups.Groupe("x2") != "x1" || g.Groups.Groupe("x3") != "x1" {
+		t.Errorf("x1, x2, x3 forment un groupe : %q / %q", g.Groups.Groupe("x2"), g.Groups.Groupe("x3"))
 	}
-	if g.Groups.Regroupe("x3") {
-		t.Error("un identifiant sans clé de module reste seul")
-	}
-	if g.Groups.Regroupe("y1") || g.Groups.Regroupe("y2") {
-		t.Error("deux clés de module différentes sous un même nom restent deux cartes")
+	if g.Groups.Regroupe("y1") || g.Groups.Regroupe("y2") || g.Groups.Regroupe("y3") {
+		t.Error("deux clés de module différentes sous un même nom restent des cartes distinctes")
 	}
 }
 
