@@ -18,6 +18,7 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 - **Vue match : plus de faux message « Les médailles et citations ne sont pas disponibles »** — un match sans médaille gagnée est une donnée complète ; le message ne s'affiche plus que si les stats du joueur pour ce match manquent aussi.
 - **Citations : Bulldozer est rangée en Multijoueur.**
 - **Titre d'onglet de la page Citations en anglais** : « Commendations », comme l'onglet de navigation.
+- **Vue du match : un match sans médaille n'affiche plus « données manquantes »** — le bandeau n'apparaît plus que si la ligne du joueur manque elle aussi dans le match.
 
 ## [8.0.6] - 2026-10-26
 

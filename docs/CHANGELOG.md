@@ -18,6 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Match view: no more false "Medals and commendations are unavailable" notice** — a match where the player earned no medal is complete data; the notice now only shows when the player's match stats are missing too.
 - **Commendations: Bulldozer is filed under Multiplayer.**
 - **Commendations page tab title in English** reads "Commendations", like the navigation tab.
+- **Match view: a match without medals no longer shows "data missing"** — the banner now only appears when the player's line is missing from the match too.
 
 ## [8.0.6] - 2026-10-26
 
