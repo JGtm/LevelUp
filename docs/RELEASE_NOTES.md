@@ -1,5 +1,11 @@
 ## What's new
 
+**v8.1 — Performance by map and by mode, map variants counted together**
+
+- **Performance score by map and by mode** — on the Summary, the "By map" and "By mode" charts carry a curve of your average performance score (0 to 100, right-hand axis) over the result bars; each point takes the colour of its tier
+- **Map variants counted with their base map** — "- Ranked" and "Heavies" variants now count under their base map in every per-map statistic: Tactics, Explorer, Summary, Squad, Time series and the home page. The replay and the match view keep the name of the variant actually played
+- **The map filter brings back the variants** — on the Summary, the Squad and Teammates, as it already did in the Explorer
+
 **v8.0 — 2D replay, the Theater film decoded & a Tactics tab**
 
 The biggest release so far. Halo records a film of every match; until now the app never opened it. It does now — and a match can be watched again from above, second by second, with everything the film knows written around it: who killed whom with what, at what range, who held the flag, who took the power weapon, who wasted the equipment they were carrying when they died.
