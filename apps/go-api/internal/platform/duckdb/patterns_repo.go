@@ -34,9 +34,9 @@ const patternsLoadTimeout = 30 * time.Second
 // Implémente port.PatternsRepository. Construit par joueur (porte un PlayerDB).
 type PatternsRepo struct {
 	pdb *PlayerDB
-	// mapVariantSuffixes : suffixes de variante de carte du titre (map_variants.toml). Vide : aucune
-	// variante, les cartes restent seules.
-	mapVariantSuffixes []string
+	// mapGroupRules : ce qui réunit plusieurs identifiants de carte (variantes de map_variants.toml,
+	// republications d'une carte intégrée). Valeur zéro : les cartes restent seules.
+	mapGroupRules analysis.MapGroupRules
 }
 
 // NewPatternsRepo construit le repo pour un joueur donné.
@@ -44,9 +44,9 @@ func NewPatternsRepo(pdb *PlayerDB) *PatternsRepo {
 	return &PatternsRepo{pdb: pdb}
 }
 
-// WithMapVariantSuffixes injecte les suffixes de variante de carte du titre. Retourne le repo.
-func (r *PatternsRepo) WithMapVariantSuffixes(suffixes []string) *PatternsRepo {
-	r.mapVariantSuffixes = suffixes
+// WithMapGroupRules injecte les règles de regroupement des cartes du titre. Retourne le repo.
+func (r *PatternsRepo) WithMapGroupRules(rules analysis.MapGroupRules) *PatternsRepo {
+	r.mapGroupRules = rules
 	return r
 }
 
@@ -516,7 +516,7 @@ func computePatternSkillDeltas(rows []patterns.MatchRow) {
 // les libellés (ResolveMapLabels) se résolvent sur l'identifiant de base. Une lecture des groupes en échec
 // est journalisée puis dégradée : les variantes restent seules.
 func (r *PatternsRepo) regrouperLesCartes(ctx context.Context, rows []patterns.MatchRow) {
-	groupes, err := lireGroupesDeCartes(ctx, r.pdb, r.mapVariantSuffixes)
+	groupes, err := lireGroupesDeCartes(ctx, r.pdb, r.mapGroupRules)
 	if err != nil {
 		slog.WarnContext(ctx, "patterns: groupes de cartes illisibles, variantes laissées seules", "err", err)
 		return

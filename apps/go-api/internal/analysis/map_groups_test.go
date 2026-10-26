@@ -1,6 +1,7 @@
 package analysis
 
 import (
+	"context"
 	"reflect"
 	"testing"
 )
@@ -102,5 +103,104 @@ func TestGroupMapsByBase_VarianteDeVariante(t *testing.T) {
 	}, suffixesGroupes)
 	if g.Groups.Groupe("xhr") != "x" || g.Groups.Groupe("xh") != "x" {
 		t.Errorf("chaîne : Groupe(xhr) = %q, Groupe(xh) = %q, attendu x", g.Groups.Groupe("xhr"), g.Groups.Groupe("xh"))
+	}
+}
+
+// Une carte intégrée republiée sous un nouvel asset : même nom, même clé de module, aucune variante.
+func TestGroupMapsByBase_IntegreeRepubliee(t *testing.T) {
+	g := GroupMapsByBase([]MapNameCount{
+		{MapID: "bz-old", Name: "Bazaar", Matches: 173, Module: "ctf_bazaar"},
+		{MapID: "bz-new", Name: "Bazaar", Matches: 59, Module: "ctf_bazaar"},
+		{MapID: "bz-bis", Name: "Bazaar", Matches: 3, Module: "ctf_bazaar"},
+	}, suffixesGroupes)
+	for _, id := range []string{"bz-old", "bz-new", "bz-bis"} {
+		if got := g.Groups.Groupe(id); got != "bz-old" {
+			t.Errorf("Groupe(%s) = %q, attendu bz-old (le plus joué)", id, got)
+		}
+	}
+	base, ok := g.Bases["bz-old"]
+	if !ok || base.Name != "Bazaar" || !reflect.DeepEqual(base.IDs, []string{"bz-bis", "bz-new", "bz-old"}) {
+		t.Errorf("base = %+v, attendu Bazaar sur les trois identifiants", base)
+	}
+}
+
+// Sans suffixe déclaré, la règle de republication fonctionne seule.
+func TestGroupMapsByBase_RepublieeSansSuffixe(t *testing.T) {
+	g := GroupMapsByBase([]MapNameCount{
+		{MapID: "a", Name: "Chasm", Matches: 5, Module: "chasm"},
+		{MapID: "b", Name: "Chasm", Matches: 9, Module: "chasm"},
+	}, nil)
+	if g.Groups.Groupe("a") != "b" || g.Groups.Groupe("b") != "b" {
+		t.Errorf("groupes = %q / %q, attendu b / b", g.Groups.Groupe("a"), g.Groups.Groupe("b"))
+	}
+}
+
+// Deux versions d'une carte Forge portent le même nom et aucune clé de module : elles restent deux
+// cartes, quel que soit leur nom.
+func TestGroupMapsByBase_DeuxVersionsForgeRestentSeparees(t *testing.T) {
+	g := GroupMapsByBase([]MapNameCount{
+		{MapID: "sh-1", Name: "Shogun", Matches: 15},
+		{MapID: "sh-2", Name: "Shogun", Matches: 2},
+	}, suffixesGroupes)
+	if g.Groups.Regroupe("sh-1") || g.Groups.Regroupe("sh-2") || !g.Groups.Vide() {
+		t.Error("deux identifiants Forge de même nom sans clé de module ne forment pas un groupe")
+	}
+}
+
+// Une clé absente d'un côté : l'identifiant sans clé reste seul, les autres se réunissent. Deux clés
+// différentes sous un même nom restent deux groupes.
+func TestGroupMapsByBase_CleAbsenteOuDifferente(t *testing.T) {
+	g := GroupMapsByBase([]MapNameCount{
+		{MapID: "x1", Name: "Forest", Matches: 10, Module: "forest"},
+		{MapID: "x2", Name: "Forest", Matches: 8, Module: "forest"},
+		{MapID: "x3", Name: "Forest", Matches: 7}, // pas de clé : reste seule
+		{MapID: "y1", Name: "Pit", Matches: 4, Module: "m1"},
+		{MapID: "y2", Name: "Pit", Matches: 3, Module: "m2"}, // clé différente : reste seule
+	}, suffixesGroupes)
+	if !g.Groups.Regroupe("x1") || g.Groups.Groupe("x2") != "x1" {
+		t.Errorf("x1 et x2 (même clé) doivent former un groupe : %q / %q", g.Groups.Groupe("x1"), g.Groups.Groupe("x2"))
+	}
+	if g.Groups.Regroupe("x3") {
+		t.Error("un identifiant sans clé de module reste seul")
+	}
+	if g.Groups.Regroupe("y1") || g.Groups.Regroupe("y2") {
+		t.Error("deux clés de module différentes sous un même nom restent deux cartes")
+	}
+}
+
+// Variante et republication : le groupe de la base absorbe tous les identifiants de son nom et ceux
+// de sa variante, sans second groupe ni doublon.
+func TestGroupMapsByBase_VarianteEtRepublieeUnSeulGroupe(t *testing.T) {
+	g := GroupMapsByBase([]MapNameCount{
+		{MapID: "lf-1", Name: "Live Fire", Matches: 432, Module: "sgh_interlock"},
+		{MapID: "lf-2", Name: "Live Fire", Matches: 58, Module: "sgh_interlock"},
+		{MapID: "lf-rk", Name: "Live Fire - Ranked", Matches: 512, Module: "sgh_interlock"},
+		{MapID: "lf-rk2", Name: "Live Fire - Ranked", Matches: 6, Module: "sgh_interlock"},
+	}, suffixesGroupes)
+	want := []string{"lf-1", "lf-2", "lf-rk", "lf-rk2"}
+	if got := g.Groups.Membres("lf-rk2"); !reflect.DeepEqual(got, want) {
+		t.Errorf("Membres = %v, attendu %v", got, want)
+	}
+	if len(g.Bases) != 1 {
+		t.Errorf("un seul groupe attendu, bases = %+v", g.Bases)
+	}
+}
+
+// Les règles : un résolveur pose la clé de module sans modifier les cartes d'origine ; sans résolveur
+// ni suffixe, elles sont inactives.
+func TestMapGroupRules(t *testing.T) {
+	if (MapGroupRules{}).Active() {
+		t.Error("règles vides : inactives")
+	}
+	cartes := []MapNameCount{{MapID: "a", Name: "Chasm"}, {MapID: "b", Name: "Chasm"}}
+	r := MapGroupRules{Modules: func(_ context.Context, maps []MapNameCount) map[string]string {
+		return map[string]string{"a": "chasm"}
+	}}
+	if !r.Active() {
+		t.Error("un résolveur suffit à activer les règles")
+	}
+	got := r.WithModules(context.Background(), cartes)
+	if got[0].Module != "chasm" || got[1].Module != "" || cartes[0].Module != "" {
+		t.Errorf("modules = %+v (origine %+v)", got, cartes)
 	}
 }

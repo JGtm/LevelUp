@@ -7,15 +7,16 @@ import (
 	"log/slog"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 )
 
 // MatchHistoryRepo implémente port.MatchHistoryRepository.
 type MatchHistoryRepo struct {
 	pdb *PlayerDB
-	// mapVariantSuffixes : suffixes de nom du titre qui font d'une carte la variante d'une autre
-	// (map_variants.toml). Vide : aucune variante, MapFilterLabel reste nil.
-	mapVariantSuffixes []string
+	// mapGroupRules : ce qui réunit plusieurs identifiants de carte (variantes de map_variants.toml,
+	// republications d'une carte intégrée). Valeur zéro : MapFilterLabel reste nil.
+	mapGroupRules analysis.MapGroupRules
 }
 
 // NewMatchHistoryRepo crée un MatchHistoryRepo depuis un PlayerDB.
@@ -23,9 +24,9 @@ func NewMatchHistoryRepo(pdb *PlayerDB) *MatchHistoryRepo {
 	return &MatchHistoryRepo{pdb: pdb}
 }
 
-// WithMapVariantSuffixes injecte les suffixes de variante de carte du titre. Retourne le repo.
-func (r *MatchHistoryRepo) WithMapVariantSuffixes(suffixes []string) *MatchHistoryRepo {
-	r.mapVariantSuffixes = suffixes
+// WithMapGroupRules injecte les règles de regroupement des cartes du titre. Retourne le repo.
+func (r *MatchHistoryRepo) WithMapGroupRules(rules analysis.MapGroupRules) *MatchHistoryRepo {
+	r.mapGroupRules = rules
 	return r
 }
 
@@ -74,7 +75,7 @@ func (r *MatchHistoryRepo) LoadAll(ctx context.Context) ([]domain.MatchHistoryRa
 	// FiltersRepo (filters_repo.go applyXxxFRTranslations), nécessaire car
 	// match_registry.{map,pair,playlist}_name_fr peut être NULL.
 	applyMatchHistoryFRTranslations(ctx, r.pdb, results)
-	rattacherCartesDeBaseHistorique(ctx, r.pdb, r.mapVariantSuffixes, results)
+	rattacherCartesDeBaseHistorique(ctx, r.pdb, r.mapGroupRules, results)
 
 	return results, nil
 }

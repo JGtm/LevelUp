@@ -36,14 +36,22 @@ Un identifiant sans clé reste seul. Libellé du groupe : celui de l'identifiant
 - Gate : tableau écrit dans la section Mesures -> fait
 
 ### E1 — Règle dans le résolveur
-- [ ] La table des groupes reçoit, en plus des noms, la clé de module de chaque map_id (lue au même
-      endroit que les noms, injectée : l'analyse reste pure)
-- [ ] `GroupMapsByBase` (ou une fonction sœur) regroupe les map_id de même nom ET de même clé de
-      module, sans variante ; les groupes de variantes existants absorbent ces identifiants
-- [ ] Tests unitaires : intégrée republiée = un groupe ; deux versions Forge = deux groupes ; clé
-      absente = seul ; variante + republiée = un seul groupe
-- [ ] Commentaire de `GroupMapsByBase` et de `map_variants.toml` mis à jour (contrat, pas historique)
-- Gate : `go test ./internal/analysis/... ./internal/platform/duckdb/ ./internal/service/... ./internal/archlint/` + golangci ratchet
+- [x] La table des groupes reçoit, en plus des noms, la clé de module de chaque map_id (lue au même
+      endroit que les noms, injectée : l'analyse reste pure) -> `MapNameCount.Module`, `analysis.MapGroupRules`
+      (suffixes + `MapModuleResolver`), posé par `rules.WithModules` dans `lireGroupesDeCartes` ; résolveur
+      `service.MapModuleResolverFor` (catalogues déjà décodés par le processus) sur
+      `mapcatalog.SourcesDeZones.CleDeModule` (essai 1, extrait de `parModule`, une seule copie) ; câblage
+      `wire.mapGroupRulesFor` pour les 5 lecteurs (filtres, filtres cachés, historique, motifs, groupes)
+- [x] `GroupMapsByBase` regroupe les map_id de même nom ET de même clé de module, sans variante ; les
+      groupes de variantes existants absorbent ces identifiants (un nom de base à variante garde la règle
+      de variante, un nom de variante n'ouvre pas de second groupe)
+- [x] Tests unitaires : intégrée republiée = un groupe ; deux versions Forge = deux groupes ; clé
+      absente = seul ; variante + republiée = un seul groupe ; deux clés = deux cartes ; sans suffixe ;
+      règles ; lecteur du registre (duckdb) ; résolveur (fixture + catalogue versionné réel : Bazaar,
+      Live Fire - Ranked ont une clé, Shogun et Houseki aucune)
+- [x] Commentaire de `GroupMapsByBase` et de `map_variants.toml` mis à jour (contrat, pas historique)
+- Gate (passé) : `go test` sur analysis/..., platform/duckdb, service/..., archlint, mapcatalog, api/wire,
+  games/mappings : vert ; `golangci-lint run --new-from-merge-base=origin/main` : 0 issues
 
 ### E2 — Clôture
 - [ ] `go test ./internal/...`, lint ratchet, thought_log, ce plan statué
@@ -56,7 +64,7 @@ v...263/shared/match_registry.parquet` + `match_participants.parquet` (9 594 mat
 (même règle que `nomDeCarteRetenuSQL`) et les comptes ; sauvegarde sans verrou `data/backups/avant_recuisson_98_2026-10-16/
 shared_matches_v2.duckdb`, ouverte en lecture seule, pour les positions (`kill_positions_latest`, 268 194 lignes, 2 600
 matchs) ; catalogues versionnés du worktree pour les clés (`map_quant_bounds.json`, `map_callouts.json`,
-`map_backgrounds/`). Outils jetables non versionnés (`cmd/_e0sql`, `cmd/_e0republiees`), supprimés en clôture. Colonnes
+`map_backgrounds/`). Outils jetables non versionnés (`cmd/_e0sql`, `cmd/_e0republiees`, `cmd/_e0groupes`), supprimés à la fin de E1. Colonnes
 « parties » = tous joueurs / JGtm (xuid 2533274823110022).
 
 **M1 - Noms portés par plusieurs map_id.** 56 noms (135 map_id). 20 sont des cartes intégrées (une clé de module unique
@@ -147,5 +155,23 @@ Salvation, Dynasty, Shiro, Vagabond, Isolation, The Pit, Perilous...) n'ont PAS 
 restent chacun une carte. Le repli par nom de l'index des fonds les ferait converger vers le fond de l'identifiant
 cuit (33075df7 pour Shogun), mais c'est précisément le repli que la règle écarte.
 
+**M6 - Effet de la règle sur le registre réel (E1, résolveur réel sur l'instantané 263).** Groupes de cartes : 40
+avant, 46 après. Six groupes nouveaux, tous des cartes intégrées : Bazaar (2 identifiants, 232 parties, JGtm 53),
+Behemoth (3, 181, JGtm 44), Chasm (2, 144, JGtm 40), Cliffhanger (2, 138, JGtm 49), Launch Site (2, 72, JGtm 24),
+Prism (2, 73, JGtm 47). Les 14 autres cartes intégrées à plusieurs identifiants étaient déjà groupées par leurs
+variantes (Live Fire, Recharge, Streets, Aquarius, Fragmentation, Oasis, Breaker, Highpower, Forest, Deadlock,
+Scarr, Illusion, Forbidden, Catalyst) : inchangées. Aucune carte Forge n'est touchée par la nouvelle règle.
+
 
 ## Découvertes (hors périmètre, non traitées)
+
+- **Shogun et Houseki ne sont pas réunies par cette règle** (E0, M5) : ce sont des cartes Forge (canevas
+  `fo11_blank` / `fo09_academy`, aucune clé de module). Le constat du plan les citait comme motivation ; la règle
+  tranchée les laisse séparées. Les réunir demanderait une preuve de terrain qui n'existe pas dans les données
+  (pas de fond ni de zones keyés par le second map_id, pas de film) ou une déclaration à la main : décision du user.
+- **La règle de variante réunit déjà toutes les versions Forge d'un nom de base** (comportement du plan des
+  variantes, `addGroup` : « tous les identifiants qui portent le nom de base »), vérifié sur le registre : Argyle,
+  Exiled, Kusini Bay, Vallaheim (cartes Forge avec une variante au registre). C'est contraire à la lettre de « deux
+  versions Forge restent séparées » ; non touché (hors périmètre, décision antérieure).
+- **Les positions de morts n'existent que pour les films de JGtm** : le contrôle spatial des republications ne
+  peut pas être étendu aux matchs des autres joueurs tant que leurs films ne sont pas décodés.
