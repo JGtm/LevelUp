@@ -158,12 +158,15 @@ func TestBuildMapObjectives_SocleCentralNeutreMalgreSonTeamIndex(t *testing.T) {
 //
 // 63 -> 64 le 2026-10-09 : « Serenity - Ranked » entre au catalogue avec ses trois socles (deux
 // d'equipe, un neutre AU LABEL `ctf_neutral_include`). Aucun socle sans equipe ni label ne s'ajoute.
-const dbb2SoclesNeutresAuLabel = 64
+//
+// 64 -> 66 le 2026-10-26 : dix cartes Forge entrent au catalogue ; Timberland Evolved et Beaver
+// Canyon portent chacune un socle neutre AU LABEL. Aucune entree existante ne change.
+const dbb2SoclesNeutresAuLabel = 66
 
-// dbb2SoclesSansEquipeSansLabel : les socles a `team_index = -1` SANS label neutre — les
-// huit sortis du panier. Cliffside, Highpower Heavies, Solitude, Solitude - Ranked, plus
-// quatre entrees d'un meme map_id sans `public_name` (`1042b738`).
-const dbb2SoclesSansEquipeSansLabel = 8
+// dbb2SoclesSansEquipeSansLabel : les socles a `team_index = -1` SANS label neutre — sortis
+// du panier. Cliffside, Highpower Heavies, Solitude, Solitude - Ranked, quatre entrees d'un
+// meme map_id sans `public_name` (`1042b738`), et Kusini Bay (entree le 2026-10-26, 8 -> 9).
+const dbb2SoclesSansEquipeSansLabel = 9
 
 // TestCatalogueRecensementDesSoclesNeutres — LE RECENSEMENT, sur le catalogue VERSIONNE.
 //
