@@ -639,11 +639,15 @@ var CartesForge = []CarteForge{
 		FichierMvar:   "argyle_map.mvar",
 		ModuleCanevas: CanevasBlank,
 	},
-	// Huit cartes declarees le 2026-10-26 (Skyblocks et Thunderbowl n'y sont pas : leur variante ne
-	// porte aucun objectif, donc aucune ancre, et la cuisson refuse « pas d'oracle, pas de cadre »). Canevas : level_id de la variante, unicite 1/1
-	// (`TestPreuveLevelIDCartesDuCache`). Quand un meme nom couvre plusieurs assets, le map_id
-	// retenu est celui d'un asset dont la variante est encore publiee (le plus recent) ; les autres
-	// assets du nom heritent du fond par l'index des noms.
+	// Quatre cartes declarees le 2026-10-26, validees par l'utilisateur en version entiere. Canevas :
+	// level_id de la variante, unicite 1/1 (`TestPreuveLevelIDCartesDuCache`). Quand un meme nom
+	// couvre plusieurs assets, le map_id retenu est celui d'un asset dont la variante est encore
+	// publiee (le plus recent) ; les autres assets du nom heritent du fond par l'index des noms.
+	//
+	// Entrees au catalogue de bornes SANS fond declare : Skyblocks et Thunderbowl (variante sans
+	// objectif, donc sans ancre : la cuisson refuse « pas d'oracle, pas de cadre »), Formation et
+	// Gondolas (fond refuse), Kusini Bay (refuse pour l'instant), Exiled (refuse : bras au nord, sa
+	// version sans bras attend la validation). Leur rejeu se cuit sur fond neutre.
 	{
 		MapID:         "beaf8ac9-fa85-4562-8def-28d9428dbddb",
 		Nom:           "Arrival",
@@ -655,30 +659,6 @@ var CartesForge = []CarteForge{
 		Nom:           "Beaver Canyon",
 		FichierMvar:   "fd17a1ca-3c67-4d6e-9149-1eb86152ea4a_map.mvar",
 		ModuleCanevas: CanevasWetland,
-	},
-	{
-		MapID:         "9bb8d9df-ff6c-4a6e-b151-436bbb2c0907",
-		Nom:           "Exiled",
-		FichierMvar:   "9bb8d9df-ff6c-4a6e-b151-436bbb2c0907_map.mvar",
-		ModuleCanevas: CanevasDesert,
-	},
-	{
-		MapID:         "2c9df7e9-89e7-430a-8615-32474d4617c1",
-		Nom:           "Formation",
-		FichierMvar:   "2c9df7e9-89e7-430a-8615-32474d4617c1_map.mvar",
-		ModuleCanevas: CanevasSpace,
-	},
-	{
-		MapID:         "c4cd9e46-3666-4d89-98ec-3b7b2c7005fb",
-		Nom:           "Gondolas",
-		FichierMvar:   "c4cd9e46-3666-4d89-98ec-3b7b2c7005fb_map.mvar",
-		ModuleCanevas: CanevasWetland,
-	},
-	{
-		MapID:         "89f3b8ad-6bbf-4652-8d67-8e5330294de4",
-		Nom:           "Kusini Bay",
-		FichierMvar:   "89f3b8ad-6bbf-4652-8d67-8e5330294de4_map.mvar",
-		ModuleCanevas: CanevasBlank,
 	},
 	{
 		MapID:         "be8131fc-8839-4448-b65c-1fb46dd077ef",

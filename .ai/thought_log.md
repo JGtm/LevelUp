@@ -118787,3 +118787,11 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Resultats observes** : a 2 m, ancres avec sol apres = avant rognage sur les 5 cartes (Beaver Canyon 36/36, Exiled 37/37, Kusini Bay 26/26, Perdition 53/54 comme avant rognage, Timberland Evolved 62/62). Non-regression : les 5 PNG cuits garde ABSENTE sont identiques a l'octet a ceux d'avant le changement ; Dredge, recuit de zero (variante et maillage rapatries), donne un WebP identique a l'octet au fond publie. Tests : trois dans `positions_jouees_test.go`, un dans `reglages_test.go`.
 
 **Les trois versions par carte** (cle = map_id) : entiere = sans `rogneAuxPositionsJouees` ni `rayonPositions` ; rognee = `rogneAuxPositionsJouees: true`, `rayonPositions: 1` (etat commite) ; rognee avec garde = la precedente + `gardeAutourDesAncres: 2`. Aucune carte n'arme la garde dans les donnees commitees : le choix est celui de l'utilisateur.
+
+## [2026-10-26] Rejeu 2D : verdicts de l'utilisateur sur les fonds Forge proposes - Complete (branche `feat/cartes-manquantes-rejeu`)
+
+**Verdicts** : Arrival, Beaver Canyon, Perdition, Timberland Evolved validees en version ENTIERE (reglages sans rognage aux positions jouees ; fonds recuits, PNG identiques a l'octet a ceux du commit des fonds proposes, fichiers publies restaures de ce commit). Formation, Gondolas refusees ; Kusini Bay refusee « pour l'instant » : declaration, reglage et fonds retires, elles restent au catalogue de bornes (rejeu sur fond neutre). Exiled refusee (« un bras qui depasse » au nord).
+
+**Exiled** : aucun nouveau code. `cadreAuxAncres` + `margeAncres: 12` (existants) bornent la matiere a la boite des ancres elargie de 12 m : le bras (a plus de 12 m de toute ancre) disparait, 37/37 ancres gardent leur sol (marge 25 m par defaut : bras presque entier ; 6 m : trop coupe). Version sans bras produite hors depot, NON publiee ; l'entree de reglages est conservee, la declaration `CartesForge` retiree.
+
+**A savoir** : le reglage `gardeAutourDesAncres` (commit precedent) n'est plus arme par aucune carte ; conserve, avec le catalogue de positions limite a Dredge, pour le retour sur Kusini Bay. A retirer si personne n'y revient (regle 7). Dredge recuit : WebP identique a l'octet.
