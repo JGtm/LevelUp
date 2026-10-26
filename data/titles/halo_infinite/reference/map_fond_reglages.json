@@ -1220,7 +1220,9 @@
       "navmeshReference": true,
       "rogneAuNavmesh": true,
       "toleranceNavmesh": 1.5,
-      "raison": "LOT DU 2026-10-26 - carte Forge de la liste d attente du rejeu 2D, jusqu ici sans entree au catalogue de bornes. CARTE : Beaver Canyon, canevas fo08_wetland (level_id de sa variante), 36 objectifs ingeres hors ligne depuis sa variante. RECETTE du lot du 2026-08-28 : habillage encre, maillage de navigation rapatrie en reference d altitude, rognage au maillage avec une tolerance de 1,5 m. Pas de rognage aux zones : la carte n a aucun callout au catalogue. FOND PROPOSE, EN ATTENTE DE VALIDATION VISUELLE par l utilisateur : ce reglage est celui de la proposition, pas d un gate.",
+      "rogneAuxPositionsJouees": true,
+      "rayonPositions": 1,
+      "raison": "LOT DU 2026-10-26 - carte Forge de la liste d attente du rejeu 2D, jusqu ici sans entree au catalogue de bornes. CARTE : Beaver Canyon, canevas fo08_wetland (level_id de sa variante), 36 objectifs ingeres hors ligne depuis sa variante. RECETTE du lot du 2026-08-28 : habillage encre, maillage de navigation rapatrie en reference d altitude, rognage au maillage avec une tolerance de 1,5 m. Pas de rognage aux zones : la carte n a aucun callout au catalogue. FOND PROPOSE, EN ATTENTE DE VALIDATION VISUELLE par l utilisateur : ce reglage est celui de la proposition, pas d un gate. ROGNAGE AUX POSITIONS JOUEES ARME LE 2026-10-26 : 4 matchs decodes de cette carte, cellule retenue si au moins 3 matchs distincts y ont couru (filtre de rarete du 2026-08-30), rayon de garde 1 m.",
       "gateLe": "2026-10-26"
     },
     "9bb8d9df-ff6c-4a6e-b151-436bbb2c0907": {
@@ -1229,7 +1231,9 @@
       "navmeshReference": true,
       "rogneAuNavmesh": true,
       "toleranceNavmesh": 1.5,
-      "raison": "LOT DU 2026-10-26 - carte Forge de la liste d attente du rejeu 2D, jusqu ici sans entree au catalogue de bornes. CARTE : Exiled, canevas fo05_desert (level_id de sa variante), 37 objectifs ingeres hors ligne depuis sa variante. RECETTE du lot du 2026-08-28 : habillage encre, maillage de navigation rapatrie en reference d altitude, rognage au maillage avec une tolerance de 1,5 m. Pas de rognage aux zones : la carte n a aucun callout au catalogue. FOND PROPOSE, EN ATTENTE DE VALIDATION VISUELLE par l utilisateur : ce reglage est celui de la proposition, pas d un gate.",
+      "rogneAuxPositionsJouees": true,
+      "rayonPositions": 1,
+      "raison": "LOT DU 2026-10-26 - carte Forge de la liste d attente du rejeu 2D, jusqu ici sans entree au catalogue de bornes. CARTE : Exiled, canevas fo05_desert (level_id de sa variante), 37 objectifs ingeres hors ligne depuis sa variante. RECETTE du lot du 2026-08-28 : habillage encre, maillage de navigation rapatrie en reference d altitude, rognage au maillage avec une tolerance de 1,5 m. Pas de rognage aux zones : la carte n a aucun callout au catalogue. FOND PROPOSE, EN ATTENTE DE VALIDATION VISUELLE par l utilisateur : ce reglage est celui de la proposition, pas d un gate. ROGNAGE AUX POSITIONS JOUEES ARME LE 2026-10-26 : 9 matchs decodes de cette carte, cellule retenue si au moins 3 matchs distincts y ont couru (filtre de rarete du 2026-08-30), rayon de garde 1 m.",
       "gateLe": "2026-10-26"
     },
     "2c9df7e9-89e7-430a-8615-32474d4617c1": {
@@ -1256,7 +1260,9 @@
       "navmeshReference": true,
       "rogneAuNavmesh": true,
       "toleranceNavmesh": 1.5,
-      "raison": "LOT DU 2026-10-26 - carte Forge de la liste d attente du rejeu 2D, jusqu ici sans entree au catalogue de bornes. CARTE : Kusini Bay, canevas fo11_blank (level_id de sa variante), 26 objectifs ingeres hors ligne depuis sa variante. RECETTE du lot du 2026-08-28 : habillage encre, maillage de navigation rapatrie en reference d altitude, rognage au maillage avec une tolerance de 1,5 m. Pas de rognage aux zones : la carte n a aucun callout au catalogue. FOND PROPOSE, EN ATTENTE DE VALIDATION VISUELLE par l utilisateur : ce reglage est celui de la proposition, pas d un gate.",
+      "rogneAuxPositionsJouees": true,
+      "rayonPositions": 1,
+      "raison": "LOT DU 2026-10-26 - carte Forge de la liste d attente du rejeu 2D, jusqu ici sans entree au catalogue de bornes. CARTE : Kusini Bay, canevas fo11_blank (level_id de sa variante), 26 objectifs ingeres hors ligne depuis sa variante. RECETTE du lot du 2026-08-28 : habillage encre, maillage de navigation rapatrie en reference d altitude, rognage au maillage avec une tolerance de 1,5 m. Pas de rognage aux zones : la carte n a aucun callout au catalogue. FOND PROPOSE, EN ATTENTE DE VALIDATION VISUELLE par l utilisateur : ce reglage est celui de la proposition, pas d un gate. ROGNAGE AUX POSITIONS JOUEES ARME LE 2026-10-26 : 21 matchs decodes de cette carte, cellule retenue si au moins 3 matchs distincts y ont couru (filtre de rarete du 2026-08-30), rayon de garde 1 m.",
       "gateLe": "2026-10-26"
     },
     "be8131fc-8839-4448-b65c-1fb46dd077ef": {
@@ -1265,7 +1271,9 @@
       "navmeshReference": true,
       "rogneAuNavmesh": true,
       "toleranceNavmesh": 1.5,
-      "raison": "LOT DU 2026-10-26 - carte Forge de la liste d attente du rejeu 2D, jusqu ici sans entree au catalogue de bornes. CARTE : Perdition, canevas fo11_blank (level_id de sa variante), 54 objectifs ingeres hors ligne depuis sa variante. RECETTE du lot du 2026-08-28 : habillage encre, maillage de navigation rapatrie en reference d altitude, rognage au maillage avec une tolerance de 1,5 m. Pas de rognage aux zones : la carte n a aucun callout au catalogue. FOND PROPOSE, EN ATTENTE DE VALIDATION VISUELLE par l utilisateur : ce reglage est celui de la proposition, pas d un gate.",
+      "rogneAuxPositionsJouees": true,
+      "rayonPositions": 1,
+      "raison": "LOT DU 2026-10-26 - carte Forge de la liste d attente du rejeu 2D, jusqu ici sans entree au catalogue de bornes. CARTE : Perdition, canevas fo11_blank (level_id de sa variante), 54 objectifs ingeres hors ligne depuis sa variante. RECETTE du lot du 2026-08-28 : habillage encre, maillage de navigation rapatrie en reference d altitude, rognage au maillage avec une tolerance de 1,5 m. Pas de rognage aux zones : la carte n a aucun callout au catalogue. FOND PROPOSE, EN ATTENTE DE VALIDATION VISUELLE par l utilisateur : ce reglage est celui de la proposition, pas d un gate. ROGNAGE AUX POSITIONS JOUEES ARME LE 2026-10-26 : 13 matchs decodes de cette carte, cellule retenue si au moins 3 matchs distincts y ont couru (filtre de rarete du 2026-08-30), rayon de garde 1 m.",
       "gateLe": "2026-10-26"
     },
     "1231d3f0-2363-4d28-8047-717a069fb0e4": {
@@ -1274,7 +1282,9 @@
       "navmeshReference": true,
       "rogneAuNavmesh": true,
       "toleranceNavmesh": 1.5,
-      "raison": "LOT DU 2026-10-26 - carte Forge de la liste d attente du rejeu 2D, jusqu ici sans entree au catalogue de bornes. CARTE : Timberland Evolved, canevas fo08_wetland (level_id de sa variante), 62 objectifs ingeres hors ligne depuis sa variante. RECETTE du lot du 2026-08-28 : habillage encre, maillage de navigation rapatrie en reference d altitude, rognage au maillage avec une tolerance de 1,5 m. Pas de rognage aux zones : la carte n a aucun callout au catalogue. FOND PROPOSE, EN ATTENTE DE VALIDATION VISUELLE par l utilisateur : ce reglage est celui de la proposition, pas d un gate.",
+      "rogneAuxPositionsJouees": true,
+      "rayonPositions": 1,
+      "raison": "LOT DU 2026-10-26 - carte Forge de la liste d attente du rejeu 2D, jusqu ici sans entree au catalogue de bornes. CARTE : Timberland Evolved, canevas fo08_wetland (level_id de sa variante), 62 objectifs ingeres hors ligne depuis sa variante. RECETTE du lot du 2026-08-28 : habillage encre, maillage de navigation rapatrie en reference d altitude, rognage au maillage avec une tolerance de 1,5 m. Pas de rognage aux zones : la carte n a aucun callout au catalogue. FOND PROPOSE, EN ATTENTE DE VALIDATION VISUELLE par l utilisateur : ce reglage est celui de la proposition, pas d un gate. ROGNAGE AUX POSITIONS JOUEES ARME LE 2026-10-26 : 12 matchs decodes de cette carte, cellule retenue si au moins 3 matchs distincts y ont couru (filtre de rarete du 2026-08-30), rayon de garde 1 m.",
       "gateLe": "2026-10-26"
     }
   }
