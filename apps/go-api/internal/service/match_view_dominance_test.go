@@ -482,26 +482,24 @@ func TestDetectPartialMatchData_PartialMix(t *testing.T) {
 	}
 }
 
-// TestDetectPartialMatchData_MedalsLegitimatelyEmpty : 0 médaille avec PBitMedals
-// positionné → pas de "medals_empty" (match sans médailles, donnée complète).
+// TestDetectPartialMatchData_MedalsLegitimatelyEmpty : 0 médaille alors que la ligne du
+// joueur est là → pas de "medals_empty" (match sans médaille gagnée, donnée complète).
 func TestDetectPartialMatchData_MedalsLegitimatelyEmpty(t *testing.T) {
-	bits := pBitMedals // 512 — médailles fetchées, résultat = 0
-	stats := &domain.PlayerMatchStatsRaw{OutcomeCode: 2, BackfillBits: &bits}
+	stats := &domain.PlayerMatchStatsRaw{OutcomeCode: 2}
 	scoreboard := []domain.ScoreboardRaw{{XUID: "x"}}
 	events := []domain.EventRaw{{EventType: "kill"}}
 	reasons := detectPartialMatchData(stats, scoreboard, events, nil)
 	for _, r := range reasons {
 		if r == "medals_empty" {
-			t.Errorf("medals_empty ne doit pas être émis quand PBitMedals est positionné")
+			t.Errorf("medals_empty ne doit pas être émis quand la ligne du joueur est là")
 		}
 	}
 }
 
-// TestDetectPartialMatchData_MedalsNeverFetched : 0 médaille sans PBitMedals →
-// "medals_empty" doit être émis (sync incomplet).
+// TestDetectPartialMatchData_MedalsNeverFetched : 0 médaille et ligne du joueur absente
+// (le repo rend une ligne vide) → "medals_empty" doit être émis (sync incomplet).
 func TestDetectPartialMatchData_MedalsNeverFetched(t *testing.T) {
-	bits := 0 // aucun bit positionné
-	stats := &domain.PlayerMatchStatsRaw{OutcomeCode: 2, BackfillBits: &bits}
+	stats := &domain.PlayerMatchStatsRaw{}
 	scoreboard := []domain.ScoreboardRaw{{XUID: "x"}}
 	events := []domain.EventRaw{{EventType: "kill"}}
 	reasons := detectPartialMatchData(stats, scoreboard, events, nil)
@@ -512,7 +510,7 @@ func TestDetectPartialMatchData_MedalsNeverFetched(t *testing.T) {
 		}
 	}
 	if !found {
-		t.Errorf("medals_empty attendu quand PBitMedals n'est pas positionné, obtenu %v", reasons)
+		t.Errorf("medals_empty attendu quand la ligne du joueur est absente, obtenu %v", reasons)
 	}
 }
 

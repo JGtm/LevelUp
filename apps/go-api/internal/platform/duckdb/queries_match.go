@@ -201,8 +201,7 @@ SELECT
     ` + analysis.SQLKnownMMR("p.team_mmr") + ` AS team_mmr,
     ` + analysis.SQLKnownMMR("p.enemy_mmr") + ` AS enemy_mmr,
     p.headshot_kills,
-    p.max_killing_spree,
-    COALESCE(p.backfill_bits, 0) AS backfill_bits
+    p.max_killing_spree
 FROM match_participants p
 WHERE p.match_id = ? AND p.xuid = ?`
 

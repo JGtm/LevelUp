@@ -31,8 +31,7 @@ func (r *repoDuelsEnPanne) GetMatchMeta(context.Context, string) (*domain.MatchM
 	return &domain.MatchMetaRaw{MatchID: "m1", StartTime: &now}, nil
 }
 func (r *repoDuelsEnPanne) GetPlayerMatchStats(context.Context, string, string) (*domain.PlayerMatchStatsRaw, error) {
-	bits := 1 << 9
-	return &domain.PlayerMatchStatsRaw{OutcomeCode: 2, BackfillBits: &bits}, nil
+	return &domain.PlayerMatchStatsRaw{OutcomeCode: 2}, nil
 }
 func (r *repoDuelsEnPanne) GetMatchEnrichment(context.Context, string) (*domain.MatchEnrichmentRaw, error) {
 	return nil, nil
