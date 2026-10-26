@@ -118757,3 +118757,13 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : `tsc` vert, `HomeRankingStates.test.tsx` 9/9 (français). Pas de test en anglais ajouté ni de contrôle visuel.
 
 **Conclusion / prochaine étape** : contrôle à l'écran en anglais par l'utilisateur.
+
+## [2026-10-26] Miniatures des cartes classées et cartes Forge sans vignette — Complété (branche `fix/miniatures-cartes-ranked`)
+
+**Contexte** : en prod, Vacancy, Argyle, Empyrean, Catalyst et Fortress « - Ranked » et Arrival n'avaient pas de miniature (constat utilisateur du 2026-10-26).
+
+**Décision technique principale** : `AssetURLAdapter.mapImageURLFromDir` replie une carte « X - Ranked » sans fichier dédié sur la miniature de X (le jeu publie la même image) ; un fichier dédié prime toujours. Miniatures officielles d'Arrival, Exiled, Kusini Bay et Vallaheim récupérées sur le stockage blob UGC public (`images/thumbnail.jpg`, 560×320, sans jeton) via l'inventaire versionné.
+
+**Résultats observés** : test `TestAssetURLAdapter_WithMapImagesDir_RankedFallsBackToBaseMap` ; tests `halo_infinite`, `assets`, `platform/duckdb` verts.
+
+**Conclusion / prochaine étape** : part avec la v8.0.7. Restent sans miniature (Discovery UGC authentifié requis) : Beaver Canyon, Harvest, Timberland Evolved, Rendezvous, Skyblocks, Formation, Thunderbowl, Longshore, Perdition, Gondolas, Gyre.

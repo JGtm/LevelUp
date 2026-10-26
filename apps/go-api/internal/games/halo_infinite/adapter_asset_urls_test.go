@@ -303,6 +303,30 @@ func TestAssetURLAdapter_WithMapImagesDir_FiltersUnknownMap(t *testing.T) {
 	}
 }
 
+func TestAssetURLAdapter_WithMapImagesDir_RankedFallsBackToBaseMap(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	for _, name := range []string{"Vacancy.jpg", "Aquarius.png", "Aquarius - Ranked.png"} {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte("img"), 0o644); err != nil {
+			t.Fatalf("write fixture: %v", err)
+		}
+	}
+	a := NewAssetURLAdapter().WithMapImagesDir(dir)
+
+	// Variante classée sans fichier dédié → miniature de la carte de base.
+	if got, want := a.MapImageURL("Vacancy - Ranked"), "/static/maps/halo_infinite/Vacancy.jpg"; got != want {
+		t.Errorf("MapImageURL(Vacancy - Ranked) = %q, want %q", got, want)
+	}
+	// Fichier dédié présent → il prime.
+	if got, want := a.MapImageURL("Aquarius - Ranked"), "/static/maps/halo_infinite/Aquarius%20-%20Ranked.png"; got != want {
+		t.Errorf("MapImageURL(Aquarius - Ranked) = %q, want %q", got, want)
+	}
+	// Ni variante ni base → vide.
+	if got := a.MapImageURL("Empyrean - Ranked"); got != "" {
+		t.Errorf("MapImageURL(Empyrean - Ranked) = %q, want empty", got)
+	}
+}
+
 func TestAssetURLAdapter_WithMapImagesDir_FiltersVariantSuffixes(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()

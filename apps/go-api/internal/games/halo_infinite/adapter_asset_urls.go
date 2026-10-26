@@ -42,6 +42,9 @@ var uuidRe = regexp.MustCompile(`(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-
 // en amont par SQL (NOT LIKE '% - %').
 var mapVariantSuffixes = []string{" Heavies", " Sentry Defense", " Firefight"}
 
+// rankedMapSuffix marque la variante classée d'une carte (« Vacancy - Ranked »).
+const rankedMapSuffix = " - Ranked"
+
 // weaponIconSentinelFiles couvre les SENTINELLES produit : des weapon_id
 // conventionnels (0 grenade, 1 mêlée, 2 véhicule) qui ne désignent aucun objet du
 // jeu et sont donc hors de portée du tag `weap`. Ils sont keyés par ID — jamais par
@@ -158,18 +161,26 @@ func (a *AssetURLAdapter) MapImageURL(mapName string) string {
 }
 
 // mapImageURLFromDir résout l'URL depuis le répertoire d'images configuré.
-// Exclut les variantes mode+map sans image dédiée.
+// Exclut les variantes mode+map sans image dédiée. Une variante classée
+// (« X - Ranked ») sans fichier dédié prend la miniature de sa carte de base :
+// le jeu publie la même image pour les deux.
 func (a *AssetURLAdapter) mapImageURLFromDir(mapName string) string {
 	for _, suffix := range mapVariantSuffixes {
 		if strings.HasSuffix(mapName, suffix) {
 			return ""
 		}
 	}
-	ext, ok := a.mapImageExts[mapName]
-	if !ok {
+	if ext, ok := a.mapImageExts[mapName]; ok {
+		return static.URL(static.KindMap, a.titleSlug, encodeSpaces(mapName), ext)
+	}
+	base, ranked := strings.CutSuffix(mapName, rankedMapSuffix)
+	if !ranked {
 		return ""
 	}
-	return static.URL(static.KindMap, a.titleSlug, encodeSpaces(mapName), ext)
+	if ext, ok := a.mapImageExts[base]; ok {
+		return static.URL(static.KindMap, a.titleSlug, encodeSpaces(base), ext)
+	}
+	return ""
 }
 
 // defaultMapImageExt retourne l'extension par défaut en mode permissif (sans répertoire).
@@ -178,7 +189,7 @@ func defaultMapImageExt(mapName string) string {
 	if _, ok := pngMapNames[mapName]; ok {
 		return ".png"
 	}
-	if strings.HasSuffix(mapName, " - Ranked") {
+	if strings.HasSuffix(mapName, rankedMapSuffix) {
 		return ".png"
 	}
 	return ".jpg"
