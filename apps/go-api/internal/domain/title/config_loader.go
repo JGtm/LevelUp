@@ -230,6 +230,7 @@ func LoadTitlesIntoRegistry(reg *Registry, repoRoot string, logger *slog.Logger)
 			"status", string(desc.Status),
 			"provider", desc.Provider,
 			"capabilities", len(desc.Capabilities),
+			"mode_source", string(desc.ModeSource), // un manifeste d'un autre dépôt (sans la clé) rend « pair » : visible au boot
 			"internal", desc.IsInternal, // fixture de test (exclue du switcher utilisateur)
 		)
 	}
