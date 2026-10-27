@@ -24,7 +24,7 @@ func TestSquadV2_CartesRegroupees(t *testing.T) {
 		mkRowMap("m2", "th-heavies", "Thunderhead Heavies", canonical.OutcomeLoss, p),
 		mkRowMap("m3", "pit", "The Pit", canonical.OutcomeWin, p),
 	}
-	lolli := BuildMapBreakdownLollipop(rows, 0, groups)
+	lolli := BuildMapBreakdownLollipop(rows, 0, groups, i18n.Fallback)
 	if len(lolli.Datapoints) != 2 {
 		t.Fatalf("lollipop : %d cartes, attendu 2 : %+v", len(lolli.Datapoints), lolli.Datapoints)
 	}
@@ -37,7 +37,7 @@ func TestSquadV2_CartesRegroupees(t *testing.T) {
 	historical := squadagg.FoldMapStats(map[string]domain.MapSquadStats{
 		"th": {Wins: 3, Total: 4}, "th-heavies": {Wins: 1, Total: 2},
 	}, groups)
-	bullet := BuildBulletWinrate(rows, historical, 0, groups)
+	bullet := BuildBulletWinrate(rows, historical, 0, groups, i18n.Fallback)
 	var vu bool
 	for _, dp := range bullet.Datapoints {
 		if dp.Category == "Thunderhead" {
@@ -51,7 +51,7 @@ func TestSquadV2_CartesRegroupees(t *testing.T) {
 		t.Errorf("bullet sans carte Thunderhead : %+v", bullet.Datapoints)
 	}
 
-	heat := BuildHeatmapPlayerMap(map[string][]canonical.PlayerMatchRow{"moi": rows}, 0, groups)
+	heat := BuildHeatmapPlayerMap(map[string][]canonical.PlayerMatchRow{"moi": rows}, 0, groups, i18n.Fallback)
 	cellules := 0
 	for _, dp := range heat.Datapoints {
 		if dp.X == "Thunderhead Heavies" {

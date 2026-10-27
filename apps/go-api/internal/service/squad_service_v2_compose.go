@@ -29,6 +29,8 @@ type buildSquadChartsInput struct {
 	mapGroups     domain.GroupesDeCartes
 	events        []canonical.HighlightEvent
 	sharedMatches []domain.SquadSharedMatch
+	// locale : la langue de la requete (noms de carte des charts par carte).
+	locale i18n.Locale
 	// provideSpree : false quand le titre ne porte pas le max killing spree (Halo 5)
 	// → la série KillingSpreeMax est omise (nil) plutôt que fabriquée. Cf.
 	// games.ProvidesMaxKillingSpree.
@@ -44,17 +46,17 @@ func buildSquadCharts(in buildSquadChartsInput) *domain.SquadCharts {
 	// pour la reference historique.
 	mainSharedRows := in.rowsByPlayer[in.mainGT]
 	if len(mainSharedRows) > 0 {
-		lollipop := BuildMapBreakdownLollipop(mainSharedRows, MapBreakdownLimit, in.mapGroups)
+		lollipop := BuildMapBreakdownLollipop(mainSharedRows, MapBreakdownLimit, in.mapGroups, in.locale)
 		out.MapBreakdownLollipop = &lollipop
 
-		bullet := BuildBulletWinrate(mainSharedRows, in.squadHistorical, MapBreakdownLimit, in.mapGroups)
+		bullet := BuildBulletWinrate(mainSharedRows, in.squadHistorical, MapBreakdownLimit, in.mapGroups, in.locale)
 		out.BulletWinrate = &bullet
 
-		perfDelta := BuildPerfVsHistorical(mainSharedRows, in.squadHistorical, MapBreakdownLimit, in.mapGroups)
+		perfDelta := BuildPerfVsHistorical(mainSharedRows, in.squadHistorical, MapBreakdownLimit, in.mapGroups, in.locale)
 		out.PerfVsHistorical = &perfDelta
 	}
 	if len(in.rowsByPlayer) > 0 {
-		heatmap := BuildHeatmapPlayerMap(in.rowsByPlayer, MapBreakdownLimit, in.mapGroups)
+		heatmap := BuildHeatmapPlayerMap(in.rowsByPlayer, MapBreakdownLimit, in.mapGroups, in.locale)
 		out.HeatmapPlayerMap = &heatmap
 	}
 

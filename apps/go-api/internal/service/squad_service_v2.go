@@ -152,6 +152,7 @@ func (s *SquadServiceV2) GetSquadPage(
 		rowsByPlayer:    rowsBySharedPlayer,
 		squadHistorical: squadHistorical,
 		mapGroups:       groups,
+		locale:          i18n.FromContext(ctx),
 		events:          events,
 		sharedMatches:   resp.SharedMatches,
 		provideSpree:    games.ProvidesMaxKillingSpree(slug),
