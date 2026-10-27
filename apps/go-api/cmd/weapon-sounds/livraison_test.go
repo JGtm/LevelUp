@@ -165,9 +165,9 @@ func TestLivraisonChoixParRole_RendreEvent(t *testing.T) {
 
 func TestLivraisonEstVarianteEtOrdre(t *testing.T) {
 	manifeste := map[string]livraisonManifesteArme{
-		"UNSC_base":          {Dossier: "UNSC_base", Cle: strPtr("hinf_x"), NomFr: strPtr("Arme")},
-		"UNSC_base_infectee": {Dossier: "UNSC_base_infectee", Cle: strPtr("hinf_x"), NomFr: strPtr("Arme (infectee)")},
-		"Covenant_provoker":  {Dossier: "Covenant_provoker", Cle: strPtr("hinf_ravager"), NomFr: strPtr("Ravageur")},
+		"UNSC_base":          {Dossier: "UNSC_base", Cle: strPtr("hinf_x"), Nom: strPtr("Arme")},
+		"UNSC_base_infectee": {Dossier: "UNSC_base_infectee", Cle: strPtr("hinf_x"), Nom: strPtr("Arme (infectee)")},
+		"Covenant_provoker":  {Dossier: "Covenant_provoker", Cle: strPtr("hinf_ravager"), Nom: strPtr("Ravageur")},
 	}
 	if livraisonEstVariante("UNSC_base", manifeste) {
 		t.Fatal("UNSC_base ne devrait pas etre une variante")

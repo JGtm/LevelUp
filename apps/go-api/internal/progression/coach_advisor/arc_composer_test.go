@@ -3,6 +3,7 @@ package coach_advisor_test
 import (
 	"testing"
 
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/prestige"
 	"levelup/go-api/internal/progression/coach_advisor"
 )
@@ -91,10 +92,10 @@ func TestTryCompose_HappyPath_ThreeSignalsSameAxis(t *testing.T) {
 		}
 	}
 	// Vérif labels combat
-	if spec.TitleEN != "Combat Mastery" || spec.TitleFR != "Domination en combat" {
-		t.Errorf("Title combat: got %q / %q", spec.TitleEN, spec.TitleFR)
+	if spec.Title[i18n.LocaleEN] != "Combat Mastery" || spec.Title[i18n.LocaleFR] != "Domination en combat" {
+		t.Errorf("Title combat: got %q / %q", spec.Title[i18n.LocaleEN], spec.Title[i18n.LocaleFR])
 	}
-	if spec.DescriptionEN == "" || spec.DescriptionFR == "" {
+	if spec.Description[i18n.LocaleEN] == "" || spec.Description[i18n.LocaleFR] == "" {
 		t.Error("Description should be non-empty")
 	}
 	if spec.AverageStrength < 0.69 || spec.AverageStrength > 0.71 {
@@ -144,8 +145,8 @@ func TestTryCompose_PicksAxisWithMostSignals(t *testing.T) {
 	if spec.RadarAxis != "survival" {
 		t.Errorf("RadarAxis: got %q, want survival (most signals)", spec.RadarAxis)
 	}
-	if spec.TitleFR != "Reprise solide" {
-		t.Errorf("Title FR: got %q, want 'Reprise solide'", spec.TitleFR)
+	if spec.Title[i18n.LocaleFR] != "Reprise solide" {
+		t.Errorf("Title FR: got %q, want 'Reprise solide'", spec.Title[i18n.LocaleFR])
 	}
 }
 
@@ -193,8 +194,8 @@ func TestTryCompose_AllAxesLabelsKnown(t *testing.T) {
 			t.Errorf("axis %q: expected arc composed", axis)
 			continue
 		}
-		if spec.TitleEN == "Coach Arc" || spec.TitleFR == "Arc du coach" {
-			t.Errorf("axis %q: fallback title used, expected mapped title (got %q / %q)", axis, spec.TitleEN, spec.TitleFR)
+		if spec.Title[i18n.LocaleEN] == "Coach Arc" || spec.Title[i18n.LocaleFR] == "Arc du coach" {
+			t.Errorf("axis %q: fallback title used, expected mapped title (got %q / %q)", axis, spec.Title[i18n.LocaleEN], spec.Title[i18n.LocaleFR])
 		}
 	}
 }
@@ -208,7 +209,7 @@ func TestTryCompose_UnknownAxis_FallbackTitle(t *testing.T) {
 	if !ok {
 		t.Fatal("expected arc even on unknown axis")
 	}
-	if spec.TitleEN != "Coach Arc" || spec.TitleFR != "Arc du coach" {
-		t.Errorf("unknown axis: expected fallback titles, got %q / %q", spec.TitleEN, spec.TitleFR)
+	if spec.Title[i18n.LocaleEN] != "Coach Arc" || spec.Title[i18n.LocaleFR] != "Arc du coach" {
+		t.Errorf("unknown axis: expected fallback titles, got %q / %q", spec.Title[i18n.LocaleEN], spec.Title[i18n.LocaleFR])
 	}
 }

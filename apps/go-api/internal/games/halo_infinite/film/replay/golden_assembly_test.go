@@ -581,7 +581,7 @@ func renderLayerCoverage(p func(string, ...any), titre string, c LayerCoverage, 
 // une inversion de rangs passerait inaperçue.
 func grenadeRankName(doc ReplayDocument, rank int) string {
 	if rank >= 0 && rank < len(doc.GrenadeLabels) {
-		return doc.GrenadeLabels[rank].En
+		return enOf(doc.GrenadeLabels[rank].Text)
 	}
 	return "rang " + strconv.Itoa(rank)
 }
@@ -1104,7 +1104,7 @@ func renderLabels(p func(string, ...any), doc ReplayDocument) {
 	p("n emprunte pas le nom d une arme voisine")
 	for _, k := range sortedKeys(doc.WeaponLabels) {
 		l := doc.WeaponLabels[k]
-		p("  %s  en=%q fr=%q fx=%q", k, l.En, l.Fr, l.Fx)
+		p("  %s  en=%q fr=%q fx=%q", k, enOf(l.Text), frOf(l.Text), l.Fx)
 	}
 	p("")
 }
@@ -1115,7 +1115,7 @@ func renderLabels(p func(string, ...any), doc ReplayDocument) {
 func renderBilingualList(in []Label) string {
 	parts := make([]string, 0, len(in))
 	for i, l := range in {
-		parts = append(parts, fmt.Sprintf("%d:en=%q/fr=%q", i, l.En, l.Fr))
+		parts = append(parts, fmt.Sprintf("%d:en=%q/fr=%q", i, enOf(l.Text), frOf(l.Text)))
 	}
 	return strings.Join(parts, ", ")
 }
@@ -1127,7 +1127,7 @@ func renderBilingualMap(in map[string]Label) string {
 		// LA FAMILLE FIGE AVEC LE NOM (schema 51) : c'est elle que le resume d'usage joint
 		// desormais, et un golden qui ne l'imprimerait pas laisserait sa perte invisible.
 		parts = append(parts, fmt.Sprintf("%s=en:%q/fr:%q/fam:%q",
-			k, in[k].En, in[k].Fr, in[k].Family))
+			k, enOf(in[k].Text), frOf(in[k].Text), in[k].Family))
 	}
 	return strings.Join(parts, ", ")
 }

@@ -47,7 +47,7 @@ func BuildRecentMatchesWithFavoritesFromCanonical(
 	if len(rows) == 0 {
 		return nil
 	}
-	locale := normalizeHomeLocale(opts.Locale)
+	locale := opts.Locale
 	effectiveHpToKill := opts.EffectiveHpToKill
 	skillBadgeURL := opts.SkillBadgeURL
 	if len(rows) > limit {
@@ -73,16 +73,17 @@ func BuildRecentMatchesWithFavoritesFromCanonical(
 		}
 		t := r.Summary.StartedAtUTC
 
-		mapName, mapNameFR := assetLabels(r.Summary.Map)
-		// modeLabels lit le mode fourni par la source du titre (PairMode).
-		modeEN, modeFR := modeLabels(r)
-		playlistName, playlistNameFR := assetLabels(r.Summary.Playlist)
+		loc := normalizeHomeLocale(locale)
+		mapNames := assetText(r.Summary.Map)
+		// modeText lit le mode fourni par la source du titre (PairMode).
+		modeNames := modeText(r)
+		playlistNames := assetText(r.Summary.Playlist)
 
-		mapUI := labelForLocale(locale, mapNameFR, mapName)
-		modeUI := normalizeHomeModeLabel(labelForLocale(locale, modeFR, modeEN), mapNameFR, mapName)
+		mapUI := mapNames.PickOptional(loc)
+		modeUI := normalizeHomeModeLabel(modeNames.PickOptional(loc), textValues(mapNames)...)
 		var playlistUI *string
-		if playlistName != "" || playlistNameFR != "" {
-			playlist := labelForLocale(locale, playlistNameFR, playlistName)
+		if !playlistNames.Empty() {
+			playlist := playlistNames.PickOptional(loc)
 			playlistUI = &playlist
 		}
 
@@ -140,12 +141,10 @@ func BuildRecentMatchesWithFavoritesFromCanonical(
 			if ss.PlaylistGroup != nil && *ss.PlaylistGroup != "" {
 				skillPlaylistGroup = ss.PlaylistGroup
 			}
-			// Badge URL depuis TierCode (EN) ; label depuis TierCodeFR si locale == "fr".
+			// Badge URL depuis TierCode (EN) ; label = nom du tier dans la langue de la requête,
+			// déduit du code (catalogue skill.tier.*).
 			if ss.TierCode != nil && *ss.TierCode != "" {
-				tierForLabel := *ss.TierCode
-				if locale == "fr" && ss.TierCodeFR != nil && *ss.TierCodeFR != "" {
-					tierForLabel = *ss.TierCodeFR
-				}
+				tierForLabel := tierDisplayName(normalizeHomeLocale(locale), *ss.TierCode)
 				skillTierLabelVal, skillBadgeURLVal = buildCanonicalSkillBadge(tierForLabel, *ss.TierCode, ss.SubTier, skillBadgeURL)
 			}
 		}

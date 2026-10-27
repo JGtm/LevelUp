@@ -909,3 +909,34 @@ func TestMediaService_SetMediaLike_NoAcquirer_LegacyPath(t *testing.T) {
 		t.Error("legacy ToggleSharedLike should have been called")
 	}
 }
+
+// TestMediaService_GetMediaPage_FilterOptionsFallbackValeursIndependantesDeLaLangue : le repli des options
+// (dépôt en échec) sert le libellé dans la langue de la requête mais la valeur du filtre reste la clé
+// indépendante de la langue (identifiant de carte, libellé de mode en langue par défaut) : le filtre du
+// dépôt compare ces clés, pas le libellé affiché (rapport de revue 2026-10-27, constat 2).
+func TestMediaService_GetMediaPage_FilterOptionsFallbackValeursIndependantesDeLaLangue(t *testing.T) {
+	mapName, mapID := "Lightning Peak", "map-1"
+	modeName, modeKey := "Capture the Flag", "Capture du drapeau"
+	repo := &mockMediaRepo{
+		files: []domain.MediaFileRow{
+			{FileName: "a.mp4", FilePath: "/clips/a.mp4", Kind: "video", MapName: &mapName, MapID: &mapID, ModeName: &modeName, ModeFilterKey: &modeKey},
+			// Même carte, même mode : une seule option.
+			{FileName: "b.mp4", FilePath: "/clips/b.mp4", Kind: "video", MapName: &mapName, MapID: &mapID, ModeName: &modeName, ModeFilterKey: &modeKey},
+		},
+		count:         2,
+		filterOptsErr: errors.New("options indisponibles"),
+	}
+	ctx := context.Background() // la requête en anglais : les lignes portent déjà les libellés anglais
+
+	resp, err := NewMediaService(repo, "").GetMediaPage(ctx, domain.MediaPageRequest{Page: 1})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	maps, modes := resp.AvailableFilters.Maps, resp.AvailableFilters.Modes
+	if len(maps) != 1 || maps[0].Label != mapName || maps[0].Value != mapID {
+		t.Fatalf("Maps = %+v, want {%s %s}", maps, mapName, mapID)
+	}
+	if len(modes) != 1 || modes[0].Label != modeName || modes[0].Value != modeKey {
+		t.Fatalf("Modes = %+v, want {%s %s}", modes, modeName, modeKey)
+	}
+}

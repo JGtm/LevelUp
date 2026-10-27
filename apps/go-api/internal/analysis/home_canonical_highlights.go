@@ -112,12 +112,11 @@ func BuildHighlightsFromCanonical(rows []canonical.PlayerMatchRow, locale string
 			} else if delta < -mmrNeutralThreshold {
 				color = homeColorNegative
 			}
-			mapEN, mapFR := assetLabels(best.Summary.Map)
-			modeEN, modeFR := modeLabels(*best)
+			detail := homeMapModeDetail(locale, assetText(best.Summary.Map), modeText(*best))
 			highlights = append(highlights, domain.HighlightItem{
 				TitleKey:   "highlight.title.best_underdog_win",
 				Value:      fmt.Sprintf("%s%.0f MMR", sign, delta),
-				Detail:     fmt.Sprintf("%s · %s", labelForLocale(locale, mapFR, mapEN), normalizeHomeModeLabel(labelForLocale(locale, modeFR, modeEN), mapFR, mapEN)),
+				Detail:     detail,
 				ValueColor: color,
 			})
 		}
@@ -127,12 +126,11 @@ func BuildHighlightsFromCanonical(rows []canonical.PlayerMatchRow, locale string
 	{
 		best := bestKDAMatchCanonical(window)
 		if best != nil && best.Self.KDA != nil {
-			mapEN, mapFR := assetLabels(best.Summary.Map)
-			modeEN, modeFR := modeLabels(*best)
+			detail := homeMapModeDetail(locale, assetText(best.Summary.Map), modeText(*best))
 			highlights = append(highlights, domain.HighlightItem{
 				TitleKey:   "highlight.title.kda_peak",
 				Value:      fmt.Sprintf("%.2f", *best.Self.KDA),
-				Detail:     fmt.Sprintf("%s · %s", labelForLocale(locale, mapFR, mapEN), normalizeHomeModeLabel(labelForLocale(locale, modeFR, modeEN), mapFR, mapEN)),
+				Detail:     detail,
 				ValueColor: highlightKDAColor(*best.Self.KDA),
 			})
 		}

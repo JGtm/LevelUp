@@ -105,8 +105,7 @@ func EntreeCalloutsDepuisZones(zs []mapvar.ZoneNommee, lex Lexique) (replay.MapC
 		}
 		entry.Zones = append(entry.Zones, replay.CalloutZone{
 			VolumeIndex: z.Index,
-			EN:          lbl.EN,
-			FR:          lbl.FR,
+			Text:        lbl.Clone(),
 			X:           z.Pos[0],
 			Y:           z.Pos[1],
 			Z:           z.Pos[2],

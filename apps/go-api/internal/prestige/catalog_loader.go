@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/pelletier/go-toml/v2"
+
+	"levelup/go-api/internal/i18n"
 )
 
 // catalog_loader.go — chargeur des templates et preset arcs depuis TOML.
@@ -32,21 +34,20 @@ type catalogMeta struct {
 }
 
 type templateEntryTOML struct {
-	ID              string  `toml:"id"`
-	Metric          string  `toml:"metric"`
-	WindowType      string  `toml:"window_type"`
-	WindowValue     string  `toml:"window_value"`
-	Cadence         string  `toml:"cadence"`
-	EvalType        string  `toml:"eval_type"`
-	ModeFilter      string  `toml:"mode_filter"`
-	LabelEN         string  `toml:"label_en"`
-	LabelFR         string  `toml:"label_fr"`
-	DescriptionEN   string  `toml:"description_en"`
-	DescriptionFR   string  `toml:"description_fr"`
-	NormalTarget    float64 `toml:"normal_target"`
-	HeroicTarget    float64 `toml:"heroic_target"`
-	LegendaryTarget float64 `toml:"legendary_target"`
-	MythicTarget    float64 `toml:"mythic_target"`
+	ID          string `toml:"id"`
+	Metric      string `toml:"metric"`
+	WindowType  string `toml:"window_type"`
+	WindowValue string `toml:"window_value"`
+	Cadence     string `toml:"cadence"`
+	EvalType    string `toml:"eval_type"`
+	ModeFilter  string `toml:"mode_filter"`
+	// Label et Description : tables par langue (`label = { en = "...", fr = "..." }`).
+	Label           i18n.Text `toml:"label"`
+	Description     i18n.Text `toml:"description"`
+	NormalTarget    float64   `toml:"normal_target"`
+	HeroicTarget    float64   `toml:"heroic_target"`
+	LegendaryTarget float64   `toml:"legendary_target"`
+	MythicTarget    float64   `toml:"mythic_target"`
 	// Tagging V1 PlayerProfile (cf. plan §5.1).
 	LUSRComponents []string `toml:"lusr_components"`
 	RadarAxes      []string `toml:"radar_axes"`
@@ -60,12 +61,10 @@ type presetsTOML struct {
 }
 
 type presetArcEntryTOML struct {
-	ID            string                   `toml:"id"`
-	TitleEN       string                   `toml:"title_en"`
-	TitleFR       string                   `toml:"title_fr"`
-	DescriptionEN string                   `toml:"description_en"`
-	DescriptionFR string                   `toml:"description_fr"`
-	Steps         []presetArcStepEntryTOML `toml:"steps"`
+	ID          string                   `toml:"id"`
+	Title       i18n.Text                `toml:"title"`
+	Description i18n.Text                `toml:"description"`
+	Steps       []presetArcStepEntryTOML `toml:"steps"`
 }
 
 type presetArcStepEntryTOML struct {
@@ -106,10 +105,8 @@ func LoadTemplatesFromTOML(ctx context.Context, repo TemplateRepo, path string) 
 			Cadence:         Cadence(t.Cadence),
 			EvalType:        EvalType(t.EvalType),
 			ModeFilter:      defaultStr(t.ModeFilter, "universal"),
-			LabelEN:         t.LabelEN,
-			LabelFR:         t.LabelFR,
-			DescriptionEN:   t.DescriptionEN,
-			DescriptionFR:   t.DescriptionFR,
+			Labels:          t.Label,
+			Descriptions:    t.Description,
 			NormalTarget:    t.NormalTarget,
 			HeroicTarget:    t.HeroicTarget,
 			LegendaryTarget: t.LegendaryTarget,
@@ -149,16 +146,17 @@ func LoadPresetArcsFromTOML(ctx context.Context, repo PresetArcRepo, path string
 	steps := make([]PresetArcStep, 0)
 	now := time.Now().UTC()
 	for _, a := range doc.Arcs {
-		if a.ID == "" || a.TitleEN == "" || a.TitleFR == "" {
-			return 0, fmt.Errorf("preset arc %q: id/title_en/title_fr requis", a.ID)
+		if a.ID == "" {
+			return 0, fmt.Errorf("preset arc: id requis")
+		}
+		if err := a.Title.Trimmed().Validate(); err != nil {
+			return 0, fmt.Errorf("preset arc %q: title: %w", a.ID, err)
 		}
 		arcs = append(arcs, PresetArc{
 			ID:            a.ID,
 			TitleSlug:     doc.Meta.TitleSlug,
-			TitleEN:       a.TitleEN,
-			TitleFR:       a.TitleFR,
-			DescriptionEN: a.DescriptionEN,
-			DescriptionFR: a.DescriptionFR,
+			Titles:        a.Title,
+			Descriptions:  a.Description,
 			SchemaVersion: doc.Meta.SchemaVersion,
 			UpdatedAt:     now,
 		})
@@ -190,8 +188,11 @@ func LoadPresetArcsFromTOML(ctx context.Context, repo PresetArcRepo, path string
 
 // validateTemplateEntry vérifie la cohérence d'un template TOML.
 func validateTemplateEntry(t templateEntryTOML) error {
-	if t.ID == "" || t.Metric == "" || t.LabelEN == "" || t.LabelFR == "" {
-		return fmt.Errorf("id/metric/label_en/label_fr requis")
+	if t.ID == "" || t.Metric == "" {
+		return fmt.Errorf("id/metric requis")
+	}
+	if err := t.Label.Trimmed().Validate(); err != nil {
+		return fmt.Errorf("label: %w", err)
 	}
 	if !Cadence(t.Cadence).Valid() {
 		return fmt.Errorf("cadence invalide: %q", t.Cadence)

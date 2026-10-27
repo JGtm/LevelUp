@@ -30,7 +30,6 @@ function weapon(
   return {
     weapon_key: key,
     label,
-    label_en: label ? `${label} EN` : '',
     measured_kills: kills,
     avg_distance_m: avg,
     min_distance_m: min,
@@ -65,7 +64,7 @@ const TC = {
   text: '#fff',
 } as never
 
-function option(rows = killDistanceRows(PLAYERS, 'fr')) {
+function option(rows = killDistanceRows(PLAYERS)) {
   return buildKillDistanceOption({
     rows,
     tc: TC,
@@ -86,7 +85,7 @@ function option(rows = killDistanceRows(PLAYERS, 'fr')) {
 
 describe('killDistanceRows — les sections par arme', () => {
   it('groupe par arme, ordonne par frags mesurés toutes équipes, joueurs sous leur arme', () => {
-    const rows = killDistanceRows(PLAYERS, 'fr')
+    const rows = killDistanceRows(PLAYERS)
     expect(rows.map((r) => `${r.kind}:${r.axisLabel}`)).toEqual([
       'weapon:BR75 ×8',
       'player:UnGamertagVra…',
@@ -97,30 +96,29 @@ describe('killDistanceRows — les sections par arme', () => {
   })
 
   it('un joueur à un seul frag avec une arme n’a pas de ligne ; une arme sans ligne quitte le graphe', () => {
-    const rows = killDistanceRows(PLAYERS, 'fr')
+    const rows = killDistanceRows(PLAYERS)
     expect(rows.some((r) => r.weapon === 'Sniper')).toBe(false)
-    const seul = killDistanceRows([{ ...PLAYERS[0], weapons: [weapon('hinf_br75', 'BR75', 1, 3, 3, 3)] }], 'fr')
+    const seul = killDistanceRows([{ ...PLAYERS[0], weapons: [weapon('hinf_br75', 'BR75', 1, 3, 3, 3)] }])
     expect(seul).toEqual([])
   })
 
   it('le total d’une arme ne compte que les lignes affichées', () => {
     const rows = killDistanceRows(
       [PLAYERS[0], { ...PLAYERS[1], weapons: [weapon('hinf_br75', 'BR75', 1, 2, 2, 2)] }],
-      'fr',
     )
     expect(rows.map((r) => `${r.kind}:${r.axisLabel}`)).toEqual(['weapon:BR75 ×3', 'player:Alice'])
   })
 
-  it('résout le libellé par locale et replie sur weapon_key', () => {
-    const rows = killDistanceRows(PLAYERS, 'en')
+  it('affiche le libellé servi (dans la langue de la requête) et replie sur weapon_key', () => {
+    const rows = killDistanceRows(PLAYERS)
     expect(rows.filter((r) => r.kind === 'weapon').map((r) => r.axisLabel)).toEqual([
-      'BR75 EN ×8',
+      'BR75 ×8',
       'hinf_repulsor ×2',
     ])
   })
 
   it('la ligne de joueur porte le gamertag COMPLET (infobulle) et ses trois distances', () => {
-    const ligne = killDistanceRows(PLAYERS, 'fr')[2]
+    const ligne = killDistanceRows(PLAYERS)[2]
     expect(ligne).toMatchObject({
       player: 'Alice',
       weapon: 'BR75',
@@ -140,7 +138,7 @@ describe('killDistanceRows — les sections par arme', () => {
 describe('buildKillDistanceOption — un seul graphe, sections par arme', () => {
   it('les deux plumes du libellé (arme, joueur) portent la taille de l’axe, sans dépendre de l’héritage', () => {
     const yAxis = (buildKillDistanceOption({
-      rows: killDistanceRows(PLAYERS, 'fr'),
+      rows: killDistanceRows(PLAYERS),
       tc: TC,
       colorOf: () => '#111111',
       avgColor: '#999999',

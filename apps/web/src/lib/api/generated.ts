@@ -350,7 +350,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Action admin — upsert asset_translations (en-US et/ou fr-FR) pour un asset playlist/map/pair/game_variant (résolution effective des UUID inconnus) (auth admin requis) */
+        /** Action admin — upsert asset_translations (une ligne par langue saisie) pour un asset playlist/map/pair/game_variant (résolution effective des UUID inconnus) (auth admin requis) */
         post: operations["postAdminActionAssetTranslation"];
         delete?: never;
         options?: never;
@@ -367,7 +367,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Action admin — upsert mode_name_tr[fr] pour un mode normalisé (résout un mode non traduit, effet immédiat) (auth admin requis) */
+        /** Action admin — upsert mode_name_tr (une ligne par langue saisie) pour un mode normalisé (résout un mode non traduit, effet immédiat) (auth admin requis) */
         post: operations["postAdminActionModeTranslation"];
         delete?: never;
         options?: never;
@@ -2732,26 +2732,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/players/{player_slug}/pages/career/top-matches": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Top matchs du joueur
-         * @description Retourne les meilleurs et pires matchs du joueur (tous critères confondus).
-         */
-        get: operations["getCareerTopMatches"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/players/{player_slug}/pages/citations": {
         parameters: {
             query?: never;
@@ -4343,16 +4323,13 @@ export interface components {
             category?: string;
             /** Format: int64 */
             current_progress?: number;
-            description_en: string;
-            description_fr: string;
+            description: string;
             /** Format: int64 */
             gamerscore: number;
             image_url?: string;
             is_secret: boolean;
-            locked_desc_en?: string;
-            locked_desc_fr?: string;
-            name_en: string;
-            name_fr: string;
+            locked_desc?: string;
+            name: string;
             rarity_category?: string;
             /** Format: double */
             rarity_percent?: number;
@@ -4775,12 +4752,10 @@ export interface components {
         };
         AssetMeta: {
             description?: string;
-            description_fr?: string;
             id: string;
             image_tinted?: boolean;
             image_url: string;
-            name_en: string;
-            name_fr: string;
+            name: string;
             /** Format: int64 */
             sprite_height?: number;
             /** Format: int64 */
@@ -5496,8 +5471,7 @@ export interface components {
             current_xp: number;
             is_max_rank: boolean;
             next_rank_image_url?: string;
-            next_rank_name_en?: string;
-            next_rank_name_fr?: string;
+            next_rank_name?: string;
             /** Format: double */
             progress_pct: number;
             rank_image_url?: string;
@@ -5544,34 +5518,6 @@ export interface components {
         };
         CareerTopEncountersResponse: {
             items: components["schemas"]["MatchEncounterRow"][] | null;
-        };
-        CareerTopMatch: {
-            assists?: number | null;
-            badge_type?: string | null;
-            deaths?: number | null;
-            /** Format: float */
-            kd_ratio?: number | null;
-            kills?: number | null;
-            map_ui?: string | null;
-            /** Format: uuid */
-            match_id: string;
-            mode_ui?: string | null;
-            /** @enum {string|null} */
-            outcome?: "win" | "loss" | "tie" | "dnf" | null;
-            /** Format: int64 */
-            outcome_code?: number | null;
-            /** Format: float */
-            performance_score?: number | null;
-            playlist_label?: string | null;
-            score_label?: string | null;
-            /** Format: date-time */
-            start_time?: string | null;
-            /** @enum {string|null} */
-            variant?: "best" | "worst" | null;
-        };
-        CareerTopMatchesResponse: {
-            best_matches: components["schemas"]["TopMatchDTO"][] | null;
-            worst_matches: components["schemas"]["TopMatchDTO"][] | null;
         };
         CarriedEnergy: {
             /** Format: float */
@@ -5992,7 +5938,6 @@ export interface components {
             /** Format: int64 */
             kills: number;
             label: string;
-            label_en?: string;
             role?: string;
         };
         CompareWeaponProfile: {
@@ -7054,11 +6999,11 @@ export interface components {
         };
         ExplorerMatchesSummary: {
             available_experience_types?: components["schemas"]["LabelValue"][] | null;
-            available_maps?: string[] | null;
-            available_modes?: string[] | null;
+            available_maps?: components["schemas"]["LabelValue"][] | null;
+            available_modes?: components["schemas"]["LabelValue"][] | null;
             available_outcomes?: components["schemas"]["LabelValue"][] | null;
             available_perf_tiers?: components["schemas"]["LabelValue"][] | null;
-            available_playlists?: string[] | null;
+            available_playlists?: components["schemas"]["LabelValue"][] | null;
             available_ranked_contexts?: components["schemas"]["LabelValue"][] | null;
             available_skill_tiers?: components["schemas"]["LabelValue"][] | null;
             available_squad_scopes?: components["schemas"]["LabelValue"][] | null;
@@ -7474,7 +7419,6 @@ export interface components {
             /** Format: int64 */
             kills: number;
             label?: string;
-            label_en?: string;
             role: string;
         };
         FreshnessBackupInfo: {
@@ -7749,8 +7693,7 @@ export interface components {
         HeroProgress: {
             /** Format: int64 */
             current_rank: number;
-            max_rank_name_en?: string;
-            max_rank_name_fr?: string;
+            max_rank_name?: string;
             /** Format: double */
             percentage: number;
             /** Format: int64 */
@@ -7769,11 +7712,13 @@ export interface components {
         HighlightModeCount: {
             /** Format: int64 */
             count: number;
+            label: string;
             value: string;
         };
         HighlightPlaylistCount: {
             /** Format: int64 */
             count: number;
+            label: string;
             value: string;
         };
         HighlightSeasonCount: {
@@ -8848,11 +8793,11 @@ export interface components {
         MatchHistoryQuerySummary: {
             active_filter_mode: string;
             available_experience_types?: components["schemas"]["LabelValue"][] | null;
-            available_maps?: string[] | null;
-            available_modes?: string[] | null;
+            available_maps?: components["schemas"]["LabelValue"][] | null;
+            available_modes?: components["schemas"]["LabelValue"][] | null;
             available_outcomes?: components["schemas"]["LabelValue"][] | null;
             available_perf_tiers?: components["schemas"]["LabelValue"][] | null;
-            available_playlists?: string[] | null;
+            available_playlists?: components["schemas"]["LabelValue"][] | null;
             available_ranked_contexts?: components["schemas"]["LabelValue"][] | null;
             available_skill_tiers?: components["schemas"]["LabelValue"][] | null;
             available_squad_scopes?: components["schemas"]["LabelValue"][] | null;
@@ -8956,7 +8901,6 @@ export interface components {
             /** Format: double */
             avg_distance_m: number;
             label?: string;
-            label_en?: string;
             /** Format: double */
             max_distance_m: number;
             /** Format: int64 */
@@ -9792,8 +9736,7 @@ export interface components {
             ffprobe: boolean;
         };
         MilestoneDTO: {
-            condition_en?: string;
-            condition_fr?: string;
+            condition?: string;
             earned: boolean;
             /** Format: date-time */
             earned_at?: string;
@@ -9802,8 +9745,7 @@ export interface components {
             metric: string;
             /** Format: double */
             threshold: number;
-            title_en: string;
-            title_fr: string;
+            title: string;
         };
         MilestonesResponse: {
             items: components["schemas"]["MilestoneDTO"][] | null;
@@ -10830,8 +10772,7 @@ export interface components {
             kind: string;
             origin: string;
             radar_axis?: string;
-            reason_key_en?: string;
-            reason_key_fr?: string;
+            reason_key?: string;
             reason_params?: string;
             /** Format: date-time */
             resolved_at?: string;
@@ -11160,7 +11101,7 @@ export interface components {
         ResolveResult: {
             action: string;
             langs?: string[] | null;
-            mode_en?: string;
+            mode_key?: string;
         };
         ResourceDBFile: {
             name: string;
@@ -11816,7 +11757,6 @@ export interface components {
         };
         /** @description Configuration de l'application (GET/PATCH /settings) */
         SettingsResponse: {
-            career_top_exclude_btb?: boolean;
             /** @enum {string} */
             discord_lang?: "fr" | "en";
             discord_notifications_enabled?: boolean;
@@ -11883,7 +11823,6 @@ export interface components {
             /** Format: int64 */
             sub_tier: number;
             tier_name: string;
-            tier_name_fr: string;
         };
         SkillSnapshot: {
             /** Format: double */
@@ -11904,7 +11843,6 @@ export interface components {
             /** Format: int64 */
             SubTier: number | null;
             TierCode: string | null;
-            TierCodeFR: string | null;
         };
         SkillTrendPoint: {
             date: string;
@@ -12689,7 +12627,6 @@ export interface components {
             };
             kind: string;
             label?: string;
-            label_en?: string;
             /** Format: int64 */
             total_squad: number;
             weapon_key?: string;
@@ -12797,13 +12734,11 @@ export interface components {
         };
         SuggestedChallenge: {
             arc_id?: string;
-            description_en?: string;
-            description_fr?: string;
+            description?: string;
             /** Format: int64 */
             historical_streak: number;
             is_arc_step: boolean;
-            label_en?: string;
-            label_fr?: string;
+            label?: string;
             target_tier: string;
             template_id: string;
         };
@@ -13184,7 +13119,6 @@ export interface components {
             arme_image_tinted?: boolean;
             arme_image_url?: string;
             arme_label?: string;
-            arme_label_en?: string;
             autre_gamertag?: string;
             autre_point?: components["schemas"]["TacticalPoint"];
             categorie_source?: string;
@@ -13217,8 +13151,7 @@ export interface components {
             id: string;
             /** Format: int64 */
             matchs: number;
-            nom_en: string;
-            nom_fr: string;
+            nom: string;
             /** Format: double */
             x: number;
             /** Format: double */
@@ -13232,9 +13165,10 @@ export interface components {
             /** Format: int64 */
             defaites: number;
             echelle?: components["schemas"]["EchelleTactique"];
+            map_filter_key: string;
             map_id: string;
+            map_label: string;
             map_name: string;
-            map_name_fr: string;
             /** Format: int64 */
             matchs: number;
             /** Format: double */
@@ -13355,8 +13289,7 @@ export interface components {
             y: number;
         };
         TacticalZoneNom: {
-            nom_en: string;
-            nom_fr: string;
+            nom: string;
         };
         TeamCoverage: {
             /** Format: int64 */
@@ -13529,15 +13462,13 @@ export interface components {
             cadence: string;
             /** Format: date-time */
             cooldown_ends_at?: string;
-            description_en?: string;
-            description_fr?: string;
+            description?: string;
             eval_type: string;
             /** Format: double */
             heroic_target: number;
             id: string;
             is_long_term: boolean;
-            label_en: string;
-            label_fr: string;
+            label: string;
             /** Format: double */
             legendary_target: number;
             lusr_components?: string[] | null;
@@ -13649,8 +13580,8 @@ export interface components {
             kills: number;
             /** Format: double */
             kills_expected?: number;
+            map_label?: string;
             map_name?: string;
-            map_name_fr?: string;
             match_id: string;
             /** Format: int64 */
             max_killing_spree?: number;
@@ -13797,24 +13728,6 @@ export interface components {
             last_auth_error?: string;
             reauth_required: boolean;
             updated_at?: string;
-        };
-        TopMatchDTO: {
-            /** Format: int64 */
-            deaths: number;
-            /** Format: double */
-            kda: number | null;
-            /** Format: int64 */
-            kills: number;
-            map_ui: string | null;
-            match_id: string;
-            mode_ui: string | null;
-            /** @enum {string} */
-            outcome?: "win" | "loss" | "tie" | "dnf";
-            /** Format: int64 */
-            outcome_code: number;
-            /** Format: double */
-            performance_score: number;
-            start_time: string | null;
         };
         TopTeammate: {
             /** Format: double */
@@ -14409,7 +14322,6 @@ export interface components {
         };
         WeaponBelowThreshold: {
             label?: string;
-            label_en?: string;
             /** Format: int64 */
             measured: number;
             weapon_key: string;
@@ -14446,7 +14358,6 @@ export interface components {
         WeaponDistanceRecordRow: {
             class?: string;
             label?: string;
-            label_en?: string;
             /** Format: int64 */
             measured: number;
             /** Format: double */
@@ -14459,7 +14370,6 @@ export interface components {
         WeaponExcludedFromRecords: {
             class: string;
             label?: string;
-            label_en?: string;
             /** Format: int64 */
             measured: number;
             weapon_key: string;
@@ -14467,8 +14377,7 @@ export interface components {
         WeaponHighlight: {
             /** Format: int64 */
             kills: number;
-            label_en: string;
-            label_fr: string;
+            label: string;
             /** Format: int64 */
             weapon_id: number;
         };
@@ -14499,7 +14408,6 @@ export interface components {
             deaths?: components["schemas"]["WeaponRangeSide"];
             kills?: components["schemas"]["WeaponRangeSide"];
             label?: string;
-            label_en?: string;
             weapon_key: string;
         };
         WeaponRangeSide: {
@@ -14524,7 +14432,6 @@ export interface components {
         };
         WeaponRecordFrag: {
             map_label?: string;
-            map_label_en?: string;
             match_id: string;
             /** Format: date-time */
             started_at?: string;
@@ -20244,42 +20151,6 @@ export interface operations {
             };
         };
     };
-    getCareerTopMatches: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
-                player_slug: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Top matchs */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CareerTopMatchesResponse"];
-                };
-            };
-            404: components["responses"]["NotFound"];
-            499: components["responses"]["ClientClosed"];
-            500: components["responses"]["InternalError"];
-            503: components["responses"]["DbBusy"];
-            /** @description Error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiError"];
-                };
-            };
-        };
-    };
     postCitations: {
         parameters: {
             query?: never;
@@ -20487,6 +20358,7 @@ export interface operations {
                     "Cache-Control"?: string;
                     "Content-Type"?: string;
                     ETag?: string;
+                    Vary?: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -20554,6 +20426,7 @@ export interface operations {
                     "Cache-Control"?: string;
                     "Content-Type"?: string;
                     ETag?: string;
+                    Vary?: string;
                     [name: string]: unknown;
                 };
                 content: {

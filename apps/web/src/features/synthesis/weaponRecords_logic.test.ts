@@ -18,7 +18,6 @@ import {
 const row = (key: string, record: number, label = key): WeaponDistanceRecordRow => ({
   weapon_key: key,
   label,
-  label_en: label,
   class: 'shoulder',
   measured: 10,
   median_m: record / 2,
@@ -27,10 +26,10 @@ const row = (key: string, record: number, label = key): WeaponDistanceRecordRow 
 })
 
 describe('resolveRecordLabel', () => {
-  it('prend le libellé de la locale et retombe sur la clé, jamais sur un nom inventé', () => {
-    expect(resolveRecordLabel({ weapon_key: 'hinf_br75', label: 'BR75', label_en: 'BR75 EN' }, 'fr')).toBe('BR75')
-    expect(resolveRecordLabel({ weapon_key: 'hinf_br75', label: 'BR75', label_en: 'BR75 EN' }, 'en')).toBe('BR75 EN')
-    expect(resolveRecordLabel({ weapon_key: 'hinf_x', label: '  ', label_en: null }, 'fr')).toBe('hinf_x')
+  it('prend le libellé servi et retombe sur la clé, jamais sur un nom inventé', () => {
+    expect(resolveRecordLabel({ weapon_key: 'hinf_br75', label: 'BR75' })).toBe('BR75')
+    expect(resolveRecordLabel({ weapon_key: 'hinf_x', label: '  ' })).toBe('hinf_x')
+    expect(resolveRecordLabel({ weapon_key: 'hinf_y' })).toBe('hinf_y')
   })
 })
 

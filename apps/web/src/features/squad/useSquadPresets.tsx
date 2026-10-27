@@ -29,6 +29,7 @@ import { normalizeModeLabel } from '@/lib/halo/modeLabel'
 import { findSquadByRoster, squadTeammates } from './squadRoster'
 import { useCanWritePlayer } from '@/lib/players/playerWriteAccess'
 import { SQUAD_PRESETS_STRINGS, type SquadPresetsStrings } from './squadPresets.i18n'
+import type { Locale } from '@/lib/i18n/locale'
 
 /**
  * buildUsualSubtitle — indice « surtout <playlists> · <mode> » de la liste des
@@ -139,7 +140,7 @@ export interface UseSquadPresetsOptions {
    *  Vide tant que le header n'est pas résolu (dégradation gracieuse transitoire). */
   currentPlayerXuid: string
   hasLinkedIdentity: boolean
-  locale: string
+  locale: Locale
   /** Coéquipiers actuellement sélectionnés (pour « enregistrer la compo »). */
   selectedRows: readonly SquadPresetRow[]
   /** Labels (playlists/modes) du filtre courant → trie en tête les escouades
@@ -163,7 +164,7 @@ export function useSquadPresets({
   selectedRows,
   activeContextLabels,
 }: UseSquadPresetsOptions): UseSquadPresetsResult {
-  const t = SQUAD_PRESETS_STRINGS[locale === 'en' ? 'en' : 'fr']
+  const t = SQUAD_PRESETS_STRINGS[locale]
   const [manageMode, setManageMode] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [draft, setDraft] = useState('')

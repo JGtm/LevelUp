@@ -19,6 +19,7 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/platform/duckdb"
 	settings_platform "levelup/go-api/internal/platform/settings"
 	sync_pkg "levelup/go-api/internal/sync"
 	"levelup/go-api/internal/sync/skill"
@@ -106,7 +107,30 @@ func (r *ServiceRegistry) scanPlayerLUSRGaps(ctx context.Context, titleSlug stri
 			})
 		}
 	}
+	r.nameLUSRGapPlaylists(ctx, titleSlug, p.Gamertag, out.TopGaps)
 	return out
+}
+
+// nameLUSRGapPlaylists pose sur chaque trou le nom de sa paire dans la langue de la requête (PairNamesIn) ;
+// le nom du registre, qui sert à choisir la chaîne LUSR, reste celui de la langue de repli. Best-effort :
+// une base joueur qui ne se résout pas laisse le nom du registre.
+func (r *ServiceRegistry) nameLUSRGapPlaylists(ctx context.Context, titleSlug, gamertag string, gaps []domain.LUSRGapItem) {
+	if len(gaps) == 0 || r.resolveByGT == nil {
+		return
+	}
+	tpdb, err := r.resolveByGT(ctx, titleSlug, gamertag)
+	if err != nil || tpdb == nil {
+		monitoringLog.WarnContext(ctx, "admin_monitoring: noms de playlist des trous LUSR non résolus",
+			"gamertag", gamertag, "title", titleSlug, "err", err)
+		return
+	}
+	refs := make([]duckdb.PairRef, len(gaps))
+	for i, g := range gaps {
+		refs[i] = duckdb.PairRef{Name: g.Playlist}
+	}
+	for i, name := range duckdb.PairNamesIn(ctx, tpdb.Metadata, refs) {
+		gaps[i].Playlist = name
+	}
 }
 
 // lusrGuardrailHealth ré-expose les compteurs LUSR v2 (gauge + cumuls held/owner)

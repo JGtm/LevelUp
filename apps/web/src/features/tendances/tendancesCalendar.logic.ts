@@ -58,9 +58,18 @@ export interface CalendarCellDetail extends Record<string, unknown> {
   performance?: number
 }
 
+/**
+ * Étiquette TECHNIQUE du jour civil, indépendante de la langue de l'interface : seules les `parts` sont
+ * lues (année, mois, jour à deux chiffres, chiffres latins), jamais le texte formaté. Une étiquette de
+ * langue d'interface (`intlLocale`) donnerait des chiffres non latins pour certaines langues et casserait
+ * la clé « AAAA-MM-JJ » ; le fuseau, lui, exige `Intl` (aucun formatage sans Intl ne sait lire le jour
+ * civil d'un fuseau IANA).
+ */
+const ISO_DAY_PARTS_TAG = 'en-CA'
+
 /** Jour civil « AAAA-MM-JJ » de `instant` dans `timeZone`. */
 export function localDay(instant: string | Date, timeZone: string): string {
-  const parts = new Intl.DateTimeFormat('en-CA', {
+  const parts = new Intl.DateTimeFormat(ISO_DAY_PARTS_TAG, {
     timeZone,
     year: 'numeric',
     month: '2-digit',

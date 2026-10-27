@@ -9,6 +9,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
 import { parseRouteSegments } from '@/lib/title-routing'
+import { normalizeLocale } from '@/lib/i18n/locale'
 import { useAppShellStore } from '@/stores/appShellStore'
 import type {
   AsyncJobStatus,
@@ -68,7 +69,7 @@ export function useUpdateSettings() {
       // de useHomePage masquerait le changement.
       const newLang = (variables as Partial<SettingsResponse>).lang
       if (typeof newLang === 'string') {
-        const next = newLang.toLowerCase().startsWith('en') ? 'en' : 'fr'
+        const next = normalizeLocale(newLang)
         if (next !== currentLocale) {
           setLocale(next)
           void qc.invalidateQueries() // toutes les queries — la locale touche

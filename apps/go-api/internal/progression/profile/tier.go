@@ -23,7 +23,7 @@ func TierFromMu(mu float64) TierState {
 	lower, upper := subTierBounds(tier, sub)
 	return TierState{
 		Name:    tier.Name,
-		NameFR:  tier.NameFR,
+		Names:   tier.Label,
 		SubTier: sub,
 		Label:   formatLabel(tier.Name, sub),
 		LowerMu: lower,
@@ -42,7 +42,7 @@ func NextTierFromMu(mu float64) TierState {
 		if len(sync.SkillTiers) > 0 {
 			first := &sync.SkillTiers[0]
 			return TierState{
-				Name: first.Name, NameFR: first.NameFR, SubTier: 1,
+				Name: first.Name, Names: first.Label, SubTier: 1,
 				Label:   formatLabel(first.Name, 1),
 				LowerMu: first.MinRating, UpperMu: subTierUpper(first, 1),
 			}
@@ -66,7 +66,7 @@ func NextTierFromMu(mu float64) TierState {
 	// Si on n'est pas sur le dernier sub-tier → passer au sub suivant.
 	if current.SubTier > 0 && current.SubTier < tier.SubTiers {
 		return TierState{
-			Name: tier.Name, NameFR: tier.NameFR, SubTier: current.SubTier + 1,
+			Name: tier.Name, Names: tier.Label, SubTier: current.SubTier + 1,
 			Label:   formatLabel(tier.Name, current.SubTier+1),
 			LowerMu: subTierLower(tier, current.SubTier+1),
 			UpperMu: subTierUpper(tier, current.SubTier+1),
@@ -79,7 +79,7 @@ func NextTierFromMu(mu float64) TierState {
 	}
 	next := &sync.SkillTiers[tierIdx+1]
 	return TierState{
-		Name: next.Name, NameFR: next.NameFR, SubTier: 1,
+		Name: next.Name, Names: next.Label, SubTier: 1,
 		Label:   formatLabel(next.Name, 1),
 		LowerMu: next.MinRating,
 		UpperMu: subTierUpper(next, 1),

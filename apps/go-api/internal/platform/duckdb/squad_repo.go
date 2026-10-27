@@ -13,6 +13,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 )
 
 // SquadRepo implémente port.SquadRepository.
@@ -295,12 +296,13 @@ func (r *SquadRepo) loadSquadMatchesShared(ctx context.Context, playerXUID, team
 	var result []domain.SquadMatchRow
 	for rows.Next() {
 		var row domain.SquadMatchRow
+		var pairEN, pairFR, variantEN string
 		if err := rows.Scan(
 			&row.MatchID,
 			&row.StartTime,
 			&row.MapName,
 			&row.MapUI,
-			&row.PairName,
+			&pairEN,
 			&row.PlaylistName,
 			&row.IsFirefight,
 			&row.IsRanked,
@@ -323,15 +325,17 @@ func (r *SquadRepo) loadSquadMatchesShared(ctx context.Context, playerXUID, team
 			&row.MyRoundsWon,
 			&row.EnemyRoundsWon,
 			&row.RoundsTotal,
-			&row.GameVariantName,
+			&variantEN,
 			&row.MapID,
 			&row.PlaylistID,
-			&row.PairNameFR,
+			&pairFR,
 			&row.PairID,
 			&row.GameVariantID,
 		); err != nil {
 			return nil, fmt.Errorf("scan: %w", err)
 		}
+		row.PairName = i18n.FromColumns(pairEN, pairFR)
+		row.GameVariantName = i18n.FromColumns(variantEN, "")
 		result = append(result, row)
 	}
 	return result, rows.Err()

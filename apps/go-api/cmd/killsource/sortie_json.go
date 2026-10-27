@@ -352,7 +352,7 @@ func mortDeJSON(k decfilm.Kill) mortJSON {
 		Credit: creditJSON{Joueur: k.Feed.Killer, PresentAuFeed: k.Feed.Present},
 		Source: sourceJSON{
 			Tag: hex8(k.Source.Tag), Etiquette: k.Source.Display, NomPropre: k.Source.Named,
-			Nature: natureFR(k.Source.Class), NatureBrut: string(k.Source.Class),
+			Nature: natureLibelle(k.Source.Class), NatureBrut: string(k.Source.Class),
 			Statut: string(k.Source.Status), Detail: k.Source.Detail,
 			Reserve: k.Source.Reserve, Categorie: k.Source.Category.Name(),
 		},
@@ -360,8 +360,8 @@ func mortDeJSON(k decfilm.Kill) mortJSON {
 		PartsDeDegats: partsDeJSON(k),
 		Divergence:    k.Diverges,
 		Lecture: lectureJSON{
-			Voie: voieFR(k.Read.Path), VoieIdentifie: string(k.Read.Path),
-			Origine: origineFR(k.Read.Origin), Multiplicite: k.Read.Multiplicity,
+			Voie: voieLibelle(k.Read.Path), VoieIdentifie: string(k.Read.Path),
+			Origine: origineLibelle(k.Read.Origin), Multiplicite: k.Read.Multiplicity,
 			NotePonderer: "la voie sequentielle apparie 98.2 % de ses candidats au couple exact, " +
 				"le balayage 78.4 % — ventilation du cout, pas deux precisions comparables",
 		},

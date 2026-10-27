@@ -4,19 +4,14 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/games/canonical"
-)
-
-// LocaleEN et LocaleFR sont les locales obligatoires.
-const (
-	LocaleEN = "en"
-	LocaleFR = "fr"
+	"levelup/go-api/internal/i18n"
 )
 
 // FieldMapping est la projection d'une section [fields.X] du TOML.
 type FieldMapping struct {
 	Key          canonical.FieldKey
-	Labels       map[string]string
-	Descriptions map[string]string
+	Labels       i18n.Text
+	Descriptions i18n.Text
 	StorageUnit  Unit
 	DisplayUnit  Unit
 	Format       Format
@@ -28,26 +23,22 @@ type FieldMapping struct {
 // Label retourne le libellé pour la locale demandée et un bool indiquant si
 // un fallback a été utilisé (pour le logging field_lookup_missing rate-limité).
 //
-// Chaîne de fallback : locale demandée → en → key as string.
+// Chaîne de fallback : locale demandée → i18n.Fallback → key as string.
 func (m FieldMapping) Label(locale string) (label string, usedFallback bool) {
-	if v, ok := m.Labels[locale]; ok && v != "" {
-		return v, false
+	v, fell := m.Labels.Resolve(i18n.Locale(locale))
+	if v == "" {
+		return string(m.Key), true
 	}
-	if v, ok := m.Labels[LocaleEN]; ok && v != "" {
-		return v, true
-	}
-	return string(m.Key), true
+	return v, fell
 }
 
 // Description retourne la description pour la locale demandée + fallback.
 func (m FieldMapping) Description(locale string) (string, bool) {
-	if v, ok := m.Descriptions[locale]; ok && v != "" {
-		return v, false
+	v, fell := m.Descriptions.Resolve(i18n.Locale(locale))
+	if v == "" {
+		return "", true
 	}
-	if v, ok := m.Descriptions[LocaleEN]; ok && v != "" {
-		return v, true
-	}
-	return "", true
+	return v, fell
 }
 
 // FieldMappingSet est l'ensemble des FieldMapping d'un titre, construit par

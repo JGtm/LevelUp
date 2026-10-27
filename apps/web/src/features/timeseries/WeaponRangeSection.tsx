@@ -290,7 +290,7 @@ export function WeaponRangeSection({ range, aside }: WeaponRangeSectionProps) {
   )
   const f = useRangeFormats(locale)
   const weapons = range?.weapons
-  const lines = useMemo(() => weaponRangeLines(weapons, locale), [weapons, locale])
+  const lines = useMemo(() => weaponRangeLines(weapons), [weapons])
   const series = useMemo(() => [{ key: 'weapon-range', datapoints: lines }], [lines])
 
   const buildRange = useWeaponRangeOption(lines, f, t)

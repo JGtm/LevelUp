@@ -1,11 +1,8 @@
 import { KNOWN_LOCALES, type Locale } from '@/lib/i18n/locale'
 import { playerRelativePath } from '@/lib/title-routing'
 
-/** Titre localisé — parité FR/EN obligatoire par typage (CLAUDE.md règle 1). */
-interface LocalizedTitle {
-  fr: string
-  en: string
-}
+/** Titre localisé — une langue manquante ne compile pas (`Record<Locale, …>`, CLAUDE.md règle 1). */
+type LocalizedTitle = Record<Locale, string>
 
 interface RouteTitleRule {
   pattern: string
@@ -28,10 +25,10 @@ interface RouteTitleRule {
 // n°7, 0 code mort). Les libellés EN ci-dessous reprennent VERBATIM les traductions
 // canoniques déjà établies ailleurs (`lib/i18n/generated/common.ts` `common.nav.*`,
 // `features/citations/i18n` via `citationsManifest`, `features/compare/i18n.ts`,
-// `features/squad/i18n.ts`) pour rester cohérentes avec la barre d'onglets réellement
+// `features/squad/i18n`) pour rester cohérentes avec la barre d'onglets réellement
 // affichée. Cette copie est VERROUILLÉE (CLAUDE.md règle n°6 : une copie sans
 // garde-rail re-diverge) par `pageTitle.labels.guard.test.ts` pour les 4 sous-routes
-// Escouade : la table SUIT `features/squad/i18n.ts`, jamais l'inverse. `lib/` ne peut
+// Escouade : la table SUIT `features/squad/i18n`, jamais l'inverse. `lib/` ne peut
 // pas importer `features/` (frontière), d'où le verrou par test plutôt que par import.
 const PLAYER_SUFFIX_OVERRIDES: RouteTitleRule[] = [
   // Accueil

@@ -148,7 +148,7 @@ func padObjects(
 		// est la regle : un drapeau reconnu ne devient pas un socle parce qu'un jour son
 		// identifiant entrerait au catalogue d'armes. Il etait deja ecarte hier — mais par
 		// ACCIDENT (hors catalogue), c'est-a-dire de la meme facon que le bruit du balayage.
-		if ok && rule.Objectives[w] != (Label{}) {
+		if ok && !rule.Objectives[w].isZero() {
 			rejected.total, rejected.objectives = rejected.total+1, rejected.objectives+1
 			continue
 		}
@@ -210,7 +210,7 @@ func naissancesProuvees(scan WorldObjectScan, rule padRule) naissancesDObjetParS
 		_, publiee := rule.Family(w)
 		k := types.LifeKey{Slot: c.Slot, Gen: c.Gen}
 		out.ajouter(c.Slot, naissanceDObjet{tUS: c.TimestampUS, gen: c.Gen,
-			retenue:  ok && (publiee || rule.Objectives[w] != (Label{})),
+			retenue:  ok && (publiee || !rule.Objectives[w].isZero()),
 			recensee: recenseeDepuis(scan.Keyframes.SeenUS[k], c.TimestampUS)})
 	}
 	out.trier()

@@ -126,6 +126,7 @@ export function useMediaPage(
   page: number,
 ) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  const locale = useAppShellStore((s) => s.locale)
   // La clé inclut tous les filtres actifs pour que chaque combinaison soit indépendante.
   const requestHash = JSON.stringify({
     p: page,
@@ -141,7 +142,7 @@ export function useMediaPage(
   })
 
   return useQuery({
-    queryKey: queryKeys.media(playerSlug, titleSlug, requestHash),
+    queryKey: queryKeys.media(playerSlug, titleSlug, requestHash, locale),
     queryFn: () =>
       api.post<MediaPageResponse>(
         `/players/${playerSlug}/pages/media`,
@@ -155,6 +156,7 @@ export function useMediaPage(
 
 export function useRecentMediaRail(playerSlug: string, limit: number, likedOnly = false) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  const locale = useAppShellStore((s) => s.locale)
   const request: MediaQueryRequest = {
     sort: DEFAULT_MEDIA_SORT,
     liked_only: likedOnly || null,
@@ -162,7 +164,7 @@ export function useRecentMediaRail(playerSlug: string, limit: number, likedOnly 
   }
 
   return useQuery({
-    queryKey: queryKeys.mediaRail(playerSlug, titleSlug, limit, likedOnly),
+    queryKey: queryKeys.mediaRail(playerSlug, titleSlug, limit, locale, likedOnly),
     queryFn: () =>
       api.post<MediaPageResponse>(
         `/players/${playerSlug}/pages/media`,
@@ -297,8 +299,9 @@ export function useMediaMatchCandidates(
   enabled = true,
 ) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  const locale = useAppShellStore((s) => s.locale)
   return useQuery({
-    queryKey: queryKeys.mediaMatchCandidates(playerSlug, titleSlug, filePath, windowMinutes),
+    queryKey: queryKeys.mediaMatchCandidates(playerSlug, titleSlug, filePath, windowMinutes, locale),
     queryFn: () =>
       api.get<MediaMatchCandidatesResponse>(
         `/players/${playerSlug}/media/match-candidates?file_path=${encodeURIComponent(filePath ?? '')}&window_minutes=${windowMinutes}`,

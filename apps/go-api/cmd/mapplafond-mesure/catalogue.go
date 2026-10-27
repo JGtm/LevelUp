@@ -28,6 +28,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/himap"
+	"levelup/go-api/internal/i18n"
 )
 
 // cheminDumpPOC : le decoupage du POC pour Ridgeline. Le catalogue de callouts ne conserve
@@ -221,11 +222,15 @@ func moduleDeLEntree(e replay.MapObjectivesEntry, bornes *decfilm.MapQuantCatalo
 	return ""
 }
 
-// nomZone rend le nom JOUEUR d'une zone : le libelle francais quand il existe, l'anglais
-// sinon, et en dernier recours le nom de CONCEPTION. Jamais vide — une zone sans nom dans le
-// rapport serait indiscernable d'une absence de zone.
+// nomZone rend le nom JOUEUR d'une zone : le libelle de la langue par defaut quand il existe, celui
+// de la langue de repli sinon, et en dernier recours le nom de CONCEPTION. Jamais vide — une zone
+// sans nom dans le rapport serait indiscernable d'une absence de zone.
 func nomZone(z replay.CalloutZone) string {
-	for _, n := range []string{z.FR, z.EN, z.Name} {
+	var noms []string
+	for _, l := range i18n.Chain(i18n.Default) {
+		noms = append(noms, z.Text[l])
+	}
+	for _, n := range append(noms, z.Name) {
 		if s := strings.TrimSpace(n); s != "" {
 			return s
 		}

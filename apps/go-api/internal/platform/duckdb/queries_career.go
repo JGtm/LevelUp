@@ -121,7 +121,6 @@ const Q5PlayerSkillRankHistoryTpl = `
 SELECT
     match_id,
     NULLIF(TRIM(COALESCE(tier, '')), '')             AS skill_tier,
-    NULLIF(TRIM(COALESCE(tier_fr, '')), '')          AS skill_tier_fr,
     NULLIF(TRIM(COALESCE(rating_type, '')), '')      AS skill_rating_type,
     NULLIF(TRIM(COALESCE(tier_label, '')), '')       AS skill_tier_label,
     expected_win_prob,
@@ -247,51 +246,19 @@ SELECT
 FROM match_registry
 WHERE match_id IN (%s)`
 
-// Q9 : Career — top matches : 10 meilleurs (WIN) + 10 moins bons (LOSS).
-// Paramètres : ?1 = xuid (section WIN), ?2 = xuid (section LOSS).
-// Filtres Python portés : had_bot_teammate=FALSE, time_played>=180s, is_firefight=FALSE.
-// Tri badge priority : WIN → flags 5/3/1 (CONTRE_REMONTADA/REMONTADA/DOMINATION) DESC ;
+// Q9bHighlightPlayer : phase A des matchs marquants de la Carrière — partie player (pme) avec
+// filtre performance_score. Le tri (dominance flag + perf score) et la sélection par section
+// (WIN/LOSS) sont faits côté Go après merge avec la partie shared (Q9bHighlightSharedTpl).
 //
-//	LOSS → flags 4/2 (DEBANDADE/HUMILIATION) DESC.
-//
-// _s sert uniquement à séparer les sections (1=best, 2=worst) dans l'ORDER BY final.
-// Q9TopMatchesPlayer : Phase A de Q9 — partie player (pme) avec filtre
-// performance_score. Le tri (dominance flag + perf score) et la sélection
-// par section (WIN/LOSS) sont faits côté Go après merge avec shared (Phase B).
-//
-// Le flag had_bot_teammate est désormais transmis au tri Go pour exclusion
-// asymétrique : on garde les WIN avec bot coéquipier (perf personnelle
-// méritoire malgré le handicap d'équipe), on rejette les LOSS avec bot
-// coéquipier (responsabilité du joueur non isolable d'un déséquilibre 4v3).
-const Q9TopMatchesPlayer = `
+// Le flag had_bot_teammate est transmis au tri Go pour l'exclusion asymétrique : on garde les WIN
+// avec bot coéquipier (perf personnelle méritoire malgré le handicap d'équipe), on rejette les LOSS
+// avec bot coéquipier (responsabilité du joueur non isolable d'un déséquilibre 4v3).
+const Q9bHighlightPlayer = `
 SELECT match_id, performance_score, COALESCE(dominance_flag, 0), COALESCE(had_bot_teammate, FALSE)
 FROM player_match_enrichment_latest
 WHERE performance_score IS NOT NULL`
 
-// Q9TopMatchesShared : Phase B de Q9 — partie shared (mp + r) avec filtres
-// shared-only (time_played >= 180, is_firefight = FALSE). Filtre xuid + IN
-// les match_ids passés par Phase A.
-var Q9TopMatchesSharedTpl = `
-SELECT
-    mp.match_id,
-    ` + StartTimeCanonicalSQL("r") + ` AS start_time,
-    r.map_name,
-    r.pair_name,
-    r.playlist_name,
-    COALESCE(mp.outcome, 0)   AS outcome,
-    COALESCE(mp.kills, 0)     AS kills,
-    COALESCE(mp.deaths, 0)    AS deaths,
-    mp.kda,
-    ` + analysis.SQLKnownMMR("mp.team_mmr") + ` AS team_mmr,
-    ` + analysis.SQLKnownMMR("mp.enemy_mmr") + ` AS enemy_mmr
-FROM match_participants mp
-JOIN match_registry r ON mp.match_id = r.match_id
-WHERE mp.xuid = ?
-  AND COALESCE(mp.time_played_seconds, 0) >= 180
-  AND COALESCE(r.is_firefight, FALSE) = FALSE` + campaignExclusionToken + `
-  AND mp.match_id IN (%s)`
-
-// Q9bHighlightSharedTpl : Phase B partagée entre GetHighlightMatchIDs et
+// Q9bHighlightSharedTpl : phase B partagée entre GetHighlightMatchIDs et
 // GetHighlightPool — partie shared (mp + r) avec filtres shared-only
 // (time_played >= 180, NOT is_firefight, outcome ∈ {2,3}, mp.match_id IN
 // les match_ids de Phase A). Le 2e %s reçoit la clause dynamique

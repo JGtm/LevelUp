@@ -7,11 +7,11 @@ import (
 	"context"
 	"fmt"
 	"strconv"
-	"strings"
 	"time"
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
 // GetMatchMedals retourne les médailles du joueur dans ce match (Q14).
@@ -78,12 +78,10 @@ type medalMeta struct {
 	difficulty  string
 }
 
-// lookupMedalMeta résout label + description + difficulty depuis medal_definitions
-// (chaîne BCP-47 medal_translations > medal_definitions), LOCALE-AWARE via la locale
-// de requête (ctxkeys.Locale ← header X-LevelUp-Locale). En UI EN, ne jamais injecter
-// les colonnes FR (name_fr/description_fr) — le drawer/résumé affichaient des noms FR
-// sous UI EN (GH-5b). Source unique de la chaîne : medalLabelDescCoalesceSQL.
-// Fallback citation_mappings.citation_name_display si la médaille n'est pas dans medal_definitions.
+// lookupMedalMeta résout label + description + difficulty : difficulty vient de medal_definitions,
+// label et description de medal_translations dans la langue de requête (ctxkeys.Locale ← header
+// X-LevelUp-Locale, repli `en`, jamais la langue par défaut : source unique loadMedalLabels).
+// Fallback citation_mappings.citation_name_display si la médaille n'a aucun nom.
 //
 // Rend les libellés résolus ET, si une lecture du référentiel a échoué, l'erreur : l'appelant
 // garde ce qui est résolu mais doit dire la panne. Un référentiel non configuré (`Metadata` nil)
@@ -93,38 +91,18 @@ func (r *MatchViewRepo) lookupMedalMeta(ctx context.Context, medalIDs []int64) (
 	if len(medalIDs) == 0 || r.pdb.Metadata == nil {
 		return result, nil
 	}
-	locale := ctxkeys.Locale(ctx)
-	labelExpr, descExpr := medalLabelDescCoalesceSQL(locale)
-	q, args, ok := buildLookupQuery(
-		`SELECT md.medal_name_id,
-		        `+labelExpr+` AS label,
-		        `+descExpr+` AS description,
-		        COALESCE(NULLIF(TRIM(md.difficulty),''), 'Normal') AS difficulty
-		 FROM medal_definitions md
-		 `+medalTranslationJoinsSQL(locale)+`
-		 WHERE md.medal_name_id IN (%s)`,
-		medalIDs,
-	)
-	if !ok {
-		return result, nil
-	}
-	rows, err := r.pdb.Metadata.Query(ctx, q, args...)
+	difficulties, err := r.medalDifficulties(ctx, medalIDs)
 	if err != nil {
-		return result, fmt.Errorf("lookupMedalMeta: medal_definitions: %w", err)
+		return result, err
 	}
-	defer rows.Close()
-	for rows.Next() {
-		var id int64
-		var label, desc, diff string
-		if err := rows.Scan(&id, &label, &desc, &diff); err != nil {
-			return result, fmt.Errorf("lookupMedalMeta: medal_definitions scan: %w", err)
-		}
-		if label != "" {
-			result[id] = medalMeta{label: label, description: desc, difficulty: diff}
-		}
+	labels, err := loadMedalLabels(ctx, r.pdb.Metadata, medalIDs, ctxkeys.Locale(ctx))
+	if err != nil {
+		return result, fmt.Errorf("lookupMedalMeta: medal_translations: %w", err)
 	}
-	if err := rows.Err(); err != nil {
-		return result, fmt.Errorf("lookupMedalMeta: medal_definitions rows: %w", err)
+	for id, diff := range difficulties {
+		if t := labels[id]; t.label != "" {
+			result[id] = medalMeta{label: t.label, description: t.description, difficulty: diff}
+		}
 	}
 	// Fallback citation_mappings pour les IDs absents de medal_definitions
 	// (source unique partagée, cf. medal_citation_fallback.go).
@@ -144,10 +122,42 @@ func (r *MatchViewRepo) lookupMedalMeta(ctx context.Context, medalIDs []int64) (
 	return result, nil
 }
 
+// medalDifficulties lit la difficulté de medal_definitions pour les médailles `medalIDs` (colonne
+// non textuelle) ; le curseur est fermé au retour.
+func (r *MatchViewRepo) medalDifficulties(ctx context.Context, medalIDs []int64) (map[int64]string, error) {
+	out := make(map[int64]string, len(medalIDs))
+	q, args, ok := buildLookupQuery(
+		`SELECT md.medal_name_id, COALESCE(NULLIF(TRIM(md.difficulty),''), 'Normal') AS difficulty
+		 FROM medal_definitions md
+		 WHERE md.medal_name_id IN (%s)`,
+		medalIDs,
+	)
+	if !ok {
+		return out, nil
+	}
+	rows, err := r.pdb.Metadata.Query(ctx, q, args...)
+	if err != nil {
+		return out, fmt.Errorf("lookupMedalMeta: medal_definitions: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id int64
+		var diff string
+		if err := rows.Scan(&id, &diff); err != nil {
+			return out, fmt.Errorf("lookupMedalMeta: medal_definitions scan: %w", err)
+		}
+		out[id] = diff
+	}
+	if err := rows.Err(); err != nil {
+		return out, fmt.Errorf("lookupMedalMeta: medal_definitions rows: %w", err)
+	}
+	return out, nil
+}
+
 // LookupMedalMetaByName résout l'identité de médailles depuis leur nom ANGLAIS
-// (medal_definitions.name_en, metadata.duckdb) — le pont entre les events `medal`
+// (medal_translations, étiquettes Halo de la langue de repli) — le pont entre les events `medal`
 // du film (raw_json.medal_name, ex. « Odin's Raven ») et le référentiel du jeu.
-// Locale-aware par la même chaîne que lookupMedalMeta (medalLabelDescCoalesceSQL).
+// Label et description suivent la langue de la requête par loadMedalLabels, comme lookupMedalMeta.
 // Metadata non configurée → map vide sans erreur (absence constatée) ; une requête ou une lecture
 // en échec REMONTE : l'appelant (décoration du kill feed) la journalise avant de laisser le feed
 // sur le nom brut. La comparaison est
@@ -176,37 +186,60 @@ func (r *MatchViewRepo) LookupMedalMetaByName(
 	if len(unique) == 0 {
 		return result, nil
 	}
-	locale := ctxkeys.Locale(ctx)
-	labelExpr, descExpr := medalLabelDescCoalesceSQL(locale)
-	placeholders := make([]string, len(unique))
-	args := make([]interface{}, len(unique))
-	for i, n := range unique {
-		placeholders[i] = "?"
-		args[i] = n
+	idsByName, err := r.medalIDsByEnglishName(ctx, unique)
+	if err != nil {
+		return nil, err
 	}
-	q := `SELECT md.name_en, md.medal_name_id,
-	             ` + labelExpr + ` AS label,
-	             ` + descExpr + ` AS description
-	      FROM medal_definitions md
-	      ` + medalTranslationJoinsSQL(locale) + `
-	      WHERE md.name_en IN (` + strings.Join(placeholders, ",") + `)`
-	rows, err := r.pdb.Metadata.Query(ctx, q, args...)
+	ids := make([]int64, 0, len(idsByName))
+	for _, id := range idsByName {
+		ids = append(ids, id)
+	}
+	labels, err := loadMedalLabels(ctx, r.pdb.Metadata, ids, ctxkeys.Locale(ctx))
+	if err != nil {
+		return nil, fmt.Errorf("MatchViewRepo.LookupMedalMetaByName: textes: %w", err)
+	}
+	for name, id := range idsByName {
+		t := labels[id]
+		result[name] = domain.MedalNameMeta{MedalNameID: id, Label: t.label, Description: t.description}
+	}
+	return result, nil
+}
+
+// medalIDsByEnglishName associe chaque nom anglais de `names` au medal_name_id de la médaille qui
+// le porte dans medal_translations (étiquettes Halo de la langue de repli).
+func (r *MatchViewRepo) medalIDsByEnglishName(ctx context.Context, names []string) (map[string]int64, error) {
+	tags := i18n.HaloTags(i18n.Fallback)
+	args := make([]interface{}, 0, len(tags)+len(names))
+	for _, tag := range tags {
+		args = append(args, tag)
+	}
+	for _, n := range names {
+		args = append(args, n)
+	}
+	rows, err := r.pdb.Metadata.Query(ctx,
+		`SELECT mt.name, mt.medal_name_id
+		 FROM medal_translations mt
+		 WHERE mt.lang IN (`+Placeholders(len(tags))+`)
+		   AND mt.name IN (`+Placeholders(len(names))+`)
+		   AND EXISTS (SELECT 1 FROM medal_definitions md WHERE md.medal_name_id = mt.medal_name_id)
+		 ORDER BY mt.medal_name_id`, args...)
 	if err != nil {
 		return nil, fmt.Errorf("MatchViewRepo.LookupMedalMetaByName: %w", err)
 	}
 	defer rows.Close()
+	out := make(map[string]int64, len(names))
 	for rows.Next() {
-		var nameEN, label, desc string
+		var name string
 		var id int64
-		if err := rows.Scan(&nameEN, &id, &label, &desc); err != nil {
+		if err := rows.Scan(&name, &id); err != nil {
 			return nil, fmt.Errorf("MatchViewRepo.LookupMedalMetaByName scan: %w", err)
 		}
-		result[nameEN] = domain.MedalNameMeta{MedalNameID: id, Label: label, Description: desc}
+		out[name] = id
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("MatchViewRepo.LookupMedalMetaByName rows: %w", err)
 	}
-	return result, nil
+	return out, nil
 }
 
 // GetMatchBulkMedals retourne les médailles de tous les joueurs du match (Q27).

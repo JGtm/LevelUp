@@ -9,6 +9,8 @@ import (
 	"log/slog"
 	"strconv"
 	"time"
+
+	"levelup/go-api/internal/i18n"
 )
 
 // service.go — orchestrateur du module Prestige.
@@ -433,7 +435,7 @@ func (s *service) CreateChallenge(ctx context.Context, req CreateChallengeReques
 		"challenge_id", c.ID, "user_id", c.UserID, "tier", c.Tier,
 		"mode", c.Mode, "cadence", c.Cadence)
 
-	return c, nil
+	return s.localizeChallenge(ctx, c), nil
 }
 
 // checkQuotas valide les plafonds simultanés et anti-farming en mode pilote.
@@ -577,7 +579,7 @@ func (s *service) UpdateChallenge(ctx context.Context, id string, patch UpdateCh
 		s.emitter.EmitPalierRecomputed(ctx, c, oldTier, stretch, baseline.Value)
 	}
 
-	return c, nil
+	return s.localizeChallenge(ctx, c), nil
 }
 
 // recomputeTier recharge la baseline et calcule un nouveau palier pour la cible donnée.
@@ -627,7 +629,7 @@ func (s *service) GetChallenge(ctx context.Context, id string) (Challenge, error
 	if err != nil {
 		return Challenge{}, ErrChallengeNotFound
 	}
-	return c, nil
+	return s.localizeChallenge(ctx, c), nil
 }
 
 func (s *service) ListActiveChallenges(ctx context.Context, userID, titleSlug string) ([]Challenge, error) {
@@ -660,7 +662,7 @@ func (s *service) ListChallenges(ctx context.Context, userID, titleSlug string, 
 		// calcul que creditCompletion, isSquad=false pour les défis perso).
 		list[i].PPReward = PPForCompletion(s.deps.Tuning, c.Tier, false, c.DataTier)
 	}
-	return list, nil
+	return s.localizeChallenges(ctx, list), nil
 }
 
 // computeCurrentValue calcule la valeur courante mesurée pour un défi sans
@@ -696,7 +698,7 @@ func (s *service) GetUserPrestige(ctx context.Context, userID, titleSlug string)
 	if err != nil {
 		return up, err
 	}
-	lvl := LevelFromPP(s.deps.Tuning, up.TotalPP)
+	lvl := LevelFromPP(s.deps.Tuning, up.TotalPP, i18n.FromContext(ctx))
 	up.Level = &lvl
 	return up, nil
 }
@@ -713,7 +715,7 @@ func (s *service) SuggestTemplates(ctx context.Context, userID, titleSlug string
 		return nil, err
 	}
 	s.annotateCooldowns(ctx, userID, titleSlug, tmpls)
-	return tmpls, nil
+	return LocalizeTemplates(tmpls, i18n.FromContext(ctx)), nil
 }
 
 // annotateCooldowns renseigne Template.CooldownEndsAt pour chaque template dont
@@ -754,7 +756,11 @@ func (s *service) SuggestNext(ctx context.Context, completedID string) ([]Templa
 	if err != nil {
 		return nil, ErrChallengeNotFound
 	}
-	return s.deps.Templates.Suggest(ctx, c.TitleSlug, []string{c.TemplateID}, s.deps.Tuning.Suggestion.AlternativesCount)
+	tmpls, err := s.deps.Templates.Suggest(ctx, c.TitleSlug, []string{c.TemplateID}, s.deps.Tuning.Suggestion.AlternativesCount)
+	if err != nil {
+		return nil, err
+	}
+	return LocalizeTemplates(tmpls, i18n.FromContext(ctx)), nil
 }
 
 // EvaluateForUser, evaluateOne, applyTransition : voir service_evaluate.go

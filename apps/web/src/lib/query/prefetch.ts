@@ -40,7 +40,11 @@ export function useNavPrefetch(playerSlug: string) {
   const prefetchCareer = useCallback(() => {
     if (!playerSlug) return
     void queryClient.prefetchQuery({
-      queryKey: queryKeys.career(playerSlug, useAppShellStore.getState().currentTitleSlug),
+      queryKey: queryKeys.career(
+        playerSlug,
+        useAppShellStore.getState().currentTitleSlug,
+        useAppShellStore.getState().locale,
+      ),
       queryFn: () => api.get<CareerPageResponse>(`/players/${playerSlug}/pages/career`),
       staleTime: PREFETCH_STALE_MS,
     })

@@ -13,9 +13,10 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log/slog"
 	"strings"
 	"time"
+
+	"levelup/go-api/internal/i18n"
 )
 
 // mediaMatchRegistryInfo regroupe les colonnes de shared.match_registry
@@ -23,19 +24,16 @@ import (
 type mediaMatchRegistryInfo struct {
 	MatchID       string
 	MapID         string
-	MapName       string
-	MapNameFR     string
-	PairName      string
-	PairNameFR    string
+	MapName       i18n.Text
+	PairName      i18n.Text
 	GameVariantID string // fallback mode des titres sans pair (Halo 5) — cf. resolveMediaRegistryNameFallbacks
 	// ModeNameFallback : libellé de mode résolu via asset_translations game_variant
 	// quand le titre n'a PAS de pair (Halo 5). Champ DISTINCT de PairName/PairNameFR :
 	// ce n'est pas un pair — il ne doit ni alimenter PairNameRaw (classification par
 	// catégorie Infinite) ni être re-normalisé (déjà un libellé propre).
-	ModeNameFallback string
+	ModeNameFallback i18n.Text
 	PlaylistID       string
-	PlaylistName     string
-	PlaylistNameFR   string
+	PlaylistName     i18n.Text
 	StartTime        *time.Time // TIMESTAMP naïf (UTC par convention v6+)
 	StartTimeUTC     *time.Time // TIMESTAMPTZ (UTC garanti après migration)
 	EndTime          *time.Time
@@ -125,23 +123,27 @@ func (r *MediaRepo) loadMediaMatchRegistry(
 
 	for rows.Next() {
 		var info mediaMatchRegistryInfo
+		var mapEN, mapFR, pairEN, pairFR, playlistEN, playlistFR string
 		var startT, startUTC, endT, endUTC sql.NullTime
 		if err := rows.Scan(
 			&info.MatchID,
 			&info.MapID,
-			&info.MapName,
-			&info.MapNameFR,
-			&info.PairName,
-			&info.PairNameFR,
+			&mapEN,
+			&mapFR,
+			&pairEN,
+			&pairFR,
 			&info.GameVariantID,
 			&info.PlaylistID,
-			&info.PlaylistName,
-			&info.PlaylistNameFR,
+			&playlistEN,
+			&playlistFR,
 			&startT, &startUTC,
 			&endT, &endUTC,
 		); err != nil {
 			return nil, fmt.Errorf("loadMediaMatchRegistry: scan: %w", err)
 		}
+		info.MapName = i18n.FromColumns(mapEN, mapFR)
+		info.PairName = i18n.FromColumns(pairEN, pairFR)
+		info.PlaylistName = i18n.FromColumns(playlistEN, playlistFR)
 		if startT.Valid {
 			t := startT.Time
 			info.StartTime = &t
@@ -168,14 +170,14 @@ func (r *MediaRepo) loadMediaMatchRegistry(
 }
 
 // resolveMediaRegistryNameFallbacks remplit les noms manquants des rows registre
-// via la cascade asset_translations (ResolveAssetNamesBulk, fr-FR→fr→en-US→en) —
+// depuis asset_translations (noms de toutes les langues, assetNameTexts) —
 // DEC-7 (résidus H5) : les colonnes noms de match_registry sont NULL sur 100 % des
 // matchs Halo 5 → la galerie média affichait « Carte inconnue » et ses filtres
 // map/mode/playlist restaient vides alors que le lien média→match fonctionnait.
-//   - map      : MapNameFR ← type "map" par MapID ;
-//   - mode     : PairNameFR ← type "game_variant" par GameVariantID quand le titre
+//   - map      : MapName ← type "map" par MapID ;
+//   - mode     : ModeNameFallback ← type "game_variant" par GameVariantID quand le titre
 //     n'a PAS de pair (même fallback data-driven que GetMatchMeta, lot A2) ;
-//   - playlist : PlaylistNameFR ← type "playlist" par PlaylistID.
+//   - playlist : PlaylistName ← type "playlist" par PlaylistID.
 //
 // No-op quand les noms sont déjà présents (Infinite : colonnes remplies → aucun
 // appel metadata). Best-effort : metadata indisponible → rows inchangées (le caller
@@ -184,31 +186,28 @@ func (r *MediaRepo) resolveMediaRegistryNameFallbacks(ctx context.Context, rows 
 	if r.pdb.Metadata == nil || len(rows) == 0 {
 		return
 	}
-	meta := NewMetadataRepoFromDB(r.pdb.Metadata)
-	langs := PreferredLangsForLocale("fr")
-
-	// map : nom FR ← asset_translations type "map" par map_id.
-	r.applyMediaNameFallback(ctx, meta, langs, rows, assetTypeMap, mediaNameAccessor{
+	// map : noms ← asset_translations type "map" par map_id.
+	r.applyMediaNameFallback(ctx, rows, assetTypeMap, mediaNameAccessor{
 		idOf:    func(i *mediaMatchRegistryInfo) string { return i.MapID },
-		missing: func(i *mediaMatchRegistryInfo) bool { return i.MapName == "" && i.MapNameFR == "" },
-		setName: func(i *mediaMatchRegistryInfo, n string) { i.MapNameFR = n },
+		missing: func(i *mediaMatchRegistryInfo) bool { return i.MapName.Empty() },
+		setName: func(i *mediaMatchRegistryInfo, n i18n.Text) { i.MapName = n.Clone() },
 	})
 
 	// mode : ModeNameFallback ← type "game_variant" par game_variant_id, pour les
 	// titres SANS pair (Halo 5). Champ DISTINCT de PairName* (cf. mediaMatchRegistryInfo).
-	r.applyMediaNameFallback(ctx, meta, langs, rows, assetTypeGameVariant, mediaNameAccessor{
+	r.applyMediaNameFallback(ctx, rows, assetTypeGameVariant, mediaNameAccessor{
 		idOf: func(i *mediaMatchRegistryInfo) string { return i.GameVariantID },
 		missing: func(i *mediaMatchRegistryInfo) bool {
-			return i.PairName == "" && i.PairNameFR == "" && i.ModeNameFallback == ""
+			return i.PairName.Empty() && i.ModeNameFallback.Empty()
 		},
-		setName: func(i *mediaMatchRegistryInfo, n string) { i.ModeNameFallback = n },
+		setName: func(i *mediaMatchRegistryInfo, n i18n.Text) { i.ModeNameFallback = n.Clone() },
 	})
 
-	// playlist : nom FR ← type "playlist" par playlist_id.
-	r.applyMediaNameFallback(ctx, meta, langs, rows, assetTypePlaylist, mediaNameAccessor{
+	// playlist : noms ← type "playlist" par playlist_id.
+	r.applyMediaNameFallback(ctx, rows, assetTypePlaylist, mediaNameAccessor{
 		idOf:    func(i *mediaMatchRegistryInfo) string { return i.PlaylistID },
-		missing: func(i *mediaMatchRegistryInfo) bool { return i.PlaylistName == "" && i.PlaylistNameFR == "" },
-		setName: func(i *mediaMatchRegistryInfo, n string) { i.PlaylistNameFR = n },
+		missing: func(i *mediaMatchRegistryInfo) bool { return i.PlaylistName.Empty() },
+		setName: func(i *mediaMatchRegistryInfo, n i18n.Text) { i.PlaylistName = n.Clone() },
 	})
 }
 
@@ -217,7 +216,7 @@ func (r *MediaRepo) resolveMediaRegistryNameFallbacks(ctx context.Context, rows 
 type mediaNameAccessor struct {
 	idOf    func(*mediaMatchRegistryInfo) string
 	missing func(*mediaMatchRegistryInfo) bool
-	setName func(*mediaMatchRegistryInfo, string)
+	setName func(*mediaMatchRegistryInfo, i18n.Text)
 }
 
 // assetTypeGameVariant / assetTypePlaylist / assetTypeMap : types d'asset de la
@@ -226,17 +225,16 @@ const (
 	assetTypeMap         = "map"
 	assetTypeGameVariant = "game_variant"
 	assetTypePlaylist    = "playlist"
+	assetTypePair        = "pair"
 )
 
 // applyMediaNameFallback résout UN type d'asset pour les rows au nom manquant puis
 // y écrit les libellés résolus. Appelé 3× (map / mode / playlist). Fast-path : si
 // aucune row n'a de nom manquant pour ce type → return sans appel metadata (Infinite :
-// colonnes remplies). Bulk-résolution via ResolveAssetNamesBulk (cascade
-// fr-FR→fr→en-US→en). Best-effort : une erreur metadata laisse les rows inchangées.
+// colonnes remplies). Bulk-résolution via assetNameTexts (noms de toutes les langues).
+// Best-effort : une erreur metadata laisse les rows inchangées (journalisée, consignée).
 func (r *MediaRepo) applyMediaNameFallback(
 	ctx context.Context,
-	meta *MetadataRepo,
-	langs []string,
 	rows map[string]mediaMatchRegistryInfo,
 	assetType string,
 	acc mediaNameAccessor,
@@ -254,17 +252,12 @@ func (r *MediaRepo) applyMediaNameFallback(
 	if len(ids) == 0 {
 		return
 	}
-	names, err := meta.ResolveAssetNamesBulk(ctx, assetType, ids, langs)
-	if err != nil {
-		slog.WarnContext(ctx, "media: fallback asset_translations échoué",
-			"asset_type", assetType, "err", err)
-		return
-	}
+	names := assetNameTexts(ctx, r.pdb.Metadata, assetType, ids)
 	for key, info := range rows {
 		if !acc.missing(&info) {
 			continue
 		}
-		if n := strings.TrimSpace(names[acc.idOf(&info)]); n != "" {
+		if n := names[acc.idOf(&info)]; !n.Empty() {
 			acc.setName(&info, n)
 			rows[key] = info
 		}

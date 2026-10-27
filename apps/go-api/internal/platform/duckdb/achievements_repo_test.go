@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/migration"
 )
 
@@ -128,35 +129,48 @@ func TestMetadataRepo_GetAchievementDefinitions_Empty(t *testing.T) {
 	}
 }
 
+// insertAchievementText range un texte de succès dans asset_translations sous l'étiquette Halo
+// principale de la langue (type `achievement` : nom + description ; `achievement_locked` : texte
+// de succès verrouillé dans `name`).
+func insertAchievementText(t *testing.T, db *DB, assetType, id string, l i18n.Locale, name string, desc any) {
+	t.Helper()
+	_, err := db.Exec(context.Background(),
+		`INSERT INTO asset_translations (asset_id, asset_type, lang, name, description) VALUES (?, ?, ?, ?, ?)`,
+		id, assetType, i18n.HaloTags(l)[0], name, desc)
+	if err != nil {
+		t.Fatalf("insert asset_translations %s/%s (%s): %v", assetType, id, l, err)
+	}
+}
+
 // TestMetadataRepo_GetAchievementDefinitions_Populated : insère 2 définitions
-// (une complète, une avec champs nullables vides) et vérifie le scan bilingue.
+// (une complète, une avec champs nullables vides) et vérifie les champs non localisés
+// et les textes lus dans asset_translations (une ligne par langue).
 func TestMetadataRepo_GetAchievementDefinitions_Populated(t *testing.T) {
 	db := openAchievementsMetadataDB(t)
 	ctx := context.Background()
 
 	insert := `INSERT INTO xbox_achievement_definitions
-		(achievement_id, name_en, name_fr, description_en, description_fr,
-		 locked_desc_en, locked_desc_fr, gamerscore, image_url, is_secret,
+		(achievement_id, gamerscore, image_url, is_secret,
 		 rarity_category, rarity_percent, title_id, fetched_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
+		VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
 
 	if _, err := db.Exec(ctx, insert,
-		"ach_full", "Full Name EN", "Nom Complet FR",
-		"Description EN", "Description FR",
-		"Locked EN", "Verrouillé FR",
-		50, "https://example.com/full.png", false,
+		"ach_full", 50, "https://example.com/full.png", false,
 		"Rare", 12.5, "halo_infinite",
 	); err != nil {
 		t.Fatalf("insert ach_full: %v", err)
 	}
 	if _, err := db.Exec(ctx, insert,
-		"ach_min", "Min EN", "",
-		nil, nil, nil, nil,
-		10, nil, true,
+		"ach_min", 10, nil, true,
 		nil, nil, "halo_infinite",
 	); err != nil {
 		t.Fatalf("insert ach_min: %v", err)
 	}
+	insertAchievementText(t, db, AssetTypeAchievement, "ach_full", i18n.LocaleEN, "Full Name EN", "Description EN")
+	insertAchievementText(t, db, AssetTypeAchievement, "ach_full", i18n.LocaleFR, "Nom Complet FR", "Description FR")
+	insertAchievementText(t, db, AssetTypeAchievementLocked, "ach_full", i18n.LocaleEN, "Locked EN", nil)
+	insertAchievementText(t, db, AssetTypeAchievementLocked, "ach_full", i18n.LocaleFR, "Verrouillé FR", nil)
+	insertAchievementText(t, db, AssetTypeAchievement, "ach_min", i18n.LocaleEN, "Min EN", nil)
 
 	repo := NewMetadataRepoFromDB(db)
 	rows, err := repo.GetAchievementDefinitions(ctx, "halo_infinite")
@@ -172,13 +186,13 @@ func TestMetadataRepo_GetAchievementDefinitions_Populated(t *testing.T) {
 	}
 	// ach_full : tous les champs peuplés
 	full := rows[0]
-	if full.NameEN != "Full Name EN" || full.NameFR != "Nom Complet FR" {
-		t.Errorf("ach_full noms bilingues incorrects")
+	if full.Name[i18n.LocaleEN] != "Full Name EN" || full.Name[i18n.LocaleFR] != "Nom Complet FR" {
+		t.Errorf("ach_full noms par langue incorrects")
 	}
-	if full.DescriptionEN != "Description EN" || full.DescriptionFR != "Description FR" {
+	if full.Description[i18n.LocaleEN] != "Description EN" || full.Description[i18n.LocaleFR] != "Description FR" {
 		t.Errorf("ach_full descriptions incorrectes")
 	}
-	if full.LockedDescEN != "Locked EN" || full.LockedDescFR != "Verrouillé FR" {
+	if full.LockedDesc[i18n.LocaleEN] != "Locked EN" || full.LockedDesc[i18n.LocaleFR] != "Verrouillé FR" {
 		t.Errorf("ach_full locked desc incorrects")
 	}
 	if full.Gamerscore != 50 || full.ImageURL != "https://example.com/full.png" {
@@ -192,13 +206,13 @@ func TestMetadataRepo_GetAchievementDefinitions_Populated(t *testing.T) {
 	}
 	// ach_min : nullables → strings vides, percent à 0
 	min := rows[1]
-	if min.NameEN != "Min EN" || min.NameFR != "" {
-		t.Errorf("ach_min name incorrect: %q, %q", min.NameEN, min.NameFR)
+	if min.Name[i18n.LocaleEN] != "Min EN" || min.Name[i18n.LocaleFR] != "" {
+		t.Errorf("ach_min name incorrect: %q, %q", min.Name[i18n.LocaleEN], min.Name[i18n.LocaleFR])
 	}
-	if min.DescriptionEN != "" || min.DescriptionFR != "" {
+	if min.Description[i18n.LocaleEN] != "" || min.Description[i18n.LocaleFR] != "" {
 		t.Errorf("ach_min description doit être vide")
 	}
-	if min.LockedDescEN != "" || min.LockedDescFR != "" {
+	if min.LockedDesc[i18n.LocaleEN] != "" || min.LockedDesc[i18n.LocaleFR] != "" {
 		t.Errorf("ach_min locked desc doit être vide")
 	}
 	if min.ImageURL != "" {
@@ -212,6 +226,60 @@ func TestMetadataRepo_GetAchievementDefinitions_Populated(t *testing.T) {
 	}
 }
 
+// TestMetadataRepo_GetAchievementDefinitions_LangueDemandee : le texte choisi suit la langue de la
+// requête (`Text.Pick`) : fr et en lisent leur ligne, une langue sans traduction (fr absent, ou une
+// langue hors liste) se replie sur l'anglais, jamais sur un texte inventé.
+func TestMetadataRepo_GetAchievementDefinitions_LangueDemandee(t *testing.T) {
+	db := openAchievementsMetadataDB(t)
+	ctx := context.Background()
+	for _, id := range []string{"both", "en_only"} {
+		if _, err := db.Exec(ctx, `INSERT INTO xbox_achievement_definitions (achievement_id, gamerscore, is_secret, title_id)
+			VALUES (?, 5, FALSE, 'halo_infinite')`, id); err != nil {
+			t.Fatalf("insert %s: %v", id, err)
+		}
+	}
+	insertAchievementText(t, db, AssetTypeAchievement, "both", i18n.LocaleEN, "First Blood", "Get a kill")
+	insertAchievementText(t, db, AssetTypeAchievement, "both", i18n.LocaleFR, "Premier sang", "Faire un frag")
+	insertAchievementText(t, db, AssetTypeAchievementLocked, "both", i18n.LocaleEN, "Keep going", nil)
+	insertAchievementText(t, db, AssetTypeAchievementLocked, "both", i18n.LocaleFR, "Continue", nil)
+	insertAchievementText(t, db, AssetTypeAchievement, "en_only", i18n.LocaleEN, "Only English", "Only EN text")
+
+	rows, err := NewMetadataRepoFromDB(db).GetAchievementDefinitions(ctx, "halo_infinite")
+	if err != nil {
+		t.Fatalf("GetAchievementDefinitions: %v", err)
+	}
+	byID := map[string]int{rows[0].AchievementID: 0, rows[1].AchievementID: 1}
+
+	cases := []struct {
+		name       string
+		loc        i18n.Locale
+		id         string
+		wantName   string
+		wantDesc   string
+		wantLocked string
+	}{
+		{"fr lit sa ligne", i18n.LocaleFR, "both", "Premier sang", "Faire un frag", "Continue"},
+		{"en lit sa ligne", i18n.LocaleEN, "both", "First Blood", "Get a kill", "Keep going"},
+		{"langue hors liste : repli en", i18n.Locale("es"), "both", "First Blood", "Get a kill", "Keep going"},
+		{"fr sans traduction : repli en", i18n.LocaleFR, "en_only", "Only English", "Only EN text", ""},
+	}
+	for _, c := range cases {
+		r := rows[byID[c.id]]
+		if got := r.Name.Pick(c.loc); got != c.wantName {
+			t.Errorf("%s : nom = %q, attendu %q", c.name, got, c.wantName)
+		}
+		if got := r.Description.Pick(c.loc); got != c.wantDesc {
+			t.Errorf("%s : description = %q, attendu %q", c.name, got, c.wantDesc)
+		}
+		if got := r.LockedDesc.PickOptional(c.loc); got != c.wantLocked {
+			t.Errorf("%s : texte verrouillé = %q, attendu %q", c.name, got, c.wantLocked)
+		}
+	}
+	if rows[byID["en_only"]].Name.Has(i18n.LocaleFR) || rows[byID["both"]].Name.Has(i18n.Locale("es")) {
+		t.Errorf("aucune traduction ne doit être inventée pour une langue sans ligne")
+	}
+}
+
 // TestMetadataRepo_GetAchievementDefinitions_TitleRouting (PMT-6 oracle b) : le
 // filtre title_id route réellement par titre — seules les défs du slug demandé
 // reviennent ; "" → défaut halo_infinite ; slug inconnu → slice vide.
@@ -219,29 +287,36 @@ func TestMetadataRepo_GetAchievementDefinitions_TitleRouting(t *testing.T) {
 	db := openAchievementsMetadataDB(t)
 	ctx := context.Background()
 	insert := `INSERT INTO xbox_achievement_definitions
-		(achievement_id, name_en, name_fr, gamerscore, is_secret, title_id)
-		VALUES (?, ?, ?, ?, ?, ?)`
-	if _, err := db.Exec(ctx, insert, "hi_1", "HI One", "HI Un", 10, false, "halo_infinite"); err != nil {
+		(achievement_id, gamerscore, is_secret, title_id)
+		VALUES (?, ?, ?, ?)`
+	if _, err := db.Exec(ctx, insert, "hi_1", 10, false, "halo_infinite"); err != nil {
 		t.Fatalf("insert hi: %v", err)
 	}
-	if _, err := db.Exec(ctx, insert, "synth_1", "Synth One", "Synth Un", 20, false, "synthetic_test_title"); err != nil {
+	if _, err := db.Exec(ctx, insert, "synth_1", 20, false, "synthetic_test_title"); err != nil {
 		t.Fatalf("insert synth: %v", err)
 	}
+	insertAchievementText(t, db, AssetTypeAchievement, "hi_1", i18n.LocaleEN, "HI One", nil)
+	insertAchievementText(t, db, AssetTypeAchievement, "hi_1", i18n.LocaleFR, "HI Un", nil)
+	insertAchievementText(t, db, AssetTypeAchievement, "synth_1", i18n.LocaleEN, "Synth One", nil)
+	insertAchievementText(t, db, AssetTypeAchievement, "synth_1", i18n.LocaleFR, "Synth Un", nil)
 	repo := NewMetadataRepoFromDB(db)
 
-	onlyOne := func(slug, wantID string) {
+	onlyOne := func(slug, wantID, wantNameEN string) {
 		t.Helper()
 		got, err := repo.GetAchievementDefinitions(ctx, slug)
 		if err != nil {
 			t.Fatalf("GetAchievementDefinitions(%q): %v", slug, err)
 		}
 		if len(got) != 1 || got[0].AchievementID != wantID {
-			t.Errorf("slug %q → %d défs, attendu 1 (%s)", slug, len(got), wantID)
+			t.Fatalf("slug %q → %d défs, attendu 1 (%s)", slug, len(got), wantID)
+		}
+		if got[0].Name[i18n.LocaleEN] != wantNameEN {
+			t.Errorf("slug %q : nom en = %q, attendu %q", slug, got[0].Name[i18n.LocaleEN], wantNameEN)
 		}
 	}
-	onlyOne("halo_infinite", "hi_1")
-	onlyOne("synthetic_test_title", "synth_1")
-	onlyOne("", "hi_1") // "" → défaut halo_infinite (parité historique)
+	onlyOne("halo_infinite", "hi_1", "HI One")
+	onlyOne("synthetic_test_title", "synth_1", "Synth One")
+	onlyOne("", "hi_1", "HI One") // "" → défaut halo_infinite (parité historique)
 
 	unknown, err := repo.GetAchievementDefinitions(ctx, "no_such_title")
 	if err != nil {

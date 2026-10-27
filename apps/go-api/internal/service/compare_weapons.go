@@ -31,6 +31,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/fragdist"
 )
@@ -136,7 +137,7 @@ func (s *CompareService) buildWeaponSide(
 	rows := s.loadCompareWeaponKills(ctx, scope.MatchIDs, xuid)
 	if len(rows) > 0 {
 		side.FragClasses = s.compareFragClasses(ctx, rows, scope, xuid)
-		side.TopWeapons = s.compareTopWeapons(rows)
+		side.TopWeapons = s.compareTopWeapons(i18n.FromContext(ctx), rows)
 	}
 	side.Range = s.compareWeaponRange(ctx, scope, xuid)
 	return side
@@ -197,7 +198,7 @@ func (s *CompareService) compareFragClasses(
 			counts.ShoulderBash = m.ShoulderBash
 		}
 	}
-	fd := fragdist.Build(rows, counts, hasMechanics)
+	fd := fragdist.Build(i18n.FromContext(ctx), rows, counts, hasMechanics)
 	logFragDistribution(ctx, "compare", s.titleSlug, xuid, fd)
 
 	out := make([]domain.CompareFragClass, 0, len(fd.Classes))
@@ -219,12 +220,12 @@ func (s *CompareService) compareFragClasses(
 // Le tri vient de `topWeaponKillRows`, définition canonique unique du dépôt (D11) : le
 // recopier ici en ferait la troisième copie, et les trois divergeraient au premier changement
 // de doctrine de départage.
-func (s *CompareService) compareTopWeapons(rows []port.WeaponKillRow) []domain.CompareTopWeapon {
-	top := topWeaponKillRows(rows, compareTopWeaponsN)
+func (s *CompareService) compareTopWeapons(loc i18n.Locale, rows []port.WeaponKillRow) []domain.CompareTopWeapon {
+	top := topWeaponKillRows(loc, rows, compareTopWeaponsN)
 	out := make([]domain.CompareTopWeapon, 0, len(top))
 	for _, r := range top {
 		w := domain.CompareTopWeapon{
-			Label: r.Label, LabelEN: r.LabelEN, Kills: r.Kills, Class: r.Class, Role: r.Role,
+			Label: r.Label.Pick(loc), Kills: r.Kills, Class: r.Class, Role: r.Role,
 		}
 		if s.weaponImage != nil {
 			w.ImageURL, w.ImageTinted = s.weaponImage(r.WeaponID)

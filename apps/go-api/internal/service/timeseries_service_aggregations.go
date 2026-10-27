@@ -12,6 +12,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/port"
 )
@@ -57,15 +58,15 @@ func filterStatsMatchRowsByContext(rows []legacymatch.StatsMatchRow, ctx string)
 // historical_* (la cellule front affiche alors "—" ou se masque).
 //
 // Résultat trié par ordre CHRONOLOGIQUE de première apparition (firstSeen =
-// StartTime minimal des matchs courants de la carte), tie-break MapUI pour un
+// StartTime minimal des matchs courants de la carte), tie-break MapID (clé indépendante de la langue) pour un
 // ordre déterministe — même stratégie que computeMapBreakdown
 // (teammates_service_assets.go, commit 59e705690, I12).
-func buildSoloMapBreakdown(current, historicalSolo []legacymatch.StatsMatchRow, groups domain.GroupesDeCartes) []domain.MapBreakdownRow {
+func buildSoloMapBreakdown(current, historicalSolo []legacymatch.StatsMatchRow, groups domain.GroupesDeCartes, loc i18n.Locale) []domain.MapBreakdownRow {
 	if len(current) == 0 {
 		return []domain.MapBreakdownRow{}
 	}
-	currentByMap := aggregateMapStats(current, groups)
-	historicalByMap := aggregateMapStats(historicalSolo, groups)
+	currentByMap := aggregateMapStats(current, groups, loc)
+	historicalByMap := aggregateMapStats(historicalSolo, groups, loc)
 
 	out := make([]domain.MapBreakdownRow, 0, len(currentByMap))
 	for key, s := range currentByMap {
@@ -93,14 +94,14 @@ func buildSoloMapBreakdown(current, historicalSolo []legacymatch.StatsMatchRow, 
 		out = append(out, row)
 	}
 	// Tri par ordre chronologique de première apparition (firstSeen calculé
-	// dans currentByMap), tie-break MapUI déterministe — l'itération d'une map
+	// dans currentByMap), tie-break MapID déterministe — l'itération d'une map
 	// Go ne l'est pas, d'où le tie-break. Pattern computeMapBreakdown (I12).
 	sort.SliceStable(out, func(i, j int) bool {
 		fi, fj := currentByMap[out[i].MapID].firstSeen, currentByMap[out[j].MapID].firstSeen
 		if !fi.Equal(fj) {
 			return fi.Before(fj)
 		}
-		return out[i].MapUI < out[j].MapUI
+		return out[i].MapID < out[j].MapID
 	})
 	return out
 }
@@ -113,21 +114,24 @@ type mapAgg struct {
 	firstSeen   time.Time
 }
 
-func aggregateMapStats(rows []legacymatch.StatsMatchRow, groups domain.GroupesDeCartes) map[string]*mapAgg {
+func aggregateMapStats(rows []legacymatch.StatsMatchRow, groups domain.GroupesDeCartes, loc i18n.Locale) map[string]*mapAgg {
 	m := make(map[string]*mapAgg, 16)
 	for _, r := range rows {
-		label := r.MapNameFR
-		if label == "" {
-			label = r.MapName
+		key := r.MapName.Pick(i18n.Default)
+		if key == "" {
+			key = tsLabelUnknown
 		}
+		// Clé = nom de la langue par défaut, donc indépendante de la
+		// langue de la requête ; libellé = nom dans la langue de la requête. Cohérent avec le fallback de
+		// computeMapBreakdown côté squad.
+		label := r.MapName.Pick(loc)
 		if label == "" {
-			label = tsLabelUnknown
+			label = key
 		}
-		// Clé = label affiché, sauf pour une carte de groupe : le groupe de son identifiant (une variante
-		// compte sous sa carte de base, libellé de la base). Cohérent avec computeMapBreakdown côté squad.
-		key := label
+		// Une carte de groupe : la clé est le groupe de son identifiant (une variante compte sous sa carte de
+		// base) et le libellé celui de la base dans la langue de la requête.
 		if r.MapID != "" {
-			if base, ok := groups.Libelle(r.MapID, libellesDeCartesFR); ok {
+			if base, ok := groups.Libelle(r.MapID, loc); ok {
 				key, label = "groupe:"+groups.Groupe(r.MapID), base
 			}
 		}
@@ -329,7 +333,7 @@ func rollupSessionPoints(points []domain.SoloSessionPerfPoint, mode string) []do
 //
 // Seule l'AGRÉGATION reste locale : elle est propre à cette page (une ligne par
 // arme sur tout le scope, là où la Synthèse agrège déjà côté repo).
-func buildTopWeapons(rows []port.WeaponKillRow, topN int) []domain.TimeseriesWeaponKill {
+func buildTopWeapons(loc i18n.Locale, rows []port.WeaponKillRow, topN int) []domain.TimeseriesWeaponKill {
 	if len(rows) == 0 {
 		return []domain.TimeseriesWeaponKill{}
 	}
@@ -352,7 +356,7 @@ func buildTopWeapons(rows []port.WeaponKillRow, topN int) []domain.TimeseriesWea
 			ordre = append(ordre, k)
 			a = &vide
 		}
-		if a.Label == "" && r.Label != "" {
+		if a.Label.Empty() && !r.Label.Empty() {
 			a.Label = r.Label
 		}
 		// Class porté depuis le registre (ResolveRoles) pour recolorer le bar chart
@@ -366,12 +370,12 @@ func buildTopWeapons(rows []port.WeaponKillRow, topN int) []domain.TimeseriesWea
 	for _, k := range ordre {
 		agregees = append(agregees, *byID[k])
 	}
-	top := topWeaponKillRows(agregees, topN)
+	top := topWeaponKillRows(loc, agregees, topN)
 	out := make([]domain.TimeseriesWeaponKill, len(top))
 	for i, r := range top {
 		out[i] = domain.TimeseriesWeaponKill{
 			WeaponID: r.WeaponID,
-			Label:    r.Label,
+			Label:    r.Label.Pick(loc),
 			Kills:    r.Kills,
 			Class:    r.Class,
 		}

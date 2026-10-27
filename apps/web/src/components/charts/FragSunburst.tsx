@@ -61,7 +61,6 @@ function useSunburstLabels(): FragSunburstBaseLabels {
     formatValue: (n: number) => n.toLocaleString(numLoc),
     othersLabel: (n: number) =>
       formatMessage(fragsManifest, 'frags.charts.others_slice', appLocale, { n }),
-    locale: appLocale,
   }
 }
 

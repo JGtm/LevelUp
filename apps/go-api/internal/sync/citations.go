@@ -22,6 +22,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/sync/citationsfilm"
 	"levelup/go-api/internal/sync/debrief"
@@ -152,7 +153,6 @@ func loadFullCitationMappings(ctx context.Context, db *sql.DB) ([]domain.Citatio
 	const q = `
 SELECT
     citation_name_norm,
-    citation_name_display,
     COALESCE(mapping_type, 'medal') AS mapping_type,
     medal_id,
     medal_ids,
@@ -175,7 +175,7 @@ ORDER BY citation_name_norm`
 	for rows.Next() {
 		var m domain.CitationFullMapping
 		if err := rows.Scan(
-			&m.NameNorm, &m.NameDisplay, &m.MappingType,
+			&m.NameNorm, &m.MappingType,
 			&m.MedalID, &m.MedalIDs, &m.StatName, &m.AwardName,
 			&m.CustomFunction, &m.CompositeChildren, &m.TierTargets,
 		); err != nil {
@@ -186,11 +186,12 @@ ORDER BY citation_name_norm`
 	return result, rows.Err()
 }
 
-// loadWeaponNames charge la table weapon_labels depuis metadata.duckdb.
-// Retourne weapon_id → name_en (canonique EN).
+// loadWeaponNames charge les noms d'armes de weapon_label_names depuis metadata.duckdb.
+// Retourne weapon_id → nom dans la langue de repli (canonique EN) : c'est la clé des stats
+// `weapon_kills:<nom>` des citations, pas un libellé d'affichage, donc jamais une langue de requête.
 func loadWeaponNames(ctx context.Context, db *sql.DB) (map[uint64]string, error) {
-	const q = `SELECT weapon_id, name_en FROM weapon_labels`
-	rows, err := db.QueryContext(ctx, q)
+	const q = `SELECT weapon_id, name FROM weapon_label_names WHERE lang = ?`
+	rows, err := db.QueryContext(ctx, q, string(i18n.Fallback))
 	if err != nil {
 		return nil, err
 	}

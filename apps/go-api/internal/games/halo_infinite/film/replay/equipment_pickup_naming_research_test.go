@@ -108,7 +108,7 @@ func eqnPalette(t *testing.T) map[int]string {
 	out := map[int]string{}
 	for _, p := range labels.AbilityPalettes() {
 		for rank, v := range p.Ranks {
-			out[rank] = fmt.Sprintf("%s / %s [%s]", v.En, v.Fr, p.ID)
+			out[rank] = fmt.Sprintf("%s / %s [%s]", v.Text.Pick("en"), v.Text.Pick("fr"), p.ID)
 		}
 	}
 	return out

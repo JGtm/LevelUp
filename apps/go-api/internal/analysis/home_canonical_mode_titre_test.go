@@ -7,7 +7,7 @@ import (
 	"levelup/go-api/internal/games/canonical"
 )
 
-// Accueil d'un titre dont le mode est le type de jeu : le mode lu (modeLabels) et le mode dominant d'une session
+// Accueil d'un titre dont le mode est le type de jeu : le mode lu (modeText) et le mode dominant d'une session
 // sont ceux que l'ancien repli « PairMode sinon GameVariant » rendait pour le même match (mêmes libellés).
 func TestAccueil_ModeFourniParLeTypeDeJeu_IdentiqueALAncienRepli(t *testing.T) {
 	sessionLabel := "session-h5"
@@ -35,10 +35,10 @@ func TestAccueil_ModeFourniParLeTypeDeJeu_IdentiqueALAncienRepli(t *testing.T) {
 	}
 
 	for _, r := range rows {
-		en, fr := modeLabels(r)
-		wantEN, wantFR := assetLabels(r.Summary.GameVariant) // ce que rendait l'ancien repli
+		en, fr := enFr(modeText(r))
+		wantEN, wantFR := enFr(assetText(r.Summary.GameVariant)) // ce que rendait l'ancien repli
 		if en != wantEN || fr != wantFR {
-			t.Errorf("%s : modeLabels = (%q, %q), l'ancien repli rendait (%q, %q)", r.Summary.MatchID, en, fr, wantEN, wantFR)
+			t.Errorf("%s : modeText = (%q, %q), l'ancien repli rendait (%q, %q)", r.Summary.MatchID, en, fr, wantEN, wantFR)
 		}
 	}
 

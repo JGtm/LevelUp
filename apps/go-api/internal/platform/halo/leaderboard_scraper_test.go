@@ -11,6 +11,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/observability"
 )
 
@@ -219,7 +220,7 @@ func TestFetchSeasons_TranslationsFR(t *testing.T) {
 	}
 	byID := make(map[string]struct{ en, fr string }, len(seasons))
 	for _, s := range seasons {
-		byID[s.SeasonID] = struct{ en, fr string }{s.DisplayName, s.NameFR}
+		byID[s.SeasonID] = struct{ en, fr string }{s.Name[i18n.LocaleEN], s.Name[i18n.LocaleFR]}
 	}
 	if got := byID["csrseason12-1"]; got.en != "Shadows" || got.fr != "Ombres" {
 		t.Errorf("csrseason12-1 = %+v, attendu {Shadows, Ombres}", got)

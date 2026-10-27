@@ -16,95 +16,119 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/games/mappings"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 )
 
 func enrichSquadMatchAssets(ctx context.Context, repo port.SquadRepository, rows []domain.SquadMatchRow) {
 	defer timing.FromContext(ctx).Section("enrich_assets")()
-	mapIDs := collectUniqueIDs(rows, func(r domain.SquadMatchRow) string { return r.MapID })
-	playlistIDs := collectUniqueIDs(rows, func(r domain.SquadMatchRow) string { return r.PlaylistID })
-	pairIDs := collectUniqueIDs(rows, func(r domain.SquadMatchRow) string { return r.PairID })
-	gameVariantIDs := collectUniqueIDs(rows, func(r domain.SquadMatchRow) string { return r.GameVariantID })
-
-	mapFR, err := repo.LoadAssetTranslationsFR(ctx, games.AssetKindMap, mapIDs)
-	if err != nil {
-		slog.WarnContext(ctx, "teammates: LoadAssetTranslationsFR map failed", "err", err)
-	}
-	playlistFR, err := repo.LoadAssetTranslationsFR(ctx, games.AssetKindPlaylist, playlistIDs)
-	if err != nil {
-		slog.WarnContext(ctx, "teammates: LoadAssetTranslationsFR playlist failed", "err", err)
-	}
-	pairAssetFR, err := repo.LoadAssetTranslationsFR(ctx, games.AssetKindPair, pairIDs)
-	if err != nil {
-		slog.WarnContext(ctx, "teammates: LoadAssetTranslationsFR pair failed", "err", err)
-	}
-	// game_variant (FR) : source du mode pour les titres SANS pair_name (Halo 5).
+	loc := i18n.FromContext(ctx)
+	maps := loadSquadAssetTexts(ctx, repo, games.AssetKindMap, collectUniqueIDs(rows, func(r domain.SquadMatchRow) string { return r.MapID }))
+	playlists := loadSquadAssetTexts(ctx, repo, games.AssetKindPlaylist, collectUniqueIDs(rows, func(r domain.SquadMatchRow) string { return r.PlaylistID }))
+	pairs := loadSquadAssetTexts(ctx, repo, games.AssetKindPair, collectUniqueIDs(rows, func(r domain.SquadMatchRow) string { return r.PairID }))
+	// game_variant : source du mode pour les titres SANS pair_name (Halo 5).
 	// Le mode = nom de la variante de jeu résolu depuis game_variant_id. Même
 	// résolveur que map/playlist/pair (asset_translations) — read-time, zéro
 	// backfill. Title-agnostic : Infinite a pair_name → ce fallback n'est pas
 	// consulté (squadModeUI le préfère). Un 3e titre sans pair_name en bénéficie.
-	gameVariantFR, err := repo.LoadAssetTranslationsFR(ctx, games.AssetKindGameVariant, gameVariantIDs)
-	if err != nil {
-		slog.WarnContext(ctx, "teammates: LoadAssetTranslationsFR game_variant failed", "err", err)
-	}
-	// mode_name_tr (FR) des modes EN normalisés — dérivés du pair_name brut ET
-	// des noms d'asset résolus, pour couvrir le cas pair_name=UUID. Même cascade
-	// canonique que match_history (applyMatchHistoryFRTranslations).
-	modeFR := loadSquadModeFR(ctx, repo, rows, pairAssetFR)
+	variants := loadSquadAssetTexts(ctx, repo, games.AssetKindGameVariant, collectUniqueIDs(rows, func(r domain.SquadMatchRow) string { return r.GameVariantID }))
+	// mode_name_tr de chaque langue des modes normalisés — dérivés du pair_name brut ET des noms
+	// d'asset résolus, pour couvrir le cas pair_name=UUID. Même cascade canonique que match_history
+	// (applyMatchHistoryFRTranslations).
+	modes := loadSquadModeNames(ctx, repo, rows, pairs)
 
 	for i := range rows {
-		if fr := strings.TrimSpace(mapFR[rows[i].MapID]); fr != "" {
-			rows[i].MapUI = fr
+		row := &rows[i]
+		row.UILocale = loc
+		if name := squadAssetName(maps[row.MapID], loc); name != "" {
+			row.MapUI = name
 		}
-		if fr := strings.TrimSpace(playlistFR[rows[i].PlaylistID]); fr != "" {
-			rows[i].PlaylistName = fr
+		if name := squadAssetName(playlists[row.PlaylistID], loc); name != "" {
+			row.PlaylistName = name
 		}
-		if fr := strings.TrimSpace(gameVariantFR[rows[i].GameVariantID]); fr != "" {
-			rows[i].GameVariantNameFR = fr
+		for _, l := range i18n.Locales() {
+			if l == i18n.Fallback {
+				continue
+			}
+			// Le nom de la variante de chaque langue autre que la langue de repli (celle-ci garde le
+			// nom brut du registre, clé de la table des manches).
+			if name := squadAssetName(variants[row.GameVariantID], l); name != "" {
+				row.GameVariantName.Set(l, name)
+			}
+			// Résolution canonique du libellé du mode dans chaque langue (source unique partagée avec
+			// home / historique / filtres). Gère pair_name brut, vide ou UUID.
+			row.PairName.Set(l, analysis.ResolvePairName(
+				row.PairName[i18n.Fallback], row.PairName[l], squadAssetName(pairs[row.PairID], l), modes[l]))
 		}
-		// Résolution canonique du libellé FR du mode (source unique partagée avec
-		// home / historique / filtres). Gère pair_name brut, vide ou UUID.
-		rows[i].PairNameFR = analysis.ResolvePairNameFR(
-			rows[i].PairName, rows[i].PairNameFR, pairAssetFR[rows[i].PairID], modeFR)
 	}
 }
 
-// loadSquadModeFR charge mode_name_tr (FR) pour les modes EN normalisés issus
-// des pair_name bruts ET des noms d'asset résolus (pair_id). Miroir de
-// match_history : nécessaire car un pair_name brut peut être un UUID, auquel cas
-// le nom EN exploitable vient de asset_translations[pair_id].
-func loadSquadModeFR(
+// loadSquadAssetTexts lit le nom de chaque langue des actifs `ids` ; l'échec est journalisé et la
+// lecture rend vide (best-effort, les libellés du registre restent).
+func loadSquadAssetTexts(ctx context.Context, repo port.SquadRepository, kind string, ids []string) map[string]i18n.Text {
+	texts, err := repo.LoadAssetTexts(ctx, kind, ids)
+	if err != nil {
+		slog.WarnContext(ctx, "teammates: LoadAssetTexts failed", "asset_type", kind, "err", err)
+	}
+	return texts
+}
+
+// squadAssetName choisit le nom d'un actif dans la langue `loc` le long de i18n.Chain (la langue,
+// la langue de repli, la langue par défaut) : un nom manquant dans la langue demandée est comblé par
+// une autre plutôt que laissé vide. "" si l'actif n'a aucun nom.
+func squadAssetName(t i18n.Text, loc i18n.Locale) string {
+	for _, l := range i18n.Chain(loc) {
+		if v := strings.TrimSpace(t[l]); v != "" {
+			return v
+		}
+	}
+	return ""
+}
+
+// loadSquadModeNames charge mode_name_tr, pour chaque langue autre que la langue de repli, des modes
+// normalisés issus des pair_name bruts ET des noms d'asset résolus (pair_id). Miroir de
+// match_history : nécessaire car un pair_name brut peut être un UUID, auquel cas le nom exploitable
+// vient de asset_translations[pair_id].
+func loadSquadModeNames(
 	ctx context.Context,
 	repo port.SquadRepository,
 	rows []domain.SquadMatchRow,
-	pairAssetFR map[string]string,
-) map[string]string {
+	pairs map[string]i18n.Text,
+) map[i18n.Locale]map[string]string {
 	seen := make(map[string]struct{}, 16)
-	modeENs := make([]string, 0, 16)
+	modeKeys := make([]string, 0, 16)
 	add := func(raw string) {
-		if en := analysis.NormalizeModeLabel(raw); en != "" {
-			if _, ok := seen[en]; !ok {
-				seen[en] = struct{}{}
-				modeENs = append(modeENs, en)
+		if key := analysis.NormalizeModeLabel(raw); key != "" {
+			if _, ok := seen[key]; !ok {
+				seen[key] = struct{}{}
+				modeKeys = append(modeKeys, key)
 			}
 		}
 	}
 	for _, r := range rows {
-		add(r.PairName)
+		add(r.PairName[i18n.Fallback])
 		if r.PairID != "" {
-			add(pairAssetFR[r.PairID])
+			for _, l := range i18n.Locales() {
+				add(pairs[r.PairID][l])
+			}
 		}
 	}
-	if len(modeENs) == 0 {
+	if len(modeKeys) == 0 {
 		return nil
 	}
-	modeFR, err := repo.LoadModeTranslationsFR(ctx, modeENs)
-	if err != nil {
-		slog.WarnContext(ctx, "teammates: LoadModeTranslationsFR failed", "err", err)
+	out := make(map[i18n.Locale]map[string]string, len(i18n.Locales()))
+	for _, l := range i18n.Locales() {
+		if l == i18n.Fallback {
+			continue
+		}
+		names, err := repo.LoadModeTranslations(ctx, l, modeKeys)
+		if err != nil {
+			slog.WarnContext(ctx, "teammates: LoadModeTranslations failed", "locale", l, "err", err)
+		}
+		out[l] = names
 	}
-	return modeFR
+	return out
 }
 
 func collectUniqueIDs(rows []domain.SquadMatchRow, idOf func(domain.SquadMatchRow) string) []string {
@@ -123,25 +147,25 @@ func collectUniqueIDs(rows []domain.SquadMatchRow, idOf func(domain.SquadMatchRo
 	return result
 }
 
-// squadModeUI calcule le libellé de mode affiché dans la table Escouade.
-// Normalise la meilleure source déjà résolue (PairNameFR via la cascade
-// canonique, sinon EN brut), puis masque un éventuel UUID résiduel (trou de
-// metadata) pour ne JAMAIS afficher d'UUID — même garde que cleanAssetLabel
-// côté home. Retourne "" si rien d'exploitable (le front affiche alors "-").
+// squadModeUI calcule le libellé de mode affiché dans la table Escouade, dans la langue de la
+// ligne (UILocale). Normalise la meilleure source déjà résolue (le mode de la langue via la cascade
+// canonique, sinon celui de la langue de repli), puis masque un éventuel UUID résiduel (trou de
+// metadata) pour ne JAMAIS afficher d'UUID — même garde que cleanAssetLabel côté home. Retourne ""
+// si rien d'exploitable (le front affiche alors "-").
 //
-// Fallback title-agnostic (presence-driven) : si la source pair_name/pair_name_fr
-// est vide (titre SANS pair_name — Halo 5), le mode retombe sur le nom de la
-// variante de jeu (GameVariantNameFR, résolu depuis game_variant_id via
-// asset_translations). Infinite (qui a pair_name) est inchangé : la source pair
-// est préférée. Aucun gating par titre — c'est une résolution de données.
+// Fallback title-agnostic (presence-driven) : si la source pair_name est vide (titre SANS
+// pair_name — Halo 5), le mode retombe sur le nom de la variante de jeu (GameVariantName, résolu
+// depuis game_variant_id via asset_translations). Infinite (qui a pair_name) est inchangé : la
+// source pair est préférée. Aucun gating par titre — c'est une résolution de données.
 func squadModeUI(m domain.SquadMatchRow) string {
-	src := m.PairNameFR
-	if strings.TrimSpace(src) == "" {
-		src = m.PairName
+	loc := m.UILocale
+	if loc == "" {
+		loc = i18n.Default
 	}
+	src := m.PairName.PickOptional(loc)
 	if strings.TrimSpace(src) == "" {
 		// Titre sans pair_name : le mode = nom de la variante de jeu.
-		src = m.GameVariantNameFR
+		src = m.GameVariantName[loc]
 	}
 	ui := analysis.NormalizeModeLabel(src, m.MapUI)
 	if analysis.IsRawAssetUUID(ui) {
@@ -178,7 +202,7 @@ func computeMapBreakdown(matches []domain.SquadMatchRow, groups domain.GroupesDe
 		}
 		s, ok := m[key]
 		if !ok {
-			lbl := libelleCarteGroupee(r.MapID, r.MapUI, groups)
+			lbl := libelleCarteGroupee(r.MapID, r.MapUI, r.UILocale, groups)
 			if lbl == "" {
 				lbl = tsLabelUnknown
 			}
@@ -300,7 +324,7 @@ func buildSquadMatchHistory(
 			MyPoints: m.MyTeamScore, EnemyPoints: m.EnemyTeamScore,
 			MyRoundsWon: m.MyRoundsWon, EnemyRoundsWon: m.EnemyRoundsWon,
 			RoundsTotal:  m.RoundsTotal,
-			RoundsDecide: roundsDecide[strings.TrimSpace(m.GameVariantName)],
+			RoundsDecide: roundsDecide[strings.TrimSpace(m.GameVariantName[i18n.Fallback])],
 		}); ok {
 			scoreLabel = analysis.FormatTeamScoreLabel(d)
 			scoreKind = string(d.Kind)
@@ -368,11 +392,10 @@ func cleCarteGroupee(id, ui string, groups domain.GroupesDeCartes) string {
 	return ui
 }
 
-// libelleCarteGroupee rend le libellé FR d'affichage : celui de la carte de BASE pour une carte de groupe
-// (jamais le nom d'une variante), sinon le libellé propre de la ligne.
-func libelleCarteGroupee(id, ui string, groups domain.GroupesDeCartes) string {
+// libelleCarteGroupee rend le libellé d'affichage dans la langue `loc` (UILocale de la ligne) : celui de la// carte de BASE pour une carte de groupe (jamais le nom d'une variante), sinon le libellé propre de la ligne.
+func libelleCarteGroupee(id, ui string, loc i18n.Locale, groups domain.GroupesDeCartes) string {
 	if id != "" {
-		if base, ok := groups.Libelle(id, mappings.LocaleFR); ok {
+		if base, ok := groups.Libelle(id, loc); ok {
 			return base
 		}
 	}

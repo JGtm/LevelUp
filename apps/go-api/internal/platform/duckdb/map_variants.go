@@ -15,7 +15,7 @@ package duckdb
 // registre a jouées, alors qu'une carte republiée a plusieurs identifiants au registre. La règle de
 // rattachement est analysis.GroupMapsByBase (analysis.BaseMapName + suffixes du titre,
 // mappings/map_variants.toml, et la clé de module que pose analysis.MapGroupRules.Modules) ; le
-// libellé FR de la base est celui de libelleDeCarte (map_labels.go), lu sur les traductions d'asset.
+// libellé de la base dans chaque langue est celui de nomsDeCarte (map_labels.go), lu sur les traductions d'asset.
 
 import (
 	"context"
@@ -24,7 +24,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/games/mappings"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
@@ -59,19 +59,14 @@ func (r *MapGroupsRepo) WithMapGroupRules(rules analysis.MapGroupRules) *MapGrou
 	return r
 }
 
-// MapGroups rend la table des groupes de cartes du titre, avec le libellé EN et FR de chaque carte de
-// base (libellesDesBases).
+// MapGroups rend la table des groupes de cartes du titre, avec le libellé de chaque carte de base dans
+// chaque langue (libellesDesBases).
 func (r *MapGroupsRepo) MapGroups(ctx context.Context) (domain.GroupesDeCartes, error) {
 	lecture, err := lireGroupesDeCartes(ctx, r.pdb, r.rules)
 	if err != nil || lecture.Groups.Vide() {
 		return lecture.Groups, err
 	}
-	bases := libellesDesBases(ctx, r.pdb, lecture)
-	libelles := make(map[string]map[string]string, len(bases))
-	for rep, base := range bases {
-		libelles[rep] = map[string]string{mappings.LocaleEN: base.EN, mappings.LocaleFR: base.FR}
-	}
-	return lecture.Groups.AvecLibelles(libelles), nil
+	return lecture.Groups.AvecLibelles(libellesDesBases(ctx, r.pdb, lecture)), nil
 }
 
 // lireGroupesDeCartes lit le registre des matchs et construit les groupes. Sans règle ou sans base
@@ -106,34 +101,28 @@ func lireGroupesDeCartes(ctx context.Context, pdb *PlayerDB, rules analysis.MapG
 	return analysis.GroupMapsByBase(rules.WithModules(ctx, cartes), rules.Suffixes), nil
 }
 
-// carteDeBase : la carte de base d'un groupe, avec son nom EN et son libellé de filtre.
-type carteDeBase struct {
-	EN string
-	FR string
-}
-
-// libellesDesBases rend, par identifiant représentatif, le nom EN et le libellé FR de la base de
-// chaque groupe. Le libellé FR est la traduction d'asset du représentant, à défaut celle d'un autre
-// identifiant portant le nom de base, à défaut le nom EN (libelleDeCarte).
-func libellesDesBases(ctx context.Context, pdb *PlayerDB, groupes analysis.MapGroups) map[string]carteDeBase {
+// libellesDesBases rend, par identifiant représentatif, le nom de la base de chaque groupe dans chaque
+// langue (nomsDeCarte). Les traductions sont celles d'asset du représentant, à défaut celles d'un autre
+// identifiant portant le nom de base ; le nom du registre (langue de repli) est le nom de la base.
+func libellesDesBases(ctx context.Context, pdb *PlayerDB, groupes analysis.MapGroups) map[string]i18n.Text {
 	var ids []string
 	for _, base := range groupes.Bases {
 		ids = append(ids, base.IDs...)
 	}
-	var traductions map[string]string
+	var traductions map[string]i18n.Text
 	if pdb != nil {
 		traductions = traductionsDeCartes(ctx, pdb.Metadata, ids)
 	}
-	out := make(map[string]carteDeBase, len(groupes.Bases))
+	out := make(map[string]i18n.Text, len(groupes.Bases))
 	for rep, base := range groupes.Bases {
 		traduction := traductions[rep]
 		for _, id := range base.IDs {
-			if traduction != "" {
+			if !traduction.Empty() {
 				break
 			}
 			traduction = traductions[id]
 		}
-		out[rep] = carteDeBase{EN: base.Name, FR: libelleDeCarte("", base.Name, traduction)}
+		out[rep] = nomsDeCarte(i18n.Text{i18n.Fallback: base.Name}, traduction)
 	}
 	return out
 }
@@ -141,7 +130,7 @@ func libellesDesBases(ctx context.Context, pdb *PlayerDB, groupes analysis.MapGr
 // groupesEtLibelles lit les groupes et les libellés de leurs bases. Un échec de lecture est
 // journalisé et consigné (bestEffortFailed : les lignes ne sont alors pas mises en cache), puis
 // dégradé : aucune variante n'est rattachée, ok = false.
-func groupesEtLibelles(ctx context.Context, pdb *PlayerDB, rules analysis.MapGroupRules) (analysis.MapGroups, map[string]carteDeBase, bool) {
+func groupesEtLibelles(ctx context.Context, pdb *PlayerDB, rules analysis.MapGroupRules) (analysis.MapGroups, map[string]i18n.Text, bool) {
 	groupes, err := lireGroupesDeCartes(ctx, pdb, rules)
 	if err != nil {
 		slog.WarnContext(ctx, "cartes : groupes de variantes illisibles, variantes laissées seules", "err", err)
@@ -154,7 +143,7 @@ func groupesEtLibelles(ctx context.Context, pdb *PlayerDB, rules analysis.MapGro
 	return groupes, libellesDesBases(ctx, pdb, groupes), true
 }
 
-// rattacherCartesDeBase réécrit le nom de carte (EN et FR) des lignes de filtres dont la carte
+// rattacherCartesDeBase réécrit le nom de carte (dans chaque langue) des lignes de filtres dont la carte
 // appartient à un groupe : les options et le filtrage, qui lisent ces noms, ne voient plus que la
 // carte de base. Le MapID reste celui de la ligne.
 func rattacherCartesDeBase(ctx context.Context, pdb *PlayerDB, rules analysis.MapGroupRules, rows []domain.FilterMatchRow) {
@@ -166,16 +155,13 @@ func rattacherCartesDeBase(ctx context.Context, pdb *PlayerDB, rules analysis.Ma
 		if rows[i].MapID == nil || !groupes.Groups.Regroupe(*rows[i].MapID) {
 			continue
 		}
-		base := bases[groupes.Groups.Groupe(*rows[i].MapID)]
-		en, fr := base.EN, base.FR
-		rows[i].MapName = &en
-		rows[i].MapNameFR = &fr
+		rows[i].MapName = bases[groupes.Groups.Groupe(*rows[i].MapID)].Clone()
 	}
 }
 
-// rattacherCartesDeBaseHistorique pose MapFilterLabel (le libellé de la carte de base) sur les lignes
-// d'historique dont la carte appartient à un groupe. Le nom affiché (MapNameFR) ne change pas : seul
-// le filtre de cartes de l'Explorateur lit MapFilterLabel.
+// rattacherCartesDeBaseHistorique pose MapFilterNames (les noms de la carte de base) sur les lignes
+// d'historique dont la carte appartient à un groupe. Le nom affiché (MapName) ne change pas : seul
+// le filtre de cartes de l'Explorateur lit MapFilterNames.
 func rattacherCartesDeBaseHistorique(ctx context.Context, pdb *PlayerDB, rules analysis.MapGroupRules, rows []domain.MatchHistoryRawRow) {
 	groupes, bases, ok := groupesEtLibelles(ctx, pdb, rules)
 	if !ok {
@@ -185,7 +171,6 @@ func rattacherCartesDeBaseHistorique(ctx context.Context, pdb *PlayerDB, rules a
 		if rows[i].MapID == nil || !groupes.Groups.Regroupe(*rows[i].MapID) {
 			continue
 		}
-		libelle := bases[groupes.Groups.Groupe(*rows[i].MapID)].FR
-		rows[i].MapFilterLabel = &libelle
+		rows[i].MapFilterNames = bases[groupes.Groups.Groupe(*rows[i].MapID)].Clone()
 	}
 }

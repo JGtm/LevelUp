@@ -16,6 +16,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"levelup/go-api/internal/i18n"
 )
 
 func racineJeu(t *testing.T) string {
@@ -63,7 +65,7 @@ func TestLexiqueLieuxCouvreToutLeVocabulaire(t *testing.T) {
 	manquants := 0
 	for _, v := range vocab {
 		l, ok := lex[v]
-		if !ok || l.EN == "" || l.FR == "" {
+		if !ok || l[i18n.LocaleEN] == "" || l[i18n.LocaleFR] == "" {
 			manquants++
 			if manquants <= 5 {
 				t.Errorf("StringId %08X sans texte complet (%+v)", v, l)
@@ -100,18 +102,18 @@ func TestLexiqueLieuxReproduitLeFichierVersionne(t *testing.T) {
 			}
 			continue
 		}
-		if got.EN != attendu.EN || got.FR != attendu.FR {
+		if got[i18n.LocaleEN] != attendu[i18n.LocaleEN] || got[i18n.LocaleFR] != attendu[i18n.LocaleFR] {
 			divergents++
 			if divergents <= 5 {
 				t.Errorf("StringId %08X : décodé (%q, %q) != fichier (%q, %q)",
-					sid, got.EN, got.FR, attendu.EN, attendu.FR)
+					sid, got[i18n.LocaleEN], got[i18n.LocaleFR], attendu[i18n.LocaleEN], attendu[i18n.LocaleFR])
 			}
 		}
 	}
 	// L'inverse aussi : une entrée décodée que le fichier ignore = fichier périmé.
 	nouvelles := 0
 	for sid, l := range lex {
-		if l.EN == "" || l.FR == "" {
+		if l[i18n.LocaleEN] == "" || l[i18n.LocaleFR] == "" {
 			continue
 		}
 		if _, ok := fichier[sid]; !ok {
@@ -126,7 +128,7 @@ func TestLexiqueLieuxReproduitLeFichierVersionne(t *testing.T) {
 }
 
 // litLexiqueVersionne relit le CSV de référence sans dépendre du paquet qui l'écrit.
-func litLexiqueVersionne(t *testing.T) map[uint32]LibelleLieu {
+func litLexiqueVersionne(t *testing.T) map[uint32]i18n.Text {
 	t.Helper()
 	p := filepath.Join("..", "..", "..", "..", "data", "titles", "halo_infinite",
 		"reference", "callouts_lexique.csv")
@@ -141,7 +143,7 @@ func litLexiqueVersionne(t *testing.T) map[uint32]LibelleLieu {
 	if err != nil {
 		t.Fatalf("lexique illisible : %v", err)
 	}
-	out := map[uint32]LibelleLieu{}
+	out := map[uint32]i18n.Text{}
 	for i, row := range rows {
 		if i == 0 || len(row) < 3 {
 			continue
@@ -150,7 +152,7 @@ func litLexiqueVersionne(t *testing.T) map[uint32]LibelleLieu {
 		if err != nil {
 			t.Fatalf("ligne %d : string_id %q", i+1, row[0])
 		}
-		out[uint32(sid)] = LibelleLieu{EN: row[1], FR: row[2]}
+		out[uint32(sid)] = i18n.FromColumns(row[1], row[2])
 	}
 	return out
 }

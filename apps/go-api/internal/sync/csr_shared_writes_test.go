@@ -87,8 +87,8 @@ func TestExtractAllSharedCSRRows_RankedMatch_AllParticipants(t *testing.T) {
 	if c.MeasurementMatchesRemaining != 3 {
 		t.Errorf("C: remaining want 3, got %d", c.MeasurementMatchesRemaining)
 	}
-	if c.TierLabel != "Placement (3 restants)" {
-		t.Errorf("C: label want \"Placement (3 restants)\", got %q", c.TierLabel)
+	if c.TierLabel != "Placement (3)" {
+		t.Errorf("C: label want \"Placement (3)\", got %q", c.TierLabel)
 	}
 }
 

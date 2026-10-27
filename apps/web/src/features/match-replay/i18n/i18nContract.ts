@@ -63,7 +63,7 @@ export interface EquipmentUsageText {
    * LE BADGE « TEMPS FORT » (`features/match-view/equipmentKillBadges.ts`, LOT F.3) : « N frags
    * sous camouflage » / « N frags sous surbouclier », le nombre RÉEL du meilleur épisode du
    * match — jamais arrondi, jamais une somme sur le joueur. Vit ici (et pas dans
-   * `match-view/i18n.ts`) pour la même raison que le reste du vocabulaire d'équipement : les
+   * `match-view/i18n`) pour la même raison que le reste du vocabulaire d'équipement : les
    * noms de famille appartiennent au dictionnaire du rejeu, `match-view` l'importe (même sens
    * que `MatchEquipmentUsageSection`, réutilisé tel quel par `MatchViewTabChronology`).
    */

@@ -9,6 +9,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/weapons"
+	"levelup/go-api/internal/i18n"
 )
 
 // repoRoot remonte jusqu'au répertoire qui porte config/titles.
@@ -46,7 +47,7 @@ func TestLoad_CatalogueReelDuTitre(t *testing.T) {
 	// Les deux langues sont obligatoires PARTOUT : un artefact est construit une fois et
 	// servi aux deux locales.
 	for i, g := range cat.Grenades {
-		if g.En == "" || g.Fr == "" {
+		if g.Text[i18n.LocaleEN] == "" || g.Text[i18n.LocaleFR] == "" {
 			t.Errorf("rang de grenade %d incomplet : %+v", i, g)
 		}
 	}
@@ -57,13 +58,13 @@ func TestLoad_CatalogueReelDuTitre(t *testing.T) {
 			t.Errorf("palette de capacités sans identifiant ou sans marqueur : %+v", p)
 		}
 		for rank, a := range p.Ranks {
-			if a.En == "" || a.Fr == "" {
+			if a.Text[i18n.LocaleEN] == "" || a.Text[i18n.LocaleFR] == "" {
 				t.Errorf("capacité %d de %q incomplète : %+v", rank, p.ID, a)
 			}
 		}
 	}
 	for fam, w := range cat.Weapons {
-		if w.En == "" || w.Fr == "" {
+		if w.Text[i18n.LocaleEN] == "" || w.Text[i18n.LocaleFR] == "" {
 			t.Errorf("famille %08X : libellé incomplet %+v", fam, w)
 		}
 	}

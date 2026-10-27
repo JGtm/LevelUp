@@ -19,6 +19,8 @@ package mappings
 import (
 	"fmt"
 	"strings"
+
+	"levelup/go-api/internal/i18n"
 )
 
 // ObjectiveFamilyFlag — LE DRAPEAU de CTF. C'est LA valeur sur laquelle la couche titre
@@ -47,20 +49,19 @@ var objectiveFamilies = map[string]bool{
 	ObjectiveFamilyBall: true,
 }
 
-// ObjectiveObject — un objet d'objectif du titre : sa famille et son nom bilingue.
+// ObjectiveObject — un objet d'objectif du titre : sa famille et son nom par langue.
 type ObjectiveObject struct {
 	// Family appartient a [objectiveFamilies] — c'est ce que l'objet EST.
 	Family string
-	// Label est son nom dans les deux langues du produit.
-	Label BilingualLabel
+	// Label est son nom dans chaque langue du produit.
+	Label ReplayLabel
 }
 
 // objectiveObjectEntry — une ligne de [[objective_objects]] du TOML.
 type objectiveObjectEntry struct {
-	ID     string `toml:"id"`
-	Family string `toml:"family"`
-	En     string `toml:"en"`
-	Fr     string `toml:"fr"`
+	ID     string    `toml:"id"`
+	Family string    `toml:"family"`
+	Label  i18n.Text `toml:"label"`
 }
 
 // parseObjectiveObjects valide la table des objets d'objectif.
@@ -69,7 +70,7 @@ type objectiveObjectEntry struct {
 // raisons : l'identifiant doit etre un GlobalID de tag 32 bits (il est lu tel quel dans le
 // film) ; la famille doit appartenir a la liste fermee, sans quoi une faute de frappe
 // desactiverait le calque EN SILENCE ; et un identifiant declare deux fois rendrait la table
-// dependante de l'ordre de lecture. Le nom bilingue est exige par `bilingual` — un objet
+// dependante de l'ordre de lecture. Le nom par langue est exige par `replayLabel` — un objet
 // nomme dans une seule langue interdit l'autre.
 func parseObjectiveObjects(path string, rows []objectiveObjectEntry) (map[uint32]ObjectiveObject, error) {
 	out := make(map[uint32]ObjectiveObject, len(rows))
@@ -87,8 +88,8 @@ func parseObjectiveObjects(path string, rows []objectiveObjectEntry) (map[uint32
 			return nil, fmt.Errorf("%s: famille d'objectif %q inconnue pour %q (admises : %s)",
 				path, fam, raw, clesTriees(objectiveFamilies))
 		}
-		lbl, err := bilingual(path, fmt.Sprintf("objet d'objectif %q", raw),
-			bilingualEntry{En: e.En, Fr: e.Fr})
+		lbl, err := replayLabel(path, fmt.Sprintf("objet d'objectif %q", raw),
+			labelEntry{Label: e.Label})
 		if err != nil {
 			return nil, err
 		}

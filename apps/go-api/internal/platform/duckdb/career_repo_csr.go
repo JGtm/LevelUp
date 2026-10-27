@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
 // GetCSRSnapshots retourne les classements CSR du joueur depuis player_csr_snapshots,
@@ -79,10 +79,10 @@ func (r *CareerRepo) GetCSRSnapshots(ctx context.Context, seasonID string) ([]do
 
 // enrichCSRPlaylistNames résout les noms de playlists selon la locale de requête
 // (GH2-B3, symétrique de GH-8 côté LIVE). Le snapshot persiste UN SEUL nom, le
-// canonique EN (le sync appelle SaveCSRSnapshots avec "en"). On résout donc le FR
-// via asset_translations et on choisit par locale : sous UI EN, le nom persisté EN
-// prime ; sous FR, la traduction FR prime (fallback croisé si l'une manque).
-// Best-effort : silencieux si metadata indisponible.
+// canonique de la langue de repli (le sync appelle SaveCSRSnapshots avec "en"). On lit donc les
+// noms par langue dans asset_translations et on choisit par locale (pickName) : le nom persisté
+// tient la langue de repli, la traduction de la langue demandée prime (repli croisé si elle manque).
+// Best-effort : journalisé et consigné si metadata est en échec.
 func (r *CareerRepo) enrichCSRPlaylistNames(ctx context.Context, playlists []domain.CareerPlaylistCSR) {
 	if r.pdb == nil || r.pdb.Metadata == nil || len(playlists) == 0 {
 		return
@@ -103,15 +103,12 @@ func (r *CareerRepo) enrichCSRPlaylistNames(ctx context.Context, playlists []dom
 	if len(ids) == 0 {
 		return
 	}
-	frNames, err := NewMetadataRepoFromDB(r.pdb.Metadata).ResolveAssetNamesBulk(ctx, "playlist", ids, PreferredLangsForLocale("fr"))
-	if err != nil {
-		return
-	}
-	locale := ctxkeys.Locale(ctx)
+	names := assetNameTexts(ctx, r.pdb.Metadata, assetTypePlaylist, ids)
+	locale := i18n.FromContext(ctx)
 	for i := range playlists {
 		id := strings.TrimSpace(playlists[i].PlaylistID)
-		// PlaylistName persisté = nom canonique EN → sert de candidat EN.
-		playlists[i].PlaylistName = resolvePlaylistNameForLocale(locale, strings.TrimSpace(frNames[id]), playlists[i].PlaylistName)
+		// PlaylistName persisté = nom canonique de la langue de repli → candidat de cette langue.
+		playlists[i].PlaylistName = pickName(locale, names[id], playlists[i].PlaylistName)
 	}
 }
 

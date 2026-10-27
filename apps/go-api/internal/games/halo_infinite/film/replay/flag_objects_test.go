@@ -177,7 +177,7 @@ func TestFlagFreeLivesApparieCreationEtPiste(t *testing.T) {
 			},
 		}},
 	}
-	lives := flagFreeLives(scan, map[uint32]Label{drapeau: {En: "Flag", Fr: "Drapeau"}})
+	lives := flagFreeLives(scan, map[uint32]Label{drapeau: {Text: enFr("Flag", "Drapeau")}})
 	if len(lives) != 1 {
 		t.Fatalf("%d vies libres, attendu 1 (l'arme au sol n'en est pas une)", len(lives))
 	}

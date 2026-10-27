@@ -10,31 +10,34 @@ import (
 	"levelup/go-api/internal/analysis/breakdown"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 )
 
 // buildBriefingDimensions émet une carte par dimension LIBRE (≥ 2 valeurs
 // distinctes dans le scope, DEC-8) parmi carte / mode / playlist. Par dimension :
 // top 3 + flop 3 des groupes qualifiés (≥ MinDimensionGroupMatches), triés par
 // delta winrate vs baseline ; moins de 2 groupes qualifiés → carte Insufficient.
-func buildBriefingDimensions(scope, all []domain.MatchHistoryRawRow, groups domain.GroupesDeCartes) []domain.ExplorerBriefingDimension {
+func buildBriefingDimensions(
+	scope, all []domain.MatchHistoryRawRow, groups domain.GroupesDeCartes, loc i18n.Locale,
+) []domain.ExplorerBriefingDimension {
 	if len(scope) == 0 {
 		return nil
 	}
-	scopeRows := rawRowsToBreakdownRows(scope)
-	allRows := rawRowsToBreakdownRows(all)
+	scopeRows, _ := rawRowsToBreakdownRows(scope, groups, loc)
+	allRows, names := rawRowsToBreakdownRows(all, groups, loc)
 	// Plein historique = scope égal à l'historique complet (un filtre ne peut que
 	// rétrécir → cardinalités égales ⟺ ensembles identiques). Les deltas vs baseline
 	// sont alors tous nuls et le tri de CompareByKey dégénère : la sélection top/flop
 	// bascule sur le taux de victoire (P-8, cf. buildDimension).
 	fullHistory := len(scope) == len(all)
 	out := make([]domain.ExplorerBriefingDimension, 0, 3)
-	if d := buildDimension("map", mapKeyed(breakdown.ByMap(scopeRows, groups, libellesDeCartesFR)), mapKeyed(breakdown.ByMap(allRows, groups, libellesDeCartesFR)), fullHistory); d != nil {
+	if d := buildDimension("map", mapKeyed(breakdown.ByMap(scopeRows, groups, loc)), mapKeyed(breakdown.ByMap(allRows, groups, loc)), fullHistory, names.mapSort); d != nil {
 		out = append(out, *d)
 	}
-	if d := buildDimension("mode", modeKeyed(breakdown.ByMode(scopeRows)), modeKeyed(breakdown.ByMode(allRows)), fullHistory); d != nil {
+	if d := buildDimension("mode", modeKeyed(breakdown.ByMode(scopeRows), names.modes), modeKeyed(breakdown.ByMode(allRows), names.modes), fullHistory, nil); d != nil {
 		out = append(out, *d)
 	}
-	if d := buildDimension("playlist", playlistKeyed(breakdown.ByPlaylist(scopeRows)), playlistKeyed(breakdown.ByPlaylist(allRows)), fullHistory); d != nil {
+	if d := buildDimension("playlist", playlistKeyed(breakdown.ByPlaylist(scopeRows), names.playlists), playlistKeyed(breakdown.ByPlaylist(allRows), names.playlists), fullHistory, nil); d != nil {
 		out = append(out, *d)
 	}
 	if len(out) == 0 {
@@ -47,7 +50,9 @@ func buildBriefingDimensions(scope, all []domain.MatchHistoryRawRow, groups doma
 // génériques par clé. Retourne nil si la dimension n'est pas libre (< 2 valeurs
 // distinctes : axe filtré ou valeur unique) ; une dimension à 2 valeurs ou plus
 // sans 2 groupes qualifiés (MinDimensionGroupMatches) est servie Insufficient.
-func buildDimension(dim string, sessionKA, histKA []breakdown.KeyedAggregate, fullHistory bool) *domain.ExplorerBriefingDimension {
+func buildDimension(
+	dim string, sessionKA, histKA []breakdown.KeyedAggregate, fullHistory bool, tieNames optionLabels,
+) *domain.ExplorerBriefingDimension {
 	distinct := 0
 	for _, a := range sessionKA {
 		if a.Played > 0 {
@@ -79,14 +84,15 @@ func buildDimension(dim string, sessionKA, histKA []breakdown.KeyedAggregate, fu
 	}
 	// En plein historique, tous les WinRateDelta valent 0 (scope == historique) et
 	// CompareByKey retombe sur un tri par clé (GUID de map → pseudo-aléatoire). On
-	// re-trie par taux de victoire du groupe décroissant (tie-break libellé) pour
-	// une sélection top/flop signifiante (P-8). Sous filtre : tri V1 (delta) conservé.
+	// re-trie par taux de victoire du groupe décroissant pour une sélection top/flop signifiante (P-8).
+	// Sous filtre : tri V1 (delta) conservé. Les ex aequo se départagent par le nom de la langue par défaut
+	// (tieNames, à défaut la clé) : la sélection ne dépend pas de la langue de la requête.
 	if fullHistory {
 		sort.SliceStable(qualified, func(i, j int) bool {
 			if qualified[i].Session.WinRate != qualified[j].Session.WinRate {
 				return qualified[i].Session.WinRate > qualified[j].Session.WinRate
 			}
-			return qualified[i].Label < qualified[j].Label
+			return tieNames.labelOr(qualified[i].Key) < tieNames.labelOr(qualified[j].Key)
 		})
 	}
 	qualified = selectTopFlop(qualified, dimensionTopFlopCount)
@@ -121,11 +127,23 @@ func selectTopFlop[T any](items []T, k int) []T {
 	return out
 }
 
-// ─── conversion raw row → breakdown.Row (libellés FR) ────────────────────────
+// ─── conversion raw row → breakdown.Row ───────────────────────────────────────
 
-// rawRowsToBreakdownRows projette les raw rows vers breakdown.Row en résolvant
-// les libellés FR (MapNameFR / PairNameFR normalisé / PlaylistName coalescé).
-func rawRowsToBreakdownRows(rows []domain.MatchHistoryRawRow) []breakdown.Row {
+// dimensionNames range les libellés affichés des modes et des playlists d'un briefing, par clé de
+// regroupement (le nom de la langue par défaut) : le libellé est celui de la langue de la requête.
+// mapSort garde le nom de la langue par défaut de chaque carte (ou de la base de son groupe) : le
+// départage des ex aequo du briefing ne dépend pas de la langue de la requête.
+type dimensionNames struct{ modes, playlists, mapSort optionLabels }
+
+// rawRowsToBreakdownRows projette les raw rows vers breakdown.Row. Une carte se regroupe par son
+// identifiant (groups : une variante compte sous sa carte de base) et porte le libellé de la langue
+// `loc` ; un mode et une playlist se regroupent par leur nom dans la langue par défaut (la clé,
+// indépendante de la langue de la requête), dont les libellés affichés sont rendus à part
+// (dimensionNames).
+func rawRowsToBreakdownRows(
+	rows []domain.MatchHistoryRawRow, groups domain.GroupesDeCartes, loc i18n.Locale,
+) ([]breakdown.Row, dimensionNames) {
+	names := dimensionNames{modes: optionLabels{}, playlists: optionLabels{}, mapSort: optionLabels{}}
 	out := make([]breakdown.Row, 0, len(rows))
 	for i := range rows {
 		r := &rows[i]
@@ -137,21 +155,33 @@ func rawRowsToBreakdownRows(rows []domain.MatchHistoryRawRow) []breakdown.Row {
 		if r.MapID != nil {
 			br.MapID = *r.MapID
 		}
-		br.MapLabel = coalesceStr(r.MapNameFR, r.MapName)
+		br.MapLabel = r.MapName.Pick(loc)
+		names.mapSort.add(groups.Groupe(br.MapID), mapSortName(r, groups))
 		// Mode : MÊME résolution que la colonne mode_ui du tableau — pair_name (FR)
 		// puis fallback game_variant (titres/matchs sans pair, ex. H5). Sans le
 		// fallback, les matchs dont le mode vient du game_variant sont écartés du
 		// regroupement et la dimension « par mode » peut dégénérer / disparaître.
 		// Convention centralisée — cf. analysis.ResolveModeUIWithVariant.
-		if modeUI := analysis.ResolveModeUIWithVariant(r.PairName, r.PairNameFR, r.GameVariantName, r.GameVariantNameFR); modeUI != nil {
+		if modeUI := analysis.ResolveModeUIWithVariant(r.PairName, r.GameVariantName); modeUI != nil {
 			br.ModeName = *modeUI
+			names.modes.add(br.ModeName, derefString(analysis.ResolveModeUIWithVariantIn(loc, r.PairName, r.GameVariantName)))
 		}
-		if r.PlaylistName != nil {
-			br.PlaylistName = *r.PlaylistName
-		}
+		br.PlaylistName = r.PlaylistName.Pick(i18n.Default)
+		names.playlists.add(br.PlaylistName, r.PlaylistName.Pick(loc))
 		out = append(out, br)
 	}
-	return out
+	return out, names
+}
+
+// mapSortName rend le nom de départage d'une carte : celui de la carte de base de son groupe dans la
+// langue par défaut, à défaut son propre nom dans cette langue.
+func mapSortName(r *domain.MatchHistoryRawRow, groups domain.GroupesDeCartes) string {
+	if r.MapID != nil {
+		if base, ok := groups.Libelle(*r.MapID, i18n.Default); ok {
+			return base
+		}
+	}
+	return r.MapName.Pick(i18n.Default)
 }
 
 // rawOutcomeToCanonical mappe le code outcome int (domain.Outcome*) vers l'enum
@@ -186,21 +216,21 @@ func mapKeyed(aggs []breakdown.MapAggregate) []breakdown.KeyedAggregate {
 	return out
 }
 
-func modeKeyed(aggs []breakdown.ModeAggregate) []breakdown.KeyedAggregate {
+func modeKeyed(aggs []breakdown.ModeAggregate, labels optionLabels) []breakdown.KeyedAggregate {
 	out := make([]breakdown.KeyedAggregate, 0, len(aggs))
 	for _, a := range aggs {
 		out = append(out, breakdown.KeyedAggregate{
-			Key: a.ModeName, Label: a.ModeName, Counts: a.Counts, AvgPerformanceScore: a.AvgPerformanceScore,
+			Key: a.ModeName, Label: labels.labelOr(a.ModeName), Counts: a.Counts, AvgPerformanceScore: a.AvgPerformanceScore,
 		})
 	}
 	return out
 }
 
-func playlistKeyed(aggs []breakdown.PlaylistAggregate) []breakdown.KeyedAggregate {
+func playlistKeyed(aggs []breakdown.PlaylistAggregate, labels optionLabels) []breakdown.KeyedAggregate {
 	out := make([]breakdown.KeyedAggregate, 0, len(aggs))
 	for _, a := range aggs {
 		out = append(out, breakdown.KeyedAggregate{
-			Key: a.PlaylistName, Label: a.PlaylistName, Counts: a.Counts, AvgPerformanceScore: a.AvgPerformanceScore,
+			Key: a.PlaylistName, Label: labels.labelOr(a.PlaylistName), Counts: a.Counts, AvgPerformanceScore: a.AvgPerformanceScore,
 		})
 	}
 	return out

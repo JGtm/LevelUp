@@ -9,6 +9,8 @@ import (
 	"context"
 	"testing"
 	"time"
+
+	"levelup/go-api/internal/i18n"
 )
 
 // ---------------------------------------------------------------------------
@@ -32,7 +34,7 @@ var fixtureAchievementsFR = []PlayerAchievementRaw{
 // ---------------------------------------------------------------------------
 
 func TestMergeAchievements_BilingualMerge(t *testing.T) {
-	merged := mergeAchievements(fixtureAchievementsEN, fixtureAchievementsFR)
+	merged := mergeAchievements(localesOf(fixtureAchievementsEN, fixtureAchievementsFR))
 
 	if len(merged) != 3 {
 		t.Fatalf("attendu 3 achievements, obtenu %d", len(merged))
@@ -43,11 +45,11 @@ func TestMergeAchievements_BilingualMerge(t *testing.T) {
 	if a1 == nil {
 		t.Fatal("achievement ID 1 manquant")
 	}
-	if a1.NameEN != "First Steps" {
-		t.Errorf("NameEN attendu 'First Steps', obtenu %q", a1.NameEN)
+	if a1.Name[i18n.LocaleEN] != "First Steps" {
+		t.Errorf("NameEN attendu 'First Steps', obtenu %q", a1.Name[i18n.LocaleEN])
 	}
-	if a1.NameFR != "Premiers pas" {
-		t.Errorf("NameFR attendu 'Premiers pas', obtenu %q", a1.NameFR)
+	if a1.Name[i18n.LocaleFR] != "Premiers pas" {
+		t.Errorf("NameFR attendu 'Premiers pas', obtenu %q", a1.Name[i18n.LocaleFR])
 	}
 	if !a1.Unlocked {
 		t.Error("Unlocked attendu true pour ID 1")
@@ -58,8 +60,8 @@ func TestMergeAchievements_BilingualMerge(t *testing.T) {
 	if a3 == nil {
 		t.Fatal("achievement ID 3 manquant")
 	}
-	if a3.NameFR != "" {
-		t.Errorf("NameFR attendu '' pour ID 3, obtenu %q", a3.NameFR)
+	if a3.Name[i18n.LocaleFR] != "" {
+		t.Errorf("NameFR attendu '' pour ID 3, obtenu %q", a3.Name[i18n.LocaleFR])
 	}
 	if a3.CurrentProgress != 2 || a3.TargetProgress != 4 {
 		t.Errorf("progression ID 3 attendue (2/4), obtenu (%d/%d)", a3.CurrentProgress, a3.TargetProgress)
@@ -67,26 +69,26 @@ func TestMergeAchievements_BilingualMerge(t *testing.T) {
 }
 
 func TestMergeAchievements_EmptyEN_ReturnsEmpty(t *testing.T) {
-	result := mergeAchievements(nil, fixtureAchievementsFR)
+	result := mergeAchievements(localesOf(nil, fixtureAchievementsFR))
 	if len(result) != 0 {
 		t.Errorf("attendu 0 résultats quand EN est vide, obtenu %d", len(result))
 	}
 }
 
 func TestMergeAchievements_EmptyFR_KeepsEN(t *testing.T) {
-	result := mergeAchievements(fixtureAchievementsEN, nil)
+	result := mergeAchievements(localesOf(fixtureAchievementsEN, nil))
 	if len(result) != len(fixtureAchievementsEN) {
 		t.Errorf("attendu %d résultats, obtenu %d", len(fixtureAchievementsEN), len(result))
 	}
 	for _, a := range result {
-		if a.NameFR != "" {
-			t.Errorf("NameFR attendu vide, obtenu %q pour ID %s", a.NameFR, a.AchievementID)
+		if a.Name[i18n.LocaleFR] != "" {
+			t.Errorf("NameFR attendu vide, obtenu %q pour ID %s", a.Name[i18n.LocaleFR], a.AchievementID)
 		}
 	}
 }
 
 func TestMergeAchievements_IsSecretPreserved(t *testing.T) {
-	merged := mergeAchievements(fixtureAchievementsEN, fixtureAchievementsFR)
+	merged := mergeAchievements(localesOf(fixtureAchievementsEN, fixtureAchievementsFR))
 	a2 := findAchievementByID(merged, "2")
 	if a2 == nil {
 		t.Fatal("achievement ID 2 manquant")
@@ -97,7 +99,7 @@ func TestMergeAchievements_IsSecretPreserved(t *testing.T) {
 }
 
 func TestMergeAchievements_UnlockedAtPreserved(t *testing.T) {
-	merged := mergeAchievements(fixtureAchievementsEN, fixtureAchievementsFR)
+	merged := mergeAchievements(localesOf(fixtureAchievementsEN, fixtureAchievementsFR))
 	a1 := findAchievementByID(merged, "1")
 	if a1 == nil {
 		t.Fatal("achievement ID 1 manquant")
@@ -111,6 +113,11 @@ func TestMergeAchievements_UnlockedAtPreserved(t *testing.T) {
 // ---------------------------------------------------------------------------
 // Helper
 // ---------------------------------------------------------------------------
+
+// localesOf range deux listes d'API sous les langues de repli (en) et par défaut (fr).
+func localesOf(en, fr []PlayerAchievementRaw) map[i18n.Locale][]PlayerAchievementRaw {
+	return map[i18n.Locale][]PlayerAchievementRaw{i18n.LocaleEN: en, i18n.LocaleFR: fr}
+}
 
 func findAchievementByID(achievements []PlayerAchievement, id string) *PlayerAchievement {
 	for i := range achievements {

@@ -2,6 +2,8 @@ package profile
 
 import (
 	"testing"
+
+	"levelup/go-api/internal/i18n"
 )
 
 // Tests unitaires des helpers V1 (pas de DB).
@@ -92,9 +94,9 @@ func TestIdentifyLeverages_Empty(t *testing.T) {
 
 func TestBuildSkillRatingSnapshot(t *testing.T) {
 	lusr := LUSRState{Mu: 1500, Sigma: 120, MatchesCount: 50}
-	tier := TierState{Name: "Platinum", NameFR: "Platine", SubTier: 3, Label: "Platinum III", LowerMu: 1400, UpperMu: 1600}
-	next := TierState{Name: "Diamond", NameFR: "Diamant", SubTier: 1, Label: "Diamond I", LowerMu: 1700, UpperMu: 1800}
-	got := buildSkillRatingSnapshot(lusr, tier, next)
+	tier := TierState{Name: "Platinum", Names: i18n.FromColumns("", "Platine"), SubTier: 3, Label: "Platinum III", LowerMu: 1400, UpperMu: 1600}
+	next := TierState{Name: "Diamond", Names: i18n.FromColumns("", "Diamant"), SubTier: 1, Label: "Diamond I", LowerMu: 1700, UpperMu: 1800}
+	got := buildSkillRatingSnapshot(lusr, tier, next, i18n.LocaleEN)
 
 	if got.TierName != "Platinum" {
 		t.Errorf("TierName: got %q, want %q", got.TierName, "Platinum")

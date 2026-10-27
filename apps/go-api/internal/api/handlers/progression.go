@@ -23,6 +23,7 @@ import (
 
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/progression/milestones"
 	"levelup/go-api/internal/progression/records"
@@ -129,16 +130,14 @@ type recordsResponse struct {
 
 // milestoneDTO joint catalogue + earned pour 1 entrée.
 type milestoneDTO struct {
-	ID          string     `json:"id"`
-	Metric      string     `json:"metric"`
-	Threshold   float64    `json:"threshold"`
-	TitleEN     string     `json:"title_en"`
-	TitleFR     string     `json:"title_fr"`
-	Icon        string     `json:"icon,omitempty"`
-	ConditionFR string     `json:"condition_fr,omitempty"`
-	ConditionEN string     `json:"condition_en,omitempty"`
-	Earned      bool       `json:"earned"`
-	EarnedAt    *time.Time `json:"earned_at,omitempty"`
+	ID        string     `json:"id"`
+	Metric    string     `json:"metric"`
+	Threshold float64    `json:"threshold"`
+	Title     string     `json:"title"` // dans la langue de la requête (repli `en`)
+	Icon      string     `json:"icon,omitempty"`
+	Condition string     `json:"condition,omitempty"` // description lisible dans la langue de la requête ; jamais la formule technique
+	Earned    bool       `json:"earned"`
+	EarnedAt  *time.Time `json:"earned_at,omitempty"`
 }
 
 type milestonesResponse struct {
@@ -249,9 +248,10 @@ func (h *ProgressionHandler) milestoneDTOs(ctx context.Context, pdb *duckdb.Play
 	for _, e := range earnedList {
 		earnedByID[e.MilestoneID] = e.EarnedAt
 	}
+	loc := i18n.FromContext(ctx)
 	items := make([]milestoneDTO, 0, len(catalog))
 	for _, c := range catalog {
-		dto := toMilestoneDTO(c)
+		dto := toMilestoneDTO(c, loc)
 		if at, ok := earnedByID[c.ID]; ok {
 			dto.Earned = true
 			// earned_at NULL (backfill A6 non dérivable) → EarnedAt zéro : le
@@ -319,18 +319,16 @@ func toHistoryDTO(h records.RecordHistory) recordHistoryDTO {
 	}
 }
 
-func toMilestoneDTO(c milestones.CatalogEntry) milestoneDTO {
-	// A9 : on sert les descriptions localisées (le front choisit selon la locale),
-	// jamais la formule technique c.Condition. Vides si le jalon n'a pas de
-	// condition → le front n'affiche rien.
-	return milestoneDTO{
-		ID:          c.ID,
-		Metric:      c.Metric,
-		Threshold:   c.Threshold,
-		TitleEN:     c.TitleEN,
-		TitleFR:     c.TitleFR,
-		Icon:        c.Icon,
-		ConditionFR: c.ConditionFR,
-		ConditionEN: c.ConditionEN,
+func toMilestoneDTO(c milestones.CatalogEntry, loc i18n.Locale) milestoneDTO {
+	// A9 : on sert la description lisible dans la langue de la requête, jamais la formule
+	// technique c.Condition. Vide si le jalon n'a pas de condition → le front n'affiche rien.
+	dto := milestoneDTO{
+		ID:        c.ID,
+		Metric:    c.Metric,
+		Threshold: c.Threshold,
+		Title:     c.Title.Pick(loc),
+		Icon:      c.Icon,
 	}
+	dto.Condition = c.ConditionText.PickOptional(loc)
+	return dto
 }

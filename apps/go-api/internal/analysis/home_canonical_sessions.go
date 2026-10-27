@@ -8,6 +8,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 )
 
 // BuildSessionSummaryFromCanonical : full canonical (P4.3 finale).
@@ -213,18 +214,20 @@ func BuildSessionSummariesFromCanonical(rows []canonical.PlayerMatchRow, squadMo
 		// "Arena:Slayer" → "Slayer") pour aligner sur BuildRecentMatchesWith…
 		// et fusionner les fréquences cross-map. Sans ça les sessions solo
 		// (où pair_name_fr est souvent absent) affichaient l'EN brut.
-		dominantMode := dominantNameFromRows(sessionRows, locale, func(r canonical.PlayerMatchRow) (string, string) {
-			en, fr := modeLabels(r)
-			mapEN, mapFR := assetLabels(r.Summary.Map)
-			return normalizeHomeModeLabel(en, mapEN, mapFR), normalizeHomeModeLabel(fr, mapEN, mapFR)
+		dominantMode := dominantNameFromRows(sessionRows, locale, func(r canonical.PlayerMatchRow) i18n.Text {
+			mapLabels := textValues(assetText(r.Summary.Map))
+			out := i18n.Text{}
+			for l, v := range modeText(r) {
+				if normalized := normalizeHomeModeLabel(v, mapLabels...); normalized != "" {
+					out[l] = normalized
+				}
+			}
+			return out
 		})
 
 		// Playlist dominante (FR si dispo et locale=fr, sinon EN). Bug #2.
-		dominantPlaylist := dominantNameFromRows(sessionRows, locale, func(r canonical.PlayerMatchRow) (string, string) {
-			if r.Summary.Playlist == nil {
-				return "", ""
-			}
-			return assetLabels(r.Summary.Playlist)
+		dominantPlaylist := dominantNameFromRows(sessionRows, locale, func(r canonical.PlayerMatchRow) i18n.Text {
+			return assetText(r.Summary.Playlist)
 		})
 
 		kpis := ComputeKPIsFromCanonical(sessionRows, len(sessionRows), locale, effectiveHpToKill)

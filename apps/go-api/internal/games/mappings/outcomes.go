@@ -5,6 +5,7 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 )
 
 // OutcomeMapping est la projection d'une section [outcomes.{key}] du TOML.
@@ -13,21 +14,19 @@ import (
 // La couleur est exposée via un token du design system (`color_token`) plutôt
 // qu'un hex direct, pour que le frontend résolve via son thème.
 type OutcomeMapping struct {
-	Key        string            // "win" | "loss" | "tie" | "dnf"
-	Labels     map[string]string // locale → libellé
-	ColorToken string            // ex : "outcome.positive" | "outcome.negative" | "outcome.neutral"
-	RawCode    int               // MT-06 : code brut du titre (Halo : win=2…). 0 = absent.
+	Key        string    // "win" | "loss" | "tie" | "dnf"
+	Labels     i18n.Text // locale → libellé
+	ColorToken string    // ex : "outcome.positive" | "outcome.negative" | "outcome.neutral"
+	RawCode    int       // MT-06 : code brut du titre (Halo : win=2…). 0 = absent.
 }
 
-// Label retourne le libellé pour la locale demandée + fallback locale → en → key.
+// Label retourne le libellé pour la locale demandée + fallback locale → i18n.Fallback → key.
 func (o OutcomeMapping) Label(locale string) (label string, usedFallback bool) {
-	if v, ok := o.Labels[locale]; ok && v != "" {
-		return v, false
+	v, fell := o.Labels.Resolve(i18n.Locale(locale))
+	if v == "" {
+		return o.Key, true
 	}
-	if v, ok := o.Labels[LocaleEN]; ok && v != "" {
-		return v, true
-	}
-	return o.Key, true
+	return v, fell
 }
 
 // OutcomeMappingSet est l'ensemble des OutcomeMapping d'un titre.

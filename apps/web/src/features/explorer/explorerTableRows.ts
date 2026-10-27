@@ -44,3 +44,13 @@ export function splitCommonMatchRows(
     enemy: rows.filter((r) => enemy.has(r.match_id)),
   }
 }
+
+/**
+ * URL de l'export CSV de l'historique. Le lien est suivi par le navigateur, qui n'envoie pas l'en-tête
+ * `X-LevelUp-Locale` : la langue de la page voyage dans `?lang=` pour que les colonnes carte, mode, playlist
+ * et issue sortent dans la langue affichée.
+ */
+export function matchHistoryExportUrl(playerSlug: string, token: string, locale: string): string {
+  const base = import.meta.env.VITE_API_BASE_URL ?? '/api/v1'
+  return `${base}/players/${playerSlug}/pages/match-history/export?token=${encodeURIComponent(token)}&lang=${encodeURIComponent(locale)}`
+}

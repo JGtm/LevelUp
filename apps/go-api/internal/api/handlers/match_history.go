@@ -28,7 +28,9 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"levelup/go-api/internal/api/humacore"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
@@ -103,6 +105,10 @@ func (h *MatchHistoryHandler) handleQuery(ctx context.Context, in *matchHistoryQ
 // Export retourne un CSV de l'historique des matchs filtrés.
 // GET /api/v1/players/{player_slug}/pages/match-history/export?token=<base64url>
 // Le token est généré par Query avec include_export_hint=true.
+//
+// Langue : le lien est suivi par le navigateur, qui n'envoie pas X-LevelUp-Locale. La page passe donc sa langue
+// en paramètre ?lang= (celle des colonnes carte, mode, playlist et du mot de l'issue) ; absent ou inconnu,
+// la langue de la requête (en-tête, sinon langue par défaut) s'applique.
 func (h *MatchHistoryHandler) Export(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "player_slug")
 	svc, _, _, err := h.newSvc(r.Context(), slug)
@@ -123,9 +129,10 @@ func (h *MatchHistoryHandler) Export(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := svc.ExportCSV(r.Context(), req)
+	ctx := exportContext(r)
+	rows, err := svc.ExportCSV(ctx, req)
 	if err != nil {
-		writeErrorFrom(r.Context(), w, http.StatusInternalServerError, "export_error", err)
+		writeErrorFrom(ctx, w, http.StatusInternalServerError, "export_error", err)
 		return
 	}
 
@@ -157,7 +164,7 @@ func (h *MatchHistoryHandler) Export(w http.ResponseWriter, r *http.Request) {
 			// Seule surface qui rend du TEXTE côté serveur (fichier direct, pas de JS pour
 			// localiser une clé) : le mot vient de l'adapter sémantique du titre, jamais
 			// d'une map Go (D5, 2026-09-07 — cf. service.OutcomeText).
-			svc.OutcomeText(r.Context(), row.OutcomeCode),
+			svc.OutcomeText(ctx, row.OutcomeCode),
 			row.ScoreLabel,
 			optStr(row.MapUI),
 			optStr(row.ModeUI),
@@ -169,6 +176,16 @@ func (h *MatchHistoryHandler) Export(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 	cw.Flush()
+}
+
+// exportContext rend le contexte de la requête d'export, dans la langue demandée par ?lang= quand elle est
+// connue (i18n.Lookup) : le navigateur qui suit le lien de téléchargement n'envoie pas X-LevelUp-Locale.
+func exportContext(r *http.Request) context.Context {
+	ctx := r.Context()
+	if l, ok := i18n.Lookup(r.URL.Query().Get("lang")); ok {
+		return ctxkeys.WithLocale(ctx, string(l))
+	}
+	return ctx
 }
 
 // ---------------------------------------------------------------------------

@@ -12,6 +12,7 @@ import { formatDurationMMSS } from '@/lib/formatters/duration'
 import { formatMessage } from '@/lib/i18n/format'
 import { timeseriesManifest, type TimeseriesManifestKey } from '@/lib/i18n/generated/timeseries'
 import type { Locale } from '@/lib/i18n/locale'
+import { intlLocale } from '@/lib/formatters/intlLocale'
 
 interface Props {
   stats?: ObjectiveAggregate | null
@@ -20,7 +21,7 @@ interface Props {
 
 export function TimeseriesObjectiveCard({ stats, locale }: Props) {
   const t = (key: TimeseriesManifestKey) => formatMessage(timeseriesManifest, key, locale)
-  const numLoc = locale === 'en' ? 'en-US' : 'fr-FR'
+  const numLoc = intlLocale(locale)
   const num = (v: number) => v.toLocaleString(numLoc)
 
   const cards: { label: string; value: string }[] = []

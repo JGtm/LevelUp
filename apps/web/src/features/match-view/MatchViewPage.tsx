@@ -65,11 +65,10 @@ export function MatchViewPage() {
   const { data: matchPositions } = useMatchPositions(playerSlug, matchId, isArsenal)
   const friendGamertags = useFriendGamertags(playerSlug)
   const locale = useAppShellStore((s) => s.locale)
-  const t = MATCH_VIEW_TEXT[locale === 'en' ? 'en' : 'fr']
+  const t = MATCH_VIEW_TEXT[locale]
 
   if (isPending) return null
 
-  const isEN = locale === 'en'
   const goHome = () => {
     navigate({ to: '/{-$lang}/t/$titleSlug/players/$playerSlug/home', params: { playerSlug } }).catch(() => {})
   }
@@ -89,15 +88,11 @@ export function MatchViewPage() {
     if (code === 'match_not_participant') {
       return (
         <PageUnavailable
-          title={isEN ? 'Match unavailable' : 'Match indisponible'}
-          description={
-            isEN
-              ? 'The player of this page did not take part in this match, so it cannot be shown here.'
-              : "Le joueur de la page n'a pas participé à ce match : il ne peut pas être affiché ici."
-          }
+          title={t.notParticipantTitle}
+          description={t.notParticipantDescription}
           actions={[
-            { label: isEN ? 'Home' : 'Accueil', onClick: goHome, variant: 'default' },
-            { label: isEN ? 'Back' : 'Précédent', onClick: goBack },
+            { label: t.navHome, onClick: goHome, variant: 'default' },
+            { label: t.navBack, onClick: goBack },
             { label: t.navMatches, onClick: goMatches },
           ]}
         />
@@ -106,13 +101,9 @@ export function MatchViewPage() {
     if (code === 'player_forbidden') {
       return (
         <PageUnavailable
-          title={isEN ? 'Access denied' : 'Accès non autorisé'}
-          description={
-            isEN
-              ? 'This player is not associated with the signed-in account.'
-              : "Ce joueur n'est pas associé au compte connecté."
-          }
-          actions={[{ label: isEN ? 'Home' : 'Accueil', onClick: goHome, variant: 'default' }]}
+          title={t.accessDeniedTitle}
+          description={t.accessDeniedDescription}
+          actions={[{ label: t.navHome, onClick: goHome, variant: 'default' }]}
         />
       )
     }
@@ -127,8 +118,8 @@ export function MatchViewPage() {
           title={t.notSyncedTitle}
           description={t.notSyncedDescription}
           actions={[
-            { label: isEN ? 'Home' : 'Accueil', onClick: goHome, variant: 'default' },
-            { label: isEN ? 'Back' : 'Précédent', onClick: goBack },
+            { label: t.navHome, onClick: goHome, variant: 'default' },
+            { label: t.navBack, onClick: goBack },
             { label: t.navMatches, onClick: goMatches },
           ]}
         />
@@ -138,8 +129,8 @@ export function MatchViewPage() {
     // permettre à l'utilisateur de continuer à naviguer entre les matchs.
     return (
       <div className="flex flex-col">
-        <MatchBreadcrumb playerSlug={playerSlug} matchLabel={t.mapUnknown} locale={locale === 'en' ? 'en' : 'fr'} />
-        <MatchNavigationBar playerSlug={playerSlug} matchId={matchId} locale={locale === 'en' ? 'en' : 'fr'} />
+        <MatchBreadcrumb playerSlug={playerSlug} matchLabel={t.mapUnknown} locale={locale} />
+        <MatchNavigationBar playerSlug={playerSlug} matchId={matchId} locale={locale} />
         <div className="p-6">
           <Card>
             <CardContent className="py-8 text-center">
@@ -192,7 +183,7 @@ export function MatchViewPage() {
 
   return (
     <div className="flex flex-col">
-      <MatchBreadcrumb playerSlug={playerSlug} matchLabel={breadcrumbLabel} locale={locale === 'en' ? 'en' : 'fr'} />
+      <MatchBreadcrumb playerSlug={playerSlug} matchLabel={breadcrumbLabel} locale={locale} />
 
       {/* Barre nav full-width — Match précédent · Match X/Y · Match suivant */}
       <MatchNavigationBar playerSlug={playerSlug} matchId={matchId} locale={locale} />

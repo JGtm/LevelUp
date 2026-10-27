@@ -125,9 +125,7 @@ function OutlineColorPicker({
 }) {
   const selected = HALO_OUTLINE_COLORS.find((c) => c.id === value)
   const selectedName = selected
-    ? locale === 'fr'
-      ? selected.nameFr
-      : selected.nameEn
+    ? selected.name[locale]
     : null
 
   return (
@@ -156,7 +154,7 @@ function OutlineColorPicker({
         </button>
 
         {HALO_OUTLINE_COLORS.map((color) => {
-          const name = locale === 'fr' ? color.nameFr : color.nameEn
+          const name = color.name[locale]
           const isSelected = value === color.id
           return (
             <button
@@ -240,12 +238,12 @@ export function AccessibilityTab({ t, locale }: Props) {
             </div>
             <div className="flex flex-wrap gap-3">
               {OUTCOME_TOKENS.map((token) => (
-                <ColorSwatch key={token} token={token} label={token.replace('outcome-', '')} />
+                <ColorSwatch key={token} token={token} label={t.previewOutcome[token.replace('outcome-', '') as keyof typeof t.previewOutcome]} />
               ))}
             </div>
             <div className="flex flex-wrap gap-3">
               {DIVERGENT_TOKENS.map((token) => (
-                <ColorSwatch key={token} token={token} label={token.replace('divergent-', 'Δ ')} />
+                <ColorSwatch key={token} token={token} label={`Δ ${t.previewDivergent[token.replace('divergent-', '') as keyof typeof t.previewDivergent]}`} />
               ))}
             </div>
             <div className="space-y-1.5">

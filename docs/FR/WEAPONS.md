@@ -59,8 +59,8 @@ réplication pour les événements de tir et d'arme tenue, corrèle chaque kill
 décomptes de kills de l'API, puis écrit une ligne par kill dans la table
 partagée `weapon_kills`.
 
-Le résultat agrégé (kills par arme, avec labels EN/FR) est relu via la vue
-`v_weapon_kills` et la table `metadata.weapon_labels`, et exposé dans la vue
+Le résultat agrégé (kills par arme, avec le label dans la langue de la requête) est relu via la vue
+`v_weapon_kills` et les tables `metadata.weapon_name_labels` / `weapon_label_names`, et exposé dans la vue
 match et le KPI « arme favorite » de l'accueil.
 
 ---
@@ -284,11 +284,21 @@ excluant les sentinels `effective_weapon_id NOT IN (0,1,2)`. Quand
 `IncludeGrenadeMelee = true`, il fait un UNION ALL des totaux `grenade_kills` /
 `melee_kills` de `match_participants` sous les IDs sentinels `0` et `1`.
 
-Les labels (EN/FR) et rôles sont attachés côté Go depuis
-`metadata.weapon_labels` (`weapon_id UBIGINT`, `name_en`, `name_fr`) via
-`weapon_resolver.go` — la DB metadata est séparée, elle ne peut donc pas être
-jointe en SQL à la DB partagée. Le nom d'affichage est `name_fr` d'abord, puis
-`name_en`.
+Les labels (un par langue) et rôles sont attachés côté Go via `weapon_resolver.go` —
+la DB metadata est séparée, elle ne peut donc pas être jointe en SQL à la DB partagée.
+
+**Nom d'affichage — source unique par `weapon_key` (V72-06).** Le nom se résout
+`weapon_id → weapon_ids → weapon_key → noms par langue` depuis
+`metadata.weapon_name_labels` (`title_slug`, `weapon_key`, `lang`, `name` : une ligne par
+langue de `config/locales.toml`, ADR 0040 D-13), alimentée au boot depuis
+`config/titles/{slug}/mappings/weapon_names.toml`. Par langue, le nom curé de
+`weapon_name_labels` l'emporte sur celui de `weapon_label_names` (`weapon_id`, `lang`,
+`name`), qui seul couvre les ids **sans** `weapon_key` (sentinelles `0/1/2`, inconnus).
+La langue de la requête se choisit ensuite par `Text.Pick` (langue demandée, sinon
+`en`), jamais par un `COALESCE` SQL croisé. Le registre `weapons` ne porte plus de nom
+d'affichage ; il ne fournit que les dimensions (rôle/classe/famille/faction). Le nom
+anglais de `weapon_label_names` pilote toujours l'URL d'image (`AssetURLAdapter`) ;
+`weapon_labels` ne garde que ses colonnes non textuelles.
 
 Si `weapon_kills` / `v_weapon_kills` est absente (ex. un titre qui ne la
 supporte pas), le repo retourne `games.ErrCapabilityNotSupported`.
@@ -316,7 +326,7 @@ ignorés (`findMissingWeaponMatches`).
 > dans `findMissingWeaponMatches`) et ne reboucle pas. Relancer la commande
 > jusqu'à `matches=0` pour vider un gros arriéré.
 
-Si `metadata.weapon_labels` est vide (certaines DB prébuilties), réparer-la
+Si `metadata.weapon_label_names` est vide (certaines DB prébuilties), réparer-la
 (arrêter le serveur API d'abord — il tient metadata.duckdb en RW) :
 
 ```bash
@@ -335,7 +345,7 @@ identifié :
    le bon groupe (standard / famille Energy Sword / famille Gravity Hammer /
    grenade). Si la classe d'arme est nouvelle, ajouter une entrée
    `WeaponTimingByName`.
-2. Ajouter le label EN/FR à `metadata.weapon_labels` (seed via
+2. Ajouter le nom, une ligne par langue, à `metadata.weapon_label_names` (seed via
    `cmd/seed-weapon-labels`, ou insertion directe) pour que la lecture puisse
    l'afficher.
 3. Relancer `go run ./cmd/levelup backfill --weapons --force` pour les matchs

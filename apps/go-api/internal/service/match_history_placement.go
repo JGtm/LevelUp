@@ -1,7 +1,7 @@
 // Package service — match_history_placement.go : calcul du placement (X/Y)
 // par match pour CSR (officiel Microsoft) et LUSR (interne LevelUp).
 //
-// CSR  : parse "Placement (N restants)" depuis tier_label + threshold dynamique
+// CSR  : lit le nombre de matchs restants du tier_label de placement (domain.ParsePlacementRemaining) + threshold dynamique
 //
 //	via csr_placement_thresholds (5 depuis S3, 10 avant).
 //
@@ -21,12 +21,11 @@ package service
 import (
 	"context"
 	"log/slog"
-	"regexp"
 	"sort"
-	"strconv"
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/sync"
 )
 
@@ -42,23 +41,6 @@ const (
 // Implémenté par *duckdb.CSRThresholdsRepo. Callback plutôt qu'interface pour
 // éviter de remonter un port pour une seule méthode triviale.
 type CSRThresholdResolver func(ctx context.Context, seasonID string) int
-
-// placementRemainingRe parse "Placement (4 restants)" → 4. Duplique le helper
-// de home_repo_playlist_ranks.go pour éviter d'importer platform/duckdb dans
-// service (cycle : sync→duckdb, et on importe sync ici).
-var placementRemainingRe = regexp.MustCompile(`\((\d+)\s*restant`)
-
-func parsePlacementRemaining(label string) int {
-	m := placementRemainingRe.FindStringSubmatch(label)
-	if len(m) < 2 {
-		return sync.LUSRPlacementThreshold
-	}
-	n, err := strconv.Atoi(m[1])
-	if err != nil || n < 0 || n > 100 {
-		return sync.LUSRPlacementThreshold
-	}
-	return n
-}
 
 // applyMatchPlacements remplit rows[i].PlacementDone/PlacementTotal pour les
 // matchs en phase de placement. Modifie rows en place. Idempotent.
@@ -146,10 +128,7 @@ func applyPerfPlacements(ctx context.Context, rows []domain.MatchHistoryRawRow) 
 	inputs := make([]perfPlacementInput, len(rows))
 	for i := range rows {
 		r := &rows[i]
-		pair := ""
-		if r.PairName != nil {
-			pair = *r.PairName
-		}
+		pair := r.PairName[i18n.Fallback]
 		inputs[i] = perfPlacementInput{
 			matchID: r.MatchID,
 			chain:   sync.GetPerformanceChain(slug, pair, r.IsRanked, r.IsFirefight),
@@ -177,7 +156,7 @@ func applyPerfPlacements(ctx context.Context, rows []domain.MatchHistoryRawRow) 
 	return count
 }
 
-// applyCSRPlacements : pour les matchs CSR avec tier_label "Placement (N restants)",
+// applyCSRPlacements : pour les matchs CSR avec tier_label de placement (domain.PlacementLabel),
 // calcule done = threshold - remaining (threshold via csr_placement_thresholds).
 // Retourne le nombre de matchs marqués (pour visibilité via slog).
 func applyCSRPlacements(
@@ -195,8 +174,7 @@ func applyCSRPlacements(
 			continue
 		}
 		label := *r.SkillTierLabel
-		// "Placement" est le préfixe FR et EN ; pas besoin de détecter la langue.
-		if len(label) < 9 || label[:9] != "Placement" {
+		if !domain.IsPlacementLabel(label) {
 			continue
 		}
 		seasonID := ""
@@ -207,7 +185,7 @@ func applyCSRPlacements(
 		if csrThreshold != nil {
 			threshold = csrThreshold(ctx, seasonID)
 		}
-		remaining := parsePlacementRemaining(label)
+		remaining := domain.ParsePlacementRemaining(label)
 		if remaining > threshold {
 			remaining = threshold
 		}
@@ -306,10 +284,10 @@ func applyLUSRPlacements(rows []domain.MatchHistoryRawRow) int {
 	inputs := make([]lusrPlacementInput, 0, len(rows))
 	for i := range rows {
 		r := &rows[i]
-		if r.PairName == nil || r.StartTime == nil {
+		if !r.PairName.Has(i18n.Fallback) || r.StartTime == nil {
 			continue
 		}
-		chain := sync.GetLUSRChain(*r.PairName)
+		chain := sync.GetLUSRChain(r.PairName[i18n.Fallback])
 		if chain == "" {
 			// Ranked (→ CSR) ou Firefight (→ PvE) : exclus du LUSR par construction.
 			continue

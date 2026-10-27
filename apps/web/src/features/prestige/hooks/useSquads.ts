@@ -13,6 +13,7 @@ import {
   type WindowType,
 } from '@/lib/prestige'
 import { queryKeys } from '@/lib/query/keys'
+import { useAppShellStore } from '@/stores/appShellStore'
 
 /** Escouades dont `userId` (player_slug) est membre-user, roster embarqué. */
 export function useMySquads(userId: string) {
@@ -27,8 +28,9 @@ export function useMySquads(userId: string) {
 /** Défis d'une escouade. `requestedBy` (player_slug) sert de scope player-scoped
  *  de la route (montée sous /players/{player_slug} côté serveur). */
 export function useSquadChallenges(squadId: string, requestedBy: string) {
+  const locale = useAppShellStore((s) => s.locale)
   return useQuery({
-    queryKey: queryKeys.squad.challenges(squadId),
+    queryKey: queryKeys.squad.challenges(squadId, locale),
     queryFn: () => prestigeApi.listSquadChallenges(squadId, requestedBy),
     retry: false,
     enabled: !!squadId && !!requestedBy,
@@ -116,7 +118,7 @@ export function useEvaluateSquadChallenge(squadId: string) {
     mutationFn: ({ id, requestedBy }: { id: string; requestedBy: string }) =>
       prestigeApi.evaluateSquadChallenge(id, requestedBy),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.squad.challenges(squadId) })
+      qc.invalidateQueries({ queryKey: queryKeys.squad.challengesAll(squadId) })
     },
   })
 }
@@ -153,7 +155,7 @@ export function useAbandonSquadChallenge(squadId: string) {
     mutationFn: ({ id, requestedBy }: { id: string; requestedBy: string }) =>
       prestigeApi.abandonSquadChallenge(id, requestedBy),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.squad.challenges(squadId) })
+      qc.invalidateQueries({ queryKey: queryKeys.squad.challengesAll(squadId) })
     },
   })
 }
@@ -173,7 +175,7 @@ export function useCreateSquadChallenge(squadId: string) {
       created_by: string
     }) => prestigeApi.createSquadChallenge(squadId, body),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.squad.challenges(squadId) })
+      qc.invalidateQueries({ queryKey: queryKeys.squad.challengesAll(squadId) })
     },
   })
 }

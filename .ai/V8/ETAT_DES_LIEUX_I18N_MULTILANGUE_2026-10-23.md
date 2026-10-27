@@ -1,6 +1,8 @@
 # Etat des lieux i18n : preparer l'ajout d'une 3e ou 4e langue
 
 Date : 2026-10-23. Statut : base de travail pour un plan, pas un plan.
+Revu le 2026-10-26 : corrections (sections C, G, F) et manques (noms Halo deja en 14 langues,
+colonnes `_fr` en base, texte redige cote Go) dans `.ai/PLAN_I18N_MULTILANGUE.md` §1.
 Perimetre : mesures sur le code a la date ci-dessus (branche release/v8.0.4). Chaque chiffre
 est reproductible avec la commande indiquee ; les rechercher a nouveau avant de planifier
 (doctrine RE-VERIFIER).

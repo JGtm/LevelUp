@@ -27,6 +27,7 @@ import (
 
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/progression/coach_advisor"
 )
 
@@ -97,10 +98,9 @@ type proposalDTO struct {
 	SourceMetric  string     `json:"source_metric,omitempty"`
 	RadarAxis     string     `json:"radar_axis,omitempty"`
 	Strength      float64    `json:"strength"`
-	Origin        string     `json:"origin"` // "catalog" | "synthesized"
-	ReasonKeyEN   string     `json:"reason_key_en,omitempty"`
-	ReasonKeyFR   string     `json:"reason_key_fr,omitempty"`
-	ReasonParams  string     `json:"reason_params,omitempty"` // JSON raw
+	Origin        string     `json:"origin"`                  // "catalog" | "synthesized"
+	ReasonKey     string     `json:"reason_key,omitempty"`    // clé d'i18n du motif dans la langue de la requête (repli `en`)
+	ReasonParams  string     `json:"reason_params,omitempty"` // JSON : libellés (`label`, `title`, `description`) dans la langue de la requête
 	Status        string     `json:"status"`
 	CreatedAt     time.Time  `json:"created_at"`
 	ResolvedAt    *time.Time `json:"resolved_at,omitempty"`
@@ -140,9 +140,10 @@ func (h *CoachProposalsHandler) handleListProposals(ctx context.Context, in *coa
 		slog.WarnContext(ctx, "coach_proposals: list", "err", err, "player", in.PlayerSlug)
 		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "list_proposals_error", err)
 	}
+	loc := i18n.FromContext(ctx)
 	items := make([]proposalDTO, 0, len(props))
 	for _, p := range props {
-		items = append(items, toProposalDTO(p))
+		items = append(items, toProposalDTO(ctx, p, loc))
 	}
 	return &proposalsListOutput{Body: proposalsListResponse{Items: items}}, nil
 }
@@ -217,7 +218,16 @@ func (h *CoachProposalsHandler) resolveOr404(ctx context.Context, playerSlug str
 	return svc, userID, nil
 }
 
-func toProposalDTO(p coach_advisor.Proposal) proposalDTO {
+func toProposalDTO(ctx context.Context, p coach_advisor.Proposal, loc i18n.Locale) proposalDTO {
+	// Les libellés stockés une fois par langue (`label_fr`, `title_en`...) sortent en une seule clé,
+	// dans la langue de la requête. Un JSON illisible est journalisé et servi tel quel : mieux vaut
+	// un motif brut qu'une liste de propositions vide.
+	reasonParams, err := coach_advisor.ResolveReasonParams(p.ReasonParams, loc)
+	if err != nil {
+		slog.WarnContext(ctx, "coach_proposals: reason_params illisibles, servis bruts",
+			"err", err, "proposal_id", p.ID)
+		reasonParams = p.ReasonParams
+	}
 	return proposalDTO{
 		ID:            p.ID,
 		Kind:          string(p.Kind),
@@ -228,9 +238,8 @@ func toProposalDTO(p coach_advisor.Proposal) proposalDTO {
 		RadarAxis:     p.RadarAxis,
 		Strength:      p.Strength,
 		Origin:        string(p.Origin),
-		ReasonKeyEN:   p.ReasonKeyEN,
-		ReasonKeyFR:   p.ReasonKeyFR,
-		ReasonParams:  p.ReasonParams,
+		ReasonKey:     p.ReasonKey.PickOptional(loc),
+		ReasonParams:  reasonParams,
 		Status:        string(p.Status),
 		CreatedAt:     p.CreatedAt,
 		ResolvedAt:    p.ResolvedAt,

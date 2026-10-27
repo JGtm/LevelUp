@@ -232,9 +232,12 @@ type TimeseriesMatchRow struct {
 	HeadshotKills   *int `json:"headshot_kills,omitempty"`
 	PerfectKills    *int `json:"perfect_kills,omitempty"`
 	// Nom de carte pour les étiquettes X compactes (timeseries.14 "Stats par minute"
-	// reprend le format `#N\nMap` de la page Contributions Squad).
-	MapName   string `json:"map_name,omitempty"`
-	MapNameFR string `json:"map_name_fr,omitempty"`
+	// reprend le format `#N\nMap` de la page Contributions Squad), dans la langue de la
+	// requête (repli sur la langue de repli).
+	MapName string `json:"map_name,omitempty"`
+	// MapLabel : le nom de la carte dans la langue de la requête, vide quand la carte n'a pas
+	// de nom dans cette langue (MapName rend alors le nom de repli).
+	MapLabel string `json:"map_label,omitempty"`
 	// Skill rank (CSR ou LUSR) — rating brut + type + contexte playlist/saison.
 	SkillRatingValue          *float64 `json:"skill_rating_value,omitempty"`
 	SkillRatingType           string   `json:"skill_rating_type,omitempty"`

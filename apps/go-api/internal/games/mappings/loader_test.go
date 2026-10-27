@@ -87,7 +87,7 @@ format = "integer"
 display_order = 1
 group = "combat"
 `,
-			errContains: "labels.fr manquant",
+			errContains: `labels: langue(s) manquante(s) ["fr"]`,
 		},
 		{
 			name: "unknown format",
@@ -181,7 +181,7 @@ format = "integer"
 display_order = 1
 group = "combat"
 `,
-			errContains: "description.en et description.fr",
+			errContains: `description: langue(s) manquante(s) ["fr"]`,
 		},
 	}
 
@@ -218,7 +218,7 @@ func TestFieldMappingLabelFallback(t *testing.T) {
 	}{
 		{"fr", "Éliminations", false},
 		{"en", "Kills", false},
-		{"xx", "Kills", true}, // fallback EN
+		{"zz", "Kills", true}, // fallback EN
 		{"", "Kills", true},   // fallback EN
 	}
 	for _, tc := range cases {
@@ -266,7 +266,7 @@ group = "combat"
 	}
 
 	// Locale inconnue → fallback EN.
-	desc, fb = m.Description("xx")
+	desc, fb = m.Description("zz")
 	if desc != "Total kills." || !fb {
 		t.Errorf("Description XX = (%q, %v), want fallback=true", desc, fb)
 	}

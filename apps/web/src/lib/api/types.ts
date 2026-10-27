@@ -388,7 +388,6 @@ export interface SettingsResponse {
   normalize_mode_labels: boolean
   show_records: boolean
   refresh_clears_caches: boolean
-  career_top_exclude_btb: boolean
   media_captures_base_dir: string
   // Valeur effective résolue (env > réglage > défaut prod). PATCH persiste le réglage.
   media_delete_source_after_transcode: boolean
@@ -468,8 +467,7 @@ export interface CareerSummary {
   is_max_rank: boolean
   recorded_at: string | null
   rank_image_url?: string | null
-  next_rank_name_fr?: string
-  next_rank_name_en?: string
+  next_rank_name?: string
   next_rank_image_url?: string | null
 }
 
@@ -505,13 +503,10 @@ export interface CareerLusrSection {
 }
 
 // V8b (2026-07-07) — les DTO réels servis par les endpoints Career. Le contrat Go
-// NE renvoie PAS de `top_matches_preview`/`encounters_preview` sur /pages/career :
-// les top matches et encounters sont fournis par leurs endpoints dédiés
-// (/top-matches, /encounters), consommés en direct par la page. Les schémas
-// canoniques CareerTopMatch/CareerEncounter existaient en surplus dans le contrat
-// mais N'étaient PAS les shapes de réponse — d'où des `undefined` silencieux.
-export type TopMatchDTO = components['schemas']['TopMatchDTO']
-
+// NE renvoie PAS de `encounters_preview` sur /pages/career : les encounters sont
+// fournis par leur endpoint dédié (/encounters), consommé en direct par la page. Le
+// schéma canonique CareerEncounter existait en surplus dans le contrat mais N'était
+// PAS la shape de réponse — d'où des `undefined` silencieux.
 export type EncounterDTO = components['schemas']['EncounterDTO']
 
 // CareerPageResponse reste une interface manuelle : les sous-types view-model
@@ -528,8 +523,6 @@ export interface CareerPageResponse {
   lusr: CareerLusrSection | null
   friends_xp_history?: FriendXPHistory[]
 }
-
-export type CareerTopMatchesResponse = components['schemas']['CareerTopMatchesResponse']
 
 export type CareerEncountersResponse = components['schemas']['CareerEncountersResponse']
 
@@ -777,9 +770,11 @@ export interface ExplorerMatchesQuerySummary {
   // available_experience_types : LabelValue (Label localisé backend, Value FR = clé
   // de filtre intacte). GH6-1, miroir GH5-2 Omnibar.
   available_experience_types?: LabelValue[]
-  available_playlists?: string[]
-  available_maps?: string[]
-  available_modes?: string[]
+  // playlists / cartes / modes : LabelValue (label dans la langue de la requête, value = nom de la
+  // langue par défaut, clé de filtre `playlists` / `maps` / `modes` indépendante de la langue).
+  available_playlists?: LabelValue[]
+  available_maps?: LabelValue[]
+  available_modes?: LabelValue[]
   /** Options Explorer-spécifiques avec count cascade-aware (sémantique OR au sein
    *  d'une dimension, AND entre dimensions). Les options à count=0 sont à griser.
    *  Le `value` est : code outcome (1..4) ou tier (1..5) en string, ou clé EN
@@ -891,11 +886,10 @@ export type SeasonMatchCount = components['schemas']['SeasonMatchCount']
  *  Ratios en nullable : null signifie "indisponible" (dénominateur nul). */
 export type ExplorerTargetSampleStats = components['schemas']['ExplorerTargetSampleStats']
 
-/** Une arme du top armes (cible Explorer) : label localisé + kills. */
+/** Une arme du top armes (cible Explorer) : libellé dans la langue de la requête + kills. */
 export interface ExplorerWeaponKill {
   weapon_id: number
-  label_fr: string
-  label_en: string
+  label: string
   kills: number
 }
 
@@ -1301,7 +1295,7 @@ export type MapBreakdownRow = components['schemas']['MapBreakdownRow']
 export type SquadMatchSeriesPoint = components['schemas']['SquadMatchSeriesPoint']
 
 /** Une ligne des « Outils de destruction » (Escouade, D8) : un outil — arme nommée par le
- *  registre (`kind` = `weapon`, `label` FR d'abord, `label_en` EN d'abord) ou nature nommée
+ *  registre (`kind` = `weapon`, `label` dans la langue de la requête) ou nature nommée
  *  par le web (mêlée, objet explosif, chute, non attribué…) —, sa classe de frag (pastille) et
  *  les frags de chaque joueur. */
 export type SquadWeaponToolLine = components['schemas']['SquadWeaponToolLine']
@@ -2488,7 +2482,7 @@ export interface WatcherAuthStatus {
 // ---------------------------------------------------------------------------
 
 // AssetMeta — type contractuel régénéré. Les champs sprite (médailles Halo 5) et
-// description / description_fr sont désormais portés par le schéma OpenAPI (optionnels :
+// description sont désormais portés (le serveur les résout dans la langue de la requête) par le schéma OpenAPI (optionnels :
 // vides pour maps/armes), plus besoin de shim manuel.
 export type AssetMeta = components['schemas']['AssetMeta']
 
@@ -2823,11 +2817,17 @@ export type RegistryNamesBackfillResult = components['schemas']['RegistryNamesBa
 
 export type ResolveResult = components['schemas']['ResolveResult']
 
+/** Miroir de domain.ModeTranslationRequest ; `mode_key` est la clé technique du mode, pas un libellé. */
+export interface ModeTranslationRequest {
+  mode_key: string
+  names: Record<string, string> // clé = code d'une langue de config/locales.toml
+}
+
+/** Miroir de domain.AssetTranslationRequest. */
 export interface AssetTranslationRequest {
   asset_kind: string // playlist | map | pair | game_variant
   asset_id: string
-  name_en?: string
-  name_fr?: string
+  names: Record<string, string> // clé = code d'une langue de config/locales.toml
 }
 
 export type CatalogRefreshResult = components['schemas']['CatalogRefreshResult']

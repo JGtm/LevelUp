@@ -55,7 +55,7 @@ func NewAssetURLAdapter() *AssetURLAdapter {
 	}
 }
 
-// WithMaps indexe les maps (ID = map_asset_id GUID, NameEN = name_canonical,
+// WithMaps indexe les maps (ID = map_asset_id GUID, CanonicalName = name_canonical,
 // ImageURL = URL CDN officielle). Les entrées sans ImageURL sont ignorées.
 func (a *AssetURLAdapter) WithMaps(maps []canonical.AssetMeta) *AssetURLAdapter {
 	for _, m := range maps {
@@ -66,7 +66,7 @@ func (a *AssetURLAdapter) WithMaps(maps []canonical.AssetMeta) *AssetURLAdapter 
 		if id := strings.TrimSpace(m.ID); id != "" {
 			a.mapURLByID[id] = url
 		}
-		if name := strings.TrimSpace(m.NameEN); name != "" {
+		if name := strings.TrimSpace(m.CanonicalName()); name != "" {
 			a.mapURLByName[name] = url
 		}
 	}

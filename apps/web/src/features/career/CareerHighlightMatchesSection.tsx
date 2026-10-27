@@ -102,13 +102,13 @@ export function CareerHighlightMatchesSection() {
 
   const modeOptions: MultiSelectOption[] = useMemo(() => {
     return (data?.available_modes ?? [])
-      .map((m) => ({ value: m.value, label: m.value, count: m.count }))
+      .map((m) => ({ value: m.value, label: m.label, count: m.count }))
       .filter((o) => o.count > 0 || selectedModes.has(o.value))
   }, [data?.available_modes, selectedModes])
 
   const playlistOptions: MultiSelectOption[] = useMemo(() => {
     return (data?.available_playlists ?? [])
-      .map((p) => ({ value: p.value, label: p.value, count: p.count }))
+      .map((p) => ({ value: p.value, label: p.label, count: p.count }))
       .filter((o) => o.count > 0 || selectedPlaylists.has(o.value))
   }, [data?.available_playlists, selectedPlaylists])
 

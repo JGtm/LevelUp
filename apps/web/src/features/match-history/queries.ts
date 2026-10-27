@@ -48,7 +48,12 @@ export function useSetMatchExclusion(playerSlug: string) {
     onSuccess: (_, { matchId }) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.matchHistoryAll(playerSlug) })
       void queryClient.invalidateQueries({
-        queryKey: queryKeys.matchView(playerSlug, useAppShellStore.getState().currentTitleSlug, matchId),
+        queryKey: queryKeys.matchView(
+          playerSlug,
+          useAppShellStore.getState().currentTitleSlug,
+          matchId,
+          useAppShellStore.getState().locale,
+        ),
       })
     },
   })

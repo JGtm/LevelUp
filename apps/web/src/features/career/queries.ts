@@ -17,8 +17,10 @@ import type {
 
 export function useCareerPage(playerSlug: string) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  // La locale scope la clé : les noms de rang sont servis dans la langue de la requête.
+  const locale = useAppShellStore((s) => s.locale)
   return useQuery({
-    queryKey: queryKeys.career(playerSlug, titleSlug),
+    queryKey: queryKeys.career(playerSlug, titleSlug, locale),
     queryFn: ({ signal }) =>
       api.get<CareerPageResponse>(`/players/${playerSlug}/pages/career`, undefined, { signal }),
     enabled: !!playerSlug,
@@ -45,9 +47,11 @@ export function useCareerEncounters(playerSlug: string) {
 // pour alimenter les dropdowns.
 export function useCareerHighlightMatches(playerSlug: string, filters: CareerHighlightFilters = {}) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  // Cartes, modes et playlists (lignes et listes de filtres) servis dans la langue de la requête.
+  const locale = useAppShellStore((s) => s.locale)
   const params = buildHighlightFilterParams(filters)
   return useQuery({
-    queryKey: queryKeys.careerHighlightMatches(playerSlug, titleSlug, params),
+    queryKey: queryKeys.careerHighlightMatches(playerSlug, titleSlug, params, locale),
     queryFn: ({ signal }) => {
       const qs = params ? `?${params}` : ''
       return api.get<CareerHighlightMatchesResponse>(
@@ -114,8 +118,9 @@ export function useCareerRivals(playerSlug: string) {
 // careerCSRs(slug, undefined) collisionnerait avec l'appel principal.
 export function useCareerCSRs(playerSlug: string, season?: string, enabled = true) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  const locale = useAppShellStore((s) => s.locale)
   return useQuery({
-    queryKey: queryKeys.careerCSRs(playerSlug, titleSlug, season),
+    queryKey: queryKeys.careerCSRs(playerSlug, titleSlug, locale, season),
     queryFn: ({ signal }) =>
       api.get<CareerCSRResponse>(
         `/players/${playerSlug}/pages/career/csrs${season ? `?season=${encodeURIComponent(season)}` : ''}`,

@@ -10,6 +10,8 @@ import (
 
 	"levelup/go-api/internal/prestige"
 	"levelup/go-api/internal/progression/coach_advisor"
+
+	"levelup/go-api/internal/i18n"
 )
 
 // ─── Fakes spécifiques Phase 7 ───
@@ -105,8 +107,7 @@ func catalogWithAccuracy(repo *fakeTemplateRepo) {
 		Cadence:         "weekly",
 		EvalType:        "threshold",
 		ModeFilter:      "universal",
-		LabelEN:         "Accuracy",
-		LabelFR:         "Accuracy",
+		Labels:          i18n.FromColumns("Accuracy", "Accuracy"),
 		NormalTarget:    0.45,
 		HeroicTarget:    0.50,
 		LegendaryTarget: 0.55,

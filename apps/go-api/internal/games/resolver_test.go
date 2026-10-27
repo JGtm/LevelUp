@@ -29,9 +29,6 @@ func (s *stubData) LoadEncounters(_ context.Context, _ string) ([]canonical.Enco
 func (s *stubData) LoadLUSRHistory(_ context.Context, _ string) ([]canonical.LUSRCheckpoint, error) {
 	return nil, nil
 }
-func (s *stubData) LoadTopMatches(_ context.Context, _ string) ([]canonical.CareerTopMatch, error) {
-	return nil, nil
-}
 func (s *stubData) LoadTargetRecentMatches(_ context.Context, _ string, _ int) ([]canonical.RecentMatchRow, error) {
 	return nil, nil
 }

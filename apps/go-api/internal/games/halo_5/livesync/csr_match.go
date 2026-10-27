@@ -143,7 +143,7 @@ func buildPerMatchCSRInsert(matchID string, cur *halo5.H5Csr) *persist.SkillRank
 			PlaylistGroup: &pg,
 		}
 	}
-	tier := h5DesignationTierEN(cur.DesignationId)
+	tier := h5DesignationTier(cur.DesignationId)
 	sub := cur.Tier
 	label := tier
 	if tier != "" && !strings.EqualFold(tier, "Onyx") && sub > 0 {

@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
 // oddballRow : le témoin 293a763e — victoire 2 manches à 1, alors que les points disent
@@ -22,7 +23,7 @@ func oddballRow() domain.MatchHistoryRawRow {
 	pr, er, total := 2, 1, 3
 	return domain.MatchHistoryRawRow{
 		MatchID:         "m-oddball",
-		GameVariantName: &variant,
+		GameVariantName: i18n.FromColumns(variant, ""),
 		MyTeamScore:     &p, EnemyTeamScore: &e,
 		MyRoundsWon: &pr, EnemyRoundsWon: &er, RoundsTotal: &total,
 	}
@@ -30,7 +31,7 @@ func oddballRow() domain.MatchHistoryRawRow {
 
 func TestEnrichRow_VarianteDeclareeAfficheLesManches(t *testing.T) {
 	fmts := rowFormatters{roundsDecide: map[string]bool{"Arena:Oddball": true}}
-	got := enrichRow(oddballRow(), nil, fmts)
+	got := enrichRow(oddballRow(), nil, fmts, i18n.Default)
 	if got.ScoreLabel != "2 - 1" {
 		t.Errorf("ScoreLabel = %q, want \"2 - 1\"", got.ScoreLabel)
 	}
@@ -42,7 +43,7 @@ func TestEnrichRow_VarianteDeclareeAfficheLesManches(t *testing.T) {
 // La table ABSENTE (service non câblé) doit rendre les points, pas planter : c'est la
 // dégradation qui garantit qu'un titre sans déclaration ne régresse pas.
 func TestEnrichRow_SansTableAfficheLesPoints(t *testing.T) {
-	got := enrichRow(oddballRow(), nil, rowFormatters{})
+	got := enrichRow(oddballRow(), nil, rowFormatters{}, i18n.Default)
 	if got.ScoreLabel != "181 - 186" || got.ScoreKind != "points" {
 		t.Errorf("got %q / %q, want \"181 - 186\" / \"points\"", got.ScoreLabel, got.ScoreKind)
 	}
@@ -53,9 +54,9 @@ func TestEnrichRow_SansTableAfficheLesPoints(t *testing.T) {
 func TestEnrichRow_VarianteNonDeclareeGardeLesPoints(t *testing.T) {
 	row := oddballRow()
 	variant := "CTF:Arena"
-	row.GameVariantName = &variant
+	row.GameVariantName = i18n.FromColumns(variant, "")
 	fmts := rowFormatters{roundsDecide: map[string]bool{"Arena:Oddball": true}}
-	got := enrichRow(row, nil, fmts)
+	got := enrichRow(row, nil, fmts, i18n.Default)
 	if got.ScoreLabel != "181 - 186" || got.ScoreKind != "points" {
 		t.Errorf("got %q / %q, want \"181 - 186\" / \"points\"", got.ScoreLabel, got.ScoreKind)
 	}
@@ -66,9 +67,9 @@ func TestEnrichRow_VarianteNonDeclareeGardeLesPoints(t *testing.T) {
 func TestEnrichRow_CleTrimee(t *testing.T) {
 	row := oddballRow()
 	variant := "  Arena:Oddball  "
-	row.GameVariantName = &variant
+	row.GameVariantName = i18n.FromColumns(variant, "")
 	fmts := rowFormatters{roundsDecide: map[string]bool{"Arena:Oddball": true}}
-	if got := enrichRow(row, nil, fmts); got.ScoreKind != "rounds" {
+	if got := enrichRow(row, nil, fmts, i18n.Default); got.ScoreKind != "rounds" {
 		t.Errorf("ScoreKind = %q, want \"rounds\" (clé trimée)", got.ScoreKind)
 	}
 }

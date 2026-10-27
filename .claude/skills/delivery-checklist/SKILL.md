@@ -117,7 +117,7 @@ Critères :
 ## 6. Frontend — règles couleurs et i18n
 
 - [ ] Pas de hex `#RRGGBB` ni classe Tailwind couleur dans `features/` ou `components/`
-- [ ] Nouvelles strings UI ajoutées dans `i18n.ts` pour **FR et EN**
+- [ ] Nouvelles strings UI ajoutées dans le dictionnaire de la feature ou le manifest, dans **chaque langue de `config/locales.toml`** (fr + en obligatoires)
 - [ ] Nouvelles query keys ajoutées dans `apps/web/src/lib/query/keys.ts`
 - [ ] `routeTree.gen.ts` non édité manuellement
 

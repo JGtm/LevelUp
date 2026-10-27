@@ -204,7 +204,7 @@ export function SquadFilterBar({
               : 'border border-input bg-background text-muted-foreground hover:bg-muted',
           ].join(' ')}
         >
-          Analyser
+          {common('common.filter.analyser')}
         </button>
 
         {/* Réinitialiser — bouton (aligné visuellement sur Analyser). */}

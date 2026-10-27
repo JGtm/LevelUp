@@ -73,7 +73,7 @@ export function TacticalZoneCard({
   bilan,
   vue = null,
 }: TacticalZoneCardProps) {
-  const titre = titreDeZone(t, locale, cellule !== null, detail.data)
+  const titre = titreDeZone(t, cellule !== null, detail.data)
   const morts = bilan?.morts && (question === 'morts' || question === 'isole') ? bilan.morts : undefined
   const aUnBloc = cellule !== null && (vue !== null || morts !== undefined)
   return (

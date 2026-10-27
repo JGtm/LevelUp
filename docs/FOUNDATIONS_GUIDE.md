@@ -14,7 +14,7 @@ The Go + React migration of LevelUp is built on **four cross-cutting foundations
 |---|---|---|---|
 | 1 | **Canonical types** | `apps/go-api/internal/games/canonical/` | Title-agnostic shapes for data flowing between layers |
 | 2 | **Adapter pattern** | `apps/go-api/internal/games/adapter.go` | Two interfaces (`TitleDataAdapter` + `TitleSemanticAdapter`) — separation data vs labels |
-| 3 | **i18n TOML manifests** | `apps/web/src/lib/i18n/manifests/*.toml` | Single source of truth for all UI strings (FR + EN) |
+| 3 | **i18n TOML manifests** | `apps/web/src/lib/i18n/manifests/*.toml` | Single source of truth for all UI strings (one entry per language of `config/locales.toml`) |
 | 4 | **ECharts wrappers** | `apps/web/src/components/charts/*.tsx` | Reusable client-side chart components |
 
 These foundations were locked in Phase 0 of `.ai/V7/PLAN_META_FOUNDATIONS_GO.md` and validated across 8 page migrations (Phases 1–3). They are stable. **Don't reinvent them.**
@@ -116,7 +116,7 @@ For TOML files (`fields.toml`, `assets.toml`, `outcomes.toml`), see ADR 0002 + `
 
 ### 3.3 i18n TOML manifests
 
-All UI strings in `apps/web/src/features/**` and `apps/web/src/components/**` come from manifests in `apps/web/src/lib/i18n/manifests/`.
+All UI strings in `apps/web/src/features/**` and `apps/web/src/components/**` come from manifests in `apps/web/src/lib/i18n/manifests/`. A leaf carries one entry per language listed in `config/locales.toml` (`fr` and `en` today; to add one, see 3.5).
 
 **Workflow** :
 
@@ -190,6 +190,101 @@ import { distributionBucketsToSeries } from '@/features/timeseries/seriesAdapter
 Each wrapper exposes a pure `buildXxxOption` builder (testable without React) — see ADR 0001.
 
 For the color tokens (`perf-tier-2`, `outcome-win`, etc.), see the `color-tokens` skill.
+
+### 3.5 Adding a language (ADR 0040)
+
+A language costs one entry in a list, the translations and the data: no code changes. A language that
+is listed and incomplete is refused by the generator, the compiler or a test; it is never served
+through a silent fallback. Worked example: Spanish (`es`).
+
+1. **List it** in `config/locales.toml`, the single source of the languages (the order of the entries is
+   the display order; `fr` stays the `default`, `en` the `fallback` of game names):
+
+   ```toml
+   [[locale]]
+   code = "es"                  # primary BCP-47 subtag, lower case: key of every per-language table
+   intl = "es-ES"               # tag handed to Intl.* (numbers, dates); its primary subtag must be `code`
+   halo = ["es-ES", "es-MX"]    # Halo tags of asset_translations, by preference
+   required = true              # true: curated texts must cover it (see step 4); false: they fall back to `en`
+   ```
+
+   A language that ships an interface is `required = true`: with `false`, the curated labels (metric
+   names, outcomes, Prestige levels) silently stay English. The primary subtag of `intl` must equal
+   `code`: some callers hand an Intl tag where a language is expected (`normalizeLocale("es-ES")`), so
+   a tag such as `en-GB` on a language other than `en` is read back as `en`.
+
+   For `populate-assets` to fetch it (step 5), each `halo` tag must be one of `domain.TargetLanguages`
+   (`apps/go-api/internal/domain/asset_langs.go`, the 14 languages of Halo Infinite).
+
+2. **Generate** the two derived lists and the manifest modules:
+
+   ```bash
+   node apps/web/scripts/build_i18n_manifests.mjs
+   ```
+
+   It rewrites `apps/web/src/lib/i18n/generated/locales.ts` and `apps/go-api/internal/i18n/locales_gen.go`
+   (both committed), then every manifest module, and stops at the first leaf that lacks the language with
+   `<file> : cle "<path>" : langue manquante "<code>"`. `TestGeneratedTableMatchesLocalesTOML` (Go) and
+   `generatedLocalesFresh.guard.test.ts` (web) fail on any difference between the generated files and
+   `locales.toml`.
+
+3. **Translate the interface (web).** Add `es = "..."` to every leaf of
+   `apps/web/src/lib/i18n/manifests/*.toml` (ICU placeholders unchanged), then regenerate (step 2). Each
+   feature dictionary under `features/<feature>/i18n/` gets an `es.ts` typed by its `contract.ts` and one
+   line in its `index.ts` (`Record<Locale, T>`); `npx tsc -b` names every dictionary that lacks the
+   language, and `lib/i18n/locale-keyed-objects.guard.test.ts` requires every other locale-keyed object to
+   be typed by `Locale`. `tsc` also names the test fixtures typed by the generated contract (the replay
+   labels carry one member per language: about twenty `*.test.ts(x)` files under `features/match-replay/`).
+   Per-language data that is not text needs its own files: the announcer sound stems of
+   `features/match-replay/sound/` need one `.wav` per language (`replaySoundAssets.guard.test.ts`). The
+   language selector of the Settings page lists `fr` and `en` only (ADR 0040, out of scope of the plan): it
+   belongs to the first real language.
+
+4. **Translate what the server writes (Go).**
+   - Message catalogue: add `es = "..."` to every message of `apps/go-api/internal/i18n/messages/*.toml`,
+     with the same `{variables}`; `TestCatalogueComplet` (`go test ./internal/i18n/`) lists what is missing.
+   - Curated per-language tables (`config/titles/{slug}/mappings/*.toml`, `internal/ops/citation_texts.toml`,
+     `config/prestige/tuning.toml` (`levels.names`), ...): a `required` language is mandatory (the loader refuses a missing language and an unknown code,
+     `i18n.Text.Validate`); a listed language that is not `required` is optional and falls back to `en`
+     (counter `levelup.i18n.text_fallback_total`).
+   - Optional documents: `docs/ES/RELEASE_NOTES.md` (absent: the English notes are served after a notice
+     written in the requested language, counter `levelup.i18n.document_fallback_total`) and a demo
+     fixture `internal/service/demo_fixtures/challenges.es.json`.
+
+5. **Game names.** The names of maps, playlists, pairs and game variants come from the Halo API:
+
+   ```bash
+   levelup populate-assets --langs es-ES,es-MX --dry-run   # then without --dry-run
+   ```
+
+   It fills `asset_translations` (one row per asset and Halo tag; the default `--langs` is all 14); the
+   readers choose the row of the request language through `i18n.Text.Pick` and fall back to `en`, with no
+   code and no column. The names written by hand (medals, achievements, milestones, citations, weapons...)
+   are rows of `medal_translations` / `asset_translations` or entries of the per-language TOML tables of
+   step 4; the administration form offers one input per listed language.
+
+6. **Regenerate the contract and check.** The replay labels are one property per language in the OpenAPI
+   document: `make openapi-gen && make generate-types` (`TestOpenAPIYAMLIsUpToDate` refuses a stale
+   `api/openapi.yaml`). Then `cd apps/go-api && go test ./internal/i18n/... ./internal/archlint/...`,
+   `cd apps/web && npx tsc -b && npx vitest run` and `node tools/check-generated-types-fresh.mjs`.
+
+| What is missing for a listed language | Who refuses |
+|---|---|
+| a manifest leaf | the generator (step 2) |
+| a feature dictionary | `tsc` (`Record<Locale, T>`) |
+| a catalogue message or a `{variable}` | `TestCatalogueComplet` |
+| a `required` language in a curated table, or an unknown code | the loader at boot |
+| a game name | nobody: it falls back to `en` and is counted |
+| a generated file out of date | the two freshness tests (step 2) |
+
+**Proof mode.** `node apps/web/scripts/build_i18n_manifests.mjs --pseudo xx [--out <dir>]` fabricates a
+language `xx` from `en` (text between `⟦` and `⟧`, ICU placeholders intact) without touching
+`config/locales.toml` or any committed file: the modules, `locales.ts` and `locales_gen.go` go to `--out`
+(a temporary folder when omitted). Any visible text outside the brackets in the application is a string
+that does not go through a manifest. It is a proof tool, never a shipped language. It writes the generated modules only: to run the
+application in `xx`, the same files as for a real language (steps 1 to 6) are needed, derived from `en`
+(throwaway-branch procedure and results: `.ai/PLAN_I18N_MULTILANGUE.md`, step 10). The unknown-language
+code used by the tests is `zz`, never `xx`.
 
 ---
 
@@ -354,6 +449,7 @@ A: The admin dashboard (2026-07 overhaul) has its own canonical primitives under
 | `docs/adr/0001-charts-stack-echarts.md` | Why ECharts (decision context) |
 | `docs/adr/0002-canonical-player-match-row.md` | Why canonical types |
 | `docs/adr/0003-i18n-manifest-and-linter.md` | Why TOML manifests + lint |
+| `docs/adr/0040-i18n-n-locales.md` | Why one list of languages (`config/locales.toml`) and how to add a language (§ 3.5) |
 | `docs/adr/0004-narrative-engine.md` | Why 8 roles + 6-axis radar |
 | `.ai/V7/PLAN_META_FOUNDATIONS_GO.md` | Master plan (Phases 0–4) |
 | `.claude/skills/arch-rules/SKILL.md` | Layer rules + multi-title contract |

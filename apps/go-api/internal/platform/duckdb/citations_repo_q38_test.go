@@ -27,6 +27,8 @@ import (
 	"context"
 	"strings"
 	"testing"
+
+	"levelup/go-api/internal/i18n"
 )
 
 // TestLoadMatchCitationsForView_TopCitationsEnriched : path nominal —
@@ -62,15 +64,17 @@ func TestLoadMatchCitationsForView_TopCitationsEnriched(t *testing.T) {
 	// Seed citation_mappings supplémentaire pour 2 norms (le seedMetaDBSchema
 	// en injecte 1 déjà : killing_spree).
 	if _, err := pdb.Metadata.Exec(ctx,
-		`INSERT INTO citation_mappings (citation_name_norm, citation_name_display, mapping_type, enabled) VALUES (?,?,?,?)`,
-		"double_kill", "Double Kill", "medal", true); err != nil {
+		`INSERT INTO citation_mappings (citation_name_norm, mapping_type, enabled) VALUES (?,?,?)`,
+		"double_kill", "medal", true); err != nil {
 		t.Fatalf("seed citation_mappings double: %v", err)
 	}
+	insertCitationTexts(t, pdb.Metadata, "double_kill", i18n.Text{i18n.LocaleFR: "Double Kill"}, nil)
 	if _, err := pdb.Metadata.Exec(ctx,
-		`INSERT INTO citation_mappings (citation_name_norm, citation_name_display, mapping_type, enabled) VALUES (?,?,?,?)`,
-		"triple_kill", "Triple Kill", "medal", true); err != nil {
+		`INSERT INTO citation_mappings (citation_name_norm, mapping_type, enabled) VALUES (?,?,?)`,
+		"triple_kill", "medal", true); err != nil {
 		t.Fatalf("seed citation_mappings triple: %v", err)
 	}
+	insertCitationTexts(t, pdb.Metadata, "triple_kill", i18n.Text{i18n.LocaleFR: "Triple Kill"}, nil)
 
 	rows, err := repo.LoadMatchCitationsForView(ctx, matchID)
 	if err != nil {

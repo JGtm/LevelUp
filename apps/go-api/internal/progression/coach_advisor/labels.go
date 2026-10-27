@@ -1,16 +1,19 @@
 package coach_advisor
 
-import "fmt"
+import (
+	"levelup/go-api/internal/i18n"
+)
 
-// labels.go — templates de titres/descriptions narratifs pour les arcs
-// dynamiques composés par arc_composer (cf. ADR 0028 §"Cohérence narrative").
+// labels.go — titres et descriptions narratifs des arcs dynamiques composés par arc_composer
+// (cf. ADR 0028 §"Cohérence narrative"). Les textes vivent dans le catalogue des messages
+// (`internal/i18n/messages/coach.toml`) : une valeur par langue de l'application.
 //
 // Templates statiques par radar_axis. Pas de génération LLM — déterministe
 // et indépendant de tout service externe. Pour un titre futur sans
 // correspondance, fallback générique.
 
-// arcTitleForAxis retourne le titre EN/FR d'un arc paramétré par son axis
-// pivot. ADR 0028 §"Cohérence narrative" :
+// arcTitleForAxis retourne le titre d'un arc paramétré par son axis pivot, dans toutes les
+// langues. ADR 0028 §"Cohérence narrative" :
 //
 //	combat     : Combat Mastery       / Domination en combat
 //	survival   : Resilient Comeback   / Reprise solide
@@ -18,68 +21,78 @@ import "fmt"
 //	objective  : Objective First      / Objectif d'abord
 //	score      : Elite Performance    / Performance d'élite
 //	impact     : Impact Player        / Joueur d'impact
-func arcTitleForAxis(axis string) (en, fr string) {
+func arcTitleForAxis(axis string) i18n.Text {
 	switch axis {
 	case "combat":
-		return "Combat Mastery", "Domination en combat"
+		return i18n.MsgText("coach.arc.title.combat", nil)
 	case "survival":
-		return "Resilient Comeback", "Reprise solide"
+		return i18n.MsgText("coach.arc.title.survival", nil)
 	case "support":
-		return "Team Pillar", "Pilier d'équipe"
+		return i18n.MsgText("coach.arc.title.support", nil)
 	case "objective":
-		return "Objective First", "Objectif d'abord"
+		return i18n.MsgText("coach.arc.title.objective", nil)
 	case "score":
-		return "Elite Performance", "Performance d'élite"
+		return i18n.MsgText("coach.arc.title.score", nil)
 	case "impact":
-		return "Impact Player", "Joueur d'impact"
+		return i18n.MsgText("coach.arc.title.impact", nil)
 	}
 	// Fallback générique — utilisé si un futur titre introduit un axis inconnu.
-	return "Coach Arc", "Arc du coach"
+	return i18n.MsgText("coach.arc.title.default", nil)
 }
 
-// arcDescriptionForAxis retourne une description courte FR/EN paramétrée par
-// l'axis pivot et le nombre d'étapes. Tone neutre, factuel — pas de
-// promesse marketing.
-func arcDescriptionForAxis(axis string, stepCount int) (en, fr string) {
-	axisLabelEN := axisHumanEN(axis)
-	axisLabelFR := axisHumanFR(axis)
-	en = fmt.Sprintf("A %d-step arc to consolidate your %s progress.", stepCount, axisLabelEN)
-	fr = fmt.Sprintf("Un arc en %d étapes pour consolider ta progression %s.", stepCount, axisLabelFR)
-	return en, fr
+// arcDescriptionForAxis retourne une description courte, dans toutes les langues, paramétrée
+// par l'axis pivot et le nombre d'étapes. Tone neutre, factuel — pas de promesse marketing.
+func arcDescriptionForAxis(axis string, stepCount int) i18n.Text {
+	return i18n.MsgTextWith("coach.arc.description", func(l i18n.Locale) i18n.Params {
+		return i18n.Params{"steps": stepCount, "axis": axisHuman(l, axis)}
+	})
 }
 
-func axisHumanEN(axis string) string {
+// axisHuman retourne le nom de l'axis pivot dans la langue `l`, tel qu'inséré dans la phrase de
+// description de l'arc. Axis inconnu : l'identifiant lui-même (précédé de « sur » en français).
+func axisHuman(l i18n.Locale, axis string) string {
 	switch axis {
 	case "combat":
-		return "combat"
+		return i18n.Msg(l, "coach.axis.combat", nil)
 	case "survival":
-		return "survival"
+		return i18n.Msg(l, "coach.axis.survival", nil)
 	case "support":
-		return "team support"
+		return i18n.Msg(l, "coach.axis.support", nil)
 	case "objective":
-		return "objective play"
+		return i18n.Msg(l, "coach.axis.objective", nil)
 	case "score":
-		return "scoring"
+		return i18n.Msg(l, "coach.axis.score", nil)
 	case "impact":
-		return "impact"
+		return i18n.Msg(l, "coach.axis.impact", nil)
 	}
-	return axis
+	return i18n.Msg(l, "coach.axis.other", i18n.Params{"axis": axis})
 }
 
-func axisHumanFR(axis string) string {
-	switch axis {
-	case "combat":
-		return "en combat"
-	case "survival":
-		return "en survie"
-	case "support":
-		return "en support d'équipe"
-	case "objective":
-		return "sur l'objectif"
-	case "score":
-		return "au scoring"
-	case "impact":
-		return "en impact"
+// reasonKeys retourne la clé d'i18n du motif d'une proposition pour chaque langue de l'application :
+// la clé de base suivie de « . » et du code de la langue (`coach.proposal.arc.combat.fr`).
+func reasonKeys(base string) i18n.Text {
+	keys := make(i18n.Text, len(i18n.Locales()))
+	for _, l := range i18n.Locales() {
+		keys[l] = base + "." + string(l)
 	}
-	return "sur " + axis
+	return keys
+}
+
+// Bases des libellés que Proposal.ReasonParams stocke une fois par langue (`label_fr`,
+// `label_en`... : voir i18n.ParamKey). Un défi proposé porte `label` ; un arc proposé porte
+// `title` et `description`.
+const (
+	ReasonParamLabel       = "label"
+	ReasonParamTitle       = "title"
+	ReasonParamDescription = "description"
+)
+
+var reasonParamBases = []string{ReasonParamLabel, ReasonParamTitle, ReasonParamDescription}
+
+// ResolveReasonParams retourne ReasonParams pour la langue `l` : chaque famille de libellés
+// stockée par langue devient une clé unique (`label`, `title`, `description`). Les lignes déjà
+// stockées (`label_fr`, `label_en`) se lisent ainsi sans migration ; une langue absente d'une
+// ligne replie sur l'anglais. Un JSON illisible rend l'erreur, l'appelant la journalise.
+func ResolveReasonParams(raw string, l i18n.Locale) (string, error) {
+	return i18n.ResolveParamsJSON(raw, reasonParamBases, l)
 }

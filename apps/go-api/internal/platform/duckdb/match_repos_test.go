@@ -12,6 +12,7 @@ import (
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
 // ---------------------------------------------------------------------------
@@ -68,18 +69,6 @@ func TestFiltersRepo_GetPlayerMatchCount(t *testing.T) {
 	}
 	if count != 1 {
 		t.Errorf("attendu 1, obtenu %d", count)
-	}
-}
-
-func TestFiltersRepo_GetAvailablePlaylists(t *testing.T) {
-	pdb := newTestPlayerDB(t)
-	repo := NewFiltersRepo(pdb)
-	playlists, err := repo.GetAvailablePlaylists(context.Background())
-	if err != nil {
-		t.Fatalf("GetAvailablePlaylists: %v", err)
-	}
-	if len(playlists) != 1 {
-		t.Errorf("attendu 1 playlist, obtenu %d", len(playlists))
 	}
 }
 
@@ -227,11 +216,13 @@ func TestCitationsRepo_LoadCitationMappings_DescriptionLocaleAware(t *testing.T)
 	// killing_spree est déjà seedé (FR "Série de kills" / EN "Killing spree streak").
 	// On ajoute une citation SANS description_en pour prouver le fallback nom-seul.
 	if _, err := pdb.Metadata.Exec(ctx,
-		`INSERT INTO citation_mappings (citation_name_norm, citation_name_display, citation_name_display_en, mapping_type, category, description, enabled)
-		 VALUES (?,?,?,?,?,?,?)`,
-		"no_en_desc", "Sans EN", "No EN", "medal", "combat", "Description FR uniquement", true); err != nil {
+		`INSERT INTO citation_mappings (citation_name_norm, mapping_type, category, enabled)
+		 VALUES (?,?,?,?)`,
+		"no_en_desc", "medal", "combat", true); err != nil {
 		t.Fatalf("seed citation sans description_en: %v", err)
 	}
+	insertCitationTexts(t, pdb.Metadata, "no_en_desc",
+		i18n.Text{i18n.LocaleFR: "Sans EN", i18n.LocaleEN: "No EN"}, i18n.Text{i18n.LocaleFR: "Description FR uniquement"})
 
 	byNorm := func(rows []domain.CitationMappingRow) map[string]domain.CitationMappingRow {
 		m := make(map[string]domain.CitationMappingRow, len(rows))

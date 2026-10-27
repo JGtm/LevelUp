@@ -11,6 +11,7 @@ import (
 	"levelup/go-api/internal/analysis/timeline"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
@@ -127,6 +128,8 @@ type buildSquadTablesInput struct {
 	squadXUIDs    map[string]string
 	weapons       []port.WeaponKillRow
 	medals        []port.MedalRow
+	// locale : la langue de la requête (nom des armes du tableau).
+	locale i18n.Locale
 }
 
 // buildSquadTables assemble les 3 tableaux (history, weapons, medals).
@@ -134,7 +137,7 @@ func buildSquadTables(in buildSquadTablesInput) *domain.SquadTables {
 	out := &domain.SquadTables{}
 
 	// History : toujours buildable depuis les SharedMatches + rowsByPlayer.
-	historyRows := BuildHistoryTable(in.sharedMatches, in.rowsByPlayer, in.squadOrder)
+	historyRows := BuildHistoryTable(in.sharedMatches, in.rowsByPlayer, in.squadOrder, in.locale)
 	if len(historyRows) > 0 {
 		out.History = make([]any, 0, len(historyRows))
 		for _, r := range historyRows {
@@ -149,7 +152,7 @@ func buildSquadTables(in buildSquadTablesInput) *domain.SquadTables {
 	}
 
 	if len(in.weapons) > 0 {
-		weaponsTable := BuildWeaponsTable(in.weapons, xuidToGT, 0)
+		weaponsTable := BuildWeaponsTable(in.locale, in.weapons, xuidToGT, 0)
 		out.Weapons = make([]any, 0, len(weaponsTable))
 		for _, r := range weaponsTable {
 			out.Weapons = append(out.Weapons, r)

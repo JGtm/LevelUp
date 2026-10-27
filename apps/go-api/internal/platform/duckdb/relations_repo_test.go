@@ -20,7 +20,7 @@ func seedRelations(t *testing.T, db *DB) {
 		`CREATE TABLE match_participants (
 			match_id VARCHAR, xuid VARCHAR, team_id INTEGER, outcome INTEGER, kda DOUBLE, gamertag VARCHAR)`,
 		`CREATE TABLE match_registry (
-			match_id VARCHAR, start_time_utc TIMESTAMPTZ, start_time TIMESTAMP, pair_name VARCHAR, map_name VARCHAR, map_name_fr VARCHAR)`,
+			match_id VARCHAR, start_time_utc TIMESTAMPTZ, start_time TIMESTAMP, pair_name VARCHAR, map_name VARCHAR, map_name_fr VARCHAR, map_id VARCHAR, pair_id VARCHAR)`,
 		`CREATE TABLE xuid_aliases (xuid VARCHAR, gamertag VARCHAR)`,
 	} {
 		if _, err := db.Exec(ctx, ddl); err != nil {
@@ -44,11 +44,11 @@ func seedRelations(t *testing.T, db *DB) {
 		// Heures UTC distinctes pour exercer le bucketing day-parts du heatmap :
 		// m1=02h (Nuit), m2=09h (Matin), m3=19h (Soir), m4=20h (Soir), m5=14h.
 		`INSERT INTO match_registry VALUES
-			('m1', TIMESTAMPTZ '2026-01-10 02:00:00+00', NULL, 'Slayer', 'Aquarius', NULL),
-			('m2', TIMESTAMPTZ '2026-02-10 09:00:00+00', NULL, 'Slayer', 'Aquarius', NULL),
-			('m3', TIMESTAMPTZ '2026-03-10 19:00:00+00', NULL, 'Capture the Flag', 'Bazaar', NULL),
-			('m4', TIMESTAMPTZ '2026-04-10 20:00:00+00', NULL, 'Capture the Flag', 'Bazaar', NULL),
-			('m5', TIMESTAMPTZ '2026-05-10 14:00:00+00', NULL, 'Oddball', 'Live Fire', NULL)`,
+			('m1', TIMESTAMPTZ '2026-01-10 02:00:00+00', NULL, 'Slayer', 'Aquarius', NULL, NULL, NULL),
+			('m2', TIMESTAMPTZ '2026-02-10 09:00:00+00', NULL, 'Slayer', 'Aquarius', NULL, NULL, NULL),
+			('m3', TIMESTAMPTZ '2026-03-10 19:00:00+00', NULL, 'Capture the Flag', 'Bazaar', NULL, NULL, NULL),
+			('m4', TIMESTAMPTZ '2026-04-10 20:00:00+00', NULL, 'Capture the Flag', 'Bazaar', NULL, NULL, NULL),
+			('m5', TIMESTAMPTZ '2026-05-10 14:00:00+00', NULL, 'Oddball', 'Live Fire', NULL, NULL, NULL)`,
 		`INSERT INTO xuid_aliases VALUES
 			('xuidMe','MePlayer'),
 			('xuidAlly','AllyPlayer'),

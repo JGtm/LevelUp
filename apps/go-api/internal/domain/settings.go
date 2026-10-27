@@ -15,7 +15,6 @@ type SettingsResponse struct {
 	NormalizeModeLabels  bool   `json:"normalize_mode_labels"`
 	ShowRecords          bool   `json:"show_records"`
 	RefreshClearsCaches  bool   `json:"refresh_clears_caches"`
-	CareerTopExcludeBTB  bool   `json:"career_top_exclude_btb"`
 	MediaCapturesBaseDir string `json:"media_captures_base_dir"`
 	// MediaDeleteSourceAfterTranscode : valeur EFFECTIVE résolue (bool, pas un
 	// pointeur) de la politique de suppression du source après transcodage HLS.
@@ -106,7 +105,6 @@ type UpdateSettingsRequest struct {
 	NormalizeModeLabels  *bool   `json:"normalize_mode_labels,omitempty"`
 	ShowRecords          *bool   `json:"show_records,omitempty"`
 	RefreshClearsCaches  *bool   `json:"refresh_clears_caches,omitempty"`
-	CareerTopExcludeBTB  *bool   `json:"career_top_exclude_btb,omitempty"`
 	MediaCapturesBaseDir *string `json:"media_captures_base_dir,omitempty"`
 	// MediaDeleteSourceAfterTranscode : *bool (nil = auto). PATCH persiste le pointeur
 	// dans app_settings.json ; la résolution effective reste au déclenchement.

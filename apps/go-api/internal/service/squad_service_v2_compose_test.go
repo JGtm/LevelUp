@@ -8,6 +8,7 @@ import (
 	"levelup/go-api/internal/analysis/temporal"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
@@ -110,8 +111,8 @@ func TestGetSquadPage_FullComposition(t *testing.T) {
 			},
 		},
 		weapons: []port.WeaponKillRow{
-			{XUID: xuidMain, WeaponID: 100, Kills: 10, Label: "BR75"},
-			{XUID: xuidF1, WeaponID: 100, Kills: 6, Label: "BR75"},
+			{XUID: xuidMain, WeaponID: 100, Kills: 10, Label: i18n.Text{i18n.LocaleFR: "BR75"}},
+			{XUID: xuidF1, WeaponID: 100, Kills: 6, Label: i18n.Text{i18n.LocaleFR: "BR75"}},
 		},
 		medals: []port.MedalRow{
 			{XUID: xuidMain, MatchID: "m1", MedalID: 200, Count: 1, Label: "Killing Spree"},

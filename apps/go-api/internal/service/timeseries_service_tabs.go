@@ -11,6 +11,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/mappings"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/legacymatch"
 )
 
@@ -323,12 +324,13 @@ func buildKillsBuckets(matches []legacymatch.StatsMatchRow) []domain.Distributio
 // provideSpree : false quand le titre ne porte pas le max killing spree (Halo 5)
 // → MaxKillingSpree reste nil par ligne (la série « Folie meurtrière max » est
 // masquée) au lieu de fabriquer une valeur.
+// loc : la langue de la requête (nom de la carte, repli en).
 // assistsExpected : map match_id → assists attendus (batch per-mode, is_me).
 // nil/absent → l'attendu FDA dégrade en K/D pur (analysis.ExpectedFDA).
 // careerXPEras : éras de multiplicateur d'XP de carrière (résolues + gatées par la
 // capability analytics.career_xp_estimate côté GetPage). Vide → CareerXPEstimated
 // reste nil par ligne (série « XP de carrière (estimée) » masquée).
-func buildMatchRows(matches []legacymatch.StatsMatchRow, provideSpree bool, assistsExpected map[string]*float64, careerXPEras []mappings.CareerXPEra) []domain.TimeseriesMatchRow {
+func buildMatchRows(loc i18n.Locale, matches []legacymatch.StatsMatchRow, provideSpree bool, assistsExpected map[string]*float64, careerXPEras []mappings.CareerXPEra) []domain.TimeseriesMatchRow {
 	rows := make([]domain.TimeseriesMatchRow, 0, len(matches))
 	for i, m := range matches {
 		// KDR canonique calcule a partir des compteurs (analysis.KDR).
@@ -358,15 +360,15 @@ func buildMatchRows(matches []legacymatch.StatsMatchRow, provideSpree bool, assi
 			DamageTaken:               m.DamageTaken,
 			PerfScore:                 m.PerfScoreComputed,
 			Rank:                      m.Rank,
-			PlaylistName:              m.PlaylistName,
+			PlaylistName:              m.PlaylistName.Pick(loc),
 			TimePlayedSeconds:         m.TimePlayedSeconds,
 			AvgLifeSeconds:            m.AvgLifeSeconds,
 			DominanceFlag:             m.DominanceFlag,
 			MaxKillingSpree:           maxSpree,
 			HeadshotKills:             m.HeadshotKills,
 			PerfectKills:              m.PerfectKills,
-			MapName:                   m.MapName,
-			MapNameFR:                 m.MapNameFR,
+			MapName:                   m.MapName.Pick(loc),
+			MapLabel:                  m.MapName.PickOptional(loc),
 			SkillRatingValue:          m.SkillRatingValue,
 			SkillRatingType:           m.SkillRatingType,
 			SkillPlaylistGroup:        m.SkillPlaylistGroup,

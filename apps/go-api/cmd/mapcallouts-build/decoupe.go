@@ -20,6 +20,7 @@ import (
 	"os"
 
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/i18n"
 )
 
 // decoupeDump est la partie du dump que l'ingestion consomme.
@@ -31,7 +32,7 @@ type decoupeDump struct {
 
 type decoupeZone struct {
 	VolumeIndex int    `json:"volumeIndex"`
-	LibelleEN   string `json:"libelle_en"`
+	Libelle     string `json:"libelle_en"`          // clé du dump : le libellé SOURCE (anglais) de la zone, format d entrée d un outil externe
 	Utiliser    string `json:"polygone_a_utiliser"` // "decoupe" | "brut"
 	Brut        struct {
 		Polygone [][2]float64 `json:"polygone"`
@@ -70,10 +71,10 @@ func appliqueDecoupe(e *replay.MapCalloutsEntry, zones map[int]decoupeZone) erro
 		z := &e.Zones[i]
 		d, ok := zones[z.VolumeIndex]
 		if !ok {
-			return fmt.Errorf("volume %d (%s) absent du dump découpé", z.VolumeIndex, z.EN)
+			return fmt.Errorf("volume %d (%s) absent du dump découpé", z.VolumeIndex, z.Text[i18n.Fallback])
 		}
-		if d.LibelleEN != z.EN {
-			return fmt.Errorf("volume %d : libellé du dump %q != tag %q", z.VolumeIndex, d.LibelleEN, z.EN)
+		if d.Libelle != z.Text[i18n.Fallback] {
+			return fmt.Errorf("volume %d : libellé du dump %q != tag %q", z.VolumeIndex, d.Libelle, z.Text[i18n.Fallback])
 		}
 		if d.Utiliser == "decoupe" && len(d.Decoupe.Parties) > 0 {
 			z.Polygon = d.Decoupe.Parties[0].Contour

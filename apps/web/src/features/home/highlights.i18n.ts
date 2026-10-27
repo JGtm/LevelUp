@@ -24,10 +24,6 @@ interface HighlightTextDict {
   }
 }
 
-export function normalizeHighlightLocale(locale?: string | null): Locale {
-  return locale === 'en' ? 'en' : 'fr'
-}
-
 function t(
   loc: Locale,
   key: HomeManifestKey,
@@ -36,8 +32,7 @@ function t(
   return formatMessage(homeManifest, key, loc, values)
 }
 
-export function getHighlightText(locale?: string | null): HighlightTextDict {
-  const loc = normalizeHighlightLocale(locale)
+export function getHighlightText(loc: Locale): HighlightTextDict {
   return {
     section: {
       title: t(loc, 'home.highlights.section_title'),
@@ -80,11 +75,11 @@ const DETAIL_KEY_MAP: Record<string, HomeManifestKey> = {
 }
 
 /** Résout un titre. Fallback : la clé brute pour repérer les manques. */
-export function resolveTitle(locale: string | null | undefined, key: string | undefined): string {
+export function resolveTitle(locale: Locale, key: string | undefined): string {
   if (!key) return ''
   const mapped = TITLE_KEY_MAP[key]
   if (!mapped) return key
-  return t(normalizeHighlightLocale(locale), mapped)
+  return t(locale, mapped)
 }
 
 /**
@@ -100,7 +95,7 @@ const SLIDE_TO_FIELD_KEY: Record<string, string> = {
 }
 
 export function resolveLabel(
-  locale: string | null | undefined,
+  locale: Locale,
   key: string | undefined,
   fieldMappings?: { fields: Record<string, { label: string }> },
 ): string {
@@ -111,7 +106,7 @@ export function resolveLabel(
   }
   const mapped = LABEL_KEY_MAP[key]
   if (!mapped) return key
-  return t(normalizeHighlightLocale(locale), mapped)
+  return t(locale, mapped)
 }
 
 /**
@@ -139,20 +134,20 @@ const UNIT_KEY_MAP: Record<string, HomeManifestKey> = {
   'highlight.title.volume': 'home.highlights.unit.matches',
 }
 
-export function resolveUnit(locale: string | null | undefined, titleKey: string | undefined): string {
+export function resolveUnit(locale: Locale, titleKey: string | undefined): string {
   if (!titleKey) return ''
   const mapped = UNIT_KEY_MAP[titleKey]
   if (!mapped) return ''
-  return t(normalizeHighlightLocale(locale), mapped)
+  return t(locale, mapped)
 }
 
 export function resolveDetail(
-  locale: string | null | undefined,
+  locale: Locale,
   key: string | undefined,
   params?: Params,
 ): string {
   if (!key) return ''
   const mapped = DETAIL_KEY_MAP[key]
   if (!mapped) return key
-  return t(normalizeHighlightLocale(locale), mapped, params)
+  return t(locale, mapped, params)
 }

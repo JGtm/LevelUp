@@ -43,9 +43,9 @@ var h5DesignationTiersEN = []string{
 	"Champion",
 }
 
-// h5DesignationTierEN retourne le libellé EN capitalisé d'un DesignationId, ""
+// h5DesignationTier retourne le libellé EN capitalisé d'un DesignationId, ""
 // si hors borne (jamais classé / palier inconnu).
-func h5DesignationTierEN(designationID int) string {
+func h5DesignationTier(designationID int) string {
 	if designationID < 0 || designationID >= len(h5DesignationTiersEN) {
 		return ""
 	}
@@ -115,7 +115,7 @@ func h5CsrSnapshot(c *halo5.H5Csr) syncpkg.CSRRankSnapshot {
 	if c == nil {
 		return syncpkg.CSRRankSnapshot{}
 	}
-	tier := h5DesignationTierEN(c.DesignationId)
+	tier := h5DesignationTier(c.DesignationId)
 	subTier := c.Tier
 	if strings.EqualFold(tier, "Onyx") || strings.EqualFold(tier, "Champion") {
 		subTier = 0 // Onyx/Champion = paliers uniques, sans sous-palier.

@@ -14,6 +14,7 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
@@ -95,13 +96,17 @@ func isRegistryFragClass(r port.WeaponKillRow) bool {
 // partagé tel quel par Synthesis (agrégat SynthesisDetailedStats), Match view
 // (ligne scoreboard native du viewer) ET Escouade (agrégat par gamertag) — jamais
 // dupliqué (règle ≤2 copies).
+//
+// loc est la langue de la requête : le libellé des objets (engins, tourelles, équipement,
+// environnement) est résolu ici, dans cette langue, avec le repli `en` de i18n.Text.Pick.
 func Build(
+	loc i18n.Locale,
 	rows []port.WeaponKillRow,
 	counts domain.FragKillTypeCounts,
 	hasMechanics bool,
 ) domain.FragDistribution {
 	byClass := make(map[string]domain.FragClassEntry, len(canonicalFragClassOrder))
-	for _, e := range buildRegistryFragClasses(rows) {
+	for _, e := range buildRegistryFragClasses(loc, rows) {
 		byClass[e.Class] = e
 	}
 	for _, e := range buildAPIFragClasses(rows, counts, hasMechanics) {
@@ -132,11 +137,10 @@ func Build(
 // niveau 2 keyée (rôle de combat, ou weapon_key d'engin), les libellés d'engin, et le
 // volume NON keyable (qui interdit une ventilation partielle trompeuse).
 type registryAcc struct {
-	kills    int
-	byKey    map[string]int
-	labels   map[string]string // key → libellé registre FR-first (classes par engin uniquement)
-	labelsEN map[string]string // key → libellé registre EN-first (idem, V2.1 2026-08-29)
-	unkeyed  int
+	kills   int
+	byKey   map[string]int
+	labels  map[string]i18n.Text // key → libellé registre par langue (classes par engin uniquement) : chaque langue porte sa chaîne de repli interne
+	unkeyed int
 }
 
 // buildRegistryFragClasses agrège les classes servies par le REGISTRE (rows) : les
@@ -153,7 +157,7 @@ type registryAcc struct {
 // assassinat est attribué à l'ARME TENUE dans weapon_kills (kill_kind <> 'weapon') → sans
 // ce retrait le kill compte à la fois dans la classe ET dans le compteur natif Mêlée/
 // Capacités spartanes (Σ classes > total). Sur Infinite MechanicKills == 0 → inchangé.
-func buildRegistryFragClasses(rows []port.WeaponKillRow) []domain.FragClassEntry {
+func buildRegistryFragClasses(loc i18n.Locale, rows []port.WeaponKillRow) []domain.FragClassEntry {
 	agg := make(map[string]*registryAcc, len(gunFragClasses)+2)
 	for _, r := range rows {
 		if r.IsGrenadeMelee || r.Class == "" || !isRegistryFragClass(r) {
@@ -170,7 +174,7 @@ func buildRegistryFragClasses(rows []port.WeaponKillRow) []domain.FragClassEntry
 		}
 		a := agg[r.Class]
 		if a == nil {
-			a = &registryAcc{byKey: make(map[string]int), labels: make(map[string]string), labelsEN: make(map[string]string)}
+			a = &registryAcc{byKey: make(map[string]int), labels: make(map[string]i18n.Text)}
 			agg[r.Class] = a
 		}
 		a.kills += weaponKills
@@ -185,11 +189,8 @@ func buildRegistryFragClasses(rows []port.WeaponKillRow) []domain.FragClassEntry
 			continue
 		}
 		a.byKey[key] += weaponKills
-		if perWeapon && r.Label != "" {
+		if perWeapon && !r.Label.Empty() {
 			a.labels[key] = r.Label
-		}
-		if perWeapon && r.LabelEN != "" {
-			a.labelsEN[key] = r.LabelEN
 		}
 	}
 	out := make([]domain.FragClassEntry, 0, len(agg))
@@ -199,7 +200,7 @@ func buildRegistryFragClasses(rows []port.WeaponKillRow) []domain.FragClassEntry
 		}
 		out = append(out, domain.FragClassEntry{
 			Class: class, Kills: a.kills, Authoritative: false,
-			Roles: registryRoles(class, a),
+			Roles: registryRoles(loc, class, a),
 		})
 	}
 	return out
@@ -209,28 +210,27 @@ func buildRegistryFragClasses(rows []port.WeaponKillRow) []domain.FragClassEntry
 // (véhicule/tourelle) ou par RÔLE (classes gun). Sur une classe d'engin, un reliquat
 // non keyable (engin absent du registre) force la FEUILLE : mieux vaut aucun niveau 2
 // qu'une ventilation qui ne somme pas au total de la classe (invariant b).
-func registryRoles(class string, a *registryAcc) []domain.FragRoleEntry {
+func registryRoles(loc i18n.Locale, class string, a *registryAcc) []domain.FragRoleEntry {
 	if domain.IsPerWeaponFragClass(class) {
 		if a.unkeyed > 0 {
 			return nil
 		}
-		return perWeaponRoles(a.byKey, a.labels, a.labelsEN)
+		return perWeaponRoles(loc, a.byKey, a.labels)
 	}
 	return rolesFromMap(a.byKey, class)
 }
 
 // perWeaponRoles trie les engins (kills desc, tie-break sur la clé → ordre stable) et
-// porte leur libellé registre, FR (labels) ET EN (labelsEN, V2.1 2026-08-29) — le web
-// choisit entre les deux selon la locale (cf. fragRoleLabel.ts). Aucun repli en feuille à
+// porte leur libellé registre dans la langue loc (repli en, cf. fragRoleLabel.ts pour le cas vide). Aucun repli en feuille à
 // un seul engin : « Warthog » est une information, « véhicule » n'en est pas une
 // (exigence V73-3.2).
-func perWeaponRoles(byKey map[string]int, labels map[string]string, labelsEN map[string]string) []domain.FragRoleEntry {
+func perWeaponRoles(loc i18n.Locale, byKey map[string]int, labels map[string]i18n.Text) []domain.FragRoleEntry {
 	roles := make([]domain.FragRoleEntry, 0, len(byKey))
 	for key, kills := range byKey {
 		if kills <= 0 {
 			continue
 		}
-		roles = append(roles, domain.FragRoleEntry{Role: key, Kills: kills, Label: labels[key], LabelEN: labelsEN[key]})
+		roles = append(roles, domain.FragRoleEntry{Role: key, Kills: kills, Label: labels[key].PickOptional(loc)})
 	}
 	sort.Slice(roles, func(i, j int) bool {
 		if roles[i].Kills != roles[j].Kills {

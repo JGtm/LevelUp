@@ -65,7 +65,7 @@ func TestCalloutsLookupByID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("carte Forge au catalogue : %v", err)
 	}
-	if e.Provenance != CalloutsProvenanceMvar || len(e.Zones) != 1 || e.Zones[0].FR != "Grotte" {
+	if e.Provenance != CalloutsProvenanceMvar || len(e.Zones) != 1 || frOf(e.Zones[0].Text) != "Grotte" {
 		t.Errorf("entrée inattendue : %+v", e)
 	}
 	if e.Module != "" {
@@ -131,9 +131,9 @@ func TestCatalogueCalloutsLivreEstExploitable(t *testing.T) {
 		}
 		total += len(e.Zones)
 		for _, z := range e.Zones {
-			if z.FR == "" || z.EN == "" {
+			if frOf(z.Text) == "" || enOf(z.Text) == "" {
 				t.Errorf("%s vi=%d : libellé vide (fr=%q en=%q) — le contrat est 816/816",
-					module, z.VolumeIndex, z.FR, z.EN)
+					module, z.VolumeIndex, frOf(z.Text), enOf(z.Text))
 			}
 			if z.ZTop <= z.ZBottom {
 				t.Errorf("%s vi=%d : tranche verticale inversée [%f;%f]", module, z.VolumeIndex, z.ZBottom, z.ZTop)
@@ -225,12 +225,12 @@ func TestCatalogueCalloutsForgeLivreEstExploitable(t *testing.T) {
 		nommeesCarte := 0
 		for _, z := range e.Zones {
 			zones++
-			if z.FR != "" && z.EN != "" {
+			if frOf(z.Text) != "" && enOf(z.Text) != "" {
 				nommeesCarte++
 			}
-			if (z.FR == "") != (z.EN == "") {
+			if (frOf(z.Text) == "") != (enOf(z.Text) == "") {
 				t.Errorf("%s vi=%d : libellé résolu dans une seule langue (fr=%q en=%q)",
-					id, z.VolumeIndex, z.FR, z.EN)
+					id, z.VolumeIndex, frOf(z.Text), enOf(z.Text))
 			}
 			if len(z.Polygon) < 3 {
 				t.Errorf("%s vi=%d : polygone à %d sommet(s) — une zone Forge est un volume posé",

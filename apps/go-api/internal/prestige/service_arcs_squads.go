@@ -7,6 +7,8 @@ import (
 	"log/slog"
 	"strings"
 	"time"
+
+	"levelup/go-api/internal/i18n"
 )
 
 // service_arcs_squads.go — méthodes Service pour les arcs libres (création,
@@ -53,7 +55,7 @@ func (s *service) ListArcs(ctx context.Context, userID, titleSlug string) ([]Arc
 	for i := range arcs {
 		arcs[i] = s.enrichArcReward(ctx, arcs[i])
 	}
-	return arcs, nil
+	return s.localizeArcs(ctx, arcs), nil
 }
 
 // arcCooldownExemptionWindow : un arc supprimé moins d'une heure après sa
@@ -137,7 +139,7 @@ func (s *service) GetArc(ctx context.Context, id string) (Arc, error) {
 		}
 		return Arc{}, fmt.Errorf("get arc: %w", err)
 	}
-	return s.enrichArcReward(ctx, a), nil
+	return s.localizeArc(ctx, s.enrichArcReward(ctx, a)), nil
 }
 
 // enrichArcReward calcule ObjectivesPP (somme des PP des objectifs) et
@@ -171,7 +173,9 @@ func (s *service) ListArcPresets(ctx context.Context, _ /*userID*/, titleSlug st
 	if err != nil {
 		return nil, fmt.Errorf("list preset arcs: %w", err)
 	}
+	loc := i18n.FromContext(ctx)
 	for i := range presets {
+		presets[i] = presets[i].Localized(loc)
 		steps, err := s.deps.PresetArcs.GetSteps(ctx, presets[i].ID)
 		if err != nil {
 			slog.WarnContext(ctx, "prestige: preset steps load failed",
@@ -207,8 +211,8 @@ func (s *service) AdoptPresetArc(ctx context.Context, userID, titleSlug, presetI
 		ID:          newID("arc"),
 		UserID:      userID,
 		TitleSlug:   titleSlug,
-		Title:       presetTitle(preset),
-		Description: presetDescription(preset),
+		Title:       preset.StoredTitle(),
+		Description: preset.StoredDescription(),
 		IsPreset:    true,
 		PresetID:    presetID,
 		CreatedAt:   s.deps.Now(),
@@ -247,7 +251,7 @@ func (s *service) AdoptPresetArc(ctx context.Context, userID, titleSlug, presetI
 			Cadence:     tmpl.Cadence,
 			EvalType:    tmpl.EvalType,
 			Mode:        ModeLibre,
-			Label:       tmpl.LabelFR,
+			Label:       tmpl.StoredLabel(),
 			// Adoption d'un preset arc = action initiée par le joueur → origine user
 			// (le coach a sa propre voie via coach_advisor). Calage coach, ADR 0020.
 			Source: ChallengeSourceUser,
@@ -265,7 +269,7 @@ func (s *service) AdoptPresetArc(ctx context.Context, userID, titleSlug, presetI
 	slog.InfoContext(ctx, "prestige: preset arc adopted",
 		"arc_id", arc.ID, "preset_id", presetID, "user_id", userID,
 		"steps_created", created, "steps_total", len(steps))
-	return arc, nil
+	return s.localizeArc(ctx, arc), nil
 }
 
 // targetForTier sélectionne la cible du template correspondant au palier.
@@ -280,19 +284,4 @@ func targetForTier(t Template, tier Tier) float64 {
 	default:
 		return t.NormalTarget
 	}
-}
-
-// presetTitle / presetDescription : libellé FR prioritaire, repli EN.
-func presetTitle(p PresetArc) string {
-	if p.TitleFR != "" {
-		return p.TitleFR
-	}
-	return p.TitleEN
-}
-
-func presetDescription(p PresetArc) string {
-	if p.DescriptionFR != "" {
-		return p.DescriptionFR
-	}
-	return p.DescriptionEN
 }

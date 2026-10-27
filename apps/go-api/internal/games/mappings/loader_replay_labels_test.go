@@ -11,24 +11,22 @@ title_slug     = "halo_infinite"
 schema_version = 1
 
 [[grenades]]
-en = "Frag"
-fr = "Fragmentation"
+label = { en = "Frag", fr = "Fragmentation" }
 
 [[grenades]]
-en = "Plasma"
-fr = "Plasma"
+label = { en = "Plasma", fr = "Plasma" }
 
 [[ability_palettes]]
 id = "famille_a"
 markers = [2, 4]
 [ability_palettes.ranks]
-"2" = { en = "Drop Wall", fr = "mur portatif" }
+"2" = { label = { en = "Drop Wall", fr = "mur portatif" } }
 
 [[ability_palettes]]
 id = "famille_b"
 markers = [19, 20]
 [ability_palettes.ranks]
-"20" = { en = "Grappleshot", fr = "grappin" }
+"20" = { label = { en = "Grappleshot", fr = "grappin" } }
 
 [shot_effects]
 hinf_ma40_ar = "ballistic"
@@ -44,14 +42,14 @@ func TestLoadReplayLabels_Valide(t *testing.T) {
 	}
 	// L'ORDRE EST LA DONNÉE : le rang d'une grenade est sa position dans le fichier.
 	ranks := set.GrenadeRanks()
-	if len(ranks) != 2 || ranks[0].En != "Frag" || ranks[1].En != "Plasma" {
+	if len(ranks) != 2 || ranks[0].Text.Pick("en") != "Frag" || ranks[1].Text.Pick("en") != "Plasma" {
 		t.Errorf("ordre des rangs perdu: %+v", ranks)
 	}
 	pal := set.AbilityPalettes()
 	if len(pal) != 2 || pal[0].ID != "famille_a" || pal[1].ID != "famille_b" {
 		t.Fatalf("palettes mal lues: %+v", pal)
 	}
-	if got := pal[0].Ranks[2]; got.En != "Drop Wall" || got.Fr != "mur portatif" {
+	if got := pal[0].Ranks[2]; got.Text.Pick("en") != "Drop Wall" || got.Text.Pick("fr") != "mur portatif" {
 		t.Errorf("capacité 2 de famille_a mal lue: %+v", got)
 	}
 	// Les MARQUEURS voyagent avec les noms : sans eux, aucun film ne se classe.
@@ -67,12 +65,12 @@ func TestLoadReplayLabels_Valide(t *testing.T) {
 // se lit comme une donnée absente alors que c'est une configuration incomplète.
 func TestLoadReplayLabels_Refus(t *testing.T) {
 	cas := []struct{ nom, toml string }{
-		{"sans meta", "[[grenades]]\nen = \"Frag\"\nfr = \"Fragmentation\"\n"},
+		{"sans meta", "[[grenades]]\nlabel = { en = \"Frag\", fr = \"Fragmentation\" }\n"},
 		{"version nulle", "[meta]\ntitle_slug=\"x\"\nschema_version=0\n"},
-		{"grenade sans fr", "[meta]\ntitle_slug=\"x\"\nschema_version=1\n[[grenades]]\nen=\"Frag\"\n"},
-		{"grenade sans en", "[meta]\ntitle_slug=\"x\"\nschema_version=1\n[[grenades]]\nfr=\"Frag\"\n"},
-		{"rang non numérique", "[meta]\ntitle_slug=\"x\"\nschema_version=1\n[[ability_palettes]]\nid=\"p\"\nmarkers=[1]\n[ability_palettes.ranks]\n\"abc\"={en=\"A\",fr=\"A\"}\n"},
-		{"capacité sans en", "[meta]\ntitle_slug=\"x\"\nschema_version=1\n[[ability_palettes]]\nid=\"p\"\nmarkers=[3]\n[ability_palettes.ranks]\n\"3\"={fr=\"A\"}\n"},
+		{"grenade sans fr", "[meta]\ntitle_slug=\"x\"\nschema_version=1\n[[grenades]]\nlabel = { en = \"Frag\" }\n"},
+		{"grenade sans en", "[meta]\ntitle_slug=\"x\"\nschema_version=1\n[[grenades]]\nlabel = { fr = \"Frag\" }\n"},
+		{"rang non numérique", "[meta]\ntitle_slug=\"x\"\nschema_version=1\n[[ability_palettes]]\nid=\"p\"\nmarkers=[1]\n[ability_palettes.ranks]\n\"abc\"={label={en=\"A\",fr=\"A\"}}\n"},
+		{"capacité sans en", "[meta]\ntitle_slug=\"x\"\nschema_version=1\n[[ability_palettes]]\nid=\"p\"\nmarkers=[3]\n[ability_palettes.ranks]\n\"3\"={label={fr=\"A\"}}\n"},
 		{"palette sans id", "[meta]\ntitle_slug=\"x\"\nschema_version=1\n[[ability_palettes]]\nmarkers=[1]\n"},
 		// Une palette sans marqueur ne pourrait JAMAIS etre reconnue : de la donnée morte.
 		{"palette sans marqueur", "[meta]\ntitle_slug=\"x\"\nschema_version=1\n[[ability_palettes]]\nid=\"p\"\n"},
@@ -167,14 +165,14 @@ schema_version = 1
 id = "famille_a"
 markers = [5, 6]
 [ability_palettes.ranks]
-"5" = { en = "Thruster", fr = "propulseur", family = "thruster" }
-"6" = { en = "Repulsor", fr = "repulseur", family = "repulsor" }
+"5" = { label = { en = "Thruster", fr = "propulseur" }, family = "thruster" }
+"6" = { label = { en = "Repulsor", fr = "repulseur" }, family = "repulsor" }
 
 [[ability_palettes]]
 id = "famille_b"
 markers = [21]
 [ability_palettes.ranks]
-"21" = { en = "Thruster", fr = "propulseur", family = "thruster" }
+"21" = { label = { en = "Thruster", fr = "propulseur" }, family = "thruster" }
 
 [ability_impulses]
 families = ["thruster"]
@@ -199,7 +197,7 @@ func TestLoadReplayLabels_FamillesDeCapacite(t *testing.T) {
 		t.Errorf("famille du rang 6 perdue: %+v", pal[0].Families)
 	}
 	// Le libelle reste ce qui S'AFFICHE, la famille ce qui SE JOINT : les deux coexistent.
-	if got := pal[0].Ranks[5]; got.En != "Thruster" || got.Fr != "propulseur" {
+	if got := pal[0].Ranks[5]; got.Text.Pick("en") != "Thruster" || got.Text.Pick("fr") != "propulseur" {
 		t.Errorf("libelle du rang 5 perdu: %+v", got)
 	}
 	if fams := set.AbilityImpulseFamilies(); len(fams) != 1 || fams[0] != famPropulseur {
@@ -213,7 +211,7 @@ func TestLoadReplayLabels_FamillesDeCapacite(t *testing.T) {
 func TestLoadReplayLabels_ImpulsionRefus(t *testing.T) {
 	base := "[meta]\ntitle_slug=\"x\"\nschema_version=1\n" +
 		"[[ability_palettes]]\nid=\"p\"\nmarkers=[5]\n[ability_palettes.ranks]\n" +
-		"\"5\"={en=\"Thruster\",fr=\"propulseur\",family=\"thruster\"}\n"
+		"\"5\"={label={en=\"Thruster\",fr=\"propulseur\"},family=\"thruster\"}\n"
 	cas := []struct{ nom, toml string }{
 		{"famille inconnue", base + "[ability_impulses]\nfamilies=[\"thrusters\"]\n"},
 		{"famille vide", base + "[ability_impulses]\nfamilies=[\"\"]\n"},
@@ -247,8 +245,8 @@ func TestLoadReplayLabels_ImpulsionRefus(t *testing.T) {
 func TestLoadReplayLabels_FamillesDeCharges(t *testing.T) {
 	base := "[meta]\ntitle_slug=\"x\"\nschema_version=1\n" +
 		"[[ability_palettes]]\nid=\"p\"\nmarkers=[4, 5]\n[ability_palettes.ranks]\n" +
-		"\"4\"={en=\"Grappleshot\",fr=\"grappin\",family=\"grapple\"}\n" +
-		"\"5\"={en=\"Thruster\",fr=\"propulseur\",family=\"thruster\"}\n"
+		"\"4\"={label={en=\"Grappleshot\",fr=\"grappin\"},family=\"grapple\"}\n" +
+		"\"5\"={label={en=\"Thruster\",fr=\"propulseur\"},family=\"thruster\"}\n"
 	set, err := LoadReplayLabelsFromBytes("t.toml",
 		[]byte(base+"[ability_charges]\nfamilies=[\"grapple\",\"thruster\"]\n"))
 	if err != nil {

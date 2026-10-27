@@ -3,7 +3,19 @@ package mappings
 import (
 	"sort"
 	"strings"
+
+	"levelup/go-api/internal/i18n"
 )
+
+// SameInEveryLocale rend une table de libellés par code de langue où `label` est la valeur de
+// chaque langue connue (un code de rang comme « SR 152 » ne se traduit pas).
+func SameInEveryLocale(label string) map[string]string {
+	out := make(map[string]string, len(i18n.Locales()))
+	for _, l := range i18n.Locales() {
+		out[string(l)] = label
+	}
+	return out
+}
 
 // RankEntry porte les libellés localisés d'un rang de carrière.
 //
@@ -33,7 +45,7 @@ func (e RankEntry) FullLabel(locale string) (string, bool) {
 			parts = append(parts, v)
 			continue
 		}
-		if v, ok := m[LocaleEN]; ok && v != "" {
+		if v, ok := m[string(i18n.Fallback)]; ok && v != "" {
 			parts = append(parts, v)
 			usedFallback = true
 		}

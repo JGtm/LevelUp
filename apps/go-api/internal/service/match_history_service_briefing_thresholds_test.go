@@ -10,6 +10,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
@@ -29,7 +30,7 @@ func briefingMapGroups(counts ...int) []domain.MatchHistoryRawRow {
 
 func briefingMapDimension(t *testing.T, scope []domain.MatchHistoryRawRow) *domain.ExplorerBriefingDimension {
 	t.Helper()
-	for _, d := range buildBriefingDimensions(scope, scope, domain.GroupesDeCartes{}) {
+	for _, d := range buildBriefingDimensions(scope, scope, domain.GroupesDeCartes{}, i18n.Default) {
 		if d.Dimension == "map" {
 			d := d
 			return &d
@@ -117,7 +118,7 @@ func TestBuildExplorerBriefing_LowSampleServesEveryModule(t *testing.T) {
 		r.DominanceFlag = analysis.DominanceFlagDomination
 		filtered = append(filtered, r)
 	}
-	repo := &briefingWeaponsRepo{rows: []port.WeaponKillRow{{WeaponID: 1, Label: "Fusil de combat", Kills: 40}}}
+	repo := &briefingWeaponsRepo{rows: []port.WeaponKillRow{{WeaponID: 1, Label: i18n.Text{i18n.LocaleFR: "Fusil de combat"}, Kills: 40}}}
 	svc := &MatchHistoryService{rankedCapable: true, weaponKillsRepo: repo, weaponKillsXUID: "2533"}
 
 	b := svc.buildExplorerBriefing(context.Background(), filtered, filtered)
@@ -131,7 +132,7 @@ func TestBuildExplorerBriefing_LowSampleServesEveryModule(t *testing.T) {
 	if b.Baseline == nil {
 		t.Error("Baseline doit être servie en échantillon faible")
 	}
-	if want := buildBriefingDimensions(filtered, filtered, domain.GroupesDeCartes{}); !reflect.DeepEqual(b.Dimensions, want) {
+	if want := buildBriefingDimensions(filtered, filtered, domain.GroupesDeCartes{}, i18n.Default); !reflect.DeepEqual(b.Dimensions, want) {
 		t.Errorf("Dimensions = %+v, want mêmes règles que hors échantillon faible : %+v", b.Dimensions, want)
 	}
 	if want := buildBriefingContextSplit(filtered); !reflect.DeepEqual(b.ContextSplit, want) {

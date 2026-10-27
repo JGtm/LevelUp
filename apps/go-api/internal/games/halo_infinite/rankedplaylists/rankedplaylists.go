@@ -29,6 +29,7 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/games/mappings"
+	"levelup/go-api/internal/i18n"
 )
 
 //go:embed ranked_playlists_labels.toml
@@ -77,19 +78,16 @@ type Playlist struct {
 	Active  bool   // hopper actuellement actif (sinon classé mais retiré du matchmaking)
 }
 
-// NameEN retourne le nom canonique EN (ranked_playlists_labels.toml). "" si
-// l'asset_id n'a pas d'entrée (ne devrait pas arriver pour un Playlist de all).
-func (p Playlist) NameEN() string { return rankedPlaylistLabelText(p.AssetID, mappings.LocaleEN) }
-
-// NameFR retourne la traduction FR officielle (ranked_playlists_labels.toml).
-// "" si non localisée.
-func (p Playlist) NameFR() string { return rankedPlaylistLabelText(p.AssetID, mappings.LocaleFR) }
+// Name retourne le nom de la playlist dans la langue l (ranked_playlists_labels.toml), SANS repli
+// sur une autre langue : "" si l'asset_id n'a pas d'entrée ou si cette langue n'est pas renseignée
+// (la langue `en` est le nom canonique ; elle ne devrait pas manquer pour un Playlist de all).
+func (p Playlist) Name(l i18n.Locale) string { return rankedPlaylistLabelText(p.AssetID, l) }
 
 // rankedPlaylistLabelText lit le libellé BRUT pour la locale demandée, SANS le
-// fallback EN de mappings.AssetMapping.Label (NameEN/NameFR doivent pouvoir
+// fallback EN de mappings.AssetMapping.Label (Name doit pouvoir
 // retourner "" — contrat historique de ce package — plutôt que se rabattre
 // silencieusement sur l'autre langue).
-func rankedPlaylistLabelText(assetID, locale string) string {
+func rankedPlaylistLabelText(assetID string, locale i18n.Locale) string {
 	a, ok := rankedPlaylistLabels.Get(rankedPlaylistLabelKind, strings.ToLower(strings.TrimSpace(assetID)))
 	if !ok {
 		return ""

@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"github.com/pelletier/go-toml/v2"
+
+	"levelup/go-api/internal/i18n"
 )
 
 // loader_replay_labels.go — libelles PROPRES AU REJEU 2D d'un titre
@@ -22,16 +24,16 @@ import (
 // Ce loader ne resout AUCUN nom d'arme : ceux-la vivent dans weapon_names.toml, keyes
 // par weapon_key. Ici on ne porte que l'effet, qui n'appartient a aucune langue.
 
-// BilingualLabel — un libelle affichable dans les deux langues du produit. en ET fr sont
-// obligatoires ; quand aucun FR officiel n'est connu, le fichier met le EN dans les deux
-// (jamais de FR invente — meme regle que weapon_names.toml).
+// ReplayLabel — un libelle affichable dans chaque langue du produit. Chaque langue
+// `required` de config/locales.toml est obligatoire ; quand aucun nom officiel n'est connu
+// dans une langue, le fichier y met le nom EN (jamais de traduction inventee — meme regle que
+// weapon_names.toml). Dans le TOML : `label = { en = "...", fr = "..." }`.
 //
 // Icon (OPTIONNEL) : stem de la vignette du HUD du jeu sous static/weapons-assets/{slug}/
 // (ex. « hud/Frag »). Sans icon, le client garde le libelle — jamais la vignette d'un
 // voisin.
-type BilingualLabel struct {
-	En   string
-	Fr   string
+type ReplayLabel struct {
+	Text i18n.Text
 	Icon string
 }
 
@@ -50,7 +52,7 @@ type AbilityPalette struct {
 	Markers []int
 	// Ranks nomme les rangs ETABLIS. Table partielle par nature : un rang absent garde son
 	// numero a l'ecran.
-	Ranks map[int]BilingualLabel
+	Ranks map[int]ReplayLabel
 	// Families donne l'IDENTITE STABLE d'un rang, dans le meme vocabulaire que
 	// `EquipmentObjects` (`thruster`, `grapple`, `wall`...). C'est ce qui permet a un calque
 	// de designer une capacite sans ecrire son RANG dans du Go : le propulseur vaut 5 en
@@ -67,7 +69,7 @@ type AbilityPalette struct {
 type ReplayLabelSet struct {
 	titleSlug     string
 	schemaVersion int
-	grenades      []BilingualLabel // index = rang lu dans le film
+	grenades      []ReplayLabel // index = rang lu dans le film
 	palettes      []AbilityPalette
 	shotEffects   map[string]string // weapon_key -> famille de rendu
 	shotTints     map[string]string // weapon_key -> nature de la decharge
@@ -98,7 +100,7 @@ type ReplayLabelSet struct {
 // replayLabelsTOML — projection brute du fichier.
 type replayLabelsTOML struct {
 	Meta         metaSection            `toml:"meta"`
-	Grenades     []bilingualEntry       `toml:"grenades"`
+	Grenades     []labelEntry           `toml:"grenades"`
 	Palettes     []abilityPaletteEntry  `toml:"ability_palettes"`
 	ShotEffects  map[string]string      `toml:"shot_effects"`
 	ShotTints    map[string]string      `toml:"shot_tints"`
@@ -117,20 +119,19 @@ type abilityPaletteEntry struct {
 	Ranks   map[string]abilityRankEntry `toml:"ranks"`
 }
 
-// abilityRankEntry — un rang de capacite : son libelle bilingue, sa vignette, et
+// abilityRankEntry — un rang de capacite : son libelle par langue, sa vignette, et
 // (OPTIONNEL) la FAMILLE qui l'identifie a travers les palettes. Type distinct de
-// `bilingualEntry` parce que la famille n'a de sens que pour une capacite : la porter sur le
+// `labelEntry` parce que la famille n'a de sens que pour une capacite : la porter sur le
 // type partage la ferait accepter en silence sur un rang de grenade.
 type abilityRankEntry struct {
-	En     string `toml:"en"`
-	Fr     string `toml:"fr"`
-	Icon   string `toml:"icon"`
-	Family string `toml:"family"`
+	Label  i18n.Text `toml:"label"`
+	Icon   string    `toml:"icon"`
+	Family string    `toml:"family"`
 }
 
-// label projette l'entree vers la forme bilingue que le validateur partage attend.
-func (e abilityRankEntry) label() bilingualEntry {
-	return bilingualEntry{En: e.En, Fr: e.Fr, Icon: e.Icon}
+// label projette l'entree vers la forme que le validateur partage attend.
+func (e abilityRankEntry) label() labelEntry {
+	return labelEntry{Label: e.Label, Icon: e.Icon}
 }
 
 // abilityImpulsesEntry — une liste de familles MESUREES sur un canal du film. Deux tables
@@ -141,10 +142,10 @@ type abilityImpulsesEntry struct {
 	Families []string `toml:"families"`
 }
 
-type bilingualEntry struct {
-	En   string `toml:"en"`
-	Fr   string `toml:"fr"`
-	Icon string `toml:"icon"`
+// labelEntry — la forme TOML d'un libelle de rejeu : `label` (une valeur par langue) et `icon`.
+type labelEntry struct {
+	Label i18n.Text `toml:"label"`
+	Icon  string    `toml:"icon"`
 }
 
 // shotEffectFamilies — les familles de rendu ADMISES. La liste est fermee a dessein :
@@ -170,11 +171,11 @@ var shotTintKinds = map[string]bool{
 }
 
 // GrenadeRanks retourne les libelles de grenade DANS L'ORDRE DES RANGS (copie).
-func (s *ReplayLabelSet) GrenadeRanks() []BilingualLabel {
+func (s *ReplayLabelSet) GrenadeRanks() []ReplayLabel {
 	if s == nil {
 		return nil
 	}
-	out := make([]BilingualLabel, len(s.grenades))
+	out := make([]ReplayLabel, len(s.grenades))
 	copy(out, s.grenades)
 	return out
 }
@@ -189,7 +190,7 @@ func (s *ReplayLabelSet) AbilityPalettes() []AbilityPalette {
 		cp := AbilityPalette{
 			ID:       p.ID,
 			Markers:  append([]int(nil), p.Markers...),
-			Ranks:    make(map[int]BilingualLabel, len(p.Ranks)),
+			Ranks:    make(map[int]ReplayLabel, len(p.Ranks)),
 			Families: make(map[int]string, len(p.Families)),
 		}
 		for k, v := range p.Ranks {
@@ -434,10 +435,10 @@ func parseMeasuredFamilies(path, table string, e *abilityImpulsesEntry,
 }
 
 // parseGrenadeRanks valide les rangs : l'ORDRE est la donnee, un trou la detruirait.
-func parseGrenadeRanks(path string, rows []bilingualEntry) ([]BilingualLabel, error) {
-	out := make([]BilingualLabel, 0, len(rows))
+func parseGrenadeRanks(path string, rows []labelEntry) ([]ReplayLabel, error) {
+	out := make([]ReplayLabel, 0, len(rows))
 	for i, e := range rows {
-		lbl, err := bilingual(path, fmt.Sprintf("grenade rang %d", i), e)
+		lbl, err := replayLabel(path, fmt.Sprintf("grenade rang %d", i), e)
 		if err != nil {
 			return nil, err
 		}
@@ -490,15 +491,15 @@ func parseAbilityPalettes(path string, rows []abilityPaletteEntry) ([]AbilityPal
 // aucune capacite. La famille est OPTIONNELLE (cf. AbilityPalette.Families) : une capacite
 // sans identite stable garde son libelle, elle ne se joint simplement a rien.
 func parseAbilityRanks(path, palette string, rows map[string]abilityRankEntry) (
-	map[int]BilingualLabel, map[int]string, error) {
-	out := make(map[int]BilingualLabel, len(rows))
+	map[int]ReplayLabel, map[int]string, error) {
+	out := make(map[int]ReplayLabel, len(rows))
 	fams := map[int]string{}
 	for rawKey, e := range rows {
 		rank, err := strconv.Atoi(strings.TrimSpace(rawKey))
 		if err != nil {
 			return nil, nil, fmt.Errorf("%s: rang de capacité %q non numérique (palette %q)", path, rawKey, palette)
 		}
-		lbl, err := bilingual(path, fmt.Sprintf("capacité %d de la palette %q", rank, palette), e.label())
+		lbl, err := replayLabel(path, fmt.Sprintf("capacité %d de la palette %q", rank, palette), e.label())
 		if err != nil {
 			return nil, nil, err
 		}
@@ -557,17 +558,13 @@ func parseShotTints(path string, rows map[string]string) (map[string]string, err
 	return out, nil
 }
 
-// bilingual valide qu'un libelle porte bien ses deux langues. L'icone reste optionnelle.
-func bilingual(path, what string, e bilingualEntry) (BilingualLabel, error) {
-	en := strings.TrimSpace(e.En)
-	fr := strings.TrimSpace(e.Fr)
-	if en == "" {
-		return BilingualLabel{}, fmt.Errorf("%s: %s sans en (nom EN obligatoire)", path, what)
+// replayLabel valide qu'un libelle porte toutes les langues `required`. L'icone reste optionnelle.
+func replayLabel(path, what string, e labelEntry) (ReplayLabel, error) {
+	text := e.Label.Trimmed()
+	if err := text.Validate(); err != nil {
+		return ReplayLabel{}, fmt.Errorf("%s: %s : %w (mettre le nom EN si aucun nom officiel)", path, what, err)
 	}
-	if fr == "" {
-		return BilingualLabel{}, fmt.Errorf("%s: %s sans fr (mettre le EN si aucun FR officiel)", path, what)
-	}
-	return BilingualLabel{En: en, Fr: fr, Icon: strings.TrimSpace(e.Icon)}, nil
+	return ReplayLabel{Text: text, Icon: strings.TrimSpace(e.Icon)}, nil
 }
 
 // tagGlobalID32 lit un GlobalID de tag du jeu, tel que les manifestes l'ecrivent : un entier

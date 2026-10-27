@@ -8,7 +8,8 @@
 #  - metric : clé snake_case alignée sur les agrégats du PlayerStats
 #    (matches_played, wins, kills, headshots, assists, accuracy_threshold_days)
 #  - threshold : > 0 obligatoire
-#  - title_en + title_fr : obligatoires (intégrés au manifest i18n notif)
+#  - title : table par langue `{ en = "...", fr = "..." }`, toute langue `required` de config/locales.toml obligatoire (intégrée au manifest i18n notif)
+#  - condition_text : idem, optionnelle ; `condition` reste la formule technique (hors langue)
 #  - icon : nom logique (résolu côté front via le mapping assets)
 #  - condition : descriptif libre, non évalué (purement UI)
 
@@ -22,24 +23,21 @@ title_slug = "halo_infinite"
 id        = "halo_infinite.matches.100"
 metric    = "matches_played"
 threshold = 100
-title_fr  = "Centurion"
-title_en  = "Centurion"
+title     = { en = "Centurion", fr = "Centurion" }
 icon      = "milestone_matches_100"
 
 [[milestones]]
 id        = "halo_infinite.matches.500"
 metric    = "matches_played"
 threshold = 500
-title_fr  = "Vétéran"
-title_en  = "Veteran"
+title     = { en = "Veteran", fr = "Vétéran" }
 icon      = "milestone_matches_500"
 
 [[milestones]]
 id        = "halo_infinite.matches.1000"
 metric    = "matches_played"
 threshold = 1000
-title_fr  = "Spartan d'élite"
-title_en  = "Elite Spartan"
+title     = { en = "Elite Spartan", fr = "Spartan d'élite" }
 icon      = "milestone_matches_1000"
 
 # ─── Victoires ─────────────────────────────────────────────────────────────
@@ -48,24 +46,21 @@ icon      = "milestone_matches_1000"
 id        = "halo_infinite.wins.50"
 metric    = "wins"
 threshold = 50
-title_fr  = "Vainqueur"
-title_en  = "Winner"
+title     = { en = "Winner", fr = "Vainqueur" }
 icon      = "milestone_wins_50"
 
 [[milestones]]
 id        = "halo_infinite.wins.250"
 metric    = "wins"
 threshold = 250
-title_fr  = "Vétéran de la victoire"
-title_en  = "Victory Veteran"
+title     = { en = "Victory Veteran", fr = "Vétéran de la victoire" }
 icon      = "milestone_wins_250"
 
 [[milestones]]
 id        = "halo_infinite.wins.1000"
 metric    = "wins"
 threshold = 1000
-title_fr  = "Champion"
-title_en  = "Champion"
+title     = { en = "Champion", fr = "Champion" }
 icon      = "milestone_wins_1000"
 
 # ─── Kills ─────────────────────────────────────────────────────────────────
@@ -74,16 +69,14 @@ icon      = "milestone_wins_1000"
 id        = "halo_infinite.kills.1000"
 metric    = "kills"
 threshold = 1000
-title_fr  = "Combattant aguerri"
-title_en  = "Seasoned Fighter"
+title     = { en = "Seasoned Fighter", fr = "Combattant aguerri" }
 icon      = "milestone_kills_1000"
 
 [[milestones]]
 id        = "halo_infinite.kills.10000"
 metric    = "kills"
 threshold = 10000
-title_fr  = "Tueur en série"
-title_en  = "Serial Killer"
+title     = { en = "Serial Killer", fr = "Tueur en série" }
 icon      = "milestone_kills_10000"
 
 # ─── Headshots ─────────────────────────────────────────────────────────────
@@ -92,16 +85,14 @@ icon      = "milestone_kills_10000"
 id        = "halo_infinite.headshots.500"
 metric    = "headshots"
 threshold = 500
-title_fr  = "Tireur d'élite"
-title_en  = "Marksman"
+title     = { en = "Marksman", fr = "Tireur d'élite" }
 icon      = "milestone_headshots_500"
 
 [[milestones]]
 id        = "halo_infinite.headshots.5000"
 metric    = "headshots"
 threshold = 5000
-title_fr  = "Sniper légendaire"
-title_en  = "Legendary Sniper"
+title     = { en = "Legendary Sniper", fr = "Sniper légendaire" }
 icon      = "milestone_headshots_5000"
 
 # ─── Assists (axe support) ─────────────────────────────────────────────────
@@ -110,16 +101,14 @@ icon      = "milestone_headshots_5000"
 id        = "halo_infinite.assists.500"
 metric    = "assists"
 threshold = 500
-title_fr  = "Soutien fidèle"
-title_en  = "Reliable Support"
+title     = { en = "Reliable Support", fr = "Soutien fidèle" }
 icon      = "milestone_assists_500"
 
 [[milestones]]
 id        = "halo_infinite.assists.2500"
 metric    = "assists"
 threshold = 2500
-title_fr  = "Pilier d'équipe"
-title_en  = "Team Pillar"
+title     = { en = "Team Pillar", fr = "Pilier d'équipe" }
 icon      = "milestone_assists_2500"
 
 # ─── Régularité (jours distincts avec performance) ────────────────────────
@@ -130,23 +119,19 @@ icon      = "milestone_assists_2500"
 id        = "halo_infinite.accuracy_consistent.30d"
 metric    = "accuracy_threshold_days"
 threshold = 30
-title_fr  = "Tireur régulier"
-title_en  = "Steady Marksman"
+title     = { en = "Steady Marksman", fr = "Tireur régulier" }
 icon      = "milestone_accuracy_30days"
 condition = "accuracy >= 0.50 sur 30 jours distincts"
-condition_fr = "Précision d'au moins 50 % sur 30 jours distincts"
-condition_en = "At least 50% accuracy on 30 distinct days"
+condition_text = { en = "At least 50% accuracy on 30 distinct days", fr = "Précision d'au moins 50 % sur 30 jours distincts" }
 
 [[milestones]]
 id        = "halo_infinite.accuracy_consistent.90d"
 metric    = "accuracy_threshold_days"
 threshold = 90
-title_fr  = "Tireur d'élite quotidien"
-title_en  = "Daily Marksman"
+title     = { en = "Daily Marksman", fr = "Tireur d'élite quotidien" }
 icon      = "milestone_accuracy_90days"
 condition = "accuracy >= 0.50 sur 90 jours distincts"
-condition_fr = "Précision d'au moins 50 % sur 90 jours distincts"
-condition_en = "At least 50% accuracy on 90 distinct days"
+condition_text = { en = "At least 50% accuracy on 90 distinct days", fr = "Précision d'au moins 50 % sur 90 jours distincts" }
 
 # ─── Profil de combat (OC/DR — Phase 5 PLAN_COMBAT_PROFILE_WIRING) ───────────
 # Métrique compute par l'orchestrateur post-sync depuis match_participants :
@@ -158,53 +143,43 @@ condition_en = "At least 50% accuracy on 90 distinct days"
 id        = "halo_infinite.combat.precision_1"
 metric    = "combat_precision_matches"
 threshold = 10
-title_fr  = "Précision acquise"
-title_en  = "Precision Achieved"
+title     = { en = "Precision Achieved", fr = "Précision acquise" }
 icon      = "milestone_combat_precision_1"
 condition = "10 matchs avec offensive_conversion >= 0.83"
-condition_fr = "10 matchs à forte conversion offensive"
-condition_en = "10 matches with high offensive conversion"
+condition_text = { en = "10 matches with high offensive conversion", fr = "10 matchs à forte conversion offensive" }
 
 [[milestones]]
 id        = "halo_infinite.combat.precision_2"
 metric    = "combat_precision_matches"
 threshold = 50
-title_fr  = "Tireur implacable"
-title_en  = "Relentless Marksman"
+title     = { en = "Relentless Marksman", fr = "Tireur implacable" }
 icon      = "milestone_combat_precision_2"
 condition = "50 matchs avec offensive_conversion >= 0.83"
-condition_fr = "50 matchs à forte conversion offensive"
-condition_en = "50 matches with high offensive conversion"
+condition_text = { en = "50 matches with high offensive conversion", fr = "50 matchs à forte conversion offensive" }
 
 [[milestones]]
 id        = "halo_infinite.combat.precision_3"
 metric    = "combat_precision_matches"
 threshold = 200
-title_fr  = "Predator"
-title_en  = "Predator"
+title     = { en = "Predator", fr = "Predator" }
 icon      = "milestone_combat_precision_3"
 condition = "200 matchs avec offensive_conversion >= 0.83"
-condition_fr = "200 matchs à forte conversion offensive"
-condition_en = "200 matches with high offensive conversion"
+condition_text = { en = "200 matches with high offensive conversion", fr = "200 matchs à forte conversion offensive" }
 
 [[milestones]]
 id        = "halo_infinite.combat.endurance_1"
 metric    = "combat_endurance_matches"
 threshold = 25
-title_fr  = "Blindé"
-title_en  = "Armored"
+title     = { en = "Armored", fr = "Blindé" }
 icon      = "milestone_combat_endurance_1"
 condition = "25 matchs avec defensive_resistance >= 1.59"
-condition_fr = "25 matchs à forte résistance défensive"
-condition_en = "25 matches with high defensive resistance"
+condition_text = { en = "25 matches with high defensive resistance", fr = "25 matchs à forte résistance défensive" }
 
 [[milestones]]
 id        = "halo_infinite.combat.consistency"
 metric    = "combat_excellence_matches"
 threshold = 10
-title_fr  = "Profil d'élite"
-title_en  = "Elite Profile"
+title     = { en = "Elite Profile", fr = "Profil d'élite" }
 icon      = "milestone_combat_excellence"
 condition = "10 matchs avec OC >= 0.83 ET DR >= 1.59"
-condition_fr = "10 matchs alliant conversion offensive et résistance défensive"
-condition_en = "10 matches combining offensive conversion and defensive resistance"
+condition_text = { en = "10 matches combining offensive conversion and defensive resistance", fr = "10 matchs alliant conversion offensive et résistance défensive" }

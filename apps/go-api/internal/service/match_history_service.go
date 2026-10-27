@@ -28,6 +28,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/mapgroups"
 )
@@ -225,7 +226,7 @@ func (s *MatchHistoryService) rowFormatters(replays port.ReplayAvailability, gro
 	// Libellé de playlist résolu via le chokepoint unique (strip + override) —
 	// même « Super Fiesta » que la Match View / les tuiles home.
 	cfg := s.playlistDisplay
-	f.playlistLabel = func(rawFR string) string { return cfg.Display(rawFR) }
+	f.playlistLabel = cfg.DisplayIn
 	f.regulation = s.regulationSeconds
 	f.roundsDecide = s.roundsDecide
 	f.skillBadgeURL = s.skillBadgeResolver
@@ -345,7 +346,7 @@ func (s *MatchHistoryService) GetPage(
 	filtered = filterByPerfTiers(filtered, req.PerfTiers)
 
 	// Options Explorer disponibles calculées AVANT les filtres Explorer additionnels.
-	availExpTypes, availPlaylists, availMaps, availModes := computeExplorerAvailableOptions(filtered)
+	availExpTypes, availPlaylists, availMaps, availModes := computeExplorerAvailableOptions(filtered, i18n.FromContext(ctx))
 	// GH6-1 : LABEL des types d'expérience localisé (EN sous locale EN), VALUE FR
 	// intacte (clé de filtre + cascade front). Miroir GH5-2 (Omnibar).
 	availExpTypeOpts := experienceTypeOptionsForLocale(availExpTypes, ctxkeys.Locale(ctx))
@@ -369,7 +370,7 @@ func (s *MatchHistoryService) GetPage(
 	mapWinRates := computeMapWinRates(rawRows, groups)
 
 	// Enrichissement
-	items := enrichRows(filtered, mapWinRates, s.rowFormatters(replays, groups))
+	items := enrichRows(filtered, mapWinRates, s.rowFormatters(replays, groups), i18n.FromContext(ctx))
 
 	// Tri
 	sortItems(items, req.SortField, req.SortDir)

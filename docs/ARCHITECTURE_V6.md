@@ -51,12 +51,13 @@ both on `POST /setup/players`.
 
 ### metadata.duckdb
 
-- `asset_translations`: localized names for maps, playlists, pairs and game variants — 14 BCP-47 languages (`en-US`, `fr-FR`, …) — **added v6.3** — populated by the Go metadata migrations (`internal/games/halo_infinite/migrations/`) during metadata seeding
+- `asset_translations`: names and descriptions per language, one row per `(asset_id, asset_type, lang)` (`lang` = Halo BCP-47 tag: `en-US`, `fr-FR`, …) — **added v6.3**. Types `map`, `playlist`, `pair`, `game_variant` (14 languages, `levelup populate-assets`), plus the curated texts that left their `_fr` / `_en` column pairs (ADR 0040 D-13, D-15): `achievement`, `achievement_locked`, `milestone` (name = title, description = condition), `citation`, `challenge_template`, `preset_arc`, and for Halo 5 `commendation`, `team_color`. Readers load every language and choose with `Text.Pick` (request language, then `en`)
+- `medal_translations`: medal name and description per `(medal_name_id, lang)`
 - `challenge_definitions`: versioned Halo challenge definitions (`challenge_path` + `content_hash`) with category, difficulty, threshold and XP rewards
 - `challenge_translations`: localized challenge titles and descriptions in all languages exposed by the CMS (BCP-47, `en-US` fallback)
-- `weapon_labels`: weapon_id (filmshell UBIGINT) → `name_en`, `name_fr` — added v5.4
-- `career_ranks`: rank tier definitions
-- `citation_mappings`: medal → citation mappings
+- `weapon_name_labels` `(title_slug, weapon_key, lang, name)` and `weapon_label_names` `(weapon_id, lang, name)`: weapon display names, one row per language (`lang` = language code of `config/locales.toml`); `weapon_labels` (weapon_id, filmshell UBIGINT) keeps only its non-text columns
+- `career_ranks`: rank tier definitions (`title_en` / `subtitle_en` are the single English source; the names per language are `career_rank_translations`)
+- `citation_mappings`: medal → citation mappings (no text column: the citation texts are `asset_translations` rows of type `citation`)
 - `mode_name_tr` / `mode_*`: game mode translations (legacy overrides, superseded by `asset_translations` for map/playlist/pair/variant names)
 
 ### shared_matches_v2.duckdb
@@ -66,7 +67,7 @@ Core tables:
 - `match_participants`: per-player stats for all matches
 
 SQL views (`ensure_resolution_views()`):
-- `v_match_full`: `match_registry` enriched with i18n names from `meta.asset_translations` — 8 LEFT JOINs (en-US + fr-FR × map/playlist/pair/variant). Columns: `map_name`, `map_name_fr`, `game_variant_name`, `game_variant_name_fr`, etc.
+- `v_match_full`: `SELECT mr.*` over `match_registry` (`internal/migration` `VMatchFullViewSQL`). The registry carries the names `map_name`, `pair_name`, `playlist_name`, `game_variant_name` and the `*_fr` columns `map_name_fr`, `pair_name_fr`, `playlist_name_fr`, kept in the shared database and read as registry values; the names in every other language are read from `meta.asset_translations` at query time (ADR 0040)
 - `v_gamertag_lookup`: XUID → current gamertag (FULL OUTER JOIN `xuid_aliases` + `match_participants` + `match_kill_events_latest`)
 
 > `v_killer_victim_full` was **dropped on 2026-08-02** and is no longer a guaranteed v6 view.

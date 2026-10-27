@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/campaign"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/prestige"
 	"levelup/go-api/internal/progression/records"
 	"levelup/go-api/internal/progression/streaks"
@@ -197,7 +198,7 @@ func buildDemoPrestigePlan(titleSlug string,
 	for _, ev := range plan.Events {
 		plan.TotalPP += ev.PP
 	}
-	plan.Level = prestige.LevelFromPP(tuning, plan.TotalPP).Index
+	plan.Level = prestige.LevelFromPP(tuning, plan.TotalPP, i18n.Default).Index
 	return plan
 }
 

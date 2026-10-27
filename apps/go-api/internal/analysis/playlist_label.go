@@ -6,6 +6,8 @@ package analysis
 import (
 	"strings"
 	"unicode"
+
+	"levelup/go-api/internal/i18n"
 )
 
 // playlistCategoryPrefixes : locutions de CATÉGORIE matchmaking pouvant préfixer un
@@ -101,4 +103,15 @@ func capitalizeFirstRune(s string) string {
 		}
 	}
 	return s
+}
+
+// DisplayIn résout le libellé d'affichage d'une playlist pour la langue `loc`. Le retrait du préfixe et
+// les overrides (clés : noms de la langue par défaut) ne visent que le nom de la langue par défaut :
+// pour une autre langue le nom, déjà celui de l'actif dans cette langue, est rendu tel quel (rogné),
+// comme le font la Match View et les tuiles de l'Accueil.
+func (c PlaylistLabelConfig) DisplayIn(loc i18n.Locale, name string) string {
+	if loc == i18n.Default {
+		return c.Display(name)
+	}
+	return strings.TrimSpace(name)
 }

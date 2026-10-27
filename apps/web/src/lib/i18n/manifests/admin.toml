@@ -1403,13 +1403,9 @@ en = "Translate"
 fr = "Résoudre"
 en = "Resolve"
 
-[admin.dq.form_name_fr]
-fr = "Nom FR"
-en = "FR name"
-
-[admin.dq.form_name_en]
-fr = "Nom EN"
-en = "EN name"
+[admin.dq.form_name_in]
+fr = "Nom ({language})"
+en = "Name ({language})"
 
 [admin.dq.form_submit]
 fr = "Enregistrer"

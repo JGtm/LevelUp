@@ -251,27 +251,23 @@ func buildMilestoneAlerts(input GenerateInput) []Alert {
 			out = append(out, Alert{
 				Type:     AlertTypeMilestoneUnlocked,
 				Severity: notifications.SeveritySuccess,
-				Params: map[string]any{
+				Params: milestoneParams(r.Milestone, map[string]any{
 					"milestone_id":   r.Milestone.ID,
-					"title_en":       r.Milestone.TitleEN,
-					"title_fr":       r.Milestone.TitleFR,
 					alertParamMetric: r.Milestone.Metric,
 					"threshold":      r.Milestone.Threshold,
-				},
+				}),
 				DedupKey: r.Milestone.ID,
 			})
 		case r.NearMiss:
 			out = append(out, Alert{
 				Type:     AlertTypeMilestoneNearMiss,
 				Severity: notifications.SeverityInfo,
-				Params: map[string]any{
+				Params: milestoneParams(r.Milestone, map[string]any{
 					"milestone_id":   r.Milestone.ID,
-					"title_en":       r.Milestone.TitleEN,
-					"title_fr":       r.Milestone.TitleFR,
 					alertParamMetric: r.Milestone.Metric,
 					"threshold":      r.Milestone.Threshold,
 					"progress":       r.Progress,
-				},
+				}),
 				DedupKey: r.Milestone.ID,
 			})
 		}

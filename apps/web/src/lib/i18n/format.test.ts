@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import { commonManifest } from './generated/common'
+import { KNOWN_LOCALES, type KnownLocale } from './generated/locales'
 import { formatMessage, resetFormatterCache } from './format'
 
 describe('formatMessage', () => {
@@ -59,8 +60,10 @@ describe('formatMessage', () => {
   })
 
   it('retourne la cle si la locale demandee est manquante (defensive)', () => {
+    // Une seule langue renseignee : les autres sont vides, quel que soit le nombre de langues listees.
+    const empty = Object.fromEntries(KNOWN_LOCALES.map((l) => [l, ''])) as Record<KnownLocale, string>
     const partialManifest = {
-      'test.partial': { fr: 'FR uniquement', en: '' },
+      'test.partial': { ...empty, fr: 'FR uniquement' },
     } as const
     expect(formatMessage(partialManifest, 'test.partial', 'en')).toBe('test.partial')
     expect(formatMessage(partialManifest, 'test.partial', 'fr')).toBe('FR uniquement')

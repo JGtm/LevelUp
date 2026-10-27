@@ -266,6 +266,14 @@ en = "Bot teammate present in this match"
 fr = "K/D vs nemesis"
 en = "K/D vs nemesis"
 
+[match_view.cards.nemesis_versus]
+fr = "contre {name}"
+en = "vs {name}"
+
+[match_view.cards.nemesis_counts]
+fr = "{killed} frags · {died} morts"
+en = "{killed} kills · {died} deaths"
+
 [match_view.cards.mmr_team_vs_enemy]
 fr = "MMR"
 en = "MMR"

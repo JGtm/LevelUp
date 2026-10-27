@@ -44,6 +44,7 @@ import { divergentZeroGradient } from '@/lib/charts/divergentZeroGradient'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import { useThemeVersion } from '@/lib/echarts/useThemeVersion'
 import type { TimeseriesMatchRow } from '@/lib/api/types'
+import type { Locale } from '@/lib/i18n/locale'
 import { buildMatchCategories } from './matchLabels'
 import { ChartFromOption } from './ChartFromOption'
 
@@ -172,7 +173,7 @@ export interface TimeseriesFdaGapTrendProps {
   emptyMessage?: string
   labels: FdaGapCumulativeLabels
   /** Locale d'affichage ('fr' | 'en') pour le formatage du KPI (séparateur décimal). */
-  locale: string
+  locale: Locale
 }
 
 export function TimeseriesFdaGapTrend({
@@ -225,7 +226,7 @@ export function TimeseriesFdaGapTrend({
       title={
         <span className="flex items-center gap-1.5">
           {title}
-          <InfoTooltip content={<FdaGapTooltipText locale={locale === 'en' ? 'en' : 'fr'} />} />
+          <InfoTooltip content={<FdaGapTooltipText locale={locale} />} />
         </span>
       }
       option={option}

@@ -14,6 +14,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/squadagg"
 )
@@ -35,13 +36,15 @@ func (s *MatchViewService) matchWeaponTools(
 		ShoulderBash:  derefInt(me.ShoulderBashKills),
 		Total:         derefInt(me.Kills),
 	}}
+	loc := i18n.FromContext(ctx)
 	tools := squadagg.BuildWeaponTools(squadagg.WeaponToolInputs{
-		Rows:           matchToolRows(bulk),
+		Rows:           matchToolRows(bulk, loc),
 		Categories:     s.matchToolCategories(ctx, matchID, me.XUID),
 		PlayersOrdered: []string{gt},
 		GtByXUID:       map[string]string{me.XUID: gt},
 		Sheet:          sheet,
 		HasMechanics:   titleHasNativeKillMechanics(s.titleSlug),
+		Locale:         loc,
 	})
 	if tools != nil {
 		slog.DebugContext(ctx, "match_view_outils", "match_id", matchID, "lignes", len(tools.Lines),
@@ -51,13 +54,13 @@ func (s *MatchViewService) matchWeaponTools(
 }
 
 // matchToolRows projette les frags par arme du match en lignes du builder (qui ne garde que celles
-// des joueurs qu'on lui nomme). Le libellé est déjà dans la langue de la requête : il sert de libellé
-// et de libellé anglais.
-func matchToolRows(bulk []domain.BulkWeaponKillRaw) []port.WeaponKillRow {
+// des joueurs qu on lui nomme). Le libellé est déjà dans la langue de la requête : il devient le
+// texte de cette langue.
+func matchToolRows(bulk []domain.BulkWeaponKillRaw, loc i18n.Locale) []port.WeaponKillRow {
 	out := make([]port.WeaponKillRow, 0, len(bulk))
 	for _, w := range bulk {
 		out = append(out, port.WeaponKillRow{
-			XUID: w.XUID, WeaponID: w.WeaponID, Kills: w.Kills, Label: w.WeaponLabel, LabelEN: w.WeaponLabel,
+			XUID: w.XUID, WeaponID: w.WeaponID, Kills: w.Kills, Label: i18n.Text{loc: w.WeaponLabel},
 			Role: w.Role, Class: w.Class, Family: w.Family, WeaponKey: w.WeaponKey,
 			FromDamageSource: w.FromDamageSource, MechanicKills: w.MechanicKills,
 		})

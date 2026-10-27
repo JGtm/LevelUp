@@ -118,9 +118,11 @@ function empriseEn(base: EmpriseText): EmpriseText {
   }
 }
 
+const EMPRISE_OVERRIDES: Record<Locale, (base: EmpriseText) => EmpriseText> = { fr: empriseFr, en: empriseEn }
+
 function emprise(locale: Locale): EmpriseText {
   const base = EMPRISE_TEXT[locale]
-  return locale === 'fr' ? empriseFr(base) : empriseEn(base)
+  return EMPRISE_OVERRIDES[locale](base)
 }
 
 const FR: UsagesText = {

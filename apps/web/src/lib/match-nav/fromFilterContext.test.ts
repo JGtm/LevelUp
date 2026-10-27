@@ -20,6 +20,27 @@ describe('filterContextToMatchFilterSpec', () => {
     expect(filterContextToMatchFilterSpec(empty)).toBeNull()
   })
 
+  it('libellés : la clé filtre, le libellé de la page est posé à côté (fr et en)', () => {
+    const ctx: FilterContextInput = {
+      ...empty,
+      cascade: { ...empty.cascade, playlists: ['Partie rapide'], modes: ['Assassin'] },
+    }
+    const fr = filterContextToMatchFilterSpec(ctx, {
+      playlistLabels: { 'Partie rapide': 'Partie rapide', Autre: 'Autre' },
+      modeLabels: { Assassin: 'Assassin' },
+    })
+    const en = filterContextToMatchFilterSpec(ctx, {
+      playlistLabels: { 'Partie rapide': 'Quick Play', Autre: 'Other' },
+      modeLabels: { Assassin: 'Slayer' },
+    })
+    expect(fr?.playlist_names).toEqual(['Partie rapide'])
+    expect(en?.playlist_names).toEqual(['Partie rapide'])
+    expect(en?.mode_categories).toEqual(['Assassin'])
+    expect(en?.playlist_labels).toEqual({ 'Partie rapide': 'Quick Play' })
+    expect(en?.mode_labels).toEqual({ Assassin: 'Slayer' })
+    expect(fr?.playlist_labels).toEqual({ 'Partie rapide': 'Partie rapide' })
+  })
+
   it('1 seule playlist : mappée en playlist_names (slice de 1)', () => {
     const ctx: FilterContextInput = {
       ...empty,

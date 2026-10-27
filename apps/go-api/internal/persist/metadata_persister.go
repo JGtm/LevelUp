@@ -75,10 +75,10 @@ func persistModeNameTranslations(ctx context.Context, tx *sql.Tx, rows []ModeNam
 		_, err := tx.ExecContext(ctx, `
 			INSERT OR IGNORE INTO mode_name_tr (mode_en, lang, name)
 			VALUES (?, ?, ?)`,
-			t.ModeEN, t.Lang, t.Name,
+			t.ModeKey, t.Lang, t.Name,
 		)
 		if err != nil {
-			return fmt.Errorf("persist: INSERT mode_name_tr %s/%s: %w", t.ModeEN, t.Lang, err)
+			return fmt.Errorf("persist: INSERT mode_name_tr %s/%s: %w", t.ModeKey, t.Lang, err)
 		}
 	}
 	return nil

@@ -31,6 +31,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/netguard"
 )
@@ -338,7 +339,7 @@ func (s *LeaderboardScraper) FetchSeasons(ctx context.Context, refPlaylistID str
 	out := make([]domain.WorldSeasonRef, 0, len(seasons))
 	for _, se := range seasons {
 		if id := strings.TrimSpace(se.ID); id != "" {
-			out = append(out, domain.WorldSeasonRef{SeasonID: id, DisplayName: se.DisplayName, NameFR: se.FrenchName()})
+			out = append(out, domain.WorldSeasonRef{SeasonID: id, Name: i18n.FromColumns(se.DisplayName, se.FrenchName())})
 		}
 	}
 	return out, nil

@@ -56,11 +56,9 @@ export function toolKindLabels(locale: Locale, source: { explosiveObject: string
 }
 
 /** Nom affiché d'une ligne. Nature inconnue du web → sa clé brute (jamais une ligne vide). */
-export function toolLineLabel(line: SquadWeaponToolLine, locale: Locale, labels: SquadToolKindLabels): string {
+export function toolLineLabel(line: SquadWeaponToolLine, labels: SquadToolKindLabels): string {
   if (line.kind === 'weapon') {
-    const fr = line.label ?? ''
-    const en = line.label_en ?? ''
-    return (locale === 'en' ? en || fr : fr || en) || (line.weapon_key ?? '')
+    return line.label || (line.weapon_key ?? '')
   }
   return labels[line.kind as keyof SquadToolKindLabels] ?? line.kind
 }
@@ -73,7 +71,7 @@ export function toolLineLabel(line: SquadWeaponToolLine, locale: Locale, labels:
 export function buildSquadToolRows(
   tools: SquadWeaponTools | null | undefined,
   /** `top` (vue compacte de Sessions) : les `top` premiers outils du serveur, « Non attribué » exclu. */
-  opts: { locale: Locale; labels: SquadToolKindLabels; top?: number },
+  opts: { labels: SquadToolKindLabels; top?: number },
 ): SquadBarRows | null {
   const players = tools?.players ?? []
   const all = tools?.lines ?? []
@@ -81,7 +79,7 @@ export function buildSquadToolRows(
   if (players.length === 0 || lines.length === 0) return null
   const rows: SquadBarRow[] = lines.map((l) => ({
     key: l.kind === 'weapon' ? `weapon:${l.weapon_key ?? l.label ?? ''}` : l.kind,
-    label: toolLineLabel(l, opts.locale, opts.labels),
+    label: toolLineLabel(l, opts.labels),
     cls: l.class,
     killsByPlayer: l.kills_by_player,
     total: l.total_squad,

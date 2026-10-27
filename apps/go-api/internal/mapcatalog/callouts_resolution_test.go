@@ -5,6 +5,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/i18n"
 )
 
 // Identifiants des témoins : une carte Forge présente aux deux catalogues, une seulement au
@@ -75,7 +76,7 @@ func TestResoudreSuitLaCascade(t *testing.T) {
 	}
 	for _, c := range cas {
 		e, origine, ok := s.Resoudre(c.id)
-		if !ok || origine != c.origine || e.Zones[0].EN != c.en {
+		if !ok || origine != c.origine || e.Zones[0].Text[i18n.LocaleEN] != c.en {
 			t.Errorf("%s : ok=%v origine=%q zone=%q ; attendu %q par %q", c.nom, ok, origine, firstEN(e), c.en, c.origine)
 		}
 	}
@@ -102,5 +103,5 @@ func firstEN(e replay.MapCalloutsEntry) string {
 	if len(e.Zones) == 0 {
 		return ""
 	}
-	return e.Zones[0].EN
+	return e.Zones[0].Text[i18n.LocaleEN]
 }

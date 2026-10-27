@@ -16,8 +16,8 @@ import { describe, it, expect } from 'vitest'
 import type { AssetMeta } from '@/lib/api/types'
 import { dedupeAssetsById } from './assetDrawerLogic'
 
-function map(id: string, nameEn: string): AssetMeta {
-  return { id, name_en: nameEn, name_fr: '', image_url: '' } as AssetMeta
+function map(id: string, name: string): AssetMeta {
+  return { id, name, image_url: '' } as AssetMeta
 }
 
 describe('dedupeAssetsById', () => {
@@ -37,7 +37,7 @@ describe('dedupeAssetsById', () => {
       'b302eb62-0000-0000-0000-000000000000',
     ])
     // La première occurrence (« Aquarius ») gagne — pas la seconde.
-    expect(dedup[0].name_en).toBe('Aquarius')
+    expect(dedup[0].name).toBe('Aquarius')
   })
 
   it('ne modifie rien quand tous les id sont déjà uniques', () => {

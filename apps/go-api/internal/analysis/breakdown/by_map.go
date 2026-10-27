@@ -4,6 +4,7 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
 // MapAggregate est l'agregation par carte.
@@ -34,14 +35,14 @@ type MapAggregate struct {
 //
 // Regles :
 //   - Les rows avec MapID == "" sont ignorees.
-//   - Une carte de groupe porte le libelle de la carte de BASE dans `locale`
+//   - Une carte de groupe porte le libelle de la carte de BASE dans `locale` (a defaut la langue de repli)
 //     (groups.Libelle) : jamais celui d'une variante.
 //   - Sinon le label retenu est celui de la premiere row rencontree avec un label
 //     non vide pour ce MapID. (Convention : si le service envoie des rows
 //     coherentes, il n'y aura qu'un seul label par ID. En cas de divergence,
 //     premiere wins.)
 //   - Tri : WinRate desc puis MapID asc.
-func ByMap(rows []Row, groups domain.GroupesDeCartes, locale string) []MapAggregate {
+func ByMap(rows []Row, groups domain.GroupesDeCartes, locale i18n.Locale) []MapAggregate {
 	grouped := make(map[string][]Row)
 	labels := make(map[string]string)
 	order := make([]string, 0)

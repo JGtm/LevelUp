@@ -48,6 +48,7 @@ import (
 	"path/filepath"
 
 	"levelup/go-api/internal/himodule"
+	"levelup/go-api/internal/i18n"
 )
 
 // LangueEN et LangueFR : index de langue tels que le jeu les numérote. Les autres existent
@@ -56,12 +57,6 @@ const (
 	LangueEN = 0
 	LangueFR = 3
 )
-
-// LibelleLieu porte le texte joueur d'un string_id de lieu.
-type LibelleLieu struct {
-	EN string
-	FR string
-}
 
 // Offsets de l'en-tête d'un sous-fichier `ucsh` — cf. en-tête de fichier.
 const (
@@ -148,7 +143,7 @@ func VocabulaireLieux(racineDeploy string) ([]uint32, error) {
 // `uslg`, celui qui couvre le mieux le vocabulaire `locs`, et on EXIGE qu'il le couvre
 // entièrement. Un indice en dur casserait à la prochaine mise à jour du jeu sans que rien
 // ne le signale ; ce critère-là, lui, est vérifiable et il échoue bruyamment.
-func LexiqueLieux(racineDeploy string) (map[uint32]LibelleLieu, error) {
+func LexiqueLieux(racineDeploy string) (map[uint32]i18n.Text, error) {
 	vocab, err := VocabulaireLieux(racineDeploy)
 	if err != nil {
 		return nil, err
@@ -162,7 +157,7 @@ func LexiqueLieux(racineDeploy string) (map[uint32]LibelleLieu, error) {
 		return nil, fmt.Errorf("himap: globals : %w", err)
 	}
 	defer func() { _ = m.Close() }()
-	var meilleur map[uint32]LibelleLieu
+	var meilleur map[uint32]i18n.Text
 	meilleureCouverture := -1
 	for _, f := range m.Files("uslg") {
 		lex, err := lexiqueDUnTag(m, f)
@@ -191,7 +186,7 @@ func LexiqueLieux(racineDeploy string) (map[uint32]LibelleLieu, error) {
 
 // lexiqueDUnTag décode un tag `uslg` : ses 18 langues, puis les sous-fichiers `ucsh` de son
 // blob de ressources. Ne rend que l'anglais et le français.
-func lexiqueDUnTag(m *himodule.Module, f himodule.File) (map[uint32]LibelleLieu, error) {
+func lexiqueDUnTag(m *himodule.Module, f himodule.File) (map[uint32]i18n.Text, error) {
 	tag, err := m.Extract(f)
 	if err != nil {
 		return nil, fmt.Errorf("extraire : %w", err)
@@ -204,7 +199,7 @@ func lexiqueDUnTag(m *himodule.Module, f himodule.File) (map[uint32]LibelleLieu,
 	if err != nil {
 		return nil, fmt.Errorf("blob de ressources : %w", err)
 	}
-	out := map[uint32]LibelleLieu{}
+	out := map[uint32]i18n.Text{}
 	p := 0
 	for slot := 0; p+ucshEnteteFixe <= len(blob); slot++ {
 		table, suivant, err := decodeSousFichierUcsh(blob, p)
@@ -216,9 +211,9 @@ func lexiqueDUnTag(m *himodule.Module, f himodule.File) (map[uint32]LibelleLieu,
 				l := out[h]
 				switch langues[slot] {
 				case LangueEN:
-					l.EN = s
+					l.Set(i18n.LocaleEN, s)
 				case LangueFR:
-					l.FR = s
+					l.Set(i18n.LocaleFR, s)
 				default:
 					continue
 				}

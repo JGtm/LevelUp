@@ -480,7 +480,6 @@ func (a *seasonsCatalogHandlerAdapter) Load(ctx context.Context, titleID string)
 		out = append(out, handlers.SeasonCatalogEntry{
 			ID:           e.ID,
 			Label:        e.Label,
-			LabelEN:      e.LabelEN,
 			Start:        e.Start,
 			End:          e.End,
 			DisplayOrder: e.DisplayOrder,

@@ -22,7 +22,12 @@
 import { z } from 'zod'
 
 import { csvToSet, setToCsv } from '@/lib/page-scope/serialize'
-import type { MatchFilterOutcome, MatchFilterSpec } from '@/lib/match-nav/navContext'
+import {
+  labelsFor,
+  type MatchFilterLabels,
+  type MatchFilterOutcome,
+  type MatchFilterSpec,
+} from '@/lib/match-nav/navContext'
 
 export type SquadScope = '' | 'solo' | 'squad'
 /** Présence d'un rejeu 2D : tous / avec / sans. Même forme à 3 états que SquadScope. */
@@ -168,14 +173,28 @@ const OUTCOME_CODE_TO_LABEL: Record<string, MatchFilterOutcome> = {
  *   - outcome      → seulement si exactement 1 sélectionné (MatchFilterSpec.outcome
  *     est mono-valeur ; multi-outcome → on n'applique pas le filtre)
  *
+ * `labels` : libellés affichés (langue de la page) des clés ci-dessus, posés à côté d'elles pour que le
+ * compteur de la vue du match nomme le filtre dans la langue de la page ; les clés restent ce qui filtre.
+ *
  * Note : la nav in-liste reste portée par `matchIds` (exact) ; ce filterSpec
  * est la couche de durabilité F5/lien partagé. Retourne `undefined` si aucun
  * axe mappable (URL non polluée, fallback Q25 global).
  */
-export function explorerScopeToFilterSpec(s: ExplorerScope): MatchFilterSpec | undefined {
+export function explorerScopeToFilterSpec(
+  s: ExplorerScope,
+  labels?: { playlists?: MatchFilterLabels; modes?: MatchFilterLabels },
+): MatchFilterSpec | undefined {
   const spec: MatchFilterSpec = {}
-  if (s.playlists.size > 0) spec.playlist_names = [...s.playlists]
-  if (s.modeNames.size > 0) spec.mode_categories = [...s.modeNames]
+  if (s.playlists.size > 0) {
+    spec.playlist_names = [...s.playlists]
+    const names = labelsFor(spec.playlist_names, labels?.playlists)
+    if (names) spec.playlist_labels = names
+  }
+  if (s.modeNames.size > 0) {
+    spec.mode_categories = [...s.modeNames]
+    const names = labelsFor(spec.mode_categories, labels?.modes)
+    if (names) spec.mode_labels = names
+  }
   if (s.startDate) spec.date_from = `${s.startDate}T00:00:00Z`
   if (s.endDate) spec.date_to = `${s.endDate}T23:59:59Z`
   if (s.outcomeFilter.size === 1) {

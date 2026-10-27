@@ -1,0 +1,467 @@
+# citation_texts.toml - noms et descriptions des citations (citation_mappings), une table par langue
+# et par entrée. Source des textes écrits par le seed `levelup seed citation-mappings` dans
+# asset_translations (type `citation`, ADR 0040 D-15) : une ligne par langue et par texte.
+#
+# Embarqué (go:embed) DANS le paquet ops, comme les libellés des playlists classées
+# (rankedplaylists/ranked_playlists_labels.toml) : le seed tourne aussi sans arborescence de
+# configuration (seed de démonstration synthétique).
+#
+# Clé = citation_name_norm (celle de defaultCitationMappings, seed_citation_data.go). Chaque entrée
+# porte `name` et `description` dans CHAQUE langue `required` de config/locales.toml ; le chargement
+# refuse une langue manquante ou hors liste (i18n.Text.Validate). Une langue de plus = une clé de
+# plus dans chaque table, sans toucher au code Go.
+#
+# Origine. Les citations Infinite sont des copies de commendations Halo 5 (seul le calcul de
+# progression diffère). Noms : le français vient des libellés curés ; l'anglais, par ordre de
+# fiabilité, du name_en OFFICIEL H5 quand le nom français correspond exactement (38), de
+# « <arme> Mastery » pour les maîtrises d'armes Infinite (armes absentes de H5), du Norm lui-même
+# qui encode l'anglais (grand_theft -> Grand Theft). Descriptions anglaises, par ordre de
+# fiabilité : la description OFFICIELLE H5 (API Metadata /commendations) pour les citations qui
+# reprennent une commendation H5 in-match (57), la page Halopedia des commendations Halo 5 (section
+# Spartan Company) pour les 15 citations Spartan Companies, une traduction fidèle du français dans
+# l'idiome officiel « Kill enemy Spartans with the <arme> » pour les 24 maîtrises d'armes Infinite
+# et les 4 citations Infinite-only (avenger, sentinel/brute/skimmer slayer).
+
+[meta]
+title_slug = "halo_infinite"
+schema_version = 1
+
+[citations.charge]
+name = { en = "Storm the Walls", fr = "À la charge" }
+description = { en = "Take over any base in any Stronghold gametype in matchmaking.", fr = "Prenez le contrôle d'une base dans n'importe quelle partie matchmaking Bases." }
+
+[citations.forced_annexation]
+name = { en = "Aggressive Expansion", fr = "Annexion forcée" }
+description = { en = "Take over 3 bases without dying in any Stronghold gametype in matchmaking.", fr = "Prenez le contrôle de 3 bases sans mourir dans n'importe quelle partie matchmaking Bases." }
+
+[citations.assistant]
+name = { en = "Assistant", fr = "Assistant" }
+description = { en = "Earn any Assist medal in Warzone.", fr = "Remportez n'importe quelle médaille d'assistance en Zone de combat." }
+
+[citations.flag_defender]
+name = { en = "Defender of the Flag", fr = "Défenseur du drapeau" }
+description = { en = "Protect your team's flag in any Capture the Flag gametype in matchmaking.", fr = "Protégez le drapeau de votre équipe dans n'importe quelle partie matchmaking Capture du drapeau." }
+
+[citations.got_you]
+name = { en = "Got You!", fr = "Je te tiens !" }
+description = { en = "Return your team's flag in any Capture the Flag gametype in matchmaking.", fr = "Rapportez le drapeau de votre équipe dans n'importe quelle partie matchmaking Capture du drapeau." }
+
+[citations.stakeholder]
+name = { en = "Head in the Game", fr = "Partie prenante" }
+description = { en = "Defend a team base in any Stronghold gametype in matchmaking.", fr = "Défendez une base appartenant à votre équipe dans n'importe quelle partie matchmaking Bases." }
+
+[citations.flag_carrier_hunter]
+name = { en = "Carrier Takedown", fr = "Sus au porteur du drapeau" }
+description = { en = "Kill an enemy flag carrier in any Capture the Flag gametype in matchmaking.", fr = "Tuez un porte-drapeau ennemi dans n'importe quelle partie matchmaking Capture du drapeau." }
+
+[citations.flag_victory]
+name = { en = "Flag Victory", fr = "Victoire au drapeau" }
+description = { en = "Win a match in any Capture the Flag gametype in matchmaking.", fr = "Remportez n'importe quelle partie matchmaking Capture du drapeau." }
+
+[citations.slayer_victory]
+name = { en = "Slayer Victory", fr = "Victoire en assassin" }
+description = { en = "Be on the winning team of a Slayer match.", fr = "Remportez une partie d'Assassin en équipe." }
+
+[citations.strongholds_victory]
+name = { en = "Stronghold Victory", fr = "Victoire en bases" }
+description = { en = "Win a match in any Stronghold gametype in matchmaking.", fr = "Remportez n'importe quelle partie matchmaking Bases." }
+
+[citations.tick_tick_boom]
+name = { en = "Tick Tick Boom", fr = "Tick Tick Boom" }
+description = { en = "Win matches in Assault.", fr = "Remportez des parties d'Assaut." }
+
+[citations.wonderful_toys]
+name = { en = "Wonderful Toys", fr = "Jouets éducatifs" }
+description = { en = "Pick up three or more weapons from weapon pads during a single Slayer match.", fr = "Prenez au moins trois armes sur socle au cours d'une même partie d'Assassin." }
+
+[citations.flag_captures]
+name = { en = "Flag Captures", fr = "Capture du drapeau" }
+description = { en = "Capture the enemy flag in any Capture the Flag gametype in matchmaking.", fr = "Capturez le drapeau ennemi dans n'importe quelle partie matchmaking Capture du drapeau." }
+
+[citations.flag_secures]
+name = { en = "Flag Secures", fr = "Sécurisation du drapeau" }
+description = { en = "Secure your team's flag in any Capture the Flag gametype in matchmaking.", fr = "Sécurisez le drapeau de votre équipe dans n'importe quelle partie matchmaking Capture du drapeau." }
+
+[citations.flag_steals]
+name = { en = "Flag Steals", fr = "Vol du drapeau" }
+description = { en = "Steal the enemy flag from its base in any Capture the Flag gametype in matchmaking.", fr = "Volez le drapeau ennemi à sa base dans n'importe quelle partie matchmaking Capture du drapeau." }
+
+[citations.returner_takedown]
+name = { en = "Returner Takedown", fr = "Chasse au rapatrieur" }
+description = { en = "Kill enemies returning their own flag in any Capture the Flag gametype in matchmaking.", fr = "Tuez les adversaires qui rapportent leur propre drapeau dans n'importe quelle partie matchmaking Capture du drapeau." }
+
+[citations.unstoppable_carrier]
+name = { en = "Unstoppable Carrier", fr = "Porteur imparable" }
+description = { en = "Kill an enemy while carrying the flag in any Capture the Flag gametype in matchmaking.", fr = "Tuez un adversaire alors que vous portez le drapeau dans n'importe quelle partie matchmaking Capture du drapeau." }
+
+[citations.aggressive_return]
+name = { en = "Aggressive Return", fr = "Rapatriement agressif" }
+description = { en = "Kill an enemy while returning your team's flag in any Capture the Flag gametype in matchmaking.", fr = "Tuez un adversaire pendant que vous rapportez le drapeau de votre équipe dans n'importe quelle partie matchmaking Capture du drapeau." }
+
+[citations.zone_defense]
+name = { en = "Zone Defense", fr = "Défense de zone" }
+description = { en = "Kill an enemy inside a zone held by your team in any Stronghold gametype in matchmaking.", fr = "Tuez un adversaire dans une zone contrôlée par votre équipe dans n'importe quelle partie matchmaking Bases." }
+
+[citations.untouchable_carrier]
+name = { en = "Untouchable Carrier", fr = "Crâne intouchable" }
+description = { en = "Kill an enemy while carrying the skull in any Oddball gametype in matchmaking.", fr = "Tuez un adversaire alors que vous portez le crâne dans n'importe quelle partie matchmaking Oddball." }
+
+[citations.skull_carrier_takedown]
+name = { en = "Skull Carrier Takedown", fr = "Chasse au porteur" }
+description = { en = "Kill the enemy skull carrier in any Oddball gametype in matchmaking.", fr = "Tuez le porteur du crâne adverse dans n'importe quelle partie matchmaking Oddball." }
+
+[citations.skull_grabs]
+name = { en = "Skull Grabs", fr = "Prise du crâne" }
+description = { en = "Pick up the skull in any Oddball gametype in matchmaking.", fr = "Emparez-vous du crâne dans n'importe quelle partie matchmaking Oddball." }
+
+[citations.splatter]
+name = { en = "Splatter", fr = "Écrasement" }
+description = { en = "Splatter an enemy Spartan with a vehicle.", fr = "Écrasez un Spartan adverse avec un véhicule." }
+
+[citations.driver]
+name = { en = "Wheelman", fr = "Pilote" }
+description = { en = "Earn Vehicle Skill medals.", fr = "Décrochez des médailles de pilote." }
+
+[citations.ghost_gunner]
+name = { en = "Ghost Gunner", fr = "Artilleur de Ghost" }
+description = { en = "Kill enemy Spartans with the Ghost's weapons.", fr = "Éliminez des Spartans avec l'armement du Ghost." }
+
+[citations.banshee_gunner]
+name = { en = "Banshee Gunner", fr = "Artilleur de Banshee" }
+description = { en = "Kill enemy Spartans with the Banshee's weapons.", fr = "Éliminez des Spartans avec l'armement du Banshee." }
+
+[citations.wraith_gunner]
+name = { en = "Wraith Gunner", fr = "Artilleur de l'Apparition" }
+description = { en = "Kill enemy Spartans with the Wraith's weapons.", fr = "Éliminez des Spartans avec l'armement de l'Apparition." }
+
+[citations.scorpion_gunner]
+name = { en = "Scorpion Gunner", fr = "Artilleur de Scorpion" }
+description = { en = "Kill enemy Spartans with the Scorpion's weapons.", fr = "Éliminez des Spartans avec l'armement du Scorpion." }
+
+[citations.wasp_gunner]
+name = { en = "Wasp Gunner", fr = "Artilleur de Wasp" }
+description = { en = "Kill enemy Spartans with the Wasp's weapons.", fr = "Éliminez des Spartans avec l'armement du Wasp." }
+
+[citations.rockethog_gunner]
+name = { en = "Rockethog Gunner", fr = "Artilleur de Warthog lance-roquettes" }
+description = { en = "Kill enemy Spartans with the Rockethog's weapons.", fr = "Éliminez des Spartans avec l'armement du Warthog lance-roquettes." }
+
+[citations.warthog_gunner]
+name = { en = "Warthog Gunner", fr = "Artilleur de Warthog" }
+description = { en = "Kill enemy Spartans with the Warthog's weapons.", fr = "Éliminez des Spartans avec l'armement du Warthog." }
+
+[citations.gungoose_gunner]
+name = { en = "Gungoose Gunner", fr = "Artilleur de Gungoose" }
+description = { en = "Kill enemy Spartans with the Gungoose's weapons.", fr = "Éliminez des Spartans avec l'armement du Gungoose." }
+
+[citations.frag_grenade]
+name = { en = "Frag Grenade", fr = "Grenade à fragmentation" }
+description = { en = "Kill an enemy Spartan with the Frag Grenade.", fr = "Tuez un Spartan adverse à l'aide d'une grenade à fragmentation." }
+
+[citations.plasma_grenade]
+name = { en = "Plasma Grenade", fr = "Grenade à plasma" }
+description = { en = "Kill an enemy Spartan with the Plasma Grenade.", fr = "Tuez un Spartan adverse à l'aide d'une grenade à plasma." }
+
+[citations.bulldozer]
+name = { en = "Bulldozer", fr = "Bulldozer" }
+description = { en = "Finish with a KDA over 8 in any Slayer gametype in matchmaking.", fr = "Terminez n'importe quelle partie matchmaking Assassin avec un FDA supérieur à 8." }
+
+[citations.assassin]
+name = { en = "Assassin", fr = "Assassin" }
+description = { en = "Assassinate enemy Spartans.", fr = "Assassinez des Spartans adverses." }
+
+[citations.first_strike]
+name = { en = "First Strike", fr = "Premier coup" }
+description = { en = "Earn the first kill of a match.", fr = "Réalisez le premier frag d'une partie." }
+
+[citations.almost_doesnt_count]
+name = { en = "Almost Doesn't Count", fr = "Presque, ça ne compte pas" }
+description = { en = "Kill an enemy Spartan with no shield left and survive.", fr = "Tuez un Spartan adverse sans bouclier et survivez." }
+
+[citations.spartan_carnage]
+name = { en = "Spartan Spree", fr = "Carnage de Spartans" }
+description = { en = "Kill multiple enemy Spartans without dying.", fr = "Tuez plusieurs Spartans adverses sans mourir." }
+
+[citations.close_combat]
+name = { en = "Close Quarters", fr = "Combat rapproché" }
+description = { en = "Earn any CQC medal.", fr = "Remportez n'importe quelle médaille de combat rapproché." }
+
+[citations.opportunist]
+name = { en = "Combat Opportunist", fr = "Combattant opportuniste" }
+description = { en = "Earn any combat skill medal.", fr = "Remportez n'importe quelle médaille d'aptitude au combat." }
+
+[citations.multikill]
+name = { en = "Multikill", fr = "Multifrag" }
+description = { en = "Quickly kill multiple enemy Spartans.", fr = "Tuez rapidement plusieurs Spartans adverses." }
+
+[citations.melee_fighter]
+name = { en = "Smash", fr = "Pugilat" }
+description = { en = "Kill an enemy Spartan with melee.", fr = "Tuez un Spartan ennemi d'une attaque rapprochée." }
+
+[citations.headshot]
+name = { en = "Headshot", fr = "Tir à la tête" }
+description = { en = "Kill an enemy Spartan with a headshot.", fr = "Tuez un Spartan ennemi d'un tir à la tête." }
+
+[citations.spartan_killer]
+name = { en = "Spartan Slayer", fr = "Tueur de Spartans" }
+description = { en = "Take out enemy Spartans.", fr = "Éliminez les Spartans ennemis." }
+
+[citations.eagle_eye]
+name = { en = "Whites of Their Eyes", fr = "Œil de lynx" }
+description = { en = "Kill a full health enemy Spartan with a precision weapon without missing any shots.", fr = "Tuez un Spartan adverse en pleine santé à l'aide d'une arme de précision sans manquer un seul coup." }
+
+[citations.avenger]
+name = { en = "Avenger", fr = "Vengeur" }
+description = { en = "Kill the enemy responsible for your previous death.", fr = "Tuez l'ennemi responsable de votre mort précédente." }
+
+[citations.flag_em_down]
+name = { en = "Flag 'Em Down", fr = "Sors les drapeaux" }
+description = { en = "Earn any of these medals: Interception, Flag Bout, Carrier Kill, Flag Return, Flag Defense.", fr = "Obtenir une des médailles suivantes : Interception, Bataille de drapeaux, Frag du porteur, Retour du drapeau, Défense du drapeau" }
+
+[citations.grand_theft]
+name = { en = "Grand Theft", fr = "Vol à la tire" }
+description = { en = "Hijack a vehicle or aircraft.", fr = "Aborder un véhicule ou un véhicule aérien" }
+
+[citations.helping_hand]
+name = { en = "Helping Hand", fr = "Coup de main" }
+description = { en = "Earn any assist.", fr = "Obtenir n'importe quelle assistance" }
+
+[citations.im_just_perfect]
+name = { en = "Perfect", fr = "Zéro défaut" }
+description = { en = "Kill a player with a precision weapon without missing a shot.", fr = "Tuer un joueur avec une arme de précision sans manquer un tir" }
+
+[citations.lawnmower]
+name = { en = "Lawnmower", fr = "Tondeuse" }
+description = { en = "Splatter an opponent with a vehicle.", fr = "Tuer un adversaire en l'écrasant avec un véhicule" }
+
+[citations.look_ma_no_pin]
+name = { en = "Look Ma, No Pin!", fr = "Regarde maman, sans goupille" }
+description = { en = "Kill an enemy Spartan with any grenade.", fr = "Tuer un Spartan ennemi avec n'importe quelle grenade" }
+
+[citations.lucky]
+name = { en = "Lucky", fr = "Lucky" }
+description = { en = "Earn the Lucky, Empty Clip, Sayonara, or Cannonball medals.", fr = "Obtenir les médailles La chance, Chargeur vide, Sayonara ou Boulet de canon" }
+
+[citations.no_hard_feelings]
+name = { en = "No Hard Feelings", fr = "Sans rancune" }
+description = { en = "Kill enemy Spartans.", fr = "Tuer des Spartans ennemis" }
+
+[citations.positive_contribution]
+name = { en = "Positive Contribution", fr = "Positive contribution" }
+description = { en = "Finish with a KDA over 8 in any Slayer game in matchmaking.", fr = "Finir avec FDA supérieur à 8 dans n'importe quelle partie Assassin en matchmaking" }
+
+[citations.power_play]
+name = { en = "Power Play", fr = "Coup de force" }
+description = { en = "Kill an enemy Spartan with a power weapon.", fr = "Tuer un Spartan ennemi avec une arme puissante" }
+
+[citations.road_trip]
+name = { en = "Road Trip", fr = "Virée sur la route" }
+description = { en = "Kill an enemy Spartan with a ground vehicle.", fr = "Tuer un Spartan ennemi avec un véhicule terrestre" }
+
+[citations.sting_like_a_bee]
+name = { en = "Sting Like a Bee", fr = "Pique comme une abeille" }
+description = { en = "Kill an enemy Spartan in close combat.", fr = "Tuer un Spartan ennemi en combat rapproché" }
+
+[citations.the_reaper]
+name = { en = "Reaper", fr = "Le faucheur" }
+description = { en = "Kill an opponent from beyond the grave.", fr = "Tuer un adversaire d'outre-tombe" }
+
+[citations.too_fast_for_you]
+name = { en = "Too Fast for You", fr = "Trop rapide pour toi" }
+description = { en = "Kill an opponent that shot you first.", fr = "Tuer un adversaire qui vous a tiré dessus en premier" }
+
+[citations.vandalism]
+name = { en = "Vandalism", fr = "Vandalisme" }
+description = { en = "Destroy an enemy vehicle.", fr = "Détruire un véhicule ennemi" }
+
+[citations.wraith_destroyer]
+name = { en = "Wraith Destroyer", fr = "Destructeur d'apparitions" }
+description = { en = "Destroy enemy occupied Wraiths.", fr = "Détruisez les apparitions occupées par l'adversaire." }
+
+[citations.banshee_destroyer]
+name = { en = "Banshee Destroyer", fr = "Destructeur de banshees" }
+description = { en = "Destroy enemy occupied Banshees.", fr = "Détruisez les banshees occupés par l'adversaire." }
+
+[citations.ghost_destroyer]
+name = { en = "Ghost Destroyer", fr = "Destructeur de ghosts" }
+description = { en = "Destroy enemy occupied Ghosts.", fr = "Détruisez les ghosts occupés par l'adversaire." }
+
+[citations.mongoose_destroyer]
+name = { en = "Mongoose Destroyer", fr = "Destructeur de mongooses" }
+description = { en = "Destroy enemy occupied Mongooses.", fr = "Détruisez les mongooses occupées par l'adversaire." }
+
+[citations.scorpion_destroyer]
+name = { en = "Scorpion Destroyer", fr = "Destructeur de scorpions" }
+description = { en = "Destroy enemy occupied Scorpions.", fr = "Détruisez les scorpions occupés par l'adversaire." }
+
+[citations.warthog_destroyer]
+name = { en = "Warthog Destroyer", fr = "Destructeur de warthogs" }
+description = { en = "Destroy enemy occupied Warthogs.", fr = "Détruisez les warthogs occupés par l'adversaire." }
+
+[citations.wasp_destroyer]
+name = { en = "Wasp Destroyer", fr = "Destructeur de wasps" }
+description = { en = "Destroy enemy occupied Wasps.", fr = "Détruisez les wasps occupés par l'adversaire." }
+
+[citations.grunt_slayer]
+name = { en = "Grunt Slayer", fr = "Tueur de Grognards" }
+description = { en = "Kill Grunts.", fr = "Tuez des Grognards." }
+
+[citations.elite_slayer]
+name = { en = "Elite Slayer", fr = "Tueur d'Élites" }
+description = { en = "Kill Elites.", fr = "Tuez des Élites." }
+
+[citations.jackal_slayer]
+name = { en = "Jackal Slayer", fr = "Tueur de Rapaces" }
+description = { en = "Kill Jackals.", fr = "Tuez des Rapaces." }
+
+[citations.hunter_slayer]
+name = { en = "Hunter Slayer", fr = "Tueur de Chasseurs" }
+description = { en = "Kill Hunters.", fr = "Tuez des Chasseurs." }
+
+[citations.sentinel_slayer]
+name = { en = "Sentinel Slayer", fr = "Tueur de sentinelles" }
+description = { en = "Kill Sentinels.", fr = "Tuez des sentinelles." }
+
+[citations.like_a_boss]
+name = { en = "Like a Boss", fr = "Comme un Boss" }
+description = { en = "Kill a boss in a Warzone Firefight match.", fr = "Tuer un boss dans une partie Baptême du feu zone de combat" }
+
+[citations.player_vs_everything]
+name = { en = "Player vs. Everything", fr = "Éliminations Firefight" }
+description = { en = "Win matches in Warzone Firefight.", fr = "Gagner des parties en Baptême du feu" }
+
+[citations.brute_slayer]
+name = { en = "Brute Slayer", fr = "Tueur de Brutes" }
+description = { en = "Kill Brutes.", fr = "Tuez des Brutes." }
+
+[citations.skimmer_slayer]
+name = { en = "Skimmer Slayer", fr = "Tueur de Skimmers" }
+description = { en = "Kill Skimmers.", fr = "Tuez des Skimmers." }
+
+[citations.marine_slayer]
+name = { en = "Marine Slayer", fr = "Tueur de Marines" }
+description = { en = "Kill enemy Marines.", fr = "Tuez les Marines ennemis." }
+
+[citations.br75_mastery]
+name = { en = "BR75 Mastery", fr = "Maîtrise du BR75" }
+description = { en = "Kill enemy Spartans with the BR75.", fr = "Éliminez des Spartans avec le BR75." }
+
+[citations.ma40_mastery]
+name = { en = "MA40 AR Mastery", fr = "Maîtrise du MA40 AR" }
+description = { en = "Kill enemy Spartans with the MA40 AR.", fr = "Éliminez des Spartans avec le MA40 AR." }
+
+[citations.sidekick_mastery]
+name = { en = "Mk50 Sidekick Mastery", fr = "Maîtrise du MK50 Sidekick" }
+description = { en = "Kill enemy Spartans with the Mk50 Sidekick.", fr = "Éliminez des Spartans avec le MK50 Sidekick." }
+
+[citations.commando_mastery]
+name = { en = "VK78 Commando Mastery", fr = "Maîtrise du VK78 Commando" }
+description = { en = "Kill enemy Spartans with the VK78 Commando.", fr = "Éliminez des Spartans avec le VK78 Commando." }
+
+[citations.sniper_mastery]
+name = { en = "S7 Sniper Mastery", fr = "Maîtrise du S7 Sniper" }
+description = { en = "Kill enemy Spartans with the S7 Sniper.", fr = "Éliminez des Spartans avec le S7 Sniper." }
+
+[citations.spnkr_mastery]
+name = { en = "M41 SPNKr Mastery", fr = "Maîtrise du M41 SPNKr" }
+description = { en = "Kill enemy Spartans with the M41 SPNKr.", fr = "Éliminez des Spartans avec le M41 SPNKr." }
+
+[citations.bulldog_mastery]
+name = { en = "CQS48 Bulldog Mastery", fr = "Maîtrise du CQS48 Bulldog" }
+description = { en = "Kill enemy Spartans with the CQS48 Bulldog.", fr = "Éliminez des Spartans avec le CQS48 Bulldog." }
+
+[citations.bandit_mastery]
+name = { en = "Bandit EVO Mastery", fr = "Maîtrise du Bandit EVO" }
+description = { en = "Kill enemy Spartans with the Bandit EVO.", fr = "Éliminez des Spartans avec le Bandit EVO." }
+
+[citations.hydra_mastery]
+name = { en = "MLRS-2 Hydra Mastery", fr = "Maîtrise du MLRS-2 Hydra" }
+description = { en = "Kill enemy Spartans with the MLRS-2 Hydra.", fr = "Éliminez des Spartans avec le MLRS-2 Hydra." }
+
+[citations.mutilator_mastery]
+name = { en = "Mutilator Mastery", fr = "Maîtrise du Mutilateur" }
+description = { en = "Kill enemy Spartans with the Mutilator.", fr = "Éliminez des Spartans avec le Mutilateur." }
+
+[citations.stalker_mastery]
+name = { en = "Stalker Rifle Mastery", fr = "Maîtrise du Fusil traqueur" }
+description = { en = "Kill enemy Spartans with the Stalker Rifle.", fr = "Éliminez des Spartans avec le Fusil traqueur." }
+
+[citations.needler_mastery]
+name = { en = "Needler Mastery", fr = "Maîtrise du Needler" }
+description = { en = "Kill enemy Spartans with the Needler.", fr = "Éliminez des Spartans avec le Needler." }
+
+[citations.energy_sword_mastery]
+name = { en = "Energy Sword Mastery", fr = "Maîtrise de l'Épée à énergie" }
+description = { en = "Kill enemy Spartans with the Energy Sword.", fr = "Éliminez des Spartans avec l'Épée à énergie." }
+
+[citations.mangler_mastery]
+name = { en = "Mangler Mastery", fr = "Maîtrise du Déchiqueteur" }
+description = { en = "Kill enemy Spartans with the Mangler.", fr = "Éliminez des Spartans avec le Déchiqueteur." }
+
+[citations.skewer_mastery]
+name = { en = "Skewer Mastery", fr = "Maîtrise de l'Empaleur" }
+description = { en = "Kill enemy Spartans with the Skewer.", fr = "Éliminez des Spartans avec l'Empaleur." }
+
+[citations.gravity_hammer_mastery]
+name = { en = "Gravity Hammer Mastery", fr = "Maîtrise du Marteau antigravité" }
+description = { en = "Kill enemy Spartans with the Gravity Hammer.", fr = "Éliminez des Spartans avec le Marteau antigravité." }
+
+[citations.pulse_carbine_mastery]
+name = { en = "Pulse Carbine Mastery", fr = "Maîtrise de la Carabine à impulsion" }
+description = { en = "Kill enemy Spartans with the Pulse Carbine.", fr = "Éliminez des Spartans avec la Carabine à impulsion." }
+
+[citations.ravager_mastery]
+name = { en = "Ravager Mastery", fr = "Maîtrise du Ravageur" }
+description = { en = "Kill enemy Spartans with the Ravager.", fr = "Éliminez des Spartans avec le Ravageur." }
+
+[citations.plasma_pistol_mastery]
+name = { en = "Plasma Pistol Mastery", fr = "Maîtrise du Pistolet à plasma" }
+description = { en = "Kill enemy Spartans with the Plasma Pistol.", fr = "Éliminez des Spartans avec le Pistolet à plasma." }
+
+[citations.heatwave_mastery]
+name = { en = "Heatwave Mastery", fr = "Maîtrise du Calcineur" }
+description = { en = "Kill enemy Spartans with the Heatwave.", fr = "Éliminez des Spartans avec le Calcineur." }
+
+[citations.cindershot_mastery]
+name = { en = "Cindershot Mastery", fr = "Maîtrise du Crémateur" }
+description = { en = "Kill enemy Spartans with the Cindershot.", fr = "Éliminez des Spartans avec le Crémateur." }
+
+[citations.sentinel_beam_mastery]
+name = { en = "Sentinel Beam Mastery", fr = "Maîtrise du Rayon de Sentinelle" }
+description = { en = "Kill enemy Spartans with the Sentinel Beam.", fr = "Éliminez des Spartans avec le Rayon de Sentinelle." }
+
+[citations.disruptor_mastery]
+name = { en = "Disruptor Mastery", fr = "Maîtrise du Disrupteur" }
+description = { en = "Kill enemy Spartans with the Disruptor.", fr = "Éliminez des Spartans avec le Disrupteur." }
+
+[citations.shock_rifle_mastery]
+name = { en = "Shock Rifle Mastery", fr = "Maîtrise du Fusil électrique" }
+description = { en = "Kill enemy Spartans with the Shock Rifle.", fr = "Éliminez des Spartans avec le Fusil électrique." }
+
+[citations.covenant_destroyer]
+name = { en = "Covenant Destroyer", fr = "Destructeur de Covenants" }
+description = { en = "Master all Covenant kill commendations.", fr = "Obtenez toutes les citations d'élimination de Covenants" }
+
+[citations.grenade_mastery]
+name = { en = "Grenade Mastery", fr = "Maîtrise des grenades" }
+description = { en = "Master all grenade commendations.", fr = "Obtenez toutes les citations de grenade." }
+
+[citations.vehicle_mastery]
+name = { en = "Vehicle Mastery", fr = "Maîtrise de véhicule" }
+description = { en = "Master all vehicle commendations.", fr = "Obtenez toutes les citations de véhicule." }
+
+[citations.human_weapons_mastery]
+name = { en = "UNSC Weapon Mastery", fr = "Maîtrise des armes UNSC" }
+description = { en = "Master all UNSC weapon commendations.", fr = "Obtenez toutes les citations de maîtrise d'armes UNSC." }
+
+[citations.paria_weapons_mastery]
+name = { en = "Banished Weapon Mastery", fr = "Maîtrise des armes Parias" }
+description = { en = "Master all Banished weapon commendations.", fr = "Obtenez toutes les citations de maîtrise d'armes Parias." }
+
+[citations.forerunner_weapons_mastery]
+name = { en = "Forerunner Weapon Mastery", fr = "Maîtrise des armes Forerunner" }
+description = { en = "Master all Forerunner weapon commendations.", fr = "Obtenez toutes les citations de maîtrise d'armes Forerunner." }
+
+[citations.all_weapons_mastery]
+name = { en = "Weapon Mastery", fr = "Maîtrise en armement" }
+description = { en = "Master all weapon commendations.", fr = "Obtenez toutes les citations d'armement." }

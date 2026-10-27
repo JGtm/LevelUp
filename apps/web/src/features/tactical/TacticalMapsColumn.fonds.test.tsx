@@ -60,7 +60,8 @@ function carte(i: number, avecFond: boolean): TacticalMapCard {
   return {
     map_id: `carte-${i}`,
     map_name: `Carte ${i}`,
-    map_name_fr: `Carte ${i}`,
+    map_label: `Carte ${i}`,
+    map_filter_key: `Carte ${i}`,
     matchs: 100 - i,
     victoires: 50,
     defaites: 40,
@@ -79,7 +80,6 @@ function rendre(cartes: TacticalMapCard[] = GRILLE) {
       plancher={10}
       carteActive=""
       playerSlug="JGtm"
-      locale="fr"
       t={t}
       onSelect={vi.fn()}
       enRelecture={false}

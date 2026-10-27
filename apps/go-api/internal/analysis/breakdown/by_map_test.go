@@ -6,6 +6,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 )
 
 // rowFactory minimise le boilerplate de creation de fixtures.
@@ -186,7 +187,7 @@ func TestByMap_UnknownOutcomeNotCounted(t *testing.T) {
 // la premiere.
 func TestByMap_GroupesRegroupesSousLaBase(t *testing.T) {
 	groups := domain.NewGroupesDeCartes(map[string]string{"var-heavies": "base", "base-bis": "base"}).
-		AvecLibelles(map[string]map[string]string{"base": {"fr": "Tonnerre", "en": "Thunderhead"}})
+		AvecLibelles(map[string]i18n.Text{"base": {"fr": "Tonnerre", "en": "Thunderhead"}})
 	rows := []Row{
 		rowMap("var-heavies", "Du lourd sur Thunderhead", canonical.OutcomeWin),
 		rowMap("base", "Thunderhead", canonical.OutcomeLoss),

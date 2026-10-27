@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/rankedplaylists"
+	"levelup/go-api/internal/i18n"
 )
 
 func TestHasRealCSR(t *testing.T) {
@@ -47,8 +48,8 @@ func TestFetchSeasonRankedCSRs(t *testing.T) {
 	if out[0].PlaylistID != pls[0].AssetID {
 		t.Errorf("playlist_id = %q, attendu %q", out[0].PlaylistID, pls[0].AssetID)
 	}
-	if out[0].PlaylistName != pls[0].NameEN() {
-		t.Errorf("nom = %q, attendu référence %q", out[0].PlaylistName, pls[0].NameEN())
+	if out[0].PlaylistName != pls[0].Name(i18n.LocaleEN) {
+		t.Errorf("nom = %q, attendu référence %q", out[0].PlaylistName, pls[0].Name(i18n.LocaleEN))
 	}
 	if out[0].Current.Tier != "Gold" {
 		t.Errorf("tier perdu: %q", out[0].Current.Tier)

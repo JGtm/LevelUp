@@ -9,6 +9,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 )
 
 // buildMaitriseHighlightCanonical : tuile Maîtrise (3 slides : HS sum,
@@ -133,12 +134,11 @@ func sliceBestKillingSpreeCanonical(window []canonical.PlayerMatchRow, locale st
 	if best == nil {
 		return nil
 	}
-	mapEN, mapFR := assetLabels(best.Summary.Map)
-	modeEN, modeFR := modeLabels(*best)
+	detail := homeMapModeDetail(locale, assetText(best.Summary.Map), modeText(*best))
 	return &domain.HighlightSlide{
 		LabelKey:   "highlight.slide.killing_spree_max",
 		Value:      fmt.Sprintf("%d", bestVal),
-		Detail:     fmt.Sprintf("%s · %s", labelForLocale(locale, mapFR, mapEN), normalizeHomeModeLabel(labelForLocale(locale, modeFR, modeEN), mapFR, mapEN)),
+		Detail:     detail,
 		ValueColor: homeColorPositive,
 	}
 }
@@ -171,27 +171,23 @@ func sliceBestWinStreakCanonical(window []canonical.PlayerMatchRow) *domain.High
 // carte de BASE (domain.GroupesDeCartes) : parties et victoires cumulées, libellé de la base.
 func sliceFavoriteMapCanonical(window []canonical.PlayerMatchRow, locale string, groups domain.GroupesDeCartes) *domain.HighlightSlide {
 	type stat struct {
-		name   string
-		nameFR string
-		plays  int
-		wins   int
+		name  i18n.Text
+		plays int
+		wins  int
 	}
 	byMap := map[string]*stat{}
 	for _, r := range window {
 		if r.Summary.Map == nil || r.Summary.Map.ID == "" {
 			continue
 		}
-		mapEN, mapFR := assetLabels(r.Summary.Map)
-		if en, ok := groups.Libelle(r.Summary.Map.ID, domain.LocaleLibelleParDefaut); ok {
-			mapEN = en
-		}
-		if fr, ok := groups.Libelle(r.Summary.Map.ID, "fr"); ok {
-			mapFR = fr
-		}
 		key := groups.Groupe(r.Summary.Map.ID)
 		s, ok := byMap[key]
 		if !ok {
-			s = &stat{name: mapEN, nameFR: mapFR}
+			name := assetText(r.Summary.Map)
+			if base, found := groups.Noms(r.Summary.Map.ID); found {
+				name = base
+			}
+			s = &stat{name: name}
 			byMap[key] = s
 		}
 		s.plays++
@@ -222,7 +218,7 @@ func sliceFavoriteMapCanonical(window []canonical.PlayerMatchRow, locale string,
 	}
 	return &domain.HighlightSlide{
 		LabelKey:  "highlight.slide.favorite_map",
-		Value:     labelForLocale(locale, best.nameFR, best.name),
+		Value:     best.name.PickOptional(normalizeHomeLocale(locale)),
 		DetailKey: "highlight.detail.favorite_map",
 		DetailParams: map[string]any{
 			"wins":   best.wins,

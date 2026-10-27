@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/legacymatch"
 )
 
@@ -96,20 +97,21 @@ func (r *HomeRepo) loadHomeMatchesSharedPart(ctx context.Context) ([]legacymatch
 	var result []legacymatch.HomeMatchRow
 	for rows.Next() {
 		var row legacymatch.HomeMatchRow
+		var mapEN, mapFR, pairEN, pairFR, variantEN, playlistEN, playlistFR string
 		if err := rows.Scan(
 			&row.MatchID,
 			&row.StartTime,
 			&row.MapID,
-			&row.MapName,
-			&row.MapNameFR,
+			&mapEN,
+			&mapFR,
 			&row.PairID,
-			&row.PairName,
-			&row.PairNameFR,
+			&pairEN,
+			&pairFR,
 			&row.GameVariantID,
-			&row.GameVariantName,
+			&variantEN,
 			&row.PlaylistID,
-			&row.PlaylistName,
-			&row.PlaylistNameFR,
+			&playlistEN,
+			&playlistFR,
 			&row.IsFirefight,
 			&row.IsRanked,
 			&row.Outcome,
@@ -135,6 +137,10 @@ func (r *HomeRepo) loadHomeMatchesSharedPart(ctx context.Context) ([]legacymatch
 		); err != nil {
 			return nil, err
 		}
+		row.MapName = i18n.FromColumns(mapEN, mapFR)
+		row.PairName = i18n.FromColumns(pairEN, pairFR)
+		row.GameVariantName = i18n.FromColumns(variantEN, "")
+		row.PlaylistName = i18n.FromColumns(playlistEN, playlistFR)
 		result = append(result, row)
 	}
 	if err := rows.Err(); err != nil {
@@ -255,8 +261,8 @@ func applyHomeMatchPlayerEnrich(row *legacymatch.HomeMatchRow, enrich *homeMatch
 //	ELSE 'LUSR'
 func resolveHomeMatchSkillRatingType(row legacymatch.HomeMatchRow, enrich *homeMatchPlayerEnrich) string {
 	if row.IsRanked ||
-		strings.Contains(strings.ToLower(row.PlaylistName), "ranked") ||
-		strings.Contains(strings.ToLower(row.PairName), "ranked") {
+		strings.Contains(strings.ToLower(row.PlaylistName[i18n.Fallback]), "ranked") ||
+		strings.Contains(strings.ToLower(row.PairName[i18n.Fallback]), "ranked") {
 		return "CSR"
 	}
 	if enrich != nil && enrich.ratingType.Valid {

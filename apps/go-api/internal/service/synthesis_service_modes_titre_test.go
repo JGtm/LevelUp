@@ -5,6 +5,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 )
 
 // h5ModeRow : match d'un titre dont le mode est le type de jeu (copie de GameVariant, Kind game_variant,
@@ -34,7 +35,7 @@ func TestBuildBreakdownsFromCanonical_ModeFourniParLeTypeDeJeu(t *testing.T) {
 		// Type de jeu que le dictionnaire ne nomme pas : aucune ligne, surtout pas son identifiant.
 		h5ModeRow("1571fdac-e0b4-4ebc-a73a-6e13001b71d3", "", "", canonical.OutcomeWin),
 	}
-	b := buildBreakdownsFromCanonical(rows, domain.GroupesDeCartes{})
+	b := buildBreakdownsFromCanonical(rows, domain.GroupesDeCartes{}, i18n.Default)
 
 	if len(b.TopModes) != 2 {
 		t.Fatalf("TopModes = %+v, want 2 lignes (le type de jeu sans nom est omis)", b.TopModes)

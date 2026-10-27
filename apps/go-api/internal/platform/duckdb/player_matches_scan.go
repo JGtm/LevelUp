@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
@@ -32,7 +33,6 @@ func (r *PlayerMatchesRepo) mergePlayerMatchRows(
 			shared[i].skillRatingType = s.ratingType
 			shared[i].skillRatingValue = s.ratingValue
 			shared[i].skillTier = s.tier
-			shared[i].skillTierFR = s.tierFR
 			shared[i].skillSubTier = s.subTier
 			shared[i].skillDelta = s.delta
 			shared[i].skillPlaylistGroup = s.playlistGroup
@@ -86,12 +86,13 @@ func (r *PlayerMatchesRepo) mergePlayerMatchRows(
 // playerMatchScanResult (cols PME/skill_rank/identité restent zero).
 func scanSharedPlayerMatchRow(rows *sql.Rows) (playerMatchScanResult, error) {
 	var s playerMatchScanResult
+	var mapEN, mapFR, playlistEN, playlistFR, variantEN, pairEN, pairFR string
 	if err := rows.Scan(
 		&s.matchID, &s.startTime, &s.durationSeconds,
-		&s.mapID, &s.mapName, &s.mapNameFR,
-		&s.playlistID, &s.playlistName, &s.playlistNameFR,
-		&s.variantID, &s.variantName,
-		&s.pairID, &s.pairName, &s.pairNameFR,
+		&s.mapID, &mapEN, &mapFR,
+		&s.playlistID, &playlistEN, &playlistFR,
+		&s.variantID, &variantEN,
+		&s.pairID, &pairEN, &pairFR,
 		&s.isRanked, &s.isFirefight,
 		&s.teamID, &s.outcomeCode,
 		&s.kills, &s.deaths, &s.assists,
@@ -110,6 +111,10 @@ func scanSharedPlayerMatchRow(rows *sql.Rows) (playerMatchScanResult, error) {
 	); err != nil {
 		return playerMatchScanResult{}, err
 	}
+	s.mapName = i18n.FromColumns(mapEN, mapFR)
+	s.playlistName = i18n.FromColumns(playlistEN, playlistFR)
+	s.variantName = i18n.FromColumns(variantEN, "")
+	s.pairName = i18n.FromColumns(pairEN, pairFR)
 	return s, nil
 }
 
@@ -120,7 +125,6 @@ type playerMatchSkillRankRow struct {
 	ratingType      sql.NullString
 	ratingValue     sql.NullFloat64
 	tier            sql.NullString
-	tierFR          sql.NullString
 	subTier         sql.NullInt64
 	delta           sql.NullFloat64
 	playlistGroup   sql.NullString
@@ -135,7 +139,6 @@ SELECT
     rating_type,
     rating_value,
     tier,
-    tier_fr,
     sub_tier,
     rating_delta,
     playlist_group,
@@ -169,10 +172,9 @@ func sortByPerformanceScore(rows []playerMatchScanResult, desc bool) {
 // playerMatchScanResult agrege les valeurs scannees pour faciliter la
 // projection en canonical.PlayerMatchRow.
 type playerMatchScanResult struct {
-	matchID, mapID, mapName, mapNameFR                      string
-	playlistID, playlistName, playlistNameFR                string
-	variantID, variantName, xuid, gamertag                  string
-	pairID, pairName, pairNameFR                            string
+	matchID, mapID, variantID, xuid, gamertag               string
+	playlistID, pairID                                      string
+	mapName, playlistName, variantName, pairName            i18n.Text
 	startTime                                               time.Time
 	durationSeconds, teamID                                 int
 	outcomeCode                                             sql.NullInt64
@@ -193,7 +195,6 @@ type playerMatchScanResult struct {
 	skillRatingType                                         sql.NullString
 	skillRatingValue                                        sql.NullFloat64
 	skillTier                                               sql.NullString
-	skillTierFR                                             sql.NullString
 	skillSubTier                                            sql.NullInt64
 	skillDelta                                              sql.NullFloat64
 	skillPlaylistGroup                                      sql.NullString

@@ -4,6 +4,7 @@
  * URLs alignées sur /api/v1 (base URL du client HTTP).
  */
 import { http, HttpResponse } from 'msw'
+import { DEFAULT_LOCALE } from '@/lib/i18n/locale'
 
 const SLUG = ':playerSlug'
 const p = (path: string) => `/api/v1${path}`
@@ -152,7 +153,6 @@ const settingsFixture = {
   normalize_mode_labels: true,
   show_records: true,
   refresh_clears_caches: false,
-  career_top_exclude_btb: false,
   media_captures_base_dir: '',
   media_tolerance_minutes: 5,
   media_watcher_enabled: false,
@@ -308,8 +308,6 @@ export const handlers = [
 
   // Career
   http.get(p(`/players/${SLUG}/pages/career`), () => HttpResponse.json(careerFixture)),
-  http.get(p(`/players/${SLUG}/pages/career/top-matches`), () =>
-    HttpResponse.json({ best_matches: [], worst_matches: [] })),
   http.get(p(`/players/${SLUG}/pages/career/encounters`), () =>
     HttpResponse.json({
       teammates: [
@@ -511,7 +509,7 @@ export const handlers = [
     return HttpResponse.json({
       title_slug: params.slug,
       schema_version: 1,
-      locale: url.searchParams.get('locale') ?? 'fr',
+      locale: url.searchParams.get('locale') ?? DEFAULT_LOCALE,
       fields: {},
       assets: {
         cadence: {

@@ -19,6 +19,8 @@ package mapdecoupe
 import (
 	"sort"
 	"testing"
+
+	"levelup/go-api/internal/i18n"
 )
 
 // SeuilIoUMedian : l'accord minimal exigé avec le découpé du POC. Fixé par le plan AVANT la
@@ -68,7 +70,7 @@ func (c corpus) accordRidgeline(t *testing.T, m *Masque, detail bool) []float64 
 		}
 		d, ok := c.dump[z.VolumeIndex]
 		if !ok || len(d.Brut.Polygone) < 3 {
-			t.Fatalf("volume %d (%s) absent du dump du POC", z.VolumeIndex, z.EN)
+			t.Fatalf("volume %d (%s) absent du dump du POC", z.VolumeIndex, z.Text[i18n.LocaleEN])
 		}
 		r := Decoupe(d.Brut.Polygone, m, opts)
 		v := iou(m, d.anneaux(), figureDe(r, d.Brut.Polygone))
@@ -78,7 +80,7 @@ func (c corpus) accordRidgeline(t *testing.T, m *Masque, detail bool) []float64 
 		}
 		poc := aireFigure(m, d.anneaux())
 		t.Logf("%-24s %5d %-8s %8.3f %9.1f m² %8.1f%% %8.1f%%",
-			z.EN, z.VolumeIndex, d.Utiliser, v, r.AireBrutM2,
+			z.Text[i18n.LocaleEN], z.VolumeIndex, d.Utiliser, v, r.AireBrutM2,
 			100*r.PartGardee(), 100*poc/r.AireBrutM2)
 	}
 	return ious
@@ -120,7 +122,7 @@ func TestOracleZonesDegenerees(t *testing.T) {
 			if r.Degenere {
 				totalDegenerees++
 				t.Logf("DÉGÉNÉRÉE %-18s %-26s vol %3d : %7.1f m² -> %5.1f m²",
-					module, z.EN, z.VolumeIndex, r.AireBrutM2, r.AireM2)
+					module, z.Text[i18n.LocaleEN], z.VolumeIndex, r.AireBrutM2, r.AireM2)
 				continue
 			}
 			decoupees++

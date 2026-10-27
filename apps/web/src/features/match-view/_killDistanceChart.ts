@@ -79,9 +79,9 @@ function truncateName(name: string): string {
   return name.length > GAMERTAG_MAX ? `${name.slice(0, GAMERTAG_MAX - 1)}…` : name
 }
 
-/** Le libellé d'une arme dans la locale courante, replié sur sa clé. */
-function weaponLabel(w: MatchKillDistanceWeapon, locale: string): string {
-  return (locale === 'en' ? w.label_en : w.label) || w.weapon_key
+/** Le libellé servi d une arme (dans la langue de la requête), replié sur sa clé. */
+function weaponLabel(w: MatchKillDistanceWeapon): string {
+  return w.label || w.weapon_key
 }
 
 /**
@@ -93,10 +93,7 @@ function weaponLabel(w: MatchKillDistanceWeapon, locale: string): string {
  * par frags mesurés décroissants, le nom départageant de même. Seules les lignes d'au moins
  * `KILL_DISTANCE_MIN_KILLS` frags entrent, et le total d'une arme ne compte qu'elles.
  */
-export function killDistanceRows(
-  players: readonly KillDistancePlayerInput[],
-  locale: string,
-): KillDistanceRow[] {
+export function killDistanceRows(players: readonly KillDistancePlayerInput[]): KillDistanceRow[] {
   interface Entry {
     label: string
     total: number
@@ -108,7 +105,7 @@ export function killDistanceRows(
       if (w.measured_kills < KILL_DISTANCE_MIN_KILLS) continue
       let entry = byWeapon.get(w.weapon_key)
       if (!entry) {
-        entry = { label: weaponLabel(w, locale), total: 0, lines: [] }
+        entry = { label: weaponLabel(w), total: 0, lines: [] }
         byWeapon.set(w.weapon_key, entry)
       }
       entry.total += w.measured_kills

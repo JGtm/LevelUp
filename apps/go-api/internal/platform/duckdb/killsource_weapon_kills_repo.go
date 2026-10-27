@@ -320,7 +320,6 @@ func (r *KillSourceWeaponKillsRepo) resolveRows(
 			WeaponID:  m.numericID,
 			Kills:     kills,
 			Label:     m.label,
-			LabelEN:   m.labelEN,
 			Role:      m.role,
 			Class:     m.class,
 			Family:    m.family,

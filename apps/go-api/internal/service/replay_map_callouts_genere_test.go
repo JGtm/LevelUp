@@ -14,6 +14,7 @@ import (
 
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
@@ -41,7 +42,7 @@ func TestMapCallouts_CatalogueGenere(t *testing.T) {
 	if err != nil {
 		t.Fatalf("carte rattrapée : %v", err)
 	}
-	if len(entry.Zones) != 1 || entry.Zones[0].FR != "Pont" || entry.Provenance != "mvar" {
+	if len(entry.Zones) != 1 || entry.Zones[0].Text[i18n.LocaleFR] != "Pont" || entry.Provenance != "mvar" {
 		t.Fatalf("entrée servie : %+v", entry)
 	}
 }
@@ -58,8 +59,8 @@ func TestMapCallouts_VersionnePrimeSurGenere(t *testing.T) {
 	if err != nil {
 		t.Fatalf("MapCallouts : %v", err)
 	}
-	if entry.Zones[0].FR != "Grotte" {
-		t.Errorf("zone servie %q : le catalogue généré a primé sur le versionné", entry.Zones[0].FR)
+	if entry.Zones[0].Text[i18n.LocaleFR] != "Grotte" {
+		t.Errorf("zone servie %q : le catalogue généré a primé sur le versionné", entry.Zones[0].Text[i18n.LocaleFR])
 	}
 }
 
@@ -74,7 +75,7 @@ func TestMapCallouts_CatalogueGenereSuitLeFilDeLEau(t *testing.T) {
 	}
 	ecrire(t, res.MapCalloutsOverlayPath(title.DefaultSlug), catalogueGenereFixture(mapIDRattrapee, "Bridge", "Pont"))
 	entry, err := svc.MapCallouts(context.Background(), "m1")
-	if err != nil || entry.Zones[0].EN != "Bridge" {
+	if err != nil || entry.Zones[0].Text[i18n.LocaleEN] != "Bridge" {
 		t.Fatalf("après rattrapage : %+v / %v", entry, err)
 	}
 }

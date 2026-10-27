@@ -1,5 +1,7 @@
 package skill_v2
 
+import "levelup/go-api/internal/i18n"
+
 // tier.go : mapping μ → tier Halo (Bronze..Onyx) pour le LUSR v2.
 //
 // Le modèle skill (μ, σ) vit en interne sur l'échelle native TrueSkill
@@ -33,10 +35,10 @@ package skill_v2
 
 // TierBoundary décrit un palier de la grille tier.
 type TierBoundary struct {
-	Name     string  // identifiant canonique EN (Bronze, Silver, Gold, ...)
-	NameFR   string  // libellé FR (Bronze, Argent, Or, ...)
-	MinMu    float64 // borne inférieure (inclusive)
-	SubTiers int     // nombre de sous-tiers (6 partout sauf Onyx = 1)
+	Name     string    // identifiant canonique EN (Bronze, Silver, Gold, ...)
+	Label    i18n.Text // libellé par langue (en : Silver ; fr : Argent, ...)
+	MinMu    float64   // borne inférieure (inclusive)
+	SubTiers int       // nombre de sous-tiers (6 partout sauf Onyx = 1)
 }
 
 // DefaultTierBoundaries retourne la grille Phase 3e v2, calibrée sur la
@@ -62,13 +64,29 @@ func DefaultTierBoundaries() []TierBoundary {
 	//	Diamant  [25.8, 27[    3              0.400 μ
 	//	Onyx     [27, ∞[       1              ouvert
 	return []TierBoundary{
-		{Name: "Bronze", NameFR: "Bronze", MinMu: 0, SubTiers: 6},
-		{Name: "Silver", NameFR: "Argent", MinMu: 21.0, SubTiers: 3},
-		{Name: "Gold", NameFR: "Or", MinMu: 22.0, SubTiers: 6},
-		{Name: "Platinum", NameFR: "Platine", MinMu: 25.0, SubTiers: 2},
-		{Name: "Diamond", NameFR: "Diamant", MinMu: 25.8, SubTiers: 3},
-		{Name: "Onyx", NameFR: "Onyx", MinMu: 27.0, SubTiers: 1},
+		tierBoundary(tierBronze, i18n.MsgText("skill.tier.bronze", nil), 0, 6),
+		tierBoundary(tierSilver, i18n.MsgText("skill.tier.silver", nil), 21.0, 3),
+		tierBoundary(tierGold, i18n.MsgText("skill.tier.gold", nil), 22.0, 6),
+		tierBoundary(tierPlatinum, i18n.MsgText("skill.tier.platinum", nil), 25.0, 2),
+		tierBoundary(tierDiamond, i18n.MsgText("skill.tier.diamond", nil), 25.8, 3),
+		tierBoundary(tierOnyx, i18n.MsgText("skill.tier.onyx", nil), 27.0, 1),
 	}
+}
+
+// Noms canoniques EN des paliers de la grille.
+const (
+	tierBronze   = "Bronze"
+	tierSilver   = "Silver"
+	tierGold     = "Gold"
+	tierPlatinum = "Platinum"
+	tierDiamond  = "Diamond"
+	tierOnyx     = "Onyx"
+)
+
+// tierBoundary construit un palier : identifiant canonique EN, libellé par langue, borne basse et
+// nombre de sous-paliers.
+func tierBoundary(name string, label i18n.Text, minMu float64, subTiers int) TierBoundary {
+	return TierBoundary{Name: name, Label: label, MinMu: minMu, SubTiers: subTiers}
 }
 
 // hyperparam keys utilisées dans lusr_hyperparams_v2 pour persister/loader

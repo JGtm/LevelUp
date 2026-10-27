@@ -31,14 +31,13 @@ function fmtNumber(value: number, locale: string, fractionDigits = 2): string {
   return value.toLocaleString(locale, { maximumFractionDigits: fractionDigits })
 }
 
-/** formatPlaytime convertit des secondes en "Xj Yh" / "Yh Zm" / "Zm" (FR/EN). */
-function formatPlaytime(seconds: number, locale: string): string {
+/** formatPlaytime convertit des secondes en "Xj Yh" / "Yh Zm" / "Zm" ; `dayUnit` : l'unité de jours de la langue. */
+function formatPlaytime(seconds: number, dayUnit: string): string {
   const totalMin = Math.floor(seconds / 60)
   const days = Math.floor(totalMin / 1440)
   const hours = Math.floor((totalMin % 1440) / 60)
   const mins = totalMin % 60
-  const dUnit = locale === 'en' ? 'd' : 'j'
-  if (days > 0) return `${days}${dUnit} ${hours}h`
+  if (days > 0) return `${days}${dayUnit} ${hours}h`
   if (hours > 0) return `${hours}h ${mins}m`
   return `${mins}m`
 }
@@ -63,7 +62,7 @@ export function ExplorerTargetCareerStats({ careerStats }: ExplorerTargetCareerS
       <KpiTile label={t('explorer.target_profile.label_dmg_per_game')} value={fmtNumber(careerStats.damage_per_game, numberLocale, 0)} accent="chart-series-4" />
       <KpiTile
         label={t('explorer.target_profile.time_played_label')}
-        value={formatPlaytime(careerStats.time_played_seconds ?? 0, appLocale)}
+        value={formatPlaytime(careerStats.time_played_seconds ?? 0, t('explorer.target_profile.playtime_day_unit'))}
         accent="chart-series-2"
         testId="explorer-target-time-played"
       />

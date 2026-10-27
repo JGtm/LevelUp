@@ -100,8 +100,8 @@ export function formatMetricValue(metric: string, value: number): string {
     'accuracy_threshold_days',
   ])
   if (intMetrics.has(metric)) {
-    // Locale fixée à en-US pour produire un séparateur déterministe.
-    return Math.round(value).toLocaleString('en-US')
+    // Étiquette de l'anglais fixée (pas celle de l'interface) : séparateur déterministe.
+    return Math.round(value).toLocaleString(intlLocale('en'))
   }
   if (metric === 'accuracy') {
     return `${(value * 100).toFixed(1)} %`

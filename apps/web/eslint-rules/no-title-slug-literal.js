@@ -21,6 +21,7 @@ const FILE_WHITELIST = [
   /\/__tests__\//,
   /\/i18n\.ts$/,
   /\.i18n\.ts$/,
+  /\/i18n\/[a-z]{2,3}\.ts$/,
 ]
 
 function isOutOfScopeOrWhitelisted(filename) {

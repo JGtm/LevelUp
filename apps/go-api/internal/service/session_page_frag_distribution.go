@@ -20,6 +20,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
@@ -92,10 +93,10 @@ func (s *SessionPageService) sessionFragDistribution(
 	}
 	rows := s.loadSessionWeaponKillRows(ctx, matchIDs)
 	hasMechanics := titleHasNativeKillMechanics(s.titleSlug)
-	fd := fragdist.Build(rows, counts, hasMechanics)
+	fd := fragdist.Build(i18n.FromContext(ctx), rows, counts, hasMechanics)
 	logFragDistribution(ctx, "session page", s.titleSlug, s.gamertag, fd)
 	tools := s.sessionWeaponTools(ctx, rows, counts, matchIDs, hasMechanics)
-	return &fd, buildTopWeaponKills(rows, synthesisWeaponChartTopN), tools
+	return &fd, buildTopWeaponKills(i18n.FromContext(ctx), rows, synthesisWeaponChartTopN), tools
 }
 
 // loadSessionWeaponKillRows charge les rows agrégées d'armes de la session

@@ -7,6 +7,7 @@
  *
  * Pas de JSX ici : ce module est pur, testable sans DOM.
  */
+import { DEFAULT_LOCALE, normalizeLocale, type Locale } from '@/lib/i18n/locale'
 
 export type RarityTier = 'common' | 'rare' | 'epic' | 'legendary' | 'mythic'
 
@@ -113,14 +114,13 @@ export function rarityStyle(tier: RarityTier | null): RarityStyle | null {
   return tier == null ? null : RARITY_STYLES[tier]
 }
 
-// preferEN accepte une locale courte ('fr'/'en') OU Intl ('fr-FR'/'en-US') —
-// certains appelants (PassContentSummary) passent l'Intl locale.
-function preferEN(locale: string): boolean {
-  return locale.toLowerCase().startsWith('en')
-}
+const RARITY_LABELS: Record<Locale, Record<RarityTier, string>> = { fr: RARITY_LABELS_FR, en: RARITY_LABELS_EN }
 
-export function rarityLabel(tier: RarityTier, locale: string = 'fr'): string {
-  return preferEN(locale) ? RARITY_LABELS_EN[tier] : RARITY_LABELS_FR[tier]
+// `locale` accepte une locale courte ('fr'/'en') OU Intl (`fr-FR`, `en-US`) —
+// certains appelants (PassContentSummary) passent l'Intl locale ; normalizeLocale
+// ramène les deux sur une langue de config/locales.toml.
+export function rarityLabel(tier: RarityTier, locale: string = DEFAULT_LOCALE): string {
+  return RARITY_LABELS[normalizeLocale(locale)][tier]
 }
 
 /**
@@ -218,11 +218,13 @@ export function isArmorItemType(raw?: string | null): boolean {
   return ARMOR_ITEM_TYPES.has(raw.trim())
 }
 
-export function itemTypeLabel(raw?: string | null, locale: string = 'fr'): string | null {
+const ITEM_TYPE_LABELS: Record<Locale, Record<string, string>> = { fr: ITEM_TYPE_LABELS_FR, en: ITEM_TYPE_LABELS_EN }
+
+export function itemTypeLabel(raw?: string | null, locale: string = DEFAULT_LOCALE): string | null {
   if (!raw) return null
   const trimmed = raw.trim()
   if (!trimmed) return null
-  const map = preferEN(locale) ? ITEM_TYPE_LABELS_EN : ITEM_TYPE_LABELS_FR
+  const map = ITEM_TYPE_LABELS[normalizeLocale(locale)]
   if (map[trimmed]) return map[trimmed]
   // Fallback : transformer PascalCase en mots espacés ("ArmorVisor" → "Armor visor").
   const spaced = trimmed.replace(/([a-z])([A-Z])/g, '$1 $2')

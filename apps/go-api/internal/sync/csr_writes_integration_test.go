@@ -68,7 +68,6 @@ func TestUpsertCSRRow_InsertNew(t *testing.T) {
 		MatchID:       "m_new_csr",
 		RatingValue:   &val,
 		Tier:          "Gold",
-		TierFR:        "Or",
 		SubTier:       5,
 		TierLabel:     "Or 5",
 		RatingDelta:   &delta,
@@ -103,8 +102,8 @@ func TestUpsertCSRRow_InsertNew(t *testing.T) {
 	if !tier.Valid || tier.String != "Gold" {
 		t.Errorf("tier: want Gold, got %v", tier)
 	}
-	if !tierFR.Valid || tierFR.String != "Or" {
-		t.Errorf("tier_fr: want Or, got %v", tierFR)
+	if tierFR.Valid {
+		t.Errorf("tier_fr: colonne inerte (ADR 0040 D-5), ne doit plus être écrite, got %v", tierFR)
 	}
 	if !subTier.Valid || subTier.Int64 != 5 {
 		t.Errorf("sub_tier: want 5, got %v", subTier)
@@ -144,7 +143,6 @@ func TestUpsertCSRRow_PlacementInsertWithZeroRating(t *testing.T) {
 		MatchID:                     "m_placement_csr",
 		RatingValue:                 &zero, // <-- 0.0, PAS nil
 		Tier:                        "Placement",
-		TierFR:                      "Placement",
 		SubTier:                     0,
 		TierLabel:                   "Placement (3 restants)",
 		PlaylistGroup:               "ranked",
@@ -204,7 +202,6 @@ func TestUpsertCSRRow_ReplacesLUSR(t *testing.T) {
 		MatchID:       "m_was_lusr",
 		RatingValue:   &val,
 		Tier:          "Gold",
-		TierFR:        "Or",
 		SubTier:       5,
 		TierLabel:     "Or 5",
 		RatingDelta:   &delta,
@@ -238,7 +235,6 @@ func TestUpsertCSRRow_PlacementWithNullValue(t *testing.T) {
 		MatchID:                     "m_placement",
 		RatingValue:                 nil, // NULL
 		Tier:                        "Placement",
-		TierFR:                      "Placement",
 		SubTier:                     0,
 		TierLabel:                   "Placement (3 restants)",
 		RatingDelta:                 nil, // NULL
@@ -275,7 +271,7 @@ func TestUpsertCSRRow_Idempotent(t *testing.T) {
 	val := 1500.0
 	row := &MatchCSRRow{
 		MatchID: "m_idem", RatingValue: &val,
-		Tier: "Platinum", TierFR: "Platine", SubTier: 1, TierLabel: "Platine 1",
+		Tier: "Platinum", SubTier: 1, TierLabel: "Platine 1",
 		PlaylistGroup: "ranked", StartTime: time.Now().UTC(),
 	}
 	if err := UpsertCSRRow(t.Context(), db, row); err != nil {

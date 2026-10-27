@@ -1,19 +1,25 @@
 /**
  * IssueSections — les quatre sections de listes d'inconnus de la page
- * Qualité données : modes sans traduction FR (form mode_name_tr), assets UUID
+ * Qualité données : modes sans traduction (form mode_name_tr), assets UUID
  * bruts + playlists hors catalogue (form asset_translations), xuids orphelins
- * (lecture seule). Une seule ligne de formulaire ouverte à la fois par section.
+ * (lecture seule). Une seule ligne de formulaire ouverte à la fois par section ;
+ * les formulaires de traduction ont une saisie par langue de `config/locales.toml`.
  */
 import { useState } from 'react'
 import { toast } from 'sonner'
 
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { apiErrorMessage } from '@/lib/api/client'
+import { languageName } from '@/lib/formatters'
+import { formatMessage } from '@/lib/i18n/format'
+import { adminManifest } from '@/lib/i18n/generated/admin'
+import { useAppShellStore } from '@/stores/appShellStore'
 import type { AdminDataQualityIssue, DataQualityIssueKind } from '@/lib/api/types'
 import { DATA_QUALITY_LOCALE, useDataQualityIssues } from './queries'
 import { useResolveAssetTranslation, useResolveModeTranslation } from './mutations'
 import { InlineResolveForm } from './InlineResolveForm'
 import { IssueTable, type IssueColumn } from './IssueTable'
+import { namesFromValues, translationFields, type TranslationField } from './translationInput'
 import { useAdminT, type TAdmin } from '../useAdminText'
 import { SectionHeader } from '../components/SectionHeader'
 
@@ -23,6 +29,19 @@ function rowKeyOf(issue: AdminDataQualityIssue): string {
 
 function toastResolve(action: string | undefined, tA: TAdmin) {
   toast.success(action === 'updated' ? tA('admin.dq.saved_updated') : tA('admin.dq.saved_created'))
+}
+
+/** Une saisie par langue de `config/locales.toml`, étiquetée du nom de la langue dans l'interface. */
+function useTranslationFields(): (placeholder?: string) => TranslationField[] {
+  const locale = useAppShellStore((s) => s.locale)
+  return (placeholder) =>
+    translationFields(
+      (l) =>
+        formatMessage(adminManifest, 'admin.dq.form_name_in', locale, {
+          language: languageName(l, locale),
+        }),
+      placeholder,
+    )
 }
 
 /** Section générique : header + états vides + table. */
@@ -67,6 +86,7 @@ export function UntranslatedModesSection() {
   const tA = useAdminT()
   const { data } = useDataQualityIssues('untranslated_modes')
   const resolve = useResolveModeTranslation()
+  const fieldsFor = useTranslationFields()
   const [openID, setOpenID] = useState<string | null>(null)
 
   const columns: IssueColumn[] = [
@@ -107,14 +127,14 @@ export function UntranslatedModesSection() {
         renderForm={(i) => (
           <InlineResolveForm
             subject={i.id}
-            fields={[{ key: 'name_fr', label: tA('admin.dq.form_name_fr'), placeholder: i.id }]}
+            fields={fieldsFor(i.id)}
             busy={resolve.isPending}
             onCancel={() => setOpenID(null)}
             onSubmit={(values) => {
-              const nameFR = values.name_fr?.trim()
-              if (!nameFR) return
+              const names = namesFromValues(values)
+              if (Object.keys(names).length === 0) return
               resolve.mutate(
-                { mode_en: i.id, name_fr: nameFR },
+                { mode_key: i.id, names },
                 {
                   onSuccess: (res) => {
                     toastResolve(res.action, tA)
@@ -178,7 +198,7 @@ export function RawAssetsSection() {
   )
 }
 
-/** Formulaire asset (EN + FR) partagé entre raw_uuids et orphan_playlists. */
+/** Formulaire asset (une saisie par langue) partagé entre raw_uuids et orphan_playlists. */
 function AssetResolveForm({
   issue,
   assetKind,
@@ -190,22 +210,19 @@ function AssetResolveForm({
 }) {
   const tA = useAdminT()
   const resolve = useResolveAssetTranslation()
+  const fieldsFor = useTranslationFields()
   const kind = assetKind ?? issue.asset_kind ?? ''
   return (
     <InlineResolveForm
       subject={`${kind} · ${issue.id}`}
-      fields={[
-        { key: 'name_en', label: tA('admin.dq.form_name_en'), initial: '' },
-        { key: 'name_fr', label: tA('admin.dq.form_name_fr'), initial: '' },
-      ]}
+      fields={fieldsFor()}
       busy={resolve.isPending}
       onCancel={onDone}
       onSubmit={(values) => {
-        const nameEN = values.name_en?.trim() ?? ''
-        const nameFR = values.name_fr?.trim() ?? ''
-        if (!nameEN && !nameFR) return
+        const names = namesFromValues(values)
+        if (Object.keys(names).length === 0) return
         resolve.mutate(
-          { asset_kind: kind, asset_id: issue.id, name_en: nameEN || undefined, name_fr: nameFR || undefined },
+          { asset_kind: kind, asset_id: issue.id, names },
           {
             onSuccess: (res) => {
               toastResolve(res.action, tA)

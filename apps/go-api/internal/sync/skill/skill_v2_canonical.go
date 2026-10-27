@@ -79,7 +79,6 @@ func writeCanonicalLUSRRow(ctx context.Context, c shadowRunContext, matchID stri
 	label := skillv2.FormatTierSubLabel(tier, sub)
 
 	tierName := tier.Name
-	tierFR := tier.NameFR
 	subPtr := &sub
 	if tier.SubTiers <= 1 {
 		// Onyx : pas de sub-tier, on garde sub=0 dans le slot
@@ -103,7 +102,6 @@ func writeCanonicalLUSRRow(ctx context.Context, c shadowRunContext, matchID stri
 		RatingValue:     rating,
 		RatingDeviation: deviation,
 		Tier:            &tierName,
-		TierFR:          &tierFR,
 		SubTier:         subPtr,
 		TierLabel:       &label,
 		RatingDelta:     ratingDelta,

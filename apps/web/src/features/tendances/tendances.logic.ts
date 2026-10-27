@@ -84,9 +84,11 @@ function percentDecimals(decimals: number): number {
   return Math.max(0, decimals - 2)
 }
 
-/** Suffixe de pourcentage : espace insécable en français, collé en anglais. */
+/** Suffixe de pourcentage par langue : espace insécable en français, collé en anglais. */
+const PERCENT_SUFFIX = { fr: '\u00a0%', en: '%' } as const satisfies Record<Locale, string>
+
 function percentSuffix(locale: Locale): string {
-  return locale === 'en' ? '%' : '\u00a0%'
+  return PERCENT_SUFFIX[locale]
 }
 
 /**

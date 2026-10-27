@@ -22,6 +22,7 @@ import (
 
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/mapdecoupe"
 )
 
@@ -100,7 +101,7 @@ func decoupeSurMasque(e *replay.MapCalloutsEntry, m *mapdecoupe.Masque) ([]repla
 		r := mapdecoupe.Decoupe(z.Polygon, m, opts)
 		if r.Degenere {
 			rap.Degenerees = append(rap.Degenerees,
-				fmt.Sprintf("%s [vol %d] %.1f m² -> %.1f m²", z.EN, z.VolumeIndex, r.AireBrutM2, r.AireM2))
+				fmt.Sprintf("%s [vol %d] %.1f m² -> %.1f m²", z.Text[i18n.Fallback], z.VolumeIndex, r.AireBrutM2, r.AireM2))
 			continue
 		}
 		bruts = append(bruts, replay.CalloutBrutZone{VolumeIndex: z.VolumeIndex, Polygon: z.Polygon})

@@ -77,11 +77,10 @@ type WeaponRangeRow struct {
 	// WeaponKey est la clé canonique du registre ("hinf_br75"). TOUJOURS renseignée : elle
 	// est le repli d'affichage quand le libellé n'a pas pu être résolu.
 	WeaponKey string `json:"weapon_key"`
-	// Label / LabelEN : le nom d'affichage FR-first et EN-first, résolus depuis la metadata
-	// du titre (jamais un libellé en dur côté Go). Vides si la metadata ne connaît pas la
-	// clé — le front retombe alors sur WeaponKey.
-	Label   string `json:"label,omitempty"`
-	LabelEN string `json:"label_en,omitempty"`
+	// Label : le nom d affichage dans la langue de la requête (repli en), résolu depuis la
+	// metadata du titre (jamais un libellé en dur côté Go). Vide si la metadata ne connaît pas
+	// la clé — le front retombe alors sur WeaponKey.
+	Label string `json:"label,omitempty"`
 
 	// Kills : « où je frague avec cette arme ». Nil si aucun frag mesuré au-dessus du seuil.
 	Kills *WeaponRangeSide `json:"kills,omitempty"`
@@ -126,7 +125,6 @@ type WeaponRangeSide struct {
 type WeaponBelowThreshold struct {
 	WeaponKey string `json:"weapon_key"`
 	Label     string `json:"label,omitempty"`
-	LabelEN   string `json:"label_en,omitempty"`
 	Measured  int    `json:"measured"`
 }
 

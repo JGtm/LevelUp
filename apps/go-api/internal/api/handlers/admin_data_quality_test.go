@@ -42,8 +42,22 @@ func dqPostJSON(path, body string) *http.Request {
 	return req
 }
 
+// dqTranslationCalls enregistre les requêtes de traduction reçues par les runners factices.
+type dqTranslationCalls struct {
+	mode  []domain.ModeTranslationRequest
+	asset []domain.AssetTranslationRequest
+}
+
 func newDQHandler(t *testing.T) *AdminDataQualityHandler {
 	t.Helper()
+	h, _ := newDQHandlerRec(t)
+	return h
+}
+
+// newDQHandlerRec construit le handler et expose les requêtes de traduction que les runners reçoivent.
+func newDQHandlerRec(t *testing.T) (*AdminDataQualityHandler, *dqTranslationCalls) {
+	t.Helper()
+	calls := &dqTranslationCalls{}
 	return NewAdminDataQualityHandler(
 		func(_ context.Context, titleSlug, locale string) (domain.AdminDataQualityCounts, error) {
 			return domain.AdminDataQualityCounts{TitleSlug: titleSlug, Locale: locale, RawUUIDTotal: 3}, nil
@@ -64,10 +78,12 @@ func newDQHandler(t *testing.T) *AdminDataQualityHandler {
 			}
 			return domain.RegistryNamesBackfillResult{}, errBusySentinel
 		},
-		func(_ context.Context, _, modeEN, nameFR string) (domain.ResolveResult, error) {
-			return domain.ResolveResult{Action: "created", ModeEN: modeEN}, nil
+		func(_ context.Context, _ string, req domain.ModeTranslationRequest) (domain.ResolveResult, error) {
+			calls.mode = append(calls.mode, req)
+			return domain.ResolveResult{Action: "created", ModeKey: req.ModeKey}, nil
 		},
 		func(_ context.Context, _ string, req domain.AssetTranslationRequest) (domain.ResolveResult, error) {
+			calls.asset = append(calls.asset, req)
 			return domain.ResolveResult{Action: "created", Langs: []string{"fr-FR"}}, nil
 		},
 		func(_ context.Context, _ string) (domain.CatalogRefreshResult, error) {
@@ -80,7 +96,7 @@ func newDQHandler(t *testing.T) *AdminDataQualityHandler {
 			return domain.LyingBitsResetResult{}, errBusySentinel
 		},
 		errBusySentinel,
-	)
+	), calls
 }
 
 // TestAdminDQ_CatalogRefresh : 200 + compteurs.
@@ -187,39 +203,147 @@ func TestAdminDQ_RegistryNames_DryRunAndBusy(t *testing.T) {
 	}
 }
 
+// dqModeBody / dqAssetBody : corps de requête de traduction pour les tests.
+func dqModeBody(key, names string) string {
+	return `{"mode_key": "` + key + `", "names": ` + names + `}`
+}
+
+func dqAssetBody(kind, id, names string) string {
+	return `{"asset_kind": "` + kind + `", "asset_id": "` + id + `", "names": ` + names + `}`
+}
+
+// dqErrCode lit le code de l'enveloppe d'erreur d'une réponse.
+func dqErrCode(t *testing.T, rec *httptest.ResponseRecorder) string {
+	t.Helper()
+	var body map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode erreur : %v (%s)", err, rec.Body.String())
+	}
+	code, _ := body["code"].(string)
+	return code
+}
+
 // TestAdminDQ_Translations_Validation : inputs vides/trop longs → 400 ;
 // valides → 200 avec action.
 func TestAdminDQ_Translations_Validation(t *testing.T) {
 	h := newDQHandler(t)
+	const mode = "/admin/actions/translations/mode"
+	const asset = "/admin/actions/translations/asset"
 
-	rec := serveAdminDataQuality(h, dqPostJSON("/admin/actions/translations/mode",
-		`{"mode_en": "", "name_fr": "Assassin"}`))
+	rec := serveAdminDataQuality(h, dqPostJSON(mode, dqModeBody("", `{"fr": "Assassin"}`)))
 	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("mode_en vide : status=%d (attendu 400)", rec.Code)
+		t.Fatalf("mode_key vide : status=%d (attendu 400)", rec.Code)
 	}
 
 	long := strings.Repeat("x", 200)
-	rec = serveAdminDataQuality(h, dqPostJSON("/admin/actions/translations/mode",
-		`{"mode_en": "Slayer", "name_fr": "`+long+`"}`))
+	rec = serveAdminDataQuality(h, dqPostJSON(mode, dqModeBody("Slayer", `{"fr": "`+long+`"}`)))
 	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("name_fr trop long : status=%d (attendu 400)", rec.Code)
+		t.Fatalf("nom trop long : status=%d (attendu 400)", rec.Code)
 	}
 
-	rec = serveAdminDataQuality(h, dqPostJSON("/admin/actions/translations/mode",
-		`{"mode_en": "Slayer", "name_fr": "Assassin"}`))
+	rec = serveAdminDataQuality(h, dqPostJSON(mode, dqModeBody("Slayer", `{"fr": "Assassin"}`)))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("valide : status=%d (attendu 200)", rec.Code)
 	}
+	// La réponse nomme la clé technique écrite `mode_key` (clé du mode, pas un libellé) : plus de `mode_en`.
+	var resp map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decode : %v", err)
+	}
+	if resp["mode_key"] != "Slayer" {
+		t.Errorf("mode_key = %v, attendu Slayer : %v", resp["mode_key"], resp)
+	}
+	if _, ok := resp["mode_en"]; ok {
+		t.Errorf("mode_en ne fait plus partie de la réponse : %v", resp)
+	}
 
 	// Asset : aucun nom fourni → 400.
-	rec = serveAdminDataQuality(h, dqPostJSON("/admin/actions/translations/asset",
-		`{"asset_kind": "pair", "asset_id": "p-1"}`))
+	rec = serveAdminDataQuality(h, dqPostJSON(asset, `{"asset_kind": "pair", "asset_id": "p-1"}`))
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("asset sans nom : status=%d (attendu 400)", rec.Code)
 	}
-	rec = serveAdminDataQuality(h, dqPostJSON("/admin/actions/translations/asset",
-		`{"asset_kind": "pair", "asset_id": "p-1", "name_fr": "Fiesta"}`))
+	rec = serveAdminDataQuality(h, dqPostJSON(asset, dqAssetBody("pair", "p-1", `{"fr": "Fiesta"}`)))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("asset valide : status=%d (attendu 200)", rec.Code)
+	}
+}
+
+// TestAdminDQ_Translations_OnePerLanguage : une saisie fr + en, ou une seule langue, arrive au
+// runner telle quelle (noms rognés, clé = code de langue).
+func TestAdminDQ_Translations_OnePerLanguage(t *testing.T) {
+	h, calls := newDQHandlerRec(t)
+
+	rec := serveAdminDataQuality(h, dqPostJSON("/admin/actions/translations/mode",
+		dqModeBody("Slayer", `{"fr": "  Assassin ", "en": "Slayer"}`)))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("mode fr+en : status=%d (attendu 200) %s", rec.Code, rec.Body.String())
+	}
+	rec = serveAdminDataQuality(h, dqPostJSON("/admin/actions/translations/mode",
+		dqModeBody("Strongholds", `{"en": "Strongholds"}`)))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("mode une langue : status=%d (attendu 200) %s", rec.Code, rec.Body.String())
+	}
+	rec = serveAdminDataQuality(h, dqPostJSON("/admin/actions/translations/asset",
+		dqAssetBody("map", "m-1", `{"fr": "Aquarius", "en": "Aquarius EN"}`)))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("asset fr+en : status=%d (attendu 200) %s", rec.Code, rec.Body.String())
+	}
+	// Les entrées vides sont écartées : une seule langue renseignée suffit.
+	rec = serveAdminDataQuality(h, dqPostJSON("/admin/actions/translations/asset",
+		dqAssetBody("map", "m-2", `{"fr": "", "en": "Streets"}`)))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("asset une langue : status=%d (attendu 200) %s", rec.Code, rec.Body.String())
+	}
+
+	if len(calls.mode) != 2 || len(calls.asset) != 2 {
+		t.Fatalf("appels runner : %d mode, %d asset (attendu 2 et 2)", len(calls.mode), len(calls.asset))
+	}
+	if got := calls.mode[0].Names; len(got) != 2 || got["fr"] != "Assassin" || got["en"] != "Slayer" {
+		t.Errorf("mode fr+en : names = %v", got)
+	}
+	if got := calls.mode[1].Names; len(got) != 1 || got["en"] != "Strongholds" {
+		t.Errorf("mode une langue : names = %v", got)
+	}
+	if got := calls.asset[0].Names; len(got) != 2 || got["fr"] != "Aquarius" || got["en"] != "Aquarius EN" {
+		t.Errorf("asset fr+en : names = %v", got)
+	}
+	if got := calls.asset[1]; got.AssetID != "m-2" || len(got.Names) != 1 || got.Names["en"] != "Streets" {
+		t.Errorf("asset une langue : %+v", got)
+	}
+}
+
+// TestAdminDQ_Translations_RejectedNames : langue inconnue (code distinct), toutes valeurs vides,
+// names absent ou null → 400 et aucun appel au runner.
+func TestAdminDQ_Translations_RejectedNames(t *testing.T) {
+	h, calls := newDQHandlerRec(t)
+	const mode = "/admin/actions/translations/mode"
+	const asset = "/admin/actions/translations/asset"
+
+	cases := []struct {
+		name, path, body, code string
+	}{
+		{"mode langue inconnue", mode, dqModeBody("Slayer", `{"zz": "Assassin"}`), "unknown_locale"},
+		{"mode langue inconnue avec une valide", mode, dqModeBody("Slayer", `{"fr": "Assassin", "zz": "x"}`), "unknown_locale"},
+		{"mode etiquette complete refusee", mode, dqModeBody("Slayer", `{"en-US": "Slayer"}`), "unknown_locale"},
+		{"mode valeurs vides", mode, dqModeBody("Slayer", `{"fr": "", "en": "   "}`), "invalid_input"},
+		{"mode names vide", mode, dqModeBody("Slayer", `{}`), "invalid_input"},
+		{"mode names null", mode, dqModeBody("Slayer", `null`), "invalid_input"},
+		{"asset langue inconnue", asset, dqAssetBody("pair", "p-1", `{"zz": "Fiesta"}`), "unknown_locale"},
+		{"asset valeurs vides", asset, dqAssetBody("pair", "p-1", `{"fr": "", "en": ""}`), "invalid_input"},
+		{"asset names absent", asset, `{"asset_kind": "pair", "asset_id": "p-1"}`, "invalid_input"},
+		{"asset id vide", asset, dqAssetBody("pair", "", `{"fr": "Fiesta"}`), "invalid_input"},
+	}
+	for _, c := range cases {
+		rec := serveAdminDataQuality(h, dqPostJSON(c.path, c.body))
+		if rec.Code != http.StatusBadRequest {
+			t.Errorf("%s : status=%d (attendu 400) %s", c.name, rec.Code, rec.Body.String())
+			continue
+		}
+		if got := dqErrCode(t, rec); got != c.code {
+			t.Errorf("%s : code=%q (attendu %q)", c.name, got, c.code)
+		}
+	}
+	if len(calls.mode) != 0 || len(calls.asset) != 0 {
+		t.Errorf("le runner ne doit pas être appelé sur une saisie refusée : %d mode, %d asset", len(calls.mode), len(calls.asset))
 	}
 }

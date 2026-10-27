@@ -23,10 +23,10 @@ const T = getSquadText('fr')
 const TOOLS: SquadWeaponTools = {
   players: ['JGtm', 'Chocoboflor'],
   lines: [
-    { kind: 'weapon', weapon_key: 'hinf_br75', label: 'BR75', label_en: 'BR75', class: 'shoulder', kills_by_player: { JGtm: 22, Chocoboflor: 22 }, total_squad: 44 },
+    { kind: 'weapon', weapon_key: 'hinf_br75', label: 'BR75', class: 'shoulder', kills_by_player: { JGtm: 22, Chocoboflor: 22 }, total_squad: 44 },
     { kind: 'melee', class: 'melee', kills_by_player: { JGtm: 6, Chocoboflor: 13 }, total_squad: 19 },
     { kind: 'explosive_object', class: 'unattributed', kills_by_player: { JGtm: 2 }, total_squad: 2 },
-    { kind: 'weapon', weapon_key: 'hinf_mutilator', label: 'Mutilateur', label_en: 'Mutilator', class: 'shoulder', kills_by_player: { JGtm: 1 }, total_squad: 1 },
+    { kind: 'weapon', weapon_key: 'hinf_mutilator', label: 'Mutilateur', class: 'shoulder', kills_by_player: { JGtm: 1 }, total_squad: 1 },
     { kind: 'unattributed', class: 'unattributed', kills_by_player: { Chocoboflor: 1 }, total_squad: 1 },
   ],
 }

@@ -3,6 +3,8 @@ package domain
 import (
 	"reflect"
 	"testing"
+
+	"levelup/go-api/internal/i18n"
 )
 
 func TestGroupesDeCartes_HorsGroupe(t *testing.T) {
@@ -88,24 +90,24 @@ func TestGroupesDeCartes_ChaineEtCycle(t *testing.T) {
 }
 
 func TestGroupesDeCartes_Libelle(t *testing.T) {
-	g := NewGroupesDeCartes(map[string]string{"v": "b", "b2": "b"}).AvecLibelles(map[string]map[string]string{
+	g := NewGroupesDeCartes(map[string]string{"v": "b", "b2": "b"}).AvecLibelles(map[string]i18n.Text{
 		"b":     {"fr": "Tonnerre", "en": "Thunderhead"},
 		"autre": {"fr": "ignoré"}, // pas une base de groupe
 	})
-	if l, ok := g.Libelle("v", "fr"); !ok || l != "Tonnerre" {
+	if l, ok := g.Libelle("v", i18n.LocaleFR); !ok || l != "Tonnerre" {
 		t.Errorf("Libelle(v, fr) = %q, %v, attendu Tonnerre", l, ok)
 	}
-	if l, ok := g.Libelle("b2", "en"); !ok || l != "Thunderhead" {
+	if l, ok := g.Libelle("b2", i18n.LocaleEN); !ok || l != "Thunderhead" {
 		t.Errorf("Libelle(b2, en) = %q, %v, attendu Thunderhead", l, ok)
 	}
 	// Locale sans libellé : repli sur l'anglais.
-	if l, ok := g.Libelle("v", "de"); !ok || l != "Thunderhead" {
+	if l, ok := g.Libelle("v", i18n.Locale("de")); !ok || l != "Thunderhead" {
 		t.Errorf("Libelle(v, de) = %q, %v, attendu le repli Thunderhead", l, ok)
 	}
-	if _, ok := g.Libelle("hors-groupe", "fr"); ok {
+	if _, ok := g.Libelle("hors-groupe", i18n.LocaleFR); ok {
 		t.Error("une carte hors groupe n'a pas de libellé de base")
 	}
-	if _, ok := NewGroupesDeCartes(map[string]string{"v": "b"}).Libelle("v", "fr"); ok {
+	if _, ok := NewGroupesDeCartes(map[string]string{"v": "b"}).Libelle("v", i18n.LocaleFR); ok {
 		t.Error("sans libellé posé, ok doit être faux")
 	}
 }

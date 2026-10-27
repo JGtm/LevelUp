@@ -511,9 +511,9 @@ func Steps() []migration.Migration {
 			// = <bad>) — aucun code Go ne réécrit ensuite ce champ (medal_definitions
 			// n'est jamais ré-upserté par refresh-metadata, qui ne touche que
 			// difficulty/medal_type via PromoteMedalDifficultyType), donc le correctif
-			// survit à un re-seed. medal_translations est traité par précaution (table
-			// vide en pratique — aucun INSERT Go ne la peuple pour les médailles — donc
-			// no-op si absente ; cf. medal_label_resolve.go).
+			// survit à un re-seed. medal_translations est traité aussi : une ligne
+			// déjà présente l'emporte sur les colonnes à la migration des textes
+			// (metadata_definition_texts_to_translations_v1).
 			Name:        "fix_meganaut_fr_description",
 			TargetDB:    migration.TargetMetadata,
 			Description: "medal_definitions/medal_translations : corrige la description FR anglicisée de la médaille Méganaute (2005352812)",
@@ -544,10 +544,10 @@ func Steps() []migration.Migration {
 			// indépendamment par la table de noms du film
 			// (games/halo_infinite/film/medalname/table.go, couple 50/157 mesuré sur
 			// 44 568 events). AUCUN libellé FR n'existe dans une source officielle :
-			// les colonnes FR restent VIDES (NOT NULL sur la table) — la chaîne
-			// COALESCE locale-aware (platform/duckdb/medal_label_resolve.go) neutralise
-			// une chaîne vide par NULLIF et sert alors le nom anglais, ce qui est exact,
-			// au lieu d'un « Inconnue » faux.
+			// les colonnes FR restent VIDES (NOT NULL sur la table) — la migration
+			// metadata_definition_texts_to_translations_v1 n'en tire aucune ligne de
+			// traduction fr, et la lecture (platform/duckdb/medal_label_resolve.go) sert
+			// alors le nom anglais, ce qui est exact, au lieu d'un « Inconnue » faux.
 			//
 			// PAS d'`ON CONFLICT` ici, contrairement à seed_custom_vengeur_medal : une
 			// metadata.duckdb héritée de l'ère Python porte un `medal_definitions` créé
@@ -586,9 +586,10 @@ func Steps() []migration.Migration {
 			// conditionne pas dessus. Le garde-fou est `name_en <> 'Clash of Kings'`,
 			// qui rend l'étape idempotente sans dépendre du bouchon.
 			//
-			// medal_translations est purgée pour cet identifiant : la chaîne FR de
-			// lecture commence par `mt_loc.name` (medal_label_resolve.go), donc une
-			// traduction bouchon y masquerait medal_definitions.
+			// medal_translations est purgée pour cet identifiant : une traduction de
+			// ligne présente l'emporte sur les colonnes à la migration des textes
+			// (metadata_definition_texts_to_translations_v1), donc une traduction
+			// bouchon y masquerait le nom corrigé ci-dessus.
 			Name:        "fix_clash_of_kings_placeholder",
 			TargetDB:    migration.TargetMetadata,
 			Description: "medal_definitions/medal_translations : remplace la ligne bouchon « Inconnue » de la médaille 1053114074",

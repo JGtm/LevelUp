@@ -17,16 +17,17 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/mappings"
+	"levelup/go-api/internal/i18n"
 )
 
 // outcomesDeTest reproduit le `outcomes.toml` d'un titre : les quatre issues canoniques, leurs
 // deux locales, et le `raw_code` qui fait le pont depuis l'entier stocké en base (2/3/1/4).
 func outcomesDeTest() *mappings.OutcomeMappingSet {
 	return mappings.NewOutcomeMappingSet("titre_de_test", 1, map[string]mappings.OutcomeMapping{
-		"win":  {Key: "win", Labels: map[string]string{"en": "Victory", "fr": "Victoire"}, RawCode: domain.OutcomeWin},
-		"loss": {Key: "loss", Labels: map[string]string{"en": "Defeat", "fr": "Défaite"}, RawCode: domain.OutcomeLoss},
-		"tie":  {Key: "tie", Labels: map[string]string{"en": "Tie", "fr": "Égalité"}, RawCode: domain.OutcomeDraw},
-		"dnf":  {Key: "dnf", Labels: map[string]string{"en": "DNF", "fr": "Abandon"}, RawCode: domain.OutcomeDNF},
+		"win":  {Key: "win", Labels: i18n.Text{"en": "Victory", "fr": "Victoire"}, RawCode: domain.OutcomeWin},
+		"loss": {Key: "loss", Labels: i18n.Text{"en": "Defeat", "fr": "Défaite"}, RawCode: domain.OutcomeLoss},
+		"tie":  {Key: "tie", Labels: i18n.Text{"en": "Tie", "fr": "Égalité"}, RawCode: domain.OutcomeDraw},
+		"dnf":  {Key: "dnf", Labels: i18n.Text{"en": "DNF", "fr": "Abandon"}, RawCode: domain.OutcomeDNF},
 	})
 }
 

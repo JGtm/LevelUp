@@ -36,11 +36,11 @@ func docIssuesTest() *ReplayDocument {
 		// La palette du film nomme quatre rangs ET publie leur famille (schéma 51) ; le
 		// rang 77 n'y est pas. La jointure du bilan lit `Family`, jamais le texte.
 		AbilityLabels: map[string]Label{
-			"2": {En: "Drop Wall", Fr: "mur de protection", Family: usageFamilyWall},
-			"1": {En: "Threat Sensor", Fr: "detecteur de menaces", Family: usageFamilySensor},
-			"8": {En: "Active Camouflage", Fr: "camouflage actif",
+			"2": {Text: enFr("Drop Wall", "mur de protection"), Family: usageFamilyWall},
+			"1": {Text: enFr("Threat Sensor", "detecteur de menaces"), Family: usageFamilySensor},
+			"8": {Text: enFr("Active Camouflage", "camouflage actif"),
 				Family: usageFamilyPowerupCamo},
-			"4": {En: "Grappleshot", Fr: "grappin", Family: usageFamilyGrapple},
+			"4": {Text: enFr("Grappleshot", "grappin"), Family: usageFamilyGrapple},
 		},
 		EquipmentEpisodes: []EquipmentEpisode{
 			{Slot: 1, T0: 100, T1: 150, Fam: EquipFamilyCamo},
@@ -245,11 +245,11 @@ func TestUsageSummary_JointureSurLaFamillePubliee(t *testing.T) {
 	doc := docIssuesTest()
 	doc.AbilityLabels = map[string]Label{
 		// Libellé opaque, famille publiée : la jointure passe par la FAMILLE.
-		"2": {En: "xyzzy", Fr: "xyzzy", Family: usageFamilyWall},
+		"2": {Text: enFr("xyzzy", "xyzzy"), Family: usageFamilyWall},
 		// Libellé parlant, aucune famille : le manifeste ne le classe pas, donc nous non plus.
-		"1": {En: "Drop Wall", Fr: "mur de protection"},
-		"8": {En: "Active Camouflage", Fr: "camouflage actif", Family: usageFamilyPowerupCamo},
-		"4": {En: "Grappleshot", Fr: "grappin", Family: usageFamilyGrapple},
+		"1": {Text: enFr("Drop Wall", "mur de protection")},
+		"8": {Text: enFr("Active Camouflage", "camouflage actif"), Family: usageFamilyPowerupCamo},
+		"4": {Text: enFr("Grappleshot", "grappin"), Family: usageFamilyGrapple},
 	}
 	s := BuildUsageSummary(doc)
 	if got := joueur(t, s, "111").TakenByFamily[usageFamilyWall]; got != 2 {

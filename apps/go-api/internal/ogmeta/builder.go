@@ -11,14 +11,8 @@ import (
 	"fmt"
 	"html"
 	"strings"
-)
 
-// Locale de rendu des textes OG.
-type Locale string
-
-const (
-	LocaleFR Locale = "fr"
-	LocaleEN Locale = "en"
+	"levelup/go-api/internal/i18n"
 )
 
 // SiteName : nom de marque affiche par les unfurlers (og:site_name).
@@ -55,7 +49,7 @@ type KPIInput struct {
 }
 
 // DefaultMeta construit la carte generique de marque pour une origine + un chemin.
-func DefaultMeta(origin, path string, loc Locale) Meta {
+func DefaultMeta(origin, path string, loc i18n.Locale) Meta {
 	return withImage(Meta{
 		Title:       defaultTitle(loc),
 		Description: defaultDescription(loc),
@@ -65,7 +59,7 @@ func DefaultMeta(origin, path string, loc Locale) Meta {
 
 // PlayerMeta construit une carte enrichie pour un joueur. titleLabel est le nom
 // affichable du titre (ex. "Halo Infinite") ; vide = titre sans mention du jeu.
-func PlayerMeta(origin, path, gamertag, titleLabel string, kpis KPIInput, loc Locale) Meta {
+func PlayerMeta(origin, path, gamertag, titleLabel string, kpis KPIInput, loc i18n.Locale) Meta {
 	return withImage(Meta{
 		Title:       playerTitle(gamertag, titleLabel, loc),
 		Description: playerDescription(kpis, loc),
@@ -81,53 +75,36 @@ func withImage(m Meta, origin string) Meta {
 	return m
 }
 
-func defaultTitle(loc Locale) string {
-	if loc == LocaleEN {
-		return SiteName + " — Halo stats"
-	}
-	return SiteName + " — Stats Halo"
+func defaultTitle(loc i18n.Locale) string {
+	return i18n.Msg(loc, "og.title.default", i18n.Params{"site": SiteName})
 }
 
-func defaultDescription(loc Locale) string {
-	if loc == LocaleEN {
-		return "Your Halo stats dashboard: KDR, win rate, sessions, medals and more."
-	}
-	return "Ton dashboard de statistiques Halo : KDR, taux de victoire, sessions, medailles et plus."
+func defaultDescription(loc i18n.Locale) string {
+	return i18n.Msg(loc, "og.description.default", nil)
 }
 
-func playerTitle(gamertag, titleLabel string, loc Locale) string {
+func playerTitle(gamertag, titleLabel string, loc i18n.Locale) string {
 	gt := strings.TrimSpace(gamertag)
 	if gt == "" {
 		return defaultTitle(loc)
 	}
 	label := strings.TrimSpace(titleLabel)
 	if label == "" {
-		return fmt.Sprintf("%s — %s", gt, SiteName)
+		return i18n.Msg(loc, "og.title.player_bare", i18n.Params{"gamertag": gt, "site": SiteName})
 	}
-	if loc == LocaleEN {
-		return fmt.Sprintf("%s — %s stats · %s", gt, label, SiteName)
-	}
-	return fmt.Sprintf("%s — Stats %s · %s", gt, label, SiteName)
+	return i18n.Msg(loc, "og.title.player", i18n.Params{"gamertag": gt, "game": label, "site": SiteName})
 }
 
 // playerDescription assemble les KPIs disponibles en une phrase compacte.
 // Repli sur la description generique si aucun KPI exploitable.
-func playerDescription(k KPIInput, loc Locale) string {
+func playerDescription(k KPIInput, loc i18n.Locale) string {
 	var parts []string
 	if k.KDR != nil {
-		parts = append(parts, fmt.Sprintf("KDR %.2f", *k.KDR))
+		parts = append(parts, i18n.Msg(loc, "og.kpi.kdr", i18n.Params{"value": fmt.Sprintf("%.2f", *k.KDR)}))
 	}
-	wr := k.WinRate * 100
-	if loc == LocaleEN {
-		parts = append(parts, fmt.Sprintf("%.0f%% win rate", wr))
-		if k.TotalMatches > 0 {
-			parts = append(parts, fmt.Sprintf("%d matches", k.TotalMatches))
-		}
-	} else {
-		parts = append(parts, fmt.Sprintf("%.0f %% de victoires", wr))
-		if k.TotalMatches > 0 {
-			parts = append(parts, fmt.Sprintf("%d matchs", k.TotalMatches))
-		}
+	parts = append(parts, i18n.Msg(loc, "og.kpi.win_rate", i18n.Params{"value": fmt.Sprintf("%.0f", k.WinRate*100)}))
+	if k.TotalMatches > 0 {
+		parts = append(parts, i18n.Msg(loc, "og.kpi.matches", i18n.Params{"count": k.TotalMatches}))
 	}
 	if len(parts) == 0 {
 		return defaultDescription(loc)
@@ -229,33 +206,19 @@ func IsCrawler(userAgent string) bool {
 }
 
 // LocaleFromParams resout la locale d'un apercu de lien. Un parametre de requete
-// ?lang= explicite (fr/en) PRIME sur l'Accept-Language : le crawler social envoie
-// SA propre langue (souvent en/absente), pas celle du partageur — un lien portant
+// ?lang= explicite et connu (i18n.Lookup) PRIME sur l'Accept-Language : le crawler social
+// envoie SA propre langue (souvent en/absente), pas celle du partageur — un lien portant
 // ?lang=fr permet donc a l'auteur du partage de figer la langue de la carte. Vide
-// ou inconnu -> repli sur l'Accept-Language (ParseLocale, defaut FR).
-func LocaleFromParams(queryLang, acceptLanguage string) Locale {
-	switch strings.ToLower(strings.TrimSpace(queryLang)) {
-	case "en":
-		return LocaleEN
-	case "fr":
-		return LocaleFR
+// ou inconnu -> repli sur l'Accept-Language (ParseLocale).
+func LocaleFromParams(queryLang, acceptLanguage string) i18n.Locale {
+	if l, ok := i18n.Lookup(queryLang); ok {
+		return l
 	}
 	return ParseLocale(acceptLanguage)
 }
 
-// ParseLocale deduit la locale depuis un en-tete Accept-Language. Defaut FR
-// (audience primaire) ; EN seulement si la langue preferee est l'anglais.
-func ParseLocale(acceptLanguage string) Locale {
-	al := strings.ToLower(strings.TrimSpace(acceptLanguage))
-	if al == "" {
-		return LocaleFR
-	}
-	first := al
-	if i := strings.IndexAny(first, ",;"); i >= 0 {
-		first = first[:i]
-	}
-	if strings.HasPrefix(strings.TrimSpace(first), "en") {
-		return LocaleEN
-	}
-	return LocaleFR
+// ParseLocale deduit la locale depuis un en-tete Accept-Language : la premiere langue
+// citee, normalisee par i18n.Parse (vide ou inconnue -> i18n.Default).
+func ParseLocale(acceptLanguage string) i18n.Locale {
+	return i18n.Parse(acceptLanguage)
 }

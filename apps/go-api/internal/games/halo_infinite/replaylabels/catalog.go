@@ -27,6 +27,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/games/weapons"
+	"levelup/go-api/internal/i18n"
 )
 
 // Load assemble le catalogue de libellés d'un titre depuis ses mappings versionnés.
@@ -105,7 +106,7 @@ func vehicleFamilies(in map[string]mappings.VehicleFamily) map[string]replay.Veh
 	}
 	out := make(map[string]replay.VehicleFamilyInfo, len(in))
 	for fam, v := range in {
-		out[fam] = replay.VehicleFamilyInfo{En: v.En, Fr: v.Fr, Kind: v.Kind, Sprite: v.Sprite}
+		out[fam] = replay.VehicleFamilyInfo{Label: v.Label, Kind: v.Kind, Sprite: v.Sprite}
 	}
 	return out
 }
@@ -147,7 +148,7 @@ func objectiveObjects(in map[uint32]mappings.ObjectiveObject) map[uint32]replay.
 		if !objectiveObjectFamilies[o.Family] {
 			continue
 		}
-		out[id] = replay.Label{En: o.Label.En, Fr: o.Label.Fr}
+		out[id] = textLabel(o.Label.Text)
 	}
 	if len(out) == 0 {
 		return nil
@@ -179,17 +180,17 @@ func weaponIcons(families map[uint32]string) map[uint32]replay.WeaponIconRef {
 // weaponNames convertit les noms d'armes du loader vers le DTO d'artefact. La JOINTURE
 // famille -> weapon_key -> nom, elle, vit dans `replay.NewLabelCatalog` : la recopier ici
 // en ferait une seconde version, et un test ne pourrait plus rejouer la vraie.
-func weaponNames(in map[string]mappings.WeaponName) map[string]replay.Label {
+func weaponNames(in map[string]i18n.Text) map[string]replay.Label {
 	out := make(map[string]replay.Label, len(in))
 	for k, v := range in {
-		out[k] = replay.Label{En: v.En, Fr: v.Fr}
+		out[k] = textLabel(v)
 	}
 	return out
 }
 
 // toLabels convertit les libellés bilingues du loader vers le DTO d'artefact, en
 // PRÉSERVANT L'ORDRE — pour les grenades, l'ordre EST le rang.
-func toLabels(slug string, in []mappings.BilingualLabel) []replay.Label {
+func toLabels(slug string, in []mappings.ReplayLabel) []replay.Label {
 	if len(in) == 0 {
 		return nil
 	}
@@ -219,11 +220,17 @@ func abilityPalettes(slug string, in []mappings.AbilityPalette) []replay.Ability
 	return out
 }
 
+// textLabel projette un libellé par langue vers le DTO d'artefact : le Text est copié tel quel, toutes
+// langues comprises (l'artefact écrit un membre par langue renseignée, sans repli cuit).
+func textLabel(t i18n.Text) replay.Label {
+	return replay.Label{Text: t.Clone()}
+}
+
 // toLabel joint le libellé et sa vignette de HUD quand le TOML en pointe une. Les
 // vignettes sont des masques (blanc/gris + alpha) : Tinted, comme les icônes d'arme
 // extraites — le client les teint à l'encre du thème.
-func toLabel(slug string, l mappings.BilingualLabel) replay.Label {
-	out := replay.Label{En: l.En, Fr: l.Fr}
+func toLabel(slug string, l mappings.ReplayLabel) replay.Label {
+	out := textLabel(l.Text)
 	if l.Icon != "" {
 		out.Img = static.URL(static.KindWeapon, slug, l.Icon, ".png")
 		out.Tinted = true

@@ -1,4 +1,5 @@
 import { humanizeMetricKey } from '@/lib/i18n/metricLabel'
+import { intlLocale } from '@/lib/formatters/intlLocale'
 import type { Locale } from '@/lib/i18n/locale'
 
 export interface CompareText {
@@ -45,7 +46,7 @@ export interface CompareText {
 }
 
 const FR_TEXT: CompareText = {
-  intlLocale: 'fr-FR',
+  intlLocale: intlLocale('fr'),
   pageTitle: 'Face-à-face',
   backToExplorer: 'Retour à l\'Explorer',
   searchPlaceholder: 'Rechercher un joueur…',
@@ -88,7 +89,7 @@ const FR_TEXT: CompareText = {
 }
 
 const EN_TEXT: CompareText = {
-  intlLocale: 'en-GB',
+  intlLocale: intlLocale('en'),
   pageTitle: 'Head-to-head',
   backToExplorer: 'Back to Explorer',
   searchPlaceholder: 'Search a player…',
@@ -134,10 +135,6 @@ const TEXT: Record<Locale, CompareText> = {
   en: EN_TEXT,
 }
 
-export function normalizeCompareLocale(locale?: string | null): Locale {
-  return locale === 'en' ? 'en' : 'fr'
-}
-
 /**
  * Métrique du contrat compare → FieldKey canonique du registre de titre
  * (`config/titles/{slug}/mappings/fields.toml`, servi par /field-mappings).
@@ -170,10 +167,10 @@ export const METRIC_TO_FIELD_KEY: Record<string, string> = {
 }
 
 export function getCompareText(
-  locale?: string | null,
+  locale: Locale,
   fieldMappings?: { fields: Record<string, { label: string }> },
 ): CompareText {
-  const base = TEXT[normalizeCompareLocale(locale)]
+  const base = TEXT[locale]
   if (!fieldMappings) return base
   const merged: CompareText = {
     ...base,

@@ -1,7 +1,11 @@
 // Package domain — types de la page Carrière.
 package domain
 
-import "time"
+import (
+	"time"
+
+	"levelup/go-api/internal/i18n"
+)
 
 // ---------------------------------------------------------------------------
 // Types de transfert bruts (repo → service, pas de tags JSON)
@@ -26,30 +30,11 @@ type CareerRankData struct {
 	IsMaxRank     bool
 	XPHeroTotal   *int
 	RankMax       *int
-	// MaxRankNameFR / MaxRankNameEN (optionnels) portent le LIBELLÉ localisé du
-	// rang maximum du titre quand la source le connaît (Halo 5 : « SR 152 »). Nil
-	// = non fourni par la source → le service résout depuis son catalogue de rangs
+	// MaxRankName (optionnel) porte le LIBELLÉ localisé du rang maximum du titre quand
+	// la source le connaît (Halo 5 : « SR 152 »). Vide = non fourni par la source → le service résout depuis son catalogue de rangs
 	// (Halo Infinite : « Héros »), sinon dégrade vers un libellé générique côté
 	// front. Title-agnostic : aucun libellé de jeu en dur dans le service.
-	MaxRankNameFR *string
-	MaxRankNameEN *string
-}
-
-// TopMatchRawRow est le type de transfert brut pour les top matches.
-type TopMatchRawRow struct {
-	MatchID          string
-	PerformanceScore float64
-	StartTime        *time.Time
-	MapName          *string
-	PairName         *string
-	PlaylistName     *string
-	Outcome          int
-	Kills            int
-	Deaths           int
-	KDA              *float64
-	TeamMMR          *float64
-	EnemyMMR         *float64
-	DominanceFlag    int
+	MaxRankName i18n.Text
 }
 
 // EncounterRawRow est le type de transfert brut pour les encounters.
@@ -79,26 +64,24 @@ type CareerRankSummary struct {
 	IsMaxRank        bool       `json:"is_max_rank"`
 	RecordedAt       *time.Time `json:"recorded_at"`
 	RankImageURL     *string    `json:"rank_image_url,omitempty"`
-	NextRankNameFR   string     `json:"next_rank_name_fr,omitempty"`
-	NextRankNameEN   string     `json:"next_rank_name_en,omitempty"`
+	NextRankName     string     `json:"next_rank_name,omitempty"`
 	NextRankImageURL *string    `json:"next_rank_image_url,omitempty"`
 }
 
 // HeroProgress représente la progression vers le rang maximum du titre.
 //
-// MaxRankNameFR / MaxRankNameEN portent le LIBELLÉ localisé du rang sommet
-// (Halo Infinite : « Héros » / « Hero » ; Halo 5 : « SR 152 »), résolu title-
-// agnostic depuis le catalogue de rangs du titre ou la source. Vides (omitempty)
-// = le front affiche un libellé générique (« rang max »). Le vocabulaire « Héros »
-// n'est JAMAIS codé en dur côté front : il provient de ces champs.
+// MaxRankName porte le LIBELLÉ du rang sommet dans la langue de la requête (repli en ; Halo
+// Infinite : « Héros » / « Hero » ; Halo 5 : « SR 152 »), résolu title-agnostic depuis le
+// catalogue de rangs du titre ou la source. Vide (omitempty) = le front affiche un libellé
+// générique (« rang max »). Le vocabulaire « Héros » n est JAMAIS codé en dur côté front : il
+// provient de ce champ.
 type HeroProgress struct {
 	XPTotalRequired int     `json:"xp_total_required"`
 	XPRemaining     int     `json:"xp_remaining"`
 	Percentage      float64 `json:"percentage"`
 	CurrentRank     int     `json:"current_rank"`
 	TotalRanks      int     `json:"total_ranks"`
-	MaxRankNameFR   string  `json:"max_rank_name_fr,omitempty"`
-	MaxRankNameEN   string  `json:"max_rank_name_en,omitempty"`
+	MaxRankName     string  `json:"max_rank_name,omitempty"`
 }
 
 // CareerProjections représente les projections de date d'atteinte du rang max.
@@ -205,28 +188,6 @@ type CareerCSRResponse struct {
 	AvailableSeasons []CSRSeasonOption   `json:"available_seasons"`
 }
 
-// TopMatchDTO représente un match dans le top/pire performance.
-type TopMatchDTO struct {
-	MatchID          string  `json:"match_id"`
-	StartTime        *string `json:"start_time"`
-	PerformanceScore float64 `json:"performance_score"`
-	MapUI            *string `json:"map_ui"`
-	ModeUI           *string `json:"mode_ui"`
-	OutcomeCode      int     `json:"outcome_code"`
-	// Outcome : clé canonique d'issue (win|loss|tie|dnf, MT-06). Vide si le code brut n'est
-	// pas mappé (omitempty). Le web localise via useOutcomeLabel — jamais de texte ici.
-	Outcome string   `json:"outcome,omitempty" enum:"win,loss,tie,dnf"`
-	Kills   int      `json:"kills"`
-	Deaths  int      `json:"deaths"`
-	KDA     *float64 `json:"kda"`
-}
-
-// CareerTopMatchesResponse est la réponse de GET /pages/career/top-matches.
-type CareerTopMatchesResponse struct {
-	BestMatches  []TopMatchDTO `json:"best_matches"`
-	WorstMatches []TopMatchDTO `json:"worst_matches"`
-}
-
 // EncounterDTO représente un adversaire/coéquipier fréquent.
 type EncounterDTO struct {
 	Gamertag   string   `json:"gamertag"`
@@ -284,6 +245,10 @@ type HighlightMatchPoolRow struct {
 	PlaylistName    string
 	PlaylistNameRaw string
 	PlaylistID      string
+	// ModeLabel / PlaylistLabel : libellés AFFICHÉS, dans la langue de la requête (posés par le service) ;
+	// ModeUI et PlaylistName restent les clés de filtre (le nom de la langue par défaut).
+	ModeLabel     string
+	PlaylistLabel string
 }
 
 // CareerHighlightFilters : filtres résolus passés au repo. Champs zéro = pas de filtre.
@@ -350,6 +315,8 @@ type HighlightSeasonCount struct {
 // Value = pair_name (= mode_ui dans ExplorerMatchRow).
 type HighlightModeCount struct {
 	Value string `json:"value"`
+	// Label : le mode dans la langue de la requête ; Value reste la clé du filtre `mode_uis`.
+	Label string `json:"label"`
 	Count int    `json:"count"`
 }
 
@@ -357,6 +324,8 @@ type HighlightModeCount struct {
 // Value = playlist_name (= playlist_label dans ExplorerMatchRow).
 type HighlightPlaylistCount struct {
 	Value string `json:"value"`
+	// Label : la playlist dans la langue de la requête ; Value reste la clé du filtre `playlist_names`.
+	Label string `json:"label"`
 	Count int    `json:"count"`
 }
 

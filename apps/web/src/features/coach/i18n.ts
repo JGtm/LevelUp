@@ -87,6 +87,8 @@ export const coachStringsEN: CoachStrings = {
   dismissError: 'Error while dismissing.',
 }
 
+const COACH_STRINGS: Record<Locale, CoachStrings> = { fr: coachStringsFR, en: coachStringsEN }
+
 export function getCoachStrings(locale: Locale): CoachStrings {
-  return locale === 'fr' ? coachStringsFR : coachStringsEN
+  return COACH_STRINGS[locale]
 }

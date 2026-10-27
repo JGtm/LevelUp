@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
 // seedFilterAssetTranslations insère des libellés bilingues dans
@@ -48,14 +49,10 @@ func nullifyRegistryNamesForH5(t *testing.T, pdb *PlayerDB, mapID, playlistID, v
 }
 
 // assertFilterName vérifie qu'un champ *string vaut la valeur attendue.
-func assertFilterName(t *testing.T, field string, got *string, want string) {
+func assertFilterName(t *testing.T, field, got, want string) {
 	t.Helper()
-	if got == nil {
-		t.Errorf("%s = nil, want %q", field, want)
-		return
-	}
-	if *got != want {
-		t.Errorf("%s = %q, want %q", field, *got, want)
+	if got != want {
+		t.Errorf("%s = %q, want %q", field, got, want)
 	}
 }
 
@@ -84,12 +81,12 @@ func TestFiltersRepo_ApplyAssetNamesFromMetadata_H5Path(t *testing.T) {
 		t.Fatalf("attendu 1 row, obtenu %d", len(rows))
 	}
 	m := rows[0]
-	assertFilterName(t, "MapName", m.MapName, "Truth")
-	assertFilterName(t, "MapNameFR", m.MapNameFR, "Vérité")
-	assertFilterName(t, "PlaylistNameEN", m.PlaylistNameEN, "Team Arena")
-	assertFilterName(t, "PlaylistName", m.PlaylistName, "Arène en équipe")
-	assertFilterName(t, "GameVariantName", m.GameVariantName, "Slayer")
-	assertFilterName(t, "GameVariantNameFR", m.GameVariantNameFR, "Assassin")
+	assertFilterName(t, "MapName", m.MapName[i18n.LocaleEN], "Truth")
+	assertFilterName(t, "MapNameFR", m.MapName[i18n.LocaleFR], "Vérité")
+	assertFilterName(t, "PlaylistNameEN", m.PlaylistName[i18n.LocaleEN], "Team Arena")
+	assertFilterName(t, "PlaylistName", m.PlaylistName[i18n.LocaleFR], "Arène en équipe")
+	assertFilterName(t, "GameVariantName", m.GameVariantName[i18n.LocaleEN], "Slayer")
+	assertFilterName(t, "GameVariantNameFR", m.GameVariantName[i18n.LocaleFR], "Assassin")
 }
 
 // TestFiltersRepo_ApplyAssetNamesFromMetadata_ENOnlyFallsBackToEN : un id sans
@@ -110,10 +107,13 @@ func TestFiltersRepo_ApplyAssetNamesFromMetadata_ENOnlyFallsBackToEN(t *testing.
 		t.Fatalf("LoadMatchesForFilters: %v", err)
 	}
 	m := rows[0]
-	assertFilterName(t, "MapName", m.MapName, "Plaza")
-	assertFilterName(t, "MapNameFR", m.MapNameFR, "Plaza") // FR retombe sur EN
-	assertFilterName(t, "GameVariantName", m.GameVariantName, "CTF")
-	assertFilterName(t, "GameVariantNameFR", m.GameVariantNameFR, "CTF")
+	assertFilterName(t, "MapName", m.MapName[i18n.LocaleEN], "Plaza")
+	assertFilterName(t, "MapNameFR", m.MapName.PickOptional(i18n.LocaleFR), "Plaza") // FR retombe sur la langue de repli (aucun nom FR inventé)
+	if m.MapName.Has(i18n.LocaleFR) {
+		t.Errorf("MapName[fr] ne doit pas être posé sans ligne de traduction : %v", m.MapName)
+	}
+	assertFilterName(t, "GameVariantName", m.GameVariantName[i18n.LocaleEN], "CTF")
+	assertFilterName(t, "GameVariantNameFR", m.GameVariantName.PickOptional(i18n.LocaleFR), "CTF")
 }
 
 // TestFiltersRepo_ApplyAssetNamesFromMetadata_InfinitePathNoOverwrite : quand les
@@ -138,9 +138,9 @@ func TestFiltersRepo_ApplyAssetNamesFromMetadata_InfinitePathNoOverwrite(t *test
 		t.Fatalf("LoadMatchesForFilters: %v", err)
 	}
 	m := rows[0]
-	assertFilterName(t, "MapName", m.MapName, "Aquarius")
-	assertFilterName(t, "PlaylistNameEN", m.PlaylistNameEN, "Ranked Slayer")
-	assertFilterName(t, "GameVariantName", m.GameVariantName, "Arena:Slayer")
+	assertFilterName(t, "MapName", m.MapName[i18n.LocaleEN], "Aquarius")
+	assertFilterName(t, "PlaylistNameEN", m.PlaylistName[i18n.LocaleEN], "Ranked Slayer")
+	assertFilterName(t, "GameVariantName", m.GameVariantName[i18n.LocaleEN], "Arena:Slayer")
 }
 
 // TestFiltersRepo_ApplyAssetNamesFromMetadata_MissingTranslationStaysEmpty : un id
@@ -159,15 +159,15 @@ func TestFiltersRepo_ApplyAssetNamesFromMetadata_MissingTranslationStaysEmpty(t 
 	m := rows[0]
 	for _, c := range []struct {
 		field string
-		got   *string
+		got   string
 	}{
-		{"MapName", m.MapName},
-		{"MapNameFR", m.MapNameFR},
-		{"PlaylistNameEN", m.PlaylistNameEN},
-		{"GameVariantName", m.GameVariantName},
-		{"GameVariantNameFR", m.GameVariantNameFR},
+		{"MapName", m.MapName[i18n.LocaleEN]},
+		{"MapNameFR", m.MapName[i18n.LocaleFR]},
+		{"PlaylistNameEN", m.PlaylistName[i18n.LocaleEN]},
+		{"GameVariantName", m.GameVariantName[i18n.LocaleEN]},
+		{"GameVariantNameFR", m.GameVariantName[i18n.LocaleFR]},
 	} {
-		if v := derefString(c.got); v != "" {
+		if v := c.got; v != "" {
 			t.Errorf("%s = %q, want vide (id sans traduction, aucun UUID ne doit fuiter)", c.field, v)
 		}
 	}
@@ -182,7 +182,7 @@ func TestFiltersRepo_ApplyAssetNamesFromMetadata_NilMetadataNoOp(t *testing.T) {
 
 	repo.applyAssetNamesFromMetadata(context.Background(), rows)
 
-	if rows[0].MapName != nil {
-		t.Errorf("MapName = %q, want nil (Metadata nil doit être no-op)", *rows[0].MapName)
+	if !rows[0].MapName.Empty() {
+		t.Errorf("MapName = %v, want vide (Metadata nil doit être no-op)", rows[0].MapName)
 	}
 }

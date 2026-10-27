@@ -1,0 +1,1208 @@
+# Plan : ouvrir LevelUp à N langues (3e et 4e langue)
+
+Date : 2026-10-26. Statut : **décisions D1-D6 validées par le user le 2026-10-26 ; prêt à exécuter**
+Entrée : `.ai/V8/ETAT_DES_LIEUX_I18N_MULTILANGUE_2026-10-23.md` (re-mesuré le 2026-10-26, §1).
+Contrat d'exécution : skill `plan-execution` (ordre strict, étape N close avant N+1, aucun
+report d'une étape exécutable, chaque item statué `[x]` / `[~]` réf / `[!]` justifié, zéro
+fix hors périmètre : les consigner en §6 « Découvertes »).
+Branche : `feat/i18n-multilangue` (worktree `../LevelUp-wt-i18n`), créée le 2026-10-26 depuis `release/v8.0.7` locale (CI active : préfixe `feat/`),
+fusionnée dans la `release/vX.Y.Z` ouverte au moment de la livraison.
+Reprise de session : lire §4 (cases), puis `git log --oneline -10` sur la branche.
+
+Objectif : ajouter une langue = (1) une ligne dans un fichier de configuration, (2) des
+fichiers de traduction, (3) **aucune** modification de code. Une langue incomplète est
+refusée par le build ou les tests, jamais servie en repli muet.
+
+Critère de succès global : la preuve de l'étape 10 (pseudo-langue `xx`) passe ; aucune chaîne
+non traduite visible sur les pages témoins ; `make gate-push` vert.
+
+---
+
+## 1. Revue de l'état des lieux du 23/10
+
+### Exact (re-mesuré le 26/10)
+
+| Point | Doc | Mesure 26/10 |
+|---|---|---|
+| A. ternaires web | 88 fichiers / 156 | 88 / 157 (mêmes 5 plus gros fichiers) |
+| B. openapi | 47 propriétés, 25 noms | identique |
+| D. générateur | `REQUIRED_LOCALES = ['fr','en']`, refus des autres | identique |
+| E. Go | 22 fichiers / ~36 comparaisons | identique |
+| F. locales Intl en dur | ~65 | 63 occurrences / 23 fichiers |
+| Manifests | 23 fichiers, 3 648 clés, ~217 consommateurs | 23, 3 650, 219 |
+
+### Inexact ou à nuancer
+
+1. **C (TOML) — la forme à corriger n'est pas dans `mappings/`.** Les 9 fichiers de
+   `mappings/` sont déjà tous en tables `{ en = ..., fr = ... }` (0 suffixe). Les suffixes
+   `*_fr` / `*_en` sont dans `halo_infinite/milestones/catalog.toml` (52 lignes),
+   `halo_5/milestones/catalog.toml` (28), `halo_infinite/challenges/templates.toml` (112) et
+   **`halo_infinite/arcs/presets.toml` (24, absent du doc)**. `vehicle_weapons.toml` ne
+   porte pas de libellé de langue.
+2. **B (Go) — 615 occurrences** : 580 hors tests dans 142 fichiers (1 162 avec tests).
+3. **G — « ~91 fichiers i18n.ts »** non reproductible : 51 fichiers `i18n.ts|*Strings.ts|*Text.ts`
+   (71 en élargissant aux `*I18n*`, `*Labels.ts`), ~12 900 lignes. Surtout : la plupart
+   sont déjà `Record<Locale, T>` (ex. `settings/i18n.ts`) — le compilateur signalera une
+   langue manquante. **La fuite muette n'est pas dans ces dictionnaires, elle est dans
+   leurs normaliseurs** : `normalizeSettingsLocale`, `normalizeHelpLocale`,
+   `normalizeCompareLocale`, `normalizeMediaLocale`, `normalizeKPILocale`,
+   `normalizeHighlightLocale`, `normalizeSpartanIdentityLocale`, `normalizeLocale`
+   (SessionBriefing)... tous `locale === 'en' ? 'en' : 'fr'` (27 occurrences de ce
+   motif), qui compilent avec `es` et le servent en français. Le doc les appelle
+   `localeKey`/`pickLocale` : le nom réel est `normalize*Locale`.
+4. **F** : `intlLocale.ts` existe déjà comme pont unique, mais ne connaît que
+   `en → en-US`, sinon `fr-FR` (repli muet lui aussi).
+
+### Manques du doc (faits qui changent l'architecture)
+
+5. **Les noms Halo existent déjà en 14 langues à la source, avec une table par langue.**
+   `domain.TargetLanguages` (14 balises BCP-47), table `asset_translations (…, lang, name)`
+   dans `metadata.duckdb` (Infinite et Halo 5), `medal_translations (medal_name_id, lang, …)`
+   (Halo 5, vide), commande `populate-assets` qui sait tout récupérer, lecture via
+   `PreferredLangsForLocale`. Seul le résolveur en cycle se borne à
+   `assetnames.DefaultLangs = ["fr-FR","en-US"]`. Le modèle « table `(clé, lang, libellé)` »
+   de la décision 4 du doc **existe déjà** pour cartes, modes et playlists : on l'étend,
+   on ne l'invente pas.
+6. **Colonnes `_fr`/`_en` en base hors armes** : métadonnées Halo 5 (5 tables :
+   `name_*`, `description_*`, `locked_desc_*`), jalons Halo 5 (`title_*`, `condition_*`),
+   `weapon_name_labels` / `weapon_labels` (Infinite), et **`match_skill_rank.tier_fr` dans
+   les bases joueur** (table append-only, ADR 0026) lue par `home_canonical_recent.go`.
+7. **Texte rédigé côté Go** (pas seulement des libellés) : `progression/coach_advisor`
+   (synthétiseur, `labels.go`), `analysis/match_impact*.go`, `analysis/skill_v2/tier.go`,
+   `sync/skill/skill_config.go`, badges narratifs de l'Accueil, `handlers/help.go` (aide par
+   langue), `release_notes_service.go` (notes de version), `ogmeta`. Le doc ne prévoit
+   aucun catalogue de messages Go.
+8. **Défauts incohérents** : `resolveLocale`, `ctxkeys.Locale`, `domain.Session`,
+   `resolveBootLocale` replient sur `fr` ; `medalLangCode` replie sur `en`.
+9. **Caches serveur localisés** : le modèle « le serveur renvoie le libellé de la langue »
+   impose une locale dans toute clé de cache (déjà le cas pour les instantanés de défis :
+   colonne `locale`) et dans toute query key web (règle déjà écrite dans
+   `lib/query/keys.ts` ; le changement de langue invalide aujourd'hui toutes les queries,
+   `settings/queries.ts:74`).
+10. **Poids** : les manifests générés font 424 Ko de source pour 2 langues, embarqués pour
+    tous. Chaque langue ajoutée l'augmente d'environ moitié. À **mesurer** en étape 10
+    avant toute découpe par langue (pas de découpe préventive).
+
+### L'architecture proposée tient-elle ?
+
+Oui sur le diagnostic (six couplages, fuites muettes, centraliser puis garde-rail) et sur la
+recommandation « le serveur renvoie le libellé de la langue demandée ». Quatre corrections :
+
+- **Ordre** : le doc place le contrat d'API (B) avant les types Go (C) et le backend (E).
+  Impossible : le serveur ne peut renvoyer « le libellé de la langue » qu'une fois
+  `Locale`, la chaîne de repli et le type `i18n.Text` posés. Ordre retenu : liste unique
+  des langues → noyaux web et Go → configuration et chargeurs → contrat → données → textes.
+- **Liste unique partagée Go + web** : le doc parle d'aligner le générateur sur
+  `KNOWN_LOCALES` ; il faut une seule source pour les deux côtés (et la balise Intl, et
+  les balises Halo par langue), sinon on recrée deux listes.
+- **Ne pas migrer les 12 900 lignes de dictionnaires TS vers les manifests** (ce que visait
+  ADR 0003) : typés `Record<Locale, T>`, ils sont déjà sûrs. Ce qui compte : supprimer les
+  normaliseurs, et découper par langue les fichiers qui dépasseront 500 lignes.
+- **Langue fictive dès l'outillage, pas seulement à la fin** : une pseudo-langue générée
+  automatiquement depuis `en` (texte entre crochets) rend toute fuite visible à l'écran.
+
+---
+
+## 2. Décisions à trancher (user) — recommandation en gras
+
+| # | Question | Recommandation |
+|---|---|---|
+| D1 | Langues visées et ordre | **Aucune imposée par ce plan** : le plan livre l'infrastructure + la preuve `xx`. La 1re vraie langue (es ? de ?) = lot suivant, décidé par le user. — VALIDÉ par le user le 2026-10-26. |
+| D2 | Contrat d'API | **Modèle unique : le serveur renvoie `label` dans la langue de la requête** ; les 25 noms `*_fr/*_en` disparaissent du contrat (web et API livrés ensemble, rupture atomique). — VALIDÉ par le user le 2026-10-26. |
+| D3 | Langue partielle | **Interface : complète ou refusée** (fr et en obligatoires, toute langue listée doit couvrir 100 % des manifests et dictionnaires, contrôle au build). **Noms de jeu** (armes, médailles, cartes) : repli `en` admis et compté, jamais de traduction inventée (règle déjà appliquée au FR). — VALIDÉ par le user le 2026-10-26. |
+| D4 | Libellés Halo en base | **Table par langue partout** (`asset_translations`, `medal_translations` existantes) ; colonnes `_fr/_en` Halo 5 migrées vers ces tables ; `tier_fr` n'est plus lu ni écrit (libellé déduit du code de rang via le TOML), la colonne reste en place (pas de reconstruction d'une table append-only pour une colonne inerte). — VALIDÉ par le user le 2026-10-26. |
+| D5 | Garde-rail anti-anglicismes | **Français seulement** (spécificité produit) ; pas d'équivalent par langue. — VALIDÉ par le user le 2026-10-26. |
+| D6 | Pages légales, aide, notes de version | **Traduites seulement en fr/en** ; autre langue → version anglaise avec mention « disponible en anglais ». Exception écrite à D3. — VALIDÉ par le user le 2026-10-26. |
+
+---
+
+## 3. Architecture cible
+
+- **`config/locales.toml`** (source unique) : par langue `code` (`fr`), `intl` (`fr-FR`),
+  `halo` (balises Halo par préférence, ex. `["es-ES","es-MX"]`), `required` (fr, en),
+  ordre d'affichage ; `default = "fr"` ; `fallback = "en"` (noms de jeu).
+- **Web** : `lib/i18n/locales.gen.ts` généré (`KNOWN_LOCALES`, `DEFAULT_LOCALE`,
+  `INTL_TAG`) ; un seul `normalizeLocale()` (inconnu → défaut, jamais en/fr binaire) ;
+  `intlLocale()` lit `INTL_TAG`. Garde-rail : aucune comparaison `=== 'fr'|'en'` hors
+  `lib/i18n/` et `lib/formatters/`.
+- **Go** : package `internal/i18n` (couche domaine, sans dépendance) : `Locale`,
+  `Locales()`, `Default`, `Parse(string) Locale`, `FromContext(ctx)` ; type
+  `Text map[Locale]string` avec `Pick(locale)` (langue → `en` pour les noms de jeu, compté
+  par `slog.DebugContext`) ; liste embarquée depuis `config/locales.toml` (`go:embed`
+  via un fichier généré, une seule lecture). Catalogue de messages Go
+  `internal/i18n/messages/*.toml` (même forme de feuilles que les manifests web, pluriels
+  `one`/`other`). Garde-rail : aucune comparaison `== "fr"|"en"` hors `internal/i18n`.
+- **Contrat** : chaque objet localisé expose `label` (et `description`) déjà résolus ;
+  toute réponse localisée porte la locale dans sa query key et dans toute clé de cache
+  serveur.
+- **Données** : noms Halo → `asset_translations` / `medal_translations` via
+  `PreferredLangsForLocale` dérivé de `locales.toml` ; noms curés à la main
+  (armes, champs, issues, jalons, défis, arcs) → TOML en tables `{ code = "..." }`.
+
+---
+
+## 4. Étapes
+
+Chaque étape : périmètre fermé, gate, puis entrée thought_log. Effort : R (rapide, < 1 j),
+M (moyen, 1-3 j), L (lourd, > 3 j). Les listes « produites par commande » sont figées dans
+l'annexe §7 au démarrage de l'étape (le périmètre est la liste figée, pas une recherche
+relancée en cours de route).
+
+### Étape 0 — Décisions et branche (user) — R
+- [x] 0.1 Réponses du user à D1-D6 consignées en §2 (messages du 2026-10-26)
+- [x] 0.2 Branche `feat/i18n-multilangue` (worktree dédié `../LevelUp-wt-i18n`, base `release/v8.0.7` 06531b561)
+- [x] 0.3 ADR 0040 « i18n à N langues » (EN-only), amende ADR 0003 : source unique, D2-D6
+Gate : ADR conforme à §2 et §3 (décisions déjà validées par le user), relu par le pilote ; le user le relit à la revue finale (étape 11).
+
+### Étape 1 — Source unique des langues — M
+- [x] 1.1 `config/locales.toml` (fr, en) + générateur commun (étend
+      `apps/web/scripts/build_i18n_manifests.mjs` : émet `locales.gen.ts` et le fichier Go
+      embarqué) ; contrôle de fraîcheur ajouté à `tools/check-generated-types-fresh.mjs`
+- [x] 1.2 `lib/i18n/locale.ts` : `KNOWN_LOCALES`/`DEFAULT_LOCALE` importés du généré ;
+      `resolveBootLocale` replie sur `DEFAULT_LOCALE`
+- [x] 1.3 Package Go `internal/i18n` (`Locale`, `Parse`, `FromContext`, `Default`) + tests
+- [x] 1.4 `middleware/title.go:resolveLocale` → `i18n.Parse` (en-US, es-ES → code
+      primaire si connu) ; `ctxkeys.Locale` → `i18n.Default` ; `domain.Session` défaut ;
+      `medalLangCode` (défaut aligné) ; `ogmeta.ParseLocale`/`LocaleFromParams`
+- [x] 1.5 Test : la liste Go et la liste web sont identiques (lecture du TOML des deux côtés)
+Gate : `make check-types` ; `make test-web` ; `cd apps/go-api && go test ./internal/i18n/... ./internal/api/middleware/... ./internal/ctxkeys/... ./internal/ogmeta/... ./internal/domain/...`.
+Exécuté le 2026-10-26 : `make check-types` vert ; `npm run test:run` 1006 fichiers / 10 371 tests verts (5 fichiers et 23 tests
+skippés d'origine) ; `go test` des cinq paquets du gate verts (+ `platform/session`, `platform/duckdb -run Medal`).
+Écarts à la lettre du plan : (a) module web généré = `generated/locales.ts` (convention du dossier `generated/`, ignoré par
+eslint, les walkers et knip), pas `locales.gen.ts` ; le générateur commun est `scripts/locales.mjs` (appelé par
+`build_i18n_manifests.mjs`) ; le Go n'embarque pas le TOML, il reçoit des constantes générées (`locales_gen.go`) ;
+(b) 1.4 : `ctxkeys` importe `domain`, qui importe désormais `i18n` : la clé de contexte de la locale vit dans `internal/i18n`
+(`WithContext`/`FromContext`) et `ctxkeys.WithLocale`/`Locale` délèguent (cycle sinon) ; `i18n.Lookup` ajouté (`Parse` sans
+repli Default) pour `medalLangCode` et `LocaleFromParams` ; (c) 1.5 : deux tests, chacun contre le même TOML :
+`internal/i18n/locales_gen_test.go` (Go) et `lib/i18n/generatedLocalesFresh.guard.test.ts` (appelle
+`checkGeneratedLocalesFresh` de `tools/check-generated-types-fresh.mjs`, qui compare octet à octet le module web ET le fichier Go
+au rendu du générateur).
+
+### Étape 2 — Noyaux et garde-rails (gel du compteur) — R
+- [x] 2.1 Web : `normalizeLocale()` unique dans `lib/i18n/locale.ts` ; `intlLocale()` lit
+      la table générée (plus de ternaire)
+- [x] 2.2 Web : garde-rail `lib/i18n/no-locale-literal-comparison.guard.test.ts` —
+      compteur gelé à la mesure d'entrée (157), interdit d'augmenter, cible 0 à l'étape 3
+- [x] 2.3 Go : garde-rail `internal/archlint/no_locale_literal_test.go` — compteur gelé
+      (36), cible 0 à l'étape 7 (hors `internal/i18n`)
+- [x] 2.4 Web : garde-rail sur les littéraux `'fr-FR'|'en-US'|'en-GB'` hors
+      `lib/formatters/` et `lib/i18n/` (gelé à la mesure, cible 0 à l'étape 3)
+Gate : les trois garde-rails verts au compteur gelé ; `make check-types`.
+Valeurs gelées (2.3 abaissée de 32 à 29 le 2026-10-26, étape 5 lot B ; mesurées le 2026-10-26 après les modifications des étapes 1-2, exclusions du plan appliquées, comptes en lignes
+comme `rg -c` ; recoupées à `rg`) : 2.2 web comparaisons de langue = **154** (157 à l'entrée, moins 3 lignes de `lib/i18n/` et
+`lib/formatters/` désormais exclus ; 86 fichiers) — `lib/i18n/no-locale-literal-comparison.guard.test.ts` ; 2.3 Go = **32**
+(36 à l'entrée : -4 par `resolveLocale`, `ogmeta` x2, `domain.SessionData` migrés à l'étape 1 ; 19 fichiers) —
+`internal/archlint/no_locale_literal_test.go` ; 2.4 web étiquettes Intl littérales = **40** (63 à l'entrée sur tout `src/` ; 20
+fichiers hors `lib/formatters/` et `lib/i18n/`) — `lib/i18n/no-intl-tag-literal.guard.test.ts`. Balayage web commun :
+`lib/i18n/localeScan.testutil.ts`. Chaque test échoue d'une unité au-dessus du plafond (vérifié en abaissant la constante).
+
+### Étape 3 — Web : fin des comparaisons de langue — L
+Périmètre = annexe 7.A (liste figée : 86 fichiers, 154 lignes, sortie du garde-rail 2.2 à `0470adcf7`).
+- [x] 3.1 Supprimer les `normalize*Locale` de feature (liste figée en 7.A) → `normalizeLocale` (lot A, 2026-10-26)
+- [x] 3.2 Type 1 (choix de dictionnaire) → `TABLE[locale]` typé `Record<Locale, T>` (lot A, 2026-10-26)
+- [x] 3.3 Type 4 (texte inline) → manifest ou dictionnaire de la feature (FR + EN) (lot B, 2026-10-26)
+- [x] 3.4 Type 3 (format : virgule décimale, `toLocaleString('fr-FR')`) →
+      `formatNumber`/`formatDate`/`intlLocale` ; inclut les 63 littéraux Intl (lot B, 2026-10-26)
+- [x] 3.5 Type 2 (choix d'un champ `_fr/_en`) : NON traité ici, tagué `// i18n-contrat`
+      et décompté à part du garde-rail jusqu'à l'étape 6 (balise posée, lot A, 2026-10-26 ; le décompte à part est l'item 3.6, lot B)
+- [x] 3.6 Garde-rails 2.2 et 2.4 abaissés à 0 (hors type 2 tagué) (lot B, 2026-10-26)
+- [x] 3.7 (ajout pilote, lot B) a : `isEN`/`isFR` et variantes de casse ajoutés à la regex du garde-rail 2.2, lignes converties
+- [x] 3.8 (ajout pilote, lot B) b : l'anglais s'affiche partout au format `en-US` (valeur de `INTL_TAG.en`) ; tous les sites `en-GB` passent par `intlLocale`
+- [x] 3.9 (ajout pilote, lot B) c : invariant du store, `hydrateFromBootstrap` passe par `normalizeLocale`, plus de cast ni de repli `?? 'fr'` dans `PeriodSessionRail`, test du store
+Gate : `make check-types` ; `make test-web` ; `cd apps/web && npx eslint src` ;
+compteurs à 0.
+
+Lot A (items 3.1, 3.2, 3.5 ; 3.3, 3.4, 3.6 = lot B), exécuté le 2026-10-26 sur la liste figée de 7.A :
+- 3.1 : les 9 normaliseurs de feature (`normalize{Settings,Help,Compare,Media,KPI,Highlight,SpartanIdentity,Palmares}Locale` et le
+  `normalizeLocale` local de `SessionBriefing`) sont supprimés ; les `get*Text` / `resolve*` qui les appelaient reçoivent une `Locale`
+  typée (la valeur vient du store `appShellStore`, typé `Locale`) ; aucun test dédié n'existait, deux cas « locale inconnue retombe sur
+  fr » (`friends/errors.test.ts`, `squad/i18n.test.ts`) testaient le repli binaire supprimé et sont retirés (l'inconnu → défaut est
+  couvert par les tests de `normalizeLocale`, `lib/i18n/`). Replis équivalents hors regex du garde-rail (7.A bis) traités aussi.
+- 3.2 : les 42 lignes de type 1 sont passées en `TABLE[locale]` (`Record<Locale, T>` ; tables typées au passage : `FEATURE_LABEL`,
+  `PLAYLISTS`, `SkillTier`, `TierNamePair`, `HaloOutlineColor.name`, `TIER_LABELS`, `EMPRISE_OVERRIDES`, `COACH_STRINGS`...).
+- 3.5 : les 32 lignes de type 2 portent `// i18n-contrat` en fin de ligne, ou `{/* i18n-contrat */}` sur la ligne qui précède quand la
+  ligne est du texte JSX (3 cas). Convention de détection pour le lot B : la sous-chaîne `i18n-contrat` sur la ligne ou sur la ligne
+  directement au-dessus.
+- Garde-rail 2.2 : 154 -> **112** (= 32 type 2 + 23 type 3 + 57 type 4) dans `no-locale-literal-comparison.guard.test.ts`.
+
+Lot B (items 3.3, 3.4, 3.6 + ajouts pilote 3.7-3.9), exécuté le 2026-10-26 :
+- Mesure d'entrée du lot : regex étendue à `isEn|isEN|isFr|isFR` = **125** lignes (112 + 13 lignes `isEN` de `matchNotices.logic.ts` et
+  `MatchViewPage.tsx`, hausse attendue) = 32 balisées `i18n-contrat` + **93** à convertir (23 type 3 + 57 type 4 + 13 `isEN`, type 4) ;
+  garde-rail 2.4 = 40.
+- 3.3 : le texte inline passe soit par une clé de manifest (TOML régénéré : `common` heading_connector et encounter_split.*, `explorer`
+  matches_unit / playtime_day_unit / csr_unranked, `home` sessions.duration_line / sessions.date_time_join / challenges.completed_suffix /
+  last_session.results_title / ascension.view_all ; `home.sessions.duration_prefix` remplacée par `duration_line`), soit par un dictionnaire
+  `Record<Locale, T>` de la feature (`SessionMultiSelect`, `AddFriendFlow`, `ArcPresetPicker`, `FeatureUnavailable`, `MatchEncountersTable`,
+  `matchNotices.logic`, `MATCH_VIEW_TEXT`, `SettingsText`, `SquadText`, `PeriodSessionRail`) ; textes FR et EN repris à l'identique.
+- 3.4 : virgule décimale, suffixes d'unité et jonctions remplacés par `formatNumber` / `intlLocale` / tables par langue (`admin/format`,
+  `usageFormat`, `tendances.logic`, `encounters/format`) ; les 40 littéraux Intl passent par `intlLocale` (les dictionnaires par langue
+  écrivent `intlLocale('fr')` / `intlLocale('en')`) ; la clé de manifest `palmares.intl_locale` (`en-GB`, invisible au garde-rail) est supprimée.
+- 3.6 : `no-locale-literal-comparison.guard.test.ts` : compteur principal **0** (interdiction), second compteur `CONTRACT_FIELD_CEILING = 32`
+  (lignes balisées, détectées par `localeScan.testutil.ts` : sous-chaîne sur la ligne ou la ligne au-dessus ; mis à 0 par l'étape 6) ;
+  `no-intl-tag-literal.guard.test.ts` : **0** ; messages d'échec explicites (`normalizeLocale`, `intlLocale`, manifests).
+- 3.8 (REPRIS par 4.9 : l'anglais est finalement `en-GB` partout, décision user du 2026-10-26) : effet visible unique du lot : sur les sites ci-dessous l'anglais passe de `en-GB` à `en-US` (dates mois/jour/année, heure de 12 h quand
+  l'horloge n'est pas forcée, mois en toutes lettres `Oct 26, 2026`). Sites : `match-card` (date du match), `HomeBattlePassPanel`,
+  `match-view/i18n.ts` (contexte de période), `match-view/descriptorLabel.ts`, `tactical/zone.logic.ts`, `squad/formes/format.ts`,
+  `squad/objectif/objectif.logic.ts`, `timeseries/usages/usagesCardsText.ts`, `squad/emprise/empriseStrings.ts`, `compare/i18n.ts`,
+  manifest `palmares.intl_locale`. Test adapté : `descriptorLabel.test.ts` (format EN en-US, assertion du format, pas affaiblie).
+- 3.9 : points d'entrée de la locale dans le store (`appShellStore`) : `hydrateFromBootstrap` (chaîne du serveur : `normalizeLocale`, nouveau) ;
+  `setLocale` typé `Locale`, appelé par `main.tsx` (`resolveBootLocale`, valide par `isKnownLocale`), `routes/{-$lang}/t/$titleSlug.tsx`
+  (gardé par `isKnownLocale(lang)`), `features/settings/queries.ts` (`normalizeLocale(newLang)`) ; état initial `DEFAULT_LOCALE`. Tests :
+  `appShellStore.test.ts` (locale inconnue du bootstrap → `DEFAULT_LOCALE` ; `en-GB` → `en`).
+Gate exécuté le 2026-10-26 : `make check-types` + `npx tsc -b --force` verts ; `npm run test:run` : 1 008 fichiers / 10 378 tests verts (5 fichiers et 23 tests skippés d'origine) ;
+`npx eslint src` : 0 erreur, aucun avertissement nouveau dans les fichiers touchés ; `lint:colors`, `lint:fields`, `knip` propres ;
+régénération des manifests sans écart ; garde-rails 2.2 (principal 0, `i18n-contrat` 32) et 2.4 (0) verts.
+
+### Étape 4 — Manifests et dictionnaires prêts pour N langues — M
+- [x] 4.1 Générateur : locales lues dans `locales.toml` ; feuille = toutes les langues
+      `required` + toute langue listée (D3 : complète ou refus) ; erreur nommant la clé
+      et la langue manquantes (2026-10-26 : `scripts/manifests.mjs`, message `<fichier> : cle "<chemin>" : langue manquante "<code>"`)
+- [x] 4.2 Générateur : mode `--pseudo xx` qui fabrique `xx` depuis `en` (`⟦texte⟧`,
+      placeholders ICU préservés) — outil de l'étape 10, jamais une langue livrée (2026-10-26 : `--pseudo xx [--out <dossier>]`, test `lib/i18n/manifestGenerator.test.ts`)
+- [x] 4.3 Dictionnaires de feature > 400 lignes (liste figée 7.B : `squad/i18n.ts`,
+      `match-view/i18n.ts`, `match-replay/i18n/i18nContract.ts`, `settings/i18n.ts`,
+      `help/i18n.ts`, `match-replay/i18n/i18n.ts`, `ascension/i18n.ts`,
+      `notifications/i18n.ts`, `squad/emprise/empriseStrings.ts`, `palmares/i18n.ts` — à
+      re-mesurer à l'entrée) découpés en `fr.ts` / `en.ts` + index `Record<Locale, T>`
+      (`satisfies`), pour rester ≤ 500 L à 4 langues (2026-10-26 : 8 des 10 découpés, voir 7.B ;
+      les 2 autres : item 4.3 bis)
+- [!] 4.3 bis `match-replay/i18n/i18nContract.ts` (1 004 lignes) et `palmares/i18n.ts` (437) : pas
+      de contenu par langue à extraire. Le premier est le TYPE du texte du rejeu (déjà séparé des
+      deux langues par la découpe du 2026-08-18) ; le second construit le texte depuis les
+      manifests (`formatMessage`), les langues vivent dans `manifests/palmares.toml`. Leur
+      taille ne dépend pas du nombre de langues ; non découpés (une découpe par thème serait un
+      autre chantier). Ni l'un ni l'autre ne dépasse 500 lignes de code (règle eslint
+      `max-lines`, commentaires et lignes vides exclus).
+- [x] 4.4 Dictionnaires non typés restants (objets `{ fr, en }` hors `Record<Locale, …>`,
+      liste figée 7.C) typés (2026-10-26 : 75 objets en 7 fichiers, voir 7.C)
+- [x] 4.5 Garde-rail : tout objet à clés de langue dans `features/`/`components/`/`lib/`
+      est typé par `Locale` (test grep, allowlist vide) (2026-10-26 :
+      `lib/i18n/locale-keyed-objects.guard.test.ts`, plafond 0, détection par le compilateur et non par
+      regex : `localeKeyedObjects.testutil.ts`)
+- [x] 4.6 (ajout pilote, découverte de l'étape 3) Appels de formatage SANS étiquette (`toLocaleString()`, `toLocaleDateString()`,
+      `toLocaleString(undefined, …)`, `Intl.*()`) : ils suivent la langue du navigateur, pas celle de l'interface → `intlLocale(locale)`
+      (2026-10-26 : 11 appels en 9 fichiers, voir ci-dessous) ; garde-rail 2.4 étendu aux appels sans étiquette, plafond 0
+      (`no-intl-tag-literal.guard.test.ts`, détection par le compilateur : `localeScan.testutil.ts`)
+- [x] 4.7 (ajout pilote) Valeurs par défaut `locale = 'fr'` → `DEFAULT_LOCALE` (2026-10-26 : 5 paramètres par défaut + 3 replis
+      `x ?? 'fr'` de valeur de langue) ; garde-rail 2.2 étendu (`no-locale-literal-comparison.guard.test.ts`, 3e compteur à 0)
+- [x] 4.8 (ajout pilote) `ComparePage` et `SquadFdaGapCumulativeCard` retrouvaient la langue depuis l'étiquette Intl d'un dictionnaire :
+      ils reçoivent la `Locale` du store (2026-10-26)
+- [x] 4.9 (ajout pilote, décision user 2026-10-26) L'anglais s'affiche au format BRITANNIQUE partout : `config/locales.toml`, `intl` de `en` passe de
+      `en-US` à `en-GB` (`halo` reste `["en-US"]`, balises de l'API Halo) ; fichiers dérivés régénérés (`generated/locales.ts`, `locales_gen.go`)
+Gate : `make check-types` ; `make test-web` ; `node apps/web/scripts/build_i18n_manifests.mjs`
+sans écart ; build vite OK.
+
+Étape 4, exécution du 2026-10-26 (détail des ajouts pilote) :
+- 4.6, appels sans étiquette corrigés (étiquette = `intlLocale(locale)`, ou `useDateLocale()` côté admin) : `admin/overview/WeaponCoveragePanel.tsx`
+  (2), `admin/sections/LusrGapsSection.tsx`, `admin/titles/TitleDetailCards.tsx`, `career/CareerRankingBlock.tsx` (3 ; `formatCSRValue` reçoit la
+  langue), `explorer/ExplorerMatchesTable.tsx` et `squad/squadHistoryExtraColumns.tsx` (`fmtMmr(v, étiquette)`, appelants de
+  `SquadSynergyHistoryTable.tsx` adaptés), `settings/WatcherCard.tsx`, `settings/BackupTab.tsx` (`toLocaleString(undefined, …)`, absent du
+  relevé du §6). Effet visible : séparateurs de milliers et dates suivent la langue de l'interface et non celle du navigateur.
+  `tendances/tendancesCalendar.logic.ts` : `'en-CA'` n'est PAS une étiquette d'interface, c'est un choix technique (parties année / mois /
+  jour à chiffres latins pour la clé `AAAA-MM-JJ`, indépendantes de la langue d'interface) ; un formatage ISO sans `Intl` est impossible,
+  puisqu'il faut lire le jour civil dans un fuseau IANA. Conservé, nommé (`ISO_DAY_PARTS_TAG`) et motivé en commentaire. Non vu par le garde-rail
+  (hors `en-US` / `fr-FR` / `en-GB`, et avec étiquette).
+- 4.7, paramètres par défaut : `components/ui/match-card-presentation.ts`, `components/ui/match-card.tsx`, `features/match-view/MatchEncountersTable.tsx`,
+  `features/palmares/RelationSplitBar.tsx`, `features/settings/watcherPresence.ts` ; replis `?? 'fr'` : `features/match-replay/export/useReplayCapture.ts`,
+  `features/settings/_settingsCards.tsx`, `src/test/handlers.ts` (serveur de test). Le relevé du §6 en annonçait 6 : le 6e (`AddFriendFlow`) avait déjà
+  `DEFAULT_LOCALE` depuis le lot B.
+- 4.8, `ComparePage` : `formatMetricValue(metric, value, locale, text, { available, display })` (5 paramètres), `CategoryColumn` et
+  `CategoryMirrorSection` reçoivent `locale` ; `SquadFdaGapCumulativeCard` prend la prop `locale` (passée par `CumulativeRow`, de la page Dynamique).
+  Les champs `intlLocale` de `CompareText` / `SquadText` restent : d'autres lecteurs s'en servent (formats de nombres et de dates).
+- 4.9 : effet visible : dates jour/mois/année (`26 Oct 2026` au lieu de `Oct 26, 2026`), horloge de 24 h là où le cycle n'est pas forcé (le 12 h de
+  l'étape 3 disparaît : `PeriodSessionRail`, `squad/formes/format.ts`, `match-view/descriptorLabel.ts`, `match-card`), `lang` de `<html>` = `en-GB`. Les
+  séparateurs de nombres sont inchangés. `hourCycle: 'h23'` de `tactical/zone.logic.ts` conservé : il date de la v8.0.0 (déjà posé quand l'anglais
+  était `en-GB`) et fixe aussi le cycle du français. ADR 0040 : exemple d'étiquette Intl mis à jour. Tests ajustés (assertions de format, pas
+  affaiblies) : `descriptorLabel.test.ts`, `tendancesCalendar.logic.test.ts` (`5 October 2026`), `document-lang-provider.test.tsx`, `locale.test.ts`,
+  `internal/i18n/i18n_test.go`. Gate Go : `go test ./internal/i18n/` vert.
+
+Gate de l'étape 4 exécuté le 2026-10-26 (après 4.9) : `make check-types` + `npx tsc -b --force` verts ; `npm run test:run` 1 010 fichiers / 10 402 tests verts (5 fichiers
+et 23 tests skippés d'origine) ; `npx eslint src` 0 erreur, 27 avertissements (les 27 d'origine : `react-hooks/incompatible-library` de TanStack Table, dont 3 dans des fichiers
+touchés, hors lignes modifiées) ; `lint:colors`, `lint:fields`, `knip` propres ; `node apps/web/scripts/build_i18n_manifests.mjs` sans écart après commit ;
+`tools/check-generated-types-fresh.mjs` OK ; `npm run build` vert ; poids gzip (somme des .js et .css de `dist/assets`) 1 791 060 -> 1 791 866 octets (+0,045 %), chunk d'entrée 129 746 -> 129 747 ;
+`go test ./internal/i18n/` vert.
+
+### Étape 5 — Go : libellés multi-langue dans les types et chargeurs — L
+- [x] 5.1 `i18n.Text` + `Pick` (repli `en` compté) + tests (lot A, 2026-10-26)
+- [x] 5.2 Chargeurs `internal/games/mappings/loader*.go` : structs `FR/EN` → `i18n.Text`
+      (liste figée 7.D des 6 chargeurs) (lot A, 2026-10-26)
+- [x] 5.3 TOML à suffixes → tables : `halo_infinite/milestones/catalog.toml`,
+      `halo_5/milestones/catalog.toml`, `halo_infinite/challenges/templates.toml`,
+      `halo_infinite/arcs/presets.toml` + leurs chargeurs (lot A, 2026-10-26)
+- [x] 5.4 `halo_5/mappings/asset_labels_fr.toml` → `asset_labels.toml` en tables par
+      langue ; `cmd/h5-metadata-fetch` adapté (lot A, 2026-10-26)
+- [x] 5.5 Types `canonical` / `domain` : champs `LabelFR/LabelEN/NameFR/...` (liste figée
+      7.E, classe (a) : 121 champs) → `i18n.Text` côté données ; la classe (b) (92 champs sérialisés) est
+      alimentée par `[i18n.LocaleFR]` / `[i18n.LocaleEN]` au point de conversion et résolue à l'étape 6 (lot B, 2026-10-26)
+- [x] 5.6 Garde-rail : plus aucun champ ni fonction à suffixe de langue en Go hors classe (b) comptée et
+      allowlist datée (`internal/archlint/i18n_langue_suffixe_test.go`, parcours AST) (lot B, 2026-10-26)
+- [x] 5.7 (ajout pilote, contrôle Scan/Exec) Garde-rail typé : aucun `i18n.Text` (ni `*i18n.Text`) en argument de `Scan`, `Exec*`,
+      `Query*`, `AppendRow` ni de fonction `...any` des dossiers SQL ; 0 cas restant, allowlist vide
+      (`internal/archlint/i18n_text_sql_test.go`) (lot C, 2026-10-26)
+Gate : `cd apps/go-api && go test ./internal/i18n/... ./internal/games/... ./internal/domain/... ./internal/service/... ./internal/analysis/...` ; `make go-api-lint`.
+
+Lot A (items 5.1 à 5.4 + annexes 7.D et 7.E ; 5.5 et 5.6 = lot B), exécuté le 2026-10-26 :
+- 5.1 : `internal/i18n/text.go`. `Text` = `map[Locale]string` ; `Pick(l)` rend la valeur de `l`, sinon celle de `Fallback`, sinon `""` ;
+  `Resolve(l)` rend en plus `fellBack bool` ; `Has`, `Clone`, `Trimmed` ; `Validate()` (toute langue `required` non vide, aucune clé hors liste ;
+  l'erreur nomme toutes les langues fautives, triées) et `CheckKnown()` (clés connues seulement, pour les tables partielles par nature). Une table TOML
+  `{ en = "...", fr = "..." }` se décode directement (test). **Comptage du repli** : deux compteurs `expvar` atomiques (`levelup.i18n.text_fallback_total`,
+  `levelup.i18n.text_empty_total`, ADR 0009), incrémentés par `Pick`/`Resolve` ; `Resolve` rend le drapeau pour l'appelant qui détient un contexte et la clé du
+  libellé et veut journaliser (`slog.DebugContext`). Raison : `Pick` n'a pas de contexte (pas de `slog.*Context` possible), aucun état mutable non protégé, et
+  le compteur se lit en prod par `/debug/vars`. ADR 0040 D-4 mis à jour en conséquence.
+- 5.2 : 6 chargeurs (7.D). `FieldMapping`, `AssetMapping`, `OutcomeMapping` : `Labels`/`Descriptions` passent de `map[string]string` à `i18n.Text` ; leurs accesseurs
+  `Label(locale string)` / `Description` gardent leur signature et délèguent à `Resolve` (même chaîne locale -> `Fallback` -> clé). La complétude n'est plus
+  « EN et FR en dur » mais `Validate()` : une langue `required` de plus fait échouer le chargement. `WeaponName{En,Fr}` supprimé : `WeaponNameSet.Names()` rend
+  `map[string]i18n.Text`. `BilingualLabel{En,Fr,Icon}` devient `ReplayLabel{Text,Icon}` ; `VehicleFamily.En/Fr` -> `Label` ; `VehicleWeapon.En/Fr` -> `Label`.
+  **Forme TOML** : les entrées qui portaient `en`/`fr` À PLAT à côté d'autres champs (`icon`, `family`, `kind`...) passent à `label = { en = "...", fr = "..." }` (une
+  langue de plus ne doit pas demander de champ Go) : `replay_labels.toml` (23) et `vehicle_weapons.toml` (15) ; `weapon_names.toml`, `fields.toml`, `assets.toml`,
+  `outcomes.toml` étaient déjà en tables. Équivalence vérifiée par un script jetable (smol-toml, avant/après, `label` remonté d'un niveau) : égal ; script supprimé.
+  Les consommateurs dont le contrat JSON porte encore `en`/`fr` (`replaylabels.textLabel`, `service.vehicleWeaponOf`, `weapons.ReconcileNameLabels`, `rankedplaylists`)
+  appellent `Pick(mappings.LocaleEN|LocaleFR)` (constantes non typées déjà existantes) : l'étape 6 les retire.
+- 5.3 : les 4 fichiers passent à `X = { en = "...", fr = "..." }` (`title`, `label`, `description`, `condition_text`) : 26 + 14 + 56 + 12 paires. `condition_fr`/`condition_en`
+  deviennent `condition_text` (le nom `condition` est pris par la formule technique non localisée). Script Go/Node jetable, valeurs reprises à l'octet : test jetable
+  d'égalité des structures (avant, après aplati) ET de l'ensemble des chaînes entre guillemets : identiques ; script supprimé. Chargeurs : `milestones/catalog_loader.go`,
+  `prestige/catalog_loader.go`, `games/halo_infinite/migrations/prestige.go` (copie indépendante du chargeur prestige, convertie aussi) ; les types de destination
+  (`CatalogEntry`, `Template`, `PresetArc`, lignes SQL `*_en`/`*_fr`) gardent leurs champs suffixés jusqu'aux étapes 5.5 / 8. Tests à TOML inline adaptés.
+- 5.4 : `git mv` `asset_labels_fr.toml` -> `asset_labels.toml` ; `[medals]` et `[medal_descriptions]` : `"nom EN" = { fr = "..." }` (184 + 194, valeur reprise à l'octet,
+  égalité vérifiée par script jetable puis supprimé), `[[maps_by_id]]` : `name = { en, fr }`. Seule `fr` est connue : toute autre langue est absente, donc repli sur la
+  donnée de l'API (aucune traduction inventée). `cmd/h5-metadata-fetch/labels.go` : `loadAssetLabels` (absent -> vide journalisé ; illisible ou langue hors
+  `locales.toml` -> erreur, alors que l'ancien `_ = toml.Unmarshal` avalait tout), `forLocale` projette sur une langue ; le seed (colonnes `name_fr`, lignes `fr-FR`) reste FR :
+  étape 8. Tests : fichier réel, langue sans entrée, fichier absent, refus.
+Gate du lot A exécuté le 2026-10-26 : `go test` de `./internal/i18n/... ./internal/games/... ./internal/domain/...` puis `./internal/progression/... ./internal/service/...` verts ; paquets dépendants de `mappings` (`go list -test`, 29 paquets) : `go vet` (avec et sans les tags `gamefiles integration`) propre, `go test` de `internal/analysis`, `internal/api/...`, `internal/notify`, `internal/platform/duckdb/...`, `internal/replaybuild`, `internal/sync/{haloclient,killcollector,replayartifacts}`, `cmd/...` verts ; `go test ./internal/archlint/` vert (garde-rail 2.3 inchangé, un test d'échelle de racine ajusté : `testutil.RepoRoot`) ; `golangci-lint run --new-from-merge-base=origin/main` : 0 issue ; `npx tsc -b --force` : exit 0 ; `git diff ef0291732 -- apps/go-api/api/openapi.yaml apps/web/src/lib/api/generated.ts` vide.
+
+Lot B (items 5.5 et 5.6), exécuté le 2026-10-26 :
+- 5.5 : sur les 121 champs de la classe (a) de 7.E, **115 passent à `i18n.Text`** (champs fusionnés : `MapName`+`MapNameFR` -> `MapName`, `PlaylistName`+`PlaylistNameEN`, `NameEN`+`NameFR` -> `Name`, `TierFR` -> `Tier`...), **5 sont renommés
+  ou retirés sans Text** parce qu'ils ne portent pas un libellé par langue (`weaponResolved.nameEN` et `weaponMetaEntry.nameEN` -> `canonicalName`, nom anglais canonique du jeu, clé de l'URL d'image ;
+  `catBucket.subEN` -> `subModes`, clés de sous-mode ; `modeRow.modeEN` -> `modeKey`, colonne `mode_en` ; `playlistMSRRow.tierFR`, jamais lu : supprimé) et **1 est un faux positif** (`replayverite.acteur.vivantEn`,
+  mot français, allowlist). Par paquet : domain 28 ; platform/duckdb 35 (+3 halo5, +2 prestige) ; legacymatch 9 ; sync 7 ; coach_advisor 6 ; tactical 4 ; sync/skill 3 ; canonical 2 (dont 1 revenu en
+  classe b, voir plus bas) ; analysis 2 ; himap 2 ; mapcatalog 2 ; ops 2 ; film/replay 2 ; wire 2 ; cmd/h5-metadata-fetch 2 ; skill_v2, handlers, service, fragdist, profile, persist, migrations 1 chacun.
+  Les colonnes `_fr` / `_en` des bases ne changent pas : on scanne les deux colonnes dans un `Text` (`i18n.FromColumns(en, fr)`, constantes `i18n.LocaleFR` / `LocaleEN` pour ce seul usage, `internal/i18n/legacy.go`).
+  Ajouts à `i18n.Text` : `Empty`, `Ptr`, `Set`, `Equal` (un Text n'est pas comparable par `==`). Pour les ponts vers la classe (b), l'index direct `t[i18n.LocaleFR]` est utilisé et non `Pick` : un
+  libellé sans traduction française reste vide sous `_fr` (JSON inchangé à l'octet, `Pick` aurait servi l'anglais).
+  Fonctions à suffixe (71 déclarations, dont 6 méthodes d'interface) : les helpers de cascade perdent le suffixe (`ResolvePairName`, `BuildCSRTierLabel`, `applyMatchHistoryMapName`...) ; ceux qui
+  chargent une langue précise prennent une `i18n.Locale` (`LoadModeTranslations(ctx, loc, ...)`, `LoadAssetTranslations`, `LoadPlaylistAssetTranslations`, `TranslateModeUIs`, `queryModeNameTr` dont le SQL
+  passe de `lang = 'fr'` à `lang = ?`, `rankedplaylists.Playlist.Name(l)`, `seedRankedPlaylistTranslation(l)`, `fetchWeaponNames(key, lang)`...) ; `resolveAssetNameEN` est fusionnée dans
+  `resolveAssetName(ctx, loc, ...)` ; `axisHumanEN/FR` et `synthesizedLabel/DescriptionEN/FR` deviennent des fonctions qui rendent un `Text` ; `ResolveModeUI` et `ResolveModeUIWithVariant` prennent des
+  `Text` ; `cmd/killsource` : `natureLibelle`... (couche d'affichage de la CLI, française par construction). Types retirés : `medalNamePair`, `LibelleLieu`, `Libelle`, `carteDeBase`,
+  `ModeTranslatorFR` -> `ModeTranslator`.
+  Aucune écriture n'a changé de requête ni de schéma. Écritures touchées en Go seulement (arguments de l'INSERT, SQL identique) : `persist.LUSRRatingInsert` (`Tier` devient un `Text`, l'INSERT
+  de `lusr_append_only_persister.go` lit `Tier.Ptr(en)` / `Tier.Ptr(fr)`), `sync/csr_writes.go` (`UpsertCSRRow`), `sync/achievements.go`, `ops/season_catalog_refresh.go`, `platform/duckdb/coach_proposal_repo.go`.
+- 5.6 : `internal/archlint/i18n_langue_suffixe_test.go` (parcours AST des champs de struct, fonctions, méthodes et méthodes d'interface non-test sous cmd, internal, pkg, tools, scripts). Champs sérialisés
+  (tag `json:"..."` autre que `-`) = classe (b), comptés dans `suffixeContratPlafond` = **93** (92 balisés + `canonical.SkillSnapshot.TierCodeFR`, voir ci-dessous), cible 0 à l'étape 6 ; fonctions de pont
+  marquées `i18n-contrat` : 0 (aucune n'est nécessaire). Allowlist datée (4 entrées) : `vivantEn`, `enteteNeufEn`, `suitLOrdreEn` (mots français « en ») et `applyPurgeWeaponsNameFR`
+  (migration historique nommée d'après la colonne `weapons.name_fr`). Le plafond est exactement la mesure (test dédié), toute entrée d'allowlist orpheline échoue, auto-preuve du parcours.
+  Plafond du garde-rail 2.3 (comparaisons de langue littérales en Go) : 32 -> **29** (`api/server.go`, `sync/career.go`, `season_catalog_repo.go` n'ont plus la comparaison).
+- Écart découvert par le gate : `canonical.SkillSnapshot.TierCodeFR` n'a pas de balise json mais son NOM est sérialisé (Huma) et figure dans `openapi.yaml` : `TestOpenAPIYAMLIsUpToDate` l'a signalé. Le champ garde son nom
+  avec une balise `json:"TierCodeFR"` (classe b, +1 au compteur) ; `legacymatch.StatsMatchRow.SkillTierLabel` (interne) est un `Text`. Leçon : « sans balise json » ne prouve pas « non sérialisé » ;
+  c'est le test openapi qui tranche, il reste dans le gate.
+- Preuve du JSON inchangé (tests ajoutés) : `service/i18n_json_inchange_test.go` (succès `name_en/name_fr/description_*/locked_desc_*` y compris libellé sans traduction française -> `name_fr` vide ;
+  rang maximal de la carrière `max_rank_name_fr/en` ; badges d'impact de la vue du match `label` ; en-tête de la vue du match carte / mode / playlist en `fr` et `en`) et
+  `api/handlers/i18n_json_inchange_test.go` (propositions du coach, pont vers Prestige : `reason_key_en/fr` omitempty ; libellé de saison des field-mappings). S'ajoutent les tests existants qui figent les valeurs
+  `_fr/_en` (`career_service_test`, `achievements_service_test`, `tactical_cellule_test`, `kill_distance_repo_test`, `weapon_resolver_test`) et `TestOpenAPIYAMLIsUpToDate`.
+- Cas douteux : (1) `SeasonCatalogEntry.Label` (service et handlers) fusionne `Label` + `LabelEN` en un `Text` ; l'accès « libellé canonique » prend le français. (2) `MatchMetaRaw` garde ses champs bruts
+  `MapName/PairName/PlaylistName/GameVariantName` (noms du registre, parfois des UUID) et reçoit `MapNames/ModeNames/PlaylistNames/PairNames` (noms résolus par langue) : ce ne sont pas les mêmes valeurs. (3) `FilterMatchRow.PlaylistName`
+  porte `fr` = valeur COALESCE et `en` = nom brut (ancien `PlaylistNameEN`). (4) `stats_filters.go` ne renseigne que `fr` pour la playlist, pour garder une table de migration cascade vide comme avant.
+Gate de l'étape 5 exécuté le 2026-10-26 : `go test` de `./internal/i18n/... ./internal/games/... ./internal/domain/... ./internal/service/... ./internal/analysis/... ./internal/progression/... ./internal/prestige/... ./internal/legacymatch/... ./internal/sync/... ./internal/api/... ./internal/platform/duckdb/... ./internal/persist/... ./internal/archlint/` (+ ops, migration, himap, mapcatalog, scheduler, cmd) : tout vert, à une exception près, `TestBackfillRegistryNames_BaseTenueParUnAutreProcessus` (`cmd/levelup`, verrou DuckDB) qui échoue quand le gate tourne en parallèle sur tout le dépôt et passe seul (package seul vert, 2 fois) ; `go vet` des paquets touchés (39 paquets dépendants compris), avec et sans `-tags integration` : propre ; `go test -tags=integration` de `persist`, `platform/duckdb/...`, `sync/...`, `games/halo_infinite/migrations`, puis `ops`, `service`, `api`, `migration`, `progression`, `scheduler`, `games/halo_5`, `cmd`, `analysis` : vert après correction du `Scan(&m.PlaylistName)` de `stats_repo.go` ; `golangci-lint run --new-from-merge-base=origin/main ./internal/... ./cmd/...` : 0 issue ; `npx tsc -b --force` : exit 0 ; `git diff 76c5eef85 -- apps/go-api/api/openapi.yaml apps/web/src/lib/api/generated.ts` : vide ; `TestOpenAPIYAMLIsUpToDate` vert.
+
+Lot C (item 5.7, ajout pilote), exécuté le 2026-10-26 :
+- Pourquoi : `Scan`, `Exec`, `AppendRow` prennent des `any` ; un `i18n.Text` (`map[Locale]string`) y compile et n'échoue qu'à l'exécution. Les tests d'intégration n'en avaient attrapé qu'un (`stats_repo.go`) ;
+  les chemins non testés pouvaient en cacher d'autres.
+- Garde-rail : `internal/archlint/i18n_text_sql_test.go` (`TestI18nTextJamaisArgumentSQL`). Charge le module AVEC ses types (`golang.org/x/tools/go/packages`, passé de `// indirect` à direct dans `go.mod`, `go mod tidy -diff` vide),
+  deux fois (tags par défaut puis `integration`), tests compris (598 puis 601 variantes de paquets). Signale un argument de type `i18n.Text`, `*i18n.Text` ou type nommé de même sous-jacent passé à : `Scan`, `Exec`, `ExecContext`,
+  `Query`, `QueryContext`, `QueryRow`, `QueryRowContext`, `AppendRow` (partout dans le module, quel que soit le receveur) ; toute fonction ou méthode déclarée sous `platform/duckdb`, `persist`, `migration`, `sync`, `ops`, `cmd`
+  dont le dernier paramètre est `...any` / `...driver.Value` ; dans ces dossiers, un élément `Text` d'un littéral `[]any{...}`, d'un `append(args, ...)` ou d'une affectation `args[i] = ...` sur un `[]any` (l'argument étalé `args...` n'est
+  pas vu par le contrôle d'appel : ses éléments le sont à la construction). Allowlist : aucune. Auto-preuve : le prédicat doit reconnaître le vrai `i18n.Text` sous ses deux formes, et au moins 100 paquets doivent être analysés.
+  Les dépendances hors module (bibliothèque standard, cache des modules) sont typées sans corps de fonction (`ParseFile` les retire) : c'est ce qui tient la durée.
+- Durée : 9 s à chaud, 38 s au premier passage (cache de compilation froid) ; archlint entier 111 s. Besoin : gcc dans le PATH (le typage des paquets cgo de DuckDB passe par `go list -compiled`).
+- Résultat : **0 cas** sur tout le module. Le seul cas connu (`stats_repo.go`, `Scan(&m.PlaylistName)`) a été corrigé au lot B ; aucun autre n'existait (ni `Exec`/`Query` avec un `Text`, ni `AppendRow`, ni `[]any` à `Text`). Une extension d'essai des règles
+  `[]any` au module entier n'a rien trouvé de plus. Aucun fichier de production touché, donc aucun gate `go test` / `-tags=integration` de paquet à rejouer.
+- Preuve que le garde-rail échoue : `Scan(&playlistEN)` remis à `Scan(&m.PlaylistName)` dans `stats_repo.go` (`internal/platform/duckdb/stats_repo.go:75`, signalé) et une sonde jetable `internal/ops/zz_probe_i18n.go`
+  (`db.Exec("x", t)`, `db.Exec("x", 1, p)`, `zzExecArgs("x", t)` à `...any`, `[]any{1, t}`, `append(a, t)` : 5 signalements, un par forme) ; les deux retirés, arbre propre ensuite.
+- Limite connue : un `Text` rangé d'abord dans une variable de type `any` / `interface{}` puis passé à `Scan`/`Exec` n'est pas vu (le type statique n'est plus `Text`).
+
+### Étape 6 — Contrat d'API : un libellé résolu (D2) — L
+- [x] 6.1 Liste figée 7.F des schémas openapi portant les 25 noms `*_fr/*_en`, et des
+      endpoints qui les renvoient (lot A, 2026-10-26 : inventaire (i) + (ii) + (iii) et partition B / C en 7.F)
+- [x] 6.2 Pour chacun : `label`/`description`/`name` résolus via `i18n.FromContext` ;
+      suppression des champs suffixés dans `openapi.yaml`
+  - [x] 6.2-rejeu Libellés du document de rejeu (stocké et servi, 6 types x 2 paquets) : `i18n.Text` à plat, forme de fil
+        inchangée, contrat dérivé de la liste des langues (lot A, 2026-10-26)
+  - [x] 6.2-B Groupe « lot B » de la partition 7.F : 25 propriétés de l'OpenAPI (8 schémas) + 10 champs servis hors OpenAPI, libellé résolu par `i18n.FromContext` (lot B, 2026-10-26)
+  - [x] 6.2-C Groupe « lot C » de la partition 7.F : 23 propriétés de l'OpenAPI (18 schémas), libellé résolu par `i18n.FromContext` (lot C, 2026-10-26)
+- [x] 6.3 Caches serveur des réponses touchées : locale dans la clé (inventaire dans
+      7.F ; modèle : instantanés de défis). Lot B : [x] aucun cache serveur ne porte une réponse du lot B (voir le paragraphe du lot B) ; lot C : [x] aucun cache serveur ne porte une réponse du lot C (rasters et séquences tactiques sans cache, carrière en direct sans libellé résolu : voir le paragraphe du lot C)
+- [x] 6.4 `make generate-types` ; usages web de type 2 (tagués à l'étape 3) → `label` ;
+      tags retirés ; garde-rail 2.2 sans exception
+  - [x] 6.4-rejeu Usages web du rejeu : `pickText` (`lib/i18n/pickText.ts`) remplace `label.fr` / `label[locale…]` ; 4 lignes
+        `i18n-contrat` retirées (32 -> 28) ; garde-rail `replay-label-access.guard.test.ts` (lot A, 2026-10-26)
+  - [x] 6.4-B Usages web du groupe B ; tags correspondants retirés : 12 lignes `i18n-contrat` retirées (28 -> 16) (lot B, 2026-10-26)
+  - [x] 6.4-C Usages web du groupe C ; tags correspondants retirés : 16 lignes `i18n-contrat` retirées (16 -> 0), plafond `CONTRACT_FIELD_CEILING` à 0, garde-rail devenu une interdiction (lot C, 2026-10-26)
+- [x] 6.5 Query keys des endpoints touchés : locale dans la clé (`lib/query/keys.ts`). Lot B : [x] 11 fabriques (lot B, 2026-10-26) ; lot C : [x] 9 fabriques (lot C, 2026-10-26)
+- [x] 6.6 Tests `httptest` : même endpoint, `X-LevelUp-Locale: fr` puis `en` → libellés
+      différents ; locale inconnue → défaut. Lot B : [x] (lot B, 2026-10-26) ; lot C : [x] (lot C, 2026-10-26)
+Gate : `cd apps/go-api && go test ./internal/api/... ./internal/service/...` ;
+`make generate-types` sans écart après commit ; `make check-types` ; `make test-web`.
+
+Lot A (items 6.1, 6.2-rejeu, 6.4-rejeu ; B et C = groupes de la partition 7.F), exécuté le 2026-10-26.
+
+Décision du pilote (2026-10-26, à relire par le user à l'étape 11), exception écrite à D2 pour le seul document de rejeu : il garde un
+libellé PAR LANGUE DANS le document (gros document mis en cache côté client : pas de re-téléchargement au changement de langue ; artefacts cuits
+qu'on ne re-cuit pas), mais sous une forme extensible. D2 (« le serveur renvoie le libellé de la langue demandée ») vaut pour le reste du contrat.
+- Forme Go : `Label`, `WeaponLabel`, `VehicleLabel`, `CalloutZone`, `ObjectiveObjectLife`, `VehicleWeapon`, dans `film/replay` (stocké) ET
+  `domain/replaydoc` (servi) : les deux champs `En`/`Fr` (ou `EN`/`FR`) deviennent un champ `Text i18n.Text` déclaré à la même place. Le type
+  `VehicleFamilyInfo.Label` (donnée interne) l'était déjà.
+- Forme de fil, INCHANGÉE octet pour octet pour fr/en : `i18n.MarshalFlat` / `UnmarshalFlat` (`internal/i18n/flat.go`) écrivent un membre JSON
+  par langue de la liste (ordre alphabétique des codes, celui des anciens champs), AU MÊME NIVEAU que les autres champs et à la même place
+  (`FlatLayout{After: ...}` : au début pour `Label` / `WeaponLabel`, après `name` pour `CalloutZone`, après `family` pour `ObjectiveObjectLife`,
+  après `vehicle` pour `VehicleWeapon`, en fin pour `VehicleLabel`). Présence : toutes les langues émises, vides comprises, comme `json:"en"` sans
+  omitempty (`required:"true"`) ; sauf `VehicleLabel` (omitempty d'avant : une langue vide n'est pas émise). Pas de sous-objet. Un membre dont le nom
+  n'est pas une langue de la liste n'entre pas dans le Text à la lecture (un artefact cuit sous une langue retirée se lit).
+- Contrat : le champ Go porte le tag `json:"i18n_text,omitempty"` (+ `required:"true"` pour « toutes les langues ») ; `openapigen` (passe 3,
+  `locale_text.go`) remplace ce repère par une propriété `string` par langue de `config/locales.toml`, à la même place dans `required`.
+  `openapi.yaml` et `generated.ts` : AUCUN écart pour fr/en (`TestOpenAPIYAMLIsUpToDate` vert sur le fichier inchangé) ; une langue ajoutée à la liste fait
+  apparaître sa propriété sans ligne de Go.
+- Web : `lib/i18n/pickText.ts` (`pickText(texte, locale)` : la langue, sinon `FALLBACK_LOCALE`, sinon `''` ; `allTexts` pour la recherche d'un radical dans
+  toutes les langues ; `localeTextsOf`). `CatalogLabel` étend `LocaleTexts` ; `CalloutZoneReady` porte `names` (plus de `fr` / `en`). Sites : `catalogLabel.ts`,
+  `useReplayVehicles.ts`, `calloutsPaint.ts`, `abilityChargeLogic.ts`, `placementTeleport.ts`. Écart de comportement (D3) : une langue vide se replie sur
+  l'anglais (avant : sur « l'autre » langue pour `catalogText`, sur rien pour `calloutLabel` / `labelOfFamily`) ; sans objet sur les données actuelles
+  (anglais toujours renseigné, `callouts_catalog_test` impose la paire).
+- Garde-rails : `lib/i18n/replay-label-access.guard.test.ts` (aucun accès `.fr` / `.en` / `['fr']` / `['en']` sur un type déclaré sous
+  `schemas.{Label,WeaponLabel,VehicleLabel,CalloutZone,ObjectiveObjectLife,VehicleWeapon}` de `generated.ts`, alias et intersections compris, par le
+  compilateur ; plafond 0 ; auto-preuve ; vérifié rouge en rétablissant un `label.fr` dans `abilityChargeLogic.ts`) ; `internal/api/openapigen/locale_text_test.go` ;
+  `document_labels_json_test.go` (stocké) et `labels_json_test.go` (servi) : chaque type face à son jumeau « d'avant » (deux champs, mêmes tags), 5 cas de
+  langues (vides, échappement), forme du nom JSON du champ Text ; `i18n/flat_test.go`.
+- Compteurs : `CONTRACT_FIELD_CEILING` (web, lignes `i18n-contrat`) 32 -> **28** ; `suffixeContratPlafond` (Go, classe b) 93 -> **69** (-24 champs : 12 stockés + 12 servis) ;
+  `localeLiteralPlafond` (Go, 2.3) 29 -> **28** (`service/squadagg/squad_formes.go` : `locale != "en"` remplacé par `i18n.Parse` + `Text.Pick`).
+- Preuve de relecture, sans re-cuisson : (1) les 3 314 artefacts du cache de films du poste (`data/cache/replays/halo_infinite`, hors `*.derived.json`) se décodent dans
+  `replay.ReplayDocument` et se ré-écrivent à l'octet près (0 écart) — balayage jetable, lecture seule, supprimé ; (2) fixture réduite versionnée
+  `testdata/labels_flat_artefact_1d2a26d8.json` (armes, capacités, grenades, objet d'objectif d'un film d'Oddball) relue et ré-écrite à l'identique
+  (`TestLibellesParLangue_ArtefactReelRelu`).
+- Révisions de couche : `GrammarRev`, `SchemaVersion` (104) et les empreintes de couche (source, profil, grammaire, killsource, objectifs : `rev_test.go` de chaque
+  couche) INCHANGÉS. UNE empreinte bouge, volontairement : celle de la FORME RÉFLÉCHIE du document (`testdata/document_shape.golden`, `empreinte-stockee`
+  `0b17b0d6cd4d78c1` -> `24d6f3e9f272182a`, `empreinte-cuite` `024d3476ff293972` -> `3cb79e686077a360`, `servie` = `stockee`) : le type Go change (un champ `Text` au lieu de
+  deux), pas le contenu cuit. Le refus de régénération sans montée de `SchemaVersion` serait ici un faux positif (il porterait sur un changement qui ne touche
+  aucun artefact, et la montée ferait lire « à re-cuire » les 3 314) : le mécanisme prévu à cet effet, le numéro de RÈGLE de l'empreinte cuite, est monté
+  (`cuiteRegleCourante` 2 -> 3, entrée de chronique dans `document_shape_test.go`). **Cas douteux n° 1 pour la relecture du pilote.**
+
+Gate du lot A exécuté le 2026-10-26 (résultats réels) : Go, en série : `go test` de `./internal/i18n/... ./internal/domain/... ./internal/games/halo_infinite/film/replay/... ./internal/replaybuild/... ./internal/mapcatalog/... ./internal/mapdecoupe/... ./internal/games/halo_infinite/replaylabels/... ./internal/sync/replayartifacts/... ./cmd/mapcallouts-build/... ./cmd/mapplafond-mesure/... ./contracttest/...` vert ; `go test` de `./internal/service/... ./internal/api/... ./internal/port/... ./internal/persist/... ./internal/ops/...` vert ; `go test ./internal/archlint/` vert (115 s) après avoir ramené `document_shape_test.go` à son plafond de taille (511 lignes : chronique de la règle 3 condensée en 4 lignes) ; `go vet -tags "gamefiles integration"` des 36 paquets qui importent `film/replay`, `replaydoc` ou `replaylabels` + `i18n` + `openapigen` : propre ; `golangci-lint run --new-from-merge-base=origin/main ./internal/... ./cmd/...` : 0 issue (après deux `goconst` dans `openapigen/locale_text.go`, corrigés). Web : `npm run generate-types` sans écart (`openapi.yaml` et `generated.ts` inchangés, `tools/check-generated-types-fresh.mjs` OK) ; `npx tsc -b --force` exit 0 ; `npm run test:run` 1 012 fichiers / 10 414 tests verts (5 fichiers et 23 tests skippés d'origine) ; `npx eslint src` 0 erreur, 27 avertissements (les 27 d'origine) ; `lint:fields`, `lint:colors` propres ; knip : seulement ses 4 indications de configuration d'origine.
+
+Lot B (items 6.2-B, 6.4-B, et la part B de 6.3, 6.5 et 6.6), exécuté le 2026-10-26 :
+- Propriétés converties (25 de l'OpenAPI, 8 schémas) : `AchievementEntry` `name_en/fr`, `description_en/fr`, `locked_desc_en/fr` -> `name`, `description`, `locked_desc` ; `AssetMeta` `name_en/fr` -> `name`
+  (`description` existait déjà avec le sens anglais, `description_fr` disparaît ; les textes par langue passent à `Names` / `Descriptions`, `json:"-"`) ; `MilestoneDTO` `title_en/fr` -> `title`, `condition_en/fr` -> `condition` ;
+  `ProposalDTO` `reason_key_en/fr` -> `reason_key` ; `SuggestedChallenge` `label_en/fr`, `description_en/fr` -> `label`, `description` ; `Template` idem (`Labels` / `Descriptions` en donnée, `json:"-"`) ;
+  `SkillRatingSnapshot` `tier_name` + `tier_name_fr` -> `tier_name` seul ; `ResolveResult` `mode_en` -> `mode_key`. Les champs suffixés disparaissent de la struct, de `openapi.yaml`, de `generated.ts` et du web.
+- Règle 2 (champ sans suffixe déjà présent avec un autre sens) : (1) `ResolveResult.mode_en` n'est PAS une paire x_fr/x_en : c'est la clé normalisée du mode effectivement écrite (clé technique) ; elle s'appelle désormais
+  `mode_key` (même nom que la colonne `modeKey` de l'étape 5) ; la requête garde `mode_en` / `name_fr` / `name_en` (corps de requête, hors des 25 propriétés de réponse : voir les cas douteux). (2) `AssetMeta.description`
+  portait l'anglais ; il devient la description résolue (même sens « la description », seule la langue change). (3) `milestoneDTO.condition` : la formule technique `CatalogEntry.Condition` n'est pas servie (A9), le champ servi
+  `condition` est le texte lisible. Aucun autre conflit de nom.
+- Où la résolution se fait (règle 3, jamais de locale globale) : au service, au dépôt ou au handler qui a le `ctx`, par `i18n.FromContext(ctx)` + `Text.Pick` (repli `en`, D-4) : `AchievementsService.GetAchievementsPage`,
+  `AssetService.ListMaps/Weapons/Medals` (`localizeAssets`), `milestoneDTOs`, `handleListProposals`, `profile.Service.BuildProfile` (`suggestedChallengeFromTemplate`, `buildSkillRatingSnapshot(.., loc)`), et pour les modèles
+  et presets `prestige.service` (`SuggestTemplates`, `SuggestNext`, `RefreshSquadPool`, `EnablePilotMode` -> choix hebdomadaires, `ListArcPresets`, `enrichSquadChallenge`) par `prestige.LocalizeTemplates` /
+  `Template.Localized` / `PresetArc.Localized` (copie : la tranche du dépôt n'est jamais modifiée). Ajout à `i18n.Text` : `PickOptional(l)` (comme `Pick`, mais un champ facultatif sans aucune valeur rend "" sans
+  incrémenter `text_empty_total`), test `TestTextPickOptional`.
+- Hors des 25 propriétés mais indissociables du lot (leur consommateur web est une ligne `i18n-contrat` du lot B) : `milestones.CatalogEntry` (`Title`, `ConditionText` en `i18n.Text` : 4 champs), `prestige.PresetArc`
+  (`Titles`, `Descriptions` en donnée, `Title`, `Description` servis : 4 champs, `GET /arcs/presets`, corps `map[string]any` donc absent de l'OpenAPI) et `prestige.SquadChallengeView` (`label` : 2 champs,
+  `GET /squad-challenges`, idem). Les endpoints à corps `map[string]any` qui servent des `Template` (`/templates/suggest`, `/prestige/challenges/{id}/suggest-next`, pool d'escouade) passent par les mêmes méthodes de service.
+- Textes STOCKÉS (non servis) : `Challenge.Label` (copié du template à la création) et `Arc.Title` / `Arc.Description` (copiés du preset à l'adoption) restent écrits dans la langue par défaut avec repli `en`
+  (`Template.StoredLabel`, `PresetArc.StoredTitle` / `StoredDescription` : `Pick(i18n.Default)`), comme avant (français). Les paramètres de proposition de coach (`reason_params`, JSON stocké) portent un
+  `label_<langue>` par langue de `config/locales.toml` (mêmes octets pour fr/en).
+- Caches (6.3, part B) : AUCUN cache serveur ne porte une réponse du lot B. `StaticAssetMetaRepo` (instantané en mémoire des cartes, armes, médailles) garde les noms dans TOUTES les langues et ne résout qu'à la réponse
+  (`localizeAssets` copie la tranche) : pas de locale dans sa clé, par construction ; un test vérifie que deux requêtes de langues différentes ne se marchent pas dessus. Les dépôts de succès, jalons, modèles, presets et
+  propositions lisent la base à chaque requête ; le profil est construit à la volée. ETag / `Vary` : les endpoints du lot B sont des routes Huma sans ETag ni `Cache-Control` ; le seul émetteur d'ETag JSON
+  (`writeJSONCached`) n'a plus d'appelant hors tests (découverte). Pas de `Vary` posé : sans validateur ni durée de fraîcheur, un cache partagé ne peut pas resservir une langue pour l'autre.
+- Query keys (6.5, part B) : la locale entre dans 11 fabriques de `lib/query/keys.ts` : `achievements`, `assetMaps`, `assetWeapons`, `assetMedals`, `progressionMilestones`, `progressionProfile`, `playerProfile.profile`,
+  `coachProposals`, `prestige.templates`, `arc.presets`, `squad.challenges` (+ préfixe `squad.challengesAll`, utilisé par les 4 invalidations, qui balaie toutes les langues). Tests : `keys.locale.test.ts` (FR/EN
+  distinctes, même langue stable, préfixe) ; garde-rail `keys.title-slug.guard.test.ts` mis à jour.
+- Tests 6.6 : `internal/api/handlers/i18n_contrat_lot_b_test.go` (httptest derrière le vrai `middleware.TitleExtractor`, en-tête `X-LevelUp-Locale` fr / en / `xx` inconnu / absent : succès, tiroir d'actifs cartes + armes +
+  médailles + recherche inter-langues, propositions du coach) ; `progression_i18n_test.go` (intégration : `GET /milestones` sur base réelle, titre et condition, condition omise sans condition) ; `admin_data_quality_test.go`
+  (`mode_key`) ; services : `prestige/service_i18n_test.go` (5 méthodes, repli, langue par défaut, non-mutation du dépôt), `profile/service_i18n_test.go` (nom du tier, suggestion de défi). Les anciens tests « JSON inchangé »
+  des succès et des propositions (lot B de l'étape 5) sont remplacés par leurs équivalents « contrat par langue ».
+- Web : `AchievementCard` (le helper `pickLocalized` et ses 10 cas sont supprimés : code mort), `AssetCard` / `AssetGrid` (la prop `locale`, devenue inutile, est retirée), `MilestonesGrid`, `PerformanceSection`,
+  `ProgressionSection`, `ArcPresetPicker` (prop `locale` de `PresetRow` retirée), `SquadObjectivesPanel`, `CreateChallengeForm`, types manuels `ascension/types.ts`, `lib/playerProfile.ts`, `lib/prestige.ts`, `coach/types.ts`.
+- Compteurs : `CONTRACT_FIELD_CEILING` (web) 28 -> **16** (12 lignes) ; `suffixeContratPlafond` (Go, classe b) 69 -> **34** (-35 : 25 propriétés de l'OpenAPI + 10 champs hors OpenAPI) ; `localeLiteralPlafond` (Go) **28** inchangé.
+- Cas douteux : (1) `CreateChallengeForm` affichait TOUJOURS le libellé français des modèles (`label_fr`) et l'écrivait dans le défi : il affiche et envoie désormais le libellé de la langue de l'interface (effet visible :
+  modèles en anglais en locale `en`). (2) `oneCardPerImage` (tiroir de cartes) choisissait le représentant d'un visuel par la présence d'un libellé FRANÇAIS traduit ; il le choisit par un libellé traduit dans la langue de la
+  REQUÊTE (identique en `fr` ; en `en`, le choix peut différer si deux copies d'un visuel portent des noms anglais différents, ce que les données connues ne montrent pas). (3) Un succès dont le nom anglais est vide mais le
+  français renseigné s'affichait en français en locale `en` (ancien `pickLocalized`) ; il est maintenant vide (D-4 : jamais d'autre langue que `en` en repli) : sans objet sur les données connues. (4) Les corps de REQUÊTE
+  `ModeTranslationRequest` (`mode_en`, `name_fr`) et `AssetTranslationRequest` (`name_en`, `name_fr`) gardent leurs champs suffixés (saisie admin d'une traduction par langue) : ils restent dans le plafond Go (classe b) ;
+  passer à `{ langue: texte }` est une décision de contrat d'écriture, hors des 25 propriétés de réponse. (5) `CoachProposalsCard.readableReason` lit toujours `label_fr` / `label_en` dans `reason_params` (JSON stocké, pas une
+  propriété de l'OpenAPI), français d'abord : à reprendre avec l'étape 7 (coach).
+Gate du lot B exécuté le 2026-10-26 (résultats réels) : Go, en série (sorties dans un fichier, code de sortie lu, jamais derrière un tube) : `go test` de `./internal/api/... ./internal/service/... ./contracttest/... ./internal/i18n/... ./internal/prestige/... ./internal/progression/... ./internal/domain/... ./internal/platform/duckdb/... ./internal/games/canonical/... ./internal/games/halo_5/... ./internal/games/halo_infinite/migrations/...` vert (37 paquets) ; `go test ./internal/archlint/` vert (plafonds 69 -> 34 et 28 vérifiés exacts : le test de mesure a échoué à 69 en annonçant 34) ; `go test -tags=integration -p 1` de `./internal/platform/duckdb/...`, des deux `migrations`, de `./internal/service/`, `./internal/api/handlers/`, `./internal/progression/...`, `./internal/prestige/...` vert (15 paquets) ; `go vet -tags "gamefiles integration"` des paquets touchés et de `./cmd/...` propre ; `golangci-lint run --new-from-merge-base=origin/main ./internal/... ./cmd/...` : 0 issue ; `go run ./cmd/openapi-gen` puis `TestOpenAPIYAMLIsUpToDate` vert. Web : `npm run generate-types` (puis `node tools/check-generated-types-fresh.mjs` : OK) ; `npx tsc -b --force` exit 0 ; `npm run test:run` 1 012 fichiers / 10 416 tests verts (5 fichiers et 23 tests skippés d'origine) ; `npx eslint src` 0 erreur, 27 avertissements (les 27 d'origine, `react-hooks/incompatible-library`) ; `lint:fields` et `lint:colors` propres ; knip : ses 4 indications de configuration d'origine ; `node scripts/build_i18n_manifests.mjs` sans écart. Deux échecs vus au premier passage de vitest, corrigés : un commentaire de `ascension/types.ts` citait un nom de tier français (garde-rail `skillTiers.guard.test.ts`) ; `squadCompositionPicker.guard.test.ts` a dépassé 5 s sous la charge des tests Go lancés en parallèle (vert seul et au second passage complet).
+
+Lot C (items 6.2-C, 6.4-C, et la part C de 6.3, 6.5 et 6.6 ; CLÔT l'étape 6), exécuté le 2026-10-26 :
+- Propriétés converties (23 de l'OpenAPI, 18 schémas ; avant -> après ; endpoints de 7.F) : `WeaponHighlight` `label_fr/label_en` -> `label` ; `CompareTopWeapon`, `FragRoleEntry`, `MatchKillDistanceWeapon`,
+  `SquadWeaponToolLine`, `WeaponBelowThreshold`, `WeaponRangeRow`, `WeaponDistanceRecordRow`, `WeaponExcludedFromRecords` : `label` (FR d'abord, existant) + `label_en` -> `label` seul (même sens, seule la langue change) ;
+  `WeaponRecordFrag` `map_label_en` -> `map_label` ; `TacticalContribution` `arme_label_en` -> `arme_label` ; `TacticalGrappe` et `TacticalZoneNom` `nom_fr/nom_en` -> `nom` ; `TacticalMapCard`
+  `map_name_fr` -> `map_label` (+ `map_filter_key`, voir plus bas) ; `TimeseriesMatchRow` `map_name_fr` -> `map_label` ; `CareerRankSummary` `next_rank_name_fr/en` -> `next_rank_name` ; `HeroProgress`
+  `max_rank_name_fr/en` -> `max_rank_name` ; `SkillSnapshot.TierCodeFR` -> retiré du contrat (donnée interne `TierLabel i18n.Text`, `json:"-"` : aucun lecteur web, la colonne `tier_fr` ne change pas, étape 8).
+- Cas `x_label` / clé technique : `TacticalMapCard.map_name` (nom du registre, anglais) garde son sens ; le libellé résolu est `map_label`. `map_name_fr` jouait un SECOND rôle : la valeur `?maps=` du lien vers
+  l'Explorateur (libellé canonique, indépendant de la langue : `platform/duckdb/map_labels.go`, garde-rail `map_label_single_resolution_test.go`). Ce rôle devient le champ `map_filter_key` (valeur du filtre,
+  `Pick(i18n.Default)` du texte de la carte, repli `en`) : servir le libellé de la langue aurait cassé le lien en anglais. `TimeseriesMatchRow.map_name` (nom brut) reste, `map_label` s'ajoute.
+- Où la résolution se fait : au service ou au dépôt qui a le `ctx`, par `i18n.FromContext(ctx)` + `Pick` / `PickOptional`. Types de données : `port.WeaponKillRow.Label` et `port.WeaponLabel.Name` deviennent des `i18n.Text`
+  (`json:"-"`, chaque langue garde sa chaîne de repli interne : fr = FR d'abord, en = EN d'abord) ; `fragdist.Build(loc, ...)`, `squadagg.WeaponToolInputs.Locale` (vide = langue par défaut), `buildTopWeaponKills`,
+  `topWeaponKillRows`, `buildTopWeapons`, `BuildWeaponsTable`, `buildViewerFragDistribution`, `grappesDeLUnivers`, `buildMatchRows`, `toWeaponRecordRows` reçoivent la langue. Dépôts : `ExplorerRepo` (top armes, deux voies),
+  `KillDistanceRepo`. Le repli est celui de D3 (`en`), jamais « l'autre langue ».
+- Changement d'affichage (libellé qui suit désormais la langue de l'interface, seul effet visible) : les noms d'armes des graphiques « frags par arme » (Synthèse, Sessions, cible de l'Explorateur, briefing), du top des
+  séries temporelles, du tableau d'armes de l'Escouade et le nom de carte des séries temporelles étaient FRANÇAIS D'ABORD quelle que soit la langue ; ils suivent la langue. Le nom de carte de l'onglet Tactique
+  et le rang de la carrière suivaient déjà la langue (inchangé).
+- Champs de classe (b) hors contrat d'API, convertis ici (le compteur Go ne garde que les corps de requête admin) : `ops.careerRankJSON.TitleEN` -> `Title` (clé `title_en` du fichier source, format d'entrée figé) ;
+  `persist.SkillRankInsert.TierFR` -> `TierNames i18n.Text` (l'INSERT écrit la langue `fr` dans `tier_fr`, NULL si la langue est absente, `''` si présente et vide : mêmes octets qu'avant) ;
+  `persist.ModeNameTranslationInsert.ModeEN` -> `ModeKey` ; `port.WeaponKillRow.LabelEN` et `port.WeaponLabel.LabelEN` (voir plus haut) ; `cmd/mapcallouts-build` `decoupeZone.LibelleEN` -> `Libelle` et
+  `cmd/weapon-sounds` `livraisonManifesteArme.NomFr` -> `Nom` (clés `libelle_en` / `nom_fr` des fichiers d'entrée de ces outils, conservées). Champs servis hors OpenAPI : aucun du lot C ne portait de paire
+  lue par le web hors OpenAPI. `CONTRACT_FIELD_CEILING` (web) 16 -> **0** : le garde-rail est une INTERDICTION, son message cite `pickText` et le libellé résolu. Restent, non convertis (étape 7, déjà notés en §6
+  pour le premier) : `reason_params` du coach (`label_fr/label_en`, JSON stocké) et les paramètres de notification stockés (`title_fr/title_en`, `medal_name_fr/en`, lus par les manifests de notification).
+- Caches (6.3, part C) : AUCUN cache serveur ne porte de réponse du lot C, donc aucune locale dans une clé serveur. Rasters tactiques : le service documente « aucun cache d'agrégat » (la page somme des fichiers de
+  sidecars à chaque affichage) et les grappes sont nommées à la réponse ; séquences tactiques : lecture de l'artefact SANS cache (`tactical_sequence_store.go`). Carrière en direct (`CareerLiveCache`) : il garde
+  `CareerRankSnapshot` (valeurs brutes de l'API Halo : numéro, XP, URL), jamais un libellé résolu ; le nom du prochain rang et du rang sommet se résolvent à la réponse depuis le catalogue (`Text`, toutes langues).
+  `playerReadCache`, `SeasonsCatalog`, caches de données distantes : inchangés (aucun libellé résolu). ETag / `Vary` : les routes du lot C sont des routes Huma sans ETag ni `Cache-Control` (hors `no-store` de la vue du
+  match dégradée) : aucun `Vary` à poser, comme pour le lot B.
+- Query keys (6.5, part C) : la locale entre dans 9 fabriques de `lib/query/keys.ts` : `career`, `explorerPlayer`, `matchView`, `synthesis`, `timeseries`, `comparePlayer`, `tacticalMaps`, `tacticalRaster`,
+  `tacticalCellule` (dernier segment ; `lireLeRaster` reçoit une clé d'adresse `{ playerSlug, titleSlug, mapId, locale }`, ses voisines sont rangées sous la même langue). Déjà localisées : `teammates` (la requête porte `locale`),
+  `sessionDetail`, `trends`. Non touchées (aucun libellé résolu du lot C) : `explorer` (matches-query), `tacticalMatchIDs`, `tacticalSequence`. Prefetch (`prefetch.ts`, loaders de route, historique) lisent la locale du store.
+  Tests : `keys.locale.test.ts` (9 fabriques, préfixe `careerAll`), `keys.title-slug.guard.test.ts`.
+- Web : les paramètres `locale` devenus inutiles sont retirés (`fragRoleDisplayLabel`, `resolveWeaponLabel`, `weaponRangeLines`, `toolLineLabel`, `resolveRecordLabel`, `killDistanceRows`, `armeDe`, `titreDeZone`, `nomCarte`,
+  `titreDeLaCarte`, `filtrerCartes`, `colonneDesCartes`, `FragSunburstLabels.locale`, `FragDetailLabels.locale`...) ; types manuels `lib/api/types.ts` alignés.
+- Tests 6.6 : `internal/api/handlers/i18n_contrat_lot_c_test.go` (httptest derrière le vrai middleware de locale : page Carrière et cartes de l'onglet Tactique, fr / en / `xx` inconnue / absente, aucun champ suffixé) ; niveau
+  service et dépôt, mêmes langues : `fragdist` (engins), `squadagg` (outils de destruction, langue vide = défaut), carte de détail et grappes tactiques, portée et records par arme, top des séries temporelles, tableau d'armes
+  de l'Escouade, top armes de la comparaison, `KillDistanceRepo`, `ExplorerRepo` (top armes). Les endpoints de Synthèse, Explorateur, Séries temporelles, Comparaison et Vue du match n'ont pas de test httptest : leurs services
+  exigent des dépôts trop larges pour une doublure ; leur résolution est couverte aux niveaux service et dépôt ci-dessus.
+- Compteurs : `CONTRACT_FIELD_CEILING` (web) 16 -> **0** ; `suffixeContratPlafond` (Go, classe b) 34 -> **4** (-30 : 23 propriétés de l'OpenAPI + 7 champs hors contrat ; les 4 restants sont les corps de requête admin
+  `ModeTranslationRequest` / `AssetTranslationRequest`, cible 0 à l'item 8.6) ; `localeLiteralPlafond` (Go, 2.3) 28 -> **26** (`home_canonical_recent.go` : la comparaison `locale == "fr"` et son commentaire).
+Gate de l'étape 6 (lot C) exécuté le 2026-10-26 (résultats réels), Go en série : `go test -count=1` de `./internal/api/... ./internal/service/... ./contracttest/... ./internal/i18n/... ./internal/analysis/... ./internal/domain/... ./internal/port/... ./internal/games/... ./internal/persist/... ./internal/sync/... ./internal/ops/... ./internal/platform/duckdb/... ./internal/archlint/ ./cmd/mapcallouts-build/... ./cmd/weapon-sounds/...` : tout vert après correction de trois garde-rails (golden du sunburst de Halo 5 sans `label_en`, comparateur du top armes `Label.Pick(loc)` dans `compare_weapons_guard_test.go`, inventaire des champs référence `Enrichment.SkillSnapshot.TierLabel` dans `player_matches_cache_test.go`) ; `go test -count=1 -tags=integration -p 1` de `./internal/persist/... ./internal/platform/duckdb/... ./internal/sync/... ./internal/service/ ./internal/api/handlers/ ./internal/ops/...` vert ; `go vet -tags "gamefiles integration"` de `./internal/... ./cmd/... ./contracttest/...` propre ; `golangci-lint run --new-from-merge-base=origin/main ./internal/... ./cmd/...` : 0 issue ; `go run ./cmd/openapi-gen` + `TestOpenAPIYAMLIsUpToDate` verts. Web : `npm run generate-types` (puis `tools/check-generated-types-fresh.mjs` : OK) ; `npx tsc -b --force` exit 0 ; `npm run test:run` 1 012 fichiers / 10 418 tests verts (5 fichiers et 23 tests skippés d'origine) ; `npx eslint src` 0 erreur, 27 avertissements (les 27 d'origine) ; `lint:fields`, `lint:colors` propres ; knip : ses 4 indications de configuration d'origine ; `build_i18n_manifests.mjs` sans écart. Premier passage de vitest : 4 fixtures qui portaient encore `map_name_fr` derrière un `as unknown as` (le compilateur ne les voyait pas), corrigées.
+Étape 6 CLOSE : 6.1 à 6.6 statués `[x]` (lots A, B, C).
+
+### Étape 7 — Go : textes rédigés par le serveur — M
+Périmètre = annexe 7.G (liste figée à l'entrée : 15 fichiers de la commande E, 12 de plus que la regex élargie voit, 5 fichiers à littéraux `FR:`/`EN:`).
+- [x] 7.1 Catalogue `internal/i18n/messages/*.toml` + chargeur embarqué + test de
+      complétude (toute clé a toutes les langues de `config/locales.toml`, mêmes variables partout) (2026-10-26)
+- [x] 7.2 `coach_advisor` (synthétiseur, `labels.go`, `service_generate.go`) (2026-10-26)
+- [x] 7.3 `analysis/match_impact*.go`, `analysis/skill_v2/tier.go`, `sync/skill/skill_config.go` (2026-10-26)
+- [x] 7.4 Accueil (badges, `home_canonical_recent.go`), `session_page_service.go`,
+      `squadagg/*`, `match_view_*` (2026-10-26)
+- [x] 7.5 `handlers/help.go`, `release_notes_service.go`, `ogmeta` : sélection de fichier par
+      langue avec repli `en` (D6) (2026-10-26)
+- [x] 7.6 Garde-rail 2.3 à 0 (2026-10-26 : plafond 26 -> 0, regex élargie)
+- [x] 7.7 (ajout pilote 2026-10-26, découverte des étapes 1-2) Listes de langues en dur côté Go : `handlers/session_context_validate.go` `sessionLocales` → `i18n.Known` ; `admin_data_quality.go` `defaultDQLocale` → `i18n.Default` (2026-10-26)
+- [x] 7.8 (ajout pilote 2026-10-26) `bpPrefersEnglish` (`platform/duckdb/season_pass_repo_*.go`, comparaison `EqualFold(..., "en")`) et `currencyLabels` (français seul) : passer par `i18n` et le catalogue, toutes langues requises (2026-10-26)
+- [x] 7.9 (ajout pilote 2026-10-26) Textes stockés en deux langues lus par le web : `reason_params` des propositions du coach (`label_<langue>`, lu français d'abord par `CoachProposalsCard.readableReason`) et paramètres de notification `title_fr`/`title_en`, `medal_name_fr`/`medal_name_en` : le web reçoit un texte déjà dans la langue de la page, sans paire `_fr/_en`, et les notifications/propositions déjà stockées s'affichent toujours correctement (2026-10-26, voir « Choix de 7.9 »)
+Gate : `cd apps/go-api && go test ./internal/i18n/... ./internal/progression/... ./internal/analysis/... ./internal/service/... ./internal/ogmeta/... ./internal/api/handlers/... ./internal/archlint/...` ; `go test -tags=integration -p 1` des paquets persist / platform/duckdb touchés ; `golangci-lint run --new-from-merge-base=origin/main` ; web : generate-types, `tsc -b --force`, vitest, eslint, `lint:fields`, `lint:colors` ; `localeLiteralPlafond` = 0.
+
+Étape 7, exécution du 2026-10-26 :
+
+**7.1, catalogue.** `internal/i18n/messages.go` + 11 fichiers `messages/*.toml` (82 messages : `coach`, `common`, `filters`, `format`, `home`, `impact`, `og`, `patterns`, `release_notes`, `season_pass`, `skill`), embarqués (`go:embed`). Une feuille = une table dont les clés sont des codes de `config/locales.toml` ; variables `{nom}` ; une table qui mêle textes et sous-tables, une langue inconnue, une clé déclarée deux fois, un TOML illisible arrêtent le démarrage (`mustLoadCatalog`). API : `Msg(l, clé, params)`, `MsgText(clé, params)` (toutes les langues, pour les champs `i18n.Text` résolus plus loin : paliers, chaînes, badges), `MsgTextWith(clé, func(Locale) Params)` (une variable qui dépend de la langue : nom d'axe), `MsgAll(clé)` (les formes d'un message dans toutes les langues : reconnaître un titre de section), `MessageKeys()`. Repli d'exécution (jamais atteint si le test passe) : langue, puis `Fallback`, puis `Default`, compté (`levelup.i18n.message_fallback_total`) ; clé absente = la clé est rendue, comptée (`message_missing_total`) et journalisée une fois ; variable non fournie = `{nom}` laissé, compté (`message_param_missing_total`). Complétude : `i18n.TestCatalogueComplet` (chaque clé non vide dans CHAQUE langue de la liste, variables identiques partout : ajouter une langue à `locales.toml` fait échouer ce test tant que le catalogue n'est pas traduit). Garde-rail `archlint/i18n_messages_test.go` : toute clé appelée est un littéral (ou un littéral de préfixe `"format.month_short." + n`) présent au catalogue, toute clé du catalogue est appelée (message sans appelant = code mort). **Pluriels : non implémentés** (aucun des 82 messages n'en a besoin, le code serait mort ; le premier message qui en a besoin ajoute une feuille `one` / `other` et la règle de sa langue ; ADR 0040 D-10 le dit). Les fichiers de traduction de la 1re vraie langue (D1) s'ajoutent sans toucher au code.
+
+**7.2, coach.** `labels.go` : `arcTitleForAxis`, `arcDescriptionForAxis`, `axisHuman` lisent `coach.arc.*` / `coach.axis.*` ; `synthesizer.go` : `synthesizedLabel`, `synthesizedDescription`, `humanMetric`, `humanWindow` lisent `coach.synth.*` / `coach.metric.*` / `coach.window.*` ; le texte de chaque langue est le texte d'avant, à l'octet (les noms de métrique restent anglais en français : sortie historique, voir §6). `service_generate.go` : voir 7.9.
+
+**7.3, badges et rangs.** Les 11 badges d'impact (dix de `match_impact.go`, « Voleur » de `match_impact_thief.go`) étaient `i18n.Text{LocaleFR: "..."}` : ils lisent `impact.badge.*`, donc existent en anglais (mêmes noms que `impactBadgeNames` du web) et `convertImpactBadgesToDomain(badges, loc)` rend le libellé de la langue de la requête (avant : français partout). `skill_v2/tier.go` : `tierBoundary(nom, Text, ...)` lit `skill.tier.*` ; `sync/skill/skill_config.go` : `SkillTiers`, `LUSRChains`, `TierText(nomEN)` lisent `skill.tier.*` / `skill.chain.*` ; les constantes `TierLabelBronze..Onyx` disparaissent (la colonne `tier_fr` reçoit le même texte qu'avant, `sync/csr_writes.go` lit `skill.TierText`) ; `TierLabelPlacement` reste : valeur STOCKÉE de la colonne `tier`, pas un affichage.
+
+**7.4, pages.** Accueil : `home_locale.go` (`normalizeHomeLocale` = `i18n.Parse`, `labelForLocale` = langue, repli, défaut sur la paire de colonnes), `home_kpis.go` (`Rang N` → `home.rank.fallback`), `home_canonical_skill.go` (`BuildSkillTierLabel(code, sous-palier, langue)`, `BuildCSRTierLabel`, `NextSubTierLabel` prennent une `Locale` à la place du booléen `frPreferred`, le nom du palier vient de `skill.tier.*` : la table `csrTierENtoFR` dupliquée disparaît), `handlers/home.go` (`resolveLocaleFromHeader` = `i18n.Lookup`, repli réglage puis défaut), `home_service_demo.go` (une fixture de défis par langue : `challenges.<code>.json`, `challenges.json` renommé `challenges.fr.json`, langue sans fixture = celle de repli, comptée), `home_repo_playlist_ranks.go`, `home_repo_medals_citations.go` et `citations_repo.go` (colonnes appariées : `i18n.UsesFallbackColumn(langue)` = toute langue hors langue par défaut lit les colonnes anglaises, D3). `session_page_service.go` : plus de `frPreferred`, `sessionModeUI(loc, ligne)` et `analysis.ResolveModeUIIn(loc, texte)` (`ResolveModeUI` = ce libellé dans la langue par défaut). `squadagg/vehicle_labels.go` : `Pick(i18n.Parse(locale))`. `match_view_builders_header.go` : plus de `isEN`, la langue décide carte, mode et playlist (`Has(loc)`, puis repli sur le nom brut du registre comme avant) ; `match_view_service.go` : `formatDateLong` lit les mois de `format.month_short.*` ; `match_view_builders_combat.go` : `buildCombatTabFull(combatTabScope{...}, ...)` porte la langue (signature à 5 paramètres au lieu de 7).
+
+**7.5, documents.** `release_notes_service.go` : `docs/RELEASE_NOTES.md` pour la langue de repli, `docs/<CODE>/RELEASE_NOTES.md` (`docs/FR/...`) pour une autre langue quand le fichier existe ; sinon le fichier de repli précédé de `release_notes.english_only` dans la langue demandée, compté (`levelup.i18n.document_fallback_total`) et journalisé ; le titre de section est reconnu dans toutes les langues (`MsgAll`) ; `handlers/help.go` : `lang` = `i18n.Parse` (clé du cache disque `help_release_notes_<code>.json` : un code de la liste, jamais une chaîne libre). `ogmeta/builder.go` : `ogmeta.Locale` et ses deux constantes disparaissent (`i18n.Locale`), les textes lisent `og.*` ; sortie à l'octet identique en fr et en en.
+
+**7.6, garde-rail.** `no_locale_literal_test.go` : plafond 26 -> **0**, regex élargie aux formes qu'elle ne voyait pas : appel avant le comparateur (`ctxkeys.Locale(ctx) == "en"`, `normalizeHomeLocale(locale) != "en"`), `strings.EqualFold(locale, "en")`, `strings.HasPrefix(..., "en")` / `"fr"`. Mesure d'entrée de la regex élargie sur `HEAD` : **45** lignes (26 avec l'ancienne regex), toutes traitées ; auto-preuve étendue (formes vues et formes à ne pas voir : `case "enemy"`, `"frag_grenade"`, `"engagement-coefs"`). Cas traités au passage parce que le garde-rail les voit : `challenges_details.go` (`normalizeChallengeLang` = première étiquette Halo de la langue, alias `en-GB` gardé), `leaderboard_world_repo.go` (`playlistName` : ordre langue, repli, défaut sur les noms officiels lus pour toute langue de la liste ; `fallbackSeasonLabel`), `medal_definitions_repo.go` (`medalLangCode` = première étiquette Halo), `metadata_repo_assets.go` (`PreferredLangsForLocale` dérivé de `locales.toml`, même résultat pour fr et en : le point 8.1 est fait pour cette fonction, `assetnames.DefaultLangs` reste à 8.1), `season_catalog_repo.go`, `filters_service.go` (libellés de l'expérience), `handlers/patterns.go` (carte inconnue), `trends_service_sources.go`, `cmd/refresh-career-ranks` (la clé `en` de Waypoint est la valeur canonique, pas une langue de l'application : constante nommée).
+
+**7.7.** `sessionLocales` -> `i18n.Known` (message d'erreur énumérant `i18n.Locales()`), `defaultDQLocale` -> `i18n.Default`.
+
+**7.8.** `bpPrefersEnglish` -> `bpPrefersFallback(ctx)` = `i18n.UsesFallbackColumn(i18n.FromContext(ctx))` (les sources de la langue de repli passent avant celles de la langue par défaut pour toute langue hors défaut) ; `buildTrackSummary` reçoit la `Locale` ; `currencyLabels` (français seul) -> `season_pass.currency.*` en fr et en, `currencyTitle(loc, ...)` ; le titre de repli « Palier N » -> `season_pass.tier_fallback`.
+
+**Choix de 7.9 : le stockage ne change pas, la résolution se fait à la lecture, côté serveur.** Inventaire. Écrivains : `progression/coach/generator.go` (alertes de jalon : `title_en`, `title_fr`), `api/wire/post_sync_medal_first_earned.go` (`medal_name_fr`, `medal_name_en`), `progression/coach_advisor/service_generate.go` (propositions : `label_<langue>` pour un défi, `title_<l>` et `description_<l>` pour un arc). Stockage : `player_notifications.params` (JSON, base joueur) et `coach_proposals.reason_params` (JSON, base joueur). Lecteurs : `NotificationsHandler.handleList` -> web (`{title_fr}` dans les dictionnaires de notification), `CoachProposalsHandler` -> web (`readableReason` : `label_fr` d'abord), `acceptArc` (titre et description de l'arc créé, en français). Solution retenue : un libellé stocké s'écrit UNE FOIS PAR LANGUE de la liste sous `<base>_<code>` (`Text.AddParams`, déjà la forme des lignes existantes) et le serveur remplace la famille par une clé `<base>` dans la langue de la requête quand il sert la ligne (`i18n.ResolveParams` / `ResolveParamsJSON`, appelés par `notifications.LocalizeParams` -- bases `title`, `medal_name` -- et par `coach_advisor.ResolveReasonParams` -- bases `label`, `title`, `description`). Repli de lecture : langue, `Fallback`, `Default`, première langue renseignée. Pourquoi : (1) aucune migration ni repli de lecture daté (règle n°11) : le format stocké d'une ligne déjà écrite EST le format courant, donc elle se lit sans chemin spécial et une langue ajoutée plus tard n'exige rien des anciennes lignes (servies en anglais) ; (2) aucun texte n'est copié d'une table à une autre, aucune écriture sur une table append-only ; (3) une clé de catalogue + paramètres non textuels aurait demandé de réécrire les lignes stockées (le texte du motif vit dans les gabarits du catalogue de défis, pas dans un message) ; (4) `acceptArc` lit toujours le titre dans la langue par défaut, comme avant (l'arc créé est stocké dans une seule langue, §6). Web : dictionnaires de notification en `{title}` et `{medal_name}`, `readableReason` lit `label`, la clé de requête de la liste des notifications porte la locale (`queryKeys.notifications(joueur, titre, locale, filtre)`). Contrat OpenAPI : inchangé (`reason_params` et `params` restent du JSON libre), `TestOpenAPIYAMLIsUpToDate` vert. Tests : `notifications/localized_params_test.go`, `coach_advisor/reason_params_test.go`, `i18n/params_test.go`, `api/handlers/i18n_contrat_etape7_test.go` (même endpoint, `X-LevelUp-Locale: fr`, `en`, `xx`, absent ; lignes au format déjà stocké), `api/wire/post_sync_medal_first_earned_test.go` (un nom présent dans une seule langue sort dans toutes), `format.test.ts` (gabarits `{title}`, `{medal_name}`).
+
+Changements d'affichage visibles : (a) badges d'impact de la vue d'un match en anglais : « First blood », « First down », « Finisher »... à la place du français (le web les traduisait déjà par clé ; le libellé du serveur n'est qu'un repli) ; (b) arme favorite de l'Accueil sans nom : « Unknown » en anglais, « Inconnue » en français, inchangé ; une arme dont seul le nom anglais existe s'affiche en anglais en français au lieu de « Inconnue » (D3) ; (c) libellés du passe de saison, monnaies : « Credits », « Spartan Credits », « XP Boost », « Challenge Reroll » en anglais (le français ne bouge pas) ; (d) la démo, le bandeau d'un match, les notes de version, les aperçus de lien (`og:*`) : fr et en à l'identique ; (e) les notifications de jalon et de médaille ainsi que le motif des propositions du coach suivent la langue de l'interface (avant : le texte de la paire correspondante, déjà choisi côté web) ; les lignes déjà stockées s'affichent à l'identique.
+
+Compteurs : `localeLiteralPlafond` 26 -> **0** (45 lignes à l'entrée avec la regex élargie) ; `suffixeContratPlafond` inchangé à **4** (item 8.6) ; catalogue : **82** messages, 11 fichiers ; `CONTRACT_FIELD_CEILING` (web) inchangé à 0 ; deux compteurs expvar de documents / messages (`levelup.i18n.document_fallback_total`, `message_*_total`).
+
+Gate de l'étape 7 exécuté le 2026-10-26 (résultats réels), Go en série : `go test -count=1` de `./internal/i18n/... ./internal/progression/... ./internal/analysis/... ./internal/service/... ./internal/ogmeta/... ./internal/api/... ./internal/archlint/... ./internal/notifications/... ./internal/platform/... ./internal/sync/skill/ ./cmd/refresh-career-ranks/` : 72 paquets `ok`, 0 échec (archlint entier 99 s) ; `go test -count=1 -tags=integration -p 1` de `./internal/platform/duckdb/... ./internal/sync/... ./internal/service/ ./internal/api/handlers/ ./internal/api/wire/ ./internal/progression/...` : 25 paquets `ok`, puis `./internal/platform/duckdb/ ./internal/progression/... ./internal/api/handlers/` rejoués après les extractions de fichiers : `ok` ; `go vet -tags "gamefiles integration"` des paquets touchés : propre ; `golangci-lint run --new-from-merge-base=origin/main ./internal/... ./cmd/...` : 0 issue ; `TestOpenAPIYAMLIsUpToDate` vert (contrat inchangé). Web (après les commandes Go) : `npm run generate-types` sans écart (`check-generated-types-fresh` : types et locales OK) ; `npx tsc -b --force` exit 0 ; `npx vitest run` 1 012 fichiers / 10 421 tests verts (5 fichiers et 23 tests skippés d'origine) ; `npx eslint src` 0 erreur, 27 avertissements (les 27 d'origine) ; `lint:fields` (2 531 fichiers) et `lint:colors` propres ; `knip` : ses 4 indications de configuration d'origine. `localeLiteralPlafond` = 0, `TestLocaleLiteralComparisonsDoNotGrow` vert.
+Étape 7 CLOSE : 7.1 à 7.9 statués `[x]`.
+
+### Étape 8 — Données : noms de jeu par langue (D4) — M
+- [x] 8.1 `PreferredLangsForLocale` et `assetnames.DefaultLangs` dérivés de `locales.toml`
+      (balises `halo` de chaque langue listée)
+      (`PreferredLangsForLocale` déjà dérivé de `locales.toml` à l'étape 7.6 ; reste `assetnames.DefaultLangs`)
+- [x] 8.2 `match_skill_rank.tier_fr` : plus lu (libellé depuis le code de rang + TOML) ni
+      écrit (`persist/rows.go`) ; colonne laissée en place, commentée inerte
+- [x] 8.3 Halo 5 : migration CTAS des colonnes `_fr/_en` (5 tables de métadonnées + jalons)
+      vers `asset_translations` / `medal_translations` (recette `steps_metadata_purge_*`) ;
+      lecteurs basculés
+- [x] 8.4 `weapon_name_labels` / `weapon_labels` : inventaire des lecteurs (7.H) ; si le TOML
+      est la seule source lue → tables supprimées (migration) ; sinon passées en
+      `(clé, lang, nom)`
+- [x] 8.5 Tests d'intégration persist (anti-ART) et migration sur copie
+- [x] 8.6 (ajout pilote, 2026-10-26) corps de requête admin des traductions en `{ langue: texte }` avec leurs écritures : `ModeTranslationRequest` (`mode_en`, `name_fr`) et `AssetTranslationRequest` (`name_en`, `name_fr`) ; seuls champs restants du compteur Go de la classe (b) (`suffixeContratPlafond` = 4), cible 0 à cet item ; le formulaire d'administration (`IssueSections.tsx`) passe de deux champs fixes à une saisie par langue de `config/locales.toml`
+- [x] 8.7 (ajout pilote, 2026-10-27) découvertes du §6 rattachées à l'étape 8 : règle de repli unique (`displayLabel` / `Text.Pick`), lecteurs de `AssetReference.Labels`, `labelForLocale` et `i18n.UsesFallbackColumn` supprimés, libellé stocké « Placement (N restants) » (avec 8.2), `cmd/h5-metadata-fetch` sans colonne `name_fr` ni `fr-FR` en dur (avec 8.3), inventaire puis résolution à la lecture de `Challenge.Label` et `Arc.Title` / `Arc.Description` (voir « Étape 8, exécution »)
+- [x] 8.8 (ajout pilote, 2026-10-27) : D4 jusqu'au bout. L'étape 8 n'avait converti que les définitions, médailles, armes, succès et jalons ; deux ensembles relevant de D4 restaient rangés au §5 et contredisaient l'objectif de D1 (une langue de plus sans toucher au code). Statuts et résultats : voir « Étape 8.8, exécution »
+  - [x] 8.8.a Paires de colonnes metadata : `citation_mappings`, `challenge_template`, `preset_arc` -> `asset_translations` (migration `metadata_curated_texts_to_translations_v1`) ; `career_ranks`, `mode_name_tr.mode_en`, `mode_prefix_names.prefix_en` : clés techniques ou source anglaise unique, données laissées (raison écrite plus bas)
+  - [x] 8.8.b Chargeurs de noms de cartes / playlists / modes : les sept chargeurs de la liste et les sites que le garde-rail a révélés (explorateur, motifs, média, rejeu, passe de saison, GameCMS) lisent toutes les langues et choisissent par `Pick` ; garde-rail `archlint/i18n_halo_literal_test.go` (liste d'exceptions vide) ; résidu consigné au §5 (Accueil, Escouade, seed des citations)
+  - [x] 8.8.c (ajout pilote 2026-10-27) résidus de 8.8.b : (1) [x] tuiles de l'Accueil (legacy et canoniques) en noms de toutes les langues ; (2) [x] enrichissement de l'Escouade en langue de la requête (`LoadAssetTexts`) ; (3) [x] textes des citations en TOML par langue (`internal/ops/citation_texts.toml`, validé) ; (4) [x] inventaire (A) / (B) des 217 emplois de `i18n.LocaleFR` / `LocaleEN` : (B) tous convertis, 39 emplois (A) restent ; (5) [x] garde-rail `archlint/i18n_locale_constant_test.go` (plafond 39). Statuts et résultats : voir « Étape 8.8.c, exécution »
+  - [x] 8.8.d (ajout pilote 2026-10-27) noms de jeu servis en langue par défaut : cartes, modes, playlists, sélections, variantes et saisons que l'Explorateur, l'historique de matchs, le briefing, les séries temporelles, la page de session, la synthèse, le média, l'engagement et les duels servaient dans la langue PAR DÉFAUT alors que D2 les veut dans la langue de la requête ; (1) inventaire exhaustif, (2) conversion (libellé = langue de la requête, clé de filtre / regroupement / tri = nom de la langue par défaut, caches et query keys), (3) accès littéraux `["fr"]` (squadagg, synthesis, notify), (4) garde-rail des index par littéral de langue. Statuts et résultats : voir « Étape 8.8.d, exécution »
+  - [x] 8.8.e (ajout pilote 2026-10-27) noms bruts du registre : D2 et la règle n°1 de CLAUDE.md (UI française sans anglicismes) l'emportent sur la consigne « fr identique » de 8.8.d ; les noms de jeu servis en nom BRUT du registre (anglais pour tout client) suivent la langue de la requête, un client `fr` les verra donc en français (changement voulu, chiffré) ; (1) `career/top-matches` : consommateur ? sinon code mort supprimé, (2) matchs exclus, `duels[].mode`, historique Escouade v2, `map_name` et `playlist_name` d'une ligne de séries, `SessionDetailMatchRow.pair_name`, `LUSRGapItem.playlist`, (3) descripteur de retour de la vue du match (libellé affiché dans la langue de la page, clés inchangées), (4) code mort repéré par 8.8.d (`GetAvailablePlaylists`, `playlistDisplayName`, `formatDateFRLong`). Statuts et résultats : voir « Étape 8.8.e, exécution »
+  - [x] 8.8.f (ajout pilote 2026-10-27) restes de 8.8.e tranchés : (1) Halo 5 sous `en` : carte et playlist servies vides parce que `fillUntranslated` ne posait jamais la langue de repli alors que `asset_translations` porte `en-US` (défaut au regard de D3) ; (2) `tactical_service.go` servait encore `MapName` brut du registre ; (3) code mort laissé par la suppression de `career/top-matches` : 18 clés `career.top_matches.*` de `career.toml` et réglage `career_top_exclude_btb` ; (4) repli `filterContextToMatchFilterSpec(filterContext)` de `ExplorerMatchesTable` sans table de libellés. Statuts et résultats : voir « Étape 8.8.f, exécution »
+Gate : `cd apps/go-api && go test -tags=integration ./internal/migration/... ./internal/persist/... ./internal/platform/duckdb/...` ; boot local sur copie : 0 ERROR.
+Étape 8, exécution du 2026-10-27 :
+
+- 8.1 : `assetnames.DefaultLangs` devient la fonction `DefaultLangs()` : la première étiquette Halo de chaque langue de `config/locales.toml`, dans l'ordre (`fr-FR`, `en-US` aujourd'hui) ; une langue ajoutée est résolue sans toucher au code (la première étiquette suffit à la servir et borne le coût réseau du chemin chaud). `PreferredLangsForLocale` était déjà dérivé (7.6). Test `TestDefaultLangs_SuitLaListeDesLangues`.
+- 8.2 : `match_skill_rank.tier_fr` n'est plus ni lue ni écrite. Écrivains : `persist/player_persister.go`, `lusr_append_only_persister.go` (`LUSRRatingInsert.Tier` devient le nom canonique anglais `*string`), `sync/csr_writes.go` (`MatchCSRRow.Tier` = chaîne), `sync/collect.go`, `ops/seed_demo_synthetic_player.go`, `persist/demo_seed_columns.go`. Lecteurs : `player_matches_scan.go`, `player_matches_loaders.go`, `match_history_repo.go` (`MatchHistoryRawRow.SkillTier` devient une chaîne), `queries_career.go`, `queries_home_citations.go` (Q26g), `home_repo_playlist_ranks.go` ; `canonical.SkillSnapshot.TierLabel` et `legacymatch.StatsMatchRow.SkillTierLabel` (Text) sont supprimés : le libellé du palier se déduit du code (`tierDisplayName`, catalogue `skill.tier.*`), à l'identique en fr et en en. La colonne reste (DDL commentés « INERTE »). Libellé stocké de placement (8.7) : `domain.PlacementLabel(n)` = `Placement (n)` (plus de mot français « restants » ni de pluriel), relu par `domain.ParsePlacementRemaining` qui lit aussi les lignes déjà écrites en `Placement (n restants)` ; les deux copies de l'analyse (service et platform/duckdb) sont remplacées par cette source, garde-rail `archlint/i18n_placement_single_source_test.go`. `session_page_service` reconstruit le libellé par la même fonction.
+- 8.3 : décision de forme (pilote) : TOUS les couples `_fr` / `_en` de noms et descriptions de définitions passent dans les tables par langue existantes, pour les DEUX titres puisque les lecteurs sont partagés (une migration limitée à Halo 5 aurait imposé des lecteurs à deux formes). Tables : `medal_definitions` -> `medal_translations` ; `commendation_definitions` (`commendation`), `team_colors` (`team_color`), `xbox_achievement_definitions` (`achievement` et `achievement_locked` : le texte verrouillé est rangé dans `name`), `milestone_catalog` (`milestone` : titre en `name`, condition lisible en `description`, la formule technique `condition` reste en colonne) -> `asset_translations` ; `lang` = première étiquette Halo de la langue (`fr-FR`, `en-US`). Migration `metadata_definition_texts_to_translations_v1` (`internal/migration/steps_metadata_texts_to_translations.go`, dernier step metadata du registre global, ajoutée à la fin du jeu Halo 5 par `migration.ByName`) : copie sans perte (une ligne de traduction déjà présente l'emporte : c'est l'ordre de la chaîne de lecture d'avant), garde de couverture (la transaction est annulée si un texte non vide n'a pas sa ligne), rebuild CTAS-swap qui recopie types, défauts, NOT NULL et clé primaire depuis le catalogue (les steps de création historiques restent inchangés et tournent avant), idempotente, une transaction par table, journalisée. Écrivains : `ops.UpsertAssetTexts` / `UpsertMedalTexts`, `migration.UpsertAssetTexts` / `UpsertMilestoneCatalogEntry` (paquets qui ne peuvent importer ni `ops` ni `platform/duckdb`) ; lecteurs : `platform/duckdb/definition_texts.go` (`LoadAssetTexts`, `LoadAllAssetTexts`, `LoadMedalTexts` -> `DefinitionTexts{Name, Description i18n.Text}` choisi par `Pick`). Lot A (commendations, couleurs d'équipe, `cmd/h5-metadata-fetch` : fichier ramené de 979 à 416 lignes, `definitions*.go`, `translations.go`, plus aucun littéral `fr-FR` / `name_fr`), lot B (succès : une requête API par langue de la liste à la synchro ; jalons : seeds Infinite et Halo 5 écrivent par les tables par langue, le seed Halo 5 passe en fin de jeu), lot C (médailles : `loadMedalLabels` source unique remplace `medalLabelDescCoalesceSQL`, `medalTranslationJoinsSQL`, `medalUsesDefaultColumns`). Lecteurs et écrivains confiés à des relecteurs Sonnet par lot, relus sur pièces par le pilote.
+- 8.4 : l'inventaire (7.H) montre que le TOML n'est pas la seule source lue : tables passées en `(clé, lang, nom)`, clé de langue = CODE de langue (`fr`, `en`) car ce sont des noms curés ou posés par Accept-Language : `weapon_name_labels(title_slug, weapon_key, lang, name)` et `weapon_label_names(weapon_id, lang, name)` ; `weapon_labels` garde `weapon_id`, `icon_url`, `weapon_type`. Migration `metadata_weapon_names_to_translations_v1` (même recette, placée juste après la précédente, ajoutée au jeu Halo 5). Lecteurs : règle unique `platform/duckdb/weapon_names.go` (le SQL ne rend que des noms par langue, le nom curé prime langue par langue, `Pick` choisit) : `displayLabel` n'est plus qu'un `Pick` (item 8.7). Écrivains : `weapons.ApplyLabels` / `ReconcileNameLabels` (une ligne par langue du TOML sans effacer une langue posée ailleurs), `weapons.SetLabelName`, `cmd/h5-metadata-fetch/weapons.go`, `cmd/seed-weapon-labels`.
+- 8.5 : tests d'intégration anti-ART (`-tags=integration -p 1` de `migration`, `persist`, `platform/duckdb/...` et des paquets écrivains) ; tests de migration (copie sans perte, clé primaire et défauts conservés, idempotence, table absente, base déjà migrée, jeux de migrations des deux titres) ; migrations rejouées sur des copies de bases (voir « Effet sur les copies »).
+- 8.6 : `ModeTranslationRequest` = `mode_key` (la clé technique, ex-`mode_en`) + `names` ; `AssetTranslationRequest` = `asset_kind`, `asset_id` + `names` (carte code de langue -> nom ; clé connue seulement, au moins un nom non vide, 1 à 128 caractères, refus 400 `unknown_locale` / `invalid_input`). Les routes écrivent par `ops.UpsertModeTranslation` / `UpsertAssetTranslation` (SELECT-puis-UPDATE-ou-INSERT sur metadata, hors `persist` qui ne sert que les écritures par match), une ligne par langue saisie : `mode_name_tr.lang` = code (`fr`, `en`), `asset_translations.lang` = première étiquette Halo (`fr-FR`, `en-US`), valeurs inchangées pour fr. `suffixeContratPlafond` 4 -> **0**. Web : `IssueSections.tsx` affiche une saisie par langue de `KNOWN_LOCALES`, étiquetée du nom de la langue (`Intl.DisplayNames` via `lib/formatters/languageName.ts`), clé de manifest `admin.dq.form_name_in`.
+- 8.7 (statuts) : (a) `[x]` règle de repli unique : `weaponResolved.displayLabel` / `weaponKeyResolved.displayLabel` ne sont plus qu'un `Text.Pick` sur un texte rassemblé langue par langue (item 8.4) ; le repli croisé fr -> en / en -> fr en SQL est supprimé, le repli est `en` seulement (D-4). (b) `[x]` `AssetReference.Labels` : méthode `AssetReference.Text()` (toutes les clés de langue connues, `DefaultLabel` sous la langue de repli) lue par `assetText` / `modeText` (accueil), `statsAssetNames` et `homeAssetNames` sont supprimées. (c) `[x]` `labelForLocale` supprimée (les données de l'accueil sont des `Text` choisis par `PickOptional`) ; `i18n.UsesFallbackColumn` supprimée : ses appelants lisent un `Text` (`pickCitationTexts`, `pickAcrossChain` dans `platform/duckdb/locale_pick.go`) ou un ordre de sources dérivé de `i18n.Chain(langue)` (langue, repli, défaut ; passe de saison : `season_pass_locale.go`). (d) `[x]` libellé stocké de placement : `domain.PlacementLabel` (avec 8.2). (e) `[x]` `cmd/h5-metadata-fetch` : plus de colonne `name_fr` ni de ligne `fr-FR` en dur (lot A et item 8.4). (f) `[x]` `Challenge.Label` et `Arc.Title` / `Arc.Description` : l'origine est enregistrée (`Challenge.TemplateID`, `Arc.PresetID`) ; résolution à la lecture (`prestige/localize.go`, `service_localize.go`) : si le texte stocké est exactement la copie de départ du modèle / du preset, la réponse sert le texte du modèle dans la langue de la requête ; un texte modifié par le joueur ou un défi libre est servi tel quel ; modèle introuvable = texte stocké, journalisé. Branchée sur `GetChallenge`, `ListChallenges` (donc `ListActiveChallenges`), `CreateChallenge`, `UpdateChallenge`, `ListArcs`, `GetArc`, `AdoptPresetArc` ; aucun cache serveur de ces réponses ; query keys web `challenge.list`, `challenge.history`, `arc.list` portent la locale (préfixes `challenge.listAll`, `arc.listAll` pour les invalidations).
+
+Effet sur les copies de bases. Les bases vivantes de `LevelUp/data` sont tenues par le serveur de l'autre session (copie refusée : verrou exclusif) ; les copies utilisées sont celles de `LevelUp/data/demo/` (metadata Infinite 59 256 832 octets, metadata Halo 5 14 168 064 octets : mêmes tailles que les bases vivantes), recopiées dans `parc_i18n/` du scratchpad ; la base `shared` et les bases joueur n'ont pas été copiées. Les deux migrations enchaînées sur une copie d'avant : 187 ms (Halo 5), 145 ms (Infinite) ; 2e passe sans effet dans les deux cas.
+
+| Compteur (lignes) | Halo 5, avant -> après | Infinite, avant -> après |
+|---|---|---|
+| `asset_translations` achievement, fr-FR / en-US | 0 / 0 -> 826 / 826 | 0 / 0 -> 144 / 144 |
+| `asset_translations` achievement_locked, fr-FR / en-US | 0 / 0 -> 826 / 826 | 0 / 0 -> 144 / 144 |
+| `asset_translations` commendation, fr-FR / en-US | 0 / 0 -> 121 / 121 | table absente |
+| `asset_translations` milestone, fr-FR / en-US | 0 / 0 -> 14 / 14 | 0 / 0 -> 33 / 33 |
+| `asset_translations` team_color, fr-FR / en-US | 0 / 0 -> 8 / 8 | table absente |
+| `medal_translations`, fr-FR / en-US | 0 / 0 -> 215 / 215 | 164 / 165 -> 166 / 167 |
+| `weapon_label_names` (table neuve), fr / en | 0 / 0 -> 68 / 68 | 0 / 0 -> 42 / 42 |
+| `weapon_name_labels` (lignes) | 55 -> 110 (55 fr + 55 en) | 53 -> 106 (53 fr + 53 en) |
+| lignes de `medal_definitions`, `commendation_definitions`, `team_colors`, `xbox_achievement_definitions`, `milestone_catalog`, `weapon_labels` | 215, 121, 8, 826, 14, 68 : inchangées | 167, 144, 33, 42 : inchangées (pas de commendations ni de couleurs d'équipe) |
+
+Les autres langues déjà présentes (14 langues de `medal_translations` Infinite, cartes / modes / playlists de `asset_translations`) sont inchangées. Noms avant / après : 2 366 noms (Halo 5) puis 684 (Infinite) lus dans les colonnes de la copie d'avant et dans les tables par langue après migration sont identiques, sauf 2 et 3 noms de succès dont l'espace final est retiré par la migration (`TRIM`) ; aucun nom manquant. Noms résolus par les lecteurs en fr et en, ancien SQL sur la copie d'avant contre nouveaux lecteurs sur la copie migrée : médailles 215 (Halo 5) et 167 (Infinite), armes 75 et 46 : 0 écart ; succès 826 / 144 et jalons 14 / 33 : 0 écart.
+
+Gate de l'étape 8 exécuté le 2026-10-27 (résultats réels), Go en série : `go vet -tags "gamefiles integration" ./internal/... ./cmd/... ./contracttest/...` propre ; `go test -count=1 -tags=integration -p 1 ./internal/migration/... ./internal/persist/... ./internal/platform/duckdb/...` : 6 paquets `ok` ; `go test -count=1 -tags=integration -p 1` de `./internal/games/... ./internal/sync/... ./internal/service/... ./internal/ops/... ./internal/prestige/... ./internal/progression/... ./internal/assetnames/... ./internal/i18n/... ./internal/domain/... ./internal/analysis/... ./internal/legacymatch/... ./internal/notifications/... ./cmd/h5-metadata-fetch/... ./cmd/levelup/...` puis de `./internal/api/... ./contracttest/...` : tous `ok`, 0 échec ; `go test -count=1` sans tag de `migration`, `persist`, `platform`, `games`, `sync`, `service`, `ops`, `prestige`, `analysis`, `domain`, `i18n`, `assetnames`, `api`, `cmd/h5-metadata-fetch`, `cmd/levelup` : 0 échec ; `go test -count=1 ./internal/archlint/...` : `ok` (100 s) ; `TestOpenAPIYAMLIsUpToDate` vert (dans `internal/api`) ; `golangci-lint run --new-from-merge-base=origin/main ./internal/... ./cmd/...` : 0 issue (5 corrigées en cours de route : 2 `goconst`, 1 `lll`, 2 `unused` d'aides de test déplacées sous le tag `integration`). Web, après Go : `npm run generate-types` sans écart (`openapi.yaml` et `generated.ts` identiques avant / après, `check-generated-types-fresh` OK pour les types et les langues) ; `node scripts/build_i18n_manifests.mjs` sans écart ; `npx tsc -b --force` exit 0 ; `npx vitest run` 1 015 fichiers / 10 434 tests verts (5 fichiers et 23 tests skippés d'origine) ; `npx eslint src` 0 erreur, 27 avertissements (les 27 d'origine) ; `lint:fields` (2 536 fichiers) et `lint:colors` propres. `suffixeContratPlafond` = **0** ; `localeLiteralPlafond` = 0 ; `CONTRACT_FIELD_CEILING` = 0.
+
+Boot local sur copie (gate de l'étape) : serveur compilé dans le scratchpad, `LEVELUP_REPO_ROOT` = dossier de scratchpad (copie de `config/` du worktree, `data/titles/{halo_infinite,halo_5}/warehouse/metadata.duckdb` = copies d'AVANT migration, `db_profiles.json` vide), `LEVELUP_API_PORT=8010` ; aucun fichier de `LevelUp/data` ouvert, serveurs :8000 et :5173 non touchés. En 40 s de vie : les deux migrations s'appliquent sur les deux titres (journal `definition texts: colonnes appariées migrées...` et `weapon names: ...`), cycle de migration `applied=2` sans erreur, et la migration tourne aussi sur la base metadata neuve du titre interne `synthetic_title_b` (seeds de médailles puis conversion) ; **1 ERROR** au journal : `catalog_refresh_cron: aucun token Halo valide` (la copie n'a ni profil ni jeton : cause d'environnement, sans rapport avec le lot). Limite : base `shared` et bases joueur absentes de ce boot.
+
+Étape 8.8, exécution du 2026-10-27 :
+
+- 8.8.a, par colonne. `citation_mappings` [x] : `citation_name_display` (fr), `citation_name_display_en`, `description` (fr), `description_en` passent dans `asset_translations` (type `citation`, identifiant = `citation_name_norm`, `lang` = première étiquette Halo). Migration `metadata_curated_texts_to_translations_v1` (`internal/migration/steps_metadata_texts_to_translations_curated.go`, ordre canonique juste après `metadata_definition_texts_to_translations_v1`) : recette de 8.3 (copie sans perte, garde de couverture, rebuild CTAS-swap, idempotente, une transaction par table) ; la structure `textPair` accepte des colonnes explicites par langue (les colonnes des citations ne suivent pas le suffixe `_fr` / `_en`) ; `migration.MigrateCuratedTexts` est exportée pour le seed. Écrivains : `ops.SeedCitationMappings` (écrit la structure puis les textes par `UpsertAssetTexts`, refuse explicitement une base sans `asset_translations`). Lecteurs : `platform/duckdb/citation_texts.go` (`loadCitationMeta` : les deux copies de `loadCitationMappingMeta` fusionnées, l'erreur de requête n'est plus avalée mais journalisée et consignée ; `citationDisplayNames` ; `pickCitationTexts` sur un `DefinitionTexts`), Q34 (le tri catégorie puis nom de la langue par défaut passe en Go), Q36b et le repli de nom de médaille (`medal_citation_fallback.go`), Q39 et `sync.loadFullCitationMappings` (la colonne `citation_name_display` n'y était jamais lue : champs `NameDisplay` supprimés de `CitationMedalMapping` et `CitationFullMapping`). `challenge_template` et `preset_arc` [x] : types `challenge_template` et `preset_arc` ; écrivains `DB.UpsertAssetTexts` (nouveau, `migration.UpsertAssetTexts` sous réouverture de handle) dans `platform/duckdb/prestige`, seed `seed_prestige_catalog_v1` (enregistré dynamiquement donc exécuté APRÈS le step : il écrit par les tables par langue) ; lecteurs `AttachTemplateTexts` / `attachArcTexts` et `progression/profile/queries.go` ; `cmd/repair-metadata` n'a plus les colonnes de texte dans ses DDL. `career_ranks` [x], donnée laissée : `title_en` / `subtitle_en` sont la source anglaise UNIQUE de l'API qui compose le `rank_name` stocké (`buildCareerRankName`) ; il n'y a aucune colonne française, et les noms servis passent par `career_rank_translations` (table par langue, `games/mappings/ranks.go`) : pas une paire de langues. `mode_name_tr.mode_en` et `mode_prefix_names.prefix_en` [x], donnée laissée : ce sont les CLÉS (nom de mode / préfixe canonique) de tables déjà de forme `(clé, lang, nom)` ; les renommer exige de reconstruire une clé primaire et de toucher une vingtaine de requêtes et les steps historiques, sans gain pour une langue de plus. `mode_prefix_names` n'a ni lecteur ni écrivain Go (voir §6).
+- 8.8.b, par chargeur. Socle `platform/duckdb/asset_name_texts.go` : `assetNameTexts` (noms par langue d'un type d'actif, `LoadAssetNames` nouveau lecteur sans description), `fillUntranslated` / `fillAbsent` / `namePlaceholder`, `pickName` (nom canonique tenu par la langue de repli), `modeTextsByLocale` (mode_name_tr pour toutes les langues) ; `analysis.ResolvePairName` documentée par langue ; `applyPairNameTexts` l'applique à chaque langue. `media_repo_translations.go` [x] (catalogue de cartes = nom canonique + noms par langue, options de carte / mode / playlist dans la langue de la requête ; `media_repo_filters.go` et `media_repo_registry.go` suivent, `ModeNameFallback` devient un `i18n.Text`) ; `translateModeFilterOptions` [x] (sous-modes dans la langue de la requête, avant : toujours en français) ; `filters_repo_fr_cascades.go` [x] (une cascade par type d'actif, toutes les langues) et `filters_repo_asset_names.go` ; `match_history_fr_translations.go` [x] (`applyMatchHistoryRow`) ; `PreferredLangsForLocale("fr")` de `home_repo_playlist_ranks.go` et `career_repo_csr.go` [x] (langue de la requête, `pickName`) ; `match_view_repo.go` [x] (`MapNames`, `PlaylistNames`, `ModeNames` pour toutes les langues ; `applyMatchHeaderMetaLabels` lit la carte par `PickOptional`) ; `ListMapsByTitle` [x] (noms de toutes les langues, recherche dans n'importe laquelle, ex aequo ordonnés par identifiant). Sites révélés par le garde-rail, traités : `explorer_repo.go` + `service/explorer_service_target.go` (noms de la cible dans la langue de la requête ; la tranche du cache de 20 min est copiée avant traduction), `map_labels.go` (+ tactique, score d'engagement, variantes de carte), `patterns_repo.go` (clés de filtre = nom de la langue par défaut, `i18n.Default`), `replay_map_repo.go` (nom de repli), `metadata_repo_assets.go` (`GetAssetNameIndex`), `persist_sink_items.go` (traductions GameCMS écrites pour chaque langue), `season_pass_*` (jointures et chemins JSON générés depuis `i18n.Locales`, `bpTranslationJoins` / `bpJSONSources`), `LangCodeFR` / `LangCodeEN` supprimés. Colonnes `*_fr` de la base partagée : non migrées, lues comme valeur de registre de la langue par défaut qui complète sans remplacer les noms par langue ; chaque nom a une source par langue (`asset_translations` types `map`, `pair`, `playlist`, `game_variant`) : aucun `[!]`. Le gel `resolutionsGelees` de `archlint/map_label_single_resolution_test.go` perd cinq entrées (ces fichiers n'ont plus d'empreinte de résolution de carte). Garde-rail `internal/archlint/i18n_halo_literal_test.go` : étiquette Halo en littéral de chaîne (balayée sur les étiquettes de `locales.toml`) ou `PreferredLangsForLocale("fr"|"en")` dans `platform/duckdb` et `service` ; liste d'exceptions vide ; auto-preuve (5 formes vues, 5 ignorées).
+
+Effet sur les copies de bases (celles de `LevelUp/data/demo/`, recopiées dans `parc_i18n/e88/` ; boot de l'exécutable compilé sur `parc_i18n/boot2/`). Infinite, migration au boot : `citation_mappings` 110 lignes -> 220 lignes de traduction (110 fr-FR + 110 en-US), `challenge_template` 27 -> 54, `preset_arc` 4 -> 8 ; les 14 autres langues et les types déjà présents sont inchangés ; les tables sont absentes de la metadata Halo 5 (rien à faire) ; 2e boot sans effet. Parité ancien / nouveau chemin (test jetable non versionné, ancien code relu dans le commit `0ba27079d`) : 0 écart sur Infinite et sur Halo 5 pour les noms par identifiant (carte 298 / 48 ids, paire 1 057 / 0, playlist 83 / 73, variante de jeu 183 / 18 ; fr et en), l'historique de matchs (68 lignes Infinite, 133 Halo 5 ; fr et en, registre avec ou sans nom français), le libellé canonique de carte (31 / 18 cartes), `ListMapsByTitle` (271 cartes, recherches « ar », « Ba », « fosse »), les 103 citations actives (nom et description, fr et en), les 27 modèles de défi et les 4 arcs (texte avant / après). Deux écarts trouvés puis corrigés : `ListMapsByTitle` rangeait les homonymes dans un ordre arbitraire (65 rangs sur 271 ; l'ancienne requête ne les ordonnait pas) : ils sont rangés par identifiant ; et l'historique Halo 5 posait en plus le nom ANGLAIS des cartes et des playlists (133 et 132 lignes) que l'ancien chemin laissait vide : la langue de repli n'est plus posée par ces cascades (`fillUntranslated`), comme avant.
+
+Changements de comportement à relire. fr : aucun sur les données connues. en : (1) les options de filtre du média (cartes, modes, playlists) et les suggestions de match d'un média sont dans la langue de la page (avant : noms français) ; (2) l'Explorateur sert les cartes et modes des matchs récents de la cible dans la langue de la page (avant : français ; la source en direct suit la même langue) ; (3) le nom de citation servi comme repli de nom de médaille et par la liste des médailles de l'Escouade / de l'Explorateur est dans la langue de la page (avant : toujours français) ; (4) un nom d'actif sans ligne de traduction dans la langue demandée retombe sur la langue de repli (`PickOptional`), jamais sur « n'importe quelle langue » comme le faisait `ResolveAssetNamesBulk` : sans objet sur les copies (0 id concerné). `MapNames[fr]` n'est plus rempli avec le texte anglais quand le français manque (la lecture replie sur l'anglais).
+
+Gate de 8.8 (résultats réels, Go en série) : `go test -count=1 -tags=integration -p 1` de `./internal/migration/...`, `./internal/persist/...`, `./internal/platform/duckdb/...`, `./internal/games/halo_infinite/migrations`, `./internal/ops`, `./internal/progression/...` : tous `ok` ; `go vet -tags "gamefiles integration"` des paquets touchés propre ; tests sans tag de `./internal/archlint/...` (141 s), `./internal/migration/...`, `./internal/platform/...`, `./internal/api/...` (dont `TestOpenAPIYAMLIsUpToDate`), `./internal/i18n/...`, `./contracttest/...`, puis de `./internal/service/...`, `./internal/analysis/...`, `./internal/domain/...`, `./internal/ops/...`, `./internal/sync/`, `./internal/progression/...`, `./cmd/levelup/...` : 0 échec (le seul échec, `TestLibelleCarte_UneSeuleResolution`, demandait de retirer cinq entrées du gel, fait) ; `golangci-lint run --new-from-merge-base=origin/main ./internal/... ./cmd/...` : 0 issue (2 `goconst` corrigées) ; web non touché (`openapi.yaml` inchangé : aucune génération de types ni test web à rejouer).
+
+Étape 8.8.c, exécution du 2026-10-27 :
+
+- Étape 0 (dette de vérification de 8.8.b), rejouée AVANT tout code : `go test -count=1 -tags=integration -p 1 ./internal/migration/... ./internal/persist/... ./internal/platform/duckdb/...` : 6 paquets `ok` (migration 10,6 s, persist 65,7 s, platform/duckdb 220 s, halo5, prestige, sharedprovider) ; `go vet -tags "gamefiles integration" ./internal/migration/ ./internal/platform/... ./internal/archlint/` propre. Aucune réparation nécessaire.
+- 8.8.c.1, tuiles de l'Accueil [x] : `home_repo_translations.go` (tuiles legacy `HomeMatchRow`) et `home_repo_translations_canonical.go` (lignes canoniques) rassemblent le nom de CHAQUE langue de `config/locales.toml` (`assetNameTexts` : `homeAssetNames`, `canonicalAssetTranslations`) puis complètent par `fillUntranslated` / `applyPairNameTexts` (tuiles) ou par la chaîne `pickAcrossChain` (références canoniques : `Labels[langue]` posé pour toute langue connue hors langue de repli, `Labels[repli]` écrasé par le nom canonique, affichage de playlist appliqué à `Labels[i18n.Default]`) ; les clés de mode viennent de `modeKeySet` (`asset_name_texts.go`, source unique pour l'historique, les tuiles et le canonique, qui remplace trois collectes) et `mode_name_tr` est lu pour toutes les langues (`modeTextsByLocale`). Les helpers à deux langues sont supprimés (`resolveAssetNames`, `loadHomeModeNameTranslations`, `collectMissingHomeAssetIDs`, `needsHomeAssetTranslation`, `namesByLocale`, `loadCanonicalModeNames`) ; l'erreur de `loadHomeMapImageURLs`, jusque-là jetée par `_`, est journalisée et consignée. `home_repo_matches.go` : `PlaylistName[i18n.Fallback]`. L'enrichissement ne dépend pas de la langue de la requête (les lignes canoniques peuvent être mises en cache : `player_matches_cache.go` ne garde pas ces libellés).
+- 8.8.c.2, Escouade [x] : le port `SquadRepository.LoadAssetTranslations(loc, ...)` devient `LoadAssetTexts(kind, ids) map[id]Text` (toutes les langues, `LoadAssetNames`, erreur remontée) ; `enrichSquadMatchAssets` pose `MapUI`, `PlaylistName`, le mode (`PairName` / `GameVariantName` de chaque langue par `analysis.ResolvePairName`, `mode_name_tr` lu pour chaque langue) dans la LANGUE DE LA REQUÊTE (`i18n.FromContext`, portée par `SquadMatchRow.UILocale` que lit `squadModeUI`). Aucun cache ne tient ces lignes (rechargées à chaque requête). `teammates_service_usage.go` et `teammates_service_objective_history.go` : même nature (`PairName[i18n.Fallback]`). Le câblage Prestige (indice hors requête, post-sync) reste sur `i18n.Default` (`LoadAssetTranslations` gardée sur `SquadRepo` pour lui seul), commentaire de limite corrigé.
+- 8.8.c.3, source des textes des citations [x] : `internal/ops/citation_texts.toml` (110 entrées `[citations.<norm>]`, `name = { en, fr }`, `description = { en, fr }`, embarqué par `go:embed` dans le paquet `ops` comme `rankedplaylists/ranked_playlists_labels.toml` : le seed de démonstration synthétique tourne sans arborescence de configuration, ce qui exclut `config/titles/{slug}/`) ; chargeur `citation_texts.go` : `Text.Validate` sur le nom ET la description de chaque entrée (toute langue `required`, aucune clé hors liste, toutes les entrées fautives d'un coup), validation AVANT toute écriture du seed. `CitationMapping.Display` / `Description`, les tables Go `citationDisplayEN` / `citationDescriptionEN` et leurs deux fonctions sont supprimés (`seed_citation_data.go` 1 114 -> 726 lignes). Le seed écrit une ligne `asset_translations` par langue (`UpsertAssetTexts`). Tests : `citation_texts_test.go` (couverture de toutes les citations, aucune entrée morte, refus d'une langue manquante ou hors liste, citation sans entrée), `TestSeedCitationMappings_UneLignePartLangue` (une ligne par langue et par citation). Doc `docs/COMMENDATIONS.md` (« Add a new commendation ») mise à jour.
+- 8.8.c.4, inventaire des emplois de `i18n.LocaleFR` / `i18n.LocaleEN` hors `internal/i18n` et hors tests. Mesure du 2026-10-27 sur `2d32cc80a` : **217 emplois sur 180 lignes dans 63 fichiers** (le décompte annoncé, 196 dans 70 fichiers, n'est pas reproductible à l'identique : il mêlait sans doute les constantes `mappings.LocaleFR` / `LocaleEN`, 9 emplois et 2 déclarations, traitées plus bas). Après : **39 emplois dans 13 fichiers**, tous (A). (B) converti : 178 emplois i18n + les 9 emplois et 2 déclarations de `mappings.Locale*` (constantes supprimées) ; le volume dépasse 60 mais tout est converti (`service/`, `platform/duckdb/`, `api/handlers/`, `analysis/`, `sync/`, `games/`, `cmd/`), rien ne reste au §5 de ce chef. Par dossier (avant -> après) : `platform` 79 -> 4, `service` 69 -> 0, `api` 5 -> 0, `analysis` 6 -> 0, `sync` 4 -> 0, `ops` 19 -> 11, `games` 5 -> 2, `himap` 2 -> 2, `migration` 8 -> 8, `cmd` 20 -> 12.
+  (B) converti : `Pick(LocaleFR)` -> `Pick(i18n.Default)` et `[LocaleEN]` / `.Has(LocaleEN)` / `.Name(LocaleEN)` -> `i18n.Fallback` (clé de filtre, valeur du registre, nom canonique, étiquette de journal) dans `service/` (filtres, historique, Explorateur, briefing, séries temporelles, page de session, vue du match, tactique, succès, saisons) ; `platform/duckdb/` (variantes de carte, Q37 du média, motifs, projection, classement mondial, `killsource_weapon_scope.go` : un `Text` qui garde toutes les langues du libellé) ; `analysis/` (`mode_label.go`, `skill_rating.go`, `skill_v2/display_smoothing.go`) ; `sync/` (`csr_history_backfill.go`, `skill/skill_config.go`) ; `ops/seed_demo_synthetic_{player,shared}.go` (libellé stocké de palier = langue par défaut, palier canonique = langue de repli) ; `cmd/{probe-world-stats,diag_lusr_volatility,mapplafond-mesure}` (`nomZone` suit `i18n.Chain(i18n.Default)`), `cmd/mapcallouts-build/decoupe*.go`. Boucle sur `i18n.Locales()` : `career_service_summary.go` (`rankLabelTexts`, `maxRankNameInEveryLanguage`), `career_service.go` (rang maximum), `seasons_catalog.go` (`e.Labels.Clone()` au lieu de `FromColumns`), `field_mappings_cache.go` (la version du catalogue de saisons, qui garde le cache par langue, couvre toutes les langues ; chaîne identique en fr / en), `ranked_playlists.go` (une traduction par langue connue hors repli), `halo_5/career_sr.go` + `mappings.SameInEveryLocale` (code de rang identique dans toutes les langues). `field_mappings.go` : la locale par défaut est `i18n.Default` et le cache couvre toute langue de `locales.toml` (`i18n.Known`) au lieu de `fr` / `en` seulement. `server_apiv1.go` (résolveur de libellé de rang des notifications) -> `i18n.Default`.
+  (A) conservé, 39 emplois : (1) migrations qui lisent d'anciennes paires de colonnes `_fr` / `_en` : `migration/steps_metadata_texts_to_translations.go` (2), `..._curated.go` (4), `..._weapon_names_to_translations.go` (2) = 8 ; (2) écriture ou lecture de colonnes `_fr` / `_en` d'une table : `platform/duckdb/coach_proposal_repo.go` (2, `reason_key_en` / `reason_key_fr`), `match_view_repo.go` (1, `pair_name_fr` de la base partagée), `ops/season_catalog_refresh.go` (2, `display_name` / `name_fr`) = 5 ; (3) sources à deux langues : `himap/uslg.go` (2, emplacements de langue du jeu), `games/weapons/labels.go` (2, seed Go `(id, en, fr)`), `cmd/mapcallouts-build/{csv,lexique,main}.go` (12, lexique CSV `en,fr`) = 16 ; (4) fixtures de démonstration synthétiques : `ops/seed_demo_synthetic_meta.go` (9, quatre médailles `{fr, en}` et le titre de rang `title_en`) ; (5) `platform/halo/challenges_details.go` (1, alias d'étiquette propre à l'anglais de l'API Waypoint).
+- 8.8.c.5, garde-rail [x] : `archlint/i18n_locale_constant_test.go`, parcours AST : compte les emplois de `i18n.LocaleFR` / `i18n.LocaleEN` sous le nom local de l'import de `internal/i18n` (commentaires et chaînes exclus, tests exclus, `internal/i18n/` exclu). Plafond = **39** (cliquet : échoue au-dessus ET au-dessous, avec la liste par fichier ; le message d'échec dit d'utiliser `i18n.Default`, `i18n.Fallback`, la langue de la requête ou `i18n.Known` / `i18n.Locales()`, et que seule la lecture d'une source à deux colonnes fr / en est légitime). Auto-preuve : l'emploi qualifié est vu (y compris sous un autre nom d'import), la constante d'un autre paquet, le commentaire, la chaîne et le fichier sans l'import sont ignorés. Preuve d'échec : un `[i18n.Fallback]` remis à `[i18n.LocaleEN]` dans `service/expected_assists.go` donne `40 emplois ... (plafond gelé : 39)` ; rétabli. Les entrées gelées `home_repo_translations*.go` de `map_label_single_resolution_test.go` sont retirées (plus d'empreinte).
+- Effet sur les copies de bases (celles de `LevelUp/data/demo/`, `parc_i18n/e88c/` : Infinite 68 matchs, Halo 5 133 matchs ; ancien code relu dans `2d32cc80a`, tests jetables non versionnés, 4 scénarios de registre : tel quel, français vide, français = anglais, tout vide). Tuiles de l'Accueil : 164 textes (Infinite) et 216 (Halo 5) par scénario, `Pick` fr et en identiques, valeurs directes identiques : **0 écart** sur les deux titres, 4 scénarios ; références canoniques : 164 et 216 références par scénario, `Labels` + `DefaultLabel` + `IconURL` identiques : **0 écart**. Escouade, langue `fr` : carte, sélection, mode (`squadModeUI`), `PairName[fr]` et `GameVariantName[fr]` : **0 écart** sur 68 + 133 lignes, 4 scénarios ; langue `en` : écarts attendus (voir ci-dessous). Citations : 110 / 110 entrées du TOML égales aux anciennes fonctions (nom et description, fr et en) avant suppression ; le seed relancé sur une copie (`levelup seed citation-mappings`) laisse les 220 lignes `asset_translations` de type `citation` identiques à l'octet (somme md5 de `asset_id|lang|name|description` égale avant / après). Saisons : 14 saisons Infinite, `e.Labels.Clone()` égal à l'ancien `FromColumns`, 0 écart.
+- Changements de comportement à relire. fr : aucun sur les données connues. en : (1) Escouade : noms de carte, de sélection et de mode du tableau des matchs dans la langue de la page (avant : français) ; sur les copies, 32 cartes, 68 sélections et 25 modes sur 68 matchs Infinite, 10 cartes, 119 sélections et 133 modes sur 133 matchs Halo 5 changent ; (2) le cache de la réponse des mappings de champs couvre toute langue de `locales.toml`. Le reste des conversions (B) est un changement de constante sans effet. Limite : l'Explorateur, l'historique, la vue du match et les séries temporelles gardent leurs libellés d'affichage dans la langue PAR DÉFAUT (`Pick(i18n.Default)`, consigne « sans changer le comportement ») : les rendre locale-aware est une décision distincte (voir §6).
+
+Gate de 8.8.c (résultats réels, Go en série, après le dernier changement de code) : `go test -count=1 -tags=integration -p 1` de `./internal/migration/...`, `./internal/persist/...`, `./internal/platform/duckdb/...`, `./internal/ops/...`, `./internal/games/...`, `./internal/service/...`, `./internal/analysis/...`, `./internal/sync/...`, `./internal/domain/...`, `./internal/port/...`, `./internal/progression/...`, `./cmd/mapcallouts-build/...`, `./cmd/mapplafond-mesure/...` : 105 paquets `ok`, 0 échec ; `go test -count=1` sans tag de `./internal/archlint/...` (99 s), `./internal/i18n/...`, `./internal/api/...` (dont `TestOpenAPIYAMLIsUpToDate`), `service`, `analysis`, `ops`, `platform`, `games`, `sync`, `domain`, `port`, `migration`, `cmd/{mapcallouts-build,mapplafond-mesure,diag_lusr_volatility,probe-world-stats}` : 0 échec (le seul échec du premier passage, `TestLibelleCarte_UneSeuleResolution`, demandait de retirer deux entrées du gel, fait, `archlint` rejoué vert) ; `go vet -tags "gamefiles integration"` des paquets touchés (et de `himap`) propre ; `golangci-lint run --new-from-merge-base=origin/main ./internal/... ./cmd/...` : 0 issue ; web non touché (`openapi.yaml` inchangé : golden vert). Boot de contrôle (`server4.exe` compilé, `LEVELUP_REPO_ROOT` = copie de `parc_i18n/boot3`, port 8010, 30 s, arrêté ensuite ; :8000 et :5173 non touchés) : migrations `applied=0` (base déjà migrée), 1 ERROR, `catalog_refresh_cron: aucun token Halo valide` (la copie n'a ni profil ni jeton, même cause d'environnement qu'à 8.8), `GET /field-mappings?locale=en|fr` : 200. Limite : base `shared` et bases joueur absentes de ce boot ; les pages Accueil et Escouade n'ont pas été parcourues dans un navigateur (pas de joueur dans la copie) : leur parité est établie par les comparaisons ancien / nouveau ci-dessus.
+
+Étape 8.8.d, exécution du 2026-10-27 :
+
+- Recette. Un nom de jeu servi en langue par défaut se lit désormais `Text.Pick(i18n.FromContext(ctx))` (langue de la requête, repli sur la langue de repli, D3) ; toute valeur réutilisée comme clé de filtre, d'URL, de regroupement, de tri ou de cache reste le nom de la langue par défaut (`Pick(i18n.Default)`). Aides communes : `analysis.ResolveModeUIWithVariantIn(loc, pair, variant)` (la version sans langue = `i18n.Default`, clé), `analysis.PlaylistLabelConfig.DisplayIn(loc, name)` (retrait du préfixe de catégorie et overrides pour la langue par défaut seule, comme la Match View et l'Accueil), `service/explorer_option_labels.go` (`optionLabels` : clé -> libellé, options triées par libellé puis clé, `localizeCascadeOptions`), `platform/duckdb/map_labels.go` `nomsDeCarte` (noms de la carte dans chaque langue, nom de la langue par défaut toujours posé ; `libelleDeCarte` en est le nom par défaut).
+- 8.8.d.3, accès littéraux [x]. Mesure d'entrée : **7** index par littéral de langue hors `internal/i18n` (`squadagg/aggregates.go` 1, `synthesis_service.go` 2 (journal de diagnostic), `synthesis_service_legacy.go` 2, `notify/coach.go` 1, `notify/discord.go` 1). Tous convertis : `assetLabelForFilter` = clé de filtre -> `Labels[string(i18n.Default)]` ; diagnostic de la synthèse -> `i18n.Default` ; classement de la synthèse -> `labelPourLocale(ref, langue)` ; `notify` : constante `defaultLang = string(i18n.Default)` (langue des embeds quand la configuration n'en porte pas, repli d'un libellé absent), mêmes comportements en fr et en en. Les tables de libellés inline de `notify` (`discordStrings`, `coachCategoryLabels`) restent des sources écrites en deux langues (données, pas des accès).
+- 8.8.d.4, garde-rail [x] : `archlint/i18n_locale_constant_test.go` compte aussi les index de table par littéral de langue (`m["fr"]`, `m["en"]`, `t[i18n.Locale("..")]` sous le nom local de l'import, codes lus dans `config/locales.toml`), hors `internal/i18n` et hors tests. `localeLiteralIndexPlafond` = **0** (cliquet : échoue au-dessus ET au-dessous). Auto-preuve : 5 formes vues, 7 formes ignorées (clé de littéral de table, index par variable, chaîne qui n'est pas un code, commentaire, `Locale(nom)`, import d'un autre paquet, `[]string{"fr"}`). Preuve d'échec : `m[defaultLang]` remis à `m["fr"]` dans `notify/coach.go` donne `1 accès par un code de langue littéral ... (plafond gelé : 0)` ; rétabli.
+- 8.8.d.1, inventaire (statut : [x] converti en 8.8.d ; [=] déjà dans la langue de la requête (8.8.b, 8.8.c, étapes 6 et 7), relu sur pièces ; [K] clé qui reste en langue par défaut ; [!] nom brut du registre, voir plus bas). Réponse, champ, fichier :
+  - [x] `POST /players/{p}/pages/explorer/matches-query` et `POST /players/{p}/pages/match-history/query` (export CSV `GET ../pages/match-history/export`) : `table.items[].map_ui`, `mode_ui`, `playlist_label` (`service/match_history_service_enrich.go` `enrichRow(.., loc)`, `analysis/mode_label.go`, `analysis/playlist_label.go`) ; l'Explorateur et les matchs marquants de la Carrière réutilisent ces lignes.
+  - [x] même réponse : `summary.available_playlists`, `available_maps`, `available_modes` (`service/match_history_service_filters.go` `computeExplorerAvailableOptions(.., loc)` ; `[]string` -> `[]LabelValue` dans `domain/match_history.go` et `domain/explorer.go`, contrat OpenAPI et web). Carte de base d'une variante : `MatchHistoryRawRow.MapFilterNames` (noms par langue) remplace `MapFilterLabel` (`platform/duckdb/map_variants.go`, `map_labels.go`).
+  - [x] même réponse, option `include_explorer_briefing` : `briefing.dimensions[].entries[].label` (carte, mode, playlist ; `match_history_service_briefing.go` `rawRowsToBreakdownRows(.., loc)`, regroupement par clé de la langue par défaut, ex aequo départagés par le nom de la langue par défaut (`buildDimension`)).
+  - [x] `POST /players/{p}/filters/resolve` (global et prévisualisation) : `available_options.playlists|modes|maps[].label` (`service/filters_service.go` `Resolve` -> `localizeCascadeOptions` ; `value` inchangé).
+  - [x] `GET /players/{p}/pages/career/highlight-matches` : `available_modes[].label`, `available_playlists[].label` (champ `label` NOUVEAU de `HighlightModeCount` / `HighlightPlaylistCount`, `service/career_service_highlights.go` `localizeHighlightPool` : `ModeUI` / `PlaylistName` = clés `mode_uis` / `playlist_names`, `ModeLabel` / `PlaylistLabel` = libellés) ; les lignes passent par `matches-query` (premier point).
+  - [x] `POST /players/{p}/pages/timeseries` : `map_breakdown[].map_ui` (clé `map_id` = nom de la langue par défaut, ordre et départage sur la clé), `first_blood[].matches[].map_ui|mode_ui`, `intensity_rows[].label` et leurs variantes lobby / équipe (`service/timeseries_service_aggregations.go`, `timeseries_service_events.go`, `intensityScope`) ; la page de session en tire les mêmes blocs (`session_page_service.go` : `intensity_rows`, `compare_intensity_rows`, `first_blood`, `compare_first_blood`).
+  - [x] `POST /players/{p}/pages/sessions/detail` : `range_profiles`, `compare_range_profiles`, `range_reference` -> `matches[].map_name` (`session_page_range.go`).
+  - [x] `GET /players/{p}/pages/synthesis` : `breakdowns.top_maps[].map_name`, `top_modes[].mode_name` (`service/synthesis_service_legacy.go` `buildBreakdownsFromCanonical(.., loc)` ; regroupement et ordre sur le nom de la langue par défaut ; `sortMapEntries` / `sortModeEntries` supprimés).
+  - [x] `GET /players/{p}/media` et options : `items[].map_name`, `mode_name` quand le registre ne les nomme que par repli (`platform/duckdb/media_repo_q37_enrich.go` `computed*LabelIn`, `media_repo_q37_transform.go` `toMediaFileRows(.., loc)`, `mediaFilterOptionPair.display`) ; tri, regroupement et filtrage gardent `computed*Label()` en langue par défaut ; les valeurs d'option restent l'identifiant (carte, playlist) ou `Catégorie/Sous-mode`.
+  - [x] `POST /players/{p}/engagement/timeseries` (`matches[].map_name`) et `GET /players/{p}/pages/squad/v2/engagement` (`map_names`), via le contexte d'engagement (`platform/duckdb/engagement_score_repo_queries.go`, `nomsDeCarte(..).Pick(loc)`).
+  - [x] `POST /players/{p}/pages/palmares/relations/moments` : `rivalries[].duels[].map_name` (`platform/duckdb/relations_moments_repo.go` `nameDuelMaps` ; en langue par défaut la ligne garde le nom lu par la requête, requête Q30 : trois colonnes de plus).
+  - [x] `POST /players/{p}/pages/explorer/player-query` : `matches_per_season[].season_name` (`service/explorer_target_seasons.go` `seasonShortLabelIn` ; `seasonShortLabel`, qui sert à lire le numéro de saison, reste en langue par défaut).
+  - [=] Accueil (tuiles, `map_ui` / `mode_ui` / `playlist_ui`), tableau de l'Escouade et ses blocs (8.8.b / 8.8.c), vue du match (`MatchViewHeader`), lignes de la page de session (`SessionDetailMatchRow.map_name|mode_ui|playlist_name`), Tactique (`map_label`, `mode_label`), lignes de Séries temporelles (`map_label`), records d'armes (`map_label`), emprise (`map_label`), classement (`playlist`), CSR de la Carrière (`playlist_name`), candidats du média, derniers matchs de la cible de l'Explorateur : lus, déjà dans la langue de la requête.
+  - [K] Clés qui restent en langue par défaut : `filters_service.go` (`mapUI`, `playlistUI`, `modeUI`, tables de migration de cascade), `match_history_service_filters.go` (`filterByExplorer*`), `match_history_service_map_filter.go`, `tactical_service.go` (`map_filter_key`), `patterns_repo.go` (clés du lien motif -> solo), `citations_repo.go` (ordre), pool des matchs marquants (`ModeUI`, `PlaylistName`), `computeMapWinRates`, `squadagg/aggregates.go` `assetLabelForFilter`, `seasonShortLabel`.
+  - [~] Nom BRUT du registre (anglais pour toute langue) : `career/top-matches`, liste des matchs exclus, mode des duels, historique de l'Escouade v2, `map_name` et `playlist_name` d'une ligne de séries, `SessionDetailMatchRow.pair_name`, `LUSRGapItem.playlist` : repris par 8.8.e (décision du pilote du 2026-10-27 : ils suivent la langue de la requête).
+  - Hors catégorie (noms de rang et de date, pas de carte / mode / playlist) : étiquette du palier de pic CSR de l'Accueil (`home_repo_skill_peak.go`, déjà au §6), `analysis/skill_v2/display_smoothing.go`, libellé de rang des notifications (`server_apiv1.go`), `formatDateFRLong` (sans appelant).
+- 8.8.d.2, champs séparés libellé / clé : `available_playlists`, `available_maps`, `available_modes` de l'Explorateur (`LabelValue` : `value` = clé du filtre, `label` = affiché) ; `available_modes`, `available_playlists` des matchs marquants (`label` ajouté à `value`) ; `available_options.playlists|modes|maps` du filtre global (déjà `LabelValue`, `label` relabellisé) ; `map_breakdown[].map_id` / `map_ui` des séries (clé / affiché) ; `map_filter_key` / `map_label` de la Tactique (étape 6, inchangé). Tests explicites fr et en du filtre ou du lien pour chacun : `TestComputeExplorerAvailableOptions_ValeurIndependanteDeLaLangue` et `TestExplorerMapOptions_LibelleSuitLaLangueValeurNonEtLeFiltreTient` (`?playlists=`, `?maps=`, `?modes=` retiennent les mêmes matchs en fr et en en), `TestLocalizeCascadeOptions_ValeurStableLibelleParLangue` (filtre global : `Cascade.Maps` retient le même nombre de matchs), `TestGetHighlightMatchIDs_ValeurStableLibelleParLangue` et `TestGetHighlightMatchIDs_SelectionResoutIndependammentDeLaLangue` (`mode_uis`, `playlist_names`), `TestBuildSoloMapBreakdown_CleStableLibelleParLangue`, `TestBuildBreakdownsFromCanonical_CleStableLibelleParLangue`, `TestBuildDimension_ExAequoDepartagesParLeNomParDefaut`, `buildExplorerFilterOptions` côté web (`ExplorerPage.filterOptions.test.ts`).
+- Caches et query keys. Serveur : aucun cache de réponse ne tient ces libellés (les lignes d'historique, de filtres et canoniques tiennent un `i18n.Text` de toutes les langues, le choix se fait après ; `CachedRecentMatchesProvider` déjà copié avant traduction en 8.8) ; la requête Q30 des duels et le contexte d'engagement sont lus à chaque requête. HTTP : aucune de ces routes ne pose de `Cache-Control` public. Web : la locale entre dans `filtersResolve`, `filtersPreview`, `matchHistory`, `explorer`, `careerHighlightMatches`, `engagementMatch`, `engagementTimeseries`, `engagementSquadSession`, `palmaresRelations` (dernier segment ; `filtersResolveAll`, `matchHistoryAll`, `careerAll` restent des préfixes) ; `timeseries`, `sessionDetail`, `synthesis`, `teammates`, `tacticalMaps` la portaient déjà. Test : `keys.locale.test.ts` (9 fabriques, 3 préfixes).
+- Écarts (copies `parc_i18n/e88c`, Infinite 68 matchs, Halo 5 133 matchs ; tests jetables non versionnés, ancien calcul = `Pick(i18n.Default)`, `ResolveModeUIWithVariant`, `Display` ; données lues par `loadSharedHistory` puis `applyMatchHistoryFRTranslations`). **fr : 0 écart** sur les trois champs et les deux titres (carte, mode, playlist ; 68 + 133 lignes). **en : écarts voulus** : Infinite, carte 32 matchs sur 68 (16 cartes distinctes sur 31 changent de nom), mode 25 matchs (7 modes sur 11), playlist 68 matchs (6 sur 6) ; Halo 5, carte 133 matchs sur 133 (18 sur 18), mode 133 (5 sur 5), playlist 132 (6 sur 7). Les valeurs des options (clés) sont les mêmes dans les deux langues. Les séries temporelles, la synthèse, la portée de session et les duels lisent les mêmes noms : mêmes volumes (cartes et modes ci-dessus), sans composante supplémentaire.
+- Changements visibles. fr : aucun. en : Explorateur (tableau, options des filtres Playlist / Mode / Carte, briefing par carte / mode / playlist, matchs marquants de la Carrière), filtre global (listes Playlist / Mode / Carte), Séries temporelles (répartition par carte, premier sang, heatmap d'intensité), page de session (axes d'intensité, premier sang, étiquettes de la portée), Synthèse (classements cartes et modes), galerie média (repli de nom), page d'engagement (carte du match), duels des rivalités (carte), saisons de l'Explorateur : noms dans la langue de la page, au lieu du français ; la playlist n'y perd plus ou ne gagne plus de préfixe de catégorie (le retrait vise la langue par défaut seule).
+- Limites relevées. (1) Matchs marquants : le pool vient d'une requête qui prend le nom FR du registre quand il existe (`COALESCE(NULLIF(pair_name_fr,''), pair_name)`) ; en `en`, un mode dont le registre porte un nom français serait servi en français ; en production `pair_name_fr` est NULL, aucun cas sur les copies. (2) Derniers matchs de la cible : `resolveModeUIsFromPairID` choisit le nom de la langue par défaut avant la traduction par `mode_name_tr` (même remarque, colonne NULL en production). (3) Le descripteur de retour de la vue du match rejouait les clés du filtre : repris par 8.8.e.
+
+Gate de 8.8.d (résultats réels, Go en série, après le dernier changement de code) : `go test -count=1 -tags=integration -p 1` de `./internal/migration/...`, `./internal/persist/...`, `./internal/platform/duckdb/...`, `./internal/service/...`, `./internal/api/...`, `./internal/analysis/...`, `./internal/notify/...`, `./internal/domain/...` : 46 paquets `ok` au premier passage et un seul échec, `platform/duckdb` (15 tests des relations et des duels : la fixture de `relations_repo_test.go` n'avait pas la colonne `map_id` que la requête Q30 lit désormais ; colonne ajoutée à la fixture) ; `platform/duckdb` rejoué en entier après la correction : `ok` (246 s ; un passage intermédiaire a dépassé le délai de 10 minutes par défaut sous charge, rejoué avec `-timeout 30m`) ; `go test -count=1` sans tag de `./internal/service/...`, `./internal/platform/...`, `./internal/analysis/...`, `./internal/domain/...`, `./internal/notify/...`, `./internal/archlint/...` (145 s), `./internal/i18n/...`, `./internal/api/...` (dont `TestOpenAPIYAMLIsUpToDate`) : 0 échec ; `go vet -tags "gamefiles integration"` des mêmes paquets : propre ; `golangci-lint run --new-from-merge-base=origin/main ./internal/... ./cmd/...` : 0 issue (une `funlen` sur `enrichRow` corrigée par l'extraction de `rowScore`). Web (après Go) : `npm run generate-types` sans écart (`check-generated-types-fresh` OK), `npx tsc -b --force` exit 0, `npx vitest run` 1 016 fichiers / 10 447 tests verts (5 fichiers et 23 tests skippés d'origine), `npx eslint src` 0 erreur et 27 avertissements (les 27 d'origine), `lint:fields` (2 537 fichiers) et `lint:colors` propres. Boot de contrôle (`server5.exe` compilé, `LEVELUP_REPO_ROOT` = copie de `parc_i18n/boot4`, port 8010, 25 s, arrêté ensuite ; :8000 et :5173 non touchés) : migrations `applied=0`, 1 ERROR d'environnement (`catalog_refresh_cron: aucun token Halo valide`, la copie n'a ni profil ni jeton), `GET /field-mappings?locale=fr|en` : 200. Limite : bases joueur absentes de la copie, les pages n'ont pas été parcourues dans un navigateur ; la parité est établie par les comparaisons ancien / nouveau ci-dessus et par les tests fr / en.
+
+Étape 8.8.e, exécution du 2026-10-27 :
+
+- Décision du pilote (2026-10-27), fondée sur D2 et sur la règle n°1 de CLAUDE.md (UI française sans anglicismes) : les noms de jeu servis en nom BRUT du registre (anglais pour tout client) suivent la langue de la requête ; un client `fr` les voit en français. Changement voulu, chiffré ci-dessous. Recette de 8.8.d (`Text.Pick(i18n.FromContext(ctx))`, repli sur la langue de repli, D3), plus une aide pour les lectures qui ne portent que le nom brut d'une paire : `duckdb.PairNamesIn(ctx, meta, []PairRef{ID, Name})` (`platform/duckdb/pair_names_locale.go` : `mode_name_tr`, puis nom d'actif de la paire, puis nom du registre, la règle de `applyPairNameTexts`).
+- 8.8.e.1 `GET .../pages/career/top-matches` [x] SUPPRIMÉ, code mort. Consommateurs cherchés dans `apps/web` (hors `generated.ts` et `dist/`), les tests e2e, les autres services Go et les scripts : aucun appel (la page Carrière lit `highlight-matches`, `encounters`, `top-encounters`, `rivals`) ; restaient un stub MSW, deux filtres d'URL des e2e qui l'excluaient et un alias de type. Supprimés : route et sortie du handler, `CareerService.GetTopMatches` (et `loadTopMatchRows`, `topMatchRowFromCanonical`, `splitTopRows`, `reverseTopMatches`, `convertTopMatches`), `CareerRepository.GetTopMatches` (et `noopCareerRepo`), `CareerRepo.GetTopMatches` (`career_repo_top_matches.go`), `TitleDataAdapter.LoadTopMatches` et ses trois implémentations (Halo Infinite, Halo 5, titre synthétique), `canonical.CareerTopMatch`, `domain.TopMatchRawRow` / `TopMatchDTO` / `CareerTopMatchesResponse`, `Q9TopMatchesSharedTpl`, leurs tests, le schéma et la route d'`openapi.yaml` et du fragment manuel, `generated.ts`, l'alias `CareerTopMatchesResponse`, le stub MSW et les deux filtres e2e. Conservés et renommés : `Q9TopMatchesPlayer` devient `Q9bHighlightPlayer` (la phase A des matchs marquants, qui le lit) et `topMatchDominancePriority` passe dans `career_repo_highlights.go`. Entrées retirées à la main du snapshot `contract-surface.snapshot.json` (disparitions assumées : route, `getCareerTopMatches`, schémas `CareerTopMatch`, `CareerTopMatchesResponse`, `TopMatchDTO` et leurs enums) ; le test `TestCareerRepo_GetTopMatches_BotTeammateAsymmetry` est retiré, l'asymétrie reste tenue par `TestCareerRepo_GetHighlightMatchIDs_BotTeammateAsymmetry`.
+- 8.8.e.2, statuts :
+  - [x] matchs exclus (`ExcludedMatch.map_name` / `mode_name`) : à l'inventaire, la liste n'est servie par AUCUNE route (le handler d'exclusion ne porte que `PATCH .../exclusion`, le schéma n'est pas au contrat, le web ne lit pas la liste) : `ListExcluded` (port, service, dépôt, `domain.ExcludedMatch`, tests) est du code mort, supprimé comme l'item 1 (règle n°7) au lieu d'être converti. À confirmer par le pilote si une route était prévue.
+  - [x] `rivalries[].duels[].mode` : `PairNamesIn` (requête Q30 : colonne `pair_id` ajoutée ; `duelNames` / `nameDuels` à la place de `duelMapNames` / `nameDuelMaps`). Même défaut sur la carte du duel en `fr` (le nom lu par la requête, EN quand `map_name_fr` est NULL, restait tel quel) : `nameDuels` nomme aussi la carte dans la langue par défaut.
+  - [x] historique Escouade v2 (`map_label`, `mode_label`, `playlist_label`) : `BuildHistoryTable(.., loc)`, `AssetReference.Text().Pick(loc)` (aucun consommateur web des lignes `tables.history`, servies en `[]any`).
+  - [x] `TimeseriesMatchRow.map_name` et `playlist_name` : `Pick(loc)` (`buildMatchRows`) ; `map_label` reste le même nom, vide quand la carte n'a pas de nom dans la langue.
+  - [x] `SessionDetailMatchRow.pair_name` : `row.PairName.Pick(loc)`.
+  - [x] `LUSRGapItem.playlist` : `ServiceRegistry.nameLUSRGapPlaylists` (administration ; le web ne lit pas ce champ, seul `match_id` des trous est affiché).
+- 8.8.e.3 descripteur de retour de la vue du match [x] : libellé affiché et clé séparés. `ContextDescriptor` (`playlist`, `mode`) gagne `label` (`name` / `category` restent les clés) ; `MatchFilterSpec` gagne `playlist_labels` / `mode_labels` (clé -> libellé, limités aux clés choisies, jamais sérialisés dans l'URL : `filterSpecToQueryString` est inchangé, un lien partagé ne porte que les clés et affiche alors la clé) ; aides `labelsOfOptions`, `labelsFor`, `labelOfKey` (`lib/match-nav/navContext.ts`). Posés par `ExplorerPage` (options du filtre, descripteur et spec), `explorerScopeToFilterSpec(scope, labels)` et `FilterOmnibar` (`filterContextToMatchFilterSpec(.., {playlistLabels, modeLabels})`). `buildContextLabel` et `buildDescriptorLabel` affichent le libellé, à défaut la clé. Tests fr / en : `navContext.test.ts` (le lien porte la clé dans les deux langues, relire un lien rend les clés sans libellé), `i18n.test.ts`, `descriptorLabel.test.ts`, `fromFilterContext.test.ts`, `explorerScope.test.ts`.
+- 8.8.e.4 code mort de 8.8.d [x] : `FiltersRepo.GetAvailablePlaylists` (et le port `FiltersRepository`, `noopFiltersRepo`, mock), `playlistDisplayName` (`leaderboard_world_repo.go`), `formatDateFRLong` (`match_view_service.go`) : aucun appelant de production (grep sur tout `apps/go-api`, seuls des tests les appelaient), supprimés avec leurs tests.
+- Champs séparés libellé / clé : un seul, le descripteur de retour (item 3). Les autres champs convertis ne servent pas de clé : `duels[].mode` et `duels[].map_name` (infobulle de la frise), `map_name` / `playlist_name` des lignes de séries (étiquettes d'axe et infobulle ; le regroupement des cartes passe par `map_key` / `map_label`), `pair_name` d'une ligne de session (repli d'affichage de `mode_ui`, regroupement dans une seule réponse donc une seule langue), historique de l'Escouade (aucun lecteur), `LUSRGapItem.playlist` (aucun lecteur). Les clés de la langue par défaut de 8.8.d restent inchangées.
+- Tests fr et en : `TestNameDuels_SuitLaLangueDeLaRequete`, `TestPairNamesIn_SuitLaLangueDuContexte` (`platform/duckdb`), `TestNameLUSRGapPlaylists_SuitLaLangueDeLaRequete` (`api/wire`), `TestBuildHistoryTable_LibellesDansLaLangueDeLaRequete`, `TestBuildMatchRows_NomsSuiventLaLangue`, `TestBuildSessionDetailRows_Locale` (`pair_name`) (`service`).
+- Écarts (copies `parc_i18n/e88d`, Infinite 68 matchs, Halo 5 133 matchs ; test jetable non versionné, ancien calcul = nom de la langue de repli du registre, nouveau = `Pick(loc)` sur les mêmes sources que l'historique : colonnes du registre, `asset_translations`, `mode_name_tr`). **en : 0 écart** sur tous les champs (carte, sélection, paire, variante, duels). **fr : écarts voulus**, Infinite : `map_name` des séries et carte des duels 32 matchs sur 68 (16 noms distincts, anglais -> français), `playlist_name` 68 matchs (6 noms), `pair_name` de la session et mode des duels / playlist des trous LUSR 29 matchs (26 noms ; population = tous les matchs de la copie, les trous LUSR et les duels en sont des sous-ensembles), mode de l'historique de l'Escouade (variante) 65 matchs (10 noms) ; Halo 5 : `map_name` et carte des duels 133 matchs (18 noms), `playlist_name` 132 matchs (6 noms), variante de l'Escouade 133 matchs (5 noms), tous passant de vide à français (le registre Halo 5 ne nomme rien : avant, ces champs étaient vides en toute langue) sauf la variante (anglais -> français) ; `pair_name` et mode des duels : 0 (aucun nom de paire au registre Halo 5).
+- Changements visibles. fr : Séries temporelles (nom de carte des étiquettes et infobulle de la liste de jeu), page de session (repli du mode `pair_name`), duels des rivalités (carte et mode), historique de l'Escouade v2 (non affiché), administration LUSR (non affiché) : noms en français au lieu de l'anglais (Halo 5 : un nom au lieu d'une valeur vide). en : aucun changement des noms ; le compteur de navigation de la vue du match affiche désormais la playlist ou le mode filtré dans la langue de la page (avant : le nom français de la clé).
+- Gate de 8.8.e (résultats réels, Go en série, après le dernier changement de code) : `go vet -tags "gamefiles integration"` des paquets touchés : propre ; `go test -count=1 -tags=integration -p 1 -timeout 30m` de `./internal/persist/...`, `./internal/platform/duckdb/...`, `./internal/service/...`, `./internal/api/...`, `./internal/games/...`, `./internal/domain/...`, `./internal/port/...`, `./internal/migration/...` : 66 paquets `ok`, 0 échec (un premier passage a échoué sur 3 tests des duels, fixture sans la colonne `pair_id` que la requête Q30 lit désormais, et sur 3 tests de `api/handlers` qui visaient encore `top-matches` : corrigés, tout rejoué) ; `go test -count=1 -p 1` sans tag de `./internal/service/...`, `./internal/platform/...`, `./internal/domain/...`, `./internal/port/...`, `./internal/games/...`, `./internal/analysis/...`, `./internal/archlint/...`, `./internal/i18n/...`, `./internal/api/...` (dont `TestOpenAPIYAMLIsUpToDate`) : 109 paquets `ok`, 0 échec ; `golangci-lint run --new-from-merge-base=origin/main ./internal/... ./cmd/...` : 0 issue. Web (après Go) : `npm run generate-types` (diff = les 102 lignes de la route et des schémas supprimés), `node tools/check-generated-types-fresh.mjs` OK, `npx tsc -b --force` exit 0, `npx vitest run` 1 016 fichiers / 10 457 tests verts (5 fichiers et 23 tests skippés d'origine ; +10 tests), `npx eslint src` 0 erreur et 27 avertissements (les 27 d'origine ; un 28e, `preserve-manual-memoization` dans `FilterOmnibar`, corrigé en remontant le calcul des options avant le gestionnaire), `lint:fields` (2 537 fichiers) et `lint:colors` propres, `npx knip` : aucun export ni fichier inutile (4 indications de configuration inchangées). Boot de contrôle (`server6.exe` compilé, `LEVELUP_REPO_ROOT` = copie de `parc_i18n/boot4`, port 8010, 25 s, arrêté ensuite ; :8000 et :5173 non touchés) : migrations `applied=0`, 1 ERROR d'environnement (`catalog_refresh_cron: aucun token Halo valide`, la copie n'a ni profil ni jeton), `/healthz` et `/api/v1/titles/halo_infinite/field-mappings?locale=fr|en` : 200. Limite : bases joueur absentes de la copie, les pages n'ont pas été parcourues dans un navigateur ; la parité est établie par les comparaisons ci-dessus et par les tests fr / en.
+
+Étape 8.8.f, exécution du 2026-10-27 :
+
+- 8.8.f.1 Halo 5 sous `en` [x]. Cause (relue sur pièces) : `fillUntranslated` (`platform/duckdb/asset_name_texts.go`) ne posait jamais la langue de repli (« nom de référence du registre »), or le registre Halo 5 ne nomme ni carte ni playlist : `Pick("en")` rendait vide alors que `asset_translations` porte `en-US`. Correction : la langue de repli est posée depuis la traduction quand le registre n'en porte aucune ; un nom de registre n'est jamais écrasé, une langue sans traduction reste absente. Les chemins qui posaient déjà toutes les langues (`fillAbsent`, filtres Halo 5) n'ont pas changé. Mesure sur copies (`parc_i18n/e88d`, Infinite 68 matchs, Halo 5 133 matchs ; test jetable non versionné, noms vides avant / après), `fr` / `en` : carte (séries et historique, `fillUntranslated`) Infinite 0 / 0 puis 0 / 0 ; Halo 5 0 / 133 puis 0 / 0 ; playlist Infinite 0 / 0 puis 0 / 0 ; Halo 5 1 / 133 puis 1 / 1 (le seul match restant a une playlist sans nom dans AUCUNE langue de `asset_translations` : lacune de la source, déjà vide en `fr`) ; `nomsDeCarte` (tactique, duels, Explorateur) Infinite 0 / 0 puis 0 / 0 ; Halo 5 0 / 133 puis 0 / 0. Test `TestFillUntranslated_PoseLaLangueDeRepliQuandLeRegistreEstVide`.
+- 8.8.f.2 `tactical_service.go` [x] : `TacticalMapCard.map_name` suit la langue de la requête (`MapName.Pick(loc)`, repli sur la langue de repli, D3). Le champ ne sert pas de valeur de filtre (c'est `map_filter_key`, inchangée, nom de la langue par défaut) : côté web il sert de clé de tri et de repli de recherche. Il porte désormais la même valeur que `map_label` ; son retrait du contrat n'est pas fait ici (changement de contrat hors liste du pilote, voir §6). Effet : la recherche de cartes de la Tactique ne trouve plus une carte par son nom ANGLAIS quand l'interface est en français (elle trouve le nom affiché). Test `TestMapsPlayed_NomsDeCarteSuiventLaLangueDeLaRequete` (service), `TestContratLangue_CartesDeLOngletTactique` (contrat HTTP, `map_name` suit la langue) ; commentaires web de `trierCartes` / `filtrerCartes` corrigés.
+- 8.8.f.3 code mort [x]. Lecteurs cherchés dans `apps`, `tools`, `docs`, les e2e et les fichiers de configuration (hors `generated/`, `dist/`, archives) : AUCUN pour les 18 clés `career.top_matches.*` (grep des 18 noms de feuille, par clé complète et par fragment, 0 résultat hors manifeste et module généré) ni pour `career_top_exclude_btb` (seule plomberie : `AppSettings`, `SettingsResponse`, `UpdateSettingsRequest`, schémas OpenAPI et fragment manuel, `types.ts`, mock MSW, bascule « Exclure BTB du classement carrière » de la page Réglages qui n'agissait sur rien, clé de dictionnaire `excludeBTB` x3, `app_settings.example.json`, deux lignes de `docs/CONFIGURATION` EN et FR). Supprimés : les 18 clés et leurs deux titres de section dans `career.toml` (module `generated/career.ts` régénéré, 18 lignes en moins, aucun autre module touché), tout ce qui précède pour le réglage. Un `app_settings.json` existant qui porte encore la clé reste lisible (décodage JSON non strict). Les deux entrées d'historique des CHANGELOG (EN et FR) sont conservées (chronique). Le descripteur `kind: 'top_matches'` du tableau des matchs marquants de la Carrière n'a rien à voir avec ces clés et reste.
+- 8.8.f.4 repli de `ExplorerMatchesTable` [x] : `filterContextToMatchFilterSpec(filterContext)` reçoit les libellés des options du filtre global (`useSoloFilterStore((s) => s.resolvedContext?.available_options)`, `labelsOfOptions` pour les playlists et les modes), comme `FilterOmnibar` et `ExplorerPage`. Même défaut trouvé et corrigé au troisième poseur du descripteur, `SquadLayout.handleBrowseMatches` (même appel sans libellés, options lues dans `resolvedContext` du store escouade). Tests `ExplorerMatchesTable.filterSpecLabels.test.tsx` (libellés posés, clés inchangées ; sans options résolues, clés seules). Le libellé figé à l'ouverture du match (contexte stocké 24 h) reste au §6, comportement accepté.
+- Changements visibles. `en`, Halo 5 : noms de cartes et de playlists affichés (Explorateur, historique, séries, Tactique, duels) au lieu d'une valeur vide. `fr` / `en` : Tactique, `map_name` dans la langue de l'interface (la recherche par nom anglais en français ne trouve plus la carte) ; page Réglages sans la bascule « Exclure BTB du classement carrière » (elle ne faisait rien) ; compteur de navigation de la vue du match ouvert depuis le filtre global ou la page Escouade : playlist ou mode dans la langue de la page.
+- Gate de 8.8.f (résultats réels, Go en série, après le dernier changement de code) : `go vet -tags "gamefiles integration"` de `./internal/platform/...`, `./internal/service/...`, `./internal/domain/...`, `./internal/api/...`, `./internal/archlint/...` : propre ; `go test -count=1 -tags=integration -p 1 -timeout 30m` de `./internal/persist/...`, `./internal/platform/...`, `./internal/service/...`, `./internal/api/...`, `./internal/games/...`, `./internal/domain/...`, `./internal/port/...`, `./internal/migration/...` : 89 paquets `ok`, 0 échec (un test de contrat HTTP de la Tactique, qui figeait `map_name` au nom du registre, a été mis à jour au passage) ; `go test -count=1 -p 1` sans tag de `./internal/service/...`, `./internal/platform/...`, `./internal/domain/...`, `./internal/port/...`, `./internal/games/...`, `./internal/analysis/...`, `./internal/archlint/...`, `./internal/i18n/...`, `./internal/api/...` (dont `TestOpenAPIYAMLIsUpToDate`) : 109 paquets `ok`, 0 échec ; `golangci-lint run --new-from-merge-base=origin/main ./internal/... ./cmd/...` : 0 issue. Web (après Go) : `npm run generate-types` (diff = 1 ligne, `career_top_exclude_btb`), `node tools/check-generated-types-fresh.mjs` OK, `npx tsc -b --force` exit 0, `npx vitest run` 1 017 fichiers / 10 459 tests verts (5 fichiers et 23 tests skippés d'origine ; +1 fichier, +2 tests), `npx eslint src` 0 erreur et 27 avertissements (les 27 d'origine), `lint:fields` et `lint:colors` propres, `npx knip` : aucun export ni fichier inutile (4 indications de configuration inchangées). Boot de contrôle (`server7.exe` compilé, `LEVELUP_REPO_ROOT` = copie de `parc_i18n/boot4` avec le `config/` du worktree, port 8010, 25 s, arrêté ensuite ; :8000 et :5173 non touchés) : migrations `applied=0`, 1 ERROR d'environnement (`catalog_refresh_cron: aucun token Halo valide`, la copie n'a ni profil ni jeton), `/healthz` et `/api/v1/titles/halo_infinite/field-mappings?locale=fr|en` : 200. Limite : pages non parcourues dans un navigateur (bases joueur absentes de la copie).
+
+Étape 8 CLOSE : 8.1 à 8.8 statués `[x]` (8.8 ajouté par le pilote le 2026-10-27, dont 8.8.a, 8.8.b, 8.8.c, 8.8.d, 8.8.e et 8.8.f).
+
+### Étape 9 — Documentation — R
+- [x] 9.1 CLAUDE.md règle n°1 : « toute string UI dans chaque langue de `config/locales.toml`
+      (fr et en obligatoires) » (2026-10-27 : règle n°1 réécrite, le reste conservé ; section « i18n — N langues
+      (ADR 0040) » ajoutée avant « Commandes Utiles » ; l'ADR 0040 figurait déjà dans la liste des ADR)
+- [x] 9.2 `FOUNDATIONS_GUIDE` EN + FR, `docs/COMMANDS` EN + FR : ajouter une langue en 3 gestes (2026-10-27 :
+      § 3.5 « Adding a language » / « Ajouter une langue » en six gestes vérifiés sur le code, tableau de ce qui
+      refuse quoi, mode `--pseudo` ; sous-section « Languages and translations » / « Langues et traductions » de COMMANDS)
+- [x] 9.3 Skills `frontend-patterns` et `arch-rules` : `normalizeLocale`, `i18n.Text`,
+      catalogue Go (2026-10-27 : sections « i18n — N langues (ADR 0040) » des deux skills)
+- [x] 9.4 (ajout pilote, 2026-10-27) skill `db-schema` et documents de schéma qui décrivent encore les colonnes `_fr` / `_en` : skill `db-schema` (section
+      `metadata.duckdb` réécrite, `tier_fr` inerte), `docs/ARCHITECTURE_V6.md` et `docs/FR/ARCHITECTURE_V6.md`, `docs/WEAPONS.md` et `docs/FR/WEAPONS.md`, `docs/COMMENDATIONS.md` et
+      `docs/COMMENDATIONS_REFERENCE.md` (DDL de `citation_mappings`)
+- [x] 9.5 (ajout pilote, 2026-10-27) `.ai/project_map.md` : date actualisée, îlot « i18n à N langues » (`internal/i18n`, `config/locales.toml`, ADR 0040, générateur, garde-rails)
+Gate : relecture ; `make test-web` (garde-rails de docs s'il y en a).
+
+Étape 9, exécution du 2026-10-27 :
+- Relecture sur pièces : chaque chemin, symbole et commande cités dans les lignes ajoutées a été vérifié (script jetable sur `git ls-files` pour les chemins ; `grep` pour les symboles, tests et compteurs ;
+  `node apps/web/scripts/build_i18n_manifests.mjs --pseudo xx --out <scratchpad>` et `node tools/check-generated-types-fresh.mjs` exécutés ; options de `levelup populate-assets` relues dans `cmd_populate_assets.go`).
+  Seules références non résolues : des exemples (`es.ts`, `docs/ES/RELEASE_NOTES.md`, `challenges.es.json`), des dossiers et des alias web (`@/lib/...`). Un nom de test périmé de `docs/WEAPONS.md`
+  (`weapon_names_completeness_test.go`) corrigé au passage (`internal/games/weapons/names_completeness_test.go`).
+- Schéma décrit d'après les bases migrées (copie de boot, `parc_i18n/boot6`) et les migrations : `asset_translations` (clé `(asset_id, asset_type, lang)`, types `map`, `playlist`, `pair`, `game_variant`, `achievement`,
+  `achievement_locked`, `milestone`, `citation`, `challenge_template`, `preset_arc`, Halo 5 `commendation` et `team_color`), `medal_translations`, `weapon_name_labels` `(title_slug, weapon_key, lang, name)`,
+  `weapon_label_names` `(weapon_id, lang, name)`, `career_rank_translations`, `v_match_full` = `SELECT mr.*` (la description « 8 LEFT JOIN » d'`ARCHITECTURE_V6` était périmée).
+- Ajouts de cohérence (même règle que 9.1, aucune décision nouvelle) : `docs/CONTRIBUTING.md` et `docs/FR/CONTRIBUTING.md` (règle des strings UI et case de revue), ligne 3 du tableau de `FOUNDATIONS_GUIDE` (EN et FR), cases de
+  `delivery-checklist`, `foundations-usage` et `plan-review` (« FR + EN » devenu « chaque langue de `config/locales.toml` »). `docs/CHANGELOG.md` (chronique) non touché.
+- Garde-rails de docs : aucun test ne lit `CLAUDE.md`, `docs/` ou les skills (les tests de `api/handlers` qui parlent de `docs/` travaillent sur des dossiers temporaires) ; le hook lefthook `docs-fr-sync` (non bloquant) ne signale rien.
+- Gate : `npx vitest run` complet (1 017 fichiers / 10 459 tests verts, 5 fichiers et 23 tests skippés d'origine), `node tools/check-generated-types-fresh.mjs` OK.
+
+### Étape 10 — Preuve par la pseudo-langue `xx` (branche jetable) — M
+- [x] 10.1 Branche `wt/i18n-preuve-xx` : `xx` ajoutée à `locales.toml`, textes générés (manifests, dictionnaires par script, catalogue Go, tables curées) ; gestes réels ci-dessous
+- [x] 10.2 `tsc`, vitest complet, tests Go des paquets touchés : verts (voir « Exécution »)
+- [x] 10.3 Pages témoins (Accueil, Explorateur, vue d'un match, Escouade, Carrière, Séries temporelles, Tactique, Réglages) parcourues en `/xx/` : fuites (b) corrigées sur `feat/i18n-multilangue`, le reste classé (a) avec justification ci-dessous
+- [x] 10.4 Poids du bundle (gzip) fr/en contre fr/en/xx : +0,67 % au premier chargement de l'Accueil, +1,04 % sur le bundle entier ; seuil de l'utilisateur 15 % : tenu, aucune découpe par langue
+- [x] 10.5 Branche jetable, jonction `node_modules`, worktree, copie de démo et serveurs supprimés
+Gate : 0 fuite (b) sur les pages témoins, restes classés (a) ; mesure consignée au thought_log.
+
+Étape 10, exécution du 2026-10-27 (utilisateur : pages témoins, seuil 15 %, second serveur sur d'autres ports avec données de démo) :
+
+- **Gestes réels pour ajouter `xx` (le guide de l'étape 9 les nommait tous sauf ceux marqués ÉCART)** : (1) `config/locales.toml` : entrée `xx` (`required = true`, `intl = "xx-GB"`, `halo = ["en-US"]`) ; (2) une feuille `xx = "⟦en⟧"` après chaque `en` des 23 manifests web (3 645 feuilles) et du catalogue Go (83) ; (3) `xx` dans chaque table curée (731 occurrences : `config/titles/*/mappings`, jalons, défis, arcs, `citation_texts.toml`, playlists classées, `config/prestige/tuning.toml`) ; (4) `node apps/web/scripts/build_i18n_manifests.mjs` ; (5) dictionnaires de feature : `xx: pseudo(<en>)` inséré par script (AST TypeScript, type contextuel) dans 65 fichiers / 213 objets, puis 22 fichiers / 87 objets et 6 fichiers / 40 objets de fixtures de test que le contrat OpenAPI régénéré rend obligatoires (ÉCART) ; (6) `make openapi-gen && make generate-types` : 6 propriétés `xx` dans l'OpenAPI (ÉCART : le guide ne citait que le contrôle de fraîcheur) ; (7) données par langue qui ne sont pas du texte : sons de l'annonceur (`endMatchSound.ts`, `roundOverSound.ts`), `xx` = fichiers `en` (ÉCART) ; (8) tests : code de langue inconnue `xx` renommé `zz` (31 fichiers Go, 5 fichiers web), 3 tests Go du paquet `i18n` qui supposaient deux langues (`TestLocalesOrderAndCopy`, `TestFlatMemeFilQueLAncienneForme`, `TestFlatAllerRetour`), le test du manifeste partiel et un cast `{ fr; en }` (`ascension/tips.ts`) (ÉCART : « aucun code à modifier » était faux pour les tests). Le mode `--pseudo` n'écrit pas les sources TOML : `xx` s'applique donc par les scripts ci-dessus (non versionnés, propres à la preuve).
+- **Écarts au guide corrigés (EN et FR)** : sous-étiquette primaire de `intl` = `code` (sinon `normalizeLocale(intl)` relit `en` : constaté, `intl = "en-GB"` pour `xx` faisait afficher la rareté et d'autres libellés en anglais), `required = true` pour une langue qui livre une interface, `config/prestige/tuning.toml` parmi les tables curées, fixtures de test typées par le contrat et sons par langue, sélecteur de langue des Réglages (fr et en seulement, §5), `make openapi-gen && make generate-types`, code inconnu des tests = `zz`.
+- **10.2** (Go en série, `-p 2`, `GOMAXPROCS=4`) : `go vet` des paquets touchés propre ; `go test -count=1 -p 2` de `./internal/{i18n,analysis,platform/duckdb,service,prestige,ops,archlint,api}/...` vert après correction du plafond `TestLocaleConstantUsesDoNotGrow` (51 > 39 : `DefaultTuning` écrivait `i18n.LocaleFR/EN`, passé par `i18n.FromColumns`) ; `golangci-lint run --new-from-merge-base=origin/main` : 0 issue. Web : `tsc` (app, node, e2e) propre, `npx vitest run` 1 019 fichiers / 10 475 tests verts (5 fichiers et 23 tests skippés d'origine), `eslint src` 0 erreur et 27 avertissements (les 27 d'origine), `lint:fields` et `lint:colors` propres, `generate-types` sans écart, `check-generated-types-fresh` OK, `knip` : 4 indications de configuration inchangées. Sur la branche jetable (`xx`, six paquets du plan puis les suivants) : Go vert après les renommages de tests, `tsc` 0 erreur, vitest 1 017 fichiers / 10 471 tests verts.
+- **Instance de démo** : copie de `LevelUp/data/demo` (480 Mo, source lue seulement, rien écrit sous `LevelUp/data/`) dans le scratchpad, serveur compilé de la branche jetable, `LEVELUP_DEMO_MODE=true`, `LEVELUP_DEMO_FIXTURES_DIR` = la copie, `LEVELUP_REPO_ROOT` = le worktree jetable, port 8010, `LEVELUP_CORS_ORIGINS` du second port (sans elle toute requête POST est refusée par la protection CSRF) ; Vite sur le port **5180** (le 5174 était tenu par la session `socle-equilibre`, `--strictPort`), `VITE_API_PROXY_TARGET`. Navigateur `chrome-devtools` isolé, sans connexion Microsoft.
+- **10.3, fuites (b) trouvées et corrigées** (FR, EN et toute langue listée, par manifest, dictionnaire ou catalogue) : toutes pages : `aria-label` / `title` du bouton d'aide (« Aide », « Onglets Aide ») et libellé du conteneur de notifications de Sonner (« Notifications alt+T ») ; Accueil : nom de niveau Prestige (« Vétéran » : liste française seule dans `tuning.toml`, y compris en anglais ; désormais `{ en, fr }` validé par `Text.Validate`), libellé de palier tronqué en octets (`ToUpper(s[:1])` produisait U+FFFD sur tout nom commençant par un caractère multi-octets : `capitalizeFirstRune`), unité « pts », `alt` de l'emblème (« Emblème {nom} », corrigé mais non reparcouru) ; Match : « kills · morts » et « vs » du nemesis (latent, hors démo) ; Escouade et Séries temporelles : bouton « Analyser » (littéral dans `SquadFilterBar` et `SynthesisPage`), « (moi) » et libellés de palier du verdict (« Correct », « Pourri »... français en anglais), titre et libellés par défaut français de la courbe d'engagement ; Séries temporelles : texte d'accessibilité anglais généré par ECharts (carte de chaleur) ; Carrière : « Saison 13 » (`csrSeasonLabel` en français pour toute langue) et « Saison inconnue » (catalogue des messages) ; Réglages : légendes de l'aperçu de palette (« win », « loss », « Δ pos »...). Explorateur et Tactique : aucune fuite (b) ; Tactique : aucune carte ouverte (la démo n'a pas de film), états vides parcourus.
+- **10.3, restes classés (a)** : noms de jeu venus de l'API Halo (cartes, modes, playlists, médailles et leurs descriptions, armes, récompenses du passe, défis de l'API, rangs de carrière : repli `en`, D3) ; noms de joueurs, de bots et `demo-player`, sigles et noms propres (CSR, LUSR, MVP, LVP, PP, XP, OKLM, LevelUp) ; initiales d'avatar, `P1` à `P5`, fuseaux IANA ; symboles d'unité (`h`, `min`, `m`, `s`) ; typographie (« : » et « % » précédés d'une espace) : ponctuation, aucun mot d'une langue ; valeurs formatées par `Intl` : une langue inconnue d'`Intl` (`xx-GB`) retombe sur la langue du navigateur (dates en français sur ce poste), sans objet pour une vraie langue ; textes STOCKÉS dans la base de démonstration (titres d'arcs et de jalons « Ascension du Spartan », « Précision létale... », « Placement (4 restants) », `skill_tier_label` « Or VI » : limites déjà consignées §6, étapes 7 et 8) ; sélecteur de langue des Réglages (fr et en seulement, §5).
+- **Garde-rail ajouté** : `lib/i18n/no-short-jsx-literal.guard.test.ts` (compilateur) : texte JSX et attributs `title` / `aria-label` / `placeholder` / `alt` / `label` littéraux ou en gabarit de 3 lettres au moins, hors tests et dictionnaires ; la règle ESLint `no-hardcoded-strings` ne signale que 3 mots ou 15 caractères, d'où « Aide », « Analyser », « (moi) ». Plafond gelé à 107 (dette hors pages témoins : administration, laboratoire, connexion, installation, classement Prestige, médias ; sigles) ; il ne fait que descendre.
+- **10.4 mesure** (`vite build`, gzip niveau 6 de chaque `.js` et `.css` ; « premier chargement » = les 105 / 106 fichiers `.js` et `.css` réellement demandés par `/fr/.../home`, relevés dans le navigateur sur `vite preview`) : bundle entier 1 792 105 → 1 810 723 octets (+18 618, **+1,04 %**) ; premier chargement de l'Accueil 935 178 → 941 407 octets (+6 229, **+0,67 %**). Seuil 15 % : tenu. Réserve : le texte `xx` est une copie de `en` entre crochets, que gzip compresse mieux qu'une vraie traduction ; une langue réelle pèse à peu près autant que la part `fr` de chaque module, soit un ordre de grandeur de quelques pour cent, très en dessous du seuil. La base de la branche jetable précédait de deux commits la tête de `feat/i18n-multilangue` (un libellé, un attribut) : écart négligeable.
+- **10.5** : `(Get-Item …\apps\web\node_modules).Delete()` (jonction vers `LevelUp-wt-i18n`, original intact), `git worktree remove` sans `--force`, `git branch -D wt/i18n-preuve-xx`, copie de démo et builds supprimés, serveurs 8010 / 5180 arrêtés (:8000, :5173, :5174 jamais touchés ; `LevelUp/data/demo` inchangé, dernière écriture du 2026-10-19). Constat : la jonction partage `node_modules/.tmp/*.tsbuildinfo` avec l'autre worktree (`tsBuildInfoFile`) ; les trois fichiers (cache) ont été effacés une fois, la suite s'est faite par `tsc -p … --incremental false`.
+
+### Étape 11 — Livraison — R
+- [ ] 11.1 Revue adversariale du diff (skill `adversarial-review`, un relecteur Sonnet)
+- [ ] 11.2 `make gate-push` ; skill `delivery-checklist`
+- [ ] 11.3 Fusion dans la `release/` du moment (demander avant commit et avant push)
+      (2026-10-27 : lot rejoué sur `release/v8.1.0` en un commit sur la branche `feat/i18n-multilangue-v810` ; 29 conflits résolus, baseline fusionnée à 46 paires retirées ; reste le `make gate-push` et la fusion par le pilote)
+- [x] 11.R Corrections de la revue adversariale (2026-10-27) : 6 constats recevables corrigés, 1 constat écarté par le relecteur. Chaque constat a été rouvert sur pièces avant correction ; chaque test échoue sans la correction (vérifié).
+  - 11.R.1 [x] Clés TanStack sans la langue pour des réponses résolues côté serveur. Relu : `progressionPatterns` (libellés de contexte par `ctxkeys.Locale`, `patterns.go`), `media` et `mediaRail` (`/pages/media`, noms de carte et de mode en langue de la requête) n'avaient pas de locale. Corrigé : paramètre `locale` (après le titre pour les patterns, juste après `requestHash` / `limit` pour les médias ; `mediaBase` reste un préfixe valide). Le contrôle `keys.locale.test.ts` classe maintenant TOUTES les fabriques de `keys.ts` (`dependDeLaLangue` avec invocation, `nePasDependreDeLaLangue` avec raison) : échec sur une fabrique non classée, classée deux fois ou disparue, sur une fabrique « dépend » dont la clé ne contient pas la langue, et sur toute fabrique qui déclare un paramètre `locale` / `lang` sans être classée « dépend » (et inversement). L'inventaire a trouvé trois autres clés du même défaut, corrigées dans le même item : `careerCSRs` (noms de playlist et libellés de saison), `teammatesTop` (page Escouade : noms d'armes et de cartes), `mediaMatchCandidates` (cartes, modes et playlists des suggestions). Test échouant avant : « classée dépend sans paramètre de langue : careerCSRs, teammatesTop, media, mediaRail, mediaMatchCandidates, progressionPatterns ».
+  - 11.R.2 [x] Repli des options de filtre du média (`buildMediaFilterOptionsFromRows`). Relu : le libellé des lignes est en langue de la requête (`computedMapLabelIn(loc)`), le filtre du dépôt compare l'identifiant de la carte ou le libellé en langue par défaut (`mediaRowMatchesMap`, `mediaRowMatchesMode`). Corrigé : `MediaFileRow.ModeFilterKey` (catégorie, sinon libellé du mode en langue par défaut) et `MapID` servent de valeur, le libellé reste en langue de la requête ; dédoublonnage par valeur. Tests : `TestMediaService_GetMediaPage_FilterOptionsFallbackValeursIndependantesDeLaLangue` (service, libellés anglais, valeurs = identifiant et libellé français) et `TestToMediaFileRows_ClesDeFiltreIndependantesDeLaLangue` (dépôt, fr et en).
+  - 11.R.3 [x] `Cache-Control: public, max-age=30, stale-while-revalidate=15` sans `Vary` sur l'Accueil. Relu : le middleware de langue ne lit que `X-LevelUp-Locale` (pas `Accept-Language`) ; `/pages/home` et `/pages/home/matches` (`private, no-cache`) partagent `homeJSONOutput`, seul site du dépôt où un corps dépend de l'en-tête de langue ET où un `Cache-Control` est posé (les autres `public` : capacités, matrice de fonctions, catalogue, field-mappings par `?locale=`, images, artefacts de rejeu : sans langue, ou langue dans l'URL). Corrigé : champ de sortie `Vary []string` (ajoute sans écraser le `Vary: Origin` de CORS), 200 et 304. Un seul site : pas de helper ; garde-rail `TestHandlersLisantLaLangueParEnTeteDeclarentVary` (tout fichier de handlers qui lit l'en-tête de langue et pose un `Cache-Control` déclare `Vary`). `api/openapi.yaml` régénéré (`Vary` sur les deux routes). Test `TestHomeHandler_VaryLocale`.
+  - 11.R.4 [x] Export CSV de l'historique. Relu : le lien `<a href>` n'envoie pas `X-LevelUp-Locale` ; le jeton (`encodeExportToken`, produit aussi par `explorer.go`) ne porte pas la langue. Choix : paramètre `?lang=` (plus simple et plus sûr que le jeton : un jeton mis en cache survivrait à un changement de langue, le lien est reconstruit à chaque rendu ; aucun format de jeton ne change). Corrigé : `Export` lit `?lang=` par `i18n.Lookup` (inconnu : langue de la requête) et passe ce contexte à `ExportCSV` et `OutcomeText` ; web : `matchHistoryExportUrl(playerSlug, token, locale)`. Tests : `TestMatchHistoryHandler_Export_LangueDeLaPage` (fr, en, `en-US`, sans langue, langue inconnue, `lang` prime sur l'en-tête : colonnes issue, carte, mode, playlist) et `ExplorerPage.test.tsx` (le lien porte `&lang=fr` / `&lang=en`).
+  - 11.R.5 [x] Notification de montée de rang. Relu : `rank_name` était écrit dans la langue par défaut seule (`FullLabel(rankID, i18n.Default)`) ; le gabarit web `notif.career_rank.body` interpole `{rank_name}`. Corrigé comme 7.9 : `rank_name_<code>` pour chaque langue (`i18n.Text.AddParams`), `notifications.ParamRankName` ajouté aux bases résolues à la lecture ; `RankLabelResolver` prend la langue. Une ligne déjà stockée (`rank_name` seul) reste affichée telle quelle. Tests : émission (une clé par langue, aucune `rank_name` seule, replis sans résolveur et sur rang inconnu), émission puis lecture fr / en, `TestLocalizeParams_NomDuRang` (nouvelle et ancienne ligne).
+  - 11.R.6 [x] `cmd/repair-metadata`. Relu : le DDL en dur (déjà périmé : sans `lusr_components`, `radar_axes`, `is_long_term`, `source`) et `INSERT ... SELECT *` échouaient après le `DROP` sur toute base dont les colonnes diffèrent (avant le lot : 22 colonnes pour 14), table vidée et données seulement dans `*_repair_tmp` (reproduit sur une base d'avant le lot avec l'ancien code : « table challenge_template has 14 columns but 22 values were supplied »). Corrigé : la table est recréée depuis sa définition STOCKÉE par DuckDB (`duckdb_tables`, `duckdb_indexes`), donc jamais périmée ; réinsertion par liste de colonnes ; nombre de lignes vérifié avant le `DROP` et après la réinsertion ; un échec après le `DROP` remet les données sous le nom d'origine (`restoreFromTemp`). Les migrations de textes ne sont PAS jouées par l'outil (une migration sur une table aux index corrompus est un risque). Tests d'intégration (`cmd/repair-metadata/main_integration_test.go`) : base d'avant le lot (aucune ligne ni colonne perdue, clé primaire et index recréés, pas de table temporaire), base d'après le lot, table absente, restauration.
+  - Constat écarté par le relecteur : 1 (aucune action).
+
+---
+
+## 5. Hors périmètre (lots suivants)
+
+- Traduction de la 1re vraie langue (D1) : fichiers de traduction + noms officiels d'armes
+  (wiki) + `populate-assets` pour ses balises Halo. Méthode de traduction à décider alors.
+- Découpe du bundle par langue (seulement si 10.4 le justifie).
+- Sélecteur de langue au-delà de deux entrées (UI) : s'il faut le changer, il tombe dans le
+  lot de la 1re langue.
+
+- Reste de D4 après l'étape 8.8.c : (1) à (3) de l'ancien reste (tuiles de l'Accueil, enrichissement de l'Escouade, source des textes des citations) sont traités par 8.8.c ; (4) les colonnes `*_fr` de la base PARTAGÉE (`map_name_fr`, `pair_name_fr`, `playlist_name_fr`) ne sont pas migrées (décision) ; elles restent lues comme valeur de registre de la langue par défaut. Aucun nom n'est sans source par langue. Emplois de `i18n.LocaleFR` / `LocaleEN` qui restent (39, garde-rail `archlint/i18n_locale_constant_test.go`, tous des sources à deux colonnes fr / en) : migrations `_fr` / `_en` (8), colonnes `_fr` / `_en` de tables (5), sources à deux langues dont le seed Go des armes `weaponLabelSeeds` et le lexique CSV de `cmd/mapcallouts-build` (16), fixtures de démonstration (9), alias d'étiquette de l'API Waypoint pour l'anglais (1) ; chaque emploi est à retirer le jour où sa source passe à une table par langue (le plafond ne fait que descendre).
+
+## 6. Découvertes (hors périmètre, non traitées)
+
+- `.ai/thought_log.md` fait ~118 000 lignes : la rotation trimestrielle (CLAUDE.md) ne
+  semble pas appliquée (à vérifier).
+- `handlers/session_context_validate.go:31` : `sessionLocales = map[string]bool{"fr": true, "en": true}` (liste fermée des
+  langues acceptées en session) et `admin_data_quality.go:220` `defaultDQLocale = "fr"` : listes de langues en dur hors du
+  périmètre des étapes 1-2 ; sans migration, ajouter une langue exigerait de les modifier → intégré au périmètre : item 7.7 (pilote, 2026-10-26).
+- Normalisation des entrées Go : `en-GB`, `EN`, `en_us` donnent désormais `en` (avant, `en-gb` retombait sur `fr` dans
+  `resolveLocale`) ; `LocaleFromParams` accepte aussi `?lang=en-US`. Seul écart de comportement pour des entrées hors fr/en strict.
+- Lot A (étape 3) : la regex du garde-rail 2.2 ne voit pas `isEN` (majuscules) ni les replis `startsWith('en') ? 'en' : 'fr'` : 5 replis
+  traités (7.A bis), 13 lignes `isEN` à traiter avec leur déclaration (lot B). Étendre la regex relèverait le compteur : décidé et fait au lot B (item 3.7, regex étendue, hausse 112 -> 125 puis conversion).
+- Lot A : `features/compare/i18n.ts` porte `intlLocale: 'en-GB'` alors que `INTL_TAG.en = 'en-US'` ; idem `match-card`, `HomeBattlePassPanel`
+  (littéraux `en-GB`) : écart d'étiquette Intl préexistant, traité au lot B (item 3.8) : l'anglais suit `en-US` partout.
+- Lot A : `stores/appShellStore.ts` `hydrateFromBootstrap` caste `data.locale as Locale` sans `normalizeLocale` : depuis la suppression des
+  normaliseurs de feature, le store est l'unique garant d'une `Locale` valide (non traité : hors item, la réponse de bootstrap est déjà
+  normalisée côté Go par `i18n.Parse`, étape 1.4) : traité au lot B (item 3.9, `normalizeLocale` dans le store).
+- Lot B : `features/compare/ComparePage.tsx:48` retrouve la langue par `normalizeLocale(text.intlLocale)` et `SquadFdaGapCumulativeCard.tsx:84` par
+  `normalizeLocale(intlLocale)` (la langue déduite de l'étiquette Intl portée par le dictionnaire, héritage du lot A) : passer la `Locale` du store
+  à ces appelants permettrait de supprimer le champ `intlLocale` de `CompareText` / `SquadText` (étape 4, dictionnaires).
+- Lot B : formats sans étiquette (langue du navigateur, pas celle de l'interface) hors de portée des deux regex : `toLocaleString()` /
+  `toLocaleDateString()` sans argument dans `CareerRankingBlock.tsx` (3), `ExplorerMatchesTable.tsx:253`, `WatcherCard.tsx:63`,
+  `squadHistoryExtraColumns.tsx:105`, `admin/titles/TitleDetailCards.tsx:214`, `admin/overview/WeaponCoveragePanel.tsx` (2),
+  `admin/sections/LusrGapsSection.tsx:128` ; `tendances/tendancesCalendar.logic.ts:63` fige `'en-CA'` (sans doute pour la forme ISO de la date, à
+  vérifier). Non traités (hors périmètre fermé du lot B).
+- Lot B : 6 valeurs par défaut `locale = 'fr'` en paramètre de fonction (ex. `MatchCard`, `formatLastSeen`) hors de la regex ; elles désignent la
+  langue par défaut en dur (`DEFAULT_LOCALE` serait le nom).
+- Lot B : `features/match-view/MatchEncountersTable.tsx` (548 lignes avant et après) et les dictionnaires de feature qui ont reçu quelques clés
+  (`match-view/i18n.ts`, `settings/i18n.ts`, `squad/i18n.ts`) dépassent déjà 500 lignes : découpe = item 4.3, non traitée ici.
+- Lot B : l'horloge de 12 h de l'anglais (`en-US`) apparaît là où le format ne fixe pas le cycle horaire (`squad/formes/format.ts`,
+  `match-view/descriptorLabel.ts`, `match-card`) ; `tactical/zone.logic.ts` fixe `hourCycle: 'h23'` et reste en 24 h. Cohérent avec
+  `PeriodSessionRail` (déjà 12 h en anglais) ; à reprendre si le user veut une horloge de 24 h en anglais.
+- Étape 4 : `lib/formatters/date.ts` exporte un type `Locale = string` (étiquette BCP-47) qui porte le même nom que le type `Locale` de l'application
+  (`lib/i18n/locale`) ; `lib/formatters/number.ts` l'importe : risque de confusion à la lecture (non traité).
+- Étape 4 : cinq clés de manifest ne se compilent pas comme messages ICU (`intl-messageformat` refuse leur texte anglais ; le runtime retombe sur le
+  texte brut) : `admin.titles.register_help_body`, `common.onboarding.import_err_low_confidence`, `common.charts.efficiency_tooltip`,
+  `session.detail.net_lives_tooltip`, `timeseries.progression.net_lives_tooltip` (accolades ou balise non fermée). Découvert par le test du mode
+  `--pseudo` ; non traité (hors périmètre : le texte s'affiche, mais sans interpolation).
+- Étape 4 : `ENCOUNTER_BADGE_TOOLTIPS` existe en deux exemplaires aux textes différents (`compare/ComparePage.tsx`, `match-view/MatchEncountersTable.tsx`) ;
+  `notifications/i18n/index.ts` garde `DICTS[locale] ?? FR_TEXT` sur une table totale (repli muet mort) ; `CareerRankingBlock.tsx` caste le store en
+  `ManifestLocale` (inutile). Non traités.
+
+- Lot A (étape 5) : `cmd/h5-metadata-fetch/main.go` (1 025 lignes avant le lot, 978 après) dépasse déjà 500 lignes ; le chargeur a été sorti dans `labels.go`, le reste non traité.
+- Lot A : `milestones.catalog_loader` : `condition` (formule technique) et `condition_fr/_en` coexistaient ; la table de langue prend le nom `condition_text`. À confirmer au lot B si le
+  champ de réponse `condition_*` devient `condition` (étape 6).
+- Lot A : `games/halo_infinite/migrations/prestige.go` duplique le chargeur de `prestige/catalog_loader.go` (structs TOML « indépendantes du package prestige ») : 2 copies, convertis
+  tous les deux ; aucune validation de langue dans la copie de migration (comportement inchangé).
+- Lot A : `web/src/lib/i18n/manifests/medals.toml:9` et `weapon_names.toml:14` citent encore « asset_labels_fr » (historique) : non touchés (manifeste web généré).
+
+- Lot B (étape 5) : des champs `en` / `fr` en minuscules, hors de la définition du lot A (suffixe `FR|EN|Fr|En` sensible à la casse), existent encore : `games/halo_5/mapping_servicerecord.go` (`h5Designations`),
+  `games/weapons/labels.go`, `analysis/home_canonical.go:114`, `ops/seed_demo_synthetic.go` (`synthMap`, `synthMode`), `platform/duckdb/media_repo_translations.go:102`, `migrations/mode_playlist_fr.go:133`,
+  `cmd/mapcallouts-build/csv.go:29` (types locaux non sérialisés). Non traités ; le garde-rail ne les voit pas.
+- Lot B : `platform/duckdb/season_pass_repo_*.go` : `bpPrefersEnglish` compare `ctxkeys.Locale(ctx)` à `"en"` par `strings.EqualFold` (comparaison de langue littérale que la regex du garde-rail 2.3 ne compte pas) et
+  `currencyLabels` ne porte que le français ; à reprendre avec l'étape 7 [TRAITÉ à l'étape 7, item 7.8]. `cmd/h5-metadata-fetch` écrit encore les colonnes `name_fr` et les lignes `fr-FR` (étape 8).
+- Lot B : `loadSharedHistory` (`match_history_repo.go`) et `applyAssetNamesFromMetadata` approchent le seuil de 80 lignes ; la baseline de lint les tolère.
+- Lot B : `TestBackfillRegistryNames_BaseTenueParUnAutreProcessus` (`cmd/levelup`) échoue quand il tourne en parallèle d'un gate complet (verrou DuckDB sous Windows) et passe seul : flaky sous charge, non lié.
+
+- Lot B (étape 6) : `handlers.writeJSONCached` (helpers.go) n'a plus d'appelant hors tests (les routes JSON sont toutes en Huma) : code mort à retirer avec ses tests (hors périmètre, non traité).
+- Lot B : textes STOCKÉS en une langue : `Challenge.Label` (copié du template) et `Arc.Title` / `Arc.Description` (copiés du preset) sont écrits en langue par défaut ; servir ces défis et arcs dans la langue de la requête suppose un libellé par langue en base (étape 8 ou lot suivant) ; `reason_params` des propositions du coach (JSON stocké) porte un `label_<langue>` par langue et `CoachProposalsCard.readableReason` le lit français d'abord (étape 7) [TRAITÉ à l'étape 7, item 7.9].
+- Lot B : corps de requête `ModeTranslationRequest` / `AssetTranslationRequest` (admin) : `mode_en`, `name_en`, `name_fr` restent des champs suffixés (classe b du garde-rail Go) ; une saisie `{ langue: texte }` est une décision de contrat d'écriture à prendre avant la 1re vraie langue (le formulaire d'administration n'a que deux champs, `IssueSections.tsx`).
+
+- Lot C (étape 6) : paramètres de NOTIFICATION stockés `title_fr` / `title_en` et `medal_name_fr` / `medal_name_en` (`api/wire/post_sync_medal_first_earned.go`, `progression/coach*`) lus par les manifests de notification du web (`{title_fr}`...) : textes stockés en deux langues, à reprendre avec l'étape 7 (comme `reason_params`) [TRAITÉ à l'étape 7, item 7.9].
+- Lot C : `weaponResolved.displayLabel(locale)` (`platform/duckdb`) résolvait déjà un nom d'arme dans la langue de la requête pour la précision par arme ; les lecteurs du lot C passent par `Text.Pick` sur le même texte : deux écritures de la même règle de repli (à unifier avec l'étape 8, `PreferredLangsForLocale`).
+- Lot C : `AssetReference.Labels` (`games/canonical`) est une `map[string]string` locale -> libellé (déjà extensible), mais ses lecteurs (`assetLabels`, `statsAssetNames`, `homeAssetNames`) ne lisent que `en` et `fr` : à reprendre avec l'étape 8.
+- Lot C : le placeholder de lecture du plan tactique (`precedenteDuMemeJoueur`) range sous la clé d'une autre langue : après un changement de langue, la grille précédente reste affichée (estompée) le temps de la relecture, noms de lieux dans l'ancienne langue ; comportement identique au `keepPreviousData` des autres pages, non traité.
+- Lot C : les tests `httptest` de Synthèse, Explorateur, Séries temporelles, Comparaison et Vue du match manquent (dépôts trop larges pour une doublure) ; couverture au niveau service et dépôt.
+
+- Étape 7 : `Challenge.Label` / `Arc.Title` (stockés par le défi ou l'arc créé) restent écrits dans UNE langue (la langue par défaut, `acceptArc` lit `title_<Default>`) : servir un arc adopté dans la langue de la requête suppose un libellé par langue en base (étape 8 ou lot suivant). Inchangé.
+- Étape 7 : les ASSISTS DE DONNÉES restent à deux langues : `labelForLocale(locale, fr, en)` (Accueil), `i18n.UsesFallbackColumn` (colonnes `_en` des citations, médailles, commendations, passe de saison, playlists), `match_view_repo.go` (`MapNames`, `PlaylistNames` ne portent que fr et en), `AssetReference.Labels` : une 3e langue lit l'anglais (D3) jusqu'à l'étape 8 (tables par langue). La binarité est donc dans la DONNÉE, plus dans un `== "en"` : `UsesFallbackColumn` est le point à remplacer à l'étape 8.
+- Étape 7 : `ResolveModeUI` / `ResolveModeUIWithVariant` (analysis) servent encore le mode dans la langue par défaut d'abord (repli anglais) pour leurs autres appelants (historique, filtres, patterns, briefing, séries temporelles) : seuls `session_page_service` et le bandeau d'un match passent par `ResolveModeUIIn(langue, ...)`.
+- Étape 7 : l'étiquette du palier de pic CSR all-time de l'Accueil (`home_repo_skill_peak.go`) est construite dans la langue par défaut quelle que soit la langue de la requête (inchangé : `true` en dur avant, `i18n.Default` maintenant).
+- Étape 7 : textes composés ailleurs que dans les fichiers du plan, non traités : `sync/csr_writes.go` `formatCSRTierLabel` et `session_page_service.go` « Placement (%d restants) » (étiquette de palier STOCKÉE en français, parsée par `applyCSRPlacements` : relève de l'item 8.2), `season_pass_repo_*` (libellés GameCMS), `notify/` (Discord) et le ratchet existant `archlint/no_french_label_literal_test.go` (littéraux français par fichier). Le garde-rail `i18n_messages_test.go` ne voit que les appels du catalogue : il ne détecte pas un nouveau texte français écrit en dur ailleurs.
+- Étape 7 : noms de métrique des défis synthétisés (`coach.metric.*`) : `kills vs expected`, `performance score`... restent anglais en français (sortie historique conservée à l'octet) ; une traduction française est un changement de texte stocké, à décider.
+- Étape 7 : plusieurs fichiers touchés dépassent déjà 500 lignes (`session_page_service.go` 878, `leaderboard_world_repo.go` 644, `home_repo_skill_peak.go` 705, `filters_service.go` 606, `match_view_service.go` 532) dépassent déjà 500 lignes : aucun n'a grossi (extractions `leaderboard_world_names.go`, `progression/coach/alert_params.go`), la dette reste gelée.
+
+- Étape 8 : `weapons.name_fr` (table `weapons`) est encore présente dans la metadata Halo 5 (108 lignes) : le jeu de migrations Halo 5 possède le target metadata et n'applique pas `purge_weapons_name_fr_column` ; colonne inerte (aucun lecteur), non traitée.
+- Étape 8 : `ops.UpsertAssetTexts` et `migration.UpsertAssetTexts` sont deux copies du même écrivain (limite de 2 copies tenue : les paquets `platform/duckdb`, `migration` et `ops` ne peuvent pas s'importer mutuellement).
+- Étape 8 : `rebuildWithoutColumns` (migration des textes de définitions, réutilisée par la migration des noms d'armes) préfixe ses erreurs par « definition texts » ; `loadCitationMappingMeta` existe en 2 copies (`citations_repo.go`, `home_repo_medals_citations.go`) et avale l'erreur de requête sans journal ; `service/achievements_service.go:92` prend `d.Name[en]` comme clé de catégorie des succès ; `AssetMeta.Localized` choisit les descriptions par `Pick` (incrémente `text_empty_total` pour une médaille sans description) alors que `PickOptional` conviendrait ; `golangci-lint` signale sur des fichiers voisins des écarts d'avant (`admin_data_quality.go` constructeur à 8 paramètres, `goconst` dans `registry_actions.go`) ; clés web `challenge.one` et `arc.one` inutilisées et sans locale ; `SquadChallenge.Label` et les autres chemins de création de défi n'ont pas été relus pour le libellé stocké.
+- Étape 8, changements de comportement à relire (D3, repli `en` seulement, jamais l'autre langue) : sous `en`, un nom d'arme ou un libellé d'accueil sans valeur anglaise ne retombe plus sur le français (vide) ; sous `fr`, un nom ou une description de citation / de passe de saison sans valeur française est servi en anglais (avant : vide). Sans objet sur les données connues (les copies montrent 0 écart en fr et en pour médailles, armes, succès, jalons). Le tiroir d'actifs Halo 5 sert toutes les langues des armes (anglais seul avant).
+- Étape 8 : Explorateur (top armes) : en anglais il lisait `weapon_labels.name_en` brut, il lit maintenant le nom curé comme les autres surfaces.
+
+- Étape 8.8 : `mode_prefix_names` (`prefix_en`, `lang`, `name`) est présente dans la metadata Infinite des copies (14 préfixes x 2 langues) mais aucun code Go ne la lit ni ne l'écrit (reliquat de l'époque Python, citée par le skill `db-schema`) : table morte, non supprimée (hors périmètre).
+- Étape 8.8 : `cmd/repair-metadata/main.go` reconstruisait `challenge_template` avec un DDL déjà périmé (sans `lusr_components`, `radar_axes`, `is_long_term`, `source`) ; seules les colonnes de texte en ont été retirées ; l'outil est à revoir ou à supprimer.
+- Étape 8.8 : `CachedRecentMatchesProvider` rend la tranche mise en cache (20 min) sans copie et ses appelants la modifiaient en place (traduction des modes) : sans effet tant que la langue était fixe, une pollution entre langues sinon ; `computeTargetCombatProfileLive` copie désormais la tranche avant de traduire (les autres appelants de ce cache n'ont pas été relus).
+- Étape 8.8 : `internal/migration/steps_metadata_texts_to_translations.go` porte maintenant deux jeux de tables (`definitionTextTables`, `curatedTextTables`) pour une seule mécanique ; un 3e jeu serait à ranger dans un fichier de données.
+- 8.8.c : `platform/duckdb/home_repo_matches.go` `LoadHomeMatches` (avec `enrichHomeMatchTranslations`, `loadHomeMatchesSharedPart`) n'a aucun appelant de production (le port `HomeRepository` ne l'expose pas ; seuls `mmr_zero_read_test.go` et `player_repos_test.go` l'appellent) : code mort au sens de la règle 7, converti en place faute de consigne de suppression ; candidat à la suppression avec ses tests.
+- 8.8.c : formes littérales hors du garde-rail des constantes de langue (index par chaîne `"fr"`) : traitées par 8.8.d (item 3), garde-rail `archlint/i18n_locale_constant_test.go` étendu (item 4).
+- 8.8.c : `games/weapons/labels.go` `weaponLabelSeeds()` est un seed Go `(id, en, fr)` : même nature que le seed des citations (source de noms écrite en deux langues dans le code), laissé en (A) parce que les noms lus à l'exécution viennent de `weapon_names.toml` (par langue) et que ces lignes ne sont qu'un amorçage `INSERT OR IGNORE`. À décider : TOML par langue ou retrait.
+- 8.8.c : l'Explorateur, l'historique, le briefing, les séries temporelles, la page de session et la vue du match servaient leurs noms de jeu en langue PAR DÉFAUT : traité par 8.8.d (inventaire, conversion et résidus consignés ci-dessous).
+- 8.8.d : le pool des matchs marquants (`queries_career.go` `Q9bHighlightSharedTpl`) et `ExplorerRepo.resolveModeUIsFromPairID` lisent le nom FR du registre quand `pair_name_fr` / `playlist_name_fr` existe ; en `en`, un tel nom serait servi en français (colonnes NULL en production et sur les copies : aucun cas mesuré).
+- 8.8.d : le départage des égalités de `computeHighlightAvailableModes` / `computeHighlightAvailablePlaylists` (tri par nombre de matchs seul sur une itération de map Go) reste non déterministe ; non touché.
+
+- 8.8.e : le libellé du descripteur de retour est celui de la page au moment de l'ouverture du match (stocké avec le contexte de navigation, 24 h) : changer de langue sans rouvrir le match garde l'ancien libellé ; un lien partagé (clés seules) affiche la clé, c'est-à-dire le nom de la langue par défaut. Comportement accepté, non traité. Les autres restes de 8.8.e (Halo 5 sous `en`, `map_name` de la Tactique, clés `career.top_matches.*` et réglage `career_top_exclude_btb`, repli de `ExplorerMatchesTable`) sont traités par 8.8.f.
+- 8.8.f : `TacticalMapCard.map_name` et `map_label` portent désormais la même valeur (la langue de la requête, repli compris) ; le champ `map_name` est redondant, son retrait du contrat (Go, OpenAPI, web) n'est pas fait : hors liste du pilote.
+
+- 11.R : l'inventaire des fabriques de `keys.ts` (`keys.locale.test.ts`) classe « ne dépend pas de la langue » les clés dont le gestionnaire ne lit pas directement la langue (`ctxkeys.Locale`, `i18n.FromContext`, en-tête) ; la chaîne de résolution des services et dépôts n'a pas été suivie jusqu'au bout pour chacune (console d'administration, `compositionSessions`, `engagementProfile`, `leaderboard`, `prestige.me`, `squad.orientation`, campagnes). Une clé classée à tort s'y repère par un test de contrat de la route concernée ; à reprendre si une réponse de ces routes reçoit un libellé résolu.
+- 11.R : le modèle de défi, l'arc et la campagne gardent un texte STOCKÉ dans une seule langue (`arc.one`, `challenge.one`, `playerProfile.campaign*` classés indépendants pour cette raison) : même limite que l'étape 7, inchangée.
+- 11.R : `catalog.go` documente `Name` comme « localisé selon ?lang= » alors que `CatalogRepo` ne lit aucune langue (`public, max-age=300` sans `Vary` : sans conséquence tant que la réponse est la même pour toutes les langues) ; commentaire ou lecteur à rapprocher, non vérifié plus loin.
+- 11.R : l'export CSV traduit les colonnes que rend `ExportCSV` dans la langue du contexte ; les en-têtes de colonnes (`match_id`, `start_time`, ...) restent des identifiants techniques non traduits (inchangé).
+- 11.R : `cmd/repair-metadata` recrée les index qui existent sur la table (dont `idx_ctmpl_*` que la migration `drop_metadata_art_surface_indexes_v3` retire des bases migrées) ; l'outil rend la forme qu'il trouve, sans décider quels index doivent exister.
+- 11.R : aucune liste de constats P2 n'a été transmise au corrigeur : seules les découvertes ci-dessus sont consignées.
+- Étape 10 (non traités) : (1) `lib/perf-color.ts` `getPerfColorLevel` / `PerfColorLevel` n'ont aucun appelant et portent des libellés français (code mort) ; (2) `heatmap2DOption.ts` : infobulle par défaut écrite en dur (« Win Rate », « Matchs ») ; (3) des appelants passent une étiquette Intl là où une langue est attendue (`rarityLabel`, `PassContentSummary` : `normalizeLocale(intl)`), d'où la règle « sous-étiquette primaire de `intl` = `code` » du guide ; (4) typographie française figée dans une trentaine de sites (« : » et « % » précédés d'une espace) : à décider avec la 1re langue qui s'en écarte ; (5) 107 littéraux JSX courts restants (garde-rail `no-short-jsx-literal.guard.test.ts`), dont `Bot` / `MVP` / `LVP`, `Chargement…`, `Ouvrir`, `Source`, `Non lue`, `option(s) indisponible(s)`, `· escouade` (états absents de la démo, donc non vus par la preuve) ; (6) au chargement, l'application demande les `field-mappings` en langue de session puis en langue de l'URL (deux requêtes, une trame de libellés de l'ancienne langue) ; (7) les messages d'erreur de l'API (ex. `origin non autorisée`) sont en français ; (8) la jonction `node_modules` partagée fait partager le `tsbuildinfo` entre worktrees : un worktree jetable devrait rejoindre le dossier par copie ou lancer `tsc -p --incremental false`.
+
+## 7. Annexes (remplies au démarrage de chaque étape)
+
+- 7.A fichiers web à comparaison de langue (étape 3). Liste figée le 2026-10-26 à `0470adcf7` : les **154 lignes** comptées par le
+  garde-rail 2.2 (86 fichiers ; la mesure de 88 fichiers / 157 lignes du §1 incluait `lib/i18n/` et `lib/formatters/`, exclus depuis
+  l'étape 2). Type 1 = choix d'un dictionnaire ou normaliseur ; 2 = choix d'un champ d'API suffixé ; 3 = format (décimale, étiquette
+  Intl, abréviation d'unité) ; 4 = texte inline. Cellule = nombre de lignes (n° de ligne **à l'entrée**, avant les modifications du lot A).
+  Totaux : type 1 = 42, type 2 = 32, type 3 = 23, type 4 = 57, soit 154.
+
+| Fichier | T1 | T2 | T3 | T4 | Total |
+|---|---|---|---|---|---|
+| `components/charts/fragRoleLabel.ts` |  | 2 (65,66) |  |  | 2 |
+| `components/charts/weaponRangeChart.ts` |  | 1 (62) |  |  | 1 |
+| `components/shell/FilterOmnibar.tsx` | 1 (342) |  |  |  | 1 |
+| `components/shell/PeriodSessionRail.tsx` |  |  | 1 (166) | 2 (173,177) | 3 |
+| `components/ui/SessionMultiSelect.tsx` |  |  |  | 12 (30,32,33,37,38,39,40,41,42,43,44,45) | 12 |
+| `components/ui/match-card.tsx` |  |  | 1 (54) | 1 (67) | 2 |
+| `features/_shared/EncounterSplitBars.tsx` |  |  |  | 4 (58,59,81,82) | 4 |
+| `features/_shared/SessionBriefing/i18n.ts` | 1 (129) |  |  |  | 1 |
+| `features/_shared/encounters/format.ts` |  |  | 2 (95,99) |  | 2 |
+| `features/_shared/usage/usageFormat.ts` |  |  | 2 (13,20) |  | 2 |
+| `features/achievements/i18n.ts` |  | 1 (114) |  |  | 1 |
+| `features/admin/format.ts` |  |  | 6 (58,89,98,99,100,101) |  | 6 |
+| `features/admin/useAdminText.ts` | 1 (41) |  |  |  | 1 |
+| `features/ascension/AscensionLayout.tsx` | 1 (62) |  |  |  | 1 |
+| `features/ascension/MilestonesGrid.tsx` |  | 2 (132,136) |  |  | 2 |
+| `features/ascension/i18n.ts` | 1 (660) |  |  |  | 1 |
+| `features/ascension/profile/PerformanceSection.tsx` |  | 1 (107) |  |  | 1 |
+| `features/ascension/profile/ProgressionSection.tsx` |  | 2 (124,125) |  |  | 2 |
+| `features/ascension/tips.ts` | 1 (32) |  |  |  | 1 |
+| `features/asset-drawer/AssetCard.tsx` |  | 2 (15,19) |  |  | 2 |
+| `features/career/CareerChartsSection.gauges.tsx` |  | 2 (50,134) |  |  | 2 |
+| `features/career/CareerSummaryCard.tsx` |  | 1 (38) |  |  | 1 |
+| `features/career/CareerTopEncountersSection.tsx` | 1 (58) |  |  |  | 1 |
+| `features/coach/i18n.ts` | 1 (91) |  |  |  | 1 |
+| `features/compare/CompareWeaponsSection.tsx` |  | 1 (141) |  |  | 1 |
+| `features/compare/i18n.ts` | 1 (138) |  |  |  | 1 |
+| `features/explorer/ExplorerBriefingStrip.tsx` |  |  | 1 (85) |  | 1 |
+| `features/explorer/ExplorerCombatProfile.tsx` | 3 (163,164,170) |  |  |  | 3 |
+| `features/explorer/ExplorerEncounterBriefing.tsx` | 1 (85) |  |  | 2 (120,137) | 3 |
+| `features/explorer/ExplorerPage.playerMode.tsx` | 1 (35) |  |  |  | 1 |
+| `features/explorer/ExplorerTargetCareerStats.tsx` |  |  |  | 1 (40) | 1 |
+| `features/explorer/ExplorerTargetSampleStats.tsx` |  | 1 (218) |  |  | 1 |
+| `features/explorer/ExplorerTargetSeasonCSR.tsx` |  |  |  | 1 (80) | 1 |
+| `features/friends/AddFriendFlow.tsx` |  |  |  | 9 (40,42,43,46,49,50,51,54,55) | 9 |
+| `features/friends/errors.ts` | 1 (52) |  |  |  | 1 |
+| `features/help/i18n.ts` | 1 (851) |  |  |  | 1 |
+| `features/home/HomeAscensionWidget.tsx` |  |  |  | 1 (94) | 1 |
+| `features/home/HomeBattlePassPanel.tsx` |  |  | 1 (36) |  | 1 |
+| `features/home/HomePage.tsx` |  |  |  | 2 (271,415) | 2 |
+| `features/home/HomeSessionCarousel.tsx` |  |  |  | 2 (69,294) | 2 |
+| `features/home/highlights.i18n.ts` | 1 (28) |  |  |  | 1 |
+| `features/home/kpi.i18n.ts` | 1 (47) |  |  |  | 1 |
+| `features/home/spartanIdentity.i18n.ts` | 1 (34) |  |  |  | 1 |
+| `features/leaderboard/LeaderboardBlock.tsx` | 1 (147) |  |  |  | 1 |
+| `features/match-replay/i18n/catalogLabel.ts` |  | 2 (34,35) |  |  | 2 |
+| `features/match-replay/layers/useReplayVehicles.ts` |  | 1 (235) |  |  | 1 |
+| `features/match-view/MatchEncountersTable.tsx` |  |  |  | 1 (207) | 1 |
+| `features/match-view/MatchViewPage.tsx` | 4 (68,141,142,195) |  |  | 1 (72) | 5 |
+| `features/match-view/_killDistanceChart.ts` |  | 1 (84) |  |  | 1 |
+| `features/match-view/descriptorLabel.ts` |  |  | 1 (21) | 1 (32) | 2 |
+| `features/match-view/format.ts` |  |  |  | 1 (10) | 1 |
+| `features/match-view/i18n.ts` |  |  | 1 (1032) |  | 1 |
+| `features/match-view/matchNotices.logic.ts` |  |  |  | 1 (75) | 1 |
+| `features/media/i18n-audio-config.ts` | 1 (85) |  |  |  | 1 |
+| `features/media/i18n-modals.ts` | 1 (174) |  |  |  | 1 |
+| `features/media/i18n.ts` | 1 (94) |  |  |  | 1 |
+| `features/palmares/i18n.ts` | 1 (209) |  |  |  | 1 |
+| `features/prestige/components/ArcPresetPicker.tsx` |  | 2 (92,94) |  | 8 (26,27,28,29,30,31,33,37) | 10 |
+| `features/prestige/components/ChallengeCard.tsx` | 1 (27) |  |  |  | 1 |
+| `features/prestige/i18n.ts` | 1 (214) |  |  |  | 1 |
+| `features/session-detail/SessionNetLivesCumulative.tsx` |  |  | 1 (168) |  | 1 |
+| `features/settings/AccessibilityTab.tsx` | 2 (128,159) |  |  |  | 2 |
+| `features/settings/SettingsPage.tsx` |  |  |  | 1 (88) | 1 |
+| `features/settings/i18n.ts` | 1 (981) |  |  |  | 1 |
+| `features/settings/watcherPresence.ts` |  |  |  | 3 (54,58,60) | 3 |
+| `features/squad/SquadObjectivesPanel.tsx` |  | 2 (101,196) |  |  | 2 |
+| `features/squad/charts/squadFragTools.ts` |  | 1 (63) |  |  | 1 |
+| `features/squad/formes/format.ts` |  |  | 1 (12) |  | 1 |
+| `features/squad/i18n.ts` | 1 (1129) |  |  |  | 1 |
+| `features/squad/objectif/objectif.logic.ts` |  |  | 1 (472) |  | 1 |
+| `features/squad/squadCompositionGapHint.tsx` |  |  |  | 1 (32) | 1 |
+| `features/squad/useSquadPresets.tsx` | 1 (166) |  |  |  | 1 |
+| `features/synthesis/WeaponRecordsRuler.tsx` |  | 1 (258) |  |  | 1 |
+| `features/synthesis/weaponRecords_logic.ts` |  | 1 (48) |  |  | 1 |
+| `features/tactical/TacticalPlanCard.tsx` |  | 1 (366) |  |  | 1 |
+| `features/tactical/tacticalLogic.ts` |  | 1 (92) |  |  | 1 |
+| `features/tactical/zone.logic.ts` |  | 2 (205,318) | 1 (152) |  | 3 |
+| `features/tendances/tendances.logic.ts` |  |  | 1 (89) |  | 1 |
+| `features/timeseries/TimeseriesFdaGapTrend.tsx` | 1 (228) |  |  |  | 1 |
+| `features/timeseries/TimeseriesNetLivesTrend.tsx` |  |  | 1 (223) |  | 1 |
+| `features/timeseries/TimeseriesObjectiveCard.tsx` |  |  | 1 (23) |  | 1 |
+| `features/timeseries/usages/usagesText.ts` | 1 (123) |  |  |  | 1 |
+| `lib/capabilities/FeatureUnavailable.tsx` | 1 (59) |  |  | 2 (60,62) | 3 |
+| `lib/charts/skillTierBands.ts` | 2 (94,135) |  |  |  | 2 |
+| `lib/replay/calloutsPaint.ts` |  | 1 (133) |  |  | 1 |
+| `lib/skillTiers.ts` | 2 (197,219) |  |  |  | 2 |
+| **Total (86 fichiers)** | **42** | **32** | **23** | **57** | **154** |
+
+  7.A bis : replis fr/en équivalents que la regex du garde-rail ne compte pas (découverts au lot A, traités au lot A, item 3.1) :
+  `settings/queries.ts` (`startsWith('en') ? 'en' : 'fr'` -> `normalizeLocale`), `compare/ComparePage.tsx` (idem, sur l'étiquette Intl),
+  `squad/SquadFdaGapCumulativeCard.tsx` (idem), `palmares/rarity.ts` (`preferEN` -> `normalizeLocale` + tables `Record<Locale, …>`),
+  `notifications/toastBridge.tsx` (locale déduite du texte du dictionnaire -> `locale` passée explicitement). Les usages de `isEN`
+  (majuscules, non comptés : `match-view/matchNotices.logic.ts` 4 lignes, `match-view/MatchViewPage.tsx` 9 lignes) suivent le sort de
+  leur déclaration (type 4, lot B) : traités au lot B (item 3.7), la regex du garde-rail les compte désormais.
+- 7.B dictionnaires de feature > 400 lignes (étape 4). Liste figée le 2026-10-26 à `2cc924186` (`i18n.ts`, `*Strings.ts`,
+  `*Text.ts`, `*I18n.ts`, `i18nContract.ts`, hors tests et `generated/` ; lignes brutes) : 10 fichiers = la liste du §4.
+  Découpe (type déclaré une fois dans `contract.ts`, un fichier par langue `fr.ts` / `en.ts`, le module d'origine garde son
+  API publique ; aucun consommateur ne change d'import) : `squad/i18n.ts` (1 138 -> `squad/i18n/` : contract 387, fr 367,
+  en 366, index 34) ; `match-view/i18n.ts` (1 081 -> `match-view/i18n/` : 350, 343, 331, index 78 dont `buildContextLabel`) ;
+  `settings/i18n.ts` (999 -> 318, 339, 339, 20) ; `help/i18n.ts` (888 -> 43, 415, 379, 66) ; `match-replay/i18n/i18n.ts` (853 ->
+  `fr.ts` 423, `en.ts` 418, `i18n.ts` 21, contrat `i18nContract.ts` inchangé) ; `ascension/i18n.ts` (663 -> 182, 238, 237, 19) ;
+  `notifications/i18n.ts` (526 -> 89, 219, 214, 19) ; `squad/emprise/empriseStrings.ts` (461 -> `empriseStrings.ts` 26 +
+  `emprise/i18n/{contract 125, fr 159, en 155, format 20}` : les trois formats communs `duration` / `dec1` / `signedPct` vont dans
+  `format.ts`, `frPct` / `enPct` restent dans leur langue). Non découpés : `i18nContract.ts` et `palmares/i18n.ts` (item 4.3 bis).
+  Les 6 en-têtes `eslint-disable max-lines` des dictionnaires sont retirés (chaque fichier tient sous 500 lignes). Équivalence
+  vérifiée par un test jetable : pour chaque langue des 8 dictionnaires, valeurs identiques et fonctions identiques à l'espace
+  près, avant et après (16 comparaisons, supprimé après usage). Garde-rails et lints qui exemptaient le nom `i18n.ts` étendus à
+  `i18n/<langue>.ts` (`lint-no-hardcoded-fields`, règles eslint `no-hardcoded-strings` et `no-title-slug-literal`,
+  `no-field-label-dictionary.test.ts`) : même exemption, déplacée avec le dictionnaire.
+- 7.C objets `{ fr, en }` non typés par `Locale` (étape 4). Liste figée le 2026-10-26 à `652f9e789` par le garde-rail 4.5 (type contextuel
+  de chaque objet littéral à clés `fr` et `en`, hors tests et dossiers `test/`) : **75 objets, 7 fichiers**, typés (contenu inchangé) :
+  `features/admin/format.ts` (1 : `REL`, dictionnaire du temps relatif, désormais `Record<Locale, RelativeTimeText>`) ;
+  `features/admin/statusDisplay.ts` (13 : `JOB_TYPE_LABELS`, `Record<string, Record<AdminLocale, string>>`) ;
+  `features/compare/ComparePage.tsx` (4) et `features/match-view/MatchEncountersTable.tsx` (4) : `ENCOUNTER_BADGE_TOOLTIPS`, `Record<string,
+  Record<Locale, string>>` ; `features/squad/squadPresets.i18n.ts` (1 : `SQUAD_PRESETS_STRINGS`, type `SquadPresetsStrings` déclaré, plus dérivé
+  de la langue `fr`) ; `lib/pageTitle.ts` (51 : `LocalizedTitle` = `Record<Locale, string>`) ; `lib/replay/calloutsPaint.ts` (1 :
+  `CalloutZoneReady extends Record<Locale, string>`, retour de `normalizeCalloutZones` annoté). Déjà typés, hors liste : les 12 lignes de
+  `lib/skillTiers.ts` (`SkillTier extends Record<Locale, string>`). Hors périmètre du garde-rail par construction : les fichiers de
+  `features/match-replay/test/` (`carriedUseWitnesses.ts`, `vehicleWeaponsTitre.ts` : fixtures de test, `fr`/`en` y sont des noms de
+  contenu du film, pas des textes d'interface). Le garde-rail interdit aussi le type `'fr' | 'en'` écrit à la main : 0 occurrence dans le
+  code à l'entrée (seuls des commentaires et `api/generated.ts`, exclu).
+- 7.D chargeurs de mappings (étape 5). Liste figée le 2026-10-26 à `ef0291732` (lot A) : les structs de `internal/games/mappings/` qui portaient un libellé par langue lu en TOML.
+  6 chargeurs (8 fichiers) : (1) `loader.go` + `types.go` (`fields.toml` : `FieldMapping.Labels`, `Descriptions`, `fieldEntryTOML.Labels`, `Description`) ;
+  (2) `loader_assets.go` + `assets.go` (`assets.toml` : `AssetMapping.Labels`, `assetEntryTOML.Labels`) ; (3) `loader_outcomes.go` + `outcomes.go` (`outcomes.toml` :
+  `OutcomeMapping.Labels`) ; (4) `loader_weapon_names.go` (`weapon_names.toml` : `WeaponName{En,Fr}`, `weaponNameEntry{En,Fr}`) ; (5) `loader_replay_labels.go`,
+  `loader_replay_labels_objectives.go`, `loader_replay_labels_vehicles.go` (`replay_labels.toml` : `BilingualLabel{En,Fr,Icon}`, `bilingualEntry`, `abilityRankEntry`,
+  `objectiveObjectEntry`, `vehicleFamilyEntry`, `VehicleFamily.En/Fr`) ; (6) `loader_vehicle_weapons.go` (`vehicle_weapons.toml` : `VehicleWeapon.En/Fr`).
+  Hors liste (pas de libellé par langue en TOML) : `capabilities`, `endpoints`, `awards`, `map_variants`, `objective_roles`, `regulation*`, `playlist_labels` (une chaîne
+  d'affichage par clé, hors langue), `ranks.go` (`RankEntry` : `map[string]string` alimenté par la base, étape 8). Chargeurs hors `mappings/` convertis au même lot (5.3, 5.4) :
+  `progression/milestones/catalog_loader.go`, `prestige/catalog_loader.go`, `games/halo_infinite/migrations/prestige.go`, `cmd/h5-metadata-fetch`.
+- 7.E champs Go `*FR/*EN` restants (étape 5, items 5.5 et 5.6, lot B). Liste figée le 2026-10-26 à la fin du lot A par un parcours AST des déclarations de champs de struct (hors tests),
+  nom finissant par `FR`, `EN`, `Fr` ou `En` : **213 champs dans 82 fichiers** = **(a) 121 données internes** (types canonical/domain/repos/services, lignes SQL, sans tag `json`)
+  + **(b) 92 champs de struct sérialisée en JSON** (tag `json:"..."`, dont la part exposée par l'openapi est à établir en 7.F ; les documents de rejeu `en`/`fr` et `prestige.Template`
+  sont aussi persistés). Faux positif connu : `replayverite.acteur.vivantEn` (mot français). Par paquet (nombre et champs) :
+  - `cmd/h5-metadata-fetch` — (a) 2 : mapIDOverride{EN,FR}
+  - `cmd/mapcallouts-build` — (b) 1 : decoupeZone{LibelleEN}
+  - `cmd/weapon-sounds` — (b) 1 : livraisonManifesteArme{NomFr}
+  - `internal/analysis` — (a) 2 : stat{nameFR} ImpactBadge{BadgeFR}
+  - `internal/analysis/skill_v2` — (a) 1 : TierBoundary{NameFR}
+  - `internal/analysis/tactical` — (a) 4 : ZoneNommee{NomFR,NomEN} GrappeSpawn{NomFR,NomEN}
+  - `internal/api/handlers` — (a) 1 : SeasonCatalogEntry{LabelEN} ; (b) 6 : proposalDTO{ReasonKeyEN,ReasonKeyFR} milestoneDTO{TitleEN,TitleFR,ConditionFR,ConditionEN}
+  - `internal/api/wire` — (a) 2 : medalNamePair{FR,EN}
+  - `internal/domain` — (a) 28 : AchievementDefinitionRow{NameEN,NameFR,DescriptionEN,DescriptionFR,LockedDescEN,LockedDescFR} CareerRankData{MaxRankNameFR,MaxRankNameEN} FilterMatchRow{MapNameFR,PairNameFR,PlaylistNameEN,GameVariantNameFR} WorldSeasonRef{NameFR} MatchHistoryRawRow{MapNameFR,PairNameFR,PlaylistNameEN,GameVariantNameFR,SkillTierFR} MatchMetaRaw{MapNameFR,ModeNameFR,PlaylistNameFR,MapNameEN,PairNameFR} SquadMatchRow{PairNameFR,GameVariantNameFR} TacticalMapRow{MapNameFR} ZoneNommee{NomFR,NomEN} ; (b) 33 : AchievementEntry{NameEN,NameFR,DescriptionEN,DescriptionFR,LockedDescEN,LockedDescFR} ModeTranslationRequest{ModeEN,NameFR} AssetTranslationRequest{NameEN,NameFR} ResolveResult{ModeEN} CareerRankSummary{NextRankNameFR,NextRankNameEN} HeroProgress{MaxRankNameFR,MaxRankNameEN} WeaponHighlight{LabelFR,LabelEN} CompareTopWeapon{LabelEN} FragRoleEntry{LabelEN} MatchKillDistanceWeapon{LabelEN} SquadWeaponToolLine{LabelEN} WeaponRangeRow{LabelEN} WeaponBelowThreshold{LabelEN} WeaponDistanceRecordRow{LabelEN} WeaponRecordFrag{MapLabelEN} WeaponExcludedFromRecords{LabelEN} TacticalContribution{ArmeLabelEN} TacticalMapCard{MapNameFR} TacticalGrappe{NomFR,NomEN} TacticalZoneNom{NomFR,NomEN} TimeseriesMatchRow{MapNameFR}
+  - `internal/domain/replaydoc` — (b) 12 : Label{En,Fr} WeaponLabel{En,Fr} VehicleLabel{En,Fr} CalloutZone{EN,FR} ObjectiveObjectLife{En,Fr} VehicleWeapon{En,Fr}
+  - `internal/games/canonical` — (a) 2 : SkillSnapshot{TierCodeFR} ImpactBadge{BadgeFR} ; (b) 3 : AssetMeta{NameEN,NameFR,DescriptionFR}
+  - `internal/games/halo_infinite/film/replay` — (a) 2 : VehicleFamilyInfo{En,Fr} ; (b) 12 : CalloutZone{EN,FR} Label{En,Fr} WeaponLabel{En,Fr} VehicleLabel{En,Fr} ObjectiveObjectLife{En,Fr} VehicleWeapon{En,Fr}
+  - `internal/games/halo_infinite/migrations` — (a) 1 : modeRow{modeEN}
+  - `internal/himap` — (a) 2 : LibelleLieu{EN,FR}
+  - `internal/legacymatch` — (a) 9 : HomeMatchRow{MapNameFR,PairNameFR,GameVariantNameFR,PlaylistNameFR} StatsMatchRow{PlaylistNameFR,PairNameFR,GameVariantNameFR,MapNameFR,SkillTierCodeFR}
+  - `internal/mapcatalog` — (a) 2 : Libelle{EN,FR}
+  - `internal/ops` — (a) 2 : synthMatch{csrTierFR} rk{titleEN} ; (b) 1 : careerRankJSON{TitleEN}
+  - `internal/persist` — (a) 1 : LUSRRatingInsert{TierFR} ; (b) 2 : SkillRankInsert{TierFR} ModeNameTranslationInsert{ModeEN}
+  - `internal/platform/duckdb` — (a) 35 : pairNames{nameFR} resolvedAssetNames{mapEN,mapFR,playlistEN,playlistFR,variantEN,variantFR} playlistMSRRow{tierFR} canonicalAssetTranslations{mapNamesEN,playlistNamesEN,variantNamesEN,pairNamesEN,modeNamesFR} weaponScopeRow{labelEN} carteDeBase{EN,FR} skill{tierFR} weaponMetaEntry{nameEN} mediaMatchRegistryInfo{MapNameFR,PairNameFR,PlaylistNameFR} catBucket{subEN} patternModeSource{pairNameFR} playerMatchSkillRankRow{tierFR} playerMatchScanResult{mapNameFR,playlistNameFR,pairNameFR,skillTierFR} SeasonName{NameFR} TeamColorName{NameEN,NameFR} weaponResolved{nameEN,labelEN} offArsenalMeta{labelEN} weaponKeyResolved{labelEN}
+  - `internal/platform/duckdb/halo5` — (a) 3 : h5MatchSummaryRow{mapNameFR,playlistNameFR,pairNameFR}
+  - `internal/platform/duckdb/prestige` — (a) 2 : PrestigeSquadMatchProvider{translateModesFR,translatePlaylistsFR}
+  - `internal/port` — (b) 2 : WeaponKillRow{LabelEN} WeaponLabel{LabelEN}
+  - `internal/prestige` — (b) 10 : Template{LabelEN,LabelFR,DescriptionEN,DescriptionFR} PresetArc{TitleEN,TitleFR,DescriptionEN,DescriptionFR} SquadChallengeView{LabelFR,LabelEN}
+  - `internal/progression/coach_advisor` — (a) 6 : ArcSpec{TitleEN,TitleFR,DescriptionEN,DescriptionFR} Proposal{ReasonKeyEN,ReasonKeyFR}
+  - `internal/progression/milestones` — (b) 4 : CatalogEntry{TitleEN,TitleFR,ConditionFR,ConditionEN}
+  - `internal/progression/profile` — (a) 1 : TierState{NameFR} ; (b) 5 : SkillRatingSnapshot{TierNameFR} SuggestedChallenge{LabelFR,LabelEN,DescriptionFR,DescriptionEN}
+  - `internal/replayverite` — (a) 1 : acteur{vivantEn}
+  - `internal/service` — (a) 1 : SeasonCatalogEntry{LabelEN}
+  - `internal/service/fragdist` — (a) 1 : registryAcc{labelsEN}
+  - `internal/sync` — (a) 7 : PlayerAchievement{NameEN,NameFR,DescriptionEN,DescriptionFR,LockedDescEN,LockedDescFR} MatchCSRRow{TierFR}
+  - `internal/sync/skill` — (a) 3 : LUSRChainConfig{LabelFR,LabelEN} SkillTier{NameFR}
+  Fonctions et méthodes dont le NOM porte le suffixe (66 ; hors 5.6 si elles ne portent pas `Label|Name|Desc|Title`) :
+  - `cmd/h5-metadata-fetch` : chooseFR, fetchCommendationsFR, fetchTeamColorsFR, fetchWeaponsFR
+  - `cmd/killsource` : categorieFR, natureFR, origineFR, statutFR, voieFR
+  - `cmd/levelup` : nomsAssetsEN
+  - `internal/analysis` : BuildCSRTierLabelFromEN, ResolvePairNameFR, labelFR, nextTierEN
+  - `internal/api/wire` : resolveCareerRankNameFR
+  - `internal/games/halo_5` : designationFromTierEN
+  - `internal/games/halo_5/livesync` : h5DesignationTierEN
+  - `internal/games/halo_infinite/film/internal/grammar` : enteteNeufEn, suitLOrdreEn
+  - `internal/games/halo_infinite/migrations` : seedRankedPlaylistFR
+  - `internal/games/halo_infinite/rankedplaylists` : NameEN, NameFR
+  - `internal/migration` : applyPurgeWeaponsNameFR
+  - `internal/platform/duckdb` : LoadAssetTranslationsFR, LoadModeTranslationsFR, LoadModeTranslationsFR, LoadPlaylistAssetTranslationsFR, TranslateModeUIsFR, applyCanonicalAssetEN, applyCanonicalAssetFR, applyCanonicalPairModeFR, applyMatchHistoryMapFR, applyMatchHistoryPairFR, applyMatchHistoryPlaylistFR, bpPreferEN, collectCanonicalAssetIDsNeedingFR, collectMapENNeedingFR, collectPlaylistENNeedingFR, currencyTitleFR, frThenEN, loadCanonicalModeNamesFR, loadKnownModesEN, loadPairAssetNamesFR, queryModeNameTrFR, resolveAssetNameEN, translateModeUIsFR
+  - `internal/platform/duckdb/prestige` : WithModeTranslatorFR, WithPlaylistTranslatorFR, applyModeTranslationsFR, applyPlaylistTranslationsFR
+  - `internal/port` : LoadAssetTranslationsFR, LoadModeTranslationsFR, LoadModeTranslationsFR, LoadPlaylistAssetTranslationsFR, TranslateModeUIsFR
+  - `internal/progression/coach_advisor` : axisHumanEN, axisHumanFR, synthesizedDescriptionEN, synthesizedDescriptionFR, synthesizedLabelEN, synthesizedLabelFR
+  - `internal/service` : formatDateFR
+  - `internal/service/teammates` : loadSquadModeFR
+  - `internal/sync` : lookupAssetCanonicalEN, translateTierFR
+  - `internal/sync/replayartifacts` : resolveMapNameEN
+- 7.F schémas openapi, endpoints et caches (étape 6). Liste figée le 2026-10-26 (lot A) à `462caf952` + les modifications du lot A, mesurée sur
+  `apps/go-api/api/openapi.yaml` par parcours de `components.schemas` (propriétés dont le nom finit par `_fr` / `_en` ou `FR` / `EN`) et des
+  `paths.*.responses` (fermeture transitive des `$ref`). Le chiffre du §1 (« 25 noms, 47 propriétés ») est exact pour les suffixes `_fr` / `_en` ; la mesure
+  ajoute `SkillSnapshot.TierCodeFR` (suffixe en capitales, découvert au lot B de l'étape 5) : **26 schémas, 48 propriétés, 26 noms**. Les endpoints sont ceux dont
+  la RÉPONSE atteint le schéma (les corps de requête et les routes à corps brut du fragment manuel ne sont pas comptés).
+
+  **(i) Propriétés de réponse à suffixe de langue** (schéma : propriétés ; struct Go ; endpoints ; consommateurs web hors tests ; lot). Les `label_en` /
+  `label_fr` sont lus par des fichiers communs (`components/charts/{fragRoleLabel,weaponRangeChart,fragDetailBreakdown,fragSunburstModel}.ts`,
+  `features/compare/CompareWeaponsSection.tsx`, `features/explorer/ExplorerTargetSampleStats.tsx`, `features/match-view/_killDistanceChart.ts`,
+  `features/squad/charts/squadFragTools.ts`, `features/synthesis/weaponRecords_logic.ts`) : une ligne de consommateurs vaut pour toute la famille.
+
+| Schéma | Propriétés | Struct Go | Endpoints | Consommateurs web | Lot |
+|---|---|---|---|---|---|
+| `AchievementEntry` | `name_en/fr`, `description_en/fr`, `locked_desc_en/fr` (6) | `domain/achievements_response.go` | GET `/players/{slug}/pages/achievements` | `achievements/AchievementCard.tsx`, `achievements/i18n.ts` | B |
+| `AssetMeta` | `name_en/fr`, `description_fr` (3) | `games/canonical/assets.go` | GET `/assets/{title}/maps`, `/medals`, `/weapons` | `asset-drawer/AssetCard.tsx` | B |
+| `ResolveResult` | `mode_en` (1) | `domain/admin_data_quality.go` | POST `/admin/actions/translations/asset`, `/mode` | `admin/data-quality/IssueSections.tsx`, `mutations.ts` | B |
+| `MilestoneDTO` | `title_en/fr`, `condition_en/fr` (4) | `api/handlers/progression.go` (`milestoneDTO`) | GET `/players/{slug}/milestones` | `ascension/MilestonesGrid.tsx`, `ascension/types.ts` | B |
+| `ProposalDTO` | `reason_key_en/fr` (2) | `api/handlers/coach_proposals.go` (`proposalDTO`) | GET `/players/{slug}/coach/proposals` | `coach/types.ts` | B |
+| `SuggestedChallenge` | `label_en/fr`, `description_en/fr` (4) | `progression/profile/types.go` | GET `/players/{slug}/profile` | `ascension/profile/ProgressionSection.tsx`, `lib/playerProfile.ts`, `lib/prestige.ts`, `prestige/components/{ArcPresetPicker,CreateChallengeForm}.tsx`, `squad/SquadObjectivesPanel.tsx` | B |
+| `Template` | `label_en/fr`, `description_en/fr` (4) | `prestige/types.go` | POST `/players/{slug}/pilot-mode/enable` | mêmes fichiers que `SuggestedChallenge` | B |
+| `SkillRatingSnapshot` | `tier_name_fr` (1) | `progression/profile/types.go` | GET `/players/{slug}/profile` | `ascension/profile/PerformanceSection.tsx`, `lib/playerProfile.ts` | B |
+| `WeaponHighlight` | `label_en/fr` (2) | `domain/compare.go` | POST `/players/{slug}/pages/explorer/player-query` | famille `label_*` ; `compare/i18n.ts` | C |
+| `CompareTopWeapon` | `label_en` (1) | `domain/compare_weapons.go` | POST `.../pages/compare` | famille `label_*` | C |
+| `FragRoleEntry` | `label_en` (1) | `domain/frag_distribution.go` | GET `/players/{slug}/matches/{id}` ; POST `.../pages/{explorer/player-query,sessions/detail,synthesis,teammates,timeseries}` | famille `label_*` | C |
+| `MatchKillDistanceWeapon` | `label_en` (1) | `domain/match_view_kill_distance.go` | GET `/players/{slug}/matches/{id}` | famille `label_*` | C |
+| `SquadWeaponToolLine` | `label_en` (1) | `domain/squad_weapon_tools.go` | GET `/players/{slug}/matches/{id}` ; POST `.../pages/{sessions/detail,teammates}` | famille `label_*` | C |
+| `WeaponBelowThreshold` | `label_en` (1) | `domain/synthesis_weapon_range.go` | POST `.../pages/{compare,explorer/player-query,timeseries}` | famille `label_*` | C |
+| `WeaponRangeRow` | `label_en` (1) | `domain/synthesis_weapon_range.go` | POST `.../pages/{compare,explorer/player-query,timeseries}` | famille `label_*` | C |
+| `WeaponDistanceRecordRow` | `label_en` (1) | `domain/synthesis_weapon_records.go` | POST `.../pages/synthesis` | famille `label_*` | C |
+| `WeaponExcludedFromRecords` | `label_en` (1) | `domain/synthesis_weapon_records.go` | POST `.../pages/synthesis` | famille `label_*` | C |
+| `WeaponRecordFrag` | `map_label_en` (1) | `domain/synthesis_weapon_records.go` | POST `.../pages/synthesis` | `synthesis/WeaponRecordsRuler.tsx` | C |
+| `TacticalContribution` | `arme_label_en` (1) | `domain/tactical_cellule.go` | POST `/players/{slug}/tactical/{map}/cellule` | `tactical/zone.logic.ts` | C |
+| `TacticalGrappe` | `nom_en/fr` (2) | `domain/tactical_raster.go` | POST `.../tactical/{map}/raster` | `tactical/TacticalPlanCard.tsx`, `tactical/zone.logic.ts` | C |
+| `TacticalZoneNom` | `nom_en/fr` (2) | `domain/tactical_zone.go` | POST `.../tactical/{map}/cellule` | idem | C |
+| `TacticalMapCard` | `map_name_fr` (1) | `domain/tactical_page.go` | POST `.../tactical/maps` | `tactical/tacticalLogic.ts`, `timeseries/{matchLabels.ts,usages/usages.logic.ts}` | C |
+| `TimeseriesMatchRow` | `map_name_fr` (1) | `domain/timeseries.go` | POST `.../pages/timeseries` | `timeseries/{matchLabels.ts,TimeseriesNetLivesTrend.tsx}`, `tactical/tacticalLogic.ts` | C |
+| `CareerRankSummary` | `next_rank_name_en/fr` (2) | `domain/career.go` | GET `/players/{slug}/pages/career` | `career/{CareerChartsSection.gauges,CareerSummaryCard}.tsx` | C |
+| `HeroProgress` | `max_rank_name_en/fr` (2) | `domain/career.go` | GET `.../pages/career` | `career/CareerChartsSection.gauges.tsx` | C |
+| `SkillSnapshot` | `TierCodeFR` (1) | `games/canonical/match.go` | GET `.../pages/squad/v2` | aucun | C |
+
+  **Partition** (48 propriétés) : **lot B = 25 propriétés, 8 schémas** : « Ascension, défis, succès, actifs et administration » (jalons, propositions du coach,
+  défis suggérés et modèles de défi, rang de compétence du profil, succès, métadonnées d'actifs, traductions admin) ; **lot C = 23 propriétés, 18 schémas** :
+  « armes, tactique, séries temporelles et carrière » (les dix schémas d'armes, soit 11 propriétés, les cinq schémas tactiques et séries, les deux de carrière, `TierCodeFR`).
+  Cohérence : B = features `ascension`, `achievements`, `prestige`, `coach`, `asset-drawer`, `admin` ; C = `compare`, `explorer`, `synthesis`, `match-view`,
+  `squad`, `tactical`, `timeseries`, `career`. Les données Go internes de chaque schéma sont déjà des `i18n.Text` (étape 5) : B et C changent le fil et les
+  consommateurs, pas le stockage. Les 69 champs Go de la classe (b) restants comprennent aussi des champs hors contrat d'API (`cmd/mapcallouts-build`,
+  `cmd/weapon-sounds`, `ops/seed.go`, `persist/rows.go` x2, `port/weapon_kills.go` + `weapon_range.go`, `prestige.SquadChallengeView`, `milestones.CatalogEntry`,
+  les requêtes admin `ModeTranslationRequest` / `AssetTranslationRequest`) : à traiter avec le groupe dont ils dépendent, ou à réétiqueter avec le garde-rail.
+
+  **(ii) Objets de libellé à clés `en` / `fr`** : 12 structs Go à champs tagués `json:"en"` / `json:"fr"` (aucun autre en dehors des tests, par `rg`), tous dans le
+  document de rejeu et tous CONVERTIS au lot A : `film/replay` (stocké) et `domain/replaydoc` (servi), chacun pour `Label`, `WeaponLabel`, `VehicleLabel`,
+  `CalloutZone` (champs `EN` / `FR`), `ObjectiveObjectLife`, `VehicleWeapon`. Consommateurs Go : `film/replay` (`catalog.go`, `build_objective_objects.go`,
+  `flag_objects.go`, `ground_weapon_objects.go`), `replaylabels/catalog.go`, `service/replayview/convert_*.go`, `service/replay_vehicle_{labels,weapons}.go`,
+  `service/tactical_{callouts,service_zones}.go`, `service/squadagg/squad_formes.go`, `mapcatalog/callouts_entree.go`, `cmd/mapcallouts-build`, `cmd/mapplafond-mesure`.
+  Consommateurs web : `match-replay/i18n/catalogLabel.ts` (et ses 9 lecteurs de `catalogText`), `match-replay/layers/useReplayVehicles.ts`, `lib/replay/calloutsPaint.ts`,
+  `match-replay/model/{abilityChargeLogic,placementTeleport}.ts`. Hors lot, trouvés par la recherche de clés littérales : `games/halo_5/career_sr.go:59` (`Labels:
+  map[string]string{"en": ..., "fr": ...}`, rang de carrière Halo 5 : à regarder avec le groupe C, carrière), `notify/coach.go:164-177` et `notify/discord.go:291-293` (tables de
+  messages `{fr, en}` : étape 7), `handlers/session_context_validate.go:31` (item 7.7).
+
+  **(iii) Caches serveur des réponses touchées** (inventaire par grep des caches du process et des clés de cache, le 2026-10-26) :
+
+| Cache | Contenu | Clé | Locale dans la clé ? | Décision pour B / C |
+|---|---|---|---|---|
+| `platform/duckdb/player_matches_cache.go` (`playerReadCache`) | lignes `PlayerMatchRow` canoniques | (xuid, titre, filtres) | non, et sans objet : aucun libellé localisé (les noms viennent après, par `Text`) | inchangé |
+| `service/seasons_catalog.go` (`SeasonsCatalog`) | `SeasonCatalogEntry.Label` en `Text` (toutes langues) | titre + xuid lecteur | non, et sans objet tant que la résolution se fait à la réponse | inchangé |
+| `service/career_live_cache.go` | carrière en direct | xuid + titre | non ; à revoir si le libellé de rang est résolu avant le cache (groupe C) | à vérifier au lot C |
+| `service/recent_matches_cache.go`, `service/remote_stats_cache.go` | données Halo distantes (pas de libellé) | xuid (+ titre) | non, sans objet | inchangé |
+| `service/replay_map_callouts.go` (`cataloguesDeCallouts`, `cataloguesGeneres`) | catalogue de zones, toutes langues | chemin du fichier | non, sans objet (libellés par langue DANS le document, décision lot A) | inchangé |
+| `handlers/field_mappings_cache.go` | mappings de champs | `slug|locale` | oui | modèle |
+| `platform/duckdb/home_repo_cache.go` (instantanés de défis) | défis résolus | colonne `locale` | oui | modèle |
+| `service/tactical_service_rasters.go`, `tactical_sequence_store.go` | rasters et séquences tactiques (`TacticalGrappe` / `TacticalZoneNom` portent `nom_en/fr`) | carte + paramètres | non | groupe C : soit la clé porte la locale, soit le cache garde les deux langues et la réponse résout |
+| ETag HTTP (`handlers/cache_http.go`, `writeJSONCached`) | condensé du corps servi | contenu | indirect : le corps change avec la langue donc l'ETag aussi ; AUCUN en-tête `Vary: X-LevelUp-Locale` n'est posé (recherche de `Vary` dans `internal/api` : 0) et pas de `Cache-Control` | à poser quand un libellé résolu entre dans une réponse (lots B et C) |
+| `proxy_cache` nginx | — | — | aucun `proxy_cache` dans les fichiers de configuration du dépôt | sans objet |
+
+  Les caches web (query keys) sont au 6.5 : la règle de `lib/query/keys.ts` existe, le changement de langue invalide aujourd'hui toutes les queries (`settings/queries.ts:74`).
+- 7.G fichiers Go à texte rédigé (étape 7). Liste figée à l'entrée de l'étape 7 (2026-10-26, `HEAD` = `c286b22a1`), produite par la regex élargie du garde-rail 2.3 (`internal/archlint/no_locale_literal_test.go`) : **45 lignes** dans **27 fichiers** (26 lignes dans 15 fichiers avec la regex d'avant) ; plus les 5 fichiers à littéraux de langue (`FR:` / `i18n.Text{LocaleFR: "..."}` / `FromColumns("...")`) : `analysis/match_impact.go`, `analysis/match_impact_thief.go`, `analysis/skill_v2/tier.go`, `sync/skill/skill_config.go`, `platform/duckdb/season_pass_repo_helpers.go`.
+  Comparaisons de langue (fichier : lignes à l'entrée) : `platform/duckdb/leaderboard_world_repo.go` 4, `progression/coach_advisor/synthesizer.go` 3, `platform/duckdb/home_repo_medals_citations.go` 3, `api/handlers/home.go` 3, `service/session_page_service.go` 2, `service/release_notes_service.go` 2, `platform/halo/challenges_details.go` 2, `platform/duckdb/metadata_repo_assets.go` 2, `platform/duckdb/killsource_weapon_scope.go` 2, `platform/duckdb/home_repo_playlist_ranks.go` 2, `platform/duckdb/citations_repo.go` 2, `analysis/home_locale.go` 2, `cmd/refresh-career-ranks/main.go` 2, et 1 ligne dans chacun de : `service/trends_service_sources.go`, `service/squadagg/vehicle_labels.go`, `service/match_view_service.go`, `service/match_view_builders_header.go`, `service/home_service_demo.go`, `service/filters_service.go`, `platform/duckdb/season_pass_repo_tracks.go`, `platform/duckdb/season_catalog_repo.go`, `platform/duckdb/media_repo_filters.go`, `platform/duckdb/medal_definitions_repo.go`, `platform/duckdb/halo5/halo5_commendation_defs.go`, `api/handlers/patterns.go`, `api/handlers/help.go`, `analysis/home_kpis.go`.
+  Hors de la liste mais convertis par l'item : `analysis/home_canonical_skill.go` (booléen `frPreferred`), `service/match_view_converters.go` / `match_view_builders_combat.go` (langue du badge d'impact), `ogmeta/builder.go`, `api/handlers/{coach_proposals,notifications,session_context_validate,admin_data_quality}.go`, `progression/coach{,_advisor}/*`, `api/wire/post_sync_medal_first_earned.go`, `sync/csr_writes.go`, `sync/skill_reexport.go`.
+- 7.H lecteurs et écrivains des tables de noms d'armes et de définitions (étape 8). Liste figée le 2026-10-27 à `b1c9eb434` (grep des tables dans `apps/go-api/internal` et `cmd`, hors tests).
+  `weapon_name_labels(title_slug, weapon_key, name_en, name_fr)` : lecteurs `platform/duckdb/weapon_resolver.go` (3 requêtes : par weapon_id, par weapon_key, dimensions par clé) et `sync/citations_weapons_source.go` ; écrivain `games/weapons/name_labels.go` (`INSERT OR REPLACE`, copie du TOML `weapon_names.toml` réconciliée à chaque boot). Le TOML n'est donc PAS la seule source lue : la table passe en `(clé, lang, nom)` (item 8.4).
+  `weapon_labels(weapon_id, name_en, name_fr [, icon_url, weapon_type])` : lecteurs `weapon_resolver.go` (requête unifiée et `resolveWeaponLabelsOnly`), `metadata_repo_assets_list.go` (tiroir d'actifs), `title_asset_drawer_loader.go` (armes Halo 5), `sync/citations.go` (`name_en`), jointures de couverture `api/wire/registry_weapon_coverage.go` et `server_admin_monitoring.go` (sur `weapon_id` seul) ; écrivains `games/weapons/labels.go` (liste Go), `cmd/h5-metadata-fetch`, `cmd/seed-weapon-labels`.
+  Tables de définitions à colonnes `_fr/_en` (8.3), par table : `medal_definitions` (lecteurs `medal_definitions_repo.go`, `medals_repo.go`, `medal_label_resolve.go`, `match_view_repo_medals.go`, `metadata_repo_assets_list.go`, `title_asset_drawer_loader.go`, `home_repo_medals_citations.go`, `medal_citation_fallback.go`, `service/{asset_service,medals_service}.go` ; écrivains `ops/seed*.go`, `cmd/refresh-metadata`, `cmd/h5-metadata-fetch`, steps historiques de médailles) ; `commendation_definitions` (`halo5/halo5_commendation_defs.go`, `home_repo_medals_citations.go`, `vehicle_commendation_stats_repo.go`, fetch H5) ; `team_colors` (`title_asset_drawer_loader.go`, `match_view_teams.go`, fetch H5) ; `xbox_achievement_definitions` (`metadata_achievements_repo.go`, `sync/achievements.go`) ; `milestone_catalog` (`milestones_catalog_repo.go`, seeds `halo_infinite/migrations/milestones.go` et `halo_5/migrations/milestones.go`). Colonnes appariées qui RESTENT après l'étape (relevé de la copie Infinite, hors périmètre, voir §5) : `citation_mappings` (`citation_name_display_en`, `description_en`), `challenge_template` et `preset_arc` (`label_*`, `description_*`, `title_*`), `career_ranks` (`title_en`, `subtitle_en`), `mode_name_tr.mode_en`, `mode_prefix_names.prefix_en`.

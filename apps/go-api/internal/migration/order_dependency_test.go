@@ -32,6 +32,10 @@ var stepDependencies = map[string]string{
 	// table `weapon_families` créée par add_weapon_registry — le créateur DOIT précéder,
 	// même raisonnement que purge_weapons_name_fr_column ci-dessus.
 	"purge_weapon_families_labels_columns": "add_weapon_registry",
+	// metadata_weapon_names_to_translations_v1 (plan i18n 8.4) reconstruit weapon_labels sans la
+	// créer : son créateur DOIT précéder, sinon une base neuve garderait le step no-op puis
+	// recevrait la table dans l'ancienne forme si le créateur y revenait.
+	"metadata_weapon_names_to_translations_v1": "add_weapon_labels",
 	// drop_arc_titles (V721-09, 2026-07-25) ne crée pas arc_titles : il la SUPPRIME.
 	// Sur une base joueur VIERGE, si le dropper passait avant create_arc_titles_join,
 	// le DROP IF EXISTS serait un no-op et la table survivrait au provisioning —

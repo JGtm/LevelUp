@@ -288,8 +288,8 @@ function raster(carte: Carte | null, film: Film, corps: Record<string, unknown>)
     echelle: { p50: quantile(0.5), p95: quantile(0.95), borne: quantile(0.95), n_cellules: cellules.length, symetrique: signe },
     cellules,
     grappes: [
-      { id: 'g1', nom_fr: 'Ouest', nom_en: 'West', matchs: n, x: x0 + w / 4, y: yHaut - h / 2 },
-      { id: 'g2', nom_fr: 'Est', nom_en: 'East', matchs: n, x: x0 + (3 * w) / 4, y: yHaut - h / 2 },
+      { id: 'g1', nom: 'Ouest', matchs: n, x: x0 + w / 4, y: yHaut - h / 2 },
+      { id: 'g2', nom: 'Est', matchs: n, x: x0 + (3 * w) / 4, y: yHaut - h / 2 },
     ],
     matchs_filtres: n,
     matchs_retenus: retenus,
@@ -305,7 +305,8 @@ function pageDesCartes(cartes: Carte[], n: number): TacticalMapsPage {
     cartes: cartes.map<TacticalMapCard>((c, i) => ({
       map_id: c.id,
       map_name: c.nom,
-      map_name_fr: c.nom,
+      map_label: c.nom,
+      map_filter_key: c.nom,
       matchs: n + (i % 7),
       victoires: Math.floor((n + (i % 7)) / 2),
       defaites: Math.ceil((n + (i % 7)) / 2),

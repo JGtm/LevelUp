@@ -47,8 +47,7 @@ function buildRankGaugeOption(series: ChartSeries<GaugePoint>[]): EChartsCoreOpt
 // source ne le fournit pas. Aucun vocabulaire de jeu codé en dur côté front.
 // Exportée pour test unitaire (résolution title-agnostic du libellé).
 export function heroMaxRankName(hero: HeroProgress, locale: ManifestLocale): string {
-  const fromPayload = locale === 'fr' ? hero.max_rank_name_fr : hero.max_rank_name_en
-  return fromPayload || formatMessage(careerManifest, 'career.charts.max_rank_generic', locale)
+  return hero.max_rank_name || formatMessage(careerManifest, 'career.charts.max_rank_generic', locale)
 }
 
 function heroGaugeSeries(hero: HeroProgress, numLoc: string, locale: ManifestLocale): ChartSeries<GaugePoint> {
@@ -130,8 +129,7 @@ function RankGaugeFooter({
   locale: ManifestLocale
   intlLocale: string
 }) {
-  const nextRankName =
-    locale === 'fr' ? summary.next_rank_name_fr : summary.next_rank_name_en
+  const nextRankName = summary.next_rank_name
   return (
     <div className="flex flex-col items-center gap-2 border-t border-border px-3 py-3">
       <div className="text-center">

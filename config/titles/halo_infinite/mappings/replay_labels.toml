@@ -32,23 +32,19 @@ schema_version = 2
 # static/weapons-assets/{slug}/ — extraites du POC de rejeu (2026-08-12), qui les
 # portait en data URI. Optionnel : sans icon, le client garde le libelle.
 [[grenades]]
-en = "Frag"
-fr = "Fragmentation"
+label = { en = "Frag", fr = "Fragmentation" }
 icon = "hud/Frag"
 
 [[grenades]]
-en = "Plasma"
-fr = "Plasma"
+label = { en = "Plasma", fr = "Plasma" }
 icon = "hud/Plasma"
 
 [[grenades]]
-en = "Dynamo"
-fr = "Dynamo"
+label = { en = "Dynamo", fr = "Dynamo" }
 icon = "hud/Dynamo"
 
 [[grenades]]
-en = "Spike"
-fr = "Spike"
+label = { en = "Spike", fr = "Spike" }
 icon = "hud/Spike"
 
 # Capacites d'armure, par PALETTE puis par RANG lu dans le film.
@@ -115,27 +111,27 @@ id = "famille_a"
 markers = [1, 2, 4, 5, 6, 8, 9, 10, 11, 12, 23]
 
 [ability_palettes.ranks]
-"1"  = { en = "Threat Sensor", fr = "detecteur de menaces", icon = "hud/ThreatSensor", family = "sensor" }
-"2"  = { en = "Drop Wall", fr = "mur de protection", icon = "hud/DropWall", family = "wall" }
-"4"  = { en = "Grappleshot", fr = "grappin", icon = "hud/Grappleshot", family = "grapple" }
-"5"  = { en = "Thruster", fr = "propulseur", icon = "hud/Thruster", family = "thruster" }
-"6"  = { en = "Repulsor", fr = "repulseur", icon = "hud/Repulsor", family = "repulsor" }
+"1"  = { label = { en = "Threat Sensor", fr = "detecteur de menaces" }, icon = "hud/ThreatSensor", family = "sensor" }
+"2"  = { label = { en = "Drop Wall", fr = "mur de protection" }, icon = "hud/DropWall", family = "wall" }
+"4"  = { label = { en = "Grappleshot", fr = "grappin" }, icon = "hud/Grappleshot", family = "grapple" }
+"5"  = { label = { en = "Thruster", fr = "propulseur" }, icon = "hud/Thruster", family = "thruster" }
+"6"  = { label = { en = "Repulsor", fr = "repulseur" }, icon = "hud/Repulsor", family = "repulsor" }
 # Rangs 8 et 9 : les DEUX BONUS. Leur `family` est celle des POSES (`powerup_*`), et elle est
 # posee le 2026-09-10 (lot 4.3) parce que le document publie desormais la table rang -> famille
 # et que le resume d usage joint dessus : sans elle, les deux familles les plus lues du bilan
 # d equipement sortaient du perimetre. Elles ne figurent dans AUCUNE liste `families` mesuree
 # ([ability_impulses], [ability_charges]) — la famille NOMME, elle n ouvre aucun canal.
-"8"  = { en = "Active Camouflage", fr = "camouflage actif", icon = "hud/ActiveCamouflage", family = "powerup_camo" }
-"9"  = { en = "Overshield", fr = "surbouclier", icon = "hud/Overshield", family = "powerup_overshield" }
+"8"  = { label = { en = "Active Camouflage", fr = "camouflage actif" }, icon = "hud/ActiveCamouflage", family = "powerup_camo" }
+"9"  = { label = { en = "Overshield", fr = "surbouclier" }, icon = "hud/Overshield", family = "powerup_overshield" }
 # Rang 10 : NOMME LE 2026-09-10 par releve Theater guide (3 matchs, 9 scenes : `cde26226`,
 # `f0220a96`, `4f77afc1`) — l ecran occultant, ramasse au socle ou au sol, a 2 ou 4 charges
 # selon la partie. Coherent avec l objet `0x4396db42` (banque sonore `sb_007_abl_shroud`).
-"10" = { en = "Shroud Screen", fr = "ecran occultant", icon = "hud/ShroudScreen", family = "shroud_screen" }
-"11" = { en = "Quantum Translocator", fr = "translocateur quantique", icon = "hud/QuantumTranslocator", family = "translocator_beacon" }
-"12" = { en = "Threat Seeker", fr = "traqueur de menaces", icon = "hud/ThreatSeeker", family = "threat_seeker" }
+"10" = { label = { en = "Shroud Screen", fr = "ecran occultant" }, icon = "hud/ShroudScreen", family = "shroud_screen" }
+"11" = { label = { en = "Quantum Translocator", fr = "translocateur quantique" }, icon = "hud/QuantumTranslocator", family = "translocator_beacon" }
+"12" = { label = { en = "Threat Seeker", fr = "traqueur de menaces" }, icon = "hud/ThreatSeeker", family = "threat_seeker" }
 # 23 est le SEUL rang confirme par DEUX chaines : l'inversion murmur3 ET la banque sonore
 # `sb_007_abl_repairfield`, atteinte depuis ce rang a la distance la plus courte.
-"23" = { en = "Repair Field", fr = "champ de reparation", icon = "hud/RepairField", family = "repair_field" }
+"23" = { label = { en = "Repair Field", fr = "champ de reparation" }, icon = "hud/RepairField", family = "repair_field" }
 
 # --- FAMILLE B ---------------------------------------------------------------------
 # Cette famille n'expose que les rangs 19 a 22, et AUCUN rang inferieur a 13 : mesure sur
@@ -164,10 +160,10 @@ id = "famille_b"
 markers = [19, 20, 21, 22]
 
 [ability_palettes.ranks]
-"20" = { en = "Grappleshot", fr = "grappin", icon = "hud/Grappleshot", family = "grapple" }
-"19" = { en = "Drop Wall", fr = "mur de protection", icon = "hud/DropWall", family = "wall" }
-"21" = { en = "Thruster", fr = "propulseur", icon = "hud/Thruster", family = "thruster" }
-"22" = { en = "Threat Sensor", fr = "detecteur de menaces", icon = "hud/ThreatSensor", family = "sensor" }
+"20" = { label = { en = "Grappleshot", fr = "grappin" }, icon = "hud/Grappleshot", family = "grapple" }
+"19" = { label = { en = "Drop Wall", fr = "mur de protection" }, icon = "hud/DropWall", family = "wall" }
+"21" = { label = { en = "Thruster", fr = "propulseur" }, icon = "hud/Thruster", family = "thruster" }
+"22" = { label = { en = "Threat Sensor", fr = "detecteur de menaces" }, icon = "hud/ThreatSensor", family = "sensor" }
 
 # Familles de capacite dont l'USAGE est MESURE par le canal d'IMPULSION du bipede : le corps
 # de tag externe `R(2) == 1` des composants `biped-spartan-ability` (i57) et
@@ -735,8 +731,7 @@ kind       = "carried"
 [[objective_objects]]
 id     = "0x2a392328"
 family = "flag"
-en     = "Flag"
-fr     = "Drapeau"
+label  = { en = "Flag", fr = "Drapeau" }
 
 # LE CRANE D'ODDBALL — identite ETABLIE le 2026-08-27, portage REFUTE le meme jour.
 #
@@ -764,8 +759,7 @@ fr     = "Drapeau"
 [[objective_objects]]
 id     = "0x0017592c"
 family = "ball"
-en     = "Oddball"
-fr     = "Crane"
+label  = { en = "Oddball", fr = "Crane" }
 
 # ---------------------------------------------------------------------------
 # LA ZONE DE RETOUR DU DRAPEAU (CTF) — la regle du mode, pas un reglage d'affichage.
@@ -845,8 +839,7 @@ solo_seconds  = 3.1
 # tourelle dedie, jamais le marqueur neutre.
 [[vehicle_families]]
 family = "tourelle_auto_bannie"
-en     = "Banished auto-turret"
-fr     = "Tourelle automatique bannie"
+label  = { en = "Banished auto-turret", fr = "Tourelle automatique bannie" }
 kind   = "map_element"
 sprite = false
 
@@ -860,7 +853,6 @@ sprite = false
 # jour (`sprite = false`) : le client dessine le pictogramme de tourelle, occupant compris.
 [[vehicle_families]]
 family = "tourelle_fixe"
-en     = "Fixed turret"
-fr     = "Tourelle fixe"
+label  = { en = "Fixed turret", fr = "Tourelle fixe" }
 kind   = "fixed_turret"
 sprite = false

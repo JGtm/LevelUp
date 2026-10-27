@@ -51,6 +51,7 @@ import type { TimeseriesMatchRow } from '@/lib/api/types'
 
 import { buildMatchCategories } from './matchLabels'
 import { ChartFromOption } from './ChartFromOption'
+import { intlLocale } from '@/lib/formatters/intlLocale'
 
 export interface TimeseriesNetLivesPoint {
   /** Étiquette d'axe X du match (`#N` + carte). */
@@ -77,7 +78,7 @@ export function computeTimeseriesNetLives(
   const categories = buildMatchCategories(rows)
   const cum = cumulativeSigned(rows.map((r) => netLives(r.damage_dealt, r.damage_taken, hp)))
   return rows.map((r, i) => {
-    const map = r.map_name_fr || r.map_name
+    const map = r.map_label
     const date = formatDate(r.start_time, locale)
     return {
       label: categories[i] ?? `#${i + 1}`,
@@ -220,7 +221,7 @@ export function TimeseriesNetLivesTrend({
   // Titre sans dégâts subis (ex. Halo 5) → masquage silencieux (pas de carte vide).
   if (!providesDamageTaken) return null
 
-  const nf = new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'fr-FR', {
+  const nf = new Intl.NumberFormat(intlLocale(locale), {
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,
     signDisplay: 'always',

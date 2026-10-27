@@ -28,12 +28,6 @@ interface SpartanIdentityTextDict {
   }
 }
 
-export function normalizeSpartanIdentityLocale(
-  locale?: string | null,
-): Locale {
-  return locale === 'en' ? 'en' : 'fr'
-}
-
 function t(
   loc: Locale,
   key: HomeManifestKey,
@@ -42,8 +36,7 @@ function t(
   return formatMessage(homeManifest, key, loc, values)
 }
 
-export function getSpartanIdentityText(locale?: string | null): SpartanIdentityTextDict {
-  const loc = normalizeSpartanIdentityLocale(locale)
+export function getSpartanIdentityText(loc: Locale): SpartanIdentityTextDict {
   return {
     labels: {
       careerRank: t(loc, 'home.spartan.career_rank'),

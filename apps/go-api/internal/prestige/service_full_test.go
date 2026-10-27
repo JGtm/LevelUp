@@ -5,6 +5,8 @@ import (
 	"errors"
 	"testing"
 	"time"
+
+	"levelup/go-api/internal/i18n"
 )
 
 // service_full_test.go — tests d'orchestration du Service avec mocks complets.
@@ -348,10 +350,10 @@ func TestService_EnablePilotMode_CreatesDailyAndWeekly(t *testing.T) {
 	svc, _, _, _, _, tplRepo := buildFullService()
 	tplRepo.templates = []Template{
 		{ID: "t1", Cadence: CadenceDaily, WindowType: WindowSession, EvalType: EvalThreshold,
-			Metric: "FieldKDA", LabelFR: "Stay sharp",
+			Metric: "FieldKDA", Labels: i18n.FromColumns("", "Stay sharp"),
 			NormalTarget: 1.1, HeroicTarget: 1.35, LegendaryTarget: 1.6, MythicTarget: 2.0},
 		{ID: "t2", Cadence: CadenceWeekly, WindowType: WindowSession, EvalType: EvalThreshold,
-			Metric: "FieldKDA", LabelFR: "Constant",
+			Metric: "FieldKDA", Labels: i18n.FromColumns("", "Constant"),
 			NormalTarget: 1.2, HeroicTarget: 1.5, LegendaryTarget: 1.8, MythicTarget: 2.2},
 	}
 	out, err := svc.EnablePilotMode(context.Background(), "u1", "halo_infinite")

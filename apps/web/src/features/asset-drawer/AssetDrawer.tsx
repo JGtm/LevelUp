@@ -118,7 +118,6 @@ export function AssetDrawer() {
         <div className="flex-1 overflow-y-auto">
           <AssetGrid
             items={items}
-            locale={locale}
             kind={activeTab}
             emptyMessage={t(emptyKey)}
             isLoading={currentQuery.isLoading}

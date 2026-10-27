@@ -22,6 +22,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/mapgroups"
 	"levelup/go-api/internal/service/squadagg"
@@ -162,6 +163,7 @@ func (s *SquadServiceV2) GetSquadPage(
 		squadXUIDs:    squadXUIDs,
 		weapons:       weapons,
 		medals:        medals,
+		locale:        i18n.FromContext(ctx),
 	})
 
 	for _, gap := range []*canonical.CapabilityGap{eventsCapGap, weaponsCapGap, medalsCapGap} {

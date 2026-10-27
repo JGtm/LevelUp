@@ -1,7 +1,6 @@
-// Package duckdb — home_repo_translations_canonical.go : enrichissements
-// FR/EN des canonical.PlayerMatchRow (AssetReference Map/Playlist/
-// GameVariant/PairMode) — cascade asset_translations + mode_name_tr +
-// map_images_registry.
+// Package duckdb — home_repo_translations_canonical.go : enrichissements des noms, dans toutes les
+// langues connues, des canonical.PlayerMatchRow (AssetReference Map/Playlist/GameVariant/PairMode) —
+// cascade asset_translations + mode_name_tr + map_images_registry.
 //
 // Sous-module de home_repo.go (split god-file 2026-05-21).
 package duckdb
@@ -14,28 +13,23 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 )
 
-// EnrichCanonicalAssetTranslations remplit Labels["fr"] sur les
-// AssetReference (Map, Playlist, GameVariant, PairMode) des canonical rows
-// depuis metadata.asset_translations + mode_name_tr quand match_registry
-// .{...}_name_fr est NULL en DB. Bug #2/#7 cascade : sans ça, modes/maps/
-// playlists restent en EN sur la home (Faits marquants, KPIs, sessions,
-// tuiles match).
-// canonicalAssetTranslations regroupe les résolutions FR/EN par kind + URLs map.
+// canonicalAssetTranslations regroupe les noms résolus par type d'actif (une entrée par langue),
+// les URLs de carte et les noms de mode (mode_name_tr) par langue.
 type canonicalAssetTranslations struct {
-	mapNames        map[string]string
-	playlistNames   map[string]string
-	variantNames    map[string]string
-	pairNames       map[string]string
-	mapNamesEN      map[string]string
-	playlistNamesEN map[string]string
-	variantNamesEN  map[string]string
-	pairNamesEN     map[string]string
-	mapImageURLs    map[string]string
-	modeNamesFR     map[string]string
+	maps, playlists, variants, pairs map[string]i18n.Text
+	mapImageURLs                     map[string]string
+	modes                            map[i18n.Locale]map[string]string
 }
 
+// EnrichCanonicalAssetTranslations complète Labels des AssetReference (Map, Playlist, GameVariant,
+// PairMode) des canonical rows, pour CHAQUE langue connue, depuis metadata.asset_translations +
+// mode_name_tr quand match_registry.{...}_name est absent ou n'est que le nom de la langue de repli.
+// Sans cela, modes/maps/playlists restent dans la langue du registre sur la home (Faits marquants,
+// KPIs, sessions, tuiles match). Les libellés de toutes les langues sont posés : l'enrichissement ne
+// dépend pas de la langue de la requête (les lignes enrichies peuvent être mises en cache).
 func (r *HomeRepo) EnrichCanonicalAssetTranslations(ctx context.Context, rows []canonical.PlayerMatchRow) error {
 	if r == nil || r.pdb == nil || r.pdb.Metadata == nil || len(rows) == 0 {
 		return nil
@@ -44,11 +38,11 @@ func (r *HomeRepo) EnrichCanonicalAssetTranslations(ctx context.Context, rows []
 	t := r.resolveCanonicalAssetTranslations(ctx, rows)
 
 	for i := range rows {
-		applyCanonicalAssetFRBatch(&rows[i], t)
-		applyCanonicalAssetENBatch(&rows[i], t)
+		fillCanonicalAssetLabelsBatch(&rows[i], t)
+		overwriteCanonicalAssetLabelsBatch(&rows[i], t)
 		r.applyCanonicalPlaylistDisplay(rows[i].Summary.Playlist)
 		r.applyCanonicalMapIconURL(rows[i].Summary.Map, t)
-		applyCanonicalPairModeFR(rows[i].Summary.PairMode, t)
+		applyCanonicalPairMode(rows[i].Summary.PairMode, t)
 		normalizeGameVariantMode(rows[i].Summary.PairMode)
 	}
 	return nil
@@ -73,55 +67,50 @@ func normalizeGameVariantMode(mode *canonical.AssetReference) {
 }
 
 // applyCanonicalPlaylistDisplay applique le CHOKEPOINT UNIQUE de libellé de
-// playlist (strip de catégorie + override playlist_labels.toml) sur Labels["fr"]
-// APRÈS résolution (DB ou asset_translations) — INCONDITIONNEL, contrairement à
-// applyCanonicalAssetFR gaté par needsHomeAssetTranslation. Sans ça, une playlist
-// dont le nom FR est déjà peuplé en DB (« Super Fiesta Fête », « Arène delta :
+// playlist (strip de catégorie + override playlist_labels.toml) sur le libellé de la langue par
+// défaut APRÈS résolution (DB ou asset_translations) — INCONDITIONNEL, contrairement à
+// fillCanonicalAssetLabel gaté par namePlaceholder. Sans ça, une playlist
+// dont le nom est déjà peuplé en DB (« Super Fiesta Fête », « Arène delta :
 // Héritage ») échappait au raccourcissement sur les tuiles de match et les
 // sessions dominantes. Idempotent (Display d'un libellé déjà résolu = lui-même).
 func (r *HomeRepo) applyCanonicalPlaylistDisplay(ref *canonical.AssetReference) {
 	if ref == nil {
 		return
 	}
-	// DefaultLabel : pour Halo 5, match_registry.playlist_name est synced en
-	// FR-localisé (« Super Fiesta Fête ») et sert de repli quand Labels["fr"] est
-	// absent (sessions dominantes → dominantNameFromRows retombe sur `en`). On le
-	// résout donc aussi. Labels["en"] (vrai EN) reste intact — parité Match View
-	// qui ne transforme que le FR.
+	// DefaultLabel : pour Halo 5, match_registry.playlist_name est synced dans la langue par défaut
+	// (« Super Fiesta Fête ») et sert de repli quand le libellé de cette langue est absent (sessions
+	// dominantes → dominantNameFromRows retombe sur la langue de repli). On le résout donc aussi. Le
+	// libellé de la langue de repli reste intact — parité Match View qui ne transforme que la langue
+	// par défaut.
 	if ref.DefaultLabel != "" {
 		ref.DefaultLabel = r.playlistDisplay.Display(ref.DefaultLabel)
 	}
 	if ref.Labels == nil {
 		return
 	}
-	if fr := ref.Labels["fr"]; fr != "" {
-		ref.Labels["fr"] = r.playlistDisplay.Display(fr)
+	if label := ref.Labels[string(i18n.Default)]; label != "" {
+		ref.Labels[string(i18n.Default)] = r.playlistDisplay.Display(label)
 	}
 }
 
-// resolveCanonicalAssetTranslations collecte les IDs nécessaires + résout les
-// traductions FR/EN + URLs map + mode_name_tr en une seule passe.
+// resolveCanonicalAssetTranslations collecte les IDs nécessaires + résout les noms de chaque
+// langue + URLs map + mode_name_tr en une seule passe.
+//
+// match_registry.{*}_name peut avoir été synced dans la langue par défaut selon le client de sync.
+// Sans libellé de la langue de repli, AssetReference.Text range ce DefaultLabel sous la langue de
+// repli et le nom de la langue par défaut fuit en UI de la langue de repli : le nom de chaque
+// actif est donc résolu pour TOUS les actifs, pas seulement ceux sans traduction.
 func (r *HomeRepo) resolveCanonicalAssetTranslations(
 	ctx context.Context, rows []canonical.PlayerMatchRow,
 ) canonicalAssetTranslations {
+	meta := r.pdb.Metadata
+	allMapIDs := collectCanonicalAssetIDs(rows, assetTypeMap)
 	t := canonicalAssetTranslations{
-		mapNames:      r.resolveAssetNames(ctx, "map", collectCanonicalAssetIDsNeedingFR(rows, "map"), "fr"),
-		playlistNames: r.resolveAssetNames(ctx, "playlist", collectCanonicalAssetIDsNeedingFR(rows, "playlist"), "fr"),
-		variantNames:  r.resolveAssetNames(ctx, "game_variant", collectCanonicalAssetIDsNeedingFR(rows, "game_variant"), "fr"),
-		pairNames:     r.resolveAssetNames(ctx, "pair", collectCanonicalAssetIDsNeedingFR(rows, "pair"), "fr"),
+		maps:      assetNameTexts(ctx, meta, assetTypeMap, allMapIDs),
+		playlists: assetNameTexts(ctx, meta, assetTypePlaylist, collectCanonicalAssetIDs(rows, assetTypePlaylist)),
+		variants:  assetNameTexts(ctx, meta, assetTypeGameVariant, collectCanonicalAssetIDs(rows, assetTypeGameVariant)),
+		pairs:     assetNameTexts(ctx, meta, assetTypePair, collectCanonicalAssetIDs(rows, assetTypePair)),
 	}
-
-	// match_registry.{*}_name peut avoir été synced en FR-localisé selon le
-	// client de sync. Sans Labels["en"], labelForLocale("en", ...) leak du FR.
-	allMapIDs := collectAllCanonicalMapIDs(rows)
-	allPlaylistIDs := collectAllCanonicalAssetIDs(rows, "playlist")
-	allVariantIDs := collectAllCanonicalAssetIDs(rows, "game_variant")
-	allPairIDs := collectAllCanonicalAssetIDs(rows, "pair")
-
-	t.mapNamesEN = r.resolveAssetNames(ctx, "map", allMapIDs, "en")
-	t.playlistNamesEN = r.resolveAssetNames(ctx, "playlist", allPlaylistIDs, "en")
-	t.variantNamesEN = r.resolveAssetNames(ctx, "game_variant", allVariantIDs, "en")
-	t.pairNamesEN = r.resolveAssetNames(ctx, "pair", allPairIDs, "en")
 
 	mapImageURLs, mapImageURLErr := r.loadHomeMapImageURLs(ctx, allMapIDs)
 	if mapImageURLErr != nil {
@@ -130,61 +119,46 @@ func (r *HomeRepo) resolveCanonicalAssetTranslations(
 	}
 	t.mapImageURLs = mapImageURLs
 
-	t.modeNamesFR = r.loadCanonicalModeNamesFR(ctx, rows, t.pairNames)
+	t.modes = modeTextsByLocale(ctx, meta, canonicalModeKeys(rows, t.pairs))
 	return t
 }
 
-// loadCanonicalModeNamesFR construit le set des mode_en (DefaultLabel + asset FR
-// re-normalisé) puis charge les traductions FR depuis mode_name_tr.
-func (r *HomeRepo) loadCanonicalModeNamesFR(
-	ctx context.Context, rows []canonical.PlayerMatchRow, pairNames map[string]string,
-) map[string]string {
-	modeENSet := map[string]struct{}{}
+// canonicalModeKeys collecte les clés de mode à traduire par mode_name_tr : le DefaultLabel de
+// chaque paire et son nom d'actif dans chaque langue (re-normalisé).
+func canonicalModeKeys(rows []canonical.PlayerMatchRow, pairs map[string]i18n.Text) []string {
+	keys := modeKeySet{}
 	for i := range rows {
 		pair := rows[i].Summary.PairMode
 		if pair == nil || modeIsGameVariant(pair) {
 			continue
 		}
-		if en := analysis.NormalizeModeLabel(pair.DefaultLabel); en != "" {
-			modeENSet[en] = struct{}{}
-		}
-		if name := strings.TrimSpace(pairNames[pair.ID]); name != "" {
-			if en := analysis.NormalizeModeLabel(name); en != "" {
-				modeENSet[en] = struct{}{}
-			}
-		}
+		keys.addLabel(pair.DefaultLabel)
+		keys.addTexts(pairs[pair.ID])
 	}
-	modeENList := make([]string, 0, len(modeENSet))
-	for k := range modeENSet {
-		modeENList = append(modeENList, k)
-	}
-	modeNamesFR, err := r.loadHomeModeNameTranslations(ctx, modeENList)
-	if err != nil {
-		bestEffortFailed(ctx, "mode_names_fr", err)
-	}
-	return modeNamesFR
+	return keys.list()
 }
 
-// applyCanonicalAssetFRBatch applique applyCanonicalAssetFR aux 3 assets Map/Playlist/GameVariant.
-// Un mode porté par le type de jeu prend le dictionnaire des types de jeu.
-func applyCanonicalAssetFRBatch(row *canonical.PlayerMatchRow, t canonicalAssetTranslations) {
-	applyCanonicalAssetFR(row.Summary.Map, t.mapNames)
-	applyCanonicalAssetFR(row.Summary.Playlist, t.playlistNames)
-	applyCanonicalAssetFR(row.Summary.GameVariant, t.variantNames)
+// fillCanonicalAssetLabelsBatch applique fillCanonicalAssetLabel à chaque langue pour les 3 assets
+// Map/Playlist/GameVariant. Un mode porté par le type de jeu prend le dictionnaire des types de jeu.
+func fillCanonicalAssetLabelsBatch(row *canonical.PlayerMatchRow, t canonicalAssetTranslations) {
+	fillCanonicalAssetLabel(row.Summary.Map, t.maps)
+	fillCanonicalAssetLabel(row.Summary.Playlist, t.playlists)
+	fillCanonicalAssetLabel(row.Summary.GameVariant, t.variants)
 	if modeIsGameVariant(row.Summary.PairMode) {
-		applyCanonicalAssetFR(row.Summary.PairMode, t.variantNames)
+		fillCanonicalAssetLabel(row.Summary.PairMode, t.variants)
 	}
 }
 
-// applyCanonicalAssetENBatch applique applyCanonicalAssetEN aux 4 assets (le mode selon son type d'asset).
-func applyCanonicalAssetENBatch(row *canonical.PlayerMatchRow, t canonicalAssetTranslations) {
-	applyCanonicalAssetEN(row.Summary.Map, t.mapNamesEN)
-	applyCanonicalAssetEN(row.Summary.Playlist, t.playlistNamesEN)
-	applyCanonicalAssetEN(row.Summary.GameVariant, t.variantNamesEN)
+// overwriteCanonicalAssetLabelsBatch applique overwriteCanonicalAssetLabel (langue de repli) aux 4
+// assets (le mode selon son type d'asset).
+func overwriteCanonicalAssetLabelsBatch(row *canonical.PlayerMatchRow, t canonicalAssetTranslations) {
+	overwriteCanonicalAssetLabel(row.Summary.Map, t.maps)
+	overwriteCanonicalAssetLabel(row.Summary.Playlist, t.playlists)
+	overwriteCanonicalAssetLabel(row.Summary.GameVariant, t.variants)
 	if modeIsGameVariant(row.Summary.PairMode) {
-		applyCanonicalAssetEN(row.Summary.PairMode, t.variantNamesEN)
+		overwriteCanonicalAssetLabel(row.Summary.PairMode, t.variants)
 	} else {
-		applyCanonicalAssetEN(row.Summary.PairMode, t.pairNamesEN)
+		overwriteCanonicalAssetLabel(row.Summary.PairMode, t.pairs)
 	}
 }
 
@@ -192,10 +166,10 @@ func applyCanonicalAssetENBatch(row *canonical.PlayerMatchRow, t canonicalAssetT
 //  1. map_images_registry (DB cache).
 //  2. AssetURLAdapter par GUID (Map.ID) — titres qui indexent par UUID (Halo 5,
 //     mapURLByID). NO-OP Infinite : son adapter rejette les UUID (uuidRe) → "".
-//  3. AssetURLAdapter avec nom EN résolu (si câblé via WithAssetURL).
+//  3. AssetURLAdapter avec le nom résolu de la langue de repli (si câblé via WithAssetURL).
 //
 // Le repli par GUID est indispensable aux titres LIVE (Halo 5) dont
-// asset_translations peut être vide : sans nom EN, l'étape 3 échoue et la tuile
+// asset_translations peut être vide : sans nom, l'étape 3 échoue et la tuile
 // reste sans image, alors que l'adapter sait résoudre l'URL depuis le GUID seul.
 func (r *HomeRepo) applyCanonicalMapIconURL(m *canonical.AssetReference, t canonicalAssetTranslations) {
 	if m == nil || m.ID == "" {
@@ -213,31 +187,54 @@ func (r *HomeRepo) applyCanonicalMapIconURL(m *canonical.AssetReference, t canon
 		m.IconURL = u
 		return
 	}
-	if enName := strings.TrimSpace(t.mapNamesEN[m.ID]); enName != "" {
-		if u := r.assetURL.MapImageURL(enName); u != "" {
+	if name := strings.TrimSpace(pickAcrossChain(i18n.Fallback, t.maps[m.ID])); name != "" {
+		if u := r.assetURL.MapImageURL(name); u != "" {
 			m.IconURL = u
 		}
 	}
 }
 
-// applyCanonicalPairModeFR applique la cascade ResolvePairNameFR (mode_name_tr → asset → raw).
-// Sans effet sur un mode porté par le type de jeu : ses libellés viennent des dictionnaires des types
-// de jeu (applyCanonicalAssetFRBatch), pas de mode_name_tr.
-func applyCanonicalPairModeFR(pair *canonical.AssetReference, t canonicalAssetTranslations) {
+// applyCanonicalPairMode applique la cascade ResolvePairName (mode_name_tr → asset → raw) au
+// libellé de chaque langue autre que la langue de repli. Sans effet sur un mode porté par le type de
+// jeu : ses libellés viennent des dictionnaires des types de jeu (fillCanonicalAssetLabelsBatch), pas
+// de mode_name_tr.
+func applyCanonicalPairMode(pair *canonical.AssetReference, t canonicalAssetTranslations) {
 	if pair == nil || modeIsGameVariant(pair) {
 		return
 	}
 	if pair.Labels == nil {
 		pair.Labels = map[string]string{}
 	}
-	if fr := analysis.ResolvePairNameFR(
-		pair.DefaultLabel,
-		pair.Labels["fr"],
-		t.pairNames[pair.ID],
-		t.modeNamesFR,
-	); fr != "" {
-		pair.Labels["fr"] = fr
+	for _, l := range i18n.Locales() {
+		if l == i18n.Fallback {
+			continue
+		}
+		if resolved := analysis.ResolvePairName(
+			pair.DefaultLabel,
+			pair.Labels[string(l)],
+			pickAcrossChain(l, t.pairs[pair.ID]),
+			t.modes[l],
+		); resolved != "" {
+			pair.Labels[string(l)] = resolved
+		}
 	}
+}
+
+// collectCanonicalAssetIDs retourne les asset_ids distincts non-vides pour le type donné, sans filtre
+// de traduction manquante : lookups par ID stable (noms de chaque langue, registre d'images).
+func collectCanonicalAssetIDs(rows []canonical.PlayerMatchRow, kind string) []string {
+	ids := map[string]struct{}{}
+	for i := range rows {
+		for _, ref := range canonicalAssetRefs(&rows[i].Summary, kind) {
+			if ref == nil {
+				continue
+			}
+			if id := strings.TrimSpace(ref.ID); id != "" {
+				ids[id] = struct{}{}
+			}
+		}
+	}
+	return setKeys(ids)
 }
 
 // canonicalAssetRefs rend les références d'un match qui se traduisent par le type d'asset
@@ -247,16 +244,16 @@ func applyCanonicalPairModeFR(pair *canonical.AssetReference, t canonicalAssetTr
 func canonicalAssetRefs(s *canonical.MatchSummary, kind string) []*canonical.AssetReference {
 	modeIsVariant := modeIsGameVariant(s.PairMode)
 	switch kind {
-	case "map":
+	case assetTypeMap:
 		return []*canonical.AssetReference{s.Map}
-	case "playlist":
+	case assetTypePlaylist:
 		return []*canonical.AssetReference{s.Playlist}
-	case games.AssetKindGameVariant:
+	case assetTypeGameVariant:
 		if modeIsVariant {
 			return []*canonical.AssetReference{s.GameVariant, s.PairMode}
 		}
 		return []*canonical.AssetReference{s.GameVariant}
-	case "pair":
+	case assetTypePair:
 		if modeIsVariant {
 			return nil
 		}
@@ -270,109 +267,46 @@ func modeIsGameVariant(mode *canonical.AssetReference) bool {
 	return mode != nil && mode.Kind == games.AssetKindGameVariant
 }
 
-// collectAllCanonicalAssetIDs retourne les asset_ids distincts non-vides pour
-// le kind donné. Sans filtre needsTranslation : utilisé pour les lookups par
-// ID stable (registry, traductions canoniques en-US).
-func collectAllCanonicalAssetIDs(rows []canonical.PlayerMatchRow, kind string) []string {
-	ids := map[string]struct{}{}
-	for i := range rows {
-		for _, ref := range canonicalAssetRefs(&rows[i].Summary, kind) {
-			if ref == nil {
-				continue
-			}
-			if id := strings.TrimSpace(ref.ID); id != "" {
-				ids[id] = struct{}{}
-			}
-		}
+// fillCanonicalAssetLabel pose, pour chaque langue autre que la langue de repli, le nom résolu de
+// l'actif (sa langue, sinon le long de i18n.Chain) dans Labels quand ce libellé est absent ou
+// n'est que le repli sur le nom de base (namePlaceholder).
+func fillCanonicalAssetLabel(ref *canonical.AssetReference, translations map[string]i18n.Text) {
+	if ref == nil || len(translations) == 0 {
+		return
 	}
-	out := make([]string, 0, len(ids))
-	for id := range ids {
-		out = append(out, id)
+	texts := translations[ref.ID]
+	base := ref.DefaultLabel
+	if v, ok := ref.Labels[string(i18n.Fallback)]; ok && v != "" {
+		base = v
 	}
-	return out
-}
-
-// collectAllCanonicalMapIDs retourne les map_ids distincts non-vides présents
-// dans les rows (toutes maps, sans filtre needsTranslation). Utilisé pour le
-// lookup map_images_registry qui dépend uniquement du map_id stable.
-func collectAllCanonicalMapIDs(rows []canonical.PlayerMatchRow) []string {
-	ids := map[string]struct{}{}
-	for i := range rows {
-		m := rows[i].Summary.Map
-		if m == nil {
+	for _, l := range i18n.Locales() {
+		if l == i18n.Fallback {
 			continue
 		}
-		if id := strings.TrimSpace(m.ID); id != "" {
-			ids[id] = struct{}{}
+		name := strings.TrimSpace(pickAcrossChain(l, texts))
+		if name == "" || !namePlaceholder(ref.Labels[string(l)], base) {
+			continue
 		}
+		if ref.Labels == nil {
+			ref.Labels = map[string]string{}
+		}
+		ref.Labels[string(l)] = name
 	}
-	out := make([]string, 0, len(ids))
-	for id := range ids {
-		out = append(out, id)
-	}
-	return out
 }
 
-func collectCanonicalAssetIDsNeedingFR(rows []canonical.PlayerMatchRow, kind string) []string {
-	ids := map[string]struct{}{}
-	for i := range rows {
-		for _, ref := range canonicalAssetRefs(&rows[i].Summary, kind) {
-			if ref == nil || strings.TrimSpace(ref.ID) == "" {
-				continue
-			}
-			fr := ""
-			en := ref.DefaultLabel
-			if ref.Labels != nil {
-				fr = ref.Labels["fr"]
-				if v, ok := ref.Labels["en"]; ok && v != "" {
-					en = v
-				}
-			}
-			if needsHomeAssetTranslation(fr, en) {
-				ids[ref.ID] = struct{}{}
-			}
-		}
-	}
-	out := make([]string, 0, len(ids))
-	for id := range ids {
-		out = append(out, id)
-	}
-	return out
-}
-
-func applyCanonicalAssetFR(ref *canonical.AssetReference, translations map[string]string) {
+// overwriteCanonicalAssetLabel écrase le libellé de la langue de repli avec le nom canonique
+// d'asset_translations. Sans ça, la langue de repli peut fuir un DefaultLabel dans la langue par
+// défaut (selon le path de sync, match_registry.{*}_name peut contenir ce label).
+func overwriteCanonicalAssetLabel(ref *canonical.AssetReference, translations map[string]i18n.Text) {
 	if ref == nil || len(translations) == 0 {
 		return
 	}
-	name := strings.TrimSpace(translations[ref.ID])
+	name := strings.TrimSpace(pickAcrossChain(i18n.Fallback, translations[ref.ID]))
 	if name == "" {
 		return
 	}
 	if ref.Labels == nil {
 		ref.Labels = map[string]string{}
 	}
-	en := ref.DefaultLabel
-	if v, ok := ref.Labels["en"]; ok && v != "" {
-		en = v
-	}
-	if needsHomeAssetTranslation(ref.Labels["fr"], en) {
-		ref.Labels["fr"] = name
-	}
-}
-
-// applyCanonicalAssetEN écrase Labels["en"] avec le nom canonique en-US depuis
-// asset_translations. Sans ça, locale=en peut leak un DefaultLabel FR-localisé
-// (selon le path de sync, match_registry.{*}_name peut contenir le label FR).
-func applyCanonicalAssetEN(ref *canonical.AssetReference, translations map[string]string) {
-	if ref == nil || len(translations) == 0 {
-		return
-	}
-	name := strings.TrimSpace(translations[ref.ID])
-	if name == "" {
-		return
-	}
-	if ref.Labels == nil {
-		ref.Labels = map[string]string{}
-	}
-	ref.Labels["en"] = name
+	ref.Labels[string(i18n.Fallback)] = name
 }

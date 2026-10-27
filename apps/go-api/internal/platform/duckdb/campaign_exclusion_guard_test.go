@@ -23,7 +23,6 @@ func TestCampaignExclusionTokenWiredInStatQueries(t *testing.T) {
 		name  string
 		query string
 	}{
-		{"Q9TopMatchesSharedTpl (career top matches)", Q9TopMatchesSharedTpl},
 		{"Q9bHighlightSharedTpl (career highlights)", Q9bHighlightSharedTpl},
 		{"Q22SessionMatches (sessions)", Q22SessionMatches},
 		{"Q23StatsMatchesShared (stats/perf)", Q23StatsMatchesShared},

@@ -127,18 +127,15 @@ function TopWeaponsColumn({
   name,
   side,
   token,
-  locale,
   fmtCount,
 }: {
   name: string
   side: CompareWeaponSide | null | undefined
   token: SemanticToken
-  locale: Locale
   fmtCount: (n: number) => string
 }) {
   const armes = side?.top_weapons ?? []
-  const nomDe = (w: CompareTopWeapon) =>
-    (locale === 'en' ? w.label_en : w.label)?.trim() || w.label || w.label_en || ''
+  const nomDe = (w: CompareTopWeapon) => w.label?.trim() ?? ''
   return (
     <div className="space-y-1.5">
       <p className="text-xs font-semibold" style={{ color: tokenCssVar(token) }}>
@@ -250,7 +247,6 @@ export function CompareWeaponsSection({ left, right, text, locale }: CompareWeap
               ]
         }
         text={text}
-        locale={locale}
         fmtCount={f.count}
       />
     </div>
@@ -265,12 +261,10 @@ export function CompareWeaponsSection({ left, right, text, locale }: CompareWeap
 function TopWeaponsRow({
   colonnes,
   text,
-  locale,
   fmtCount,
 }: {
   colonnes: { name: string; side: CompareWeaponSide | null | undefined; token: SemanticToken }[]
   text: CompareText
-  locale: Locale
   fmtCount: (n: number) => string
 }) {
   return (
@@ -285,7 +279,6 @@ function TopWeaponsRow({
             name={c.name}
             side={c.side}
             token={c.token}
-            locale={locale}
             fmtCount={fmtCount}
           />
         ))}

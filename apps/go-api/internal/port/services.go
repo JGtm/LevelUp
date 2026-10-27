@@ -23,7 +23,6 @@ import (
 // CareerService construit les réponses de la page Carrière.
 type CareerService interface {
 	GetCareerPage(ctx context.Context) (domain.CareerPageResponse, error)
-	GetTopMatches(ctx context.Context) (domain.CareerTopMatchesResponse, error)
 	GetEncounters(ctx context.Context) (domain.CareerEncountersResponse, error)
 	// GetHighlightMatchIDs : 15 best + 15 worst match_ids (split par section)
 	// + cascade counts (available_experience, available_seasons) pour les
@@ -348,15 +347,12 @@ type GamertagResolver interface {
 	ResolveGamertags(ctx context.Context, matchID string, xuids []string) (map[string]string, error)
 }
 
-// MatchExclusionService gère le marquage et la liste des matchs non pertinents.
+// MatchExclusionService gère le marquage des matchs non pertinents.
 type MatchExclusionService interface {
 	// SetExclusion marque ou démarque un match comme non pertinent.
 	// Retourne ErrRankedMatchNotExcludable si excluded=true sur un match classé.
 	// Retourne ErrMatchNotFound si le match_id n'existe pas dans shared.match_registry.
 	SetExclusion(ctx context.Context, matchID string, excluded bool) error
-
-	// ListExcluded retourne les matchs exclus du joueur.
-	ListExcluded(ctx context.Context) ([]domain.ExcludedMatch, error)
 }
 
 // MatchRecomputer relance les batches perf_score + LUSR pour propager l'effet

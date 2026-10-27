@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
 const (
@@ -236,8 +237,8 @@ func TestFilterBySet_EmptyValues(t *testing.T) {
 func TestFilterBySet_WithValues(t *testing.T) {
 	pl1, pl2 := "Ranked", "Social"
 	rows := []domain.FilterMatchRow{
-		{MatchID: "m1", PlaylistName: &pl1},
-		{MatchID: "m2", PlaylistName: &pl2},
+		{MatchID: "m1", PlaylistName: i18n.FromColumns("", pl1)},
+		{MatchID: "m2", PlaylistName: i18n.FromColumns("", pl2)},
 	}
 	got := filterBySet(rows, []string{"Ranked"}, playlistUI)
 	if len(got) != 1 {
@@ -252,7 +253,7 @@ func TestFilterBySet_WithValues(t *testing.T) {
 
 func TestMapUI_FRPreferred(t *testing.T) {
 	en, fr := aquariusMap, "Verseau"
-	row := domain.FilterMatchRow{MapName: &en, MapNameFR: &fr}
+	row := domain.FilterMatchRow{MapName: i18n.FromColumns(en, fr)}
 	if got := mapUI(row); got != "Verseau" {
 		t.Errorf("expected FR, got %s", got)
 	}
@@ -260,7 +261,7 @@ func TestMapUI_FRPreferred(t *testing.T) {
 
 func TestMapUI_FallbackEN(t *testing.T) {
 	en := aquariusMap
-	row := domain.FilterMatchRow{MapName: &en}
+	row := domain.FilterMatchRow{MapName: i18n.FromColumns(en, "")}
 	if got := mapUI(row); got != aquariusMap {
 		t.Errorf("expected EN fallback, got %s", got)
 	}

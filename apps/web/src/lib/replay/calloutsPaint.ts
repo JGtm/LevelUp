@@ -21,6 +21,7 @@
  */
 import type { ReplayCalloutZone, ReplayMapCallouts } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
+import { localeTextsOf, pickText } from '@/lib/i18n/pickText'
 
 import { type XY } from './replayLogic'
 
@@ -29,8 +30,8 @@ export type ProjectionMonde = (p: XY) => XY
 
 /** Une zone prête à dessiner : nullabilité du transport résolue, ancre de libellé posée. */
 export interface CalloutZoneReady {
-  fr: string
-  en: string
+  /** Le nom officiel de la zone, un texte par langue (vide dans une langue que le lexique ne couvre pas). */
+  names: Partial<Record<Locale, string>>
   /** Centre 3D du volume (mètres monde) — la référence de zoneAt. */
   x: number
   y: number
@@ -59,12 +60,11 @@ export function normalizeCallouts(entry: ReplayMapCallouts | null | undefined): 
 /** normalizeCalloutZones : la même normalisation, sur une liste de zones (lecture du plan). */
 export function normalizeCalloutZones(zones: readonly ReplayCalloutZone[] | null | undefined): CalloutZoneReady[] {
   if (!zones) return []
-  return zones.map((z) => {
+  return zones.map((z): CalloutZoneReady => {
     const polygon = ring(z.polygon)
     const anchor = polygon.length >= 3 ? centroid(polygon) : { x: z.x, y: z.y }
     return {
-      fr: z.fr,
-      en: z.en,
+      names: localeTextsOf(z),
       x: z.x,
       y: z.y,
       z: z.z,
@@ -130,7 +130,7 @@ export function zoneAt(zones: CalloutZoneReady[], x: number, y: number, z: numbe
 
 /** calloutLabel rend le libellé officiel dans la langue de l'interface. */
 export function calloutLabel(zone: CalloutZoneReady, locale: Locale): string {
-  return locale === 'fr' ? zone.fr : zone.en
+  return pickText(zone.names, locale)
 }
 
 /** Style du calque : couleurs déjà RÉSOLUES par l'appelant (règle color-tokens). */

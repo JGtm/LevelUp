@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/legacymatch"
 )
 
@@ -104,7 +105,7 @@ func ComputeSkillRatingsBatch(
 	results := make([]domain.LUSRMatchRating, 0, len(sorted))
 
 	for _, row := range sorted {
-		group := resolvePlaylistGroup(row.PlaylistName, row.PairName)
+		group := resolvePlaylistGroup(row.PlaylistName[i18n.Fallback], row.PairName[i18n.Fallback])
 		state := getOrCreateState(states, group)
 
 		if state.lastMatchTime != nil {

@@ -148,7 +148,7 @@ func d4ViesLibres(t *testing.T, root, id string) ([]flagFreeLife, bool) {
 		return nil, false
 	}
 	scan := WorldObjectScan{Scanned: true, Creations: cre, Stats: st, Keyframes: kf, Tracks: tracks}
-	vies := flagFreeLives(scan, map[uint32]Label{uint32(d4MotCrane): {En: "Skull", Fr: "Crane"}})
+	vies := flagFreeLives(scan, map[uint32]Label{uint32(d4MotCrane): {Text: enFr("Skull", "Crane")}})
 	t.Logf("%s : %d ancres, %d creations acceptees, %d pistes delta ; %d vie(s) du mot elu",
 		id, st.Anchors, st.Accepted, len(tracks), len(vies))
 	return vies, true

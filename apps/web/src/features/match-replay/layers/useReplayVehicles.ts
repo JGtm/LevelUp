@@ -30,6 +30,7 @@ import {
   type RefObject,
 } from 'react'
 
+import { pickText } from '@/lib/i18n/pickText'
 import { staticAssetURL } from '@/lib/staticAssets'
 import { useTitleSlug } from '@/lib/title-routing'
 
@@ -232,7 +233,7 @@ export function useReplayVehicles({
   const labelOfFamily = useCallback(
     (family: string): string | null => {
       const lbl = labels?.[family]
-      return (locale === 'fr' ? lbl?.fr : lbl?.en) ?? null
+      return pickText(lbl, locale) || null
     },
     [labels, locale],
   )

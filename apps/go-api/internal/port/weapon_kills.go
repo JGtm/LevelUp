@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+
+	"levelup/go-api/internal/i18n"
 )
 
 // WeaponKillFilters parametre la lecture aggregate des kills par arme.
@@ -72,19 +74,16 @@ func (f WeaponKillFilters) Validate() error {
 // WeaponKillRow est une ligne aggregat (xuid, weapon_id, total_kills).
 //
 // L'agregation est faite cote DuckDB (GROUP BY xuid, effective_weapon_id).
-// Le Label EN/FR est resolu cote service via metadata.weapon_labels apres
-// chargement (le repo reste agnostique).
+// Le Label est resolu par langue cote repo (noms d'armes par langue de la metadata) apres
+// chargement ; le service choisit la langue (le repo reste agnostique).
 type WeaponKillRow struct {
 	XUID     string `json:"xuid"`
 	WeaponID int64  `json:"weapon_id"`
 	Kills    int    `json:"kills"`
-	// Label EN ou FR resolu cote service. Vide cote repo.
-	Label string `json:"label,omitempty"`
-	// LabelEN : meme libelle que Label mais EN-first (repli FR), resolu dans la MEME passe
-	// (resolveWeaponMeta). Ajoute le 2026-08-29 (V2.1) pour porter le nom d'engin EN jusqu'a
-	// FragRoleEntry.LabelEN (classes vehicule/tourelle, domain.IsPerWeaponFragClass) — vide
-	// pour les autres classes (non lu ailleurs). Vide cote repo.
-	LabelEN string `json:"label_en,omitempty"`
+	// Label : le nom de l arme dans chaque langue, resolu dans la passe de metadonnees
+	// (resolveWeaponMeta), une valeur par langue SANS repli croise. Le service en choisit une avec
+	// Pick(locale de la requete) : langue demandee, sinon langue de repli.
+	Label i18n.Text `json:"-"`
 	// Role : fonction de combat de l'arme (automatic/precision/sniper/shotgun/
 	// sidearm/power/special/melee/grenade), resolu depuis le referentiel
 	// metadata.weapons (duckdb/weapon_resolver.go) quand

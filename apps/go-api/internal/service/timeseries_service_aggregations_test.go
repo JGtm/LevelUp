@@ -6,6 +6,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/port"
 )
@@ -24,15 +25,15 @@ func TestBuildSoloMapBreakdown_OrderedByFirstAppearance(t *testing.T) {
 	base := time.Date(2026, 5, 1, 18, 0, 0, 0, time.UTC)
 	win := analysis.OutcomeWin
 	current := []legacymatch.StatsMatchRow{
-		{MatchID: "l1", StartTime: base.Add(2 * time.Hour), MapNameFR: "Late", Outcome: &win},
-		{MatchID: "l2", StartTime: base.Add(150 * time.Minute), MapNameFR: "Late", Outcome: &win},
-		{MatchID: "l3", StartTime: base.Add(3 * time.Hour), MapNameFR: "Late", Outcome: &win},
-		{MatchID: "m1", StartTime: base.Add(1 * time.Hour), MapNameFR: "Mid", Outcome: &win},
-		{MatchID: "m2", StartTime: base.Add(90 * time.Minute), MapNameFR: "Mid", Outcome: &win},
-		{MatchID: "e1", StartTime: base, MapNameFR: "Early", Outcome: &win},
+		{MatchID: "l1", StartTime: base.Add(2 * time.Hour), MapName: i18n.FromColumns("", "Late"), Outcome: &win},
+		{MatchID: "l2", StartTime: base.Add(150 * time.Minute), MapName: i18n.FromColumns("", "Late"), Outcome: &win},
+		{MatchID: "l3", StartTime: base.Add(3 * time.Hour), MapName: i18n.FromColumns("", "Late"), Outcome: &win},
+		{MatchID: "m1", StartTime: base.Add(1 * time.Hour), MapName: i18n.FromColumns("", "Mid"), Outcome: &win},
+		{MatchID: "m2", StartTime: base.Add(90 * time.Minute), MapName: i18n.FromColumns("", "Mid"), Outcome: &win},
+		{MatchID: "e1", StartTime: base, MapName: i18n.FromColumns("", "Early"), Outcome: &win},
 	}
 
-	rows := buildSoloMapBreakdown(current, nil, domain.GroupesDeCartes{})
+	rows := buildSoloMapBreakdown(current, nil, domain.GroupesDeCartes{}, i18n.Default)
 
 	want := []string{"Early", "Mid", "Late"}
 	if len(rows) != len(want) {
@@ -54,11 +55,11 @@ func TestBuildSoloMapBreakdown_TieBreakMapUI(t *testing.T) {
 	same := time.Date(2026, 5, 1, 18, 0, 0, 0, time.UTC)
 	win := analysis.OutcomeWin
 	current := []legacymatch.StatsMatchRow{
-		{MatchID: "z1", StartTime: same, MapNameFR: "Zanzibar", Outcome: &win},
-		{MatchID: "a1", StartTime: same, MapNameFR: "Aquarius", Outcome: &win},
+		{MatchID: "z1", StartTime: same, MapName: i18n.FromColumns("", "Zanzibar"), Outcome: &win},
+		{MatchID: "a1", StartTime: same, MapName: i18n.FromColumns("", "Aquarius"), Outcome: &win},
 	}
 
-	rows := buildSoloMapBreakdown(current, nil, domain.GroupesDeCartes{})
+	rows := buildSoloMapBreakdown(current, nil, domain.GroupesDeCartes{}, i18n.Default)
 
 	if len(rows) != 2 || rows[0].MapUI != "Aquarius" || rows[1].MapUI != "Zanzibar" {
 		t.Fatalf("want [Aquarius, Zanzibar] (tie-break MapUI asc), got %v", rows)
@@ -78,13 +79,13 @@ func TestBuildSoloMapBreakdown_TieBreakMapUI(t *testing.T) {
 // (identifiant, clé de registre).
 func TestBuildTopWeapons_DepartageSurLeLibelle(t *testing.T) {
 	rows := []port.WeaponKillRow{
-		{WeaponID: 10, WeaponKey: "hinf_fusil", Label: "Fusil de combat", Kills: 3, Class: "shoulder"},
-		{WeaponID: 20, WeaponKey: "hinf_bandit", Label: "Bandit", Kills: 2},
-		{WeaponID: 20, WeaponKey: "hinf_bandit", Label: "Bandit", Kills: 1, Class: "shoulder"},
-		{WeaponID: 30, WeaponKey: "hinf_grenade", Label: "Grenade", Kills: 9, IsGrenadeMelee: true},
-		{WeaponID: 40, WeaponKey: "", Label: "", Kills: 5},
+		{WeaponID: 10, WeaponKey: "hinf_fusil", Label: i18n.Text{i18n.LocaleFR: "Fusil de combat"}, Kills: 3, Class: "shoulder"},
+		{WeaponID: 20, WeaponKey: "hinf_bandit", Label: i18n.Text{i18n.LocaleFR: "Bandit"}, Kills: 2},
+		{WeaponID: 20, WeaponKey: "hinf_bandit", Label: i18n.Text{i18n.LocaleFR: "Bandit"}, Kills: 1, Class: "shoulder"},
+		{WeaponID: 30, WeaponKey: "hinf_grenade", Label: i18n.Text{i18n.LocaleFR: "Grenade"}, Kills: 9, IsGrenadeMelee: true},
+		{WeaponID: 40, WeaponKey: "", Label: i18n.Text{i18n.LocaleFR: ""}, Kills: 5},
 	}
-	got := buildTopWeapons(rows, 10)
+	got := buildTopWeapons(i18n.LocaleFR, rows, 10)
 	if len(got) != 2 {
 		t.Fatalf("attendu 2 armes (grenade/mêlée et ligne sans libellé écartées), obtenu %d : %+v",
 			len(got), got)
@@ -105,12 +106,29 @@ func TestBuildTopWeapons_DepartageSurLeLibelle(t *testing.T) {
 // TestBuildTopWeapons_PlafonneAuTopN : le cap est un plafond de COMPTE appliqué APRÈS tri.
 func TestBuildTopWeapons_PlafonneAuTopN(t *testing.T) {
 	rows := []port.WeaponKillRow{
-		{WeaponID: 1, WeaponKey: "a", Label: "A", Kills: 1},
-		{WeaponID: 2, WeaponKey: "b", Label: "B", Kills: 5},
-		{WeaponID: 3, WeaponKey: "c", Label: "C", Kills: 3},
+		{WeaponID: 1, WeaponKey: "a", Label: i18n.Text{i18n.LocaleFR: "A"}, Kills: 1},
+		{WeaponID: 2, WeaponKey: "b", Label: i18n.Text{i18n.LocaleFR: "B"}, Kills: 5},
+		{WeaponID: 3, WeaponKey: "c", Label: i18n.Text{i18n.LocaleFR: "C"}, Kills: 3},
 	}
-	got := buildTopWeapons(rows, 2)
+	got := buildTopWeapons(i18n.LocaleFR, rows, 2)
 	if len(got) != 2 || got[0].Label != "B" || got[1].Label != "C" {
 		t.Fatalf("attendu [B C], obtenu %+v", got)
+	}
+}
+
+// TestBuildTopWeapons_NomDansLaLangueDeLaRequete : le nom d'une arme du top (et son départage
+// alphabétique) suivent la langue de la requête.
+func TestBuildTopWeapons_NomDansLaLangueDeLaRequete(t *testing.T) {
+	rows := []port.WeaponKillRow{
+		{WeaponID: 1, WeaponKey: "a", Label: i18n.Text{i18n.LocaleFR: "Zèbre", i18n.LocaleEN: "Alpha"}, Kills: 5},
+		{WeaponID: 2, WeaponKey: "b", Label: i18n.Text{i18n.LocaleFR: "Abeille", i18n.LocaleEN: "Zulu"}, Kills: 5},
+	}
+	fr := buildTopWeapons(i18n.LocaleFR, rows, 10)
+	en := buildTopWeapons(i18n.LocaleEN, rows, 10)
+	if len(fr) != 2 || fr[0].Label != "Abeille" || fr[1].Label != "Zèbre" {
+		t.Errorf("fr : %+v, want Abeille puis Zèbre (départage alphabétique en français)", fr)
+	}
+	if len(en) != 2 || en[0].Label != "Alpha" || en[1].Label != "Zulu" {
+		t.Errorf("en : %+v, want Alpha puis Zulu (départage alphabétique en anglais)", en)
 	}
 }

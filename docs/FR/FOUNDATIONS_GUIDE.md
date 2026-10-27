@@ -14,7 +14,7 @@ La migration Go + React de LevelUp repose sur **quatre fondations transverses** 
 |---|---|---|---|
 | 1 | **Types canoniques** | `apps/go-api/internal/games/canonical/` | Shapes title-agnostiques pour la donnée entre couches |
 | 2 | **Pattern adapter** | `apps/go-api/internal/games/adapter.go` | 2 interfaces (`TitleDataAdapter` + `TitleSemanticAdapter`) — séparation données vs libellés |
-| 3 | **Manifests TOML i18n** | `apps/web/src/lib/i18n/manifests/*.toml` | Source unique pour toutes les strings UI (FR + EN) |
+| 3 | **Manifests TOML i18n** | `apps/web/src/lib/i18n/manifests/*.toml` | Source unique pour toutes les strings UI (une entrée par langue de `config/locales.toml`) |
 | 4 | **Wrappers ECharts** | `apps/web/src/components/charts/*.tsx` | Composants charts client-side réutilisables |
 
 Ces fondations ont été figées en Phase 0 du `.ai/V7/PLAN_META_FOUNDATIONS_GO.md` et validées sur 8 migrations de pages (Phases 1–3). Elles sont stables. **Ne les réinvente pas.**
@@ -116,7 +116,7 @@ Pour les fichiers TOML (`fields.toml`, `assets.toml`, `outcomes.toml`), voir l'A
 
 ### 3.3 Manifests TOML i18n
 
-Toutes les strings UI dans `apps/web/src/features/**` et `apps/web/src/components/**` viennent des manifests dans `apps/web/src/lib/i18n/manifests/`.
+Toutes les strings UI dans `apps/web/src/features/**` et `apps/web/src/components/**` viennent des manifests dans `apps/web/src/lib/i18n/manifests/`. Une feuille porte une entrée par langue listée dans `config/locales.toml` (`fr` et `en` aujourd'hui ; pour en ajouter une, voir 3.5).
 
 **Workflow** :
 
@@ -190,6 +190,106 @@ import { distributionBucketsToSeries } from '@/features/timeseries/seriesAdapter
 Chaque wrapper expose un builder pur `buildXxxOption` (testable sans React) — voir ADR 0001.
 
 Pour les tokens couleur (`perf-tier-2`, `outcome-win`, etc.), voir le skill `color-tokens`.
+
+### 3.5 Ajouter une langue (ADR 0040)
+
+Une langue coûte une entrée dans une liste, les traductions et les données : aucune modification de
+code. Une langue listée et incomplète est refusée par le générateur, le compilateur ou un test ; elle
+n'est jamais servie par un repli silencieux. Exemple : l'espagnol (`es`).
+
+1. **La déclarer** dans `config/locales.toml`, source unique des langues (l'ordre des entrées est
+   l'ordre d'affichage ; `fr` reste la langue par défaut (`default`), `en` la langue de repli
+   (`fallback`) des noms de jeu) :
+
+   ```toml
+   [[locale]]
+   code = "es"                  # sous-étiquette BCP-47 primaire, minuscules : clé de toute table par langue
+   intl = "es-ES"               # étiquette passée à Intl.* (nombres, dates) ; sa sous-étiquette primaire doit être `code`
+   halo = ["es-ES", "es-MX"]    # étiquettes Halo de asset_translations, par ordre de préférence
+   required = true              # true : les textes curés doivent la couvrir (voir l'étape 4) ; false : repli sur `en`
+   ```
+
+   Une langue qui livre une interface est `required = true` : avec `false`, les libellés curés (noms de
+   métriques, issues, niveaux Prestige) restent silencieusement en anglais. La sous-étiquette primaire de
+   `intl` doit être égale à `code` : certains appelants passent une étiquette Intl là où une langue est
+   attendue (`normalizeLocale("es-ES")`), donc `en-GB` sur une langue autre que `en` serait relu comme `en`.
+
+   Pour que `populate-assets` la récupère (étape 5), chaque étiquette `halo` doit figurer dans
+   `domain.TargetLanguages` (`apps/go-api/internal/domain/asset_langs.go`, les 14 langues de Halo
+   Infinite).
+
+2. **Générer** les deux listes dérivées et les modules de manifests :
+
+   ```bash
+   node apps/web/scripts/build_i18n_manifests.mjs
+   ```
+
+   Le script réécrit `apps/web/src/lib/i18n/generated/locales.ts` et
+   `apps/go-api/internal/i18n/locales_gen.go` (tous deux versionnés), puis chaque module de manifest, et
+   s'arrête à la première feuille qui n'a pas la langue avec
+   `<fichier> : cle "<chemin>" : langue manquante "<code>"`. `TestGeneratedTableMatchesLocalesTOML` (Go) et
+   `generatedLocalesFresh.guard.test.ts` (web) échouent dès que les fichiers générés diffèrent de
+   `locales.toml`.
+
+3. **Traduire l'interface (web).** Ajouter `es = "..."` à chaque feuille de
+   `apps/web/src/lib/i18n/manifests/*.toml` (placeholders ICU inchangés), puis régénérer (étape 2).
+   Chaque dictionnaire de feature sous `features/<feature>/i18n/` reçoit un `es.ts` typé par son
+   `contract.ts` et une ligne dans son `index.ts` (`Record<Locale, T>`) ; `npx tsc -b` nomme chaque
+   dictionnaire qui n'a pas la langue, et `lib/i18n/locale-keyed-objects.guard.test.ts` exige que tout
+   autre objet à clés de langue soit typé par `Locale`. `tsc` nomme aussi les fixtures de test typées par le
+   contrat généré (les libellés de rejeu portent un membre par langue : une vingtaine de fichiers
+   `*.test.ts(x)` sous `features/match-replay/`). Les données par langue qui ne sont pas du texte demandent
+   leurs propres fichiers : les sons de l'annonceur de `features/match-replay/sound/` veulent un `.wav` par
+   langue (`replaySoundAssets.guard.test.ts`). Le sélecteur de langue de la page Réglages ne liste que `fr`
+   et `en` (ADR 0040, hors périmètre du plan) : il fait partie de la première vraie langue.
+
+4. **Traduire ce que le serveur écrit (Go).**
+   - Catalogue de messages : ajouter `es = "..."` à chaque message de
+     `apps/go-api/internal/i18n/messages/*.toml`, avec les mêmes `{variables}` ; `TestCatalogueComplet`
+     (`go test ./internal/i18n/`) liste ce qui manque.
+   - Tables curées par langue (`config/titles/{slug}/mappings/*.toml`, `internal/ops/citation_texts.toml`,
+     `config/prestige/tuning.toml` (`levels.names`), ...) : une langue `required` est obligatoire (le chargeur refuse une langue manquante et un code
+     inconnu, `i18n.Text.Validate`) ; une langue listée mais non `required` est facultative et se replie
+     sur `en` (compteur `levelup.i18n.text_fallback_total`).
+   - Documents facultatifs : `docs/ES/RELEASE_NOTES.md` (absent : les notes anglaises sont servies après
+     un avis écrit dans la langue demandée, compteur `levelup.i18n.document_fallback_total`) et une
+     fixture de démonstration `internal/service/demo_fixtures/challenges.es.json`.
+
+5. **Noms de jeu.** Les noms des cartes, playlists, paires et variantes viennent de l'API Halo :
+
+   ```bash
+   levelup populate-assets --langs es-ES,es-MX --dry-run   # puis sans --dry-run
+   ```
+
+   La commande remplit `asset_translations` (une ligne par actif et par étiquette Halo ; `--langs` par
+   défaut = les 14) ; les lecteurs choisissent la ligne de la langue de la requête par `i18n.Text.Pick` et
+   se replient sur `en`, sans code ni colonne. Les noms écrits à la main (médailles, succès, jalons,
+   citations, armes...) sont des lignes de `medal_translations` / `asset_translations` ou des entrées des
+   tables TOML par langue de l'étape 4 ; le formulaire d'administration propose une saisie par langue
+   listée.
+
+6. **Régénérer le contrat et vérifier.** Les libellés de rejeu sont une propriété par langue du document
+   OpenAPI : `make openapi-gen && make generate-types` (`TestOpenAPIYAMLIsUpToDate` refuse un
+   `api/openapi.yaml` périmé). Puis `cd apps/go-api && go test ./internal/i18n/... ./internal/archlint/...`,
+   `cd apps/web && npx tsc -b && npx vitest run` et `node tools/check-generated-types-fresh.mjs`.
+
+| Ce qui manque pour une langue listée | Qui refuse |
+|---|---|
+| une feuille de manifest | le générateur (étape 2) |
+| un dictionnaire de feature | `tsc` (`Record<Locale, T>`) |
+| un message du catalogue ou une `{variable}` | `TestCatalogueComplet` |
+| une langue `required` dans une table curée, ou un code inconnu | le chargeur, au démarrage |
+| un nom de jeu | personne : repli sur `en`, compté |
+| un fichier généré périmé | les deux tests de fraîcheur (étape 2) |
+
+**Mode preuve.** `node apps/web/scripts/build_i18n_manifests.mjs --pseudo xx [--out <dossier>]` fabrique une
+langue `xx` depuis `en` (texte entre `⟦` et `⟧`, placeholders ICU intacts) sans toucher à
+`config/locales.toml` ni à aucun fichier versionné : les modules, `locales.ts` et `locales_gen.go` vont dans
+`--out` (un dossier temporaire par défaut). Tout texte visible hors des crochets dans l'application est une
+chaîne qui ne passe pas par un manifest. C'est un outil de preuve, jamais une langue livrée. Il n'écrit que les modules générés : pour faire tourner
+l'application en `xx`, il faut les mêmes fichiers qu'une vraie langue (étapes 1 à 6), dérivés de `en`
+(procédure de la branche jetable et résultats : `.ai/PLAN_I18N_MULTILANGUE.md`, étape 10). Le code de langue
+inconnue des tests est `zz`, jamais `xx`.
 
 ---
 
@@ -354,6 +454,7 @@ composants locaux (garde-rail : `admin-ui.guard.test.ts`) :
 | `docs/adr/0001-charts-stack-echarts.md` | Pourquoi ECharts (contexte de la décision) |
 | `docs/adr/0002-canonical-player-match-row.md` | Pourquoi les types canoniques |
 | `docs/adr/0003-i18n-manifest-and-linter.md` | Pourquoi les manifests TOML + lint |
+| `docs/adr/0040-i18n-n-locales.md` | Pourquoi une seule liste de langues (`config/locales.toml`) et comment ajouter une langue (§ 3.5) |
 | `docs/adr/0004-narrative-engine.md` | Pourquoi 8 rôles + radar 6 axes |
 | `.ai/V7/PLAN_META_FOUNDATIONS_GO.md` | Plan maître (Phases 0–4) |
 | `.claude/skills/arch-rules/SKILL.md` | Règles de couches + contrat multi-titres |

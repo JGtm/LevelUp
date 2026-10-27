@@ -5,12 +5,13 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sort"
 	"strings"
 	"time"
 
 	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
 // CitationsRepo implémente port.CitationsRepository.
@@ -35,45 +36,61 @@ func (r *CitationsRepo) LoadCitationMappings(ctx context.Context) ([]domain.Cita
 	}
 	defer rows.Close()
 
-	enLocale := ctxkeys.Locale(ctx) == "en"
 	var result []domain.CitationMappingRow
 	for rows.Next() {
 		var row domain.CitationMappingRow
-		var displayEN string     // citation_name_display_en (COALESCE '' si NULL)
-		var descriptionEN string // description_en (COALESCE '' si NULL)
 		if err := rows.Scan(
 			&row.NameNorm,
-			&row.NameDisplay,
-			&displayEN,
 			&row.MappingType,
 			&row.Category,
 			&row.ImagePath,
-			&row.Description,
-			&descriptionEN,
 			&row.TierTargets,
 			&row.CompositeChildren,
 		); err != nil {
 			return nil, fmt.Errorf("LoadCitationMappings scan: %w", err)
 		}
-		// Locale-aware (GH4) : en UI anglaise, le nom anglais prime (sinon fallback FR)
-		// et la description anglaise (description_en) prime ; si absente → description
-		// masquée (nom seul, pointeur nil), jamais le FR (principe GH-5b). Les citations
-		// Infinite étant copiées de H5, leur EN vient du seed — cf. ops.citationDisplayEN
-		// / citationDescriptionEN.
-		if enLocale {
-			if displayEN != "" {
-				row.NameDisplay = displayEN
-			}
-			if descriptionEN != "" {
-				enDesc := descriptionEN
-				row.Description = &enDesc
-			} else {
-				row.Description = nil
-			}
-		}
 		result = append(result, row)
 	}
-	return result, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("LoadCitationMappings: %w", err)
+	}
+	return result, r.attachCitationTexts(ctx, result)
+}
+
+// attachCitationTexts pose le nom et la description de chaque citation dans la langue de la requête
+// (pickCitationTexts, textes par langue de asset_translations), puis range les lignes par catégorie
+// et nom de la langue par défaut (l'ordre que posait la colonne triée avant sa migration).
+func (r *CitationsRepo) attachCitationTexts(ctx context.Context, rows []domain.CitationMappingRow) error {
+	if len(rows) == 0 {
+		return nil
+	}
+	norms := make([]string, len(rows))
+	for i := range rows {
+		norms[i] = rows[i].NameNorm
+	}
+	texts, err := LoadAssetTexts(ctx, r.pdb.Metadata, AssetTypeCitation, norms)
+	if err != nil {
+		return fmt.Errorf("LoadCitationMappings: %w", err)
+	}
+	loc := i18n.FromContext(ctx)
+	order := make(map[string]string, len(rows))
+	for i := range rows {
+		t := texts[rows[i].NameNorm]
+		order[rows[i].NameNorm] = t.Name[i18n.Default]
+		name, picked := pickCitationTexts(loc, t)
+		rows[i].NameDisplay = name
+		rows[i].Description = nil
+		if picked != "" {
+			rows[i].Description = &picked
+		}
+	}
+	sort.SliceStable(rows, func(i, j int) bool {
+		if rows[i].Category != rows[j].Category {
+			return rows[i].Category < rows[j].Category
+		}
+		return order[rows[i].NameNorm] < order[rows[j].NameNorm]
+	})
+	return nil
 }
 
 // LoadCitationTotals charge les totaux agrégés depuis match_citations (Q35).
@@ -144,20 +161,35 @@ func (r *CitationsRepo) LoadMedalCitationMappings(ctx context.Context) ([]domain
 	}
 	defer rows.Close()
 
-	var result []domain.MedalCitationRow
+	var (
+		result []domain.MedalCitationRow
+		norms  []string
+	)
 	for rows.Next() {
 		var row domain.MedalCitationRow
+		var norm string
 		if err := rows.Scan(
 			&row.MedalID,
-			&row.NameDisplay,
+			&norm,
 			&row.Category,
 			&row.ImagePath,
 		); err != nil {
 			return nil, fmt.Errorf("LoadMedalCitationMappings scan: %w", err)
 		}
+		norms = append(norms, norm)
 		result = append(result, row)
 	}
-	return result, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("LoadMedalCitationMappings: %w", err)
+	}
+	names, err := citationDisplayNames(ctx, r.pdb.Metadata, norms)
+	if err != nil {
+		return nil, fmt.Errorf("LoadMedalCitationMappings: %w", err)
+	}
+	for i := range result {
+		result[i].NameDisplay = names[norms[i]]
+	}
+	return result, nil
 }
 
 // LoadCitationMedalMappings charge les règles citation→medal_id pour le moteur de calcul (Q39).
@@ -178,7 +210,7 @@ func (r *CitationsRepo) LoadCitationMedalMappings(ctx context.Context) ([]domain
 	var result []domain.CitationMedalMapping
 	for rows.Next() {
 		var m domain.CitationMedalMapping
-		if err := rows.Scan(&m.NameNorm, &m.NameDisplay, &m.MedalID, &m.MappingType); err != nil {
+		if err := rows.Scan(&m.NameNorm, &m.MedalID, &m.MappingType); err != nil {
 			return nil, fmt.Errorf("LoadCitationMedalMappings scan: %w", err)
 		}
 		result = append(result, m)
@@ -235,7 +267,7 @@ func (r *CitationsRepo) LoadMatchCitationsForView(ctx context.Context, matchID s
 	for n := range normsSeen {
 		norms = append(norms, n)
 	}
-	metaMap := r.loadCitationMappingMeta(ctx, norms)
+	metaMap := loadCitationMetaOrLog(ctx, r.pdb.Metadata, norms)
 
 	// Étape 3 : merge — COALESCE(display, norm).
 	result := make([]domain.CitationMatchViewRow, 0, len(raws))
@@ -291,7 +323,7 @@ func (r *CitationsRepo) LoadMatchCitationsRich(ctx context.Context, matchID stri
 	for n := range normsSeen {
 		norms = append(norms, n)
 	}
-	metaMap := r.loadCitationMappingMeta(ctx, norms)
+	metaMap := loadCitationMetaOrLog(ctx, r.pdb.Metadata, norms)
 	cumul, err := loadCitationCumulAfterMatch(ctx, r.pdb, norms)
 	if err != nil {
 		// Sans cumul arrêté au match, l'anneau et le palier seraient faux : pas de citation riche.
@@ -403,55 +435,6 @@ func (r *CitationsRepo) LoadMatchCommendationsRich(ctx context.Context, matchID,
 		})
 	}
 	return result, nil
-}
-
-type citationMappingMeta struct {
-	display     string
-	imagePath   string
-	tierTargets string
-	description string
-}
-
-func (r *CitationsRepo) loadCitationMappingMeta(ctx context.Context, norms []string) map[string]citationMappingMeta {
-	result := make(map[string]citationMappingMeta, len(norms))
-	if len(norms) == 0 || r.pdb == nil || r.pdb.Metadata == nil {
-		return result
-	}
-	placeholders := make([]string, len(norms))
-	args := make([]interface{}, len(norms))
-	for i, n := range norms {
-		placeholders[i] = "?"
-		args[i] = n
-	}
-	query := fmt.Sprintf(Q26jCitationMappingsForNormsTemplate, strings.Join(placeholders, ", "))
-	rows, err := r.pdb.Metadata.Query(ctx, query, args...)
-	if err != nil {
-		return result
-	}
-	defer rows.Close()
-	enLocale := ctxkeys.Locale(ctx) == "en"
-	for rows.Next() {
-		var norm, display, displayEN, imagePath, tierTargets, description, descriptionEN string
-		if err := rows.Scan(&norm, &display, &displayEN, &imagePath, &tierTargets, &description, &descriptionEN); err == nil {
-			// Locale-aware (GH2-B2 + GH4) : sous UI EN, le nom anglais prime (fallback FR)
-			// et la description EN (description_en, source commendations H5 officielles +
-			// trad Infinite) prime. Si description_en est absente → nom seul (masquée) :
-			// principe GH-5b « EN n'injecte jamais de FR ».
-			if enLocale {
-				if displayEN != "" {
-					display = displayEN
-				}
-				description = descriptionEN
-			}
-			result[norm] = citationMappingMeta{
-				display:     display,
-				imagePath:   imagePath,
-				tierTargets: tierTargets,
-				description: description,
-			}
-		}
-	}
-	return result
 }
 
 // NOTE (campagne ART #23645) : WriteCitationsForMatch a été SUPPRIMÉ — c'était du

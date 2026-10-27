@@ -50,10 +50,6 @@ func (s *failingCareerService) GetCareerPage(context.Context) (domain.CareerPage
 	return domain.CareerPageResponse{}, s.err
 }
 
-func (s *failingCareerService) GetTopMatches(context.Context) (domain.CareerTopMatchesResponse, error) {
-	return domain.CareerTopMatchesResponse{}, s.err
-}
-
 func (s *failingCareerService) GetEncounters(context.Context) (domain.CareerEncountersResponse, error) {
 	return domain.CareerEncountersResponse{}, s.err
 }
@@ -222,7 +218,6 @@ func explorerCareerRoutes() []pageRoute {
 			},
 		},
 		careerRoute("career", "", failing, okHistory),
-		careerRoute("career top-matches", "/top-matches", failing, okHistory),
 		careerRoute("career encounters", "/encounters", failing, okHistory),
 		careerRoute("career highlight-matches", "/highlight-matches", failing, okHistory),
 		careerRoute("career highlight-matches (enrichissement)", "/highlight-matches", highlightRows, failingHistory),

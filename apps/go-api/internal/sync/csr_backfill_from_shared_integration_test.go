@@ -142,8 +142,8 @@ func TestBackfillCSRFromShared_ProjectsStableRank(t *testing.T) {
 	if !tier.Valid || tier.String != "Gold" {
 		t.Errorf("tier: want Gold, got %v", tier)
 	}
-	if !tierFR.Valid || tierFR.String != "Or" {
-		t.Errorf("tier_fr: want Or (traduit), got %v", tierFR)
+	if tierFR.Valid {
+		t.Errorf("tier_fr: colonne inerte (ADR 0040 D-5), ne doit plus être écrite, got %v", tierFR)
 	}
 	if !subTier.Valid || subTier.Int64 != 2 {
 		t.Errorf("sub_tier: want 2, got %v", subTier)

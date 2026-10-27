@@ -35,9 +35,9 @@ func acPalette() *AbilityPalette {
 		ID:      "test",
 		Markers: []int{acRankGrapple, acRankThruster, acRankRepulsor},
 		Ranks: map[int]Label{
-			acRankGrapple:  {En: "Grappleshot", Fr: "grappin"},
-			acRankThruster: {En: "Thruster", Fr: "propulseur"},
-			acRankRepulsor: {En: "Repulsor", Fr: "repulseur"},
+			acRankGrapple:  {Text: enFr("Grappleshot", "grappin")},
+			acRankThruster: {Text: enFr("Thruster", "propulseur")},
+			acRankRepulsor: {Text: enFr("Repulsor", "repulseur")},
 		},
 		Families: map[int]string{
 			acRankGrapple: "grapple", acRankThruster: "thruster", acRankRepulsor: "repulsor",

@@ -16,6 +16,7 @@ import (
 	"levelup/go-api/internal/analysis/sessionusage"
 	"levelup/go-api/internal/analysis/squadformes"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/legacymatch"
 )
 
@@ -44,7 +45,7 @@ func historiqueFixture() (*mockSquadRepo, *objectifsFactices) {
 	ajoute := func(id, label, pair string, at time.Time, filtre bool, nous float64) {
 		sess := label
 		repo.squadRows = append(repo.squadRows, domain.SquadMatchRow{
-			MatchID: id, StartTime: at, SessionLabel: &sess, PairName: pair, Outcome: domain.OutcomeWin,
+			MatchID: id, StartTime: at, SessionLabel: &sess, PairName: i18n.FromColumns(pair, ""), Outcome: domain.OutcomeWin,
 		})
 		if filtre {
 			repo.synthRows = append(repo.synthRows, legacymatch.SynthesisMatchRow{MatchID: id, StartTime: at, Outcome: domain.OutcomeWin})

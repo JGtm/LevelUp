@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
 // briefingRaw construit une raw row minimale pour les tests du briefing.
@@ -27,13 +28,13 @@ func briefingRaw(id string, daysAgo, outcome, kills, deaths, assists int, perf f
 		r.MapID = &mapID
 	}
 	if mapFR != "" {
-		r.MapNameFR = &mapFR
+		r.MapName.Set(i18n.LocaleFR, mapFR)
 	}
 	if pairFR != "" {
-		r.PairNameFR = &pairFR
+		r.PairName.Set(i18n.LocaleFR, pairFR)
 	}
 	if playlist != "" {
-		r.PlaylistName = &playlist
+		r.PlaylistName.Set(i18n.LocaleFR, playlist)
 	}
 	return r
 }
@@ -91,7 +92,7 @@ func TestBuildExplorerBriefing_LowSample(t *testing.T) {
 	if mapDim == nil || !mapDim.Insufficient {
 		t.Errorf("low sample: dimension carte attendue en état vide (Insufficient), got %+v", b.Dimensions)
 	}
-	if want := buildBriefingDimensions(filtered, filtered, domain.GroupesDeCartes{}); !reflect.DeepEqual(b.Dimensions, want) {
+	if want := buildBriefingDimensions(filtered, filtered, domain.GroupesDeCartes{}, i18n.Default); !reflect.DeepEqual(b.Dimensions, want) {
 		t.Errorf("Dimensions = %+v, want mêmes règles que hors échantillon faible : %+v", b.Dimensions, want)
 	}
 	// 4 solo + 4 escouade : les deux côtés existent mais sont sous le seuil → état vide (D5).
@@ -674,7 +675,7 @@ func TestBuildDimension_FilteredSortsByDelta(t *testing.T) {
 func peakRankRaw(id string, daysAgo int, ratingType, tierEN string, subTier int, tierLabel string) domain.MatchHistoryRawRow {
 	r := briefingRaw(id, daysAgo, domain.OutcomeWin, 10, 5, 2, 60, "map1", "Aquarius", "Slayer", "Arène")
 	r.SkillRatingType = strPtr(ratingType)
-	r.SkillTier = strPtr(tierEN)
+	r.SkillTier = tierEN
 	r.SubTier = intPtr(subTier)
 	r.SkillTierLabel = strPtr(tierLabel)
 	return r

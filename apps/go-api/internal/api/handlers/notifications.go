@@ -17,6 +17,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"levelup/go-api/internal/api/humacore"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/notifications"
 	"levelup/go-api/internal/platform/dblease"
 )
@@ -158,6 +159,7 @@ func (h *NotificationsHandler) handleList(ctx context.Context, in *notifListInpu
 	if res.Items == nil {
 		res.Items = []notifications.Notification{}
 	}
+	notifications.LocalizeParams(ctx, res.Items, i18n.FromContext(ctx))
 	return &notifListOutput{Body: res}, nil
 }
 

@@ -14,6 +14,7 @@ import (
 	"levelup/go-api/internal/games/canonical"
 	halo_games "levelup/go-api/internal/games/halo_infinite"
 	"levelup/go-api/internal/games/mappings"
+	"levelup/go-api/internal/i18n"
 )
 
 // --- mock ---
@@ -25,8 +26,6 @@ type mockCareerRepo struct {
 	xpErr    error
 	lusrHist []domain.LUSRCheckpointDTO
 	lusrErr  error
-	topRows  []domain.TopMatchRawRow
-	topErr   error
 	encRows  []domain.EncounterRawRow
 	encErr   error
 	// Sprint Carrière+ : extensions injectables pour les tests des 3 nouvelles
@@ -51,9 +50,6 @@ func (m *mockCareerRepo) GetXPHistory(_ context.Context) ([]domain.XPHistoryPoin
 func (m *mockCareerRepo) GetLUSRHistory(_ context.Context) ([]domain.LUSRCheckpointDTO, error) {
 	return m.lusrHist, m.lusrErr
 }
-func (m *mockCareerRepo) GetTopMatches(_ context.Context) ([]domain.TopMatchRawRow, error) {
-	return m.topRows, m.topErr
-}
 func (m *mockCareerRepo) GetEncounters(_ context.Context) ([]domain.EncounterRawRow, error) {
 	return m.encRows, m.encErr
 }
@@ -76,10 +72,10 @@ func (m *mockCareerRepo) GetCSRSnapshots(_ context.Context, _ string) ([]domain.
 func (m *mockCareerRepo) AvailableCSRSeasons(_ context.Context) ([]domain.CSRSeasonOption, error) {
 	return nil, nil
 }
-func (m *mockCareerRepo) LoadModeTranslationsFR(_ context.Context, _ []string) (map[string]string, error) {
+func (m *mockCareerRepo) LoadModeTranslations(_ context.Context, _ i18n.Locale, _ []string) (map[string]string, error) {
 	return nil, nil
 }
-func (m *mockCareerRepo) LoadPlaylistAssetTranslationsFR(_ context.Context, _ []string) (map[string]string, error) {
+func (m *mockCareerRepo) LoadPlaylistAssetTranslations(_ context.Context, _ i18n.Locale, _ []string) (map[string]string, error) {
 	return nil, nil
 }
 
@@ -208,11 +204,15 @@ func TestCareerService_GetCareerPage_H5TotalRanks152(t *testing.T) {
 		t.Errorf("RankLabel = %q, want \"SR 111\" (catalogue HINF ne doit PAS écraser le label SR h5)", resp.Summary.RankLabel)
 	}
 	// Le libellé du rang max vient de la source h5 (« SR 152 »), pas du catalogue HINF.
-	if resp.HeroProgress.MaxRankNameFR != "SR 152" {
-		t.Errorf("MaxRankNameFR = %q, want \"SR 152\" (source h5, pas le catalogue HINF)", resp.HeroProgress.MaxRankNameFR)
+	if resp.HeroProgress.MaxRankName != "SR 152" {
+		t.Errorf("MaxRankName(fr) = %q, want \"SR 152\" (source h5, pas le catalogue HINF)", resp.HeroProgress.MaxRankName)
 	}
-	if resp.HeroProgress.MaxRankNameEN != "SR152" {
-		t.Errorf("MaxRankNameEN = %q, want \"SR152\"", resp.HeroProgress.MaxRankNameEN)
+	respEN, err := svc.GetCareerPage(i18n.WithContext(context.Background(), i18n.LocaleEN))
+	if err != nil {
+		t.Fatalf("GetCareerPage(en): %v", err)
+	}
+	if respEN.HeroProgress.MaxRankName != "SR152" {
+		t.Errorf("MaxRankName(en) = %q, want \"SR152\"", respEN.HeroProgress.MaxRankName)
 	}
 }
 
@@ -236,11 +236,15 @@ func TestCareerService_GetCareerPage_MaxRankNameFromCatalog(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetCareerPage: %v", err)
 	}
-	if resp.HeroProgress.MaxRankNameFR != "Héros" {
-		t.Errorf("MaxRankNameFR = %q, want \"Héros\" (entrée sommet du catalogue)", resp.HeroProgress.MaxRankNameFR)
+	if resp.HeroProgress.MaxRankName != "Héros" {
+		t.Errorf("MaxRankName(fr) = %q, want \"Héros\" (entrée sommet du catalogue)", resp.HeroProgress.MaxRankName)
 	}
-	if resp.HeroProgress.MaxRankNameEN != "Hero" {
-		t.Errorf("MaxRankNameEN = %q, want \"Hero\"", resp.HeroProgress.MaxRankNameEN)
+	respEN, err := svc.GetCareerPage(i18n.WithContext(context.Background(), i18n.LocaleEN))
+	if err != nil {
+		t.Fatalf("GetCareerPage(en): %v", err)
+	}
+	if respEN.HeroProgress.MaxRankName != "Hero" {
+		t.Errorf("MaxRankName(en) = %q, want \"Hero\"", respEN.HeroProgress.MaxRankName)
 	}
 }
 
@@ -258,8 +262,8 @@ func TestCareerService_GetCareerPage_MaxRankName_DegradesEmpty(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetCareerPage: %v", err)
 	}
-	if resp.HeroProgress.MaxRankNameFR != "" || resp.HeroProgress.MaxRankNameEN != "" {
-		t.Errorf("MaxRankName* = (%q, %q), want vides (dégradation)", resp.HeroProgress.MaxRankNameFR, resp.HeroProgress.MaxRankNameEN)
+	if resp.HeroProgress.MaxRankName != "" {
+		t.Errorf("MaxRankName = %q, want vide (dégradation)", resp.HeroProgress.MaxRankName)
 	}
 }
 
@@ -283,120 +287,6 @@ func TestCareerService_GetCareerPage_HINFCatalogAppliesSameTitle(t *testing.T) {
 	}
 	if resp.Summary.RankLabel != "Cavalier HINF" {
 		t.Errorf("RankLabel = %q, want \"Cavalier HINF\" (catalogue même titre doit s'appliquer)", resp.Summary.RankLabel)
-	}
-}
-
-func TestCareerService_GetTopMatches_OK(t *testing.T) {
-	now := time.Now()
-	rows := make([]domain.TopMatchRawRow, 20)
-	for i := range rows {
-		outcome := 2 // WIN pour les 10 premiers
-		if i >= 10 {
-			outcome = 3 // LOSS pour les 10 derniers
-		}
-		rows[i] = domain.TopMatchRawRow{
-			MatchID:          "m" + string(rune('A'+i)),
-			PerformanceScore: float64(100 - i),
-			Kills:            10 + i,
-			Deaths:           5,
-			Outcome:          outcome,
-			StartTime:        &now,
-		}
-	}
-	repo := &mockCareerRepo{topRows: rows}
-	svc := NewCareerService(repo)
-
-	resp, err := svc.GetTopMatches(context.Background())
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if len(resp.BestMatches) == 0 {
-		t.Error("expected BestMatches to be non-empty")
-	}
-}
-
-func TestCareerService_GetTopMatches_Empty(t *testing.T) {
-	repo := &mockCareerRepo{topRows: []domain.TopMatchRawRow{}}
-	svc := NewCareerService(repo)
-
-	resp, err := svc.GetTopMatches(context.Background())
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if len(resp.BestMatches) != 0 || len(resp.WorstMatches) != 0 {
-		t.Error("expected empty best/worst for empty input")
-	}
-}
-
-func TestCareerService_GetTopMatches_Error(t *testing.T) {
-	repo := &mockCareerRepo{topErr: errors.New("fail")}
-	svc := NewCareerService(repo)
-
-	_, err := svc.GetTopMatches(context.Background())
-	if err == nil {
-		t.Error("expected error")
-	}
-}
-
-// TestCareerService_GetTopMatches_DataAdapterParity (HIGH-C Path C) prouve que la
-// bascule via TitleDataAdapter.LoadTopMatches produit STRICTEMENT le même
-// CareerTopMatchesResponse que le repo legacy. Fixture avec TOUS les codes outcome
-// (WIN=2/LOSS=3/TIE=1/DNF=4/unknown=0 — verrouille le code BRUT vs string canonique
-// lossy + le split WIN/LOSS aval) + une map nil ET une map vide (verrouille la
-// dérivation pointeur de convertTopMatches).
-func TestCareerService_GetTopMatches_DataAdapterParity(t *testing.T) {
-	t.Parallel()
-
-	now := time.Date(2026, 4, 1, 12, 0, 0, 0, time.UTC)
-	mapA, mapEmpty := "Aquarius", ""
-	kda := 2.5
-	mmr := 1500.0
-	rows := []domain.TopMatchRawRow{
-		{MatchID: "m1", PerformanceScore: 95, Outcome: 2, Kills: 20, Deaths: 5, StartTime: &now, MapName: &mapA, KDA: &kda, TeamMMR: &mmr, DominanceFlag: 3},
-		{MatchID: "m2", PerformanceScore: 90, Outcome: 3, Kills: 8, Deaths: 12, StartTime: &now, MapName: &mapEmpty}, // map vide → pointeur dérivé nil aval
-		{MatchID: "m3", PerformanceScore: 70, Outcome: 1, Kills: 10, Deaths: 10, MapName: nil},                       // TIE + map nil
-		{MatchID: "m4", PerformanceScore: 50, Outcome: 4, Kills: 1, Deaths: 1},                                       // DNF
-		{MatchID: "m5", PerformanceScore: 40, Outcome: 0, Kills: 5, Deaths: 5},                                       // unknown
-	}
-
-	svcLegacy := NewCareerService(&mockCareerRepo{topRows: rows})
-	respLegacy, err := svcLegacy.GetTopMatches(context.Background())
-	if err != nil {
-		t.Fatalf("legacy: %v", err)
-	}
-
-	repoAdapter := &mockCareerRepo{topRows: rows}
-	dataAdapter := halo_games.NewDataAdapter(repoAdapter, slog.New(slog.NewJSONHandler(io.Discard, nil)))
-	svcAdapter := NewCareerService(repoAdapter).WithDataAdapter(dataAdapter)
-	respAdapter, err := svcAdapter.GetTopMatches(context.Background())
-	if err != nil {
-		t.Fatalf("adapter: %v", err)
-	}
-
-	jsonLegacy, _ := json.Marshal(respLegacy)
-	jsonAdapter, _ := json.Marshal(respAdapter)
-	if string(jsonLegacy) != string(jsonAdapter) {
-		t.Errorf("top matches parity cassée :\nlegacy=  %s\nadapter= %s", jsonLegacy, jsonAdapter)
-	}
-}
-
-// TestCareerService_GetTopMatches_AdapterFallbackOnUnsupported : adapter sans
-// CareerSource → ErrCapabilityNotSupported → fallback silencieux sur repo.
-func TestCareerService_GetTopMatches_AdapterFallbackOnUnsupported(t *testing.T) {
-	t.Parallel()
-	rows := []domain.TopMatchRawRow{
-		{MatchID: "m1", PerformanceScore: 95, Outcome: 2, Kills: 20, Deaths: 5},
-	}
-	repo := &mockCareerRepo{topRows: rows}
-	dataAdapter := halo_games.NewDataAdapter(nil, slog.New(slog.NewJSONHandler(io.Discard, nil)))
-	svc := NewCareerService(repo).WithDataAdapter(dataAdapter)
-
-	resp, err := svc.GetTopMatches(context.Background())
-	if err != nil {
-		t.Fatalf("fallback devrait être silencieux, got %v", err)
-	}
-	if len(resp.BestMatches) != 1 {
-		t.Errorf("BestMatches via fallback = %d, want 1", len(resp.BestMatches))
 	}
 }
 

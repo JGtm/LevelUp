@@ -14,6 +14,8 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	"levelup/go-api/internal/i18n"
 )
 
 // erreurHandler retient les enregistrements de niveau ERROR.
@@ -73,16 +75,18 @@ func TestTitleAssetLoaders_TablesAbsentes_PasDErreur(t *testing.T) {
 func TestTitleAssetLoaders_TablePartielle_ChargeCeQuiExiste(t *testing.T) {
 	db := openAssetMemDB(t)
 	ctx := context.Background()
-	if _, err := db.Exec(ctx, `CREATE TABLE weapon_labels (weapon_id UBIGINT, name_en VARCHAR, icon_url VARCHAR)`); err != nil {
+	if _, err := db.Exec(ctx, `CREATE TABLE weapon_labels (weapon_id UBIGINT, icon_url VARCHAR)`); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.Exec(ctx, `INSERT INTO weapon_labels VALUES (7, 'Magnum', 'https://cdn.example/magnum.png')`); err != nil {
+	if _, err := db.Exec(ctx, `INSERT INTO weapon_labels VALUES (7, 'https://cdn.example/magnum.png')`); err != nil {
 		t.Fatal(err)
 	}
+	createWeaponNameTables(t, db)
+	putWeaponLabelNames(t, db, 7, i18n.Text{i18n.LocaleEN: "Magnum"})
 	errs := capturerErreurs(t)
 
 	_, weapons, _ := LoadTitleAssetDrawerData(ctx, db, "halo_5")
-	if len(weapons) != 1 || weapons[0].NameEN != "Magnum" || weapons[0].ImageURL == "" {
+	if len(weapons) != 1 || weapons[0].Names[i18n.LocaleEN] != "Magnum" || weapons[0].ImageURL == "" {
 		t.Fatalf("weapons = %+v, attendu l'arme présente", weapons)
 	}
 	if len(*errs) != 0 {
@@ -95,6 +99,9 @@ func TestTitleAssetLoaders_TablePresenteEnEchec_ResteUneErreur(t *testing.T) {
 	ctx := context.Background()
 	// team_colors existe mais sans la colonne lue : la lecture échoue pour de vrai.
 	if _, err := db.Exec(ctx, `CREATE TABLE team_colors (team_id INTEGER)`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(ctx, `CREATE TABLE asset_translations (asset_id VARCHAR, asset_type VARCHAR, lang VARCHAR, name VARCHAR, description VARCHAR)`); err != nil {
 		t.Fatal(err)
 	}
 	errs := capturerErreurs(t)

@@ -48,8 +48,8 @@ const FRIENDS_ERROR_TEXT: Record<Locale, Record<FriendsErrorKey, string>> = {
 }
 
 /** Traduit une erreur d'API de la liste d'amis. */
-export function friendsErrorMessage(err: unknown, locale: string): string {
-  const table = FRIENDS_ERROR_TEXT[locale === 'en' ? 'en' : 'fr']
+export function friendsErrorMessage(err: unknown, locale: Locale): string {
+  const table = FRIENDS_ERROR_TEXT[locale]
   const code = apiErrorCode(err)
   if (code && code in table) {
     return table[code as FriendsErrorKey]

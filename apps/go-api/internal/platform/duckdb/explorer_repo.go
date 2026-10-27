@@ -15,6 +15,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
@@ -307,10 +308,10 @@ func (r *ExplorerRepo) GetTargetRecentMatches(
 	if rerr := rows.Err(); rerr != nil {
 		return nil, rerr
 	}
-	// pair_name_fr est NULL en base → ResolveModeUI ne produit que de l'EN. On
-	// applique la traduction FR canonique (metadata.mode_name_tr), même source
-	// que l'historique de matchs / la home, pour le donut "Répartition des modes".
-	r.translateModeUIsFR(ctx, out)
+	// pair_name_fr est NULL en base → ResolveModeUI ne produit que de l'EN. On applique la
+	// traduction dans la langue de la requête (metadata.mode_name_tr), même source que l'historique
+	// de matchs / la home, pour le donut "Répartition des modes".
+	r.translateModeUIs(ctx, i18n.FromContext(ctx), out)
 	// Fallback libellés via asset_translations pour les matchs dont map/mode restent
 	// vides après la résolution ci-dessus — cas Halo 5, où map_name/pair_name sont
 	// NULL sur 100 % des matchs du registre (l'Explorer affichait des lignes vides).
@@ -318,8 +319,8 @@ func (r *ExplorerRepo) GetTargetRecentMatches(
 	return out, nil
 }
 
-// resolveTargetRecentAssetNames remplit MapUI / ModeUI encore vides via la cascade
-// asset_translations (ResolveAssetNamesBulk, fr-FR→fr→en-US→en) — MÊME primitive
+// resolveTargetRecentAssetNames remplit MapUI / ModeUI encore vides depuis asset_translations
+// (assetNameTexts, nom choisi dans la langue de la requête) — MÊME primitive
 // partagée que le pipeline média (DEC-7 résidus H5) et le fallback mode de
 // GetMatchMeta (lot A2) :
 //   - map  : type "map" par MapAssetID ;
@@ -333,17 +334,16 @@ func (r *ExplorerRepo) resolveTargetRecentAssetNames(ctx context.Context, rows [
 	if r.pdb == nil || r.pdb.Metadata == nil || len(rows) == 0 {
 		return
 	}
-	meta := NewMetadataRepoFromDB(r.pdb.Metadata)
-	langs := PreferredLangsForLocale("fr")
+	loc := i18n.FromContext(ctx)
 	// map : MapUI vide ← type "map" par MapAssetID.
-	fillRecentAssetNames(ctx, meta, langs, rows, recentAssetSlot{
+	fillRecentAssetNames(ctx, r.pdb.Metadata, loc, rows, recentAssetSlot{
 		assetType: assetTypeMap,
 		id:        func(m *domain.ExplorerTargetRecentMatch) string { return m.MapAssetID },
 		missing:   func(m *domain.ExplorerTargetRecentMatch) bool { return m.MapUI == "" },
 		set:       func(m *domain.ExplorerTargetRecentMatch, n string) { m.MapUI = n },
 	})
 	// mode : ModeUI vide ← type "game_variant" par GameVariantAssetID (titres sans pair).
-	fillRecentAssetNames(ctx, meta, langs, rows, recentAssetSlot{
+	fillRecentAssetNames(ctx, r.pdb.Metadata, loc, rows, recentAssetSlot{
 		assetType: assetTypeGameVariant,
 		id:        func(m *domain.ExplorerTargetRecentMatch) string { return m.GameVariantAssetID },
 		missing:   func(m *domain.ExplorerTargetRecentMatch) bool { return m.ModeUI == "" },
@@ -361,11 +361,11 @@ type recentAssetSlot struct {
 }
 
 // fillRecentAssetNames résout en bulk les libellés d'un slot (map ou game_variant)
-// pour les rows dont le champ cible est encore vide, via ResolveAssetNamesBulk
-// (cascade fr-FR→fr→en-US→en). Best-effort : metadata en erreur → rows inchangées.
+// pour les rows dont le champ cible est encore vide, via assetNameTexts (nom dans la langue loc,
+// repli croisé). Best-effort : metadata en erreur → rows inchangées (journalisé, consigné).
 // No-op si aucun id manquant.
 func fillRecentAssetNames(
-	ctx context.Context, meta *MetadataRepo, langs []string,
+	ctx context.Context, meta *DB, loc i18n.Locale,
 	rows []domain.ExplorerTargetRecentMatch, slot recentAssetSlot,
 ) {
 	var ids []string
@@ -377,39 +377,34 @@ func fillRecentAssetNames(
 	if len(ids) == 0 {
 		return // libellés déjà présents (Infinite) → aucune requête metadata.
 	}
-	names, err := meta.ResolveAssetNamesBulk(ctx, slot.assetType, ids, langs)
-	if err != nil {
-		slog.WarnContext(ctx, "explorer_target_recent_asset_fallback_failed",
-			"asset_type", slot.assetType, "err", err)
-		return
-	}
+	names := assetNameTexts(ctx, meta, slot.assetType, ids)
 	for i := range rows {
 		if slot.missing(&rows[i]) && slot.id(&rows[i]) != "" {
-			if n := strings.TrimSpace(names[slot.id(&rows[i])]); n != "" {
+			if n := strings.TrimSpace(pickAcrossChain(loc, names[slot.id(&rows[i])])); n != "" {
 				slot.set(&rows[i], n)
 			}
 		}
 	}
 }
 
-// TranslateModeUIsFR expose translateModeUIsFR (port.ExplorerRepository) pour que
+// TranslateModeUIs expose translateModeUIs (port.ExplorerRepository) pour que
 // l'ExplorerService homogénéise la source LIVE du profil de combat avec la locale.
-func (r *ExplorerRepo) TranslateModeUIsFR(ctx context.Context, rows []domain.ExplorerTargetRecentMatch) {
-	r.translateModeUIsFR(ctx, rows)
+func (r *ExplorerRepo) TranslateModeUIs(ctx context.Context, loc i18n.Locale, rows []domain.ExplorerTargetRecentMatch) {
+	r.translateModeUIs(ctx, loc, rows)
 }
 
-// translateModeUIsFR remplace en place les libellés de mode EN normalisés
-// (ex. "CTF") par leur traduction FR depuis metadata.mode_name_tr (lang='fr').
+// translateModeUIs remplace en place les libellés de mode EN normalisés
+// (ex. "CTF") par leur traduction dans la langue loc depuis metadata.mode_name_tr.
 // Best-effort : l'EN est conservé si Metadata est absent, la table absente ou la
 // requête en erreur (loguée par le helper canonique, pas avalée). Clé = sous-mode
 // EN normalisé (même convention que career).
-func (r *ExplorerRepo) translateModeUIsFR(ctx context.Context, rows []domain.ExplorerTargetRecentMatch) {
+func (r *ExplorerRepo) translateModeUIs(ctx context.Context, loc i18n.Locale, rows []domain.ExplorerTargetRecentMatch) {
 	if len(rows) == 0 || r.pdb == nil {
 		return
 	}
 	// Source LIVE : ModeUI est souvent vide (le MatchInfo brut de l'API n'expose pas
 	// de PublicName, seulement des AssetId). On résout d'abord le mode depuis l'AssetId
-	// du pair via shared.match_registry, AVANT la traduction FR ci-dessous.
+	// du pair via shared.match_registry, AVANT la traduction ci-dessous.
 	r.resolveModeUIsFromPairID(ctx, rows)
 	if r.pdb.Metadata == nil {
 		return
@@ -427,12 +422,12 @@ func (r *ExplorerRepo) translateModeUIsFR(ctx context.Context, rows []domain.Exp
 	for m := range modeSet {
 		modes = append(modes, m)
 	}
-	// Résolution FR via la source unique du SQL mode_name_tr (mode_name_tr.go).
+	// Résolution via la source unique du SQL mode_name_tr (mode_name_tr.go).
 	// Variante best-effort : l'erreur est loguée (plus avalée en silence) et
 	// l'EN conservé.
-	fr := loadModeNamesFRForKeys(ctx, r.pdb.Metadata, modes)
+	translated := loadModeNamesForKeys(ctx, r.pdb.Metadata, loc, modes)
 	for i := range rows {
-		if t, ok := fr[rows[i].ModeUI]; ok {
+		if t, ok := translated[rows[i].ModeUI]; ok {
 			rows[i].ModeUI = t
 		}
 	}
@@ -475,13 +470,12 @@ func (r *ExplorerRepo) resolveModeUIsFromPairID(ctx context.Context, rows []doma
 		return
 	}
 	defer qrows.Close()
-	type pairNames struct{ name, nameFR sql.NullString }
-	byID := make(map[string]pairNames, len(idList))
+	byID := make(map[string]i18n.Text, len(idList))
 	for qrows.Next() {
 		var id string
-		var p pairNames
-		if scanErr := qrows.Scan(&id, &p.name, &p.nameFR); scanErr == nil {
-			byID[id] = p
+		var nameEN, nameFR sql.NullString
+		if scanErr := qrows.Scan(&id, &nameEN, &nameFR); scanErr == nil {
+			byID[id] = i18n.FromColumns(nameEN.String, nameFR.String)
 		}
 	}
 	for i := range rows {
@@ -492,14 +486,7 @@ func (r *ExplorerRepo) resolveModeUIsFromPairID(ctx context.Context, rows []doma
 		if !ok {
 			continue
 		}
-		var namePtr, frPtr *string
-		if p.name.Valid {
-			namePtr = &p.name.String
-		}
-		if p.nameFR.Valid {
-			frPtr = &p.nameFR.String
-		}
-		if mode := analysis.ResolveModeUI(namePtr, frPtr); mode != nil {
+		if mode := analysis.ResolveModeUI(p); mode != nil {
 			rows[i].ModeUI = *mode
 		}
 	}
@@ -512,7 +499,7 @@ func scanTargetRecentMatch(rows *sql.Rows) (domain.ExplorerTargetRecentMatch, er
 	var m domain.ExplorerTargetRecentMatch
 	var rank sql.NullInt64
 	var damageDealt, damageTaken float64
-	var pairName, pairNameFR *string
+	var pairName, pairNameFR sql.NullString
 	if err := rows.Scan(
 		&m.MatchID, &m.StartTime, &m.MapUI, &pairName, &pairNameFR,
 		&m.Outcome, &rank,
@@ -526,7 +513,7 @@ func scanTargetRecentMatch(rows *sql.Rows) (domain.ExplorerTargetRecentMatch, er
 	// Libellé de mode normalisé + localisé (FR-preferring) — helper canonique
 	// partagé avec home / match-view / historique (ResolveModeUI =
 	// COALESCE(pair_name_fr, pair_name) → NormalizeModeLabel).
-	if mode := analysis.ResolveModeUI(pairName, pairNameFR); mode != nil {
+	if mode := analysis.ResolveModeUI(i18n.FromColumns(pairName.String, pairNameFR.String)); mode != nil {
 		m.ModeUI = *mode
 	}
 	if rank.Valid {
@@ -541,7 +528,7 @@ func scanTargetRecentMatch(rows *sql.Rows) (domain.ExplorerTargetRecentMatch, er
 // GetTopWeaponsForMatches retourne le top `limit` armes (par kills) du joueur sur
 // les matchs donnés : COUNT(*) par effective_weapon_id dans shared.v_weapon_kills
 // (1 ligne = 1 kill event). Labels résolus
-// depuis metadata.weapon_labels. Best-effort : nil si entrée vide / erreur
+// depuis les noms d'armes par langue de la metadata. Best-effort : nil si entrée vide / erreur
 // (feature secondaire, jamais fatale). Armes 0/1/2 exclues (melee/grenade génériques).
 func (r *ExplorerRepo) GetTopWeaponsForMatches(
 	ctx context.Context, xuid string, matchIDs []string, limit int,
@@ -593,8 +580,7 @@ func (r *ExplorerRepo) GetTopWeaponsForMatches(
 		out = append(out, domain.WeaponHighlight{
 			WeaponID: wid.Int64(),
 			Kills:    kills,
-			LabelFR:  idStr,
-			LabelEN:  idStr,
+			Label:    idStr,
 		})
 	}
 	if err := rows.Err(); err != nil {
@@ -604,9 +590,9 @@ func (r *ExplorerRepo) GetTopWeaponsForMatches(
 	return out, nil
 }
 
-// resolveWeaponLabels remplit LabelFR/LabelEN en place depuis metadata.weapon_labels.
-// Best-effort : laisse l'ID décimal si metadata absent / arme inconnue. IDs injectés
-// en littéraux décimaux (cast UBIGINT non bindable proprement, cf. compare_repo).
+// resolveWeaponLabels remplit Label en place (dans la langue de la requête) depuis
+// les noms d'armes par langue de la metadata. Best-effort : laisse l ID décimal si metadata absent / arme inconnue.
+// IDs injectés en littéraux décimaux (cast UBIGINT non bindable proprement, cf. compare_repo).
 func (r *ExplorerRepo) resolveWeaponLabels(ctx context.Context, weapons []domain.WeaponHighlight) {
 	if len(weapons) == 0 || r.pdb == nil || r.pdb.Metadata == nil {
 		return
@@ -615,20 +601,17 @@ func (r *ExplorerRepo) resolveWeaponLabels(ctx context.Context, weapons []domain
 	for _, w := range weapons {
 		ids = append(ids, w.WeaponID)
 	}
-	// PASSAGE PRINCIPAL P4 : nom via le registre + weapon_labels (parité). label =
-	// name_fr>name_en (= LabelFR) ; LabelEN = name_en sinon le label FR (parité avec
-	// l'ancien COALESCE inversé).
+	// PASSAGE PRINCIPAL P4 : nom via le registre + noms par langue, choisi par displayLabel (la
+	// même règle de repli que tout nom d'arme : langue demandée, sinon langue de repli).
+	loc := i18n.FromContext(ctx)
 	meta := resolveWeaponMeta(ctx, r.pdb.Metadata, r.pdb.TitleSlug, ids)
 	for i := range weapons {
 		m, ok := meta[weapons[i].WeaponID]
-		if !ok || m.label == "" {
+		if !ok || m.label.Empty() {
 			continue
 		}
-		weapons[i].LabelFR = m.label
-		if m.nameEN != "" {
-			weapons[i].LabelEN = m.nameEN
-		} else {
-			weapons[i].LabelEN = m.label
+		if label := m.displayLabel(string(loc)); label != "" {
+			weapons[i].Label = label
 		}
 	}
 }

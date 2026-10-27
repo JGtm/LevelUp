@@ -51,8 +51,7 @@ schema_version = 1
 [[weapons]]
 tag      = "121B4009"
 vehicle  = "wraith"
-en       = "Plasma Mortar"
-fr       = "Mortier à plasma"
+label    = { en = "Plasma Mortar", fr = "Mortier à plasma" }
 fire     = "single"
 impact   = true
 impact_sound = "impact_wraith_mortar"
@@ -66,8 +65,7 @@ decision = "teinte ROUGE plasma_hot (utilisateur, Q7, 2026-09-23)"
 [[weapons]]
 tag      = "C7D50912"
 vehicle  = "rockethog"
-en       = "Rocket Launcher"
-fr       = "Lance-roquettes"
+label    = { en = "Rocket Launcher", fr = "Lance-roquettes" }
 fire     = "single"
 impact   = true
 fx       = "explosive"
@@ -80,8 +78,7 @@ decision = "explosions comme le lance-roquettes SPNKR (forme explosive, teinte b
 [[weapons]]
 tag      = "0BB6976B"
 vehicle  = "falcon"
-en       = "Grenade Launcher"
-fr       = "Lance-grenades"
+label    = { en = "Grenade Launcher", fr = "Lance-grenades" }
 fire     = "single"
 fx       = "explosive"
 tint     = "kinetic"
@@ -93,8 +90,7 @@ decision = "lance-grenades du Falcon (Q10, 2026-09-23 : deduit du tir au coup, l
 [[weapons]]
 tag      = "0042678E"
 vehicle  = "gungoose"
-en       = "Forward Machine Guns"
-fr       = "Mitrailleuses avant"
+label    = { en = "Forward Machine Guns", fr = "Mitrailleuses avant" }
 fire     = "single"
 fx       = "ballistic"
 tint     = "kinetic"
@@ -105,8 +101,7 @@ proof    = "40 tirs publies dont 15 en vehicule, 3 documents (4f77afc1, 8a485699
 [[weapons]]
 tag      = "49E40D17"
 vehicle  = "scorpion"
-en       = "Main Cannon"
-fr       = "Canon principal"
+label    = { en = "Main Cannon", fr = "Canon principal" }
 fire     = "single"
 fx       = "explosive"
 tint     = "blast"
@@ -118,8 +113,7 @@ decision = "explosion comme la grenade (utilisateur, 2026-09-23 nuit) : forme ex
 [[weapons]]
 tag      = "11725DC4"
 vehicle  = "wasp"
-en       = "Missile Launcher"
-fr       = "Lance-missiles"
+label    = { en = "Missile Launcher", fr = "Lance-missiles" }
 fire     = "single"
 impact   = true
 fx       = "explosive"
@@ -132,8 +126,7 @@ decision = "le coup par coup est le LANCE-MISSILES, l autre mode (d3c407ed, son 
 [[weapons]]
 tag      = "850902EF"
 vehicle  = "banshee"
-en       = "Fuel Rod Bomb"
-fr       = "Bombe à combustible"
+label    = { en = "Fuel Rod Bomb", fr = "Bombe à combustible" }
 fire     = "single"
 impact   = true
 impact_sound = "impact_banshee_bomb"
@@ -160,8 +153,7 @@ decision = "bombe de la Banshee ROUGE et PLUS GROSSE, eclair et explosion (utili
 [[weapons]]
 tag      = "00015435"
 vehicle  = "ghost"
-en       = "Plasma Cannons"
-fr       = "Canons à plasma"
+label    = { en = "Plasma Cannons", fr = "Canons à plasma" }
 fire     = "continuous"
 fx       = "plasma"
 tint     = "plasma_hot"
@@ -173,8 +165,7 @@ decision = "tir continu rendu comme Theater, cadence du tag (utilisateur, 2026-0
 [[weapons]]
 tag      = "0000AA68"
 vehicle  = "banshee"
-en       = "Plasma Cannons"
-fr       = "Canons à plasma"
+label    = { en = "Plasma Cannons", fr = "Canons à plasma" }
 fire     = "continuous"
 fx       = "plasma"
 tint     = "plasma_hot"
@@ -186,8 +177,7 @@ decision = "tir continu rendu comme Theater (utilisateur, 2026-09-24) ; teinte R
 [[weapons]]
 tag      = "B40E9618"
 vehicle  = "chopper"
-en       = "Forward Cannons"
-fr       = "Canons avant"
+label    = { en = "Forward Cannons", fr = "Canons avant" }
 fire     = "continuous"
 fx       = "plasma"
 tint     = "plasma_hot"
@@ -199,8 +189,7 @@ decision = "teinte ROUGE plasma_hot, forme plasma (Q8)"
 [[weapons]]
 tag      = "D3C407ED"
 vehicle  = "wasp"
-en       = "Machine Gun"
-fr       = "Mitrailleuse"
+label    = { en = "Machine Gun", fr = "Mitrailleuse" }
 fire     = "continuous"
 fx       = "ballistic"
 tint     = "kinetic"
@@ -213,8 +202,7 @@ decision = "LMG de la Wasp = le mode continu (Q11, 2026-09-23 nuit) ; sons desig
 [[weapons]]
 tag      = "0C6FD911"
 vehicle  = "warthog"
-en       = "LAAG Machine Gun"
-fr       = "Mitrailleuse LAAG"
+label    = { en = "LAAG Machine Gun", fr = "Mitrailleuse LAAG" }
 fire     = "continuous"
 fx       = "ballistic"
 tint     = "kinetic"
@@ -226,8 +214,7 @@ decision = "son de la LAAG = le son de la tourelle LMG deja en place (utilisateu
 [[weapons]]
 tag      = "E2066F44"
 vehicle  = "falcon"
-en       = "Machine Gun Turret"
-fr       = "Tourelle mitrailleuse"
+label    = { en = "Machine Gun Turret", fr = "Tourelle mitrailleuse" }
 fire     = "continuous"
 fx       = "ballistic"
 tint     = "kinetic"
@@ -239,8 +226,7 @@ decision = "le Falcon porte la LMG OU le lance-grenades, le rendu suit la tourel
 [[weapons]]
 tag      = "00015CD3"
 vehicle  = "scorpion"
-en       = "Machine Gun"
-fr       = "Mitrailleuse"
+label    = { en = "Machine Gun", fr = "Mitrailleuse" }
 fire     = "continuous"
 fx       = "ballistic"
 tint     = "kinetic"
@@ -251,8 +237,7 @@ proof    = "tag declare par le collier de tourelle du Scorpion (0000d500) ; 1 ba
 [[weapons]]
 tag      = "001B33E8"
 vehicle  = "wraith"
-en       = "Plasma Turret"
-fr       = "Tourelle à plasma"
+label    = { en = "Plasma Turret", fr = "Tourelle à plasma" }
 fire     = "continuous"
 fx       = "plasma"
 tint     = "plasma_hot"

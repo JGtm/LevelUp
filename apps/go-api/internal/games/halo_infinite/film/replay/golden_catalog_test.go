@@ -37,20 +37,20 @@ func goldenCatalog(t *testing.T) LabelCatalog {
 
 	byKey := map[string]Label{}
 	for k, v := range names.Names() {
-		byKey[k] = Label{En: v.En, Fr: v.Fr}
+		byKey[k] = Label{Text: enFr(v.Pick("en"), v.Pick("fr"))}
 	}
 	var abilities []AbilityPalette
 	for _, p := range labels.AbilityPalettes() {
 		ranks := map[int]Label{}
 		for rank, v := range p.Ranks {
-			ranks[rank] = Label{En: v.En, Fr: v.Fr}
+			ranks[rank] = Label{Text: enFr(v.Text.Pick("en"), v.Text.Pick("fr"))}
 		}
 		abilities = append(abilities, AbilityPalette{
 			ID: p.ID, Markers: p.Markers, Ranks: ranks, Families: p.Families})
 	}
 	grenades := make([]Label, 0, len(labels.GrenadeRanks()))
 	for _, v := range labels.GrenadeRanks() {
-		grenades = append(grenades, Label{En: v.En, Fr: v.Fr})
+		grenades = append(grenades, Label{Text: enFr(v.Text.Pick("en"), v.Text.Pick("fr"))})
 	}
 	cat := NewLabelCatalog(
 		weapons.FilmshellWeaponKeysByFamily(), byKey, labels.ShotEffects(), grenades, abilities)
@@ -79,7 +79,7 @@ func goldenCatalog(t *testing.T) LabelCatalog {
 		if cat.ObjectiveObjects == nil {
 			cat.ObjectiveObjects = map[uint32]Label{}
 		}
-		cat.ObjectiveObjects[id] = Label{En: o.Label.En, Fr: o.Label.Fr}
+		cat.ObjectiveObjects[id] = Label{Text: enFr(o.Label.Text.Pick("en"), o.Label.Text.Pick("fr"))}
 	}
 	return cat
 }
@@ -129,9 +129,9 @@ func TestCatalogueDuTitreNommeLesArmesDuFilmDeReference(t *testing.T) {
 		t.Fatal("aucune arme nommée : la jointure famille -> weapon_key -> nom est rompue")
 	}
 	for family, lbl := range cat.Weapons {
-		if lbl.En == "" || lbl.Fr == "" {
+		if enOf(lbl.Text) == "" || frOf(lbl.Text) == "" {
 			t.Errorf("famille %08X : libellé incomplet (en=%q fr=%q) — les deux langues sont obligatoires",
-				family, lbl.En, lbl.Fr)
+				family, enOf(lbl.Text), frOf(lbl.Text))
 		}
 	}
 	if len(cat.Grenades) != 4 {

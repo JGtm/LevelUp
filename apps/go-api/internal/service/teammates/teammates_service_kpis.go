@@ -283,5 +283,6 @@ func squadStatsToWinTotal(stats map[string]domain.MapSquadStats, groups domain.G
 	return out
 }
 
-// enrichSquadMatchAssets enrichit MapUI et PlaylistName des rows avec les traductions FR
-// depuis metadata.asset_translations (calqué sur home_repo.enrichHomeMatchTranslations).
+// enrichSquadMatchAssets enrichit MapUI et PlaylistName des rows dans la langue de la requête
+// depuis metadata.asset_translations (calqué sur home_repo.enrichHomeMatchTranslations) : voir
+// teammates_service_assets.go.

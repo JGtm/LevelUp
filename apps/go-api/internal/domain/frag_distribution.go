@@ -243,11 +243,12 @@ type FragClassEntry struct {
 type FragRoleEntry struct {
 	Role  string `json:"role"` // precision|automatic|sniper|shotgun|special|sidearm|assassination|direct_melee|ground_pound|shoulder_bash|grenade_*| weapon_key d'objet (h5_vehicle_warthog, hinf_repulsor, hinf_coil_plasma…)
 	Kills int    `json:"kills"`
-	// Label : libellé d'affichage DÉJÀ résolu, servi quand Role est un weapon_key
-	// d'OBJET — sa source est config/titles/{slug}/mappings/weapon_names.toml (via
-	// metadata.weapon_name_labels), et non un manifeste i18n web. Motif : ces noms sont
-	// propres à CHAQUE titre ; les recopier dans le manifeste web frags.toml (partagé par
-	// tous les titres) dupliquerait le TOML du titre et enflerait à chaque titre ajouté.
+	// Label : libellé d'affichage DÉJÀ résolu, dans la LANGUE DE LA REQUÊTE (repli en), servi
+	// quand Role est un weapon_key d'OBJET — sa source est
+	// config/titles/{slug}/mappings/weapon_names.toml (via metadata.weapon_name_labels), et non
+	// un manifeste i18n web. Motif : ces noms sont propres à CHAQUE titre ; les recopier dans le
+	// manifeste web frags.toml (partagé par tous les titres) dupliquerait le TOML du titre et
+	// enflerait à chaque titre ajouté.
 	//
 	// DEUX familles de classes le peuplent, par deux provenances distinctes :
 	//   - véhicule/tourelle (IsPerWeaponFragClass), via le REGISTRE d'armes ;
@@ -256,18 +257,9 @@ type FragRoleEntry struct {
 	// Ce champ n'est donc PAS réservé aux classes IsPerWeaponFragClass (il l'était avant
 	// le lot « kills hors arme à feu »).
 	//
-	// FR-first (repli EN interne côté résolveur, cf. weapon_resolver.go) : sémantique
-	// INCHANGÉE depuis son introduction — un lecteur FR voit toujours ce champ. Vide pour
-	// tous les autres rôles, qui restent des clés canoniques traduites côté web
-	// (frags.role.*) — le front applique `label || t(frags.role.<role>)`.
+	// Vide pour tous les autres rôles, qui restent des clés canoniques traduites côté web
+	// (frags.role.*) — le front applique `label || t(frags.role.<role>)`, et retombe sur un
+	// libellé générique quand il est vide (cf. fragRoleLabel.ts, jamais une clé i18n brute à
+	// l'écran).
 	Label string `json:"label,omitempty"`
-	// LabelEN : même libellé d'objet que Label, mais EN-first (repli FR interne) — ajouté
-	// le 2026-08-29 (V2.1, D2) pour qu'un lecteur EN voie le nom EN de l'objet (« UNSC
-	// Fusion Coil ») au lieu du FR servi par défaut (« Bobine à fusion UNSC »). Peuplé par
-	// EXACTEMENT les deux mêmes provenances que Label (registre véhicule/tourelle +
-	// source de dégât du film), au même point d'écriture — jamais l'un sans l'autre.
-	// Vide dans les mêmes conditions que Label (aucune traduction seedée) : le web choisit
-	// entre les deux SELON LA LOCALE et retombe sur un libellé générique si les deux sont
-	// vides (cf. fragRoleLabel.ts, jamais une clé i18n brute à l'écran).
-	LabelEN string `json:"label_en,omitempty"`
 }

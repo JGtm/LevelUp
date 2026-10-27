@@ -342,9 +342,14 @@ CREATE TABLE citation_mappings (
 );
 
 CREATE TABLE weapon_labels (
-    weapon_id  UBIGINT PRIMARY KEY,
-    name_en    VARCHAR,
-    name_fr    VARCHAR
+    weapon_id  UBIGINT PRIMARY KEY
+);
+
+CREATE TABLE weapon_label_names (
+    weapon_id  UBIGINT NOT NULL,
+    lang       VARCHAR NOT NULL,
+    name       VARCHAR NOT NULL,
+    PRIMARY KEY (weapon_id, lang)
 );
 `
 }

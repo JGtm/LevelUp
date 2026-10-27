@@ -57,7 +57,7 @@ func TestSessionContext_RejectsMalformedValues(t *testing.T) {
 		name string
 		body string
 	}{
-		{"locale inconnue", `{"locale":"xx"}`},
+		{"locale inconnue", `{"locale":"zz"}`},
 		{"locale composée", `{"locale":"fr-FR"}`},
 		{"locale vide", `{"locale":""}`},
 		{"locale volumineuse", `{"locale":"` + strings.Repeat("a", 5000) + `"}`},

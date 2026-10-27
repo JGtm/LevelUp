@@ -8,6 +8,7 @@ import (
 	"math"
 
 	"levelup/go-api/internal/domain/highlightevent"
+	"levelup/go-api/internal/i18n"
 )
 
 // ImpactEvent représente un événement horodaté d'un match.
@@ -36,8 +37,8 @@ type ParticipantSnap struct {
 // badges stat-based qui n'ont pas de timestamp (top_killer, silent_hero,
 // false_brother).
 type ImpactBadge struct {
-	BadgeKey   string // identifiant technique
-	BadgeFR    string // libellé français
+	BadgeKey   string    // identifiant technique
+	Badge      i18n.Text // libellé par langue
 	PlayerXUID string
 	TimeMS     int64
 }
@@ -110,7 +111,7 @@ func ComputeMatchImpactFull(input MatchImpactInput) []ImpactBadge {
 	if fb := FirstBlood(input.Events); fb != nil {
 		badges = append(badges, ImpactBadge{
 			BadgeKey:   "first_blood",
-			BadgeFR:    "Premier sang",
+			Badge:      i18n.MsgText("impact.badge.first_blood", nil),
 			PlayerXUID: fb.ActorXUID,
 			TimeMS:     fb.TimeMS,
 		})
@@ -124,7 +125,7 @@ func ComputeMatchImpactFull(input MatchImpactInput) []ImpactBadge {
 	if fd := firstByTime(deathsForSquad); fd != nil {
 		badges = append(badges, ImpactBadge{
 			BadgeKey:   "first_group_death",
-			BadgeFR:    "Première victime",
+			Badge:      i18n.MsgText("impact.badge.first_group_death", nil),
 			PlayerXUID: fd.ActorXUID,
 			TimeMS:     fd.TimeMS,
 		})
@@ -134,7 +135,7 @@ func ComputeMatchImpactFull(input MatchImpactInput) []ImpactBadge {
 	if cf := lastByTimeFiltered(kills, winXUIDs); cf != nil {
 		badges = append(badges, ImpactBadge{
 			BadgeKey:   "clutch_finisher",
-			BadgeFR:    "Finisseur",
+			Badge:      i18n.MsgText("impact.badge.clutch_finisher", nil),
 			PlayerXUID: cf.ActorXUID,
 			TimeMS:     cf.TimeMS,
 		})
@@ -144,7 +145,7 @@ func ComputeMatchImpactFull(input MatchImpactInput) []ImpactBadge {
 	if lc := lastByTimeFiltered(deaths, lossXUIDs); lc != nil {
 		badges = append(badges, ImpactBadge{
 			BadgeKey:   "last_casualty",
-			BadgeFR:    "Boulet",
+			Badge:      i18n.MsgText("impact.badge.last_casualty", nil),
 			PlayerXUID: lc.ActorXUID,
 			TimeMS:     lc.TimeMS,
 		})
@@ -159,7 +160,7 @@ func ComputeMatchImpactFull(input MatchImpactInput) []ImpactBadge {
 	if xuid, t := slowestFirstKillerWithTime(killsForSquad); xuid != "" {
 		badges = append(badges, ImpactBadge{
 			BadgeKey:   "last_group_kill",
-			BadgeFR:    "Touriste",
+			Badge:      i18n.MsgText("impact.badge.last_group_kill", nil),
 			PlayerXUID: xuid,
 			TimeMS:     t,
 		})
@@ -169,7 +170,7 @@ func ComputeMatchImpactFull(input MatchImpactInput) []ImpactBadge {
 	if xuid := topKiller(input.Participants); xuid != "" {
 		badges = append(badges, ImpactBadge{
 			BadgeKey:   "top_killer",
-			BadgeFR:    "Bourreau",
+			Badge:      i18n.MsgText("impact.badge.top_killer", nil),
 			PlayerXUID: xuid,
 		})
 	}
@@ -178,7 +179,7 @@ func ComputeMatchImpactFull(input MatchImpactInput) []ImpactBadge {
 	if xuid := silentHero(input.Participants); xuid != "" {
 		badges = append(badges, ImpactBadge{
 			BadgeKey:   "silent_hero",
-			BadgeFR:    "Héros silencieux",
+			Badge:      i18n.MsgText("impact.badge.silent_hero", nil),
 			PlayerXUID: xuid,
 		})
 	}
@@ -187,7 +188,7 @@ func ComputeMatchImpactFull(input MatchImpactInput) []ImpactBadge {
 	if xuid := falseBrother(input.Participants); xuid != "" {
 		badges = append(badges, ImpactBadge{
 			BadgeKey:   "false_brother",
-			BadgeFR:    "Faux-frère",
+			Badge:      i18n.MsgText("impact.badge.false_brother", nil),
 			PlayerXUID: xuid,
 		})
 	}
@@ -199,7 +200,7 @@ func ComputeMatchImpactFull(input MatchImpactInput) []ImpactBadge {
 	if xuid, t := topGunWithTime(killsForSquad); xuid != "" {
 		badges = append(badges, ImpactBadge{
 			BadgeKey:   "top_gun",
-			BadgeFR:    "Top Gun",
+			Badge:      i18n.MsgText("impact.badge.top_gun", nil),
 			PlayerXUID: xuid,
 			TimeMS:     t,
 		})
@@ -211,7 +212,7 @@ func ComputeMatchImpactFull(input MatchImpactInput) []ImpactBadge {
 	if xuid, t := kamikaze(kills, deaths, squadXUIDs); xuid != "" {
 		badges = append(badges, ImpactBadge{
 			BadgeKey:   "kamikaze",
-			BadgeFR:    "Kamikaze",
+			Badge:      i18n.MsgText("impact.badge.kamikaze", nil),
 			PlayerXUID: xuid,
 			TimeMS:     t,
 		})

@@ -8,6 +8,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/legacymatch"
 )
 
@@ -47,8 +48,8 @@ type mockSquadRepo struct {
 	// lookupAliases : gamertag normalisé (lowercase) -> xuid. Vide -> ("", false, nil).
 	lookupAliases map[string]string
 	lookupErr     error
-	// assetFR : traductions FR par type d'asset -> (asset_id -> libellé FR).
-	assetFR map[string]map[string]string
+	// assetTexts : noms par langue par type d'asset ("map"|"playlist"|"pair"|"game_variant") -> (asset_id -> Text).
+	assetTexts map[string]map[string]i18n.Text
 	// modeFR : mode_name_tr FR (mode EN normalisé -> FR).
 	modeFR map[string]string
 	// amis / profils / amisLus : les sources des coéquipiers connus du SCÉNARIO (pas des
@@ -147,13 +148,13 @@ func (m *mockSquadRepo) LoadSquadKillLog(_ context.Context, _, _ []string) ([]do
 func (m *mockSquadRepo) LoadMainTeamParticipants(_ context.Context, _ string, _ []string) ([]domain.AllyParticipant, error) {
 	return m.allyRows, m.allyErr
 }
-func (m *mockSquadRepo) LoadAssetTranslationsFR(_ context.Context, assetType string, _ []string) (map[string]string, error) {
-	if m.assetFR == nil {
+func (m *mockSquadRepo) LoadAssetTexts(_ context.Context, assetType string, _ []string) (map[string]i18n.Text, error) {
+	if m.assetTexts == nil {
 		return nil, nil
 	}
-	return m.assetFR[assetType], nil
+	return m.assetTexts[assetType], nil
 }
-func (m *mockSquadRepo) LoadModeTranslationsFR(_ context.Context, _ []string) (map[string]string, error) {
+func (m *mockSquadRepo) LoadModeTranslations(_ context.Context, _ i18n.Locale, _ []string) (map[string]string, error) {
 	return m.modeFR, nil
 }
 func (m *mockSquadRepo) LoadMapStatsForSquad(_ context.Context, _ string, squadXUIDs, excludeXUIDs []string) (map[string]domain.MapSquadStats, error) {

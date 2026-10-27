@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/legacymatch"
 )
 
@@ -66,29 +67,10 @@ func IsRawAssetUUID(s string) bool {
 	return homeUUIDRe.MatchString(strings.TrimSpace(s))
 }
 
-// labelFR retourne fr si non vide, sinon en.
-func labelFR(fr, en string) string {
-	if fr != "" {
-		return fr
-	}
-	return en
-}
-
-func normalizeHomeLocale(locale string) string {
-	if strings.HasPrefix(strings.ToLower(strings.TrimSpace(locale)), "en") {
-		return "en"
-	}
-	return "fr"
-}
-
-func labelForLocale(locale, fr, en string) string {
-	if normalizeHomeLocale(locale) == "en" {
-		if strings.TrimSpace(en) != "" {
-			return en
-		}
-		return fr
-	}
-	return labelFR(fr, en)
+// normalizeHomeLocale normalise la langue de la requête (i18n.Parse : inconnue ou vide, la langue par
+// défaut).
+func normalizeHomeLocale(locale string) i18n.Locale {
+	return i18n.Parse(locale)
 }
 
 func outcomeTone(code int) string {

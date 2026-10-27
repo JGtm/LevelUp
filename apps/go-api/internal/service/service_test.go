@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
 // ---------------------------------------------------------------------------
@@ -23,8 +24,8 @@ func TestResolveFiltersFromRows_AllRows(t *testing.T) {
 	mapName := "Aquarius"
 	pair := "Slayer"
 	rows := []domain.FilterMatchRow{
-		{MatchID: "m1", MapName: &mapName, PairName: &pair, IsFirefight: false, IsRanked: false},
-		{MatchID: "m2", MapName: &mapName, PairName: &pair, IsFirefight: false, IsRanked: false},
+		{MatchID: "m1", MapName: i18n.FromColumns(mapName, ""), PairName: i18n.FromColumns(pair, ""), IsFirefight: false, IsRanked: false},
+		{MatchID: "m2", MapName: i18n.FromColumns(mapName, ""), PairName: i18n.FromColumns(pair, ""), IsFirefight: false, IsRanked: false},
 	}
 	result := ResolveFiltersFromRows(rows, domain.FilterContextInput{})
 	if result.Counts.TotalMatchesBeforeFilters != 2 {
@@ -39,7 +40,7 @@ func TestResolveFiltersFromRows_ModeUI_StripsSuffix(t *testing.T) {
 	pair := "Slayer on Aquarius"
 	mapName := "Aquarius"
 	rows := []domain.FilterMatchRow{
-		{MatchID: "m1", PairName: &pair, MapName: &mapName},
+		{MatchID: "m1", PairName: i18n.FromColumns(pair, ""), MapName: i18n.FromColumns(mapName, "")},
 	}
 	result := ResolveFiltersFromRows(rows, domain.FilterContextInput{})
 	if len(result.AvailableOptions.Modes) == 0 {
@@ -84,9 +85,9 @@ func TestFormatLifeSeconds_65Seconds(t *testing.T) {
 func TestComputeMapWinRates(t *testing.T) {
 	map1 := "Aquarius"
 	rows := []domain.MatchHistoryRawRow{
-		{MapName: &map1, Outcome: 2},
-		{MapName: &map1, Outcome: 2},
-		{MapName: &map1, Outcome: 3},
+		{MapName: i18n.FromColumns(map1, ""), Outcome: 2},
+		{MapName: i18n.FromColumns(map1, ""), Outcome: 2},
+		{MapName: i18n.FromColumns(map1, ""), Outcome: 3},
 	}
 	rates := computeMapWinRates(rows, domain.GroupesDeCartes{})
 	// Sans identifiant de carte, la ligne est comptée sous son nom.
@@ -287,23 +288,6 @@ func TestApplyMatchHeaderScore_VarianteNonDeclareeGardeLesPoints(t *testing.T) {
 	}
 	if h.ScorePointsLabel != "" {
 		t.Errorf("aucun second plan attendu en lecture points, got %q", h.ScorePointsLabel)
-	}
-}
-
-// ---------------------------------------------------------------------------
-// MatchViewService — formatDateFRLong
-// ---------------------------------------------------------------------------
-
-func TestFormatDateFRLong_Known(t *testing.T) {
-	// 2025-12-01 19:42 UTC → local peut varier, on teste juste que ça parse
-	ts := time.Date(2025, time.December, 1, 19, 42, 0, 0, time.UTC)
-	got := formatDateFRLong(ts)
-	if got == "" {
-		t.Error("expected non-empty string")
-	}
-	// Le résultat doit contenir "déc." et "2025"
-	if len(got) < 10 {
-		t.Errorf("result too short: %q", got)
 	}
 }
 

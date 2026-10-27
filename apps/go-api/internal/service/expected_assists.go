@@ -10,6 +10,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/observability/timing"
 )
@@ -61,7 +62,7 @@ func computeExpectedAssistsBatch(
 
 	for i := range matches {
 		m := &matches[i]
-		mode := m.GameVariantName
+		mode := m.GameVariantName[i18n.Fallback]
 		if !personalDone[mode] {
 			pm, err := models.GetPlayerAssistsModel(ctx, mode)
 			if err != nil {

@@ -26,6 +26,7 @@ import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 import { filterContextToMatchFilterSpec } from '@/lib/match-nav/fromFilterContext'
+import { labelsOfOptions } from '@/lib/match-nav/navContext'
 import { api } from '@/lib/api/client'
 import type { FilterMatchIdsResponse } from '@/lib/api/types'
 import {
@@ -193,6 +194,23 @@ export function FilterOmnibar({ matchContext, filterStore = useSoloFilterStore, 
   const totalAfter =
     (previewData?.counts ?? resolvedContext?.counts)?.total_matches_after_filters ?? null
 
+  // Priorité au preview (temps réel) ; fallback sur le contexte commité
+  // tant que le premier fetch preview n'est pas revenu.
+  const rawAvailable = previewData?.available_options ?? resolvedContext?.available_options
+  const available = useMemo(() => {
+    if (!rawAvailable) return undefined
+    // Défense : un slice nil Go sérialise en JSON null. `?? []` garantit qu'on
+    // ne crashe pas si le backend dérape sur le contrat. Cf. testutil.RequireNoNilSlicesWithoutOmitempty.
+    const filterUUIDs = (opts: LabelValue[] | null | undefined): LabelValue[] =>
+      (opts ?? []).filter((o) => !isUUIDLabel(o.label))
+    return {
+      playlists: filterUUIDs(rawAvailable.playlists),
+      modes: filterUUIDs(rawAvailable.modes),
+      maps: filterUUIDs(rawAvailable.maps),
+      experience_types: filterUUIDs(rawAvailable.experience_types),
+    }
+  }, [rawAvailable])
+
   // Bouton "Voir les matchs" : on récupère à la volée la liste ORDONNÉE des
   // match_id de la sélection (POST /filters/match-ids — même pipeline que le
   // compteur, donc match_context/sessions/cascade respectés), puis on ouvre le
@@ -214,7 +232,12 @@ export function FilterOmnibar({ matchContext, filterStore = useSoloFilterStore, 
         sourceCtx,
       )
       if (match_ids.length === 0) return
-      const filterSpec = filterContextToMatchFilterSpec(sourceCtx)
+      // Les clés du contexte filtrent ; les libellés des options (langue de la page) nomment le
+      // filtre dans le compteur de la vue du match.
+      const filterSpec = filterContextToMatchFilterSpec(sourceCtx, {
+        playlistLabels: labelsOfOptions(available?.playlists),
+        modeLabels: labelsOfOptions(available?.modes),
+      })
       navigateToMatch(match_ids[0], {
         source: 'history',
         matchIds: match_ids,
@@ -228,22 +251,6 @@ export function FilterOmnibar({ matchContext, filterStore = useSoloFilterStore, 
     }
   }
 
-  // Priorité au preview (temps réel) ; fallback sur le contexte commité
-  // tant que le premier fetch preview n'est pas revenu.
-  const rawAvailable = previewData?.available_options ?? resolvedContext?.available_options
-  const available = useMemo(() => {
-    if (!rawAvailable) return undefined
-    // Défense : un slice nil Go sérialise en JSON null. `?? []` garantit qu'on
-    // ne crashe pas si le backend dérape sur le contrat. Cf. testutil.RequireNoNilSlicesWithoutOmitempty.
-    const filterUUIDs = (opts: LabelValue[] | null | undefined): LabelValue[] =>
-      (opts ?? []).filter((o) => !isUUIDLabel(o.label))
-    return {
-      playlists: filterUUIDs(rawAvailable.playlists),
-      modes: filterUUIDs(rawAvailable.modes),
-      maps: filterUUIDs(rawAvailable.maps),
-      experience_types: filterUUIDs(rawAvailable.experience_types),
-    }
-  }, [rawAvailable])
 
   function setPendingPeriod(p: PeriodInput) {
     const isPeriodSet = !!(p?.start_date || p?.end_date)
@@ -339,7 +346,7 @@ export function FilterOmnibar({ matchContext, filterStore = useSoloFilterStore, 
                   : 'text-muted-foreground hover:text-foreground',
               ].join(' ')}
             >
-              {CONTEXT_LABELS[locale === 'en' ? 'en' : 'fr'][ctx]}
+              {CONTEXT_LABELS[locale][ctx]}
             </button>
           ))}
         </div>

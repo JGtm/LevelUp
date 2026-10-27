@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"github.com/pelletier/go-toml/v2"
+
+	"levelup/go-api/internal/i18n"
 )
 
 // outcomesTOML est la projection brute du fichier outcomes.toml avant validation.
@@ -16,9 +18,9 @@ type outcomesTOML struct {
 }
 
 type outcomeEntryTOML struct {
-	Labels     map[string]string `toml:"labels"`
-	ColorToken string            `toml:"color_token"`
-	RawCode    int               `toml:"raw_code"` // MT-06 : code brut du titre (0 = absent)
+	Labels     i18n.Text `toml:"labels"`
+	ColorToken string    `toml:"color_token"`
+	RawCode    int       `toml:"raw_code"` // MT-06 : code brut du titre (0 = absent)
 }
 
 // allowedOutcomeKeys est la liste exhaustive des outcomes canoniques admis.
@@ -80,7 +82,7 @@ func LoadOutcomesFromBytes(path string, raw []byte) (*OutcomeMappingSet, error) 
 		}
 		byKey[key] = OutcomeMapping{
 			Key:        key,
-			Labels:     copyStringMap(entry.Labels),
+			Labels:     entry.Labels.Clone(),
 			ColorToken: entry.ColorToken,
 			RawCode:    entry.RawCode,
 		}
@@ -95,11 +97,8 @@ func LoadOutcomesFromBytes(path string, raw []byte) (*OutcomeMappingSet, error) 
 
 func validateOutcome(key string, e outcomeEntryTOML) []error {
 	var errs []error
-	if _, ok := e.Labels[LocaleEN]; !ok || strings.TrimSpace(e.Labels[LocaleEN]) == "" {
-		errs = append(errs, fmt.Errorf("label EN manquant"))
-	}
-	if _, ok := e.Labels[LocaleFR]; !ok || strings.TrimSpace(e.Labels[LocaleFR]) == "" {
-		errs = append(errs, fmt.Errorf("label FR manquant"))
+	if err := e.Labels.Trimmed().Validate(); err != nil {
+		errs = append(errs, fmt.Errorf("labels: %w", err))
 	}
 	if strings.TrimSpace(e.ColorToken) == "" {
 		errs = append(errs, fmt.Errorf("color_token manquant"))

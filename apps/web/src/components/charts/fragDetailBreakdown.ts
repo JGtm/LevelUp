@@ -13,7 +13,6 @@
  * (le set GUN_CLASSES + le filtre) — cf. règle ≤2 copies (3e usage = centraliser).
  */
 import type { FragDistribution, SynthesisWeaponKillEntry } from '@/lib/api/types'
-import type { Locale } from '@/lib/i18n/locale'
 import { fragRoleDisplayLabel } from './fragRoleLabel'
 
 /** Classes servies par des ARMES (registre) — les seules gardées depuis la liste per-arme. */
@@ -47,8 +46,6 @@ export const NON_WEAPON_FRAG_CLASSES: ReadonlySet<string> = new Set([
 export interface FragDetailLabels {
   roleLabel: (role: string) => string
   classLabel: (className: string) => string
-  /** Locale d'affichage courante — choisit label/label_en pour les rôles OBJET (D2). */
-  locale: Locale
 }
 
 /**
@@ -75,7 +72,7 @@ export function buildFragDetailBreakdown(
     if (roles.length > 0) {
       // Nom d'engin servi par l'API (véhicule/tourelle) ou clé canonique traduite.
       for (const r of roles) {
-        details.push({ label: fragRoleDisplayLabel(r, labels.locale, labels.roleLabel), kills: r.kills, class: c.class })
+        details.push({ label: fragRoleDisplayLabel(r, labels.roleLabel), kills: r.kills, class: c.class })
       }
     } else {
       details.push({ label: labels.classLabel(c.class), kills: c.kills, class: c.class })

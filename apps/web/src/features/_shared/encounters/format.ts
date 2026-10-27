@@ -92,9 +92,14 @@ export function formatRelativeEN(iso: string): string {
 /**
  * formatRelativeFor — le formateur d'ancienneté de la langue du lecteur.
  *
- * Les deux vues écrivaient le MÊME ternaire (`locale === 'en' ? …EN : …FR`) : il vit ici,
- * pour qu'une troisième langue n'ait qu'un seul endroit à toucher.
+ * Table par langue (`Record<Locale, …>`) : une troisième langue n'a qu'un seul endroit à toucher
+ * et ne compile pas tant qu'elle n'y figure pas.
  */
+const RELATIVE_FORMATTER: Record<Locale, (iso: string) => string> = {
+  fr: formatRelativeFR,
+  en: formatRelativeEN,
+}
+
 export function formatRelativeFor(locale: Locale): (iso: string) => string {
-  return locale === 'en' ? formatRelativeEN : formatRelativeFR
+  return RELATIVE_FORMATTER[locale]
 }

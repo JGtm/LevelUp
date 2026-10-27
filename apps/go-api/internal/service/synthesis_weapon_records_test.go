@@ -24,6 +24,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
@@ -67,7 +68,7 @@ func TestBuildWeaponRecordsSection_Nominal(t *testing.T) {
 		dims: map[string]port.WeaponDimensions{
 			"hinf_br75": {Class: "shoulder", Role: "precision"}, "hinf_s7_sniper": {Class: "heavy", Role: "sniper"},
 		},
-		labels: map[string]port.WeaponLabel{"hinf_br75": {Label: "BR75", LabelEN: "BR75"}},
+		labels: map[string]port.WeaponLabel{"hinf_br75": {Name: i18n.Text{i18n.LocaleFR: "BR75", i18n.LocaleEN: "BR75"}}},
 	}
 
 	block, _ := buildWeaponRecordsSection(context.Background(), wrecQuery(repo, rows))
@@ -103,10 +104,14 @@ func TestBuildWeaponRecordsSection_Nominal(t *testing.T) {
 		t.Errorf("contexte du record = %+v, attendu Recharge à t0+1h", br.Record)
 	}
 	sn := block.Weapons[1]
-	if sn.Record.MapLabel != "Béhémoth" || sn.Record.MapLabelEN != "Behemoth" {
-		t.Errorf("carte du sniper = %q / %q, attendu Béhémoth / Behemoth", sn.Record.MapLabel, sn.Record.MapLabelEN)
+	if sn.Record.MapLabel != "Béhémoth" {
+		t.Errorf("carte du sniper = %q, attendu Béhémoth (langue de la requête fr)", sn.Record.MapLabel)
 	}
-	if sn.Label != "" || sn.LabelEN != "" {
+	blockEN, _ := buildWeaponRecordsSection(i18n.WithContext(context.Background(), i18n.LocaleEN), wrecQuery(repo, rows))
+	if blockEN == nil || len(blockEN.Weapons) != 2 || blockEN.Weapons[1].Record.MapLabel != "Behemoth" {
+		t.Errorf("carte du sniper en anglais : %+v, attendu Behemoth", blockEN)
+	}
+	if sn.Label != "" {
 		t.Errorf("libellé du sniper = %q, attendu vide (clé inconnue de la metadata, repli front)", sn.Label)
 	}
 	if block.Excluded != nil {
@@ -130,7 +135,7 @@ func TestBuildWeaponRecordsSection_ClassesEcarteesNommees(t *testing.T) {
 			"hinf_repulsor": {Class: "equipment"}, "h5_energy_sword": {Class: "melee"},
 			"hinf_warthog": {Class: "vehicle"},
 		},
-		labels: map[string]port.WeaponLabel{"hinf_environment": {Label: "Chute et environnement", LabelEN: "Environment"}},
+		labels: map[string]port.WeaponLabel{"hinf_environment": {Name: i18n.Text{i18n.LocaleFR: "Chute et environnement", i18n.LocaleEN: "Environment"}}},
 	}
 
 	block, _ := buildWeaponRecordsSection(context.Background(), wrecQuery(repo, wrCanonRows(1, 20, 5)))

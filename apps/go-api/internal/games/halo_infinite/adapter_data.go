@@ -35,8 +35,6 @@ type CareerSource interface {
 	GetXPHistory(ctx context.Context) ([]domain.XPHistoryPoint, error)
 	// GetLUSRHistory : historique des checkpoints de rating LUSR/CSR (Phase 2 HIGH-C).
 	GetLUSRHistory(ctx context.Context) ([]domain.LUSRCheckpointDTO, error)
-	// GetTopMatches : meilleurs/pires matchs carrière (Phase 2 HIGH-C).
-	GetTopMatches(ctx context.Context) ([]domain.TopMatchRawRow, error)
 }
 
 // RecentSource est la surface minimale de lecture du profil de combat récent d'un

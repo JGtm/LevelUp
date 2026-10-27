@@ -54,11 +54,6 @@ describe('getSquadText', () => {
     expect(getSquadText('en')).toBe(EN_TEXT)
   })
 
-  it('fallback FR pour une locale inconnue', () => {
-    expect(getSquadText('xx')).toBe(FR_TEXT)
-    expect(getSquadText(undefined)).toBe(FR_TEXT)
-  })
-
   it('compose correctement les fonctions paramétrées (FR) et le champ coéquipier', () => {
     const t = getSquadText('fr')
     expect(t.selection.placeholder).toBe('Ajouter un coéquipier…')

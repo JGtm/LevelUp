@@ -28,11 +28,52 @@
  */
 export type MatchFilterOutcome = 'win' | 'loss' | 'draw' | 'dnf'
 
+/**
+ * Libellés AFFICHÉS (langue de la page) des clés d'un filtre : clé -> libellé. La clé (nom de la langue par
+ * défaut) reste ce qui filtre, se sérialise et se compare ; le libellé ne sert qu'à l'affichage et n'entre
+ * jamais dans l'URL.
+ */
+export type MatchFilterLabels = Record<string, string>
+
+/** Table clé -> libellé des options d'un filtre (`value` = clé, `label` = affiché). */
+export function labelsOfOptions(
+  options: ReadonlyArray<{ value: string; label: string }> | null | undefined,
+): MatchFilterLabels {
+  const out: MatchFilterLabels = {}
+  for (const o of options ?? []) {
+    if (o.value && o.label) out[o.value] = o.label
+  }
+  return out
+}
+
+/** Sous-table des libellés limitée aux clés données (celles du filtre sélectionné) ; undefined si aucune. */
+export function labelsFor(
+  keys: readonly string[],
+  labels: MatchFilterLabels | undefined,
+): MatchFilterLabels | undefined {
+  if (!labels) return undefined
+  const out: MatchFilterLabels = {}
+  for (const k of keys) {
+    const l = labels[k]
+    if (l) out[k] = l
+  }
+  return Object.keys(out).length > 0 ? out : undefined
+}
+
+/** Libellé affiché d'une clé de filtre : celui de la table, à défaut la clé elle-même. */
+export function labelOfKey(key: string, labels: MatchFilterLabels | undefined): string {
+  return labels?.[key] || key
+}
+
 export interface MatchFilterSpec {
-  /** Playlists (multi, Phase 3). Sérialisées en `?playlist=A,B`. */
+  /** Playlists (multi, Phase 3). Sérialisées en `?playlist=A,B` : ce sont des CLÉS de filtre. */
   playlist_names?: string[]
-  /** Catégories de mode (multi, Phase 3). Sérialisées en `?mode=X,Y`. */
+  /** Catégories de mode (multi, Phase 3). Sérialisées en `?mode=X,Y` : ce sont des CLÉS de filtre. */
   mode_categories?: string[]
+  /** Libellés affichés des `playlist_names` (jamais sérialisés ; absents d'un lien partagé : la clé s'affiche). */
+  playlist_labels?: MatchFilterLabels
+  /** Libellés affichés des `mode_categories` (idem). */
+  mode_labels?: MatchFilterLabels
   date_from?: string // ISO 8601 RFC3339 ("2026-04-01T00:00:00Z")
   date_to?: string
   session_id?: string
@@ -144,6 +185,9 @@ export type MatchNavSource =
  *   - localisable côté target (le label est construit dans la locale du match)
  *   - sérialisable / réplicable depuis n'importe quelle source (home, squad, …)
  *
+ * `name` / `category` sont des CLÉS de filtre (langue par défaut) ; `label` est le libellé affiché dans
+ * la langue de la page (à défaut, la clé).
+ *
  * Sources alimentant chaque variante :
  *   - `recent` / `favorites`   : HomePage tuile match, Synthesis highlights
  *   - `media`                  : MediaPage galerie + viewers
@@ -160,8 +204,8 @@ export type ContextDescriptor =
   | { kind: 'with_player'; gamertag: string }
   | { kind: 'session'; startTimeUtc: string }
   | { kind: 'period'; from?: string; to?: string }
-  | { kind: 'playlist'; name: string }
-  | { kind: 'mode'; category: string }
+  | { kind: 'playlist'; name: string; label?: string }
+  | { kind: 'mode'; category: string; label?: string }
   | { kind: 'top_matches' }
 
 export interface MatchNavContext {
@@ -175,7 +219,7 @@ export interface MatchNavContext {
   /**
    * Descriptor typé du contexte d'origine — Phase 2c.
    * Préféré à `filtersLabel` ; le builder `buildDescriptorLabel` côté
-   * `match-view/i18n.ts` produit un label localisé compact.
+   * `match-view/i18n` produit un label localisé compact.
    */
   contextDescriptor?: ContextDescriptor
   /**

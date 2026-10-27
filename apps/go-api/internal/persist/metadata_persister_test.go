@@ -35,9 +35,9 @@ func TestMetadataPersister_Persist_InsertsTranslations(t *testing.T) {
 
 	b := NewBatchBuilder("halo_infinite", "Alice", "1111", "test")
 	b.AddModeNameTranslations([]ModeNameTranslationInsert{
-		{ModeEN: "NewSlayer3000", Lang: "fr", Name: "Carnage 3000"},
-		{ModeEN: "NewSlayer3000", Lang: "en", Name: "Slayer 3000"},
-		{ModeEN: "NewCTF", Lang: "fr", Name: "Capture du drapeau"},
+		{ModeKey: "NewSlayer3000", Lang: "fr", Name: "Carnage 3000"},
+		{ModeKey: "NewSlayer3000", Lang: "en", Name: "Slayer 3000"},
+		{ModeKey: "NewCTF", Lang: "fr", Name: "Capture du drapeau"},
 	})
 
 	if err := p.Persist(context.Background(), b.Build()); err != nil {
@@ -77,7 +77,7 @@ func TestMetadataPersister_Persist_PreservesExistingTranslations(t *testing.T) {
 	b := NewBatchBuilder("halo_infinite", "Alice", "1111", "test")
 	b.AddModeNameTranslations([]ModeNameTranslationInsert{
 		// Le sync essaie d'écraser avec une traduction auto-générée.
-		{ModeEN: "Slayer", Lang: "fr", Name: "AUTO_OVERRIDE_NEVER"},
+		{ModeKey: "Slayer", Lang: "fr", Name: "AUTO_OVERRIDE_NEVER"},
 	})
 
 	if err := p.Persist(context.Background(), b.Build()); err != nil {

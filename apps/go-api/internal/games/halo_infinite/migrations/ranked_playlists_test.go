@@ -12,6 +12,7 @@ import (
 	_ "github.com/duckdb/duckdb-go/v2"
 
 	"levelup/go-api/internal/games/halo_infinite/rankedplaylists"
+	"levelup/go-api/internal/i18n"
 )
 
 func setupCatalogDBForSeed(t *testing.T) *sql.DB {
@@ -80,14 +81,14 @@ func TestApplyRankedPlaylistSeeds_SeedsActiveAndFR(t *testing.T) {
 	}
 
 	for _, p := range rankedplaylists.Active() {
-		nameFR := p.NameFR()
+		nameFR := p.Name(i18n.LocaleFR)
 		if nameFR == "" {
 			continue
 		}
 		var fr string
 		if err := db.QueryRow(`SELECT name FROM asset_translations
 			WHERE asset_id = ? AND asset_type = 'playlist' AND lang = 'fr-FR'`, p.AssetID).Scan(&fr); err != nil {
-			t.Errorf("FR manquant pour %s (%s): %v", p.NameEN(), p.AssetID, err)
+			t.Errorf("FR manquant pour %s (%s): %v", p.Name(i18n.LocaleEN), p.AssetID, err)
 			continue
 		}
 		if fr != nameFR {

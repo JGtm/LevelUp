@@ -101,11 +101,11 @@ func TestTacticalHandler_CelluleMiniTuile(t *testing.T) {
 	svc := &fakeTacticalSvc{cellule: domain.TacticalCelluleReponse{
 		Contributions: []domain.TacticalContribution{{
 			MatchID: "m1", InstantMs: 4200, XUID: "2533274000000001", Clock: domain.TacticalClockMatch,
-			Face: domain.TacticalFaceMort, AutreGamertag: "Rival", ArmeLabel: "Fusil de combat", ArmeLabelEN: "BR75",
+			Face: domain.TacticalFaceMort, AutreGamertag: "Rival", ArmeLabel: "Fusil de combat",
 			Placement: &domain.TacticalPlacement{Seul: true, DistanceM: &distance},
 			ModeLabel: "Assassin", ScoreLabel: "50 - 42", ScoreKind: "points", ReplayAvailable: true,
 		}},
-		Zone: &domain.TacticalZoneNom{NomFR: "Nid blindé", NomEN: "Armored Nest"},
+		Zone: &domain.TacticalZoneNom{Nom: "Nid blindé"},
 	}}
 	r := newTacticalRouter(tacticalFactory(svc, nil))
 	w := appelPost(t, r, "/players/JGtm/tactical/streets/cellule", `{"match_ids":["m1"],"cellule":{"col":4,"lig":6}}`)
@@ -113,10 +113,10 @@ func TestTacticalHandler_CelluleMiniTuile(t *testing.T) {
 		t.Fatalf("status=%d body=%s", w.Code, w.Body.String())
 	}
 	for _, cle := range []string{
-		`"face":"mort"`, `"autre_gamertag":"Rival"`, `"arme_label":"Fusil de combat"`, `"arme_label_en":"BR75"`,
+		`"face":"mort"`, `"autre_gamertag":"Rival"`, `"arme_label":"Fusil de combat"`,
 		`"mode_label":"Assassin"`, `"score_label":"50 - 42"`, `"score_kind":"points"`,
 		`"placement":{"seul":true,"distance_m":12.5}`, `"replay_available":true`,
-		`"zone":{"nom_fr":"Nid blindé","nom_en":"Armored Nest"}`,
+		`"zone":{"nom":"Nid blindé"}`,
 	} {
 		if !strings.Contains(w.Body.String(), cle) {
 			t.Errorf("clef %s absente du JSON servi : %s", cle, w.Body.String())

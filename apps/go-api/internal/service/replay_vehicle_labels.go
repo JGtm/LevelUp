@@ -100,7 +100,7 @@ func (s *replayService) resolveVehicleLabels(ctx context.Context, doc *replay.Re
 // morte a la place ferait un 404 par match et laisserait le client incapable de distinguer
 // « pas encore charge » de « aucun asset a ce jour ».
 func vehicleLabelOf(famille string, info replay.VehicleFamilyInfo, titleSlug string) (replay.VehicleLabel, bool) {
-	lbl := replay.VehicleLabel{Kind: info.Kind, En: info.En, Fr: info.Fr}
+	lbl := replay.VehicleLabel{Kind: info.Kind, Text: info.Label.Clone()}
 	// Une famille NON qualifiee par le titre (le cas de dix-huit sur dix-neuf : les noms propres
 	// du jeu) a toujours son asset servi — c est le regime d avant le lot 1.9.9, inchange.
 	if info.Kind == "" || info.Sprite {

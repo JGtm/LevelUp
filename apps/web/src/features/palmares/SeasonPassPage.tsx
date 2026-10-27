@@ -15,7 +15,7 @@ import { seasonPassStatusRole } from './battlePassBadgeStyle'
 import { BattlePassRewardCarousel } from './BattlePassRewardCarousel'
 import { buildTierGroups, type RewardCard } from './battlePassTierGroups'
 import { BattlePassRewardLightbox, type RewardLightboxData } from './BattlePassRewardLightbox'
-import { getPalmaresText, normalizePalmaresLocale } from './i18n'
+import { getPalmaresText } from './i18n'
 import { PassContentSummary, type ContentLabels } from './PassContentSummary'
 import { useSeasonPassPage } from './queries'
 import { SeasonPassBadge } from './SeasonPassBadge'
@@ -527,7 +527,7 @@ function PassShowcase({
 
 export function SeasonPassPage() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
-  const locale = normalizePalmaresLocale(useAppShellStore((state) => state.locale))
+  const locale = useAppShellStore((state) => state.locale)
   const text = getPalmaresText(locale)
   const { data, isLoading, isError, error, refetch } = useSeasonPassPage(playerSlug)
   const [selectedPassPath, setSelectedPassPath] = useState<string | null>(null)

@@ -62,7 +62,7 @@ export function timeseriesMatchIndex(rows: TimeseriesMatchRow[]): EmpriseMatchIn
       {
         matchId: r.match_id,
         startTime: r.start_time ?? '',
-        map: r.map_name_fr || r.map_name || '',
+        map: r.map_label ?? '',
         mode: r.playlist_name ?? '',
         outcome: outcomeCodeToValue(r.outcome),
         score: null,

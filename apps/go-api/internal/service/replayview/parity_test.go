@@ -25,6 +25,7 @@ import (
 
 	"levelup/go-api/internal/domain/replaydoc"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/service/replayview"
 )
 
@@ -570,6 +571,10 @@ func (r *remplisseur) remplirTranche(v reflect.Value, profondeur int) {
 }
 
 func (r *remplisseur) remplirMap(v reflect.Value, profondeur int) {
+	if v.Type() == reflect.TypeOf(i18n.Text{}) {
+		r.remplirTexte(v, profondeur)
+		return
+	}
 	n := r.elements
 	if r.auBord(profondeur) {
 		switch r.bord {
@@ -608,4 +613,29 @@ func (r *remplisseur) remplirStruct(v reflect.Value, profondeur int) {
 			r.remplir(v.Field(i), profondeur+1)
 		}
 	}
+}
+
+// remplirTexte remplit un i18n.Text : il porte une entrée par LANGUE DE LA LISTE (les clés
+// aléatoires des autres maps seraient ignorées par la forme de fil à plat, et le filet ne verrait
+// plus une projection qui perdrait un libellé). Même règle de bord que les autres conteneurs.
+func (r *remplisseur) remplirTexte(v reflect.Value, profondeur int) {
+	if r.auBord(profondeur) {
+		switch r.bord {
+		case conteneurNul:
+			return
+		case conteneurVide:
+			v.Set(reflect.ValueOf(i18n.Text{}))
+			return
+		case conteneurPeuple:
+		}
+	}
+	t := i18n.Text{}
+	for _, code := range i18n.FlatCodes() {
+		if r.zero {
+			t[code] = ""
+		} else {
+			t[code] = fmt.Sprintf("v%d", r.suivant())
+		}
+	}
+	v.Set(reflect.ValueOf(t))
 }

@@ -25,9 +25,9 @@ var gameVariantReadsAllowlist = map[string]struct {
 	reads  int
 	reason string
 }{
-	"internal/analysis/home_canonical_converters.go":               {5, "expose l'identifiant et le nom du type de jeu à l'API : donnée du match, pas un libellé de mode"},
+	"internal/analysis/home_canonical_converters.go":               {3, "expose l'identifiant et le nom du type de jeu à l'API : donnée du match, pas un libellé de mode"},
 	"internal/analysis/home_canonical_recent.go":                   {2, "variantNameOf : le nom du type de jeu est la clé de [rounds_decide] (ADR 0032), pas un libellé de mode"},
-	"internal/analysis/stats_canonical.go":                         {3, "recopie le type de jeu dans la ligne brute (GameVariantName/FR) ; le repli de la famille ligne brute est analysis.ResolveModeUIWithVariant, hors du périmètre canonique (plan, Découvertes)"},
+	"internal/analysis/stats_canonical.go":                         {2, "recopie le type de jeu dans la ligne brute (GameVariantName, un i18n.Text) ; le repli de la famille ligne brute est analysis.ResolveModeUIWithVariant, hors du périmètre canonique (plan, Découvertes)"},
 	"internal/platform/duckdb/home_repo_translations_canonical.go": {2, "traduit le type de jeu lui-même (dictionnaire game_variant)"},
 	"internal/service/squad_service_v2_history.go":                 {2, "libellé de mode de l'historique Escouade lu sur le type de jeu pour les deux titres : lecture propre, à trancher hors de ce plan (plan, Découvertes)"},
 	"internal/service/teammates/teammates_squad_expected_fda.go":   {2, "le nom du type de jeu est la clé du modèle d'écart attendu, pas un libellé de mode"},

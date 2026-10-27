@@ -31,6 +31,7 @@ import (
 	"unicode"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 
 	"github.com/google/uuid"
 )
@@ -144,7 +145,7 @@ func NewStore(dir string, ttl time.Duration, secret string, opts ...StoreOption)
 // New crée une nouvelle session avec un ID UUID v4.
 func (s *Store) New() *domain.SessionData {
 	now := s.now().Unix()
-	locale := "fr"
+	locale := string(i18n.Default)
 	return &domain.SessionData{
 		SessionID:    uuid.New().String(),
 		CreatedAt:    now,

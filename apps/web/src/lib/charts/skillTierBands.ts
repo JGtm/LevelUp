@@ -91,7 +91,7 @@ export function frameToData(dataMin: number, dataMax: number, grid: SkillTierGri
 /** Libellé d'un sous-palier : « Or III » (LUSR/roman) ou « Diamond 3 » (CSR/arabe).
  *  Palier sans sous-palier (Onyx) → nom du tier seul. */
 function subTierLabel(grid: SkillTierGrid, tier: SkillTier, subIndex: number, locale: ManifestLocale): string {
-  const name = locale === 'fr' ? tier.fr : tier.en
+  const name = tier[locale]
   if (tier.subTiers <= 1) return name
   if (grid.subTierStyle === 'roman') return `${name} ${ROMAN[subIndex] ?? subIndex + 1}`
   return `${name} ${subIndex + 1}`
@@ -132,7 +132,7 @@ function visibleBands(input: SkillTierMarkAreaInput, byTier: boolean): Band[] {
       const lo = Math.max(tier.min + k * width, yMin)
       const hi = Math.min(tier.min + (k + 1) * width, yMax)
       if (hi <= lo) continue
-      const label = byTier ? (locale === 'fr' ? tier.fr : tier.en) : subTierLabel(grid, tier, k, locale)
+      const label = byTier ? tier[locale] : subTierLabel(grid, tier, k, locale)
       bands.push({ lo, hi, label })
     }
   }

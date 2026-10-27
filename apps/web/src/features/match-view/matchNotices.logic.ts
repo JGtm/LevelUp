@@ -14,6 +14,7 @@ import {
   isAnalysisInProgress,
   type AnalysisPendingPart,
 } from '@/lib/analysis-pending/analysisPending.logic'
+import type { Locale } from '@/lib/i18n/locale'
 import type { MatchViewText } from './i18n'
 import { selectMatchPartialBanner } from './matchPartial.logic'
 
@@ -67,30 +68,29 @@ export function analysisNoticeBody(parts: readonly AnalysisPendingPart[], t: Mat
   return parts.map((part) => t.analysisPendingParts[part]).join(' · ')
 }
 
+/** Impact end-user de chaque code stable de partial_reason, par langue. */
+const PARTIAL_REASON_TEXT = {
+  fr: {
+    scoreboard_empty: 'Le tableau des scores et les stats individuelles sont indisponibles',
+    events_empty:
+      'Les graphes de combat sont vides — Cadence, Dominance et Frags différentiel ne peuvent pas être tracés',
+    player_stats_empty: 'Certaines statistiques personnelles sont absentes — les données peuvent être incomplètes',
+    medals_empty: 'Les médailles et citations ne sont pas disponibles',
+  },
+  en: {
+    scoreboard_empty: 'Scoreboard and individual player stats are unavailable',
+    events_empty: 'Combat charts cannot be displayed — Cadence, Dominance and Frag diff are empty',
+    player_stats_empty: 'Some personal stats are missing — datas may be incomplete',
+    medals_empty: 'Medals and commendations are unavailable',
+  },
+} satisfies Record<Locale, Record<string, string>>
+
 /**
  * Traduit un code stable de partial_reason en impact end-user concret.
  * Décrit ce que l'utilisateur ne peut PAS voir, pas la raison technique.
+ * Code inconnu : renvoyé tel quel.
  */
-export function translatePartialReason(code: string, locale: string): string {
-  const isEN = locale === 'en'
-  switch (code) {
-    case 'scoreboard_empty':
-      return isEN
-        ? 'Scoreboard and individual player stats are unavailable'
-        : 'Le tableau des scores et les stats individuelles sont indisponibles'
-    case 'events_empty':
-      return isEN
-        ? 'Combat charts cannot be displayed — Cadence, Dominance and Frag diff are empty'
-        : 'Les graphes de combat sont vides — Cadence, Dominance et Frags différentiel ne peuvent pas être tracés'
-    case 'player_stats_empty':
-      return isEN
-        ? 'Some personal stats are missing — datas may be incomplete'
-        : 'Certaines statistiques personnelles sont absentes — les données peuvent être incomplètes'
-    case 'medals_empty':
-      return isEN
-        ? 'Medals and commendations are unavailable'
-        : 'Les médailles et citations ne sont pas disponibles'
-    default:
-      return code
-  }
+export function translatePartialReason(code: string, locale: Locale): string {
+  const texts: Record<string, string> = PARTIAL_REASON_TEXT[locale]
+  return Object.hasOwn(texts, code) ? texts[code] : code
 }

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
 // ─── helpers ───────────────────────────────────────────────────────────────────
@@ -20,22 +21,18 @@ func makeTranslatedRows() []domain.FilterMatchRow {
 		rows[i] = domain.FilterMatchRow{
 			MatchID:      fmt.Sprintf("mt%d", i),
 			StartTime:    &now,
-			MapName:      strPtr("Aquarius"),
-			MapNameFR:    strPtr("Aquarius"),
-			PairName:     strPtr("Arena:Slayer"),
-			PairNameFR:   strPtr("Assassin"),
-			PlaylistName: strPtr("Ranked Arena"),
+			MapName:      i18n.FromColumns("Aquarius", "Aquarius"),
+			PairName:     i18n.FromColumns("Arena:Slayer", "Assassin"),
+			PlaylistName: i18n.FromColumns("", "Ranked Arena"),
 		}
 	}
 	for i := range 5 {
 		rows[5+i] = domain.FilterMatchRow{
 			MatchID:      fmt.Sprintf("mt%d", 5+i),
 			StartTime:    &now,
-			MapName:      strPtr("Streets"),
-			MapNameFR:    strPtr("Streets"),
-			PairName:     strPtr("BTB:CTF"),
-			PairNameFR:   strPtr("Capture de drapeau"),
-			PlaylistName: strPtr("Quick Play"),
+			MapName:      i18n.FromColumns("Streets", "Streets"),
+			PairName:     i18n.FromColumns("BTB:CTF", "Capture de drapeau"),
+			PlaylistName: i18n.FromColumns("", "Quick Play"),
 		}
 	}
 	return rows
@@ -49,20 +46,18 @@ func makeUntranslatedRows() []domain.FilterMatchRow {
 		rows[i] = domain.FilterMatchRow{
 			MatchID:      fmt.Sprintf("mu%d", i),
 			StartTime:    &now,
-			MapName:      strPtr("Aquarius"),
-			PairName:     strPtr("Arena:Slayer"),
-			PairNameFR:   strPtr("Arena:Slayer"),
-			PlaylistName: strPtr("Ranked Arena"),
+			MapName:      i18n.FromColumns("Aquarius", ""),
+			PairName:     i18n.FromColumns("Arena:Slayer", "Arena:Slayer"),
+			PlaylistName: i18n.FromColumns("", "Ranked Arena"),
 		}
 	}
 	for i := range 5 {
 		rows[5+i] = domain.FilterMatchRow{
 			MatchID:      fmt.Sprintf("mu%d", 5+i),
 			StartTime:    &now,
-			MapName:      strPtr("Streets"),
-			PairName:     strPtr("BTB:CTF"),
-			PairNameFR:   strPtr("BTB:CTF"),
-			PlaylistName: strPtr("Quick Play"),
+			MapName:      i18n.FromColumns("Streets", ""),
+			PairName:     i18n.FromColumns("BTB:CTF", "BTB:CTF"),
+			PlaylistName: i18n.FromColumns("", "Quick Play"),
 		}
 	}
 	return rows
@@ -79,7 +74,7 @@ func TestBuildModeTranslationMap_NilRows(t *testing.T) {
 
 func TestBuildModeTranslationMap_NilPairName(t *testing.T) {
 	t.Parallel()
-	rows := []domain.FilterMatchRow{{PairName: nil, PairNameFR: nil}}
+	rows := []domain.FilterMatchRow{{PairName: i18n.FromColumns("", "")}}
 	if m := buildModeTranslationMap(rows); len(m) != 0 {
 		t.Errorf("expected empty map for nil fields, got %v", m)
 	}
@@ -88,8 +83,8 @@ func TestBuildModeTranslationMap_NilPairName(t *testing.T) {
 func TestBuildModeTranslationMap_SameNormalized(t *testing.T) {
 	t.Parallel()
 	rows := []domain.FilterMatchRow{
-		{PairName: strPtr("Arena:Slayer"), PairNameFR: strPtr("Arena:Slayer")},
-		{PairName: strPtr("Slayer"), PairNameFR: strPtr("Slayer")},
+		{PairName: i18n.FromColumns("Arena:Slayer", "Arena:Slayer")},
+		{PairName: i18n.FromColumns("Slayer", "Slayer")},
 	}
 	if m := buildModeTranslationMap(rows); len(m) != 0 {
 		t.Errorf("no translation when EN==FR, but got: %v", m)
@@ -119,8 +114,7 @@ func TestBuildModeTranslationMap_WithTranslations(t *testing.T) {
 func TestModeUI_FrenchPairNameFR(t *testing.T) {
 	t.Parallel()
 	row := domain.FilterMatchRow{
-		PairName:   strPtr("Arena:Slayer"),
-		PairNameFR: strPtr("Assassin"),
+		PairName: i18n.FromColumns("Arena:Slayer", "Assassin"),
 	}
 	if got := modeUI(row); got != "Assassin" {
 		t.Errorf("modeUI = %q, want Assassin", got)
@@ -130,8 +124,7 @@ func TestModeUI_FrenchPairNameFR(t *testing.T) {
 func TestModeUI_EnglishFallback(t *testing.T) {
 	t.Parallel()
 	row := domain.FilterMatchRow{
-		PairName:   strPtr("Arena:Slayer"),
-		PairNameFR: strPtr("Arena:Slayer"),
+		PairName: i18n.FromColumns("Arena:Slayer", "Arena:Slayer"),
 	}
 	if got := modeUI(row); got != "Slayer" {
 		t.Errorf("modeUI = %q, want Slayer", got)

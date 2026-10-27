@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/analysis/modelabel"
+	"levelup/go-api/internal/i18n"
 )
 
 // Regex partagées pour la normalisation des modes.
@@ -178,14 +179,15 @@ func invertedModeLabel(left, rest string) string {
 // "Slayer on Streets" sur la vue détail est née d'une cascade ad hoc.
 //
 // Retourne nil si les deux sources sont vides après normalisation.
-func ResolveModeUI(pairName, pairNameFR *string) *string {
-	src := ""
-	if pairNameFR != nil && *pairNameFR != "" {
-		src = *pairNameFR
-	} else if pairName != nil {
-		src = *pairName
-	}
-	out := NormalizeModeLabel(src)
+func ResolveModeUI(pair i18n.Text) *string {
+	return ResolveModeUIIn(i18n.Default, pair)
+}
+
+// ResolveModeUIIn fait comme ResolveModeUI dans la langue `loc` : le nom de la langue, sinon celui de
+// la langue de repli (i18n.Text.Pick), normalisé par NormalizeModeLabel. ResolveModeUI est ce même
+// libellé dans la langue par défaut.
+func ResolveModeUIIn(loc i18n.Locale, pair i18n.Text) *string {
+	out := NormalizeModeLabel(pair.Pick(loc))
 	if out == "" {
 		return nil
 	}
@@ -204,24 +206,26 @@ func ResolveModeUI(pairName, pairNameFR *string) *string {
 // "- Forge"), on retombe sur la valeur brute trimée au lieu de perdre le libellé.
 // Un pair_name / game_variant réel porte toujours un token de mode, donc ce repli
 // ne se déclenche pas sur les données de production (iso-comportement effectif).
-func ResolveModeUIWithVariant(pairName, pairNameFR, variantName, variantNameFR *string) *string {
-	if v := resolveModeSource(pairNameFR, pairName); v != nil {
-		return v
-	}
-	return resolveModeSource(variantNameFR, variantName)
+func ResolveModeUIWithVariant(pair, variant i18n.Text) *string {
+	return ResolveModeUIWithVariantIn(i18n.Default, pair, variant)
 }
 
-// resolveModeSource prend la première source non vide (préférence au 1er argument
-// = FR), applique NormalizeModeLabel, et retombe sur la valeur brute trimée si la
-// normalisation vide le libellé. Retourne nil si les deux sources sont vides.
-func resolveModeSource(preferred, fallback *string) *string {
-	src := ""
-	if preferred != nil && *preferred != "" {
-		src = *preferred
-	} else if fallback != nil && *fallback != "" {
-		src = *fallback
+// ResolveModeUIWithVariantIn fait comme ResolveModeUIWithVariant dans la langue `loc` (le nom de la
+// langue, sinon celui de la langue de repli, i18n.Text.Pick). ResolveModeUIWithVariant, qui lit la langue
+// par défaut, est le libellé qui sert de CLÉ de filtre, de regroupement et de tri : un libellé affiché
+// passe par cette variante avec la langue de la requête.
+func ResolveModeUIWithVariantIn(loc i18n.Locale, pair, variant i18n.Text) *string {
+	if v := resolveModeSource(loc, pair); v != nil {
+		return v
 	}
-	src = strings.TrimSpace(src)
+	return resolveModeSource(loc, variant)
+}
+
+// resolveModeSource prend la source non vide du texte (langue demandée, sinon langue de repli), applique
+// NormalizeModeLabel, et retombe sur la valeur brute trimée si la normalisation vide le
+// libellé. Retourne nil si les deux sources sont vides.
+func resolveModeSource(loc i18n.Locale, t i18n.Text) *string {
+	src := strings.TrimSpace(t.Pick(loc))
 	if src == "" {
 		return nil
 	}

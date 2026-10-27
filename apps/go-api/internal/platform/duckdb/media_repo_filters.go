@@ -16,8 +16,8 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
 func (r *MediaRepo) LoadMediaFilterOptions(ctx context.Context, filters domain.MediaFilters) (domain.MediaFilterOptions, error) {
@@ -32,7 +32,7 @@ func (r *MediaRepo) LoadMediaFilterOptions(ctx context.Context, filters domain.M
 	if err != nil {
 		return domain.MediaFilterOptions{}, fmt.Errorf("LoadMediaFilterOptions maps: %w", err)
 	}
-	maps := r.translateMapFilterOptions(ctx, extractMapPairs(mapEnriched))
+	maps := r.translateMapFilterOptions(ctx, extractMapPairs(mapEnriched, i18n.FromContext(ctx)))
 
 	modeEnriched, err := r.runMediaPipeline(ctx, filters, mediaWhereConfig{
 		includeMapFilter:      true,
@@ -52,7 +52,7 @@ func (r *MediaRepo) LoadMediaFilterOptions(ctx context.Context, filters domain.M
 	if err != nil {
 		return domain.MediaFilterOptions{}, fmt.Errorf("LoadMediaFilterOptions playlists: %w", err)
 	}
-	playlists := r.translatePlaylistFilterOptions(ctx, extractPlaylistPairs(playlistEnriched))
+	playlists := r.translatePlaylistFilterOptions(ctx, extractPlaylistPairs(playlistEnriched, i18n.FromContext(ctx)))
 
 	return domain.MediaFilterOptions{Playlists: playlists, Maps: maps, Modes: modes}, nil
 }
@@ -113,7 +113,7 @@ func (r *MediaRepo) ListMediaAuthors(ctx context.Context) ([]domain.MediaAuthor,
 	return authors, rows.Err()
 }
 
-// translatePlaylistFilterOptions enrichit les libellés de playlists en FR via
+// translatePlaylistFilterOptions enrichit les libellés de playlists dans la langue de la requête via
 // asset_translations (asset_type='playlist') + dédup par playlist_id. Value =
 // playlist_id (stable) ; sinon fallback label brut.
 func (r *MediaRepo) translatePlaylistFilterOptions(ctx context.Context, pairs []mediaFilterOptionPair) []domain.LabelValue {
@@ -130,15 +130,19 @@ func (r *MediaRepo) translatePlaylistFilterOptions(ctx context.Context, pairs []
 	for id := range idsSet {
 		ids = append(ids, id)
 	}
-	translations := r.loadAssetTranslationNames(ctx, "playlist", ids)
+	translations := assetNameTexts(ctx, r.pdb.Metadata, assetTypePlaylist, ids)
+	loc := i18n.FromContext(ctx)
 
 	seenIDs := make(map[string]bool)
 	seenLabels := make(map[string]bool)
 	options := make([]domain.LabelValue, 0, len(pairs))
 	for _, p := range pairs {
-		labelFR := translations[p.id]
-		if labelFR == "" {
-			labelFR = p.label
+		label := pickAcrossChain(loc, translations[p.id])
+		if label == "" {
+			label = p.display
+		}
+		if label == "" {
+			label = p.label
 		}
 		value := p.id
 		if value == "" {
@@ -153,7 +157,7 @@ func (r *MediaRepo) translatePlaylistFilterOptions(ctx context.Context, pairs []
 			}
 			seenIDs[value] = true
 		}
-		options = append(options, domain.LabelValue{Label: labelFR, Value: value})
+		options = append(options, domain.LabelValue{Label: label, Value: value})
 	}
 	sort.Slice(options, func(i, j int) bool { return options[i].Label < options[j].Label })
 	return options
@@ -264,10 +268,9 @@ func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath st
 	}
 	defer rows.Close()
 
-	// GH3-4 : locale de requête (défaut "fr"). Sous EN, les libellés mode/playlist/map
-	// des suggestions suivent la locale (jamais de FR résiduel).
-	locale := ctxkeys.Locale(ctx)
-	isEN := strings.HasPrefix(strings.ToLower(strings.TrimSpace(locale)), "en")
+	// GH3-4 : locale de requête (langue par défaut sinon). Les libellés mode/playlist/map
+	// des suggestions suivent la locale (jamais de texte d'une autre langue résiduel).
+	locale := i18n.FromContext(ctx)
 
 	matchIDs := []string{}
 	mapIDByMatch := map[string]string{}
@@ -356,25 +359,25 @@ func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath st
 		matchIDs = append(matchIDs, c.MatchID)
 	}
 
-	// Traduction FR des modes (ex: "Slayer" → "Assassin") via mode_name_tr.
-	// Si pair_name_fr était déjà rempli en DB, on le préserve quand même
-	// puisqu'on substitue uniquement si une traduction existe.
-	// GH3-4 : la traduction FR (mode_name_tr) n'est appliquée QUE sous FR. Sous EN,
-	// ModeName reste le sous-mode EN canonique (NormalizeModeLabel sur base EN-first).
-	if len(modeEnSet) > 0 && !isEN {
+	// Traduction des modes dans la langue de la requête (ex: "Slayer" → "Assassin") via
+	// mode_name_tr. On substitue uniquement si une traduction existe.
+	// GH3-4 : sous la langue de repli (EN), ModeName reste le sous-mode EN canonique
+	// (NormalizeModeLabel sur base EN-first) ; toute autre langue charge ses lignes de
+	// mode_name_tr, une clé sans ligne gardant l'EN.
+	if loc := locale; len(modeEnSet) > 0 && loc != i18n.Fallback {
 		enList := make([]string, 0, len(modeEnSet))
 		for en := range modeEnSet {
 			enList = append(enList, en)
 		}
-		translations := r.loadModeNameTranslations(ctx, enList)
+		translations := r.loadModeNameTranslations(ctx, loc, enList)
 		for i := range resp.Candidates {
 			if resp.Candidates[i].ModeName == nil {
 				continue
 			}
 			// ModeName est déjà le sous-mode EN canonique (cf. boucle ci-dessus) →
 			// lookup direct, pas besoin de re-normaliser.
-			if fr, ok := translations[*resp.Candidates[i].ModeName]; ok && fr != "" {
-				resp.Candidates[i].ModeName = &fr
+			if name, ok := translations[*resp.Candidates[i].ModeName]; ok && name != "" {
+				resp.Candidates[i].ModeName = &name
 			}
 		}
 	}
@@ -401,7 +404,7 @@ func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath st
 			cat := catNames[mid]
 			// GH3-4 : nom affiché résolu par locale (EN = name_canonical, FR =
 			// asset_translations) via le helper partagé ; jamais l'UUID brut.
-			if resolved := resolvePlaylistNameForLocale(locale, cat.fr, cat.en); resolved != "" {
+			if resolved := pickName(locale, cat.texts, cat.canonical); resolved != "" {
 				resp.Candidates[i].MapName = &resolved
 			} else if resp.Candidates[i].MapName != nil && looksLikeAssetID(*resp.Candidates[i].MapName) {
 				resp.Candidates[i].MapName = nil
@@ -412,8 +415,8 @@ func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath st
 				resp.Candidates[i].MapImageURL = &localCopy
 				continue
 			}
-			if r.assetURL != nil && cat.en != "" {
-				if u := r.assetURL.MapImageURL(cat.en); u != "" {
+			if r.assetURL != nil && cat.canonical != "" {
+				if u := r.assetURL.MapImageURL(cat.canonical); u != "" {
 					localCopy := u
 					resp.Candidates[i].MapImageURL = &localCopy
 					continue
@@ -432,25 +435,26 @@ func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath st
 	// EN = playlist_name brut (match_registry). resolvePlaylistNameForLocale choisit
 	// selon la locale avec fallback croisé — même chemin que les cartes du rail media.
 	if len(resp.Candidates) > 0 {
-		var playlistTr map[string]string
+		var playlistTr map[string]i18n.Text
 		if len(playlistIDSet) > 0 {
 			ids := make([]string, 0, len(playlistIDSet))
 			for id := range playlistIDSet {
 				ids = append(ids, id)
 			}
-			playlistTr = r.loadAssetTranslationNames(ctx, "playlist", ids)
+			playlistTr = assetNameTexts(ctx, r.pdb.Metadata, assetTypePlaylist, ids)
 		}
 		for i := range resp.Candidates {
 			pid := playlistIDByMatch[resp.Candidates[i].MatchID]
-			frName := ""
+			var translations i18n.Text
 			if pid != "" {
-				frName = playlistTr[pid]
+				translations = playlistTr[pid]
 			}
-			if frName == "" && resp.Candidates[i].PlaylistName != nil {
-				frName = *resp.Candidates[i].PlaylistName // COALESCE FR-first du scan
+			if len(translations) == 0 && resp.Candidates[i].PlaylistName != nil {
+				// COALESCE du scan : le nom de la langue par défaut tient lieu de traduction.
+				translations = i18n.Text{i18n.Default: *resp.Candidates[i].PlaylistName}
 			}
 			enName := playlistNameENByMatch[resp.Candidates[i].MatchID]
-			if resolved := resolvePlaylistNameForLocale(locale, frName, enName); resolved != "" {
+			if resolved := pickName(locale, translations, enName); resolved != "" {
 				resp.Candidates[i].PlaylistName = &resolved
 			}
 		}

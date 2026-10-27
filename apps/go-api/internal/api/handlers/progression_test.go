@@ -26,6 +26,8 @@ import (
 	"levelup/go-api/internal/progression/milestones"
 	"levelup/go-api/internal/progression/records"
 	"levelup/go-api/internal/progression/streaks"
+
+	"levelup/go-api/internal/i18n"
 )
 
 const (
@@ -238,9 +240,9 @@ func TestListMilestones_CatalogPlusEarned(t *testing.T) {
 	catRepo := duckdb.NewMilestoneCatalogRepo(pdb.Metadata)
 	entries := []milestones.CatalogEntry{
 		{ID: "h.matches.10", TitleSlug: progTestTitle, Metric: "matches_played",
-			Threshold: 10, TitleEN: "Decimus", TitleFR: "Decimus"},
+			Threshold: 10, Title: i18n.FromColumns("Decimus", "Decimus")},
 		{ID: "h.matches.100", TitleSlug: progTestTitle, Metric: "matches_played",
-			Threshold: 100, TitleEN: "Centurion", TitleFR: "Centurion"},
+			Threshold: 100, Title: i18n.FromColumns("Centurion", "Centurion")},
 	}
 	for _, e := range entries {
 		if err := catRepo.Upsert(ctx, e); err != nil {

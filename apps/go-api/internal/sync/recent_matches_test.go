@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/i18n"
 )
 
 // recentMatchJSON construit un JSON de match minimal (1 joueur cible) au shape
@@ -83,7 +84,7 @@ func TestBuildRecentMatchesFromStats(t *testing.T) {
 	// Mode normalisé via ResolveModeUI (sinon le donut modes = "Inconnu") + carte.
 	gv := "Slayer"
 	wantMode := ""
-	if m := analysis.ResolveModeUI(&gv, nil); m != nil {
+	if m := analysis.ResolveModeUI(i18n.FromColumns(gv, "")); m != nil {
 		wantMode = *m
 	}
 	if r.ModeUI == "" || r.ModeUI != wantMode || r.MapUI != "Aquarius" {

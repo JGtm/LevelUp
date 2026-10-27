@@ -64,17 +64,14 @@ func fusionnerLesCartes(rows []domain.TacticalMapRow, groupes domain.GroupesDeCa
 		i, vu := index[cle]
 		if !vu {
 			index[cle] = len(out)
-			out = append(out, domain.TacticalMapRow{MapID: cle, MapName: r.MapName, MapNameFR: r.MapNameFR})
+			out = append(out, domain.TacticalMapRow{MapID: cle, MapName: r.MapName})
 			i = len(out) - 1
 		}
 		out[i].Matchs += r.Matchs
 		out[i].Victoires += r.Victoires
 		out[i].Defaites += r.Defaites
-		if en, ok := groupes.Libelle(r.MapID, domain.LocaleLibelleParDefaut); ok {
-			out[i].MapName = en
-		}
-		if fr, ok := groupes.Libelle(r.MapID, libellesDeCartesFR); ok {
-			out[i].MapNameFR = fr
+		if base, ok := groupes.Noms(r.MapID); ok {
+			out[i].MapName = base
 		}
 	}
 	sort.SliceStable(out, func(i, j int) bool {

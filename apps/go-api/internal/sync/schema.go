@@ -98,7 +98,7 @@ CREATE TABLE IF NOT EXISTS match_skill_rank (
     rating_value      FLOAT,
     rating_deviation  FLOAT,
     tier              VARCHAR,
-    tier_fr           VARCHAR,
+    tier_fr           VARCHAR, -- INERTE (ADR 0040 D-5) : ni lue ni écrite, laissée en place (table append-only, ADR 0026)
     sub_tier          SMALLINT DEFAULT 0,
     tier_label        VARCHAR,
     rating_delta      FLOAT,

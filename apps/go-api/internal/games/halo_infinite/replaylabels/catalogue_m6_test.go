@@ -20,7 +20,11 @@ package replaylabels
 // LES LIBELLES ATTENDUS SONT DES LITTERAUX : les deriver du fichier teste rendrait le test
 // tautologique.
 
-import "testing"
+import (
+	"testing"
+
+	"levelup/go-api/internal/i18n"
+)
 
 func TestCatalogueM6MainsNuesBobineEtHeatwave(t *testing.T) {
 	cat, err := Load(repoRoot(t), "halo_infinite")
@@ -36,7 +40,7 @@ func TestCatalogueM6MainsNuesBobineEtHeatwave(t *testing.T) {
 	}
 	for fam, a := range attendus {
 		w, ok := cat.Weapons[fam]
-		if !ok || cat.Keys[fam] != a.key || w.En != a.en || w.Fr != a.fr {
+		if !ok || cat.Keys[fam] != a.key || w.Text[i18n.LocaleEN] != a.en || w.Text[i18n.LocaleFR] != a.fr {
 			t.Errorf("famille %08X : cle %q libelle %+v, attendu %q / %q / %q",
 				fam, cat.Keys[fam], w, a.key, a.en, a.fr)
 		}

@@ -21,7 +21,7 @@ import { CompareBar } from './CompareBar'
 import { CompareBlock } from './CompareBlock'
 import { CompareMirrorRow } from './CompareMirrorRow'
 import { CompareWeaponsSection } from './CompareWeaponsSection'
-import { getCompareText, normalizeCompareLocale, resolveMetricLabel, type CompareText } from './i18n'
+import { getCompareText, resolveMetricLabel, type CompareText } from './i18n'
 import { useCompare } from './queries'
 import type { Locale } from '@/lib/i18n/locale'
 import { isCompareNotFound } from './errors'
@@ -32,12 +32,18 @@ const CATEGORY_KEYS = {
   bilan: ['matches', 'career_rank', 'csr', 'csr_alltime', 'perf_ath', 'lusr_ath'],
 } as const
 
+/** Ce que la ligne dit de la cellule : donnée présente ou non, et libellé prêt-à-afficher du back. */
+interface MetricCell {
+  available?: boolean
+  display?: string | null
+}
+
 function formatMetricValue(
   metric: string,
   value: number | string,
+  locale: Locale,
   text: CompareText,
-  available: boolean = true,
-  display?: string | null,
+  { available = true, display }: MetricCell = {},
 ) {
   if (!available) return text.notAvailable
   // Libellé prêt-à-afficher fourni par le back (rang carrière → titre, CSR → tier).
@@ -45,8 +51,7 @@ function formatMetricValue(
   // NOM de palier à l'affichage. Un titre de rang carrière (déjà localisé côté back)
   // ou tout libellé sans palier connu est renvoyé inchangé par localizeTierLabel.
   if (display) {
-    const loc = text.intlLocale.toLowerCase().startsWith('en') ? 'en' : 'fr'
-    return localizeTierLabel(display, loc) ?? display
+    return localizeTierLabel(display, locale) ?? display
   }
   if (typeof value !== 'number') return String(value)
   if (metric === 'win_rate' || metric === 'accuracy') {
@@ -92,11 +97,12 @@ interface CategoryColumnProps {
   title: string
   rows: CompareMetricRow[]
   text: CompareText
+  locale: Locale
   gamertagA: string
   gamertagB: string
 }
 
-function CategoryColumn({ title, rows, text, gamertagA, gamertagB }: CategoryColumnProps) {
+function CategoryColumn({ title, rows, text, locale, gamertagA, gamertagB }: CategoryColumnProps) {
   if (rows.length === 0) return null
   return (
     <CompareBlock title={title}>
@@ -106,8 +112,8 @@ function CategoryColumn({ title, rows, text, gamertagA, gamertagB }: CategoryCol
           const availableA = row.value_a_available !== false
           const availableB = row.value_b_available !== false
           const bothAvailable = availableA && availableB
-          const valA = formatMetricValue(row.metric, row.value_a, text, availableA, row.display_a)
-          const valB = formatMetricValue(row.metric, row.value_b, text, availableB, row.display_b)
+          const valA = formatMetricValue(row.metric, row.value_a, locale, text, { available: availableA, display: row.display_a })
+          const valB = formatMetricValue(row.metric, row.value_b, locale, text, { available: availableB, display: row.display_b })
           const ariaLabel = !bothAvailable
             ? text.ariaNotAvailable
             : row.winner === 'tie' || row.winner == null
@@ -148,9 +154,10 @@ interface CategoryMirrorSectionProps {
   metricsLeft: CompareMetricRow[]   // comparaison A vs B
   metricsRight: CompareMetricRow[]  // comparaison A vs C
   text: CompareText
+  locale: Locale
 }
 
-function CategoryMirrorSection({ title, keys, metricsLeft, metricsRight, text }: CategoryMirrorSectionProps) {
+function CategoryMirrorSection({ title, keys, metricsLeft, metricsRight, text, locale }: CategoryMirrorSectionProps) {
   const byKeyLeft = new Map(metricsLeft.map(r => [r.metric, r]))
   const byKeyRight = new Map(metricsRight.map(r => [r.metric, r]))
 
@@ -172,9 +179,9 @@ function CategoryMirrorSection({ title, keys, metricsLeft, metricsRight, text }:
           const availableA = left.value_a_available !== false || right.value_a_available !== false
           const availableB = left.value_b_available !== false
           const availableC = right.value_b_available !== false
-          const valA = formatMetricValue(left.metric, left.value_a, text, availableA, left.display_a)
-          const valB = formatMetricValue(left.metric, left.value_b, text, availableB, left.display_b)
-          const valC = formatMetricValue(right.metric, right.value_b, text, availableC, right.display_b)
+          const valA = formatMetricValue(left.metric, left.value_a, locale, text, { available: availableA, display: left.display_a })
+          const valB = formatMetricValue(left.metric, left.value_b, locale, text, { available: availableB, display: left.display_b })
+          const valC = formatMetricValue(right.metric, right.value_b, locale, text, { available: availableC, display: right.display_b })
           const sampleNoteB =
             typeof left.sample_size_b === 'number' && left.sample_size_b > 0 && left.sample_size_b < 10
               ? text.sampleSize(left.sample_size_b)
@@ -215,7 +222,7 @@ function isSemanticToken(s: string): s is SemanticToken {
   return s.startsWith('narrative-') || s.startsWith('outcome-') || s.startsWith('perf-')
 }
 
-const ENCOUNTER_BADGE_TOOLTIPS: Record<string, { fr: string; en: string }> = {
+const ENCOUNTER_BADGE_TOOLTIPS: Record<string, Record<Locale, string>> = {
   'narrative.encounter.ally_plus': { fr: 'Allié récurrent : bon taux de victoire ensemble', en: 'Recurring ally: good win rate together' },
   'narrative.encounter.tough_enemy': { fr: 'Dur à cuire : ratio morts/frags > 2 en ennemi', en: 'Tough nut: death/kill ratio > 2 as enemy' },
   'narrative.encounter.coriace': { fr: 'Coriace : taux de victoire en ennemi ≤ 35 %', en: 'Tough opponent: win rate vs enemy ≤ 35 %' },
@@ -304,7 +311,7 @@ export function ComparePage() {
   const fromExplorer = search.from === 'explorer'
   const isMirror = !!target && !!target2
 
-  const locale = normalizeCompareLocale(useAppShellStore((s) => s.locale))
+  const locale = useAppShellStore((s) => s.locale)
   const { data: fieldMappings } = useFieldMappings()
   const text = getCompareText(locale, fieldMappings)
 
@@ -406,6 +413,7 @@ export function ComparePage() {
               metricsLeft={leftData.metrics}
               metricsRight={rightData.metrics}
               text={text}
+              locale={locale}
             />
             <CategoryMirrorSection
               title={text.catPrecision}
@@ -413,6 +421,7 @@ export function ComparePage() {
               metricsLeft={leftData.metrics}
               metricsRight={rightData.metrics}
               text={text}
+              locale={locale}
             />
             <CategoryMirrorSection
               title={text.catBilan}
@@ -420,6 +429,7 @@ export function ComparePage() {
               metricsLeft={leftData.metrics}
               metricsRight={rightData.metrics}
               text={text}
+              locale={locale}
             />
             {/* Après « Bilan & Rang » : le profil d'armes décrit un STYLE, il se lit une fois
                 les chiffres de performance parcourus. Le composant se retire de lui-même
@@ -447,6 +457,7 @@ export function ComparePage() {
                 title={text.catCombat}
                 rows={getCategoryRows(leftData.metrics, CATEGORY_KEYS.combat)}
                 text={text}
+                locale={locale}
                 gamertagA={leftData.player_a.gamertag}
                 gamertagB={leftData.player_b.gamertag}
               />
@@ -454,6 +465,7 @@ export function ComparePage() {
                 title={text.catPrecision}
                 rows={getCategoryRows(leftData.metrics, CATEGORY_KEYS.precision)}
                 text={text}
+                locale={locale}
                 gamertagA={leftData.player_a.gamertag}
                 gamertagB={leftData.player_b.gamertag}
               />
@@ -461,6 +473,7 @@ export function ComparePage() {
                 title={text.catBilan}
                 rows={getCategoryRows(leftData.metrics, CATEGORY_KEYS.bilan)}
                 text={text}
+                locale={locale}
                 gamertagA={leftData.player_a.gamertag}
                 gamertagB={leftData.player_b.gamertag}
               />

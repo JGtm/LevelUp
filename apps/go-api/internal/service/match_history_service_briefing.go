@@ -24,6 +24,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/service/mapgroups"
 )
 
@@ -72,7 +73,7 @@ func (s *MatchHistoryService) buildExplorerBriefing(
 	b.PeriodStart, b.PeriodEnd = scopePeriod(filtered)
 	b.LowSample = len(filtered) < MinBriefingModulesMatches
 	b.Baseline = buildBriefingBaseline(filtered, allRaw)
-	b.Dimensions = buildBriefingDimensions(filtered, allRaw, mapgroups.Load(ctx, s.mapGroups))
+	b.Dimensions = buildBriefingDimensions(filtered, allRaw, mapgroups.Load(ctx, s.mapGroups), i18n.FromContext(ctx))
 	// Split solo/escouade : aucun gate capability (P-7), omission si un côté est vide.
 	b.ContextSplit = buildBriefingContextSplit(filtered)
 	b.MinGroupMatches = MinDimensionGroupMatches
@@ -202,10 +203,10 @@ func scopePeakRanks(scope []domain.MatchHistoryRawRow) []domain.ExplorerBriefing
 	best := map[string]peak{}
 	for i := range scope {
 		r := &scope[i]
-		if r.SkillRatingType == nil || r.SkillTier == nil || r.SkillTierLabel == nil {
+		if r.SkillRatingType == nil || r.SkillTier == "" || r.SkillTierLabel == nil {
 			continue
 		}
-		ord := analysis.CSRTierOrdinal(*r.SkillTier)
+		ord := analysis.CSRTierOrdinal(r.SkillTier)
 		if ord == 0 {
 			continue // palier EN inconnu → non classable
 		}

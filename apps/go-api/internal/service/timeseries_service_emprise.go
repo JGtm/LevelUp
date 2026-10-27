@@ -15,6 +15,7 @@ import (
 	"levelup/go-api/internal/analysis/squademprise"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/mapgroups"
@@ -101,7 +102,7 @@ func timeseriesEmpriseMatches(rows []canonical.PlayerMatchRow, locale string, gr
 	for _, r := range rows {
 		m := squademprise.Match{
 			MatchID: r.Summary.MatchID, StartTime: r.Summary.StartedAtUTC, Outcome: r.Self.Outcome,
-			MapLabel: mapgroups.RefLabel(r.Summary.Map, groups, locale, labelPourLocale(r.Summary.Map, locale)),
+			MapLabel: mapgroups.RefLabel(r.Summary.Map, groups, i18n.Parse(locale), labelPourLocale(r.Summary.Map, locale)),
 			MapKey:   mapgroups.RefKey(r.Summary.Map, groups),
 		}
 		if r.Enrichment.SessionLabel != nil {

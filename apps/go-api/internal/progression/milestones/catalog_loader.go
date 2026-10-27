@@ -7,6 +7,8 @@ import (
 	"os"
 
 	"github.com/pelletier/go-toml/v2"
+
+	"levelup/go-api/internal/i18n"
 )
 
 // catalog_loader.go — chargement du catalogue depuis TOML.
@@ -28,15 +30,17 @@ type catalogMetaTOML struct {
 }
 
 type milestoneEntryTOML struct {
-	ID          string  `toml:"id"`
-	Metric      string  `toml:"metric"`
-	Threshold   float64 `toml:"threshold"`
-	TitleEN     string  `toml:"title_en"`
-	TitleFR     string  `toml:"title_fr"`
-	Icon        string  `toml:"icon"`
-	Condition   string  `toml:"condition"`
-	ConditionFR string  `toml:"condition_fr"`
-	ConditionEN string  `toml:"condition_en"`
+	ID        string  `toml:"id"`
+	Metric    string  `toml:"metric"`
+	Threshold float64 `toml:"threshold"`
+	// Title : `title = { en = "...", fr = "..." }`, une valeur par langue `required`.
+	Title i18n.Text `toml:"title"`
+	Icon  string    `toml:"icon"`
+	// Condition : formule technique libre, non évaluée, hors langue.
+	Condition string `toml:"condition"`
+	// ConditionText : la condition dite aux joueurs, `condition_text = { en, fr }` (optionnelle ;
+	// présente, elle couvre chaque langue `required`).
+	ConditionText i18n.Text `toml:"condition_text"`
 }
 
 // LoadCatalogFromFile lit le TOML, valide la structure et retourne les entrées
@@ -71,20 +75,23 @@ func parseCatalogBytes(data []byte) ([]CatalogEntry, error) {
 		if m.Threshold <= 0 {
 			return nil, fmt.Errorf("milestones: entry %s threshold must be > 0, got %v", m.ID, m.Threshold)
 		}
-		if m.TitleEN == "" || m.TitleFR == "" {
-			return nil, fmt.Errorf("milestones: entry %s missing title_en or title_fr", m.ID)
+		if err := m.Title.Trimmed().Validate(); err != nil {
+			return nil, fmt.Errorf("milestones: entry %s title: %w", m.ID, err)
+		}
+		if len(m.ConditionText) > 0 {
+			if err := m.ConditionText.Trimmed().Validate(); err != nil {
+				return nil, fmt.Errorf("milestones: entry %s condition_text: %w", m.ID, err)
+			}
 		}
 		out = append(out, CatalogEntry{
-			ID:          m.ID,
-			TitleSlug:   raw.Meta.TitleSlug,
-			Metric:      m.Metric,
-			Threshold:   m.Threshold,
-			TitleEN:     m.TitleEN,
-			TitleFR:     m.TitleFR,
-			Icon:        m.Icon,
-			Condition:   m.Condition,
-			ConditionFR: m.ConditionFR,
-			ConditionEN: m.ConditionEN,
+			ID:            m.ID,
+			TitleSlug:     raw.Meta.TitleSlug,
+			Metric:        m.Metric,
+			Threshold:     m.Threshold,
+			Title:         m.Title,
+			Icon:          m.Icon,
+			Condition:     m.Condition,
+			ConditionText: m.ConditionText,
 		})
 	}
 	return out, nil

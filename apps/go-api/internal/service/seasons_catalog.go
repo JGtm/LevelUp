@@ -44,6 +44,7 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/mappings"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 )
@@ -67,13 +68,12 @@ const (
 // avec une saison DB-only sans entrée TOML.
 type SeasonCatalogEntry struct {
 	ID string
-	// Label = libellé FR si TOML, sinon Name Waypoint brut. Reste le libellé
-	// canonique/défaut (consommé par l'Explorer via short_label et les tests).
-	Label string
-	// LabelEN = libellé EN du TOML (GH3-1). Pour une saison DB-only sans
-	// traduction, vaut le même Name brut que Label. Sert la résolution
-	// locale-aware du bucket "season" servi à la SaisonPill (projectCatalogToBucket).
-	LabelEN      string
+	// Label = libellé par langue. fr : libellé FR si TOML, sinon Name Waypoint brut (reste le
+	// libellé canonique/défaut, consommé par l'Explorer via short_label et les tests) ; en : libellé
+	// EN du TOML (GH3-1). Pour une saison DB-only sans traduction, les deux langues portent le
+	// même Name brut. Sert la résolution locale-aware du bucket "season" servi à la SaisonPill
+	// (projectCatalogToBucket).
+	Label        i18n.Text
 	Start        time.Time
 	End          *time.Time        // nil = saison ouverte
 	DisplayOrder int               // ordre TOML, ou int max(displayOrders)+10 pour DB-only (en fin de liste)
@@ -164,16 +164,13 @@ func projectTOMLSeasons(assets *mappings.AssetMappingSet) []SeasonCatalogEntry {
 		if e.StartDate == nil {
 			continue
 		}
-		label, _ := e.Label(mappings.LocaleFR)
-		labelEN, _ := e.Label(mappings.LocaleEN)
 		extra := make(map[string]string, len(e.Extra))
 		for k, v := range e.Extra {
 			extra[k] = v
 		}
 		out = append(out, SeasonCatalogEntry{
 			ID:           e.ID,
-			Label:        label,
-			LabelEN:      labelEN,
+			Label:        e.Labels.Clone(),
 			Start:        *e.StartDate,
 			End:          e.EndDate,
 			DisplayOrder: e.DisplayOrder,
@@ -431,15 +428,14 @@ func mergeSeasonSources(toml []SeasonCatalogEntry, db []domain.SeasonCalendar) [
 			continue
 		}
 		// DB-only : libellé fallback = Name brut Waypoint, sinon ID. Pas de
-		// traduction disponible → LabelEN identique (même Name servi FR et EN).
+		// traduction disponible → même Name servi FR et EN.
 		fallbackLabel := dbS.Name
 		if fallbackLabel == "" {
 			fallbackLabel = id
 		}
 		byID[id] = &SeasonCatalogEntry{
 			ID:           id,
-			Label:        fallbackLabel,
-			LabelEN:      fallbackLabel,
+			Label:        i18n.FromColumns(fallbackLabel, fallbackLabel),
 			Start:        dbS.StartDate,
 			End:          dbS.EndDate,
 			DisplayOrder: maxOrder + 10*(i+1),

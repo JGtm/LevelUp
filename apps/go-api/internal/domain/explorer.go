@@ -89,7 +89,7 @@ type ExplorerEncounterStats struct {
 	// lecture en échec — le front rend alors un état vide titré, jamais une portée fabriquée.
 	//
 	// `weapon_key` porte une clé de RÔLE (`precision`, `automatic`, ...) et non une clé
-	// d'arme ; `label`/`label_en` restent vides, le front résolvant le libellé depuis son
+	// d'arme ; `label` reste vide, le front résolvant le libellé depuis son
 	// manifeste (aucun libellé FR/EN écrit en Go).
 	FragRangeTarget *SynthesisWeaponRange `json:"frag_range_target,omitempty"`
 	// AssistVolumeMax = plus gros volume d'un sens (reçues ou données) parmi TOUTES les
@@ -516,7 +516,7 @@ type ExplorerMatchesRow struct {
 	// seuil MinMatchesPerChainForRelative=10 sur la même chaîne pour
 	// arena_slayer/arena_objectif/btb/chaos ; rating_type : nil par construction
 	// tant qu'aucun LUSR/CSR n'est calculé).
-	// CSR : remaining parsé depuis "Placement (N restants)" + threshold csr_placement_thresholds.
+	// CSR : remaining lu du libellé de placement (ParsePlacementRemaining) + threshold csr_placement_thresholds.
 	// LUSR : 10 plus anciens matchs sans LUSR par chaîne (arena_slayer/arena_objectif/btb/chaos).
 	PlacementDone  *int `json:"placement_done,omitempty"`
 	PlacementTotal *int `json:"placement_total,omitempty"`
@@ -568,9 +568,11 @@ type ExplorerMatchesSummary struct {
 	// AvailableExperienceTypes : LABEL localisé (locale de requête), VALUE FR
 	// canonique = clé de filtre intacte (GH6-1, miroir GH5-2 Omnibar).
 	AvailableExperienceTypes []LabelValue `json:"available_experience_types,omitempty"`
-	AvailablePlaylists       []string     `json:"available_playlists,omitempty"`
-	AvailableMaps            []string     `json:"available_maps,omitempty"`
-	AvailableModes           []string     `json:"available_modes,omitempty"`
+	// AvailablePlaylists / AvailableMaps / AvailableModes : LABEL dans la langue de la requête, VALUE = le nom
+	// de la langue par défaut, clé de filtre (`playlists`, `maps`, `modes`) indépendante de la langue.
+	AvailablePlaylists []LabelValue `json:"available_playlists,omitempty"`
+	AvailableMaps      []LabelValue `json:"available_maps,omitempty"`
+	AvailableModes     []LabelValue `json:"available_modes,omitempty"`
 	// Options Explorer-spécifiques avec count cascade-aware (sémantique OR).
 	// Permettent au front d'afficher "Win (42)" et de griser les options à 0.
 	AvailableOutcomes       []LabelValue `json:"available_outcomes,omitempty"`

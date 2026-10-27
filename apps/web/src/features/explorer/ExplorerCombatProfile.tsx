@@ -32,7 +32,7 @@ export interface ExplorerCombatProfileProps {
   liveMatches: ExplorerTargetRecentMatch[]
   /** Matchs de la cible en base locale (surtout matchs communs) — toggle "local". */
   localMatches: ExplorerTargetRecentMatch[]
-  locale: string
+  locale: Locale
   t: (key: ExplorerManifestKey) => string
   /** Top médailles lifetime de la cible (source « En direct ») — à droite du donut modes. */
   topMedals?: MedalDigestItem[]
@@ -160,14 +160,14 @@ export function ExplorerCombatProfile({
           <ExplorerLiveStatusBadge status={combatLiveStatus} />
         </header>
         <EmptyStateNotice
-          title={SOURCE_LABELS[locale === 'en' ? 'en' : 'fr'].emptyTitle}
-          description={SOURCE_LABELS[locale === 'en' ? 'en' : 'fr'].empty}
+          title={SOURCE_LABELS[locale].emptyTitle}
+          description={SOURCE_LABELS[locale].empty}
         />
       </section>
     )
   }
 
-  const lbl = SOURCE_LABELS[locale === 'en' ? 'en' : 'fr']
+  const lbl = SOURCE_LABELS[locale]
   const damageColors: Record<string, SemanticToken> = {
     [damageDealtLabel]: 'divergent-pos',
     [damageTakenLabel]: 'divergent-neg',

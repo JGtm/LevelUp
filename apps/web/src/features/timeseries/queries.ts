@@ -16,8 +16,10 @@ export function useTimeseriesPage(
   filterHash: string,
 ) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  // Les noms de cartes et d armes sont servis dans la langue de la requête : la locale scope la clé.
+  const locale = useAppShellStore((s) => s.locale)
   return useQuery({
-    queryKey: queryKeys.timeseries(playerSlug, titleSlug, filterHash),
+    queryKey: queryKeys.timeseries(playerSlug, titleSlug, filterHash, locale),
     queryFn: ({ signal }) =>
       api.post<TimeseriesPageResponse>(
         `/players/${playerSlug}/pages/timeseries`,

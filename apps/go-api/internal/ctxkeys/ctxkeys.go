@@ -5,6 +5,7 @@ import (
 	"context"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
 type contextKey string
@@ -16,24 +17,22 @@ const (
 	tokensOwnerXUIDKey    contextKey = "tokens_owner_xuid"
 	requestIDKey          contextKey = "request_id"
 	eventIDKey            contextKey = "event_id"
-	localeKey             contextKey = "locale"
 	dbWriterLabelKey      contextKey = "db_writer_label"
 	gamertagLiveSearchKey contextKey = "gamertag_live_search"
 )
 
-// WithLocale place la locale UI ("fr"/"en") dans le contexte. Utilisée par les
-// services qui localisent des libellés (médailles, etc.) sans avoir à threader
-// la locale dans chaque signature.
+// WithLocale place la locale UI dans le contexte, normalisée par i18n.Parse (une valeur vide
+// ou hors liste de config/locales.toml devient i18n.Default). Utilisée par les services qui
+// localisent des libellés (médailles, etc.) sans avoir à threader la locale dans chaque
+// signature. La clé de contexte vit dans internal/i18n : ctxkeys importe domain, qui importe
+// i18n, donc i18n ne peut pas importer ctxkeys.
 func WithLocale(ctx context.Context, locale string) context.Context {
-	return context.WithValue(ctx, localeKey, locale)
+	return i18n.WithContext(ctx, i18n.Parse(locale))
 }
 
-// Locale extrait la locale depuis le contexte. Retourne "fr" si absente.
+// Locale extrait la locale depuis le contexte. Retourne i18n.Default si absente.
 func Locale(ctx context.Context) string {
-	if v, ok := ctx.Value(localeKey).(string); ok && v != "" {
-		return v
-	}
-	return "fr"
+	return string(i18n.FromContext(ctx))
 }
 
 // WithTitleSlug place le slug du titre dans le contexte.

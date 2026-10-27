@@ -9,6 +9,8 @@ import (
 
 	"levelup/go-api/internal/prestige"
 	"levelup/go-api/internal/progression/coach_advisor"
+
+	"levelup/go-api/internal/i18n"
 )
 
 // ─── Grammar TOML loader ───
@@ -202,7 +204,7 @@ func TestSynthesizer_HappyPath_AccuracySignal(t *testing.T) {
 	}
 
 	// Labels paramétrés présents (forme exacte n'est pas testée, juste non-vide)
-	if tmpl.LabelEN == "" || tmpl.LabelFR == "" {
+	if tmpl.Labels[i18n.LocaleEN] == "" || tmpl.Labels[i18n.LocaleFR] == "" {
 		t.Error("Labels should be non-empty")
 	}
 }

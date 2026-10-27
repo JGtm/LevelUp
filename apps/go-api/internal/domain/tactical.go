@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+
+	"levelup/go-api/internal/i18n"
 )
 
 // Les trois refus de l'onglet Tactique. Ils sont dans `domain` parce que le
@@ -439,9 +441,8 @@ type TacticalPositions struct {
 // est pose par le service, pas par le lecteur — une regle produit n'appartient pas
 // a une requete SQL.
 type TacticalMapRow struct {
-	MapID     string
-	MapName   string
-	MapNameFR string
+	MapID   string
+	MapName i18n.Text
 
 	Matchs    int
 	Victoires int

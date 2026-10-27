@@ -34,6 +34,7 @@ export function useComparePrefetch(playerSlug: string) {
         playerSlug,
         useAppShellStore.getState().currentTitleSlug,
         targetGamertag,
+        useAppShellStore.getState().locale,
       ),
       queryFn: () =>
         api.post<CompareResponse>(`/players/${playerSlug}/pages/compare`, {

@@ -3,18 +3,19 @@ package service
 import (
 	"testing"
 
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
 func TestBuildWeaponsTable_AggregatesByWeaponAndPlayer(t *testing.T) {
 	t.Parallel()
 	rows := []port.WeaponKillRow{
-		{XUID: "x_p1", WeaponID: 100, Kills: 10, Label: "BR75"},
-		{XUID: "x_p1", WeaponID: 100, Kills: 5, Label: "BR75"}, // meme arme : sommer
-		{XUID: "x_p2", WeaponID: 100, Kills: 8, Label: "BR75"},
-		{XUID: "x_p1", WeaponID: 200, Kills: 3, Label: "Sidekick"},
+		{XUID: "x_p1", WeaponID: 100, Kills: 10, Label: i18n.Text{i18n.LocaleFR: "BR75"}},
+		{XUID: "x_p1", WeaponID: 100, Kills: 5, Label: i18n.Text{i18n.LocaleFR: "BR75"}}, // meme arme : sommer
+		{XUID: "x_p2", WeaponID: 100, Kills: 8, Label: i18n.Text{i18n.LocaleFR: "BR75"}},
+		{XUID: "x_p1", WeaponID: 200, Kills: 3, Label: i18n.Text{i18n.LocaleFR: "Sidekick"}},
 	}
-	out := BuildWeaponsTable(rows, nil, 0)
+	out := BuildWeaponsTable(i18n.LocaleFR, rows, nil, 0)
 	if len(out) != 2 {
 		t.Fatalf("want 2 weapons aggregated, got %d", len(out))
 	}
@@ -40,7 +41,7 @@ func TestBuildWeaponsTable_RemapsXUIDToGamertag(t *testing.T) {
 		{XUID: "x_p2", WeaponID: 100, Kills: 8},
 	}
 	xuidToGT := map[string]string{"x_p1": "main", "x_p2": "f1"}
-	out := BuildWeaponsTable(rows, xuidToGT, 0)
+	out := BuildWeaponsTable(i18n.LocaleFR, rows, xuidToGT, 0)
 	if len(out) != 1 {
 		t.Fatalf("want 1 weapon, got %d", len(out))
 	}
@@ -58,7 +59,7 @@ func TestBuildWeaponsTable_AppliesMinKillsFilter(t *testing.T) {
 		{XUID: "x_p1", WeaponID: 100, Kills: 10},
 		{XUID: "x_p1", WeaponID: 200, Kills: 2}, // total 2 < min 5
 	}
-	out := BuildWeaponsTable(rows, nil, 5)
+	out := BuildWeaponsTable(i18n.LocaleFR, rows, nil, 5)
 	if len(out) != 1 {
 		t.Fatalf("want 1 weapon (min 5), got %d", len(out))
 	}
@@ -73,7 +74,7 @@ func TestBuildWeaponsTable_GrenadeMeleeSeparated(t *testing.T) {
 		{XUID: "x_p1", WeaponID: 100, Kills: 10},
 		{XUID: "x_p1", WeaponID: 100, Kills: 3, IsGrenadeMelee: true}, // separe
 	}
-	out := BuildWeaponsTable(rows, nil, 0)
+	out := BuildWeaponsTable(i18n.LocaleFR, rows, nil, 0)
 	if len(out) != 2 {
 		t.Fatalf("want 2 entries (grenade/melee separate), got %d", len(out))
 	}
@@ -88,7 +89,7 @@ func TestBuildWeaponsTable_GrenadeMeleeSeparated(t *testing.T) {
 
 func TestBuildWeaponsTable_EmptyInput(t *testing.T) {
 	t.Parallel()
-	if got := BuildWeaponsTable(nil, nil, 0); got != nil {
+	if got := BuildWeaponsTable(i18n.LocaleFR, nil, nil, 0); got != nil {
 		t.Errorf("nil rows: want nil, got %v", got)
 	}
 }
@@ -155,5 +156,21 @@ func TestBuildMedalsGallery_EmptyInput(t *testing.T) {
 	t.Parallel()
 	if got := BuildMedalsGallery(nil, nil, nil); got != nil {
 		t.Errorf("nil rows: want nil, got %v", got)
+	}
+}
+
+// TestBuildWeaponsTable_NomDansLaLangueDeLaRequete : le nom de l'arme suit la langue demandée.
+func TestBuildWeaponsTable_NomDansLaLangueDeLaRequete(t *testing.T) {
+	t.Parallel()
+	rows := []port.WeaponKillRow{
+		{XUID: "x_p1", WeaponID: 100, Kills: 10, Label: i18n.Text{i18n.LocaleFR: "Fusil de combat", i18n.LocaleEN: "Battle Rifle"}},
+	}
+	for loc, want := range map[i18n.Locale]string{
+		i18n.LocaleFR: "Fusil de combat", i18n.LocaleEN: "Battle Rifle", i18n.Locale("zz"): "Battle Rifle",
+	} {
+		out := BuildWeaponsTable(loc, rows, nil, 0)
+		if len(out) != 1 || out[0].Label != want {
+			t.Errorf("locale %q : %+v, want %q", loc, out, want)
+		}
 	}
 }

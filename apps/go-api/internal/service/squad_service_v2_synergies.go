@@ -19,6 +19,7 @@ import (
 	"levelup/go-api/internal/analysis/breakdown"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/service/mapgroups"
 )
 
@@ -102,7 +103,7 @@ func BuildMapBreakdownLollipop(
 	if limit <= 0 {
 		limit = MapBreakdownLimit
 	}
-	maps := breakdown.ByMap(rowsToBreakdownInputs(rows), groups, domain.LocaleLibelleParDefaut)
+	maps := breakdown.ByMap(rowsToBreakdownInputs(rows), groups, i18n.Fallback)
 	// breakdown.ByMap trie par WinRate desc ; on re-trie par Played desc pour
 	// privilegier les cartes les plus jouees.
 	sort.SliceStable(maps, func(i, j int) bool {
@@ -159,7 +160,7 @@ func BuildBulletWinrate(
 	if limit <= 0 {
 		limit = MapBreakdownLimit
 	}
-	sessionAgg := breakdown.ByMap(rowsToBreakdownInputs(sessionRows), groups, domain.LocaleLibelleParDefaut)
+	sessionAgg := breakdown.ByMap(rowsToBreakdownInputs(sessionRows), groups, i18n.Fallback)
 
 	// On re-trie sessionAgg par Played desc pour limiter aux N plus jouees.
 	sort.SliceStable(sessionAgg, func(i, j int) bool {
@@ -212,7 +213,7 @@ func BuildPerfVsHistorical(
 	if limit <= 0 {
 		limit = MapBreakdownLimit
 	}
-	sessionAgg := breakdown.ByMap(rowsToBreakdownInputs(sessionRows), groups, domain.LocaleLibelleParDefaut)
+	sessionAgg := breakdown.ByMap(rowsToBreakdownInputs(sessionRows), groups, i18n.Fallback)
 	// CompareToHistorical attend []MapAggregate. On materialise une liste
 	// minimale a partir du map (Played/Wins/WinRate/AvgPerformanceScore)
 	// pour reutiliser la logique de delta.
@@ -278,7 +279,7 @@ func BuildHeatmapPlayerMap(
 			}
 			id := mapgroups.RefKey(r.Summary.Map, groups)
 			playedPerMap[id]++
-			if lbl := mapgroups.RefLabel(r.Summary.Map, groups, domain.LocaleLibelleParDefaut, r.Summary.Map.DefaultLabel); labelByID[id] == "" && lbl != "" {
+			if lbl := mapgroups.RefLabel(r.Summary.Map, groups, i18n.Fallback, r.Summary.Map.DefaultLabel); labelByID[id] == "" && lbl != "" {
 				labelByID[id] = lbl
 			}
 		}

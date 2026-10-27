@@ -1,8 +1,8 @@
 // Package domain — achievements_response.go : payload HTTP de la page Achievements.
 //
 // Tags JSON snake_case (convention API). Les noms et descriptions sont servis
-// dans les deux langues ; le frontend choisit selon sa locale (même pattern que
-// les médailles bilingues).
+// dans la langue de la requête (ADR 0040 D-3) : le service les résout par
+// `i18n.FromContext`, le frontend n'en choisit pas.
 package domain
 
 import "time"
@@ -27,12 +27,9 @@ type AchievementsSummary struct {
 // cet ID, Unlocked=false et UnlockedAt/Current/Target sont nil.
 type AchievementEntry struct {
 	AchievementID   string     `json:"achievement_id"`
-	NameEN          string     `json:"name_en"`
-	NameFR          string     `json:"name_fr"`
-	DescriptionEN   string     `json:"description_en"`
-	DescriptionFR   string     `json:"description_fr"`
-	LockedDescEN    string     `json:"locked_desc_en,omitempty"`
-	LockedDescFR    string     `json:"locked_desc_fr,omitempty"`
+	Name            string     `json:"name"`
+	Description     string     `json:"description"`
+	LockedDesc      string     `json:"locked_desc,omitempty"`
 	Gamerscore      int        `json:"gamerscore"`
 	ImageURL        string     `json:"image_url,omitempty"`
 	IsSecret        bool       `json:"is_secret"`

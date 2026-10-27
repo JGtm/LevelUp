@@ -120,7 +120,7 @@ func flagFreeLives(scan WorldObjectScan, flags map[uint32]Label) []flagFreeLife 
 	ids := map[types.LifeKey]uint32{}
 	for _, c := range scan.Creations {
 		w, ok := gwPadsIdentity(c)
-		if !ok || flags[w] == (Label{}) {
+		if !ok || flags[w].isZero() {
 			continue
 		}
 		k := types.LifeKey{Slot: c.Slot, Gen: c.Gen}

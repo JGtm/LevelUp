@@ -10,6 +10,7 @@ import (
 
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/i18n"
 )
 
 // registreArmesMinimal : deux armes et un inconnu, au format du titre.
@@ -20,8 +21,7 @@ schema_version = 1
 [[weapons]]
 tag = "C7D50912"
 vehicle = "rockethog"
-en = "Rocket Launcher"
-fr = "Lance-roquettes"
+label = { en = "Rocket Launcher", fr = "Lance-roquettes" }
 fire = "single"
 fx = "explosive"
 tint = "blast"
@@ -33,8 +33,7 @@ proof = "p"
 [[weapons]]
 tag = "0BB6976B"
 vehicle = "falcon"
-en = "Grenade Launcher"
-fr = "Lance-grenades"
+label = { en = "Grenade Launcher", fr = "Lance-grenades" }
 fire = "single"
 fx = "explosive"
 tint = "kinetic"
@@ -82,7 +81,7 @@ func TestVehicleWeapons_PoseLesArmesEmployees(t *testing.T) {
 	}
 	if r.Vehicle != "rockethog" || r.Fx != "explosive" || r.Tint != "blast" ||
 		r.Sound != "vehicle_shot_warthog_rocket_1" || r.Mount == nil || r.Mount.Aim != "turret" ||
-		r.Mount.AY != 0.26 || r.Mount.Reach != 0.12 || r.En != "Rocket Launcher" || r.Fr != "Lance-roquettes" {
+		r.Mount.AY != 0.26 || r.Mount.Reach != 0.12 || r.Text[i18n.LocaleEN] != "Rocket Launcher" || r.Text[i18n.LocaleFR] != "Lance-roquettes" {
 		t.Errorf("roquettes = %+v", r)
 	}
 	if g := doc.VehicleWeapons["0x0BB6976B00000000"]; g.Sound != "" || g.Fx != "explosive" {

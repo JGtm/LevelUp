@@ -222,7 +222,7 @@ func (s *TeammatesService) buildSquadMapHeatmap(
 			mapFirstSeen[key] = m.StartTime
 		}
 		if m.MapUI != "" {
-			mapIDToUI[key] = libelleCarteGroupee(m.MapID, m.MapUI, groups)
+			mapIDToUI[key] = libelleCarteGroupee(m.MapID, m.MapUI, m.UILocale, groups)
 		}
 	}
 	if len(mapFirstSeen) == 0 {

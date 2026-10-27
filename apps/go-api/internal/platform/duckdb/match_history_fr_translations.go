@@ -1,23 +1,30 @@
-// Package duckdb — enrichissement FR best-effort des MatchHistoryRawRow.
+// Package duckdb — enrichissement des noms (carte, mode, sélection, variante) des MatchHistoryRawRow,
+// best-effort, dans toutes les langues connues.
 //
-// Reproduit STRICTEMENT le pattern home_repo.go (resolveAssetNames + mode_name_tr) :
-// résolution par UUID directement (map_id, pair_id, playlist_id) via
-// MetadataRepo.ResolveAssetNamesBulk, sans aller-retour par les noms EN.
+// Reproduit le pattern de home_repo.go : résolution par UUID directement (map_id, pair_id,
+// playlist_id) dans asset_translations (assetNameTexts), sans aller-retour par les noms EN, puis
+// mode_name_tr pour les sous-modes (modeTextsByLocale). Les noms sont rassemblés pour chaque langue
+// de config/locales.toml : le choix de la langue de la requête se fait en aval (Text.Pick).
 //
 // Cohérent avec ce qui marche déjà sur la home page et les tuiles de match.
-// Best-effort : erreurs silencieuses pour ne pas bloquer le rendu.
+// Best-effort : une lecture en échec est journalisée et consignée, sans bloquer le rendu.
 package duckdb
 
 import (
 	"context"
-	"fmt"
-	"log/slog"
 	"strings"
 	"time"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
+
+// matchHistoryNames regroupe, par type d'actif, les noms de chaque langue des actifs d'une page
+// d'historique, et les noms de mode de mode_name_tr.
+type matchHistoryNames struct {
+	maps, pairs, playlists, variants map[string]i18n.Text
+	modes                            map[i18n.Locale]map[string]string
+}
 
 // applyMatchHistoryFRTranslations enrichit les rows en utilisant les UUIDs
 // (map_id, pair_id, playlist_id) pour faire un lookup direct dans
@@ -27,127 +34,66 @@ func applyMatchHistoryFRTranslations(ctx context.Context, pdb *PlayerDB, rows []
 		return
 	}
 
-	// Collecter les IDs distincts à résoudre.
-	mapIDs := collectDistinctIDs(rows, func(r domain.MatchHistoryRawRow) *string { return r.MapID })
-	pairIDs := collectDistinctIDs(rows, func(r domain.MatchHistoryRawRow) *string { return r.PairID })
-	playlistIDs := collectDistinctIDs(rows, func(r domain.MatchHistoryRawRow) *string { return r.PlaylistID })
-	variantIDs := collectDistinctIDs(rows, func(r domain.MatchHistoryRawRow) *string { return r.GameVariantID })
-
-	// Lookup bulk via MetadataRepo (même chemin que home_repo).
-	metaRepo := NewMetadataRepoFromDB(pdb.Metadata)
-	langs := PreferredLangsForLocale("fr")
-	langsEN := PreferredLangsForLocale("en")
-
-	mapNames := traductionsDeCartes(ctx, pdb.Metadata, mapIDs)
-	pairNames, _ := metaRepo.ResolveAssetNamesBulk(ctx, "pair", pairIDs, langs)
-	playlistNames, _ := metaRepo.ResolveAssetNamesBulk(ctx, "playlist", playlistIDs, langs)
-	// game_variant : source de MODE pour les titres sans pair_name (Halo 5). Résolu en
-	// FR (cascade fr→en) ET EN (registry NULL en H5) — parité avec le fallback
-	// GameVariant de la home (analysis.modeLabels).
-	variantNamesFR, _ := metaRepo.ResolveAssetNamesBulk(ctx, "game_variant", variantIDs, langs)
-	variantNamesEN, _ := metaRepo.ResolveAssetNamesBulk(ctx, "game_variant", variantIDs, langsEN)
-
-	// Lookup mode_name_tr (FR) pour les modes normalisés EN — gère les sous-modes
-	// (ex: "Slayer" → "Assassin"). Cohérent avec home_repo.loadHomeModeNameTranslations.
-	modeENSet := make(map[string]struct{}, 16)
-	for _, r := range rows {
-		if en := analysis.NormalizeModeLabel(derefString(r.PairName)); en != "" {
-			modeENSet[en] = struct{}{}
-		}
-		// Si le pair_name brut était un UUID, l'asset_translations donne un nom EN
-		// qu'on doit aussi traduire via mode_name_tr.
-		if r.PairID != nil {
-			if assetName := strings.TrimSpace(pairNames[*r.PairID]); assetName != "" {
-				if en2 := analysis.NormalizeModeLabel(assetName); en2 != "" {
-					modeENSet[en2] = struct{}{}
-				}
-			}
-		}
+	names := matchHistoryNames{
+		maps:      assetNameTexts(ctx, pdb.Metadata, assetTypeMap, collectDistinctIDs(rows, func(r domain.MatchHistoryRawRow) *string { return r.MapID })),
+		pairs:     assetNameTexts(ctx, pdb.Metadata, assetTypePair, collectDistinctIDs(rows, func(r domain.MatchHistoryRawRow) *string { return r.PairID })),
+		playlists: assetNameTexts(ctx, pdb.Metadata, assetTypePlaylist, collectDistinctIDs(rows, func(r domain.MatchHistoryRawRow) *string { return r.PlaylistID })),
+		// game_variant : source de MODE pour les titres sans pair_name (Halo 5), résolu dans toutes
+		// les langues (registry NULL en H5) — parité avec le fallback GameVariant de la home
+		// (analysis.modeLabels).
+		variants: assetNameTexts(ctx, pdb.Metadata, assetTypeGameVariant, collectDistinctIDs(rows, func(r domain.MatchHistoryRawRow) *string { return r.GameVariantID })),
 	}
-	modeFR := loadModeFRBatch(ctx, pdb, modeENSet)
+	names.modes = modeTextsByLocale(ctx, pdb.Metadata, modeKeysOfHistory(rows, names.pairs))
 
-	applyMatchHistoryFRRow(rows, mapNames, pairNames, playlistNames, variantNamesFR, variantNamesEN, modeFR)
-}
-
-// applyMatchHistoryFRRow applique les traductions FR (map, pair, playlist, game_variant)
-// à chaque row. Extraction pour réduire la complexité de applyMatchHistoryFRTranslations.
-func applyMatchHistoryFRRow(
-	rows []domain.MatchHistoryRawRow,
-	mapNames, pairNames, playlistNames, variantNamesFR, variantNamesEN map[string]string,
-	modeFR map[string]string,
-) {
 	for i := range rows {
-		applyMatchHistoryMapFR(&rows[i], mapNames)
-		applyMatchHistoryPairFR(&rows[i], pairNames, modeFR)
-		applyMatchHistoryPlaylistFR(&rows[i], playlistNames)
-		applyMatchHistoryGameVariant(&rows[i], variantNamesFR, variantNamesEN)
+		applyMatchHistoryRow(&rows[i], names)
 	}
 }
 
-// applyMatchHistoryGameVariant résout le nom du game_variant (FR + EN) depuis
-// asset_translations. Sert de source de MODE aux titres sans pair_name (Halo 5) : le
-// nom registry est souvent NULL → on remplit GameVariantName (EN) et GameVariantNameFR.
-// N'écrase pas une valeur registry déjà présente.
-func applyMatchHistoryGameVariant(row *domain.MatchHistoryRawRow, variantNamesFR, variantNamesEN map[string]string) {
-	if row.GameVariantID == nil {
-		return
-	}
-	id := strings.TrimSpace(*row.GameVariantID)
-	if id == "" {
-		return
-	}
-	if fr := strings.TrimSpace(variantNamesFR[id]); fr != "" {
-		row.GameVariantNameFR = &fr
-	}
-	// EN : ne remplir que si le registry n'a pas déjà un nom (NULL/vide en H5).
-	if strings.TrimSpace(derefString(row.GameVariantName)) == "" {
-		if en := strings.TrimSpace(variantNamesEN[id]); en != "" {
-			row.GameVariantName = &en
+// modeKeysOfHistory collecte les clés de mode (noms normalisés de la langue de repli) à traduire par
+// mode_name_tr : le pair_name brut de chaque row et, quand il est un UUID, le nom de l'actif de la
+// paire dans chaque langue.
+func modeKeysOfHistory(rows []domain.MatchHistoryRawRow, pairs map[string]i18n.Text) []string {
+	keys := modeKeySet{}
+	for _, r := range rows {
+		keys.addLabel(r.PairName[i18n.Fallback])
+		if r.PairID != nil {
+			keys.addTexts(pairs[*r.PairID])
 		}
 	}
+	return keys.list()
 }
 
-// applyMatchHistoryMapFR pose le libellé canonique de la carte (libelleDeCarte, map_labels.go) :
-// c'est lui que l'Explorateur affiche, propose dans son filtre et compare à `?maps=`.
-func applyMatchHistoryMapFR(row *domain.MatchHistoryRawRow, mapNames map[string]string) {
-	if row.MapID == nil {
-		return
+// setKeys retourne les clés d'un ensemble (ordre quelconque).
+func setKeys(set map[string]struct{}) []string {
+	out := make([]string, 0, len(set))
+	for k := range set {
+		out = append(out, k)
 	}
-	if libelle := libelleDeCarte(derefString(row.MapNameFR), derefString(row.MapName), mapNames[*row.MapID]); libelle != "" {
-		row.MapNameFR = &libelle
-	}
+	return out
 }
 
-// applyMatchHistoryPairFR applique la cascade unifiée mode_name_tr → asset re-lookup → raw.
-func applyMatchHistoryPairFR(
-	row *domain.MatchHistoryRawRow,
-	pairNames map[string]string,
-	modeFR map[string]string,
-) {
-	var assetName string
+// applyMatchHistoryRow applique les noms (map, pair, playlist, game_variant) à une row :
+//   - carte : le libellé canonique (libelleDeCarte, map_labels.go), celui que l'Explorateur affiche,
+//     propose dans son filtre et compare à `?maps=` ;
+//   - paire : la cascade unifiée mode_name_tr → asset re-lookup → raw ;
+//   - sélection : la traduction de l'actif quand le nom de la langue manque ;
+//   - variante de jeu : tous les noms de l'actif que le registre ne porte pas (source de MODE des
+//     titres sans pair, registre NULL en Halo 5).
+func applyMatchHistoryRow(row *domain.MatchHistoryRawRow, names matchHistoryNames) {
+	if row.MapID != nil {
+		fillUntranslated(&row.MapName, names.maps[strings.TrimSpace(*row.MapID)])
+	}
+	var pair i18n.Text
 	if row.PairID != nil {
-		assetName = pairNames[*row.PairID]
+		pair = names.pairs[*row.PairID]
 	}
-	if fr := analysis.ResolvePairNameFR(
-		derefString(row.PairName),
-		derefString(row.PairNameFR),
-		assetName,
-		modeFR,
-	); fr != "" {
-		row.PairNameFR = &fr
+	applyPairNameTexts(&row.PairName, pair, names.modes)
+	if row.PlaylistID != nil {
+		fillUntranslated(&row.PlaylistName, names.playlists[strings.TrimSpace(*row.PlaylistID)])
 	}
-}
-
-// applyMatchHistoryPlaylistFR enrichit PlaylistName si COALESCE SQL a renvoyé l'EN.
-func applyMatchHistoryPlaylistFR(row *domain.MatchHistoryRawRow, playlistNames map[string]string) {
-	if row.PlaylistID == nil {
-		return
-	}
-	if !needsHomeAssetTranslation(derefString(row.PlaylistName), derefString(row.PlaylistNameEN)) {
-		return
-	}
-	if name := strings.TrimSpace(playlistNames[*row.PlaylistID]); name != "" {
-		row.PlaylistName = &name
+	if row.GameVariantID != nil {
+		fillAbsent(&row.GameVariantName, names.variants[strings.TrimSpace(*row.GameVariantID)])
 	}
 }
 
@@ -174,67 +120,16 @@ func collectDistinctIDs(rows []domain.MatchHistoryRawRow, get func(domain.MatchH
 	return out
 }
 
-// loadModeFRBatch charge mode_name_tr (FR) pour la liste de modes EN normalisés.
-// Best-effort : retourne un map vide si erreur ou table absente.
-//
-// Wrapper map[string]struct{} → loadModeNamesFRForKeys, conservé pour préserver
-// la signature historique du caller match_history.
-func loadModeFRBatch(ctx context.Context, pdb *PlayerDB, modeENSet map[string]struct{}) map[string]string {
-	if len(modeENSet) == 0 || pdb == nil || pdb.Metadata == nil {
-		return nil
-	}
-	enList := make([]string, 0, len(modeENSet))
-	for k := range modeENSet {
-		enList = append(enList, k)
-	}
-	return loadModeNamesFRForKeys(ctx, pdb.Metadata, enList)
-}
-
-// loadModeNamesFRForKeys / loadKnownModesEN : DÉPLACÉS dans mode_name_tr.go
-// (2026-07-25) — source unique du SQL sur metadata.mode_name_tr, cf. le
-// garde-rail no_mode_name_tr_literal_test.go. Aucun changement de signature ni
-// de comportement pour les callers de ce fichier.
-
-// loadPairAssetNamesFR charge asset_translations[asset_type='pair', lang='fr'|'fr-FR']
-// pour les pair_id donnés. Helper partagé entre match_history et filters pour
-// le fallback de re-lookup mode_name_tr (cf. analysis.ResolvePairNameFR).
-// Best-effort : une erreur est journalisée et consignée (noteDegraded : un
-// chargement mis en cache qui l'appelle n'est pas caché) ; rend nil, ou ce qui a été lu.
-func loadPairAssetNamesFR(ctx context.Context, meta *DB, pairIDs []string) map[string]string {
+// loadPairAssetNames charge, pour les pair_id donnés, le nom de la paire dans chaque langue
+// (asset_translations, type pair). Helper partagé entre match_history et filters pour le fallback de
+// re-lookup mode_name_tr (cf. analysis.ResolvePairName). Best-effort : une erreur est journalisée et
+// consignée (assetNameTexts : un chargement mis en cache qui l'appelle n'est pas caché) ; rend ce
+// qui a été lu.
+func loadPairAssetNames(ctx context.Context, meta *DB, pairIDs []string) map[string]i18n.Text {
 	if meta == nil || len(pairIDs) == 0 {
 		return nil
 	}
-	ph := strings.TrimRight(strings.Repeat("?,", len(pairIDs)), ",")
-	q := fmt.Sprintf(`SELECT asset_id, name FROM asset_translations
-		WHERE asset_type = 'pair' AND lang IN ('fr-FR', 'fr') AND asset_id IN (%s)
-		ORDER BY asset_id, CASE WHEN lang = 'fr-FR' THEN 0 ELSE 1 END`, ph)
-	args := make([]any, len(pairIDs))
-	for i, id := range pairIDs {
-		args[i] = id
-	}
 	ctx2, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
-	// QueryRecovered : auto-réparation si handle metadata FATAL-invalidated (bug ART).
-	rows, err := meta.QueryRecovered(ctx2, q, args...)
-	if err != nil {
-		if !isTableNotFoundErr(err) {
-			slog.WarnContext(ctx, "fr_translations: loadPairAssetNamesFR failed", "err", err)
-			noteDegraded(ctx, "pair_asset_names_fr")
-		}
-		return nil
-	}
-	defer rows.Close()
-	out := make(map[string]string, len(pairIDs))
-	for rows.Next() {
-		var id, name string
-		if rows.Scan(&id, &name) == nil {
-			if _, exists := out[id]; !exists {
-				out[id] = strings.TrimSpace(name)
-			}
-		}
-	}
-	if err := rows.Err(); err != nil {
-		bestEffortFailed(ctx, "pair_asset_names_fr", err)
-	}
-	return out
+	return assetNameTexts(ctx2, meta, assetTypePair, pairIDs)
 }

@@ -8,6 +8,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
 // FiltersRepo implémente port.FiltersRepository.
@@ -141,25 +142,30 @@ func (r *FiltersRepo) loadSharedFilterRows(ctx context.Context, query string) ([
 	var results []domain.FilterMatchRow
 	for rows.Next() {
 		var m domain.FilterMatchRow
+		var mapEN, mapFR, pairEN, pairFR, playlistFR, playlistEN, variantEN *string
 		if err := rows.Scan(
 			&m.MatchID,
 			&m.StartTime,
-			&m.MapName,
-			&m.MapNameFR,
-			&m.PairName,
-			&m.PairNameFR,
+			&mapEN,
+			&mapFR,
+			&pairEN,
+			&pairFR,
 			&m.PairID,
-			&m.PlaylistName,
+			&playlistFR,
 			&m.IsFirefight,
 			&m.IsRanked,
-			&m.PlaylistNameEN,
+			&playlistEN,
 			&m.MapID,
 			&m.PlaylistID,
 			&m.GameVariantID,
-			&m.GameVariantName,
+			&variantEN,
 		); err != nil {
 			return nil, fmt.Errorf("scan: %w", err)
 		}
+		m.MapName = i18n.FromColumns(derefString(mapEN), derefString(mapFR))
+		m.PairName = i18n.FromColumns(derefString(pairEN), derefString(pairFR))
+		m.PlaylistName = i18n.FromColumns(derefString(playlistEN), derefString(playlistFR))
+		m.GameVariantName = i18n.FromColumns(derefString(variantEN), "")
 		results = append(results, m)
 	}
 	return results, rows.Err()
@@ -258,43 +264,4 @@ func derefString(s *string) string {
 		return ""
 	}
 	return *s
-}
-
-// GetAvailablePlaylists retourne les playlists uniques du joueur.
-func (r *FiltersRepo) GetAvailablePlaylists(ctx context.Context) ([]domain.LabelValue, error) {
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-
-	q := `
-	SELECT DISTINCT
-	    COALESCE(r.playlist_name_fr, r.playlist_name, '') AS label,
-	    COALESCE(r.playlist_name, '')                     AS value
-	FROM match_registry r
-	JOIN match_participants p ON r.match_id = p.match_id
-	WHERE p.xuid = ?` + excludeCampaignClause(r.pdb.TitleSlug, "r") + `
-	  AND r.playlist_name IS NOT NULL
-	  AND r.playlist_name != ''
-	ORDER BY label ASC`
-
-	db, release, err := r.pdb.SharedReadDB().Get(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("GetAvailablePlaylists: %w", err)
-	}
-	defer release()
-
-	rows, err := db.QueryContext(ctx, q, r.pdb.XUID)
-	if err != nil {
-		return nil, fmt.Errorf("GetAvailablePlaylists: %w", err)
-	}
-	defer rows.Close()
-
-	var results []domain.LabelValue
-	for rows.Next() {
-		var lv domain.LabelValue
-		if err := rows.Scan(&lv.Label, &lv.Value); err != nil {
-			return nil, err
-		}
-		results = append(results, lv)
-	}
-	return results, rows.Err()
 }

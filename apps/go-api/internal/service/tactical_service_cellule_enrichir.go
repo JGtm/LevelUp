@@ -24,6 +24,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 )
@@ -90,7 +91,7 @@ func (s *TacticalService) nommerLaCellule(ctx context.Context, req domain.Tactic
 	s.logger.DebugContext(ctx, "tactique: zone nommee (detail de cellule)",
 		"player", s.xuid, "map_id", req.MapID, "col", req.Col, "lig", req.Lig,
 		"regle", retenue.Regle, "distance_m", retenue.DistanceM, "hauteurs", len(zs))
-	return &domain.TacticalZoneNom{NomFR: retenue.Zone.NomFR, NomEN: retenue.Zone.NomEN}
+	return &domain.TacticalZoneNom{Nom: retenue.Zone.Nom.PickOptional(i18n.FromContext(ctx))}
 }
 
 // enrichir rend les contributions publiées, chacune munie de ce que ses sources savent, et le bilan
@@ -204,9 +205,10 @@ func (s *TacticalService) poserArmes(ctx context.Context, mapID string, retenues
 		}
 	}
 	noms := s.nomsDesArmes(ctx, mapID, distinctes)
+	loc := i18n.FromContext(ctx)
 	for i, c := range retenues {
 		if l, ok := noms[cles[i]]; ok && cles[i] != "" {
-			out[i].ArmeLabel, out[i].ArmeLabelEN = l.Label, l.LabelEN
+			out[i].ArmeLabel = l.Name.PickOptional(loc)
 			continue
 		}
 		out[i].CategorieSource = c.categorie

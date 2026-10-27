@@ -216,16 +216,16 @@ func TestNormalizeChallengeLang(t *testing.T) {
 		in   string
 		want string
 	}{
-		{in: "fr", want: langFR},
-		{in: "fr-FR", want: langFR},
-		{in: "FR-fr", want: langFR},
-		{in: "  fr  ", want: langFR},
-		{in: "en", want: langEN},
-		{in: "en-US", want: langEN},
-		{in: "EN-us", want: langEN},
-		{in: "de", want: langFR},    // défaut = FR
-		{in: "", want: langFR},      // défaut = FR
-		{in: "es-ES", want: langFR}, // défaut = FR
+		{in: "fr", want: "fr-FR"},
+		{in: "fr-FR", want: "fr-FR"},
+		{in: "FR-fr", want: "fr-FR"},
+		{in: "  fr  ", want: "fr-FR"},
+		{in: "en", want: "en-US"},
+		{in: "en-US", want: "en-US"},
+		{in: "EN-us", want: "en-US"},
+		{in: "de", want: "fr-FR"},    // défaut = FR
+		{in: "", want: "fr-FR"},      // défaut = FR
+		{in: "es-ES", want: "fr-FR"}, // défaut = FR
 	}
 	for _, tt := range tests {
 		t.Run(tt.in, func(t *testing.T) {
@@ -242,10 +242,10 @@ func TestChallengeLanguageCandidates(t *testing.T) {
 		lang string
 		want []string
 	}{
-		{name: "FR", lang: langFR, want: []string{langFR, "fr"}},
-		{name: "EN", lang: langEN, want: []string{langEN, "en-GB", "en"}},
+		{name: "FR", lang: "fr-FR", want: []string{"fr-FR", "fr"}},
+		{name: "EN", lang: "en-US", want: []string{"en-US", "en-GB", "en"}},
 		{name: "autre avec région", lang: "es-ES", want: []string{"es-ES", "es"}},
-		{name: "autre sans région", lang: "pt", want: []string{"pt", "pt"}},
+		{name: "autre sans région", lang: "pt", want: []string{"pt"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -276,7 +276,7 @@ func TestResolveChallengeLocalizedValue(t *testing.T) {
 		},
 		{
 			name: "translation FR exacte",
-			data: map[string]any{"translations": map[string]any{langFR: "Défi FR", "en-US": "EN challenge"}},
+			data: map[string]any{"translations": map[string]any{"fr-FR": "Défi FR", "en-US": "EN challenge"}},
 			lang: "fr",
 			want: "Défi FR",
 		},
@@ -294,7 +294,7 @@ func TestResolveChallengeLocalizedValue(t *testing.T) {
 		},
 		{
 			name: "translation vide ignorée -> fallback value",
-			data: map[string]any{"translations": map[string]any{langFR: "   "}, "value": "brut"},
+			data: map[string]any{"translations": map[string]any{"fr-FR": "   "}, "value": "brut"},
 			lang: "fr",
 			want: "brut",
 		},

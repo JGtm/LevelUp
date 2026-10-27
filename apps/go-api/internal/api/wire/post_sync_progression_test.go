@@ -15,6 +15,7 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/notifications"
 	"levelup/go-api/internal/platform/duckdb"
@@ -134,18 +135,23 @@ func seedMatches(t *testing.T, env *progressionTestEnv, now time.Time, count int
 	}
 }
 
-// seedMilestoneCatalog charge un catalogue minimal dans metadata.duckdb.
+// seedMilestoneCatalog charge un catalogue minimal dans metadata.duckdb (par le dépôt : ligne de
+// jalon + titres par langue dans asset_translations).
 func seedMilestoneCatalog(t *testing.T, env *progressionTestEnv) {
 	t.Helper()
 	ctx := context.Background()
-	if _, err := env.pdb.Metadata.Exec(ctx, `
-		INSERT INTO milestone_catalog (id, title_slug, metric, threshold, title_en, title_fr)
-		VALUES
-			('h.matches.10',  'halo_infinite', 'matches_played',  10, 'Decimus',   'Decimus'),
-			('h.matches.100', 'halo_infinite', 'matches_played', 100, 'Centurion', 'Centurion'),
-			('h.wins.5',      'halo_infinite', 'wins',             5, 'Winner',    'Vainqueur')
-	`); err != nil {
-		t.Fatalf("seed milestone_catalog: %v", err)
+	repo := duckdb.NewMilestoneCatalogRepo(env.pdb.Metadata)
+	for _, e := range []milestones.CatalogEntry{
+		{ID: "h.matches.10", TitleSlug: "halo_infinite", Metric: "matches_played", Threshold: 10,
+			Title: i18n.Text{i18n.LocaleEN: "Decimus", i18n.LocaleFR: "Decimus"}},
+		{ID: "h.matches.100", TitleSlug: "halo_infinite", Metric: "matches_played", Threshold: 100,
+			Title: i18n.Text{i18n.LocaleEN: "Centurion", i18n.LocaleFR: "Centurion"}},
+		{ID: "h.wins.5", TitleSlug: "halo_infinite", Metric: "wins", Threshold: 5,
+			Title: i18n.Text{i18n.LocaleEN: "Winner", i18n.LocaleFR: "Vainqueur"}},
+	} {
+		if err := repo.Upsert(ctx, e); err != nil {
+			t.Fatalf("seed milestone_catalog %s: %v", e.ID, err)
+		}
 	}
 }
 

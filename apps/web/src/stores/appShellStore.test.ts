@@ -7,6 +7,7 @@
  */
 import { describe, it, expect, beforeEach } from 'vitest'
 import { useAppShellStore, buildTitleSwitcherEntries } from '@/stores/appShellStore'
+import { DEFAULT_LOCALE } from '@/lib/i18n/locale'
 
 const PLAYER = {
   player_slug: 'test-player',
@@ -127,6 +128,19 @@ describe('AppShellStore', () => {
     const newPlayer = { ...PLAYER, player_slug: 'other-player', gamertag: 'OtherPlayer' }
     useAppShellStore.getState().setCurrentPlayer(newPlayer)
     expect(useAppShellStore.getState().currentPlayer?.player_slug).toBe('other-player')
+  })
+
+  it('hydrate depuis bootstrap — une locale inconnue donne DEFAULT_LOCALE', () => {
+    for (const unknown of ['zz', 'zz-ZZ', '', 'klingon']) {
+      useAppShellStore.setState({ locale: 'en' })
+      useAppShellStore.getState().hydrateFromBootstrap({ ...BOOTSTRAP_READY, locale: unknown })
+      expect(useAppShellStore.getState().locale, unknown).toBe(DEFAULT_LOCALE)
+    }
+  })
+
+  it('hydrate depuis bootstrap — une étiquette régionale se ramène sur sa langue', () => {
+    useAppShellStore.getState().hydrateFromBootstrap({ ...BOOTSTRAP_READY, locale: 'en-GB' })
+    expect(useAppShellStore.getState().locale).toBe('en')
   })
 
   it('setLocale change la locale', () => {

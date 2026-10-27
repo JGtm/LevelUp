@@ -64,12 +64,6 @@ export interface SquadEngagementSeriesLabels {
   observed: string
 }
 
-const DEFAULT_SQUAD_LABELS: SquadEngagementSeriesLabels = {
-  lobby: 'Partie',
-  expected: 'Escouade attendue',
-  observed: 'Escouade réelle',
-}
-
 export interface SquadEngagementViewProps {
   /** Donnees de la session ou periode. */
   session: SquadEngagementSession
@@ -77,8 +71,10 @@ export interface SquadEngagementViewProps {
   state?: 'loading' | 'error' | 'empty' | 'ready'
   /** Hauteur du chart. Default 280. */
   height?: number
-  /** Libellés localisés des 3 courbes (défaut FR). Fournis par le parent. */
-  seriesLabels?: SquadEngagementSeriesLabels
+  /** Titre de la carte, localisé par le parent. */
+  title: string
+  /** Libellés localisés des 3 courbes, fournis par le parent. */
+  seriesLabels: SquadEngagementSeriesLabels
 }
 
 /**
@@ -86,7 +82,7 @@ export interface SquadEngagementViewProps {
  *   3 courbes team-level + boutons squad pour overlay 1 joueur a la fois.
  */
 export function SquadEngagementView(props: SquadEngagementViewProps) {
-  const { session, state = 'ready', height = 280, seriesLabels = DEFAULT_SQUAD_LABELS } = props
+  const { session, state = 'ready', height = 280, seriesLabels, title } = props
   const [selectedXUID, setSelectedXUID] = useState<string | null>(null)
 
   const overlayPlayer = useMemo(
@@ -107,7 +103,7 @@ export function SquadEngagementView(props: SquadEngagementViewProps) {
 
   return (
     <ChartCard
-      title="Engagement"
+      title={title}
       series={dummySeries}
       loading={state === 'loading'}
       error={state === 'error' ? new Error('error') : undefined}
@@ -165,7 +161,7 @@ function truncateMapName(s: string, max = 14): string {
 function buildSquadEngagementOption(
   session: SquadEngagementSession,
   overlay: SquadPlayerEngagement | null,
-  labels: SquadEngagementSeriesLabels = DEFAULT_SQUAD_LABELS,
+  labels: SquadEngagementSeriesLabels,
 ): EChartsCoreOption {
   if (session.labels.length === 0) {
     return {} as EChartsCoreOption

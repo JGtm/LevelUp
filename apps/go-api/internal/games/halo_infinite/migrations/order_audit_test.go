@@ -14,6 +14,7 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/migration"
 )
 
@@ -121,15 +122,16 @@ func TestTitleStepsRunEndToEnd_Metadata(t *testing.T) {
 	// Médaille custom Vengeur (9000000001) seedée pour Infinite (native H5) —
 	// step seed_custom_vengeur_medal. Sans elle, elle n'apparaît pas dans le
 	// catalogue médailles du tab Asset Drawer d'Infinite.
-	var nameFR, nameEN string
 	var isCustom bool
 	if err := db.QueryRow(
-		`SELECT name_fr, name_en, is_custom FROM medal_definitions WHERE medal_name_id = 9000000001`,
-	).Scan(&nameFR, &nameEN, &isCustom); err != nil {
+		`SELECT is_custom FROM medal_definitions WHERE medal_name_id = 9000000001`,
+	).Scan(&isCustom); err != nil {
 		t.Fatalf("Vengeur medal absent de medal_definitions: %v", err)
 	}
-	if nameFR != "Vengeur" || nameEN != "Avenger" || !isCustom {
-		t.Errorf("Vengeur medal = {fr:%q en:%q custom:%v}, want {Vengeur Avenger true}", nameFR, nameEN, isCustom)
+	names, _ := medalTextsByLanguage(t, db, 9000000001)
+	if names[i18n.LocaleFR] != "Vengeur" || names[i18n.LocaleEN] != "Avenger" || !isCustom {
+		t.Errorf("Vengeur medal = {fr:%q en:%q custom:%v}, want {Vengeur Avenger true}",
+			names[i18n.LocaleFR], names[i18n.LocaleEN], isCustom)
 	}
 }
 
@@ -331,10 +333,13 @@ func TestTitleStepsRunEndToEnd_SharedSocial(t *testing.T) {
 // "active camo") — est corrigée par fix_meganaut_fr_description de façon
 // idempotente (même garde que fix_super_fiesta_fr_label : seule l'ANCIENNE
 // valeur fautive déclenche la réécriture, donc une ré-application n'écrase
-// jamais une correction manuelle ultérieure). medal_definitions n'est jamais
-// re-seedée en code pour les médailles réelles (seul le custom Vengeur l'est,
-// cf. TestTitleStepsRunEndToEnd_Metadata) : la ligne Méganaute est insérée ici
-// pour simuler l'état prod (donnée Waypoint) tel qu'il existait avant ce fix.
+// jamais une correction manuelle ultérieure).
+//
+// Le step est HISTORIQUE : il précède metadata_definition_texts_to_translations_v1 dans
+// l'ordre canonique et lit les colonnes appariées `description_fr`, que ce dernier retire. Il
+// est donc rejoué ici sur une base à colonnes appariées (forme d'avant la migration finale),
+// telle qu'une base qui n'a pas encore passé le step la porte ; après la chaîne complète, le
+// texte corrigé est dans medal_translations (cf. TestMedalDefinitions_SansColonnesDeTexteApresLaChaine).
 func TestFixMeganautFrDescription(t *testing.T) {
 	db, err := sql.Open("duckdb", ":memory:")
 	if err != nil {
@@ -342,12 +347,28 @@ func TestFixMeganautFrDescription(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = db.Close() })
 
-	migration.SetTitleStepsProvider(StepsFor)
-	if err := migration.RunForDB(db, migration.TargetMetadata); err != nil {
-		t.Fatalf("RunForDB(Metadata): %v", err)
-	}
-
 	const badFR = "Tuez un ennemi possédant un surshield et une active camo."
+	for _, q := range []string{
+		`CREATE TABLE medal_definitions (
+			medal_name_id  BIGINT,
+			name_fr        VARCHAR,
+			name_en        VARCHAR,
+			description_fr VARCHAR,
+			description_en VARCHAR,
+			is_custom      BOOLEAN
+		)`,
+		`CREATE TABLE medal_translations (
+			medal_name_id BIGINT NOT NULL,
+			lang          VARCHAR NOT NULL,
+			name          VARCHAR,
+			description   VARCHAR,
+			PRIMARY KEY (medal_name_id, lang)
+		)`,
+	} {
+		if _, err := db.Exec(q); err != nil {
+			t.Fatalf("setup %q: %v", q, err)
+		}
+	}
 	if _, err := db.Exec(`
 		INSERT INTO medal_definitions (medal_name_id, name_fr, name_en, description_fr, description_en, is_custom)
 		VALUES (2005352812, 'Méganaute', 'Meganaut', ?, 'Kill an enemy with both overshield and active camo.', FALSE)`,
@@ -363,9 +384,6 @@ func TestFixMeganautFrDescription(t *testing.T) {
 		t.Fatalf("seed bad medal_translations row: %v", err)
 	}
 
-	// Le step est déjà marqué schema_done par le RunForDB ci-dessus (no-op :
-	// la ligne n'existait pas encore) — on rejoue directement SA fonction
-	// ApplySchema pour tester la SQL, indépendamment du tracking schema_migrations.
 	steps := StepsFor(migration.TargetMetadata)
 	idx := -1
 	for i, m := range steps {
@@ -408,5 +426,31 @@ func TestFixMeganautFrDescription(t *testing.T) {
 	}
 	if gotDefFR2 != wantFR {
 		t.Errorf("medal_definitions.description_fr après 2e passage = %q, want %q (non-idempotent)", gotDefFR2, wantFR)
+	}
+}
+
+// TestMedalDefinitions_SansColonnesDeTexteApresLaChaine : sur une base fraîche migrée jusqu'au bout,
+// medal_definitions ne porte plus de colonne de texte ; le nom et la description d'une médaille
+// vivent dans medal_translations.
+func TestMedalDefinitions_SansColonnesDeTexteApresLaChaine(t *testing.T) {
+	db, err := sql.Open("duckdb", ":memory:")
+	if err != nil {
+		t.Fatalf("open duckdb: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	migration.SetTitleStepsProvider(StepsFor)
+	if err := migration.RunForDB(db, migration.TargetMetadata); err != nil {
+		t.Fatalf("RunForDB(Metadata): %v", err)
+	}
+	for _, col := range []string{"name_fr", "name_en", "description_fr", "description_en"} {
+		var n int
+		if err := db.QueryRow(
+			`SELECT COUNT(*) FROM information_schema.columns WHERE table_name = 'medal_definitions' AND column_name = ?`, col,
+		).Scan(&n); err != nil {
+			t.Fatalf("colonne %s: %v", col, err)
+		}
+		if n != 0 {
+			t.Errorf("medal_definitions.%s existe encore après la chaîne complète", col)
+		}
 	}
 }

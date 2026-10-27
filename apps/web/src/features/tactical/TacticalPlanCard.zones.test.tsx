@@ -13,6 +13,7 @@ import type { TacticalRaster } from '@/lib/api/types'
 import { renderWithProviders } from '@/test/render-utils'
 
 import { getTacticalText } from './i18n'
+import { calloutLabel } from '@/lib/replay/calloutsPaint'
 import { peindreLePlan } from './planPaint'
 import { TacticalPlanCard, type ReglagesDuPlan } from './TacticalPlanCard'
 
@@ -113,7 +114,7 @@ describe('TacticalPlanCard — les zones nommées de la lecture', () => {
     const [ctx, , largeur, peinture] = vi.mocked(peindreLePlan).mock.calls.at(-1) ?? []
     expect(ctx).toBe(contexteFactice)
     expect(largeur).toBe(200)
-    expect(peinture?.zones.map((z) => z.fr)).toEqual(['Base', 'Pont'])
+    expect(peinture?.zones.map((z) => calloutLabel(z, 'fr'))).toEqual(['Base', 'Pont'])
     expect(peinture?.zones[0]?.polygon).toHaveLength(4)
     expect(peinture?.locale).toBe('fr')
     expect(peinture?.encre).toBe(getComputedStyle(canvas).color)

@@ -439,9 +439,8 @@ type SessionLabelsList struct {
 // filtre a écarté le match sans pouvoir nommer un fautif ; le web affiche alors le
 // repli « coéquipier inconnu ». Revue adversariale vague 1, 2026-09-09.
 //
-// Nommage CompositionExcludedMatch (et non ExcludedMatch) pour éviter la
-// collision avec domain.ExcludedMatch (match_exclusion.go), qui couvre un
-// concept sans rapport : l'exclusion MANUELLE d'un match par l'utilisateur.
+// Nommage CompositionExcludedMatch : à ne pas confondre avec l'exclusion MANUELLE
+// d'un match par l'utilisateur (match_exclusion.go), concept sans rapport.
 type CompositionExcludedMatch struct {
 	MatchID        string    `json:"match_id"`
 	StartTime      time.Time `json:"start_time"`

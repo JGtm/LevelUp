@@ -44,6 +44,7 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
@@ -124,11 +125,13 @@ func (s *TacticalService) MapsPlayed(ctx context.Context, scope domain.TacticalS
 	}
 	// UNE CARTE PAR GROUPE : base et variantes sont sommees AVANT le plancher (tactical_service_groupes.go).
 	rows = fusionnerLesCartes(rows, s.groupes(ctx))
+	loc := i18n.FromContext(ctx)
 	page.Cartes = make([]domain.TacticalMapCard, 0, len(rows))
 	for _, r := range rows {
 		page.Cartes = append(page.Cartes, domain.TacticalMapCard{
-			MapID: r.MapID, MapName: r.MapName, MapNameFR: r.MapNameFR,
-			Matchs: r.Matchs, Victoires: r.Victoires, Defaites: r.Defaites,
+			MapID: r.MapID, MapName: r.MapName.Pick(loc), MapLabel: r.MapName.PickOptional(loc),
+			MapFilterKey: r.MapName.PickOptional(i18n.Default),
+			Matchs:       r.Matchs, Victoires: r.Victoires, Defaites: r.Defaites,
 			SousPlancher: r.Matchs < domain.PlancherMatchsParCarte,
 		})
 	}

@@ -38,6 +38,7 @@ import (
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/games/mappings"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
@@ -287,14 +288,14 @@ func (s *TimeseriesService) GetPage(
 	stop = timing.FromContext(ctx).Section("tabs")
 	resp := domain.TimeseriesPageResponse{
 		TotalMatches: len(matches),
-		MatchRows:    buildMatchRows(matches, provideSpree, assistsExpected, careerXPEras),
+		MatchRows:    buildMatchRows(i18n.FromContext(ctx), matches, provideSpree, assistsExpected, careerXPEras),
 		SummaryTab:   domain.TimeseriesSummaryTab{},
 		CumulTab:     buildCumulTab(matches),
 
 		IntensityTab:     buildIntensityTab(matches),
 		DistributionsTab: buildDistributionsTab(ctx, matches, provideSpree),
 		OutcomesOverTime: buildOutcomesOverTime(matches),
-		MapBreakdown:     buildSoloMapBreakdown(matches, historicalSolo, mapgroups.Load(ctx, s.mapGroups)),
+		MapBreakdown:     buildSoloMapBreakdown(matches, historicalSolo, mapgroups.Load(ctx, s.mapGroups), i18n.FromContext(ctx)),
 		SoloSessionPerf:  buildSoloSessionPerf(historicalSolo),
 		TopWeapons:       []domain.TimeseriesWeaponKill{},
 		KillTypes:        buildTimeseriesKillTypes(matches),
@@ -334,7 +335,7 @@ func (s *TimeseriesService) GetPage(
 				slog.WarnContext(ctx, "timeseries: top weapons load failed", "err", err)
 			} else {
 				weaponRows = rows
-				resp.TopWeapons = buildTopWeapons(rows, 10)
+				resp.TopWeapons = buildTopWeapons(i18n.FromContext(ctx), rows, 10)
 			}
 		}
 	}
@@ -361,14 +362,16 @@ func (s *TimeseriesService) GetPage(
 	if len(highlightEvents) > 0 {
 		timelines := timeline.BuildTimelinesFromPlayerMatches(canonicalRows)
 		corrected := timeline.CorrectEvents(highlightEvents, timelines)
+		loc := i18n.FromContext(ctx)
 		resp.FirstBlood = buildSoloFirstBlood(
 			s.gamertag,
 			narrative.ComputeFirstEventsPerMatch(corrected, s.playerXUID, matchIDs),
 			matches,
+			loc,
 		)
-		durations := timeline.GameplayDurationsMS(timelines)
-		resp.IntensityRows = buildIntensityRows(corrected, matches, s.playerXUID, durations)
-		attachIntensityOverlays(&resp, corrected, matches, durations, equipes)
+		scope := intensityScope{events: corrected, matches: matches, durationsMS: timeline.GameplayDurationsMS(timelines), loc: loc}
+		resp.IntensityRows = buildIntensityRows(scope, s.playerXUID)
+		attachIntensityOverlays(&resp, scope, equipes)
 	}
 	stop()
 
@@ -424,7 +427,7 @@ func (s *TimeseriesService) buildTimeseriesFragDistribution(
 		ShoulderBash:  kt.ShoulderBashKills,
 		Total:         kt.TotalKills,
 	}
-	fd := fragdist.Build(weaponRows, counts, titleHasNativeKillMechanics(s.titleSlug))
+	fd := fragdist.Build(i18n.FromContext(ctx), weaponRows, counts, titleHasNativeKillMechanics(s.titleSlug))
 	logFragDistribution(ctx, "timeseries", s.titleSlug, s.gamertag, fd)
 	return &fd
 }

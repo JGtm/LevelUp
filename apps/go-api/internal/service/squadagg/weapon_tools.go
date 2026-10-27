@@ -27,6 +27,7 @@ import (
 	"strconv"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
@@ -43,6 +44,9 @@ type WeaponToolInputs struct {
 	// Sheet : compteurs de la feuille de match par gamertag (total, mêlée, mécaniques).
 	Sheet        map[string]domain.FragKillTypeCounts
 	HasMechanics bool
+	// Locale : la langue de la requête, dans laquelle le nom d arme de chaque ligne est résolu
+	// (repli en). Vide = langue par défaut.
+	Locale i18n.Locale
 }
 
 // toolAcc accumule une ligne pendant la construction.
@@ -80,6 +84,9 @@ func weaponLineID(r port.WeaponKillRow) string {
 func BuildWeaponTools(in WeaponToolInputs) *domain.SquadWeaponTools {
 	if len(in.PlayersOrdered) == 0 {
 		return nil
+	}
+	if in.Locale == "" {
+		in.Locale = i18n.Default
 	}
 	lines := toolLines{}
 	claimed := addCategoryLines(lines, in)
@@ -140,7 +147,7 @@ func addWeaponLines(lines toolLines, in WeaponToolInputs, claimed map[string]int
 			continue
 		}
 		gt, ok := in.GtByXUID[r.XUID]
-		if !ok || r.Label == "" {
+		if !ok || r.Label.Empty() {
 			continue
 		}
 		if r.Class == domain.FragClassGrenade {
@@ -158,7 +165,7 @@ func addWeaponLines(lines toolLines, in WeaponToolInputs, claimed map[string]int
 		}
 		lines.add(weaponLineID(r), domain.SquadWeaponToolLine{
 			Kind: domain.SquadToolKindWeapon, WeaponKey: r.WeaponKey,
-			Label: r.Label, LabelEN: r.LabelEN, Class: r.Class,
+			Label: r.Label.Pick(in.Locale), Class: r.Class,
 		}, gt, kills)
 	}
 	return filmGrenades

@@ -31,7 +31,7 @@ func seedGameVariantNames(t *testing.T, meta *DB) {
 }
 
 func h5ModeRow(variantID string) canonical.PlayerMatchRow {
-	variant := AssetReference("game_variant", variantID, "", "")
+	variant := AssetReference("game_variant", variantID, nil)
 	return canonical.PlayerMatchRow{Summary: canonical.MatchSummary{
 		MatchID:     "m-" + variantID,
 		GameVariant: variant,
@@ -99,7 +99,7 @@ func TestEnrichCanonicalAssetTranslations_PairModeIgnoresGameVariantDictionary(t
 	repo := NewHomeRepo(&PlayerDB{Metadata: meta})
 	rows := []canonical.PlayerMatchRow{{Summary: canonical.MatchSummary{
 		MatchID:  "m-pair",
-		PairMode: AssetReference("pair_mode", "gv-slayer", "", ""),
+		PairMode: AssetReference("pair_mode", "gv-slayer", nil),
 	}}}
 
 	if err := repo.EnrichCanonicalAssetTranslations(context.Background(), rows); err != nil {

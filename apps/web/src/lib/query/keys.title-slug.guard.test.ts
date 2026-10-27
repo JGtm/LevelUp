@@ -33,25 +33,25 @@ const U = '__USER__'
  */
 const titleScopedInvocations: Record<string, () => readonly unknown[]> = {
   // Filtres (déjà title-scopés avant V72-29 — verrouillés ici).
-  filtersResolve: () => queryKeys.filtersResolve(P, T, 'h', 'squad'),
-  filtersPreview: () => queryKeys.filtersPreview(P, T, 'h'),
+  filtersResolve: () => queryKeys.filtersResolve(P, T, 'h', 'squad', 'fr'),
+  filtersPreview: () => queryKeys.filtersPreview(P, T, 'h', 'fr'),
   // `player` retiré le 2026-07-25 : fabrique sans AUCUN call-site (enrichie du
   // titre « par cohérence » en V72-29, jamais consommée) — code mort supprimé,
   // règle CLAUDE.md n°7. Le volet COMPLÉTUDE ci-dessous (symétrie `stale`) fait
   // échouer ce test si un nom classé disparaît de queryKeys sans être retiré ici.
   // Carrière.
-  career: () => queryKeys.career(P, T),
+  career: () => queryKeys.career(P, T, 'fr'),
   careerEncounters: () => queryKeys.careerEncounters(P, T),
   careerHighlightMatches: () => queryKeys.careerHighlightMatches(P, T),
   careerTopEncounters: () => queryKeys.careerTopEncounters(P, T),
   careerRivals: () => queryKeys.careerRivals(P, T),
-  careerCSRs: () => queryKeys.careerCSRs(P, T),
-  achievements: () => queryKeys.achievements(P, T),
+  careerCSRs: () => queryKeys.careerCSRs(P, T, 'fr'),
+  achievements: () => queryKeys.achievements(P, T, 'fr'),
   // Matchs / explorer.
   matchHistory: () => queryKeys.matchHistory(P, T, 'h', 1),
   explorer: () => queryKeys.explorer(P, T, 'h'),
-  explorerPlayer: () => queryKeys.explorerPlayer(P, T, 'gt', 'x', 1),
-  matchView: () => queryKeys.matchView(P, T, 'm'),
+  explorerPlayer: () => queryKeys.explorerPlayer(P, T, 'gt', 'x', 1, 'fr'),
+  matchView: () => queryKeys.matchView(P, T, 'm', 'fr'),
   matchNeighbors: () => queryKeys.matchNeighbors(P, T, 'm'),
   // Calques décodés du film : un match_id ne vaut que dans son titre, et les trois
   // artefacts (timeline objectif, positions, rejeu 2D) sont produits par titre.
@@ -75,7 +75,7 @@ const titleScopedInvocations: Record<string, () => readonly unknown[]> = {
   palmaresRelations: () => queryKeys.palmaresRelations(P, T),
   // Onglet Tactique : une carte n'existe que dans son titre, et la grille compte les
   // matchs du titre courant.
-  tacticalMaps: () => queryKeys.tacticalMaps(P, T, 'h'),
+  tacticalMaps: () => queryKeys.tacticalMaps(P, T, 'h', 'fr'),
   tacticalMatchIDs: () => queryKeys.tacticalMatchIDs(P, T, 'h'),
   // Le fond d'une carte est title-scopé par le 1er argument (comme `assetMaps` ou
   // `presence`) : c'est une donnée de référence du titre, la même pour tous les joueurs.
@@ -83,64 +83,66 @@ const titleScopedInvocations: Record<string, () => readonly unknown[]> = {
   tacticalMapBackgroundFrame: () => queryKeys.tacticalMapBackgroundFrame(T, 'map-1'),
   // Le raster de placement (vue d'analyse, phase 5) compte les matchs du titre courant,
   // même raison que `tacticalMaps`.
-  tacticalRaster: () => queryKeys.tacticalRaster(P, T, 'map-1', 'h'),
+  tacticalRaster: () => queryKeys.tacticalRaster(P, T, 'map-1', 'h', 'fr'),
   // Le détail d'une cellule (lien « voir dans le rejeu », lot M1) : même raison que
   // `tacticalRaster`.
-  tacticalCellule: () => queryKeys.tacticalCellule(P, T, 'map-1', 'h'),
+  tacticalCellule: () => queryKeys.tacticalCellule(P, T, 'map-1', 'h', 'fr'),
   tacticalSequence: () => queryKeys.tacticalSequence(P, T, 'map-1', 'h'),
   // Escouade / synthèse / sessions / compare.
   teammates: () => queryKeys.teammates(P, T, 'h', []),
   compositionSessions: () => queryKeys.compositionSessions(P, T, [], true),
-  teammatesTop: () => queryKeys.teammatesTop(P, T),
-  synthesis: () => queryKeys.synthesis(P, T, 'h'),
+  teammatesTop: () => queryKeys.teammatesTop(P, T, 'fr'),
+  synthesis: () => queryKeys.synthesis(P, T, 'h', 'fr'),
   sessionDetail: () => queryKeys.sessionDetail(P, T, 'h', 's', 'c', false, 'fr'),
-  comparePlayer: () => queryKeys.comparePlayer(P, T, 'gt'),
+  comparePlayer: () => queryKeys.comparePlayer(P, T, 'gt', 'fr'),
   // Médias (feuilles ; mediaBase est un préfixe large -> agnostique).
-  media: () => queryKeys.media(P, T, 'h'),
-  mediaRail: () => queryKeys.mediaRail(P, T, 5),
+  media: () => queryKeys.media(P, T, 'h', 'fr'),
+  mediaRail: () => queryKeys.mediaRail(P, T, 5, 'fr'),
   mediaAuthors: () => queryKeys.mediaAuthors(P, T),
   mediaAudioConfig: () => queryKeys.mediaAudioConfig(P, T),
-  mediaMatchCandidates: () => queryKeys.mediaMatchCandidates(P, T, null, 5),
+  mediaMatchCandidates: () => queryKeys.mediaMatchCandidates(P, T, null, 5, 'fr'),
   // Citations / médailles / commendations / timeseries.
   citations: () => queryKeys.citations(P, T, 'h', 'fr'),
   medals: () => queryKeys.medals(P, T, 'fr'),
   commendationTotals: () => queryKeys.commendationTotals(P, T, 'fr'),
-  timeseries: () => queryKeys.timeseries(P, T, 'h'),
+  timeseries: () => queryKeys.timeseries(P, T, 'h', 'fr'),
   trends: () => queryKeys.trends(P, T, 'solo', 'ranked_slayer', 'fr', '', false),
   // Classement.
   leaderboard: () => queryKeys.leaderboard(P, T),
   leaderboardCatalog: () => queryKeys.leaderboardCatalog(P, T, 'fr'),
   // Notifications (feuilles ; notificationsAll est un préfixe large -> agnostique).
-  notifications: () => queryKeys.notifications(P, T, {}),
+  notifications: () => queryKeys.notifications(P, T, 'fr', {}),
   notificationsUnreadCount: () => queryKeys.notificationsUnreadCount(P, T),
   notificationsPreferences: () => queryKeys.notificationsPreferences(P, T),
   // Capabilities data-level du titre (title-scopé par le 1er argument).
   titleDataCapabilities: () => queryKeys.titleDataCapabilities(T),
   // Asset drawer (title-scopé par le 1er argument).
-  assetMaps: () => queryKeys.assetMaps(T, 'q'),
-  assetWeapons: () => queryKeys.assetWeapons(T, 'q'),
-  assetMedals: () => queryKeys.assetMedals(T, 'q'),
+  assetMaps: () => queryKeys.assetMaps(T, 'q', 'fr'),
+  assetWeapons: () => queryKeys.assetWeapons(T, 'q', 'fr'),
+  assetMedals: () => queryKeys.assetMedals(T, 'q', 'fr'),
   // Progression (Ascension).
   progressionStreaks: () => queryKeys.progressionStreaks(P, T),
   progressionRecords: () => queryKeys.progressionRecords(P, T),
-  progressionMilestones: () => queryKeys.progressionMilestones(P, T),
-  progressionProfile: () => queryKeys.progressionProfile(P, T),
-  progressionPatterns: () => queryKeys.progressionPatterns(P, T),
+  progressionMilestones: () => queryKeys.progressionMilestones(P, T, 'fr'),
+  progressionProfile: () => queryKeys.progressionProfile(P, T, 'fr'),
+  progressionPatterns: () => queryKeys.progressionPatterns(P, T, 'fr'),
   progressionActivity: () => queryKeys.progressionActivity(P, T),
   // Coach.
-  coachProposals: () => queryKeys.coachProposals(P, T),
+  coachProposals: () => queryKeys.coachProposals(P, T, 'fr'),
   // Présence en jeu du shell : pas par joueur, mais bien par titre (la réponse
   // ne liste que les joueurs du titre courant).
   presence: () => queryKeys.presence(T),
   // Namespaces imbriqués title-scopés.
   'prestige.me': () => queryKeys.prestige.me(U, T),
-  'prestige.templates': () => queryKeys.prestige.templates(U, T),
+  'prestige.templates': () => queryKeys.prestige.templates(U, T, 'fr'),
   'prestige.pilotMode': () => queryKeys.prestige.pilotMode(U, T),
-  'arc.list': () => queryKeys.arc.list(U, T),
-  'arc.presets': () => queryKeys.arc.presets(U, T),
-  'challenge.list': () => queryKeys.challenge.list(U, T),
-  'challenge.history': () => queryKeys.challenge.history(U, T),
-  'playerProfile.profile': () => queryKeys.playerProfile.profile(P, T, 30),
+  'arc.list': () => queryKeys.arc.list(U, T, 'fr'),
+  'arc.listAll': () => queryKeys.arc.listAll(U, T),
+  'arc.presets': () => queryKeys.arc.presets(U, T, 'fr'),
+  'challenge.list': () => queryKeys.challenge.list(U, T, 'fr'),
+  'challenge.listAll': () => queryKeys.challenge.listAll(U, T),
+  'challenge.history': () => queryKeys.challenge.history(U, T, 'fr'),
+  'playerProfile.profile': () => queryKeys.playerProfile.profile(P, T, 'fr', 30),
   'playerProfile.activeCampaign': () => queryKeys.playerProfile.activeCampaign(P, T),
   'playerProfile.campaign': () => queryKeys.playerProfile.campaign(P, T, 'id'),
   'playerProfile.campaignHistory': () => queryKeys.playerProfile.campaignHistory(P, T),
@@ -231,6 +233,7 @@ const agnosticKeys = new Set<string>([
   'challenge.one', // identifiant global de défi
   'squad.mine', // squads d'un utilisateur (identité, cross-titre)
   'squad.challenges', // clé par squadId (identité)
+  'squad.challengesAll', // préfixe large (squadId)
   'squad.orientation', // clé par squadId (identité)
   'playerProfile.campaignAll', // préfixe large (playerSlug)
   'watcher.status',

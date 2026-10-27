@@ -9,6 +9,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/patterns"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
 var reglesDeTest = analysis.MapGroupRules{Suffixes: []string{"- Ranked", "Heavies"}}
@@ -95,27 +96,27 @@ func TestRattacherCartesDeBase_Filtres(t *testing.T) {
 	})
 	s := func(v string) *string { return &v }
 	rows := []domain.FilterMatchRow{
-		{MatchID: "m1", MapID: s("var-heavies"), MapName: s("Thunderhead Heavies"), MapNameFR: s("Du lourd sur Thunderhead")},
-		{MatchID: "m2", MapID: s("base-thunder"), MapName: s("Thunderhead"), MapNameFR: s("Tonnerre")},
-		{MatchID: "m3", MapID: nil, MapName: s("Thunderhead Heavies"), MapNameFR: s("Thunderhead Heavies")},
+		{MatchID: "m1", MapID: s("var-heavies"), MapName: i18n.FromColumns("Thunderhead Heavies", "Du lourd sur Thunderhead")},
+		{MatchID: "m2", MapID: s("base-thunder"), MapName: i18n.FromColumns("Thunderhead", "Tonnerre")},
+		{MatchID: "m3", MapID: nil, MapName: i18n.FromColumns("Thunderhead Heavies", "Thunderhead Heavies")},
 		// Ligne dont le nom est absent mais dont l'identifiant est une variante : rattachée par l'identifiant.
-		{MatchID: "m4", MapID: s("var-heavies"), MapName: nil, MapNameFR: nil},
-		{MatchID: "m5", MapID: s("var-ranked"), MapName: s("Live Fire - Ranked"), MapNameFR: s("Live Fire - Ranked")},
+		{MatchID: "m4", MapID: s("var-heavies"), MapName: nil},
+		{MatchID: "m5", MapID: s("var-ranked"), MapName: i18n.FromColumns("Live Fire - Ranked", "Live Fire - Ranked")},
 	}
 	rattacherCartesDeBase(context.Background(), pdb, reglesDeTest, rows)
 
 	for _, i := range []int{0, 3} {
-		if *rows[i].MapName != "Thunderhead" || *rows[i].MapNameFR != "Tonnerre" || *rows[i].MapID != "var-heavies" {
+		if rows[i].MapName[i18n.LocaleEN] != "Thunderhead" || rows[i].MapName[i18n.LocaleFR] != "Tonnerre" || *rows[i].MapID != "var-heavies" {
 			t.Errorf("ligne %d : la variante doit prendre le nom de la base et garder son identifiant : %+v", i, rows[i])
 		}
 	}
-	if *rows[1].MapNameFR != "Tonnerre" {
+	if rows[1].MapName[i18n.LocaleFR] != "Tonnerre" {
 		t.Errorf("la carte de base ne bouge pas : %+v", rows[1])
 	}
-	if *rows[2].MapName != "Thunderhead Heavies" {
+	if rows[2].MapName[i18n.LocaleEN] != "Thunderhead Heavies" {
 		t.Errorf("sans identifiant de carte, la ligne reste telle quelle : %+v", rows[2])
 	}
-	if *rows[4].MapName != "Live Fire - Ranked" {
+	if rows[4].MapName[i18n.LocaleEN] != "Live Fire - Ranked" {
 		t.Errorf("une variante sans base au registre reste seule : %+v", rows[4])
 	}
 }
@@ -129,23 +130,23 @@ func TestRattacherCartesDeBaseHistorique(t *testing.T) {
 	})
 	s := func(v string) *string { return &v }
 	rows := []domain.MatchHistoryRawRow{
-		{MatchID: "m1", MapID: s("var-heavies"), MapName: s("Thunderhead Heavies"), MapNameFR: s("Du lourd sur Thunderhead")},
-		{MatchID: "m2", MapID: s("base-thunder"), MapName: s("Thunderhead"), MapNameFR: s("Tonnerre")},
-		{MatchID: "m3", MapID: s("seule"), MapName: s("The Pit"), MapNameFR: s("La Fosse")},
+		{MatchID: "m1", MapID: s("var-heavies"), MapName: i18n.FromColumns("Thunderhead Heavies", "Du lourd sur Thunderhead")},
+		{MatchID: "m2", MapID: s("base-thunder"), MapName: i18n.FromColumns("Thunderhead", "Tonnerre")},
+		{MatchID: "m3", MapID: s("seule"), MapName: i18n.FromColumns("The Pit", "La Fosse")},
 	}
 	rattacherCartesDeBaseHistorique(context.Background(), pdb, reglesDeTest, rows)
 
-	if rows[0].MapFilterLabel == nil || *rows[0].MapFilterLabel != "Tonnerre" {
-		t.Errorf("libellé de filtre de la variante : %v, attendu Tonnerre", rows[0].MapFilterLabel)
+	if rows[0].MapFilterNames[i18n.LocaleFR] != "Tonnerre" {
+		t.Errorf("noms de filtre de la variante : %v, attendu Tonnerre", rows[0].MapFilterNames)
 	}
-	if *rows[0].MapNameFR != "Du lourd sur Thunderhead" {
-		t.Errorf("le nom affiché ne doit pas changer : %q", *rows[0].MapNameFR)
+	if rows[0].MapName[i18n.LocaleFR] != "Du lourd sur Thunderhead" {
+		t.Errorf("le nom affiché ne doit pas changer : %q", rows[0].MapName[i18n.LocaleFR])
 	}
-	if rows[1].MapFilterLabel == nil || *rows[1].MapFilterLabel != "Tonnerre" {
-		t.Errorf("la base porte le même libellé de filtre que ses variantes : %v", rows[1].MapFilterLabel)
+	if rows[1].MapFilterNames[i18n.LocaleFR] != "Tonnerre" {
+		t.Errorf("la base porte les mêmes noms de filtre que ses variantes : %v", rows[1].MapFilterNames)
 	}
-	if rows[2].MapFilterLabel != nil {
-		t.Errorf("une carte hors groupe n'a pas de libellé de filtre propre : %q", *rows[2].MapFilterLabel)
+	if rows[2].MapFilterNames != nil {
+		t.Errorf("une carte hors groupe n'a pas de noms de filtre propres : %v", rows[2].MapFilterNames)
 	}
 }
 
@@ -166,15 +167,15 @@ func TestRattacherCartesDeBase_LibelleDeRepli(t *testing.T) {
 	}
 	s := func(v string) *string { return &v }
 	rows := []domain.FilterMatchRow{
-		{MatchID: "m1", MapID: s("live-rk"), MapName: s("Live Fire - Ranked")},
-		{MatchID: "m2", MapID: s("pit-rk"), MapName: s("The Pit - Ranked")},
+		{MatchID: "m1", MapID: s("live-rk"), MapName: i18n.FromColumns("Live Fire - Ranked", "")},
+		{MatchID: "m2", MapID: s("pit-rk"), MapName: i18n.FromColumns("The Pit - Ranked", "")},
 	}
 	rattacherCartesDeBase(context.Background(), pdb, reglesDeTest, rows)
-	if *rows[0].MapNameFR != "Tir nourri" {
-		t.Errorf("libellé FR = %q, attendu Tir nourri (traduction d'un autre identifiant de la base)", *rows[0].MapNameFR)
+	if rows[0].MapName[i18n.LocaleFR] != "Tir nourri" {
+		t.Errorf("libellé FR = %q, attendu Tir nourri (traduction d'un autre identifiant de la base)", rows[0].MapName[i18n.LocaleFR])
 	}
-	if *rows[1].MapNameFR != "The Pit" {
-		t.Errorf("base sans traduction : libellé = %q, attendu The Pit", *rows[1].MapNameFR)
+	if rows[1].MapName[i18n.LocaleFR] != "The Pit" {
+		t.Errorf("base sans traduction : libellé = %q, attendu The Pit", rows[1].MapName[i18n.LocaleFR])
 	}
 }
 
@@ -189,10 +190,10 @@ func TestMapGroupsRepo_LibellesDeBase(t *testing.T) {
 	if err != nil {
 		t.Fatalf("MapGroups: %v", err)
 	}
-	if l, ok := g.Libelle("var-heavies", "fr"); !ok || l != "Tonnerre" {
+	if l, ok := g.Libelle("var-heavies", i18n.LocaleFR); !ok || l != "Tonnerre" {
 		t.Errorf("libellé FR = %q, %v, attendu Tonnerre", l, ok)
 	}
-	if l, ok := g.Libelle("var-heavies", "en"); !ok || l != "Thunderhead" {
+	if l, ok := g.Libelle("var-heavies", i18n.LocaleEN); !ok || l != "Thunderhead" {
 		t.Errorf("libellé EN = %q, %v, attendu Thunderhead", l, ok)
 	}
 }

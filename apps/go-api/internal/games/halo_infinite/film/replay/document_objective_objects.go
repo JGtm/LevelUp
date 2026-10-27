@@ -1,5 +1,7 @@
 package replay
 
+import "levelup/go-api/internal/i18n"
+
 // document_objective_objects.go — LES OBJETS D'OBJECTIF LIBRES : où se trouve le crâne quand
 // PERSONNE ne le porte.
 //
@@ -41,11 +43,11 @@ type ObjectiveObjectLife struct {
 	// Family est la nature de l'objet, telle que le manifeste du titre la déclare : `ball`
 	// aujourd'hui, `flag` le jour où son contrôle passera. JAMAIS déduite du libellé.
 	Family string `json:"family"`
-	// En / Fr sont le nom de l'objet dans les deux langues du produit. Ils voyagent avec la vie
+	// Text est le nom de l'objet dans chaque langue de `config/locales.toml` (au fil : un membre par
+	// langue, à plat). Il voyage avec la vie
 	// plutôt que dans une table à part : le client dessine ce que le document dit, et un libellé
 	// rangé ailleurs se désynchronise (même règle que les armes et les grenades).
-	En string `json:"en"`
-	Fr string `json:"fr"`
+	Text i18n.Text `json:"i18n_text,omitempty" required:"true"`
 	// T0 / T1 bornent la vie en frames (même axe que Point.T). T1 est INCLUS.
 	//
 	// T0 == T1 EST UNE VIE RÉELLE, PAS UN DÉFAUT : l'objet est né immobile — à son socle, le

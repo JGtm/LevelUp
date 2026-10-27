@@ -36,7 +36,7 @@ func ooScan(ids ...uint32) WorldObjectScan {
 func ooTables(fams map[uint32]string) (map[uint32]Label, map[uint32]string) {
 	labels := map[uint32]Label{}
 	for id, f := range fams {
-		labels[id] = Label{En: f, Fr: f}
+		labels[id] = Label{Text: enFr(f, f)}
 	}
 	return labels, fams
 }
@@ -61,10 +61,10 @@ func TestObjectiveObjects_PublieLeCraneEtPasLeDrapeau(t *testing.T) {
 
 // TestObjectiveObjects_NeNommeJamaisLObjetEnDur : le libelle vient du manifeste, jamais du Go.
 func TestObjectiveObjects_NeNommeJamaisLObjetEnDur(t *testing.T) {
-	labels := map[uint32]Label{ooTestCrane: {En: "Oddball", Fr: "Crane"}}
+	labels := map[uint32]Label{ooTestCrane: {Text: enFr("Oddball", "Crane")}}
 	fams := map[uint32]string{ooTestCrane: familleCrane}
 	lives, _ := buildObjectiveObjects(ooScan(ooTestCrane), labels, fams, ooClock())
-	if len(lives) != 1 || lives[0].En != "Oddball" || lives[0].Fr != "Crane" {
+	if len(lives) != 1 || enOf(lives[0].Text) != "Oddball" || frOf(lives[0].Text) != "Crane" {
 		t.Fatalf("libelles publies = %+v, attendus ceux du manifeste (Oddball / Crane)", lives)
 	}
 }

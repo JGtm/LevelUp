@@ -18,6 +18,7 @@ import (
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 )
@@ -101,11 +102,11 @@ func TestLoadMapCatalogNames_PrefersFR(t *testing.T) {
 	repo := NewMediaRepo(&PlayerDB{Metadata: meta})
 
 	got := repo.loadMapCatalogNames(context.Background(), []string{"5324364b-cliff", "921aebb1-dom", "inconnu"})
-	if got["5324364b-cliff"].fr != "Dévissage" || got["5324364b-cliff"].en != "Cliffhanger" {
-		t.Errorf("Cliffhanger : got %+v, want en=Cliffhanger fr=Dévissage", got["5324364b-cliff"])
+	if got["5324364b-cliff"].texts[i18n.LocaleFR] != "Dévissage" || got["5324364b-cliff"].canonical != "Cliffhanger" {
+		t.Errorf("Cliffhanger : got %+v, want canonique=Cliffhanger fr=Dévissage", got["5324364b-cliff"])
 	}
-	if got["921aebb1-dom"].en != "Domicile" || got["921aebb1-dom"].fr != "" {
-		t.Errorf("Domicile : got %+v, want en=Domicile fr vide", got["921aebb1-dom"])
+	if got["921aebb1-dom"].canonical != "Domicile" || got["921aebb1-dom"].texts[i18n.LocaleFR] != "" {
+		t.Errorf("Domicile : got %+v, want canonique=Domicile fr vide", got["921aebb1-dom"])
 	}
 	if _, ok := got["inconnu"]; ok {
 		t.Errorf("id inconnu ne doit pas être présent dans le résultat")

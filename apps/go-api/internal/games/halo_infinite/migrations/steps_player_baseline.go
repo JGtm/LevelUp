@@ -294,7 +294,7 @@ func applyBaselinePlayerV1Tables(db *sql.DB) error {
 			rating_value FLOAT,
 			rating_deviation FLOAT,
 			tier VARCHAR,
-			tier_fr VARCHAR,
+			tier_fr VARCHAR, -- INERTE (ADR 0040 D-5) : ni lue ni écrite, laissée en place (table append-only)
 			sub_tier SMALLINT DEFAULT 0,
 			tier_label VARCHAR,
 			rating_delta FLOAT,

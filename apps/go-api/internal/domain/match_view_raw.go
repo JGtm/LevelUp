@@ -4,7 +4,11 @@
 // réponse JSON (refactor god-file, revue 2026-06-02).
 package domain
 
-import "time"
+import (
+	"time"
+
+	"levelup/go-api/internal/i18n"
+)
 
 // MatchHistAvgRow : ligne brute de Q29 (historique récent pour moyennes).
 type MatchHistAvgRow struct {
@@ -39,21 +43,20 @@ type MatchMetaRaw struct {
 	// PlaylistAssetID : identifiant stable de la playlist (match_registry.playlist_id).
 	// Nil pour les matchs custom games sans playlist enregistrée.
 	PlaylistAssetID *string
-	// MapNameFR / ModeNameFR / PlaylistNameFR : traductions FR enrichies post-scan
-	// via asset_translations (map, playlist) et mode_name_tr (mode). Nil si non
-	// disponibles — le service retombe alors sur le label brut EN.
-	MapNameFR      *string
-	ModeNameFR     *string
-	PlaylistNameFR *string
-	// MapNameEN : nom canonique EN résolu via asset_translations en-US.
+	// MapNames / ModeNames / PlaylistNames : noms résolus par langue, enrichis post-scan via
+	// asset_translations (map, playlist) et mode_name_tr (mode). Une langue absente = non
+	// disponible : le service retombe alors sur le label brut EN.
+	// MapNames[en] : nom canonique EN résolu via asset_translations en-US.
 	// Utilisé pour les lookups d'asset image (l'adapter AssetURLAdapter
 	// indexe `static/maps/halo_infinite/{name}.{ext}` par nom EN). Sans ça,
 	// le fallback adapter recevrait l'UUID brut de match_registry.map_name
 	// et échouerait silencieusement (warn "map image missing for known map").
-	MapNameEN *string
-	// PairNameFR : traduction FR stockée en DB (match_registry.pair_name_fr).
-	// Utilisé comme fallback quand mode_name_tr ne contient pas le mode EN normalisé.
-	PairNameFR *string
+	MapNames      i18n.Text
+	ModeNames     i18n.Text
+	PlaylistNames i18n.Text
+	// PairNames[fr] : traduction FR stockée en DB (match_registry.pair_name_fr). Utilisée comme
+	// fallback quand mode_name_tr ne contient pas le mode EN normalisé.
+	PairNames i18n.Text
 	// PairAssetID : identifiant stable du pair_name (match_registry.pair_id).
 	// Permet la résolution via asset_translations quand pair_name est un UUID brut.
 	PairAssetID *string
@@ -359,8 +362,8 @@ type EventRaw struct {
 }
 
 // MedalNameMeta : l'identité d'une médaille résolue depuis son nom ANGLAIS
-// (medal_definitions.name_en, metadata.duckdb). Label/Description suivent la
-// locale de requête — même chaîne BCP-47 que lookupMedalMeta (GH-5b).
+// (medal_translations, étiquettes de la langue de repli, metadata.duckdb). Label/Description
+// suivent la langue de la requête, avec repli sur `en` — même résolution que lookupMedalMeta.
 type MedalNameMeta struct {
 	MedalNameID int64
 	Label       string

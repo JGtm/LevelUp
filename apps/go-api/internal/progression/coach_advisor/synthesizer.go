@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/prestige"
 )
 
@@ -91,6 +92,8 @@ func (s *Synthesizer) Synthesize(sig Signal, titleSlug string, now time.Time) (p
 	radarAxes := nonEmptyList(sig.RadarAxis)
 	cadence := cadenceForWindow(choice.WindowType, choice.WindowValue)
 
+	label := synthesizedLabel(metric, choice.WindowType, choice.WindowValue)
+	description := synthesizedDescription(metric, choice.WindowType, choice.WindowValue)
 	t := prestige.Template{
 		ID:              templateIDFromComponents(metric, choice.WindowType, choice.WindowValue, cadence, choice.EvalType, lusrComponents, radarAxes),
 		TitleSlug:       titleSlug,
@@ -100,10 +103,8 @@ func (s *Synthesizer) Synthesize(sig Signal, titleSlug string, now time.Time) (p
 		Cadence:         prestige.Cadence(cadence),
 		EvalType:        prestige.EvalType(choice.EvalType),
 		ModeFilter:      "universal",
-		LabelEN:         synthesizedLabelEN(metric, choice.WindowType, choice.WindowValue),
-		LabelFR:         synthesizedLabelFR(metric, choice.WindowType, choice.WindowValue),
-		DescriptionEN:   synthesizedDescriptionEN(metric, choice.WindowType, choice.WindowValue),
-		DescriptionFR:   synthesizedDescriptionFR(metric, choice.WindowType, choice.WindowValue),
+		Labels:          label,
+		Descriptions:    description,
 		NormalTarget:    s.cfg.StretchFactors[0], // stretch ratio (cf. I1/I2)
 		HeroicTarget:    s.cfg.StretchFactors[1],
 		LegendaryTarget: s.cfg.StretchFactors[2],
@@ -217,63 +218,53 @@ func joinPipe(items []string) string {
 	return out
 }
 
-// ─── Labels paramétrés (i18n minimal en attendant i18n service complet) ───
+// ─── Labels paramétrés (catalogue des messages, internal/i18n/messages/coach.toml) ───
 
-func synthesizedLabelEN(metric, windowType, windowValue string) string {
-	return fmt.Sprintf("Improve %s over %s", humanMetric(metric), humanWindow(windowType, windowValue, "en"))
+func synthesizedLabel(metric, windowType, windowValue string) i18n.Text {
+	return i18n.MsgTextWith("coach.synth.label", synthParams(metric, windowType, windowValue))
 }
 
-func synthesizedLabelFR(metric, windowType, windowValue string) string {
-	return fmt.Sprintf("Améliore %s sur %s", humanMetric(metric), humanWindow(windowType, windowValue, "fr"))
+func synthesizedDescription(metric, windowType, windowValue string) i18n.Text {
+	return i18n.MsgTextWith("coach.synth.description", synthParams(metric, windowType, windowValue))
 }
 
-func synthesizedDescriptionEN(metric, windowType, windowValue string) string {
-	return fmt.Sprintf("Push your %s above your personal baseline over %s.",
-		humanMetric(metric), humanWindow(windowType, windowValue, "en"))
+// synthParams construit les variables des messages d'un défi synthétisé, dans la langue demandée.
+func synthParams(metric, windowType, windowValue string) func(i18n.Locale) i18n.Params {
+	return func(l i18n.Locale) i18n.Params {
+		return i18n.Params{"metric": humanMetric(l, metric), "window": humanWindow(l, windowType, windowValue)}
+	}
 }
 
-func synthesizedDescriptionFR(metric, windowType, windowValue string) string {
-	return fmt.Sprintf("Pousse ton %s au-dessus de ta moyenne personnelle sur %s.",
-		humanMetric(metric), humanWindow(windowType, windowValue, "fr"))
-}
-
-func humanMetric(m string) string {
+// humanMetric retourne le nom de la métrique dans la langue `l` ; une métrique inconnue garde son
+// identifiant (basique, suffisant pour des libellés neutres).
+func humanMetric(l i18n.Locale, m string) string {
 	switch m {
 	case "kda":
-		return "KDA"
+		return i18n.Msg(l, "coach.metric.kda", nil)
 	case "kills_vs_expected":
-		return "kills vs expected"
+		return i18n.Msg(l, "coach.metric.kills_vs_expected", nil)
 	case "deaths_vs_expected":
-		return "deaths vs expected"
+		return i18n.Msg(l, "coach.metric.deaths_vs_expected", nil)
 	case "accuracy_delta":
-		return "accuracy delta"
+		return i18n.Msg(l, "coach.metric.accuracy_delta", nil)
 	case "assists_per_kill":
-		return "assists per kill"
+		return i18n.Msg(l, "coach.metric.assists_per_kill", nil)
 	case "performance_score":
-		return "performance score"
+		return i18n.Msg(l, "coach.metric.performance_score", nil)
 	}
-	// Fallback : kebab/snake → words (basique, suffisant pour labels neutres)
 	return m
 }
 
-func humanWindow(windowType, windowValue, lang string) string {
-	if windowType == "session" {
-		if lang == "fr" {
-			return "une session"
-		}
-		return "a session"
-	}
-	if windowType == "last_n_matches" {
-		if lang == "fr" {
-			return fmt.Sprintf("les %s derniers matchs", windowValue)
-		}
-		return fmt.Sprintf("the last %s matches", windowValue)
-	}
-	if windowType == "rolling_days" {
-		if lang == "fr" {
-			return fmt.Sprintf("%s jours", windowValue)
-		}
-		return fmt.Sprintf("%s days", windowValue)
+// humanWindow décrit la fenêtre d'évaluation dans la langue `l` ; un type inconnu garde son
+// identifiant.
+func humanWindow(l i18n.Locale, windowType, windowValue string) string {
+	switch windowType {
+	case "session":
+		return i18n.Msg(l, "coach.window.session", nil)
+	case "last_n_matches":
+		return i18n.Msg(l, "coach.window.last_n_matches", i18n.Params{"n": windowValue})
+	case "rolling_days":
+		return i18n.Msg(l, "coach.window.rolling_days", i18n.Params{"n": windowValue})
 	}
 	return windowType
 }

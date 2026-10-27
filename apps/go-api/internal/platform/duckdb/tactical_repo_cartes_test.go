@@ -21,6 +21,7 @@ import (
 	"levelup/go-api/internal/domain"
 	titlepkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/migration"
 )
 
@@ -44,19 +45,19 @@ func TestTacticalRepo_MapsPlayed(t *testing.T) {
 	if rows[0].Victoires != 1 || rows[0].Defaites != 1 {
 		t.Errorf("carte A = %d V / %d D, want 1/1", rows[0].Victoires, rows[0].Defaites)
 	}
-	if rows[0].MapName != tacCarteA+"_en" {
-		t.Errorf("libelle EN = %q, want %q", rows[0].MapName, tacCarteA+"_en")
+	if rows[0].MapName[i18n.LocaleEN] != tacCarteA+"_en" {
+		t.Errorf("libelle EN = %q, want %q", rows[0].MapName[i18n.LocaleEN], tacCarteA+"_en")
 	}
 	// LE LIBELLÉ CANONIQUE (map_labels.go) : la traduction de l'asset de la carte.
-	if rows[0].MapNameFR != "Les Rues" {
-		t.Errorf("libelle = %q, want %q (traduction de l'asset)", rows[0].MapNameFR, "Les Rues")
+	if rows[0].MapName[i18n.LocaleFR] != "Les Rues" {
+		t.Errorf("libelle = %q, want %q (traduction de l'asset)", rows[0].MapName[i18n.LocaleFR], "Les Rues")
 	}
 	if rows[1].MapID != tacCarteB || rows[1].Matchs != 1 || rows[1].Victoires != 1 {
 		t.Errorf("seconde carte = %+v, want %s a 1 match / 1 V", rows[1], tacCarteB)
 	}
 	// Carte sans traduction : le libellé est le nom du registre, comme dans l'Explorateur.
-	if rows[1].MapNameFR != tacCarteB+"_en" {
-		t.Errorf("carte sans traduction : libelle = %q, want %q", rows[1].MapNameFR, tacCarteB+"_en")
+	if rows[1].MapName[i18n.LocaleFR] != tacCarteB+"_en" {
+		t.Errorf("carte sans traduction : libelle = %q, want %q", rows[1].MapName[i18n.LocaleFR], tacCarteB+"_en")
 	}
 }
 
@@ -72,9 +73,9 @@ func TestTacticalRepo_SansMetadata_LibelleDuRegistre(t *testing.T) {
 	if err != nil {
 		t.Fatalf("MapsPlayed sans metadata: %v", err)
 	}
-	if len(rows) != 2 || rows[0].MapNameFR != tacCarteA+"_en" {
+	if len(rows) != 2 || rows[0].MapName[i18n.LocaleFR] != tacCarteA+"_en" {
 		t.Errorf("sans metadata : %d cartes, libelle = %q — want 2 cartes servies, libelle %q",
-			len(rows), rows[0].MapNameFR, tacCarteA+"_en")
+			len(rows), rows[0].MapName[i18n.LocaleFR], tacCarteA+"_en")
 	}
 }
 
