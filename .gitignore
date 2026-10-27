@@ -379,3 +379,4 @@ data/global/player_friends.json
 # Sorties de decompilation du jeu (Ghidra) : propriete de Microsoft, jamais versionnees
 # (NOTICE par. 4). Elles vivent hors du depot ; les releves ecrits (Markdown) restent.
 .ai/**/*.c
+data/titles/halo_infinite/warehouse/shared_matches_v2.duckdb.avant-purge-20261026
