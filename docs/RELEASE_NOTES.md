@@ -7,6 +7,10 @@
 - **The map filter brings back the variants** — on the Summary, the Squad and Teammates, as it already did in the Explorer
 - **The Explorer briefing keeps its cards** — a filter too narrow to compare now shows the card with the reason instead of dropping it; under 10 matches everything stays, with a warning on the Matches tile; on smaller screens the tiles split into even rows
 - **Halo 5 modes everywhere** — the Summary's "By mode" chart, empty for Halo 5 until now, lists your modes (Slayer, Capture the Flag, Strongholds...)
+- **Names in your language, everywhere** — map, mode, playlist, weapon and medal names and the texts written by the server follow the language of the interface on every page; switching language reloads all data in the new language, and the CSV export is written in the language of the page
+- **Halo 5 names** — in French, some names that used to stay in English now appear in French; in English, the maps and playlists that showed no name now display it
+- **Translations in administration** — the form offers one field per language; the application is ready for more languages
+- **"Exclude BTB from the career ranking" removed** — the option had no effect
 
 **v8.0 — 2D replay, the Theater film decoded & a Tactics tab**
 
