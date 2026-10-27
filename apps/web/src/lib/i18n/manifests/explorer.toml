@@ -933,6 +933,10 @@ en = "Collapse (10 rows)"
 fr = "Profil de combat"
 en = "Combat profile"
 
+[explorer.combat.source_group_label]
+fr = "Source"
+en = "Source"
+
 [explorer.combat.fda_title]
 fr = "FDA et Frags / Morts / Assistances"
 en = "KDA and Kills / Deaths / Assists"

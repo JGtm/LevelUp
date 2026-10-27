@@ -32,6 +32,9 @@ export type ManifestLocale = Locale
  */
 export type ManifestEntries = Readonly<Record<string, Readonly<Record<ManifestLocale, string>>>>
 
+/** Un texte sans variable n'a besoin de MessageFormat que s'il porte de la syntaxe ICU. */
+const NEEDS_ICU = /[{<]|'[{}<>']/
+
 // Cache process des MessageFormat compiles : clef = "<locale>::<message>".
 // Compiler une string ICU est non-trivial ; on memoize pour eviter de payer
 // le cout a chaque rendu.
@@ -72,9 +75,11 @@ export function formatMessage<M extends ManifestEntries>(
     return key
   }
   if (!vars) {
-    // Pas d'interpolation : on peut court-circuiter MessageFormat si la
-    // string ne contient pas d'accolades (gain perf).
-    if (!message.includes('{')) {
+    // Pas d'interpolation : on court-circuite MessageFormat quand le texte n'a rien
+    // d'ICU (gain perf). Une accolade, un chevron ouvrant ou une apostrophe devant
+    // `{ } < >` / `'` est de la syntaxe ICU : le texte passe alors par MessageFormat,
+    // sans quoi une forme echappee (`'<x>'`) s'afficherait avec ses apostrophes.
+    if (!NEEDS_ICU.test(message)) {
       return message
     }
   }

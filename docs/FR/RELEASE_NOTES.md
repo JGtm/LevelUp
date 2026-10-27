@@ -7,6 +7,10 @@
 - **Le filtre de cartes ramène les variantes** — dans la Synthèse, l'Escouade et Coéquipiers, comme il le faisait déjà dans l'Explorateur
 - **Le briefing de l'Explorateur garde ses cartes** — un filtre trop étroit pour comparer affiche la carte avec la raison au lieu de la retirer ; sous 10 matchs tout reste, avec un avertissement sur la tuile Matchs ; sur les écrans plus étroits, les tuiles se répartissent en lignes égales
 - **Les modes de Halo 5 partout** — le graphique « Par mode » de la Synthèse, vide jusqu'ici pour Halo 5, liste tes modes (Assassin, Capture du drapeau, Bases...)
+- **Les noms dans ta langue, partout** — les noms de cartes, de modes, de listes de jeu, d'armes et de médailles et les textes rédigés par le serveur suivent la langue de l'interface sur toutes les pages ; changer de langue recharge toutes les données dans la nouvelle langue, et l'export CSV est rédigé dans la langue de la page
+- **Les noms de Halo 5** — en français, certains noms qui restaient en anglais apparaissent en français ; en anglais, les cartes et les listes de jeu qui n'affichaient aucun nom l'affichent
+- **Traductions dans l'administration** — le formulaire propose un champ par langue ; l'application est prête à accueillir d'autres langues
+- **Option « Exclure BTB du classement carrière » retirée** — elle n'avait aucun effet
 
 **v8.0 — Le rejeu 2D, le film Theater décodé & un onglet Tactique**
 

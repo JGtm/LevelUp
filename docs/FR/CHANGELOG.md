@@ -10,16 +10,26 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 
 ### Added
 - **Synthèse : score de performance par carte et par mode** — les graphiques « Par carte » et « Par mode » portent une courbe du score de performance moyen (de 0 à 100, axe de droite) au-dessus des barres de résultats. Chaque point prend la couleur de son palier ; la courbe s'interrompt sur une colonne sans match noté (les matchs non terminés n'ont pas de score).
+- **Administration : formulaire des traductions avec une saisie par langue** — le formulaire qui modifie les noms de cartes, de modes et d'armes propose un champ pour chaque langue de l'application, au lieu d'un couple français et anglais figé.
+- **Prêt pour d'autres langues** — la liste des langues de l'application est déclarée une seule fois ; tous les textes des pages, du serveur et des exports la lisent, ajouter une langue ne demande plus de passer page par page.
 
 ### Changed
 - **Variantes de carte comptées avec leur carte de base** — les variantes « - Ranked » et « Heavies » (par exemple « Solitude - Classé », « Du lourd sur Fragmentation ») comptent désormais sous leur carte de base dans toutes les statistiques par carte : grille et lectures de placement de la Tactique, taux de victoire par carte et briefing de l'Explorateur, cartes les plus jouées de la Synthèse, Escouade et Coéquipiers, Séries temporelles et carte fétiche de l'Accueil. Une variante sans carte de base (Treillis, Vacancy) reste seule. Le rejeu et la vue d'un match gardent le nom de la variante réellement jouée.
 - **Briefing de l'Explorateur : les cartes ne disparaissent plus selon les filtres** — « Par carte », « Par mode » et « Par sélection » retiennent une carte, un mode ou une sélection dès 5 matchs (au lieu de 10) et en comparent au moins deux ; en dessous, la carte reste à sa place avec un encadré en pointillé qui dit pourquoi. « Par contexte » demande 5 matchs en solo et 5 en escouade, et donne les deux comptes quand un côté n'y est pas. Une carte n'est absente que si le filtre ne laisse qu'une valeur (la carte filtrée, par exemple).
 - **Briefing de l'Explorateur sous 10 matchs** — plus rien n'est retiré : écarts à ton niveau habituel, cartes « Par… », Classement, arme favorite et moments forts s'affichent, et un triangle d'avertissement sur la tuile Matchs signale l'échantillon faible. Avant, seules quatre tuiles restaient, avec une ligne « Échantillon faible ».
 - **Tuiles du briefing de l'Explorateur en lignes égales** — quand les tuiles ne tiennent pas sur une ligne, elles se répartissent sur deux lignes de même largeur (4+4, 4+3, 3+3, 3+2) au lieu de laisser la dernière seule sur sa ligne. La tuile « Séries marquantes » devient « Séries » ; son infobulle garde le nom complet.
+- **Les noms suivent la langue de l'interface partout** — les noms de cartes, de modes, de listes de jeu, d'armes et de médailles, ainsi que les textes rédigés par le serveur, arrivent dans la langue choisie pour l'interface sur toutes les pages, graphiques par carte de l'Escouade compris.
+- **Changer de langue recharge toutes les données dans la nouvelle langue** — aucun nom ne reste dans l'ancienne langue jusqu'au prochain rafraîchissement.
+- **Export CSV dans la langue de la page** — le fichier exporté est rédigé dans la langue de la page d'où il part.
+
+### Removed
+- **Option « Exclure BTB du classement carrière »** — elle n'avait aucun effet sur le classement ; elle disparaît.
 
 ### Fixed
 - **Filtre de cartes de la Synthèse, de l'Escouade et des Coéquipiers** — choisir une carte ramène aussi les parties jouées sur ses variantes, comme le faisait déjà le filtre de l'Explorateur.
 - **Halo 5 : « Par mode » de la Synthèse était vide** — les matchs Halo 5 portent désormais leur mode (Assassin, Capture du drapeau, Bases...) sur toutes les pages, par une règle déclarée une fois par jeu ; le graphique « Par mode » de la Synthèse les liste avec leur courbe de performance.
+- **Halo 5 en anglais : cartes et listes de jeu sans nom** — elles n'affichaient rien quand l'interface était en anglais ; leur nom s'affiche désormais.
+- **Halo 5 en français : des noms restés en anglais** — certains noms (cartes, modes...) qui s'affichaient en anglais apparaissent maintenant en français.
 
 ## [8.0.7] - 2026-10-26
 

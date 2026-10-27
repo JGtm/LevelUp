@@ -92,6 +92,13 @@ describe('ExplorerCombatProfile', () => {
     expect(stubs.length).toBe(5)
   })
 
+  it("le groupe du sélecteur de source porte un libellé accessible issu du manifest, pas un littéral", () => {
+    const matches = [match({ match_id: 'm1' })]
+    renderWithProviders(<ExplorerCombatProfile liveMatches={matches} localMatches={[]} locale="fr" t={t} />)
+    // `t` rend la clé : un `aria-label="Source"` en dur ne correspondrait pas.
+    expect(screen.getByRole('group', { name: 'explorer.combat.source_group_label' })).toBeInTheDocument()
+  })
+
   it('groupe les modes pour le donut (G5)', async () => {
     const matches = [
       match({ match_id: 'm1', mode_ui: 'Slayer' }),

@@ -71,7 +71,7 @@ export function SessionPill({
       {open && (
         <div
           role="listbox"
-          aria-label="Sessions"
+          aria-label={t('common.filters.session_list_label')}
           className="absolute left-0 top-full z-40 mt-1 flex w-80 flex-col rounded-md border border-border bg-background shadow-lg"
         >
           <div className="border-b border-border p-2">

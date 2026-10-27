@@ -9,11 +9,17 @@
  * Contrat des feuilles (D-4 : une langue est complete ou refusee) : une feuille porte EXACTEMENT
  * les langues de `config/locales.toml`, chacune en chaine non vide. Une langue manquante, vide
  * ou non listee est une erreur qui nomme le fichier, le chemin de la cle et la langue.
+ *
+ * Chaque texte doit en outre COMPILER en message ICU (`intl-messageformat`, le moteur du runtime
+ * `lib/i18n/format.ts`) : le runtime avale l'echec et affiche le texte brut, sans interpolation ;
+ * une accolade ou une balise litterale doit donc etre echappee (`'{'`, `'<'`) pour que la regle
+ * « le manifest est la source » tienne. Erreur : fichier, cle, langue, cause du parseur.
  */
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { basename, join } from 'node:path'
 
 import TOML from '@iarna/toml'
+import { IntlMessageFormat } from 'intl-messageformat'
 
 /** Une table du manifest est une feuille des qu'elle porte une valeur texte ; sinon c'est une section. */
 function isLeafTable(v) {
@@ -36,6 +42,12 @@ function checkLeaf(v, codes, where) {
     }
     if (v[code].trim() === '') {
       throw new Error(`${where} : langue "${code}" vide`)
+    }
+    try {
+      new IntlMessageFormat(v[code], code)
+    } catch (e) {
+      const cause = String(e?.message ?? e).split(/\r?\n/)[0]
+      throw new Error(`${where} : langue "${code}" : texte non compilable en message ICU (${cause})`)
     }
     leaf[code] = v[code]
   }
