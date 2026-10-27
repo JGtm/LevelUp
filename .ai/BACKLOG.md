@@ -77,7 +77,7 @@ Section « Découvertes » de `.ai/PLAN_BACKLOG_2026-10-16.md` (détail, `fichie
 
 ### [replay/sons] Fins de partie multi-équipes par couleur — écran + annonceur
 
-Noté le 2026-08-27 (chantier rejeu 2D, plan `.ai/V7.5/PLAN_REPLAY_CADRAGE_VICTOIRE.md`,
+Noté le 2026-08-27 (chantier rejeu 2D, plan `.ai/archive/V7.5/PLAN_REPLAY_CADRAGE_VICTOIRE.md`,
 branche `wt/replay-cadrage-victoire`). L'écran de victoire et les sons de fin (lots B/C)
 couvrent les matchs à 2 équipes + le FFA gagné ; les modes MULTI-ÉQUIPES (3+) n'ont ni
 écran (décision D-B1) ni son. Or le jeu porte une famille complète d'annonces dédiées,

@@ -1,7 +1,7 @@
 /**
  * usages.fixtures.ts — un périmètre solo témoin au format du contrat, tiré des chiffres
- * d'illustration de la maquette v4 (`.ai/V7.5/MAQUETTE_TIMESERIES_USAGES_2026-10-05.html` ; relevés
- * `.ai/V7.5/MESURES_TIMESERIES_USAGES_2026-10-05.md`) : bilan 111 / 87 bonus et 229 / 231 armes
+ * d'illustration de la maquette v4 (`.ai/archive/V7.5/MAQUETTE_TIMESERIES_USAGES_2026-10-05.html` ; relevés
+ * `.ai/archive/V7.5/MESURES_TIMESERIES_USAGES_2026-10-05.md`) : bilan 111 / 87 bonus et 229 / 231 armes
  * spéciales, vies 1 558 près / 301 seul (1 250 / 262 frags, 59 écartées), mur 52 · 0 · 32 pour moi et
  * 146 · 7 · 151 pour le reste de mon camp, capteur 6 · 1 · 54, grappin 84 et propulseur 65 lâchés.
  * Quatre matchs suffisent à porter ces comptes (le bloc publie des totaux) ; les cartes sont trois

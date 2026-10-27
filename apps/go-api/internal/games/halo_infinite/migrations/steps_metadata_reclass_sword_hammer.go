@@ -17,7 +17,7 @@ package migrations
 //
 // `hinf_energy_sword` et `hinf_gravity_hammer` étaient `class = 'melee'`. Le lecteur de la
 // répartition des frags écarte cette classe : son TOTAL vient du compteur API, autoritatif
-// (décision D4 du plan `.ai/V7.5/PLAN_SOURCE_UNIQUE_ARME_2026-09-01.md`).
+// (décision D4 du plan `.ai/archive/V7.5/PLAN_SOURCE_UNIQUE_ARME_2026-09-01.md`).
 //
 // OR CE COMPTEUR NE LES COMPTE PAS. Mesure du 2026-09-01 sur 200 matchs :
 // `match_participants.melee_kills` vaut 1 717, quand l'épée et le marteau pèsent 2 514 à

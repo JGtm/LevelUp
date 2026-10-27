@@ -1258,7 +1258,7 @@ func main() {
 				// LOGUE AVANT DE DÉGRADER (règle n°3) : sans cette ligne, un
 				// app_settings.json illisible faisait passer la fenêtre à 0 EN SILENCE —
 				// c'est-à-dire rétention illimitée, donc purge désactivée sans un mot (Q8,
-				// .ai/V7.5/DECOUVERTES_TACTIQUE_2026-09-07.md).
+				// .ai/archive/V7.5/DECOUVERTES_TACTIQUE_2026-09-07.md).
 				slog.WarnContext(ctx, "replay_purge_cron: settings illisibles, "+
 					"rétention illimitée (purge désactivée)", "err", err)
 				return 0

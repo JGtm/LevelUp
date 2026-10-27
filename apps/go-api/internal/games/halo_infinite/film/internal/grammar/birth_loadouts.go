@@ -2,7 +2,7 @@ package grammar
 
 // birth_loadouts.go — LA DOTATION DE NAISSANCE : les armes qu'un bipède porte À SA CRÉATION, lues
 // dans le record NEW `ti=35` du paquet delta qui le crée (lot M3.2 de la campagne « retours
-// rejeu », 2026-09-23 ; sonde P3, `.ai/V7.5/retours_rejeu_2026-09-23/SONDE_P3_armes_naissance.md`).
+// rejeu », 2026-09-23 ; sonde P3, `.ai/archive/V7.5/retours_rejeu_2026-09-23/SONDE_P3_armes_naissance.md`).
 //
 // # LE CANAL
 //

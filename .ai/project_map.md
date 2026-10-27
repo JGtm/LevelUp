@@ -379,8 +379,8 @@ data/
 > Réécrite par le lot d'archivage du 2026-09-23 : l'ancienne table énumérait 26 chemins qui
 > n'existaient plus (corpus `go_migration*`, `migration/`, `sprints/`, monde Python). Règle
 > (CLAUDE.md, « Workflow Agentique ») : la racine de `.ai/` ne garde que le chantier vivant ;
-> les archives de chantier v7.5 sont indexées par `.ai/V7.5/README.md`, ce qui précède v7.5
-> vit sous `.ai/archive/`. Verdict et preuve de chaque document : `.ai/V7.5/README.md`,
+> les archives de chantier v7.5 sont indexées par `.ai/archive/V7.5/README.md`, ce qui précède v7.5
+> vit sous `.ai/archive/`. Verdict et preuve de chaque document : `.ai/archive/V7.5/README.md`,
 > section « Ce qui est resté à la racine ».
 
 | Racine de `.ai/` | Rôle |
@@ -394,7 +394,7 @@ data/
 | `REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md` | Équipement : à lire avant toute affirmation (CLAUDE.md) |
 | `ETAT_DE_L_ART_KILLWEAPON.md`, `ADDENDUM_ETAT_DE_L_ART_2026-07-26.md`, `README_KILLWEAPON_INDEX.md`, `GUIDE_WEAPON_SHOTS.md`, `ETAT_DE_L_ART_FORGE_PALETTE_ZONES.md`, `ARCHITECTURE_CIBLE_DECODEUR_FILM_2026-09-12.md`, `AUDIT_LECTEURS_VIES_ANONYMES_2026-09-06.md` | Références du film et des armes, citées par du code, un ADR ou un plan vivant |
 | `REFERENCE_WEAPON_IDS.md`, `I18N_REFERENCE.md`, `ENRICHMENTS_CATALOG.md`, `CHARTS_AND_TABLES.md`, `MCC_UNOFFICIAL_API_REFERENCE.md`, `STEAKTACULAR.md`, `duckdb_7659_upstream_report.md` | Références transverses (armes, i18n, enrichissements, graphes, API MCC, comeback, rapport DuckDB amont) |
-| `HANDOFF_DECODEUR_FILM_2026-09-13.md`, `PREPARATION_M2_PAS_4_A_6_2026-09-17.md`, `PREPARATION_M4_ORDRE_ET_FRONTIERES_2026-09-17.md`, `PLAN_ARME_FAVORITE_BRIEFING_EXPLORER_2026-09-17.md`, `PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md`, `PLAN_EXPLORER_PORTEE_FRAGS_2026-09-17.md`, `PLAN_ESCOUADE_HORS_CADRE_2026-09-09.md`, `PLAN_FINALISATION_REJEU_2D.md`, `PLAN_MASTER_FILM_KILLFEED_REJEU.md`, `PLAN_OBJECTIFS_TEMPS_REEL.md`, `PLAN_DEPS_ECHARTS_TS7_2026-07-27.md`, `PLAN_REVUE_ANALYTIQUE_TIMESERIES_SQUAD_2026-07.md` | À ARBITRER (le 2026-09-23) : restés en place faute de preuve nette de clôture, ou parce que `PLAN_DECODEUR_FILM_2026-09-13.md` les cite ; la question posée pour chacun est dans `.ai/V7.5/README.md` |
+| `HANDOFF_DECODEUR_FILM_2026-09-13.md`, `PREPARATION_M2_PAS_4_A_6_2026-09-17.md`, `PREPARATION_M4_ORDRE_ET_FRONTIERES_2026-09-17.md`, `PLAN_ARME_FAVORITE_BRIEFING_EXPLORER_2026-09-17.md`, `PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md`, `PLAN_EXPLORER_PORTEE_FRAGS_2026-09-17.md`, `PLAN_ESCOUADE_HORS_CADRE_2026-09-09.md`, `PLAN_FINALISATION_REJEU_2D.md`, `PLAN_MASTER_FILM_KILLFEED_REJEU.md`, `PLAN_OBJECTIFS_TEMPS_REEL.md`, `PLAN_DEPS_ECHARTS_TS7_2026-07-27.md`, `PLAN_REVUE_ANALYTIQUE_TIMESERIES_SQUAD_2026-07.md` | À ARBITRER (le 2026-09-23) : restés en place faute de preuve nette de clôture, ou parce que `PLAN_DECODEUR_FILM_2026-09-13.md` les cite ; la question posée pour chacun est dans `.ai/archive/V7.5/README.md` |
 
 | Sous-dossier de `.ai/` | Contenu |
 |---|---|

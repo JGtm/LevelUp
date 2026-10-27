@@ -1,7 +1,7 @@
 package grammar
 
 // ti47_annonces_largeur_test.go — LES TROIS MESURES DE LARGEUR de l'instrument ti=47
-// (plan `.ai/V7.5/replay2d/PLAN_TI47_ANNONCES_ZONE.md`, item 0.1). Le balayage est dans
+// (plan `.ai/archive/V7.5/replay2d/PLAN_TI47_ANNONCES_ZONE.md`, item 0.1). Le balayage est dans
 // `ti47_annonces_scan_test.go`, les rapports dans `ti47_annonces_test.go`.
 //
 // POURQUOI TROIS ET NON UNE. La recette du depot lit les largeurs dans le descripteur `+0x28` du

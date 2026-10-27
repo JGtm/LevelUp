@@ -1,6 +1,6 @@
 /**
  * sessionEmpriseText.ts — LES TEXTES des cartes « Frags et usages » de la page Sessions (plan
- * PLAN_SESSIONS_EMPRISE_2026-10-06, D12 ; maquette `.ai/V7.5/MAQUETTE_SESSIONS_2026-10-06.html`, vue
+ * PLAN_SESSIONS_EMPRISE_2026-10-06, D12 ; maquette `.ai/archive/V7.5/MAQUETTE_SESSIONS_2026-10-06.html`, vue
  * « Après », fonctions `make*`).
  *
  * Les cartes sont celles de l'Escouade et des Séries temporelles, et leurs textes aussi, sans variante :

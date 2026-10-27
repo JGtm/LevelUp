@@ -33,7 +33,7 @@ type RegulationSet struct {
 	targets map[string]int
 	// roundsDecide : game_variant_name → la variante se décide aux MANCHES, donc son
 	// `CoreStats.Score` (un cumul de points sur toutes les manches) ne dit PAS le résultat.
-	// Même doctrine encore : contenu MESURÉ (`.ai/V7.5/RAPPORT_MANCHES_2026-08-29.md`),
+	// Même doctrine encore : contenu MESURÉ (`.ai/archive/V7.5/RAPPORT_MANCHES_2026-08-29.md`),
 	// variante absente → on garde les points. Consommateur : analysis.TeamScoreDisplay.
 	roundsDecide map[string]bool
 	// holdTicks : game_variant_name → TICS DE GARDE qui valent un point, sur un mode
@@ -68,7 +68,7 @@ type RegulationSet struct {
 	// vit dans le GESTE (la durée d'un jet de drapeau suivi d'une reprise à la course), pas
 	// dans le réglage d'une playlist. La mesure du 2026-09-13 la situe entre 1,4 et 1,6 s sur
 	// les treize films CTF du parc, toutes variantes confondues
-	// (`.ai/V7.5/RAPPORT_PRISES_NETTES_2026-09-13.md`).
+	// (`.ai/archive/V7.5/RAPPORT_PRISES_NETTES_2026-09-13.md`).
 	//
 	// MÊME DOCTRINE QUE LES TABLES CI-DESSUS : absent = PAS DE LECTURE. Un titre qui ne la
 	// déclare pas ne publie pas les prises nettes — jamais une fenêtre par défaut, qui

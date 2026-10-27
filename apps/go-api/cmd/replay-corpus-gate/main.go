@@ -5,7 +5,7 @@
 // Trois regressions de donnees (28/08, 30/08, 02/09 — pont d'identite par manche, drapeaux non
 // attribues, "une piste = une vie") ont traverse des goldens SYNTHETIQUES verts pendant
 // dix-neuf schemas de suite, faute d'un differentiel sur des FILMS REELS. Le balayage
-// retroactif du parc local (119 matchs, .ai/V7.5/v2/BALAYAGE_PARC_2026-09-06.md) les a
+// retroactif du parc local (119 matchs, .ai/archive/V7.5/v2/BALAYAGE_PARC_2026-09-06.md) les a
 // finalement trouvees — mais APRES coup, par une mesure manuelle. Ce gate industrialise CETTE
 // MEME METHODE sur un corpus TEMOIN restreint et versionne (config/replay_corpus.toml).
 //

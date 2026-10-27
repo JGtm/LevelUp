@@ -447,7 +447,7 @@ export interface ReplayText {
   layerGroundWeaponsHint: string
   /**
    * LE FILTRE « ARMES SPÉCIALES SEULEMENT » du calque des armes au sol (lot 6.5, 2026-09-10,
-   * rapport `.ai/V7.5/RAPPORT_ARMES_AU_SOL_2026-09-10.md` §1 et §5 option B). Sniper, power,
+   * rapport `.ai/archive/V7.5/RAPPORT_ARMES_AU_SOL_2026-09-10.md` §1 et §5 option B). Sniper, power,
    * special : ce qu'un socle distribue et qu'un adversaire a intérêt à ramasser — 17,4 % des
    * objets au sol, mais 65,3 % des reprises OBSERVÉES. Une bascule fille du calque, comme les
    * objets non identifiés des poses d'équipement : elle ne s'affiche qu'avec son calque.
@@ -480,7 +480,7 @@ export interface ReplayText {
    * LES MUNITIONS DE L'ARME LÂCHÉE (lot 6.6, 2026-09-10) — ET POURQUOI ELLES SONT DATÉES.
    *
    * Le chiffre n'est PAS celui du lâcher : les munitions ne sont pas sur l'objet (mesure du
-   * lot, `.ai/V7.5/RAPPORT_MUNITIONS_OBJET_2026-09-10.md` — 0 égalité sur 1 524 comparaisons
+   * lot, `.ai/archive/V7.5/RAPPORT_MUNITIONS_OBJET_2026-09-10.md` — 0 égalité sur 1 524 comparaisons
    * pour la liste de chargeurs du record de création, 10 sur 6 477 pour le R(7) voisin). Ce
    * qui s'affiche est la dernière lecture d'inventaire du LÂCHEUR avant le lâcher, prise aux
    * images-clés, en retard de 9,0 s en médiane et de 18,0 s au neuvième décile.

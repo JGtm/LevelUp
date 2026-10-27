@@ -6,7 +6,7 @@ package grammar
 // mesure seule.)
 //
 // CE QUE L ECRIVAIN DIT DU RECORD 36 (`action_weapon_fire`), EN ENTIER (Ghidra, lecture seule,
-// `.ai/V7.5/film_re/NOTE_5_26_*`) :
+// `.ai/archive/V7.5/film_re/NOTE_5_26_*`) :
 //
 //	repartiteur `FUN_14080a9d4` : R(7) type ; puis TROIS references gardees — R(1) garde, et si
 //	    posee `FUN_1406d3140(lecteur, domaine, &ref)` — dont le domaine est rendu par la vtable du

@@ -363,7 +363,7 @@ func d6Triees(m map[int]bool) []int {
 // LOT 0.D.1 bis — CE QUE LE CHAMP « MANCHE » PORTE VRAIMENT
 //
 // Le registre du film NOMME les composants de l archetype 6 (cf.
-// `.ai/V7.5/ETAT_DE_L_ART_MODE_SCORE_EVENEMENTS.md` §17.1) :
+// `.ai/archive/V7.5/ETAT_DE_L_ART_MODE_SCORE_EVENEMENTS.md` §17.1) :
 //
 //	0..27   statborg-current-round-value-stat-component     (la manche EN COURS)
 //	28..55  statborg-finalized-rounds-values-stat-component  (les manches TERMINEES)

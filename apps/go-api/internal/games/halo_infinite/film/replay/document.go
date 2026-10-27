@@ -33,7 +33,7 @@ package replay
 // exigé par la RÈGLE ci-dessus ; il est posé quand même pour que `backfill-replay` recuise
 // tout le parc < 49 en une passe (plutôt que de laisser un artefact ancien répondre « calage
 // inconnu » indéfiniment faute de recuisson déclenchée) — cf.
-// `.ai/V7.5/v2/CHRONIQUE_49_2026-09-08.md`.
+// `.ai/archive/V7.5/v2/CHRONIQUE_49_2026-09-08.md`.
 //
 // LA CHRONIQUE FAIT FOI, ET ELLE EST LA SEULE : `document_chronicle.go` (les notes par version qui
 // la recopiaient ici ont ete retirees le 2026-09-14, lot 1.0, revue R1, constat R1-4).

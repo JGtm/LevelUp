@@ -15,7 +15,7 @@ package grammar
 // TENUES dont le barillet n a pas emis de record de tir (type de prediction 1) et les BARILLETS de
 // type 3 en tir : c est le canal que Theater rejoue pour le Ghost, les canons de la Banshee, le
 // Chopper, la LAAG, les LMG du Falcon et du Wasp, et a pied le Rayon de Sentinelle (sonde P1-S3,
-// `.ai/V7.5/retours_rejeu_2026-09-23/SONDE_P1S3_tir_continu_vue_controle.md`). L entree est
+// `.ai/archive/V7.5/retours_rejeu_2026-09-23/SONDE_P1S3_tir_continu_vue_controle.md`). L entree est
 // desormais lue EN ENTIER : les trois branches que ce port refusait (le troisieme champ du couple
 // analogique, le champ +0x10 et les drapeaux +0x14) sont resolues au site d appel, et le bloc
 // d action est celui de `bloc_action.go`, dont deux sous-lecteurs ont ete corriges. Ce que la vue

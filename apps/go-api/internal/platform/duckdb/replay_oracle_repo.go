@@ -3,7 +3,7 @@ package duckdb
 // replay_oracle_repo.go — LES VERITES OFFICIELLES D'UN MATCH QUE LE REJEU NE LIT PAS.
 //
 // L'oracle du banc de verite (`internal/replayverite`, decision D-2 de
-// .ai/V7.5/film_re/BANC_DE_VERITE_CONCEPTION_2026-09-30.md). Il est lu a cote des faits de match
+// .ai/archive/V7.5/film_re/BANC_DE_VERITE_CONCEPTION_2026-09-30.md). Il est lu a cote des faits de match
 // (`replay_facts_repo.go`) mais ne les rejoint jamais : ce qui passe ici n'est pas une entree de
 // cuisson, et ne doit pas en devenir une.
 //

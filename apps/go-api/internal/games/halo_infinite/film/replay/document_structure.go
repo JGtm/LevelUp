@@ -3,7 +3,7 @@ package replay
 // document_structure.go — LES DEUX TYPES DU FOND DE CARTE : l'emprise au sol d'un element de
 // structure, et le prop Forge projete en 2D.
 //
-// EXTRAITS DE `document.go` le 2026-08-18 (plan `.ai/V7.5/replay2d/PLAN_DRAPEAU_OBJET.md`,
+// EXTRAITS DE `document.go` le 2026-08-18 (plan `.ai/archive/V7.5/replay2d/PLAN_DRAPEAU_OBJET.md`,
 // phase 2). Le fichier hote etait EXACTEMENT au seuil de 500 lignes du depot : la chronique du
 // schema 15 ne pouvait pas y entrer sans le franchir. Ces deux types-la sont ceux qui partent, et
 // pas au hasard — ils ne decrivent pas le REJEU (des joueurs, des tirs, des objets qui bougent)

@@ -2,7 +2,7 @@
  * objectif.byRole.test.ts — le rapport de force PAR RÔLE (vue compacte du tiroir de comparaison de
  * Sessions, maquette `makeBalance` avec `cp`) : par famille, la somme des actions de chaque rôle
  * (Tenir en durée), camp contre camp, puis les colonnes facultatives (prises nettes de drapeau) en
- * ligne à part. Témoin : la soirée du 07/09 (relevés `.ai/V7.5/MESURES_SESSIONS_2026-10-06.md` §3).
+ * ligne à part. Témoin : la soirée du 07/09 (relevés `.ai/archive/V7.5/MESURES_SESSIONS_2026-10-06.md` §3).
  */
 import { describe, expect, it } from 'vitest'
 

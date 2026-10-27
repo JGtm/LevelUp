@@ -1,7 +1,7 @@
 package grammar
 
 // i48_rank_test.go — INSTRUMENT DE MESURE de l'ÉTAPE 2 du plan
-// .ai/V7.5/replay2d/PLAN_EQUIPEMENT_ACTIF.md : « quelle palette pour ce film ? ».
+// .ai/archive/V7.5/replay2d/PLAN_EQUIPEMENT_ACTIF.md : « quelle palette pour ce film ? ».
 //
 // CE QU'IL LIT, ET POURQUOI PERSONNE NE L'AVAIT LU. `consumeBipedDesiredAbilitySet`
 // (components_biped_ability.go, i48) reproduit `FUN_1406d0ff0` : R(3) compteur de rotation,

@@ -9,7 +9,7 @@ package grammar
 // (`consumeUnitActorControl`, `FUN_1408f0778`) et l entree de controle `kind 0` de la vue C
 // (`FUN_1406cd860` +0x18, `frame_vue_controle.go`). Il vivait dans `unit_control.go` sous le nom
 // `consume1406d025c`, qui CONSOMMAIT ses bits et jetait les valeurs. La vue C en a besoin : ses
-// gachettes sont le TIR CONTINU (sonde P1-S3, `.ai/V7.5/retours_rejeu_2026-09-23/
+// gachettes sont le TIR CONTINU (sonde P1-S3, `.ai/archive/V7.5/retours_rejeu_2026-09-23/
 // SONDE_P1S3_tir_continu_vue_controle.md`). Il est donc sorti ici, et il REND ce qu il lit.
 //
 // # CE QUI CHANGE DANS LA LECTURE, RELU CHEZ L ECRIVAIN (HaloInfinite.exe, lecture seule)

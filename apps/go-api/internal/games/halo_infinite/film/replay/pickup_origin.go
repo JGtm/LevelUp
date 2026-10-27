@@ -10,7 +10,7 @@ import "levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 // la distance seule (mediane 1,33 m, 46 % sous le metre — sans pouvoir de separation), la fin
 // de vie d'objet (25,6 % d'injectivite), la levitation (separation 0,00 m) et la recurrence des
 // naissances (elle mesure le trafic des joueurs, pas les points d'apparition). Elles sont
-// consignees dans `.ai/V7.5/film_re/NOTE_ORIGINE_LEVITATION_2026-09-01.md`, section « ce qu'il
+// consignees dans `.ai/archive/V7.5/film_re/NOTE_ORIGINE_LEVITATION_2026-09-01.md`, section « ce qu'il
 // ne faut plus retenter ».
 //
 // CE QUI DEBLOQUE : LA CARTE, PAS LE FILM. Le fichier de variante declare les points

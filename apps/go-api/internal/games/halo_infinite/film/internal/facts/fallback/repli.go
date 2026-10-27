@@ -1,11 +1,11 @@
 // Package fallback porte LE REGISTRE DES REPLIS du décodeur de film (D14 du plan
-// `.ai/V7.5/PLAN_DECODEUR_FILM_2026-09-13.md`, ADR 0034).
+// `.ai/archive/V7.5/PLAN_DECODEUR_FILM_2026-09-13.md`, ADR 0034).
 //
 // # CE QUE CE PAQUET EXISTE POUR EMPÊCHER
 //
 // Un REPLI ANONYME : un `if` de secours au milieu d'une fonction, qui décide un fait à la
 // place de la lecture du film, sans nom, sans compteur, sans date et sans critère de retrait.
-// L'audit du lot 0.E en a recensé 62 dans le décodeur (`.ai/V7.5/AUDIT_HEURISTIQUES_DECODEUR_2026-09-13.md`,
+// L'audit du lot 0.E en a recensé 62 dans le décodeur (`.ai/archive/V7.5/AUDIT_HEURISTIQUES_DECODEUR_2026-09-13.md`,
 // table E), dont neuf portaient DÉJÀ un défaut mesuré — jusqu'à 95 % des poses d'un film
 // créditées au mauvais joueur, 213 s d'attribution fausse sur une manche, 27 faux
 // enregistrements sur Live Fire. Aucun de ces défauts n'était visible d'un artefact : c'est ce

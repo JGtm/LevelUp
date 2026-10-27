@@ -5,7 +5,7 @@
 // canevas en déclare 20, la carte jouée 4. Une mutation qui rendrait le rack acceptable
 // fait tomber ce test.
 //
-// FIXTURES — `.ai/V7.5/dumps/mapvar/` n'est pas versionné (77 Mo de variantes
+// FIXTURES — `internal/testfixtures/testdata/cartes/mapvar/` n'est pas versionné (77 Mo de variantes
 // re-téléchargeables). Deux exceptions y sont suivies parce qu'elles sont des témoins de
 // test : les deux `.mvar` de Cliffhanger et `vagabond_fo08_wetland.mvar` (17 Ko), le rack
 // qui porte la démonstration. `vagabond_map.mvar` (882 Ko) reste hors dépôt : le test qui
@@ -23,12 +23,13 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
+	"levelup/go-api/internal/testfixtures"
 )
 
 // varianteFixture parse un .mvar de référence, ou saute le test s'il n'est pas là.
 func varianteFixture(t *testing.T, nom string) *mapvar.Variant {
 	t.Helper()
-	src := filepath.Join("..", "..", "..", "..", ".ai", "V7.5", "dumps", "mapvar", nom)
+	src := testfixtures.Carte("mapvar", nom)
 	buf, err := os.ReadFile(src)
 	if err != nil {
 		t.Skipf("fixture %s absente (%v)", src, err)

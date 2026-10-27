@@ -80,7 +80,7 @@ package objectives
 // remplacant arrive 2 min 30 plus tard.
 //
 // COMPLEMENT DU 2026-10-02 (retrait des replis nuls, decision DU-7, REVISION CONSTANTE) : deux replis
-// a compte NUL sur le parc sortent de la couche (`.ai/V7.5/MESURES_PARC_REPLIS_NULS_2026-10-02.md`, 1 227
+// a compte NUL sur le parc sortent de la couche (`.ai/archive/V7.5/MESURES_PARC_REPLIS_NULS_2026-10-02.md`, 1 227
 // artefacts de la vague J11.4). `repli_instant_sur_la_premiere_manche` : un instant anterieur a toute
 // manche connue n est plus range dans la premiere — [RoundIdentity.RoundAt] rend faux et
 // [RoundIdentity.At] ne nomme personne ; `repli_mort_sans_xuid_ignoree` : la mort sans xuid reste hors
@@ -151,13 +151,13 @@ package objectives
 // `grammar/signaux` ne change pas et les objectifs ne lisent pas le fil : sortie inchangee par
 // construction. Golden regenere a revision constante.
 //
-// COMPLEMENT DU 2026-10-09 (jalon LK du plan `.ai/V7.5/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`,
+// COMPLEMENT DU 2026-10-09 (jalon LK du plan `.ai/archive/V7.5/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`,
 // REVISION CONSTANTE) : `grammar.Rev` monte a `grammar-2026-10-09.2` (records d image-cle lus sous la
 // portee de l etat complet). `grammar/signaux` ne change pas ; l etape `objectives` de `replay-equiv`
 // est IDENTIQUE sur les 20 films de reference (binaires de `d429dc517` contre ceux du lot). Golden
 // regenere a revision constante.
 //
-// COMPLEMENT DU 2026-10-09 (lot 2.7.d1 du plan `.ai/V7.5/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`,
+// COMPLEMENT DU 2026-10-09 (lot 2.7.d1 du plan `.ai/archive/V7.5/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`,
 // REVISION CONSTANTE) : `grammar.Rev` monte a `grammar-2026-10-09.3` (etat complet du bipede aux
 // images-cles lu par la grammaire, fenetres de bits derriere la lecture ; la marque de portage, lue
 // par la grammaire sur les records admis, reste la configuration de la fenetre, U-2 (b)).
@@ -166,7 +166,7 @@ package objectives
 // regenere a revision constante. Les deux rangs (`.2`, `.3`) sont renumerotes a la fusion de `feat/v75`
 // `54b47a2b8` (chronique de `grammar`) ; l etape `objectives` rejouee contre `54b47a2b8` est identique.
 //
-// COMPLEMENT DU 2026-10-14 (lot F du plan `.ai/V7.5/PLAN_AJUSTEMENTS_2026-10-14.md`, branche `feat/aj14-f`,
+// COMPLEMENT DU 2026-10-14 (lot F du plan `.ai/archive/V7.5/PLAN_AJUSTEMENTS_2026-10-14.md`, branche `feat/aj14-f`,
 // REVISION CONSTANTE) : `grammar.Rev` monte a `grammar-2026-10-14` — elle entre PAR VALEUR dans l amont
 // de cette couche — : la lecture de la vue A range ses messages de poussee (genres 104 et 105) et
 // `film/types` gagne `Knockback` et `KnockbackStats`. Les objectifs ne lisent pas les poussees.
@@ -181,7 +181,7 @@ package objectives
 // `killsource` IDENTIQUES sur les 20 ; seules `carriedEquipment` (14 films) et l artefact bougent.
 // Golden regenere a revision constante.
 //
-// COMPLEMENT DU 2026-10-15 (plan `.ai/V7.5/PLAN_RI_RESIDU_IMAGES_CLES_2026-10-14.md`, branche
+// COMPLEMENT DU 2026-10-15 (plan `.ai/archive/V7.5/PLAN_RI_RESIDU_IMAGES_CLES_2026-10-14.md`, branche
 // `feat/ri-ecart-108`, REVISION CONSTANTE) : `grammar.Rev` monte a `grammar-2026-10-15.2` (table
 // d entrees d image-cle, bloc malleable d i53 sans drapeau final pour la majeure 0x25, world-object i0
 // et rigid-body i18 sous la garde) et `killsource.Rev` a `killsource-2026-10-15`. PREUVE :
@@ -199,7 +199,7 @@ package objectives
 // film par processus : etape `objectives` IDENTIQUE sur les 20 ; seules `killsource`, `carriedEquipment`
 // et l artefact bougent. Golden regenere a revision constante.
 //
-// ENTREE `objectives-2026-10-17` (2026-10-17, lot E8.2 du plan `.ai/V7.5/PLAN_BACKLOG_2026-10-16.md`, branche
+// ENTREE `objectives-2026-10-17` (2026-10-17, lot E8.2 du plan `.ai/archive/V7.5/PLAN_BACKLOG_2026-10-16.md`, branche
 // `feat/backlog-2026-10-16`) : LE CANAL B D'UN SLOT D'EQUIPE N'EST PAS UN SCORE. [emissionHorsDomaine]
 // jette desormais l'emission du score de mode d'un slot d'EQUIPE dont le canal B est non nul. Avant,
 // une emission `A=0 B=5` PASSAIT la borne de domaine et, plus tardive que le dernier point reel,

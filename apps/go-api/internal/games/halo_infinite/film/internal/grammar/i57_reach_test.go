@@ -3,7 +3,7 @@
 package grammar
 
 // i57_reach_test.go — INSTRUMENT DE MESURE de l'ÉTAPE 3 du plan
-// .ai/V7.5/replay2d/PLAN_EQUIPEMENT_ACTIF.md : « pourquoi le saut vers i56/i57 n'aboutit
+// .ai/archive/V7.5/replay2d/PLAN_EQUIPEMENT_ACTIF.md : « pourquoi le saut vers i56/i57 n'aboutit
 // pas ». Il INSTRUMENTE avant de conclure, comme l'item 3.1 l'exige.
 //
 // CE QU'IL COMPTE, ET POURQUOI CES COMPTEURS-LÀ. Le plan supposait un échec de TRAVERSÉE :

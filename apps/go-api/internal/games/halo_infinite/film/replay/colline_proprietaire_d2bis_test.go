@@ -16,7 +16,7 @@ package replay
 // le camp du preneur.
 //
 // LE PROTOCOLE — tolerance, temoins, seuils, regle d'escalade — EST ECRIT ET COMMITE AVANT CE
-// FICHIER (`.ai/V7.5/PLAN_OBJECTIFS_ETAT_VIVANT_2026-08.md`, section D2-bis, commit dedie). Ce
+// FICHIER (`.ai/archive/V7.5/PLAN_OBJECTIFS_ETAT_VIVANT_2026-08.md`, section D2-bis, commit dedie). Ce
 // qui suit l'applique, il ne le decide pas.
 //
 // REGIME : garde `ZONE_FILM`, un film par processus, lecture seule, AUCUNE base ouverte, AUCUN

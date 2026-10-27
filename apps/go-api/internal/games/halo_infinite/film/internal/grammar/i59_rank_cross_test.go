@@ -3,7 +3,7 @@
 package grammar
 
 // i59_rank_cross_test.go — INSTRUMENT DE MESURE de l'item 0.7 du plan
-// .ai/V7.5/replay2d/PLAN_CAPACITES_ACTIVES.md : les TAGS 0 et 2 d'`i59`
+// .ai/archive/V7.5/replay2d/PLAN_CAPACITES_ACTIVES.md : les TAGS 0 et 2 d'`i59`
 // `biped-spartan-ability-non-predicted-state`, jamais croisés à une identité.
 //
 // POURQUOI CETTE SONDE EXISTE, ET CE QU'ELLE N'EST PAS. La Phase 0 a rendu un négatif sur

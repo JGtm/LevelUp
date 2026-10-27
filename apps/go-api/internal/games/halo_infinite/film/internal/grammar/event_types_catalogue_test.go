@@ -7,7 +7,7 @@ package grammar
 // PROVENANCE ET STATUT. Ces noms ne sont PAS mesures dans le film : ils viennent de la table
 // statique des descripteurs de `HaloInfinite.exe` (base `0x144724A90`, 8 octets par type),
 // relevee mecaniquement `table[t] -> vtable+0x08 -> LEA RAX,[rip+X] -> chaine` et consignee en
-// annexe de `.ai/V7.5/film_re/NOTE_ENVELOPPE_EVENTS_2026-08-30.md`. Les types 0..49 ne suivent
+// annexe de `.ai/archive/V7.5/film_re/NOTE_ENVELOPPE_EVENTS_2026-08-30.md`. Les types 0..49 ne suivent
 // pas ce format et n'ont pas ete resolus.
 //
 // POURQUOI ILS VIVENT ICI, DANS UN FICHIER DE TEST. Ce sont des DONNEES DE RECHERCHE : elles

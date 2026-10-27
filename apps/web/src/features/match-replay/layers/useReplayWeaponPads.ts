@@ -65,7 +65,7 @@ type PadLabels = ReplayDocumentReady['weaponLabels']
 
 /**
  * weaponLabelKeyOf — LA CLÉ CANONIQUE d'une famille d'arme dans `weaponLabels`, quelle que
- * soit la forme de l'identifiant REÇU (rapport `.ai/V7.5/RAPPORT_ARMES_AU_SOL_2026-09-10.md`,
+ * soit la forme de l'identifiant REÇU (rapport `.ai/archive/V7.5/RAPPORT_ARMES_AU_SOL_2026-09-10.md`,
  * §0 et §5 option 0).
  *
  * DEUX ÉCRITURES COEXISTENT DANS LES ARTEFACTS DÉJÀ CUITS, ET C'EST UN DÉFAUT, PAS UN CHOIX.
@@ -181,7 +181,7 @@ export function padIconRefFor(weapon: string, labels: PadLabels, titleSlug: stri
 
 /**
  * SPECIAL_WEAPON_ROLES — LES TROIS RÔLES DU FILTRE « ARMES SPÉCIALES » du calque des armes au
- * sol (rapport `.ai/V7.5/RAPPORT_ARMES_AU_SOL_2026-09-10.md`, §1 et §5 option B).
+ * sol (rapport `.ai/archive/V7.5/RAPPORT_ARMES_AU_SOL_2026-09-10.md`, §1 et §5 option B).
  *
  * LA DÉFINITION RETENUE EST LA DIMENSION FONCTION DE COMBAT (`WeaponLabel.role`, posé à la
  * requête depuis le registre canonique — jamais une table d'armes en dur côté web), PAS LA

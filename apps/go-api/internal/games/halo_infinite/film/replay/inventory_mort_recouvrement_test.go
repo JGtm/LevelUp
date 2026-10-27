@@ -3,7 +3,7 @@ package replay
 // inventory_mort_recouvrement_test.go — LE RECORD SANS ARME EST-IL UN MORT ?
 //
 // CE QU'ON MESURE, ET POURQUOI. La mesure du 2026-08-24
-// (`.ai/V7.5/replay2d/MESURE_TROUS_INVENTAIRE_2026-08-24.md`) etablit que 17,4 % des lectures
+// (`.ai/archive/V7.5/replay2d/MESURE_TROUS_INVENTAIRE_2026-08-24.md`) etablit que 17,4 % des lectures
 // d'inventaire ne rendent RIEN, et que 96,7 % de ces lectures sont des records SANS AUCUNE
 // ARME. Elle avance une interpretation — « bipede mort ou en reapparition » — en la declarant
 // explicitement NON PROUVEE. Encoder une etiquette « mort » dans le contrat publie sans la

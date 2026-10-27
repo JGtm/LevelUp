@@ -2,7 +2,7 @@
 
 package grammar
 
-// ri27d1_m2_ancres_research_test.go — 2.7.d1 (`.ai/V7.5/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`,
+// ri27d1_m2_ancres_research_test.go — 2.7.d1 (`.ai/archive/V7.5/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`,
 // commandes I-ancres et I-equipes).
 //
 // L ELECTION DES ANCRES ET LES PREUVES D IMAGE-CLE, dans le contexte de la cuisson ([ri27cContexte],

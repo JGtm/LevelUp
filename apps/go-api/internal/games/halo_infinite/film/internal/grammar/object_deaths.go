@@ -32,8 +32,8 @@ package grammar
 //
 // HORS LIGNE par construction (le film entier est parcouru) — jamais depuis un chemin de requête.
 //
-// Mesure et gates d'origine : `.ai/V7.5/GATE_V13_DEADSTATE_MARCHE_2026-09-05.md` et
-// `.ai/V7.5/film_re/NOTE_V13_DEADSTATE_VEHICULE_2026-09-05.md`.
+// Mesure et gates d'origine : `.ai/archive/V7.5/GATE_V13_DEADSTATE_MARCHE_2026-09-05.md` et
+// `.ai/archive/V7.5/film_re/NOTE_V13_DEADSTATE_VEHICULE_2026-09-05.md`.
 
 import (
 	"cmp"

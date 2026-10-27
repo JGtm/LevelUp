@@ -44,7 +44,7 @@ l oracle corpus `grammar.TestResidusPiedOctetEquipe`, rejoue le 2026-09-14 sur t
 (53ce4390, 64e8adfa, 7344d24f) : 173 evenements sur 173 pour l octet 37, 84 sur 173 pour l
 octet 55, quatre lectures en accord parfait sur cent quatre-vingts essayees. Mesure d origine
 du 2026-09-13 : 665/665 sur quatorze films
-(.ai/V7.5/film_re/NOTE_RESIDUS_CHUNK00_2026-09-13.md §6).
+(.ai/archive/V7.5/film_re/NOTE_RESIDUS_CHUNK00_2026-09-13.md §6).
 
 POURQUOI CE BLOC-LA, ET PAS LE PREMIER VENU. La premiere version de cette fixture (bloc
 t=61155, xuid 2533274823110022) portait 1 aux octets 36, 37 ET 38 : elle ne discriminait que

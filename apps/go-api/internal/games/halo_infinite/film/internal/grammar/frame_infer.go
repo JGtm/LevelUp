@@ -79,7 +79,7 @@ func DecodeFrameInfer(buf []byte, w *World, cfg FrameConfig) ([]FrameRecord, int
 // Le gate du trou est `TestMouvement5116Gate` : bits non lus par paquet dans [0 ; 7].
 // --- fin de la note ---------------------------------------------------------------------------
 // --- CE QUE LE LOT 5.15 A TROUVE SUR CETTE GARDE, ET IL FAUT LE LIRE AVANT DE S Y FIER
-// --- (2026-09-22, `.ai/V7.5/film_re/NOTE_5_15_RANG_1_FILM_DENSE_2026-09-22.md` §3)
+// --- (2026-09-22, `.ai/archive/V7.5/film_re/NOTE_5_15_RANG_1_FILM_DENSE_2026-09-22.md` §3)
 //
 // `FUN_1406cd128` porte DEUX grammaires, separees par le global `DAT_14474cd78` (`1406cd24d`) :
 //
@@ -104,7 +104,7 @@ func DecodeFrameInfer(buf []byte, w *World, cfg FrameConfig) ([]FrameRecord, int
 // table de datums par slot, pas un changement de garde — c est le report 5.15.3 (D1 du 5.15).
 // --- fin de la note du lot 5.15 ---------------------------------------------------------------
 // --- CE QUE LE LOT 5.16 A PORTE, ET LE « MODELE MANQUANT » CI-DESSUS EST DONC CADUC
-// --- (2026-09-22, `.ai/V7.5/film_re/NOTE_5_16_MODELE_RANG_1_2026-09-22.md`)
+// --- (2026-09-22, `.ai/archive/V7.5/film_re/NOTE_5_16_MODELE_RANG_1_2026-09-22.md`)
 //
 // LE MODELE N ETAIT PAS « LES TROIS TABLES D ENTITES PAR VUE ». La garde vive de
 // `FUN_1406cbaa0` (cas DELTA) porte sur la TABLE DE DATUMS du decodeur PARTAGE — une seule

@@ -83,7 +83,7 @@ var deltaWitnessFrozen = map[string]deltaWitnessCounts{
 // 000d5950 30 058 -> 30 060 · 64e8adfa 31 934 -> 31 935 · 06dfe6d9 8 494 (inchange)
 // 7344d24f 25 016 -> 25 021 · 696a9d7c 24 652 -> 24 653 · 01e1f945 29 138 -> 29 140
 // 530820e5 26 238 -> 26 241 · 53ce4390 28 584 -> 28 586 · 0a247154, 606d9844, 8076f97f,
-// 24dbb67d inchanges. Detail : `.ai/V7.5/replay2d/registre_film/LOTC_PHASE1B.md`.
+// 24dbb67d inchanges. Detail : `.ai/archive/V7.5/replay2d/registre_film/LOTC_PHASE1B.md`.
 //
 // POURQUOI CES COMPTES ONT BOUGE LE 2026-08-18, DEUXIEME FOIS (lot C-bis phase 1, item CB.1.1) —
 // meme espece de raison que la premiere : la grammaire a GAGNE des composants. Les deux desers de
@@ -98,7 +98,7 @@ var deltaWitnessFrozen = map[string]deltaWitnessCounts{
 // (+40) · 64e8adfa 31 935 -> 31 973 (+38) · 24dbb67d 30 917 -> 30 954 (+37) · 530820e5 26 241 ->
 // 26 273 (+32) · 53ce4390 28 586 -> 28 613 (+27) · 01e1f945 29 140 -> 29 162 (+22) · 000d5950
 // 30 060 -> 30 080 (+20) · 0a247154 24 468 -> 24 484 (+16) · 606d9844 26 642 -> 26 657 (+15) ·
-// 06dfe6d9 8 494 -> 8 502 (+8). Detail : `.ai/V7.5/replay2d/registre_film/LOTCBIS_PHASE1.md`.
+// 06dfe6d9 8 494 -> 8 502 (+8). Detail : `.ai/archive/V7.5/replay2d/registre_film/LOTCBIS_PHASE1.md`.
 //
 // Le gain reste MODESTE, et pour la meme raison qu au lot C : une traversee n aboutit que si TOUS
 // les composants annonces sont portes, et ti=13 n a que 34 composants sur un trafic domine par le

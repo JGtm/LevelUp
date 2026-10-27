@@ -5,12 +5,11 @@ package mapcatalog
 
 import (
 	"os"
-	"path/filepath"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
-	"levelup/go-api/internal/testutil"
+	"levelup/go-api/internal/testfixtures"
 )
 
 // zoneForge fabrique une zone déjà extraite : un carré de côté c centré en (x, y).
@@ -127,11 +126,7 @@ func TestPasDeClassementSeDesserreSurLesGrandesEmprises(t *testing.T) {
 // vers son CANEVAS : il décode, et ne pose aucune zone nommée — le verdict doit le dire, sans
 // erreur. Des octets qui ne sont pas une variante, eux, échouent.
 func TestEntreeForgeSurUneVarianteSansZone(t *testing.T) {
-	root, err := testutil.RepoRoot()
-	if err != nil {
-		t.Fatalf("racine du dépôt : %v", err)
-	}
-	blob, err := os.ReadFile(filepath.Join(root, ".ai", "V7.5", "dumps", "mapvar", "vagabond_fo08_wetland.mvar"))
+	blob, err := os.ReadFile(testfixtures.Carte("mapvar", "vagabond_fo08_wetland.mvar"))
 	if err != nil {
 		t.Fatalf("variante versionnée illisible : %v", err)
 	}

@@ -3,7 +3,7 @@ package main
 // polarite_j11_test.go — LE VERDICT DU G-CORPUS J11 REJOUE SOUS LA CLASSIFICATION TOTALE (lot R4).
 //
 // `testdata/gcorpus_j11_2026-09-28.json` est le rapport JSON du gate de corpus J11 (17 temoins,
-// `.ai/V7.5/film_re/G_CORPUS_J11_2026-09-28.md`), tel que le gate l'a ecrit. Il porte les
+// `.ai/archive/V7.5/film_re/G_CORPUS_J11_2026-09-28.md`), tel que le gate l'a ecrit. Il porte les
 // valeurs BRUTES (`ancien`, `nouveau`) de chaque ligne perte et changement — pas celles des
 // gains, que le rapport compte sans les nommer. Ce test rejoue donc la classification des seules
 // lignes nommees : chaque ligne de couverture numerique est recomparee par `replaydiff.Comparer`

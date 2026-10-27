@@ -77,7 +77,7 @@ func (s *TeammatesService) buildSquadAssistPairs(
 		// Ce `return nil` a fait disparaître le tableau de la page pendant CINQ MOIS sans
 		// qu'aucun log, compteur ni ligne d'admin ne le dise : l'effondrement de
 		// `assist_known` (cache de films gelé le 2026-04-07, registre
-		// `.ai/V7.5/REGISTRE_ASSISTANCES_2026-08-29.md`) n'a été découvert que parce qu'un
+		// `.ai/archive/V7.5/REGISTRE_ASSISTANCES_2026-08-29.md`) n'a été découvert que parce qu'un
 		// utilisateur a demandé pourquoi un tableau manquait. Le silence était le défaut.
 		observability.IncCounterT(ctxkeys.TitleSlug(ctx), compteurAssistPairsSansMesure)
 		slog.InfoContext(ctx, "teammates_assist_pairs_bloc_retire_sans_mesure",

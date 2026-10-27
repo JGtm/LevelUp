@@ -233,7 +233,7 @@ package grammar
 // designer un corps ; un slot dont aucune generation n est connue retombe sur l ancien filtre, repli
 // nomme `repli_generation_vivante_inconnue_tag1`. L etage du pont d identite (`pont_identite.go`)
 // lit les creations AVANT les positions ; les vehicules sont lus sous toutes les generations.
-// Mesure J5.0 (`.ai/V7.5/film_re/MESURE_GB1_2026-09-27.md`) : quatre films touches (`084a804d`,
+// Mesure J5.0 (`.ai/archive/V7.5/film_re/MESURE_GB1_2026-09-27.md`) : quatre films touches (`084a804d`,
 // `1c4c63c2`, `a349fea8`, `4f77afc1`), les quinze autres temoins sans aucune vie de generation >= 2.
 //
 // J5.3 : l equipement, sa recuperation et l arme tenue sont CHAINES PAR VIE (`LifeKey`) et non plus
@@ -379,7 +379,7 @@ package grammar
 // chacun). Plus aucun paquet ferme a la reference ne se perd sur les vingt films.
 //
 // ENTREE `grammar-2026-10-02` (2026-10-02, lot L0 de la campagne de grammaire,
-// `.ai/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`) : LA FERMETURE D UN PAQUET SUIT LES REGLES DE
+// `.ai/archive/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`) : LA FERMETURE D UN PAQUET SUIT LES REGLES DE
 // L ECRIVAIN (decision D2).
 //
 // Un paquet delta est FERME quand sa vue C se lit jusqu a son terminateur avec un reste de 0 a 7
@@ -413,7 +413,7 @@ package grammar
 // etapes sur 61 divergent sur les 20 films, les 56 autres sont identiques a l octet.
 //
 // ENTREE `grammar-2026-10-02.2` (2026-10-02, lot L8 de la campagne de grammaire,
-// `.ai/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`) : `ti=3 low-frequency` EST PORTE, ET `high-frequency`
+// `.ai/archive/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`) : `ti=3 low-frequency` EST PORTE, ET `high-frequency`
 // SE LIT PAR LA TABLE DE L ARCHETYPE.
 //
 // `low-frequency` (`ti=3 i0`) se lit par FUN_142ed4aec (table 0x143d07b40, ecrivain FUN_142eda938) :
@@ -429,7 +429,7 @@ package grammar
 // plus loin (carte de fermeture et mesures : `campagne_grammaire_2026-10-01/LOT_L8.md`).
 //
 // ENTREE `grammar-2026-10-02.3` (2026-10-02, lot L3a de la campagne de grammaire,
-// `.ai/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`) : LA FIN DU MOTEUR DE PARTIE, LUE DANS LE JEU.
+// `.ai/archive/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`) : LA FIN DU MOTEUR DE PARTIE, LUE DANS LE JEU.
 //
 // Six composants des archetypes du moteur (`ti=0`, `ti=1`, `ti=2`, index `i11` a `i17`) passent de
 // « non porte » (arret du record) a porte, chacun sur son lecteur et son ecrivain relus dans

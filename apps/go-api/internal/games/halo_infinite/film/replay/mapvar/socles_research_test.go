@@ -11,7 +11,7 @@ package mapvar
 // `.mvar` de la carte portait les spawners, on connaitrait TOUS les socles des le depart.
 //
 // LECTURE SEULE, aucune base, aucune ecriture. Plan (hypotheses et seuils ECRITS AVANT la
-// mesure) : `.ai/V7.5/replay2d/PLAN_SOCLES_MVAR.md`.
+// mesure) : `.ai/archive/V7.5/replay2d/PLAN_SOCLES_MVAR.md`.
 //
 // USAGE (depuis apps/go-api) :
 //

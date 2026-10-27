@@ -2,7 +2,7 @@ package replay
 
 // oddball_sonde_d7_test.go — D7 : LA SONDE DIAGNOSTIQUE. Ou passe la moitie manquante ?
 //
-// LE PROTOCOLE EST ECRIT ET COMMITE AVANT CE FICHIER (`.ai/V7.5/PLAN_OBJECTIFS_ETAT_VIVANT_
+// LE PROTOCOLE EST ECRIT ET COMMITE AVANT CE FICHIER (`.ai/archive/V7.5/PLAN_OBJECTIFS_ETAT_VIVANT_
 // 2026-08.md`, section « D7 »). Ce qui suit l'applique.
 //
 // # CE QUE CETTE SONDE N'EST PAS

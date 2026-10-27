@@ -3,7 +3,7 @@ package grammar
 // vehicules_v13_deadstate_test.go — MESURE V13 : le dead-state `i11` des vehicules, lu par LA
 // MARCHE et non par l'ancre. Instrument de recherche, LECTURE SEULE, garde par V13_FILMS.
 //
-// LE GATE EST ECRIT AVANT LA MESURE : `.ai/V7.5/GATE_V13_DEADSTATE_MARCHE_2026-09-05.md`.
+// LE GATE EST ECRIT AVANT LA MESURE : `.ai/archive/V7.5/GATE_V13_DEADSTATE_MARCHE_2026-09-05.md`.
 // Resume des criteres, tous implementes ici :
 //
 //	G1a  chiffre ce que le FILTRE DE BANDE aurait perdu (dead-states ti=35 hors de la bande

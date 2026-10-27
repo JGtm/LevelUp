@@ -100,7 +100,7 @@ export const ZONE_SOUND_STEMS = {
    *
    * POURQUOI CE N'EST PAS `capturing`, ET POURQUOI LES DEUX NE SE MARCHENT PAS DESSUS. En Roi
    * de la colline, la prise est une capture d'environ une seconde et c'est la GARDE qui marque
-   * (`.ai/V7.5/PLAN_KOTH_GARDE_VIVANTE_2026-08-30.md` § 1.1). La jauge d'une colline est publiée
+   * (`.ai/archive/V7.5/PLAN_KOTH_GARDE_VIVANTE_2026-08-30.md` § 1.1). La jauge d'une colline est publiée
    * depuis le schéma 92, mais `zoneSoundEvents` ne lit PAS les rampes d'une colline (zone dont
    * les intervalles sont `active`) : `capturing` reste la capture de Bastion, et la sécurisation
    * naît d'un intervalle `active` possédé, qui n'existe QUE sur une colline.

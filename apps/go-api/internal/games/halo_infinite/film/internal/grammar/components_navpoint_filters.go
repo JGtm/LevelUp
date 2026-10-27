@@ -7,7 +7,7 @@ package grammar
 // Cinq composants de l'archetype `managed-navpoint` (ti=12 `i2`..`i6`) commencent par le MEME
 // bloc, et `ti=11 i4 managed-objective-interaction-filter-component` le partage. Le releve
 // integral — structure, table des quinze tags, largeur de chaque charge — est
-// `.ai/V7.5/film_re/NOTE_3_6_TI12_GRAMMAIRES_A_2026-09-17.md` § 3, lu au desassemblage de
+// `.ai/archive/V7.5/film_re/NOTE_3_6_TI12_GRAMMAIRES_A_2026-09-17.md` § 3, lu au desassemblage de
 // `FUN_140dbe400` et de ses trois rappels (`FUN_141e98e10` tags 0..5, `FUN_141e98c70` tags
 // 6..11, `FUN_141e98f90` tags 12..14).
 //

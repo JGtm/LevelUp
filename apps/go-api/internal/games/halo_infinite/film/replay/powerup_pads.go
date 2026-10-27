@@ -11,7 +11,7 @@ package replay
 // position delta, donc n'a aucune vie sur laquelle retomber. Cette voie-ci lui est ADJOINTE,
 // jamais substituée, et elle emploie le filtre que les armes au sol emploient déjà : L'IDENTITÉ.
 //
-// LA MESURE QUI LA FONDE (plan `.ai/V7.5/replay2d/PLAN_POWERUP_SOCLE_CATALYST.md`, phase 3,
+// LA MESURE QUI LA FONDE (plan `.ai/archive/V7.5/replay2d/PLAN_POWERUP_SOCLE_CATALYST.md`, phase 3,
 // 2026-08-18). Sur les deux films KOTH de Catalyst, le balayage des créations `ti=37` SANS
 // l'oracle de vie delta rend NEUF (`01e1f945`) et SEPT (`75f1188f`) créations de
 // `powerup_overshield` (`0xb781197a`) à la MÊME position au centimètre — (0,257 ; -0,003 ;

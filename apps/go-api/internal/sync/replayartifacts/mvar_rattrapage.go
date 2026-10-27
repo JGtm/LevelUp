@@ -65,7 +65,7 @@ import (
 
 // entryFromMvarFn est la couture qui rend le CHEMIN NOMINAL testable sans `.mvar` reel.
 //
-// Les fixtures `.mvar` du depot vivent hors de l'arbre (`.ai/V7.5/dumps/mapvar/`) et les tests
+// Les fixtures `.mvar` du depot vivent sous `internal/testfixtures/testdata/cartes/mapvar/` et les tests
 // qui en dependent SAUTENT quand elles manquent — donc en CI. Sans cette couture, la promesse
 // « carte inconnue -> entree ajoutee, existantes byte-identiques » ne serait verifiee nulle
 // part la ou elle compte. Le parsing lui-meme est couvert par les tests de `mapvar`.

@@ -121,7 +121,7 @@ func (c *Client) FetchMvar(ctx context.Context, asset *Asset, relPath string) ([
 //
 // POURQUOI CE POINT D'ENTRÉE EXISTE À CÔTÉ DE FetchMvar. Le préfixe blob d'une carte n'a
 // pas à être re-résolu quand on l'a déjà : l'inventaire UGC versionné
-// (.ai/V7.5/cartes/inventaire_rotation_ugc_*.json) le porte pour chaque carte de la
+// (apps/go-api/cmd/mapcallouts-build/donnees/inventaire_rotation_ugc_*.json) le porte pour chaque carte de la
 // rotation. Le stockage blob répond SANS jeton — seul le Discovery en exige un — donc ce
 // chemin-là n'a besoin d'aucune authentification, et un `Client` à jetons nil suffit.
 // Il reste soumis à `netguard` comme toute émission sortante d'`internal/`.

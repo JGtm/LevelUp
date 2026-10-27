@@ -1,6 +1,6 @@
 // Package main — sync_v2_wiring_title_test.go : gardes C.2 du lot finitions LUSR
 // (2026-09-13), spécification G1/G2 du rapport
-// .ai/V7.5/RAPPORT_VOLET1_LUSR_H5_2026-08-28.md §5.3.
+// .ai/archive/V7.5/RAPPORT_VOLET1_LUSR_H5_2026-08-28.md §5.3.
 //
 // Contexte : la corruption LUSR h5_arena du 2026-06-26 vient d'une DOUBLE SOURCE
 // DE TITRE dans le câblage V2 — handles DB depuis le titre du CYCLE, moteur depuis
@@ -96,7 +96,7 @@ func TestSyncV2WiringHasSingleTitleSource(t *testing.T) {
 			t.Errorf("%s:%d — p.TitleSlug employé sans deps.TitleSlug sur la même ligne :\n\t%s\n"+
 				"Le titre du cycle est la SEULE source (handles DB, persister, moteur) ; le titre "+
 				"du profil ne sert qu'au garde d'égalité. Double source = corruption LUSR "+
-				"h5_arena du 2026-06-26 (rapport .ai/V7.5/RAPPORT_VOLET1_LUSR_H5_2026-08-28.md §3).",
+				"h5_arena du 2026-06-26 (rapport .ai/archive/V7.5/RAPPORT_VOLET1_LUSR_H5_2026-08-28.md §3).",
 				src, i+1, strings.TrimSpace(line))
 		}
 	}

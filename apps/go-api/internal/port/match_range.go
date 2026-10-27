@@ -1,7 +1,7 @@
 package port
 
 // match_range.go — LE PORT DE LA PORTÉE DE TOUT UN LOBBY, PAR MATCH (plan
-// .ai/V7.5/PLAN_AJUSTEMENTS_SUPP_PRE_V75_2026-09-21.md, lot N2 ; réserve R3 de la maquette
+// .ai/archive/V7.5/PLAN_AJUSTEMENTS_SUPP_PRE_V75_2026-09-21.md, lot N2 ; réserve R3 de la maquette
 // MAQUETTE_TRANSVERSES_RIPOSTE_PORTEE_APPUI_2026-09-21.html §5).
 //
 // # POURQUOI UN CONTRAT SÉPARÉ DE `WeaponRangeRepository`

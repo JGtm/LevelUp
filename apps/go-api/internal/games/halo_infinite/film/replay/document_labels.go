@@ -74,7 +74,7 @@ type WeaponLabel struct {
 	//
 	// POURQUOI IL EST PUBLIÉ (lot armes au sol, 2026-09-10) : c'est le critère du filtre
 	// « armes spéciales seulement » du calque des armes au sol (rôles sniper/power/special —
-	// cf. `.ai/V7.5/RAPPORT_ARMES_AU_SOL_2026-09-10.md`, §1). Interdit au client de tenir une
+	// cf. `.ai/archive/V7.5/RAPPORT_ARMES_AU_SOL_2026-09-10.md`, §1). Interdit au client de tenir une
 	// table d'armes en dur pour la même décision.
 	//
 	// IL N'EST PAS ÉCRIT DANS L'ARTEFACT : posé À LA REQUÊTE par le service

@@ -1,5 +1,5 @@
 // Package service — synthesis_weapon_records.go : LA SECTION « RECORDS DE DISTANCE PAR ARME »
-// de la Synthèse (plan .ai/V7.5/PLAN_RECORDS_DISTANCE_2026-09-20.md).
+// de la Synthèse (plan .ai/archive/V7.5/PLAN_RECORDS_DISTANCE_2026-09-20.md).
 //
 // FONCTION LIBRE, comme la portée (`weapon_range_section.go`) : elle prend son scope canonique
 // en paramètre, et un service qui appellerait un autre service serait un couplage horizontal.

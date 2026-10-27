@@ -15,7 +15,7 @@ import (
 // tenues des paquets delta ne le voit jamais (0 sur 68 284 lectures). Il ne NOMME rien : il
 // DIT que ce joueur-la porte quelque chose, a cet instant-la.
 //
-// LA MESURE QUI L'ETABLIT (plan `.ai/V7.5/replay2d/PLAN_OBJECTIFS_VIVANTS_2E_LECTURE.md`,
+// LA MESURE QUI L'ETABLIT (plan `.ai/archive/V7.5/replay2d/PLAN_OBJECTIFS_VIVANTS_2E_LECTURE.md`,
 // phase 0, item 0.1 — balayage SANS predicat de toutes les fenetres de 32 bits de l'emprise,
 // confronte aux fenetres de portage de l'oracle CTF nomme) :
 //

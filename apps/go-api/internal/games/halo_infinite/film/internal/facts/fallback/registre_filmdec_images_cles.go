@@ -2,7 +2,7 @@ package fallback
 
 // registre_filmdec_images_cles.go — les replis des FENETRES DE BITS des images-cles, passees DERRIERE
 // la lecture de l etat complet du bipede par la grammaire (plan
-// `.ai/V7.5/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, D1.2 ; ADR 0037 IR-6, option A de
+// `.ai/archive/V7.5/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, D1.2 ; ADR 0037 IR-6, option A de
 // l utilisateur du 2026-10-04).
 //
 // FAMILLE NEUVE (2026-10-09) : les trois gestes d une famille neuve sont faits — [Tranches],

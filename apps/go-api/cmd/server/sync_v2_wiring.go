@@ -292,7 +292,7 @@ func buildSyncEngineFactoryParityComplete(deps SyncV2WiringDeps) syncv2.SyncEngi
 		// donnait au moteur les bases d'un titre et la sémantique d'un autre. C'est
 		// la chaîne causale exacte de la corruption LUSR h5_arena du 2026-06-26
 		// (4 joueurs déclarés sous deux titres → passe « profil halo_5 » sur les
-		// bases halo_infinite ; rapport .ai/V7.5/RAPPORT_VOLET1_LUSR_H5_2026-08-28.md
+		// bases halo_infinite ; rapport .ai/archive/V7.5/RAPPORT_VOLET1_LUSR_H5_2026-08-28.md
 		// §3). La partition livesync.HandlesTitle (b30eb9fe5) ferme le CHEMIN de juin,
 		// pas la CLASSE : un titre piloté par le SyncEngine la traverserait.
 		//

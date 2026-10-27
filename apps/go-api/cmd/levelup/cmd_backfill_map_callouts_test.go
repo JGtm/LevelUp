@@ -16,6 +16,7 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/mapcatalog"
 	"levelup/go-api/internal/sync/replayartifacts"
+	"levelup/go-api/internal/testfixtures"
 	"levelup/go-api/internal/testutil"
 )
 
@@ -82,8 +83,7 @@ func ecrireFichier(t *testing.T, chemin, contenu string) {
 func TestBackfillMapCalloutsHorsLigne(t *testing.T) {
 	const versionnee, auCache, absente = "aaaa", "bbbb", "cccc"
 	racine := racineZonesCLI(t, versionnee)
-	depot, _ := testutil.RepoRoot()
-	blob, err := os.ReadFile(filepath.Join(depot, ".ai", "V7.5", "dumps", "mapvar", "vagabond_fo08_wetland.mvar"))
+	blob, err := os.ReadFile(testfixtures.Carte("mapvar", "vagabond_fo08_wetland.mvar"))
 	if err != nil {
 		t.Fatal(err)
 	}

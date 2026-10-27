@@ -1,7 +1,7 @@
 package replaybuild
 
 // pont_siege_recycle_test.go — LE SIEGE RECYCLE SUR UN FILM REEL (lot R1 du plan de suite d audit,
-// constat C1 du rapport `.ai/V7.5/film_re/G_CORPUS_J11_2026-09-28.md`).
+// constat C1 du rapport `.ai/archive/V7.5/film_re/G_CORPUS_J11_2026-09-28.md`).
 //
 // `bcb6d393` (Cliffhanger, CTF, une manche) porte deux sieges statborg recycles : le slot 12 (un
 // joueur part, un remplacant le reprend) et le slot 14 (trois occupants). Depuis le lot J8.5, le

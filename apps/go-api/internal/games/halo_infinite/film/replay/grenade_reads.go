@@ -33,7 +33,7 @@ import (
 //
 // CE QUI N'EST PAS ICI, ET POURQUOI : LES MUNITIONS. Le suivi delta des chargeurs a été
 // implémenté, mesuré, et REFUSÉ par sa propre mesure (lot 4.2 du 2026-08-25,
-// .ai/V7.5/replay2d/LOT4_SUIVI_DELTA_2026-08-25.md) : la concordance avec les images-clés
+// .ai/archive/V7.5/replay2d/LOT4_SUIVI_DELTA_2026-08-25.md) : la concordance avec les images-clés
 // plafonne à 92,80 % et — c'est le point — elle DESCEND quand on rapproche les deux lectures
 // (88,06 % à 0,10 s contre 93,19 % à 2 s). Un désaccord dû au tir survenu entre les deux
 // mesures ferait l'inverse. Le scanner reste en place et publie ses chiffres ; il n'alimente

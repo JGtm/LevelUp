@@ -1,7 +1,7 @@
 package fallback
 
 // registre_replay_positions.go — les replis de la PUBLICATION DES POSITIONS (`replay/`), poses au
-// lot M1 des retours du rejeu (2026-09-23, `.ai/V7.5/PLAN_RETOURS_REJEU_2026-09-23.md` §4.4).
+// lot M1 des retours du rejeu (2026-09-23, `.ai/archive/V7.5/PLAN_RETOURS_REJEU_2026-09-23.md` §4.4).
 //
 // # POURQUOI DES REPLIS, ET PAS DES REGLES
 //

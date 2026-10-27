@@ -6,7 +6,7 @@ package replay
 // EXACTEMENT UN joueur dont le score personnel monte sans interruption pendant tout ce temps ?
 //
 // LE PROTOCOLE — trou, tranche de 5 s, « exactement un », temoin, diagnostic d'oracle — EST
-// ECRIT ET COMMITE AVANT CE FICHIER (`.ai/V7.5/PLAN_OBJECTIFS_ETAT_VIVANT_2026-08.md`, section
+// ECRIT ET COMMITE AVANT CE FICHIER (`.ai/archive/V7.5/PLAN_OBJECTIFS_ETAT_VIVANT_2026-08.md`, section
 // « D4.3 — LE SEUIL (2) : les definitions operatoires »). Ce qui suit l'applique.
 //
 // # LE CANAL EST UNE ABSENCE, ET C'EST CE QUI LE REND SUR

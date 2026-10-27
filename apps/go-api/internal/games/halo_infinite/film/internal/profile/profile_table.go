@@ -67,7 +67,7 @@ const (
 	// dateProfilPose : le lot 2.1, jour ou ces valeurs entrent au profil avec leur provenance.
 	dateProfilPose = "2026-09-17"
 	// dateLoiLargeursAxe : lecture du remplisseur des largeurs d axe dans Ghidra (lot 3.4,
-	// volet preparation), consignee par `.ai/V7.5/film_re/NOTE_3_4_REMPLISSEUR_LARGEURS_*`.
+	// volet preparation), consignee par `.ai/archive/V7.5/film_re/NOTE_3_4_REMPLISSEUR_LARGEURS_*`.
 	dateLoiLargeursAxe = "2026-09-16"
 	// dateAmorceGrenade : lot 3.3.1, mesure de l amorce et de l index auteur sur dix films.
 	dateAmorceGrenade = "2026-09-17"

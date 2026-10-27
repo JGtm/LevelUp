@@ -32,7 +32,7 @@ package replay
 // USAGE (depuis apps/go-api) :
 //
 //	CGO_ENABLED=0 ADS_FILMS_DIR=<repo>/data/cache/film_chunks \
-//	  ADS_TSV=<repo>/.ai/V7.5/film_re \
+//	  ADS_TSV=<repo>/.ai/archive/V7.5/film_re \
 //	  go test ./internal/games/halo_infinite/film/replay/ -run TestViseeMedaillesRecensement -v -timeout 120m
 
 import (

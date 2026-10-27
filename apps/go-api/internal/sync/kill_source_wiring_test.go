@@ -6,7 +6,7 @@ package sync
 // origine — le kill-feed du film — et son seul producteur etait une commande manuelle. Le
 // jour ou plus personne ne l a lancee (cache de films gele le 2026-04-07), la donnee s est
 // arretee sans un log : cinq mois, deux blocs de l app disparus en silence
-// (`.ai/V7.5/REGISTRE_ASSISTANCES_2026-08-29.md`).
+// (`.ai/archive/V7.5/REGISTRE_ASSISTANCES_2026-08-29.md`).
 //
 // La revue du meme jour avait par ailleurs montre qu un cablage pose sur UNE factory et pas
 // sur sa jumelle ne prend jamais, et que rien ne le dit. Les deux lecons se rejoignent ici :

@@ -1,7 +1,7 @@
 package grammar
 
 // sonde_ti11_mur_test.go — INSTRUMENT DE MESURE DU MUR de l'archetype OBJECTIFS (ti=11),
-// phase 4 du plan .ai/V7.5/replay2d/PLAN_R4_OBJECTIFS_VIVANTS_TI11.md (lot R4).
+// phase 4 du plan .ai/archive/V7.5/replay2d/PLAN_R4_OBJECTIFS_VIVANTS_TI11.md (lot R4).
 //
 // POURQUOI CETTE VOIE, ET PAS CELLE DE LA PHASE 1. La phase 1 a cherche les records ti=11 dans
 // les paquets DELTA, avec le reconnaisseur d'en-tete des objets du monde : REFUTE (la vraie

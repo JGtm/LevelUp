@@ -497,7 +497,7 @@ type CompareRepository interface {
 	// totaux sur cet ensemble.
 	//
 	// C'EST LE SEUL SCOPE, POUR LES DEUX JOUEURS (plan
-	// .ai/V7.5/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md, D2 amendé au lot 3-bis, 2026-09-17). Un
+	// .ai/archive/V7.5/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md, D2 amendé au lot 3-bis, 2026-09-17). Un
 	// second scope « croisé » (les matchs communs à A et B) a été retiré : il lisait la
 	// même table avec la même exclusion et n'y ajoutait qu'un EXISTS, donc son résultat
 	// était un SOUS-ENSEMBLE de celui-ci et la branche qui l'appelait était morte.

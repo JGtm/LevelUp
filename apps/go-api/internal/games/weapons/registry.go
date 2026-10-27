@@ -312,7 +312,7 @@ func FilmshellWeaponKeysByFamily() map[uint32]string {
 // POURQUOI EXPORTÉ (lot armes au sol, 2026-09-10). Le rejeu 2D publie déjà `WeaponLabel.Key`
 // à la requête (`resolveWeaponLabels`, depuis `cat.Keys[family]`, lui-même construit sur
 // `FilmshellWeaponKeysByFamily`) : le filtre « armes spéciales » (rôles sniper/power/special,
-// cf. rapport `.ai/V7.5/RAPPORT_ARMES_AU_SOL_2026-09-10.md`) a besoin du MÊME weapon_key pour
+// cf. rapport `.ai/archive/V7.5/RAPPORT_ARMES_AU_SOL_2026-09-10.md`) a besoin du MÊME weapon_key pour
 // trouver le rôle, SANS seconde jointure ni recuisson — c'est la donnée déjà en mémoire du
 // registre statique, jamais une lecture de metadata.duckdb.
 //

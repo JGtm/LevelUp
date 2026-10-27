@@ -10,7 +10,7 @@
 // HISTORIQUE (lot v2 G.2, 2026-09-05) : ce fichier portait aussi un troisieme
 // consommateur, HeightField — un champ d'altitude par cellule pour la seule surface
 // MARCHABLE (mesure du 2026-08-08 sur Cliffhanger). Approche abandonnee sans avoir jamais
-// eu d'appelant hors de son propre test (handoff `.ai/V7.5/cartes/HANDOFF_PORT_TRIANGLES_
+// eu d'appelant hors de son propre test (handoff `.ai/archive/V7.5/cartes/HANDOFF_PORT_TRIANGLES_
 // 2026-08-08.md` §3 : le probleme qu'elle visait — le decor noyant l'arene — a ete resolu
 // autrement, par l'ecretage des toits sur le rendu existant, cf. ecretage_toits.go). Les
 // 175 lignes de HeightField/NewHeightField/AddMesh/faceMarchable/rasteriseTriangle/At/

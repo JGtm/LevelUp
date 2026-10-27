@@ -10,7 +10,7 @@ package killcollector
 // 2026-04-07. Depuis, AUCUN match synchronise n avait de passe de film — donc `assist_known`
 // y valait FALSE (« on ne sait pas ») sur 100 % des morts, et les deux blocs d assistances de
 // l app se retiraient. Cinq mois, sans un log. Mesure complete :
-// `.ai/V7.5/REGISTRE_ASSISTANCES_2026-08-29.md`.
+// `.ai/archive/V7.5/REGISTRE_ASSISTANCES_2026-08-29.md`.
 //
 // UN RATTRAPAGE MANUEL AURAIT REPRODUIT LE DEFAUT. Une donnee qui ne se remplit que si
 // quelqu un pense a lancer une commande finit toujours par ne plus se remplir. L etape vit

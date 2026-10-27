@@ -1,7 +1,7 @@
 package grammar
 
 // bits_word_test.go — TEST DIFFERENTIEL DU LECTEUR SEQUENTIEL DE LA GRAMMAIRE (decision D6 du
-// plan `.ai/V7.5/PLAN_CUISSON_PERF.md`).
+// plan `.ai/archive/V7.5/PLAN_CUISSON_PERF.md`).
 //
 // LA METHODE. `Lecteur.ReadBits`, reecrit par mot au lot 4, est oppose a une COPIE DE REFERENCE
 // de son implementation d'AVANT, recopiee ici et nulle part ailleurs — le code de production

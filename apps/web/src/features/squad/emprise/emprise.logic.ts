@@ -1,7 +1,7 @@
 /**
  * emprise.logic.ts — LES MODÈLES PURS des cartes de l'onglet « Emprise » de l'Escouade (lot L5
  * du plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26 ; maquette
- * `.ai/V7.5/MAQUETTE_ONGLET_TACTIQUE_ESCOUADE_2026-09-26.html`, bloc « Proposition »).
+ * `.ai/archive/V7.5/MAQUETTE_ONGLET_TACTIQUE_ESCOUADE_2026-09-26.html`, bloc « Proposition »).
  *
  * Toutes les cartes lisent le bloc Emprise (Escouade : `squad_emprise`, périmètre D2 ; Séries
  * temporelles : `emprise`, matchs solo de la fenêtre), calculé côté Go ; le résultat, le score, la

@@ -3,7 +3,7 @@
 package grammar
 
 // lp_temoin_research_test.go — LOT LP DE LA CAMPAGNE DE GRAMMAIRE : L IMAGE-CLE JUGEE PAR LE BLOC DE
-// TYPE 1 QUI LA PRECEDE (`.ai/V7.5/film_re/campagne_grammaire_2026-10-01/LOT_LP.md`).
+// TYPE 1 QUI LA PRECEDE (`.ai/archive/V7.5/film_re/campagne_grammaire_2026-10-01/LOT_LP.md`).
 //
 // Chaque test lit la marche d image-cle DU CONTEXTE ([FilmContext.MarcheDImageCle]) et la marche de
 // trames ([FilmContext.Trames]) de l arbre compile : joue sur la tete, il decrit la marche de

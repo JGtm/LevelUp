@@ -4,7 +4,7 @@
  * Contrat du lot : `'source-in'` (défaut) reste STRICTEMENT INCHANGÉ — aucun call-site actuel
  * (masques HUD des socles d'armes) ne passe `composite`, donc son comportement observé avant
  * ce lot doit rester identique bit à bit. `'multiply'` est le mode nouveau, réservé aux sprites
- * véhicules au trait (fond blanc + traits noirs, cf. `.ai/V7.5/film_re/V4_RAPPORT_SPRITES_2026-08-31.md`
+ * véhicules au trait (fond blanc + traits noirs, cf. `.ai/archive/V7.5/film_re/V4_RAPPORT_SPRITES_2026-08-31.md`
  * §10.1) : Canvas ne respecte pas l'alpha en mode `multiply` (le `fillRect` rend tout le canvas
  * opaque, fond transparent compris) — le second passage `destination-in` qui répare ça est ce
  * que ces tests verrouillent.

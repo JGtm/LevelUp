@@ -10,7 +10,7 @@
 //
 // Ce test rejoue la production des deux cartes déjà figées dans le dépôt et exige
 // l'ÉGALITÉ EXACTE, emprise par emprise. C'est la condition d'entrée du portage de la
-// chaîne des triangles (plan `.ai/V7.5/cartes/PLAN_PORT_TRIANGLES_GO.md`, étape E) : on ne
+// chaîne des triangles (plan `.ai/archive/V7.5/cartes/PLAN_PORT_TRIANGLES_GO.md`, étape E) : on ne
 // porte rien au-dessus d'un lecteur dont personne ne vérifie la sortie.
 //
 // Il se déclare ABSENT quand l'installation du jeu n'est pas là (CI). C'est assumé : sur un

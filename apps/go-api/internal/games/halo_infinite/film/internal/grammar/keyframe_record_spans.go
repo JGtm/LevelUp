@@ -8,7 +8,7 @@ package grammar
 // (`familiesByRecord`) recalculent les bornes pour leur compte, et le lot V5
 // (« où est l'état d'occupation ? ») a mesuré que l'emprise EST elle-même un signal.
 //
-// CE QUE LA MESURE V5 A ÉTABLI (rapport `.ai/V7.5/film_re/V5_ETAT_OCCUPATION_2026-09-02.md`) :
+// CE QUE LA MESURE V5 A ÉTABLI (rapport `.ai/archive/V7.5/film_re/V5_ETAT_OCCUPATION_2026-09-02.md`) :
 // le record d'image-clé d'un VÉHICULE (`ti=40`) est plus long quand le véhicule est occupé.
 // Test apparié véhicule-contre-lui-même, restreint aux records dont le voisin de slot suivant
 // n'a pas été sauté par le balayeur : **16 paires sur 17 (94,1 %)**, écart moyen **+151 bits**,

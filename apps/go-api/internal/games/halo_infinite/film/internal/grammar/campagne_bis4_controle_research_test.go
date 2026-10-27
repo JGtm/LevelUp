@@ -5,7 +5,7 @@ package grammar
 // campagne_bis4_controle_research_test.go — MESURES BIS 4 DE LA CAMPAGNE DE GRAMMAIRE
 // (2026-10-02), ITEM 1.3 : QUAND UN JOUEUR A-T-IL UNE ENTREE DANS LA VUE C D UN PAQUET ?
 //
-// La lecture du jeu (`.ai/V7.5/film_re/campagne_grammaire_2026-10-01/ghidra_13/`) dit : l entree
+// La lecture du jeu (`.ai/archive/V7.5/film_re/campagne_grammaire_2026-10-01/ghidra_13/`) dit : l entree
 // kind 0 du joueur k entre dans le tampon par joueur que l enregistreur `FUN_142f2c3b0` recopie
 // quand `FUN_14076b0e8` est APPELE pour (k, 0) dans la trame, c est-a-dire quand l ordonnanceur
 // d au moins un PAIR qui envoie un paquet dans cette trame (`FUN_140516fa0` -> `FUN_14076aca4`)

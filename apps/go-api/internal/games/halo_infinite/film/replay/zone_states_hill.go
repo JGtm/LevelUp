@@ -3,7 +3,7 @@ package replay
 // zone_states_hill.go — LE VOLET COLLINE : la zone ACTIVE quand le mode n'a aucun oracle nomme.
 //
 // DEUX VOIES, ET LA MESURE A DECIDE DE LEUR ORDRE (lot C-ter volet 1, 2026-08-19,
-// `.ai/V7.5/replay2d/registre_film/LOTCTER_VOLET1.md`) :
+// `.ai/archive/V7.5/replay2d/registre_film/LOTCTER_VOLET1.md`) :
 //
 //	le DESIGNATEUR   l objet de mode KOTH est un BLOC de proprietes `ti=13` nommees —
 //	                 [tag 5 designateur][tag 4 proprietaire][tag 4 capteur][tag 3 jauge], le

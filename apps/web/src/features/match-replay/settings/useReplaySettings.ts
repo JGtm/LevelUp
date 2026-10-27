@@ -173,7 +173,7 @@ const SHOW_GROUND_WEAPONS_DEFAULT = true
 
 /**
  * LE FILTRE « ARMES SPÉCIALES SEULEMENT » EST ÉTEINT PAR DÉFAUT (lot 6.5, 2026-09-10, rapport
- * `.ai/V7.5/RAPPORT_ARMES_AU_SOL_2026-09-10.md`). C'est un RESSERREMENT du calque des armes au
+ * `.ai/archive/V7.5/RAPPORT_ARMES_AU_SOL_2026-09-10.md`). C'est un RESSERREMENT du calque des armes au
  * sol, pas son remplacement : le comportement d'avant ce lot (tout afficher) reste le défaut,
  * et l'utilisateur choisit d'affiner sur les matchs denses (204 objets/film en moyenne, dont
  * 82 % sans intérêt tactique).

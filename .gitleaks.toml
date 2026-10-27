@@ -130,7 +130,7 @@ regexes = ['''^eyJmaWx0ZXJz[A-Za-z0-9_=/+-]+$''']
 
 [[allowlists]]
 # 2026-07-31 — empreinte
-#   .ai/V7.5/killweapon/RE_LOG_KILLWEAPON.md:generic-api-key:17478
+#   .ai/archive/V7.5/killweapon/RE_LOG_KILLWEAPON.md:generic-api-key:17478
 # Journal de rétro-ingénierie du chantier « arme du kill ». La ligne compare le
 # kill-feed décodé au kill-feed de l'API officielle et aligne les deux tableaux de
 # frags : « API : HizaroMne4262 16 ; FireKoreT7 15 ; ... ». Le mot-clé « API » suivi
@@ -143,7 +143,7 @@ regexes = ['''^eyJmaWx0ZXJz[A-Za-z0-9_=/+-]+$''']
 description = "Gamertag lu comme une clé dans les tableaux de confrontation du RE_LOG killweapon"
 targetRules = ["generic-api-key"]
 condition = "AND"
-paths = ['''(^|/)\.ai/V7\.5/killweapon/RE_LOG_KILLWEAPON\.md$''']
+paths = ['''(^|/)\.ai/archive/V7\.5/killweapon/RE_LOG_KILLWEAPON\.md$''']
 regexTarget = "secret"
 regexes = ['''^HizaroMne4262$''']
 
@@ -193,7 +193,7 @@ regexes = ['''^grenade_kills=1$''']
 
 [[allowlists]]
 # 2026-08-30 — empreinte
-#   .ai/V7.5/killweapon/REFERENCE_VARIANTES_ARMES_REDDIT.md:generic-api-key:135
+#   .ai/archive/V7.5/killweapon/REFERENCE_VARIANTES_ARMES_REDDIT.md:generic-api-key:135
 # Document de référence des variantes d'armes (guide Reddit croisé avec notre
 # registre). La phrase « partagent tous les deux `weapon_key = hinf_m41_spnkr` »
 # fait lire le mot-clé « key » + l'identifiant d'arme comme une assignation
@@ -204,6 +204,6 @@ regexes = ['''^grenade_kills=1$''']
 description = "WeaponKey hinf_* du document de référence des variantes (registre public)"
 targetRules = ["generic-api-key"]
 condition = "AND"
-paths = ['''(^|/)\.ai/V7\.5/killweapon/REFERENCE_VARIANTES_ARMES_REDDIT\.md$''']
+paths = ['''(^|/)\.ai/archive/V7\.5/killweapon/REFERENCE_VARIANTES_ARMES_REDDIT\.md$''']
 regexTarget = "secret"
 regexes = ['''^hinf_[a-z0-9_]+$''']

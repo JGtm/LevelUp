@@ -21,7 +21,7 @@ package objectives
 //	   d'armement. Ici on vise l'INSTANT d'armement lui-meme, film a mèche fixe seulement.
 //	2. LES COMPOSANTS 28 A 57. L'archetype en compte 58 ; A6 s'arretait a 27. Trente composants
 //	   x 4 canaux = 120 emplacements jamais regardes, nommement listes comme « reste a instruire »
-//	   dans `.ai/V7.5/ETAT_ASSAUT_2026-08-31.md` §3.3.
+//	   dans `.ai/archive/V7.5/ETAT_ASSAUT_2026-08-31.md` §3.3.
 //	3. LES SLOTS D'EQUIPE. A6 ne balayait que les slots de JOUEUR (« un armement est un geste de
 //	   joueur »). Un canal qui distingue l'EQUIPE sans nommer le joueur reste un resultat utile,
 //	   et il est ici mesure a part.

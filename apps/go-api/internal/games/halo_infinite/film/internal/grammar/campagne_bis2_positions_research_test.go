@@ -10,7 +10,7 @@ package grammar
 // fichiers de production (`capture.go`, `lecteur_position.go`, `lecteur_position_exceptions.go`)
 // qu aucune copie de la marche ne peut atteindre : le dispatch des composants les appelle. Leurs
 // COPIES DE RECHERCHE sont dans
-// `.ai/V7.5/film_re/campagne_grammaire_2026-10-01/mesures_bis2_overlay/` et `go test -overlay`
+// `.ai/archive/V7.5/film_re/campagne_grammaire_2026-10-01/mesures_bis2_overlay/` et `go test -overlay`
 // les substitue aux fichiers du depot POUR LA SEULE COMPILATION DU TEST : aucun fichier de
 // production n est modifie sur disque, `grammar.Rev` ne bouge pas. Sans bascule, chaque copie lit
 // exactement comme la production (controle : la variante `reference` rend la carte v2).

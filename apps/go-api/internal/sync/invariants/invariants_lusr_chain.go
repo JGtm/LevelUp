@@ -3,7 +3,7 @@ package invariants
 // invariants_lusr_chain.go — I14 : aucune chaîne LUSR étrangère au titre de la base.
 //
 // Détecteur de la corruption cross-titre du 2026-06-26 (spécification G3 du rapport
-// .ai/V7.5/RAPPORT_VOLET1_LUSR_H5_2026-08-28.md §5.3). Le pipeline V2 tirait alors le
+// .ai/archive/V7.5/RAPPORT_VOLET1_LUSR_H5_2026-08-28.md §5.3). Le pipeline V2 tirait alors le
 // titre de deux sources : handles DB du titre du CYCLE, moteur du titre du PROFIL. Les
 // 4 joueurs déclarés sous deux titres ont reçu, dans leurs player DB halo_infinite, des
 // lignes match_skill_rank de chaîne h5_arena — la chaîne LUSR de Halo 5.

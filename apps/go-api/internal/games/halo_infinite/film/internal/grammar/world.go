@@ -24,7 +24,7 @@ import (
 // chaque record propre dans le slot. Le cache n avait AUCUN appelant, et la mesure qui aurait pu
 // lui en donner un l a REFUTE : sur trois films CTF, 68 284 lectures d arme tenue, dont 96 a
 // 100 % valent la variante NULLE sur les slots que le pont bipede nomme, et zero occurrence du
-// marqueur de portage du drapeau (plan `.ai/V7.5/replay2d/PLAN_OBJECTIFS_VIVANTS_2E_LECTURE.md`,
+// marqueur de portage du drapeau (plan `.ai/archive/V7.5/replay2d/PLAN_OBJECTIFS_VIVANTS_2E_LECTURE.md`,
 // phase 0, item 0.2). Le canal du porteur publie par la phase 1 passe par les IMAGES-CLES.
 type World struct {
 	Reg   *Registry
@@ -162,7 +162,7 @@ func (w *World) PoserVueCourante(v int) { w.vueCourante = int8(v) } //nolint:gos
 // decodeur partage (`*(vue+0x20) + 0x20`, pas de 200). Le seul ecrivain de `DAT_14474cd78 = 0`
 // est `FUN_1428e24bc`, un aller-retour d etat qui pre-remplit la table puis restaure le global.
 // Consequence MESUREE sur `bfecd02b` : 21 988 des 22 112 rejets portent sur un slot jamais lie,
-// ZERO sur un slot lie ailleurs. Voir `.ai/V7.5/film_re/NOTE_5_15_RANG_1_FILM_DENSE_2026-09-22.md`
+// ZERO sur un slot lie ailleurs. Voir `.ai/archive/V7.5/film_re/NOTE_5_15_RANG_1_FILM_DENSE_2026-09-22.md`
 // §3 et le report 5.15.3 — le correctif est un MODELE (la table de datums par slot), pas une
 // garde de plus.
 //

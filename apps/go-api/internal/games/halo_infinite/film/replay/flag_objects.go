@@ -224,7 +224,7 @@ func flagFreeSampleLess(a, b flagFreeSample) bool {
 // flagFreeDropWindowMS — l'ecart maximal, en millisecondes, entre la fin d'un portage et la
 // naissance de la vie libre qui l'explique : UNE SECONDE.
 //
-// ECRIT AVANT LA MESURE (plan `.ai/V7.5/replay2d/PLAN_DRAPEAU_OBJET.md`, controle 3). Le lacher
+// ECRIT AVANT LA MESURE (plan `.ai/archive/V7.5/replay2d/PLAN_DRAPEAU_OBJET.md`, controle 3). Le lacher
 // est un evenement PHYSIQUE — le porteur tombe, l'objet est recree la — et non une transition de
 // compteur : l'axe du rejeu avance par pas de 100 ms, les deux horloges (match et film) sont
 // calees a la frame pres. Une seconde laisse dix pas de marge sans jamais rattraper le portage

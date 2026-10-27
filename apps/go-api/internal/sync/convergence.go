@@ -534,7 +534,7 @@ func (s postSyncFilmSteps) runEventsConvergence(ctx context.Context) {
 // sous-commande manuelle qui ne lisait que les films déjà en cache. Le cache a cessé d'être
 // alimenté le 2026-04-07 et personne ne l'a vu pendant cinq mois — `assist_known` est resté
 // FALSE sur tout match synchronisé depuis, et deux blocs de l'app se sont retirés sans un log
-// (`.ai/V7.5/REGISTRE_ASSISTANCES_2026-08-29.md`). Une donnée qui ne se remplit que si
+// (`.ai/archive/V7.5/REGISTRE_ASSISTANCES_2026-08-29.md`). Une donnée qui ne se remplit que si
 // quelqu'un lance une commande finit toujours par ne plus se remplir.
 //
 // Elle vient APRÈS la convergence events, pour la même raison que l'étape 1.55 (weapon

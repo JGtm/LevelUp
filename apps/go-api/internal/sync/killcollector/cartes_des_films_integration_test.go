@@ -12,7 +12,7 @@ package killcollector
 // carte. Ils decodent desormais sous la carte du film, lue dans cette table, de facon deterministe.
 //
 // PROVENANCE, SANS BASE OUVERTE : la colonne `map_name` des extraits de registre COMMIS
-// (`.ai/V7.5/replay2d/registre_film/oracle_lotB_overtime.tsv`, `oracle_vague6_registry.tsv`) et
+// (`.ai/archive/V7.5/replay2d/registre_film/oracle_lotB_overtime.tsv`, `oracle_vague6_registry.tsv`) et
 // les references du decodeur (`killsource_test.go`). Un film absent de cette table n a pas de
 // carte resolue : le collecteur le met de cote, jamais un decodage au plus proche.
 

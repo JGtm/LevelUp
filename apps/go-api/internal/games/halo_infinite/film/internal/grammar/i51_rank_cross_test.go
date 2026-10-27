@@ -1,7 +1,7 @@
 package grammar
 
 // i51_rank_cross_test.go — INSTRUMENT DE MESURE de l'item 0.5 du plan
-// .ai/V7.5/replay2d/PLAN_CAPACITES_ACTIVES.md : le CANDIDAT SECONDAIRE, interrogé
+// .ai/archive/V7.5/replay2d/PLAN_CAPACITES_ACTIVES.md : le CANDIDAT SECONDAIRE, interrogé
 // uniquement parce que l'item 0.4 a échoué pour les deux capacités du périmètre.
 //
 // CE QUE `i51` EST, D'APRÈS LE BINAIRE, ET CE QUE ÇA IMPLIQUE POUR LA PRÉDICTION.

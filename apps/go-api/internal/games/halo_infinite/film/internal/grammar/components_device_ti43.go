@@ -12,8 +12,8 @@ import "levelup/go-api/internal/games/halo_infinite/film/types"
 // au masque. Son adresse est sur chaque `case`. Pour les composants a branches (`i21`, `i34`,
 // `i35`), l ECRIVAIN (`descripteur + 0x28`) a ete relu en plus : il dit quand un champ
 // conditionnel est ecrit, donc ce que le lecteur doit lire. Notes de releve :
-// `.ai/V7.5/film_re/NOTE_3_6_TI43_GRAMMAIRES_A_2026-09-17.md` (`i19`..`i29`), `_C_` (`i30`..`i35`),
-// `_D_` (`i36`..`i40`), et `.ai/V7.5/film_re/campagne_grammaire_2026-10-01/T7_dispositifs_ti43_moteur.md`
+// `.ai/archive/V7.5/film_re/NOTE_3_6_TI43_GRAMMAIRES_A_2026-09-17.md` (`i19`..`i29`), `_C_` (`i30`..`i35`),
+// `_D_` (`i36`..`i40`), et `.ai/archive/V7.5/film_re/campagne_grammaire_2026-10-01/T7_dispositifs_ti43_moteur.md`
 // (ecrivains).
 //
 // # CE QUE LE LECTEUR DU JEU NE FAIT PAS, ET CE PORT NON PLUS

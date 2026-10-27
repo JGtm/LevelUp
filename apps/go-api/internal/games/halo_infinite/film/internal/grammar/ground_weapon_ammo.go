@@ -3,7 +3,7 @@ package grammar
 import "levelup/go-api/internal/games/halo_infinite/film/types"
 
 // ground_weapon_ammo.go — LES MUNITIONS EXACTES d'une ARME AU SOL, lues sur son record de
-// CREATION (lot 6.10, 2026-09-11, rapport `.ai/V7.5/RAPPORT_MUNITIONS_EXACTES_2026-09-11.md`).
+// CREATION (lot 6.10, 2026-09-11, rapport `.ai/archive/V7.5/RAPPORT_MUNITIONS_EXACTES_2026-09-11.md`).
 //
 // OU ELLES SONT, ET POURQUOI LE LOT 6.6 NE LES AVAIT PAS TROUVEES. Le lot 6.6 avait fouille les
 // trois feuilles candidates de l'ETAT PAR DEFAUT de `ti=42` (`default_state_ti42.go`, points 3,

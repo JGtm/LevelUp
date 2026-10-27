@@ -2,7 +2,7 @@ package main
 
 // wemduree.go — duree APPROXIMATIVE d'un `.wem` lue dans son EN-TETE RIFF, SANS decodage
 // audio (lot L6, S3 : le decodeur Vorbis/Opus Wwise n'est pas dans la chaine d'extraction —
-// `.ai/V7.5/replay2d/PLAN_BALISE_MIX_WWISE.md` phase 5, `RECETTE_SONS_ARMES.md` §0).
+// `.ai/archive/V7.5/replay2d/PLAN_BALISE_MIX_WWISE.md` phase 5, `RECETTE_SONS_ARMES.md` §0).
 //
 // UN `.wem` EST UN CONTENEUR RIFF (magic `RIFF`/`WAVE`, sous-chunks `fmt `/`data`), meme
 // quand le codec a l'interieur est le Vorbis maison de Wwise — c'est ce que les outils de la

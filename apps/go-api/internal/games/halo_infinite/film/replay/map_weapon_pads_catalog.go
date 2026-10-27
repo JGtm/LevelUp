@@ -6,7 +6,7 @@ package replay
 //
 // D'OU IL VIENT. Les trois type_id de socle du `.mvar` d'une carte, extraits hors ligne par
 // cmd/mapopads-build depuis le dépôt local de variantes. Mesure du plan
-// `.ai/V7.5/replay2d/PLAN_SOCLES_MVAR.md` : 32 positions d'oracle sur trois cartes, 32
+// `.ai/archive/V7.5/replay2d/PLAN_SOCLES_MVAR.md` : 32 positions d'oracle sur trois cartes, 32
 // appariées à moins d'un mètre, médiane 0,01 m.
 //
 // CE QU'IL DIT, ET CE QU'IL NE DIT PAS. Il dit OU sont TOUS les socles d'une carte — y

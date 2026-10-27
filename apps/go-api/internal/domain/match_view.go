@@ -56,7 +56,7 @@ type MatchViewHeader struct {
 	// ou "rounds" (des MANCHES gagnées). Sur les variantes déclarées dans
 	// regulation.toml [rounds_decide], le cumul de points peut donner la victoire au
 	// perdant — c'est le compte de manches qui tranche (mesure du 2026-08-29,
-	// `.ai/V7.5/RAPPORT_MANCHES_2026-08-29.md`). Vide = aucun score affiché.
+	// `.ai/archive/V7.5/RAPPORT_MANCHES_2026-08-29.md`). Vide = aucun score affiché.
 	// Le client s'en sert pour LOCALISER la mention « manches » : le serveur ne met aucun
 	// mot de langue dans le libellé.
 	ScoreKind string `json:"score_kind,omitempty"`

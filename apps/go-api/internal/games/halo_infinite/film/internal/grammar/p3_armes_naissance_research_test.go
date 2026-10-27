@@ -6,7 +6,7 @@ package grammar
 // LES ARMES DE NAISSANCE sont-elles dans le record NEW du bipede (ti=35) ? (mesure seule, aucun
 // code de production, aucun artefact.)
 //
-// FAIT DE DEPART (`.ai/V7.5/retours_rejeu_2026-09-23/RAPPORT_fiche_armes.md` §2.3) : le flux delta
+// FAIT DE DEPART (`.ai/archive/V7.5/retours_rejeu_2026-09-23/RAPPORT_fiche_armes.md` §2.3) : le flux delta
 // n emet jamais i43..i46 a la naissance (0/106 en Super Fiesta, etalon i48 94/106) ; la marche du
 // depot traverse le record NEW du bipede et lit l arme via `consumeWeaponStateTypeInfoVariant`, que
 // personne ne branche.

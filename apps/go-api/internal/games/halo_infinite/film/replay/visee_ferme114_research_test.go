@@ -9,7 +9,7 @@ package replay
 // (visee_larg114_research_test.go) conclut qu'un var-int de DOUZE bits, suivi de deux bits,
 // place les deux portes suivantes exactement sur les bits 22 et 23 — mesures constantes a 0 sur
 // trois films — et le payload R(6) au bit 24. De l'autre, la note de retro-ingenierie du lot B
-// (`.ai/V7.5/film_re/NOTE_ENVELOPPE_EVENTS_2026-08-30.md`, table `0x1451f98d0` reconstituee
+// (`.ai/archive/V7.5/film_re/NOTE_ENVELOPPE_EVENTS_2026-08-30.md`, table `0x1451f98d0` reconstituee
 // depuis `FUN_140d10bb0`) donne pour le DOMAINE 2 — celui de la reference 0 du type 114 — une
 // base de 0x200 et un cardinal de 0x100, soit un index de HUIT bits, plus deux bits de
 // generation, et aucune sonde (la sonde n'existe que pour le domaine 1).

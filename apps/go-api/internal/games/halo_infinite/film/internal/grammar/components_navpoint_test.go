@@ -6,7 +6,7 @@ package grammar
 // porte que la traversee d'un record. C'est le seul moyen d'exercer aussi le cablage — le
 // routage du nom, et surtout le `param_4` de `paramByComponent`, qui decide de deux largeurs du
 // bloc de filtres et dont l'absence etait le mode de panne annonce par la note
-// (`.ai/V7.5/film_re/NOTE_3_6_TI12_GRAMMAIRES_A_2026-09-17.md` § 17 pt 1).
+// (`.ai/archive/V7.5/film_re/NOTE_3_6_TI12_GRAMMAIRES_A_2026-09-17.md` § 17 pt 1).
 //
 // AUCUN FILM N'EST OUVERT : les flux sont fabriques bit a bit. La confrontation a un film entier
 // est le lot 5.1.2, et elle porte sur la VALEUR, pas sur la largeur.

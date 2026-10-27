@@ -1,7 +1,7 @@
 //go:build integration
 
 // campaign_exclusion_e2_behavior_test.go — lecteurs de la Campagne rattrapés à l'étape E2
-// du plan .ai/V7.5/PLAN_BACKLOG_2026-10-15.md (DB-25, DB-26 du backlog 2026-09-26) : duel entre
+// du plan .ai/archive/V7.5/PLAN_BACKLOG_2026-10-15.md (DB-25, DB-26 du backlog 2026-09-26) : duel entre
 // deux joueurs (kill-feed) et totaux de médailles. Même fixture que les cas B4 : un match
 // d'arène (arena1) et un match de Campagne (camp1) pour A et B ; Halo 5 masque la Campagne,
 // Halo Infinite (aucune variante masquée) reste neutre.

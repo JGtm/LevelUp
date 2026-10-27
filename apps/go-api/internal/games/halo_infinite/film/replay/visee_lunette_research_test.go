@@ -43,7 +43,7 @@ package replay
 //	                drapeau qui monte sur les deux ne dit rien du zoom, il dit « je tire ».
 //
 // SEUIL ET VERDICT, ECRITS AVANT LA MESURE (regle du depot, cf.
-// `.ai/V7.5/film_re/METHODE_RETRO_INGENIERIE_FILM.md`) : voir le bloc de constantes
+// `.ai/archive/V7.5/film_re/METHODE_RETRO_INGENIERIE_FILM.md`) : voir le bloc de constantes
 // `adsFacteurSeuil` / `adsEcartSeuil` / `adsMinFenetres` / `adsMinEchantillons` ci-dessous.
 //
 // CE QUE LA RETRO-INGENIERIE PREDIT — et c'est une prediction, pas un resultat : chez le

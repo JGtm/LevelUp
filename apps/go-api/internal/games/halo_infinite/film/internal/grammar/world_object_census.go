@@ -13,7 +13,7 @@ import (
 //
 // L'ARCHÉTYPE EST UN PARAMÈTRE, ET C'EST L'ACQUIS DU 2026-08-19. Le recensement est né pour les
 // ARMES AU SOL (`ti=42`) et n'était écrit que pour elles. La mesure du power-up de socle
-// (`.ai/V7.5/replay2d/PLAN_POWERUP_SOCLE_CATALYST.md`) a montré que la MÊME marche répond à la
+// (`.ai/archive/V7.5/replay2d/PLAN_POWERUP_SOCLE_CATALYST.md`) a montré que la MÊME marche répond à la
 // MÊME question pour l'ÉQUIPEMENT (`ti=37`) : un objet de socle qui ne bouge jamais n'a aucune
 // vie delta, donc la seule preuve de sa présence est le recensement. Un second walker aurait
 // été une deuxième écriture de la même lecture ; l'archétype descend donc au rang de paramètre.

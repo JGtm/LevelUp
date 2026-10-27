@@ -9,7 +9,7 @@
  * PORTAGE), sur `doc.objectiveObjects` (les VIES du crane libre) et sur `doc.scoreTimeline`.
  *
  * C'est ce qui a change depuis la RE du 2026-08-27
- * (`.ai/V7.5/RE_GESTES_SONORES_2026-08-27.md` §10.6, « les sept sons sont valides, le cablage
+ * (`.ai/archive/V7.5/RE_GESTES_SONORES_2026-08-27.md` §10.6, « les sept sons sont valides, le cablage
  * ne l'est pas encore ») : a l'epoque le moteur sonore ne lisait que `doc.objectives` et le
  * verdict etait « pas cablable ». Le schema 23 a ouvert le canal, et `zoneSound.ts` a etabli
  * le precedent d'un son qui ne vient d'aucune statistique.
@@ -53,7 +53,7 @@
  * laisser croire a une mesure.
  *
  * L'APPROXIMATION S'APPUIE SUR LA VERITE TERRAIN de `d9781168`
- * (`.ai/V7.5/replay2d/ODDBALL_VERITE_TERRAIN_d9781168.md`) : « 2:48 meurt en sautant dans le
+ * (`.ai/archive/V7.5/replay2d/ODDBALL_VERITE_TERRAIN_d9781168.md`) : « 2:48 meurt en sautant dans le
  * vide avec le crane -> cooldown -> respawn socle 2:53 ». Le crane sorti de la carte ne tombe
  * pas au sol : il DISPARAIT, puis REAPPARAIT sur son socle. D'ou :
  *

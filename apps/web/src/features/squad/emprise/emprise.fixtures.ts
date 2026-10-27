@@ -1,7 +1,7 @@
 /**
  * emprise.fixtures.ts — la soirée témoin du 22/09/2026 (JGtm, Chocoboflor, Madina97294, sept
  * matchs) au format du contrat : bloc `squad_emprise` et historique de matchs. Chiffres de la
- * maquette de l'onglet (`.ai/V7.5/MAQUETTE_ONGLET_TACTIQUE_ESCOUADE_2026-09-26.html` : MATCHES,
+ * maquette de l'onglet (`.ai/archive/V7.5/MAQUETTE_ONGLET_TACTIQUE_ESCOUADE_2026-09-26.html` : MATCHES,
  * ITEMS, ROLES, PISTES, FIL_SERIES), relevés en lecture seule dans la base réelle ; les mêmes
  * que le test d'intégration Go `TestSquadEmprise_TemoinsDu2209` (lot L4). Aucune lecture de
  * base : des données figées.

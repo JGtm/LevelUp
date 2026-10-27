@@ -8,7 +8,7 @@ package replay
 // deux axes de temps du rejeu (ms depuis le premier paquet du film ; frame du rejeu), et ecrit la
 // SERIE COMPLETE des valeurs par (slot, mode, tag) — mode A : les tags du variant scalaire i1 ;
 // mode B : les tags des 32 variants par joueur i2..i33, avec l'index de film du joueur — dans un
-// TSV par film sous `.ai/V7.5/replay2d/registre_film/lotCter/`, plus un RESUME par (slot, mode,
+// TSV par film sous `.ai/archive/V7.5/replay2d/registre_film/lotCter/`, plus un RESUME par (slot, mode,
 // tag) : emissions, valeurs distinctes, changements, premiere et derniere emission.
 //
 // POURQUOI. La phase 2a du lot C-bis n'a exploite que la rampe (tag 3) et le proprietaire
@@ -184,7 +184,7 @@ func ctOutDir(t *testing.T) string {
 		p2aMkdir(t, v)
 		return v
 	}
-	out := filepath.Join(repoRootForTest(t), ".ai", "V7.5", "replay2d", "registre_film", ctOutDirName)
+	out := filepath.Join(repoRootForTest(t), ".ai", "archive", "V7.5", "replay2d", "registre_film", ctOutDirName)
 	p2aMkdir(t, out)
 	return out
 }

@@ -3,7 +3,7 @@
 package grammar
 
 // ecart108_research_test.go — INSTRUCTION DES ECARTS DE FIN MULTIPLES DE -108 BITS (hypothese R-VEH-4,
-// plan `.ai/V7.5/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md` §7, branche feat/ri-ecart-108). Aucun
+// plan `.ai/archive/V7.5/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md` §7, branche feat/ri-ecart-108). Aucun
 // fichier de production n est touche.
 //
 // CE QUE LE JEU LIT (Ghidra, lecture seule, HaloInfinite.exe) :

@@ -3,7 +3,7 @@
 package replay
 
 // weapon_burst_research_test.go — L'INVENTAIRE FERME DES ARMES AUTOMATIQUES, MESURE AVANT
-// D'IMPLANTER LA RAFALE (item C-1 du plan .ai/V7.5/replay2d/PLAN_RETOURS_REJEU_2026-08-27.md).
+// D'IMPLANTER LA RAFALE (item C-1 du plan .ai/archive/V7.5/replay2d/PLAN_RETOURS_REJEU_2026-08-27.md).
 //
 // LE RETOUR UTILISATEUR A EPROUVER (2026-08-27, mot pour mot) : « L'arme MA40 est une auto donc
 // les sons joues doivent chacun tirer 3 balles, un fire event pour cette arme c'est une rafale de

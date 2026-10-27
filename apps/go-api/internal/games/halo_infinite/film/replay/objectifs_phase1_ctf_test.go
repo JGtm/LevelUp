@@ -33,7 +33,7 @@ import (
 
 // objModeCorpus — les films de mode CONNU. Le mode vient de `game_variant_name`, releve dans
 // les tests de verite terrain d'`objectives` (extract_test.go, named_test.go) et dans le
-// corpus du plan (`.ai/V7.5/replay2d/PLAN_OBJECTIFS_VIVANTS_2E_LECTURE.md`, ligne « Corpus »).
+// corpus du plan (`.ai/archive/V7.5/replay2d/PLAN_OBJECTIFS_VIVANTS_2E_LECTURE.md`, ligne « Corpus »).
 var objModeCorpus = []struct {
 	ID   string
 	Mode string // "" = mode sans table d'objectif (Slayer et apparentes)

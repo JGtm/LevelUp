@@ -6,7 +6,7 @@ package grammar
 // Les tests bit-exacts (biped_creation_test.go) prouvent que le lecteur lit aux bonnes
 // positions ; ils ne peuvent rien dire du RENDEMENT ni du plancher de faux positifs sur un vrai
 // flux. C'est ce que mesure cet instrument, et il reproduit le protocole du sondage E2
-// (`.ai/V7.5/film_re/SONDAGE_E2_BIPEDE_INDEX_2026-09-08.md` §2.3) :
+// (`.ai/archive/V7.5/film_re/SONDAGE_E2_BIPEDE_INDEX_2026-09-08.md` §2.3) :
 //
 //	mesure   la bande de slots `ti=35` du film
 //	témoin   une bande FANTÔME de même cardinalité, décalée de 4 096 (des slots qu'aucun bipède

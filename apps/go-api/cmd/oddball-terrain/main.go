@@ -3,7 +3,7 @@
 // Ce binaire repond a UNE question : le score decode du film (score personnel a la ms +
 // emplacements du statborg) reproduit-il QUI PORTE le crane ? La verite terrain (d9781168,
 // relevee image par image en Theater) calibre ; l'oracle fige (`D10_oracle_objective_stats.json`)
-// generalise. Protocole : `.ai/V7.5/replay2d/registre_film/TERRAIN_PROTOCOLE.md`.
+// generalise. Protocole : `.ai/archive/V7.5/replay2d/registre_film/TERRAIN_PROTOCOLE.md`.
 //
 // # Deux processus, une seule sentinelle (patron cmd/statnames-sweep + cmd/zone-attribution)
 //

@@ -2,7 +2,7 @@
  * ObjectiveSoloSheetCard.compact.test.tsx — « Ma part à l'objectif » en vue compacte (tiroir de
  * comparaison de Sessions, maquette `makeSheets` avec `cp`) : le nombre au bout de chaque action
  * devient ma part du total de mon camp, le pied aussi. Témoin : la soirée du 22/09 (relevés
- * `.ai/V7.5/MESURES_SESSIONS_2026-10-06.md` §3 : Prendre 7 / 22, Défendre 10 / 33, Tenir 65 s / 138 s).
+ * `.ai/archive/V7.5/MESURES_SESSIONS_2026-10-06.md` §3 : Prendre 7 / 22, Défendre 10 / 33, Tenir 65 s / 138 s).
  */
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'

@@ -1,6 +1,6 @@
 // Package himap — geometry.go : des maillages du tag `rtgo` aux TRIANGLES en repere local.
 //
-// CHAINE (handoff `.ai/V7.5/cartes/HANDOFF_GEOMETRIE_TRIANGLES.md` §1) :
+// CHAINE (handoff `.ai/archive/V7.5/cartes/HANDOFF_GEOMETRIE_TRIANGLES.md` §1) :
 //
 //	rtgo -> Sections (60 o par maillage) -> LOD render data (148 o) -> index de tampons
 //	     -> descripteurs (80 o pour les sommets, 72 o pour les indices)

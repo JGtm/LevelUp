@@ -4,7 +4,7 @@
 // # CE QU'IL RÉPARE, ET POURQUOI UN RE-SYNC NE SUFFIT PAS
 //
 // Mesure du 2026-08-24 sur les 1 934 matchs du corpus
-// (`.ai/V7.5/replay2d/RAPPORT_QUALITE_SCORE_EQUIPE.md`) : 80 lignes portent une valeur qui
+// (`.ai/archive/V7.5/replay2d/RAPPORT_QUALITE_SCORE_EQUIPE.md`) : 80 lignes portent une valeur qui
 // n'est pas le score affiché — 69 d'entre elles portent, au tick près, le compteur brut du
 // mode (`Teams[].Stats.ZonesStats.StrongholdScoringTicks`). Héritage d'une période où l'API
 // 343 servait ce compteur dans `CoreStats.Score` ; elle a été corrigée entre avril et mai
@@ -83,8 +83,9 @@ import (
 	go_sync "levelup/go-api/internal/sync"
 )
 
-// defaultIDsFile : la liste nominative produite par la phase 1 du lot, versionnée.
-const defaultIDsFile = ".ai/V7.5/replay2d/registre_film/score_equipe_ecarts_2026-08-24.tsv"
+// defaultIDsFile : la liste nominative produite par la phase 1 du lot, versionnée avec l'outil
+// (donnees/) : c'est l'entrée de la CLI, pas une pièce de travail.
+const defaultIDsFile = "apps/go-api/cmd/backfill-team-scores/donnees/score_equipe_ecarts_2026-08-24.tsv"
 
 // writerLeaseTimeout borne l'attente du lease intra-process. Court : en CLI mono-process
 // il est toujours libre, un dépassement signalerait un bug d'appel, pas une contention.

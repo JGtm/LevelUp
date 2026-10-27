@@ -12,6 +12,9 @@
 //   - api_match_stats.json + api_skill.json + api_match_history_page0.json).
 //     Régénéré via `go run ./cmd/gen_test_fixtures download-full-match`.
 //
+//   - testdata/cartes/ : fixtures de cartes (dump découpé de Ridgeline, carte validée, trois
+//     variantes .mvar), accessibles par CartesDir() et Carte().
+//
 //   - data/wal/ : 69 batches WAL JSON capturés en production (référence:
 //     racine repo data/wal/, accessible via WALDir()).
 //

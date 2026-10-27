@@ -5,7 +5,7 @@ package migrations
 // POURQUOI CES COLONNES EXISTENT. Sur les modes qui se decident aux MANCHES, le score
 // d'equipe rendu par l'API (`CoreStats.Score`, deja au registre sous team_{0,1}_score) est un
 // CUMUL DE POINTS sur toutes les manches — il ne dit pas qui a gagne. Mesure du 2026-08-29 sur
-// les 1 942 matchs a score du corpus (`.ai/V7.5/RAPPORT_MANCHES_2026-08-29.md`) : sur 4 matchs
+// les 1 942 matchs a score du corpus (`.ai/archive/V7.5/RAPPORT_MANCHES_2026-08-29.md`) : sur 4 matchs
 // Oddball, l'equipe VICTORIEUSE affiche MOINS de points que la perdante. Le compte de manches,
 // lui, tranche — et l'API le publie depuis toujours (`CoreStats.RoundsWon/RoundsLost/RoundsTied`,
 // jamais lu jusqu'ici).

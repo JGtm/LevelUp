@@ -22,7 +22,7 @@ package replay
 //
 // AVERTISSEMENT — LE CRITERE C1 DE LA PREMIERE PASSE EST REFUTE, ET IL EST GARDE ICI EXPRES.
 // La passe L1 ci-dessous suppose que les deux bits qui closent le var-int sont CONSTANTS (des
-// bits de fin de champ). La note de rétro-ingénierie du lot B (`.ai/V7.5/film_re/
+// bits de fin de champ). La note de rétro-ingénierie du lot B (`.ai/archive/V7.5/film_re/
 // NOTE_ENVELOPPE_EVENTS_2026-08-30.md`, lecture statique du binaire) etablit qu'ils sont les
 // deux bits de GENERATION du handle 32 bits rendu par FUN_1406d3140 : de la donnee, qui n'a
 // aucune raison d'etre constante. C1 elimine donc des hypotheses valides, et la « solution

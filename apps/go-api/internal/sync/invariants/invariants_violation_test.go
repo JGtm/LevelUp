@@ -192,7 +192,7 @@ func keysOf(m map[string]Violation) []string {
 
 // TestCheckPlayerLUSRChains_FlagsForeignChain — I14 : une ligne LUSR portant une
 // chaîne qui n'appartient pas au titre de la base est une corruption cross-titre
-// (incident 2026-06-26, rapport .ai/V7.5/RAPPORT_VOLET1_LUSR_H5_2026-08-28.md §5.3
+// (incident 2026-06-26, rapport .ai/archive/V7.5/RAPPORT_VOLET1_LUSR_H5_2026-08-28.md §5.3
 // G3). Le check lit la table BRUTE : la ligne fautive survit sous la ligne gagnante
 // de la vue _latest après un replay correct, invisible de tout lecteur applicatif.
 func TestCheckPlayerLUSRChains_FlagsForeignChain(t *testing.T) {

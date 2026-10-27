@@ -4,7 +4,7 @@ package mappings
 // `loader_replay_labels.go` le 2026-08-18.
 //
 // POURQUOI UN FICHIER A PART : le lot de nommage
-// (`.ai/V7.5/replay2d/PLAN_NOMMAGE_EQIP_TRANSLOCATEUR.md`) fait passer cette section de deux
+// (`.ai/archive/V7.5/replay2d/PLAN_NOMMAGE_EQIP_TRANSLOCATEUR.md`) fait passer cette section de deux
 // familles a quinze et lui ajoute un invariant de PROVENANCE ; le fichier hote depassait alors
 // le seuil de 500 lignes. La section a de toute facon sa propre raison d'etre — c'est la seule
 // du manifeste dont la cle est un GlobalID de tag du jeu et non un libelle.

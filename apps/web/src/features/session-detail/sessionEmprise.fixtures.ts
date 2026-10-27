@@ -1,6 +1,6 @@
 /**
  * sessionEmprise.fixtures.ts — les colonnes de session témoins de la page Sessions (relevés
- * `.ai/V7.5/MESURES_SESSIONS_2026-10-06.md`, §0 à §3) :
+ * `.ai/archive/V7.5/MESURES_SESSIONS_2026-10-06.md`, §0 à §3) :
  *   - `session2209()` : la soirée d'escouade du 22/09 (7 matchs, 6 filmés, deux CTF) — Emprise et
  *     objectif des fixtures de l'Escouade de la même soirée (`EMPRISE_2209`, `block2209`), frags par
  *     classe et six premiers outils de JGtm (65 frags : BR75 22, MK50 Sidekick 13, M41 SPNKr 11…),

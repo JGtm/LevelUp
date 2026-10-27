@@ -49,7 +49,7 @@ package grammar
 // UNE POPULATION VIDE EST UNE INFORMATION, PAS UN ECHEC : ce film est une Fiesta d'arene, sans
 // vehicule, sans objectif ti=11, sans porteur et sans translocateur. Le golden fige les deux cas
 // TELS QUELS : si un jour l'une se remplit, le golden rougit et c'est exactement ce qu'on veut
-// savoir. Le detail famille par famille est au journal du lot (`.ai/V7.5/v2/LOT_E.md`).
+// savoir. Le detail famille par famille est au journal du lot (`.ai/archive/V7.5/v2/LOT_E.md`).
 //
 // CE QU'UNE LIGNE VIDE NE VERROUILLE PAS, ET IL FAUT LE SAVOIR EN LISANT CE GOLDEN : les deux
 // lignes a zero d'une famille qui rend une tranche portent le digest de la tranche VIDE
@@ -72,7 +72,7 @@ package grammar
 // pour les 38 creations d'equipement — identiques avant et apres, positions, masques,
 // `DefaultStateBits` et `AfterBit` compris. Les comptes d'ancres (141 / 170) et d'acceptees
 // (28 / 38) ne bougent pas non plus. Le detail est au rapport
-// `.ai/V7.5/RAPPORT_MUNITIONS_OBJET_2026-09-10.md`.
+// `.ai/archive/V7.5/RAPPORT_MUNITIONS_OBJET_2026-09-10.md`.
 //
 // # REGENERATION DU 2026-09-11 (lot 6.10) — DEUX LIGNES, ET AUCUN BIT N'A BOUGE NON PLUS
 //
@@ -93,7 +93,7 @@ package grammar
 //	equipmentCreations     n=38  ancres=170  acceptees=38
 //	  sha256=71cd12247c95a07f11849fc8d43565674172cebfd140145de31ef6cefe086cee   (identique)
 //
-// Le detail est au rapport `.ai/V7.5/RAPPORT_MUNITIONS_EXACTES_2026-09-11.md`.
+// Le detail est au rapport `.ai/archive/V7.5/RAPPORT_MUNITIONS_EXACTES_2026-09-11.md`.
 //
 // # REGENERATION DU 2026-09-11 (lot 6.10 bis) — UNE LIGNE, ET C'EST UNE MARCHE QUI N'EST PLUS ROMPUE
 //

@@ -3,7 +3,7 @@
 package replay
 
 // ground_weapon_pads_research_test.go — SOCLES par RECURRENCE SPATIALE, et CYCLE de
-// reapparition (phase 1 du plan .ai/V7.5/replay2d/PLAN_ARMES_AU_SOL_2E_LECTURE.md).
+// reapparition (phase 1 du plan .ai/archive/V7.5/replay2d/PLAN_ARMES_AU_SOL_2E_LECTURE.md).
 //
 // L'ENTREE EST LE RECORD DE CREATION, PAS LA DISPERSION DES DELTAS. C'est l'arbitrage
 // superviseur du 2026-08-17 apres le gate 0 : le critere de dispersion mesurait l'immobilite

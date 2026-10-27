@@ -186,7 +186,7 @@ const deployVariant = "ds"
 // `himap.TestPreuveLevelIDCartesDuCache` (la variante se dépose sous `<cache>/mvar/<map_id>/
 // map.mvar`, ou se rapatrie sans jeton par `mapnav-fetch -fichier map.mvar`) ; le canevas
 // d'Arrival, Exiled et Kusini Bay est aussi celui de l'inventaire UGC versionné
-// (`.ai/V7.5/cartes/inventaire_rotation_ugc_2026-08-27.json`) :
+// (`apps/go-api/cmd/mapcallouts-build/donnees/inventaire_rotation_ugc_2026-08-27.json`) :
 //
 //	Arrival, Formation                       -747133697  (0xD377A4FF) -> fo03_space
 //	Canopy, Exiled, Guardian                 1804860316  (0x6B93FB9C) -> fo05_desert

@@ -3,7 +3,7 @@
 package grammar
 
 // i59_tag1_confirm_test.go — INSTRUMENT DE MESURE de la PHASE 0-BIS du plan
-// .ai/V7.5/replay2d/PLAN_CAPACITES_ACTIVES.md : confirmer (ou tuer) `i59 tag==1` comme
+// .ai/archive/V7.5/replay2d/PLAN_CAPACITES_ACTIVES.md : confirmer (ou tuer) `i59 tag==1` comme
 // canal d'usage du PROPULSEUR.
 //
 // D'OÙ VIENT CETTE PHASE. L'étape 0.7 a trouvé que les transitions vers `tag==1` se

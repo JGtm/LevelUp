@@ -9,7 +9,7 @@ import (
 
 // slotidentity_occupations.go — LE SIEGE RECYCLE : un slot d'entite statborg qui CHANGE D'OCCUPANT
 // au cours d'une manche (lot R1 du plan de suite d audit, constat C1 du rapport
-// `.ai/V7.5/film_re/G_CORPUS_J11_2026-09-28.md`).
+// `.ai/archive/V7.5/film_re/G_CORPUS_J11_2026-09-28.md`).
 //
 // # LE DEFAUT, MESURE SUR `bcb6d393` (CTF, une manche)
 //

@@ -33,7 +33,7 @@ const (
 
 	// MarqueurImpair : le marqueur de production dont le DERNIER bit vaut 1 — c est-a-dire
 	// l amorce de 23 bits suivie d un champ d identifiant dont le bit de poids fort est a 1.
-	// Voir `.ai/V7.5/film_re/NOTE_3_3_IDENTIFIANTS_GRENADE_2026-09-16.md` §6 : sur les builds
+	// Voir `.ai/archive/V7.5/film_re/NOTE_3_3_IDENTIFIANTS_GRENADE_2026-09-16.md` §6 : sur les builds
 	// anciens le champ commence un bit plus tot, si bien que le vingt-quatrieme bit filtre par
 	// la production N EST PAS de l amorce mais le premier bit de l identifiant.
 	MarqueurImpair

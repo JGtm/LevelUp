@@ -1,6 +1,6 @@
 // Package migration — steps_shared_match_lives_mates.go : la table des COEQUIPIERS A LA MORT,
 // quatrieme projection de la passe de positions du collecteur (plan
-// `.ai/V7.5/PLAN_TACTIQUE_COEQUIPIERS_2026-10-14.md`, lot L1).
+// `.ai/archive/V7.5/PLAN_TACTIQUE_COEQUIPIERS_2026-10-14.md`, lot L1).
 //
 // ─── CE QU'ELLE AJOUTE A `match_death_context` ────────────────────────────────────────────
 //

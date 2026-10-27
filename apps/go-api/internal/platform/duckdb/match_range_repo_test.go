@@ -1,7 +1,7 @@
 //go:build integration
 
 // Package duckdb — match_range_repo_test.go : tests du lecteur de portée « tout le lobby »
-// (lot N2 du plan .ai/V7.5/PLAN_AJUSTEMENTS_SUPP_PRE_V75_2026-09-21.md, réserve R3).
+// (lot N2 du plan .ai/archive/V7.5/PLAN_AJUSTEMENTS_SUPP_PRE_V75_2026-09-21.md, réserve R3).
 //
 // Round-trip sur DB `:memory:` montée par les VRAIES migrations shared (fixture partagée
 // `newKillSourceTestPlayerDB`) — jamais une DDL recopiée, qui diverge sans rougir nulle part.

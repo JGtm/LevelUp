@@ -1,7 +1,7 @@
 /**
  * empriseStrings.ts — les textes de l'onglet « Emprise » de l'Escouade (lot L5 du plan
  * PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26) : titres (§3 du plan), aides ⓘ (trois phrases au
- * plus) et libellés de la maquette `.ai/V7.5/MAQUETTE_ONGLET_TACTIQUE_ESCOUADE_2026-09-26.html`.
+ * plus) et libellés de la maquette `.ai/archive/V7.5/MAQUETTE_ONGLET_TACTIQUE_ESCOUADE_2026-09-26.html`.
  * Fichier à part (précédent : `objectif/objectifStrings.ts`) : `i18n.ts` de la feature dépasse
  * déjà le seuil de taille. Parité FR / EN garantie par le typage `Record<Locale, …>`.
  */

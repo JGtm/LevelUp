@@ -1,7 +1,7 @@
 /**
  * WeaponRecordsRuler — « la règle » des records de distance de frag par arme (Synthèse).
  *
- * Plan : .ai/V7.5/PLAN_RECORDS_DISTANCE_2026-09-20.md, rendu A de la maquette
+ * Plan : .ai/archive/V7.5/PLAN_RECORDS_DISTANCE_2026-09-20.md, rendu A de la maquette
  * MAQUETTE_REGLE_RECORDS_2026-09-20.html (choix utilisateur du 2026-09-20). Une seule ligne
  * graduée du contact vers la longue portée, un losange par arme à son record, couleur par
  * CLASSE d'arme (la même famille `frag-*` que le sunburst voisin), libellés étagés au-dessus,

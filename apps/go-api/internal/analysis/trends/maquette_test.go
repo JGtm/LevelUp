@@ -1,7 +1,7 @@
 // Test de référence : compare les résultats de BuildSolo à ceux de la maquette
 // de la page Tendances. Les données (testdata/maquette_matchs.tsv) et les valeurs
 // attendues (testdata/maquette_attendu.json) sont tirées de
-// .ai/V7.5/MAQUETTE_TENDANCES_2026-10-04.html (maquette v15) : les calculs de la
+// .ai/archive/V7.5/MAQUETTE_TENDANCES_2026-10-04.html (maquette v15) : les calculs de la
 // maquette, rejoués à now fixé (2026-09-27T02:00:00Z) avec une découpe en UTC,
 // puis convertis dans les unités de l'API (taux et parts en 0..1).
 package trends

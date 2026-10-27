@@ -153,7 +153,7 @@ schema_version = 1
 # CE QUE « NETTE » VEUT DIRE : le compteur officiel `flag_grabs` compte chaque ramassage, donc
 # aussi le JONGLAGE (lancer le drapeau devant soi pour courir plus vite, puis le reprendre).
 # Les prises nettes replient ces allers-retours ; mesure du 2026-09-13 : 40 % du compteur
-# officiel en est. Rapport : `.ai/V7.5/RAPPORT_PRISES_NETTES_2026-09-13.md`.
+# officiel en est. Rapport : `.ai/archive/V7.5/RAPPORT_PRISES_NETTES_2026-09-13.md`.
 # POURQUOI PAS match.objective.stats : celle-ci gouverne le JOIN sur match_objective_stats,
 # alimentée par le SYNC API — or l'API ne publie qu'un TOTAL, sans la chronologie de portage
 # qui seule permet de reconnaître un jonglage. La grandeur vient du film.

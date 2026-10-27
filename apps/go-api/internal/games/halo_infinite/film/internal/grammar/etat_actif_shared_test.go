@@ -1,7 +1,7 @@
 package grammar
 
 // etat_actif_shared_test.go — AIDES PARTAGÉES des cinq instruments du plan
-// .ai/V7.5/replay2d/PLAN_ETAT_ACTIF_EQUIPEMENT.md (phases A camo, B surbouclier,
+// .ai/archive/V7.5/replay2d/PLAN_ETAT_ACTIF_EQUIPEMENT.md (phases A camo, B surbouclier,
 // C déployables, D mobilité, E i59). Un seul exemplaire de la marche, de la jointure
 // slot -> rang i48 et du groupage en épisodes : cinq copies auraient re-divergé (règle
 // des ≤ 2 copies, CLAUDE.md n°6).

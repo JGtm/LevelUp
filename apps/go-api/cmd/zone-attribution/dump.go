@@ -3,7 +3,7 @@
 // Les tableaux agreges disent COMBIEN d'actions ont ete rattachees a une zone. Ils ne
 // disent jamais si c'est LA BONNE — et c'est le chiffre qui manque a tout ce chantier.
 // Le seul temoin externe existant est le releve a l'oeil du 2026-08-02 sur Vagabond
-// (`.ai/V7.5/film_re/RELEVE_TERRAIN_CAPTURES_2026-07-31.md`), qui date quatre instants
+// (`.ai/archive/V7.5/film_re/RELEVE_TERRAIN_CAPTURES_2026-07-31.md`), qui date quatre instants
 // d'un film precis. Confronter l'un a l'autre exige de sortir les actions UNE PAR UNE,
 // avec leur auteur nomme et leur instant en secondes de film.
 //

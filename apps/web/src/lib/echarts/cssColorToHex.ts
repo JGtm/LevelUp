@@ -13,7 +13,7 @@
  * `fillStyle` d'un contexte 2D et on relit : le moteur rend la forme canonique (`#9ca3af`, ou
  * `rgba(...)` si la couleur a de l'alpha). Aucune table de conversion oklch->sRGB à maintenir,
  * aucune dérive possible avec le rendu réel. C'est la technique de la maquette validée le
- * 2026-09-06 (`.ai/V7.5/MAQUETTE_PORTEE_ENGAGEMENTS_2026-09-06.html`, fonction `toHex`).
+ * 2026-09-06 (`.ai/archive/V7.5/MAQUETTE_PORTEE_ENGAGEMENTS_2026-09-06.html`, fonction `toHex`).
  *
  * REPLI : la valeur d'entrée, inchangée. Sans `document` (SSR) ou sans contexte 2D (jsdom
  * sous vitest rend `null` : « Not implemented: HTMLCanvasElement's getContext() »), on ne

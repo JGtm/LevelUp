@@ -11,7 +11,7 @@ Related files:
 - `scripts/deploy-worker.sh` — build + install, run on the worker host by CI.
 - `packaging/systemd/levelup-worker.service` — the versioned unit.
 - `.github/workflows/deploy.yml`, job `deploy-worker` — the CI trigger.
-- `.ai/V7.5/PLAN_OUVRIER_DISTANT.md` — the plan this deployment closes.
+- `.ai/archive/V7.5/PLAN_OUVRIER_DISTANT.md` — the plan this deployment closes.
 
 ---
 
@@ -206,7 +206,7 @@ n'est pas ouvert" WARN in the logs).
 
 ### Step 2 — Repair impoverished artifacts BEFORE the first worker pass
 
-Copied verbatim from `.ai/V7.5/PLAN_OUVRIER_DISTANT.md`, section "COMMANDE DE REMEDIATION":
+Copied verbatim from `.ai/archive/V7.5/PLAN_OUVRIER_DISTANT.md`, section "COMMANDE DE REMEDIATION":
 
 ```bash
 # 1. Constater (READ-ONLY, aucun decodage, aucune ecriture)

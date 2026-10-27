@@ -3,7 +3,7 @@
 package grammar
 
 // res_r4_emplacement_desire_research_test.go — LE SENS DE LA VALEUR 2 DE L EMPLACEMENT DESIRE (plan
-// `.ai/V7.5/PLAN_RI_RESIDU_IMAGES_CLES_2026-10-14.md`, R4.1 ; D-30 du plan clos).
+// `.ai/archive/V7.5/PLAN_RI_RESIDU_IMAGES_CLES_2026-10-14.md`, R4.1 ; D-30 du plan clos).
 //
 // Pour chaque record bipede d image-cle lu, une ligne : film, rang de l image-cle
 // dans le film (0 = la premiere), horodatage, slot, admis, emplacement desire (param[1], -9 : i42 non

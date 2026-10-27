@@ -51,7 +51,7 @@ package replay
 // USAGE (depuis apps/go-api) :
 //
 //	CGO_ENABLED=0 TIR_FILMS_DIR=<repo>/data/cache/film_chunks \
-//	  TIR_TSV=<repo>/.ai/V7.5/film_re \
+//	  TIR_TSV=<repo>/.ai/archive/V7.5/film_re \
 //	  go test ./internal/games/halo_infinite/film/replay/ -run TestViseeTirFatal -v -timeout 120m
 
 import (

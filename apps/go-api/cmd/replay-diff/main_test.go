@@ -2,7 +2,7 @@ package main
 
 // main_test.go — TEST DE FUMEE DU CLI HISTORIQUE (CORPUS-R1 C12, 2026-09-07).
 //
-// Le journal .ai/V7.5/v2/CORPUS_TEMOIN_2026-09-06.md annoncait `go test ./cmd/replay-diff/...`
+// Le journal .ai/archive/V7.5/v2/CORPUS_TEMOIN_2026-09-06.md annoncait `go test ./cmd/replay-diff/...`
 // comme un gate JOUE — le paquet n'avait pourtant AUCUN fichier de test
 // (`? levelup/go-api/cmd/replay-diff [no test files]`). La promesse « comportement externe
 // inchange » qui a motive l'extraction de la logique vers internal/replaydiff (memes flags,

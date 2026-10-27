@@ -19,7 +19,7 @@ import (
 // La chaîne de composants MARCHE désormais, sur le chemin ANCRÉ (matchBipedHeader puis la
 // marche de record) : sur 000d5950, i22 y rend 120 lectures sur 120 avec compteur == 4 et valeurs
 // dans {0, 1, 2} (étude du 2026-08-24,
-// .ai/V7.5/replay2d/FAISABILITE_SUIVI_DELTA_INVENTAIRE_2026-08-24.md §1.3), et
+// .ai/archive/V7.5/replay2d/FAISABILITE_SUIVI_DELTA_INVENTAIRE_2026-08-24.md §1.3), et
 // ScanFilmInventoryDeltas (inventory_delta.go) SUIT les compteurs sur la marche des trames, ce
 // chemin passant derrière elle (`lectures_bipedes.go`).
 //
@@ -38,7 +38,7 @@ import (
 // (`projectiles.go`, point 2). Il ne valait donc que pour UN découpage et UN registre.
 //
 // CE QUE LE VOLET RECHERCHE DU LOT 3.3 A MESURÉ (note
-// `.ai/V7.5/film_re/NOTE_3_3_IDENTIFIANTS_GRENADE_2026-09-16.md`, découvertes D3 et D5 (3.3r),
+// `.ai/archive/V7.5/film_re/NOTE_3_3_IDENTIFIANTS_GRENADE_2026-09-16.md`, découvertes D3 et D5 (3.3r),
 // puis les mesures du lot 3.3.1 sur dix films) : ni le nombre, ni l'ordre, ni les valeurs des
 // identifiants n'ont changé depuis la sortie du jeu — [GrenadeTypeIDsByRank] reste une constante
 // du TITRE. Ce qui a changé est la grammaire, en trois nombres : la largeur du motif d'amorce

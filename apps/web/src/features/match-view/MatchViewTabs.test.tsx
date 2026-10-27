@@ -2,7 +2,7 @@
  * Page match — 4 onglets « Général / Chronologie / Armes et terrain / Joueurs ».
  *
  * Le troisième onglet a été ajouté le 2026-09-19 (plan
- * `.ai/V7.5/PLAN_AJUSTEMENTS_PRE_V75_2026-09-19.md`, lot 2) sous le nom « Contrôle » : il
+ * `.ai/archive/V7.5/PLAN_AJUSTEMENTS_PRE_V75_2026-09-19.md`, lot 2) sous le nom « Contrôle » : il
  * prend à Chronologie les blocs qui disent QUI A TENU QUOI. Il s'appelle « Armes et terrain »
  * (`arsenal`) depuis le 2026-09-22 et a repris de Général la répartition des frags et la distance
  * des frags ; depuis le 2026-10-07 il porte les cartes de l'Emprise du match (contrôle des

@@ -188,7 +188,7 @@ package replay
 // images-cles plafonne a 92,80 % et DESCEND quand on rapproche les deux lectures (88,06 % a
 // 0,10 s contre 93,19 % a 2 s), ce qu'une consommation reelle entre les deux mesures ferait a
 // l'envers. `Inventory.Am` reste donc alimente par les seules images-cles. Chronique complete,
-// chiffres et porte par film : .ai/V7.5/replay2d/LOT4_SUIVI_DELTA_2026-08-25.md.
+// chiffres et porte par film : .ai/archive/V7.5/replay2d/LOT4_SUIVI_DELTA_2026-08-25.md.
 // CE QUE LA VERSION 21 PORTE, ET POURQUOI ELLE MONTE ALORS QU'AUCUNE CLE NE BOUGE. Le
 // PROPRIETAIRE DE LA COLLINE est desormais publie sur la voie du designateur (KOTH) : une
 // periode de colline se SUBDIVISE aux changements de main et chaque morceau porte son camp dans
@@ -208,7 +208,7 @@ package replay
 // REFUTE par sa propre mesure (40,6 a 66,7 % de trous a porteur unique contre un seuil de 90 %,
 // temoin hors trou a 66,7 et 71,4 %). Aucun calque de portage de crane n'existe. Et les zones de
 // TOTAL CONTROL : le designateur y rend jusqu'a 77 designations simultanees sur un mode a trois
-// zones, la mesure est close `[!]` pour v7.5. Chronique complete : .ai/V7.5/PLAN_OBJECTIFS_
+// zones, la mesure est close `[!]` pour v7.5. Chronique complete : .ai/archive/V7.5/PLAN_OBJECTIFS_
 // ETAT_VIVANT_2026-08.md.
 // CE QUE LA VERSION 22 PORTE, ET POURQUOI ELLE MONTE. La COURONNE VIP est desormais publiee
 // (`vipCrown`) : chaque SELECTION `vip_selected` (`comp 22 A` = `TimesSelectedAsVip`, resolu au
@@ -222,7 +222,7 @@ package replay
 // aucun rejeu VIP deja cuit ne montrerait jamais la couronne. GARDE DE MODE : `comp 22 A` vaut
 // `flag_grabs` en CTF, donc la couronne n'est lue que sur les films que l'APPELANT reconnait VIP
 // par `game_variant_name` (comme la colline de KOTH) — jamais devinee dans le film.
-// Chronique complete : .ai/V7.5/replay2d/registre_film/VIP_COURONNE_PROTOCOLE.md.
+// Chronique complete : .ai/archive/V7.5/replay2d/registre_film/VIP_COURONNE_PROTOCOLE.md.
 //
 // CE QUE LA VERSION 23 PORTE, ET POURQUOI ELLE MONTE. Le PORTEUR DU CRANE d'Oddball est desormais
 // publie (`skullCarries`) : le porteur est le joueur dont les TICS DE SCORE DE MODE montent
@@ -239,7 +239,7 @@ package replay
 // un artefact 22 doit se lire « a re-cuire », pas « a jour ». GARDE DE MODE : `comp 0 A` est le
 // score de mode de tout mode, donc le porteur n'est lu que sur un film que l'APPELANT reconnait
 // Oddball par `game_variant_name` — jamais devine dans le film. Chronique complete :
-// .ai/V7.5/replay2d/registre_film/ODDBALL_PORTEUR_PROTOCOLE.md.
+// .ai/archive/V7.5/replay2d/registre_film/ODDBALL_PORTEUR_PROTOCOLE.md.
 //
 // CE QUE LA VERSION 24 PORTE, ET POURQUOI ELLE MONTE. `equipmentEpisodes[].k`/`.a` — LES
 // FRAGS ET ASSISTANCES DU PORTEUR pendant l'episode (camo, surbouclier), et
@@ -721,7 +721,7 @@ package replay
 // qu'AUCUN artefact 38 n'existait alors hors témoins de gate. Ici la reprise doit re-cuire tout
 // artefact < 40.
 // Détail : internal/games/halo_infinite/film/internal/facts/objectives/slotidentity_rounds.go (CompletedByLines) et
-// .ai/V7.5/v2/INSTRUCTION_CTF_DRAPEAUX.md section 9.
+// .ai/archive/V7.5/v2/INSTRUCTION_CTF_DRAPEAUX.md section 9.
 //
 // v41 (2026-09-06) : TROIS CALQUES RATTRAPENT « UNE TRACK = UNE VIE ». Aucun champ n'est
 // ajouté, aucune forme ne change : trois calques publient de nouveau ce qu'ils publiaient
@@ -757,7 +757,7 @@ package replay
 // (minX -227,27 -> -18,57). L'assainissement des trajectoires l'a supprimé : c'est un gain,
 // il n'est pas revenu, il ne doit pas revenir.
 // Détail : internal/games/halo_infinite/film/replay/{closures.go, closures_respawn.go, owners.go,
-// grapple_lines.go, equipment_episodes.go} et .ai/V7.5/v2/INSTRUCTION_REGRESSIONS_2_4.md.
+// grapple_lines.go, equipment_episodes.go} et .ai/archive/V7.5/v2/INSTRUCTION_REGRESSIONS_2_4.md.
 //
 // v42 (2026-09-06) : LE DRAPEAU A ENFIN DES PORTEURS. Aucun champ n'est ajouté, aucune clé ne
 // bouge — c'est le CONTENU de `flagCarries` qui change, exactement comme aux montées v14 et v15
@@ -807,7 +807,7 @@ package replay
 // Détail : internal/games/halo_infinite/film/replay/build_objectives_live.go (`FlagInput.Identity`,
 // `flagIdentityOf`), internal/replaybuild/matchfacts.go (`pontParManche`),
 // internal/games/halo_infinite/film/internal/facts/objectives/slotidentity_rounds.go (`CompletedByLines`) et
-// .ai/V7.5/v2/FLAGCARRIES_COMPLEMENT_2026-09-06.md.
+// .ai/archive/V7.5/v2/FLAGCARRIES_COMPLEMENT_2026-09-06.md.
 //
 // v43 (2026-09-06) : UNE VIE ANONYME N'EST PAS UNE ABSENCE. Aucun champ n'est ajouté ; c'est le
 // CONTENU de `skullCarries` — et, latent, de `bombCarries` — qui change. Le gate de présence
@@ -833,7 +833,7 @@ package replay
 // La version monte pour la raison des montées v39/v40/v41/v42 : un artefact 23 à 42 est appauvri
 // sans que sa forme le dise, et `backfill-replay` saute un artefact à la version courante.
 // Détail : internal/games/halo_infinite/film/replay/skull_carries.go (carrierPresence.gate) et
-// .ai/V7.5/v2/INSTRUCTION_RESIDUS_2026-09-06.md.
+// .ai/archive/V7.5/v2/INSTRUCTION_RESIDUS_2026-09-06.md.
 //
 // v44 (2026-09-06) : LA MANCHE DÉCLARÉE D'UN ENREGISTREMENT EST CONFRONTÉE AU TEMPS. Aucun champ
 // n'est ajouté ; c'est le CONTENU de `scoreTimeline` (les quatre compteurs par joueur et les
@@ -860,7 +860,7 @@ package replay
 // La version monte pour la raison des montées v39 à v43 : un artefact 1 à 43 d'un film
 // multi-manche porte des compteurs gonflés sans que sa forme le dise, et `backfill-replay` saute
 // un artefact à la version courante. Détail :
-// internal/games/halo_infinite/film/internal/facts/objectives/round_bounds.go et .ai/V7.5/v2/MANCHES_COMPTEURS_2026-09-06.md.
+// internal/games/halo_infinite/film/internal/facts/objectives/round_bounds.go et .ai/archive/V7.5/v2/MANCHES_COMPTEURS_2026-09-06.md.
 //
 // v45 (2026-09-06) : UN TROU DE RÉPLICATION N'AMPUTE PLUS UNE DURÉE MESURÉE. Aucun champ n'est
 // ajouté ; c'est le CONTENU d'`equipmentEpisodes` et de `flagCarries` qui change. Même cause
@@ -881,7 +881,7 @@ package replay
 //
 // La version monte pour la raison des montées v39 à v44 : un artefact 36 à 44 est appauvri sans
 // que sa forme le dise. Détail : internal/games/halo_infinite/film/replay/{equipment_episodes.go, flag_carries.go}
-// et .ai/V7.5/v2/INSTRUCTION_DUREES_2026-09-06.md.
+// et .ai/archive/V7.5/v2/INSTRUCTION_DUREES_2026-09-06.md.
 //
 // v46 (2026-09-06) : UN JOUEUR NE PORTE PLUS SON PROPRE DRAPEAU. Aucun champ n'est ajouté ;
 // c'est le CONTENU de `flagCarries` qui change — l'attribution d'un portage à l'un des deux
@@ -904,7 +904,7 @@ package replay
 // pour la raison des montées v39 à v45 : un artefact 45 attribue un portage — et sa capture — au
 // mauvais drapeau sans que sa forme le dise, et `backfill-replay` saute un artefact à la version
 // courante. Détail : internal/games/halo_infinite/film/replay/flag_assign.go et
-// .ai/V7.5/v2/INSTRUCTION_DRAPEAUX_2026-09-06.md.
+// .ai/archive/V7.5/v2/INSTRUCTION_DRAPEAUX_2026-09-06.md.
 //
 // v47 (2026-09-07) : AUCUNE VIE PUBLIEE NE RESTE SANS NOM, ET LES LECTEURS LISENT LA PISTE SOUS
 // L'IDENTITE RESOLUE DE SON SLOT. NEUF champs de couverture s'ajoutent — cinq au pont
@@ -963,7 +963,7 @@ package replay
 // que sa forme le dise, et `backfill-replay` saute un artefact a la version courante. 44, 45 et
 // 46 sont deja integres (manches, durees, DRAPEAUX) : la chronique ci-dessus les porte dans
 // l'ordre, et aucun numero n'est plus reserve.
-// Detail : .ai/V7.5/v2/VIES_ANONYMES_2026-09-06.md.
+// Detail : .ai/archive/V7.5/v2/VIES_ANONYMES_2026-09-06.md.
 //
 // v48 (2026-09-07) : LE PONT D'IDENTITE CESSE D'ETRE MUET SUR LES FILMS DONT LA PREMIERE FIN DE
 // VIE TOMBE APRES LA PREMIERE MINUTE DU MATCH. Deux champs de couverture s'ajoutent
@@ -999,7 +999,7 @@ package replay
 //
 // La version monte pour la meme raison qu'aux montees v39 a v47 : un artefact < 48 porte des
 // pistes non nommees et, sur cinq films, un calque d'objectifs et une courbe de score non
-// recales faute d'origine. Detail : .ai/V7.5/v2/PONT_MUET_2026-09-07.md.
+// recales faute d'origine. Detail : .ai/archive/V7.5/v2/PONT_MUET_2026-09-07.md.
 //
 // v49 (2026-09-08, lot M1b — décision utilisateur ferme, « corriger le décalage ») : le
 // document publie `coverage.bridge.deathOffsetMs` — le calage `DeathOffsetMS` du pont
@@ -1010,7 +1010,7 @@ package replay
 // zéro qui se lirait comme un calage exact (cf. BridgeHealth.DeathOffsetMs, coverage_bridge.go).
 //
 //	pourquoi     le lien « voir dans le rejeu » posé depuis une cellule Tactique (lot M1,
-//	             `.ai/V7.5/DECOUVERTES_TACTIQUE_2026-09-07.md`) portait un instant EXACT pour
+//	             `.ai/archive/V7.5/DECOUVERTES_TACTIQUE_2026-09-07.md`) portait un instant EXACT pour
 //	             deux questions sur six (`temps`/`routes`, déjà sur l'horloge du film) et une
 //	             APPROXIMATION pour les quatre autres (`morts`/`kills`/`gagne`/`isole`, sur
 //	             l'horloge du MATCH) — le décalage par match n'était publié nulle part. Le
@@ -1025,7 +1025,7 @@ package replay
 // le champ est optionnel et le web sait déjà lire son absence sans regarder la version —
 // le bump sert seulement à faire recuire tout le parc < 49 en une passe
 // (`backfill-replay`), pour qu'un artefact ancien cesse de répondre « calage inconnu » faute
-// de recuisson déclenchée. Détail : `.ai/V7.5/v2/CHRONIQUE_49_2026-09-08.md`.
+// de recuisson déclenchée. Détail : `.ai/archive/V7.5/v2/CHRONIQUE_49_2026-09-08.md`.
 
 // v50 (2026-09-08, lot P2 — REGISTRE D'IDENTITÉ DES JOUEURS) : le document publie POUR LA
 // PREMIÈRE FOIS sur quoi repose chaque nom qu'il sert, l'identifiant stable des bots, et il
@@ -1103,7 +1103,7 @@ package replay
 //
 //	ce que le lot   il ne touche NI le pont statborg (`64e8adfa` garde ses 5 couples perdus, écart
 //	n'a pas fait    K/D/A 16 inchangé) NI l'équipe d'un joueur (elle vit dans la base). Détail,
-//	                mesures et instruction du résidu : `.ai/V7.5/v2/RESTES_E2_2026-09-08.md`.
+//	                mesures et instruction du résidu : `.ai/archive/V7.5/v2/RESTES_E2_2026-09-08.md`.
 
 // v51 (2026-09-10, lot 4.3 — LE TABLEAU DE L'API NOMME LES CORPS HORS TABLE).
 //
@@ -1180,7 +1180,7 @@ package replay
 //	                (médiane 31,89 m pour 63,775 m) avec |Δx| médian 0,20 m : le bit de poids
 //	                fort de Y bascule, 3 907 pas sur 4 901. Sur les cartes Forge l'axe touché est
 //	                plutôt X et le bit plus bas (étendue / 2^7 majoritaire). Le chantier appartient
-//	                à `grammar` : `.ai/V7.5/RAPPORT_LOT_B_DECODEUR_FORK_2026-09-11.md`.
+//	                à `grammar` : `.ai/archive/V7.5/RAPPORT_LOT_B_DECODEUR_FORK_2026-09-11.md`.
 //
 //	le contrat      `coverage.projectiles` est ADDITIF et optionnel. `grenades[].slot` et
 //	                `projectiles[].p` existaient déjà : ce sont leurs VALEURS qui changent, et
@@ -1260,7 +1260,7 @@ package replay
 //	                position de bit — Y figé au quantum près (479, 735) pendant que X saute d'une
 //	                puissance de deux exacte, sur plusieurs slots et générations à la fois. Le
 //	                garde-fou de v52 la couvre et devient rare : c'est son rôle.
-//	                Détail : `.ai/V7.5/RAPPORT_LOT_BBIS_BIT_PROJECTILE_2026-09-12.md`.
+//	                Détail : `.ai/archive/V7.5/RAPPORT_LOT_BBIS_BIT_PROJECTILE_2026-09-12.md`.
 //
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 // v54 (2026-09-12, lot G.2bis) — LA VERSION DU FILM EST LUE, PLUS DEVINEE
@@ -1300,7 +1300,7 @@ package replay
 //
 //	ce que le lot   le REDECODAGE lui-meme (`backfill-replay --only-existing` et le backlog
 //	n'a pas fait    killsource par `KillSourceDecoderRev`) : consigne du lot, il reste a lancer.
-//	                Detail : `.ai/V7.5/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md`.
+//	                Detail : `.ai/archive/V7.5/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md`.
 
 // v55 (2026-09-14, lot 1.0.4 du PLAN_DECODEUR_FILM) : LE REFUS DE PUBLICATION D'UNE VIE CESSE
 // D'ETRE MUET.
@@ -1389,7 +1389,7 @@ package replay
 //	ce qui etait   `Track.Team` valait -1 sur TOUTES les vies de TOUS les artefacts, et le
 //	faux           document le documentait ainsi : « l'equipe n'est PAS dans le film, elle vit
 //	               dans la base et le client la joint par XUID ». C'est refute :
-//	               `.ai/V7.5/film_re/NOTE_EQUIPE_FILM_2026-09-12.md` etablit par DEUX chaines
+//	               `.ai/archive/V7.5/film_re/NOTE_EQUIPE_FILM_2026-09-12.md` etablit par DEUX chaines
 //	               sans etape commune — le desassemblage du lecteur `0x140f581e8` et 160 slots
 //	               sur 176 en accord exact avec `match_participants.team_id`, dont deux Grandes
 //	               batailles a 24/24 — que la trame d'etat la porte, par joueur, sur 4 bits.
@@ -2017,7 +2017,7 @@ package replay
 //	               (`grammar` a monte au commit precedent du lot, pour le cablage du bloc
 //	               d action de la vue de controle).
 
-// v69 (2026-09-24, vague C des retours du rejeu, plan `.ai/V7.5/PLAN_RETOURS_REJEU_2026-09-23.md`
+// v69 (2026-09-24, vague C des retours du rejeu, plan `.ai/archive/V7.5/PLAN_RETOURS_REJEU_2026-09-23.md`
 // §4.4) : UNE SEULE MONTEE POUR QUATRE LOTS — M1 (positions), M5 (score a sens unique et fil des
 // morts), M4a (vehicules : pieces montees, registre), M6 (registre et catalogue : la remise des
 // mains nues). Chaque lot avait pose 69 sur sa branche (M6 avait d abord pose 70, rabattu sur 69
@@ -2205,7 +2205,7 @@ package replay
 //	               Parc (107 documents rejoues des faits, base -> reprise) : 7 documents touches,
 //	               19 Falcon occupes, 64 episodes, 6 ecartes, 16 coupes, +365 tirs.
 //
-// v70 (2026-09-24, vague D des retours du rejeu, plan `.ai/V7.5/PLAN_RETOURS_REJEU_2026-09-23.md`
+// v70 (2026-09-24, vague D des retours du rejeu, plan `.ai/archive/V7.5/PLAN_RETOURS_REJEU_2026-09-23.md`
 // §4.5) : UNE SEULE MONTEE POUR LES LOTS DE LA VAGUE — M2 (equipes, presence et place lues dans
 // le film) et M3 (marche d image-cle, armes de naissance). Chaque lot, parti de
 // `fe7079f41` AVANT la vague C, avait pose 69 sur sa branche ; l integration les reunit sous ce
@@ -2514,7 +2514,7 @@ package replay
 // `coverage.stances.jumpEpisodes` et `.jumpsDerived` (§8).
 //
 // v71 (2026-09-24, lot M4b de la campagne « retours rejeu », plan
-// `.ai/V7.5/PLAN_RETOURS_REJEU_2026-09-23.md` §4.5 « M4b — Tir des vehicules ») : LE TIR CONTINU,
+// `.ai/archive/V7.5/PLAN_RETOURS_REJEU_2026-09-23.md` §4.5 « M4b — Tir des vehicules ») : LE TIR CONTINU,
 // LU DANS LA VUE DE CONTROLE ET RENDU COMME THEATER. Une montee de plus que la vague D (70) : la
 // FORME du document change (un calque racine et quatre blocs de couverture), et le garde-rail de
 // forme refuse une forme nouvelle sous le numero de la vague.
@@ -2674,7 +2674,7 @@ package replay
 //	`tracks`,      les corps de GENERATION >= 2 d un slot bipede recycle sont lus (filtre de
 //	`durationMs`,  generation vivante, `grammar-2026-09-27`, GB-1) : leurs positions sont publiees,
 //	`frameCount`,  et la duree du rejeu n est plus tronquee a la derniere vie de generation 1.
-//	`bounds`       Cibles mesurees avant de coder (`.ai/V7.5/film_re/MESURE_GB1_2026-09-27.md`) :
+//	`bounds`       Cibles mesurees avant de coder (`.ai/archive/V7.5/film_re/MESURE_GB1_2026-09-27.md`) :
 //	               `1c4c63c2` ~825,9 s -> ~1 288,7 s, `084a804d` ~972,4 s -> ~1 055,8 s,
 //	               `a349fea8` ~933,1 s -> ~948,0 s ; aucune vie de generation >= 2 sans position sur
 //	               `084a804d`, `1c4c63c2`, `4f77afc1`. Les quinze autres temoins ne changent pas.
@@ -2845,7 +2845,7 @@ package replay
 //	`roster[].     (bot declare a la frame ou finit la derniere vie du partant) n est plus un
 //	presence`      chevauchement ; l humain lu pendant la declaration du bot, sans vie avant son
 //	               retrait, lui succede : sa presence commence au lendemain du retrait. Sur les 19
-//	               temoins du lot (`.ai/V7.5/PLAN_REJEU_EQUIPES_SOURCE_2026-10-06.md`, G3.5) :
+//	               temoins du lot (`.ai/archive/V7.5/PLAN_REJEU_EQUIPES_SOURCE_2026-10-06.md`, G3.5) :
 //	               `sansEquipe` 18 -> 0, `sansPlace` 21 -> 3, `depassements` 229 -> 60 ; les trois
 //	               restes ne viennent pas de l equipe (une vie nommee apres l absence prouvee de son
 //	               entite, un bot non epingle hors du roster, un depart apres la derniere image-cle).
@@ -2884,7 +2884,7 @@ package replay
 //	`roster[]`     un bot declare qui n a aucune vie et ne trouve aucune place dans son equipe n entre
 //	               pas au roster publie (`sieges_bots_sans_place.go`) ; un bot sans place qui a une vie
 //	               reste, sans place, en ERREUR. Sur les 19 temoins du lot
-//	               (`.ai/V7.5/PLAN_REJEU_EQUIPES_SOURCE_2026-10-06.md`, phase D) : `sansPlace` 3 -> 0,
+//	               (`.ai/archive/V7.5/PLAN_REJEU_EQUIPES_SOURCE_2026-10-06.md`, phase D) : `sansPlace` 3 -> 0,
 //	               `placesEnTrop` 3 -> 0, `depassements` 60 -> 0.
 //	forme          AUCUN CHAMP NEUF : les comptes de ces regles vont au journal et a l expvar
 //	               (`rejeu_vies_apres_depart_ecartees`, `rejeu_bots_sans_vie_ni_place_ecartes`).
@@ -3067,7 +3067,7 @@ package replay
 //	                depuis) -> 0 ; les 13 lachers ne sont plus publies, les 5 echanges sont des
 //	                prises ; tout autre changement d arme, et le reste du document, identiques hors
 //	                revisions ; banc de verite 19/19 « ok » (detail :
-//	                `.ai/V7.5/film_re/arrets_vue_b_2026-10-07/RAPPORT.md`, « Correctif D9 »).
+//	                `.ai/archive/V7.5/film_re/arrets_vue_b_2026-10-07/RAPPORT.md`, « Correctif D9 »).
 //
 // v89 (2026-10-08, representation intermediaire 2.7.d : positions et objets du monde derriere la
 // marche des trames) : LES POSITIONS DES JOUEURS, LES PISTES ET LES CREATIONS DES OBJETS DU MONDE SE
@@ -3209,10 +3209,10 @@ package replay
 //	                colline active par frame, aucune periode fusionnee avec la suivante (4 films sur
 //	                11 en avaient), 0 repli sans garde ; les trois films classes de Lattice rendent
 //	                la meme sequence de collines. Temoin `0d9a9af9` : 3e periode sur la colline 4
-//	                (avant : 2, celle de la 4e). Detail : `.ai/V7.5/PLAN_KOTH_REJEU_2026-10-09.md`.
+//	                (avant : 2, celle de la 4e). Detail : `.ai/archive/V7.5/PLAN_KOTH_REJEU_2026-10-09.md`.
 //
 // v93 (2026-10-09, representation intermediaire 2.7.d1, plan
-// `.ai/V7.5/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, `grammar-2026-10-09.3`) : L ETAT COMPLET DU
+// `.ai/archive/V7.5/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, `grammar-2026-10-09.3`) : L ETAT COMPLET DU
 // BIPEDE AUX IMAGES-CLES EST LU PAR LA GRAMMAIRE, LES FENETRES DE BITS PASSENT DERRIERE ELLE.
 // ECRITE v91 sur la branche `feat/ri-lk-images-cles`, RENUMEROTEE v92 a la fusion de `feat/v75`
 // `f516d4bf4` (le lot `feat/aj-needler` a pris 91), puis v93 a celle de `46f203b09` (le lot
@@ -3254,7 +3254,7 @@ package replay
 //	                (20), `inventory` et `inventory.stats` (19, tous sauf `50247b26`, qui n admet aucun
 //	                record), `loadouts` (4) ; `carrierMarks`, `objectives`, `killsource` identiques.
 //
-// v94 (2026-10-14, lot F du plan `.ai/V7.5/PLAN_AJUSTEMENTS_2026-10-14.md`, `grammar-2026-10-14`) : LES
+// v94 (2026-10-14, lot F du plan `.ai/archive/V7.5/PLAN_AJUSTEMENTS_2026-10-14.md`, `grammar-2026-10-14`) : LES
 // POUSSEES DU REPULSEUR SONT LUES DANS LE FILM.
 //
 //	`knockbacks[]`  neuf : {t, slot, by, vx, vy, vz} — le joueur pousse, l unite qui pousse, la
@@ -3280,7 +3280,7 @@ package replay
 //	                piste accelerent le slot pousse dans les 300 ms (temoin decale de 5 s : 1 sur 14) ; 215e7022 : paire a 325 526 ms, la milliseconde du kill au repulseur
 //	                releve au Theater. Auteur porteur du repulseur sur 130 paires sur 130.
 //
-// v95 (2026-10-14, lot « équipement porté » du plan `.ai/V7.5/PLAN_AJUSTEMENTS_2026-10-14.md`,
+// v95 (2026-10-14, lot « équipement porté » du plan `.ai/archive/V7.5/PLAN_AJUSTEMENTS_2026-10-14.md`,
 // `grammar-2026-10-14.3`) : L'ÉQUIPEMENT PORTÉ EST LU, ET LA FAILLE SE POSE.
 //
 //	`carriedEquipment[]`  neuf : {slot, r, t0, t1?, energy[{t, e, n?, tag?}], uses[]} — l'objet ti=37
@@ -3330,7 +3330,7 @@ package replay
 //	                de 11,35 à 12,24 s, 6 de 1,5 à 4,6 s (champ détruit), une de 16,95 s. Capteur 834,
 //	                écran 241, traqueur 49 objets engendrés, tous ti=41 nés dans le paquet.
 //
-// v97 (2026-10-15, plan `.ai/V7.5/PLAN_RI_RESIDU_IMAGES_CLES_2026-10-14.md`, branche `feat/ri-ecart-108`,
+// v97 (2026-10-15, plan `.ai/archive/V7.5/PLAN_RI_RESIDU_IMAGES_CLES_2026-10-14.md`, branche `feat/ri-ecart-108`,
 // `grammar-2026-10-15.2`) : LES IMAGES-CLÉS SE LISENT COMME UNE TABLE D'ENTRÉES. Aucune forme ne change :
 // des valeurs, sur des films où la lecture rend désormais ce qu'elle perdait.
 //
@@ -3401,7 +3401,7 @@ package replay
 //
 //	LE PARC         un artefact 97 ou d'avant : verdict `redecoder` (révision de grammaire).
 
-// v99 (2026-10-17, E8.4 du plan `.ai/V7.5/PLAN_BACKLOG_2026-10-16.md`, « vies sans identite ») : contenu
+// v99 (2026-10-17, E8.4 du plan `.ai/archive/V7.5/PLAN_BACKLOG_2026-10-16.md`, « vies sans identite ») : contenu
 // seul. La FORME du document ne change pas ; son CONTENU change, et un artefact 98 doit se lire « a
 // republier ».
 //

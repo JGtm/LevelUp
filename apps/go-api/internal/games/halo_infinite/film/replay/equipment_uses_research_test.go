@@ -42,7 +42,7 @@ package replay
 //
 //	CGO_ENABLED=0 EQ_FILM=<principal>/data/cache/film_chunks/000d5950 \
 //	  EQ_BOUNDS=<principal>/data/titles/halo_infinite/reference/map_quant_bounds.json \
-//	  EQ_OUT=<repo>/.ai/V7.5/replay2d/registre_film/lotD \
+//	  EQ_OUT=<repo>/.ai/archive/V7.5/replay2d/registre_film/lotD \
 //	  go test ./internal/games/halo_infinite/film/replay/ -run '^TestEquipmentUsesPhase0$' -timeout 60m -v
 //
 // `EQ_BOUNDS` est FACULTATIF : sans lui les positions restent en coordonnees normalisees

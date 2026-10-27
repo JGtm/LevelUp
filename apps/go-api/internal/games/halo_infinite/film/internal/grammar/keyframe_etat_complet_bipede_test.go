@@ -1,7 +1,7 @@
 package grammar
 
 // keyframe_etat_complet_bipede_test.go — la lecture de l etat complet du bipede aux images-cles
-// (D1.1 du plan `.ai/V7.5/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`) : le cadre de la relecture,
+// (D1.1 du plan `.ai/archive/V7.5/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`) : le cadre de la relecture,
 // la regle d admission (U-1 amendee le 2026-10-09), la publication et les sept bobines du golden en
 // contexte de cuisson.
 //

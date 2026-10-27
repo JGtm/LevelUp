@@ -1,7 +1,7 @@
 package grammar
 
 // ti47_annonces_scan_test.go — LE MOTEUR de l'instrument du lot « ti=47 i2 personal-ai-data »
-// (plan `.ai/V7.5/replay2d/PLAN_TI47_ANNONCES_ZONE.md`). Les verdicts sont dans
+// (plan `.ai/archive/V7.5/replay2d/PLAN_TI47_ANNONCES_ZONE.md`). Les verdicts sont dans
 // `ti47_annonces_test.go` ; ce fichier ne fait que produire la matiere.
 //
 // CE QU'IL FAIT. Le lot C a mesure que `ti=47 i2 personal-ai-data-component` est le canal le

@@ -88,7 +88,7 @@ var famillesAttendues = map[string]string{
 }
 
 // cartesMesurees — le compte d'emplacements des trois cartes du plan
-// `.ai/V7.5/replay2d/PLAN_SOCLES_MVAR.md`, par map_id.
+// `.ai/archive/V7.5/replay2d/PLAN_SOCLES_MVAR.md`, par map_id.
 //
 // CATALYST 11 est la mesure du plan au socle près (13 objets, 11 emplacements — deux
 // déclarations doubles à 4,7 cm et 9 mm). CLIFFHANGER 18 = les 17 socles d'ARME du plan

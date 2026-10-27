@@ -47,7 +47,7 @@ const (
 	metricIsolationWriteFail         = "killsource_isolement_erreurs_ecriture"
 	// metricIsolationPontNonPublicable : le pont slot->xuid est refuse (`IndexDisagreements >
 	// 0`, cf. replay.PontPubliable) — cause DISTINCTE de « sans lieu » (Q8,
-	// .ai/V7.5/DECOUVERTES_TACTIQUE_2026-09-07.md) : sans ce compteur dedie, un pont non publiable
+	// .ai/archive/V7.5/DECOUVERTES_TACTIQUE_2026-09-07.md) : sans ce compteur dedie, un pont non publiable
 	// faisait tomber TOUTES les morts du match dans killsource_isolement_morts_sans_lieu, qui
 	// ne dit normalement qu'« une victime precise n'a pas de position au film ».
 	metricIsolationPontNonPublicable = "killsource_isolement_pont_non_publiable"
@@ -178,7 +178,7 @@ func (c *KillSourceCollector) writeIsolationFacts(ctx context.Context, matchID s
 // déjà collecté ne repasserait, et les positions écrites resteraient celles du pont aplati.
 //
 // CE QUE ÇA COÛTE, ET CE QUE ÇA RAPPORTE — les deux mesurés, pour que la décision de JOUER le
-// backfill se prenne sur des chiffres (rapport `.ai/V7.5/RAPPORT_PONT_APLATI_2026-09-10.md`) :
+// backfill se prenne sur des chiffres (rapport `.ai/archive/V7.5/RAPPORT_PONT_APLATI_2026-09-10.md`) :
 // sur 74 films du parc, UN SEUL siège est ambigu (`084a804d`/603), et sa fenêtre d'exposition
 // vaut UNE frame (100 ms, la dernière du film). Le bump rend éligible TOUT le corpus au
 // redécodage. Il ne déclenche rien par lui-même : seule la commande `levelup backfill-killsource`
@@ -249,7 +249,7 @@ func (c *KillSourceCollector) writeIsolationFacts(ctx context.Context, matchID s
 // reboucle (un BTB long), les corps recycles n avaient aucune position.
 //
 // CE QUI CHANGE, et seulement sur ces films (mesure J5.0 : `084a804d`, `1c4c63c2`, `a349fea8`,
-// `4f77afc1` parmi 19 ; `.ai/V7.5/film_re/MESURE_GB1_2026-09-27.md`) : `positions` gagne les
+// `4f77afc1` parmi 19 ; `.ai/archive/V7.5/film_re/MESURE_GB1_2026-09-27.md`) : `positions` gagne les
 // echantillons des corps de generation >= 2 ; en aval, les vies decoupees de ces slots
 // (`match_lives`), le lieu et le contexte de mort (`match_death_context`) et la position du tueur
 // ou de la victime a l instant du coup (`kill_positions` / `kill_openings`) changent. Un film dont

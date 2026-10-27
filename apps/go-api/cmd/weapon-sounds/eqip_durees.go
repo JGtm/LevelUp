@@ -3,7 +3,7 @@ package main
 // eqip_durees.go — mode `eqip-durees` : TRIAGE des candidats "pose de balise" du balayage
 // structurel (`eqip-arbre -banks all`) par duree.
 //
-// Lot L6, S3 (`.ai/V7.5/replay2d/PLAN_BALISE_MIX_WWISE.md` phase 5.2). Deux filtres, dans
+// Lot L6, S3 (`.ai/archive/V7.5/replay2d/PLAN_BALISE_MIX_WWISE.md` phase 5.2). Deux filtres, dans
 // l'ordre de leur cout :
 //
 //  1. STRUCTUREL, gratuit (deja dans le JSON du balayage) : ecarte les banques que le graphe

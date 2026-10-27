@@ -10,7 +10,7 @@ package profile
 // motif de recherche : ce sont les CINQ bits bas du typeIndex suivis de l amorce constante de
 // l etat par defaut (`grammar/projectiles.go`, point 2).
 //
-// Le volet RECHERCHE du lot 3.3 (note `.ai/V7.5/film_re/NOTE_3_3_IDENTIFIANTS_GRENADE_2026-09-16.md`,
+// Le volet RECHERCHE du lot 3.3 (note `.ai/archive/V7.5/film_re/NOTE_3_3_IDENTIFIANTS_GRENADE_2026-09-16.md`,
 // decouverte D3 (3.3r), 2026-09-17) a etabli que ni le nombre, ni l ordre, ni les valeurs des
 // identifiants de grenade n ont change depuis la sortie du jeu : `GrenadeTypeIDsByRank` reste une
 // constante du TITRE. Ce qui varie d un build a l autre est la GRAMMAIRE, et elle tient en trois

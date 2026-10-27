@@ -7,7 +7,7 @@ package grammar
 // quantifiee — l immediat de niveau du site, la porte d index, l index sur `DAT_144632be0` bits,
 // puis les trois axes aux largeurs de la ligne de CE niveau — et exige que le desserialiseur Go du
 // site en consomme EXACTEMENT la longueur. Les sites, leurs appelants, leurs adresses d appel et
-// leurs immediats sont ceux du releve `.ai/V7.5/film_re/RELEVES_J6_GHIDRA_2026-09-27.md` (§1, §6),
+// leurs immediats sont ceux du releve `.ai/archive/V7.5/film_re/RELEVES_J6_GHIDRA_2026-09-27.md` (§1, §6),
 // completes le 2026-09-27 pour les trois lecteurs Go que le releve laissait « a relever »
 // (descripteurs resolus en lecture seule, cf. `lecteur_position.go`).
 //

@@ -2,7 +2,7 @@
 
 package grammar
 
-// ri27d1_instrument_research_test.go — 2.7.d1 (`.ai/V7.5/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`,
+// ri27d1_instrument_research_test.go — 2.7.d1 (`.ai/archive/V7.5/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`,
 // §1.2) : les complements de l instrument 2.7.d0 (`ri27d0_images_cles_research_test.go`) — classes
 // d admission, temoin de hasard, marque de portage, familles en plus, dump par record.
 //

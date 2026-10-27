@@ -1,7 +1,7 @@
 // Package himap — sddt.go : le tag `sddt` (structure design), la frontiere de mort et l'eau.
 //
 // D'OU VIENT CETTE LECTURE. Investigation du 2026-08-10
-// (`.ai/V7.5/cartes/INVESTIGATION_SDDT_PFND_2026-08-10.md`) : aucun plugin n'existe pour ce
+// (`.ai/archive/V7.5/cartes/INVESTIGATION_SDDT_PFND_2026-08-10.md`) : aucun plugin n'existe pour ce
 // groupe et Reclaimer ne l'implemente pas (verifie par grep sur les 7 refs). Tout est lu par
 // la struct-table generique du format de tag (candidats d'en-tete + table des blocs + liens
 // de type TagBlock), et chaque interpretation est etablie par un temoin JOUE :

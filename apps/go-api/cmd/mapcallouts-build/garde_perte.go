@@ -7,7 +7,7 @@ package main
 // qu une carte venait de recevoir un fond, elle a rendu un catalogue de 2,97 Mo la ou HEAD en
 // portait 3,71 — **32 716 nombres de moins, soit environ 16 400 sommets**, repartis sur 16 cartes
 // (btb_fragmentation -9 372, btb_highpower -4 786, btb_exiled -4 299, va_behemoth -4 120...). Le
-// meme piege est consigne dans `.ai/V7.5/cartes/HANDOFF_FONDS_CARTE_2026-09-03.md` (section 5)
+// meme piege est consigne dans `.ai/archive/V7.5/cartes/HANDOFF_FONDS_CARTE_2026-09-03.md` (section 5)
 // pour une autre machine, avec un ecart de 645 Ko.
 //
 // CE QUI L A RENDU INVISIBLE, ET C EST LE POINT. Les invariants deja poses par la passe comptent

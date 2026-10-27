@@ -3,7 +3,7 @@ package replay
 // assaut_a0_qualification_test.go — LOT A (Assaut), PHASE A0.2/A0.3 : LA QUALIFICATION DU
 // CORPUS ET LES RELEVES DE SCORE DE MODE.
 //
-// LE PLAN EST COMMITE AVANT CE FICHIER (`.ai/V7.5/PLAN_ASSAUT_LOT_A_2026-08-27.md`) ; le
+// LE PLAN EST COMMITE AVANT CE FICHIER (`.ai/archive/V7.5/PLAN_ASSAUT_LOT_A_2026-08-27.md`) ; le
 // protocole `A_PROTOCOLE.md` fige ce que cet instrument aura publie. Trois questions par
 // film, aucune n'est supposee :
 //

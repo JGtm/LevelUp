@@ -3,7 +3,7 @@ package mapvar
 // socles.go — LES EMPLACEMENTS DE SOCLE d'une variante de carte, et la famille que leur
 // type_id trahit.
 //
-// CE QUE MESURE LE PLAN `.ai/V7.5/replay2d/PLAN_SOCLES_MVAR.md` (2026-08-19), et rien de
+// CE QUE MESURE LE PLAN `.ai/archive/V7.5/replay2d/PLAN_SOCLES_MVAR.md` (2026-08-19), et rien de
 // plus : trois type_id du fichier de carte portent les socles d'arme et de power-up. Sur
 // trois cartes et 32 positions d'oracle tirées d'artefacts de rejeu cuits, 32 sont
 // appariées à moins d'un mètre, médiane 0,01 m — le centimètre. Le témoin négatif (tirages

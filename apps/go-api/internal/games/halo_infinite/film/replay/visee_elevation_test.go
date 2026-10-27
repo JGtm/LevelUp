@@ -1,7 +1,7 @@
 package replay
 
 // visee_elevation_test.go — INSTRUMENT DE MESURE du DEUXIEME AXE DE LA VISEE (i21 `PitchRaw`),
-// item E.0.1 du plan `.ai/V7.5/replay2d/PLAN_EXPLOITATION_REGISTRE_FILM.md`.
+// item E.0.1 du plan `.ai/archive/V7.5/replay2d/PLAN_EXPLOITATION_REGISTRE_FILM.md`.
 //
 // CE QU'IL MESURE, ET POURQUOI IL EXISTE. `unit-desired-aiming-vector` (ti=35 i21) porte DEUX
 // scalaires : un cap R(12), lu et publie depuis longtemps (`AimHeadingDeg`), et une elevation
@@ -57,7 +57,7 @@ package replay
 //
 //	CGO_ENABLED=0 AIM_FILM=<repo>/data/cache/film_chunks/000d5950 AIM_MAP=Cliffhanger \
 //	  AIM_BOUNDS=<repo>/data/titles/halo_infinite/reference/map_quant_bounds.json \
-//	  AIM_TSV=<repo>/.ai/V7.5/replay2d/registre_film/lotEF \
+//	  AIM_TSV=<repo>/.ai/archive/V7.5/replay2d/registre_film/lotEF \
 //	  go test ./internal/games/halo_infinite/film/replay/ -run TestViseeElevation -v -timeout 60m
 
 import (

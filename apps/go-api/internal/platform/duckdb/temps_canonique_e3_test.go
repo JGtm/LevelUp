@@ -1,6 +1,6 @@
 //go:build integration
 
-// temps_canonique_e3_test.go — étape E3 du plan .ai/V7.5/PLAN_BACKLOG_2026-10-15.md : temps
+// temps_canonique_e3_test.go — étape E3 du plan .ai/archive/V7.5/PLAN_BACKLOG_2026-10-15.md : temps
 // canonique (règle n°8) du filtre et du tri de CampaignSampleProvider et de
 // ListRecentPvPMatchIDs, et erreurs de lecture visibles dans EngagementScoreRepo.
 //

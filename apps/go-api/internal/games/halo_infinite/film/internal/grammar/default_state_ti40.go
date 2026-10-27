@@ -3,7 +3,7 @@ package grammar
 // default_state_ti40.go — L'ETAT PAR DEFAUT de l'archetype VEHICULE (ti=40), porte feuille par
 // feuille depuis `FUN_1410A5A74` (= vtable[0x60] du descripteur d'archetype 40, cf.
 // KEYFRAME_ARCHETYPE_DEFAULTSTATE_TABLE.md:30, classe REAL). Dossier complet :
-// .ai/V7.5/film_re/RE_DEFAULTSTATE_TI40_2026-08-31.md.
+// .ai/archive/V7.5/film_re/RE_DEFAULTSTATE_TI40_2026-08-31.md.
 //
 // CONVENTION DU BITREADER (param_4 dans l'exe) : chaque feuille qui lit fait `*(param_4+0x2c) += N`.
 //

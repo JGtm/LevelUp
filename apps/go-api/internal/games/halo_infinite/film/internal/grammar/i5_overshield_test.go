@@ -1,7 +1,7 @@
 package grammar
 
 // i5_overshield_test.go — INSTRUMENT DE MESURE de la PHASE B du plan
-// .ai/V7.5/replay2d/PLAN_ETAT_ACTIF_EQUIPEMENT.md : le SURBOUCLIER se lit-il dans le
+// .ai/archive/V7.5/replay2d/PLAN_ETAT_ACTIF_EQUIPEMENT.md : le SURBOUCLIER se lit-il dans le
 // bouclier déjà décodé (i5 object-shield-vitality) ?
 //
 // B.1 — LA SÉMANTIQUE DE `Point.sh`, VÉRIFIÉE SUR PIÈCES AVANT LA MESURE (et c'est ce qui

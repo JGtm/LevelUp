@@ -3,7 +3,7 @@
 package grammar
 
 // i59_tag3_test.go — INSTRUMENT DE MESURE de la PHASE E du plan
-// .ai/V7.5/replay2d/PLAN_ETAT_ACTIF_EQUIPEMENT.md : compter et DATER les occurrences
+// .ai/archive/V7.5/replay2d/PLAN_ETAT_ACTIF_EQUIPEMENT.md : compter et DATER les occurrences
 // tag==3 d'i59 `biped-spartan-ability-non-predicted-state` — SANS décoder le corps.
 //
 // AU MOMENT DE CETTE MESURE (16/08, phase E), LE CORPS N'ÉTAIT PAS PORTÉ : la branche

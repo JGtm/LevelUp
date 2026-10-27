@@ -1,7 +1,7 @@
 package archlint
 
 // no_stale_fallback_target_test.go — UNE CIBLE DE RETRAIT QUI NOMME UN LOT DEJA CLOS EST ROUGE
-// (D14 d du plan `.ai/V7.5/PLAN_DECODEUR_FILM_2026-09-13.md`, ADR 0034 ; pose le 2026-09-16 par la
+// (D14 d du plan `.ai/archive/V7.5/PLAN_DECODEUR_FILM_2026-09-13.md`, ADR 0034 ; pose le 2026-09-16 par la
 // revue de jalon M1, lentille L3).
 //
 // # LE DEFAUT QUE CE GARDE-RAIL FERME
@@ -56,8 +56,8 @@ import (
 )
 
 // cheminDuPlanDecodeur : le plan est la SOURCE des cases. Chemin depuis `apps/go-api` ; le plan
-// clos vit sous `.ai/V7.5/` depuis l archivage du 2026-09-23 (fe2106f4b).
-const cheminDuPlanDecodeur = "../../.ai/V7.5/PLAN_DECODEUR_FILM_2026-09-13.md"
+// clos vit sous `.ai/archive/V7.5/` depuis l archivage du 2026-09-23 (fe2106f4b).
+const cheminDuPlanDecodeur = "../../.ai/archive/V7.5/PLAN_DECODEUR_FILM_2026-09-13.md"
 
 // planchersLotsDuPlan : le nombre minimal d'items que le balayage du plan doit voir. Mesure du
 // 2026-09-16 : 96 items coches. Plancher a 60 — un parcours casse (plan renomme, format des
@@ -110,7 +110,7 @@ func TestAucuneCibleDeRepliNeNommeUnLotClos(t *testing.T) {
 // Jusqu au lot J8.7, un item `[ ]` ou `[!]` du plan se lisait « ouvert », une FAMILLE (`lot 3.4`) ou
 // une famille GENERIQUE (`1.9.x`, `3.x`) se lisait vivante, et un JALON (`M2`, « pas 2 de M2 ») n etait
 // meme pas releve. Or le PLAN_DECODEUR_FILM est CLOS — cloture de M4 et du chantier le 2026-09-18
-// (ADR 0034), plan archive sous `.ai/V7.5/` — et la campagne « retours rejeu », qui numerotait ses
+// (ADR 0034), plan archive sous `.ai/archive/V7.5/` — et la campagne « retours rejeu », qui numerotait ses
 // lots `M1` a `M8`, l est aussi (handoff du 2026-09-25) : aucun lot de ces deux plans ne fera plus
 // rien. Une cible qui en nomme un ne designe PLUS RIEN, et c est exactement la cible sans echeance
 // que ce garde-rail existe pour refuser. D ou trois familles de references perimees :

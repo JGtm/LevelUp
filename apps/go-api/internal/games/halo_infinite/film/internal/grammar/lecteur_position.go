@@ -8,7 +8,7 @@ import "levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 // # CE QUE LE JEU LIT
 //
 // Releve Ghidra du 2026-09-27 (`HaloInfinite.exe`, base 0x140000000, lecture seule ;
-// `.ai/V7.5/film_re/RELEVES_J6_GHIDRA_2026-09-27.md`) :
+// `.ai/archive/V7.5/film_re/RELEVES_J6_GHIDRA_2026-09-27.md`) :
 //
 //	FUN_14076e524(dst, lecteur, indexOut, NIVEAU)
 //	    R(1) porte ; si 0 -> index de plage sur DAT_144632be0 bits

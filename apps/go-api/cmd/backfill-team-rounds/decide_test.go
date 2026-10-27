@@ -1,7 +1,7 @@
 package main
 
 // decide_test.go — la règle d'écriture, éprouvée sur les témoins RÉELS du corpus mesuré le
-// 2026-08-29 (`.ai/V7.5/RAPPORT_MANCHES_2026-08-29.md`). Aucun réseau, aucune base.
+// 2026-08-29 (`.ai/archive/V7.5/RAPPORT_MANCHES_2026-08-29.md`). Aucun réseau, aucune base.
 
 import "testing"
 

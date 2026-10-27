@@ -7,7 +7,7 @@ package killcollector
 // Jusqu ici, le decodage de kill-source n avait qu UNE source : [LocalCacheFilms], le cache
 // disque. Or ce cache etait herite du projet Python supprime a la migration, et AUCUN code Go
 // ne creait de nouveau manifeste. Mesure du 2026-08-29 (registre
-// `.ai/V7.5/REGISTRE_ASSISTANCES_2026-08-29.md`) : le cache s arrete le 2026-04-07, et depuis
+// `.ai/archive/V7.5/REGISTRE_ASSISTANCES_2026-08-29.md`) : le cache s arrete le 2026-04-07, et depuis
 // cette date `assist_known` vaut FALSE sur 100 % des matchs synchronises — parce que
 // l assistant ne se lit QUE dans le kill-feed du film. Deux blocs de l app (« qui assiste
 // qui » de la page Escouade, assistances de la vue match) se sont retires en silence pendant

@@ -10,7 +10,7 @@
  * commun (`SectionTitle`).
  *
  * Transposition de la maquette validée par l'utilisateur le 2026-09-06
- * (`.ai/V7.5/MAQUETTE_PORTEE_ENGAGEMENTS_2026-09-06.html`) : quatre tuiles de tête, puis la carte
+ * (`.ai/archive/V7.5/MAQUETTE_PORTEE_ENGAGEMENTS_2026-09-06.html`) : quatre tuiles de tête, puis la carte
  * « Portée par arme » — deux bâtons p10→p90 par arme, frags au-dessus, morts en dessous. Elle reste
  * en DEMI-LARGEUR (maquette v4 des Usages, décision D11 du plan PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05),
  * et partage sa rangée avec la carte passée en `aside` (« Rôles de portée »).

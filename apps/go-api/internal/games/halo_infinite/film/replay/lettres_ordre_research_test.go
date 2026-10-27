@@ -3,7 +3,7 @@
 package replay
 
 // lettres_ordre_research_test.go — INSTRUMENT DE MESURE du lot « lettres A/B/C des bases »
-// (phase 0.2 de `.ai/V7.5/replay2d/PLAN_LETTRES_BASES_FALLBACK.md`, 2026-08-24).
+// (phase 0.2 de `.ai/archive/V7.5/replay2d/PLAN_LETTRES_BASES_FALLBACK.md`, 2026-08-24).
 //
 // # LA QUESTION, ET RIEN D'AUTRE
 //
@@ -60,7 +60,7 @@ package replay
 // USAGE (depuis apps/go-api, UN FILM PAR PROCESSUS, en avant-plan) :
 //
 //	$env:GOMEMLIMIT='4GiB'; $env:CGO_ENABLED='0'
-//	$env:LETTRES_OUT="<worktree>/.ai/V7.5/replay2d/registre_film/lotLettres"
+//	$env:LETTRES_OUT="<worktree>/.ai/archive/V7.5/replay2d/registre_film/lotLettres"
 //	$env:LETTRES_FILM="<mainrepo>/data/cache/film_chunks/7344d24f"
 //	go test -count=1 -run TestLettresOrdreSlots -v -timeout 10m ./internal/games/halo_infinite/film/replay/
 //

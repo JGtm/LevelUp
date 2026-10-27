@@ -6,7 +6,7 @@ package grammar
 //
 // POURQUOI CE FICHIER EXISTE. Le lot R5 avait laisse une condition de reprise : « decompiler
 // le consommateur du payload type-2, qui alimenterait une file par-entite ». La lecture du
-// jeu (journal RE `.ai/V7.5/killweapon/WALK_PORT_NOTES.md`, section « file par entite ») a
+// jeu (journal RE `.ai/archive/V7.5/killweapon/WALK_PORT_NOTES.md`, section « file par entite ») a
 // tranche autrement :
 //
 //   - la file par-entite n'est PAS une transformation : son item porte une COPIE du tampon

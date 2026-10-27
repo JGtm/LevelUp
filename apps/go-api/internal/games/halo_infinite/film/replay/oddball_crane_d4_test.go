@@ -7,7 +7,7 @@ package replay
 // evenements `th=10` de crane ?
 //
 // LE PROTOCOLE — corpus, seuils, temoins, controle d'alignement, escalade — EST ECRIT ET
-// COMMITE AVANT CE FICHIER (`.ai/V7.5/PLAN_OBJECTIFS_ETAT_VIVANT_2026-08.md`, section « D4 —
+// COMMITE AVANT CE FICHIER (`.ai/archive/V7.5/PLAN_OBJECTIFS_ETAT_VIVANT_2026-08.md`, section « D4 —
 // ODDBALL : le PROTOCOLE »). Ce qui suit l'applique ; il ne le decide pas.
 //
 // # LA RECETTE N'EST PAS NEUVE, ET C'EST TOUT SON INTERET

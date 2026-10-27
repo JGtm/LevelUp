@@ -241,7 +241,7 @@ go-api-test-gamefiles:
 ## a la base partagee du titre pour les faits du match ; PAS le jeu installe. Marche SANS FLAG
 ## depuis un depot qui porte sa propre base partagee (le cas courant, cf. docs/COMMANDS.md pour
 ## le detail des 10 options si votre topologie l'exige) ; duree mesuree (7 temoins, 2026-09-07,
-## les deux modes) : cf. .ai/V7.5/v2/CORPUS_TEMOIN_2026-09-06.md.
+## les deux modes) : cf. .ai/archive/V7.5/v2/CORPUS_TEMOIN_2026-09-06.md.
 ##
 ## Par defaut, un SEUL temoin absent (cache de film purge ou partiel) fait sortir en code 2 —
 ## un gate qui ne compare rien ne doit jamais sortir en 0 (`--allow-missing` restaure l'ancien
