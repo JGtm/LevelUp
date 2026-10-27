@@ -991,18 +991,6 @@
 {"Time":"2026-06-26T23:45:09.8234805+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestAssetLabels_NoFRLabel","Output":"=== RUN   TestAssetLabels_NoFRLabel\n"}
 {"Time":"2026-06-26T23:45:09.8234805+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestAssetLabels_NoFRLabel","Output":"=== PAUSE TestAssetLabels_NoFRLabel\n"}
 {"Time":"2026-06-26T23:45:09.8234805+02:00","Action":"pause","Package":"levelup/go-api/internal/analysis","Test":"TestAssetLabels_NoFRLabel"}
-{"Time":"2026-06-26T23:45:09.8239818+02:00","Action":"run","Package":"levelup/go-api/internal/analysis","Test":"TestModeLabels_PrefersPairMode"}
-{"Time":"2026-06-26T23:45:09.8239818+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestModeLabels_PrefersPairMode","Output":"=== RUN   TestModeLabels_PrefersPairMode\n"}
-{"Time":"2026-06-26T23:45:09.8239818+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestModeLabels_PrefersPairMode","Output":"=== PAUSE TestModeLabels_PrefersPairMode\n"}
-{"Time":"2026-06-26T23:45:09.8239818+02:00","Action":"pause","Package":"levelup/go-api/internal/analysis","Test":"TestModeLabels_PrefersPairMode"}
-{"Time":"2026-06-26T23:45:09.8239818+02:00","Action":"run","Package":"levelup/go-api/internal/analysis","Test":"TestModeLabels_FallbackGameVariant"}
-{"Time":"2026-06-26T23:45:09.8239818+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestModeLabels_FallbackGameVariant","Output":"=== RUN   TestModeLabels_FallbackGameVariant\n"}
-{"Time":"2026-06-26T23:45:09.8239818+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestModeLabels_FallbackGameVariant","Output":"=== PAUSE TestModeLabels_FallbackGameVariant\n"}
-{"Time":"2026-06-26T23:45:09.8239818+02:00","Action":"pause","Package":"levelup/go-api/internal/analysis","Test":"TestModeLabels_FallbackGameVariant"}
-{"Time":"2026-06-26T23:45:09.8239818+02:00","Action":"run","Package":"levelup/go-api/internal/analysis","Test":"TestModeLabels_PairModeEmptyFallbackGameVariant"}
-{"Time":"2026-06-26T23:45:09.8239818+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestModeLabels_PairModeEmptyFallbackGameVariant","Output":"=== RUN   TestModeLabels_PairModeEmptyFallbackGameVariant\n"}
-{"Time":"2026-06-26T23:45:09.8239818+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestModeLabels_PairModeEmptyFallbackGameVariant","Output":"=== PAUSE TestModeLabels_PairModeEmptyFallbackGameVariant\n"}
-{"Time":"2026-06-26T23:45:09.8239818+02:00","Action":"pause","Package":"levelup/go-api/internal/analysis","Test":"TestModeLabels_PairModeEmptyFallbackGameVariant"}
 {"Time":"2026-06-26T23:45:09.8239818+02:00","Action":"run","Package":"levelup/go-api/internal/analysis","Test":"TestModeLabels_BothNil"}
 {"Time":"2026-06-26T23:45:09.8239818+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestModeLabels_BothNil","Output":"=== RUN   TestModeLabels_BothNil\n"}
 {"Time":"2026-06-26T23:45:09.8239818+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestModeLabels_BothNil","Output":"=== PAUSE TestModeLabels_BothNil\n"}
@@ -4269,12 +4257,8 @@
 {"Time":"2026-06-26T23:45:09.8354974+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestSelectHighlightWindow_SingleSession","Output":"=== CONT  TestSelectHighlightWindow_SingleSession\n"}
 {"Time":"2026-06-26T23:45:09.8354974+02:00","Action":"cont","Package":"levelup/go-api/internal/analysis","Test":"TestLatestEndTime_WithDuration"}
 {"Time":"2026-06-26T23:45:09.8354974+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestLatestEndTime_WithDuration","Output":"=== CONT  TestLatestEndTime_WithDuration\n"}
-{"Time":"2026-06-26T23:45:09.8354974+02:00","Action":"cont","Package":"levelup/go-api/internal/analysis","Test":"TestModeLabels_PrefersPairMode"}
-{"Time":"2026-06-26T23:45:09.8354974+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestModeLabels_PrefersPairMode","Output":"=== CONT  TestModeLabels_PrefersPairMode\n"}
 {"Time":"2026-06-26T23:45:09.8354974+02:00","Action":"run","Package":"levelup/go-api/internal/analysis","Test":"TestComputeMaxKillingSpree/kills_d'un_autre_joueur_ignores_(XUID_different)"}
 {"Time":"2026-06-26T23:45:09.8354974+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestComputeMaxKillingSpree/kills_d'un_autre_joueur_ignores_(XUID_different)","Output":"=== RUN   TestComputeMaxKillingSpree/kills_d'un_autre_joueur_ignores_(XUID_different)\n"}
-{"Time":"2026-06-26T23:45:09.8354974+02:00","Action":"cont","Package":"levelup/go-api/internal/analysis","Test":"TestModeLabels_FallbackGameVariant"}
-{"Time":"2026-06-26T23:45:09.8354974+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestModeLabels_FallbackGameVariant","Output":"=== CONT  TestModeLabels_FallbackGameVariant\n"}
 {"Time":"2026-06-26T23:45:09.8354974+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestComputeMaxKillingSpree/kills_d'un_autre_joueur_ignores_(XUID_different)","Output":"=== PAUSE TestComputeMaxKillingSpree/kills_d'un_autre_joueur_ignores_(XUID_different)\n"}
 {"Time":"2026-06-26T23:45:09.8354974+02:00","Action":"pause","Package":"levelup/go-api/internal/analysis","Test":"TestComputeMaxKillingSpree/kills_d'un_autre_joueur_ignores_(XUID_different)"}
 {"Time":"2026-06-26T23:45:09.8354974+02:00","Action":"run","Package":"levelup/go-api/internal/analysis","Test":"TestComputeMaxKillingSpree/morts_de_l'autre_joueur_ne_resettent_pas_le_compteur_du_joueur"}
@@ -4327,8 +4311,6 @@
 {"Time":"2026-06-26T23:45:09.8354974+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestBuildCanonicalSkillBadge_SubTierOutOfRange","Output":"=== CONT  TestBuildCanonicalSkillBadge_SubTierOutOfRange\n"}
 {"Time":"2026-06-26T23:45:09.8354974+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestBuildNeighborsWhereClause_Playlist","Output":"--- PASS: TestBuildNeighborsWhereClause_Playlist (0.00s)\n"}
 {"Time":"2026-06-26T23:45:09.8354974+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis","Test":"TestBuildNeighborsWhereClause_Playlist","Elapsed":0}
-{"Time":"2026-06-26T23:45:09.8354974+02:00","Action":"cont","Package":"levelup/go-api/internal/analysis","Test":"TestModeLabels_PairModeEmptyFallbackGameVariant"}
-{"Time":"2026-06-26T23:45:09.8354974+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestModeLabels_PairModeEmptyFallbackGameVariant","Output":"=== CONT  TestModeLabels_PairModeEmptyFallbackGameVariant\n"}
 {"Time":"2026-06-26T23:45:09.8354974+02:00","Action":"cont","Package":"levelup/go-api/internal/analysis","Test":"TestSkillTierBand/sous-palier_hors_borne_→_pas_de_bande"}
 {"Time":"2026-06-26T23:45:09.8354974+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestSkillTierBand/sous-palier_hors_borne_→_pas_de_bande","Output":"=== CONT  TestSkillTierBand/sous-palier_hors_borne_→_pas_de_bande\n"}
 {"Time":"2026-06-26T23:45:09.8354974+02:00","Action":"cont","Package":"levelup/go-api/internal/analysis","Test":"TestSkillTierBand/Gold_IV_→_4/6"}
@@ -4831,10 +4813,6 @@
 {"Time":"2026-06-26T23:45:09.8370432+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis","Test":"TestLatestEndTime_WithDuration","Elapsed":0}
 {"Time":"2026-06-26T23:45:09.8370432+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestSelectHighlightWindow_SingleSession","Output":"--- PASS: TestSelectHighlightWindow_SingleSession (0.00s)\n"}
 {"Time":"2026-06-26T23:45:09.8370432+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis","Test":"TestSelectHighlightWindow_SingleSession","Elapsed":0}
-{"Time":"2026-06-26T23:45:09.8370432+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestModeLabels_PrefersPairMode","Output":"--- PASS: TestModeLabels_PrefersPairMode (0.00s)\n"}
-{"Time":"2026-06-26T23:45:09.8370432+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis","Test":"TestModeLabels_PrefersPairMode","Elapsed":0}
-{"Time":"2026-06-26T23:45:09.8370432+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestModeLabels_FallbackGameVariant","Output":"--- PASS: TestModeLabels_FallbackGameVariant (0.00s)\n"}
-{"Time":"2026-06-26T23:45:09.8370432+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis","Test":"TestModeLabels_FallbackGameVariant","Elapsed":0}
 {"Time":"2026-06-26T23:45:09.8370432+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestAssetLabels_EmptyLabelsKeepDefault","Output":"--- PASS: TestAssetLabels_EmptyLabelsKeepDefault (0.00s)\n"}
 {"Time":"2026-06-26T23:45:09.8370432+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis","Test":"TestAssetLabels_EmptyLabelsKeepDefault","Elapsed":0}
 {"Time":"2026-06-26T23:45:09.8375604+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestAssetLabels_NoFRLabel","Output":"--- PASS: TestAssetLabels_NoFRLabel (0.00s)\n"}
@@ -4875,8 +4853,6 @@
 {"Time":"2026-06-26T23:45:09.8375604+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis","Test":"TestMmrDelta_BothNil","Elapsed":0}
 {"Time":"2026-06-26T23:45:09.8375604+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestBuildCanonicalSkillBadge_SubTierOutOfRange","Output":"--- PASS: TestBuildCanonicalSkillBadge_SubTierOutOfRange (0.00s)\n"}
 {"Time":"2026-06-26T23:45:09.8375604+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis","Test":"TestBuildCanonicalSkillBadge_SubTierOutOfRange","Elapsed":0}
-{"Time":"2026-06-26T23:45:09.8375604+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestModeLabels_PairModeEmptyFallbackGameVariant","Output":"--- PASS: TestModeLabels_PairModeEmptyFallbackGameVariant (0.00s)\n"}
-{"Time":"2026-06-26T23:45:09.8375604+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis","Test":"TestModeLabels_PairModeEmptyFallbackGameVariant","Elapsed":0}
 {"Time":"2026-06-26T23:45:09.8375604+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestSelectHighlightWindow_FiltersDissimilarSessions","Output":"--- PASS: TestSelectHighlightWindow_FiltersDissimilarSessions (0.00s)\n"}
 {"Time":"2026-06-26T23:45:09.8375604+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis","Test":"TestSelectHighlightWindow_FiltersDissimilarSessions","Elapsed":0}
 {"Time":"2026-06-26T23:45:09.8375604+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestAssetLabels_Nil","Output":"--- PASS: TestAssetLabels_Nil (0.00s)\n"}

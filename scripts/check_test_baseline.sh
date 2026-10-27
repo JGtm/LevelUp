@@ -290,6 +290,13 @@
 # supprimée (plus d'appelant), ses tests visent `captureInstantFromName`. 28 lignes JSONL, exactement
 # 7 paires (Package, Test).
 #
+# RETRAIT DU 2026-10-27 (plan des modes par titre, release v8.1.0 : le mode d'un match est fourni par la
+# source du titre, le repli de `modeLabels` sur le type de jeu est supprimé) : 3 tests de `internal/analysis`
+# — TestModeLabels_PrefersPairMode, TestModeLabels_FallbackGameVariant et
+# TestModeLabels_PairModeEmptyFallbackGameVariant, remplacés par TestModeLabels_LitLeModeFourniParLaSource et
+# TestModeLabels_SansModeNeRepliePasSurGameVariant. 24 lignes JSONL, exactement 3 paires (Package, Test),
+# vérifié par différence avant/après.
+#
 # DEUX MODES (le code de vérification est le MÊME — verify_tests_jsonl) :
 #   - AUTONOME (défaut) : le script lance lui-même la suite. C'est le mode du
 #     filet local `make gate-push`.
