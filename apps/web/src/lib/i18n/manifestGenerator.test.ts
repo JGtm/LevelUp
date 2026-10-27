@@ -14,8 +14,15 @@ import { execFileSync } from 'node:child_process'
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
+import TOML from '@iarna/toml'
 import { IntlMessageFormat } from 'intl-messageformat'
 import { describe, expect, it } from 'vitest'
+import { substituteHpToken } from '@/lib/damage/effectiveHp'
+import { formatMessage } from '@/lib/i18n/format'
+import { adminManifest } from '@/lib/i18n/generated/admin'
+import { commonManifest } from '@/lib/i18n/generated/common'
+import { sessionManifest } from '@/lib/i18n/generated/session'
+import { timeseriesManifest } from '@/lib/i18n/generated/timeseries'
 // @ts-expect-error — script Node hors du programme tsc d'apps/web (frontière ESM/TS).
 import { loadLocalesConfig } from '../../../scripts/locales.mjs'
 import {
@@ -105,6 +112,87 @@ describe('générateur de manifests — langues lues dans config/locales.toml (4
   })
 })
 
+/** Feuilles `{ <langue>: texte }` d'un manifest, par chemin pointé, lues sans le contrôle du générateur. */
+function rawLeaves(toml: string): Flat {
+  const out: Flat = {}
+  const walk = (node: Record<string, unknown>, prefix: string): void => {
+    for (const [k, v] of Object.entries(node)) {
+      const path = prefix ? `${prefix}.${k}` : k
+      const table = v as Record<string, unknown>
+      if (Object.values(table).some((x) => typeof x === 'string')) out[path] = table as Leaf
+      else walk(table, path)
+    }
+  }
+  walk(TOML.parse(toml) as Record<string, unknown>, '')
+  return out
+}
+
+describe('générateur de manifests — chaque texte compile en message ICU (compléments 11.C)', () => {
+  it("un texte qui ne compile pas est refusé : fichier, clé, langue et cause", () => {
+    expect(flattenError({ a: { fr: 'ok', en: 'Dossier {slug}/ sans valeur {' } }, ['fr', 'en'])).toMatch(
+      /^demo\.toml : cle "a" : langue "en" : texte non compilable en message ICU \(/,
+    )
+    // Une balise litterale non fermee (<ton-xuid>) est refusee comme une accolade nue.
+    expect(flattenError({ a: { fr: 'Renomme en <ton-xuid>.db', en: 'x' } }, ['fr', 'en'])).toContain('langue "fr" : texte non compilable')
+    // La forme echappee compile.
+    expect(flattenOk({ a: { fr: "en '<ton-xuid>'.db", en: "data/'{slug}'/" } }, ['fr', 'en'])).toBeTruthy()
+  })
+
+  it("CHAQUE feuille de CHAQUE manifest compile avec intl-messageformat (le runtime avale l'échec)", () => {
+    const failures: string[] = []
+    for (const domain of listManifestDomains(MANIFESTS_DIR) as string[]) {
+      // Lecture SANS le controle du generateur : la garde ne depend pas de l'outil qu'elle surveille.
+      const raw = readFileSync(join(MANIFESTS_DIR, `${domain}.toml`), 'utf8')
+      const flat = rawLeaves(raw)
+      for (const [key, leaf] of Object.entries(flat)) {
+        for (const code of CODES) {
+          try {
+            new IntlMessageFormat(leaf[code] ?? '', code)
+          } catch (e) {
+            failures.push(`${domain}.toml : ${key} [${code}] : ${(e as Error).message.split(/\r?\n/)[0]}`)
+          }
+        }
+      }
+    }
+    expect(failures).toEqual([])
+  })
+
+  it("les cinq textes corriges s'affichent tels qu'ecrits (accolades et chevrons litteraux), dans chaque langue", () => {
+    for (const code of CODES) {
+      const body = formatMessage(adminManifest, 'admin.titles.register_help_body', code as never)
+      expect(body, code).toContain('data/titles/{slug}/')
+      expect(body, code).toContain('config/titles/{slug}/')
+      expect(body, code).toContain('mappings/{fields,assets,outcomes,capabilities}.toml')
+      expect(body, code).not.toContain("'{")
+
+      const lowConf = formatMessage(commonManifest, 'common.onboarding.import_err_low_confidence', code as never)
+      expect(lowConf, code).toMatch(/<(ton|your)-xuid>\.db/)
+      expect(lowConf, code).not.toContain("'<")
+    }
+  })
+
+  it('le jeton {{HP}} survit au formatage ICU et est ensuite remplace par le bareme du titre (225 / 115)', () => {
+    const cases: [string, string][] = []
+    for (const code of CODES) {
+      cases.push(
+        [code, formatMessage(commonManifest, 'common.charts.efficiency_tooltip', code as never)],
+        [code, formatMessage(sessionManifest, 'session.detail.net_lives_tooltip', code as never)],
+        [code, formatMessage(timeseriesManifest, 'timeseries.progression.net_lives_tooltip', code as never)],
+      )
+    }
+    for (const [code, text] of cases) {
+      expect(text, code).toContain('{{HP}}')
+      expect(text, code).not.toContain("'{{")
+      for (const hp of [225, 115]) {
+        const out = substituteHpToken(text, hp)
+        expect(out, `${code} ${hp}`).toContain(String(hp))
+        expect(out, `${code} ${hp}`).not.toContain('{{')
+        expect(out, `${code} ${hp}`).not.toContain(`'${hp}'`)
+      }
+    }
+  })
+})
+
 // --- 4.2 pseudo-langue ---------------------------------------------------------------------
 
 // Types d'éléments de l'AST ICU (`@formatjs/icu-messageformat-parser`, enum TYPE).
@@ -151,7 +239,7 @@ function render(message: string, vars: Record<string, unknown>): string {
   return Array.isArray(out) ? out.join('') : String(out)
 }
 
-/** Code d'erreur ICU si le message ne se compile pas (cinq clés existantes dans ce cas), sinon null. */
+/** Code d'erreur ICU si le message ne se compile pas, sinon null. */
 function parseError(message: string): string | null {
   try {
     new IntlMessageFormat(message, 'en')
@@ -184,21 +272,16 @@ describe('générateur de manifests — pseudo-langue (4.2)', () => {
   })
 
   it('sur toutes les vraies clés : mêmes placeholders, même sortie entre les délimiteurs', () => {
-    const natures = { plural: 0, select: 0, argument: 0, pound: 0, invalidIcu: 0, keys: 0 }
+    const natures = { plural: 0, select: 0, argument: 0, pound: 0, keys: 0 }
     for (const domain of listManifestDomains(MANIFESTS_DIR) as string[]) {
       const flat = withPseudoLocale(loadManifest(MANIFESTS_DIR, domain, CODES), 'xx', 'en') as Flat
       for (const [key, leaf] of Object.entries(flat)) {
         natures.keys++
         const where = `${domain} : ${key}`
         expect(leaf.xx, where).toBe(`⟦${leaf.en}⟧`)
-        const enError = parseError(leaf.en!)
-        if (enError !== null) {
-          // Message source déjà invalide (le runtime retombe sur le texte brut) : la pseudo-langue
-          // ne le rend ni valide ni plus invalide.
-          expect(parseError(leaf.xx!), where).toBe(enError)
-          natures.invalidIcu++
-          continue
-        }
+        // Tout message source compile (garde 11.C) : la pseudo-langue le garde compilable.
+        expect(parseError(leaf.en!), where).toBeNull()
+        expect(parseError(leaf.xx!), where).toBeNull()
         const args = new Map<string, number>()
         const ast = new IntlMessageFormat(leaf.en!, 'en').getAst() as IcuElement[]
         collectArgs(ast, args)

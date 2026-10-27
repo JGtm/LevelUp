@@ -399,8 +399,8 @@ fr = "vies/match"
 en = "lives/match"
 
 [session.detail.net_lives_tooltip]
-fr = "Balance des dégâts = (dégâts infligés − dégâts subis) ÷ {{HP}} PV, exprimée en vies. Positif = la balance porte l'équipe ; négatif = elle coûte plus qu'elle ne rapporte."
-en = "Damage balance = (damage dealt − damage taken) ÷ {{HP}} HP, expressed in lives. Positive = the balance carries the team; negative = it costs more than it brings."
+fr = "Balance des dégâts = (dégâts infligés − dégâts subis) ÷ '{{HP}}' PV, exprimée en vies. Positif = la balance porte l'équipe ; négatif = elle coûte plus qu'elle ne rapporte."
+en = "Damage balance = (damage dealt − damage taken) ÷ '{{HP}}' HP, expressed in lives. Positive = the balance carries the team; negative = it costs more than it brings."
 
 [session.detail.col_rating_delta]
 fr = "Δ rang"

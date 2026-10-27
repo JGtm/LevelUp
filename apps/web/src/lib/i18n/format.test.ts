@@ -59,6 +59,19 @@ describe('formatMessage', () => {
     expect(formatMessage(commonManifest, 'common.outcome.win', 'en')).toBe('Win')
   })
 
+  it("un texte echappe sans variable (`'<x>'`, `'{x}'`) s'affiche litteral, sans les apostrophes d'echappement", () => {
+    const every = (text: string) => Object.fromEntries(KNOWN_LOCALES.map((l) => [l, text]))
+    const manifest = {
+      // Sans accolade : le chemin rapide ne doit pas laisser les apostrophes d'echappement.
+      'test.chevron': every("Renomme en '<mon-xuid>'.db ; c'est tout"),
+      'test.accolade': every("data/'{slug}'/ ; c'est tout"),
+    } as unknown as Record<string, Record<KnownLocale, string>>
+    for (const locale of KNOWN_LOCALES) {
+      expect(formatMessage(manifest, 'test.chevron', locale)).toBe("Renomme en <mon-xuid>.db ; c'est tout")
+      expect(formatMessage(manifest, 'test.accolade', locale)).toBe("data/{slug}/ ; c'est tout")
+    }
+  })
+
   it('retourne la cle si la locale demandee est manquante (defensive)', () => {
     // Une seule langue renseignee : les autres sont vides, quel que soit le nombre de langues listees.
     const empty = Object.fromEntries(KNOWN_LOCALES.map((l) => [l, ''])) as Record<KnownLocale, string>

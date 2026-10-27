@@ -192,7 +192,7 @@ export const sessionManifest = {
   "session.detail.net_lives_average_unit": { fr: "vies/match", en: "lives/match" },
   "session.detail.net_lives_match": { fr: "Balance du match", en: "Match balance" },
   "session.detail.net_lives_series": { fr: "Balance cumulée", en: "Cumulative balance" },
-  "session.detail.net_lives_tooltip": { fr: "Balance des dégâts = (dégâts infligés − dégâts subis) ÷ {{HP}} PV, exprimée en vies. Positif = la balance porte l'équipe ; négatif = elle coûte plus qu'elle ne rapporte.", en: "Damage balance = (damage dealt − damage taken) ÷ {{HP}} HP, expressed in lives. Positive = the balance carries the team; negative = it costs more than it brings." },
+  "session.detail.net_lives_tooltip": { fr: "Balance des dégâts = (dégâts infligés − dégâts subis) ÷ '{{HP}}' PV, exprimée en vies. Positif = la balance porte l'équipe ; négatif = elle coûte plus qu'elle ne rapporte.", en: "Damage balance = (damage dealt − damage taken) ÷ '{{HP}}' HP, expressed in lives. Positive = the balance carries the team; negative = it costs more than it brings." },
   "session.detail.net_score_series": { fr: "Net cumulé", en: "Cumulative net" },
   "session.detail.no_compare_title": { fr: "Aucune session de comparaison", en: "No comparison session" },
   "session.detail.no_session_in_scope_description": { fr: "Aucune session n'a pu être reconstruite avec les filtres actuels.", en: "No session could be reconstructed with the current filters." },
