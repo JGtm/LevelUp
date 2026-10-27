@@ -15,7 +15,7 @@ import (
 //	  -> FUN_1428e2b68   recupere le descripteur d'archetype et la TABLE de 64 entrees
 //	    -> FUN_142e2c690  LA BOUCLE : 64 entrees nommees, AUCUN masque de presence
 //
-// Detail dans `.ai/V7.5/killweapon/WALK_PORT_NOTES.md`, section 6.
+// Detail dans `.ai/archive/V7.5/killweapon/WALK_PORT_NOTES.md`, section 6.
 //
 // CE QUI EST PORTE, ET SA PREUVE (adresses relues le 2026-08-17, Ghidra lecture seule) :
 //

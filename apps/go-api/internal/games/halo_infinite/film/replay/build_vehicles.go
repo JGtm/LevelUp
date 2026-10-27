@@ -29,7 +29,7 @@ package replay
 // l identite aux largeurs PAR DEFAUT et AUCUNE famille de chassis ne se resoudrait — en silence.
 //
 // LA DESTRUCTION SE LIT, ELLE NE S INFERE PAS (lot 1.9.10). Ce qui reste REFUTE est de la dater
-// par la MORT DU CONDUCTEUR : le rapport `.ai/V7.5/film_re/V3_DESTRUCTION_DATEE_2026-09-02.md` a
+// par la MORT DU CONDUCTEUR : le rapport `.ai/archive/V7.5/film_re/V3_DESTRUCTION_DATEE_2026-09-02.md` a
 // mesure 460 vies sur 12 films — ZERO occupant encore a bord a la fin serree du flux, mort a
 // bord ANTI-correlee (3,8 % contre 21,3 % au temoin), un vehicule qui replique encore 13 a 36 s
 // (mediane par lot) APRES avoir ete quitte. Ce qui est desormais LU est le composant

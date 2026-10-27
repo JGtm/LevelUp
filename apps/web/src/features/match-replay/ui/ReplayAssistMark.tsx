@@ -38,7 +38,7 @@ export const ASSIST_ICON_STEM = 'killfeed-62'
  * cmd/weapon-icons-build/killfeed.go — "assist" y est dans le vocabulaire curaté, mais son
  * hachage n'a jamais été rejoué contre le binaire du jeu depuis). C'est L'UTILISATEUR qui a
  * désigné `killfeed-62.png` à l'œil le 2026-08-17, cohérent avec l'identification
- * indépendante de `.ai/V7.5/icones/NOMMAGE_GATE_2026-08-09.tsv` (killfeed 62 → « Assist »).
+ * indépendante de `.ai/archive/V7.5/icones/NOMMAGE_GATE_2026-08-09.tsv` (killfeed 62 → « Assist »).
  *
  * TAILLE : le pictogramme est quasi carré (40×40 mesuré) — le gabarit bandeau des icônes
  * d'arme (`ICON_W`×`ICON_H`) l'écraserait à la hauteur d'une lettre, d'où `PICTOGRAM_PX`,

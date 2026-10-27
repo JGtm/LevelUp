@@ -1,5 +1,5 @@
 // Package analysis — match_range_profile.go : LA PORTÉE PAR (MATCH, JOUEUR), RAPPORTÉE À LA
-// MÉDIANE DU LOBBY (plan .ai/V7.5/PLAN_AJUSTEMENTS_SUPP_PRE_V75_2026-09-21.md, lot N2).
+// MÉDIANE DU LOBBY (plan .ai/archive/V7.5/PLAN_AJUSTEMENTS_SUPP_PRE_V75_2026-09-21.md, lot N2).
 //
 // # PUR, COMME TOUT CE PAQUET
 //

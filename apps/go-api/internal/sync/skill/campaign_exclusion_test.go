@@ -1,7 +1,7 @@
 //go:build integration
 
 // campaign_exclusion_test.go — les chargeurs LUSR (v1 et ombre v2) excluent la Campagne (E2 du
-// plan .ai/V7.5/PLAN_BACKLOG_2026-10-15.md, DB-27 du backlog 2026-09-26).
+// plan .ai/archive/V7.5/PLAN_BACKLOG_2026-10-15.md, DB-27 du backlog 2026-09-26).
 //
 // Un match d'arène (arena1, 01/09) et un match de Campagne PLUS RÉCENT (camp1, 02/09), joués par
 // le même joueur, le titre posé dans le contexte comme le fait le moteur de sync. Halo 5 : la

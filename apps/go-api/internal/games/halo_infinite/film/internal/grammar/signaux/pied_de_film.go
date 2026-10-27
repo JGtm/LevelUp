@@ -51,7 +51,7 @@ const (
 // lu : deux lectures d'un meme fait se contrediraient un jour sans que rien ne le dise, et
 // rien n'etablit laquelle des deux est l'ecriture et laquelle la copie.
 //
-// Mesure : `.ai/V7.5/film_re/NOTE_RESIDUS_CHUNK00_2026-09-13.md` §6 ; instrument (oracle
+// Mesure : `.ai/archive/V7.5/film_re/NOTE_RESIDUS_CHUNK00_2026-09-13.md` §6 ; instrument (oracle
 // corpus, rejouable) `TestResidusPiedOctetEquipe` (etiquette `research`).
 const (
 	footerBlockBytes = 60 // taille du bloc d'evenement qui precede le marqueur de fin

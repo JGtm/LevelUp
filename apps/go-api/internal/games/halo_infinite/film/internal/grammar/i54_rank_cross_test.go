@@ -1,7 +1,7 @@
 package grammar
 
 // i54_rank_cross_test.go — INSTRUMENT DE MESURE de la PHASE D du plan
-// .ai/V7.5/replay2d/PLAN_ETAT_ACTIF_EQUIPEMENT.md : le croisement JAMAIS FAIT,
+// .ai/archive/V7.5/replay2d/PLAN_ETAT_ACTIF_EQUIPEMENT.md : le croisement JAMAIS FAIT,
 // épisodes `i54` x identité `i48` de la MÊME VIE (même slot). C'était la reprise n°1 du
 // registre des reports.
 //

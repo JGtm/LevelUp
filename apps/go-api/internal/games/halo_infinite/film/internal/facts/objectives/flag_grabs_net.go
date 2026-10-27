@@ -8,7 +8,7 @@ package objectives
 // l'API) compte CHAQUE ramassage. Or un porteur qui LANCE le drapeau devant lui pour courir plus
 // vite, puis le reprend une seconde plus tard, se voit crediter une prise de plus a chaque
 // aller-retour : le compteur classe le JONGLAGE, pas la PRISE. Mesure du 2026-09-13 sur les
-// treize films CTF du parc local (rapport `.ai/V7.5/RAPPORT_PRISES_NETTES_2026-09-13.md`) :
+// treize films CTF du parc local (rapport `.ai/archive/V7.5/RAPPORT_PRISES_NETTES_2026-09-13.md`) :
 // 617 prises brutes, 370 nettes a 1,5 s — 40 % du compteur officiel est du jonglage, et sur un
 // film le premier au brut (27 prises) tombe TROISIEME au net (4).
 //

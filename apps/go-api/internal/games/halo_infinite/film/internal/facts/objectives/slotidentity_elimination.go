@@ -8,7 +8,7 @@ import (
 
 // slotidentity_elimination.go — L'IDENTITE D'UN SLOT D'ENTITE PAR ELIMINATION, MANCHE PAR MANCHE.
 //
-// # LE TROU QUE CE FICHIER FERME (diagnostic R4, `.ai/V7.5/v2/RESTES_R4_R5_2026-09-08.md` §2-§4)
+// # LE TROU QUE CE FICHIER FERME (diagnostic R4, `.ai/archive/V7.5/v2/RESTES_R4_R5_2026-09-08.md` §2-§4)
 //
 // [bestDeathClaim] exige `deathInstantMin` = 3 instants coincidents pour nommer un couple
 // (slot, manche). Un joueur qui meurt MOINS DE TROIS FOIS dans une manche lui echappe par

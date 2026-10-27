@@ -10,7 +10,7 @@ package replay
 // CE QUI EST TESTE, EN UNE PHRASE : par MANCHE, le film designe-t-il exactement TROIS zones ?
 //
 // LE PROTOCOLE — definition de « exactement 3 », tolerance de rotation, seuils, escalade — EST
-// ECRIT ET COMMITE AVANT CE FICHIER (`.ai/V7.5/PLAN_OBJECTIFS_ETAT_VIVANT_2026-08.md`, section
+// ECRIT ET COMMITE AVANT CE FICHIER (`.ai/archive/V7.5/PLAN_OBJECTIFS_ETAT_VIVANT_2026-08.md`, section
 // D3-bis). Ce qui suit l'applique, il ne le decide pas.
 //
 // # POURQUOI CET INSTRUMENT N'A BESOIN NI DE CARTE NI DE POSITIONS

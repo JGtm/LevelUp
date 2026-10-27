@@ -62,7 +62,7 @@ type p2aFilm struct {
 
 // p2aCorpus — les films de la phase 2a, avec leurs lignes de match gelees.
 //
-// Releve du 2026-08-18 sur `.ai/V7.5/replay2d/registre_film/oracle_lotA_participants.tsv`
+// Releve du 2026-08-18 sur `.ai/archive/V7.5/replay2d/registre_film/oracle_lotA_participants.tsv`
 // (lecture seule, aucune base ouverte). `1b1e380f` est HORS corpus par consigne.
 var p2aCorpus = map[string]p2aFilm{
 	// Les deux Strongholds de Vagabond : le coeur de CB.2a.1 et CB.2a.2 (oracle nomme).

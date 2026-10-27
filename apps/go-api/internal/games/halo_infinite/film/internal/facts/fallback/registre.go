@@ -6,7 +6,7 @@ package fallback
 //
 // Trois sources, toutes datées et vérifiées sur pièces au lot 1.9.0 (2026-09-14) :
 //
-//  1. la table (E) de `.ai/V7.5/AUDIT_HEURISTIQUES_DECODEUR_2026-09-13.md` — les 62 REPLIS
+//  1. la table (E) de `.ai/archive/V7.5/AUDIT_HEURISTIQUES_DECODEUR_2026-09-13.md` — les 62 REPLIS
 //     ANONYMES du décodeur, recensés par le lot 0.E. Ceux que les lots 1.0 à 1.8 ont convertis
 //     ou supprimés depuis N'Y SONT PAS : le recensement du lot 1.9.0 les nomme un par un (§5
 //     du plan) ;

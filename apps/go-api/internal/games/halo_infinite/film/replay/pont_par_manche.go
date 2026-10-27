@@ -3,7 +3,7 @@ package replay
 // pont_par_manche.go — LE PONT SLOT D'ENTITE STATBORG -> XUID, PAR MANCHE, DE LA CUISSON ET DU SYNC.
 //
 // DEPLACE depuis `replaybuild/matchfacts.go` le 2026-09-28 (lot V1.4 du plan
-// `.ai/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md`), sans changement de regle : le collecteur de sync lit
+// `.ai/archive/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md`), sans changement de regle : le collecteur de sync lit
 // desormais les porteurs d'objectif par l'assembleur de production (`porteurs_au_sync.go`), et ce
 // pont nomme les porteurs du drapeau et du crane. Deux producteurs du meme fait ne peuvent pas
 // resoudre deux ponts : il vit ICI, ou les deux le trouvent, et `replaybuild` l'appelle.
@@ -34,7 +34,7 @@ type PontParManche struct {
 	resolu bool
 	id     objectives.RoundIdentity
 	// cons : l enregistreur des replis a la consultation du document (lot J8.7-bis du plan
-	// `.ai/V7.5/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25.md`) — le pont le passe a sa resolution, et les
+	// `.ai/archive/V7.5/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25.md`) — le pont le passe a sa resolution, et les
 	// lectures de series de l appelant le recoivent de lui ([PontParManche.Consultations]). Nil
 	// (tests) : rien n est note.
 	cons *objectives.ReplisALaConsultation

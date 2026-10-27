@@ -10,7 +10,7 @@
 //
 // Les deux premiers tests ne dépendent d'AUCUNE fixture : ils tournent partout, CI
 // comprise. Le troisième a besoin d'un `.mvar` réel (actif propriétaire versionné sous
-// .ai/V7.5/dumps/) et s'annonce absent plutôt que de passer en silence.
+// internal/testfixtures/testdata/cartes/mapvar/) et s'annonce absent plutôt que de passer en silence.
 package main
 
 import (
@@ -21,7 +21,7 @@ import (
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/testutil"
+	"levelup/go-api/internal/testfixtures"
 )
 
 // ecrireCatalogue pose un catalogue de départ à la version demandée, avec des cartes
@@ -172,7 +172,7 @@ func TestRefreshRefuseDEcrireSurUnParseEnEchec(t *testing.T) {
 // plus être marquée. C'est ce qui garantit que le marqueur tombe quand la migration a
 // réellement eu lieu, au lieu de rester collé.
 func TestRefreshRegenereEtDemarqueUneCarteReparsee(t *testing.T) {
-	src := filepath.Join("..", "..", "..", "..", ".ai", "V7.5", "dumps", "mapvar", "cliffhanger_map.mvar")
+	src := testfixtures.Carte("mapvar", "cliffhanger_map.mvar")
 	buf, err := os.ReadFile(src)
 	if err != nil {
 		t.Skipf("fixture %s absente (%v) — recette du re-parse ignorée", src, err)
@@ -218,16 +218,12 @@ func TestRefreshRegenereEtDemarqueUneCarteReparsee(t *testing.T) {
 }
 
 // mvarVersionne rend le chemin d'un `.mvar` SUIVI EN DÉPÔT (témoins de test de
-// `.ai/V7.5/dumps/mapvar/`). Il est versionné : son absence est une installation cassée,
+// `internal/testfixtures/testdata/cartes/mapvar/`). Il est versionné : son absence est une installation cassée,
 // pas un cas à sauter — la racine vient de testutil.RepoRoot(), sans variable
 // d'environnement (revue ronde 1, R1-1).
 func mvarVersionne(t *testing.T, nom string) string {
 	t.Helper()
-	root, err := testutil.RepoRoot()
-	if err != nil {
-		t.Fatalf("racine du dépôt introuvable : %v", err)
-	}
-	p := filepath.Join(root, ".ai", "V7.5", "dumps", "mapvar", nom)
+	p := testfixtures.Carte("mapvar", nom)
 	if _, statErr := os.Stat(p); statErr != nil {
 		t.Fatalf("témoin versionné absent : %v", statErr)
 	}

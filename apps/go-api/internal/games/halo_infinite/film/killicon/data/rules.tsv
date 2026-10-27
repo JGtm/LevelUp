@@ -36,7 +36,7 @@
 # KILL FEED (format bandeau, dessine pour etre lu petit). L atlas `contour` n est PAS
 # utilise ici : il ne porte ni grenade, ni melee, ni pictogramme.
 #
-# D OU VIENT `sprite` POUR CHAQUE LIGNE. De la passe humaine `.ai/V7.5/icones/
+# D OU VIENT `sprite` POUR CHAQUE LIGNE. De la passe humaine `.ai/archive/V7.5/icones/
 # NOMMAGE_GATE_2026-08-09.tsv` (index d atlas -> libelle + weapon_key), corroboree par
 # `config/titles/halo_infinite/mappings/weapon_names.toml` (weapon_key -> {en, fr}). Le
 # test `TestChaqueRegleEstCorroboreeParLeRegistre` rejoue cette corroboration : si le nom

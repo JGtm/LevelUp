@@ -6,7 +6,7 @@ package mapvar
 // Chaque zone nommee est un OBJET de la variante, de type `TypeIDZoneNommee`, qui porte son
 // StringId de lieu (`Object.LocationID`) et sa forme Forge ordinaire a cote. Un CANEVAS n'en
 // pose aucune : il n'a que ses barrieres. Recherche et mesures :
-// `.ai/V7.5/cartes/CALLOUTS_FORGE_2026-08-27.md`.
+// `.ai/archive/V7.5/cartes/CALLOUTS_FORGE_2026-08-27.md`.
 //
 // CE QUE CE FICHIER FOURNIT : la conversion des objets en polygones du monde, et le tri des
 // RATELIERS (voir `ratelier`). Il ne nomme rien (le libelle se joint par StringId, au

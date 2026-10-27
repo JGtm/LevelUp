@@ -1,7 +1,7 @@
 package grammar
 
 // ti47_annonces_oracle_test.go — LA CONFRONTATION AUX ORACLES HORS FILM (phase 1 du plan
-// `.ai/V7.5/replay2d/PLAN_TI47_ANNONCES_ZONE.md`, items 1.2 a 1.4).
+// `.ai/archive/V7.5/replay2d/PLAN_TI47_ANNONCES_ZONE.md`, items 1.2 a 1.4).
 //
 // L'ORACLE EST L'ARTEFACT DE REJEU, PAS UNE RECONSTRUCTION. `zoneStates` (schema 15+) porte
 // l'etat de chaque zone en intervalles de propriete, sa jauge de capture en direct (schema 18),

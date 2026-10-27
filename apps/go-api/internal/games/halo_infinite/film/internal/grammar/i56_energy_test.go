@@ -3,7 +3,7 @@
 package grammar
 
 // i56_energy_test.go — INSTRUMENT DE MESURE de l'ÉTAPE 3 (actualisée) du plan
-// .ai/V7.5/replay2d/PLAN_CAPACITES_ACTIVES.md : l'ÉTAT ACTIF d'une capacité d'armure.
+// .ai/archive/V7.5/replay2d/PLAN_CAPACITES_ACTIVES.md : l'ÉTAT ACTIF d'une capacité d'armure.
 //
 // POURQUOI CET INSTRUMENT PLUTÔT QUE `i57`. Le plan désignait `i57` comme la source de
 // l'état actif. Cette piste est RÉFUTÉE : le POC avait exploité son bit 0, qui valait 1 sur

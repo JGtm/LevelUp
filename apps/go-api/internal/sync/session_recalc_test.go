@@ -127,7 +127,7 @@ func TestLoadSessionMatchRowsDirect_WithData(t *testing.T) {
 	}
 }
 
-// ─── Exclusion de la Campagne (E2 du plan .ai/V7.5/PLAN_BACKLOG_2026-10-15.md, DB-27) ───
+// ─── Exclusion de la Campagne (E2 du plan .ai/archive/V7.5/PLAN_BACKLOG_2026-10-15.md, DB-27) ───
 //
 // Chaque cas sème, pour le même joueur, un match d'arène (arena1, 01/09) et un match de
 // Campagne PLUS RÉCENT (camp1, 02/09), puis lit par le VRAI chargeur, le titre posé dans le

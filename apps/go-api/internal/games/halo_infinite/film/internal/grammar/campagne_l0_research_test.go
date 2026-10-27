@@ -17,7 +17,7 @@ package grammar
 //	L0.8   records DEL et leur mot de 32 bits, par etat du paquet (`FUN_142f304a8` n ecrit un mot
 //	       non nul que pour l archetype 0x10 ; cet archetype est celui du DATUM, que le paquet ne
 //	       porte pas : la ventilation par archetype a ete mesuree une fois sous instrumentation
-//	       temporaire, `.ai/V7.5/film_re/campagne_grammaire_2026-10-01/LOT_L0.md`).
+//	       temporaire, `.ai/archive/V7.5/film_re/campagne_grammaire_2026-10-01/LOT_L0.md`).
 //
 // La marche est celle de la carte (`cmMarcher`), sous la definition de la fermeture en vigueur ;
 // l etat d un paquet se lit sur `FermeeAuBit`, jamais sur `Fermee`. La mesure prealable du lot L0

@@ -2,7 +2,7 @@ package grammar
 
 // zone_census_test.go — INSTRUMENT DE RECENSEMENT des archetypes de ZONE et d'OBJECTIF du
 // mode, phase 0 (items C.0.1 et C.0.3) du lot C de
-// `.ai/V7.5/replay2d/PLAN_EXPLOITATION_REGISTRE_FILM.md`.
+// `.ai/archive/V7.5/replay2d/PLAN_EXPLOITATION_REGISTRE_FILM.md`.
 //
 // CE QU'IL MESURE, et pourquoi il ne peut pas se contenter de la traversee canonique.
 // La traversee d'un record (`traverseComponentLoop`) s'ARRETE au premier composant PRESENT
@@ -26,7 +26,7 @@ package grammar
 //	                POSITIF : il doit rendre des records, sinon le balayeur ne voit rien.
 //
 // IL NE MODIFIE RIEN : aucun code de production, aucune ecriture en base, aucun champ
-// d'artefact. Lecture seule du film, sortie en TSV sous `.ai/V7.5/replay2d/registre_film/lotC/`.
+// d'artefact. Lecture seule du film, sortie en TSV sous `.ai/archive/V7.5/replay2d/registre_film/lotC/`.
 // SOUS GARDE D'ENVIRONNEMENT (ZONE_FILM), donc saute partout ailleurs, CI comprise.
 //
 // UN SEUL FILM PAR PROCESSUS (memoire de depot `reference_statrecords_corpus_sweep_ram_bomb`,
@@ -78,7 +78,7 @@ func zcOutDir(t *testing.T) string {
 		return v
 	}
 	root := zcModuleRoot(t)
-	out := filepath.Join(root, "..", "..", ".ai", "V7.5", "replay2d", "registre_film", "lotC")
+	out := filepath.Join(root, "..", "..", ".ai", "archive", "V7.5", "replay2d", "registre_film", "lotC")
 	mustMkdir(t, out)
 	return out
 }

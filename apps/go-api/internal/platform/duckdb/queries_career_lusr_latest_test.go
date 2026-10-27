@@ -8,7 +8,7 @@ package duckdb
 // lignes des passes précédentes : une chaîne fausse écrite une fois y restait tracée
 // À VIE, même après un replay correct — c'est ce qui maintenait la série « Arène »
 // fantôme des 4 joueurs Infinite après la réparation d'août
-// (.ai/V7.5/RAPPORT_VOLET1_LUSR_H5_2026-08-28.md §6.2).
+// (.ai/archive/V7.5/RAPPORT_VOLET1_LUSR_H5_2026-08-28.md §6.2).
 //
 // DEUX contrats, indissociables — c'est tout l'objet de la vue par TYPE :
 //  1. une ligne périmée d'un match rejoué n'est plus servie ;

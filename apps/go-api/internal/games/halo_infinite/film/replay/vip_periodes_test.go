@@ -2,7 +2,7 @@ package replay
 
 // vip_periodes_test.go — LOT VIP COURONNE, E3 : LES PERIODES DE PORT DE COURONNE.
 //
-// LE PROTOCOLE EST COMMITE AVANT CE FICHIER (`.ai/V7.5/replay2d/registre_film/
+// LE PROTOCOLE EST COMMITE AVANT CE FICHIER (`.ai/archive/V7.5/replay2d/registre_film/
 // VIP_COURONNE_PROTOCOLE.md` §3). Ce qui suit l'applique.
 //
 // # LA QUESTION

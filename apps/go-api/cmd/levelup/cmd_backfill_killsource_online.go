@@ -12,7 +12,7 @@ package main
 // cache s est arrete le 2026-04-07. Depuis cette date, aucun match synchronise n a de passe de
 // film, donc `assist_known` y vaut FALSE — « on ne sait pas » — sur 100 % des morts, et les
 // deux blocs d assistances de l app se retirent. Mesure complete et datee :
-// `.ai/V7.5/REGISTRE_ASSISTANCES_2026-08-29.md`.
+// `.ai/archive/V7.5/REGISTRE_ASSISTANCES_2026-08-29.md`.
 //
 // # CE QU ELLE FAIT DE PLUS, ET RIEN D AUTRE
 //

@@ -3,7 +3,7 @@ package main
 // decoupe.go — l'ingestion du DUMP DÉCOUPÉ de Ridgeline.
 //
 // RIDGELINE SEULE est découpée sur le sol praticable : le dump versionné
-// .ai/V7.5/dumps/callout_zones_ridgeline_clipped.json (produit par les scripts de
+// apps/go-api/internal/testfixtures/testdata/cartes/callout_zones_ridgeline_clipped.json (produit par les scripts de
 // recherche, confronté aux positions de joueurs : réduction d'aire 21 % à rétention
 // 98,2 %, quarante écarts-types au-dessus du hasard) est LA source de ses polygones —
 // on le CONSERVE, on ne le refait pas. Les 21 autres cartes livrent le polygone

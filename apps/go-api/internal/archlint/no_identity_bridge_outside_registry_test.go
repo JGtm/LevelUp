@@ -114,7 +114,7 @@ var identityBridgePatterns = []struct {
 	// `XUIDNumAt`, et l'accesseur a été SUPPRIMÉ (règle 7, zéro code mort). L'ALLOWLIST DE CE
 	// MOTIF EST VIDE : aucun fichier de production n'a le droit de le rouvrir, y compris le
 	// registre. Mesure qui a commandé le retrait, avec ce qu'elle a trouvé de faux à l'écran :
-	// `.ai/V7.5/RAPPORT_PONT_APLATI_2026-09-10.md`.
+	// `.ai/archive/V7.5/RAPPORT_PONT_APLATI_2026-09-10.md`.
 	{regexp.MustCompile(`\bPontParSlot\s*\(`), true,
 		"appel à `PontParSlot` — le pont APLATI est supprimé (lot 6.1) : `XUIDNumAt`/`XUIDAt` " +
 			"répondent à l'instant, `PontEpure` nomme une piste entière, `PontEtabli` dit " +

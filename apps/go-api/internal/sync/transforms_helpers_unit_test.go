@@ -333,7 +333,7 @@ func TestExtractTeamScoresByID_MissingStats(t *testing.T) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ExtractTeamRoundsByID — les témoins viennent du corpus mesuré le 2026-08-29
-// (.ai/V7.5/RAPPORT_MANCHES_2026-08-29.md).
+// (.ai/archive/V7.5/RAPPORT_MANCHES_2026-08-29.md).
 // ─────────────────────────────────────────────────────────────────────────────
 
 // roundsPayload fabrique un payload à deux camps porteur des trois compteurs de manches.

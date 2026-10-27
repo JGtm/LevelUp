@@ -137,7 +137,7 @@ package grammar
 // gardes en plus.
 //
 // ENTREE `grammar-2026-10-09.2` (2026-10-09, jalon LK du plan
-// `.ai/V7.5/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, branche `feat/ri-lk-images-cles`) : LES
+// `.ai/archive/V7.5/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, branche `feat/ri-lk-images-cles`) : LES
 // RECORDS D IMAGE-CLE SE LISENT SOUS LA PORTEE `DAT_144e61ea0` DE L ETAT COMPLET.
 //
 // RENUMEROTEE (2026-10-09, fusion de `feat/v75` `54b47a2b8` dans `feat/ri-lk-images-cles`) : cette
@@ -177,7 +177,7 @@ package grammar
 // D-18, D-21, D-23).
 //
 // ENTREE `grammar-2026-10-09.3` (2026-10-09, lot 2.7.d1 du plan
-// `.ai/V7.5/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, etapes D1.1 a D1.3, branche
+// `.ai/archive/V7.5/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, etapes D1.1 a D1.3, branche
 // `feat/ri-lk-images-cles`) : L ETAT COMPLET DU BIPEDE AUX IMAGES-CLES EST LU PAR LA GRAMMAIRE, LES
 // FENETRES DE BITS PASSENT DERRIERE LA LECTURE.
 //
@@ -221,7 +221,7 @@ package grammar
 // de format 20 ; admis inchanges (6 507) ; fermetures `ti=35` 5 401 -> 5 397 ; `replay-equiv` (20
 // films) : seuls `a349fea8` et `a521164d` changent (4 selections tues) ; killsource identique.
 //
-// ENTREE `grammar-2026-10-14` (2026-10-14, lot F du plan `.ai/V7.5/PLAN_AJUSTEMENTS_2026-10-14.md`, branche
+// ENTREE `grammar-2026-10-14` (2026-10-14, lot F du plan `.ai/archive/V7.5/PLAN_AJUSTEMENTS_2026-10-14.md`, branche
 // `feat/aj14-f`) : LA LECTURE DE LA VUE A RANGE SES MESSAGES DE POUSSEE. Aucun bit n est lu autrement :
 // [lireUnMessage] garde les references qu il lisait et jetait, les charges des genres 104 et 105
 // ([chargePousseeDuJoueur], [chargeObjetRepousse], `vue_a_poussees.go`) gardent leurs valeurs, et
@@ -236,7 +236,7 @@ package grammar
 // repulseur sur 130 paires sur 130.
 //
 // ENTREE `grammar-2026-10-14.2` (2026-10-14, lot « equipement porte » du plan
-// `.ai/V7.5/PLAN_AJUSTEMENTS_2026-10-14.md`, branche `feat/equip-porte`) : `ti=37 i28
+// `.ai/archive/V7.5/PLAN_AJUSTEMENTS_2026-10-14.md`, branche `feat/equip-porte`) : `ti=37 i28
 // equipment-tracked-object-handles-stack-component` LIT n ENTREES, PLUS n+1. Le lecteur du jeu
 // `FUN_140f72dec` lit R(4) n (`FUN_1424e1d48`), le range en `+0x544`, puis avance le pointeur de
 // 8 octets AVANT de le comparer a `+0x544 + (n+1)*8` : n appels de `FUN_1408f0ac4(…,0)`. Le port
@@ -280,7 +280,7 @@ package grammar
 // ecran 241, traqueur 49 : tous ti=41 nes dans le paquet. Le retrait de la pile precede la
 // suppression de 0,2 a 0,7 s (5676a9ba).
 //
-// ENTREE `grammar-2026-10-15.2` (2026-10-15, plan `.ai/V7.5/PLAN_RI_RESIDU_IMAGES_CLES_2026-10-14.md`, branche
+// ENTREE `grammar-2026-10-15.2` (2026-10-15, plan `.ai/archive/V7.5/PLAN_RI_RESIDU_IMAGES_CLES_2026-10-14.md`, branche
 // `feat/ri-ecart-108`, etapes R1 a R3) : TROIS LECTURES DU JEU ENTRENT DANS LA MARCHE DES IMAGES-CLES.
 //
 //   - R1, LA TABLE D ENTREES (`keyframe_entrees.go`). La table d image-cle compte une entree par slot
@@ -348,7 +348,7 @@ package grammar
 // Contre l arrivee du premier echange (74) : ecart XY mediane 0,02 m, max 0,13 (l arrivee est 0,11 a
 // 0,53 m plus haut) ; contre le porteur a l image de la pose (120) : XY mediane 0,04 m, max 0,17.
 //
-// ENTREE `grammar-2026-10-18` (2026-10-18, plan `.ai/V7.5/PLAN_BACKLOG_2026-10-16.md`, E8.1 (b) (c),
+// ENTREE `grammar-2026-10-18` (2026-10-18, plan `.ai/archive/V7.5/PLAN_BACKLOG_2026-10-16.md`, E8.1 (b) (c),
 // decision utilisateur D-16, option B du pilote) : L OCCUPATION DES VEHICULES QUE LA MARCHE DE
 // KILLSOURCE RECOLTE EST RENDUE. Aucun bit n est lu autrement : le canal des morts recoltait deja les
 // lectures d `object-parent-state` (i10) de la bande bipede pendant la marche de killsource, et les

@@ -698,7 +698,7 @@ kind       = "carried"
 # ------------------------------------------------------------------------------------------
 # OBJETS D'OBJECTIF — les objets du monde QUI FONT LE MODE, et que la chaine des socles doit
 # reconnaitre pour ne PAS les publier comme des armes (2026-08-18,
-# `.ai/V7.5/replay2d/PLAN_DRAPEAU_OBJET.md`, decision 1).
+# `.ai/archive/V7.5/replay2d/PLAN_DRAPEAU_OBJET.md`, decision 1).
 #
 # CE QUE CETTE TABLE EST, ET CE QU'ELLE N'EST PAS. La cle est le mot de 32 bits du bloc
 # `object-multiplayer-properties` d'un record de CREATION `ti=42` — le MEME champ que celui
@@ -742,7 +742,7 @@ fr     = "Drapeau"
 #
 # CE QUI EST MESURE (phase D4, quatre films Oddball : `24dbb67d` Recharge, `43716616`
 # Smallhalla, `51ebbc0f` Banished Narrows, `d9781168` Dredge ; instrument
-# `oddball_crane_d4_test.go`, sortie figee dans `.ai/V7.5/replay2d/registre_film/`) :
+# `oddball_crane_d4_test.go`, sortie figee dans `.ai/archive/V7.5/replay2d/registre_film/`) :
 #
 #   COMBIEN   133 / 137 / 144 / 256 creations `ti=42` ECARTEES du catalogue d'armes, soit
 #             69 / 107 / 82 / 199 mots de 32 bits distincts.
@@ -794,7 +794,7 @@ fr     = "Crane"
 #                  `1/reset + H(n)/solo`, H = serie HARMONIQUE (le jeu nomme sa fonction
 #                  `CalculateReturnRateHarmonic`) — au rayon 1,3 : 3,09 s.
 #
-# Detail, protocole et bornes : `.ai/V7.5/PLAN_CTF_ZONE_RETOUR_2026-08-30.md`.
+# Detail, protocole et bornes : `.ai/archive/V7.5/PLAN_CTF_ZONE_RETOUR_2026-08-30.md`.
 # NE PAS renseigner ces valeurs « au juge » pour un autre titre : la section absente ne dessine
 # rien, ce qui est le comportement voulu, alors qu'un rayon invente dessine un cercle faux.
 [flag_return_zone]

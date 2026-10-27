@@ -2,7 +2,7 @@
  * Tests — equipmentUsageColumns : LES GROUPES DE COLONNES QUE LA DONNÉE JUSTIFIE.
  *
  * LE REPLI « GAME CHANGERS » ET LE GROUPE « ÉTATS ACTIFS » ONT ÉTÉ RETIRÉS LE 2026-09-19
- * (plan `.ai/V7.5/PLAN_AJUSTEMENTS_PRE_V75_2026-09-19.md`, lot 2, décision 6) : tout ce que la
+ * (plan `.ai/archive/V7.5/PLAN_AJUSTEMENTS_PRE_V75_2026-09-19.md`, lot 2, décision 6) : tout ce que la
  * donnée justifie s'affiche, et l'épisode de camouflage ou de surbouclier ne fait plus de
  * colonne à lui — il alimente le côté « utilisé » de la colonne d'équipement du power-up. Les
  * tests de la partition et du pont D5 sont partis avec le code qu'ils protégeaient.

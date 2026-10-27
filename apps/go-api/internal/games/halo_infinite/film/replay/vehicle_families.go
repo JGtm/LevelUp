@@ -41,7 +41,7 @@ package replay
 // Le jeu range ses tags dans des MODULES (`pc/globals`, `any/globals`, `any/globals/common`...),
 // et un meme vehicule y est declare PLUSIEURS FOIS, sous un GlobalID different par module. Le
 // manifeste de la chaine de destruction l ecrit noir sur blanc pour le Scorpion
-// (`.ai/V7.5/film_re/sons_v3_reconstruits/manifeste_v3.json`, entree « Scorpion (M808) ») :
+// (`.ai/archive/V7.5/film_re/sons_v3_reconstruits/manifeste_v3.json`, entree « Scorpion (M808) ») :
 // « f6f54e56 (any/globals) = chassis 0000d3db (pc/globals), meme hlmt ».
 //
 // CONSEQUENCE MESUREE, ET ELLE A COUTE DEUX FAMILLES (lot 1.9.9, 2026-09-16). Les releves qui
@@ -200,7 +200,7 @@ var vehicleFamilyByChassis = map[uint32]string{
 	// --- LES SECONDS `vehi` DU MANIFESTE, un module plus loin (lot 1.9.9, 2026-09-16) ---
 	//
 	// TOUS viennent de la MEME piece, celle que la table cite deja pour `fe32c0f4` et
-	// `cb96ca07` : `.ai/V7.5/film_re/sons_v3_reconstruits/manifeste_v3.json`, section
+	// `cb96ca07` : `.ai/archive/V7.5/film_re/sons_v3_reconstruits/manifeste_v3.json`, section
 	// `par_vehicule`, recoupee par `V3D_DESTRUCTION_SONS_2026-09-02.md` § 2. Chaque ligne du
 	// manifeste donne le `hlmt` de la famille et la banque d explosion qu il atteint ; les
 	// identifiants entre parentheses de sa colonne `vehi` sont les declarations du MEME

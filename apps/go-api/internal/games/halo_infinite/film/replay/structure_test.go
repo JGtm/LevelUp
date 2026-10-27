@@ -324,7 +324,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   sont REFUSÉES par leur propre mesure — concordance plafonnant à 92,80 %, et qui DESCEND
 	//   quand on rapproche les deux lectures (88,06 % à 0,10 s contre 93,19 % à 2 s), ce qu'une
 	//   consommation réelle entre les deux mesures ferait à l'envers. `Inventory.Am` reste donc
-	//   alimenté par les seules images-clés. Détail : .ai/V7.5/replay2d/LOT4_SUIVI_DELTA_2026-08-25.md.
+	//   alimenté par les seules images-clés. Détail : .ai/archive/V7.5/replay2d/LOT4_SUIVI_DELTA_2026-08-25.md.
 	//   v20 -> v21 (2026-08-27, phase D5 du plan des objectifs vivants) : LE PROPRIÉTAIRE DE LA
 	//   COLLINE. Sur la voie du désignateur (KOTH), une période de colline se SUBDIVISE aux
 	//   changements de main et chaque morceau porte son camp dans `ZoneSpan.Owner`.
@@ -343,7 +343,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   sa propre mesure : 40,6 à 66,7 % de trous à porteur unique contre un seuil de 90 %, et un
 	//   témoin placé HORS trou qui rend le même signal dans 66,7 et 71,4 % des cas. Les ZONES DE
 	//   TOTAL CONTROL non plus : le désignateur y rend jusqu'à 77 désignations simultanées sur un
-	//   mode à trois zones. Détail : .ai/V7.5/PLAN_OBJECTIFS_ETAT_VIVANT_2026-08.md.
+	//   mode à trois zones. Détail : .ai/archive/V7.5/PLAN_OBJECTIFS_ETAT_VIVANT_2026-08.md.
 	//   v21 -> v22 (2026-08-27, lot VIP COURONNE) : LA COURONNE VIP. `vipCrown` publie les
 	//   PÉRIODES DE PORT — chaque sélection `vip_selected` (`comp 22 A` = `TimesSelectedAsVip`,
 	//   résolu au gate corrigé : 100 % par joueur x3 films, témoin décalé 0) ouvre une période,
@@ -355,7 +355,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   (recouv 100 % 3/3, 24/24 joueurs à +0,2-0,3 s), contre un témoin d'attribution aléatoire
 	//   effondré (exactitude 8/8 contre 0-1/8). GARDE DE MODE chez l'appelant : `comp 22 A` vaut
 	//   `flag_grabs` en CTF, donc la couronne n'est lue que sur un film reconnu VIP par
-	//   `game_variant_name`. Détail : .ai/V7.5/replay2d/registre_film/VIP_COURONNE_PROTOCOLE.md.
+	//   `game_variant_name`. Détail : .ai/archive/V7.5/replay2d/registre_film/VIP_COURONNE_PROTOCOLE.md.
 	// - v23 (2026-08-28, lot PORTEUR ODDBALL) : `skullCarries` — LES PÉRIODES DE PORTAGE DU CRÂNE.
 	//   Le porteur est le joueur dont les TICS DE SCORE DE MODE montent (`comp 0 A` =
 	//   `skull_scoring_ticks`), un TRAIN de tics étant une période de portage ; nommé par le pont
@@ -369,7 +369,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   0 A` est le score de mode de tout mode, donc le porteur n'est lu que sur un film reconnu
 	//   Oddball par `game_variant_name`. Le crâne LIBRE (`objectiveObjects`, v21) reste la couche
 	//   POSITION ; celle-ci est la couche PORTEUR. Détail :
-	//   .ai/V7.5/replay2d/registre_film/ODDBALL_PORTEUR_PROTOCOLE.md.
+	//   .ai/archive/V7.5/replay2d/registre_film/ODDBALL_PORTEUR_PROTOCOLE.md.
 	// - v24 (2026-08-30, PLAN_RETOURS_UTILISATEUR_2026-08-29 §LOT F.1) : `equipmentEpisodes[].k`/
 	//   `.a` — LES FRAGS ET ASSISTANCES DU PORTEUR pendant l'épisode (camo, surbouclier), et
 	//   `coverage.equipment.killsRead` qui dit si la mesure a été TENTÉE pour ce match. Champs
@@ -485,7 +485,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   n'ont aucune émission i48 du même slot à moins de 500 ms (témoin décalé 0,0 %) — elles
 	//   comblent un trou, elles ne doublonnent pas `equipmentChanges`.
 	//   Détail : internal/games/halo_infinite/film/replay/document_pickups.go, pad_pickup_dating.go,
-	//   internal/games/halo_infinite/film/internal/grammar/biped_pickups.go, .ai/V7.5/film_re/NOTE_BIPED_PICKUP_2026-08-31.md.
+	//   internal/games/halo_infinite/film/internal/grammar/biped_pickups.go, .ai/archive/V7.5/film_re/NOTE_BIPED_PICKUP_2026-08-31.md.
 	// v31 — LE NOM DE L'OBJET RAMASSÉ (`pickups[].family`), ET UNE NATURE À TROIS VALEURS.
 	//   Le schéma 30 publiait un identifiant BRUT que rien ne nommait pour les classes non-arme.
 	//   LE NOM VIENT DES FICHIERS DU JEU, PAS D'UNE STATISTIQUE — et c'est la raison de la
@@ -514,7 +514,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   UN ARTEFACT 30 SE LIT SANS CHANGEMENT : il ne porte simplement ni `family` ni les deux
 	//   natures fines, et son `kind` vaut `item` là où un 31 dirait `grenade` ou `equipment`.
 	//   Détail : internal/games/halo_infinite/film/replay/document_pickups.go,
-	//   .ai/V7.5/film_re/NOTE_NOMMAGE_ORIGINE_2026-09-01.md.
+	//   .ai/archive/V7.5/film_re/NOTE_NOMMAGE_ORIGINE_2026-09-01.md.
 	//   RISQUE DE COLLISION DE NUMÉRO, consigné comme au 29->30 : ce lot prend le 31 sur
 	//   `wt/pickup-nommage` alors que le 30 vient d'arriver sur `feat/v75`. L'arbitrage se fait
 	//   au merge, par renumérotation.
@@ -548,7 +548,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   UN ARTEFACT 31 SE LIT SANS CHANGEMENT : ses ramassages n'ont pas de cle `origin`, ce qui
 	//   est exactement ce qu'un client doit traiter comme « non etabli ».
 	//   Detail : internal/games/halo_infinite/film/replay/pickup_origin.go,
-	//   .ai/V7.5/film_re/NOTE_ORIGINE_POSITIONS_2026-09-01.md.
+	//   .ai/archive/V7.5/film_re/NOTE_ORIGINE_POSITIONS_2026-09-01.md.
 	//
 	// (v33/v34 : pris 29/30 sur wt/bombe-visuel, renumerotes au merge du 2026-09-01 —
 	// les schemas 29-32 etaient pris sur feat/v75, arbitrage ecrit aux schemas 30/31.)
@@ -597,7 +597,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   dispersion à 1,3-1,5 m) ; les durées sont MESURÉES. L'occupation, elle, se compte chez le
 	//   client : l'équipe d'un joueur n'est pas dans le film. Un artefact 34 doit se lire « à
 	//   re-cuire » — ses drapeaux au sol n'ont ni retour automatique ni zone. Détail :
-	//   internal/games/halo_infinite/film/replay/flag_objects.go et .ai/V7.5/PLAN_CTF_ZONE_RETOUR_2026-08-30.md.
+	//   internal/games/halo_infinite/film/replay/flag_objects.go et .ai/archive/V7.5/PLAN_CTF_ZONE_RETOUR_2026-08-30.md.
 	//   (Ce lot avait pris le 29 sur wt/ctf-zone-retour ; renumerote 35 au merge du 2026-09-02.)
 	// v36 — L'IDENTITÉ DES VIES : une track = UNE VIE (découpe `lifeGapUS`, la règle de
 	//   `buildLifeSpans`, appliquée aux tracks), nommage PAR VIE (un slot recyclé porte une
@@ -625,7 +625,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   nil, même piège omitempty qu'`originMs`), refus journalisé, raison publiée dans
 	//   `coverage.t0Film`. Et AUCUNE CONSTANTE ABSOLUE : la marge de 22 700 ms est un témoin
 	//   documentaire, jamais une valeur servie — le détecteur mesure par match.
-	//   Détail : internal/games/halo_infinite/film/replay/t0_film.go et .ai/V7.5/PLAN_T0_FILM_2026-09-02.md.
+	//   Détail : internal/games/halo_infinite/film/replay/t0_film.go et .ai/archive/V7.5/PLAN_T0_FILM_2026-09-02.md.
 	//   (Ce lot avait pris le 36 sur wt/t0-film pendant que l'identité des vies prenait le 36
 	//   sur feat/v75 : renuméroté 37 au merge du 2026-09-02, arbitrage écrit aux schémas
 	//   30, 31, 33 et 35.)
@@ -771,7 +771,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   une explosion sans armement dans la fenêtre de sens, ou des mèches du film qui se
 	//   contredisent, retiennent le calque ENTIER.
 	//   Détail : filmdec/navpoint_radial_segments.go, replay/bomb_armings.go,
-	//   replaybuild/zones.go et .ai/V7.5/PLAN_ASSAUT_STATS_2026-09-04.md (E2-ter).
+	//   replaybuild/zones.go et .ai/archive/V7.5/PLAN_ASSAUT_STATS_2026-09-04.md (E2-ter).
 	//
 	// v39 (5) — LES CINQ STATISTIQUES D'OBJECTIF DE L'ASSAUT (`bombStats`) et ses FAITS DATÉS
 	//   (`bombEvents`), 2026-09-05, étape G.2 de l'intégration. DEUX CHAMPS NEUFS SUR LE MÊME
@@ -819,7 +819,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   monte pour la raison des montées v39/v40 : un artefact 36 à 40 est appauvri sans que sa
 	//   forme le dise, et `backfill-replay` saute un artefact à la version courante.
 	//   Détail : internal/games/halo_infinite/film/replay/{closures.go, grapple_lines.go, equipment_episodes.go}
-	//   et .ai/V7.5/v2/INSTRUCTION_REGRESSIONS_2_4.md.
+	//   et .ai/archive/V7.5/v2/INSTRUCTION_REGRESSIONS_2_4.md.
 	// v42 — LE DRAPEAU A ENFIN DES PORTEURS (2026-09-06). Aucun champ ajouté : c'est le CONTENU
 	//   de `flagCarries` qui change, comme aux montées v14 et v15 du même calque. Le calque
 	//   nommait son porteur par le seul pont PAR MORTS, qui exige trois instants coïncidents :
@@ -834,7 +834,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   POURQUOI LA VERSION MONTE : un artefact 41 est amputé de portages sans que sa forme le
 	//   dise, et `backfill-replay` saute un artefact à la version courante.
 	//   Détail : internal/games/halo_infinite/film/replay/build_objectives_live.go et
-	//   .ai/V7.5/v2/FLAGCARRIES_COMPLEMENT_2026-09-06.md.
+	//   .ai/archive/V7.5/v2/FLAGCARRIES_COMPLEMENT_2026-09-06.md.
 	// v43 — UNE VIE ANONYME N'EST PAS UNE ABSENCE (2026-09-06). Aucun champ ajouté : c'est le
 	//   CONTENU de `skullCarries` (et, latent, de `bombCarries`) qui change. Le gate de présence
 	//   de `af89b091b` (2026-08-30) n'indexait que les vies NOMMÉES et lisait « aucune vie nommée
@@ -848,7 +848,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   pour la raison des montées v39/v40/v41/v42 : un artefact 23 à 42 est appauvri sans que sa
 	//   forme le dise, et `backfill-replay` saute un artefact qui porte la version courante.
 	//   Détail : internal/games/halo_infinite/film/replay/skull_carries.go (carrierPresence.gate) et
-	//   .ai/V7.5/v2/INSTRUCTION_RESIDUS_2026-09-06.md.
+	//   .ai/archive/V7.5/v2/INSTRUCTION_RESIDUS_2026-09-06.md.
 	// v44 — LA MANCHE DÉCLARÉE EST CONFRONTÉE AU TEMPS (2026-09-06). Aucun champ ajouté : c'est le
 	//   CONTENU de `scoreTimeline` (les quatre compteurs par joueur, les courbes d'équipe) et des
 	//   actions d'objectif qui change, sur les films À PLUSIEURS MANCHES seulement. La manche d'un
@@ -867,7 +867,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   gonflés sans que sa forme le dise, et `backfill-replay` saute un artefact à la version
 	//   courante.
 	//   Détail : internal/games/halo_infinite/film/internal/facts/objectives/round_bounds.go et
-	//   .ai/V7.5/v2/MANCHES_COMPTEURS_2026-09-06.md.
+	//   .ai/archive/V7.5/v2/MANCHES_COMPTEURS_2026-09-06.md.
 	// v45 — UN TROU DE RÉPLICATION N'AMPUTE PLUS UNE DURÉE MESURÉE (2026-09-06). Aucun champ
 	//   ajouté : c'est le CONTENU de `equipmentEpisodes` et de `flagCarries` qui change, sur la
 	//   même cause que les montées v41 et v43 — le découpage « une track = une vie » du v36, dont
@@ -894,7 +894,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   POURQUOI LA VERSION MONTE : un artefact 36 à 44 est amputé de durée sans que sa forme le
 	//   dise, et `backfill-replay` saute un artefact qui porte la version courante.
 	//   Détail : internal/games/halo_infinite/film/replay/{equipment_episodes.go (spanFor), flag_carries.go
-	//   (tracksByXUID)} et .ai/V7.5/v2/INSTRUCTION_DUREES_2026-09-06.md.
+	//   (tracksByXUID)} et .ai/archive/V7.5/v2/INSTRUCTION_DUREES_2026-09-06.md.
 	// v46 — UN JOUEUR NE PORTE PLUS SON PROPRE DRAPEAU (2026-09-06). Aucun champ ajouté : c'est
 	//   le CONTENU de `flagCarries` qui change — à quel drapeau un portage est rattaché, et donc
 	//   à quel drapeau la CAPTURE qui le ferme est publiée.
@@ -921,7 +921,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   montées v39 à v45 : un artefact 45 attribue un portage — et sa capture — au mauvais
 	//   drapeau sans que sa forme le dise, et la reprise du backfill se fait par SchemaVersion.
 	//   Détail : internal/games/halo_infinite/film/replay/flag_assign.go et
-	//   .ai/V7.5/v2/INSTRUCTION_DRAPEAUX_2026-09-06.md.
+	//   .ai/archive/V7.5/v2/INSTRUCTION_DRAPEAUX_2026-09-06.md.
 	// v47 — AUCUNE VIE PUBLIÉE NE RESTE SANS NOM (2026-09-07). Décision produit : « les vies
 	//   anonymes n'existent pas ; une vie est un humain ou un bot, point ». Une piste sans
 	//   identité est un DÉFAUT du pont, pas une donnée : une passe finale la nomme par
@@ -943,7 +943,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   POURQUOI LA VERSION MONTE : un artefact 36 à 46 est appauvri sans que sa forme le dise.
 	//   44, 45 et 46 sont INTEGRES (manches, durees, drapeaux) : la chronique ci-dessus les
 	//   porte dans l ordre, et aucun numero n est plus reserve.
-	//   Détail : .ai/V7.5/v2/VIES_ANONYMES_2026-09-06.md.
+	//   Détail : .ai/archive/V7.5/v2/VIES_ANONYMES_2026-09-06.md.
 	// v48 — LE PONT CESSE D'ÊTRE MUET SUR LES FILMS QUI DÉMARRENT TARD (2026-09-07). Deux champs
 	//   ajoutés (`bridge.deathOffsetMatched/deathOffsetRunnerUp`), le reste est du CONTENU.
 	//   (1) `bestDeathOffset` cherchait le calage du fil des morts depuis
@@ -963,7 +963,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   (`3372e7eb`, 6 pour 8). La feuille de match le complète quand l'appelant la fournit.
 	//   POURQUOI LA VERSION MONTE : un artefact < 48 porte des pistes non nommées, et sur ces
 	//   cinq films un calque d'objectifs et une courbe de score non recalés faute d'origine.
-	//   Détail : .ai/V7.5/v2/PONT_MUET_2026-09-07.md.
+	//   Détail : .ai/archive/V7.5/v2/PONT_MUET_2026-09-07.md.
 	// v48 -> v49 (2026-09-08, lot M1b, décision utilisateur ferme « corriger le décalage ») :
 	//   bridge.deathOffsetMs, LE CALAGE lui-même (`horlogeFilm = horlogeMatch + deathOffsetMs`),
 	//   déjà calculé à la cuisson (v48 ne publiait que sa MARGE). Champ optionnel, pointeur —
@@ -973,7 +973,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   déclenchée. Le lien « voir dans le rejeu » posé depuis une cellule Tactique (lot M1)
 	//   ouvrait une APPROXIMATION pour 4 questions sur 6 (`morts`/`kills`/`gagne`/`isole`, sur
 	//   l'horloge du MATCH) faute de ce calage publié — cf.
-	//   `.ai/V7.5/DECOUVERTES_TACTIQUE_2026-09-07.md`. Détail : `.ai/V7.5/v2/CHRONIQUE_49_2026-09-08.md`.
+	//   `.ai/archive/V7.5/DECOUVERTES_TACTIQUE_2026-09-07.md`. Détail : `.ai/archive/V7.5/v2/CHRONIQUE_49_2026-09-08.md`.
 	// v49 -> v50 (2026-09-08, lot P2 — REGISTRE D'IDENTITÉ DES JOUEURS) : la section `identity`
 	//   naît (`players`, `bipedSlots`, `statborgSlots`, `coverage`), `roster[].bid` publie
 	//   l'identifiant stable des bots, et LE CONTENU CUIT CHANGE — la règle exige donc le bump,
@@ -993,7 +993,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   (`51ebbc0f` : écart cumulé K/D/A de 9 contre la feuille, un joueur à 0 mort en manche 0).
 	//   POURQUOI LA VERSION MONTE : un artefact < 50 porte des vies anonymes réparables, des
 	//   actions d'objectif manquantes et des manches de joueur non publiées.
-	//   Détail : `.ai/V7.5/v2/RESTES_P2_2026-09-08.md`.
+	//   Détail : `.ai/archive/V7.5/v2/RESTES_P2_2026-09-08.md`.
 	//
 	// v51 (2026-09-10, lot 4.3) : (1) le tableau de l'API nomme les corps dont l'index de
 	//   participant est LU mais hors de `PlayerIndexTable` — `identity.bipedSlots[].bid` naît et
@@ -1020,7 +1020,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   POURQUOI LA VERSION MONTE : un artefact < 52 porte des lancers posés sur le mauvais
 	//   joueur, des vols traversant la carte, et le décor d'une autre carte. `coverage.projectiles`
 	//   s'ajoute au passage — un champ optionnel, qui ne l'aurait pas exigé à lui seul.
-	//   Détail : `document_chronicle.go` et `.ai/V7.5/RAPPORT_LOT_B_DECODEUR_FORK_2026-09-11.md`.
+	//   Détail : `document_chronicle.go` et `.ai/archive/V7.5/RAPPORT_LOT_B_DECODEUR_FORK_2026-09-11.md`.
 	// v53 (2026-09-12, lot B-bis — LE BIT DE TROP PEU DE LA PORTE D'i0). UN changement de
 	//   contenu cuit, sur une seule carte. `decodeWorldObjectPos` écrivait la porte
 	//   d'`object-position-component` en dur à 3 bits (precHigh + index-sel + UN bit d'index de
@@ -1057,7 +1057,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   `coverage.filmMajorVersion` s'ajoute au passage — la version lue voyage desormais AVEC
 	//   l'artefact, au lieu d'exiger une relecture du film. Champ OPTIONNEL : il ne l'aurait pas
 	//   exigé à lui seul, et il sert la mesure par version du lot H.
-	//   Détail : `document_chronicle.go` et `.ai/V7.5/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md`.
+	//   Détail : `document_chronicle.go` et `.ai/archive/V7.5/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md`.
 	// v55 (2026-09-14, lot 1.0.4 — LE REFUS DE PUBLICATION D'UNE VIE CESSE D'ÊTRE MUET).
 	//   `decimateTracks` écarte toute vie dont la trajectoire décimée porte moins de `minPoints`
 	//   échantillons (défaut 2 : une vie d'un seul point n'est pas une trajectoire). Depuis

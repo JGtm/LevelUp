@@ -3,7 +3,7 @@
 package replay
 
 // ground_weapon_pickup_owner_test.go — ITEM 2.5 : L'ORACLE DU RAMASSAGE SUIT LE JOUEUR, PAS LE
-// SLOT DE VIE (plan .ai/V7.5/replay2d/PLAN_ARMES_AU_SOL_2E_LECTURE.md, arbitrage superviseur
+// SLOT DE VIE (plan .ai/archive/V7.5/replay2d/PLAN_ARMES_AU_SOL_2E_LECTURE.md, arbitrage superviseur
 // apres la phase 2).
 //
 // POURQUOI CE FICHIER EXISTE. L'item 2.2 a relu le loadout du MEME slot de bipede que celui du

@@ -1,7 +1,7 @@
 package grammar
 
 // keyframe_biped_bitexact_test.go — INSTRUMENT DU LOT R7-b
-// (cf. .ai/V7.5/replay2d/PLAN_R7B_BIPEDE_IMAGE_CLE_BIT_EXACT.md).
+// (cf. .ai/archive/V7.5/replay2d/PLAN_R7B_BIPEDE_IMAGE_CLE_BIT_EXACT.md).
 //
 // R7-a a tranche la FORME du corps d'un record d'image-cle : c'est un ETAT COMPLET (la
 // concatenation des 64 deserialiseurs leaf consomme 102-104 % de la longueur reelle du

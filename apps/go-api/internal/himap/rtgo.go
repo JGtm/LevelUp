@@ -1,6 +1,6 @@
 // Package himap — rtgo.go : le tag `rtgo` (runtime geo), ou vit la geometrie de rendu.
 //
-// CHAINE (handoff `.ai/V7.5/cartes/HANDOFF_GEOMETRIE_TRIANGLES.md` §1) :
+// CHAINE (handoff `.ai/archive/V7.5/cartes/HANDOFF_GEOMETRIE_TRIANGLES.md` §1) :
 //
 //	instance du sbsp -> RuntimeGeoMeshReference -> tag rtgo -> PerMeshData -> maillages
 //

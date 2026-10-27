@@ -353,19 +353,16 @@ apps/go-api/backfill.log
 tools/ce/*.bin
 tools/ce/*.csv
 
-# .ai/V7.5/dumps/ : seules restent les fixtures lues par des tests (NOTICE par. 4), nommees
-# une a une ; tout le reste est une sortie de recherche ou un extrait du jeu, hors du depot.
-# Les variantes de carte (.mvar) re-telechargeables ne sont pas versionnees : seules trois
-# sont suivies, comme temoins de test. Le resultat extrait est versionne dans
+# .ai/archive/V7.5/dumps/ : sorties de recherche et extraits du jeu, hors du depot (NOTICE par. 4).
+# Les fixtures de test des cartes vivent hors de .ai, sous internal/testfixtures/testdata/cartes/ :
+# le dossier mapvar/ y sert aussi de cache local des variantes (.mvar) re-telechargeables, dont
+# seules trois sont suivies, comme temoins de test. Le resultat extrait est versionne dans
 # data/titles/{slug}/reference/map_objectives.json — c'est lui qui fait foi.
-.ai/V7.5/dumps/*
-!.ai/V7.5/dumps/callout_zones_ridgeline_clipped.json
-!.ai/V7.5/dumps/carte_validee_v1.png
-!.ai/V7.5/dumps/mapvar/
-.ai/V7.5/dumps/mapvar/*
-!.ai/V7.5/dumps/mapvar/cliffhanger_map.mvar
-!.ai/V7.5/dumps/mapvar/cliffhanger_ridgeline.mvar
-!.ai/V7.5/dumps/mapvar/vagabond_fo08_wetland.mvar
+.ai/archive/V7.5/dumps/*
+apps/go-api/internal/testfixtures/testdata/cartes/mapvar/*
+!apps/go-api/internal/testfixtures/testdata/cartes/mapvar/cliffhanger_map.mvar
+!apps/go-api/internal/testfixtures/testdata/cartes/mapvar/cliffhanger_ridgeline.mvar
+!apps/go-api/internal/testfixtures/testdata/cartes/mapvar/vagabond_fo08_wetland.mvar
 
 # Caches Go de build des agents (scratch, jamais versionnes)
 .gocache-*/

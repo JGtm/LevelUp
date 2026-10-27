@@ -1,6 +1,6 @@
 /**
  * TimeseriesPage — onglet « Usages » : L'EMPRISE DU PÉRIMÈTRE SOLO (plan
- * PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05, maquette v4 `.ai/V7.5/MAQUETTE_TIMESERIES_USAGES_2026-10-05.html`).
+ * PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05, maquette v4 `.ai/archive/V7.5/MAQUETTE_TIMESERIES_USAGES_2026-10-05.html`).
  *
  * Mêmes matchs que le reste de la page (fenêtre filtrée, contexte solo), dans l'ordre d'un débrief :
  *

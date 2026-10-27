@@ -19,6 +19,7 @@ import (
 
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/testfixtures"
 	"levelup/go-api/internal/testutil"
 )
 
@@ -83,8 +84,7 @@ func ouvreCorpus(t *testing.T) corpus {
 	}
 	c := corpus{racine: racine, res: res, cat: cat,
 		calage: map[string]*Masque{}, niveau: map[string]float64{}}
-	c.dump = chargeDumpPOC(t, filepath.Join(racine, ".ai", "V7.5", "dumps",
-		"callout_zones_ridgeline_clipped.json"))
+	c.dump = chargeDumpPOC(t, testfixtures.Carte("callout_zones_ridgeline_clipped.json"))
 	for module := range cat.Maps {
 		meta := res.MapBackgroundMetaPath(title.DefaultSlug, module)
 		if _, err := os.Stat(meta); err != nil {
@@ -105,7 +105,7 @@ func ouvreCorpus(t *testing.T) corpus {
 
 func chargeDumpPOC(t *testing.T, path string) map[int]zonePOC {
 	t.Helper()
-	// Fichier VERSIONNÉ (git ls-files confirme .ai/V7.5/dumps/callout_zones_ridgeline_clipped.json)
+	// Fichier VERSIONNÉ (git ls-files confirme internal/testfixtures/testdata/cartes/callout_zones_ridgeline_clipped.json)
 	// : son absence sur un checkout propre est une anomalie, pas un cas nominal — t.Fatalf, pas
 	// t.Skip (un skip aurait rendu cet oracle muet en CI, cf. l'en-tête du fichier).
 	blob, err := os.ReadFile(path)

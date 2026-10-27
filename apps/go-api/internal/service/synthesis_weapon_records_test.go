@@ -1,5 +1,5 @@
 // Package service — synthesis_weapon_records_test.go : la section « Records de distance par
-// arme » vue du service (plan .ai/V7.5/PLAN_RECORDS_DISTANCE_2026-09-20.md).
+// arme » vue du service (plan .ai/archive/V7.5/PLAN_RECORDS_DISTANCE_2026-09-20.md).
 //
 // Ce que ces tests verrouillent :
 //

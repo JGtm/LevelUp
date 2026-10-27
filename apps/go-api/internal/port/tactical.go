@@ -54,7 +54,7 @@ type TacticalService interface {
 	Sequence(ctx context.Context, req domain.TacticalSequenceRequest) (domain.TacticalSequence, error)
 }
 
-// TacticalRepository — onglet Tactique (plan .ai/V7.5/PLAN_TACTIQUE_2026-09-06.md,
+// TacticalRepository — onglet Tactique (plan .ai/archive/V7.5/PLAN_TACTIQUE_2026-09-06.md,
 // phase 2) : les trois lectures de base d'une analyse de placement par CARTE.
 // Implémenté par platform/duckdb.TacticalRepo.
 //

@@ -498,7 +498,7 @@ go run ./cmd/weapon-icons-table                      # derive la table Go depuis
 - À rejouer : après une mise à jour de contenu qui fait grandir les tables (build) ; après
   chaque exécution de `weapon-icons-build`, pour garder la table à jour (table).
 - Chaîne complète, tables de correspondance et pistes réfutées :
-  `.ai/V7.5/icones/ETAT_DE_L_ART_ICONES.md`.
+  `.ai/archive/V7.5/icones/ETAT_DE_L_ART_ICONES.md`.
 
 #### mapquant-build
 
@@ -609,7 +609,7 @@ go run ./cmd/mapopads-build --from <dossier> --refresh-drifted   # re-valide con
 - Sortie : `data/titles/{slug}/reference/map_weapon_pads.json` (socles d'arme et de
   power-up), écriture atomique via le même helper `mapcatalog.WriteAtomic` que le chemin de
   rattrapage Forge de la synchro écrit dans ce même fichier
-  (`.ai/V7.5/v2/PLAN_V2_REJEU_FILM_2026-09-05.md` item A.3 — suivi séparément, hors de cette chaîne).
+  (`.ai/archive/V7.5/v2/PLAN_V2_REJEU_FILM_2026-09-05.md` item A.3 — suivi séparément, hors de cette chaîne).
 - Prérequis : ni jeu installé, ni réseau, ni cgo ; exige `map_objectives.json` (lien map_id ->
   nom de fichier) et un dépôt local de `.mvar` (`--from`).
 - À rejouer : `--refresh-drifted` — le `.mvar` d'une carte UGC ne concorde plus avec le
@@ -669,7 +669,7 @@ go run ./cmd/mapnav-fetch -map-id <uuid> [-map-id <uuid>...] [-dry-run]
 CLI à sous-commandes (`inventaire`/`render`/`variantes`/`diag`/`assemble`/`compose2d`), pas
 une invocation unique. Fragment vérifié de la recette derrière le jeu actuel (couvre 13 des
 18 véhicules ; des passes ultérieures ont ajouté le reste — vérifier
-`.ai/V7.5/film_re/*.md` pour l'état courant avant de rejouer) :
+`.ai/archive/V7.5/film_re/*.md` pour l'état courant avant de rejouer) :
 
 ```bash
 go build -o v4tool.exe ./cmd/vehicle-sprite
@@ -683,7 +683,7 @@ v4tool.exe render -variant=any -cote=256 -out=<dir> \
   le `PathResolver` — les chemins sont de simples flags `-out`/`-curate`.
 - Prérequis : jeu installé, cgo/GPLv3 (jamais lié dans `cmd/server`) ; aucun réseau.
 - À rejouer : un nouveau véhicule pilotable sort. Recette complète :
-  `.ai/V7.5/film_re/V4_RAPPORT_SPRITES_2026-08-31.md` §9 et les notes suivantes du même
+  `.ai/archive/V7.5/film_re/V4_RAPPORT_SPRITES_2026-08-31.md` §9 et les notes suivantes du même
   dossier.
 
 #### weapon-sounds (mode `livrer`, dernière étape d'une recette plus large)
@@ -701,7 +701,7 @@ go run ./cmd/weapon-sounds -mode livrer -donnees <chantier>/_donnees [-sons <cha
   `cmd/weapon-sounds` importe `internal/himap` -> `internal/himodule` -> `internal/ooz`
   (décompression Kraken) pour ses autres modes.
 - À rejouer : un vote d'arme est finalisé, ou la recette complète est rejouée (mise à jour du
-  jeu, nouvelle arme). Recette complète : `.ai/V7.5/RECETTE_SONS_ARMES.md`.
+  jeu, nouvelle arme). Recette complète : `.ai/archive/V7.5/RECETTE_SONS_ARMES.md`.
 
 ### Médias
 
@@ -967,7 +967,7 @@ celui qui la tape a déjà décidé où il construit, sur sa machine, avec ses f
 ### Rejeu 2D — outillage de construction (faits, équivalence, profils)
 
 Outils d'opérateur de la chaîne de construction des artefacts (« cuisson » dans le plan
-`.ai/V7.5/PLAN_CUISSON_PERF.md`). Ils lisent le cache local de films ; les deux outils hors ligne
+`.ai/archive/V7.5/PLAN_CUISSON_PERF.md`). Ils lisent le cache local de films ; les deux outils hors ligne
 n'ont besoin d'aucune base et décodent un film par processus enfant borné (plafond mémoire dur,
 priorité CPU basse, verrou solo).
 
@@ -1013,7 +1013,7 @@ références au lieu de les comparer — pour une correction déclarée seulemen
 (divergence des grammaires de découpage sur tout le cache de films) a été **retiré** en 2026-09 :
 il portait en copie trois marcheurs de paquets historiques dont les originaux n'existent plus, il
 ne se comparait donc plus qu'à lui-même. Sa mesure reste figée au §2 de
-`.ai/V7.5/MESURES_CUISSON_PERF.md` et rejouée en CI par le test de la mini-bobine de
+`.ai/archive/V7.5/MESURES_CUISSON_PERF.md` et rejouée en CI par le test de la mini-bobine de
 `internal/analysis/filmsource`.
 
 ```bash
@@ -1171,7 +1171,7 @@ pouvait le voir : le corpus ne terminait jamais, et la CI ne l’exécute pas. C
 Trois régressions de données (28/08, 30/08, 02/09 — pont d'identité par manche, actions de
 drapeau non attribuées, « une piste = une vie ») ont traversé des goldens SYNTHÉTIQUES verts
 pendant dix-neuf schémas, faute d'un différentiel sur des films réels. `cmd/replay-diff` (déjà
-utilisé pour le balayage ponctuel du parc, `.ai/V7.5/v2/BALAYAGE_PARC_2026-09-06.md`) devient ici
+utilisé pour le balayage ponctuel du parc, `.ai/archive/V7.5/v2/BALAYAGE_PARC_2026-09-06.md`) devient ici
 un gate répétable : `config/replay_corpus.toml` fige un film témoin par famille de mode (CTF
 mono- et multi-manche, Oddball, Assaut, Slayer, un match à deux manches, un match riche en
 véhicules), chacun choisi parce qu'il porte déjà un calque ou un défaut mesuré (portages de
@@ -1318,7 +1318,7 @@ de base) ne lit que des catalogues versionnés (`data/titles/{slug}/reference`),
 corpus `gamefiles` ci-dessus — le gate n'en partage que l'ESPRIT (une ressource locale
 volumineuse, absente en CI, qui dégrade proprement plutôt que d'échouer). Mesuré le
 2026-09-06/07 sur le manifeste à 7 témoins, dans les deux modes : **cf.
-`.ai/V7.5/v2/CORPUS_TEMOIN_2026-09-06.md`** pour l'exécution exacte et sa durée.
+`.ai/archive/V7.5/v2/CORPUS_TEMOIN_2026-09-06.md`** pour l'exécution exacte et sa durée.
 
 Si le parc local est plus ancien que le HEAD, les écarts attendus en `--reference=parc` sont des
 GAINS (calques neufs, correctifs documentés) ; toute PERTE est un fait à rapporter, jamais à
@@ -1330,7 +1330,7 @@ masquer en resserrant le manifeste ou en filtrant le rapport.
 Juge un artefact de rejeu APRÈS contre un artefact AVANT du même témoin, contre des ORACLES (les
 vérités officielles du match) et par des COMPTES DE VIOLATIONS (ce qu'aucun match réel ne peut
 contenir), au lieu d'attribuer à la main des centaines de métriques de couverture. Conception :
-`.ai/V7.5/film_re/BANC_DE_VERITE_CONCEPTION_2026-09-30.md` ; bibliothèque : `internal/replayverite`.
+`.ai/archive/V7.5/film_re/BANC_DE_VERITE_CONCEPTION_2026-09-30.md` ; bibliothèque : `internal/replayverite`.
 Il ne cuit rien, ne décode aucun film et n'ouvre aucune base.
 
 ```bash

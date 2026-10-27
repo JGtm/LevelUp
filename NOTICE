@@ -42,7 +42,7 @@ The following additional terms apply under section 7 of the AGPL:
 -----------------------------
 
 The prose written for this project - the files under docs/ and the research write-ups
-under .ai/V7.5/ (Markdown) - is licensed under Creative Commons Attribution 4.0
+under .ai/archive/V7.5/ (Markdown) - is licensed under Creative Commons Attribution 4.0
 International (CC BY 4.0). The full text is in LICENSE-DOCS. Reuse requires crediting
 "LevelUp by JGtm (Guillaume Sitbon)" with a link to the repository.
 
@@ -75,13 +75,14 @@ lets them reuse:
     apps/web/public/titles/ (Halo 5 emblems and nameplates), and the reference
     images under data/titles/.
   - Test fixtures that carry game content, kept in the tree only because tests read
-    them: three map variants (.ai/V7.5/dumps/mapvar/cliffhanger_map.mvar,
+    them: three map variants (apps/go-api/internal/testfixtures/testdata/cartes/mapvar/cliffhanger_map.mvar,
     cliffhanger_ridgeline.mvar, vagabond_fo08_wetland.mvar), the reference map image
-    .ai/V7.5/dumps/carte_validee_v1.png and the callout zones dump
-    .ai/V7.5/dumps/callout_zones_ridgeline_clipped.json. The content is Microsoft's;
+    apps/go-api/internal/testfixtures/testdata/cartes/carte_validee_v1.png and the callout
+    zones dump apps/go-api/internal/testfixtures/testdata/cartes/callout_zones_ridgeline_clipped.json.
+    The content is Microsoft's;
     it is kept for the tests and is not licensed for any other use.
   - Removed from the tree on 2026-10-22: the captures of the game's memory and the
-    other research outputs under .ai/V7.5/dumps/, and the *.bin captures under
+    other research outputs under .ai/archive/V7.5/dumps/, and the *.bin captures under
     tools/ce/. They are ignored by .gitignore and live outside the repository, as does
     decompiler output (removed on 2026-10-16). The Cheat Engine scripts written for
     this project (tools/ce/*.lua) stay. Removal from the tree does not remove

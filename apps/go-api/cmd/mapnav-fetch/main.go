@@ -1,7 +1,7 @@
 // cmd/mapnav-fetch — rapatrie les `navmesh.blob` des cartes Forge.
 //
 // POURQUOI CETTE COMMANDE EXISTE. Le maillage de navigation d'une carte Forge est ce qui rend
-// son fond lisible (`.ai/V7.5/cartes/NAVMESH_FORGE_2026-08-27.md`) : il sert de reference
+// son fond lisible (`.ai/archive/V7.5/cartes/NAVMESH_FORGE_2026-08-27.md`) : il sert de reference
 // d'altitude et il borne le terrain joue. Il n'est PAS dans l'installation du jeu — il est
 // publie a cote de la variante, dans l'asset UGC. Sans lui, la cuisson d'une carte organique
 // retombe sur une reference interpolee depuis une vingtaine d'ancres, et l'image reste illisible.

@@ -5,7 +5,7 @@ package domain
 // POURQUOI UN TYPE DISTINCT DE MatchFacts. `MatchFacts` est une ENTREE de la cuisson : le triplet
 // (frags, morts, assistances) apparie les slots, `teamScores` rattache les camps. Tout ce qu'il
 // porte peut donc etre CIRCULAIRE pour un banc qui juge l'artefact (cf.
-// .ai/V7.5/film_re/BANC_DE_VERITE_CONCEPTION_2026-09-30.md §0). `MatchOracle` porte l'inverse :
+// .ai/archive/V7.5/film_re/BANC_DE_VERITE_CONCEPTION_2026-09-30.md §0). `MatchOracle` porte l'inverse :
 // des verites officielles que la cuisson n'a JAMAIS vues, et qu'elle ne doit pas voir — les
 // ajouter a `MatchFacts` changerait la cle de cuisson et les digests d'equivalence sans rien
 // changer a l'artefact (decision D-2 du banc de verite).

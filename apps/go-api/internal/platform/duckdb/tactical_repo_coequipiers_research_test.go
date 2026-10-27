@@ -3,7 +3,7 @@
 package duckdb
 
 // tactical_repo_coequipiers_research_test.go — LES QUATRE SONDES DU LOT L2.0 du plan
-// `.ai/V7.5/PLAN_TACTIQUE_COEQUIPIERS_2026-10-14.md`, qui fixent ce que « coequipier » et « vengeur »
+// `.ai/archive/V7.5/PLAN_TACTIQUE_COEQUIPIERS_2026-10-14.md`, qui fixent ce que « coequipier » et « vengeur »
 // veulent dire pour un BOT :
 //
 //	1. des bots dans match_participants ? (xuid vide ou NULL) et avec quelle equipe ;

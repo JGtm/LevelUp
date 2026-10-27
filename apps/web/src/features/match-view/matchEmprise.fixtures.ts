@@ -1,6 +1,6 @@
 /**
  * matchEmprise.fixtures.ts — LES DEUX TÉMOINS de la Vue match aux formes de l'Emprise, réduits à ce
- * que lisent les cartes (`.ai/V7.5/MESURES_MATCHVIEW_2026-10-06.md`, §3) :
+ * que lisent les cartes (`.ai/archive/V7.5/MESURES_MATCHVIEW_2026-10-06.md`, §3) :
  *   - `STARBOARD` (22/09, Drapeau à Starboard, 4 contre 4, journal des morts publiable) : bonus 5–2
  *     (Surbouclier, 10 socles vidés), armes spéciales 0–2 (Épée à énergie), râteliers 4–3 (Fusil
  *     électrique 2–2, VK78 Commando 2–0, CQS48 Bulldog 0–1) ; fiches JGtm, XL JACOB, Madina97294,

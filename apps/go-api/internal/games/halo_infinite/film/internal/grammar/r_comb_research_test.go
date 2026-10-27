@@ -8,7 +8,7 @@ package grammar
 // fichier de production n est touche, aucune sortie ne change, `grammar.Rev` ne bouge pas.
 //
 // CE FICHIER EXIGE LA SURCOUCHE DE RECHERCHE (tag `campagne_overlay`) : copie des mesures bis 2
-// dans `.ai/V7.5/film_re/campagne_grammaire_2026-10-01/r_comb_overlay/` (fichiers identiques a
+// dans `.ai/archive/V7.5/film_re/campagne_grammaire_2026-10-01/r_comb_overlay/` (fichiers identiques a
 // l octet a `mesures_bis2_overlay/`, `overlay.json` reecrit sur ce worktree).
 //
 // Les leviers (chacun est la MEME copie de recherche que sa mesure separee) :

@@ -78,7 +78,7 @@ sans portée de radar connue), `carrier_ms`, `team_down_ms`, `unplaced_ms`,
 `teammate_unplaced_ms` (cumuls des causes d'exclusion, grille de 100 ms bornes incluses),
 `kills` (frags publiables contre l'autre camp rattachés à la vie).
 **Lecture : vue `match_life_placement_latest` UNIQUEMENT** (dernière passe ENTIÈRE par match,
-`decode_pass`). Plan : `.ai/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md`.
+`decode_pass`). Plan : `.ai/archive/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md`.
 
 ### match_death_mates — état et position de chaque coéquipier à l'instant d'une mort (append-only, 2026-10-14)
 Écrite AU REJEU DES FILMS par la passe d'isolement (`sync/killcollector/isolation_facts.go`,
@@ -103,7 +103,7 @@ bots n'y figurent pas (équipes indexées par xuid). Le nom vient de `match_part
 `Deriver`, gate `film.vehicle_usage`) et par `levelup backfill-vehicle-takes`, depuis le calque
 véhicules de l'artefact (`vehicles[].rides[]`, schéma >= 67, projection pure
 `replay.ProjectVehicleTakes`). Persister `persist/vehicle_takes_persister.go` (INSERT-only, une
-transaction par passe). Plan : `.ai/V7.5/PLAN_EMPRISE_VEHICULES_2026-09-28.md`.
+transaction par passe). Plan : `.ai/archive/V7.5/PLAN_EMPRISE_VEHICULES_2026-09-28.md`.
 Deux natures de ligne (`row_kind`) dans UNE passe (`decode_pass`) :
 - `take` : une ligne par `(camp, xuid, family)` — `takes` (D2), `aboard_ms` (D4), `episodes`, dont
   `proximity_episodes`, `frags` = frags de classe engin (véhicule/tourelle) tombés PENDANT un

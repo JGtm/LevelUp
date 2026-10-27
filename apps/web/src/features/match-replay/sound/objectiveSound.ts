@@ -7,7 +7,7 @@
  * STATISTIQUE que `doc.objectives` publie.
  *
  * D'OÙ VIENNENT CES SONS. De la RE du 2026-08-26
- * (`.ai/V7.5/RE_BANQUES_SONORES_NOMMEES_2026-08-26.md`) : l'identifiant Wwise d'une banque est
+ * (`.ai/archive/V7.5/RE_BANQUES_SONORES_NOMMEES_2026-08-26.md`) : l'identifiant Wwise d'une banque est
  * le FNV-1 de son nom de fichier en minuscules, ce qui a permis de NOMMER la banque du mode
  * (`sb_004_mod_mp_ctf`), puis ses événements par la même voie
  * (`play_004_mod_mp_ctf_flag_scored_team`), puis de reconstruire chaque geste couche par

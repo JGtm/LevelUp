@@ -1,7 +1,7 @@
 package grammar
 
 // emp_timer.go — LE MINUTEUR EMP DU BIPÈDE (i51), publié le 2026-08-24 pour l'item 0.5 du
-// plan .ai/V7.5/replay2d/PLAN_CAPACITES_ACTIVES.md.
+// plan .ai/archive/V7.5/replay2d/PLAN_CAPACITES_ACTIVES.md.
 //
 // POURQUOI CE COMPOSANT-LÀ. L'item 0.4 cherche un canal DÉDIÉ à l'usage du répulseur et du
 // propulseur dans `i56` (l'énergie de capacité) ; `i51` est le candidat SECONDAIRE, désigné

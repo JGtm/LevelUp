@@ -3,7 +3,7 @@
 package grammar
 
 // i57_handle_test.go — INSTRUMENT DE MESURE de la PHASE C du plan
-// .ai/V7.5/replay2d/PLAN_ETAT_ACTIF_EQUIPEMENT.md : les DÉPLOYABLES (mur rang 19,
+// .ai/archive/V7.5/replay2d/PLAN_ETAT_ACTIF_EQUIPEMENT.md : les DÉPLOYABLES (mur rang 19,
 // capteur rang 22 — relevé Theater du 27/07) — trois signaux datés à croiser.
 //
 // C.1 — publier la branche v==1 d'i57 par hook (observateur.SpartanAbilityHook) : tag R(2), R(2)

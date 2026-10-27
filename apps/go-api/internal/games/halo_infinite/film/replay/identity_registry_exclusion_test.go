@@ -12,7 +12,7 @@ import (
 // identity_registry_exclusion_test.go — LES PROPRIETES DE L'EXCLUSION TEMPORELLE.
 //
 // Chaque test porte une regle, et chacune a sa MUTATION jouee au journal du lot P2-bis
-// (`.ai/V7.5/v2/RESTES_P2_2026-09-08.md` §B). Aucune valeur figee : des proprietes.
+// (`.ai/archive/V7.5/v2/RESTES_P2_2026-09-08.md` §B). Aucune valeur figee : des proprietes.
 
 // sejour ajoute a `pos` les positions d'un sejour continu [debutS, finS] sur un slot, une
 // position toutes les 500 ms — bien en deca de `lifeGapUS`, donc un seul sejour.

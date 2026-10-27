@@ -2,7 +2,7 @@ package replay
 
 // vip_v0_qualification_test.go — LOT RESOLUTION, PHASE V0 : LA QUALIFICATION DU CORPUS VIP.
 //
-// LE PROTOCOLE EST COMMITE AVANT CE FICHIER (`.ai/V7.5/PROTOCOLE_RESOLUTION_VIP_ASSAUT.md`,
+// LE PROTOCOLE EST COMMITE AVANT CE FICHIER (`.ai/archive/V7.5/PROTOCOLE_RESOLUTION_VIP_ASSAUT.md`,
 // section R2, et `PROTOCOLE_REMESURE_ODDBALL_VIP.md` §0.2/§3). Deux questions par film,
 // aucune supposee — meme discipline qu'A0.2 (Assaut), sans la question des sites (le VIP n'a
 // pas d'objet porte au sol) :

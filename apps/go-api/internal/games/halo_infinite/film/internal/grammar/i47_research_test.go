@@ -4,10 +4,10 @@ package grammar
 
 // i47_research_test.go — INSTRUMENT DE MESURE de la GRENADE SÉLECTIONNÉE (i47) dans les
 // records de biped des images-clés (lot portage POC, phase A.1 —
-// .ai/V7.5/replay2d/PLAN_PORTAGE_POC_FICHES_KILLFEED.md).
+// .ai/archive/V7.5/replay2d/PLAN_PORTAGE_POC_FICHES_KILLFEED.md).
 //
 // CE QU'IL CHERCHE. La grammaire d'i47 est ÉTABLIE par la capture du dispatch
-// (.ai/V7.5/replay2d/RECETTE_LOADOUT_2026-07-27.md §1) : 9 bits, [6 bits masque][3 bits
+// (.ai/archive/V7.5/replay2d/RECETTE_LOADOUT_2026-07-27.md §1) : 9 bits, [6 bits masque][3 bits
 // sélection], le masque étant EXACTEMENT le bitmap des compteurs i22 non nuls et la sélection
 // l'index en base 1 (accord i22↔i47 : 194/194 au dispatch). Ce qui MANQUE est sa POSITION dans
 // le record d'image-clé — le POC ne l'a jamais localisé (ses 98 sélections affichées viennent

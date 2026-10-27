@@ -5,7 +5,7 @@ package grammar
 // mouvement_5_26_handlers_research_test.go — LES TROIS HANDLERS QUE LE DEPOT NE LIT PAS
 // (types 6, 0xb, 0xc) : RECENSEMENT, POSITION ET CONTENU (lot 5.26.1, mesure seule).
 //
-// CE QUE L ECRIVAIN DIT (Ghidra, lecture seule, `.ai/V7.5/film_re/NOTE_5_26_*`) :
+// CE QUE L ECRIVAIN DIT (Ghidra, lecture seule, `.ai/archive/V7.5/film_re/NOTE_5_26_*`) :
 //
 //	type 6   `FUN_142988084` : lit le bloc entier (`FUN_142988338`, taille = en-tete + 4), pose un
 //	         lecteur de bits (`FUN_1424c7b4c`, `FUN_1406d5cc0(.,3)` a zero bit) et lit R(32) ;

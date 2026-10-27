@@ -60,7 +60,7 @@ func zonesDuCatalogue(t *testing.T, module string) []tactical.ZoneNommee {
 
 // TestNommerZone_TemoinsDuCatalogueReel — les deux témoins du plan (D26). Les hauteurs sont celles
 // des morts de la cellule la plus chaude (« Morts », « Moi ») relevées dans les données de la
-// maquette (`.ai/V7.5/MAQUETTE_TACTIQUE_2026-10-06.html`, `VM.witness`, face victime), arrondies
+// maquette (`.ai/archive/V7.5/MAQUETTE_TACTIQUE_2026-10-06.html`, `VM.witness`, face victime), arrondies
 // au centimètre par la maquette.
 func TestNommerZone_TemoinsDuCatalogueReel(t *testing.T) {
 	// Illusion, cellule (−7, 2) à 2 m : centre (−13, 5), 11 morts, z médian 2,90 m. Aucun

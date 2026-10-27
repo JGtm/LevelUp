@@ -315,7 +315,7 @@ func applyMSRViewPriorityCSR(db *sql.DB) error {
 // replay d'août (written_at postérieur) mais y survivent ; la vue par type ne sert que
 // la plus récente de chaque (match_id, rating_type) et les masque donc, sans jamais
 // arbitrer un type contre un autre (rapport
-// .ai/V7.5/RAPPORT_VOLET1_LUSR_H5_2026-08-28.md §6.2 ; ADR 0026, règle ART n°2).
+// .ai/archive/V7.5/RAPPORT_VOLET1_LUSR_H5_2026-08-28.md §6.2 ; ADR 0026, règle ART n°2).
 //
 // Idempotent (CREATE OR REPLACE VIEW) et gardé par la présence de la colonne `id` :
 // sur une base antérieure à la conversion append-only, written_at/id n'existent pas.

@@ -3,7 +3,7 @@
 package grammar
 
 // i54_research_test.go — INSTRUMENT DE MESURE de l'item 1.4 du plan
-// .ai/V7.5/replay2d/PLAN_PARITE_REJEU_2D.md (lot 1, investigation bornée) : les
+// .ai/archive/V7.5/replay2d/PLAN_PARITE_REJEU_2D.md (lot 1, investigation bornée) : les
 // évènements du composant i54 « biped-mobility-action » donnent-ils un USAGE DATÉ DE
 // CAPACITÉ (équipement actif : surbouclier, camouflage, translocateur — décision
 // produit 3 du plan), 100 % offline, sur le film témoin 000d5950 ?

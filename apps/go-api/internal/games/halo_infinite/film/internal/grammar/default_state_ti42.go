@@ -4,7 +4,7 @@ package grammar
 // bit a bit depuis `FUN_1407f0c68`.
 //
 // CHAINE DE RESOLUTION (celle de default_state_arch.go, rejouee pour ti=42 par le lot R5 et
-// consignee dans .ai/V7.5/killweapon/WALK_PORT_NOTES.md § IMAGE-CLE §4) :
+// consignee dans .ai/archive/V7.5/killweapon/WALK_PORT_NOTES.md § IMAGE-CLE §4) :
 //
 //	FUN_140e453b4 (registrar) -> FUN_140e45fc4(world, 0x2a, &PTR_PTR_144701780) @0x140e4578f
 //	xref [WRITE] sur 0x144701780 -> FUN_1403721d0 : PTR_PTR_144701780 = &PTR_LAB_1436fd790
@@ -31,7 +31,7 @@ package grammar
 // recopie pas : une seconde copie re-divergerait au premier correctif (regle des 2 copies).
 //
 // CE QUE LES POINTS 3, 4 ET 5 NE SONT PAS — MESURE DU 2026-09-10, LOT 6.6
-// (`.ai/V7.5/RAPPORT_MUNITIONS_OBJET_2026-09-10.md`). La question posee etait « les MUNITIONS de
+// (`.ai/archive/V7.5/RAPPORT_MUNITIONS_OBJET_2026-09-10.md`). La question posee etait « les MUNITIONS de
 // l'arme lachee sont-elles sur l'objet ? ». Les trois feuilles ont ete instrumentees et
 // confrontees, sur 61 films d'arene et 9 219 objets laches apparies, a la derniere lecture
 // d'inventaire du lacheur :

@@ -2,7 +2,7 @@ package replay
 
 // totalcontrol_instant_d3ter_test.go — D3-ter, VERROU 2 : « EXACTEMENT 3 » MESURE EN GLISSANT.
 //
-// LE PROTOCOLE EST ECRIT ET COMMITE AVANT CE FICHIER (`.ai/V7.5/PLAN_OBJECTIFS_ETAT_VIVANT_
+// LE PROTOCOLE EST ECRIT ET COMMITE AVANT CE FICHIER (`.ai/archive/V7.5/PLAN_OBJECTIFS_ETAT_VIVANT_
 // 2026-08.md`, section « D3-ter, VERROU 2 »). Ce qui suit l'applique, il ne le decide pas.
 //
 // # CE QUE CETTE MESURE CORRIGE DE D3-BIS

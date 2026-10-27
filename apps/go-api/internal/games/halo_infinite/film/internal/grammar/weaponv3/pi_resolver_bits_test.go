@@ -1,7 +1,7 @@
 package weaponv3
 
 // pi_resolver_bits_test.go — TEST DIFFERENTIEL de la lecture de bits du resolveur
-// xuid -> player_index (decision D6 du plan `.ai/V7.5/PLAN_CUISSON_PERF.md`).
+// xuid -> player_index (decision D6 du plan `.ai/archive/V7.5/PLAN_CUISSON_PERF.md`).
 //
 // IL RESTE ICI APRES LE LOT 2.4.2, ET C EST DELIBERE : les deux primitives ont descendu dans la
 // couche source ([source.BitsTolerants], [source.ChercherMotif64]), mais la propriete

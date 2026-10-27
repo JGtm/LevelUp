@@ -1,7 +1,7 @@
 package grammar
 
 // ti47_annonces_valeurs_test.go — LES RAPPORTS DE VALEUR de l'instrument ti=47 (phase 1, item
-// 1.1 du plan `.ai/V7.5/replay2d/PLAN_TI47_ANNONCES_ZONE.md`) : cardinalite, profil de bits,
+// 1.1 du plan `.ai/archive/V7.5/replay2d/PLAN_TI47_ANNONCES_ZONE.md`) : cardinalite, profil de bits,
 // structure temporelle, rythme par slot. La confrontation aux oracles est dans
 // `ti47_annonces_oracle_test.go`.
 //

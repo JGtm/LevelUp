@@ -1,6 +1,6 @@
 /**
  * weaponSoundVariations.ts — GENERE PAR `weapon-sounds -mode livrer` (cmd/weapon-sounds,
- * recette `.ai/V7.5/RECETTE_SONS_ARMES.md`), NE PAS EDITER A LA MAIN : toute reprise
+ * recette `.ai/archive/V7.5/RECETTE_SONS_ARMES.md`), NE PAS EDITER A LA MAIN : toute reprise
  * rejoue la recette et reecrit ce fichier avec les sons.
  *
  * Les fourchettes RANGED extraites des banks Wwise du jeu, par stem d'arme : ce que le

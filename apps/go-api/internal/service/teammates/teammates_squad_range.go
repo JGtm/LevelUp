@@ -1,5 +1,5 @@
 // Package teammates — teammates_squad_range.go : LES ROLES DE PORTEE de la page Escouade
-// (plan .ai/V7.5/PLAN_AJUSTEMENTS_SUPP_PRE_V75_2026-09-21.md, lot N2, decision D22-5).
+// (plan .ai/archive/V7.5/PLAN_AJUSTEMENTS_SUPP_PRE_V75_2026-09-21.md, lot N2, decision D22-5).
 //
 // ─── UN PROFIL PAR MATCH, PAS UN AGREGAT DE PERIODE ────────────────────────────────────
 //

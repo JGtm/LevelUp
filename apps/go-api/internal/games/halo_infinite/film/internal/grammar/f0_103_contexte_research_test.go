@@ -2,7 +2,7 @@
 
 package grammar
 
-// f0_103_contexte_research_test.go — LOT F.0 (plan .ai/V7.5/PLAN_FINITIONS_2026-09-13.md) :
+// f0_103_contexte_research_test.go — LOT F.0 (plan .ai/archive/V7.5/PLAN_FINITIONS_2026-09-13.md) :
 // LE CONTEXTE DE MESURE du type 103 `EquipmentSpawnedObject`.
 //
 // # LA QUESTION DU LOT

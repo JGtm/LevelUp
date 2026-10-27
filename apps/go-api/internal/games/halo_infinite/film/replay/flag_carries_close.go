@@ -95,7 +95,7 @@ func flagCloseAt(r *flagCarryRaw, at int64, by flagCloser) {
 // porteur-la, et le faire clore serait une regression.
 //
 // LE DESACCORD ENTRE `t1` ET L'ETAT PUBLIE EST CONSIGNE, PAS TRAITE (decouverte de la revue 6.R,
-// rapport `.ai/V7.5/REVUE_VAGUE6_2026-09-11.md`) : la borne bouge sans que la publication la
+// rapport `.ai/archive/V7.5/REVUE_VAGUE6_2026-09-11.md`) : la borne bouge sans que la publication la
 // suive. Le trancher demande de qualifier ce que `flag_carriers_killed` date vraiment quand
 // plusieurs portages se succedent — un sujet de mesure, pas de refactorisation.
 func (c flagCloser) ferme() bool { return c != flagCloserCarrierKill }

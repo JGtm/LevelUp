@@ -1,7 +1,7 @@
 package replay
 
 // ground_weapon_flag_exclusion_test.go — LE GARDE-RAIL DE LA DECISION 1 du plan
-// `.ai/V7.5/replay2d/PLAN_DRAPEAU_OBJET.md` : un objet d'objectif du manifeste ne fait JAMAIS
+// `.ai/archive/V7.5/replay2d/PLAN_DRAPEAU_OBJET.md` : un objet d'objectif du manifeste ne fait JAMAIS
 // un socle d'arme.
 //
 // POURQUOI UN GARDE-RAIL PLUTOT QU'UN COMMENTAIRE. Le drapeau etait deja ecarte AVANT ce lot,

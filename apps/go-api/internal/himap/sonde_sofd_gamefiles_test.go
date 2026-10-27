@@ -2,7 +2,7 @@
 
 package himap
 
-// SONDE (2026-08-18, plan .ai/V7.5/replay2d/PLAN_NOMMAGE_EQIP_TRANSLOCATEUR.md phase 0) —
+// SONDE (2026-08-18, plan .ai/archive/V7.5/replay2d/PLAN_NOMMAGE_EQIP_TRANSLOCATEUR.md phase 0) —
 // NOMMER les objets d'equipement `ti=37` PAR LA STRUCTURE DU JEU, sans statistique.
 //
 // LA CHAINE, telle que la mesure l'a rendue — et elle CORRIGE le plan. Le plan annoncait

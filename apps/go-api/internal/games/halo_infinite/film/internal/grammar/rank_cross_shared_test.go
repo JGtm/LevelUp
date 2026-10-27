@@ -2,7 +2,7 @@ package grammar
 
 // rank_cross_shared_test.go — LE TABLEAU D'EXCLUSIVITÉ PAR RANG, partagé par les
 // instruments qui cherchent un canal DÉDIÉ à une capacité (item 0.4 et 0.5 du plan
-// .ai/V7.5/replay2d/PLAN_CAPACITES_ACTIVES.md).
+// .ai/archive/V7.5/replay2d/PLAN_CAPACITES_ACTIVES.md).
 //
 // POURQUOI IL EST ICI ET PAS RECOPIÉ. Deux canaux sont interrogés avec EXACTEMENT le même
 // protocole — `i56` (énergie de capacité, chutes de charge) et `i51` (minuteur EMP,

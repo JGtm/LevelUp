@@ -23,7 +23,7 @@ package archlint
 //
 // « Laisser les deux facades telles quelles, avec un ratchet. » La reduction de la facade (166) et
 // de la surface compagnon (257) est NON RETENUE — ce n est plus un report, c est une decision, et
-// elle est consignee au §1.4 du plan `.ai/V7.5/PLAN_DECODEUR_FILM_2026-09-13.md` ainsi qu a l ADR 0034
+// elle est consignee au §1.4 du plan `.ai/archive/V7.5/PLAN_DECODEUR_FILM_2026-09-13.md` ainsi qu a l ADR 0034
 // (annexe `docs/adr/0034-annex-history.md`, section « State reached at M4 », D-1). CONSEQUENCE POUR CE FICHIER : il n est plus la mesure
 // d entree d un lot a venir, il est LA SEULE CHOSE qui tient la ligne — d ou la phrase
 // [exigenceDeJustificationDatee] dans ses trois messages d erreur.
@@ -318,7 +318,7 @@ const plafondSurfaceFacade = 179 // 2026-10-02 — retrait des replis nuls (DU-7
 //	                                           UN symbole neuf, re-mesure sur la base `e3e322b74` :
 //	                                           277.
 //	291  emprise-vies V1 (2026-09-28)           +13, le placement des vies et les porteurs lus au
-//	                                           sync (plan `.ai/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md`).
+//	                                           sync (plan `.ai/archive/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md`).
 //	                                           HUIT par `replaybuild`, qui appelle desormais le pont
 //	                                           par manche, les gardes de mode et les entrees des
 //	                                           calques de porteur DEPLACES dans `replay` pour que

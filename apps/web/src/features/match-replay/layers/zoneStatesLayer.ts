@@ -26,7 +26,7 @@
  * garde le trait faible du calque statique, et paraît estompée sous celles qui sont tenues.
  *
  * LA PROGRESSION SE LIT SUR LA FORME, PLUS AUTOUR (2026-08-25, item D-R du plan
- * `.ai/V7.5/PLAN_OBJECTIFS_ETAT_VIVANT_2026-08.md`). Jusqu'ici la jauge était un ARC tracé HORS
+ * `.ai/archive/V7.5/PLAN_OBJECTIFS_ETAT_VIVANT_2026-08.md`). Jusqu'ici la jauge était un ARC tracé HORS
  * de la zone, à un rayon dérivé de sa plus grande demi-dimension. Deux défauts, et le second
  * est le vrai : l'arc parlait d'une base sans la toucher, et surtout SA FRACTION D'ANGLE N'EST
  * PAS UNE FRACTION D'AIRE dès que la forme n'est pas un disque — sur une boîte orientée, un

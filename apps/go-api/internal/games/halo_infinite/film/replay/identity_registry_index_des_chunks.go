@@ -10,7 +10,7 @@ package replay
 // concordante sur tous les chunks) donne CET index a un joueur que la table du film assied a un
 // autre index. Les corps de ce joueur portent alors l'index des chunks — seul, ou en alternance avec
 // celui de la table, sans jamais se chevaucher. Mesures et temoins : journal d'E8.4 du plan
-// `.ai/V7.5/PLAN_BACKLOG_2026-10-16.md`.
+// `.ai/archive/V7.5/PLAN_BACKLOG_2026-10-16.md`.
 //
 // # LA REGLE
 //

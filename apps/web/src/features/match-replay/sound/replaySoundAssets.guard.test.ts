@@ -207,7 +207,7 @@ describe('garde-rail : manifeste sonore = dossier d assets', () => {
 
 /**
  * Durée d'un WAV, lue dans ses en-têtes RIFF (aucune dépendance : les fichiers livrés sont
- * du PCM produit par une recette fixe — `.ai/V7.5/RECETTE_SONS_ARMES.md` §7 et le lot R2 —
+ * du PCM produit par une recette fixe — `.ai/archive/V7.5/RECETTE_SONS_ARMES.md` §7 et le lot R2 —
  * et un fichier qui ne serait plus du PCM canonique doit faire ÉCHOUER ce test, pas être
  * deviné). `data` / `byteRate` : les deux seules quantités nécessaires.
  */

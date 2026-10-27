@@ -2,7 +2,7 @@ package replay
 
 // document_vip_crown.go — LA COURONNE VIP : la forme qu'elle prend dans l'artefact.
 //
-// CHRONIQUE — v22 (2026-08-27, lot VIP COURONNE, `.ai/V7.5/replay2d/registre_film/
+// CHRONIQUE — v22 (2026-08-27, lot VIP COURONNE, `.ai/archive/V7.5/replay2d/registre_film/
 // VIP_COURONNE_PROTOCOLE.md`). Le document publie `vipCrown` — LES PERIODES DE PORT DE LA
 // COURONNE, en intervalles de frames, chacun nomme par le xuid du VIP. Un champ de document, un
 // schema de plus (`VipPeriod`) et un bloc de couverture (`VipCrownCoverage`).

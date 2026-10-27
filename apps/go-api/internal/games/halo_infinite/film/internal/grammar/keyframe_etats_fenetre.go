@@ -1,7 +1,7 @@
 package grammar
 
 // keyframe_etats_fenetre.go — LES FENETRES DE BITS DERRIERE LA LECTURE (plan
-// `.ai/V7.5/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, D1.2 ; ADR 0037 IR-6, option A de
+// `.ai/archive/V7.5/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, D1.2 ; ADR 0037 IR-6, option A de
 // l utilisateur du 2026-10-04).
 //
 // Un record bipede d image-cle que la regle d admission refuse (ou dont la phase n a pas parcouru le

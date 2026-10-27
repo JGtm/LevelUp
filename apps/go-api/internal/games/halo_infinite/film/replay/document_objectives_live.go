@@ -3,7 +3,7 @@ package replay
 // document_objectives_live.go — L'OBJECTIF VIVANT : la forme que le DRAPEAU de CTF prend dans
 // l'artefact, et ce que la mesure a refuse d'y mettre.
 //
-// CHRONIQUE — v15 (2026-08-18, plan `.ai/V7.5/replay2d/PLAN_DRAPEAU_OBJET.md`, phase 2). AUCUNE
+// CHRONIQUE — v15 (2026-08-18, plan `.ai/archive/V7.5/replay2d/PLAN_DRAPEAU_OBJET.md`, phase 2). AUCUNE
 // CLE NE BOUGE, ET POURTANT LA VERSION MONTE : c'est le CONTENU de `flagCarries` qui change.
 // L'OBJET drapeau — le meme archetype `ti=42` que les armes au sol, identifie par le manifeste du
 // titre (`[[objective_objects]]`, famille `flag`) — replique sa position quand PERSONNE ne le
@@ -34,7 +34,7 @@ package replay
 // CE QUE LA MESURE N'A PAS TRANCHE : la cause des 48 vies inexpliquees. Le diagnostic ecarte la
 // re-creation sur place (3 cas sur 48) ; le registre des reports porte la condition de reprise.
 //
-// CHRONIQUE — v14 (2026-08-18, plan `.ai/V7.5/replay2d/PLAN_OBJECTIFS_VIVANTS_2E_LECTURE.md`,
+// CHRONIQUE — v14 (2026-08-18, plan `.ai/archive/V7.5/replay2d/PLAN_OBJECTIFS_VIVANTS_2E_LECTURE.md`,
 // phase 1 item 1.3). Le document publie `flagCarries` — LA VIE DE CHAQUE DRAPEAU sur toute la
 // partie, en intervalles d'etat — et `coverage.flagCarries`, ses denominateurs. Le champ est
 // optionnel, mais la version monte : le drapeau vivant cote client N'EXISTE que si l'artefact le

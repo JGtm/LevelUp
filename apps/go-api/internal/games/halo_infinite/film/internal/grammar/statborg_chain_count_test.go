@@ -7,7 +7,7 @@ import (
 )
 
 // statborg_chain_count_test.go — le CONTROLE CROISE de la decision D1 du plan
-// `.ai/V7.5/replay2d/PLAN_EXPLOITATION_REGISTRE_FILM.md` (lot A, phase 0).
+// `.ai/archive/V7.5/replay2d/PLAN_EXPLOITATION_REGISTRE_FILM.md` (lot A, phase 0).
 //
 // # La question, et ce qu'elle decide
 //
@@ -24,7 +24,7 @@ import (
 //
 // Ce test compte donc, sur UN film, les records d'archetype statborg atteints par la chaine.
 // Le compte de l'ancrage vient de l'instrument du lot A (colonne `meta` de
-// `.ai/V7.5/replay2d/registre_film/lotA/<short8>.tsv`) : les deux se comparent au journal.
+// `.ai/archive/V7.5/replay2d/registre_film/lotA/<short8>.tsv`) : les deux se comparent au journal.
 //
 // Garde : `D1_FILM` = dossier de chunks d'UN film. `D1_OUT`, s'il est pose, recoit une ligne
 // TSV. Un film par processus (D17).

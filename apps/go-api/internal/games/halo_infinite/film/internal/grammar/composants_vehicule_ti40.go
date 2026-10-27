@@ -6,7 +6,7 @@ import "levelup/go-api/internal/games/halo_infinite/film/types"
 //
 // Chaque grammaire est celle du DESERIALISEUR du jeu (Ghidra, HaloInfinite.exe, base
 // 0x140000000 ; table nom -> descripteur -> deserialiseur relevee dans
-// `.ai/V7.5/film_re/campagne_grammaire_2026-10-01/T6_vehicules_ti40.md` §1 et §4). Aucune valeur
+// `.ai/archive/V7.5/film_re/campagne_grammaire_2026-10-01/T6_vehicules_ti40.md` §1 et §4). Aucune valeur
 // n est interpretee ni publiee : ces lecteurs rendent la LARGEUR juste, pour que la liste de la
 // vue B continue.
 //

@@ -1,7 +1,7 @@
 package replay
 
 // images_cles_faits_test.go — LA LECTURE DES IMAGES-CLES SURVIT A LA PUBLICATION REJOUEE DEPUIS LES
-// FAITS (D1.3.2 du plan `.ai/V7.5/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, ADR 0034 D-7).
+// FAITS (D1.3.2 du plan `.ai/archive/V7.5/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, ADR 0034 D-7).
 //
 // La grammaire lit l etat complet des bipedes aux images-cles et publie les records qu elle admet ;
 // les fenetres de bits rendent les autres derriere elle, marques recuperes et comptes sous trois

@@ -1,7 +1,7 @@
 package grammar
 
 // keyframe_record_walk_test.go — INSTRUMENT DE MESURE de la grammaire du corps d'un record
-// d'image-cle (lot R5, cf. .ai/V7.5/replay2d/PLAN_R5_GRAMMAIRE_IMAGE_CLE.md).
+// d'image-cle (lot R5, cf. .ai/archive/V7.5/replay2d/PLAN_R5_GRAMMAIRE_IMAGE_CLE.md).
 //
 // CE QU'IL MESURE :
 //

@@ -57,7 +57,7 @@ package killsource
 // `estNomDeRemplissage`.
 //
 // COMPLEMENT DU 2026-10-02 (retrait des replis nuls, decision DU-7, REVISION CONSTANTE) : deux replis
-// a compte NUL sur le parc sortent de la couche (`.ai/V7.5/MESURES_PARC_REPLIS_NULS_2026-10-02.md`, passe
+// a compte NUL sur le parc sortent de la couche (`.ai/archive/V7.5/MESURES_PARC_REPLIS_NULS_2026-10-02.md`, passe
 // killsource de la vague J11.4, 1 222 films). `repli_gamertag_par_xuid_brut` : un event du kill-feed
 // dont le xuid n a aucun gamertag dans le bloc n entre plus dans le fil (il y entrait sous un nom
 // `xuid:<N>` fabrique) ; `repli_roster_indice_hors_bijection` : son compte (noms « ? » publies, deja
@@ -68,7 +68,7 @@ package killsource
 // resultat observe change (`Stats.Replis` perd deux champs nuls).
 //
 // COMPLEMENT DU 2026-10-03 (vague 1 de la campagne de grammaire : lots L8, L3a, L4a et corrections
-// de la revue de la vague, `.ai/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`, REVISION CONSTANTE) : la
+// de la revue de la vague, `.ai/archive/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`, REVISION CONSTANTE) : la
 // VALEUR de `grammar.Rev` monte jusqu a `grammar-2026-10-03.2`, donc l empreinte ; aucune source de
 // la couche ne change. Sortie `cmd/killsource json` sur les 19 temoins de
 // `config/replay_corpus.toml`, binaire de `67c379fc1` contre binaire de la vague : AUCUNE mort,
@@ -131,7 +131,7 @@ package killsource
 // `campagne_grammaire_2026-10-01/LOT_VA_V2.md`, `LOT_VA_V3.md` (§15, §16).
 //
 // COMPLEMENT DU 2026-10-06 (lot « Rejeu : toute entree du roster a l equipe que le film ecrit »,
-// `.ai/V7.5/PLAN_REJEU_EQUIPES_SOURCE_2026-10-06.md`, REVISION CONSTANTE) : `botmeta_equipe.go` lit
+// `.ai/archive/V7.5/PLAN_REJEU_EQUIPES_SOURCE_2026-10-06.md`, REVISION CONSTANTE) : `botmeta_equipe.go` lit
 // l EQUIPE de chaque bot dans son entree BOT_METADATA (octet `+ 0xCE5` du bloc de 44 octets, par la
 // grammaire de l ecrivain `FUN_14299bda0`) et la publie en `BotEntry.Team`, avec son bilan
 // (`Roster.BotEquipes`) et deux diagnostics (`killsource.equipes_de_bots`, en erreur pour un bot
@@ -263,7 +263,7 @@ package killsource
 // l utilisateur (D6).
 //
 // COMPLEMENT DU 2026-10-09 (jalon LK et lot 2.7.d1 du plan
-// `.ai/V7.5/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, fusionnes apres le lot `assist-film`,
+// `.ai/archive/V7.5/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, fusionnes apres le lot `assist-film`,
 // REVISION CONSTANTE) : `grammar.Rev` monte a `grammar-2026-10-09.2` (records d image-cle lus sous la
 // portee de l etat complet) puis a `grammar-2026-10-09.3` (etat complet du bipede aux images-cles lu
 // par la grammaire, fenetres de bits derriere la lecture). Sur la branche, ces deux montees etaient
@@ -273,7 +273,7 @@ package killsource
 // `54b47a2b8` contre binaire de la tete fusionnee : sorties identiques a l octet. Golden regenere a
 // revision constante.
 //
-// COMPLEMENT DU 2026-10-14 (lot F du plan `.ai/V7.5/PLAN_AJUSTEMENTS_2026-10-14.md`, branche `feat/aj14-f`,
+// COMPLEMENT DU 2026-10-14 (lot F du plan `.ai/archive/V7.5/PLAN_AJUSTEMENTS_2026-10-14.md`, branche `feat/aj14-f`,
 // REVISION CONSTANTE) : `grammar.Rev` monte a `grammar-2026-10-14` — elle entre PAR VALEUR dans
 // l amont de cette couche — : la lecture de la vue A range ses messages de poussee (genres 104 et
 // 105) et `film/types` gagne `Knockback` et `KnockbackStats`. Aucun bit n est lu autrement et
@@ -282,7 +282,7 @@ package killsource
 // l octet sur les 20. Golden regenere a revision constante.
 //
 // ENTREE `killsource-2026-10-14` (2026-10-14, lot « equipement porte » du plan
-// `.ai/V7.5/PLAN_AJUSTEMENTS_2026-10-14.md`, branche `feat/equip-porte`) : `grammar.Rev` monte a
+// `.ai/archive/V7.5/PLAN_AJUSTEMENTS_2026-10-14.md`, branche `feat/equip-porte`) : `grammar.Rev` monte a
 // `grammar-2026-10-14.2` — `ti=37 i28 equipment-tracked-object-handles-stack-component` lit n entrees
 // et non n+1 (`FUN_140f72dec`), et les trames qui le portent ferment (0 sur 4 839 -> 4 726 sur 4 841
 // au parc, contexte de la cuisson). PREUVE (`cmd/killsource json`, 20 films du corpus d equivalence,
@@ -304,7 +304,7 @@ package killsource
 // killsource. `replay-equiv` (20 films, `027a5bcaf` contre le lot) : etape
 // `killsource` identique sur les 20. Golden regenere a revision constante.
 //
-// ENTREE `killsource-2026-10-15` (2026-10-15, plan `.ai/V7.5/PLAN_RI_RESIDU_IMAGES_CLES_2026-10-14.md`, branche
+// ENTREE `killsource-2026-10-15` (2026-10-15, plan `.ai/archive/V7.5/PLAN_RI_RESIDU_IMAGES_CLES_2026-10-14.md`, branche
 // `feat/ri-ecart-108`) : `grammar.Rev` monte a `grammar-2026-10-15.2` (table d entrees d image-cle,
 // bloc malleable d i53 sans drapeau final pour la version majeure declaree 0x25, world-object i0 et
 // rigid-body i18 sous la garde) ; [GrammaireSousFilm] pose le nouveau champ du film. PREUVE
@@ -363,7 +363,7 @@ package killsource
 // changement. `replay-equiv` (20 films, `a9a9ac78a` contre le lot) : etape `killsource` identique sur
 // les 20.
 //
-// ENTREE `killsource-2026-10-18` (2026-10-18, plan `.ai/V7.5/PLAN_BACKLOG_2026-10-16.md`, E8.1 (b) (c),
+// ENTREE `killsource-2026-10-18` (2026-10-18, plan `.ai/archive/V7.5/PLAN_BACKLOG_2026-10-16.md`, E8.1 (b) (c),
 // decision utilisateur D-16) : la VALEUR de `grammar.Rev` monte a `grammar-2026-10-18`
 // ([grammar.LectureDeKillsource.Occupation]), et [Result.Occupation] rend au collecteur l occupation
 // des vehicules que la marche a lue (hors serialisation, comme les diagnostics). AUCUNE ligne de kill

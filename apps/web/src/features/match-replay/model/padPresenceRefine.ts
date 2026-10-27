@@ -29,7 +29,7 @@
  *
  * CONDITION DE REPRISE : l'enquête sur la population de socles des artefacts BTB (les deux films
  * suspects, socles jamais approchés de tout le film) est ouverte dans les Découvertes du plan
- * `.ai/V7.5/replay2d/PLAN_RETOURS_REJEU_2026-08-27.md`. Si elle montre que ces socles sont des
+ * `.ai/archive/V7.5/replay2d/PLAN_RETOURS_REJEU_2026-08-27.md`. Si elle montre que ces socles sont des
  * artefacts de mesure, ce fichier n'aura plus rien à corriger ; si elle montre l'inverse, c'est
  * le rayon ou la règle qui devront bouger.
  *

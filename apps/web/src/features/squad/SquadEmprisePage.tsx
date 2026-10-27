@@ -1,7 +1,7 @@
 /**
  * SquadEmprisePage — l'onglet « Emprise » de l'Escouade (ex-Usages ; lot L5 du plan
  * PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26, maquette
- * `.ai/V7.5/MAQUETTE_ONGLET_TACTIQUE_ESCOUADE_2026-09-26.html`, bloc « Proposition »).
+ * `.ai/archive/V7.5/MAQUETTE_ONGLET_TACTIQUE_ESCOUADE_2026-09-26.html`, bloc « Proposition »).
  *
  * UN SEUL AXE DE LECTURE : qui a tenu la carte — les ressources (bonus, armes spéciales, armes
  * de râtelier) prises par notre camp face à l'adversaire, dans l'ordre d'un débrief :

@@ -1,7 +1,7 @@
 package grammar
 
 // keyframe_biped_fullstate_test.go — INSTRUMENT DU LOT R7-a
-// (cf. .ai/V7.5/replay2d/PLAN_R7A_IMAGE_CLE_BIPEDE_ETAT_COMPLET.md).
+// (cf. .ai/archive/V7.5/replay2d/PLAN_R7A_IMAGE_CLE_BIPEDE_ETAT_COMPLET.md).
 //
 // LA QUESTION, UNE SEULE : le corps d'un record d'IMAGE-CLE (payload type-2) est-il l'ETAT
 // COMPLET de l'objet — la concatenation des deserialiseurs « leaf » de TOUS les composants

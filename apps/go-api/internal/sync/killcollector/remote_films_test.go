@@ -57,7 +57,7 @@ func chunksTemoins() []haloclient.FilmChunk {
 // TestRemoteFilms_TelechargeEtArchive : LE CŒUR DU CORRECTIF.
 //
 // Le film n est pas en cache — c est l etat de tous les matchs postérieurs au 2026-04-07
-// (`.ai/V7.5/REGISTRE_ASSISTANCES_2026-08-29.md`). La source doit alors le TELECHARGER, et
+// (`.ai/archive/V7.5/REGISTRE_ASSISTANCES_2026-08-29.md`). La source doit alors le TELECHARGER, et
 // l ECRIRE au cache : un film expire ne se retelecharge jamais, et le jeter apres decodage
 // perdrait une donnee irremplacable qu on a eue en main.
 func TestRemoteFilms_TelechargeEtArchive(t *testing.T) {

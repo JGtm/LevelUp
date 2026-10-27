@@ -8,7 +8,7 @@ import (
 //
 // CE QUE CE FICHIER PORTE. La visée ne se lit qu'au bout de la grammaire réelle du record —
 // tracée instruction par instruction dans FUN_14080C1F8 par l'agent Ghidra, cf.
-// .ai/V7.5/film_re/NOTE_VISEE_TIR_2026-08-31.md — à la position POST-COMPTES + 2. Il couvre TOUT le
+// .ai/archive/V7.5/film_re/NOTE_VISEE_TIR_2026-08-31.md — à la position POST-COMPTES + 2. Il couvre TOUT le
 // record MODAL (0 cible, 0 composante de dégât), soit 3 à 6× plus de tirs que l'ancien chemin à
 // offsets fixes (mesuré : 33→210, 143→491, 48→218 sur trois films).
 //

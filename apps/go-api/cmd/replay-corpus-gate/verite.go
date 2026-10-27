@@ -2,7 +2,7 @@ package main
 
 // verite.go — LE BANC DE VERITE DANS LE GATE : SON VERDICT EST CELUI DU GATE (D-5, 2026-09-30).
 //
-// Conception : .ai/V7.5/film_re/BANC_DE_VERITE_CONCEPTION_2026-09-30.md §6.3. Pour chaque temoin
+// Conception : .ai/archive/V7.5/film_re/BANC_DE_VERITE_CONCEPTION_2026-09-30.md §6.3. Pour chaque temoin
 // compare, les deux artefacts (reference et HEAD) sont notes par `internal/replayverite` avec les
 // MEMES faits et le MEME oracle ; le verdict du banc (`FAUX` / `MANQUE` / `ok`) devient celui du
 // temoin. Les differences `replaydiff` restent au rapport, A TITRE D'INFORMATION, sauf DEUX FILETS

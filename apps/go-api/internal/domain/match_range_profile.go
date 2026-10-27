@@ -1,7 +1,7 @@
 package domain
 
 // match_range_profile.go — LA PORTÉE D'UN JOUEUR, RAPPORTÉE À SON LOBBY (plan
-// .ai/V7.5/PLAN_AJUSTEMENTS_SUPP_PRE_V75_2026-09-21.md, lot N2, décisions D22-4 et D22-5).
+// .ai/archive/V7.5/PLAN_AJUSTEMENTS_SUPP_PRE_V75_2026-09-21.md, lot N2, décisions D22-4 et D22-5).
 //
 // # POURQUOI L'ÉCART AU LOBBY, ET JAMAIS LA MÉDIANE BRUTE
 //

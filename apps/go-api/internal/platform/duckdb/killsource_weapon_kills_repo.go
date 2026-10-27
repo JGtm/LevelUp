@@ -9,7 +9,7 @@
 // gonflait l'AR, le BR et le Sidekick. Ce lecteur-ci lit la SOURCE DU DEGAT dans l'etat de
 // mort de la VICTIME (`match_kill_pairs_latest.source_tag`), ou l'epee est une epee.
 //
-// Mesure du 2026-09-01 sur 200 matchs (.ai/V7.5/MESURE_BASCULE_ARME_2026-09-01.md) : le
+// Mesure du 2026-09-01 sur 200 matchs (.ai/archive/V7.5/MESURE_BASCULE_ARME_2026-09-01.md) : le
 // residu « Non attribue » passe de 14 453 (77,1 %) a 3 984 (21,2 %), et aucune classe
 // d'arme a feu ne perd un seul frag.
 //

@@ -1,5 +1,5 @@
 // Package domain — synthesis_weapon_records.go : contrat de la section « Records de distance
-// par arme » de la Synthèse (plan .ai/V7.5/PLAN_RECORDS_DISTANCE_2026-09-20.md).
+// par arme » de la Synthèse (plan .ai/archive/V7.5/PLAN_RECORDS_DISTANCE_2026-09-20.md).
 //
 // CE QUE LA SECTION PUBLIE : pour chaque arme, LE frag mesuré le plus lointain — identifié
 // (match, instant) pour que le joueur aille le revoir — avec la médiane de l'arme comme repère

@@ -69,11 +69,12 @@ const (
 	attenduZones  = 816
 )
 
-// inventaireParDefaut : l'inventaire UGC versionné dont la passe Forge tire sa liste.
-var inventaireParDefaut = []string{".ai", "V7.5", "cartes", "inventaire_rotation_ugc_2026-08-27.json"}
+// inventaireParDefaut : l'inventaire UGC versionné dont la passe Forge tire sa liste. Il vit avec
+// l'outil (donnees/) : c'est son entrée, lue à chaque passe Forge, pas une pièce de travail.
+var inventaireParDefaut = []string{"apps", "go-api", "cmd", "mapcallouts-build", "donnees", "inventaire_rotation_ugc_2026-08-27.json"}
 
 // cacheVariantesParDefaut : le cache local des `.mvar`, HORS DÉPÔT (.gitignore).
-var cacheVariantesParDefaut = []string{".ai", "V7.5", "dumps", "mapvar"}
+var cacheVariantesParDefaut = []string{"apps", "go-api", "internal", "testfixtures", "testdata", "cartes", "mapvar"}
 
 // options porte les chemins et les bascules résolus, pour ne pas promener dix paramètres.
 type options struct {
@@ -120,10 +121,10 @@ func lisOptions() options {
 	flag.StringVar(&o.levels, "levels", "", "racine des dossiers de cartes (.module) ; vide = installation détectée")
 	flag.StringVar(&o.titleSlug, "title", title.DefaultSlug, "slug du titre")
 	flag.StringVar(&o.i18nPath, "i18n", "", "CSV des libellés (défaut : reference/callouts_i18n.csv du titre)")
-	flag.StringVar(&o.decoupePath, "decoupe", "", "dump découpé de Ridgeline (défaut : .ai/V7.5/dumps/callout_zones_ridgeline_clipped.json)")
+	flag.StringVar(&o.decoupePath, "decoupe", "", "dump découpé de Ridgeline (défaut : apps/go-api/internal/testfixtures/testdata/cartes/callout_zones_ridgeline_clipped.json)")
 	flag.StringVar(&o.outPath, "out", "", "fichier de sortie (défaut : PathResolver.MapCalloutsPath)")
-	flag.StringVar(&o.inventaire, "forge-inventaire", "", "inventaire UGC versionné (défaut : .ai/V7.5/cartes/inventaire_rotation_ugc_2026-08-27.json)")
-	flag.StringVar(&o.cacheForge, "forge-cache", "", "cache local des .mvar (défaut : .ai/V7.5/dumps/mapvar)")
+	flag.StringVar(&o.inventaire, "forge-inventaire", "", "inventaire UGC versionné (défaut : apps/go-api/cmd/mapcallouts-build/donnees/inventaire_rotation_ugc_2026-08-27.json)")
+	flag.StringVar(&o.cacheForge, "forge-cache", "", "cache local des .mvar (défaut : apps/go-api/internal/testfixtures/testdata/cartes/mapvar)")
 	flag.BoolVar(&o.forgeOnly, "forge-only", false, "ne pas reconstruire la partie native (n'exige pas le jeu installé)")
 	flag.BoolVar(&o.forgeFetch, "forge-fetch", false, "télécharger les map.mvar manquants (stockage blob UGC, sans jeton)")
 	flag.BoolVar(&o.lexique, "lexique", false, "régénérer callouts_lexique.csv depuis les listes de chaînes du jeu (exige l'installation)")
@@ -155,7 +156,7 @@ func lisOptions() options {
 		o.i18nPath = filepath.Join(filepath.Dir(o.res.MapCalloutsPath(o.titleSlug)), "callouts_i18n.csv")
 	}
 	if o.decoupePath == "" {
-		o.decoupePath = filepath.Join(root, ".ai", "V7.5", "dumps", "callout_zones_ridgeline_clipped.json")
+		o.decoupePath = filepath.Join(root, "apps", "go-api", "internal", "testfixtures", "testdata", "cartes", "callout_zones_ridgeline_clipped.json")
 	}
 	if o.inventaire == "" {
 		o.inventaire = filepath.Join(append([]string{root}, inventaireParDefaut...)...)

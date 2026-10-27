@@ -17,7 +17,7 @@ package replay
 // a cette chaine PAR CONSTRUCTION. La chaine `ti=42` (armes au sol), elle, retient les
 // creations SANS vie delta et filtre par IDENTITE — c'est l'asymetrie que ce lot exploite.
 //
-// LECTURE SEULE, aucune base, aucune ecriture. Plan : `.ai/V7.5/replay2d/
+// LECTURE SEULE, aucune base, aucune ecriture. Plan : `.ai/archive/V7.5/replay2d/
 // PLAN_POWERUP_SOCLE_CATALYST.md` (hypotheses et seuils ECRITS AVANT la mesure).
 //
 // USAGE (depuis apps/go-api) :

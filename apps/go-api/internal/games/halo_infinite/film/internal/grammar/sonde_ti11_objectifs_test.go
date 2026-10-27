@@ -1,12 +1,12 @@
 package grammar
 
 // sonde_ti11_objectifs_test.go — INSTRUMENT DE MESURE de l'archetype OBJECTIFS (ti=11),
-// phase 1 du plan .ai/V7.5/replay2d/PLAN_R4_OBJECTIFS_VIVANTS_TI11.md (lot R4).
+// phase 1 du plan .ai/archive/V7.5/replay2d/PLAN_R4_OBJECTIFS_VIVANTS_TI11.md (lot R4).
 //
 // CE QU'IL MESURE, et pourquoi il existe. Le corpus documentaire du depot se CONTREDIT sur
 // l'endroit ou la traversee de ti=11 s'arrete : PLAN_RETOURS_PLANCHE §R4 et
 // SUIVI_REPLAY_2D.md:320 disent `interaction-filter` en i4 ; components_batch3.go:12 et
-// .ai/V7.5/PLAN_OBJECTIFS_TEMPS_REEL.md:25 disent i0 (« Le SUIVI accusait i4 [...] C'est faux »).
+// .ai/archive/V7.5/PLAN_OBJECTIFS_TEMPS_REEL.md:25 disent i0 (« Le SUIVI accusait i4 [...] C'est faux »).
 // Un lot qui part sur la mauvaise version perd son temps sur le mauvais composant. Cet
 // instrument remplace les deux affirmations par une MESURE datee, sur pieces.
 //

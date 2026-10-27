@@ -1,5 +1,5 @@
 // Package analysis — match_range_roles.go : LES SEUILS DE RÔLE DE PORTÉE D'UNE PÉRIODE
-// (plan .ai/V7.5/PLAN_AJUSTEMENTS_SUPP_PRE_V75_2026-09-21.md, lot U, décision D23-4).
+// (plan .ai/archive/V7.5/PLAN_AJUSTEMENTS_SUPP_PRE_V75_2026-09-21.md, lot U, décision D23-4).
 //
 // # LES SEUILS SONT DES QUANTILES, JAMAIS DES MÈTRES EN DUR
 //

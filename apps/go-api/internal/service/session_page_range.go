@@ -1,5 +1,5 @@
 // Package service — session_page_range.go : le bloc « portée des engagements » de la page
-// détail de session (plan .ai/V7.5/PLAN_AJUSTEMENTS_SUPP_PRE_V75_2026-09-21.md, lots N2 et
+// détail de session (plan .ai/archive/V7.5/PLAN_AJUSTEMENTS_SUPP_PRE_V75_2026-09-21.md, lots N2 et
 // U, décisions D22-4 et D23-4).
 //
 // PATRON D'ATTACHEMENT identique au bloc usage : repo OPTIONNEL injecté à la DI, attaché à

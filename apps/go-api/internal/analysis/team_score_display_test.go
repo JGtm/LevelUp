@@ -1,7 +1,7 @@
 package analysis
 
 // team_score_display_test.go — la règle points/manches, sur les témoins RÉELS du corpus
-// mesuré le 2026-08-29 (`.ai/V7.5/RAPPORT_MANCHES_2026-08-29.md`).
+// mesuré le 2026-08-29 (`.ai/archive/V7.5/RAPPORT_MANCHES_2026-08-29.md`).
 
 import "testing"
 

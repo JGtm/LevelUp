@@ -5,7 +5,7 @@
 // cuisson d'un artefact de rejeu relisait et redecompressait le film entier ~36-40 fois, avec
 // TROIS inflates et TROIS marcheurs de paquets DIVERGENTS (`grammar`, `killsource`,
 // `objectives`). Ici : un chargement, un jeu de paquets, une grammaire.
-// Reference : `.ai/V7.5/PLAN_CUISSON_PERF.md` §2 (conception) et §3 D1/D3.
+// Reference : `.ai/archive/V7.5/PLAN_CUISSON_PERF.md` §2 (conception) et §3 D1/D3.
 //
 // # POURQUOI UN PAQUET FEUILLE, ET POURQUOI PAS `grammar`
 //
@@ -28,7 +28,7 @@
 //	(4) arret AVANT emission sur un paquet de taille 0 qui n'est PAS de type 7 (en-tete degenere).
 //
 // La regle (2) a remplace un « arret sur taille <= 0 » candidat, sur des FAITS et non par gout :
-// mesure sur 1 378 films du cache (`.ai/V7.5/MESURES_CUISSON_PERF.md` §2b) plus un diagnostic
+// mesure sur 1 378 films du cache (`.ai/archive/V7.5/MESURES_CUISSON_PERF.md` §2b) plus un diagnostic
 // paquet par paquet sur trois films, tous chunks. Sur les chunks de DONNEES, l'unique paquet de
 // taille 0 est le terminateur CHUNK_END, en DERNIERE position, sans un octet apres (27/27, 32/32,
 // 43/43 chunks) : « taille 0 » et « CHUNK_END » y sont LE MEME PAQUET. La candidate le supprimait

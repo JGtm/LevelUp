@@ -6,7 +6,7 @@ package mapvar
 // CE QUE CE HARNAIS GARANTIT, ET RIEN DE PLUS : [Parse] ne panique sur AUCUNE entree.
 //
 // DEUX SOURCES DE GRAINES, ET C EST VOULU :
-//   - les `.mvar` VERSIONNES (.ai/V7.5/dumps/mapvar/) sont ajoutes par `f.Add` a chaque
+//   - les `.mvar` VERSIONNES (internal/testfixtures/testdata/cartes/mapvar/) sont ajoutes par `f.Add` a chaque
 //     execution, lus la ou ils vivent : ce sont des actifs proprietaires 343/Microsoft que
 //     `mapvar_test.go` refuse de dupliquer dans testdata/ — le corpus de fuzz ne les copie pas
 //     davantage ;
@@ -31,6 +31,8 @@ import (
 	"slices"
 	"strconv"
 	"testing"
+
+	"levelup/go-api/internal/testfixtures"
 )
 
 var updateGrainesMvar = flag.Bool("update-graines-mvar", false,
@@ -46,7 +48,7 @@ var mvarVersionnes = []string{
 // FuzzMapvarParse : le lecteur .mvar ne panique sur AUCUNE entree.
 func FuzzMapvarParse(f *testing.F) {
 	for _, nom := range mvarVersionnes {
-		path := filepath.Join("..", "..", "..", "..", "..", "..", "..", "..", ".ai", "V7.5", "dumps", "mapvar", nom)
+		path := testfixtures.Carte("mapvar", nom)
 		buf, err := os.ReadFile(path) //nolint:gosec // chemin fige dans le code
 		if err != nil {
 			f.Logf("graine %s absente (%v) : non ajoutee", nom, err)

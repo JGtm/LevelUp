@@ -58,7 +58,7 @@ package grammar
 // # LA PARTITION DU CORPUS, ET POURQUOI ELLE N EST PAS UN REPENTIR
 //
 // Le corpus se coupe en deux DEPUIS LA VEILLE : trois films One Bomb (multi-manches) et six
-// films Neutral Bomb, decoupage ecrit dans `.ai/V7.5/ETAT_ASSAUT_2026-08-31.md` §1.b et §1.e.
+// films Neutral Bomb, decoupage ecrit dans `.ai/archive/V7.5/ETAT_ASSAUT_2026-08-31.md` §1.b et §1.e.
 // Le critere est applique aux deux moities EN PLUS du corpus entier, jamais a sa place — le
 // verdict primaire reste celui des 28 explosions.
 //

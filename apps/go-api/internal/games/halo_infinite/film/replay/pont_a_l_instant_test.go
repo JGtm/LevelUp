@@ -10,7 +10,7 @@ package replay
 // est datee, la lecture d'inventaire porte sa frame, le coup fatal porte son horodatage. Ils
 // passent desormais par le registre A L'INSTANT (`XUIDNumAt`).
 //
-// LA MESURE QUI A COMMANDE CE LOT (rapport `.ai/V7.5/RAPPORT_PONT_APLATI_2026-09-10.md`) : sur
+// LA MESURE QUI A COMMANDE CE LOT (rapport `.ai/archive/V7.5/RAPPORT_PONT_APLATI_2026-09-10.md`) : sur
 // 74 films, UN SEUL siege ambigu (`084a804d`/603) — mais il suffit a publier deux ramassages sous
 // le nom d'un joueur que le film place ailleurs. Le parc mesure le VOLUME ; ce fichier epingle la
 // REGLE, sur un siege synthetique que le parc ne fournit qu'une fois.

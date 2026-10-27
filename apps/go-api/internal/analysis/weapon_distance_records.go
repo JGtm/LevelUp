@@ -1,7 +1,7 @@
 // Package analysis — weapon_distance_records.go : LE FRAG LE PLUS LOINTAIN PAR ARME.
 //
 // Section « Records de distance par arme » de la Synthèse
-// (plan .ai/V7.5/PLAN_RECORDS_DISTANCE_2026-09-20.md).
+// (plan .ai/archive/V7.5/PLAN_RECORDS_DISTANCE_2026-09-20.md).
 //
 // # POURQUOI CE N'EST PAS `WeaponRangeAggregate`
 //

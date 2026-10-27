@@ -5,7 +5,7 @@ package grammar
 // tcg_tir_continu_research_test.go — SONDE P1 DE LA CAMPAGNE « RETOURS REJEU » (2026-09-23) :
 // OU LE FILM PORTE-T-IL LE TIR CONTINU (Ghost) ? (mesure seule, aucun code de production.)
 //
-// FAIT DE DEPART (`.ai/V7.5/retours_rejeu_2026-09-23/RAPPORT_tirs_vehicules.md`) : `ScanFireEvents`
+// FAIT DE DEPART (`.ai/archive/V7.5/retours_rejeu_2026-09-23/RAPPORT_tirs_vehicules.md`) : `ScanFireEvents`
 // ne lit que l evenement de TETE des paquets delta d octet 0 = 0xD2 (types 36 et 37), a offsets
 // fixes, et jette les payloads de moins de 113 bits. Sur 81c02726 (Isolation), G MONEY 2123
 // (index 2) pilote le Ghost (vies 769 puis 771 ; corps 514 puis 541) de t 311 a 1088 et de 2064 a

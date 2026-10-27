@@ -6,7 +6,7 @@ package replay
 // (`ground_weapon_bounds.go`) — même lot, même règle, seuil de 500 lignes du dépôt.
 //
 // D'OÙ ELLES VIENNENT. Elles ont été écrites AVANT chaque mesure du plan
-// `.ai/V7.5/replay2d/PLAN_ARMES_AU_SOL_2E_LECTURE.md` (phases 1 et 2, 2026-08-17) et n'ont pas
+// `.ai/archive/V7.5/replay2d/PLAN_ARMES_AU_SOL_2E_LECTURE.md` (phases 1 et 2, 2026-08-17) et n'ont pas
 // bougé depuis : les seuils du plan ne se rebaissent pas après coup. Elles vivaient dans les
 // instruments sous garde ; la phase 3 les amène en production sans les recopier — les
 // instruments les APPELLENT désormais. Une seconde copie de la règle de grappe ou du verdict de

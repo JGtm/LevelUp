@@ -11,7 +11,7 @@ package grammar
 // meme filtre). Or ces deux bits sont la GENERATION du handle (`readRecordID` : « the tag is
 // generation ») : quand le pool de slots bipedes reboucle — un BTB long —, le slot d un joueur mort
 // est rendu a un autre corps sous la generation 2, puis 3. Ces corps n avaient AUCUNE position ni
-// aucune lecture delta. Mesure du lot J5.0 (`.ai/V7.5/film_re/MESURE_GB1_2026-09-27.md`) : 123 vies
+// aucune lecture delta. Mesure du lot J5.0 (`.ai/archive/V7.5/film_re/MESURE_GB1_2026-09-27.md`) : 123 vies
 // sur 379 sans une position sur `084a804d`, 330 sur 586 sur `1c4c63c2`, dont le rejeu s arretait a
 // 826 s pour un film de 1 334 s.
 //

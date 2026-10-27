@@ -29,7 +29,7 @@ package replay
 // hillGardeMinPresence est la part minimale des frames tenues observees ou le camp proprietaire doit
 // etre dans la zone retenue. Sur les films a collines du parc, la colline vraie couvre 64 a 100 %
 // de ces frames et une periode dont la colline manque au catalogue 25 a 27 % : le seuil tombe dans
-// l ecart (journal du plan `.ai/V7.5/PLAN_KOTH_REJEU_2026-10-09.md`).
+// l ecart (journal du plan `.ai/archive/V7.5/PLAN_KOTH_REJEU_2026-10-09.md`).
 const hillGardeMinPresence = 0.5
 
 // hillTeamPoint est une position publiee et le camp de la vie qui la porte.

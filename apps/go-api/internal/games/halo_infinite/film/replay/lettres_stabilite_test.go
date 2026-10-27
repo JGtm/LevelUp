@@ -15,7 +15,7 @@ package replay
 //
 // USAGE (depuis apps/go-api, une fois les films mesures) :
 //
-//	$env:LETTRES_OUT="<worktree>/.ai/V7.5/replay2d/registre_film/lotLettres"
+//	$env:LETTRES_OUT="<worktree>/.ai/archive/V7.5/replay2d/registre_film/lotLettres"
 //	go test -count=1 -run TestLettresOrdreStabilite -v ./internal/games/halo_infinite/film/replay/
 
 import (

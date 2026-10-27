@@ -18,7 +18,7 @@ package mappings
 //	             temoin verifiable qui atteste le decodage.
 //	MINUTERIE    MESUREE sur les films : le defaut de la bibliotheque (`flagResetSeconds = 15`)
 //	             est ecrase par instance (`FlagInitArgs.returnTimer`), et c'est la valeur du MATCH
-//	             qui compte pour un rejeu. Voir `.ai/V7.5/PLAN_CTF_ZONE_RETOUR_2026-08-30.md`.
+//	             qui compte pour un rejeu. Voir `.ai/archive/V7.5/PLAN_CTF_ZONE_RETOUR_2026-08-30.md`.
 //
 // # ABSENTE = RIEN N'EST DESSINE
 //

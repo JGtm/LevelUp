@@ -86,7 +86,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Replay: a power-up pad goes empty the instant it is taken, not up to twenty seconds later** — a weapon pad already read the exact pickup moment from the film; a power-up pad (camouflage, overshield) now does too, instead of staying "uncertain" until the next scheduled check, roughly every twenty seconds.
 
 ### Removed
-- **Memory captures of the running game and unused game extracts** — `.ai/V7.5/dumps/` and the `tools/ce/*.bin` captures leave the tree (copy kept outside the repository); the four files read by CI tests (three Forge maps, one zone file) and one image read by the `gamefiles` tests stay, declared as test fixtures in `NOTICE`.
+- **Memory captures of the running game and unused game extracts** — `.ai/archive/V7.5/dumps/` and the `tools/ce/*.bin` captures leave the tree (copy kept outside the repository); the four files read by CI tests (three Forge maps, one zone file) and one image read by the `gamefiles` tests stay, declared as test fixtures in `NOTICE`.
 
 ### Ops
 - **Third-party gamertags anonymised in the film test fixtures** — same-length pseudonyms in the film bytes and their derived files, decoding unchanged apart from names (checked on 11 films); a reusable gate `cmd/anonymise-gamertags` rewrites any fixture regenerated from the film cache (the correspondence table is not versioned).

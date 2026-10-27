@@ -2,7 +2,7 @@
 
 package himap
 
-// SONDE (2026-08-17, plan .ai/V7.5/replay2d/PLAN_IDENTITE_TI37.md phase 0.3) — NOMMER les
+// SONDE (2026-08-17, plan .ai/archive/V7.5/replay2d/PLAN_IDENTITE_TI37.md phase 0.3) — NOMMER les
 // valeurs du champ `mpp-word32` lu dans le record de CREATION des objets d'equipement (ti=37).
 //
 // CE QUE LA MESURE AMONT A DONNE (filmdec/equipment_creation_test.go, 2026-08-17) : le champ

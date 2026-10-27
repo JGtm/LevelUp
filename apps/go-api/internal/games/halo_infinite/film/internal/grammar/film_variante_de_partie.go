@@ -8,7 +8,7 @@ import "levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 // # CE QUE LE JEU LIT
 //
 // Releve Ghidra `HaloInfinite.exe` HI_1_13_0, base 0x140000000, lecture seule
-// (`.ai/V7.5/film_re/campagne_grammaire_2026-10-01/va_ghidra/`). Le lecteur du corps est
+// (`.ai/archive/V7.5/film_re/campagne_grammaire_2026-10-01/va_ghidra/`). Le lecteur du corps est
 // `FUN_1407ee138` (appele par `FUN_14299ac50` sur `film + 0xCE690`), l ecrivain `FUN_1407ec560`.
 // Le corps est la structure des OPTIONS DE PARTIE (pas `0x1134F0`), et il se lit dans cet ordre :
 //

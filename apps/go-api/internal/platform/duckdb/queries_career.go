@@ -214,7 +214,7 @@ ORDER BY cp.recorded_at ASC`
 // replay — les lignes de chaîne h5_arena écrites le 2026-06-26 dans les player DB
 // Infinite (913 / 1 064 / 471 / 31 lignes) y traçaient encore une série « Arène »
 // fantôme malgré la réparation append-only d'août (rapport
-// .ai/V7.5/RAPPORT_VOLET1_LUSR_H5_2026-08-28.md §6.2).
+// .ai/archive/V7.5/RAPPORT_VOLET1_LUSR_H5_2026-08-28.md §6.2).
 //
 // La vue employée ici partitionne par (match_id, rating_type) et retient la plus
 // récente : les lignes périmées disparaissent, les DEUX séries du graphe (LUSR pleine,

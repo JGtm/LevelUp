@@ -3,7 +3,7 @@
 package replay
 
 // pads_proximity_research_test.go — LE RAFFINEMENT DE L'ETAT INCERTAIN D'UN SOCLE, MESURE AVANT
-// D'ETRE IMPLANTE (item A-2 du plan .ai/V7.5/replay2d/PLAN_RETOURS_REJEU_2026-08-27.md).
+// D'ETRE IMPLANTE (item A-2 du plan .ai/archive/V7.5/replay2d/PLAN_RETOURS_REJEU_2026-08-27.md).
 //
 // LA THESE A EPROUVER est celle de l'utilisateur (retour du 2026-08-27) : « si pas de joueurs
 // ont pickup c'est que l'etat n'a pas du changer ». Autrement dit, dans l'intervalle [tLow,

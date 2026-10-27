@@ -257,7 +257,7 @@ func (pc *PooledHaloClient) GetMatchFilm(ctx context.Context, matchID string) (m
 // HORS de l'interface HaloClient, mais INDISPENSABLE : l'étape 1.57 du post-sync obtient
 // cette capacité par assertion de type, et ce client est celui du chemin serveur. Son absence
 // désactivait l'étape en silence (mesure du 2026-08-29 — cf.
-// `.ai/V7.5/REGISTRE_ASSISTANCES_2026-08-29.md`). Verrouillé par
+// `.ai/archive/V7.5/REGISTRE_ASSISTANCES_2026-08-29.md`). Verrouillé par
 // `kill_source_wiring_test.go`, qui l'assert sur les TYPES CONCRETS.
 func (pc *PooledHaloClient) GetFilmChunks(ctx context.Context, matchID string) ([]FilmChunk, bool, error) {
 	callStart := time.Now()

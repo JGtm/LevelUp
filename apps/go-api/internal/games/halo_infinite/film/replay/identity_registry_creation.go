@@ -6,7 +6,7 @@ package replay
 //
 // Le record de CREATION d'un bipede (`ti=35`) porte, dans son default-state, l'index de
 // participant de son proprietaire — `grammar.ScanBipedCreations` le lit (specification
-// bit-exacte : `.ai/V7.5/film_re/SONDAGE_E2_BIPEDE_INDEX_2026-09-08.md` §2.2). C'est une
+// bit-exacte : `.ai/archive/V7.5/film_re/SONDAGE_E2_BIPEDE_INDEX_2026-09-08.md` §2.2). C'est une
 // LECTURE : le film ECRIT a qui appartient ce corps. Jusqu'au lot E2, le registre l'ignorait et
 // devinait la meme chose par le fil des morts.
 //

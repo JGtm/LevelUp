@@ -6,7 +6,7 @@ package grammar
 // 2026-10-02) : R-L1 (c), la vue A des paquets a evenements.
 //
 // CE QUE L ECRIVAIN DIT (Ghidra, lecture seule, extraits dans
-// `.ai/V7.5/film_re/campagne_grammaire_2026-10-01/r_loc_ghidra/`) : `FUN_142f2c050` recopie, sans
+// `.ai/archive/V7.5/film_re/campagne_grammaire_2026-10-01/r_loc_ghidra/`) : `FUN_142f2c050` recopie, sans
 // prefixe de longueur, des messages DEJA serialises (`FUN_1406d60f4(w, _, 0x1451f9920 + off,
 // nbits)`), chacun ecrit par `FUN_140bbd474` = `1` + `R(7)` genre + trois references gardees +
 // la charge du genre (`FUN_1424d80bc` -> `vtable[0x60]` du genre) ; l enregistreur pose ensuite

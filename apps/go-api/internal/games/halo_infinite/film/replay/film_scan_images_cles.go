@@ -1,7 +1,7 @@
 package replay
 
 // film_scan_images_cles.go — LA MARCHE UNIQUE DES IMAGES-CLES POUR LES BIPEDES (lot D1.1 de 2.7.d1,
-// `.ai/V7.5/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`).
+// `.ai/archive/V7.5/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`).
 //
 // Armes portees, inventaire et marque de portage sortent d UNE distribution de la phase des
 // images-cles (`grammar.ScanEtatsDesImagesCles`), lus par la grammaire sur les records admis. Elle

@@ -1,5 +1,5 @@
 // Package duckdb — temoin_bascule_arme_probe_test.go : LE TEMOIN DE BASCULE de l'arme
-// du kill (etape A0 du plan .ai/V7.5/PLAN_SOURCE_UNIQUE_ARME_2026-09-01.md).
+// du kill (etape A0 du plan .ai/archive/V7.5/PLAN_SOURCE_UNIQUE_ARME_2026-09-01.md).
 //
 // # Pourquoi cette sonde existe
 //

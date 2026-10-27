@@ -15,7 +15,7 @@ import (
 // [SlotIdentity] apparie un slot au TRIPLET FINAL (frags, morts, assistances) de la ligne de
 // match du joueur. C'est exact quand les compteurs du film atteignent leurs valeurs finales,
 // et c'est MESURE que ce n'est pas toujours le cas : un film que le Theater rend TRONQUE
-// s'arrete avant. Mesure du 2026-08-18 (plan `.ai/V7.5/replay2d/PLAN_OBJECTIFS_VIVANTS_2E_LECTURE.md`,
+// s'arrete avant. Mesure du 2026-08-18 (plan `.ai/archive/V7.5/replay2d/PLAN_OBJECTIFS_VIVANTS_2E_LECTURE.md`,
 // phase 0) : **0 slot sur 8** sur `64e8adfa` et `24dbb67d` (`64e8adfa` slot 24 = 10/18/7 dans le
 // film contre 10/21/7 a l'API), **8 sur 8** sur `530820e5` et `53ce4390`.
 //

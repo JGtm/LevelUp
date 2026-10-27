@@ -1,7 +1,7 @@
 // Package himap — vehicules.go : la chaine `vehi -> hlmt -> mode` d'un vehicule pilotable.
 //
 // C'est le SEUL maillon neuf de la voie « sprite vue de dessus » (scout S2,
-// `.ai/V7.5/film_re/SCOUT_SPRITES_VEHICULES_2026-08-31.md`). Il ne lit AUCUN offset propre
+// `.ai/archive/V7.5/film_re/SCOUT_SPRITES_VEHICULES_2026-08-31.md`). Il ne lit AUCUN offset propre
 // au tag `vehi` : un vehicule reference son modele `hlmt` par un GlobalID inline, exactement
 // comme un `bloc`/`scen`/`mach` Forge, et `modeleDuHlmt` (cuisson_forge.go) sait deja suivre
 // ce saut jusqu'au render_model. Le `vehi` joue donc le role du tag d'objet, sans code

@@ -1,7 +1,7 @@
 package grammar
 
 // sonde_registre_scan_test.go — LE MOTEUR DE BALAYAGE des sondes F2/F3/F4/F5 du plan
-// `.ai/V7.5/replay2d/PLAN_EXPLOITATION_REGISTRE_FILM.md` (lot F). Les verdicts sont dans
+// `.ai/archive/V7.5/replay2d/PLAN_EXPLOITATION_REGISTRE_FILM.md` (lot F). Les verdicts sont dans
 // `sonde_registre_verdicts_test.go` ; ce fichier ne fait que produire la matiere.
 //
 // CE QU'IL FAIT, ET POURQUOI IL EST UNIQUE. Quatre archetypes sont interroges (ti=47 splash,
@@ -39,7 +39,7 @@ package grammar
 //
 //	CGO_ENABLED=0 PROBE_FILM=<repo>/data/cache/film_chunks/7344d24f \
 //	  PROBE_CACHE=<repo>/data/cache PROBE_SHORT=7344d24f PROBE_OBJTYPE=zone \
-//	  PROBE_TSV=<repo>/.ai/V7.5/replay2d/registre_film/lotEF \
+//	  PROBE_TSV=<repo>/.ai/archive/V7.5/replay2d/registre_film/lotEF \
 //	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run TestSondesRegistre -v -timeout 60m
 
 import (

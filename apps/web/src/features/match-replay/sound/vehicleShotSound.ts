@@ -10,7 +10,7 @@
  * le registre ne dit pas : les DEUX PRISES de chaque son, pour le tirage par coup.
  *
  * LES SOURCES SONT LES RECONSTRUCTIONS Wwise VALIDÉES PAR L'UTILISATEUR (manifeste_v3.json,
- * rev12, `.ai/V7.5/film_re/sons_v3_reconstruits/`), livrées en DEUX variantes (deux prises de la
+ * rev12, `.ai/archive/V7.5/film_re/sons_v3_reconstruits/`), livrées en DEUX variantes (deux prises de la
  * même perspective), coupées à la règle des ARMES (1,2 s max), 48 kHz / 16 bits / stéréo,
  * égalisées à la convention du lot R2-S (-16 LUFS visé, plafond -1 dBTP, gain LINÉAIRE seul).
  * Perspective : la prise « 3e personne » (vue spectateur) par défaut, sauf désignation à l'écoute

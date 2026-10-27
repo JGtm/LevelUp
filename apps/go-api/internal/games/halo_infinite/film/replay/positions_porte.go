@@ -2,7 +2,7 @@ package replay
 
 // positions_porte.go — LA PORTE DES POSITIONS DE BIPEDE : la grammaire de la vie, puis l emprise
 // jouee (lot M1 des retours du rejeu, 2026-09-23 ; annexe
-// `.ai/V7.5/retours_rejeu_2026-09-23/RAPPORT_positions_limbe.md`).
+// `.ai/archive/V7.5/retours_rejeu_2026-09-23/RAPPORT_positions_limbe.md`).
 //
 // # LE DEFAUT, MESURE
 //

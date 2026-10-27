@@ -42,7 +42,7 @@ const (
 	// p2aFilmEnv porte le repertoire des chunks d'UN film (chemin absolu). Meme nom qu'en
 	// phase 1 : c'est la meme garde, pour le meme corpus.
 	p2aFilmEnv = "ZONE_FILM"
-	// p2aOutEnv redirige les TSV ; par defaut `.ai/V7.5/replay2d/registre_film/lotCbis/`.
+	// p2aOutEnv redirige les TSV ; par defaut `.ai/archive/V7.5/replay2d/registre_film/lotCbis/`.
 	p2aOutEnv = "ZONE_OUT"
 )
 
@@ -157,7 +157,7 @@ func p2aOutDir(t *testing.T) string {
 		p2aMkdir(t, v)
 		return v
 	}
-	out := filepath.Join(repoRootForTest(t), ".ai", "V7.5", "replay2d", "registre_film", "lotCbis")
+	out := filepath.Join(repoRootForTest(t), ".ai", "archive", "V7.5", "replay2d", "registre_film", "lotCbis")
 	p2aMkdir(t, out)
 	return out
 }

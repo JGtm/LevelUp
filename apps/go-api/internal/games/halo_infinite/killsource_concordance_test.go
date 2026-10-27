@@ -1,6 +1,6 @@
 // Package halo_infinite — killsource_concordance_test.go : LE GARDE-RAIL DE CONCORDANCE
 // entre le kill feed du rejeu 2D et le graphe de répartition des frags (décision D13 du
-// plan .ai/V7.5/PLAN_SOURCE_UNIQUE_ARME_2026-09-01.md).
+// plan .ai/archive/V7.5/PLAN_SOURCE_UNIQUE_ARME_2026-09-01.md).
 //
 // # Le problème qu'il tient
 //

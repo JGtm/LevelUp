@@ -34,7 +34,7 @@ import (
 // PAS le pave brut de cette carte (son decoupage vient du POC, pas de la chaine universelle,
 // cf. `MapCalloutsCatalog.Brut`) — sans ce dump, Ridgeline se reconnait sur ses contours
 // DECOUPES, plus petits, donc avec un score plus severe. Fichier versionne.
-var cheminDumpPOC = filepath.Join(".ai", "V7.5", "dumps", "callout_zones_ridgeline_clipped.json")
+var cheminDumpPOC = filepath.Join("apps", "go-api", "internal", "testfixtures", "testdata", "cartes", "callout_zones_ridgeline_clipped.json")
 
 // moduleRidgeline : la carte dont les paves bruts vivent dans le dump du POC.
 const moduleRidgeline = "ridgeline"

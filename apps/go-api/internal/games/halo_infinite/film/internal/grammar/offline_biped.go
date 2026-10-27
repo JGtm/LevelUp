@@ -1,13 +1,13 @@
 // Décodage 100 % OFFLINE des positions absolues des bipeds (joueurs) depuis les seuls
 // chunks d'un film — zéro capture Cheat Engine.
 //
-// RÉFÉRENCE DE GRAMMAIRE : .ai/V7.5/film_re/GRAMMAIRE_RECORD_FILM.md fait foi sur l'en-tête d'un record,
+// RÉFÉRENCE DE GRAMMAIRE : .ai/archive/V7.5/film_re/GRAMMAIRE_RECORD_FILM.md fait foi sur l'en-tête d'un record,
 // sur le fait qu'idLow est une valeur de RUNTIME variable d'un film à l'autre (11 ici, 14 sur
 // le film de la capture live), et sur les bornes de jeu utilisables comme critères absolus.
 // À lire avant tout nouveau décodage.
 //
 // GRAMMAIRE DU RECORD BIPED (validée au quantum exact, 99,99 %, contre une table de
-// vérité live ; cf. .ai/V7.5/replay2d/thought_log_replay.md) :
+// vérité live ; cf. .ai/archive/V7.5/replay2d/thought_log_replay.md) :
 //
 //	[1 préfixe=1][idLow = slot][2 tag][1 gate=0][3 maskCount]
 //	[6 bits x maskCount indices de composants, croissants, le premier = 0]

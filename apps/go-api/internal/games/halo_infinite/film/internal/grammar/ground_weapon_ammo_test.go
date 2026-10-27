@@ -6,7 +6,7 @@ package grammar
 // composants de production, lancee au premier bit du composant i0, atteint `weapon-ammo-component`
 // et y lit R(8) puis R(11) dans cet ordre ; et que les trois refus tiennent. Il ne prouve PAS la
 // SEMANTIQUE des deux champs — celle-la se mesure sur le parc et son verdict est au rapport
-// `.ai/V7.5/RAPPORT_MUNITIONS_EXACTES_2026-09-11.md`, resume en tete de ground_weapon_ammo.go.
+// `.ai/archive/V7.5/RAPPORT_MUNITIONS_EXACTES_2026-09-11.md`, resume en tete de ground_weapon_ammo.go.
 //
 // LE CAS QUI TRAVERSE i9 EST LE PLUS IMPORTANT DES DEUX (lot 6.10 bis, 2026-09-11). Les 28
 // records de creation d'arme au sol de la bobine versionnee portent TOUS le composant i9

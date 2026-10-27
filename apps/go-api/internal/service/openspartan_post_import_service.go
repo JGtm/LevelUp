@@ -89,7 +89,7 @@ func (s *OpenSpartanPostImportService) Run(
 	// (GetLUSRChainForTitle) comme le recalcul des notes de performance
 	// (GetPerformanceChain, title-aware depuis 5be99a2c3) — écriraient sinon dans la
 	// base d'un titre la classification d'un AUTRE : c'est la corruption du
-	// 2026-06-26 (.ai/V7.5/RAPPORT_VOLET1_LUSR_H5_2026-08-28.md §5.1 T3), dont C.1
+	// 2026-06-26 (.ai/archive/V7.5/RAPPORT_VOLET1_LUSR_H5_2026-08-28.md §5.1 T3), dont C.1
 	// n'avait fermé que le volet LUSR. Le stamp est ici, À L'ENTRÉE, pour qu'une
 	// étape AJOUTÉE plus bas en hérite sans que personne ait à y penser
 	// (garde-rail : TestRunStampeLeTitreAvantLaPremiereEtape).

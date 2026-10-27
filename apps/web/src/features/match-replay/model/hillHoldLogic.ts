@@ -31,7 +31,7 @@
  * 43 s. C'était une reconstruction, et elle était fausse d'environ 20 % — l'écart n'a pas été
  * corrigé en ajustant la constante (ce qui aurait été caler une mesure sur un rendu) mais en
  * changeant de SOURCE. L'historique des trois lots vit dans
- * `.ai/V7.5/PLAN_KOTH_GARDE_VIVANTE_2026-08-30.md`.
+ * `.ai/archive/V7.5/PLAN_KOTH_GARDE_VIVANTE_2026-08-30.md`.
  *
  * LES CAMPS SE LISENT DANS LA MÊME CONVENTION QUE LE BANDEAU. `holdTicks[].teamId` et
  * `teams[].teamId` portent tous deux l'index d'équipe du REGISTRE ; ce module reçoit les

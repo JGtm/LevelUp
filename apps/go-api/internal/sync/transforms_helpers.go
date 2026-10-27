@@ -122,7 +122,7 @@ func isFirefightMatch(matchInfo map[string]any) bool {
 //
 // SOURCE UNIQUE DU SCORE D'ÉQUIPE, ET C'EST POUR ÇA QU'ELLE EST EXPORTÉE. Le champ lu,
 // `Teams[].Stats.CoreStats.Score`, est le score AFFICHÉ par le jeu — mesuré sur les 1 934
-// matchs du corpus le 2026-08-24 (rapport `.ai/V7.5/replay2d/RAPPORT_QUALITE_SCORE_EQUIPE.md`).
+// matchs du corpus le 2026-08-24 (rapport `.ai/archive/V7.5/replay2d/RAPPORT_QUALITE_SCORE_EQUIPE.md`).
 // Le bloc voisin `Stats.ZonesStats.StrongholdScoringTicks` porte, lui, le compteur brut du
 // mode : 69 lignes de `match_registry` le contiennent par erreur, héritage d'une période où
 // l'API 343 servait ce compteur dans `CoreStats.Score` (corrigée entre avril et mai 2026).
@@ -178,7 +178,7 @@ func ExtractTeamScoresByID(matchJSON map[string]any) (*int, *int) {
 // voisins `RoundsLost` / `RoundsTied`), est publié par l'API depuis toujours et n'était lu
 // nulle part avant le 2026-08-29. Il porte la seule grandeur qui dise le résultat d'un mode à
 // manches : mesuré sur les 1 942 matchs à score du corpus
-// (`.ai/V7.5/RAPPORT_MANCHES_2026-08-29.md`), 4 matchs Oddball donnent la victoire à l'équipe
+// (`.ai/archive/V7.5/RAPPORT_MANCHES_2026-08-29.md`), 4 matchs Oddball donnent la victoire à l'équipe
 // qui a le MOINS de points, et seul le compte de manches les départage.
 //
 // LE TOTAL EST LE MAX DES DEUX CAMPS, PAS LE TOTAL D'UN SEUL. Quatre matchs du corpus

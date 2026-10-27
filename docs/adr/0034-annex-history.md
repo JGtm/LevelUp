@@ -2,9 +2,9 @@
 
 This annex holds, verbatim, the sections of [ADR 0034](0034-film-decoder-profile-and-layers.md)
 that recorded the state of the tree at the closures of milestones M2, M3 and M4 of
-`.ai/V7.5/PLAN_DECODEUR_FILM_2026-09-13.md`, and the corrections found on the tree during that
+`.ai/archive/V7.5/PLAN_DECODEUR_FILM_2026-09-13.md`, and the corrections found on the tree during that
 effort. They were moved out of the ADR on 2026-09-30 (J12.5 of
-`.ai/V7.5/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25.md`) so the ADR keeps its decisions and a short
+`.ai/archive/V7.5/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25.md`) so the ADR keeps its decisions and a short
 current state. **This is history**: each section describes the tree on its date, not today. For
 the current state, read the "Current state" section of the ADR.
 
@@ -16,7 +16,7 @@ registry entries without a wired counter; every entry has been counted since 202
 
 ## State reached at M2 (2026-09-17)
 
-Measured on the tree at the closure of milestone M2 of `.ai/V7.5/PLAN_DECODEUR_FILM_2026-09-13.md`
+Measured on the tree at the closure of milestone M2 of `.ai/archive/V7.5/PLAN_DECODEUR_FILM_2026-09-13.md`
 (base `92c83b333`). Go paths below are relative to `apps/go-api/internal/`. The plan holds the
 lots, the gates and their numbers; this section holds only what the tree shows, decision by
 decision, and where a decision above reads differently from the tree **the tree wins and the
@@ -232,7 +232,7 @@ exemptions for the game writer's own fallbacks.
 
 ## State reached at M3 (2026-09-17)
 
-Measured on the tree at the closure of milestone M3 of `.ai/V7.5/PLAN_DECODEUR_FILM_2026-09-13.md`
+Measured on the tree at the closure of milestone M3 of `.ai/archive/V7.5/PLAN_DECODEUR_FILM_2026-09-13.md`
 (base `fe38d2e35`, the integration carrying lots 3.4, 3.6.a and 3.1.1 — the code of M3 is
 complete). Go paths are relative to `apps/go-api/internal/`. Same rule as the M2 section above:
 the plan holds the lots, the gates and their numbers; this section holds what the tree shows,
@@ -446,7 +446,7 @@ rest on.
 
 ## State reached at M4 (2026-09-18)
 
-Measured on the tree at the closure of milestone M4 of `.ai/V7.5/PLAN_DECODEUR_FILM_2026-09-13.md`
+Measured on the tree at the closure of milestone M4 of `.ai/archive/V7.5/PLAN_DECODEUR_FILM_2026-09-13.md`
 (base `896a9ce04`, the integration carrying lots 4.1, 4.2, 4.4 with the equivalence references
 re-frozen — the code of M4 is complete, and M4 is the last milestone of the effort). Go paths are
 relative to `apps/go-api/internal/`. Same rule as the two sections above: the plan holds the lots,

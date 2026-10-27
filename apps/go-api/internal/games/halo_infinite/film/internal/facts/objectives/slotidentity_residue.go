@@ -5,7 +5,7 @@ import "levelup/go-api/internal/games/halo_infinite/film/types"
 // slotidentity_residue.go — L'IDENTITE D'UN SLOT D'ENTITE PAR RESIDU DE MANCHE.
 //
 // # LE TROU QUE CE FICHIER FERME (decouverte 1 du lot 6.2,
-// `.ai/V7.5/RAPPORT_ODDBALL_FANTOMES_2026-09-10.md` §6)
+// `.ai/archive/V7.5/RAPPORT_ODDBALL_FANTOMES_2026-09-10.md` §6)
 //
 // [RoundIdentity.CompletedByElimination] ne nomme que le cas d'UNICITE : exactement un slot
 // muet, exactement un xuid libre. Des qu'une manche en laisse DEUX, elle s'abstient — et c'est

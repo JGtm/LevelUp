@@ -16,7 +16,7 @@ package grammar
 // hypothèse : c'est la MÊME primitive que `EnumA`/`EnumB` du dead-state, que la production lit
 // déjà comme des index de participant (`killsource/walk.go:224`, validés `< nPlay`), et le
 // sondage E2 du 2026-09-08 l'a mesurée sur cinq films —
-// `.ai/V7.5/film_re/SONDAGE_E2_BIPEDE_INDEX_2026-09-08.md` :
+// `.ai/archive/V7.5/film_re/SONDAGE_E2_BIPEDE_INDEX_2026-09-08.md` :
 //
 //	porte OUVERTE 529 fois sur 529 · valeur dans le roster du film 527 fois sur 529
 //	couverture des vies nommées DIRECTEMENT : 90,3 % / 86,8 % / 95,0 % (372 vies sur 408)

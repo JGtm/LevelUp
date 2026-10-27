@@ -16,9 +16,9 @@ package grammar
 // jeu, aucun etat de processus, et n a AUCUNE entree de profil — les grammaires portees ici sont
 // des largeurs LITTERALES d instruction. Sources, sous Ghidra en lecture seule :
 //
-//	i4  `.ai/V7.5/film_re/NOTE_3_6_TI9_2026-09-16.md` §2 — ecrivain `FUN_142ed5bc8`
+//	i4  `.ai/archive/V7.5/film_re/NOTE_3_6_TI9_2026-09-16.md` §2 — ecrivain `FUN_142ed5bc8`
 //	    (descripteur `0x143d08840`, ecrivain a `descripteur + 0x40` = `0x143d08880`).
-//	i9  `.ai/V7.5/film_re/NOTE_3_6_TI9_TI35_RESTES_2026-09-17.md` §1 — ecrivain
+//	i9  `.ai/archive/V7.5/film_re/NOTE_3_6_TI9_TI35_RESTES_2026-09-17.md` §1 — ecrivain
 //	    `FUN_141fcf160` (descripteur `0x143d08930`, `+0x40`), son sac texte `FUN_14080b034`
 //	    et le corps d emplacement `FUN_1407f0ebc`. Grammaire VERIFIEE par un sceptique
 //	    independant (20 points de controle, 19 concordants ; l unique discordance portait sur

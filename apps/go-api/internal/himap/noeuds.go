@@ -1,7 +1,7 @@
 // Package himap — noeuds.go : le squelette (bloc NOEUDS) d'un render_model `mode`, et la
 // composition de la transformee MODEL-SPACE d'un noeud nomme.
 //
-// POURQUOI (preuve moteur Ghidra, `.ai/V7.5/film_re/GHIDRA_ATTACHEMENT_VEHICULE_2026-09-01.md`).
+// POURQUOI (preuve moteur Ghidra, `.ai/archive/V7.5/film_re/GHIDRA_ATTACHEMENT_VEHICULE_2026-09-01.md`).
 // Le moteur N'attache PAS un objet-enfant (tourelle/arme) a translation nulle : il resout un
 // MARQUEUR NOMME (StringId) qui se resout a la matrice MODEL-SPACE d'un NOEUD du squelette du
 // chassis, en tire une transformee COMPLETE {echelle uniforme, rotation 3x3, translation} et pose

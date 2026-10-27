@@ -283,7 +283,7 @@ export interface TintedIconOptions {
    * comportement STRICTEMENT INCHANGÉ) — la teinte REMPLACE la couleur du sprite, c'est le
    * mode des masques HUD (blanc/gris + alpha). `'multiply'` — la teinte se MULTIPLIE avec les
    * couleurs du sprite : le blanc devient l'encre, le NOIR RESTE NOIR (les traits de volume des
-   * sprites véhicules, cf. `.ai/V7.5/film_re/V4_RAPPORT_SPRITES_2026-08-31.md` §10.1).
+   * sprites véhicules, cf. `.ai/archive/V7.5/film_re/V4_RAPPORT_SPRITES_2026-08-31.md` §10.1).
    * `multiply` ne respecte PAS l'alpha à lui seul (`fillRect` en mode multiply rend opaque tout
    * pixel de fond transparent) : un second passage `destination-in` avec l'image d'origine
    * réapplique le canal alpha du sprite après le `fillRect`.

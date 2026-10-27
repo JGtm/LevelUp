@@ -5,7 +5,7 @@ and facts freshness: D-3 rule 2, D-6, D-7; one scan stage for the identity bridg
 over the bytes: D-1, D-2). Amended on **2026-10-02** by
 [ADR 0037](0037-film-intermediate-representation.md): the grammar's reading becomes a typed
 intermediate representation (D-1, D-2, D-6, D-7, D-10). The state reached at the M2, M3 and M4 closures of
-`.ai/V7.5/PLAN_DECODEUR_FILM_2026-09-13.md` (2026-09-17 and 2026-09-18), and the corrections found
+`.ai/archive/V7.5/PLAN_DECODEUR_FILM_2026-09-13.md` (2026-09-17 and 2026-09-18), and the corrections found
 on the tree during that effort, moved on 2026-09-30 to
 [the history annex](0034-annex-history.md). This file keeps the decisions, their amendments and a
 short current state.
@@ -361,9 +361,9 @@ the difference is written here; the history of how each decision was reached is 
 
 ## Amendment of 2026-09-26 — the revision model and the freshness of facts (audit follow-up, J3)
 
-Source: `.ai/V7.5/AUDIT_DECODEUR_FILM_2026-09-24.md` (findings SRC-1, RA1-1, RA1-2, RA1-4 and
+Source: `.ai/archive/V7.5/AUDIT_DECODEUR_FILM_2026-09-24.md` (findings SRC-1, RA1-1, RA1-2, RA1-4 and
 architecture weakness 1), decisions DU-2 and DU-9 of
-`.ai/V7.5/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25.md`, milestone J3. No decode revision rose:
+`.ai/archive/V7.5/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25.md`, milestone J3. No decode revision rose:
 `source.Rev`, `profile.Rev`, `grammar.Rev` keep their values and their fingerprints were re-frozen
 at constant revision (tooling); `SchemaVersion` went **71 -> 72** and the facts codec
 (`VersionCodecFaits`) **1 -> 2**, so every persisted facts file is refused on its prefix and
@@ -463,7 +463,7 @@ for used values).
 
 ## Amendment of 2026-09-26 (bis) — one scan stage for the identity bridge (audit follow-up, J4)
 
-Source: `.ai/V7.5/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25.md`, decision DU-3 (option S, first half S1),
+Source: `.ai/archive/V7.5/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25.md`, decision DU-3 (option S, first half S1),
 finding RA1-3 and architecture weaknesses 3 and 5. No decode revision rose: the moves are pure and
 the fingerprints of `source`, `grammar`, `killsource` and `objectives` were re-frozen at constant
 revision. `IsolationDecoderRev` (the killsource collector's isolation facts) rose to
@@ -594,7 +594,7 @@ backstop for review, not a semantic proof.
 
 ## References
 
-- `.ai/V7.5/PLAN_DECODEUR_FILM_2026-09-13.md` — the lots, gates and dates this ADR abstracts from.
-- `.ai/V7.5/ARCHITECTURE_CIBLE_DECODEUR_FILM_2026-09-12.md`, `.ai/V7.5/HANDOFF_DECODEUR_FILM_2026-09-13.md`
+- `.ai/archive/V7.5/PLAN_DECODEUR_FILM_2026-09-13.md` — the lots, gates and dates this ADR abstracts from.
+- `.ai/archive/V7.5/ARCHITECTURE_CIBLE_DECODEUR_FILM_2026-09-12.md`, `.ai/archive/V7.5/HANDOFF_DECODEUR_FILM_2026-09-13.md`
   — the dated survey and the proofs behind D-3, D-4 and D-9. Chronicle, not source: the code is.
 - Every package, test and ratchet named above, cited inline where it applies.

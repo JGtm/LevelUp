@@ -7,7 +7,7 @@
 // titre du MOTEUR (e.titleSlug, celui dont il ouvre les bases), et JAMAIS celle
 // du titre porté par le ctx entrant. C'est le correctif de la classe de défaut qui
 // a produit la corruption h5_arena du 2026-06-26 : handles DB d'un titre, chaîne
-// LUSR d'un autre (.ai/V7.5/RAPPORT_VOLET1_LUSR_H5_2026-08-28.md §3, §5.3 G4).
+// LUSR d'un autre (.ai/archive/V7.5/RAPPORT_VOLET1_LUSR_H5_2026-08-28.md §3, §5.3 G4).
 //
 // Le test passe par le seam title-aware réel (SetLUSRChainClassifierForTitle /
 // GetLUSRChainForTitle) avec deux slugs SYNTHÉTIQUES : aucun autre test du binaire

@@ -30,7 +30,7 @@ import (
 // se corrige en produisant des kill-events pour ce match ; `sans_mesure` se corrige en
 // DÉCODANT SON FILM (le film est là, il ne porte pas l'assistance). Le bloc est retiré dans
 // les deux cas ; les confondre rendrait l'alerte inexploitable (registre
-// `.ai/V7.5/REGISTRE_ASSISTANCES_2026-08-29.md`).
+// `.ai/archive/V7.5/REGISTRE_ASSISTANCES_2026-08-29.md`).
 const (
 	compteurMatchAssistSansLigne  = "assist_pairs_match_retire_sans_ligne_total"
 	compteurMatchAssistSansMesure = "assist_pairs_match_retire_sans_mesure_total"

@@ -38,7 +38,7 @@ package replay
 // seule, AUCUNE base.
 //
 //	$env:ATT_FILM="<repo>/data/cache"; $env:ATT_REF="<worktree>/data/titles/halo_infinite/reference"
-//	$env:C2_FILM="35b75a31"; $env:C2_SITES="<worktree>/.ai/V7.5/replay2d/registre_film/C2_sites_candidats.json"
+//	$env:C2_FILM="35b75a31"; $env:C2_SITES="<worktree>/.ai/archive/V7.5/replay2d/registre_film/C2_sites_candidats.json"
 //	go test ./internal/games/halo_infinite/film/replay/ -run CataloguesC2Sites -v
 
 import (

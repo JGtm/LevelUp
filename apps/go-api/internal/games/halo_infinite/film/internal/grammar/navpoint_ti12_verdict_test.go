@@ -35,7 +35,7 @@ var ti12Explosions = map[string][]int{
 // ti12UneBombe designe les TROIS films de la variante One Bomb du corpus.
 //
 // CE DECOUPAGE EST ANTERIEUR A CETTE MESURE, et c'est ce qui autorise a s'en servir : il est
-// ecrit dans `.ai/V7.5/ETAT_ASSAUT_2026-08-31.md` §1.b (« sur df8fcbef, c75f33b8 et 9f57c612 »,
+// ecrit dans `.ai/archive/V7.5/ETAT_ASSAUT_2026-08-31.md` §1.b (« sur df8fcbef, c75f33b8 et 9f57c612 »,
 // les seuls films MULTI-MANCHES du corpus) et §1.e, ou les memes trois films portent les cinq
 // pertes du pont d'identite. Il n'a pas ete choisi apres coup pour separer un resultat : il
 // separait deja le corpus la veille.

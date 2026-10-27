@@ -1,6 +1,6 @@
 /**
  * Tests — useReplayGroundWeapons : LE SURVOL (item A) et LE FILTRE « ARMES SPÉCIALES » (item B)
- * du lot 6.5 (2026-09-10, `.ai/V7.5/RAPPORT_ARMES_AU_SOL_2026-09-10.md`).
+ * du lot 6.5 (2026-09-10, `.ai/archive/V7.5/RAPPORT_ARMES_AU_SOL_2026-09-10.md`).
  *
  * CE QUE CE FICHIER VERROUILLE :
  *  - l'infobulle tient en UNE ligne composée de trois fragments (arme, origine, reprise) ;

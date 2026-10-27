@@ -3,7 +3,7 @@ package filmshell
 // unarmed.go — L OBJET « MAINS NUES » DU JEU, et la regle NOMMEE qui l ecarte des dotations
 // (retours du rejeu, lot M6.3, 2026-09-24).
 //
-// L IDENTITE (sonde CA9 du 2026-09-23, `.ai/V7.5/retours_rejeu_2026-09-23/SONDE_CA9_objet_00007CA9.md`,
+// L IDENTITE (sonde CA9 du 2026-09-23, `.ai/archive/V7.5/retours_rejeu_2026-09-23/SONDE_CA9_objet_00007CA9.md`,
 // et instrument `internal/himodule/m6_bobine_mains_nues_research_test.go`) : `00007CA9` est un
 // tag `weap` du module `globals` (8 796 octets, sans projectile, sans chargeur, sans son de tir)
 // que le script Lua global nomme `WeaponTags.unarmed`. Sa liste de variantes porte `42C9679F`,

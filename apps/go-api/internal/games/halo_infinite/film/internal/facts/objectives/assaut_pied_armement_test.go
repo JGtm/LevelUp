@@ -87,7 +87,7 @@ const (
 )
 
 // apVariante dit, pour chaque film du corpus, si sa meche est FIXE (donc si l'oracle
-// `explosion - meche` s'y applique). Source : `.ai/V7.5/PLAN_ASSAUT_LOT_A_2026-08-27.md` §0.
+// `explosion - meche` s'y applique). Source : `.ai/archive/V7.5/PLAN_ASSAUT_LOT_A_2026-08-27.md` §0.
 var apVariante = map[string]struct {
 	nom       string
 	mecheFixe bool

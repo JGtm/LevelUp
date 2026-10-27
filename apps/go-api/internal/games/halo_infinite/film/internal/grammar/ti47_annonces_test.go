@@ -1,7 +1,7 @@
 package grammar
 
 // ti47_annonces_test.go — L'ENTREE ET LES RAPPORTS de l'instrument « ti=47 i2 personal-ai-data »
-// (plan `.ai/V7.5/replay2d/PLAN_TI47_ANNONCES_ZONE.md`). Le moteur est dans
+// (plan `.ai/archive/V7.5/replay2d/PLAN_TI47_ANNONCES_ZONE.md`). Le moteur est dans
 // `ti47_annonces_scan_test.go` ; ici on ne fait que lire ce qu'il a recolte et l'ecrire.
 //
 // PHASE 0 (toujours) : recensement de la bande, purete, et HISTOGRAMME DE CHAINAGE — la largeur

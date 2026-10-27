@@ -170,7 +170,7 @@ views serve one pass but every read scans all of them. `levelup compact-passes` 
 the rows their view keeps, but it was a manual, server-stopped gesture and the production
 databases had never been compacted: 26.6 M raw rows for 3.7 M served on 2026-10-21
 (`match_kill_events` 7.98 M for 0.42 M, about 20 passes per match). On a copy of production,
-compaction alone made most pages 2 to 10 times faster (plan `.ai/V7.5/PLAN_PERF_PAGES_V801_2026-10-21.md`,
+compaction alone made most pages 2 to 10 times faster (plan `.ai/archive/V7.5/PLAN_PERF_PAGES_V801_2026-10-21.md`,
 annex A.3): read cost follows the raw row count.
 
 **Decision.** Compaction runs every night as a HOST task, outside the server process, only when

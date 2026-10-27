@@ -35,7 +35,7 @@
 # `.facts.json` touche ; 20 cuissons `depuis_les_faits=false`.
 #
 # REFERENCES RE-FIGEES AU RETRAIT DES REPLIS NULS (DU-7), SCHEMA 76, LE 2026-10-02 (branche
-# feat/retrait-replis-nuls ; mesure du parc : .ai/V7.5/MESURES_PARC_REPLIS_NULS_2026-10-02.md).
+# feat/retrait-replis-nuls ; mesure du parc : .ai/archive/V7.5/MESURES_PARC_REPLIS_NULS_2026-10-02.md).
 # CLASSIFICATION AVANT `-update`, sortie complete : 20 films, 20 ecarts, et sur les VINGT les trois
 # memes etapes des 61 — `flag`, `killsource`, `skull`. `artifact` (le document cuit) et les 57
 # autres etapes sont IDENTIQUES A L OCTET. Les trois objets observes perdent des champs de COMPTE de
@@ -116,7 +116,7 @@
 #
 # POURQUOI ON PEUT RE-FIGER ICI — TROIS CHAINES INDEPENDANTES, ET ELLES CONCORDENT.
 #   (1) LA PIECE ECRITE. Les sept chassis entres viennent tous de
-#       `.ai/V7.5/film_re/sons_v3_reconstruits/manifeste_v3.json` (section `par_vehicule`),
+#       `.ai/archive/V7.5/film_re/sons_v3_reconstruits/manifeste_v3.json` (section `par_vehicule`),
 #       celle que la table citait deja pour `fe32c0f4`. Un meme vehicule est declare dans
 #       PLUSIEURS modules du jeu sous un GlobalID par module — le manifeste l ecrit :
 #       « f6f54e56 (any/globals) = chassis 0000d3db (pc/globals), meme hlmt ».
@@ -256,7 +256,7 @@
 # 13 differents / 0 identique. Ce n'etait ni une regression ni une derive de grammaire, et la
 # preuve est faite ecart par ecart : les 110 couples film x etape qui ont bouge (sur 650) sont
 # tous rattaches a une entree datee, ZERO constat de regression — cf.
-# `.ai/V7.5/RAPPORT_REFIGEAGE_EQUIVALENCE_2026-09-13.md`. Les anciennes references restent
+# `.ai/archive/V7.5/RAPPORT_REFIGEAGE_EQUIVALENCE_2026-09-13.md`. Les anciennes references restent
 # lisibles par `git show cbfdc269d:<chemin du .tsv>` (c'est le commit qui les PORTE encore, et
 # aussi celui ou les neuves ont ete mesurees : cette branche n'a touche aucun fichier de
 # production). Les trois seules BAISSES de compte : `objectives` a 0 sur quatre films (garde

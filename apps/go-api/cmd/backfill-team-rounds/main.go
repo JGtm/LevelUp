@@ -14,7 +14,7 @@
 //
 // Sur un mode qui se décide aux manches, le score d'équipe est un CUMUL DE POINTS qui ne dit
 // pas le résultat. Mesure du 2026-08-29 sur les 1 942 matchs à score du corpus
-// (`.ai/V7.5/RAPPORT_MANCHES_2026-08-29.md`) : 4 matchs Oddball donnent la victoire à
+// (`.ai/archive/V7.5/RAPPORT_MANCHES_2026-08-29.md`) : 4 matchs Oddball donnent la victoire à
 // l'équipe qui affiche le MOINS de points. Sans ces colonnes, l'app présente ces victoires
 // comme des défaites au score.
 //

@@ -1,7 +1,7 @@
 package grammar
 
 // i48_ability_width_test.go — INSTRUMENT DE MESURE de l'ÉTAPE 1 du plan
-// .ai/V7.5/replay2d/PLAN_CAPACITES_ACTIVES.md : « relire l'index de capacité sur 6 BITS,
+// .ai/archive/V7.5/replay2d/PLAN_CAPACITES_ACTIVES.md : « relire l'index de capacité sur 6 BITS,
 // après la porte décrite par le binaire », mesure déclarée prioritaire le 2026-07-27 et
 // jamais exécutée jusqu'ici.
 //

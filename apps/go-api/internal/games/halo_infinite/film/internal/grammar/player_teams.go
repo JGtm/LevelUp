@@ -12,7 +12,7 @@ import (
 // Elle est dans la trame d'etat (paquets de type 2), portee par le composant
 // `managed-player-team-designator-component` — le composant i0 de l'archetype ti=9
 // (« managed-player ») — sur QUATRE bits. Source :
-// `.ai/V7.5/film_re/NOTE_EQUIPE_FILM_2026-09-12.md`, deux chaines SANS etape commune :
+// `.ai/archive/V7.5/film_re/NOTE_EQUIPE_FILM_2026-09-12.md`, deux chaines SANS etape commune :
 //
 //	L'EXECUTABLE : descripteur `0x143d08ad0` (nom en +0x08, ecrivain en +0x18, lecteur en
 //	  +0x30) ; le lecteur `0x140f581e8` n'appelle que `FUN_1407ef804`, dont le desassemblage

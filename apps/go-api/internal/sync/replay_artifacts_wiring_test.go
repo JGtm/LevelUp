@@ -6,7 +6,7 @@ package sync
 //
 // L etape 1.57 obtenait sa capacite film par assertion de type. Aucun client de production ne
 // la portait : l assertion echouait partout, l etape ne s executait nulle part, et RIEN ne le
-// disait — cinq mois de donnee arretee (`.ai/V7.5/REGISTRE_ASSISTANCES_2026-08-29.md`). Le
+// disait — cinq mois de donnee arretee (`.ai/archive/V7.5/REGISTRE_ASSISTANCES_2026-08-29.md`). Le
 // correctif fut `kill_source_wiring_test.go` : des assertions qui NE PEUVENT PAS MENTIR parce
 // qu elles ne compilent pas quand un client perd la methode.
 //

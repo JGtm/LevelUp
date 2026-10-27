@@ -8,7 +8,7 @@ package grammar
 // Une fonction du jeu, UN portage (`lecteur_position.go`). Chaque site Go qui lit une position
 // quantifiee appelle l un des points d entree du portage (`lireE524`, `lireE494`, `lireE420`,
 // `lireE494Sur`) avec l IMMEDIAT DE NIVEAU que le jeu passe a CE site — releve dans Ghidra le
-// 2026-09-27 (`.ai/V7.5/film_re/RELEVES_J6_GHIDRA_2026-09-27.md`, colonnes « appelant / CALL /
+// 2026-09-27 (`.ai/archive/V7.5/film_re/RELEVES_J6_GHIDRA_2026-09-27.md`, colonnes « appelant / CALL /
 // niveau » de son §1). Le test, par l AST des sources de production du paquet :
 //
 //   - releve chaque appel d un point d entree, sa fonction englobante, son `case` englobant quand

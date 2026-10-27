@@ -5,7 +5,7 @@ package main
 //
 // # POURQUOI UNE COPIE, PAS UNE JONCTION
 //
-// Le balayage du 2026-09-06 (.ai/V7.5/v2/BALAYAGE_PARC_2026-09-06.md) a proteg le parc par des
+// Le balayage du 2026-09-06 (.ai/archive/V7.5/v2/BALAYAGE_PARC_2026-09-06.md) a proteg le parc par des
 // jonctions NTFS EN LECTURE et un dossier `data/cache/replays` REEL pour l'ecriture — sur et
 // mesure, mais VERIFIE apres coup (mtimes compares avant/apres) plutot que garanti par
 // construction : une jonction ne bloque aucune ecriture, elle redirige simplement, et

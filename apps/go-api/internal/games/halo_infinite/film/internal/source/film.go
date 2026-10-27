@@ -3,8 +3,8 @@ package source
 // film.go — LE FILM CHARGE : CHUNKS DECOMPRESSES UNE FOIS, PAQUETS DECOUPES UNE FOIS.
 //
 // La grammaire de decoupage (D3 REVISEE du 2026-09-02) et la mesure qui l'a etablie sont
-// documentees en tete de paquet (doc.go) : `.ai/V7.5/PLAN_CUISSON_PERF.md` §3 D3 et
-// `.ai/V7.5/MESURES_CUISSON_PERF.md` §2b (1 378 films).
+// documentees en tete de paquet (doc.go) : `.ai/archive/V7.5/PLAN_CUISSON_PERF.md` §3 D3 et
+// `.ai/archive/V7.5/MESURES_CUISSON_PERF.md` §2b (1 378 films).
 
 import (
 	"bytes"

@@ -9,7 +9,7 @@ import (
 )
 
 // GARDE-RAIL de la chaine des ARMES AU SOL, portee en production a la phase 3 du plan
-// `.ai/V7.5/replay2d/PLAN_ARMES_AU_SOL_2E_LECTURE.md`.
+// `.ai/archive/V7.5/replay2d/PLAN_ARMES_AU_SOL_2E_LECTURE.md`.
 //
 // LA REGLE N°6 DU DEPOT : une factorisation SANS garde-rail re-diverge, et la lecon est
 // chiffree (predicat bot passe de 8 a 36 copies apres centralisation). Ici la divergence serait

@@ -2,7 +2,7 @@
 
 package grammar
 
-// ri27d1_d10_research_test.go — LES MESURES DE D1.0 (`.ai/V7.5/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`,
+// ri27d1_d10_research_test.go — LES MESURES DE D1.0 (`.ai/archive/V7.5/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`,
 // items D1.0.4 a D1.0.7), complements de l instrument 2.7.d0/2.7.d1 (`ri27d0_images_cles_research_test.go`,
 // `ri27d1_instrument_research_test.go`). Aucun fichier de production n est touche.
 //

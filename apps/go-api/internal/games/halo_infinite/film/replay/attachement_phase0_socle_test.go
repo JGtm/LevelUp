@@ -1,7 +1,7 @@
 package replay
 
 // attachement_phase0_socle_test.go — PHASE 0 du plan
-// `.ai/V7.5/replay2d/PLAN_ATTACHEMENT_PARENT_STATE.md` : LE SOCLE DE LECTURE D'i10.
+// `.ai/archive/V7.5/replay2d/PLAN_ATTACHEMENT_PARENT_STATE.md` : LE SOCLE DE LECTURE D'i10.
 //
 // CE QUE LA PHASE 0 CHERCHE. Le composant `object-parent-state-component` (i10) est porté
 // par le bipède (ti=35), l'équipement (37), le corps rigide (38), le véhicule (40), l'arme

@@ -3,7 +3,7 @@ package grammar
 // vehicle_occupancy.go — LE BLOC SUPPLÉMENTAIRE DU RECORD D'IMAGE-CLÉ D'UN VÉHICULE : le
 // localiser, le mesurer, et dire EXACTEMENT ce qu'il ne dit pas.
 //
-// D'OÙ ÇA VIENT. Le lot V5 (`.ai/V7.5/film_re/V5_ETAT_OCCUPATION_2026-09-02.md` § 6) a mesuré que
+// D'OÙ ÇA VIENT. Le lot V5 (`.ai/archive/V7.5/film_re/V5_ETAT_OCCUPATION_2026-09-02.md` § 6) a mesuré que
 // le record d'image-clé d'un véhicule `ti=40` est PLUS LONG quand le véhicule est occupé, avec un
 // écart récurrent de +89 bits sur trois films indépendants. Le lot V5B a ouvert ce bloc.
 //

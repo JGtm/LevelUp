@@ -5,7 +5,7 @@ package himap
 // Témoins GAMEFILES du lecteur de callouts (exigent l'installation du jeu ; skip sinon).
 //
 // Les oracles sont EXTERNES au lecteur : le dump versionné
-// .ai/V7.5/dumps/callout_zones_ridgeline_clipped.json (produit par les scripts Python de
+// internal/testfixtures/testdata/cartes/callout_zones_ridgeline_clipped.json (produit par les scripts Python de
 // recherche, confronté aux positions de joueurs) et les totaux mesurés du balayage
 // callouts_all.py (22 cartes, 816 zones, liaison 816/816).
 

@@ -1,7 +1,7 @@
 package grammar
 
 // keyframe_etat_complet_bipede.go — L ETAT COMPLET DU BIPEDE AUX IMAGES-CLES, LU PAR LA GRAMMAIRE
-// (plan `.ai/V7.5/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, D1.1.2 ; ADR 0037 IR-6, option A de
+// (plan `.ai/archive/V7.5/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, D1.1.2 ; ADR 0037 IR-6, option A de
 // l utilisateur du 2026-10-04 : les fenetres de bits passent DERRIERE la lecture).
 //
 // Un canal de la phase des images-cles ([canalDeLEtatCompletBipede]) declare, par NOM, les

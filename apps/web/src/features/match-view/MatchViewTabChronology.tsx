@@ -5,7 +5,7 @@
  * Joueurs, 2026-08-24) : les blocs sont DÉPLACÉS tels quels depuis la sous-section
  * « Déroulé du match » de l'ancien onglet Détails, dont le sous-titre est conservé.
  *
- * TROIS BLOCS L'ONT QUITTÉ LE 2026-09-19 (plan `.ai/V7.5/PLAN_AJUSTEMENTS_PRE_V75_2026-09-19.md`,
+ * TROIS BLOCS L'ONT QUITTÉ LE 2026-09-19 (plan `.ai/archive/V7.5/PLAN_AJUSTEMENTS_PRE_V75_2026-09-19.md`,
  * lot 2) pour le nouvel onglet « Contrôle » : le bilan d'équipement, le contrôle des armes et
  * l'occupation du terrain. Aucun des trois n'est une lecture chronologique — ils disent QUI A
  * TENU QUOI, pas QUAND. Cet onglet ne garde que ce qui se lit sur un axe de temps.

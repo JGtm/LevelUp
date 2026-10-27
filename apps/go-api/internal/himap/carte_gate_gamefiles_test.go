@@ -10,6 +10,8 @@ import (
 	"math"
 	"os"
 	"testing"
+
+	"levelup/go-api/internal/testfixtures"
 )
 
 // LE GATE VISUEL — la carte reconstruite contre la carte VALIDEE, au meme calage.
@@ -31,11 +33,7 @@ import (
 func TestGateVisuelCliffhanger(t *testing.T) {
 	ref := os.Getenv("GATE_REFERENCE")
 	if ref == "" {
-		p, err := cheminDepuisDepot(".ai/V7.5/dumps/carte_validee_v1.png")
-		if err != nil {
-			t.Skip(err)
-		}
-		ref = p
+		ref = testfixtures.Carte("carte_validee_v1.png")
 	}
 	f, err := os.Open(ref) //nolint:gosec // chemin de test, lecture seule
 	if err != nil {

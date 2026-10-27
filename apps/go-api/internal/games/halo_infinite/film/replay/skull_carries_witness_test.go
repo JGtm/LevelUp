@@ -11,7 +11,7 @@ package replay
 // REGIME : UN FILM PAR PROCESSUS (garde RAM du corpus Oddball), lecture seule, aucune base.
 //
 //	$env:ATT_FILM="<repo>"; $env:ODDBALL_FILM="d9781168"
-//	$env:SKULL_ORACLE="<repo>/.ai/V7.5/replay2d/registre_film/D10_oracle_objective_stats.json"
+//	$env:SKULL_ORACLE="<repo>/.ai/archive/V7.5/replay2d/registre_film/D10_oracle_objective_stats.json"
 //	go test ./internal/games/halo_infinite/film/replay/ -run SkullCarrierWitness -v
 
 import (

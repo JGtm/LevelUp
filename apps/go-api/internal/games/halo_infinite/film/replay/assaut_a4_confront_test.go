@@ -24,8 +24,8 @@ package replay
 // REGIME : gardes `ASSAUT_SWEEP` (TSV du balayage) + `ASSAUT_PARTICIPANTS` (releve fige),
 // aucune base, aucun film.
 //
-//	$env:ASSAUT_SWEEP=".ai/V7.5/replay2d/registre_film/A4_statborg_sweep.tsv"
-//	$env:ASSAUT_PARTICIPANTS=".ai/V7.5/replay2d/registre_film/A_oracle_participants.tsv"
+//	$env:ASSAUT_SWEEP=".ai/archive/V7.5/replay2d/registre_film/A4_statborg_sweep.tsv"
+//	$env:ASSAUT_PARTICIPANTS=".ai/archive/V7.5/replay2d/registre_film/A_oracle_participants.tsv"
 //	go test ./internal/games/halo_infinite/film/replay/ -run AssautA4Confront -v
 
 import (

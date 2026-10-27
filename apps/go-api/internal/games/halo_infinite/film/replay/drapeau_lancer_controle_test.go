@@ -2,7 +2,7 @@ package replay
 
 // drapeau_lancer_controle_test.go — LE CONTROLE ELARGI : ET SI ON LANCAIT LE DRAPEAU ?
 //
-// D'OU VIENT LA QUESTION. Le controle 3 du plan `.ai/V7.5/replay2d/PLAN_DRAPEAU_OBJET.md` a
+// D'OU VIENT LA QUESTION. Le controle 3 du plan `.ai/archive/V7.5/replay2d/PLAN_DRAPEAU_OBJET.md` a
 // REFUSE la piste : 149/197 = 75,6 % des vies libres naissent a moins de 1,5 m d'un socle ou du
 // porteur qui vient de finir, contre 90 % exiges. Le temoin, lui, tient (12,8 %) : la piste
 // discrimine, elle n'est pas du bruit — mais 48 vies restent sans explication, et le diagnostic
@@ -71,7 +71,7 @@ package replay
 // rattraper le portage precedent. Piste au registre, pas correctif.
 //
 // CE TEST RESTE, ET IL RESTE VERT : il ne juge pas, il PUBLIE le balayage. Le refus est ecrit au
-// plan `.ai/V7.5/replay2d/PLAN_DRAPEAU_OBJET.md` (phase 4), la ou un verdict se conteste.
+// plan `.ai/archive/V7.5/replay2d/PLAN_DRAPEAU_OBJET.md` (phase 4), la ou un verdict se conteste.
 // ────────────────────────────────────────────────────────────────────────────────────────────
 
 import (

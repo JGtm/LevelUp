@@ -4,7 +4,7 @@ package replay
 // l'artefact.
 //
 // CHRONIQUE — v23 (2026-08-28, lot PORTEUR ODDBALL,
-// `.ai/V7.5/replay2d/registre_film/ODDBALL_PORTEUR_PROTOCOLE.md`). Le document publie
+// `.ai/archive/V7.5/replay2d/registre_film/ODDBALL_PORTEUR_PROTOCOLE.md`). Le document publie
 // `skullCarries` — LES PERIODES DE PORTAGE DU CRANE, en intervalles de frames, chacun nomme par
 // le xuid du porteur. Un champ de document, un schema de plus (`SkullCarry`) et un bloc de
 // couverture (`SkullCarriesCoverage`).

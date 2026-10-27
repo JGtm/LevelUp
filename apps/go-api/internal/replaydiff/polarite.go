@@ -9,7 +9,7 @@ package replaydiff
 //
 // HISTORIQUE DU DEFAUT. Jusqu'au 2026-09-28 une liste FERMEE de derniers segments (`noSlot`,
 // `unpublished`...) designait les compteurs d'echec, et toute autre mesure gardait la lecture
-// « plus = mieux ». Le G-corpus J11 (`.ai/V7.5/film_re/G_CORPUS_J11_2026-09-28.md` §4) en a
+// « plus = mieux ». Le G-corpus J11 (`.ai/archive/V7.5/film_re/G_CORPUS_J11_2026-09-28.md` §4) en a
 // chiffre le cout : environ 110 des 390 lignes « perte » etaient des compteurs d'echec qui
 // BAISSAIENT (`holes*`, `*Unlocated`, `no_owner`, `desync`, `uncovered`...), et 70 compteurs
 // d'echec qui MONTAIENT sortaient en « gain », donc absents du rapport. Une liste fermee se

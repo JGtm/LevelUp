@@ -3,7 +3,7 @@ package replay
 // oddball_th10_d10_test.go — D10 / O3 : QUE DATENT LES EVENEMENTS `th=10` DU CRANE ?
 //
 // LE PROTOCOLE EST ECRIT ET COMMITE AVANT CE FICHIER
-// (`.ai/V7.5/replay2d/registre_film/D10_PROTOCOLE.md`, §6). Ce qui suit l'applique.
+// (`.ai/archive/V7.5/replay2d/registre_film/D10_PROTOCOLE.md`, §6). Ce qui suit l'applique.
 //
 // # POURQUOI CETTE QUESTION EST OUVERTE
 //

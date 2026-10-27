@@ -13,7 +13,7 @@ package replay
 // CE CAMP dont le score personnel monte.
 //
 // LE PROTOCOLE — dominance exigee, temoins, seuils, escalade — EST ECRIT ET COMMITE AVANT CE
-// FICHIER (`.ai/V7.5/PLAN_OBJECTIFS_ETAT_VIVANT_2026-08.md`, section D2-ter). Ce qui suit
+// FICHIER (`.ai/archive/V7.5/PLAN_OBJECTIFS_ETAT_VIVANT_2026-08.md`, section D2-ter). Ce qui suit
 // l'applique, il ne le decide pas.
 //
 // REGIME : garde `ZONE_FILM`, un film par processus, lecture seule, AUCUNE base, AUCUN

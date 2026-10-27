@@ -8,7 +8,7 @@ import (
 
 // FRAME-delta decoder (L3) — port of the type-0 packet record loop FUN_1406cd128 +
 // dispatch FUN_1406cbaa0 + delta FUN_141f86b58. Grammar extracted via Ghidra
-// (workflow frame-decoder-grammar). See .ai/V7.5/killweapon/PLAN_FILM_KILLFEED_V3.md / HANDOFF.
+// (workflow frame-decoder-grammar). See .ai/archive/V7.5/killweapon/PLAN_FILM_KILLFEED_V3.md / HANDOFF.
 //
 // Per-record header (CONFIRMED, the two traps a naive port falls into):
 //   - record TYPE is a PREFIX CODE, not a flat R(2):
@@ -125,7 +125,7 @@ func (c FrameConfig) contexte() ContexteDeLecture {
 // (matchBipedHeader puis la marche de record, `delta_biped_walk.go`) mesure sur le
 // meme film 000d5950 : compteur R(3) == 4 dans 120 lectures sur 120 (100,00 %) et valeurs
 // R(8) dans {0, 1, 2} exclusivement (etude du 2026-08-24,
-// .ai/V7.5/replay2d/FAISABILITE_SUIVI_DELTA_INVENTAIRE_2026-08-24.md §1.3). Ne pas lire les
+// .ai/archive/V7.5/replay2d/FAISABILITE_SUIVI_DELTA_INVENTAIRE_2026-08-24.md §1.3). Ne pas lire les
 // 92,46 % comme un verdict sur i22 : c'est un verdict sur la marche non ancree.
 //
 // Cette amorce est gardee parce qu'elle repose sur trois temoins independants d'i22 et

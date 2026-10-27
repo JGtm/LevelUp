@@ -1,5 +1,5 @@
 // Package service — match_range_block.go : LE PRODUCTEUR UNIQUE du bloc « portée des
-// engagements » par (match, joueur) (plan .ai/V7.5/PLAN_AJUSTEMENTS_SUPP_PRE_V75_2026-09-21.md,
+// engagements » par (match, joueur) (plan .ai/archive/V7.5/PLAN_AJUSTEMENTS_SUPP_PRE_V75_2026-09-21.md,
 // lots N2 puis U).
 //
 // # POURQUOI UN PRODUCTEUR, ET PAS UNE MÉTHODE PAR PAGE

@@ -6,7 +6,7 @@
 // Pourquoi cet outil existe. Le 2026-06-26, le pipeline de sync V2 a écrit la chaîne
 // Halo 5 `h5_arena` dans les player DB halo_infinite de 4 joueurs (913 / 1 064 / 471 /
 // 31 lignes, ×2 rating_type) — double source de titre au câblage, cf.
-// .ai/V7.5/RAPPORT_VOLET1_LUSR_H5_2026-08-28.md. La réparation d'août a AJOUTÉ les
+// .ai/archive/V7.5/RAPPORT_VOLET1_LUSR_H5_2026-08-28.md. La réparation d'août a AJOUTÉ les
 // lignes correctes (append-only : rien n'est jamais supprimé), elle n'a pas retiré les
 // fautives. Elles restent dans la table brute, et deux d'entre elles (matchs non
 // rejouables) gagnent encore l'arbitrage de match_skill_rank_latest.

@@ -13,7 +13,7 @@
 //
 // # CE QU'IL FAIT, ET POURQUOI IL N'A PAS BESOIN DE GHIDRA
 //
-// La chaine de `.ai/V7.5/film_re/NOTE_3_6_METHODE_DESCRIPTEURS_2026-09-16.md` est MECANIQUE :
+// La chaine de `.ai/archive/V7.5/film_re/NOTE_3_6_METHODE_DESCRIPTEURS_2026-09-16.md` est MECANIQUE :
 //
 //  1. la chaine de caracteres du nom du composant, en `.rdata` ;
 //  2. l'accesseur de nom (« thunk ») : `LEA RAX,[rip+disp] ; RET`, 8 octets, seule reference

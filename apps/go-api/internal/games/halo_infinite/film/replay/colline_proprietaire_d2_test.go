@@ -2,7 +2,7 @@ package replay
 
 // colline_proprietaire_d2_test.go — PHASE D2 : QUI TIENT LA COLLINE ?
 //
-// Le plan `.ai/V7.5/PLAN_OBJECTIFS_ETAT_VIVANT_2026-08.md` (§2.2) part d'un manque ECRIT DANS LE
+// Le plan `.ai/archive/V7.5/PLAN_OBJECTIFS_ETAT_VIVANT_2026-08.md` (§2.2) part d'un manque ECRIT DANS LE
 // CODE : `hillStatesOf` (zone_states_hill.go) construit ses intervalles avec `Active: true` et
 // `Owner` JAMAIS renseigne — le rejeu sait quelle colline est active, jamais qui la tient. Le
 // volet 1 du lot C-ter le disait en toutes lettres : « on ne publie pas ce qu'on n'a pas mesure ».

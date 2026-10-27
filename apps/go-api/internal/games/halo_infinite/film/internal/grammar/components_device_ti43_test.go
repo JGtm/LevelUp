@@ -6,7 +6,7 @@ import (
 )
 
 // components_device_ti43_test.go — les lecteurs `device-*` de `ti=43` confrontes a des vecteurs
-// ECRITS COMME L ECRIVAIN LES ECRIT (`.ai/V7.5/film_re/campagne_grammaire_2026-10-01/T7_dispositifs_ti43_moteur.md`
+// ECRITS COMME L ECRIVAIN LES ECRIT (`.ai/archive/V7.5/film_re/campagne_grammaire_2026-10-01/T7_dispositifs_ti43_moteur.md`
 // §6.1) : bits dans l ordre d ecriture, chaque champ poids fort en tete. Un vecteur est tenu quand
 // le lecteur de production, appele par la chaine de dispatch, consomme EXACTEMENT ses bits — ni
 // moins, ni plus : une queue de uns suit chaque vecteur, qu un lecteur qui lirait trop

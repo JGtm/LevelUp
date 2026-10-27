@@ -174,7 +174,7 @@ schema_version = 9
 # CE CHIFFRE NE SE CALE PAS SUR LE RENDU. Une version anterieure de cette table portait 43,
 # mesure sur le canal de PROPRIETE (une reconstruction), et la tentation etait de le monter pour
 # que la jauge tombe pleine pile au point. La voie propre etait de changer de SOURCE, pas de
-# corriger la constante. Detail des trois lots : `.ai/V7.5/PLAN_KOTH_GARDE_VIVANTE_2026-08-30.md`
+# corriger la constante. Detail des trois lots : `.ai/archive/V7.5/PLAN_KOTH_GARDE_VIVANTE_2026-08-30.md`
 # §E1, §E1-bis et §E1-ter ; instrument `internal/games/halo_infinite/film/replay/colline_statborg_e1bis_test.go`.
 #
 # DOUBLES ET CLASSE, MESURES LE 2026-10-09 par la meme regle (union des tics du camp depuis le
@@ -220,7 +220,7 @@ schema_version = 9
 #
 # MEME DOCTRINE QUE LES DEUX TABLES CI-DESSUS : cle = game_variant_name exact, contenu
 # MESURE, jamais « au juge ». Une variante absente garde les points — degradation sure.
-# Mesure : `.ai/V7.5/RAPPORT_MANCHES_2026-08-29.md` (1 942 matchs re-lus, 0 erreur).
+# Mesure : `.ai/archive/V7.5/RAPPORT_MANCHES_2026-08-29.md` (1 942 matchs re-lus, 0 erreur).
 #
 # VOLONTAIREMENT ABSENTS, et ce n'est pas un oubli :
 #   - One Flag CTF, Assault:One Bomb, Attrition : modes A MANCHES eux aussi, mais leur
@@ -444,7 +444,7 @@ schema_version = 9
 # distribution ; au-dela c'est un plateau plat. 1,5 s capte 93 % du mode dense sans mordre
 # sur le plateau. A cette fenetre, 40 % du compteur officiel est du jonglage (617 prises
 # brutes, 370 nettes). Detail, histogramme et controles :
-# `.ai/V7.5/RAPPORT_PRISES_NETTES_2026-09-13.md`.
+# `.ai/archive/V7.5/RAPPORT_PRISES_NETTES_2026-09-13.md`.
 #
 # MEME DOCTRINE QUE TOUT CE FICHIER : cle ABSENTE = PAS DE LECTURE. Un titre qui ne declare
 # pas cette fenetre ne publie AUCUNE prise nette (jamais un zero, jamais une fenetre par

@@ -18,6 +18,6 @@
 //
 // The engine's accumulator/refill state machine (FUN_1406d6c7c / FUN_1406cf008 /
 // FUN_140c18a1c) is an optimization; its observable output is a plain MSB-first big-endian
-// bitstream, which is what the reader implements. See .ai/V7.5/film_re/PLAN_FILM_ECS_DECODER.md
+// bitstream, which is what the reader implements. See .ai/archive/V7.5/film_re/PLAN_FILM_ECS_DECODER.md
 // (the decompiler output it was read from is kept outside the repository, see NOTICE).
 package grammar

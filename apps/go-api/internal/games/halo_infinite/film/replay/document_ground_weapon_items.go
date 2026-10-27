@@ -112,7 +112,7 @@ type GroundWeapon struct {
 	// et rien d'autre. -1 sinon (`Origin == "spawned"`).
 	//
 	// CE N'EST PAS UN LIEN AVEC LE FLUX DELTA DE PRISES/LÂCHERS (corrigé le 2026-09-10,
-	// rapport `.ai/V7.5/RAPPORT_ARMES_AU_SOL_2026-09-10.md` §2.2 : le commentaire précédent
+	// rapport `.ai/archive/V7.5/RAPPORT_ARMES_AU_SOL_2026-09-10.md` §2.2 : le commentaire précédent
 	// promettait un tel lien — « un lâcher du flux delta coïncide » — qui n'existe nulle part
 	// dans le code, `DropperSlot` n'ayant qu'une seule affectation, ici même). Mesuré sur le
 	// parc : `Dropper` renseigné équivaut EXACTEMENT à `Origin == "dropped"` (9 794 = 9 794
@@ -144,7 +144,7 @@ type GroundWeapon struct {
 // conclusion avant la mesure. La preuve des deux qui sortent ici — le gradient d'égalité avec
 // l'inventaire du lâcheur selon l'âge de la référence — est en tête de
 // `filmdec/ground_weapon_ammo.go` et au rapport
-// `.ai/V7.5/RAPPORT_MUNITIONS_EXACTES_2026-09-11.md`.
+// `.ai/archive/V7.5/RAPPORT_MUNITIONS_EXACTES_2026-09-11.md`.
 type GroundWeaponAmmo struct {
 	// Mag est le CHARGEUR.
 	Mag int `json:"mag"`

@@ -484,7 +484,7 @@ go run ./cmd/weapon-icons-table                      # derives the Go table from
 - Replay when: a game content update grows the icon set (build) ; after every
   `weapon-icons-build` run, so the table stays in sync (table).
 - Full chain, correspondence tables and refuted leads:
-  `.ai/V7.5/icones/ETAT_DE_L_ART_ICONES.md`.
+  `.ai/archive/V7.5/icones/ETAT_DE_L_ART_ICONES.md`.
 
 #### mapquant-build
 
@@ -588,7 +588,7 @@ go run ./cmd/mapopads-build --from <dir> --refresh-drifted   # re-validate again
 
 - Output: `data/titles/{slug}/reference/map_weapon_pads.json` (weapon/power-up spawn pads),
   written atomically via the same `mapcatalog.WriteAtomic` helper used by the sync runtime's
-  own Forge catch-up path into this file (`.ai/V7.5/v2/PLAN_V2_REJEU_FILM_2026-09-05.md` item A.3 —
+  own Forge catch-up path into this file (`.ai/archive/V7.5/v2/PLAN_V2_REJEU_FILM_2026-09-05.md` item A.3 —
   tracked separately, not part of this chain).
 - Prereq: no game install, no network, no cgo ; requires `map_objectives.json` (map_id →
   filename link) and a local dump of `.mvar` files (`--from`).
@@ -643,7 +643,7 @@ go run ./cmd/mapnav-fetch -map-id <uuid> [-map-id <uuid>...] [-dry-run]
 
 Multi-subcommand CLI (`inventaire`/`render`/`variantes`/`diag`/`assemble`/`compose2d`), not a
 single fixed invocation. Verified fragment of the recipe behind the current set (covers 13 of
-the 18 vehicles ; later passes added the rest — check `.ai/V7.5/film_re/*.md` for the current
+the 18 vehicles ; later passes added the rest — check `.ai/archive/V7.5/film_re/*.md` for the current
 state before re-running):
 
 ```bash
@@ -657,7 +657,7 @@ v4tool.exe render -variant=any -cote=256 -out=<dir> \
   `files_list.txt`), consumed by `useReplayVehicles.ts`. None of it goes through
   `PathResolver` — paths are plain `-out`/`-curate` flags.
 - Prereq: game installed, cgo/GPLv3 (never linked into `cmd/server`) ; no network.
-- Replay when: a new pilotable vehicle ships. Full recipe: `.ai/V7.5/film_re/V4_RAPPORT_SPRITES_2026-08-31.md`
+- Replay when: a new pilotable vehicle ships. Full recipe: `.ai/archive/V7.5/film_re/V4_RAPPORT_SPRITES_2026-08-31.md`
   §9 and later notes in the same directory.
 
 #### weapon-sounds (mode `livrer`, final step of a larger recipe)
@@ -674,7 +674,7 @@ go run ./cmd/weapon-sounds -mode livrer -donnees <chantier>/_donnees [-sons <cha
   cgo IS required to BUILD the binary: `cmd/weapon-sounds` imports `internal/himap` ->
   `internal/himodule` -> `internal/ooz` (Kraken decompression) for its other modes.
 - Replay when: a weapon vote is finalized, or the full recipe is redone (game update, new
-  weapon). Full recipe: `.ai/V7.5/RECETTE_SONS_ARMES.md`.
+  weapon). Full recipe: `.ai/archive/V7.5/RECETTE_SONS_ARMES.md`.
 
 ### Media
 
@@ -925,7 +925,7 @@ films.
 
 ### 2D replay — build tooling (facts, equivalence, profiling)
 
-Operator tools of the artifact build chain ("cuisson" in `.ai/V7.5/PLAN_CUISSON_PERF.md`). They read
+Operator tools of the artifact build chain ("cuisson" in `.ai/archive/V7.5/PLAN_CUISSON_PERF.md`). They read
 the local film cache; the two offline ones need no DB and decode one film per bounded child process
 (hard memory cap, low CPU priority, solo lock).
 
@@ -968,7 +968,7 @@ wait, sentinel) and dies with its RAM. References live in
 instead of comparing them — for a declared correction only. The `-walkers` mode (divergence of the
 packet-splitting grammars over the whole film cache) was **removed** in 2026-09: it carried a copy
 of three historical packet walkers whose originals no longer exist, so it only compared against
-itself. Its measurement stays frozen in `.ai/V7.5/MESURES_CUISSON_PERF.md` §2 and is replayed in CI
+itself. Its measurement stays frozen in `.ai/archive/V7.5/MESURES_CUISSON_PERF.md` §2 and is replayed in CI
 by the mini-reel test of `internal/analysis/filmsource`.
 
 ```bash
@@ -1119,7 +1119,7 @@ corpus never ran to completion, and CI does not execute it. Tracked in
 Three data regressions (2026-08-28, 08-30, 09-02 — identity bridge per round, unattributed
 flag actions, "one track = one life") sailed through green SYNTHETIC goldens for nineteen
 schema bumps, because nothing diffed real films. `cmd/replay-diff` (used for the one-off
-parc sweep, `.ai/V7.5/v2/BALAYAGE_PARC_2026-09-06.md`) turns that manual method into a repeatable
+parc sweep, `.ai/archive/V7.5/v2/BALAYAGE_PARC_2026-09-06.md`) turns that manual method into a repeatable
 gate: `config/replay_corpus.toml` freezes one witness match per mode family (CTF single- and
 multi-round, Oddball, Assault, Slayer, a two-round match, a vehicle-heavy match), each chosen
 because it already carries a measured layer or defect (skull carries, the multi-round identity
@@ -1260,7 +1260,7 @@ never the whole batch). **Does NOT require the installed game**: baking itself (
 revision) only reads versioned catalogs (`data/titles/{slug}/reference`), unlike the
 `gamefiles` corpus above — the gate only shares its *spirit* (a large local resource, absent in
 CI, degrades cleanly instead of failing). Measured 2026-09-06/07 on the 7-witness manifest,
-both modes: **cf. `.ai/V7.5/v2/CORPUS_TEMOIN_2026-09-06.md`** for the exact runs and durations.
+both modes: **cf. `.ai/archive/V7.5/v2/CORPUS_TEMOIN_2026-09-06.md`** for the exact runs and durations.
 
 If the local parc is older than HEAD, `--reference=parc` diffs are expected to show GAINS (new
 layers, documented fixes); any LOSS is a fact to report, never to hide by narrowing the
@@ -1272,7 +1272,7 @@ manifest or filtering the report.
 Judges a replay artifact AFTER against an artifact BEFORE of the same witness, against ORACLES
 (official match truths) and VIOLATION COUNTS (what no real match can contain), instead of
 attributing hundreds of coverage metrics by hand. Design:
-`.ai/V7.5/film_re/BANC_DE_VERITE_CONCEPTION_2026-09-30.md`; library: `internal/replayverite`. It
+`.ai/archive/V7.5/film_re/BANC_DE_VERITE_CONCEPTION_2026-09-30.md`; library: `internal/replayverite`. It
 bakes nothing, decodes no film and opens no DB.
 
 ```bash

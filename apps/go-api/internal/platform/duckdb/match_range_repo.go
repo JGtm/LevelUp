@@ -1,5 +1,5 @@
 // Package duckdb — match_range_repo.go : la portée de frag de TOUT UN LOBBY, par match
-// (port.MatchRangeRepository ; plan .ai/V7.5/PLAN_AJUSTEMENTS_SUPP_PRE_V75_2026-09-21.md,
+// (port.MatchRangeRepository ; plan .ai/archive/V7.5/PLAN_AJUSTEMENTS_SUPP_PRE_V75_2026-09-21.md,
 // lot N2, réserve R3).
 //
 // # UN SEUL CÔTÉ, ET C'EST LE POINT

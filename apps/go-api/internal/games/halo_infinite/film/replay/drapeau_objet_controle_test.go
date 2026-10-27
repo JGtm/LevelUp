@@ -1,7 +1,7 @@
 package replay
 
 // drapeau_objet_controle_test.go — LE CONTROLE 3 du plan
-// `.ai/V7.5/replay2d/PLAN_DRAPEAU_OBJET.md` : les vies LIBRES du drapeau naissent-elles la ou
+// `.ai/archive/V7.5/replay2d/PLAN_DRAPEAU_OBJET.md` : les vies LIBRES du drapeau naissent-elles la ou
 // un drapeau nait ?
 //
 // LA QUESTION, ET POURQUOI ELLE SUFFIT. La chaine ne decode aucune etiquette « drapeau » sur la

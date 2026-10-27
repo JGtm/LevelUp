@@ -32,7 +32,7 @@ package killsource
 // ailleurs ; un build sans position etablie ne donne aucune equipe ([EquipesDesBots.PositionInconnue]).
 //
 // L ORACLE : l equipe de la feuille de match et celle que l entite `ti=9` du bot lui donne, liee par
-// ses declarations (`botmeta_equipe_research_test.go`, `.ai/V7.5/PLAN_REJEU_EQUIPES_SOURCE_2026-10-06.md`).
+// ses declarations (`botmeta_equipe_research_test.go`, `.ai/archive/V7.5/PLAN_REJEU_EQUIPES_SOURCE_2026-10-06.md`).
 // Elles CONTROLENT la mesure ; aucune ne remplace la lecture.
 //
 // # LA LECTURE VIT DANS LA GRAMMAIRE

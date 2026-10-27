@@ -75,7 +75,7 @@ func lettresLitLigneMatch(t *testing.T, path, short string) (lettresFilm, bool) 
 // lettresRegistreDir rend le repertoire des exports geles du registre du film.
 func lettresRegistreDir(t *testing.T) string {
 	t.Helper()
-	return filepath.Join(repoRootForTest(t), ".ai", "V7.5", "replay2d", "registre_film")
+	return filepath.Join(repoRootForTest(t), ".ai", "archive", "V7.5", "replay2d", "registre_film")
 }
 
 // lettresRoster relit les lignes de match GELEES du film.

@@ -21,7 +21,7 @@ const zoneLetterMax = 3
 // `ti=13` CROISSANT, chacune prenant son rang (0 = A, 1 = B, 2 = C).
 //
 // POURQUOI CET ORDRE-LA, ET CE QU'IL VAUT (mesure du 2026-08-24, plan
-// `.ai/V7.5/replay2d/PLAN_LETTRES_BASES_FALLBACK.md`, phase 0.2). La lettre affichee en jeu
+// `.ai/archive/V7.5/replay2d/PLAN_LETTRES_BASES_FALLBACK.md`, phase 0.2). La lettre affichee en jeu
 // n'existe dans AUCUNE donnee decodee : ni le catalogue de formes, ni la variante, ni — verdict
 // de la RE Ghidra du meme jour — le binaire, ou elle vient d'un script de mode. Ce qui se mesure,
 // c'est que l'ordre des slots de jauge est REPRODUCTIBLE : sur 8 cartes et 17 films de Bastion,
