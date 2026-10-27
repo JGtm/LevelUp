@@ -6,6 +6,7 @@
 - **Map variants counted with their base map** — "- Ranked" and "Heavies" variants now count under their base map in every per-map statistic: Tactics, Explorer, Summary, Squad, Time series and the home page. The replay and the match view keep the name of the variant actually played
 - **The map filter brings back the variants** — on the Summary, the Squad and Teammates, as it already did in the Explorer
 - **The Explorer briefing keeps its cards** — a filter too narrow to compare now shows the card with the reason instead of dropping it; under 10 matches everything stays, with a warning on the Matches tile; on smaller screens the tiles split into even rows
+- **Halo 5 modes everywhere** — the Summary's "By mode" chart, empty for Halo 5 until now, lists your modes (Slayer, Capture the Flag, Strongholds...)
 
 **v8.0 — 2D replay, the Theater film decoded & a Tactics tab**
 

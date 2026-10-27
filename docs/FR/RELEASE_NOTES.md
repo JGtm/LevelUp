@@ -6,6 +6,7 @@
 - **Les variantes de carte comptées avec leur carte de base** — les variantes « - Ranked » et « Heavies » comptent désormais sous leur carte de base dans toutes les statistiques par carte : Tactique, Explorateur, Synthèse, Escouade, Séries temporelles et page d'accueil. Le rejeu et la vue du match gardent le nom de la variante réellement jouée
 - **Le filtre de cartes ramène les variantes** — dans la Synthèse, l'Escouade et Coéquipiers, comme il le faisait déjà dans l'Explorateur
 - **Le briefing de l'Explorateur garde ses cartes** — un filtre trop étroit pour comparer affiche la carte avec la raison au lieu de la retirer ; sous 10 matchs tout reste, avec un avertissement sur la tuile Matchs ; sur les écrans plus étroits, les tuiles se répartissent en lignes égales
+- **Les modes de Halo 5 partout** — le graphique « Par mode » de la Synthèse, vide jusqu'ici pour Halo 5, liste tes modes (Assassin, Capture du drapeau, Bases...)
 
 **v8.0 — Le rejeu 2D, le film Theater décodé & un onglet Tactique**
 

@@ -19,6 +19,7 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 
 ### Fixed
 - **Filtre de cartes de la Synthèse, de l'Escouade et des Coéquipiers** — choisir une carte ramène aussi les parties jouées sur ses variantes, comme le faisait déjà le filtre de l'Explorateur.
+- **Halo 5 : « Par mode » de la Synthèse était vide** — les matchs Halo 5 portent désormais leur mode (Assassin, Capture du drapeau, Bases...) sur toutes les pages, par une règle déclarée une fois par jeu ; le graphique « Par mode » de la Synthèse les liste avec leur courbe de performance.
 
 ## [8.0.7] - 2026-10-26
 

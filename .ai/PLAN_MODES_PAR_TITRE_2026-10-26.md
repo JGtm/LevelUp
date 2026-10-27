@@ -159,11 +159,17 @@ touchées, à l'octet hors champs volatils, pour un joueur témoin).
 - Gate : relevé écrit, tests verts. (Relevé en Mesures.)
 
 ### E4 — Vérification visuelle (avec le user) et clôture
-- [ ] Halo 5 (Chocoboflor, puis JGtm) : Synthèse « Par mode », filtre Modes de l'Explorateur,
-      Accueil ; Halo Infinite (JGtm) : mêmes pages inchangées
-- [ ] Changelog EN/FR : une ligne dans la section `[8.1.0]` existante (Fixed)
-- [ ] `.ai/thought_log.md` : entrée Complété
-- [ ] Skill `delivery-checklist` ; commit et fusion dans `release/v8.1.0` sur accord du user
+- [x] Halo 5 (Chocoboflor, puis JGtm) : Synthèse « Par mode », filtre Modes de l'Explorateur,
+      Accueil ; Halo Infinite (JGtm) : mêmes pages inchangées (2026-10-27, serveur relancé depuis la copie
+      principale passée sur `release/v8.1.0` : Synthèse H5 Chocoboflor 12 modes à l'écran avec courbe, JGtm 13 ;
+      filtre Modes 12 options ; Accueil H5 nomme les modes des sessions ; Synthèse Infinite JGtm 21 modes, inchangée.
+      Premier essai faux négatif : le serveur lisait `config/` d'une copie restée en v8.0.7, d'où le log
+      `mode_source` au boot, 47f3e6c4a)
+- [x] Changelog EN/FR : une ligne dans la section `[8.1.0]` existante (Fixed), plus une puce au bloc v8.1 des
+      notes de version (EN/FR)
+- [x] `.ai/thought_log.md` : entrée Complété
+- [x] Skill `delivery-checklist` ; commit et fusion dans `release/v8.1.0` sur accord du user (accord du 2026-10-26,
+      fusion a2a369f2b puis 9240e1c4a ; non poussé)
 - Gate : validation visuelle du user + checklist verte.
 
 ## Reprise de session

@@ -19,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 - **Map filter in the Summary, Squad and Teammates** — picking a map now also brings back the matches played on its variants, as the Explorer filter already did.
+- **Halo 5: "By mode" in the Summary was empty** — Halo 5 matches now carry their mode (Slayer, Capture the Flag, Strongholds...) on every page, from one rule declared per game; the Summary's "By mode" chart lists them with their performance curve.
 
 ## [8.0.7] - 2026-10-26
 
