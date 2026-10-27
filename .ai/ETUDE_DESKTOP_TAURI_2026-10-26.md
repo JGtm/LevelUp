@@ -8,6 +8,13 @@ release), puis vérification sur pièces par le pilote des points qualifiés de 
 Les références `fichier:ligne` datent du 2026-10-26 (branche `release/v8.0.7`) : RE-VÉRIFIER
 avant de coder.
 
+**Audit complémentaire** : `.ai/AUDIT_COMPLEMENTAIRE_DESKTOP_2026-10-27.md` cadre les 12
+chantiers que cette étude fait apparaître (C1 à C12 : arrêt propre sous Windows, migrations,
+jeton en mode `none`, horloge du cache, archive des films, séquence de démarrage, profil de
+déploiement, racines ressources/données, CI Windows, binaire autonome, sons de `static/`,
+police et ffmpeg), avec gravité, preuve, traitement, tests et décisions. Il corrige le §7 et
+la question 4 du §11 (pas de purge automatique des films).
+
 ---
 
 ## 1. Verdict
@@ -227,6 +234,10 @@ restent possibles en suivant des profils avec son propre jeton (pool à un jeton
   films, ~27 Mo par film) sur 144 Go pour tout `data/` ; faits ~4,5 Mo et rejeu ~2 Mo par
   film. Sans rétention, un joueur assidu remplit son disque. Décision VPS actuelle : purge
   manuelle, pas d'éviction auto — à redécider pour le Desktop (§11 q4).
+  **Corrigé le 2026-10-27** (audit complémentaire, C5) : les films expirent côté Halo et
+  servent aux recuissons, l'archive est irremplaçable (`filmcache/write.go`) : pas de purge
+  automatique. À la place : emplacement d'archive réglable, occupation affichée, choix
+  « archiver ou non » à l'installation. Les chunks sont déjà en zlib (recompression : +1,4 %).
 - Installation neuve : ~150 Mo de ressources ; la croissance vient des films.
 - Mémoire : DuckDB plafonné à 512 Mo et 2 threads par connexion (`platform/duckdb/db.go`),
   aucun plafond global au processus serveur ; en ajouter un en mode Desktop.
@@ -282,8 +293,9 @@ amendement de l'ADR 0023 si chiffrement des jetons.
 2. Windows seul en v1 ? Recommandation : oui.
 3. Desktop autonome (+ option « se connecter à un serveur ») ou client de l'hébergé ?
    Recommandation : autonome.
-4. Films bruts sur Desktop : purge automatique une fois les faits extraits, quota réglable,
-   ou manuelle comme sur le VPS ?
+4. Films bruts sur Desktop : ~~purge automatique une fois les faits extraits~~ (écarté le
+   2026-10-27, archive irremplaçable) ; reformulée en C5-a de l'audit complémentaire :
+   archiver par défaut, ou proposer « ne pas archiver » à l'installation ?
 5. Chiffrer les jetons au repos (aujourd'hui JSON en clair, 0600) par DPAPI / gestionnaire
    d'identifiants Windows, derrière un port côté Go ? Amende l'ADR 0023.
 6. Budget de signature de code ; ffmpeg livré ou téléchargement optionnel ?
