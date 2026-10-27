@@ -205,7 +205,7 @@ Plan : `.ai/PLAN_DELAI_DEBRIEF_2026-10-17.md` (Découvertes D-1 à D-4, journal)
 
 ## Reports du lot « statistiques par carte regroupées » (2026-10-26, exécutant de `feat/cartes-variantes-stats`)
 
-Plan : `.ai/PLAN_CARTES_VARIANTES_STATS_2026-10-26.md` (Découvertes, E4 et E5).
+Plan : `.ai/V8/PLAN_CARTES_VARIANTES_STATS_2026-10-26.md` (Découvertes, E4 et E5).
 
 | Item | Origine | Pourquoi reporté | Condition de reprise |
 |---|---|---|---|

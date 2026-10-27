@@ -1,5 +1,5 @@
 // Package archlint — title_slug_literal_test.go : pas de littéral de slug de titre dans `analysis/` ni
-// `platform/duckdb/` (plan .ai/PLAN_MODES_PAR_TITRE_2026-10-26.md, D4).
+// `platform/duckdb/` (plan .ai/V8/PLAN_MODES_PAR_TITRE_2026-10-26.md, D4).
 //
 // no_slug_comparison_test.go voit `slug == "halo_infinite"` mais pas une clé de map ni un argument
 // (`ModeSourceFor("halo_5")`, `map[string]X{"halo_5": ...}`) : une donnée PAR TITRE écrite en Go. Elle

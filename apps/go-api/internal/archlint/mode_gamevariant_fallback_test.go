@@ -1,5 +1,5 @@
 // Package archlint — mode_gamevariant_fallback_test.go : garde-rail « le mode d'un match est fourni
-// par la source du titre » (plan .ai/PLAN_MODES_PAR_TITRE_2026-10-26.md).
+// par la source du titre » (plan .ai/V8/PLAN_MODES_PAR_TITRE_2026-10-26.md).
 //
 // Le mode d'un match est `Summary.PairMode`, rempli UNE fois par la source de lecture selon la règle
 // du titre (`TitleDescriptor.ModeSource`, déclaré au manifeste du titre ; platform/duckdb.ModeAssetReference). Une page qui lit
