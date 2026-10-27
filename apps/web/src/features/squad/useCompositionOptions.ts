@@ -49,6 +49,7 @@ export function useCompositionOptions(playerSlug: string): CompositionOptions {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   const profils = useAppShellStore((s) => s.availablePlayers)
   const avecIdentite = useAppShellStore((s) => !!s.linkedHaloIdentity)
+  const locale = useAppShellStore((s) => s.locale)
   const rencontres = useQuery({
     queryKey: queryKeys.careerEncounters(playerSlug, titleSlug),
     queryFn: () =>
@@ -59,7 +60,7 @@ export function useCompositionOptions(playerSlug: string): CompositionOptions {
   // La source de l'Escouade : sans `teammate`, le service ne lit que le top des coéquipiers des
   // matchs avec amis (`SquadService.GetSquadPage`), rien de plus.
   const avecAmis = useQuery({
-    queryKey: queryKeys.teammatesTop(playerSlug, titleSlug),
+    queryKey: queryKeys.teammatesTop(playerSlug, titleSlug, locale),
     queryFn: () => api.get<SquadPageResponse>(`/players/${playerSlug}/pages/squad`),
     enabled: !!playerSlug,
     staleTime: FRAICHEUR_RENCONTRES_MS,

@@ -6,6 +6,8 @@ package migrations
 import (
 	"database/sql"
 	"testing"
+
+	"levelup/go-api/internal/i18n"
 )
 
 const watchTheThroneID = 1210968206
@@ -23,7 +25,7 @@ func TestWatchTheThrone_BaseNeuve(t *testing.T) {
 
 // TestWatchTheThrone_BaseHeritee : table SANS clé primaire (forme de l'ère Python), ligne qui
 // porte la description de Roi de la colline, et traduction FR héritée dans medal_translations
-// (lue AVANT medal_definitions par la chaîne FR).
+// (lue AVANT les colonnes par l'ancienne chaîne FR).
 func TestWatchTheThrone_BaseHeritee(t *testing.T) {
 	db := ouvrirMemoire(t)
 	for _, q := range []string{
@@ -57,18 +59,11 @@ func TestWatchTheThrone_BaseHeritee(t *testing.T) {
 
 	jouerMetadata(t, db)
 	assertWatchTheThrone(t, db)
-
-	var n int
-	if err := db.QueryRow(
-		`SELECT COUNT(*) FROM medal_translations WHERE medal_name_id = ?`, watchTheThroneID,
-	).Scan(&n); err != nil {
-		t.Fatalf("count medal_translations: %v", err)
-	}
-	if n != 0 {
-		t.Errorf("medal_translations garde %d ligne(s) pour %d, want 0", n, watchTheThroneID)
-	}
 }
 
+// assertWatchTheThrone : une seule ligne de définition, et des textes par langue dans
+// medal_translations (la traduction héritée est purgée, puis les colonnes passent dans les tables
+// par langue) : ni la description de Roi de la colline, ni un doublon.
 func assertWatchTheThrone(t *testing.T, db *sql.DB) {
 	t.Helper()
 	var n int
@@ -80,15 +75,20 @@ func assertWatchTheThrone(t *testing.T, db *sql.DB) {
 	if n != 1 {
 		t.Fatalf("lignes pour %d = %d, want 1", watchTheThroneID, n)
 	}
-	var nameEN, nameFR, descEN, descFR string
-	if err := db.QueryRow(`
-		SELECT name_en, name_fr, description_en, description_fr
-		FROM medal_definitions WHERE medal_name_id = ?`, watchTheThroneID,
-	).Scan(&nameEN, &nameFR, &descEN, &descFR); err != nil {
-		t.Fatalf("lecture: %v", err)
+	if err := db.QueryRow(
+		`SELECT COUNT(*) FROM medal_translations WHERE medal_name_id = ?`, watchTheThroneID,
+	).Scan(&n); err != nil {
+		t.Fatalf("count medal_translations: %v", err)
 	}
+	if n != 2 {
+		t.Errorf("medal_translations : %d lignes pour %d, want 2 (fr et en)", n, watchTheThroneID)
+	}
+	names, descriptions := medalTextsByLanguage(t, db, watchTheThroneID)
 	want := [4]string{"Watch the Throne", "Garde du trône", "Save your VIP's life", "Sauvez la vie de votre VIP."}
-	got := [4]string{nameEN, nameFR, descEN, descFR}
+	got := [4]string{
+		names[i18n.LocaleEN], names[i18n.LocaleFR],
+		descriptions[i18n.LocaleEN], descriptions[i18n.LocaleFR],
+	}
 	if got != want {
 		t.Errorf("médaille %d = %q, want %q", watchTheThroneID, got, want)
 	}

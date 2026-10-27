@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
 // --- mock ---
@@ -145,10 +146,10 @@ func TestMatchViewService_LocalisationFR_ModeMapPlaylistTraduits(t *testing.T) {
 	modeFR, mapFR, plFR := "Capture du drapeau", "Forbidden", "Partie rapide"
 	repo := &mockMatchViewRepo{
 		meta: &domain.MatchMetaRaw{
-			MatchID:        "m-fr",
-			ModeNameFR:     &modeFR,
-			MapNameFR:      &mapFR,
-			PlaylistNameFR: &plFR,
+			MatchID:       "m-fr",
+			ModeNames:     i18n.FromColumns("", modeFR),
+			MapNames:      i18n.FromColumns("", mapFR),
+			PlaylistNames: i18n.FromColumns("", plFR),
 		},
 	}
 	resp, err := NewMatchViewService(repo, "x").GetMatchView(context.Background(), "m-fr")
@@ -174,9 +175,9 @@ func TestMatchViewService_LocalisationFR_ModeNilFallbackNonVide(t *testing.T) {
 	pairN := "Arena:CTF on Forbidden"
 	repo := &mockMatchViewRepo{
 		meta: &domain.MatchMetaRaw{
-			MatchID:    "m-fallback",
-			PairName:   &pairN,
-			ModeNameFR: nil,
+			MatchID:   "m-fallback",
+			PairName:  &pairN,
+			ModeNames: i18n.FromColumns("", ""),
 		},
 	}
 	resp, err := NewMatchViewService(repo, "x").GetMatchView(context.Background(), "m-fallback")
@@ -213,9 +214,9 @@ func TestMatchViewService_LocalisationFR_FRPrioritaireSurEN(t *testing.T) {
 	mapEN, mapFR := "Aquarius", "Verseau"
 	repo := &mockMatchViewRepo{
 		meta: &domain.MatchMetaRaw{
-			MatchID:   "m-fr-pref",
-			MapName:   &mapEN,
-			MapNameFR: &mapFR,
+			MatchID:  "m-fr-pref",
+			MapName:  &mapEN,
+			MapNames: i18n.FromColumns("", mapFR),
 		},
 	}
 	resp, err := NewMatchViewService(repo, "x").GetMatchView(context.Background(), "m-fr-pref")

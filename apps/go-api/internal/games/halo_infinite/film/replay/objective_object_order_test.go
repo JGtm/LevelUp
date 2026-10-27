@@ -23,8 +23,7 @@ import (
 func vieObjectifExAequo(t1 int, en string, pts []ObjectiveObjectPoint) ObjectiveObjectLife {
 	return ObjectiveObjectLife{
 		Family: familleCrane,
-		En:     en,
-		Fr:     "Crane",
+		Text:   enFr(en, "Crane"),
 		T0:     12,
 		T1:     t1,
 		Pts:    pts,

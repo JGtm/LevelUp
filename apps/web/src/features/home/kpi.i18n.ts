@@ -43,16 +43,11 @@ interface KPITextDict {
   kills: (count: number) => string
 }
 
-export function normalizeKPILocale(locale?: string | null): Locale {
-  return locale === 'en' ? 'en' : 'fr'
-}
-
 function t(loc: Locale, key: HomeManifestKey): string {
   return formatMessage(homeManifest, key, loc)
 }
 
-export function getKPIText(locale?: string | null): KPITextDict {
-  const loc = normalizeKPILocale(locale)
+export function getKPIText(loc: Locale): KPITextDict {
   return {
     labels: {
       totalTime: t(loc, 'home.kpi.total_time'),

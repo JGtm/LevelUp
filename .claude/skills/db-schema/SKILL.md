@@ -21,7 +21,7 @@ filepath.Join(repoRoot, "data", "warehouse", "shared_matches_v2.duckdb")
 | DB | Chemin résolu | Contenu |
 |---|---|---|
 | `shared_matches_v2.duckdb` | `data/titles/{slug}/warehouse/` | Stats matchs de TOUS les joueurs |
-| `metadata.duckdb` | `data/titles/{slug}/warehouse/` | Référentiels (modes, armes, rangs, médailles) |
+| `metadata.duckdb` | `data/titles/{slug}/warehouse/` | Référentiels (modes, armes, rangs, médailles) et tous les noms par langue |
 | `shared_pve.duckdb` | `data/titles/{slug}/warehouse/` | Stats Firefight |
 | `shared_social.duckdb` | `data/titles/{slug}/warehouse/` | Données sociales (followers, activité) |
 | `stats.duckdb` | `data/titles/{slug}/players/{gamertag}/` | Enrichissements individuels uniquement |
@@ -139,14 +139,32 @@ perf pages v8.0.1).
 
 ## metadata.duckdb
 
+**Textes par langue (ADR 0040 D-5, D-13, D-15)** : un nom ou une description affichable n'est JAMAIS une
+colonne `_fr` / `_en` neuve : c'est une ligne par (identifiant, langue). Lecture = charger TOUTES les
+langues (`LoadAssetNames` / `LoadAssetTexts`, `assetNameTexts`) puis choisir par `i18n.Text.Pick(loc)`
+(langue demandée, sinon `en`), jamais un `COALESCE` croisé fr/en en SQL. Écriture = `UpsertAssetTexts`
+(admin, seeds) ; une langue de plus est un jeu de lignes de plus.
+
 | Table | Clé | Description |
 |---|---|---|
-| `career_ranks` | `rank_id` | Paliers et noms des rangs Halo |
-| `citation_mappings` | `medal_id` | Mapping médaille→citation |
-| `mode_name_tr` | `raw_name`, `lang` | Traductions des noms de modes EN→FR |
-| `mode_pair_overrides` | `pair_name` | Surcharges manuelles de paires map/mode |
-| `mode_prefix_names` | `prefix` | Préfixes canoniques de modes |
-| `weapon_labels` | `weapon_id` (UBIGINT) | Labels EN/FR par weapon_id filmshell |
+| `asset_translations` | `(asset_id, asset_type, lang)` | `name`, `description` par langue ; `lang` = étiquette Halo (`fr-FR`, `en-US`, …, `i18n.HaloTags`). `asset_type` : `map`, `playlist`, `pair`, `game_variant` (API Discovery, `levelup populate-assets`) ; `achievement`, `achievement_locked` (texte verrouillé dans `name`), `milestone` (nom = titre, description = condition), `citation` (clé `citation_name_norm`), `challenge_template`, `preset_arc` ; Halo 5 : `commendation`, `team_color` |
+| `medal_translations` | `(medal_name_id, lang)` | Nom et description de médaille |
+| `career_ranks` | `rank_id` | Paliers ; `title_en` / `subtitle_en` = source anglaise unique (clé technique) ; noms par langue : `career_rank_translations` `(rank_id, lang, title, subtitle, tier)` |
+| `citation_mappings` | `citation_name_norm` | Mapping médaille→citation, sans colonne de texte |
+| `challenge_template`, `preset_arc` (+ `preset_arc_step`) | `id` | Modèles de défi et arcs préréglés, sans colonne de texte |
+| `medal_definitions`, `milestone_catalog`, `xbox_achievement_definitions` (Halo 5 : `commendation_definitions`, `team_colors`) | id | Définitions sans colonne de texte (les noms sont dans `medal_translations` / `asset_translations`) |
+| `mode_name_tr` | `(mode_en, lang, name)` | Traductions des noms de modes (`mode_en` = nom anglais du mode, la clé) |
+| `mode_pair_overrides` | `(pattern, lang, name)` | Surcharges manuelles de paires map/mode |
+| `mode_prefix_names` | `(prefix_en, lang, name)` | Préfixes canoniques de modes |
+| `weapon_name_labels` | `(title_slug, weapon_key, lang, name)` | Noms d'armes curés (`config/titles/{slug}/mappings/weapon_names.toml`) ; `lang` = code de langue de `config/locales.toml` |
+| `weapon_label_names` | `(weapon_id, lang, name)` | Noms par weapon_id filmshell (ids sans `weapon_key`) ; le nom `en` pilote l'URL d'image |
+| `weapon_labels` | `weapon_id` (UBIGINT) | Colonnes non textuelles seulement |
+
+Registre de la base PARTAGÉE : `match_registry` garde `map_name`, `pair_name`, `playlist_name`,
+`game_variant_name` et les colonnes `map_name_fr`, `pair_name_fr`, `playlist_name_fr` (décision : non
+migrées) ; elles se lisent comme la valeur de registre de la langue par défaut, jamais comme « le français ».
+Un titre dont le registre ne nomme rien (Halo 5) est complété depuis `asset_translations`, langue de repli
+comprise.
 
 ## shared_pve.duckdb
 
@@ -164,7 +182,7 @@ Stats par joueur par match Firefight : `match_id`, `xuid`, `waves`, `boss_kills`
 | `player_match_enrichment` | `performance_score`, `session_id`, `is_with_friends` |
 | `personal_score_awards` | Awards objectifs (PersonalScores API) |
 | `match_citations` | Citations calculées par match |
-| `match_skill_rank` | Rating LUSR ou CSR par match — **append-only : lire via `match_skill_rank_latest`** (une ligne par match, priorité CSR > LUSR, `start_time` avant `written_at`) ou `match_skill_rank_latest_by_type` (une par match ET type, `written_at` : graphe d'évolution). Le LUSR n'est écrit que par la v2 (ADR 0024) : lignes `LUSR` + `LUSR_V2` (audit) dans la même transaction |
+| `match_skill_rank` | Rating LUSR ou CSR par match — **append-only : lire via `match_skill_rank_latest`** (une ligne par match, priorité CSR > LUSR, `start_time` avant `written_at`) ou `match_skill_rank_latest_by_type` (une par match ET type, `written_at` : graphe d'évolution). Le LUSR n'est écrit que par la v2 (ADR 0024) : lignes `LUSR` + `LUSR_V2` (audit) dans la même transaction. `tier_fr` est inerte : ni lue ni écrite (le libellé de rang se dérive du code de rang et du TOML), la table n'est pas reconstruite pour une colonne inutilisée (ADR 0026, ADR 0040 D-5) |
 | `lusr_component_history` | 8 composantes de performance par match (Prestige, profil, escouade) — écrites par le LUSR v2 seul ; **append-only : lire via `lusr_component_history_latest`** |
 | `career_progression` | Historique rangs |
 | `sessions` | Sessions groupées |

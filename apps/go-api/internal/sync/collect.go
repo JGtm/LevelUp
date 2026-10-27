@@ -404,7 +404,6 @@ func pveMatchStatsRowToInsert(r PveMatchStatsRow) persist.PVEMatchStatsInsert {
 // produit que des rows de matchs ranked.
 func matchCSRRowToSkillRankInsert(r *MatchCSRRow) *persist.SkillRankInsert {
 	tier := r.Tier
-	tierFR := r.TierFR
 	subTier := r.SubTier
 	tierLabel := r.TierLabel
 	playlistGroup := r.PlaylistGroup
@@ -413,7 +412,6 @@ func matchCSRRowToSkillRankInsert(r *MatchCSRRow) *persist.SkillRankInsert {
 		RatingType:    "CSR",
 		RatingValue:   r.RatingValue,
 		Tier:          &tier,
-		TierFR:        &tierFR,
 		SubTier:       &subTier,
 		TierLabel:     &tierLabel,
 		RatingDelta:   r.RatingDelta,

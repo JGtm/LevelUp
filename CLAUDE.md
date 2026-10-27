@@ -181,6 +181,28 @@ des DBs en prod. L'éradication (ADR 0019/0026) repose sur des invariants NON N�
   jamais de panic ni de données d'un autre titre.
 - Détail : skill `arch-rules` (adapters, PathResolver, TitleRegistry).
 
+## i18n — N langues (ADR 0040)
+
+- **Source unique des langues** : `config/locales.toml` (`default`, `fallback`, une entrée
+  `[[locale]]` par langue : `code`, `intl`, `halo`, `required`). `node apps/web/scripts/build_i18n_manifests.mjs`
+  en tire `lib/i18n/generated/locales.ts` et `internal/i18n/locales_gen.go` (versionnés, tenus par
+  un test de fraîcheur). Jamais de liste de langues, de `=== 'fr'` / `== "en"` ni d'étiquette Intl
+  en dur : garde-rails web (`lib/i18n/*.guard.test.ts`) et Go (`internal/archlint/`, `no_locale_literal_test.go`
+  et `i18n_*_test.go`).
+- **Réponses d'API = libellé résolu** dans la langue de la requête (`label`, `name`,
+  `description`), jamais une paire `x_fr` / `x_en` ; une réponse localisée porte la locale dans
+  sa query key web et dans toute clé de cache serveur. Une valeur réutilisée comme clé de filtre
+  ou d'URL reste le nom de la langue par défaut et se sert dans un champ séparé du libellé.
+- **Go** : `i18n.Text` (`map[Locale]string`) pour les données, `Pick` / `i18n.FromContext(ctx)`
+  pour choisir ; texte composé par le serveur = catalogue `internal/i18n/messages/*.toml`
+  (`i18n.Msg`, variables `{nom}`), jamais une chaîne française ou anglaise dans le code.
+- **Web** : `normalizeLocale` (`lib/i18n/locale.ts`), `pickText` pour un libellé par langue,
+  `intlLocale` / `INTL_TAG` pour `Intl.*`.
+- **Base** : une ligne par (identifiant, langue) dans `asset_translations` / `medal_translations`
+  (étiquettes Halo de `locales.toml`) et les tables par langue des noms curés ; aucune colonne
+  `_fr` / `_en` neuve. Ajouter une langue : `docs/FOUNDATIONS_GUIDE.md` § « Adding a language ».
+- Détail : skills `frontend-patterns`, `arch-rules`, `db-schema`.
+
 ## Commandes Utiles
 
 ```bash
@@ -226,8 +248,10 @@ Référence complète des commandes : `docs/COMMANDS.md`. Déploiement : `docs/R
 ## Règles
 
 1. **Répondre en français.** UI : FR sans anglicismes (« série » pas « streak »,
-   « Taux de victoire » pas « WR ») ; toute string UI en FR **et** EN (`i18n.ts`,
-   parité par typage `Record<Locale, T>`).
+   « Taux de victoire » pas « WR ») ; toute string UI dans CHAQUE langue de
+   `config/locales.toml` (fr et en obligatoires ; une langue listée est complète ou refusée par le
+   build) : manifests web `lib/i18n/manifests/*.toml` et dictionnaires de feature typés
+   `Record<Locale, T>` (parité par typage). Section « i18n » ci-dessus.
 2. **Go/TS uniquement.** Pas de nouveau Python, pas de SQLite, pas de Pandas/Polars (morts
    avec la migration).
 3. **Logging Go** : `slog.InfoContext/ErrorContext(ctx, "...", "err", err)` structuré.
@@ -367,7 +391,11 @@ git commit -m "refactor(phase2): ..."
   `0039` **résumés par match du journal des morts** (agrégat décomposable par match = calculé une fois,
   écrit dans la transaction de sa passe par `insertKillSummaryRows` ; S0 tête / S1 paires et armes / S2
   assistances, vues `_latest` décidées par la tête ; lecteurs de requête interdits sur le journal brut hors
-  allowlist datée de lecteurs ligne à ligne ; jauge « sans tête » = porte de release).
+  allowlist datée de lecteurs ligne à ligne ; jauge « sans tête » = porte de release) ·
+  `0040` **i18n à N langues** (source unique `config/locales.toml` → `lib/i18n/generated/locales.ts` +
+  `internal/i18n/locales_gen.go` ; un `normalizeLocale` / `i18n.Parse` par côté, jamais de repli binaire
+  fr/en ; le serveur renvoie le libellé résolu ; langue complète ou refusée, repli `en` admis pour les
+  noms de jeu seulement ; compteurs gelés à garde-rail ; amende 0003).
 
 READMEs catalogues : `apps/go-api/internal/analysis/{temporal,breakdown,narrative}/README.md`,
 `apps/web/src/components/charts/README.md` (wrappers ECharts).

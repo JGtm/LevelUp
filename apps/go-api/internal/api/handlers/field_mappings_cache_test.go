@@ -13,6 +13,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"levelup/go-api/internal/games/mappings"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/observability/timing"
 )
 
@@ -128,13 +129,13 @@ func TestFieldMappingsHandler_ETagChangesWhenSeasonCatalogChanges(t *testing.T) 
 	t.Parallel()
 	start6 := time.Date(2024, 3, 19, 0, 0, 0, 0, time.UTC)
 	catalog := &mutableSeasonsCatalog{entries: []SeasonCatalogEntry{
-		{ID: "season6", Label: "Spirit of Fire", Start: start6, DisplayOrder: 60},
+		{ID: "season6", Label: i18n.FromColumns("Spirit of Fire", ""), Start: start6, DisplayOrder: 60},
 	}}
 	h := newHandler(&stubRegistry{set: mustLoad(t), assets: mustLoadAssets(t)}).WithSeasonsCatalog(catalog)
 	before := serveFieldMappings(t, h, "", "")
 
 	catalog.entries = append(catalog.entries, SeasonCatalogEntry{
-		ID: "season14", Label: "Skyfall", Start: time.Date(2026, 4, 15, 0, 0, 0, 0, time.UTC), DisplayOrder: 70,
+		ID: "season14", Label: i18n.FromColumns("Skyfall", ""), Start: time.Date(2026, 4, 15, 0, 0, 0, 0, time.UTC), DisplayOrder: 70,
 	})
 	after := serveFieldMappings(t, h, "", before.etag)
 	if after.code != http.StatusOK || after.etag == before.etag {
@@ -178,5 +179,30 @@ func TestFieldMappingsHandler_UnknownLocaleNotCached(t *testing.T) {
 	defer h.mu.RUnlock()
 	if len(h.dtoByKey) != 0 {
 		t.Errorf("entrées cachées = %d, want 0 pour une locale hors fr/en", len(h.dtoByKey))
+	}
+}
+
+// TestSeasonsCatalogVersion_CouvreToutesLesLangues : la version du catalogue de saisons, qui garde le
+// cache par langue, change quand le libellé de N'IMPORTE quelle langue connue change : une langue
+// de plus n'exige aucune modification de l'empreinte.
+func TestSeasonsCatalogVersion_CouvreToutesLesLangues(t *testing.T) {
+	start := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	build := func(label i18n.Text) []SeasonCatalogEntry {
+		return []SeasonCatalogEntry{{ID: "s1", Label: label, Start: start}}
+	}
+	full := i18n.Text{}
+	for _, l := range i18n.Locales() {
+		full[l] = "Saison " + string(l)
+	}
+	base := seasonsCatalogVersion(build(full))
+	if base != seasonsCatalogVersion(build(full.Clone())) {
+		t.Fatal("version non déterministe")
+	}
+	for _, l := range i18n.Locales() {
+		changed := full.Clone()
+		changed[l] = "autre"
+		if seasonsCatalogVersion(build(changed)) == base {
+			t.Errorf("la version ignore le libellé de la langue %s", l)
+		}
 	}
 }

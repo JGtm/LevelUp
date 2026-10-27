@@ -9,6 +9,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/highlightevent"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 )
 
 // rowWithPersonalScore construit une PlayerMatchRow avec PersonalScore renseigné.
@@ -544,7 +545,7 @@ func TestBuildSquadFirstBlood_PopulatesMatchMeta(t *testing.T) {
 	}
 	svc := &TeammatesService{titleSlug: "halo_infinite", gamertag: "main", repo: repo}
 	rows := []domain.SquadMatchRow{
-		{MatchID: "m1", StartTime: start, DurationSeconds: 600, MapUI: "Aquarius", PairNameFR: "Assassin"},
+		{MatchID: "m1", StartTime: start, DurationSeconds: 600, MapUI: "Aquarius", PairName: i18n.FromColumns("", "Assassin")},
 	}
 
 	got := svc.buildSquadFirstBlood(context.Background(), rows, "main", mainXUID, nil)

@@ -11,14 +11,15 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+
+	"levelup/go-api/internal/i18n"
 )
 
 // SeasonName : nom d'une saison CSR persisté dans season_catalog (C2).
 type SeasonName struct {
-	DisplayName string // nom d'Operation EN
-	NameFR      string // traduction fr-FR (peut être vide → fallback EN)
-	Major       int
-	Minor       int
+	Name  i18n.Text // en : nom d'Operation ; fr : traduction fr-FR (peut être absente → repli EN)
+	Major int
+	Minor int
 }
 
 // LoadSeasonCatalogNames lit season_catalog (shared) et retourne un map keyé par
@@ -42,16 +43,18 @@ func LoadSeasonCatalogNames(ctx context.Context, sharedDB *sql.DB, titleSlug str
 	for rows.Next() {
 		var id string
 		var sn SeasonName
-		if err := rows.Scan(&id, &sn.DisplayName, &sn.NameFR, &sn.Major, &sn.Minor); err != nil {
+		var nameEN, nameFR string
+		if err := rows.Scan(&id, &nameEN, &nameFR, &sn.Major, &sn.Minor); err != nil {
 			return nil, fmt.Errorf("LoadSeasonCatalogNames scan: %w", err)
 		}
+		sn.Name = i18n.FromColumns(nameEN, nameFR)
 		out[strings.ToLower(strings.TrimSpace(id))] = sn
 	}
 	return out, rows.Err()
 }
 
-// SeasonSelectorLabel compose "Saison N · Nom" (locale != en) / "Season N · Name"
-// (en) pour un season_id, à partir des noms persistés (match insensible à la casse).
+// SeasonSelectorLabel compose "Saison N · Nom" / "Season N · Name" (catalogue des messages,
+// common.toml) pour un season_id, à partir des noms persistés (match insensible à la casse).
 // Retourne `fallback` si la saison n'est pas au catalogue (jamais scrapée) — préserve
 // le libellé dérivé existant.
 func SeasonSelectorLabel(locale, seasonID string, names map[string]SeasonName, fallback string) string {
@@ -59,19 +62,13 @@ func SeasonSelectorLabel(locale, seasonID string, names map[string]SeasonName, f
 	if !ok {
 		return fallback
 	}
-	name := strings.TrimSpace(sn.DisplayName)
-	if locale != "en" && strings.TrimSpace(sn.NameFR) != "" {
-		name = strings.TrimSpace(sn.NameFR)
-	}
-	word := "Saison"
-	if locale == "en" {
-		word = "Season"
-	}
+	loc := i18n.Parse(locale)
+	name := strings.TrimSpace(sn.Name.Pick(loc))
 	switch {
 	case sn.Major > 0 && name != "":
-		return fmt.Sprintf("%s %d · %s", word, sn.Major, name)
+		return i18n.Msg(loc, "common.season.label_named", i18n.Params{"n": sn.Major, "name": name})
 	case sn.Major > 0:
-		return fmt.Sprintf("%s %d", word, sn.Major)
+		return i18n.Msg(loc, "common.season.label", i18n.Params{"n": sn.Major})
 	case name != "":
 		return name
 	default:

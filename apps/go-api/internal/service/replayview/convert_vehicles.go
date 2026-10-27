@@ -35,8 +35,7 @@ func toVehicleLifeRef(v replay.VehicleLifeRef) replaydoc.VehicleLifeRef {
 func toVehicleWeapon(v replay.VehicleWeapon) replaydoc.VehicleWeapon {
 	return replaydoc.VehicleWeapon{
 		Vehicle:     v.Vehicle,
-		En:          v.En,
-		Fr:          v.Fr,
+		Text:        v.Text.Clone(),
 		Fire:        v.Fire,
 		Fx:          v.Fx,
 		Tint:        v.Tint,

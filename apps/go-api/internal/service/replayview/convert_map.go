@@ -146,8 +146,7 @@ func toCalloutZone(v replay.CalloutZone) replaydoc.CalloutZone {
 	return replaydoc.CalloutZone{
 		VolumeIndex: v.VolumeIndex,
 		Name:        v.Name,
-		EN:          v.EN,
-		FR:          v.FR,
+		Text:        v.Text.Clone(),
 		X:           v.X,
 		Y:           v.Y,
 		Z:           v.Z,

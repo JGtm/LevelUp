@@ -51,7 +51,6 @@ const PLAYERS: MatchKillDistancePlayer[] = [
       {
         weapon_key: 'hinf_br75',
         label: 'BR75',
-        label_en: 'BR75',
         measured_kills: 2,
         avg_distance_m: 12.35,
         min_distance_m: 3.1,
@@ -60,7 +59,6 @@ const PLAYERS: MatchKillDistancePlayer[] = [
       {
         weapon_key: 'hinf_repulsor',
         label: '',
-        label_en: '',
         measured_kills: 1,
         avg_distance_m: 5,
         min_distance_m: 5,
@@ -74,7 +72,6 @@ const PLAYERS: MatchKillDistancePlayer[] = [
       {
         weapon_key: 'hinf_sniper',
         label: 'Fusil de précision',
-        label_en: 'Sniper Rifle',
         measured_kills: 2,
         avg_distance_m: 40,
         min_distance_m: 40,

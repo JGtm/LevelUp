@@ -12,36 +12,12 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
-	"regexp"
 	"strings"
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
-
-// placementRemainingRe extrait N depuis "Placement (N restant)" ou
-// "Placement (N restants)" écrit par csr_writes.formatCSRTierLabel.
-var placementRemainingRe = regexp.MustCompile(`\((\d+)\s*restant`)
-
-// parsePlacementRemaining extrait le N d'un tier_label "Placement (N restants)".
-// Retourne 10 si non parsable (joueur en placement, 0 match joué).
-func parsePlacementRemaining(label string) int {
-	m := placementRemainingRe.FindStringSubmatch(label)
-	if len(m) < 2 {
-		return 10
-	}
-	var n int
-	if _, err := fmt.Sscanf(m[1], "%d", &n); err != nil {
-		return 10
-	}
-	if n < 0 {
-		return 0
-	}
-	if n > 10 {
-		return 10
-	}
-	return n
-}
 
 // LoadRecentPlaylistRanks retourne les 3 dernières playlists distinctes jouées avec leur
 // dernier rang compétitif connu (Q26g). Retourne (nil, nil) si aucune donnée.
@@ -90,9 +66,8 @@ func (r *HomeRepo) LoadRecentPlaylistRanks(ctx context.Context, locale string) (
 	msrByMatch := r.loadPlaylistPhaseAMSR(ctx, matchIDs)
 	snapshotByPlaylist := r.loadPlaylistPhaseASnapshot(ctx, plIDs)
 
-	// Locale → préférence FR pour le libellé du sous-palier suivant (même
-	// convention que resolvePlaylistNameForLocale : tout sauf "en*" = FR).
-	frPreferred := !strings.HasPrefix(strings.ToLower(strings.TrimSpace(locale)), "en")
+	// Langue du libellé du sous-palier suivant : celle de la requête.
+	tierLoc := i18n.Parse(locale)
 	raws := make([]playlistRawItem, 0, len(phaseB))
 	for _, p := range phaseB {
 		// Phase 6 : threshold lookup par saison du dernier match. Fallback à
@@ -102,25 +77,30 @@ func (r *HomeRepo) LoadRecentPlaylistRanks(ctx context.Context, locale string) (
 		raws = append(raws, playlistRawItem{
 			playlistID:   p.playlistID,
 			playlistName: p.playlistName,
-			item:         buildPlaylistRankItem(r.titleSlug(), p, msrByMatch, snapshotByPlaylist, threshold, frPreferred),
+			item:         buildPlaylistRankItem(r.titleSlug(), p, msrByMatch, snapshotByPlaylist, threshold, tierLoc),
 		})
 	}
 
-	// Enrichissement FR depuis asset_translations (même source que les tuiles de matchs).
+	// Enrichissement depuis asset_translations (même source que les tuiles de matchs), dans toutes
+	// les langues ; le choix de la langue de la requête se fait par pickName.
 	playlistIDs := make([]string, 0, len(raws))
 	for _, raw := range raws {
 		if raw.playlistID != "" {
 			playlistIDs = append(playlistIDs, raw.playlistID)
 		}
 	}
-	assetNames := r.resolveAssetNames(ctx, "playlist", playlistIDs, "fr")
+	assetNames := assetNameTexts(ctx, r.pdb.Metadata, assetTypePlaylist, playlistIDs)
+	reqLocale := i18n.Parse(locale)
 
 	result := make([]domain.HomePlaylistRank, 0, len(raws))
 	for _, raw := range raws {
 		// Libellé d'affichage via le chokepoint unique (strip + override) — même
 		// résolution que les tuiles de match : « Super Fiesta Fête » → « Super Fiesta ».
-		nameFR := r.playlistDisplay.Display(strings.TrimSpace(assetNames[raw.playlistID]))
-		raw.item.PlaylistName = resolvePlaylistNameForLocale(locale, nameFR, raw.playlistName)
+		names := assetNames[raw.playlistID].Clone()
+		if names.Has(i18n.Default) {
+			names[i18n.Default] = r.playlistDisplay.Display(strings.TrimSpace(names[i18n.Default]))
+		}
+		raw.item.PlaylistName = pickName(reqLocale, names, raw.playlistName)
 		result = append(result, raw.item)
 	}
 	return result, nil
@@ -219,7 +199,6 @@ type playlistPhaseBRow struct {
 type playlistMSRRow struct {
 	ratingValue float64
 	tier        string
-	tierFR      string
 	subTier     int
 	tierLabel   string
 }
@@ -273,9 +252,9 @@ func (r *HomeRepo) loadPlaylistPhaseAMSR(ctx context.Context, matchIDs []string)
 	for rows.Next() {
 		var matchID string
 		var ratingValue sql.NullFloat64
-		var tier, tierFR, tierLabel sql.NullString
+		var tier, tierLabel sql.NullString
 		var subTier sql.NullInt16
-		if err := rows.Scan(&matchID, &ratingValue, &tier, &tierFR, &subTier, &tierLabel); err != nil {
+		if err := rows.Scan(&matchID, &ratingValue, &tier, &subTier, &tierLabel); err != nil {
 			continue
 		}
 		if !ratingValue.Valid {
@@ -284,7 +263,6 @@ func (r *HomeRepo) loadPlaylistPhaseAMSR(ctx context.Context, matchIDs []string)
 		out[matchID] = playlistMSRRow{
 			ratingValue: ratingValue.Float64,
 			tier:        optionalNullStringValue(tier),
-			tierFR:      optionalNullStringValue(tierFR),
 			subTier:     optionalNullInt16Value(subTier),
 			tierLabel:   optionalNullStringValue(tierLabel),
 		}
@@ -344,7 +322,7 @@ func buildPlaylistRankItem(
 	msrByMatch map[string]playlistMSRRow,
 	snapshotByPlaylist map[string]int,
 	threshold int,
-	frPreferred bool,
+	tierLoc i18n.Locale,
 ) domain.HomePlaylistRank {
 	if threshold <= 0 {
 		threshold = CSRPlacementThresholdDefault
@@ -369,7 +347,7 @@ func buildPlaylistRankItem(
 		case snapIsPlacement:
 			remaining = snapRem
 		case msrIsPlacement:
-			remaining = parsePlacementRemaining(msr.tierLabel)
+			remaining = domain.ParsePlacementRemaining(msr.tierLabel)
 		}
 		completed := threshold - remaining
 		if completed < 0 {
@@ -405,7 +383,7 @@ func buildPlaylistRankItem(
 		// pleine sans suivant ; sub_tier hors 1..6 → pas de barre.
 		if pct, ok := analysis.SkillTierBand(msr.tier, msr.subTier); ok {
 			item.TierProgressPct = &pct
-			item.NextTierLabel = analysis.NextSubTierLabel(msr.tier, msr.subTier, frPreferred)
+			item.NextTierLabel = analysis.NextSubTierLabel(msr.tier, msr.subTier, tierLoc)
 		}
 		// Rang matured : on expose quand même le placement_total pour info front.
 		if p.isRanked {
@@ -447,19 +425,4 @@ func splitCSV(s string) []string {
 		}
 	}
 	return out
-}
-
-// resolvePlaylistNameForLocale retourne le nom de playlist adapté à la locale.
-// Pour "en*" → préfère l'anglais ; sinon → préfère le français.
-func resolvePlaylistNameForLocale(locale, fr, en string) string {
-	if strings.HasPrefix(strings.ToLower(strings.TrimSpace(locale)), "en") {
-		if strings.TrimSpace(en) != "" {
-			return en
-		}
-		return fr
-	}
-	if strings.TrimSpace(fr) != "" {
-		return fr
-	}
-	return en
 }

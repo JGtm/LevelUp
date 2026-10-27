@@ -4,7 +4,26 @@
  * Dict local par feature (suffixe `.i18n.ts`) : source de vérité des chaînes UI
  * de useSquadPresets, hors scan FieldKey (lint-no-hardcoded-fields).
  */
-export const SQUAD_PRESETS_STRINGS = {
+import type { Locale } from '@/lib/i18n/locale'
+
+export interface SquadPresetsStrings {
+  squadsHeader: string
+  groupsHeader: string
+  save: string
+  saving: string
+  saved: string
+  saveSuccess: string
+  saveError: string
+  manage: string
+  done: string
+  rename: string
+  ok: string
+  del: string
+  confirmDelete: string
+  usualPrefix: string
+}
+
+export const SQUAD_PRESETS_STRINGS: Record<Locale, SquadPresetsStrings> = {
   fr: {
     squadsHeader: 'Escouades enregistrées',
     groupsHeader: 'Groupes',
@@ -39,4 +58,3 @@ export const SQUAD_PRESETS_STRINGS = {
   },
 }
 
-export type SquadPresetsStrings = (typeof SQUAD_PRESETS_STRINGS)['fr']

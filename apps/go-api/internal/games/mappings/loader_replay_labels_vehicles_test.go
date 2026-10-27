@@ -11,8 +11,7 @@ func TestVehicleFamilies_EntreeValide(t *testing.T) {
 	raw := enteteVehFam + `
 [[vehicle_families]]
 family = "tourelle_auto_bannie"
-en     = "Banished auto-turret"
-fr     = "Tourelle automatique bannie"
+label   = { en = "Banished auto-turret", fr = "Tourelle automatique bannie" }
 kind   = "map_element"
 sprite = false
 `
@@ -25,7 +24,7 @@ sprite = false
 	if !ok {
 		t.Fatalf("famille absente du set : %+v", got)
 	}
-	if v.En != "Banished auto-turret" || v.Fr != "Tourelle automatique bannie" {
+	if v.Label.Pick("en") != "Banished auto-turret" || v.Label.Pick("fr") != "Tourelle automatique bannie" {
 		t.Errorf("libellés = %+v", v)
 	}
 	if v.Kind != VehicleFamilyKindMapElement || v.Sprite {
@@ -48,13 +47,13 @@ func TestVehicleFamilies_TableAbsente(t *testing.T) {
 // une famille à moitié déclarée produirait un rendu neutre indistinguable d'une non-déclarée.
 func TestVehicleFamilies_RefusDesEntreesIncompletes(t *testing.T) {
 	cas := map[string]string{
-		"famille vide":   "[[vehicle_families]]\nfamily = \"\"\nen = \"A\"\nfr = \"A\"\nkind = \"map_element\"\n",
-		"libelle absent": "[[vehicle_families]]\nfamily = \"x\"\nen = \"A\"\nkind = \"map_element\"\n",
-		"nature inventee": "[[vehicle_families]]\nfamily = \"x\"\nen = \"A\"\nfr = \"A\"\n" +
+		"famille vide":   "[[vehicle_families]]\nfamily = \"\"\nlabel = { en = \"A\", fr = \"A\" }\nkind = \"map_element\"\n",
+		"libelle absent": "[[vehicle_families]]\nfamily = \"x\"\nlabel = { en = \"A\" }\nkind = \"map_element\"\n",
+		"nature inventee": "[[vehicle_families]]\nfamily = \"x\"\nlabel = { en = \"A\", fr = \"A\" }\n" +
 			"kind = \"decor\"\n",
-		"nature absente": "[[vehicle_families]]\nfamily = \"x\"\nen = \"A\"\nfr = \"A\"\n",
-		"famille en double": "[[vehicle_families]]\nfamily = \"x\"\nen = \"A\"\nfr = \"A\"\nkind = \"map_element\"\n" +
-			"[[vehicle_families]]\nfamily = \"x\"\nen = \"B\"\nfr = \"B\"\nkind = \"map_element\"\n",
+		"nature absente": "[[vehicle_families]]\nfamily = \"x\"\nlabel = { en = \"A\", fr = \"A\" }\n",
+		"famille en double": "[[vehicle_families]]\nfamily = \"x\"\nlabel = { en = \"A\", fr = \"A\" }\nkind = \"map_element\"\n" +
+			"[[vehicle_families]]\nfamily = \"x\"\nlabel = { en = \"B\", fr = \"B\" }\nkind = \"map_element\"\n",
 	}
 	for nom, corps := range cas {
 		t.Run(nom, func(t *testing.T) {
@@ -72,8 +71,7 @@ func TestVehicleFamilies_TourelleFixeOccupable(t *testing.T) {
 	raw := enteteVehFam + `
 [[vehicle_families]]
 family = "tourelle_fixe"
-en     = "Fixed turret"
-fr     = "Tourelle fixe"
+label   = { en = "Fixed turret", fr = "Tourelle fixe" }
 kind   = "fixed_turret"
 sprite = false
 `

@@ -322,10 +322,10 @@ func (r *WeaponRangeRepo) ResolveWeaponLabels(
 	for key, meta := range resolveWeaponKeyLabelsAny(ctx, r.pdb.Metadata, r.pdb.TitleSlug, weaponKeys) {
 		// Une entrée sans aucun nom n'en est pas une : la laisser passer ferait publier un
 		// libellé vide là où l'appelant sait retomber sur la clé.
-		if meta.label == "" && meta.labelEN == "" {
+		if meta.label.Empty() {
 			continue
 		}
-		out[key] = port.WeaponLabel{Label: meta.label, LabelEN: meta.labelEN}
+		out[key] = port.WeaponLabel{Name: meta.label}
 	}
 	slog.DebugContext(ctx, "WeaponRangeRepo: weapon labels resolved",
 		"slug", r.pdb.TitleSlug, "demandees", len(weaponKeys), "resolues", len(out))

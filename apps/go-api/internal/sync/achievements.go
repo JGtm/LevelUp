@@ -1,9 +1,12 @@
 // Package sync — achievements.go : synchronisation des achievements Xbox.
 //
 // Flow :
-//  1. Deux appels API : GetPlayerAchievements("en-US") + GetPlayerAchievements("fr-FR")
-//  2. Fusion par achievement_id → champs bilingues
-//  3. Upsert dans metadata.xbox_achievement_definitions et player_achievements
+//  1. Un appel API par langue de config/locales.toml (étiquette Halo principale de la langue)
+//  2. Fusion par achievement_id → un texte par langue (la langue de repli fait foi pour les
+//     champs partagés)
+//  3. Upsert dans metadata.xbox_achievement_definitions (champs non localisés), dans
+//     metadata.asset_translations (noms et descriptions, une ligne par langue) et dans
+//     player_achievements
 //  4. Pré-warming optionnel des images (fire-and-forget si resolver non nil)
 package sync
 
@@ -15,17 +18,17 @@ import (
 	"time"
 
 	"levelup/go-api/internal/assets"
+	"levelup/go-api/internal/i18n"
+	"levelup/go-api/internal/migration"
+	ddb "levelup/go-api/internal/platform/duckdb"
 )
 
-// PlayerAchievement contient les données fusionnées (EN + FR) d'un achievement.
+// PlayerAchievement contient les données fusionnées (une valeur par langue) d'un achievement.
 type PlayerAchievement struct {
 	AchievementID   string
-	NameEN          string
-	NameFR          string
-	DescriptionEN   string
-	DescriptionFR   string
-	LockedDescEN    string
-	LockedDescFR    string
+	Name            i18n.Text
+	Description     i18n.Text
+	LockedDesc      i18n.Text
 	Gamerscore      int
 	ImageURL        string
 	IsSecret        bool
@@ -39,8 +42,8 @@ type PlayerAchievement struct {
 	ServiceConfigID string
 }
 
-// SyncAchievements récupère les achievements du joueur en EN et FR,
-// fusionne les données bilingues, puis les écrit dans les deux DBs.
+// SyncAchievements récupère les achievements du joueur dans chaque langue de
+// config/locales.toml, fusionne les textes par langue, puis les écrit dans les deux DBs.
 // titleID est le slug LevelUp du titre (ex: "halo_infinite") — stocké dans
 // xbox_achievement_definitions pour permettre le filtrage multi-titres.
 // resolver peut être nil (le pré-warming des images est alors ignoré).
@@ -53,25 +56,17 @@ func SyncAchievements(
 	xuid string,
 	titleID string,
 ) error {
-	// Étape 1 : deux appels API (EN + FR).
-	slog.DebugContext(ctx, "achievements: récupération EN", "xuid", xuid)
-	enRaw, err := client.GetPlayerAchievements(ctx, xuid, "en-US")
+	// Étape 1 : un appel API par langue (une erreur, quelle que soit la langue, abandonne la synchro).
+	raw, err := fetchAchievementsByLocale(ctx, client, xuid)
 	if err != nil {
-		return fmt.Errorf("achievements: fetch EN: %w", err)
-	}
-	slog.DebugContext(ctx, "achievements: récupération FR", "xuid", xuid)
-	frRaw, err := client.GetPlayerAchievements(ctx, xuid, "fr-FR")
-	if err != nil {
-		return fmt.Errorf("achievements: fetch FR: %w", err)
+		return err
 	}
 
 	// Étape 2 : fusion par achievement_id.
+	merged := mergeAchievements(raw)
+	slog.InfoContext(ctx, "achievements: fusion terminée", "xuid", xuid, "count", len(merged), "locales", len(raw))
 
-	// Étape 3 : fusion par achievement_id.
-	merged := mergeAchievements(enRaw, frRaw)
-	slog.InfoContext(ctx, "achievements: fusion terminée", "xuid", xuid, "count", len(merged))
-
-	// Étape 4 : upserts (UPDATE-then-INSERT, ART-safe). Pas de purge des périmés :
+	// Étape 3 : upserts (UPDATE-then-INSERT, ART-safe). Pas de purge des périmés :
 	// le filtre SCID empêche toute nouvelle contamination cross-titre, et l'ancien
 	// purgeStaleAchievementDefinitions (DELETE per-row sur l'index PK ART) était un
 	// nettoyage historique vestigial (0 ligne en régime permanent) — retiré pour
@@ -83,7 +78,7 @@ func SyncAchievements(
 		return fmt.Errorf("achievements: upsert player progress: %w", err)
 	}
 
-	// Étape 5 : pré-warming des images (fire-and-forget).
+	// Étape 4 : pré-warming des images (fire-and-forget).
 	if resolver != nil {
 		warmAchievementImages(ctx, resolver, merged, titleID)
 	}
@@ -91,21 +86,47 @@ func SyncAchievements(
 	return nil
 }
 
-// mergeAchievements fusionne deux slices (EN + FR) en un slice bilingue.
-// Les doublons sont ignorés (EN fait foi pour les champs partagés, dont XboxTitleID).
-func mergeAchievements(en, fr []PlayerAchievementRaw) []PlayerAchievement {
-	frMap := make(map[string]PlayerAchievementRaw, len(fr))
-	for _, a := range fr {
-		frMap[a.ID] = a
+// fetchAchievementsByLocale appelle l'API Xbox une fois par langue de config/locales.toml, avec
+// l'étiquette Halo principale de la langue.
+func fetchAchievementsByLocale(ctx context.Context, client XboxAchievementsClient, xuid string) (map[i18n.Locale][]PlayerAchievementRaw, error) {
+	out := make(map[i18n.Locale][]PlayerAchievementRaw, len(i18n.Locales()))
+	for _, l := range i18n.Locales() {
+		tags := i18n.HaloTags(l)
+		if len(tags) == 0 {
+			return nil, fmt.Errorf("achievements: langue %s sans étiquette Halo", l)
+		}
+		slog.DebugContext(ctx, "achievements: récupération", "xuid", xuid, "locale", l, "tag", tags[0])
+		list, err := client.GetPlayerAchievements(ctx, xuid, tags[0])
+		if err != nil {
+			return nil, fmt.Errorf("achievements: fetch %s: %w", l, err)
+		}
+		out[l] = list
+	}
+	return out, nil
+}
+
+// mergeAchievements fusionne les listes par langue en un slice portant un texte par langue.
+// La liste de la langue de repli (i18n.Fallback) fait foi pour l'ensemble des identifiants et les
+// champs partagés (dont XboxTitleID) ; une langue qui n'a pas l'identifiant, ou dont le texte est
+// vide, ne renseigne rien (la lecture se replie alors sur la langue de repli).
+func mergeAchievements(byLocale map[i18n.Locale][]PlayerAchievementRaw) []PlayerAchievement {
+	index := make(map[i18n.Locale]map[string]PlayerAchievementRaw, len(byLocale))
+	for l, list := range byLocale {
+		m := make(map[string]PlayerAchievementRaw, len(list))
+		for _, a := range list {
+			m[a.ID] = a
+		}
+		index[l] = m
 	}
 
-	result := make([]PlayerAchievement, 0, len(en))
-	for _, a := range en {
+	base := byLocale[i18n.Fallback]
+	result := make([]PlayerAchievement, 0, len(base))
+	for _, a := range base {
 		pa := PlayerAchievement{
 			AchievementID:   a.ID,
-			NameEN:          a.Name,
-			DescriptionEN:   a.Description,
-			LockedDescEN:    a.LockedDesc,
+			Name:            i18n.Text{},
+			Description:     i18n.Text{},
+			LockedDesc:      i18n.Text{},
 			Gamerscore:      a.Gamerscore,
 			ImageURL:        a.ImageURL,
 			IsSecret:        a.IsSecret,
@@ -118,17 +139,30 @@ func mergeAchievements(en, fr []PlayerAchievementRaw) []PlayerAchievement {
 			XboxTitleID:     a.XboxTitleID,
 			ServiceConfigID: a.ServiceConfigID,
 		}
-		if f, ok := frMap[a.ID]; ok {
-			pa.NameFR = f.Name
-			pa.DescriptionFR = f.Description
-			pa.LockedDescFR = f.LockedDesc
+		for _, l := range i18n.Locales() {
+			loc, ok := index[l][a.ID]
+			if !ok {
+				continue
+			}
+			setIfNotEmpty(pa.Name, l, loc.Name)
+			setIfNotEmpty(pa.Description, l, loc.Description)
+			setIfNotEmpty(pa.LockedDesc, l, loc.LockedDesc)
 		}
 		result = append(result, pa)
 	}
 	return result
 }
 
-// upsertAchievementDefinitions écrit les définitions dans metadata.xbox_achievement_definitions.
+// setIfNotEmpty inscrit v pour la langue l, sauf s'il est vide.
+func setIfNotEmpty(t i18n.Text, l i18n.Locale, v string) {
+	if v != "" {
+		t[l] = v
+	}
+}
+
+// upsertAchievementDefinitions écrit les définitions dans metadata.xbox_achievement_definitions
+// (champs non localisés) et leurs textes dans metadata.asset_translations (types `achievement` et
+// `achievement_locked`), dans une seule transaction.
 // titleID (ex: "halo_infinite") est stocké pour permettre le filtrage multi-titres côté query.
 func upsertAchievementDefinitions(ctx context.Context, db *sql.DB, achievements []PlayerAchievement, titleID string) error {
 	if len(achievements) == 0 {
@@ -148,17 +182,15 @@ func upsertAchievementDefinitions(ctx context.Context, db *sql.DB, achievements 
 	// lease KindMetadata (cf. achievements_race_test.go) → pas de TOCTOU.
 	const updQ = `
 		UPDATE xbox_achievement_definitions SET
-			name_en = ?, name_fr = ?, description_en = ?, description_fr = ?,
-			locked_desc_en = ?, locked_desc_fr = ?, gamerscore = ?, image_url = ?,
+			gamerscore = ?, image_url = ?,
 			is_secret = ?, rarity_category = ?, rarity_percent = ?, title_id = ?,
 			xbox_title_id = ?, service_config_id = ?, fetched_at = CURRENT_TIMESTAMP
 		WHERE achievement_id = ?`
 	const insQ = `
 		INSERT INTO xbox_achievement_definitions
-			(achievement_id, name_en, name_fr, description_en, description_fr,
-			 locked_desc_en, locked_desc_fr, gamerscore, image_url, is_secret,
+			(achievement_id, gamerscore, image_url, is_secret,
 			 rarity_category, rarity_percent, title_id, xbox_title_id, service_config_id, fetched_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
 
 	updStmt, err := tx.PrepareContext(ctx, updQ)
 	if err != nil {
@@ -178,8 +210,7 @@ func upsertAchievementDefinitions(ctx context.Context, db *sql.DB, achievements 
 			rarityPercent = &v
 		}
 		res, err := updStmt.ExecContext(ctx,
-			a.NameEN, a.NameFR, a.DescriptionEN, a.DescriptionFR,
-			a.LockedDescEN, a.LockedDescFR, a.Gamerscore, a.ImageURL,
+			a.Gamerscore, a.ImageURL,
 			a.IsSecret, a.RarityCategory, rarityPercent, titleID,
 			a.XboxTitleID, a.ServiceConfigID, a.AchievementID,
 		)
@@ -188,18 +219,30 @@ func upsertAchievementDefinitions(ctx context.Context, db *sql.DB, achievements 
 		}
 		if n, _ := res.RowsAffected(); n == 0 {
 			if _, err := insStmt.ExecContext(ctx,
-				a.AchievementID, a.NameEN, a.NameFR,
-				a.DescriptionEN, a.DescriptionFR,
-				a.LockedDescEN, a.LockedDescFR,
-				a.Gamerscore, a.ImageURL, a.IsSecret,
+				a.AchievementID, a.Gamerscore, a.ImageURL, a.IsSecret,
 				a.RarityCategory, rarityPercent, titleID, a.XboxTitleID, a.ServiceConfigID,
 			); err != nil {
 				return fmt.Errorf("insert definition %s: %w", a.AchievementID, err)
 			}
 		}
+		if err := upsertAchievementTexts(ctx, tx, a); err != nil {
+			return err
+		}
 	}
 
 	return tx.Commit()
+}
+
+// upsertAchievementTexts écrit les textes d'un succès : nom et description (type `achievement`),
+// texte de succès verrouillé (type `achievement_locked`, rangé dans `name`).
+func upsertAchievementTexts(ctx context.Context, tx *sql.Tx, a PlayerAchievement) error {
+	if err := migration.UpsertAssetTexts(ctx, tx, ddb.AssetTypeAchievement, a.AchievementID, a.Name, a.Description); err != nil {
+		return fmt.Errorf("texts of achievement %s: %w", a.AchievementID, err)
+	}
+	if err := migration.UpsertAssetTexts(ctx, tx, ddb.AssetTypeAchievementLocked, a.AchievementID, a.LockedDesc, nil); err != nil {
+		return fmt.Errorf("locked texts of achievement %s: %w", a.AchievementID, err)
+	}
+	return nil
 }
 
 // upsertPlayerAchievements écrit la progression joueur dans player_achievements.

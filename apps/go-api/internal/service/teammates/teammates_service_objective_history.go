@@ -16,6 +16,7 @@ import (
 
 	"levelup/go-api/internal/analysis/squadformes"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/observability/timing"
 )
 
@@ -95,7 +96,7 @@ func historyMatches(rows []domain.SquadMatchRow, ecarte func(matchID, pairName s
 		if r.SessionLabel != nil {
 			m.SessionLabel = *r.SessionLabel
 		}
-		m.Excluded = ecarte(r.MatchID, r.PairName)
+		m.Excluded = ecarte(r.MatchID, r.PairName[i18n.Fallback])
 		out = append(out, m)
 	}
 	return out

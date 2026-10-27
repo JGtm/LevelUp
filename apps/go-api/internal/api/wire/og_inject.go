@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/ogmeta"
 	"levelup/go-api/internal/port"
 )
@@ -99,7 +100,7 @@ func playerSlugFromPath(p string) (string, bool) {
 
 // playerOGMeta construit une carte enrichie via les services existants
 // (HomeCtx → GetHomePage). Best-effort : (Meta{}, false) sur toute erreur.
-func (reg *ServiceRegistry) playerOGMeta(ctx context.Context, origin, path, slug string, loc ogmeta.Locale) (ogmeta.Meta, bool) {
+func (reg *ServiceRegistry) playerOGMeta(ctx context.Context, origin, path, slug string, loc i18n.Locale) (ogmeta.Meta, bool) {
 	ctx, cancel := context.WithTimeout(ctx, ogInjectTimeout)
 	defer cancel()
 
@@ -122,7 +123,7 @@ func (reg *ServiceRegistry) playerOGMeta(ctx context.Context, origin, path, slug
 // joueur. Sans forçage, HaloXUID resterait "" et l'identité serait servie sans peaks.
 // Même invariant que HomeCtxWithAuth (cf. forcePageIdentityXUID, registry_auth.go),
 // et title-agnostic (aucune dépendance au slug).
-func ogMetaFromHome(ctx context.Context, svc port.HomeService, xuid, gamertag, origin, path string, loc ogmeta.Locale) (ogmeta.Meta, bool) {
+func ogMetaFromHome(ctx context.Context, svc port.HomeService, xuid, gamertag, origin, path string, loc i18n.Locale) (ogmeta.Meta, bool) {
 	ctx = forcePageIdentityXUID(ctx, xuid)
 	page, err := svc.GetHomePage(ctx, gamertag, string(loc))
 	if err != nil {

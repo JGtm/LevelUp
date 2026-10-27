@@ -1,9 +1,8 @@
 /**
- * i18n.ts — strings UI + helper de fallback bilingue pour la feature Achievements.
+ * i18n.ts — strings UI de la feature Achievements.
  *
- * Convention : dictionnaire `Record<Locale, AchievementsText>` centralisé,
- * helper `pickLocalized` pour gérer les fallbacks quand un champ EN ou FR
- * est vide côté API (Xbox renvoie parfois un seul des deux).
+ * Convention : dictionnaire `Record<Locale, AchievementsText>` centralisé. Les noms et descriptions
+ * des succès arrivent déjà dans la langue de la requête (ADR 0040 D-3) : aucun choix de langue ici.
  */
 import type { ManifestLocale } from '@/lib/i18n/format'
 import { intlLocale } from '@/lib/formatters'
@@ -87,34 +86,6 @@ export const ACHIEVEMENTS_TEXT: Record<AchievementsLocale, AchievementsText> = {
     scrollHintForward: 'Show next achievements',
     scrollHintBack: 'Show previous achievements',
   },
-}
-
-/**
- * pickLocalized — sélectionne la chaîne dans la locale demandée avec fallback.
- *
- * Règles :
- *   - locale="fr" : prend `fr` si non vide, sinon `en`, sinon "" (les deux vides)
- *   - locale="en" : prend `en` si non vide, sinon `fr`, sinon ""
- *
- * Utile parce que l'API Xbox Achievements peut renvoyer un seul des deux
- * pour certains achievements localisés partiellement, ou les deux vides
- * pour des champs optionnels (locked_desc).
- *
- * @param en - chaîne anglaise (peut être vide ou undefined)
- * @param fr - chaîne française (peut être vide ou undefined)
- * @param locale - locale courante de l'app
- */
-export function pickLocalized(
-  en: string | undefined,
-  fr: string | undefined,
-  locale: AchievementsLocale,
-): string {
-  const enStr = en ?? ''
-  const frStr = fr ?? ''
-  if (locale === 'fr') {
-    return frStr || enStr
-  }
-  return enStr || frStr
 }
 
 /**

@@ -21,19 +21,13 @@ import (
 // mockCareerService implémente port.CareerService pour les tests.
 type mockCareerService struct {
 	careerPage   domain.CareerPageResponse
-	topMatches   domain.CareerTopMatchesResponse
 	encounters   domain.CareerEncountersResponse
 	careerErr    error
-	topErr       error
 	encounterErr error
 }
 
 func (m *mockCareerService) GetCareerPage(_ context.Context) (domain.CareerPageResponse, error) {
 	return m.careerPage, m.careerErr
-}
-
-func (m *mockCareerService) GetTopMatches(_ context.Context) (domain.CareerTopMatchesResponse, error) {
-	return m.topMatches, m.topErr
 }
 
 func (m *mockCareerService) GetEncounters(_ context.Context) (domain.CareerEncountersResponse, error) {

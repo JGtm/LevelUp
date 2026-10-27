@@ -86,7 +86,7 @@ const REGLAGES: ReglagesDuPlan = {
 
 const DETAIL: TacticalCelluleReponse = {
   contributions: [MORT_COMPLETE, FRAG],
-  zone: { nom_fr: 'Place centrale', nom_en: 'Central Square' },
+  zone: { nom: 'Place centrale' },
   bilan: BILAN,
 }
 

@@ -28,6 +28,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/i18n"
 )
 
 // synthAnchor : instant de référence FIXE du corpus synthétique (déterminisme). Le
@@ -151,7 +152,7 @@ type synthMatch struct {
 	team0Score, team1Score        int
 	// skill
 	csrValue, lusrValue float64
-	csrTier, csrTierFR  string
+	csrTier             i18n.Text // en : palier canonique ; fr : libellé français
 	csrSubTier          int
 	csrDelta            float64
 	// médailles (medal_name_id présents dans medal_definitions synthétiques)
@@ -308,8 +309,7 @@ func buildSynthMatch(rng *rand.Rand, idx int, s synthSession, pl synthPlaylist, 
 		team0Score:   t0,
 		team1Score:   t1,
 		csrValue:     *csr,
-		csrTier:      tier,
-		csrTierFR:    tierFR,
+		csrTier:      i18n.FromColumns(tier, tierFR),
 		csrSubTier:   subTier,
 		csrDelta:     delta,
 		lusrValue:    1000 + (*csr-1150)*0.9 + rng.Float64()*20,

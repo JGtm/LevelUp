@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log/slog"
 	"time"
+
+	"levelup/go-api/internal/i18n"
 )
 
 // service_squad_challenges.go — méthodes Service pour les défis d'escouade
@@ -244,10 +246,10 @@ func (s *service) enrichSquadChallenge(ctx context.Context, c SquadChallenge) Sq
 	view.Expired = c.ExpiresAt != nil && c.ExpiresAt.Before(s.deps.Now())
 	if c.TemplateID != "" {
 		if tpl, err := s.deps.Templates.GetByID(ctx, c.TemplateID); err != nil {
-			slog.DebugContext(ctx, "prestige: squad challenge label lookup failed (libellés omis)",
+			slog.DebugContext(ctx, "prestige: squad challenge label lookup failed (libellé omis)",
 				"err", err, "squad_challenge_id", c.ID, "template_id", c.TemplateID)
 		} else {
-			view.LabelFR, view.LabelEN = tpl.LabelFR, tpl.LabelEN
+			view.Label = tpl.Labels.Pick(i18n.FromContext(ctx))
 		}
 	}
 	if parts, err := s.deps.SquadChallenges.ListParticipants(ctx, c.ID); err != nil {

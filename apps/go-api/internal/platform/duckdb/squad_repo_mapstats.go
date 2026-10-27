@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
 func (r *SquadRepo) LoadMapStatsForSquad(ctx context.Context, mainXUID string, squadXUIDs, excludeXUIDs []string) (map[string]domain.MapSquadStats, error) {
@@ -173,16 +174,16 @@ func uniqueXUIDs(xs []string) []string {
 	return out
 }
 
-// LoadAssetTranslationsFR retourne les traductions FR depuis metadata.asset_translations.
+// LoadAssetTranslations retourne les traductions dans la langue loc depuis metadata.asset_translations.
 // Wrapper mince autour du résolveur unifié `MetadataRepo.ResolveAssetNamesBulk`
 // (cf. metadata_repo_assets.go). Cohérent avec home_repo.resolveAssetNames.
 // assetType : "map" | "playlist" | "game_variant" | "pair".
-func (r *SquadRepo) LoadAssetTranslationsFR(ctx context.Context, assetType string, assetIDs []string) (map[string]string, error) {
+func (r *SquadRepo) LoadAssetTranslations(ctx context.Context, loc i18n.Locale, assetType string, assetIDs []string) (map[string]string, error) {
 	if len(assetIDs) == 0 || r.pdb == nil || r.pdb.Metadata == nil {
 		return nil, nil
 	}
 	out, err := NewMetadataRepoFromDB(r.pdb.Metadata).ResolveAssetNamesBulk(
-		ctx, assetType, assetIDs, PreferredLangsForLocale("fr"),
+		ctx, assetType, assetIDs, PreferredLangsForLocale(string(loc)),
 	)
 	if err != nil && isTableNotFoundErr(err) {
 		return nil, nil
@@ -190,17 +191,38 @@ func (r *SquadRepo) LoadAssetTranslationsFR(ctx context.Context, assetType strin
 	return out, err
 }
 
-// LoadModeTranslationsFR retourne les traductions FR depuis metadata.mode_name_tr.
+// LoadAssetTexts retourne le nom de chaque actif `assetIDs` du type `assetType` dans chaque langue qui
+// en porte un (LoadAssetNames) : le service choisit la langue de la requête. (nil, nil) si metadata
+// ou la table est absente ; l'erreur SQL réelle est remontée.
+func (r *SquadRepo) LoadAssetTexts(ctx context.Context, assetType string, assetIDs []string) (map[string]i18n.Text, error) {
+	if len(assetIDs) == 0 || r.pdb == nil || r.pdb.Metadata == nil {
+		return nil, nil
+	}
+	texts, err := LoadAssetNames(ctx, r.pdb.Metadata, assetType, assetIDs)
+	if err != nil {
+		if isTableNotFoundErr(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	out := make(map[string]i18n.Text, len(texts))
+	for id, t := range texts {
+		out[id] = t.Name
+	}
+	return out, nil
+}
+
+// LoadModeTranslations retourne les traductions dans la langue loc depuis metadata.mode_name_tr.
 // Point d'entrée EXPORTÉ de la couche (port.SquadRepository, et injection
-// prestige via WithModeTranslatorFR) ; le SQL vit dans mode_name_tr.go, source
+// prestige via WithModeTranslator) ; le SQL vit dans mode_name_tr.go, source
 // unique du littéral (garde-rail no_mode_name_tr_literal_test.go).
-func (r *SquadRepo) LoadModeTranslationsFR(ctx context.Context, modeENs []string) (map[string]string, error) {
+func (r *SquadRepo) LoadModeTranslations(ctx context.Context, loc i18n.Locale, modeENs []string) (map[string]string, error) {
 	if len(modeENs) == 0 || r.pdb == nil || r.pdb.Metadata == nil {
 		return nil, nil
 	}
-	out, err := queryModeNameTrFR(ctx, r.pdb.Metadata, modeENs)
+	out, err := queryModeNameTr(ctx, r.pdb.Metadata, loc, modeENs)
 	if err != nil {
-		return nil, fmt.Errorf("LoadModeTranslationsFR: %w", err)
+		return nil, fmt.Errorf("LoadModeTranslations: %w", err)
 	}
 	return out, nil
 }

@@ -17,8 +17,8 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 )
 
-// natureFR : la nature de la source, en clair.
-func natureFR(c damagetag.Class) string {
+// natureLibelle : la nature de la source, en clair.
+func natureLibelle(c damagetag.Class) string {
 	switch c {
 	case damagetag.ClassArme:
 		return "arme"
@@ -39,9 +39,9 @@ func natureFR(c damagetag.Class) string {
 	}
 }
 
-// statutFR : ce que le consommateur a le droit de faire de l etiquette. Une ligne VALIDE ne dit
+// statutLibelle : ce que le consommateur a le droit de faire de l etiquette. Une ligne VALIDE ne dit
 // rien : le silence est le cas normal, et seul l inhabituel merite un mot.
-func statutFR(s damagetag.Status) string {
+func statutLibelle(s damagetag.Status) string {
 	switch s {
 	case damagetag.StatusValide:
 		return ""
@@ -56,13 +56,13 @@ func statutFR(s damagetag.Status) string {
 	}
 }
 
-// categorieFR : le modificateur de rapport de degat.
+// categorieLibelle : le modificateur de rapport de degat.
 //
 // QUATRE SONT ETABLIS PAR LE CHANTIER et se traduisent ; les autres gardent leur identifiant
 // moteur entre parentheses, parce qu aucune verite terrain ne les a confirmes. Rappel mesure :
 // la categorie ne discrimine PAS grenade et melee ordinaire — les deux sortent `None`, c est le
 // TAG qui les porte (RE_LOG 7ter.37).
-func categorieFR(c decfilm.Category) string {
+func categorieLibelle(c decfilm.Category) string {
 	switch c {
 	case decfilm.CategoryNone:
 		return ""
@@ -81,9 +81,9 @@ func categorieFR(c decfilm.Category) string {
 	}
 }
 
-// voieFR : par quelle voie la ligne a ete lue. A PONDERER, pas a interpreter : les deux lisent le
+// voieLibelle : par quelle voie la ligne a ete lue. A PONDERER, pas a interpreter : les deux lisent le
 // MEME champ, au MEME bit quand elles repondent toutes les deux (346/346, desaccord 0).
-func voieFR(p decfilm.Path) string {
+func voieLibelle(p decfilm.Path) string {
 	switch p {
 	case decfilm.PathWalk:
 		return "sequentielle"
@@ -94,8 +94,8 @@ func voieFR(p decfilm.Path) string {
 	}
 }
 
-// origineFR : comment la ligne a ete appariee au kill-feed.
-func origineFR(o decfilm.Origin) string {
+// origineLibelle : comment la ligne a ete appariee au kill-feed.
+func origineLibelle(o decfilm.Origin) string {
 	switch o {
 	case decfilm.OriginCredit:
 		return "les deux verites concordent"

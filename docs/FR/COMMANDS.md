@@ -472,6 +472,30 @@ ne liste pas : le JSON reste la référence, `--pin` est la porte de sortie, et 
 `internal/games/halo_infinite/medal_icons_test.go` échoue dès qu'une médaille de la taxonomie
 n'a pas d'icône.
 
+### Langues et traductions (ADR 0040)
+
+Les langues de l'application sont listées dans `config/locales.toml` (source unique). Ajouter une langue,
+pas à pas : [Guide des fondations § 3.5](FOUNDATIONS_GUIDE.md).
+
+```bash
+# régénère apps/web/src/lib/i18n/generated/locales.ts, apps/go-api/internal/i18n/locales_gen.go et les
+# modules de manifests depuis config/locales.toml ; s'arrête à la première feuille de manifest qui n'a pas
+# une langue listée
+node apps/web/scripts/build_i18n_manifests.mjs
+# langue de preuve : fabrique `xx` depuis `en` (texte entre ⟦ et ⟧) dans --out (un dossier temporaire par
+# défaut) ; ne touche ni config/locales.toml ni aucun fichier versionné
+node apps/web/scripts/build_i18n_manifests.mjs --pseudo xx [--out DOSSIER]
+# les types TypeScript générés ET les listes de langues générées sont à jour (aussi lancé par les tests web)
+node tools/check-generated-types-fresh.mjs
+# noms Halo des cartes, playlists, paires et variantes dans asset_translations (API Discovery UGC)
+cd apps/go-api
+go run ./cmd/levelup populate-assets [--types map,playlist,pair,game_variant] [--langs es-ES,es-MX] \
+    [--dry-run] [--force] [--concurrency N] [--freshness JOURS] [--title-id halo_infinite]
+```
+
+Défauts de `populate-assets` : les quatre types, les 14 étiquettes de `domain.TargetLanguages`, concurrence
+10, fraîcheur 30 jours ; `--langs` ignore (avec un avertissement) une étiquette hors de cette liste.
+
 ### Chaînes de fabrication des assets versionnés
 
 Onze chaînes hors ligne, toutes sous `apps/go-api/cmd/`, produisent des fichiers commités

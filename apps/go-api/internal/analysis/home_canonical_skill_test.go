@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 )
 
 // ─── buildCanonicalSkillBadge ──────────────────────────────────────────────
@@ -245,32 +246,32 @@ func TestCSRTierOrdinal(t *testing.T) {
 	}
 }
 
-// ─── BuildCSRTierLabelFromEN ───────────────────────────────────────────────
+// ─── BuildCSRTierLabel ───────────────────────────────────────────────
 
 func TestBuildCSRTierLabelFromEN(t *testing.T) {
 	t.Parallel()
 	sub3 := 3
 	cases := []struct {
-		name        string
-		tierEN      string
-		subTier     *int
-		frPreferred bool
-		want        string // "" → attend nil
+		name    string
+		tierEN  string
+		subTier *int
+		loc     i18n.Locale
+		want    string // "" → attend nil
 	}{
-		{"diamond FR + sous-palier", "Diamond", &sub3, true, "Diamant III"},
-		{"casse normalisée (lowercase)", "diamond", &sub3, true, "Diamant III"},
-		{"casse normalisée (UPPER)", "DIAMOND", &sub3, true, "Diamant III"},
-		{"onyx sans sous-palier", "Onyx", &sub3, true, "Onyx"},
-		{"EN quand frPreferred=false", "Diamond", &sub3, false, "Diamond III"},
-		{"tier inconnu → laissé EN", "Mythic", &sub3, true, "Mythic III"},
-		{"vide → nil", "", &sub3, true, ""},
-		{"whitespace → nil", "   ", &sub3, true, ""},
+		{"diamond FR + sous-palier", "Diamond", &sub3, i18n.LocaleFR, "Diamant III"},
+		{"casse normalisée (lowercase)", "diamond", &sub3, i18n.LocaleFR, "Diamant III"},
+		{"casse normalisée (UPPER)", "DIAMOND", &sub3, i18n.LocaleFR, "Diamant III"},
+		{"onyx sans sous-palier", "Onyx", &sub3, i18n.LocaleFR, "Onyx"},
+		{"EN quand la langue est l'anglais", "Diamond", &sub3, i18n.LocaleEN, "Diamond III"},
+		{"tier inconnu → laissé EN", "Mythic", &sub3, i18n.LocaleFR, "Mythic III"},
+		{"vide → nil", "", &sub3, i18n.LocaleFR, ""},
+		{"whitespace → nil", "   ", &sub3, i18n.LocaleFR, ""},
 	}
 	for _, c := range cases {
 		c := c
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
-			got := BuildCSRTierLabelFromEN(c.tierEN, c.subTier, c.frPreferred)
+			got := BuildCSRTierLabel(c.tierEN, c.subTier, c.loc)
 			if c.want == "" {
 				if got != nil {
 					t.Errorf("%s: got %q, want nil", c.name, derefStr(got))
@@ -431,26 +432,26 @@ func TestSkillTierBand(t *testing.T) {
 func TestNextSubTierLabel(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
-		name        string
-		tierEN      string
-		subTier     int
-		frPreferred bool
-		want        string // "" → attend nil
+		name    string
+		tierEN  string
+		subTier int
+		loc     i18n.Locale
+		want    string // "" → attend nil
 	}{
-		{"Or I → Or II (FR)", "Gold", 1, true, "Or II"},
-		{"Or V → Or VI", "Gold", 5, true, "Or VI"},
-		{"Or VI → Platine I (palier suivant)", "Gold", 6, true, "Platine I"},
-		{"Diamant VI → Onyx (sommet)", "Diamond", 6, true, "Onyx"},
-		{"Gold I → Gold II (EN)", "Gold", 1, false, "Gold II"},
-		{"casse normalisée", "diamond", 6, true, "Onyx"},
-		{"Onyx → nil (déjà au sommet)", "Onyx", 0, true, ""},
-		{"sous-palier 0 (placement) → nil", "Gold", 0, true, ""},
+		{"Or I → Or II (FR)", "Gold", 1, i18n.LocaleFR, "Or II"},
+		{"Or V → Or VI", "Gold", 5, i18n.LocaleFR, "Or VI"},
+		{"Or VI → Platine I (palier suivant)", "Gold", 6, i18n.LocaleFR, "Platine I"},
+		{"Diamant VI → Onyx (sommet)", "Diamond", 6, i18n.LocaleFR, "Onyx"},
+		{"Gold I → Gold II (EN)", "Gold", 1, i18n.LocaleEN, "Gold II"},
+		{"casse normalisée", "diamond", 6, i18n.LocaleFR, "Onyx"},
+		{"Onyx → nil (déjà au sommet)", "Onyx", 0, i18n.LocaleFR, ""},
+		{"sous-palier 0 (placement) → nil", "Gold", 0, i18n.LocaleFR, ""},
 	}
 	for _, c := range cases {
 		c := c
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
-			got := NextSubTierLabel(c.tierEN, c.subTier, c.frPreferred)
+			got := NextSubTierLabel(c.tierEN, c.subTier, c.loc)
 			if c.want == "" {
 				if got != nil {
 					t.Errorf("got %q, want nil", derefStr(got))

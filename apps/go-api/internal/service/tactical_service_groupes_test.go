@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
 type lecteurDeGroupesTactique struct{ groups domain.GroupesDeCartes }
@@ -23,7 +24,7 @@ func (l lecteurDeGroupesTactique) MapGroups(context.Context) (domain.GroupesDeCa
 func groupeThunderhead() lecteurDeGroupesTactique {
 	return lecteurDeGroupesTactique{groups: domain.NewGroupesDeCartes(map[string]string{
 		"var-heavies": "base-a", "base-b": "base-a",
-	}).AvecLibelles(map[string]map[string]string{
+	}).AvecLibelles(map[string]i18n.Text{
 		"base-a": {"fr": "Tonnerre", "en": "Thunderhead"},
 	})}
 }
@@ -32,9 +33,9 @@ func groupeThunderhead() lecteurDeGroupesTactique {
 // base, identifiant de base. Une carte hors groupe reste seule.
 func TestMapsPlayed_GroupeFusionneEtPlancherSurLaSomme(t *testing.T) {
 	repo := &mockTacticalRepo{maps: []domain.TacticalMapRow{
-		{MapID: "base-a", MapName: "Thunderhead", MapNameFR: "Tonnerre", Matchs: 6, Victoires: 4, Defaites: 2},
-		{MapID: "var-heavies", MapName: "Thunderhead Heavies", MapNameFR: "Du lourd sur Thunderhead", Matchs: 5, Victoires: 1, Defaites: 4},
-		{MapID: "seule", MapName: "The Pit", MapNameFR: "La Fosse", Matchs: 7, Victoires: 3, Defaites: 4},
+		{MapID: "base-a", MapName: i18n.FromColumns("Thunderhead", "Tonnerre"), Matchs: 6, Victoires: 4, Defaites: 2},
+		{MapID: "var-heavies", MapName: i18n.FromColumns("Thunderhead Heavies", "Du lourd sur Thunderhead"), Matchs: 5, Victoires: 1, Defaites: 4},
+		{MapID: "seule", MapName: i18n.FromColumns("The Pit", "La Fosse"), Matchs: 7, Victoires: 3, Defaites: 4},
 	}}
 	svc := NewTacticalService(repo, capsCompletes(), tsMoi).WithMapGroups(groupeThunderhead())
 	page, err := svc.MapsPlayed(context.Background(), domain.TacticalScope{})
@@ -52,8 +53,8 @@ func TestMapsPlayed_GroupeFusionneEtPlancherSurLaSomme(t *testing.T) {
 		t.Errorf("11 parties >= plancher %d : le groupe ne doit pas etre sous le plancher alors que ses parts le sont",
 			domain.PlancherMatchsParCarte)
 	}
-	if g.MapNameFR != "Tonnerre" || g.MapName != "Thunderhead" {
-		t.Errorf("libelles = %q / %q, attendu ceux de la BASE (aucune mention de la variante)", g.MapName, g.MapNameFR)
+	if g.MapName != "Tonnerre" || g.MapLabel != "Tonnerre" || g.MapFilterKey != "Tonnerre" {
+		t.Errorf("libelles = %q / %q, attendu ceux de la BASE (aucune mention de la variante)", g.MapName, g.MapLabel)
 	}
 	if s := page.Cartes[1]; s.MapID != "seule" || !s.SousPlancher {
 		t.Errorf("carte seule = %+v, attendu inchangee (7 < plancher)", s)
@@ -97,8 +98,8 @@ func TestRaster_LitTousLesIdentifiantsDuGroupe(t *testing.T) {
 func TestMapsPlayed_VignetteDuGroupeReunitLesMorts(t *testing.T) {
 	repo := &mockTacticalRepo{
 		maps: []domain.TacticalMapRow{
-			{MapID: "base-a", MapName: "Thunderhead", Matchs: 6, Victoires: 3, Defaites: 3},
-			{MapID: "var-heavies", MapName: "Thunderhead Heavies", Matchs: 6, Victoires: 3, Defaites: 3},
+			{MapID: "base-a", MapName: i18n.FromColumns("Thunderhead", ""), Matchs: 6, Victoires: 3, Defaites: 3},
+			{MapID: "var-heavies", MapName: i18n.FromColumns("Thunderhead Heavies", ""), Matchs: 6, Victoires: 3, Defaites: 3},
 		},
 		mortsParCarte: map[string][]domain.PositionSample{
 			"base-a":      {{MatchID: "m1", X: 2, Y: 2}, {MatchID: "m2", X: 2.2, Y: 2.2}},

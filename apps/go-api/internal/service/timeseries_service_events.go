@@ -12,6 +12,7 @@ import (
 	"levelup/go-api/internal/analysis/narrative"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
@@ -84,13 +85,8 @@ func (s *TimeseriesService) loadHighlightEvents(
 // Le label affiché côté front est "Map — dd/MM" (lookup depuis matches).
 // matchOrder : préserve l'ordre des matches du scope (latest first comme
 // LoadPlayerMatches), idem squad SquadIntensityProfile.
-func buildIntensityRows(
-	events []canonical.HighlightEvent,
-	matches []legacymatch.StatsMatchRow,
-	playerXUID string,
-	gameplayDurationsMS map[string]int64,
-) []domain.IntensityMatchRow {
-	return buildIntensityRowsPour(events, matches, gameplayDurationsMS,
+func buildIntensityRows(sc intensityScope, playerXUID string) []domain.IntensityMatchRow {
+	return buildIntensityRowsPour(sc,
 		func(_, killer string) bool { return killer == playerXUID })
 }
 
@@ -107,12 +103,8 @@ func tueurDeLEvent(ev canonical.HighlightEvent) string {
 // le joueur, son ÉQUIPE et le LOBBY ne diffèrent que par la population de tueurs retenue
 // (`garde`). Un second calcul par population aurait fait trois profils d'intensité libres
 // de diverger — le même piège que la page Escouade évite avec `intensityEventFilter`.
-func buildIntensityRowsPour(
-	events []canonical.HighlightEvent,
-	matches []legacymatch.StatsMatchRow,
-	gameplayDurationsMS map[string]int64,
-	garde func(matchID, killerXUID string) bool,
-) []domain.IntensityMatchRow {
+func buildIntensityRowsPour(sc intensityScope, garde func(matchID, killerXUID string) bool) []domain.IntensityMatchRow {
+	events, matches, gameplayDurationsMS := sc.events, sc.matches, sc.durationsMS
 	playerKills := make([]canonical.HighlightEvent, 0, len(events))
 	for _, ev := range events {
 		if ev.EventType != string(canonical.EventKill) &&
@@ -142,10 +134,7 @@ func buildIntensityRowsPour(
 	}
 	metaByID := make(map[string]matchMeta, len(matches))
 	for _, m := range matches {
-		mapName := m.MapNameFR
-		if mapName == "" {
-			mapName = m.MapName
-		}
+		mapName := m.MapName.Pick(sc.loc)
 		// Contrat du builder heatmap (squadIntensityHeatmapChart) : label
 		// "Carte — date" ; le numéro #N est posé par le builder web (le
 		// doubler ici rendait "#1 #1 Carte" à l'écran).
@@ -207,13 +196,14 @@ func buildSoloFirstBlood(
 	player string,
 	rows []narrative.FirstEventsRow,
 	matches []legacymatch.StatsMatchRow,
+	loc i18n.Locale,
 ) []domain.FirstBloodPlayerSeries {
 	if player == "" || len(rows) == 0 {
 		return nil
 	}
 	metaByMatch := make(map[string]domain.FirstBloodMatchMeta, len(matches))
 	for _, m := range matches {
-		metaByMatch[m.MatchID] = statsMatchRowFirstBloodMeta(m)
+		metaByMatch[m.MatchID] = statsMatchRowFirstBloodMeta(m, loc)
 	}
 	points := make([]domain.FirstBloodMatchPoint, 0, len(rows))
 	for _, r := range rows {
@@ -229,20 +219,15 @@ func buildSoloFirstBlood(
 
 // statsMatchRowFirstBloodMeta résout les métadonnées d'affichage (carte, mode,
 // date) d'un match pour le chart « premier frag / première mort ». Carte : FR
-// si disponible sinon l'anglais brut (même repli que buildIntensityRows
+// de la langue `loc`, sinon l'anglais brut (même repli que buildIntensityRows
 // ci-dessus ; 2e occurrence du pattern, sous le seuil ≤2 copies avant
-// centralisation — règle CLAUDE.md). Mode : analysis.ResolveModeUIWithVariant,
+// centralisation — règle CLAUDE.md). Mode : analysis.ResolveModeUIWithVariantIn,
 // résolveur canonique pair-sinon-variant déjà utilisé dans tout le package
 // service — ne pas dupliquer sa logique ici.
-func statsMatchRowFirstBloodMeta(m legacymatch.StatsMatchRow) domain.FirstBloodMatchMeta {
-	mapUI := m.MapNameFR
-	if mapUI == "" {
-		mapUI = m.MapName
-	}
+func statsMatchRowFirstBloodMeta(m legacymatch.StatsMatchRow, loc i18n.Locale) domain.FirstBloodMatchMeta {
+	mapUI := m.MapName.Pick(loc)
 	meta := domain.FirstBloodMatchMeta{MapUI: mapUI, StartTime: m.StartTime}
-	if modeUI := analysis.ResolveModeUIWithVariant(
-		&m.PairName, &m.PairNameFR, &m.GameVariantName, &m.GameVariantNameFR,
-	); modeUI != nil {
+	if modeUI := analysis.ResolveModeUIWithVariantIn(loc, m.PairName, m.GameVariantName); modeUI != nil {
 		meta.ModeUI = *modeUI
 	}
 	return meta
@@ -263,21 +248,15 @@ func statsMatchRowFirstBloodMeta(m legacymatch.StatsMatchRow) domain.FirstBloodM
 //
 // DÉGRADATION NOMMÉE : port non câblé (titre sans résumé d'usage) ou lecture en échec ⇒
 // la courbe d'équipe est absente, le reste est servi. Jamais une courbe plate.
-func attachIntensityOverlays(
-	resp *domain.TimeseriesPageResponse,
-	events []canonical.HighlightEvent,
-	matches []legacymatch.StatsMatchRow,
-	gameplayDurationsMS map[string]int64,
-	equipes equipesDuScope,
-) {
-	resp.IntensityRowsLobby = buildIntensityRowsPour(events, matches, gameplayDurationsMS,
+func attachIntensityOverlays(resp *domain.TimeseriesPageResponse, sc intensityScope, equipes equipesDuScope) {
+	resp.IntensityRowsLobby = buildIntensityRowsPour(sc,
 		func(string, string) bool { return true })
 
 	if !equipes.lues {
 		return
 	}
 	tc := equipes.tc
-	resp.IntensityRowsTeam = buildIntensityRowsPour(events, matches, gameplayDurationsMS,
+	resp.IntensityRowsTeam = buildIntensityRowsPour(sc,
 		func(matchID, killer string) bool {
 			camp, connu := tc.PlayerTeam[matchID]
 			if !connu {
@@ -286,4 +265,13 @@ func attachIntensityOverlays(
 			campDuTueur, ok := tc.TeamOf[matchID][killer]
 			return ok && campDuTueur == camp
 		})
+}
+
+// intensityScope regroupe ce que les courbes d'intensité lisent : les events (corrigés T0), les matchs
+// du scope (libellés « Carte — jj/mm » dans la langue `loc`) et les durées de jeu par match.
+type intensityScope struct {
+	events      []canonical.HighlightEvent
+	matches     []legacymatch.StatsMatchRow
+	durationsMS map[string]int64
+	loc         i18n.Locale
 }

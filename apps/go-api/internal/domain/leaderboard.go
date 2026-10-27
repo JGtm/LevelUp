@@ -3,7 +3,11 @@
 // Sprint 54 E : LeaderboardEntry, LeaderboardRequest/Response.
 package domain
 
-import "time"
+import (
+	"time"
+
+	"levelup/go-api/internal/i18n"
+)
 
 // WorldPlayerRef identifie un joueur du classement mondial : son gamertag et, quand
 // il est connu (scrapé du snapshot Waypoint), son xuid. XUID vide = à résoudre via
@@ -24,12 +28,11 @@ type WorldPlaylistRef struct {
 
 // WorldSeasonRef identifie une saison CSR exposée par le menu déroulant de la page
 // classement Waypoint : season_id (ex "csrseason13-2"), nom d'Operation EN
-// (DisplayName) et sa traduction FR déjà résolue (NameFR, fallback EN). Persisté
+// (Name[en]) et sa traduction FR déjà résolue (Name[fr], fallback EN). Persisté
 // dans season_catalog pour un libellé autoritatif "Saison N · Nom" (C2).
 type WorldSeasonRef struct {
-	SeasonID    string
-	DisplayName string
-	NameFR      string
+	SeasonID string
+	Name     i18n.Text
 }
 
 // LeaderboardEntry est une entrée du classement.

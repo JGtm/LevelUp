@@ -15,6 +15,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 )
 
 // HistoryTableRow est une ligne du tableau historique Squad V2.
@@ -53,12 +54,15 @@ type HistoryPlayerCell struct {
 //	                match (lookup via PlayerMatchRow.Summary.MatchID).
 //	squadOrder    : conservee dans HistoryTableRow.PlayerStats (les keys de
 //	                la map suivent cet ordre cote front).
+//	loc           : la langue de la requete (carte, mode, playlist ; repli sur
+//	                la langue de repli, i18n.Text.Pick).
 //
 // Tri retourne : StartedAt desc (matchs recents en haut). Stable.
 func BuildHistoryTable(
 	sharedMatches []domain.SquadSharedMatch,
 	rowsByPlayer map[string][]canonical.PlayerMatchRow,
 	squadOrder []string,
+	loc i18n.Locale,
 ) []HistoryTableRow {
 	if len(sharedMatches) == 0 {
 		return nil
@@ -92,13 +96,13 @@ func BuildHistoryTable(
 					row.GameplayDurationSeconds = gp
 				}
 				if m.Summary.Map != nil {
-					row.MapLabel = m.Summary.Map.DefaultLabel
+					row.MapLabel = m.Summary.Map.Text().Pick(loc)
 				}
 				if m.Summary.GameVariant != nil {
-					row.ModeLabel = m.Summary.GameVariant.DefaultLabel
+					row.ModeLabel = m.Summary.GameVariant.Text().Pick(loc)
 				}
 				if m.Summary.Playlist != nil {
-					row.PlaylistLabel = m.Summary.Playlist.DefaultLabel
+					row.PlaylistLabel = m.Summary.Playlist.Text().Pick(loc)
 				}
 			}
 		}

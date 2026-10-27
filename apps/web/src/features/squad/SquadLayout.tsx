@@ -48,6 +48,7 @@ import { empriseTabHasContent } from './emprise/empriseContent'
 
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 import { filterContextToMatchFilterSpec } from '@/lib/match-nav/fromFilterContext'
+import { labelsOfOptions } from '@/lib/match-nav/navContext'
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -91,6 +92,7 @@ export function SquadLayout() {
     filterContext,
     filterContextHash,
     resetFilters,
+    resolvedContext,
   } = useSquadFilterStore()
   // Composition (lien profond de l'accueil, amis, choix), session pickée — source
   // UNIQUE : le store escouade — et moment où la requête lourde peut partir.
@@ -188,7 +190,11 @@ export function SquadLayout() {
   const squadEntryMatchId = data?.match_history?.[0]?.match_id
   const handleBrowseMatches = () => {
     if (!squadEntryMatchId) return
-    const filterSpec = filterContextToMatchFilterSpec(squadFilterContext)
+    const available = resolvedContext?.available_options
+    const filterSpec = filterContextToMatchFilterSpec(squadFilterContext, {
+      playlistLabels: labelsOfOptions(available?.playlists),
+      modeLabels: labelsOfOptions(available?.modes),
+    })
     navigateToMatch(squadEntryMatchId, {
       source: 'session',
       matchIds: squadMatchIds,

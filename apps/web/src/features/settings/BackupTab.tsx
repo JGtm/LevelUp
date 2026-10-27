@@ -10,6 +10,8 @@ import { Card, CardContent } from '@/components/ui/card'
 import { useBackupStatus, useRunBackup } from '@/features/settings/queries'
 import type { getSettingsText } from '@/features/settings/i18n'
 import type { IntegrityResult } from '@/lib/api/types'
+import { intlLocale } from '@/lib/formatters'
+import { useAppShellStore } from '@/stores/appShellStore'
 
 interface BackupTabProps {
   t: ReturnType<typeof getSettingsText>
@@ -50,8 +52,8 @@ function fmtDuration(ms: number) {
   return `${Math.round(ms / 60_000)} min`
 }
 
-function fmtDate(iso: string) {
-  return new Date(iso).toLocaleString(undefined, {
+function fmtDate(iso: string, intlTag: string) {
+  return new Date(iso).toLocaleString(intlTag, {
     dateStyle: 'medium',
     timeStyle: 'short',
   })
@@ -59,6 +61,7 @@ function fmtDate(iso: string) {
 
 export function BackupTab({ t, frozen }: BackupTabProps) {
   const { data: status, isLoading } = useBackupStatus()
+  const locale = useAppShellStore((s) => s.locale)
   const runBackup = useRunBackup()
 
   const badge = status ? statusBadge(status.enabled, status.available, t) : null
@@ -87,7 +90,7 @@ export function BackupTab({ t, frozen }: BackupTabProps) {
             ) : status?.last_backup_at ? (
               <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
                 <dt className="text-muted-foreground">{t.backupLastBackup}</dt>
-                <dd>{fmtDate(status.last_backup_at)}</dd>
+                <dd>{fmtDate(status.last_backup_at, intlLocale(locale))}</dd>
 
                 {status.last_snapshot_id && (
                   <>

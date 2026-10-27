@@ -37,8 +37,7 @@ const H = vi.hoisted(() => {
     target_per_member: 7,
     created_by: 'alice',
     created_at: '2026-07-02T00:00:00Z',
-    label_fr: 'Briseur de couronnes',
-    label_en: 'Crown breaker',
+    label: 'Briseur de couronnes', // servi dans la langue de la requête
     expired: false,
     participants: [
       {

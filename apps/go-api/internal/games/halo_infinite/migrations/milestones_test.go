@@ -14,6 +14,7 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/migration"
 )
 
@@ -45,7 +46,8 @@ func openMetadataDB(t *testing.T) *sql.DB {
 }
 
 // TestSeedMilestonesFromTOML_HaloInfinite_PopulatesRows : milestones d'Halo
-// Infinite chargés depuis le vrai TOML config.
+// Infinite chargés depuis le vrai TOML config. Titre et condition lisible vont dans
+// asset_translations (type `milestone`, une ligne par langue), pas dans des colonnes appariées.
 func TestSeedMilestonesFromTOML_HaloInfinite_PopulatesRows(t *testing.T) {
 	db := openMetadataDB(t)
 
@@ -62,27 +64,32 @@ func TestSeedMilestonesFromTOML_HaloInfinite_PopulatesRows(t *testing.T) {
 	if count == 0 {
 		t.Fatalf("expected >0 milestones for halo_infinite, got 0 — TOML vide ou parse échoué")
 	}
-	var centurionTitleFR string
-	if err := db.QueryRow(
-		`SELECT title_fr FROM milestone_catalog WHERE id = 'halo_infinite.matches.100'`).Scan(&centurionTitleFR); err != nil {
-		t.Fatalf("centurion lookup: %v", err)
+	text := func(id string, l i18n.Locale) (name string, desc sql.NullString) {
+		t.Helper()
+		if err := db.QueryRow(
+			`SELECT name, description FROM asset_translations WHERE asset_type = 'milestone' AND asset_id = ? AND lang = ?`,
+			id, i18n.HaloTags(l)[0]).Scan(&name, &desc); err != nil {
+			t.Fatalf("texte %s (%s): %v", id, l, err)
+		}
+		return name, desc
 	}
-	if centurionTitleFR == "" {
-		t.Errorf("title_fr Centurion vide")
+	for _, l := range []i18n.Locale{i18n.LocaleFR, i18n.LocaleEN} {
+		if name, _ := text("halo_infinite.matches.100", l); name == "" {
+			t.Errorf("titre %s Centurion vide", l)
+		}
+		// A9 : les conditions localisées sont seedées pour les jalons qui en ont une.
+		if _, desc := text("halo_infinite.accuracy_consistent.30d", l); !desc.Valid || desc.String == "" {
+			t.Errorf("condition lisible %s vide pour accuracy_consistent.30d (A9)", l)
+		}
 	}
-
-	// A9 : les conditions localisées sont seedées pour les jalons qui en ont une.
-	var condFR, condEN sql.NullString
-	if err := db.QueryRow(
-		`SELECT condition_fr, condition_en FROM milestone_catalog
-		 WHERE id = 'halo_infinite.accuracy_consistent.30d'`).Scan(&condFR, &condEN); err != nil {
-		t.Fatalf("condition lookup: %v", err)
+	// Les colonnes appariées n'existent plus : le seed n'a pas pu les écrire.
+	var cols int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM information_schema.columns
+		WHERE table_name = 'milestone_catalog' AND column_name IN ('title_en', 'title_fr', 'condition_fr', 'condition_en')`).Scan(&cols); err != nil {
+		t.Fatalf("information_schema: %v", err)
 	}
-	if !condFR.Valid || condFR.String == "" {
-		t.Errorf("condition_fr vide pour accuracy_consistent.30d (A9)")
-	}
-	if !condEN.Valid || condEN.String == "" {
-		t.Errorf("condition_en vide pour accuracy_consistent.30d (A9)")
+	if cols != 0 {
+		t.Errorf("milestone_catalog garde %d colonne(s) appariée(s)", cols)
 	}
 }
 
@@ -94,17 +101,19 @@ func TestSeedMilestonesFromTOML_Idempotent(t *testing.T) {
 	if err := seedMilestonesFromTOML(db, path); err != nil {
 		t.Fatalf("run 1: %v", err)
 	}
-	var n1 int
+	var n1, t1 int
 	db.QueryRow(`SELECT COUNT(*) FROM milestone_catalog`).Scan(&n1)
+	db.QueryRow(`SELECT COUNT(*) FROM asset_translations WHERE asset_type = 'milestone'`).Scan(&t1)
 
 	if err := seedMilestonesFromTOML(db, path); err != nil {
-		t.Fatalf("run 2 (doit être no-op via ON CONFLICT): %v", err)
+		t.Fatalf("run 2 (doit être idempotent): %v", err)
 	}
-	var n2 int
+	var n2, t2 int
 	db.QueryRow(`SELECT COUNT(*) FROM milestone_catalog`).Scan(&n2)
+	db.QueryRow(`SELECT COUNT(*) FROM asset_translations WHERE asset_type = 'milestone'`).Scan(&t2)
 
-	if n1 != n2 {
-		t.Fatalf("idempotence cassée : run1=%d run2=%d", n1, n2)
+	if n1 != n2 || t1 != t2 {
+		t.Fatalf("idempotence cassée : jalons run1=%d run2=%d, traductions run1=%d run2=%d", n1, n2, t1, t2)
 	}
 }
 

@@ -11,6 +11,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/mappings"
+	"levelup/go-api/internal/i18n"
 )
 
 func tm(s string) time.Time {
@@ -22,9 +23,9 @@ func TestBuildMatchesPerSeason_Bucketing(t *testing.T) {
 	endS1 := tm("2022-05-03T17:00:00Z")
 	endS2 := tm("2022-11-08T17:00:00Z")
 	seasons := []SeasonCatalogEntry{
-		{ID: "season1", Label: "Heroes of Reach", Start: tm("2021-12-08T17:00:00Z"), End: &endS1, Extra: map[string]string{"short_label": "S1"}},
-		{ID: "season2", Label: "Lone Wolves", Start: tm("2022-05-03T17:00:00Z"), End: &endS2, Extra: map[string]string{"short_label": "S2"}},
-		{ID: "season3", Label: "Open", Start: tm("2022-11-08T17:00:00Z"), End: nil}, // saison ouverte, pas de short_label
+		{ID: "season1", Label: i18n.FromColumns("Heroes of Reach", ""), Start: tm("2021-12-08T17:00:00Z"), End: &endS1, Extra: map[string]string{"short_label": "S1"}},
+		{ID: "season2", Label: i18n.FromColumns("Lone Wolves", ""), Start: tm("2022-05-03T17:00:00Z"), End: &endS2, Extra: map[string]string{"short_label": "S2"}},
+		{ID: "season3", Label: i18n.FromColumns("Open", ""), Start: tm("2022-11-08T17:00:00Z"), End: nil}, // saison ouverte, pas de short_label
 	}
 	starts := []time.Time{
 		tm("2022-01-10T10:00:00Z"), // S1
@@ -34,7 +35,7 @@ func TestBuildMatchesPerSeason_Bucketing(t *testing.T) {
 		tm("2020-01-01T10:00:00Z"), // avant toute saison → ignoré
 	}
 
-	got := buildMatchesPerSeason(starts, seasons)
+	got := buildMatchesPerSeason(starts, seasons, i18n.Default)
 	if len(got) != 3 {
 		t.Fatalf("attendu 3 saisons avec matchs, got %d (%+v)", len(got), got)
 	}
@@ -53,10 +54,10 @@ func TestBuildMatchesPerSeason_Bucketing(t *testing.T) {
 
 func TestBuildMatchesPerSeason_Empty(t *testing.T) {
 	seasons := []SeasonCatalogEntry{{ID: "s1", Start: tm("2021-01-01T00:00:00Z")}}
-	if got := buildMatchesPerSeason(nil, seasons); got != nil {
+	if got := buildMatchesPerSeason(nil, seasons, i18n.Default); got != nil {
 		t.Errorf("starts vide → nil, got %v", got)
 	}
-	if got := buildMatchesPerSeason([]time.Time{tm("2021-06-01T00:00:00Z")}, nil); got != nil {
+	if got := buildMatchesPerSeason([]time.Time{tm("2021-06-01T00:00:00Z")}, nil, i18n.Default); got != nil {
 		t.Errorf("seasons vide → nil, got %v", got)
 	}
 }
@@ -142,7 +143,7 @@ func (m *mockSeasonSR) pathCalls(seasonID string) int {
 
 func breakdownTestSeasons() []SeasonCatalogEntry {
 	mk := func(id, short, csr string) SeasonCatalogEntry {
-		return SeasonCatalogEntry{ID: id, Label: id, Extra: map[string]string{"short_label": short, "csr_season_id": csr}}
+		return SeasonCatalogEntry{ID: id, Label: i18n.FromColumns(id, id), Extra: map[string]string{"short_label": short, "csr_season_id": csr}}
 	}
 	return []SeasonCatalogEntry{
 		mk("season6", "S6", "CsrSeason6-1"),
@@ -258,7 +259,7 @@ func TestComputeSeasonBreakdown_NoEngagedPlaylists_SkipsCSR(t *testing.T) {
 
 func TestDeterministicSeasonPath(t *testing.T) {
 	mk := func(id string, extra map[string]string) SeasonCatalogEntry {
-		return SeasonCatalogEntry{ID: id, Label: id, Extra: extra}
+		return SeasonCatalogEntry{ID: id, Label: i18n.FromColumns(id, id), Extra: extra}
 	}
 	cases := []struct {
 		name  string
@@ -293,7 +294,7 @@ func TestSeasonCMSPaths_UnionDedup(t *testing.T) {
 		6: {"Seasons/Season6.json", "Seasons/Season6-2.json"},
 		9: {"Seasons/Season9.json"},
 	}
-	s6 := SeasonCatalogEntry{ID: "season6", Label: "season6", Extra: map[string]string{"short_label": "S6"}}
+	s6 := SeasonCatalogEntry{ID: "season6", Label: i18n.FromColumns("season6", ""), Extra: map[string]string{"short_label": "S6"}}
 	got := seasonCMSPaths(&s6, live)
 	want := []string{"Seasons/Season6.json", "Seasons/Season6-2.json"}
 	if len(got) != len(want) {
@@ -306,13 +307,13 @@ func TestSeasonCMSPaths_UnionDedup(t *testing.T) {
 	}
 
 	// Saison au catalogue absente du live : le chemin déterministe suffit.
-	s7 := SeasonCatalogEntry{ID: "season7", Label: "season7"}
+	s7 := SeasonCatalogEntry{ID: "season7", Label: i18n.FromColumns("season7", "")}
 	if got := seasonCMSPaths(&s7, live); len(got) != 1 || got[0] != "Seasons/Season7.json" {
 		t.Errorf("S7 attendu [Seasons/Season7.json], got %v", got)
 	}
 
 	// Saison hors gabarit sans extra ni chemin live : rien à interroger.
-	orphan := SeasonCatalogEntry{ID: "operation_alpha", Label: "Alpha"}
+	orphan := SeasonCatalogEntry{ID: "operation_alpha", Label: i18n.FromColumns("Alpha", "")}
 	if got := seasonCMSPaths(&orphan, live); got != nil {
 		t.Errorf("saison sans chemin déductible ni live → nil, got %v", got)
 	}
@@ -444,7 +445,7 @@ func TestComputeSeasonBreakdown_NoCMSPathFallsBackLocal(t *testing.T) {
 	sr := &mockSeasonSR{}
 	svc := NewExplorerService(&mockExplorerRepo{}, "me").
 		WithTargetProfileProviders(ExplorerTargetProfileDeps{
-			Seasons:  []SeasonCatalogEntry{{ID: "operation_alpha", Label: "Alpha"}},
+			Seasons:  []SeasonCatalogEntry{{ID: "operation_alpha", Label: i18n.FromColumns("Alpha", "")}},
 			SeasonSR: sr, TitleSlug: "halo_5",
 		})
 

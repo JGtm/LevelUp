@@ -10,6 +10,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/sync"
@@ -358,8 +359,7 @@ func makeSessionPageMatch(
 		Accuracy:          sessionFloat64Ptr(accuracy),
 		PerfScoreComputed: sessionFloat64Ptr(perf),
 		IsRanked:          isRanked,
-		PlaylistName:      playlistName,
-		PairName:          pairName,
+		PairName:          i18n.FromColumns(pairName, ""),
 		SessionLabel:      &label,
 	}
 }
@@ -479,8 +479,8 @@ func TestSessionPageService_AttachSessionEventBlocks(t *testing.T) {
 	const xuid = "player1"
 	killer, victim := xuid, xuid
 	tt := time.Date(2026, 4, 21, 20, 0, 0, 0, time.UTC)
-	currentMatches := []legacymatch.StatsMatchRow{{MatchID: "m1", StartTime: tt, MapName: "Aquarius"}}
-	compareMatches := []legacymatch.StatsMatchRow{{MatchID: "c1", StartTime: tt, MapName: "Bazaar"}}
+	currentMatches := []legacymatch.StatsMatchRow{{MatchID: "m1", StartTime: tt, MapName: i18n.FromColumns("Aquarius", "")}}
+	compareMatches := []legacymatch.StatsMatchRow{{MatchID: "c1", StartTime: tt, MapName: i18n.FromColumns("Bazaar", "")}}
 	events := []canonical.HighlightEvent{
 		{MatchID: "m1", EventType: string(canonical.EventKill), TimeMS: 100, XUID: xuid, KillerXUID: &killer},
 		{MatchID: "m1", EventType: string(canonical.EventKill), TimeMS: 900, XUID: xuid, KillerXUID: &killer},
@@ -681,11 +681,11 @@ func TestComputeSessionPlacements_PerfChain(t *testing.T) {
 	scored := 61.0
 	rows := []legacymatch.StatsMatchRow{
 		// 2 matchs BTB sans perf : chaîne "btb" à 3 éligibles < 10 → 3/10 attendu.
-		{MatchID: "btb1", StartTime: start, Outcome: &win, PairName: "BTB:CTF on Highpower", SkillRatingType: "lusr"},
-		{MatchID: "btb2", StartTime: start.Add(time.Hour), Outcome: &win, PairName: "BTB:Slayer on Behemoth", SkillRatingType: "lusr"},
-		{MatchID: "btb3", StartTime: start.Add(2 * time.Hour), Outcome: &win, PairName: "BTB:Total Control on Insolence", SkillRatingType: "lusr"},
+		{MatchID: "btb1", StartTime: start, Outcome: &win, PairName: i18n.FromColumns("BTB:CTF on Highpower", ""), SkillRatingType: "lusr"},
+		{MatchID: "btb2", StartTime: start.Add(time.Hour), Outcome: &win, PairName: i18n.FromColumns("BTB:Slayer on Behemoth", ""), SkillRatingType: "lusr"},
+		{MatchID: "btb3", StartTime: start.Add(2 * time.Hour), Outcome: &win, PairName: i18n.FromColumns("BTB:Total Control on Insolence", ""), SkillRatingType: "lusr"},
 		// Match déjà scoré : jamais annoncé en placement perf.
-		{MatchID: "btb4", StartTime: start.Add(3 * time.Hour), Outcome: &win, PairName: "BTB:CTF on Fortitude",
+		{MatchID: "btb4", StartTime: start.Add(3 * time.Hour), Outcome: &win, PairName: i18n.FromColumns("BTB:CTF on Fortitude", ""),
 			SkillRatingType: "lusr", PerfScoreComputed: &scored},
 	}
 	pl := svc.computeSessionPlacements(context.Background(), rows)
@@ -720,7 +720,7 @@ func TestBuildSessionDetailRows_SkillTierLabel(t *testing.T) {
 	start := time.Date(2026, 4, 21, 20, 0, 0, 0, time.UTC)
 	label := "S"
 	win := analysis.OutcomeWin
-	gold, goldFR, sub := "gold", "Or", 3
+	gold, sub := "gold", 3
 	deref := func(rs []domain.SessionDetailMatchRow) string {
 		if len(rs) == 1 && rs[0].SkillTierLabel != nil {
 			return *rs[0].SkillTierLabel
@@ -729,7 +729,7 @@ func TestBuildSessionDetailRows_SkillTierLabel(t *testing.T) {
 	}
 	ranked := []legacymatch.StatsMatchRow{{
 		MatchID: "m1", StartTime: start, Outcome: &win, Kills: 1, Deaths: 1, SessionLabel: &label,
-		SkillRatingType: "csr", SkillTierCode: &gold, SkillTierCodeFR: &goldFR, SkillSubTier: &sub,
+		SkillRatingType: "csr", SkillTierCode: &gold, SkillSubTier: &sub,
 	}}
 	if got := deref(buildSessionDetailRows(ranked, nil, "fr", nil, nil)); got != "Or III" {
 		t.Fatalf("FR SkillTierLabel = %q, want %q", got, "Or III")
@@ -762,7 +762,7 @@ func TestBuildSessionDetailRows_ModeUILocale(t *testing.T) {
 
 	withFR := []legacymatch.StatsMatchRow{{
 		MatchID: "m1", StartTime: start, Outcome: &win, Kills: 10, Deaths: 8,
-		PairName: "Arena:Team Slayer on Live Fire", PairNameFR: "Slayer en équipe", SessionLabel: &label,
+		PairName: i18n.FromColumns("Arena:Team Slayer on Live Fire", "Slayer en équipe"), SessionLabel: &label,
 	}}
 	if got := modeUIOf(buildSessionDetailRows(withFR, nil, "fr", nil, nil)); got != "Slayer en équipe" {
 		t.Fatalf("FR ModeUI = %q, want %q", got, "Slayer en équipe")
@@ -774,7 +774,7 @@ func TestBuildSessionDetailRows_ModeUILocale(t *testing.T) {
 	// PairNameFR vide + aucun GameVariant FR (mode_name_tr sans entrée) → repli EN.
 	noFR := []legacymatch.StatsMatchRow{{
 		MatchID: "m2", StartTime: start, Outcome: &win, Kills: 5, Deaths: 5,
-		PairName: "Arena:Team Slayer on Live Fire", PairNameFR: "", SessionLabel: &label,
+		PairName: i18n.FromColumns("Arena:Team Slayer on Live Fire", ""), SessionLabel: &label,
 	}}
 	if got := modeUIOf(buildSessionDetailRows(noFR, nil, "fr", nil, nil)); got != "Team Slayer" {
 		t.Fatalf("FR sans variant : ModeUI = %q, want %q", got, "Team Slayer")
@@ -786,9 +786,7 @@ func TestBuildSessionDetailRows_ModeUILocale(t *testing.T) {
 	// les modes absents de mode_name_tr (aligné Home).
 	variantFR := []legacymatch.StatsMatchRow{{
 		MatchID: "m3", StartTime: start, Outcome: &win, Kills: 7, Deaths: 4,
-		PairName: "Arena:Team Slayer on Catalyst - Forge", PairNameFR: "",
-		GameVariantName: "Team Slayer:Arena", GameVariantNameFR: "Assassin en équipe : Arène",
-		SessionLabel: &label,
+		PairName: i18n.FromColumns("Arena:Team Slayer on Catalyst - Forge", ""), GameVariantName: i18n.FromColumns("Team Slayer:Arena", "Assassin en équipe : Arène"), SessionLabel: &label,
 	}}
 	if got := modeUIOf(buildSessionDetailRows(variantFR, nil, "fr", nil, nil)); got != "Assassin en équipe" {
 		t.Fatalf("FR repli GameVariant : ModeUI = %q, want %q", got, "Assassin en équipe")

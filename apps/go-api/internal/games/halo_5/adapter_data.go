@@ -309,10 +309,6 @@ func (a *DataAdapter) LoadLUSRHistory(_ context.Context, _ string) ([]canonical.
 	return nil, games.ErrCapabilityNotSupported
 }
 
-func (a *DataAdapter) LoadTopMatches(_ context.Context, _ string) ([]canonical.CareerTopMatch, error) {
-	return nil, games.ErrCapabilityNotSupported
-}
-
 func (a *DataAdapter) LoadTargetRecentMatches(_ context.Context, _ string, _ int) ([]canonical.RecentMatchRow, error) {
 	return nil, games.ErrCapabilityNotSupported
 }

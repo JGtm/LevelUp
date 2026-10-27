@@ -15,6 +15,7 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	halo_games "levelup/go-api/internal/games/halo_infinite"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
@@ -155,8 +156,8 @@ func TestExplorerService_TargetFragDistribution_PopulatedFromWeaponRows(t *testi
 	t.Parallel()
 	agg := &domain.ParticipantStatsAggregate{Kills: 20, Deaths: 10, MeleeKills: 2, GrenadeKills: 1}
 	wk := &fakeExplorerWeaponKillsRepo{rows: []port.WeaponKillRow{
-		{XUID: "target", WeaponID: 100, Kills: 8, Label: "BR75", Class: "shoulder", Role: "precision"},
-		{XUID: "target", WeaponID: 200, Kills: 5, Label: "Sidekick", Class: "sidearm", Role: "sidearm"},
+		{XUID: "target", WeaponID: 100, Kills: 8, Label: i18n.Text{i18n.LocaleFR: "BR75"}, Class: "shoulder", Role: "precision"},
+		{XUID: "target", WeaponID: 200, Kills: 5, Label: i18n.Text{i18n.LocaleFR: "Sidekick"}, Class: "sidearm", Role: "sidearm"},
 	}}
 	out := NewExplorerService(&mockExplorerRepo{participants: agg}, "self").
 		WithWeaponKillsRepo(wk).
@@ -267,7 +268,7 @@ func (m *mockExplorerRepo) GetMatchStartTimesForXUID(_ context.Context, _ string
 func (m *mockExplorerRepo) GetTargetRecentMatches(_ context.Context, _ string, _ int) ([]domain.ExplorerTargetRecentMatch, error) {
 	return m.recentMatches, m.recentErr
 }
-func (m *mockExplorerRepo) TranslateModeUIsFR(_ context.Context, _ []domain.ExplorerTargetRecentMatch) {
+func (m *mockExplorerRepo) TranslateModeUIs(_ context.Context, _ i18n.Locale, _ []domain.ExplorerTargetRecentMatch) {
 }
 func (m *mockExplorerRepo) GetTopWeaponsForMatches(_ context.Context, _ string, _ []string, _ int) ([]domain.WeaponHighlight, error) {
 	return m.topWeapons, m.topWeaponsErr

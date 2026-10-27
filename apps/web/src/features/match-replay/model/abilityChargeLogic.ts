@@ -44,6 +44,7 @@
  * Tout ce fichier est PUR : aucun React, aucun réseau — même partage que `equippedLogic.ts`
  * et `changeRefine.ts`, testé sans rien monter.
  */
+import { allTexts } from '@/lib/i18n/pickText'
 import { isAliveAt } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 
@@ -94,7 +95,7 @@ export function measuredChargeFamilyOf(
 ): string | null {
   const label = labels?.[String(rank)]
   if (!label) return null
-  const text = `${label.fr ?? ''} ${label.en ?? ''}`.toLowerCase()
+  const text = allTexts(label).join(' ').toLowerCase()
   for (const [family, stems] of Object.entries(CHARGE_FAMILY_STEMS)) {
     if (stems.some((stem) => text.includes(stem))) return family
   }

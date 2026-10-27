@@ -86,7 +86,6 @@ test("Carrière — chart LUSR : 1 entrée par chaîne, libellés FR localisés,
   const careerPromise = page.waitForResponse(
     (resp) =>
       resp.url().includes(`/api/v1/players/${E2E_PLAYER_SLUG}/pages/career`) &&
-      !resp.url().includes('top-matches') &&
       !resp.url().includes('encounters') &&
       resp.status() === 200,
   )

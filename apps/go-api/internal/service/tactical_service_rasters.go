@@ -45,6 +45,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
@@ -127,7 +128,7 @@ func (s *TacticalService) rasterArtefact(ctx context.Context, out *domain.Tactic
 	// `Raster`) : les recalculer sur l'univers DEJA RESTREINT reduirait la liste a la seule
 	// grappe choisie, et enfermerait l'utilisateur dans sa selection.
 	if out.Grappes == nil {
-		out.Grappes = grappesDeLUnivers(sidecars, s.xuid, s.zonesDeLaCarte(ctx, out.MapID))
+		out.Grappes = grappesDeLUnivers(i18n.FromContext(ctx), sidecars, s.xuid, s.zonesDeLaCarte(ctx, out.MapID))
 	}
 	// MATCHS FILTRES = L'UNIVERS DE CETTE CARTE — deja restreint par le filtre de spawn,
 	// qui est un filtre d'univers ; MatchsRetenus en est le SOUS-ENSEMBLE MESURE.

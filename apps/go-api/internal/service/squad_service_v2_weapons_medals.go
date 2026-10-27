@@ -16,6 +16,7 @@ package service
 import (
 	"sort"
 
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
@@ -34,6 +35,7 @@ type WeaponsTableRow struct {
 
 // BuildWeaponsTable agrege []port.WeaponKillRow en un tableau armes × joueurs.
 //
+//	loc        : langue de la requete, dans laquelle le nom de chaque arme est resolu (repli en).
 //	rows       : pre-charge par WeaponKillsRepository.LoadWeaponKillsAggregated
 //	             (avec MatchIDs = matchs partages, XUIDs = xuids du squad).
 //	xuidToGT   : si non nil, KillsByXUID est rekey par gamertag (front-friendly).
@@ -42,6 +44,7 @@ type WeaponsTableRow struct {
 //
 // Tri : total desc, fallback weapon_id asc en cas d'egalite.
 func BuildWeaponsTable(
+	loc i18n.Locale,
 	rows []port.WeaponKillRow,
 	xuidToGT map[string]string,
 	minKills int,
@@ -72,8 +75,8 @@ func BuildWeaponsTable(
 		}
 		w.killsByID[r.XUID] += r.Kills
 		w.total += r.Kills
-		if w.label == "" && r.Label != "" {
-			w.label = r.Label
+		if w.label == "" {
+			w.label = r.Label.PickOptional(loc)
 		}
 	}
 

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
@@ -44,7 +45,7 @@ func (l *toolsLoader) LoadKillSourceCategories(
 // nom EN d'abord, classe du registre).
 func filmRow(xuid, key, label, labelEN, class string, kills int) port.WeaponKillRow {
 	return port.WeaponKillRow{
-		XUID: xuid, WeaponKey: key, Label: label, LabelEN: labelEN, Class: class,
+		XUID: xuid, WeaponKey: key, Label: i18n.Text{i18n.LocaleFR: label, i18n.LocaleEN: labelEN}, Class: class,
 		Kills: kills, FromDamageSource: true,
 	}
 }
@@ -172,8 +173,8 @@ func TestSquadWeaponTools_Soiree2209(t *testing.T) {
 	wantKills(t, lines["VK78 Commando"], "VK78 Commando", 1, 0, 0)
 	frag := lines["Grenade frag"]
 	wantKills(t, frag, "grenade à fragmentation", 2, 1, 4)
-	if frag.WeaponKey != keyToolFrag || frag.Class != domain.FragClassGrenade || frag.LabelEN != "Frag Grenade" {
-		t.Errorf("grenade frag = %+v, want clé %s, classe grenade, nom EN", frag, keyToolFrag)
+	if frag.WeaponKey != keyToolFrag || frag.Class != domain.FragClassGrenade {
+		t.Errorf("grenade frag = %+v, want clé %s, classe grenade", frag, keyToolFrag)
 	}
 	wantKills(t, lines["Grenade plasma"], "grenade plasma", 2, 1, 0)
 	wantKills(t, lines["Grenade dynamo"], "grenade dynamo", 1, 0, 0)

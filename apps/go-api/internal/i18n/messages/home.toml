@@ -1,0 +1,6 @@
+# Accueil : libellés composés par le serveur.
+
+# Rang de carrière sans nom dans le catalogue ni en base.
+[home.rank.fallback]
+fr = "Rang {n}"
+en = "Rank {n}"

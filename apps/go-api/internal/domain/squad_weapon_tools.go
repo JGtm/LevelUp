@@ -48,10 +48,9 @@ type SquadWeaponToolLine struct {
 	Kind string `json:"kind"`
 	// WeaponKey : clé de registre (nature `weapon` seule).
 	WeaponKey string `json:"weapon_key,omitempty"`
-	// Label / LabelEN : nom de l'arme au registre, FR d'abord / EN d'abord (nature
-	// `weapon` seule ; les autres natures sont nommées par le web).
-	Label   string `json:"label,omitempty"`
-	LabelEN string `json:"label_en,omitempty"`
+	// Label : nom de l arme au registre, dans la langue de la requête (repli en) ; nature
+	// `weapon` seule, les autres natures sont nommées par le web.
+	Label string `json:"label,omitempty"`
 	// Class : classe de frag (FragClass*) dont la ligne prend la couleur — la pastille
 	// devant le nom relie la ligne à la « Répartition des frags ».
 	Class         string         `json:"class"`

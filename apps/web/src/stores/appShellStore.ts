@@ -11,7 +11,7 @@
 import { create } from 'zustand'
 import type { BootstrapResponse, CapabilityMap, HaloIdentitySummary, PlayerSummary, TitleSummary } from '@/lib/api/types'
 import { api, setApiTitleSlug, setApiLocale } from '@/lib/api/client'
-import type { Locale } from '@/lib/i18n/locale'
+import { DEFAULT_LOCALE, normalizeLocale, type Locale } from '@/lib/i18n/locale'
 import { rememberLocale } from '@/lib/i18n/bootLocale'
 import { useSoloFilterStore } from '@/stores/soloFilterStore'
 import { useSquadFilterStore } from '@/stores/squadFilterStore'
@@ -107,7 +107,7 @@ export const useAppShellStore = create<AppShellState>((set) => ({
   currentTitleSlug: 'halo_infinite',
   availableTitles: [],
   isTitleSwitching: false,
-  locale: 'fr',
+  locale: DEFAULT_LOCALE,
   userTimezone: 'Europe/Paris',
   hintsVisible: true,
   capabilities: null,
@@ -133,7 +133,9 @@ export const useAppShellStore = create<AppShellState>((set) => ({
   hydrateFromBootstrap: (data: BootstrapResponse) => {
     const titleSlug = data.current_title_slug ?? 'halo_infinite'
     setApiTitleSlug(titleSlug)
-    const locale: Locale = (data.locale as Locale) ?? 'fr'
+    // Garant de l'invariant « le store ne porte qu'une langue de config/locales.toml » : les
+    // lecteurs indexent `TABLE[locale]` sans défense (valeur inconnue → langue par défaut).
+    const locale = normalizeLocale(data.locale)
     setApiLocale(locale)
     rememberLocale(locale)
     set({

@@ -24,6 +24,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
@@ -275,14 +276,14 @@ func (l *lecturesComptees) LoadSquadKillLog(ctx context.Context, ids, x []string
 	return l.mockSquadRepo.LoadSquadKillLog(ctx, ids, x)
 }
 
-func (l *lecturesComptees) LoadAssetTranslationsFR(ctx context.Context, kind string, ids []string) (map[string]string, error) {
+func (l *lecturesComptees) LoadAssetTexts(ctx context.Context, kind string, ids []string) (map[string]i18n.Text, error) {
 	l.lues = append(l.lues, "section:assets")
-	return l.mockSquadRepo.LoadAssetTranslationsFR(ctx, kind, ids)
+	return l.mockSquadRepo.LoadAssetTexts(ctx, kind, ids)
 }
 
-func (l *lecturesComptees) LoadModeTranslationsFR(ctx context.Context, modes []string) (map[string]string, error) {
+func (l *lecturesComptees) LoadModeTranslations(ctx context.Context, loc i18n.Locale, modes []string) (map[string]string, error) {
 	l.lues = append(l.lues, "section:modes")
-	return l.mockSquadRepo.LoadModeTranslationsFR(ctx, modes)
+	return l.mockSquadRepo.LoadModeTranslations(ctx, loc, modes)
 }
 
 func (l *lecturesComptees) LoadMapStatsForSquad(ctx context.Context, x string, squad, excl []string) (map[string]domain.MapSquadStats, error) {

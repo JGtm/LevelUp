@@ -85,9 +85,9 @@ func TestResolvePairNameFR(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := ResolvePairNameFR(tt.rawPair, tt.currentFR, tt.assetName, modes)
+			got := ResolvePairName(tt.rawPair, tt.currentFR, tt.assetName, modes)
 			if got != tt.want {
-				t.Errorf("ResolvePairNameFR(%q, %q, %q) = %q, want %q",
+				t.Errorf("ResolvePairName(%q, %q, %q) = %q, want %q",
 					tt.rawPair, tt.currentFR, tt.assetName, got, tt.want)
 			}
 		})
@@ -103,7 +103,7 @@ func TestResolvePairNameFR_PreservesIdentityPrefixesViaNormalize(t *testing.T) {
 		"Slayer": "Assassin",
 	}
 	raw := "Super Fiesta:Slayer on Streets - Forge"
-	got := ResolvePairNameFR(raw, raw, "", modes)
+	got := ResolvePairName(raw, raw, "", modes)
 	if got != raw {
 		t.Errorf("got %q, want %q (raw EN preserved when no FR available)", got, raw)
 	}

@@ -11,6 +11,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 )
 
 // helpers locaux pour fabriquer un PlayerMatchRow minimal.
@@ -439,7 +440,7 @@ func TestSliceFavoriteMapCanonical_LocaleAware(t *testing.T) {
 func TestSliceFavoriteMapCanonical_BaseEtVarianteCumulees(t *testing.T) {
 	t.Parallel()
 	groups := domain.NewGroupesDeCartes(map[string]string{"th-heavies": "th"}).
-		AvecLibelles(map[string]map[string]string{"th": {"en": "Thunderhead", "fr": "Tonnerre"}})
+		AvecLibelles(map[string]i18n.Text{"th": {"en": "Thunderhead", "fr": "Tonnerre"}})
 	row := func(id, en string, o canonical.Outcome) canonical.PlayerMatchRow {
 		return canonical.PlayerMatchRow{
 			Summary: canonical.MatchSummary{Map: &canonical.AssetReference{ID: id, DefaultLabel: en}},

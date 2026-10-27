@@ -139,7 +139,7 @@ function ligneDeCoequipier(t: TacticalText, m: TacticalCoequipier, locale: Local
 export function lignesDeLaFiche(t: TacticalText, c: TacticalContribution, locale: Locale): LigneDeFiche[] {
   const lignes: LigneDeFiche[] = []
   if (c.autre_gamertag) {
-    const arme = armeDe(t, c, locale)
+    const arme = armeDe(t, c)
     lignes.push({
       cle: 'tueur',
       role: 'tueur',

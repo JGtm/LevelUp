@@ -1,6 +1,10 @@
 package duckdb
 
-import "testing"
+import (
+	"testing"
+
+	"levelup/go-api/internal/i18n"
+)
 
 // arenaRankedID : playlist Arène classée (présente dans rankedplaylists, NameFR connu).
 const arenaRankedID = "edfef3ac-9cbe-4fa2-b949-8f29deafd483"
@@ -31,7 +35,7 @@ func TestPlaylistName_Cascade(t *testing.T) {
 		{"EN id brut en dernier recours", "unknown-pl-id", "en", "", "", "", "unknown-pl-id"},
 	}
 	for _, c := range cases {
-		if got := playlistName(c.id, c.locale, c.frOfficial, c.enOfficial, c.canonical); got != c.want {
+		if got := playlistName(c.id, i18n.Parse(c.locale), i18n.FromColumns(c.enOfficial, c.frOfficial), c.canonical); got != c.want {
 			t.Errorf("%s: playlistName(%q, %q, %q, %q, %q) = %q, want %q",
 				c.name, c.id, c.locale, c.frOfficial, c.enOfficial, c.canonical, got, c.want)
 		}

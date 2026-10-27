@@ -23,6 +23,7 @@ import (
 	"levelup/go-api/internal/domain"
 	titlepkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite"
+	"levelup/go-api/internal/i18n"
 )
 
 // Labels rating_type (UPPERCASE pour cohérence DB : match_skill_rank.rating_type).
@@ -339,16 +340,15 @@ func (r *HomeRepo) loadCSRAlltimePeak(ctx context.Context) *domain.HomeSkillPeak
 		peak.Tier = bestTier
 		peak.SubTier = bestSub
 		peak.BadgeImageURL = buildHomeSkillPeakBadgeURLForThreshold(bestTier, "", bestSub, r.titleSlug(), 0, threshold)
-		// Palier all-time CSR : libellé FR + sous-palier romain ("Diamant III"),
-		// au lieu du tier brut anglais sans sous-palier. FR-first comme tous les
-		// libellés CSR (sync.formatCSRTierLabel). Partagé Home + Explorer.
+		// Palier all-time CSR : libellé en langue par défaut + sous-palier romain ("Diamant III"),
+		// au lieu du tier brut anglais sans sous-palier (comme sync.formatCSRTierLabel). Partagé Home + Explorer.
 		if bestTier != "" {
 			var subPtr *int
 			if bestSub >= 1 && bestSub <= 6 {
 				s := bestSub
 				subPtr = &s
 			}
-			if lbl := analysis.BuildCSRTierLabelFromEN(bestTier, subPtr, true); lbl != nil {
+			if lbl := analysis.BuildCSRTierLabel(bestTier, subPtr, i18n.Default); lbl != nil {
 				peak.TierLabel = lbl
 			} else {
 				peak.TierLabel = stringPtr(bestTier)

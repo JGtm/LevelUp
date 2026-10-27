@@ -34,7 +34,6 @@ test.describe('Slice 2 — Page Carrière (DEMO_MODE)', () => {
     const careerPromise = page.waitForResponse(
       (resp) =>
         resp.url().includes('/api/v1/players/demo-player/pages/career') &&
-        !resp.url().includes('top-matches') &&
         !resp.url().includes('encounters') &&
         resp.status() === 200,
     )

@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/legacymatch"
 )
 
@@ -19,8 +20,8 @@ import (
 func homeReplayRepo(now time.Time) *mockHomeRepo {
 	return &mockHomeRepo{
 		matches: []legacymatch.HomeMatchRow{
-			{MatchID: "aaaa1111-0000-4000-8000-000000000001", StartTime: now, MapName: "Aquarius", PairName: "Slayer", Outcome: 2, Kills: 10, Deaths: 5},
-			{MatchID: "bbbb2222-0000-4000-8000-000000000002", StartTime: now.Add(-1 * time.Hour), MapName: "Streets", PairName: "CTF", Outcome: 3, Kills: 5, Deaths: 10},
+			{MatchID: "aaaa1111-0000-4000-8000-000000000001", StartTime: now, MapName: i18n.FromColumns("Aquarius", ""), PairName: i18n.FromColumns("Slayer", ""), Outcome: 2, Kills: 10, Deaths: 5},
+			{MatchID: "bbbb2222-0000-4000-8000-000000000002", StartTime: now.Add(-1 * time.Hour), MapName: i18n.FromColumns("Streets", ""), PairName: i18n.FromColumns("CTF", ""), Outcome: 3, Kills: 5, Deaths: 10},
 		},
 	}
 }

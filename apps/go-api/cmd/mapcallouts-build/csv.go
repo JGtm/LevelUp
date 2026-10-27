@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/himap"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/mapcatalog"
 )
 
@@ -79,10 +80,10 @@ func chargeLibelles(path string) (libelles, mapcatalog.Lexique, error) {
 		// Un string_id qui porterait DEUX libellés différents rendrait la jointure Forge
 		// indéterminée : on refuse plutôt que de trancher au hasard de l'ordre des lignes.
 		// Mesuré sain sur le CSV versionné : 463 string_id, un seul couple (en, fr) chacun.
-		parLieu := mapcatalog.Libelle{EN: l.en, FR: l.fr}
-		if vu, deja := parSID[l.stringID]; deja && vu != parLieu {
+		parLieu := i18n.FromColumns(l.en, l.fr)
+		if vu, deja := parSID[l.stringID]; deja && !vu.Equal(parLieu) {
 			return nil, nil, fmt.Errorf("CSV ligne %d : string_id %08x porte deux libellés (%q/%q puis %q/%q)",
-				n+2, l.stringID, vu.EN, vu.FR, l.en, l.fr)
+				n+2, l.stringID, vu[i18n.LocaleEN], vu[i18n.LocaleFR], l.en, l.fr)
 		}
 		parSID[l.stringID] = parLieu
 	}

@@ -103,8 +103,7 @@ func toFlagReturnZone(v replay.FlagReturnZone) replaydoc.FlagReturnZone {
 func toObjectiveObjectLife(v replay.ObjectiveObjectLife) replaydoc.ObjectiveObjectLife {
 	return replaydoc.ObjectiveObjectLife{
 		Family: v.Family,
-		En:     v.En,
-		Fr:     v.Fr,
+		Text:   v.Text.Clone(),
 		T0:     v.T0,
 		T1:     v.T1,
 		Pts:    sliceOf(v.Pts, toObjectiveObjectPoint),

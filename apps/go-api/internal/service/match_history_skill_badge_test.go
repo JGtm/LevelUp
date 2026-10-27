@@ -11,19 +11,20 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
 // strPtr : helper partagé du package (testhelpers_test.go).
 
 func TestEnrichRow_personalScoreSurvivesEnrichment(t *testing.T) {
 	score := 1450
-	row := enrichRow(domain.MatchHistoryRawRow{MatchID: "m1", PersonalScore: &score}, nil, rowFormatters{})
+	row := enrichRow(domain.MatchHistoryRawRow{MatchID: "m1", PersonalScore: &score}, nil, rowFormatters{}, i18n.Default)
 	if row.PersonalScore == nil || *row.PersonalScore != 1450 {
 		t.Fatalf("PersonalScore = %v, want 1450 (chargé en DB, ne doit plus être perdu)", row.PersonalScore)
 	}
 
 	// Donnée absente → nil (le front affiche "-", pas un 0 trompeur).
-	if got := enrichRow(domain.MatchHistoryRawRow{MatchID: "m2"}, nil, rowFormatters{}); got.PersonalScore != nil {
+	if got := enrichRow(domain.MatchHistoryRawRow{MatchID: "m2"}, nil, rowFormatters{}, i18n.Default); got.PersonalScore != nil {
 		t.Errorf("PersonalScore sans donnée = %v, want nil", *got.PersonalScore)
 	}
 }
@@ -32,7 +33,7 @@ func TestEnrichRow_skillRankImageURLFromTitleResolver(t *testing.T) {
 	sub := 4
 	raw := domain.MatchHistoryRawRow{
 		MatchID:        "m1",
-		SkillTier:      strPtr("Diamond"),
+		SkillTier:      "Diamond",
 		SubTier:        &sub,
 		SkillTierLabel: strPtr("Diamant IV"),
 	}
@@ -44,7 +45,7 @@ func TestEnrichRow_skillRankImageURLFromTitleResolver(t *testing.T) {
 		return "/static/ranks/halo_infinite/120px-HINF-CSR_Diamond4.png"
 	}}
 
-	row := enrichRow(raw, nil, fmts)
+	row := enrichRow(raw, nil, fmts, i18n.Default)
 	if row.SkillRankImageURL == nil {
 		t.Fatal("SkillRankImageURL = nil, want l'URL rendue par le résolveur du titre")
 	}
@@ -75,7 +76,7 @@ func TestEnrichRow_skillRankImageURLDegrades(t *testing.T) {
 	}{
 		{
 			name: "titre sans résolveur de badge",
-			raw:  domain.MatchHistoryRawRow{MatchID: "m1", SkillTier: strPtr("Diamond"), SubTier: &sub},
+			raw:  domain.MatchHistoryRawRow{MatchID: "m1", SkillTier: "Diamond", SubTier: &sub},
 			fmts: rowFormatters{},
 		},
 		{
@@ -85,13 +86,13 @@ func TestEnrichRow_skillRankImageURLDegrades(t *testing.T) {
 		},
 		{
 			name: "palier sans sous-palier (placement)",
-			raw:  domain.MatchHistoryRawRow{MatchID: "m3", SkillTier: strPtr("Diamond")},
+			raw:  domain.MatchHistoryRawRow{MatchID: "m3", SkillTier: "Diamond"},
 			fmts: withResolver,
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := enrichRow(tc.raw, nil, tc.fmts); got.SkillRankImageURL != nil {
+			if got := enrichRow(tc.raw, nil, tc.fmts, i18n.Default); got.SkillRankImageURL != nil {
 				t.Errorf("SkillRankImageURL = %q, want nil (dégradation sur le texte)", *got.SkillRankImageURL)
 			}
 		})

@@ -6,12 +6,13 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/service/squadagg"
 )
 
 func groupesEscouadeTest() domain.GroupesDeCartes {
 	return domain.NewGroupesDeCartes(map[string]string{"th-heavies": "th"}).
-		AvecLibelles(map[string]map[string]string{"th": {"en": "Thunderhead", "fr": "Tonnerre"}})
+		AvecLibelles(map[string]i18n.Text{"th": {"en": "Thunderhead", "fr": "Tonnerre"}})
 }
 
 // Escouade : base et variante sont UNE ligne de carte, au libellé de la base ; l'historique « avec
@@ -20,9 +21,9 @@ func TestTeammates_CartesRegroupees(t *testing.T) {
 	groups := groupesEscouadeTest()
 	t0 := time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC)
 	matches := []domain.SquadMatchRow{
-		{MatchID: "a", MapID: "th", MapUI: "Tonnerre", Outcome: analysis.OutcomeWin, StartTime: t0},
-		{MatchID: "b", MapID: "th-heavies", MapUI: "Du lourd sur Thunderhead", Outcome: analysis.OutcomeLoss, StartTime: t0.Add(time.Hour)},
-		{MatchID: "c", MapID: "pit", MapUI: "La Fosse", Outcome: analysis.OutcomeWin, StartTime: t0.Add(2 * time.Hour)},
+		{MatchID: "a", MapID: "th", MapUI: "Tonnerre", UILocale: i18n.LocaleFR, Outcome: analysis.OutcomeWin, StartTime: t0},
+		{MatchID: "b", MapID: "th-heavies", MapUI: "Du lourd sur Thunderhead", UILocale: i18n.LocaleFR, Outcome: analysis.OutcomeLoss, StartTime: t0.Add(time.Hour)},
+		{MatchID: "c", MapID: "pit", MapUI: "La Fosse", UILocale: i18n.LocaleFR, Outcome: analysis.OutcomeWin, StartTime: t0.Add(2 * time.Hour)},
 	}
 	rows := computeMapBreakdown(matches, groups)
 	if len(rows) != 2 {

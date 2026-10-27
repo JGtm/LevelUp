@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 	"time"
+
+	"levelup/go-api/internal/i18n"
 )
 
 // detector_test.go — tests unitaires du détecteur de milestones.
@@ -79,7 +81,7 @@ func TestDetect_Unlock_ThresholdReached(t *testing.T) {
 	d := NewDetector(cat, earned)
 
 	seedCatalog(cat, "halo_infinite",
-		CatalogEntry{ID: "matches.100", Metric: "matches_played", Threshold: 100, TitleEN: "Centurion", TitleFR: "Centurion"},
+		CatalogEntry{ID: "matches.100", Metric: "matches_played", Threshold: 100, Title: i18n.FromColumns("Centurion", "Centurion")},
 	)
 
 	results, err := d.Detect(context.Background(), DetectInput{
@@ -110,7 +112,7 @@ func TestDetect_AlreadyEarned_NoDuplicate(t *testing.T) {
 	d := NewDetector(cat, earned)
 
 	seedCatalog(cat, "halo_infinite",
-		CatalogEntry{ID: "wins.50", Metric: "wins", Threshold: 50, TitleEN: "Winner", TitleFR: "Vainqueur"},
+		CatalogEntry{ID: "wins.50", Metric: "wins", Threshold: 50, Title: i18n.FromColumns("Winner", "Vainqueur")},
 	)
 	// Seed earned row.
 	_ = earned.Append(context.Background(), Earned{
@@ -144,7 +146,7 @@ func TestDetect_NearMiss_Within2Percent(t *testing.T) {
 	d := NewDetector(cat, earned)
 
 	seedCatalog(cat, "halo_infinite",
-		CatalogEntry{ID: "kills.1000", Metric: "kills", Threshold: 1000, TitleEN: "Killer", TitleFR: "Tueur"},
+		CatalogEntry{ID: "kills.1000", Metric: "kills", Threshold: 1000, Title: i18n.FromColumns("Killer", "Tueur")},
 	)
 
 	detect := func(kills float64) DetectionResult {
@@ -182,7 +184,7 @@ func TestDetect_FarFromThreshold_NoSignal(t *testing.T) {
 	d := NewDetector(cat, earned)
 
 	seedCatalog(cat, "halo_infinite",
-		CatalogEntry{ID: "kills.10000", Metric: "kills", Threshold: 10000, TitleEN: "Legend", TitleFR: "Légende"},
+		CatalogEntry{ID: "kills.10000", Metric: "kills", Threshold: 10000, Title: i18n.FromColumns("Legend", "Légende")},
 	)
 
 	results, err := d.Detect(context.Background(), DetectInput{
@@ -209,9 +211,9 @@ func TestDetect_MultipleEntries_OnePass(t *testing.T) {
 	d := NewDetector(cat, earned)
 
 	seedCatalog(cat, "halo_infinite",
-		CatalogEntry{ID: "matches.100", Metric: "matches_played", Threshold: 100, TitleEN: "Centurion", TitleFR: "Centurion"},
-		CatalogEntry{ID: "matches.500", Metric: "matches_played", Threshold: 500, TitleEN: "Veteran", TitleFR: "Vétéran"},
-		CatalogEntry{ID: "matches.1000", Metric: "matches_played", Threshold: 1000, TitleEN: "Elite", TitleFR: "Élite"},
+		CatalogEntry{ID: "matches.100", Metric: "matches_played", Threshold: 100, Title: i18n.FromColumns("Centurion", "Centurion")},
+		CatalogEntry{ID: "matches.500", Metric: "matches_played", Threshold: 500, Title: i18n.FromColumns("Veteran", "Vétéran")},
+		CatalogEntry{ID: "matches.1000", Metric: "matches_played", Threshold: 1000, Title: i18n.FromColumns("Elite", "Élite")},
 	)
 
 	results, err := d.Detect(context.Background(), DetectInput{

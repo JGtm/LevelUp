@@ -12,13 +12,15 @@ import (
 	"levelup/go-api/internal/assets"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
-// Codes de langue Waypoint utilisés pour l'i18n des challenges et BP.
-const (
-	langFR = "fr-FR"
-	langEN = "en-US"
-)
+// challengeTagAliases : étiquettes de traduction voisines que l'API Waypoint peut porter à la place
+// de l'étiquette Halo de la langue (clé = étiquette Halo de config/locales.toml), essayées avant le
+// code court. L'anglais américain de l'API reste parfois publié sous l'étiquette britannique.
+var challengeTagAliases = map[string][]string{
+	i18n.HaloTags(i18n.LocaleEN)[0]: {"en-GB"},
+}
 
 type challengeDeckRaw struct {
 	Expiration struct {
@@ -264,26 +266,22 @@ func resolveChallengeLocalizedValue(data any, lang string) string {
 	return ""
 }
 
+// normalizeChallengeLang retourne l'étiquette Halo (Waypoint) de la langue demandée : la première
+// de `halo` dans config/locales.toml ; une langue inconnue ou vide prend celle de la langue par défaut.
 func normalizeChallengeLang(lang string) string {
-	switch strings.ToLower(strings.TrimSpace(lang)) {
-	case "fr", "fr-fr":
-		return langFR
-	case "en", "en-us":
-		return langEN
-	default:
-		return langFR
-	}
+	return i18n.HaloTags(i18n.Parse(lang))[0]
 }
 
-func challengeLanguageCandidates(lang string) []string {
-	if lang == langFR {
-		return []string{langFR, "fr"}
+// challengeLanguageCandidates liste les clés de traduction à essayer pour l'étiquette Halo `tag`, par
+// ordre de préférence : l'étiquette, ses alias connus, puis le code court de la langue ("fr-FR" →
+// "fr").
+func challengeLanguageCandidates(tag string) []string {
+	out := []string{tag}
+	out = append(out, challengeTagAliases[tag]...)
+	if short := strings.Split(tag, "-")[0]; short != tag {
+		out = append(out, short)
 	}
-	if lang == langEN {
-		return []string{langEN, "en-GB", "en"}
-	}
-	short := strings.Split(lang, "-")[0]
-	return []string{lang, short}
+	return out
 }
 
 //nolint:gocyclo // construction de candidats de badge : N branches d'heuristiques sur path/category/difficulty

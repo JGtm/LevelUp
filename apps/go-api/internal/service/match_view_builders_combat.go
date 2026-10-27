@@ -15,6 +15,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/highlightevent"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/fragdist"
 )
@@ -23,15 +24,23 @@ import (
 // Combat Tab
 // ---------------------------------------------------------------------------
 
+// combatTabScope regroupe ce qui identifie le match et la requête : le match, le joueur, la durée et
+// la langue des libellés servis (badges d'impact).
+type combatTabScope struct {
+	matchID    string
+	myXUID     string
+	durationMS int64
+	locale     i18n.Locale
+}
+
 func buildCombatTabFull(
-	matchID string,
+	scope combatTabScope,
 	events []domain.EventRaw,
 	canonicalEvents []canonical.HighlightEvent,
 	kvPairs []domain.KVPairRaw,
 	scoreboard []domain.ScoreboardRaw,
-	myXUID string,
-	durationMS int64,
 ) domain.MatchCombatTab {
+	matchID, myXUID, durationMS := scope.matchID, scope.myXUID, scope.durationMS
 	events, canonicalEvents = applyKVSynthesisIfNeeded(events, canonicalEvents, kvPairs, matchID)
 
 	evtList := highlightEventList(events)
@@ -48,7 +57,7 @@ func buildCombatTabFull(
 	// full (first_blood reste global toutes équipes).
 	impactInput := buildImpactInput(events, scoreboard, myXUID)
 	allBadges := analysis.ComputeMatchImpactFull(impactInput)
-	badgesDomain := convertImpactBadgesToDomain(allBadges)
+	badgesDomain := convertImpactBadgesToDomain(allBadges, scope.locale)
 
 	// KD timeline
 	kdEvents := buildKDEvents(kvPairs, myXUID)
@@ -383,6 +392,7 @@ func buildViewerFragDistribution(
 	me *domain.MatchScoreboardRow,
 	bulkWeapons []domain.BulkWeaponKillRaw,
 	hasMechanics bool,
+	loc i18n.Locale,
 ) *domain.FragDistribution {
 	if me == nil {
 		return nil
@@ -397,7 +407,7 @@ func buildViewerFragDistribution(
 			continue
 		}
 		rows = append(rows, port.WeaponKillRow{
-			Label: w.WeaponLabel, Kills: w.Kills, Class: w.Class, Role: w.Role,
+			Label: i18n.Text{loc: w.WeaponLabel}, Kills: w.Kills, Class: w.Class, Role: w.Role,
 			Family: w.Family, WeaponKey: w.WeaponKey, MechanicKills: w.MechanicKills,
 			// La provenance VOYAGE (lot 4.5) : sans elle fragdist ecarte equipement et
 			// environnement, et une chute mesuree au film retombe en « non attribue ».
@@ -412,7 +422,7 @@ func buildViewerFragDistribution(
 		ShoulderBash:  derefInt(me.ShoulderBashKills),
 		Total:         total,
 	}
-	fd := fragdist.Build(rows, counts, hasMechanics)
+	fd := fragdist.Build(loc, rows, counts, hasMechanics)
 	return &fd
 }
 

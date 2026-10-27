@@ -1,6 +1,10 @@
 package canonical
 
-import "time"
+import (
+	"time"
+
+	"levelup/go-api/internal/i18n"
+)
 
 // AssetReference est l'objet canonique pour les assets Halo référencés par
 // le produit (maps, playlists, modes, ranks, médailles).
@@ -9,8 +13,29 @@ type AssetReference struct {
 	ID           string            // identifiant source stable
 	VersionID    string            // optionnel
 	DefaultLabel string            // libellé par défaut sans i18n locale avancée
-	Labels       map[string]string // locale -> label
+	Labels       map[string]string // code de langue -> libellé (lu par Text)
 	IconURL      string
+}
+
+// Text rassemble les libellés de la référence en un i18n.Text : chaque clé de Labels qui est une
+// langue de l'application (une clé hors liste n'est pas une langue, elle est ignorée) et, quand la
+// langue de repli n'a pas d'entrée, DefaultLabel rangé sous elle. Une valeur vide n'est pas
+// inscrite. Source unique de lecture par langue des libellés d'actif : les consommateurs choisissent
+// ensuite par Text.Pick, sans coder de langue. Nil-safe (une référence absente donne un Text nil).
+func (r *AssetReference) Text() i18n.Text {
+	if r == nil {
+		return nil
+	}
+	t := i18n.Text{}
+	for code, label := range r.Labels {
+		if l := i18n.Locale(code); i18n.Known(l) && label != "" {
+			t[l] = label
+		}
+	}
+	if t[i18n.Fallback] == "" && r.DefaultLabel != "" {
+		t[i18n.Fallback] = r.DefaultLabel
+	}
+	return t
 }
 
 // MatchSummary est la version légère d'un match pour un historique paginé.
@@ -247,17 +272,18 @@ type PlayerMatchEnrichment struct {
 // Tous les champs sont optionnels (pointeurs) — un titre sans système de
 // tiers (ex: Halo MCC 1-50) peut ne renseigner que `RatingValue`.
 type SkillSnapshot struct {
-	RatingType           RatingType // "csr" | "lusr" (enum existant canonical/enums.go)
-	RatingValue          *float64   // valeur brute du rating (CSR points, LUSR mu)
-	TierCode             *string    // code stable cross-titre (ex: "diamond", "onyx") — EN
-	TierCodeFR           *string    // libellé localisé FR (ex: "Or", "Platine") depuis match_skill_rank.tier_fr
-	SubTier              *int       // 1..6 ou nil pour Onyx (max tier sans sub-tier)
-	Delta                *float64   // points gagnés/perdus ce match (positif/négatif)
-	PlaylistGroup        *string    // groupe normalisé (ex: "ranked-arena")
-	SeasonID             *string    // saison Halo associée au rating (ex: "Elan")
-	MeasurementRemaining *int       // matchs de placement restants (>0 = phase placement)
-	KillsExpected        *float64   // depuis MatchSkillSnapshot — utilisé par Stats
-	DeathsExpected       *float64   // idem
+	RatingType  RatingType // "csr" | "lusr" (enum existant canonical/enums.go)
+	RatingValue *float64   // valeur brute du rating (CSR points, LUSR mu)
+	TierCode    *string    // code stable cross-titre (ex: "diamond", "onyx") — EN
+	// Le libellé d'un palier dans une langue se déduit de TierCode (catalogue skill.tier.*) à
+	// la lecture ; la colonne `tier_fr` n'est plus lue (ADR 0040 D-5).
+	SubTier              *int     // 1..6 ou nil pour Onyx (max tier sans sub-tier)
+	Delta                *float64 // points gagnés/perdus ce match (positif/négatif)
+	PlaylistGroup        *string  // groupe normalisé (ex: "ranked-arena")
+	SeasonID             *string  // saison Halo associée au rating (ex: "Elan")
+	MeasurementRemaining *int     // matchs de placement restants (>0 = phase placement)
+	KillsExpected        *float64 // depuis MatchSkillSnapshot — utilisé par Stats
+	DeathsExpected       *float64 // idem
 	// ExpectedWinProb : proba de victoire pré-match de l'équipe du joueur (LUSR v2
 	// Sprint 1.A), ∈ [0,1]. nil pour les matchs pré-v2 / non-LUSR. Lue depuis
 	// match_skill_rank.expected_win_prob (Stratégie C la pose sur les rows LUSR).
@@ -266,8 +292,8 @@ type SkillSnapshot struct {
 
 // ImpactBadge est un badge d'impact calculé sur les événements d'un match.
 type ImpactBadge struct {
-	BadgeKey   string // identifiant technique : first_blood, clutch_finisher…
-	BadgeFR    string // libellé français affiché
+	BadgeKey   string    // identifiant technique : first_blood, clutch_finisher…
+	Badge      i18n.Text // libellé affiché, par langue
 	PlayerXUID string
 }
 

@@ -19,17 +19,11 @@ import (
 
 // mockMatchExclusionService implémente port.MatchExclusionService.
 type mockMatchExclusionService struct {
-	setErr  error
-	listed  []domain.ExcludedMatch
-	listErr error
+	setErr error
 }
 
 func (m *mockMatchExclusionService) SetExclusion(_ context.Context, _ string, _ bool) error {
 	return m.setErr
-}
-
-func (m *mockMatchExclusionService) ListExcluded(_ context.Context) ([]domain.ExcludedMatch, error) {
-	return m.listed, m.listErr
 }
 
 func newMatchExclusionRouter(factory handlers.ServiceFactory[port.MatchExclusionService]) *chi.Mux {

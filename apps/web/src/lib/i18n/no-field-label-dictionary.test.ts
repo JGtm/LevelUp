@@ -20,7 +20,7 @@
  * couleur, identifiants camelCase) sont exclues par l'heuristique de libellé.
  *
  * PÉRIMÈTRE — ce qui n'est PAS visé : les dictionnaires UI d'une feature
- * (`features/<x>/i18n.ts`, couche 1 du skill frontend-patterns). Ils indexent
+ * (`features/<x>/i18n.ts` ou `features/<x>/i18n/<langue>.ts`, couche 1 du skill frontend-patterns). Ils indexent
  * parfois par nom de métrique des textes qui ne sont pas le libellé canonique
  * (« Morts/min » en en-tête de colonne, « Améliore ta précision » en conseil),
  * et leur migration éventuelle est un autre chantier. Le fichier doit s'appeler
@@ -57,6 +57,11 @@ const EXEMPTIONS: ReadonlyArray<{ pattern: RegExp; why: string }> = [
     // Nom EXACT `i18n.ts` : les variantes suffixées restent scannées.
     pattern: /(^|\/)i18n\.ts$/,
     why: 'dictionnaire UI de feature (textes contextuels, pas le registre de libellés)',
+  },
+  {
+    // Le même dictionnaire découpé par langue (étape 4 du plan i18n, 2026-10-26) : `i18n/<langue>.ts`.
+    pattern: /(^|\/)i18n\/[a-z]{2,3}\.ts$/,
+    why: 'dictionnaire UI de feature, un fichier par langue (même couche 1 que `i18n.ts`)',
   },
   {
     // Aligné sur tools/lint-no-hardcoded-fields.mjs (whitelist du 2026-07-06) :

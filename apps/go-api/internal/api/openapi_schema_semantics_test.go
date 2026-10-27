@@ -31,8 +31,7 @@
 //     par Huma : CompareRequest, MatchHistoryQueryRequest, PaginationRequest,
 //     MediaPageRequest, SessionContextRequest, ExplorerMatchesQueryRequest.
 //   - dérives de NOM yaml↔Go (ExplorerMatchRow↔ExplorerMatchesRow,
-//     GamertagSuggestion↔GamertagSearchResult, CascadeInput↔CascadeFilter,
-//     CareerTopMatch sans équivalent DTO) : la sémantique portable a été posée
+//     GamertagSuggestion↔GamertagSearchResult, CascadeInput↔CascadeFilter) : la sémantique portable a été posée
 //     sur le type Go réel ; le nom yaml diverge (H6/H7).
 //   - defaults triviaux (valeur zéro : bool false / int 0) NON posés (no-op).
 //   - sémantique de PARAMÈTRE (enum/default de query/path) et exemples de RÉPONSE

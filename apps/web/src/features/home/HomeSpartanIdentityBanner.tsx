@@ -7,6 +7,8 @@
 import { CompositeProgressBar } from '@/components/ui/composite-progress-bar'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { intlLocale } from '@/lib/formatters'
+import { formatMessage } from '@/lib/i18n/format'
+import { homeManifest } from '@/lib/i18n/generated/home'
 import { useCapability, useCapabilityStrict } from '@/lib/capabilities/capabilities'
 import type { HomeSkillPeakSummary, HomeSpartanIdentity } from '@/lib/api/types'
 import { getSpartanIdentityText } from './spartanIdentity.i18n'
@@ -169,7 +171,7 @@ export function HomeSpartanIdentityBanner({
                 <RecoloredMask
                   src={`/titles/${currentTitleSlug}/spartan/emblems/${spartanEmblemId}.png`}
                   colors={spartanApp.emblemColors}
-                  alt={`Emblème ${playerName}`}
+                  alt={formatMessage(homeManifest, 'home.spartan_customizer.emblem_alt', locale, { name: playerName })}
                   className="h-20 w-20 shrink-0 object-contain drop-shadow-[0_2px_6px_rgba(8,15,28,0.5)] sm:h-24 sm:w-24"
                 />
               ) : (
@@ -178,7 +180,7 @@ export function HomeSpartanIdentityBanner({
                     <img
                       data-testid="home-spartan-emblem-image"
                       src={spartanIdentity.emblem_image_url}
-                      alt={`Emblème ${playerName}`}
+                      alt={formatMessage(homeManifest, 'home.spartan_customizer.emblem_alt', locale, { name: playerName })}
                       className="h-full w-full object-cover"
                       loading="lazy"
                       decoding="async"

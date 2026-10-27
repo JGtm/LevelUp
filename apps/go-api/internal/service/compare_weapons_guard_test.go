@@ -61,7 +61,7 @@ const topWeaponSortOwner = "synthesis_service_builders.go"
 // gofmt impose entre les trois instructions.
 var topWeaponSortInline = regexp.MustCompile(
 	`(?s)\[i\]\.Kills\s*!=\s*\w+\[j\]\.Kills.{0,120}?\[i\]\.Kills\s*>\s*\w+\[j\]\.Kills` +
-		`.{0,120}?\[i\]\.Label\s*<\s*\w+\[j\]\.Label`)
+		`.{0,120}?\[i\]\.Label(?:\.Pick\(\w+\))?\s*<\s*\w+\[j\]\.Label`)
 
 // topWeaponSortByIDInline matche la MÊME doctrine départagée sur l'identifiant d'arme —
 // la troisième écriture retirée le 2026-09-19 (`buildTopWeapons`). Aucun propriétaire :

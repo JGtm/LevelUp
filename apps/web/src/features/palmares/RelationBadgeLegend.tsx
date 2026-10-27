@@ -15,7 +15,6 @@ import { palmaresManifest, type PalmaresManifestKey } from '@/lib/i18n/generated
 import { squadManifest, type SquadManifestKey } from '@/lib/i18n/generated/squad'
 import { useAppShellStore } from '@/stores/appShellStore'
 
-import { normalizePalmaresLocale } from './i18n'
 
 interface LegendEntry {
   /** Identifiant du badge (`narrative.encounter.<kind>`) — sert au filtre `only`. */
@@ -50,7 +49,7 @@ const ENTRIES: LegendEntry[] = [
  * le backend). Absent ⇒ tous les badges (page Relations).
  */
 export function RelationBadgeLegend({ intro, only }: { intro: string; only?: string[] }) {
-  const locale = normalizePalmaresLocale(useAppShellStore((s) => s.locale))
+  const locale = useAppShellStore((s) => s.locale)
   const entries = only ? ENTRIES.filter((e) => only.includes(e.kind)) : ENTRIES
   return (
     <div className="flex flex-col gap-2 text-left">

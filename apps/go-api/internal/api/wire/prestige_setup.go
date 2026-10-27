@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 	"sync"
 
+	"levelup/go-api/internal/i18n"
 	platform_duckdb "levelup/go-api/internal/platform/duckdb"
 	prestigedb "levelup/go-api/internal/platform/duckdb/prestige"
 	"levelup/go-api/internal/prestige"
@@ -244,19 +245,17 @@ func (b *PrestigeBundle) serviceAndPlayerDB(ctx context.Context, playerSlug stri
 		// résolveur que la page Carrière) — comble le trou "Quick Play"/"Big Team
 		// Battle" dont playlist_name_fr est vide dans match_registry (V72-10 suite).
 		//
-		// LIMITATION ASSUMÉE (contre-revue V7.2, 2026-07-25) : ces traducteurs sont
-		// câblés en dur sur le FR, sans tenir compte de la locale de la requête —
-		// un client EN reçoit donc l'indice en français. C'est le comportement
-		// FR-first DÉJÀ retenu sur les autres surfaces serveur qui résolvent des
-		// libellés d'assets (home, match-view, historique : LoadModeTranslationsFR
-		// / LoadAssetTranslationsFR n'ont pas de variante locale-aware). Rendre
-		// l'indice locale-aware isolément le désalignerait du reste de l'app ; le
-		// jour où la résolution d'assets devient locale-aware, ce point de câblage
-		// suit le même mouvement — il n'a pas à le précéder.
+		// LIMITATION ASSUMÉE (contre-revue V7.2, 2026-07-25) : ces traducteurs sont câblés sur la
+		// langue par défaut (i18n.Default), sans tenir compte de la langue de la requête — un client
+		// d'une autre langue reçoit donc l'indice dans la langue par défaut. L'indice est produit
+		// hors requête (post-sync) ; le jour où il est servi dans la langue de la requête, ce point
+		// de câblage suit.
 		SquadMatches: prestigedb.NewPrestigeSquadMatchProvider(pdb.SharedReadDB()).
-			WithModeTranslatorFR(platform_duckdb.NewSquadRepo(pdb).LoadModeTranslationsFR).
-			WithPlaylistTranslatorFR(func(ctx context.Context, ids []string) (map[string]string, error) {
-				return platform_duckdb.NewSquadRepo(pdb).LoadAssetTranslationsFR(ctx, "playlist", ids)
+			WithModeTranslator(func(ctx context.Context, modeENs []string) (map[string]string, error) {
+				return platform_duckdb.NewSquadRepo(pdb).LoadModeTranslations(ctx, i18n.Default, modeENs)
+			}).
+			WithPlaylistTranslator(func(ctx context.Context, ids []string) (map[string]string, error) {
+				return platform_duckdb.NewSquadRepo(pdb).LoadAssetTranslations(ctx, i18n.Default, "playlist", ids)
 			}),
 		SquadProfile: b.squadProfile,
 	}

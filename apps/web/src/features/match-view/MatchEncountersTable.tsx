@@ -52,7 +52,51 @@ import { useFieldLabel } from '@/lib/i18n/fieldMappings'
 import { ariaSortOf, sortSuffixOf } from './sortHeader'
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 import type { MatchEncounterBadge, MatchEncounterRow } from '@/lib/api/types'
-import type { Locale } from '@/lib/i18n/locale'
+import { DEFAULT_LOCALE, type Locale } from '@/lib/i18n/locale'
+
+/** Libellés de la table, par langue (`Record<Locale, …>` : une langue manquante ne compile pas). */
+const ENCOUNTER_LABELS = {
+  en: {
+    title: 'Encounter history (match players)',
+    empty: 'No prior encounters with these players.',
+    player: 'Player',
+    badgesInfo: 'What each pill means:',
+    role: 'Role',
+    roleAlly: 'ally',
+    roleEnemy: 'enemy',
+    encounters: 'Encounters',
+    encountersTooltip: 'Matches played with this player, split into ally and enemy.',
+    wrAlly: 'WR as ally',
+    wrAllyTooltip: 'Win rate in matches where this player was an ally.',
+    wrEnemy: 'WR as enemy',
+    wrEnemyTooltip: 'Win rate in matches where this player was an opponent.',
+    kdCross: 'K/D',
+    kdCrossTooltip: 'Kills dealt and deaths suffered in these direct duels.',
+    ratio: 'Ratio',
+    ratioTooltip: 'Kill/Death ratio: kills dealt ÷ deaths suffered across all shared matches',
+    lastSeen: 'Last seen',
+  },
+  fr: {
+    title: 'Historique des rencontres',
+    empty: 'Aucune rencontre antérieure avec ces joueurs.',
+    player: 'Joueur',
+    badgesInfo: 'Ce que signifie chaque pastille :',
+    role: 'Rôle',
+    roleAlly: 'allié',
+    roleEnemy: 'ennemi',
+    encounters: 'Rencontres',
+    encountersTooltip: 'Nombre de matchs joués avec ce joueur, répartis en allié et adversaire.',
+    wrAlly: 'Taux de victoire allié',
+    wrAllyTooltip: 'Taux de victoire des matchs où ce joueur était allié.',
+    wrEnemy: 'Taux de victoire ennemi',
+    wrEnemyTooltip: 'Taux de victoire des matchs où ce joueur était adversaire.',
+    kdCross: 'F/D',
+    kdCrossTooltip: 'Frags infligés et morts subies dans ces duels directs.',
+    ratio: 'Ratio',
+    ratioTooltip: 'Ratio frags/morts : frags infligés ÷ morts subies sur l’ensemble des matchs communs',
+    lastSeen: 'Vu pour la dernière fois',
+  },
+} satisfies Record<Locale, Record<string, string>>
 
 interface Props {
   rows: MatchEncounterRow[]
@@ -87,7 +131,7 @@ function isSemanticToken(s: string): s is SemanticToken {
   return s.startsWith('narrative-') || s.startsWith('outcome-') || s.startsWith('perf-')
 }
 
-const ENCOUNTER_BADGE_TOOLTIPS: Record<string, { fr: string; en: string }> = {
+const ENCOUNTER_BADGE_TOOLTIPS: Record<string, Record<Locale, string>> = {
   'narrative.encounter.ally_plus': {
     fr: 'Allié récurrent : bon taux de victoire ensemble',
     en: 'Recurring ally: good win rate together',
@@ -190,7 +234,7 @@ function EncounterTh({ header, idx }: { header: Header<MatchEncounterRow, unknow
 
 export function MatchEncountersTable({
   rows,
-  locale = 'fr',
+  locale = DEFAULT_LOCALE,
   onPlayerClick,
   hideCardWrapper = false,
   showAssists = true,
@@ -202,51 +246,7 @@ export function MatchEncountersTable({
   // Libellé de colonne « Assistances » title-aware (mappings du titre, champ `assists`).
   const assistsLabel = useFieldLabel('assists')
 
-  const labels = useMemo(
-    () =>
-      locale === 'en'
-        ? {
-            title: 'Encounter history (match players)',
-            empty: 'No prior encounters with these players.',
-            player: 'Player',
-            badgesInfo: 'What each pill means:',
-            role: 'Role',
-            roleAlly: 'ally',
-            roleEnemy: 'enemy',
-            encounters: 'Encounters',
-            encountersTooltip: 'Matches played with this player, split into ally and enemy.',
-            wrAlly: 'WR as ally',
-            wrAllyTooltip: 'Win rate in matches where this player was an ally.',
-            wrEnemy: 'WR as enemy',
-            wrEnemyTooltip: 'Win rate in matches where this player was an opponent.',
-            kdCross: 'K/D',
-            kdCrossTooltip: 'Kills dealt and deaths suffered in these direct duels.',
-            ratio: 'Ratio',
-            ratioTooltip: 'Kill/Death ratio: kills dealt ÷ deaths suffered across all shared matches',
-            lastSeen: 'Last seen',
-          }
-        : {
-            title: 'Historique des rencontres',
-            empty: 'Aucune rencontre antérieure avec ces joueurs.',
-            player: 'Joueur',
-            badgesInfo: 'Ce que signifie chaque pastille :',
-            role: 'Rôle',
-            roleAlly: 'allié',
-            roleEnemy: 'ennemi',
-            encounters: 'Rencontres',
-            encountersTooltip: 'Nombre de matchs joués avec ce joueur, répartis en allié et adversaire.',
-            wrAlly: 'Taux de victoire allié',
-            wrAllyTooltip: 'Taux de victoire des matchs où ce joueur était allié.',
-            wrEnemy: 'Taux de victoire ennemi',
-            wrEnemyTooltip: 'Taux de victoire des matchs où ce joueur était adversaire.',
-            kdCross: 'F/D',
-            kdCrossTooltip: 'Frags infligés et morts subies dans ces duels directs.',
-            ratio: 'Ratio',
-            ratioTooltip: 'Ratio frags/morts : frags infligés ÷ morts subies sur l’ensemble des matchs communs',
-            lastSeen: 'Vu pour la dernière fois',
-          },
-    [locale],
-  )
+  const labels = ENCOUNTER_LABELS[locale]
 
   function goToExplorer(gamertag: string) {
     if (onPlayerClick) {

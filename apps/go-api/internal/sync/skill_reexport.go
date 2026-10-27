@@ -55,12 +55,6 @@ const (
 	TierDiamond  = skill.TierDiamond
 	TierOnyx     = skill.TierOnyx
 
-	TierLabelBronze    = skill.TierLabelBronze
-	TierLabelArgent    = skill.TierLabelArgent
-	TierLabelOr        = skill.TierLabelOr
-	TierLabelPlatine   = skill.TierLabelPlatine
-	TierLabelDiamant   = skill.TierLabelDiamant
-	TierLabelOnyx      = skill.TierLabelOnyx
 	TierLabelPlacement = skill.TierLabelPlacement
 )
 

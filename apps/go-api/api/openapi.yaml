@@ -651,7 +651,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiError'
           description: Error
-      summary: Action admin — upsert asset_translations (en-US et/ou fr-FR) pour un asset playlist/map/pair/game_variant (résolution effective des UUID inconnus) (auth admin requis)
+      summary: Action admin — upsert asset_translations (une ligne par langue saisie) pour un asset playlist/map/pair/game_variant (résolution effective des UUID inconnus) (auth admin requis)
       tags:
         - admin
   /admin/actions/translations/mode:
@@ -680,7 +680,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiError'
           description: Error
-      summary: Action admin — upsert mode_name_tr[fr] pour un mode normalisé (résout un mode non traduit, effet immédiat) (auth admin requis)
+      summary: Action admin — upsert mode_name_tr (une ligne par langue saisie) pour un mode normalisé (résout un mode non traduit, effet immédiat) (auth admin requis)
       tags:
         - admin
   /admin/db-contention:
@@ -4759,41 +4759,6 @@ paths:
       summary: Joueurs les plus croisés (hors amis)
       tags:
         - career
-  /players/{player_slug}/pages/career/top-matches:
-    get:
-      description: Retourne les meilleurs et pires matchs du joueur (tous critères confondus).
-      operationId: getCareerTopMatches
-      parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
-          in: path
-          name: player_slug
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CareerTopMatchesResponse'
-          description: Top matchs
-        "404":
-          $ref: '#/components/responses/NotFound'
-        "499":
-          $ref: '#/components/responses/ClientClosed'
-        "500":
-          $ref: '#/components/responses/InternalError'
-        "503":
-          $ref: '#/components/responses/DbBusy'
-        default:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-          description: Error
-      summary: Top matchs du joueur
-      tags:
-        - career
   /players/{player_slug}/pages/citations:
     post:
       operationId: postCitations
@@ -5008,6 +4973,9 @@ paths:
             ETag:
               schema:
                 type: string
+            Vary:
+              schema:
+                type: string
         "404":
           $ref: '#/components/responses/NotFound'
         "499":
@@ -5104,6 +5072,9 @@ paths:
               schema:
                 type: string
             ETag:
+              schema:
+                type: string
+            Vary:
               schema:
                 type: string
         "400":
@@ -7976,9 +7947,7 @@ components:
         current_progress:
           format: int64
           type: integer
-        description_en:
-          type: string
-        description_fr:
+        description:
           type: string
         gamerscore:
           format: int64
@@ -7987,13 +7956,9 @@ components:
           type: string
         is_secret:
           type: boolean
-        locked_desc_en:
+        locked_desc:
           type: string
-        locked_desc_fr:
-          type: string
-        name_en:
-          type: string
-        name_fr:
+        name:
           type: string
         rarity_category:
           type: string
@@ -8012,10 +7977,8 @@ components:
           type: string
       required:
         - achievement_id
-        - name_en
-        - name_fr
-        - description_en
-        - description_fr
+        - name
+        - description
         - gamerscore
         - is_secret
         - unlocked
@@ -9149,17 +9112,13 @@ components:
       properties:
         description:
           type: string
-        description_fr:
-          type: string
         id:
           type: string
         image_tinted:
           type: boolean
         image_url:
           type: string
-        name_en:
-          type: string
-        name_fr:
+        name:
           type: string
         sprite_height:
           format: int64
@@ -9177,8 +9136,7 @@ components:
           type: integer
       required:
         - id
-        - name_en
-        - name_fr
+        - name
         - image_url
       type: object
     AssetReference:
@@ -10910,9 +10868,7 @@ components:
           type: boolean
         next_rank_image_url:
           type: string
-        next_rank_name_en:
-          type: string
-        next_rank_name_fr:
+        next_rank_name:
           type: string
         progress_pct:
           format: double
@@ -11041,87 +10997,6 @@ components:
             - "null"
       required:
         - items
-      type: object
-    CareerTopMatch:
-      properties:
-        assists:
-          nullable: true
-          type: integer
-        badge_type:
-          nullable: true
-          type: string
-        deaths:
-          nullable: true
-          type: integer
-        kd_ratio:
-          format: float
-          nullable: true
-          type: number
-        kills:
-          nullable: true
-          type: integer
-        map_ui:
-          nullable: true
-          type: string
-        match_id:
-          format: uuid
-          type: string
-        mode_ui:
-          nullable: true
-          type: string
-        outcome:
-          enum:
-            - win
-            - loss
-            - tie
-            - dnf
-          nullable: true
-          type: string
-        outcome_code:
-          format: int64
-          nullable: true
-          type: integer
-        performance_score:
-          format: float
-          nullable: true
-          type: number
-        playlist_label:
-          nullable: true
-          type: string
-        score_label:
-          nullable: true
-          type: string
-        start_time:
-          format: date-time
-          nullable: true
-          type: string
-        variant:
-          enum:
-            - best
-            - worst
-          nullable: true
-          type: string
-      required:
-        - match_id
-      type: object
-    CareerTopMatchesResponse:
-      additionalProperties: false
-      properties:
-        best_matches:
-          items:
-            $ref: '#/components/schemas/TopMatchDTO'
-          type:
-            - array
-            - "null"
-        worst_matches:
-          items:
-            $ref: '#/components/schemas/TopMatchDTO'
-          type:
-            - array
-            - "null"
-      required:
-        - best_matches
-        - worst_matches
       type: object
     CarriedEnergy:
       additionalProperties: false
@@ -12127,8 +12002,6 @@ components:
           format: int64
           type: integer
         label:
-          type: string
-        label_en:
           type: string
         role:
           type: string
@@ -14498,13 +14371,13 @@ components:
             - "null"
         available_maps:
           items:
-            type: string
+            $ref: '#/components/schemas/LabelValue'
           type:
             - array
             - "null"
         available_modes:
           items:
-            type: string
+            $ref: '#/components/schemas/LabelValue'
           type:
             - array
             - "null"
@@ -14522,7 +14395,7 @@ components:
             - "null"
         available_playlists:
           items:
-            type: string
+            $ref: '#/components/schemas/LabelValue'
           type:
             - array
             - "null"
@@ -15519,8 +15392,6 @@ components:
           type: integer
         label:
           type: string
-        label_en:
-          type: string
         role:
           type: string
       required:
@@ -16126,9 +15997,7 @@ components:
         current_rank:
           format: int64
           type: integer
-        max_rank_name_en:
-          type: string
-        max_rank_name_fr:
+        max_rank_name:
           type: string
         percentage:
           format: double
@@ -16171,10 +16040,13 @@ components:
         count:
           format: int64
           type: integer
+        label:
+          type: string
         value:
           type: string
       required:
         - value
+        - label
         - count
       type: object
     HighlightPlaylistCount:
@@ -16183,10 +16055,13 @@ components:
         count:
           format: int64
           type: integer
+        label:
+          type: string
         value:
           type: string
       required:
         - value
+        - label
         - count
       type: object
     HighlightSeasonCount:
@@ -18768,13 +18643,13 @@ components:
             - "null"
         available_maps:
           items:
-            type: string
+            $ref: '#/components/schemas/LabelValue'
           type:
             - array
             - "null"
         available_modes:
           items:
-            type: string
+            $ref: '#/components/schemas/LabelValue'
           type:
             - array
             - "null"
@@ -18792,7 +18667,7 @@ components:
             - "null"
         available_playlists:
           items:
-            type: string
+            $ref: '#/components/schemas/LabelValue'
           type:
             - array
             - "null"
@@ -19055,8 +18930,6 @@ components:
           format: double
           type: number
         label:
-          type: string
-        label_en:
           type: string
         max_distance_m:
           format: double
@@ -20994,9 +20867,7 @@ components:
     MilestoneDTO:
       additionalProperties: false
       properties:
-        condition_en:
-          type: string
-        condition_fr:
+        condition:
           type: string
         earned:
           type: boolean
@@ -21012,16 +20883,13 @@ components:
         threshold:
           format: double
           type: number
-        title_en:
-          type: string
-        title_fr:
+        title:
           type: string
       required:
         - id
         - metric
         - threshold
-        - title_en
-        - title_fr
+        - title
         - earned
       type: object
     MilestonesResponse:
@@ -23418,9 +23286,7 @@ components:
           type: string
         radar_axis:
           type: string
-        reason_key_en:
-          type: string
-        reason_key_fr:
+        reason_key:
           type: string
         reason_params:
           type: string
@@ -24411,7 +24277,7 @@ components:
           type:
             - array
             - "null"
-        mode_en:
+        mode_key:
           type: string
       required:
         - action
@@ -25989,8 +25855,6 @@ components:
     SettingsResponse:
       description: Configuration de l'application (GET/PATCH /settings)
       properties:
-        career_top_exclude_btb:
-          type: boolean
         discord_lang:
           enum:
             - fr
@@ -26123,11 +25987,8 @@ components:
           type: integer
         tier_name:
           type: string
-        tier_name_fr:
-          type: string
       required:
         - tier_name
-        - tier_name_fr
         - sub_tier
         - label
         - mu
@@ -26185,15 +26046,10 @@ components:
           type:
             - string
             - "null"
-        TierCodeFR:
-          type:
-            - string
-            - "null"
       required:
         - RatingType
         - RatingValue
         - TierCode
-        - TierCodeFR
         - SubTier
         - Delta
         - PlaylistGroup
@@ -28246,8 +28102,6 @@ components:
           type: string
         label:
           type: string
-        label_en:
-          type: string
         total_squad:
           format: int64
           type: integer
@@ -28493,18 +28347,14 @@ components:
       properties:
         arc_id:
           type: string
-        description_en:
-          type: string
-        description_fr:
+        description:
           type: string
         historical_streak:
           format: int64
           type: integer
         is_arc_step:
           type: boolean
-        label_en:
-          type: string
-        label_fr:
+        label:
           type: string
         target_tier:
           type: string
@@ -29405,8 +29255,6 @@ components:
           type: string
         arme_label:
           type: string
-        arme_label_en:
-          type: string
         autre_gamertag:
           type: string
         autre_point:
@@ -29479,9 +29327,7 @@ components:
         matchs:
           format: int64
           type: integer
-        nom_en:
-          type: string
-        nom_fr:
+        nom:
           type: string
         x:
           format: double
@@ -29491,8 +29337,7 @@ components:
           type: number
       required:
         - id
-        - nom_fr
-        - nom_en
+        - nom
         - x
         - "y"
         - matchs
@@ -29516,11 +29361,13 @@ components:
           type: integer
         echelle:
           $ref: '#/components/schemas/EchelleTactique'
+        map_filter_key:
+          type: string
         map_id:
           type: string
-        map_name:
+        map_label:
           type: string
-        map_name_fr:
+        map_name:
           type: string
         matchs:
           format: int64
@@ -29536,7 +29383,8 @@ components:
       required:
         - map_id
         - map_name
-        - map_name_fr
+        - map_label
+        - map_filter_key
         - matchs
         - victoires
         - defaites
@@ -29832,13 +29680,10 @@ components:
     TacticalZoneNom:
       additionalProperties: false
       properties:
-        nom_en:
-          type: string
-        nom_fr:
+        nom:
           type: string
       required:
-        - nom_fr
-        - nom_en
+        - nom
       type: object
     TeamCoverage:
       additionalProperties: false
@@ -30284,9 +30129,7 @@ components:
         cooldown_ends_at:
           format: date-time
           type: string
-        description_en:
-          type: string
-        description_fr:
+        description:
           type: string
         eval_type:
           type: string
@@ -30297,9 +30140,7 @@ components:
           type: string
         is_long_term:
           type: boolean
-        label_en:
-          type: string
-        label_fr:
+        label:
           type: string
         legendary_target:
           format: double
@@ -30348,8 +30189,7 @@ components:
         - cadence
         - eval_type
         - mode_filter
-        - label_en
-        - label_fr
+        - label
         - normal_target
         - heroic_target
         - legendary_target
@@ -30615,9 +30455,9 @@ components:
         kills_expected:
           format: double
           type: number
-        map_name:
+        map_label:
           type: string
-        map_name_fr:
+        map_name:
           type: string
         match_id:
           type: string
@@ -31038,58 +30878,6 @@ components:
       required:
         - has_refresh_token
         - reauth_required
-      type: object
-    TopMatchDTO:
-      additionalProperties: false
-      properties:
-        deaths:
-          format: int64
-          type: integer
-        kda:
-          format: double
-          type:
-            - number
-            - "null"
-        kills:
-          format: int64
-          type: integer
-        map_ui:
-          type:
-            - string
-            - "null"
-        match_id:
-          type: string
-        mode_ui:
-          type:
-            - string
-            - "null"
-        outcome:
-          enum:
-            - win
-            - loss
-            - tie
-            - dnf
-          type: string
-        outcome_code:
-          format: int64
-          type: integer
-        performance_score:
-          format: double
-          type: number
-        start_time:
-          type:
-            - string
-            - "null"
-      required:
-        - match_id
-        - start_time
-        - performance_score
-        - map_ui
-        - mode_ui
-        - outcome_code
-        - kills
-        - deaths
-        - kda
       type: object
     TopTeammate:
       additionalProperties: false
@@ -32482,8 +32270,6 @@ components:
       properties:
         label:
           type: string
-        label_en:
-          type: string
         measured:
           format: int64
           type: integer
@@ -32561,8 +32347,6 @@ components:
           type: string
         label:
           type: string
-        label_en:
-          type: string
         measured:
           format: int64
           type: integer
@@ -32590,8 +32374,6 @@ components:
           type: string
         label:
           type: string
-        label_en:
-          type: string
         measured:
           format: int64
           type: integer
@@ -32608,17 +32390,14 @@ components:
         kills:
           format: int64
           type: integer
-        label_en:
-          type: string
-        label_fr:
+        label:
           type: string
         weapon_id:
           format: int64
           type: integer
       required:
         - weapon_id
-        - label_fr
-        - label_en
+        - label
         - kills
       type: object
     WeaponLabel:
@@ -32691,8 +32470,6 @@ components:
           $ref: '#/components/schemas/WeaponRangeSide'
         label:
           type: string
-        label_en:
-          type: string
         weapon_key:
           type: string
       required:
@@ -32743,8 +32520,6 @@ components:
       additionalProperties: false
       properties:
         map_label:
-          type: string
-        map_label_en:
           type: string
         match_id:
           type: string

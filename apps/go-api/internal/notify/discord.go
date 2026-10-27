@@ -18,7 +18,12 @@ import (
 	"time"
 
 	"levelup/go-api/internal/config"
+	"levelup/go-api/internal/i18n"
 )
+
+// defaultLang : langue des embeds quand la configuration n'en porte pas, et langue de repli d'un
+// libellé absent dans la langue demandée (les tables inline ci-dessous sont indexées par code de langue).
+const defaultLang = string(i18n.Default)
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types Discord webhook
@@ -156,7 +161,7 @@ func readSettingsMap(path string) map[string]any {
 // (globale ou globale+overlay résolue). Logique partagée par LoadNotifyConfig et
 // LoadNotifyConfigForTitle (une seule source de vérité).
 func notifyConfigFromMap(settingsPath string, s map[string]any) NotifyConfig {
-	cfg := NotifyConfig{Lang: "fr", SettingsPath: settingsPath}
+	cfg := NotifyConfig{Lang: defaultLang, SettingsPath: settingsPath}
 	if s == nil || !boolVal(s, "discord_notifications_enabled") {
 		return cfg
 	}
@@ -421,7 +426,7 @@ var discordStrings = map[string]map[string]string{
 // Les tokens {key} sont remplacés par les valeurs de args.
 func T(key, lang string, args ...any) string {
 	if lang == "" {
-		lang = "fr"
+		lang = defaultLang
 	}
 	entry, ok := discordStrings[key]
 	if !ok {
@@ -429,7 +434,7 @@ func T(key, lang string, args ...any) string {
 	}
 	tmpl, ok := entry[lang]
 	if !ok {
-		tmpl = entry["fr"] // fallback français
+		tmpl = entry[defaultLang] // repli : langue par défaut
 	}
 	if len(args) == 0 || len(args)%2 != 0 {
 		return tmpl

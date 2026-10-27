@@ -123,7 +123,7 @@ export function WeaponRecordsRuler({ records, playerSlug }: WeaponRecordsRulerPr
   // retirée à la demande de l'utilisateur (2026-09-20) ; la couverture reste dans le (i).
   const count = t('synthesis.weapon_records.count', { weapons: weapons.length })
   const excludedList = (records.excluded ?? [])
-    .map((w) => t('synthesis.weapon_records.excluded_item', { label: resolveRecordLabel(w, locale), measured: w.measured }))
+    .map((w) => t('synthesis.weapon_records.excluded_item', { label: resolveRecordLabel(w), measured: w.measured }))
     .join(' · ')
   const legend = legendItems(weapons, locale)
   // Les armes écartées et la réserve de couverture vivent dans le (i) du titre, pas sous
@@ -255,7 +255,7 @@ interface RecordTooltipProps {
 /** L'infobulle : l'arme, le record, la médiane et l'effectif, le match, l'invite au clic. */
 function RecordTooltip({ hover, locale, t }: RecordTooltipProps) {
   const { row } = hover.item
-  const map = (locale === 'en' ? row.record.map_label_en : row.record.map_label) || row.record.map_label_en || ''
+  const map = row.record.map_label ?? ''
   const date = row.record.started_at ? formatDate(row.record.started_at, intlLocale(locale)) : ''
   const where = [map, date].filter(Boolean).join(' · ')
   return (

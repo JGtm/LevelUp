@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/legacymatch"
 )
 
@@ -36,13 +37,13 @@ func TestBuildIntensityRows_OrdersOldestFirst(t *testing.T) {
 	// `matches` arrive déjà ASC (comme GetPage le garantit). Le label suit le
 	// contrat du builder ("Carte — date") : le numéro #N est posé côté web.
 	matches := []legacymatch.StatsMatchRow{
-		{MatchID: "old", StartTime: tOld, MapName: "Aquarius"},
-		{MatchID: "mid", StartTime: tMid, MapName: "Bazaar"},
-		{MatchID: "new", StartTime: tNew, MapName: "Catalyst"},
+		{MatchID: "old", StartTime: tOld, MapName: i18n.FromColumns("Aquarius", "")},
+		{MatchID: "mid", StartTime: tMid, MapName: i18n.FromColumns("Bazaar", "")},
+		{MatchID: "new", StartTime: tNew, MapName: i18n.FromColumns("Catalyst", "")},
 	}
 	durations := map[string]int64{"old": 1000, "mid": 1000, "new": 1000}
 
-	rows := buildIntensityRows(events, matches, xuid, durations)
+	rows := buildIntensityRows(intensityScope{events: events, matches: matches, durationsMS: durations, loc: i18n.Default}, xuid)
 	if len(rows) != 3 {
 		t.Fatalf("attendu 3 rows d'intensité, obtenu %d", len(rows))
 	}

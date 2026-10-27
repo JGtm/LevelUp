@@ -10,6 +10,7 @@ import (
 	"levelup/go-api/internal/assets/static"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/i18n"
 )
 
 // convertTugBinsToDomain convertit les bins analysis -> domain pour le chart
@@ -37,13 +38,14 @@ func convertTugBinsToDomain(bins []analysis.TugOfWarBin) []domain.MatchTugOfWarB
 }
 
 // convertImpactBadgesToDomain convertit les badges analysis -> domain avec
-// pointer optionnel sur TimeMS (nil si event horodaté absent).
-func convertImpactBadgesToDomain(badges []analysis.ImpactBadge) []domain.MatchImpactBadge {
+// pointer optionnel sur TimeMS (nil si event horodaté absent). Le libellé est celui de la langue
+// `loc` de la requête.
+func convertImpactBadgesToDomain(badges []analysis.ImpactBadge, loc i18n.Locale) []domain.MatchImpactBadge {
 	out := make([]domain.MatchImpactBadge, 0, len(badges))
 	for _, b := range badges {
 		badge := domain.MatchImpactBadge{
 			Key:        b.BadgeKey,
-			Label:      b.BadgeFR,
+			Label:      b.Badge.Pick(loc),
 			PlayerXUID: b.PlayerXUID,
 		}
 		if b.TimeMS > 0 {

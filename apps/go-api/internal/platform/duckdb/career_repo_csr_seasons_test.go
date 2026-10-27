@@ -26,10 +26,12 @@ func TestParseCSRSeasonNumber(t *testing.T) {
 }
 
 func TestCSRSeasonLabel(t *testing.T) {
-	if got := csrSeasonLabel("CsrSeason13-1"); got != "Saison 13" {
-		t.Errorf("label CsrSeason13-1 = %q, attendu 'Saison 13'", got)
+	for loc, want := range map[string]string{"fr": "Saison 13", "en": "Season 13"} {
+		if got := csrSeasonLabel(loc, "CsrSeason13-1"); got != want {
+			t.Errorf("label CsrSeason13-1 (%s) = %q, attendu %q", loc, got, want)
+		}
 	}
-	if got := csrSeasonLabel("inconnu"); got != "inconnu" {
+	if got := csrSeasonLabel("fr", "inconnu"); got != "inconnu" {
 		t.Errorf("label fallback = %q, attendu 'inconnu'", got)
 	}
 }

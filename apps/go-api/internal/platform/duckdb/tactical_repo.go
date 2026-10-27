@@ -56,6 +56,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/i18n"
 )
 
 // tacticalReadTimeout borne une lecture tactique. Plus large que les 15 s de
@@ -147,10 +148,12 @@ func (r *TacticalRepo) MapsPlayed(ctx context.Context, q domain.TacticalQuery) (
 	out := make([]domain.TacticalMapRow, 0)
 	err = scanRows(ctx, rows, "TacticalRepo.MapsPlayed", func(sc rowScanner) error {
 		var row domain.TacticalMapRow
-		if err := sc.Scan(&row.MapID, &row.MapName, &row.MapNameFR,
+		var nameEN, nameFR string
+		if err := sc.Scan(&row.MapID, &nameEN, &nameFR,
 			&row.Matchs, &row.Victoires, &row.Defaites); err != nil {
 			return err
 		}
+		row.MapName = i18n.FromColumns(nameEN, nameFR)
 		out = append(out, row)
 		return nil
 	})
@@ -161,7 +164,7 @@ func (r *TacticalRepo) MapsPlayed(ctx context.Context, q domain.TacticalQuery) (
 	return out, nil
 }
 
-// poserLesLibelles remplace le nom FR du registre de chaque carte par son LIBELLÉ CANONIQUE
+// poserLesLibelles remplace le nom français du registre de chaque carte par son LIBELLÉ CANONIQUE
 // (libelleDeCarte, map_labels.go), traductions lues en une requête : la vignette et le lien vers
 // l'Explorateur portent ainsi la chaîne exacte que l'Explorateur compare.
 func (r *TacticalRepo) poserLesLibelles(ctx context.Context, rows []domain.TacticalMapRow) {
@@ -172,12 +175,12 @@ func (r *TacticalRepo) poserLesLibelles(ctx context.Context, rows []domain.Tacti
 	for i := range rows {
 		ids[i] = rows[i].MapID
 	}
-	var traductions map[string]string
+	var traductions map[string]i18n.Text
 	if r.pdb != nil {
 		traductions = traductionsDeCartes(ctx, r.pdb.Metadata, ids)
 	}
 	for i := range rows {
-		rows[i].MapNameFR = libelleDeCarte(rows[i].MapNameFR, rows[i].MapName, traductions[rows[i].MapID])
+		rows[i].MapName.Set(i18n.Default, libelleDeCarte(rows[i].MapName, traductions[rows[i].MapID]))
 	}
 }
 

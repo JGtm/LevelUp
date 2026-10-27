@@ -24,6 +24,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/duckdb"
@@ -245,8 +246,8 @@ func TestWorldLeaderboardCron_PersistsSeasonCatalog(t *testing.T) {
 		entries:         []domain.LeaderboardEntry{{Rank: 1, Gamertag: "Alpha", XUID: "2535000000000001", CSRValue: 1500}},
 		activePlaylists: []domain.WorldPlaylistRef{{AssetID: "pl-1", DisplayName: "Ranked Arena"}},
 		seasons: []domain.WorldSeasonRef{
-			{SeasonID: "csrseason13-2", DisplayName: "Infinite", NameFR: "Infinite"},
-			{SeasonID: "csrseason12-1", DisplayName: "Shadows", NameFR: "Ombres"},
+			{SeasonID: "csrseason13-2", Name: i18n.FromColumns("Infinite", "Infinite")},
+			{SeasonID: "csrseason12-1", Name: i18n.FromColumns("Shadows", "Ombres")},
 		},
 	}
 	c := newTestCron(provider, scraper)

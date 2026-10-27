@@ -45,6 +45,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/rankedplaylists"
 	"levelup/go-api/internal/games/titleseams"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/platform/auth"
 	syncpkg "levelup/go-api/internal/sync"
 )
@@ -579,7 +580,7 @@ func iso8601Seconds(s string) float64 {
 // plName mappe un Playlist.AssetId vers son nom catalogue (sinon id court).
 func plName(assetID string) string {
 	if pl, ok := rankedplaylists.Lookup(assetID); ok {
-		return pl.NameEN()
+		return pl.Name(i18n.Fallback)
 	}
 	if assetID == "" {
 		return "(inconnu)"

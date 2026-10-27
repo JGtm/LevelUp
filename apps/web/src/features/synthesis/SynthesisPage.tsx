@@ -37,7 +37,8 @@ import { useActiveSeason, seasonToPeriod } from '@/features/squad/useActiveSeaso
 import { MultiSelectFilter, type MultiSelectOption } from '@/features/explorer/MultiSelectFilter'
 import { ExperienceDropdown, type Experience } from '@/features/_shared/ExperienceDropdown'
 import { synthesisManifest } from '@/lib/i18n/generated/synthesis'
-import type { ManifestLocale } from '@/lib/i18n/format'
+import { formatMessage, type ManifestLocale } from '@/lib/i18n/format'
+import { commonManifest } from '@/lib/i18n/generated/common'
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 import type {
   BestMatchRef,
@@ -766,7 +767,7 @@ export function SynthesisPage() {
                 : 'border border-input bg-background text-muted-foreground hover:bg-muted',
             ].join(' ')}
           >
-            Analyser
+            {formatMessage(commonManifest, 'common.filter.analyser', locale)}
           </button>
           {hasActiveFilters && (
             <button

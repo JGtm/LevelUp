@@ -1,45 +1,13 @@
 // Package duckdb — home_repo_playlist_ranks_test.go : tests unitaires des
-// helpers d'assemblage Playlists récentes (parsePlacementRemaining et
-// buildPlaylistRankItem). Cible : aucun accès DB.
+// helpers d'assemblage Playlists récentes (buildPlaylistRankItem). Cible : aucun accès DB.
 package duckdb
 
 import (
 	"testing"
 
 	titlepkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/i18n"
 )
-
-// ─── parsePlacementRemaining ────────────────────────────────────────────
-
-func TestParsePlacementRemaining_Pluriel(t *testing.T) {
-	t.Parallel()
-	if got := parsePlacementRemaining("Placement (4 restants)"); got != 4 {
-		t.Errorf("parsePlacementRemaining(\"Placement (4 restants)\") = %d, want 4", got)
-	}
-}
-
-func TestParsePlacementRemaining_Singulier(t *testing.T) {
-	t.Parallel()
-	if got := parsePlacementRemaining("Placement (1 restant)"); got != 1 {
-		t.Errorf("parsePlacementRemaining(\"Placement (1 restant)\") = %d, want 1", got)
-	}
-}
-
-func TestParsePlacementRemaining_UnparseableReturns10(t *testing.T) {
-	t.Parallel()
-	for _, in := range []string{"", "Onyx 3", "Placement", "Bronze 1"} {
-		if got := parsePlacementRemaining(in); got != 10 {
-			t.Errorf("parsePlacementRemaining(%q) = %d, want 10", in, got)
-		}
-	}
-}
-
-func TestParsePlacementRemaining_ClampHighValues(t *testing.T) {
-	t.Parallel()
-	if got := parsePlacementRemaining("Placement (99 restants)"); got != 10 {
-		t.Errorf("parsePlacementRemaining(\"Placement (99 restants)\") = %d, want 10 (clamp)", got)
-	}
-}
 
 // ─── buildPlaylistRankItem ──────────────────────────────────────────────
 
@@ -57,7 +25,7 @@ func TestBuildPlaylistRankItem_PlacementFromSnapshot(t *testing.T) {
 	}
 	snap := map[string]int{"pl-ranked": 4}
 
-	item := buildPlaylistRankItem(titlepkg.DefaultSlug, p, msr, snap, 10, true)
+	item := buildPlaylistRankItem(titlepkg.DefaultSlug, p, msr, snap, 10, i18n.LocaleFR)
 
 	if item.RatingValue != nil {
 		t.Errorf("RatingValue: want nil (placement), got %v", *item.RatingValue)
@@ -90,7 +58,7 @@ func TestBuildPlaylistRankItem_PlacementFromMSROnly(t *testing.T) {
 	}
 	snap := map[string]int{} // pas de snapshot
 
-	item := buildPlaylistRankItem(titlepkg.DefaultSlug, p, msr, snap, 10, true)
+	item := buildPlaylistRankItem(titlepkg.DefaultSlug, p, msr, snap, 10, i18n.LocaleFR)
 
 	if item.MeasurementMatchesRemaining == nil || *item.MeasurementMatchesRemaining != 7 {
 		t.Errorf("MeasurementMatchesRemaining: want 7, got %v", item.MeasurementMatchesRemaining)
@@ -113,7 +81,7 @@ func TestBuildPlaylistRankItem_StableRank(t *testing.T) {
 	}
 	snap := map[string]int{"pl-ranked": 0} // matured
 
-	item := buildPlaylistRankItem(titlepkg.DefaultSlug, p, msr, snap, 10, true)
+	item := buildPlaylistRankItem(titlepkg.DefaultSlug, p, msr, snap, 10, i18n.LocaleFR)
 
 	if item.RatingValue == nil || *item.RatingValue != 1450 {
 		t.Errorf("RatingValue: want 1450, got %v", item.RatingValue)
@@ -143,7 +111,7 @@ func TestBuildPlaylistRankItem_MaturedRankComputesTierBand(t *testing.T) {
 	msr := map[string]playlistMSRRow{
 		"m1": {ratingValue: 1450, tier: "Gold", tierLabel: "Or IV", subTier: 4},
 	}
-	item := buildPlaylistRankItem(titlepkg.DefaultSlug, p, msr, map[string]int{"pl-ranked": 0}, 10, true)
+	item := buildPlaylistRankItem(titlepkg.DefaultSlug, p, msr, map[string]int{"pl-ranked": 0}, 10, i18n.LocaleFR)
 
 	if item.TierProgressPct == nil {
 		t.Fatalf("TierProgressPct: want non-nil (matured Gold IV), got nil")
@@ -165,7 +133,7 @@ func TestBuildPlaylistRankItem_PlacementHasNoTierBand(t *testing.T) {
 	msr := map[string]playlistMSRRow{
 		"m1": {ratingValue: 0, tier: "Placement", tierLabel: "Placement (4 restants)"},
 	}
-	item := buildPlaylistRankItem(titlepkg.DefaultSlug, p, msr, map[string]int{"pl-ranked": 4}, 10, true)
+	item := buildPlaylistRankItem(titlepkg.DefaultSlug, p, msr, map[string]int{"pl-ranked": 4}, 10, i18n.LocaleFR)
 
 	if item.TierProgressPct != nil {
 		t.Errorf("TierProgressPct: want nil (placement), got %v", *item.TierProgressPct)
@@ -187,7 +155,7 @@ func TestBuildPlaylistRankItem_PlacementFromSnapshotNoMSR(t *testing.T) {
 	msr := map[string]playlistMSRRow{} // pas de MSR
 	snap := map[string]int{"pl-ranked": 9}
 
-	item := buildPlaylistRankItem(titlepkg.DefaultSlug, p, msr, snap, 10, true)
+	item := buildPlaylistRankItem(titlepkg.DefaultSlug, p, msr, snap, 10, i18n.LocaleFR)
 
 	if item.MeasurementMatchesRemaining == nil || *item.MeasurementMatchesRemaining != 9 {
 		t.Errorf("MeasurementMatchesRemaining: want 9, got %v", item.MeasurementMatchesRemaining)
@@ -211,7 +179,7 @@ func TestBuildPlaylistRankItem_RankedNoMSRNoSnapshot(t *testing.T) {
 		isRanked:     true,
 		lastMatchID:  "m1",
 	}
-	item := buildPlaylistRankItem(titlepkg.DefaultSlug, p, map[string]playlistMSRRow{}, map[string]int{}, 10, true)
+	item := buildPlaylistRankItem(titlepkg.DefaultSlug, p, map[string]playlistMSRRow{}, map[string]int{}, 10, i18n.LocaleFR)
 
 	if item.MeasurementMatchesRemaining == nil || *item.MeasurementMatchesRemaining != 10 {
 		t.Errorf("MeasurementMatchesRemaining: want 10 (placement à 0 match), got %v", item.MeasurementMatchesRemaining)
@@ -242,7 +210,7 @@ func TestBuildPlaylistRankItem_Threshold5_PlacementFromSnapshot(t *testing.T) {
 	}
 	snap := map[string]int{"pl-ranked": 2}
 
-	item := buildPlaylistRankItem(titlepkg.DefaultSlug, p, msr, snap, 5, true)
+	item := buildPlaylistRankItem(titlepkg.DefaultSlug, p, msr, snap, 5, i18n.LocaleFR)
 
 	if item.MeasurementMatchesRemaining == nil || *item.MeasurementMatchesRemaining != 2 {
 		t.Errorf("MeasurementMatchesRemaining: want 2, got %v", item.MeasurementMatchesRemaining)
@@ -263,7 +231,7 @@ func TestBuildPlaylistRankItem_Threshold5_NoMatchYet(t *testing.T) {
 		playlistID: "pl-ranked", playlistName: "Assassin classé", isRanked: true, lastMatchID: "m1",
 		lastSeasonID: "CsrSeason13-1",
 	}
-	item := buildPlaylistRankItem(titlepkg.DefaultSlug, p, map[string]playlistMSRRow{}, map[string]int{}, 5, true)
+	item := buildPlaylistRankItem(titlepkg.DefaultSlug, p, map[string]playlistMSRRow{}, map[string]int{}, 5, i18n.LocaleFR)
 
 	if item.MeasurementMatchesRemaining == nil || *item.MeasurementMatchesRemaining != 5 {
 		t.Errorf("MeasurementMatchesRemaining: want 5, got %v", item.MeasurementMatchesRemaining)
@@ -286,7 +254,7 @@ func TestBuildPlaylistRankItem_Threshold5_MaturedRankExposesPlacementTotal(t *te
 	msr := map[string]playlistMSRRow{
 		"m1": {ratingValue: 1450, tier: "Onyx", tierLabel: "Onyx 1450"},
 	}
-	item := buildPlaylistRankItem(titlepkg.DefaultSlug, p, msr, map[string]int{"pl-ranked": 0}, 5, true)
+	item := buildPlaylistRankItem(titlepkg.DefaultSlug, p, msr, map[string]int{"pl-ranked": 0}, 5, i18n.LocaleFR)
 
 	if item.PlacementTotal == nil || *item.PlacementTotal != 5 {
 		t.Errorf("PlacementTotal: want 5 (matured ranked), got %v", item.PlacementTotal)
@@ -305,7 +273,7 @@ func TestBuildPlaylistRankItem_NonRankedNoMSR(t *testing.T) {
 		isRanked:     false,
 		lastMatchID:  "m1",
 	}
-	item := buildPlaylistRankItem(titlepkg.DefaultSlug, p, map[string]playlistMSRRow{}, map[string]int{}, 10, true)
+	item := buildPlaylistRankItem(titlepkg.DefaultSlug, p, map[string]playlistMSRRow{}, map[string]int{}, 10, i18n.LocaleFR)
 
 	if item.MeasurementMatchesRemaining != nil {
 		t.Errorf("MeasurementMatchesRemaining: want nil, got %v", *item.MeasurementMatchesRemaining)

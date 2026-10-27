@@ -209,7 +209,7 @@ func upsertTranslations(ctx context.Context, db *duckdb.DB, ranks []rankEntry) (
 // collectLangs retourne l'union triée des locales présentes dans les trois
 // champs traduisibles ("en" pour la valeur canonique + chaque clé translations).
 func collectLangs(r rankEntry) []string {
-	set := map[string]struct{}{"en": {}}
+	set := map[string]struct{}{canonicalLang: {}}
 	for _, ts := range []translatableString{r.RankTitle, r.RankSubTitle, r.RankTier} {
 		for k := range ts.Translations {
 			set[k] = struct{}{}
@@ -223,10 +223,14 @@ func collectLangs(r rankEntry) []string {
 	return out
 }
 
-// pick retourne la traduction pour `lang`, ou la valeur canonique si lang == "en"
+// canonicalLang est la clé de la valeur canonique de Waypoint (l'anglais), pas une langue de
+// l'application : collectLangs l'ajoute à chaque jeu de traductions.
+const canonicalLang = "en"
+
+// pick retourne la traduction pour `lang`, ou la valeur canonique si lang == canonicalLang
 // ou absent (fallback EN au cas où Waypoint omet la clé).
 func pick(ts translatableString, lang string) string {
-	if lang == "en" {
+	if lang == canonicalLang {
 		return ts.Value
 	}
 	if v, ok := ts.Translations[lang]; ok {

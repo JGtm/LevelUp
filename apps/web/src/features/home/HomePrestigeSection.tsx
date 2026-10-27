@@ -74,7 +74,7 @@ export function HomePrestigeSection({ playerSlug, titleSlug, locale }: HomePrest
   const prestige = useMyPrestige(playerSlug, titleSlug)
   const arcsQ = useArcs(playerSlug, titleSlug)
   const challengesQ = useQuery({
-    queryKey: queryKeys.challenge.list(playerSlug, titleSlug),
+    queryKey: queryKeys.challenge.list(playerSlug, titleSlug, locale),
     queryFn: () => prestigeApi.listActiveChallenges(playerSlug, titleSlug),
     retry: false,
     staleTime: 30_000,

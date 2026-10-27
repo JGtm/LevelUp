@@ -90,8 +90,3 @@ func (s *MatchExclusionService) recomputePending() bool {
 	p, ok := s.recomputer.(interface{ RecomputePending() bool })
 	return ok && p.RecomputePending()
 }
-
-// ListExcluded retourne les matchs exclus du joueur.
-func (s *MatchExclusionService) ListExcluded(ctx context.Context) ([]domain.ExcludedMatch, error) {
-	return s.repo.ListExcluded(ctx)
-}

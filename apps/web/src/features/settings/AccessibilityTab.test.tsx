@@ -19,6 +19,8 @@ const T_STUB = {
   paletteTolBright: 'Tol Bright',
   paletteTolBrightDesc: 'Palette catégorielle Tol.',
   previewLabel: 'Aperçu',
+  previewOutcome: { win: 'victoire', loss: 'défaite', draw: 'égalité', dnf: 'abandon' },
+  previewDivergent: { pos: 'positif', neutral: 'neutre', neg: 'négatif' },
   teamColorsTitle: 'Couleurs de jeu',
   teamColorsDescription: 'Couleurs outline Halo.',
   allyColorLabel: 'Alliés',

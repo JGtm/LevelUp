@@ -1,5 +1,5 @@
-// Package service — career_service_encounters.go : top matches (best/worst),
-// encounters, top encounters globaux et rivals pour la page Carrière.
+// Package service — career_service_encounters.go : encounters, top encounters
+// globaux et rivals pour la page Carrière.
 // Découpé de career_service.go (god-file split, refactor 2026-05-27).
 package service
 
@@ -17,93 +17,6 @@ import (
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/service/teammates"
 )
-
-// GetTopMatches retourne les 10 meilleurs et 10 moins bons matchs.
-func (s *CareerService) GetTopMatches(ctx context.Context) (domain.CareerTopMatchesResponse, error) {
-	rows, err := s.loadTopMatchRows(ctx)
-	if err != nil {
-		return domain.CareerTopMatchesResponse{}, fmt.Errorf("CareerService.GetTopMatches: %w", err)
-	}
-
-	// Q9 retourne jusqu'à 20 matchs classés DESC par performance_score.
-	// Les 10 premiers = meilleurs, les 10 derniers = moins bons.
-	bestRows, worstRows := splitTopRows(rows)
-	best := convertTopMatches(bestRows)
-	// Inverser l'affichage des pires (les moins bons en premier)
-	reverseTopMatches(worstRows)
-	worst := convertTopMatches(worstRows)
-
-	return domain.CareerTopMatchesResponse{
-		BestMatches:  best,
-		WorstMatches: worst,
-	}, nil
-}
-
-// loadTopMatchRows centralise la résolution repo/adapter pour les top matches
-// (HIGH-C). Adapter-first via LoadTopMatches + reconstitution byte-identique
-// (OutcomeCode → Outcome BRUT) ; fallback repo.GetTopMatches sur capability absente.
-func (s *CareerService) loadTopMatchRows(ctx context.Context) ([]domain.TopMatchRawRow, error) {
-	if s.dataAdapter != nil {
-		canonicalRows, err := s.dataAdapter.LoadTopMatches(ctx, "")
-		if err == nil {
-			if len(canonicalRows) == 0 {
-				return nil, nil
-			}
-			out := make([]domain.TopMatchRawRow, 0, len(canonicalRows))
-			for _, c := range canonicalRows {
-				out = append(out, topMatchRowFromCanonical(c))
-			}
-			return out, nil
-		}
-		if !errors.Is(err, games.ErrCapabilityNotSupported) {
-			return nil, err
-		}
-	}
-	return s.repo.GetTopMatches(ctx)
-}
-
-// topMatchRowFromCanonical projette canonical.CareerTopMatch → domain.TopMatchRawRow
-// (copie profonde des pointeurs). Outcome = OutcomeCode BRUT (le split WIN/LOSS aval
-// compare à domain.OutcomeWin ; jamais via une string canonique).
-func topMatchRowFromCanonical(c canonical.CareerTopMatch) domain.TopMatchRawRow {
-	r := domain.TopMatchRawRow{
-		MatchID:          c.MatchID,
-		PerformanceScore: c.PerformanceScore,
-		Outcome:          c.OutcomeCode,
-		Kills:            c.Kills,
-		Deaths:           c.Deaths,
-		DominanceFlag:    c.DominanceFlag,
-	}
-	if c.StartTime != nil {
-		v := *c.StartTime
-		r.StartTime = &v
-	}
-	if c.MapName != nil {
-		v := *c.MapName
-		r.MapName = &v
-	}
-	if c.PairName != nil {
-		v := *c.PairName
-		r.PairName = &v
-	}
-	if c.PlaylistName != nil {
-		v := *c.PlaylistName
-		r.PlaylistName = &v
-	}
-	if c.KDA != nil {
-		v := *c.KDA
-		r.KDA = &v
-	}
-	if c.TeamMMR != nil {
-		v := *c.TeamMMR
-		r.TeamMMR = &v
-	}
-	if c.EnemyMMR != nil {
-		v := *c.EnemyMMR
-		r.EnemyMMR = &v
-	}
-	return r
-}
 
 // GetEncounters retourne les joueurs les plus fréquemment croisés.
 //
@@ -276,58 +189,4 @@ func encounterDTOFromCanonical(r canonical.EncounterRow) domain.EncounterDTO {
 		AsEnemy:    r.AsEnemy,
 		AvgKDA:     r.AvgKDA,
 	}
-}
-
-// ---------------------------------------------------------------------------
-// Top matches helpers (split/reverse/convert)
-// ---------------------------------------------------------------------------
-
-func splitTopRows(rows []domain.TopMatchRawRow) (best, worst []domain.TopMatchRawRow) {
-	for _, r := range rows {
-		if r.Outcome == domain.OutcomeWin {
-			best = append(best, r)
-		} else {
-			worst = append(worst, r)
-		}
-	}
-	return
-}
-
-func reverseTopMatches(rows []domain.TopMatchRawRow) {
-	for i, j := 0, len(rows)-1; i < j; i, j = i+1, j-1 {
-		rows[i], rows[j] = rows[j], rows[i]
-	}
-}
-
-func convertTopMatches(rows []domain.TopMatchRawRow) []domain.TopMatchDTO {
-	out := make([]domain.TopMatchDTO, 0, len(rows))
-	for _, r := range rows {
-		mapUI := derefStr(r.MapName)
-		modeUI := derefStr(r.PairName)
-		var mapPtr, modePtr *string
-		if mapUI != "" {
-			mapPtr = &mapUI
-		}
-		if modeUI != "" {
-			modePtr = &modeUI
-		}
-		var startPtr *string
-		if r.StartTime != nil {
-			s := r.StartTime.UTC().Format(time.RFC3339)
-			startPtr = &s
-		}
-		out = append(out, domain.TopMatchDTO{
-			MatchID:          r.MatchID,
-			StartTime:        startPtr,
-			PerformanceScore: r.PerformanceScore,
-			MapUI:            mapPtr,
-			ModeUI:           modePtr,
-			OutcomeCode:      r.Outcome,
-			Outcome:          outcomeKeyFromHaloCode(r.Outcome),
-			Kills:            r.Kills,
-			Deaths:           r.Deaths,
-			KDA:              r.KDA,
-		})
-	}
-	return out
 }

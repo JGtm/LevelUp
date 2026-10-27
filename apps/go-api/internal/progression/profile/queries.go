@@ -457,7 +457,6 @@ func (r *duckdbRepo) listTemplatesByLUSRComponents(ctx context.Context, titleSlu
 	rows, err := r.db.Query(ctx, `
 		SELECT id, title_slug, metric, window_type, COALESCE(window_value, ''),
 		       cadence, eval_type, COALESCE(mode_filter, 'universal'),
-		       label_en, label_fr, COALESCE(description_en, ''), COALESCE(description_fr, ''),
 		       normal_target, heroic_target, legendary_target, mythic_target,
 		       COALESCE(lusr_components, ''), COALESCE(radar_axes, ''),
 		       COALESCE(is_long_term, FALSE),
@@ -488,7 +487,31 @@ func (r *duckdbRepo) listTemplatesByLUSRComponents(ctx context.Context, titleSlu
 			out = append(out, t)
 		}
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return out, r.attachTemplateTexts(ctx, out)
+}
+
+// attachTemplateTexts pose sur chaque modèle son libellé et sa description dans chaque langue qui
+// en porte un (asset_translations, type challenge_template ; ADR 0040 D-15).
+func (r *duckdbRepo) attachTemplateTexts(ctx context.Context, ts []prestige.Template) error {
+	if len(ts) == 0 {
+		return nil
+	}
+	ids := make([]string, len(ts))
+	for i := range ts {
+		ids[i] = ts[i].ID
+	}
+	texts, err := duckdb.LoadAssetTexts(ctx, r.db, duckdb.AssetTypeChallengeTemplate, ids)
+	if err != nil {
+		return fmt.Errorf("listTemplatesByLUSRComponents: %w", err)
+	}
+	for i := range ts {
+		ts[i].Labels = texts[ts[i].ID].Name
+		ts[i].Descriptions = texts[ts[i].ID].Description
+	}
+	return nil
 }
 
 // scanTemplateRow scanne une ligne challenge_template depuis un *sql.Rows.
@@ -501,7 +524,6 @@ func scanTemplateRow(row *sql.Rows) (prestige.Template, error) {
 	err := row.Scan(
 		&t.ID, &t.TitleSlug, &t.Metric, &windowType, &t.WindowValue,
 		&cadence, &evalType, &t.ModeFilter,
-		&t.LabelEN, &t.LabelFR, &t.DescriptionEN, &t.DescriptionFR,
 		&t.NormalTarget, &t.HeroicTarget, &t.LegendaryTarget, &t.MythicTarget,
 		&lusrJSON, &radarJSON, &t.IsLongTerm,
 		&t.SchemaVersion, &t.UpdatedAt,

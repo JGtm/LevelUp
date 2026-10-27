@@ -71,8 +71,7 @@ func ComputeKPIsFromCanonical(rows []canonical.PlayerMatchRow, totalMatches int,
 		}
 		if r.Summary.Playlist != nil {
 			id := r.Summary.Playlist.ID
-			en, fr := assetLabels(r.Summary.Playlist)
-			name := labelForLocale(locale, fr, en)
+			name := assetText(r.Summary.Playlist).PickOptional(normalizeHomeLocale(locale))
 			if name != "" && id != "" {
 				playlistCounts[id]++
 				if _, seen := playlistNames[id]; !seen {

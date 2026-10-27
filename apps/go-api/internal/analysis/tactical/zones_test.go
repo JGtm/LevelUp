@@ -6,6 +6,8 @@ package tactical
 
 import (
 	"testing"
+
+	"levelup/go-api/internal/i18n"
 )
 
 func carre(x0, y0, x1, y1 float64) [][2]float64 {
@@ -13,7 +15,7 @@ func carre(x0, y0, x1, y1 float64) [][2]float64 {
 }
 
 func zone(nom string, vol int, contour [][2]float64, zb, zh float64) ZoneNommee {
-	return ZoneNommee{NomFR: nom, NomEN: nom, Polygone: contour, ZBas: zb, ZHaut: zh, VolumeIndex: vol}
+	return ZoneNommee{Nom: i18n.FromColumns(nom, nom), Polygone: contour, ZBas: zb, ZHaut: zh, VolumeIndex: vol}
 }
 
 func attendreZone(t *testing.T, x, y float64, zs []float64, zones []ZoneNommee, nom, regle string) {
@@ -21,15 +23,15 @@ func attendreZone(t *testing.T, x, y float64, zs []float64, zones []ZoneNommee, 
 	got, ok := NommerZone(x, y, zs, zones)
 	if nom == "" {
 		if ok {
-			t.Fatalf("(%v, %v) z=%v : attendu aucun nom, obtenu %q (%s)", x, y, zs, got.Zone.NomFR, got.Regle)
+			t.Fatalf("(%v, %v) z=%v : attendu aucun nom, obtenu %q (%s)", x, y, zs, got.Zone.Nom[i18n.LocaleFR], got.Regle)
 		}
 		return
 	}
 	if !ok {
 		t.Fatalf("(%v, %v) z=%v : attendu %q, obtenu aucun nom", x, y, zs, nom)
 	}
-	if got.Zone.NomFR != nom || got.Regle != regle {
-		t.Fatalf("(%v, %v) z=%v : obtenu %q par %q, attendu %q par %q", x, y, zs, got.Zone.NomFR, got.Regle, nom, regle)
+	if got.Zone.Nom[i18n.LocaleFR] != nom || got.Regle != regle {
+		t.Fatalf("(%v, %v) z=%v : obtenu %q par %q, attendu %q par %q", x, y, zs, got.Zone.Nom[i18n.LocaleFR], got.Regle, nom, regle)
 	}
 }
 
@@ -121,7 +123,7 @@ func TestNommerZone_DeuxMetresStricts(t *testing.T) {
 func TestNommerZone_SansNom(t *testing.T) {
 	zones := []ZoneNommee{
 		zone("Loin", 1, carre(0, 0, 10, 10), 0, 3),
-		{NomFR: "SansForme", NomEN: "SansForme", X: 50, Y: 50, ZBas: 0, ZHaut: 3, VolumeIndex: 2},
+		{Nom: i18n.FromColumns("SansForme", "SansForme"), X: 50, Y: 50, ZBas: 0, ZHaut: 3, VolumeIndex: 2},
 	}
 	attendreZone(t, 50, 50, []float64{1}, zones, "", "")
 	attendreZone(t, 50, 50, nil, zones, "", "")

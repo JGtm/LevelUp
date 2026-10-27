@@ -25,6 +25,7 @@ import (
 	"levelup/go-api/internal/analysis/squadformes"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/halo_infinite/replaylabels"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
@@ -200,14 +201,11 @@ func WeaponCatalog(ctx context.Context, repoRoot, titleSlug, locale string) map[
 			"err", err, "titleSlug", titleSlug)
 		return out
 	}
-	frPreferred := locale != "en"
+	loc := i18n.Parse(locale)
 	for family, key := range cat.Keys {
 		info := squadformes.WeaponInfo{WeaponKey: key}
 		if label, ok := cat.Weapons[family]; ok {
-			info.Label = label.En
-			if frPreferred && label.Fr != "" {
-				info.Label = label.Fr
-			}
+			info.Label = label.Text.Pick(loc)
 		}
 		out[formesWeaponFamilyKey(family)] = info
 	}

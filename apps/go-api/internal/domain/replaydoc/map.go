@@ -4,7 +4,11 @@ package replaydoc
 // socle, structure, et les deux corps de route qui vivent a cote du document
 // (`MapBackground` pour le calage du fond, `MapCalloutsEntry` pour les zones nommees).
 
-import "time"
+import (
+	"time"
+
+	"levelup/go-api/internal/i18n"
+)
 
 // MapObjectives est le calque statique servi avec le rejeu.
 type MapObjectives struct {
@@ -154,8 +158,7 @@ type MapCalloutsEntry struct {
 type CalloutZone struct {
 	VolumeIndex int            `json:"volume_index"`
 	Name        string         `json:"name"`
-	EN          string         `json:"en"`
-	FR          string         `json:"fr"`
+	Text        i18n.Text      `json:"i18n_text,omitempty" required:"true"`
 	X           float64        `json:"x"`
 	Y           float64        `json:"y"`
 	Z           float64        `json:"z"`

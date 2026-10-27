@@ -474,6 +474,18 @@ en = "Sign-in could not be completed. Please try again."
 fr = "Glossaire & Concepts"
 en = "Glossary & Concepts"
 
+[common.units.points_short]
+fr = "pts"
+en = "pts"
+
+[common.help.button_label]
+fr = "Aide"
+en = "Help"
+
+[common.help.tabs_label]
+fr = "Onglets Aide"
+en = "Help tabs"
+
 [common.help.release_notes]
 fr = "Notes de version"
 en = "Release notes"
@@ -1185,6 +1197,10 @@ en = "More information"
 fr = "Placement : #"
 en = "Placement: #"
 
+[common.match_card.heading_connector]
+fr = "sur"
+en = "on"
+
 [common.match_card.map_unknown]
 fr = "Map inconnue"
 en = "Unknown map"
@@ -1645,6 +1661,10 @@ fr = "Les détails de combat (cadence, dominance, duels) sont récupérés en ar
 en = "Combat details (cadence, dominance, duels) are retrieved in the background from Halo films. Some matches that are too old may not be able to be fully processed."
 
 # ─── Notifications page ─────────────────────────────────────────────────
+
+[common.notifications.container_aria]
+fr = "Notifications"
+en = "Notifications"
 
 [common.notifications.bulk_actions_aria]
 fr = "Actions groupées"
@@ -2647,3 +2667,21 @@ en = "Lobby"
 [common.charts.axis_matches]
 fr = "Matchs"
 en = "Matches"
+
+# ─── Barres de répartition des rencontres (infobulles) ──────────────────
+
+[common.encounter_split.matches_ally]
+fr = "{count} matchs en allié"
+en = "{count} matches as ally"
+
+[common.encounter_split.matches_enemy]
+fr = "{count} matchs en ennemi"
+en = "{count} matches as enemy"
+
+[common.encounter_split.kills_dealt]
+fr = "{count} frags infligés"
+en = "{count} kills dealt"
+
+[common.encounter_split.deaths_suffered]
+fr = "{count} morts subies"
+en = "{count} deaths suffered"

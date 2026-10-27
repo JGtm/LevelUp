@@ -32,7 +32,7 @@ var modeNameTrReadRE = regexp.MustCompile(`(?i)\b(?:FROM|JOIN)\s+mode_name_tr\b`
 // home_repo_translations et media_repo_translations en variante de mise en
 // forme), chacun avec sa propre gestion du vide, de la table absente et du handle
 // FATAL-invalidated. Tous convergent désormais vers mode_name_tr.go
-// (queryModeNameTrFR / loadModeNamesFRForKeys / loadKnownModesEN).
+// (queryModeNameTr / loadModeNamesFRForKeys / loadKnownModes).
 //
 // Périmètre : internal/platform/duckdb (sous-paquets inclus) — la seule couche
 // autorisée à parler SQL aux repos de lecture (internal/service ne peut pas
@@ -89,7 +89,7 @@ func TestNoModeNameTrLiteralOutsideCanonicalFile(t *testing.T) {
 
 	if len(offenders) > 0 {
 		t.Errorf("lecture SQL de mode_name_tr hors du fichier canonique %s — "+
-			"utiliser queryModeNameTrFR / loadModeNamesFRForKeys / loadKnownModesEN "+
+			"utiliser queryModeNameTr / loadModeNamesFRForKeys / loadKnownModes "+
 			"(règle CLAUDE.md n°6) :\n  %s",
 			modeNameTrCanonicalFile, strings.Join(offenders, "\n  "))
 	}

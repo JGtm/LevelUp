@@ -6,30 +6,30 @@
  * `MATCH_VIEW_TEXT[locale]` mais vit dans son propre module pour faciliter
  * tests unitaires + extension future (nouveaux kinds de descriptor).
  */
+import { intlLocale } from '@/lib/formatters/intlLocale'
 import type { ContextDescriptor } from '@/lib/match-nav/navContext'
 import { MATCH_VIEW_TEXT, type MatchViewLocale } from './i18n'
 
 /**
  * Format date court pour les descriptors `session` / `period`.
  *
- * FR : `07/05/26 à 21:30` · EN : `07/05/26 at 21:30`.
+ * FR : `07/05/26 à 21:30` · EN : `05/07/26 at 09:30 PM`.
  * Si `withTime=false`, seule la date est rendue (descriptor `period`).
  */
 function fmtShortDateTime(iso: string, locale: MatchViewLocale, withTime: boolean): string {
   const d = new Date(iso)
   if (isNaN(d.getTime())) return iso
-  const intlLocale = locale === 'en' ? 'en-GB' : 'fr-FR'
-  const dateStr = new Intl.DateTimeFormat(intlLocale, {
+  const dateStr = new Intl.DateTimeFormat(intlLocale(locale), {
     day: '2-digit',
     month: '2-digit',
     year: '2-digit',
   }).format(d)
   if (!withTime) return dateStr
-  const timeStr = new Intl.DateTimeFormat(intlLocale, {
+  const timeStr = new Intl.DateTimeFormat(intlLocale(locale), {
     hour: '2-digit',
     minute: '2-digit',
   }).format(d)
-  return locale === 'en' ? `${dateStr} at ${timeStr}` : `${dateStr} à ${timeStr}`
+  return MATCH_VIEW_TEXT[locale].dateTimeJoinFmt(dateStr, timeStr)
 }
 
 /**
@@ -70,8 +70,8 @@ export function buildDescriptorLabel(
       return ''
     }
     case 'playlist':
-      return descriptor.name ? t.ctxPlaylistFmt(descriptor.name) : ''
+      return descriptor.name ? t.ctxPlaylistFmt(descriptor.label || descriptor.name) : ''
     case 'mode':
-      return descriptor.category ? t.ctxModeFmt(descriptor.category) : ''
+      return descriptor.category ? t.ctxModeFmt(descriptor.label || descriptor.category) : ''
   }
 }

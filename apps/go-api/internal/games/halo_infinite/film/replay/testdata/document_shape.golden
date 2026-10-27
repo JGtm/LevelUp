@@ -1,10 +1,10 @@
 # EMPREINTE DE FORME DU DOCUMENT DE REJEU — fige par document_shape_test.go.
 # Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.
 schema 104
-empreinte-stockee 0b17b0d6cd4d78c1
-empreinte-servie 0b17b0d6cd4d78c1
-empreinte-cuite 024d3476ff293972
-empreinte-cuite-regle 2
+empreinte-stockee 24d6f3e9f272182a
+empreinte-servie 24d6f3e9f272182a
+empreinte-cuite 3cb79e686077a360
+empreinte-cuite-regle 3
 
 AbilityCharge
   Charges json:"charges" int
@@ -636,10 +636,9 @@ KnockbackCoverage
   WithoutAuthor json:"withoutAuthor" int
   WithoutImpulse json:"withoutImpulse" int
 Label
-  En json:"en" string
   Family json:"family,omitempty" string
-  Fr json:"fr" string
   Img json:"img,omitempty" string
+  Text json:"i18n_text,omitempty" map[string]string
   Tinted json:"tinted,omitempty" bool
 LayerCoverage
   Ambiguous json:"ambiguous" int
@@ -708,12 +707,11 @@ ObjectiveMarkerDTO
   Y json:"y" float32
   Z json:"z" float32
 ObjectiveObjectLife
-  En json:"en" string
   Family json:"family" string
-  Fr json:"fr" string
   Pts json:"pts" []ObjectiveObjectPoint
   T0 json:"t0" int
   T1 json:"t1" int
+  Text json:"i18n_text,omitempty" map[string]string
 ObjectiveObjectPoint
   T json:"t" int
   X json:"x" float32
@@ -1178,10 +1176,9 @@ VehicleCycle
   X json:"x" float32
   Y json:"y" float32
 VehicleLabel
-  En json:"en,omitempty" string
-  Fr json:"fr,omitempty" string
   Img json:"img,omitempty" string
   Kind json:"kind,omitempty" string
+  Text json:"i18n_text,omitempty" map[string]string
   Tinted json:"tinted,omitempty" bool
 VehicleLifeRef
   Gen json:"gen" uint32
@@ -1235,15 +1232,14 @@ VehicleTrack
   TEnd json:"tEnd,omitempty" *int
   Variant json:"variant,omitempty" string
 VehicleWeapon
-  En json:"en" string
   Fire json:"fire" string
-  Fr json:"fr" string
   Fx json:"fx" string
   Impact json:"impact,omitempty" bool
   ImpactSound json:"impactSound,omitempty" string
   Loop json:"loop,omitempty" string
   Mount json:"mount,omitempty" *VehicleWeaponMount
   Sound json:"sound,omitempty" string
+  Text json:"i18n_text,omitempty" map[string]string
   Tint json:"tint" string
   Vehicle json:"vehicle" string
 VehicleWeaponMount
@@ -1283,13 +1279,12 @@ WeaponChangeCoverage
   Taken json:"taken" int
   UnarmedGrants json:"unarmedGrants" int
 WeaponLabel
-  En json:"en" string
-  Fr json:"fr" string
   Fx json:"fx,omitempty" string
   Img json:"img,omitempty" string
   Impact json:"impact,omitempty" bool
   Key json:"key,omitempty" string
   Role json:"role,omitempty" string
+  Text json:"i18n_text,omitempty" map[string]string
   Tint json:"tint,omitempty" string
   Tinted json:"tinted,omitempty" bool
 WeaponPad

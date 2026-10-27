@@ -8,6 +8,7 @@ import (
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
 const slayerMode = "Slayer"
@@ -31,8 +32,8 @@ func TestMatchHistoryService_GetPage_OK(t *testing.T) {
 	pairName := slayerMode
 	repo := &mockMatchHistoryRepo{
 		rows: []domain.MatchHistoryRawRow{
-			{MatchID: "m1", StartTime: &now, MapName: &mapName, PairName: &pairName, Outcome: 2, Kills: 10, Deaths: 5},
-			{MatchID: "m2", StartTime: &now, MapName: &mapName, PairName: &pairName, Outcome: 3, Kills: 5, Deaths: 10},
+			{MatchID: "m1", StartTime: &now, MapName: i18n.FromColumns(mapName, ""), PairName: i18n.FromColumns(pairName, ""), Outcome: 2, Kills: 10, Deaths: 5},
+			{MatchID: "m2", StartTime: &now, MapName: i18n.FromColumns(mapName, ""), PairName: i18n.FromColumns(pairName, ""), Outcome: 3, Kills: 5, Deaths: 10},
 		},
 	}
 	svc := NewMatchHistoryService(repo, "TestPlayer")
@@ -57,9 +58,9 @@ func TestMatchHistoryService_GetPage_PropagatesIsWithFriendsAndExperience(t *tes
 	pairName := slayerMode
 	repo := &mockMatchHistoryRepo{
 		rows: []domain.MatchHistoryRawRow{
-			{MatchID: "solo", StartTime: &now, MapName: &mapName, PairName: &pairName, IsWithFriends: false, IsRanked: false, Outcome: 2},
-			{MatchID: "squad", StartTime: &now, MapName: &mapName, PairName: &pairName, IsWithFriends: true, IsRanked: true, Outcome: 2},
-			{MatchID: "pve", StartTime: &now, MapName: &mapName, PairName: &pairName, IsWithFriends: false, IsFirefight: true, Outcome: 2},
+			{MatchID: "solo", StartTime: &now, MapName: i18n.FromColumns(mapName, ""), PairName: i18n.FromColumns(pairName, ""), IsWithFriends: false, IsRanked: false, Outcome: 2},
+			{MatchID: "squad", StartTime: &now, MapName: i18n.FromColumns(mapName, ""), PairName: i18n.FromColumns(pairName, ""), IsWithFriends: true, IsRanked: true, Outcome: 2},
+			{MatchID: "pve", StartTime: &now, MapName: i18n.FromColumns(mapName, ""), PairName: i18n.FromColumns(pairName, ""), IsWithFriends: false, IsFirefight: true, Outcome: 2},
 		},
 	}
 	svc := NewMatchHistoryService(repo, "Player")
@@ -97,9 +98,9 @@ func TestMatchHistoryService_GetPage_ExperienceLabelsLocaleAware(t *testing.T) {
 	pairName := slayerMode
 	repo := &mockMatchHistoryRepo{
 		rows: []domain.MatchHistoryRawRow{
-			{MatchID: "unranked", StartTime: &now, MapName: &mapName, PairName: &pairName, Outcome: 2},
-			{MatchID: "ranked", StartTime: &now, MapName: &mapName, PairName: &pairName, IsRanked: true, Outcome: 2},
-			{MatchID: "pve", StartTime: &now, MapName: &mapName, PairName: &pairName, IsFirefight: true, Outcome: 2},
+			{MatchID: "unranked", StartTime: &now, MapName: i18n.FromColumns(mapName, ""), PairName: i18n.FromColumns(pairName, ""), Outcome: 2},
+			{MatchID: "ranked", StartTime: &now, MapName: i18n.FromColumns(mapName, ""), PairName: i18n.FromColumns(pairName, ""), IsRanked: true, Outcome: 2},
+			{MatchID: "pve", StartTime: &now, MapName: i18n.FromColumns(mapName, ""), PairName: i18n.FromColumns(pairName, ""), IsFirefight: true, Outcome: 2},
 		},
 	}
 	svc := NewMatchHistoryService(repo, "Player")

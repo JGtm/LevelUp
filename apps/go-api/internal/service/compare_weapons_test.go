@@ -27,6 +27,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
@@ -160,11 +161,11 @@ func cwScope(n int, kills, deaths, melee, grenade int) *domain.CompareWeaponScop
 // cwRows : trois armes résolues (épaule/poing/lourde) aux frags décroissants.
 func cwRows() []port.WeaponKillRow {
 	return []port.WeaponKillRow{
-		{WeaponID: 1, WeaponKey: "br75", Label: "BR75", LabelEN: "BR75",
+		{WeaponID: 1, WeaponKey: "br75", Label: i18n.Text{i18n.LocaleFR: "BR75", i18n.LocaleEN: "BR75"},
 			Class: domain.FragClassShoulder, Role: "precision", Kills: 10},
-		{WeaponID: 2, WeaponKey: "sidekick", Label: "Sidekick",
+		{WeaponID: 2, WeaponKey: "sidekick", Label: i18n.Text{i18n.LocaleFR: "Sidekick"},
 			Class: domain.FragClassSidearm, Role: "sidearm", Kills: 5},
-		{WeaponID: 3, WeaponKey: "sniper", Label: "Sniper",
+		{WeaponID: 3, WeaponKey: "sniper", Label: i18n.Text{i18n.LocaleFR: "Sniper"},
 			Class: domain.FragClassHeavy, Role: "sniper", Kills: 3},
 	}
 }
@@ -379,9 +380,9 @@ func TestBuildWeaponProfile_PorteeParRoleEtCleSansRoleEcartee(t *testing.T) {
 		t.Errorf("clé de ligne = %q, attendu « precision » : le grain publié est le RÔLE (D1)",
 			rows[0].WeaponKey)
 	}
-	if rows[0].Label != "" || rows[0].LabelEN != "" {
-		t.Errorf("libellés attendus VIDES (D8 : le front résout frags.role.<clé>), obtenu %q/%q",
-			rows[0].Label, rows[0].LabelEN)
+	if rows[0].Label != "" {
+		t.Errorf("libellé attendu VIDE (D8 : le front résout frags.role.<clé>), obtenu %q",
+			rows[0].Label)
 	}
 	if rows[0].Kills == nil || rows[0].Kills.Measured != 10 {
 		t.Fatalf("10 frags mesurés attendus sur la ligne « precision » (5 BR75 + 5 Commando), "+
@@ -397,10 +398,10 @@ func TestBuildWeaponProfile_PorteeParRoleEtCleSansRoleEcartee(t *testing.T) {
 // armes de l'arsenal, et les y ranger ferait concourir « Mêlée » contre un fusil.
 func TestBuildWeaponProfile_TopArmesBorneEtTrie(t *testing.T) {
 	rows := append(cwRows(), port.WeaponKillRow{
-		WeaponID: 4, WeaponKey: "hydra", Label: "Hydra",
+		WeaponID: 4, WeaponKey: "hydra", Label: i18n.Text{i18n.LocaleFR: "Hydra"},
 		Class: domain.FragClassHeavy, Role: "power", Kills: 2,
 	}, port.WeaponKillRow{
-		WeaponID: 5, Label: "Mêlée", Kills: 99, IsGrenadeMelee: true,
+		WeaponID: 5, Label: i18n.Text{i18n.LocaleFR: "Mêlée"}, Kills: 99, IsGrenadeMelee: true,
 	}, port.WeaponKillRow{
 		WeaponID: 6, WeaponKey: "sans_nom", Class: domain.FragClassShoulder, Role: "automatic", Kills: 50,
 	})
@@ -526,5 +527,30 @@ func TestCompareService_GetPage_PorteLeProfilDArmes(t *testing.T) {
 	}
 	if len(resp.Metrics) == 0 {
 		t.Error("les métriques de la page doivent rester intactes")
+	}
+}
+
+// TestCompareTopWeapons_NomDansLaLangueDeLaRequete : le nom d'une arme du top suit la langue de la
+// requête (repli en) ; une langue sans texte se replie sur l'anglais, jamais sur une autre langue.
+func TestCompareTopWeapons_NomDansLaLangueDeLaRequete(t *testing.T) {
+	rows := []port.WeaponKillRow{
+		{WeaponID: 1, WeaponKey: "br75", Label: i18n.Text{i18n.LocaleFR: "Fusil de combat", i18n.LocaleEN: "Battle Rifle"},
+			Class: domain.FragClassShoulder, Kills: 10},
+		{WeaponID: 2, WeaponKey: "sidekick", Label: i18n.Text{i18n.LocaleEN: "Sidekick"},
+			Class: domain.FragClassSidearm, Kills: 5},
+	}
+	s := &CompareService{}
+	for _, c := range []struct {
+		loc           i18n.Locale
+		first, second string
+	}{
+		{i18n.LocaleFR, "Fusil de combat", "Sidekick"},
+		{i18n.LocaleEN, "Battle Rifle", "Sidekick"},
+		{i18n.Locale("zz"), "Battle Rifle", "Sidekick"},
+	} {
+		top := s.compareTopWeapons(c.loc, rows)
+		if len(top) != 2 || top[0].Label != c.first || top[1].Label != c.second {
+			t.Errorf("locale %q : top = %+v, want %q puis %q", c.loc, top, c.first, c.second)
+		}
 	}
 }

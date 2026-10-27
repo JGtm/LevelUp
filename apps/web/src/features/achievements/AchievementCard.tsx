@@ -10,7 +10,6 @@ import { Tooltip } from '@/components/ui/tooltip'
 import {
   ACHIEVEMENTS_TEXT,
   formatUnlockedDate,
-  pickLocalized,
   type AchievementsLocale,
 } from './i18n'
 
@@ -27,16 +26,13 @@ interface Props {
 
 export function AchievementCard({ achievement, locale, fixedWidth = true }: Props) {
   const t = ACHIEVEMENTS_TEXT[locale]
-  const name = pickLocalized(achievement.name_en, achievement.name_fr, locale)
+  // Le serveur sert nom et descriptions dans la langue de la requête (repli anglais côté serveur).
+  const name = achievement.name
 
   // Description : utilise locked_desc si verrouillé et disponible, sinon description normale.
-  let description: string
-  if (achievement.unlocked) {
-    description = pickLocalized(achievement.description_en, achievement.description_fr, locale)
-  } else {
-    const locked = pickLocalized(achievement.locked_desc_en, achievement.locked_desc_fr, locale)
-    description = locked || pickLocalized(achievement.description_en, achievement.description_fr, locale)
-  }
+  const description = achievement.unlocked
+    ? achievement.description
+    : achievement.locked_desc || achievement.description
 
   const unlockedDate = formatUnlockedDate(achievement.unlocked_at, locale)
   const progress =

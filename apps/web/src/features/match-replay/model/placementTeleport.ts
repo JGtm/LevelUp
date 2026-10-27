@@ -27,6 +27,7 @@
  * (négatif mesuré sur trois : R1 §1-3 et R6 §1.4) : on ne dessine donc rien avant lui — voir
  * `riftStations.ts`, qui porte cette partie.
  */
+import { allTexts } from '@/lib/i18n/pickText'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import type { XY } from '../../../lib/replay/replayLogic'
 
@@ -59,7 +60,7 @@ export function translocatorRanks(
 ): ReadonlySet<number> {
   const ranks = new Set<number>()
   for (const [rank, label] of Object.entries(labels ?? {})) {
-    const text = `${label?.fr ?? ''} ${label?.en ?? ''}`.toLowerCase()
+    const text = allTexts(label).join(' ').toLowerCase()
     if (text.includes('transloc')) ranks.add(Number(rank))
   }
   if (ranks.size === 0) ranks.add(RANG_TRANSLOCATEUR)

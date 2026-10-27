@@ -16,29 +16,29 @@
 // seront portés full canonical et les analyses legacy retirées.
 package legacymatch
 
-import "time"
+import (
+	"time"
+
+	"levelup/go-api/internal/i18n"
+)
 
 // HomeMatchRow est une ligne brute chargée depuis Q26 (matchs du home).
 type HomeMatchRow struct {
 	MatchID   string
 	StartTime time.Time
 	MapID     string
-	MapName   string
-	MapNameFR string
+	MapName   i18n.Text
 	// MapImageURL est résolue par HomeRepo depuis map_images_registry
 	// (lookup par map_id, pattern asset kinds). Empty si pas d'entrée
 	// dans le registry — l'analysis layer émet alors nil et le frontend
 	// dégrade gracieusement (placeholder map inconnue).
 	MapImageURL        string
 	PairID             string
-	PairName           string
-	PairNameFR         string
+	PairName           i18n.Text
 	GameVariantID      string
-	GameVariantName    string
-	GameVariantNameFR  string
+	GameVariantName    i18n.Text
 	PlaylistID         string
-	PlaylistName       string
-	PlaylistNameFR     string
+	PlaylistName       i18n.Text
 	IsFirefight        bool
 	IsRanked           bool
 	SessionLabel       *string
@@ -107,21 +107,17 @@ type StatsMatchRow struct {
 	// ShotsHit : tirs au but du match (match_participants.shots_hit). Alimente le
 	// fallback populationnel du modèle d'assists attendus (slope × (personal_score +
 	// shots_hit) + intercept). nil si non chargé.
-	ShotsHit       *int
-	Rank           *int
-	IsRanked       bool
-	IsFirefight    bool
-	IsWithFriends  bool
-	PlaylistName   string
-	PlaylistNameFR string
-	PairName       string
-	PairNameFR     string
+	ShotsHit      *int
+	Rank          *int
+	IsRanked      bool
+	IsFirefight   bool
+	IsWithFriends bool
+	PlaylistName  i18n.Text
+	PairName      i18n.Text
 	// GameVariant : source de repli pour le mode FR (les game_variant sont localisés,
 	// contrairement à asset_translations[pair]). Cf. buildSessionDetailRows.
-	GameVariantName   string
-	GameVariantNameFR string
-	MapName           string
-	MapNameFR         string
+	GameVariantName i18n.Text
+	MapName         i18n.Text
 	// MapID : l'identifiant de la carte (Summary.Map.ID) — la clé qui rattache une variante à sa carte de
 	// base dans les agrégats par carte. Vide quand la source n'en porte pas.
 	MapID               string
@@ -161,7 +157,6 @@ type StatsMatchRow struct {
 	SkillExpectedWinProb      *float64 // proba de victoire pré-match ∈ [0,1] (LUSR v2, SkillSnapshot.ExpectedWinProb)
 	// Codes de palier (pour reconstruire le libellé "Or III" comme l'Explorer) :
 	SkillTierCode       *string  // code EN stable (ex: "gold", "diamond", "onyx")
-	SkillTierCodeFR     *string  // libellé FR du tier (ex: "Or", "Diamant") depuis match_skill_rank.tier_fr
 	SkillSubTier        *int     // 1..6, nil pour Onyx
 	EngagementScoreBrut *float64 // résidu brut engagement, nil si non calculé
 	EngagementPaceRatio *float64 // engagement absolu = pace_joueur/pace_lobby, nil si indispo

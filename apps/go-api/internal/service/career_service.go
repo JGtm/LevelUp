@@ -27,6 +27,7 @@ import (
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/games/mappings"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/teammates"
@@ -222,7 +223,8 @@ func (s *CareerService) GetCareerPage(ctx context.Context) (domain.CareerPageRes
 	hero := buildHeroProgress(xpTotal, rankIDFromData(rank), xpHeroMax, heroRankMax(rank))
 	// Libellé du rang max (« Héros » / « SR 152 ») title-agnostic : source-fournie
 	// (Halo 5) ou catalogue du titre (Halo Infinite). Vide → libellé générique front.
-	hero.MaxRankNameFR, hero.MaxRankNameEN = s.resolveMaxRankNames(rank)
+	maxRankName := s.resolveMaxRankName(rank)
+	hero.MaxRankName = maxRankName.PickOptional(i18n.FromContext(ctx))
 	projs := buildProjections(xpHistory, xpTotal, xpHeroMax)
 	lusr := buildLUSRSummary(lusrHistory)
 
@@ -317,14 +319,15 @@ func rankDataFromCanonical(snap *canonical.CareerSnapshot) *domain.CareerRankDat
 	}
 	// Libellé du rang max porté par la source (Halo 5 : « SR 152 »). Le service le
 	// recopie tel quel dans HeroProgress ; Halo Infinite laisse MaxRank nil et le
-	// service résout depuis son catalogue de rangs (cf. resolveMaxRankNames).
+	// service résout depuis son catalogue de rangs (cf. resolveMaxRankName).
 	if snap.MaxRank != nil {
-		if fr := assetRefLabel(snap.MaxRank, "fr"); fr != "" {
-			row.MaxRankNameFR = &fr
+		names := make(i18n.Text, len(i18n.Locales()))
+		for _, l := range i18n.Locales() {
+			if v := assetRefLabel(snap.MaxRank, string(l)); v != "" {
+				names[l] = v
+			}
 		}
-		if en := assetRefLabel(snap.MaxRank, "en"); en != "" {
-			row.MaxRankNameEN = &en
-		}
+		row.MaxRankName = names
 	}
 	return row
 }
@@ -447,7 +450,7 @@ func lusrCheckpointsFromCanonical(cs []canonical.LUSRCheckpoint) []domain.LUSRCh
 // avec Synthetic non-nil (fallback S54-A8).
 func (s *CareerService) resolveCurrentSeason(ctx context.Context) *domain.CurrentSeasonResult {
 	if s.metaRepo == nil {
-		return syntheticSeasonResult()
+		return syntheticSeasonResult(ctx)
 	}
 	titleID := s.titleSlug
 	if titleID == "" {
@@ -456,17 +459,17 @@ func (s *CareerService) resolveCurrentSeason(ctx context.Context) *domain.Curren
 	slog.DebugContext(ctx, "resolveCurrentSeason", "titleSlug", titleID)
 	season, err := s.metaRepo.GetCurrentSeason(ctx, titleID)
 	if err != nil || season == nil {
-		return syntheticSeasonResult()
+		return syntheticSeasonResult(ctx)
 	}
 	return &domain.CurrentSeasonResult{Season: season}
 }
 
 // syntheticSeasonResult retourne un fallback synthétique (0 date hardcodée).
-func syntheticSeasonResult() *domain.CurrentSeasonResult {
+func syntheticSeasonResult(ctx context.Context) *domain.CurrentSeasonResult {
 	return &domain.CurrentSeasonResult{
 		Synthetic: &domain.SeasonSynthetic{
 			SeasonID:   "unknown",
-			Name:       "Saison inconnue",
+			Name:       i18n.Msg(i18n.FromContext(ctx), "common.season.unknown", nil),
 			StartDate:  time.Time{},
 			IsFallback: true,
 		},

@@ -5,21 +5,19 @@ import (
 	"strings"
 )
 
+// Q34 : structure des citations (les noms et descriptions viennent des tables par langue, citation_texts.go).
+// L'ordre final (catégorie, puis nom dans la langue par défaut) est posé en Go après la lecture des textes.
 const Q34CitationMappings = `
 SELECT
     citation_name_norm,
-    citation_name_display,
-    COALESCE(citation_name_display_en, '') AS citation_name_display_en,
     mapping_type,
     COALESCE(category, 'misc')    AS category,
     image_path,
-    description,
-    COALESCE(description_en, '') AS description_en,
     tier_targets,
     composite_children
 FROM citation_mappings
 WHERE enabled IS NOT FALSE
-ORDER BY category, citation_name_display`
+ORDER BY category, citation_name_norm`
 
 // Q35 : Citations — totaux agrégés depuis match_citations (player stats.duckdb).
 // Paramètre : aucun.
@@ -50,7 +48,7 @@ ORDER BY total_count DESC`
 const Q36bMedalCitationMappings = `
 SELECT
     medal_id,
-    citation_name_display,
+    citation_name_norm,
     COALESCE(category, 'misc')  AS category,
     image_path
 FROM citation_mappings
@@ -95,11 +93,10 @@ LIMIT 4`
 
 // Q39 : Moteur citations — mappings citation→medal depuis metadata.duckdb.
 // Paramètre : aucun. Requête sur pdb.Metadata.
-// Retourne 4 colonnes : citation_name_norm, citation_name_display, medal_id, mapping_type.
+// Retourne 3 colonnes : citation_name_norm, medal_id, mapping_type.
 const Q39CitationMedalMappings = `
 SELECT
     citation_name_norm,
-    citation_name_display,
     medal_id,
     COALESCE(mapping_type, 'medal') AS mapping_type
 FROM citation_mappings

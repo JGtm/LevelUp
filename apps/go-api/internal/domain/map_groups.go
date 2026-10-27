@@ -1,6 +1,10 @@
 package domain
 
-import "sort"
+import (
+	"sort"
+
+	"levelup/go-api/internal/i18n"
+)
 
 // GroupesDeCartes regroupe les identifiants de carte (map_id) qui désignent un même terrain :
 // une carte de base, ses variantes déclarées (map_variants.toml : « - Ranked », « Heavies ») et
@@ -13,9 +17,9 @@ import "sort"
 //
 // La valeur zéro est utilisable : aucun groupe, chaque identifiant reste seul.
 type GroupesDeCartes struct {
-	baseDe   map[string]string            // identifiant membre -> identifiant de base (base comprise)
-	membres  map[string][]string          // identifiant de base -> membres triés (base comprise)
-	libelles map[string]map[string]string // identifiant de base -> locale -> libellé de la base
+	baseDe   map[string]string    // identifiant membre -> identifiant de base (base comprise)
+	membres  map[string][]string  // identifiant de base -> membres triés (base comprise)
+	libelles map[string]i18n.Text // identifiant de base -> libellé de la base par langue
 }
 
 // NewGroupesDeCartes construit la table depuis `baseParMembre` (identifiant membre -> identifiant
@@ -107,43 +111,50 @@ func (g GroupesDeCartes) Membres(id string) []string {
 // Vide dit si aucun groupe n'existe.
 func (g GroupesDeCartes) Vide() bool { return len(g.baseDe) == 0 }
 
-// LocaleLibelleParDefaut est la locale de repli de Libelle : le nom EN de la carte de base.
-const LocaleLibelleParDefaut = "en"
-
 // AvecLibelles rend une copie de la table qui porte, par identifiant de base, le libellé de la carte
-// de base par locale (`libelles[base][locale]`). Les entrées dont la base n'est pas celle d'un groupe
+// de base dans chaque langue (`libelles[base]`). Les entrées dont la base n'est pas celle d'un groupe
 // sont ignorées. La table d'origine n'est pas modifiée.
-func (g GroupesDeCartes) AvecLibelles(libelles map[string]map[string]string) GroupesDeCartes {
+func (g GroupesDeCartes) AvecLibelles(libelles map[string]i18n.Text) GroupesDeCartes {
 	out := GroupesDeCartes{baseDe: g.baseDe, membres: g.membres}
-	for base, parLocale := range libelles {
-		if _, ok := g.membres[base]; !ok || len(parLocale) == 0 {
+	for base, noms := range libelles {
+		if _, ok := g.membres[base]; !ok || noms.Empty() {
 			continue
 		}
 		if out.libelles == nil {
-			out.libelles = make(map[string]map[string]string)
+			out.libelles = make(map[string]i18n.Text)
 		}
-		out.libelles[base] = parLocale
+		out.libelles[base] = noms
 	}
 	return out
 }
 
-// Libelle rend le libellé de la carte de BASE du groupe de `id`, dans la `locale` demandée, à défaut
-// en LocaleLibelleParDefaut. `ok` est faux quand `id` n'appartient à aucun groupe ou que la base n'a
-// aucun libellé : l'appelant garde alors le libellé propre de la carte.
+// Libelle rend le libellé de la carte de BASE du groupe de `id`, dans la langue `loc`, à défaut dans
+// la langue de repli (i18n.Fallback). `ok` est faux quand `id` n'appartient à aucun groupe ou que la
+// base n'a aucun libellé : l'appelant garde alors le libellé propre de la carte.
 //
 // C'est ce libellé, et jamais celui d'une variante, qu'une ligne regroupée affiche : aucune mention de
 // la variante (décision produit du 2026-10-26).
-func (g GroupesDeCartes) Libelle(id, locale string) (string, bool) {
-	base, ok := g.baseDe[id]
+func (g GroupesDeCartes) Libelle(id string, loc i18n.Locale) (string, bool) {
+	noms, ok := g.Noms(id)
 	if !ok {
 		return "", false
 	}
-	parLocale := g.libelles[base]
-	if l := parLocale[locale]; l != "" {
-		return l, true
-	}
-	if l := parLocale[LocaleLibelleParDefaut]; l != "" {
+	if l := noms.Pick(loc); l != "" {
 		return l, true
 	}
 	return "", false
+}
+
+// Noms rend les libellés de la carte de BASE du groupe de `id` dans toutes les langues renseignées.
+// `ok` est faux quand `id` n'appartient à aucun groupe ou que la base n'a aucun libellé.
+func (g GroupesDeCartes) Noms(id string) (i18n.Text, bool) {
+	base, ok := g.baseDe[id]
+	if !ok {
+		return nil, false
+	}
+	noms := g.libelles[base]
+	if noms.Empty() {
+		return nil, false
+	}
+	return noms.Clone(), true
 }

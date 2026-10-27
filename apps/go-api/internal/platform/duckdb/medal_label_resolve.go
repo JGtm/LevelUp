@@ -1,73 +1,60 @@
-// Package duckdb — medal_label_resolve.go : source unique de l'expression SQL de
-// résolution label + description d'une médaille (locale-aware).
+// Package duckdb — medal_label_resolve.go : source unique de la résolution label + description d'une
+// médaille dans la langue de la requête.
 //
-// Pourquoi : quatre lecteurs résolvent le nom/description d'une médaille depuis
-// medal_definitions (+ medal_translations) — la vue Match (lookupMedalMeta), la
-// tuile Home (resolveMedalLabels), l'Explorer/Squad (MedalDefinitionsRepo.
-// LookupByIDs) et le tab Assets (ListMedalsByTitle). Avant centralisation, une
-// copie (Explorer/Squad) avait dérivé en OMETTANT les colonnes FR
-// (md.name_fr / md.description_fr) → médailles non traduites sur la page Escouade
-// ET le tab assets, sur Halo 5 ET Infinite (medal_translations est vide : aucun
-// INSERT Go ne la peuple, la vraie source FR est medal_definitions.name_fr).
+// Les textes d'une médaille vivent dans medal_translations, une ligne par (médaille, étiquette
+// Halo) ; medal_definitions ne porte plus que des colonnes non textuelles (difficulté, type,
+// score personnel, sprite). Les lecteurs (vue Match, tuile Home, Explorer/Squad, page Médailles,
+// tiroir d'actifs) lisent leurs colonnes non textuelles puis passent par ce helper, au lieu de
+// recopier une chaîne de repli en SQL.
 //
-// Ce helper émet la chaîne canonique LOCALE-AWARE pour empêcher une 5e copie de
-// rederiver. Calqué sur medal_citation_fallback.go (source unique du fallback).
-//
-// Chaîne de priorité (alias attendus dans la requête : `md` = medal_definitions,
-// `mt_loc` = medal_translations[locale], `mt_en` = medal_translations[en-US]) :
-//
-//	locale FR : label       = mt_loc.name → md.name_fr → mt_en.name → md.name_en
-//	            description = md.description_fr → mt_loc.description → md.description_en
-//	locale EN : label       = mt_loc.name → mt_en.name → md.name_en   (PAS name_fr)
-//	            description = mt_loc.description → md.description_en    (PAS description_fr)
-//
-// L'ordre FR préserve la priorité historique de la vue Match (md.name_fr AVANT
-// mt_en.name) pour ne pas régresser ; il NE FAUT PAS injecter name_fr/
-// description_fr en locale EN (sinon un client EN reçoit du FR).
+// Chaîne de repli (ADR 0040 D-4, game names) : texte de la langue demandée, sinon texte de la
+// langue de repli (`en`), sinon vide ; aucune traduction n'est inventée. Une langue vide ou
+// inconnue se lit comme la langue de repli.
 package duckdb
 
-// medalLabelDescCoalesceSQL retourne les deux expressions SELECT (label,
-// description) à interpoler dans une requête médaille, en fonction de la locale
-// applicative ("fr" ou "en"). Les alias `md`, `mt_loc`, `mt_en` doivent exister
-// dans la requête appelante (cf. medalTranslationJoinsSQL).
-func medalLabelDescCoalesceSQL(locale string) (labelExpr, descExpr string) {
-	if medalLangCode(locale) == LangCodeFR {
-		labelExpr = `COALESCE(
-			NULLIF(TRIM(mt_loc.name),''),
-			NULLIF(TRIM(md.name_fr),''),
-			NULLIF(TRIM(mt_en.name),''),
-			NULLIF(TRIM(md.name_en),''),
-			''
-		)`
-		descExpr = `COALESCE(
-			NULLIF(TRIM(md.description_fr),''),
-			NULLIF(TRIM(mt_loc.description),''),
-			NULLIF(TRIM(md.description_en),''),
-			''
-		)`
-		return labelExpr, descExpr
-	}
-	// Locale EN (défaut) : ne jamais injecter les colonnes FR.
-	labelExpr = `COALESCE(
-		NULLIF(TRIM(mt_loc.name),''),
-		NULLIF(TRIM(mt_en.name),''),
-		NULLIF(TRIM(md.name_en),''),
-		''
-	)`
-	descExpr = `COALESCE(
-		NULLIF(TRIM(mt_loc.description),''),
-		NULLIF(TRIM(md.description_en),''),
-		''
-	)`
-	return labelExpr, descExpr
+import (
+	"context"
+	"strings"
+
+	"levelup/go-api/internal/i18n"
+)
+
+// medalText est le label et la description d'une médaille dans une langue de lecture.
+type medalText struct {
+	label       string
+	description string
 }
 
-// medalTranslationJoinsSQL retourne les deux LEFT JOIN (mt_loc[locale] + mt_en[en-US])
-// sur medal_translations à coller après `FROM medal_definitions md`. Tolère une
-// table medal_translations vide (LEFT JOIN → NULL → COALESCE retombe sur md.*).
-func medalTranslationJoinsSQL(locale string) string {
-	return `LEFT JOIN medal_translations mt_loc
-			    ON mt_loc.medal_name_id = md.medal_name_id AND mt_loc.lang = '` + medalLangCode(locale) + `'
-			 LEFT JOIN medal_translations mt_en
-			    ON mt_en.medal_name_id = md.medal_name_id AND mt_en.lang = '` + LangCodeEN + `'`
+// medalReadLocale retourne la langue de lecture d'une langue demandée : la langue elle-même si
+// elle figure dans la liste, sinon la langue de repli (un nom de jeu n'est jamais servi dans la
+// langue par défaut faute de mieux).
+func medalReadLocale(locale string) i18n.Locale {
+	if l, ok := i18n.Lookup(locale); ok {
+		return l
+	}
+	return i18n.Fallback
+}
+
+// pickMedalText choisit label et description dans la langue de lecture (repli compris).
+func pickMedalText(t DefinitionTexts, loc i18n.Locale) medalText {
+	return medalText{
+		label:       strings.TrimSpace(t.Name.Pick(loc)),
+		description: strings.TrimSpace(t.Description.PickOptional(loc)),
+	}
+}
+
+// loadMedalLabels lit medal_translations pour `ids` et résout label et description dans la langue
+// demandée. Une médaille sans aucune ligne de traduction est absente du résultat : l'appelant
+// applique son repli (citation_mappings, identifiant).
+func loadMedalLabels(ctx context.Context, q metaQuerier, ids []int64, locale string) (map[int64]medalText, error) {
+	texts, err := LoadMedalTexts(ctx, q, uniqueInt64s(ids))
+	if err != nil {
+		return nil, err
+	}
+	loc := medalReadLocale(locale)
+	out := make(map[int64]medalText, len(texts))
+	for id, t := range texts {
+		out[id] = pickMedalText(t, loc)
+	}
+	return out, nil
 }

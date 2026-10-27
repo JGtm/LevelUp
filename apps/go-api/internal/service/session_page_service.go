@@ -15,6 +15,7 @@ import (
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/games/mappings"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
@@ -377,19 +378,20 @@ func (s *SessionPageService) attachSessionEventBlocks(
 	timelines := timeline.BuildTimelinesFromPlayerMatches(canonicalRows)
 	corrected := timeline.CorrectEvents(events, timelines)
 	durations := timeline.GameplayDurationsMS(timelines)
+	loc := i18n.FromContext(ctx)
 	// buildIntensityRows produit une ligne pour CHAQUE match présent dans les events
 	// (le paramètre matches ne sert qu'aux libellés) : on scinde donc les events par
 	// session AVANT chaque appel, sinon les matchs de la session comparée fuiteraient
 	// dans le profil de la session courante (et inversement).
 	currentEvents := filterHighlightEventsByMatches(corrected, currentMatches)
-	resp.IntensityRows = buildIntensityRows(currentEvents, currentMatches, s.playerXUID, durations)
+	resp.IntensityRows = buildIntensityRows(intensityScope{currentEvents, currentMatches, durations, loc}, s.playerXUID)
 	resp.FirstBlood = buildSoloFirstBlood(s.gamertag, narrative.ComputeFirstEventsPerMatch(
-		currentEvents, s.playerXUID, matchIDsFromStatsRows(currentMatches)), currentMatches)
+		currentEvents, s.playerXUID, matchIDsFromStatsRows(currentMatches)), currentMatches, loc)
 	if len(compareMatches) > 0 {
 		compareEvents := filterHighlightEventsByMatches(corrected, compareMatches)
-		resp.CompareIntensityRows = buildIntensityRows(compareEvents, compareMatches, s.playerXUID, durations)
+		resp.CompareIntensityRows = buildIntensityRows(intensityScope{compareEvents, compareMatches, durations, loc}, s.playerXUID)
 		resp.CompareFirstBlood = buildSoloFirstBlood(s.gamertag, narrative.ComputeFirstEventsPerMatch(
-			compareEvents, s.playerXUID, matchIDsFromStatsRows(compareMatches)), compareMatches)
+			compareEvents, s.playerXUID, matchIDsFromStatsRows(compareMatches)), compareMatches, loc)
 	}
 }
 
@@ -560,8 +562,8 @@ type sessionPlacement struct {
 
 // computeSessionPlacements calcule le placement X/Y par match en RÉUTILISANT la
 // logique de l'Explorer (applyMatchPlacements) — cohérence garantie avec l'app. On
-// convertit tous les matchs en MatchHistoryRawRow : le label CSR "Placement (N
-// restants)" est synthétisé depuis MeasurementRemaining ; LUSR dérivé des 10 plus
+// convertit tous les matchs en MatchHistoryRawRow : le label CSR de placement
+// (domain.PlacementLabel) est synthétisé depuis MeasurementRemaining ; LUSR dérivé des 10 plus
 // vieux par chaîne. `rows` DOIT contenir TOUS les matchs (pas que la session) pour
 // que le calcul LUSR (chronologique global par chaîne) soit correct.
 func (s *SessionPageService) computeSessionPlacements(ctx context.Context, rows []legacymatch.StatsMatchRow) map[string]sessionPlacement {
@@ -586,17 +588,16 @@ func (s *SessionPageService) computeSessionPlacements(ctx context.Context, rows 
 		if src.Outcome != nil {
 			mr.Outcome = *src.Outcome
 		}
-		if src.PairName != "" {
-			pn := src.PairName
-			mr.PairName = &pn
+		if en := src.PairName[i18n.Fallback]; en != "" {
+			mr.PairName = i18n.FromColumns(en, "")
 		}
 		if src.SkillRatingType != "" {
 			rt := strings.ToUpper(src.SkillRatingType) // "csr"/"lusr" → "CSR"/"LUSR"
 			mr.SkillRatingType = &rt
-			// CSR en placement : applyCSRPlacements parse "Placement (N restants)" ;
-			// on le synthétise depuis MeasurementRemaining (la valeur N).
+			// CSR en placement : applyCSRPlacements lit le libellé stocké ; on le reconstruit
+			// depuis MeasurementRemaining (la valeur N) par la même fonction que l'écriture.
 			if rt == "CSR" && src.SkillMeasurementRemaining != nil && *src.SkillMeasurementRemaining > 0 {
-				lbl := fmt.Sprintf("Placement (%d restants)", *src.SkillMeasurementRemaining)
+				lbl := domain.PlacementLabel(*src.SkillMeasurementRemaining)
 				mr.SkillTierLabel = &lbl
 			}
 		}
@@ -646,6 +647,21 @@ func applyPlacementsToRows(rows []domain.SessionDetailMatchRow, placements map[s
 	}
 }
 
+// sessionModeUI résout le libellé de mode d'une ligne dans la langue `loc`. Repli GameVariant
+// (localisé) quand la cascade pair n'a pas de nom dans cette langue : même repli que le converter
+// Home. Il ne se déclenche que si le GameVariant est réellement localisé (≠ langue de repli) → n'écrase
+// jamais une résolution déjà correcte.
+func sessionModeUI(loc i18n.Locale, row legacymatch.StatsMatchRow) string {
+	modeUI := derefString(analysis.ResolveModeUIIn(loc, row.PairName))
+	if !row.PairName.Has(loc) && row.GameVariantName.Has(loc) &&
+		!strings.EqualFold(row.GameVariantName[loc], row.GameVariantName[i18n.Fallback]) {
+		if localized := derefString(analysis.ResolveModeUIIn(loc, row.GameVariantName)); localized != "" {
+			modeUI = localized
+		}
+	}
+	return modeUI
+}
+
 func buildSessionDetailRows(
 	rows []legacymatch.StatsMatchRow,
 	dominantCategory *string,
@@ -653,20 +669,14 @@ func buildSessionDetailRows(
 	assistsExpected map[string]*float64,
 	careerXPEras []mappings.CareerXPEra,
 ) []domain.SessionDetailMatchRow {
-	// Locale-aware (aligné Home/Explorer) : FR par défaut, EN si locale == "en".
-	// Sans ça les cartes/modes/playlists restaient figés (FR si trad présente,
+	// Locale-aware (aligné Home/Explorer) : la langue de la requête (i18n.Parse : inconnue ou vide,
+	// la langue par défaut). Sans ça les cartes/modes/playlists restaient figés (FR si trad présente,
 	// sinon EN) quelle que soit la locale sélectionnée par l'utilisateur.
-	frPreferred := locale != "en"
+	loc := i18n.Parse(locale)
 	out := make([]domain.SessionDetailMatchRow, 0, len(rows))
 	for _, row := range rows {
-		mapName := row.MapName
-		if frPreferred && row.MapNameFR != "" {
-			mapName = row.MapNameFR
-		}
-		playlist := row.PlaylistName
-		if frPreferred && row.PlaylistNameFR != "" {
-			playlist = row.PlaylistNameFR
-		}
+		mapName := row.MapName.Pick(loc)
+		playlist := row.PlaylistName.Pick(loc)
 		var deltaMMR *float64
 		if row.TeamMMR != nil && row.EnemyMMR != nil {
 			d := *row.TeamMMR - *row.EnemyMMR
@@ -676,27 +686,10 @@ func buildSessionDetailRows(
 		if row.PerfScoreComputed != nil {
 			perfTier = int(analysis.PerfTier(*row.PerfScoreComputed))
 		}
-		// Mode : ResolveModeUI prend la trad FR si fournie ; en EN on passe nil
-		// pour rester sur le sous-mode normalisé EN.
-		var modeUI string
-		if frPreferred {
-			modeUI = derefString(analysis.ResolveModeUI(&row.PairName, &row.PairNameFR))
-			// Repli GameVariant (localisé FR) quand la cascade pair n'a pas trouvé de FR
-			// (pair_name_fr NULL + asset_translations[pair] non localisé). Même repli que
-			// le converter Home. Ne se déclenche que si le GameVariant FR est réellement
-			// localisé (≠ EN) → n'écrase jamais une résolution FR déjà correcte.
-			if row.PairNameFR == "" && row.GameVariantNameFR != "" &&
-				!strings.EqualFold(row.GameVariantNameFR, row.GameVariantName) {
-				if fr := derefString(analysis.ResolveModeUI(&row.GameVariantName, &row.GameVariantNameFR)); fr != "" {
-					modeUI = fr
-				}
-			}
-		} else {
-			modeUI = derefString(analysis.ResolveModeUI(&row.PairName, nil))
-		}
+		modeUI := sessionModeUI(loc, row)
 		// Libellé du palier ("Or III", "Diamant V"…) construit comme l'Explorer —
 		// la colonne "Rang" affiche le palier, pas la valeur brute. Nil si non rankée.
-		skillTierLabel := analysis.BuildSkillTierLabel(row.SkillTierCode, row.SkillTierCodeFR, row.SkillSubTier, frPreferred)
+		skillTierLabel := analysis.BuildSkillTierLabel(row.SkillTierCode, row.SkillSubTier, loc)
 		assistsExp := assistsExpected[row.MatchID]
 		kdaExp := analysis.ExpectedFDA(row.KillsExpected, row.DeathsExpected, assistsExp)
 		// XP de carrière estimée (V72-13) : MIROIR EXACT du calcul Timeseries
@@ -708,7 +701,7 @@ func buildSessionDetailRows(
 			StartTime:            row.StartTime,
 			Outcome:              row.Outcome,
 			PlaylistName:         playlist,
-			PairName:             row.PairName,
+			PairName:             row.PairName.Pick(loc),
 			IsRanked:             row.IsRanked,
 			Kills:                row.Kills,
 			Deaths:               row.Deaths,

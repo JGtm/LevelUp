@@ -51,12 +51,13 @@ et le SSO Xbox), le verrou d'instance se lit uniquement via `authz.InstanceLocke
 
 ### metadata.duckdb
 
-- `asset_translations` : noms localisés pour les maps, playlists, paires et variantes de jeu — 14 langues BCP-47 (`en-US`, `fr-FR`, …) — **ajouté en v6.3** — peuplé par les migrations Go de metadata (`internal/games/halo_infinite/migrations/`) lors du seeding de la metadata
+- `asset_translations` : noms et descriptions par langue, une ligne par `(asset_id, asset_type, lang)` (`lang` = étiquette BCP-47 Halo : `en-US`, `fr-FR`, …) — **ajouté en v6.3**. Types `map`, `playlist`, `pair`, `game_variant` (14 langues, `levelup populate-assets`), plus les textes curés sortis de leurs paires de colonnes `_fr` / `_en` (ADR 0040 D-13, D-15) : `achievement`, `achievement_locked`, `milestone` (nom = titre, description = condition), `citation`, `challenge_template`, `preset_arc`, et pour Halo 5 `commendation`, `team_color`. Les lecteurs chargent toutes les langues et choisissent par `Text.Pick` (langue de la requête, puis `en`)
+- `medal_translations` : nom et description de médaille par `(medal_name_id, lang)`
 - `challenge_definitions` : définitions versionnées des défis Halo (`challenge_path` + `content_hash`) avec catégorie, difficulté, seuil et récompenses XP
 - `challenge_translations` : titres et descriptions de défis localisés dans toutes les langues exposées par le CMS (BCP-47, fallback `en-US`)
-- `weapon_labels` : weapon_id (filmshell UBIGINT) → `name_en`, `name_fr` — ajouté en v5.4
-- `career_ranks` : définitions des paliers de rang
-- `citation_mappings` : mappings médaille → citation
+- `weapon_name_labels` `(title_slug, weapon_key, lang, name)` et `weapon_label_names` `(weapon_id, lang, name)` : noms d'affichage des armes, une ligne par langue (`lang` = code de langue de `config/locales.toml`) ; `weapon_labels` (weapon_id, filmshell UBIGINT) ne garde que ses colonnes non textuelles
+- `career_ranks` : définitions des paliers de rang (`title_en` / `subtitle_en` sont la source anglaise unique ; les noms par langue sont `career_rank_translations`)
+- `citation_mappings` : mappings médaille → citation (aucune colonne de texte : les textes de citation sont des lignes `asset_translations` de type `citation`)
 - `mode_name_tr` / `mode_*` : traductions des noms de modes de jeu (surcharges legacy, supplantées par `asset_translations` pour les noms de map/playlist/paire/variante)
 
 ### shared_matches_v2.duckdb
@@ -66,7 +67,7 @@ Tables principales :
 - `match_participants` : stats par joueur pour tous les matchs
 
 Vues SQL (`ensure_resolution_views()`) :
-- `v_match_full` : `match_registry` enrichi des noms i18n issus de `meta.asset_translations` — 8 LEFT JOIN (en-US + fr-FR × map/playlist/paire/variante). Colonnes : `map_name`, `map_name_fr`, `game_variant_name`, `game_variant_name_fr`, etc.
+- `v_match_full` : `SELECT mr.*` sur `match_registry` (`internal/migration` `VMatchFullViewSQL`). Le registre porte les noms `map_name`, `pair_name`, `playlist_name`, `game_variant_name` et les colonnes `map_name_fr`, `pair_name_fr`, `playlist_name_fr`, conservées dans la base partagée et lues comme valeurs de registre ; les noms dans toute autre langue sont lus dans `meta.asset_translations` au moment de la requête (ADR 0040)
 - `v_gamertag_lookup` : XUID → gamertag courant (FULL OUTER JOIN `xuid_aliases` + `match_participants` + `match_kill_events_latest`)
 
 > `v_killer_victim_full` a été **supprimée le 2026-08-02** et n'est plus une vue garantie v6.

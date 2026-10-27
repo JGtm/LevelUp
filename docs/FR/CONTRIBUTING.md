@@ -230,7 +230,7 @@ Aucun hex brut (`#RRGGBB`) ni classe de couleur Tailwind (`text-red-*`, `bg-gree
 
 ### i18n
 
-Les chaînes destinées à l'utilisateur doivent être fournies en **FR et EN** via les manifests i18n (manifests TOML + linter custom, voir ADR 0003). Ne pas coder en dur les chaînes d'affichage dans les composants.
+Les chaînes destinées à l'utilisateur doivent être fournies dans **chaque langue de `config/locales.toml`** (`fr` et `en` obligatoires) via les manifests i18n (manifests TOML + linter custom, voir ADR 0003 et ADR 0040). Ne pas coder en dur les chaînes d'affichage dans les composants.
 
 ### Charts et pages
 
@@ -261,7 +261,7 @@ Avant de soumettre une PR, vérifier :
 - [ ] Le ratchet de couverture ne régresse pas
 - [ ] Frontend : `npm run typecheck`, `npm run lint`, `npm run test:run` passent
 - [ ] Aucun hex brut / classe couleur Tailwind dans `features/` ou `components/`
-- [ ] Chaînes i18n FR + EN fournies pour tout nouveau texte UI
+- [ ] Chaînes i18n fournies dans chaque langue listée (`fr` + `en`) pour tout nouveau texte UI
 - [ ] Miroir `docs/FR/` mis à jour si un fichier `docs/` change
 - [ ] Entrée `.ai/thought_log.md` ajoutée
 - [ ] Messages de commit au format Conventional Commits

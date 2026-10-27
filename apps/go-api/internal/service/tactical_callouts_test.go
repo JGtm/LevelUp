@@ -11,6 +11,7 @@ import (
 
 	"levelup/go-api/internal/analysis/tactical"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/testutil"
 )
 
@@ -19,7 +20,7 @@ func TestZonesNommees_FormeEtTranche(t *testing.T) {
 	part := [][][2]float64{{{10, 10}, {12, 10}, {12, 12}}}
 	trou := [][][2]float64{{{1, 1}, {2, 1}, {2, 2}}}
 	out := zonesNommees([]replay.CalloutZone{{
-		VolumeIndex: 7, FR: "Salle", EN: "Room", X: 1, Y: 2,
+		VolumeIndex: 7, Text: i18n.Text{i18n.LocaleEN: "Room", i18n.LocaleFR: "Salle"}, X: 1, Y: 2,
 		ZBottom: -1.5, ZTop: 3.25, Polygon: poly, Parts: part, Holes: trou,
 	}})
 	if len(out) != 1 {
@@ -67,10 +68,10 @@ func TestNommerZone_TemoinsDuCatalogueReel(t *testing.T) {
 	// polygone ne contient le centre : « Nid blindé », le plus proche, à 0,81 m (règle (c)).
 	illusion := []float64{2.9, 2.9, 2.89, 2.9, 2.9, 3.67, 2.9, 2.9, 2.9, 2.9, 2.9}
 	got, ok := tactical.NommerZone(-13, 5, illusion, zonesDuCatalogue(t, "ctf_illusion"))
-	if !ok || got.Zone.NomFR != "Nid blindé" || got.Regle != tactical.RegleZoneProche ||
+	if !ok || got.Zone.Nom[i18n.LocaleFR] != "Nid blindé" || got.Regle != tactical.RegleZoneProche ||
 		math.Abs(got.DistanceM-0.81) > 0.01 {
 		t.Fatalf("Illusion : %q par %q à %.3f m, attendu « Nid blindé » par (c) à 0,81 m",
-			got.Zone.NomFR, got.Regle, got.DistanceM)
+			got.Zone.Nom[i18n.LocaleFR], got.Regle, got.DistanceM)
 	}
 
 	// Bazaar, cellule (−4, −1) à 2 m : centre (−7, −1), 9 morts, z médian 3,18 m. Trois zones
@@ -91,9 +92,9 @@ func TestNommerZone_TemoinsDuCatalogueReel(t *testing.T) {
 		t.Errorf("Bazaar : %d zones contiennent le centre, attendu 3", empilees)
 	}
 	got, ok = tactical.NommerZone(-7, -1, bazaar, zones)
-	if !ok || got.Regle != tactical.RegleZoneEmpilee || got.Zone.NomFR != "Pont du marché ouest" ||
-		got.Zone.NomEN != "West Market Bridge" {
+	if !ok || got.Regle != tactical.RegleZoneEmpilee || got.Zone.Nom[i18n.LocaleFR] != "Pont du marché ouest" ||
+		got.Zone.Nom[i18n.LocaleEN] != "West Market Bridge" {
 		t.Fatalf("Bazaar : %q / %q par %q, attendu « Pont du marché ouest » / « West Market Bridge » par (b)",
-			got.Zone.NomFR, got.Zone.NomEN, got.Regle)
+			got.Zone.Nom[i18n.LocaleFR], got.Zone.Nom[i18n.LocaleEN], got.Regle)
 	}
 }

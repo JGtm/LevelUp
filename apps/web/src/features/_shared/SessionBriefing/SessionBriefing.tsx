@@ -27,7 +27,6 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { KpiGrid } from './KpiGrid'
 import { SquadVerdict } from './SquadVerdict'
 import { getBriefingTexts } from './i18n'
-import type { Locale } from '@/lib/i18n/locale'
 import { getScoreTier } from './tier'
 
 export interface SessionBriefingSquadProps {
@@ -48,14 +47,10 @@ export interface SessionBriefingProps {
   squad?: SessionBriefingSquadProps
 }
 
-function normalizeLocale(input: string | undefined): Locale {
-  return input === 'en' ? 'en' : 'fr'
-}
-
 export function SessionBriefing({ kpis, squad }: SessionBriefingProps) {
   const locale = useAppShellStore((s) => s.locale)
   const gamertag = useAppShellStore((s) => s.currentPlayer?.gamertag ?? '')
-  const texts = getBriefingTexts(normalizeLocale(locale))
+  const texts = getBriefingTexts(locale)
 
   // Mode solo avec performance_score : construit une carte joueur unique (moi).
   const soloPlayers = useMemo<PlayerScoreCard[] | undefined>(() => {

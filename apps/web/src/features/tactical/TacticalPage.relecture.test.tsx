@@ -75,7 +75,8 @@ const PAGE: TacticalMapsPage = {
     {
       map_id: 'streets',
       map_name: 'Streets',
-      map_name_fr: 'Ruelles',
+      map_label: 'Ruelles',
+      map_filter_key: 'Ruelles',
       matchs: 24,
       victoires: 14,
       defaites: 9,
@@ -84,7 +85,8 @@ const PAGE: TacticalMapsPage = {
     {
       map_id: 'aquarius',
       map_name: 'Aquarius',
-      map_name_fr: 'Aquarius',
+      map_label: 'Aquarius',
+      map_filter_key: 'Aquarius',
       matchs: 12,
       victoires: 6,
       defaites: 6,

@@ -5,12 +5,13 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/service/squadagg"
 )
 
 func groupesSquadTest() domain.GroupesDeCartes {
 	return domain.NewGroupesDeCartes(map[string]string{"th-heavies": "th"}).
-		AvecLibelles(map[string]map[string]string{"th": {"en": "Thunderhead", "fr": "Tonnerre"}})
+		AvecLibelles(map[string]i18n.Text{"th": {"en": "Thunderhead", "fr": "Tonnerre"}})
 }
 
 // Escouade : base et variante forment UNE carte dans le lollipop, le bullet (session et historique repliés)

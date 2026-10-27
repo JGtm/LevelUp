@@ -59,7 +59,7 @@ describe('resolvePageTitle (URLs title-scoped)', () => {
   it('index sous le segment de langue : /fr/ et /en/ ont le titre d’accueil, une langue inconnue non', () => {
     expect(resolvePageTitle('/fr/', 'fr')).toBe('LevelUp - Accueil')
     expect(resolvePageTitle('/en', 'en')).toBe('LevelUp - Home')
-    expect(resolvePageTitle('/xx/', 'fr')).toBe('LevelUp')
+    expect(resolvePageTitle('/zz/', 'fr')).toBe('LevelUp')
   })
 
   it('suffixe/pathname inconnu → LevelUp (fallback conservé)', () => {

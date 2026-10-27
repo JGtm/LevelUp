@@ -373,7 +373,7 @@ func registreParShort(ctx context.Context, pr *titlePkg.PathResolver, titleSlug 
 	}
 	defer release()
 
-	enParMapID := nomsAssetsEN(ctx, pr, titleSlug)
+	enParMapID := nomsCartesCanoniques(ctx, pr, titleSlug)
 
 	rows, err := db.QueryContext(ctx, `SELECT match_id, map_name, map_id, `+analysis.SQLModeNonGere("")+
 		` FROM match_registry ORDER BY match_id`)
@@ -446,14 +446,14 @@ func mapNamesForOne(ctx context.Context, pr *titlePkg.PathResolver, titleSlug, m
 			"non resolue (passer --map-name)", "err", err, "match_id", matchID)
 		return nil
 	}
-	en := nomsAssetsEN(ctx, pr, titleSlug)[strings.TrimSpace(mapID.String)]
+	en := nomsCartesCanoniques(ctx, pr, titleSlug)[strings.TrimSpace(mapID.String)]
 	return candidatsCarte(en, rawName.String)
 }
 
-// nomsAssetsEN charge la table map_id -> nom EN depuis metadata.asset_translations.
+// nomsCartesCanoniques charge la table map_id -> nom canonique (en-US) depuis metadata.asset_translations.
 // BEST-EFFORT : metadata absente ou tenue RW par un autre process → map vide + message, la
 // passe continue sur les map_name bruts du registre.
-func nomsAssetsEN(ctx context.Context, pr *titlePkg.PathResolver, titleSlug string) map[string]string {
+func nomsCartesCanoniques(ctx context.Context, pr *titlePkg.PathResolver, titleSlug string) map[string]string {
 	metaPath := pr.MetadataDBPath(titleSlug)
 	db, release, err := duckdb.OpenReadForQuery(metaPath)
 	if err != nil {

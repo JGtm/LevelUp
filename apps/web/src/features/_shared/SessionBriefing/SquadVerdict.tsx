@@ -38,17 +38,9 @@ interface SquadVerdictProps {
   texts: BriefingTexts
 }
 
-const TIER_LABEL_FALLBACK: Record<TierKey, string> = {
-  excellent: 'Excellent',
-  good: 'Solide',
-  average: 'Correct',
-  poor: 'Mauvais',
-  bad: 'Pourri',
-}
-
-function tierLabelOf(card: PlayerScoreCard): string {
-  if (card.label) return TIER_LABEL_FALLBACK[card.label]
-  return TIER_LABEL_FALLBACK[getScoreTier(card.score).key]
+function tierLabelOf(card: PlayerScoreCard, tiers: Record<TierKey, string>): string {
+  if (card.label) return tiers[card.label]
+  return tiers[getScoreTier(card.score).key]
 }
 
 interface OutcomeSeg {
@@ -71,7 +63,7 @@ export function SquadVerdict({
   const hasPlayerCards = players != null && players.length > 0
 
   const teamTier = hasTeamCard ? getScoreTier(squadScore!.score) : null
-  const teamLabel = teamTier ? TIER_LABEL_FALLBACK[teamTier.key] : null
+  const teamLabel = teamTier ? texts.verdict.tiers[teamTier.key] : null
 
   const delta = hasTeamCard ? Math.round(squadScore!.score - squadScore!.base_avg) : 0
   const deltaText = hasTeamCard
@@ -154,7 +146,7 @@ export function SquadVerdict({
                 <p className="text-3xs uppercase tracking-wide text-muted-foreground">
                   {p.gamertag}
                   {isActive && (
-                    <span className="ml-1 text-2xs opacity-60">(moi)</span>
+                    <span className="ml-1 text-2xs opacity-60">{texts.verdict.you}</span>
                   )}
                 </p>
                 {trendState !== 'none' && (
@@ -181,7 +173,7 @@ export function SquadVerdict({
                 >
                   {Math.round(p.score)}
                 </span>
-                <span className="text-xs text-muted-foreground">{tierLabelOf(p)}</span>
+                <span className="text-xs text-muted-foreground">{tierLabelOf(p, texts.verdict.tiers)}</span>
               </div>
             </button>
           )

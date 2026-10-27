@@ -18,9 +18,9 @@ const LABELS: SquadToolKindLabels = {
   unattributed: 'Non attribué',
 }
 
-function weapon(key: string, fr: string, en: string, cls: string, kills: Record<string, number>): SquadWeaponToolLine {
+function weapon(key: string, label: string, cls: string, kills: Record<string, number>): SquadWeaponToolLine {
   const total = Object.values(kills).reduce((a, b) => a + b, 0)
-  return { kind: 'weapon', weapon_key: key, label: fr, label_en: en, class: cls, kills_by_player: kills, total_squad: total }
+  return { kind: 'weapon', weapon_key: key, label, class: cls, kills_by_player: kills, total_squad: total }
 }
 
 function kind(k: string, cls: string, kills: Record<string, number>): SquadWeaponToolLine {
@@ -31,45 +31,45 @@ function kind(k: string, cls: string, kills: Record<string, number>): SquadWeapo
 /** Seize outils, dans l'ordre du serveur (total décroissant, reliquat en dernier). */
 function tools(): SquadWeaponTools {
   const lines: SquadWeaponToolLine[] = [
-    weapon('hinf_br75', 'BR75', 'BR75', 'shoulder', { J: 22, C: 22, M: 35 }),
+    weapon('hinf_br75', 'BR75', 'shoulder', { J: 22, C: 22, M: 35 }),
     kind('melee', 'melee', { J: 6, C: 13, M: 16 }),
-    weapon('hinf_frag_grenade', 'Grenade frag', 'Frag Grenade', 'grenade', { J: 2, C: 1, M: 4 }),
+    weapon('hinf_frag_grenade', 'Grenade frag', 'grenade', { J: 2, C: 1, M: 4 }),
     kind('explosive_object', 'unattributed', { J: 2, C: 1, M: 2 }),
     kind('environment', 'environmental', { C: 1, M: 1 }),
   ]
-  for (let i = 0; i < 10; i++) lines.push(weapon(`hinf_w${i}`, `Arme ${i}`, `Weapon ${i}`, 'shoulder', { J: 1 }))
+  for (let i = 0; i < 10; i++) lines.push(weapon(`hinf_w${i}`, `Arme ${i}`, 'shoulder', { J: 1 }))
   lines.push(kind('unattributed', 'unattributed', { M: 1 }))
   return { players: ['J', 'C', 'M'], lines }
 }
 
 describe('buildSquadToolRows', () => {
   it('vide → null', () => {
-    expect(buildSquadToolRows(null, { locale: 'fr', labels: LABELS })).toBeNull()
-    expect(buildSquadToolRows({ players: [], lines: [] }, { locale: 'fr', labels: LABELS })).toBeNull()
+    expect(buildSquadToolRows(null, { labels: LABELS })).toBeNull()
+    expect(buildSquadToolRows({ players: [], lines: [] }, { labels: LABELS })).toBeNull()
   })
 
   it('AUCUN plafond ni ligne « Autres » : les 16 lignes du serveur, toutes nommées', () => {
-    const res = buildSquadToolRows(tools(), { locale: 'fr', labels: LABELS })!
+    const res = buildSquadToolRows(tools(), { labels: LABELS })!
     expect(res.rows).toHaveLength(16)
     expect(res.rows.some((r) => /autres/i.test(r.label))).toBe(false)
     expect(res.rows.every((r) => r.label !== '')).toBe(true)
   })
 
   it('ordre renversé : la première ligne du serveur en HAUT (dernière catégorie du graphe)', () => {
-    const res = buildSquadToolRows(tools(), { locale: 'fr', labels: LABELS })!
+    const res = buildSquadToolRows(tools(), { labels: LABELS })!
     expect(res.rows[res.rows.length - 1].label).toBe('BR75')
     expect(res.rows[0].label).toBe('Non attribué')
   })
 
   it('`top` (vue compacte de Sessions) : les premiers outils du serveur, sans « Non attribué », plus gros en haut', () => {
-    const res = buildSquadToolRows(tools(), { locale: 'fr', labels: LABELS, top: 3 })!
+    const res = buildSquadToolRows(tools(), { labels: LABELS, top: 3 })!
     expect(res.rows.map((r) => r.label)).toEqual(['Grenade frag', 'Mêlée', 'BR75'])
-    const tous = buildSquadToolRows(tools(), { locale: 'fr', labels: LABELS, top: 99 })!
+    const tous = buildSquadToolRows(tools(), { labels: LABELS, top: 99 })!
     expect(tous.rows.some((r) => r.key === 'unattributed')).toBe(false)
   })
 
   it('comptes, total et classe (pastille) repris tels quels', () => {
-    const res = buildSquadToolRows(tools(), { locale: 'fr', labels: LABELS })!
+    const res = buildSquadToolRows(tools(), { labels: LABELS })!
     const br = res.rows.find((r) => r.label === 'BR75')!
     expect(br.killsByPlayer).toEqual({ J: 22, C: 22, M: 35 })
     expect(br.total).toBe(79)
@@ -82,23 +82,22 @@ describe('buildSquadToolRows', () => {
 })
 
 describe('toolLineLabel', () => {
-  const frag = weapon('hinf_frag_grenade', 'Grenade frag', 'Frag Grenade', 'grenade', { J: 1 })
-  it('arme : nom de registre dans la langue de l’interface', () => {
-    expect(toolLineLabel(frag, 'fr', LABELS)).toBe('Grenade frag')
-    expect(toolLineLabel(frag, 'en', LABELS)).toBe('Frag Grenade')
+  const frag = weapon('hinf_frag_grenade', 'Grenade frag', 'grenade', { J: 1 })
+  it('arme : nom de registre servi, déjà dans la langue de la requête', () => {
+    expect(toolLineLabel(frag, LABELS)).toBe('Grenade frag')
   })
-  it('arme sans nom dans la langue demandée → l’autre langue', () => {
-    expect(toolLineLabel({ ...frag, label_en: '' }, 'en', LABELS)).toBe('Grenade frag')
+  it('arme sans nom servi → sa clé de registre', () => {
+    expect(toolLineLabel({ ...frag, label: undefined }, LABELS)).toBe('hinf_frag_grenade')
   })
   it('natures nommées par le web ; nature inconnue → sa clé', () => {
-    expect(toolLineLabel(kind('melee', 'melee', {}), 'fr', LABELS)).toBe('Mêlée')
-    expect(toolLineLabel(kind('environment', 'environmental', {}), 'fr', LABELS)).toBe('Chute, environnement')
-    expect(toolLineLabel(kind('nouvelle_nature', '', {}), 'fr', LABELS)).toBe('nouvelle_nature')
+    expect(toolLineLabel(kind('melee', 'melee', {}), LABELS)).toBe('Mêlée')
+    expect(toolLineLabel(kind('environment', 'environmental', {}), LABELS)).toBe('Chute, environnement')
+    expect(toolLineLabel(kind('nouvelle_nature', '', {}), LABELS)).toBe('nouvelle_nature')
   })
 })
 
 describe('ligne « Grenade » (titre sans film)', () => {
   it('nommée par le web, jamais vide', () => {
-    expect(toolLineLabel(kind('grenade', 'grenade', { J: 14 }), 'fr', LABELS)).toBe('Grenade')
+    expect(toolLineLabel(kind('grenade', 'grenade', { J: 14 }), LABELS)).toBe('Grenade')
   })
 })

@@ -66,7 +66,7 @@ func buildObjectiveObjects(scan WorldObjectScan, labels map[uint32]Label,
 	cov := &ObjectiveObjectsCoverage{Scanned: scan.Scanned}
 	publiables := map[uint32]Label{}
 	for id, fam := range families {
-		if objectiveObjectPublished[fam] && labels[id] != (Label{}) {
+		if objectiveObjectPublished[fam] && !labels[id].isZero() {
 			publiables[id] = labels[id]
 		}
 	}
@@ -121,10 +121,8 @@ func objectiveObjectLess(a, b ObjectiveObjectLife) bool {
 		return a.Family < b.Family
 	case a.T1 != b.T1:
 		return a.T1 < b.T1
-	case a.En != b.En:
-		return a.En < b.En
-	case a.Fr != b.Fr:
-		return a.Fr < b.Fr
+	case a.Text.Compare(b.Text) != 0:
+		return a.Text.Compare(b.Text) < 0
 	case len(a.Pts) != len(b.Pts):
 		return len(a.Pts) < len(b.Pts)
 	}
@@ -159,7 +157,7 @@ func objectiveObjectLifeOf(l flagFreeLife, family string, label Label,
 	if t0 < 0 || t0 >= clock.frames {
 		return ObjectiveObjectLife{}, false
 	}
-	vie := ObjectiveObjectLife{Family: family, En: label.En, Fr: label.Fr, T0: t0, T1: t0}
+	vie := ObjectiveObjectLife{Family: family, Text: label.Text.Clone(), T0: t0, T1: t0}
 	for _, p := range l.Pts {
 		t := frameOf(p.TUS, clock.origin, clock.step)
 		if t < 0 || t >= clock.frames {

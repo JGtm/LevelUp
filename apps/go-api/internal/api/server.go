@@ -34,6 +34,7 @@ import (
 	halo5 "levelup/go-api/internal/games/halo_5"
 	halo_games "levelup/go-api/internal/games/halo_infinite"
 	"levelup/go-api/internal/games/mappings"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/notify"
 
 	// init() de observability publie le namespace expvar "levelup" ; le handler
@@ -217,13 +218,7 @@ func loadTeamColorResolvers(metaPath string) teamColorResolvers {
 			if !ok {
 				return ""
 			}
-			if locale == "en" {
-				return tc.NameEN
-			}
-			if tc.NameFR != "" {
-				return tc.NameFR
-			}
-			return tc.NameEN
+			return tc.Name.Pick(i18n.Parse(locale))
 		},
 		color: func(teamID int) string {
 			tc, ok := m[teamID]
@@ -278,7 +273,7 @@ func buildAssetMetadataHandler(cfg *config.AppConfig, hiAssetURL *halo_games.Ass
 		maps, errM := liveRepo.ListMapsByTitle(loadCtx, titlePkg.DefaultSlug, "")
 		weapons, errW := liveRepo.ListWeaponsByTitle(loadCtx, titlePkg.DefaultSlug, "")
 		// Médailles Infinite : sans ce chargement, le tab « Médailles » du drawer reste
-		// VIDE pour Infinite. Noms FR/EN depuis medal_definitions ; icône = PNG
+		// VIDE pour Infinite. Noms par langue depuis medal_translations ; icône = PNG
 		// /static/medals/halo_infinite/{id}.png (résolu via static.MedalImage).
 		medals, errMed := liveRepo.ListMedalsByTitle(loadCtx, titlePkg.DefaultSlug, "")
 		_ = metaDB.Close() // relâche le lock Windows immédiatement après chargement

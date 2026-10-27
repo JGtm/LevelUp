@@ -2,6 +2,8 @@ package prestige
 
 import (
 	"testing"
+
+	"levelup/go-api/internal/i18n"
 )
 
 // ─────────── Stretch ───────────
@@ -161,7 +163,7 @@ func TestLevelFromPP_Boundaries(t *testing.T) {
 		{99999, 5, "Légendaire"},
 	}
 	for _, tc := range cases {
-		got := LevelFromPP(tuning, tc.pp)
+		got := LevelFromPP(tuning, tc.pp, i18n.LocaleFR)
 		if got.Index != tc.wantIdx {
 			t.Errorf("PP=%d: index got %d want %d", tc.pp, got.Index, tc.wantIdx)
 		}
@@ -171,11 +173,20 @@ func TestLevelFromPP_Boundaries(t *testing.T) {
 	}
 }
 
+func TestLevelFromPP_NomDansLaLangueDemandee(t *testing.T) {
+	tuning := DefaultTuning()
+	for loc, want := range map[i18n.Locale]string{i18n.LocaleFR: "Vétéran", i18n.LocaleEN: "Veteran"} {
+		if got := LevelFromPP(tuning, 1500, loc).Name; got != want {
+			t.Errorf("langue %s : nom %q, attendu %q", loc, got, want)
+		}
+	}
+}
+
 func TestLevelFromPP_ProgressRatio(t *testing.T) {
 	tuning := DefaultTuning()
 	// Niveau 1 (Soldat) commence à 500, prochain à 1500 → span 1000
 	// 1000 PP → milieu → 0.5
-	got := LevelFromPP(tuning, 1000)
+	got := LevelFromPP(tuning, 1000, i18n.Default)
 	if got.Index != 1 {
 		t.Fatalf("want index 1, got %d", got.Index)
 	}
@@ -186,7 +197,7 @@ func TestLevelFromPP_ProgressRatio(t *testing.T) {
 
 func TestLevelFromPP_MaxLevel(t *testing.T) {
 	tuning := DefaultTuning()
-	got := LevelFromPP(tuning, 999999)
+	got := LevelFromPP(tuning, 999999, i18n.Default)
 	if got.NextThresholdPP != -1 {
 		t.Errorf("max level should have NextThresholdPP=-1, got %d", got.NextThresholdPP)
 	}

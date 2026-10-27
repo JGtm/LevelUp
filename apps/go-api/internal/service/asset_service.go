@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
@@ -39,7 +40,8 @@ func (s *AssetService) WithWeaponImageURL(fn func(titleID string, weaponID int64
 }
 
 // ListMaps retourne les maps d'un titre avec image_url, UNE entrée par visuel (cf.
-// oneCardPerImage) triée par nom anglais.
+// oneCardPerImage) triée par nom canonique, avec le nom dans la langue de la requête
+// (`i18n.FromContext`, repli `en`).
 func (s *AssetService) ListMaps(ctx context.Context, titleID, search string) ([]canonical.AssetMeta, error) {
 	items, err := s.repo.ListMapsByTitle(ctx, titleID, search)
 	if err != nil {
@@ -54,7 +56,7 @@ func (s *AssetService) ListMaps(ctx context.Context, titleID, search string) ([]
 		case items[i].ImageURL != "":
 			// Déjà résolue depuis la DB (ex. h5 : image_url officielle) → conserver.
 		case s.mapImageURL != nil:
-			items[i].ImageURL = s.mapImageURL(titleID, items[i].NameEN)
+			items[i].ImageURL = s.mapImageURL(titleID, items[i].CanonicalName())
 			if items[i].ImageURL == "" {
 				continue // variante mode+map sans image : exclure du drawer
 			}
@@ -64,10 +66,11 @@ func (s *AssetService) ListMaps(ctx context.Context, titleID, search string) ([]
 		out = append(out, items[i])
 	}
 	// Une carte par VISUEL (URL d'image résolue), pas par asset : cf. oneCardPerImage.
-	return oneCardPerImage(out), nil
+	loc := i18n.FromContext(ctx)
+	return localizeAssets(oneCardPerImage(out, loc), loc), nil
 }
 
-// ListWeapons retourne les armes avec image_url.
+// ListWeapons retourne les armes avec image_url, nom dans la langue de la requête.
 func (s *AssetService) ListWeapons(ctx context.Context, titleID, search string) ([]canonical.AssetMeta, error) {
 	items, err := s.repo.ListWeaponsByTitle(ctx, titleID, search)
 	if err != nil {
@@ -88,12 +91,13 @@ func (s *AssetService) ListWeapons(ctx context.Context, titleID, search string) 
 	if items == nil {
 		items = []canonical.AssetMeta{}
 	}
-	return items, nil
+	return localizeAssets(items, i18n.FromContext(ctx)), nil
 }
 
 // ListMedals retourne les médailles d'un titre. L'icône est un SPRITE (feuille +
 // offset, champs Sprite* déjà résolus en amont depuis medal_definitions) — pas de
-// mapImageURL/weaponImageURL. ImageURL reste vide (le front rend le sprite).
+// mapImageURL/weaponImageURL. ImageURL reste vide (le front rend le sprite). Nom et description
+// sont ceux de la langue de la requête.
 func (s *AssetService) ListMedals(ctx context.Context, titleID, search string) ([]canonical.AssetMeta, error) {
 	items, err := s.repo.ListMedalsByTitle(ctx, titleID, search)
 	if err != nil {
@@ -102,5 +106,16 @@ func (s *AssetService) ListMedals(ctx context.Context, titleID, search string) (
 	if items == nil {
 		items = []canonical.AssetMeta{}
 	}
-	return items, nil
+	return localizeAssets(items, i18n.FromContext(ctx)), nil
+}
+
+// localizeAssets rend une tranche neuve dont chaque entrée porte `Name` et `Description` de la langue
+// `loc`. La tranche reçue (peut être celle d'un dépôt en mémoire partagé entre requêtes) n'est jamais
+// modifiée : deux requêtes de langues différentes ne se marchent pas dessus.
+func localizeAssets(items []canonical.AssetMeta, loc i18n.Locale) []canonical.AssetMeta {
+	out := make([]canonical.AssetMeta, len(items))
+	for i := range items {
+		out[i] = items[i].Localized(loc)
+	}
+	return out
 }

@@ -123,7 +123,7 @@ type livraisonManifesteRoot struct {
 type livraisonManifesteArme struct {
 	Dossier string  `json:"dossier"`
 	Cle     *string `json:"cle"`
-	NomFr   *string `json:"nom_fr"`
+	Nom     *string `json:"nom_fr"` // clé du manifeste : le nom français de l arme (format d entrée figé)
 }
 
 // --- coups.json (objet racine : dossier -> entree) ---

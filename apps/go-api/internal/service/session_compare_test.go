@@ -7,6 +7,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/narrative"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/legacymatch"
 )
 
@@ -199,10 +200,10 @@ func TestClassifySessionCategory(t *testing.T) {
 		match legacymatch.StatsMatchRow
 		want  string
 	}{
-		{name: "firefight", match: legacymatch.StatsMatchRow{PlaylistName: "Firefight Normal"}, want: "Firefight"},
-		{name: "ranked", match: legacymatch.StatsMatchRow{IsRanked: true, PlaylistName: "Arena"}, want: "Ranked"},
-		{name: "btb", match: legacymatch.StatsMatchRow{PlaylistName: "Big Team Battle"}, want: "BTB"},
-		{name: "arena", match: legacymatch.StatsMatchRow{PlaylistName: "Quick Play"}, want: "Arena"},
+		{name: "firefight", match: legacymatch.StatsMatchRow{PlaylistName: i18n.FromColumns("Firefight Normal", "")}, want: "Firefight"},
+		{name: "ranked", match: legacymatch.StatsMatchRow{IsRanked: true, PlaylistName: i18n.FromColumns("Arena", "")}, want: "Ranked"},
+		{name: "btb", match: legacymatch.StatsMatchRow{PlaylistName: i18n.FromColumns("Big Team Battle", "")}, want: "BTB"},
+		{name: "arena", match: legacymatch.StatsMatchRow{PlaylistName: i18n.FromColumns("Quick Play", "")}, want: "Arena"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -374,9 +375,8 @@ func TestBuildSessionDetailRows_EnrichedFields(t *testing.T) {
 		StartTime:         time.Now(),
 		Kills:             10,
 		Deaths:            5,
-		MapName:           "Live Fire",
-		MapNameFR:         "Tir réel",
-		PairName:          "Arena:Slayer on Live Fire",
+		MapName:           i18n.FromColumns("Live Fire", "Tir réel"),
+		PairName:          i18n.FromColumns("Arena:Slayer on Live Fire", ""),
 		TeamMMR:           &team,
 		EnemyMMR:          &enemy,
 		PerfScoreComputed: &perf,
@@ -396,7 +396,7 @@ func TestBuildSessionDetailRows_EnrichedFields(t *testing.T) {
 	if r.MapName != "Tir réel" {
 		t.Fatalf("MapName: want FR-preferred 'Tir réel', got %q", r.MapName)
 	}
-	wantMode := derefString(analysis.ResolveModeUI(&row.PairName, &row.PairNameFR))
+	wantMode := derefString(analysis.ResolveModeUI(row.PairName))
 	if wantMode == "" || r.ModeUI != wantMode {
 		t.Fatalf("ModeUI: want %q (via ResolveModeUI), got %q", wantMode, r.ModeUI)
 	}
@@ -433,14 +433,11 @@ func TestBuildSessionDetailRows_EnrichedFields(t *testing.T) {
 // cartes/modes/playlists selon la locale (aligné Home/Explorer).
 func TestBuildSessionDetailRows_Locale(t *testing.T) {
 	row := legacymatch.StatsMatchRow{
-		MatchID:        "m1",
-		StartTime:      time.Now(),
-		MapName:        "Live Fire",
-		MapNameFR:      "Tir réel",
-		PlaylistName:   "Ranked Arena",
-		PlaylistNameFR: "Arène classée",
-		PairName:       "Arena:Slayer on Live Fire",
-		PairNameFR:     "Arène:Massacre sur Tir réel",
+		MatchID:      "m1",
+		StartTime:    time.Now(),
+		MapName:      i18n.FromColumns("Live Fire", "Tir réel"),
+		PlaylistName: i18n.FromColumns("Ranked Arena", "Arène classée"),
+		PairName:     i18n.FromColumns("Arena:Slayer on Live Fire", "Arène:Massacre sur Tir réel"),
 	}
 	en := buildSessionDetailRows([]legacymatch.StatsMatchRow{row}, nil, "en", nil, nil)[0]
 	if en.MapName != "Live Fire" {
@@ -449,7 +446,7 @@ func TestBuildSessionDetailRows_Locale(t *testing.T) {
 	if en.PlaylistName != "Ranked Arena" {
 		t.Fatalf("EN PlaylistName: want 'Ranked Arena', got %q", en.PlaylistName)
 	}
-	if want := derefString(analysis.ResolveModeUI(&row.PairName, nil)); en.ModeUI != want {
+	if want := derefString(analysis.ResolveModeUI(i18n.FromColumns(row.PairName[i18n.LocaleEN], ""))); en.ModeUI != want {
 		t.Fatalf("EN ModeUI: want %q (EN normalisé), got %q", want, en.ModeUI)
 	}
 
@@ -460,8 +457,15 @@ func TestBuildSessionDetailRows_Locale(t *testing.T) {
 	if fr.PlaylistName != "Arène classée" {
 		t.Fatalf("FR PlaylistName: want 'Arène classée', got %q", fr.PlaylistName)
 	}
-	if want := derefString(analysis.ResolveModeUI(&row.PairName, &row.PairNameFR)); fr.ModeUI != want {
+	if want := derefString(analysis.ResolveModeUI(row.PairName)); fr.ModeUI != want {
 		t.Fatalf("FR ModeUI: want %q, got %q", want, fr.ModeUI)
+	}
+	// pair_name (nom brut de la paire, repli de l'affichage) suit aussi la langue de la requête.
+	if en.PairName != "Arena:Slayer on Live Fire" {
+		t.Fatalf("EN PairName: want le nom du registre, got %q", en.PairName)
+	}
+	if fr.PairName != "Arène:Massacre sur Tir réel" {
+		t.Fatalf("FR PairName: want le nom français, got %q", fr.PairName)
 	}
 }
 

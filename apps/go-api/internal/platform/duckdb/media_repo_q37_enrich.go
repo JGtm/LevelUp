@@ -5,6 +5,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
 type mediaEnrichedRow struct {
@@ -20,13 +21,17 @@ type mediaEnrichedRow struct {
 //	  '\s*-\s*Forge.*$', '', 'i'),
 //	  '\s*-\s*Ranked.*$', '', 'i')), '')
 func (e mediaEnrichedRow) computedMapLabel() string {
+	return e.computedMapLabelIn(i18n.Default)
+}
+
+// computedMapLabelIn fait comme computedMapLabel dans la langue `loc` (repli sur la langue de repli) :
+// le libellé AFFICHÉ. computedMapLabel, en langue par défaut, reste celui du tri, du regroupement et du
+// filtrage.
+func (e mediaEnrichedRow) computedMapLabelIn(loc i18n.Locale) string {
 	if e.Match == nil {
 		return ""
 	}
-	raw := e.Match.MapNameFR
-	if raw == "" {
-		raw = e.Match.MapName
-	}
+	raw := e.Match.MapName.Pick(loc)
 	if raw == "" {
 		return ""
 	}
@@ -39,18 +44,20 @@ func (e mediaEnrichedRow) computedMapLabel() string {
 //
 // Aligné sur normalizeModeLabel (media_repo.go).
 func (e mediaEnrichedRow) computedModeLabel() string {
+	return e.computedModeLabelIn(i18n.Default)
+}
+
+// computedModeLabelIn fait comme computedModeLabel dans la langue `loc` : le libellé AFFICHÉ.
+func (e mediaEnrichedRow) computedModeLabelIn(loc i18n.Locale) string {
 	if e.Match == nil {
 		return ""
 	}
-	raw := e.Match.PairNameFR
-	if raw == "" {
-		raw = e.Match.PairName
-	}
+	raw := e.Match.PairName.Pick(loc)
 	if raw == "" {
 		// Titre sans pair (Halo 5) : libellé résolu via asset_translations
 		// game_variant (resolveMediaRegistryNameFallbacks, DEC-7). Déjà propre —
 		// pas de normalizeModeLabel (qui vise les formats pair Infinite).
-		return strings.TrimSpace(e.Match.ModeNameFallback)
+		return strings.TrimSpace(e.Match.ModeNameFallback.Pick(loc))
 	}
 	return normalizeModeLabel(raw)
 }
@@ -59,13 +66,15 @@ func (e mediaEnrichedRow) computedModeLabel() string {
 //
 //	NULLIF(TRIM(COALESCE(mr.playlist_name_fr, mr.playlist_name, '')), '')
 func (e mediaEnrichedRow) computedPlaylistLabel() string {
+	return e.computedPlaylistLabelIn(i18n.Default)
+}
+
+// computedPlaylistLabelIn fait comme computedPlaylistLabel dans la langue `loc` : le libellé AFFICHÉ.
+func (e mediaEnrichedRow) computedPlaylistLabelIn(loc i18n.Locale) string {
 	if e.Match == nil {
 		return ""
 	}
-	raw := e.Match.PlaylistNameFR
-	if raw == "" {
-		raw = e.Match.PlaylistName
-	}
+	raw := e.Match.PlaylistName.Pick(loc)
 	return strings.TrimSpace(raw)
 }
 
@@ -155,7 +164,7 @@ func mediaRowMatchesMode(row mediaEnrichedRow, filter string, tax analysis.ModeT
 	if row.Match == nil {
 		return false
 	}
-	pairName := row.Match.PairName
+	pairName := row.Match.PairName[i18n.Fallback]
 	if pairName == "" {
 		// Titre sans pair (Halo 5) : la classification par catégorie/préfixes ne
 		// s'applique pas — on filtre par ÉGALITÉ de libellé (le label résolu via

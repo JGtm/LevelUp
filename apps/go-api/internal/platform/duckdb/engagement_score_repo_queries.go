@@ -16,6 +16,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
@@ -78,12 +79,13 @@ func (r *EngagementScoreRepo) LoadMatchEngagementContext(
 		return nil, fmt.Errorf("LoadMatchEngagementContext: %w", err)
 	}
 
-	// LE LIBELLÉ CANONIQUE de la carte (libelleDeCarte, map_labels.go), le même que l'Explorateur.
-	var traduction string
+	// Le nom de la carte dans la langue de la requête (nomsDeCarte, map_labels.go : la même règle que
+	// l'Explorateur, dont le nom de la langue par défaut est la clé des filtres).
+	var traduction i18n.Text
 	if mapID.Valid && mapID.String != "" && r.pdb != nil {
 		traduction = traductionsDeCartes(ctx, r.pdb.Metadata, []string{mapID.String})[mapID.String]
 	}
-	if libelle := libelleDeCarte(registreFR, registreEN, traduction); libelle != "" {
+	if libelle := nomsDeCarte(i18n.FromColumns(registreEN, registreFR), traduction).Pick(i18n.FromContext(ctx)); libelle != "" {
 		mctx.MapName = &libelle
 	}
 

@@ -100,8 +100,6 @@ const CRITICAL_CONTRACT_TYPES = [
   'ExplorerPlayerQueryResponse',
   'ExplorerMatchesQueryResponse',
   'EngagementTimeseriesResponse',
-  // Régression historique A2 (cf. en-tête) : contrat {best_matches, worst_matches}.
-  'CareerTopMatchesResponse',
   'CareerEncountersResponse',
   'GamertagSearchResponse',
   'DeviceFlowStatusResponse',

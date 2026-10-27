@@ -4,34 +4,34 @@ package domain
 import (
 	"fmt"
 	"time"
+
+	"levelup/go-api/internal/i18n"
 )
 
 // MatchHistoryRawRow est le type de transfert entre platform/duckdb et les services.
 type MatchHistoryRawRow struct {
 	MatchID   string
 	StartTime *time.Time
-	MapName   *string
-	MapNameFR *string
-	// MapFilterLabel : libellé de la carte de BASE quand la carte est une variante (« Thunderhead »
-	// pour « Du lourd sur Thunderhead »), nil sinon. Seul le filtre de cartes le lit, l'affichage
-	// reste MapNameFR.
-	MapFilterLabel *string
-	PairName       *string
-	PairNameFR     *string
-	PlaylistName   *string // FR si dispo (COALESCE), sinon EN
-	PlaylistNameEN *string // EN brut (pour comparer EN==FR et déclencher translate)
-	MapID          *string // UUID asset, clé de lookup asset_translations
-	PairID         *string // UUID asset
-	PlaylistID     *string // UUID asset
+	// MapName : nom de la carte par langue (en : nom brut du registre ; fr : libellé canonique, repli sur le brut).
+	MapName i18n.Text
+	// MapFilterNames : noms par langue de la carte de BASE quand la carte est une variante (« Thunderhead »
+	// pour « Du lourd sur Thunderhead »), nil sinon. Seul le filtre de cartes le lit (clé = le nom de la
+	// langue par défaut, libellé = celui de la langue de la requête), l'affichage reste MapName.
+	MapFilterNames i18n.Text
+	PairName       i18n.Text
+	// PlaylistName : en = nom EN brut (pour comparer EN==FR et déclencher la traduction) ; fr = FR si dispo (COALESCE), sinon EN.
+	PlaylistName i18n.Text
+	MapID        *string // UUID asset, clé de lookup asset_translations
+	PairID       *string // UUID asset
+	PlaylistID   *string // UUID asset
 	// GameVariant* : source de mode ALTERNATIVE au pair_name. Halo 5 n'a pas de
 	// pair_name (PairMode nil au mapping) ; son mode vient du GameBaseVariantId
 	// (game_variant_id). Le nom EN/registry est souvent NULL → résolu depuis
 	// metadata.asset_translations (asset_type='game_variant'). Sert de FALLBACK au
 	// mode_ui quand le pair est absent (cf. analysis.modeLabels, parité home).
 	GameVariantID      *string
-	GameVariantName    *string // EN (registry ou asset_translations) — souvent NULL en H5
-	GameVariantNameFR  *string // FR résolu depuis asset_translations
-	SeasonID           *string // ex. "CsrSeason13-1" — utilisé pour résoudre le threshold de placement CSR (5 ou 10 selon saison)
+	GameVariantName    i18n.Text // en : registry ou asset_translations, souvent vide en H5 ; fr : résolu depuis asset_translations
+	SeasonID           *string   // ex. "CsrSeason13-1" — utilisé pour résoudre le threshold de placement CSR (5 ou 10 selon saison)
 	IsFirefight        bool
 	IsRanked           bool
 	SessionID          *string
@@ -57,8 +57,7 @@ type MatchHistoryRawRow struct {
 	ElapsedSeconds   *int
 	IsExcluded       bool
 	PerformanceScore *float64
-	SkillTier        *string // e.g. "Diamond" (EN, clé de filtre)
-	SkillTierFR      *string // e.g. "Diamant" (affichage FR)
+	SkillTier        string  // nom canonique anglais du palier ("Diamond"), clé de filtre ; le libellé d'une langue se déduit du code
 	SkillRatingType  *string // "LUSR" | "CSR"
 	SkillTierLabel   *string // e.g. "Diamant IV" (label formaté DB)
 	// PlaylistGroup / RatingValue / RatingDelta : colonnes match_skill_rank_latest
@@ -79,7 +78,7 @@ type MatchHistoryRawRow struct {
 	// depuis match_skill_rank.expected_win_prob. Nil si pré-v2 / non disponible.
 	SkillExpectedWinProb *float64
 	// PlacementDone/PlacementTotal : progression dans la phase de placement.
-	// CSR : parsé depuis SkillTierLabel "Placement (N restants)" + threshold via csr_placement_thresholds.
+	// CSR : lu du SkillTierLabel de placement (ParsePlacementRemaining) + threshold via csr_placement_thresholds.
 	// LUSR : 10 plus anciens matchs sans LUSR par chaîne (arena_slayer/arena_objectif/btb/chaos).
 	// Tous deux nil si le match n'est pas en placement.
 	PlacementDone  *int
@@ -166,7 +165,7 @@ type MatchHistoryRow struct {
 	// Alimente la colonne « Prob. vic. ». Nil si pré-v2 / non disponible.
 	ExpectedWinProb *float64 `json:"expected_win_prob,omitempty"`
 	// PlacementDone/PlacementTotal : phase de placement (X/Y).
-	// CSR : remaining parsé de "Placement (N restants)" + threshold csr_placement_thresholds.
+	// CSR : remaining lu du libellé de placement (ParsePlacementRemaining) + threshold csr_placement_thresholds.
 	// LUSR : rang chronologique parmi les 10 plus anciens matchs sans LUSR de la chaîne.
 	// Consommé aussi par ExplorerMatchesTable (front) pour le badge « En placement »
 	// des colonnes Perf/ΔPerf/Note quand PerformanceScoreRelative/SkillRatingType
@@ -211,9 +210,11 @@ type MatchHistoryQuerySummary struct {
 	// AvailableExperienceTypes : LABEL localisé (locale de requête), VALUE FR
 	// canonique = clé de filtre intacte (GH6-1, miroir GH5-2 Omnibar).
 	AvailableExperienceTypes []LabelValue `json:"available_experience_types,omitempty"`
-	AvailablePlaylists       []string     `json:"available_playlists,omitempty"`
-	AvailableMaps            []string     `json:"available_maps,omitempty"`
-	AvailableModes           []string     `json:"available_modes,omitempty"`
+	// AvailablePlaylists / AvailableMaps / AvailableModes : LABEL dans la langue de la requête, VALUE = le nom
+	// de la langue par défaut, clé de filtre (`playlists`, `maps`, `modes`) indépendante de la langue.
+	AvailablePlaylists []LabelValue `json:"available_playlists,omitempty"`
+	AvailableMaps      []LabelValue `json:"available_maps,omitempty"`
+	AvailableModes     []LabelValue `json:"available_modes,omitempty"`
 	// Options Explorer-spécifiques avec count cascade-aware (sémantique OR au sein
 	// d'une dimension, AND entre dimensions). Permettent au front de griser les
 	// valeurs à count=0 et d'afficher le compte par option.

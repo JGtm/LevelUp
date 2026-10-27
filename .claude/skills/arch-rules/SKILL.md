@@ -107,6 +107,49 @@ des espaces). `NewError` / `writeError` restent pour un message écrit à la mai
 texte (FR + EN) à partir du `code`, jamais d'`ApiError.message`. Un job porte `domain.NewJobError(code, retryable)`.
 Garde-rails : `archlint/err_error_response_test.go` et `archlint/job_error_fixed_message_test.go` (allowlist vide).
 
+## i18n — N langues (`internal/i18n`, ADR 0040)
+
+Les langues sont celles de `config/locales.toml` (table générée `internal/i18n/locales_gen.go`) ; le code Go
+ne les connaît pas. Package `internal/i18n` : couche domaine, aucune dépendance interne.
+
+| Besoin | Outil |
+|---|---|
+| Langue de la requête | `i18n.FromContext(ctx)` (le middleware pose `X-LevelUp-Locale` ; `ctxkeys.WithLocale` / `ctxkeys.Locale` délèguent à ce package) ; une entrée libre se normalise par `i18n.Parse` (vide ou inconnu -> `i18n.Default`) |
+| Libellé de donnée en plusieurs langues | `i18n.Text` (`map[Locale]string`) ; `Pick(loc)` = langue, sinon `i18n.Fallback`, sinon `""` (repli compté, `levelup.i18n.text_fallback_total`) ; `PickOptional` pour un champ facultatif ; `Resolve` quand on veut journaliser le repli |
+| Texte composé par le serveur | catalogue `internal/i18n/messages/*.toml` : `i18n.Msg(loc, "cle.du.message", i18n.Params{...})`, `MsgText` / `MsgTextWith` (un `Text` de toutes les langues), `MsgAll` ; variables `{nom}` |
+| Texte stocké une fois par langue (JSON de notification, raison de coach) | `Text.AddParams` à l'écriture (`<base>_<code>`), `i18n.ResolveParams` à la lecture dans la langue de la requête |
+| Langues connues | `i18n.Locales()`, `i18n.Default`, `i18n.Fallback`, `i18n.HaloTags(loc)`, `i18n.IntlTag(loc)` |
+
+**Contrat d'API** : un type de réponse porte UN libellé résolu (`label`, `name`, `description` en `string`),
+jamais une paire `x_fr` / `x_en` ; le service ou le dépôt qui a le `ctx` fait `Text.Pick(i18n.FromContext(ctx))`.
+Tout cache serveur d'une réponse localisée porte la langue dans sa clé (ou garde le `Text` de toutes les
+langues et choisit après le cache). Exception écrite : le document de rejeu garde un libellé par langue dans le
+document (D-9).
+
+**Libellé et clé** : ce qui sert de valeur de filtre, d'URL, de regroupement ou de tri stable n'est PAS le
+libellé de la requête : c'est le nom de la langue par défaut (`i18n.Default`), dans un champ séparé
+(`LabelValue{Value, Label}`, `map_filter_key` / `map_label`, `ContextDescriptor.label`).
+
+**Base** : les noms viennent de tables par langue lues en entier puis choisies par `Pick` (`asset_translations`
+via `LoadAssetNames` / `assetNameTexts`, `medal_translations`, `mode_name_tr`, tables d'armes) ; un
+registre qui ne nomme rien (Halo 5) est complété depuis `asset_translations` dans toutes les langues, repli
+compris. Aucune colonne `_fr` / `_en` neuve (schéma : skill `db-schema`).
+
+**Interdits** (garde-rails dans `internal/archlint/`, plafonds à 0 ou à liste vide sauf mention) :
+
+| Interdit | Garde-rail |
+|---|---|
+| `== "fr"`, `case "en"`, `strings.EqualFold(loc, "en")`, `HasPrefix(loc, "en")` hors `internal/i18n` | `no_locale_literal_test.go` |
+| `i18n.LocaleFR` / `i18n.LocaleEN`, `m["fr"]`, `t[i18n.Locale("en")]` hors `internal/i18n` (le plafond des constantes ne fait que descendre : sources à deux colonnes) | `i18n_locale_constant_test.go` |
+| identifiant ou champ suffixé par une langue (`LabelFR`, `nameEN`) ; champ JSON `*_fr` / `*_en` | `i18n_langue_suffixe_test.go` |
+| `i18n.Text` passé à `Scan` / `Exec` / `Query` (ce n'est pas une valeur SQL : deux colonnes + `i18n.FromColumns`, ou `Text.Ptr`) | `i18n_text_sql_test.go` |
+| étiquette Halo en dur (`'fr-FR'`, `PreferredLangsForLocale("fr")`) dans `platform/duckdb` et `service` | `i18n_halo_literal_test.go` |
+| clé de message qui n'est pas un littéral du catalogue, ou message sans appelant | `i18n_messages_test.go` |
+| littéral accentué dans `service`, `analysis`, `api/handlers`, `notify`, `games` | `no_french_label_literal_test.go` |
+
+Ajouter une langue : `docs/FOUNDATIONS_GUIDE.md` § 3.5 (aucun changement de code ; le catalogue et les tables
+curées `required` sont refusés tant qu'ils sont incomplets).
+
 ## Modularité
 
 | Unité | Seuil | Action |
@@ -236,7 +279,7 @@ if errors.Is(err, games.ErrCapabilityNotSupported) {
 
 | Fichier | Contenu |
 |---|---|
-| `fields.toml` | Labels EN/FR, unit, format, display_order par FieldKey canonique |
+| `fields.toml` | Libellés par langue (`{ fr = ..., en = ... }`, `i18n.Text`), unit, format, display_order par FieldKey canonique |
 | `assets.toml` | Assets par mode (icônes), tiers médailles, statuts challenges |
 | `outcomes.toml` | Labels + color tokens par résultat (win/loss/tie/dnf) |
 

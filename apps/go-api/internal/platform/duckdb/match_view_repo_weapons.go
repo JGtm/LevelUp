@@ -17,8 +17,8 @@ import (
 )
 
 type weaponMetaEntry struct {
-	label  string
-	nameEN string
+	label         string
+	canonicalName string
 	// class / role / family : dimensions du registre (axe manipulation + fonction de
 	// combat + famille), résolues dans la même passe que le label (resolveWeaponMeta les
 	// porte déjà). Vides si l'arme est absente du registre. Alimentent la FragDistribution
@@ -44,9 +44,9 @@ func (r *MatchViewRepo) lookupWeaponMeta(ctx context.Context, weaponIDs []int64)
 	// PASSAGE PRINCIPAL P4 : résolution via le registre + weapon_labels (parité du
 	// nom). On ne garde que les ids résolus (label non vide), comme l'ancien lookup.
 	for id, m := range resolveWeaponMeta(ctx, r.pdb.Metadata, r.pdb.TitleSlug, weaponIDs) {
-		if m.label != "" {
+		if !m.label.Empty() {
 			result[id] = weaponMetaEntry{
-				label: m.displayLabel(locale), nameEN: m.nameEN, class: m.class, role: m.role,
+				label: m.displayLabel(locale), canonicalName: m.canonicalName, class: m.class, role: m.role,
 				family: m.family, weaponKey: m.weaponKey,
 			}
 		}
@@ -63,7 +63,7 @@ func (r *MatchViewRepo) lookupWeaponLabels(ctx context.Context, weaponIDs []int6
 	}
 	locale := ctxkeys.Locale(ctx)
 	for id, m := range resolveWeaponMeta(ctx, r.pdb.Metadata, r.pdb.TitleSlug, weaponIDs) {
-		if m.label != "" {
+		if !m.label.Empty() {
 			labels[id] = m.displayLabel(locale)
 		}
 	}

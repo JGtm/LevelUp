@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { adminRelativeTime, formatDurationMs, formatIntervalMinutes } from './format'
+import { adminRelativeTime, formatBytes, formatDurationMs, formatIntervalMinutes } from './format'
 
 describe('adminRelativeTime', () => {
   const now = new Date('2026-06-11T12:00:00Z').getTime()
@@ -50,10 +50,22 @@ describe('formatDurationMs', () => {
 
 describe('formatIntervalMinutes', () => {
   it('gère minutes, heures rondes et mixte', () => {
-    expect(formatIntervalMinutes(undefined, 'fr')).toBe('—')
-    expect(formatIntervalMinutes(0, 'fr')).toBe('—')
-    expect(formatIntervalMinutes(15, 'fr')).toBe('15 min')
-    expect(formatIntervalMinutes(360, 'fr')).toBe('6 h')
-    expect(formatIntervalMinutes(90, 'en')).toBe('1 h 30 min')
+    expect(formatIntervalMinutes(undefined)).toBe('—')
+    expect(formatIntervalMinutes(0)).toBe('—')
+    expect(formatIntervalMinutes(15)).toBe('15 min')
+    expect(formatIntervalMinutes(360)).toBe('6 h')
+    expect(formatIntervalMinutes(90)).toBe('1 h 30 min')
+  })
+})
+
+describe('formatBytes', () => {
+  it('unités décimales par langue : o / Ko / Mo / Go en FR, B / KB / MB / GB en EN', () => {
+    expect(formatBytes(512, 'fr')).toBe('512 o')
+    expect(formatBytes(512, 'en')).toBe('512 B')
+    expect(formatBytes(1_500, 'fr')).toMatch(/^1,5 Ko$/)
+    expect(formatBytes(1_500, 'en')).toBe('1.5 KB')
+    expect(formatBytes(2_000_000, 'fr')).toMatch(/Mo$/)
+    expect(formatBytes(3_000_000_000, 'en')).toBe('3 GB')
+    expect(formatBytes(undefined, 'fr')).toBe('—')
   })
 })

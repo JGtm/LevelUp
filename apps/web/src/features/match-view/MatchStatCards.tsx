@@ -22,6 +22,7 @@ import {
 import { KpiCard } from '@/components/cards/KpiCard'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest } from '@/lib/i18n/generated/common'
 import { matchViewManifest, type MatchViewManifestKey } from '@/lib/i18n/generated/match_view'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useProvidesDamageTaken, useProvidesTeamMmr } from '@/lib/damage/effectiveHp'
@@ -162,7 +163,7 @@ export function MatchRankBadge({ rank, hadBotTeammate = false }: MatchRankBadgeP
         <div className="flex items-baseline gap-2 mt-0.5">
           <span className="text-lg font-bold text-foreground">{localizeTierLabel(rank.tier_label, locale)}</span>
           {rank.numeric_value != null && (
-            <span className="text-sm text-muted-foreground">{rank.numeric_value.toFixed(0)} pts</span>
+            <span className="text-sm text-muted-foreground">{rank.numeric_value.toFixed(0)} {formatMessage(commonManifest, 'common.units.points_short', locale)}</span>
           )}
         </div>
       </div>
@@ -208,10 +209,10 @@ export function KdIndicatorCard({ nemesis }: KdIndicatorCardProps) {
           className="text-2xl font-bold"
           style={{ color: tokenCssVar(kdScale(kd)) }}
         >{kd.toFixed(2)}</span>
-        <span className="text-sm text-muted-foreground">vs {nemesis.gamertag}</span>
+        <span className="text-sm text-muted-foreground">{formatMessage(matchViewManifest, 'match_view.cards.nemesis_versus', locale, { name: nemesis.gamertag })}</span>
       </div>
       <p className="text-xs text-muted-foreground mt-0.5">
-        {nemesis.i_killed} kills · {nemesis.killed_me} morts
+        {formatMessage(matchViewManifest, 'match_view.cards.nemesis_counts', locale, { killed: nemesis.i_killed, died: nemesis.killed_me })}
       </p>
     </div>
   )

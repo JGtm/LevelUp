@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 // i18n : renvoie la clé brute (suffit pour vérifier le rendu structurel).
 vi.mock('../useAdminText', () => ({
   useAdminT: () => (key: string) => key,
+  useDateLocale: () => 'fr-FR',
 }))
 
 // Données mockées : un titre Halo Infinite avec capabilities + feature-matrix.

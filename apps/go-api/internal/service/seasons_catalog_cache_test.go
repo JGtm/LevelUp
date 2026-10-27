@@ -13,6 +13,7 @@ import (
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/observability/timing"
 )
 
@@ -211,7 +212,7 @@ func TestSeasonsCatalog_ReturnsCopies(t *testing.T) {
 	mutate := func(entries []SeasonCatalogEntry) {
 		entries[0].Extra["csr_season_id"] = "muté"
 		*entries[0].End = time.Date(1999, 1, 1, 0, 0, 0, 0, time.UTC)
-		entries[0].Label = "muté"
+		entries[0].Label = i18n.FromColumns("", "muté")
 	}
 	check := func(step string, entries []SeasonCatalogEntry) {
 		t.Helper()
@@ -221,8 +222,8 @@ func TestSeasonsCatalog_ReturnsCopies(t *testing.T) {
 		if entries[0].End.Year() != 2022 {
 			t.Errorf("%s : End partagé : %v", step, entries[0].End)
 		}
-		if entries[0].Label != "Heroes of Reach" {
-			t.Errorf("%s : Label partagé : %q", step, entries[0].Label)
+		if entries[0].Label[i18n.LocaleFR] != "Heroes of Reach" {
+			t.Errorf("%s : Label partagé : %q", step, entries[0].Label[i18n.LocaleFR])
 		}
 	}
 

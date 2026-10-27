@@ -4,9 +4,10 @@ package duckdb
 
 import (
 	"context"
-	titlePkg "levelup/go-api/internal/domain/title"
 	"path/filepath"
 	"testing"
+
+	titlePkg "levelup/go-api/internal/domain/title"
 )
 
 // TestLoadRankCatalog_NilDB couvre le early-return : sans DB, on retourne

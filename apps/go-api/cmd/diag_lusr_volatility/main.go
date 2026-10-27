@@ -28,6 +28,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	skillv2 "levelup/go-api/internal/analysis/skill_v2"
+	"levelup/go-api/internal/i18n"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 )
@@ -412,7 +413,7 @@ func printGridWidths(bnd []skillv2.TierBoundary) {
 		if n < 1 {
 			n = 1
 		}
-		fmt.Printf("  %-9s μ≥%-5.1f  largeur tier=%-4.1f  sous-palier=%.3f μ\n", b.NameFR, b.MinMu, w, w/float64(n))
+		fmt.Printf("  %-9s μ≥%-5.1f  largeur tier=%-4.1f  sous-palier=%.3f μ\n", b.Label.Pick(i18n.Default), b.MinMu, w, w/float64(n))
 	}
 }
 

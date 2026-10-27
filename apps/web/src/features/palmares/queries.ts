@@ -32,8 +32,10 @@ export function useSeasonPassPage(playerSlug: string) {
 // committed) participe à la queryKey → refetch au clic « Analyser ».
 export function useRelationsPage(playerSlug: string, filterContext: FilterContextInput, hash: string) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  // Le nom de la carte de chaque duel est servi dans la langue de la requête.
+  const locale = useAppShellStore((s) => s.locale)
   return useQuery<RelationsPageResponse>({
-    queryKey: [...queryKeys.palmaresRelations(playerSlug, titleSlug), hash],
+    queryKey: [...queryKeys.palmaresRelations(playerSlug, titleSlug, locale), hash],
     queryFn: () =>
       api.post<RelationsPageResponse>(`/players/${playerSlug}/pages/palmares/relations`, filterContext),
     enabled: !!playerSlug,
@@ -53,8 +55,9 @@ export function useRelationsMoments(
   enabled: boolean,
 ) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  const locale = useAppShellStore((s) => s.locale)
   return useQuery<RelationsMomentsResponse>({
-    queryKey: [...queryKeys.palmaresRelations(playerSlug, titleSlug), 'moments', hash],
+    queryKey: [...queryKeys.palmaresRelations(playerSlug, titleSlug, locale), 'moments', hash],
     queryFn: () =>
       api.post<RelationsMomentsResponse>(
         `/players/${playerSlug}/pages/palmares/relations/moments`,

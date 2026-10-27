@@ -1,4 +1,5 @@
 import { EmptyStateCard } from '@/components/ui/empty-state'
+import type { Locale } from '@/lib/i18n/locale'
 import { useAppShellStore } from '@/stores/appShellStore'
 
 import type { TitleCapability } from './capabilities'
@@ -9,7 +10,7 @@ import type { TitleCapability } from './capabilities'
  * n'a qu'un seul message court par locale. NO-OP pour `halo_infinite` (déclare
  * toutes les capabilities → ce placeholder n'est jamais rendu en mono-titre).
  */
-const FEATURE_LABEL: Record<TitleCapability, { fr: string; en: string }> = {
+const FEATURE_LABEL: Record<TitleCapability, Record<Locale, string>> = {
   matchmaking: { fr: 'les matchs', en: 'matches' },
   firefight: { fr: 'le Firefight (PvE)', en: 'Firefight (PvE)' },
   forge: { fr: 'Forge', en: 'Forge' },
@@ -42,6 +43,18 @@ const FEATURE_LABEL: Record<TitleCapability, { fr: string; en: string }> = {
   citations: { fr: 'les citations calculées', en: 'computed citations' },
 }
 
+/** Titre et phrase du placeholder, par langue ; `feature` est le libellé de FEATURE_LABEL. */
+const UNAVAILABLE_TEXT: Record<Locale, { title: string; description: (feature: string) => string }> = {
+  fr: {
+    title: 'Indisponible pour ce titre',
+    description: (feature) => `Ce titre ne fournit pas ${feature}.`,
+  },
+  en: {
+    title: 'Not available for this title',
+    description: (feature) => `This title does not provide ${feature}.`,
+  },
+}
+
 interface FeatureUnavailableProps {
   capability: TitleCapability
   className?: string
@@ -56,12 +69,10 @@ interface FeatureUnavailableProps {
 export function FeatureUnavailable({ capability, className }: FeatureUnavailableProps) {
   const locale = useAppShellStore((s) => s.locale)
   const label = FEATURE_LABEL[capability]
-  const feature = locale === 'en' ? label.en : label.fr
-  const title = locale === 'en' ? 'Not available for this title' : 'Indisponible pour ce titre'
-  const description =
-    locale === 'en'
-      ? `This title does not provide ${feature}.`
-      : `Ce titre ne fournit pas ${feature}.`
+  const feature = label[locale]
+  const text = UNAVAILABLE_TEXT[locale]
+  const title = text.title
+  const description = text.description(feature)
 
   return (
     <div className={className ?? 'p-6'}>

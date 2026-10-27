@@ -19,6 +19,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
@@ -73,7 +74,7 @@ func buildBriefingWeapons(
 	retained := make([]port.WeaponKillRow, 0, len(rows))
 	measured := 0
 	for _, r := range rows {
-		if r.Label == "" || r.IsGrenadeMelee {
+		if r.Label.Empty() || r.IsGrenadeMelee {
 			continue
 		}
 		retained = append(retained, r)
@@ -82,7 +83,7 @@ func buildBriefingWeapons(
 	if measured == 0 {
 		return nil
 	}
-	entries := buildTopWeaponKills(retained, briefingWeaponsTopN)
+	entries := buildTopWeaponKills(i18n.FromContext(ctx), retained, briefingWeaponsTopN)
 	if len(entries) == 0 {
 		return nil
 	}

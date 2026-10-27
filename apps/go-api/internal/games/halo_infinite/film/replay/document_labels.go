@@ -1,5 +1,7 @@
 package replay
 
+import "levelup/go-api/internal/i18n"
+
 // document_labels.go — LES LIBELLES que l artefact embarque : le nom bilingue d une arme, d une
 // grenade ou d une capacite, et ce qui se dessine avec.
 //
@@ -8,15 +10,14 @@ package replay
 // au-dessus d un seuil deja gele par la baseline. AUCUNE ligne de ces deux types n a change —
 // c est un deplacement, verifie par le golden d assemblage qui fige les libelles servis.
 
-// Label est un libellé affichable dans les deux langues du produit.
+// Label est un libellé affichable dans chaque langue de `config/locales.toml`.
 //
 // POURQUOI DEUX LANGUES DANS L'ARTEFACT, et pas une résolution au service : l'artefact
 // est construit UNE FOIS, hors ligne, et servi tel quel — la locale, elle, change à
 // chaque requête. Y figer une seule langue reviendrait à choisir la langue du lecteur au
 // moment du décodage d'un film.
 type Label struct {
-	En string `json:"en"`
-	Fr string `json:"fr"`
+	Text i18n.Text `json:"i18n_text,omitempty" required:"true"`
 	// Img est l'URL de la vignette du HUD du jeu (grenades, capacités des fiches joueur).
 	// Vide = pas de visuel : le client garde le libellé, jamais la vignette d'un voisin.
 	// Tinted dit si le visuel est un masque à teindre (même contrat que WeaponLabel).
@@ -46,8 +47,7 @@ type Label struct {
 // le catalogue des 22 noms d'armes Halo : le client dessine ce que le document dit, il
 // n'a plus à savoir ce qu'est un Ravager.
 type WeaponLabel struct {
-	En string `json:"en"`
-	Fr string `json:"fr"`
+	Text i18n.Text `json:"i18n_text,omitempty" required:"true"`
 	// Fx est la famille de RENDU du tir (ballistic, plasma, light, shock, explosive,
 	// bomb, melee, needles). Vide = arme non catégorisée : le client dessine le trait neutre,
 	// jamais l'effet d'une arme voisine.
@@ -111,8 +111,8 @@ type WeaponLabel struct {
 // (lot 1.9.9, 2026-09-16). Lue du manifeste du titre, jamais ecrite en Go : les libelles
 // viennent de `config/titles/{slug}/mappings/replay_labels.toml`, section `[[vehicle_families]]`.
 type VehicleFamilyInfo struct {
-	// En / Fr : le libelle affichable de la famille.
-	En, Fr string
+	// Label : le libelle affichable de la famille, par langue.
+	Label i18n.Text
 	// Kind est la NATURE publiee (`map_element` : un objet de la carte, pas un vehicule de la
 	// partie). Liste fermee, tenue par le loader du manifeste.
 	Kind string
@@ -125,7 +125,7 @@ type VehicleFamilyInfo struct {
 // VehicleLabel est ce qu il faut pour DESSINER une famille de chassis : sa vignette, le fait
 // qu elle se teigne, et — depuis le lot 1.9.9 — ce qu elle EST quand ce n est pas un vehicule.
 //
-// SES `En`/`Fr` SONT PRESQUE TOUJOURS VIDES, ET C EST LA REGLE. Le nom d un vehicule est un NOM
+// SON `Text` EST PRESQUE TOUJOURS VIDE, ET C EST LA REGLE. Le nom d un vehicule est un NOM
 // PROPRE du jeu (Warthog, Banshee, Mongoose) : il ne se traduit pas, et la CLE de la table EST
 // deja ce nom. Les deux champs ne se remplissent que pour les familles que le TITRE qualifie dans
 // son manifeste, c est-a-dire celles dont le nom est une DESCRIPTION et non un nom propre — la
@@ -155,7 +155,13 @@ type VehicleLabel struct {
 	// VEHICULE : aucun occupant ne lui est attribue cote serveur (cf. `vehicleFamillesNonPilotables`),
 	// et le calque lui reserve un pictogramme dedie plutot que le marqueur neutre.
 	Kind string `json:"kind,omitempty"`
-	// En / Fr : le libelle de la famille, vide pour un nom propre du jeu (cf. l en-tete).
-	En string `json:"en,omitempty"`
-	Fr string `json:"fr,omitempty"`
+	// Text : le libelle de la famille par langue, vide pour un nom propre du jeu (cf. l en-tete) ;
+	// au fil, un membre par langue renseignee, a plat (`i18n.MarshalFlat`).
+	Text i18n.Text `json:"i18n_text,omitempty"`
+}
+
+// isZero dit que le libellé ne porte rien : aucune langue, aucun visuel, aucune famille. Un Label
+// n'est pas comparable avec `==` (son Text est une table).
+func (l Label) isZero() bool {
+	return l.Text.Empty() && l.Img == "" && !l.Tinted && l.Family == ""
 }

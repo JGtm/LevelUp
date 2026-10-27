@@ -139,3 +139,21 @@ func TestWithDBWriterLabelIfAbsent_LabelsBareContext(t *testing.T) {
 		t.Errorf("contexte nu: got %q, want sync_v2_postsync", got)
 	}
 }
+
+func TestLocale_NormalizedThroughI18n(t *testing.T) {
+	cases := []struct{ set, want string }{
+		{"fr", "fr"},
+		{"en", "en"},
+		{"en-US", "en"},
+		{"", "fr"},
+		{"zz", "fr"},
+	}
+	for _, c := range cases {
+		if got := Locale(WithLocale(context.Background(), c.set)); got != c.want {
+			t.Errorf("WithLocale(%q) -> Locale = %q, want %q", c.set, got, c.want)
+		}
+	}
+	if got := Locale(context.Background()); got != "fr" {
+		t.Errorf("contexte vide : %q, want fr", got)
+	}
+}

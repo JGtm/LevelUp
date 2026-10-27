@@ -18,6 +18,7 @@ import (
 	"log/slog"
 	"sort"
 
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/notifications"
 	"levelup/go-api/internal/platform/duckdb"
 )
@@ -29,32 +30,19 @@ import (
 // la garde cold-start couvre le tout-premier cas, ce seuil couvre le reste.
 const medalFirstEarnedRecapThreshold = 3
 
-// paramKeyMedalNameFR / paramKeyMedalNameEN : clés Params du nom localisé de la
-// médaille. Le serveur résout les DEUX langues (patron title_fr/title_en de
-// milestone_unlocked) ; le front choisit selon la locale. Jamais d'id brut affiché.
-const (
-	paramKeyMedalNameFR = "medal_name_fr"
-	paramKeyMedalNameEN = "medal_name_en"
-)
-
 // medalsRouteSuffix : sous-chemin joueur de la page Médailles (cible des notifs
 // « médaille inédite »). Route front RÉELLE (career/medals.tsx) → zéro hop.
 const medalsRouteSuffix = "career/medals"
 
-// medalNamePair porte le nom localisé (FR + EN) d'une médaille résolu côté serveur.
-type medalNamePair struct {
-	FR string
-	EN string
-}
-
 // medalNameResolver résout les noms localisés d'un ensemble de medal_name_id.
 // Interface locale pour rendre emitMedalFirstEarned testable sans metadata DB.
 type medalNameResolver interface {
-	MedalNames(ctx context.Context, ids []int64) map[int64]medalNamePair
+	MedalNames(ctx context.Context, ids []int64) map[int64]i18n.Text
 }
 
-// pdbMedalNamer résout les noms FR + EN via MedalDefinitionsRepo.LookupByIDs (deux
-// lectures locale-aware, chaîne de fallback partagée medal_label_resolve.go).
+// pdbMedalNamer résout les noms dans chaque langue de l'application via
+// MedalDefinitionsRepo.LookupByIDs (une lecture locale-aware par langue, chaîne de fallback
+// partagée medal_label_resolve.go).
 type pdbMedalNamer struct {
 	repo *duckdb.MedalDefinitionsRepo
 }
@@ -69,20 +57,24 @@ func newMedalNamerForPDB(pdb *duckdb.PlayerDB) medalNameResolver {
 	return &pdbMedalNamer{repo: duckdb.NewMedalDefinitionsRepo(pdb)}
 }
 
-// MedalNames résout FR + EN pour chaque id ; une lecture en échec est loguée et
-// laisse un nom vide (emitSingleMedal saute alors la médaille — jamais d'id brut).
-func (m *pdbMedalNamer) MedalNames(ctx context.Context, ids []int64) map[int64]medalNamePair {
-	out := make(map[int64]medalNamePair, len(ids))
-	fr, err := m.repo.LookupByIDs(ctx, ids, "fr")
-	if err != nil {
-		slog.WarnContext(ctx, "post_sync: medal names lookup FR", "err", err)
-	}
-	en, err := m.repo.LookupByIDs(ctx, ids, "en")
-	if err != nil {
-		slog.WarnContext(ctx, "post_sync: medal names lookup EN", "err", err)
-	}
+// MedalNames résout le nom de chaque médaille dans toutes les langues ; une lecture en échec est
+// loguée et laisse un nom vide dans cette langue (emitSingleMedal saute alors la médaille si
+// aucune langue n'a de nom — jamais d'id brut).
+func (m *pdbMedalNamer) MedalNames(ctx context.Context, ids []int64) map[int64]i18n.Text {
+	out := make(map[int64]i18n.Text, len(ids))
 	for _, id := range ids {
-		out[id] = medalNamePair{FR: fr[id].Label, EN: en[id].Label}
+		out[id] = i18n.Text{}
+	}
+	for _, l := range i18n.Locales() {
+		rows, err := m.repo.LookupByIDs(ctx, ids, string(l))
+		if err != nil {
+			slog.WarnContext(ctx, "post_sync: medal names lookup", "locale", l, "err", err)
+		}
+		for _, id := range ids {
+			if name := rows[id].Label; name != "" {
+				out[id][l] = name
+			}
+		}
 	}
 	return out
 }
@@ -150,36 +142,29 @@ func emitMedalRecap(ctx context.Context, emitter notifications.Emitter, titleSlu
 }
 
 // emitSingleMedal émet une notification « médaille inédite » nominative. Si le nom
-// localisé est introuvable dans les DEUX langues, on saute (jamais d'id brut). Un
-// nom présent dans une seule langue est réutilisé pour l'autre (dégradation propre).
+// localisé est introuvable dans TOUTES les langues, on saute (jamais d'id brut). Le nom est écrit
+// une fois par langue (`medal_name_fr`...) ; une langue sans nom est lue dans une autre à
+// l'affichage (dégradation propre : notifications.LocalizeParams).
 func emitSingleMedal(
 	ctx context.Context,
 	emitter notifications.Emitter,
 	titleSlug, slug string,
 	id int64,
-	name medalNamePair,
+	name i18n.Text,
 ) {
-	if name.FR == "" && name.EN == "" {
+	if name.Empty() {
 		slog.WarnContext(ctx, "post_sync: medal_first_earned nom introuvable — émission sautée",
 			"slug", slug, "medal_id", id)
 		return
 	}
-	fr, en := name.FR, name.EN
-	if fr == "" {
-		fr = en
-	}
-	if en == "" {
-		en = fr
-	}
+	params := map[string]any{}
+	name.AddParams(params, notifications.ParamMedalName)
 	err := emitter.Emit(ctx, notifications.EmitInput{
-		Category: notifications.CategoryMedalFirstEarned,
-		Severity: notifications.SeveritySuccess,
-		TitleKey: "notif.medal_first_earned.title",
-		BodyKey:  "notif.medal_first_earned.body",
-		Params: map[string]any{
-			paramKeyMedalNameFR: fr,
-			paramKeyMedalNameEN: en,
-		},
+		Category:    notifications.CategoryMedalFirstEarned,
+		Severity:    notifications.SeveritySuccess,
+		TitleKey:    "notif.medal_first_earned.title",
+		BodyKey:     "notif.medal_first_earned.body",
+		Params:      params,
 		TargetRoute: notifications.PlayerTargetRoute(titleSlug, slug, medalsRouteSuffix),
 		Source:      postSyncSource,
 	})

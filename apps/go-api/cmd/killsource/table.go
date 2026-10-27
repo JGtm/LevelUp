@@ -95,14 +95,14 @@ func ligneTable(w *tabwriter.Writer, k decfilm.Kill, o options) {
 		credit += "  " + marqueurDivergence
 	}
 	source := k.Source.Display
-	if c := categorieFR(k.Source.Category); c != "" {
+	if c := categorieLibelle(k.Source.Category); c != "" {
 		source += " · " + c
 	}
 	fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t",
-		mmss(k.TimeMS), k.Victim, source, natureFR(k.Source.Class), credit,
+		mmss(k.TimeMS), k.Victim, source, natureLibelle(k.Source.Class), credit,
 		assistantCourt(k.Assist), partsCourtes(k))
 	if o.full {
-		fmt.Fprintf(w, "%08x\t%s\t%s\t", k.Source.Tag, voieFR(k.Read.Path), statutFR(k.Source.Status))
+		fmt.Fprintf(w, "%08x\t%s\t%s\t", k.Source.Tag, voieLibelle(k.Read.Path), statutLibelle(k.Source.Status))
 	}
 	fmt.Fprintln(w)
 }

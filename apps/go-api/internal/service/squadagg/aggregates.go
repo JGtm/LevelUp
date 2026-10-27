@@ -11,7 +11,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
-	"levelup/go-api/internal/games/mappings"
+	"levelup/go-api/internal/i18n"
 )
 
 func BuildSquadHeader(
@@ -338,8 +338,8 @@ func modeLabelForFilter(r canonical.PlayerMatchRow) string {
 // les parties jouées sur « Thunderhead Heavies ». `groups` est obligatoire pour que chaque appelant
 // décide du regroupement ; la valeur zéro laisse chaque carte seule.
 //
-// Modes : le mode du match (PairMode, via modeLabelForFilter). Fallback sur DefaultLabel (EN) si
-// Labels["fr"] absent.
+// Modes : le mode du match (PairMode, via modeLabelForFilter). Repli sur DefaultLabel (EN) si
+// le nom de la langue par défaut est absent.
 func FilterRowsByCascade(rows []canonical.PlayerMatchRow, c domain.CascadeFilter, groups domain.GroupesDeCartes) []canonical.PlayerMatchRow {
 	expSet := make(map[string]struct{}, len(c.ExperienceTypes))
 	for _, e := range c.ExperienceTypes {
@@ -385,14 +385,14 @@ func FilterRowsByCascade(rows []canonical.PlayerMatchRow, c domain.CascadeFilter
 }
 
 // assetLabelForFilter retourne le label d'un AssetReference utilisé comme clé de filtre.
-// Préfère Labels["fr"] (COALESCE(name_fr, name) — même source que filtersResolve)
-// sur DefaultLabel (anglais pur) pour alignement avec les valeurs du frontend.
+// Clé de filtre : le nom de la langue par défaut (Labels[i18n.Default], même source que filtersResolve)
+// plutôt que DefaultLabel (anglais pur), pour s'aligner sur les valeurs des options du frontend.
 func assetLabelForFilter(ref *canonical.AssetReference) string {
 	if ref == nil {
 		return ""
 	}
-	if fr, ok := ref.Labels["fr"]; ok && fr != "" {
-		return fr
+	if v, ok := ref.Labels[string(i18n.Default)]; ok && v != "" {
+		return v
 	}
 	return ref.DefaultLabel
 }
@@ -405,7 +405,7 @@ func assetLabelForFilter(ref *canonical.AssetReference) string {
 // propre de la carte (assetLabelForFilter).
 func mapLabelForFilter(ref *canonical.AssetReference, groups domain.GroupesDeCartes) string {
 	if ref != nil {
-		if base, ok := groups.Libelle(ref.ID, mappings.LocaleFR); ok {
+		if base, ok := groups.Libelle(ref.ID, i18n.Default); ok {
 			return base
 		}
 	}

@@ -9,6 +9,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 )
 
 // ─── derefIntZero ─────────────────────────────────────────────────────────
@@ -124,32 +125,35 @@ func TestCleanAssetLabel_RejectsUUIDUpper(t *testing.T) {
 	}
 }
 
-// ─── assetLabels ──────────────────────────────────────────────────────────
+// enFr rend les libellés anglais et français d un Text (les tests historiques raisonnent en paires).
+func enFr(t i18n.Text) (en, fr string) { return t[i18n.LocaleEN], t[i18n.LocaleFR] }
 
-func TestAssetLabels_Nil(t *testing.T) {
+// ─── assetText ──────────────────────────────────────────────────────────
+
+func TestAssetText_Nil(t *testing.T) {
 	t.Parallel()
-	en, fr := assetLabels(nil)
+	en, fr := enFr(assetText(nil))
 	if en != "" || fr != "" {
-		t.Errorf("assetLabels(nil) = (%q, %q), want (empty, empty)", en, fr)
+		t.Errorf("assetText(nil) = (%q, %q), want (empty, empty)", en, fr)
 	}
 }
 
-func TestAssetLabels_OnlyDefaultLabel(t *testing.T) {
+func TestAssetText_OnlyDefaultLabel(t *testing.T) {
 	t.Parallel()
 	ref := &canonical.AssetReference{DefaultLabel: "Bazaar"}
-	en, fr := assetLabels(ref)
+	en, fr := enFr(assetText(ref))
 	if en != "Bazaar" || fr != "" {
-		t.Errorf("assetLabels(default only) = (%q, %q), want (Bazaar, empty)", en, fr)
+		t.Errorf("assetText(default only) = (%q, %q), want (Bazaar, empty)", en, fr)
 	}
 }
 
-func TestAssetLabels_LabelsOverrideDefault(t *testing.T) {
+func TestAssetText_LabelsOverrideDefault(t *testing.T) {
 	t.Parallel()
 	ref := &canonical.AssetReference{
 		DefaultLabel: "FallbackEN",
 		Labels:       map[string]string{"en": "Bazaar", "fr": "Bazaar FR"},
 	}
-	en, fr := assetLabels(ref)
+	en, fr := enFr(assetText(ref))
 	if en != "Bazaar" {
 		t.Errorf("EN: got %q, want Bazaar (Labels[en] should override DefaultLabel)", en)
 	}
@@ -158,27 +162,27 @@ func TestAssetLabels_LabelsOverrideDefault(t *testing.T) {
 	}
 }
 
-func TestAssetLabels_EmptyLabelsKeepDefault(t *testing.T) {
+func TestAssetText_EmptyLabelsKeepDefault(t *testing.T) {
 	t.Parallel()
 	// Labels["en"] empty → keep DefaultLabel via cleanAssetLabel("") returning "".
 	ref := &canonical.AssetReference{
 		DefaultLabel: "FallbackEN",
 		Labels:       map[string]string{"en": "  "},
 	}
-	en, _ := assetLabels(ref)
+	en, _ := enFr(assetText(ref))
 	if en != "FallbackEN" {
 		t.Errorf("EN with whitespace label: got %q, want FallbackEN (fallback)", en)
 	}
 }
 
-func TestAssetLabels_UUIDLabelsRejected(t *testing.T) {
+func TestAssetText_UUIDLabelsRejected(t *testing.T) {
 	t.Parallel()
 	uuid := "3e1e4cec-4f2c-44c6-b8d2-96b85c66c702"
 	ref := &canonical.AssetReference{
 		DefaultLabel: "Bazaar",
 		Labels:       map[string]string{"en": uuid, "fr": uuid},
 	}
-	en, fr := assetLabels(ref)
+	en, fr := enFr(assetText(ref))
 	if en != "Bazaar" {
 		t.Errorf("UUID en should be rejected, fallback to DefaultLabel; got en=%q", en)
 	}
@@ -187,21 +191,21 @@ func TestAssetLabels_UUIDLabelsRejected(t *testing.T) {
 	}
 }
 
-func TestAssetLabels_NoFRLabel(t *testing.T) {
+func TestAssetText_NoFRLabel(t *testing.T) {
 	t.Parallel()
 	ref := &canonical.AssetReference{
 		DefaultLabel: "Bazaar",
 		Labels:       map[string]string{"en": "Bazaar"},
 	}
-	_, fr := assetLabels(ref)
+	_, fr := enFr(assetText(ref))
 	if fr != "" {
 		t.Errorf("missing FR: got fr=%q, want empty", fr)
 	}
 }
 
-// ─── modeLabels ───────────────────────────────────────────────────────────
+// ─── modeText ───────────────────────────────────────────────────────────
 
-func TestModeLabels_LitLeModeFourniParLaSource(t *testing.T) {
+func TestModeText_LitLeModeFourniParLaSource(t *testing.T) {
 	t.Parallel()
 	// Le mode est PairMode ; GameVariant (type de jeu exposé à part) n'y change rien.
 	r := canonical.PlayerMatchRow{
@@ -210,13 +214,13 @@ func TestModeLabels_LitLeModeFourniParLaSource(t *testing.T) {
 			GameVariant: &canonical.AssetReference{DefaultLabel: "Slayer Variant"},
 		},
 	}
-	en, _ := modeLabels(r)
+	en, _ := enFr(modeText(r))
 	if en != "Arena:Slayer" {
-		t.Errorf("modeLabels: got %q, want Arena:Slayer", en)
+		t.Errorf("modeText: got %q, want Arena:Slayer", en)
 	}
 }
 
-func TestModeLabels_SansModeNeRepliePasSurGameVariant(t *testing.T) {
+func TestModeText_SansModeNeRepliePasSurGameVariant(t *testing.T) {
 	t.Parallel()
 	// PairMode nil, ou sans libellé : pas de mode, même si GameVariant est nommé.
 	for name, pair := range map[string]*canonical.AssetReference{
@@ -231,22 +235,22 @@ func TestModeLabels_SansModeNeRepliePasSurGameVariant(t *testing.T) {
 				GameVariant: &canonical.AssetReference{DefaultLabel: "Slayer Variant"},
 			},
 		}
-		if en, fr := modeLabels(r); en != "" || fr != "" {
-			t.Errorf("%s : modeLabels = (%q, %q), want vide (aucun repli sur GameVariant)", name, en, fr)
+		if en, fr := enFr(modeText(r)); en != "" || fr != "" {
+			t.Errorf("%s : modeText = (%q, %q), want vide (aucun repli sur GameVariant)", name, en, fr)
 		}
 	}
 }
 
-func TestModeLabels_BothNil(t *testing.T) {
+func TestModeText_BothNil(t *testing.T) {
 	t.Parallel()
 	r := canonical.PlayerMatchRow{}
-	en, fr := modeLabels(r)
+	en, fr := enFr(modeText(r))
 	if en != "" || fr != "" {
-		t.Errorf("modeLabels(empty): got (%q, %q), want (empty, empty)", en, fr)
+		t.Errorf("modeText(empty): got (%q, %q), want (empty, empty)", en, fr)
 	}
 }
 
-func TestModeLabels_PairModeFRFR(t *testing.T) {
+func TestModeText_PairModeFRFR(t *testing.T) {
 	t.Parallel()
 	// PairMode avec label FR → renvoie FR aussi.
 	r := canonical.PlayerMatchRow{
@@ -257,7 +261,7 @@ func TestModeLabels_PairModeFRFR(t *testing.T) {
 			},
 		},
 	}
-	en, fr := modeLabels(r)
+	en, fr := enFr(modeText(r))
 	if en != "Arena:Slayer" || fr != "Arène:Massacre" {
 		t.Errorf("modeLabels: got (%q, %q), want (Arena:Slayer, Arène:Massacre)", en, fr)
 	}
@@ -267,8 +271,8 @@ func TestModeLabels_PairModeFRFR(t *testing.T) {
 
 func TestDominantNameFromRows_Empty(t *testing.T) {
 	t.Parallel()
-	got := dominantNameFromRows(nil, "fr", func(r canonical.PlayerMatchRow) (string, string) {
-		return "", ""
+	got := dominantNameFromRows(nil, "fr", func(r canonical.PlayerMatchRow) i18n.Text {
+		return nil
 	})
 	if got != nil {
 		t.Errorf("dominantNameFromRows(nil) = %v, want nil", got)
@@ -278,8 +282,8 @@ func TestDominantNameFromRows_Empty(t *testing.T) {
 func TestDominantNameFromRows_SingleEntry(t *testing.T) {
 	t.Parallel()
 	rows := []canonical.PlayerMatchRow{{}}
-	got := dominantNameFromRows(rows, "fr", func(r canonical.PlayerMatchRow) (string, string) {
-		return "Slayer", "Massacre"
+	got := dominantNameFromRows(rows, "fr", func(r canonical.PlayerMatchRow) i18n.Text {
+		return i18n.FromColumns("Slayer", "Massacre")
 	})
 	if got == nil || *got != "Massacre" {
 		t.Errorf("dominantNameFromRows(fr): got %v, want Massacre", got)
@@ -289,8 +293,8 @@ func TestDominantNameFromRows_SingleEntry(t *testing.T) {
 func TestDominantNameFromRows_LocaleEN(t *testing.T) {
 	t.Parallel()
 	rows := []canonical.PlayerMatchRow{{}}
-	got := dominantNameFromRows(rows, "en", func(r canonical.PlayerMatchRow) (string, string) {
-		return "Slayer", "Massacre"
+	got := dominantNameFromRows(rows, "en", func(r canonical.PlayerMatchRow) i18n.Text {
+		return i18n.FromColumns("Slayer", "Massacre")
 	})
 	if got == nil || *got != "Slayer" {
 		t.Errorf("dominantNameFromRows(en): got %v, want Slayer", got)
@@ -301,13 +305,13 @@ func TestDominantNameFromRows_MajorityWins(t *testing.T) {
 	t.Parallel()
 	rows := make([]canonical.PlayerMatchRow, 5)
 	i := 0
-	got := dominantNameFromRows(rows, "fr", func(r canonical.PlayerMatchRow) (string, string) {
+	got := dominantNameFromRows(rows, "fr", func(r canonical.PlayerMatchRow) i18n.Text {
 		i++
 		// 3x Slayer, 2x CTF.
 		if i <= 3 {
-			return "Slayer", "Massacre"
+			return i18n.FromColumns("Slayer", "Massacre")
 		}
-		return "CTF", "Drapeau"
+		return i18n.FromColumns("CTF", "Drapeau")
 	})
 	if got == nil || *got != "Massacre" {
 		t.Errorf("dominantNameFromRows majority: got %v, want Massacre (3x vs 2x)", got)
@@ -318,14 +322,14 @@ func TestDominantNameFromRows_TieAlphabetical(t *testing.T) {
 	t.Parallel()
 	rows := make([]canonical.PlayerMatchRow, 2)
 	i := 0
-	got := dominantNameFromRows(rows, "fr", func(r canonical.PlayerMatchRow) (string, string) {
+	got := dominantNameFromRows(rows, "fr", func(r canonical.PlayerMatchRow) i18n.Text {
 		i++
 		// 1x Slayer (key="Slayer"), 1x CTF (key="CTF") — égalité, CTF < Slayer
 		// → CTF gagne.
 		if i == 1 {
-			return "Slayer", "Massacre"
+			return i18n.FromColumns("Slayer", "Massacre")
 		}
-		return "CTF", "Drapeau"
+		return i18n.FromColumns("CTF", "Drapeau")
 	})
 	if got == nil || *got != "Drapeau" {
 		t.Errorf("dominantNameFromRows tie: got %v, want Drapeau (alphabetical key tie-break)", got)
@@ -336,12 +340,12 @@ func TestDominantNameFromRows_SkipsEmpty(t *testing.T) {
 	t.Parallel()
 	rows := make([]canonical.PlayerMatchRow, 3)
 	i := 0
-	got := dominantNameFromRows(rows, "fr", func(r canonical.PlayerMatchRow) (string, string) {
+	got := dominantNameFromRows(rows, "fr", func(r canonical.PlayerMatchRow) i18n.Text {
 		i++
 		if i == 1 {
-			return "", "" // ignoré
+			return nil // ignoré
 		}
-		return "Slayer", "Massacre"
+		return i18n.FromColumns("Slayer", "Massacre")
 	})
 	if got == nil || *got != "Massacre" {
 		t.Errorf("dominantNameFromRows skipping empty: got %v, want Massacre", got)
@@ -351,8 +355,8 @@ func TestDominantNameFromRows_SkipsEmpty(t *testing.T) {
 func TestDominantNameFromRows_AllEmpty(t *testing.T) {
 	t.Parallel()
 	rows := make([]canonical.PlayerMatchRow, 3)
-	got := dominantNameFromRows(rows, "fr", func(r canonical.PlayerMatchRow) (string, string) {
-		return "", ""
+	got := dominantNameFromRows(rows, "fr", func(r canonical.PlayerMatchRow) i18n.Text {
+		return nil
 	})
 	if got != nil {
 		t.Errorf("dominantNameFromRows all empty: got %v, want nil", got)
@@ -363,8 +367,8 @@ func TestDominantNameFromRows_KeyFromFROnly(t *testing.T) {
 	t.Parallel()
 	// EN vide → key = FR ; reste cohérent.
 	rows := make([]canonical.PlayerMatchRow, 1)
-	got := dominantNameFromRows(rows, "fr", func(r canonical.PlayerMatchRow) (string, string) {
-		return "", "Massacre"
+	got := dominantNameFromRows(rows, "fr", func(r canonical.PlayerMatchRow) i18n.Text {
+		return i18n.FromColumns("", "Massacre")
 	})
 	if got == nil || *got != "Massacre" {
 		t.Errorf("dominantNameFromRows fr only: got %v, want Massacre", got)

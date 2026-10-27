@@ -105,7 +105,6 @@ func TestBuildBatchFromFetchedMatch_FullData_PopulatesAllFields(t *testing.T) {
 			MatchID:       "m_full_001",
 			RatingValue:   cF64Ptr(1450),
 			Tier:          "Onyx",
-			TierFR:        "Onyx",
 			SubTier:       0,
 			TierLabel:     "Onyx 1450",
 			RatingDelta:   cF64Ptr(+18),

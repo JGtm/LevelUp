@@ -83,12 +83,12 @@ var (
 	famA = AbilityPalette{
 		ID:      "famille_a",
 		Markers: []int{1, 2, 4, 5, 6, 8, 9, 10, 11, 12, 23},
-		Ranks:   map[int]Label{8: {En: "Active Camouflage", Fr: "camouflage actif"}},
+		Ranks:   map[int]Label{8: {Text: enFr("Active Camouflage", "camouflage actif")}},
 	}
 	famB = AbilityPalette{
 		ID:      "famille_b",
 		Markers: []int{19, 20, 21, 22},
-		Ranks:   map[int]Label{20: {En: "Grappleshot", Fr: "grappin"}},
+		Ranks:   map[int]Label{20: {Text: enFr("Grappleshot", "grappin")}},
 	}
 )
 
@@ -228,7 +228,7 @@ func TestAbilityLabelsUsedNamesOnlyWhatItKnows(t *testing.T) {
 	// test l'injecte, comme le fait cmd/replay-build.
 	reads := []AbilityRead{{R: 20}, {R: 9}}
 	got := abilityLabelsUsed(reads, &famB)
-	if got["20"].Fr != "grappin" || got["20"].En != "Grappleshot" {
+	if frOf(got["20"].Text) != "grappin" || enOf(got["20"].Text) != "Grappleshot" {
 		t.Errorf("rang connu non nomme dans les deux langues : %+v", got)
 	}
 	if _, named := got["9"]; named {
@@ -257,7 +257,7 @@ func TestAbilityLabelsUsedNamesOnlyWhatItKnows(t *testing.T) {
 func TestAbilityLabelsUsedPublieLaFamilleDuManifeste(t *testing.T) {
 	palette := AbilityPalette{
 		ID:       "test",
-		Ranks:    map[int]Label{2: {En: "Drop Wall", Fr: "mur"}, 8: {En: "Camo", Fr: "camo"}},
+		Ranks:    map[int]Label{2: {Text: enFr("Drop Wall", "mur")}, 8: {Text: enFr("Camo", "camo")}},
 		Families: map[int]string{2: "wall"},
 	}
 	got := abilityLabelsUsed([]AbilityRead{{R: 2}, {R: 8}}, &palette)

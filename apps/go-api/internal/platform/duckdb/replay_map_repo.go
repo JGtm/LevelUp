@@ -21,6 +21,7 @@ import (
 	"log/slog"
 	"strings"
 
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
@@ -168,7 +169,7 @@ func (r *ReplayMapRepo) assemblerIdentites(ctx context.Context, brut identitesBr
 	}
 	if keys.MapID != "" && r.metadata != nil {
 		meta := NewMetadataRepoFromDB(r.metadata)
-		name, _, ok, resErr := meta.ResolveAssetName(ctx, "map", keys.MapID, PreferredLangsForLocale("en"))
+		name, _, ok, resErr := meta.ResolveAssetName(ctx, "map", keys.MapID, PreferredLangsForLocale(string(i18n.Fallback)))
 		if resErr != nil {
 			slog.WarnContext(ctx, "replay map: résolution du nom d'asset échouée",
 				"err", resErr, "ref", brut.Ref, "map_id", keys.MapID)

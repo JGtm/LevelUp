@@ -4,7 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
+
+	"levelup/go-api/internal/i18n"
 )
 
 // mockFetcher compte les appels et renvoie un nom par (assetID|lang).
@@ -188,5 +191,20 @@ func TestResolve_SansPlafond_70Assets(t *testing.T) {
 	}
 	if len(s.upserts) != 140 {
 		t.Errorf("traductions écrites = %d, want 140 (70 assets x 2 langues)", len(s.upserts))
+	}
+}
+
+// DefaultLangs suit la liste des langues : une étiquette Halo (la première) par langue, dans l'ordre.
+func TestDefaultLangs_SuitLaListeDesLangues(t *testing.T) {
+	got := DefaultLangs()
+	var want []string
+	for _, l := range i18n.Locales() {
+		want = append(want, i18n.HaloTags(l)[0])
+	}
+	if len(got) != len(i18n.Locales()) || strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Fatalf("DefaultLangs() = %v, want %v", got, want)
+	}
+	if got[0] != "fr-FR" || got[1] != "en-US" {
+		t.Fatalf("fr/en attendus en tête : %v", got)
 	}
 }

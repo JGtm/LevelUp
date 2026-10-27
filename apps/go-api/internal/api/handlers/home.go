@@ -27,6 +27,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"levelup/go-api/internal/api/humacore"
+	"levelup/go-api/internal/i18n"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 	settings_platform "levelup/go-api/internal/platform/settings"
@@ -35,6 +36,11 @@ import (
 
 // homeCacheControl reproduit l'en-tête de l'ancien middleware CacheMaxAge(30).
 const homeCacheControl = "public, max-age=30, stale-while-revalidate=15"
+
+// homeVary : le corps de l'Accueil dépend de la langue de la requête (X-LevelUp-Locale). Sans Vary, un cache
+// HTTP (navigateur, proxy) qui garde la réponse 30 s (ou 15 s de plus pendant la revalidation) la resservirait
+// dans l'autre langue après une bascule. Posé sur toute réponse de homeJSONOutput, 304 compris.
+const homeVary = "X-LevelUp-Locale"
 
 // HomeAuthFactory est une factory qui retourne un HomeService + contexte enrichi avec HaloTokens.
 type HomeAuthFactory func(ctx context.Context, slug string) (svc port.HomeService, enrichedCtx context.Context, xuid, gamertag string, err error)
@@ -71,42 +77,35 @@ type homePageInput struct {
 // SANS trailing newline — byte-exact vs writeJSONCached). Status dynamique (200/304).
 type homePageOutput struct {
 	Status       int
-	ContentType  string `header:"Content-Type"`
-	CacheControl string `header:"Cache-Control"`
-	ETag         string `header:"ETag"`
+	ContentType  string   `header:"Content-Type"`
+	CacheControl string   `header:"Cache-Control"`
+	ETag         string   `header:"ETag"`
+	Vary         []string `header:"Vary"`
 	Body         []byte
 }
 
 // resolveLocaleFromHeader détermine la locale à utiliser pour cette requête.
 // Priorité : header X-LevelUp-Locale (envoyé par le frontend) → settings store
-// (app_settings.json:lang) → "fr" par défaut.
+// (app_settings.json:lang) → langue par défaut.
 //
 // Le header permet au frontend de basculer la locale en runtime sans dépendre
 // d'un re-bootstrap après modification de app_settings.json.
 func (h *HomeHandler) resolveLocaleFromHeader(ctx context.Context, localeHeader string) string {
-	if v := strings.ToLower(strings.TrimSpace(localeHeader)); v != "" {
-		if strings.HasPrefix(v, "en") {
-			return "en"
-		}
-		if strings.HasPrefix(v, "fr") {
-			return "fr"
-		}
+	if l, ok := i18n.Lookup(localeHeader); ok {
+		return string(l)
 	}
 	if h.settingsStore == nil {
-		return "fr"
+		return string(i18n.Default)
 	}
 	settings, err := h.settingsStore.Load()
 	if err != nil {
-		slog.DebugContext(ctx, "home: locale settings load failed, fallback fr", "err", err)
-		return "fr"
+		slog.DebugContext(ctx, "home: locale settings load failed, fallback default", "err", err, "default", i18n.Default)
+		return string(i18n.Default)
 	}
 	if settings == nil {
-		return "fr"
+		return string(i18n.Default)
 	}
-	if strings.HasPrefix(strings.ToLower(strings.TrimSpace(settings.Lang)), "en") {
-		return "en"
-	}
-	return "fr"
+	return string(i18n.Parse(settings.Lang))
 }
 
 // handleGetHomePage retourne la page d'accueil agrégée (migré Huma).
@@ -143,13 +142,14 @@ func homeJSONOutput(ctx context.Context, v any, ifNoneMatch, cacheControl string
 	sum := sha256.Sum256(body)
 	etag := fmt.Sprintf(`"%x"`, sum[:8])
 	if ifNoneMatch != "" && ifNoneMatch == etag {
-		return &homePageOutput{Status: http.StatusNotModified, CacheControl: cacheControl, ETag: etag}, nil
+		return &homePageOutput{Status: http.StatusNotModified, CacheControl: cacheControl, ETag: etag, Vary: []string{homeVary}}, nil
 	}
 	return &homePageOutput{
 		Status:       http.StatusOK,
 		ContentType:  "application/json",
 		CacheControl: cacheControl,
 		ETag:         etag,
+		Vary:         []string{homeVary},
 		Body:         body,
 	}, nil
 }

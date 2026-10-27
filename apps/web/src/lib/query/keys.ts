@@ -25,6 +25,8 @@
  * (header X-LevelUp-Locale) dans le payload (ex. `home`, `medals`, `seasonPass`). Sans
  * `locale` en clé, un fetch background survivant à la bascule de langue reste dans
  * l'ancienne langue. Modèle : `home` (playerSlug + titleSlug + locale).
+ * Garde-rail : `keys.locale.test.ts` classe CHAQUE fabrique (dépend de la langue / non, avec la raison)
+ * et échoue sur une fabrique non classée ou dont le paramètre de langue ne correspond pas à son classement.
  */
 
 export const queryKeys = {
@@ -58,34 +60,50 @@ export const queryKeys = {
   // différentes — le store escouade résout en 'squad' (lot perf L4a, D4.3,
   // 2026-09-23), le solo sans contexte (= 'all' côté serveur). Sans ce segment,
   // deux stores au même hash partageraient une entrée de cache.
-  filtersResolve: (playerSlug: string, titleSlug: string, filterHash: string, matchContext: string) =>
-    ['filters-resolve', playerSlug, titleSlug, filterHash, matchContext] as const,
-  filtersPreview: (playerSlug: string, titleSlug: string, filterHash: string) =>
-    ['filters-preview', playerSlug, titleSlug, filterHash] as const,
+  // Les libellés des options playlist / mode / carte sont servis dans la langue de la requête (la
+  // valeur reste le nom de la langue par défaut) : la locale est le dernier segment des deux clés.
+  filtersResolve: (playerSlug: string, titleSlug: string, filterHash: string, matchContext: string, locale: string) =>
+    ['filters-resolve', playerSlug, titleSlug, filterHash, matchContext, locale] as const,
+  filtersPreview: (playerSlug: string, titleSlug: string, filterHash: string, locale: string) =>
+    ['filters-preview', playerSlug, titleSlug, filterHash, locale] as const,
 
   // Carrière (Slice 2)
   // Prefixe large : tout le domaine Carriere d un joueur (invalidation apres une
   // ecriture de sa liste d amis : les rencontres « hors amis » sont filtrees serveur).
   careerAll: (playerSlug: string) => ['career', playerSlug] as const,
-  career: (playerSlug: string, titleSlug: string) => ['career', playerSlug, titleSlug] as const,
+  // Page Carrière : les noms de rang (prochain rang, rang sommet) sont servis dans la langue de la
+  // requête, la locale est le dernier segment.
+  career: (playerSlug: string, titleSlug: string, locale: string) =>
+    ['career', playerSlug, titleSlug, locale] as const,
   careerEncounters: (playerSlug: string, titleSlug: string) =>
     ['career', playerSlug, titleSlug, 'encounters'] as const,
-  careerHighlightMatches: (playerSlug: string, titleSlug: string, filtersKey = '') =>
-    ['career', playerSlug, titleSlug, 'highlight-matches', filtersKey] as const,
+  // Cartes, modes et playlists des lignes et des listes de filtres servis dans la langue de la requête.
+  careerHighlightMatches: (playerSlug: string, titleSlug: string, filtersKey = '', locale = '') =>
+    ['career', playerSlug, titleSlug, 'highlight-matches', filtersKey, locale] as const,
   careerTopEncounters: (playerSlug: string, titleSlug: string) =>
     ['career', playerSlug, titleSlug, 'top-encounters'] as const,
   careerRivals: (playerSlug: string, titleSlug: string) =>
     ['career', playerSlug, titleSlug, 'rivals'] as const,
-  careerCSRs: (playerSlug: string, titleSlug: string, season?: string) =>
-    ['career', playerSlug, titleSlug, 'csrs', season ?? ''] as const,
+  // Noms de playlist et libellés de saison servis dans la langue de la requête.
+  careerCSRs: (playerSlug: string, titleSlug: string, locale: string, season?: string) =>
+    ['career', playerSlug, titleSlug, 'csrs', locale, season ?? ''] as const,
 
-  // Achievements Xbox (bilingues EN/FR, statiques après backfill) — par titre (jeu).
-  achievements: (playerSlug: string, titleSlug: string) =>
-    ['achievements', playerSlug, titleSlug] as const,
+  // Achievements Xbox (statiques après backfill) — par titre (jeu) ; noms et descriptions servis dans la
+  // langue de la requête : la locale est dans la clé.
+  achievements: (playerSlug: string, titleSlug: string, locale: string) =>
+    ['achievements', playerSlug, titleSlug, locale] as const,
 
   // Historique des matchs (Slice 3)
-  matchHistory: (playerSlug: string, titleSlug: string, filterHash: string, page: number, soloSessions: string[] = []) =>
-    ['match-history', playerSlug, titleSlug, filterHash, page, [...soloSessions].sort().join(',')] as const,
+  // Cartes, modes et playlists des lignes et des options de filtre servis dans la langue de la requête.
+  matchHistory: (
+    playerSlug: string,
+    titleSlug: string,
+    filterHash: string,
+    page: number,
+    soloSessions: string[] = [],
+    locale = '',
+  ) =>
+    ['match-history', playerSlug, titleSlug, filterHash, page, [...soloSessions].sort().join(','), locale] as const,
   /** Préfixe broad — invalide tout le cache match-history d'un joueur. */
   matchHistoryAll: (playerSlug: string) => ['match-history', playerSlug] as const,
 
@@ -99,6 +117,7 @@ export const queryKeys = {
     rankedContext = '',
     outcomeFilter: number[] = [],
     matchFiltersKey = '',
+    locale = '',
   ) =>
     [
       'explorer', playerSlug, titleSlug, filterHash,
@@ -107,14 +126,23 @@ export const queryKeys = {
       rankedContext,
       [...outcomeFilter].sort().join(','),
       matchFiltersKey,
+      locale,
     ] as const,
-  explorerPlayer: (playerSlug: string, titleSlug: string, targetGamertag: string, targetXuid: string, page: number) =>
-    ['explorer-player', playerSlug, titleSlug, targetGamertag, targetXuid, page] as const,
+  // Profil de la cible : top armes et répartition des frags nommés dans la langue de la requête.
+  explorerPlayer: (
+    playerSlug: string,
+    titleSlug: string,
+    targetGamertag: string,
+    targetXuid: string,
+    page: number,
+    locale: string,
+  ) => ['explorer-player', playerSlug, titleSlug, targetGamertag, targetXuid, page, locale] as const,
   // gamertagSearch : recherche globale (Xbox), title-agnostic — pas de titleSlug.
   // `live` distingue le repli Xbox explicite (V72-24) de la recherche locale rapide.
   gamertagSearch: (q: string, live = false) => ['gamertag-search', q, live] as const,
-  matchView: (playerSlug: string, titleSlug: string, matchId: string) =>
-    ['match-view', playerSlug, titleSlug, matchId] as const,
+  // Vue du match : noms de cartes, modes, armes, médailles... servis dans la langue de la requête.
+  matchView: (playerSlug: string, titleSlug: string, matchId: string, locale: string) =>
+    ['match-view', playerSlug, titleSlug, matchId, locale] as const,
   matchObjectiveEvents: (playerSlug: string, titleSlug: string, matchId: string) =>
     ['match-objective-events', playerSlug, titleSlug, matchId] as const,
   matchPositions: (playerSlug: string, titleSlug: string, matchId: string) =>
@@ -139,14 +167,22 @@ export const queryKeys = {
     ['match-replay-callouts', playerSlug, titleSlug, matchId] as const,
 
   // Engagement (Phase 4 plan engagement)
-  engagementMatch: (playerSlug: string, titleSlug: string, matchId: string) =>
-    ['engagement', 'match', playerSlug, titleSlug, matchId] as const,
+  // Le nom de la carte des matchs (engagementMatch, engagementTimeseries, engagementSquadSession) est servi
+  // dans la langue de la requête : la locale est le dernier segment.
+  engagementMatch: (playerSlug: string, titleSlug: string, matchId: string, locale = '') =>
+    ['engagement', 'match', playerSlug, titleSlug, matchId, locale] as const,
   engagementProfile: (playerSlug: string, titleSlug: string) =>
     ['engagement', 'profile', playerSlug, titleSlug] as const,
-  engagementTimeseries: (playerSlug: string, titleSlug: string, filterHash: string, limit: number) =>
-    ['engagement', 'timeseries', playerSlug, titleSlug, filterHash, limit] as const,
-  engagementSquadSession: (playerSlug: string, titleSlug: string, matchIds: string[], teammates: string[]) =>
-    ['engagement', 'squad-session', playerSlug, titleSlug, matchIds.join(','), teammates.join(',')] as const,
+  engagementTimeseries: (playerSlug: string, titleSlug: string, filterHash: string, limit: number, locale = '') =>
+    ['engagement', 'timeseries', playerSlug, titleSlug, filterHash, limit, locale] as const,
+  engagementSquadSession: (
+    playerSlug: string,
+    titleSlug: string,
+    matchIds: string[],
+    teammates: string[],
+    locale = '',
+  ) =>
+    ['engagement', 'squad-session', playerSlug, titleSlug, matchIds.join(','), teammates.join(','), locale] as const,
 
   // Accueil / Home (Slice 5)
   // Le titre courant fait partie de la clé : la réponse /pages/home est
@@ -179,8 +215,9 @@ export const queryKeys = {
   seasonPass: (playerSlug: string, titleSlug: string, locale: string) =>
     ['palmares', playerSlug, titleSlug, 'season-pass', locale] as const,
   // Relations / social (followers) — stockage shared_social PAR TITRE.
-  palmaresRelations: (playerSlug: string, titleSlug: string) =>
-    ['palmares', playerSlug, titleSlug, 'relations'] as const,
+  // Le nom de la carte de chaque duel est servi dans la langue de la requête.
+  palmaresRelations: (playerSlug: string, titleSlug: string, locale = '') =>
+    ['palmares', playerSlug, titleSlug, 'relations', locale] as const,
 
   // Escouade / Teammates (Slice 6)
   // exactComposition : l'option « composition exacte » change la POPULATION servie
@@ -204,7 +241,9 @@ export const queryKeys = {
   // Top des coéquipiers des matchs avec amis (GET /pages/squad sans coéquipier) : la source de
   // la liste de l'Escouade, lue par les sélecteurs de composition hors Escouade. Sous le préfixe
   // 'teammates' : un ami ajouté l'invalide avec le reste.
-  teammatesTop: (playerSlug: string, titleSlug: string) => ['teammates', playerSlug, titleSlug, 'top'] as const,
+  // La page Escouade sert ses noms d'armes et de cartes dans la langue de la requête.
+  teammatesTop: (playerSlug: string, titleSlug: string, locale: string) =>
+    ['teammates', playerSlug, titleSlug, 'top', locale] as const,
   /** Préfixe broad — invalide toutes les queries teammates (ex. après ajout d'ami).
    *  Title-agnostic PAR DESIGN (balaie tous les joueurs/titres). */
   teammatesAll: ['teammates'] as const,
@@ -213,8 +252,10 @@ export const queryKeys = {
   // `filterHash` : le filtre courant entre dans la clé parce qu'il change la POPULATION
   // servie (quelles cartes, et combien de matchs sur chacune). Sans lui, changer de
   // période resservirait la grille de la période précédente.
-  tacticalMaps: (playerSlug: string, titleSlug: string, filterHash: string) =>
-    ['tactical-maps', playerSlug, titleSlug, filterHash] as const,
+  // Les noms de cartes sont servis dans la langue de la requête : la locale est le dernier segment
+  // de la grille, du raster (noms des grappes) et du détail de cellule (zone, arme).
+  tacticalMaps: (playerSlug: string, titleSlug: string, filterHash: string, locale: string) =>
+    ['tactical-maps', playerSlug, titleSlug, filterHash, locale] as const,
   // Le PÉRIMÈTRE de l'onglet : les match_id que la barre L2 fait résoudre par
   // /filters/match-ids. Clé DISTINCTE de la grille (2026-09-06) parce que la
   // résolution est partagée par toutes les lectures de l'onglet — la grille
@@ -238,28 +279,35 @@ export const queryKeys = {
     ['tactical', 'map-background-frame', titleSlug, mapId] as const,
 
   // Raster de placement pour UNE carte et UNE question.
-  tacticalRaster: (playerSlug: string, titleSlug: string, mapId: string, paramHash: string) =>
-    ['tactical-raster', playerSlug, titleSlug, mapId, paramHash] as const,
+  tacticalRaster: (playerSlug: string, titleSlug: string, mapId: string, paramHash: string, locale: string) =>
+    ['tactical-raster', playerSlug, titleSlug, mapId, paramHash, locale] as const,
   // Détail d'UNE cellule (lien « voir dans le rejeu », lot M1) : mêmes raisons que
   // `tacticalRaster` (une carte n'existe que dans son titre), clé DISTINCTE parce que le
   // périmètre inclut en plus l'adresse de la cellule cliquée.
-  tacticalCellule: (playerSlug: string, titleSlug: string, mapId: string, paramHash: string) =>
-    ['tactical-cellule', playerSlug, titleSlug, mapId, paramHash] as const,
+  tacticalCellule: (playerSlug: string, titleSlug: string, mapId: string, paramHash: string, locale: string) =>
+    ['tactical-cellule', playerSlug, titleSlug, mapId, paramHash, locale] as const,
   // Séquence d'UNE mort (vue D) : l'empreinte porte le match, la victime et l'instant.
   tacticalSequence: (playerSlug: string, titleSlug: string, mapId: string, paramHash: string) =>
     ['tactical-sequence', playerSlug, titleSlug, mapId, paramHash] as const,
   // Synthèse (Slice 7 — Sprint 55 D8 : scopeHash = period + filtres)
-  synthesis: (playerSlug: string, titleSlug: string, scopeHash: string) =>
-    ['synthesis', playerSlug, titleSlug, scopeHash] as const,
+  // Noms d armes (frags, portée, records) et de cartes servis dans la langue de la requête.
+  synthesis: (playerSlug: string, titleSlug: string, scopeHash: string, locale: string) =>
+    ['synthesis', playerSlug, titleSlug, scopeHash, locale] as const,
 
   // Médias (Slice 8)
   /** Préfixe broad — matche toutes les queries média du joueur (patch like/upload).
    *  Reste un préfixe `['media', playerSlug]` : matche les clés enrichies du titre. */
   mediaBase: (playerSlug: string) => ['media', playerSlug] as const,
-  media: (playerSlug: string, titleSlug: string, requestHash: string) =>
-    ['media', playerSlug, titleSlug, requestHash] as const,
-  mediaRail: (playerSlug: string, titleSlug: string, limit: number, likedOnly = false) =>
-    ['media', playerSlug, titleSlug, 'rail', limit, likedOnly] as const,
+  // Noms de carte et de mode des médias servis dans la langue de la requête (locale dans la clé).
+  media: (playerSlug: string, titleSlug: string, requestHash: string, locale: string) =>
+    ['media', playerSlug, titleSlug, requestHash, locale] as const,
+  mediaRail: (
+    playerSlug: string,
+    titleSlug: string,
+    limit: number,
+    locale: string,
+    likedOnly = false,
+  ) => ['media', playerSlug, titleSlug, 'rail', limit, locale, likedOnly] as const,
   mediaAuthors: (playerSlug: string, titleSlug: string) =>
     ['media', playerSlug, titleSlug, 'authors'] as const,
   mediaAudioConfig: (playerSlug: string, titleSlug: string) =>
@@ -286,8 +334,9 @@ export const queryKeys = {
     ['commendation-totals', playerSlug, titleSlug, locale] as const,
 
   // Timeseries (Slice 3B) — 'solo' dans la clé pour invalider tout cache pré-fix
-  timeseries: (playerSlug: string, titleSlug: string, filterHash: string) =>
-    ['timeseries', 'solo', playerSlug, titleSlug, filterHash] as const,
+  // Noms de cartes et d armes servis dans la langue de la requête : la locale est le dernier segment.
+  timeseries: (playerSlug: string, titleSlug: string, filterHash: string, locale: string) =>
+    ['timeseries', 'solo', playerSlug, titleSlug, filterHash, locale] as const,
 
   // Tendances (Solo) — titre en 2e segment ; vue, type de partie, locale, composition
   // (gamertags triés, joints par une virgule ; vide en vue Solo) et option stricte : une autre
@@ -317,8 +366,9 @@ export const queryKeys = {
     ['session-detail', playerSlug, titleSlug, filterHash, sessionLabel, compareSessionLabel, enableCompare, locale] as const,
 
   // Compare joueur vs joueur (Sprint 54-C)
-  comparePlayer: (playerSlug: string, titleSlug: string, targetGamertag: string) =>
-    ['compare', playerSlug, titleSlug, targetGamertag] as const,
+  // Noms d armes du profil d armes servis dans la langue de la requête.
+  comparePlayer: (playerSlug: string, titleSlug: string, targetGamertag: string, locale: string) =>
+    ['compare', playerSlug, titleSlug, targetGamertag, locale] as const,
 
   // Navigation prev/next entre matchs (V7).
   // Phase 2b : spec optionnel pour différencier les caches global vs filtré.
@@ -343,8 +393,10 @@ export const queryKeys = {
   /** Préfixe broad — invalide/matche toutes les queries notifications d'un joueur.
    *  Reste `['notifications', playerSlug]` : préfixe valide des clés enrichies du titre. */
   notificationsAll: (playerSlug: string) => ['notifications', playerSlug] as const,
-  notifications: (playerSlug: string, titleSlug: string, filter: object) =>
-    ['notifications', playerSlug, titleSlug, 'list', filter] as const,
+  /** La liste porte des paramètres résolus par le serveur dans la langue de la requête (`title`,
+   *  `medal_name`) : la locale entre dans la clé. */
+  notifications: (playerSlug: string, titleSlug: string, locale: string, filter: object) =>
+    ['notifications', playerSlug, titleSlug, 'list', locale, filter] as const,
   notificationsUnreadCount: (playerSlug: string, titleSlug: string) =>
     ['notifications', playerSlug, titleSlug, 'unread-count'] as const,
   notificationsPreferences: (playerSlug: string, titleSlug: string) =>
@@ -357,9 +409,12 @@ export const queryKeys = {
   titleDataCapabilities: (titleSlug: string) => ['title-data-capabilities', titleSlug] as const,
 
   // Asset Drawer (Phase 2)
-  assetMaps: (titleSlug: string, q: string) => ['assets', titleSlug, 'maps', q] as const,
-  assetWeapons: (titleSlug: string, q: string) => ['assets', titleSlug, 'weapons', q] as const,
-  assetMedals: (titleSlug: string, q: string) => ['assets', titleSlug, 'medals', q] as const,
+  // Noms et descriptions servis dans la langue de la requête : la locale est le dernier segment.
+  assetMaps: (titleSlug: string, q: string, locale: string) => ['assets', titleSlug, 'maps', q, locale] as const,
+  assetWeapons: (titleSlug: string, q: string, locale: string) =>
+    ['assets', titleSlug, 'weapons', q, locale] as const,
+  assetMedals: (titleSlug: string, q: string, locale: string) =>
+    ['assets', titleSlug, 'medals', q, locale] as const,
 
   // Progression V2 (Ascension) — cf. PLAN_PROGRESSION_TRACKING_ASCENSION.md §8.1.
   // Dérivée des matchs du titre → titleSlug scope la clé.
@@ -367,20 +422,24 @@ export const queryKeys = {
     ['progression', playerSlug, titleSlug, 'streaks'] as const,
   progressionRecords: (playerSlug: string, titleSlug: string, historyLimit?: number) =>
     ['progression', playerSlug, titleSlug, 'records', historyLimit ?? 50] as const,
-  progressionMilestones: (playerSlug: string, titleSlug: string) =>
-    ['progression', playerSlug, titleSlug, 'milestones'] as const,
+  // Jalons : titres et conditions servis dans la langue de la requête (locale dans la clé).
+  progressionMilestones: (playerSlug: string, titleSlug: string, locale: string) =>
+    ['progression', playerSlug, titleSlug, 'milestones', locale] as const,
   // Pattern Engine (phases 0.2-3)
-  progressionProfile: (playerSlug: string, titleSlug: string, windowDays = 30) =>
-    ['progression', playerSlug, titleSlug, 'profile', windowDays] as const,
-  progressionPatterns: (playerSlug: string, titleSlug: string, n = 50) =>
-    ['progression', playerSlug, titleSlug, 'patterns', n] as const,
+  // Le profil porte des libellés servis dans la langue de la requête (tier, défis suggérés).
+  progressionProfile: (playerSlug: string, titleSlug: string, locale: string, windowDays = 30) =>
+    ['progression', playerSlug, titleSlug, 'profile', locale, windowDays] as const,
+  // Les libellés des contextes (cartes, modes) sont servis dans la langue de la requête.
+  progressionPatterns: (playerSlug: string, titleSlug: string, locale: string, n = 50) =>
+    ['progression', playerSlug, titleSlug, 'patterns', locale, n] as const,
   // Calendrier d'activité (Réalisations) — jours joués sur la fenêtre (DEC-5/D3).
   progressionActivity: (playerSlug: string, titleSlug: string, days = 90) =>
     ['progression', playerSlug, titleSlug, 'activity', days] as const,
 
   // Coach Advisor proposals (ADR 0020 Phase 10) — dérivé des matchs du titre.
-  coachProposals: (playerSlug: string, titleSlug: string, status?: string) =>
-    ['coach', playerSlug, titleSlug, 'proposals', status ?? 'all'] as const,
+  // Le motif de chaque proposition est servi dans la langue de la requête (locale dans la clé).
+  coachProposals: (playerSlug: string, titleSlug: string, locale: string, status?: string) =>
+    ['coach', playerSlug, titleSlug, 'proposals', locale, status ?? 'all'] as const,
   /** Préfixe broad — invalide toutes les queries coach d'un joueur.
    *  Reste `['coach', playerSlug]` : préfixe valide des clés enrichies du titre. */
   coachAll: (playerSlug: string) => ['coach', playerSlug] as const,
@@ -435,37 +494,54 @@ export const queryKeys = {
       ['prestige', 'me', userId, titleSlug] as const,
     /** Préfixe broad — invalide `me(userId, *)` pour tous les titres. */
     meAll: (userId: string) => ['prestige', 'me', userId] as const,
-    templates: (userId: string, titleSlug: string) =>
-      ['prestige', 'templates', userId, titleSlug] as const,
+    /** Libellés des modèles servis dans la langue de la requête : locale dans la clé. */
+    templates: (userId: string, titleSlug: string, locale: string) =>
+      ['prestige', 'templates', userId, titleSlug, locale] as const,
     /** Clé de mutation du mode pilote (enable/disable auto-attribution, B3). */
     pilotMode: (userId: string, titleSlug: string) =>
       ['prestige', 'pilot-mode', userId, titleSlug] as const,
   },
   arc: {
-    list: (userId: string, titleSlug: string) =>
+    /** Titre et description d'un arc adopté depuis un preset sont servis dans la langue de la
+     *  requête (résolus à la lecture depuis le preset) : locale dans la clé. */
+    list: (userId: string, titleSlug: string, locale: string) =>
+      ['prestige', 'arcs', userId, titleSlug, locale] as const,
+    /** Préfixe broad — invalide les arcs du joueur dans toutes les langues. */
+    listAll: (userId: string, titleSlug: string) =>
       ['prestige', 'arcs', userId, titleSlug] as const,
     one: (id: string) => ['prestige', 'arc', id] as const,
-    presets: (userId: string, titleSlug: string) =>
-      ['prestige', 'arc-presets', userId, titleSlug] as const,
+    /** Titres et descriptions des presets servis dans la langue de la requête. */
+    presets: (userId: string, titleSlug: string, locale: string) =>
+      ['prestige', 'arc-presets', userId, titleSlug, locale] as const,
   },
   challenge: {
-    list: (userId: string, titleSlug: string) =>
+    /** Le libellé d'un défi issu d'un modèle est servi dans la langue de la requête (résolu à la
+     *  lecture depuis le modèle) : locale dans la clé. */
+    list: (userId: string, titleSlug: string, locale: string) =>
+      ['prestige', 'challenges', userId, titleSlug, locale] as const,
+    /** Préfixe broad — invalide les défis actifs du joueur dans toutes les langues. */
+    listAll: (userId: string, titleSlug: string) =>
       ['prestige', 'challenges', userId, titleSlug] as const,
     /** Défis terminaux (historique Réalisations) — statuts distincts de `list`
-     *  (actifs), donc clé distincte. */
-    history: (userId: string, titleSlug: string) =>
-      ['prestige', 'challenges', 'history', userId, titleSlug] as const,
+     *  (actifs), donc clé distincte. Libellés servis dans la langue de la requête. */
+    history: (userId: string, titleSlug: string, locale: string) =>
+      ['prestige', 'challenges', 'history', userId, titleSlug, locale] as const,
     one: (id: string) => ['prestige', 'challenge', id] as const,
   },
   squad: {
     mine: (userId: string) => ['prestige', 'squads', userId] as const,
-    challenges: (squadId: string) => ['prestige', 'squad-challenges', squadId] as const,
+    /** Le libellé de chaque défi est servi dans la langue de la requête : locale dans la clé. */
+    challenges: (squadId: string, locale: string) =>
+      ['prestige', 'squad-challenges', squadId, locale] as const,
+    /** Préfixe broad — invalide les défis de l'escouade dans toutes les langues. */
+    challengesAll: (squadId: string) => ['prestige', 'squad-challenges', squadId] as const,
     orientation: (squadId: string, requestedBy: string) =>
       ['prestige', 'squad-orientation', squadId, requestedBy] as const,
   },
   playerProfile: {
-    profile: (playerSlug: string, titleSlug: string, windowDays: number) =>
-      ['playerProfile', playerSlug, titleSlug, windowDays] as const,
+    /** Le profil porte des libellés servis dans la langue de la requête : locale dans la clé. */
+    profile: (playerSlug: string, titleSlug: string, locale: string, windowDays: number) =>
+      ['playerProfile', playerSlug, titleSlug, locale, windowDays] as const,
     activeCampaign: (playerSlug: string, titleSlug: string) =>
       ['playerProfile', 'campaign', 'active', playerSlug, titleSlug] as const,
     campaign: (playerSlug: string, titleSlug: string, id: string) =>
@@ -503,7 +579,9 @@ export const queryKeys = {
     // byte-identique (rien inséré/retiré) — pas d'invalidation de cache.
     filePath: string | null,
     windowMinutes: number,
-  ) => ['media', 'match-candidates', playerSlug, titleSlug, filePath, windowMinutes] as const,
+    // Cartes, modes et playlists des suggestions servis dans la langue de la requête.
+    locale: string,
+  ) => ['media', 'match-candidates', playerSlug, titleSlug, filePath, windowMinutes, locale] as const,
   /** Préfixe broad — invalide tous les `filtersResolve(playerSlug, *, *, *)` (solo ET escouade).
    *  RESTE broad PAR JOUEUR (n'inclut PAS le titre) : son unique usage
    *  (invalidation post-sync, $playerSlug.tsx) doit rafraîchir la résolution du

@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log/slog"
 	"math/rand"
+
+	"levelup/go-api/internal/i18n"
 )
 
 // service_pilot_pool.go — méthodes Service pour le mode pilote (auto-attribution)
@@ -138,7 +140,7 @@ func (s *service) attributeFromCatalog(ctx context.Context, userID, titleSlug st
 		Cadence:     t.Cadence,
 		EvalType:    t.EvalType,
 		Mode:        ModePilote,
-		Label:       t.LabelFR,
+		Label:       t.StoredLabel(),
 		// Défi auto-attribué par le mode pilote → origine pilot_mode (calage coach, ADR 0020).
 		Source: ChallengeSourcePilotMode,
 	})
@@ -155,7 +157,7 @@ func (s *service) suggestWeeklyChoices(ctx context.Context, titleSlug string) ([
 	if len(weekly) < count {
 		count = len(weekly)
 	}
-	return weekly[:count], nil
+	return LocalizeTemplates(weekly[:count], i18n.FromContext(ctx)), nil
 }
 
 // filterTemplatesByCadence retourne les templates qui matchent la cadence.
@@ -240,7 +242,7 @@ func (s *service) RefreshSquadPool(ctx context.Context, squadID, titleSlug, requ
 		shuffled[i], shuffled[j] = shuffled[j], shuffled[i]
 	})
 	shuffled = BiasTemplatesByAxis(shuffled, s.squadFocusAxis(ctx, members, titleSlug))
-	pool := shuffled[:size]
+	pool := LocalizeTemplates(shuffled[:size], i18n.FromContext(ctx))
 
 	slog.InfoContext(ctx, "prestige: squad pool refreshed",
 		"squad_id", squadID, "title_slug", titleSlug,

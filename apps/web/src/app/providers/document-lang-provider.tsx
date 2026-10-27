@@ -4,8 +4,8 @@ import { intlLocale } from '@/lib/formatters/intlLocale'
 
 /**
  * DocumentLangProvider — reflète la locale applicative (`'fr' | 'en'`) sur
- * l'attribut `lang` de `<html>` en BCP-47 (`fr-FR` / `en-US`), via la source
- * unique `intlLocale` (CLAUDE.md n°6 — aucun ternaire `en ? en-US : fr-FR`
+ * l'attribut `lang` de `<html>` en BCP-47 (`fr-FR` / `en-GB`), via la source
+ * unique `intlLocale` (CLAUDE.md n°6 — aucun ternaire `en ? en-GB : fr-FR`
  * dupliqué).
  *
  * Pourquoi : le shell HTML fige un `lang` statique alors que l'app démarre en FR

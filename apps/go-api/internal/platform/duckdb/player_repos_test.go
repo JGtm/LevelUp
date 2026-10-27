@@ -12,6 +12,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	titlepkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/migration"
 )
 
@@ -713,10 +714,9 @@ func seedMetaDBSchema(t *testing.T, db *DB) {
 		// Garder en sync avec la migration : les queries du repo référencent
 		// composite_children, medal_ids, stat_name, award_name, custom_function.
 		`CREATE TABLE citation_mappings (
-			citation_name_norm VARCHAR, citation_name_display VARCHAR,
-			citation_name_display_en VARCHAR,
+			citation_name_norm VARCHAR,
 			mapping_type VARCHAR, category VARCHAR,
-			image_path VARCHAR, description VARCHAR, description_en VARCHAR, tier_targets VARCHAR,
+			image_path VARCHAR, tier_targets VARCHAR,
 			medal_id UBIGINT, enabled BOOLEAN DEFAULT TRUE,
 			medal_ids VARCHAR, stat_name VARCHAR, award_name VARCHAR,
 			award_category VARCHAR, custom_function VARCHAR,
@@ -729,17 +729,15 @@ func seedMetaDBSchema(t *testing.T, db *DB) {
 			description VARCHAR,
 			fetched_at TIMESTAMPTZ,
 			PRIMARY KEY (asset_id, asset_type, lang))`,
-		`CREATE TABLE weapon_labels (weapon_id UBIGINT, name_en VARCHAR, name_fr VARCHAR)`,
+		`CREATE TABLE weapon_labels (weapon_id UBIGINT)`,
+		`CREATE TABLE weapon_label_names (weapon_id UBIGINT NOT NULL, lang VARCHAR NOT NULL, name VARCHAR NOT NULL,
+			PRIMARY KEY (weapon_id, lang))`,
 		// medal_definitions + medal_translations utilisées par
 		// MatchViewRepo.lookupMedalMeta (chaîne BCP-47 prioritaire sur le
 		// fallback citation_mappings). Cf. migrations `add_medal_translations`
 		// et `add_medal_definitions` dans steps_metadata.go.
 		`CREATE TABLE medal_definitions (
 			medal_name_id  BIGINT PRIMARY KEY,
-			name_fr        VARCHAR NOT NULL,
-			name_en        VARCHAR NOT NULL,
-			description_fr VARCHAR DEFAULT '',
-			description_en VARCHAR DEFAULT '',
 			difficulty     VARCHAR DEFAULT 'Normal',
 			is_custom      BOOLEAN DEFAULT FALSE)`,
 		`CREATE TABLE medal_translations (
@@ -779,12 +777,23 @@ func seedMetaDBSchema(t *testing.T, db *DB) {
 		args []interface{}
 	}
 	inserts := []row{
-		{`INSERT INTO citation_mappings (citation_name_norm,citation_name_display,citation_name_display_en,mapping_type,category,description,description_en,enabled,medal_id) VALUES (?,?,?,?,?,?,?,?,?)`,
-			[]interface{}{"killing_spree", "Killing Spree", "Killing Spree (EN)", "medal", "combat", "Série de kills", "Killing spree streak", true, uint64(1001)}},
-		{`INSERT INTO medal_definitions (medal_name_id,name_fr,name_en,description_fr,description_en,difficulty) VALUES (?,?,?,?,?,?)`,
-			[]interface{}{int64(1001), "Killing Spree", "Killing Spree", "Série de kills", "Killing spree", "Normal"}},
-		{`INSERT INTO weapon_labels (weapon_id,name_en,name_fr) VALUES (?,?,?)`,
-			[]interface{}{uint64(42), "Battle Rifle", "BR75"}},
+		{`INSERT INTO citation_mappings (citation_name_norm,mapping_type,category,enabled,medal_id) VALUES (?,?,?,?,?)`,
+			[]interface{}{"killing_spree", "medal", "combat", true, uint64(1001)}},
+		{`INSERT INTO asset_translations (asset_id,asset_type,lang,name,description) VALUES (?,?,?,?,?)`,
+			[]interface{}{"killing_spree", "citation", "fr-FR", "Killing Spree", "Série de kills"}},
+		{`INSERT INTO asset_translations (asset_id,asset_type,lang,name,description) VALUES (?,?,?,?,?)`,
+			[]interface{}{"killing_spree", "citation", "en-US", "Killing Spree (EN)", "Killing spree streak"}},
+		{`INSERT INTO medal_definitions (medal_name_id,difficulty) VALUES (?,?)`,
+			[]interface{}{int64(1001), "Normal"}},
+		{`INSERT INTO medal_translations (medal_name_id,lang,name,description) VALUES (?,?,?,?)`,
+			[]interface{}{int64(1001), "fr-FR", "Killing Spree", "Série de kills"}},
+		{`INSERT INTO medal_translations (medal_name_id,lang,name,description) VALUES (?,?,?,?)`,
+			[]interface{}{int64(1001), "en-US", "Killing Spree", "Killing spree"}},
+		{`INSERT INTO weapon_labels (weapon_id) VALUES (?)`, []interface{}{uint64(42)}},
+		{`INSERT INTO weapon_label_names (weapon_id,lang,name) VALUES (?,?,?)`,
+			[]interface{}{uint64(42), "en", "Battle Rifle"}},
+		{`INSERT INTO weapon_label_names (weapon_id,lang,name) VALUES (?,?,?)`,
+			[]interface{}{uint64(42), "fr", "BR75"}},
 		{`INSERT INTO career_ranks VALUES (?,?,?,?,?,?,?)`, []interface{}{1, "Recruit", "Recruit", "Recrue", nil, nil, nil}},
 		{`INSERT INTO career_ranks VALUES (?,?,?,?,?,?,?)`, []interface{}{25, "Platinum 1", "Lance Corporal", "Caporal-chef", "Progression/RewardTracks/CareerRanks/platinum1.png", "Progression/RewardTracks/CareerRanks/platinum1-large.png", "Progression/RewardTracks/CareerRanks/platinum1-adornment.png"}},
 		// Phase 3.bis : seed season_id="s1" avec threshold=10 (historique
@@ -989,17 +998,17 @@ func TestHomeRepo_LoadHomeMatches_FallsBackToMetadataAssetTranslations(t *testin
 	if len(rows) != 1 {
 		t.Fatalf("attendu 1 match, obtenu %d", len(rows))
 	}
-	if rows[0].MapNameFR != "Couvre-feu" {
-		t.Fatalf("MapNameFR = %q, want Couvre-feu", rows[0].MapNameFR)
+	if rows[0].MapName[i18n.LocaleFR] != "Couvre-feu" {
+		t.Fatalf("MapNameFR = %q, want Couvre-feu", rows[0].MapName[i18n.LocaleFR])
 	}
-	if rows[0].PairNameFR != "Slayer en équipe" {
-		t.Fatalf("PairNameFR = %q, want Slayer en équipe", rows[0].PairNameFR)
+	if rows[0].PairName[i18n.LocaleFR] != "Slayer en équipe" {
+		t.Fatalf("PairNameFR = %q, want Slayer en équipe", rows[0].PairName[i18n.LocaleFR])
 	}
-	if rows[0].GameVariantNameFR != "Assassin : Arène" {
-		t.Fatalf("GameVariantNameFR = %q, want Assassin : Arène", rows[0].GameVariantNameFR)
+	if rows[0].GameVariantName[i18n.LocaleFR] != "Assassin : Arène" {
+		t.Fatalf("GameVariantNameFR = %q, want Assassin : Arène", rows[0].GameVariantName[i18n.LocaleFR])
 	}
-	if rows[0].PlaylistNameFR != "Partie rapide" {
-		t.Fatalf("PlaylistNameFR = %q, want Partie rapide", rows[0].PlaylistNameFR)
+	if rows[0].PlaylistName[i18n.LocaleFR] != "Partie rapide" {
+		t.Fatalf("PlaylistNameFR = %q, want Partie rapide", rows[0].PlaylistName[i18n.LocaleFR])
 	}
 }
 
@@ -1838,102 +1847,6 @@ func TestCareerRepo_GetXPHistory_WithData(t *testing.T) {
 	}
 	if len(history) != 1 {
 		t.Errorf("attendu 1, obtenu %d", len(history))
-	}
-}
-
-func TestCareerRepo_GetTopMatches_WithData(t *testing.T) {
-	pdb := newTestPlayerDB(t)
-	repo := NewCareerRepo(pdb)
-	matches, err := repo.GetTopMatches(context.Background())
-	if err != nil {
-		t.Fatalf("GetTopMatches: %v", err)
-	}
-	if len(matches) != 1 {
-		t.Errorf("attendu 1, obtenu %d", len(matches))
-	}
-}
-
-// TestCareerRepo_GetTopMatches_BotTeammateAsymmetry verifie l'asymetrie WIN/LOSS
-// sur had_bot_teammate, miroir de TestCareerRepo_GetHighlightMatchIDs_*.
-// GetTopMatches doit appliquer le meme tri que GetHighlightMatchIDs pour
-// coherence d'experience utilisateur entre les deux endpoints.
-//   - WIN+bot : conserve (perf personnelle meritoire malgre handicap 4v3)
-//   - LOSS+bot : exclu (responsabilite du joueur non isolable)
-//   - LOSS sans bot : conserve normalement
-func TestCareerRepo_GetTopMatches_BotTeammateAsymmetry(t *testing.T) {
-	pdb := newTestPlayerDB(t)
-	ctx := context.Background()
-
-	// Seed: m1 existe deja (WIN, perf 85.5, no bot). Ajouter:
-	//   m2 = WIN avec bot (doit etre conserve).
-	//   m3 = LOSS avec bot (doit etre exclu).
-	//   m4 = LOSS sans bot (doit etre conserve).
-	type insert struct {
-		q    string
-		args []any
-	}
-	mkRegistry := func(id string) insert {
-		return insert{
-			q: `INSERT INTO shared.match_registry
-				(match_id,start_time,start_time_utc,playlist_id,map_id,pair_id,game_variant_id,last_updated_at,map_name,pair_name,game_variant_name,playlist_name,is_ranked,team_0_score,team_1_score,duration_seconds,season_id)
-				VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-			args: []any{id, "2025-01-11 14:00:00", "2025-01-11 14:00:00+00",
-				"playlist-x", "aquarius", "pair-slayer", "variant-slayer", "2025-01-11 14:30:00+00",
-				"Aquarius", "Slayer", "Arena:Slayer", "Ranked Slayer", true, 1, 3, 600, "s1"},
-		}
-	}
-	mkParticipant := func(id string, outcome int) insert {
-		return insert{
-			q: `INSERT INTO shared.match_participants
-				(match_id,xuid,gamertag,outcome,kills,deaths,assists,kda,accuracy,personal_score,
-				 damage_dealt,damage_taken,time_played_seconds,team_mmr,enemy_mmr,
-				 kills_expected,deaths_expected,rank,is_ranked,team_id,avg_life_seconds)
-				VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-			args: []any{id, pTestXUID, pTestGamertag, outcome, 10, 5, 2,
-				1.5, 0.6, 1500, 3000.0, 1500.0, 600, 1200.0, 1100.0,
-				8.0, 5.0, 1, true, 1, 45.0},
-		}
-	}
-	mkEnrichment := func(id string, perf float64, hadBot bool) insert {
-		return insert{
-			q: `INSERT INTO player_match_enrichment
-				(match_id,performance_score,session_id,session_label,dominance_flag,had_bot_teammate,is_with_friends,is_excluded)
-				VALUES (?,?,?,?,?,?,?,?)`,
-			args: []any{id, perf, 1, "Session 1", 0, hadBot, false, false},
-		}
-	}
-	rows := []insert{
-		mkRegistry("m2"), mkParticipant("m2", 2), mkEnrichment("m2", 95.0, true),
-		mkRegistry("m3"), mkParticipant("m3", 3), mkEnrichment("m3", 20.0, true),
-		mkRegistry("m4"), mkParticipant("m4", 3), mkEnrichment("m4", 25.0, false),
-	}
-	for _, r := range rows {
-		if _, err := pdb.Player.Exec(ctx, r.q, r.args...); err != nil {
-			t.Fatalf("seed %q: %v", r.q, err)
-		}
-	}
-
-	repo := NewCareerRepo(pdb)
-	matches, err := repo.GetTopMatches(ctx)
-	if err != nil {
-		t.Fatalf("GetTopMatches: %v", err)
-	}
-
-	ids := map[string]int{} // matchID -> outcome
-	for _, m := range matches {
-		ids[m.MatchID] = m.Outcome
-	}
-	if ids["m1"] != 2 {
-		t.Errorf("attendu m1 WIN (outcome=2), got %d (present: %v)", ids["m1"], ids)
-	}
-	if ids["m2"] != 2 {
-		t.Errorf("attendu m2 WIN avec bot conserve, got %d (present: %v)", ids["m2"], ids)
-	}
-	if _, present := ids["m3"]; present {
-		t.Errorf("m3 (LOSS avec bot) doit etre exclu, got %v", ids)
-	}
-	if ids["m4"] != 3 {
-		t.Errorf("attendu m4 LOSS sans bot conserve, got %d (present: %v)", ids["m4"], ids)
 	}
 }
 

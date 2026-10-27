@@ -32,8 +32,8 @@ func aiPalette() *AbilityPalette {
 		ID:      "test",
 		Markers: []int{aiRankThruster, aiRankRepulsor},
 		Ranks: map[int]Label{
-			aiRankThruster: {En: "Thruster", Fr: "propulseur"},
-			aiRankRepulsor: {En: "Repulsor", Fr: "repulseur"},
+			aiRankThruster: {Text: enFr("Thruster", "propulseur")},
+			aiRankRepulsor: {Text: enFr("Repulsor", "repulseur")},
 		},
 		Families: map[int]string{aiRankThruster: "thruster", aiRankRepulsor: "repulsor"},
 	}

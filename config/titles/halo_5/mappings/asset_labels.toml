@@ -1,0 +1,415 @@
+# config/titles/halo_5/mappings/asset_labels.toml
+#
+# Overrides de noms officiels (localisation officielle Halo 5: Guardians) pour le
+# référentiel d'assets, UNE TABLE PAR LANGUE (ADR 0040 D-5) : `"nom EN" = { fr = "..." }`.
+# Clé = nom EN EXACT de l'API Metadata officielle ; seules les langues CONNUES figurent
+# dans la table (aujourd'hui `fr`). Une langue absente = repli sur la donnée de l'API
+# (jamais de traduction inventée). Une clé de langue hors de config/locales.toml est refusée.
+# Lu par cmd/h5-metadata-fetch : une ligne de traduction par langue renseignée (EN = donnée de l'API).
+#
+# Source : wiki.halo.fr (pages dédiées par arme/médaille), recherche convergente.
+# RÈGLE : uniquement les correspondances CONFIRMÉES. Les noms non listés gardent
+# l'EN (aucune traduction inventée). Identiques EN/FR volontairement omis (DMR,
+# Magnum, Needler, Railgun, SAW, Hydra…).
+
+# [weapons] RETIRÉ (V72-06) : les noms d'armes FR sont désormais la SOURCE UNIQUE
+# keyée par weapon_key dans config/titles/halo_5/mappings/weapon_names.toml (résolu
+# via weapon_id -> weapon_ids -> weapon_key). Les traductions confirmées de cette
+# section y ont été migrées. Ne PAS ré-ajouter [weapons] ici (clé = nom EN brut,
+# fragile — c'est précisément la source de mismatch que V72-06 supprime).
+
+[medals]
+# 184 médailles (wiki.halo.fr, pattern FR ( EN )). Reste EN = noms non listés/non matchés.
+"Airborne Snapshot!" = { fr = "Grand-angle dans les airs" }
+"Airsassination" = { fr = "Suspends ton vol !" }
+"Ancient One" = { fr = "Le grand ancien" }
+"Assassination" = { fr = "Assassinat" }
+"Assist" = { fr = "Assistance" }
+"Ball Carrier Kill" = { fr = "Frag du porteur de crâne" }
+"Ball Carrier Protected" = { fr = "Porteur du crâne protégé" }
+"Ball Champion" = { fr = "Coup du chapeau" }
+"Ball Clear" = { fr = "Dégagement" }
+"Ball Kill" = { fr = "Frag de crâne" }
+"Ball Runner" = { fr = "Doublé" }
+"Banshee Assist" = { fr = "Assistance sur banshee" }
+"Banshee Destroyed" = { fr = "Banshee détruit" }
+"Base Capture" = { fr = "Capture de base" }
+"Base Defense" = { fr = "Défense de la base" }
+"Beam Kill" = { fr = "Frag de sniper covenant" }
+"Beat Down" = { fr = "Tabassage" }
+"Bifecta" = { fr = "Doublé" }
+"Big Game Hunter" = { fr = "Chasse au gros gibier" }
+"Big Gun Runner" = { fr = "Amateur d'armes lourdes" }
+"Binary Kill" = { fr = "Frag binaire" }
+"Blind Side" = { fr = "Nettoyage" }
+"Bodyguard" = { fr = "Garde du corps" }
+"Boss Takedown" = { fr = "Élimination de boss" }
+"Brawler" = { fr = "Dérouilleur" }
+"Buckle Up" = { fr = "Attachez vos ceintures !" }
+"Bulltrue" = { fr = "Sur le fil" }
+"Busted" = { fr = "Flagrant délit" }
+"Buzzer Beater" = { fr = "Au dernier moment" }
+"Capture Assist" = { fr = "Assistance à la capture" }
+"Capture Spree" = { fr = "Capture en série" }
+"Carrier Kill" = { fr = "Frag du porteur" }
+"Carrier Protected" = { fr = "Porte-drapeau protégé" }
+"Carrier" = { fr = "Porteur" }
+"Caster Kill" = { fr = "Frag au grenadier" }
+"Cliffhanger" = { fr = "Dévissage" }
+"Close Call" = { fr = "Chaude alerte" }
+"Cluster Luck" = { fr = "La chance" }
+"Clutch Kill" = { fr = "Frag déterminant" }
+"Combat Evolved" = { fr = "Passe avec grenade" }
+"Core Defense" = { fr = "Défense du générateur" }
+"Crawler Kill" = { fr = "Frag de rampant" }
+"Distraction" = { fr = "Diversion" }
+"Double Kill" = { fr = "Double frag" }
+"EMP Assist" = { fr = "Assistance IEM" }
+"Elite Assist" = { fr = "Assistance sur Élite" }
+"Elite Kill" = { fr = "Frag d'Élite" }
+"Fast Break" = { fr = "Belle entrée en matière" }
+"Fastball" = { fr = "Boulet de canon" }
+"First Strike" = { fr = "Premier frag" }
+"First Touch" = { fr = "Première prise" }
+"Flag Capture Assist" = { fr = "Assistance à la capture du drapeau" }
+"Flag Capture" = { fr = "Capture du drapeau" }
+"Flag Champion" = { fr = "Champion au drapeau" }
+"Flag Defense" = { fr = "Défense du drapeau" }
+"Flag Driver" = { fr = "Chauffeur au drapeau" }
+"Flag Joust" = { fr = "Bataille de drapeaux" }
+"Flag Kill" = { fr = "Frag avec drapeau" }
+"Flag Return" = { fr = "Retour du drapeau" }
+"Flag Runner" = { fr = "Porte-drapeau" }
+"Flagsassination" = { fr = "Meurtre au drapeau" }
+"Flatline" = { fr = "Encéphalogramme plat" }
+"Flyin' High" = { fr = "Dans les étoiles" }
+"From the Grave" = { fr = "Vengeance d'outre-tombe" }
+"Game Saver" = { fr = "Sauveur de partie" }
+"Ghost Assist" = { fr = "Assistance sur ghost" }
+"Ghost Destroyed" = { fr = "Ghost détruit" }
+"Goal Defense" = { fr = "Défense du but" }
+"Goal Line Stand" = { fr = "Prise de risque" }
+"Goal Offense" = { fr = "Attaque du but" }
+"Goal" = { fr = "But" }
+"Grenade Kill" = { fr = "Frag par grenade" }
+"Ground Pound" = { fr = "Coup au sol" }
+"Grunt Kill" = { fr = "Frag de Grognard" }
+"Guardian Angel" = { fr = "Ange gardien" }
+"Gun Punch" = { fr = "Flingue au poing" }
+"Hail Mary" = { fr = "Belle cloche" }
+"Hard Target" = { fr = "Cible difficile" }
+"Hat Trick" = { fr = "Coup du chapeau" }
+"Headshot" = { fr = "Tir à la tête" }
+"Hell Jumper" = { fr = "Helljumper" }
+"Hijack" = { fr = "Vol à la tire" }
+"Hydra Kill" = { fr = "Frag à l'hydra" }
+"Immortal" = { fr = "Immortel" }
+"Incineration Kill" = { fr = "Frag par incinération" }
+"Inconceivable" = { fr = "Inconcevable" }
+"Infected" = { fr = "Infecté" }
+"Infector" = { fr = "Corrupteur" }
+"Jackal Kill" = { fr = "Gardien des enfers" }
+"Kill" = { fr = "Frag" }
+"Killamanjaro" = { fr = "Serial killer" }
+"Killing Frenzy" = { fr = "Massacre" }
+"Killing Spree" = { fr = "Folie meurtrière" }
+"Killionaire" = { fr = "Bourreau" }
+"Killpocalypse" = { fr = "Sanguinaire" }
+"Killtacular" = { fr = "Quelle tuerie" }
+"Killtastrophe" = { fr = "Meurtre mort détruire" }
+"Killtrocity" = { fr = "Boucherie" }
+"Knight Assist" = { fr = "Assistance sur chevalier" }
+"Knight Kill" = { fr = "Frag de chevalier" }
+"Last Man Standing" = { fr = "Dernier survivant" }
+"Last Shot" = { fr = "Chargeur vide" }
+"Legendary Takedown" = { fr = "Élimination légendaire" }
+"Lockdown" = { fr = "Verrouillage" }
+"Longshot" = { fr = "Coup risqué" }
+"Lord of the Flies" = { fr = "Sa Majesté des mouches" }
+"Mantis Assist" = { fr = "Assistance sur mantis" }
+"Mantis Destroyed" = { fr = "Mantis détruit" }
+"Marine Assist" = { fr = "Assistance sur Marine" }
+"Marine Kill" = { fr = "Frag de Marine" }
+"Melee Kill" = { fr = "Frag rapproché" }
+"Mongoose Assist" = { fr = "Assistance sur mongoose" }
+"Mongoose Destroyed" = { fr = "Mongoose détruite" }
+"Mythic Takedown" = { fr = "Élimination mythique" }
+"Nadeshot" = { fr = "Grenade et tir à la tête" }
+"Noob Combo" = { fr = "Combo noob" }
+"Overkill" = { fr = "À la chaîne" }
+"Perfect Kill" = { fr = "Frag parfait" }
+"Phaeton Assist" = { fr = "Assistance sur phaéton" }
+"Phaeton Destroyed" = { fr = "Phaéton détruit" }
+"Pineapple Express" = { fr = "Grenade véhiculée" }
+"Plague Bearer" = { fr = "Porteur de l'infection" }
+"Pounder Assist" = { fr = "Assistance à l'attaque massive" }
+"Power Player" = { fr = "Roi des armes lourdes" }
+"Protector" = { fr = "Protecteur" }
+"Quickdraw" = { fr = "Plus vite que votre ombre" }
+"Railgun Kill" = { fr = "Frag au railgun" }
+"Rampage" = { fr = "Carnage" }
+"Ravager" = { fr = "Destructeur" }
+"Resourceful" = { fr = "Plein de ressources" }
+"Retribution" = { fr = "Châtiment" }
+"Reversal" = { fr = "Revirement" }
+"Rocket Kill" = { fr = "Frag avec roquette" }
+"Rocket Mary" = { fr = "Roquette longue portée" }
+"Running Riot" = { fr = "Émeute" }
+"SAW Kill" = { fr = "Frag au SAW" }
+"Scattershot Kill" = { fr = "Frag au répercuteur" }
+"Scorpion Assist" = { fr = "Assistance sur scorpion" }
+"Scorpion Destroyed" = { fr = "Scorpion détruit" }
+"Shotgun Kill" = { fr = "Frag au fusil à pompe" }
+"Showstopper" = { fr = "Trouble-fête" }
+"Skyjack" = { fr = "Détournement" }
+"Snapshot" = { fr = "Grand-angle" }
+"Snipeltaneous!" = { fr = "Snipertanée !" }
+"Sniper Headshot" = { fr = "Tir à la tête de sniper" }
+"Sniper Kill" = { fr = "Tir de précision" }
+"Snipunch" = { fr = "Précignon" }
+"Soldier Assist" = { fr = "Assistance sur soldat" }
+"Soldier Kill" = { fr = "Frag de soldat" }
+"Spartan Charge" = { fr = "Charge spartane" }
+"Splaser Kill" = { fr = "Frag au laser" }
+"Splatter" = { fr = "Écrasement" }
+"Spray N' Pray" = { fr = "On défouraille !" }
+"Starkiller" = { fr = "Tueur hors pair" }
+"Stealth Capture" = { fr = "Capture furtive" }
+"Stopped Short" = { fr = "Interception" }
+"Stronghold Captured" = { fr = "Base prise" }
+"Stronghold Defense" = { fr = "Défense de la base" }
+"Stronghold Secured" = { fr = "Base sécurisée" }
+"Stuck" = { fr = "Ça colle !" }
+"Supercombine" = { fr = "Supercombiné" }
+"Superfecta" = { fr = "Quarté" }
+"Survived" = { fr = "Nombre survécu" }
+"Sword Kill" = { fr = "Frag avec épée à énergie" }
+"Team Takedown" = { fr = "Exécution en équipe" }
+"The Cure" = { fr = "Le remède" }
+"Top Gun" = { fr = "As de la gâchette" }
+"Total Control" = { fr = "Contrôle total" }
+"Trifecta" = { fr = "Tiercé" }
+"Triple Double" = { fr = "Dix au cube" }
+"Triple Kill" = { fr = "Triple frag" }
+"Triple Threat" = { fr = "Triple menace" }
+"Unfriggenbelievable" = { fr = "Impensable" }
+"Untouchable" = { fr = "Invulnérable" }
+"Vanquisher" = { fr = "Vainqueur" }
+"Warthog Assist" = { fr = "Assistance sur warthog" }
+"Warthog Destroyed" = { fr = "Warthog détruit" }
+"Watcher Kill" = { fr = "Frag de sentinelle" }
+"Wheelman" = { fr = "Pilote" }
+"Wingman" = { fr = "Ailier" }
+"Wraith Assist" = { fr = "Assistance sur apparition" }
+"Wraith Destroyed" = { fr = "Apparition détruite" }
+"Zombie Hunter" = { fr = "Chasseur zombie" }
+"Zombie Slayer" = { fr = "Assassin zombie" }
+
+[medal_descriptions]
+# 194 descriptions FR (wiki.halo.fr, par colonne). Fallback = description EN officielle.
+"Airborne Snapshot!" = { fr = "Tuez un ennemi à l'aide d'un fusil sniper dans les airs et sans utiliser le grossissement." }
+"Airsassination" = { fr = "Tuez un adversaire en l'assassinant en l'air." }
+"Alley-Oop" = { fr = "Expulsez une arme lourde d'une plateforme d'armement avec une grenade à plasma pour qu'un allié la récupère." }
+"Ancient One" = { fr = "Survivez une manche entière en tant que zombie et convertissez au moins un survivant." }
+"Assassination" = { fr = "Tuez un adversaire en l'assassinant." }
+"Assist" = { fr = "Aidez un joueur à réaliser un frag." }
+"BXR" = { fr = "Attaquez un ennemi en combat rapproché et tuez-le avec une seule rafale de fusil de combat." }
+"Ball Carrier Kill" = { fr = "Tuez le porteur de crâne ennemi." }
+"Ball Carrier Protected" = { fr = "Sauvez le porteur du crâne en tuant son attaquant." }
+"Ball Champion" = { fr = "Marquez 3 buts dans une partie." }
+"Ball Clear" = { fr = "Annulez la progression de l'équipe ennemie." }
+"Ball Kill" = { fr = "Tuez un adversaire tout en détenant le crâne." }
+"Ball Runner" = { fr = "Marquez 2 buts dans une partie." }
+"Banshee Assist" = { fr = "Aidez un joueur à détruire un banshee ennemi." }
+"Banshee Destroyed" = { fr = "Détruisez un banshee ennemi." }
+"Base Capture" = { fr = "Prenez le contrôle d'une base." }
+"Base Defense" = { fr = "Tuez un ennemi dans une base sous votre contrôle." }
+"Beam Kill" = { fr = "Tuez un ennemi à l'aide d'un fusil sniper covenant." }
+"Beat Down" = { fr = "Tuez un ennemi avec une attaque rapprochée par-derrière." }
+"Bifecta" = { fr = "Survivez à un 2 contre 1." }
+"Big Game Hunter" = { fr = "Tuez 3 ennemis équipés d'armes lourdes avant de mourir." }
+"Big Gun Runner" = { fr = "Récupérez 3 armes lourdes sur les plateformes d'armement en une seule partie." }
+"Binary Kill" = { fr = "Tuez un ennemi à l'aide d'un fusil binaire." }
+"Blind Side" = { fr = "Assassinez le dernier joueur ennemi en Élimination." }
+"Bodyguard" = { fr = "Obtenez une série de 3 médailles de Protecteur ou d'Ange gardien." }
+"Boss Takedown" = { fr = "Participez à l'élimination d'un boss." }
+"Brawler" = { fr = "Tuez un ennemi à l'aide de 2 attaques rapprochées ou plus." }
+"Buckle Up" = { fr = "Tuez le pilote d'un véhicule ennemi en mouvement avec un fusil sniper." }
+"Bulltrue" = { fr = "Tuez un ennemi qui se précipite à l'aide d'une épée à énergie." }
+"Busted" = { fr = "Tuez un adversaire qui essaie de prendre un véhicule." }
+"Buzzer Beater" = { fr = "Effectuez un frag dans les 10 dernières secondes d'une manche." }
+"Capture Assist" = { fr = "Aidez à prendre le contrôle d'une base ennemie." }
+"Capture Spree" = { fr = "Prenez le contrôle de 3 bases en une vie." }
+"Carrier Kill" = { fr = "Tuez le porte-drapeau ennemi." }
+"Carrier Protected" = { fr = "Sauvez votre porte-drapeau en tuant son attaquant." }
+"Carrier" = { fr = "Infectez 3 survivants sans mourir." }
+"Caster Kill" = { fr = "Tuez un ennemi à l'aide d'un grenadier-plasma." }
+"Cliffhanger" = { fr = "Tuez un ennemi en train d'escalader." }
+"Close Call" = { fr = "Tuez un adversaire lorsque votre santé est réduite et survivez." }
+"Cluster Luck" = { fr = "Tuez 2 ennemis ou plus avec une seule grenade." }
+"Clutch Kill" = { fr = "Tuez un ennemi pour faire une égalité ou prendre la tête pendant les dernières secondes." }
+"Combat Evolved" = { fr = "Attrapez une arme lourde expulsée d'une plateforme d'armement à l'aide d'une grenade à plasma." }
+"Core Defense" = { fr = "Tuez un ennemi près de votre générateur." }
+"Crawler Kill" = { fr = "Tuez un rampant." }
+"Distraction" = { fr = "Faites diversion auprès d'un adversaire qui est ensuite tué." }
+"Double Kill" = { fr = "Tuez 2 adversaires, 5 secondes max. entre chaque frag." }
+"EMP Assist" = { fr = "Déclenchez une IEM sur un adversaire qui est ensuite tué." }
+"Elite Assist" = { fr = "Aidez un joueur à tuer un Élite." }
+"Elite Kill" = { fr = "Tuez un Élite." }
+"Extermination" = { fr = "Éliminez une équipe ennemie avec au moins une médaille À la chaîne." }
+"Extinction" = { fr = "Tuez tous les membres de l'équipe adverse dans une manche en Élimination." }
+"Fast Break" = { fr = "Effectuez un frag dans les 10 premières secondes d'une manche." }
+"Fastball" = { fr = "Tuez un adversaire grâce à l'impact d'un lancer de grenade." }
+"First Strike" = { fr = "Réalisez le premier frag d'une partie." }
+"First Touch" = { fr = "Soyez le premier joueur à récupérer le crâne quand il apparaît." }
+"Flag Capture Assist" = { fr = "Contribuez à la capture du drapeau en le transportant vers sa destination." }
+"Flag Capture" = { fr = "Capturez un drapeau." }
+"Flag Champion" = { fr = "Capturez 3 drapeaux en une partie." }
+"Flag Defense" = { fr = "Tuez un ennemi proche de votre drapeau." }
+"Flag Driver" = { fr = "Contribuez à la capture du drapeau en escortant un porte-drapeau allié avec un véhicule." }
+"Flag Joust" = { fr = "Tuez le porte-drapeau ennemi tout en portant le drapeau." }
+"Flag Kill" = { fr = "Tuez un adversaire en portant le drapeau." }
+"Flag Return" = { fr = "Rapportez le drapeau de votre équipe." }
+"Flag Runner" = { fr = "Capturez 2 drapeaux en une partie." }
+"Flagsassination" = { fr = "Assassinez un ennemi tout en portant le drapeau." }
+"Flatline" = { fr = "Tuez le dernier survivant dans une partie d'Infection." }
+"Flyin' High" = { fr = "Réalisez un grand saut en mongoose ou en warthog avec un passager." }
+"From the Grave" = { fr = "Tuez un adversaire après votre mort." }
+"Game Saver" = { fr = "Sauvez un équipier qui n'a plus de réapparitions." }
+"Ghost Assist" = { fr = "Aidez un joueur à détruire un ghost ennemi." }
+"Ghost Destroyed" = { fr = "Détruisez un ghost ennemi." }
+"Goal Defense" = { fr = "Tuez un adversaire près de votre but." }
+"Goal Line Stand" = { fr = "Rapportez un drapeau près de la base drapeau de l'équipe adverse." }
+"Goal Offense" = { fr = "Tuez un adversaire près du but de son équipe." }
+"Goal" = { fr = "Marquez un but." }
+"Grenade Kill" = { fr = "Tuez un ennemi à l'aide d'une grenade." }
+"Ground Pound" = { fr = "Tuez un ennemi avec un coup au sol." }
+"Grunt Kill" = { fr = "Tuez un Grognard." }
+"Guardian Angel" = { fr = "Sauvez la vie d'un équipier de loin." }
+"Gun Punch" = { fr = "Tuez un ennemi en combat rapproché après avoir tiré 2 rafales de fusil de combat." }
+"Hail Mary" = { fr = "Tuez vos ennemis d'un long lancer de grenade." }
+"Hard Target" = { fr = "Rechargez 10 fois vos boucliers en une seule manche." }
+"Hat Trick" = { fr = "Effectuez 3 tirs à la tête de sniper à la suite." }
+"Headshot" = { fr = "Tuez un ennemi en lui tirant dans la tête." }
+"Hell Jumper" = { fr = "Tuez 20 zombies sans mourir." }
+"Hijack" = { fr = "Abordez un véhicule terrestre après en avoir éjecté le pilote adverse." }
+"Hydra Kill" = { fr = "Tuez un ennemi avec un hydra." }
+"Immortal" = { fr = "Survivez à toutes les manches d'une partie en mode Élimination." }
+"Incineration Kill" = { fr = "Tuez un ennemi avec un canon incendiaire." }
+"Inconceivable" = { fr = "Tuez 35 adversaires sans mourir." }
+"Infected" = { fr = "Infectez un survivant." }
+"Infector" = { fr = "Infectez 2 survivants sans mourir." }
+"Invincible" = { fr = "Tuez 30 adversaires sans mourir." }
+"Jackal Kill" = { fr = "Tuez 15 zombies sans mourir." }
+"Kill" = { fr = "Frag générique." }
+"Killamanjaro" = { fr = "Tuez 7 adversaires, 5 secondes max. entre chaque frag." }
+"Killing Frenzy" = { fr = "Tuez 10 adversaires sans mourir." }
+"Killing Spree" = { fr = "Tuez 5 adversaires sans mourir." }
+"Killionaire" = { fr = "Tuez 10 adversaires, 5 secondes max. entre chaque frag." }
+"Killpocalypse" = { fr = "Tuez 9 adversaires, 5 secondes max. entre chaque frag." }
+"Killtacular" = { fr = "Tuez 5 adversaires, 5 secondes max. entre chaque frag." }
+"Killtastrophe" = { fr = "Tuez 8 adversaires, 5 secondes max. entre chaque frag." }
+"Killtrocity" = { fr = "Tuez 6 adversaires, 5 secondes max. entre chaque frag." }
+"Knight Assist" = { fr = "Aidez un joueur à tuer un chevalier." }
+"Knight Kill" = { fr = "Tuez un chevalier." }
+"Last Man Standing" = { fr = "Soyez le dernier survivant dans une partie d'Infection." }
+"Last Shot" = { fr = "Tuez un joueur ennemi avec la dernière munition de votre chargeur." }
+"Legendary Takedown" = { fr = "Participez à l'élimination légendaire d'un boss." }
+"Lockdown" = { fr = "Anéantissez la progression de capture de l'équipe adverse 3 fois en une vie." }
+"Longshot" = { fr = "Tuez un ennemi à distance avec une arme de précision." }
+"Lord of the Flies" = { fr = "Infectez 6 survivants sans mourir." }
+"Mantis Assist" = { fr = "Aidez un joueur à détruire un mantis ennemi." }
+"Mantis Destroyed" = { fr = "Détruisez un mantis ennemi." }
+"Marine Assist" = { fr = "Aidez un joueur à tuer un Marine ennemi." }
+"Marine Kill" = { fr = "Tuez un Marine ennemi." }
+"Melee Kill" = { fr = "Tuez un ennemi avec une attaque rapprochée." }
+"Mongoose Assist" = { fr = "Aidez un joueur à détruire une mongoose ennemie." }
+"Mongoose Destroyed" = { fr = "Détruisez une mongoose ennemie." }
+"Mythic Takedown" = { fr = "Participez à l'élimination d'un boss mythique." }
+"Nadeshot" = { fr = "Tuez un adversaire d'un tir à la tête juste après l'avoir blessé avec une grenade." }
+"Noob Combo" = { fr = "Tuez un adversaire d'un tir de fusil de combat à la tête après avoir neutralisé ses boucliers à l'aide d'un pistolet à plasma chargé à fond." }
+"Overkill" = { fr = "Tuez 4 adversaires, 5 secondes max. entre chaque frag." }
+"Perfect Kill" = { fr = "Tuez un joueur avec un fusil de combat en 4 coups sans en rater un." }
+"Perfection" = { fr = "Gagnez sans mourir une partie d'Assassin avec au moins 15 frags." }
+"Phaeton Assist" = { fr = "Aidez un joueur à détruire un phaéton ennemi." }
+"Phaeton Destroyed" = { fr = "Détruisez un phaéton ennemi." }
+"Pineapple Express" = { fr = "Tuez un ennemi à l'aide d'une grenade à bord d'un véhicule." }
+"Plague Bearer" = { fr = "Infectez 5 survivants sans mourir." }
+"Pounder Assist" = { fr = "Aidez lors d'une attaque massive." }
+"Power Player" = { fr = "Tuez 10 adversaires à l'aide d'armes lourdes." }
+"Protector" = { fr = "Sauvez un équipier en tuant son attaquant." }
+"Quickdraw" = { fr = "Tuez un adversaire d'un seul tir de magnum à la tête juste après l'avoir blessé avec votre arme principale." }
+"Railgun Kill" = { fr = "Tuez un ennemi à l'aide d'un railgun." }
+"Rampage" = { fr = "Tuez 20 adversaires sans mourir." }
+"Ravager" = { fr = "Infectez 4 survivants sans mourir." }
+"Resourceful" = { fr = "Tuez un zombie après avoir épuisé les munitions de toutes vos armes." }
+"Retribution" = { fr = "Assassinez l'adversaire qui a provoqué votre dernier décès." }
+"Reversal" = { fr = "Tuez un ennemi qui vous a tiré dessus." }
+"Road Trip" = { fr = "Embarquez des équipiers sur un warthog ou une mongoose et écrasez un joueur adverse." }
+"Rocket Kill" = { fr = "Tuez un ennemi à l'aide d'un lance-roquettes." }
+"Rocket Mary" = { fr = "Tuez un ennemi à distance à l'aide d'un lance-roquettes." }
+"Running Riot" = { fr = "Tuez 15 adversaires sans mourir." }
+"SAW Kill" = { fr = "Tuez un ennemi à l'aide d'un SAW." }
+"Sayonara" = { fr = "Infligez des dégâts à un ennemi avant une chute qui lui sera fatale." }
+"Scattershot Kill" = { fr = "Tuez un ennemi à l'aide d'un répercuteur." }
+"Scorpion Assist" = { fr = "Aidez un joueur à détruire un scorpion ennemi." }
+"Scorpion Destroyed" = { fr = "Détruisez un scorpion ennemi." }
+"Shotgun Kill" = { fr = "Tuez un ennemi avec un fusil à pompe." }
+"Showstopper" = { fr = "Déjouez un assassinat en tuant l'assassin ennemi." }
+"Skyjack" = { fr = "Abordez un appareil aérien après en avoir éjecté le pilote ennemi." }
+"Snapshot" = { fr = "Tuez un ennemi à l'aide d'un fusil sniper sans utiliser le grossissement." }
+"Snipeltaneous!" = { fr = "Tuez 2 ennemis ou plus avec une seule cartouche de fusil sniper." }
+"Sniper Headshot" = { fr = "Effectuez un tir à la tête avec un fusil sniper." }
+"Sniper Kill" = { fr = "Tuez un ennemi à l'aide d'un fusil sniper." }
+"Snipunch" = { fr = "Tuez un ennemi au combat rapproché après l'avoir touché au fusil sniper." }
+"Soldier Assist" = { fr = "Aidez un joueur à tuer un soldat." }
+"Soldier Kill" = { fr = "Tuez un soldat." }
+"Spartan Charge" = { fr = "Tuez un ennemi d'une charge spartane." }
+"Splaser Kill" = { fr = "Tuez un ennemi à l'aide d'un laser spartan." }
+"Splatter" = { fr = "Tuez un ennemi en le heurtant avec un véhicule." }
+"Spray N' Pray" = { fr = "Tuez un ennemi à distance avec une arme automatique." }
+"Stalker" = { fr = "Assassinez un zombie." }
+"Starkiller" = { fr = "Tuez un ennemi qui réalise un coup au sol." }
+"Stealth Capture" = { fr = "Capturez un drapeau sans vous faire repérer." }
+"Stopped Short" = { fr = "Tuez un porte-drapeau sur le point de marquer." }
+"Stronghold Captured" = { fr = "Prenez le contrôle d'une base." }
+"Stronghold Defense" = { fr = "Tuez un ennemi en train de prendre le contrôle d'une base." }
+"Stronghold Secured" = { fr = "Anéantissez la progression de capture de l'équipe adverse dans une base sous contrôle." }
+"Stuck" = { fr = "Tuez un adversaire en lui collant une grenade à plasma." }
+"Supercombine" = { fr = "Tuez un ennemi à l'aide d'un needler." }
+"Superfecta" = { fr = "Survivez à un 4 contre 1." }
+"Survived" = { fr = "Survivez à l'apocalypse zombie." }
+"Sword Kill" = { fr = "Tuez un ennemi avec une épée à énergie." }
+"Team Takedown" = { fr = "Aidez lors d'une exécution en équipe." }
+"The Cure" = { fr = "Tuez 30 zombies sans mourir." }
+"Top Gun" = { fr = "Soyez le premier joueur de votre équipe à accumuler 10 frags." }
+"Total Control" = { fr = "Contrôlez toutes les bases de la carte." }
+"Trifecta" = { fr = "Survivez à un 3 contre 1." }
+"Triple Double" = { fr = "Finissez une partie en arène avec des nombres de frags, d'assistances et de tirs à la tête à deux chiffres." }
+"Triple Kill" = { fr = "Tuez 3 adversaires, 5 secondes max. entre chaque frag." }
+"Triple Threat" = { fr = "Effectuez un frag avec un pistolet, une grenade et une attaque rapprochée dans une même manche." }
+"Unfriggenbelievable" = { fr = "Tuez 40 adversaires sans mourir." }
+"Untouchable" = { fr = "Tuez 25 adversaires sans mourir." }
+"Vanquisher" = { fr = "Survivez à un 1 contre 1." }
+"Warthog Assist" = { fr = "Aidez un joueur à détruire un warthog ennemi." }
+"Warthog Destroyed" = { fr = "Détruisez un warthog ennemi." }
+"Watcher Kill" = { fr = "Tuez une sentinelle." }
+"Wheelman" = { fr = "Pilotez un véhicule et faites en sorte que le passager tue un adversaire." }
+"Wingman" = { fr = "Réalisez une série de 5 assistances." }
+"Wraith Assist" = { fr = "Aidez un joueur à détruire une apparition ennemie." }
+"Wraith Destroyed" = { fr = "Détruisez une apparition ennemie." }
+"Zombicide" = { fr = "Tuez 25 zombies sans mourir." }
+"Zombie Hunter" = { fr = "Tuez 5 zombies sans mourir." }
+"Zombie Slayer" = { fr = "Tuez 10 zombies sans mourir." }
+
+# --- Overrides de nom de MAP par asset_id ---
+# Canvas Forge non nommés par l'API officielle /maps : maps_catalog.name_canonical
+# reste vide et l'asset n'apparaît PAS dans asset_translations → carte affichée
+# vide dans la match view / la galerie média. Clé = map_asset_id ; `name` = nom
+# par langue (en = nom canonique EN, fr = nom FR affiché). Appliqués EN FIN de run par h5-metadata-fetch
+# (idempotent, survivent à un re-fetch qui réécrirait name_canonical vide).
+# Tidal : canvas Forge océanique (identifié visuellement via l'image officielle
+# halocdn du catalogue) — seul asset de map non résolu du registre H5 (129 matchs).
+[[maps_by_id]]
+id = "d67fdcb9-6d9c-403e-960d-04202e19b244"
+name = { en = "Tidal", fr = "Tidal" }

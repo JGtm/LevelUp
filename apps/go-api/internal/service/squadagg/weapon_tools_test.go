@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
@@ -28,7 +29,7 @@ const (
 // nom EN d'abord, classe du registre).
 func filmRow(xuid, key, label, labelEN, class string, kills int) port.WeaponKillRow {
 	return port.WeaponKillRow{
-		XUID: xuid, WeaponKey: key, Label: label, LabelEN: labelEN, Class: class,
+		XUID: xuid, WeaponKey: key, Label: i18n.Text{i18n.LocaleFR: label, i18n.LocaleEN: labelEN}, Class: class,
 		Kills: kills, FromDamageSource: true,
 	}
 }
@@ -86,7 +87,7 @@ func TestBuildWeaponTools_ReliquatEnDernier(t *testing.T) {
 func TestBuildWeaponTools_MecaniquesNatives(t *testing.T) {
 	tools := BuildWeaponTools(WeaponToolInputs{
 		Rows: []port.WeaponKillRow{
-			{XUID: toolXJ, WeaponID: 10, WeaponKey: keyToolH5BR, Label: "BR85", Class: "shoulder", Kills: 12, MechanicKills: 4},
+			{XUID: toolXJ, WeaponID: 10, WeaponKey: keyToolH5BR, Label: i18n.Text{i18n.LocaleFR: "BR85"}, Class: "shoulder", Kills: 12, MechanicKills: 4},
 			{XUID: toolXJ, WeaponID: 99, Kills: 3}, // arme hors registre, sans nom
 		},
 		PlayersOrdered: []string{toolJ},
@@ -165,9 +166,9 @@ func TestPlayersAboveSheet(t *testing.T) {
 func TestBuildWeaponTools_Halo5GrenadesSansFilm(t *testing.T) {
 	tools := BuildWeaponTools(WeaponToolInputs{
 		Rows: []port.WeaponKillRow{
-			{XUID: toolXJ, WeaponID: 1001, WeaponKey: keyToolH5BR, Label: "BR85", Class: "shoulder", Kills: 40},
-			{XUID: toolXJ, WeaponID: 1007, WeaponKey: keyToolH5Frag, Label: "Grenade frag", Class: "grenade", Kills: 8},
-			{XUID: toolXJ, WeaponID: 1008, WeaponKey: keyToolH5Splinter, Label: "Grenade à fragments", Class: "grenade", Kills: 4},
+			{XUID: toolXJ, WeaponID: 1001, WeaponKey: keyToolH5BR, Label: i18n.Text{i18n.LocaleFR: "BR85"}, Class: "shoulder", Kills: 40},
+			{XUID: toolXJ, WeaponID: 1007, WeaponKey: keyToolH5Frag, Label: i18n.Text{i18n.LocaleFR: "Grenade frag"}, Class: "grenade", Kills: 8},
+			{XUID: toolXJ, WeaponID: 1008, WeaponKey: keyToolH5Splinter, Label: i18n.Text{i18n.LocaleFR: "Grenade à fragments"}, Class: "grenade", Kills: 4},
 			{XUID: toolXJ, WeaponID: 0, Kills: 14, IsGrenadeMelee: true},
 		},
 		PlayersOrdered: []string{toolJ},
@@ -212,4 +213,28 @@ func TestBuildWeaponTools_GrenadesParJoueur(t *testing.T) {
 	lines := toolLineByName(t, tools)
 	wantKills(t, lines["Grenade frag"], "grenade frag", 2, 0)
 	wantKills(t, lines[domain.SquadToolKindGrenade], "grenade (feuille)", 0, 1)
+}
+
+// TestBuildWeaponTools_NomDansLaLangueDeLaRequete : le nom d'une arme suit la langue demandée ;
+// une langue sans texte se replie sur `en`, et une langue vide sur la langue par défaut.
+func TestBuildWeaponTools_NomDansLaLangueDeLaRequete(t *testing.T) {
+	rows := []port.WeaponKillRow{filmRow(toolXJ, "hinf_br75", "Fusil de combat", "Battle Rifle", "shoulder", 2)}
+	for _, c := range []struct {
+		loc  i18n.Locale
+		want string
+	}{
+		{i18n.LocaleFR, "Fusil de combat"},
+		{i18n.LocaleEN, "Battle Rifle"},
+		{i18n.Locale("zz"), "Battle Rifle"},
+		{"", "Fusil de combat"},
+	} {
+		tools := BuildWeaponTools(WeaponToolInputs{
+			Rows: rows, PlayersOrdered: []string{toolJ}, GtByXUID: map[string]string{toolXJ: toolJ},
+			Sheet:  map[string]domain.FragKillTypeCounts{toolJ: {Total: 2}},
+			Locale: c.loc,
+		})
+		if tools == nil || len(tools.Lines) == 0 || tools.Lines[0].Label != c.want {
+			t.Errorf("locale %q : lignes = %+v, want le nom %q", c.loc, tools, c.want)
+		}
+	}
 }

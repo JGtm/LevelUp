@@ -34,7 +34,6 @@ type WeaponDistanceRecordRow struct {
 	// de libellé pour la clé.
 	WeaponKey string `json:"weapon_key"`
 	Label     string `json:"label,omitempty"`
-	LabelEN   string `json:"label_en,omitempty"`
 	// Class est la classe de registre (épaule, poing, lourde, grenade...) : elle porte la
 	// couleur côté web (famille `frag-*`, la même que le sunburst voisin). Vide si le registre
 	// ne connaît pas la clé — le web retombe sur la couleur neutre, jamais une classe inventée.
@@ -54,18 +53,17 @@ type WeaponRecordFrag struct {
 	// TacticalClockMatch) : le web ouvre le rejeu avec `?t=<time_ms>&clock=match`, et c'est la
 	// route du rejeu qui recale sur l'axe du film une fois le document chargé.
 	TimeMS int64 `json:"time_ms"`
-	// StartedAt, MapLabel, MapLabelEN viennent du scope canonique déjà chargé par la page
-	// (aucune requête neuve). Omis si le match n'y figure pas.
-	StartedAt  *time.Time `json:"started_at,omitempty"`
-	MapLabel   string     `json:"map_label,omitempty"`
-	MapLabelEN string     `json:"map_label_en,omitempty"`
+	// StartedAt, MapLabel viennent du scope canonique déjà chargé par la page (aucune requête
+	// neuve). MapLabel est le nom de la carte dans la langue de la requête (repli en). Omis si
+	// le match n y figure pas.
+	StartedAt *time.Time `json:"started_at,omitempty"`
+	MapLabel  string     `json:"map_label,omitempty"`
 }
 
 // WeaponExcludedFromRecords : une arme écartée de la règle, nommée avec sa classe et son effectif.
 type WeaponExcludedFromRecords struct {
 	WeaponKey string `json:"weapon_key"`
 	Label     string `json:"label,omitempty"`
-	LabelEN   string `json:"label_en,omitempty"`
 	Class     string `json:"class"`
 	Measured  int    `json:"measured"`
 }

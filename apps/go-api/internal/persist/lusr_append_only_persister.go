@@ -34,12 +34,14 @@ type LUSRRatingInsert struct {
 	RatingType      string // défaut 'LUSR' si vide
 	RatingValue     float64
 	RatingDeviation float64
-	Tier            *string
-	TierFR          *string
-	SubTier         *int
-	TierLabel       *string
-	RatingDelta     *float64
-	PlaylistGroup   string
+	// Tier : nom canonique anglais du palier (« Gold »), colonne `tier`. Le libellé d'une langue se
+	// déduit du code au moment de la lecture (catalogue skill.tier.*) ; la colonne `tier_fr` n'est
+	// plus écrite (ADR 0040 D-5).
+	Tier          *string
+	SubTier       *int
+	TierLabel     *string
+	RatingDelta   *float64
+	PlaylistGroup string
 	// ExpectedWinProb : proba de victoire pré-match de l'équipe du joueur
 	// (LUSR v2 Sprint 1.A). nil pour les chemins qui ne la calculent pas
 	// (CSR, héritage v1) → colonne NULL.
@@ -65,7 +67,7 @@ type LUSRRatingInsert struct {
 //	  rating_value      FLOAT,
 //	  rating_deviation  FLOAT,
 //	  tier              VARCHAR,
-//	  tier_fr           VARCHAR,
+//	  tier_fr           VARCHAR,  -- inerte (ADR 0040 D-5)
 //	  sub_tier          SMALLINT,
 //	  tier_label        VARCHAR,
 //	  rating_delta      FLOAT,
@@ -128,11 +130,11 @@ func (p *AppendOnlyLUSRPersister) Persist(ctx context.Context, rows []LUSRRating
 		if _, err := tx.ExecContext(ctx, `
 			INSERT INTO match_skill_rank
 				(match_id, rating_type, rating_value, rating_deviation,
-				 tier, tier_fr, sub_tier, tier_label,
+				 tier, sub_tier, tier_label,
 				 rating_delta, playlist_group, expected_win_prob, start_time)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			r.MatchID, rt, r.RatingValue, r.RatingDeviation,
-			r.Tier, r.TierFR, r.SubTier, r.TierLabel,
+			r.Tier, r.SubTier, r.TierLabel,
 			r.RatingDelta, r.PlaylistGroup, r.ExpectedWinProb, r.StartTime,
 		); err != nil {
 			return fmt.Errorf("persist: INSERT LUSR append-only %s/%s: %w", r.MatchID, rt, err)

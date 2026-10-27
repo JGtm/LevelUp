@@ -3,12 +3,17 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { formatUsagePct } from './usageFormat'
+import { formatUsageGap, formatUsagePct } from './usageFormat'
 
 describe('formatage des parts', () => {
   it('formate une part au dixième, virgule en FR, point en EN', () => {
     expect(formatUsagePct(45.62, 'fr')).toBe('45,6 %')
     expect(formatUsagePct(45.62, 'en')).toBe('45.6%')
+  })
+
+  it('écart signé en points : virgule en FR, point en EN, signe explicite', () => {
+    expect(formatUsageGap(3.24, 'fr')).toBe('+3,2 pts')
+    expect(formatUsageGap(-3.24, 'en')).toBe('-3.2 pts')
   })
 
   it('nil ≠ 0 : une part absente rend un tiret, une part nulle rend 0,0 %', () => {

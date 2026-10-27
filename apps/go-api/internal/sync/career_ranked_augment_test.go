@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/rankedplaylists"
+	"levelup/go-api/internal/i18n"
 )
 
 // augmentStubClient implémente HaloClient via embedding (méthodes non utilisées
@@ -61,8 +62,8 @@ func TestAugmentWithActiveRankedCSRs(t *testing.T) {
 	if !ok {
 		t.Fatal("2e active non ajoutée")
 	}
-	if got2.PlaylistName != active[1].NameEN() {
-		t.Errorf("nom = %q, attendu référence %q", got2.PlaylistName, active[1].NameEN())
+	if got2.PlaylistName != active[1].Name(i18n.LocaleEN) {
+		t.Errorf("nom = %q, attendu référence %q", got2.PlaylistName, active[1].Name(i18n.LocaleEN))
 	}
 	if got2.Current.Tier != "Gold" {
 		t.Errorf("tier perdu après augment: %q", got2.Current.Tier)

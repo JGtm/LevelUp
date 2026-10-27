@@ -41,8 +41,7 @@ function makeTemplate(over: Partial<Template>): Template {
     cadence: 'free',
     eval_type: 'threshold',
     mode_filter: 'universal',
-    label_en: 'KDA challenge',
-    label_fr: 'Défi KDA',
+    label: 'Défi KDA', // servi dans la langue de la requête
     normal_target: 1,
     heroic_target: 1.5,
     legendary_target: 2,

@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"levelup/go-api/internal/i18n"
 )
 
 // ecrireLexique pose un lexique de test et rend son chemin.
@@ -24,7 +26,7 @@ func TestChargerLexiqueLitLesDeuxLangues(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ChargerLexique : %v", err)
 	}
-	if len(lex) != 2 || lex[0x4E9E5E09] != (Libelle{EN: "River", FR: "Rivière"}) {
+	if len(lex) != 2 || !lex[0x4E9E5E09].Equal(i18n.FromColumns("River", "Rivière")) {
 		t.Fatalf("lexique = %+v", lex)
 	}
 }

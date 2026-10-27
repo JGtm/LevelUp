@@ -56,12 +56,14 @@ func Generate(ctx context.Context, root, fragmentPath string) ([]byte, error) {
 	return Render(doc, fragment)
 }
 
-// Render sérialise le document Huma en YAML DÉTERMINISTE après trois passes :
+// Render sérialise le document Huma en YAML DÉTERMINISTE après quatre passes :
 //  1. les chemins absolus perdent le préfixe /api/v1 (contrat relatif au server) ;
 //  2. les requestBody `application/octet-stream` auto-générés pour les handlers
 //     RawBody sont retirés (wrapper par-route SANS valeur : Huma ne voit qu'un
 //     []byte opaque — le vrai schéma JSON vient du fragment) ;
-//  3. le fragment manuel est fusionné en profondeur, avec PRÉCÉDENCE MANUELLE.
+//  3. les libellés par langue à plat (`i18n_text`) deviennent une propriété par langue de
+//     `config/locales.toml` (locale_text.go) ;
+//  4. le fragment manuel est fusionné en profondeur, avec PRÉCÉDENCE MANUELLE.
 func Render(doc *huma.OpenAPI, fragment []byte) ([]byte, error) {
 	tree, err := docToTree(doc)
 	if err != nil {
@@ -71,6 +73,7 @@ func Render(doc *huma.OpenAPI, fragment []byte) ([]byte, error) {
 		return nil, err
 	}
 	dropOpaqueBodyStubs(tree)
+	expandLocaleTexts(tree)
 
 	if len(bytes.TrimSpace(fragment)) > 0 {
 		var frag map[string]any

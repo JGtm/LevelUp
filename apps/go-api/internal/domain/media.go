@@ -107,8 +107,13 @@ type MediaFileRow struct {
 	MatchStartTime *time.Time
 	Liked          bool
 	MapName        *string
-	ModeName       *string // catégorie custom inférée côté Go depuis PairNameRaw
-	MapID          *string
+	ModeName       *string // catégorie custom inférée côté Go depuis PairNameRaw, ou libellé dans la langue de la requête
+	// ModeFilterKey est la valeur de filtre du mode, indépendante de la langue de la requête : la catégorie
+	// (la valeur des options nominales) quand elle est inférée, sinon le libellé en langue par défaut (celui
+	// que compare le filtre). ModeName porte l'affichage et peut être traduit.
+	ModeFilterKey *string
+	// MapID est la valeur de filtre de la carte (la valeur des options nominales) ; MapName porte l'affichage.
+	MapID *string
 	// PairNameRaw : valeur brute (EN) de match_registry.pair_name. Sert à inférer
 	// la mode_category custom (Assassin/Fiesta/BTB/Ranked/Firefight/Other) côté Go.
 	PairNameRaw *string

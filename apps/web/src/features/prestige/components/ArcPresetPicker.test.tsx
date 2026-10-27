@@ -30,8 +30,7 @@ function preset(over: Partial<PresetArc>): PresetArc {
   return {
     id: 'p1',
     title_slug: 'halo_infinite',
-    title_en: 'Spartan Ascension',
-    title_fr: 'Ascension du Spartan',
+    title: 'Ascension du Spartan', // servi dans la langue de la requête
     schema_version: 1,
     updated_at: '2026-01-01T00:00:00Z',
     steps: [
@@ -73,8 +72,8 @@ describe('ArcPresetPicker', () => {
     expect(screen.getByText(/Aucun preset disponible/i)).toBeInTheDocument()
   })
 
-  it('utilise le titre EN en locale en', () => {
-    mockPresets.current = [preset({})]
+  it('affiche le titre servi tel quel et le texte du sélecteur en anglais en locale en', () => {
+    mockPresets.current = [preset({ title: 'Spartan Ascension' })]
     render(<ArcPresetPicker playerSlug="u1" titleSlug="halo_infinite" locale="en" onClose={vi.fn()} />)
     expect(screen.getByText('Spartan Ascension')).toBeInTheDocument()
     expect(screen.getByText(/2 objectives/i)).toBeInTheDocument()

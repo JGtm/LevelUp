@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
 // oddballSquadRow : le témoin 293a763e — 2 manches à 1, points 181-186. Valeurs toutes
@@ -21,7 +22,7 @@ func oddballSquadRow() []domain.SquadMatchRow {
 	pr, er, total := 2, 1, 3
 	return []domain.SquadMatchRow{{
 		MatchID:         "m-oddball",
-		GameVariantName: "Arena:Oddball",
+		GameVariantName: i18n.FromColumns("Arena:Oddball", ""),
 		MyTeamScore:     &p, EnemyTeamScore: &e,
 		MyRoundsWon: &pr, EnemyRoundsWon: &er, RoundsTotal: &total,
 	}}
@@ -52,7 +53,7 @@ func TestBuildSquadMatchHistory_SansTableAfficheLesPoints(t *testing.T) {
 // Variante non déclarée (le CTF d'arène et ses deux mi-temps) : les points restent.
 func TestBuildSquadMatchHistory_VarianteNonDeclareeGardeLesPoints(t *testing.T) {
 	rows := oddballSquadRow()
-	rows[0].GameVariantName = "CTF:Arena"
+	rows[0].GameVariantName = i18n.FromColumns("CTF:Arena", "")
 	hist := buildSquadMatchHistory(rows, nil, "halo_infinite", nil,
 		map[string]bool{"Arena:Oddball": true})
 	if len(hist) != 1 {

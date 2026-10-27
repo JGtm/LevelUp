@@ -13,6 +13,7 @@ import (
 	"levelup/go-api/internal/domain/objectiveevent"
 	"levelup/go-api/internal/domain/playerposition"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 )
 
 type SquadRepository interface {
@@ -73,14 +74,16 @@ type SquadRepository interface {
 	// l'équipe alliée complète au lieu du squad sélectionné uniquement.
 	LoadMainTeamParticipants(ctx context.Context, mainXUID string, matchIDs []string) ([]domain.AllyParticipant, error)
 
-	// LoadAssetTranslationsFR retourne les traductions FR depuis metadata.asset_translations.
-	// assetType : "map" | "playlist". Retourne nil sans erreur si table absente ou IDs vides.
-	LoadAssetTranslationsFR(ctx context.Context, assetType string, assetIDs []string) (map[string]string, error)
+	// LoadAssetTexts retourne le nom de chaque actif dans chaque langue qui en porte un, depuis
+	// metadata.asset_translations (le choix de la langue se fait en aval, Text.Pick).
+	// assetType : "map" | "playlist" | "pair" | "game_variant". Retourne nil sans erreur si table
+	// absente ou IDs vides.
+	LoadAssetTexts(ctx context.Context, assetType string, assetIDs []string) (map[string]i18n.Text, error)
 
-	// LoadModeTranslationsFR retourne les traductions FR des modes EN (depuis metadata.mode_name_tr).
-	// Les clés sont les noms EN normalisés (ex: "Slayer"), les valeurs les noms FR (ex: "Tueur").
+	// LoadModeTranslations retourne les traductions des modes EN dans la langue loc (depuis metadata.mode_name_tr).
+	// Les clés sont les noms EN normalisés (ex: "Slayer"), les valeurs les noms traduits (ex: "Tueur").
 	// Retourne nil sans erreur si la table est absente ou si modeENs est vide.
-	LoadModeTranslationsFR(ctx context.Context, modeENs []string) (map[string]string, error)
+	LoadModeTranslations(ctx context.Context, loc i18n.Locale, modeENs []string) (map[string]string, error)
 
 	// LoadMapStatsForSquad retourne par map_id les stats historiques (wins,
 	// total, perf moyenne) du joueur principal sur les matchs où TOUS les xuids
@@ -102,10 +105,10 @@ type SquadRepository interface {
 //
 // P4.3 finale : LoadSynthesisMatches retiré.
 type SynthesisRepository interface {
-	// EnrichCanonicalAssetTranslations remplit Labels["fr"] sur les AssetReference
-	// (Map, Playlist, GameVariant, PairMode) des rows canoniques depuis
-	// metadata.asset_translations + mode_name_tr quand match_registry.{...}_name_fr
-	// est NULL en DB. Même helper que HomeRepo — réutilisé pour cohérence cross-page.
+	// EnrichCanonicalAssetTranslations remplit Labels de chaque langue connue sur les
+	// AssetReference (Map, Playlist, GameVariant, PairMode) des rows canoniques depuis
+	// metadata.asset_translations + mode_name_tr quand match_registry.{...}_name
+	// est absent en DB. Même helper que HomeRepo — réutilisé pour cohérence cross-page.
 	// Best-effort : erreurs loggées, rows mutées en place.
 	EnrichCanonicalAssetTranslations(ctx context.Context, rows []canonical.PlayerMatchRow) error
 }
@@ -194,9 +197,6 @@ type MatchExclusionRepository interface {
 	// dit s'il l'a écrit. Lecture de l'état, décision et écriture se font sous le verrou
 	// d'écriture de la base joueur : deux demandes qui se chevauchent se sérialisent.
 	SetExclusion(ctx context.Context, matchID string, excluded bool) (changed bool, err error)
-
-	// ListExcluded retourne les matchs marqués is_excluded = TRUE.
-	ListExcluded(ctx context.Context) ([]domain.ExcludedMatch, error)
 
 	// GetMatchRegistryInfo retourne les métadonnées du match depuis
 	// shared.match_registry. Utilisé pour la garde "match classé" et la
@@ -339,10 +339,10 @@ func (n *noopSquadRepo) LoadSquadKillLog(_ context.Context, _, _ []string) ([]do
 func (n *noopSquadRepo) LoadMainTeamParticipants(_ context.Context, _ string, _ []string) ([]domain.AllyParticipant, error) {
 	return nil, nil
 }
-func (n *noopSquadRepo) LoadAssetTranslationsFR(_ context.Context, _ string, _ []string) (map[string]string, error) {
+func (n *noopSquadRepo) LoadAssetTexts(_ context.Context, _ string, _ []string) (map[string]i18n.Text, error) {
 	return nil, nil
 }
-func (n *noopSquadRepo) LoadModeTranslationsFR(_ context.Context, _ []string) (map[string]string, error) {
+func (n *noopSquadRepo) LoadModeTranslations(_ context.Context, _ i18n.Locale, _ []string) (map[string]string, error) {
 	return nil, nil
 }
 func (n *noopSquadRepo) LoadMapStatsForSquad(_ context.Context, _ string, _, _ []string) (map[string]domain.MapSquadStats, error) {

@@ -15,7 +15,7 @@ export { truncateMap }
 /** Construit les étiquettes X au format `#N\nMap` (ou `#N` si pas de carte). */
 export function buildMatchCategories(rows: TimeseriesMatchRow[]): string[] {
   return rows.map((r, i) => {
-    const map = r.map_name_fr || r.map_name
+    const map = r.map_label
     return map ? `#${i + 1}\n${truncateMap(map)}` : `#${i + 1}`
   })
 }

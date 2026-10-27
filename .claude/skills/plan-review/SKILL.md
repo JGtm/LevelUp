@@ -54,7 +54,7 @@ Utiliser ce skill pour valider qu'un plan est complet, cohérent avec l'architec
 
 - [ ] Nouvelles routes ajoutées dans `apps/web/src/routes/` (file-based, pas dans routeTree.gen)
 - [ ] Query keys prévues dans `apps/web/src/lib/query/keys.ts`
-- [ ] Strings UI prévues dans `i18n.ts` (FR + EN)
+- [ ] Strings UI prévues dans le dictionnaire / manifest, dans chaque langue de `config/locales.toml` (fr + en)
 - [ ] Labels de stats via `useFieldLabel()` / `useOutcomeLabel()` (pas hardcodés)
 - [ ] Pas de couleurs hex/Tailwind prévues directement dans les composants
 

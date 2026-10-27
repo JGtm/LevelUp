@@ -12,6 +12,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
@@ -42,8 +43,8 @@ func (a *armesEtCategories) LoadKillSourceCategoryKills(_ context.Context, _ str
 // lignesArmesDeSession : 4 frags au BR75 et une bobine (objet explosif) lus au film.
 func lignesArmesDeSession() []port.WeaponKillRow {
 	return []port.WeaponKillRow{
-		{XUID: "P", WeaponKey: "hinf_br75", Label: "BR75", LabelEN: "BR75", Class: "shoulder", Kills: 4, FromDamageSource: true},
-		{XUID: "P", WeaponKey: keyOutilBobine, Label: "Bobine à plasma", Class: "environmental", Kills: 1, FromDamageSource: true},
+		{XUID: "P", WeaponKey: "hinf_br75", Label: i18n.Text{i18n.LocaleFR: "BR75", i18n.LocaleEN: "BR75"}, Class: "shoulder", Kills: 4, FromDamageSource: true},
+		{XUID: "P", WeaponKey: keyOutilBobine, Label: i18n.Text{i18n.LocaleFR: "Bobine à plasma"}, Class: "environmental", Kills: 1, FromDamageSource: true},
 	}
 }
 

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/himap"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/mapcatalog"
 )
 
@@ -55,8 +55,8 @@ func TestLexiqueVersionnePorteDesLibellesReels(t *testing.T) {
 			t.Errorf("string_id %08X absent du lexique", c.sid)
 			continue
 		}
-		if got.EN != c.en || got.FR != c.fr {
-			t.Errorf("string_id %08X = (%q, %q), attendu (%q, %q)", c.sid, got.EN, got.FR, c.en, c.fr)
+		if got[i18n.LocaleEN] != c.en || got[i18n.LocaleFR] != c.fr {
+			t.Errorf("string_id %08X = (%q, %q), attendu (%q, %q)", c.sid, got[i18n.LocaleEN], got[i18n.LocaleFR], c.en, c.fr)
 		}
 	}
 }
@@ -83,15 +83,15 @@ func TestLexiqueCouvreLeCSVFigeAuCaractereRes(t *testing.T) {
 		if !ok {
 			absents++
 			if absents <= 5 {
-				t.Errorf("string_id %08X (%q) absent du lexique", sid, attendu.EN)
+				t.Errorf("string_id %08X (%q) absent du lexique", sid, attendu[i18n.LocaleEN])
 			}
 			continue
 		}
-		if got != attendu {
+		if !got.Equal(attendu) {
 			divergents++
 			if divergents <= 5 {
 				t.Errorf("string_id %08X : lexique (%q, %q) != CSV (%q, %q)",
-					sid, got.EN, got.FR, attendu.EN, attendu.FR)
+					sid, got[i18n.LocaleEN], got[i18n.LocaleFR], attendu[i18n.LocaleEN], attendu[i18n.LocaleFR])
 			}
 		}
 	}
@@ -134,10 +134,10 @@ func TestLexiqueEstTrieEtSansTexteVide(t *testing.T) {
 // TestFusionneLexiqueRefuseUneDivergence — la fusion ne tranche JAMAIS entre deux textes
 // concurrents pour un même string_id : elle échoue, et rien n'est publié.
 func TestFusionneLexiqueRefuseUneDivergence(t *testing.T) {
-	base := mapcatalog.Lexique{0x11111111: {EN: "Cave", FR: "Grotte"}}
+	base := mapcatalog.Lexique{0x11111111: i18n.FromColumns("Cave", "Grotte")}
 	lex := mapcatalog.Lexique{
-		0x11111111: {EN: "Cavern", FR: "Caverne"},
-		0x22222222: {EN: "River", FR: "Rivière"},
+		0x11111111: i18n.FromColumns("Cavern", "Caverne"),
+		0x22222222: i18n.FromColumns("River", "Rivière"),
 	}
 	if _, _, err := fusionneLexique(base, lex); err == nil {
 		t.Fatal("une divergence de texte doit faire échouer la fusion")
@@ -148,7 +148,7 @@ func TestFusionneLexiqueRefuseUneDivergence(t *testing.T) {
 	if err != nil {
 		t.Fatalf("fusion saine : %v", err)
 	}
-	if ajouts != 1 || len(out) != 2 || out[0x11111111].EN != "Cave" || out[0x22222222].EN != "River" {
+	if ajouts != 1 || len(out) != 2 || out[0x11111111][i18n.LocaleEN] != "Cave" || out[0x22222222][i18n.LocaleEN] != "River" {
 		t.Fatalf("fusion = %d ajouts, %d entrées : %+v", ajouts, len(out), out)
 	}
 }
@@ -158,10 +158,10 @@ func TestFusionneLexiqueRefuseUneDivergence(t *testing.T) {
 func TestEcritLexiqueEcarteUnCoupleIncomplet(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, nomLexique)
-	n, ecartes, err := ecritLexique(p, map[uint32]himap.LibelleLieu{
-		0x00000002: {EN: "River", FR: "Rivière"},
-		0x00000001: {EN: "Ledge", FR: ""},
-		0x00000003: {EN: "", FR: "Rampe"},
+	n, ecartes, err := ecritLexique(p, map[uint32]i18n.Text{
+		0x00000002: i18n.FromColumns("River", "Rivière"),
+		0x00000001: i18n.FromColumns("Ledge", ""),
+		0x00000003: i18n.FromColumns("", "Rampe"),
 	})
 	if err != nil {
 		t.Fatalf("écriture : %v", err)
@@ -173,7 +173,7 @@ func TestEcritLexiqueEcarteUnCoupleIncomplet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("relecture : %v", err)
 	}
-	if len(relu) != 1 || relu[0x00000002].FR != "Rivière" {
+	if len(relu) != 1 || relu[0x00000002][i18n.LocaleFR] != "Rivière" {
 		t.Fatalf("relu = %+v", relu)
 	}
 }

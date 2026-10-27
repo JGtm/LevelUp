@@ -213,7 +213,7 @@ func NewLabelCatalog(
 		if !ok {
 			continue
 		}
-		weapons[family] = WeaponLabel{En: name.En, Fr: name.Fr, Fx: effects[key]}
+		weapons[family] = WeaponLabel{Text: name.Text.Clone(), Fx: effects[key]}
 	}
 	// La table brute est COPIÉE : le catalogue survit à son appelant, il ne doit pas
 	// partager une map que celui-ci pourrait muter.

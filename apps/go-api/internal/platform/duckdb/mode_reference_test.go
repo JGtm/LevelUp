@@ -5,12 +5,13 @@ import (
 
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 )
 
 func variantScan(variantID, variantName, pairID, pairName, pairNameFR string) playerMatchScanResult {
 	return playerMatchScanResult{
-		matchID: "m1", variantID: variantID, variantName: variantName,
-		pairID: pairID, pairName: pairName, pairNameFR: pairNameFR,
+		matchID: "m1", variantID: variantID, variantName: i18n.FromColumns(variantName, ""),
+		pairID: pairID, pairName: i18n.FromColumns(pairName, pairNameFR),
 	}
 }
 

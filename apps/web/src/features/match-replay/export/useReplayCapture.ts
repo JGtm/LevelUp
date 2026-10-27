@@ -54,6 +54,7 @@ import { meXUIDOf } from '@/features/match-view/xuidMeta'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 import type { FilmAllegiance } from '@/lib/replay/filmAllegiance'
 import type { ReplayScoreDocument } from '@/lib/replay/scoreTimeline'
+import { DEFAULT_LOCALE } from '@/lib/i18n/locale'
 
 export interface ReplayCaptureOptions {
   /** La toile du rejeu : c'est elle, et elle seule, qui porte tout ce qui se voit. */
@@ -326,7 +327,7 @@ function useExportSeam(o: ReplayCaptureOptions): ReplayExport | null {
     outcome,
     viewpoint: o.viewpoint,
     titleSlug: doc.titleSlug ?? '',
-    locale: o.locale ?? 'fr',
+    locale: o.locale ?? DEFAULT_LOCALE,
     soundTrack: o.soundTrack,
     soundVolume: o.soundVolume,
     zoomLevel: o.zoomLevel,

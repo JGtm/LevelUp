@@ -5,7 +5,6 @@ export const palmaresManifest = {
   "palmares.empty.unavailable_description": { fr: "Aucune réponse exploitable n'a été renvoyée pour cette page.", en: "No exploitable response returned for this page." },
   "palmares.empty.unavailable_title": { fr: "Palmarès indisponible", en: "Palmares unavailable" },
   "palmares.errors.retry": { fr: "Réessayer", en: "Retry" },
-  "palmares.intl_locale": { fr: "fr-FR", en: "en-GB" },
   "palmares.page.subtitle": { fr: "Classements, relations de jeu, passes saisonniers et comparaison joueur à joueur regroupés dans un même hub.", en: "Ranked standings, play relationships, seasonal passes and player-vs-player comparison grouped into one hub." },
   "palmares.page.title": { fr: "Palmarès", en: "Palmares" },
   "palmares.relations.badge_legend.ally_plus": { fr: "Coéquipier fiable : au moins 65 % de victoires ensemble.", en: "Reliable teammate: at least 65% wins together." },

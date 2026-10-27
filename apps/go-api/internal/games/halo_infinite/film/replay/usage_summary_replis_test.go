@@ -126,7 +126,7 @@ func docGardeNegative(episodes int) *ReplayDocument {
 		FrameCount:      1000,
 		Roster:          []RosterEntry{{XUID: "111", FilmIndex: 0}},
 		Tracks:          []Track{{Slot: 1, XUID: "111", StartFrame: 0, EndFrame: 900}},
-		AbilityLabels:   map[string]Label{"8": {En: "Camo", Fr: "Camo", Family: usageFamilyPowerupCamo}},
+		AbilityLabels:   map[string]Label{"8": {Text: enFr("Camo", "Camo"), Family: usageFamilyPowerupCamo}},
 		EquipmentChanges: []EquipmentChange{
 			{Slot: 1, T: 10, Kind: EquipmentTaken, R: 8, From: NoAbilityRank},
 		},

@@ -20,6 +20,7 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/migration"
 )
 
@@ -44,8 +45,9 @@ func TestClashOfKingsSeed_BaseNeuve(t *testing.T) {
 
 // TestClashOfKingsSeed_BaseHeritee : table SANS clé primaire + ligne bouchon
 // « Unknown / Inconnue » + traduction bouchon dans medal_translations (la chaîne
-// FR de lecture la consulte AVANT medal_definitions). Après migrations, la page
-// Médailles doit servir « Clash of Kings ».
+// FR de lecture la consulte AVANT les colonnes). Après migrations, la page Médailles doit servir
+// « Clash of Kings » : le bouchon est purgé avant que les colonnes ne passent dans les tables
+// par langue.
 func TestClashOfKingsSeed_BaseHeritee(t *testing.T) {
 	db := ouvrirMemoire(t)
 	for _, q := range []string{
@@ -145,61 +147,68 @@ func assertUneSeuleLigne(t *testing.T, db *sql.DB) {
 	}
 }
 
+// medalTextsByLanguage lit les textes d'une médaille dans medal_translations, par langue de
+// l'application (étiquette Halo -> langue). Une étiquette hors liste est ignorée.
+func medalTextsByLanguage(t *testing.T, db *sql.DB, id int64) (names, descriptions i18n.Text) {
+	t.Helper()
+	rows, err := db.Query(`SELECT lang, name, COALESCE(description, '') FROM medal_translations WHERE medal_name_id = ?`, id)
+	if err != nil {
+		t.Fatalf("lecture de medal_translations pour %d: %v", id, err)
+	}
+	defer rows.Close()
+	names, descriptions = i18n.Text{}, i18n.Text{}
+	for rows.Next() {
+		var tag, name, desc string
+		if err := rows.Scan(&tag, &name, &desc); err != nil {
+			t.Fatalf("scan: %v", err)
+		}
+		if loc, ok := i18n.FromHaloTag(tag); ok {
+			names[loc], descriptions[loc] = name, desc
+		}
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("rows: %v", err)
+	}
+	return names, descriptions
+}
+
+// assertClashOfKings : après la chaîne complète, le nom et la description anglais sont dans
+// medal_translations (migrés depuis les colonnes par metadata_definition_texts_to_translations_v1)
+// et le type reste dans medal_definitions.
 func assertClashOfKings(t *testing.T, db *sql.DB) {
 	t.Helper()
-	var nameEN, descEN, medalType string
-	var nameFR, descFR sql.NullString
+	var medalType string
 	if err := db.QueryRow(`
-		SELECT name_en, description_en, name_fr, description_fr, COALESCE(medal_type, '')
+		SELECT COALESCE(medal_type, '')
 		FROM medal_definitions WHERE medal_name_id = ?`, clashOfKingsID,
-	).Scan(&nameEN, &descEN, &nameFR, &descFR, &medalType); err != nil {
+	).Scan(&medalType); err != nil {
 		t.Fatalf("médaille %d absente de medal_definitions: %v", clashOfKingsID, err)
-	}
-	if nameEN != clashOfKingsNameEN {
-		t.Errorf("name_en = %q, want %q", nameEN, clashOfKingsNameEN)
-	}
-	if descEN != clashOfKingsDescEN {
-		t.Errorf("description_en = %q, want %q", descEN, clashOfKingsDescEN)
 	}
 	if medalType != clashOfKingsMedalTyp {
 		t.Errorf("medal_type = %q, want %q", medalType, clashOfKingsMedalTyp)
 	}
-	// Aucun libellé FR n'existe dans une source officielle : la colonne reste
-	// vide pour que la chaîne COALESCE serve le nom anglais (exact) plutôt
-	// qu'une traduction inventée ou le bouchon « Inconnue ».
-	if nameFR.Valid && nameFR.String != "" {
-		t.Errorf("name_fr = %q, want vide (aucune source FR officielle)", nameFR.String)
+	names, descriptions := medalTextsByLanguage(t, db, clashOfKingsID)
+	if names[i18n.LocaleEN] != clashOfKingsNameEN {
+		t.Errorf("nom en = %q, want %q", names[i18n.LocaleEN], clashOfKingsNameEN)
 	}
-	if descFR.Valid && descFR.String != "" {
-		t.Errorf("description_fr = %q, want vide (aucune source FR officielle)", descFR.String)
+	if descriptions[i18n.LocaleEN] != clashOfKingsDescEN {
+		t.Errorf("description en = %q, want %q", descriptions[i18n.LocaleEN], clashOfKingsDescEN)
+	}
+	// Aucun libellé FR n'existe dans une source officielle : aucune ligne fr ne porte de texte,
+	// pour que la lecture serve le nom anglais (exact) plutôt qu'une traduction inventée ou le
+	// bouchon « Inconnue ».
+	if names[i18n.LocaleFR] != "" || descriptions[i18n.LocaleFR] != "" {
+		t.Errorf("texte fr = %q / %q, want vide (aucune source FR officielle)", names[i18n.LocaleFR], descriptions[i18n.LocaleFR])
 	}
 }
 
-// assertLabelServiFR rejoue la chaîne de résolution FR de la page Médailles
-// (platform/duckdb/medal_label_resolve.go, locale par défaut) : traduction
-// locale, puis name_fr, puis traduction EN, puis name_en. C'est ce que l'API
-// renvoie réellement — un test sur les seules colonnes ne l'aurait pas vu.
+// assertLabelServiFR rejoue la lecture de la page Médailles en français : langue demandée, sinon
+// langue de repli (platform/duckdb/medal_label_resolve.go). C'est ce que l'API renvoie
+// réellement — un test sur les seules lignes de traduction ne l'aurait pas vu.
 func assertLabelServiFR(t *testing.T, db *sql.DB) {
 	t.Helper()
-	var label string
-	if err := db.QueryRow(`
-		SELECT COALESCE(
-			NULLIF(TRIM(mt_loc.name),''),
-			NULLIF(TRIM(md.name_fr),''),
-			NULLIF(TRIM(mt_en.name),''),
-			NULLIF(TRIM(md.name_en),''),
-			''
-		)
-		FROM medal_definitions md
-		LEFT JOIN medal_translations mt_loc
-		       ON mt_loc.medal_name_id = md.medal_name_id AND mt_loc.lang = 'fr-FR'
-		LEFT JOIN medal_translations mt_en
-		       ON mt_en.medal_name_id = md.medal_name_id AND mt_en.lang = 'en-US'
-		WHERE md.medal_name_id = ?`, clashOfKingsID,
-	).Scan(&label); err != nil {
-		t.Fatalf("résolution du label FR: %v", err)
-	}
-	if label != clashOfKingsNameEN {
+	names, _ := medalTextsByLanguage(t, db, clashOfKingsID)
+	if label := names.Pick(i18n.LocaleFR); label != clashOfKingsNameEN {
 		t.Errorf("label servi en FR = %q, want %q", label, clashOfKingsNameEN)
 	}
 }

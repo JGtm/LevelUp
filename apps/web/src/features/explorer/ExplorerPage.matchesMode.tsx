@@ -17,7 +17,8 @@ import type { ContextDescriptor, MatchFilterSpec } from '@/lib/match-nav/navCont
 import type { ExplorerMatchesQueryResponse } from '@/lib/api/types'
 import type { ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 import type { SeasonEntry } from '@/lib/i18n/fieldMappings'
-import { normalizeExplorerTableRows } from './explorerTableRows'
+import { matchHistoryExportUrl, normalizeExplorerTableRows } from './explorerTableRows'
+import { useAppShellStore } from '@/stores/appShellStore'
 import type { ReplayScope } from './explorerScope'
 
 export interface ExplorerMatchesModeProps {
@@ -336,6 +337,8 @@ export function ExplorerMatchesResultsBlock({
   matchesContextDescriptor,
   matchesFilterSpec,
 }: ResultsBlockProps) {
+  // La langue de la page suit le lien de téléchargement (le navigateur n'envoie pas l'en-tête de langue).
+  const locale = useAppShellStore((s) => s.locale)
   if (matchesQuery.isLoading) {
     return (
       <div className="flex justify-center py-16">
@@ -391,7 +394,7 @@ export function ExplorerMatchesResultsBlock({
         footerLeadingSlot={
           matchesQuery.data.export_hint?.token ? (
             <a
-              href={`${import.meta.env.VITE_API_BASE_URL ?? '/api/v1'}/players/${playerSlug}/pages/match-history/export?token=${encodeURIComponent(matchesQuery.data.export_hint.token)}`}
+              href={matchHistoryExportUrl(playerSlug, matchesQuery.data.export_hint.token, locale)}
               download
               title={t('explorer.matches.export_csv')}
               className="inline-flex h-8 shrink-0 items-center rounded-md border border-input bg-background px-3 text-xs font-medium text-foreground hover:bg-muted transition-colors"

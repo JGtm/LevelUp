@@ -169,28 +169,16 @@ ORDER BY mc.match_id, mc.value DESC`
 
 // Q26j : Home — métadonnées citations depuis metadata.duckdb pour un ensemble de norms.
 // Les citation_name_norm sont injectés dynamiquement via IN (%s).
-// GROUP BY car une citation peut avoir plusieurs medal_id rows.
-//
-// GH2-B2/B6 : citation_name_display_en exposé pour la résolution locale-aware du
-// nom (les citations Infinite sont des copies de commendations H5, seul le calcul
-// diffère → l'EN vient du seed). Sous UI EN, l'appelant remplace le display FR par
-// l'EN quand il est non vide.
-// GH4 : description_en exposé (source = commendations H5 officielles + trad fidèle
-// Infinite). Sous UI EN, l'appelant sert description_en quand non vide, sinon le nom
-// seul (description masquée) — jamais le FR (principe GH-5b).
+// Les noms et descriptions par langue ne sont plus des colonnes : citation_texts.go les lit dans
+// asset_translations (type citation) et les choisit dans la langue de la requête.
 const Q26jCitationMappingsForNormsTemplate = `
 SELECT
     citation_name_norm,
-    citation_name_display,
-    COALESCE(citation_name_display_en, '') AS citation_name_display_en,
     COALESCE(image_path, '')   AS image_path,
-    COALESCE(tier_targets, '') AS tier_targets,
-    COALESCE(MAX(description), '') AS description,
-    COALESCE(MAX(description_en), '') AS description_en
+    COALESCE(tier_targets, '') AS tier_targets
 FROM citation_mappings
 WHERE citation_name_norm IN (%s)
-  AND enabled IS NOT FALSE
-GROUP BY citation_name_norm, citation_name_display, citation_name_display_en, image_path, tier_targets`
+  AND enabled IS NOT FALSE`
 
 // Q26b : Home -- nombre total de matchs d un joueur (pas de LIMIT).
 // Parametre : ?1 = xuid du joueur. JOIN match_registry pour exposer game_variant_id
@@ -316,7 +304,7 @@ WHERE mr.match_id IN (%s)`
 
 // Q26g : Home — 3 dernières playlists distinctes jouées avec leur dernier rang compétitif.
 // Paramètre : ?1 = xuid du joueur.
-// Retourne (playlist_id, playlist_name, is_ranked, rating_type, rating_value, tier, tier_fr,
+// Retourne (playlist_id, playlist_name, is_ranked, rating_type, rating_value, tier,
 //
 //	sub_tier, tier_label, measurement_matches_remaining).
 //
@@ -398,7 +386,6 @@ WITH exploitable AS (
 		rating_type,
 		rating_value,
 		NULLIF(TRIM(tier), '')        AS tier,
-		NULLIF(TRIM(tier_fr), '')     AS tier_fr,
 		COALESCE(sub_tier, 0)         AS sub_tier,
 		NULLIF(TRIM(tier_label), '')  AS tier_label,
 		ROW_NUMBER() OVER (
@@ -420,7 +407,7 @@ WITH exploitable AS (
 	  AND rating_value IS NOT NULL
 	  AND NOT (UPPER(COALESCE(rating_type, '')) = 'CSR' AND rating_value = 0)
 )
-SELECT match_id, rating_value, tier, tier_fr, sub_tier, tier_label
+SELECT match_id, rating_value, tier, sub_tier, tier_label
 FROM exploitable
 WHERE rn = 1`
 

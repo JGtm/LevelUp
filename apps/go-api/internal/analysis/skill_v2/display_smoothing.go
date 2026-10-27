@@ -1,5 +1,7 @@
 package skill_v2
 
+import "levelup/go-api/internal/i18n"
+
 // display_smoothing.go — lissage de l'AFFICHAGE du palier LUSR v2.
 //
 // Sépare la vérité interne (μ honnête, jamais bridé) de la présentation : le
@@ -97,7 +99,7 @@ func SmoothDisplayedOrdinal(prevOrd, targetOrd, experience int) int {
 	return prevOrd - 1
 }
 
-// FormatTierSubLabel retourne le libellé FR ("Or III", "Onyx", "Non classé")
+// FormatTierSubLabel retourne le libellé français ("Or III", "Onyx", "Non classé")
 // pour un (tier, sub) déjà résolu — utilisé par le chemin lissé qui dispose
 // directement de la cible affichée, sans repasser par μ.
 func FormatTierSubLabel(tier TierBoundary, sub int) string {
@@ -105,13 +107,13 @@ func FormatTierSubLabel(tier TierBoundary, sub int) string {
 		return "Non classé"
 	}
 	if sub == 0 || tier.SubTiers <= 1 {
-		return tier.NameFR
+		return tier.Label.Pick(i18n.Default)
 	}
 	r, ok := romanSubTier[sub]
 	if !ok {
-		return tier.NameFR
+		return tier.Label.Pick(i18n.Default)
 	}
-	return tier.NameFR + " " + r
+	return tier.Label.Pick(i18n.Default) + " " + r
 }
 
 // mapTierSubToLegacyRating mappe un (tier, sub) résolu vers le rating_value

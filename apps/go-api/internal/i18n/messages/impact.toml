@@ -1,0 +1,46 @@
+# Badges d'impact d'un match (analysis.ComputeMatchImpactFull, ComputeThiefBadge). Les noms anglais
+# sont ceux de l'interface web (match-view et squad).
+
+[impact.badge.first_blood]
+fr = "Premier sang"
+en = "First blood"
+
+[impact.badge.first_group_death]
+fr = "Première victime"
+en = "First down"
+
+[impact.badge.clutch_finisher]
+fr = "Finisseur"
+en = "Finisher"
+
+[impact.badge.last_casualty]
+fr = "Boulet"
+en = "Last casualty"
+
+[impact.badge.last_group_kill]
+fr = "Touriste"
+en = "Latecomer"
+
+[impact.badge.top_killer]
+fr = "Bourreau"
+en = "Top killer"
+
+[impact.badge.silent_hero]
+fr = "Héros silencieux"
+en = "Silent hero"
+
+[impact.badge.false_brother]
+fr = "Faux-frère"
+en = "False brother"
+
+[impact.badge.top_gun]
+fr = "Top Gun"
+en = "Top Gun"
+
+[impact.badge.kamikaze]
+fr = "Kamikaze"
+en = "Kamikaze"
+
+[impact.badge.thief]
+fr = "Voleur"
+en = "Thief"

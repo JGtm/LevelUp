@@ -84,10 +84,11 @@ type RemoteServiceRecord struct {
 // WeaponHighlight représente une arme mise en avant (top arme par kills),
 // utilisée notamment par le profil Explorer (top_weapons).
 type WeaponHighlight struct {
-	WeaponID int64  `json:"weapon_id"`
-	LabelFR  string `json:"label_fr"`
-	LabelEN  string `json:"label_en"`
-	Kills    int    `json:"kills"`
+	WeaponID int64 `json:"weapon_id"`
+	// Label : le nom de l arme dans la langue de la requete (repli en), ou son identifiant
+	// decimal quand la metadata ne la connait pas.
+	Label string `json:"label"`
+	Kills int    `json:"kills"`
 }
 
 // PlayerATH regroupe les métriques all-time lues depuis stats.duckdb du joueur A.

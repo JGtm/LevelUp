@@ -201,3 +201,24 @@ describe('ExplorerMatchesResultsBlock — compteur retiré / CSV dans le pied du
     expect(tableRoot.contains(csv)).toBe(true)
   })
 })
+
+describe('ExplorerMatchesResultsBlock — langue de la page dans le lien d\'export CSV', () => {
+  afterEach(() => useAppShellStore.setState({ locale: 'fr' }))
+
+  for (const locale of ['fr', 'en'] as const) {
+    it(`${locale} : le lien porte ?lang=${locale} (le navigateur n'envoie pas l'en-tête de langue)`, () => {
+      useAppShellStore.setState({ locale })
+      renderWithProviders(
+        <ExplorerMatchesResultsBlock
+          playerSlug="test-player"
+          t={tStub}
+          matchesQuery={fakeMatchesQuery()}
+          matchesContextDescriptor={undefined}
+        />,
+      )
+      const lien = screen.getByText('explorer.matches.export_csv').closest('a')
+      expect(lien?.getAttribute('href')).toContain('token=tok-123')
+      expect(lien?.getAttribute('href')).toContain(`&lang=${locale}`)
+    })
+  }
+})

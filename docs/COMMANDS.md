@@ -459,6 +459,29 @@ escape hatch, and the guard-rail
 `internal/games/halo_infinite/medal_icons_test.go` fails when a medal of the taxonomy has no
 icon.
 
+### Languages and translations (ADR 0040)
+
+The languages of the application are listed in `config/locales.toml` (single source). Adding one, step by
+step: [Foundations Guide § 3.5](FOUNDATIONS_GUIDE.md).
+
+```bash
+# regenerate apps/web/src/lib/i18n/generated/locales.ts, apps/go-api/internal/i18n/locales_gen.go and the
+# manifest modules from config/locales.toml; stops at the first manifest leaf that lacks a listed language
+node apps/web/scripts/build_i18n_manifests.mjs
+# proof language: fabricates `xx` from `en` (text between ⟦ and ⟧) into --out (a temporary folder when
+# omitted); touches neither config/locales.toml nor any committed file
+node apps/web/scripts/build_i18n_manifests.mjs --pseudo xx [--out DIR]
+# generated TypeScript types AND generated locale lists are fresh (also run by the web test suite)
+node tools/check-generated-types-fresh.mjs
+# Halo names of maps, playlists, pairs and game variants into asset_translations (Discovery UGC API)
+cd apps/go-api
+go run ./cmd/levelup populate-assets [--types map,playlist,pair,game_variant] [--langs es-ES,es-MX] \
+    [--dry-run] [--force] [--concurrency N] [--freshness DAYS] [--title-id halo_infinite]
+```
+
+`populate-assets` defaults: all four types, the 14 tags of `domain.TargetLanguages`, concurrency 10,
+freshness 30 days; `--langs` ignores (with a warning) a tag outside that list.
+
 ### Asset production chains (versioned outputs)
 
 Eleven offline chains, all under `apps/go-api/cmd/`, produce files committed to the repo

@@ -76,15 +76,19 @@ describe('normalizeCallouts', () => {
 
 describe('zoneAt — affectation 3D', () => {
   const zones = normalizeCallouts(ENTRY)
+  const nameAt = (x: number, y: number, z: number) => {
+    const zone = zoneAt(zones, x, y, z)
+    return zone ? calloutLabel(zone, 'en') : undefined
+  }
 
   it('départage deux étages superposés par le z', () => {
     // Même point 2D (19, 10) : en bas -> version inférieure, en haut -> version haute.
-    expect(zoneAt(zones, 19, 10, -1.9)?.en).toBe('Lower Horseshoe')
-    expect(zoneAt(zones, 19, 10, 0.9)?.en).toBe('Horseshoe')
+    expect(nameAt(19, 10, -1.9)).toBe('Lower Horseshoe')
+    expect(nameAt(19, 10, 0.9)).toBe('Horseshoe')
   })
 
   it('les volumes secondaires comptent : l’étage bas d’Antenne est affecté à Antenne', () => {
-    expect(zoneAt(zones, -2, -5, -4)?.en).toBe('Antenna')
+    expect(nameAt(-2, -5, -4)).toBe('Antenna')
   })
 
   it('liste vide = null', () => {

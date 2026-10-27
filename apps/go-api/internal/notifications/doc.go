@@ -2,7 +2,7 @@
 // per-player, vue comme un domaine autonome découplé du reste de l'app.
 //
 // Règle de dépendance :
-//   - Ce package n'importe que la stdlib.
+//   - Ce package n'importe que la stdlib et internal/i18n (couche domaine sans dépendance).
 //   - L'implémentation du Repository vit dans internal/platform/duckdb/.
 //   - Les modules consommateurs (sync, handlers media, etc.) reçoivent une
 //     Emitter via DI ; ils ne connaissent pas l'impl, juste l'interface.

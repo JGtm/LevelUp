@@ -332,7 +332,6 @@ Keys read by the Go backend from `app_settings.json` (some are not in the exampl
 | `tailscale_enabled` | bool | `false` | Enable Tailscale Funnel remote access. |
 | `user_timezone` | string | `"Europe/Paris"` | IANA timezone for display. |
 | `watcher_presence_enabled` | bool | `true` | Enable presence watcher. |
-| `career_top_exclude_btb` | bool | `false` | Exclude Big Team Battle from career tops. |
 | `csr_season_id` | string | `"CsrSeason13-1"` | CSR season id (overridable via `LEVELUP_CSR_SEASON_ID`). |
 | `backup_enabled` | bool | `false` | Enable scheduled DuckDB backups. |
 | `backup_interval` | string | `"6h"` | Backup interval (Go duration). |

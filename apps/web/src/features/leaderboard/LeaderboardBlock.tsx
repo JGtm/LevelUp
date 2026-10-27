@@ -54,7 +54,7 @@ const COL_HIDE_LG = 'hidden lg:table-cell'
  * présent, on s'appuie sur `display_name` renvoyé par l'API (déjà résolu selon la
  * locale via le header X-LevelUp-Locale côté backend).
  */
-const PLAYLISTS: { id: string; fr: string; en: string }[] = [
+const PLAYLISTS: ({ id: string } & Record<ManifestLocale, string>)[] = [
   { id: 'edfef3ac-9cbe-4fa2-b949-8f29deafd483', fr: 'Arène classée', en: 'Ranked Arena' },
   { id: 'dcb2e24e-05fb-4390-8076-32a0cdb4326e', fr: 'Assassin classé', en: 'Ranked Slayer' },
   { id: 'fa5aa2a3-2428-4912-a023-e1eeea7b877c', fr: 'Duo classé', en: 'Ranked Doubles' },
@@ -144,7 +144,7 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
           // On l'utilise directement, sans table FR codée en dur.
           catalog.playlists.map((p) => ({ value: p.id, label: p.display_name || p.id }))
         : // Catalogue vide (avant le 1er snapshot) : fallback bilingue local.
-          PLAYLISTS.map((p) => ({ value: p.id, label: locale === 'en' ? p.en : p.fr })),
+          PLAYLISTS.map((p) => ({ value: p.id, label: p[locale] })),
     [catalog, locale],
   )
 

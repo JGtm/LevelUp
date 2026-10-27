@@ -12,7 +12,7 @@ import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
 
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useSettings, useUpdateSettings } from '@/features/settings/queries'
-import { getSettingsText, normalizeSettingsLocale } from '@/features/settings/i18n'
+import { getSettingsText } from '@/features/settings/i18n'
 import { AccessibilityTab } from '@/features/settings/AccessibilityTab'
 import { SetPasswordCard } from '@/features/auth/SetPasswordCard'
 import { NotificationsSettingsTab } from '@/features/notifications/NotificationsSettingsTab'
@@ -32,7 +32,7 @@ export function SettingsPage() {
   const { data: settings, isLoading } = useSettings()
   const mutation = useUpdateSettings()
   const demoMode = useAppShellStore((s) => s.demoMode)
-  const locale = normalizeSettingsLocale(useAppShellStore((s) => s.locale))
+  const locale = useAppShellStore((s) => s.locale)
   const t = getSettingsText(locale)
   const tc = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
@@ -85,9 +85,7 @@ export function SettingsPage() {
           className="mx-6 mt-4 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground"
           role="note"
         >
-          {locale === 'en'
-            ? 'Demo mode: settings are frozen. Only language and accessibility can be changed (this session only).'
-            : 'Mode démo : les paramètres sont figés. Seules la langue et l’accessibilité sont modifiables (le temps de la session).'}
+          {t.demoModeNotice}
         </div>
       )}
       {saveStatus && (

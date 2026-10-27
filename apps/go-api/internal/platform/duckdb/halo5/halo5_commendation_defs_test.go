@@ -1,10 +1,10 @@
 //go:build integration
 
 // halo5_commendation_defs_test.go — test in-memory (DuckDB :memory:) de la lecture
-// du référentiel commendation_definitions (metadata h5). NE TOUCHE JAMAIS la vraie
-// metadata h5.
+// du référentiel commendation_definitions (metadata h5) et de ses textes par langue
+// (asset_translations, type « commendation »). NE TOUCHE JAMAIS la vraie metadata h5.
 //
-// Lancer : go test -tags=integration ./internal/platform/duckdb/ -run Halo5Commendation
+// Lancer : go test -tags=integration ./internal/platform/duckdb/halo5/ -run Halo5Commendation
 
 package halo5
 
@@ -18,34 +18,50 @@ import (
 	_ "github.com/duckdb/duckdb-go/v2"
 )
 
+// seedCommendationDefs crée les tables telles qu'elles sont après la migration des textes de
+// définitions : commendation_definitions sans colonne de texte, noms dans asset_translations.
 func seedCommendationDefs(t *testing.T, db *sql.DB) {
 	t.Helper()
 	ctx := context.Background()
-	if _, err := db.ExecContext(ctx, `CREATE TABLE commendation_definitions (
-		commendation_id   VARCHAR PRIMARY KEY,
-		name_en           VARCHAR NOT NULL,
-		name_fr           VARCHAR NOT NULL,
-		description_en    VARCHAR DEFAULT '',
-		description_fr    VARCHAR DEFAULT '',
-		commendation_type VARCHAR,
-		category          VARCHAR,
-		icon_url          VARCHAR,
-		tier_targets      VARCHAR
-	)`); err != nil {
-		t.Fatalf("ddl: %v", err)
+	for _, q := range []string{
+		`CREATE TABLE commendation_definitions (
+			commendation_id   VARCHAR PRIMARY KEY,
+			commendation_type VARCHAR,
+			category          VARCHAR,
+			icon_url          VARCHAR,
+			tier_targets      VARCHAR
+		)`,
+		`CREATE TABLE asset_translations (
+			asset_id VARCHAR NOT NULL, asset_type VARCHAR NOT NULL, lang VARCHAR NOT NULL,
+			name VARCHAR NOT NULL, description VARCHAR,
+			PRIMARY KEY (asset_id, asset_type, lang)
+		)`,
+	} {
+		if _, err := db.ExecContext(ctx, q); err != nil {
+			t.Fatalf("ddl: %v", err)
+		}
 	}
-	rows := []struct {
-		id, nameEN, nameFR, icon string
-	}{
-		{"uuid-1", "Spartan Slayer", "Tueur de Spartans", "https://cdn/1.png"},
-		{"uuid-2", "Headshot Honcho", "", "https://cdn/2.png"}, // name_fr vide → fallback EN
-		{"uuid-3", "No Icon", "Sans Icône", ""},                // icon vide
+	rows := []struct{ id, icon string }{
+		{"uuid-1", "https://cdn/1.png"},
+		{"uuid-2", "https://cdn/2.png"},
+		{"uuid-3", ""}, // icon vide
 	}
 	for _, r := range rows {
 		if _, err := db.ExecContext(ctx, `INSERT INTO commendation_definitions
-			(commendation_id, name_en, name_fr, commendation_type, category, icon_url)
-			VALUES (?,?,?,?,?,?)`, r.id, r.nameEN, r.nameFR, "Progressive", "MULTIPLAYER", r.icon); err != nil {
+			(commendation_id, commendation_type, category, icon_url)
+			VALUES (?,?,?,?)`, r.id, "Progressive", "MULTIPLAYER", r.icon); err != nil {
 			t.Fatalf("insert %s: %v", r.id, err)
+		}
+	}
+	texts := []struct{ id, lang, name string }{
+		{"uuid-1", "fr-FR", "Tueur de Spartans"}, {"uuid-1", "en-US", "Spartan Slayer"},
+		{"uuid-2", "en-US", "Headshot Honcho"}, // pas de ligne fr-FR : repli sur l'anglais
+		{"uuid-3", "fr-FR", "Sans Icône"}, {"uuid-3", "en-US", "No Icon"},
+	}
+	for _, r := range texts {
+		if _, err := db.ExecContext(ctx, `INSERT INTO asset_translations (asset_id, asset_type, lang, name)
+			VALUES (?, 'commendation', ?, ?)`, r.id, r.lang, r.name); err != nil {
+			t.Fatalf("insert texte %s/%s: %v", r.id, r.lang, err)
 		}
 	}
 }
@@ -68,14 +84,14 @@ func TestHalo5CommendationDefs_LookupResolvesNameIconFallback(t *testing.T) {
 	if len(got) != 3 {
 		t.Fatalf("résultat = %d, want 3 (uuid-1,2,3 ; inconnu+vide exclus) — %+v", len(got), got)
 	}
-	// name_fr prioritaire quand non vide.
+	// Langue par défaut : le texte de la langue quand il existe.
 	if got["uuid-1"].Name != "Tueur de Spartans" {
 		t.Errorf("uuid-1 name = %q, want FR 'Tueur de Spartans'", got["uuid-1"].Name)
 	}
 	if got["uuid-1"].IconURL != "https://cdn/1.png" {
 		t.Errorf("uuid-1 icon = %q", got["uuid-1"].IconURL)
 	}
-	// name_fr vide → fallback name_en.
+	// Pas de ligne dans la langue → repli sur la langue de repli.
 	if got["uuid-2"].Name != "Headshot Honcho" {
 		t.Errorf("uuid-2 name = %q, want fallback EN 'Headshot Honcho'", got["uuid-2"].Name)
 	}
@@ -88,9 +104,9 @@ func TestHalo5CommendationDefs_LookupResolvesNameIconFallback(t *testing.T) {
 	}
 }
 
-// TestHalo5CommendationDefs_LocaleAware verrouille la résolution par locale : EN →
-// name_en, FR (défaut) → name_fr, avec repli sur l'autre langue si vide. C'est le
-// correctif du bug "titres FR en UI anglaise" (le reader servait toujours name_fr).
+// TestHalo5CommendationDefs_LocaleAware verrouille la résolution par locale : le texte de la
+// langue demandée, sinon celui de la langue de repli ; une langue inconnue du contexte prend la
+// langue par défaut (i18n.Parse), jamais un texte inventé.
 func TestHalo5CommendationDefs_LocaleAware(t *testing.T) {
 	db, err := sql.Open("duckdb", ":memory:")
 	if err != nil {
@@ -101,28 +117,34 @@ func TestHalo5CommendationDefs_LocaleAware(t *testing.T) {
 	src := NewHalo5CommendationDefSource(db)
 	ids := []string{"uuid-1", "uuid-2", "uuid-3"}
 
-	// FR (contexte par défaut) : name_fr prioritaire ; uuid-2 fr vide → fallback EN.
-	fr, err := src.LookupCommendations(context.Background(), ids)
-	if err != nil {
-		t.Fatalf("lookup FR: %v", err)
+	cases := []struct {
+		name   string
+		ctx    context.Context
+		wanted map[string]string
+	}{
+		{"fr (contexte par défaut)", context.Background(),
+			map[string]string{"uuid-1": "Tueur de Spartans", "uuid-2": "Headshot Honcho", "uuid-3": "Sans Icône"}},
+		{"fr explicite", ctxkeys.WithLocale(context.Background(), "fr"),
+			map[string]string{"uuid-1": "Tueur de Spartans", "uuid-2": "Headshot Honcho", "uuid-3": "Sans Icône"}},
+		{"en : jamais de français", ctxkeys.WithLocale(context.Background(), "en"),
+			map[string]string{"uuid-1": "Spartan Slayer", "uuid-2": "Headshot Honcho", "uuid-3": "No Icon"}},
+		{"en-US normalisé", ctxkeys.WithLocale(context.Background(), "en-US"),
+			map[string]string{"uuid-1": "Spartan Slayer", "uuid-2": "Headshot Honcho", "uuid-3": "No Icon"}},
+		{"langue inconnue : langue par défaut", ctxkeys.WithLocale(context.Background(), "zz"),
+			map[string]string{"uuid-1": "Tueur de Spartans", "uuid-2": "Headshot Honcho", "uuid-3": "Sans Icône"}},
 	}
-	if fr["uuid-1"].Name != "Tueur de Spartans" {
-		t.Errorf("FR uuid-1 = %q, want 'Tueur de Spartans'", fr["uuid-1"].Name)
-	}
-	if fr["uuid-2"].Name != "Headshot Honcho" {
-		t.Errorf("FR uuid-2 = %q, want fallback EN 'Headshot Honcho'", fr["uuid-2"].Name)
-	}
-
-	// EN : name_en prioritaire (uuid-1 anglais malgré un name_fr non vide).
-	en, err := src.LookupCommendations(ctxkeys.WithLocale(context.Background(), "en"), ids)
-	if err != nil {
-		t.Fatalf("lookup EN: %v", err)
-	}
-	if en["uuid-1"].Name != "Spartan Slayer" {
-		t.Errorf("EN uuid-1 = %q, want 'Spartan Slayer'", en["uuid-1"].Name)
-	}
-	if en["uuid-3"].Name != "No Icon" {
-		t.Errorf("EN uuid-3 = %q, want 'No Icon'", en["uuid-3"].Name)
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got, err := src.LookupCommendations(c.ctx, ids)
+			if err != nil {
+				t.Fatalf("lookup: %v", err)
+			}
+			for id, want := range c.wanted {
+				if got[id].Name != want {
+					t.Errorf("%s = %q, want %q", id, got[id].Name, want)
+				}
+			}
+		})
 	}
 }
 

@@ -6,6 +6,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 )
 
 func rowCarte(matchID, mapID, en, fr string) canonical.PlayerMatchRow {
@@ -28,7 +29,7 @@ func idsDesLignes(rows []canonical.PlayerMatchRow) []string {
 func TestFilterRowsByCascade_CarteDeBaseRetientSesVariantes(t *testing.T) {
 	groups := domain.NewGroupesDeCartes(map[string]string{
 		"th-heavies": "th", "th-bis": "th", "lf-ranked": "lf",
-	}).AvecLibelles(map[string]map[string]string{
+	}).AvecLibelles(map[string]i18n.Text{
 		"th": {"fr": "Thunderhead", "en": "Thunderhead"},
 		"lf": {"fr": "Live Fire", "en": "Live Fire"},
 	})

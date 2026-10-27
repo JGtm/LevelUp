@@ -19,6 +19,8 @@ import (
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/prestige"
+
+	"levelup/go-api/internal/i18n"
 )
 
 // setupPrestigeDB ouvre une DB temp et applique les migrations du target.
@@ -390,8 +392,8 @@ func TestPrestigeTemplateRepo_ReplaceListGet(t *testing.T) {
 			ID: "tpl_1", TitleSlug: "halo_infinite", Metric: "FieldKDA",
 			WindowType: prestige.WindowSession, WindowValue: "1",
 			Cadence: prestige.CadenceDaily, EvalType: prestige.EvalThreshold,
-			ModeFilter: "universal",
-			LabelEN:    "Stay sharp", LabelFR: "Reste affûté",
+			ModeFilter:   "universal",
+			Labels:       i18n.FromColumns("Stay sharp", "Reste affûté"),
 			NormalTarget: 1.0, HeroicTarget: 1.3, LegendaryTarget: 1.6, MythicTarget: 2.0,
 			SchemaVersion: 1, UpdatedAt: now,
 		},
@@ -399,8 +401,8 @@ func TestPrestigeTemplateRepo_ReplaceListGet(t *testing.T) {
 			ID: "tpl_2", TitleSlug: "halo_infinite", Metric: "FieldWinRate",
 			WindowType: prestige.WindowSession, WindowValue: "3",
 			Cadence: prestige.CadenceWeekly, EvalType: prestige.EvalThreshold,
-			ModeFilter: "pvp",
-			LabelEN:    "Winning streak", LabelFR: "Série de victoires",
+			ModeFilter:   "pvp",
+			Labels:       i18n.FromColumns("Winning streak", "Série de victoires"),
 			NormalTarget: 50, HeroicTarget: 60, LegendaryTarget: 70, MythicTarget: 80,
 			SchemaVersion: 1, UpdatedAt: now,
 		},
@@ -420,8 +422,8 @@ func TestPrestigeTemplateRepo_ReplaceListGet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
-	if got.LabelFR != "Reste affûté" {
-		t.Errorf("got label %q", got.LabelFR)
+	if got.Labels[i18n.LocaleFR] != "Reste affûté" {
+		t.Errorf("got label %q", got.Labels[i18n.LocaleFR])
 	}
 }
 
@@ -438,7 +440,7 @@ func TestPrestigeTemplateRepo_Suggest_ExcludesIDs(t *testing.T) {
 			TitleSlug: "halo_infinite", Metric: "FieldKDA",
 			WindowType: prestige.WindowSession, Cadence: prestige.CadenceDaily,
 			EvalType: prestige.EvalThreshold, ModeFilter: "universal",
-			LabelEN: "L", LabelFR: "L",
+			Labels:       i18n.FromColumns("L", "L"),
 			NormalTarget: 1, HeroicTarget: 2, LegendaryTarget: 3, MythicTarget: 4,
 			SchemaVersion: 1, UpdatedAt: now,
 		}

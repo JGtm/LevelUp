@@ -1,4 +1,4 @@
-import { isKnownLocale, type Locale } from '@/lib/i18n/locale'
+import { DEFAULT_LOCALE, isKnownLocale, type Locale } from '@/lib/i18n/locale'
 import { parseRouteSegments } from '@/lib/title-routing/parseRouteSegments'
 
 /**
@@ -7,8 +7,8 @@ import { parseRouteSegments } from '@/lib/title-routing/parseRouteSegments'
  * s'affichaient toujours en français, y compris sur une instance anglaise (démo).
  *
  * Priorité : segment de langue de l'URL > dernière locale de session vue par ce navigateur
- * > langue du navigateur > français. Le bootstrap reste autoritaire : il ré-écrit la locale
- * dès qu'il répond.
+ * > langue du navigateur > DEFAULT_LOCALE (config/locales.toml). Le bootstrap reste
+ * autoritaire : il ré-écrit la locale dès qu'il répond.
  */
 const STORAGE_KEY = 'levelup-last-locale'
 
@@ -25,7 +25,7 @@ export function resolveBootLocale(
     const primary = tag.split('-')[0].toLowerCase()
     if (isKnownLocale(primary)) return primary
   }
-  return 'fr'
+  return DEFAULT_LOCALE
 }
 
 /** Dernière locale de session mémorisée ; null si rien n'est lisible. */

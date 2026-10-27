@@ -39,17 +39,15 @@ import {
   type EChartsThemeColors,
 } from '@/components/charts/_utils'
 import type { WeaponRangeRow, WeaponRangeSide } from '@/lib/api/types'
-import type { ManifestLocale } from '@/lib/i18n/format'
 
-/** Une entrée du contrat qui porte un libellé bilingue et une clé d'arme. */
+/** Une entrée du contrat qui porte un libellé (dans la langue de la requête) et une clé d arme. */
 interface LabelledWeapon {
   weapon_key: string
   label?: string
-  label_en?: string
 }
 
 /**
- * resolveWeaponLabel — le nom affiché d'une arme, dans la locale courante.
+ * resolveWeaponLabel — le nom affiché d une arme : le libellé servi, déjà dans la langue de la requête.
  *
  * Repli sur `weapon_key` quand le registre n'a pas résolu le libellé : une clé technique
  * lisible vaut mieux qu'une ligne anonyme, et elle SE VOIT (le trou de registre se signale
@@ -58,8 +56,8 @@ interface LabelledWeapon {
  * Vit ici depuis le 2026-09-17 : seul ce module l'appelait, et le garder sous
  * `features/synthesis/` aurait fait remonter `components/` vers `features/`.
  */
-export function resolveWeaponLabel(w: LabelledWeapon, locale: ManifestLocale): string {
-  const label = locale === 'en' ? w.label_en : w.label
+export function resolveWeaponLabel(w: LabelledWeapon): string {
+  const label = w.label
   return label && label.trim() !== '' ? label : w.weapon_key
 }
 
@@ -118,13 +116,10 @@ export interface WeaponRangeLine {
  * mètre ») ; la projection le normalise en `null` pour que le rendu ait un seul cas à
  * traiter.
  */
-export function weaponRangeLines(
-  weapons: readonly WeaponRangeRow[] | null | undefined,
-  locale: ManifestLocale,
-): WeaponRangeLine[] {
+export function weaponRangeLines(weapons: readonly WeaponRangeRow[] | null | undefined): WeaponRangeLine[] {
   return (weapons ?? []).map((w) => ({
     weaponKey: w.weapon_key,
-    label: resolveWeaponLabel(w, locale),
+    label: resolveWeaponLabel(w),
     // Synthèse : les frags EN HAUT, les morts en dessous (l'ordre de la légende).
     top: w.kills ?? null,
     bottom: w.deaths ?? null,

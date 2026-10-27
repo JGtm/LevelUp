@@ -1,7 +1,7 @@
 /**
  * document-lang-provider.test.tsx — garde-rail : la locale applicative doit se
  * refléter sur `document.documentElement.lang` en BCP-47 (fr -> fr-FR,
- * en -> en-US). Empêche une régression vers un `lang` figé côté shell HTML
+ * en -> en-GB). Empêche une régression vers un `lang` figé côté shell HTML
  * (a11y + format des contrôles natifs sous Firefox).
  */
 import { describe, it, expect, afterEach } from 'vitest'
@@ -25,14 +25,14 @@ describe('DocumentLangProvider', () => {
     expect(document.documentElement.lang).toBe('fr-FR')
   })
 
-  it('pose lang="en-US" pour la locale en', () => {
+  it('pose lang="en-GB" pour la locale en', () => {
     useAppShellStore.setState({ locale: 'en' })
     render(
       <DocumentLangProvider>
         <span />
       </DocumentLangProvider>,
     )
-    expect(document.documentElement.lang).toBe('en-US')
+    expect(document.documentElement.lang).toBe('en-GB')
   })
 
   it('met à jour lang au changement de locale via setLocale (fr -> en)', () => {
@@ -50,6 +50,6 @@ describe('DocumentLangProvider', () => {
         <span />
       </DocumentLangProvider>,
     )
-    expect(document.documentElement.lang).toBe('en-US')
+    expect(document.documentElement.lang).toBe('en-GB')
   })
 })

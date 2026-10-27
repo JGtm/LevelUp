@@ -230,7 +230,7 @@ No raw hex (`#RRGGBB`) and no Tailwind color classes (`text-red-*`, `bg-green-*`
 
 ### i18n
 
-User-facing strings must be provided in both **FR and EN** via the i18n manifests (TOML manifests + custom linter, see ADR 0003). Do not hardcode display strings in components.
+User-facing strings must be provided in **every language of `config/locales.toml`** (`fr` and `en` required) via the i18n manifests (TOML manifests + custom linter, see ADR 0003 and ADR 0040). Do not hardcode display strings in components.
 
 ### Charts and pages
 
@@ -261,7 +261,7 @@ Before submitting a PR, verify:
 - [ ] Coverage ratchet does not regress
 - [ ] Frontend: `npm run typecheck`, `npm run lint`, `npm run test:run` pass
 - [ ] No raw hex / Tailwind color classes in `features/` or `components/`
-- [ ] FR + EN i18n strings provided for new UI text
+- [ ] i18n strings provided in every listed language (`fr` + `en`) for new UI text
 - [ ] `docs/FR/` mirror updated if a `docs/` file changed
 - [ ] `.ai/thought_log.md` entry added
 - [ ] Commit messages follow Conventional Commits

@@ -139,33 +139,21 @@ func StatsMatchRowFromCanonical(r canonical.PlayerMatchRow, effectiveHpToKill fl
 		out.IsFirefight = *r.Summary.IsPvE
 	}
 	if r.Summary.Playlist != nil {
-		out.PlaylistName = r.Summary.Playlist.DefaultLabel
-		if fr, ok := r.Summary.Playlist.Labels["fr"]; ok && fr != "" {
-			out.PlaylistNameFR = fr
-		}
+		out.PlaylistName = r.Summary.Playlist.Text()
 	}
 	if r.Summary.Map != nil {
-		out.MapName = r.Summary.Map.DefaultLabel
 		out.MapID = r.Summary.Map.ID
-		if fr, ok := r.Summary.Map.Labels["fr"]; ok {
-			out.MapNameFR = fr
-		}
+		out.MapName = r.Summary.Map.Text()
 	}
 	if r.Summary.PairMode != nil {
-		out.PairName = r.Summary.PairMode.DefaultLabel
-		if fr, ok := r.Summary.PairMode.Labels["fr"]; ok {
-			out.PairNameFR = fr
-		}
+		out.PairName = r.Summary.PairMode.Text()
 	}
 	// GameVariant : source de repli pour le mode FR. Contrairement aux paires
 	// (asset_translations[pair] = EN pour toutes les langues), les game_variant SONT
 	// localisés ("Assassin en équipe : Arène"). buildSessionDetailRows s'en sert quand
 	// la cascade pair n'a pas produit de FR — aligné sur le converter Home.
 	if r.Summary.GameVariant != nil {
-		out.GameVariantName = r.Summary.GameVariant.DefaultLabel
-		if fr, ok := r.Summary.GameVariant.Labels["fr"]; ok && fr != "" {
-			out.GameVariantNameFR = fr
-		}
+		out.GameVariantName = r.Summary.GameVariant.Text()
 	}
 	if r.Enrichment.SkillSnapshot != nil {
 		// KillsExpected/DeathsExpected proviennent désormais de Self (ci-dessus) —
@@ -178,7 +166,6 @@ func StatsMatchRowFromCanonical(r canonical.PlayerMatchRow, effectiveHpToKill fl
 		out.SkillRatingDelta = r.Enrichment.SkillSnapshot.Delta
 		out.SkillExpectedWinProb = r.Enrichment.SkillSnapshot.ExpectedWinProb
 		out.SkillTierCode = r.Enrichment.SkillSnapshot.TierCode
-		out.SkillTierCodeFR = r.Enrichment.SkillSnapshot.TierCodeFR
 		out.SkillSubTier = r.Enrichment.SkillSnapshot.SubTier
 	}
 	out.IsWithFriends = r.Enrichment.IsWithFriends

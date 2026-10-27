@@ -21,8 +21,9 @@ import { useAppShellStore } from '@/stores/appShellStore'
 
 export function usePlayerProfile(playerSlug: string | undefined, windowDays = 30) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  const locale = useAppShellStore((s) => s.locale)
   return useQuery<PlayerProfile>({
-    queryKey: queryKeys.playerProfile.profile(playerSlug ?? '', titleSlug, windowDays),
+    queryKey: queryKeys.playerProfile.profile(playerSlug ?? '', titleSlug, locale, windowDays),
     queryFn: () => playerProfileApi.getProfile(playerSlug!, windowDays),
     enabled: !!playerSlug,
     staleTime: 5 * 60 * 1000,

@@ -11,8 +11,10 @@ import type { MatchObjectiveEvent, MatchPlayerPosition, MatchViewResponse } from
 
 export function useMatchView(playerSlug: string, matchId: string) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  // La locale scope la clé : noms de cartes, modes, armes... servis dans la langue de la requête.
+  const locale = useAppShellStore((s) => s.locale)
   return useQuery({
-    queryKey: queryKeys.matchView(playerSlug, titleSlug, matchId),
+    queryKey: queryKeys.matchView(playerSlug, titleSlug, matchId, locale),
     queryFn: () =>
       api.get<MatchViewResponse>(`/players/${playerSlug}/matches/${matchId}`),
     enabled: !!playerSlug && !!matchId,
@@ -116,7 +118,7 @@ export function useToggleMatchFavorite(playerSlug: string, matchId: string) {
       ),
     onSuccess: () => {
       void queryClient.invalidateQueries({
-        queryKey: queryKeys.matchView(playerSlug, titleSlug, matchId),
+        queryKey: queryKeys.matchView(playerSlug, titleSlug, matchId, useAppShellStore.getState().locale),
       })
     },
   })

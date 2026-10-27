@@ -21,6 +21,7 @@ import (
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/ops"
 	"levelup/go-api/internal/platform/adminstate"
@@ -150,13 +151,18 @@ func lyingBitsToDomain(o ops.LyingBitsResetResult) domain.LyingBitsResetResult {
 	}
 }
 
-// ResolveModeTranslation upserte mode_name_tr[fr] pour un mode (clé
-// normalisée via NormalizeModeLabel — idempotent si déjà normalisée).
-func (r *ServiceRegistry) ResolveModeTranslation(ctx context.Context, titleSlug, modeEN, nameFR string) (domain.ResolveResult, error) {
+// ResolveModeTranslation upserte mode_name_tr pour un mode, une ligne par langue de req.Names
+// (clé = code de langue, valeur de `lang` identique). La clé du mode est normalisée par
+// NormalizeModeLabel (idempotent si déjà normalisée).
+func (r *ServiceRegistry) ResolveModeTranslation(ctx context.Context, titleSlug string, req domain.ModeTranslationRequest) (domain.ResolveResult, error) {
 	out := domain.ResolveResult{}
-	normalized := analysis.NormalizeModeLabel(modeEN)
+	normalized := analysis.NormalizeModeLabel(req.ModeKey)
 	if normalized == "" {
-		return out, fmt.Errorf("mode_en vide après normalisation")
+		return out, fmt.Errorf("mode_key vide après normalisation")
+	}
+	writes := translationWrites(req.Names, func(l i18n.Locale) string { return string(l) })
+	if len(writes) == 0 {
+		return out, fmt.Errorf("au moins un nom dans une langue connue est requis")
 	}
 	metaDB, closeMeta, err := r.metadataRWHandle(titleSlug)
 	if err != nil {
@@ -164,16 +170,43 @@ func (r *ServiceRegistry) ResolveModeTranslation(ctx context.Context, titleSlug,
 	}
 	defer closeMeta()
 
-	action, err := ops.UpsertModeTranslation(ctx, metaDB.SQLDb(), normalized, "fr", nameFR)
-	if err != nil {
-		return out, err
+	for _, w := range writes {
+		action, err := ops.UpsertModeTranslation(ctx, metaDB.SQLDb(), normalized, w.lang, w.name)
+		if err != nil {
+			return out, err
+		}
+		out.Action = mergeResolveAction(out.Action, action)
 	}
-	out.Action = action
-	out.ModeEN = normalized
+	out.ModeKey = normalized
 	monitoringLog.InfoContext(ctx, "admin_actions: traduction mode écrite",
-		"title", titleSlug, "mode_en", normalized, "action", action)
+		"title", titleSlug, "mode_key", normalized, "action", out.Action, "langs", len(writes))
 	observability.IncCounter("admin_action_mode_translation_total")
 	return out, nil
+}
+
+// langName est une écriture de traduction : la valeur de `lang` de la table cible et le nom.
+type langName struct{ lang, name string }
+
+// translationWrites range les noms saisis dans l'ordre de config/locales.toml (écriture
+// déterministe) et traduit chaque langue en valeur de `lang` de la table cible. Une clé qui n'est
+// pas une langue connue est ignorée : le handler l'a déjà refusée.
+func translationWrites(names map[string]string, langOf func(i18n.Locale) string) []langName {
+	var writes []langName
+	for _, l := range i18n.Locales() {
+		if name := names[string(l)]; name != "" {
+			writes = append(writes, langName{langOf(l), name})
+		}
+	}
+	return writes
+}
+
+// mergeResolveAction cumule l'action de plusieurs langues : « created » dès qu'une ligne a été
+// créée, « updated » si toutes existaient.
+func mergeResolveAction(acc, next string) string {
+	if acc == ops.ResolveActionCreated || next == ops.ResolveActionCreated {
+		return ops.ResolveActionCreated
+	}
+	return next
 }
 
 // validAssetKinds : asset_type acceptés par translations/asset (alignés sur
@@ -185,16 +218,18 @@ var validAssetKinds = map[string]struct{}{
 	games.AssetKindGameVariant: {},
 }
 
-// ResolveAssetTranslation upserte asset_translations pour un asset (en-US
-// et/ou fr-FR). C'est la résolution effective d'un asset UUID inconnu : la
-// chaîne d'affichage et le backfill registry names lisent cette table.
+// ResolveAssetTranslation upserte asset_translations pour un asset, une ligne par langue de
+// req.Names, sous la première étiquette Halo de la langue (`fr-FR`, `en-US`). C'est la résolution
+// effective d'un asset UUID inconnu : la chaîne d'affichage et le backfill registry names lisent
+// cette table.
 func (r *ServiceRegistry) ResolveAssetTranslation(ctx context.Context, titleSlug string, req domain.AssetTranslationRequest) (domain.ResolveResult, error) {
 	out := domain.ResolveResult{}
 	if _, ok := validAssetKinds[req.AssetKind]; !ok {
 		return out, fmt.Errorf("asset_kind invalide %q (playlist|map|pair|game_variant)", req.AssetKind)
 	}
-	if req.NameEN == "" && req.NameFR == "" {
-		return out, fmt.Errorf("au moins un nom (name_en ou name_fr) est requis")
+	writes := translationWrites(req.Names, func(l i18n.Locale) string { return i18n.HaloTags(l)[0] })
+	if len(writes) == 0 {
+		return out, fmt.Errorf("au moins un nom dans une langue connue est requis")
 	}
 	metaDB, closeMeta, err := r.metadataRWHandle(titleSlug)
 	if err != nil {
@@ -202,20 +237,12 @@ func (r *ServiceRegistry) ResolveAssetTranslation(ctx context.Context, titleSlug
 	}
 	defer closeMeta()
 
-	type langName struct{ lang, name string }
-	writes := []langName{}
-	if req.NameEN != "" {
-		writes = append(writes, langName{duckdb.LangCodeEN, req.NameEN})
-	}
-	if req.NameFR != "" {
-		writes = append(writes, langName{duckdb.LangCodeFR, req.NameFR})
-	}
 	for _, w := range writes {
 		action, err := ops.UpsertAssetTranslation(ctx, metaDB.SQLDb(), req.AssetKind, req.AssetID, w.lang, w.name)
 		if err != nil {
 			return out, err
 		}
-		out.Action = action
+		out.Action = mergeResolveAction(out.Action, action)
 		out.Langs = append(out.Langs, w.lang)
 	}
 	monitoringLog.InfoContext(ctx, "admin_actions: traduction asset écrite",

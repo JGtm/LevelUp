@@ -27,6 +27,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/weapons"
+	"levelup/go-api/internal/i18n"
 )
 
 // corpusDir rend le dossier d'artefacts, ou saute le test.
@@ -198,8 +199,8 @@ func TestCadenceDesArmesSurLeCorpus(t *testing.T) {
 	// Nom affichable par weapon_key : le catalogue nomme par FAMILLE, la mesure agrège par clé.
 	nomParCle := map[string]string{}
 	for fam, key := range cat.Keys {
-		if w, ok := cat.Weapons[fam]; ok && w.Fr != "" {
-			nomParCle[key] = w.Fr
+		if w, ok := cat.Weapons[fam]; ok && w.Text[i18n.LocaleFR] != "" {
+			nomParCle[key] = w.Text[i18n.LocaleFR]
 		}
 	}
 	type ligne struct {

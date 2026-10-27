@@ -39,6 +39,7 @@ import (
 	halo5 "levelup/go-api/internal/games/halo_5"
 	halo_games "levelup/go-api/internal/games/halo_infinite"
 	"levelup/go-api/internal/games/mappings"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/ops"
 	auth_platform "levelup/go-api/internal/platform/auth"
@@ -1326,18 +1327,18 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 		WithRadarRange(radarRange).
 		WithScoreTimelineKind(scoreTimelineKind)
 
-	// V72-27 : câble le résolveur de libellé de rang FR consommé par les
+	// V72-27 : câble le résolveur de libellé de rang (une langue à la fois) consommé par les
 	// notifications post-sync (career_rank) — même RankCatalog HI que
 	// CareerService ci-dessus. hiRanks.TitleSlug() == "" quand le catalog n'a
 	// pas pu être chargé (démo sans metadata, échec I/O) : FullLabel renvoie
 	// alors toujours ok=false, dégradation gracieuse vers le fallback EN déjà
 	// en place. Comparaison slug↔slug (catalog vs paramètre), pas un gate
 	// littéral — cf. archlint no_slug_comparison (pattern explicitement toléré).
-	wire.SetRankLabelResolver(func(titleSlug string, rankID int) (string, bool) {
+	wire.SetRankLabelResolver(func(titleSlug string, rankID int, loc i18n.Locale) (string, bool) {
 		if hiRanks == nil || hiRanks.TitleSlug() != titleSlug {
 			return "", false
 		}
-		return hiRanks.FullLabel(rankID, mappings.LocaleFR)
+		return hiRanks.FullLabel(rankID, string(loc))
 	})
 
 	// MT-09 (PMT-12) : factory player-scoped de Halo enregistrée par SLUG (clé de

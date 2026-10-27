@@ -25,6 +25,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/platform/duckdb"
 )
 
@@ -79,25 +80,22 @@ WHERE LOWER(COALESCE(p.gamertag, '')) = LOWER(?)`
 
 // h5MatchSummaryRow porte les colonnes scannées d'une ligne d'historique h5.
 type h5MatchSummaryRow struct {
-	matchID        string
-	startTime      time.Time
-	durationSec    *int
-	mapID          string
-	mapName        string
-	mapNameFR      string
-	playlistID     string
-	playlistName   string
-	playlistNameFR string
-	variantID      string
-	variantName    string
-	pairID         string
-	pairName       string
-	pairNameFR     string
-	isRanked       bool
-	isFirefight    bool
-	outcomeCode    int
-	team0Score     int
-	team1Score     int
+	matchID      string
+	startTime    time.Time
+	durationSec  *int
+	mapID        string
+	mapName      i18n.Text
+	playlistID   string
+	playlistName i18n.Text
+	variantID    string
+	variantName  i18n.Text
+	pairID       string
+	pairName     i18n.Text
+	isRanked     bool
+	isFirefight  bool
+	outcomeCode  int
+	team0Score   int
+	team1Score   int
 }
 
 // GetMatchSummaries implémente halo_5.MatchHistorySource. matchIDs nil/vide → les N
@@ -150,17 +148,22 @@ func (s *Halo5MatchHistorySource) loadRows(ctx context.Context, matchIDs []strin
 	var out []h5MatchSummaryRow
 	for dbRows.Next() {
 		var m h5MatchSummaryRow
+		var mapEN, mapFR, playlistEN, playlistFR, variantEN, pairEN, pairFR string
 		if err := dbRows.Scan(
 			&m.matchID, &m.startTime, &m.durationSec,
-			&m.mapID, &m.mapName, &m.mapNameFR,
-			&m.playlistID, &m.playlistName, &m.playlistNameFR,
-			&m.variantID, &m.variantName,
-			&m.pairID, &m.pairName, &m.pairNameFR,
+			&m.mapID, &mapEN, &mapFR,
+			&m.playlistID, &playlistEN, &playlistFR,
+			&m.variantID, &variantEN,
+			&m.pairID, &pairEN, &pairFR,
 			&m.isRanked, &m.isFirefight, &m.outcomeCode,
 			&m.team0Score, &m.team1Score,
 		); err != nil {
 			return nil, fmt.Errorf("h5 match history scan: %w", err)
 		}
+		m.mapName = i18n.FromColumns(mapEN, mapFR)
+		m.playlistName = i18n.FromColumns(playlistEN, playlistFR)
+		m.variantName = i18n.FromColumns(variantEN, "")
+		m.pairName = i18n.FromColumns(pairEN, pairFR)
 		out = append(out, m)
 	}
 	return out, dbRows.Err()
@@ -205,17 +208,17 @@ func orderH5SummariesByIDs(rows []h5MatchSummaryRow, matchIDs []string, modeSour
 func projectH5MatchSummary(r h5MatchSummaryRow, modeSource title.ModeSource) canonical.MatchSummary {
 	isRanked := r.isRanked
 	isFirefight := r.isFirefight
-	gameVariant := duckdb.AssetReference("game_variant", r.variantID, r.variantName, "")
+	gameVariant := duckdb.AssetReference("game_variant", r.variantID, r.variantName)
 	return canonical.MatchSummary{
 		MatchID:         r.matchID,
 		StartedAtUTC:    r.startTime,
 		DurationSeconds: r.durationSec,
 		MatchType:       duckdb.MatchTypeFromFlags(r.isRanked, r.isFirefight),
-		Playlist:        duckdb.AssetReference("playlist", r.playlistID, r.playlistName, r.playlistNameFR),
-		Map:             duckdb.AssetReference("map", r.mapID, r.mapName, r.mapNameFR),
+		Playlist:        duckdb.AssetReference("playlist", r.playlistID, r.playlistName),
+		Map:             duckdb.AssetReference("map", r.mapID, r.mapName),
 		GameVariant:     gameVariant,
 		PairMode: duckdb.ModeAssetReference(modeSource,
-			duckdb.AssetReference("pair_mode", r.pairID, r.pairName, r.pairNameFR), gameVariant),
+			duckdb.AssetReference("pair_mode", r.pairID, r.pairName), gameVariant),
 		IsRanked: &isRanked,
 		IsPvE:    &isFirefight,
 		Outcome:  duckdb.OutcomeFromInt(r.outcomeCode),

@@ -154,8 +154,7 @@ func TestRegistreArmesVehicule_SonsEtSpritesServis(t *testing.T) {
 func TestRegistreArmesVehicule_ValidationFermee(t *testing.T) {
 	const base = `tag = "121B4009"
 vehicle = "wraith"
-en = "a"
-fr = "b"
+label = { en = "a", fr = "b" }
 fire = "single"
 fx = "plasma"
 tint = "plasma_hot"

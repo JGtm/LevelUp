@@ -24,7 +24,6 @@ Definition lives in `internal/ops/seed.go` (`SeedCitationMappings`):
 ```sql
 CREATE TABLE IF NOT EXISTS citation_mappings (
     citation_name_norm    VARCHAR PRIMARY KEY,
-    citation_name_display VARCHAR NOT NULL,
     mapping_type          VARCHAR NOT NULL DEFAULT 'medal',
     medal_id              UBIGINT,
     medal_ids             VARCHAR,        -- CSV of medal_name_id
@@ -36,11 +35,12 @@ CREATE TABLE IF NOT EXISTS citation_mappings (
     enabled               BOOLEAN NOT NULL DEFAULT TRUE,
     image_path            VARCHAR,
     category              VARCHAR,
-    description           VARCHAR,
     tier_targets          VARCHAR,        -- CSV of milestone targets, e.g. 10,20,30,50,100
     subcategory           VARCHAR
 );
 ```
+
+The display name and the description are not columns: they are rows of `metadata.asset_translations` (`asset_type = 'citation'`, `asset_id = citation_name_norm`, one row per language, texts from `internal/ops/citation_texts.toml`; ADR 0040 D-15).
 
 The `enabled` column gates a commendation: the engine reads `WHERE enabled IS NOT FALSE`. The seed is **ART-safe** (SELECT-then-INSERT-or-UPDATE, no `ON CONFLICT`); no index on `medal_id`/`mapping_type` because the seed mutates them.
 
@@ -151,7 +151,8 @@ levelup backfill --gamertag YourGamertag --composite-only
    - `award` → set `AwardName` (+ `AwardCategory`).
    - `custom` → set `CustomFunction` and implement + register it in `citations_custom.go`.
    - `composite` → set `CompositeChildren` (JSON array of child norm-keys).
-   - Always set `Display`, `Category`, `Description`, `TierTargets`, `ImagePath`, `Enabled`.
+   - Always set `Category`, `TierTargets`, `ImagePath`, `Enabled`.
+   - Add the name and the description in **every language** of `config/locales.toml` to `internal/ops/citation_texts.toml` (`[citations.<norm>]`, `name = { en = "...", fr = "..." }`, same for `description`). The file is validated at load time (a missing language fails the seed and the guard-rail test).
 2. Re-seed: `levelup seed citation-mappings`.
 3. Recompute: `levelup backfill --all --citations-recompute-all`.
 4. Enable/disable later by flipping `Enabled` in the seed (or `citation_mappings.enabled`) and re-seeding.

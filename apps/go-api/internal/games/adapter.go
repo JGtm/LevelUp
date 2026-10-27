@@ -359,8 +359,6 @@ type TitleDataAdapter interface {
 	// LoadLUSRHistory : historique des checkpoints de rating LUSR/CSR (Phase 2
 	// HIGH-C). ErrCapabilityNotSupported si le titre ne porte pas de rating LUSR.
 	LoadLUSRHistory(ctx context.Context, xuid string) ([]canonical.LUSRCheckpoint, error)
-	// LoadTopMatches : meilleurs/pires matchs carrière (Phase 2 HIGH-C).
-	LoadTopMatches(ctx context.Context, xuid string) ([]canonical.CareerTopMatch, error)
 	// LoadTargetRecentMatches : profil de combat récent d'un joueur cible (Explorer,
 	// Phase 2 HIGH-B). ErrCapabilityNotSupported si pas de substrat match local.
 	LoadTargetRecentMatches(ctx context.Context, xuid string, limit int) ([]canonical.RecentMatchRow, error)

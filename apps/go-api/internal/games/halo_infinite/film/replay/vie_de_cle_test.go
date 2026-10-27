@@ -28,7 +28,7 @@ func TestVieDUneCle_BorneeParLaVieSuivanteDuSlot(t *testing.T) {
 	kf := []uint64{0, 10_000_000, 20_000_000, 40_000_000}
 	pos := []grammar.BipedPosition{{Slot: 1, TimestampUS: 45_000_000, X: 100, Y: 100, HasWorld: true}}
 	const drapeau = 0x0F1A6000
-	objectifs := map[uint32]Label{drapeau: {En: "Flag", Fr: "Drapeau"}}
+	objectifs := map[uint32]Label{drapeau: {Text: enFr("Flag", "Drapeau")}}
 	t.Run("objet d'objectif ecarte sur la meme cle", func(t *testing.T) {
 		scan := WorldObjectScan{Scanned: true, Stats: types.EquipmentCreationStats{Accepted: 2},
 			Creations: []types.EquipmentCreation{

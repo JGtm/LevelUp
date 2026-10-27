@@ -10,6 +10,7 @@ import (
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/games/halo_infinite"
 	"levelup/go-api/internal/games/mappings"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/port"
 )
@@ -55,34 +56,34 @@ func (m *mockHomePlayerMatches) LoadPlayerMatches(_ context.Context, _, _ string
 		}
 		isRanked := mm.IsRanked
 		isPvE := mm.IsFirefight
-		mapRef := &canonical.AssetReference{Kind: "map", ID: mm.MapID, DefaultLabel: mm.MapName, Labels: map[string]string{}}
-		if mm.MapNameFR != "" {
-			mapRef.Labels["fr"] = mm.MapNameFR
+		mapRef := &canonical.AssetReference{Kind: "map", ID: mm.MapID, DefaultLabel: mm.MapName[i18n.LocaleEN], Labels: map[string]string{}}
+		if mm.MapName[i18n.LocaleFR] != "" {
+			mapRef.Labels["fr"] = mm.MapName[i18n.LocaleFR]
 		}
-		if mm.MapName != "" {
-			mapRef.Labels["en"] = mm.MapName
+		if mm.MapName[i18n.LocaleEN] != "" {
+			mapRef.Labels["en"] = mm.MapName[i18n.LocaleEN]
 		}
-		playlistRef := &canonical.AssetReference{Kind: "playlist", ID: mm.PlaylistID, DefaultLabel: mm.PlaylistName, Labels: map[string]string{}}
-		if mm.PlaylistNameFR != "" {
-			playlistRef.Labels["fr"] = mm.PlaylistNameFR
+		playlistRef := &canonical.AssetReference{Kind: "playlist", ID: mm.PlaylistID, DefaultLabel: mm.PlaylistName[i18n.LocaleEN], Labels: map[string]string{}}
+		if mm.PlaylistName[i18n.LocaleFR] != "" {
+			playlistRef.Labels["fr"] = mm.PlaylistName[i18n.LocaleFR]
 		}
-		if mm.PlaylistName != "" {
-			playlistRef.Labels["en"] = mm.PlaylistName
+		if mm.PlaylistName[i18n.LocaleEN] != "" {
+			playlistRef.Labels["en"] = mm.PlaylistName[i18n.LocaleEN]
 		}
 		// PairName composite Halo-only → mode du match (PairMode, comme le fournit la source de
 		// lecture) ET type de jeu (GameVariant), pour les tests legacy qui peuplaient PairName/FR.
 		newModeRef := func(kind string) *canonical.AssetReference {
-			ref := &canonical.AssetReference{Kind: kind, DefaultLabel: mm.PairName, Labels: map[string]string{}}
-			if mm.PairNameFR != "" {
-				ref.Labels["fr"] = mm.PairNameFR
+			ref := &canonical.AssetReference{Kind: kind, DefaultLabel: mm.PairName[i18n.LocaleEN], Labels: map[string]string{}}
+			if mm.PairName[i18n.LocaleFR] != "" {
+				ref.Labels["fr"] = mm.PairName[i18n.LocaleFR]
 			}
-			if mm.PairName != "" {
-				ref.Labels["en"] = mm.PairName
+			if mm.PairName[i18n.LocaleEN] != "" {
+				ref.Labels["en"] = mm.PairName[i18n.LocaleEN]
 			}
 			return ref
 		}
 		var variantRef, modeRef *canonical.AssetReference
-		if mm.PairName != "" || mm.PairNameFR != "" {
+		if !mm.PairName.Empty() {
 			variantRef = newModeRef("game_variant")
 			modeRef = newModeRef("pair_mode")
 		}
@@ -202,8 +203,8 @@ func TestHomeService_GetHomePage_OK(t *testing.T) {
 	now := time.Now()
 	repo := &mockHomeRepo{
 		matches: []legacymatch.HomeMatchRow{
-			{MatchID: "m1", StartTime: now, MapName: "Aquarius", PairName: "Slayer", Outcome: 2, Kills: 10, Deaths: 5, Assists: 3, IsRanked: true},
-			{MatchID: "m2", StartTime: now.Add(-1 * time.Hour), MapName: "Streets", PairName: "CTF", Outcome: 3, Kills: 5, Deaths: 10, Assists: 1, IsRanked: false},
+			{MatchID: "m1", StartTime: now, MapName: i18n.FromColumns("Aquarius", ""), PairName: i18n.FromColumns("Slayer", ""), Outcome: 2, Kills: 10, Deaths: 5, Assists: 3, IsRanked: true},
+			{MatchID: "m2", StartTime: now.Add(-1 * time.Hour), MapName: i18n.FromColumns("Streets", ""), PairName: i18n.FromColumns("CTF", ""), Outcome: 3, Kills: 5, Deaths: 10, Assists: 1, IsRanked: false},
 		},
 		sessions: []legacymatch.HomeSessionRow{
 			{MatchID: "m1", SessionLabel: strPtr("Session 1"), StartTime: &now},
@@ -260,15 +261,12 @@ func TestHomeService_GetHomePage_RespectsLocale(t *testing.T) {
 	now := time.Now()
 	repo := &mockHomeRepo{
 		matches: []legacymatch.HomeMatchRow{{
-			MatchID:        "m1",
-			StartTime:      now,
-			MapName:        "Bazaar",
-			MapNameFR:      "Bazaar",
-			PairName:       "Team Slayer on Bazaar",
-			PairNameFR:     "Slayer en équipe sur Bazaar",
-			PlaylistName:   "Quick Play",
-			PlaylistNameFR: "Partie rapide",
-			Outcome:        2,
+			MatchID:      "m1",
+			StartTime:    now,
+			MapName:      i18n.FromColumns("Bazaar", "Bazaar"),
+			PairName:     i18n.FromColumns("Team Slayer on Bazaar", "Slayer en équipe sur Bazaar"),
+			PlaylistName: i18n.FromColumns("Quick Play", "Partie rapide"),
+			Outcome:      2,
 		}},
 	}
 	svc := withHomeMock(NewHomeService(repo), repo)

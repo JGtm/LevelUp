@@ -6,34 +6,34 @@ package duckdb
 import (
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"sort"
 	"strings"
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
 // buildTrackSummary construit un SeasonPassTrackSummary depuis les données brutes.
-// preferEN (locale de requête, cf. bpPreferEN) ordonne la résolution des libellés du
+// loc (locale de requête) ordonne la résolution des libellés du
 // payload brut (nom/description) : sans lui, le fallback restait FR-first.
 func buildTrackSummary(
 	row seasonPassTrackRow,
 	state trackSnapshotState,
 	itemMap map[string]seasonPassItemMeta,
-	preferEN bool,
+	loc i18n.Locale,
 ) domain.SeasonPassTrackSummary {
 	payload := parseTrackPayload(row.rawPayloadJSON)
 	name := row.rewardTrackPath
 	if row.trackName.Valid && row.trackName.String != "" {
 		name = row.trackName.String
-	} else if payloadName := localizedText(payloadNameValue(payload), preferEN); payloadName != "" {
+	} else if payloadName := localizedText(payloadNameValue(payload), loc); payloadName != "" {
 		name = payloadName
 	}
-	description := payloadDescription(payload, preferEN)
+	description := payloadDescription(payload, loc)
 	xpPerRank := resolveXPPerRank(row, payload)
 	maxRank := resolveMaxRank(payload, state)
-	tiers, activeTierRank := buildTierSummaries(payload, itemMap, state)
+	tiers, activeTierRank := buildTierSummaries(payload, itemMap, state, loc)
 	activeTierProgressPercent := computeActiveTierProgressPercent(state, xpPerRank, activeTierRank)
 
 	status := computeSeasonPassStatus(state)
@@ -197,6 +197,7 @@ func buildTierSummaries(
 	payload *seasonPassTrackPayload,
 	itemMap map[string]seasonPassItemMeta,
 	state trackSnapshotState,
+	loc i18n.Locale,
 ) ([]domain.SeasonPassTierSummary, *int) {
 	if payload == nil || len(payload.Ranks) == 0 {
 		return nil, nil
@@ -209,7 +210,7 @@ func buildTierSummaries(
 	activeTierRank := resolveActiveTierRank(state, maxRank)
 	tiers := make([]domain.SeasonPassTierSummary, 0, len(ranks))
 	for _, rank := range ranks {
-		tiers = append(tiers, buildTierSummary(rank, itemMap, state, activeTierRank))
+		tiers = append(tiers, buildTierSummary(rank, itemMap, state, activeTierRank, loc))
 	}
 	return tiers, intPtr(activeTierRank)
 }
@@ -219,11 +220,12 @@ func buildTierSummary(
 	itemMap map[string]seasonPassItemMeta,
 	state trackSnapshotState,
 	activeTierRank int,
+	loc i18n.Locale,
 ) domain.SeasonPassTierSummary {
-	meta, isPremium := selectTierPreview(rank, itemMap, state.IsOwned)
+	meta, isPremium := selectTierPreview(rank, itemMap, state.IsOwned, loc)
 	title := meta.Title
 	if title == "" {
-		title = fmt.Sprintf("Palier %d", rank.Rank)
+		title = i18n.Msg(loc, "season_pass.tier_fallback", i18n.Params{"n": rank.Rank})
 	}
 	return domain.SeasonPassTierSummary{
 		Rank:        rank.Rank,
@@ -235,7 +237,7 @@ func buildTierSummary(
 		IsObtained:  rank.Rank <= state.Rank,
 		IsCurrent:   rank.Rank == activeTierRank,
 		IsPremium:   isPremium,
-		FreeRewards: buildFreeRewardSummaries(rank.FreeRewards, itemMap),
+		FreeRewards: buildFreeRewardSummaries(rank.FreeRewards, itemMap, loc),
 	}
 }
 
@@ -244,6 +246,7 @@ func buildTierSummary(
 func buildFreeRewardSummaries(
 	bucket seasonPassRewardBucket,
 	itemMap map[string]seasonPassItemMeta,
+	loc i18n.Locale,
 ) []domain.SeasonPassItemSummary {
 	items := make([]domain.SeasonPassItemSummary, 0, len(bucket.InventoryRewards))
 	for _, reward := range bucket.InventoryRewards {
@@ -269,7 +272,7 @@ func buildFreeRewardSummaries(
 	}
 	// Currency rewards gratuits
 	for _, reward := range bucket.CurrencyRewards {
-		meta, ok := currencyRewardMeta(reward)
+		meta, ok := currencyRewardMeta(reward, loc)
 		if !ok {
 			continue
 		}

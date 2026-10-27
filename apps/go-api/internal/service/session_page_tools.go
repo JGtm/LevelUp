@@ -15,6 +15,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/squadagg"
 )
@@ -34,6 +35,7 @@ func (s *SessionPageService) sessionWeaponTools(
 		}
 	}
 	tools := squadagg.BuildWeaponTools(squadagg.WeaponToolInputs{
+		Locale:         i18n.FromContext(ctx),
 		Rows:           rows,
 		Categories:     s.loadSessionToolCategories(ctx, matchIDs),
 		PlayersOrdered: []string{s.gamertag},

@@ -334,8 +334,8 @@ func TestBackfillCSRFromAPI_HandlesPlacement(t *testing.T) {
 	if tier != "Placement" {
 		t.Errorf("tier: want Placement, got %q", tier)
 	}
-	if tierLabel != "Placement (3 restants)" {
-		t.Errorf("tier_label: want %q, got %q", "Placement (3 restants)", tierLabel)
+	if tierLabel != "Placement (3)" {
+		t.Errorf("tier_label: want %q, got %q", "Placement (3)", tierLabel)
 	}
 	if measurement != 3 {
 		t.Errorf("measurement_matches_remaining: want 3, got %d", measurement)

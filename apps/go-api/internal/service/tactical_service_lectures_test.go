@@ -16,6 +16,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
@@ -142,7 +143,13 @@ func sidecarSpawn(matchID string, x, y float64) *domain.TacticalRasterSidecar {
 
 func lireTemps(t *testing.T, svc *TacticalService, spawn string, ids ...string) domain.TacticalRaster {
 	t.Helper()
-	out, err := svc.Raster(context.Background(), domain.TacticalRasterRequest{
+	return lireTempsEn(t, svc, i18n.Default, spawn, ids...)
+}
+
+// lireTempsEn : comme lireTemps, dans la langue de requête loc.
+func lireTempsEn(t *testing.T, svc *TacticalService, loc i18n.Locale, spawn string, ids ...string) domain.TacticalRaster {
+	t.Helper()
+	out, err := svc.Raster(i18n.WithContext(context.Background(), loc), domain.TacticalRasterRequest{
 		MapID: "streets", Question: domain.TacticalQuestionTemps, Qui: domain.TacticalQuiMoi,
 		Scope: domain.TacticalScope{MatchIDs: ids, Spawn: spawn},
 	})
@@ -174,23 +181,26 @@ func grappesFixture() (*mockRasterStore, domain.TacticalUnivers, []string) {
 func TestGrappes_ServiesAvecLaLecture(t *testing.T) {
 	store, univ, ids := grappesFixture()
 	svc := svcArtefact(univ, store).WithCalloutsStore(&mockCallouts{zones: []domain.ZoneNommee{
-		{NomFR: "Base rouge", NomEN: "Red base", X: 0, Y: 0},
-		{NomFR: "Base bleue", NomEN: "Blue base", X: 51, Y: 51},
+		{Nom: i18n.FromColumns("Red base", "Base rouge"), X: 0, Y: 0},
+		{Nom: i18n.FromColumns("Blue base", "Base bleue"), X: 51, Y: 51},
 	}})
 	out := lireTemps(t, svc, "", ids...)
 	if len(out.Grappes) != 2 {
 		t.Fatalf("grappes = %+v, attendu 2", out.Grappes)
 	}
-	noms := map[string]bool{out.Grappes[0].NomFR: true, out.Grappes[1].NomFR: true}
+	noms := map[string]bool{out.Grappes[0].Nom: true, out.Grappes[1].Nom: true}
 	if !noms["Base rouge"] || !noms["Base bleue"] {
 		t.Fatalf("grappes nommees %v, attendu les deux bases", noms)
 	}
-	// LES DEUX LANGUES VOYAGENT : un nom de lieu vient du catalogue du JEU, et le client ne
-	// peut pas le traduire.
-	for _, g := range out.Grappes {
-		if g.NomEN == "" {
-			t.Fatalf("grappe %s sans nom EN : %+v", g.ID, g)
-		}
+	// LE NOM SUIT LA LANGUE DE LA REQUETE : un nom de lieu vient du catalogue du JEU, qui le porte
+	// par langue.
+	outEN := lireTempsEn(t, svc, i18n.LocaleEN, "", ids...)
+	nomsEN := map[string]bool{}
+	for _, g := range outEN.Grappes {
+		nomsEN[g.Nom] = true
+	}
+	if !nomsEN["Red base"] || !nomsEN["Blue base"] {
+		t.Fatalf("grappes nommees en anglais %v, attendu Red base et Blue base", nomsEN)
 	}
 	for _, g := range out.Grappes {
 		if g.Matchs != 3 {
@@ -338,7 +348,7 @@ func TestFiltreSpawn_SappliqueAuxLecturesSQL(t *testing.T) {
 	}
 	// Les grappes ne sont PAS calculees hors filtre sur une lecture SQL : elles couteraient
 	// un chargement de sidecars que la lecture n'a pas besoin de faire.
-	grappes := grappesDeLUnivers(store.sidecars, tsMoi, nil)
+	grappes := grappesDeLUnivers(i18n.LocaleFR, store.sidecars, tsMoi, nil)
 	if len(grappes) != 2 {
 		t.Fatalf("grappes = %+v, attendu 2", grappes)
 	}
@@ -427,26 +437,26 @@ func TestCallouts_ErreurNonAvalee(t *testing.T) {
 // encore tout le vocabulaire Forge).
 func TestZonesNommees_LesDeuxLanguesEtLeurRepli(t *testing.T) {
 	out := zonesNommees([]replay.CalloutZone{
-		{Name: "design_a", FR: "Base rouge", EN: "Red base", X: 1, Y: 2},
-		{Name: "design_b", EN: "Ramp", X: 3, Y: 4},  // FR manquant
-		{Name: "design_c", FR: "Rampe", X: 5, Y: 6}, // EN manquant
-		{Name: "design_d", X: 7, Y: 8},              // les deux manquants
-		{X: 9, Y: 10},                               // muette des trois cotes
+		{Name: "design_a", Text: i18n.Text{i18n.LocaleEN: "Red base", i18n.LocaleFR: "Base rouge"}, X: 1, Y: 2},
+		{Name: "design_b", Text: i18n.Text{i18n.LocaleEN: "Ramp"}, X: 3, Y: 4},  // FR manquant
+		{Name: "design_c", Text: i18n.Text{i18n.LocaleFR: "Rampe"}, X: 5, Y: 6}, // EN manquant
+		{Name: "design_d", X: 7, Y: 8}, // les deux manquants
+		{X: 9, Y: 10},                  // muette des trois cotes
 	})
 	if len(out) != 4 {
 		t.Fatalf("zones = %+v, attendu 4 : la zone muette des TROIS cotes est ecartee", out)
 	}
-	if out[0].NomFR != "Base rouge" || out[0].NomEN != "Red base" {
+	if out[0].Nom[i18n.LocaleFR] != "Base rouge" || out[0].Nom[i18n.LocaleEN] != "Red base" {
 		t.Fatalf("zone complete = %+v", out[0])
 	}
-	if out[1].NomFR != "design_b" || out[1].NomEN != "Ramp" {
+	if out[1].Nom[i18n.LocaleFR] != "design_b" || out[1].Nom[i18n.LocaleEN] != "Ramp" {
 		t.Fatalf("FR manquant = %+v, attendu le repli sur le nom de conception POUR LE FR SEUL",
 			out[1])
 	}
-	if out[2].NomFR != "Rampe" || out[2].NomEN != "design_c" {
+	if out[2].Nom[i18n.LocaleFR] != "Rampe" || out[2].Nom[i18n.LocaleEN] != "design_c" {
 		t.Fatalf("EN manquant = %+v, attendu le repli pour l'EN SEUL", out[2])
 	}
-	if out[3].NomFR != "design_d" || out[3].NomEN != "design_d" {
+	if out[3].Nom[i18n.LocaleFR] != "design_d" || out[3].Nom[i18n.LocaleEN] != "design_d" {
 		t.Fatalf("les deux manquants = %+v, attendu le nom de conception des deux cotes", out[3])
 	}
 }

@@ -22,6 +22,7 @@ import (
 	"errors"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/i18n"
 )
 
 // WeaponRangeFilters paramètre la lecture des frags mesurés.
@@ -74,15 +75,15 @@ func (f WeaponRangeFilters) Validate() error {
 	return nil
 }
 
-// WeaponLabel est le nom d'affichage d'une clé d'arme, dans les deux ordres de langue.
+// WeaponLabel est le nom d'affichage d'une clé d'arme, dans chaque langue connue de la metadata.
 //
-// Deux champs et non un, pour la même raison que `MatchKillDistanceWeapon` : la réponse sert
-// les deux locales et la résolution est UNE seule requête. Vides tous les deux quand la
-// metadata du titre ne connaît pas la clé — l'appelant retombe alors sur la clé elle-même,
-// jamais sur un libellé inventé côté Go.
+// Un Text et non une chaîne : la résolution est UNE seule requête, quelle que soit la langue
+// demandée, et l'appelant en choisit une avec Pick(locale de la requête). Chaque langue porte sa
+// propre chaîne de repli interne (fr = FR d'abord, en = EN d'abord). Vide quand la metadata du
+// titre ne connaît pas la clé — l'appelant retombe alors sur la clé elle-même, jamais sur un
+// libellé inventé côté Go.
 type WeaponLabel struct {
-	Label   string `json:"label,omitempty"`
-	LabelEN string `json:"label_en,omitempty"`
+	Name i18n.Text `json:"-"`
 }
 
 // WeaponLabelResolver traduit des clés de registre en noms d'affichage.

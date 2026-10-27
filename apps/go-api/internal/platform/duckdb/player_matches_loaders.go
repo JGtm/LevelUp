@@ -110,7 +110,7 @@ func (r *PlayerMatchesRepo) loadSkillRanksForMatches(ctx context.Context, matchI
 			s   playerMatchSkillRankRow
 		)
 		if err := rows.Scan(&mid, &s.ratingType, &s.ratingValue, &s.tier,
-			&s.tierFR, &s.subTier, &s.delta, &s.playlistGroup, &s.expectedWinProb); err != nil {
+			&s.subTier, &s.delta, &s.playlistGroup, &s.expectedWinProb); err != nil {
 			return nil, fmt.Errorf("skill_rank scan: %w", err)
 		}
 		out[mid] = s

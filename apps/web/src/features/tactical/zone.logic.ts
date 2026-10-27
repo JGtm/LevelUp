@@ -149,7 +149,7 @@ export function sousLigneDeZone(t: TacticalText, question: TacticalQuestion, c: 
 function dateEtHeure(iso: string, timezone: string, locale: Locale): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''
-  const loc = locale === 'en' ? 'en-GB' : 'fr-FR'
+  const loc = intlLocale(locale)
   const date = new Intl.DateTimeFormat(loc, { timeZone: timezone, day: '2-digit', month: '2-digit', year: 'numeric' })
   const heure = new Intl.DateTimeFormat(loc, { timeZone: timezone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
   return `${date.format(d)} · ${heure.format(d)}`
@@ -201,9 +201,8 @@ function faitDecoupeDe(t: TacticalText, c: TacticalContribution): { avant: strin
   return { avant, gamertag: c.autre_gamertag, apres }
 }
 
-export function armeDe(t: TacticalText, c: TacticalContribution, locale: Locale): string | undefined {
-  const arme = locale === 'en' ? c.arme_label_en || c.arme_label : c.arme_label || c.arme_label_en
-  if (arme) return arme
+export function armeDe(t: TacticalText, c: TacticalContribution): string | undefined {
+  if (c.arme_label) return c.arme_label
   return c.categorie_source ? t.tileCategories[c.categorie_source] : undefined
 }
 
@@ -238,7 +237,7 @@ export function modeleDeTuile(
   // calculé par le serveur depuis le coup d'envoi) : jamais `instant_ms`, qui compte le countdown.
   const instant = c.instant_affiche_ms == null ? undefined : formatClock(c.instant_affiche_ms)
   const fait = faitDe(t, c)
-  const arme = armeDe(t, c, locale)
+  const arme = armeDe(t, c)
   const badge = badgeDe(t, c, locale)
   const distance = distanceDe(t, c, locale)
   const date = dateEtHeure(c.match_started_at, timezone, locale)
@@ -269,7 +268,7 @@ export function modeleDeTuile(
  * l'arme si elle est connue, la distance si les deux points le sont.
  */
 export function infobulleDuPoint(t: TacticalText, c: TacticalContribution, locale: Locale): string {
-  return [c.autre_gamertag, armeDe(t, c, locale), distanceDe(t, c, locale)].filter(Boolean).join(' · ')
+  return [c.autre_gamertag, armeDe(t, c), distanceDe(t, c, locale)].filter(Boolean).join(' · ')
 }
 
 /**
@@ -304,16 +303,15 @@ export function positionEtiquette(
 
 /**
  * titreDeZone — le titre de la carte de zone : « Zone sélectionnée » sans sélection ou tant que le
- * détail n'a pas répondu ; puis le nom en jeu de la zone dans la langue de la page, ou « Zone sans
+ * détail n'a pas répondu ; puis le nom en jeu de la zone (déjà dans la langue de la page), ou « Zone sans
  * nom » quand aucune zone ne la nomme.
  */
 export function titreDeZone(
   t: TacticalText,
-  locale: Locale,
   aUneCellule: boolean,
   reponse: TacticalCelluleReponse | undefined,
 ): string {
   if (!aUneCellule || !reponse) return t.zoneTitle
   if (!reponse.zone) return t.zoneUnnamed
-  return locale === 'en' ? reponse.zone.nom_en : reponse.zone.nom_fr
+  return reponse.zone.nom
 }

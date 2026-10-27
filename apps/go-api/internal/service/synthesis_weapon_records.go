@@ -22,6 +22,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 )
@@ -85,7 +86,7 @@ func buildWeaponRecordsSection(ctx context.Context, q weaponRecordsQuery) (*doma
 	kept, excluded := splitWeaponRecordsByClass(mine, dims)
 	records := analysis.WeaponDistanceRecords(kept, analysis.SideKiller)
 	block := &domain.SynthesisWeaponRecords{
-		Weapons:       toWeaponRecordRows(records, dims, indexCanonicalByMatch(q.Rows)),
+		Weapons:       toWeaponRecordRows(i18n.FromContext(ctx), records, dims, indexCanonicalByMatch(q.Rows)),
 		MeasuredKills: len(mine),
 		TotalKills:    scope.totalKills,
 		Excluded:      excluded,
@@ -192,6 +193,7 @@ func indexCanonicalByMatch(rows []canonical.PlayerMatchRow) map[string]canonical
 // toWeaponRecordRows projette les records purs en lignes de contrat, habillées de leur classe
 // et du contexte du match source. L'ORDRE DE L'ANALYSE EST CONSERVÉ.
 func toWeaponRecordRows(
+	loc i18n.Locale,
 	records []analysis.WeaponDistanceRecord,
 	dims map[string]port.WeaponDimensions,
 	byMatch map[string]canonical.MatchSummary,
@@ -211,27 +213,26 @@ func toWeaponRecordRows(
 				started := s.StartedAtUTC
 				row.Record.StartedAt = &started
 			}
-			row.Record.MapLabel, row.Record.MapLabelEN = assetLabelPair(s.Map)
+			row.Record.MapLabel = assetLabelFor(s.Map, loc)
 		}
 		rows = append(rows, row)
 	}
 	return rows
 }
 
-// assetLabelPair rend le libellé FR et le libellé EN d'une référence d'asset canonique, avec
-// repli sur le libellé par défaut. Aucun nom n'est inventé : un asset nil rend deux vides.
-func assetLabelPair(ref *canonical.AssetReference) (fr, en string) {
+// assetLabelFor rend le libellé d une référence d asset canonique dans la langue loc, avec repli
+// sur la langue de repli (en) puis sur le libellé par défaut. Aucun nom n est inventé : un asset
+// nil rend "".
+func assetLabelFor(ref *canonical.AssetReference, loc i18n.Locale) string {
 	if ref == nil {
-		return "", ""
+		return ""
 	}
-	fr, en = ref.Labels["fr"], ref.Labels["en"]
-	if fr == "" {
-		fr = ref.DefaultLabel
+	for _, l := range []i18n.Locale{loc, i18n.Fallback} {
+		if v := ref.Labels[string(l)]; v != "" {
+			return v
+		}
 	}
-	if en == "" {
-		en = ref.DefaultLabel
-	}
-	return fr, en
+	return ref.DefaultLabel
 }
 
 // hydrateWeaponRecordsLabels pose les noms d'affichage des armes publiées ET écartées. Best-effort
@@ -254,12 +255,11 @@ func hydrateWeaponRecordsLabels(ctx context.Context, q weaponRecordsQuery, block
 			"title", q.TitleSlug, "armes", len(keys), "err", err)
 		return
 	}
+	loc := i18n.FromContext(ctx)
 	for i := range block.Weapons {
-		l := labels[block.Weapons[i].WeaponKey]
-		block.Weapons[i].Label, block.Weapons[i].LabelEN = l.Label, l.LabelEN
+		block.Weapons[i].Label = labels[block.Weapons[i].WeaponKey].Name.PickOptional(loc)
 	}
 	for i := range block.Excluded {
-		l := labels[block.Excluded[i].WeaponKey]
-		block.Excluded[i].Label, block.Excluded[i].LabelEN = l.Label, l.LabelEN
+		block.Excluded[i].Label = labels[block.Excluded[i].WeaponKey].Name.PickOptional(loc)
 	}
 }

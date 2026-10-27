@@ -12,12 +12,14 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
 func selectTierPreview(
 	rank seasonPassRankRaw,
 	itemMap map[string]seasonPassItemMeta,
 	preferPremium bool,
+	loc i18n.Locale,
 ) (seasonPassItemMeta, bool) {
 	buckets := []struct {
 		bucket    seasonPassRewardBucket
@@ -47,7 +49,7 @@ func selectTierPreview(
 	// localisé et, quand l'asset existe localement, une miniature.
 	for _, entry := range buckets {
 		for _, reward := range entry.bucket.CurrencyRewards {
-			if meta, ok := currencyRewardMeta(reward); ok {
+			if meta, ok := currencyRewardMeta(reward, loc); ok {
 				return meta, entry.isPremium
 			}
 		}
@@ -71,19 +73,26 @@ var currencyImagePath = map[string]string{
 	"xpgrant":        "progression/Currencies/1102-000-xp-grant-c77c6396-2x2.png",
 }
 
-// currencyTitleFR retourne le libellé français d'une currency, par slug lowercase.
-func currencyTitleFR(slug string, amount int) string {
-	var label string
+// currencyLabel retourne le nom d'une currency dans la langue `loc` (catalogue des messages,
+// season_pass.toml), par slug lowercase ; "" pour une monnaie sans nom au catalogue.
+func currencyLabel(loc i18n.Locale, slug string) string {
 	switch slug {
 	case "cr":
-		label = "Crédits"
+		return i18n.Msg(loc, "season_pass.currency.cr", nil)
 	case "softcurrency":
-		label = "Crédits Spartan"
+		return i18n.Msg(loc, "season_pass.currency.softcurrency", nil)
 	case "xpboost":
-		label = "Boost XP"
+		return i18n.Msg(loc, "season_pass.currency.xpboost", nil)
 	case "rerollcurrency":
-		label = "Relance défi"
-	default:
+		return i18n.Msg(loc, "season_pass.currency.rerollcurrency", nil)
+	}
+	return ""
+}
+
+// currencyTitle retourne le libellé d'une currency dans la langue `loc`, par slug lowercase.
+func currencyTitle(loc i18n.Locale, slug string, amount int) string {
+	label := currencyLabel(loc, slug)
+	if label == "" {
 		if slug == "" {
 			return ""
 		}
@@ -97,13 +106,13 @@ func currencyTitleFR(slug string, amount int) string {
 
 // currencyRewardMeta convertit une CurrencyReward en seasonPassItemMeta.
 // Retourne ok=false si le CurrencyPath est vide.
-func currencyRewardMeta(reward seasonPassCurrencyReward) (seasonPassItemMeta, bool) {
+func currencyRewardMeta(reward seasonPassCurrencyReward, loc i18n.Locale) (seasonPassItemMeta, bool) {
 	cleanPath := strings.TrimSpace(reward.CurrencyPath)
 	if cleanPath == "" {
 		return seasonPassItemMeta{}, false
 	}
 	slug := currencySlug(cleanPath)
-	title := currencyTitleFR(slug, reward.Amount)
+	title := currencyTitle(loc, slug, reward.Amount)
 	meta := seasonPassItemMeta{Title: title}
 	if imgPath, ok := currencyImagePath[slug]; ok {
 		meta.ImageURL = localBPImageURL(imgPath, "tracks")
@@ -230,11 +239,11 @@ func payloadNameValue(payload *seasonPassTrackPayload) any {
 	return payload.Name
 }
 
-func payloadDescription(payload *seasonPassTrackPayload, preferEN bool) *string {
+func payloadDescription(payload *seasonPassTrackPayload, loc i18n.Locale) *string {
 	if payload == nil {
 		return nil
 	}
-	value := localizedText(payload.Description, preferEN)
+	value := localizedText(payload.Description, loc)
 	if value == "" || isPlaceholderDescription(value) {
 		return nil
 	}
@@ -242,11 +251,11 @@ func payloadDescription(payload *seasonPassTrackPayload, preferEN bool) *string 
 }
 
 // localizedText résout un texte Battle Pass (nom/description) potentiellement
-// multilingue. preferEN (dérivé de la locale de requête, cf. bpPreferEN) ordonne les
-// clés de langue : anglais d'abord en EN, français d'abord sinon — au lieu de l'ordre
-// FR-first figé historique qui laissait les libellés de pass en français quand l'UI
-// passait en anglais.
-func localizedText(value any, preferEN bool) string {
+// multilingue. La langue de requête `loc` ordonne les clés de langue (bpPayloadKeys, dérivé de
+// i18n.Chain) : sa clé, puis celle de la langue de repli suivie de « default », puis celle de la
+// langue par défaut — au lieu de l'ordre FR-first figé historique qui laissait les libellés de
+// pass en français quand l'UI passait en anglais.
+func localizedText(value any, loc i18n.Locale) string {
 	switch typed := value.(type) {
 	case string:
 		return strings.TrimSpace(typed)
@@ -259,11 +268,7 @@ func localizedText(value any, preferEN bool) string {
 		}
 		// Clés de langue explicites (stockées par le système de traduction interne),
 		// ordonnées selon la locale de requête.
-		langOrder := []string{"fr", "en", "default"}
-		if preferEN {
-			langOrder = []string{"en", "default", "fr"}
-		}
-		for _, key := range langOrder {
+		for _, key := range bpPayloadKeys(loc) {
 			candidate, ok := typed[key].(string)
 			if ok && strings.TrimSpace(candidate) != "" {
 				return strings.TrimSpace(candidate)

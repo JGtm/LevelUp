@@ -36,15 +36,16 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+
+	"levelup/go-api/internal/i18n"
 )
 
 // vehicleFamilyEntry — une ligne de [[vehicle_families]].
 type vehicleFamilyEntry struct {
-	Family string `toml:"family"`
-	En     string `toml:"en"`
-	Fr     string `toml:"fr"`
-	Kind   string `toml:"kind"`
-	Sprite bool   `toml:"sprite"`
+	Family string    `toml:"family"`
+	Label  i18n.Text `toml:"label"`
+	Kind   string    `toml:"kind"`
+	Sprite bool      `toml:"sprite"`
 }
 
 // VehicleFamilyKindMapElement — la NATURE d un ELEMENT DE CARTE : un objet de la carte, pas un
@@ -71,15 +72,15 @@ var vehicleFamilyKinds = map[string]bool{
 	VehicleFamilyKindFixedTurret: true,
 }
 
-// VehicleFamily — ce que le titre DIT d une famille de chassis : son nom dans les deux langues,
+// VehicleFamily — ce que le titre DIT d une famille de chassis : son nom dans chaque langue,
 // sa nature, et si un asset est servi pour elle.
 type VehicleFamily struct {
 	// Family est la cle stable publiee par le document (`VehicleTrack.family`).
 	Family string
-	// En / Fr : le libelle affichable. Les deux sont obligatoires (meme regle que
-	// `BilingualLabel` : quand aucun FR officiel n existe, le fichier met le EN dans les deux —
-	// jamais de FR invente).
-	En, Fr string
+	// Label : le libelle affichable. Chaque langue `required` est obligatoire (meme regle que
+	// `ReplayLabel` : quand aucun nom officiel n existe dans une langue, le fichier y met le
+	// EN — jamais de traduction inventee).
+	Label i18n.Text
 	// Kind est la NATURE publiee, dans `vehicleFamilyKinds`.
 	Kind string
 	// Sprite dit qu un asset est servi pour cette famille sous
@@ -118,18 +119,16 @@ func parseVehicleFamilies(path string, entries []vehicleFamilyEntry) (map[string
 		if _, dup := out[fam]; dup {
 			return nil, fmt.Errorf("%s: [[vehicle_families]] famille %q declaree deux fois", path, fam)
 		}
-		en, fr := strings.TrimSpace(e.En), strings.TrimSpace(e.Fr)
-		if en == "" || fr == "" {
-			return nil, fmt.Errorf(
-				"%s: [[vehicle_families]] %q — `en` et `fr` sont obligatoires (recu en=%q fr=%q)",
-				path, fam, e.En, e.Fr)
+		label := e.Label.Trimmed()
+		if err := label.Validate(); err != nil {
+			return nil, fmt.Errorf("%s: [[vehicle_families]] %q — `label` : %w", path, fam, err)
 		}
 		kind := strings.TrimSpace(e.Kind)
 		if !vehicleFamilyKinds[kind] {
 			return nil, fmt.Errorf("%s: [[vehicle_families]] %q — `kind` %q hors de la liste fermee %v",
 				path, fam, e.Kind, vehicleFamilyKindsTriees())
 		}
-		out[fam] = VehicleFamily{Family: fam, En: en, Fr: fr, Kind: kind, Sprite: e.Sprite}
+		out[fam] = VehicleFamily{Family: fam, Label: label, Kind: kind, Sprite: e.Sprite}
 	}
 	return out, nil
 }

@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/port"
 )
@@ -83,11 +84,12 @@ func (s *AchievementsService) GetAchievementsPage(ctx context.Context) (domain.A
 		playerByID[r.AchievementID] = r
 	}
 
+	loc := i18n.FromContext(ctx)
 	entries := make([]domain.AchievementEntry, 0, len(defs))
 	summary := domain.AchievementsSummary{}
 	for _, d := range defs {
-		entry := buildAchievementEntry(d, playerByID[d.AchievementID])
-		entry.Category = resolveAchievementCategory(ctx, titleSlug, d.NameEN)
+		entry := buildAchievementEntry(d, playerByID[d.AchievementID], loc)
+		entry.Category = resolveAchievementCategory(ctx, titleSlug, d.Name[i18n.Fallback])
 		entries = append(entries, entry)
 		summary.TotalCount++
 		summary.TotalGamerscore += d.Gamerscore
@@ -130,16 +132,14 @@ func resolveAchievementCategory(ctx context.Context, titleSlug, nameEN string) d
 }
 
 // buildAchievementEntry fusionne une définition et la ligne player (peut être zero-value
-// si le joueur n'a pas encore syncé cet achievement).
-func buildAchievementEntry(d domain.AchievementDefinitionRow, p domain.PlayerAchievementRow) domain.AchievementEntry {
+// si le joueur n'a pas encore syncé cet achievement). Nom et descriptions sont résolus dans la langue
+// `loc` (repli sur `en`, ADR 0040 D-4).
+func buildAchievementEntry(d domain.AchievementDefinitionRow, p domain.PlayerAchievementRow, loc i18n.Locale) domain.AchievementEntry {
 	return domain.AchievementEntry{
 		AchievementID:   d.AchievementID,
-		NameEN:          d.NameEN,
-		NameFR:          d.NameFR,
-		DescriptionEN:   d.DescriptionEN,
-		DescriptionFR:   d.DescriptionFR,
-		LockedDescEN:    d.LockedDescEN,
-		LockedDescFR:    d.LockedDescFR,
+		Name:            d.Name.Pick(loc),
+		Description:     d.Description.Pick(loc),
+		LockedDesc:      d.LockedDesc.Pick(loc),
 		Gamerscore:      d.Gamerscore,
 		ImageURL:        d.ImageURL,
 		IsSecret:        d.IsSecret,

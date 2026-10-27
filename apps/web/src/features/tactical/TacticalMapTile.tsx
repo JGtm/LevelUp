@@ -26,7 +26,6 @@ import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import { useColorPaletteVersion } from '@/lib/accessibility/useColorPaletteVersion'
 import type { TacticalMapCard } from '@/lib/api/types'
 import { useVisibleUneFois } from '@/lib/hooks/useVisibleUneFois'
-import type { Locale } from '@/lib/i18n/locale'
 import { lisserLaGrille } from '@/lib/replay/chaleurLissee'
 import { drawTacticalHeatmap, heatRamp, mapFrame } from '@/lib/replay/heatPaint'
 import { useTitleSlug } from '@/lib/title-routing'
@@ -40,14 +39,13 @@ import { grilleDuPlan, repereDuPlan, vueContain } from './tacticalView.logic'
 interface TacticalMapTileProps {
   carte: TacticalMapCard
   playerSlug: string
-  locale: Locale
   t: TacticalText
   selectionnee: boolean
   onSelect: (mapId: string) => void
 }
 
-export function TacticalMapTile({ carte, playerSlug, locale, t, selectionnee, onSelect }: TacticalMapTileProps) {
-  const nom = nomCarte(carte, locale)
+export function TacticalMapTile({ carte, playerSlug, t, selectionnee, onSelect }: TacticalMapTileProps) {
+  const nom = nomCarte(carte)
   const parts = barreResultats(carte)
   // L'IMAGE NE PART QU'À L'ENTRÉE DANS LE CHAMP DE VISION, et seulement si la carte porte un
   // calage : sans lui, elle n'a pas de fond figé (aucune requête vouée au 404). Même clé de cache

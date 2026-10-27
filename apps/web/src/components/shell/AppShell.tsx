@@ -7,6 +7,9 @@
  */
 import { Outlet, useMatches } from '@tanstack/react-router'
 import { Toaster } from 'sonner'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest } from '@/lib/i18n/generated/common'
+import { useAppShellStore } from '@/stores/appShellStore'
 import { NavL1 } from './NavL1'
 import { ReauthBanner } from './ReauthBanner'
 import { OAuthRefusalBanner } from './OAuthRefusalBanner'
@@ -23,6 +26,7 @@ import { useSettingsDraftStore } from '@/stores/settingsDraftStore'
 export function AppShell() {
   // Lie le thème Sonner au thème app pour que les toasts respectent dark/light.
   const theme = useSettingsDraftStore((s) => s.localUiPrefs.theme)
+  const locale = useAppShellStore((s) => s.locale)
   // Une vue « cockpit » (onglet Tactique) tient dans l'écran : pas de pied de page sous elle.
   const avecPiedDePage = useMatches({ select: (matches) => piedDePageAffiche(matches) })
   return (
@@ -47,6 +51,7 @@ export function AppShell() {
         position="top-right"
         offset={56}
         theme={theme}
+        containerAriaLabel={formatMessage(commonManifest, 'common.notifications.container_aria', locale)}
         toastOptions={{
           classNames: {
             toast:

@@ -36,6 +36,7 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/fragdist"
@@ -232,10 +233,10 @@ func (s *SynthesisService) GetSynthesisPage(
 	comparison := analysis.ComputeComparisonMetrics(soloKPIs, squadKPIs)
 
 	// D7 : breakdowns map/mode depuis les rows canoniques filtrés (period-aware).
-	// Les Labels["fr"] des AssetReference ont été hydratés par
+	// Les Labels des AssetReference (une entrée par langue) ont été hydratés par
 	// EnrichCanonicalAssetTranslations en amont, donc buildBreakdownsFromCanonical
-	// lit directement les noms FR.
-	breakdowns := buildBreakdownsFromCanonical(filteredCanon, groups)
+	// lit directement le nom de chaque langue.
+	breakdowns := buildBreakdownsFromCanonical(filteredCanon, groups, i18n.FromContext(ctx))
 
 	// P9 : stats détaillées (combat, tir, dégâts, fun)
 	detailedStats := buildSynthesisDetailedStatsFromCanonical(filteredCanon, provideSpree)
@@ -325,10 +326,10 @@ func (s *SynthesisService) loadAndEnrichCanonicalRows(ctx context.Context) ([]ca
 	}
 	mapFR, pairFR := 0, 0
 	for _, r := range canonicalRows {
-		if r.Summary.Map != nil && r.Summary.Map.Labels["fr"] != "" {
+		if r.Summary.Map != nil && r.Summary.Map.Labels[string(i18n.Default)] != "" {
 			mapFR++
 		}
-		if r.Summary.PairMode != nil && r.Summary.PairMode.Labels["fr"] != "" {
+		if r.Summary.PairMode != nil && r.Summary.PairMode.Labels[string(i18n.Default)] != "" {
 			pairFR++
 		}
 	}
@@ -408,9 +409,9 @@ func (s *SynthesisService) loadTopWeaponKills(
 		ShoulderBash:  detailedStats.TotalShoulderBashKills,
 		Total:         totalKills,
 	}
-	fd := fragdist.Build(rows, counts, hasMechanics)
+	fd := fragdist.Build(i18n.FromContext(ctx), rows, counts, hasMechanics)
 	logFragDistribution(ctx, "synthesis", s.titleSlug, s.gamertag, fd)
-	return buildTopWeaponKills(rows, synthesisWeaponChartTopN), &fd
+	return buildTopWeaponKills(i18n.FromContext(ctx), rows, synthesisWeaponChartTopN), &fd
 }
 
 // loadWeaponKillRows charge les rows agrégées d'armes (ResolveRoles=true → Role+Class).

@@ -111,9 +111,9 @@ func TestEnrichEncounterFragRange(t *testing.T) {
 		t.Errorf("clé de ligne cible = %q, want \"sniper\"", got)
 	}
 	// Aucun libellé écrit côté Go (D8).
-	if stats.FragRangeTarget.Weapons[0].Label != "" || stats.FragRangeTarget.Weapons[0].LabelEN != "" {
-		t.Errorf("libellés attendus vides, got %q / %q",
-			stats.FragRangeTarget.Weapons[0].Label, stats.FragRangeTarget.Weapons[0].LabelEN)
+	if stats.FragRangeTarget.Weapons[0].Label != "" {
+		t.Errorf("libellé attendu vide, got %q",
+			stats.FragRangeTarget.Weapons[0].Label)
 	}
 	// Dénominateurs de couverture : ceux du scope, pas la carrière.
 	if stats.FragRangeTarget.TotalKills != 33 {

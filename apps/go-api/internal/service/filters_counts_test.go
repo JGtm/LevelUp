@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
 // ─── Helpers de fabrication de FilterMatchRow ───────────────────────────────
@@ -17,11 +18,9 @@ func tsPtr(t time.Time) *time.Time { return &t }
 func makeFilterRow(matchID, mode, mapName, playlist string, isRanked, isFirefight bool) domain.FilterMatchRow {
 	return domain.FilterMatchRow{
 		MatchID:      matchID,
-		PairName:     strPtr(mode),
-		PairNameFR:   strPtr(mode),
-		MapName:      strPtr(mapName),
-		MapNameFR:    strPtr(mapName),
-		PlaylistName: strPtr(playlist),
+		PairName:     i18n.FromColumns(mode, mode),
+		MapName:      i18n.FromColumns(mapName, mapName),
+		PlaylistName: i18n.FromColumns("", playlist),
 		IsRanked:     isRanked,
 		IsFirefight:  isFirefight,
 	}
@@ -113,8 +112,8 @@ func TestUniqueLabelValuesWithORCounts_DownFilterAppliedToCount(t *testing.T) {
 func TestBuildAvailableOptions_ExperienceFiltersPlaylistsModesMaps(t *testing.T) {
 	rows := []domain.FilterMatchRow{
 		// 2 matchs PVE — Firefight sur Sanctuary
-		{MatchID: "pve1", PairName: strPtr("Firefight"), PairNameFR: strPtr("Firefight"), MapName: strPtr("Sanctuary"), MapNameFR: strPtr("Sanctuary"), PlaylistName: strPtr("Firefight"), IsFirefight: true},
-		{MatchID: "pve2", PairName: strPtr("Firefight"), PairNameFR: strPtr("Firefight"), MapName: strPtr("Sanctuary"), MapNameFR: strPtr("Sanctuary"), PlaylistName: strPtr("Firefight"), IsFirefight: true},
+		{MatchID: "pve1", PairName: i18n.FromColumns("Firefight", "Firefight"), MapName: i18n.FromColumns("Sanctuary", "Sanctuary"), PlaylistName: i18n.FromColumns("", "Firefight"), IsFirefight: true},
+		{MatchID: "pve2", PairName: i18n.FromColumns("Firefight", "Firefight"), MapName: i18n.FromColumns("Sanctuary", "Sanctuary"), PlaylistName: i18n.FromColumns("", "Firefight"), IsFirefight: true},
 		// 5 matchs PVP — Slayer/CTF/Strongholds sur Streets/Bazaar/Aquarius
 		makeFilterRow("pvp1", "Slayer", "Streets", "Arena", false, false),
 		makeFilterRow("pvp2", "Slayer", "Bazaar", "Arena", false, false),
@@ -283,11 +282,11 @@ func TestBuildSeasonCounts_CascadeApplied(t *testing.T) {
 	}
 	rows := []domain.FilterMatchRow{
 		// 2 matchs Slayer + 3 matchs CTF, tous dans s1.
-		{MatchID: "m1", StartTime: tsPtr(time.Date(2022, 2, 1, 0, 0, 0, 0, time.UTC)), PairName: strPtr("Slayer"), PairNameFR: strPtr("Slayer")},
-		{MatchID: "m2", StartTime: tsPtr(time.Date(2022, 3, 1, 0, 0, 0, 0, time.UTC)), PairName: strPtr("Slayer"), PairNameFR: strPtr("Slayer")},
-		{MatchID: "m3", StartTime: tsPtr(time.Date(2022, 4, 1, 0, 0, 0, 0, time.UTC)), PairName: strPtr("CTF"), PairNameFR: strPtr("CTF")},
-		{MatchID: "m4", StartTime: tsPtr(time.Date(2022, 5, 1, 0, 0, 0, 0, time.UTC)), PairName: strPtr("CTF"), PairNameFR: strPtr("CTF")},
-		{MatchID: "m5", StartTime: tsPtr(time.Date(2022, 6, 1, 0, 0, 0, 0, time.UTC)), PairName: strPtr("CTF"), PairNameFR: strPtr("CTF")},
+		{MatchID: "m1", StartTime: tsPtr(time.Date(2022, 2, 1, 0, 0, 0, 0, time.UTC)), PairName: i18n.FromColumns("Slayer", "Slayer")},
+		{MatchID: "m2", StartTime: tsPtr(time.Date(2022, 3, 1, 0, 0, 0, 0, time.UTC)), PairName: i18n.FromColumns("Slayer", "Slayer")},
+		{MatchID: "m3", StartTime: tsPtr(time.Date(2022, 4, 1, 0, 0, 0, 0, time.UTC)), PairName: i18n.FromColumns("CTF", "CTF")},
+		{MatchID: "m4", StartTime: tsPtr(time.Date(2022, 5, 1, 0, 0, 0, 0, time.UTC)), PairName: i18n.FromColumns("CTF", "CTF")},
+		{MatchID: "m5", StartTime: tsPtr(time.Date(2022, 6, 1, 0, 0, 0, 0, time.UTC)), PairName: i18n.FromColumns("CTF", "CTF")},
 	}
 	got := BuildSeasonCounts(rows, domain.CascadeFilter{Modes: []string{"Slayer"}}, seasons)
 	if len(got) != 1 {
@@ -336,11 +335,11 @@ func TestBuildSessionOptions_MatchCountFiltered(t *testing.T) {
 	sidA, sidB := "sa", "sb"
 	rows := []domain.FilterMatchRow{
 		// Session A : 2 matchs, dont 1 Slayer/Streets et 1 CTF/Bazaar.
-		{MatchID: "m1", SessionLabel: &lblA, SessionID: &sidA, PairName: strPtr("Slayer"), PairNameFR: strPtr("Slayer"), MapName: strPtr("Streets")},
-		{MatchID: "m2", SessionLabel: &lblA, SessionID: &sidA, PairName: strPtr("CTF"), PairNameFR: strPtr("CTF"), MapName: strPtr("Bazaar")},
+		{MatchID: "m1", SessionLabel: &lblA, SessionID: &sidA, PairName: i18n.FromColumns("Slayer", "Slayer"), MapName: i18n.FromColumns("Streets", "")},
+		{MatchID: "m2", SessionLabel: &lblA, SessionID: &sidA, PairName: i18n.FromColumns("CTF", "CTF"), MapName: i18n.FromColumns("Bazaar", "")},
 		// Session B : 2 matchs Slayer/Streets (≥ minListedSessionMatches pour être listée).
-		{MatchID: "m3", SessionLabel: &lblB, SessionID: &sidB, PairName: strPtr("Slayer"), PairNameFR: strPtr("Slayer"), MapName: strPtr("Streets")},
-		{MatchID: "m4", SessionLabel: &lblB, SessionID: &sidB, PairName: strPtr("Slayer"), PairNameFR: strPtr("Slayer"), MapName: strPtr("Streets")},
+		{MatchID: "m3", SessionLabel: &lblB, SessionID: &sidB, PairName: i18n.FromColumns("Slayer", "Slayer"), MapName: i18n.FromColumns("Streets", "")},
+		{MatchID: "m4", SessionLabel: &lblB, SessionID: &sidB, PairName: i18n.FromColumns("Slayer", "Slayer"), MapName: i18n.FromColumns("Streets", "")},
 	}
 
 	// Sans cascade : MatchCountFiltered == MatchCount.

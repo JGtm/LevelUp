@@ -28,7 +28,7 @@ import { tokenCssVar } from '@/lib/accessibility'
 import { perfScale } from '@/lib/accessibility/scales'
 import { kdaNetColor } from '@/lib/colors/outcomePalette'
 import { getPerfColor } from '@/lib/perf-color'
-import { formatDateRange, formatSignedFixed } from '@/lib/formatters'
+import { formatDateRange, formatSignedFixed, intlLocale } from '@/lib/formatters'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useExplorerPrefsStore } from '@/stores/explorerPrefsStore'
 import type { ExplorerBriefing } from '@/lib/api/types'
@@ -45,6 +45,7 @@ import {
   StreaksTile,
   WinRateTile,
 } from './ExplorerBriefingTiles'
+import type { Locale } from '@/lib/i18n/locale'
 
 type T = (key: ExplorerManifestKey, values?: Record<string, string | number>) => string
 
@@ -99,12 +100,12 @@ function LowSampleWarning({ text }: { text: string }) {
 function formatPeriod(
   start: string | null | undefined,
   end: string | null | undefined,
-  locale: string,
+  locale: Locale,
 ): string | undefined {
   if (!start) return undefined
   // Intervalle daté COMPLET (année incluse) via le helper canonique formatDateRange —
   // factorise mois/année (« 3–12 mars 2025 ») ; date simple si end absent/égal.
-  return formatDateRange(start, end, locale === 'en' ? 'en-US' : 'fr-FR')
+  return formatDateRange(start, end, intlLocale(locale))
 }
 
 export function ExplorerBriefingStrip({ briefing, t }: Props) {

@@ -1,22 +1,31 @@
 // Package canonical — assets.go : type référentiel pour l'Asset Drawer.
 package canonical
 
-import "strconv"
+import (
+	"strconv"
+
+	"levelup/go-api/internal/i18n"
+)
 
 // AssetMeta décrit un asset visuel (map, arme, médaille) exposé par l'Asset Drawer.
 // C'est un type de réponse pur — aucune logique métier.
+//
+// Deux états, jamais mélangés : lu depuis la base, il porte les libellés dans TOUTES les langues
+// (`Names`, `Descriptions`, `json:"-"`) ; servi, il porte le libellé de la langue de la requête
+// (`Name`, `Description`), posé par Localized (ADR 0040 D-3, côté service, avec la `Locale` du
+// contexte). `Name` et `Description` d'une valeur non localisée sont vides.
 //
 // Médailles Halo 5 : l'icône est un SPRITE (feuille + offset, API Metadata
 // officielle) plutôt qu'une image dédiée. Les champs Sprite* portent la découpe ;
 // le front rend via background-image + background-position. Tous omitempty :
 // maps/armes (ImageURL direct) n'ont pas de sprite.
 type AssetMeta struct {
-	ID            string `json:"id"`
-	NameEN        string `json:"name_en"`
-	NameFR        string `json:"name_fr"`                  // vide si traduction absente
-	Description   string `json:"description,omitempty"`    // description EN (médailles) ; vide pour maps/armes
-	DescriptionFR string `json:"description_fr,omitempty"` // description FR (médailles) ; vide si absente
-	ImageURL      string `json:"image_url"`                // URL relative /api/v1/assets/... ou "" si pas d'image
+	ID           string    `json:"id"`
+	Names        i18n.Text `json:"-"`                     // nom par langue (donnée) ; une langue sans traduction est absente
+	Descriptions i18n.Text `json:"-"`                     // description par langue (médailles) ; vide pour maps/armes
+	Name         string    `json:"name"`                  // nom dans la langue de la requête (repli `en`)
+	Description  string    `json:"description,omitempty"` // description dans la langue de la requête ; vide pour maps/armes
+	ImageURL     string    `json:"image_url"`             // URL relative /api/v1/assets/... ou "" si pas d'image
 	// ImageTinted : l'image est un MASQUE (dessin porté par l'alpha) que le front doit
 	// teindre, et non une image finie. Cf. games.TitleAssetURLAdapter.WeaponImageIsTinted.
 	ImageTinted  bool   `json:"image_tinted,omitempty"`
@@ -68,4 +77,20 @@ func (m AssetMeta) WeaponID() (int64, bool) {
 		return 0, false
 	}
 	return int64(v), true //nolint:gosec // motif binaire conservé, convention du domaine
+}
+
+// Localized rend une copie dont `Name` et `Description` sont ceux de la langue `loc`, avec le repli
+// des noms de jeu (`en`, ADR 0040 D-4). Les textes par langue (`Names`, `Descriptions`) restent
+// portés : la copie peut être localisée une seconde fois dans une autre langue.
+func (m AssetMeta) Localized(loc i18n.Locale) AssetMeta {
+	m.Name = m.Names.Pick(loc)
+	m.Description = m.Descriptions.Pick(loc)
+	return m
+}
+
+// CanonicalName est le nom du jeu dans la langue de repli (`en`, ADR 0040 D-4) : la clé qui identifie
+// une carte ou une arme auprès des adaptateurs d'images et de l'ordre du tiroir, jamais un texte à
+// afficher (l'affichage passe par Name, résolu dans la langue de la requête).
+func (m AssetMeta) CanonicalName() string {
+	return m.Names[i18n.Fallback]
 }

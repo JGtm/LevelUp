@@ -29,7 +29,7 @@ Ce skill est une **checklist d'application des 4 fondations** documentées dans 
 
 ### Côté frontend (nouvelle page React)
 
-- [ ] **Manifest TOML créé ?** `apps/web/src/lib/i18n/manifests/<page>.toml` avec **clés FR + EN par entrée**.
+- [ ] **Manifest TOML créé ?** `apps/web/src/lib/i18n/manifests/<page>.toml` avec **une clé par langue de `config/locales.toml` (fr + en obligatoires) par entrée**.
 - [ ] **Manifest régénéré ?** `node apps/web/scripts/build_i18n_manifests.mjs` → produit `lib/i18n/generated/<page>.ts`.
 - [ ] **Strings via `formatMessage` ?** Aucune string FR/EN hardcodée dans le composant. Vérifier `npm run lint` (ESLint custom rule).
 - [ ] **Couleurs via tokens ?** `tokenCssVar('outcome-win')` ou `resolveToken('perf-tier-2')` — aucun hex `#RRGGBB` ni classe Tailwind couleur (`text-red-*`, `bg-green-*`).

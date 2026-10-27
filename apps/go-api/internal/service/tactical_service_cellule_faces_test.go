@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/observability/timing"
 )
 
@@ -74,8 +75,8 @@ func TestCellule_IsoleNommeLeTueur(t *testing.T) {
 // (3 à 6 m) — le centre de la cellule (4, 4) au pas de 0,5 m, (2,25 ; 2,25), est dans les deux.
 func zonesEmpilees() *mockCallouts {
 	return &mockCallouts{zones: []domain.ZoneNommee{
-		{NomFR: "Rez", NomEN: "Ground", X: 2.5, Y: 2.5, Polygone: carre(0, 5), ZBas: 0, ZHaut: 2, VolumeIndex: 1},
-		{NomFR: "Étage", NomEN: "Upper", X: 2.5, Y: 2.5, Polygone: carre(0, 5), ZBas: 3, ZHaut: 6, VolumeIndex: 2},
+		{Nom: i18n.FromColumns("Ground", "Rez"), X: 2.5, Y: 2.5, Polygone: carre(0, 5), ZBas: 0, ZHaut: 2, VolumeIndex: 1},
+		{Nom: i18n.FromColumns("Upper", "Étage"), X: 2.5, Y: 2.5, Polygone: carre(0, 5), ZBas: 3, ZHaut: 6, VolumeIndex: 2},
 	}}
 }
 
@@ -92,8 +93,16 @@ func TestCellule_ZoneNommeeParLaHauteurDeLaFace(t *testing.T) {
 	}
 	for _, c := range cas {
 		got := celluleLue(t, svc, celluleDemande(repo, c.question, domain.TacticalQuiMoi, 4, 4))
-		if got.Zone == nil || got.Zone.NomFR != c.fr || got.Zone.NomEN != c.en {
-			t.Errorf("%s : zone = %+v, want %s / %s", c.question, got.Zone, c.fr, c.en)
+		if got.Zone == nil || got.Zone.Nom != c.fr {
+			t.Errorf("%s : zone = %+v, want %s", c.question, got.Zone, c.fr)
+		}
+		gotEN, err := svc.Cellule(i18n.WithContext(context.Background(), i18n.LocaleEN),
+			celluleDemande(repo, c.question, domain.TacticalQuiMoi, 4, 4))
+		if err != nil {
+			t.Fatalf("Cellule(en): %v", err)
+		}
+		if gotEN.Zone == nil || gotEN.Zone.Nom != c.en {
+			t.Errorf("%s (en) : zone = %+v, want %s", c.question, gotEN.Zone, c.en)
 		}
 	}
 }
@@ -119,7 +128,7 @@ func TestCellule_ZoneSectionDeDuree(t *testing.T) {
 func TestCellule_ZoneSansNom(t *testing.T) {
 	repo := repoDeuxFaces()
 	loin := &mockCallouts{zones: []domain.ZoneNommee{
-		{NomFR: "Loin", NomEN: "Far", X: 40, Y: 40, Polygone: carre(38, 42), ZBas: 0, ZHaut: 6, VolumeIndex: 1},
+		{Nom: i18n.FromColumns("Far", "Loin"), X: 40, Y: 40, Polygone: carre(38, 42), ZBas: 0, ZHaut: 6, VolumeIndex: 1},
 	}}
 	svc := NewTacticalService(repo, capsCompletes(), tsMoi).WithCalloutsStore(loin)
 	if got := celluleLue(t, svc, celluleDemande(repo, domain.TacticalQuestionMorts, domain.TacticalQuiMoi, 4, 4)); got.Zone != nil {

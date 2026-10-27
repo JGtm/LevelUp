@@ -13,6 +13,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/squadagg"
 )
@@ -84,6 +85,7 @@ func (s *TeammatesService) buildSquadToolsSection(
 	hasMechanics bool,
 ) *domain.SquadWeaponTools {
 	tools := squadagg.BuildWeaponTools(squadagg.WeaponToolInputs{
+		Locale:         i18n.FromContext(ctx),
 		Rows:           rows,
 		Categories:     s.loadSquadToolCategories(ctx, sc.sharedMatches, sc.xuids),
 		PlayersOrdered: sc.playersOrdered,

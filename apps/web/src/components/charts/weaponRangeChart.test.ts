@@ -57,7 +57,6 @@ const ROWS: WeaponRangeRow[] = [
   {
     weapon_key: 'hinf_melee',
     label: 'Mêlée',
-    label_en: 'Melee',
     kills: side({ measured: 133, p10: 0.9, median: 1.4, p90: 2.6 }),
     deaths: side({ measured: 96, p10: 0.9, median: 1.5, p90: 2.8 }),
   },
@@ -69,7 +68,6 @@ const ROWS: WeaponRangeRow[] = [
   {
     weapon_key: 'hinf_s7',
     label: 'Fusil de précision S7',
-    label_en: 'S7 Sniper',
     deaths: side({ measured: 117, p10: 19.6, median: 33.1, p90: 52 }),
   },
 ]
@@ -118,23 +116,22 @@ interface RenderedGroup {
 
 describe('weaponRangeLines — la projection du contrat', () => {
   it('conserve l’ordre du backend, résout le libellé et normalise le côté absent en null', () => {
-    const fr = weaponRangeLines(ROWS, 'fr')
+    const fr = weaponRangeLines(ROWS)
     expect(fr.map((l) => l.weaponKey)).toEqual(['hinf_melee', 'hinf_commando', 'hinf_s7'])
     expect(fr.map((l) => l.label)).toEqual(['Mêlée', 'hinf_commando', 'Fusil de précision S7'])
     expect(fr[1].bottom).toBeNull()
     expect(fr[2].top).toBeNull()
-    expect(weaponRangeLines(ROWS, 'en')[0].label).toBe('Melee')
   })
 
   it('accepte une liste absente (le contrat rend `weapons` nullable)', () => {
-    expect(weaponRangeLines(null, 'fr')).toEqual([])
-    expect(weaponRangeLines(undefined, 'fr')).toEqual([])
+    expect(weaponRangeLines(null)).toEqual([])
+    expect(weaponRangeLines(undefined)).toEqual([])
   })
 })
 
 describe('weaponRangeCategoryLabel — le nom de l’arme, nu', () => {
   it('n’écrit QUE le libellé — les effectifs vivent dans l’infobulle et le tableau', () => {
-    const [melee, commando, s7] = weaponRangeLines(ROWS, 'fr')
+    const [melee, commando, s7] = weaponRangeLines(ROWS)
     expect(weaponRangeCategoryLabel(melee)).toBe('Mêlée')
     // Repli sur la clé quand le registre n'a rien résolu : le trou doit rester VISIBLE.
     expect(weaponRangeCategoryLabel(commando)).toBe('hinf_commando')
@@ -149,23 +146,23 @@ describe('weaponRangeChartHeight / weaponRangeAxisMax', () => {
   })
 
   it('l’axe est COMMUN aux deux côtés : il couvre le plus grand p90, arrondi aux 5 m', () => {
-    expect(weaponRangeAxisMax(weaponRangeLines(ROWS, 'fr'))).toBe(55)
+    expect(weaponRangeAxisMax(weaponRangeLines(ROWS))).toBe(55)
   })
 
   it('plancher de 5 m : un corpus tout au contact ne dégénère pas l’axe', () => {
     expect(weaponRangeAxisMax([])).toBe(5)
-    expect(weaponRangeAxisMax(weaponRangeLines([{ weapon_key: 'x', kills: side({ p90: 1.2 }) }], 'fr'))).toBe(5)
+    expect(weaponRangeAxisMax(weaponRangeLines([{ weapon_key: 'x', kills: side({ p90: 1.2 }) }]))).toBe(5)
   })
 })
 
 describe('buildWeaponRangeOption — l’axe et la série', () => {
   it('noms d’armes : colonne bornée, troncature À DROITE avec « … » (jamais coupés par le début)', () => {
-    const { axisLabel } = optionOf(weaponRangeLines(ROWS, 'fr')).yAxis
+    const { axisLabel } = optionOf(weaponRangeLines(ROWS)).yAxis
     expect(axisLabel).toMatchObject({ width: 120, overflow: 'truncate', ellipsis: '…' })
   })
 
   it('la première arme du backend est EN HAUT : l’axe Y inverse la liste', () => {
-    const o = optionOf(weaponRangeLines(ROWS, 'fr'))
+    const o = optionOf(weaponRangeLines(ROWS))
     expect(o.yAxis.data).toEqual([
       'Fusil de précision S7',
       'hinf_commando',
@@ -185,7 +182,7 @@ describe('buildWeaponRangeOption — l’axe et la série', () => {
 })
 
 describe('renderItem — la géométrie des deux bâtons', () => {
-  const lines = weaponRangeLines(ROWS, 'fr')
+  const lines = weaponRangeLines(ROWS)
   // Après inversion, l'index 2 est la Mêlée (deux côtés mesurés).
   const melee = () => optionOf(lines).series[0].renderItem({ dataIndex: 2 }, API)
 
@@ -230,14 +227,14 @@ describe('renderItem — la géométrie des deux bâtons', () => {
   })
 
   it('une portée quasi ponctuelle garde 2 px de large : l’arme ne disparaît pas', () => {
-    const plat = weaponRangeLines([{ weapon_key: 'x', kills: side({ p10: 4, median: 4, p90: 4 }) }], 'fr')
+    const plat = weaponRangeLines([{ weapon_key: 'x', kills: side({ p10: 4, median: 4, p90: 4 }) }])
     const g = optionOf(plat).series[0].renderItem({ dataIndex: 0 }, API)
     expect(g.children[0].shape.width).toBe(2)
   })
 })
 
 describe('infobulle', () => {
-  const tooltip = (dataIndex: number) => optionOf(weaponRangeLines(ROWS, 'fr')).tooltip.formatter({ dataIndex })
+  const tooltip = (dataIndex: number) => optionOf(weaponRangeLines(ROWS)).tooltip.formatter({ dataIndex })
 
   it('donne les trois valeurs des deux côtés', () => {
     const html = tooltip(2)
@@ -254,7 +251,6 @@ describe('infobulle', () => {
   it('échappe le nom d’arme (rendu en innerHTML par ECharts)', () => {
     const hostile = weaponRangeLines(
       [{ weapon_key: 'x', label: '<img src=x onerror=alert(1)>', kills: side({}) }],
-      'fr',
     )
     const html = optionOf(hostile).tooltip.formatter({ dataIndex: 0 })
     expect(html).toContain('&lt;img src=x onerror=alert(1)&gt;')
@@ -267,18 +263,13 @@ describe('infobulle', () => {
 })
 
 describe('resolveWeaponLabel', () => {
-  it('rend le libellé de la locale demandée', () => {
-    const w = { weapon_key: 'hinf_br75', label: 'Fusil de combat BR75', label_en: 'BR75 Battle Rifle' }
-    expect(resolveWeaponLabel(w, 'fr')).toBe('Fusil de combat BR75')
-    expect(resolveWeaponLabel(w, 'en')).toBe('BR75 Battle Rifle')
+  it('rend le libellé servi (déjà dans la langue de la requête)', () => {
+    expect(resolveWeaponLabel({ weapon_key: 'hinf_br75', label: 'BR75 Battle Rifle' })).toBe('BR75 Battle Rifle')
   })
 
   it('replie sur la clé d’arme quand le registre n’a rien résolu (libellé absent ou vide)', () => {
-    expect(resolveWeaponLabel({ weapon_key: 'hinf_inconnue' }, 'fr')).toBe('hinf_inconnue')
-    expect(resolveWeaponLabel({ weapon_key: 'hinf_inconnue', label: '  ' }, 'fr')).toBe('hinf_inconnue')
-    // Locale EN sans `label_en` : le repli est la clé, JAMAIS le libellé français — servir
-    // l'autre langue serait un mélange silencieux.
-    expect(resolveWeaponLabel({ weapon_key: 'hinf_x', label: 'Hydra' }, 'en')).toBe('hinf_x')
+    expect(resolveWeaponLabel({ weapon_key: 'hinf_inconnue' })).toBe('hinf_inconnue')
+    expect(resolveWeaponLabel({ weapon_key: 'hinf_inconnue', label: '  ' })).toBe('hinf_inconnue')
   })
 })
 

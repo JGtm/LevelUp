@@ -2,13 +2,14 @@ package service
 
 import (
 	"context"
-	"levelup/go-api/internal/domain"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 	"time"
+
+	"levelup/go-api/internal/domain"
 )
 
 func buildMediaItems(rows []domain.MediaFileRow, currentPlayerSlug string) []domain.MediaItem {
@@ -76,40 +77,53 @@ func (s *MediaService) resolveAvailableFilters(
 	return options
 }
 
+// buildMediaFilterOptionsFromRows reconstruit les options de carte et de mode depuis les médias chargés,
+// quand le dépôt ne sait pas les calculer. Le libellé est dans la langue de la requête (celui des lignes) ;
+// la valeur est la clé indépendante de la langue que compare le filtre du dépôt, la même que celle des
+// options nominales (LoadMediaFilterOptions) : l'identifiant de la carte, la catégorie ou le libellé du mode
+// en langue par défaut. Sans clé (média sans correspondance), la valeur est le libellé.
 func buildMediaFilterOptionsFromRows(rows []domain.MediaFileRow) domain.MediaFilterOptions {
 	return domain.MediaFilterOptions{
-		Maps:  collectMediaLabelValues(rows, func(row domain.MediaFileRow) *string { return row.MapName }),
-		Modes: collectMediaLabelValues(rows, func(row domain.MediaFileRow) *string { return row.ModeName }),
+		Maps: collectMediaLabelValues(rows,
+			func(row domain.MediaFileRow) *string { return row.MapName },
+			func(row domain.MediaFileRow) *string { return row.MapID }),
+		Modes: collectMediaLabelValues(rows,
+			func(row domain.MediaFileRow) *string { return row.ModeName },
+			func(row domain.MediaFileRow) *string { return row.ModeFilterKey }),
 	}
 }
 
+// collectMediaLabelValues dédoublonne par valeur (la clé quand elle existe, sinon le libellé) et trie par
+// libellé affiché.
 func collectMediaLabelValues(
 	rows []domain.MediaFileRow,
-	selector func(domain.MediaFileRow) *string,
+	label func(domain.MediaFileRow) *string,
+	key func(domain.MediaFileRow) *string,
 ) []domain.LabelValue {
 	seen := make(map[string]struct{})
-	labels := make([]string, 0)
+	options := make([]domain.LabelValue, 0)
 	for _, row := range rows {
-		labelPtr := selector(row)
+		labelPtr := label(row)
 		if labelPtr == nil {
 			continue
 		}
-		label := strings.TrimSpace(*labelPtr)
-		if label == "" {
+		text := strings.TrimSpace(*labelPtr)
+		if text == "" {
 			continue
 		}
-		if _, exists := seen[label]; exists {
+		value := text
+		if keyPtr := key(row); keyPtr != nil {
+			if k := strings.TrimSpace(*keyPtr); k != "" {
+				value = k
+			}
+		}
+		if _, exists := seen[value]; exists {
 			continue
 		}
-		seen[label] = struct{}{}
-		labels = append(labels, label)
+		seen[value] = struct{}{}
+		options = append(options, domain.LabelValue{Label: text, Value: value})
 	}
-
-	sort.Strings(labels)
-	options := make([]domain.LabelValue, 0, len(labels))
-	for _, label := range labels {
-		options = append(options, domain.LabelValue{Label: label, Value: label})
-	}
+	sort.Slice(options, func(i, j int) bool { return options[i].Label < options[j].Label })
 	return options
 }
 

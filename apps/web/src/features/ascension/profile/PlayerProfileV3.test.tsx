@@ -66,7 +66,6 @@ const FIXTURE: PlayerProfile = {
   lusr: { Mu: 1850, Sigma: 95 },
   skill_rating: {
     tier_name: 'Onyx',
-    tier_name_fr: 'Onyx',
     sub_tier: 3,
     label: 'Onyx III',
     mu: 1850,
@@ -94,10 +93,8 @@ const FIXTURE: PlayerProfile = {
       target_tier: 'heroic',
       historical_streak: 5,
       is_arc_step: false,
-      label_fr: 'Précision 50% sur 20 parties',
-      label_en: 'Accuracy 50% over 20 matches',
-      description_fr: 'Tient la précision au-dessus de 50% pendant 20 parties consécutives.',
-      description_en: 'Hold accuracy above 50% across 20 consecutive matches.',
+      label: 'Précision 50% sur 20 parties',
+      description: 'Tient la précision au-dessus de 50% pendant 20 parties consécutives.',
     },
     {
       template_id: 'tmpl_damage_legendary',
@@ -105,10 +102,8 @@ const FIXTURE: PlayerProfile = {
       historical_streak: 2,
       is_arc_step: true,
       arc_id: 'arc_combat_apex',
-      label_fr: '3000 dégâts par partie sur 10 parties',
-      label_en: '3000 damage per match over 10 matches',
-      description_fr: 'Maintien d\'un volume de dégâts élevé.',
-      description_en: 'Sustain high damage volume.',
+      label: '3000 dégâts par partie sur 10 parties',
+      description: 'Maintien d\'un volume de dégâts élevé.',
     },
   ],
 }

@@ -13,7 +13,6 @@
 import type { CSSProperties } from 'react'
 
 import type { TacticalMapCard } from '@/lib/api/types'
-import type { Locale } from '@/lib/i18n/locale'
 import { sansAccents } from '@/lib/text/sansAccents'
 
 import { estOuvrable, nomCarte, trierCartes } from './tacticalLogic'
@@ -84,12 +83,11 @@ export function titreDeLaCarte(
   carte: CarteEffective,
   cartes: readonly TacticalMapCard[],
   connues: ReadonlyMap<string, TacticalMapCard>,
-  locale: Locale,
   generique: string,
 ): string {
   if (carte.mapId === '') return ''
   const connue = cartes.find((c) => c.map_id === carte.mapId) ?? connues.get(carte.mapId)
-  if (connue) return nomCarte(connue, locale)
+  if (connue) return nomCarte(connue)
   return carte.origine === 'hors_filtre' ? generique : ''
 }
 
@@ -104,18 +102,17 @@ export function normaliserRecherche(texte: string): string {
 }
 
 /**
- * filtrerCartes — les cartes dont le nom AFFICHÉ ou le nom CANONIQUE contient la recherche, sans
- * casse ni accents. Recherche vide : toutes.
+ * filtrerCartes — les cartes dont le nom AFFICHÉ ou le nom de tri (`map_name`, même langue, repli
+ * compris) contient la recherche, sans casse ni accents. Recherche vide : toutes.
  */
 export function filtrerCartes(
   cartes: readonly TacticalMapCard[],
   recherche: string,
-  locale: Locale,
 ): TacticalMapCard[] {
   const q = normaliserRecherche(recherche)
   if (q === '') return [...cartes]
   return cartes.filter(
-    (c) => normaliserRecherche(nomCarte(c, locale)).includes(q) || normaliserRecherche(c.map_name).includes(q),
+    (c) => normaliserRecherche(nomCarte(c)).includes(q) || normaliserRecherche(c.map_name).includes(q),
   )
 }
 
@@ -143,11 +140,10 @@ export interface ColonneDesCartes {
 export function colonneDesCartes(
   cartes: readonly TacticalMapCard[],
   recherche: string,
-  locale: Locale,
 ): ColonneDesCartes {
   const triees = trierCartes(cartes)
   const totalSousPlancher = triees.filter((c) => !estOuvrable(c)).length
-  const visibles = filtrerCartes(triees, recherche, locale)
+  const visibles = filtrerCartes(triees, recherche)
   const ouvrables = visibles.filter(estOuvrable)
   const sousPlancher = visibles.filter((c) => !estOuvrable(c))
   const rechercheActive = normaliserRecherche(recherche) !== ''

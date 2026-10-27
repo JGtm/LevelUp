@@ -1,5 +1,7 @@
 package replaydoc
 
+import "levelup/go-api/internal/i18n"
+
 // document.go — LA RACINE DU DOCUMENT SERVI et les types qu'un client dessine sans
 // contexte : trajectoires, tirs, grenades, projectiles, libelles.
 //
@@ -234,12 +236,11 @@ type NeutralDeath struct {
 	Tinted bool   `json:"tinted,omitempty"`
 }
 
-// Label est un libellé affichable dans les deux langues du produit.
+// Label est un libellé affichable dans chaque langue de `config/locales.toml`.
 type Label struct {
-	En     string `json:"en"`
-	Fr     string `json:"fr"`
-	Img    string `json:"img,omitempty"`
-	Tinted bool   `json:"tinted,omitempty"`
+	Text   i18n.Text `json:"i18n_text,omitempty" required:"true"`
+	Img    string    `json:"img,omitempty"`
+	Tinted bool      `json:"tinted,omitempty"`
 	// Family est l'identite STABLE de la chose nommee, dans le vocabulaire des familles
 	// d'equipement du titre (`wall`, `sensor`, `powerup_camo`...) — schema 51, lot 4.3. Le rang
 	// d'une capacite n'est PAS une identite (le propulseur vaut 5 en famille A et 21 en famille
@@ -250,10 +251,9 @@ type Label struct {
 
 // WeaponLabel est le libellé d'une arme, plus l'EFFET de rendu de ses tirs.
 type WeaponLabel struct {
-	En  string `json:"en"`
-	Fr  string `json:"fr"`
-	Fx  string `json:"fx,omitempty"`
-	Key string `json:"key,omitempty"`
+	Text i18n.Text `json:"i18n_text,omitempty" required:"true"`
+	Fx   string    `json:"fx,omitempty"`
+	Key  string    `json:"key,omitempty"`
 	// Role est la fonction de combat (sniper, power, special...) postée à la requête depuis
 	// le registre canonique — filtre « armes spéciales » du calque des armes au sol (lot
 	// 2026-09-10). Cf. replay.WeaponLabel.Role pour la décision complète.
@@ -268,7 +268,7 @@ type WeaponLabel struct {
 // VehicleLabel est ce qu il faut pour DESSINER une famille de chassis : sa vignette, le fait
 // qu elle se teigne, et — depuis le lot 1.9.9 — ce qu elle EST quand ce n est pas un vehicule.
 //
-// `Kind`, `En` et `Fr` sont OPTIONNELS et presque toujours vides : le nom d une famille de
+// `Kind` et `Text` sont OPTIONNELS et presque toujours vides : le nom d une famille de
 // vehicule est un nom propre du jeu, qui ne se traduit pas, et la cle de la table EST ce nom. Ils
 // ne se remplissent que pour les familles que le titre QUALIFIE dans son manifeste — la tourelle
 // automatique bannie (`kind = "map_element"`) et, depuis le 2026-09-24 (lot M6.2), la tourelle fixe
@@ -280,7 +280,6 @@ type VehicleLabel struct {
 	// vehicule. Le client s en sert pour lui reserver un pictogramme dedie plutot que le
 	// marqueur neutre des chassis non resolus.
 	Kind string `json:"kind,omitempty"`
-	// En / Fr : le libelle de la famille, vide pour un nom propre du jeu.
-	En string `json:"en,omitempty"`
-	Fr string `json:"fr,omitempty"`
+	// Text : le libelle de la famille par langue, vide pour un nom propre du jeu.
+	Text i18n.Text `json:"i18n_text,omitempty"`
 }

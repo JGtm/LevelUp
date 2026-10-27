@@ -1,7 +1,8 @@
 package halo_5
 
 // commendation_defs.go — résolution des définitions natives (nom + icône) des
-// commendations Halo 5, issues du référentiel metadata h5 (commendation_definitions,
+// commendations Halo 5, issues du référentiel metadata h5 (commendation_definitions + noms par
+// langue de asset_translations,
 // seedé par cmd/h5-metadata-fetch depuis l'API Metadata officielle /commendations).
 // AXE B prod-gate, suite « définitions natives ». Consommée par
 // enrichCommendationTotals (commendation_totals.go, totaux à vie).

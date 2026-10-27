@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
@@ -68,7 +69,7 @@ func TestBuild_InfiniteCapOff(t *testing.T) {
 		// mécaniques natives absentes (Infinite)
 	}
 	// gun=30, melee=6, grenade=4 → attribué=40 ; total=50 → unattributed=10.
-	fd := Build(heterogeneousInfiniteRows(), counts, false)
+	fd := Build(i18n.LocaleFR, heterogeneousInfiniteRows(), counts, false)
 	assertFragInvariants(t, fd)
 
 	if _, ok := findFragClass(fd, domain.FragClassSpartanAbility); ok {
@@ -116,7 +117,7 @@ func TestBuild_H5CapOn(t *testing.T) {
 	}
 	// gun=21, melee=melee+assass=14, grenade=5, spartan=5 → attribué=45 ; total=50 →
 	// unattributed=5. (assassinat ⊄ mêlée : compteurs API disjoints, cf. meleeRoles.)
-	fd := Build(rows, counts, true)
+	fd := Build(i18n.LocaleFR, rows, counts, true)
 	assertFragInvariants(t, fd)
 
 	spartan, ok := findFragClass(fd, domain.FragClassSpartanAbility)
@@ -158,7 +159,7 @@ func TestBuild_CanonicalOrder(t *testing.T) {
 		GroundPound: 5,
 		Total:       40,
 	}
-	fd := Build(rows, counts, true) // 15 gun +5+5+5 spartan =30 ; total 40 → unattr 10
+	fd := Build(i18n.LocaleFR, rows, counts, true) // 15 gun +5+5+5 spartan =30 ; total 40 → unattr 10
 	assertFragInvariants(t, fd)
 	want := []string{
 		domain.FragClassShoulder, domain.FragClassSidearm, domain.FragClassHeavy,
@@ -185,7 +186,7 @@ func TestBuild_AssassinationGreaterThanMelee(t *testing.T) {
 		Assassination: 4, // > melee : disjoint, aucun clamp
 		Total:         6, // melee 2 + assass 4 (les assassinats SONT des kills du total)
 	}
-	fd := Build(nil, counts, true)
+	fd := Build(i18n.LocaleFR, nil, counts, true)
 	assertFragInvariants(t, fd)
 	melee, ok := findFragClass(fd, domain.FragClassMelee)
 	if !ok || melee.Kills != 6 || len(melee.Roles) != 2 {
@@ -203,7 +204,7 @@ func TestBuild_AssassinationGreaterThanMelee(t *testing.T) {
 // le total.
 func TestBuild_NoResidualWhenExact(t *testing.T) {
 	rows := []port.WeaponKillRow{{WeaponID: 40, Kills: 10, Class: "shoulder", Role: "automatic"}}
-	fd := Build(rows, domain.FragKillTypeCounts{Total: 10}, false)
+	fd := Build(i18n.LocaleFR, rows, domain.FragKillTypeCounts{Total: 10}, false)
 	assertFragInvariants(t, fd)
 	if _, ok := findFragClass(fd, domain.FragClassUnattributed); ok {
 		t.Error("attribution exacte : aucune classe unattributed attendue")
@@ -230,7 +231,7 @@ func TestBuild_GrenadeSubLevelByType(t *testing.T) {
 	}
 	// total API grenade = 6 ; typé = 5 (frag 3 + plasma 2) → résidu « autre grenade » = 1.
 	counts := domain.FragKillTypeCounts{Grenade: 6, Total: 20}
-	fd := Build(rows, counts, false)
+	fd := Build(i18n.LocaleFR, rows, counts, false)
 	assertFragInvariants(t, fd)
 	g, ok := findFragClass(fd, domain.FragClassGrenade)
 	if !ok || g.Kills != 6 || !g.Authoritative {
@@ -253,7 +254,7 @@ func TestBuild_GrenadeSubLevelByType(t *testing.T) {
 // TestBuild_GrenadeLeafWhenNoTypedRows : sans row grenade typée (donnée absente), la classe
 // Grenade reste une FEUILLE (dégradation data-driven, ni Infinite ni H5 en dur).
 func TestBuild_GrenadeLeafWhenNoTypedRows(t *testing.T) {
-	fd := Build(nil, domain.FragKillTypeCounts{Grenade: 4, Total: 10}, false)
+	fd := Build(i18n.LocaleFR, nil, domain.FragKillTypeCounts{Grenade: 4, Total: 10}, false)
 	assertFragInvariants(t, fd)
 	g, ok := findFragClass(fd, domain.FragClassGrenade)
 	if !ok || g.Kills != 4 || g.Roles != nil {
@@ -268,7 +269,7 @@ func TestBuild_GrenadeLeafWhenOverAttributed(t *testing.T) {
 	rows := []port.WeaponKillRow{
 		{WeaponID: 50, Kills: 5, Class: "grenade", Role: "grenade", Family: "frag_grenade"},
 	}
-	fd := Build(rows, domain.FragKillTypeCounts{Grenade: 4, Total: 10}, false)
+	fd := Build(i18n.LocaleFR, rows, domain.FragKillTypeCounts{Grenade: 4, Total: 10}, false)
 	assertFragInvariants(t, fd)
 	g, ok := findFragClass(fd, domain.FragClassGrenade)
 	if !ok || g.Kills != 4 || g.Roles != nil {
@@ -287,7 +288,7 @@ func TestBuild_MechanicKillsExcludedFromGunClasses(t *testing.T) {
 		{WeaponID: 60, Kills: 9, Class: "shoulder", Role: "automatic", MechanicKills: 2},
 	}
 	counts := domain.FragKillTypeCounts{Melee: 3, Total: 10}
-	fd := Build(rows, counts, true)
+	fd := Build(i18n.LocaleFR, rows, counts, true)
 	assertFragInvariants(t, fd) // Σ classes == 10 (sinon le non-retrait ferait 12 > 10)
 	sh, ok := findFragClass(fd, domain.FragClassShoulder)
 	if !ok || sh.Kills != 7 {
@@ -316,13 +317,13 @@ func h5VehicleRows() []port.WeaponKillRow {
 	return []port.WeaponKillRow{
 		{WeaponID: 10, Kills: 10, Class: "shoulder", Role: "precision"},
 		{WeaponID: 4028516791, Kills: 6, Class: "vehicle", Role: "vehicle", Family: "vehicle",
-			WeaponKey: "h5_vehicle_warthog", Label: "Warthog"},
+			WeaponKey: "h5_vehicle_warthog", Label: i18n.Text{i18n.LocaleFR: "Warthog"}},
 		{WeaponID: 3010146366, Kills: 4, Class: "vehicle", Role: "vehicle", Family: "vehicle",
-			WeaponKey: "h5_vehicle_ghost", Label: "Ghost"},
+			WeaponKey: "h5_vehicle_ghost", Label: i18n.Text{i18n.LocaleFR: "Ghost"}},
 		{WeaponID: 419783896, Kills: 4, Class: "vehicle", Role: "vehicle", Family: "vehicle",
-			WeaponKey: "h5_vehicle_banshee", Label: "Banshee"},
+			WeaponKey: "h5_vehicle_banshee", Label: i18n.Text{i18n.LocaleFR: "Banshee"}},
 		{WeaponID: 4233134183, Kills: 3, Class: "turret", Role: "turret", Family: "turret",
-			WeaponKey: "h5_turret_gauss", Label: "Tourelle Gauss"},
+			WeaponKey: "h5_turret_gauss", Label: i18n.Text{i18n.LocaleFR: "Tourelle Gauss"}},
 	}
 }
 
@@ -332,7 +333,7 @@ func h5VehicleRows() []port.WeaponKillRow {
 func TestBuild_H5VehiclesVentilatedPerVehicle(t *testing.T) {
 	// gun=10, vehicle=14, turret=3, melee=2, grenade=1 → 30 = total (résidu nul).
 	counts := domain.FragKillTypeCounts{Melee: 2, Grenade: 1, Total: 30}
-	fd := Build(h5VehicleRows(), counts, true)
+	fd := Build(i18n.LocaleFR, h5VehicleRows(), counts, true)
 	assertFragInvariants(t, fd)
 
 	veh, ok := findFragClass(fd, domain.FragClassVehicle)
@@ -388,7 +389,7 @@ func TestBuild_H5VehiclesVentilatedPerVehicle(t *testing.T) {
 // aucune row de cette classe, donc aucun arc. Sortie byte-identique à l'avant-3.2.
 func TestBuild_TitleWithoutVehicles_NoVehicleClass(t *testing.T) {
 	counts := domain.FragKillTypeCounts{Melee: 6, Grenade: 4, Total: 50}
-	fd := Build(heterogeneousInfiniteRows(), counts, false)
+	fd := Build(i18n.LocaleFR, heterogeneousInfiniteRows(), counts, false)
 	assertFragInvariants(t, fd)
 	for _, class := range []string{domain.FragClassVehicle, domain.FragClassTurret} {
 		if c, ok := findFragClass(fd, class); ok {
@@ -407,10 +408,10 @@ func TestBuild_TitleWithoutVehicles_NoVehicleClass(t *testing.T) {
 func TestBuild_VehicleWithoutWeaponKey_StaysLeaf(t *testing.T) {
 	rows := []port.WeaponKillRow{
 		{WeaponID: 4028516791, Kills: 5, Class: "vehicle", Role: "vehicle",
-			WeaponKey: "h5_vehicle_warthog", Label: "Warthog"},
+			WeaponKey: "h5_vehicle_warthog", Label: i18n.Text{i18n.LocaleFR: "Warthog"}},
 		{WeaponID: 999999, Kills: 2, Class: "vehicle", Role: "vehicle"}, // hors registre
 	}
-	fd := Build(rows, domain.FragKillTypeCounts{Total: 10}, true)
+	fd := Build(i18n.LocaleFR, rows, domain.FragKillTypeCounts{Total: 10}, true)
 	assertFragInvariants(t, fd)
 	veh, ok := findFragClass(fd, domain.FragClassVehicle)
 	if !ok || veh.Kills != 7 {
@@ -422,39 +423,45 @@ func TestBuild_VehicleWithoutWeaponKey_StaysLeaf(t *testing.T) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// V2.1 (D2+D3, 2026-08-29) — LabelEN posé sur le chemin REGISTRE (véhicule/tourelle)
+// Libellé d'engin dans la langue de la requête (registre véhicule/tourelle)
 // ─────────────────────────────────────────────────────────────────────────────
 
-// TestBuild_VehicleLabelENPropagates verrouille le chemin REGISTRE : LabelEN suit
-// EXACTEMENT le même trajet que Label (WeaponKillRow.LabelEN -> registryAcc.labelsEN ->
-// perWeaponRoles -> FragRoleEntry.LabelEN), sans jamais se substituer à Label ni
-// dépendre de lui — un engin peut porter les deux, l'un des deux, ou aucun.
-func TestBuild_VehicleLabelENPropagates(t *testing.T) {
+// TestBuild_VehicleLabelFollowsLocale verrouille le chemin REGISTRE : le libellé d'un engin est
+// celui de la langue de la requête, avec repli sur `en` (ADR 0040 D-4) ; une langue inconnue de
+// la liste retombe sur le défaut avant d'arriver ici, et une langue sans texte se replie sur `en`.
+func TestBuild_VehicleLabelFollowsLocale(t *testing.T) {
 	rows := []port.WeaponKillRow{
 		{WeaponID: 4028516791, Kills: 6, Class: "vehicle", Role: "vehicle",
-			WeaponKey: "h5_vehicle_warthog", Label: "Warthog", LabelEN: "Warthog"},
-		// EN seedé mais pas FR (weapon_names.toml partiellement traduit) : Label reste
-		// vide, LabelEN NE retombe PAS dessus — c'est le web (fragRoleLabel.ts), pas Go,
-		// qui fait le repli croisé entre les deux locales.
+			WeaponKey: "h5_vehicle_warthog",
+			Label:     i18n.Text{i18n.LocaleFR: "Phacochère", i18n.LocaleEN: "Warthog"}},
+		// EN seedé mais pas FR (weapon_names.toml partiellement traduit) : le français se replie
+		// sur l'anglais, jamais sur une autre langue.
 		{WeaponID: 3010146366, Kills: 4, Class: "vehicle", Role: "vehicle",
-			WeaponKey: "h5_vehicle_ghost", Label: "", LabelEN: "Ghost"},
+			WeaponKey: "h5_vehicle_ghost", Label: i18n.Text{i18n.LocaleFR: "", i18n.LocaleEN: "Ghost"}},
 	}
-	fd := Build(rows, domain.FragKillTypeCounts{Total: 10}, true)
-	assertFragInvariants(t, fd)
-	veh, ok := findFragClass(fd, domain.FragClassVehicle)
-	if !ok || len(veh.Roles) != 2 {
-		t.Fatalf("classe vehicle = %+v, want 2 rôles", veh)
-	}
-	byRole := map[string]domain.FragRoleEntry{}
-	for _, r := range veh.Roles {
-		byRole[r.Role] = r
-	}
-	warthog, ok := byRole["h5_vehicle_warthog"]
-	if !ok || warthog.Label != "Warthog" || warthog.LabelEN != "Warthog" {
-		t.Errorf("warthog = %+v, want Label=LabelEN=Warthog", warthog)
-	}
-	ghost, ok := byRole["h5_vehicle_ghost"]
-	if !ok || ghost.Label != "" || ghost.LabelEN != "Ghost" {
-		t.Errorf("ghost = %+v, want Label vide / LabelEN=Ghost (pas de repli côté Go)", ghost)
+	for _, c := range []struct {
+		loc            i18n.Locale
+		warthog, ghost string
+	}{
+		{i18n.LocaleFR, "Phacochère", "Ghost"},
+		{i18n.LocaleEN, "Warthog", "Ghost"},
+		{i18n.Locale("zz"), "Warthog", "Ghost"},
+	} {
+		fd := Build(c.loc, rows, domain.FragKillTypeCounts{Total: 10}, true)
+		assertFragInvariants(t, fd)
+		veh, ok := findFragClass(fd, domain.FragClassVehicle)
+		if !ok || len(veh.Roles) != 2 {
+			t.Fatalf("[%s] classe vehicle = %+v, want 2 rôles", c.loc, veh)
+		}
+		byRole := map[string]domain.FragRoleEntry{}
+		for _, r := range veh.Roles {
+			byRole[r.Role] = r
+		}
+		if got := byRole["h5_vehicle_warthog"].Label; got != c.warthog {
+			t.Errorf("[%s] warthog = %q, want %q", c.loc, got, c.warthog)
+		}
+		if got := byRole["h5_vehicle_ghost"].Label; got != c.ghost {
+			t.Errorf("[%s] ghost = %q, want %q", c.loc, got, c.ghost)
+		}
 	}
 }

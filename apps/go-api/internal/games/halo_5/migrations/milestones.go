@@ -9,12 +9,15 @@ package migrations
 // h5 n'a pas de table milestone_catalog → la couche Progression V2 (milestones) ne
 // peut rien servir pour Halo 5 (milestone_catalog_count=0, aucun milestone gagné).
 //
-// Le schéma répliqué DOIT rester aligné sur le SELECT du lecteur unique
-// (duckdb.MilestoneCatalogRepo / milestoneCatalogSelectColumns), colonnes
-// condition_fr / condition_en comprises — une divergence se paie en Binder Error
-// à la lecture, donc en 500 sur GET /milestones et en grille Réalisations vide.
+// Le schéma créé ici est celui d'HINF d'avant le passage des textes aux tables par langue : il
+// porte encore les colonnes appariées title_en / title_fr / condition_fr / condition_en, que
+// metadata_definition_texts_to_translations_v1 copie dans asset_translations (type `milestone`)
+// puis retire. Le lecteur unique (duckdb.MilestoneCatalogRepo) ne lit plus ces colonnes.
 //
-// Le seed lit config/titles/halo_5/milestones/catalog.toml (créé en C5). Comme
+// Le seed lit config/titles/halo_5/milestones/catalog.toml (créé en C5) et vient APRÈS
+// metadata_definition_texts_to_translations_v1 dans l'ordre du set : il écrit titre et condition
+// lisible par langue dans asset_translations (table créée par h5_add_asset_translations), sur une
+// table de jalons sans colonnes appariées. Comme
 // MetadataSteps() est statique (pas de repoRoot), le chemin racine est injecté via
 // SetMilestonesSeedRoot au boot (cmd/server) et par les CLI qui provisionnent la
 // metadata h5. Root vide → le schéma est créé mais le seed no-op (catalogue vide,
@@ -22,9 +25,10 @@ package migrations
 
 import (
 	"database/sql"
+	"fmt"
+	"log/slog"
 	"path/filepath"
 	"sync"
-	"time"
 
 	halo5 "levelup/go-api/internal/games/halo_5"
 	"levelup/go-api/internal/migration"
@@ -55,17 +59,15 @@ func milestonesSeedRootValue() string {
 }
 
 // milestoneCatalogSchemaStep crée la table milestone_catalog (référentiel des
-// milestones). Schéma IDENTIQUE à HINF (create_milestone_catalog_metadata),
-// colonnes localisées condition_fr / condition_en COMPRISES : le lecteur unique
-// (duckdb.MilestoneCatalogRepo, milestoneCatalogSelectColumns) les SELECTionne
-// toujours — sans elles, /milestones répond 500 (Binder Error) sur halo_5 et la
-// grille Réalisations disparaît. Pas d'index secondaire (title_slug/metric mutés
-// par Upsert → un index ART FATAL-invaliderait metadata.duckdb).
+// milestones). Schéma historique IDENTIQUE à HINF (create_milestone_catalog_metadata), colonnes
+// appariées comprises : metadata_definition_texts_to_translations_v1, dernier step du set, les
+// copie dans asset_translations puis les retire. Pas d'index secondaire (title_slug/metric
+// mutés par Upsert → un index ART FATAL-invaliderait metadata.duckdb).
 func milestoneCatalogSchemaStep() migration.Migration {
 	return migration.Migration{
 		Name:        "h5_create_milestone_catalog",
 		TargetDB:    migration.TargetMetadata,
-		Description: "Halo 5 — table milestone_catalog (référentiel milestones, forme HINF colonnes condition_fr/condition_en comprises ; seedée depuis config/titles/halo_5/milestones/catalog.toml).",
+		Description: "Halo 5 — table milestone_catalog (référentiel milestones, forme HINF ; textes migrés ensuite vers asset_translations ; seedée depuis config/titles/halo_5/milestones/catalog.toml).",
 		ApplySchema: func(db *sql.DB) error {
 			return migration.ExecScript(db, `
 				CREATE TABLE IF NOT EXISTS milestone_catalog (
@@ -86,20 +88,19 @@ func milestoneCatalogSchemaStep() migration.Migration {
 	}
 }
 
-// milestoneCatalogConditionLocalesStep répare les metadata.duckdb h5 DÉJÀ
-// provisionnées : `CREATE TABLE IF NOT EXISTS` n'ajoute jamais de colonne à une
-// table existante, et un step déjà tracé dans schema_migrations n'est jamais
-// rejoué → corriger le CREATE ci-dessus ne suffit PAS pour démo/prod. Step
-// SÉPARÉ (nouveau nom = appliqué au prochain boot) et 100 % idempotent
-// (AddColumnIfMissing), même motif que h5_weapon_labels_add_icon /
-// h5_commendation_definitions_add_tier_targets.
+// milestoneCatalogConditionLocalesStep ajoute condition_fr / condition_en aux metadata.duckdb h5
+// DÉJÀ provisionnées sans elles : `CREATE TABLE IF NOT EXISTS` n'ajoute jamais de colonne à une
+// table existante, et un step déjà tracé dans schema_migrations n'est jamais rejoué. Step SÉPARÉ
+// (nouveau nom = appliqué au prochain boot) et 100 % idempotent (AddColumnIfMissing), même motif
+// que h5_weapon_labels_add_icon / h5_commendation_definitions_add_tier_targets. Historique : le
+// step de textes (metadata_definition_texts_to_translations_v1) retire ces colonnes ensuite.
 func milestoneCatalogConditionLocalesStep() migration.Migration {
 	return migration.Migration{
 		Name:     "h5_milestone_catalog_add_condition_locales",
 		TargetDB: migration.TargetMetadata,
 		Description: "Halo 5 — milestone_catalog : colonnes condition_fr/condition_en " +
-			"(ALTER idempotent pour les DB déjà provisionnées sans elles ; sans quoi " +
-			"MilestoneCatalogRepo.ListByTitle échoue en Binder Error → /milestones 500).",
+			"(ALTER idempotent pour les DB déjà provisionnées sans elles ; historique, retirées " +
+			"ensuite par metadata_definition_texts_to_translations_v1).",
 		ApplySchema: func(db *sql.DB) error {
 			if err := migration.AddColumnIfMissing(db, "milestone_catalog", "condition_fr", "VARCHAR"); err != nil {
 				return err
@@ -110,8 +111,9 @@ func milestoneCatalogConditionLocalesStep() migration.Migration {
 }
 
 // milestoneCatalogSeedStep seede le catalogue h5 depuis le TOML. ApplyBackfill
-// (idempotent, UPSERT sur la PK id) : no-op si la racine n'est pas injectée ou si
-// le TOML est absent. Découplé du schéma (ordre canonique : schéma avant seed).
+// (idempotent, SELECT-puis-UPDATE-ou-INSERT sur la clé id) : no-op si la racine n'est pas
+// injectée ou si le TOML est absent. Placé APRÈS le step de textes dans l'ordre du set : la table
+// n'a plus de colonnes appariées et les textes vont dans asset_translations.
 func milestoneCatalogSeedStep() migration.Migration {
 	return migration.Migration{
 		Name:        "h5_seed_milestone_catalog",
@@ -128,46 +130,27 @@ func milestoneCatalogSeedStep() migration.Migration {
 			if err != nil {
 				// TOML absent/illisible → no-op gracieux (la metadata reste valide,
 				// milestones simplement non peuplés). On NE casse PAS la migration.
+				slog.WarnContext(migration.BootCtx(), "migration h5: catalogue de jalons illisible, seed ignoré",
+					"path", path, "err", err)
 				return nil
 			}
-			now := time.Now().UTC()
-			for _, e := range catalogEntries {
-				if _, err := db.ExecContext(migration.BootCtx(), `
-					INSERT INTO milestone_catalog (
-						id, title_slug, metric, threshold, title_en, title_fr,
-						icon, condition, condition_fr, condition_en, updated_at
-					) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-					ON CONFLICT (id) DO UPDATE SET
-						title_slug   = excluded.title_slug,
-						metric       = excluded.metric,
-						threshold    = excluded.threshold,
-						title_en     = excluded.title_en,
-						title_fr     = excluded.title_fr,
-						icon         = excluded.icon,
-						condition    = excluded.condition,
-						condition_fr = excluded.condition_fr,
-						condition_en = excluded.condition_en,
-						updated_at   = excluded.updated_at`,
-					e.ID, e.TitleSlug, e.Metric, e.Threshold,
-					e.TitleEN, e.TitleFR,
-					nullableSeedString(e.Icon),
-					nullableSeedString(e.Condition),
-					nullableSeedString(e.ConditionFR),
-					nullableSeedString(e.ConditionEN),
-					now,
-				); err != nil {
-					return err
-				}
-			}
-			return nil
+			return seedMilestoneEntries(db, catalogEntries)
 		},
 	}
 }
 
-// nullableSeedString stocke NULL plutôt que ” pour icon/condition (cohérent HINF).
-func nullableSeedString(s string) any {
-	if s == "" {
-		return nil
+// seedMilestoneEntries écrit les jalons (ligne + traductions) dans une seule transaction.
+func seedMilestoneEntries(db *sql.DB, entries []milestones.CatalogEntry) error {
+	ctx := migration.BootCtx()
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("seed milestones h5: begin tx: %w", err)
 	}
-	return s
+	defer tx.Rollback() //nolint:errcheck // sans effet après Commit
+	for _, e := range entries {
+		if err := migration.UpsertMilestoneCatalogEntry(ctx, tx, e); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }

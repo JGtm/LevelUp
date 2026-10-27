@@ -1,6 +1,6 @@
 // handlers_extra_test.go — tests HTTP supplémentaires (package handlers_test).
 //
-// Couvre : CareerHandler (GetTopMatches, GetEncounters),
+// Couvre : CareerHandler (GetEncounters),
 // MatchHistoryHandler (Export OK/NotFound/Invalid/Error),
 // ExplorerHandler (QueryMatches OK/NotFound/Error/BadBody),
 // PlayersHandler (OK/Error).
@@ -25,54 +25,6 @@ import (
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service"
 )
-
-// ---------------------------------------------------------------------------
-// CareerHandler — GetTopMatches
-// ---------------------------------------------------------------------------
-
-func TestCareerHandler_GetTopMatches_OK(t *testing.T) {
-	mock := &mockCareerService{topMatches: domain.CareerTopMatchesResponse{}}
-	factory := func(_ context.Context, slug string) (port.CareerService, error) {
-		if slug != testPlayerSlug {
-			return nil, errors.New("not_found")
-		}
-		return mock, nil
-	}
-	r := newTestRouter(factory)
-	req := httptest.NewRequest(http.MethodGet, "/players/test-player/pages/career/top-matches", nil)
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-	if w.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
-	}
-}
-
-func TestCareerHandler_GetTopMatches_PlayerNotFound(t *testing.T) {
-	factory := func(_ context.Context, _ string) (port.CareerService, error) {
-		return nil, errors.New("not_found")
-	}
-	r := newTestRouter(factory)
-	req := httptest.NewRequest(http.MethodGet, "/players/unknown/pages/career/top-matches", nil)
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-	if w.Code != http.StatusNotFound {
-		t.Fatalf("expected 404, got %d", w.Code)
-	}
-}
-
-func TestCareerHandler_GetTopMatches_ServiceError(t *testing.T) {
-	mock := &mockCareerService{topErr: errors.New("boom")}
-	factory := func(_ context.Context, _ string) (port.CareerService, error) {
-		return mock, nil
-	}
-	r := newTestRouter(factory)
-	req := httptest.NewRequest(http.MethodGet, "/players/test-player/pages/career/top-matches", nil)
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-	if w.Code != http.StatusInternalServerError {
-		t.Fatalf("expected 500, got %d", w.Code)
-	}
-}
 
 // ---------------------------------------------------------------------------
 // CareerHandler — GetEncounters

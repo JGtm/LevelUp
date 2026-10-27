@@ -102,7 +102,7 @@ func BuildSpartanRankCatalog() *mappings.RankCatalog {
 		}
 		entries = append(entries, mappings.RankEntry{
 			ID:         n,
-			Title:      map[string]string{mappings.LocaleEN: label, mappings.LocaleFR: label},
+			Title:      mappings.SameInEveryLocale(label),
 			Subtitle:   map[string]string{},
 			Tier:       map[string]string{},
 			XPRequired: xpRequired,

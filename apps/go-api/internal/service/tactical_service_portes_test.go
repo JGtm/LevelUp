@@ -13,6 +13,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/i18n"
 )
 
 // ─── LES PORTES ────────────────────────────────────────────────────────────────
@@ -74,8 +75,8 @@ func TestTacticalService_PositionsNatives_RasterServi(t *testing.T) {
 // pose ICI (regle produit), pas dans la requete SQL.
 func TestTacticalService_MapsPlayed_Plancher(t *testing.T) {
 	repo := &mockTacticalRepo{maps: []domain.TacticalMapRow{
-		{MapID: "a", MapName: "Aquarius", Matchs: domain.PlancherMatchsParCarte, Victoires: 6, Defaites: 4},
-		{MapID: "b", MapName: "Bazaar", Matchs: domain.PlancherMatchsParCarte - 1, Victoires: 5, Defaites: 4},
+		{MapID: "a", MapName: i18n.FromColumns("Aquarius", ""), Matchs: domain.PlancherMatchsParCarte, Victoires: 6, Defaites: 4},
+		{MapID: "b", MapName: i18n.FromColumns("Bazaar", ""), Matchs: domain.PlancherMatchsParCarte - 1, Victoires: 5, Defaites: 4},
 	}}
 	svc := NewTacticalService(repo, capsCompletes(), tsMoi)
 

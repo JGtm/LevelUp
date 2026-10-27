@@ -7,6 +7,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/mappings"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/legacymatch"
 )
 
@@ -19,9 +20,9 @@ func makeHomeMatch(matchID string, outcome int, ratio, accuracy *float64, isWith
 	return legacymatch.HomeMatchRow{
 		MatchID:       matchID,
 		StartTime:     t,
-		MapName:       "Recharge",
-		PairName:      "Slayer",
-		PlaylistName:  "Ranked",
+		MapName:       i18n.FromColumns("Recharge", ""),
+		PairName:      i18n.FromColumns("Slayer", ""),
+		PlaylistName:  i18n.FromColumns("Ranked", ""),
 		Outcome:       outcome,
 		IsWithFriends: isWithFriends,
 		Ratio:         ratio,
@@ -33,8 +34,8 @@ func homeMatchAt(matchID string, outcome int, ratio *float64, t time.Time) legac
 	return legacymatch.HomeMatchRow{
 		MatchID:   matchID,
 		StartTime: t,
-		MapName:   "Bazaar",
-		PairName:  "Slayer",
+		MapName:   i18n.FromColumns("Bazaar", ""),
+		PairName:  i18n.FromColumns("Slayer", ""),
 		Outcome:   outcome,
 		Ratio:     ratio,
 	}

@@ -1,0 +1,44 @@
+# Rangs de compétence (CSR / LUSR) : noms des paliers et des chaînes de classement. L'identifiant
+# canonique d'un palier est son nom anglais de l'API Halo (Bronze, Silver...), clé des filtres et des
+# écritures ; ces messages en sont l'affichage.
+
+[skill.tier.bronze]
+fr = "Bronze"
+en = "Bronze"
+
+[skill.tier.silver]
+fr = "Argent"
+en = "Silver"
+
+[skill.tier.gold]
+fr = "Or"
+en = "Gold"
+
+[skill.tier.platinum]
+fr = "Platine"
+en = "Platinum"
+
+[skill.tier.diamond]
+fr = "Diamant"
+en = "Diamond"
+
+[skill.tier.onyx]
+fr = "Onyx"
+en = "Onyx"
+
+# Chaînes de classement LUSR (famille de playlists notées ensemble).
+[skill.chain.arena_slayer]
+fr = "Social · Slayer"
+en = "Social · Slayer"
+
+[skill.chain.arena_objectif]
+fr = "Social · Objectif"
+en = "Social · Objective"
+
+[skill.chain.btb]
+fr = "Grande Équipe"
+en = "Big Team Battle"
+
+[skill.chain.chaos]
+fr = "Chaos"
+en = "Chaos"

@@ -32,6 +32,7 @@ import (
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
@@ -212,19 +213,15 @@ func mapLabelOrFallback(resolved map[string]string, key, locale string) string {
 	return fallbackMapLabel(key, locale)
 }
 
-// fallbackMapLabel construit le repli localisé pour une carte non résolue :
-// « Carte inconnue (xxxxxxxx) » / « Unknown map (xxxxxxxx) », l'id tronqué aux
-// 8 premiers caractères (jamais le GUID complet). Exception assumée à la règle
-// « pas de libellé FR/EN en dur » : ce repli est un état de dégradation (asset
-// absent du référentiel), pas un libellé de titre — le back doit garantir un
-// label non vide (contrat A1), et le front affiche le label tel quel.
+// fallbackMapLabel construit le repli localisé pour une carte non résolue (catalogue des
+// messages, patterns.toml) : « Carte inconnue (xxxxxxxx) » / « Unknown map (xxxxxxxx) », l'id tronqué
+// aux 8 premiers caractères (jamais le GUID complet). Ce repli est un état de dégradation (asset
+// absent du référentiel), pas un libellé de titre — le back doit garantir un label non vide
+// (contrat A1), et le front affiche le label tel quel.
 func fallbackMapLabel(id, locale string) string {
 	short := id
 	if len(short) > 8 {
 		short = short[:8]
 	}
-	if strings.HasPrefix(strings.ToLower(locale), "en") {
-		return "Unknown map (" + short + ")"
-	}
-	return "Carte inconnue (" + short + ")"
+	return i18n.Msg(i18n.Parse(locale), "patterns.unknown_map", i18n.Params{"id": short})
 }

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
 // haloInfiniteRegulation : extrait de la table réelle (regulation.toml).
@@ -92,16 +93,16 @@ func overtimeRows() []domain.MatchHistoryRawRow {
 	pair := slayerMode
 	return []domain.MatchHistoryRawRow{
 		{ // prolongation sur variante connue
-			MatchID: "ot", StartTime: &now, MapName: &mapName, PairName: &pair, Outcome: 2,
-			GameVariantName: strPtr("Team Slayer:Arena"), ElapsedSeconds: intPtr(763),
+			MatchID: "ot", StartTime: &now, MapName: i18n.FromColumns(mapName, ""), PairName: i18n.FromColumns(pair, ""), Outcome: 2,
+			GameVariantName: i18n.FromColumns("Team Slayer:Arena", ""), ElapsedSeconds: intPtr(763),
 		},
 		{ // dans le temps
-			MatchID: "reg", StartTime: &now, MapName: &mapName, PairName: &pair, Outcome: 3,
-			GameVariantName: strPtr("Team Slayer:Arena"), ElapsedSeconds: intPtr(721),
+			MatchID: "reg", StartTime: &now, MapName: i18n.FromColumns(mapName, ""), PairName: i18n.FromColumns(pair, ""), Outcome: 3,
+			GameVariantName: i18n.FromColumns("Team Slayer:Arena", ""), ElapsedSeconds: intPtr(721),
 		},
 		{ // variante inconnue, très longue → jamais flaguée
-			MatchID: "unknown", StartTime: &now, MapName: &mapName, PairName: &pair, Outcome: 2,
-			GameVariantName: strPtr("BTB:Total Control"), ElapsedSeconds: intPtr(1200),
+			MatchID: "unknown", StartTime: &now, MapName: i18n.FromColumns(mapName, ""), PairName: i18n.FromColumns(pair, ""), Outcome: 2,
+			GameVariantName: i18n.FromColumns("BTB:Total Control", ""), ElapsedSeconds: intPtr(1200),
 		},
 	}
 }

@@ -5,6 +5,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/legacymatch"
 )
 
@@ -12,13 +13,17 @@ import (
 func groupesDeTest() domain.GroupesDeCartes {
 	return domain.NewGroupesDeCartes(map[string]string{
 		"var-heavies": "base-a", "base-b": "base-a",
-	}).AvecLibelles(map[string]map[string]string{
+	}).AvecLibelles(map[string]i18n.Text{
 		"base-a": {"fr": "Tonnerre", "en": "Thunderhead"},
 	})
 }
 
 func rowCarteGroupe(id string, nom *string, outcome int) domain.MatchHistoryRawRow {
-	return domain.MatchHistoryRawRow{MapID: &id, MapName: nom, Outcome: outcome}
+	var names i18n.Text
+	if nom != nil {
+		names = i18n.FromColumns(*nom, "")
+	}
+	return domain.MatchHistoryRawRow{MapID: &id, MapName: names, Outcome: outcome}
 }
 
 // Une variante et sa base donnent UN taux ; une ligne sans nom au registre est comptée par son
@@ -55,7 +60,7 @@ func TestEnrichRow_TauxDuGroupe(t *testing.T) {
 	rates := computeMapWinRates(rows, groups)
 	fmts := rowFormatters{mapGroups: groups}
 	for _, r := range rows {
-		got := enrichRow(r, rates, fmts)
+		got := enrichRow(r, rates, fmts, i18n.Default)
 		if got.WinRateHist == nil || *got.WinRateHist != 50 || got.WinRateHistTotal == nil || *got.WinRateHistTotal != 2 {
 			t.Errorf("ligne %s : taux = %v sur %v, attendu 50 %% sur 2", *r.MapID, got.WinRateHist, got.WinRateHistTotal)
 		}
@@ -68,20 +73,20 @@ func TestBuildBriefingDimensions_CarteRegroupee(t *testing.T) {
 	var scope []domain.MatchHistoryRawRow
 	for i := 0; i < 6; i++ {
 		r := rowCarteGroupe("base-a", s("Thunderhead"), domain.OutcomeWin)
-		r.MapNameFR = s("Tonnerre")
+		r.MapName[i18n.LocaleFR] = "Tonnerre"
 		scope = append(scope, r)
 	}
 	for i := 0; i < 6; i++ {
 		r := rowCarteGroupe("var-heavies", s("Thunderhead Heavies"), domain.OutcomeLoss)
-		r.MapNameFR = s("Du lourd sur Thunderhead")
+		r.MapName[i18n.LocaleFR] = "Du lourd sur Thunderhead"
 		scope = append(scope, r)
 	}
 	for i := 0; i < 12; i++ {
 		r := rowCarteGroupe("seule", s("La Fosse"), domain.OutcomeLoss)
-		r.MapNameFR = s("La Fosse")
+		r.MapName[i18n.LocaleFR] = "La Fosse"
 		scope = append(scope, r)
 	}
-	dims := buildBriefingDimensions(scope, scope, groupesDeTest())
+	dims := buildBriefingDimensions(scope, scope, groupesDeTest(), i18n.Default)
 	for _, d := range dims {
 		if d.Dimension != "map" {
 			continue
@@ -124,7 +129,7 @@ func TestBuildBreakdownsFromCanonical_UneEntreePourBaseEtVariante(t *testing.T) 
 		rowSynthese("base-b", "Thunderhead", "Tonnerre", canonical.OutcomeWin),
 		rowSynthese("seule", "The Pit", "La Fosse", canonical.OutcomeWin),
 	}
-	got := buildBreakdownsFromCanonical(rows, groupesDeTest())
+	got := buildBreakdownsFromCanonical(rows, groupesDeTest(), i18n.Default)
 	if len(got.TopMaps) != 2 {
 		t.Fatalf("entrées de carte = %d, attendu 2 : %+v", len(got.TopMaps), got.TopMaps)
 	}
@@ -143,13 +148,13 @@ func TestBuildBreakdownsFromCanonical_UneEntreePourBaseEtVariante(t *testing.T) 
 		}
 	}
 	// Sans groupe : le comportement d'avant, une entrée par libellé.
-	if avant := buildBreakdownsFromCanonical(rows, domain.GroupesDeCartes{}); len(avant.TopMaps) != 3 {
+	if avant := buildBreakdownsFromCanonical(rows, domain.GroupesDeCartes{}, i18n.Default); len(avant.TopMaps) != 3 {
 		t.Errorf("sans groupe : %d entrées, attendu 3", len(avant.TopMaps))
 	}
 }
 
 func statRow(id, nom, fr string, outcome int) legacymatch.StatsMatchRow {
-	return legacymatch.StatsMatchRow{MatchID: id + nom, MapID: id, MapName: nom, MapNameFR: fr, Outcome: &outcome}
+	return legacymatch.StatsMatchRow{MatchID: id + nom, MapID: id, MapName: i18n.FromColumns(nom, fr), Outcome: &outcome}
 }
 
 // Séries temporelles : le découpage par carte compte base + variante comme UNE carte, au libellé de la
@@ -162,7 +167,7 @@ func TestBuildSoloMapBreakdown_CartesRegroupees(t *testing.T) {
 		statRow("var-heavies", "Thunderhead Heavies", "Du lourd sur Thunderhead", loss),
 		statRow("seule", "The Pit", "La Fosse", win),
 	}
-	got := buildSoloMapBreakdown(current, current, groups)
+	got := buildSoloMapBreakdown(current, current, groups, i18n.Default)
 	if len(got) != 2 {
 		t.Fatalf("cartes = %d, attendu 2 : %+v", len(got), got)
 	}

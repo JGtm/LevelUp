@@ -16,6 +16,7 @@ import (
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
 // qDistinctCSRSeasons : season_id distincts présents dans les snapshots du joueur.
@@ -83,7 +84,7 @@ func (r *CareerRepo) AvailableCSRSeasons(ctx context.Context) ([]domain.CSRSeaso
 	for sid := range seen {
 		out = append(out, domain.CSRSeasonOption{
 			SeasonID:  sid,
-			Label:     SeasonSelectorLabel(locale, sid, names, csrSeasonLabel(sid)),
+			Label:     SeasonSelectorLabel(locale, sid, names, csrSeasonLabel(locale, sid)),
 			IsCurrent: sid == r.currentCSRSID,
 		})
 	}
@@ -164,11 +165,12 @@ func sortCSRSeasonsDesc(opts []domain.CSRSeasonOption) {
 	})
 }
 
-// csrSeasonLabel dérive un libellé court depuis le season_id.
-// "CsrSeason13-1" → "Saison 13" ; fallback : le season_id brut.
-func csrSeasonLabel(seasonID string) string {
+// csrSeasonLabel dérive un libellé court depuis le season_id, dans la langue demandée (catalogue des
+// messages, common.season.label) : "CsrSeason13-1" → "Saison 13" (fr) / "Season 13" (en) ; fallback : le
+// season_id brut.
+func csrSeasonLabel(locale, seasonID string) string {
 	if major, _ := parseCSRSeasonNumber(seasonID); major > 0 {
-		return fmt.Sprintf("Saison %d", major)
+		return i18n.Msg(i18n.Parse(locale), "common.season.label", i18n.Params{"n": major})
 	}
 	return seasonID
 }

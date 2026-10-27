@@ -31,4 +31,5 @@ export {
   calendarChartText,
 } from './calendar'
 export { intlLocale } from './intlLocale'
+export { languageName } from './languageName'
 export { verificationLinkLabel } from './url'

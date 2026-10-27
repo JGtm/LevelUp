@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/i18n"
 )
 
 // entreeZonesTest : une entrée Forge minimale, une zone nommée.
@@ -14,7 +15,7 @@ func entreeZonesTest(en string) replay.MapCalloutsEntry {
 	return replay.MapCalloutsEntry{
 		Provenance: replay.CalloutsProvenanceMvar,
 		Zones: []replay.CalloutZone{{
-			VolumeIndex: 7, EN: en, FR: en, X: 1, Y: 2, Z: 3, ZBottom: 0, ZTop: 6,
+			VolumeIndex: 7, Text: i18n.Text{i18n.LocaleEN: en, i18n.LocaleFR: en}, X: 1, Y: 2, Z: 3, ZBottom: 0, ZTop: 6,
 			Polygon: [][2]float64{{0, 0}, {4, 0}, {4, 4}},
 		}},
 	}
@@ -32,7 +33,7 @@ func TestAddCalloutsOverlayEntryCreeLeCatalogueGenere(t *testing.T) {
 		t.Fatalf("relecture par le lecteur du catalogue versionné : %v", err)
 	}
 	e, err := cat.LookupByID("aaa")
-	if err != nil || e.Zones[0].EN != "Cave" || cat.TitleSlug != "halo_infinite" {
+	if err != nil || e.Zones[0].Text[i18n.LocaleEN] != "Cave" || cat.TitleSlug != "halo_infinite" {
 		t.Fatalf("catalogue généré relu : %+v / %v", cat, err)
 	}
 	if len(cat.Maps) != 0 {
@@ -57,7 +58,7 @@ func TestAddCalloutsOverlayEntryEstEnAjoutSeul(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(cat.MapsByID) != 2 || cat.MapsByID["aaa"].Zones[0].EN != "Cave aaa" {
+	if len(cat.MapsByID) != 2 || cat.MapsByID["aaa"].Zones[0].Text[i18n.LocaleEN] != "Cave aaa" {
 		t.Fatalf("catalogue généré après refus : %+v", cat.MapsByID)
 	}
 }

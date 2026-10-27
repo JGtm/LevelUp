@@ -75,7 +75,7 @@ const RASTER_NOMINAL: TacticalRaster = {
     { col: 2, lig: 1, valeur: 3, brut: 3, matchs: 4, matchs_victoire: 2, matchs_defaite: 2, centre_x: 25, centre_y: 15 },
     { col: 5, lig: 2, valeur: 5, brut: 5, matchs: 6, matchs_victoire: 3, matchs_defaite: 3, centre_x: 55, centre_y: 25 },
   ],
-  grappes: [{ id: 'g1', nom_fr: 'Base Rouge', nom_en: 'Red Base', matchs: 10, x: 10, y: 10 }],
+  grappes: [{ id: 'g1', nom: 'Base Rouge', matchs: 10, x: 10, y: 10 }],
   matchs_filtres: 50,
   matchs_retenus: 45,
   matchs_victoire: 20,
@@ -499,7 +499,7 @@ describe('TacticalAnalysisView — la zone choisie', () => {
   it('le nom de la zone se pose sur le plan, à côté de sa cellule', () => {
     mockRaster({ data: RASTER_NOMINAL })
     useTacticalCellule.mockReturnValue({
-      data: { contributions: [], zone: { nom_fr: 'Nid blindé', nom_en: 'Armored Nest' } },
+      data: { contributions: [], zone: { nom: 'Nid blindé' } },
       isPending: false,
     })
     renderVue()
@@ -510,7 +510,7 @@ describe('TacticalAnalysisView — la zone choisie', () => {
   it('une mort choisie retire le nom de la zone du plan, la désélection le ramène', () => {
     mockRaster({ data: RASTER_NOMINAL })
     useTacticalCellule.mockReturnValue({
-      data: { contributions: [MORT_COMPLETE], zone: { nom_fr: 'Nid blindé', nom_en: 'Armored Nest' } },
+      data: { contributions: [MORT_COMPLETE], zone: { nom: 'Nid blindé' } },
       isPending: false,
     })
     renderVue()

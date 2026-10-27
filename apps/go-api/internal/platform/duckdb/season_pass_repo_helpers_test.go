@@ -9,43 +9,44 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/ctxkeys"
+	"levelup/go-api/internal/i18n"
 )
 
 func TestLocalizedText_LocaleOrdering(t *testing.T) {
 	multi := map[string]any{"fr": "Français", "en": "English", "default": "Default"}
 
-	// FR (preferEN=false) : ordre fr,en,default — inchangé vs historique.
-	if got := localizedText(multi, false); got != "Français" {
-		t.Errorf("preferEN=false: got %q, want %q", got, "Français")
+	// FR (fr) : ordre fr,en,default — inchangé vs historique.
+	if got := localizedText(multi, i18n.LocaleFR); got != "Français" {
+		t.Errorf("fr: got %q, want %q", got, "Français")
 	}
-	// EN (preferEN=true) : ordre en,default,fr.
-	if got := localizedText(multi, true); got != "English" {
-		t.Errorf("preferEN=true: got %q, want %q", got, "English")
+	// EN (en) : ordre en,default,fr.
+	if got := localizedText(multi, i18n.LocaleEN); got != "English" {
+		t.Errorf("en: got %q, want %q", got, "English")
 	}
 
 	// La clé "value" (déjà localisée côté serveur Halo) prime dans les deux sens.
 	resolved := map[string]any{"value": "Resolved", "fr": "Français", "en": "English"}
-	if got := localizedText(resolved, true); got != "Resolved" {
+	if got := localizedText(resolved, i18n.LocaleEN); got != "Resolved" {
 		t.Errorf("value prime (EN): got %q, want %q", got, "Resolved")
 	}
-	if got := localizedText(resolved, false); got != "Resolved" {
+	if got := localizedText(resolved, i18n.LocaleFR); got != "Resolved" {
 		t.Errorf("value prime (FR): got %q, want %q", got, "Resolved")
 	}
 
 	// EN demandé mais seul FR présent → fallback (default absent, fr dernier recours).
 	frOnly := map[string]any{"fr": "SeulementFR"}
-	if got := localizedText(frOnly, true); got != "SeulementFR" {
+	if got := localizedText(frOnly, i18n.LocaleEN); got != "SeulementFR" {
 		t.Errorf("EN préféré, seul FR dispo: got %q, want %q", got, "SeulementFR")
 	}
 
 	// FR demandé mais seul EN présent → fallback en.
 	enOnly := map[string]any{"en": "OnlyEN"}
-	if got := localizedText(enOnly, false); got != "OnlyEN" {
+	if got := localizedText(enOnly, i18n.LocaleFR); got != "OnlyEN" {
 		t.Errorf("FR préféré, seul EN dispo: got %q, want %q", got, "OnlyEN")
 	}
 
 	// String brute : trim, indépendant de la locale.
-	if got := localizedText("  plain  ", true); got != "plain" {
+	if got := localizedText("  plain  ", i18n.LocaleEN); got != "plain" {
 		t.Errorf("string brute: got %q, want %q", got, "plain")
 	}
 }
@@ -74,5 +75,36 @@ func TestBPItemFieldCoalesce_ValueIsEnglishSource(t *testing.T) {
 	}
 	if posFRfr > posValFR {
 		t.Errorf("FR: fr-FR doit précéder value dans le COALESCE, got %q", frSQL)
+	}
+}
+
+func TestBPPayloadKeys(t *testing.T) {
+	cases := map[i18n.Locale][]string{
+		i18n.LocaleFR:     {"fr", "en", "default"},
+		i18n.LocaleEN:     {"en", "default", "fr"},
+		i18n.Locale("zz"): {"fr", "en", "default"}, // langue inconnue : chaine de Default
+	}
+	for loc, want := range cases {
+		if got := bpPayloadKeys(loc); strings.Join(got, ",") != strings.Join(want, ",") {
+			t.Errorf("bpPayloadKeys(%q) = %v, want %v", loc, got, want)
+		}
+	}
+}
+
+func TestBPLocaleOrderedCoalesce(t *testing.T) {
+	sources := bpLangSources{
+		i18n.LocaleEN:     {"en1", "en2"},
+		i18n.LocaleFR:     {"fr1"},
+		i18n.Locale("zz"): {"zz1"}, // langue hors liste : jamais dans la chaine, ne contribue pas
+	}
+	if got := bpLocaleOrderedCoalesce(i18n.LocaleFR, sources); got != "COALESCE(fr1, en1, en2)" {
+		t.Errorf("fr: %q", got)
+	}
+	if got := bpLocaleOrderedCoalesce(i18n.LocaleEN, sources); got != "COALESCE(en1, en2, fr1)" {
+		t.Errorf("en: %q", got)
+	}
+	// Une langue de la chaine sans source ne contribue pas.
+	if got := bpLocaleOrderedCoalesce(i18n.LocaleEN, bpLangSources{i18n.LocaleFR: {"fr1"}}); got != "COALESCE(fr1)" {
+		t.Errorf("en sans source anglaise: %q", got)
 	}
 }

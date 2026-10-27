@@ -18,6 +18,7 @@ import (
 	"levelup/go-api/internal/domain/killscope"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/persist"
 )
@@ -210,13 +211,13 @@ func insertMatchMedals(ctx context.Context, db *sql.DB, m synthMatch) error {
 
 // insertMatchCSR écrit match_csrs (append-only : written_at posé, lecture _latest).
 func insertMatchCSR(ctx context.Context, db *sql.DB, m synthMatch) error {
-	label := fmt.Sprintf("%s %d", m.csrTierFR, m.csrSubTier)
+	label := fmt.Sprintf("%s %d", m.csrTier[i18n.Default], m.csrSubTier)
 	_, err := db.ExecContext(ctx, `
 		INSERT INTO match_csrs
 			(match_id, xuid, rating_type, rating_value, tier, sub_tier, tier_label,
 			 rating_delta, measurement_matches_remaining, season_id, written_at)
 		VALUES (?, ?, 'CSR', ?, ?, ?, ?, ?, 0, ?, ?)`,
-		m.matchID, demoXUIDForIndex(0), m.csrValue, m.csrTier, m.csrSubTier, label,
+		m.matchID, demoXUIDForIndex(0), m.csrValue, m.csrTier[i18n.Fallback], m.csrSubTier, label,
 		m.csrDelta, synthDemoSeason, m.end)
 	return err
 }

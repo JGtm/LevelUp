@@ -2,7 +2,11 @@
 // depuis un pair_name brut Halo Infinite.
 package analysis
 
-import "testing"
+import (
+	"testing"
+
+	"levelup/go-api/internal/i18n"
+)
 
 // modePtr : helper local (package analysis interne) — strPtr n'est défini que dans
 // le package externe analysis_test, non visible ici.
@@ -208,7 +212,9 @@ func TestResolveModeUIWithVariant(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := ResolveModeUIWithVariant(tc.pairName, tc.pairNameFR, tc.variantName, tc.variantNameFR)
+			got := ResolveModeUIWithVariant(
+				i18n.FromColumns(modeStr(tc.pairName), modeStr(tc.pairNameFR)),
+				i18n.FromColumns(modeStr(tc.variantName), modeStr(tc.variantNameFR)))
 			switch {
 			case tc.want == nil && got != nil:
 				t.Errorf("ResolveModeUIWithVariant = %q ; want nil", *got)
@@ -235,4 +241,13 @@ func TestNormalizeModeLabel_StripsKnownMap(t *testing.T) {
 	if got != "Super Fiesta" {
 		t.Errorf("NormalizeModeLabel(Super Fiesta:Slayer on Forbidden, Forbidden) = %q ; want Super Fiesta", got)
 	}
+}
+
+// modeStr rend la valeur d'un pointeur de test, "" pour nil (les cas du test distinguent « absent »
+// et « vide » seulement par le résultat attendu, pas par la source).
+func modeStr(p *string) string {
+	if p == nil {
+		return ""
+	}
+	return *p
 }

@@ -16,6 +16,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/i18n"
 )
 
 // familleMutilator — la famille d'arme telle que le document l'écrit (8 chiffres, majuscules).
@@ -50,8 +51,8 @@ func TestWeaponLabels_CompleteUnArtefactCuitAvantLeRegistre(t *testing.T) {
 		t.Fatalf("%s absent de la table des libellés — le socle afficherait son hexadécimal",
 			familleMutilator)
 	}
-	if lbl.Fr != "Mutilateur" || lbl.En != "Mutilator" {
-		t.Errorf("libellé = %q / %q, attendu « Mutilator » / « Mutilateur »", lbl.En, lbl.Fr)
+	if lbl.Text[i18n.LocaleFR] != "Mutilateur" || lbl.Text[i18n.LocaleEN] != "Mutilator" {
+		t.Errorf("libellé = %q / %q, attendu « Mutilator » / « Mutilateur »", lbl.Text[i18n.LocaleEN], lbl.Text[i18n.LocaleFR])
 	}
 	if lbl.Key != "hinf_mutilator" {
 		t.Errorf("clé = %q, attendu hinf_mutilator", lbl.Key)
@@ -64,7 +65,7 @@ func TestWeaponLabels_CompleteUnArtefactCuitAvantLeRegistre(t *testing.T) {
 			"alors que le titre sert l'icône de cette famille", familleMutilator)
 	}
 	// Le libellé DÉJÀ CUIT reste celui de l'artefact : la complétion comble, elle n'écrase pas.
-	if got := doc.WeaponLabels["0x48C19D2D"].Fr; got != "MA40 AR" {
+	if got := doc.WeaponLabels["0x48C19D2D"].Text[i18n.LocaleFR]; got != "MA40 AR" {
 		t.Errorf("libellé cuit du MA40 = %q, attendu MA40 AR (intouché)", got)
 	}
 }
@@ -85,7 +86,7 @@ func TestWeaponLabels_CompleteUnArtefactSansAucunLibelle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("lecture du rejeu : %v", err)
 	}
-	if got := served.WeaponLabels[familleMutilator].Fr; got != "Mutilateur" {
+	if got := served.WeaponLabels[familleMutilator].Text[i18n.LocaleFR]; got != "Mutilateur" {
 		t.Errorf("libellé FR = %q, attendu Mutilateur (table absente du fichier : elle se crée)", got)
 	}
 }
@@ -148,8 +149,8 @@ func TestWeaponLabels_ArtefactReelDuPoste(t *testing.T) {
 		t.Fatalf("%s toujours sans libellé sur l'artefact réel : le socle afficherait son "+
 			"hexadécimal à l'écran", familleMutilator)
 	}
-	if lbl.Fr != "Mutilateur" {
-		t.Errorf("libellé FR servi = %q, attendu Mutilateur", lbl.Fr)
+	if lbl.Text[i18n.LocaleFR] != "Mutilateur" {
+		t.Errorf("libellé FR servi = %q, attendu Mutilateur", lbl.Text[i18n.LocaleFR])
 	}
 	if lbl.Key != "hinf_mutilator" {
 		t.Errorf("clé servie = %q, attendu hinf_mutilator", lbl.Key)

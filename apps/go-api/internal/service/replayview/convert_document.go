@@ -214,8 +214,7 @@ func toNeutralDeath(v replay.NeutralDeath) replaydoc.NeutralDeath {
 
 func toLabel(v replay.Label) replaydoc.Label {
 	return replaydoc.Label{
-		En:     v.En,
-		Fr:     v.Fr,
+		Text:   v.Text.Clone(),
 		Img:    v.Img,
 		Tinted: v.Tinted,
 		Family: v.Family,
@@ -224,8 +223,7 @@ func toLabel(v replay.Label) replaydoc.Label {
 
 func toWeaponLabel(v replay.WeaponLabel) replaydoc.WeaponLabel {
 	return replaydoc.WeaponLabel{
-		En:     v.En,
-		Fr:     v.Fr,
+		Text:   v.Text.Clone(),
 		Fx:     v.Fx,
 		Key:    v.Key,
 		Role:   v.Role,
@@ -241,7 +239,6 @@ func toVehicleLabel(v replay.VehicleLabel) replaydoc.VehicleLabel {
 		Img:    v.Img,
 		Tinted: v.Tinted,
 		Kind:   v.Kind,
-		En:     v.En,
-		Fr:     v.Fr,
+		Text:   v.Text.Clone(),
 	}
 }

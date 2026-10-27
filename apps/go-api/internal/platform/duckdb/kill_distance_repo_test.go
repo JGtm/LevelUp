@@ -32,6 +32,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
@@ -145,16 +146,8 @@ func TestKillDistance_MoyennesExactes(t *testing.T) {
 // d'écarter : il doit la publier, avec son libellé.
 func TestKillDistance_CleArsenalRemonte(t *testing.T) {
 	pdb := newKillSourceTestPlayerDB(t)
-	ctx := context.Background()
-	if _, err := pdb.Metadata.Exec(ctx, `CREATE TABLE weapon_name_labels (
-		title_slug VARCHAR, weapon_key VARCHAR, name_en VARCHAR, name_fr VARCHAR,
-		PRIMARY KEY (title_slug, weapon_key))`); err != nil {
-		t.Fatalf("create weapon_name_labels: %v", err)
-	}
-	if _, err := pdb.Metadata.Exec(ctx,
-		"INSERT INTO weapon_name_labels VALUES ('halo_infinite', 'hinf_br75', 'BR75', 'BR75')"); err != nil {
-		t.Fatalf("seed weapon_name_labels: %v", err)
-	}
+	createWeaponNameTables(t, pdb.Metadata)
+	putCuratedWeaponNames(t, pdb.Metadata, "halo_infinite", "hinf_br75", frEn("BR75", "BR75"))
 
 	insertKill(t, pdb, kscDecodeV1, true, kdXUIDA, kscTagRifle, 1000)
 	insertKillPos(t, pdb, kscMatchID, kdXUIDA, 1000, 0.0, 0.0, 0.0, 7.0, 0.0, 0.0)
@@ -164,8 +157,8 @@ func TestKillDistance_CleArsenalRemonte(t *testing.T) {
 	if w == nil {
 		t.Fatalf("hinf_br75 absent (devrait remonter, contrairement à KillSourceClassRepo) : %+v", rows)
 	}
-	if w.Label != "BR75" || w.LabelEN != "BR75" {
-		t.Errorf("Label/LabelEN = %q/%q, want BR75/BR75", w.Label, w.LabelEN)
+	if w.Label != "BR75" {
+		t.Errorf("Label = %q, want BR75", w.Label)
 	}
 }
 
@@ -310,5 +303,35 @@ func TestKillDistance_MatchIDVide_Erreur(t *testing.T) {
 	repo := NewKillDistanceRepo(pdb, fakeKillSourceClassifier{})
 	if _, err := repo.LoadMatch(context.Background(), ""); err == nil {
 		t.Fatal("attendu un refus (matchID vide), obtenu nil")
+	}
+}
+
+// TestKillDistance_LibelleDansLaLangueDeLaRequete : le nom de l'arme suit la langue du contexte
+// (fr par défaut, en sur demande) ; une langue inconnue donne le français (défaut du contexte).
+func TestKillDistance_LibelleDansLaLangueDeLaRequete(t *testing.T) {
+	pdb := newKillSourceTestPlayerDB(t)
+	ctx := context.Background()
+	createWeaponNameTables(t, pdb.Metadata)
+	putCuratedWeaponNames(t, pdb.Metadata, "halo_infinite", "hinf_br75", frEn("Fusil de combat BR75", "BR75 Battle Rifle"))
+	insertKill(t, pdb, kscDecodeV1, true, kdXUIDA, kscTagRifle, 1000)
+	insertKillPos(t, pdb, kscMatchID, kdXUIDA, 1000, 0.0, 0.0, 0.0, 7.0, 0.0, 0.0)
+
+	repo := NewKillDistanceRepo(pdb, fakeKillSourceClassifier{})
+	for _, c := range []struct {
+		locale i18n.Locale
+		want   string
+	}{
+		{i18n.LocaleFR, "Fusil de combat BR75"},
+		{i18n.LocaleEN, "BR75 Battle Rifle"},
+		{i18n.Locale("zz"), "Fusil de combat BR75"},
+	} {
+		rows, err := repo.LoadMatch(i18n.WithContext(ctx, c.locale), kscMatchID)
+		if err != nil {
+			t.Fatalf("LoadMatch(%s): %v", c.locale, err)
+		}
+		w := findKDWeapon(findKDPlayer(rows, kdXUIDA), "hinf_br75")
+		if w == nil || w.Label != c.want {
+			t.Errorf("locale %q : arme = %+v, want le libellé %q", c.locale, w, c.want)
+		}
 	}
 }

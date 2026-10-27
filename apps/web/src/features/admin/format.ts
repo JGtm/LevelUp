@@ -10,7 +10,14 @@ import type { Locale } from '@/lib/i18n/locale'
 /** Alias de compat du type central `Locale` (lib/i18n/locale) : conservé car consommé dans plus de 5 fichiers du dashboard admin. */
 export type AdminLocale = Locale
 
-const REL = {
+interface RelativeTimeText {
+  justNow: string
+  minutesAgo: (n: number) => string
+  hoursAgo: (n: number) => string
+  daysAgo: (n: number) => string
+}
+
+const REL: Record<Locale, RelativeTimeText> = {
   fr: {
     justNow: "à l'instant",
     minutesAgo: (n: number) => `il y a ${n} min`,
@@ -23,7 +30,7 @@ const REL = {
     hoursAgo: (n: number) => `${n} h ago`,
     daysAgo: (n: number) => `${n} d ago`,
   },
-} as const
+}
 
 /**
  * Formate un timestamp ISO en libellé relatif court. Au-delà de 7 jours →
@@ -55,7 +62,7 @@ export function formatDurationMs(ms: number | undefined, locale: AdminLocale): s
   const seconds = ms / 1000
   if (seconds < 60) {
     const rounded = Math.round(seconds * 10) / 10
-    const text = locale === 'fr' ? String(rounded).replace('.', ',') : String(rounded)
+    const text = rounded.toLocaleString(intlLocale(locale), { maximumFractionDigits: 1 })
     return `${text} s`
   }
   const totalMinutes = Math.floor(seconds / 60)
@@ -80,23 +87,30 @@ export function adminAbsoluteTime(iso: string | undefined, locale: AdminLocale):
 }
 
 /** Formate un intervalle scheduler en minutes vers un libellé lisible. */
-export function formatIntervalMinutes(minutes: number | undefined, locale: AdminLocale): string {
+export function formatIntervalMinutes(minutes: number | undefined): string {
   if (!minutes || minutes <= 0) return '—'
   if (minutes < 60) return `${minutes} min`
   const hours = Math.floor(minutes / 60)
   const rest = minutes % 60
   if (rest === 0) return `${hours} h`
-  return locale === 'fr' ? `${hours} h ${rest} min` : `${hours} h ${rest} min`
+  return `${hours} h ${rest} min`
 }
 
-/** Formate un volume d'octets en unité lisible (Ko/Mo/Go — décimal, FR). */
+/** Unités d'octets par langue (puissances de 1 000) : octet, kilo, méga, giga. */
+const BYTE_UNITS = {
+  fr: ['o', 'Ko', 'Mo', 'Go'],
+  en: ['B', 'KB', 'MB', 'GB'],
+} as const satisfies Record<Locale, readonly [string, string, string, string]>
+
+/** Formate un volume d'octets en unité lisible (décimal : 1 Ko = 1 000 o). */
 export function formatBytes(bytes: number | undefined, locale: AdminLocale): string {
   if (bytes == null || Number.isNaN(bytes)) return '—'
   const abs = Math.abs(bytes)
   const fmt = (v: number, unit: string) =>
     `${v.toLocaleString(intlLocale(locale), { maximumFractionDigits: 1 })} ${unit}`
-  if (abs < 1_000) return fmt(bytes, locale === 'fr' ? 'o' : 'B')
-  if (abs < 1_000_000) return fmt(bytes / 1_000, locale === 'fr' ? 'Ko' : 'KB')
-  if (abs < 1_000_000_000) return fmt(bytes / 1_000_000, locale === 'fr' ? 'Mo' : 'MB')
-  return fmt(bytes / 1_000_000_000, locale === 'fr' ? 'Go' : 'GB')
+  const [unit, kilo, mega, giga] = BYTE_UNITS[locale]
+  if (abs < 1_000) return fmt(bytes, unit)
+  if (abs < 1_000_000) return fmt(bytes / 1_000, kilo)
+  if (abs < 1_000_000_000) return fmt(bytes / 1_000_000, mega)
+  return fmt(bytes / 1_000_000_000, giga)
 }

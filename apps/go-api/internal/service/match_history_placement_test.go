@@ -7,28 +7,9 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/sync"
 )
-
-func TestParsePlacementRemaining(t *testing.T) {
-	cases := []struct {
-		label string
-		want  int
-	}{
-		{"Placement (4 restants)", 4},
-		{"Placement (10 restants)", 10},
-		{"Placement (0 restant)", 0},
-		{"Placement", 10},  // fallback : pas de "(N restant)"
-		{"Diamant IV", 10}, // fallback : pas un label de placement
-		{"", 10},
-		{"Placement (999 restants)", 10}, // out of bounds → fallback
-	}
-	for _, c := range cases {
-		if got := parsePlacementRemaining(c.label); got != c.want {
-			t.Errorf("parsePlacementRemaining(%q) = %d, want %d", c.label, got, c.want)
-		}
-	}
-}
 
 func TestApplyCSRPlacements_threshold5(t *testing.T) {
 	rows := []domain.MatchHistoryRawRow{
@@ -85,7 +66,7 @@ func TestApplyLUSRPlacements_first10PerChain(t *testing.T) {
 		rows = append(rows, domain.MatchHistoryRawRow{
 			MatchID:   "slayer-" + string(rune('a'+i-1)),
 			StartTime: &ts,
-			PairName:  strPtr("Arena:Slayer on Bazaar"),
+			PairName:  i18n.FromColumns("Arena:Slayer on Bazaar", ""),
 		})
 	}
 
@@ -114,13 +95,13 @@ func TestApplyMatchPlacements_csrAndLusrCombined(t *testing.T) {
 	ts := time.Now()
 	rows := []domain.MatchHistoryRawRow{
 		// CSR placement → done = 5-2 = 3, total = 5
-		{MatchID: "csr1", StartTime: &ts, PairName: strPtr("Ranked:Slayer"),
+		{MatchID: "csr1", StartTime: &ts, PairName: i18n.FromColumns("Ranked:Slayer", ""),
 			SkillRatingType: strPtr("CSR"), SkillTierLabel: strPtr("Placement (2 restants)"),
 			SeasonID: strPtr("CsrSeason13-1")},
 		// LUSR placement (chaîne arena_slayer, premier match) → 1/10
-		{MatchID: "lusr1", StartTime: &ts, PairName: strPtr("Arena:Slayer on Bazaar")},
+		{MatchID: "lusr1", StartTime: &ts, PairName: i18n.FromColumns("Arena:Slayer on Bazaar", "")},
 		// Tier officiel CSR → ignoré
-		{MatchID: "csr_full", StartTime: &ts, PairName: strPtr("Ranked:Slayer"),
+		{MatchID: "csr_full", StartTime: &ts, PairName: i18n.FromColumns("Ranked:Slayer", ""),
 			SkillRatingType: strPtr("CSR"), SkillTierLabel: strPtr("Diamant IV")},
 	}
 	csrResolver := func(_ context.Context, _ string) int { return 5 }
@@ -161,9 +142,9 @@ func TestApplyMatchPlacements_nilCsrResolver(t *testing.T) {
 func TestApplyLUSRPlacements_skipMatchesWithLUSRorCSR(t *testing.T) {
 	ts := time.Now()
 	rows := []domain.MatchHistoryRawRow{
-		{MatchID: "m1", StartTime: &ts, PairName: strPtr("Arena:Slayer"), SkillRatingType: strPtr(skillRatingTypeLUSR)},
-		{MatchID: "m2", StartTime: &ts, PairName: strPtr("Arena:Slayer"), SkillRatingType: strPtr("CSR")},
-		{MatchID: "m3", StartTime: &ts, PairName: strPtr("Arena:Slayer")}, // sans rating, chaîne déjà calibrée par m1
+		{MatchID: "m1", StartTime: &ts, PairName: i18n.FromColumns("Arena:Slayer", ""), SkillRatingType: strPtr(skillRatingTypeLUSR)},
+		{MatchID: "m2", StartTime: &ts, PairName: i18n.FromColumns("Arena:Slayer", ""), SkillRatingType: strPtr("CSR")},
+		{MatchID: "m3", StartTime: &ts, PairName: i18n.FromColumns("Arena:Slayer", "")}, // sans rating, chaîne déjà calibrée par m1
 	}
 	applyLUSRPlacements(rows)
 	if rows[0].PlacementDone != nil {
@@ -180,9 +161,9 @@ func TestApplyLUSRPlacements_skipMatchesWithLUSRorCSR(t *testing.T) {
 func TestApplyLUSRPlacements_skipRankedAndFirefight(t *testing.T) {
 	ts := time.Now()
 	rows := []domain.MatchHistoryRawRow{
-		{MatchID: "ranked", StartTime: &ts, PairName: strPtr("Ranked:Slayer")},     // chaîne "" (Ranked → CSR)
-		{MatchID: "firefight", StartTime: &ts, PairName: strPtr("Firefight:KOTH")}, // chaîne "" (Firefight → PvE)
-		{MatchID: "btb", StartTime: &ts, PairName: strPtr("BTB:CTF on Highpower")}, // chaîne "btb"
+		{MatchID: "ranked", StartTime: &ts, PairName: i18n.FromColumns("Ranked:Slayer", "")},     // chaîne "" (Ranked → CSR)
+		{MatchID: "firefight", StartTime: &ts, PairName: i18n.FromColumns("Firefight:KOTH", "")}, // chaîne "" (Firefight → PvE)
+		{MatchID: "btb", StartTime: &ts, PairName: i18n.FromColumns("BTB:CTF on Highpower", "")}, // chaîne "btb"
 	}
 	applyLUSRPlacements(rows)
 	if rows[0].PlacementDone != nil {
@@ -209,14 +190,14 @@ func TestApplyLUSRPlacements_bigTeamBattle_fewerThan10_userReportedScenario(t *t
 	// 6 matchs BTB au total (< 10) : 3 "il y a plusieurs jours" + 3 "hier"
 	// (24/07), aucun n'a encore de LUSR (chaîne trop jeune).
 	rows := []domain.MatchHistoryRawRow{
-		{MatchID: "btb-old-1", StartTime: tPtr(base), PairName: strPtr("BTB:CTF on Highpower")},
-		{MatchID: "btb-old-2", StartTime: tPtr(base.Add(24 * time.Hour)), PairName: strPtr("BTB:Slayer on Behemoth")},
-		{MatchID: "btb-old-3", StartTime: tPtr(base.Add(48 * time.Hour)), PairName: strPtr("BTB:Stockpile on Deadlock")},
-		{MatchID: "btb-yday-1", StartTime: tPtr(base.Add(96 * time.Hour)), PairName: strPtr("BTB:CTF on Fragmentation")},
-		{MatchID: "btb-yday-2", StartTime: tPtr(base.Add(97 * time.Hour)), PairName: strPtr("BTB:Slayer on Highpower")},
-		{MatchID: "btb-yday-3", StartTime: tPtr(base.Add(98 * time.Hour)), PairName: strPtr("BTB:Stockpile on Behemoth")},
+		{MatchID: "btb-old-1", StartTime: tPtr(base), PairName: i18n.FromColumns("BTB:CTF on Highpower", "")},
+		{MatchID: "btb-old-2", StartTime: tPtr(base.Add(24 * time.Hour)), PairName: i18n.FromColumns("BTB:Slayer on Behemoth", "")},
+		{MatchID: "btb-old-3", StartTime: tPtr(base.Add(48 * time.Hour)), PairName: i18n.FromColumns("BTB:Stockpile on Deadlock", "")},
+		{MatchID: "btb-yday-1", StartTime: tPtr(base.Add(96 * time.Hour)), PairName: i18n.FromColumns("BTB:CTF on Fragmentation", "")},
+		{MatchID: "btb-yday-2", StartTime: tPtr(base.Add(97 * time.Hour)), PairName: i18n.FromColumns("BTB:Slayer on Highpower", "")},
+		{MatchID: "btb-yday-3", StartTime: tPtr(base.Add(98 * time.Hour)), PairName: i18n.FromColumns("BTB:Stockpile on Behemoth", "")},
 		// Un match Ranked le même jour ne doit pas polluer la chaîne "btb".
-		{MatchID: "ranked-same-day", StartTime: tPtr(base.Add(50 * time.Hour)), PairName: strPtr("Ranked:Slayer")},
+		{MatchID: "ranked-same-day", StartTime: tPtr(base.Add(50 * time.Hour)), PairName: i18n.FromColumns("Ranked:Slayer", "")},
 	}
 	count := applyLUSRPlacements(rows)
 	if count != 6 {
@@ -248,7 +229,7 @@ func TestApplyLUSRPlacements_chaineCalibree_dnfSansSignal(t *testing.T) {
 	base := time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC)
 	rows := []domain.MatchHistoryRawRow{
 		// Match le plus ancien de la chaîne : déjà classé (LUSR établi).
-		{MatchID: "established", StartTime: tPtr(base), PairName: strPtr("Fiesta:Slayer on Bazaar"),
+		{MatchID: "established", StartTime: tPtr(base), PairName: i18n.FromColumns("Fiesta:Slayer on Bazaar", ""),
 			SkillRatingType: strPtr(skillRatingTypeLUSR), SkillTierLabel: strPtr("Or III")},
 	}
 	// 3 DNF récents dans la MÊME chaîne, sans LUSR (n'en auront jamais).
@@ -256,7 +237,7 @@ func TestApplyLUSRPlacements_chaineCalibree_dnfSansSignal(t *testing.T) {
 		r := domain.MatchHistoryRawRow{
 			MatchID:   "dnf-" + strconv.Itoa(i),
 			StartTime: tPtr(base.Add(time.Duration(i) * time.Hour)),
-			PairName:  strPtr("Fiesta:Slayer on Bazaar"),
+			PairName:  i18n.FromColumns("Fiesta:Slayer on Bazaar", ""),
 			Outcome:   domain.OutcomeDNF,
 		}
 		rows = append(rows, r)
@@ -286,11 +267,11 @@ func TestApplyLUSRPlacements_chaineVierge_dnfIntercalesNonComptes(t *testing.T) 
 		ts := base.Add(time.Duration(i) * time.Hour)
 		if i%2 == 0 {
 			rows = append(rows, domain.MatchHistoryRawRow{
-				MatchID: "ok-" + strconv.Itoa(i), StartTime: tPtr(ts), PairName: strPtr("Fiesta:Slayer on Bazaar"),
+				MatchID: "ok-" + strconv.Itoa(i), StartTime: tPtr(ts), PairName: i18n.FromColumns("Fiesta:Slayer on Bazaar", ""),
 			})
 		} else {
 			rows = append(rows, domain.MatchHistoryRawRow{
-				MatchID: "dnf-" + strconv.Itoa(i), StartTime: tPtr(ts), PairName: strPtr("Fiesta:Slayer on Bazaar"),
+				MatchID: "dnf-" + strconv.Itoa(i), StartTime: tPtr(ts), PairName: i18n.FromColumns("Fiesta:Slayer on Bazaar", ""),
 				Outcome: domain.OutcomeDNF,
 			})
 		}
@@ -326,20 +307,20 @@ func TestApplyLUSRPlacements_chaineVierge_dnfIntercalesNonComptes(t *testing.T) 
 func TestApplyLUSRPlacements_idempotent(t *testing.T) {
 	base := time.Date(2026, 8, 1, 9, 0, 0, 0, time.UTC)
 	rows := []domain.MatchHistoryRawRow{
-		{MatchID: "established", StartTime: tPtr(base), PairName: strPtr("Fiesta:Slayer on Bazaar"),
+		{MatchID: "established", StartTime: tPtr(base), PairName: i18n.FromColumns("Fiesta:Slayer on Bazaar", ""),
 			SkillRatingType: strPtr(skillRatingTypeLUSR), SkillTierLabel: strPtr("Or III")},
 	}
 	for i := 1; i <= 3; i++ {
 		rows = append(rows, domain.MatchHistoryRawRow{
 			MatchID: "dnf-" + strconv.Itoa(i), StartTime: tPtr(base.Add(time.Duration(i) * time.Hour)),
-			PairName: strPtr("Fiesta:Slayer on Bazaar"), Outcome: domain.OutcomeDNF,
+			PairName: i18n.FromColumns("Fiesta:Slayer on Bazaar", ""), Outcome: domain.OutcomeDNF,
 		})
 	}
 	// Chaîne vierge indépendante, pas de calibration : doit rester stable aussi.
 	for i := 0; i < 3; i++ {
 		rows = append(rows, domain.MatchHistoryRawRow{
 			MatchID: "btb-" + strconv.Itoa(i), StartTime: tPtr(base.Add(time.Duration(100+i) * time.Hour)),
-			PairName: strPtr("BTB:CTF on Highpower"),
+			PairName: i18n.FromColumns("BTB:CTF on Highpower", ""),
 		})
 	}
 
@@ -376,7 +357,7 @@ func btbRow(id string, at time.Time, perf *float64, lusr bool) domain.MatchHisto
 	r := domain.MatchHistoryRawRow{
 		MatchID:          id,
 		StartTime:        tPtr(at),
-		PairName:         strPtr("BTB:CTF on Highpower"),
+		PairName:         i18n.FromColumns("BTB:CTF on Highpower", ""),
 		Outcome:          domain.OutcomeWin,
 		PerformanceScore: perf,
 	}
@@ -541,7 +522,7 @@ func TestApplyPerfPlacements_chainesIndependantes(t *testing.T) {
 		rows = append(rows, domain.MatchHistoryRawRow{
 			MatchID:          "ranked-" + strconv.Itoa(i),
 			StartTime:        tPtr(base.Add(time.Duration(100+i) * time.Hour)),
-			PairName:         strPtr("Ranked:Slayer"),
+			PairName:         i18n.FromColumns("Ranked:Slayer", ""),
 			IsRanked:         true,
 			Outcome:          domain.OutcomeWin,
 			PerformanceScore: f64Ptr(60),

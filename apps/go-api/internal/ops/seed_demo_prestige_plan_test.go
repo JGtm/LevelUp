@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/campaign"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/prestige"
 	"levelup/go-api/internal/progression/records"
 )
@@ -217,7 +218,7 @@ func TestDemoPrestigePlan_TotalPPMatchesEvents(t *testing.T) {
 	if sum != plan.TotalPP {
 		t.Errorf("TotalPP = %d, somme des événements = %d", plan.TotalPP, sum)
 	}
-	want := prestige.LevelFromPP(prestige.DefaultTuning(), plan.TotalPP).Index
+	want := prestige.LevelFromPP(prestige.DefaultTuning(), plan.TotalPP, i18n.Default).Index
 	if plan.Level != want {
 		t.Errorf("Level = %d, LevelFromPP(%d) = %d", plan.Level, plan.TotalPP, want)
 	}

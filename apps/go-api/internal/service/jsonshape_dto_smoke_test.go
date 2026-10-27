@@ -328,15 +328,6 @@ func TestDTOs_NoNilSlicesOnEmptyInput(t *testing.T) {
 
 	// --- Career sous-méthodes (méthodes additionnelles de CareerService) ---
 
-	t.Run("CareerService.GetTopMatches", func(t *testing.T) {
-		svc := NewCareerService(&mockCareerRepo{topRows: []domain.TopMatchRawRow{}})
-		resp, err := svc.GetTopMatches(context.Background())
-		if err != nil {
-			t.Fatalf("error: %v", err)
-		}
-		testutil.RequireNoNilSlicesWithoutOmitempty(t, resp)
-	})
-
 	t.Run("CareerService.GetEncounters", func(t *testing.T) {
 		svc := NewCareerService(&mockCareerRepo{encRows: []domain.EncounterRawRow{}})
 		resp, err := svc.GetEncounters(context.Background())

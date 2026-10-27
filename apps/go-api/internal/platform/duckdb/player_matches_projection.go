@@ -11,6 +11,7 @@ import (
 	"levelup/go-api/internal/analysis/temporal"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 )
 
 func projectPlayerMatchRow(s playerMatchScanResult, modeSource title.ModeSource) canonical.PlayerMatchRow {
@@ -83,10 +84,6 @@ func projectSkillSnapshot(s playerMatchScanResult) *canonical.SkillSnapshot {
 		tier := strings.ToLower(s.skillTier.String)
 		snap.TierCode = &tier
 	}
-	if s.skillTierFR.Valid && s.skillTierFR.String != "" {
-		tierFR := s.skillTierFR.String
-		snap.TierCodeFR = &tierFR
-	}
 	if s.skillSubTier.Valid {
 		st := int(s.skillSubTier.Int64)
 		snap.SubTier = &st
@@ -116,18 +113,18 @@ func projectMatchSummary(
 	s playerMatchScanResult, outcome canonical.Outcome, teams []canonical.TeamSnapshot, modeSource title.ModeSource,
 ) canonical.MatchSummary {
 	durationPtr := s.durationSeconds
-	gameVariant := AssetReference("game_variant", s.variantID, s.variantName, "")
+	gameVariant := AssetReference("game_variant", s.variantID, s.variantName)
 	return canonical.MatchSummary{
 		MatchID:         s.matchID,
 		StartedAtUTC:    s.startTime,
 		DurationSeconds: &durationPtr,
 		MatchType:       MatchTypeFromFlags(s.isRanked, s.isFirefight),
-		Playlist:        AssetReference("playlist", s.playlistID, s.playlistName, s.playlistNameFR),
-		Map:             AssetReference("map", s.mapID, s.mapName, s.mapNameFR),
+		Playlist:        AssetReference("playlist", s.playlistID, s.playlistName),
+		Map:             AssetReference("map", s.mapID, s.mapName),
 		GameVariant:     gameVariant,
 		RoundsTotal:     nonNegPtr(s.roundsTotal),
 		PairMode: ModeAssetReference(modeSource,
-			AssetReference("pair_mode", s.pairID, s.pairName, s.pairNameFR), gameVariant),
+			AssetReference("pair_mode", s.pairID, s.pairName), gameVariant),
 		IsRanked: &s.isRanked,
 		IsPvE:    &s.isFirefight,
 		Outcome:  outcome,
@@ -178,7 +175,7 @@ func projectEnrichment(s playerMatchScanResult, skillSnap *canonical.SkillSnapsh
 	return canonical.PlayerMatchEnrichment{
 		SessionID:           nullStringPtr(s.sessionID),
 		SessionLabel:        nullStringPtr(s.sessionLabel),
-		PairName:            strValueToPtr(s.pairName),
+		PairName:            strValueToPtr(s.pairName[i18n.Fallback]),
 		PerformanceScore:    nullFloatPtr(s.performanceScore),
 		DominanceFlag:       canonical.DominanceFlag(s.dominanceFlag),
 		HadBotTeammate:      s.hadBotTeammate,
@@ -236,22 +233,21 @@ func MatchTypeFromFlags(isRanked, isFirefight bool) canonical.MatchType {
 
 // AssetReference compose un canonical.AssetReference depuis les colonnes DB.
 // Retourne nil si aucun ID ni label.
-func AssetReference(kind, id, name, nameFR string) *canonical.AssetReference {
-	if id == "" && name == "" && nameFR == "" {
+func AssetReference(kind, id string, names i18n.Text) *canonical.AssetReference {
+	if id == "" && names.Empty() {
 		return nil
 	}
 	ref := &canonical.AssetReference{
 		Kind:         kind,
 		ID:           id,
-		DefaultLabel: name,
+		DefaultLabel: names[i18n.Fallback],
 	}
-	if nameFR != "" || name != "" {
+	if !names.Empty() {
 		ref.Labels = map[string]string{}
-		if name != "" {
-			ref.Labels["en"] = name
-		}
-		if nameFR != "" {
-			ref.Labels["fr"] = nameFR
+		for l, v := range names {
+			if v != "" {
+				ref.Labels[string(l)] = v
+			}
 		}
 	}
 	return ref

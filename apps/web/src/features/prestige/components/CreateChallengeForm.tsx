@@ -259,7 +259,7 @@ function HybridForm({ userId, titleSlug, onSuccess }: TabFormProps) {
       cadence: selected.cadence,
       eval_type: selected.eval_type,
       mode: 'libre',
-      label: selected.label_fr,
+      label: selected.label,
     }
     create.mutate(body, { onSuccess })
   }
@@ -285,11 +285,11 @@ function HybridForm({ userId, titleSlug, onSuccess }: TabFormProps) {
               onClick={() => !cd && handleSelect(tpl)}
             >
               <h3 className="font-medium">
-                {tpl.label_fr}
+                {tpl.label}
                 {cd && <CooldownBadge end={cd} t={t} />}
               </h3>
-              {tpl.description_fr && (
-                <p className="mt-0.5 text-xs text-muted-foreground">{tpl.description_fr}</p>
+              {tpl.description && (
+                <p className="mt-0.5 text-xs text-muted-foreground">{tpl.description}</p>
               )}
               <p className="mt-1 text-xs text-muted-foreground">
                 N: {tpl.normal_target} · H: {tpl.heroic_target} · L: {tpl.legendary_target} · M:{' '}
@@ -348,7 +348,7 @@ function AutoForm({ userId, titleSlug, onSuccess }: TabFormProps) {
       cadence: tpl.cadence,
       eval_type: tpl.eval_type,
       mode: 'libre',
-      label: tpl.label_fr,
+      label: tpl.label,
     }
     create.mutate(body, { onSuccess })
   }
@@ -362,11 +362,11 @@ function AutoForm({ userId, titleSlug, onSuccess }: TabFormProps) {
           return (
             <li key={tpl.id} className="rounded-md border border-border p-3">
               <h3 className="text-sm font-medium">
-                {tpl.label_fr}
+                {tpl.label}
                 {cd && <CooldownBadge end={cd} t={t} />}
               </h3>
-              {tpl.description_fr && (
-                <p className="mt-0.5 text-xs text-muted-foreground">{tpl.description_fr}</p>
+              {tpl.description && (
+                <p className="mt-0.5 text-xs text-muted-foreground">{tpl.description}</p>
               )}
               <button
                 type="button"

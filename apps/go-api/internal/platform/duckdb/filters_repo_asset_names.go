@@ -30,14 +30,13 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
-// resolvedAssetNames regroupe les noms EN/FR résolus par kind depuis
-// asset_translations, pour passer sous la limite de 5 paramètres.
+// resolvedAssetNames regroupe les noms résolus par kind depuis asset_translations : pour chaque
+// actif (clé = id), son nom dans chaque langue qui en porte un.
 type resolvedAssetNames struct {
-	mapEN, mapFR           map[string]string
-	playlistEN, playlistFR map[string]string
-	variantEN, variantFR   map[string]string
+	maps, playlists, variants map[string]i18n.Text
 }
 
 // applyAssetNamesFromMetadata remplit les noms de carte / sélection / mode à
@@ -45,7 +44,7 @@ type resolvedAssetNames struct {
 // ids au registry (noms NULL, voie Halo 5). Déclenchée par la donnée (nom vide +
 // id présent), jamais par le slug : no-op strict sur les titres qui portent déjà
 // les noms (collecte vide → aucune requête metadata). Best-effort : les erreurs
-// de bulk sont loggées (WarnContext) puis on continue.
+// de lecture sont loggées (WarnContext) puis on continue.
 func (r *FiltersRepo) applyAssetNamesFromMetadata(ctx context.Context, rows []domain.FilterMatchRow) {
 	if r.pdb.Metadata == nil || len(rows) == 0 {
 		return
@@ -58,44 +57,16 @@ func (r *FiltersRepo) applyAssetNamesFromMetadata(ctx context.Context, rows []do
 	ctx2, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	metaRepo := NewMetadataRepoFromDB(r.pdb.Metadata)
-	langsFR := PreferredLangsForLocale("fr")
-	langsEN := PreferredLangsForLocale("en")
 	res := resolvedAssetNames{
-		mapEN:      r.resolveAssetNamesBulkBestEffort(ctx2, metaRepo, "map", mapIDs, langsEN),
-		mapFR:      r.resolveAssetNamesBulkBestEffort(ctx2, metaRepo, "map", mapIDs, langsFR),
-		playlistEN: r.resolveAssetNamesBulkBestEffort(ctx2, metaRepo, "playlist", playlistIDs, langsEN),
-		playlistFR: r.resolveAssetNamesBulkBestEffort(ctx2, metaRepo, "playlist", playlistIDs, langsFR),
-		variantEN:  r.resolveAssetNamesBulkBestEffort(ctx2, metaRepo, "game_variant", variantIDs, langsEN),
-		variantFR:  r.resolveAssetNamesBulkBestEffort(ctx2, metaRepo, "game_variant", variantIDs, langsFR),
+		maps:      assetNameTexts(ctx2, r.pdb.Metadata, assetTypeMap, mapIDs),
+		playlists: assetNameTexts(ctx2, r.pdb.Metadata, assetTypePlaylist, playlistIDs),
+		variants:  assetNameTexts(ctx2, r.pdb.Metadata, assetTypeGameVariant, variantIDs),
 	}
 
 	for i := range rows {
 		applyResolvedAssetNamesRow(&rows[i], res)
 	}
 	logResolvedAssetNames(ctx, res, len(mapIDs), len(playlistIDs), len(variantIDs))
-}
-
-// resolveAssetNamesBulkBestEffort encapsule ResolveAssetNamesBulk : échec journalisé
-// (WarnContext, jamais avalé) et consigné (noteDegraded : lignes jamais mises en cache),
-// retour best-effort. Retourne nil pour une liste d'ids vide (aucune requête).
-func (r *FiltersRepo) resolveAssetNamesBulkBestEffort(
-	ctx context.Context,
-	metaRepo *MetadataRepo,
-	kind string,
-	ids, preferredLangs []string,
-) map[string]string {
-	if len(ids) == 0 {
-		return nil
-	}
-	names, err := metaRepo.ResolveAssetNamesBulk(ctx, kind, ids, preferredLangs)
-	if err != nil {
-		slog.WarnContext(ctx, "filters: résolution asset_translations échouée",
-			"kind", kind, "err", err)
-		noteDegraded(ctx, "asset_names")
-		return nil
-	}
-	return names
 }
 
 // collectAssetIDsNeedingNames extrait, par kind, les ids distincts À RÉSOUDRE :
@@ -105,13 +76,13 @@ func collectAssetIDsNeedingNames(rows []domain.FilterMatchRow) (mapIDs, playlist
 	seenPlaylist := make(map[string]struct{}, len(rows))
 	seenVariant := make(map[string]struct{}, len(rows))
 	for _, row := range rows {
-		if id := assetIDNeedingName(row.MapID, row.MapName); id != "" {
+		if id := assetIDNeedingName(row.MapID, row.MapName[i18n.Fallback]); id != "" {
 			appendDistinct(&mapIDs, seenMap, id)
 		}
-		if id := assetIDNeedingName(row.PlaylistID, row.PlaylistNameEN); id != "" {
+		if id := assetIDNeedingName(row.PlaylistID, row.PlaylistName[i18n.Fallback]); id != "" {
 			appendDistinct(&playlistIDs, seenPlaylist, id)
 		}
-		if id := assetIDNeedingName(row.GameVariantID, row.GameVariantName); id != "" {
+		if id := assetIDNeedingName(row.GameVariantID, row.GameVariantName[i18n.Fallback]); id != "" {
 			appendDistinct(&variantIDs, seenVariant, id)
 		}
 	}
@@ -120,12 +91,12 @@ func collectAssetIDsNeedingNames(rows []domain.FilterMatchRow) (mapIDs, playlist
 
 // assetIDNeedingName retourne l'id nettoyé si l'id est présent ET le nom cible
 // vide (cas à résoudre), sinon la chaîne vide.
-func assetIDNeedingName(idPtr, namePtr *string) string {
+func assetIDNeedingName(idPtr *string, name string) string {
 	id := strings.TrimSpace(derefString(idPtr))
 	if id == "" {
 		return ""
 	}
-	if strings.TrimSpace(derefString(namePtr)) != "" {
+	if strings.TrimSpace(name) != "" {
 		return ""
 	}
 	return id
@@ -144,49 +115,28 @@ func appendDistinct(out *[]string, seen map[string]struct{}, id string) {
 // vides, et jamais avec un id/UUID : si la traduction manque, le champ reste
 // vide (pas de fuite d'UUID dans l'UI).
 func applyResolvedAssetNamesRow(row *domain.FilterMatchRow, res resolvedAssetNames) {
-	applyNamePair(row.MapID, res.mapEN, res.mapFR, &row.MapName, &row.MapNameFR)
-	applyNamePair(row.PlaylistID, res.playlistEN, res.playlistFR, &row.PlaylistNameEN, &row.PlaylistName)
-	applyNamePair(row.GameVariantID, res.variantEN, res.variantFR, &row.GameVariantName, &row.GameVariantNameFR)
+	applyNameTexts(row.MapID, res.maps, &row.MapName)
+	applyNameTexts(row.PlaylistID, res.playlists, &row.PlaylistName)
+	applyNameTexts(row.GameVariantID, res.variants, &row.GameVariantName)
 }
 
-// applyNamePair pose le nom EN (si champ EN vide) et le nom FR-sinon-EN (si champ
-// FR vide) pour un id donné. N'écrit jamais une valeur vide.
-func applyNamePair(idPtr *string, enMap, frMap map[string]string, enField, frField **string) {
+// applyNameTexts pose, pour un id donné, le nom de chaque langue qui en porte un et que le champ n'a
+// pas déjà (fillAbsent).
+func applyNameTexts(idPtr *string, names map[string]i18n.Text, field *i18n.Text) {
 	id := strings.TrimSpace(derefString(idPtr))
 	if id == "" {
 		return
 	}
-	en := strings.TrimSpace(enMap[id])
-	if en != "" && derefString(*enField) == "" {
-		enCopy := en
-		*enField = &enCopy
-	}
-	if derefString(*frField) == "" {
-		if fr := frThenEN(frMap[id], en); fr != "" {
-			frCopy := fr
-			*frField = &frCopy
-		}
-	}
+	fillAbsent(field, names[id])
 }
 
-// frThenEN retourne le FR nettoyé s'il est non vide, sinon l'EN (déjà nettoyé).
-func frThenEN(fr, en string) string {
-	if v := strings.TrimSpace(fr); v != "" {
-		return v
-	}
-	return en
-}
-
-// logResolvedAssetNames émet les compteurs de résolution par kind (union EN/FR)
-// face aux ids demandés. WarnContext si au moins un kind demandé ne résout RIEN
-// (metadata incomplète → catégorie de filtres vide SANS erreur : cette
-// dégradation best-effort doit laisser une trace, règle logging n°3 — c'est
-// exactement le mode de panne silencieux du bug « filtres H5 vides »).
-// DebugContext sinon (compteurs de suivi).
+// logResolvedAssetNames émet les compteurs de résolution par kind face aux ids demandés.
+// WarnContext si au moins un kind demandé ne résout RIEN (metadata incomplète → catégorie de
+// filtres vide SANS erreur : cette dégradation best-effort doit laisser une trace, règle logging
+// n°3 — c'est exactement le mode de panne silencieux du bug « filtres H5 vides »). DebugContext
+// sinon (compteurs de suivi).
 func logResolvedAssetNames(ctx context.Context, res resolvedAssetNames, mapReq, plReq, varReq int) {
-	mapN := countResolved(res.mapEN, res.mapFR)
-	plN := countResolved(res.playlistEN, res.playlistFR)
-	varN := countResolved(res.variantEN, res.variantFR)
+	mapN, plN, varN := len(res.maps), len(res.playlists), len(res.variants)
 	attrs := []any{
 		"maps_resolus", mapN, "maps_demandes", mapReq,
 		"playlists_resolues", plN, "playlists_demandees", plReq,
@@ -203,24 +153,9 @@ func logResolvedAssetNames(ctx context.Context, res resolvedAssetNames, mapReq, 
 	slog.DebugContext(ctx, "filters: noms d'assets résolus depuis metadata", attrs...)
 }
 
-// countResolved compte les ids distincts présents dans l'un des deux maps.
-func countResolved(enMap, frMap map[string]string) int {
-	if len(enMap) == 0 && len(frMap) == 0 {
-		return 0
-	}
-	seen := make(map[string]struct{}, len(enMap)+len(frMap))
-	for id := range enMap {
-		seen[id] = struct{}{}
-	}
-	for id := range frMap {
-		seen[id] = struct{}{}
-	}
-	return len(seen)
-}
-
-// applyModeFRTranslations enrichit PairNameFR dans les rows via la cascade
-// unifiée analysis.ResolvePairNameFR (mode_name_tr puis re-lookup via
-// asset_translations puis raw fallback).
+// applyModeFRTranslations enrichit PairName, dans chaque langue autre que la langue de repli, via la
+// cascade unifiée analysis.ResolvePairName (mode_name_tr puis re-lookup via asset_translations puis
+// raw fallback).
 //
 // Source unique de vérité partagée avec home_repo et match_history. Sans le
 // re-lookup asset_translations, certains pair_id corrompus (asset_translations
@@ -238,15 +173,15 @@ func (r *FiltersRepo) applyModeFRTranslations(ctx context.Context, rows []domain
 	// Étape 1 : collecter les pair_id distincts ET les mode_en normalisés
 	// (depuis pair_name brut ET depuis l'asset name si déjà connu).
 	pairIDs := collectDistinctPairIDsForFilters(rows)
-	pairAssetNames := loadPairAssetNamesFR(ctx, r.pdb.Metadata, pairIDs)
+	pairAssets := loadPairAssetNames(ctx, r.pdb.Metadata, pairIDs)
 
 	uniqueEN := make(map[string]struct{}, 32)
 	for _, row := range rows {
-		if en := analysis.NormalizeModeLabel(derefString(row.PairName)); en != "" {
+		if en := analysis.NormalizeModeLabel(row.PairName[i18n.Fallback]); en != "" {
 			uniqueEN[en] = struct{}{}
 		}
 		if row.PairID != nil {
-			if assetName := strings.TrimSpace(pairAssetNames[*row.PairID]); assetName != "" {
+			if assetName := strings.TrimSpace(pickAcrossChain(i18n.Fallback, pairAssets[*row.PairID])); assetName != "" {
 				if en := analysis.NormalizeModeLabel(assetName); en != "" {
 					uniqueEN[en] = struct{}{}
 				}
@@ -261,25 +196,37 @@ func (r *FiltersRepo) applyModeFRTranslations(ctx context.Context, rows []domain
 	for en := range uniqueEN {
 		enNames = append(enNames, en)
 	}
-	modeFR := loadModeNamesFRForKeys(ctx, r.pdb.Metadata, enNames)
-	if len(modeFR) == 0 && len(pairAssetNames) == 0 {
+	modes := modeTextsByLocale(ctx, r.pdb.Metadata, enNames)
+	if len(modes) == 0 && len(pairAssets) == 0 {
 		return
 	}
 
-	// Étape 2 : appliquer le helper canonique sur chaque row.
+	// Étape 2 : appliquer le helper canonique sur chaque row, langue par langue.
 	for i := range rows {
-		var assetName string
+		var assets i18n.Text
 		if rows[i].PairID != nil {
-			assetName = pairAssetNames[*rows[i].PairID]
+			assets = pairAssets[*rows[i].PairID]
 		}
-		if fr := analysis.ResolvePairNameFR(
-			derefString(rows[i].PairName),
-			derefString(rows[i].PairNameFR),
-			assetName,
-			modeFR,
-		); fr != "" {
-			rows[i].PairNameFR = &fr
+		applyPairNameTexts(&rows[i].PairName, assets, modes)
+	}
+}
+
+// applyPairNameTexts applique analysis.ResolvePairName à chaque langue autre que la langue de repli :
+// le nom brut est celui de la langue de repli (pair_name du registre), le nom d'actif celui de la
+// langue puis de la langue de repli, la table des modes celle de la langue.
+func applyPairNameTexts(field *i18n.Text, assets i18n.Text, modes map[i18n.Locale]map[string]string) {
+	for _, l := range i18n.Locales() {
+		if l == i18n.Fallback {
+			continue
 		}
+		resolved := analysis.ResolvePairName((*field)[i18n.Fallback], (*field)[l], pickAcrossChain(l, assets), modes[l])
+		if resolved == "" {
+			continue
+		}
+		if *field == nil {
+			*field = i18n.Text{}
+		}
+		(*field)[l] = resolved
 	}
 }
 

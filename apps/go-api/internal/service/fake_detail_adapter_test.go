@@ -31,9 +31,6 @@ func (f *fakeDetailAdapter) LoadEncounters(_ context.Context, _ string) ([]canon
 func (f *fakeDetailAdapter) LoadLUSRHistory(_ context.Context, _ string) ([]canonical.LUSRCheckpoint, error) {
 	return nil, games.ErrCapabilityNotSupported
 }
-func (f *fakeDetailAdapter) LoadTopMatches(_ context.Context, _ string) ([]canonical.CareerTopMatch, error) {
-	return nil, games.ErrCapabilityNotSupported
-}
 func (f *fakeDetailAdapter) LoadTargetRecentMatches(_ context.Context, _ string, _ int) ([]canonical.RecentMatchRow, error) {
 	return nil, games.ErrCapabilityNotSupported
 }

@@ -16,7 +16,6 @@ import { useMemo, useState, type ReactNode } from 'react'
 import { Input } from '@/components/ui/input'
 import { SectionCard } from '@/components/ui/section-card'
 import type { TacticalMapCard } from '@/lib/api/types'
-import type { Locale } from '@/lib/i18n/locale'
 
 import { colonneDesCartes, type ColonneDesCartes } from './cockpit.logic'
 import type { TacticalText } from './i18n'
@@ -30,7 +29,6 @@ interface TacticalMapsColumnProps {
   /** La carte affichée par le plan (sélectionnée ou choisie d'office) ; '' = aucune. */
   carteActive: string
   playerSlug: string
-  locale: Locale
   t: TacticalText
   onSelect: (mapId: string) => void
   /** Les cartes affichées répondent à l'ANCIEN filtre (relecture en cours). */
@@ -44,14 +42,13 @@ export function TacticalMapsColumn({
   plancher,
   carteActive,
   playerSlug,
-  locale,
   t,
   onSelect,
   enRelecture,
   etat,
 }: TacticalMapsColumnProps) {
   const [recherche, setRecherche] = useState('')
-  const colonne = useMemo(() => colonneDesCartes(cartes, recherche, locale), [cartes, recherche, locale])
+  const colonne = useMemo(() => colonneDesCartes(cartes, recherche), [cartes, recherche])
 
   return (
     <div className="min-w-0 min-[1400px]:self-stretch min-[1400px]:[contain:size]" data-testid="tactical-maps-column">
@@ -84,7 +81,6 @@ export function TacticalMapsColumn({
                   key={c.map_id}
                   carte={c}
                   playerSlug={playerSlug}
-                  locale={locale}
                   t={t}
                   selectionnee={c.map_id === carteActive}
                   onSelect={onSelect}
@@ -97,7 +93,7 @@ export function TacticalMapsColumn({
               )}
             </div>
             {colonne.totalSousPlancher > 0 && (
-              <RepliSousPlancher colonne={colonne} plancher={plancher} locale={locale} t={t} />
+              <RepliSousPlancher colonne={colonne} plancher={plancher} t={t} />
             )}
           </>
         )}
@@ -116,12 +112,10 @@ export function TacticalMapsColumn({
 function RepliSousPlancher({
   colonne,
   plancher,
-  locale,
   t,
 }: {
   colonne: ColonneDesCartes
   plancher: number
-  locale: Locale
   t: TacticalText
 }) {
   return (
@@ -143,7 +137,7 @@ function RepliSousPlancher({
             className="flex justify-between gap-2 border-b border-border text-[11.5px] leading-[19px] last:border-b-0"
             data-testid={`tactical-map-plancher-${c.map_id}`}
           >
-            <span className="min-w-0 truncate">{nomCarte(c, locale)}</span>
+            <span className="min-w-0 truncate">{nomCarte(c)}</span>
             <span className="flex-none tabular-nums text-muted-foreground">{t.floorCount(c.matchs, plancher)}</span>
           </li>
         ))}

@@ -46,8 +46,8 @@ func TestAchievementsHandler_OK(t *testing.T) {
 				CompletionPct:    40.0,
 			},
 			Achievements: []domain.AchievementEntry{
-				{AchievementID: "a", NameEN: "First", NameFR: "Premier", Gamerscore: 10, Unlocked: true},
-				{AchievementID: "b", NameEN: "Second", NameFR: "Second", Gamerscore: 20, Unlocked: false},
+				{AchievementID: "a", Name: "Premier", Gamerscore: 10, Unlocked: true},
+				{AchievementID: "b", Name: "Second", Gamerscore: 20, Unlocked: false},
 			},
 		},
 	}

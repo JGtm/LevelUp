@@ -35,17 +35,15 @@ func seedWeaponAccuracy(t *testing.T, pdb *PlayerDB) {
 	execOnSharedDBs(t, pdb, ctx,
 		`INSERT INTO shared.xuid_aliases (xuid, gamertag) VALUES (?, ?)`,
 		waTestXUIDOther, "OtherPlayer")
-	// Label FR pour weapon 100 (parité weapon_labels-first ; 42 reste sans label).
-	if _, err := pdb.Metadata.Exec(ctx,
-		`INSERT INTO weapon_labels (weapon_id,name_en,name_fr) VALUES (?,?,?)`,
-		uint64(100), "Magnum", "Pistolet"); err != nil {
+	// Noms de l'arme 100 en français et en anglais ; la 42 porte les siens depuis seedMetaDBSchema.
+	if _, err := pdb.Metadata.Exec(ctx, `INSERT INTO weapon_labels (weapon_id) VALUES (?)`, uint64(100)); err != nil {
 		t.Fatalf("seed weapon_label 100: %v", err)
 	}
-	if _, err := pdb.Metadata.Exec(ctx,
-		`INSERT INTO weapon_labels (weapon_id,name_en,name_fr) VALUES (?,?,?)`,
-		uint64(42), "BR75", "BR75"); err != nil {
-		t.Fatalf("seed weapon_label 42: %v", err)
+	putWeaponLabelNames(t, pdb.Metadata, 100, frEn("Pistolet", "Magnum"))
+	if _, err := pdb.Metadata.Exec(ctx, `DELETE FROM weapon_label_names WHERE weapon_id = ?`, uint64(42)); err != nil {
+		t.Fatalf("reset weapon_label 42: %v", err)
 	}
+	putWeaponLabelNames(t, pdb.Metadata, 42, frEn("BR75", "BR75"))
 }
 
 func TestWeaponAccuracyRepo_Load_RejectsBroadFilters(t *testing.T) {

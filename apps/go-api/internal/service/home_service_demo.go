@@ -9,30 +9,41 @@ package service
 
 import (
 	"context"
-	_ "embed"
+	"embed"
 	"encoding/json"
 	"log/slog"
 	"time"
 
-	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
-//go:embed demo_fixtures/challenges.json
-var demoChallengesJSON []byte
+// demoFixturesFS porte une fixture de défis par langue : `demo_fixtures/challenges.<code>.json`.
+// Une langue sans fixture sert celle de la langue de repli (compté, voir demoChallengesFixture).
+//
+//go:embed demo_fixtures/challenges.*.json
+var demoFixturesFS embed.FS
 
-//go:embed demo_fixtures/challenges.en.json
-var demoChallengesENJSON []byte
+// demoChallengesFixture lit la fixture de la langue `l`, sinon celle de i18n.Fallback.
+func demoChallengesFixture(ctx context.Context, l i18n.Locale) ([]byte, error) {
+	raw, err := demoFixturesFS.ReadFile("demo_fixtures/challenges." + string(l) + ".json")
+	if err == nil {
+		return raw, nil
+	}
+	i18n.CountDocumentFallback()
+	slog.DebugContext(ctx, "demo challenges : pas de fixture dans cette langue, repli", "locale", l, "fallback", i18n.Fallback)
+	return demoFixturesFS.ReadFile("demo_fixtures/challenges." + string(i18n.Fallback) + ".json")
+}
 
 // demoChallenges retourne la fixture défis démo (embarquée), dans la locale de la
-// requête (ctxkeys.Locale). Bypass live + cache. snapshot_at = maintenant (fraîcheur
-// ok côté UI, pas d'indicateur "périmé"). Parité FR/EN 1:1 (challenges.json /
-// challenges.en.json) : sans sélection par locale, la démo affiche les défis en FR
-// même quand l'UI passe en anglais.
+// requête (i18n.FromContext). Bypass live + cache. snapshot_at = maintenant (fraîcheur
+// ok côté UI, pas d'indicateur "périmé"). Une fixture par langue (challenges.<code>.json) :
+// sans sélection par locale, la démo afficherait les défis dans une seule langue.
 func demoChallenges(ctx context.Context) domain.ChallengesResponse {
-	fixture := demoChallengesJSON
-	if ctxkeys.Locale(ctx) == "en" {
-		fixture = demoChallengesENJSON
+	fixture, err := demoChallengesFixture(ctx, i18n.FromContext(ctx))
+	if err != nil {
+		slog.WarnContext(ctx, "demo challenges fixture read failed", "err", err)
+		return domain.ChallengesResponse{Available: false}
 	}
 	var resp domain.ChallengesResponse
 	if err := json.Unmarshal(fixture, &resp); err != nil {

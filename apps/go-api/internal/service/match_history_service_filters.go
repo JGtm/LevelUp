@@ -16,6 +16,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/mapgroups"
 )
@@ -91,10 +92,10 @@ func filterBySkillTier(rows []domain.MatchHistoryRawRow, tiers []string, rankedC
 	}
 	out := rows[:0:0]
 	for _, r := range rows {
-		if r.SkillTier == nil {
+		if r.SkillTier == "" {
 			continue
 		}
-		if _, ok := tierSet[strings.ToLower(*r.SkillTier)]; ok {
+		if _, ok := tierSet[strings.ToLower(r.SkillTier)]; ok {
 			out = append(out, r)
 		}
 	}
@@ -188,7 +189,7 @@ func filterByExplorerPlaylists(rows []domain.MatchHistoryRawRow, playlists []str
 	set := stringSliceToSet(playlists)
 	out := rows[:0:0]
 	for _, r := range rows {
-		if _, ok := set[derefStr(r.PlaylistName)]; ok {
+		if _, ok := set[r.PlaylistName.Pick(i18n.Default)]; ok {
 			out = append(out, r)
 		}
 	}
@@ -223,7 +224,7 @@ func filterByExplorerModeNames(rows []domain.MatchHistoryRawRow, modes []string)
 		// Pair prioritaire, sinon fallback game_variant (titres sans pair, ex. H5) —
 		// même convention que le chokepoint filters_service.modeUI et les options.
 		label := ""
-		if v := analysis.ResolveModeUIWithVariant(r.PairName, r.PairNameFR, r.GameVariantName, r.GameVariantNameFR); v != nil {
+		if v := analysis.ResolveModeUIWithVariant(r.PairName, r.GameVariantName); v != nil {
 			label = *v
 		}
 		if _, ok := set[label]; ok {
@@ -333,32 +334,26 @@ func applyExplorerMatchFilters(
 	return rows
 }
 
-// computeExplorerAvailableOptions calcule les valeurs distinctes triées pour les 4 dimensions
-// Explorer (experience, playlist, carte, mode) depuis les rows AVANT les filtres Explorer.
-func computeExplorerAvailableOptions(rows []domain.MatchHistoryRawRow) (expTypes, playlists, maps, modes []string) {
+// computeExplorerAvailableOptions calcule les options distinctes triées pour les 4 dimensions Explorer
+// (experience, playlist, carte, mode) depuis les rows AVANT les filtres Explorer. Les types
+// d'expérience restent des clés (localisées plus loin) ; playlist, carte et mode rendent une option par
+// clé de filtre (le nom de la langue par défaut) dont le libellé est celui de la langue `loc`.
+func computeExplorerAvailableOptions(
+	rows []domain.MatchHistoryRawRow, loc i18n.Locale,
+) (expTypes []string, playlists, maps, modes []domain.LabelValue) {
 	expSet := make(map[string]struct{})
-	plSet := make(map[string]struct{})
-	mapSet := make(map[string]struct{})
-	modeSet := make(map[string]struct{})
+	pl, mp, md := optionLabels{}, optionLabels{}, optionLabels{}
 	for _, r := range rows {
 		expSet[explorerExperienceType(r)] = struct{}{}
-		if pl := derefStr(r.PlaylistName); pl != "" {
-			plSet[pl] = struct{}{}
-		}
-		if m := explorerMapFilterLabel(r); m != "" {
-			mapSet[m] = struct{}{}
-		}
+		pl.add(r.PlaylistName.Pick(i18n.Default), r.PlaylistName.Pick(loc))
+		mp.add(explorerMapFilterLabel(r), explorerMapFilterLabelIn(r, loc))
 		// Pair prioritaire, sinon fallback game_variant (titres sans pair, ex. H5) —
 		// même convention que filterByExplorerModeNames et les options du filtre.
-		if v := analysis.ResolveModeUIWithVariant(r.PairName, r.PairNameFR, r.GameVariantName, r.GameVariantNameFR); v != nil && *v != "" {
-			modeSet[*v] = struct{}{}
+		if v := analysis.ResolveModeUIWithVariant(r.PairName, r.GameVariantName); v != nil && *v != "" {
+			md.add(*v, derefString(analysis.ResolveModeUIWithVariantIn(loc, r.PairName, r.GameVariantName)))
 		}
 	}
-	expTypes = sortedKeys(expSet)
-	playlists = sortedKeys(plSet)
-	maps = sortedKeys(mapSet)
-	modes = sortedKeys(modeSet)
-	return
+	return sortedKeys(expSet), pl.options(), mp.options(), md.options()
 }
 
 // sortedKeys retourne les clés d'un map[string]struct{} triées alphabétiquement.
@@ -410,7 +405,7 @@ func (s *MatchHistoryService) ExportCSV(
 	mapWinRates := computeMapWinRates(rawRows, groups)
 	// Rejeu 2D : l'export CSV ne porte pas de colonne « Rejeu » (cf. availableColumns)
 	// — inutile de lister le dossier d'artefacts pour un fichier qui ne l'affiche pas.
-	items := enrichRows(filtered, mapWinRates, s.rowFormatters(nil, groups))
+	items := enrichRows(filtered, mapWinRates, s.rowFormatters(nil, groups), i18n.FromContext(ctx))
 	sortItems(items, req.SortField, req.SortDir)
 
 	return items, nil

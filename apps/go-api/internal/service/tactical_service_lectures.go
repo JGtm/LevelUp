@@ -22,6 +22,7 @@ import (
 	"levelup/go-api/internal/analysis/tactical"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/i18n"
 )
 
 // comptesDesRoutes rend les cellules de ROUTE de la cible, une occurrence par passage.
@@ -61,14 +62,14 @@ func comptesDesRoutes(sc *domain.TacticalRasterSidecar, matchID string,
 //
 // SEULE LA PREMIERE VIE COMPTE (decision produit) : les reapparitions suivantes dependent de
 // l'endroit ou l'on vient de mourir, pas du placement d'ouverture.
-func grappesDeLUnivers(sidecars map[string]*domain.TacticalRasterSidecar,
+func grappesDeLUnivers(loc i18n.Locale, sidecars map[string]*domain.TacticalRasterSidecar,
 	xuid string, zones []domain.ZoneNommee) []domain.TacticalGrappe {
 	amas := tactical.GrappesDeSpawn(tactical.GrilleParDefaut(),
 		spawnsDeDepart(sidecars, xuid), zonesPures(zones))
 	out := make([]domain.TacticalGrappe, 0, len(amas))
 	for _, a := range amas {
 		out = append(out, domain.TacticalGrappe{
-			ID: a.ID, NomFR: a.NomFR, NomEN: a.NomEN, X: a.X, Y: a.Y, Matchs: a.Matchs,
+			ID: a.ID, Nom: a.Nom.PickOptional(loc), X: a.X, Y: a.Y, Matchs: a.Matchs,
 		})
 	}
 	return out
@@ -80,7 +81,7 @@ func zonesPures(zones []domain.ZoneNommee) []tactical.ZoneNommee {
 	out := make([]tactical.ZoneNommee, 0, len(zones))
 	for _, z := range zones {
 		out = append(out, tactical.ZoneNommee{
-			NomFR: z.NomFR, NomEN: z.NomEN, X: z.X, Y: z.Y,
+			Nom: z.Nom, X: z.X, Y: z.Y,
 			Polygone: z.Polygone, Parties: z.Parties, Trous: z.Trous,
 			ZBas: z.ZBas, ZHaut: z.ZHaut, VolumeIndex: z.VolumeIndex,
 		})
@@ -146,7 +147,7 @@ func (s *TacticalService) perimetreDuSpawn(ctx context.Context, carte string,
 		return perimetreSpawn{}, domain.ErrTacticalCarteInconnue
 	}
 	sidecars, _ := s.chargerSidecars(ctx, univers, carte)
-	grappes := grappesDeLUnivers(sidecars, s.xuid, s.zonesDeLaCarte(ctx, carte))
+	grappes := grappesDeLUnivers(i18n.FromContext(ctx), sidecars, s.xuid, s.zonesDeLaCarte(ctx, carte))
 
 	amas, ok := amasParID(sidecars, s.xuid, scope.Spawn, grappes)
 	if !ok {

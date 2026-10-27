@@ -7,6 +7,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
@@ -40,13 +41,13 @@ func briefingWeaponsScope(n, kills int) []domain.MatchHistoryRawRow {
 
 func TestBuildBriefingWeapons_TopTwoAndMeasuredDenominator(t *testing.T) {
 	repo := &briefingWeaponsRepo{rows: []port.WeaponKillRow{
-		{WeaponID: 1, Label: "Fusil de combat", Kills: 40, Class: "shoulder"},
-		{WeaponID: 2, Label: "Pistolet", Kills: 25, Class: "sidearm"},
-		{WeaponID: 3, Label: "Fusil à pompe", Kills: 5, Class: "shoulder"},
+		{WeaponID: 1, Label: i18n.Text{i18n.LocaleFR: "Fusil de combat"}, Kills: 40, Class: "shoulder"},
+		{WeaponID: 2, Label: i18n.Text{i18n.LocaleFR: "Pistolet"}, Kills: 25, Class: "sidearm"},
+		{WeaponID: 3, Label: i18n.Text{i18n.LocaleFR: "Fusil à pompe"}, Kills: 5, Class: "shoulder"},
 		// Libellé non résolu : compte pour zéro, ni au classement ni au dénominateur.
-		{WeaponID: 4, Label: "", Kills: 100},
+		{WeaponID: 4, Label: i18n.Text{i18n.LocaleFR: ""}, Kills: 100},
 		// Sentinelle grenade/mêlée : même traitement (ce n'est pas une arme du classement).
-		{WeaponID: 5, Label: "Grenade à fragmentation", Kills: 30, IsGrenadeMelee: true},
+		{WeaponID: 5, Label: i18n.Text{i18n.LocaleFR: "Grenade à fragmentation"}, Kills: 30, IsGrenadeMelee: true},
 	}}
 	// 12 matchs à 10 frags = 120 frags au scope.
 	got := buildBriefingWeapons(context.Background(), repo, "halo_infinite", "2533", briefingWeaponsScope(12, 10))
@@ -80,7 +81,7 @@ func TestBuildBriefingWeapons_TopTwoAndMeasuredDenominator(t *testing.T) {
 
 func TestBuildBriefingWeapons_FiltersPassedToRepo(t *testing.T) {
 	repo := &briefingWeaponsRepo{rows: []port.WeaponKillRow{
-		{WeaponID: 1, Label: "Fusil de combat", Kills: 10},
+		{WeaponID: 1, Label: i18n.Text{i18n.LocaleFR: "Fusil de combat"}, Kills: 10},
 	}}
 	scope := briefingWeaponsScope(3, 4)
 	if got := buildBriefingWeapons(context.Background(), repo, "halo_5", "2533274823110022", scope); got == nil {
@@ -112,11 +113,11 @@ func TestBuildBriefingWeapons_MeasuredZeroYieldsNil(t *testing.T) {
 	cases := map[string][]port.WeaponKillRow{
 		"aucune ligne": nil,
 		"que des libelles non resolus": {
-			{WeaponID: 4, Label: "", Kills: 100},
-			{WeaponID: 5, Label: "", Kills: 3},
+			{WeaponID: 4, Label: i18n.Text{i18n.LocaleFR: ""}, Kills: 100},
+			{WeaponID: 5, Label: i18n.Text{i18n.LocaleFR: ""}, Kills: 3},
 		},
 		"que des sentinelles grenade/melee": {
-			{WeaponID: 6, Label: "Grenade à fragmentation", Kills: 30, IsGrenadeMelee: true},
+			{WeaponID: 6, Label: i18n.Text{i18n.LocaleFR: "Grenade à fragmentation"}, Kills: 30, IsGrenadeMelee: true},
 		},
 	}
 	for name, rows := range cases {
@@ -131,7 +132,7 @@ func TestBuildBriefingWeapons_MeasuredZeroYieldsNil(t *testing.T) {
 
 func TestBuildBriefingWeapons_DegradesWithoutPropagating(t *testing.T) {
 	scope := briefingWeaponsScope(12, 10)
-	rows := []port.WeaponKillRow{{WeaponID: 1, Label: "Fusil de combat", Kills: 40}}
+	rows := []port.WeaponKillRow{{WeaponID: 1, Label: i18n.Text{i18n.LocaleFR: "Fusil de combat"}, Kills: 40}}
 	t.Run("repo absent", func(t *testing.T) {
 		if got := buildBriefingWeapons(context.Background(), nil, "halo_infinite", "2533", scope); got != nil {
 			t.Errorf("bloc = %+v, want nil", got)
@@ -170,7 +171,7 @@ func TestBuildBriefingWeapons_DegradesWithoutPropagating(t *testing.T) {
 }
 
 func TestBuildExplorerBriefing_WeaponsModuleGating(t *testing.T) {
-	rows := []port.WeaponKillRow{{WeaponID: 1, Label: "Fusil de combat", Kills: 40}}
+	rows := []port.WeaponKillRow{{WeaponID: 1, Label: i18n.Text{i18n.LocaleFR: "Fusil de combat"}, Kills: 40}}
 	t.Run("scope nominal", func(t *testing.T) {
 		svc := &MatchHistoryService{weaponKillsRepo: &briefingWeaponsRepo{rows: rows}, weaponKillsXUID: "2533"}
 		scope := briefingWeaponsScope(12, 10)

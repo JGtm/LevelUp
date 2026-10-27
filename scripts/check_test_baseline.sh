@@ -293,9 +293,21 @@
 # RETRAIT DU 2026-10-27 (plan des modes par titre, release v8.1.0 : le mode d'un match est fourni par la
 # source du titre, le repli de `modeLabels` sur le type de jeu est supprimé) : 3 tests de `internal/analysis`
 # — TestModeLabels_PrefersPairMode, TestModeLabels_FallbackGameVariant et
-# TestModeLabels_PairModeEmptyFallbackGameVariant, remplacés par TestModeLabels_LitLeModeFourniParLaSource et
-# TestModeLabels_SansModeNeRepliePasSurGameVariant. 24 lignes JSONL, exactement 3 paires (Package, Test),
+# TestModeLabels_PairModeEmptyFallbackGameVariant, remplacés par TestModeText_LitLeModeFourniParLaSource et
+# TestModeText_SansModeNeRepliePasSurGameVariant (renommés à la fusion de l'i18n, `modeLabels` devenu `modeText`). 24 lignes JSONL, exactement 3 paires (Package, Test),
 # vérifié par différence avant/après.
+#
+# RETRAIT DU 2026-10-27 (i18n à N langues, ADR 0040, branche feat/i18n-multilangue) : 46 tests dont le
+# code testé est supprimé ou remplacé. `internal/analysis` (19) : `assetLabels`, `labelFR`,
+# `labelForLocale`, `modeLabels` et la branche `frPreferred` de `buildCSRTierLabel` remplacés par les
+# lecteurs `i18n.Text` (TestModeText_* et suivants). `career/top-matches` supprimé, sans consommateur
+# (handlers 3, service 7 dont TestReverseTopMatches / TestSplitTopRows_*, platform/duckdb 2) ; liste des
+# matchs exclus sans route (`ListExcluded` : platform/duckdb 4, service 1) ; `GetAvailablePlaylists` et
+# `formatDateFRLong` morts (1 + 2) ; `ParsePlacementRemaining` déplacé vers `internal/domain`
+# (platform/duckdb 4, service 1 ; couvert par les tests de `domain`). 293 lignes JSONL, exactement 46
+# paires (Package, Test), vérifié par différence avant/après. Rejouée sur release/v8.1.0 : les 3 paires TestModeLabels_*
+# ci-dessus figurent dans ces 46 et ont déjà été retirées par le retrait de la release (24 lignes) ; la baseline
+# fusionnée retire donc 46 paires (293 lignes) au total, pas 49 : jamais une paire retirée deux fois.
 #
 # DEUX MODES (le code de vérification est le MÊME — verify_tests_jsonl) :
 #   - AUTONOME (défaut) : le script lance lui-même la suite. C'est le mode du

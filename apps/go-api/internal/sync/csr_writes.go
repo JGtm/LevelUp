@@ -23,20 +23,23 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
+	"levelup/go-api/internal/sync/skill"
 )
 
 // MatchCSRRow représente une ligne à écrire dans match_skill_rank avec
 // rating_type='CSR'. Pour les matchs de placement (PostMatchCSR.Value=0
 // et MeasurementMatchesRemaining > 0) :
 //   - RatingValue = nil (NULL en DB)
-//   - Tier = "Placement", TierFR = "Placement"
-//   - TierLabel = "Placement (N restants)"
+//   - Tier = "Placement"
+//   - TierLabel = domain.PlacementLabel(N)
 //   - RatingDelta = nil (le delta n'a pas de sens en placement)
 type MatchCSRRow struct {
 	MatchID                     string
 	RatingValue                 *float64
-	Tier                        string
-	TierFR                      string
+	Tier                        string // nom canonique anglais du palier (colonne `tier`)
 	SubTier                     int
 	TierLabel                   string
 	RatingDelta                 *float64
@@ -45,35 +48,29 @@ type MatchCSRRow struct {
 	MeasurementMatchesRemaining int
 }
 
-// tierENtoFR mappe le tier EN renvoyé par l'API Halo vers son équivalent FR.
-// Les valeurs vides ("" → placement) sont gérées en amont par ExtractCSRRowIfRanked.
-var tierENtoFR = map[string]string{
-	TierBronze:   TierLabelBronze,
-	TierSilver:   TierLabelArgent,
-	TierGold:     TierLabelOr,
-	TierPlatinum: TierLabelPlatine,
-	TierDiamond:  TierLabelDiamant,
-	TierOnyx:     TierLabelOnyx,
-}
-
-// translateTierFR retourne la traduction FR du tier EN ; retourne le tier EN
-// inchangé si non reconnu (forward-compat : si Microsoft ajoute un tier).
-func translateTierFR(tierEN string) string {
-	if fr, ok := tierENtoFR[tierEN]; ok {
-		return fr
+// translateTier retourne les noms par langue du tier EN ; un tier non reconnu garde son nom EN dans
+// chaque langue (forward-compat : si Microsoft ajoute un tier).
+func translateTier(tierEN string) i18n.Text {
+	if names, ok := skill.TierText(tierEN); ok {
+		return names
 	}
-	return tierEN
+	names := i18n.Text{}
+	for _, l := range i18n.Locales() {
+		names[l] = tierEN
+	}
+	return names
 }
 
 var csrSubTierRoman = [7]string{"", "I", "II", "III", "IV", "V", "VI"}
 
 // formatCSRTierLabel construit le tier_label affiché côté front. Format :
-//   - placement : "Placement (N restants)"
+//   - placement : domain.PlacementLabel(N), lu par domain.ParsePlacementRemaining
 //   - Onyx (pas de sous-tier) : "Onyx 1850"
-//   - autres tiers (Bronze…Diamond) : "Or III" (FR + sous-tier en chiffres romains)
+//   - autres tiers (Bronze…Diamond) : "Or III" (nom du tier dans la langue par défaut + sous-tier
+//     en chiffres romains ; le web le relocalise par nom de tier)
 func formatCSRTierLabel(tier, tierFR string, subTier int, value int, measurementRemaining int) string {
 	if measurementRemaining > 0 || tier == "" {
-		return fmt.Sprintf("Placement (%d restant%s)", measurementRemaining, pluralS(measurementRemaining))
+		return domain.PlacementLabel(measurementRemaining)
 	}
 	if tier == TierOnyx {
 		return fmt.Sprintf("Onyx %d", value)
@@ -82,13 +79,6 @@ func formatCSRTierLabel(tier, tierFR string, subTier int, value int, measurement
 		return fmt.Sprintf("%s %s", tierFR, csrSubTierRoman[subTier])
 	}
 	return tierFR
-}
-
-func pluralS(n int) string {
-	if n > 1 {
-		return "s"
-	}
-	return ""
 }
 
 // ExtractCSRRowIfRanked construit une MatchCSRRow depuis le skillData d'un
@@ -114,7 +104,7 @@ func ExtractCSRRowIfRanked(reg *MatchRegistryRow, skill *MatchSkillData) *MatchC
 	// porte SOIT un Tier non vide (rang stable Bronze..Onyx) SOIT un
 	// MeasurementMatchesRemaining > 0 (placement en cours). Si les deux sont
 	// nuls, on suppose le payload invalide et on rejette la row plutôt que
-	// d'écraser une CSR existante avec un placeholder "Placement (0 restant)".
+	// d'écraser une CSR existante avec un placeholder de placement à 0 match restant.
 	// Le user perdrait alors une donnée Microsoft valide sur un re-fetch
 	// (notamment via `--csr --force`).
 	if post.Tier == "" && post.MeasurementMatchesRemaining == 0 {
@@ -137,7 +127,6 @@ func ExtractCSRRowIfRanked(reg *MatchRegistryRow, skill *MatchSkillData) *MatchC
 	// (highest_csr/lusr filtrera 0.0 implicitement via ORDER BY rating DESC).
 	if post.MeasurementMatchesRemaining > 0 || post.Tier == "" {
 		row.Tier = TierLabelPlacement
-		row.TierFR = TierLabelPlacement
 		row.SubTier = 0
 		row.TierLabel = formatCSRTierLabel("", "", 0, 0, post.MeasurementMatchesRemaining)
 		zero := 0.0
@@ -145,11 +134,11 @@ func ExtractCSRRowIfRanked(reg *MatchRegistryRow, skill *MatchSkillData) *MatchC
 		return row
 	}
 
-	// Rang stable : value, tier_fr, tier_label, delta.
+	// Rang stable : value, tier_label, delta.
 	v := post.Value
 	row.RatingValue = &v
-	row.TierFR = translateTierFR(post.Tier)
-	row.TierLabel = formatCSRTierLabel(post.Tier, row.TierFR, post.SubTier, int(post.Value), 0)
+	row.Tier = post.Tier
+	row.TierLabel = formatCSRTierLabel(post.Tier, translateTier(post.Tier).Pick(i18n.Default), post.SubTier, int(post.Value), 0)
 	if skill.PreMatchCSR != nil {
 		delta := post.Value - skill.PreMatchCSR.Value
 		row.RatingDelta = &delta
@@ -180,13 +169,13 @@ func UpsertCSRRow(ctx context.Context, playerDB *sql.DB, row *MatchCSRRow) error
 	_, err := playerDB.ExecContext(ctx, `
 		INSERT INTO match_skill_rank
 			(match_id, rating_type, rating_value, rating_deviation,
-			 tier, tier_fr, sub_tier, tier_label,
+			 tier, sub_tier, tier_label,
 			 rating_delta, playlist_group, start_time,
 			 measurement_matches_remaining,
 			 created_at, updated_at)
-		VALUES (?, 'CSR', ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		VALUES (?, 'CSR', ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		row.MatchID, row.RatingValue,
-		row.Tier, row.TierFR, row.SubTier, row.TierLabel,
+		row.Tier, row.SubTier, row.TierLabel,
 		row.RatingDelta, row.PlaylistGroup, row.StartTime,
 		row.MeasurementMatchesRemaining,
 		now, now,
@@ -203,12 +192,12 @@ func UpsertCSRRow(ctx context.Context, playerDB *sql.DB, row *MatchCSRRow) error
 // Contexte : l'import OpenSpartan écrit le CSR par-match dans shared.match_csrs
 // (extrait de RankRecap, cf. ExtractAllSharedCSRRows), mais l'UI lit le rating
 // via player.match_skill_rank_latest. Cette fonction reprojette donc les lignes
-// shared du joueur vers sa player DB, en réutilisant le formatage tier_fr /
-// placement de la chaîne CSR. Pur local — aucun appel API.
+// shared du joueur vers sa player DB, en réutilisant le formatage du
+// libellé de palier / placement de la chaîne CSR. Pur local — aucun appel API.
 //
 // La shared row a déjà appliqué le formatage placement (tier="Placement",
 // rating_value NULL) ; on réplique ici l'invariant player (rating_value=0.0 en
-// placement pour la contrainte NOT NULL) et on dérive tier_fr.
+// placement pour la contrainte NOT NULL) et on garde le nom canonique du palier.
 //
 // Idempotent : les matchs portant déjà une ligne CSR côté player DB sont skippés
 // (évite la prolifération de versions append-only au réimport). Retourne le
@@ -259,7 +248,6 @@ func BackfillCSRFromShared(ctx context.Context, sharedDB, playerDB *sql.DB, xuid
 		row := &MatchCSRRow{
 			MatchID:                     matchID,
 			Tier:                        tier.String,
-			TierFR:                      translateTierFR(tier.String),
 			SubTier:                     int(subTier.Int64),
 			TierLabel:                   tierLabel.String,
 			PlaylistGroup:               PerfChainRanked,

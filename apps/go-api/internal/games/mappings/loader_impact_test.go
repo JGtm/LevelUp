@@ -68,8 +68,7 @@ func TestRegistreArmesVehicule_ImpactExigeUnTirAuCoup(t *testing.T) {
 	const continu = `[[weapons]]
 tag = "00015CD3"
 vehicle = "falcon"
-en = "a"
-fr = "b"
+label = { en = "a", fr = "b" }
 fire = "continuous"
 fx = "ballistic"
 tint = "kinetic"

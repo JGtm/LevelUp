@@ -37,6 +37,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
@@ -198,13 +199,13 @@ func (r *KillDistanceRepo) resolveRows(ctx context.Context, measured []killMeasu
 		return nil
 	}
 
+	loc := i18n.FromContext(ctx)
 	byPlayer := map[string][]domain.MatchKillDistanceWeapon{}
 	for k, a := range agg {
 		m := meta[k.weaponKey]
 		byPlayer[k.xuid] = append(byPlayer[k.xuid], domain.MatchKillDistanceWeapon{
 			WeaponKey:     k.weaponKey,
-			Label:         m.label,
-			LabelEN:       m.labelEN,
+			Label:         m.label.PickOptional(loc),
 			MeasuredKills: a.kills,
 			AvgDistanceM:  a.sum / float64(a.kills),
 			MinDistanceM:  a.min,

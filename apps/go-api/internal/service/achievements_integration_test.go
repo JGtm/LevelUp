@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/platform/duckdb"
 )
@@ -48,6 +49,31 @@ func openIntegrationMetadataDB(t *testing.T) *duckdb.DB {
 	return db
 }
 
+// insertAchievementTexts range les textes d'un succès dans asset_translations, une ligne par
+// langue (type `achievement` : nom + description ; `achievement_locked` : texte verrouillé dans
+// `name`). Un texte vide n'écrit pas de ligne.
+func insertAchievementTexts(t *testing.T, db *duckdb.DB, id, nameEN, nameFR, descEN, descFR, lockedEN, lockedFR string) {
+	t.Helper()
+	put := func(assetType string, l i18n.Locale, name, desc string) {
+		if name == "" && desc == "" {
+			return
+		}
+		var d any
+		if desc != "" {
+			d = desc
+		}
+		if _, err := db.Exec(context.Background(),
+			`INSERT INTO asset_translations (asset_id, asset_type, lang, name, description) VALUES (?, ?, ?, ?, ?)`,
+			id, assetType, i18n.HaloTags(l)[0], name, d); err != nil {
+			t.Fatalf("insert asset_translations %s/%s (%s): %v", assetType, id, l, err)
+		}
+	}
+	put(duckdb.AssetTypeAchievement, i18n.LocaleEN, nameEN, descEN)
+	put(duckdb.AssetTypeAchievement, i18n.LocaleFR, nameFR, descFR)
+	put(duckdb.AssetTypeAchievementLocked, i18n.LocaleEN, lockedEN, "")
+	put(duckdb.AssetTypeAchievementLocked, i18n.LocaleFR, lockedFR, "")
+}
+
 // TestAchievementsIntegration_FullFlow : peuple les deux DBs avec un dataset
 // hétérogène (10 défs + 4 unlocked) et vérifie le merge cross-DB de bout en bout.
 func TestAchievementsIntegration_FullFlow(t *testing.T) {
@@ -76,20 +102,18 @@ func TestAchievementsIntegration_FullFlow(t *testing.T) {
 	// title_id 'halo_infinite' obligatoire — la query GetAchievementDefinitions
 	// filtre dessus depuis la migration `add_title_id_to_xbox_achievement_definitions`.
 	insertDef := `INSERT INTO xbox_achievement_definitions
-		(achievement_id, name_en, name_fr, description_en, description_fr,
-		 locked_desc_en, locked_desc_fr, gamerscore, image_url, is_secret,
+		(achievement_id, gamerscore, image_url, is_secret,
 		 rarity_category, rarity_percent, title_id, fetched_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
+		VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
 	for _, d := range defs {
 		if _, err := metaDB.Exec(ctx, insertDef,
-			d.id, d.nameEN, d.nameFR,
-			"Desc EN", "Desc FR",
-			"Locked EN", "Verrouillé FR",
+			d.id,
 			d.score, "https://example.com/img.png", false,
 			"Common", 25.0, "halo_infinite",
 		); err != nil {
 			t.Fatalf("insert def %s: %v", d.id, err)
 		}
+		insertAchievementTexts(t, metaDB, d.id, d.nameEN, d.nameFR, "Desc EN", "Desc FR", "Locked EN", "Verrouillé FR")
 	}
 
 	// 4 unlocked (def01, def03, def07, def10) + 1 in-progress (def05) + 5 locked vierges.
@@ -172,9 +196,9 @@ func TestAchievementsIntegration_FullFlow(t *testing.T) {
 				t.Errorf("def05 TargetProgress: attendu %d", target)
 			}
 		}
-		// Vérifier que les noms bilingues sont préservés
-		if a.AchievementID == "def01" && (a.NameEN != "Boot Camp" || a.NameFR != "Camp d'entraînement") {
-			t.Errorf("def01 noms bilingues incorrects: EN=%q FR=%q", a.NameEN, a.NameFR)
+		// Vérifier que le nom est résolu dans la langue du contexte (défaut : fr)
+		if a.AchievementID == "def01" && a.Name != "Camp d'entraînement" {
+			t.Errorf("def01 nom (langue par défaut fr) incorrect: %q", a.Name)
 		}
 	}
 }
@@ -189,13 +213,13 @@ func TestAchievementsIntegration_OrphanPlayerRow(t *testing.T) {
 	// 1 définition seulement.
 	if _, err := metaDB.Exec(ctx,
 		`INSERT INTO xbox_achievement_definitions
-		 (achievement_id, name_en, name_fr, description_en, description_fr,
-		  locked_desc_en, locked_desc_fr, gamerscore, image_url, is_secret,
+		 (achievement_id, gamerscore, image_url, is_secret,
 		  rarity_category, rarity_percent, title_id, fetched_at)
-		 VALUES ('alive', 'Alive', 'Vivant', '', '', '', '', 10, '', false, '', 0, 'halo_infinite', CURRENT_TIMESTAMP)`,
+		 VALUES ('alive', 10, '', false, '', 0, 'halo_infinite', CURRENT_TIMESTAMP)`,
 	); err != nil {
 		t.Fatalf("insert def alive: %v", err)
 	}
+	insertAchievementTexts(t, metaDB, "alive", "Alive", "Vivant", "", "", "", "")
 
 	// 2 player rows : 1 valide (alive) + 1 orphelin (ghost).
 	t1 := time.Date(2026, 4, 1, 10, 0, 0, 0, time.UTC)

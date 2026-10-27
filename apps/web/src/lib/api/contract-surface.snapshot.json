@@ -146,7 +146,6 @@
     "/players/{player_slug}/pages/career/highlight-matches",
     "/players/{player_slug}/pages/career/rivals",
     "/players/{player_slug}/pages/career/top-encounters",
-    "/players/{player_slug}/pages/career/top-matches",
     "/players/{player_slug}/pages/citations",
     "/players/{player_slug}/pages/commendations",
     "/players/{player_slug}/pages/compare",
@@ -342,8 +341,6 @@
     "CareerRivalsResponse",
     "CareerSummary",
     "CareerTopEncountersResponse",
-    "CareerTopMatch",
-    "CareerTopMatchesResponse",
     "CascadeFilter",
     "CascadeInput",
     "CatalogMap",
@@ -966,7 +963,6 @@
     "TokenHealthResponse",
     "TokenProbeResult",
     "TokenRef",
-    "TopMatchDTO",
     "TopTeammate",
     "TopWeekEntry",
     "Track",
@@ -1113,7 +1109,6 @@
     "getCareerPage",
     "getCareerRivals",
     "getCareerTopEncounters",
-    "getCareerTopMatches",
     "getChallengeBadgeAsset",
     "getChangelog",
     "getCommendationTotals",
@@ -1313,16 +1308,6 @@
       "profile_ready_no_sync",
       "ready"
     ],
-    "CareerTopMatch.outcome": [
-      "dnf",
-      "loss",
-      "tie",
-      "win"
-    ],
-    "CareerTopMatch.variant": [
-      "best",
-      "worst"
-    ],
     "CommonMatchRow.outcome": [
       "dnf",
       "loss",
@@ -1489,12 +1474,6 @@
       "active",
       "archived",
       "coming_soon"
-    ],
-    "TopMatchDTO.outcome": [
-      "dnf",
-      "loss",
-      "tie",
-      "win"
     ],
     "getAdminMonitoringDataQualityIssues.kind": [
       "orphan_playlists",

@@ -7,6 +7,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 )
 
 type lecteur struct {
@@ -31,7 +32,7 @@ func TestLoad_Degradation(t *testing.T) {
 
 func TestRefKeyEtRefLabel(t *testing.T) {
 	groups := domain.NewGroupesDeCartes(map[string]string{"v": "b"}).
-		AvecLibelles(map[string]map[string]string{"b": {"en": "Base", "fr": "Socle"}})
+		AvecLibelles(map[string]i18n.Text{"b": {"en": "Base", "fr": "Socle"}})
 	v := &canonical.AssetReference{ID: "v", DefaultLabel: "Variante"}
 	seule := &canonical.AssetReference{ID: "s", DefaultLabel: "Seule"}
 	if RefKey(v, groups) != "b" || RefKey(seule, groups) != "s" || RefKey(nil, groups) != "" {

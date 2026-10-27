@@ -361,7 +361,11 @@ const shapeEnteteCuiteRegle = "empreinte-cuite-regle "
 //	2 (2026-09-14) les lignes de champ de la racine le sont aussi. Sans ce correctif, l'AJOUT
 //	  d'un calque de requête (`weaponTiers`) faisait bouger l'empreinte cuite — exactement ce
 //	  qu'elle existe pour ne pas faire.
-const cuiteRegleCourante = 2
+//	3 (2026-10-26, ADR 0040 D-9) les libelles par langue du document passent de deux champs `En` / `Fr` a un
+//	  champ `Text` (membre Go `i18n_text`, jamais ecrit) : forme de FIL inchangee octet pour octet (`i18n.MarshalFlat`,
+//	  3 314 artefacts du parc relus a l identique), aucun artefact perime, donc ni montee de `SchemaVersion` ni
+//	  re-cuisson. La forme reflechie ne depend plus du nombre de langues.
+const cuiteRegleCourante = 3
 
 // calquesALaRequete — les balises JSON des champs que la CUISSON N'ÉCRIT JAMAIS (grep : aucun `build*.go` ne pose le champ ; vérifié le 2026-09-23 pour `vehicleLabels` 62 et `vehicleWeapons` 69, le 2026-09-24 pour `vehicleScenery`).
 var calquesALaRequete = map[string]bool{

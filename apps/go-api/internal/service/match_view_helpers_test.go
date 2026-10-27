@@ -7,6 +7,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
 // ptrInt : helper de test partagé du package (pointeur int) — utilisé par les tests
@@ -157,7 +158,7 @@ func TestBuildCombatTabFull_MedalsOnlyEvents_UsesKVPairsSynthetic(t *testing.T) 
 		{XUID: me, Kills: 2, Deaths: 1, OutcomeCode: 2, TeamID: intPtr(0)},
 		{XUID: enemy, Kills: 1, Deaths: 2, OutcomeCode: 3, TeamID: intPtr(1)},
 	}
-	tab := buildCombatTabFull("m1", events, nil, kvPairs, scoreboard, me, 60000)
+	tab := buildCombatTabFull(combatTabScope{matchID: "m1", myXUID: me, durationMS: 60000, locale: i18n.Default}, events, nil, kvPairs, scoreboard)
 
 	// KD timeline du joueur : 2 kills + 1 death = 3 points.
 	if len(tab.KDTimeline) == 0 {
@@ -198,7 +199,7 @@ func TestBuildCombatTabFull_RealKillEvents_NoSynthetic(t *testing.T) {
 		{XUID: me, Kills: 1, Deaths: 0, OutcomeCode: 2, TeamID: intPtr(0)},
 		{XUID: enemy, Kills: 0, Deaths: 1, OutcomeCode: 3, TeamID: intPtr(1)},
 	}
-	tab := buildCombatTabFull("m1", events, nil, kvPairs, scoreboard, me, 60000)
+	tab := buildCombatTabFull(combatTabScope{matchID: "m1", myXUID: me, durationMS: 60000, locale: i18n.Default}, events, nil, kvPairs, scoreboard)
 	// Pas de synthèse : exactement les 2 events d'origine dans le kill-feed.
 	if len(tab.HighlightEvents) != 2 {
 		t.Errorf("HighlightEvents attendu 2 (events réels, pas de synthèse), obtenu %d", len(tab.HighlightEvents))
@@ -231,10 +232,10 @@ func TestConvertTugBinsToDomain_SplitsAllyEnemy(t *testing.T) {
 
 func TestConvertImpactBadgesToDomain_TimeMSPointerOptional(t *testing.T) {
 	badges := []analysis.ImpactBadge{
-		{BadgeKey: "first_blood", BadgeFR: "Premier sang", PlayerXUID: "A", TimeMS: 5000},
-		{BadgeKey: "top_killer", BadgeFR: "Meilleur tueur", PlayerXUID: "B", TimeMS: 0},
+		{BadgeKey: "first_blood", Badge: i18n.FromColumns("", "Premier sang"), PlayerXUID: "A", TimeMS: 5000},
+		{BadgeKey: "top_killer", Badge: i18n.FromColumns("", "Meilleur tueur"), PlayerXUID: "B", TimeMS: 0},
 	}
-	got := convertImpactBadgesToDomain(badges)
+	got := convertImpactBadgesToDomain(badges, i18n.LocaleFR)
 	if len(got) != 2 {
 		t.Fatalf("attendu 2 badges, obtenu %d", len(got))
 	}

@@ -46,6 +46,8 @@ import (
 	"fmt"
 	"math"
 	"sort"
+
+	"levelup/go-api/internal/i18n"
 )
 
 // PointSpawn est une reapparition observee : ou, et dans quel match.
@@ -65,9 +67,8 @@ type PointSpawn struct {
 // dessine), en metres monde ; une zone sans contour ni partie ne nomme aucune cellule.
 // VolumeIndex est l'indice de la zone dans son catalogue (departage final, determinisme).
 type ZoneNommee struct {
-	NomFR string
-	NomEN string
-	X, Y  float64
+	Nom  i18n.Text
+	X, Y float64
 
 	Polygone    [][2]float64
 	Parties     [][][2]float64
@@ -81,11 +82,10 @@ type GrappeSpawn struct {
 	// ID est stable entre deux lectures du meme amas (cf. l'en-tete). C'est lui que le
 	// filtre `?spawn=` transporte.
 	ID string
-	// NomFR / NomEN : le callout le plus proche du barycentre, dans chaque langue. VIDES
+	// Nom : le callout le plus proche du barycentre, dans chaque langue. VIDE
 	// quand la carte n'a aucune zone nommee au catalogue : on ne fabrique pas de nom de
 	// repli — le jeu ne le prononcerait pas (meme regle que le rendu des zones du rejeu).
-	NomFR string
-	NomEN string
+	Nom i18n.Text
 	// X, Y : le barycentre de l'amas, en metres monde.
 	X, Y float64
 	// Matchs est le nombre de matchs DISTINCTS ayant alimente l'amas — sa solidite.
@@ -130,8 +130,7 @@ func GrappesDeSpawn(g Grille, points []PointSpawn, zones []ZoneNommee) []GrappeS
 		z := calloutLePlusProche(zones, x, y)
 		out = append(out, GrappeSpawn{
 			ID:       identifiantDeGrappe(x, y, len(comp)),
-			NomFR:    z.NomFR,
-			NomEN:    z.NomEN,
+			Nom:      z.Nom,
 			X:        x,
 			Y:        y,
 			Matchs:   len(matchs),
@@ -229,7 +228,7 @@ func calloutLePlusProche(zones []ZoneNommee, x, y float64) ZoneNommee {
 	var meilleure ZoneNommee
 	best := math.Inf(1)
 	for _, z := range zones {
-		if z.NomFR == "" && z.NomEN == "" {
+		if z.Nom.Empty() {
 			continue
 		}
 		if d := math.Hypot(z.X-x, z.Y-y); d < best {

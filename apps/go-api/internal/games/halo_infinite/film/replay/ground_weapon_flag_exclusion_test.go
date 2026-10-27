@@ -68,7 +68,7 @@ func TestUnObjetDObjectifNeFaitJamaisUnSocle(t *testing.T) {
 
 	// LA REGLE — le meme identifiant declare DRAPEAU par le titre : aucun socle.
 	pads, picks, cov, _ := buildWeaponPads(PadScans{Weapons: scan}, pos, gwTestClock(),
-		padCatalogs{ObjectiveObjects: map[uint32]Label{fam: {En: "Flag", Fr: "Drapeau"}}})
+		padCatalogs{ObjectiveObjects: map[uint32]Label{fam: {Text: enFr("Flag", "Drapeau")}}})
 	for _, p := range pads {
 		if p.Weapon == formatWeaponFamily(fam) {
 			t.Errorf("un socle porte la famille DRAPEAU %q — un drapeau n'est pas un socle d'arme",
@@ -126,9 +126,9 @@ func TestLeManifesteNommeSesObjetsDObjectifDansLesDeuxLangues(t *testing.T) {
 	nb := map[string]int{}
 	for id, o := range labels.ObjectiveObjects() {
 		nb[o.Family]++
-		if o.Label.En == "" || o.Label.Fr == "" {
+		if o.Label.Text.Pick("en") == "" || o.Label.Text.Pick("fr") == "" {
 			t.Errorf("objet d'objectif %s (famille %q) nomme dans une seule langue (en=%q fr=%q)",
-				formatWeaponFamily(id), o.Family, o.Label.En, o.Label.Fr)
+				formatWeaponFamily(id), o.Family, o.Label.Text.Pick("en"), o.Label.Text.Pick("fr"))
 		}
 	}
 	for _, f := range attendues {

@@ -9,6 +9,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/mappings"
+	"levelup/go-api/internal/i18n"
 )
 
 // ─── Fakes pour MetadataRepository et SeasonProvider ──────────────────────
@@ -135,11 +136,11 @@ func TestSeasonsCatalog_TOMLOnly(t *testing.T) {
 			t.Errorf("season %q: source = %v, want toml_only", e.ID, e.Source)
 		}
 	}
-	if got[0].Label != "Heroes of Reach" {
-		t.Errorf("FR label fallback = %q, want Heroes of Reach", got[0].Label)
+	if got[0].Label[i18n.LocaleFR] != "Heroes of Reach" {
+		t.Errorf("FR label fallback = %q, want Heroes of Reach", got[0].Label[i18n.LocaleFR])
 	}
-	if got[1].Label != "Loups solitaires" {
-		t.Errorf("FR label = %q, want Loups solitaires", got[1].Label)
+	if got[1].Label[i18n.LocaleFR] != "Loups solitaires" {
+		t.Errorf("FR label = %q, want Loups solitaires", got[1].Label[i18n.LocaleFR])
 	}
 }
 
@@ -173,8 +174,8 @@ func TestSeasonsCatalog_DBPopulated_Merged(t *testing.T) {
 		t.Errorf("S1 end date = %v, want 2022-05-04 (DB wins)", got[0].End)
 	}
 	// TOML labels (FR) préservés malgré la fusion.
-	if got[1].Label != "Loups solitaires" {
-		t.Errorf("S2 label = %q, want Loups solitaires (TOML wins)", got[1].Label)
+	if got[1].Label[i18n.LocaleFR] != "Loups solitaires" {
+		t.Errorf("S2 label = %q, want Loups solitaires (TOML wins)", got[1].Label[i18n.LocaleFR])
 	}
 	// Extra TOML préservés.
 	if got[0].Extra["csr_season_id"] != "CsrSeason1" {
@@ -230,8 +231,8 @@ func TestSeasonsCatalog_DBEmpty_LazyFetchPersist(t *testing.T) {
 	if s14.Source != SeasonSourceDBOnly {
 		t.Errorf("S14 source = %v, want db_only", s14.Source)
 	}
-	if s14.Label != "Skyfall" {
-		t.Errorf("S14 label = %q, want Skyfall (Name Waypoint fallback)", s14.Label)
+	if s14.Label[i18n.LocaleFR] != "Skyfall" {
+		t.Errorf("S14 label = %q, want Skyfall (Name Waypoint fallback)", s14.Label[i18n.LocaleFR])
 	}
 	if s14.End != nil {
 		t.Errorf("S14 EndDate = %v, want nil (saison ouverte)", s14.End)
@@ -303,14 +304,14 @@ func TestSeasonsCatalog_DBOnly_NoTOML(t *testing.T) {
 	if got[0].Source != SeasonSourceDBOnly {
 		t.Errorf("source = %v, want db_only", got[0].Source)
 	}
-	if got[0].Label != "Heroes of Reach" {
-		t.Errorf("label = %q, want Heroes of Reach (Name Waypoint)", got[0].Label)
+	if got[0].Label[i18n.LocaleFR] != "Heroes of Reach" {
+		t.Errorf("label = %q, want Heroes of Reach (Name Waypoint)", got[0].Label[i18n.LocaleFR])
 	}
 }
 
 func TestMergeSeasonSources_DBOnlyOrderedAfterTOML(t *testing.T) {
 	tomlEntries := []SeasonCatalogEntry{
-		{ID: "season1", DisplayOrder: 10, Label: "S1", Source: SeasonSourceTOMLOnly,
+		{ID: "season1", DisplayOrder: 10, Label: i18n.FromColumns("S1", ""), Source: SeasonSourceTOMLOnly,
 			Start: time.Date(2021, 12, 8, 0, 0, 0, 0, time.UTC)},
 	}
 	dbRows := []domain.SeasonCalendar{

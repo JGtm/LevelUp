@@ -268,7 +268,7 @@ export function HomePage() {
               {challengesCompletedLabel && (
                 <p data-testid="home-challenges-completed" className="shrink-0 text-sm text-foreground">
                   <strong className="text-primary">{challengesCompleted}</strong> / {challengesTotal}{' '}
-                  {locale === 'en' ? 'completed' : 'complétés'}
+                  {t('home.challenges.completed_suffix')}
                 </p>
               )}
             </header>
@@ -412,7 +412,7 @@ export function HomePage() {
           <section className="flex flex-col gap-3">
             <header className="flex items-center gap-1.5">
               <h3 className="text-base font-semibold text-foreground">
-                {locale === 'en' ? 'Last session results' : 'Résultats de la dernière session'}
+                {t('home.last_session.results_title')}
               </h3>
             </header>
             <OutcomeSequenceTape

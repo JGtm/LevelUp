@@ -44,6 +44,7 @@ function row(
     index: 0,
     kills: 0,
     map_name: map,
+    map_label: map,
     match_id: 'm',
     outcome: null,
     perf_score: null,

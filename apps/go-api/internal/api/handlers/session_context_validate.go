@@ -13,6 +13,7 @@ import (
 
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
 const (
@@ -26,15 +27,21 @@ const (
 	slugExtraRunes = " _-.#"
 )
 
-// sessionLocales est la liste fermée des langues acceptées en session ; elle est
-// celle du front (KNOWN_LOCALES de lib/i18n/locale.ts).
-var sessionLocales = map[string]bool{"fr": true, "en": true}
+// knownLocalesList énumère les langues acceptées, séparées par une virgule.
+func knownLocalesList() string {
+	codes := make([]string, 0, len(i18n.Locales()))
+	for _, l := range i18n.Locales() {
+		codes = append(codes, string(l))
+	}
+	return strings.Join(codes, ", ")
+}
 
 // validateSessionContextRequest vérifie la forme des champs renseignés de la requête.
 // Elle retourne nil si tout est acceptable, sinon une erreur 400 au contrat d'API.
 func validateSessionContextRequest(req *domain.SessionContextRequest) error {
-	if req.Locale != nil && !sessionLocales[*req.Locale] {
-		return humacore.NewError(http.StatusBadRequest, "invalid_locale", "locale must be one of: fr, en")
+	// Les langues acceptées en session sont celles de config/locales.toml (KNOWN_LOCALES côté web).
+	if req.Locale != nil && !i18n.Known(i18n.Locale(*req.Locale)) {
+		return humacore.NewError(http.StatusBadRequest, "invalid_locale", "locale must be one of: "+knownLocalesList())
 	}
 	if req.PlayerSlug != nil && !isValidPlayerSlugShape(*req.PlayerSlug) {
 		return humacore.NewError(http.StatusBadRequest, "invalid_player_slug", "player_slug has an invalid format")

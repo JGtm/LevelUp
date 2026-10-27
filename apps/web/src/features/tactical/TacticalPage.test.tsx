@@ -79,7 +79,8 @@ const page: TacticalMapsPage = {
     {
       map_id: 'streets',
       map_name: 'Streets',
-      map_name_fr: 'Ruelles',
+      map_label: 'Ruelles',
+      map_filter_key: 'Ruelles',
       matchs: 24,
       victoires: 14,
       defaites: 9,
@@ -88,7 +89,8 @@ const page: TacticalMapsPage = {
     {
       map_id: 'aquarius',
       map_name: 'Aquarius',
-      map_name_fr: 'Aquarius',
+      map_label: 'Aquarius',
+      map_filter_key: 'Aquarius',
       matchs: 9,
       victoires: 4,
       defaites: 5,
@@ -539,8 +541,17 @@ describe('TacticalPage — l’écran unique', () => {
     expect(streets.querySelector('img')).toBeNull()
   })
 
-  it('en anglais, les libellés et le nom canonique', async () => {
+  it('en anglais, les libellés servis (langue de la requête) et les nombres suivent la langue', async () => {
     useAppShellStore.setState({ locale: 'en' })
+    // Le serveur résout le nom de la carte dans la langue de la requête.
+    post.mockImplementation((path: string) => {
+      if (path.endsWith('/filters/match-ids')) return Promise.resolve({ match_ids: PERIMETRE })
+      if (path.endsWith('/tactical/maps')) {
+        return Promise.resolve({ ...page, cartes: (page.cartes ?? []).map((c) => ({ ...c, map_label: c.map_name })) })
+      }
+      if (path.endsWith('/tactical/streets/raster')) return Promise.resolve(RASTER_VIDE)
+      return Promise.reject(new Error(`appel inattendu : ${path}`))
+    })
     renderWithProviders(<TacticalPage />)
     const streets = await screen.findByTestId('tactical-map-streets')
     expect(streets.textContent).toContain('Streets')
