@@ -1150,6 +1150,10 @@ en = "All sessions"
 fr = "Aucune session ne correspond."
 en = "No session matches."
 
+[common.filters.session_list_label]
+fr = "Sessions"
+en = "Sessions"
+
 # ─── Gamertag combobox (sectioned dropdown) ─────────────────────────────
 
 [common.gamertag.players_configured]

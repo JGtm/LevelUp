@@ -9,7 +9,7 @@
  * d'au moins 3 lettres, hors tests et hors fichiers de langue.
  *
  * Le plafond ne fait que descendre : un littéral de plus échoue (passer par un manifest ou un dictionnaire
- * `Record<Locale, T>`) ; un littéral converti abaisse le plafond. Les 107 restants (2026-10-27, dont 5 attributs en gabarit « Retirer ${x} ») sont de la dette
+ * `Record<Locale, T>`) ; un littéral converti abaisse le plafond. Les 105 restants (2026-10-27, dont 5 attributs en gabarit « Retirer ${x} ») sont de la dette
  * hors pages témoins de l'étape 10 (administration, laboratoire, pages d'accueil de connexion et d'installation,
  * classement Prestige, médias), plus des noms propres et sigles (LevelUp, MVP, GitHub, CODE1234).
  */
@@ -19,7 +19,7 @@ import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
 
 const SRC_ROOT = resolve(process.cwd(), 'src')
-const SHORT_LITERAL_CEILING = 107
+const SHORT_LITERAL_CEILING = 105
 
 const TEXT_ATTRS = new Set(['title', 'aria-label', 'aria-description', 'aria-placeholder', 'placeholder', 'alt', 'label'])
 const EXCLUDED = [

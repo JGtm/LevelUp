@@ -204,6 +204,7 @@ export const commonManifest = {
   "common.filters.season_empty_fold": { fr: "+ {n, plural, one {# saison sans matchs} other {# saisons sans matchs}}", en: "+ {n, plural, one {# season without matches} other {# seasons without matches}}" },
   "common.filters.season_pill_label": { fr: "Saison", en: "Season" },
   "common.filters.session_all": { fr: "Toutes les sessions", en: "All sessions" },
+  "common.filters.session_list_label": { fr: "Sessions", en: "Sessions" },
   "common.filters.session_no_match": { fr: "Aucune session ne correspond.", en: "No session matches." },
   "common.filters.session_search_placeholder": { fr: "Rechercher une session…", en: "Search a session…" },
   "common.filters.share_copied": { fr: "Lien copié", en: "Link copied" },

@@ -192,7 +192,7 @@ export function ExplorerCombatProfile({
         {/* Toggle source : live (défaut) / local. Désactive une source sans données. */}
         <div
           role="group"
-          aria-label="Source"
+          aria-label={t('explorer.combat.source_group_label')}
           className="inline-flex shrink-0 rounded-md border border-border bg-muted p-0.5 text-xs"
         >
           <button

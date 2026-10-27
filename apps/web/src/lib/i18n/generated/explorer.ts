@@ -62,6 +62,7 @@ export const explorerManifest = {
   "explorer.combat.mode_unknown": { fr: "Inconnu", en: "Unknown" },
   "explorer.combat.modes_title": { fr: "Répartition des modes", en: "Mode distribution" },
   "explorer.combat.score_title": { fr: "Score et placement", en: "Score and placement" },
+  "explorer.combat.source_group_label": { fr: "Source", en: "Source" },
   "explorer.combat.spree_title": { fr: "Folie meurtrière max et frags parfaits", en: "Max killing spree and perfect kills" },
   "explorer.combat.title": { fr: "Profil de combat", en: "Combat profile" },
   "explorer.encounter.empty": { fr: "Aucune rencontre antérieure avec ce joueur.", en: "No prior encounters with this player." },
