@@ -9,6 +9,7 @@
 - **Halo 5 modes everywhere** — the Summary's "By mode" chart, empty for Halo 5 until now, lists your modes (Slayer, Capture the Flag, Strongholds...)
 - **Names in your language, everywhere** — map, mode, playlist, weapon and medal names and the texts written by the server follow the language of the interface on every page; switching language reloads all data in the new language, and the CSV export is written in the language of the page
 - **Halo 5 names** — in French, some names that used to stay in English now appear in French; in English, the maps and playlists that showed no name now display it
+- **Rank names in your language** — "Gold VI" rather than "Or VI" in English, "Diamant IV" rather than "Diamond 4" in French, on every page; challenges created in English follow the interface language too
 - **Translations in administration** — the form offers one field per language; the application is ready for more languages
 - **"Exclude BTB from the career ranking" removed** — the option had no effect
 
