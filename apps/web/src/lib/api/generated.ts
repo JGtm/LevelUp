@@ -5519,6 +5519,18 @@ export interface components {
         CareerTopEncountersResponse: {
             items: components["schemas"]["MatchEncounterRow"][] | null;
         };
+        CarriedEffect: {
+            /** Format: int64 */
+            t0: number;
+            /** Format: int64 */
+            t1?: number;
+            /** Format: float */
+            x?: number;
+            /** Format: float */
+            y?: number;
+            /** Format: float */
+            z?: number;
+        };
         CarriedEnergy: {
             /** Format: float */
             e: number;
@@ -5573,9 +5585,21 @@ export interface components {
             /** Format: int64 */
             teleportsWithoutPose: number;
             /** Format: int64 */
+            trackedEffectEnds: number;
+            /** Format: int64 */
+            trackedEffects: number;
+            /** Format: int64 */
+            trackedEffectsAmbiguous: number;
+            /** Format: int64 */
+            trackedEffectsUnlinked: number;
+            /** Format: int64 */
             trackedEnds: number;
             /** Format: int64 */
             trackedObjects: number;
+            /** Format: int64 */
+            trackedPositioned: number;
+            /** Format: int64 */
+            trackedUnpositioned: number;
             /** Format: int64 */
             unnamed: number;
             /** Format: int64 */
@@ -5588,10 +5612,19 @@ export interface components {
             withoutRank: number;
         };
         CarriedTracked: {
+            effect?: components["schemas"]["CarriedEffect"];
+            /** Format: int64 */
+            land?: number;
             /** Format: int64 */
             t0: number;
             /** Format: int64 */
             t1?: number;
+            /** Format: float */
+            x?: number;
+            /** Format: float */
+            y?: number;
+            /** Format: float */
+            z?: number;
         };
         CascadeFilter: {
             experience_types: string[] | null;
@@ -6644,6 +6677,8 @@ export interface components {
             /** Format: float */
             h?: number;
             id: string;
+            /** Format: int64 */
+            lifeEnd?: number;
             origin?: string;
             /** Format: int64 */
             owner: number;
@@ -6685,6 +6720,12 @@ export interface components {
             endOpen: number;
             /** Format: int64 */
             endSeen: number;
+            /** Format: int64 */
+            lifeAmbiguous: number;
+            /** Format: int64 */
+            lifeEnds: number;
+            /** Format: int64 */
+            lifeLinked: number;
             /** Format: int64 */
             lives: number;
             /** Format: int64 */

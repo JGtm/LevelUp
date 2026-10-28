@@ -10998,6 +10998,27 @@ components:
       required:
         - items
       type: object
+    CarriedEffect:
+      additionalProperties: false
+      properties:
+        t0:
+          format: int64
+          type: integer
+        t1:
+          format: int64
+          type: integer
+        x:
+          format: float
+          type: number
+        "y":
+          format: float
+          type: number
+        z:
+          format: float
+          type: number
+      required:
+        - t0
+      type: object
     CarriedEnergy:
       additionalProperties: false
       properties:
@@ -11104,10 +11125,28 @@ components:
         teleportsWithoutPose:
           format: int64
           type: integer
+        trackedEffectEnds:
+          format: int64
+          type: integer
+        trackedEffects:
+          format: int64
+          type: integer
+        trackedEffectsAmbiguous:
+          format: int64
+          type: integer
+        trackedEffectsUnlinked:
+          format: int64
+          type: integer
         trackedEnds:
           format: int64
           type: integer
         trackedObjects:
+          format: int64
+          type: integer
+        trackedPositioned:
+          format: int64
+          type: integer
+        trackedUnpositioned:
           format: int64
           type: integer
         unnamed:
@@ -11146,18 +11185,38 @@ components:
         - teleportsWithoutPose
         - trackedObjects
         - trackedEnds
+        - trackedPositioned
+        - trackedUnpositioned
+        - trackedEffects
+        - trackedEffectEnds
+        - trackedEffectsAmbiguous
+        - trackedEffectsUnlinked
         - riftEndsRead
         - riftEndsUnread
       type: object
     CarriedTracked:
       additionalProperties: false
       properties:
+        effect:
+          $ref: '#/components/schemas/CarriedEffect'
+        land:
+          format: int64
+          type: integer
         t0:
           format: int64
           type: integer
         t1:
           format: int64
           type: integer
+        x:
+          format: float
+          type: number
+        "y":
+          format: float
+          type: number
+        z:
+          format: float
+          type: number
       required:
         - t0
       type: object
@@ -13613,6 +13672,9 @@ components:
           type: number
         id:
           type: string
+        lifeEnd:
+          format: int64
+          type: integer
         origin:
           type: string
         owner:
@@ -13686,6 +13748,15 @@ components:
         endSeen:
           format: int64
           type: integer
+        lifeAmbiguous:
+          format: int64
+          type: integer
+        lifeEnds:
+          format: int64
+          type: integer
+        lifeLinked:
+          format: int64
+          type: integer
         lives:
           format: int64
           type: integer
@@ -13735,6 +13806,9 @@ components:
         - endOpen
         - spawnEvents
         - spawnLists
+        - lifeLinked
+        - lifeAmbiguous
+        - lifeEnds
       type: object
     ExplorerBriefing:
       additionalProperties: false

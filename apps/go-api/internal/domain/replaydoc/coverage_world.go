@@ -26,6 +26,9 @@ type EquipmentPlacementCoverage struct {
 	SpawnEvents    int            `json:"spawnEvents"`
 	SpawnLists     int            `json:"spawnLists"`
 	ByCause        map[string]int `json:"byCause,omitempty"`
+	LifeLinked     int            `json:"lifeLinked"`
+	LifeAmbiguous  int            `json:"lifeAmbiguous"`
+	LifeEnds       int            `json:"lifeEnds"`
 }
 
 // GroundWeaponCoverage dit ce que le calque a lu, ce qu'il a retenu, et ce qu'il a écarté.

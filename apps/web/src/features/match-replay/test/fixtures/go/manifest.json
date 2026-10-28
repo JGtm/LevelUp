@@ -1,68 +1,68 @@
 {
- "schemaVersion": 104,
+ "schemaVersion": 106,
  "fixtures": [
   {
-   "file": "replay_schema_104_000d5950.json.gz",
+   "file": "replay_schema_106_000d5950.json.gz",
    "film": "000d5950",
    "build": "HI_1_13_0",
-   "schemaVersion": 104,
-   "bytes": 424451,
+   "schemaVersion": 106,
+   "bytes": 424650,
    "pointsStride": 1
   },
   {
-   "file": "replay_schema_104_a521164d.json.gz",
+   "file": "replay_schema_106_a521164d.json.gz",
    "film": "a521164d",
    "build": "HI_1_4_1",
-   "schemaVersion": 104,
-   "bytes": 374347,
+   "schemaVersion": 106,
+   "bytes": 374422,
    "pointsStride": 5
   },
   {
-   "file": "replay_schema_104_60ae07c4.json.gz",
+   "file": "replay_schema_106_60ae07c4.json.gz",
    "film": "60ae07c4",
    "build": "HI_1_8_0",
-   "schemaVersion": 104,
-   "bytes": 243800,
+   "schemaVersion": 106,
+   "bytes": 243846,
    "pointsStride": 5
   },
   {
-   "file": "replay_schema_104_11de8353.json.gz",
+   "file": "replay_schema_106_11de8353.json.gz",
    "film": "11de8353",
    "build": "HI_1_9_0",
-   "schemaVersion": 104,
-   "bytes": 486712,
+   "schemaVersion": 106,
+   "bytes": 487110,
    "pointsStride": 5
   },
   {
-   "file": "replay_schema_104_111fa685.json.gz",
+   "file": "replay_schema_106_111fa685.json.gz",
    "film": "111fa685",
    "build": "HI_1_10_0",
-   "schemaVersion": 104,
-   "bytes": 495055,
+   "schemaVersion": 106,
+   "bytes": 495379,
    "pointsStride": 5
   },
   {
-   "file": "replay_schema_104_e5adf7b2.json.gz",
+   "file": "replay_schema_106_e5adf7b2.json.gz",
    "film": "e5adf7b2",
    "build": "HI_1_11_0",
-   "schemaVersion": 104,
-   "bytes": 603235,
+   "schemaVersion": 106,
+   "bytes": 603539,
    "pointsStride": 5
   },
   {
-   "file": "replay_schema_104_bcb6d393.json.gz",
+   "file": "replay_schema_106_bcb6d393.json.gz",
    "film": "bcb6d393",
    "build": "HI_1_12_0",
-   "schemaVersion": 104,
-   "bytes": 98744,
+   "schemaVersion": 106,
+   "bytes": 98794,
    "pointsStride": 5
   },
   {
-   "file": "replay_schema_104_fb1a1a72.json.gz",
+   "file": "replay_schema_106_fb1a1a72.json.gz",
    "film": "fb1a1a72",
    "build": "HI_1_13_0",
-   "schemaVersion": 104,
-   "bytes": 230566,
+   "schemaVersion": 106,
+   "bytes": 230615,
    "pointsStride": 5
   }
  ]

@@ -1,6 +1,6 @@
 # ADR 0040 — i18n for N languages: one list of languages, no code change to add one
 
-Status: accepted (2026-10-26); implementation tracked in `.ai/PLAN_I18N_MULTILANGUE.md` (steps 1 to 11).
+Status: accepted (2026-10-26); implementation tracked in `.ai/V8/PLAN_I18N_MULTILANGUE.md` (steps 1 to 11).
 Amends: ADR 0003 (i18n via TOML manifests): the manifest generator no longer hard-codes `fr` and
 `en`; the languages come from `config/locales.toml`. The manifests stay the home of UI strings.
 Relates to: ADR 0011 (canonical / semantic / asset-URL adapter boundary), ADR 0026 (append-only
@@ -260,7 +260,7 @@ global filter (Explorer table and squad page read them from the resolved filter 
 
 ## References
 
-- Plan and steps: `.ai/PLAN_I18N_MULTILANGUE.md`; survey: `.ai/V8/ETAT_DES_LIEUX_I18N_MULTILANGUE_2026-10-23.md`.
+- Plan and steps: `.ai/V8/PLAN_I18N_MULTILANGUE.md`; survey: `.ai/V8/ETAT_DES_LIEUX_I18N_MULTILANGUE_2026-10-23.md`.
 - Source list: `config/locales.toml`; generator: `apps/web/scripts/build_i18n_manifests.mjs`,
   `apps/web/scripts/locales.mjs`.
 - Go core: `apps/go-api/internal/i18n/`; web core: `apps/web/src/lib/i18n/locale.ts`.

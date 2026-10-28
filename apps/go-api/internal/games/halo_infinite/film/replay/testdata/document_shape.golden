@@ -1,9 +1,9 @@
 # EMPREINTE DE FORME DU DOCUMENT DE REJEU — fige par document_shape_test.go.
 # Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.
-schema 104
-empreinte-stockee 24d6f3e9f272182a
-empreinte-servie 24d6f3e9f272182a
-empreinte-cuite 3cb79e686077a360
+schema 106
+empreinte-stockee 0d2f84c6bfc90744
+empreinte-servie 0d2f84c6bfc90744
+empreinte-cuite 5851d6b8391f4d64
 empreinte-cuite-regle 3
 
 AbilityCharge
@@ -179,6 +179,12 @@ BridgeHealth
   Slots json:"slots" int
   UnnamedLives json:"unnamedLives" int
   UnnamedLivesContested json:"unnamedLivesContested" int
+CarriedEffect
+  T0 json:"t0" int
+  T1 json:"t1,omitempty" *int
+  X json:"x,omitempty" *float32
+  Y json:"y,omitempty" *float32
+  Z json:"z,omitempty" *float32
 CarriedEnergy
   E json:"e" float32
   N json:"n,omitempty" *int
@@ -208,16 +214,27 @@ CarriedEquipmentCoverage
   RiftEndsUnread json:"riftEndsUnread" int
   RiftPoses json:"riftPoses" int
   TeleportsWithoutPose json:"teleportsWithoutPose" int
+  TrackedEffectEnds json:"trackedEffectEnds" int
+  TrackedEffects json:"trackedEffects" int
+  TrackedEffectsAmbiguous json:"trackedEffectsAmbiguous" int
+  TrackedEffectsUnlinked json:"trackedEffectsUnlinked" int
   TrackedEnds json:"trackedEnds" int
   TrackedObjects json:"trackedObjects" int
+  TrackedPositioned json:"trackedPositioned" int
+  TrackedUnpositioned json:"trackedUnpositioned" int
   Unnamed json:"unnamed" int
   Unpositioned json:"unpositioned" int
   Uses json:"uses" int
   WithCost json:"withCost" int
   WithoutRank json:"withoutRank" int
 CarriedTracked
+  Effect json:"effect,omitempty" *CarriedEffect
+  Land json:"land,omitempty" *int
   T0 json:"t0" int
   T1 json:"t1,omitempty" *int
+  X json:"x,omitempty" *float32
+  Y json:"y,omitempty" *float32
+  Z json:"z,omitempty" *float32
 ContinuousFireCoverage
   Ambiguous json:"ambiguous" int
   BurstsRead json:"burstsRead" int
@@ -354,6 +371,7 @@ EquipmentPlacement
   Family json:"family" string
   H json:"h,omitempty" *float32
   ID json:"id" string
+  LifeEnd json:"lifeEnd,omitempty" *int
   Origin json:"origin,omitempty" string
   Owner json:"owner" int
   T0 json:"t0" int
@@ -374,6 +392,9 @@ EquipmentPlacementCoverage
   Dropped json:"dropped" int
   EndOpen json:"endOpen" int
   EndSeen json:"endSeen" int
+  LifeAmbiguous json:"lifeAmbiguous" int
+  LifeEnds json:"lifeEnds" int
+  LifeLinked json:"lifeLinked" int
   Lives json:"lives" int
   Named json:"named" int
   Other json:"other" int

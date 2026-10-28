@@ -384,3 +384,9 @@ package killsource
 // (`marche_de_killsource.go` ne marche aucune image-cle) ; la bande des bipedes qu elle recoit
 // ([grammar.FilmContext.BipedSlots]) se releve sur les images-cles : les minibobines du depot rendent
 // des lignes identiques, le parc n a pas ete re-mesure. Golden regenere a revision constante.
+//
+// A REVISION CONSTANTE (plan des durees d effets, 2026-10-28) : la VALEUR de `grammar.Rev` monte a
+// `grammar-2026-10-28` (le canal de l equipement porte rend l objet d effet : lectures `effect-birth` et
+// `effect-end`). Aucune source de cette couche ne change et rien de ce qui change n est sur le chemin de
+// killsource (le canal ne lit que les records ti=37 attaches et les naissances ti=38, jamais par la marche
+// de killsource ni par `sync/killcollector`). Golden regenere a revision constante.

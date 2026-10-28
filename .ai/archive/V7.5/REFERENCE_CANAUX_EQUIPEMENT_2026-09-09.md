@@ -127,6 +127,32 @@ C'est la clé de tout le sujet, et c'est ce que j'avais raté (décision utilisa
 > fin (18 sur 18 lues ; 11 champs de 11,35 à 12,24 s, 6 détruits en 1,5 à 4,6 s, un de 16,95 s) ;
 > `repair_field_end` y sonne. Le retrait de la pile précède la suppression de 0,2 à 0,7 s quand
 > l'objet porté vit encore.
+>
+> **Position de repos des objets engendrés (2026-10-28, schéma 105).** Ces entités ti=41 sont des
+> projectiles : le film écrit leur trajectoire sous la MÊME vie (slot, génération) que celle que la pile
+> i28 nomme. `carriedEquipment[].tracked[]` gagne `land` (frame du dernier point PUBLIÉ de la
+> trajectoire de la vie, règle de `projectiles` : un point par frame, vol coupé à un pas impossible),
+> `x`, `y`, `z` (position à cette frame, z de l'échantillon brut), absents ENSEMBLE quand aucune
+> trajectoire publiée ne porte la vie ; `coverage.carriedEquipment.trackedPositioned` /
+> `trackedUnpositioned` les comptent. Rien ne vient du porteur. `equipmentPlacements` (le mur seul est
+> `deployed`), `riftPoses`, `projectiles` et les résumés d'usage ne changent pas : la règle du 15/09
+> tient, la position de ces objets est un canal à part (`internal/games/halo_infinite/film/replay/document_objets_engendres.go`).
+>
+> **Fin lue du mur et objet d'effet de l'écran occultant (2026-10-28, schéma 106, plan `.ai/PLAN_REJEU_DUREES_EFFETS_2026-10-28.md`).**
+> *Mur* : le panneau est une vie ti=37 (slot, génération) que le balayage des poses rend et que le 103 désigne ; la pile
+> i28 de l'objet porté qui l'a posé NOMME cette MÊME vie 16 à 45 ms après sa création (67 murs suivis sur trois films : 66
+> liés par la clé, le dernier n'a pas de 103). `equipmentPlacements[].lifeEnd` = la frame de la suppression lue de
+> cette vie ; la barrière meurt avec le panneau (écart méd 0 ms, -66 à +17, 97 murs sur 104). Le lien exige la clé ET un nommage qui suit
+> la création d'au plus 200 ms (la génération ne tient que sur 2 bits) ; ambigu ou fin non lue : absent, repli du client
+> (`WALL_DURATION_MS` = 12 480 ms, la médiane mesurée). Compteurs `coverage.placements.{lifeLinked,lifeAmbiguous,lifeEnds}`.
+> *Écran occultant* : la grenade (ti=41, nommée par la pile) est détruite à l'impact ; la bulle est une AUTRE vie ti=38 que
+> nulle pile ne nomme, née 150 à 600 ms avant la suppression de la grenade et supprimée 7,507 s plus tard (38 écrans sur 39, cinq films
+> de 2025-11 à 2026-07). Son record de création (i0, i2, i14, i15) ne désigne ni la grenade ni le porteur : AUCUN lien structurel.
+> La grammaire rend donc, à chaque suppression d'objet suivi, les ti=38 non nommées nées 100 à 700 ms avant (`effect-birth`) et leur
+> suppression (`effect-end`) ; la publication retient, pour la famille `shroud_screen` seule, celle qui est à 3 m du repos publié
+> de la grenade (seule de sa fenêtre sans repos), ambigu = rien (rivales mesurées à 9,5 et 30 m). `tracked[].effect {t0, t1?, x?, y?, z?}`,
+> repli nommé et compté `repli_effet_d_ecran_par_la_fin_de_la_grenade`, compteurs `coverage.carriedEquipment.trackedEffect*`.
+> Le capteur, le champ de réparation, le traqueur et le translocateur n'ont pas d'objet d'effet distinct (étape A du plan).
 
 **B — Les équipements DÉPLOYABLES.** On les pose sur le terrain. « Utilisé » = **la charge
 consommée** (`equipmentChanges` `spent`) — SAUF pour le mur, « utilisé » = **posé**.

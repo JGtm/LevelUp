@@ -124,6 +124,7 @@ type EquipmentPlacement struct {
 	Until    int      `json:"until,omitempty"`
 	UntilMax int      `json:"untilMax,omitempty"`
 	End      string   `json:"end,omitempty"`
+	LifeEnd  *int     `json:"lifeEnd,omitempty"`
 }
 
 // GrappleLine est UNE traction de grappin : la fenêtre datée et le point d'accroche.
@@ -186,10 +187,27 @@ type CarriedEquipment struct {
 }
 
 // CarriedTracked est un objet engendré par un équipement porté (pile i28) : son apparition et sa
-// suppression, quand elle est lue.
+// suppression, quand elle est lue, et sa position de repos (dernier point publié de sa trajectoire :
+// Land, X, Y, Z absents ensemble quand aucune trajectoire ne porte sa vie).
 type CarriedTracked struct {
-	T0 int  `json:"t0"`
-	T1 *int `json:"t1,omitempty"`
+	T0   int      `json:"t0"`
+	T1   *int     `json:"t1,omitempty"`
+	Land *int     `json:"land,omitempty"`
+	X    *float32 `json:"x,omitempty"`
+	Y    *float32 `json:"y,omitempty"`
+	Z    *float32 `json:"z,omitempty"`
+	// Effect est l objet d effet de l objet engendre (la bulle de l ecran occultant) ; absent quand il n est pas lu.
+	Effect *CarriedEffect `json:"effect,omitempty"`
+}
+
+// CarriedEffect est l objet d effet d un objet engendre : sa naissance, sa suppression quand elle est lue, sa
+// position a la creation quand elle est lue (X, Y, Z absents ensemble).
+type CarriedEffect struct {
+	T0 int      `json:"t0"`
+	T1 *int     `json:"t1,omitempty"`
+	X  *float32 `json:"x,omitempty"`
+	Y  *float32 `json:"y,omitempty"`
+	Z  *float32 `json:"z,omitempty"`
 }
 
 // CarriedEnergy est une lecture de l'énergie d'un objet porté, avec ses usages restants.

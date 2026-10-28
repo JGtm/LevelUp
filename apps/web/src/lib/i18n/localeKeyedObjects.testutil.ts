@@ -1,7 +1,7 @@
 /// <reference types="node" />
 /**
  * Détection des objets « à clés de langue » non typés par `Locale` (ADR 0040, étape 4 du plan
- * `.ai/PLAN_I18N_MULTILANGUE.md`), pour `locale-keyed-objects.guard.test.ts`.
+ * `.ai/V8/PLAN_I18N_MULTILANGUE.md`), pour `locale-keyed-objects.guard.test.ts`.
  *
  * Pourquoi le compilateur et pas une regex : `{ fr: '…', en: '…' }` est typé par `Locale` soit
  * en place (`Record<Locale, T>`, `satisfies`), soit par un type déclaré ailleurs (une interface

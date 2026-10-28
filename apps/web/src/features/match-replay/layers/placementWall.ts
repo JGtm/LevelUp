@@ -82,25 +82,19 @@ export const WALL_RADIUS_M = 1.6
 export const WALL_OPENING_RAD = (110 * Math.PI) / 180
 
 /**
- * DURÉE DE VIE OFFICIELLE DU MUR, en millisecondes.
+ * DURÉE DE REPLI DU MUR, en millisecondes : 12,48 s, la MÉDIANE MESURÉE de sa barrière dans le film.
  *
- * MÊME RAISONNEMENT QUE LE CAPTEUR (cf. SENSOR_DURATION_MS), et il faut le rappeler parce
- * que le film n'y aide pas : le décodeur ne suit que les records porteurs d'une position, si
- * bien que `t1` date l'instant où l'objet cesse de BOUGER — 0,6 s de médiane pour un mur —
- * et non sa disparition, que le film ne date NULLE PART. La seule durée disponible est donc
- * l'officielle.
+ * LE FILM DATE LA FIN DU MUR (schéma 106, `equipmentPlacements[].lifeEnd`) : le panneau est une vie que la
+ * pile de l'objet porté nomme, et sa suppression est écrite ; la fenêtre s'arrête à cette fin quand elle est lue
+ * (`placementEndFrame`). Cette constante ne sert plus qu'aux poses SANS fin lue (artefact antérieur au schéma
+ * 106, pose sans lien, suppression non lue). Elle n'est plus « une dizaine de secondes » (Halo Waypoint, Sandbox
+ * Overview Season 4) : la barrière dure 12 395 à 12 545 ms sur cinq films de 2025-11 à 2026-07 (médiane 12 480 ms),
+ * et 16,7 s sur un film à durées longues. La médiane est le meilleur chiffre sans lecture.
  *
- * LA SOURCE NE DONNE PAS DE CHIFFRE EXACT, contrairement au capteur : « le capteur de menaces
- * dure 15 s [...], le mur une dizaine de secondes » (Halo Waypoint, Sandbox Overview
- * Season 4, cité dans `filmdec/equipment_life_end_test.go`). On retient donc 10 s, la lecture
- * littérale de « une dizaine » — et c'est écrit ici pour qu'un chiffre publié plus tard
- * remplace une approximation identifiée comme telle, et pas une valeur d'origine oubliée.
- *
- * LA BORNE MESURÉE L'EMPORTE si elle dépasse : un mur suivi 18,9 s existe au témoin, et la
- * fenêtre couvre toujours au moins `t1` (cf. `placementEndFrame`). On n'efface pas un objet
- * que la mesure montre encore vivant.
+ * LA BORNE MESURÉE L'EMPORTE si elle dépasse : la fenêtre couvre toujours au moins `t1` (cf. `placementEndFrame`).
+ * On n'efface pas un objet que la mesure montre encore vivant.
  */
-export const WALL_DURATION_MS = 10_000
+export const WALL_DURATION_MS = 12_480
 
 /**
  * PLANCHER DE LISIBILITÉ, en pixels d'écran. Un mur de 1,6 m sur une carte de Big Team Battle

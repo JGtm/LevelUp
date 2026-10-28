@@ -17,22 +17,35 @@ import type {
   PlacementKind,
   PlacementWindowTime,
 } from '../layers/equipmentPlacementsLayer'
-import { seekerImpulseActive } from '../layers/placementShapes'
+import { SHROUD_DURATION_MS, seekerImpulseActive } from '../layers/placementShapes'
 import { WALL_DURATION_MS } from '../layers/placementWall'
 import { SENSOR_DURATION_MS } from './threatSensor'
 
 /**
- * LES DURÉES DE VIE PUBLIÉES PAR L'ÉDITEUR, par famille. Une famille absente de cette table
- * n'a aucune durée connue : elle reste affichée jusqu'à la fin du rejeu, faute de mieux.
+ * LES DURÉES DE REPLI, par famille : celles qu'une pose SANS FIN LUE se voit appliquer. Une famille absente de
+ * cette table n'a aucune durée connue : elle reste affichée jusqu'à la fin du rejeu, faute de mieux.
  *
- * Les deux valeurs vivent dans le fichier de LEUR famille (`threatSensor.ts`,
- * `placementWall.ts`), avec leur portée et leur géométrie : c'est là qu'on va lire ce que le
- * jeu déclare d'un objet, et cette table ne fait que les rassembler pour la fenêtre.
+ * Les valeurs vivent dans le fichier de LEUR famille (`threatSensor.ts`, `placementWall.ts`,
+ * `placementShapes.ts`), avec leur portée et leur géométrie, et cette table ne fait que les rassembler pour la
+ * fenêtre. Le capteur tient la durée publiée par l'éditeur ; le mur et l'écran occultant celle que le film
+ * mesure (médiane de la barrière, durée de la bulle) — et le film, quand il date leur fin, l'emporte.
  */
 const OFFICIAL_DURATION_MS: Partial<Record<PlacementKind, number>> = {
   sensor: SENSOR_DURATION_MS,
   wall: WALL_DURATION_MS,
+  shroud: SHROUD_DURATION_MS,
 }
+
+/**
+ * Une pose dont la FIN peut être LUE. `endRead` ne se pose que sur une pose fabriquée depuis un
+ * objet engendré dont le film écrit la suppression (`spawnedObjects.ts` : capteur, champ de
+ * réparation, bulle de l'écran occultant) : son `t1` est alors la fin de l'objet, pas la borne inférieure
+ * d'une fin inconnue. Les poses DU DOCUMENT portent la leur dans `lifeEnd` (le mur, schéma 106).
+ *
+ * Le type voyage sous celui des poses du document (`ReplayEquipmentPlacement`) : les tableaux du
+ * calque restent typés ainsi, et le drapeau se lit à l'exécution, ici et nulle part ailleurs.
+ */
+export type WindowedPlacement = ReplayEquipmentPlacement & { readonly endRead?: boolean }
 
 /**
  * placementEndFrame — LA DERNIÈRE IMAGE à laquelle une pose se dessine.
@@ -41,14 +54,18 @@ const OFFICIAL_DURATION_MS: Partial<Record<PlacementKind, number>> = {
  * `filmdec/equipment_life_end_test.go`) : le décodeur ne suit que les records qui portent une
  * position, si bien que `t1` date l'instant où l'objet cesse de BOUGER. Un mur de protection y
  * atteint 0,7 s de médiane et un capteur 2,1 s, quand le recensement des keyframes montre
- * 101 de ces 295 objets encore présents plus d'une seconde après. Le film ne date AUCUNE
- * disparition d'équipement — le record de suppression et la queue de records sans position
- * sont l'un et l'autre du bruit au témoin. `t1` est donc une BORNE INFÉRIEURE.
+ * 101 de ces 295 objets encore présents plus d'une seconde après. Pour les poses du document, le
+ * film ne date AUCUNE disparition d'équipement — le record de suppression et la queue de records
+ * sans position y sont l'un et l'autre du bruit au témoin. `t1` est donc une BORNE INFÉRIEURE
+ * (sauf pour les poses à fin lue, première règle ci-dessous).
  *
- * D'OÙ LA RÈGLE, en deux temps et sans rien inventer :
- *  - une famille dont la durée est PUBLIÉE par l'éditeur s'y tient — le capteur de menaces
- *    dure 15 s, le mur une dizaine de secondes (cf. OFFICIAL_DURATION_MS), du même genre que
- *    la portée et la cadence qui gouvernent déjà leur tracé ;
+ * D'OÙ LA RÈGLE, en trois temps et sans rien inventer :
+ *  - une pose à FIN LUE s'arrête à cette fin, que la durée de repli ne prolonge pas : la lecture l'emporte sur
+ *    toute durée supposée. C'est `endRead` (objet engendré dont le film écrit la suppression : son `t1`) pour
+ *    une pose fabriquée, `lifeEnd` (suppression de l'objet que la pose a créé : le mur) pour une pose du document ;
+ *  - une famille dont la durée est connue s'y tient FAUTE DE FIN LUE — le capteur de menaces dure
+ *    15 s (éditeur), le mur 12,48 s (médiane mesurée), l'écran 7,5 s (lue dans le film) : cf.
+ *    OFFICIAL_DURATION_MS ;
  *  - les autres restent affichées jusqu'à la fin du rejeu, faute d'une durée à leur opposer.
  *
  * LE MUR A REJOINT LE CAPTEUR le 2026-08-20 (demande utilisateur). Il restait jusqu'à la fin
@@ -59,11 +76,13 @@ const OFFICIAL_DURATION_MS: Partial<Record<PlacementKind, number>> = {
  * Jamais AVANT `t1` : la borne mesurée l'emporte si elle dépasse la durée officielle.
  */
 export function placementEndFrame(
-  p: ReplayEquipmentPlacement,
+  p: WindowedPlacement,
   kind: PlacementKind,
   time: PlacementWindowTime,
 ): number {
+  if (p.endRead) return p.t1
   const lastFrame = Math.max(time.frames - 1, p.t1)
+  if (p.lifeEnd !== undefined) return Math.min(Math.max(p.lifeEnd, p.t0), lastFrame)
   const duration = OFFICIAL_DURATION_MS[kind]
   if (duration === undefined || !(time.frameMs > 0)) return lastFrame
   const official = p.t0 + Math.round(duration / time.frameMs)
@@ -72,7 +91,7 @@ export function placementEndFrame(
 
 /** isPlacementActive — la pose se dessine-t-elle à cette image ? (cf. placementEndFrame). */
 export function isPlacementActive(
-  p: ReplayEquipmentPlacement,
+  p: WindowedPlacement,
   kind: PlacementKind,
   frame: number,
   time: PlacementWindowTime,

@@ -412,6 +412,18 @@ export function drawRepairField(
  */
 export const SHROUD_RADIUS_M = 6
 
+/**
+ * LA DURÉE DE REPLI DE L'ÉCRAN OCCULTANT, en ms : 7,5 s, LUE DANS LE FILM. À l'impact, le film fait naître un
+ * objet que la pile i28 ne nomme pas et le supprime 7,51 s plus tard (38 écrans sur 39, cinq films de 2025-11 à
+ * 2026-07 ; décision de l'utilisateur du 2026-10-28, qui mesure 10 s à l'écran en jeu : l'écart est la
+ * dissipation visuelle). Depuis le schéma 106 le document porte cet objet (`tracked[].effect`) : sa naissance et sa
+ * suppression LUES bornent la pose (`spawnedObjects.ts`). Cette durée ne sert plus qu'à un écran dont la bulle n'est
+ * pas lue (artefact antérieur, association ambiguë, suppression non lue). Le `t1` de l'objet engendré, lui, est la
+ * fin de la GRENADE (0,1 à 0,4 s après le repos). La fenêtre de la pose (`placementWindow.ts`) lit cette durée à
+ * cet endroit et nulle part ailleurs.
+ */
+export const SHROUD_DURATION_MS = 7_500
+
 /** Part du rayon occupée par le fondu du bord (verdict R2-6 : 22 %). */
 const SHROUD_FADE_RATIO = 0.22
 /** Opacité du cœur. Presque plein : le verdict du 2026-08-27 est « opaque ». */

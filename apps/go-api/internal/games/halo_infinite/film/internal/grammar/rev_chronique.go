@@ -381,3 +381,14 @@ package grammar
 // images-cles du match (aucune des 236 entrees libres attendues devant 542). Les elections se comptent
 // attestees ou non (`KeyframeWalkStats.ElectionsAttestees`, `ElectionsNonAttestees`). Les ancres lues
 // changent, donc le recensement des images-cles et tout ce qui en derive.
+//
+// ENTREE `grammar-2026-10-28` (2026-10-28, plan des durees d effets `.ai/PLAN_REJEU_DUREES_EFFETS_2026-10-28.md`,
+// etape B.2) : LE CANAL DE L EQUIPEMENT PORTE RENDRE L OBJET D EFFET. Aucun bit n est lu autrement : la
+// grenade de l ecran occultant est detruite a l impact, et la bulle est une AUTRE vie (ti=38) que la pile i28
+// ne nomme pas, nee 150 a 600 ms avant la suppression de la grenade et supprimee 7,507 s plus tard (38 ecrans sur
+// 39, cinq films). Son record de creation (i0, i2, i14, i15) ne designe rien : le canal rend donc, a la
+// suppression de chaque objet suivi, une lecture `effect-birth` par vie ti=38 non nommee nee 100 a 700 ms
+// avant elle (creation et position i0 dans `Spawned`), puis une lecture `effect-end` a la suppression de
+// chaque candidate. Les lectures sont des chaines de genre neuves du meme codec : `SchemaDesFaits` garde sa
+// valeur, et les faits cuits avant se refusent sur cette revision. L association (quelle candidate, pour quelle
+// famille) se tranche a la publication (`replay/document_effets.go`).

@@ -60,17 +60,9 @@ type CarriedEquipment struct {
 	Energy []CarriedEnergy `json:"energy,omitempty"`
 	// Uses : les frames des activations (i21).
 	Uses []int `json:"uses,omitempty"`
-	// Tracked : les objets que l'équipement a engendrés et suivis (pile i28 : la faille, le champ de
-	// réparation), dans l'ordre de leur apparition.
+	// Tracked : les objets que l'équipement a engendrés et suivis (pile i28 : le capteur, le traqueur,
+	// l'écran, le champ de réparation, la faille...), dans l'ordre de leur apparition.
 	Tracked []CarriedTracked `json:"tracked,omitempty"`
-}
-
-// CarriedTracked est un objet engendré par un équipement porté. T0 est la frame de la première pile
-// i28 qui le nomme (il naît dans ce paquet) ; T1 celle de sa SUPPRESSION, écrite par le film,
-// absente quand elle n'est pas lue.
-type CarriedTracked struct {
-	T0 int  `json:"t0"`
-	T1 *int `json:"t1,omitempty"`
 }
 
 // CarriedEnergy est une lecture de l'énergie d'un objet porté.
@@ -143,6 +135,17 @@ type CarriedEquipmentCoverage struct {
 	// TrackedObjects : objets engendrés publiés ; TrackedEnds : ceux dont la suppression est lue.
 	TrackedObjects int `json:"trackedObjects"`
 	TrackedEnds    int `json:"trackedEnds"`
+	// TrackedPositioned : objets engendrés dont une trajectoire publiée porte la vie (position de
+	// repos publiée) ; TrackedUnpositioned : les autres, publiés sans position.
+	TrackedPositioned   int `json:"trackedPositioned"`
+	TrackedUnpositioned int `json:"trackedUnpositioned"`
+	// TrackedEffects : objets engendres de l ecran occultant dont l objet d effet (ti=38) est publie ;
+	// TrackedEffectEnds : ceux dont la suppression est lue ; TrackedEffectsAmbiguous : plusieurs candidates
+	// retenues, rien n est publie ; TrackedEffectsUnlinked : aucune candidate retenue (cf. `document_effets.go`).
+	TrackedEffects          int `json:"trackedEffects"`
+	TrackedEffectEnds       int `json:"trackedEffectEnds"`
+	TrackedEffectsAmbiguous int `json:"trackedEffectsAmbiguous"`
+	TrackedEffectsUnlinked  int `json:"trackedEffectsUnlinked"`
 	// RiftEndsRead : poses dont la fin (suppression de l objet cree) est lue ; RiftEndsUnread : poses
 	// sans fin lue, que le client clot par son repli (consommation ou mort du porteur).
 	RiftEndsRead   int `json:"riftEndsRead"`
@@ -218,6 +221,7 @@ type entreeDEquipementPorte struct {
 	palette      *AbilityPalette
 	couts        map[string][]coutDeFamille
 	tracks       []Track
+	projectiles  []types.ProjectileTrack
 	origin, step uint64
 }
 
@@ -230,6 +234,9 @@ type objetLu struct {
 	lectures []types.CarriedEquipmentRead
 	// suivis : l'indice, dans pub.Tracked, de chaque objet engendré nommé par la pile i28.
 	suivis map[types.LifeKey]int
+	// effets : les candidates a l objet d effet, par vie suivie ; finsDEffet : la suppression lue de chaque vie d effet.
+	effets     map[types.LifeKey][]effetCandidat
+	finsDEffet map[types.LifeKey][]finDEffet
 }
 
 // buildCarriedEquipment assemble le calque de l'équipement porté et les poses de faille.
@@ -242,7 +249,10 @@ func buildCarriedEquipment(in entreeDEquipementPorte) ([]CarriedEquipment, []Rif
 		published: publishedSlots(in.tracks)}
 	var out []CarriedEquipment
 	var poses []RiftPose
+	repos := reposParVie(in.projectiles, in.origin, in.step)
+	fins := finsDEffetLues(in.reads, in)
 	for _, o := range regrouperParObjet(in.reads) {
+		o.finsDEffet = fins
 		creation := o.lectures[0]
 		rang, ok := idx.rangDe(creation, in.origin, in.palette, &cov)
 		if !ok {
@@ -261,6 +271,8 @@ func buildCarriedEquipment(in entreeDEquipementPorte) ([]CarriedEquipment, []Rif
 		}
 		o.pub = CarriedEquipment{Slot: creation.Carrier, R: rang, T0: in.frame(creation.TimestampUS)}
 		poses = append(poses, o.projeter(in, &cov)...)
+		o.situerLesObjetsEngendres(repos, &cov)
+		o.situerLesEffets(&cov)
 		out = append(out, o.pub)
 		cov.Published++
 	}
@@ -284,42 +296,6 @@ func buildCarriedEquipment(in entreeDEquipementPorte) ([]CarriedEquipment, []Rif
 	return out, poses, cov
 }
 
-// indexDesRangs : les annonces i48 par paquet et porteur, les créations par paquet et porteur, et les
-// pistes publiées.
-type indexDesRangs struct {
-	rangs     map[paquetDuPorteur]int
-	nouveaux  map[paquetDuPorteur]int
-	published map[uint32]bool
-}
-
-// rangDe rend le rang de l'objet créé par `creation` : celui de l'annonce i48 de son porteur dans le
-// même paquet, quand l'objet y est seul et que la palette du film le nomme. Un écart se compte.
-func (x indexDesRangs) rangDe(creation types.CarriedEquipmentRead, origin uint64, palette *AbilityPalette,
-	cov *CarriedEquipmentCoverage) (int, bool) {
-	cle := paquetDuPorteur{creation.TimestampUS, creation.Carrier}
-	rang, annonce := x.rangs[cle]
-	switch {
-	case creation.TimestampUS < origin:
-		cov.BeforeOrigin++
-	case !x.published[creation.Carrier]:
-		cov.NoIdentity++
-	case !annonce:
-		cov.WithoutRank++
-	case x.nouveaux[cle] > 1:
-		cov.AmbiguousRank++
-	case palette.FamilyOf(rang) == "":
-		cov.Unnamed++
-	default:
-		return rang, true
-	}
-	return 0, false
-}
-
-// frame rend la frame d'un instant du film.
-func (in entreeDEquipementPorte) frame(ts uint64) int {
-	return int((ts - in.origin) / in.step) //nolint:gosec // instants posterieurs a l origine
-}
-
 // projeter publie les lectures d'un objet sur l'axe de frames, et rend ses poses de faille.
 func (o *objetLu) projeter(in entreeDEquipementPorte, cov *CarriedEquipmentCoverage) []RiftPose {
 	translocateur := o.famille == familleDuTranslocateur
@@ -334,6 +310,10 @@ func (o *objetLu) projeter(in entreeDEquipementPorte, cov *CarriedEquipmentCover
 		}
 		if l.Kind == types.CarriedDel {
 			o.pub.T1 = &t
+		}
+		if l.Kind == grammar.CarriedEffectBirth || l.Kind == grammar.CarriedEffectEnd {
+			o.noterLEffet(l, in)
+			continue
 		}
 		o.suivre(l, t, cov)
 		if l.HasActivation {
@@ -387,7 +367,7 @@ func regrouperParObjet(reads []types.CarriedEquipmentRead) []*objetLu {
 			o := &objetLu{lectures: []types.CarriedEquipmentRead{l}}
 			courants[l.Object], derniers[l.Object] = o, o
 			out = append(out, o)
-		case types.CarriedTrackedEnd:
+		case types.CarriedTrackedEnd, grammar.CarriedEffectBirth, grammar.CarriedEffectEnd:
 			if o, ok := derniers[l.Object]; ok {
 				o.lectures = append(o.lectures, l)
 			}
@@ -398,34 +378,6 @@ func regrouperParObjet(reads []types.CarriedEquipmentRead) []*objetLu {
 					delete(courants, l.Object)
 				}
 			}
-		}
-	}
-	return out
-}
-
-// paquetDuPorteur : un paquet (son instant) et un porteur.
-type paquetDuPorteur struct {
-	ts   uint64
-	slot uint32
-}
-
-// rangsParPaquet indexe le rang des annonces i48 qui donnent un équipement (prise ou réapparition).
-func rangsParPaquet(changes []types.EquipmentChange) map[paquetDuPorteur]int {
-	out := map[paquetDuPorteur]int{}
-	for _, c := range changes {
-		if c.Kind == types.EquipmentTaken || c.Kind == types.EquipmentSpawned {
-			out[paquetDuPorteur{c.TimestampUS, c.Slot}] = c.Rank
-		}
-	}
-	return out
-}
-
-// nouveauxParPaquet compte les objets créés attachés par paquet et par porteur.
-func nouveauxParPaquet(reads []types.CarriedEquipmentRead) map[paquetDuPorteur]int {
-	out := map[paquetDuPorteur]int{}
-	for _, l := range reads {
-		if l.Kind == types.CarriedNew {
-			out[paquetDuPorteur{l.TimestampUS, l.Carrier}]++
 		}
 	}
 	return out
@@ -449,7 +401,10 @@ func logCarriedEquipmentCoverage(ctx context.Context, cov CarriedEquipmentCovera
 		"situeesParLePorteur", cov.PositionedByCarrier, "sansPosition", cov.Unpositioned,
 		"echangesSansPose", cov.TeleportsWithoutPose,
 		"objetsEngendres", cov.TrackedObjects, "finsLues", cov.TrackedEnds,
-		"finsDeFailleLues", cov.RiftEndsRead, "finsDeFailleNonLues", cov.RiftEndsUnread)
+		"objetsSitues", cov.TrackedPositioned, "objetsSansPosition", cov.TrackedUnpositioned,
+		"finsDeFailleLues", cov.RiftEndsRead, "finsDeFailleNonLues", cov.RiftEndsUnread,
+		"effets", cov.TrackedEffects, "finsDEffetLues", cov.TrackedEffectEnds,
+		"effetsAmbigus", cov.TrackedEffectsAmbiguous, "effetsSansLien", cov.TrackedEffectsUnlinked)
 }
 
 // poserLEquipementPorte publie l'équipement porté et les poses de faille, nommés par la palette classée
@@ -458,11 +413,12 @@ func (a *assemblage) poserLEquipementPorte() {
 	carried, poses, cov := buildCarriedEquipment(entreeDEquipementPorte{
 		reads: a.opt.CarriedEquipment, st: a.opt.CarriedEquipmentStats, changes: a.opt.EquipmentChanges,
 		palette: a.palette, couts: coutsParFamille(a.opt.EquipmentEnergy, a.opt.Labels.EquipmentFamilies),
-		tracks: a.doc.Tracks, origin: a.origin, step: a.step,
+		tracks: a.doc.Tracks, projectiles: a.opt.Projectiles, origin: a.origin, step: a.step,
 	})
 	a.doc.CarriedEquipment, a.doc.RiftPoses = carried, poses
 	a.doc.Coverage.CarriedEquipment = &cov
 	a.opt.Fallbacks.DeclencheN(fallback.NomFinDeFailleConsommationOuMortDuPorteur, cov.RiftEndsUnread)
+	a.opt.Fallbacks.DeclencheN(fallback.NomEffetDEcranParLaFinDeLaGrenade, cov.TrackedEffects)
 	logCarriedEquipmentCoverage(a.ctx, cov)
 }
 
