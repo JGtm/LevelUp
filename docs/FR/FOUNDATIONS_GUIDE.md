@@ -288,7 +288,7 @@ langue `xx` depuis `en` (texte entre `⟦` et `⟧`, placeholders ICU intacts) s
 `--out` (un dossier temporaire par défaut). Tout texte visible hors des crochets dans l'application est une
 chaîne qui ne passe pas par un manifest. C'est un outil de preuve, jamais une langue livrée. Il n'écrit que les modules générés : pour faire tourner
 l'application en `xx`, il faut les mêmes fichiers qu'une vraie langue (étapes 1 à 6), dérivés de `en`
-(procédure de la branche jetable et résultats : `.ai/PLAN_I18N_MULTILANGUE.md`, étape 10). Le code de langue
+(procédure de la branche jetable et résultats : `.ai/V8/PLAN_I18N_MULTILANGUE.md`, étape 10). Le code de langue
 inconnue des tests est `zz`, jamais `xx`.
 
 ---
