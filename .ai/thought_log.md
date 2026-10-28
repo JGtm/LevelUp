@@ -119105,3 +119105,25 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Resultats observes** : `go test ./internal/service/ ./internal/games/halo_infinite/film/replay/` vert ; ce sont les deux seuls tests en echec des runs CI `0339476b8` et `3e55cb337`.
 
 **Prochaine etape** : fusion dans `release/v8.0.7`, CI de la PR #109.
+
+## [2026-10-28] Découplage des briques — vérification de l'audit et plan D1 — Complété (branche `release/v8.1.0`, documents seuls, aucun code modifié)
+
+**Contexte** : demande utilisateur du 2026-10-28 d'attaquer le plan issu de `.ai/AUDIT_DECOUPLAGE_BRIQUES_2026-10-27.md` après vérification que rien ne manque.
+
+**Décision technique principale** : l'audit est confirmé dans son fond (trois briques, ordre D1 → D2 → D3) mais complété par huit constats sur pièces (addendum ajouté au fichier d'audit) : `himap` importe `internal/i18n` (coupe oubliée) ; `film/replay` importe `i18n` (5 fichiers, absent du tableau D2) ; le traitement D2 des types de sortie heurte `no_title_package_in_analysis_test` (analysis lit `highlightevent` et `equipmentusage`) ; les fichiers protocole de `platform/auth` importent `logging` et `netguard` ; un module séparé ne peut pas importer `go-api/internal` même en test (dix tests gamefiles de `himap` lisent des données LevelUp) ; Dockerfile, ci.yml, Makefile, release.yml et les ratchets archlint racinés sur `apps/go-api` doivent suivre ; le chemin de module doit être résolvable pour l'import externe ; le ratchet `doc_chemins_ai` est rouge dans l'arbre local (déplacement non commité de `PLAN_I18N_MULTILANGUE.md`) et la CI de `release/v8.1.0` est rouge côté web (garde-rails i18n). Plan D1 écrit : `.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D1_2026-10-28.md` (lot 0 préalable CI, lot 1 garde-fou G avant tout déplacement, lot 2 coupes dans le module, lot 3 module `libs/gamefiles` + go.work + infra + ADR 0041, lot 4 module `libs/himap`, lot 5 preuve par recuisson à l'octet). Huit décisions D1-A à D1-H proposées, à confirmer par l'utilisateur.
+
+**Résultats observés** : `go list -deps ./internal/himap/...` = himap, himodule, hinavmesh, ooz, mapvar, i18n ; `go test -run TestCheminsAiCitesDansLeCodeExistent` ROUGE (2 citations de `.ai/PLAN_I18N_MULTILANGUE.md`, déplacé sous `.ai/V8/`). Effort D1 revu de ~1 jour à ~3 jours.
+
+**Conclusion / prochaine étape** : confirmation des décisions D1-A à D1-H par l'utilisateur, puis lot 0 sur `fix/ratchet-chemins-ai` et lot 1 sur `refactor/decouplage-d1-fichiers-du-jeu` (worktree dédié).
+
+## [2026-10-28] Découplage D1 — lot 0 (préalable CI) et lot 1 (garde-fou des briques) — En cours (branches `fix/ratchet-chemins-ai` et `refactor/decouplage-d1-fichiers-du-jeu`, non commitées)
+
+**Contexte** : l'utilisateur a corrigé D1-A (dépôt de référence = `origin` https://github.com/JGtm/LevelUp, pas le remote `fork`) et délégué les décisions D1-B à D1-H au pilote (message du 2026-10-28). Elles sont fermes et consignées dans le plan.
+
+**Lot 0** (worktree `LevelUp-wt-chemins-ai`) : déplacement de `.ai/PLAN_I18N_MULTILANGUE.md` vers `.ai/V8/` commis à l'index (il était fait dans l'arbre de travail principal sans commit) et sept citations corrigées (2 Go, 2 TS web, ADR 0040, FOUNDATIONS_GUIDE EN et FR). `TestCheminsAiCitesDansLeCodeExistent` vert. Item 0.5 `[!]` : la CI de `release/v8.1.0` est rouge côté web (garde-rails i18n `no-locale-literal-comparison`, `no-intl-tag-literal`, dépassements 5 s) — chantier i18n, hors D1 ; D1 ne pousse rien tant que la base n'est pas verte.
+
+**Lot 1** (worktree `LevelUp-wt-decouplage-d1`) : `internal/archlint/briques_imports_test.go` — table brique → paquets + imports permis (`gamefiles` = himodule, ooz, hinavmesh, mapvar, rien de permis ; `himap` → gamefiles), imports PARSÉS tests compris (un module séparé ne peut pas importer `go-api/internal` même en test), allowlist datée de 17 entrées (1 de production : `uslg.go` → `i18n` ; 16 tests → `film/replay`, `i18n`, `testfixtures`, `testutil`), entrée morte = rouge, auto-preuve sur extrait synthétique, cohérence de rang de la table. Vert ; `go vet` vert ; mutation (entrée `uslg.go` retirée) rouge comme attendu.
+
+**Découverte (plan amendé, non traitée)** : l'inventaire D1-D de l'audit (dix tests) était incomplet — seize fichiers de test importent LevelUp, dont deux de `mapvar` et un de `hinavmesh` ; les fixtures `.mvar` de `testfixtures/testdata/cartes` sont aussi lues par `mapcatalog`, `mapdecoupe`, `cmd/levelup`, `cmd/mapobj-build` et restent côté LevelUp (lot 2 : copie unique dans le `testdata/` de la brique pour les tests du lecteur).
+
+**Prochaine étape** : accord de l'utilisateur pour les deux commits ; PR lot 0 vers `release/v8.1.0` ; puis lot 2 (coupes dans le module).
