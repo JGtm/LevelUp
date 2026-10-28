@@ -33,8 +33,11 @@
  *    de la famille (15 s pour le capteur, fin du rejeu pour le champ) ;
  *  - traqueur : une impulsion unique ancrée à `land` (règle existante de la famille). Son `t1` est
  *    la fin du PROJECTILE (2 images médianes), jamais celle de l'effet : il n'est pas lu ;
- *  - écran occultant : ancré à `land`, fin = 7,5 s après (`SHROUD_DURATION_MS`, lue dans le film). Son
- *    `t1` est de même la fin du projectile.
+ *  - écran occultant : sa BULLE est un objet à part (`tracked[].effect`, schéma 106 : la vie que le film crée à
+ *    l'impact et supprime 7,5 s plus tard). Quand elle est lue, la pose va de `effect.t0` à `effect.t1`, à la
+ *    position de la bulle — et se dessine même si la grenade n'a aucune trajectoire. Sans bulle lue : ancré à
+ *    `land`, fin = 7,5 s après (`SHROUD_DURATION_MS`), la règle d'avant. Le `t1` de la grenade est la fin du
+ *    projectile, jamais celle de l'effet.
  *
  * Pas de React, pas de couleur, pas de canvas : de la lecture de document, testée seule.
  */
@@ -114,6 +117,11 @@ function* spawnedObjects(
 export function spawnedObjectPlacements(doc: SpawnedSource): WindowedPlacement[] {
   const out: WindowedPlacement[] = []
   for (const { family, slot, tracked } of spawnedObjects(doc)) {
+    const effect = family === SHROUD_FAMILY ? effectPlacement(slot, tracked) : null
+    if (effect) {
+      out.push(effect)
+      continue
+    }
     if (!isSituated(tracked)) continue
     const end = END_READ_FAMILIES.has(family) ? tracked.t1 : undefined
     out.push({
@@ -130,6 +138,36 @@ export function spawnedObjectPlacements(doc: SpawnedSource): WindowedPlacement[]
     })
   }
   return out
+}
+
+/** La famille dont la bulle est un objet à part : l'écran occultant. */
+const SHROUD_FAMILY: SpawnedObjectFamily = 'shroud_screen'
+
+/**
+ * La pose de la BULLE d'un écran occultant, ou null quand le film n'en donne pas (ou pas de lieu : ni sa position
+ * ni le repos de la grenade). La position est celle de la bulle ; à défaut, le repos de la grenade. Sans fin lue la
+ * pose garde la durée de repli de la famille (`SHROUD_DURATION_MS`), depuis la naissance de la bulle.
+ */
+function effectPlacement(slot: number, tracked: Tracked): WindowedPlacement | null {
+  const effect = tracked.effect
+  if (!effect) return null
+  const at =
+    effect.x !== undefined && effect.y !== undefined && effect.z !== undefined
+      ? { x: effect.x, y: effect.y, z: effect.z }
+      : isSituated(tracked)
+        ? { x: tracked.x, y: tracked.y, z: tracked.z }
+        : null
+  if (at === null) return null
+  return {
+    family: SHROUD_FAMILY,
+    id: SPAWNED_OBJECT_ID,
+    origin: PLACEMENT_ORIGIN_DEPLOYED,
+    owner: slot,
+    t0: effect.t0,
+    t1: effect.t1 === undefined ? effect.t0 : Math.max(effect.t1, effect.t0),
+    ...at,
+    ...(effect.t1 === undefined ? {} : { endRead: true }),
+  }
 }
 
 /** Les tableaux de dessin, calculés une fois par document (le calque les relit à chaque image). */

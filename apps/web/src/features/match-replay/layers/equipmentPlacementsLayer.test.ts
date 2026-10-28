@@ -159,13 +159,13 @@ describe('placementOrigin / placementIsDeployedObject — le filtre du schéma 1
 describe('placementEndFrame — `t1` n’est PAS la disparition', () => {
   it('rien avant t0, et t1 ne referme RIEN : le film ne date aucune disparition', () => {
     // `t1 = 20` ne ferme pas la fenêtre — c'est la mise au repos, pas la disparition. Ce qui
-    // la ferme, pour un mur, c'est sa durée OFFICIELLE (110 avec t0 = 10) ; l'image 21 est
-    // donc encore active, l'image 599 ne l'est plus.
+    // la ferme, pour un mur sans fin lue, c'est sa durée de REPLI (135 avec t0 = 10 : 12,48 s, soit 125 images) ;
+    // l'image 21 est donc encore active, l'image 599 ne l'est plus.
     const p = pose({ t0: 10, t1: 20 })
-    expect([9, 10, 20, 21, 110].map((f) => isPlacementActive(p, 'wall', f, TIME))).toEqual([
+    expect([9, 10, 20, 21, 135].map((f) => isPlacementActive(p, 'wall', f, TIME))).toEqual([
       false, true, true, true, true,
     ])
-    expect(isPlacementActive(p, 'wall', 111, TIME)).toBe(false)
+    expect(isPlacementActive(p, 'wall', 136, TIME)).toBe(false)
     expect(isPlacementActive(p, 'wall', 599, TIME)).toBe(false)
   })
 
@@ -175,9 +175,39 @@ describe('placementEndFrame — `t1` n’est PAS la disparition', () => {
     expect(isPlacementActive(p, 'sensor', 161, TIME)).toBe(false)
   })
 
-  it('le mur se tient à la sienne : une dizaine de secondes, soit 100 images de 100 ms', () => {
+  it('sans fin lue, le mur se tient à sa durée de repli : la médiane mesurée de sa barrière, 12,48 s', () => {
     const p = pose({ t0: 10, t1: 20 })
-    expect(placementEndFrame(p, 'wall', TIME)).toBe(10 + WALL_DURATION_MS / TIME.frameMs)
+    expect(WALL_DURATION_MS).toBe(12_480)
+    expect(placementEndFrame(p, 'wall', TIME)).toBe(10 + Math.round(WALL_DURATION_MS / TIME.frameMs))
+    expect(placementEndFrame(p, 'wall', TIME)).toBe(135)
+  })
+
+  describe("la FIN LUE du mur (`lifeEnd`, schéma 106) l'emporte sur la durée de repli", () => {
+    it('une fin lue AVANT le repli ferme la fenêtre là : un mur détruit à 6 s', () => {
+      const p = pose({ t0: 10, t1: 20, lifeEnd: 70 })
+      expect(placementEndFrame(p, 'wall', TIME)).toBe(70)
+      expect([69, 70, 71].map((f) => isPlacementActive(p, 'wall', f, TIME))).toEqual([true, true, false])
+    })
+
+    it('une fin lue APRÈS le repli prolonge la fenêtre : un film aux murs de 16,7 s', () => {
+      const p = pose({ t0: 10, t1: 20, lifeEnd: 177 })
+      expect(placementEndFrame(p, 'wall', TIME)).toBe(177)
+      expect(isPlacementActive(p, 'wall', 177, TIME)).toBe(true)
+      expect(isPlacementActive(p, 'wall', 178, TIME)).toBe(false)
+    })
+
+    it('la fin lue ne précède jamais le début de la pose, et la dernière image du rejeu la borne', () => {
+      expect(placementEndFrame(pose({ t0: 10, t1: 20, lifeEnd: 3 }), 'wall', TIME)).toBe(10)
+      expect(placementEndFrame(pose({ t0: 10, t1: 20, lifeEnd: 99_999 }), 'wall', TIME)).toBe(TIME.frames - 1)
+    })
+
+    it('le DÉBUT de la fenêtre ne change pas : rien avant t0, avec ou sans fin lue', () => {
+      const sans = pose({ t0: 10, t1: 20 })
+      const avec = pose({ t0: 10, t1: 20, lifeEnd: 70 })
+      expect([9, 10].map((f) => isPlacementActive(avec, 'wall', f, TIME))).toEqual(
+        [9, 10].map((f) => isPlacementActive(sans, 'wall', f, TIME)),
+      )
+    })
   })
 
   it('la borne MESURÉE l’emporte pour le mur aussi : un mur suivi 19 s reste jusqu’à `t1`', () => {
