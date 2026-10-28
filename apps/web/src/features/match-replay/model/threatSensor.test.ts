@@ -19,7 +19,6 @@ import {
   REVEAL_ALPHA,
   SENSOR_DURATION_MS,
   SENSOR_PING_MS,
-  SENSOR_PINGS_DECLARED,
   SENSOR_RADIUS_M,
   SENSOR_REVEAL_MS,
   SENSOR_SWEEP_MS,
@@ -58,10 +57,12 @@ describe('les chiffres officiels du capteur', () => {
     expect(SENSOR_DURATION_MS).toBe(15_000)
   })
 
-  it('une vie officielle porte NEUF pings (0 s, 1,8 s, ... 14,4 s) — la borne de coût', () => {
-    expect(SENSOR_PINGS_DECLARED).toBe(9)
-    expect((SENSOR_PINGS_DECLARED - 1) * SENSOR_PING_MS).toBeLessThanOrEqual(SENSOR_DURATION_MS)
-    expect(SENSOR_PINGS_DECLARED * SENSOR_PING_MS).toBeGreaterThan(SENSOR_DURATION_MS)
+  it('le ping est périodique à tout âge : la durée officielle ne borne pas les pings d’une fin lue', () => {
+    // Un capteur à fin lue dure jusqu'à ~20 s : le douzième ping (à 19,8 s) part comme le premier.
+    const age = 11 * SENSOR_PING_MS
+    expect(age).toBeGreaterThan(SENSOR_DURATION_MS)
+    expect(sensorPing(age, false)).toEqual(sensorPing(0, false))
+    expect(sensorPingAgeMs(age + 100)).toBe(100)
   })
 
   it('l’onde est brève devant la période : le capteur pinge, il ne gonfle pas en continu', () => {

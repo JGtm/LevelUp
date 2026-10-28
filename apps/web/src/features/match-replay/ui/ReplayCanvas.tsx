@@ -506,7 +506,7 @@ export function ReplayCanvas({
               // Les VIES et leur CAMP voyagent avec les poses : le ping du capteur revele les
               // adversaires du poseur, et « adversaire » est une relation entre deux vies. Le
               // camp est l'equipe du FILM de chacune, jamais le drapeau « allie » de la page.
-              { placements: doc.equipmentPlacements, lives: doc.tracks, campOfSlot },
+              { placements: placements.all, lives: doc.tracks, campOfSlot },
               view,
               { frame: fr, ...placements.windowTime, k, reducedMotion, ...placements.toggles },
               // FRONTIERE : objet lache a la mort, `t0 = finVie+1` — `colorOfSlotOrLast`.
@@ -568,6 +568,7 @@ export function ReplayCanvas({
     zonesRef, heatRef, objectivesRef, cookedRef,
     renderWidth, viewH, canvasView,
     placements.counts.drawable,
+    placements.all,
     placements.windowTime,
     placements.toggles,
     showPlacements,

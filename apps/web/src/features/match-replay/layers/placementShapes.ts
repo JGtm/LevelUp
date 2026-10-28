@@ -412,6 +412,16 @@ export function drawRepairField(
  */
 export const SHROUD_RADIUS_M = 6
 
+/**
+ * LA DURÉE DE L'ÉCRAN OCCULTANT, en ms — INCONNUE, donc `undefined`. Ni le film (le `t1` de son objet
+ * engendré est la fin du PROJECTILE, 2 images après le repos), ni une source officielle citée ne la
+ * donnent. `undefined` = la règle existante des familles sans durée (`placementEndFrame`) : l'écran
+ * reste dessiné jusqu'à la fin du rejeu. DÉCISION DE L'UTILISATEUR ATTENDUE (durée de l'écran en jeu) :
+ * renseigner ici un nombre suffit, la fenêtre de la pose (`placementWindow.ts`) le lit à cet endroit
+ * et nulle part ailleurs.
+ */
+export const SHROUD_DURATION_MS: number | undefined = undefined
+
 /** Part du rayon occupée par le fondu du bord (verdict R2-6 : 22 %). */
 const SHROUD_FADE_RATIO = 0.22
 /** Opacité du cœur. Presque plein : le verdict du 2026-08-27 est « opaque ». */

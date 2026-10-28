@@ -28,6 +28,8 @@ import {
   type PlacementWindowTime,
 } from './equipmentPlacementsLayer'
 import { translocationLinks } from '../model/placementTeleport'
+import { drawablePlacements } from '../model/spawnedObjects'
+import type { ReplayEquipmentPlacement } from '@/lib/api/types'
 import type { RiftScene } from './placementRift'
 import { riftStations } from '../model/riftStations'
 import { frameToMs } from '../../../lib/replay/replayLogic'
@@ -53,6 +55,12 @@ export interface ReplayPlacementsInput {
 }
 
 export interface ReplayPlacements {
+  /**
+   * Les poses que le calque, la révélation du capteur et le survol lisent : celles du document,
+   * puis celles que les objets engendrés situés (capteur, traqueur, écran, champ) fabriquent
+   * (`spawnedObjects.ts`). Les sons, eux, ne lisent JAMAIS ce tableau.
+   */
+  all: readonly ReplayEquipmentPlacement[]
   /**
    * Ce que le document donne à dessiner. `drawable` passe par la porte du tracé
    * (`placementKind`) ET compte les FAILLES du translocateur : celles-ci ne sont pas des poses
@@ -100,10 +108,8 @@ export function useReplayPlacements({
   // que si quelque chose se dessinerait derrière elle (même règle que le bouton Zones). Les
   // failles s'y ajoutent — elles se dessinent dans ce calque sans être des poses (cf. le
   // contrat de `counts`).
-  const placementCounts = useMemo(
-    () => countDrawablePlacements(doc.equipmentPlacements),
-    [doc.equipmentPlacements],
-  )
+  const all = useMemo(() => drawablePlacements(doc), [doc])
+  const placementCounts = useMemo(() => countDrawablePlacements(all), [all])
   const counts = useMemo(
     () => ({ ...placementCounts, drawable: placementCounts.drawable + rift.rifts.length }),
     [placementCounts, rift],
@@ -122,7 +128,7 @@ export function useReplayPlacements({
   )
 
   const hover = usePlacementHover({
-    placements: doc.equipmentPlacements,
+    placements: all,
     view,
     time: windowTime,
     frameRef,
@@ -131,5 +137,5 @@ export function useReplayPlacements({
     showDropped,
   })
 
-  return { counts, windowTime, toggles, hover, rift }
+  return { all, counts, windowTime, toggles, hover, rift }
 }

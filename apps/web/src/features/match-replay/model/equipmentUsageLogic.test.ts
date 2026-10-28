@@ -241,6 +241,45 @@ describe('buildEquipmentUsage — poses déployées et objets lâchés', () => {
     expect(u.columns.dropped).toEqual(['sensor', 'powerup_overshield'])
   })
 
+  it('compte un déploiement par OBJET ENGENDRÉ du capteur, du traqueur, de l’écran et du champ — situé ou non', () => {
+    const doc = temoin({
+      abilityLabels: {
+        '1': { en: 'Threat Sensor', fr: 'capteur', family: 'sensor' },
+        '2': { en: 'Drop Wall', fr: 'mur', family: 'wall' },
+        '3': { en: 'Repair Field', fr: 'champ', family: 'repair_field' },
+      },
+      carriedEquipment: [
+        {
+          slot: 1,
+          r: 1,
+          t0: 5,
+          t1: 150,
+          // Le premier est situé, le second non : le geste a eu lieu dans les deux cas.
+          tracked: [
+            { t0: 10, t1: 40, land: 14, x: 1, y: 2, z: 3 },
+            { t0: 60, t1: 90 },
+          ],
+        },
+        { slot: 3, r: 3, t0: 5, t1: 150, tracked: [{ t0: 20, t1: 80, land: 24, x: 1, y: 2, z: 3 }] },
+        // Le mur se compte sur ses panneaux (poses), jamais sur ses objets engendrés.
+        { slot: 1, r: 2, t0: 5, t1: 150, tracked: [{ t0: 30, t1: 50 }, { t0: 70, t1: 90 }] },
+      ],
+    } as Partial<ReplayDocument>)
+    const parNom = new Map(buildEquipmentUsage(doc, SB).byPlayer.map((r) => [r.name, r]))
+    expect(parNom.get('Alpha')?.deployed).toEqual({ sensor: 2 })
+    expect(parNom.get('Charlie')?.deployed).toEqual({ repair_field: 1 })
+  })
+
+  it('ne recompte pas une famille que les poses du document déploient déjà (artefact ancien)', () => {
+    const doc = temoin({
+      abilityLabels: { '1': { en: 'Threat Sensor', fr: 'capteur', family: 'sensor' } },
+      carriedEquipment: [{ slot: 1, r: 1, t0: 5, t1: 150, tracked: [{ t0: 10, t1: 40 }] }],
+      equipmentPlacements: [pose('sensor', 'deployed', 1)],
+    } as Partial<ReplayDocument>)
+    const alpha = buildEquipmentUsage(doc, SB).byPlayer.find((r) => r.name === 'Alpha')
+    expect(alpha?.deployed).toEqual({ sensor: 1 })
+  })
+
   it('ne compte QUE les panneaux du mur déployé — l’appareil et ses panneaux font UN mur', () => {
     const doc = temoin({
       equipmentPlacements: [

@@ -5577,6 +5577,10 @@ export interface components {
             /** Format: int64 */
             trackedObjects: number;
             /** Format: int64 */
+            trackedPositioned: number;
+            /** Format: int64 */
+            trackedUnpositioned: number;
+            /** Format: int64 */
             unnamed: number;
             /** Format: int64 */
             unpositioned: number;
@@ -5589,9 +5593,17 @@ export interface components {
         };
         CarriedTracked: {
             /** Format: int64 */
+            land?: number;
+            /** Format: int64 */
             t0: number;
             /** Format: int64 */
             t1?: number;
+            /** Format: float */
+            x?: number;
+            /** Format: float */
+            y?: number;
+            /** Format: float */
+            z?: number;
         };
         CascadeFilter: {
             experience_types: string[] | null;
