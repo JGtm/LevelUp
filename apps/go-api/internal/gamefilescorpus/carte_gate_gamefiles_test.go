@@ -34,7 +34,7 @@ import (
 func TestGateVisuelCliffhanger(t *testing.T) {
 	ref := os.Getenv("GATE_REFERENCE")
 	if ref == "" {
-		ref = testfixtures.Carte("carte_validee_v1.png")
+		ref = testfixtures.CarteValidee()
 	}
 	f, err := os.Open(ref) //nolint:gosec // chemin de test, lecture seule
 	if err != nil {

@@ -36,6 +36,7 @@ func cheminDepuisDepot(rel string) (string, error) {
 }
 
 // fixtureCarteValidee : la carte de reference des bancs de rendu (`carte_validee_v1.png`),
-// copiee dans le testdata/ de la brique. Elle n'est lue que par ce paquet : la brique n'ouvre
-// aucun fichier d'un autre paquet du depot pour son banc.
+// versionnee dans le testdata/ de la brique, qui la possede (une seule copie). La brique n'ouvre
+// aucun fichier d'un autre paquet du depot pour son banc ; LevelUp la lit d'ici par
+// testfixtures.CarteValidee (corpus gamefilescorpus).
 const fixtureCarteValidee = "testdata/carte_validee_v1.png"

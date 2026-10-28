@@ -28,7 +28,7 @@ func TestCoquilleEnXY(t *testing.T) {
 	if err != nil {
 		t.Skip(err)
 	}
-	ref := testfixtures.Carte("carte_validee_v1.png")
+	ref := testfixtures.CarteValidee()
 	f, err := os.Open(ref)
 	if err != nil {
 		t.Skip(err)

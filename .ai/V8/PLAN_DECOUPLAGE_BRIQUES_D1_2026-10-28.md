@@ -179,17 +179,17 @@ diffs restent lisibles et que la recuisson témoin puisse être rejouée entre l
   - SCINDÉS : `uslg_gamefiles` (2 tests restent, 1 déménage), `cloture_gamefiles` (`TestClotureCliffhanger`
     lit le champ interne `Rendu.z` : reste ; `TestCoquilleEnXY*` -> `gamefilescorpus/coquille_xy_gamefiles_test.go`),
     `hinavmesh/oracle_ancres_test.go` (`decodeTemoin` reste dans `hinavmesh/temoin_test.go` ; les trois
-    `TestOracle*` -> `gamefilescorpus/navmesh_ancres_test.go`, avec copie des deux blobs navmesh, 462 537 octets,
-    dans `gamefilescorpus/testdata/`).
+    `TestOracle*` -> `gamefilescorpus/navmesh_ancres_test.go` ; les deux blobs navmesh, 462 537 octets, avaient été
+    copiés dans `gamefilescorpus/testdata/` au lot 2, puis ramenés à UNE copie, celle de `hinavmesh/testdata/`, au lot 2b : 2.10).
   - RESTÉS dans la brique, sans import LevelUp : `sddt` (champs internes `Rendu.z/n`), `physique_sonde`, `sonde_stse`
-    (carte de référence `carte_validee_v1.png` copiée dans `himap/testdata/`, 618 987 octets, constante
-    `fixtureCarteValidee`), `filtres_reclaimer`, `sonde_bouillie`, `sonde_forge_saut`, `sonde_locs` (exercent ~35 internes
+    (carte de référence `carte_validee_v1.png`, 618 987 octets, dans `himap/testdata/` — copie unique depuis le lot 2b : 2.11 —,
+    constante `fixtureCarteValidee`), `filtres_reclaimer`, `sonde_bouillie`, `sonde_forge_saut`, `sonde_locs` (exercent ~35 internes
     non exportés : tags sbsp/instances/forge, index Forge) ; leurs oracles du dépôt hôte (catalogue d'objectifs, rejeu)
     passent par `himap/oracles_depot_gamefiles_test.go` (parseur local, `cheminDepuisDepot`, test sauté si absent).
     Autres restés : `depot_variantes`, `sonde_forge`, `sonde_forge_mvar`, `sonde_canevas_orphelines`,
     `sonde_levelid` (lisent `.ai/re_dump` par la constante exportée `DepotVariantesCarte`, convention de la brique),
     `filtres_reclaimer_offsets`, `maillage_sain`, `callouts`, etc. (jeu installé seul).
-  - `mapvar/mapvar_test.go`, `mapvar/cb2_fuzz_test.go` : lisent `testdata/` (copie des 3 `.mvar` : 195 869 octets) ;
+  - `mapvar/mapvar_test.go`, `mapvar/cb2_fuzz_test.go` : lisent `testdata/` (les 3 `.mvar` : 195 869 octets, copie unique depuis le lot 2b : 2.9) ;
     plus aucun import `testfixtures`.
   - EXPORT UNIQUE ajouté : `himap.PeupleDepuisModule` (première étape de `CuitCarteNative`, documentée), pour
     `rendu_carte` et `sonde_toits`.
@@ -206,6 +206,30 @@ diffs restent lisibles et que la recuisson témoin puisse être rejouée entre l
   gamefilescorpus verts ; corpus gamefiles : mêmes issues qu'avant le lot (ensemble de 191 tests comparé à la base :
   9 échecs identiques, voir journal) ; `go list -deps` = himap, himodule, hinavmesh, ooz, mapvar ; témoins avant/après
   du lexique identiques (md5).
+
+- [x] 2.9 Lot 2b, décision du pilote (2026-10-28) : UNE SEULE COPIE par fichier binaire, possédée par la brique qui
+  le LIT, lue par LevelUp par chemin depuis la racine du dépôt (jamais `../` entre paquets). `.mvar` (3 fichiers,
+  195 869 octets) : copie de `mapvar/testdata/` gardée, copie `testfixtures/testdata/cartes/mapvar/` supprimée (`git rm`) ;
+  `testfixtures.Carte("mapvar", nom)` résout vers `testfixtures.MapvarFixturesDir` (constante unique ; au lot 3 :
+  `libs/gamefiles/mapvar/testdata`). Lecteurs vérifiés : `cmd/levelup` (backfill callouts), `cmd/mapobj-build` (refresh,
+  variant), `internal/mapcatalog`, `cmd/mapcallouts-build` (défaut de `-forge-cache` : `cacheVariantesParDefaut`, chemin
+  de la brique, sans importer `testfixtures`) ; `mapdecoupe` ne lit que le JSON de LevelUp (inchangé, reste dans
+  `testfixtures/testdata/cartes/`) ; `gamefilescorpus` ne lit pas de `.mvar`. `.gitignore` : règle `mapvar/*` déplacée sur
+  `mapvar/testdata/*.mvar` (3 exceptions suivies ; le `fuzz/` n'est pas touché) ; `NOTICE` : chemins corrigés.
+  md5 avant = après : `66d06d7be92847c5ff137a3f52c6424e` cliffhanger_map, `278c4e9e196774c941e3053c9bbe852e`
+  cliffhanger_ridgeline, `659e35845c2fab7fb4f1a5d82bc9692b` vagabond_fo08_wetland.
+- [x] 2.10 Blobs navmesh (2 fichiers, 462 537 octets) : copie de `hinavmesh/testdata/` gardée, copie
+  `gamefilescorpus/testdata/` supprimée (`git rm`) ; `gamefilescorpus` les lit par `testfixtures.Navmesh(assetID)`
+  (constante `NavmeshFixturesDir`) dans `cuisson_navmesh_gamefiles_test.go` (qui lisait `../hinavmesh/testdata`) et
+  `navmesh_ancres_test.go` (`decodeTemoin`). md5 avant = après : `aee118d183ef4107d60aa2a8e3921f16` (01af558d-...),
+  `5261e8c36f80389a9cdb16643620ac59` (df7dbf08-...).
+- [x] 2.11 `carte_validee_v1.png` (618 987 octets) : copie de `himap/testdata/` gardée (test de la brique
+  `calage_banc_test.go`/`fixtureCarteValidee`), copie `testfixtures/testdata/cartes/` supprimée (`git rm`) ; les trois
+  tests de `gamefilescorpus` (`carte_gate`, `coquille_xy`, `rendu`) la lisent par `testfixtures.CarteValidee()`
+  (constante `CarteValideeFixturesDir`). `domain/title/registry.go`, `replay/map_background.go`, `himap/fond_png.go` ne la
+  citent qu'en commentaire : vérifié, non touchés. md5 avant = après : `4bb575ed09ff4fb6f8e7675d0224e193`.
+  `testfixtures/testdata/cartes/` ne garde que `callout_zones_ridgeline_clipped.json` (fixture de LevelUp, non déplacée).
+  Gate du lot 2b (2026-10-28) : voir le journal.
 
 **Clos quand** : 2.8 vert, allowlist vide, commit « refactor(himap): coupe i18n et tests couplés
 à LevelUp sortis de la brique (D1) » (commit à la main du pilote).
@@ -392,10 +416,12 @@ Lot 2 (2026-10-28) :
    lit `../hinavmesh/testdata` (utiliser la copie `gamefilescorpus/testdata/` des mêmes blobs) ;
    `himap/deploy_root_test.go` (`TestAucuneAutreCopieDuCheminDuJeu`) balaie `../..` (= `apps/go-api`) :
    à porter dans archlint ou à borner à la brique ; les chemins `../../../../data` de `sonde_locs`.
-5. Le commentaire de `mapvar_test.go` refusait de dupliquer les `.mvar` (« actifs propriétaires 343/Microsoft ») ;
-   le plan (D1-D) l'autorise : 3 fichiers copiés (195 869 octets). Mêmes réserves que D1-H pour les copies de
-   `carte_validee_v1.png` (618 987 octets, `himap/testdata/`) et des deux blobs navmesh (462 537 octets,
-   `gamefilescorpus/testdata/`).
+5. TRAITÉE AU LOT 2b : une copie par fichier, dans la brique. Le commentaire de `mapvar_test.go` refusait de dupliquer
+   les `.mvar` (« actifs propriétaires 343/Microsoft ») et le lot 2 avait pourtant dupliqué 6 fichiers (3 `.mvar`,
+   2 blobs navmesh, `carte_validee_v1.png`). Décision du pilote : chaque fichier reste dans le `testdata/` de la brique
+   qui le lit (`mapvar`, `hinavmesh`, `himap`), LevelUp le lit par `testfixtures.MapvarFixturesDir`,
+   `NavmeshFixturesDir` et `CarteValideeFixturesDir` (items 2.9 à 2.11). Au lot 3, ces trois constantes sont les seules
+   lignes à changer.
 6. `sonde_locs_gamefiles_test.go` contient des chemins absolus périmés (`C:\Users\Guillaume\Projects\LevelUp\.ai\re_dump`) :
    préexistant, non traité.
 7. Poste de gate : `.ai/re_dump/mapvar` est ABSENT (même du checkout principal) et `data/cache` ne porte que

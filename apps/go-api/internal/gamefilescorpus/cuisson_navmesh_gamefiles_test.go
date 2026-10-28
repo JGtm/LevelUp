@@ -6,10 +6,10 @@ import (
 	"context"
 	"encoding/json"
 	"os"
-	"path/filepath"
 	"testing"
 
 	"levelup/go-api/internal/himap"
+	"levelup/go-api/internal/testfixtures"
 )
 
 // TestCuitIsolationDepuisSonNavmesh — LE FOND D'ISOLATION, RENDU DEPUIS LE SOL JOUABLE.
@@ -18,8 +18,7 @@ import (
 // source. Le test verifie ce qui compte — que les ancres retrouvent leur sol — et journalise
 // l'emprise, pour que le gate visuel se fasse sur une image dont on connait les chiffres.
 func TestCuitIsolationDepuisSonNavmesh(t *testing.T) {
-	blob, err := os.ReadFile(filepath.Join("..", "hinavmesh", "testdata",
-		"01af558d-53ab-4f05-ba68-92d805fc6260.navmesh.blob"))
+	blob, err := os.ReadFile(testfixtures.Navmesh("01af558d-53ab-4f05-ba68-92d805fc6260"))
 	if err != nil {
 		t.Skipf("blob de navigation absent : %v", err)
 	}

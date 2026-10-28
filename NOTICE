@@ -75,9 +75,9 @@ lets them reuse:
     apps/web/public/titles/ (Halo 5 emblems and nameplates), and the reference
     images under data/titles/.
   - Test fixtures that carry game content, kept in the tree only because tests read
-    them: three map variants (apps/go-api/internal/testfixtures/testdata/cartes/mapvar/cliffhanger_map.mvar,
+    them: three map variants (apps/go-api/internal/games/halo_infinite/film/replay/mapvar/testdata/cliffhanger_map.mvar,
     cliffhanger_ridgeline.mvar, vagabond_fo08_wetland.mvar), the reference map image
-    apps/go-api/internal/testfixtures/testdata/cartes/carte_validee_v1.png and the callout
+    apps/go-api/internal/himap/testdata/carte_validee_v1.png and the callout
     zones dump apps/go-api/internal/testfixtures/testdata/cartes/callout_zones_ridgeline_clipped.json.
     The content is Microsoft's;
     it is kept for the tests and is not licensed for any other use.

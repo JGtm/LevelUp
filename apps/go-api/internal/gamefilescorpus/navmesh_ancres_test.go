@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/hinavmesh"
+	"levelup/go-api/internal/testfixtures"
 	"levelup/go-api/internal/testutil"
 )
 
@@ -278,11 +279,11 @@ func distanceAuSegment(x, y float64, a, b hinavmesh.Point) float64 {
 	return math.Hypot(x-(a.X+t*dx), y-(a.Y+t*dy))
 }
 
-// decodeTemoin decode le navmesh verse en testdata pour un asset (copie, dans ce paquet, des
-// deux blobs de `internal/hinavmesh/testdata`).
+// decodeTemoin decode le navmesh verse en testdata pour un asset ; les deux blobs appartiennent
+// a la brique hinavmesh, que ce paquet lit par `testfixtures.Navmesh` (une seule copie).
 func decodeTemoin(t *testing.T, assetID string) *hinavmesh.Maillage {
 	t.Helper()
-	chemin := filepath.Join("testdata", assetID+".navmesh.blob")
+	chemin := testfixtures.Navmesh(assetID)
 	blob, err := os.ReadFile(chemin) //nolint:gosec // chemin de test, versionne
 	if err != nil {
 		t.Fatalf("lecture de %s: %v", chemin, err)

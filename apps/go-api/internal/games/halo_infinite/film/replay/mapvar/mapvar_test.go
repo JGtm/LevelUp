@@ -9,10 +9,10 @@ import (
 
 // fixture lit un .mvar de référence sous testdata/ : trois variantes (cliffhanger_map,
 // cliffhanger_ridgeline, vagabond_fo08_wetland), des artefacts de rétro-ingénierie. Le paquet
-// est une brique autonome (il n'importe rien du dépôt, même en test) : il porte SA copie de ces
-// fichiers ; une seconde copie vit sous internal/testfixtures/testdata/cartes/mapvar/ pour les
-// outils de LevelUp (mapcatalog, mapdecoupe, mapobj-build). Ce sont des actifs propriétaires
-// 343/Microsoft : ne pas en ajouter d'autres.
+// est une brique autonome (il n'importe rien du dépôt, même en test) : il POSSÈDE ces fichiers,
+// en une seule copie. Les outils de LevelUp (mapcatalog, mapdecoupe, mapobj-build, cmd/levelup) les
+// lisent ici par chemin depuis la racine du dépôt (testfixtures.MapvarFixturesDir), jamais par une
+// seconde copie. Ce sont des actifs propriétaires 343/Microsoft : ne pas en dupliquer ni en ajouter.
 func fixture(t *testing.T, name string) []byte {
 	t.Helper()
 	path := filepath.Join("testdata", name)

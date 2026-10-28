@@ -5,7 +5,8 @@
 // canevas en déclare 20, la carte jouée 4. Une mutation qui rendrait le rack acceptable
 // fait tomber ce test.
 //
-// FIXTURES — `internal/testfixtures/testdata/cartes/mapvar/` n'est pas versionné (77 Mo de variantes
+// FIXTURES — `testfixtures.MapvarFixturesDir` (le `testdata/` de la brique mapvar, qui possède ces
+// fichiers) n'est pas versionné en entier (77 Mo de variantes
 // re-téléchargeables). Deux exceptions y sont suivies parce qu'elles sont des témoins de
 // test : les deux `.mvar` de Cliffhanger et `vagabond_fo08_wetland.mvar` (17 Ko), le rack
 // qui porte la démonstration. `vagabond_map.mvar` (882 Ko) reste hors dépôt : le test qui

@@ -9,8 +9,8 @@
 // lue comme une mesure de ponctualité.
 //
 // Les deux premiers tests ne dépendent d'AUCUNE fixture : ils tournent partout, CI
-// comprise. Le troisième a besoin d'un `.mvar` réel (actif propriétaire versionné sous
-// internal/testfixtures/testdata/cartes/mapvar/) et s'annonce absent plutôt que de passer en silence.
+// comprise. Le troisième a besoin d'un `.mvar` réel (actif propriétaire versionné dans le
+// `testdata/` de la brique mapvar, testfixtures.MapvarFixturesDir) et s'annonce absent plutôt que de passer en silence.
 package main
 
 import (
@@ -218,7 +218,7 @@ func TestRefreshRegenereEtDemarqueUneCarteReparsee(t *testing.T) {
 }
 
 // mvarVersionne rend le chemin d'un `.mvar` SUIVI EN DÉPÔT (témoins de test de
-// `internal/testfixtures/testdata/cartes/mapvar/`). Il est versionné : son absence est une installation cassée,
+// `testfixtures.MapvarFixturesDir`, le `testdata/` de la brique mapvar). Il est versionné : son absence est une installation cassée,
 // pas un cas à sauter — la racine vient de testutil.RepoRoot(), sans variable
 // d'environnement (revue ronde 1, R1-1).
 func mvarVersionne(t *testing.T, nom string) string {
