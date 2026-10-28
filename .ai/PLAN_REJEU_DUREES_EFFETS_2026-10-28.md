@@ -164,11 +164,11 @@ sons du rejeu restent identiques à l'octet (témoins avant/après, cf. B.0). Se
 de l'écran, et la position de l'écran quand sa grenade n'a pas de trajectoire. Une pose sans fin lue garde une
 règle de repli (constante de famille).
 
-- [ ] B.0 Témoins AVANT (règle `feedback_temoins_avant_apres`) : sur 5 films (1ea71def, 52fc79ef, cba488f7,
+- [x] B.0 Témoins AVANT (règle `feedback_temoins_avant_apres`) : sur 5 films (1ea71def, 52fc79ef, cba488f7,
   f59c9332, 5676a9ba), documents Go complets (T-Go) et sortie du script de caractérisation web du lot précédent
   (T-Web : faille, calendrier complet des sons, poses d'origine, fenêtres de toutes les poses), capturés depuis le
   code de la release AVANT toute modification, rangés dans le scratchpad `durees_effets/temoins/avant/`.
-- [ ] B.1 Mur, fin lue. Établir sur pièces le LIEN STRUCTUREL entre la pose de mur publiée (`equipmentPlacements`,
+- [x] B.1 Mur, fin lue. Établir sur pièces le LIEN STRUCTUREL entre la pose de mur publiée (`equipmentPlacements`,
   origine `deployed`, issue du 103) et l'objet suivi du mur (`carriedEquipment[].tracked[]`, dont `t1` est la
   suppression écrite par le film) : clé de vie, référence du 103 (`Source` / `Spawned`), porteur. LA GRAMMAIRE PRIME :
   une jointure par proximité temporelle n'est admise que si aucun lien structurel n'existe, et alors bornée, comptée
@@ -176,7 +176,7 @@ règle de repli (constante de famille).
   (champ dédié, schéma 106, calculé à la publication depuis les faits) ; web : la fenêtre du mur s'arrête à cette
   fin quand elle est lue. Repli sans fin lue : `WALL_DURATION_MS` passe de 10 s à la médiane mesurée de la
   barrière (12 480 ms, Résultats A), commentaire mis à jour (source = mesure du film, pas « une dizaine »).
-- [ ] B.2 Écran occultant, objet d'effet. Dans la grammaire de production (canal de l'équipement porté), lire la vie
+- [x] B.2 Écran occultant, objet d'effet. Dans la grammaire de production (canal de l'équipement porté), lire la vie
   ti=38 née à l'impact de chaque objet suivi d'écran (naissance, suppression, position à la création). LIEN
   STRUCTUREL d'abord (composant du record de création de la ti=38 qui désigne la grenade, le porteur ou l'objet
   porté) ; à défaut règle d'association bornée (fenêtre et distance tirées des Résultats A), comptée et nommée
@@ -185,23 +185,39 @@ règle de repli (constante de famille).
   et ligne slog. Web : l'écran se dessine de `effect.t0` à `effect.t1` à la position de l'effet ; sans effet, règle
   actuelle (repos de la grenade + `SHROUD_DURATION_MS`). Un écran sans trajectoire mais avec effet se dessine.
   Ne pas brancher le mur sur cet effet (B.1 suffit) sauf si B.1 le rend nécessaire, et alors le noter.
-- [ ] B.3 Tests : Go (lien ou association, bords de fenêtre, clé recyclée, absence), web (fenêtres mur et écran,
+- [x] B.3 Tests : Go (lien ou association, bords de fenêtre, clé recyclée, absence), web (fenêtres mur et écran,
   repli), mutations vérifiées (inverser la condition fait rougir un test). Goldens et fixtures régénérés par les
   outils du projet (jamais à la main), `make generate-types` si l'OpenAPI bouge. Plafonds de taille : ne pas les
   relever sans justification datée.
-- [ ] B.4 Témoins APRÈS sur les 5 mêmes films : T-Go identique hors champs neufs et fins de mur ; T-Web : faille,
+- [x] B.4 Témoins APRÈS sur les 5 mêmes films : T-Go identique hors champs neufs et fins de mur ; T-Web : faille,
   sons, début et tracé du mur identiques à l'octet ; tableau des fins de mur et d'écran avant/après par film.
-- [ ] B.5 Gates : `go vet ./...`, `go test ./...` et `go test -tags=integration -p 1` sur les paquets du film
+- [x] B.5 Gates : `go vet ./...`, `go test ./...` et `go test -tags=integration -p 1` sur les paquets du film
   touchés (depuis `apps/go-api`, `GOCACHE=%LOCALAPPDATA%\go-build-durees-effets`), `npx tsc -b --force`, eslint,
   vitest `src/features/match-replay src/lib/replay src/lib/api src/lib/i18n`, knip. Codes de sortie relevés.
-- [ ] B.6 Changelog et notes de version EN + FR (une ligne chacun), référence des canaux d'équipement
+- [x] B.6 Changelog et notes de version EN + FR (une ligne chacun), référence des canaux d'équipement
   (`.ai/archive/V7.5/REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md`), entrée `.ai/thought_log.md`. NE PAS commiter :
   le superviseur relit, fait la revue adversariale et commite. Recuisson du parc : NE PAS lancer (le superviseur
   la demande au user).
 
+- [x] B.7 Revue adversariale de l'étape B (superviseur, 2026-10-28) : 0 P0/P1, 5 P2 corrigés dans le lot (journal ci-dessous), sans décodage.
+
 Gate B : B.0 à B.6 statués, gates verts, témoins conformes aux invariants. Compte rendu au superviseur.
 
 ## Découvertes (non traitées)
+
+- (Étape B) `durees_effets_research_test.go` (étape A, commité) passait le ratchet de taille de `archlint` à 702 lignes : la
+  justification écrite en tête n'est pas une exemption que le test reconnaît. Scindé par déplacement pur en deux fichiers
+  (`durees_effets_ecriture_research_test.go`), la justification retirée (453 + 220 lignes).
+- (Étape B) `film/types` est dans le périmètre de la couche `source` (fermeture des imports de `revision/`) : y ajouter les deux
+  genres de lecture neufs aurait monté `source.Rev` (donc tout le décodeur et le backlog killsource). Les genres sont déclarés
+  dans `grammar` (`CarriedEffectBirth`, `CarriedEffectEnd`, de type `types.CarriedReadKind`).
+- (Étape B) Les quanta i0 d'un objet engendré sont rangés par clé de vie seule (`equipementPorteLu.quanta`) : une clé recyclée
+  (2 bits de génération) écrase la position d'une naissance antérieure. Les candidates à l'effet ont leur table propre (vie + instant) ;
+  la table des objets suivis n'est PAS corrigée (hors périmètre).
+- (Étape B) Le repos publié d'une grenade (dernier point de grille à 100 ms de sa trajectoire) est à 0 à 1,96 m de la bulle (méd 0,6 m),
+  pas à 0,03 m comme le mesurait l'étape A sur le dernier échantillon brut.
+- (Étape B) Le décalage `originMs` du document (frames) et `ScanClockOrigin` (instruments) diffère de ~29,9 s sur `cba488f7` :
+  les frames d'un instrument ne se lisent pas sur celles de l'artefact sans ce décalage.
 
 - Le répulseur écrit une RAFALE de 32 vies ti=41 (0,3 à 0,76 s) à chacun de ses usages (43/43, témoins 1/81) : signature
   fiable de l'usage et de sa position, non instruite (hors périmètre de l'étape A).
@@ -228,6 +244,64 @@ Gate B : B.0 à B.6 statués, gates verts, témoins conformes aux invariants. Co
 - A.4 : ti=12 de 5,0 s = bruit (marqueurs d'interface, 27 % près d'un lancer pour 26 % attendu).
 - Reste incertain : mur « au repos » mesuré à la création du suivi ; familles à 1 ou 2 films ; `52fc79ef` à durées longues ; cause des 5 fins de capteur à 124 s et plus.
 - Étape B NON commencée (accord écrit du superviseur requis). Rien commité.
+
+### 2026-10-28 — Étape B exécutée (exécuteur Sonnet)
+
+- Base : `release/v8.1.0` (`3d39a67c7`, lot `fix/rejeu-objets-engendres`, schéma 105) fusionnée dans la branche (`ee887a41c`).
+- Jonctions posées sous le worktree, À RETIRER à la clôture (PowerShell `(Get-Item <chemin>).Delete()`, jamais `Remove-Item -Recurse`) :
+  `data/cache/film_chunks` et `data/cache/film_manifests` (vers le dépôt principal, lecture seule) et `apps/web/node_modules`
+  (vers le dépôt principal : `tsc -b`, vitest et knip y ont écrit leurs caches `.tmp` / `.vite`).
+- **B.0** Binaire `replay-build` AVANT construit depuis `ee887a41c` avant toute modification ; 5 films, un par un, `LEVELUP_REPO_ROOT` = le worktree,
+  sans `--facts` : 1ea71def Deadlock 36,6 s / 1,04 Go, 52fc79ef Corpo 14,6 s / 0,48 Go, cba488f7 Starboard 8,2 s / 0,41 Go,
+  f59c9332 Catalyst 9 s / 0,54 Go, 5676a9ba Insolence 21,8 s / 0,58 Go (jeu de travail max). md5 AVANT 1ea71def `2fb9a4cc…`, 52fc79ef `8d2a558e…`,
+  cba488f7 `d6a9f860…`, f59c9332 `06dc2024…`, 5676a9ba `445c14e3…`. T-Web AVANT (script local non versionné, supprimé : poses dessinées, début/tracé,
+  fenêtres, faille, calendrier complet des sons, usage), deux passes identiques.
+- **B.1 LIEN STRUCTUREL TROUVÉ** (instrument `durees_effets_lien_research_test.go`, 3 films à murs) : le panneau du mur publié (vie ti=37 que le balayage
+  des poses rend et que le 103 désigne) est la MÊME vie (slot, génération) que celle que la pile i28 de l'objet porté nomme, 16 à 45 ms APRÈS sa
+  création ; `Source` du 103 = l'objet porté (66 sur 66). Mesure : 67 murs suivis, 66 liés par la clé (le dernier n'a pas de 103). La
+  génération ne tient que sur 2 bits : le lien exige la clé ET un nommage qui suit la création d'au plus 200 ms (borne du 103). Aucune jointure par
+  proximité. Publié : `equipmentPlacements[].lifeEnd` ; web : la fenêtre s'arrête à cette fin ; repli `WALL_DURATION_MS` = 12 480 ms.
+- **B.2 AUCUN LIEN STRUCTUREL** : le record de création de la ti=38 de la bulle ne porte que i0, i2, i14, i15 (pas de i9 ni i10) : il ne désigne ni la grenade
+  ni le porteur. Association bornée, nommée, comptée (repli `repli_effet_d_ecran_par_la_fin_de_la_grenade`) : candidates = ti=38 non nommées nées 100 à 700 ms
+  avant la suppression de la grenade (mesure A : 150 à 600 ms) ; retenue = à 3 m du repos publié de la grenade, ou seule de sa fenêtre sans repos ;
+  plusieurs = ambigu, rien. Comptes sur les 4 films à écrans (35 grenades) : 34 effets lus (1ea71def 9/10, cba488f7 13/13, f59c9332 11/11, 5676a9ba 1/1),
+  0 ambigu, 1 sans lien (la grenade restée 6,6 s), 34 suppressions lues. Distance bulle <-> repos publié 0 à 1,96 m (30 mesures), rivales à 9,5 et 30 m (étape A).
+  Faits : `grammar.Rev` -> `grammar-2026-10-28` (deux genres de lecture neufs, codec inchangé, `SchemaDesFaits` 18 inchangé, `killsource`/`objectives` à révision constante).
+  Schéma 105 -> 106.
+- Trois erreurs de lecture corrigées en route (chacune a coûté une série de décodages APRÈS) : (1) l'exclusion « vie déjà nommée » ignorait que la clé
+  revient (rendue datée) ; (2) les quanta de position étaient rangés par clé seule (table propre aux candidates) ; (3) le rayon de 1,5 m, mesuré en étape A sur le
+  dernier échantillon brut, rejetait des bulles à 1,5 à 1,96 m du repos PUBLIÉ (grille de 100 ms) : 28 effets sur 35, puis 34 sur 35 à 3 m.
+- **Décodages** (autorisés : 5 avant, 5 après, un par un) : AVANT 5. APRÈS : 5 séries de 5 (la première, une par correction ci-dessus, la série finale) = 25, plus 1 de contrôle
+  (`cba488f7` avec le binaire final : même md5), plus ~10 passes d'instruments de recherche, toujours un processus à la fois, jamais plus de 1,1 Go, jamais pendant la recuisson. À dire au user.
+- **B.3** Tests : Go grammaire (`equipement_porte_effet_test.go` : fenêtre aux bornes, exclusions, clé recyclée, fin rendue, génération recyclée) ; Go replay
+  (`document_effets_test.go`, `equipment_placement_life_end_test.go`) ; web (fenêtre du mur : fin lue avant/après le repli, bornes, début inchangé ;
+  écran : bulle lue, sans fin, sans trajectoire, sans position, autre famille). MUTATIONS vérifiées rouges puis restaurées : fenêtre 100 ms, nommage 2 s,
+  borne de nommage du mur (200 ms), rayon <= 3 m, famille de l'écran, fin d'effet antérieure à la naissance, `lifeEnd` dans la fenêtre du mur, borne basse
+  `max(lifeEnd, t0)`, `endRead` de la bulle, famille de la bulle côté web, repos de repli, `WALL_DURATION_MS`. Un mutant survit : retirer `v.nomme >= p.T0US` de
+  `finsLuesDesPoses` ne change rien (le test `v.nomme-p.T0US <= 200 ms` en uint64 déborde pour un nommage antérieur : condition redondante, gardée par lisibilité).
+  Goldens (assemblage x8, forme, formes des types, révisions grammar/killsource/objectives) et fixtures web `replay_schema_106_*` (x8) régénérés par les outils du
+  projet ; `openapi.yaml` et `generated.ts` régénérés (`openapi-gen`, `npm run generate-types`). Plafonds `document_chronicle.go` 3633 -> 3659 et `structure_test.go`
+  1486 -> 1491 (exceptions écrites du ratchet, montée de `SchemaVersion`).
+- **B.4** T-Go : après retrait de `schemaVersion`, `layers`, `coverage.decoder.grammarRev`, du repli neuf, de `lifeEnd`, `effect` et des 7 compteurs neufs, les 5 documents sont IDENTIQUES
+  (écarts : 0). T-Web : faille, calendrier complet des sons, usage d'équipement IDENTIQUES à l'octet sur 5 films ; début, tracé et position des poses hors écran identiques
+  (hors indice : un écran de plus décale les poses fabriquées qui le suivent) ; début du mur (`t0`) et `t1` identiques sur 68 murs ; deux passes APRÈS identiques.
+  Tableau murs : 1ea71def 24 murs, 22 à fin lue, fenêtre 10,0 s -> 5,4/13,3/14,6 s (min/méd/max) ; 52fc79ef 41 murs, 37 à fin lue, 10,0 -> 2,4/17,2/20,0 s ; 5676a9ba 3 murs, 3 lues, 10,0 -> 2,4/5,4/6,7 s.
+  Tableau écrans : 1ea71def 8 -> 10 dessinés, 7,5 -> 7,5/7,5/7,6 s ; cba488f7 13 -> 13, 7,4/7,5/7,5 ; f59c9332 9 -> 11 (deux écrans sans trajectoire dessinés), 7,5 ; 5676a9ba 1 -> 1, 7,5 ;
+  décalage de début médian 0 image, déplacement de position médian 0,15 à 1,07 m (max 1,93 m).
+- **B.5** Gates : `go vet ./...` rc=0 (CGO=1, gcc msys64 15.2.0) ; `go test ./...` rc=0 (214 paquets ok, aucun FAIL, 297 s) ; `go test -tags=integration -p 1` sur `film/...`, `replaydoc`, `replayview`, `replaydiff` rc=0 (22 paquets ok) ; `go vet -tags research` sur `grammar` rc=0 ; `openapi-gen -check` rc=0 ; web : `npx tsc -b --force` rc=0, eslint (match-replay, lib/replay, lib/api) 0 erreur (8 avertissements, fichiers non touchés), vitest match-replay + lib/replay + lib/api + lib/i18n : 296 fichiers / 3 951 tests verts (4 fichiers / 7 tests ignorés préexistants), `npx knip` rc=0. Vérification finale : le binaire final redécode `cba488f7` (depuis_les_faits=false) au même md5 que la série APRÈS.
+- **B.6** Changelog et notes de version EN + FR, référence des canaux d'équipement (section « Fin lue du mur et objet d'effet… »), entrée `.ai/thought_log.md`. Rien commité, aucune recuisson lancée.
+
+### 2026-10-28 — Correction des 5 P2 de la revue adversariale (exécuteur Sonnet, sans décodage)
+
+Chaque correction a un test qui rougit si on l'annule (mutation vérifiée puis restaurée).
+1. **`SpawnedPositioned` dépassait son dénominateur** (`ScanEquipementPorte`) : une candidate à l'effet positionnée l'incrémentait alors que `SpawnedBirths` ne compte que les vies nommées. Un effet n'incrémente plus ce compte (pas de nouveau compteur : ajouter un champ aux statistiques changerait le codec des faits et `film/types`, dans le périmètre de la couche `source`). Test `TestScanEquipementPorteBrancheDeLEffet` (statistiques : seule la vie nommée se compte). Mutation : incrémenter pour tout genre de lecture -> rouge.
+2. **Candidate réattribuée en silence** (`candidatesALEffet`) : **première attribution conservée** (l'écriture par slot n'écrase plus une candidate de même génération). Choix motivé : rendre la candidate ambiguë aurait effacé l'effet de l'écran sur la foi d'un mur voisin supprimé au même instant, alors que la publication ne lit une candidate que pour la famille de l'écran ; et la fin n'est plus rattachée à un objet : `finsDEffetLues` (replay) indexe les `effect-end` par la vie de l'effet, tous objets confondus (sans cela la fin rangée sous un objet absent du document était perdue). Tests `TestCandidateRetenueParDeuxObjetsGardeLaPremiere` (deux propriétaires) et `TestEffetFinRetrouveeSousUnAutreObjet`. Mutations : écriture inconditionnelle -> rouge ; fins rangées par objet (`_ = fins`) -> rouge.
+3. **Clé de vie recyclée dans le même objet porté** (`situerLesEffets`) : la candidate porte désormais la frame de la suppression qui l'a rendue ; `deCetObjet` ne garde que celles dont la frame est celle de `T1` de CET objet suivi (même esprit que la garde de naissance du repos, `toleranceDeNaissance`). Un objet suivi sans suppression lue n'a aucune candidate. Test `TestEffetCleRecycleeDansLeMemeObjet` (bulle du second lancer à portée du repos du premier : sans garde, attribuée au premier ; deux candidates à portée : pas d'ambiguïté). Mutation : retirer `deCetObjet` -> rouge. Limite connue, non traitée : `o.suivis` est indexé par la clé seule, donc le second lancer d'une clé recyclée dans le même objet n'est pas publié comme second objet suivi (comportement du lot précédent).
+4. **Quanta de la candidate non verrouillés** : `TestLireLesEffetsQuanta` (composant d'index 0 uniquement, bits non nuls, chemin dominant, région de la carte ; payload construit bit à bit) et `TestScanEquipementPorteBrancheDeLEffet` (position lue par vie ET instant : deux candidates de même clé ont deux positions, les quanta d'une vie nommée de même clé ne sont jamais les siens). Mutations : `quanta[n.Life]` à la place de `quantaEffets[...]` (lecture et publication) -> rouge ; `k.Index == 0` ou `k.Bits > 0` retirés -> rouge.
+5. **Commentaire de `layers.go`** : `equipmentPlacements` lit aussi `FilmInputs.CarriedEquipment` (fin lue).
+
+Gates rejoués : `go vet ./...` rc=0 ; `go test` de `film/...`, `replaydoc`, `replayview`, `replaydiff`, `archlint` rc=0 ; `go test -tags=integration -p 1` sur les mêmes paquets rc=0 ; `go vet -tags research` (grammar) rc=0 ; `openapi-gen -check` rc=0 ; golden de la grammaire regénéré (sources changées, `grammar.Rev` et `SchemaDesFaits` inchangés). Web non touché.
+**Document publié** : aucun champ ni contrat ne change ; sur les 5 films des témoins, aucun cas des corrections 2 et 3 n'a été observé (34 effets sur 35, tous à `t1` lu, 0 ambigu), donc les documents sont attendus identiques, MAIS non prouvé sans décodage. Le compte `SpawnedPositioned` des faits persistés change (les films à écrans), jamais le document. Une série de témoins reste à la décision du superviseur.
 
 ## Reprise de session
 
