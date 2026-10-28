@@ -446,9 +446,10 @@ function drawPlacement(
  * drawEquipmentPlacementsLayer trace les poses ACTIVES à l'image courante, puis les marques de
  * révélation que les pings de capteur produisent à cet instant.
  *
- * La fenêtre dessinée n'est PAS [t0, t1] : `t1` date la mise au repos de l'objet, pas sa
- * disparition, que le film ne porte pas (cf. placementEndFrame). Le capteur se tient à sa durée
- * officielle, les autres poses restent jusqu'à la fin du rejeu.
+ * La fenêtre dessinée est celle de `placementEndFrame` : une pose à fin lue (`endRead`, capteur
+ * et champ engendrés) va de son repos à cette fin ; sinon `t1` n'est qu'une borne inférieure et
+ * la famille se tient à sa durée officielle quand elle en a une (capteur, mur), ou reste jusqu'à
+ * la fin du rejeu.
  *
  * LES MARQUES PASSENT APRÈS TOUTES LES POSES, et jamais dans la boucle : une marque est un
  * signe posé sur un JOUEUR, elle doit se lire par-dessus les zones — y compris celle d'un

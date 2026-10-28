@@ -412,6 +412,16 @@ export function drawRepairField(
  */
 export const SHROUD_RADIUS_M = 6
 
+/**
+ * LA DURÉE DE L'ÉCRAN OCCULTANT, en ms : 7,5 s, LUE DANS LE FILM. À l'impact, le film fait naître un
+ * objet que la pile i28 ne nomme pas et le supprime 7,51 s plus tard, sur les 11 écrans d'un film
+ * témoin sans exception (décision de l'utilisateur du 2026-10-28, qui mesure 10 s à l'écran en jeu :
+ * l'écart est la dissipation visuelle). Le `t1` de l'objet engendré, lui, est la fin de la GRENADE
+ * (0,1 à 0,4 s après le repos). La fenêtre de la pose (`placementWindow.ts`) lit cette durée à cet
+ * endroit et nulle part ailleurs.
+ */
+export const SHROUD_DURATION_MS = 7_500
+
 /** Part du rayon occupée par le fondu du bord (verdict R2-6 : 22 %). */
 const SHROUD_FADE_RATIO = 0.22
 /** Opacité du cœur. Presque plein : le verdict du 2026-08-27 est « opaque ». */

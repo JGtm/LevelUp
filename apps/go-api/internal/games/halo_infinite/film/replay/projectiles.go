@@ -115,40 +115,21 @@ func buildProjectiles(tracks []types.ProjectileTrack, origin, step uint64,
 	}
 	kept := make([]withRaw, 0, len(tracks))
 	for raw, tr := range tracks {
-		if len(tr.Pts) < 3 || tr.Pts[0].TimestampUS < origin {
+		vol, lu := volPublie(tr, origin, step)
+		if !lu {
 			continue
 		}
-		t0 := int((tr.Pts[0].TimestampUS - origin) / step)
-		var pts [][3]float32
-		var dernierPublie types.ProjectileSample
-		last := -1
-		coupe := false
-		for _, p := range tr.Pts {
-			if p.TimestampUS < origin {
-				continue
-			}
-			f := int((p.TimestampUS - origin) / step)
-			if f == last {
-				continue // un seul point par frame de la grille
-			}
-			if n := len(pts); n > 0 && planDist(round2(p.X), round2(p.Y), pts[n-1][1], pts[n-1][2]) > projectileMaxStepM {
-				coupe = true
-				break
-			}
-			last, dernierPublie = f, p
-			pts = append(pts, [3]float32{float32(f - t0), round2(p.X), round2(p.Y)})
-		}
-		if coupe {
+		if vol.coupe {
 			tronquees++
 		}
-		if len(pts) < 2 { // une trajectoire d'un seul point de grille ne se dessine pas
+		if len(vol.pts) < 2 { // une trajectoire d'un seul point de grille ne se dessine pas
 			continue
 		}
-		proj := Projectile{T0: t0, P: pts,
+		proj := Projectile{T0: vol.t0, P: vol.pts,
 			// `Rest` CERTIFIE une fin de vol : un vol coupé n'a pas la sienne, et le dire
 			// serait affirmer qu'on a vu le projectile s'immobiliser là.
-			Rest: !coupe && tr.Pts[len(tr.Pts)-1].AtRest}
-		attachDetonation(&proj, dernierPublie, origin, step, detos, fb)
+			Rest: !vol.coupe && tr.Pts[len(tr.Pts)-1].AtRest}
+		attachDetonation(&proj, vol.dernier, origin, step, detos, fb)
 		kept = append(kept, withRaw{p: proj, raw: raw})
 	}
 	// Tri TOTAL : T0 est un index de frame de la grille 10 Hz, donc les ex æquo sont la règle,
@@ -172,6 +153,48 @@ func buildProjectiles(tracks []types.ProjectileTrack, origin, step uint64,
 		pubByRaw[k.raw] = i
 	}
 	return out, pubByRaw, tronquees
+}
+
+// vol est ce que le rejeu retient d'une piste de projectile : le premier point de chaque image de la
+// grille, jusqu'au premier pas impossible.
+type vol struct {
+	// t0 est l'image du premier point ; pts la suite [dt, x, y] (dt en images depuis t0).
+	t0  int
+	pts [][3]float32
+	// dernier est l'échantillon BRUT du dernier point retenu (sa hauteur, son instant) ; coupe dit que
+	// le vol s'arrête à un pas impossible.
+	dernier types.ProjectileSample
+	coupe   bool
+}
+
+// publie dit que le vol se dessine : au moins deux points de grille.
+func (v vol) publie() bool { return len(v.pts) >= 2 }
+
+// volPublie réduit une piste à son vol retenu. `lu` est faux pour une piste que le rejeu ignore
+// (moins de trois échantillons, ou née avant l'origine). La règle est UNIQUE : [buildProjectiles] la
+// publie, [reposParVie] en lit le dernier point.
+func volPublie(tr types.ProjectileTrack, origin, step uint64) (v vol, lu bool) {
+	if len(tr.Pts) < 3 || tr.Pts[0].TimestampUS < origin {
+		return vol{}, false
+	}
+	v.t0 = int((tr.Pts[0].TimestampUS - origin) / step)
+	last := -1
+	for _, p := range tr.Pts {
+		if p.TimestampUS < origin {
+			continue
+		}
+		f := int((p.TimestampUS - origin) / step)
+		if f == last {
+			continue // un seul point par frame de la grille
+		}
+		if n := len(v.pts); n > 0 && planDist(round2(p.X), round2(p.Y), v.pts[n-1][1], v.pts[n-1][2]) > projectileMaxStepM {
+			v.coupe = true
+			break
+		}
+		last, v.dernier = f, p
+		v.pts = append(v.pts, [3]float32{float32(f - v.t0), round2(p.X), round2(p.Y)})
+	}
+	return v, true
 }
 
 // detoSearchBeforeUS/detoSearchAfterUS bornent la fenêtre de recherche d'une détonation à portée

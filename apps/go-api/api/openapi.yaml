@@ -11110,6 +11110,12 @@ components:
         trackedObjects:
           format: int64
           type: integer
+        trackedPositioned:
+          format: int64
+          type: integer
+        trackedUnpositioned:
+          format: int64
+          type: integer
         unnamed:
           format: int64
           type: integer
@@ -11146,18 +11152,32 @@ components:
         - teleportsWithoutPose
         - trackedObjects
         - trackedEnds
+        - trackedPositioned
+        - trackedUnpositioned
         - riftEndsRead
         - riftEndsUnread
       type: object
     CarriedTracked:
       additionalProperties: false
       properties:
+        land:
+          format: int64
+          type: integer
         t0:
           format: int64
           type: integer
         t1:
           format: int64
           type: integer
+        x:
+          format: float
+          type: number
+        "y":
+          format: float
+          type: number
+        z:
+          format: float
+          type: number
       required:
         - t0
       type: object

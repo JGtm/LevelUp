@@ -1,5 +1,5 @@
 // Package archlint — i18n_messages_test.go : garde-rail du catalogue des messages Go (ADR 0040,
-// D-3/D-4, étape 7.1 du plan `.ai/PLAN_I18N_MULTILANGUE.md`).
+// D-3/D-4, étape 7.1 du plan `.ai/V8/PLAN_I18N_MULTILANGUE.md`).
 //
 // Deux règles, tenues par parcours AST des fichiers Go non-test (hors internal/i18n) :
 //
