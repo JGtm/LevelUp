@@ -24,8 +24,19 @@ package grammar
 // des entites ti=41 nees dans le paquet ou la pile les nomme). Le canal retient chaque vie nommee,
 // meme apres la fin de l objet porte, et rend sa SUPPRESSION (`tracked-end`), rattachee a l objet
 // qui la suivait : c est la fin, ecrite par le film, de l objet engendre.
+//
+// L OBJET D EFFET (plan des durees d effets, etape B). Certains objets engendres ne sont que le vehicule de
+// l effet : la grenade de l ecran occultant est detruite a l impact, et c est une AUTRE vie (ti=38) que
+// la pile i28 ne nomme pas, nee au meme instant, qui porte la bulle (7,507 s, mesure sur 5 films). Son
+// record de creation ne designe rien (i0, i2, i14, i15 seulement) : le canal rend donc, a la suppression
+// de CHAQUE objet suivi, les vies ti=38 non nommees nees 100 a 700 ms avant elle (`effect-birth`, une lecture
+// par candidate), puis la suppression de chaque candidate (`effect-end`). Le sens (quelle famille a un
+// effet, laquelle des candidates est la bonne) se tranche a la publication.
 
 import (
+	"cmp"
+	"slices"
+
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
@@ -38,7 +49,10 @@ type equipementPorteLu struct {
 	// quanta : les quanta i0 lus a la creation des objets engendres, par vie, et les largeurs de la
 	// marche ; [ScanEquipementPorte] les dequantifie aux bornes de la carte.
 	quanta map[types.LifeKey][3]uint64
-	lg     profile.PrecisionDescriptor
+	// quantaEffets : les quanta i0 des candidates a l effet, par vie ET par instant de creation — la cle (slot,
+	// generation) revient dans le match, et deux candidates de meme cle se partageraient les quanta de la derniere.
+	quantaEffets map[naissanceCle][3]uint64
+	lg           profile.PrecisionDescriptor
 }
 
 // vieDObjetPorte est un objet porte suivi : sa generation et son porteur.
@@ -66,8 +80,43 @@ type canalDeLEquipementPorte struct {
 	// naissances : la derniere creation (record NEW) lue par slot, avec sa position i0 — la naissance
 	// d un objet que la pile i28 nommera.
 	naissances map[uint32]naissanceLue
-	lu         equipementPorteLu
+	// nommes : les instants ou la pile i28 d un objet porte a designe chaque vie. Une candidate a l effet n est
+	// jamais nommee ; la cle (slot, generation) revient dans le match (2 bits de generation), d ou l instant.
+	nommes map[types.LifeKey][]uint64
+	// effets : les candidates dont la suppression sera rendue, par slot. nes38 : la derniere creation ti=38 lue par
+	// slot, DANS LES RECORDS DE LECTURE de chaque trame (cf. [canalDeLEquipementPorte.lireLesEffets]).
+	effets map[uint32]objetSuivi
+	nes38  map[uint32]naissanceLue
+	lu     equipementPorteLu
 }
+
+// Les genres de lecture de l objet d effet. Declares ICI et non dans `types` : le paquet `types` est dans le
+// perimetre de la couche `source` (fermeture des imports), et un genre de lecture que seule la grammaire
+// ecrit ne doit pas faire monter la porte aux octets.
+const (
+	// CarriedEffectBirth : une CANDIDATE a l objet d effet d un objet suivi, lue a la suppression de ce dernier.
+	// Object et Carrier sont ceux de l objet porte qui le suivait, Tracked[0] la vie suivie qui vient d etre
+	// supprimee, Spawned[0] la creation (instant, archetype, position i0) d une vie ti=38 QUE NULLE PILE i28 NE
+	// NOMME, nee entre 100 et 700 ms avant cette suppression. Le film ne designe pas la vie suivie dans le
+	// record de creation de la candidate (i0, i2, i14, i15 seulement) : c est une ASSOCIATION par l instant, que
+	// la publication resserre par la famille et la position de repos.
+	CarriedEffectBirth types.CarriedReadKind = "effect-birth"
+	// CarriedEffectEnd : la suppression d une candidate lue en [CarriedEffectBirth] ; Object et Carrier sont ceux de
+	// l objet porte qui avait suivi la vie supprimee, Tracked[0] la vie de l effet.
+	CarriedEffectEnd types.CarriedReadKind = "effect-end"
+)
+
+// Les bornes de la fenetre, avant la suppression d un objet suivi, ou nait la vie d effet. Mesure du
+// plan des durees d effets (etape A, 5 films, 38 ecrans) : la bulle nait 150 a 600 ms avant la
+// suppression de la grenade (mediane 250) ; 100 ms et 700 ms laissent une marge d un paquet de chaque cote.
+const (
+	// effetNommageUS : une vie nee a moins de 2 s d un nommage de sa cle est celle que la pile designe ; au-dela, la
+	// cle a ete recyclee. Meme borne que la mesure de l etape A.
+	effetNommageUS     = 2_000_000
+	archetypeDeLEffet  = 38
+	effetAvantFinMinUS = 100_000
+	effetAvantFinMaxUS = 700_000
+)
 
 // composantsDeLEquipementPorte rend les composants de ti=37 que le canal interprete.
 func composantsDeLEquipementPorte() []string {
@@ -83,7 +132,8 @@ func nouveauCanalDeLEquipementPorte(fc *FilmContext) *canalDeLEquipementPorte {
 	}
 	return &canalDeLEquipementPorte{fc: fc, reg: reg, vies: map[uint32]vieDObjetPorte{},
 		suivis: map[uint32]objetSuivi{}, naissances: map[uint32]naissanceLue{},
-		lu: equipementPorteLu{quanta: map[types.LifeKey][3]uint64{}}}
+		nommes: map[types.LifeKey][]uint64{}, effets: map[uint32]objetSuivi{}, nes38: map[uint32]naissanceLue{},
+		lu: equipementPorteLu{quanta: map[types.LifeKey][3]uint64{}, quantaEffets: map[naissanceCle][3]uint64{}}}
 }
 
 // Interets : les cinq composants de ti=37 que le registre du film declare, dans les trames.
@@ -115,6 +165,7 @@ func (c *canalDeLEquipementPorte) Clore(BilanDeMarche) { c.fc.recup.equipementPo
 
 // Trame lit les records d objets portes de la trame `p`.
 func (c *canalDeLEquipementPorte) Trame(p *lecture.Paquet) {
+	c.lireLesEffets(p)
 	recs, lus := c.m.recordsDeLaTrame()
 	if !lus {
 		return
@@ -181,8 +232,10 @@ func (c *canalDeLEquipementPorte) suppression(ts uint64, r *FrameRecord) {
 	if s, ok := c.suivis[r.Slot]; ok && s.gen == r.ID>>30 {
 		c.lu.st.TrackedEnds++
 		delete(c.suivis, r.Slot)
+		fin := types.LifeKey{Slot: r.Slot, Gen: s.gen}
 		c.lu.lectures = append(c.lu.lectures, types.CarriedEquipmentRead{TimestampUS: ts, Object: s.objet,
-			Carrier: s.porteur, Kind: types.CarriedTrackedEnd, Tracked: []types.LifeKey{{Slot: r.Slot, Gen: s.gen}}})
+			Carrier: s.porteur, Kind: types.CarriedTrackedEnd, Tracked: []types.LifeKey{fin}})
+		c.candidatesALEffet(ts, s, fin)
 		return
 	}
 	v, ok := c.vies[r.Slot]
@@ -261,10 +314,18 @@ func ScanEquipementPorte(fc *FilmContext, wr *profile.Vec3Range) ([]types.Carrie
 		}
 		ls[i].Spawned = make([]types.SpawnedObject, len(l.Spawned))
 		for k, n := range l.Spawned {
-			if q, ok := lu.quanta[n.Life]; ok {
+			q, ok := lu.quanta[n.Life]
+			if l.Kind == CarriedEffectBirth {
+				q, ok = lu.quantaEffets[naissanceCle{n.Life, n.TimestampUS}]
+			}
+			if ok {
 				v := dequantObjetDuMonde(q, wr, lu.lg)
 				n.HasPosition, n.X, n.Y, n.Z = true, v[0], v[1], v[2]
-				st.SpawnedPositioned++
+				// SpawnedPositioned est un compte de VIES NOMMEES (son denominateur est SpawnedBirths) : une
+				// candidate a l effet n est pas nommee, elle ne s y ajoute pas.
+				if l.Kind != CarriedEffectBirth {
+					st.SpawnedPositioned++
+				}
 			}
 			ls[i].Spawned[k] = n
 		}
@@ -284,6 +345,12 @@ func (c *canalDeLEquipementPorte) naissance(p *lecture.Paquet, r *FrameRecord) {
 	c.naissances[r.Slot] = n
 }
 
+// naissanceCle identifie une creation : sa vie et l instant du paquet.
+type naissanceCle struct {
+	vie types.LifeKey
+	ts  uint64
+}
+
 // naissanceLue est la derniere creation lue d un slot, et les quanta de sa position i0.
 type naissanceLue struct {
 	obj types.SpawnedObject
@@ -299,6 +366,7 @@ func (c *canalDeLEquipementPorte) suivre(l *types.CarriedEquipmentRead, v vieDOb
 			continue
 		}
 		c.suivis[s.Slot] = objetSuivi{gen: s.Gen, objet: l.Object, porteur: v.porteur}
+		c.nommes[s] = append(c.nommes[s], l.TimestampUS)
 		n, ok := c.naissances[s.Slot]
 		if !ok || n.obj.Life != s {
 			continue
@@ -307,6 +375,80 @@ func (c *canalDeLEquipementPorte) suivre(l *types.CarriedEquipmentRead, v vieDOb
 		c.lu.st.SpawnedBirths++
 		if n.aQ {
 			c.lu.quanta[s] = n.q
+		}
+	}
+}
+
+// candidatesALEffet rend, a la suppression de la vie suivie `fin` (instant `ts`, suivie par `s`), une lecture
+// `effect-birth` par vie ti=38 NON NOMMEE nee dans la fenetre [ts - 700 ms, ts - 100 ms], dans l ordre de
+// leur naissance (puis de leur slot), et retient chacune pour rendre sa suppression.
+func (c *canalDeLEquipementPorte) candidatesALEffet(ts uint64, s objetSuivi, fin types.LifeKey) {
+	var cands []naissanceLue
+	for _, n := range c.nes38 {
+		if c.estNommee(n.obj) {
+			continue
+		}
+		if n.obj.TimestampUS+effetAvantFinMinUS > ts || ts > n.obj.TimestampUS+effetAvantFinMaxUS {
+			continue
+		}
+		cands = append(cands, n)
+	}
+	slices.SortFunc(cands, func(a, b naissanceLue) int {
+		return cmp.Or(cmp.Compare(a.obj.TimestampUS, b.obj.TimestampUS), cmp.Compare(a.obj.Life.Slot, b.obj.Life.Slot))
+	})
+	for _, n := range cands {
+		c.lu.lectures = append(c.lu.lectures, types.CarriedEquipmentRead{TimestampUS: ts, Object: s.objet,
+			Carrier: s.porteur, Kind: CarriedEffectBirth, Tracked: []types.LifeKey{fin},
+			Spawned: []types.SpawnedObject{n.obj}})
+		if n.aQ {
+			c.lu.quantaEffets[naissanceCle{n.obj.Life, n.obj.TimestampUS}] = n.q
+		}
+		// UNE CANDIDATE RETENUE PAR DEUX OBJETS SUIVIS GARDE SA PREMIERE ATTRIBUTION : sa suppression est rendue une
+		// fois, sous le premier objet porte qui l a retenue. La publication joint les fins d effet par la vie de la
+		// candidate, sans regarder l objet porte (`finsDEffetLues`) : l attribution n y decide rien.
+		if prev, ok := c.effets[n.obj.Life.Slot]; !ok || prev.gen != n.obj.Life.Gen {
+			c.effets[n.obj.Life.Slot] = objetSuivi{gen: n.obj.Life.Gen, objet: s.objet, porteur: s.porteur}
+		}
+	}
+}
+
+// estNommee dit si la pile i28 d un objet porte a nomme CETTE vie : meme cle, nommage a moins de [effetNommageUS] de sa
+// creation. Une cle nommee il y a longtemps est celle d une vie anterieure.
+func (c *canalDeLEquipementPorte) estNommee(n types.SpawnedObject) bool {
+	for _, at := range c.nommes[n.Life] {
+		if at+effetNommageUS >= n.TimestampUS && n.TimestampUS+effetNommageUS >= at {
+			return true
+		}
+	}
+	return false
+}
+
+// lireLesEffets lit, dans les RECORDS DE LECTURE de la trame (ceux que l etape A du plan des durees d effets a
+// mesures : 38 ecrans sur 39), les creations ti=38 et les suppressions des candidates retenues, sans passer par les
+// records de la marche de la cuisson ([MarcheDistribuee]) : une trame que la marche ne localise pas (`lus` faux) ne
+// doit pas faire taire la bulle. Sur les cinq films du plan les deux sources rendent les memes effets.
+func (c *canalDeLEquipementPorte) lireLesEffets(p *lecture.Paquet) {
+	for _, r := range p.Records {
+		switch r.Genre {
+		case lecture.GenreNeuf:
+			if r.TI != archetypeDeLEffet {
+				continue
+			}
+			n := naissanceLue{obj: types.SpawnedObject{Life: types.LifeKey{Slot: r.Vie.Slot, Gen: r.Vie.Gen},
+				TimestampUS: p.TS, TypeIndex: archetypeDeLEffet}}
+			for _, k := range p.Comps[r.Comps[0]:r.Comps[1]] {
+				if k.Index == 0 && k.Bits > 0 {
+					n.q, n.aQ = lireQuantaObjetDuMonde(p.Payload, int(k.Debut), c.lu.lg)
+					break
+				}
+			}
+			c.nes38[r.Vie.Slot] = n
+		case lecture.GenreSuppression:
+			if e, ok := c.effets[r.Vie.Slot]; ok && e.gen == r.Vie.Gen {
+				delete(c.effets, r.Vie.Slot)
+				c.lu.lectures = append(c.lu.lectures, types.CarriedEquipmentRead{TimestampUS: p.TS, Object: e.objet,
+					Carrier: e.porteur, Kind: CarriedEffectEnd, Tracked: []types.LifeKey{{Slot: r.Vie.Slot, Gen: e.gen}}})
+			}
 		}
 	}
 }

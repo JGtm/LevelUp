@@ -9,7 +9,6 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
-	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
@@ -158,6 +157,13 @@ type EquipmentPlacement struct {
 	Until    int    `json:"until,omitempty"`
 	UntilMax int    `json:"untilMax,omitempty"`
 	End      string `json:"end,omitempty"`
+	// LifeEnd (schéma 106) : la frame de la SUPPRESSION LUE de l'objet que cette pose a créé, quand la
+	// pile i28 de l'objet porté qui l'a posé le suivait (le panneau du mur : même vie, créée 16 à 45 ms
+	// avant que la pile ne la nomme). Contrairement à T1, c'est la FIN : le panneau et la barrière
+	// disparaissent ensemble (écart méd 0 ms, -66 à +17, 97 murs sur 104). Absent quand la pose n'est liée à
+	// aucun objet suivi, que ce lien est ambigu ou que la suppression n'est pas lue : le client garde alors
+	// la durée de repli de la famille. Aucune fin n'est devinée (cf. `equipment_placement_life_end.go`).
+	LifeEnd *int `json:"lifeEnd,omitempty"`
 }
 
 // EquipmentPlacementCoverage dit ce que le calque a lu et ce qu'il en a publié.
@@ -250,73 +256,15 @@ type EquipmentPlacementCoverage struct {
 	// table lisible : « 3 255 poses décidées par une mort écrite » ne veut rien dire sans le
 	// total qu'elle partage avec les autres.
 	ByCause map[string]int `json:"byCause,omitempty"`
+	// LifeLinked / LifeAmbiguous / LifeEnds (schéma 106) : poses liées à un objet suivi par la vie (une seule
+	// candidate), poses dont le lien est ambigu (rien n est publié), et fins lues publiées (`LifeEnd`).
+	LifeLinked    int `json:"lifeLinked"`
+	LifeAmbiguous int `json:"lifeAmbiguous"`
+	LifeEnds      int `json:"lifeEnds"`
 }
 
 // equipmentFamilyOther est la famille par défaut : un objet dont la nature n'est pas établie.
 const equipmentFamilyOther = "other"
-
-// decodeFilmPlacements décode les poses du film et JOURNALISE ce qu'il en est.
-//
-// TROIS SORTIES, TROIS PHRASES — et la distinction est le point. Un balayage impossible (film
-// illisible) n'est pas un film sans équipement, et un film dont le découpage du bloc de
-// réplication n'a pas été tranché n'est ni l'un ni l'autre : il aurait des poses, mais les lire
-// à une largeur devinée rendrait du bruit. Les trois se lisent au journal, et la troisième se
-// relit ensuite dans l'artefact (`coverage.placements.calibrated`).
-//
-// HORS LIGNE — appelée par BuildFromFilm.
-func decodeFilmPlacements(ctx context.Context,
-	fc *grammar.FilmContext, matchID string, worldRange *profile.Vec3Range,
-) ([]types.EquipmentPlacement, grammar.EquipmentPlacementStats) {
-	pl, st, err := grammar.ScanEquipmentPlacements(fc, worldRange)
-	if st.FormatSansProfil {
-		// SITE 1 DU REPLI `repli_largeurs_mpp_calibrees_sur_le_film` : le compteur, pas le
-		// journal — l avertissement est emis UNE FOIS PAR FILM par `avertirFormatSansProfil`.
-		publierFormatSansProfil(st.FormatVersion)
-	}
-	switch {
-	case err != nil:
-		slog.WarnContext(ctx, "poses d'equipement illisibles — rejeu sans equipement pose",
-			"err", err, "match_id", matchID)
-		return nil, st
-	case !st.Calibration.Widths.Valid():
-		slog.WarnContext(ctx, "poses d'equipement : le decoupage du bloc de replication n'a pas ete tranche"+
-			" sur ce film — AUCUNE pose publiee plutot que du bruit",
-			"match_id", matchID, "ancres", st.Calibration.Anchors,
-			"vies", st.Calibration.Lives, "chunksLus", st.Calibration.Chunks)
-	default:
-		slog.InfoContext(ctx, "poses d'equipement : records de creation ti=37",
-			"decoupage", st.Calibration.Widths.String(), "accords", st.Calibration.Agree,
-			"ancres", st.Anchors, "acceptes", st.Accepted,
-			"confirmes", st.Confirmed, "poses", st.Placements)
-	}
-	return pl, st
-}
-
-// decodeFilmSpawnEvents lit les evenements 103 « une PIECE a ete engendree » et JOURNALISE ce
-// que le balayage a vu.
-//
-// UN FILM SANS AUCUN EVENEMENT N'EST PAS UNE ERREUR, ET CE N'EST PAS NON PLUS UN SILENCE : les
-// builds les plus anciens du corpus n'en rendent aucun (`a521164d`, HI_1_4_1 : 0 sur 4 956
-// listes non vides) la ou les recents en rendent des dizaines. Le journal publie donc les DEUX
-// denominateurs — listes traversees et evenements lus —, et la couverture de l'artefact les
-// publie TOUS DEUX (`coverage.placements.spawnLists` et `.spawnEvents`).
-//
-// HORS LIGNE — appelee par le balayage, sous le meme verrou que le reste de la cuisson.
-func decodeFilmSpawnEvents(ctx context.Context,
-	fc *grammar.FilmContext, matchID string,
-) ([]types.EquipmentSpawnEvent, types.EquipmentSpawnStats) {
-	ev, st, err := grammar.ScanEquipmentSpawnEvents(fc)
-	if err != nil {
-		slog.WarnContext(ctx, "evenements de piece engendree illisibles — l'origine des poses retombe sur ses replis",
-			"err", err, "match_id", matchID)
-		return nil, st
-	}
-	slog.InfoContext(ctx, "poses d'equipement : evenements 103 (piece engendree)",
-		"match_id", matchID, "chunks", st.Chunks, "paquetsDelta", st.Packets,
-		"listesNonVides", st.Lists, "evenements", st.Events,
-		"refSource", st.WithSource, "refEngendree", st.WithSpawned, "ref2", st.Ref2)
-	return ev, st
-}
 
 // logPlacementCoverage publie au journal ce que le calque a rendu — les mêmes dénominateurs
 // que l'artefact, pour qu'un build se juge sans ouvrir le JSON.
@@ -360,6 +308,9 @@ type equipmentInputs struct {
 	// Changes sont les ramassages et consommations d'équipement : leurs `taken` portent la prise
 	// ÉCRITE du poseur.
 	Changes []types.EquipmentChange
+	// Carried sont les lectures de l'équipement porté : leurs piles i28 nomment les objets suivis, leurs
+	// suppressions datent la fin (`LifeEnd`).
+	Carried []types.CarriedEquipmentRead
 }
 
 // buildEquipmentPlacements assemble les poses : famille par le manifeste, poseur par
@@ -389,6 +340,7 @@ func buildEquipmentPlacements(
 	src := nouvelleSourceOrigine(in.Spawns, in.Lives, in.Changes)
 	cov.SpawnEvents, cov.SpawnLists = src.evenements, in.SpawnStats.Lists
 	ends := placementEnds(in.Raw, in.Census, clock)
+	fins := finsLuesDesPoses(in.Raw, in.Carried)
 	out := make([]EquipmentPlacement, 0, len(in.Raw))
 	causes := make([]string, 0, len(in.Raw))
 	for i, p := range in.Raw {
@@ -415,6 +367,7 @@ func buildEquipmentPlacements(
 		}
 		var cause string
 		pl.Origin, cause = origineDeLaPose(p, pl.ID, o, clock.fb)
+		pl.LifeEnd = fins[i].publier(cov, clock)
 		out, causes = append(out, pl), append(causes, cause)
 	}
 	tallyEquipmentPlacements(out, causes, cov)

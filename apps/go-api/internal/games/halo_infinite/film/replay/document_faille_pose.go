@@ -4,7 +4,10 @@ package replay
 // `document_equipement_porte.go`) : l objet que la pose cree la situe, sinon la piste du porteur ; la
 // suppression lue de cet objet la clot.
 
-import "levelup/go-api/internal/games/halo_infinite/film/types"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+)
 
 // situerLesPoses pose la position et la fin de chaque faille. La position est celle de l'objet que la
 // pose CRÉE (une vie engendrée née dans le paquet même de la pose, position i0 lue), sinon celle du
@@ -36,6 +39,9 @@ func (o *objetLu) objetCreeA(ts uint64) (types.SpawnedObject, bool) {
 	var premier types.SpawnedObject
 	trouve := false
 	for _, l := range o.lectures {
+		if l.Kind == grammar.CarriedEffectBirth {
+			continue // une candidate a l effet n est pas l objet que la pose cree
+		}
 		for _, n := range l.Spawned {
 			if n.TimestampUS != ts {
 				continue

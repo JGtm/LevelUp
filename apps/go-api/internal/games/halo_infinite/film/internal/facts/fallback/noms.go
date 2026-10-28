@@ -148,6 +148,9 @@ const (
 	// `poserLEquipementPorte` (poses sans fin lue de leur objet, que le client clot par la consommation ou
 	// la mort du porteur ; integration des lots film, 2026-10-16).
 	NomFinDeFailleConsommationOuMortDuPorteur Nom = "repli_fin_de_faille_consommation_ou_mort_du_porteur"
+	// NomEffetDEcranParLaFinDeLaGrenade : `replay/document_effets.go`, `situerLesEffets` ; compte par
+	// `replay/document_equipement_porte.go`, `poserLEquipementPorte` (plan des durees d effets, 2026-10-28).
+	NomEffetDEcranParLaFinDeLaGrenade Nom = "repli_effet_d_ecran_par_la_fin_de_la_grenade"
 	// NomIdentiteDeSlotParResiduDeManche : `objectives/slotidentity_residue.go`,
 	// `CompletedByRoundResidue` ; compte par `replay/identity_registry_section.go`,
 	// `compterLesSlotsParResidu` (lot J8.4, constats FO-1 / RA2-4).

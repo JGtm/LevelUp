@@ -11,6 +11,9 @@ const dateLotNeedler = "2026-10-09"
 // dateLotFinDeFaille : le jour de l integration qui clot la faille a la suppression lue de son objet.
 const dateLotFinDeFaille = "2026-10-16"
 
+// dateLotDureesEffets : le jour du lot qui lit l objet d effet de l ecran occultant.
+const dateLotDureesEffets = "2026-10-28"
+
 var registreReplayEquipement = []Repli{
 	{
 		Nom:       "repli_piece_engendree_sans_evenement",
@@ -338,6 +341,30 @@ var registreReplayEquipement = []Repli{
 		DatePose:        dateLotFinDeFaille,
 		CibleRetrait:    "retrait sec quand chaque pose du parc porte la fin lue de son objet ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "coverage.carriedEquipment.riftEndsUnread a 0 sur les artefacts du parc (corpus du gate de rejeu)",
+		CompteurBranche: true,
+	},
+	{
+		// LE FILM NE DESIGNE PAS LA VIE D EFFET : le record de creation de la ti=38 de la bulle (i0, i2, i14, i15)
+		// ne porte aucune reference a la grenade, au porteur ni a l objet porte.
+		Nom:  "repli_effet_d_ecran_par_la_fin_de_la_grenade",
+		Fait: "quelle vie ti=38 est la bulle d un ecran occultant (naissance, suppression, position a la creation)",
+		Mecanisme: "la grammaire rend les vies ti=38 non nommees nees 100 a 700 ms avant la suppression de la grenade ; " +
+			"a 3 m du repos publie de la grenade quand il est publie, sinon seule de la fenetre ; plusieurs : ambigu, rien n est " +
+			"publie ; compte = effets ainsi associes (coverage.carriedEquipment.trackedEffects)",
+		// LE NEGATIF QUI L OUVRE : 38 ecrans sur 39 sur cinq films (2025-11 a 2026-07), une seule candidate par fenetre
+		// a 1,96 m au plus du repos publie ; les rivales mesurees sont a 9,5 et 30 m (plan des durees d effets, etape A).
+		Condition: CondNonResolu,
+		Ordre:     OrdreApresLecture,
+		Sites: []Site{{
+			Fichier: pkgReplay + "document_effets.go",
+			Ancre:   "func (o *objetLu) situerLesEffets(cov *CarriedEquipmentCoverage) {",
+		}, {
+			Fichier: pkgReplay + "document_equipement_porte.go",
+			Ancre:   "a.opt.Fallbacks.DeclencheN(fallback.NomEffetDEcranParLaFinDeLaGrenade, cov.TrackedEffects)",
+		}},
+		DatePose:        dateLotDureesEffets,
+		CibleRetrait:    "conversion le jour ou le record de creation de la vie d effet designe la grenade ou l objet porte",
+		CritereRetrait:  "chaque effet lu par une reference du record de creation, ET coverage.carriedEquipment.trackedEffects a 0 sur le corpus du gate de rejeu",
 		CompteurBranche: true,
 	},
 }

@@ -159,7 +159,7 @@ var couchesDesCalques = map[string]string{
 	"weaponLabels":        grammar.Rev, // build_inventaire.go `buildWeaponLabels` <- les identifiants d armes de loadouts / shots / weaponPads
 	"abilityLabels":       grammar.Rev, // build_inventaire.go `abilityLabelsUsed` <- les rangs i48 de `abilities`
 	"grappleLines":        grammar.Rev, // build_calques.go <- FilmInputs.GrappleReads
-	"equipmentPlacements": grammar.Rev, // build_calques.go <- FilmInputs.Placements + SpawnEvents
+	"equipmentPlacements": grammar.Rev, // build_calques.go <- FilmInputs.Placements + SpawnEvents + CarriedEquipment (la fin lue, `LifeEnd`)
 	"weaponChanges":       grammar.Rev, // build_calques.go <- FilmInputs.WeaponChanges
 	"pickups":             grammar.Rev, // build_calques.go <- FilmInputs.Pickups
 	"weaponPads":          grammar.Rev, // build_ground_weapons.go <- FilmInputs.Pads (ti=42 et ti=37)

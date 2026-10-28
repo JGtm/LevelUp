@@ -36,6 +36,9 @@ type CarriedTracked struct {
 	X    *float32 `json:"x,omitempty"`
 	Y    *float32 `json:"y,omitempty"`
 	Z    *float32 `json:"z,omitempty"`
+	// Effect est l objet d effet de l objet engendre (la bulle de l ecran occultant : vie ti=38 nee a l impact),
+	// absent quand le film ne le donne pas ou que l association est ambigue (cf. `document_effets.go`).
+	Effect *CarriedEffect `json:"effect,omitempty"`
 }
 
 // toleranceDeNaissance borne l'écart, en frames, entre la frame où la pile i28 nomme un objet engendré

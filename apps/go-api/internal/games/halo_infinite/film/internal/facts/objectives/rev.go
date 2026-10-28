@@ -223,6 +223,9 @@ package objectives
 // `grammar.Rev` monte a `grammar-2026-10-25` (ancre d image-cle prouvee par les entrees libres qui la
 // precedent) ; aucune source de cette couche ne change, l empreinte du golden est recopiee au meme rang.
 // Le parc n a pas ete re-mesure pour les objectifs lus aux images-cles.
+// A REVISION CONSTANTE (plan des durees d effets, 2026-10-28) : la VALEUR de `grammar.Rev` monte a
+// `grammar-2026-10-28` (le canal de l equipement porte rend l objet d effet) ; aucune source de cette couche ne
+// change et aucune de ses lectures n appelle ce canal, l empreinte du golden est recopiee au meme rang.
 
 // Rev est la revision de la sortie des objectifs.
 const Rev = "objectives-2026-10-17"

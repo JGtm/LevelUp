@@ -3631,3 +3631,29 @@ package replay
 //	                (les trajectoires et les lectures de l equipement porte sont des faits persistes).
 //
 //	LE PARC         un artefact 104 : verdict `a republier` (assemblage seul, aucun fait perime).
+
+// v106 (2026-10-28, lot durees d effets, plan `.ai/PLAN_REJEU_DUREES_EFFETS_2026-10-28.md`). Le rejeu dessinait
+// le mur et l ecran occultant sur des durees supposees (10 s et 7,5 s) ; le film ecrit leur fin.
+//
+//	`equipmentPlacements[].lifeEnd`   la frame de la SUPPRESSION LUE de l objet que la pose a cree. Le panneau
+//	                 du mur est une vie ti=37 que le balayage des poses rend et que la pile i28 de l objet
+//	                 porte NOMME (meme vie, nommee 16 a 45 ms apres la creation) : le lien est structurel
+//	                 (la cle, plus un nommage qui suit la creation d au plus 200 ms, la generation ne tenant
+//	                 que sur 2 bits), jamais temporel. La barriere meurt avec le panneau (ecart de fin
+//	                 mediane 0 ms, -66 a +17, 97 murs sur 104). Absent sans lien, lien ambigu ou fin non lue :
+//	                 le client garde sa duree de repli (12 480 ms, la mediane mesuree de la barriere).
+//	`carriedEquipment[].tracked[].effect`   {t0, t1?, x?, y?, z?} : l objet d effet de l objet engendre de la
+//	                 famille `shroud_screen`, la vie ti=38 nee a l impact (7 492 a 7 512 ms de vie, 38 ecrans sur
+//	                 39). Son record de creation ne designe rien : la grammaire rend, a la suppression de chaque
+//	                 objet suivi, les ti=38 non nommees nees 100 a 700 ms avant elle (`effect-birth`) puis leur
+//	                 suppression (`effect-end`) ; la publication retient celle qui est a 3 m du repos publie de la
+//	                 grenade (seule de sa fenetre sans repos), ambigu = rien. Repli nomme et compte
+//	                 (`repli_effet_d_ecran_par_la_fin_de_la_grenade`).
+//	`coverage.placements.{lifeLinked,lifeAmbiguous,lifeEnds}`, `coverage.carriedEquipment.{trackedEffects,
+//	                 trackedEffectEnds,trackedEffectsAmbiguous,trackedEffectsUnlinked}`   les comptes de ces deux lectures.
+//
+//	CE QUI MONTE    `SchemaVersion` 105 -> 106, `grammar.Rev` -> `grammar-2026-10-28` (le canal de l equipement porte
+//	AVEC ELLE       rend deux genres de lecture neufs, sans changer le codec : `SchemaDesFaits` garde sa valeur) et
+//	                les revisions qui hachent sa valeur.
+//
+//	LE PARC         un artefact 105 : verdict `redecoder` (la revision de grammaire a change).
