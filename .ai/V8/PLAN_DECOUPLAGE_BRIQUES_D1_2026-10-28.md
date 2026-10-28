@@ -470,7 +470,7 @@ Découverte 4 (pour le lot 4 ; TRAITÉE au lot 4, voir 4.2) : `apps/go-api/inter
 - [x] 4.4 Table du garde-fou : `himap` = `libs/himap/himap`, imports permis = `libs/gamefiles/...`.
   Allowlist vide (contrôle : le test échoue si on y ajoute une entrée fictive non utilisée —
   « entrée morte » = rouge, comme les autres ratchets datés).
-- [!] 4.5 (gates locales passées, voir l'exécution ; push + CI verte + `docker build` reviennent au pilote) Gate : `cd libs/himap && go test ./... -count=1` ;
+- [x] 4.5 (clos par le pilote : commit 19dcb9e1b, CI verte sur les 4 workflows — run 40752659187 —, `docker build` tenu par Deploy Pre-Check, couverture 84,0 % >= 69,0 %) Gate : `cd libs/himap && go test ./... -count=1` ;
   `go list -deps ./... | grep -E 'levelup/go-api|libs/himap'` depuis `libs/gamefiles` = vide ;
   `go list -deps ./... | grep 'levelup/go-api'` depuis `libs/himap` = vide ;
   `make go-api-test-gamefiles` vert ; push, CI verte.
@@ -523,7 +523,7 @@ Statuts (le texte des items ci-dessus est celui du plan ; ce bloc dit ce qui a �
   `-tags=gamefiles` des quatre paquets verts, `-tags=research ./...` et `-tags=integration ./...` verts ; `go test -count=1` archlint (118 s, suite complète), `cmd/server` (11 s), `testfixtures`, `film/internal/profile`, commandes consommatrices, `gamefilescorpus`
   ok ; `go build -o NUL ./cmd/server/` ok ; `make libs-test` réel ok (9 s) ; `golangci-lint run --new-from-merge-base=origin/release/v8.1.0` : `apps/go-api` 0 issue, `libs/himap` 0 issue (plein, sans ratchet : 0 ; mutation d'une fonction inutilisée => « unused » vu) ;
   `lefthook validate` ok. `make go-api-test-gamefiles` : la cible n'a pas été lancée d'un bloc ; ses trois parties l'ont été (corpus himap depuis le module 24 s, `gamefilescorpus` + `mapfond-build` + `mapstruct-build` 6 min 18 s, `film-profiles-build` 2 s) et la cible
-  est vue par `make -n`. REVIENT AU PILOTE `[!]` : push, CI verte sur tous les jobs, `docker build` (job `Deploy Pre-Check`), ratchet de couverture (découverte 26).
+  est vue par `make -n`. CLOS PAR LE PILOTE (2026-10-28) : commit `19dcb9e1b` poussé ; CI verte sur les 4 workflows du premier coup (run 40752659187 ; seul « E2E React » est `skipped`, par filtre de chemins) ; `docker build` tenu par `Deploy Pre-Check` (vert) ; ratchet de couverture 84,0 % >= plancher 69,0 % (82,0 % au lot 3 : découverte 26 close, le départ de `himap` fait MONTER le total).
 
 Témoins (scratchpad `temoins_lot4_*`) :
 - go-api, `go test ./...` par six grappes (`-count=1`) : 359 paquets avant, 358 après ; 213 lignes `ok` avant, 212 après ; 0 FAIL ; la SEULE différence est la ligne `ok levelup/go-api/internal/himap` ; liste avant identique à `temoins_lot3_apres_go.txt`.
@@ -688,7 +688,7 @@ Lot 4 (2026-10-28) :
 25. `cmd/mapfond-build/cuisson.go` : `const sourceCuisson = "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)"` est ÉCRITE dans le champ `source` de chaque sidecar publié (`data/titles/halo_infinite/reference/map_backgrounds/*.json`, une centaine). Le chemin est
     faux depuis le lot 4. LAISSÉE telle quelle : la changer modifie le contenu de tout sidecar recuit (donc les sidecars ne seraient plus identiques aux publiés hors `generatedAt`, et la prochaine recuisson ferait un diff de données). À trancher : changer la
     constante au prochain recuit de fonds, ou la rendre indépendante d'un chemin.
-26. Ratchet de couverture : les instructions de `himap` (12 500 lignes) sortent du `-coverpkg=./...` de go-api (comme `mapvar` au lot 3, découverte 21) ; le total bouge. Non mesurable sur ce poste ; à lire à la première CI. Aucun job ne mesure la couverture de `libs/himap` ni de `libs/gamefiles`.
+26. Ratchet de couverture : les instructions de `himap` (12 500 lignes) sortent du `-coverpkg=./...` de go-api (comme `mapvar` au lot 3, découverte 21) ; le total bouge. Lu à la première CI (run 40752659187) : 84,0 % (82,0 % au lot 3) — CLOSE, le ratchet ne fait que monter avec le départ des briques. Aucun job ne mesure la couverture de `libs/himap` ni de `libs/gamefiles`.
 27. Dependabot (suite de la découverte 19) : le bloc `gomod` `/libs/himap` charge un module qui importe un frère SANS `go.work` ; même risque que celui de go-api et de gamefiles, à constater au premier passage mensuel. Le risque est plus net ici : le module n'a AUCUN `require` de son frère.
 28. `make gate-push` (GnuWin32) : `make -n gate-push` échoue sur ce poste (« Paramètre incorrect ») à cause du `$(MAKE)` dont le chemin contient un espace (`C:/Program Files (x86)/...`) ; préexistant (la ligne `$(MAKE) libs-test` date du lot 3), non traité. `make libs-test` direct fonctionne.
 29. Les commentaires de la brique `himap` citent encore des chemins de l'hôte (`internal/gamefilescorpus`, `internal/testfixtures/...`, `cmd/mapquant-build`, `cmd/mapcallouts-build`, `internal/games/halo_infinite/film/replay/map_background.go` : une douzaine de lignes de commentaire, aucun import). Sans effet sur l'autonomie au sens de l'ADR (critère = `go list -deps`), mais bruyant pour un module
