@@ -89,7 +89,7 @@ var mojibakeAllowlist = map[string]bool{}
 
 func TestNoMojibakeInGoModule(t *testing.T) {
 	var violations []string
-	for _, f := range workspaceGoSources(t, "apps/go-api/cmd", "apps/go-api/internal", "libs/gamefiles") {
+	for _, f := range workspaceGoSources(t, racinesEspaceDeTravail...) {
 		if mojibakeAllowlist[f.Rel] {
 			continue
 		}

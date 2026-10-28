@@ -368,10 +368,9 @@ libs/gamefiles/mapvar/testdata/*.mvar
 # Caches Go de build des agents (scratch, jamais versionnes)
 .gocache-*/
 
-# Artefacts ecrits par le corpus gamefiles de libs/himap/himap (gate visuel, planches de
-# revue). Ils sont REGENERES a chaque run et ne doivent pas entrer dans le depot ; le seul
-# PNG versionne de ce dossier est `coupe.png`, qui est une reference, pas une sortie.
-libs/himap/himap/gate.png
+# Artefact ecrit par le gate visuel du corpus gamefiles (`internal/gamefilescorpus`),
+# regenere a chaque run, ne doit pas entrer dans le depot.
+apps/go-api/internal/gamefilescorpus/gate.png
 data/global/player_friends.json
 
 # Sorties de decompilation du jeu (Ghidra) : propriete de Microsoft, jamais versionnees
