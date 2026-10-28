@@ -283,7 +283,7 @@ language `xx` from `en` (text between `⟦` and `⟧`, ICU placeholders intact) 
 (a temporary folder when omitted). Any visible text outside the brackets in the application is a string
 that does not go through a manifest. It is a proof tool, never a shipped language. It writes the generated modules only: to run the
 application in `xx`, the same files as for a real language (steps 1 to 6) are needed, derived from `en`
-(throwaway-branch procedure and results: `.ai/PLAN_I18N_MULTILANGUE.md`, step 10). The unknown-language
+(throwaway-branch procedure and results: `.ai/V8/PLAN_I18N_MULTILANGUE.md`, step 10). The unknown-language
 code used by the tests is `zz`, never `xx`.
 
 ---
