@@ -66,12 +66,12 @@ const (
 // `libs/gamefiles/`. Aucune entrée ajoutée, plafond inchangé.
 var sitesAiAutorises = map[string]siteAi{
 	// Dumps locaux du jeu (hors clone, jamais versionnés).
-	"apps/go-api/cmd/mapfond-build/resolution_test.go":             {1, "fabrique une arborescence .ai/re_dump factice dans un TempDir, ne lit pas le dépôt"},
-	"apps/go-api/internal/himap/cartes_forge.go":                   {2, "constantes DepotVariantesCarte et DepotNavmesh : " + raisonReDump},
-	"apps/go-api/internal/himap/sonde_forge_research_test.go":      {4, raisonReDump},
-	"apps/go-api/internal/himap/sonde_forge_mvar_research_test.go": {1, raisonReDump},
-	"libs/gamefiles/hinavmesh/depot_research_test.go":              {1, raisonReDump + " (helper unique des instruments de la brique, lot 2c du plan D1, 2026-10-28)"},
-	"libs/gamefiles/mapvar/depot_research_test.go":                 {1, raisonReDump + " (helper unique des instruments de la brique, lot 2c du plan D1, 2026-10-28)"},
+	"apps/go-api/cmd/mapfond-build/resolution_test.go":   {1, "fabrique une arborescence .ai/re_dump factice dans un TempDir, ne lit pas le dépôt"},
+	"libs/himap/himap/cartes_forge.go":                   {2, "constantes DepotVariantesCarte et DepotNavmesh : " + raisonReDump},
+	"libs/himap/himap/sonde_forge_research_test.go":      {4, raisonReDump},
+	"libs/himap/himap/sonde_forge_mvar_research_test.go": {1, raisonReDump},
+	"libs/gamefiles/hinavmesh/depot_research_test.go":    {1, raisonReDump + " (helper unique des instruments de la brique, lot 2c du plan D1, 2026-10-28)"},
+	"libs/gamefiles/mapvar/depot_research_test.go":       {1, raisonReDump + " (helper unique des instruments de la brique, lot 2c du plan D1, 2026-10-28)"},
 	// Sorties de recherche (écriture, pas lecture de fixture).
 	"apps/go-api/internal/games/halo_infinite/film/internal/grammar/zone_census_test.go": {1, raisonSortie},
 	"apps/go-api/internal/games/halo_infinite/film/replay/colline_propriete_test.go":     {1, raisonSortie},

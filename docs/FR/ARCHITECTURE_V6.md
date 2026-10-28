@@ -242,17 +242,20 @@ une brique est `github.com/JGtm/LevelUp/libs/<brique>`, ses paquets au premier n
 paquet `internal/` ne serait pas importable par l'application).
 
 ```text
-go.work                  use ./apps/go-api ./libs/gamefiles
+go.work                  use ./apps/go-api ./libs/gamefiles ./libs/himap
 apps/go-api/             l'application (module levelup/go-api)
 libs/gamefiles/          la brique « fichiers du jeu » : himodule, ooz (GPLv3, jamais linké par cmd/server),
                          hinavmesh, mapvar — n'importe rien de LevelUp
+libs/himap/              la brique « images de carte » : paquet himap (géométrie des cartes et fonds vus du
+                         dessus, lus dans les fichiers du jeu) — n'importe que libs/gamefiles
 ```
 
 Règles, tenues par des garde-rails : une brique n'importe rien de `levelup/go-api` et seulement des briques de
 rang inférieur (`archlint/briques_imports_test.go`, tests compris) ; `go list -deps` dans le module ne montre
 aucun paquet `levelup/go-api` ; aucun fichier extrait du jeu installé n'entre dans une brique ; la ligne `go` est
 la même dans `go.work`, `apps/go-api/go.mod`, chaque `libs/*/go.mod` et l'image du `Dockerfile`. `./...` ne
-franchit jamais la frontière d'un module : `make libs-test` et le pas CI « brique gamefiles » couvrent les briques,
+franchit jamais la frontière d'un module : `make libs-test` et les pas CI « brique gamefiles » et « brique himap »
+couvrent les briques,
 `go mod tidy` ne tourne pas dans `apps/go-api`. Une brique est importable de l'extérieur par le tag
 `libs/<brique>/vX.Y.Z`. Commandes : [`COMMANDS.md`](COMMANDS.md) § « Modules Go sous `libs/` » ; décision et liste à
 suivre pour ajouter une brique : [`adr/0041-go-modules-under-libs.md`](../adr/0041-go-modules-under-libs.md).

@@ -77,7 +77,7 @@ lets them reuse:
   - Test fixtures that carry game content, kept in the tree only because tests read
     them: three map variants (libs/gamefiles/mapvar/testdata/cliffhanger_map.mvar,
     cliffhanger_ridgeline.mvar, vagabond_fo08_wetland.mvar), the reference map image
-    apps/go-api/internal/himap/testdata/carte_validee_v1.png and the callout
+    libs/himap/himap/testdata/carte_validee_v1.png and the callout
     zones dump apps/go-api/internal/testfixtures/testdata/cartes/callout_zones_ridgeline_clipped.json.
     The content is Microsoft's;
     it is kept for the tests and is not licensed for any other use.

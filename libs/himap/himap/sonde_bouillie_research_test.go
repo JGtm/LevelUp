@@ -16,7 +16,7 @@ package himap
 //
 // Lancement CIBLE :
 //
-//	go test ./internal/himap/ -run TestSondeBouillie -timeout 45m -v
+//	go test ./himap/ -run TestSondeBouillie -timeout 45m -v
 //
 // AUCUNE ecriture d'asset : mesure pure.
 

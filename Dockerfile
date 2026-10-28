@@ -66,6 +66,7 @@ WORKDIR /build
 COPY go.work go.work.sum ./
 COPY apps/go-api/go.mod apps/go-api/go.sum ./apps/go-api/
 COPY libs/gamefiles/go.mod libs/gamefiles/go.sum ./libs/gamefiles/
+COPY libs/himap/go.mod libs/himap/go.sum ./libs/himap/
 
 # Cache mounts BuildKit (2026-07-26) — présents sur les 4 RUN Go de ce stage :
 #   /go/pkg/mod           = GOMODCACHE par défaut (l'image officielle fixe GOPATH=/go)

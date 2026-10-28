@@ -8,10 +8,9 @@
 // cette liste fermée. Il a été posé AVANT le premier déplacement de paquet, avec une allowlist
 // datée égale aux coupes restantes, qui a fini VIDE (même méthode que `film_layers_deps_test.go`).
 //
-// Depuis le lot 3, une brique est un MODULE Go sous `libs/<brique>/` (ADR 0041) : le compilateur
+// Depuis les lots 3 et 4, une brique est un MODULE Go sous `libs/<brique>/` (ADR 0041) : le compilateur
 // refuse déjà qu'elle importe `levelup/go-api/internal/...` ; ce test tient en plus la liste
-// fermée des briques de rang inférieur qu'elle a le droit d'importer, et garde les paquets qui
-// n'ont pas encore quitté `apps/go-api` (`himap`, jusqu'au lot 4).
+// fermée des briques de rang inférieur qu'elle a le droit d'importer.
 //
 // # CE QU'IL VÉRIFIE
 //
@@ -30,7 +29,7 @@
 // # MUTATION QUI DOIT LE FAIRE ROUGIR
 //
 // Ajouter `"levelup/go-api/internal/analysis"` aux imports de
-// `apps/go-api/internal/himap/cuisson_forge.go`, ou `"github.com/JGtm/LevelUp/libs/himap/himap"`
+// `libs/himap/himap/cuisson_forge.go`, ou `"github.com/JGtm/LevelUp/libs/himap/himap"`
 // à ceux de `libs/gamefiles/mapvar/mapvar.go`.
 package archlint
 
@@ -57,7 +56,7 @@ const (
 type brique struct {
 	nom string
 	// paquets : répertoires relatifs à la racine du dépôt, séparateurs "/" (`libs/gamefiles/ooz`,
-	// `apps/go-api/internal/himap`). Chaque répertoire est un paquet Go (pas de descente
+	// `libs/himap/himap`). Chaque répertoire est un paquet Go (pas de descente
 	// récursive : un sous-répertoire se déclare).
 	paquets []string
 	// permis : les paquets (même forme) d'AUTRES briques, de rang inférieur, que celle-ci peut
@@ -88,7 +87,7 @@ var paquetsGamefiles = []string{
 // Les plans D2 (décodeur de film) et D3 (API Halo) y ajoutent leurs lignes.
 var briques = []brique{
 	{nom: "gamefiles", paquets: paquetsGamefiles},
-	{nom: "himap", paquets: []string{"apps/go-api/internal/himap"}, permis: paquetsGamefiles},
+	{nom: "himap", paquets: []string{"libs/himap/himap"}, permis: paquetsGamefiles},
 }
 
 // importsToleres : les fichiers d'une brique qui importent un paquet du dépôt hors de la brique,
@@ -240,8 +239,9 @@ func TestBriquesImports_AutoPreuve(t *testing.T) {
 // TestCheminImport : la dérivation du chemin d'import suit la forme des deux sortes de modules.
 func TestCheminImport(t *testing.T) {
 	for paquet, attendu := range map[string]string{
-		"apps/go-api/internal/himap": "levelup/go-api/internal/himap",
-		"libs/gamefiles/ooz":         "github.com/JGtm/LevelUp/libs/gamefiles/ooz",
+		"apps/go-api/internal/i18n": "levelup/go-api/internal/i18n",
+		"libs/himap/himap":          "github.com/JGtm/LevelUp/libs/himap/himap",
+		"libs/gamefiles/ooz":        "github.com/JGtm/LevelUp/libs/gamefiles/ooz",
 	} {
 		if got := cheminImport(paquet); got != attendu {
 			t.Errorf("cheminImport(%q) = %q, attendu %q", paquet, got, attendu)

@@ -34,7 +34,8 @@ import (
 
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/himap"
+
+	"github.com/JGtm/LevelUp/libs/himap/himap"
 )
 
 // deployVariant : deploy/pc/ et non deploy/ds/ (cf. en-tête — le build dédié n'a pas la

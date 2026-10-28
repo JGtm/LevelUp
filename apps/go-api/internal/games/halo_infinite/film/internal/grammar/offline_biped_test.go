@@ -13,7 +13,7 @@ import (
 var cliffLayout = profile.I0Layout{GateBits: profile.DefaultI0GateBits, AxisW: [3]uint{13, 13, 14}}
 
 // cliffRange est l'AABB monde du BSP de Cliffhanger (module `ridgeline`), lue avec
-// internal/himap. Les bornes sont PROPRES À LA CARTE : le décodeur les exige désormais.
+// libs/himap/himap. Les bornes sont PROPRES À LA CARTE : le décodeur les exige désormais.
 var cliffRange = profile.QuantRangeCEBiped()
 
 // scanOptWorld : réglages par défaut + bornes de carte (le décodeur refuse d'émettre des

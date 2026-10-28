@@ -68,7 +68,7 @@ const corpusGamefilesPlancher = 62
 
 // appelsInstallation : les portes d'entrée vers l'installation de Halo Infinite. Un test qui en
 // appelle une lit le disque du jeu, donc coûte des minutes dès que le jeu est là. Les trois
-// vivent dans `internal/himap` ; hors de ce paquet elles s'écrivent `himap.DeployRoot(` etc.,
+// vivent dans `libs/himap/himap` ; hors de ce paquet elles s'écrivent `himap.DeployRoot(` etc.,
 // que ces motifs attrapent aussi.
 var appelsInstallation = []string{"DeployRoot(", "LevelsDir(", "ChercheModuleInstalle("}
 
@@ -77,14 +77,14 @@ var appelsInstallation = []string{"DeployRoot(", "LevelsDir(", "ChercheModuleIns
 // l'agrandir demande la même démonstration (le test ne touche pas au jeu, et sa durée le
 // prouve).
 //
-//   - apps/go-api/internal/himap/deploy_root_test.go (2026-09-05) : il appelle bien `DeployRoot()` et
+//   - libs/himap/himap/deploy_root_test.go (2026-09-05) : il appelle bien `DeployRoot()` et
 //     `LevelsDir()`, mais toujours sous `t.Setenv(DeployRootEnv, t.TempDir())` — il teste la
 //     RÉSOLUTION du chemin, jamais le contenu du jeu. Durée mesurée : < 0,01 s.
 //   - apps/go-api/internal/archlint/gamefiles_tag_test.go (2026-09-05) : ce fichier-ci. Il ne les APPELLE
 //     pas, il les CITE dans `appelsInstallation` — même auto-référence que les autres ratchets
 //     de ce paquet, qui s'allowlistent parce qu'ils portent les motifs qu'ils interdisent.
 var horsCorpusAutorises = map[string]bool{
-	"apps/go-api/internal/himap/deploy_root_test.go":      true,
+	"libs/himap/himap/deploy_root_test.go":                true,
 	"apps/go-api/internal/archlint/gamefiles_tag_test.go": true,
 }
 
@@ -175,14 +175,14 @@ func appelSansDeclarerGamefiles(rel, texte string) string {
 // tagué hors allowlist (vérifié le 2026-09-05 en remettant
 // `TestModuleGeometrieExisteDansLInstallation` dans `cmd/mapfond-build/reglages_test.go`), ou
 // retirer `gamefiles &&` de la première ligne d'un `*_research_test.go` qui appelle
-// `DeployRoot(` (vérifié le 2026-10-28 sur `internal/himap/cloture_research_test.go`).
+// `DeployRoot(` (vérifié le 2026-10-28 sur `libs/himap/himap/cloture_research_test.go`).
 func TestAucunTestNonTagueNeLitLInstallation(t *testing.T) {
 	balayerTests(t, func(rel, texte string) {
 		if appel := appelSansDeclarerGamefiles(rel, texte); appel != "" {
 			t.Errorf("%s appelle %s sans déclarer le tag %q — déplacer le test dans un "+
 				"*_gamefiles_test.go tagué, déclarer `gamefiles && research` si c'est un instrument "+
 				"de recherche (*_research_test.go), ou justifier une entrée d'allowlist comme "+
-				"apps/go-api/internal/himap/deploy_root_test.go", rel, appel, tagGamefiles)
+				"libs/himap/himap/deploy_root_test.go", rel, appel, tagGamefiles)
 		}
 	})
 }
@@ -265,7 +265,7 @@ func TestCibleMakefileGamefilesCouvreLeCorpus(t *testing.T) {
 }
 
 // cheminDansLeModule rend le chemin d'un paquet de l'espace de travail relatif à la racine de SON
-// module (`apps/go-api/internal/himap` -> `internal/himap`) : la forme dans laquelle une recette
+// module (`apps/go-api/internal/gamefilescorpus` -> `internal/gamefilescorpus`) : la forme dans laquelle une recette
 // `cd <module> && go test ./<paquet>/` le nomme.
 func cheminDansLeModule(paquet string) string {
 	for _, racine := range racinesEspaceDeTravail {

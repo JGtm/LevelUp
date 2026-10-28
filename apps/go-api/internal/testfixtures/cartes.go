@@ -20,7 +20,7 @@ const (
 
 	// CarteValideeFixturesDir : la brique himap possede `carte_validee_v1.png`, la carte de
 	// reference de ses bancs de rendu.
-	CarteValideeFixturesDir = "apps/go-api/internal/himap/testdata"
+	CarteValideeFixturesDir = "libs/himap/himap/testdata"
 )
 
 // CartesDir retourne le dossier des fixtures de cartes propres a LevelUp :

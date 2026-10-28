@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/himap"
+	"github.com/JGtm/LevelUp/libs/himap/himap"
 )
 
 // LE GATE DE LA COQUILLE — elle transfere-t-elle aux 27 cartes, ou seulement aux deux qui

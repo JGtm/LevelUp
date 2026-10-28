@@ -13,7 +13,7 @@
 |---|---|---|
 | API + sync + analyse | **Go** (chi + Huma, slog, DuckDB) | `apps/go-api/` |
 | Frontend | **React/TypeScript** (Vite, TanStack Router/Query/Table, ECharts) | `apps/web/` |
-| Briques Go (modules séparés, ADR 0041) | **Go**, reliées à `apps/go-api` par `go.work` (racine) | `libs/<brique>/` (`libs/gamefiles` : lecteurs de fichiers du jeu) |
+| Briques Go (modules séparés, ADR 0041) | **Go**, reliées à `apps/go-api` par `go.work` (racine) | `libs/<brique>/` (`libs/gamefiles` : lecteurs de fichiers du jeu ; `libs/himap` : images de carte) |
 | Stockage | **DuckDB** par titre + Parquet (archives) | `data/titles/{slug}/` |
 | Config | JSON + TOML | `db_profiles.json`, `app_settings.json`, `.env.local`, `config/titles/` |
 
@@ -211,7 +211,7 @@ des DBs en prod. L'éradication (ADR 0019/0026) repose sur des invariants NON N�
 make go-api-test            # tests Go rapides (domain/analysis/contracttest)
 cd apps/go-api && go test ./...                      # suite complète
 cd apps/go-api && go test -tags=integration ./...    # inclut les tests persist anti-ART (OBLIGATOIRE avant livraison sync/persist)
-make go-api-test-gamefiles  # corpus cartes internal/himap (tag `gamefiles`, EXIGE Halo installe, ~6 min)
+make go-api-test-gamefiles  # corpus cartes libs/himap + internal/gamefilescorpus (tag `gamefiles`, EXIGE Halo installe, ~6 min)
 make go-api-lint            # golangci-lint
 make libs-test              # vet + tests des modules libs/ (ADR 0041 ; `./...` de go-api ne les couvre pas)
 make gate-push              # filet local avant merge vers main (~25 min) : ratchet lint Go + typecheck/lint web + baseline de tests (voies film et DuckDB en parallèle) ; la CI reste le gate d'autorité
@@ -235,14 +235,14 @@ go run apps/go-api/cmd/inspect_bp/main.go            # outil Go (CGO : gcc msys6
 go run ./apps/go-api/cmd/levelup --help              # sync, backfill, diag
 ```
 
-**Tag `gamefiles` (2026-09-05)** : les 59 `*_gamefiles_test.go` de `internal/himap/` lisent
+**Tag `gamefiles` (2026-09-05)** : les 59 `*_gamefiles_test.go` de `libs/himap/himap/` (module `libs/himap`) lisent
 l'installation locale de Halo Infinite et coûtent des dizaines de minutes
 (`TestBalayageCoquille` seul : 203 s pour 26 cartes ; 1 246 s avant le passage du lecteur
  de modules en projection mémoire le 2026-09-05). Ils sont derrière
-`//go:build gamefiles` — sans quoi `go test ./internal/himap/` ne terminait jamais sur un
+`//go:build gamefiles` — sans quoi `go test ./himap/` (depuis `libs/himap`) ne terminait jamais sur un
 poste où le jeu est installé, alors que la CI (pas de jeu → `t.Skip`) restait verte. Un test
 qui ouvre le jeu se nomme `*_gamefiles_test.go` ET porte le tag : garde-rails dans
-`internal/archlint/gamefiles_tag_test.go` (ratchet sur tout le module, 2026-09-06 ; remplace `internal/himap/corpus_tag_test.go`).
+`internal/archlint/gamefiles_tag_test.go` (ratchet sur tout l'espace de travail Go, 2026-09-06 ; remplace l'ancien `corpus_tag_test.go` de la brique).
 
 Référence complète des commandes : `docs/COMMANDS.md`. Déploiement : `docs/RUNBOOK_GO_LIVE*`
 — **push sur `main` = déploiement prod automatique** : prévenir l'utilisateur avant.

@@ -11,9 +11,10 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/himap"
 	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/mapcatalog"
+
+	"github.com/JGtm/LevelUp/libs/himap/himap"
 )
 
 // cheminReference rend le dossier reference/ du titre par défaut depuis ce paquet.

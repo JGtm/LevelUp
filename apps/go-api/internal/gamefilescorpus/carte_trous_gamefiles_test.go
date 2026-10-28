@@ -8,7 +8,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/himap"
+	"github.com/JGtm/LevelUp/libs/himap/himap"
 )
 
 // DIAGNOSTIC DES TROUS — d'ou vient la geometrie qui manque sous les joueurs.

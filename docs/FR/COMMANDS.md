@@ -500,7 +500,7 @@ Défauts de `populate-assets` : les quatre types, les 14 étiquettes de `domain.
 
 Onze chaînes hors ligne, toutes sous `apps/go-api/cmd/`, produisent des fichiers commités
 (`data/titles/{slug}/reference/`, `static/`, ou un fichier Go généré). Aucune n'est câblée
-dans `cmd/server` — le décodage du jeu et le code GPLv3 (`internal/himap`, `libs/gamefiles/ooz`,
+dans `cmd/server` — le décodage du jeu et le code GPLv3 (`libs/himap/himap`, `libs/gamefiles/ooz`,
 Kraken/Oodle) restent isolés dans ces binaires. Lancées depuis `apps/go-api` sauf mention
 contraire. `--title`/`-title` vaut `halo_infinite` par défaut partout.
 
@@ -594,7 +594,7 @@ CGO_ENABLED=1 go run ./cmd/mapfond-build [--maps "Cliffhanger,Catalyst"] [--titl
 - Sortie : `data/titles/{slug}/reference/map_backgrounds/{cle}.png` + `{cle}.json` (sidecar de
   calage) par carte — 218 fichiers aujourd'hui.
 - Prérequis : jeu installé — TOUJOURS, aucun flag ne permet de l'éviter, même en Forge seul ;
-  chaîne cgo/GPLv3 (`internal/himap` -> `libs/gamefiles/himodule` -> `libs/gamefiles/ooz`, jamais liée
+  chaîne cgo/GPLv3 (`libs/himap/himap` -> `libs/gamefiles/himodule` -> `libs/gamefiles/ooz`, jamais liée
   dans `cmd/server`) ; exige `map_objectives.json` déjà construit (dépendance dure, échoue
   sans lui) ; utilise `map_quant_bounds.json` / `map_callouts.json` / `map_positions_jouees.json`
   / `map_fond_reglages.json` s'ils existent, dégrade avec un avertissement sinon.
@@ -722,7 +722,7 @@ go run ./cmd/weapon-sounds -mode livrer -donnees <chantier>/_donnees [-sons <cha
   des banks, vote humain), doivent déjà avoir produit `_donnees/*.json` et l'arborescence de
   `.wav` sources/rendus par arme. Aucun jeu installé n'est nécessaire pour cette étape finale
   (le mode n'ouvre aucun module du jeu), mais cgo EST requis pour COMPILER le binaire :
-  `cmd/weapon-sounds` importe `internal/himap` -> `libs/gamefiles/himodule` -> `libs/gamefiles/ooz`
+  `cmd/weapon-sounds` importe `libs/himap/himap` -> `libs/gamefiles/himodule` -> `libs/gamefiles/ooz`
   (décompression Kraken) pour ses autres modes.
 - À rejouer : un vote d'arme est finalisé, ou la recette complète est rejouée (mise à jour du
   jeu, nouvelle arme). Recette complète : `.ai/archive/V7.5/RECETTE_SONS_ARMES.md`.
@@ -1137,32 +1137,37 @@ cd apps/go-api && CGO_ENABLED=0 go test ./internal/domain/... ./internal/analysi
 cd apps/go-api && CGO_ENABLED=1 LEVELUP_DEMO_MODE=true go test ./... -timeout 5m -count=1
 
 make go-api-coverage   # rapport de couverture
-make go-api-lint       # golangci-lint ratchet (apps/go-api + libs/gamefiles) ; go vet en repli
+make go-api-lint       # golangci-lint ratchet (apps/go-api + chaque module libs/) ; go vet en repli
 ```
 
 #### Modules Go sous `libs/` et espace de travail (ADR 0041)
 
-La brique « fichiers du jeu » vit dans son propre module Go, `libs/gamefiles` (chemin de module
-`github.com/JGtm/LevelUp/libs/gamefiles` : paquets `himodule`, `ooz`, `hinavmesh`, `mapvar`), relié à
-`apps/go-api` par le `go.work` de la racine du dépôt (aucune directive `replace` ; `go.work.sum` est
-versionné). Deux conséquences pour toute commande :
+Deux briques vivent dans leur propre module Go : « fichiers du jeu », `libs/gamefiles` (chemin de module
+`github.com/JGtm/LevelUp/libs/gamefiles` : paquets `himodule`, `ooz`, `hinavmesh`, `mapvar`), et « images de
+carte », `libs/himap` (`github.com/JGtm/LevelUp/libs/himap` : paquet `himap`, qui n'importe que `libs/gamefiles`).
+Toutes deux sont reliées à `apps/go-api` par le `go.work` de la racine du dépôt (aucune directive
+`replace` ; `go.work.sum` est versionné). Deux conséquences pour toute commande :
 
 - `./...` ne franchit jamais la frontière d'un module. `cd apps/go-api && go test ./...` ne teste **pas**
   `libs/`, et `go mod tidy` ne peut plus tourner dans `apps/go-api` (il cherche le module voisin sur le
   réseau ; l'espace de travail le résout, donc `go.mod` ne porte aucun `require` pour lui). Une montée
-  de dépendance d'une brique se fait dans son propre `go.mod` (`cd libs/gamefiles && go get ...`).
+  de dépendance d'une brique se fait dans son propre `go.mod` (`cd libs/gamefiles && go get ...`) ; `go mod
+  tidy` ne marche pas non plus dans `libs/himap` (elle importe `libs/gamefiles`) : `make tidy` dans `apps/go-api`
+  la nomme et la saute, et son `go.mod` s'édite à la main.
 - La ligne de version Go est la même dans `apps/go-api/go.mod`, `go.work`, chaque `libs/*/go.mod` et l'image
   du `Dockerfile` (`internal/archlint/dockerfile_go_version_test.go`).
 
 ```bash
-make libs-test                       # vet (défaut, tags research, gamefiles+research) + tests de chaque module libs/, CGO actif
+make libs-test                       # vet (défaut, tags research, gamefiles, gamefiles+research) + tests de chaque module libs/, CGO actif
 cd libs/gamefiles && go test ./... -count=1
 cd libs/gamefiles && go vet -tags=gamefiles,research ./...     # compile les instruments de recherche
 cd libs/gamefiles && go list -deps ./... | grep levelup/go-api  # ne doit rien afficher : le module est autonome
+cd libs/himap && go test ./... -count=1                         # la brique images de carte, sans le jeu : son corpus est sous le tag
+cd libs/himap && go list -deps ./... | grep levelup/go-api      # ne doit rien afficher non plus
 go test ./libs/gamefiles/mapvar/ -run TestLabel -count=1       # depuis la racine du dépôt fonctionne aussi (espace de travail)
 ```
 
-`make go-api-lint` et `make gate-push` passent aussi le lint sur `libs/gamefiles` (même `.golangci.yml`, donné par
+`make go-api-lint` et `make gate-push` passent aussi le lint sur chaque module `libs/` (même `.golangci.yml`, donné par
 `--config ../../apps/go-api/.golangci.yml`). Le job CI `go-build` joue les mêmes vet et tests dans un pas dédié.
 Une brique n'a ni base de données ni donnée de LevelUp : ses tests ne lisent que leur `testdata/` et le jeu installé ;
 les tests qui exigent des données de LevelUp vivent dans `apps/go-api` (`internal/gamefilescorpus/`).
@@ -1171,19 +1176,19 @@ les tests qui exigent des données de LevelUp vivent dans `apps/go-api` (`intern
 
 Deux familles de tests lisent le **jeu installé**, toutes deux derrière `//go:build gamefiles` :
 
-- les fichiers `*_gamefiles_test.go` de `internal/himap/` (34 au 2026-10-28, après le lot 2c) décodent les
+- les fichiers `*_gamefiles_test.go` de `libs/himap/himap/` (34 au 2026-10-28, après le lot 2c) décodent les
   modules du jeu, et ceux de `internal/gamefilescorpus/` (25, un paquet de tests seuls : depuis
   le plan de découplage D1, les tests de `himap` qui lisent des données de LevelUp y vivent et
   appellent `himap` par son API exportée) balaient les 26 cartes du catalogue. Ils sont longs par nature — mesuré le 2026-09-05,
   `TestBalayageCoquille` prend à lui seul **203 s** pour 26 cartes (1 246 s avant le passage du
   lecteur de modules en projection mémoire, le même jour). Le tag garde un `go test
-  ./internal/himap/` nu utilisable (2,8 s) ;
+  ./himap/` nu (depuis `libs/himap`) utilisable (2,8 s) ;
 - trois fabricants de catalogues sous `cmd/` re-dérivent leur catalogue **commis** depuis le jeu
   installé et le comparent à l'octet : `cmd/film-profiles-build/`, `cmd/mapfond-build/`,
   `cmd/mapstruct-build/` (9,0 s à eux trois, mesuré le 2026-09-17).
 
-`make go-api-test-gamefiles` joue **les cinq paquets**. Jusqu'au 2026-09-17 la cible ne jouait
-que `./internal/himap/` : les trois tests `cmd/` n'étaient joués par AUCUNE commande du dépôt
+`make go-api-test-gamefiles` joue **les cinq paquets** (la brique depuis `libs/himap`, les quatre autres depuis
+`apps/go-api`). Jusqu'au 2026-09-17 la cible ne jouait que la brique : les trois tests `cmd/` n'étaient joués par AUCUNE commande du dépôt
 (découverte D1 (3.1.2) ; le plus ancien est tagué depuis le 2026-09-05). La liste des paquets est
 explicite et non `./cmd/...` : sous le tag, un paquet sans fichier `gamefiles` n'apporte que du
 temps de compilation. `archlint.TestCibleMakefileGamefilesCouvreLeCorpus` rougit si un paquet
@@ -1191,8 +1196,9 @@ entre au corpus sans entrer dans la cible.
 
 ```bash
 make go-api-test-gamefiles                       # corpus entier (~6 min, exige le jeu)
+cd libs/himap && CGO_ENABLED=1 go test -tags=gamefiles -count=1 -timeout 3600s ./himap/ -v
 cd apps/go-api && CGO_ENABLED=1 go test -tags=gamefiles -count=1 -timeout 3600s \
-  ./internal/himap/ ./internal/gamefilescorpus/ \
+  ./internal/gamefilescorpus/ \
   ./cmd/film-profiles-build/ ./cmd/mapfond-build/ ./cmd/mapstruct-build/ -v
 
 # Les catalogues commis seuls (des secondes, pas des minutes) :
@@ -1204,13 +1210,13 @@ BALAYAGE_CARTES=aquarius_map go test -tags=gamefiles -timeout 300s \
   ./internal/gamefilescorpus/ -run TestBalayageCoquille -v
 
 # Jeu installé ailleurs :
-LEVELUP_HALO_DEPLOY=/chemin/vers/Halo Infinite/deploy go test -tags=gamefiles ./internal/himap/
+cd libs/himap && LEVELUP_HALO_DEPLOY=/chemin/vers/Halo Infinite/deploy go test -tags=gamefiles ./himap/
 ```
 
 Sans installation du jeu, chaque test prend son `t.Skip` et le corpus est vide en une
 seconde — c'est exactement ce qui se passe en CI. La CI se contente donc de le **compiler**
-(`go vet -tags=gamefiles ./internal/himap/ ./internal/gamefilescorpus/`, job `go-test`) ; elle ne l'exécute jamais. Le
-tag lui-même est tenu sur tout le module par `internal/archlint/gamefiles_tag_test.go`, qui
+(`go vet -tags=gamefiles ./...` dans `libs/himap` et `go vet -tags=gamefiles ./internal/gamefilescorpus/` dans `apps/go-api`, job `go-build`) ; elle ne l'exécute jamais. Le
+tag lui-même est tenu sur tout l'espace de travail par `internal/archlint/gamefiles_tag_test.go`, qui
 tourne dans le build par défaut.
 
 **Test rouge connu** (devenu un instrument de recherche depuis le lot 2c de D1 : `sddt_research_test.go`, joué avec `-tags=gamefiles,research`) : `TestBancCliffhanger` échoue (accord 64,4 % contre une référence
@@ -1227,11 +1233,11 @@ portent `//go:build gamefiles && research` (les autres `//go:build research`). I
 exigent le jeu installé et, pour certains, `.ai/re_dump` :
 
 ```bash
-cd apps/go-api && CGO_ENABLED=1 go test -tags=gamefiles,research -count=1 ./internal/himap/ -run <Sonde>   # un instrument ; sans -run, toute la suite gamefiles plus les instruments
+cd libs/himap && CGO_ENABLED=1 go test -tags=gamefiles,research -count=1 ./himap/ -run <Sonde>   # un instrument ; sans -run, toute la suite gamefiles plus les instruments
 cd libs/gamefiles && go test -tags=research -count=1 ./hinavmesh/ ./mapvar/
 ```
 
-La CI les compile (`go vet -tags=gamefiles,research ./internal/himap/` dans `apps/go-api`, `go vet -tags=gamefiles,research ./...` dans `libs/gamefiles`) ;
+La CI les compile (`go vet -tags=gamefiles,research ./...` dans `libs/himap` et dans `libs/gamefiles`) ;
 le `go vet -tags=research ./...` de tout le module laisse de côté, volontairement, ceux en `gamefiles && research`
 (les deux tags sont requis). La règle est tenue par `internal/archlint/gamefiles_tag_test.go` (« un instrument qui
 ouvre le jeu déclare `gamefiles` ») et `research_tag_test.go`.

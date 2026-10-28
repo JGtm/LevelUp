@@ -8,7 +8,7 @@ package himap
 // Le releve des cartes natives joint les ancres du catalogue d'objectifs, et le releve
 // d'Isolation lit la variante `.mvar` du dump de retro-ingenierie (`.ai/re_dump/mapvar`) : deux
 // donnees que la brique ne possede pas. A la demande :
-// `go test -tags=gamefiles,research ./internal/himap/ -run 'TestFiltresReclaimer'`.
+// `go test -tags=gamefiles,research ./himap/ -run 'TestFiltresReclaimer'`.
 // Le balayage des drapeaux d'instance (`TestBalayageDrapeauxInstances`) et le temoin d'offsets
 // restent sous `gamefiles` : le jeu seul suffit.
 

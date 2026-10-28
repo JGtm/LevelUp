@@ -15,7 +15,7 @@ package mapvar
 // POURQUOI ICI, A COTE DES SOCLES ET DES POINTS D'APPARITION : c'est la meme nature de
 // lecture — des objets de la variante vers un ensemble semantique de la carte — et elle doit
 // tourner AU RUNTIME (rattrapage des zones au fetch de film) comme dans les chaines de
-// fabrication. Ce paquet est pur Go ; `internal/himap`, qui lit les fichiers du jeu, ne l'est
+// fabrication. Ce paquet est pur Go ; `libs/himap/himap`, qui lit les fichiers du jeu, ne l'est
 // pas (decodeur Oodle en cgo) et ne peut donc pas entrer dans le serveur.
 
 import "math"

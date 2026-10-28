@@ -7,7 +7,7 @@ package himap
 //
 // Il compare les rendus aux ancres d'objectifs et aux positions jouees du depot hote, que la
 // brique ne possede pas. A la demande :
-// `go test -tags=gamefiles,research ./internal/himap/ -run TestSondePhysiqueRendu`.
+// `go test -tags=gamefiles,research ./himap/ -run TestSondePhysiqueRendu`.
 // Les deux autres sondes physiques (decodage du bloc, resolution) restent sous `gamefiles`.
 
 import (

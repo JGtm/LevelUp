@@ -47,6 +47,7 @@ jobs:
           cache-dependency-path: |
             apps/go-api/go.sum
             libs/gamefiles/go.sum
+            libs/himap/go.sum
 
       - name: Extract version from tag
         id: ver

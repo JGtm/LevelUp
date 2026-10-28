@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/himap"
+	"github.com/JGtm/LevelUp/libs/himap/himap"
 )
 
 // LE RENDU SUR UNE CARTE QUELCONQUE — la regle transfere-t-elle ?

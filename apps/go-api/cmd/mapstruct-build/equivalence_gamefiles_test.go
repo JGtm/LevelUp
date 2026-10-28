@@ -25,7 +25,8 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
-	"levelup/go-api/internal/himap"
+
+	"github.com/JGtm/LevelUp/libs/himap/himap"
 )
 
 // referenceDir : les structures figées, telles que le dépôt les publie.
@@ -37,7 +38,7 @@ func referenceDir() string {
 // TestStructuresFigeesSeReproduisent — régénère chaque carte figée et compare.
 //
 // Mutation qui doit le faire rougir : décaler d'un octet un offset de lecture d'instance
-// dans `internal/himap`, ou changer la base de données de `libs/gamefiles/himodule`.
+// dans `libs/himap/himap`, ou changer la base de données de `libs/gamefiles/himodule`.
 func TestStructuresFigeesSeReproduisent(t *testing.T) {
 	levels, err := himap.LevelsDir(deployVariant)
 	if err != nil {

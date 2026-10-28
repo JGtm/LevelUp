@@ -83,7 +83,7 @@ func parseGoSnippet(t *testing.T, rel, src string) goSource {
 
 // racinesEspaceDeTravail : les racines des modules Go du dépôt (ADR 0041), relatives à la racine
 // du dépôt. Une brique de `libs/` y entre le jour où son `go.mod` est créé.
-var racinesEspaceDeTravail = []string{"apps/go-api", "libs/gamefiles"}
+var racinesEspaceDeTravail = []string{"apps/go-api", "libs/gamefiles", "libs/himap"}
 
 // workspaceRoot rend la racine du dépôt (celle du `go.work`).
 func workspaceRoot(t *testing.T) string {

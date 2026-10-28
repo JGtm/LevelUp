@@ -30,7 +30,8 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
-	"levelup/go-api/internal/himap"
+
+	"github.com/JGtm/LevelUp/libs/himap/himap"
 )
 
 // liveFireLevelID est le level_id de Live Fire (preuve de module, TestPreuveLevelIDCartes).

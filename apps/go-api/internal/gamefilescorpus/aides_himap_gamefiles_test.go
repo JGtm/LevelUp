@@ -3,12 +3,12 @@
 package gamefilescorpus
 
 // aides_himap_gamefiles_test.go — les petites aides de test que ce corpus partage avec les tests
-// internes de `internal/himap`.
+// internes de `libs/himap/himap`.
 //
 // POURQUOI ELLES SONT COPIEES ET NON PARTAGEES. Un test d'une brique ne peut pas importer un
 // paquet de LevelUp, et le corpus ne peut pas importer les `_test.go` d'un autre paquet : chaque
 // côté porte donc sa copie (deux copies au plus, règle 6 de CLAUDE.md ; aucun paquet d'aides
-// commun entre la brique et le module). Les originaux vivent dans `internal/himap/` :
+// commun entre la brique et le module). Les originaux vivent dans `libs/himap/himap/` :
 // `calage_banc_test.go` (calage de la carte validée), `instances_gamefiles_test.go`
 // (moduleDuJeu), `sonde_outils_gamefiles_test.go` (moduleAny), `geometry_gamefiles_test.go`
 // (mediane), `carte_globaux_gamefiles_test.go` (part), `origine_*_gamefiles_test.go`
@@ -23,7 +23,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/himap"
+	"github.com/JGtm/LevelUp/libs/himap/himap"
 
 	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )

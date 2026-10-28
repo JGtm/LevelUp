@@ -16,8 +16,9 @@ import (
 	"regexp"
 	"testing"
 
-	"levelup/go-api/internal/himap"
 	"levelup/go-api/internal/testutil"
+
+	"github.com/JGtm/LevelUp/libs/himap/himap"
 )
 
 // cheminReglagesPublies, relatif a la RACINE du depot — la racine se demande a

@@ -7,8 +7,8 @@
 // binaires echouent sur un dossier introuvable. Un garde-rail qui saute en silence ne
 // garde rien.
 //
-// La liste des racines connues vit ICI et nulle part ailleurs (garde-rail :
-// deploy_root_test.go interdit le litteral partout ailleurs).
+// La liste des racines connues vit ICI et nulle part ailleurs (garde-rail du depot hote :
+// archlint.TestAucuneAutreCopieDuCheminDuJeu interdit le litteral partout ailleurs).
 package himap
 
 import (

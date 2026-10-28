@@ -19,7 +19,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/himap"
+	"github.com/JGtm/LevelUp/libs/himap/himap"
 
 	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 )

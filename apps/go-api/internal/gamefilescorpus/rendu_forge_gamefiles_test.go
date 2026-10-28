@@ -20,7 +20,8 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
-	"levelup/go-api/internal/himap"
+
+	"github.com/JGtm/LevelUp/libs/himap/himap"
 
 	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 )

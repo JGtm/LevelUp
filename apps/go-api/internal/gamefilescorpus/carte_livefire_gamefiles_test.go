@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/himap"
+	"github.com/JGtm/LevelUp/libs/himap/himap"
 
 	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )

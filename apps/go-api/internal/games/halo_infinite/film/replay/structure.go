@@ -6,7 +6,7 @@ package replay
 // 0,25 m² d'emprise médiane, 3,4 % de la surface de jeu couverts. Ce sont des accessoires,
 // pas la carte. Les sols, plateformes, rampes et murs vivent dans le bloc
 // `instanced geometry instances` du tag scenario_structure_bsp du module de la carte
-// (cf. internal/himap). Ce bloc est lu HORS LIGNE par cmd/mapstruct-build, qui fige ici
+// (cf. libs/himap/himap). Ce bloc est lu HORS LIGNE par cmd/mapstruct-build, qui fige ici
 // l'emprise (AABB monde projetée) de chaque instance.
 //
 // RÈGLE : ce fichier exige les fichiers du jeu installé, donc il est VERSIONNÉ comme

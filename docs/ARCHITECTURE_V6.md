@@ -270,17 +270,19 @@ modules of its own** under `libs/<brick>/`, in this repository, linked to the ap
 level of the module (an `internal/` package could not be imported by the application).
 
 ```text
-go.work                  use ./apps/go-api ./libs/gamefiles
+go.work                  use ./apps/go-api ./libs/gamefiles ./libs/himap
 apps/go-api/             the application (module levelup/go-api)
 libs/gamefiles/          the "game files" brick: himodule, ooz (GPLv3, never linked by cmd/server),
                          hinavmesh, mapvar — imports nothing from LevelUp
+libs/himap/              the "map images" brick: package himap (map geometry and top-down background
+                         images read from the game files) — imports libs/gamefiles only
 ```
 
 Rules, held by ratchets: a brick imports nothing from `levelup/go-api` and only bricks of lower
 rank (`archlint/briques_imports_test.go`, tests included); `go list -deps` in the module shows no
 `levelup/go-api` package; no file extracted from the installed game enters a brick; the `go` line
 is the same in `go.work`, `apps/go-api/go.mod`, every `libs/*/go.mod` and the `Dockerfile` image.
-`./...` never crosses a module boundary: `make libs-test` and the CI step "brique gamefiles" cover
-the bricks, `go mod tidy` does not run in `apps/go-api`. A brick is importable from outside by the
+`./...` never crosses a module boundary: `make libs-test` and the CI steps "brique gamefiles" and "brique himap"
+cover the bricks, `go mod tidy` does not run in `apps/go-api`. A brick is importable from outside by the
 tag `libs/<brick>/vX.Y.Z`. Commands: [`COMMANDS.md`](COMMANDS.md) § "Go modules under `libs/`"; decision and the
 checklist for adding a brick: [`adr/0041-go-modules-under-libs.md`](adr/0041-go-modules-under-libs.md).

@@ -8,7 +8,7 @@ package himap
 // L'oracle de Cliffhanger et le banc comparent la coquille sddt aux ancres d'objectifs
 // (`data/titles/.../map_objectives.json`) et aux positions jouees (`data/cache/replays/...`),
 // deux donnees que la brique ne possede pas. Ils tournent a la demande :
-// `go test -tags=gamefiles,research ./internal/himap/ -run 'TestSddtOracle|TestBancCliffhanger'`.
+// `go test -tags=gamefiles,research ./himap/ -run 'TestSddtOracle|TestBancCliffhanger'`.
 // Le decodage lui-meme (`TestSddtLecture`, `TestSddtBalayageEau`) reste sous le tag `gamefiles`.
 
 import (

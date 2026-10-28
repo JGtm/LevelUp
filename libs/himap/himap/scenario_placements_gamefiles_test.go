@@ -36,7 +36,7 @@ package himap
 // 4,6 Mo — aucun risque memoire, contrairement aux modules `pc/` (586 Mo de tags anonymes).
 //
 //	$env:HALO_DEPLOY="<racine deploy du jeu>"   # facultatif : DeployRoot() connait les installations usuelles
-//	go test ./internal/himap/ -run ScenarioBlocs -v
+//	go test ./himap/ -run ScenarioBlocs -v
 
 import (
 	"fmt"
@@ -139,7 +139,7 @@ func scInventaire(t *testing.T, chemin string) {
 // TestScenarioBlocDump imprime les premiers octets d'un bloc designe, pour lire sa grammaire.
 //
 //	$env:HALO_DEPLOY="..." ; $env:SC_CARTE="btb_fragmentation" ; $env:SC_CHAMP="0x1234"
-//	go test ./internal/himap/ -run ScenarioBlocDump -v
+//	go test ./himap/ -run ScenarioBlocDump -v
 func TestScenarioBlocDump(t *testing.T) {
 	deploy, carte, champ := os.Getenv("HALO_DEPLOY"), os.Getenv("SC_CARTE"), os.Getenv("SC_CHAMP")
 	if deploy == "" || carte == "" || champ == "" {

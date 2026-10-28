@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/himap"
+	"github.com/JGtm/LevelUp/libs/himap/himap"
 )
 
 // TestCarteCliffhanger produit l ARTEFACT DE REVUE de la carte (gate visuel de la piste B).

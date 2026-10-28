@@ -11,7 +11,7 @@ package main
 // string_id : ce sont des mots du dictionnaire du jeu, pas des zones d'une carte donnée.
 //
 // SA SOURCE : les listes de chaînes localisées du jeu (`uslg`), décodées par
-// internal/himap.LexiqueLieux — voir uslg.go pour le format. Il se régénère par
+// libs/himap/himap.LexiqueLieux — voir uslg.go pour le format. Il se régénère par
 // `mapcallouts-build --lexique` et EXIGE le jeu installé. Sa LECTURE est dans
 // `mapcatalog.ChargerLexique`, partagée avec le serveur : elle n'exige rien.
 //

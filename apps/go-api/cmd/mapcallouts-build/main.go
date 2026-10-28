@@ -6,7 +6,7 @@
 // PASSE NATIVE (cartes intégrées, clé = module installé). EXIGE LE JEU INSTALLÉ :
 //
 //	deploy/ds/levels/multi/<carte>/<carte>-rtx-new.module
-//	  -> tag levl (internal/himap.ReadModuleCallouts : offsets documentés au champ près)
+//	  -> tag levl (libs/himap/himap.ReadModuleCallouts : offsets documentés au champ près)
 //	  -> jointure des libellés FR/EN par (carte, volume_index) sur callouts_i18n.csv
 //	     (copie VERSIONNÉE — data/titles/{slug}/reference/callouts_i18n.csv : 816/816
 //	     résolus par string_id)
@@ -25,7 +25,7 @@
 // LE LEXIQUE (`--lexique`, EXIGE LE JEU) est la troisième production de ce binaire, et la
 // seule qui n'écrit pas dans le catalogue : il régénère
 // data/titles/{slug}/reference/callouts_lexique.csv depuis les listes de chaînes `uslg`
-// (internal/himap.LexiqueLieux). Il ne se rejoue qu'à une mise à jour du jeu.
+// (libs/himap/himap.LexiqueLieux). Il ne se rejoue qu'à une mise à jour du jeu.
 //
 // LES DEUX PASSES SONT INDÉPENDANTES ET NE S'ÉCRASENT PAS : une reconstruction native
 // CONSERVE la section Forge du catalogue existant, et `--forge-only` conserve la section
@@ -55,9 +55,10 @@ import (
 
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
-	"levelup/go-api/internal/himap"
 	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/mapcatalog"
+
+	"github.com/JGtm/LevelUp/libs/himap/himap"
 )
 
 // deployVariant : la variante sur laquelle la table levl a été établie et mesurée

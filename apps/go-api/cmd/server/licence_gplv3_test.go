@@ -13,16 +13,19 @@ package main
 // d'une œuvre GPLv3, sans qu'aucun outil ne le signale. Une note dans un NOTICE ne garde rien.
 //
 // La vérification est PUREMENT SOURCE (pas d'appel à `go list`) : elle parcourt le graphe des
-// imports du module `levelup/go-api` ET du module `libs/gamefiles` (ADR 0041) depuis cmd/server.
-// Sans ce second module, le déplacement de `ooz` hors de `internal/` aurait rendu le garde-rail
-// aveugle : un import hors du module n'est pas suivi, et `TestLeParcoursFranchitLeModuleGamefiles`
-// l'empêche. Elle tourne donc partout, sans toolchain ni cgo.
+// imports du module `levelup/go-api` ET de TOUS les modules de `libs/` (ADR 0041) depuis cmd/server.
+// Sans cela, le déplacement de `ooz` hors de `internal/` aurait rendu le garde-rail aveugle : un
+// import hors du module n'est pas suivi, et `TestLeParcoursFranchitLeModuleGamefiles` l'empêche.
+// La chaîne `himap -> himodule -> ooz` passe, elle, par DEUX modules de `libs/` :
+// `TestLaChaineDeHimapAtteintOoz` prouve que le parcours la voit, le jour où le serveur importerait
+// `himap`. Le garde-rail tourne donc partout, sans toolchain ni cgo.
 //
 // MUTATION JOUÉE (2026-08-10) : déclarer interdit `internal/domain/title`, que le serveur
 // utilise réellement, fait rougir le test avec la chaîne `cmd/server -> internal/domain/title`.
 // Mesure au vert : voir le journal du test (paquets atteints depuis cmd/server, aucun interdit).
 
 import (
+	"fmt"
 	"go/parser"
 	"go/token"
 	"os"
@@ -32,11 +35,12 @@ import (
 	"testing"
 )
 
-// modulePath est le chemin du module Go de l'API ; gamefilesModule celui de la brique « fichiers du
-// jeu » (dossier libs/gamefiles de la racine du dépôt), qui porte ooz.
+// modulePath est le chemin du module Go de l'API ; libsPrefix le préfixe d'import des briques
+// (dossier libs/ de la racine du dépôt : le chemin du module EST le chemin du dossier).
 const (
 	modulePath      = "levelup/go-api"
-	gamefilesModule = "github.com/JGtm/LevelUp/libs/gamefiles"
+	libsPrefix      = "github.com/JGtm/LevelUp/libs/"
+	gamefilesModule = libsPrefix + "gamefiles"
 )
 
 // paquetsInterdits : les paquets dont la licence contamine le binaire distribué.
@@ -44,37 +48,47 @@ var paquetsInterdits = map[string]string{
 	gamefilesModule + "/ooz": "GPLv3 (powzix/ooz, cf. libs/gamefiles/ooz/NOTICE.md)",
 }
 
+const departServeur = modulePath + "/cmd/server"
+
 func TestServeurNeLinkePasDeCodeGPL(t *testing.T) {
 	racine, err := racineModule()
 	if err != nil {
 		t.Fatal(err)
 	}
-	vus := map[string]bool{}
-	chemin := map[string]string{} // paquet -> chaîne d'imports qui y mène
-	file := []string{modulePath + "/cmd/server"}
-	vus[file[0]] = true
-	chemin[file[0]] = "cmd/server"
+	chaines, err := chainesDepuis(racine, departServeur)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for p, chaine := range chaines {
+		if raison, interdit := paquetsInterdits[p]; interdit {
+			t.Fatalf("cmd/server dépend de %s — %s\nchaîne : %s", p, raison, chaine)
+		}
+	}
+	t.Logf("%d paquets internes atteints depuis cmd/server, aucun paquet interdit", len(chaines))
+}
 
+// chainesDepuis rend, pour chaque paquet atteignable depuis `depart` par les imports (modules
+// `levelup/go-api` et `libs/*`, tests exclus), la chaîne d'imports qui y mène. Un seul parcours en
+// largeur pour le garde-rail et pour ses témoins.
+func chainesDepuis(racineModule, depart string) (map[string]string, error) {
+	chaines := map[string]string{depart: strings.TrimPrefix(depart, modulePath+"/")}
+	file := []string{depart}
 	for len(file) > 0 {
 		p := file[0]
 		file = file[1:]
-		if raison, interdit := paquetsInterdits[p]; interdit {
-			t.Fatalf("cmd/server dépend de %s — %s\nchaîne : %s", p, raison, chemin[p])
-		}
-		imports, err := importsDuPaquet(racine, p)
+		imports, err := importsDuPaquet(racineModule, p)
 		if err != nil {
-			t.Fatalf("%s : %v", p, err)
+			return nil, fmt.Errorf("%s : %w", p, err)
 		}
 		for _, imp := range imports {
-			if vus[imp] {
+			if _, vu := chaines[imp]; vu {
 				continue
 			}
-			vus[imp] = true
-			chemin[imp] = chemin[p] + " -> " + strings.TrimPrefix(imp, modulePath+"/")
+			chaines[imp] = chaines[p] + " -> " + strings.TrimPrefix(imp, modulePath+"/")
 			file = append(file, imp)
 		}
 	}
-	t.Logf("%d paquets internes atteints depuis cmd/server, aucun paquet interdit", len(vus))
+	return chaines, nil
 }
 
 // TestGardeRailDeLicenceDetecteUneViolation joue la MUTATION du garde-rail ci-dessus : si l'on
@@ -89,46 +103,34 @@ func TestGardeRailDeLicenceDetecteUneViolation(t *testing.T) {
 	}
 	// `internal/domain/title` est atteint par le serveur (PathResolver, registre des titres).
 	cible := modulePath + "/internal/domain/title"
-	vus := map[string]bool{modulePath + "/cmd/server": true}
-	file := []string{modulePath + "/cmd/server"}
-	for len(file) > 0 {
-		p := file[0]
-		file = file[1:]
-		if p == cible {
-			return // le parcours atteint bien un paquet profond : il explore vraiment
-		}
-		imports, err := importsDuPaquet(racine, p)
-		if err != nil {
-			t.Fatalf("%s : %v", p, err)
-		}
-		for _, imp := range imports {
-			if !vus[imp] {
-				vus[imp] = true
-				file = append(file, imp)
-			}
-		}
+	chaines, err := chainesDepuis(racine, departServeur)
+	if err != nil {
+		t.Fatal(err)
 	}
-	t.Fatalf("le parcours n'atteint pas %s : il n'explore pas le graphe, et son verdict ne vaut rien", cible)
+	if _, ok := chaines[cible]; !ok {
+		t.Fatalf("le parcours n'atteint pas %s : il n'explore pas le graphe, et son verdict ne vaut rien", cible)
+	}
 }
 
-// dossierDuPaquet rend le dossier d'un paquet des deux modules suivis : `levelup/go-api/…` sous la
-// racine du module, `…/libs/gamefiles/…` sous `libs/gamefiles` de la racine du dépôt (deux niveaux
+// dossierDuPaquet rend le dossier d'un paquet des modules suivis : `levelup/go-api/…` sous la
+// racine du module, `…/libs/<brique>/…` sous `libs/<brique>` de la racine du dépôt (deux niveaux
 // au-dessus de `apps/go-api`).
 func dossierDuPaquet(racineModule, paquet string) string {
-	if reste, ok := strings.CutPrefix(paquet, gamefilesModule+"/"); ok {
+	if reste, ok := strings.CutPrefix(paquet, libsPrefix); ok {
 		depot := filepath.Dir(filepath.Dir(racineModule))
-		return filepath.Join(depot, "libs", "gamefiles", filepath.FromSlash(reste))
+		return filepath.Join(depot, "libs", filepath.FromSlash(reste))
 	}
 	return filepath.Join(racineModule, filepath.FromSlash(strings.TrimPrefix(paquet, modulePath+"/")))
 }
 
-// estSuivi dit si un import vise un paquet d'un des deux modules dont on parcourt le graphe.
+// estSuivi dit si un import vise un paquet d'un des modules dont on parcourt le graphe : le module
+// de l'application ou une brique de `libs/`.
 func estSuivi(chemin string) bool {
-	return strings.HasPrefix(chemin, modulePath+"/") || strings.HasPrefix(chemin, gamefilesModule+"/")
+	return strings.HasPrefix(chemin, modulePath+"/") || strings.HasPrefix(chemin, libsPrefix)
 }
 
-// importsDuPaquet rend les imports d'un paquet qui visent l'un des deux modules suivis, tests
-// exclus (un test n'est pas linké dans le binaire distribué).
+// importsDuPaquet rend les imports d'un paquet qui visent l'un des modules suivis, tests exclus
+// (un test n'est pas linké dans le binaire distribué).
 func importsDuPaquet(racineModule, paquet string) ([]string, error) {
 	dir := dossierDuPaquet(racineModule, paquet)
 	entrees, err := os.ReadDir(dir)
@@ -187,24 +189,36 @@ func TestLeParcoursFranchitLeModuleGamefiles(t *testing.T) {
 		t.Fatal(err)
 	}
 	cible := gamefilesModule + "/mapvar"
-	vus := map[string]bool{modulePath + "/cmd/server": true}
-	file := []string{modulePath + "/cmd/server"}
-	for len(file) > 0 {
-		p := file[0]
-		file = file[1:]
-		if p == cible {
-			return
-		}
-		imports, err := importsDuPaquet(racine, p)
-		if err != nil {
-			t.Fatalf("%s : %v", p, err)
-		}
-		for _, imp := range imports {
-			if !vus[imp] {
-				vus[imp] = true
-				file = append(file, imp)
-			}
-		}
+	chaines, err := chainesDepuis(racine, departServeur)
+	if err != nil {
+		t.Fatal(err)
 	}
-	t.Fatalf("le parcours n'atteint pas %s : il ne franchit pas la frontière du module gamefiles", cible)
+	if _, ok := chaines[cible]; !ok {
+		t.Fatalf("le parcours n'atteint pas %s : il ne franchit pas la frontière du module gamefiles", cible)
+	}
+}
+
+// TestLaChaineDeHimapAtteintOoz : la chaîne GPL de la brique `himap` (`himap -> himodule -> ooz`,
+// deux modules de `libs/`) est visible du parcours. Le serveur n'importe pas `himap` aujourd'hui ;
+// le jour où un de ses paquets l'importe, `TestServeurNeLinkePasDeCodeGPL` ne rougit QUE si le
+// parcours suit un import de `libs/himap` puis de `libs/gamefiles`. Ce témoin le prouve en
+// partant de `himap` lui-même, sans qu'il faille muter le serveur.
+func TestLaChaineDeHimapAtteintOoz(t *testing.T) {
+	racine, err := racineModule()
+	if err != nil {
+		t.Fatal(err)
+	}
+	chaines, err := chainesDepuis(racine, libsPrefix+"himap/himap")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ooz := gamefilesModule + "/ooz"
+	chaine, ok := chaines[ooz]
+	if !ok {
+		t.Fatalf("depuis libs/himap/himap, le parcours n'atteint pas %s : un serveur qui importerait himap "+
+			"linkerait du GPLv3 sans que le garde-rail le voie", ooz)
+	}
+	if _, interdit := paquetsInterdits[ooz]; !interdit {
+		t.Fatalf("%s atteint par %s mais absent de paquetsInterdits", ooz, chaine)
+	}
 }

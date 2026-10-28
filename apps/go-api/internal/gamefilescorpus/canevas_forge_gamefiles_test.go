@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/himap"
+	"github.com/JGtm/LevelUp/libs/himap/himap"
 )
 
 // LE CANEVAS D'UNE CARTE FORGE PORTE-T-IL LA GEOMETRIE DU TERRAIN ?

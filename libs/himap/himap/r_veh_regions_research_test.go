@@ -18,7 +18,7 @@ package himap
 //
 //	RVEH_MODULES='<deploy>/ds/levels/multi/ctf_illusion/ctf_illusion-rtx-new.module|...' \
 //	RVEH_GLOBALS=<deploy>/ds/globals \
-//	  go test -tags=research -count=1 -v -run '^TestRVehRegionsDesCartes$' ./internal/himap/
+//	  go test -tags=research -count=1 -v -run '^TestRVehRegionsDesCartes$' ./himap/
 
 import (
 	"fmt"

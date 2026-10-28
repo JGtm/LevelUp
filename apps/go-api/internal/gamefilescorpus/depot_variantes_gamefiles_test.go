@@ -11,10 +11,11 @@ package gamefilescorpus
 // « saute » qui, dans un run gamefiles vert, passerait pour une preuve rejouee.
 
 import (
-	"levelup/go-api/internal/himap"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/JGtm/LevelUp/libs/himap/himap"
 )
 
 // lireVarianteDuDepot rend les octets du `.mvar` `fichier` du depot de variantes, ou fait

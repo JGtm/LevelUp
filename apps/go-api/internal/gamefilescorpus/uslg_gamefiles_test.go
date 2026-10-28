@@ -21,8 +21,9 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/himap"
 	"levelup/go-api/internal/i18n"
+
+	"github.com/JGtm/LevelUp/libs/himap/himap"
 )
 
 // racineJeu rend l'installation du jeu, ou déclare le test absent si elle ou le module des

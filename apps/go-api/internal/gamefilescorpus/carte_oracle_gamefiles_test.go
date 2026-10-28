@@ -15,7 +15,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/himap"
+	"github.com/JGtm/LevelUp/libs/himap/himap"
 )
 
 // L'ORACLE — les positions de joueur REELLEMENT observees jugent la carte reconstruite.

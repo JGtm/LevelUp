@@ -88,6 +88,7 @@ jobs:
           cache-dependency-path: |
             apps/go-api/go.sum
             libs/gamefiles/go.sum
+            libs/himap/go.sum
 
       - name: Install build deps (CGO + DuckDB)
         run: |

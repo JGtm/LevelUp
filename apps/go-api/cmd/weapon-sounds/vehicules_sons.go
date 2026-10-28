@@ -7,7 +7,7 @@ package main
 // (sound_looping) que le tag `vehi` REFERENCE — demarrage / boucle / arret, module par un RTPC
 // de vitesse. Ce mode ouvre la chaine, soeur de celle des equipements (`eqip.go`) : seule la
 // RACINE change (`vehi` au lieu de `eqip`), et la reference se lit INLINE dans le corps du
-// `vehi` (comme la ref `hlmt`, cf. `internal/himap/vehicules.go`) autant que dans la table de
+// `vehi` (comme la ref `hlmt`, cf. `libs/himap/himap/vehicules.go`) autant que dans la table de
 // dependances — on prend l'union des deux.
 //
 // PASSE 1, module `any/globals` (0,62 Go) : vehi -> lsnd/snd!/effe -> sbnk + mots (candidats

@@ -456,26 +456,86 @@ Témoins (scratchpad `temoins_lot3_*`) :
 - `-tags=gamefiles` sur `internal/himap`, `internal/gamefilescorpus`, `cmd/mapfond-build`, `cmd/mapstruct-build` : liste `--- PASS/FAIL/SKIP` IDENTIQUE à la base test par test (160 PASS, 12 SKIP, 1 FAIL préexistant `TestRenduForgeVagabond` dans `gamefilescorpus`, avant ET après).
 - Instruments `-tags=gamefiles,research` de `libs/gamefiles` : 56 PASS / 41 SKIP / 0 FAIL ; tous les verdicts du lot 2c pour `hinavmesh` et `mapvar` retrouvés à l'identique, +9 verdicts nouveaux (6 instruments de `himodule` jamais joués, 3 de `mapvar`).
 
-Découverte 4 (pour le lot 4) : `apps/go-api/internal/himap/deploy_root_test.go` (`TestAucuneAutreCopieDuCheminDuJeu`) balaie `../..` (= `apps/go-api`) : NON TOUCHÉ au lot 3 (himap reste dans go-api). Au lot 4, quand `himap` devient `libs/himap`, le porter dans
+Découverte 4 (pour le lot 4 ; TRAITÉE au lot 4, voir 4.2) : `apps/go-api/internal/himap/deploy_root_test.go` (`TestAucuneAutreCopieDuCheminDuJeu`) balaie `../..` (= `apps/go-api`) : NON TOUCHÉ au lot 3 (himap reste dans go-api). Au lot 4, quand `himap` devient `libs/himap`, le porter dans
 `archlint` sur `workspaceGoSources(t, racinesEspaceDeTravail...)` (le helper existe), avec `libs/himap` dans `racinesEspaceDeTravail`.
 
 ## Lot 4 — Module `libs/himap`
 
-- [ ] 4.1 `libs/himap/go.mod` (chemin D1-A, `require .../libs/gamefiles`), `go.work` : `use ./libs/himap`.
-- [ ] 4.2 `git mv internal/himap libs/himap/himap` ; imports réécrits dans les 10 commandes
+- [x] 4.1 `libs/himap/go.mod` (chemin D1-A ; PAS de `require .../libs/gamefiles` : ADR 0041 D2, voir l'exécution), `go.work` : `use ./libs/himap`.
+- [x] 4.2 `git mv internal/himap libs/himap/himap` ; imports réécrits dans les 10 commandes
   consommatrices (`cmd/{equipenergy-build,mapcallouts-build,mapfond-build,mapnav-fetch,mapplafond-mesure,mapquant-build,mapstruct-build,vehicle-sprite,weapon-icons-build,weapon-sounds}`)
   et dans `internal/gamefilescorpus/`.
-- [ ] 4.3 Infra du lot 3 étendue au module (CI pas par module, Makefile, Dockerfile `COPY`
+- [x] 4.3 Infra du lot 3 étendue au module (CI pas par module, Makefile, Dockerfile `COPY`
   déjà `libs/`, `go.mod` version, lint). Aucun nouveau mécanisme : que des entrées.
-- [ ] 4.4 Table du garde-fou : `himap` = `libs/himap/himap`, imports permis = `libs/gamefiles/...`.
+- [x] 4.4 Table du garde-fou : `himap` = `libs/himap/himap`, imports permis = `libs/gamefiles/...`.
   Allowlist vide (contrôle : le test échoue si on y ajoute une entrée fictive non utilisée —
   « entrée morte » = rouge, comme les autres ratchets datés).
-- [ ] 4.5 Gate : `cd libs/himap && go test ./... -count=1` ;
+- [!] 4.5 (gates locales passées, voir l'exécution ; push + CI verte + `docker build` reviennent au pilote) Gate : `cd libs/himap && go test ./... -count=1` ;
   `go list -deps ./... | grep -E 'levelup/go-api|libs/himap'` depuis `libs/gamefiles` = vide ;
   `go list -deps ./... | grep 'levelup/go-api'` depuis `libs/himap` = vide ;
   `make go-api-test-gamefiles` vert ; push, CI verte.
 
 **Clos quand** : 4.5 vert, commit « refactor(libs): module himap (D1) ».
+
+### Exécution du lot 4 (2026-10-28, branche `refactor/decouplage-d1-fichiers-du-jeu`, NON commité)
+
+Statuts (le texte des items ci-dessus est celui du plan ; ce bloc dit ce qui a été fait, vérifié sur pièces) :
+
+- [x] 4.1 `libs/himap/go.mod` (`github.com/JGtm/LevelUp/libs/himap`, `go 1.26.10`) et `libs/himap/go.sum` ; `go.work` : `use ./libs/himap`
+  (`go.work.sum` inchangé). CORRECTION DU LIBELLÉ DU PLAN : AUCUN `require` de `libs/gamefiles` (ADR 0041 D2). La brique n'importe
+  directement AUCUN paquet externe (relevé par parse des imports de ses 117 fichiers, tests compris : seuls `libs/gamefiles/{himodule,hinavmesh,mapvar}`) ;
+  la seule dépendance externe de son graphe, `golang.org/x/sys` (via `himodule`), est inscrite `// indirect` à la version de go-api
+  (v0.49.0), `go.sum` = ses deux lignes (copiées de `libs/gamefiles/go.sum`, mêmes hachages que `apps/go-api/go.sum`). `go mod tidy` est inutilisable
+  dans ce module comme dans go-api (il importe un frère). Vérifié : `go list -deps -test ./...` des quatre jeux de tags depuis `libs/himap` sans
+  `levelup/go-api` ; depuis `libs/gamefiles` sans `levelup/go-api` ni `libs/himap`.
+- [x] 4.2 `git mv apps/go-api/internal/himap libs/himap/himap` : 117 fichiers (`testdata/carte_validee_v1.png`, `sbsp.xml`, `coupe.png` compris) ; 109 renommages à 100 %, 7 à 97-99 %
+  (commentaires), `deploy_root_test.go` scindé (voir découverte 4). Imports `"levelup/go-api/internal/himap"` -> `"github.com/JGtm/LevelUp/libs/himap/himap"` : 56 fichiers
+  (28 sous `cmd/` dans 11 commandes, 26 de `gamefilescorpus`, `film/internal/profile/loi_largeurs_himap_test.go`, `film/research/cmd_fermeture`) par `sed` + `goimports -w` ; diff = imports seuls
+  (vérifié : aucune ligne modifiée hors import). Un 57e fichier correspondait au motif sans être un import (`archlint/briques_imports_test.go`, valeur attendue de `TestCheminImport`) :
+  corrigé à la main (exemples `apps/go-api/internal/i18n` et `libs/himap/himap`). Chemins `internal/himap` citées ailleurs, corrigées : 7 commentaires de la brique
+  (`go test ./himap/`), 20 fichiers `.go` de go-api et de gamefiles (commentaires), `testfixtures.CarteValideeFixturesDir` = `libs/himap/himap/testdata`, `.gitignore` (`gate.png`), `NOTICE`, `CLAUDE.md`
+  (table, `make go-api-test-gamefiles`, § tag `gamefiles`), `docs/COMMANDS.md` + `docs/FR/COMMANDS.md`, `docs/ARCHITECTURE_V6.md` + FR (arbre + pas CI), `docs/ACKNOWLEDGMENTS.md` + FR, ADR 0041
+  (D1, D2 brique à frère, D3, D5 chaîne GPL, « Adding a brick », conséquences). NON TOUCHÉS (histoire) : `.ai/archive/**`, entrées passées du thought_log, `docs/CHANGELOG.md` + FR (notes de version datées),
+  commentaires datés de `gamefiles_tag_test.go` (mesures du 2026-09), `no_repo_root_walk_test.go` (« déplacé de internal/himap le 2026-10-28 »), `.ai/PLAN_I18N_MULTILANGUE.md`, audit, ce plan.
+  Chemins relatifs `../` de la brique : `grep -n '\.\./' libs/himap/himap/*.go` = 2 occurrences, toutes DANS DU TEXTE (`D:/SteamLibrary/.../deploy`, `data/titles/.../map_objectives.json`), 0 chemin
+  relatif entre paquets ; `cheminDepuisDepot` (instruments `research`) remonte depuis le répertoire de travail jusqu'à trouver la cible, indépendant de la profondeur ; `-forge-cache` et défauts de
+  commandes : aucun ne cite `internal/himap`. `const sourceCuisson` de `cmd/mapfond-build` (« internal/himap », écrite dans chaque sidecar publié) : LAISSÉE, voir découverte 25.
+  Découverte 4 TRAITÉE : `TestAucuneAutreCopieDuCheminDuJeu` PORTÉ dans `archlint/deploy_root_copie_unique_test.go` (parcours `balayerGoTexte` = `workspaceGoSources` sur les trois racines, allowlist = `libs/himap/himap/deploy_root.go`
+  + le fichier lui-même, entrée morte refusée, fonction pure `copiesDuCheminDuJeu` + auto-preuve `_AutoPreuve`) ; retiré de `deploy_root_test.go` (les deux autres tests y restent) ; le contrat s'ÉLARGIT (le parcours voit désormais
+  `libs/gamefiles` : 0 copie trouvée). Mutations jouées : littéral `SteamLibrary` dans `cmd/mapfond-build` -> rouge ; `XboxGames` dans `libs/gamefiles/mapvar` -> rouge ; fichiers retirés ensuite.
+- [x] 4.3 Infra, par entrées (aucun mécanisme neuf) : `ci.yml` — (i) le pas « corpus gamefiles » ne vise plus `./internal/himap/` (deux lignes `go vet` restantes : go-api) ; nouveau pas Linux CGO « brique himap — module libs/himap »
+  (`go vet ./...`, `-tags=research`, `-tags=gamefiles`, `-tags=gamefiles,research`, `go test ./... -timeout 600s -count=1`, `go list -deps | grep levelup/go-api` => erreur) ; (ii) `libs/himap/go.sum` ajouté à
+  `cache-dependency-path` PARTOUT où figure celui de gamefiles : 10 occurrences (8 `ci.yml`, `release.yml`, `shared-social-gate.yml` ; le brief en annonçait 11, `grep -c` donne 10 et 10 `setup-go` au total) ; (iii) pas `golangci-lint`
+  (même config `--config ../../apps/go-api/.golangci.yml`, même ratchet) et `govulncheck` pour `libs/himap` ; (iv) filtre `libs/**` déjà couvrant. `.github/dependabot.yml` : bloc `gomod` `/libs/himap`
+  (`TestModulesLibsSurveillesParDependabot` vu rouge sans lui). `Dockerfile` : `COPY libs/himap/go.mod libs/himap/go.sum ./libs/himap/` ; SIMULATION (docker absent) : arborescence minimale (go.work, go.work.sum, trois couples go.mod/go.sum),
+  `GOPROXY=off go mod download` exit 0 ; sans le go.mod de himap : « cannot load module libs\himap listed in go.work file ». `Makefile` : `go-api-test-gamefiles` joue la brique depuis `libs/himap`
+  (`./himap/`, exigé par `TestCibleMakefileGamefilesCouvreLeCorpus`, vu rouge avec `./...`) puis go-api ; `libs-test` = UNE boucle sur `libs/*/go.mod` (4 vet + test + `go list -deps`), `go-api-lint` et `gate-push` bouclent sur
+  `libs/*/go.mod` (plus de bloc par module : règle 6). `apps/go-api/Makefile` `tidy` : AURAIT ÉCHOUÉ sur `libs/himap` (il importe un frère) -> la cible détecte un import de brique voisine par `go list -deps`, nomme le module et le saute
+  (détection vérifiée : gamefiles « sans voisin », himap « voisin »). `go-vet-cgo.sh` : boucle déjà sur `libs/*/go.mod`, rien à faire. `ci_go_shard.sh` / `go-shards.txt` : aucune citation de himap ; `TestCIGoShardsPartitionIsExact` vert
+  (358 paquets). Baseline JSONL : `grep -c 'internal/himap'` = 0, rien à retirer de `scripts/check_test_baseline.sh`. `cmd/server/licence_gplv3_test.go` : la frontière était codée « gamefiles » seulement (`gamefilesModule`) -> le parcours suit désormais
+  tout `github.com/JGtm/LevelUp/libs/` ; trois copies du parcours en largeur ramenées à un helper `chainesDepuis` (règle 6, comportement conservé) ; nouveau témoin `TestLaChaineDeHimapAtteintOoz` (depuis `libs/himap/himap` le parcours atteint
+  `ooz`). MUTATION JOUÉE : fichier temporaire de `cmd/server` important `libs/himap/himap` => rouge, chaîne « cmd/server -> libs/himap/himap -> libs/gamefiles/himodule -> libs/gamefiles/ooz » ; fichier retiré.
+- [x] 4.4 Table `briques` : `himap` = `libs/himap/himap`, permis = `paquetsGamefiles` ; `importsToleres` vide ; `racinesEspaceDeTravail` + `libs/himap`. Mutations jouées : (a) entrée fictive `libs/himap/himap/fictif.go` dans `importsToleres` => rouge
+  « qui n'importe plus rien hors de sa brique — retirer l'entrée » ; (b) `_ "levelup/go-api/internal/analysis"` ajouté à `libs/himap/himap/cuisson_forge.go` => rouge « [himap] libs/himap/himap/cuisson_forge.go -> levelup/go-api/internal/analysis » ;
+  les deux retirées, test vert.
+- [!] 4.5 Gates locales RÉELLEMENT lancées (GOCACHE `go-build-d1`) : `gofmt -l apps/go-api libs` vide ; aucun CRLF (fichiers modifiés + non suivis) ; `libs/himap` : les 4 `go vet` verts, `go test ./... -count=1` ok (1,9 s) ;
+  `go list -deps` sans `levelup/go-api` (himap, 4 jeux de tags, tests compris) et sans `levelup/go-api|libs/himap` (gamefiles) ; go-api : `go vet ./cmd/... ./internal/gamefilescorpus/ ./internal/replaybuild/ ./internal/games/halo_infinite/film/...` vert,
+  `-tags=gamefiles` des quatre paquets verts, `-tags=research ./...` et `-tags=integration ./...` verts ; `go test -count=1` archlint (118 s, suite complète), `cmd/server` (11 s), `testfixtures`, `film/internal/profile`, commandes consommatrices, `gamefilescorpus`
+  ok ; `go build -o NUL ./cmd/server/` ok ; `make libs-test` réel ok (9 s) ; `golangci-lint run --new-from-merge-base=origin/release/v8.1.0` : `apps/go-api` 0 issue, `libs/himap` 0 issue (plein, sans ratchet : 0 ; mutation d'une fonction inutilisée => « unused » vu) ;
+  `lefthook validate` ok. `make go-api-test-gamefiles` : la cible n'a pas été lancée d'un bloc ; ses trois parties l'ont été (corpus himap depuis le module 24 s, `gamefilescorpus` + `mapfond-build` + `mapstruct-build` 6 min 18 s, `film-profiles-build` 2 s) et la cible
+  est vue par `make -n`. REVIENT AU PILOTE `[!]` : push, CI verte sur tous les jobs, `docker build` (job `Deploy Pre-Check`), ratchet de couverture (découverte 26).
+
+Témoins (scratchpad `temoins_lot4_*`) :
+- go-api, `go test ./...` par six grappes (`-count=1`) : 359 paquets avant, 358 après ; 213 lignes `ok` avant, 212 après ; 0 FAIL ; la SEULE différence est la ligne `ok levelup/go-api/internal/himap` ; liste avant identique à `temoins_lot3_apres_go.txt`.
+  Les tests non tagués de `himap` réapparaissent dans `cd libs/himap && go test ./...` : `ok github.com/JGtm/LevelUp/libs/himap/himap`.
+- Corpus `-tags=gamefiles` (himap puis gamefilescorpus, mapfond-build, mapstruct-build, `-json`, `pass|fail|skip` par test et sous-test) : 348 lignes avant, 347 après, 330 PASS / 12 SKIP / 1 FAIL (`TestRenduForgeVagabond`, préexistant) ; la SEULE différence est
+  `pass TestAucuneAutreCopieDuCheminDuJeu` de la brique, portée dans archlint (vert).
+- Instruments `-tags=gamefiles,research` de himap : 117 fail / 153 pass / 20 skip avant et après (fail = `.ai/re_dump` absent, voulu) ; même et unique différence.
+- Fonds : `git diff --stat 3d579bfd0 HEAD -- apps/go-api libs go.work` VIDE, donc `temoins_lot3_apres_fonds/` valait « avant » ; recuit quand même avec le binaire de HEAD (`mapfond_avant4.exe`, entrées de `fond_root/`) puis avec le binaire du lot
+  (`mapfond_apres4.exe`) : PNG identiques à l'octet 5/5 entre eux ET aux captures du lot 3 (MD5 : 1231d3f0 `9c508b6a…`, be8131fc `601bf65a…`, beaf8ac9 `a77d7fdb…`, e4bb06db `0576b82f…`, fd17a1ca `cda739f4…`) ; sidecars identiques hors `generatedAt` ; la
+  comparaison aux fonds publiés (pixels / WebP) est celle du lot 3, mêmes PNG.
+- Lexique : `mapcallouts-build -lexique -out <témoin>/map_callouts.json` : `map_callouts.json` `988fd140d2d33808dc7a546cd69b7bdb`, `callouts_lexique.csv` `5c835edd4fa2715b051dd2df1d485ab0` avant ET après, et égaux à `temoins_lot2_*` ;
+  `callouts_i18n.csv` `cb36bdd205b68fb30a00d03a7f6cb648` inchangé ; `git status data/` vide.
 
 ## Lot 5 — Preuve de non-régression et clôture
 
@@ -622,3 +682,15 @@ Lot 3 (2026-10-28) :
 23. Découverte 12 (suite, lot 3) : `hinavmesh.racineDumpNavmesh` et `mapvar.cheminDump` partagent désormais le module `libs/gamefiles`, mais sur consigne du pilote (deux copies tolérées par la règle 6) AUCUN helper commun n'a été posé :
     les deux copies restent. Une troisième copie (ou le jour où `himap` rejoindra un module commun) imposera helper + garde-rail.
 24. CI (`ci.yml`, job « Go Coverage + Baseline », `download-artifact` `pattern: go-lot-*` + `merge-multiple`) : après un `gh run rerun --failed`, le lot relancé publie un SECOND artefact du même nom (`go-lot-film-grammar-reste`, 17:50 et 18:01 le 2026-10-28) et la fusion relit le JSONL périmé (`FAIL ... 600.041s` d'un dépassement de délai de runner) alors que le lot relancé est vert. Contournement appliqué : suppression de l'artefact périmé par l'API puis relance du seul job de fusion. Correctif possible (hors D1) : `overwrite: true` sur `upload-artifact` des lots, ou nommer l'artefact par tentative (`github.run_attempt`) et ne télécharger que la dernière.
+
+Lot 4 (2026-10-28) :
+
+25. `cmd/mapfond-build/cuisson.go` : `const sourceCuisson = "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)"` est ÉCRITE dans le champ `source` de chaque sidecar publié (`data/titles/halo_infinite/reference/map_backgrounds/*.json`, une centaine). Le chemin est
+    faux depuis le lot 4. LAISSÉE telle quelle : la changer modifie le contenu de tout sidecar recuit (donc les sidecars ne seraient plus identiques aux publiés hors `generatedAt`, et la prochaine recuisson ferait un diff de données). À trancher : changer la
+    constante au prochain recuit de fonds, ou la rendre indépendante d'un chemin.
+26. Ratchet de couverture : les instructions de `himap` (12 500 lignes) sortent du `-coverpkg=./...` de go-api (comme `mapvar` au lot 3, découverte 21) ; le total bouge. Non mesurable sur ce poste ; à lire à la première CI. Aucun job ne mesure la couverture de `libs/himap` ni de `libs/gamefiles`.
+27. Dependabot (suite de la découverte 19) : le bloc `gomod` `/libs/himap` charge un module qui importe un frère SANS `go.work` ; même risque que celui de go-api et de gamefiles, à constater au premier passage mensuel. Le risque est plus net ici : le module n'a AUCUN `require` de son frère.
+28. `make gate-push` (GnuWin32) : `make -n gate-push` échoue sur ce poste (« Paramètre incorrect ») à cause du `$(MAKE)` dont le chemin contient un espace (`C:/Program Files (x86)/...`) ; préexistant (la ligne `$(MAKE) libs-test` date du lot 3), non traité. `make libs-test` direct fonctionne.
+29. Les commentaires de la brique `himap` citent encore des chemins de l'hôte (`internal/gamefilescorpus`, `internal/testfixtures/...`, `cmd/mapquant-build`, `cmd/mapcallouts-build`, `internal/games/halo_infinite/film/replay/map_background.go` : une douzaine de lignes de commentaire, aucun import). Sans effet sur l'autonomie au sens de l'ADR (critère = `go list -deps`), mais bruyant pour un module
+    destiné à l'import externe. Non traité.
+30. `libs/himap/go.mod` porte `golang.org/x/sys v0.49.0 // indirect` écrit à la main (aucun `go mod tidy` possible, ADR 0041 D2) : une montée de version de `x/sys` dans `libs/gamefiles` ou `apps/go-api` doit être répercutée à la main dans les trois `go.mod` (le ratchet de version Go ne couvre que la ligne `go`). Un garde-rail « même version de `x/sys` dans les modules » n'existe pas.

@@ -18,7 +18,8 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
-	"levelup/go-api/internal/himap"
+
+	"github.com/JGtm/LevelUp/libs/himap/himap"
 )
 
 // TestLoiHimapEtLoiDuProfilSAccordent — LE GARDE-RAIL DES DEUX COPIES.

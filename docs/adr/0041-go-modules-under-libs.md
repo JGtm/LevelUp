@@ -1,7 +1,7 @@
 # ADR 0041 — Go modules under `libs/`, linked to the application by `go.work`
 
 Status: accepted (2026-10-28); implementation tracked in
-`.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D1_2026-10-28.md` (lot 3 creates the first module, `libs/gamefiles`).
+`.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D1_2026-10-28.md` (lot 3 creates the first module, `libs/gamefiles`; lot 4 the second, `libs/himap`).
 Source: `.ai/AUDIT_DECOUPLAGE_BRIQUES_2026-10-27.md` (decision 1 and the addendum of 2026-10-28).
 Relates to: ADR 0012 (title-specific adapters live under `games/<slug>/`), ADR 0034 (film decoder,
 its façade and layers), ADR 0011 (canonical / semantic / asset-URL boundary).
@@ -35,7 +35,7 @@ sit at the first level of the module (`libs/gamefiles/himodule`, never `libs/gam
 `apps/go-api` could not import them). The module path is
 `github.com/JGtm/LevelUp/libs/<brick>`, resolvable by `go get` once a tag exists; the application
 keeps `levelup/go-api`. The first module is `libs/gamefiles` (`himodule`, `ooz`, `hinavmesh`,
-`mapvar`); `libs/himap` follows in lot 4.
+`mapvar`); the second is `libs/himap` (package `himap`, the map-image brick: `github.com/JGtm/LevelUp/libs/himap`).
 
 **D2 — The workspace.** The `go.work` at the root lists `./apps/go-api` and every `./libs/<brick>`;
 `go.work.sum` is versioned. There is **no `replace` directive** and **no `require` line for a
@@ -44,7 +44,11 @@ workspace module** in `apps/go-api/go.mod`: a `require` on an unpublished versio
 revision") even in workspace mode, while without it the workspace resolves the import. The price is
 that `go mod tidy` can no longer run inside `apps/go-api` (it resolves the sibling module on the
 network and fails): dependency bumps of a brick are made in its own `go.mod`, and `go.mod` of the
-application only changes for its own dependencies. The `go` line is **identical** in `go.work`,
+application only changes for its own dependencies. The same holds for a brick that imports another
+brick (`libs/himap` imports `libs/gamefiles`): its `go.mod` carries no `require` for the sibling, `go mod
+tidy` fails there too, and its requirements (here `golang.org/x/sys`, reached through
+`libs/gamefiles/himodule`, recorded `// indirect` at the version of `apps/go-api`) are kept by hand;
+`make tidy` in `apps/go-api` names such a module and skips it. The `go` line is **identical** in `go.work`,
 `apps/go-api/go.mod`, every `libs/*/go.mod` and the `Dockerfile` image
 (`archlint/dockerfile_go_version_test.go`).
 
@@ -54,8 +58,7 @@ its table row. The table is `archlint/briques_imports_test.go`: brick → packag
 relative to the repository root) + permitted imports of other bricks; any import of the
 `levelup/go-api` module or of another `libs/` module outside the row is a failure, tests included,
 with an allowlist that must stay empty or dated and whose dead entries fail. Rank today: `gamefiles`
-imports nothing from the repository; `himap` (until lot 4 inside `apps/go-api`) imports `gamefiles`
-only.
+imports nothing from the repository; `himap` imports `gamefiles` only.
 
 **D4 — Import from outside.** A module in a subdirectory is tagged `libs/<brick>/vX.Y.Z`; that is
 Go's rule for the module path above. Until the first tag the workspace is the only way to build
@@ -71,7 +74,10 @@ LevelUp reads them by path from the repository root (`testfixtures.MapvarFixture
 captures) may be added; the `.mvar` cache beside the fixtures is ignored by git (`.gitignore`).
 `ooz` is GPLv3 (powzix/ooz): `cmd/server` must never link it, and the licence ratchet
 (`cmd/server/licence_gplv3_test.go`) follows imports across the module boundary into `libs/gamefiles`
-(`TestLeParcoursFranchitLeModuleGamefiles` fails if it stops doing so).
+(`TestLeParcoursFranchitLeModuleGamefiles` fails if it stops doing so). The walk follows every module
+under `libs/`, because the GPL chain of the map-image brick crosses two of them
+(`himap` -> `gamefiles/himodule` -> `gamefiles/ooz`): `TestLaChaineDeHimapAtteintOoz` proves the walk sees it
+the day a server package imports `himap`.
 
 **D6 — Research instruments.** The reverse-engineering probes of a brick that read `.ai/re_dump` or
 data of the host repository are kept as `*_research_test.go` files behind the `research` tag
@@ -96,8 +102,10 @@ on `apiModuleRoot`.
 **Adding a brick** costs: the `go.mod` (same `go` line), a `use` line in `go.work`, two `COPY` lines
 in the `Dockerfile`, the steps of `ci.yml` (vet/test, lint, `govulncheck`), a `gomod` block in
 `.github/dependabot.yml` (checked by `TestModulesLibsSurveillesParDependabot`), a row in the
-`briques_imports_test.go` table, the module in `racinesEspaceDeTravail` (`archlint/go_source_walk_test.go`)
-and in `make libs-test`.
+`briques_imports_test.go` table and the module in `racinesEspaceDeTravail`
+(`archlint/go_source_walk_test.go`). `make libs-test`, `make go-api-lint` and `make gate-push` loop on
+`libs/*/go.mod`: no line to add there; a brick that carries `*_gamefiles_test.go` files adds its line to
+`go-api-test-gamefiles` (`TestCibleMakefileGamefilesCouvreLeCorpus`).
 
 ## Consequences
 
@@ -109,11 +117,15 @@ and in `make libs-test`.
 - The vendored `ooz` stays GPLv3 inside a module that is meant to be importable: the module carries
   that licence note (`libs/gamefiles/ooz/NOTICE.md`) and a consumer that imports `ooz` takes it on.
 - The monorepo test baseline loses the entries of the packages that move (here 48 pairs of the
-  `mapvar` package); their tests keep running in the module's own CI step.
+  `mapvar` package at lot 3, none for `himap` at lot 4: no test of that package was in the baseline); their
+  tests keep running in the module's own CI step.
+- `TestAucuneAutreCopieDuCheminDuJeu` (one copy of the game's install path in the whole workspace, the source
+  being `libs/himap/himap/deploy_root.go`) moved from the brick to `archlint`: a guard run from inside a
+  brick would only see `libs/`.
 
 ## References
 
 - Plan: `.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D1_2026-10-28.md`; audit: `.ai/AUDIT_DECOUPLAGE_BRIQUES_2026-10-27.md`.
 - Ratchets: `apps/go-api/internal/archlint/briques_imports_test.go`, `dockerfile_go_version_test.go`,
   `go_source_walk_test.go`, `gamefiles_tag_test.go`; `apps/go-api/cmd/server/licence_gplv3_test.go`.
-- Module: `libs/gamefiles/`; workspace: `go.work`; commands: `docs/COMMANDS.md` § "Go modules under `libs/`".
+- Modules: `libs/gamefiles/`, `libs/himap/`; workspace: `go.work`; commands: `docs/COMMANDS.md` § "Go modules under `libs/`".

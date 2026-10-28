@@ -9,7 +9,7 @@
 #   make test        — lance les tests Go
 #   make msal-poc    — lance le POC MSAL Device Code Flow
 #   make vet         — go vet sur tous les packages
-#   make tidy        — go mod tidy des briques libs/ (inutilisable dans ce module : go.work, ADR 0041)
+#   make tidy        — go mod tidy des briques libs/ sans brique voisine (inutilisable ici : go.work, ADR 0041)
 #   make lint        — go vet + build
 
 .PHONY: build gen run test test-unit test-all coverage coverage-report msal-poc vet tidy lint lint-go
@@ -74,8 +74,16 @@ lint: vet build lint-go
 	@echo "lint OK"
 
 # `go mod tidy` ne peut pas tourner dans ce module : go.work le relie aux briques de libs/ (ADR 0041)
-# et tidy cherche le module voisin sur le reseau (echec). Les dependances de go-api se changent par
-# `go get` ou edition de go.mod ; les briques se tidy dans leur dossier, ce que fait cette cible.
+# et tidy cherche le module voisin sur le reseau (echec). Meme limite pour une brique qui en importe
+# une autre (libs/himap importe libs/gamefiles) : cette cible ne tidy que les briques SANS voisin
+# et nomme les autres, dont le go.mod se change a la main (D2 de l'ADR).
+# Les dependances de go-api se changent par `go get` ou edition de go.mod.
 tidy:
-	@echo "apps/go-api : go mod tidy est inutilisable (go.work, ADR 0041) ; briques libs/ : tidy ci-dessous."
-	@for m in ../../libs/*/; do (cd $$m && go mod tidy) || exit 1; done
+	@echo "apps/go-api : go mod tidy est inutilisable (go.work, ADR 0041) ; briques libs/ : ci-dessous."
+	@for m in ../../libs/*/; do n=$$(basename $$m); \
+		if (cd $$m && go list -deps ./... | grep -E '^github.com/JGtm/LevelUp/libs/' | grep -qv "^github.com/JGtm/LevelUp/libs/$$n/"); then \
+			echo "libs/$$n : importe une autre brique, tidy impossible (ADR 0041 D2) - editer son go.mod a la main"; \
+		else \
+			(cd $$m && go mod tidy) || exit 1; \
+		fi; \
+	done

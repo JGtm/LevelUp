@@ -13,13 +13,13 @@ import (
 	"sort"
 	"strings"
 
-	"levelup/go-api/internal/himap"
+	"github.com/JGtm/LevelUp/libs/himap/himap"
 )
 
 // moduleRoot rend la racine `deploy` de l'installation Halo Infinite. Le drapeau -deploy la
 // surcharge via HALO_DEPLOY (priorité, historique de cet outil) ; à défaut, la résolution des
 // racines connues et de LEVELUP_HALO_DEPLOY passe par himap — source UNIQUE des chemins du jeu
-// (garde-rail himap.TestAucuneAutreCopieDuCheminDuJeu : aucune seconde copie de ces chemins).
+// (garde-rail archlint.TestAucuneAutreCopieDuCheminDuJeu : aucune seconde copie de ces chemins).
 func moduleRoot() string {
 	if v := os.Getenv("HALO_DEPLOY"); v != "" {
 		return v

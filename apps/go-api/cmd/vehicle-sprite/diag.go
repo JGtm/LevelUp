@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"levelup/go-api/internal/himap"
+	"github.com/JGtm/LevelUp/libs/himap/himap"
 )
 
 // cmdDiag est un outil de reconnaissance : il dumpe, pour un tag donne (vehi, bloc, hlmt,

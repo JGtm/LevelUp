@@ -10,7 +10,8 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
-	"levelup/go-api/internal/himap"
+
+	"github.com/JGtm/LevelUp/libs/himap/himap"
 )
 
 // LE BALAYAGE — la regle vaut-elle sur les 37 cartes, ou seulement sur celle qui l'a vue naitre ?

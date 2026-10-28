@@ -12,7 +12,7 @@
 // et pour se juger — que le catalogue de bornes ne porte pas. Fondre les deux orchestrations
 // dans un même binaire mêlerait deux chaînes sans rien mutualiser.
 //
-// LICENCE — CONTRAINTE STRUCTURANTE : la chaîne passe par internal/himap -> libs/gamefiles/himodule
+// LICENCE — CONTRAINTE STRUCTURANTE : la chaîne passe par libs/himap/himap -> libs/gamefiles/himodule
 // -> libs/gamefiles/ooz, **GPLv3**. Ce binaire est de l'outillage HORS LIGNE ; l'application lit
 // l'asset figé, elle ne le fabrique jamais. `licence_test.go` interdit à cmd/server d'en
 // dépendre.
@@ -41,7 +41,8 @@ import (
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
-	"levelup/go-api/internal/himap"
+
+	"github.com/JGtm/LevelUp/libs/himap/himap"
 )
 
 func main() {

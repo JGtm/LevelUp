@@ -422,6 +422,7 @@ jobs:
           cache-dependency-path: |
             apps/go-api/go.sum
             libs/gamefiles/go.sum
+            libs/himap/go.sum
 
       - name: go vet (domain + analysis — sans CGo)
         run: go vet ./internal/domain/... ./internal/analysis/... ./internal/games/weapons/... ./internal/games/halo_infinite/film/internal/profile/... ./internal/games/halo_infinite/film/internal/grammar/... ./internal/games/halo_infinite/film/internal/facts/... ./internal/games/halo_infinite/film/replay/...
@@ -462,8 +463,31 @@ jobs:
       - name: go vet (corpus gamefiles — compilation seule, jamais exécuté en CI)
         if: runner.os == 'Linux'
         run: |
-          go vet -tags=gamefiles ./internal/himap/ ./internal/gamefilescorpus/ ./cmd/mapstruct-build/ ./cmd/mapfond-build/
-          go vet -tags=gamefiles,research ./internal/himap/
+          go vet -tags=gamefiles ./internal/gamefilescorpus/ ./cmd/mapstruct-build/ ./cmd/mapfond-build/
+        env:
+          CGO_ENABLED: "1"
+
+      # BRIQUE `libs/himap` (ADR 0041, plan D1 lot 4) : même schéma que `libs/gamefiles` ci-dessus,
+      # module séparé. `himap` importe `himodule` donc `ooz` : CGO actif, Linux seulement. Les quatre
+      # vet couvrent le build par défaut, les instruments `research`, le corpus `gamefiles` (les
+      # `*_gamefiles_test.go` de la brique ; compilation seule, le runner n'a pas le jeu) et les
+      # instruments qui ouvrent le jeu (`gamefiles && research`). `go list -deps` ne doit montrer
+      # aucun paquet `levelup/go-api` : l'autonomie du module, doublée par
+      # archlint/briques_imports_test.go. Le test tourne SANS jeu : les tests qui l'exigent sont
+      # sous le tag `gamefiles` et se sautent ou n'existent pas dans le build par défaut.
+      - name: go vet + go test (brique himap — module libs/himap)
+        if: runner.os == 'Linux'
+        working-directory: libs/himap
+        run: |
+          go vet ./...
+          go vet -tags=research ./...
+          go vet -tags=gamefiles ./...
+          go vet -tags=gamefiles,research ./...
+          go test ./... -timeout 600s -count=1
+          if go list -deps ./... | grep -E 'levelup/go-api'; then
+            echo "::error::libs/himap importe le module levelup/go-api"
+            exit 1
+          fi
         env:
           CGO_ENABLED: "1"
 
@@ -563,6 +587,7 @@ jobs:
           cache-dependency-path: |
             apps/go-api/go.sum
             libs/gamefiles/go.sum
+            libs/himap/go.sum
 
       - name: go test -race (deux films en parallele)
         run: go test -race -count=1 -run TestDeuxFilmsEnParallele ./internal/games/halo_infinite/film/internal/grammar/
@@ -593,6 +618,7 @@ jobs:
           cache-dependency-path: |
             apps/go-api/go.sum
             libs/gamefiles/go.sum
+            libs/himap/go.sum
 
       # golangci-lint : équivalent ruff + ruff-format + enforce_size_limits + McCabe pour Go
       # Règles : gocyclo max 12 / funlen 80L / lll 100c / revive argument-limit 5
@@ -649,6 +675,14 @@ jobs:
           working-directory: libs/gamefiles
           args: --config ../../apps/go-api/.golangci.yml --timeout 5m ${{ steps.lint_base.outputs.args }}
 
+      # Brique `libs/himap` (ADR 0041, lot 4) : troisième passage, même config, même ratchet.
+      - name: golangci-lint (ratchet, brique libs/himap)
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.12.2
+          working-directory: libs/himap
+          args: --config ../../apps/go-api/.golangci.yml --timeout 5m ${{ steps.lint_base.outputs.args }}
+
   go-lease-enforcement:
     name: Go Lease Enforcement (ADR 0013)
     needs: changes
@@ -692,6 +726,7 @@ jobs:
           cache-dependency-path: |
             apps/go-api/go.sum
             libs/gamefiles/go.sum
+            libs/himap/go.sum
 
       # Version exacte : un outil de sécurité flottant changerait de verdict sans commit.
       # La monter volontairement, avec un run vert pour preuve.
@@ -711,6 +746,14 @@ jobs:
       # et le décodeur). Un module destiné à l'import externe répond de TOUTES ses dépendances.
       - name: govulncheck libs/gamefiles
         working-directory: libs/gamefiles
+        run: |
+          "$(go env GOPATH)/bin/govulncheck" ./...
+        env:
+          CGO_ENABLED: "1"
+
+      # Brique `libs/himap` (ADR 0041, lot 4) : même raison que `libs/gamefiles` ci-dessus.
+      - name: govulncheck libs/himap
+        working-directory: libs/himap
         run: |
           "$(go env GOPATH)/bin/govulncheck" ./...
         env:
@@ -783,6 +826,7 @@ jobs:
           cache-dependency-path: |
             apps/go-api/go.sum
             libs/gamefiles/go.sum
+            libs/himap/go.sum
 
       # S45 T8 — décision : CGO=0 fast-check = job go-build ; CGO=1 full = ce job.
       - name: Vérifier GCC (CGO requis pour DuckDB)
@@ -860,6 +904,7 @@ jobs:
           cache-dependency-path: |
             apps/go-api/go.sum
             libs/gamefiles/go.sum
+            libs/himap/go.sum
 
       - name: Télécharger les artefacts des lots
         uses: actions/download-artifact@v4
@@ -1070,6 +1115,7 @@ jobs:
           cache-dependency-path: |
             apps/go-api/go.sum
             libs/gamefiles/go.sum
+            libs/himap/go.sum
 
       # Tests YAML-only : vérifie que openapi.yaml est valide, complet (≥20 paths)
       # et que les paths obligatoires (health, bootstrap, settings…) sont présents.
@@ -1120,6 +1166,7 @@ jobs:
           cache-dependency-path: |
             apps/go-api/go.sum
             libs/gamefiles/go.sum
+            libs/himap/go.sum
 
       - name: Build Go backend
         working-directory: apps/go-api

@@ -5,7 +5,7 @@ package main
 // Lit `UI display info` d un tag `weap` pour en sortir le couple
 // (sprite = bitmap d atlas, sprite index = position de l icone dans cet atlas).
 //
-// Mecanique reprise de internal/himap (field-walker version-aware) : le plugin donne l ORDRE
+// Mecanique reprise de libs/himap/himap (field-walker version-aware) : le plugin donne l ORDRE
 // et les TAILLES des champs, jamais des offsets absolus codes en dur.
 //
 // L APPARIEMENT PAR RANG A ETE ESSAYE ET ECARTE. Aligner le k-ieme `_40` du plugin sur le
@@ -35,7 +35,7 @@ type xnode struct {
 }
 
 // sizeTab : tailles de champs du format de plugin (group_lengths_dict), copiee de
-// internal/himap/sbsp.go — meme format de plugin, meme table.
+// libs/himap/himap/sbsp.go — meme format de plugin, meme table.
 var sizeTab = map[string]int{
 	"_0": 32, "_1": 256, "_2": 4, "_3": 4, "_4": 1, "_5": 2, "_6": 4, "_7": 8,
 	"_8": 4, "_9": 4, "_A": 1, "_B": 2, "_C": 4, "_D": 4, "_E": 2, "_F": 1,
@@ -85,7 +85,7 @@ func walkFields(n xnode, off int, out *[]pfield) int {
 
 // weapPlugin : definition du tag `weap` (Gamergotten/Infinite-runtime-tagviewer,
 // Plugins/weap.xml, 479 definitions dumpees par Lord Zedd et Exhibit). Embarquee comme
-// internal/himap embarque sbsp.xml : le binaire doit pouvoir tourner sans depot tiers.
+// libs/himap/himap embarque sbsp.xml : le binaire doit pouvoir tourner sans depot tiers.
 //
 //go:embed weap.xml
 var weapPlugin []byte

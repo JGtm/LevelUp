@@ -14,9 +14,9 @@ package gamefilescorpus
 // PISTE REFUTEE, ne pas rejouer : l'ecart MEDIAN aux ancres ne predit pas le defaut
 // (Behemoth -12,73 m est nickel, Forbidden -0,35 m est touche).
 //
-// Lancement CIBLE (jamais ./internal/himap/ nu) :
+// Lancement CIBLE (jamais ./internal/gamefilescorpus/ nu) :
 //
-//	go test ./internal/himap/ -run TestSondeToits -timeout 45m -v
+//	go test -tags=gamefiles ./internal/gamefilescorpus/ -run TestSondeToits -timeout 45m -v
 
 import (
 	"context"
@@ -28,7 +28,8 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
-	"levelup/go-api/internal/himap"
+
+	"github.com/JGtm/LevelUp/libs/himap/himap"
 )
 
 // cartesSondeToits : cles = dossiers installes, dans l'ordre du verdict utilisateur.

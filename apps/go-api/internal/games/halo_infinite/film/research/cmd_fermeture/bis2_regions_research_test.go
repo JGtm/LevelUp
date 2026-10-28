@@ -24,7 +24,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/himap"
+	"github.com/JGtm/LevelUp/libs/himap/himap"
 )
 
 // TestBis2RegionsDeLaCarte journalise les bornes et les largeurs (niveau 0x10) de chaque plage.

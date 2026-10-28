@@ -9,8 +9,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/himap"
 	"levelup/go-api/internal/testfixtures"
+
+	"github.com/JGtm/LevelUp/libs/himap/himap"
 )
 
 // TestCoquilleEnXY — la coquille testee a l'altitude DE JEU et non a l'altitude DESSINEE.

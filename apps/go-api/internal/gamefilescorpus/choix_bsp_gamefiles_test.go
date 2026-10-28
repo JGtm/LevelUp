@@ -7,7 +7,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/himap"
+	"github.com/JGtm/LevelUp/libs/himap/himap"
 )
 
 // LE VERROU DU CHOIX DE BSP — sur les fichiers du jeu installe.

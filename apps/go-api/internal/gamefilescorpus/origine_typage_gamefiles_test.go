@@ -26,8 +26,9 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/himap"
 	"levelup/go-api/internal/testutil"
+
+	"github.com/JGtm/LevelUp/libs/himap/himap"
 )
 
 // origManifesteEquipement lit les `[[equipment_objects]]` du manifeste du titre.

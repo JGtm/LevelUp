@@ -8,8 +8,9 @@ import (
 	"os"
 	"testing"
 
-	"levelup/go-api/internal/himap"
 	"levelup/go-api/internal/testfixtures"
+
+	"github.com/JGtm/LevelUp/libs/himap/himap"
 )
 
 // TestCuitIsolationDepuisSonNavmesh — LE FOND D'ISOLATION, RENDU DEPUIS LE SOL JOUABLE.

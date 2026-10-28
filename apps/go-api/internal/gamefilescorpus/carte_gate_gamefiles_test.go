@@ -11,8 +11,9 @@ import (
 	"os"
 	"testing"
 
-	"levelup/go-api/internal/himap"
 	"levelup/go-api/internal/testfixtures"
+
+	"github.com/JGtm/LevelUp/libs/himap/himap"
 )
 
 // LE GATE VISUEL — la carte reconstruite contre la carte VALIDEE, au meme calage.
