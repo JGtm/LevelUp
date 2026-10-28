@@ -504,6 +504,8 @@ type CarriedEquipmentCoverage struct {
 	TeleportsWithoutPose int `json:"teleportsWithoutPose"`
 	TrackedObjects       int `json:"trackedObjects"`
 	TrackedEnds          int `json:"trackedEnds"`
+	TrackedPositioned    int `json:"trackedPositioned"`
+	TrackedUnpositioned  int `json:"trackedUnpositioned"`
 	RiftEndsRead         int `json:"riftEndsRead"`
 	RiftEndsUnread       int `json:"riftEndsUnread"`
 }
