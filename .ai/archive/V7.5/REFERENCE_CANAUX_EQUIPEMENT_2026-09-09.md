@@ -127,6 +127,16 @@ C'est la clé de tout le sujet, et c'est ce que j'avais raté (décision utilisa
 > fin (18 sur 18 lues ; 11 champs de 11,35 à 12,24 s, 6 détruits en 1,5 à 4,6 s, un de 16,95 s) ;
 > `repair_field_end` y sonne. Le retrait de la pile précède la suppression de 0,2 à 0,7 s quand
 > l'objet porté vit encore.
+>
+> **Position de repos des objets engendrés (2026-10-28, schéma 105).** Ces entités ti=41 sont des
+> projectiles : le film écrit leur trajectoire sous la MÊME vie (slot, génération) que celle que la pile
+> i28 nomme. `carriedEquipment[].tracked[]` gagne `land` (frame du dernier point PUBLIÉ de la
+> trajectoire de la vie, règle de `projectiles` : un point par frame, vol coupé à un pas impossible),
+> `x`, `y`, `z` (position à cette frame, z de l'échantillon brut), absents ENSEMBLE quand aucune
+> trajectoire publiée ne porte la vie ; `coverage.carriedEquipment.trackedPositioned` /
+> `trackedUnpositioned` les comptent. Rien ne vient du porteur. `equipmentPlacements` (le mur seul est
+> `deployed`), `riftPoses`, `projectiles` et les résumés d'usage ne changent pas : la règle du 15/09
+> tient, la position de ces objets est un canal à part (`internal/games/halo_infinite/film/replay/document_objets_engendres.go`).
 
 **B — Les équipements DÉPLOYABLES.** On les pose sur le terrain. « Utilisé » = **la charge
 consommée** (`equipmentChanges` `spent`) — SAUF pour le mur, « utilisé » = **posé**.

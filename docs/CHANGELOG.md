@@ -32,6 +32,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Halo 5 in French: names left in English** — some names (maps, modes...) that used to show in English now appear in French.
 - **Rank names in the interface language** — tier names were shown as recorded at match time: in French on Halo Infinite even with the interface in English, in English with Arabic numerals on Halo 5 even in French ("Diamond 4"). They now follow the interface language, with Roman numerals ("Diamant IV", "Diamond IV"), in the Explorer, the home page, Career, the leaderboard, sessions and the match view.
 - **Challenges created in English** — a challenge taken from a template while the interface was in English stayed in English afterwards; it now follows the interface language, like one created in French. A renamed challenge keeps its text.
+- **2D replay: threat sensor, threat seeker, shroud screen and repair field missing from the map** — since mid-September these four pieces of equipment were no longer drawn (their sounds still played). They are drawn again where they land, read from the film: the sensor marks the opponents it detects and, like the repair field, disappears when the film says it does; the seeker shows its pulse where it arrives. They also count again in zone presence, the hover tooltip and the "deployed" count of the replay usages. The drop wall and the translocator rift are unchanged.
 
 ## [8.0.7] - 2026-10-26
 
