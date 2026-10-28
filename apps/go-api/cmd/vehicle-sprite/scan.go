@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	"levelup/go-api/internal/himap"
+	"github.com/JGtm/LevelUp/libs/himap/himap"
 )
 
 // cmdScan enumere les tags `vehi`, resout leur chaine vers le render_model, et dumpe les

@@ -10,7 +10,8 @@ import (
 	"time"
 
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
-	"levelup/go-api/internal/himap"
+
+	"github.com/JGtm/LevelUp/libs/himap/himap"
 )
 
 // coverCell est le pas de rastérisation de la couverture, en mètres (même pas que le

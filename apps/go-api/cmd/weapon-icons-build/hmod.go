@@ -1,8 +1,8 @@
 package main
 
-// hmod.go — LECTEUR .module AUTONOME (ne modifie pas internal/himodule).
+// hmod.go — LECTEUR .module AUTONOME (ne modifie pas libs/gamefiles/himodule).
 //
-// POURQUOI un lecteur local : `internal/himodule` lit `data_offset` comme un u32 a +0x18.
+// POURQUOI un lecteur local : `libs/gamefiles/himodule` lit `data_offset` comme un u32 a +0x18.
 // C est correct pour les archives < 4 Go, mais `pc/globals/globals-rtx-new.module` fait
 // 7.78 Go : le champ est en realite un ENTIER 48 BITS (2 octets de flags en tete de poids
 // fort). Symptome mesure : `Extract` echoue (`ooz retour=-1`) sur toutes les entrees de
@@ -27,7 +27,7 @@ import (
 	"fmt"
 	"os"
 
-	"levelup/go-api/internal/ooz"
+	"github.com/JGtm/LevelUp/libs/gamefiles/ooz"
 )
 
 type hmHeader struct {

@@ -252,3 +252,53 @@ Aucun calendrier : implémentation reportée par le user (2026-10-27). Le moment
 par axe, dans l'ordre D1, D2, D3, chacun sur sa branche depuis la release en cours, pas sur la
 release elle-même. Les décisions ci-dessus s'appliquent ; seule une décision neuve (dépôt
 propre pour une brique) les rouvre.
+
+## Addendum — vérification sur pièces du 2026-10-28 (avant le plan D1)
+
+Relevé par `go list -deps`, grep des imports (production et tests) et lecture des ratchets
+`archlint`, de `ci.yml`, du `Dockerfile` et du `Makefile`. Le fond de l'audit tient (trois
+briques, ordre D1 → D2 → D3, coupes identifiées). Corrections et compléments :
+
+1. **D1, faux** : `himap` importe aussi `internal/i18n` (`uslg.go:51`, `LexiqueLieux` rend des
+   `i18n.Text`). Deuxième coupe de production, à côté de `mapvar`.
+2. **D2, manque** : `film/replay` importe `internal/i18n` dans 5 fichiers (`MarshalFlat`,
+   `UnmarshalFlat`, `FlatLayout`, `Text` : libellés du document de rejeu). Absent du tableau.
+3. **D2, conflit** : le traitement 1 (types de sortie sous le décodeur) ferait importer un paquet
+   de titre par `internal/analysis` (`highlightevent` lu par `analysis`, `equipmentusage` par
+   `analysis/{sessionusage,squademprise,trends}`) — interdit par
+   `archlint/no_title_package_in_analysis_test.go` (ADR 0012). À trancher au plan D2.
+4. **D3.5, nuance** : `oauth_refresh.go` importe `observability/logging` + `platform/netguard`,
+   `xsts.go` `observability/logging`, `xbox_device_code.go` `platform/netguard`. La coupe du
+   protocole demande une injection (client HTTP, journal), pas un simple déplacement.
+5. **Décision 1, coût non compté** : un module Go séparé ne peut PAS importer
+   `levelup/go-api/internal/...`, tests compris. Dix tests `gamefiles` de `himap` lisent des
+   données de LevelUp (`replay.LoadMapObjectives`, `data/cache/mvar`, `testfixtures`, `testutil`)
+   et doivent passer côté LevelUp. L'infrastructure suit : `Dockerfile` (copie `apps/go-api`
+   seul), `ci.yml` (`working-directory: apps/go-api` partout, filtre `paths` sans `libs/**`,
+   énumération `go list ./...` des shards et de la baseline, lint), `Makefile`, `release.yml` ;
+   les ratchets `archlint` sont racinés sur `apps/go-api` (`apiModuleRoot`) et perdraient de vue
+   les briques (dont `gamefiles_tag_test`, 60+ tests concernés). Estimation D1 revue : ~3 jours.
+6. **Décision 1, chemin de module** : « importable de l'extérieur par tag » suppose un chemin de
+   module résolvable (`github.com/<dépôt>/libs/<brique>`), pas `levelup/...`.
+7. **CI rouge** : (a) `archlint/doc_chemins_ai_test.go` échoue dans l'arbre de travail local :
+   `.ai/PLAN_I18N_MULTILANGUE.md` a été déplacé sous `.ai/V8/` sans commit, deux citations du
+   code pointent l'ancien chemin ; (b) la CI de `release/v8.1.0` est rouge côté web (garde-rails
+   i18n `no-locale-literal-comparison` et `no-intl-tag-literal`, dépassements de 5 s) — chantier
+   i18n, pas D1, mais préalable à toute PR D1 verte.
+8. **Confirmé** : `himodule`, `hinavmesh`, `ooz`, `mapvar` n'importent rien du dépôt ;
+   `canonical` n'est utilisé par le film qu'au travers des symboles de `film_identity.go`
+   (décision 3 tenable) ; les types de sortie `domain/*` n'importent rien (feuilles) ; la
+   sensibilité des révisions de couche aux chemins reste À VÉRIFIER au plan D2
+   (`grammar/registry_fingerprint.go`).
+
+Plan D1 : `.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D1_2026-10-28.md`.
+
+## D1 exécuté le 2026-10-28
+
+Plan : `.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D1_2026-10-28.md` (lots 0 à 5) ; décision : `docs/adr/0041-go-modules-under-libs.md`.
+
+- **Deux modules** : `libs/gamefiles` (`github.com/JGtm/LevelUp/libs/gamefiles` : `himodule`, `ooz`, `hinavmesh`, `mapvar`, rien du dépôt) et `libs/himap` (`github.com/JGtm/LevelUp/libs/himap`, paquet `libs/himap/himap`, importe `libs/gamefiles` seulement). Reliés à `apps/go-api` par un `go.work` racine (`go.work.sum` versionné), SANS `require` ni `replace` de module voisin (ADR 0041 D2) : `go mod tidy` est inutilisable dans `apps/go-api` et dans `libs/himap`.
+- **Ratchets posés** : `archlint/briques_imports_test` (table brique -> paquets + imports permis, allowlist vide, entrée morte refusée), `deploy_root_copie_unique_test` (chemin du jeu en une seule copie, porté de la brique), `dockerfile_go_version_test` (même ligne `go` partout), garde-rail de licence GPLv3 de `cmd/server` (suit tous les modules de `libs/`), plus `TestModulesLibsSurveillesParDependabot` et `TestCibleMakefileGamefilesCouvreLeCorpus`.
+- **Preuve du lot 5** : cinq fonds recuits identiques à l'octet (PNG aux témoins, WebP aux fichiers publiés), corpus `gamefiles` entier identique test par test à la base (un seul rouge connu, `TestRenduForgeVagabond`, poste sans `.ai/re_dump`), mêmes 212 paquets `ok` de `go test ./...`, `-tags=integration -p 1 ./internal/sync/...` vert, `gate-push` joué commande par commande (le `$(MAKE)` GnuWin32 du poste échoue : découvertes 28 et 33).
+- **Pour D2 (décodeur de film)** : 20 fichiers de `film/internal/grammar` et `film/replay` citent encore `C:\Users\Guillaume\Projects\LevelUp` (commandes `ZONE_FILM`, chemins par défaut de `vehicules_v2*` ; découverte 9) ; les mêmes contraintes de module que D1 valent (pas d'import de `go-api/internal`, ratchets à racine d'espace de travail, une seule boucle `libs/*/go.mod` pour Makefile et CI).
+- **Pour D2 et D3, découvertes de D1 qui les concernent** : 18 (retraits de baseline JSONL à poser en même temps que le déplacement d'un paquet) ; 19 et 27 (Dependabot `gomod` charge un module à voisin sans `go.work` : décision neuve si ça échoue) ; 20 (`.air.toml` ne surveille pas `libs/`) ; 22 (hooks `go-vet.sh`, `govulncheck.sh` limités à `apps/go-api`) ; 23 (deux copies de remontée de chemin `hinavmesh`/`mapvar`, une 3e impose helper + garde-rail) ; 24 (artefact CI périmé après `gh run rerun --failed`) ; 28 (`$(MAKE)` GnuWin32) ; 29 (commentaires de `himap` qui citent l'hôte) ; 30 (`golang.org/x/sys` tenu à la main dans trois `go.mod`, sans garde-rail de version).

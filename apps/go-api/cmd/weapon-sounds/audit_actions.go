@@ -42,7 +42,7 @@ import (
 	"os"
 	"sort"
 
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 // offsetPropsAction : l'offset THEORIQUE du premier paquet de proprietes d'une action.

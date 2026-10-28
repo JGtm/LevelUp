@@ -82,7 +82,7 @@ import (
 	"strconv"
 	"strings"
 
-	"levelup/go-api/internal/himap"
+	"github.com/JGtm/LevelUp/libs/himap/himap"
 )
 
 // moduleParDefaut : le module qui porte les `sbnk` (mesure : les 40 IDs `.wem` du fusil
@@ -363,7 +363,7 @@ func main() {
 // tournent sur un poste ou Halo n'est pas installe (cf. modesSansJeu dans main, et les
 // prerequis documentes de `weapon-sounds -mode livrer` dans docs/COMMANDS.md).
 //
-// Le BINAIRE, lui, reste lie a cgo : `internal/himap` -> `internal/himodule` -> `internal/ooz`
+// Le BINAIRE, lui, reste lie a cgo : `libs/himap/himap` -> `libs/gamefiles/himodule` -> `libs/gamefiles/ooz`
 // (decompression Kraken) est un import du paquet, pas du mode. Le retirer demanderait de
 // scinder ce `main` — hors du perimetre de cette correction, et la documentation le dit.
 var modesSansJeu = map[string]bool{"livrer": true}

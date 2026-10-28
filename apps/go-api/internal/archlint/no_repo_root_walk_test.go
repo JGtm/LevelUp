@@ -172,7 +172,7 @@ var repoRootInTestsAllowlist = map[string]bool{
 	// Lit data/cache/replays/halo_infinite/000d5950.json — un CACHE, NON versionne
 	// (git ls-files vide au 2026-08-19). Ici le skip est le comportement JUSTE : le fichier
 	// est vraiment absent d'un checkout. Reprise : s'il devient versionne, migrer + Fatal.
-	"internal/himap/carte_oracle_gamefiles_test.go": true,
+	"internal/gamefilescorpus/carte_oracle_gamefiles_test.go": true, // deplace de internal/himap/ le 2026-10-28 (D1 lot 2) : meme raison, meme reprise
 	// (2026-08-20, lot hygiene H4) internal/mapdecoupe/oracle_corpus_test.go et
 	// cmd/mapcallouts-build/classify_test.go migres vers testutil.RepoRoot() + t.Fatalf —
 	// les deux entrees qui etaient ici ont disparu avec la cause (cf. historique git).

@@ -34,13 +34,25 @@ package archlint
 // regarde un tableau de bord. Un tag posé à la main sur 61 fichiers se re-perd au premier
 // fichier ajouté sans lui, d'où ces deux tests, qui tournent dans le build PAR DÉFAUT (donc en
 // CI) et lisent les fichiers sur disque plutôt que de dépendre de leur compilation.
+//
+// INSTRUMENTS QUI OUVRENT LE JEU (plan D1, lot 2c, 2026-10-28, décision utilisateur). Les sondes de
+// rétro-ingénierie des briques qui lisent `.ai/re_dump` ou les données du dépôt hôte sont
+// conservées comme instruments `*_research_test.go` (jamais supprimées). Quand elles ouvrent
+// aussi le jeu, elles portent `//go:build gamefiles && research` : `appelSansDeclarerGamefiles`
+// l'accepte pour un fichier dont le NOM est `*_research_test.go` et dont la contrainte porte
+// `gamefiles` ET `research` comme termes d'une conjonction. Ce N'EST PAS un assouplissement :
+// le fichier n'entre dans aucun build automatique (il faut `-tags=gamefiles,research`, donné à
+// la main), il sort de la suite `gamefiles`, et la contrainte dit ce que le nom ne dit pas.
+// La règle reste « un instrument qui ouvre le jeu déclare `gamefiles` » ; un `*_research_test.go`
+// sous `//go:build research` seul qui appelle l'installation reste refusé
+// (`TestInstrumentQuiOuvreLeJeuDeclareGamefiles`, auto-preuve sur sources synthétiques).
+// Un `*_gamefiles_test.go`, lui, garde exactement `//go:build gamefiles` : un instrument ne porte
+// jamais ce suffixe.
 
 import (
-	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 )
@@ -56,24 +68,24 @@ const corpusGamefilesPlancher = 62
 
 // appelsInstallation : les portes d'entrée vers l'installation de Halo Infinite. Un test qui en
 // appelle une lit le disque du jeu, donc coûte des minutes dès que le jeu est là. Les trois
-// vivent dans `internal/himap` ; hors de ce paquet elles s'écrivent `himap.DeployRoot(` etc.,
+// vivent dans `libs/himap/himap` ; hors de ce paquet elles s'écrivent `himap.DeployRoot(` etc.,
 // que ces motifs attrapent aussi.
 var appelsInstallation = []string{"DeployRoot(", "LevelsDir(", "ChercheModuleInstalle("}
 
 // horsCorpusAutorises : tests NON tagués qui citent une porte d'entrée SANS lire l'installation
-// réelle. Chemins relatifs à `apps/go-api`, en slash. Allowlist à deux entrées, datées —
+// réelle. Chemins relatifs à la racine du dépôt, en slash. Allowlist à deux entrées, datées —
 // l'agrandir demande la même démonstration (le test ne touche pas au jeu, et sa durée le
 // prouve).
 //
-//   - internal/himap/deploy_root_test.go (2026-09-05) : il appelle bien `DeployRoot()` et
+//   - libs/himap/himap/deploy_root_test.go (2026-09-05) : il appelle bien `DeployRoot()` et
 //     `LevelsDir()`, mais toujours sous `t.Setenv(DeployRootEnv, t.TempDir())` — il teste la
 //     RÉSOLUTION du chemin, jamais le contenu du jeu. Durée mesurée : < 0,01 s.
-//   - internal/archlint/gamefiles_tag_test.go (2026-09-05) : ce fichier-ci. Il ne les APPELLE
+//   - apps/go-api/internal/archlint/gamefiles_tag_test.go (2026-09-05) : ce fichier-ci. Il ne les APPELLE
 //     pas, il les CITE dans `appelsInstallation` — même auto-référence que les autres ratchets
 //     de ce paquet, qui s'allowlistent parce qu'ils portent les motifs qu'ils interdisent.
 var horsCorpusAutorises = map[string]bool{
-	"internal/himap/deploy_root_test.go":      true,
-	"internal/archlint/gamefiles_tag_test.go": true,
+	"libs/himap/himap/deploy_root_test.go":                true,
+	"apps/go-api/internal/archlint/gamefiles_tag_test.go": true,
 }
 
 // dossiersInvisiblesAuGo : les répertoires que le CHARGEUR DE PAQUETS Go n'ouvre jamais — un
@@ -122,6 +134,38 @@ func TestCorpusGamefilesEstTague(t *testing.T) {
 	}
 }
 
+// appelSansDeclarerGamefiles rend la porte d'entrée vers l'installation que le fichier appelle
+// sans déclarer le tag `gamefiles`, ou "" si la règle est respectée. Trois façons de la
+// respecter : le suffixe `_gamefiles_test.go` (le tag exact est contrôlé ailleurs), une
+// allowlist datée, ou la première ligne `//go:build gamefiles` seule.
+//
+// LE CAS DES INSTRUMENTS (plan D1, lot 2c, 2026-10-28, décision utilisateur) : un
+// `*_research_test.go` qui OUVRE le jeu déclare `gamefiles` comme terme de conjonction
+// (`//go:build gamefiles && research`, dans n'importe quel ordre). Ce n'est PAS un
+// assouplissement : le fichier n'entre dans AUCUN build automatique (il faut les deux tags, donné
+// à la main), et la contrainte dit ce que le nom ne dit pas, « le jeu est requis ». La règle
+// reste donc « un instrument qui ouvre le jeu déclare `gamefiles` » : un `*_research_test.go`
+// sous `//go:build research` seul qui appelle l'installation reste refusé, comme une disjonction
+// (`gamefiles || research`) ou une négation (`research && !gamefiles`).
+func appelSansDeclarerGamefiles(rel, texte string) string {
+	if strings.HasSuffix(rel, "_gamefiles_test.go") || horsCorpusAutorises[rel] {
+		return ""
+	}
+	if strings.HasPrefix(texte, tagGamefiles+"\n") {
+		return "" // tagué sans porter le suffixe : la règle est respectée au fond
+	}
+	if strings.HasSuffix(rel, "_research_test.go") && contrainteAvecTerme(texte, "gamefiles") &&
+		contrainteResearch(texte) {
+		return "" // instrument qui ouvre le jeu : `gamefiles && research`
+	}
+	for _, appel := range appelsInstallation {
+		if strings.Contains(texte, appel) {
+			return appel
+		}
+	}
+	return ""
+}
+
 // TestAucunTestNonTagueNeLitLInstallation — l'autre sens de la même règle, sur tout le module.
 //
 // Taguer le corpus ne sert à rien si un test ORDINAIRE se remet à ouvrir l'installation : le
@@ -129,62 +173,59 @@ func TestCorpusGamefilesEstTague(t *testing.T) {
 //
 // Mutation qui doit le faire rougir : appeler `himap.DeployRoot()` depuis un `*_test.go` non
 // tagué hors allowlist (vérifié le 2026-09-05 en remettant
-// `TestModuleGeometrieExisteDansLInstallation` dans `cmd/mapfond-build/reglages_test.go`).
+// `TestModuleGeometrieExisteDansLInstallation` dans `cmd/mapfond-build/reglages_test.go`), ou
+// retirer `gamefiles &&` de la première ligne d'un `*_research_test.go` qui appelle
+// `DeployRoot(` (vérifié le 2026-10-28 sur `libs/himap/himap/cloture_research_test.go`).
 func TestAucunTestNonTagueNeLitLInstallation(t *testing.T) {
 	balayerTests(t, func(rel, texte string) {
-		if strings.HasSuffix(rel, "_gamefiles_test.go") || horsCorpusAutorises[rel] {
-			return
-		}
-		if strings.HasPrefix(texte, tagGamefiles+"\n") {
-			return // tagué sans porter le suffixe : la règle est respectée au fond
-		}
-		for _, appel := range appelsInstallation {
-			if strings.Contains(texte, appel) {
-				t.Errorf("%s appelle %s hors du tag %q — déplacer le test dans un "+
-					"*_gamefiles_test.go tagué, ou justifier une entrée d'allowlist comme "+
-					"internal/himap/deploy_root_test.go", rel, appel, tagGamefiles)
-			}
+		if appel := appelSansDeclarerGamefiles(rel, texte); appel != "" {
+			t.Errorf("%s appelle %s sans déclarer le tag %q — déplacer le test dans un "+
+				"*_gamefiles_test.go tagué, déclarer `gamefiles && research` si c'est un instrument "+
+				"de recherche (*_research_test.go), ou justifier une entrée d'allowlist comme "+
+				"libs/himap/himap/deploy_root_test.go", rel, appel, tagGamefiles)
 		}
 	})
 }
 
-// balayerTests appelle `visiter` pour CHAQUE `*_test.go` du module, où qu'il soit, avec son
-// chemin relatif à `apps/go-api` (en slash) et son contenu. Seuls sont sautés les répertoires
-// que l'outil Go n'ouvre pas lui-même (cf. `dossiersInvisiblesAuGo`, plus les `.foo` et `_foo`
-// que le chargeur de paquets ignore par convention).
+// TestInstrumentQuiOuvreLeJeuDeclareGamefiles — AUTO-PREUVE de la règle des instruments (lot 2c
+// du plan D1, 2026-10-28) : la règle est rejouée sur des sources synthétiques, pour qu'elle
+// rougisse sans qu'il faille muter un fichier du dépôt.
+func TestInstrumentQuiOuvreLeJeuDeclareGamefiles(t *testing.T) {
+	const corps = "\n\npackage x\n\nfunc f() { _, _ = DeployRoot() }\n"
+	cas := []struct {
+		nom, rel, tete string
+		rouge          bool
+	}{
+		{"instrument avec gamefiles && research", "a/x_research_test.go", "//go:build gamefiles && research", false},
+		{"instrument, termes dans l'autre ordre", "a/x_research_test.go", "//go:build research && gamefiles", false},
+		{"instrument sous research seul", "a/x_research_test.go", "//go:build research", true},
+		{"instrument sous disjonction", "a/x_research_test.go", "//go:build gamefiles || research", true},
+		{"instrument avec gamefiles nié", "a/x_research_test.go", "//go:build research && !gamefiles", true},
+		{"instrument sans aucune contrainte", "a/x_research_test.go", "// pas de contrainte", true},
+		{"test ordinaire sous gamefiles && research", "a/x_test.go", "//go:build gamefiles && research", true},
+		{"corpus gamefiles ordinaire", "a/x_gamefiles_test.go", "//go:build gamefiles", false},
+		{"test ordinaire sous gamefiles seul", "a/x_test.go", "//go:build gamefiles", false},
+	}
+	for _, c := range cas {
+		got := appelSansDeclarerGamefiles(c.rel, c.tete+corps) != ""
+		if got != c.rouge {
+			t.Errorf("%s : refusé = %v, attendu %v", c.nom, got, c.rouge)
+		}
+	}
+}
+
+// balayerTests appelle `visiter` pour CHAQUE `*_test.go` de l'espace de travail (`apps/go-api` et
+// `libs/**`, ADR 0041), où qu'il soit, avec son chemin relatif à la RACINE DU DÉPÔT (en slash) et son
+// contenu. Seuls sont sautés les répertoires que l'outil Go n'ouvre pas lui-même (cf.
+// `dossiersInvisiblesAuGo`, plus les `.foo` et `_foo` que le chargeur de paquets ignore par
+// convention) : le parcours est `workspaceGoSources`.
 func balayerTests(t *testing.T, visiter func(rel, texte string)) {
 	t.Helper()
-	_, ici, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller a échoué")
-	}
-	goAPIRoot := filepath.Dir(filepath.Dir(filepath.Dir(ici))) // .../apps/go-api
-	err := filepath.WalkDir(goAPIRoot, func(chemin string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
+	balayerGoTexte(t, func(rel, texte string) {
+		if strings.HasSuffix(rel, "_test.go") {
+			visiter(rel, texte)
 		}
-		if d.IsDir() {
-			nom := d.Name()
-			if chemin != goAPIRoot && (dossiersInvisiblesAuGo[nom] ||
-				strings.HasPrefix(nom, ".") || strings.HasPrefix(nom, "_")) {
-				return fs.SkipDir
-			}
-			return nil
-		}
-		if !strings.HasSuffix(chemin, "_test.go") {
-			return nil
-		}
-		buf, rerr := os.ReadFile(chemin) //nolint:gosec // chemin de test, lecture seule
-		if rerr != nil {
-			return rerr
-		}
-		rel, _ := filepath.Rel(goAPIRoot, chemin)
-		visiter(filepath.ToSlash(rel), string(buf))
-		return nil
 	})
-	if err != nil {
-		t.Fatalf("parcours du module (%s) : %v", goAPIRoot, err)
-	}
 }
 
 // cibleMakefileGamefiles : le nom de la cible du `Makefile` qui joue le corpus.
@@ -214,25 +255,33 @@ func TestCibleMakefileGamefilesCouvreLeCorpus(t *testing.T) {
 
 	recette := recetteMakefile(t, cibleMakefileGamefiles)
 	for paquet := range paquets {
-		if !strings.Contains(recette, "./"+paquet+"/") {
+		cite := cheminDansLeModule(paquet)
+		if !strings.Contains(recette, "./"+cite+"/") {
 			t.Errorf("le paquet %s porte des *_gamefiles_test.go mais la cible %s ne le nomme pas "+
-				"— ces tests ne tournent nulle part ; ajouter `./%s/` à la recette",
-				paquet, cibleMakefileGamefiles, paquet)
+				"— ces tests ne tournent nulle part ; ajouter `./%s/` à la recette (dans la ligne "+
+				"`cd <module>` de son module)", paquet, cibleMakefileGamefiles, cite)
 		}
 	}
 }
 
+// cheminDansLeModule rend le chemin d'un paquet de l'espace de travail relatif à la racine de SON
+// module (`apps/go-api/internal/gamefilescorpus` -> `internal/gamefilescorpus`) : la forme dans laquelle une recette
+// `cd <module> && go test ./<paquet>/` le nomme.
+func cheminDansLeModule(paquet string) string {
+	for _, racine := range racinesEspaceDeTravail {
+		if reste, ok := strings.CutPrefix(paquet, racine+"/"); ok {
+			return reste
+		}
+	}
+	return paquet
+}
+
 // recetteMakefile rend le corps (lignes indentées par une tabulation, continuations comprises) de
-// la cible `nomCible` du `Makefile` de la racine du dépôt, lu depuis `apps/go-api`.
+// la cible `nomCible` du `Makefile` de la racine du dépôt.
 func recetteMakefile(t *testing.T, nomCible string) string {
 	t.Helper()
-	_, ici, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller a échoué")
-	}
-	goAPIRoot := filepath.Dir(filepath.Dir(filepath.Dir(ici)))                 // .../apps/go-api
-	chemin := filepath.Join(filepath.Dir(filepath.Dir(goAPIRoot)), "Makefile") // .../Makefile
-	buf, err := os.ReadFile(chemin)                                            //nolint:gosec // chemin de test, lecture seule
+	chemin := filepath.Join(workspaceRoot(t), "Makefile")
+	buf, err := os.ReadFile(chemin) //nolint:gosec // chemin de test, lecture seule
 	if err != nil {
 		t.Fatalf("lecture du Makefile (%s) : %v", chemin, err)
 	}

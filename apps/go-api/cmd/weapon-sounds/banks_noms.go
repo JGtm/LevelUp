@@ -37,7 +37,7 @@ import (
 	"sort"
 	"strings"
 
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 // BanqueNommee est une banque du module, son identifiant Wwise et son nom quand il est etabli.

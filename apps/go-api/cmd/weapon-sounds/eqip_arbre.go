@@ -34,7 +34,7 @@ import (
 	"strings"
 	"time"
 
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 // evenementStructure : un evenement de la banque, avec la maniere dont il se joue.

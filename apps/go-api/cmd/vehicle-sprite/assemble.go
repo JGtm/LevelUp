@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"levelup/go-api/internal/himap"
+	"github.com/JGtm/LevelUp/libs/himap/himap"
 )
 
 // cmdAssemble fond un chassis parent (`mode`) et un ou plusieurs objets-enfants (tourelle,

@@ -486,7 +486,7 @@ freshness 30 days; `--langs` ignores (with a warning) a tag outside that list.
 
 Eleven offline chains, all under `apps/go-api/cmd/`, produce files committed to the repo
 (`data/titles/{slug}/reference/`, `static/`, or a generated Go file). None is wired into
-`cmd/server` — game decoding and GPLv3 code (`internal/himap`, `internal/ooz`, Kraken/Oodle)
+`cmd/server` — game decoding and GPLv3 code (`libs/himap/himap`, `libs/gamefiles/ooz`, Kraken/Oodle)
 stay isolated to these binaries. Run from `apps/go-api` unless noted. `--title`/`-title`
 defaults to `halo_infinite` throughout.
 
@@ -575,7 +575,7 @@ CGO_ENABLED=1 go run ./cmd/mapfond-build [--maps "Cliffhanger,Catalyst"] [--titl
 - Output: `data/titles/{slug}/reference/map_backgrounds/{key}.png` + `{key}.json` sidecar per
   map (218 files today) — the top-down background image and its calibration.
 - Prereq: game installed — **always**, no flag bypasses it, even a Forge-only run ; cgo/GPLv3
-  chain (`internal/himap` → `internal/himodule` → `internal/ooz`, never linked into
+  chain (`libs/himap/himap` → `libs/gamefiles/himodule` → `libs/gamefiles/ooz`, never linked into
   `cmd/server`) ; requires `map_objectives.json` already built (hard dependency, fails
   without it) ; uses `map_quant_bounds.json` / `map_callouts.json` / `map_positions_jouees.json`
   / `map_fond_reglages.json` when present, degrades with a warning otherwise.
@@ -694,8 +694,8 @@ go run ./cmd/weapon-sounds -mode livrer -donnees <chantier>/_donnees [-sons <cha
 - Prereq: the recipe's earlier, still-external steps (extraction, banks analysis, human vote)
   must already have produced `_donnees/*.json` and the per-weapon source/rendered `.wav`
   tree. No game install is needed for this final step (the mode opens no game module), but
-  cgo IS required to BUILD the binary: `cmd/weapon-sounds` imports `internal/himap` ->
-  `internal/himodule` -> `internal/ooz` (Kraken decompression) for its other modes.
+  cgo IS required to BUILD the binary: `cmd/weapon-sounds` imports `libs/himap/himap` ->
+  `libs/gamefiles/himodule` -> `libs/gamefiles/ooz` (Kraken decompression) for its other modes.
 - Replay when: a weapon vote is finalized, or the full recipe is redone (game update, new
   weapon). Full recipe: `.ai/archive/V7.5/RECETTE_SONS_ARMES.md`.
 
@@ -1085,23 +1085,58 @@ cd apps/go-api && CGO_ENABLED=0 go test ./internal/domain/... ./internal/analysi
 cd apps/go-api && CGO_ENABLED=1 LEVELUP_DEMO_MODE=true go test ./... -timeout 5m -count=1
 
 make go-api-coverage   # coverage report
-make go-api-lint       # go vet
+make go-api-lint       # golangci-lint ratchet (apps/go-api + every libs/ module) ; go vet in fallback
 ```
+
+#### Go modules under `libs/` and the workspace (ADR 0041)
+
+Two bricks live in their own Go modules: "game files", `libs/gamefiles` (module path
+`github.com/JGtm/LevelUp/libs/gamefiles`: packages `himodule`, `ooz`, `hinavmesh`, `mapvar`), and "map
+images", `libs/himap` (`github.com/JGtm/LevelUp/libs/himap`: package `himap`, which imports `libs/gamefiles`
+only). Both are linked to `apps/go-api` by the `go.work` at the repository root (no `replace`
+directive; commit `go.work.sum`). Two consequences for every command:
+
+- `./...` never crosses a module boundary. `cd apps/go-api && go test ./...` does **not** test
+  `libs/`, and `go mod tidy` cannot run in `apps/go-api` any more (it looks for the sibling
+  module on the network; the workspace resolves it, so `go.mod` carries no `require` for it).
+  A dependency bump of a brick is made in its own `go.mod` (`cd libs/gamefiles && go get ...`); `go mod
+  tidy` does not work in `libs/himap` either (it imports `libs/gamefiles`), so `make tidy` in `apps/go-api`
+  names it and skips it, and its `go.mod` is edited by hand.
+- The Go version line is the same in `apps/go-api/go.mod`, `go.work`, every `libs/*/go.mod` and the
+  `Dockerfile` image (`internal/archlint/dockerfile_go_version_test.go`).
+
+```bash
+make libs-test                       # vet (default, research, gamefiles, gamefiles+research tags) + tests of each libs/ module, CGO on
+cd libs/gamefiles && go test ./... -count=1
+cd libs/gamefiles && go vet -tags=gamefiles,research ./...     # compile the research instruments
+cd libs/gamefiles && go list -deps ./... | grep levelup/go-api  # must print nothing: the module is autonomous
+cd libs/himap && go test ./... -count=1                         # the map-image brick, without the game: its corpus is under the tag
+cd libs/himap && go list -deps ./... | grep levelup/go-api      # must print nothing either
+go test ./libs/gamefiles/mapvar/ -run TestLabel -count=1       # from the repository root also works (workspace)
+```
+
+`make go-api-lint` and `make gate-push` also lint every `libs/` module (same `.golangci.yml`, passed with
+`--config ../../apps/go-api/.golangci.yml`). The CI job `go-build` runs the same vet and tests in a
+dedicated step. A brick has no database and no LevelUp data: its tests read only its own
+`testdata/` and the installed game; tests that need LevelUp data live in `apps/go-api`
+(`internal/gamefilescorpus/`).
 
 #### `gamefiles` build-tag corpus (map reverse engineering **and** committed catalogues)
 
 Two families of tests read the **installed game**, and both sit behind `//go:build gamefiles`:
 
-- the 59 `*_gamefiles_test.go` files in `internal/himap/` decode the game's modules and sweep
-  the 26 catalogue maps. They are long by nature — measured 2026-09-05, `TestBalayageCoquille`
+- the `*_gamefiles_test.go` files of `libs/himap/himap/` (34 on 2026-10-28, after lot 2c) decode the game's
+  modules, and those of `internal/gamefilescorpus/` (25, a package of tests only: since the D1
+  decoupling plan the `himap` tests that read LevelUp data live there and call `himap` through
+  its exported API) sweep the 26 catalogue maps. They are long by nature — measured 2026-09-05, `TestBalayageCoquille`
   alone takes **203 s** for 26 maps (1 246 s before the module reader switched to memory
-  mapping the same day). The tag keeps a plain `go test ./internal/himap/` usable (2.8 s);
+  mapping the same day). The tag keeps a plain `go test ./himap/` (from `libs/himap`) usable (2.8 s);
 - three `cmd/` catalogue builders re-derive their **committed** catalogue from the installed
   game and compare it byte for byte: `cmd/film-profiles-build/`, `cmd/mapfond-build/`,
   `cmd/mapstruct-build/` (9.0 s for the three, measured 2026-09-17).
 
-`make go-api-test-gamefiles` runs **all four packages**. Until 2026-09-17 it only ran
-`./internal/himap/`, so the three `cmd/` tests were run by no command in the repository
+`make go-api-test-gamefiles` runs **all five packages** (the brick from `libs/himap`, the four others from
+`apps/go-api`). Until 2026-09-17 it only ran the brick, so the three `cmd/` tests were run by no command in the repository
 (discovery D1 (3.1.2), the oldest of them tagged since 2026-09-05). The package list is
 explicit rather than `./cmd/...`: under the tag, a package with no `gamefiles` file only adds
 compile time. `archlint.TestCibleMakefileGamefilesCouvreLeCorpus` fails if a package joins the
@@ -1109,8 +1144,9 @@ corpus without joining the target.
 
 ```bash
 make go-api-test-gamefiles                       # whole corpus (~6 min, needs the game)
+cd libs/himap && CGO_ENABLED=1 go test -tags=gamefiles -count=1 -timeout 3600s ./himap/ -v
 cd apps/go-api && CGO_ENABLED=1 go test -tags=gamefiles -count=1 -timeout 3600s \
-  ./internal/himap/ \
+  ./internal/gamefilescorpus/ \
   ./cmd/film-profiles-build/ ./cmd/mapfond-build/ ./cmd/mapstruct-build/ -v
 
 # Committed catalogues only (seconds, not minutes):
@@ -1119,23 +1155,40 @@ cd apps/go-api && CGO_ENABLED=1 go test -tags=gamefiles -count=1 \
 
 # One map only (much faster):
 BALAYAGE_CARTES=aquarius_map go test -tags=gamefiles -timeout 300s \
-  ./internal/himap/ -run TestBalayageCoquille -v
+  ./internal/gamefilescorpus/ -run TestBalayageCoquille -v
 
 # Game installed somewhere else:
-LEVELUP_HALO_DEPLOY=/path/to/Halo Infinite/deploy go test -tags=gamefiles ./internal/himap/
+cd libs/himap && LEVELUP_HALO_DEPLOY=/path/to/Halo Infinite/deploy go test -tags=gamefiles ./himap/
 ```
 
 Without the game installed every test takes its `t.Skip` and the corpus is empty in a
 second — which is exactly what happens in CI. CI therefore only **compiles** it
-(`go vet -tags=gamefiles ./internal/himap/`, job `go-test`); it never runs it. The tag
-itself is enforced module-wide by `internal/archlint/gamefiles_tag_test.go`, which runs in the
+(`go vet -tags=gamefiles ./...` in `libs/himap` and `go vet -tags=gamefiles ./internal/gamefilescorpus/` in `apps/go-api`, job `go-build`); it never runs it. The tag
+itself is enforced workspace-wide by `internal/archlint/gamefiles_tag_test.go`, which runs in the
 default build.
 
-**Known red test**: `TestBancCliffhanger` fails (accord 64.4 % against a 64.7 % re-based
+**Known red test** (now a research instrument since D1 lot 2c: `sddt_research_test.go`, run with `-tags=gamefiles,research`): `TestBancCliffhanger` fails (accord 64.4 % against a 64.7 % re-based
 reference). It is *pre-existing*, not a regression — verified 2026-09-05 by replaying it on
 the previous commit, which yields bit-identical numbers. Nobody could see it before: the
 corpus never ran to completion, and CI does not execute it. Tracked in
 `.ai/REGISTRE_REPORTS.md`.
+
+**Brick research instruments (D1 lot 2c, 2026-10-28).** The reverse-engineering probes of the
+`himap`, `hinavmesh` and `mapvar` bricks that read `.ai/re_dump` (the unversioned reverse-engineering dump) or
+data of the host repository (`data/...`) are *kept* as research instruments, outside both the default build
+and the `gamefiles` suite above. They are `*_research_test.go` files; those that also open the game carry
+`//go:build gamefiles && research` (the others `//go:build research`). They run on demand and need the game
+installed and, for some, `.ai/re_dump`:
+
+```bash
+cd libs/himap && CGO_ENABLED=1 go test -tags=gamefiles,research -count=1 ./himap/ -run <Sonde>   # one instrument; without -run, the whole gamefiles suite plus the instruments
+cd libs/gamefiles && go test -tags=research -count=1 ./hinavmesh/ ./mapvar/
+```
+
+CI compiles them (`go vet -tags=gamefiles,research ./...` in `libs/himap` and in `libs/gamefiles`);
+the module-wide `go vet -tags=research ./...` leaves out the `gamefiles && research` ones on purpose (both
+tags are required). The rule is held by `internal/archlint/gamefiles_tag_test.go` ("an instrument that opens the
+game declares `gamefiles`") and `research_tag_test.go`.
 
 #### Replay non-regression gate on a witness corpus (`cmd/replay-corpus-gate`)
 

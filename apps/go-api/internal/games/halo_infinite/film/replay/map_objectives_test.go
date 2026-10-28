@@ -3,7 +3,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
+	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 )
 
 // entreeObjectifs construit une entrée de catalogue en mémoire : deux points de spawn et

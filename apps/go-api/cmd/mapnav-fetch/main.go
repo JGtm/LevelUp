@@ -44,7 +44,8 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/himap"
+
+	"github.com/JGtm/LevelUp/libs/himap/himap"
 )
 
 const (

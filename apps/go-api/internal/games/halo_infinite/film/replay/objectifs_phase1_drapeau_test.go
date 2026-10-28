@@ -36,7 +36,8 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/signaux"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
-	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
+
+	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 )
 
 // objSeuilMarqueur — le seuil du gate 1, ecrit avant la mesure et jamais rebaisse.

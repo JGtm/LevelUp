@@ -2,7 +2,7 @@
 
 // cmd/mapstruct-build — equivalence_gamefiles_test.go : le test qui manquait.
 //
-// POURQUOI. `internal/himodule` n'a AUCUN test et le découpage de `loadHd1` a été vérifié
+// POURQUOI. `libs/gamefiles/himodule` n'a AUCUN test et le découpage de `loadHd1` a été vérifié
 // par lecture, pas par exécution. Le gate des artefacts ne le couvre pas : le rejeu lit les
 // fichiers de structure FIGÉS, il ne repasse jamais par le lecteur de module. Une dérive du
 // lecteur — un offset, une base de données mal calculée, un bloc mal chaîné — ne casserait
@@ -25,7 +25,8 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
-	"levelup/go-api/internal/himap"
+
+	"github.com/JGtm/LevelUp/libs/himap/himap"
 )
 
 // referenceDir : les structures figées, telles que le dépôt les publie.
@@ -37,7 +38,7 @@ func referenceDir() string {
 // TestStructuresFigeesSeReproduisent — régénère chaque carte figée et compare.
 //
 // Mutation qui doit le faire rougir : décaler d'un octet un offset de lecture d'instance
-// dans `internal/himap`, ou changer la base de données de `internal/himodule`.
+// dans `libs/himap/himap`, ou changer la base de données de `libs/gamefiles/himodule`.
 func TestStructuresFigeesSeReproduisent(t *testing.T) {
 	levels, err := himap.LevelsDir(deployVariant)
 	if err != nil {

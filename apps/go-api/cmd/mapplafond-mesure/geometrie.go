@@ -23,7 +23,7 @@ import (
 	"log/slog"
 	"math"
 
-	"levelup/go-api/internal/himap"
+	"github.com/JGtm/LevelUp/libs/himap/himap"
 )
 
 // mesureGeom est ce qu'une carte rend a l'instrument.

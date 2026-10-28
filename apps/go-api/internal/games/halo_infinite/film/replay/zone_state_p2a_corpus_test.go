@@ -35,8 +35,9 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
-	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
+
+	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 )
 
 // p2aPlayer est la ligne de match d'un joueur, telle que l'export TSV la donne.

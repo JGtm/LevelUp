@@ -31,8 +31,9 @@ import (
 
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 	"levelup/go-api/internal/mapcatalog"
+
+	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 )
 
 type mapIDList []string

@@ -3,7 +3,7 @@
 //
 // CHAINE : `vehi` -> `hlmt` -> `mode` (render_model) -> triangles (himap.NewRenderModelAsset)
 // -> rasterizer top-down local (himap.RenduObjetIsole) -> PNG silhouette+alpha
-// (himap.SpriteObjetPNG). Tout le decodage vit dans internal/himap ; cette commande orchestre.
+// (himap.SpriteObjetPNG). Tout le decodage vit dans libs/himap/himap ; cette commande orchestre.
 //
 // Offline-pur (ooz/Kraken GPLv3) : jamais linke dans le serveur, seulement ici.
 //
@@ -19,7 +19,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"levelup/go-api/internal/himap"
+	"github.com/JGtm/LevelUp/libs/himap/himap"
 )
 
 func main() {

@@ -22,9 +22,10 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
-	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/port"
+
+	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 )
 
 // mrFetcherEspion compte ses appels et rend ce qu'on lui dit de rendre.

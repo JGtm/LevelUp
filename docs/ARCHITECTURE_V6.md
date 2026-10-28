@@ -260,3 +260,29 @@ silent empty payload.
 See [`.ai/V7/PLAN_MULTI_TITLE_ADAPTERS_AND_MAPPINGS.md`](../.ai/V7/PLAN_MULTI_TITLE_ADAPTERS_AND_MAPPINGS.md)
 for the design rationale and [`tools/mappings/CHANGELOG.md`](../tools/mappings/CHANGELOG.md)
 for the TOML schema versioning history.
+
+## Bricks / libs (ADR 0041)
+
+Code that is autonomous by nature (a file format, a stream decoder, a protocol) lives in **Go
+modules of its own** under `libs/<brick>/`, in this repository, linked to the application by the
+`go.work` at the root (no `replace` directive). The application stays the module `levelup/go-api`
+(`apps/go-api`); a brick is `github.com/JGtm/LevelUp/libs/<brick>`, with its packages at the first
+level of the module (an `internal/` package could not be imported by the application).
+
+```text
+go.work                  use ./apps/go-api ./libs/gamefiles ./libs/himap
+apps/go-api/             the application (module levelup/go-api)
+libs/gamefiles/          the "game files" brick: himodule, ooz (GPLv3, never linked by cmd/server),
+                         hinavmesh, mapvar — imports nothing from LevelUp
+libs/himap/              the "map images" brick: package himap (map geometry and top-down background
+                         images read from the game files) — imports libs/gamefiles only
+```
+
+Rules, held by ratchets: a brick imports nothing from `levelup/go-api` and only bricks of lower
+rank (`archlint/briques_imports_test.go`, tests included); `go list -deps` in the module shows no
+`levelup/go-api` package; no file extracted from the installed game enters a brick; the `go` line
+is the same in `go.work`, `apps/go-api/go.mod`, every `libs/*/go.mod` and the `Dockerfile` image.
+`./...` never crosses a module boundary: `make libs-test` and the CI steps "brique gamefiles" and "brique himap"
+cover the bricks, `go mod tidy` does not run in `apps/go-api`. A brick is importable from outside by the
+tag `libs/<brick>/vX.Y.Z`. Commands: [`COMMANDS.md`](COMMANDS.md) § "Go modules under `libs/`"; decision and the
+checklist for adding a brick: [`adr/0041-go-modules-under-libs.md`](adr/0041-go-modules-under-libs.md).

@@ -309,6 +309,18 @@
 # ci-dessus figurent dans ces 46 et ont déjà été retirées par le retrait de la release (24 lignes) ; la baseline
 # fusionnée retire donc 46 paires (293 lignes) au total, pas 49 : jamais une paire retirée deux fois.
 #
+# RETRAIT DU 2026-10-28 (plan de découplage D1, lot 3 : le paquet `mapvar` quitte le module `go-api` pour
+# le module `libs/gamefiles`, ADR 0041) : 48 paires (Package, Test) retirées, 48 lignes JSONL, toutes du
+# paquet `levelup/go-api/internal/games/halo_infinite/film/replay/mapvar`. Ce n'est PAS une perte de test :
+# 38 des 48 tournent dans le module `libs/gamefiles` (paquet `github.com/JGtm/LevelUp/libs/gamefiles/mapvar`),
+# joués par le pas « go test (brique gamefiles) » du job go-build, et les 10 autres (TestArbreRacineVarianteInventaire,
+# TestBalayageChampsObjets{Isolation,Native}, TestCandidatsNomDeLieu, TestCategorieDesCoquesForge,
+# TestChamp6DesObjetsForge, TestInventaireBranchesRacine, TestNomsLisiblesDeLaVariante,
+# TestZonesNommees{DIsolation,PortentUneForme}) sont passés en instruments `*_research_test.go` au lot 2c du
+# même plan (tag `research`, à la demande). La baseline reste celle du module `go-api` seul : le `go list ./...`
+# de ce script ne franchit jamais la frontière d'un module, une entrée d'un autre module y serait « absente ».
+# Vérifié par différence des paires avant/après : aucune autre absence introduite par le lot.
+#
 # DEUX MODES (le code de vérification est le MÊME — verify_tests_jsonl) :
 #   - AUTONOME (défaut) : le script lance lui-même la suite. C'est le mode du
 #     filet local `make gate-push`.

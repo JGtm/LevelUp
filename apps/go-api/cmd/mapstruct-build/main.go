@@ -13,7 +13,7 @@
 // DÉPÔT DE JEU : utiliser deploy/pc/. Le build serveur dédié (deploy/ds/) est dépouillé du
 // rendu : son bloc `instanced geometry instances` est VIDE (mesuré : data-block cible -1),
 // il ne garde que `instanced physics instances`. Le compagnon `_hd1` de deploy/pc/ n'est
-// pas un problème depuis le correctif dataBase de internal/himodule.
+// pas un problème depuis le correctif dataBase de libs/gamefiles/himodule.
 //
 // Usage :
 //
@@ -34,7 +34,8 @@ import (
 
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/himap"
+
+	"github.com/JGtm/LevelUp/libs/himap/himap"
 )
 
 // deployVariant : deploy/pc/ et non deploy/ds/ (cf. en-tête — le build dédié n'a pas la

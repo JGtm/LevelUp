@@ -30,6 +30,14 @@ package archlint
 // Mutation qui doit le faire rougir : retirer la première ligne d'un `*_research_test.go`
 // (sens 1), poser `//go:build research` sur un fichier de production (sens 2), ou sur un
 // `*_gate_test.go` (troisième contrôle).
+//
+// INSTRUMENTS DES BRIQUES (plan D1, lot 2c, 2026-10-28, décision utilisateur). Les sondes de
+// rétro-ingénierie de `himap`, `hinavmesh` et `mapvar` qui lisent `.ai/re_dump` ou les données du
+// dépôt hôte sont des `*_research_test.go` : conservées, jamais supprimées, sorties du build par
+// défaut ET de la suite `gamefiles`. Celles qui ouvrent aussi le jeu portent
+// `//go:build gamefiles && research` (`contrainteAvecTerme`, partagée avec
+// `gamefiles_tag_test.go`) ; leurs helpers communs sont des compagnons tagués `research`.
+// Une GARDE qui partagerait un de ces helpers serait extraite, pas taguée.
 
 import (
 	"os"
@@ -40,42 +48,53 @@ import (
 // tagResearch : la ligne exacte attendue en tête de chaque instrument.
 const tagResearch = "//go:build research"
 
-// instrumentsResearchPlancher : le corpus mesuré le 2026-09-30 (383 `*_research_test.go`).
-// Un balayage qui rend moins ne garde plus rien.
-const instrumentsResearchPlancher = 383
+// instrumentsResearchPlancher : le corpus mesuré le 2026-09-30 (383 `*_research_test.go`), monté
+// de 29 le 2026-10-28 (plan D1, lot 2c : 15 fichiers dans `himap`, 9 dans `hinavmesh`, 5 dans
+// `mapvar`, sondes de rétro-ingénierie des briques et leurs helpers). Un balayage qui rend moins
+// ne garde plus rien.
+const instrumentsResearchPlancher = 412
 
-// dossiersInstruments : sous ces préfixes (chemins relatifs à `apps/go-api`, en slash), tout
+// dossiersInstruments : sous ces préfixes (chemins relatifs à la racine du dépôt, en slash), tout
 // fichier tagué est un instrument par construction.
 var dossiersInstruments = []string{
-	"internal/games/halo_infinite/film/research/",
-	"tools/film_re/",
+	"apps/go-api/internal/games/halo_infinite/film/research/",
+	"apps/go-api/tools/film_re/",
 }
 
 // contrainteResearch rend vrai si la première ligne est `//go:build` et cite `research`
 // comme terme d'une conjonction (`research` seul ou `research && X`).
 func contrainteResearch(texte string) bool {
+	return contrainteAvecTerme(texte, "research")
+}
+
+// contrainteAvecTerme rend vrai si la première ligne est `//go:build` et cite `terme` comme
+// terme d'une conjonction pure (`terme` seul, ou `terme && X`, dans n'importe quel ordre). Une
+// disjonction (`||`) est refusée : elle ne garantit pas que le terme soit requis. Partagée avec
+// `gamefiles_tag_test.go` (instruments `gamefiles && research`, lot 2c du plan D1) pour ne pas
+// dupliquer la lecture de la contrainte.
+func contrainteAvecTerme(texte, terme string) bool {
 	ligne, _, _ := strings.Cut(texte, "\n")
 	ligne = strings.TrimSpace(ligne)
-	if ligne == tagResearch {
+	if ligne == "//go:build "+terme {
 		return true
 	}
 	if !strings.HasPrefix(ligne, "//go:build ") || strings.Contains(ligne, "||") {
 		return false
 	}
-	for _, terme := range strings.Split(strings.TrimPrefix(ligne, "//go:build "), "&&") {
-		if strings.TrimSpace(terme) == "research" {
+	for _, t := range strings.Split(strings.TrimPrefix(ligne, "//go:build "), "&&") {
+		if strings.TrimSpace(t) == terme {
 			return true
 		}
 	}
 	return false
 }
 
-// balayerGoTexte appelle `visiter` pour CHAQUE `.go` du module, avec son contenu. S appuie sur
+// balayerGoTexte appelle `visiter` pour CHAQUE `.go` de l'espace de travail, avec son contenu et son
+// chemin relatif à la racine du dépôt. S appuie sur
 // `balayerGo` (doc_chemins_ai_test.go) : un seul parcours.
 func balayerGoTexte(t *testing.T, visiter func(rel, texte string)) {
 	t.Helper()
-	goAPI, _ := racinesDuModule(t)
-	balayerGo(t, goAPI, func(rel, chemin string) {
+	balayerGo(t, func(rel, chemin string) {
 		buf, err := os.ReadFile(chemin) //nolint:gosec // chemin de test, lecture seule
 		if err != nil {
 			t.Fatalf("lecture de %s : %v", rel, err)

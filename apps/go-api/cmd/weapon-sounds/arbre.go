@@ -18,7 +18,7 @@ import (
 	"os"
 	"sort"
 
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 // nomsTypesHIRC : nomenclature Wwise des objets de la hierarchie.

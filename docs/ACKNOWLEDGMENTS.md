@@ -18,6 +18,6 @@ art we learned from, not code we ship:
   services, and the import path for OpenSpartan data.
 - **Gravemind2401** ([Gravemind2401](https://github.com/Gravemind2401)) for [Reclaimer](https://github.com/Gravemind2401/Reclaimer) —
   its reading of the Halo map file formats is the reference behind our geometry decoder
-  (`apps/go-api/internal/himap/`: SBSP sections, mesh filters, SDDT groups).
+  (`libs/himap/himap/`: SBSP sections, mesh filters, SDDT groups).
 
 If you use this project, consider starring the upstream projects too.

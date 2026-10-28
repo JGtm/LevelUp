@@ -86,8 +86,9 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
-	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
+
+	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 )
 
 const (

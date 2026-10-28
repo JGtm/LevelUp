@@ -24,7 +24,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
+	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 )
 
 // p2aPeriode est un intervalle pendant lequel UN slot ti=13 est le seul a monter.

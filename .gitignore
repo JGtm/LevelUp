@@ -354,23 +354,23 @@ tools/ce/*.bin
 tools/ce/*.csv
 
 # .ai/archive/V7.5/dumps/ : sorties de recherche et extraits du jeu, hors du depot (NOTICE par. 4).
-# Les fixtures de test des cartes vivent hors de .ai, sous internal/testfixtures/testdata/cartes/ :
-# le dossier mapvar/ y sert aussi de cache local des variantes (.mvar) re-telechargeables, dont
+# Les fixtures de test des cartes vivent hors de .ai : les .mvar dans le testdata/ de la brique
+# mapvar (qui les possede ; une seule copie), le reste sous internal/testfixtures/testdata/cartes/.
+# Le testdata/ de mapvar sert aussi de cache local des variantes (.mvar) re-telechargeables, dont
 # seules trois sont suivies, comme temoins de test. Le resultat extrait est versionne dans
 # data/titles/{slug}/reference/map_objectives.json — c'est lui qui fait foi.
 .ai/archive/V7.5/dumps/*
-apps/go-api/internal/testfixtures/testdata/cartes/mapvar/*
-!apps/go-api/internal/testfixtures/testdata/cartes/mapvar/cliffhanger_map.mvar
-!apps/go-api/internal/testfixtures/testdata/cartes/mapvar/cliffhanger_ridgeline.mvar
-!apps/go-api/internal/testfixtures/testdata/cartes/mapvar/vagabond_fo08_wetland.mvar
+libs/gamefiles/mapvar/testdata/*.mvar
+!libs/gamefiles/mapvar/testdata/cliffhanger_map.mvar
+!libs/gamefiles/mapvar/testdata/cliffhanger_ridgeline.mvar
+!libs/gamefiles/mapvar/testdata/vagabond_fo08_wetland.mvar
 
 # Caches Go de build des agents (scratch, jamais versionnes)
 .gocache-*/
 
-# Artefacts ecrits par le corpus gamefiles de internal/himap (gate visuel, planches de
-# revue). Ils sont REGENERES a chaque run et ne doivent pas entrer dans le depot ; le seul
-# PNG versionne de ce dossier est `coupe.png`, qui est une reference, pas une sortie.
-apps/go-api/internal/himap/gate.png
+# Artefact ecrit par le gate visuel du corpus gamefiles (`internal/gamefilescorpus`),
+# regenere a chaque run, ne doit pas entrer dans le depot.
+apps/go-api/internal/gamefilescorpus/gate.png
 data/global/player_friends.json
 
 # Sorties de decompilation du jeu (Ghidra) : propriete de Microsoft, jamais versionnees

@@ -25,9 +25,11 @@ import (
 	"time"
 
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
-	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
-	"levelup/go-api/internal/himap"
-	"levelup/go-api/internal/hinavmesh"
+
+	"github.com/JGtm/LevelUp/libs/himap/himap"
+
+	"github.com/JGtm/LevelUp/libs/gamefiles/hinavmesh"
+	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 )
 
 // sourceCuisson documente la chaîne dans chaque sidecar.

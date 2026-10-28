@@ -4,8 +4,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 	"levelup/go-api/internal/testutil"
+
+	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 )
 
 // flag_spawn_neutral_label_test.go — LE LABEL TRANCHE LA NEUTRALITE D'UN SOCLE DE DRAPEAU,

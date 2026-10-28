@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	"levelup/go-api/internal/himap"
+	"github.com/JGtm/LevelUp/libs/himap/himap"
 )
 
 // cmdRender rend un vehi (ou tous) en PNG teintable dans -out.

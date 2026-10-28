@@ -1,0 +1,743 @@
+# Plan D1 — Découplage des briques : « fichiers du jeu » et « images de carte » — 2026-10-28
+
+Source : `.ai/AUDIT_DECOUPLAGE_BRIQUES_2026-10-27.md` (axe D1 + garde-fou G + décision 1
+« modules Go dans le même dépôt »), complété par la vérification du 2026-10-28 (addendum de
+l'audit). Exécution sous le contrat du skill `plan-execution` : ordre strict, un lot à la fois,
+gate passé avant le lot suivant, chaque item statué `[x]` / `[~]` (référence) / `[!]`
+(justification écrite), zéro fix hors périmètre (section « Découvertes » en fin de fichier).
+
+## Objectif et critère de succès
+
+Deux modules Go sous `libs/`, reliés à `apps/go-api` par un `go.work` à la racine du dépôt :
+
+| Module | Paquets | Importe |
+|---|---|---|
+| `libs/gamefiles` | `himodule`, `ooz`, `hinavmesh`, `mapvar` | rien du dépôt |
+| `libs/himap` | `himap` | `libs/gamefiles` seulement |
+
+Succès = (1) `go list -deps` de chaque module ne montre aucun paquet `levelup/go-api/...` ;
+(2) un ratchet `archlint` tient cette liste fermée et son allowlist de départ est vide à la
+clôture ; (3) CI verte, image Docker construite, `make go-api-test-gamefiles` vert ; (4) les cinq
+fonds déjà publiés recuits sont identiques à l'octet (Dredge WebP, Arrival, Beaver Canyon,
+Perdition, Timberland Evolved PNG — protocole du journal du 2026-10-26).
+
+Effort estimé : 3 jours (l'audit disait ~1 jour : il ne comptait ni l'infrastructure multi-module
+ni les tests de la brique couplés à LevelUp). Aucune réécriture d'algorithme.
+
+## Branches
+
+- Lot 0 : `fix/ratchet-chemins-ai` depuis `release/v8.1.0` (préalable, PR séparée).
+- Lots 1 à 5 : `refactor/decouplage-d1-fichiers-du-jeu` depuis `release/v8.1.0`, worktree
+  dédié, N commits (un par lot), fusion par PR dans `release/v8.1.0` (jamais sur `main`
+  directement : push `main` = déploiement prod).
+
+## Décisions tranchées avant exécution
+
+Prises par le pilote sur pièces le 2026-10-28 ; l'utilisateur a corrigé D1-A (dépôt JGtm) et
+délégué les autres au pilote le 2026-10-28 (message : « je te laisse prendre la meilleure
+décision ») — elles sont FERMES :
+
+- **D1-A — Chemin de module** : `github.com/JGtm/LevelUp/libs/gamefiles` et
+  `github.com/JGtm/LevelUp/libs/himap` (dépôt principal `origin` ; le remote `fork` ChaseWoodhams
+  n'est pas la référence — confirmé par l'utilisateur le 2026-10-28). Raison : la décision 1 de
+  l'audit veut des modules « importables de l'extérieur par tag » ; un chemin fictif comme
+  `levelup/go-api` ne se résout pas depuis un autre dépôt. `apps/go-api` garde `levelup/go-api`.
+  Si le chemin du dépôt change (migration d'organisation), les deux `go.mod` changent avec.
+- **D1-B — Deux modules, pas un** : conforme à l'audit (brique de rang inférieur « fichiers du
+  jeu » commune à D1 et D2 ; D2 ne doit jamais tirer `himap`, 12 500 lignes).
+- **D1-C — `himap` n'importe plus `internal/i18n`** : `himap.LexiqueLieux` rend
+  `map[uint32]map[string]string` (code de langue → texte, les codes tels que le jeu les nomme) ;
+  le seul appelant, `cmd/mapcallouts-build/main.go:180`, convertit en `i18n.Text`. Oubli de
+  l'audit (il affirmait « himap n'importe que himodule, hinavmesh, ooz et mapvar »).
+- **D1-D — Tests d'une brique couplés à LevelUp = tests de LevelUp**. Un module séparé ne PEUT
+  PAS importer `levelup/go-api/internal/...` (règle Go des `internal/`), tests compris. Les tests
+  de `himap` qui lisent les données de LevelUp (`data/titles/.../map_objectives.json` via
+  `replay.LoadMapObjectives`, `data/cache/mvar`, `data/cache/replays`, `internal/testfixtures`,
+  `internal/testutil`) déménagent dans un paquet de tests seuls
+  `apps/go-api/internal/gamefilescorpus/` (tag `gamefiles`, suffixe `_gamefiles_test.go`,
+  ratchet `gamefiles_tag_test`). Fichiers concernés (relevé du 2026-10-28, à rouvrir à
+  l'exécution) : `carte_ancres_gamefiles_test.go`, `carte_balayage_gamefiles_test.go`,
+  `preuve_regions_livefire_gamefiles_test.go`, `rendu_forge_gamefiles_test.go`,
+  `sonde_toits_gamefiles_test.go`, `uslg_gamefiles_test.go`, `origine_typage_gamefiles_test.go`,
+  `carte_gate_gamefiles_test.go`, `cloture_gamefiles_test.go`, `physique_sonde_gamefiles_test.go`,
+  `rendu_gamefiles_test.go`, `sddt_gamefiles_test.go`, `sonde_stse_gamefiles_test.go` (himap, 14) ;
+  `hinavmesh/oracle_ancres_test.go` ; `mapvar/cb2_fuzz_test.go`, `mapvar/mapvar_test.go` — la liste
+  exacte est l'allowlist d'`archlint/briques_imports_test.go`. S'y ajoutent, sans import LevelUp
+  mais lisant `data/` par `cheminDepuisDepot` : `carte_oracle_gamefiles_test.go`, `cle_forge_test.go`,
+  `sonde_levelid_cache_gamefiles_test.go`. **Fixtures** : `testfixtures.Carte` pointe
+  `internal/testfixtures/testdata/cartes/mapvar/*.mvar`, lues AUSSI par `mapcatalog`, `mapdecoupe`,
+  `cmd/levelup`, `cmd/mapobj-build` : elles restent côté LevelUp ; un test du LECTEUR (`mapvar`,
+  `hinavmesh`) qui en a besoin reçoit sa copie dans le `testdata/` de la brique (une seule copie
+  par fichier, règle 6 : deux copies tolérées), un test de himap couplé aux données déménage. Les tests qui n'ont besoin que du
+  jeu installé et de `testdata/` restent dans la brique. Un test qui exerce une fonction NON
+  exportée de `himap` et lit des données LevelUp : exporter la fonction si elle est un vrai
+  contrat, sinon réécrire le test sur l'API exportée — jamais de copie des données dans la brique.
+- **D1-E — Docker et CI passent en mode espace de travail** : `go.work` et `go.work.sum` sont
+  versionnés et copiés dans l'image ; aucune directive `replace` dans `apps/go-api/go.mod`
+  (`go mod tidy` en mode `go.work` y inscrit une version `v0.0.0-00010101000000-000000000000`
+  pour chaque module local : c'est attendu, ne pas la « corriger »).
+- **D1-F — Ratchets `archlint` à règle générale** : leur racine devient l'espace de travail
+  (`apps/go-api` + `libs/**`) via un helper unique `workspaceGoSources` à côté de
+  `goSourcesUnder` (règle 6 : pas de 3e parcours de fichiers). Les ratchets propres au film ou à
+  `go-api` restent sur `apiModuleRoot`. Les ratchets propres au décodeur qui citaient `mapvar`
+  perdent leur entrée (il n'est plus un paquet du décodeur).
+- **D1-G — Non retenu** : renommer la variable d'environnement `LEVELUP_HALO_DEPLOY`
+  (`himap/deploy_root.go`). Les briques restent des bibliothèques du projet LevelUp.
+- **D1-H — ADR 0041** (EN seulement) : « Go modules under libs/ linked by go.work » — forme
+  cible, critère d'autonomie, règle d'import, étiquetage `libs/<brique>/vX.Y.Z`, interdiction des
+  données extraites du jeu dans une brique. Rédigé au lot 3, pas après.
+
+---
+
+## Lot 0 — Préalable : CI de la branche de base au vert
+
+Deux constats du 2026-10-28, hors périmètre de D1 mais bloquants pour une CI verte :
+
+- Le ratchet `archlint/doc_chemins_ai_test.go` est ROUGE dans l'arbre de travail local : le
+  déplacement de `.ai/PLAN_I18N_MULTILANGUE.md` vers `.ai/V8/` est fait mais NON commité
+  (`git status` : D + ??), et deux citations dans le code pointent encore l'ancien chemin. Le
+  jour où ce déplacement sera commité sans les citations, la CI rougira.
+- La CI de `release/v8.1.0` est déjà ROUGE (trois derniers runs) côté web : garde-rails
+  `no-locale-literal-comparison.guard.test.ts` et `no-intl-tag-literal.guard.test.ts` en échec,
+  plus des dépassements de 5 s. Cela relève du chantier i18n (ADR 0040), pas de D1 ; mais une PR
+  D1 hérite de ce rouge. Un lot ne se clôt pas sur une CI rouge, même héritée (mémoire « tout
+  rouge se répare »).
+
+- [x] 0.1 `internal/archlint/i18n_messages_test.go:2` : citer `.ai/V8/PLAN_I18N_MULTILANGUE.md`.
+- [x] 0.2 `internal/archlint/no_locale_literal_test.go:10` : idem. Relevé complet du 2026-10-28 : cinq
+  autres citations hors Go corrigées dans le même geste (`apps/web/src/lib/i18n/localeKeyedObjects.testutil.ts`,
+  `apps/web/src/lib/i18n/no-locale-literal-comparison.guard.test.ts`, `docs/adr/0040-i18n-n-locales.md`,
+  `docs/FOUNDATIONS_GUIDE.md`, `docs/FR/FOUNDATIONS_GUIDE.md`) : même cause, même commit.
+- [x] 0.3 Commiter le déplacement de `.ai/PLAN_I18N_MULTILANGUE.md` vers `.ai/V8/` AVEC 0.1 et 0.2
+  (même commit).
+- [x] 0.4 (clos le 2026-10-28 : PR #110 mise à jour sur la release, CI verte, fusion squash `2f033c36c` ; branche et worktree `LevelUp-wt-chemins-ai` supprimés) Gate : `go test ./internal/archlint/ -run TestCheminsAiCitesDansLeCodeExistent -count=1`
+  vert (fait le 2026-10-28, worktree `LevelUp-wt-chemins-ai`, branche `fix/ratchet-chemins-ai`,
+  7 fichiers + 1 déplacement prêts) ; commit sur accord de l'utilisateur, PR vers `release/v8.1.0`,
+  fusion (squash) — RESTE À FAIRE.
+- [x] 0.5 Rouge web de la base : corrigé dans le chantier i18n (run CI « fix(ci): délai unique des garde-rails » vert sur `release/v8.1.0`, constaté le 2026-10-28) ; D1 peut pousser. : traité dans le chantier i18n (branche à part, pas dans D1) ; D1
+  ne pousse son premier lot qu'une fois `gh run list --branch release/v8.1.0 --limit 1` vert,
+  ou rebase sa branche sur le correctif.
+
+**Clos quand** : 0.4 fusionné et 0.5 constaté (CI de `release/v8.1.0` verte).
+
+## Lot 1 — Garde-fou G posé AVANT tout déplacement
+
+Fichier : `internal/archlint/briques_imports_test.go`. Une table unique
+`brique → {paquets de la brique} + {imports permis hors de la brique}` (règle 6 de CLAUDE.md :
+une table, pas un fichier par brique), lue par `goSourcesUnder` au lot 1 et par
+`workspaceGoSources` à partir du lot 3. Un import hors liste rougit avec le fichier, la ligne et
+le paquet. Allowlist DATÉE des coupes restantes, qui doit finir vide à la clôture du lot 4.
+
+- [x] 1.1 Table des briques à la pose : `gamefiles` = {`internal/himodule`, `internal/ooz`,
+  `internal/hinavmesh`, `internal/games/halo_infinite/film/replay/mapvar`}, imports permis hors
+  brique = aucun ; `himap` = {`internal/himap`}, imports permis = la brique `gamefiles`.
+- [x] 1.2 Allowlist de départ (datée 2026-10-28, chaque entrée avec le lot qui la vide) :
+  `internal/himap/uslg.go` → `internal/i18n` (lot 2). Seule coupe de PRODUCTION (vérifié par
+  `go list -deps` le 2026-10-28).
+- [x] 1.3 Les fichiers de test de la brique sont AUSSI contrôlés (règle D1-D), même allowlist
+  datée : SEIZE fichiers de test (relevé par parse des imports le 2026-10-28, et non dix comme
+  l'audit le laissait croire) → `film/replay` (5), `i18n` (1), `testfixtures` (8, dont 2 de `mapvar`),
+  `testutil` (2, dont 1 de `hinavmesh`) ; tous « lot 2, D1-D ». `himodule` et `mapvar` importés par les tests de `himap` sont permis (même rang ou
+  rang inférieur).
+- [x] 1.4 Auto-preuve : un extrait synthétique qui importe `internal/analysis` depuis un fichier
+  présenté comme `internal/himap/x.go` rougit (patron `parseGoSnippet` existant).
+- [x] 1.5 Gate : `go test ./internal/archlint/ -run TestBriquesImports -count=1` vert (3 tests :
+  contrôle, auto-preuve, cohérence de table) ; `go vet ./internal/archlint/` vert ; mutation : entrée
+  `uslg.go` retirée → rouge « [himap] internal/himap/uslg.go -> levelup/go-api/internal/i18n »,
+  entrée remise → vert (2026-10-28).
+
+**Clos quand** : 1.5 passé, commit « test(archlint): garde-fou d'autonomie des briques (D1) ».
+
+## Lot 2 — Coupes dans le module actuel (sans déplacement de paquet)
+
+Tout se fait encore sous `apps/go-api` : les coupes sont séparées du déménagement pour que les
+diffs restent lisibles et que la recuisson témoin puisse être rejouée entre les deux.
+
+- [x] 2.1 `himap/uslg.go` : `LexiqueLieux` et `lexiqueDUnTag` rendent
+  `map[uint32]map[string]string` ; import `internal/i18n` retiré. Le texte EN/FR lu dans le jeu
+  n'a pas à connaître la liste des langues de LevelUp. Fait le 2026-10-28 : les clés sont les
+  étiquettes du jeu, constantes exportées `CodeLangueEN = "en-US"` / `CodeLangueFR = "fr-FR"`
+  (table `codesLangues` index du jeu -> code ; helper `codeDuSlot`).
+- [x] 2.2 `cmd/mapcallouts-build/main.go` : conversion vers `i18n.Text` au point d'appel.
+  Fait : `versTextes` (lexique.go) traduit chaque code par `i18n.FromHaloTag` (l'étiquette Halo de
+  `config/locales.toml`, aucun repli binaire fr/en) ; un code inconnu est compté et journalisé
+  (`slog.Warn`), jamais rangé sous une autre langue. Test : `TestVersTextesTraduitLesCodesDuJeu`.
+- [x] 2.3 `himap/uslg_gamefiles_test.go` : adapté au nouveau type (clés `CodeLangueEN/FR`).
+  SCINDÉ : les deux tests qui n'exigent que le jeu restent dans la brique ; `TestLexiqueLieuxReproduitLeFichierVersionne`
+  (lit `callouts_lexique.csv`, donnée de LevelUp) passe dans `gamefilescorpus/uslg_gamefiles_test.go`
+  et compare par `i18n.FromHaloTag(himap.CodeLangue*)`.
+- [x] 2.4 `apps/go-api/internal/gamefilescorpus/` créé (tests seuls). RELEVÉ FERMÉ du 2026-10-28
+  (le grep du plan est insuffisant : il manquait les fichiers qui n'importent rien mais appellent
+  un helper de données défini dans un autre fichier de test ; relevé fait par graphe de
+  dépendances des helpers de test + compilation, voir « Découvertes » 1). Sort de chaque fichier :
+  - DÉPLACÉS vers `gamefilescorpus/` (`git mv`, API exportée de `himap`) : `carte_ancres`,
+    `carte_balayage`, `carte_gamefiles`, `carte_gate`, `carte_livefire`, `carte_oracle`, `carte_trous`,
+    `canevas_forge`, `balayage_coquille`, `choix_bsp_gamefiles`, `cuisson_navmesh`, `preuve_regions_livefire`,
+    `rendu` (gamefiles), `rendu_carte`, `rendu_forge`, `sonde_bsp_choix`, `sonde_toits`,
+    `sonde_levelid_cache`, `origine_typage`, `origine_fosp`, `cle_forge_test`, `chemin_depot_test`
+    (copie : l'original reste dans la brique).
+  - SCINDÉS : `uslg_gamefiles` (2 tests restent, 1 déménage), `cloture_gamefiles` (`TestClotureCliffhanger`
+    lit le champ interne `Rendu.z` : reste ; `TestCoquilleEnXY*` -> `gamefilescorpus/coquille_xy_gamefiles_test.go`),
+    `hinavmesh/oracle_ancres_test.go` (`decodeTemoin` reste dans `hinavmesh/temoin_test.go` ; les trois
+    `TestOracle*` -> `gamefilescorpus/navmesh_ancres_test.go` ; les deux blobs navmesh, 462 537 octets, avaient été
+    copiés dans `gamefilescorpus/testdata/` au lot 2, puis ramenés à UNE copie, celle de `hinavmesh/testdata/`, au lot 2b : 2.10).
+  - RESTÉS dans la brique, sans import LevelUp : `sddt` (champs internes `Rendu.z/n`), `physique_sonde`, `sonde_stse`
+    (carte de référence `carte_validee_v1.png`, 618 987 octets, dans `himap/testdata/` — copie unique depuis le lot 2b : 2.11 —,
+    constante `fixtureCarteValidee`), `filtres_reclaimer`, `sonde_bouillie`, `sonde_forge_saut`, `sonde_locs` (exercent ~35 internes
+    non exportés : tags sbsp/instances/forge, index Forge) ; leurs oracles du dépôt hôte (catalogue d'objectifs, rejeu)
+    passent par `himap/oracles_depot_gamefiles_test.go` (parseur local, `cheminDepuisDepot`, test sauté si absent).
+    Autres restés : `depot_variantes`, `sonde_forge`, `sonde_forge_mvar`, `sonde_canevas_orphelines`,
+    `sonde_levelid` (lisent `.ai/re_dump` par la constante exportée `DepotVariantesCarte`, convention de la brique),
+    `filtres_reclaimer_offsets`, `maillage_sain`, `callouts`, etc. (jeu installé seul).
+  - `mapvar/mapvar_test.go`, `mapvar/cb2_fuzz_test.go` : lisent `testdata/` (les 3 `.mvar` : 195 869 octets, copie unique depuis le lot 2b : 2.9) ;
+    plus aucun import `testfixtures`.
+  - EXPORT UNIQUE ajouté : `himap.PeupleDepuisModule` (première étape de `CuitCarteNative`, documentée), pour
+    `rendu_carte` et `sonde_toits`.
+- [x] 2.5 Helpers dupliqués UNE fois (deux copies) : `gamefilescorpus/aides_himap_gamefiles_test.go`
+  (gate*, moduleDuJeu, moduleAny, mediane, part, orig*, itoaSimple, indexLevlInstalle, dossiersDistincts),
+  copies de `rendu_diff_gamefiles_test.go` et `depot_variantes_gamefiles_test.go` ; côté brique
+  `himap/aides_corpus_gamefiles_test.go` (ecritPNG, mesureAncresToits, chainesLisibles). Aucun paquet d'aides commun.
+- [x] 2.6 `Makefile` (cible `go-api-test-gamefiles` : `./internal/gamefilescorpus/`), `.github/workflows/ci.yml`
+  (`go vet -tags=gamefiles`), `docs/COMMANDS.md` et `docs/FR/COMMANDS.md` mis à jour ; `TestCibleMakefileGamefilesCouvreLeCorpus` vert.
+  Ratchets ajustés avec justification datée : `no_repo_root_walk_test.go` (clé de `carte_oracle` déplacée),
+  `i18n_locale_constant_test.go` (plafond 39 -> 37, cliquet descendant).
+- [x] 2.7 `importsToleres` vidée (map vide, commentaire « VIDÉE LE 2026-10-28 (lot 2) ») ; `TestBriquesImports` vert.
+- [x] 2.8 Gate passé le 2026-10-28 (sorties dans le journal) : archlint, himap, hinavmesh, mapvar, mapcallouts-build,
+  gamefilescorpus verts ; corpus gamefiles : mêmes issues qu'avant le lot (ensemble de 191 tests comparé à la base :
+  9 échecs identiques, voir journal) ; `go list -deps` = himap, himodule, hinavmesh, ooz, mapvar ; témoins avant/après
+  du lexique identiques (md5).
+
+- [x] 2.9 Lot 2b, décision du pilote (2026-10-28) : UNE SEULE COPIE par fichier binaire, possédée par la brique qui
+  le LIT, lue par LevelUp par chemin depuis la racine du dépôt (jamais `../` entre paquets). `.mvar` (3 fichiers,
+  195 869 octets) : copie de `mapvar/testdata/` gardée, copie `testfixtures/testdata/cartes/mapvar/` supprimée (`git rm`) ;
+  `testfixtures.Carte("mapvar", nom)` résout vers `testfixtures.MapvarFixturesDir` (constante unique ; au lot 3 :
+  `libs/gamefiles/mapvar/testdata`). Lecteurs vérifiés : `cmd/levelup` (backfill callouts), `cmd/mapobj-build` (refresh,
+  variant), `internal/mapcatalog`, `cmd/mapcallouts-build` (défaut de `-forge-cache` : `cacheVariantesParDefaut`, chemin
+  de la brique, sans importer `testfixtures`) ; `mapdecoupe` ne lit que le JSON de LevelUp (inchangé, reste dans
+  `testfixtures/testdata/cartes/`) ; `gamefilescorpus` ne lit pas de `.mvar`. `.gitignore` : règle `mapvar/*` déplacée sur
+  `mapvar/testdata/*.mvar` (3 exceptions suivies ; le `fuzz/` n'est pas touché) ; `NOTICE` : chemins corrigés.
+  md5 avant = après : `66d06d7be92847c5ff137a3f52c6424e` cliffhanger_map, `278c4e9e196774c941e3053c9bbe852e`
+  cliffhanger_ridgeline, `659e35845c2fab7fb4f1a5d82bc9692b` vagabond_fo08_wetland.
+- [x] 2.10 Blobs navmesh (2 fichiers, 462 537 octets) : copie de `hinavmesh/testdata/` gardée, copie
+  `gamefilescorpus/testdata/` supprimée (`git rm`) ; `gamefilescorpus` les lit par `testfixtures.Navmesh(assetID)`
+  (constante `NavmeshFixturesDir`) dans `cuisson_navmesh_gamefiles_test.go` (qui lisait `../hinavmesh/testdata`) et
+  `navmesh_ancres_test.go` (`decodeTemoin`). md5 avant = après : `aee118d183ef4107d60aa2a8e3921f16` (01af558d-...),
+  `5261e8c36f80389a9cdb16643620ac59` (df7dbf08-...).
+- [x] 2.11 `carte_validee_v1.png` (618 987 octets) : copie de `himap/testdata/` gardée (test de la brique
+  `calage_banc_test.go`/`fixtureCarteValidee`), copie `testfixtures/testdata/cartes/` supprimée (`git rm`) ; les trois
+  tests de `gamefilescorpus` (`carte_gate`, `coquille_xy`, `rendu`) la lisent par `testfixtures.CarteValidee()`
+  (constante `CarteValideeFixturesDir`). `domain/title/registry.go`, `replay/map_background.go`, `himap/fond_png.go` ne la
+  citent qu'en commentaire : vérifié, non touchés. md5 avant = après : `4bb575ed09ff4fb6f8e7675d0224e193`.
+  `testfixtures/testdata/cartes/` ne garde que `callout_zones_ridgeline_clipped.json` (fixture de LevelUp, non déplacée).
+  Gate du lot 2b (2026-10-28) : voir le journal.
+
+Lot 2c (2026-10-28) — DÉCISION UTILISATEUR (option 2) : les sondes de rétro-ingénierie des briques `himap`,
+`hinavmesh`, `mapvar` qui lisent `.ai/re_dump` ou les données du dépôt hôte sont CONSERVÉES comme
+INSTRUMENTS DE RECHERCHE sous le tag `research`, jamais supprimées ; elles sortent du build par défaut ET
+de la suite `gamefiles` et tournent à la demande. Critère de tri, test par test : « lit `.ai/re_dump`, ou
+une donnée du dépôt hôte (`data/...`, `callouts_i18n.csv`, cache de rejeu) » => instrument ; « le jeu seul
+suffit » => reste sous `gamefiles` (jamais taguée : une garde ne se tague pas).
+
+- [x] 2.12 Convention + ratchets. Un instrument qui n'ouvre pas le jeu : `<nom>_research_test.go`,
+  `//go:build research`. Un instrument qui l'ouvre (`DeployRoot(`, `LevelsDir(`, `ChercheModuleInstalle(`) :
+  `<nom>_research_test.go`, `//go:build gamefiles && research`. Helpers communs aux seuls instruments :
+  compagnons `*_research_test.go` tagués `research`. Ratchets (chacun vu rouge par mutation, puis vert) :
+  `gamefiles_tag_test.go` (règle `appelSansDeclarerGamefiles` : un `*_research_test.go` dont la contrainte
+  porte `gamefiles` ET `research` en conjonction est accepté ; `research` seul, disjonction, négation ou
+  non-`_research_test.go` restent refusés ; doc de tête datée avec la raison ; auto-preuve
+  `TestInstrumentQuiOuvreLeJeuDeclareGamefiles` sur 9 sources synthétiques ; mutation réelle : première
+  ligne de `cloture_research_test.go` ramenée à `//go:build research` => rouge) ; `research_tag_test.go`
+  (`contrainteAvecTerme` partagée, `contrainteResearch` en dérive ; plancher 383 -> 412, +29 fichiers
+  comptés par `find` : 525 -> 554 `*_research_test.go`) ; `pas_de_lecture_sous_ai_test.go` (13 entrées
+  retirées, 2 helpers ajoutés, plafond 27 -> 16, noms `sonde_forge*` mis à jour) ; `film_file_size_test.go`
+  (clé `mapvar/noms_lieux_hunt_research_test.go`, plafond 627 inchangé, le fichier a diminué) ;
+  `no_repo_root_walk_test.go` : aucune entrée ne citait ces fichiers (grep) => [~] sans changement.
+- [x] 2.13 Renommages (`git mv`), liste fermée vérifiée fichier par fichier (ancien -> nouveau [contrainte]) :
+  `himap/` — `sonde_forge_gamefiles_test.go` -> `sonde_forge_research_test.go` [g&r, 4 tests] ;
+  `sonde_forge_mvar_gamefiles_test.go` -> `sonde_forge_mvar_research_test.go` [r, 1] ;
+  `sonde_locs_gamefiles_test.go` -> `sonde_locs_research_test.go` [g&r, 11 ; les 7 chemins absolus périmés et les
+  2 `..` relatifs remplacés par `dossierDeVariantes(t)` / `cheminCalloutsI18n(t)` ; `moduleGlobals` rendu à
+  `sonde_uslg_gamefiles_test.go`, son autre utilisateur] ; `cloture_gamefiles_test.go` -> `cloture_research_test.go` [g&r, 1] ;
+  `sonde_bouillie_…` -> `sonde_bouillie_research_test.go`, `sonde_forge_saut_…` -> `sonde_forge_saut_research_test.go` [g&r, 1 chacun] ;
+  helpers : `depot_variantes_…` -> `depot_variantes_research_test.go` [r, + `dossierDeVariantes`],
+  `oracles_depot_…` -> `oracles_depot_research_test.go` [r, + `cheminCalloutsI18n`], `chemin_depot_test.go` ->
+  `chemin_depot_research_test.go` [r] (la constante `fixtureCarteValidee`, utilisée par des tests `gamefiles`, passe dans
+  `fixture_carte_validee_test.go`, non tagué). NON LISTÉS PAR LE RELEVÉ mais lisant le dump (rouverts, entrés au lot) :
+  `maillage_sain_gamefiles_test.go` -> `maillage_sain_research_test.go` [g&r, 2], `sonde_canevas_orphelines_…` ->
+  `sonde_canevas_orphelines_research_test.go` [g&r, 1], `sonde_levelid_…` -> `sonde_levelid_research_test.go` [g&r,
+  `TestPreuveLevelIDCartes` + helpers d'index, qui n'ont pas d'autre utilisateur]. SCINDÉS : `sddt_gamefiles_test.go`
+  (`TestSddtOracleCliffhanger`, `TestBancCliffhanger` -> `sddt_research_test.go` [g&r] ; `TestSddtLecture` et
+  `TestSddtBalayageEau` restent) ; `physique_sonde_gamefiles_test.go` (`TestSondePhysiqueRendu` + `itemRendu` ->
+  `physique_sonde_research_test.go` [g&r] ; `TestSondePhysique` et `TestSondePhysiqueResolution` restent) ;
+  `filtres_reclaimer_gamefiles_test.go` (`TestFiltresReclaimerNatives`, `TestFiltresReclaimerIsolation` et leurs 8 helpers ->
+  `filtres_reclaimer_research_test.go` [g&r] ; `TestBalayageDrapeauxInstances` reste, avec `assetsNatifs`/`indexDeCarte`).
+  RESTÉS SOUS `gamefiles` après vérification (le jeu seul suffit, aucune donnée du dépôt) : `filtres_reclaimer_drapeau_…`,
+  `filtres_reclaimer_offsets_…` (`TestPluginDrapeauxDeFiltre` est une vraie garde sur le plugin embarqué).
+  `hinavmesh/` — `chaines_tstr_test.go`, `sonde_{compare,format,membres_navmesh,racines,resync,sections,tbdy}_test.go`
+  -> `*_research_test.go` [r, 1 test chacun] + `depot_research_test.go` [r, `racineDumpNavmesh`, remplace 8 chemins
+  absolus périmés]. `mapvar/` — `categorie_test.go`, `champ6_test.go`, `lieux_test.go` (2), `noms_lieux_hunt_test.go` (6)
+  -> `*_research_test.go` [r] + `depot_research_test.go` [r, `cheminDump`, remplace 4 chemins absolus périmés].
+  Hors lot, intacts : `himap/deploy_root_test.go` (découverte 4, lot 3), `gamefilescorpus`. Les noms cités plus haut (2.4,
+  2.5, découvertes 1 à 6) sont ceux d'AVANT le lot 2c.
+- [x] 2.14 CI et docs : `.github/workflows/ci.yml` pas « go vet (corpus gamefiles) » : ligne
+  `go vet -tags=gamefiles,research ./internal/himap/ ./internal/hinavmesh/ ./internal/games/halo_infinite/film/replay/mapvar/`
+  + commentaire ; `go vet -tags=research ./...` n'est pas cassé (les fichiers `gamefiles && research` en sont exclus,
+  voulu, dit dans le commentaire ; `go vet -tags=research` vérifié sur les trois paquets + archlint). `docs/COMMANDS.md`
+  et `docs/FR/COMMANDS.md` : paragraphe « instruments de recherche des briques » + compte des `*_gamefiles_test.go` de
+  `himap` (45 -> 34) + `TestBancCliffhanger` (rouge connu) signalé comme instrument. Ratchets `ci_*_test.go` verts
+  (suite archlint complète verte). Commentaires de code qui citaient les anciens noms corrigés (`cuisson_forge.go`,
+  `calage_banc_test.go`, `cmd/mapquant-build/main.go`).
+- [x] 2.15 Témoins (scratchpad `temoins_lot2c_*`). AVANT/APRÈS sur `-tags=gamefiles ./internal/himap/` : les tests restés
+  ont les MÊMES verdicts ; 28 tests ont quitté la suite, exactement ceux des fichiers renommés/scindés (8 FAIL du rouge
+  connu `.ai/re_dump` absent, 8 PASS, 12 SKIP) ; le paquet passe de FAIL à ok (les 8 rouges étaient tous des
+  instruments). `hinavmesh` : 8 tests sortis (8 SKIP). `mapvar` : 10 sortis (3 PASS, 7 SKIP). Instruments sous
+  `-tags=gamefiles,research` : les 28 compilent et tournent, mêmes 8 FAIL (dump absent) ; 3 PASS vides d'avant
+  (`TestStringIDsDuMvarContreVocabulaireCallouts`, `TestZonesNommeesIsolationDetail`, `TestEntiersDuMvarContreVocabulaireLocs` :
+  l'ancien chemin absolu périmé faisait `continue` sur tout) deviennent SKIP honnêtes. Voir le journal.
+
+**Clos quand** : 2.8 vert, allowlist vide, commit « refactor(himap): coupe i18n et tests couplés
+à LevelUp sortis de la brique (D1) » (commit à la main du pilote).
+
+## Lot 3 — Module `libs/gamefiles` + espace de travail + infrastructure
+
+Un seul lot parce que la CI casse entre la création du module et l'adaptation de l'infra : rien
+n'est poussé entre 3.1 et 3.14.
+
+- [x] 3.1 `go.work` à la racine (`use ./apps/go-api`, `use ./libs/gamefiles`) ; `go.work.sum`
+  versionné ; la ligne `go` des trois `go.mod` égale celle d'`apps/go-api/go.mod` (le ratchet
+  `dockerfile_go_version_test` compare l'image Docker à `apps/go-api/go.mod` : l'étendre aux
+  `go.mod` de `libs/**`).
+- [x] 3.2 `libs/gamefiles/go.mod` (chemin D1-A), `git mv` de `internal/himodule`, `internal/ooz`,
+  `internal/hinavmesh`, `internal/games/halo_infinite/film/replay/mapvar` vers
+  `libs/gamefiles/{himodule,ooz,hinavmesh,mapvar}` (paquets au premier niveau, jamais sous
+  `internal/`, sinon `go-api` ne peut pas les importer). `ooz/NOTICE.md` et les sources C++
+  suivent. `mapvar/testdata/` suit (graines de fuzz, aucun fichier extrait du jeu : vérifier).
+- [x] 3.3 Réécriture des imports dans `apps/go-api` (relevé du 2026-10-28 : `mapvar` importé par
+  14 paquets — `cmd/{mapfond-build,mapobj-build,mapopads-build,vehicle-sprite,weapon-icons-build,zone-attribution}`,
+  `internal/{archlint,himap,mapcatalog,replaybuild,games/mappings,games/halo_infinite/film/replay,sync/killcollector,sync/replayartifacts}` ;
+  `himodule`/`hinavmesh`/`ooz` par `cmd/{mapfond-build,weapon-icons-build,weapon-sounds}` et
+  `himap`). `sed` sur le préfixe d'import puis `gofmt`/`goimports` ; `go mod tidy` dans
+  `apps/go-api` (version `v0.0.0-...` attendue, D1-E).
+- [x] 3.4 `archlint` — entrées à retirer (mapvar n'est plus un paquet du décodeur) :
+  `film_layers_deps_test.go:273-274` (table des couches), `film_file_size_test.go:461`,
+  `pas_de_lecture_sous_ai_test.go:71-74`, `no_raw_film_bytes_outside_source_test.go:222`
+  (+ le commentaire l.57). `film_layers_deps` R3 reste vrai (`replay` garde ses paquets).
+- [x] 3.5 `archlint` — helper `workspaceGoSources(t, roots...)` (racine = dépôt, roots relatifs
+  `apps/go-api`, `libs/gamefiles`, ...). Ratchets à règle générale qui passent dessus (liste
+  fermée, chacun rouvert) : `gamefiles_tag_test.go` (il parcourt `goAPIRoot` l.161 : la brique
+  porte 60+ tests `gamefiles`, il DOIT continuer à les voir), `research_tag_test.go` (3 tests
+  `research` dans `mapvar`), `pas_de_lecture_sous_ai_test.go`, `todo_expiry_test.go`,
+  `no_mojibake_test.go`, `no_accidental_goos_suffix_test.go`, `doc_chemins_ai_test.go`,
+  `briques_imports_test.go` (lot 1). Tout autre appelant d'`apiModuleRoot` est listé par
+  `grep -n 'apiModuleRoot(' internal/archlint/*.go` et annoté dans le journal : « propre à
+  go-api » ou « étendu ». Aucun appelant sans verdict.
+- [x] 3.6 Table du lot 1 : les chemins deviennent ceux de `libs/gamefiles/...` ; la règle « rien
+  du dépôt » s'écrit « aucun import `levelup/go-api/...` ni `.../libs/himap/...` ».
+- [x] 3.7 `Dockerfile` : `WORKDIR` racine d'espace de travail ; `COPY go.work go.work.sum`,
+  `COPY apps/go-api/go.mod apps/go-api/go.sum`, `COPY libs/gamefiles/go.mod` AVANT
+  `go mod download` (cache de couches conservé) ; `COPY libs/ ./libs/` avant les `go build` ;
+  les `go build` restent lancés depuis `apps/go-api`. Le contexte de build est déjà la racine du
+  dépôt (il copie `config/`, `static/`, `docs/`).
+- [x] 3.8 `.github/workflows/ci.yml` : filtre `dorny/paths-filter` (l.137-162) — `go` inclut
+  `libs/**` et `go.work*` ; `web` exclut `libs/**`. Ratchet `ci_paths_filter_test.go` à suivre.
+- [x] 3.9 `ci.yml` — jobs Go : `go vet`/`go test` « sans CGo » (l.419, 482) : ajouter un pas par
+  module (`go test ./... ` depuis `libs/gamefiles` — `./...` ne franchit jamais la frontière d'un
+  module) ; `go vet -tags=gamefiles` (l.450) ; lint `golangci-lint` (l.576, `working-directory`) :
+  un pas supplémentaire sur `libs/gamefiles` avec la même config (copie de `.golangci.yml` ou
+  `--config ../../apps/go-api/.golangci.yml` — vérifier que les règles `path:` relatives tiennent) ;
+  shards (`scripts/ci_go_shard.sh`, `go list -tags=integration ./...` l.51 et `paquets_module.txt`
+  l.810) : les paquets déplacés SORTENT du module `go-api` et donc de la baseline JSONL (mémoire
+  « test renommé = retrait de la baseline ») — ajouter un pas de test par module dans le job de
+  couverture, sans l'inclure dans la baseline du module `go-api`. Ratchets `ci_go_shards_test.go`,
+  `ci_web_reads_go_test.go`, `ci_workflows_security_test.go` verts.
+- [x] 3.10 `release.yml` (l.39-62) et `deploy.yml` : vérifier que le `go build` s'exécute dans
+  l'espace de travail (checkout complet, pas de sparse checkout de `apps/go-api` seul).
+- [x] 3.11 `Makefile` : `go-api-test`, `go-api-lint`, `go-api-coverage`, `gate-push`,
+  `go-api-test-gamefiles` — ajouter les modules `libs/*` là où le périmètre est « tout le Go » ;
+  `docs/COMMANDS.md` (bilingue, FR dans le même commit, règle 15) mis à jour.
+- [x] 3.12 `.golangci.yml` : les règles `path:` qui visaient `internal/games/halo_infinite/film/replay`
+  n'ont plus `mapvar` dedans (rien à faire si aucune règle ne le nommait — vérifier) ; la dette
+  gelée (`--new-from-merge-base`) n'est pas accrue par le déplacement (un fichier déplacé est
+  « nouveau » pour golangci : lancer le lint, corriger ce qui sort ou noter l'exemption datée).
+- [x] 3.13 ADR 0041 rédigé (D1-H) + ligne dans la liste des ADR de `CLAUDE.md` + tableau
+  « Architecture des Données » inchangé ; `docs/ARCHITECTURE_V6.md` : une section « Bricks /
+  libs » (EN + FR).
+- [x] 3.14 Gate : `go build ./...` INTERDIT (mémoire disque) — à la place :
+  `cd apps/go-api && go test ./internal/archlint/ ./internal/himap/ ./internal/games/halo_infinite/film/replay/... ./internal/mapcatalog/ ./internal/replaybuild/ ./internal/sync/... -count=1` ;
+  `cd libs/gamefiles && go test ./... -count=1` ; `go vet -tags=gamefiles ./internal/himap/`
+  depuis `apps/go-api` ; `docker build -t levelup-d1 .` local réussi (ou, si Docker absent du
+  poste, le job CI `docker`/`deploy` sur la branche fait foi — à écrire dans le journal) ;
+  push, CI verte sur TOUS les jobs.
+
+**Clos quand** : 3.14 vert en CI, commit « refactor(libs): module gamefiles (himodule, ooz,
+hinavmesh, mapvar) et espace de travail go.work (D1) ».
+
+### Exécution du lot 3 (2026-10-28, branche `refactor/decouplage-d1-fichiers-du-jeu`, NON commité)
+
+Statuts (le texte des items ci-dessus est celui du plan ; ce bloc dit ce qui a été fait, vérifié sur pièces) :
+
+- [x] 3.1 `go.work` (`go 1.26.10`, `use ./apps/go-api ./libs/gamefiles`) + `go.work.sum` (160 lignes) ; `libs/gamefiles/go.mod`
+  (`require golang.org/x/sys v0.49.0`, SEULE dépendance externe, même version que go-api ; `go mod tidy` dans la brique OK).
+  ÉCART AU PLAN (D1-E) : `go mod tidy` dans `apps/go-api` N'ajoute PAS de `require ...@v0.0.0-00010101000000-...` — il
+  ÉCHOUE (il cherche `github.com/JGtm/LevelUp/libs/gamefiles` sur le réseau, ignore `go.work`). Écrire la ligne à la main
+  est PIRE : `go mod download` et `go list -deps` échouent alors (« unknown revision 000000000000 », même en mode
+  espace de travail). Décision : AUCUN `require` ni `replace` pour un module de l'espace de travail ; `go.mod` de go-api
+  inchangé (il garde `golang.org/x/sys` en direct : `filmproc`, `platform/diskfree`, `platform/filelock`). Conséquence :
+  `go mod tidy` inutilisable dans `apps/go-api` (cible `make tidy` d'`apps/go-api/Makefile` réécrite, ADR 0041 D2).
+  Ratchet étendu : `archlint/dockerfile_go_version_test.go` (`TestGoVersionIdentiqueDansLEspaceDeTravail` + auto-preuve sur 5 défauts)
+  compare `go.work`, chaque `libs/*/go.mod` et `apps/go-api/go.mod`.
+- [x] 3.2 `git mv` des 4 paquets vers `libs/gamefiles/{himodule,ooz,hinavmesh,mapvar}` (64 `.go`, 4 `.cpp`, `.h`, `NOTICE.md`,
+  2 blobs navmesh, 3 `.mvar`, 6 graines de fuzz). Vérifié : aucun fichier extrait de l'installation du jeu ; les `.mvar` et blobs sont
+  des artefacts de rétro-ingénierie déjà versionnés (commentaire de `mapvar_test.go`, `NOTICE` racine), dit dans l'ADR 0041 D5.
+  Tests `*_research_test.go` suivent leurs paquets ; `depot_research_test.go` de `hinavmesh` et `mapvar` restent un par paquet
+  (deux copies tolérées, découverte 12) et remontent vers `.ai/re_dump` depuis `libs/`.
+- [x] 3.3 Imports réécrits : 141 fichiers (relevé par `grep -rl` avant, par répertoire : `cmd/weapon-sounds` 32, `internal/himap` 31 + 13 (mapvar), `internal/games/halo_infinite/film/replay` 27,
+  `internal/mapcatalog` 5, `cmd/mapobj-build` 5, `gamefilescorpus` 3 + 3 + 1, `cmd/mapopads-build` 3, `cmd/zone-attribution` 3, `internal/replaybuild` 3,
+  `internal/games/mappings` 2, `sync/replayartifacts` 2, `cmd/weapon-icons-build` 2 + 1 (ooz), `cmd/mapfond-build` 2, `cmd/vehicle-sprite` 1, `sync/killcollector` 1,
+  `himodule` (tests externes) 4 ; `archlint` n'importait aucun des quatre, contrairement au relevé du plan). `sed` puis `gofmt -w` + `goimports -w`
+  (goimports sépare les chemins à point des chemins sans point : le diff des 141 fichiers ne touche que les imports, vérifié).
+  `testfixtures.MapvarFixturesDir` / `NavmeshFixturesDir`, défaut de `-forge-cache` de `mapcallouts-build`, `.gitignore`, `NOTICE` : nouveaux chemins.
+  Commentaires de 33 fichiers `.go` qui citaient `internal/{himodule,ooz,hinavmesh}` ou `replay/mapvar` : corrigés. `go vet ./...` depuis `libs/gamefiles` vert,
+  `go list -deps ./... | grep -E 'levelup/go-api|libs/himap'` vide.
+  NON PRÉVU PAR LE PLAN mais cassé par le déplacement, traité dans le lot : `cmd/server/licence_gplv3_test.go` ne suivait que les imports du module
+  `levelup/go-api` — après le déplacement il n'aurait plus JAMAIS vu `ooz` (GPLv3) : parcours étendu au module `libs/gamefiles`, `ooz` interdit sous son
+  nouveau chemin, témoin `TestLeParcoursFranchitLeModuleGamefiles` (rouge tant que le parcours ne franchit pas la frontière), mutation jouée
+  (`mapvar` déclaré interdit => rouge avec la chaîne `cmd/server -> internal/ops -> internal/replaybuild -> .../libs/gamefiles/mapvar`).
+- [x] 3.4 Entrées retirées : `film_layers_deps` (`mapvar`), `film_file_size` (`noms_lieux_hunt_research_test.go`), `no_raw_film_bytes_outside_source`
+  (exclusion `mapvar` + exemple du commentaire), `pas_de_lecture_sous_ai` (déplacées sous `libs/gamefiles/...`, plafond 16 inchangé), et — absente du relevé du plan —
+  `no_film_reread` (`sitesZlibAutorises` : `internal/hinavmesh/conteneur.go`, entrée morte sinon).
+- [x] 3.5 Helper `workspaceGoSources(t, roots...)` (+ `workspaceRoot`, `racinesEspaceDeTravail`) dans `go_source_walk_test.go` : renvoie tous les `.go`
+  (tests compris, répertoires invisibles à l'outil Go sautés) en chemins relatifs à la RACINE DU DÉPÔT. Il remplace les parcours maison de
+  `balayerGo` / `balayerTests` / `balayerGoTexte` (donc `gamefiles_tag`, `research_tag`, `doc_chemins_ai`, `pas_de_lecture_sous_ai`) et sert directement
+  `todo_expiry`, `no_mojibake` (périmètre inchangé : `apps/go-api/{cmd,internal}` + `libs/gamefiles`), `no_accidental_goos_suffix`. Les clés d'allowlist de ces ratchets
+  passent à la racine du dépôt (`apps/go-api/internal/...`, `libs/gamefiles/...`). `TestCibleMakefileGamefilesCouvreLeCorpus` : chemin du paquet ramené à la racine
+  de son module (`cheminDansLeModule`). `briques_imports_test.go` : table en chemins de la racine du dépôt, `cheminImport()`, interdit = tout import `levelup/go-api/`
+  OU `github.com/JGtm/LevelUp/libs/` hors brique et hors permis (couvre donc `libs/himap`), auto-preuve étendue (import d'une autre brique) et `TestCheminImport`.
+  Verdicts des autres appelants (aucun sans verdict) :
+  `apiModuleRoot` : `briques_imports_test` ÉTENDU (`workspaceRoot`) ; `i18n_text_sql_test` PROPRE À GO-API (`i18n.Text` passé à `Scan/Exec/Query` : SQL, aucune brique n'en a).
+  `apiRootDepuisIci` (tous PROPRES À GO-API, film, SQL ou couches de go-api) : `decode_lock_interdit`, `film_exported_vars`, `film_handle_lecture`, `film_layers_deps` (+ helpers),
+  `film_lecture`, `film_pont_identite`, `film_slog_contexte`, `film_types_leaf`, `filmdec_package_vars`, `keyframe_walk_proof`, `killsource_nom_de_remplissage`,
+  `no_ad_hoc_source_fingerprint` (empreinte des sources du décodeur), `no_film_reread`, `no_french_label_literal` (littéraux accentués de service/analysis/handlers/notify/games),
+  `no_os_is_predicates` (périmètre film/replaybuild/killcollector/cmd/replay-*), `no_raw_film_bytes_outside_source` (+ helpers), `no_recomputed_film_context`, `no_title_package_in_analysis`.
+  Parcours `goAPIRoot` du module entier non listés par le plan : `no_hardcoded_film_cache_dirs` (littéral du cache de films), `no_weapon_kills_sql` (SQL), `unarmed_family_literal`
+  (identifiant `00007CA9` en production : les deux seuls fichiers de `libs/` qui le citent sont des `_research_test.go`, hors règle) : PROPRES À GO-API.
+- [x] 3.6 Couvert par 3.5 (table `briques` en chemins de `libs/gamefiles/...`, règle « aucun import `levelup/go-api/...` ni `libs/` hors brique »).
+- [x] 3.7 `Dockerfile` : `WORKDIR /build` ; `COPY go.work go.work.sum`, `COPY apps/go-api/go.mod go.sum`, `COPY libs/gamefiles/go.mod go.sum` AVANT `go mod download` ;
+  `COPY apps/go-api/ ./apps/go-api/`, `COPY libs/ ./libs/`, puis `WORKDIR /build/apps/go-api` pour les 4 `go build` (sorties `/build/...` inchangées). `docker` ABSENT du poste :
+  la validation Docker REVIENT À LA CI (job `Deploy Pre-Check`, `test-deploy-precheck.yml`, qui construit l'image sur `refactor/**`) — je ne prétends pas l'avoir faite. SIMULATION faite
+  (pas un `docker build`) : arborescence minimale (go.work, go.work.sum, go.mod/go.sum des deux modules) => `GOPROXY=off go mod download` OK ; puis sources copiées =>
+  `go vet ./internal/himap/ ./cmd/mapfond-build/` et `go build ./cmd/server/` OK. `compose_hardening_test` et `dockerfile_go_version_test` verts.
+- [x] 3.8 `ci.yml`, filtre `dorny/paths-filter` : `go` inclut `libs/**`, `go.work`, `go.work.sum` ; `autre` les exclut (donc `web` aussi) ; commentaire d'en-tête mis à jour. `.github/dependabot.yml` : bloc `gomod`
+  `/libs/gamefiles` ajouté (+ garde-rail `TestModulesLibsSurveillesParDependabot`). `ci_paths_filter_test` vert.
+- [x] 3.9 `ci.yml` : job `go-build` : pas Linux CGO « go vet + go test (brique gamefiles) » (`go vet ./...`, `-tags=research`, `-tags=gamefiles,research`, `go test ./... -count=1`, `go list -deps` sans `levelup/go-api`) ;
+  pas sans CGo sur les deux OS (`./hinavmesh/ ./mapvar/`, remplace la couverture de `replay/...` pour `mapvar`) ; vet `-tags=gamefiles,research` d'`himap` seul ; `cache-dependency-path` à deux `go.sum` (8 jobs) ;
+  `go-lint` : second passage golangci-lint sur `libs/gamefiles` (`--config ../../apps/go-api/.golangci.yml`, même ratchet) ; `govulncheck` : second pas sur `libs/gamefiles`. Le job de couverture et `go-coverage-merge`
+  restent sur `go-api` seul. `scripts/ci_go_shard.sh` : `go list -m` (qui rend TOUS les modules d'un espace de travail et cassait le `sed`) remplacé par la lecture de `go.mod`
+  (`TestCIGoShardsPartitionIsExact` était rouge avant correction) ; partition exacte : 360 paquets, 6 lots. Baseline JSONL : `RETRAIT DU 2026-10-28` de `scripts/check_test_baseline.sh`
+  (48 paires du seul paquet `mapvar`, vérifié paire par paire : 38 tournent dans le module, 10 sont devenues instruments `research` au lot 2c) ; `himodule`, `ooz`, `hinavmesh` : 0 entrée.
+- [x] 3.10 `release.yml` : checkout complet (pas de sparse), `go build` lancé depuis `apps/go-api` en mode espace de travail (go.work trouvé en remontant) ; seul changement : `cache-dependency-path`. `deploy.yml` ne
+  construit pas de Go (ssh + `scripts/deploy.sh` => `docker compose build`) ; `scripts/deploy-worker.sh` construit dans `$REPO_DIR/apps/go-api` (go.work en amont) : inchangés.
+- [x] 3.11 `Makefile` : `go-api-test` (+ ligne `libs/gamefiles` sans CGo), `go-api-lint` et `gate-push` (+ lint de `libs/gamefiles`), nouvelle cible `libs-test` (appelée par `gate-push`), `go-api-coverage` inchangée (go-api seul),
+  `go-api-test-gamefiles` inchangée (aucun `*_gamefiles_test.go` sous `libs/`, vérifié par grep ; le ratchet exigera la ligne le jour où il y en aura). `apps/go-api/Makefile` : cible `tidy`. `lefthook.yml` :
+  globs `gofmt` et `go-vet-cgo` + `libs/**/*.go`, `go-vet-cgo.sh` vet les modules `libs/*`. `docs/COMMANDS.md` et `docs/FR/COMMANDS.md` : § « Go modules under `libs/` » / « Modules Go sous `libs/` » + corrections de chemins.
+- [x] 3.12 `.golangci.yml` : aucune règle ne nomme `mapvar`/`himodule`/`hinavmesh`/`ooz` (grep) => rien à retirer. `golangci-lint run --new-from-merge-base=origin/release/v8.1.0` : `apps/go-api` 0 issue (après correction d'un
+  `unused` DE LA BASE : `himap/fixture_carte_validee_test.go`, constante lue seulement sous les tags — découverte 17), `libs/gamefiles` 0 issue (plein, sans ratchet : 0 aussi) ; mutation (fonction inutilisée dans `mapvar`) => le lint la voit.
+- [x] 3.13 ADR `docs/adr/0041-go-modules-under-libs.md` (EN) ; ligne dans la liste des ADR + ligne de tableau + `make libs-test` dans `CLAUDE.md` ; `docs/ARCHITECTURE_V6.md` et `docs/FR/ARCHITECTURE_V6.md` : section « Bricks / libs » / « Briques / libs ».
+- [x] 3.14 Gate : commandes locales au journal ; commit 3d579bfd0 + fusion de `release/v8.1.0` (07a77fe7b, correctif des garde-rails de langue) ; CI verte sur les 4 workflows (run 40737136591, 3e tentative : voir découverte 24) ; `docker build` tenu par « Deploy Pre-Check » (vert) ; ratchet de couverture 82,0 % >= plancher 69,0 % (découverte 21 close).
+
+Témoins (scratchpad `temoins_lot3_*`) :
+- Fonds publiés : `md5sum` des 228 fichiers de `data/titles/halo_infinite/reference/map_backgrounds/` AVANT et APRÈS : identiques (`git status data/` vide). Recuisson `mapfond-build` des 5 cartes (Dredge, Arrival, Beaver Canyon, Perdition, Timberland Evolved),
+  binaire de la BASE (commit `8e7601ad7`, extrait par `git archive`) et binaire du lot, mêmes entrées : PNG identiques à l'octet entre base et lot (5/5) ; sidecars identiques hors `generatedAt`. Les fonds publiés sont des WEBP (le PNG
+  n'est pas versionné) : comparaison au publié faite sur les PIXELS (MD5 RGBA du PNG recuit = MD5 RGBA du WebP publié décodé, 5/5) ET sur les OCTETS (ré-encodage `nativewebp` BestCompression du PNG recuit == WebP publié, 5/5).
+  Entrées de la recuisson : `.mvar` de Beaver Canyon, Perdition, Timberland Evolved copiés (lecture seule) depuis `data/cache/mvar/<id>/map.mvar` du checkout principal ; `.mvar` de Dredge et Arrival et les 5 `navmesh.blob`
+  rapatriés par `mapnav-fetch` (anonyme) dans la racine temporaire du scratchpad (`.ai/re_dump` n'existe nulle part sur le poste) ; rien n'a été écrit dans `data/`.
+- `go test ./...` du module go-api, 359 paquets (avant : 363) : verdicts `ok` identiques, 0 FAIL ; seules différences : `internal/hinavmesh` et `internal/games/halo_infinite/film/replay/mapvar` sortis de la liste (les deux paquets déplacés qui portent des tests ; `himodule` et `ooz` n'ont aucun test non tagué)
+  et ils figurent dans `cd libs/gamefiles && go test ./...` (ok : hinavmesh, mapvar ; himodule et ooz « no test files »).
+- `-tags=gamefiles` sur `internal/himap`, `internal/gamefilescorpus`, `cmd/mapfond-build`, `cmd/mapstruct-build` : liste `--- PASS/FAIL/SKIP` IDENTIQUE à la base test par test (160 PASS, 12 SKIP, 1 FAIL préexistant `TestRenduForgeVagabond` dans `gamefilescorpus`, avant ET après).
+- Instruments `-tags=gamefiles,research` de `libs/gamefiles` : 56 PASS / 41 SKIP / 0 FAIL ; tous les verdicts du lot 2c pour `hinavmesh` et `mapvar` retrouvés à l'identique, +9 verdicts nouveaux (6 instruments de `himodule` jamais joués, 3 de `mapvar`).
+
+Découverte 4 (pour le lot 4 ; TRAITÉE au lot 4, voir 4.2) : `apps/go-api/internal/himap/deploy_root_test.go` (`TestAucuneAutreCopieDuCheminDuJeu`) balaie `../..` (= `apps/go-api`) : NON TOUCHÉ au lot 3 (himap reste dans go-api). Au lot 4, quand `himap` devient `libs/himap`, le porter dans
+`archlint` sur `workspaceGoSources(t, racinesEspaceDeTravail...)` (le helper existe), avec `libs/himap` dans `racinesEspaceDeTravail`.
+
+## Lot 4 — Module `libs/himap`
+
+- [x] 4.1 `libs/himap/go.mod` (chemin D1-A ; PAS de `require .../libs/gamefiles` : ADR 0041 D2, voir l'exécution), `go.work` : `use ./libs/himap`.
+- [x] 4.2 `git mv internal/himap libs/himap/himap` ; imports réécrits dans les 10 commandes
+  consommatrices (`cmd/{equipenergy-build,mapcallouts-build,mapfond-build,mapnav-fetch,mapplafond-mesure,mapquant-build,mapstruct-build,vehicle-sprite,weapon-icons-build,weapon-sounds}`)
+  et dans `internal/gamefilescorpus/`.
+- [x] 4.3 Infra du lot 3 étendue au module (CI pas par module, Makefile, Dockerfile `COPY`
+  déjà `libs/`, `go.mod` version, lint). Aucun nouveau mécanisme : que des entrées.
+- [x] 4.4 Table du garde-fou : `himap` = `libs/himap/himap`, imports permis = `libs/gamefiles/...`.
+  Allowlist vide (contrôle : le test échoue si on y ajoute une entrée fictive non utilisée —
+  « entrée morte » = rouge, comme les autres ratchets datés).
+- [x] 4.5 (clos par le pilote : commit 19dcb9e1b, CI verte sur les 4 workflows — run 40752659187 —, `docker build` tenu par Deploy Pre-Check, couverture 84,0 % >= 69,0 %) Gate : `cd libs/himap && go test ./... -count=1` ;
+  `go list -deps ./... | grep -E 'levelup/go-api|libs/himap'` depuis `libs/gamefiles` = vide ;
+  `go list -deps ./... | grep 'levelup/go-api'` depuis `libs/himap` = vide ;
+  `make go-api-test-gamefiles` vert ; push, CI verte.
+
+**Clos quand** : 4.5 vert, commit « refactor(libs): module himap (D1) ».
+
+### Exécution du lot 4 (2026-10-28, branche `refactor/decouplage-d1-fichiers-du-jeu`, NON commité)
+
+Statuts (le texte des items ci-dessus est celui du plan ; ce bloc dit ce qui a été fait, vérifié sur pièces) :
+
+- [x] 4.1 `libs/himap/go.mod` (`github.com/JGtm/LevelUp/libs/himap`, `go 1.26.10`) et `libs/himap/go.sum` ; `go.work` : `use ./libs/himap`
+  (`go.work.sum` inchangé). CORRECTION DU LIBELLÉ DU PLAN : AUCUN `require` de `libs/gamefiles` (ADR 0041 D2). La brique n'importe
+  directement AUCUN paquet externe (relevé par parse des imports de ses 117 fichiers, tests compris : seuls `libs/gamefiles/{himodule,hinavmesh,mapvar}`) ;
+  la seule dépendance externe de son graphe, `golang.org/x/sys` (via `himodule`), est inscrite `// indirect` à la version de go-api
+  (v0.49.0), `go.sum` = ses deux lignes (copiées de `libs/gamefiles/go.sum`, mêmes hachages que `apps/go-api/go.sum`). `go mod tidy` est inutilisable
+  dans ce module comme dans go-api (il importe un frère). Vérifié : `go list -deps -test ./...` des quatre jeux de tags depuis `libs/himap` sans
+  `levelup/go-api` ; depuis `libs/gamefiles` sans `levelup/go-api` ni `libs/himap`.
+- [x] 4.2 `git mv apps/go-api/internal/himap libs/himap/himap` : 117 fichiers (`testdata/carte_validee_v1.png`, `sbsp.xml`, `coupe.png` compris) ; 109 renommages à 100 %, 7 à 97-99 %
+  (commentaires), `deploy_root_test.go` scindé (voir découverte 4). Imports `"levelup/go-api/internal/himap"` -> `"github.com/JGtm/LevelUp/libs/himap/himap"` : 56 fichiers
+  (28 sous `cmd/` dans 11 commandes, 26 de `gamefilescorpus`, `film/internal/profile/loi_largeurs_himap_test.go`, `film/research/cmd_fermeture`) par `sed` + `goimports -w` ; diff = imports seuls
+  (vérifié : aucune ligne modifiée hors import). Un 57e fichier correspondait au motif sans être un import (`archlint/briques_imports_test.go`, valeur attendue de `TestCheminImport`) :
+  corrigé à la main (exemples `apps/go-api/internal/i18n` et `libs/himap/himap`). Chemins `internal/himap` citées ailleurs, corrigées : 7 commentaires de la brique
+  (`go test ./himap/`), 20 fichiers `.go` de go-api et de gamefiles (commentaires), `testfixtures.CarteValideeFixturesDir` = `libs/himap/himap/testdata`, `.gitignore` (`gate.png`), `NOTICE`, `CLAUDE.md`
+  (table, `make go-api-test-gamefiles`, § tag `gamefiles`), `docs/COMMANDS.md` + `docs/FR/COMMANDS.md`, `docs/ARCHITECTURE_V6.md` + FR (arbre + pas CI), `docs/ACKNOWLEDGMENTS.md` + FR, ADR 0041
+  (D1, D2 brique à frère, D3, D5 chaîne GPL, « Adding a brick », conséquences). NON TOUCHÉS (histoire) : `.ai/archive/**`, entrées passées du thought_log, `docs/CHANGELOG.md` + FR (notes de version datées),
+  commentaires datés de `gamefiles_tag_test.go` (mesures du 2026-09), `no_repo_root_walk_test.go` (« déplacé de internal/himap le 2026-10-28 »), `.ai/PLAN_I18N_MULTILANGUE.md`, audit, ce plan.
+  Chemins relatifs `../` de la brique : `grep -n '\.\./' libs/himap/himap/*.go` = 2 occurrences, toutes DANS DU TEXTE (`D:/SteamLibrary/.../deploy`, `data/titles/.../map_objectives.json`), 0 chemin
+  relatif entre paquets ; `cheminDepuisDepot` (instruments `research`) remonte depuis le répertoire de travail jusqu'à trouver la cible, indépendant de la profondeur ; `-forge-cache` et défauts de
+  commandes : aucun ne cite `internal/himap`. `const sourceCuisson` de `cmd/mapfond-build` (« internal/himap », écrite dans chaque sidecar publié) : LAISSÉE, voir découverte 25.
+  Découverte 4 TRAITÉE : `TestAucuneAutreCopieDuCheminDuJeu` PORTÉ dans `archlint/deploy_root_copie_unique_test.go` (parcours `balayerGoTexte` = `workspaceGoSources` sur les trois racines, allowlist = `libs/himap/himap/deploy_root.go`
+  + le fichier lui-même, entrée morte refusée, fonction pure `copiesDuCheminDuJeu` + auto-preuve `_AutoPreuve`) ; retiré de `deploy_root_test.go` (les deux autres tests y restent) ; le contrat s'ÉLARGIT (le parcours voit désormais
+  `libs/gamefiles` : 0 copie trouvée). Mutations jouées : littéral `SteamLibrary` dans `cmd/mapfond-build` -> rouge ; `XboxGames` dans `libs/gamefiles/mapvar` -> rouge ; fichiers retirés ensuite.
+- [x] 4.3 Infra, par entrées (aucun mécanisme neuf) : `ci.yml` — (i) le pas « corpus gamefiles » ne vise plus `./internal/himap/` (deux lignes `go vet` restantes : go-api) ; nouveau pas Linux CGO « brique himap — module libs/himap »
+  (`go vet ./...`, `-tags=research`, `-tags=gamefiles`, `-tags=gamefiles,research`, `go test ./... -timeout 600s -count=1`, `go list -deps | grep levelup/go-api` => erreur) ; (ii) `libs/himap/go.sum` ajouté à
+  `cache-dependency-path` PARTOUT où figure celui de gamefiles : 10 occurrences (8 `ci.yml`, `release.yml`, `shared-social-gate.yml` ; le brief en annonçait 11, `grep -c` donne 10 et 10 `setup-go` au total) ; (iii) pas `golangci-lint`
+  (même config `--config ../../apps/go-api/.golangci.yml`, même ratchet) et `govulncheck` pour `libs/himap` ; (iv) filtre `libs/**` déjà couvrant. `.github/dependabot.yml` : bloc `gomod` `/libs/himap`
+  (`TestModulesLibsSurveillesParDependabot` vu rouge sans lui). `Dockerfile` : `COPY libs/himap/go.mod libs/himap/go.sum ./libs/himap/` ; SIMULATION (docker absent) : arborescence minimale (go.work, go.work.sum, trois couples go.mod/go.sum),
+  `GOPROXY=off go mod download` exit 0 ; sans le go.mod de himap : « cannot load module libs\himap listed in go.work file ». `Makefile` : `go-api-test-gamefiles` joue la brique depuis `libs/himap`
+  (`./himap/`, exigé par `TestCibleMakefileGamefilesCouvreLeCorpus`, vu rouge avec `./...`) puis go-api ; `libs-test` = UNE boucle sur `libs/*/go.mod` (4 vet + test + `go list -deps`), `go-api-lint` et `gate-push` bouclent sur
+  `libs/*/go.mod` (plus de bloc par module : règle 6). `apps/go-api/Makefile` `tidy` : AURAIT ÉCHOUÉ sur `libs/himap` (il importe un frère) -> la cible détecte un import de brique voisine par `go list -deps`, nomme le module et le saute
+  (détection vérifiée : gamefiles « sans voisin », himap « voisin »). `go-vet-cgo.sh` : boucle déjà sur `libs/*/go.mod`, rien à faire. `ci_go_shard.sh` / `go-shards.txt` : aucune citation de himap ; `TestCIGoShardsPartitionIsExact` vert
+  (358 paquets). Baseline JSONL : `grep -c 'internal/himap'` = 0, rien à retirer de `scripts/check_test_baseline.sh`. `cmd/server/licence_gplv3_test.go` : la frontière était codée « gamefiles » seulement (`gamefilesModule`) -> le parcours suit désormais
+  tout `github.com/JGtm/LevelUp/libs/` ; trois copies du parcours en largeur ramenées à un helper `chainesDepuis` (règle 6, comportement conservé) ; nouveau témoin `TestLaChaineDeHimapAtteintOoz` (depuis `libs/himap/himap` le parcours atteint
+  `ooz`). MUTATION JOUÉE : fichier temporaire de `cmd/server` important `libs/himap/himap` => rouge, chaîne « cmd/server -> libs/himap/himap -> libs/gamefiles/himodule -> libs/gamefiles/ooz » ; fichier retiré.
+- [x] 4.4 Table `briques` : `himap` = `libs/himap/himap`, permis = `paquetsGamefiles` ; `importsToleres` vide ; `racinesEspaceDeTravail` + `libs/himap`. Mutations jouées : (a) entrée fictive `libs/himap/himap/fictif.go` dans `importsToleres` => rouge
+  « qui n'importe plus rien hors de sa brique — retirer l'entrée » ; (b) `_ "levelup/go-api/internal/analysis"` ajouté à `libs/himap/himap/cuisson_forge.go` => rouge « [himap] libs/himap/himap/cuisson_forge.go -> levelup/go-api/internal/analysis » ;
+  les deux retirées, test vert.
+- [x] 4.5 Gates locales RÉELLEMENT lancées (GOCACHE `go-build-d1`) : `gofmt -l apps/go-api libs` vide ; aucun CRLF (fichiers modifiés + non suivis) ; `libs/himap` : les 4 `go vet` verts, `go test ./... -count=1` ok (1,9 s) ;
+  `go list -deps` sans `levelup/go-api` (himap, 4 jeux de tags, tests compris) et sans `levelup/go-api|libs/himap` (gamefiles) ; go-api : `go vet ./cmd/... ./internal/gamefilescorpus/ ./internal/replaybuild/ ./internal/games/halo_infinite/film/...` vert,
+  `-tags=gamefiles` des quatre paquets verts, `-tags=research ./...` et `-tags=integration ./...` verts ; `go test -count=1` archlint (118 s, suite complète), `cmd/server` (11 s), `testfixtures`, `film/internal/profile`, commandes consommatrices, `gamefilescorpus`
+  ok ; `go build -o NUL ./cmd/server/` ok ; `make libs-test` réel ok (9 s) ; `golangci-lint run --new-from-merge-base=origin/release/v8.1.0` : `apps/go-api` 0 issue, `libs/himap` 0 issue (plein, sans ratchet : 0 ; mutation d'une fonction inutilisée => « unused » vu) ;
+  `lefthook validate` ok. `make go-api-test-gamefiles` : la cible n'a pas été lancée d'un bloc ; ses trois parties l'ont été (corpus himap depuis le module 24 s, `gamefilescorpus` + `mapfond-build` + `mapstruct-build` 6 min 18 s, `film-profiles-build` 2 s) et la cible
+  est vue par `make -n`. CLOS PAR LE PILOTE (2026-10-28) : commit `19dcb9e1b` poussé ; CI verte sur les 4 workflows du premier coup (run 40752659187 ; seul « E2E React » est `skipped`, par filtre de chemins) ; `docker build` tenu par `Deploy Pre-Check` (vert) ; ratchet de couverture 84,0 % >= plancher 69,0 % (82,0 % au lot 3 : découverte 26 close, le départ de `himap` fait MONTER le total).
+
+Témoins (scratchpad `temoins_lot4_*`) :
+- go-api, `go test ./...` par six grappes (`-count=1`) : 359 paquets avant, 358 après ; 213 lignes `ok` avant, 212 après ; 0 FAIL ; la SEULE différence est la ligne `ok levelup/go-api/internal/himap` ; liste avant identique à `temoins_lot3_apres_go.txt`.
+  Les tests non tagués de `himap` réapparaissent dans `cd libs/himap && go test ./...` : `ok github.com/JGtm/LevelUp/libs/himap/himap`.
+- Corpus `-tags=gamefiles` (himap puis gamefilescorpus, mapfond-build, mapstruct-build, `-json`, `pass|fail|skip` par test et sous-test) : 348 lignes avant, 347 après, 330 PASS / 12 SKIP / 1 FAIL (`TestRenduForgeVagabond`, préexistant) ; la SEULE différence est
+  `pass TestAucuneAutreCopieDuCheminDuJeu` de la brique, portée dans archlint (vert).
+- Instruments `-tags=gamefiles,research` de himap : 117 fail / 153 pass / 20 skip avant et après (fail = `.ai/re_dump` absent, voulu) ; même et unique différence.
+- Fonds : `git diff --stat 3d579bfd0 HEAD -- apps/go-api libs go.work` VIDE, donc `temoins_lot3_apres_fonds/` valait « avant » ; recuit quand même avec le binaire de HEAD (`mapfond_avant4.exe`, entrées de `fond_root/`) puis avec le binaire du lot
+  (`mapfond_apres4.exe`) : PNG identiques à l'octet 5/5 entre eux ET aux captures du lot 3 (MD5 : 1231d3f0 `9c508b6a…`, be8131fc `601bf65a…`, beaf8ac9 `a77d7fdb…`, e4bb06db `0576b82f…`, fd17a1ca `cda739f4…`) ; sidecars identiques hors `generatedAt` ; la
+  comparaison aux fonds publiés (pixels / WebP) est celle du lot 3, mêmes PNG.
+- Lexique : `mapcallouts-build -lexique -out <témoin>/map_callouts.json` : `map_callouts.json` `988fd140d2d33808dc7a546cd69b7bdb`, `callouts_lexique.csv` `5c835edd4fa2715b051dd2df1d485ab0` avant ET après, et égaux à `temoins_lot2_*` ;
+  `callouts_i18n.csv` `cb36bdd205b68fb30a00d03a7f6cb648` inchangé ; `git status data/` vide.
+
+## Lot 5 — Preuve de non-régression et clôture
+
+- [x] 5.1 Recuisson des cinq fonds publiés (protocole du journal 2026-10-26 : variante et
+  maillage présents dans `data/cache/`, `mapfond-build` par carte) : Dredge (WebP identique à
+  l'octet, sinon MD5 des pixels identique), Arrival, Beaver Canyon, Perdition, Timberland Evolved
+  (PNG identiques à l'octet aux fichiers publiés). Un seul écart = lot NON clos, cause à trouver.
+- [x] 5.2 `make go-api-test-gamefiles` complet (himap + corpus + mapfond-build + mapstruct-build
+  + film-profiles-build), vert.
+- [x] 5.3 `cd apps/go-api && go test ./... -count=1` (CGO : gcc msys64) vert ;
+  `go test -tags=integration -p 1 ./internal/sync/...` (le lot touche `sync/killcollector` et
+  `sync/replayartifacts` par leurs imports : la règle « persist/sync touché = tag integration »
+  s'applique).
+- [~] 5.4 `make gate-push` vert ; CI de la branche verte (`gh run list --branch refactor/decouplage-d1-fichiers-du-jeu`).
+- [x] 5.5 Audit : addendum « D1 exécuté le … » ; `.ai/REGISTRE_REPORTS.md` alimenté pour tout
+  `[!]` ; `thought_log.md` : entrée par lot (déjà écrite au fil de l'eau) + entrée de clôture.
+- [x] 5.6 (fait le 2026-10-28 : `golangci-d1` 0,01 Go, `go-build-d1` 3,27 Go et `go-build-d1-base` supprimés) Hygiène disque (skill `plan-execution` §5) : `scripts/disk-hygiene.ps1 -Lot d1 -Apply`.
+- [x] 5.7 (PR #111 ouverte le 2026-10-28 après fusion de la release `1de7cbda6`, CI verte sur les 36 contrôles ; revue adversariale : voir l'exécution ; fusion squash = dernier geste, feu vert de l'utilisateur du 2026-10-28) PR vers `release/v8.1.0`, revue adversariale (`adversarial-review`) sur les lots 3 et 4
+  (infra CI/Docker = lot à risque : une erreur se voit au déploiement) ; fusion squash sur accord
+  de l'utilisateur.
+
+**Clos quand** : 5.1 à 5.7 cochés ; aucune case sans statut.
+
+### Exécution du lot 5 (2026-10-28, branche `refactor/decouplage-d1-fichiers-du-jeu`, HEAD `4236f8867`, NON commité ; 5.6 et 5.7 reviennent au pilote)
+
+Statuts (le texte des items ci-dessus est celui du plan ; ce bloc dit ce qui a été fait, vérifié sur pièces). Tout a tourné avec `GOCACHE=%LOCALAPPDATA%\go-build-d1`, `GOLANGCI_LINT_CACHE=%LOCALAPPDATA%\golangci-d1`, gcc msys64 ucrt64 dans le PATH ; chaque sortie complète est dans le scratchpad (`temoins_lot5_*.log`).
+
+- [x] 5.1 Recuisson des cinq fonds avec le binaire de HEAD (`go build -o temoins_lot5_bin/mapfond_head.exe ./cmd/mapfond-build`). Racine de cuisson `fond_root/` du scratchpad (`LEVELUP_REPO_ROOT`) : `reference/` et `config/`
+  identiques en MD5 à ceux du worktree HEAD pour les six fichiers lus (`map_objectives`, `map_fond_reglages`, `map_positions_jouees`, `map_quant_bounds`, `map_callouts`, `callouts_i18n.csv`), variantes et maillages rapatriés sous `.ai/re_dump/{mapvar,navmesh}`
+  (trois `.mvar` recoupés en MD5 avec `data/cache/mvar/` du checkout principal ; Dredge = `dredge_map.mvar` = `e4bb06db_map.mvar`). Commande : `mapfond_head.exe --natives=false --maps <les cinq map_id> --out-dir temoins_lot5_apres_fonds --rapport ...` :
+  35 s, exit 0, `cartes=5 échecs=0 nonCuisinables=0 dégradées=0 ancresAvecSol=173/175`. (a) PNG recuits identiques à l'octet aux témoins `temoins_lot4_apres_fonds/` (MD5, 5/5) et sidecars identiques (hors `generatedAt`) ; (b) les fonds PUBLIÉS sont des `.webp`, pas des PNG (voir découverte 31) :
+  les PNG recuits passés par l'outil de production `mapfond-webp -convertir` (sur une copie du scratchpad, `data/` intact) donnent des WebP IDENTIQUES À L'OCTET aux fichiers publiés 5/5, et des sidecars identiques hors `generatedAt` (champ `image` en `.webp` compris). Aucun écart.
+  MD5 (PNG recuit = témoin lot 4 ; WebP recuit = publié) : Dredge `e4bb06db` PNG `0576b82f…` WebP `739e3842…` ; Arrival `beaf8ac9` PNG `a77d7fdb…` WebP `2b9b3de4…` ; Beaver Canyon `fd17a1ca` PNG `cda739f4…` WebP `96f7f61a…` ;
+  Perdition `be8131fc` PNG `601bf65a…` WebP `d218f350…` ; Timberland Evolved `1231d3f0` PNG `9c508b6a…` WebP `8a83c600…`. `git status --short` (arbre entier) vide avant et après.
+- [x] 5.2 `make go-api-test-gamefiles` d'un bloc, depuis la racine du worktree : 449 s (7 min 29 s), exit 2 — la cible a tourné entière (les cinq paquets : `libs/himap/himap` ok 15,8 s, `internal/gamefilescorpus` FAIL 430,7 s, `cmd/film-profiles-build` ok 1,0 s,
+  `cmd/mapfond-build` ok 0,2 s, `cmd/mapstruct-build` ok 0,2 s). Le SEUL `^--- FAIL:` est `TestRenduForgeVagabond`, avec la même cause que le témoin « avant » (`t.Fatalf` « dépôt de variantes absent (.ai/re_dump/mapvar introuvable ...) », découverte 7 ;
+  la ligne passe de `:34` à `:35` par un import scindé de `goimports` au lot 3, rien d'autre). Pas de problème `$(MAKE)` pour cette cible. Verdicts par test (`-v`) : 344 = 331 PASS / 12 SKIP / 1 FAIL ; contre `temoins_lot4_apres_corpus.txt` la SEULE différence est
+  `pass TestCatalogueCommisEgaleCatalogueRegenere` (paquet `cmd/film-profiles-build`, absent des témoins des lots 3 et 4 : découverte 32) ; contre `avant`, en plus : `TestAucuneAutreCopieDuCheminDuJeu` sorti (porté dans archlint au lot 4). Aucun test disparu sans déménagement tracé.
+  Statut `[x]` au sens de la non-régression (identique à la base, un seul rouge connu) ; « vert » absolu est impossible sur ce poste tant que `.ai/re_dump/mapvar` est absent (découverte 7, registre).
+- [x] 5.3 `cd apps/go-api && go test ./... -count=1` : exit 0, 224 s, 358 paquets (212 `ok`, 146 sans test), 0 `^--- FAIL:`, 0 `^FAIL`, 0 panic ; la liste des 212 `ok` est IDENTIQUE (même ensemble, `diff` vide) à `temoins_lot4_apres_go.txt`.
+  `go test -tags=integration -p 1 ./internal/sync/... -count=1` : exit 0, 373 s, 15 `ok` / 3 sans test / 0 FAIL. `cd libs/himap && go test ./... -count=1` : exit 0, 4 s (`ok .../libs/himap/himap`). `cd libs/gamefiles && go test ./... -count=1` : exit 0, 3 s (`hinavmesh` ok, `mapvar` ok, `himodule` et `ooz` sans test).
+- [~] 5.4 `make gate-push` : lancé tel quel, ÉCHEC attendu de la découverte 28, avec l'erreur réelle (voir découverte 33) : exit 2 à 31 s, après les trois lint (`golangci-lint run --new-from-merge-base=origin/main` : `apps/go-api`, `libs/gamefiles`, `libs/himap` = `0 issues.` chacun),
+  sur la ligne `C:/Program Files (x86)/GnuWin32/bin/make libs-test` : `/usr/bin/sh: -c: line 1: syntax error near unexpected token '('`. Les lignes restantes de la cible ont été jouées UNE À UNE, mêmes commandes que `make -n` : `make libs-test` exit 0 (9 s) ;
+  `cd apps/web && npm run typecheck` exit 0 (16 s) ; `cd apps/web && npm run lint` exit 0 (44 s ; 0 erreur, 27 avertissements préexistants, découverte 35) ; `bash scripts/check_test_baseline.sh tests` exit 0 (1 787 s : baseline 9 236 tests, courant 21 984, « Tous les tests baseline présents »,
+  « Aucun test en échec », « Aucun package en échec hors test » ; voie film 21 paquets 160 s, voie DuckDB 338 paquets 1 781 s). Total équivalent de la cible : ≈ 31 min. `[~]` : couverte par ces commandes développées, faute de pouvoir lancer la cible sur ce poste (GnuWin32 make 3.81 + chemin à espace et parenthèses) ; la CI fait foi sur Linux.
+  CI (`gh run list --branch ... --commit <sha>`) : `19dcb9e1b` (lot 4) : `CI` run 40752659187 success, `Deploy Pre-Check` 40752659131 success, `ADR 0021 Gate` 40752659234 success, `Secrets (gitleaks)` 40752659133 success. `922ef941a` et `4236f8867` (docs seuls, uniquement `.ai/**.md`) :
+  SEUL `Secrets (gitleaks)` s'est déclenché (runs 40755802958 et 40756031255, success) ; `CI`, `Deploy Pre-Check` et le gate ADR 0021 ne se lancent pas pour eux (`paths-ignore: .ai/**.md` de `ci.yml`, sous-ensemble de celui de `deploy.yml` : `TestCIPathsIgnoreSubsetOfDeployPathsIgnore`). Le dernier commit de CODE (`19dcb9e1b`) est donc couvert par une CI verte.
+- [x] 5.5 Trois documents : (a) addendum « D1 exécuté le 2026-10-28 » dans `.ai/AUDIT_DECOUPLAGE_BRIQUES_2026-10-27.md` ; (b) `.ai/REGISTRE_REPORTS.md`, section « Reports du lot découplage D1 » (une ligne par `[~]` et par découverte non traitée, 20 entrées) ;
+  (c) `.ai/thought_log.md`, entrée de clôture du lot 5. Fichiers en LF (`git ls-files --eol`).
+- [x] 5.6 pilote : `scripts/disk-hygiene.ps1 -Lot d1 -Apply` puis `-Lot d1-base` (après le dernier build local).
+- [x] 5.7 pilote : release fusionnée dans la branche (`1de7cbda6`, 52 fichiers Go de la release, build serveur + archlint verts), PR #111 vers `release/v8.1.0`, CI verte (36 contrôles, E2E sauté par filtre), fusion squash sur le feu vert d'avance du 2026-10-28 (titre « refactor(libs): briques gamefiles et himap en modules Go sous libs/ (D1) »).
+
+- [x] 5.7 (partie revue) Revue adversariale des lots 3 et 4 (`adversarial-review`, 1 relecteur Sonnet en contexte frais, lentilles A infra de build/livraison + B couverture des garde-rails, 1 ronde) : 3 constats recevables, tous P2 proposés, 0 jeté, 18 conditions vérifiées qui tiennent (go.mod sans require/replace, versions `go` alignées + Dockerfile, aucun import inverse, Docker COPY/ordre, chaîne GPL vue à travers deux modules, pas CI réellement joués sur Linux, filtres `paths`, caches, baseline, boucles Makefile, ratchets `gamefiles_tag`/`research_tag`/`deploy_root_copie_unique`/`todo_expiry`/`doc_chemins_ai`, sources non-test de `libs/` = imports et commentaires seuls). Triage du pilote : (1) `no_mojibake_test.go` ne balayait plus `libs/himap` (couverture perdue sans rouge, ADR 0041 D7 faux) -> P1, CORRIGÉ (`racinesEspaceDeTravail`) ; (2) `.gitignore` ignorait `libs/himap/himap/gate.png` alors que le gate visuel écrit dans `internal/gamefilescorpus/` -> P1, CORRIGÉ, et le PNG versionné par erreur au lot 2 (`46ab4068b`) sort de l'index ; (3) table `briques` non exhaustive sur `libs/**` -> P2, CONSIGNÉ (découverte 38). Commit `7b1bb0840`.
+
+**Décisions de l'utilisateur (message du 2026-10-28, soir)** : (a) PR #110 : « oui pas de soucis » -> fusionnée ; (b) les deux preuves `TestPreuveLevelIDCartes` / `TestZonesNommeesDIsolation` RESTENT instruments `research` (« option 1 » = première proposition du pilote : statu quo, pas de fixtures versionnées) ; (c) PR finale vers `release/v8.1.0` : « tu as mon feu vert d'avance » pour la fusion squash dès gates et revue verts.
+
+Témoins (scratchpad `temoins_lot5_*`) : `temoins_lot5_mapfond.log`, `temoins_lot5_apres_fonds/` (5 PNG + sidecars + rapport), `temoins_lot5_fonds_png.md5`, `temoins_lot5_fonds_comparaison.txt`, `temoins_lot5_webp/` (WebP produits), `temoins_lot5_gamefiles.log` + `temoins_lot5_gamefiles_tests.txt`,
+`temoins_lot5_go.log` + `temoins_lot5_apres_go.txt`, `temoins_lot5_integration.log`, `temoins_lot5_libs_{himap,gamefiles}.log`, `temoins_lot5_gatepush.log`, `temoins_lot5_gatepush_{libs-test,typecheck,lint,baseline}.log`.
+
+---
+
+## Témoins avant/après (règle utilisateur du 2026-10-28)
+
+Tout lot se prouve par des sorties capturées AVANT sur le code de base et comparées APRÈS sur le
+code modifié : identiques, sinon le lot n'est pas clos. Témoins dans le scratchpad de session
+(`temoins_<lot>_avant/`, `temoins_<lot>_apres/`), empreintes MD5 consignées au journal. Le TDD au
+sens strict (test rouge écrit avant le code) vaut pour les comportements NEUFS : le garde-fou du
+lot 1 a été écrit, vu rouge par mutation, puis vert.
+
+| Lot | Témoin | Capture (avant = code de base, après = branche) | Comparaison |
+|---|---|---|---|
+| 2 | lexique des lieux lu dans le jeu | `go test -tags=gamefiles ./internal/himap/ -run 'TestLexiqueLieux|TestVocabulaireLieux'` ; avant (2026-10-28) : 810 entrées reproduites à l'identique, 3 tests verts | mêmes 3 tests verts, mêmes comptes |
+| 2 | `mapcallouts-build -lexique -out <témoin>/map_callouts.json` (écrit aussi `callouts_lexique.csv` à côté) | avant : `temoins_lot2_avant/` ; après : `temoins_lot2_apres/` | `md5sum` identiques fichier à fichier |
+| 2 | `callouts_i18n.csv` versionné | md5 `cb36bdd205b68fb30a00d03a7f6cb648` (2026-10-28) | inchangé (`git status` propre sur `data/titles/halo_infinite/reference/`) |
+| 3, 4 | fonds publiés : Dredge (WebP), Arrival, Beaver Canyon, Perdition, Timberland Evolved (PNG) | avant = fichiers publiés sous `data/titles/halo_infinite/reference/map_backgrounds/` (md5 relevés au début du lot 3) ; après = recuisson `mapfond-build` par carte dans `temoins_lot<N>_apres/` | identiques à l'octet (WebP : MD5 des pixels décodés si l'encodeur diffère) |
+| 3, 4 | suite `make go-api-test-gamefiles` | avant : liste des tests verts/sautés (`-v`, lot 2) | même liste, aucun test disparu sans déménagement tracé |
+| 3, 4 | `go test ./...` du module `go-api` | avant : liste des paquets verts (lot 2) | aucun paquet passé au rouge ; paquets sortis = ceux déplacés dans `libs/` |
+
+## Protocole de reprise de session
+
+1. `git branch --show-current` ; `git log --oneline -10` sur la branche D1.
+2. Relire ce plan : le premier item sans statut du premier lot non clos est le point de reprise.
+3. Vérifier sur pièces (rouvrir le fichier cité) avant de coder : le code a pu bouger.
+4. Journal : `.ai/thought_log.md`, entrées « Découplage D1 — lot N ».
+
+## Ce que D2 et D3 devront reprendre (hors périmètre D1, consigné dans l'addendum de l'audit)
+
+- D2 : `film/replay` importe `internal/i18n` (5 fichiers : `MarshalFlat`, `UnmarshalFlat`,
+  `FlatLayout`, `Text`) — le format JSON des libellés du document de rejeu embarque la
+  disposition i18n de LevelUp. Absent du tableau de l'audit.
+- D2 : déplacer `domain/highlightevent` et `domain/equipmentusage` sous le décodeur ferait
+  importer un paquet de titre par `internal/analysis` (lecteurs : `analysis`,
+  `analysis/sessionusage`, `analysis/squademprise`, `analysis/trends`) — interdit par
+  `archlint/no_title_package_in_analysis_test.go` (ADR 0012). Décision à prendre au plan D2 :
+  type de sortie côté décodeur + conversion vers un type LevelUp au point d'entrée, ou
+  exemption motivée du ratchet pour une brique (ce n'est plus `games/<slug>`).
+- D3 : les fichiers « protocole » de `platform/auth` ne sont pas aussi nets que l'audit le dit :
+  `oauth_refresh.go` importe `observability/logging` et `platform/netguard`, `xsts.go`
+  `observability/logging`, `xbox_device_code.go` `platform/netguard`. Injection du client HTTP
+  et d'un journal à prévoir.
+- D2/D3 : mêmes contraintes de module que D1 (pas d'import de `go-api/internal` même en test,
+  ratchets à racine d'espace de travail, pas par module en CI) — l'infra du lot 3 est faite pour
+  être réutilisée telle quelle.
+
+## Découvertes (notées, non traitées)
+
+Lot 2 (2026-10-28) :
+
+1. Le relevé D1-D du plan (16 fichiers + 3) est très en deçà du réel : l'ensemble des tests de la
+   brique couplés à LevelUp par DONNÉES forme une grappe (le banc Cliffhanger : `carte_ancres` porte
+   `ancresDuModule`/`cheminCatalogue`, `carte_oracle` porte `chargePositions`, etc.) ; 39 fichiers `himap`
+   en dépendaient directement ou par helper. Relevé final : 22 déménagés, 2 scindés + 1 hinavmesh scindé,
+   ~19 restés (voir 2.4).
+2. TRAITÉE AU LOT 2c (décision utilisateur option 2 : sondes conservées sous le tag `research`, items 2.12 à 2.15). Énoncé d'origine : RÉSIDU À TRANCHER AVANT LE LOT 4 : cinq sondes de la brique (`sddt`, `physique_sonde`, `filtres_reclaimer`,
+   `sonde_bouillie`, `sonde_forge_saut`, plus `cloture` pour `TestClotureCliffhanger` et `sonde_locs`) lisent encore
+   des données du dépôt hôte (`data/titles/.../map_objectives.json`, `data/cache/replays/...`,
+   `callouts_i18n.csv`) par `cheminDepuisDepot`/chemin relatif, sans importer LevelUp. Elles exercent des
+   internes non exportés (~35 : tags sbsp/instances/forge, champs `Rendu.z/n`) que la règle D1-D (« exporter si vrai
+   contrat ») ne justifie pas d'exporter. Dans `libs/himap` autonome elles se sauteront (oracle absent) ou
+   échoueront (`.ai/re_dump` absent => `t.Fatalf` voulu). Options : les supprimer (sondes de recherche), exporter
+   des étapes de cuisson, ou ajouter une variable d'environnement de corpus. Décision de l'utilisateur.
+3. TRAITÉE AU LOT 2c (décision utilisateur option 2, items 2.12 à 2.15). Énoncé d'origine : treize fichiers de test de `hinavmesh` et `mapvar` (table `pas_de_lecture_sous_ai_test.go`) et trois de `himap`
+   lisent `.ai/re_dump` : même statut que 2 pour le lot 3/4.
+4. (Partielle : les chemins `../../../../data` de `sonde_locs` sont traités au lot 2c ; le reste demeure pour le lot 3/4.) Casses prévisibles au lot 3/4 (chemins relatifs entre paquets) : `gamefilescorpus/cuisson_navmesh_gamefiles_test.go`
+   lit `../hinavmesh/testdata` (utiliser la copie `gamefilescorpus/testdata/` des mêmes blobs) ;
+   `himap/deploy_root_test.go` (`TestAucuneAutreCopieDuCheminDuJeu`) balaie `../..` (= `apps/go-api`) :
+   à porter dans archlint ou à borner à la brique ; les chemins `../../../../data` de `sonde_locs`.
+5. TRAITÉE AU LOT 2b : une copie par fichier, dans la brique. Le commentaire de `mapvar_test.go` refusait de dupliquer
+   les `.mvar` (« actifs propriétaires 343/Microsoft ») et le lot 2 avait pourtant dupliqué 6 fichiers (3 `.mvar`,
+   2 blobs navmesh, `carte_validee_v1.png`). Décision du pilote : chaque fichier reste dans le `testdata/` de la brique
+   qui le lit (`mapvar`, `hinavmesh`, `himap`), LevelUp le lit par `testfixtures.MapvarFixturesDir`,
+   `NavmeshFixturesDir` et `CarteValideeFixturesDir` (items 2.9 à 2.11). Au lot 3, ces trois constantes sont les seules
+   lignes à changer.
+6. TRAITÉE AU LOT 2c (décision utilisateur option 2 : un helper de remontée par paquet). Énoncé d'origine : `sonde_locs_gamefiles_test.go` contient des chemins absolus périmés (`C:\Users\Guillaume\Projects\LevelUp\.ai\re_dump`) :
+   préexistant, non traité.
+7. Poste de gate : `.ai/re_dump/mapvar` est ABSENT (même du checkout principal) et `data/cache` ne porte que
+   `career-rank-image` ; 7 tests du corpus gamefiles échouent donc par `t.Fatalf` « depot de variantes absent » AVANT
+   et APRÈS le lot, et `TestBancCliffhanger` reste le rouge connu (accord 64,4 %). Le gate de non-régression est la
+   COMPARAISON des issues test par test à la base (identiques).
+8. Le test `TestRenduForgeVagabond`, `TestOracle*` et autres changent de paquet : aucune entrée de la baseline JSONL de
+   tests (`.ai/baselines/tests_pre_migration.jsonl`) ne porte `himap`/`hinavmesh` : rien à retirer.
+
+Lot 2c (2026-10-28) :
+
+9. Le gate 5 du lot (`grep 'Projects\\\|Projects/LevelUp' internal/` vide) n'est pas atteignable sans sortir du périmètre : 20 fichiers
+   du décodeur de film (`film/internal/grammar`, `film/replay` : commentaires de commande `$env:ZONE_FILM="C:/Users/Guillaume/Projects/LevelUp/..."` et
+   chemins par défaut `C:\Users\Guillaume\Projects\LevelUp\data\...` de `vehicules_v2*`) portent encore ce chemin périmé. Les trois briques
+   (`himap`, `hinavmesh`, `mapvar`) sont propres (0 occurrence). Non traité : hors périmètre D1.
+10. Le relevé du pilote était inexact dans les deux sens (voir 2.13) : `filtres_reclaimer_drapeau`, `filtres_reclaimer_offsets` et cinq tests
+    de fichiers scindés ne lisent aucune donnée du dépôt (restés sous `gamefiles`) ; `maillage_sain`, `sonde_canevas_orphelines`,
+    `sonde_levelid` et le releve `Natives` de `filtres_reclaimer` en lisent (entrés au lot).
+11. DEUX PREUVES « DURABLES » DEVIENNENT À LA DEMANDE par la décision option 2 : `TestPreuveLevelIDCartes` (preuve level_id des appariements
+    carte -> module de `cmd/mapquant-build`, écrite comme « test durable ») et `TestZonesNommeesDIsolation` (témoin figé de 18 zones). Sur un poste
+    qui a `.ai/re_dump`, elles ne rejouent plus d'elles-mêmes. Conséquence assumée de la décision ; à confirmer par l'utilisateur au besoin.
+12. Trois copies d'une remontée « chercher un chemin relatif en montant » : `himap.cheminDepuisDepot`, `hinavmesh.racineDumpNavmesh`,
+    `mapvar.cheminDump` (règle 6 : la 3e copie demande helper + garde-rail). Un helper commun est impossible entre `himap` (module `libs/himap`)
+    et les deux autres sans casser l'autonomie des briques ; `hinavmesh` et `mapvar` partageront le module `libs/gamefiles` au lot 3 : y poser alors
+    un helper commun (sous `libs/gamefiles/internal/`) et retirer deux copies.
+13. Tests des briques pilotés par variable d'environnement, non tagués (`hinavmesh/sonde_blobs_ugc_test.go` via `dossierBlobsUGC` ;
+    `mapvar/{label_hunt,socles_*,vehicules_corpus,frag_types,assaut_sites_mvar}_test.go`) : ils ne remontent ni `.ai` ni le dépôt, se sautent si la
+    variable n'est pas posée, hors du critère du lot 2c. Non touchés ; à nommer `research` si l'on veut une classe d'instruments homogène.
+14. `gamefilescorpus` cite encore des noms d'avant le lot 2c dans ses commentaires (`aides_himap_gamefiles_test.go` : `sonde_levelid_gamefiles_test.go`) ;
+    fichier hors lot, non touché.
+15. Le plancher `instrumentsResearchPlancher` (383) est très en dessous du corpus réel (525 avant le lot, 554 après) : monté de 29 comme demandé ;
+    le recalibrer n'est pas du lot.
+16. Effet de bord attendu : la suite `gamefiles` de `himap` est maintenant ENTIÈREMENT verte sur un poste sans `.ai/re_dump` (les 8 rouges connus étaient
+    tous des instruments, dont `TestBancCliffhanger`) ; le « rouge connu » de la découverte 7 vit désormais dans la voie `gamefiles,research`.
+
+Lot 3 (2026-10-28) :
+
+17. DÉFAUT DU LOT 2c, corrigé au lot 3 parce qu'il bloquait le gate de lint : `himap/fixture_carte_validee_test.go` déclarait `fixtureCarteValidee`, lue seulement sous les tags `gamefiles` et `research` ;
+    `golangci-lint` (build par défaut) la signalait `unused`, donc le job `go-lint` du lot 2c aurait rougi (ratchet « fichier neuf »). Corrigé par `//nolint:unused` motivé sur la ligne.
+18. Lot 2c : les 10 tests de `mapvar` passés en instruments (`TestArbreRacineVarianteInventaire`, ...) n'ont pas eu de `RETRAIT` dans `scripts/check_test_baseline.sh` : le contrôle de PRÉSENCE de la baseline JSONL
+    aurait signalé 10 absences en CI. Sans objet depuis le lot 3 (les 48 paires du paquet sont retirées, `RETRAIT DU 2026-10-28`), mais la CI du lot 2c a pu être rouge sur ce point.
+19. `go mod tidy` est inutilisable dans `apps/go-api` (ADR 0041 D2) et Dependabot (`gomod`, `/apps/go-api`) charge le module sans `go.work` : il peut échouer à résoudre `github.com/JGtm/LevelUp/libs/gamefiles`
+    (à constater au premier passage mensuel). Si c'est le cas, les sorties sont une directive `replace` (écartée par D1-E) ou un ignore : DÉCISION NEUVE pour le pilote, non prise ici.
+20. Rechargement à chaud local : `apps/go-api/.air.toml` (`root = "."`) ne surveille pas `libs/` ; modifier une brique ne relance pas le serveur de développement (redémarrer air à la main).
+21. Ratchet de couverture (`scripts/check_coverage_ratchet.sh`) : les instructions de `mapvar` sortent du `-coverpkg=./...` de go-api, le total bouge un peu ; non mesurable sur ce poste (job `go-coverage-merge`), à lire à la première CI.
+22. Les hooks locaux `go-vet.sh` (informatif) et `govulncheck.sh` (indicatif) ne couvrent que `apps/go-api` ; seul `go-vet-cgo.sh` (bloquant) a été étendu aux modules `libs/*`.
+23. Découverte 12 (suite, lot 3) : `hinavmesh.racineDumpNavmesh` et `mapvar.cheminDump` partagent désormais le module `libs/gamefiles`, mais sur consigne du pilote (deux copies tolérées par la règle 6) AUCUN helper commun n'a été posé :
+    les deux copies restent. Une troisième copie (ou le jour où `himap` rejoindra un module commun) imposera helper + garde-rail.
+24. CI (`ci.yml`, job « Go Coverage + Baseline », `download-artifact` `pattern: go-lot-*` + `merge-multiple`) : après un `gh run rerun --failed`, le lot relancé publie un SECOND artefact du même nom (`go-lot-film-grammar-reste`, 17:50 et 18:01 le 2026-10-28) et la fusion relit le JSONL périmé (`FAIL ... 600.041s` d'un dépassement de délai de runner) alors que le lot relancé est vert. Contournement appliqué : suppression de l'artefact périmé par l'API puis relance du seul job de fusion. Correctif possible (hors D1) : `overwrite: true` sur `upload-artifact` des lots, ou nommer l'artefact par tentative (`github.run_attempt`) et ne télécharger que la dernière.
+
+Lot 4 (2026-10-28) :
+
+25. `cmd/mapfond-build/cuisson.go` : `const sourceCuisson = "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)"` est ÉCRITE dans le champ `source` de chaque sidecar publié (`data/titles/halo_infinite/reference/map_backgrounds/*.json`, une centaine). Le chemin est
+    faux depuis le lot 4. LAISSÉE telle quelle : la changer modifie le contenu de tout sidecar recuit (donc les sidecars ne seraient plus identiques aux publiés hors `generatedAt`, et la prochaine recuisson ferait un diff de données). À trancher : changer la
+    constante au prochain recuit de fonds, ou la rendre indépendante d'un chemin.
+26. Ratchet de couverture : les instructions de `himap` (12 500 lignes) sortent du `-coverpkg=./...` de go-api (comme `mapvar` au lot 3, découverte 21) ; le total bouge. Lu à la première CI (run 40752659187) : 84,0 % (82,0 % au lot 3) — CLOSE, le ratchet ne fait que monter avec le départ des briques. Aucun job ne mesure la couverture de `libs/himap` ni de `libs/gamefiles`.
+27. Dependabot (suite de la découverte 19) : le bloc `gomod` `/libs/himap` charge un module qui importe un frère SANS `go.work` ; même risque que celui de go-api et de gamefiles, à constater au premier passage mensuel. Le risque est plus net ici : le module n'a AUCUN `require` de son frère.
+28. `make gate-push` (GnuWin32) : `make -n gate-push` échoue sur ce poste (« Paramètre incorrect ») à cause du `$(MAKE)` dont le chemin contient un espace (`C:/Program Files (x86)/...`) ; préexistant (la ligne `$(MAKE) libs-test` date du lot 3), non traité. `make libs-test` direct fonctionne.
+29. Les commentaires de la brique `himap` citent encore des chemins de l'hôte (`internal/gamefilescorpus`, `internal/testfixtures/...`, `cmd/mapquant-build`, `cmd/mapcallouts-build`, `internal/games/halo_infinite/film/replay/map_background.go` : une douzaine de lignes de commentaire, aucun import). Sans effet sur l'autonomie au sens de l'ADR (critère = `go list -deps`), mais bruyant pour un module
+    destiné à l'import externe. Non traité.
+30. `libs/himap/go.mod` porte `golang.org/x/sys v0.49.0 // indirect` écrit à la main (aucun `go mod tidy` possible, ADR 0041 D2) : une montée de version de `x/sys` dans `libs/gamefiles` ou `apps/go-api` doit être répercutée à la main dans les trois `go.mod` (le ratchet de version Go ne couvre que la ligne `go`). Un garde-rail « même version de `x/sys` dans les modules » n'existe pas.
+
+Lot 5 (2026-10-28) :
+
+31. Les fonds publiés sont des `.webp` (le PNG est l'intermédiaire que `mapfond-webp -convertir` transforme, avec son aller-retour vérifié), alors que le critère de succès (4) et l'item 5.1 écrivent « PNG identiques à l'octet aux fichiers publiés ». La preuve se fait donc en deux étages (PNG recuit = témoin PNG du lot 4 ; WebP produit par l'outil de production = fichier publié, à l'octet). Libellé du plan non corrigé (historique).
+32. Les témoins de corpus des lots 3 et 4 ne couvraient que quatre des cinq paquets de la cible `go-api-test-gamefiles` : `cmd/film-profiles-build` (un test, `TestCatalogueCommisEgaleCatalogueRegenere`) n'y figurait pas. Le témoin du lot 5 est la cible entière (344 verdicts : 331 PASS / 12 SKIP / 1 FAIL).
+33. Précision sur la 28 : l'échec réel de `make gate-push` n'est pas le « Paramètre incorrect » de `make -n` mais `/usr/bin/sh: syntax error near unexpected token '('` sur la ligne `C:/Program Files (x86)/GnuWin32/bin/make libs-test` (le `$(MAKE)` est développé sans guillemets), après les trois lint. Correctif possible, hors D1 : `"$(MAKE)" libs-test` (ou ne pas passer par un sous-make).
+34. `golangci-lint` émet à chaque exécution `Found unknown linters in //nolint directives: 2026-09-07), gosec — ...` : des directives `//nolint` mal formées (le linter lit « 2026-09-07) » comme un nom de linter), p. ex. `internal/service/match_view_builders_team.go:48` (`//nolint:PLR0913 — clé canonique d'issue (D5, 2026-09-07)`) et `match_view_builders_summary.go:34`. Préexistant, hors D1.
+35. `npm run lint` (web) : 0 erreur, 27 avertissements (`react-hooks/incompatible-library` sur `useReactTable`, etc.). Préexistant, hors D1.
+36. `TestRenduForgeVagabond` échoue par `t.Fatalf` (dépôt de variantes absent) là où `TestRenduCarte` et d'autres preuves du même tag se sautent : sur un poste sans `.ai/re_dump/mapvar`, la cible `go-api-test-gamefiles` ne peut pas rendre 0 (suite de la 7). Pas traité.
+37. Le worktree laisse `apps/go-api/internal/gamefilescorpus/gate.png` (ignoré par git, écrit par le corpus `gamefiles`) : sans effet sur `git status`, présent après chaque exécution de la cible.
+38. (revue adversariale, constat 3) `apps/go-api/internal/archlint/briques_imports_test.go` (table `briques`) ne contrôle que les paquets déclarés, sans descente récursive sur `libs/**` : un `libs/gamefiles/extra/x.go` important `libs/himap/himap` (inversion de l'invariant 2) ou un `libs/himap/himap/y_test.go` important `levelup/go-api/contracttest` (paquet non `internal/`) resteraient verts ; le pas CI `go list -deps | grep levelup/go-api` ne voit ni les tests ni l'inversion gamefiles -> himap. Déclencheur futur, pas de défaut présent. Correctif à écrire (hors D1) : un test qui exige que chaque dossier Go de `libs/**` figure dans la table, et un `-test` sur le `go list -deps` CI.

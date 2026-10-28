@@ -896,7 +896,7 @@ func (p *PathResolver) FilmProfilesPath(titleSlug string) string {
 // MapFondReglagesPath retourne le chemin des RÉGLAGES DE CUISSON PAR CARTE des fonds de
 // rejeu 2D (habillage, échelle).
 //
-// POURQUOI CE FICHIER EXISTE. La chaîne de cuisson (`internal/himap`) ne porte aucune branche
+// POURQUOI CE FICHIER EXISTE. La chaîne de cuisson (`libs/himap/himap`) ne porte aucune branche
 // par carte, et c'est ce qui la rend transférable. Mais le gate utilisateur du 2026-08-26 a
 // établi, images à l'appui, que le meilleur rendu n'est pas le même d'une carte à l'autre.
 // Le choix vit donc ICI, en DONNÉE, avec sa raison écrite et la date de son gate — jamais

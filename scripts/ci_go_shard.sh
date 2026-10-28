@@ -45,7 +45,10 @@ if [[ -f /c/msys64/ucrt64/bin/gcc.exe ]]; then
 fi
 
 cd "$REPO_ROOT/apps/go-api"
-MODULE="$(go list -m | tr -d '\r')"
+# `go list -m` rend TOUS les modules de l'espace de travail (go.work, ADR 0041) : le chemin du
+# module go-api se lit dans son go.mod. `./...` ne franchit pas la frontière d'un module, donc
+# la partition ne couvre que go-api ; les briques sous libs/ ont leurs pas de CI (job go-test).
+MODULE="$(awk '$1 == "module" { print $2; exit }' go.mod | tr -d '\r')"
 PKG_FILE="$(mktemp)"
 trap 'rm -f "$PKG_FILE"' EXIT
 CGO_ENABLED=1 go list -tags=integration ./... | tr -d '\r' | sed "s#^${MODULE}/##" > "$PKG_FILE"

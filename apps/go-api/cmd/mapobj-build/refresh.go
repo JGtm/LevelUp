@@ -18,7 +18,7 @@ import (
 	"sort"
 	"strings"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
+	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 )
 
 // loadAnyVersion lit un catalogue existant SANS exiger la version courante :

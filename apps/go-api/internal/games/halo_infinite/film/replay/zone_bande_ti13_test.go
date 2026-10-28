@@ -46,7 +46,8 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
-	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
+
+	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 )
 
 // bandeHorsCorpus — les films du controle de bande ABSENTS du corpus gele de la phase 2a, avec

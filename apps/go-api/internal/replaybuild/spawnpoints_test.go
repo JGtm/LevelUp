@@ -14,7 +14,8 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
-	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
+
+	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 )
 
 // spEcrireCatalogue depose un catalogue minimal dans l'arborescence attendue et rend sa racine.

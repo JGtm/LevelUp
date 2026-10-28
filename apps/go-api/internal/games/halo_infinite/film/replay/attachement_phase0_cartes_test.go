@@ -19,7 +19,8 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
-	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
+
+	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 )
 
 // attRefEnv permet de désigner le répertoire des données de référence du titre. Sans elle, il

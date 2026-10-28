@@ -17,7 +17,7 @@ package replay
 // (cf. Zone.SpatialRank — un rang spatial n'est pas un nom, et le client ne doit PAS en
 // inventer un). Le DTO ne publie donc AUCUN identifiant affichable.
 
-import "levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
+import "github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 
 // TeamNeutral est la valeur « aucun camp » du team_index, celle du fichier de carte.
 const TeamNeutral = -1

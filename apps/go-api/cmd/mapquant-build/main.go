@@ -27,7 +27,8 @@ import (
 
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/himap"
+
+	"github.com/JGtm/LevelUp/libs/himap/himap"
 )
 
 // deployVariant : les bornes monde du BSP se lisent dans le build serveur dédié. La racine
@@ -55,8 +56,8 @@ const deployVariant = "ds"
 // porte les bornes de déquantification.
 //
 // Les 6 entrées du 2026-08-13 (Corpo, Deadlock, Oasis, Prism, Recharge, Scarr) sont
-// établies par la MÊME méthode level_id, désormais REJOUÉE en continu par le test
-// gamefiles `TestPreuveLevelIDCartes` (internal/himap/sonde_levelid_gamefiles_test.go) :
+// établies par la MÊME méthode level_id, désormais REJOUABLE à la demande par l'instrument
+// `TestPreuveLevelIDCartes` (libs/himap/himap/sonde_levelid_research_test.go, `-tags=gamefiles,research`) :
 // level_id lu dans `<carte>_map.mvar` (variante par défaut, nom sans module), corroboré par
 // le fichier-lien `<carte>_<module>.mvar`, unicité exigée sur les 64 modules de
 // `any/levels` + `ds/levels`. Level_id mesurés (2026-08-13, unicité 1/1 chacun) :

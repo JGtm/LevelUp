@@ -54,7 +54,7 @@ package archlint
 //	                  position EN BITS (`bp`, `bitPos`, `bitOff`, ...). C est le motif
 //	                  structurel : un septieme lecteur invente demain sous un nom neuf rougit
 //	                  quand meme. Une position en OCTETS (`pos`) ne compte pas — sinon tout
-//	                  decodeur d octets du depot (`replay/mapvar/cb2.go`) rougirait.
+//	                  decodeur d octets du depot (`libs/gamefiles/mapvar/cb2.go`, hors perimetre) rougirait.
 //	motifChunk        indexation ou tranchage d une valeur nommee `chunk` / `chunks` /
 //	                  `chunk0` DONT LE TYPE DECLARE dans le paquet est `[]byte` ou
 //	                  `[][]byte`. Le controle de type evite les faux positifs reels :
@@ -219,9 +219,6 @@ var exclusionsOctetsBruts = []exclusionOctets{
 	{chemin: "cmd/weapon-icons-build", raison: "lit les modules et les textures BC7 de " +
 		"l INSTALLATION DU JEU (son propre `bitReader` de `bc7.go` decode un bloc de " +
 		"texture), jamais un film."},
-	{chemin: "internal/games/halo_infinite/film/replay/mapvar", raison: "lit les VARIANTES " +
-		"DE CARTE `.mvar` (Bond CompactBinary v2, stockage UGC), jamais les chunks d un " +
-		"film. Le paquet vit sous `film/` par proximite d usage, pas par format."},
 	{chemin: "internal/games/halo_infinite/film/research/reapparition", raison: "lit " +
 		"`HaloInfinite.exe` — l EXECUTABLE DE L INSTALLATION DU JEU (en-tetes PE, sections, " +
 		"repertoire d exceptions `.pdata`), jamais un film. Meme nature que `cmd/weapon-sounds` " +

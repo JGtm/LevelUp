@@ -12,8 +12,10 @@
 //   - api_match_stats.json + api_skill.json + api_match_history_page0.json).
 //     Régénéré via `go run ./cmd/gen_test_fixtures download-full-match`.
 //
-//   - testdata/cartes/ : fixtures de cartes (dump découpé de Ridgeline, carte validée, trois
-//     variantes .mvar), accessibles par CartesDir() et Carte().
+//   - testdata/cartes/ : fixtures de cartes propres à LevelUp (dump découpé de Ridgeline),
+//     accessibles par CartesDir() et Carte(). Les fixtures binaires de cartes (trois variantes
+//     .mvar, carte validée, blobs navmesh) appartiennent à la brique qui les lit et n'existent
+//     qu'en une copie, dans son testdata/ ; Carte(), CarteValidee() et Navmesh() les y résolvent.
 //
 //   - data/wal/ : 69 batches WAL JSON capturés en production (référence:
 //     racine repo data/wal/, accessible via WALDir()).

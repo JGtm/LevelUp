@@ -8,7 +8,7 @@ package profile_test
 // `himap`, qui tire `himodule` puis `ooz` — un paquet CGO sans aucun fichier compilable sous
 // CGO_ENABLED=0. Or le job « Go Build + Test » de la CI vet `film/internal/profile/...` avec
 // CGO_ENABLED=0 (ci.yml, etape `go vet`) : le paquet de test entier mourait sur « build constraints
-// exclude all Go files in internal/ooz », et avec lui les six autres tests de la loi, qui n ont
+// exclude all Go files in libs/gamefiles/ooz », et avec lui les six autres tests de la loi, qui n ont
 // besoin de rien. Le tag `cgo` ne desarme rien : le job Coverage (CGO_ENABLED=1) et tout poste local
 // jouent ce test ; seul le vet sans CGO l ignore, comme il ignore deja himap lui-meme
 // (memoire du projet : « vet himap/himodule = CGO obligatoire »).
@@ -18,7 +18,8 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
-	"levelup/go-api/internal/himap"
+
+	"github.com/JGtm/LevelUp/libs/himap/himap"
 )
 
 // TestLoiHimapEtLoiDuProfilSAccordent — LE GARDE-RAIL DES DEUX COPIES.

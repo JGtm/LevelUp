@@ -34,7 +34,7 @@ import (
 	"sort"
 	"strings"
 
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 // EqipSon est la chaine son d'UN tag `eqip`, telle que la passe 1 la rend.

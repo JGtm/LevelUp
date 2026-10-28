@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"sort"
 
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 // dependancesEnOrdre affiche les references sortantes d'un tag DANS L'ORDRE DU FICHIER, sans

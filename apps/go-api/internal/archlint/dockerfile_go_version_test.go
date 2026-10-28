@@ -21,6 +21,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"testing"
 
 	"gopkg.in/yaml.v3"
@@ -160,4 +161,140 @@ func mustReadRepoFile(t *testing.T, path string) string {
 		t.Fatalf("lecture de %s impossible : %v (le garde-rail a perdu sa cible)", path, err)
 	}
 	return string(data)
+}
+
+// TestGoVersionIdentiqueDansLEspaceDeTravail — la ligne `go` de `go.work` et de chaque `go.mod`
+// de `libs/**` égale celle de `apps/go-api/go.mod` (ADR 0041, plan D1 lot 3).
+//
+// POURQUOI. L'image du Dockerfile, le job `govulncheck` et le build de release lisent UNE ligne
+// `go` (celle d'`apps/go-api/go.mod`, via `go-version-file`). Dans un espace de travail, la ligne
+// `go` du `go.work` doit être au moins la plus haute des modules ; une brique qui déclarerait une
+// ligne plus basse serait compilée et testée par un toolchain que personne n'a validé pour elle,
+// plus haute elle exigerait un toolchain que l'image n'a pas (`GOTOOLCHAIN=local`). Une seule
+// valeur partout : la montée de version est un seul geste, et ce test refuse le geste partiel.
+func TestGoVersionIdentiqueDansLEspaceDeTravail(t *testing.T) {
+	depot := workspaceRoot(t)
+	modules, err := filepath.Glob(filepath.Join(depot, "libs", "*", "go.mod"))
+	if err != nil || len(modules) == 0 {
+		t.Fatalf("aucun libs/*/go.mod trouvé (%v) : le garde-rail a perdu sa cible", err)
+	}
+	fichiers := map[string]string{
+		"apps/go-api/go.mod": mustReadRepoFile(t, filepath.Join(depot, "apps", "go-api", "go.mod")),
+		"go.work":            mustReadRepoFile(t, filepath.Join(depot, "go.work")),
+	}
+	for _, m := range modules {
+		rel, _ := filepath.Rel(depot, m)
+		fichiers[filepath.ToSlash(rel)] = mustReadRepoFile(t, m)
+	}
+	for _, v := range goVersionsEspaceDeTravailViolations(fichiers) {
+		t.Error(v)
+	}
+}
+
+// TestGoVersionEspaceDeTravailDetectsDefects — l'analyse sait échouer : une brique en écart, un
+// `go.work` en écart et un fichier sans ligne `go` sont signalés ; un jeu cohérent passe.
+func TestGoVersionEspaceDeTravailDetectsDefects(t *testing.T) {
+	sain := map[string]string{
+		"apps/go-api/go.mod":    "module levelup/go-api\n\ngo 1.26.9\n",
+		"go.work":               "// commentaire\ngo 1.26.9\n\nuse ./apps/go-api\n",
+		"libs/gamefiles/go.mod": "module x/gamefiles\n\ngo 1.26.9\r\n",
+	}
+	if got := goVersionsEspaceDeTravailViolations(sain); len(got) != 0 {
+		t.Fatalf("jeu sain signalé : %v", got)
+	}
+	for nom, mutation := range map[string]func(map[string]string){
+		"brique en écart":       func(m map[string]string) { m["libs/gamefiles/go.mod"] = "go 1.26.8\n" },
+		"go.work en écart":      func(m map[string]string) { m["go.work"] = "go 1.27.0\n" },
+		"brique sans ligne go":  func(m map[string]string) { m["libs/gamefiles/go.mod"] = "module x\n" },
+		"référence sans ligne":  func(m map[string]string) { m["apps/go-api/go.mod"] = "module levelup/go-api\n" },
+		"go.work sans ligne go": func(m map[string]string) { m["go.work"] = "use ./apps/go-api\n" },
+	} {
+		cas := map[string]string{}
+		for k, v := range sain {
+			cas[k] = v
+		}
+		mutation(cas)
+		if got := goVersionsEspaceDeTravailViolations(cas); len(got) == 0 {
+			t.Errorf("%s : défaut non signalé", nom)
+		}
+	}
+}
+
+// goVersionsEspaceDeTravailViolations compare la ligne `go` de chaque fichier à celle de
+// `apps/go-api/go.mod` (la référence, lue par `go-version-file` en CI).
+func goVersionsEspaceDeTravailViolations(fichiers map[string]string) []string {
+	var out []string
+	ref := goModGoLineRe.FindStringSubmatch(fichiers["apps/go-api/go.mod"])
+	if ref == nil {
+		return []string{"apps/go-api/go.mod : ligne `go X.Y.Z` introuvable (le garde-rail a perdu sa cible)"}
+	}
+	noms := make([]string, 0, len(fichiers))
+	for nom := range fichiers {
+		noms = append(noms, nom)
+	}
+	sort.Strings(noms)
+	for _, nom := range noms {
+		m := goModGoLineRe.FindStringSubmatch(fichiers[nom])
+		switch {
+		case m == nil:
+			out = append(out, fmt.Sprintf("%s : ligne `go X.Y.Z` introuvable", nom))
+		case m[1] != ref[1]:
+			out = append(out, fmt.Sprintf("%s : `go %s` diffère de `go %s` d'apps/go-api/go.mod — "+
+				"monter ensemble go.work, chaque libs/*/go.mod et l'image du Dockerfile", nom, m[1], ref[1]))
+		}
+	}
+	return out
+}
+
+// TestModulesLibsSurveillesParDependabot — chaque module `libs/*/go.mod` a son bloc `gomod` dans
+// `.github/dependabot.yml` : sans lui, ses dépendances externes ne reçoivent jamais de bump
+// (Dependabot ne descend pas dans un module qu'on ne lui nomme pas).
+func TestModulesLibsSurveillesParDependabot(t *testing.T) {
+	depot := workspaceRoot(t)
+	modules, err := filepath.Glob(filepath.Join(depot, "libs", "*", "go.mod"))
+	if err != nil || len(modules) == 0 {
+		t.Fatalf("aucun libs/*/go.mod trouvé (%v) : le garde-rail a perdu sa cible", err)
+	}
+	src := mustReadRepoFile(t, filepath.Join(depot, ".github", "dependabot.yml"))
+	for _, m := range modules {
+		rel, _ := filepath.Rel(depot, filepath.Dir(m))
+		dir := "/" + filepath.ToSlash(rel)
+		if !dependabotWatchesGomod(src, dir) {
+			t.Errorf(".github/dependabot.yml : aucun bloc package-ecosystem: \"gomod\" avec directory: %q", dir)
+		}
+	}
+}
+
+func TestDependabotGomodAnalysisDetectsDefects(t *testing.T) {
+	sain := "version: 2\nupdates:\n  - package-ecosystem: gomod\n    directory: /libs/x\n"
+	if !dependabotWatchesGomod(sain, "/libs/x") {
+		t.Fatal("fichier sain non reconnu")
+	}
+	for nom, doc := range map[string]string{
+		"répertoire absent":  "version: 2\nupdates:\n  - package-ecosystem: gomod\n    directory: /apps/go-api\n",
+		"mauvais écosystème": "version: 2\nupdates:\n  - package-ecosystem: docker\n    directory: /libs/x\n",
+		"YAML illisible":     "updates: [",
+	} {
+		if dependabotWatchesGomod(doc, "/libs/x") {
+			t.Errorf("%s : défaut non signalé", nom)
+		}
+	}
+}
+
+func dependabotWatchesGomod(src, directory string) bool {
+	var cfg struct {
+		Updates []struct {
+			Ecosystem string `yaml:"package-ecosystem"`
+			Directory string `yaml:"directory"`
+		} `yaml:"updates"`
+	}
+	if err := yaml.Unmarshal([]byte(src), &cfg); err != nil {
+		return false
+	}
+	for _, u := range cfg.Updates {
+		if u.Ecosystem == "gomod" && u.Directory == directory {
+			return true
+		}
+	}
+	return false
 }

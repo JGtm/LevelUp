@@ -694,7 +694,7 @@ var weaponRegistryInfiniteFilmshell = []weaponNumericID{
 	{"hinf_dynamo_grenade", 0x3ad55da442c9679f},
 	// RETOURS DU REJEU, lots M6.3 et M6.4 (2026-09-24) — trois familles OBSERVEES au parc sous leur
 	// seul hexadecimal, etablies sur pieces (instrument
-	// `internal/himodule/m6_bobine_mains_nues_research_test.go`, modules installes en lecture
+	// `libs/gamefiles/himodule/m6_bobine_mains_nues_research_test.go`, modules installes en lecture
 	// seule ; la variante est lue dans la liste du tag, comme `42C9679F` pour l arsenal) :
 	//   - MAINS NUES : l objet que le jeu remet a chaque bipede (cf. filmshell/unarmed.go) ;
 	//   - BOBINE A FUSION UNSC : `forge_fusion_coil_mp` (table `MiscWeaponTags` du Lua global,

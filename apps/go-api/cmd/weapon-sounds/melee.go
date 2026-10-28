@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"sort"
 
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 // derivesConnues : decalages a essayer entre l'offset du plugin et le tag reel. Le +64 est

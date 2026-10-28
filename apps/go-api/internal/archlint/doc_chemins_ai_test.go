@@ -9,8 +9,8 @@ package archlint
 // commandes `go test` qui visaient un paquet disparu. Rien ne les voyait : un commentaire ne
 // compile pas.
 //
-//   - TestCheminsAiCitesDansLeCodeExistent : tout chemin `.ai/…` cité dans un COMMENTAIRE Go du
-//     module existe dans le dépôt. Les chaînes de caractères ne sont pas lues (ce sont du code :
+//   - TestCheminsAiCitesDansLeCodeExistent : tout chemin `.ai/…` cité dans un COMMENTAIRE Go de
+//     l'espace de travail (`apps/go-api` et `libs/**`, ADR 0041) existe dans le dépôt. Les chaînes de caractères ne sont pas lues (ce sont du code :
 //     les changer changerait un comportement).
 //   - TestAucunCommentaireNeViseLAncienPaquetFilmdec : le littéral de l'ancien chemin du
 //     décodeur n'apparaît plus dans aucun fichier Go du module.
@@ -18,11 +18,9 @@ package archlint
 import (
 	"go/parser"
 	"go/token"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strings"
 	"testing"
 )
@@ -51,9 +49,9 @@ var racinesLocalesAi = []string{".ai/re_dump/"}
 // Mutation qui doit le faire rougir : ajouter à `internal/sync/scope.go` un commentaire qui cite
 // un plan `.ai/` absent (vérifié le 2026-09-30).
 func TestCheminsAiCitesDansLeCodeExistent(t *testing.T) {
-	goAPI, depot := racinesDuModule(t)
+	depot := workspaceRoot(t)
 	vus := 0
-	balayerGo(t, goAPI, func(rel, chemin string) {
+	balayerGo(t, func(rel, chemin string) {
 		fset := token.NewFileSet()
 		f, err := parser.ParseFile(fset, chemin, nil, parser.ParseComments|parser.SkipObjectResolution)
 		if err != nil {
@@ -92,8 +90,7 @@ var ancienPaquetFilmdec = "film/" + "filmdec/"
 // Mutation qui doit le faire rougir : réécrire une commande d'en-tête de
 // `film/internal/grammar/fuzz_records_test.go` vers l'ancien chemin (vérifié le 2026-09-30).
 func TestAucunCommentaireNeViseLAncienPaquetFilmdec(t *testing.T) {
-	goAPI, _ := racinesDuModule(t)
-	balayerGo(t, goAPI, func(rel, chemin string) {
+	balayerGo(t, func(rel, chemin string) {
 		buf, err := os.ReadFile(chemin) //nolint:gosec // chemin de test, lecture seule
 		if err != nil {
 			t.Errorf("%s : %v", rel, err)
@@ -170,41 +167,12 @@ func cheminAiVivant(depot string, c citationAi) bool {
 	return false
 }
 
-// racinesDuModule rend `apps/go-api` et la racine du dépôt.
-func racinesDuModule(t *testing.T) (goAPI, depot string) {
+// balayerGo appelle `visiter` pour chaque fichier `.go` de l'espace de travail (tests compris), avec
+// son chemin relatif à la RACINE DU DÉPÔT en slash (`apps/go-api/…`, `libs/gamefiles/…`). Mêmes
+// répertoires sautés que `workspaceGoSources`, le parcours unique des garde-rails à règle générale.
+func balayerGo(t *testing.T, visiter func(rel, chemin string)) {
 	t.Helper()
-	_, ici, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller a échoué")
-	}
-	goAPI = filepath.Dir(filepath.Dir(filepath.Dir(ici)))
-	return goAPI, filepath.Dir(filepath.Dir(goAPI))
-}
-
-// balayerGo appelle `visiter` pour chaque fichier `.go` du module (tests compris), avec son
-// chemin relatif à `apps/go-api` en slash. Mêmes répertoires sautés que `balayerTests`.
-func balayerGo(t *testing.T, goAPI string, visiter func(rel, chemin string)) {
-	t.Helper()
-	err := filepath.WalkDir(goAPI, func(chemin string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if d.IsDir() {
-			nom := d.Name()
-			if chemin != goAPI && (dossiersInvisiblesAuGo[nom] ||
-				strings.HasPrefix(nom, ".") || strings.HasPrefix(nom, "_")) {
-				return fs.SkipDir
-			}
-			return nil
-		}
-		if !strings.HasSuffix(chemin, ".go") {
-			return nil
-		}
-		rel, _ := filepath.Rel(goAPI, chemin)
-		visiter(filepath.ToSlash(rel), chemin)
-		return nil
-	})
-	if err != nil {
-		t.Fatalf("parcours du module (%s) : %v", goAPI, err)
+	for _, f := range workspaceGoSources(t, racinesEspaceDeTravail...) {
+		visiter(f.Rel, f.Chemin)
 	}
 }

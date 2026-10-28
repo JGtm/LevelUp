@@ -4,7 +4,7 @@ package filmshell
 // (retours du rejeu, lot M6.3, 2026-09-24).
 //
 // L IDENTITE (sonde CA9 du 2026-09-23, `.ai/archive/V7.5/retours_rejeu_2026-09-23/SONDE_CA9_objet_00007CA9.md`,
-// et instrument `internal/himodule/m6_bobine_mains_nues_research_test.go`) : `00007CA9` est un
+// et instrument `libs/gamefiles/himodule/m6_bobine_mains_nues_research_test.go`) : `00007CA9` est un
 // tag `weap` du module `globals` (8 796 octets, sans projectile, sans chargeur, sans son de tir)
 // que le script Lua global nomme `WeaponTags.unarmed`. Sa liste de variantes porte `42C9679F`,
 // comme les armes de l arsenal : l identifiant d arme du film vaut donc `00007CA942C9679F`.

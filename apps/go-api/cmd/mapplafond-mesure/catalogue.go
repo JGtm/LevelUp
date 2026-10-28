@@ -27,8 +27,9 @@ import (
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
-	"levelup/go-api/internal/himap"
 	"levelup/go-api/internal/i18n"
+
+	"github.com/JGtm/LevelUp/libs/himap/himap"
 )
 
 // cheminDumpPOC : le decoupage du POC pour Ridgeline. Le catalogue de callouts ne conserve

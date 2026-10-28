@@ -1,0 +1,9 @@
+// Espace de travail Go du depot (ADR 0041) : l'application et les briques sous libs/.
+// La ligne `go` est celle de apps/go-api/go.mod (ratchet archlint/dockerfile_go_version_test.go).
+go 1.26.10
+
+use (
+	./apps/go-api
+	./libs/gamefiles
+	./libs/himap
+)

@@ -270,8 +270,6 @@ var couchesDuDecodeur = map[string]coucheFilm{
 
 	// --- replay : publie le document versionne. NE DECODE RIEN (ADR 0034 D-1).
 	"internal/games/halo_infinite/film/replay": coucheReplay,
-	// `mapvar` est une feuille de `replay` (variantes de carte), sans aucun import du depot.
-	"internal/games/halo_infinite/film/replay/mapvar": coucheReplay,
 
 	// --- hors couches : ni decodage, ni publication. Sans rang, R1 ne les contraint pas ; R2 (le
 	// lieu) si, parce qu ils vivent sous `film/`.

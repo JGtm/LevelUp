@@ -31,7 +31,7 @@ package main
 //
 //	CGO_ENABLED=1 go test -tags=gamefiles ./cmd/film-profiles-build/ -count=1 -v
 //
-// CGO est OBLIGATOIRE : `internal/himap` tire `internal/ooz` (decompression), dont les
+// CGO est OBLIGATOIRE : `libs/himap/himap` tire `libs/gamefiles/ooz` (decompression), dont les
 // fichiers sont exclus sans cgo. Sans jeu installe, le test se SKIPPE (c est le cas de la CI).
 
 import (
@@ -42,8 +42,9 @@ import (
 
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/filmprofile"
-	"levelup/go-api/internal/himap"
 	"levelup/go-api/internal/testutil"
+
+	"github.com/JGtm/LevelUp/libs/himap/himap"
 )
 
 // deployVariantTest : la variante d installation ou vivent les bornes monde du BSP, la meme

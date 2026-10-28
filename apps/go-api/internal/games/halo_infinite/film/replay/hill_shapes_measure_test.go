@@ -84,7 +84,7 @@ import (
 	"strconv"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
+	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 )
 
 const (

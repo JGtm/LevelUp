@@ -24,7 +24,7 @@ LOAD_DOTENV := if [ -f .env.local ]; then set -a; . ./.env.local; set +a; fi; \
 
 .PHONY: help web dev stop restart test-web test-e2e test-e2e-ui demo-visual check-types \
         generate-types install-web \
-        go-api-build go-api-test go-api-test-gamefiles go-api-dev _go-api-run \
+        go-api-build go-api-test go-api-test-gamefiles libs-test go-api-dev _go-api-run \
         go-api-test-shared-social-gate install-git-hooks gate-push replay-corpus-gate \
         go-api-test-coverage-ratchet openapi-gen openapi-check
 
@@ -201,32 +201,57 @@ go-api-test:
 			./internal/games/weapons/... ./internal/games/halo_infinite/film/internal/profile/... ./internal/games/halo_infinite/film/internal/grammar/... ./internal/games/halo_infinite/film/internal/facts/... ./internal/games/halo_infinite/film/replay/... \
 			./contracttest/... \
 		-v -timeout 60s -count=1
+	cd libs/gamefiles && CGO_ENABLED=0 go test ./hinavmesh/ ./mapvar/ -timeout 60s -count=1
 
 ## Go API: corpus gamefiles du module — retro-ingenierie des cartes ET catalogues commis
 ## (EXIGE Halo Infinite installe, ~6 min)
 ##
-## Joue TOUS les paquets qui portent des `*_gamefiles_test.go`, pas seulement internal/himap/
+## Joue TOUS les paquets qui portent des `*_gamefiles_test.go`, pas seulement ceux de la brique himap
 ## (decouverte D1 (3.1.2) du 2026-09-16 : les tags hors himap n'etaient joues par AUCUNE
 ## commande du depot). La liste est EXPLICITE et non `./cmd/...` : sous le tag, un paquet sans
 ## fichier gamefiles n'apporte que du temps de compilation. Le ratchet
 ## `archlint.TestCibleMakefileGamefilesCouvreLeCorpus` rougit si un paquet entre au corpus
 ## sans entrer ici.
 ##
-## Les 59 fichiers `*_gamefiles_test.go` de internal/himap/ decodent les modules du JEU
+## Les 45 fichiers `*_gamefiles_test.go` de libs/himap/himap/ (au 2026-10-28) decodent les modules du JEU
 ## et balaient les 26 cartes du catalogue. Mesure du 2026-09-05 : `TestBalayageCoquille`
 ## seul prend 1 246 s (20 min 47 s) et passe — ce n'est pas un blocage, c'est le prix du
-## balayage. Ils sont derriere `//go:build gamefiles` pour que `go test ./internal/himap/`
-## reste utilisable (22 s au lieu d'interminable). Les trois paquets `cmd/` verifient qu'un
+## balayage. Ils sont derriere `//go:build gamefiles` pour que `go test ./himap/`
+## (depuis libs/himap) reste utilisable (22 s au lieu d'interminable). Les trois paquets `cmd/` verifient qu'un
 ## catalogue COMMIS est bien celui que son outil regenere depuis l'installation (mesure du
-## 2026-09-17 : 9,0 s a eux trois).
+## 2026-09-17 : 9,0 s a eux trois). Depuis le 2026-10-28 (plan D1, lot 2), les tests de la brique
+## `himap` qui lisent des donnees de LevelUp (catalogue d'objectifs, caches de rejeu, config)
+## vivent dans `internal/gamefilescorpus/` (tests seuls, 25 fichiers `*_gamefiles_test.go`) et
+## appellent `himap` par son API exportee. Depuis le lot 4 (module libs/himap, ADR 0041) la brique est
+## un module a part : la cible joue le corpus de la brique depuis libs/himap, puis celui de go-api.
 ##
 ## Sans installation du jeu, chaque test prend son `t.Skip` et la cible est vide en 1 s.
 ## Cibler une carte : BALAYAGE_CARTES=aquarius_map ; installation ailleurs :
 ## LEVELUP_HALO_DEPLOY=<chemin>.
 go-api-test-gamefiles:
+	cd libs/himap && CGO_ENABLED=1 go test -tags=gamefiles -count=1 -timeout 3600s ./himap/ -v
 	cd $(GO_API_DIR) && CGO_ENABLED=1 go test -tags=gamefiles -count=1 -timeout 3600s \
-		./internal/himap/ \
+		./internal/gamefilescorpus/ \
 		./cmd/film-profiles-build/ ./cmd/mapfond-build/ ./cmd/mapstruct-build/ -v
+
+## Briques Go sous libs/ (ADR 0041) : vet + tests de chaque module. `./...` ne franchit jamais la
+## frontiere d'un module (le go.work les relie a apps/go-api) : ni go-api-test ni go-api-lint
+## ne voient libs/, d'ou cette cible, aussi appelee par `make gate-push`. Miroir des pas
+## « brique ... » du job CI go-build. CGO actif : libs/gamefiles/ooz est un paquet C++ et
+## libs/himap l'importe. UNE boucle sur libs/*/go.mod : un module de plus n'ajoute pas de bloc ici.
+## Le corpus `gamefiles` d'une brique se joue par go-api-test-gamefiles (archlint.
+## TestCibleMakefileGamefilesCouvreLeCorpus exige sa ligne) ; les quatre vet couvrent le build par
+## defaut et les combinaisons de tags (compilation seule, jamais d'execution sans le jeu).
+## Autonomie : `go list -deps` d'un module ne doit montrer aucun paquet levelup/go-api.
+libs-test:
+	@set -e; for m in libs/*/go.mod; do d=$$(dirname $$m); echo "== $$d"; \
+		(cd $$d && CGO_ENABLED=1 go vet ./... && CGO_ENABLED=1 go vet -tags=research ./... \
+			&& CGO_ENABLED=1 go vet -tags=gamefiles ./... && CGO_ENABLED=1 go vet -tags=gamefiles,research ./... \
+			&& CGO_ENABLED=1 go test ./... -timeout 600s -count=1); \
+		if (cd $$d && go list -deps ./... | grep -E 'levelup/go-api'); then \
+			echo "$$d importe le module levelup/go-api"; exit 1; \
+		fi; \
+	done
 
 ## Go API: gate de non-regression des artefacts de rejeu sur corpus temoin. DEFAUT
 ## (--reference=base) : cuit chaque temoin DEUX FOIS (code du HEAD, code d'une revision de
@@ -259,7 +284,7 @@ go-api-coverage:
 ## Go API: lint (2026-07-22, F8 — aligné sur la CI)
 ##
 ## Le lint qui FAIT FOI est le job CI `go-lint` (.github/workflows/ci.yml) :
-## golangci-lint v2.12.2 sur TOUT apps/go-api, config apps/go-api/.golangci.yml,
+## golangci-lint v2.12.2 sur TOUT apps/go-api ET sur chaque module de libs/ (ADR 0041), config apps/go-api/.golangci.yml,
 ## avec RATCHET `--new-from-merge-base=origin/main` — seules les issues AJOUTÉES
 ## rougissent ; la dette baseline (~479 issues gelées) reste invisible.
 ##
@@ -274,7 +299,10 @@ go-api-lint:
 	cd $(GO_API_DIR) && \
 	if command -v golangci-lint >/dev/null 2>&1; then \
 		echo "golangci-lint présent — lint complet (ratchet CI, dette gelée exclue)."; \
-		golangci-lint run --timeout 5m --new-from-merge-base=origin/main; \
+		golangci-lint run --timeout 5m --new-from-merge-base=origin/main && \
+		for m in ../../libs/*/go.mod; do \
+			(cd $$(dirname $$m) && golangci-lint run --config ../../apps/go-api/.golangci.yml --timeout 5m --new-from-merge-base=origin/main) || exit 1; \
+		done; \
 	else \
 		echo "golangci-lint absent — REPLI go vet (domain+analysis). Le lint complet FAIT FOI en CI (job go-lint, .github/workflows/ci.yml)."; \
 		go vet ./internal/domain/... ./internal/analysis/... ./internal/games/weapons/... ./internal/games/halo_infinite/film/internal/profile/... ./internal/games/halo_infinite/film/internal/grammar/... ./internal/games/halo_infinite/film/internal/facts/... ./internal/games/halo_infinite/film/replay/...; \
@@ -347,6 +375,10 @@ gate-push:
 		exit 1; \
 	}
 	cd $(GO_API_DIR) && golangci-lint run --timeout 5m --new-from-merge-base=origin/main
+	@for m in libs/*/go.mod; do \
+		(cd $$(dirname $$m) && golangci-lint run --config ../../apps/go-api/.golangci.yml --timeout 5m --new-from-merge-base=origin/main) || exit 1; \
+	done
+	$(MAKE) libs-test
 	cd apps/web && npm run typecheck
 	cd apps/web && npm run lint
 	bash scripts/check_test_baseline.sh tests

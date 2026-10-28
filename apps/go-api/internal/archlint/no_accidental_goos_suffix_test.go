@@ -24,9 +24,7 @@
 package archlint
 
 import (
-	"os"
-	"path/filepath"
-	"runtime"
+	"path"
 	"strings"
 	"testing"
 )
@@ -43,59 +41,36 @@ var goosArchSuffixes = []string{
 }
 
 // goosSuffixAllowed : les fichiers REELLEMENT propres a une plateforme, verifies un a un le
-// 2026-09-06. Chemin relatif a `apps/go-api`.
+// 2026-09-06. Chemin relatif a la racine du depot.
 //
 // Ajouter une entree exige que le fichier soit un ADAPTATEUR SYSTEME (appel d'API du systeme
 // d'exploitation, ou type de donnee propre a une architecture) — pas un fichier metier dont le
 // nom tombe par hasard sur un suffixe.
 var goosSuffixAllowed = map[string]string{
-	"internal/filmproc/alive_windows.go": "vie d'un processus : OpenProcess/GetExitCodeProcess (Win32), " +
+	"apps/go-api/internal/filmproc/alive_windows.go": "vie d'un processus : OpenProcess/GetExitCodeProcess (Win32), " +
 		"ajoute le 2026-10-17 (lecture du detenteur du verrou de decodage)",
-	"internal/filmproc/priority_windows.go":          "priorite de processus : SetPriorityClass (Win32)",
-	"internal/filmproc/selfpriority_windows.go":      "priorite du processus courant : Win32",
-	"internal/himodule/projection_windows.go":        "projection memoire d'un module : CreateFileMapping (Win32)",
-	"internal/platform/diskfree/diskfree_windows.go": "espace disque : GetDiskFreeSpaceEx (Win32)",
-	"internal/platform/filelock/filelock_windows.go": "verrou de fichier entre processus : " +
+	"apps/go-api/internal/filmproc/priority_windows.go":          "priorite de processus : SetPriorityClass (Win32)",
+	"apps/go-api/internal/filmproc/selfpriority_windows.go":      "priorite du processus courant : Win32",
+	"libs/gamefiles/himodule/projection_windows.go":              "projection memoire d'un module : CreateFileMapping (Win32)",
+	"apps/go-api/internal/platform/diskfree/diskfree_windows.go": "espace disque : GetDiskFreeSpaceEx (Win32)",
+	"apps/go-api/internal/platform/filelock/filelock_windows.go": "verrou de fichier entre processus : " +
 		"LockFileEx (Win32), ajoute le 2026-09-26 (J2.6, DT-2)",
-	"internal/platform/session/store_purge_windows_test.go": "purge de sessions : comportement " +
+	"apps/go-api/internal/platform/session/store_purge_windows_test.go": "purge de sessions : comportement " +
 		"de suppression propre a Windows",
 }
 
-// TestAucunSuffixeDePlateformeAccidentel balaie le module et refuse tout nom de fichier qui porte
-// une contrainte de plateforme implicite sans etre dans l'allowlist.
+// TestAucunSuffixeDePlateformeAccidentel balaie l'espace de travail (`apps/go-api` et `libs/**`) et
+// refuse tout nom de fichier qui porte une contrainte de plateforme implicite sans etre dans
+// l'allowlist.
 func TestAucunSuffixeDePlateformeAccidentel(t *testing.T) {
-	_, thisFile, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller a échoué")
-	}
-	goAPIRoot := filepath.Dir(filepath.Dir(filepath.Dir(thisFile)))
-
 	var violations []string
-	err := filepath.WalkDir(goAPIRoot, func(path string, d os.DirEntry, err error) error {
-		if err != nil {
-			return err
+	for _, f := range workspaceGoSources(t, racinesEspaceDeTravail...) {
+		if !porteUnSuffixeDePlateforme(path.Base(f.Rel)) {
+			continue
 		}
-		if d.IsDir() {
-			if nom := d.Name(); nom == "vendor" || nom == "node_modules" || nom == "testdata" {
-				return filepath.SkipDir
-			}
-			return nil
+		if _, permis := goosSuffixAllowed[f.Rel]; !permis {
+			violations = append(violations, f.Rel)
 		}
-		if !strings.HasSuffix(d.Name(), ".go") || !porteUnSuffixeDePlateforme(d.Name()) {
-			return nil
-		}
-		rel, errRel := filepath.Rel(goAPIRoot, path)
-		if errRel != nil {
-			return errRel
-		}
-		rel = filepath.ToSlash(rel)
-		if _, permis := goosSuffixAllowed[rel]; !permis {
-			violations = append(violations, rel)
-		}
-		return nil
-	})
-	if err != nil {
-		t.Fatalf("balayage du module : %v", err)
 	}
 	if len(violations) > 0 {
 		t.Fatalf("ces fichiers portent une contrainte de compilation IMPLICITE par leur nom "+

@@ -6,8 +6,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 	"levelup/go-api/internal/testutil"
+
+	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 )
 
 func zoneObjective(idx int, instance int32, pos mapvar.Vec3, withShape bool) mapvar.Objective {

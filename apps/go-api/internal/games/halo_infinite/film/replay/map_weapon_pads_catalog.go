@@ -33,7 +33,7 @@ import (
 	"os"
 	"time"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
+	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 )
 
 // MapWeaponPadsSchemaVersion est la version de forme attendue du catalogue.

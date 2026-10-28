@@ -14,7 +14,7 @@ import (
 	"os"
 	"sort"
 
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 // magicBKHD marque le debut de la bank Wwise dans les octets du tag `sbnk`.
