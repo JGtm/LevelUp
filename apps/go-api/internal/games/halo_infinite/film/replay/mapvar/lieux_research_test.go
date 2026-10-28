@@ -1,8 +1,9 @@
+//go:build research
+
 package mapvar
 
 import (
 	"os"
-	"path/filepath"
 	"testing"
 )
 
@@ -80,8 +81,7 @@ func TestZonesNommeesPortentUneForme(t *testing.T) {
 
 func varianteDeTest(t *testing.T, nom string) *Variant {
 	t.Helper()
-	chemin := filepath.Join("C:\\", "Users", "Guillaume", "Projects", "LevelUp",
-		".ai", "re_dump", "mapvar", nom)
+	chemin := cheminDump(nom)
 	brut, err := os.ReadFile(chemin)
 	if err != nil {
 		t.Skipf("variante absente : %v", err)

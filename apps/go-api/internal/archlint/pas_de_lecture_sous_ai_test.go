@@ -53,25 +53,21 @@ const (
 
 // sitesAiAutorises : fichiers relatifs à `apps/go-api`, séparateurs `/`. Entrées posées à la
 // création du garde-rail (2026-10-27) ; la liste ne grossit pas.
+//
+// 2026-10-28 (plan D1, lot 2c, decision utilisateur) : les sondes de retro-ingenierie des briques
+// `himap`, `hinavmesh` et `mapvar` sont des instruments `*_research_test.go` ; les chemins
+// absolus perimes (`C:\Users\...\Projects\LevelUp\.ai\re_dump`) sont remplaces par UN helper de
+// remontee par paquet (`depot_research_test.go`), qui porte seul le litteral du dump. Les
+// treize entrees (une par fichier qui lisait le dump) sont retirees, deux helpers ajoutes
+// (plafond 27 -> 16).
 var sitesAiAutorises = map[string]siteAi{
 	// Dumps locaux du jeu (hors clone, jamais versionnés).
-	"cmd/mapfond-build/resolution_test.go":                                    {1, "fabrique une arborescence .ai/re_dump factice dans un TempDir, ne lit pas le dépôt"},
-	"internal/himap/cartes_forge.go":                                          {2, "constantes DepotVariantesCarte et DepotNavmesh : " + raisonReDump},
-	"internal/himap/sonde_forge_gamefiles_test.go":                            {4, raisonReDump},
-	"internal/himap/sonde_forge_mvar_gamefiles_test.go":                       {1, raisonReDump},
-	"internal/himap/sonde_locs_gamefiles_test.go":                             {7, raisonReDump},
-	"internal/hinavmesh/chaines_tstr_test.go":                                 {1, raisonReDump},
-	"internal/hinavmesh/sonde_compare_test.go":                                {1, raisonReDump},
-	"internal/hinavmesh/sonde_format_test.go":                                 {1, raisonReDump},
-	"internal/hinavmesh/sonde_membres_navmesh_test.go":                        {1, raisonReDump},
-	"internal/hinavmesh/sonde_racines_test.go":                                {1, raisonReDump},
-	"internal/hinavmesh/sonde_resync_test.go":                                 {1, raisonReDump},
-	"internal/hinavmesh/sonde_sections_test.go":                               {1, raisonReDump},
-	"internal/hinavmesh/sonde_tbdy_test.go":                                   {1, raisonReDump},
-	"internal/games/halo_infinite/film/replay/mapvar/categorie_test.go":       {1, raisonReDump},
-	"internal/games/halo_infinite/film/replay/mapvar/champ6_test.go":          {1, raisonReDump},
-	"internal/games/halo_infinite/film/replay/mapvar/lieux_test.go":           {1, raisonReDump},
-	"internal/games/halo_infinite/film/replay/mapvar/noms_lieux_hunt_test.go": {1, raisonReDump},
+	"cmd/mapfond-build/resolution_test.go":                                   {1, "fabrique une arborescence .ai/re_dump factice dans un TempDir, ne lit pas le dépôt"},
+	"internal/himap/cartes_forge.go":                                         {2, "constantes DepotVariantesCarte et DepotNavmesh : " + raisonReDump},
+	"internal/himap/sonde_forge_research_test.go":                            {4, raisonReDump},
+	"internal/himap/sonde_forge_mvar_research_test.go":                       {1, raisonReDump},
+	"internal/hinavmesh/depot_research_test.go":                              {1, raisonReDump + " (helper unique des instruments de la brique, lot 2c du plan D1, 2026-10-28)"},
+	"internal/games/halo_infinite/film/replay/mapvar/depot_research_test.go": {1, raisonReDump + " (helper unique des instruments de la brique, lot 2c du plan D1, 2026-10-28)"},
 	// Sorties de recherche (écriture, pas lecture de fixture).
 	"internal/games/halo_infinite/film/internal/grammar/zone_census_test.go": {1, raisonSortie},
 	"internal/games/halo_infinite/film/replay/colline_propriete_test.go":     {1, raisonSortie},
@@ -88,7 +84,7 @@ var sitesAiAutorises = map[string]siteAi{
 }
 
 // nombreSitesAiAutorisesPlafond : taille maximale de la liste (ratchet). Baisser avec elle.
-const nombreSitesAiAutorisesPlafond = 27
+const nombreSitesAiAutorisesPlafond = 16
 
 // sitesSousAi compte, dans une source Go, les littéraux qui construisent un chemin sous `.ai`.
 func sitesSousAi(t *testing.T, nom string, src []byte) int {

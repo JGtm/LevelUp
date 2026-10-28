@@ -1,3 +1,5 @@
+//go:build research
+
 package hinavmesh
 
 import (
@@ -15,7 +17,7 @@ func TestSondeRacinesDesRegions(t *testing.T) {
 		{"Absolution", "78da545f-a168-4a5e-9c8d-dd379067c352.blob"},
 	} {
 		brut, err := os.ReadFile(filepath.Join(
-			`C:/Users/Guillaume/Projects/LevelUp/.ai/re_dump/navmesh`, cas.blob))
+			racineDumpNavmesh(), cas.blob))
 		if err != nil {
 			t.Skipf("blob absent (%v)", err)
 		}

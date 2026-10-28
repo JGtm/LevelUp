@@ -445,9 +445,17 @@ jobs:
       # job windows par fail-fast dès l'ajout de cette étape. Le toolchain C++ est garanti
       # sur le runner Linux (le job Coverage y compile déjà ooz avec CGO_ENABLED=1) ; il ne
       # l'est pas sur le runner Windows, et compiler le corpus DEUX fois n'apprend rien.
+      #
+      # INSTRUMENTS DES BRIQUES qui ouvrent le jeu (`//go:build gamefiles && research`, plan D1
+      # lot 2c, 2026-10-28) : sondes de rétro-ingénierie de himap, hinavmesh et mapvar, conservées
+      # pour tourner à la demande (`go test -tags=gamefiles,research ...`). Compilation seule,
+      # jamais exécutée. Le vet `-tags=research ./...` ci-dessous les EXCLUT (il faut les deux
+      # tags) : c'est voulu, la deuxième ligne les compile à part.
       - name: go vet (corpus gamefiles — compilation seule, jamais exécuté en CI)
         if: runner.os == 'Linux'
-        run: go vet -tags=gamefiles ./internal/himap/ ./internal/gamefilescorpus/ ./cmd/mapstruct-build/ ./cmd/mapfond-build/
+        run: |
+          go vet -tags=gamefiles ./internal/himap/ ./internal/gamefilescorpus/ ./cmd/mapstruct-build/ ./cmd/mapfond-build/
+          go vet -tags=gamefiles,research ./internal/himap/ ./internal/hinavmesh/ ./internal/games/halo_infinite/film/replay/mapvar/
         env:
           CGO_ENABLED: "1"
 

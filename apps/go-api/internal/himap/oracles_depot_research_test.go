@@ -1,24 +1,25 @@
-//go:build gamefiles
+//go:build research
 
 package himap
 
-// oracles_depot_gamefiles_test.go — les ORACLES du depot hote que lisent encore quelques sondes
-// de la brique, sans importer aucun paquet de LevelUp.
+// oracles_depot_research_test.go — les ORACLES du depot hote que lisent les instruments de
+// recherche de la brique, sans importer aucun paquet de LevelUp.
 //
-// POURQUOI CES SONDES SONT RESTEES ICI. La regle (plan D1, decision D1-D) est qu'un test couple
-// aux donnees de LevelUp vit dans `internal/gamefilescorpus`, qui appelle `himap` par son API
-// exportee. Les sondes qui lisent ces oracles ET exercent des fonctions NON exportees de la
-// brique (tags sbsp/instances/forge, champs internes de `Rendu`) ne peuvent pas y aller sans
-// exporter des dizaines d'internes qui ne sont pas un contrat. Elles lisent donc leurs oracles
-// ici, par un parseur LOCAL (mapvar.Objective suffit) et la remontee depuis le repertoire de
-// test (cheminDepuisDepot) : fichier absent = test saute, comme avant. Les fichiers lus sont
-// ceux du depot hote, jamais copies dans la brique :
+// DEPUIS LE LOT 2c DU PLAN D1 (2026-10-28, decision utilisateur), ces sondes sont des
+// INSTRUMENTS (`*_research_test.go`) : elles lisent des donnees que la brique ne possede pas,
+// donc ne font partie ni du build par defaut ni de la suite `gamefiles` (le jeu seul). Elles
+// exercent des fonctions NON exportees de la brique (tags sbsp/instances/forge, champs internes
+// de `Rendu`) : leur place est ici, pas dans `internal/gamefilescorpus`. Les oracles se lisent
+// par un parseur LOCAL (mapvar.Objective suffit) et la remontee depuis le repertoire de test
+// (cheminDepuisDepot) ; fichier absent = instrument saute. Les fichiers lus sont ceux du depot
+// hote, jamais copies dans la brique :
 //
 //   - data/titles/halo_infinite/reference/map_objectives.json (ancres d'objectifs) ;
-//   - data/cache/replays/halo_infinite/*.json (positions jouees).
+//   - data/cache/replays/halo_infinite/*.json (positions jouees) ;
+//   - data/titles/halo_infinite/reference/callouts_i18n.csv (libelles, lus par sonde_locs).
 //
-// Sondes concernees : cloture, filtres_reclaimer, physique_sonde, sddt, sonde_bouillie,
-// sonde_forge_saut (et sonde_locs, qui lit callouts_i18n.csv).
+// Instruments concernes : cloture, filtres_reclaimer, physique_sonde, sddt, sonde_bouillie,
+// sonde_forge_saut, sonde_locs.
 
 import (
 	"encoding/json"
@@ -160,4 +161,15 @@ func chargePositions(t *testing.T) []pointRejeu {
 		t.Fatalf("%s ne porte aucune position", p)
 	}
 	return out
+}
+
+// cheminCalloutsI18n trouve `callouts_i18n.csv` (le catalogue de libelles versionne du depot
+// hote, jamais copie dans la brique) ; absent = instrument saute.
+func cheminCalloutsI18n(t *testing.T) string {
+	t.Helper()
+	p, err := cheminDepuisDepot("data/titles/halo_infinite/reference/callouts_i18n.csv")
+	if err != nil {
+		t.Skipf("catalogue i18n absent : %v", err)
+	}
+	return p
 }

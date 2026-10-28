@@ -1,8 +1,9 @@
+//go:build research
+
 package mapvar
 
 import (
 	"os"
-	"path/filepath"
 	"sort"
 	"testing"
 )
@@ -19,7 +20,7 @@ import (
 //
 // Le test ne conclut pas : il decrit ce que le champ contient, sur une carte reelle.
 func TestChamp6DesObjetsForge(t *testing.T) {
-	chemin := filepath.Join("C:\\", "Users", "Guillaume", "Projects", "LevelUp", ".ai", "re_dump", "mapvar", "isolation_map.mvar")
+	chemin := cheminDump("isolation_map.mvar")
 	brut, err := os.ReadFile(chemin)
 	if err != nil {
 		t.Skipf("variante absente : %v", err)

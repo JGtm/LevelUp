@@ -1,3 +1,5 @@
+//go:build research
+
 package hinavmesh
 
 import (
@@ -120,7 +122,7 @@ func litEntrees(corps []byte, depuis int, types tableTypes, nomsChamps []string)
 // chargePourSonde ouvre un blob et rend region, sections, types et noms de champs.
 func chargePourSonde(t *testing.T, blob string) ([]byte, map[string][2]int, tableTypes, []string) {
 	t.Helper()
-	const racine = `C:/Users/Guillaume/Projects/LevelUp/.ai/re_dump/navmesh`
+	racine := racineDumpNavmesh()
 	brut, err := os.ReadFile(filepath.Join(racine, blob))
 	if err != nil {
 		t.Skipf("blob absent (%v)", err)

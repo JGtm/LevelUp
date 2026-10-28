@@ -1,4 +1,4 @@
-//go:build gamefiles
+//go:build gamefiles && research
 
 package himap
 
@@ -28,19 +28,6 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 	"levelup/go-api/internal/himodule"
 )
-
-func moduleGlobals(t *testing.T) string {
-	t.Helper()
-	racine, err := DeployRoot()
-	if err != nil {
-		t.Skipf("pas d installation : %v", err)
-	}
-	p := filepath.Join(racine, "any", "globals", "globals-rtx-new.module")
-	if _, err := os.Stat(p); err != nil {
-		t.Skipf("globals absent : %v", err)
-	}
-	return p
-}
 
 // TestSondeTagLocsStructure — combien de tags `locs`, quelle taille, quels StringId ?
 func TestSondeTagLocsStructure(t *testing.T) {
@@ -83,7 +70,7 @@ var vocabNoms = map[uint32]string{}
 
 func chargeVocabCallouts(t *testing.T) map[uint32]bool {
 	t.Helper()
-	p := filepath.Join("..", "..", "..", "..", "data", "titles", "halo_infinite", "reference", "callouts_i18n.csv")
+	p := cheminCalloutsI18n(t)
 	f, err := os.Open(p)
 	if err != nil {
 		t.Skipf("catalogue i18n absent : %v", err)
@@ -122,7 +109,7 @@ func vocabNom(_ map[uint32]bool, v uint32) string {
 // TestCalloutStringIDEstUnMurmur — le string_id d'une zone nommee est-il le murmur3 de son
 // nom de conception (avec ou sans le prefixe « named location ») ?
 func TestCalloutStringIDEstUnMurmur(t *testing.T) {
-	p := filepath.Join("..", "..", "..", "..", "data", "titles", "halo_infinite", "reference", "callouts_i18n.csv")
+	p := cheminCalloutsI18n(t)
 	f, err := os.Open(p)
 	if err != nil {
 		t.Skipf("catalogue absent : %v", err)
@@ -171,7 +158,7 @@ func TestCalloutStringIDEstUnMurmur(t *testing.T) {
 // rien rater), puis on les confronte au vocabulaire des zones nommees natives.
 func TestStringIDsDuMvarContreVocabulaireCallouts(t *testing.T) {
 	vocab := chargeVocabCallouts(t)
-	dossier := filepath.Join("C:\\", "Users", "Guillaume", "Projects", "LevelUp", ".ai", "re_dump", "mapvar")
+	dossier := dossierDeVariantes(t)
 	for _, nom := range []string{"isolation_map.mvar", "aquarius_map.mvar", "streets_map.mvar", "cliffhanger_map.mvar", "recharge_map.mvar", "live_fire_map.mvar"} {
 		brut, err := os.ReadFile(filepath.Join(dossier, nom))
 		if err != nil {
@@ -274,7 +261,7 @@ func TestStructureTagLocs(t *testing.T) {
 func TestEntiersDuMvarContreVocabulaireLocs(t *testing.T) {
 	vocab := vocabulaireLocs(t)
 	vocabNatif := chargeVocabCallouts(t)
-	dossier := filepath.Join("C:\\", "Users", "Guillaume", "Projects", "LevelUp", ".ai", "re_dump", "mapvar")
+	dossier := dossierDeVariantes(t)
 	cartes := []string{
 		"isolation_map.mvar", "isolation_fo08_wetland.mvar",
 		"aquarius_map.mvar", "streets_map.mvar", "cliffhanger_map.mvar",
@@ -406,7 +393,7 @@ func TestVocabulaireLocsExact(t *testing.T) {
 func TestOuSontLesStringIdDeLieuDansLaVariante(t *testing.T) {
 	vocab, _ := vocabulaireLocsExact(t)
 	natif := chargeVocabCallouts(t)
-	dossier := filepath.Join("C:\\", "Users", "Guillaume", "Projects", "LevelUp", ".ai", "re_dump", "mapvar")
+	dossier := dossierDeVariantes(t)
 	entrees, err := os.ReadDir(dossier)
 	if err != nil {
 		t.Skipf("dump absent : %v", err)
@@ -611,7 +598,7 @@ func labelsDeObjet(bag mapvar.Value) []int32 {
 func TestZonesNommeesDesVariantes(t *testing.T) {
 	vocab, _ := vocabulaireLocsExact(t)
 	natif := chargeVocabCallouts(t)
-	dossier := filepath.Join("C:\\", "Users", "Guillaume", "Projects", "LevelUp", ".ai", "re_dump", "mapvar")
+	dossier := dossierDeVariantes(t)
 	entrees, err := os.ReadDir(dossier)
 	if err != nil {
 		t.Skipf("dump absent : %v", err)
@@ -679,8 +666,9 @@ func TestZonesNommeesDesVariantes(t *testing.T) {
 func TestZonesNommeesIsolationDetail(t *testing.T) {
 	vocab, _ := vocabulaireLocsExact(t)
 	natif := chargeVocabCallouts(t)
+	dossier := dossierDeVariantes(t)
 	for _, nom := range []string{"isolation_map.mvar", "isolation_2e_asset_map.mvar", "aquarius_map.mvar", "streets_map.mvar", "live_fire_map.mvar", "recharge_map.mvar", "argyle_map.mvar"} {
-		p := filepath.Join("C:\\", "Users", "Guillaume", "Projects", "LevelUp", ".ai", "re_dump", "mapvar", nom)
+		p := filepath.Join(dossier, nom)
 		brut, err := os.ReadFile(p)
 		if err != nil {
 			continue
@@ -711,7 +699,7 @@ func TestZonesNommeesIsolationDetail(t *testing.T) {
 func TestCouvertureZonesNommeesVariantes(t *testing.T) {
 	vocab, _ := vocabulaireLocsExact(t)
 	natif := chargeVocabCallouts(t)
-	dossier := filepath.Join("C:\\", "Users", "Guillaume", "Projects", "LevelUp", ".ai", "re_dump", "mapvar")
+	dossier := dossierDeVariantes(t)
 	entrees, err := os.ReadDir(dossier)
 	if err != nil {
 		t.Skipf("dump absent : %v", err)
@@ -806,7 +794,7 @@ func TestIsolationSidsDansLeTableauLocs(t *testing.T) {
 		}
 	}
 	chargeVocabCallouts(t)
-	brut, err := os.ReadFile(filepath.Join("C:\\", "Users", "Guillaume", "Projects", "LevelUp", ".ai", "re_dump", "mapvar", "isolation_map.mvar"))
+	brut, err := os.ReadFile(filepath.Join(dossierDeVariantes(t), "isolation_map.mvar"))
 	if err != nil {
 		t.Skipf("isolation absente : %v", err)
 	}

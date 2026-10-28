@@ -1,3 +1,5 @@
+//go:build research
+
 package hinavmesh
 
 import (
@@ -19,7 +21,7 @@ func TestSondeCompareEntreeDuMemeType(t *testing.T) {
 		{"Absolution", "78da545f-a168-4a5e-9c8d-dd379067c352.blob"},
 	} {
 		if _, err := os.Stat(filepath.Join(
-			`C:/Users/Guillaume/Projects/LevelUp/.ai/re_dump/navmesh`, cas.blob)); err != nil {
+			racineDumpNavmesh(), cas.blob)); err != nil {
 			t.Skipf("blob absent (%v)", err)
 		}
 		region, sections, types, _ := chargePourSonde(t, cas.blob)

@@ -1,3 +1,5 @@
+//go:build research
+
 package hinavmesh
 
 import (
@@ -34,7 +36,7 @@ import (
 // La sonde reste versionnee parce qu elle porte la mesure : sans elle, la prochaine tentative
 // recommencerait par l hypothese deja refutee.
 func TestSondeCorpsDeTypes(t *testing.T) {
-	const racine = `C:/Users/Guillaume/Projects/LevelUp/.ai/re_dump/navmesh`
+	racine := racineDumpNavmesh()
 	for _, cas := range []struct{ nom, blob string }{
 		{"Isolation", "01af558d-53ab-4f05-ba68-92d805fc6260.blob"},
 		{"Absolution", "78da545f-a168-4a5e-9c8d-dd379067c352.blob"},

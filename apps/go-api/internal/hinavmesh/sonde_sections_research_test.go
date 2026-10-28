@@ -1,3 +1,5 @@
+//go:build research
+
 package hinavmesh
 
 import (
@@ -13,7 +15,7 @@ import (
 // la table de chaines d un AUTRE, et l indice de champ deborde : exactement le symptome
 // d Absolution.
 func TestSondeOccurrencesDeSection(t *testing.T) {
-	const racine = `C:/Users/Guillaume/Projects/LevelUp/.ai/re_dump/navmesh`
+	racine := racineDumpNavmesh()
 	for _, cas := range []struct{ nom, blob string }{
 		{"Isolation", "01af558d-53ab-4f05-ba68-92d805fc6260.blob"},
 		{"Absolution", "78da545f-a168-4a5e-9c8d-dd379067c352.blob"},

@@ -114,7 +114,7 @@ Deux constats du 2026-10-28, hors périmètre de D1 mais bloquants pour une CI v
   vert (fait le 2026-10-28, worktree `LevelUp-wt-chemins-ai`, branche `fix/ratchet-chemins-ai`,
   7 fichiers + 1 déplacement prêts) ; commit sur accord de l'utilisateur, PR vers `release/v8.1.0`,
   fusion (squash) — RESTE À FAIRE.
-- [!] 0.5 Rouge web de la base (dépend du chantier i18n, hors D1 ; constaté le 2026-10-28, voir journal) : : traité dans le chantier i18n (branche à part, pas dans D1) ; D1
+- [x] 0.5 Rouge web de la base : corrigé dans le chantier i18n (run CI « fix(ci): délai unique des garde-rails » vert sur `release/v8.1.0`, constaté le 2026-10-28) ; D1 peut pousser. : traité dans le chantier i18n (branche à part, pas dans D1) ; D1
   ne pousse son premier lot qu'une fois `gh run list --branch release/v8.1.0 --limit 1` vert,
   ou rebase sa branche sur le correctif.
 
@@ -230,6 +230,70 @@ diffs restent lisibles et que la recuisson témoin puisse être rejouée entre l
   citent qu'en commentaire : vérifié, non touchés. md5 avant = après : `4bb575ed09ff4fb6f8e7675d0224e193`.
   `testfixtures/testdata/cartes/` ne garde que `callout_zones_ridgeline_clipped.json` (fixture de LevelUp, non déplacée).
   Gate du lot 2b (2026-10-28) : voir le journal.
+
+Lot 2c (2026-10-28) — DÉCISION UTILISATEUR (option 2) : les sondes de rétro-ingénierie des briques `himap`,
+`hinavmesh`, `mapvar` qui lisent `.ai/re_dump` ou les données du dépôt hôte sont CONSERVÉES comme
+INSTRUMENTS DE RECHERCHE sous le tag `research`, jamais supprimées ; elles sortent du build par défaut ET
+de la suite `gamefiles` et tournent à la demande. Critère de tri, test par test : « lit `.ai/re_dump`, ou
+une donnée du dépôt hôte (`data/...`, `callouts_i18n.csv`, cache de rejeu) » => instrument ; « le jeu seul
+suffit » => reste sous `gamefiles` (jamais taguée : une garde ne se tague pas).
+
+- [x] 2.12 Convention + ratchets. Un instrument qui n'ouvre pas le jeu : `<nom>_research_test.go`,
+  `//go:build research`. Un instrument qui l'ouvre (`DeployRoot(`, `LevelsDir(`, `ChercheModuleInstalle(`) :
+  `<nom>_research_test.go`, `//go:build gamefiles && research`. Helpers communs aux seuls instruments :
+  compagnons `*_research_test.go` tagués `research`. Ratchets (chacun vu rouge par mutation, puis vert) :
+  `gamefiles_tag_test.go` (règle `appelSansDeclarerGamefiles` : un `*_research_test.go` dont la contrainte
+  porte `gamefiles` ET `research` en conjonction est accepté ; `research` seul, disjonction, négation ou
+  non-`_research_test.go` restent refusés ; doc de tête datée avec la raison ; auto-preuve
+  `TestInstrumentQuiOuvreLeJeuDeclareGamefiles` sur 9 sources synthétiques ; mutation réelle : première
+  ligne de `cloture_research_test.go` ramenée à `//go:build research` => rouge) ; `research_tag_test.go`
+  (`contrainteAvecTerme` partagée, `contrainteResearch` en dérive ; plancher 383 -> 412, +29 fichiers
+  comptés par `find` : 525 -> 554 `*_research_test.go`) ; `pas_de_lecture_sous_ai_test.go` (13 entrées
+  retirées, 2 helpers ajoutés, plafond 27 -> 16, noms `sonde_forge*` mis à jour) ; `film_file_size_test.go`
+  (clé `mapvar/noms_lieux_hunt_research_test.go`, plafond 627 inchangé, le fichier a diminué) ;
+  `no_repo_root_walk_test.go` : aucune entrée ne citait ces fichiers (grep) => [~] sans changement.
+- [x] 2.13 Renommages (`git mv`), liste fermée vérifiée fichier par fichier (ancien -> nouveau [contrainte]) :
+  `himap/` — `sonde_forge_gamefiles_test.go` -> `sonde_forge_research_test.go` [g&r, 4 tests] ;
+  `sonde_forge_mvar_gamefiles_test.go` -> `sonde_forge_mvar_research_test.go` [r, 1] ;
+  `sonde_locs_gamefiles_test.go` -> `sonde_locs_research_test.go` [g&r, 11 ; les 7 chemins absolus périmés et les
+  2 `..` relatifs remplacés par `dossierDeVariantes(t)` / `cheminCalloutsI18n(t)` ; `moduleGlobals` rendu à
+  `sonde_uslg_gamefiles_test.go`, son autre utilisateur] ; `cloture_gamefiles_test.go` -> `cloture_research_test.go` [g&r, 1] ;
+  `sonde_bouillie_…` -> `sonde_bouillie_research_test.go`, `sonde_forge_saut_…` -> `sonde_forge_saut_research_test.go` [g&r, 1 chacun] ;
+  helpers : `depot_variantes_…` -> `depot_variantes_research_test.go` [r, + `dossierDeVariantes`],
+  `oracles_depot_…` -> `oracles_depot_research_test.go` [r, + `cheminCalloutsI18n`], `chemin_depot_test.go` ->
+  `chemin_depot_research_test.go` [r] (la constante `fixtureCarteValidee`, utilisée par des tests `gamefiles`, passe dans
+  `fixture_carte_validee_test.go`, non tagué). NON LISTÉS PAR LE RELEVÉ mais lisant le dump (rouverts, entrés au lot) :
+  `maillage_sain_gamefiles_test.go` -> `maillage_sain_research_test.go` [g&r, 2], `sonde_canevas_orphelines_…` ->
+  `sonde_canevas_orphelines_research_test.go` [g&r, 1], `sonde_levelid_…` -> `sonde_levelid_research_test.go` [g&r,
+  `TestPreuveLevelIDCartes` + helpers d'index, qui n'ont pas d'autre utilisateur]. SCINDÉS : `sddt_gamefiles_test.go`
+  (`TestSddtOracleCliffhanger`, `TestBancCliffhanger` -> `sddt_research_test.go` [g&r] ; `TestSddtLecture` et
+  `TestSddtBalayageEau` restent) ; `physique_sonde_gamefiles_test.go` (`TestSondePhysiqueRendu` + `itemRendu` ->
+  `physique_sonde_research_test.go` [g&r] ; `TestSondePhysique` et `TestSondePhysiqueResolution` restent) ;
+  `filtres_reclaimer_gamefiles_test.go` (`TestFiltresReclaimerNatives`, `TestFiltresReclaimerIsolation` et leurs 8 helpers ->
+  `filtres_reclaimer_research_test.go` [g&r] ; `TestBalayageDrapeauxInstances` reste, avec `assetsNatifs`/`indexDeCarte`).
+  RESTÉS SOUS `gamefiles` après vérification (le jeu seul suffit, aucune donnée du dépôt) : `filtres_reclaimer_drapeau_…`,
+  `filtres_reclaimer_offsets_…` (`TestPluginDrapeauxDeFiltre` est une vraie garde sur le plugin embarqué).
+  `hinavmesh/` — `chaines_tstr_test.go`, `sonde_{compare,format,membres_navmesh,racines,resync,sections,tbdy}_test.go`
+  -> `*_research_test.go` [r, 1 test chacun] + `depot_research_test.go` [r, `racineDumpNavmesh`, remplace 8 chemins
+  absolus périmés]. `mapvar/` — `categorie_test.go`, `champ6_test.go`, `lieux_test.go` (2), `noms_lieux_hunt_test.go` (6)
+  -> `*_research_test.go` [r] + `depot_research_test.go` [r, `cheminDump`, remplace 4 chemins absolus périmés].
+  Hors lot, intacts : `himap/deploy_root_test.go` (découverte 4, lot 3), `gamefilescorpus`. Les noms cités plus haut (2.4,
+  2.5, découvertes 1 à 6) sont ceux d'AVANT le lot 2c.
+- [x] 2.14 CI et docs : `.github/workflows/ci.yml` pas « go vet (corpus gamefiles) » : ligne
+  `go vet -tags=gamefiles,research ./internal/himap/ ./internal/hinavmesh/ ./internal/games/halo_infinite/film/replay/mapvar/`
+  + commentaire ; `go vet -tags=research ./...` n'est pas cassé (les fichiers `gamefiles && research` en sont exclus,
+  voulu, dit dans le commentaire ; `go vet -tags=research` vérifié sur les trois paquets + archlint). `docs/COMMANDS.md`
+  et `docs/FR/COMMANDS.md` : paragraphe « instruments de recherche des briques » + compte des `*_gamefiles_test.go` de
+  `himap` (45 -> 34) + `TestBancCliffhanger` (rouge connu) signalé comme instrument. Ratchets `ci_*_test.go` verts
+  (suite archlint complète verte). Commentaires de code qui citaient les anciens noms corrigés (`cuisson_forge.go`,
+  `calage_banc_test.go`, `cmd/mapquant-build/main.go`).
+- [x] 2.15 Témoins (scratchpad `temoins_lot2c_*`). AVANT/APRÈS sur `-tags=gamefiles ./internal/himap/` : les tests restés
+  ont les MÊMES verdicts ; 28 tests ont quitté la suite, exactement ceux des fichiers renommés/scindés (8 FAIL du rouge
+  connu `.ai/re_dump` absent, 8 PASS, 12 SKIP) ; le paquet passe de FAIL à ok (les 8 rouges étaient tous des
+  instruments). `hinavmesh` : 8 tests sortis (8 SKIP). `mapvar` : 10 sortis (3 PASS, 7 SKIP). Instruments sous
+  `-tags=gamefiles,research` : les 28 compilent et tournent, mêmes 8 FAIL (dump absent) ; 3 PASS vides d'avant
+  (`TestStringIDsDuMvarContreVocabulaireCallouts`, `TestZonesNommeesIsolationDetail`, `TestEntiersDuMvarContreVocabulaireLocs` :
+  l'ancien chemin absolu périmé faisait `continue` sur tout) deviennent SKIP honnêtes. Voir le journal.
 
 **Clos quand** : 2.8 vert, allowlist vide, commit « refactor(himap): coupe i18n et tests couplés
 à LevelUp sortis de la brique (D1) » (commit à la main du pilote).
@@ -402,7 +466,7 @@ Lot 2 (2026-10-28) :
    `ancresDuModule`/`cheminCatalogue`, `carte_oracle` porte `chargePositions`, etc.) ; 39 fichiers `himap`
    en dépendaient directement ou par helper. Relevé final : 22 déménagés, 2 scindés + 1 hinavmesh scindé,
    ~19 restés (voir 2.4).
-2. RÉSIDU À TRANCHER AVANT LE LOT 4 : cinq sondes de la brique (`sddt`, `physique_sonde`, `filtres_reclaimer`,
+2. TRAITÉE AU LOT 2c (décision utilisateur option 2 : sondes conservées sous le tag `research`, items 2.12 à 2.15). Énoncé d'origine : RÉSIDU À TRANCHER AVANT LE LOT 4 : cinq sondes de la brique (`sddt`, `physique_sonde`, `filtres_reclaimer`,
    `sonde_bouillie`, `sonde_forge_saut`, plus `cloture` pour `TestClotureCliffhanger` et `sonde_locs`) lisent encore
    des données du dépôt hôte (`data/titles/.../map_objectives.json`, `data/cache/replays/...`,
    `callouts_i18n.csv`) par `cheminDepuisDepot`/chemin relatif, sans importer LevelUp. Elles exercent des
@@ -410,9 +474,9 @@ Lot 2 (2026-10-28) :
    contrat ») ne justifie pas d'exporter. Dans `libs/himap` autonome elles se sauteront (oracle absent) ou
    échoueront (`.ai/re_dump` absent => `t.Fatalf` voulu). Options : les supprimer (sondes de recherche), exporter
    des étapes de cuisson, ou ajouter une variable d'environnement de corpus. Décision de l'utilisateur.
-3. Treize fichiers de test de `hinavmesh` et `mapvar` (table `pas_de_lecture_sous_ai_test.go`) et trois de `himap`
+3. TRAITÉE AU LOT 2c (décision utilisateur option 2, items 2.12 à 2.15). Énoncé d'origine : treize fichiers de test de `hinavmesh` et `mapvar` (table `pas_de_lecture_sous_ai_test.go`) et trois de `himap`
    lisent `.ai/re_dump` : même statut que 2 pour le lot 3/4.
-4. Casses prévisibles au lot 3/4 (chemins relatifs entre paquets) : `gamefilescorpus/cuisson_navmesh_gamefiles_test.go`
+4. (Partielle : les chemins `../../../../data` de `sonde_locs` sont traités au lot 2c ; le reste demeure pour le lot 3/4.) Casses prévisibles au lot 3/4 (chemins relatifs entre paquets) : `gamefilescorpus/cuisson_navmesh_gamefiles_test.go`
    lit `../hinavmesh/testdata` (utiliser la copie `gamefilescorpus/testdata/` des mêmes blobs) ;
    `himap/deploy_root_test.go` (`TestAucuneAutreCopieDuCheminDuJeu`) balaie `../..` (= `apps/go-api`) :
    à porter dans archlint ou à borner à la brique ; les chemins `../../../../data` de `sonde_locs`.
@@ -422,7 +486,7 @@ Lot 2 (2026-10-28) :
    qui le lit (`mapvar`, `hinavmesh`, `himap`), LevelUp le lit par `testfixtures.MapvarFixturesDir`,
    `NavmeshFixturesDir` et `CarteValideeFixturesDir` (items 2.9 à 2.11). Au lot 3, ces trois constantes sont les seules
    lignes à changer.
-6. `sonde_locs_gamefiles_test.go` contient des chemins absolus périmés (`C:\Users\Guillaume\Projects\LevelUp\.ai\re_dump`) :
+6. TRAITÉE AU LOT 2c (décision utilisateur option 2 : un helper de remontée par paquet). Énoncé d'origine : `sonde_locs_gamefiles_test.go` contient des chemins absolus périmés (`C:\Users\Guillaume\Projects\LevelUp\.ai\re_dump`) :
    préexistant, non traité.
 7. Poste de gate : `.ai/re_dump/mapvar` est ABSENT (même du checkout principal) et `data/cache` ne porte que
    `career-rank-image` ; 7 tests du corpus gamefiles échouent donc par `t.Fatalf` « depot de variantes absent » AVANT
@@ -430,3 +494,29 @@ Lot 2 (2026-10-28) :
    COMPARAISON des issues test par test à la base (identiques).
 8. Le test `TestRenduForgeVagabond`, `TestOracle*` et autres changent de paquet : aucune entrée de la baseline JSONL de
    tests (`.ai/baselines/tests_pre_migration.jsonl`) ne porte `himap`/`hinavmesh` : rien à retirer.
+
+Lot 2c (2026-10-28) :
+
+9. Le gate 5 du lot (`grep 'Projects\\\|Projects/LevelUp' internal/` vide) n'est pas atteignable sans sortir du périmètre : 20 fichiers
+   du décodeur de film (`film/internal/grammar`, `film/replay` : commentaires de commande `$env:ZONE_FILM="C:/Users/Guillaume/Projects/LevelUp/..."` et
+   chemins par défaut `C:\Users\Guillaume\Projects\LevelUp\data\...` de `vehicules_v2*`) portent encore ce chemin périmé. Les trois briques
+   (`himap`, `hinavmesh`, `mapvar`) sont propres (0 occurrence). Non traité : hors périmètre D1.
+10. Le relevé du pilote était inexact dans les deux sens (voir 2.13) : `filtres_reclaimer_drapeau`, `filtres_reclaimer_offsets` et cinq tests
+    de fichiers scindés ne lisent aucune donnée du dépôt (restés sous `gamefiles`) ; `maillage_sain`, `sonde_canevas_orphelines`,
+    `sonde_levelid` et le releve `Natives` de `filtres_reclaimer` en lisent (entrés au lot).
+11. DEUX PREUVES « DURABLES » DEVIENNENT À LA DEMANDE par la décision option 2 : `TestPreuveLevelIDCartes` (preuve level_id des appariements
+    carte -> module de `cmd/mapquant-build`, écrite comme « test durable ») et `TestZonesNommeesDIsolation` (témoin figé de 18 zones). Sur un poste
+    qui a `.ai/re_dump`, elles ne rejouent plus d'elles-mêmes. Conséquence assumée de la décision ; à confirmer par l'utilisateur au besoin.
+12. Trois copies d'une remontée « chercher un chemin relatif en montant » : `himap.cheminDepuisDepot`, `hinavmesh.racineDumpNavmesh`,
+    `mapvar.cheminDump` (règle 6 : la 3e copie demande helper + garde-rail). Un helper commun est impossible entre `himap` (module `libs/himap`)
+    et les deux autres sans casser l'autonomie des briques ; `hinavmesh` et `mapvar` partageront le module `libs/gamefiles` au lot 3 : y poser alors
+    un helper commun (sous `libs/gamefiles/internal/`) et retirer deux copies.
+13. Tests des briques pilotés par variable d'environnement, non tagués (`hinavmesh/sonde_blobs_ugc_test.go` via `dossierBlobsUGC` ;
+    `mapvar/{label_hunt,socles_*,vehicules_corpus,frag_types,assaut_sites_mvar}_test.go`) : ils ne remontent ni `.ai` ni le dépôt, se sautent si la
+    variable n'est pas posée, hors du critère du lot 2c. Non touchés ; à nommer `research` si l'on veut une classe d'instruments homogène.
+14. `gamefilescorpus` cite encore des noms d'avant le lot 2c dans ses commentaires (`aides_himap_gamefiles_test.go` : `sonde_levelid_gamefiles_test.go`) ;
+    fichier hors lot, non touché.
+15. Le plancher `instrumentsResearchPlancher` (383) est très en dessous du corpus réel (525 avant le lot, 554 après) : monté de 29 comme demandé ;
+    le recalibrer n'est pas du lot.
+16. Effet de bord attendu : la suite `gamefiles` de `himap` est maintenant ENTIÈREMENT verte sur un poste sans `.ai/re_dump` (les 8 rouges connus étaient
+    tous des instruments, dont `TestBancCliffhanger`) ; le « rouge connu » de la découverte 7 vit désormais dans la voie `gamefiles,research`.

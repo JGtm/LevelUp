@@ -1,4 +1,4 @@
-//go:build gamefiles
+//go:build research
 
 package himap
 

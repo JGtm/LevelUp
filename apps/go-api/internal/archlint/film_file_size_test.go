@@ -458,7 +458,7 @@ var plafondsParFichier = map[string]int{
 	"internal/games/halo_infinite/film/replay/ground_link_research_test.go":                       814,
 	"internal/games/halo_infinite/film/replay/ctf_retour_zone_research_test.go":                   812,
 	"internal/games/halo_infinite/film/replay/assaut_manches_research_test.go":                    656,
-	"internal/games/halo_infinite/film/replay/mapvar/noms_lieux_hunt_test.go":                     627,
+	"internal/games/halo_infinite/film/replay/mapvar/noms_lieux_hunt_research_test.go":            627,
 	"internal/games/halo_infinite/film/killicon/killicon_test.go":                                 610,
 	"internal/games/halo_infinite/film/internal/grammar/components_hooks_test.go":                 600,
 	"internal/games/halo_infinite/film/replay/closures_test.go":                                   598,

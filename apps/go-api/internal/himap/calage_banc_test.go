@@ -8,7 +8,7 @@ package himap
 // serait plus comparable a la reference — et ce garde-rail doit rougir PARTOUT, y compris en
 // CI ou le jeu n'est pas installe.
 //
-// Le banc qui les consomme (`carte_gate_gamefiles_test.go`, `cloture_gamefiles_test.go`,
+// Le banc qui les consomme (`carte_gate_gamefiles_test.go`, `cloture_research_test.go`,
 // `rendu_gamefiles_test.go`, ...) reste, lui, derriere le tag.
 
 // Calage de `carte_validee_v1.png`, mesure sur les trajectoires de joueur

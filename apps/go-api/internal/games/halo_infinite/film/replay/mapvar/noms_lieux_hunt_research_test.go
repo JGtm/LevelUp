@@ -1,3 +1,5 @@
+//go:build research
+
 package mapvar
 
 // CHASSE AUX NOMS DE LIEUX DANS LE .mvar (2026-08-27).
@@ -15,15 +17,10 @@ import (
 	"fmt"
 	"math"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
 )
-
-func cheminDump(nom string) string {
-	return filepath.Join("C:\\", "Users", "Guillaume", "Projects", "LevelUp", ".ai", "re_dump", "mapvar", nom)
-}
 
 func chargeVariante(t *testing.T, nom string) []byte {
 	t.Helper()

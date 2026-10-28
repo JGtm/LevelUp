@@ -34,6 +34,20 @@ package archlint
 // regarde un tableau de bord. Un tag posé à la main sur 61 fichiers se re-perd au premier
 // fichier ajouté sans lui, d'où ces deux tests, qui tournent dans le build PAR DÉFAUT (donc en
 // CI) et lisent les fichiers sur disque plutôt que de dépendre de leur compilation.
+//
+// INSTRUMENTS QUI OUVRENT LE JEU (plan D1, lot 2c, 2026-10-28, décision utilisateur). Les sondes de
+// rétro-ingénierie des briques qui lisent `.ai/re_dump` ou les données du dépôt hôte sont
+// conservées comme instruments `*_research_test.go` (jamais supprimées). Quand elles ouvrent
+// aussi le jeu, elles portent `//go:build gamefiles && research` : `appelSansDeclarerGamefiles`
+// l'accepte pour un fichier dont le NOM est `*_research_test.go` et dont la contrainte porte
+// `gamefiles` ET `research` comme termes d'une conjonction. Ce N'EST PAS un assouplissement :
+// le fichier n'entre dans aucun build automatique (il faut `-tags=gamefiles,research`, donné à
+// la main), il sort de la suite `gamefiles`, et la contrainte dit ce que le nom ne dit pas.
+// La règle reste « un instrument qui ouvre le jeu déclare `gamefiles` » ; un `*_research_test.go`
+// sous `//go:build research` seul qui appelle l'installation reste refusé
+// (`TestInstrumentQuiOuvreLeJeuDeclareGamefiles`, auto-preuve sur sources synthétiques).
+// Un `*_gamefiles_test.go`, lui, garde exactement `//go:build gamefiles` : un instrument ne porte
+// jamais ce suffixe.
 
 import (
 	"io/fs"
@@ -122,6 +136,38 @@ func TestCorpusGamefilesEstTague(t *testing.T) {
 	}
 }
 
+// appelSansDeclarerGamefiles rend la porte d'entrée vers l'installation que le fichier appelle
+// sans déclarer le tag `gamefiles`, ou "" si la règle est respectée. Trois façons de la
+// respecter : le suffixe `_gamefiles_test.go` (le tag exact est contrôlé ailleurs), une
+// allowlist datée, ou la première ligne `//go:build gamefiles` seule.
+//
+// LE CAS DES INSTRUMENTS (plan D1, lot 2c, 2026-10-28, décision utilisateur) : un
+// `*_research_test.go` qui OUVRE le jeu déclare `gamefiles` comme terme de conjonction
+// (`//go:build gamefiles && research`, dans n'importe quel ordre). Ce n'est PAS un
+// assouplissement : le fichier n'entre dans AUCUN build automatique (il faut les deux tags, donné
+// à la main), et la contrainte dit ce que le nom ne dit pas, « le jeu est requis ». La règle
+// reste donc « un instrument qui ouvre le jeu déclare `gamefiles` » : un `*_research_test.go`
+// sous `//go:build research` seul qui appelle l'installation reste refusé, comme une disjonction
+// (`gamefiles || research`) ou une négation (`research && !gamefiles`).
+func appelSansDeclarerGamefiles(rel, texte string) string {
+	if strings.HasSuffix(rel, "_gamefiles_test.go") || horsCorpusAutorises[rel] {
+		return ""
+	}
+	if strings.HasPrefix(texte, tagGamefiles+"\n") {
+		return "" // tagué sans porter le suffixe : la règle est respectée au fond
+	}
+	if strings.HasSuffix(rel, "_research_test.go") && contrainteAvecTerme(texte, "gamefiles") &&
+		contrainteResearch(texte) {
+		return "" // instrument qui ouvre le jeu : `gamefiles && research`
+	}
+	for _, appel := range appelsInstallation {
+		if strings.Contains(texte, appel) {
+			return appel
+		}
+	}
+	return ""
+}
+
 // TestAucunTestNonTagueNeLitLInstallation — l'autre sens de la même règle, sur tout le module.
 //
 // Taguer le corpus ne sert à rien si un test ORDINAIRE se remet à ouvrir l'installation : le
@@ -129,23 +175,45 @@ func TestCorpusGamefilesEstTague(t *testing.T) {
 //
 // Mutation qui doit le faire rougir : appeler `himap.DeployRoot()` depuis un `*_test.go` non
 // tagué hors allowlist (vérifié le 2026-09-05 en remettant
-// `TestModuleGeometrieExisteDansLInstallation` dans `cmd/mapfond-build/reglages_test.go`).
+// `TestModuleGeometrieExisteDansLInstallation` dans `cmd/mapfond-build/reglages_test.go`), ou
+// retirer `gamefiles &&` de la première ligne d'un `*_research_test.go` qui appelle
+// `DeployRoot(` (vérifié le 2026-10-28 sur `internal/himap/cloture_research_test.go`).
 func TestAucunTestNonTagueNeLitLInstallation(t *testing.T) {
 	balayerTests(t, func(rel, texte string) {
-		if strings.HasSuffix(rel, "_gamefiles_test.go") || horsCorpusAutorises[rel] {
-			return
-		}
-		if strings.HasPrefix(texte, tagGamefiles+"\n") {
-			return // tagué sans porter le suffixe : la règle est respectée au fond
-		}
-		for _, appel := range appelsInstallation {
-			if strings.Contains(texte, appel) {
-				t.Errorf("%s appelle %s hors du tag %q — déplacer le test dans un "+
-					"*_gamefiles_test.go tagué, ou justifier une entrée d'allowlist comme "+
-					"internal/himap/deploy_root_test.go", rel, appel, tagGamefiles)
-			}
+		if appel := appelSansDeclarerGamefiles(rel, texte); appel != "" {
+			t.Errorf("%s appelle %s sans déclarer le tag %q — déplacer le test dans un "+
+				"*_gamefiles_test.go tagué, déclarer `gamefiles && research` si c'est un instrument "+
+				"de recherche (*_research_test.go), ou justifier une entrée d'allowlist comme "+
+				"internal/himap/deploy_root_test.go", rel, appel, tagGamefiles)
 		}
 	})
+}
+
+// TestInstrumentQuiOuvreLeJeuDeclareGamefiles — AUTO-PREUVE de la règle des instruments (lot 2c
+// du plan D1, 2026-10-28) : la règle est rejouée sur des sources synthétiques, pour qu'elle
+// rougisse sans qu'il faille muter un fichier du dépôt.
+func TestInstrumentQuiOuvreLeJeuDeclareGamefiles(t *testing.T) {
+	const corps = "\n\npackage x\n\nfunc f() { _, _ = DeployRoot() }\n"
+	cas := []struct {
+		nom, rel, tete string
+		rouge          bool
+	}{
+		{"instrument avec gamefiles && research", "a/x_research_test.go", "//go:build gamefiles && research", false},
+		{"instrument, termes dans l'autre ordre", "a/x_research_test.go", "//go:build research && gamefiles", false},
+		{"instrument sous research seul", "a/x_research_test.go", "//go:build research", true},
+		{"instrument sous disjonction", "a/x_research_test.go", "//go:build gamefiles || research", true},
+		{"instrument avec gamefiles nié", "a/x_research_test.go", "//go:build research && !gamefiles", true},
+		{"instrument sans aucune contrainte", "a/x_research_test.go", "// pas de contrainte", true},
+		{"test ordinaire sous gamefiles && research", "a/x_test.go", "//go:build gamefiles && research", true},
+		{"corpus gamefiles ordinaire", "a/x_gamefiles_test.go", "//go:build gamefiles", false},
+		{"test ordinaire sous gamefiles seul", "a/x_test.go", "//go:build gamefiles", false},
+	}
+	for _, c := range cas {
+		got := appelSansDeclarerGamefiles(c.rel, c.tete+corps) != ""
+		if got != c.rouge {
+			t.Errorf("%s : refusé = %v, attendu %v", c.nom, got, c.rouge)
+		}
+	}
 }
 
 // balayerTests appelle `visiter` pour CHAQUE `*_test.go` du module, où qu'il soit, avec son

@@ -37,6 +37,7 @@ package himap
 // conclut pas au-dela : elle mesure et journalise. Aucun octet n'est ecrit.
 
 import (
+	"os"
 	"path/filepath"
 	"sort"
 	"testing"
@@ -128,4 +129,17 @@ func maxi(a, b int) int {
 		return a
 	}
 	return b
+}
+
+func moduleGlobals(t *testing.T) string {
+	t.Helper()
+	racine, err := DeployRoot()
+	if err != nil {
+		t.Skipf("pas d installation : %v", err)
+	}
+	p := filepath.Join(racine, "any", "globals", "globals-rtx-new.module")
+	if _, err := os.Stat(p); err != nil {
+		t.Skipf("globals absent : %v", err)
+	}
+	return p
 }

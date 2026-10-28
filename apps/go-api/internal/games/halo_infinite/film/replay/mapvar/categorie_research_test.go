@@ -1,9 +1,10 @@
+//go:build research
+
 package mapvar
 
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
@@ -20,8 +21,7 @@ import (
 //
 // Le test ne conclut pas : il croise categorie et drapeaux avec le type fautif.
 func TestCategorieDesCoquesForge(t *testing.T) {
-	chemin := filepath.Join("C:\\", "Users", "Guillaume", "Projects", "LevelUp",
-		".ai", "re_dump", "mapvar", "isolation_map.mvar")
+	chemin := cheminDump("isolation_map.mvar")
 	brut, err := os.ReadFile(chemin)
 	if err != nil {
 		t.Skipf("variante absente : %v", err)

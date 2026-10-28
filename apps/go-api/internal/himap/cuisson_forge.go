@@ -5,7 +5,7 @@
 // Vagabond, elle, n'est pas cuite — 788 instances dans son canevas contre 4 709 objets dans son
 // `.mvar`. Sa carte est le RACK D'OBJETS, pas le module.
 //
-// LA CHAINE, etablie sur pieces le 2026-08-10 (sondes `sonde_forge_gamefiles_test.go`) :
+// LA CHAINE, etablie sur pieces le 2026-08-10 (sondes `sonde_forge_research_test.go`) :
 //
 //	objet .mvar --type_id--> tag `food` (GlobalID, forge_objects-rtx-new.module)
 //	           --refs inline--> tags `rtgo` (les MEMES maillages que la chaine sbsp)
@@ -17,7 +17,7 @@
 //     l'auto-reference — le lien est INLINE. 374 type_id portent au moins une ref rtgo,
 //     couvrant 3 558 des 4 697 objets (75,7 %). Les 93 restants passent par `bloc`/`scen`/`mach`
 //     (963/173/9 objets) : le SAUT `bloc`/`scen`/`mach` -> `hlmt` -> `rtgo` les resout (lot B,
-//     2026-08-13, mesure : `sonde_forge_saut_gamefiles_test.go`) ;
+//     2026-08-13, mesure : `sonde_forge_saut_research_test.go`) ;
 //   - echelle : AUCUNE dans le `.mvar` de Vagabond. MESURE, pas suppose — le champ objet [6]
 //     n'existe pas et [9] est une struct VIDE sur 4 709/4 709 objets. Le piege de l'echelle
 //     d'instance sbsp, paye deux jours, a ete verifie ici sur pieces.
@@ -645,7 +645,7 @@ var groupesSautForge = []string{"bloc", "scen", "mach"}
 // passe par un tag `bloc`/`scen`/`mach`, qui reference son modele `hlmt`, lequel porte la
 // geometrie — un `rtgo`, ou un `mode` (mesure 2026-08-13 : les 125 hlmt du saut de Vagabond
 // ne referencent QUE des `mode`). Meme mecanique a chaque maillon — le scan des octets
-// contre l'index, la methode qui a ferme F1 (`sonde_forge_saut_gamefiles_test.go`).
+// contre l'index, la methode qui a ferme F1 (`sonde_forge_saut_research_test.go`).
 func modeleParSaut(ctx context.Context, idx *ModuleIndex, tagFood []byte) (refModele, bool) {
 	for _, groupe := range groupesSautForge {
 		for _, hObjet := range refsInlineDuGroupe(tagFood, idx, groupe) {

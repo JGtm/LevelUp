@@ -1144,7 +1144,7 @@ make go-api-lint       # go vet
 
 Deux familles de tests lisent le **jeu installé**, toutes deux derrière `//go:build gamefiles` :
 
-- les fichiers `*_gamefiles_test.go` de `internal/himap/` (45 au 2026-10-28) décodent les
+- les fichiers `*_gamefiles_test.go` de `internal/himap/` (34 au 2026-10-28, après le lot 2c) décodent les
   modules du jeu, et ceux de `internal/gamefilescorpus/` (25, un paquet de tests seuls : depuis
   le plan de découplage D1, les tests de `himap` qui lisent des données de LevelUp y vivent et
   appellent `himap` par son API exportée) balaient les 26 cartes du catalogue. Ils sont longs par nature — mesuré le 2026-09-05,
@@ -1186,11 +1186,28 @@ seconde — c'est exactement ce qui se passe en CI. La CI se contente donc de le
 tag lui-même est tenu sur tout le module par `internal/archlint/gamefiles_tag_test.go`, qui
 tourne dans le build par défaut.
 
-**Test rouge connu** : `TestBancCliffhanger` échoue (accord 64,4 % contre une référence
+**Test rouge connu** (devenu un instrument de recherche depuis le lot 2c de D1 : `sddt_research_test.go`, joué avec `-tags=gamefiles,research`) : `TestBancCliffhanger` échoue (accord 64,4 % contre une référence
 re-basée à 64,7 %). Il est *préexistant*, pas une régression — vérifié le 2026-09-05 en le
 rejouant sur le commit précédent, qui rend des chiffres identiques au bit près. Personne ne
 pouvait le voir : le corpus ne terminait jamais, et la CI ne l’exécute pas. Consigné dans
 `.ai/REGISTRE_REPORTS.md`.
+
+**Instruments de recherche des briques (D1 lot 2c, 2026-10-28).** Les sondes de rétro-ingénierie des briques
+`himap`, `hinavmesh` et `mapvar` qui lisent `.ai/re_dump` (le dump de rétro-ingénierie non versionné) ou des
+données du dépôt hôte (`data/...`) sont *conservées* comme instruments de recherche, hors du build par défaut
+ET de la suite `gamefiles` ci-dessus. Ce sont des fichiers `*_research_test.go` ; ceux qui ouvrent aussi le jeu
+portent `//go:build gamefiles && research` (les autres `//go:build research`). Ils tournent à la demande et
+exigent le jeu installé et, pour certains, `.ai/re_dump` :
+
+```bash
+cd apps/go-api && CGO_ENABLED=1 go test -tags=gamefiles,research -count=1 ./internal/himap/ -run <Sonde>   # un instrument ; sans -run, toute la suite gamefiles plus les instruments
+cd apps/go-api && go test -tags=research -count=1 ./internal/hinavmesh/ ./internal/games/halo_infinite/film/replay/mapvar/
+```
+
+La CI les compile (`go vet -tags=gamefiles,research ./internal/himap/ ./internal/hinavmesh/ ./internal/games/halo_infinite/film/replay/mapvar/`) ;
+le `go vet -tags=research ./...` de tout le module laisse de côté, volontairement, ceux en `gamefiles && research`
+(les deux tags sont requis). La règle est tenue par `internal/archlint/gamefiles_tag_test.go` (« un instrument qui
+ouvre le jeu déclare `gamefiles` ») et `research_tag_test.go`.
 
 #### Gate de non-régression du rejeu sur corpus témoin (`cmd/replay-corpus-gate`)
 

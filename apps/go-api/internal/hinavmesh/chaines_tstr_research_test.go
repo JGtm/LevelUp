@@ -1,3 +1,5 @@
+//go:build research
+
 package hinavmesh
 
 import (
@@ -30,7 +32,7 @@ import (
 // (sa region porte un hkaiStaticTreeNavMeshQueryMediator), et le vecteur haut suppose faute
 // d etre declare. Si l une des trois est retiree, ce temoin tombe.
 func TestLesDeuxEcrituresDeTableDeChaines(t *testing.T) {
-	const racine = `C:/Users/Guillaume/Projects/LevelUp/.ai/re_dump/navmesh`
+	racine := racineDumpNavmesh()
 	lis := func(f string) []byte {
 		brut, err := os.ReadFile(filepath.Join(racine, f))
 		if err != nil {
