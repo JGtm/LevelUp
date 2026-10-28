@@ -80,6 +80,12 @@ import (
 // aucun appelant. Ce qu il servait a prouver est acquis : l heritage de l OUTILLAGE ne coute
 // aucune renumerotation (l empreinte heritee des cinq racines egalait `7994ce19…`, figee au rang
 // `.38`). Ce qui a fait monter le rang au `.39` est le PERIMETRE, pas le cadre.
+//
+// LE CADRE EST HISTORIQUE (decision D2-F du plan `.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D2_2026-10-28.md`) :
+// les chaines d import de la brique et les dossiers des paquets importes entrent dans le hachage
+// sous leur nom du module `levelup/go-api`, quel que soit le module qui porte la brique, parce que
+// le chemin du module n est pas de la grammaire. Ce que le `git mv` d une couche ne coutait deja
+// pas, le passage de la brique dans son propre module ne le coute pas non plus (voir `cadre.go`).
 
 // ErrRacineSansSource : une racine ne porte AUCUNE source `.go` de production.
 //
@@ -137,22 +143,25 @@ type Resultat struct {
 type empreinteur struct {
 	h        hash.Hash
 	fichiers int
+	// brique : le chemin d import courant de la brique, que [jetonsDe] ramene au cadre historique.
+	brique string
 }
 
 // nouvelEmpreinteur ouvre un hachage et y verse les valeurs amont, EN TETE et dans l ordre donne.
-// AUCUN OCTET n est ecrit quand il n y en a pas (cf. [empreinteur]).
-func nouvelEmpreinteur(valeursAmont []string) *empreinteur {
+// AUCUN OCTET n est ecrit quand il n y en a pas (cf. [empreinteur]). `brique` est le chemin
+// d import courant de la brique (cf. `cadre.go`).
+func nouvelEmpreinteur(brique string, valeursAmont []string) *empreinteur {
 	h := sha256.New()
 	for _, v := range valeursAmont {
 		_, _ = fmt.Fprintf(h, "amont:%d\n%s\n", len(v), v)
 	}
-	return &empreinteur{h: h}
+	return &empreinteur{h: h, brique: brique}
 }
 
 // arbre verse toute l arborescence `racine`, chemins relatifs a la racine. Une racine sans source
 // de production est une ERREUR ([ErrRacineSansSource]).
 func (e *empreinteur) arbre(racine string, exclure func(rel string) bool) error {
-	lus, err := sourcesDe(racine, "", true, exclure)
+	lus, err := e.sources(racine, "", true, exclure)
 	if err != nil {
 		return err
 	}
@@ -163,15 +172,16 @@ func (e *empreinteur) arbre(racine string, exclure func(rel string) bool) error 
 	return nil
 }
 
-// paquet verse UN paquet importe — le dossier `rel` du module, sans ses sous-dossiers — chemins
-// prefixes par `rel` : c est le paquet qui nomme ce qu il apporte.
-func (e *empreinteur) paquet(racineModule, rel string) error {
-	lus, err := sourcesDe(filepath.Join(racineModule, filepath.FromSlash(rel)), rel, false, nil)
+// paquet verse UN paquet importe de `m` — le dossier de nom historique `nom`, sans ses
+// sous-dossiers — chemins prefixes par `nom` : c est le paquet qui nomme ce qu il apporte, sous
+// son nom HISTORIQUE (cf. `cadre.go`).
+func (e *empreinteur) paquet(m Module, nom string) error {
+	lus, err := e.sources(m.SurDisque(nom), nom, false, nil)
 	if err != nil {
 		return err
 	}
 	if len(lus) == 0 {
-		return fmt.Errorf("%w : %s", ErrRacineSansSource, rel)
+		return fmt.Errorf("%w : %s", ErrRacineSansSource, nom)
 	}
 	e.ecrire(lus)
 	return nil
@@ -204,10 +214,10 @@ type sourceLue struct {
 	texte string
 }
 
-// sourcesDe rend les sources `.go` de production de `racine` — et les fichiers qu elles
+// sources rend les sources `.go` de production de `racine` — et les fichiers qu elles
 // EMBARQUENT — triees par nom hache. `recursif` faux s arrete au dossier lui-meme ; `prefixe`
 // non vide prefixe chaque nom hache ; `exclure` recoit le chemin relatif a la racine.
-func sourcesDe(racine, prefixe string, recursif bool, exclure func(rel string) bool) ([]sourceLue, error) {
+func (e *empreinteur) sources(racine, prefixe string, recursif bool, exclure func(rel string) bool) ([]sourceLue, error) {
 	c := &collecte{racine: racine, prefixe: prefixe, deja: map[string]bool{}}
 	err := filepath.WalkDir(racine, func(chemin string, d fs.DirEntry, errMarche error) error {
 		if errMarche != nil {
@@ -230,7 +240,7 @@ func sourcesDe(racine, prefixe string, recursif bool, exclure func(rel string) b
 		if exclure != nil && exclure(rel) {
 			return nil
 		}
-		source, motifs, err := lireSource(chemin, rel)
+		source, motifs, err := lireSource(chemin, rel, e.brique)
 		if err != nil {
 			return err
 		}
@@ -245,13 +255,14 @@ func sourcesDe(racine, prefixe string, recursif bool, exclure func(rel string) b
 	return c.lus, nil
 }
 
-// lireSource lit une source et rend son flux de jetons et ses motifs `//go:embed`.
-func lireSource(chemin, rel string) (sourceLue, []string, error) {
+// lireSource lit une source et rend son flux de jetons, dans le cadre de `brique`, et ses motifs
+// `//go:embed`.
+func lireSource(chemin, rel, brique string) (sourceLue, []string, error) {
 	blob, err := os.ReadFile(chemin) //nolint:gosec // chemin construit depuis une racine fournie par l appelant
 	if err != nil {
 		return sourceLue{}, nil, err
 	}
-	jetons, motifs, err := jetonsDe(rel, strings.ReplaceAll(string(blob), "\r\n", "\n"))
+	jetons, motifs, err := jetonsDe(rel, strings.ReplaceAll(string(blob), "\r\n", "\n"), brique)
 	if err != nil {
 		return sourceLue{}, nil, err
 	}

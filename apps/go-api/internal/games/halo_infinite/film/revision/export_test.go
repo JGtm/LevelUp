@@ -7,7 +7,7 @@ package revision
 // lot J3.2 : garder cette fonction en production sans appelant serait du code mort (CLAUDE.md
 // regle 7).
 func Calculer(racines []string, exclure func(rel string) bool, valeursAmont ...string) (Resultat, error) {
-	e := nouvelEmpreinteur(valeursAmont)
+	e := nouvelEmpreinteur(cheminModuleCourant, valeursAmont)
 	for _, racine := range racines {
 		if err := e.arbre(racine, exclure); err != nil {
 			return Resultat{}, err

@@ -13,7 +13,7 @@ package revision
 // LE SECOND ORACLE (`equivalence_test.go`) REDECLARE CETTE LISTE A PART, et c est voulu : une
 // divergence entre les deux declarations est exactement ce qu aucun gate de couche ne peut voir.
 
-// racineDesCouches : le dossier commun des couches revisees, relatif au module.
+// racineDesCouches : le dossier commun des couches revisees, sous son nom historique (cf. `cadre.go`).
 const racineDesCouches = "internal/games/halo_infinite/film/internal/"
 
 // CouchesRevisees rend les couches dont la revision est une constante hachee, dans l ORDRE DU

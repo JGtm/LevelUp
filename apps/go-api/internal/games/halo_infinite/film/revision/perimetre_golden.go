@@ -3,7 +3,7 @@ package revision
 // perimetre_golden.go — LE GOLDEN DE PERIMETRE D UNE COUCHE : la liste des paquets hashes par
 // leurs octets et des couches amont qui entrent par leur valeur (lot J3.2).
 //
-//	paquet<TAB><dossier relatif au module>   un paquet de l arbre de la couche, ou importe
+//	paquet<TAB><dossier, nom historique>     un paquet de l arbre de la couche, ou importe (cf. `cadre.go`)
 //	amont<TAB><nom de couche>                 une couche revisee rencontree
 //
 // Les lignes vides et celles qui commencent par `#` sont de la prose, conservee a la reecriture.

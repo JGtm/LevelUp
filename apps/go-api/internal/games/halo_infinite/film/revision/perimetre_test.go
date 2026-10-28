@@ -142,7 +142,7 @@ func TestPerimetreDeChaqueCoucheEgaleSonGolden(t *testing.T) {
 			if err != nil {
 				t.Fatalf("fermeture de %s : %v", c.Nom, err)
 			}
-			chemin := filepath.Join(m.Racine, filepath.FromSlash(c.Racine), "testdata", c.Nom+"_perimetre.golden")
+			chemin := filepath.Join(m.SurDisque(c.Racine), "testdata", c.Nom+"_perimetre.golden")
 			if *updatePerimetres {
 				if ouverte, raison := porte.Ouverte(true, os.Getenv(porte.Variable())); !ouverte {
 					t.Skip(raison)

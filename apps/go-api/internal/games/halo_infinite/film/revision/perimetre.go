@@ -45,12 +45,13 @@ import (
 )
 
 // Couche : une couche REVISEE, telle que la fermeture la reconnait — son nom et la racine de son
-// arbre, relative au module et en slash.
+// arbre, sous son nom HISTORIQUE (cf. `cadre.go`) et en slash.
 type Couche struct {
 	// Nom : le nom court de la couche (`grammar`), qui nomme aussi sa valeur amont.
 	Nom string
-	// Racine : le dossier racine de l arbre de la couche, relatif au module
-	// (`internal/games/halo_infinite/film/internal/grammar`). Tout paquet sous cette racine est
+	// Racine : le dossier racine de l arbre de la couche, sous son nom historique — relatif au
+	// module `levelup/go-api` (`internal/games/halo_infinite/film/internal/grammar`) ;
+	// [Module.SurDisque] le resout dans le module courant. Tout paquet sous cette racine est
 	// de la couche.
 	Racine string
 }
@@ -66,11 +67,14 @@ type Module struct {
 	Racine string
 	// Chemin : le chemin du module (`levelup/go-api`).
 	Chemin string
+	// brique : le chemin d import courant de la brique ; vide, [cheminModuleCourant]. Seuls les
+	// tests du cadre le posent, pour simuler la brique dans un autre module (cf. `cadre.go`).
+	brique string
 }
 
 // Perimetre : ce que la fermeture d une couche rencontre.
 type Perimetre struct {
-	// Paquets : les dossiers haches par leurs OCTETS, relatifs au module, en slash, tries —
+	// Paquets : les dossiers haches par leurs OCTETS, sous leur nom historique, en slash, tries —
 	// ceux de l arbre de la couche comme ceux qu elle importe.
 	Paquets []string
 	// Amonts : les couches revisees rencontrees, qui entrent par leur VALEUR, dans l ORDRE de la
@@ -178,10 +182,11 @@ func coucheDuPaquet(rel string, couches []Couche) string {
 }
 
 // paquetsDeLArbre rend les dossiers de l arbre `racine` qui portent au moins une source `.go`
-// de production — les paquets de la couche. `testdata/` est ecarte, comme au hachage.
+// de production — les paquets de la couche, sous leur nom historique. `testdata/` est ecarte,
+// comme au hachage.
 func (m Module) paquetsDeLArbre(racine string) ([]string, error) {
 	var out []string
-	base := filepath.Join(m.Racine, filepath.FromSlash(racine))
+	base := m.SurDisque(racine)
 	err := filepath.WalkDir(base, func(chemin string, d fs.DirEntry, errMarche error) error {
 		if errMarche != nil {
 			return errMarche
@@ -201,7 +206,7 @@ func (m Module) paquetsDeLArbre(racine string) ([]string, error) {
 			if errRel != nil {
 				return errRel
 			}
-			out = append(out, filepath.ToSlash(rel))
+			out = append(out, m.historique(filepath.ToSlash(rel)))
 		}
 		return nil
 	})
@@ -228,13 +233,14 @@ func estSourceDeProduction(nom string) bool {
 	return strings.HasSuffix(nom, ".go") && !strings.HasSuffix(nom, "_test.go")
 }
 
-// importsDuPaquet rend les imports DU MODULE du paquet `rel`, relatifs au module, sans doublon.
+// importsDuPaquet rend les imports DU MODULE du paquet de nom historique `rel`, sous leur nom
+// historique, sans doublon.
 //
 // TOUTES LES SOURCES DE PRODUCTION SONT LUES, contraintes de construction comprises : un fichier
 // `//go:build research` qui importe un paquet le fait entrer dans le perimetre. C est le choix
 // prudent — l empreinte hache deja ces fichiers, quel que soit leur tag.
 func (m Module) importsDuPaquet(rel string) ([]string, error) {
-	dossier := filepath.Join(m.Racine, filepath.FromSlash(rel))
+	dossier := m.SurDisque(rel)
 	noms, err := sourcesDuDossier(dossier)
 	if err != nil {
 		return nil, err
@@ -252,7 +258,11 @@ func (m Module) importsDuPaquet(rel string) ([]string, error) {
 			if err != nil {
 				return nil, fmt.Errorf("imports de %s/%s : %w", rel, nom, err)
 			}
-			if cible, ok := strings.CutPrefix(chemin, prefixe); ok && !vus[cible] {
+			courant, ok := strings.CutPrefix(chemin, prefixe)
+			if !ok {
+				continue
+			}
+			if cible := m.historique(courant); !vus[cible] {
 				vus[cible] = true
 				out = append(out, cible)
 			}
@@ -271,7 +281,7 @@ func (m Module) importsDuPaquet(rel string) ([]string, error) {
 //     lots precedents, qui survit a un `git mv` de la couche entiere.
 //  3. Chaque paquet IMPORTE qui n est pas une couche, dans l ordre de son chemin, SANS descendre
 //     dans ses sous-dossiers (un sous-paquet n entre que s il est importe lui-meme), chemins
-//     relatifs au MODULE : le paquet nomme ce qu il apporte.
+//     prefixes par le NOM HISTORIQUE du paquet (cf. `cadre.go`) : le paquet nomme ce qu il apporte.
 func (m Module) CalculerCouche(nom string, couches []Couche, exclure func(rel string) bool,
 	valeurs map[string]string,
 ) (Resultat, Perimetre, error) {
@@ -284,15 +294,15 @@ func (m Module) CalculerCouche(nom string, couches []Couche, exclure func(rel st
 		return Resultat{}, Perimetre{}, err
 	}
 	propre, _ := coucheNommee(nom, couches)
-	e := nouvelEmpreinteur(amonts)
-	if err := e.arbre(filepath.Join(m.Racine, filepath.FromSlash(propre.Racine)), exclure); err != nil {
+	e := nouvelEmpreinteur(m.cheminBrique(), amonts)
+	if err := e.arbre(m.SurDisque(propre.Racine), exclure); err != nil {
 		return Resultat{}, Perimetre{}, err
 	}
 	for _, paquet := range p.Paquets {
 		if coucheDuPaquet(paquet, couches) == nom {
 			continue
 		}
-		if err := e.paquet(m.Racine, paquet); err != nil {
+		if err := e.paquet(m, paquet); err != nil {
 			return Resultat{}, Perimetre{}, err
 		}
 	}

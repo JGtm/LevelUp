@@ -342,7 +342,7 @@ fermeture), `.github/workflows/ci.yml` (2 lignes), `Makefile` (1 ligne + son com
 
 Chaque item fait descendre une tolérance du lot 1 ; T1 à T3 relancés en fin de lot.
 
-- [ ] 2.1 Cadre historique de l'empreinte (D2-F) dans `film/revision` : constante, normalisation des
+- [x] 2.1 Cadre historique de l'empreinte (D2-F) dans `film/revision` : constante, normalisation des
   chaînes d'import dans `jetons.go`, racines de couche nommées par le dossier historique, test
   `TestCadreHistoriqueDesImports` (source avec le préfixe `github.com/JGtm/LevelUp/libs/film` =
   même empreinte qu'avec l'ancien) ; goldens inchangés (`git diff` vide sur `revision/testdata`
@@ -383,6 +383,44 @@ Chaque item fait descendre une tolérance du lot 1 ; T1 à T3 relancés en fin d
   T3 vert ; archlint vert (`go test ./internal/archlint/`) ; lint go-api vert. Commit « D2 lot 2 ».
 
 **Clos quand** : 2.12 passé, CI de la branche verte, entrée thought_log, point d'étape à l'utilisateur.
+
+**Exécution du lot 2 (2026-10-29, worktree `LevelUp-wt-decouplage-d2`)** — témoins sous
+`%TEMP%\claude\c--Users-Guillaume-Downloads-Scripts-LevelUp\77a8b90a-21a6-40a0-ac64-eb152f616862\scratchpad\temoins_d2_lot2_1\`.
+- 2.1 (cadre historique de l'empreinte, D2-F). **Sur pièces** : les trois dépendances au chemin du module annoncées dans
+  « Chiffres de départ » sont confirmées — (a) `jetons.go` garde le littéral de chaque jeton `STRING`, donc les chaînes d'import ;
+  (b) `couches.go` nomme les racines `internal/games/halo_infinite/film/internal/...` relativement au module ; (c)
+  `empreinteur.paquet` préfixe les fichiers d'un paquet importé par son dossier relatif au module, qui est aussi la ligne
+  `paquet` des goldens de périmètre. Une quatrième entrée en découle sans être distincte : le nom haché d'un fichier EMBARQUÉ
+  (`embed:<dossier du paquet>/data/...`, `damagetag`) reprend le préfixe de (c). Aucune autre : les 783 lignes de production du
+  film qui citent `levelup/go-api` sont des lignes d'import (aucun littéral hors import, aucune directive `//go:` ne cite le
+  module, les `//go:embed` sont relatifs) ; `chronique.go`, `porte.go`, `messages.go` ne hachent rien. `racineModule` vient de
+  `ModuleDe(dossier de la couche)` (remontée au premier `go.mod`), appelé par `EmpreinteDeCouche` depuis les cinq gates
+  `film/internal/*/rev_test.go` : mécanisme gardé tel quel. **Mécanisme retenu** (`film/revision/cadre.go`, neuf) :
+  `cadreHistorique = "levelup/go-api/internal/games/halo_infinite/film"` ; `cheminModuleCourant` LU et non écrit
+  (`path.Dir(reflect.TypeFor[Resultat]().PkgPath())` : le chemin d'import du paquet `revision` moins `/revision`), de sorte que
+  le lot 3 (3.3) n'a AUCUNE constante à changer — une constante oubliée rendrait des empreintes fausses, le chemin lu suit le
+  paquet ; le contrat « `revision` vit directement sous la racine `film` de la brique » est tenu par
+  `TestCheminModuleCourantEstLaRacineDeLaBrique`. Jetons : un littéral chaîne (interprété ou brut) qui commence par le chemin
+  courant de la brique, à la frontière d'un chemin (`/` ou fin), est haché sous `cadreHistorique` ; rien d'autre ne change
+  dans le flux. Dossiers : les déclarations (racines de `CouchesRevisees`, oracle d'`equivalence_test.go`, goldens) restent
+  en noms HISTORIQUES ; `Module.SurDisque(nom)` les résout dans le module courant, `Module.historique(rel)` ramène au nom
+  historique ce que le disque et les imports donnent (identité sous `apps/go-api`, préfixe `internal/games/halo_infinite/film/`
+  ajouté quand le module EST la brique, identité pour un module qui ne porte pas la brique). Écart assumé au libellé de D2-F
+  (b) : les racines ne deviennent pas `internal/source` dans `couches.go` ; elles gardent leur nom historique, si bien que ni
+  `couches.go` ni l'oracle ne changent au lot 3. Le test de périmètre résout son golden par `m.SurDisque(c.Racine)`.
+  Tests neufs (`cadre_test.go`, internes au paquet) : `TestCadreHistoriqueDesImports` (3 sous-cas : source écrite sous
+  `github.com/JGtm/LevelUp/libs/film` = même flux de jetons que sous l'ancien préfixe ; littéraux hors brique — `libs/gamefiles`,
+  `libs/filmx`, `libs/film_ancien/x`, `internal/domain/...` — hachés tels quels ; traduction de dossier dans les deux sens sous
+  les trois sortes de module), `TestCadreHistorique_LaBriqueDeplaceeRendLaMemeEmpreinte` (la même brique de fixture posée dans
+  un module `levelup/go-api` et comme module `libs/film` : même `Resultat`, même `Perimetre`, amont, paquet importé hors couche
+  et fichier embarqué compris ; une ligne de la table embarquée changée fait bouger l'empreinte), `TestCheminModuleCourantEstLaRacineDeLaBrique`.
+  Mutations vues rouges puis remises : littéral non traduit (3 tests rouges), dossier non traduit (2), frontière de chemin
+  retirée (1). **Gates** : `go test ./…/film/revision/ -count=1 -v` code 0, les 40 verdicts du témoin identiques + 6 neufs
+  (3 tests, 3 sous-tests), les cinq empreintes calculées identiques au témoin (`source` 92ce10ae…, `profile` a520bb98…,
+  `grammar` 8353c693…, `killsource` 3a3992d4…, `objectives` 2b45f688…) ; `go test ./internal/games/halo_infinite/film/... -count=1`
+  code 0 (18 paquets `ok`, les mêmes qu'à T1, 73 s ; les cinq gates de couche verts sans réécriture) ; aucun fichier sous
+  `testdata/` dans `git status` ; MD5 des 202 fichiers du témoin `empreintes.txt` identiques ; `go vet`, `gofmt -l` vides,
+  `golangci-lint run ./…/film/revision/...` 0 issue ; `go test ./internal/archlint/ -count=1` vert (99 s).
 
 ## Lot 3 — Module `libs/film` + espace de travail + infrastructure
 
@@ -487,3 +525,22 @@ découvertes de D1 et D2).
   sans la forme `replay.Symbole` (fait ici pour `Text`). Non traité.
 - D2-L1-c (lot 1) : la fermeture `go list -deps -test` d'`internal/analysis/...` ne contient aujourd'hui aucun paquet du décodeur ni
   `filmshell` : l'allowlist `fuitesTransitivesAnalysis` naît vide ; la fuite `games/weapons` -> `filmshell` n'apparaîtra qu'au lot 2.5.
+- D2-L2-a (lot 2.1, 2026-10-29) — **conflit entre le critère de succès (3) et les items 2.3, 2.5, 2.7 tels qu'écrits.** Les
+  goldens de périmètre portent des paquets HORS du dossier `film` qui décident la sortie des couches :
+  `internal/domain/playerposition` et `internal/games/weapons/filmshell` (grammar), `internal/domain/highlightevent` (grammar,
+  killsource), `internal/domain/objectiveevent` (objectives). Les déplacer dans la brique (2.3, 2.5) change (i) les chaînes
+  d'import des sources de ces couches (`levelup/go-api/internal/domain/playerposition` -> `.../film/playerposition`), que le
+  cadre historique ne couvre pas (elles ne commencent pas par le chemin de la brique), et (ii) la ligne `paquet` du golden de
+  périmètre et le préfixe haché des fichiers du paquet ; 2.7 (`types.HighlightEvent`) change en plus des jetons de `grammar` et
+  `killsource`. Les empreintes de `grammar`, `killsource` et `objectives` bougeront donc au lot 2, et leurs goldens (révision
+  ET périmètre) devront être régénérés — ce que le gate D2-F interdit. Pistes pour le pilote (non tranchées) : étendre le cadre
+  par une table « nom historique par paquet déplacé » (couvre les déplacements nus 2.3 et 2.5 : chaînes d'import et dossiers),
+  et pour 2.7 accepter une régénération À RÉVISION CONSTANTE (sortie inchangée ; les faits persistés portent les révisions,
+  constantes `Rev` lues par exemple dans `replay/coverage_decoder.go`, pas les empreintes de sources : à confirmer), ce qui ne
+  déclenche aucune recuisson mais rouvre une écriture de golden.
+- D2-L2-b (lot 2.1) : côté tests, trois lectures de chemins de `film/revision` resteront à reraciner au lot 3 (aucune ne touche
+  un golden) : `arborescence_test.go` (`racineAPI` remonte de 5 dossiers vers `apps/go-api`), les chemins des goldens de
+  révision dans `equivalence_test.go` et le dossier de `grammar` dans `chronique_test.go` (tous deux construits depuis
+  `racineAPI` + `internal/games/halo_infinite/film/internal`). Le test des goldens de périmètre passe déjà par `Module.SurDisque`.
+- D2-L2-c (lot 2.1) : le gate `go test ./internal/games/halo_infinite/film/...` dure 73 s sur ce poste (le brief l'estimait à
+  ~10 min) ; mêmes 18 paquets `ok` qu'au témoin T1, donc pas un trou de couverture, mais l'estimation est à corriger.
