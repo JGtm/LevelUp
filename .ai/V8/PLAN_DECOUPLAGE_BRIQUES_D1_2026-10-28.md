@@ -552,8 +552,8 @@ Témoins (scratchpad `temoins_lot4_*`) :
 - [~] 5.4 `make gate-push` vert ; CI de la branche verte (`gh run list --branch refactor/decouplage-d1-fichiers-du-jeu`).
 - [x] 5.5 Audit : addendum « D1 exécuté le … » ; `.ai/REGISTRE_REPORTS.md` alimenté pour tout
   `[!]` ; `thought_log.md` : entrée par lot (déjà écrite au fil de l'eau) + entrée de clôture.
-- [ ] 5.6 Hygiène disque (skill `plan-execution` §5) : `scripts/disk-hygiene.ps1 -Lot d1 -Apply`.
-- [ ] 5.7 PR vers `release/v8.1.0`, revue adversariale (`adversarial-review`) sur les lots 3 et 4
+- [x] 5.6 (fait le 2026-10-28 : `golangci-d1` 0,01 Go, `go-build-d1` 3,27 Go et `go-build-d1-base` supprimés) Hygiène disque (skill `plan-execution` §5) : `scripts/disk-hygiene.ps1 -Lot d1 -Apply`.
+- [x] 5.7 (PR #111 ouverte le 2026-10-28 après fusion de la release `1de7cbda6`, CI verte sur les 36 contrôles ; revue adversariale : voir l'exécution ; fusion squash = dernier geste, feu vert de l'utilisateur du 2026-10-28) PR vers `release/v8.1.0`, revue adversariale (`adversarial-review`) sur les lots 3 et 4
   (infra CI/Docker = lot à risque : une erreur se voit au déploiement) ; fusion squash sur accord
   de l'utilisateur.
 
@@ -585,8 +585,8 @@ Statuts (le texte des items ci-dessus est celui du plan ; ce bloc dit ce qui a �
   SEUL `Secrets (gitleaks)` s'est déclenché (runs 40755802958 et 40756031255, success) ; `CI`, `Deploy Pre-Check` et le gate ADR 0021 ne se lancent pas pour eux (`paths-ignore: .ai/**.md` de `ci.yml`, sous-ensemble de celui de `deploy.yml` : `TestCIPathsIgnoreSubsetOfDeployPathsIgnore`). Le dernier commit de CODE (`19dcb9e1b`) est donc couvert par une CI verte.
 - [x] 5.5 Trois documents : (a) addendum « D1 exécuté le 2026-10-28 » dans `.ai/AUDIT_DECOUPLAGE_BRIQUES_2026-10-27.md` ; (b) `.ai/REGISTRE_REPORTS.md`, section « Reports du lot découplage D1 » (une ligne par `[~]` et par découverte non traitée, 20 entrées) ;
   (c) `.ai/thought_log.md`, entrée de clôture du lot 5. Fichiers en LF (`git ls-files --eol`).
-- [ ] 5.6 pilote.
-- [ ] 5.7 pilote (PR vers `release/v8.1.0`, revue adversariale des lots 3 et 4, fusion squash sur accord de l'utilisateur).
+- [x] 5.6 pilote : `scripts/disk-hygiene.ps1 -Lot d1 -Apply` puis `-Lot d1-base` (après le dernier build local).
+- [x] 5.7 pilote : release fusionnée dans la branche (`1de7cbda6`, 52 fichiers Go de la release, build serveur + archlint verts), PR #111 vers `release/v8.1.0`, CI verte (36 contrôles, E2E sauté par filtre), fusion squash sur le feu vert d'avance du 2026-10-28 (titre « refactor(libs): briques gamefiles et himap en modules Go sous libs/ (D1) »).
 
 - [x] 5.7 (partie revue) Revue adversariale des lots 3 et 4 (`adversarial-review`, 1 relecteur Sonnet en contexte frais, lentilles A infra de build/livraison + B couverture des garde-rails, 1 ronde) : 3 constats recevables, tous P2 proposés, 0 jeté, 18 conditions vérifiées qui tiennent (go.mod sans require/replace, versions `go` alignées + Dockerfile, aucun import inverse, Docker COPY/ordre, chaîne GPL vue à travers deux modules, pas CI réellement joués sur Linux, filtres `paths`, caches, baseline, boucles Makefile, ratchets `gamefiles_tag`/`research_tag`/`deploy_root_copie_unique`/`todo_expiry`/`doc_chemins_ai`, sources non-test de `libs/` = imports et commentaires seuls). Triage du pilote : (1) `no_mojibake_test.go` ne balayait plus `libs/himap` (couverture perdue sans rouge, ADR 0041 D7 faux) -> P1, CORRIGÉ (`racinesEspaceDeTravail`) ; (2) `.gitignore` ignorait `libs/himap/himap/gate.png` alors que le gate visuel écrit dans `internal/gamefilescorpus/` -> P1, CORRIGÉ, et le PNG versionné par erreur au lot 2 (`46ab4068b`) sort de l'index ; (3) table `briques` non exhaustive sur `libs/**` -> P2, CONSIGNÉ (découverte 38). Commit `7b1bb0840`.
 
