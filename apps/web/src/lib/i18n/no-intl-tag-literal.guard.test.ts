@@ -14,7 +14,7 @@
  * section F). Périmètre : voir `localeScan.testutil.ts`.
  */
 import { describe, expect, it } from 'vitest'
-import { formatOverflow, scanLines, scanUntaggedIntl, untaggedIntlLines } from './localeScan.testutil'
+import { formatOverflow, scanLines, scanUntaggedIntl, TREE_SCAN_TIMEOUT_MS, untaggedIntlLines } from './localeScan.testutil'
 
 /** Interdit : aucune étiquette Intl littérale hors des deux dossiers propriétaires de la langue. */
 const INTL_TAG_LITERAL_CEILING = 0
@@ -35,7 +35,7 @@ describe('garde-rail langue — étiquettes Intl littérales', () => {
         "Passer par intlLocale(locale) (table INTL_TAG de config/locales.toml) ou formatNumber / formatDate, qui prennent l'étiquette de la langue.",
       ),
     ).toBeLessThanOrEqual(INTL_TAG_LITERAL_CEILING)
-  })
+  }, TREE_SCAN_TIMEOUT_MS)
 
   it("aucun appel de formatage sans étiquette (langue du navigateur au lieu de celle de l'interface)", () => {
     const hits = scanUntaggedIntl()
@@ -47,7 +47,7 @@ describe('garde-rail langue — étiquettes Intl littérales', () => {
         "Passer l'étiquette de la langue : x.toLocaleString(intlLocale(locale)), formatNumber(x, intlLocale(locale)) ou formatDate.",
       ),
     ).toBeLessThanOrEqual(UNTAGGED_INTL_CEILING)
-  })
+  }, TREE_SCAN_TIMEOUT_MS)
 
   it('auto-preuve : la détection voit les appels sans étiquette et ignore les autres', () => {
     const seen = (code: string): number => untaggedIntlLines(code).length
