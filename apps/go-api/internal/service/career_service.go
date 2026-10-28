@@ -22,6 +22,7 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
@@ -390,6 +391,17 @@ func xpHistoryFromCanonical(entries []canonical.CareerHistoryEntry) []domain.XPH
 // (HIGH-C). Adapter-first via LoadLUSRHistory + reconstitution byte-identique ;
 // fallback repo.GetLUSRHistory sur capability absente.
 func (s *CareerService) loadLUSRHistory(ctx context.Context) ([]domain.LUSRCheckpointDTO, error) {
+	history, err := s.loadLUSRHistoryCodes(ctx)
+	if err != nil {
+		return nil, err
+	}
+	applyLUSRTierLabels(history, i18n.FromContext(ctx))
+	return history, nil
+}
+
+// loadLUSRHistoryCodes lit les checkpoints avec leur code de palier (Tier, SubTier) : voie adaptateur
+// d'abord, repo en repli. TierLabel n'est pas encore posé.
+func (s *CareerService) loadLUSRHistoryCodes(ctx context.Context) ([]domain.LUSRCheckpointDTO, error) {
 	if s.dataAdapter != nil {
 		checkpoints, err := s.dataAdapter.LoadLUSRHistory(ctx, "")
 		if err == nil {
@@ -400,6 +412,15 @@ func (s *CareerService) loadLUSRHistory(ctx context.Context) ([]domain.LUSRCheck
 		}
 	}
 	return s.repo.GetLUSRHistory(ctx)
+}
+
+// applyLUSRTierLabels pose le libellé de palier de chaque checkpoint, DÉDUIT de son code (Tier, SubTier)
+// dans la langue `loc` : la colonne stockée `tier_label` n'est jamais servie. Un checkpoint en placement
+// porte le marqueur machine domain.TierPlacement (le web écarte ces points du graphe).
+func applyLUSRTierLabels(history []domain.LUSRCheckpointDTO, loc i18n.Locale) {
+	for i := range history {
+		history[i].TierLabel = analysis.SkillTierLabelOrPlacementMarker(history[i].Tier, history[i].SubTier, loc)
+	}
 }
 
 // lusrCheckpointsFromCanonical projette []canonical.LUSRCheckpoint →
@@ -415,12 +436,13 @@ func lusrCheckpointsFromCanonical(cs []canonical.LUSRCheckpoint) []domain.LUSRCh
 			MatchID:      c.MatchID,
 			RatingType:   c.RatingType,
 			RatingValue:  c.RatingValue,
+			Tier:         c.Tier,
 			PlaylistName: c.PlaylistName,
 			PlaylistID:   c.PlaylistID,
 		}
-		if c.TierLabel != nil {
-			v := *c.TierLabel
-			d.TierLabel = &v
+		if c.SubTier != nil {
+			v := *c.SubTier
+			d.SubTier = &v
 		}
 		if c.PlaylistGroup != nil {
 			v := *c.PlaylistGroup

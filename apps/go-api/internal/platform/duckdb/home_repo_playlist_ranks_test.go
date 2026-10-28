@@ -86,8 +86,8 @@ func TestBuildPlaylistRankItem_StableRank(t *testing.T) {
 	if item.RatingValue == nil || *item.RatingValue != 1450 {
 		t.Errorf("RatingValue: want 1450, got %v", item.RatingValue)
 	}
-	if item.TierLabel == nil || *item.TierLabel != "Onyx 1450" {
-		t.Errorf("TierLabel: want \"Onyx 1450\", got %v", item.TierLabel)
+	if item.TierLabel == nil || *item.TierLabel != "Onyx" {
+		t.Errorf("TierLabel: want \"Onyx\" (déduit du code ; le libellé stocké \"Onyx 1450\" n'est pas servi), got %v", item.TierLabel)
 	}
 	if item.MeasurementMatchesRemaining != nil {
 		t.Errorf("MeasurementMatchesRemaining: want nil (matured), got %v", *item.MeasurementMatchesRemaining)

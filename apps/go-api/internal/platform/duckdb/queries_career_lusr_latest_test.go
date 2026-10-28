@@ -154,9 +154,9 @@ func serveQ8(t *testing.T, ctx context.Context, db *sql.DB) map[q8Key]string {
 	for rows.Next() {
 		var matchID, ratingType string
 		var ratingValue float64
-		var tierLabel, playlistGroup, tier sql.NullString
+		var playlistGroup, tier sql.NullString
 		var subTier sql.NullInt16
-		if err := rows.Scan(&matchID, &ratingType, &ratingValue, &tierLabel,
+		if err := rows.Scan(&matchID, &ratingType, &ratingValue,
 			&playlistGroup, &tier, &subTier); err != nil {
 			t.Fatalf("scan: %v", err)
 		}

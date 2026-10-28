@@ -13,9 +13,9 @@ import (
 
 func TestApplyCSRPlacements_threshold5(t *testing.T) {
 	rows := []domain.MatchHistoryRawRow{
-		{MatchID: "m1", SkillRatingType: strPtr("CSR"), SkillTierLabel: strPtr("Placement (4 restants)"), SeasonID: strPtr("CsrSeason13-1")},
-		{MatchID: "m2", SkillRatingType: strPtr("CSR"), SkillTierLabel: strPtr("Diamant IV"), SeasonID: strPtr("CsrSeason13-1")}, // tier officiel → pas placement
-		{MatchID: "m3", SkillRatingType: strPtr(skillRatingTypeLUSR), SkillTierLabel: strPtr("Placement (3 restants)")},          // LUSR → pas concerné par applyCSRPlacements
+		{MatchID: "m1", SkillRatingType: strPtr("CSR"), SkillStoredLabel: strPtr("Placement (4 restants)"), SeasonID: strPtr("CsrSeason13-1")},
+		{MatchID: "m2", SkillRatingType: strPtr("CSR"), SkillStoredLabel: strPtr("Diamant IV"), SeasonID: strPtr("CsrSeason13-1")}, // tier officiel → pas placement
+		{MatchID: "m3", SkillRatingType: strPtr(skillRatingTypeLUSR), SkillStoredLabel: strPtr("Placement (3 restants)")},          // LUSR → pas concerné par applyCSRPlacements
 		{MatchID: "m4"}, // pas de rating → ignore
 	}
 	csrResolver := func(_ context.Context, _ string) int { return 5 }
@@ -39,7 +39,7 @@ func TestApplyCSRPlacements_threshold5(t *testing.T) {
 
 func TestApplyCSRPlacements_threshold10_legacySeason(t *testing.T) {
 	rows := []domain.MatchHistoryRawRow{
-		{MatchID: "m1", SkillRatingType: strPtr("CSR"), SkillTierLabel: strPtr("Placement (7 restants)"), SeasonID: strPtr("CsrSeason1")},
+		{MatchID: "m1", SkillRatingType: strPtr("CSR"), SkillStoredLabel: strPtr("Placement (7 restants)"), SeasonID: strPtr("CsrSeason1")},
 	}
 	csrResolver := func(_ context.Context, seasonID string) int {
 		if seasonID == "CsrSeason1" {
@@ -96,13 +96,13 @@ func TestApplyMatchPlacements_csrAndLusrCombined(t *testing.T) {
 	rows := []domain.MatchHistoryRawRow{
 		// CSR placement → done = 5-2 = 3, total = 5
 		{MatchID: "csr1", StartTime: &ts, PairName: i18n.FromColumns("Ranked:Slayer", ""),
-			SkillRatingType: strPtr("CSR"), SkillTierLabel: strPtr("Placement (2 restants)"),
+			SkillRatingType: strPtr("CSR"), SkillStoredLabel: strPtr("Placement (2 restants)"),
 			SeasonID: strPtr("CsrSeason13-1")},
 		// LUSR placement (chaîne arena_slayer, premier match) → 1/10
 		{MatchID: "lusr1", StartTime: &ts, PairName: i18n.FromColumns("Arena:Slayer on Bazaar", "")},
 		// Tier officiel CSR → ignoré
 		{MatchID: "csr_full", StartTime: &ts, PairName: i18n.FromColumns("Ranked:Slayer", ""),
-			SkillRatingType: strPtr("CSR"), SkillTierLabel: strPtr("Diamant IV")},
+			SkillRatingType: strPtr("CSR"), SkillStoredLabel: strPtr("Diamant IV")},
 	}
 	csrResolver := func(_ context.Context, _ string) int { return 5 }
 	applyMatchPlacements(context.Background(), rows, csrResolver)
@@ -120,7 +120,7 @@ func TestApplyMatchPlacements_csrAndLusrCombined(t *testing.T) {
 
 func TestApplyMatchPlacements_nilCsrResolver(t *testing.T) {
 	rows := []domain.MatchHistoryRawRow{
-		{MatchID: "m1", SkillRatingType: strPtr("CSR"), SkillTierLabel: strPtr("Placement (2 restants)")},
+		{MatchID: "m1", SkillRatingType: strPtr("CSR"), SkillStoredLabel: strPtr("Placement (2 restants)")},
 	}
 	// csrThreshold = nil → fallback à defaultCSRPlacementThreshold (5)
 	applyMatchPlacements(context.Background(), rows, nil)
@@ -230,7 +230,7 @@ func TestApplyLUSRPlacements_chaineCalibree_dnfSansSignal(t *testing.T) {
 	rows := []domain.MatchHistoryRawRow{
 		// Match le plus ancien de la chaîne : déjà classé (LUSR établi).
 		{MatchID: "established", StartTime: tPtr(base), PairName: i18n.FromColumns("Fiesta:Slayer on Bazaar", ""),
-			SkillRatingType: strPtr(skillRatingTypeLUSR), SkillTierLabel: strPtr("Or III")},
+			SkillRatingType: strPtr(skillRatingTypeLUSR), SkillStoredLabel: strPtr("Or III")},
 	}
 	// 3 DNF récents dans la MÊME chaîne, sans LUSR (n'en auront jamais).
 	for i := 1; i <= 3; i++ {
@@ -308,7 +308,7 @@ func TestApplyLUSRPlacements_idempotent(t *testing.T) {
 	base := time.Date(2026, 8, 1, 9, 0, 0, 0, time.UTC)
 	rows := []domain.MatchHistoryRawRow{
 		{MatchID: "established", StartTime: tPtr(base), PairName: i18n.FromColumns("Fiesta:Slayer on Bazaar", ""),
-			SkillRatingType: strPtr(skillRatingTypeLUSR), SkillTierLabel: strPtr("Or III")},
+			SkillRatingType: strPtr(skillRatingTypeLUSR), SkillStoredLabel: strPtr("Or III")},
 	}
 	for i := 1; i <= 3; i++ {
 		rows = append(rows, domain.MatchHistoryRawRow{
@@ -363,7 +363,7 @@ func btbRow(id string, at time.Time, perf *float64, lusr bool) domain.MatchHisto
 	}
 	if lusr {
 		r.SkillRatingType = strPtr(skillRatingTypeLUSR)
-		r.SkillTierLabel = strPtr("Or II")
+		r.SkillStoredLabel = strPtr("Or II")
 	}
 	return r
 }

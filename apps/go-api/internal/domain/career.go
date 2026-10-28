@@ -110,10 +110,14 @@ type FriendXPHistory struct {
 // LUSRCheckpointDTO représente un checkpoint LUSR pour l'API.
 // Champs alignés avec les colonnes de Q8LUSRHistory.
 type LUSRCheckpointDTO struct {
-	MatchID       string     `json:"-"`
-	RatingType    string     `json:"rating_type"`
-	RatingValue   float64    `json:"rating_value"`
-	TierLabel     *string    `json:"tier_label"`
+	MatchID     string  `json:"-"`
+	RatingType  string  `json:"rating_type"`
+	RatingValue float64 `json:"rating_value"`
+	TierLabel   *string `json:"tier_label"`
+	// Tier (nom canonique anglais) + SubTier : le code dont le service déduit TierLabel dans la langue
+	// de la requête ; jamais servis.
+	Tier          string     `json:"-"`
+	SubTier       *int       `json:"-"`
 	PlaylistGroup *string    `json:"playlist_group"`
 	PlaylistName  string     `json:"playlist_name"`
 	PlaylistID    string     `json:"-"`

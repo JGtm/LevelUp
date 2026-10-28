@@ -373,9 +373,8 @@ func buildPlaylistRankItem(
 		item.RatingType = &ratingType
 		ratingValueCopy := msr.ratingValue
 		item.RatingValue = &ratingValueCopy
-		if msr.tierLabel != "" {
-			item.TierLabel = stringPtr(msr.tierLabel)
-		}
+		// Libellé déduit du code dans la langue de la requête, jamais de la colonne stockée.
+		item.TierLabel = analysis.SkillTierDisplayLabel(msr.tier, &msr.subTier, tierLoc)
 		item.BadgeImageURL = buildHomeSkillPeakBadgeURLForThreshold(msr.tier, msr.tierLabel, msr.subTier, slug, 0, threshold)
 		// Bande de progression ORDINALE (extrémité droite du palier) + sous-palier
 		// suivant — même calcul que le skill peak (analysis.SkillTierBand /

@@ -32,10 +32,10 @@ func TestEnrichRow_personalScoreSurvivesEnrichment(t *testing.T) {
 func TestEnrichRow_skillRankImageURLFromTitleResolver(t *testing.T) {
 	sub := 4
 	raw := domain.MatchHistoryRawRow{
-		MatchID:        "m1",
-		SkillTier:      "Diamond",
-		SubTier:        &sub,
-		SkillTierLabel: strPtr("Diamant IV"),
+		MatchID:          "m1",
+		SkillTier:        "Diamond",
+		SubTier:          &sub,
+		SkillStoredLabel: strPtr("Diamond 4"),
 	}
 
 	var gotTier string

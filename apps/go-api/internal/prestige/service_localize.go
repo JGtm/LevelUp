@@ -14,16 +14,18 @@ import (
 //
 // Un défi ou un arc copie le texte de son modèle / preset à la création dans la langue par défaut
 // (Template.StoredLabel, PresetArc.StoredTitle). L'origine est enregistrée (Challenge.TemplateID,
-// Arc.PresetID) : tant que le texte stocké est EXACTEMENT la copie, le service sert celui du
+// Arc.PresetID) : tant que le texte stocké est EXACTEMENT une copie, le service sert celui du
 // modèle dans la langue de la requête (Template.ServedLabel et consorts) ; un texte modifié ou
-// libre est servi tel quel. Ni le stockage ni le schéma ne changent. Sous la langue par défaut la
-// copie et le texte servi coïncident : aucune lecture du catalogue n'est faite.
+// libre est servi tel quel. Ni le stockage ni le schéma ne changent. La copie peut être dans N'IMPORTE
+// QUELLE langue du modèle (isStoredCopy : un défi créé depuis le web porte le texte de la langue de
+// la requête de création) : la résolution se fait donc aussi sous la langue par défaut. Un défi ou un
+// arc SANS origine enregistrée (TemplateID / PresetID vide, ou absent du catalogue) est servi tel quel.
 
 // localizeChallenges remplace en place le libellé des défis issus d'un modèle par celui de la
 // langue de la requête et rend la liste. Un modèle illisible laisse le libellé stocké (journalisé).
 func (s *service) localizeChallenges(ctx context.Context, list []Challenge) []Challenge {
 	loc := i18n.FromContext(ctx)
-	if loc == i18n.Default || s.deps.Templates == nil {
+	if s.deps.Templates == nil {
 		return list
 	}
 	cache := map[string]*Template{}
@@ -53,7 +55,7 @@ func (s *service) localizeChallenge(ctx context.Context, c Challenge) Challenge 
 // (IsPreset et PresetID) par ceux de la langue de la requête. Un arc libre n'est pas touché.
 func (s *service) localizeArcs(ctx context.Context, arcs []Arc) []Arc {
 	loc := i18n.FromContext(ctx)
-	if loc == i18n.Default || s.deps.PresetArcs == nil {
+	if s.deps.PresetArcs == nil {
 		return arcs
 	}
 	cache := map[string]*PresetArc{}

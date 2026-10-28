@@ -28,7 +28,6 @@ type lusrPlayerRow struct {
 	MatchID       string
 	RatingType    string
 	RatingValue   float64
-	TierLabel     *string
 	PlaylistGroup *string
 	Tier          sql.NullString
 	SubTier       sql.NullInt16
@@ -78,7 +77,7 @@ func (r *CareerRepo) loadLUSRPlayerRows(ctx context.Context) ([]lusrPlayerRow, [
 	matchIDs := make([]string, 0)
 	for rows.Next() {
 		var p lusrPlayerRow
-		if err := rows.Scan(&p.MatchID, &p.RatingType, &p.RatingValue, &p.TierLabel,
+		if err := rows.Scan(&p.MatchID, &p.RatingType, &p.RatingValue,
 			&p.PlaylistGroup, &p.Tier, &p.SubTier); err != nil {
 			return nil, nil, fmt.Errorf("CareerRepo.GetLUSRHistory scan A: %w", err)
 		}
@@ -130,21 +129,21 @@ func assembleLUSRResults(slug string, playerRows []lusrPlayerRow, registryByMatc
 			MatchID:       p.MatchID,
 			RatingType:    p.RatingType,
 			RatingValue:   p.RatingValue,
-			TierLabel:     p.TierLabel,
+			Tier:          optionalNullStringValue(p.Tier),
 			PlaylistGroup: p.PlaylistGroup,
+		}
+		if p.SubTier.Valid {
+			sub := int(p.SubTier.Int16)
+			cp.SubTier = &sub
 		}
 		if info, ok := registryByMatch[p.MatchID]; ok {
 			cp.RecordedAt = info.RecordedAt
 			cp.PlaylistName = info.PlaylistName
 			cp.PlaylistID = info.PlaylistID
 		}
-		tierLabel := ""
-		if cp.TierLabel != nil {
-			tierLabel = *cp.TierLabel
-		}
 		cp.BadgeImageURL = buildHomeSkillPeakBadgeURL(
 			optionalNullStringValue(p.Tier),
-			tierLabel,
+			"",
 			optionalNullInt16Value(p.SubTier),
 			slug,
 			0,

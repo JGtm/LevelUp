@@ -288,7 +288,7 @@ func (r *MatchHistoryRepo) mergeHistorySkillRanks(ctx context.Context, rows []do
 		}
 		rows[i].SkillTier = s.tier
 		rows[i].SkillRatingType = s.rating
-		rows[i].SkillTierLabel = s.tierLabel
+		rows[i].SkillStoredLabel = s.tierLabel
 		rows[i].SkillExpectedWinProb = s.winProb
 		rows[i].PlaylistGroup = s.playlistGroup
 		rows[i].RatingValue = s.ratingValue

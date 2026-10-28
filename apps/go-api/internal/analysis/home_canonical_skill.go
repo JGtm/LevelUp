@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/i18n"
 )
@@ -61,6 +62,51 @@ func BuildSkillTierLabel(tierCode *string, subTier *int, loc i18n.Locale) *strin
 	// Label-only : pas besoin de l'URL → résolveur nil.
 	label, _ := buildCanonicalSkillBadge(tierDisplay, *tierCode, subTier, nil)
 	return label
+}
+
+// SkillTierDisplayLabel est le point d'entrée des lecteurs qui servent le libellé d'un palier de
+// rang lu en base : il se DÉDUIT DU CODE (colonnes `tier` et `sub_tier`), dans la langue `loc`, et
+// la colonne `tier_label` n'est jamais servie (écrite dans la langue du moment de l'écriture, elle
+// donne « Or VI » à un client anglais et « Diamond 4 » à un client français).
+//
+//   - palier vide ou en placement : nil (le placement se signale par ses propres champs, jamais par
+//     un libellé de palier) ;
+//   - palier à sous-palier valide (1..6) : « Nom + chiffre romain » (BuildSkillTierLabel) ;
+//   - palier sans sous-palier exploitable (Onyx, Champion, ligne CSR dont le sous-palier vaut 0) :
+//     le nom seul, dans la langue de la requête ; un palier inconnu du catalogue garde son nom tel quel.
+func SkillTierDisplayLabel(tier string, subTier *int, loc i18n.Locale) *string {
+	t := strings.TrimSpace(tier)
+	if t == "" || strings.EqualFold(t, domain.TierPlacement) {
+		return nil
+	}
+	if label := BuildSkillTierLabel(&t, subTier, loc); label != nil {
+		return label
+	}
+	name := capitalizeFirstRune(tierDisplayName(loc, t))
+	return &name
+}
+
+// SkillTierLabelOrPlacementMarker est SkillTierDisplayLabel pour les lecteurs dont la consommation distingue
+// « palier connu » de « sans palier » : une ligne en placement rend le marqueur machine
+// domain.TierPlacement (le web le reconnaît par `isPlacementTierLabel` et affiche son propre texte), jamais
+// un texte d'une langue ni le nombre de matchs restants (champs dédiés).
+func SkillTierLabelOrPlacementMarker(tier string, subTier *int, loc i18n.Locale) *string {
+	if label := SkillTierDisplayLabel(tier, subTier, loc); label != nil {
+		return label
+	}
+	if strings.EqualFold(strings.TrimSpace(tier), domain.TierPlacement) {
+		marker := domain.TierPlacement
+		return &marker
+	}
+	return nil
+}
+
+// SkillTierDisplayLabelPtr est SkillTierDisplayLabel pour un palier optionnel (colonne nullable).
+func SkillTierDisplayLabelPtr(tier *string, subTier *int, loc i18n.Locale) *string {
+	if tier == nil {
+		return nil
+	}
+	return SkillTierDisplayLabel(*tier, subTier, loc)
 }
 
 // Noms canoniques EN des paliers, en minuscules : clés de recherche du catalogue des messages.

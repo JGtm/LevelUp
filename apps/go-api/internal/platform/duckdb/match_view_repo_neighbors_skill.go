@@ -137,7 +137,6 @@ func (r *MatchViewRepo) GetMatchSkillRank(ctx context.Context, matchID string) (
 	defer rrows.Close()
 	if err := rrows.Scan(
 		&ratingTypeRaw,
-		&row.TierLabel,
 		&row.RatingValue,
 		&row.RatingDelta,
 		&row.PlaylistGroup,
@@ -239,7 +238,6 @@ func (r *MatchViewRepo) GetMatchSharedCSRs(ctx context.Context, matchID string) 
 		if err := rows.Scan(
 			&xuid,
 			&row.RatingType,
-			&row.TierLabel,
 			&row.RatingValue,
 			&row.RatingDelta,
 			&row.Tier,

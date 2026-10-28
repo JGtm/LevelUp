@@ -598,7 +598,7 @@ func (s *SessionPageService) computeSessionPlacements(ctx context.Context, rows 
 			// depuis MeasurementRemaining (la valeur N) par la même fonction que l'écriture.
 			if rt == "CSR" && src.SkillMeasurementRemaining != nil && *src.SkillMeasurementRemaining > 0 {
 				lbl := domain.PlacementLabel(*src.SkillMeasurementRemaining)
-				mr.SkillTierLabel = &lbl
+				mr.SkillStoredLabel = &lbl
 			}
 		}
 		raw[i] = mr
@@ -687,9 +687,9 @@ func buildSessionDetailRows(
 			perfTier = int(analysis.PerfTier(*row.PerfScoreComputed))
 		}
 		modeUI := sessionModeUI(loc, row)
-		// Libellé du palier ("Or III", "Diamant V"…) construit comme l'Explorer —
+		// Libellé du palier ("Or III", "Diamant V"…) déduit du code comme l'Explorer —
 		// la colonne "Rang" affiche le palier, pas la valeur brute. Nil si non rankée.
-		skillTierLabel := analysis.BuildSkillTierLabel(row.SkillTierCode, row.SkillSubTier, loc)
+		skillTierLabel := analysis.SkillTierDisplayLabelPtr(row.SkillTierCode, row.SkillSubTier, loc)
 		assistsExp := assistsExpected[row.MatchID]
 		kdaExp := analysis.ExpectedFDA(row.KillsExpected, row.DeathsExpected, assistsExp)
 		// XP de carrière estimée (V72-13) : MIROIR EXACT du calcul Timeseries

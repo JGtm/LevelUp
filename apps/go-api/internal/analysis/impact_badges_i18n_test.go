@@ -51,3 +51,40 @@ func TestBuildSkillTierLabel_DansLaLangueDemandee(t *testing.T) {
 		}
 	}
 }
+
+// TestSkillTierDisplayLabel_DeduitDuCodeDansLaLangueDemandee : le libellé d'un palier lu en base se
+// déduit du code (tier anglais + sous-palier), jamais du libellé stocké ; un palier sans sous-palier
+// valide garde son nom seul, le placement et le vide ne donnent aucun libellé.
+func TestSkillTierDisplayLabel_DeduitDuCodeDansLaLangueDemandee(t *testing.T) {
+	sub := func(n int) *int { return &n }
+	cases := []struct {
+		name   string
+		tier   string
+		sub    *int
+		fr, en string
+	}{
+		{"diamant stocke en anglais arabe", "Diamond", sub(4), "Diamant IV", "Diamond IV"},
+		{"or stocke en francais", "Gold", sub(6), "Or VI", "Gold VI"},
+		{"casse libre", "PLATINUM", sub(1), "Platine I", "Platinum I"},
+		{"onyx sans sous-palier", "Onyx", sub(0), "Onyx", "Onyx"},
+		{"palier a sous-palier nul (CSR Diamant 0)", "Diamond", sub(0), "Diamant", "Diamond"},
+		{"sous-palier absent", "Gold", nil, "Or", "Gold"},
+		{"palier inconnu du catalogue", "Champion", sub(0), "Champion", "Champion"},
+	}
+	for _, c := range cases {
+		for loc, want := range map[i18n.Locale]string{i18n.LocaleFR: c.fr, i18n.LocaleEN: c.en} {
+			got := SkillTierDisplayLabel(c.tier, c.sub, loc)
+			if got == nil || *got != want {
+				t.Errorf("%s (%s) : %v, attendu %q", c.name, loc, got, want)
+			}
+		}
+	}
+	for _, tier := range []string{"", "  ", "Placement", "placement"} {
+		if got := SkillTierDisplayLabel(tier, sub(0), i18n.LocaleFR); got != nil {
+			t.Errorf("palier %q : libellé %q, attendu nil", tier, *got)
+		}
+	}
+	if got := SkillTierDisplayLabelPtr(nil, sub(1), i18n.LocaleFR); got != nil {
+		t.Errorf("palier nil : %q, attendu nil", *got)
+	}
+}
