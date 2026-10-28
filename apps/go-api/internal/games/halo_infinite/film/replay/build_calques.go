@@ -47,7 +47,7 @@ func (a *assemblage) poserGrappinEtPoses() {
 			// registre d'identite apparie aux vies (lots 1.6 / 1.8, seul producteur de liens),
 			// et sa PRISE d'equipement (`equipmentChanges.taken`). Ni l'une ni l'autre ne se
 			// reconstruit ici : on passe la lecture deja faite.
-			Lives: a.reg.Vies(), Changes: a.opt.EquipmentChanges,
+			Lives: a.reg.Vies(), Changes: a.opt.EquipmentChanges, Carried: a.opt.CarriedEquipment,
 		},
 		replayClock{origin: a.origin, step: a.step, frames: a.doc.FrameCount, fb: a.opt.Fallbacks,
 			families: a.opt.Labels.EquipmentFamilies})

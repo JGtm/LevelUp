@@ -282,3 +282,62 @@ describe('branchements : zones, survol et révélation lisent les poses fabriqu�
     expect(reveals.map((r) => [r.slot, r.owner, r.ownerFrame])).toEqual([[3, 540, 105]])
   })
 })
+
+describe('écran occultant — la bulle lue dans le film (`tracked[].effect`, schéma 106)', () => {
+  const shroud = (objects: unknown[]) => docWith(4, objects)
+  const effect = (over: Record<string, number | undefined> = {}) => ({ t0: 103, t1: 178, x: 7.5, y: -2.25, z: 3, ...over })
+  const activeAt = (doc: ReturnType<typeof docWith>, frame: number) =>
+    drawablePlacements(doc).some((p) => isPlacementActive(p, 'shroud', frame, TIME))
+
+  it('la pose se dessine de la naissance à la suppression LUES, à la position de la bulle', () => {
+    const doc = shroud([{ ...tracked(100, 105, { x: 3, y: 4 }), effect: effect() }])
+    const [p] = spawnedObjectPlacements(doc)
+    expect(p).toMatchObject({ family: 'shroud_screen', id: SPAWNED_OBJECT_ID, owner: 540, t0: 103, t1: 178, x: 7.5, y: -2.25, z: 3, endRead: true })
+    expect([102, 103, 178, 179].map((f) => activeAt(doc, f))).toEqual([false, true, true, false])
+  })
+
+  it('une bulle supprimée avant ou après 7,5 s est suivie telle quelle : la lecture l’emporte sur la durée de repli', () => {
+    const court = shroud([{ ...tracked(100, 105), effect: effect({ t1: 120 }) }])
+    expect([120, 121].map((f) => activeAt(court, f))).toEqual([true, false])
+    const long = shroud([{ ...tracked(100, 105), effect: effect({ t1: 300 }) }])
+    expect([300, 301].map((f) => activeAt(long, f))).toEqual([true, false])
+  })
+
+  it('sans suppression lue, la bulle garde la durée de repli à partir de SA naissance, pas du repos de la grenade', () => {
+    const doc = shroud([{ ...tracked(100, 105), effect: effect({ t0: 103, t1: undefined }) }])
+    const [p] = spawnedObjectPlacements(doc)
+    expect(p.endRead).toBeUndefined()
+    const fin = 103 + SHROUD_DURATION_MS / TIME.frameMs
+    expect([fin, fin + 1].map((f) => activeAt(doc, f))).toEqual([true, false])
+  })
+
+  it('un écran SANS trajectoire de grenade mais avec bulle lue se dessine', () => {
+    const sansRepos = { t0: 100, t1: 104 }
+    expect(spawnedObjectPlacements(shroud([sansRepos]))).toEqual([])
+    const [p] = spawnedObjectPlacements(shroud([{ ...sansRepos, effect: effect() }]))
+    expect(p).toMatchObject({ t0: 103, x: 7.5, y: -2.25 })
+  })
+
+  it('une bulle sans position prend le repos de la grenade, et sans l’un ni l’autre ne se dessine pas', () => {
+    const sansPosition = effect({ x: undefined, y: undefined, z: undefined })
+    const [p] = spawnedObjectPlacements(shroud([{ ...tracked(100, 105, { x: 3, y: 4, z: 1 }), effect: sansPosition }]))
+    expect(p).toMatchObject({ t0: 103, x: 3, y: 4, z: 1 })
+    expect(spawnedObjectPlacements(shroud([{ t0: 100, t1: 104, effect: sansPosition }]))).toEqual([])
+  })
+
+  it('sans bulle lue, la règle d’avant : repos de la grenade, durée de repli depuis le repos', () => {
+    const [p] = spawnedObjectPlacements(shroud([tracked(100, 105)]))
+    expect(p).toMatchObject({ t0: 105, t1: 105 })
+    expect(p.endRead).toBeUndefined()
+  })
+
+  it('seule la famille de l’écran lit la bulle : un capteur qui en porterait une garde sa règle', () => {
+    const [p] = spawnedObjectPlacements(docWith(1, [{ ...tracked(100, 105), effect: effect() }]))
+    expect(p).toMatchObject({ family: 'sensor', t0: 105, t1: 125, endRead: true })
+  })
+
+  it('le compte des déploiements ne change pas : un objet engendré = un déploiement, bulle lue ou non', () => {
+    const avec = shroud([{ ...tracked(100, 105), effect: effect() }, tracked(300, 305)])
+    expect(spawnedObjectDeployments(avec).map((d) => d.t0)).toEqual([100, 300])
+  })
+})

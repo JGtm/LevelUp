@@ -11,6 +11,7 @@
 - **Halo 5 names** — in French, some names that used to stay in English now appear in French; in English, the maps and playlists that showed no name now display it
 - **Rank names in your language** — "Gold VI" rather than "Or VI" in English, "Diamant IV" rather than "Diamond 4" in French, on every page; challenges created in English follow the interface language too
 - **Threat sensor, seeker, shroud screen and repair field back on the replay map** — drawn where they land, for as long as the film says they last
+- **Drop wall and shroud screen last as long as the film says** — their end is read from the match instead of a flat duration
 - **Translations in administration** — the form offers one field per language; the application is ready for more languages
 - **"Exclude BTB from the career ranking" removed** — the option had no effect
 

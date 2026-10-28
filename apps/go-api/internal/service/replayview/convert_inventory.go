@@ -120,6 +120,7 @@ func toEquipmentPlacement(v replay.EquipmentPlacement) replaydoc.EquipmentPlacem
 		Until:    v.Until,
 		UntilMax: v.UntilMax,
 		End:      v.End,
+		LifeEnd:  v.LifeEnd,
 	}
 }
 
@@ -174,7 +175,12 @@ func toCarriedEnergy(v replay.CarriedEnergy) replaydoc.CarriedEnergy {
 }
 
 func toCarriedTracked(v replay.CarriedTracked) replaydoc.CarriedTracked {
-	return replaydoc.CarriedTracked(v)
+	out := replaydoc.CarriedTracked{T0: v.T0, T1: v.T1, Land: v.Land, X: v.X, Y: v.Y, Z: v.Z}
+	if v.Effect != nil {
+		e := replaydoc.CarriedEffect(*v.Effect)
+		out.Effect = &e
+	}
+	return out
 }
 
 func toRiftPose(v replay.RiftPose) replaydoc.RiftPose {
