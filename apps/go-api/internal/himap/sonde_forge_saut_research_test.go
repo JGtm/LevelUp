@@ -22,7 +22,7 @@ import (
 	"context"
 	"testing"
 
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 func TestSondeForgeSautBlocScenMach(t *testing.T) {

@@ -24,7 +24,8 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/himap"
-	"levelup/go-api/internal/himodule"
+
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 // Calage de `carte_validee_v1.png`, mesuré sur les trajectoires de joueur

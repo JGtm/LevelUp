@@ -27,7 +27,7 @@ import (
 	"fmt"
 	"sort"
 
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 // champsDuTableau rend les champs d'un `_40`, avec leurs offsets DANS un element, et la

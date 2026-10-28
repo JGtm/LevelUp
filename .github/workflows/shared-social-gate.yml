@@ -85,7 +85,9 @@ jobs:
         with:
           go-version-file: apps/go-api/go.mod
           cache: true
-          cache-dependency-path: apps/go-api/go.sum
+          cache-dependency-path: |
+            apps/go-api/go.sum
+            libs/gamefiles/go.sum
 
       - name: Install build deps (CGO + DuckDB)
         run: |

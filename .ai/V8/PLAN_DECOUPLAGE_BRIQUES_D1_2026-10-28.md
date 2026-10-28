@@ -303,26 +303,26 @@ suffit » => reste sous `gamefiles` (jamais taguée : une garde ne se tague pas)
 Un seul lot parce que la CI casse entre la création du module et l'adaptation de l'infra : rien
 n'est poussé entre 3.1 et 3.14.
 
-- [ ] 3.1 `go.work` à la racine (`use ./apps/go-api`, `use ./libs/gamefiles`) ; `go.work.sum`
+- [x] 3.1 `go.work` à la racine (`use ./apps/go-api`, `use ./libs/gamefiles`) ; `go.work.sum`
   versionné ; la ligne `go` des trois `go.mod` égale celle d'`apps/go-api/go.mod` (le ratchet
   `dockerfile_go_version_test` compare l'image Docker à `apps/go-api/go.mod` : l'étendre aux
   `go.mod` de `libs/**`).
-- [ ] 3.2 `libs/gamefiles/go.mod` (chemin D1-A), `git mv` de `internal/himodule`, `internal/ooz`,
+- [x] 3.2 `libs/gamefiles/go.mod` (chemin D1-A), `git mv` de `internal/himodule`, `internal/ooz`,
   `internal/hinavmesh`, `internal/games/halo_infinite/film/replay/mapvar` vers
   `libs/gamefiles/{himodule,ooz,hinavmesh,mapvar}` (paquets au premier niveau, jamais sous
   `internal/`, sinon `go-api` ne peut pas les importer). `ooz/NOTICE.md` et les sources C++
   suivent. `mapvar/testdata/` suit (graines de fuzz, aucun fichier extrait du jeu : vérifier).
-- [ ] 3.3 Réécriture des imports dans `apps/go-api` (relevé du 2026-10-28 : `mapvar` importé par
+- [x] 3.3 Réécriture des imports dans `apps/go-api` (relevé du 2026-10-28 : `mapvar` importé par
   14 paquets — `cmd/{mapfond-build,mapobj-build,mapopads-build,vehicle-sprite,weapon-icons-build,zone-attribution}`,
   `internal/{archlint,himap,mapcatalog,replaybuild,games/mappings,games/halo_infinite/film/replay,sync/killcollector,sync/replayartifacts}` ;
   `himodule`/`hinavmesh`/`ooz` par `cmd/{mapfond-build,weapon-icons-build,weapon-sounds}` et
   `himap`). `sed` sur le préfixe d'import puis `gofmt`/`goimports` ; `go mod tidy` dans
   `apps/go-api` (version `v0.0.0-...` attendue, D1-E).
-- [ ] 3.4 `archlint` — entrées à retirer (mapvar n'est plus un paquet du décodeur) :
+- [x] 3.4 `archlint` — entrées à retirer (mapvar n'est plus un paquet du décodeur) :
   `film_layers_deps_test.go:273-274` (table des couches), `film_file_size_test.go:461`,
   `pas_de_lecture_sous_ai_test.go:71-74`, `no_raw_film_bytes_outside_source_test.go:222`
   (+ le commentaire l.57). `film_layers_deps` R3 reste vrai (`replay` garde ses paquets).
-- [ ] 3.5 `archlint` — helper `workspaceGoSources(t, roots...)` (racine = dépôt, roots relatifs
+- [x] 3.5 `archlint` — helper `workspaceGoSources(t, roots...)` (racine = dépôt, roots relatifs
   `apps/go-api`, `libs/gamefiles`, ...). Ratchets à règle générale qui passent dessus (liste
   fermée, chacun rouvert) : `gamefiles_tag_test.go` (il parcourt `goAPIRoot` l.161 : la brique
   porte 60+ tests `gamefiles`, il DOIT continuer à les voir), `research_tag_test.go` (3 tests
@@ -331,16 +331,16 @@ n'est poussé entre 3.1 et 3.14.
   `briques_imports_test.go` (lot 1). Tout autre appelant d'`apiModuleRoot` est listé par
   `grep -n 'apiModuleRoot(' internal/archlint/*.go` et annoté dans le journal : « propre à
   go-api » ou « étendu ». Aucun appelant sans verdict.
-- [ ] 3.6 Table du lot 1 : les chemins deviennent ceux de `libs/gamefiles/...` ; la règle « rien
+- [x] 3.6 Table du lot 1 : les chemins deviennent ceux de `libs/gamefiles/...` ; la règle « rien
   du dépôt » s'écrit « aucun import `levelup/go-api/...` ni `.../libs/himap/...` ».
-- [ ] 3.7 `Dockerfile` : `WORKDIR` racine d'espace de travail ; `COPY go.work go.work.sum`,
+- [x] 3.7 `Dockerfile` : `WORKDIR` racine d'espace de travail ; `COPY go.work go.work.sum`,
   `COPY apps/go-api/go.mod apps/go-api/go.sum`, `COPY libs/gamefiles/go.mod` AVANT
   `go mod download` (cache de couches conservé) ; `COPY libs/ ./libs/` avant les `go build` ;
   les `go build` restent lancés depuis `apps/go-api`. Le contexte de build est déjà la racine du
   dépôt (il copie `config/`, `static/`, `docs/`).
-- [ ] 3.8 `.github/workflows/ci.yml` : filtre `dorny/paths-filter` (l.137-162) — `go` inclut
+- [x] 3.8 `.github/workflows/ci.yml` : filtre `dorny/paths-filter` (l.137-162) — `go` inclut
   `libs/**` et `go.work*` ; `web` exclut `libs/**`. Ratchet `ci_paths_filter_test.go` à suivre.
-- [ ] 3.9 `ci.yml` — jobs Go : `go vet`/`go test` « sans CGo » (l.419, 482) : ajouter un pas par
+- [x] 3.9 `ci.yml` — jobs Go : `go vet`/`go test` « sans CGo » (l.419, 482) : ajouter un pas par
   module (`go test ./... ` depuis `libs/gamefiles` — `./...` ne franchit jamais la frontière d'un
   module) ; `go vet -tags=gamefiles` (l.450) ; lint `golangci-lint` (l.576, `working-directory`) :
   un pas supplémentaire sur `libs/gamefiles` avec la même config (copie de `.golangci.yml` ou
@@ -350,19 +350,19 @@ n'est poussé entre 3.1 et 3.14.
   « test renommé = retrait de la baseline ») — ajouter un pas de test par module dans le job de
   couverture, sans l'inclure dans la baseline du module `go-api`. Ratchets `ci_go_shards_test.go`,
   `ci_web_reads_go_test.go`, `ci_workflows_security_test.go` verts.
-- [ ] 3.10 `release.yml` (l.39-62) et `deploy.yml` : vérifier que le `go build` s'exécute dans
+- [x] 3.10 `release.yml` (l.39-62) et `deploy.yml` : vérifier que le `go build` s'exécute dans
   l'espace de travail (checkout complet, pas de sparse checkout de `apps/go-api` seul).
-- [ ] 3.11 `Makefile` : `go-api-test`, `go-api-lint`, `go-api-coverage`, `gate-push`,
+- [x] 3.11 `Makefile` : `go-api-test`, `go-api-lint`, `go-api-coverage`, `gate-push`,
   `go-api-test-gamefiles` — ajouter les modules `libs/*` là où le périmètre est « tout le Go » ;
   `docs/COMMANDS.md` (bilingue, FR dans le même commit, règle 15) mis à jour.
-- [ ] 3.12 `.golangci.yml` : les règles `path:` qui visaient `internal/games/halo_infinite/film/replay`
+- [x] 3.12 `.golangci.yml` : les règles `path:` qui visaient `internal/games/halo_infinite/film/replay`
   n'ont plus `mapvar` dedans (rien à faire si aucune règle ne le nommait — vérifier) ; la dette
   gelée (`--new-from-merge-base`) n'est pas accrue par le déplacement (un fichier déplacé est
   « nouveau » pour golangci : lancer le lint, corriger ce qui sort ou noter l'exemption datée).
-- [ ] 3.13 ADR 0041 rédigé (D1-H) + ligne dans la liste des ADR de `CLAUDE.md` + tableau
+- [x] 3.13 ADR 0041 rédigé (D1-H) + ligne dans la liste des ADR de `CLAUDE.md` + tableau
   « Architecture des Données » inchangé ; `docs/ARCHITECTURE_V6.md` : une section « Bricks /
   libs » (EN + FR).
-- [ ] 3.14 Gate : `go build ./...` INTERDIT (mémoire disque) — à la place :
+- [!] 3.14 Gate : `go build ./...` INTERDIT (mémoire disque) — à la place :
   `cd apps/go-api && go test ./internal/archlint/ ./internal/himap/ ./internal/games/halo_infinite/film/replay/... ./internal/mapcatalog/ ./internal/replaybuild/ ./internal/sync/... -count=1` ;
   `cd libs/gamefiles && go test ./... -count=1` ; `go vet -tags=gamefiles ./internal/himap/`
   depuis `apps/go-api` ; `docker build -t levelup-d1 .` local réussi (ou, si Docker absent du
@@ -371,6 +371,93 @@ n'est poussé entre 3.1 et 3.14.
 
 **Clos quand** : 3.14 vert en CI, commit « refactor(libs): module gamefiles (himodule, ooz,
 hinavmesh, mapvar) et espace de travail go.work (D1) ».
+
+### Exécution du lot 3 (2026-10-28, branche `refactor/decouplage-d1-fichiers-du-jeu`, NON commité)
+
+Statuts (le texte des items ci-dessus est celui du plan ; ce bloc dit ce qui a été fait, vérifié sur pièces) :
+
+- [x] 3.1 `go.work` (`go 1.26.10`, `use ./apps/go-api ./libs/gamefiles`) + `go.work.sum` (160 lignes) ; `libs/gamefiles/go.mod`
+  (`require golang.org/x/sys v0.49.0`, SEULE dépendance externe, même version que go-api ; `go mod tidy` dans la brique OK).
+  ÉCART AU PLAN (D1-E) : `go mod tidy` dans `apps/go-api` N'ajoute PAS de `require ...@v0.0.0-00010101000000-...` — il
+  ÉCHOUE (il cherche `github.com/JGtm/LevelUp/libs/gamefiles` sur le réseau, ignore `go.work`). Écrire la ligne à la main
+  est PIRE : `go mod download` et `go list -deps` échouent alors (« unknown revision 000000000000 », même en mode
+  espace de travail). Décision : AUCUN `require` ni `replace` pour un module de l'espace de travail ; `go.mod` de go-api
+  inchangé (il garde `golang.org/x/sys` en direct : `filmproc`, `platform/diskfree`, `platform/filelock`). Conséquence :
+  `go mod tidy` inutilisable dans `apps/go-api` (cible `make tidy` d'`apps/go-api/Makefile` réécrite, ADR 0041 D2).
+  Ratchet étendu : `archlint/dockerfile_go_version_test.go` (`TestGoVersionIdentiqueDansLEspaceDeTravail` + auto-preuve sur 5 défauts)
+  compare `go.work`, chaque `libs/*/go.mod` et `apps/go-api/go.mod`.
+- [x] 3.2 `git mv` des 4 paquets vers `libs/gamefiles/{himodule,ooz,hinavmesh,mapvar}` (64 `.go`, 4 `.cpp`, `.h`, `NOTICE.md`,
+  2 blobs navmesh, 3 `.mvar`, 6 graines de fuzz). Vérifié : aucun fichier extrait de l'installation du jeu ; les `.mvar` et blobs sont
+  des artefacts de rétro-ingénierie déjà versionnés (commentaire de `mapvar_test.go`, `NOTICE` racine), dit dans l'ADR 0041 D5.
+  Tests `*_research_test.go` suivent leurs paquets ; `depot_research_test.go` de `hinavmesh` et `mapvar` restent un par paquet
+  (deux copies tolérées, découverte 12) et remontent vers `.ai/re_dump` depuis `libs/`.
+- [x] 3.3 Imports réécrits : 141 fichiers (relevé par `grep -rl` avant, par répertoire : `cmd/weapon-sounds` 32, `internal/himap` 31 + 13 (mapvar), `internal/games/halo_infinite/film/replay` 27,
+  `internal/mapcatalog` 5, `cmd/mapobj-build` 5, `gamefilescorpus` 3 + 3 + 1, `cmd/mapopads-build` 3, `cmd/zone-attribution` 3, `internal/replaybuild` 3,
+  `internal/games/mappings` 2, `sync/replayartifacts` 2, `cmd/weapon-icons-build` 2 + 1 (ooz), `cmd/mapfond-build` 2, `cmd/vehicle-sprite` 1, `sync/killcollector` 1,
+  `himodule` (tests externes) 4 ; `archlint` n'importait aucun des quatre, contrairement au relevé du plan). `sed` puis `gofmt -w` + `goimports -w`
+  (goimports sépare les chemins à point des chemins sans point : le diff des 141 fichiers ne touche que les imports, vérifié).
+  `testfixtures.MapvarFixturesDir` / `NavmeshFixturesDir`, défaut de `-forge-cache` de `mapcallouts-build`, `.gitignore`, `NOTICE` : nouveaux chemins.
+  Commentaires de 33 fichiers `.go` qui citaient `internal/{himodule,ooz,hinavmesh}` ou `replay/mapvar` : corrigés. `go vet ./...` depuis `libs/gamefiles` vert,
+  `go list -deps ./... | grep -E 'levelup/go-api|libs/himap'` vide.
+  NON PRÉVU PAR LE PLAN mais cassé par le déplacement, traité dans le lot : `cmd/server/licence_gplv3_test.go` ne suivait que les imports du module
+  `levelup/go-api` — après le déplacement il n'aurait plus JAMAIS vu `ooz` (GPLv3) : parcours étendu au module `libs/gamefiles`, `ooz` interdit sous son
+  nouveau chemin, témoin `TestLeParcoursFranchitLeModuleGamefiles` (rouge tant que le parcours ne franchit pas la frontière), mutation jouée
+  (`mapvar` déclaré interdit => rouge avec la chaîne `cmd/server -> internal/ops -> internal/replaybuild -> .../libs/gamefiles/mapvar`).
+- [x] 3.4 Entrées retirées : `film_layers_deps` (`mapvar`), `film_file_size` (`noms_lieux_hunt_research_test.go`), `no_raw_film_bytes_outside_source`
+  (exclusion `mapvar` + exemple du commentaire), `pas_de_lecture_sous_ai` (déplacées sous `libs/gamefiles/...`, plafond 16 inchangé), et — absente du relevé du plan —
+  `no_film_reread` (`sitesZlibAutorises` : `internal/hinavmesh/conteneur.go`, entrée morte sinon).
+- [x] 3.5 Helper `workspaceGoSources(t, roots...)` (+ `workspaceRoot`, `racinesEspaceDeTravail`) dans `go_source_walk_test.go` : renvoie tous les `.go`
+  (tests compris, répertoires invisibles à l'outil Go sautés) en chemins relatifs à la RACINE DU DÉPÔT. Il remplace les parcours maison de
+  `balayerGo` / `balayerTests` / `balayerGoTexte` (donc `gamefiles_tag`, `research_tag`, `doc_chemins_ai`, `pas_de_lecture_sous_ai`) et sert directement
+  `todo_expiry`, `no_mojibake` (périmètre inchangé : `apps/go-api/{cmd,internal}` + `libs/gamefiles`), `no_accidental_goos_suffix`. Les clés d'allowlist de ces ratchets
+  passent à la racine du dépôt (`apps/go-api/internal/...`, `libs/gamefiles/...`). `TestCibleMakefileGamefilesCouvreLeCorpus` : chemin du paquet ramené à la racine
+  de son module (`cheminDansLeModule`). `briques_imports_test.go` : table en chemins de la racine du dépôt, `cheminImport()`, interdit = tout import `levelup/go-api/`
+  OU `github.com/JGtm/LevelUp/libs/` hors brique et hors permis (couvre donc `libs/himap`), auto-preuve étendue (import d'une autre brique) et `TestCheminImport`.
+  Verdicts des autres appelants (aucun sans verdict) :
+  `apiModuleRoot` : `briques_imports_test` ÉTENDU (`workspaceRoot`) ; `i18n_text_sql_test` PROPRE À GO-API (`i18n.Text` passé à `Scan/Exec/Query` : SQL, aucune brique n'en a).
+  `apiRootDepuisIci` (tous PROPRES À GO-API, film, SQL ou couches de go-api) : `decode_lock_interdit`, `film_exported_vars`, `film_handle_lecture`, `film_layers_deps` (+ helpers),
+  `film_lecture`, `film_pont_identite`, `film_slog_contexte`, `film_types_leaf`, `filmdec_package_vars`, `keyframe_walk_proof`, `killsource_nom_de_remplissage`,
+  `no_ad_hoc_source_fingerprint` (empreinte des sources du décodeur), `no_film_reread`, `no_french_label_literal` (littéraux accentués de service/analysis/handlers/notify/games),
+  `no_os_is_predicates` (périmètre film/replaybuild/killcollector/cmd/replay-*), `no_raw_film_bytes_outside_source` (+ helpers), `no_recomputed_film_context`, `no_title_package_in_analysis`.
+  Parcours `goAPIRoot` du module entier non listés par le plan : `no_hardcoded_film_cache_dirs` (littéral du cache de films), `no_weapon_kills_sql` (SQL), `unarmed_family_literal`
+  (identifiant `00007CA9` en production : les deux seuls fichiers de `libs/` qui le citent sont des `_research_test.go`, hors règle) : PROPRES À GO-API.
+- [x] 3.6 Couvert par 3.5 (table `briques` en chemins de `libs/gamefiles/...`, règle « aucun import `levelup/go-api/...` ni `libs/` hors brique »).
+- [x] 3.7 `Dockerfile` : `WORKDIR /build` ; `COPY go.work go.work.sum`, `COPY apps/go-api/go.mod go.sum`, `COPY libs/gamefiles/go.mod go.sum` AVANT `go mod download` ;
+  `COPY apps/go-api/ ./apps/go-api/`, `COPY libs/ ./libs/`, puis `WORKDIR /build/apps/go-api` pour les 4 `go build` (sorties `/build/...` inchangées). `docker` ABSENT du poste :
+  la validation Docker REVIENT À LA CI (job `Deploy Pre-Check`, `test-deploy-precheck.yml`, qui construit l'image sur `refactor/**`) — je ne prétends pas l'avoir faite. SIMULATION faite
+  (pas un `docker build`) : arborescence minimale (go.work, go.work.sum, go.mod/go.sum des deux modules) => `GOPROXY=off go mod download` OK ; puis sources copiées =>
+  `go vet ./internal/himap/ ./cmd/mapfond-build/` et `go build ./cmd/server/` OK. `compose_hardening_test` et `dockerfile_go_version_test` verts.
+- [x] 3.8 `ci.yml`, filtre `dorny/paths-filter` : `go` inclut `libs/**`, `go.work`, `go.work.sum` ; `autre` les exclut (donc `web` aussi) ; commentaire d'en-tête mis à jour. `.github/dependabot.yml` : bloc `gomod`
+  `/libs/gamefiles` ajouté (+ garde-rail `TestModulesLibsSurveillesParDependabot`). `ci_paths_filter_test` vert.
+- [x] 3.9 `ci.yml` : job `go-build` : pas Linux CGO « go vet + go test (brique gamefiles) » (`go vet ./...`, `-tags=research`, `-tags=gamefiles,research`, `go test ./... -count=1`, `go list -deps` sans `levelup/go-api`) ;
+  pas sans CGo sur les deux OS (`./hinavmesh/ ./mapvar/`, remplace la couverture de `replay/...` pour `mapvar`) ; vet `-tags=gamefiles,research` d'`himap` seul ; `cache-dependency-path` à deux `go.sum` (8 jobs) ;
+  `go-lint` : second passage golangci-lint sur `libs/gamefiles` (`--config ../../apps/go-api/.golangci.yml`, même ratchet) ; `govulncheck` : second pas sur `libs/gamefiles`. Le job de couverture et `go-coverage-merge`
+  restent sur `go-api` seul. `scripts/ci_go_shard.sh` : `go list -m` (qui rend TOUS les modules d'un espace de travail et cassait le `sed`) remplacé par la lecture de `go.mod`
+  (`TestCIGoShardsPartitionIsExact` était rouge avant correction) ; partition exacte : 360 paquets, 6 lots. Baseline JSONL : `RETRAIT DU 2026-10-28` de `scripts/check_test_baseline.sh`
+  (48 paires du seul paquet `mapvar`, vérifié paire par paire : 38 tournent dans le module, 10 sont devenues instruments `research` au lot 2c) ; `himodule`, `ooz`, `hinavmesh` : 0 entrée.
+- [x] 3.10 `release.yml` : checkout complet (pas de sparse), `go build` lancé depuis `apps/go-api` en mode espace de travail (go.work trouvé en remontant) ; seul changement : `cache-dependency-path`. `deploy.yml` ne
+  construit pas de Go (ssh + `scripts/deploy.sh` => `docker compose build`) ; `scripts/deploy-worker.sh` construit dans `$REPO_DIR/apps/go-api` (go.work en amont) : inchangés.
+- [x] 3.11 `Makefile` : `go-api-test` (+ ligne `libs/gamefiles` sans CGo), `go-api-lint` et `gate-push` (+ lint de `libs/gamefiles`), nouvelle cible `libs-test` (appelée par `gate-push`), `go-api-coverage` inchangée (go-api seul),
+  `go-api-test-gamefiles` inchangée (aucun `*_gamefiles_test.go` sous `libs/`, vérifié par grep ; le ratchet exigera la ligne le jour où il y en aura). `apps/go-api/Makefile` : cible `tidy`. `lefthook.yml` :
+  globs `gofmt` et `go-vet-cgo` + `libs/**/*.go`, `go-vet-cgo.sh` vet les modules `libs/*`. `docs/COMMANDS.md` et `docs/FR/COMMANDS.md` : § « Go modules under `libs/` » / « Modules Go sous `libs/` » + corrections de chemins.
+- [x] 3.12 `.golangci.yml` : aucune règle ne nomme `mapvar`/`himodule`/`hinavmesh`/`ooz` (grep) => rien à retirer. `golangci-lint run --new-from-merge-base=origin/release/v8.1.0` : `apps/go-api` 0 issue (après correction d'un
+  `unused` DE LA BASE : `himap/fixture_carte_validee_test.go`, constante lue seulement sous les tags — découverte 17), `libs/gamefiles` 0 issue (plein, sans ratchet : 0 aussi) ; mutation (fonction inutilisée dans `mapvar`) => le lint la voit.
+- [x] 3.13 ADR `docs/adr/0041-go-modules-under-libs.md` (EN) ; ligne dans la liste des ADR + ligne de tableau + `make libs-test` dans `CLAUDE.md` ; `docs/ARCHITECTURE_V6.md` et `docs/FR/ARCHITECTURE_V6.md` : section « Bricks / libs » / « Briques / libs ».
+- [!] 3.14 Gate : toutes les commandes locales ont tourné (sorties au journal). NON FAIT : `docker build` (docker absent du poste => CI `Deploy Pre-Check`) ; push et CI verte sur TOUS les jobs (le lot n'est ni commité ni poussé : décision du pilote).
+
+Témoins (scratchpad `temoins_lot3_*`) :
+- Fonds publiés : `md5sum` des 228 fichiers de `data/titles/halo_infinite/reference/map_backgrounds/` AVANT et APRÈS : identiques (`git status data/` vide). Recuisson `mapfond-build` des 5 cartes (Dredge, Arrival, Beaver Canyon, Perdition, Timberland Evolved),
+  binaire de la BASE (commit `8e7601ad7`, extrait par `git archive`) et binaire du lot, mêmes entrées : PNG identiques à l'octet entre base et lot (5/5) ; sidecars identiques hors `generatedAt`. Les fonds publiés sont des WEBP (le PNG
+  n'est pas versionné) : comparaison au publié faite sur les PIXELS (MD5 RGBA du PNG recuit = MD5 RGBA du WebP publié décodé, 5/5) ET sur les OCTETS (ré-encodage `nativewebp` BestCompression du PNG recuit == WebP publié, 5/5).
+  Entrées de la recuisson : `.mvar` de Beaver Canyon, Perdition, Timberland Evolved copiés (lecture seule) depuis `data/cache/mvar/<id>/map.mvar` du checkout principal ; `.mvar` de Dredge et Arrival et les 5 `navmesh.blob`
+  rapatriés par `mapnav-fetch` (anonyme) dans la racine temporaire du scratchpad (`.ai/re_dump` n'existe nulle part sur le poste) ; rien n'a été écrit dans `data/`.
+- `go test ./...` du module go-api, 359 paquets (avant : 363) : verdicts `ok` identiques, 0 FAIL ; seules différences : `internal/hinavmesh` et `internal/games/halo_infinite/film/replay/mapvar` sortis de la liste (les deux paquets déplacés qui portent des tests ; `himodule` et `ooz` n'ont aucun test non tagué)
+  et ils figurent dans `cd libs/gamefiles && go test ./...` (ok : hinavmesh, mapvar ; himodule et ooz « no test files »).
+- `-tags=gamefiles` sur `internal/himap`, `internal/gamefilescorpus`, `cmd/mapfond-build`, `cmd/mapstruct-build` : liste `--- PASS/FAIL/SKIP` IDENTIQUE à la base test par test (160 PASS, 12 SKIP, 1 FAIL préexistant `TestRenduForgeVagabond` dans `gamefilescorpus`, avant ET après).
+- Instruments `-tags=gamefiles,research` de `libs/gamefiles` : 56 PASS / 41 SKIP / 0 FAIL ; tous les verdicts du lot 2c pour `hinavmesh` et `mapvar` retrouvés à l'identique, +9 verdicts nouveaux (6 instruments de `himodule` jamais joués, 3 de `mapvar`).
+
+Découverte 4 (pour le lot 4) : `apps/go-api/internal/himap/deploy_root_test.go` (`TestAucuneAutreCopieDuCheminDuJeu`) balaie `../..` (= `apps/go-api`) : NON TOUCHÉ au lot 3 (himap reste dans go-api). Au lot 4, quand `himap` devient `libs/himap`, le porter dans
+`archlint` sur `workspaceGoSources(t, racinesEspaceDeTravail...)` (le helper existe), avec `libs/himap` dans `racinesEspaceDeTravail`.
 
 ## Lot 4 — Module `libs/himap`
 
@@ -520,3 +607,17 @@ Lot 2c (2026-10-28) :
     le recalibrer n'est pas du lot.
 16. Effet de bord attendu : la suite `gamefiles` de `himap` est maintenant ENTIÈREMENT verte sur un poste sans `.ai/re_dump` (les 8 rouges connus étaient
     tous des instruments, dont `TestBancCliffhanger`) ; le « rouge connu » de la découverte 7 vit désormais dans la voie `gamefiles,research`.
+
+Lot 3 (2026-10-28) :
+
+17. DÉFAUT DU LOT 2c, corrigé au lot 3 parce qu'il bloquait le gate de lint : `himap/fixture_carte_validee_test.go` déclarait `fixtureCarteValidee`, lue seulement sous les tags `gamefiles` et `research` ;
+    `golangci-lint` (build par défaut) la signalait `unused`, donc le job `go-lint` du lot 2c aurait rougi (ratchet « fichier neuf »). Corrigé par `//nolint:unused` motivé sur la ligne.
+18. Lot 2c : les 10 tests de `mapvar` passés en instruments (`TestArbreRacineVarianteInventaire`, ...) n'ont pas eu de `RETRAIT` dans `scripts/check_test_baseline.sh` : le contrôle de PRÉSENCE de la baseline JSONL
+    aurait signalé 10 absences en CI. Sans objet depuis le lot 3 (les 48 paires du paquet sont retirées, `RETRAIT DU 2026-10-28`), mais la CI du lot 2c a pu être rouge sur ce point.
+19. `go mod tidy` est inutilisable dans `apps/go-api` (ADR 0041 D2) et Dependabot (`gomod`, `/apps/go-api`) charge le module sans `go.work` : il peut échouer à résoudre `github.com/JGtm/LevelUp/libs/gamefiles`
+    (à constater au premier passage mensuel). Si c'est le cas, les sorties sont une directive `replace` (écartée par D1-E) ou un ignore : DÉCISION NEUVE pour le pilote, non prise ici.
+20. Rechargement à chaud local : `apps/go-api/.air.toml` (`root = "."`) ne surveille pas `libs/` ; modifier une brique ne relance pas le serveur de développement (redémarrer air à la main).
+21. Ratchet de couverture (`scripts/check_coverage_ratchet.sh`) : les instructions de `mapvar` sortent du `-coverpkg=./...` de go-api, le total bouge un peu ; non mesurable sur ce poste (job `go-coverage-merge`), à lire à la première CI.
+22. Les hooks locaux `go-vet.sh` (informatif) et `govulncheck.sh` (indicatif) ne couvrent que `apps/go-api` ; seul `go-vet-cgo.sh` (bloquant) a été étendu aux modules `libs/*`.
+23. Découverte 12 (suite, lot 3) : `hinavmesh.racineDumpNavmesh` et `mapvar.cheminDump` partagent désormais le module `libs/gamefiles`, mais sur consigne du pilote (deux copies tolérées par la règle 6) AUCUN helper commun n'a été posé :
+    les deux copies restent. Une troisième copie (ou le jour où `himap` rejoindra un module commun) imposera helper + garde-rail.

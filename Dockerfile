@@ -51,14 +51,21 @@ RUN node scripts/verify-public-in-dist.mjs
 # Image épinglée sur le correctif exact (pas la branche flottante `1.26`) :
 # `scripts/deploy.sh` construit sans `--pull`, donc un tag flottant resterait sur la
 # version déjà présente sur l'hôte. Même version que la ligne `go` de
-# apps/go-api/go.mod ; les monter ensemble (garde-rail :
+# apps/go-api/go.mod, de go.work et de chaque libs/*/go.mod ; les monter ensemble (garde-rail :
 # internal/archlint/dockerfile_go_version_test.go).
 FROM golang:1.26.10-bookworm AS go-builder
 
-WORKDIR /build/go
+# Espace de travail Go (ADR 0041) : le serveur est le module apps/go-api, relié par go.work aux
+# briques sous libs/ (aucune directive `replace`). La racine de l'espace de travail est /build ;
+# les `go build` se lancent depuis /build/apps/go-api, où go.work est trouvé en remontant.
+WORKDIR /build
 
-# Dépendances Go (cache Docker — séparé du code source)
-COPY apps/go-api/go.mod apps/go-api/go.sum ./
+# Dépendances Go (cache Docker — séparé du code source). Ordre des couches : go.work, puis les
+# go.mod/go.sum de chaque module de l'espace de travail, AVANT `go mod download` ; tout module
+# ajouté à go.work doit avoir sa ligne COPY ici (go.work refuse un `use` sans go.mod).
+COPY go.work go.work.sum ./
+COPY apps/go-api/go.mod apps/go-api/go.sum ./apps/go-api/
+COPY libs/gamefiles/go.mod libs/gamefiles/go.sum ./libs/gamefiles/
 
 # Cache mounts BuildKit (2026-07-26) — présents sur les 4 RUN Go de ce stage :
 #   /go/pkg/mod           = GOMODCACHE par défaut (l'image officielle fixe GOPATH=/go)
@@ -80,8 +87,11 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     go mod download
 
-# Code source Go
-COPY apps/go-api/ ./
+# Code source Go : le module de l'application, puis les briques (libs/ en entier : ooz y embarque
+# ses sources C++, mapvar ses graines de test).
+COPY apps/go-api/ ./apps/go-api/
+COPY libs/ ./libs/
+WORKDIR /build/apps/go-api
 
 # La version N'EST PLUS une entrée de build (V721-15, 2026-07-25).
 #

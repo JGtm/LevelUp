@@ -16,15 +16,15 @@ package mapvar
 // USAGE (depuis apps/go-api) :
 //
 //	CGO_ENABLED=0 MVAR_FILE=<depot>/.ai/re_dump/mapvar/catalyst_catalyst.mvar \
-//	  go test ./internal/games/halo_infinite/film/replay/mapvar/ -run '^TestSoclesInventaire$' -v
+//	  go test ./libs/gamefiles/mapvar/ -run '^TestSoclesInventaire$' -v
 //
 //	CGO_ENABLED=0 MVAR_FILE=<depot>/.ai/re_dump/mapvar/catalyst_catalyst.mvar \
 //	  MVAR_ORACLE=<depot>/data/cache/replays/halo_infinite/01e1f945.json \
 //	  MVAR_ORACLE_POINTS="0.257,-0.003,21.36" \
-//	  go test ./internal/games/halo_infinite/film/replay/mapvar/ -run '^TestSoclesAppariement$' -v
+//	  go test ./libs/gamefiles/mapvar/ -run '^TestSoclesAppariement$' -v
 //
 //	CGO_ENABLED=0 MVAR_DIR=<depot>/.ai/re_dump/mapvar \
-//	  go test ./internal/games/halo_infinite/film/replay/mapvar/ -run '^TestSoclesCorpus$' -v
+//	  go test ./libs/gamefiles/mapvar/ -run '^TestSoclesCorpus$' -v
 
 import (
 	"encoding/json"

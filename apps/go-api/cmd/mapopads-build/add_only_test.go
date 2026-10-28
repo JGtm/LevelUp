@@ -18,7 +18,8 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
-	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
+
+	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 )
 
 // aoSocle fabrique un socle de fixture.

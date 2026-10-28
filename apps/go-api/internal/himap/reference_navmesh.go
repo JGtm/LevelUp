@@ -9,7 +9,7 @@ package himap
 //
 // Le maillage de navigation, lui, DONNE l'altitude du sol en chaque point, parce que c'est
 // exactement ce qu'il decrit : la surface ou l'on marche. Le decodage est etabli et teste
-// (internal/hinavmesh) et l'oracle est passe — 24 des 25 ancres d'Isolation tombent dans un
+// (libs/gamefiles/hinavmesh) et l'oracle est passe — 24 des 25 ancres d'Isolation tombent dans un
 // polygone, ecart d'altitude median 7,4 cm.
 //
 // POURQUOI CE N'EST PAS UN NOUVEAU MOTEUR. Toute la machinerie de substitution existe deja et
@@ -20,7 +20,7 @@ package himap
 import (
 	"math"
 
-	"levelup/go-api/internal/hinavmesh"
+	"github.com/JGtm/LevelUp/libs/gamefiles/hinavmesh"
 )
 
 // MargeNavmesh : de combien on elargit la couverture du maillage avant d effacer autour. Le

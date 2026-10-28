@@ -9,7 +9,7 @@
 #   make test        — lance les tests Go
 #   make msal-poc    — lance le POC MSAL Device Code Flow
 #   make vet         — go vet sur tous les packages
-#   make tidy        — go mod tidy
+#   make tidy        — go mod tidy des briques libs/ (inutilisable dans ce module : go.work, ADR 0041)
 #   make lint        — go vet + build
 
 .PHONY: build gen run test test-unit test-all coverage coverage-report msal-poc vet tidy lint lint-go
@@ -73,5 +73,9 @@ lint-go:
 lint: vet build lint-go
 	@echo "lint OK"
 
+# `go mod tidy` ne peut pas tourner dans ce module : go.work le relie aux briques de libs/ (ADR 0041)
+# et tidy cherche le module voisin sur le reseau (echec). Les dependances de go-api se changent par
+# `go get` ou edition de go.mod ; les briques se tidy dans leur dossier, ce que fait cette cible.
 tidy:
-	go mod tidy
+	@echo "apps/go-api : go mod tidy est inutilisable (go.work, ADR 0041) ; briques libs/ : tidy ci-dessous."
+	@for m in ../../libs/*/; do (cd $$m && go mod tidy) || exit 1; done

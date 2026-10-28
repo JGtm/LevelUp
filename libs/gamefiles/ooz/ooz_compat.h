@@ -6,7 +6,7 @@
 // poste de développement et sur le runner Windows, mais faisait échouer TOUTE la
 // suite Go du runner Linux — `go test ./...` s'arrête sur « fatal error: intrin.h:
 // No such file or directory », et les 8 786 tests de la baseline sont alors déclarés
-// absents. Le décodeur des .module (internal/himodule, géométrie des cartes) n'a
+// absents. Le décodeur des .module (libs/gamefiles/himodule, géométrie des cartes) n'a
 // aucune raison d'être Windows-only : ce qui manquait était trois noms d'intrinsèques.
 #pragma once
 

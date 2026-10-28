@@ -33,7 +33,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 // Reference de tag SERIALISEE, 28 octets — meme convention que `physique_sonde` :

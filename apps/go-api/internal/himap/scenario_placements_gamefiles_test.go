@@ -45,7 +45,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 // scCartes : les modules sondes, et ce qu'on attend d'y trouver.

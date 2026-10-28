@@ -3,7 +3,7 @@ package replay
 // FOND DE CARTE — le sidecar de calage d'une image de carte figée.
 //
 // POURQUOI CE FICHIER EST ICI ET PAS DANS `internal/himap`. Le fond de carte est PRODUIT hors
-// ligne par cmd/mapfond-build, qui lit les fichiers du jeu via internal/himap → internal/ooz,
+// ligne par cmd/mapfond-build, qui lit les fichiers du jeu via internal/himap → libs/gamefiles/ooz,
 // **licencié GPLv3**. L'application, elle, doit pouvoir LIRE le calage sans jamais linker cette
 // chaîne : le type et son lecteur vivent donc du côté consommateur, exactement comme
 // MapStructure. Un garde-rail (cmd/mapfond-build/licence_test.go) interdit à cmd/server de

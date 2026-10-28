@@ -232,3 +232,27 @@ Depuis le 2026-08-02 (v7.3 lot 2), les manifests TOML sont la source UNIQUE de c
 Chaque `TitleDataAdapter` expose une `Capabilities() games.CapabilityMap` reflétant le support par titre des capabilities produit. Un appel `Load*` sur une capability marquée `not_exposed` retourne `games.ErrCapabilityNotSupported`, que les services en aval traduisent en un champ explicite `not_supported_reason` plutôt qu'un payload vide silencieux.
 
 Voir [`.ai/V7/PLAN_MULTI_TITLE_ADAPTERS_AND_MAPPINGS.md`](../../.ai/V7/PLAN_MULTI_TITLE_ADAPTERS_AND_MAPPINGS.md) pour le rationnel de conception et [`tools/mappings/CHANGELOG.md`](../../tools/mappings/CHANGELOG.md) pour l'historique de versioning du schéma TOML.
+
+## Briques / libs (ADR 0041)
+
+Le code autonome par nature (un format de fichier, un décodeur de flux, un protocole) vit dans des
+**modules Go à part** sous `libs/<brique>/`, dans ce dépôt, reliés à l'application par le `go.work` de
+la racine (aucune directive `replace`). L'application reste le module `levelup/go-api` (`apps/go-api`) ;
+une brique est `github.com/JGtm/LevelUp/libs/<brique>`, ses paquets au premier niveau du module (un
+paquet `internal/` ne serait pas importable par l'application).
+
+```text
+go.work                  use ./apps/go-api ./libs/gamefiles
+apps/go-api/             l'application (module levelup/go-api)
+libs/gamefiles/          la brique « fichiers du jeu » : himodule, ooz (GPLv3, jamais linké par cmd/server),
+                         hinavmesh, mapvar — n'importe rien de LevelUp
+```
+
+Règles, tenues par des garde-rails : une brique n'importe rien de `levelup/go-api` et seulement des briques de
+rang inférieur (`archlint/briques_imports_test.go`, tests compris) ; `go list -deps` dans le module ne montre
+aucun paquet `levelup/go-api` ; aucun fichier extrait du jeu installé n'entre dans une brique ; la ligne `go` est
+la même dans `go.work`, `apps/go-api/go.mod`, chaque `libs/*/go.mod` et l'image du `Dockerfile`. `./...` ne
+franchit jamais la frontière d'un module : `make libs-test` et le pas CI « brique gamefiles » couvrent les briques,
+`go mod tidy` ne tourne pas dans `apps/go-api`. Une brique est importable de l'extérieur par le tag
+`libs/<brique>/vX.Y.Z`. Commandes : [`COMMANDS.md`](COMMANDS.md) § « Modules Go sous `libs/` » ; décision et liste à
+suivre pour ajouter une brique : [`adr/0041-go-modules-under-libs.md`](../adr/0041-go-modules-under-libs.md).

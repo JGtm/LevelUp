@@ -11,7 +11,8 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/himap"
-	"levelup/go-api/internal/himodule"
+
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 // SONDE — MESURER LES QUATRE BSP DE `common-rtx-new` AVANT DE CHOISIR UNE REGLE.

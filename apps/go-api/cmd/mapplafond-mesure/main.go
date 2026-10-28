@@ -15,7 +15,7 @@
 //	                      stabilite du maximum quand on retire un film du corpus
 //
 // LICENCE — CONTRAINTE STRUCTURANTE, la meme que `cmd/mapfond-build` : la mesure de la
-// geometrie passe par internal/himap -> internal/himodule -> internal/ooz, **GPLv3**. C'est de
+// geometrie passe par internal/himap -> libs/gamefiles/himodule -> libs/gamefiles/ooz, **GPLv3**. C'est de
 // l'outillage HORS LIGNE ; l'application ne linke jamais cette chaine. Le drapeau
 // `--sans-jeu` rend la passe corpus seule, sans aucun fichier du jeu.
 //

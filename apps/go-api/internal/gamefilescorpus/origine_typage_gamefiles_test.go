@@ -137,7 +137,7 @@ func TestOrigineTypageDesPoints(t *testing.T) {
 }
 
 // origSocleConnu rend la famille de socle d'un type quand c'est l'un des trois PROUVES.
-// La table est recopiee ici volontairement : `himap` ne doit pas importer `replay/mapvar`.
+// La table est recopiee ici volontairement : `himap` ne doit pas importer `libs/gamefiles/mapvar`.
 func origSocleConnu(ty uint32) (string, bool) {
 	switch ty {
 	case 0x5F379533:

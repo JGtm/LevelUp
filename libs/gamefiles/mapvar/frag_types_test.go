@@ -12,7 +12,7 @@ package mapvar
 // dit — et surtout ce qu'elle n'en dit pas.
 //
 //	$env:FRAG_MVAR="C:/.../mvar/<map_id>/btb_fragmentation.mvar"
-//	go test ./internal/games/halo_infinite/film/replay/mapvar/ -run FragTypes -v
+//	go test ./libs/gamefiles/mapvar/ -run FragTypes -v
 
 import (
 	"os"

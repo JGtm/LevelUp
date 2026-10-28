@@ -36,7 +36,7 @@ import (
 	"fmt"
 	"strings"
 
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 // Offsets et strides du tag levl — mesurés, cf. en-tête.

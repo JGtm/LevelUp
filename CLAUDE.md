@@ -13,6 +13,7 @@
 |---|---|---|
 | API + sync + analyse | **Go** (chi + Huma, slog, DuckDB) | `apps/go-api/` |
 | Frontend | **React/TypeScript** (Vite, TanStack Router/Query/Table, ECharts) | `apps/web/` |
+| Briques Go (modules séparés, ADR 0041) | **Go**, reliées à `apps/go-api` par `go.work` (racine) | `libs/<brique>/` (`libs/gamefiles` : lecteurs de fichiers du jeu) |
 | Stockage | **DuckDB** par titre + Parquet (archives) | `data/titles/{slug}/` |
 | Config | JSON + TOML | `db_profiles.json`, `app_settings.json`, `.env.local`, `config/titles/` |
 
@@ -212,6 +213,7 @@ cd apps/go-api && go test ./...                      # suite complète
 cd apps/go-api && go test -tags=integration ./...    # inclut les tests persist anti-ART (OBLIGATOIRE avant livraison sync/persist)
 make go-api-test-gamefiles  # corpus cartes internal/himap (tag `gamefiles`, EXIGE Halo installe, ~6 min)
 make go-api-lint            # golangci-lint
+make libs-test              # vet + tests des modules libs/ (ADR 0041 ; `./...` de go-api ne les couvre pas)
 make gate-push              # filet local avant merge vers main (~25 min) : ratchet lint Go + typecheck/lint web + baseline de tests (voies film et DuckDB en parallèle) ; la CI reste le gate d'autorité
 powershell -File scripts/disk-hygiene.ps1                  # disque : simulation (caches Go dédiés, dossiers de session, C:\t) ; -Apply supprime
 powershell -File scripts/disk-hygiene.ps1 -Lot <lot> -Apply # clôture de lot : supprime go-build-<lot> / golangci-<lot> (convention : skill plan-execution §5)
@@ -395,7 +397,12 @@ git commit -m "refactor(phase2): ..."
   `0040` **i18n à N langues** (source unique `config/locales.toml` → `lib/i18n/generated/locales.ts` +
   `internal/i18n/locales_gen.go` ; un `normalizeLocale` / `i18n.Parse` par côté, jamais de repli binaire
   fr/en ; le serveur renvoie le libellé résolu ; langue complète ou refusée, repli `en` admis pour les
-  noms de jeu seulement ; compteurs gelés à garde-rail ; amende 0003).
+  noms de jeu seulement ; compteurs gelés à garde-rail ; amende 0003). ·
+  `0041` **modules Go sous `libs/`** (une brique = un module `github.com/JGtm/LevelUp/libs/<brique>`, paquets au
+  premier niveau, relié à `apps/go-api` par `go.work` sans `replace` ni `require` ; critère d'autonomie =
+  `go list -deps` sans `levelup/go-api` ; table `archlint/briques_imports_test.go` ; ratchets à règle générale
+  racinés sur l'espace de travail ; aucun fichier extrait du jeu dans une brique ; `./...` ne franchit pas un
+  module : `make libs-test`, pas de `go mod tidy` dans `apps/go-api`).
 
 READMEs catalogues : `apps/go-api/internal/analysis/{temporal,breakdown,narrative}/README.md`,
 `apps/web/src/components/charts/README.md` (wrappers ECharts).

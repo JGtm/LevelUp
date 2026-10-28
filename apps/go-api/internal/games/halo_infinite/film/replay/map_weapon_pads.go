@@ -32,7 +32,7 @@ package replay
 // mode. Le champ se remplit À LA REQUÊTE, au service, et le SchemaVersion de l'artefact ne
 // bouge pas — rien n'a changé dans l'artefact.
 
-import "levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
+import "github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 
 // MapWeaponPadMatchM est le rayon de confirmation, en mètres. Le même seuil que la mesure
 // du plan, écrit AVANT elle : 32 positions d'oracle sur trois cartes, 32 appariées, médiane

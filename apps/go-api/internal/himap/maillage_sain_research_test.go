@@ -7,7 +7,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
+	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 )
 
 // UN MAILLAGE MAL DECODE SE MESURE — hypothese de l'utilisateur, 2026-08-27 :

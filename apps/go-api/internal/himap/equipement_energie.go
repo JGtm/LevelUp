@@ -27,7 +27,7 @@ import (
 	"path/filepath"
 	"sort"
 
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 // Les offsets du bloc racine d un `eqip` et de son element de capacite, lus dans l executable.

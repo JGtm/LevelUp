@@ -33,7 +33,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 const physiqueBlockName = "instanced physics instances"

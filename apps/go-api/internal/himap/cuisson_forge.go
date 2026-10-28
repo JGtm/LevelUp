@@ -40,9 +40,9 @@ import (
 	"sort"
 	"strings"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
-	"levelup/go-api/internal/himodule"
-	"levelup/go-api/internal/hinavmesh"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/hinavmesh"
+	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 )
 
 // TypesVolumesDeMort : empreinte fonctionnelle des volumes de mort, etablie sur 101 `.mvar`

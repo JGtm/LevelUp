@@ -47,7 +47,7 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 // LangueEN et LangueFR : index de langue tels que le jeu les numérote. Les autres existent

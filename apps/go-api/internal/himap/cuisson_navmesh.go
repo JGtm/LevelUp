@@ -14,7 +14,7 @@
 // vit entre Z 112,54 et 124,08 — ONZE METRES SOUS la premiere couche de coques. Il ne les
 // contient pas : il n'y a rien a peler.
 //
-// L'ORACLE EST PASSE AVANT D'ECRIRE CE FICHIER (internal/hinavmesh, TestOracleAncresDansLeMaillage) :
+// L'ORACLE EST PASSE AVANT D'ECRIRE CE FICHIER (libs/gamefiles/hinavmesh, TestOracleAncresDansLeMaillage) :
 // 24 des 25 ancres d'objectif d'Isolation tombent DANS un polygone du maillage, ecart d'altitude
 // median 7,4 cm ; 13 sur 13 sur Kiken'na, dans un repere tout autre. Une ancre d'objectif etant
 // du terrain joue par definition, le maillage decode EST le sol.
@@ -25,7 +25,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"levelup/go-api/internal/hinavmesh"
+	"github.com/JGtm/LevelUp/libs/gamefiles/hinavmesh"
 )
 
 // OptionsCuissonNavmesh decrit un fond a rendre depuis un maillage de navigation.

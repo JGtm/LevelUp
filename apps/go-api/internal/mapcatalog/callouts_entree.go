@@ -25,7 +25,8 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
-	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
+
+	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 )
 
 // VerdictZones dit ce que vaut la lecture d'une variante pour le catalogue.

@@ -2,7 +2,7 @@ package replaylabels
 
 // catalogue_m6_test.go — TROIS ENTREES DU CATALOGUE D ARMES DU REJEU, etablies sur pieces le
 // 2026-09-24 (retours du rejeu, lots M6.3 et M6.4 ; instrument
-// `internal/himodule/m6_bobine_mains_nues_research_test.go`, modules installes en lecture seule).
+// `libs/gamefiles/himodule/m6_bobine_mains_nues_research_test.go`, modules installes en lecture seule).
 //
 //   - `00007CA9` = « Mains nues » / « Unarmed » : `WeaponTags.unarmed` du script Lua global. Le jeu
 //     le remet a chaque bipede ; nomme pour le jour ou un joueur le TIENT en cours de partie.

@@ -22,9 +22,10 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/hinavmesh"
 	"levelup/go-api/internal/testfixtures"
 	"levelup/go-api/internal/testutil"
+
+	"github.com/JGtm/LevelUp/libs/gamefiles/hinavmesh"
 )
 
 // ancre est une ancre d'objectif du referentiel des cartes.

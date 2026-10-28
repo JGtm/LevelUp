@@ -18,7 +18,7 @@
 // (`vcdd` -> `sofd` -> `sofa` -> `uwfa` -> `weap`, meme chaine que la sonde M6.2).
 //
 //	M4B_DEPLOY=<bibliotheque>/<jeux>/Halo Infinite/deploy M4B_WEAP=00015435,a0955e9e \
-//	M4B_VEHI=5b80c406 go test -tags=research -count=1 -v -run '^TestM4bBarillets$' ./internal/himodule/
+//	M4B_VEHI=5b80c406 go test -tags=research -count=1 -v -run '^TestM4bBarillets$' ./libs/gamefiles/himodule/
 
 package himodule_test
 
@@ -32,7 +32,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 // Disposition d un tag `ucsh` (cmd/weapon-sounds/tags.go, weapfire.go).

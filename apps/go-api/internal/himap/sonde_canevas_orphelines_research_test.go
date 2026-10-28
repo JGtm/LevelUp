@@ -17,7 +17,7 @@ package himap
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
+	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 )
 
 // cartesOrphelines : les cartes du depot sans fichier-lien de canevas. Une entree sort de

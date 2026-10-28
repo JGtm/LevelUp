@@ -12,9 +12,10 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
-	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
+
+	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 )
 
 // TestProjeterPlacementDesVies_PontNonPubliable_EcritSansLireLesPorteurs — decision V1 amendee le

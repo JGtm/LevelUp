@@ -36,7 +36,7 @@ import (
 	"slices"
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
+	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 )
 
 // DefaultMaxGapFrames est la tolerance par defaut entre l'instant d'une action et

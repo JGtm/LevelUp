@@ -35,7 +35,7 @@ import (
 	"os"
 	"sort"
 
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 // dumpeurV3E porte l'etat d'un dump : la banque parsee et la table des noeuds complets.

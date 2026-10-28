@@ -360,10 +360,10 @@ tools/ce/*.csv
 # seules trois sont suivies, comme temoins de test. Le resultat extrait est versionne dans
 # data/titles/{slug}/reference/map_objectives.json — c'est lui qui fait foi.
 .ai/archive/V7.5/dumps/*
-apps/go-api/internal/games/halo_infinite/film/replay/mapvar/testdata/*.mvar
-!apps/go-api/internal/games/halo_infinite/film/replay/mapvar/testdata/cliffhanger_map.mvar
-!apps/go-api/internal/games/halo_infinite/film/replay/mapvar/testdata/cliffhanger_ridgeline.mvar
-!apps/go-api/internal/games/halo_infinite/film/replay/mapvar/testdata/vagabond_fo08_wetland.mvar
+libs/gamefiles/mapvar/testdata/*.mvar
+!libs/gamefiles/mapvar/testdata/cliffhanger_map.mvar
+!libs/gamefiles/mapvar/testdata/cliffhanger_ridgeline.mvar
+!libs/gamefiles/mapvar/testdata/vagabond_fo08_wetland.mvar
 
 # Caches Go de build des agents (scratch, jamais versionnes)
 .gocache-*/

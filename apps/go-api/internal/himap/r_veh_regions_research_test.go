@@ -27,7 +27,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 // TestRVehRegionsDesCartes journalise l ordre des regions de chaque carte (lignes RVEH_*).

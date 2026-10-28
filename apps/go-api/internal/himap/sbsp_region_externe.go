@@ -27,7 +27,8 @@ package himap
 
 import (
 	"errors"
-	"levelup/go-api/internal/himodule"
+
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 
 	"fmt"
 	"sort"

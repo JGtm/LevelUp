@@ -1,30 +1,37 @@
 // Package archlint — briques_imports_test.go : une BRIQUE n'importe rien du dépôt hors d'elle-même.
 //
-// # POURQUOI (2026-10-28, plan `.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D1_2026-10-28.md`, lot 1)
+// # POURQUOI (2026-10-28, plan `.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D1_2026-10-28.md`, lots 1 et 3)
 //
 // L'audit `.ai/AUDIT_DECOUPLAGE_BRIQUES_2026-10-27.md` (constat G) montre comment trois briques
 // autonomes par nature (images de carte, décodeur de film, API Halo) se sont liées au reste de
 // LevelUp : chaque import ajouté était local et raisonnable, et rien ne le refusait. Ce test est
-// cette liste fermée. Il est posé AVANT le premier déplacement de paquet, avec une allowlist
-// datée égale aux coupes restantes, qui doit finir VIDE à la clôture du plan (même méthode que
-// `film_layers_deps_test.go`).
+// cette liste fermée. Il a été posé AVANT le premier déplacement de paquet, avec une allowlist
+// datée égale aux coupes restantes, qui a fini VIDE (même méthode que `film_layers_deps_test.go`).
+//
+// Depuis le lot 3, une brique est un MODULE Go sous `libs/<brique>/` (ADR 0041) : le compilateur
+// refuse déjà qu'elle importe `levelup/go-api/internal/...` ; ce test tient en plus la liste
+// fermée des briques de rang inférieur qu'elle a le droit d'importer, et garde les paquets qui
+// n'ont pas encore quitté `apps/go-api` (`himap`, jusqu'au lot 4).
 //
 // # CE QU'IL VÉRIFIE
 //
-// Une brique = des paquets (répertoires relatifs à `apps/go-api/`) + les paquets d'autres
+// Une brique = des paquets (répertoires relatifs à la RACINE DU DÉPÔT) + les paquets d'autres
 // briques qu'elle a le droit d'importer (ses briques de rang inférieur). Pour chaque `.go` d'un
 // paquet de la brique, TESTS COMPRIS (un module Go séparé ne peut pas importer
 // `levelup/go-api/internal/...` même depuis un test : la frontière des tests est la même que
-// celle de la production), tout import `levelup/go-api/...` doit viser un paquet de la brique ou
-// un paquet permis. Les imports sont PARSÉS (go/parser, ImportsOnly) : un grep se laisserait
-// prendre aux chemins cités en commentaire.
+// celle de la production), tout import d'un paquet du module `levelup/go-api/...` ou d'une brique
+// `github.com/JGtm/LevelUp/libs/...` doit viser un paquet de la brique ou un paquet permis. Les
+// imports sont PARSÉS (go/parser, ImportsOnly) : un grep se laisserait prendre aux chemins cités
+// en commentaire.
 //
 // Une entrée d'allowlist que plus aucun fichier n'honore fait rougir le test : une exemption qui
 // survit à son site finit par en couvrir un autre.
 //
 // # MUTATION QUI DOIT LE FAIRE ROUGIR
 //
-// Ajouter `"levelup/go-api/internal/analysis"` aux imports de `internal/himap/cuisson_forge.go`.
+// Ajouter `"levelup/go-api/internal/analysis"` aux imports de
+// `apps/go-api/internal/himap/cuisson_forge.go`, ou `"github.com/JGtm/LevelUp/libs/himap/himap"`
+// à ceux de `libs/gamefiles/mapvar/mapvar.go`.
 package archlint
 
 import (
@@ -37,38 +44,55 @@ import (
 	"testing"
 )
 
-// prefixeModuleAPI : le préfixe d'import de tout paquet du module `apps/go-api`.
-const prefixeModuleAPI = "levelup/go-api/"
+const (
+	// prefixeModuleAPI : le préfixe d'import de tout paquet du module `apps/go-api`.
+	prefixeModuleAPI = "levelup/go-api/"
+	// prefixeBriques : le préfixe d'import de tout paquet d'un module sous `libs/` (D1-A).
+	prefixeBriques = "github.com/JGtm/LevelUp/libs/"
+	// racineAPI : le répertoire du module `go-api`, relatif à la racine du dépôt.
+	racineAPI = "apps/go-api/"
+)
 
 // brique : un ensemble de paquets autonome, et ce qu'il a le droit d'importer hors de lui.
 type brique struct {
 	nom string
-	// paquets : répertoires relatifs à `apps/go-api/`, séparateurs "/". Chaque répertoire est
-	// un paquet Go (pas de descente récursive : un sous-répertoire se déclare).
+	// paquets : répertoires relatifs à la racine du dépôt, séparateurs "/" (`libs/gamefiles/ooz`,
+	// `apps/go-api/internal/himap`). Chaque répertoire est un paquet Go (pas de descente
+	// récursive : un sous-répertoire se déclare).
 	paquets []string
 	// permis : les paquets (même forme) d'AUTRES briques, de rang inférieur, que celle-ci peut
-	// importer. Tout autre import `levelup/go-api/...` est une violation.
+	// importer. Tout autre import `levelup/go-api/...` ou `.../libs/...` est une violation.
 	permis []string
+}
+
+// cheminImport rend le chemin d'import Go d'un paquet donné par son répertoire (relatif à la
+// racine du dépôt) : `apps/go-api/internal/x` -> `levelup/go-api/internal/x`, `libs/b/p` ->
+// `github.com/JGtm/LevelUp/libs/b/p`.
+func cheminImport(paquet string) string {
+	if reste, ok := strings.CutPrefix(paquet, racineAPI); ok {
+		return prefixeModuleAPI + reste
+	}
+	return "github.com/JGtm/LevelUp/" + paquet
 }
 
 // paquetsGamefiles : la brique « fichiers du jeu » (lecteurs de modules, décompresseur ooz,
 // maillage de navigation, variantes de carte). Rang le plus bas : elle n'importe RIEN du dépôt.
 var paquetsGamefiles = []string{
-	"internal/himodule",
-	"internal/ooz",
-	"internal/hinavmesh",
-	"internal/games/halo_infinite/film/replay/mapvar",
+	"libs/gamefiles/himodule",
+	"libs/gamefiles/ooz",
+	"libs/gamefiles/hinavmesh",
+	"libs/gamefiles/mapvar",
 }
 
 // briques : la table des briques (règle 6 de CLAUDE.md : UNE table, pas un fichier par brique).
 // Les plans D2 (décodeur de film) et D3 (API Halo) y ajoutent leurs lignes.
 var briques = []brique{
 	{nom: "gamefiles", paquets: paquetsGamefiles},
-	{nom: "himap", paquets: []string{"internal/himap"}, permis: paquetsGamefiles},
+	{nom: "himap", paquets: []string{"apps/go-api/internal/himap"}, permis: paquetsGamefiles},
 }
 
 // importsToleres : les fichiers d'une brique qui importent un paquet du dépôt hors de la brique,
-// par chemin relatif à `apps/go-api/`, avec la DATE d'inscription, l'import visé et le LOT du
+// par chemin relatif à la racine du dépôt, avec la DATE d'inscription, l'import visé et le LOT du
 // plan qui retire l'entrée. Ce n'est pas un blanc-seing : toute entrée est une coupe à faire.
 //
 // VIDÉE LE 2026-10-28 (lot 2 du plan D1) : la coupe de production (`himap/uslg.go` →
@@ -83,12 +107,12 @@ var importsToleres = map[string]string{}
 
 // fichierImports : un fichier Go et ses imports, tel que le parcours le livre au contrôle pur.
 type fichierImports struct {
-	rel     string // relatif à apps/go-api, séparateurs "/"
+	rel     string // relatif à la racine du dépôt, séparateurs "/"
 	imports []string
 }
 
 func TestBriquesImports(t *testing.T) {
-	racine := apiModuleRoot(t)
+	racine := workspaceRoot(t)
 	vus := map[string]bool{}
 	var violations []string
 	for _, b := range briques {
@@ -112,8 +136,8 @@ func TestBriquesImports(t *testing.T) {
 }
 
 // fichiersImportsDesPaquets parse les imports de tous les `.go` (tests compris) des paquets
-// donnés. Échoue si un paquet n'existe pas ou ne contient aucun fichier Go : un garde-rail qui
-// ne voit rien ne garde rien.
+// donnés (répertoires relatifs à `racine`, la racine du dépôt). Échoue si un paquet n'existe pas
+// ou ne contient aucun fichier Go : un garde-rail qui ne voit rien ne garde rien.
 func fichiersImportsDesPaquets(t *testing.T, racine string, paquets []string) []fichierImports {
 	t.Helper()
 	fset := token.NewFileSet()
@@ -148,22 +172,24 @@ func fichiersImportsDesPaquets(t *testing.T, racine string, paquets []string) []
 	return out
 }
 
-// violationsDeBrique rend, pour une brique, les imports `levelup/go-api/...` qui ne visent ni un
-// paquet de la brique ni un paquet permis. Les fichiers de `toleres` sont passés et marqués
-// dans `vus` (un fichier toléré qui n'a plus de franchissement n'est PAS marqué : son entrée
-// est morte). Fonction pure : c'est elle que l'auto-preuve exerce.
+// violationsDeBrique rend, pour une brique, les imports de `levelup/go-api/...` ou de
+// `github.com/JGtm/LevelUp/libs/...` qui ne visent ni un paquet de la brique ni un paquet permis.
+// Les fichiers de `toleres` sont passés et marqués dans `vus` (un fichier toléré qui n'a plus de
+// franchissement n'est PAS marqué : son entrée est morte). Fonction pure : c'est elle que
+// l'auto-preuve exerce.
 func violationsDeBrique(b brique, fichiers []fichierImports, toleres map[string]string, vus map[string]bool) []string {
 	interne := map[string]bool{}
 	for _, p := range b.paquets {
-		interne[prefixeModuleAPI+p] = true
+		interne[cheminImport(p)] = true
 	}
 	for _, p := range b.permis {
-		interne[prefixeModuleAPI+p] = true
+		interne[cheminImport(p)] = true
 	}
 	var violations []string
 	for _, f := range fichiers {
 		for _, imp := range f.imports {
-			if !strings.HasPrefix(imp, prefixeModuleAPI) || interne[imp] {
+			surveille := strings.HasPrefix(imp, prefixeModuleAPI) || strings.HasPrefix(imp, prefixeBriques)
+			if !surveille || interne[imp] {
 				continue
 			}
 			if _, ok := toleres[f.rel]; ok {
@@ -176,29 +202,50 @@ func violationsDeBrique(b brique, fichiers []fichierImports, toleres map[string]
 	return violations
 }
 
-// TestBriquesImports_AutoPreuve : le contrôle pur rougit sur un import hors brique, laisse
-// passer la brique elle-même et ses briques permises, et signale une entrée morte.
+// TestBriquesImports_AutoPreuve : le contrôle pur rougit sur un import hors brique (module
+// `go-api` OU autre brique), laisse passer la brique elle-même et ses briques permises, et signale
+// une entrée morte.
 func TestBriquesImports_AutoPreuve(t *testing.T) {
-	b := brique{nom: "x", paquets: []string{"internal/x"}, permis: []string{"internal/y"}}
+	b := brique{nom: "x", paquets: []string{"libs/x/p"}, permis: []string{"libs/y/q"}}
+	const (
+		moi   = "github.com/JGtm/LevelUp/libs/x/p"
+		permi = "github.com/JGtm/LevelUp/libs/y/q"
+		autre = "github.com/JGtm/LevelUp/libs/z/r"
+	)
 	fichiers := []fichierImports{
-		{rel: "internal/x/a.go", imports: []string{"fmt", prefixeModuleAPI + "internal/x", prefixeModuleAPI + "internal/y"}},
-		{rel: "internal/x/b.go", imports: []string{prefixeModuleAPI + "internal/analysis"}},
-		{rel: "internal/x/c_test.go", imports: []string{prefixeModuleAPI + "internal/testutil"}},
+		{rel: "libs/x/p/a.go", imports: []string{"fmt", "golang.org/x/sys/unix", moi, permi}},
+		{rel: "libs/x/p/b.go", imports: []string{prefixeModuleAPI + "internal/analysis"}},
+		{rel: "libs/x/p/c_test.go", imports: []string{prefixeModuleAPI + "internal/testutil"}},
+		{rel: "libs/x/p/d.go", imports: []string{autre}},
 	}
 	vus := map[string]bool{}
-	got := violationsDeBrique(b, fichiers, map[string]string{"internal/x/c_test.go": "toléré"}, vus)
-	if len(got) != 1 || !strings.Contains(got[0], "internal/x/b.go  -> "+prefixeModuleAPI+"internal/analysis") {
-		t.Fatalf("violations attendues : b.go seul ; obtenu %v", got)
+	got := violationsDeBrique(b, fichiers, map[string]string{"libs/x/p/c_test.go": "toléré"}, vus)
+	if len(got) != 2 ||
+		!strings.Contains(got[0], "libs/x/p/b.go  -> "+prefixeModuleAPI+"internal/analysis") ||
+		!strings.Contains(got[1], "libs/x/p/d.go  -> "+autre) {
+		t.Fatalf("violations attendues : b.go (module go-api) et d.go (autre brique) ; obtenu %v", got)
 	}
-	if !vus["internal/x/c_test.go"] {
+	if !vus["libs/x/p/c_test.go"] {
 		t.Fatal("le fichier toléré doit être marqué vu")
 	}
 	// Entrée morte : un fichier toléré sans franchissement n'est pas marqué, le test principal
 	// le signale alors comme à retirer.
 	vus = map[string]bool{}
-	_ = violationsDeBrique(b, fichiers[:1], map[string]string{"internal/x/a.go": "toléré"}, vus)
-	if vus["internal/x/a.go"] {
+	_ = violationsDeBrique(b, fichiers[:1], map[string]string{"libs/x/p/a.go": "toléré"}, vus)
+	if vus["libs/x/p/a.go"] {
 		t.Fatal("un fichier sans franchissement ne doit pas honorer son entrée d'allowlist")
+	}
+}
+
+// TestCheminImport : la dérivation du chemin d'import suit la forme des deux sortes de modules.
+func TestCheminImport(t *testing.T) {
+	for paquet, attendu := range map[string]string{
+		"apps/go-api/internal/himap": "levelup/go-api/internal/himap",
+		"libs/gamefiles/ooz":         "github.com/JGtm/LevelUp/libs/gamefiles/ooz",
+	} {
+		if got := cheminImport(paquet); got != attendu {
+			t.Errorf("cheminImport(%q) = %q, attendu %q", paquet, got, attendu)
+		}
 	}
 }
 

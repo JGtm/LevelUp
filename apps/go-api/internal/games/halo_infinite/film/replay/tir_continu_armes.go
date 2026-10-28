@@ -12,7 +12,7 @@ package replay
 // comme les chassis et les pieces montees.
 //
 // L INSTRUMENT qui a lu chaque valeur, dans les modules installes et en lecture seule :
-// `internal/himodule/m4b_barillets_research_test.go` (2026-09-24). Il lit, par tag `weap`, le
+// `libs/gamefiles/himodule/m4b_barillets_research_test.go` (2026-09-24). Il lit, par tag `weap`, le
 // tableau `barrels` (element de 928 octets au champ +3284, le meme sur toutes les armes lues) :
 // « rounds per second » (+4, min et max), « acceleration time » (+0x10), le TYPE DE PREDICTION
 // (+0x70, court) et le debit d evenements synchronises (+0x74) — les deux champs que

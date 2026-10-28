@@ -391,8 +391,6 @@ func TestProductionNAppellePasLesEnveloppes(t *testing.T) {
 var sitesZlibAutorises = map[string]string{
 	"internal/games/halo_infinite/film/internal/source/film.go": "L'UNIQUE inflate de la chaine de cuisson (D1). " +
 		"Rend le PARTIEL sur flux tronque : un film Theater se termine parfois net.",
-	"internal/hinavmesh/conteneur.go": "AUTRE DOMAINE (conteneurs de navmesh du jeu), " +
-		"aucun rapport avec les chunks de film.",
 }
 
 // UNE ENTREE EST TOMBEE LE 2026-09-16 (lot 2.5.e) : `internal/analysis/highlight_event_parser.go`.

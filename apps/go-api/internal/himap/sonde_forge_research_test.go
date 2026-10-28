@@ -17,8 +17,8 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 )
 
 func fourCCDe(v uint32) string {

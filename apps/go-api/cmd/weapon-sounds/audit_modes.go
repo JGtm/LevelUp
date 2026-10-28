@@ -17,7 +17,7 @@ import (
 	"fmt"
 	"sort"
 
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 // auditModesConteneurs balaie les banques d'un module et statue sur leur mode de lecture.

@@ -12,7 +12,7 @@ package himap
 import (
 	"math"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
+	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 )
 
 // ContoursDeZones rend les seuls polygones, dans la forme qu'attend `MasqueZones`.

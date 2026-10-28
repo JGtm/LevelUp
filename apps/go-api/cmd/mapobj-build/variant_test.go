@@ -23,8 +23,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 	"levelup/go-api/internal/testfixtures"
+
+	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 )
 
 // varianteFixture parse un .mvar de référence, ou saute le test s'il n'est pas là.

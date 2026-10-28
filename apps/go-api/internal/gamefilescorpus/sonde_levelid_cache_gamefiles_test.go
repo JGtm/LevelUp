@@ -19,8 +19,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 	"levelup/go-api/internal/himap"
+
+	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 )
 
 // preuvesLevelIDCache : cartes Forge prouvees par la variante du cache. MEME TABLE que les

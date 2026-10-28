@@ -35,7 +35,7 @@ package himap
 // CE QUE LA RECETTE NE FAIT PAS : elle dit OU un objet ramassable peut naitre, jamais LEQUEL.
 // La chaine de tags ne descend pas jusqu'a l'objet engendre — elle s'arrete au `fosp`, dont les
 // references ne resolvent dans aucun module indexe. Le typage passe par la mesure, cote
-// `replay/mapvar`.
+// `libs/gamefiles/mapvar`.
 
 // GroupeRamassable est le groupe de tag qu'un point d'apparition doit referencer.
 const GroupeRamassable = "foki"

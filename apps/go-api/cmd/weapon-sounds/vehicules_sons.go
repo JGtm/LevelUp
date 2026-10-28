@@ -20,7 +20,7 @@ import (
 	"os"
 	"sort"
 
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 // VehiSon est la chaine son d'UN tag `vehi`, telle que la passe 1 la rend.

@@ -17,7 +17,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
+	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 )
 
 // cartesNativesMesurees : les cartes NATIVES du releve, avec leur cle de catalogue

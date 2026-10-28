@@ -20,8 +20,9 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
-	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 	"levelup/go-api/internal/himap"
+
+	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 )
 
 func TestRenduForgeVagabond(t *testing.T) {

@@ -44,7 +44,9 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: apps/go-api/go.mod
-          cache-dependency-path: apps/go-api/go.sum
+          cache-dependency-path: |
+            apps/go-api/go.sum
+            libs/gamefiles/go.sum
 
       - name: Extract version from tag
         id: ver

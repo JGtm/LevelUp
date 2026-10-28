@@ -9,7 +9,7 @@ package mapvar
 // les cherchait par ancrage `ti=13`) devient sans objet.
 //
 //	$env:VEHI_MVAR_DIR="C:/.../scratchpad/mvar"
-//	go test ./internal/games/halo_infinite/film/replay/mapvar/ -run AssautSitesMvar -v
+//	go test ./libs/gamefiles/mapvar/ -run AssautSitesMvar -v
 
 import (
 	"os"

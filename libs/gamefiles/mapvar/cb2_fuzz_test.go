@@ -15,11 +15,11 @@ package mapvar
 //
 // CAMPAGNE (a la main, jamais en CI) :
 //
-//	go test ./internal/games/halo_infinite/film/replay/mapvar/ -run '^$' -fuzz FuzzMapvarParse -fuzztime 30s -fuzzminimizetime 0s
+//	go test ./libs/gamefiles/mapvar/ -run '^$' -fuzz FuzzMapvarParse -fuzztime 30s -fuzzminimizetime 0s
 //
 // REGENERATION DES GRAINES SYNTHETIQUES (porte dediee) :
 //
-//	go test ./internal/games/halo_infinite/film/replay/mapvar/ -run TestFuzzMapvarSeedsRegenerate -update-graines-mvar
+//	go test ./libs/gamefiles/mapvar/ -run TestFuzzMapvarSeedsRegenerate -update-graines-mvar
 
 import (
 	"flag"

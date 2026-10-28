@@ -25,8 +25,8 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 )
 
 // TestSondeTagLocsStructure — combien de tags `locs`, quelle taille, quels StringId ?

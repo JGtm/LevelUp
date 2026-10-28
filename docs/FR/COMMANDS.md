@@ -500,7 +500,7 @@ Défauts de `populate-assets` : les quatre types, les 14 étiquettes de `domain.
 
 Onze chaînes hors ligne, toutes sous `apps/go-api/cmd/`, produisent des fichiers commités
 (`data/titles/{slug}/reference/`, `static/`, ou un fichier Go généré). Aucune n'est câblée
-dans `cmd/server` — le décodage du jeu et le code GPLv3 (`internal/himap`, `internal/ooz`,
+dans `cmd/server` — le décodage du jeu et le code GPLv3 (`internal/himap`, `libs/gamefiles/ooz`,
 Kraken/Oodle) restent isolés dans ces binaires. Lancées depuis `apps/go-api` sauf mention
 contraire. `--title`/`-title` vaut `halo_infinite` par défaut partout.
 
@@ -594,7 +594,7 @@ CGO_ENABLED=1 go run ./cmd/mapfond-build [--maps "Cliffhanger,Catalyst"] [--titl
 - Sortie : `data/titles/{slug}/reference/map_backgrounds/{cle}.png` + `{cle}.json` (sidecar de
   calage) par carte — 218 fichiers aujourd'hui.
 - Prérequis : jeu installé — TOUJOURS, aucun flag ne permet de l'éviter, même en Forge seul ;
-  chaîne cgo/GPLv3 (`internal/himap` -> `internal/himodule` -> `internal/ooz`, jamais liée
+  chaîne cgo/GPLv3 (`internal/himap` -> `libs/gamefiles/himodule` -> `libs/gamefiles/ooz`, jamais liée
   dans `cmd/server`) ; exige `map_objectives.json` déjà construit (dépendance dure, échoue
   sans lui) ; utilise `map_quant_bounds.json` / `map_callouts.json` / `map_positions_jouees.json`
   / `map_fond_reglages.json` s'ils existent, dégrade avec un avertissement sinon.
@@ -722,7 +722,7 @@ go run ./cmd/weapon-sounds -mode livrer -donnees <chantier>/_donnees [-sons <cha
   des banks, vote humain), doivent déjà avoir produit `_donnees/*.json` et l'arborescence de
   `.wav` sources/rendus par arme. Aucun jeu installé n'est nécessaire pour cette étape finale
   (le mode n'ouvre aucun module du jeu), mais cgo EST requis pour COMPILER le binaire :
-  `cmd/weapon-sounds` importe `internal/himap` -> `internal/himodule` -> `internal/ooz`
+  `cmd/weapon-sounds` importe `internal/himap` -> `libs/gamefiles/himodule` -> `libs/gamefiles/ooz`
   (décompression Kraken) pour ses autres modes.
 - À rejouer : un vote d'arme est finalisé, ou la recette complète est rejouée (mise à jour du
   jeu, nouvelle arme). Recette complète : `.ai/archive/V7.5/RECETTE_SONS_ARMES.md`.
@@ -1137,8 +1137,35 @@ cd apps/go-api && CGO_ENABLED=0 go test ./internal/domain/... ./internal/analysi
 cd apps/go-api && CGO_ENABLED=1 LEVELUP_DEMO_MODE=true go test ./... -timeout 5m -count=1
 
 make go-api-coverage   # rapport de couverture
-make go-api-lint       # go vet
+make go-api-lint       # golangci-lint ratchet (apps/go-api + libs/gamefiles) ; go vet en repli
 ```
+
+#### Modules Go sous `libs/` et espace de travail (ADR 0041)
+
+La brique « fichiers du jeu » vit dans son propre module Go, `libs/gamefiles` (chemin de module
+`github.com/JGtm/LevelUp/libs/gamefiles` : paquets `himodule`, `ooz`, `hinavmesh`, `mapvar`), relié à
+`apps/go-api` par le `go.work` de la racine du dépôt (aucune directive `replace` ; `go.work.sum` est
+versionné). Deux conséquences pour toute commande :
+
+- `./...` ne franchit jamais la frontière d'un module. `cd apps/go-api && go test ./...` ne teste **pas**
+  `libs/`, et `go mod tidy` ne peut plus tourner dans `apps/go-api` (il cherche le module voisin sur le
+  réseau ; l'espace de travail le résout, donc `go.mod` ne porte aucun `require` pour lui). Une montée
+  de dépendance d'une brique se fait dans son propre `go.mod` (`cd libs/gamefiles && go get ...`).
+- La ligne de version Go est la même dans `apps/go-api/go.mod`, `go.work`, chaque `libs/*/go.mod` et l'image
+  du `Dockerfile` (`internal/archlint/dockerfile_go_version_test.go`).
+
+```bash
+make libs-test                       # vet (défaut, tags research, gamefiles+research) + tests de chaque module libs/, CGO actif
+cd libs/gamefiles && go test ./... -count=1
+cd libs/gamefiles && go vet -tags=gamefiles,research ./...     # compile les instruments de recherche
+cd libs/gamefiles && go list -deps ./... | grep levelup/go-api  # ne doit rien afficher : le module est autonome
+go test ./libs/gamefiles/mapvar/ -run TestLabel -count=1       # depuis la racine du dépôt fonctionne aussi (espace de travail)
+```
+
+`make go-api-lint` et `make gate-push` passent aussi le lint sur `libs/gamefiles` (même `.golangci.yml`, donné par
+`--config ../../apps/go-api/.golangci.yml`). Le job CI `go-build` joue les mêmes vet et tests dans un pas dédié.
+Une brique n'a ni base de données ni donnée de LevelUp : ses tests ne lisent que leur `testdata/` et le jeu installé ;
+les tests qui exigent des données de LevelUp vivent dans `apps/go-api` (`internal/gamefilescorpus/`).
 
 #### Corpus du tag de build `gamefiles` (cartes **et** catalogues commis)
 
@@ -1201,10 +1228,10 @@ exigent le jeu installé et, pour certains, `.ai/re_dump` :
 
 ```bash
 cd apps/go-api && CGO_ENABLED=1 go test -tags=gamefiles,research -count=1 ./internal/himap/ -run <Sonde>   # un instrument ; sans -run, toute la suite gamefiles plus les instruments
-cd apps/go-api && go test -tags=research -count=1 ./internal/hinavmesh/ ./internal/games/halo_infinite/film/replay/mapvar/
+cd libs/gamefiles && go test -tags=research -count=1 ./hinavmesh/ ./mapvar/
 ```
 
-La CI les compile (`go vet -tags=gamefiles,research ./internal/himap/ ./internal/hinavmesh/ ./internal/games/halo_infinite/film/replay/mapvar/`) ;
+La CI les compile (`go vet -tags=gamefiles,research ./internal/himap/` dans `apps/go-api`, `go vet -tags=gamefiles,research ./...` dans `libs/gamefiles`) ;
 le `go vet -tags=research ./...` de tout le module laisse de côté, volontairement, ceux en `gamefiles && research`
 (les deux tags sont requis). La règle est tenue par `internal/archlint/gamefiles_tag_test.go` (« un instrument qui
 ouvre le jeu déclare `gamefiles` ») et `research_tag_test.go`.

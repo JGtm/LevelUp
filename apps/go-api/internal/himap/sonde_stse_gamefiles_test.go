@@ -15,7 +15,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 func litStsePolygones(t *testing.T, chemin string) ([][][3]float64, tagInfo) {

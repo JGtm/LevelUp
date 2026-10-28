@@ -6,7 +6,7 @@ import (
 	"math"
 	"sort"
 
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 // instanceStride est la taille d'un enregistrement `instanced geometry instances`.

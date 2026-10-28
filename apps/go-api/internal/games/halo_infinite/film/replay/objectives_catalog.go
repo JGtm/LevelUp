@@ -27,7 +27,7 @@ import (
 	"slices"
 	"time"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
+	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 )
 
 // MapObjectivesSchemaVersion est la version de forme attendue du catalogue. Elle doit

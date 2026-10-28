@@ -11,7 +11,8 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/himap"
-	"levelup/go-api/internal/himodule"
+
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 // POURQUOI LIVE FIRE NE PLACE AUCUNE DE SES 28 ANCRES SUR UN SOL.

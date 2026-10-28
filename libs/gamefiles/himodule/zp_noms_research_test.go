@@ -14,7 +14,7 @@
 // scripts dont une chaine contient ce mot.
 //
 //	ZP_DEPLOY=<...>/Halo Infinite/deploy ZP_CIBLES="904941267=proprietaireA,..." go test \
-//	  -tags=research -count=1 -v -run '^TestZPNoms$' ./internal/himodule/
+//	  -tags=research -count=1 -v -run '^TestZPNoms$' ./libs/gamefiles/himodule/
 package himodule_test
 
 import (
@@ -26,7 +26,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 func zpMM3(data []byte) uint32 {

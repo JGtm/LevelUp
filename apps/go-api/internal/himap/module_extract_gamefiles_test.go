@@ -5,10 +5,10 @@ package himap
 import (
 	"testing"
 
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
-// TestModuleExtractionRate est le garde-rail du calcul de dataBase (internal/himodule).
+// TestModuleExtractionRate est le garde-rail du calcul de dataBase (libs/gamefiles/himodule).
 // L'ancienne règle `tailleFichier - max(dataOffset+compSize)` faisait échouer 1965/2047
 // entrées sur any/levels/multi/catalyst et 100 % sur pc/. Le seuil ci-dessous bloque tout
 // retour en arrière.

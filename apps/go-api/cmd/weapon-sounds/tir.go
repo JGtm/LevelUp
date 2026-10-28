@@ -16,7 +16,7 @@ import (
 	"fmt"
 	"sort"
 
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 // offsets internes d'un element de « Weapon Fire Sounds », calcules depuis le plugin.

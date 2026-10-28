@@ -4,7 +4,7 @@ package himap
 
 // empreinte_himodule_gamefiles_test.go — LE HARNAIS D'EMPREINTES DU LECTEUR DE MODULES.
 //
-// POURQUOI IL EXISTE. `internal/himodule` n'avait AUCUN test (constat du 2026-09-05) alors
+// POURQUOI IL EXISTE. `libs/gamefiles/himodule` n'avait AUCUN test (constat du 2026-09-05) alors
 // qu'il est la porte d'entree de toutes les donnees du jeu : geometrie de rendu, tags de
 // scenario, sons, icones. Changer sa facon de lire un `.module` — par exemple passer de
 // `os.ReadFile` a une projection memoire — sans empreinte, c'est changer la source de TOUT
@@ -41,7 +41,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 const (

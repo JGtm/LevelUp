@@ -20,3 +20,11 @@
 set -euo pipefail
 cd apps/go-api
 CGO_ENABLED=1 go vet -tags=integration ./...
+
+# Briques Go sous libs/ (ADR 0041) : `./...` ne franchit pas la frontière d'un module, chaque
+# libs/<brique> a donc son propre vet (CGO actif : libs/gamefiles/ooz est un paquet CGO).
+cd ../..
+for mod in libs/*/go.mod; do
+  [ -f "$mod" ] || continue
+  (cd "$(dirname "$mod")" && CGO_ENABLED=1 go vet ./...)
+done

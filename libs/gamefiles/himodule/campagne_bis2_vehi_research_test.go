@@ -12,7 +12,7 @@
 // fichier : 20 octets, compte a +0x10, cf. `m4bBarillets`), pour chaque chassis demande.
 //
 //	BIS2_DEPLOY=<bibliotheque>/<jeux>/Halo Infinite/deploy BIS2_VEHI=0000254b,77ef810a \
-//	  go test -tags=research -count=1 -v -run '^TestCampagneBis2TypeDePhysique$' ./internal/himodule/
+//	  go test -tags=research -count=1 -v -run '^TestCampagneBis2TypeDePhysique$' ./libs/gamefiles/himodule/
 
 package himodule_test
 

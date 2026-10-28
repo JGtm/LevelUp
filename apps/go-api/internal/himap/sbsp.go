@@ -30,7 +30,7 @@ import (
 	"sort"
 	"sync"
 
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 //go:embed sbsp.xml

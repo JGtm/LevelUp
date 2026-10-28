@@ -10,7 +10,7 @@ package himap
 import (
 	"testing"
 
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 func TestSondeScnr(t *testing.T) {

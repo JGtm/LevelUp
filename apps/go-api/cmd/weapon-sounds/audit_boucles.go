@@ -32,7 +32,7 @@ import (
 	"math"
 	"sort"
 
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 // Decalages depuis la liste d'enfants, pour les deux layouts candidats.

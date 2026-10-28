@@ -42,7 +42,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 // TestSondeGroupesDeTagsGlobals — quels groupes de tags porte le module globals, et lequel

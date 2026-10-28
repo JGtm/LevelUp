@@ -32,8 +32,8 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 )
 
 // preuvesLevelID : les appariements affiches -> installes tenus par la methode level_id.

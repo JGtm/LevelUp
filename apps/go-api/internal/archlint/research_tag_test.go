@@ -54,11 +54,11 @@ const tagResearch = "//go:build research"
 // ne garde plus rien.
 const instrumentsResearchPlancher = 412
 
-// dossiersInstruments : sous ces préfixes (chemins relatifs à `apps/go-api`, en slash), tout
+// dossiersInstruments : sous ces préfixes (chemins relatifs à la racine du dépôt, en slash), tout
 // fichier tagué est un instrument par construction.
 var dossiersInstruments = []string{
-	"internal/games/halo_infinite/film/research/",
-	"tools/film_re/",
+	"apps/go-api/internal/games/halo_infinite/film/research/",
+	"apps/go-api/tools/film_re/",
 }
 
 // contrainteResearch rend vrai si la première ligne est `//go:build` et cite `research`
@@ -89,12 +89,12 @@ func contrainteAvecTerme(texte, terme string) bool {
 	return false
 }
 
-// balayerGoTexte appelle `visiter` pour CHAQUE `.go` du module, avec son contenu. S appuie sur
+// balayerGoTexte appelle `visiter` pour CHAQUE `.go` de l'espace de travail, avec son contenu et son
+// chemin relatif à la racine du dépôt. S appuie sur
 // `balayerGo` (doc_chemins_ai_test.go) : un seul parcours.
 func balayerGoTexte(t *testing.T, visiter func(rel, texte string)) {
 	t.Helper()
-	goAPI, _ := racinesDuModule(t)
-	balayerGo(t, goAPI, func(rel, chemin string) {
+	balayerGo(t, func(rel, chemin string) {
 		buf, err := os.ReadFile(chemin) //nolint:gosec // chemin de test, lecture seule
 		if err != nil {
 			t.Fatalf("lecture de %s : %v", rel, err)

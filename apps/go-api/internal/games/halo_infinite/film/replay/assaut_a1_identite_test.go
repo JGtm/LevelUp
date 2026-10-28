@@ -31,8 +31,9 @@ import (
 	"levelup/go-api/internal/filmproc"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
-	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
+
+	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 )
 
 // a1SitesEnv designe le fichier de sites CANDIDATS a donner en entree (arbitrage lot C). Sans

@@ -29,7 +29,7 @@ import (
 	"strconv"
 	"strings"
 
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 // candidatDuree : un evenement survivant des deux filtres, avec ses durees et sa recette.

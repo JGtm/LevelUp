@@ -41,7 +41,7 @@ import (
 	"path/filepath"
 	"sort"
 
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 // Offsets etablis par l'investigation du 2026-08-10 (arbre des blocs, ridgeline et catalyst).

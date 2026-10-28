@@ -7,16 +7,16 @@ import "path/filepath"
 // un chemin depuis la racine du depot, jamais par un `../` entre paquets. Ce sont des actifs
 // proprietaires 343/Microsoft : ne pas en dupliquer, ne pas en ajouter.
 //
-// Chemins relatifs a la racine du depot, separateurs slash. Quand une brique change de place
-// (D1, lot 3 : `libs/gamefiles/...`), c'est la seule ligne a toucher.
+// Chemins relatifs a la racine du depot, separateurs slash. Les briques vivent sous `libs/` (ADR 0041) ;
+// quand l'une change de place, c'est la seule ligne a toucher.
 const (
 	// MapvarFixturesDir : la brique mapvar possede ses trois `.mvar` (cliffhanger_map,
 	// cliffhanger_ridgeline, vagabond_fo08_wetland) ; LevelUp les lit ici. Le dossier sert aussi
 	// de cache local des variantes re-telechargeables (cf. .gitignore, seules trois sont suivies).
-	MapvarFixturesDir = "apps/go-api/internal/games/halo_infinite/film/replay/mapvar/testdata"
+	MapvarFixturesDir = "libs/gamefiles/mapvar/testdata"
 
 	// NavmeshFixturesDir : la brique hinavmesh possede les deux `<assetID>.navmesh.blob`.
-	NavmeshFixturesDir = "apps/go-api/internal/hinavmesh/testdata"
+	NavmeshFixturesDir = "libs/gamefiles/hinavmesh/testdata"
 
 	// CarteValideeFixturesDir : la brique himap possede `carte_validee_v1.png`, la carte de
 	// reference de ses bancs de rendu.

@@ -17,7 +17,7 @@ package mapvar
 // aucune donnee n'est versionnee ici, le corpus se re-telecharge.
 //
 //	$env:VEHI_MVAR_DIR="C:/.../scratchpad/mvar"
-//	go test ./internal/games/halo_infinite/film/replay/mapvar/ -run VehiculesCorpus -v -timeout 30m
+//	go test ./libs/gamefiles/mapvar/ -run VehiculesCorpus -v -timeout 30m
 //
 // # Ce que le fichier NE DIT PAS, et qu'on ne devine pas
 //

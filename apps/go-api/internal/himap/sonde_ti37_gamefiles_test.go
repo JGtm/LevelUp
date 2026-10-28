@@ -25,7 +25,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 // ti37Observes : les valeurs de `mpp-word32` relevees dans les POSES confirmees des records de

@@ -34,8 +34,9 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
-	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 	"levelup/go-api/internal/mapcatalog"
+
+	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 )
 
 // diffSocles est ce qui a change entre deux jeux de socles d'une meme carte.

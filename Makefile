@@ -24,7 +24,7 @@ LOAD_DOTENV := if [ -f .env.local ]; then set -a; . ./.env.local; set +a; fi; \
 
 .PHONY: help web dev stop restart test-web test-e2e test-e2e-ui demo-visual check-types \
         generate-types install-web \
-        go-api-build go-api-test go-api-test-gamefiles go-api-dev _go-api-run \
+        go-api-build go-api-test go-api-test-gamefiles libs-test go-api-dev _go-api-run \
         go-api-test-shared-social-gate install-git-hooks gate-push replay-corpus-gate \
         go-api-test-coverage-ratchet openapi-gen openapi-check
 
@@ -201,6 +201,7 @@ go-api-test:
 			./internal/games/weapons/... ./internal/games/halo_infinite/film/internal/profile/... ./internal/games/halo_infinite/film/internal/grammar/... ./internal/games/halo_infinite/film/internal/facts/... ./internal/games/halo_infinite/film/replay/... \
 			./contracttest/... \
 		-v -timeout 60s -count=1
+	cd libs/gamefiles && CGO_ENABLED=0 go test ./hinavmesh/ ./mapvar/ -timeout 60s -count=1
 
 ## Go API: corpus gamefiles du module — retro-ingenierie des cartes ET catalogues commis
 ## (EXIGE Halo Infinite installe, ~6 min)
@@ -230,6 +231,21 @@ go-api-test-gamefiles:
 	cd $(GO_API_DIR) && CGO_ENABLED=1 go test -tags=gamefiles -count=1 -timeout 3600s \
 		./internal/himap/ ./internal/gamefilescorpus/ \
 		./cmd/film-profiles-build/ ./cmd/mapfond-build/ ./cmd/mapstruct-build/ -v
+
+## Briques Go sous libs/ (ADR 0041) : vet + tests de chaque module. `./...` ne franchit jamais la
+## frontiere d'un module (le go.work les relie a apps/go-api) : ni go-api-test ni go-api-lint
+## ne voient libs/, d'ou cette cible, aussi appelee par `make gate-push`. Miroir des pas
+## « brique gamefiles » du job CI go-build. CGO actif : libs/gamefiles/ooz est un paquet C++.
+## Corpus gamefiles d'une brique : aucun a ce jour (les tests `*_gamefiles_test.go` de la
+## brique himap vivent dans apps/go-api/internal/himap) ; le jour ou un module libs/ en porte
+## un, archlint.TestCibleMakefileGamefilesCouvreLeCorpus exige sa ligne dans go-api-test-gamefiles.
+## Autonomie : `go list -deps` d'un module ne doit montrer aucun paquet levelup/go-api.
+libs-test:
+	cd libs/gamefiles && CGO_ENABLED=1 go vet ./... && CGO_ENABLED=1 go vet -tags=research ./... \
+		&& CGO_ENABLED=1 go vet -tags=gamefiles,research ./... && CGO_ENABLED=1 go test ./... -timeout 600s -count=1
+	@cd libs/gamefiles && if go list -deps ./... | grep -E 'levelup/go-api'; then \
+		echo "libs/gamefiles importe le module levelup/go-api"; exit 1; \
+	fi
 
 ## Go API: gate de non-regression des artefacts de rejeu sur corpus temoin. DEFAUT
 ## (--reference=base) : cuit chaque temoin DEUX FOIS (code du HEAD, code d'une revision de
@@ -262,7 +278,7 @@ go-api-coverage:
 ## Go API: lint (2026-07-22, F8 — aligné sur la CI)
 ##
 ## Le lint qui FAIT FOI est le job CI `go-lint` (.github/workflows/ci.yml) :
-## golangci-lint v2.12.2 sur TOUT apps/go-api, config apps/go-api/.golangci.yml,
+## golangci-lint v2.12.2 sur TOUT apps/go-api ET sur chaque module de libs/ (ADR 0041), config apps/go-api/.golangci.yml,
 ## avec RATCHET `--new-from-merge-base=origin/main` — seules les issues AJOUTÉES
 ## rougissent ; la dette baseline (~479 issues gelées) reste invisible.
 ##
@@ -277,7 +293,8 @@ go-api-lint:
 	cd $(GO_API_DIR) && \
 	if command -v golangci-lint >/dev/null 2>&1; then \
 		echo "golangci-lint présent — lint complet (ratchet CI, dette gelée exclue)."; \
-		golangci-lint run --timeout 5m --new-from-merge-base=origin/main; \
+		golangci-lint run --timeout 5m --new-from-merge-base=origin/main && \
+		(cd ../../libs/gamefiles && golangci-lint run --config ../../apps/go-api/.golangci.yml --timeout 5m --new-from-merge-base=origin/main); \
 	else \
 		echo "golangci-lint absent — REPLI go vet (domain+analysis). Le lint complet FAIT FOI en CI (job go-lint, .github/workflows/ci.yml)."; \
 		go vet ./internal/domain/... ./internal/analysis/... ./internal/games/weapons/... ./internal/games/halo_infinite/film/internal/profile/... ./internal/games/halo_infinite/film/internal/grammar/... ./internal/games/halo_infinite/film/internal/facts/... ./internal/games/halo_infinite/film/replay/...; \
@@ -350,6 +367,8 @@ gate-push:
 		exit 1; \
 	}
 	cd $(GO_API_DIR) && golangci-lint run --timeout 5m --new-from-merge-base=origin/main
+	cd libs/gamefiles && golangci-lint run --config ../../apps/go-api/.golangci.yml --timeout 5m --new-from-merge-base=origin/main
+	$(MAKE) libs-test
 	cd apps/web && npm run typecheck
 	cd apps/web && npm run lint
 	bash scripts/check_test_baseline.sh tests

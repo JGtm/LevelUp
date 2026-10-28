@@ -28,7 +28,7 @@
 // Commande (depuis `apps/go-api`, CGO actif) :
 //
 //	CA9_DEPLOY=<bibliotheque>/<jeux>/Halo Infinite/deploy go test -tags=research -count=1 -v \
-//	  -run '^TestCA9Unarmed$' ./internal/himodule/
+//	  -run '^TestCA9Unarmed$' ./libs/gamefiles/himodule/
 package himodule_test
 
 import (
@@ -39,7 +39,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 const (

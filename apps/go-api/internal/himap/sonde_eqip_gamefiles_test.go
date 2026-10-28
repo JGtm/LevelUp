@@ -27,7 +27,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 // eqipInfo : ce qu'un tag `eqip` porte et qui sert au nommage.

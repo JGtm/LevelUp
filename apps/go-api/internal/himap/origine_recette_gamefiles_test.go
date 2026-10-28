@@ -49,7 +49,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 func origIndexForge(t *testing.T, racine string) *ModuleIndex {

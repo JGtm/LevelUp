@@ -22,7 +22,7 @@
 // dans le dépôt) :
 //
 //	M6_DEPLOY=<bibliotheque>/<jeux>/Halo Infinite/deploy go test -tags=research -count=1 -v \
-//	  -run '^TestM6CatalogueBobineMainsNues$' ./internal/himodule/
+//	  -run '^TestM6CatalogueBobineMainsNues$' ./libs/gamefiles/himodule/
 package himodule_test
 
 import (

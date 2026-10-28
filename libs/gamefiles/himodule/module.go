@@ -1,5 +1,5 @@
 // Package himodule lit les archives .module Halo Infinite (mohd v53) et extrait
-// les tags (décompression Kraken via internal/ooz). Offline-pur, universel.
+// les tags (décompression Kraken via libs/gamefiles/ooz). Offline-pur, universel.
 //
 // Layout VÉRIFIÉ (hand-decode catalyst/ds, cross-checké table des blocs) :
 //
@@ -24,7 +24,7 @@ import (
 	"encoding/binary"
 	"fmt"
 
-	"levelup/go-api/internal/ooz"
+	"github.com/JGtm/LevelUp/libs/gamefiles/ooz"
 )
 
 const (

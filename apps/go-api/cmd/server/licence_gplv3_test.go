@@ -1,9 +1,9 @@
 package main
 
-// LE GARDE-RAIL DE LICENCE — le serveur ne doit JAMAIS linker `internal/ooz`.
+// LE GARDE-RAIL DE LICENCE — le serveur ne doit JAMAIS linker `libs/gamefiles/ooz`.
 //
-// `internal/ooz` vendorise un décodeur Oodle clean-room dérivé de powzix/ooz, **GPLv3**
-// (cf. internal/ooz/NOTICE.md). Il ne sert qu'à l'outillage HORS LIGNE : extraction de
+// `libs/gamefiles/ooz` vendorise un décodeur Oodle clean-room dérivé de powzix/ooz, **GPLv3**
+// (cf. libs/gamefiles/ooz/NOTICE.md). Il ne sert qu'à l'outillage HORS LIGNE : extraction de
 // géométrie de cartes, production d'assets (cmd/mapstruct-build, cmd/mapfond-build,
 // cmd/mapquant-build). L'application distribuée LIT les assets figés, elle ne les fabrique
 // pas — la géométrie extraite est une DONNÉE, pas du code, et se bake sans contrainte.
@@ -13,11 +13,14 @@ package main
 // d'une œuvre GPLv3, sans qu'aucun outil ne le signale. Une note dans un NOTICE ne garde rien.
 //
 // La vérification est PUREMENT SOURCE (pas d'appel à `go list`) : elle parcourt le graphe des
-// imports internes depuis cmd/server. Elle tourne donc partout, sans toolchain ni cgo.
+// imports du module `levelup/go-api` ET du module `libs/gamefiles` (ADR 0041) depuis cmd/server.
+// Sans ce second module, le déplacement de `ooz` hors de `internal/` aurait rendu le garde-rail
+// aveugle : un import hors du module n'est pas suivi, et `TestLeParcoursFranchitLeModuleGamefiles`
+// l'empêche. Elle tourne donc partout, sans toolchain ni cgo.
 //
 // MUTATION JOUÉE (2026-08-10) : déclarer interdit `internal/domain/title`, que le serveur
 // utilise réellement, fait rougir le test avec la chaîne `cmd/server -> internal/domain/title`.
-// Mesure au vert : 108 paquets internes atteints depuis cmd/server, aucun interdit.
+// Mesure au vert : voir le journal du test (paquets atteints depuis cmd/server, aucun interdit).
 
 import (
 	"go/parser"
@@ -29,12 +32,16 @@ import (
 	"testing"
 )
 
-// modulePath est le chemin du module Go de l'API.
-const modulePath = "levelup/go-api"
+// modulePath est le chemin du module Go de l'API ; gamefilesModule celui de la brique « fichiers du
+// jeu » (dossier libs/gamefiles de la racine du dépôt), qui porte ooz.
+const (
+	modulePath      = "levelup/go-api"
+	gamefilesModule = "github.com/JGtm/LevelUp/libs/gamefiles"
+)
 
 // paquetsInterdits : les paquets dont la licence contamine le binaire distribué.
 var paquetsInterdits = map[string]string{
-	modulePath + "/internal/ooz": "GPLv3 (powzix/ooz, cf. internal/ooz/NOTICE.md)",
+	gamefilesModule + "/ooz": "GPLv3 (powzix/ooz, cf. libs/gamefiles/ooz/NOTICE.md)",
 }
 
 func TestServeurNeLinkePasDeCodeGPL(t *testing.T) {
@@ -104,10 +111,26 @@ func TestGardeRailDeLicenceDetecteUneViolation(t *testing.T) {
 	t.Fatalf("le parcours n'atteint pas %s : il n'explore pas le graphe, et son verdict ne vaut rien", cible)
 }
 
-// importsDuPaquet rend les imports INTERNES au module d'un paquet, tests exclus (un test n'est
-// pas linké dans le binaire distribué).
+// dossierDuPaquet rend le dossier d'un paquet des deux modules suivis : `levelup/go-api/…` sous la
+// racine du module, `…/libs/gamefiles/…` sous `libs/gamefiles` de la racine du dépôt (deux niveaux
+// au-dessus de `apps/go-api`).
+func dossierDuPaquet(racineModule, paquet string) string {
+	if reste, ok := strings.CutPrefix(paquet, gamefilesModule+"/"); ok {
+		depot := filepath.Dir(filepath.Dir(racineModule))
+		return filepath.Join(depot, "libs", "gamefiles", filepath.FromSlash(reste))
+	}
+	return filepath.Join(racineModule, filepath.FromSlash(strings.TrimPrefix(paquet, modulePath+"/")))
+}
+
+// estSuivi dit si un import vise un paquet d'un des deux modules dont on parcourt le graphe.
+func estSuivi(chemin string) bool {
+	return strings.HasPrefix(chemin, modulePath+"/") || strings.HasPrefix(chemin, gamefilesModule+"/")
+}
+
+// importsDuPaquet rend les imports d'un paquet qui visent l'un des deux modules suivis, tests
+// exclus (un test n'est pas linké dans le binaire distribué).
 func importsDuPaquet(racineModule, paquet string) ([]string, error) {
-	dir := filepath.Join(racineModule, filepath.FromSlash(strings.TrimPrefix(paquet, modulePath+"/")))
+	dir := dossierDuPaquet(racineModule, paquet)
 	entrees, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, err
@@ -126,7 +149,7 @@ func importsDuPaquet(racineModule, paquet string) ([]string, error) {
 		}
 		for _, imp := range f.Imports {
 			chemin, err := strconv.Unquote(imp.Path.Value)
-			if err != nil || !strings.HasPrefix(chemin, modulePath+"/") || vus[chemin] {
+			if err != nil || !estSuivi(chemin) || vus[chemin] {
 				continue
 			}
 			vus[chemin] = true
@@ -152,4 +175,36 @@ func racineModule() (string, error) {
 		}
 		d = parent
 	}
+}
+
+// TestLeParcoursFranchitLeModuleGamefiles : le parcours entre bien dans le module `libs/gamefiles`.
+// Le serveur importe `mapvar` (via le décodeur de film) : si le parcours ne suit plus les imports
+// vers ce module, `ooz` n'est plus jamais atteint ni cherché, et le garde-rail ci-dessus passerait
+// au vert en ne regardant rien — le même piège que la mutation sur `internal/domain/title`.
+func TestLeParcoursFranchitLeModuleGamefiles(t *testing.T) {
+	racine, err := racineModule()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cible := gamefilesModule + "/mapvar"
+	vus := map[string]bool{modulePath + "/cmd/server": true}
+	file := []string{modulePath + "/cmd/server"}
+	for len(file) > 0 {
+		p := file[0]
+		file = file[1:]
+		if p == cible {
+			return
+		}
+		imports, err := importsDuPaquet(racine, p)
+		if err != nil {
+			t.Fatalf("%s : %v", p, err)
+		}
+		for _, imp := range imports {
+			if !vus[imp] {
+				vus[imp] = true
+				file = append(file, imp)
+			}
+		}
+	}
+	t.Fatalf("le parcours n'atteint pas %s : il ne franchit pas la frontière du module gamefiles", cible)
 }

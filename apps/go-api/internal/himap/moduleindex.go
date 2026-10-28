@@ -15,7 +15,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 // ModuleIndex resout un GlobalID de tag vers l'entree qui le porte, sur un ensemble de

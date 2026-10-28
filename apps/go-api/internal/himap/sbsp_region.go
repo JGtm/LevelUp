@@ -30,7 +30,7 @@ package himap
 import (
 	"fmt"
 
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 // ErrRegionBSPIndecidable signale que l'ordre des regions de compression n'a pas pu etre lu

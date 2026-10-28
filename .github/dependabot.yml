@@ -63,6 +63,22 @@ updates:
           - "minor"
           - "patch"
 
+  # Briques Go (modules sous libs/, ADR 0041) : une entree par go.mod. Le module go-api les
+  # lit par go.work (aucune directive replace) ; seules leurs dependances externes se bumpent ici
+  # (garde-rail internal/archlint/dockerfile_go_version_test.go).
+  - package-ecosystem: "gomod"
+    directory: "/libs/gamefiles"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 3
+    groups:
+      go-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
   # Workflows GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"

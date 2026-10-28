@@ -78,7 +78,7 @@ var inventaireParDefaut = []string{"apps", "go-api", "cmd", "mapcallouts-build",
 // témoins versionnés. Il vit dans le `testdata/` de la brique mapvar, qui possède ces fichiers
 // (même chemin que `testfixtures.MapvarFixturesDir`, qu'un binaire de production n'importe pas :
 // une seule ligne à toucher aux deux endroits quand la brique change de place).
-var cacheVariantesParDefaut = []string{"apps", "go-api", "internal", "games", "halo_infinite", "film", "replay", "mapvar", "testdata"}
+var cacheVariantesParDefaut = []string{"libs", "gamefiles", "mapvar", "testdata"}
 
 // options porte les chemins et les bascules résolus, pour ne pas promener dix paramètres.
 type options struct {
@@ -128,7 +128,7 @@ func lisOptions() options {
 	flag.StringVar(&o.decoupePath, "decoupe", "", "dump découpé de Ridgeline (défaut : apps/go-api/internal/testfixtures/testdata/cartes/callout_zones_ridgeline_clipped.json)")
 	flag.StringVar(&o.outPath, "out", "", "fichier de sortie (défaut : PathResolver.MapCalloutsPath)")
 	flag.StringVar(&o.inventaire, "forge-inventaire", "", "inventaire UGC versionné (défaut : apps/go-api/cmd/mapcallouts-build/donnees/inventaire_rotation_ugc_2026-08-27.json)")
-	flag.StringVar(&o.cacheForge, "forge-cache", "", "cache local des .mvar (défaut : apps/go-api/internal/games/halo_infinite/film/replay/mapvar/testdata)")
+	flag.StringVar(&o.cacheForge, "forge-cache", "", "cache local des .mvar (défaut : libs/gamefiles/mapvar/testdata)")
 	flag.BoolVar(&o.forgeOnly, "forge-only", false, "ne pas reconstruire la partie native (n'exige pas le jeu installé)")
 	flag.BoolVar(&o.forgeFetch, "forge-fetch", false, "télécharger les map.mvar manquants (stockage blob UGC, sans jeton)")
 	flag.BoolVar(&o.lexique, "lexique", false, "régénérer callouts_lexique.csv depuis les listes de chaînes du jeu (exige l'installation)")

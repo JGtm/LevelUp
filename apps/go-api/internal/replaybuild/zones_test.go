@@ -13,8 +13,9 @@ import (
 
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
-	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 	"levelup/go-api/internal/testutil"
+
+	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 )
 
 // vagabondMapID est la carte des deux temoins de Bastion du lot C-bis.

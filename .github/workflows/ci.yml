@@ -104,7 +104,7 @@ jobs:
   # Classement des fichiers modifiés (prédicat `some-with-excludes` : au moins un motif retenu et
   # aucun motif exclu). Conservateur : dans le doute, les deux piles tournent.
   #   web      apps/web/**
-  #   go       apps/go-api/** hors openapi.yaml
+  #   go       apps/go-api/**, libs/** et go.work* (modules Go de l'espace de travail, ADR 0041) hors openapi.yaml
   #   croisee  le contrat OpenAPI (relie les deux piles) et les miroirs TypeScript que des tests
   #            Go relisent (parité des capacités, variations sonores, familles d'objectifs,
   #            fixtures de contrat du rejeu), et les sources Go que des tests Vitest relisent
@@ -145,6 +145,9 @@ jobs:
               - 'apps/web/**'
             go:
               - 'apps/go-api/**'
+              - 'libs/**'
+              - 'go.work'
+              - 'go.work.sum'
               - '!**/openapi.yaml'
             croisee:
               - '**/openapi.yaml'
@@ -160,6 +163,9 @@ jobs:
               - '**'
               - '!apps/web/**'
               - '!apps/go-api/**'
+              - '!libs/**'
+              - '!go.work'
+              - '!go.work.sum'
 
   frontend:
     name: Frontend (TypeScript + Vite build)
@@ -413,7 +419,9 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: apps/go-api/go.mod
-          cache-dependency-path: apps/go-api/go.sum
+          cache-dependency-path: |
+            apps/go-api/go.sum
+            libs/gamefiles/go.sum
 
       - name: go vet (domain + analysis — sans CGo)
         run: go vet ./internal/domain/... ./internal/analysis/... ./internal/games/weapons/... ./internal/games/halo_infinite/film/internal/profile/... ./internal/games/halo_infinite/film/internal/grammar/... ./internal/games/halo_infinite/film/internal/facts/... ./internal/games/halo_infinite/film/replay/...
@@ -439,7 +447,7 @@ jobs:
       # n'avait pas suivi. Un tag sans vet est un fichier qui pourrit en silence.
       #
       # CGO OBLIGATOIRE, ET SUR LINUX SEULEMENT (correctif du 2026-09-05). `himap` importe
-      # `himodule`, qui importe `internal/ooz` — un paquet CGO (décodeur Oodle C++). Avec
+      # `himodule`, qui importe `libs/gamefiles/ooz` — un paquet CGO (décodeur Oodle C++). Avec
       # CGO_ENABLED=0, ooz n'a AUCUN fichier compilable : le vet meurt sur « build
       # constraints exclude all Go files », ce qui a rougi le job ubuntu et fait annuler le
       # job windows par fail-fast dès l'ajout de cette étape. Le toolchain C++ est garanti
@@ -455,9 +463,45 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           go vet -tags=gamefiles ./internal/himap/ ./internal/gamefilescorpus/ ./cmd/mapstruct-build/ ./cmd/mapfond-build/
-          go vet -tags=gamefiles,research ./internal/himap/ ./internal/hinavmesh/ ./internal/games/halo_infinite/film/replay/mapvar/
+          go vet -tags=gamefiles,research ./internal/himap/
         env:
           CGO_ENABLED: "1"
+
+      # BRIQUE `libs/gamefiles` (ADR 0041, plan D1 lot 3) : module Go séparé, relié à go-api par
+      # `go.work`. `./...` ne franchit JAMAIS la frontière d'un module : sans ce pas, les quatre
+      # paquets (himodule, ooz, hinavmesh, mapvar) ne seraient ni compilés ni testés par aucun job
+      # (les `go vet`/`go test` de ce job tournent dans apps/go-api). Linux seulement, CGO actif :
+      # `ooz` est un paquet C++ (cf. le pas du corpus ci-dessus). Les trois vet couvrent le build
+      # par défaut, les instruments `research` et ceux qui ouvrent le jeu (`gamefiles && research`,
+      # compilation seule, jamais exécutés). `go list -deps` ne doit montrer aucun paquet
+      # `levelup/go-api` : l'autonomie du module, doublée par archlint/briques_imports_test.go.
+      - name: go vet + go test (brique gamefiles — module libs/gamefiles)
+        if: runner.os == 'Linux'
+        working-directory: libs/gamefiles
+        run: |
+          go vet ./...
+          go vet -tags=research ./...
+          go vet -tags=gamefiles,research ./...
+          go test ./... -timeout 600s -count=1
+          if go list -deps ./... | grep -E 'levelup/go-api'; then
+            echo "::error::libs/gamefiles importe le module levelup/go-api"
+            exit 1
+          fi
+        env:
+          CGO_ENABLED: "1"
+
+      # Les paquets de la brique SANS cgo (`mapvar`, `hinavmesh`) tournent aussi sans CGo, sur les
+      # deux systèmes : ils étaient sous `film/replay/...` dans le pas « go test (unit, no CGo DB) »
+      # ci-dessous, qui n'ouvre plus le module libs/gamefiles.
+      - name: go vet + go test (brique gamefiles, paquets sans CGo)
+        working-directory: libs/gamefiles
+        shell: bash
+        run: |
+          set -e
+          go vet ./hinavmesh/ ./mapvar/
+          go test ./hinavmesh/ ./mapvar/ -timeout 600s -count=1
+        env:
+          CGO_ENABLED: "0"
 
       # INSTRUMENTS `research` (2026-09-16, chantier du decodeur de film). Les instruments de
       # recherche qui REBALAYENT les 7 bobines versionnees (`e191b_carte_ti37_*`, `e191c_*` dans
@@ -516,7 +560,9 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: apps/go-api/go.mod
-          cache-dependency-path: apps/go-api/go.sum
+          cache-dependency-path: |
+            apps/go-api/go.sum
+            libs/gamefiles/go.sum
 
       - name: go test -race (deux films en parallele)
         run: go test -race -count=1 -run TestDeuxFilmsEnParallele ./internal/games/halo_infinite/film/internal/grammar/
@@ -544,7 +590,9 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: apps/go-api/go.mod
-          cache-dependency-path: apps/go-api/go.sum
+          cache-dependency-path: |
+            apps/go-api/go.sum
+            libs/gamefiles/go.sum
 
       # golangci-lint : équivalent ruff + ruff-format + enforce_size_limits + McCabe pour Go
       # Règles : gocyclo max 12 / funlen 80L / lll 100c / revive argument-limit 5
@@ -590,6 +638,17 @@ jobs:
           # par les flags --new-from-* ci-dessous, jamais par l'API GitHub.
           args: --timeout 5m ${{ steps.lint_base.outputs.args }}
 
+      # Brique `libs/gamefiles` (ADR 0041) : un module séparé, donc un second passage. MÊME config
+      # que go-api (`--config` relatif au working-directory), MÊME ratchet. Les chemins y sont rapportés
+      # depuis le dossier de la config (`../../libs/gamefiles/...`) : aucune règle `path:` ni l'exclusion
+      # `apps` ne les vise ; une mutation locale (fonction inutilisée dans mapvar) rougit bien ce pas.
+      - name: golangci-lint (ratchet, brique libs/gamefiles)
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.12.2
+          working-directory: libs/gamefiles
+          args: --config ../../apps/go-api/.golangci.yml --timeout 5m ${{ steps.lint_base.outputs.args }}
+
   go-lease-enforcement:
     name: Go Lease Enforcement (ADR 0013)
     needs: changes
@@ -630,7 +689,9 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: apps/go-api/go.mod
-          cache-dependency-path: apps/go-api/go.sum
+          cache-dependency-path: |
+            apps/go-api/go.sum
+            libs/gamefiles/go.sum
 
       # Version exacte : un outil de sécurité flottant changerait de verdict sans commit.
       # La monter volontairement, avec un run vert pour preuve.
@@ -640,6 +701,16 @@ jobs:
       # CGO_ENABLED=1 : le module importe DuckDB (binding C) ; ubuntu-latest fournit gcc.
       # Exit 3 = vulnérabilité atteinte par le code (trace affichée) : le step échoue.
       - name: govulncheck ./...
+        run: |
+          "$(go env GOPATH)/bin/govulncheck" ./...
+        env:
+          CGO_ENABLED: "1"
+
+      # Brique `libs/gamefiles` (ADR 0041) : `./...` ne franchit pas la frontière du module, et
+      # go-api ne tire que les paquets qu'il importe (himodule, ooz, hinavmesh, mapvar via himap
+      # et le décodeur). Un module destiné à l'import externe répond de TOUTES ses dépendances.
+      - name: govulncheck libs/gamefiles
+        working-directory: libs/gamefiles
         run: |
           "$(go env GOPATH)/bin/govulncheck" ./...
         env:
@@ -709,7 +780,9 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: apps/go-api/go.mod
-          cache-dependency-path: apps/go-api/go.sum
+          cache-dependency-path: |
+            apps/go-api/go.sum
+            libs/gamefiles/go.sum
 
       # S45 T8 — décision : CGO=0 fast-check = job go-build ; CGO=1 full = ce job.
       - name: Vérifier GCC (CGO requis pour DuckDB)
@@ -784,7 +857,9 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: apps/go-api/go.mod
-          cache-dependency-path: apps/go-api/go.sum
+          cache-dependency-path: |
+            apps/go-api/go.sum
+            libs/gamefiles/go.sum
 
       - name: Télécharger les artefacts des lots
         uses: actions/download-artifact@v4
@@ -992,7 +1067,9 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: apps/go-api/go.mod
-          cache-dependency-path: apps/go-api/go.sum
+          cache-dependency-path: |
+            apps/go-api/go.sum
+            libs/gamefiles/go.sum
 
       # Tests YAML-only : vérifie que openapi.yaml est valide, complet (≥20 paths)
       # et que les paths obligatoires (health, bootstrap, settings…) sont présents.
@@ -1040,7 +1117,9 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: apps/go-api/go.mod
-          cache-dependency-path: apps/go-api/go.sum
+          cache-dependency-path: |
+            apps/go-api/go.sum
+            libs/gamefiles/go.sum
 
       - name: Build Go backend
         working-directory: apps/go-api

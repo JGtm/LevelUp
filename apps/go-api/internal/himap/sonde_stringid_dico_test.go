@@ -29,7 +29,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
+	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 )
 
 // dicoPrefixes : les familles de nom observees dans le jeu. La chaine vide couvre les noms

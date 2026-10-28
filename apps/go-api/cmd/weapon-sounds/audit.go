@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"sort"
 
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 // chunksLus : les chunks que `parserBank` exploite reellement aujourd'hui.

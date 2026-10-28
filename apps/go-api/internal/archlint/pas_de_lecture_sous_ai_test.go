@@ -9,7 +9,7 @@ package archlint
 // paquet qui les lit, ou sous `internal/testfixtures/testdata/` quand plusieurs paquets les
 // partagent (`testfixtures.Carte`).
 //
-// Le garde-rail lit l'AST de TOUS les fichiers `.go` du module (tests et outils compris) et
+// Le garde-rail lit l'AST de TOUS les fichiers `.go` de l'espace de travail (tests et outils compris) et
 // compte les littéraux de chaîne qui construisent un chemin sous `.ai` :
 //   - un littéral qui commence par `.ai/` ou contient `/.ai/` ;
 //   - un littéral égal à `.ai` passé à un `Join` (`filepath.Join(racine, ".ai", ...)`).
@@ -51,7 +51,7 @@ const (
 	raisonSortie = "ÉCRIT sa sortie de recherche sous l'archive : une sortie n'est pas une fixture"
 )
 
-// sitesAiAutorises : fichiers relatifs à `apps/go-api`, séparateurs `/`. Entrées posées à la
+// sitesAiAutorises : fichiers relatifs à la racine du dépôt, séparateurs `/`. Entrées posées à la
 // création du garde-rail (2026-10-27) ; la liste ne grossit pas.
 //
 // 2026-10-28 (plan D1, lot 2c, decision utilisateur) : les sondes de retro-ingenierie des briques
@@ -60,27 +60,31 @@ const (
 // remontee par paquet (`depot_research_test.go`), qui porte seul le litteral du dump. Les
 // treize entrees (une par fichier qui lisait le dump) sont retirees, deux helpers ajoutes
 // (plafond 27 -> 16).
+//
+// 2026-10-28 (plan D1, lot 3) : le parcours est l'espace de travail (`apps/go-api` et `libs/**`), les
+// clés sont relatives à la racine du dépôt ; les deux helpers des briques vivent sous
+// `libs/gamefiles/`. Aucune entrée ajoutée, plafond inchangé.
 var sitesAiAutorises = map[string]siteAi{
 	// Dumps locaux du jeu (hors clone, jamais versionnés).
-	"cmd/mapfond-build/resolution_test.go":                                   {1, "fabrique une arborescence .ai/re_dump factice dans un TempDir, ne lit pas le dépôt"},
-	"internal/himap/cartes_forge.go":                                         {2, "constantes DepotVariantesCarte et DepotNavmesh : " + raisonReDump},
-	"internal/himap/sonde_forge_research_test.go":                            {4, raisonReDump},
-	"internal/himap/sonde_forge_mvar_research_test.go":                       {1, raisonReDump},
-	"internal/hinavmesh/depot_research_test.go":                              {1, raisonReDump + " (helper unique des instruments de la brique, lot 2c du plan D1, 2026-10-28)"},
-	"internal/games/halo_infinite/film/replay/mapvar/depot_research_test.go": {1, raisonReDump + " (helper unique des instruments de la brique, lot 2c du plan D1, 2026-10-28)"},
+	"apps/go-api/cmd/mapfond-build/resolution_test.go":             {1, "fabrique une arborescence .ai/re_dump factice dans un TempDir, ne lit pas le dépôt"},
+	"apps/go-api/internal/himap/cartes_forge.go":                   {2, "constantes DepotVariantesCarte et DepotNavmesh : " + raisonReDump},
+	"apps/go-api/internal/himap/sonde_forge_research_test.go":      {4, raisonReDump},
+	"apps/go-api/internal/himap/sonde_forge_mvar_research_test.go": {1, raisonReDump},
+	"libs/gamefiles/hinavmesh/depot_research_test.go":              {1, raisonReDump + " (helper unique des instruments de la brique, lot 2c du plan D1, 2026-10-28)"},
+	"libs/gamefiles/mapvar/depot_research_test.go":                 {1, raisonReDump + " (helper unique des instruments de la brique, lot 2c du plan D1, 2026-10-28)"},
 	// Sorties de recherche (écriture, pas lecture de fixture).
-	"internal/games/halo_infinite/film/internal/grammar/zone_census_test.go": {1, raisonSortie},
-	"internal/games/halo_infinite/film/replay/colline_propriete_test.go":     {1, raisonSortie},
-	"internal/games/halo_infinite/film/replay/lettres_corpus_test.go":        {1, raisonSortie},
-	"internal/games/halo_infinite/film/replay/zone_state_ti13_scan_test.go":  {1, raisonSortie},
-	"cmd/engagement-calibrate/main.go":                                       {1, "écrit son rapport de calibration à la racine de .ai (sortie de l'outil)"},
-	"cmd/weapon-icons-build/page.go":                                         {1, "réécrit la page de nommage des icônes dans l'archive (sortie de l'outil, pas une entrée)"},
+	"apps/go-api/internal/games/halo_infinite/film/internal/grammar/zone_census_test.go": {1, raisonSortie},
+	"apps/go-api/internal/games/halo_infinite/film/replay/colline_propriete_test.go":     {1, raisonSortie},
+	"apps/go-api/internal/games/halo_infinite/film/replay/lettres_corpus_test.go":        {1, raisonSortie},
+	"apps/go-api/internal/games/halo_infinite/film/replay/zone_state_ti13_scan_test.go":  {1, raisonSortie},
+	"apps/go-api/cmd/engagement-calibrate/main.go":                                       {1, "écrit son rapport de calibration à la racine de .ai (sortie de l'outil)"},
+	"apps/go-api/cmd/weapon-icons-build/page.go":                                         {1, "réécrit la page de nommage des icônes dans l'archive (sortie de l'outil, pas une entrée)"},
 	// Contrôles de cohérence entre documents de .ai.
-	"internal/archlint/doc_chemins_ai_test.go":           {4, "ratchet des chemins .ai cités en commentaire : son objet est .ai"},
-	"internal/archlint/no_stale_fallback_target_test.go": {1, "contrôle de cohérence entre le registre de replis et le plan du décodeur (accepté, 2026-10-27)"},
-	"internal/testfixtures/paths_test.go":                {1, "sentinelle : RepoRoot() doit retrouver la racine, reconnue à son dossier .ai"},
+	"apps/go-api/internal/archlint/doc_chemins_ai_test.go":           {4, "ratchet des chemins .ai cités en commentaire : son objet est .ai"},
+	"apps/go-api/internal/archlint/no_stale_fallback_target_test.go": {1, "contrôle de cohérence entre le registre de replis et le plan du décodeur (accepté, 2026-10-27)"},
+	"apps/go-api/internal/testfixtures/paths_test.go":                {1, "sentinelle : RepoRoot() doit retrouver la racine, reconnue à son dossier .ai"},
 	// Dette connue : fixture versionnée lue sous .ai, à migrer sous testdata/ du paquet.
-	"internal/games/halo_infinite/film/internal/facts/objectives/named_test.go": {1, "DETTE (2026-10-27) : lit .ai/refs/TABLE_STATS_STATBORG.tsv, versionnée et non archivée ; à migrer sous testdata/"},
+	"apps/go-api/internal/games/halo_infinite/film/internal/facts/objectives/named_test.go": {1, "DETTE (2026-10-27) : lit .ai/refs/TABLE_STATS_STATBORG.tsv, versionnée et non archivée ; à migrer sous testdata/"},
 }
 
 // nombreSitesAiAutorisesPlafond : taille maximale de la liste (ratchet). Baisser avec elle.

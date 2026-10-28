@@ -25,7 +25,7 @@ import (
 	"sort"
 	"strings"
 
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 // longueurMinChaine : en dessous, une suite d'octets imprimables est du hasard. Quatre

@@ -31,7 +31,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 // eqipPresence : ou un tag `eqip` a ete trouve, et ce qu'il porte.

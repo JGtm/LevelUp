@@ -31,7 +31,7 @@ package main
 //
 //	CGO_ENABLED=1 go test -tags=gamefiles ./cmd/film-profiles-build/ -count=1 -v
 //
-// CGO est OBLIGATOIRE : `internal/himap` tire `internal/ooz` (decompression), dont les
+// CGO est OBLIGATOIRE : `internal/himap` tire `libs/gamefiles/ooz` (decompression), dont les
 // fichiers sont exclus sans cgo. Sans jeu installe, le test se SKIPPE (c est le cas de la CI).
 
 import (

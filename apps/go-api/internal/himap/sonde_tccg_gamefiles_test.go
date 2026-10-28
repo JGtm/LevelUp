@@ -16,7 +16,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 // ancresIsolation : les 25 ancres d'objectif d'Isolation (map_objectives.json, asset

@@ -10,8 +10,9 @@ import (
 	"strconv"
 	"strings"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 	"levelup/go-api/internal/himap"
+
+	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 )
 
 // vocabPermutations : noms candidats de permutation de vehicule. Un StringId de nom est le

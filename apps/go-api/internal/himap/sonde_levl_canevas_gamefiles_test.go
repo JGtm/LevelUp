@@ -24,7 +24,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 // temoinLevl est ce qu'on mesure sur un tag levl sans rien supposer de son contenu.

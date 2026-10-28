@@ -21,7 +21,7 @@
 // écrite dans le dépôt) :
 //
 //	M6_DEPLOY=<bibliotheque>/<jeux>/Halo Infinite/deploy go test -tags=research -count=1 -v \
-//	  -run '^TestM6BombeBanshee$' ./internal/himodule/
+//	  -run '^TestM6BombeBanshee$' ./libs/gamefiles/himodule/
 package himodule_test
 
 import (
@@ -32,7 +32,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 const (
