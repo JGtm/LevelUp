@@ -7,7 +7,7 @@
 // mauvaise : la langue passe par i18n.Parse / i18n.Text / le catalogue des messages, jamais par un
 // littéral.
 //
-// Le plafond est à 0 depuis l'étape 7 du plan `.ai/PLAN_I18N_MULTILANGUE.md` : ce garde-rail est
+// Le plafond est à 0 depuis l'étape 7 du plan `.ai/V8/PLAN_I18N_MULTILANGUE.md` : ce garde-rail est
 // absolu. La regex de l'état des lieux (`.ai/V8/ETAT_DES_LIEUX_I18N_MULTILANGUE_2026-10-23.md`, section
 // E) a été élargie à l'étape 7 aux formes qu'elle ne voyait pas (appel de fonction avant le
 // comparateur, EqualFold, HasPrefix) ; elle est appliquée ligne à ligne aux fichiers Go non-test des

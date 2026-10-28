@@ -13,7 +13,7 @@
  *  - les lignes balisées `i18n-contrat` (sous-chaîne sur la ligne ou sur la ligne directement
  *    au-dessus) qui choisissaient un champ d'API suffixé `_fr` / `_en` : le contrat d'API sert UN
  *    libellé résolu par le serveur dans la langue de la requête (ADR 0040 D2 ; plan
- *    `.ai/PLAN_I18N_MULTILANGUE.md`, étape 6). La balise ne sert plus : la réintroduire échoue ici.
+ *    `.ai/V8/PLAN_I18N_MULTILANGUE.md`, étape 6). La balise ne sert plus : la réintroduire échoue ici.
  *
  * Troisième compteur, à 0 (étape 4, item 4.7) : un littéral `'fr'` / `'en'` comme DÉFAUT d'une valeur de langue
  * (`locale = 'fr'`, `locale ?? 'fr'`) fige la langue par défaut hors de `config/locales.toml` ; le défaut est
