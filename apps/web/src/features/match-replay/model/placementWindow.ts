@@ -27,9 +27,8 @@ import { SENSOR_DURATION_MS } from './threatSensor'
  *
  * Les valeurs vivent dans le fichier de LEUR famille (`threatSensor.ts`, `placementWall.ts`,
  * `placementShapes.ts`), avec leur portée et leur géométrie : c'est là qu'on va lire ce que le
- * jeu déclare d'un objet, et cette table ne fait que les rassembler pour la fenêtre. L'écran
- * occultant y figure avec une durée `undefined` tant qu'aucune n'est établie (cf.
- * `SHROUD_DURATION_MS`) : c'est l'UNIQUE endroit où la renseigner.
+ * jeu déclare d'un objet, et cette table ne fait que les rassembler pour la fenêtre. La durée de
+ * l'écran occultant est lue dans le film, pas publiée par l'éditeur (cf. `SHROUD_DURATION_MS`).
  */
 const OFFICIAL_DURATION_MS: Partial<Record<PlacementKind, number>> = {
   sensor: SENSOR_DURATION_MS,

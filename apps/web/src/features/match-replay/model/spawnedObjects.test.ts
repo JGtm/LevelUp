@@ -165,12 +165,14 @@ describe('fenêtre de dessin par famille (placementEndFrame via isPlacementActiv
     expect(active('threat_seeker', {}, 105)).toBe(true)
   })
 
-  it("écran : ancré au repos, fin = règle existante isolée dans SHROUD_DURATION_MS", () => {
+  it('écran : ancré au repos, dessiné SHROUD_DURATION_MS (7,5 s lues dans le film) puis effacé', () => {
+    expect(SHROUD_DURATION_MS).toBe(7_500)
+    const fin = 105 + SHROUD_DURATION_MS / TIME.frameMs
     expect(active('shroud_screen', {}, 104)).toBe(false)
     expect(active('shroud_screen', {}, 105)).toBe(true)
-    // Tant que l'utilisateur n'a pas tranché la durée, l'écran reste jusqu'à la fin du rejeu.
-    expect(SHROUD_DURATION_MS).toBeUndefined()
-    expect(active('shroud_screen', {}, 999)).toBe(true)
+    expect(active('shroud_screen', {}, fin)).toBe(true)
+    expect(active('shroud_screen', {}, fin + 1)).toBe(false)
+    expect(active('shroud_screen', {}, 999)).toBe(false)
   })
 })
 

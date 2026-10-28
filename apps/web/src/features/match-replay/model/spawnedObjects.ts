@@ -33,8 +33,8 @@
  *    de la famille (15 s pour le capteur, fin du rejeu pour le champ) ;
  *  - traqueur : une impulsion unique ancrée à `land` (règle existante de la famille). Son `t1` est
  *    la fin du PROJECTILE (2 images médianes), jamais celle de l'effet : il n'est pas lu ;
- *  - écran occultant : ancré à `land`, fin = règle existante (cf. `SHROUD_DURATION_MS`, durée
- *    inconnue). Son `t1` est de même la fin du projectile.
+ *  - écran occultant : ancré à `land`, fin = 7,5 s après (`SHROUD_DURATION_MS`, lue dans le film). Son
+ *    `t1` est de même la fin du projectile.
  *
  * Pas de React, pas de couleur, pas de canvas : de la lecture de document, testée seule.
  */
