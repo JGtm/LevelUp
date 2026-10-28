@@ -20,6 +20,14 @@ const OWNER_DIRS = ['lib/i18n/', 'lib/formatters/']
 
 const GENERATED_FILES = new Set(['generated.ts', 'routeTree.gen.ts'])
 
+/**
+ * Délai des tests qui lisent tout `src/` (balayage des fichiers, analyse TypeScript) : une seconde en
+ * local, plus de cinq sous la charge d'un lot vitest de la CI, où le délai par défaut de vitest (5 s) les
+ * faisait échouer. Source unique de ce délai pour les garde-rails de `lib/i18n/`
+ * (`guardTimeout.guard.test.ts` interdit un délai écrit en chiffres dans ces fichiers).
+ */
+export const TREE_SCAN_TIMEOUT_MS = 120_000
+
 export interface LineHit {
   file: string
   line: number
