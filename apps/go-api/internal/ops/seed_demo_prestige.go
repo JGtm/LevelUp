@@ -84,7 +84,9 @@ func demoTelemetryKindFor(status prestige.ChallengeStatus) string {
 // layout = disposition de l'arbre démo (plate pour le titre par défaut, cf.
 // title.DemoLayout). matchIDs vide = tout le corpus du joueur démo présent dans le
 // shared de sortie (cas du générateur synthétique, qui n'a pas de liste externe).
-func seedDemoPrestige(ctx context.Context, layout titlePkg.DemoLayout, titleSlug string,
+// repoRoot = racine du dépôt qui porte config/titles (vide = title.FindRepoRoot) : le catalogue
+// de défis et d'arcs du titre y est lu pour adosser les objectifs démo à une origine.
+func seedDemoPrestige(ctx context.Context, layout titlePkg.DemoLayout, titleSlug, repoRoot string,
 	matchIDs []string) (map[string]int, error) {
 	playerDBPath := layout.PlayerDBPath(titleSlug, demoDirForIndex(0))
 	sharedDBPath := layout.SharedDBPath(titleSlug)
@@ -101,7 +103,7 @@ func seedDemoPrestige(ctx context.Context, layout titlePkg.DemoLayout, titleSlug
 		return map[string]int{}, nil
 	}
 
-	plan := buildDemoPrestigePlan(titleSlug, stats, matches)
+	plan := buildDemoPrestigePlan(titleSlug, loadDemoCatalogOrEmpty(ctx, repoRoot, titleSlug), stats, matches)
 
 	counts := map[string]int{}
 	if err := writeDemoPrestigePlayer(ctx, playerDBPath, metaDBPath, plan, counts); err != nil {
@@ -113,6 +115,25 @@ func seedDemoPrestige(ctx context.Context, layout titlePkg.DemoLayout, titleSlug
 	slog.InfoContext(ctx, "seed-demo: échantillons Prestige écrits",
 		"title_slug", titleSlug, "total_pp", plan.TotalPP, "level", plan.Level, "rows", counts)
 	return counts, nil
+}
+
+// loadDemoCatalogOrEmpty lit le catalogue du titre et dégrade sur un catalogue vide en le
+// journalisant : un catalogue illisible laisse les objectifs démo sans origine (une seule langue)
+// au lieu de faire échouer tout le seed. Un catalogue incomplet est signalé avec ses manques.
+func loadDemoCatalogOrEmpty(ctx context.Context, repoRoot, titleSlug string) demoPrestigeCatalog {
+	cat, err := loadDemoPrestigeCatalog(ctx, repoRoot, titleSlug)
+	if err != nil {
+		slog.WarnContext(ctx, "seed-demo prestige: catalogue illisible, objectifs et arcs démo sans origine",
+			"title_slug", titleSlug, "err", err)
+		return demoPrestigeCatalog{Slug: titleSlug}
+	}
+	if !cat.empty() {
+		if gaps := demoCatalogGaps(cat); len(gaps) > 0 {
+			slog.WarnContext(ctx, "seed-demo prestige: origines absentes du catalogue, texte de repli utilisé",
+				"title_slug", titleSlug, "missing", gaps)
+		}
+	}
+	return cat
 }
 
 // rebuildDemoSharedSocial (re)crée le shared_social démo vide et migré. Appelé
@@ -286,12 +307,12 @@ func insertDemoChallenges(ctx context.Context, db *sql.DB, plan demoPrestigePlan
 		completed, expired, abandoned := demoChallengeTerminalColumns(c)
 		if _, err := db.ExecContext(ctx, `
 			INSERT INTO challenge (
-				id, user_id, title_slug, arc_id, position, metric, target,
+				id, user_id, title_slug, arc_id, position, template_id, metric, target,
 				window_type, window_value, cadence, eval_type, mode, tier, data_tier,
 				label, status, created_at, committed_at,
 				completed_at, expired_at, abandoned_at, is_private, source
-			) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-			c.ID, plan.UserID, plan.TitleSlug, nullStr(c.ArcID), c.Position, c.Metric, c.Target,
+			) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+			c.ID, plan.UserID, plan.TitleSlug, nullStr(c.ArcID), c.Position, nullStr(c.TemplateID), c.Metric, c.Target,
 			string(c.WindowType), c.WindowValue, string(c.Cadence), string(c.EvalType),
 			string(prestige.ModeLibre), string(c.Tier), string(prestige.DataFull),
 			c.Label, string(c.Status), c.CreatedAt, c.CreatedAt,

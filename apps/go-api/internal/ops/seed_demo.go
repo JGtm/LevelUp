@@ -378,7 +378,7 @@ func SeedDemo(ctx context.Context, opts SeedDemoOptions) (SeedDemoResult, error)
 	// 6b. Échantillons Prestige (arcs, objectifs, points de progression, séries,
 	// records, jalons, escouade) dérivés du corpus démo. Sans cette phase les pages
 	// Prestige/Ascension sont accessibles (prestige_enabled=true) mais vides.
-	prestigeRows, prestigeErr := seedDemoPrestige(ctx, layout, opts.TitleSlug, matchIDs)
+	prestigeRows, prestigeErr := seedDemoPrestige(ctx, layout, opts.TitleSlug, opts.RepoRoot, matchIDs)
 	if prestigeErr != nil {
 		return res, fmt.Errorf("seed-demo: %w", prestigeErr)
 	}
