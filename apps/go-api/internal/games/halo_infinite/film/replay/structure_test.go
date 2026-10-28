@@ -1475,8 +1475,12 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   Même version, même jour (images-cles sans vehicule) : deux compteurs neufs de `coverage.vehicles` ; une
 	//   image-cle videe d un coup n est plus une preuve d absence d un vehicule. `grammar.Rev` monte sur
 	//   la meme branche : un v103 se lit « a redecoder ». Detail : `document_chronicle.go`.
-	if SchemaVersion != 104 {
-		t.Fatalf("SchemaVersion = %d, attendu 104 : incrémenter exige une raison écrite ci-dessus "+
+	// - 105 (2026-10-28, lot objets engendres) : champs neufs `carriedEquipment[].tracked[].{land,x,y,z}`
+	//   (position de repos de l objet engendre : dernier point publie de la trajectoire de sa vie) et
+	//   compteurs `coverage.carriedEquipment.{trackedPositioned,trackedUnpositioned}`. Assemblage seul :
+	//   un v104 se lit « a republier ». Detail : `document_chronicle.go`.
+	if SchemaVersion != 105 {
+		t.Fatalf("SchemaVersion = %d, attendu 105 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

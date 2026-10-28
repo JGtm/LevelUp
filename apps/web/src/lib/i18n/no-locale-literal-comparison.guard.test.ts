@@ -24,7 +24,7 @@
  * `localeScan.testutil.ts`.
  */
 import { describe, expect, it } from 'vitest'
-import { formatOverflow, languageDefaultLiteralLines, scanLanguageDefaultLiterals, scanLines } from './localeScan.testutil'
+import { formatOverflow, languageDefaultLiteralLines, scanLanguageDefaultLiterals, scanLines, TREE_SCAN_TIMEOUT_MS } from './localeScan.testutil'
 
 /** Interdit : toute comparaison de langue littérale non balisée. */
 const LOCALE_LITERAL_CEILING = 0
@@ -70,7 +70,7 @@ describe('garde-rail langue — comparaisons de langue littérales', () => {
       hits.length,
       formatOverflow(hits, LANGUAGE_DEFAULT_LITERAL_CEILING, "Écrire `locale = DEFAULT_LOCALE` (lib/i18n/locale) : le défaut de l'application vient de config/locales.toml."),
     ).toBeLessThanOrEqual(LANGUAGE_DEFAULT_LITERAL_CEILING)
-  })
+  }, TREE_SCAN_TIMEOUT_MS)
 
   it('auto-preuve : la détection des défauts littéraux voit les formes visées et ignore les autres', () => {
     const seen = (code: string): number => languageDefaultLiteralLines(code).length

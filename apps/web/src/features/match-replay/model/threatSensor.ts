@@ -90,26 +90,13 @@ export const SENSOR_REVEAL_MS = 750
 /**
  * Durée de vie officielle du capteur, en millisecondes (« Sensor Duration: 15 secondes »).
  *
- * ELLE BORNE CE QUI S'AFFICHE, et ce n'est plus le choix qui figurait ici. Le commentaire
- * précédent lisait la fenêtre `[t0, t1]` du document comme la RÉPLICATION de l'objet et en
- * concluait qu'un capteur « que le film ne réplique plus » ne devait pas être prolongé. La
- * mesure du 2026-08-18 (`filmdec/equipment_life_end_test.go`) l'a réfuté : `t1` date l'instant
- * où l'objet cesse de BOUGER — le décodage ne suit que les records porteurs d'une position —
- * et le recensement des keyframes montre l'entité bien vivante après (101 poses sur 295 du
- * film `000d5950`). Les 2,1 s de vie médiane d'un capteur sont donc la durée de sa CHUTE, pas
- * de son service.
- *
- * Le film ne datant aucune disparition, la seule durée disponible est celle-ci : officielle,
- * citée verbatim en tête de fichier, du même genre que la portée et la cadence qui gouvernent
- * déjà tout ce tracé. Elle sert aussi de CONTRÔLE de coût (cf. SENSOR_PINGS_DECLARED).
+ * C'EST LE REPLI DE LA FENÊTRE, PAS SON CONTRAT. Un capteur dont le film écrit la suppression
+ * (objet engendré situé, `endRead`, cf. `spawnedObjects.ts`) se dessine jusqu'à cette fin lue,
+ * qui peut dépasser 15 s ; cette durée ne vaut que pour une pose sans fin lue (`placementWindow.ts`).
+ * Elle ne borne ni le nombre de pings ni la révélation : le ping est périodique à tout âge
+ * (`sensorPing`).
  */
 export const SENSOR_DURATION_MS = 15_000
-
-/**
- * Nombre de pings d'une vie officielle : aux âges 0, 1,8 s, ... 14,4 s — soit NEUF. C'est la
- * borne de coût d'un capteur, au-delà il n'existe plus.
- */
-export const SENSOR_PINGS_DECLARED = Math.floor(SENSOR_DURATION_MS / SENSOR_PING_MS) + 1
 
 /**
  * Course de l'onde d'un ping, en millisecondes : le temps qu'elle met à atteindre le rayon.

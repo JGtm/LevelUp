@@ -3611,3 +3611,23 @@ package replay
 //	                hachent sa valeur ; `SchemaDesFaits` garde sa valeur.
 //
 //	LE PARC         un artefact 103 : verdict `redecoder` (la revision de grammaire a change).
+
+// v105 (2026-10-28, lot objets engendres). Le capteur, le traqueur, l ecran occultant et le champ de
+// reparation sont des projectiles (ti=41) que la pile i28 de l objet porte NOMME par leur vie
+// (slot, generation) ; le document les publiait (`carriedEquipment[].tracked[]`, {t0, t1}) sans
+// position, et le rejeu ne pouvait donc pas les dessiner.
+//
+//	`carriedEquipment[].tracked[].{land,x,y,z}`   la position de repos de l objet : `land` est la
+//	                 frame du dernier point PUBLIE de la trajectoire de la meme vie (la regle de
+//	                 `projectiles`, `volPublie` : un point par frame, vol coupe a un pas impossible),
+//	                 `x`,`y`,`z` sa position (z : l echantillon brut correspondant). Absents ENSEMBLE
+//	                 quand aucune trajectoire publiee ne porte la vie ; rien ne se devine et aucune
+//	                 position ne vient du porteur.
+//	`coverage.carriedEquipment.{trackedPositioned,trackedUnpositioned}`   objets engendres situes, et
+//	                 publies sans position (somme = `trackedObjects`).
+//
+//	CE QUI MONTE    `SchemaVersion` 104 -> 105. Aucune revision de couche ni `SchemaDesFaits` ne
+//	AVEC ELLE       bouge : l ASSEMBLAGE seul joint la trajectoire a l objet, a partir de faits deja lus
+//	                (les trajectoires et les lectures de l equipement porte sont des faits persistes).
+//
+//	LE PARC         un artefact 104 : verdict `a republier` (assemblage seul, aucun fait perime).

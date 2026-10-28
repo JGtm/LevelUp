@@ -10,6 +10,7 @@
 - **Les noms dans ta langue, partout** — les noms de cartes, de modes, de listes de jeu, d'armes et de médailles et les textes rédigés par le serveur suivent la langue de l'interface sur toutes les pages ; changer de langue recharge toutes les données dans la nouvelle langue, et l'export CSV est rédigé dans la langue de la page
 - **Les noms de Halo 5** — en français, certains noms qui restaient en anglais apparaissent en français ; en anglais, les cartes et les listes de jeu qui n'affichaient aucun nom l'affichent
 - **Les rangs dans ta langue** — « Diamant IV » plutôt que « Diamond 4 » en français, « Gold VI » plutôt que « Or VI » en anglais, sur toutes les pages ; les défis créés en anglais suivent aussi la langue de l'interface
+- **Capteur, traqueur, écran occultant et champ de réparation de retour sur la carte du rejeu** — dessinés là où ils retombent, aussi longtemps que le film dit qu'ils durent
 - **Traductions dans l'administration** — le formulaire propose un champ par langue ; l'application est prête à accueillir d'autres langues
 - **Option « Exclure BTB du classement carrière » retirée** — elle n'avait aucun effet
 

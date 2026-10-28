@@ -17,6 +17,7 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { join, relative, resolve, sep } from 'node:path'
 import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
+import { TREE_SCAN_TIMEOUT_MS } from './localeScan.testutil'
 
 const SRC_ROOT = resolve(process.cwd(), 'src')
 const SHORT_LITERAL_CEILING = 105
@@ -91,5 +92,5 @@ describe('garde-rail : texte JSX court écrit en dur (plafond gelé)', () => {
       hits.length,
       `Littéraux JSX courts : ${hits.length} (plafond ${SHORT_LITERAL_CEILING}). Utiliser formatMessage() ou un dictionnaire Record<Locale, T>.\n${hits.join('\n')}`,
     ).toBeLessThanOrEqual(SHORT_LITERAL_CEILING)
-  })
+  }, TREE_SCAN_TIMEOUT_MS)
 })

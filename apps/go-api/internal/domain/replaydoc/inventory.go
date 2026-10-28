@@ -186,10 +186,15 @@ type CarriedEquipment struct {
 }
 
 // CarriedTracked est un objet engendré par un équipement porté (pile i28) : son apparition et sa
-// suppression, quand elle est lue.
+// suppression, quand elle est lue, et sa position de repos (dernier point publié de sa trajectoire :
+// Land, X, Y, Z absents ensemble quand aucune trajectoire ne porte sa vie).
 type CarriedTracked struct {
-	T0 int  `json:"t0"`
-	T1 *int `json:"t1,omitempty"`
+	T0   int      `json:"t0"`
+	T1   *int     `json:"t1,omitempty"`
+	Land *int     `json:"land,omitempty"`
+	X    *float32 `json:"x,omitempty"`
+	Y    *float32 `json:"y,omitempty"`
+	Z    *float32 `json:"z,omitempty"`
 }
 
 // CarriedEnergy est une lecture de l'énergie d'un objet porté, avec ses usages restants.
