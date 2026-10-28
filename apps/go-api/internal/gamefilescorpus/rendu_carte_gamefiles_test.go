@@ -1,6 +1,6 @@
 //go:build gamefiles
 
-package himap
+package gamefilescorpus
 
 import (
 	"context"
@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"levelup/go-api/internal/himap"
 )
 
 // LE RENDU SUR UNE CARTE QUELCONQUE — la regle transfere-t-elle ?
@@ -31,11 +33,11 @@ func TestRenduCarte(t *testing.T) {
 	if carte == "" {
 		t.Skip("RENDU_CARTE non defini (nom de module au catalogue, ex. catalyst_map)")
 	}
-	racine, err := DeployRoot()
+	racine, err := himap.DeployRoot()
 	if err != nil {
 		t.Skip(err)
 	}
-	chemin, ok := ChercheModuleInstalle(carte)
+	chemin, ok := himap.ChercheModuleInstalle(carte)
 	if !ok {
 		t.Skipf("aucun module installe pour %q", carte)
 	}
@@ -46,7 +48,7 @@ func TestRenduCarte(t *testing.T) {
 		t.Skipf("aucune ancre au catalogue pour %q — pas d'oracle, pas de cadre", carte)
 	}
 
-	rendu, bilan, err := CuitCarteNative(context.Background(), OptionsCuisson{
+	rendu, bilan, err := himap.CuitCarteNative(context.Background(), himap.OptionsCuisson{
 		RacineDeploy:  racine,
 		CheminModule:  chemin,
 		Ancres:        ancres,
@@ -58,21 +60,21 @@ func TestRenduCarte(t *testing.T) {
 	journaliseBilan(t, rendu, bilan)
 
 	if sortie := os.Getenv("RENDU_PNG_CARTE"); sortie != "" {
-		ecritPNG(t, sortie, FondPNG(rendu, rendu.NX, rendu.NY, nil, styleDemande()))
+		ecritPNG(t, sortie, himap.FondPNG(rendu, rendu.NX, rendu.NY, nil, styleDemande()))
 		fmt.Println("carte ecrite:", sortie)
 	}
 }
 
 // styleDemande rend l'habillage demande par l'environnement, ou celui de production.
-func styleDemande() StyleFond {
-	if s := StyleFond(os.Getenv("RENDU_STYLE")); s != "" {
+func styleDemande() himap.StyleFond {
+	if s := himap.StyleFond(os.Getenv("RENDU_STYLE")); s != "" {
 		return s
 	}
-	return StyleFondParDefaut
+	return himap.StyleFondParDefaut
 }
 
 // journaliseBilan rend au journal du test ce que la cuisson a mesure.
-func journaliseBilan(t *testing.T, r *Rendu, b BilanCuisson) {
+func journaliseBilan(t *testing.T, r *himap.Rendu, b himap.BilanCuisson) {
 	t.Helper()
 	t.Logf("cadre %d x %d px a %.4f m/px · %d instances dessinees · %d ecartees comme decor",
 		r.NX, r.NY, r.Cell, b.Dessinees, b.EcarteesDecor)
@@ -109,19 +111,19 @@ func ancresPlatesDuModule(t *testing.T, module string) [][3]float64 {
 // ca : elles appellent la production et journalisent. Toute logique qui apparaitrait ici serait
 // une seconde chaine, donc une divergence en puissance.
 
-func cadreSurAncres(t *testing.T, ancres [][3]float64) *Rendu {
+func cadreSurAncres(t *testing.T, ancres [][3]float64) *himap.Rendu {
 	t.Helper()
-	r := CadreSurAncres(ancres)
+	r := himap.CadreSurAncres(ancres)
 	t.Logf("cadre [%.1f ; %.1f] x [%.1f ; %.1f] -> %d x %d px a %.4f m/px",
 		r.Min[0], r.Min[0]+float64(r.NX)*r.Cell, r.Min[1], r.Min[1]+float64(r.NY)*r.Cell,
 		r.NX, r.NY, r.Cell)
 	return r
 }
 
-func peupleRendu(t *testing.T, rendu *Rendu, racine, chemin string, ancres [][3]float64) (int, int) {
+func peupleRendu(t *testing.T, rendu *himap.Rendu, racine, chemin string, ancres [][3]float64) (int, int) {
 	t.Helper()
-	var b BilanCuisson
-	err := peupleDepuisModule(context.Background(), rendu, &b, OptionsCuisson{
+	var b himap.BilanCuisson
+	err := himap.PeupleDepuisModule(context.Background(), rendu, &b, himap.OptionsCuisson{
 		RacineDeploy: racine, CheminModule: chemin, Ancres: ancres,
 	})
 	if err != nil {
@@ -131,10 +133,10 @@ func peupleRendu(t *testing.T, rendu *Rendu, racine, chemin string, ancres [][3]
 	return b.Dessinees, b.EcarteesDecor
 }
 
-func jugeParLesAncres(t *testing.T, r *Rendu, ancres [][3]float64) {
+func jugeParLesAncres(t *testing.T, r *himap.Rendu, ancres [][3]float64) {
 	t.Helper()
-	var b BilanCuisson
-	JugeParLesAncres(r, &b, ancres)
+	var b himap.BilanCuisson
+	himap.JugeParLesAncres(r, &b, ancres)
 	if b.AncresDansLeCadre == 0 {
 		t.Fatal("aucune ancre dans le cadre — le cadrage est faux")
 	}
@@ -143,10 +145,10 @@ func jugeParLesAncres(t *testing.T, r *Rendu, ancres [][3]float64) {
 		100*float64(b.AncresAvecSol)/float64(b.AncresDansLeCadre), b.EcartMedianAncre)
 }
 
-func poseEauDepuisSddt(t *testing.T, r *Rendu, cheminModule string) {
+func poseEauDepuisSddt(t *testing.T, r *himap.Rendu, cheminModule string) {
 	t.Helper()
-	var b BilanCuisson
-	PoseEauDepuisModule(context.Background(), r, &b, cheminModule)
+	var b himap.BilanCuisson
+	himap.PoseEauDepuisModule(context.Background(), r, &b, cheminModule)
 	for _, d := range b.Degradations {
 		t.Logf("eau : %s", d)
 	}

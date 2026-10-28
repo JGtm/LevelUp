@@ -1,4 +1,4 @@
-package himap
+package gamefilescorpus
 
 // LA CLE D'UN FOND FORGE EST SON map_id — garde-rails de la decision du 2026-08-13
 // (plan fonds par map_id). Un canevas (fo08_wetland, fo11_blank, ...) est partage par des
@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
+	"levelup/go-api/internal/himap"
 )
 
 // regexpMapID : la forme d'un asset UGC (uuid v4 minuscule) — la cle de publication Forge.
@@ -24,7 +25,7 @@ var regexpMapID = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a
 // un nom, un `.mvar` de CARTE (jamais le rack du canevas) et un canevas connu.
 func TestCartesForgeDeclarations(t *testing.T) {
 	vus := map[string]string{}
-	for _, c := range CartesForge {
+	for _, c := range himap.CartesForge {
 		if !regexpMapID.MatchString(c.MapID) {
 			t.Errorf("%s : MapID %q n'est pas un asset UGC — la cle de publication serait fausse", c.Nom, c.MapID)
 		}
@@ -45,13 +46,13 @@ func TestCartesForgeDeclarations(t *testing.T) {
 		if strings.TrimSpace(c.ModuleCanevas) == "" {
 			t.Errorf("%s : ModuleCanevas vide", c.Nom)
 		}
-		if !EstCanevasForge(c.ModuleCanevas) {
+		if !himap.EstCanevasForge(c.ModuleCanevas) {
 			t.Errorf("%s : EstCanevasForge(%q) devrait etre vrai", c.Nom, c.ModuleCanevas)
 		}
 	}
 	// Un module NATIF n'est jamais un canevas Forge : la chaine native doit le cuire.
 	for _, natif := range []string{"ridgeline", "catalyst", "btb_engine"} {
-		if EstCanevasForge(natif) {
+		if himap.EstCanevasForge(natif) {
 			t.Errorf("EstCanevasForge(%q) devrait etre faux — module natif", natif)
 		}
 	}
@@ -72,7 +73,7 @@ func TestFondForgeJamaisSousCleModule(t *testing.T) {
 		t.Fatalf("dossier des fonds versionnes introuvable : %v", err)
 	}
 	declares := map[string]string{}
-	for _, c := range CartesForge {
+	for _, c := range himap.CartesForge {
 		declares[c.MapID] = c.Nom
 		// L'IMAGE peut etre un `.png` ou un `.webp` : le format est une propriete de la
 		// DONNEE, pas du code (plan fonds WebP, D3, etape 4). Le sidecar, lui, reste
@@ -142,7 +143,7 @@ func uneExtensionExiste(dir, cle string, extensions []string) bool {
 // les volumes qui en ont une.
 func TestBoiteDesVolumesDeMort(t *testing.T) {
 	var typeMort int32
-	for id := range TypesVolumesDeMort {
+	for id := range himap.TypesVolumesDeMort {
 		typeMort = id
 		break
 	}
@@ -157,7 +158,7 @@ func TestBoiteDesVolumesDeMort(t *testing.T) {
 		// Pas un volume de mort : ignore, meme avec une forme.
 		{TypeID: typeMort + 12345, Pos: mapvar.Vec3{X: -900, Y: -900}, ShapeRaw: forme},
 	}
-	boite, n := BoiteDesVolumesDeMort(objets)
+	boite, n := himap.BoiteDesVolumesDeMort(objets)
 	if n != 2 {
 		t.Fatalf("volumes retenus = %d, attendu 2 (un sans forme et un non-mortel sont ecartes)", n)
 	}
@@ -166,7 +167,7 @@ func TestBoiteDesVolumesDeMort(t *testing.T) {
 	if boite[0] > -10-d || boite[1] > -20-d || boite[2] < 10+d || boite[3] < 20+d {
 		t.Fatalf("boite %v n'enveloppe pas les deux volumes (demi-diagonale %.2f)", boite, d)
 	}
-	if _, n := BoiteDesVolumesDeMort(nil); n != 0 {
+	if _, n := himap.BoiteDesVolumesDeMort(nil); n != 0 {
 		t.Fatal("aucun objet : aucun volume retenu")
 	}
 }

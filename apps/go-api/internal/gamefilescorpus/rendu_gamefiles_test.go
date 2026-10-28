@@ -1,6 +1,6 @@
 //go:build gamefiles
 
-package himap
+package gamefilescorpus
 
 import (
 	"fmt"
@@ -13,13 +13,14 @@ import (
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/himap"
 	"levelup/go-api/internal/testfixtures"
 )
 
 // TestRenduCliffhanger produit le rendu du maillage vu du dessus, au calage de la carte
 // validee, et l'ecrit cote a cote avec elle. Il ne juge rien : le juge est l'utilisateur.
 func TestRenduCliffhanger(t *testing.T) {
-	racine, err := DeployRoot()
+	racine, err := himap.DeployRoot()
 	if err != nil {
 		t.Skip(err)
 	}
@@ -38,13 +39,13 @@ func TestRenduCliffhanger(t *testing.T) {
 
 	lo := [2]float64{gateX0, gateY1 - float64(haut)*gateEchelle}
 	hi := [2]float64{gateX0 + float64(larg)*gateEchelle, gateY1}
-	rendu := NewRendu(lo, hi, gateEchelle)
+	rendu := himap.NewRendu(lo, hi, gateEchelle)
 	// LA TRANCHE DE JEU — configuration validee par l'utilisateur le 2026-08-09.
 	//
 	// L'ancien defaut (plafond « deduit des ancres » a +6,95 m, aucun plancher) est FAUX des
 	// deux cotes : il coupait 118 000 pixels justes entre +10 et +35 m, et laissait entrer
 	// 807 000 pixels de decor sous -10 m. RENDU_TRANCHE le rejoue pour la comparaison.
-	plancher, plafond := TrancheDeJeuMin, TrancheDeJeuMax
+	plancher, plafond := himap.TrancheDeJeuMin, himap.TrancheDeJeuMax
 	if v := os.Getenv("RENDU_TRANCHE"); v != "" {
 		fmt.Sscanf(v, "%f,%f", &plancher, &plafond)
 	}
@@ -58,19 +59,19 @@ func TestRenduCliffhanger(t *testing.T) {
 	t.Logf("tranche d'altitude : [%+.2f ; %+.2f] m", plancher, plafond)
 
 	modCarte := moduleDuJeu(t, "pc", "ridgeline")
-	chemins, _ := GeometrySearchPath(racine, modCarte)
-	idx, err := NewModuleIndex(chemins...)
+	chemins, _ := himap.GeometrySearchPath(racine, modCarte)
+	idx, err := himap.NewModuleIndex(chemins...)
 	if err != nil {
 		t.Fatal(err)
 	}
-	bsps, _ := ReadModuleInstances(modCarte)
+	bsps, _ := himap.ReadModuleInstances(modCarte)
 	// Le bsp DESIGNE PAR LES ANCRES, comme partout ailleurs dans ce package. Prendre « tous
 	// les bsp » ramenait l'horizon de 6 619 x 10 471 m, dont la dalle de fond de scene couvre
 	// 100 % du cadre — porte deja fermee au §9.2 du handoff.
-	bsp := ChoisitBSP(bsps, ancresCliffhanger(t))
+	bsp := himap.ChoisitBSP(bsps, ancresCliffhanger(t))
 	// Le niveau JOUE, deduit des ancres : c'est contre lui que les habillages `jeu` et `encre`
 	// mesurent l'altitude, au lieu de la mesurer contre elle-meme.
-	rendu.NiveauDeJeu(MedianeZ(ancresCliffhanger(t)) - AncrageDecalageSol)
+	rendu.NiveauDeJeu(himap.MedianeZ(ancresCliffhanger(t)) - himap.AncrageDecalageSol)
 	// Temoin A/B : neutraliser le champ `scale` reproduit la lecture d'avant le 2026-08-09.
 	// N'existe que pour departager, jamais pour produire une carte.
 	sansEchelle := os.Getenv("RENDU_SANS_ECHELLE") != ""
@@ -109,8 +110,8 @@ func TestRenduCliffhanger(t *testing.T) {
 		aHi = [2]float64{math.Inf(-1), math.Inf(-1)}
 		for _, a := range ancresCliffhanger(t) {
 			for k := 0; k < 2; k++ {
-				aLo[k] = math.Min(aLo[k], a[k]-PorteeAncre)
-				aHi[k] = math.Max(aHi[k], a[k]+PorteeAncre)
+				aLo[k] = math.Min(aLo[k], a[k]-himap.PorteeAncre)
+				aHi[k] = math.Max(aHi[k], a[k]+himap.PorteeAncre)
 			}
 		}
 		t.Logf("TEMOIN : emprise bornee aux ancres [%.1f ; %.1f] x [%.1f ; %.1f] = %.0f x %.0f m",
@@ -126,17 +127,17 @@ func TestRenduCliffhanger(t *testing.T) {
 	}
 	// TRI DE LA ZONE JOUABLE par la finesse du maillage — defaut valide par l'utilisateur le
 	// 2026-08-09 (cf. `zone_jouable.go`). RENDU_AIRE_MAX=0 le desactive pour la comparaison.
-	aireMax := AireMaxTriangleJouable
+	aireMax := himap.AireMaxTriangleJouable
 	if v := os.Getenv("RENDU_AIRE_MAX"); v != "" {
 		fmt.Sscanf(v, "%f", &aireMax)
 	}
 	t.Logf("tri de la zone jouable : aire mediane de triangle <= %.4f m2 (0 = desactive)", aireMax)
 	var aires []float64
 
-	assets := map[uint32]*RuntimeGeoAsset{}
+	assets := map[uint32]*himap.RuntimeGeoAsset{}
 	n, globaux, nonResolues, maillageNil, supprimees, ombres := 0, 0, 0, 0, 0, 0
 	coupeesParPlafond, horsEmprise, tropGrossieres := 0, 0, 0
-	var inconnues []Instance
+	var inconnues []himap.Instance
 	for _, in := range bsp.Instances {
 		if in.QuickDeleted() {
 			supprimees++
@@ -160,7 +161,7 @@ func TestRenduCliffhanger(t *testing.T) {
 		}
 		id := in.RuntimeGeoID()
 		g, mod, ok := idx.Lookup(id)
-		if !ok || g != GroupeRtgo {
+		if !ok || g != himap.GroupeRtgo {
 			nonResolues++
 			inconnues = append(inconnues, in)
 			continue
@@ -185,16 +186,16 @@ func TestRenduCliffhanger(t *testing.T) {
 			if err != nil {
 				continue
 			}
-			if a, err = NewRuntimeGeoAsset(tag, blob); err != nil {
+			if a, err = himap.NewRuntimeGeoAsset(tag, blob); err != nil {
 				continue
 			}
 			assets[id] = a
 		}
 		if m := a.Mesh(in.MeshIndex); m != nil {
 			if aireMax > 0 {
-				aires = append(aires, AireMedianeProjetee(m, in))
+				aires = append(aires, himap.AireMedianeProjetee(m, in))
 			}
-			if EstDecorGrossier(m, in, aireMax) {
+			if himap.EstDecorGrossier(m, in, aireMax) {
 				tropGrossieres++
 				continue
 			}
@@ -220,7 +221,7 @@ func TestRenduCliffhanger(t *testing.T) {
 	t.Logf("%d instances entierement au-dessus du plafond · %d hors emprise des ancres", coupeesParPlafond, horsEmprise)
 	if len(aires) > 0 {
 		t.Logf("aire mediane de triangle, par instance : p10 %.4f · p50 %.4f · p90 %.4f · p99 %.4f m2 (%d instances ecartees)",
-			Centile(aires, 0.10), Centile(aires, 0.50), Centile(aires, 0.90), Centile(aires, 0.99), tropGrossieres)
+			himap.Centile(aires, 0.10), himap.Centile(aires, 0.50), himap.Centile(aires, 0.90), himap.Centile(aires, 0.99), tropGrossieres)
 	}
 
 	// Trois vignettes : reference | reconstruction | carte des ecarts (cf. comparePixels).
@@ -282,14 +283,14 @@ func TestRenduCliffhanger(t *testing.T) {
 			t.Log("REPLI : carte masquee par la silhouette de la reference (Cliffhanger UNIQUEMENT)")
 		}
 		// Le style de PRODUCTION (cf. StyleFondParDefaut, fond_png.go) ; RENDU_STYLE le force.
-		style := StyleFond(os.Getenv("RENDU_STYLE"))
+		style := himap.StyleFond(os.Getenv("RENDU_STYLE"))
 		if style == "" {
-			style = StyleFondParDefaut
+			style = himap.StyleFondParDefaut
 		}
 		bas, haute, _ := rendu.BornesAltitudeRobustes()
 		t.Logf("style %q · bornes d'altitude robustes (centiles 2/98) [%+.2f ; %+.2f] m",
 			style, bas, haute)
-		ecritPNG(t, seule, FondPNG(rendu, larg, haut, masque, style))
+		ecritPNG(t, seule, himap.FondPNG(rendu, larg, haut, masque, style))
 		fmt.Println("carte seule ecrite:", seule)
 	}
 }

@@ -3,17 +3,19 @@ package mapvar
 import (
 	"math"
 	"os"
+	"path/filepath"
 	"testing"
-
-	"levelup/go-api/internal/testfixtures"
 )
 
-// fixtureDir : les .mvar de référence vivent sous internal/testfixtures/testdata/cartes/mapvar/ (artefacts de
-// rétro-ingénierie déjà présents en dépôt). On ne les duplique pas dans testdata/ :
-// ce sont des actifs propriétaires 343/Microsoft.
+// fixture lit un .mvar de référence sous testdata/ : trois variantes (cliffhanger_map,
+// cliffhanger_ridgeline, vagabond_fo08_wetland), des artefacts de rétro-ingénierie. Le paquet
+// est une brique autonome (il n'importe rien du dépôt, même en test) : il porte SA copie de ces
+// fichiers ; une seconde copie vit sous internal/testfixtures/testdata/cartes/mapvar/ pour les
+// outils de LevelUp (mapcatalog, mapdecoupe, mapobj-build). Ce sont des actifs propriétaires
+// 343/Microsoft : ne pas en ajouter d'autres.
 func fixture(t *testing.T, name string) []byte {
 	t.Helper()
-	path := testfixtures.Carte("mapvar", name)
+	path := filepath.Join("testdata", name)
 	buf, err := os.ReadFile(path)
 	if err != nil {
 		t.Skipf("fixture %s absente (%v) — test de parse ignoré", name, err)

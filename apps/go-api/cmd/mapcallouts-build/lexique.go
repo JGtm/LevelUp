@@ -105,3 +105,25 @@ func fusionneLexique(base, lex mapcatalog.Lexique) (mapcatalog.Lexique, int, err
 	}
 	return out, ajouts, nil
 }
+
+// versTextes convertit le lexique rendu par himap.LexiqueLieux (code de langue du jeu -> texte)
+// en textes de l'application. La traduction d'un code passe par i18n.FromHaloTag, seule
+// autorité sur la liste des langues (config/locales.toml). Un code que l'application ne connaît
+// pas n'est pas converti : il est compté et rendu pour que l'appelant le journalise.
+func versTextes(brut map[uint32]map[string]string) (map[uint32]i18n.Text, int) {
+	out := make(map[uint32]i18n.Text, len(brut))
+	inconnus := 0
+	for id, parLangue := range brut {
+		var t i18n.Text
+		for code, s := range parLangue {
+			l, ok := i18n.FromHaloTag(code)
+			if !ok {
+				inconnus++
+				continue
+			}
+			t.Set(l, s)
+		}
+		out[id] = t
+	}
+	return out, inconnus
+}

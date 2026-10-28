@@ -447,7 +447,7 @@ jobs:
       # l'est pas sur le runner Windows, et compiler le corpus DEUX fois n'apprend rien.
       - name: go vet (corpus gamefiles — compilation seule, jamais exécuté en CI)
         if: runner.os == 'Linux'
-        run: go vet -tags=gamefiles ./internal/himap/ ./cmd/mapstruct-build/ ./cmd/mapfond-build/
+        run: go vet -tags=gamefiles ./internal/himap/ ./internal/gamefilescorpus/ ./cmd/mapstruct-build/ ./cmd/mapfond-build/
         env:
           CGO_ENABLED: "1"
 

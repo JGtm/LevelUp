@@ -1,6 +1,6 @@
 //go:build gamefiles
 
-package himap
+package gamefilescorpus
 
 import (
 	"fmt"
@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/himap"
 	"levelup/go-api/internal/himodule"
 )
 
@@ -25,16 +26,16 @@ import (
 // disjoints, la question n'est plus « pourquoi le sol manque » mais « pourquoi les ancres sont
 // ailleurs », ce qui est un tout autre probleme.
 func TestDiagnosticLiveFire(t *testing.T) {
-	if _, err := DeployRoot(); err != nil {
+	if _, err := himap.DeployRoot(); err != nil {
 		t.Skip(err)
 	}
 	for _, module := range []string{"live_fire_sgh_interlock", "recharge_sgh_blueprint", "cliffhanger_ridgeline"} {
-		chemin, ok := ChercheModuleInstalle(module)
+		chemin, ok := himap.ChercheModuleInstalle(module)
 		if !ok {
 			t.Logf("%-26s module introuvable", module)
 			continue
 		}
-		bsps, err := ReadModuleInstances(chemin)
+		bsps, err := himap.ReadModuleInstances(chemin)
 		if err != nil {
 			t.Logf("%-26s lecture KO : %v", module, err)
 			continue
@@ -79,10 +80,10 @@ func TestDiagnosticLiveFire(t *testing.T) {
 // Ce test ne conclut pas : il compte les tags par groupe pour la carte fautive et pour deux
 // temoins, et laisse les chiffres decider.
 func TestInventaireModuleLiveFire(t *testing.T) {
-	if _, err := DeployRoot(); err != nil {
+	if _, err := himap.DeployRoot(); err != nil {
 		t.Skip(err)
 	}
-	racine, _ := DeployRoot()
+	racine, _ := himap.DeployRoot()
 	cibles := []string{"live_fire_sgh_interlock", "recharge_sgh_blueprint", "streets_sgh_streets"}
 	// Les modules PARTAGES : si la geometrie de Live Fire n est pas chez elle, elle est
 	// peut-etre la — multiplayer-rtx-new pese 955 Mo et n appartient a aucune carte.
@@ -100,7 +101,7 @@ func TestInventaireModuleLiveFire(t *testing.T) {
 		chemin := module
 		if !strings.HasSuffix(module, ".module") {
 			var ok bool
-			chemin, ok = ChercheModuleInstalle(module)
+			chemin, ok = himap.ChercheModuleInstalle(module)
 			if !ok {
 				t.Logf("%-26s module introuvable", module)
 				continue
@@ -140,11 +141,11 @@ func TestInventaireModuleLiveFire(t *testing.T) {
 // scenarios et les zones. Un nom de dossier autre que `sgh_interlock` y designerait le
 // module reellement porteur.
 func TestLevlLiveFireDesigneQuoi(t *testing.T) {
-	if _, err := DeployRoot(); err != nil {
+	if _, err := himap.DeployRoot(); err != nil {
 		t.Skip(err)
 	}
 	for _, module := range []string{"live_fire_sgh_interlock", "recharge_sgh_blueprint"} {
-		chemin, ok := ChercheModuleInstalle(module)
+		chemin, ok := himap.ChercheModuleInstalle(module)
 		if !ok {
 			continue
 		}
@@ -197,7 +198,7 @@ func chainesLisibles(b []byte, minLen, maxOut int) []string {
 // Le depart se fait par l'emprise, l'oracle deja employe par TestDiagnosticLiveFire : si l'un
 // de ces quatre bsp contient les ancres d'objectif de Live Fire, c'est sa geometrie.
 func TestGeometrieLiveFireDansCommon(t *testing.T) {
-	racine, err := DeployRoot()
+	racine, err := himap.DeployRoot()
 	if err != nil {
 		t.Skip(err)
 	}
@@ -218,7 +219,7 @@ func TestGeometrieLiveFireDansCommon(t *testing.T) {
 
 	for _, nom := range []string{"common-rtx-new.module", "multiplayer-rtx-new.module"} {
 		chemin := filepath.Join(racine, "pc", "globals", nom)
-		bsps, err := ReadModuleInstances(chemin)
+		bsps, err := himap.ReadModuleInstances(chemin)
 		if err != nil {
 			t.Logf("%s : lecture KO : %v", nom, err)
 			continue

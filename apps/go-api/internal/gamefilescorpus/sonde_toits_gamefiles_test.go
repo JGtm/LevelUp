@@ -1,6 +1,6 @@
 //go:build gamefiles
 
-package himap
+package gamefilescorpus
 
 // SONDE DES TOITS — cherche le critere UNIVERSEL qui separe un PLAFOND (a remplacer par le sol
 // qui est dessous) d'un ROCHER HAUT valide (l'identite de Cliffhanger, a ne pas toucher).
@@ -28,6 +28,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/himap"
 )
 
 // cartesSondeToits : cles = dossiers installes, dans l'ordre du verdict utilisateur.
@@ -69,7 +70,7 @@ func ancresParCleInstallee(t *testing.T) map[string]struct {
 	connues := map[string]map[[3]float64]bool{}
 	for _, id := range ids {
 		e := cat.Maps[id]
-		chemin, ok := ChercheModuleInstalle(e.Module)
+		chemin, ok := himap.ChercheModuleInstalle(e.Module)
 		if !ok {
 			continue
 		}
@@ -92,7 +93,7 @@ func ancresParCleInstallee(t *testing.T) map[string]struct {
 }
 
 func TestSondeToits(t *testing.T) {
-	racine, err := DeployRoot()
+	racine, err := himap.DeployRoot()
 	if err != nil {
 		t.Skip(err)
 	}
@@ -112,13 +113,13 @@ func TestSondeToits(t *testing.T) {
 
 func mesureToits(t *testing.T, racine, chemin string, ancres [][3]float64) {
 	t.Helper()
-	s := NewSurfaceReference(ancres)
-	r := CadreSurAncres(ancres)
-	zJeu := MedianeZ(ancres) - AncrageDecalageSol
-	r.Tranche(TrancheDeJeu(zJeu))
+	s := himap.NewSurfaceReference(ancres)
+	r := himap.CadreSurAncres(ancres)
+	zJeu := himap.MedianeZ(ancres) - himap.AncrageDecalageSol
+	r.Tranche(himap.TrancheDeJeu(zJeu))
 	r.ArmeReference(s)
-	var b BilanCuisson
-	if err := peupleDepuisModule(context.Background(), r, &b, OptionsCuisson{
+	var b himap.BilanCuisson
+	if err := himap.PeupleDepuisModule(context.Background(), r, &b, himap.OptionsCuisson{
 		RacineDeploy: racine, CheminModule: chemin, Ancres: ancres,
 	}); err != nil {
 		t.Skipf("cuisson impossible : %v", err)
@@ -140,7 +141,7 @@ func mesureToits(t *testing.T, racine, chemin string, ancres [][3]float64) {
 				continue
 			}
 			nMat++
-			proche := s.DistanceAncre(r.Min[0]+(float64(i)+0.5)*r.Cell, y) <= PorteeAncre
+			proche := s.DistanceAncre(r.Min[0]+(float64(i)+0.5)*r.Cell, y) <= himap.PorteeAncre
 			if proche {
 				nMatProche++
 			}
@@ -170,8 +171,8 @@ func mesureToits(t *testing.T, racine, chemin string, ancres [][3]float64) {
 		nAltProche, nMatProche, 100*float64(nAltProche)/float64(max(nMatProche, 1)))
 	if len(hautsAlt) > 0 {
 		t.Logf("zHaut-ref des cellules a alternative : q10 %.1f · q25 %.1f · mediane %.1f · q75 %.1f · q90 %.1f",
-			Centile(hautsAlt, 0.10), Centile(hautsAlt, 0.25), Centile(hautsAlt, 0.5),
-			Centile(hautsAlt, 0.75), Centile(hautsAlt, 0.90))
+			himap.Centile(hautsAlt, 0.10), himap.Centile(hautsAlt, 0.25), himap.Centile(hautsAlt, 0.5),
+			himap.Centile(hautsAlt, 0.75), himap.Centile(hautsAlt, 0.90))
 	}
 	for si, S := range seuilsS {
 		var ligne strings.Builder
@@ -186,7 +187,7 @@ func mesureToits(t *testing.T, racine, chemin string, ancres [][3]float64) {
 
 // mesureAncresToits journalise, ancre par ancre, la surface HAUTE dessinee a son aplomb, en
 // metres au-dessus de son sol. Un plafond se lit ici directement.
-func mesureAncresToits(t *testing.T, r *Rendu, ancres [][3]float64) {
+func mesureAncresToits(t *testing.T, r *himap.Rendu, ancres [][3]float64) {
 	t.Helper()
 	var dessus []float64
 	couvertes := 0
@@ -194,7 +195,7 @@ func mesureAncresToits(t *testing.T, r *Rendu, ancres [][3]float64) {
 		i := int((a[0] - r.Min[0]) / r.Cell)
 		j := int((a[1] - r.Min[1]) / r.Cell)
 		if z, ok := r.Altitude(i, j); ok {
-			d := z - (a[2] - AncrageDecalageSol)
+			d := z - (a[2] - himap.AncrageDecalageSol)
 			dessus = append(dessus, d)
 			if d >= 4 {
 				couvertes++
@@ -203,6 +204,6 @@ func mesureAncresToits(t *testing.T, r *Rendu, ancres [][3]float64) {
 	}
 	if len(dessus) > 0 {
 		t.Logf("ANCRES : %d/%d sous une surface a >=4 m au-dessus de leur sol · surplomb q50 %.1f m · q90 %.1f m",
-			couvertes, len(dessus), Centile(dessus, 0.5), Centile(dessus, 0.90))
+			couvertes, len(dessus), himap.Centile(dessus, 0.5), himap.Centile(dessus, 0.90))
 	}
 }

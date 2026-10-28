@@ -177,10 +177,14 @@ func construitLexique(opts options) {
 		slog.Error("lexique : installation du jeu", "err", err)
 		os.Exit(1)
 	}
-	lex, err := himap.LexiqueLieux(racine)
+	brut, err := himap.LexiqueLieux(racine)
 	if err != nil {
 		slog.Error("lexique : extraction", "err", err)
 		os.Exit(1)
+	}
+	lex, inconnus := versTextes(brut)
+	if inconnus > 0 {
+		slog.Warn("lexique : textes dans une langue absente de config/locales.toml, ignorés", "textes", inconnus)
 	}
 	path := cheminLexique(opts.outPath)
 	n, ecartes, err := ecritLexique(path, lex)

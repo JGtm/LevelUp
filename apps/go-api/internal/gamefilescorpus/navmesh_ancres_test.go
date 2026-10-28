@@ -1,6 +1,6 @@
-package hinavmesh
+package gamefilescorpus
 
-// oracle_ancres_test.go — L'ORACLE : les ancres d'objectif tombent-elles sur le maillage ?
+// navmesh_ancres_test.go — L'ORACLE : les ancres d'objectif tombent-elles sur le maillage ?
 //
 // Les ancres d'objectif d'une carte (drapeau, colline, zone, bombe...) sont du TERRAIN
 // JOUE par definition : le jeu y pose un objet que des joueurs vont chercher a pied. Si
@@ -22,6 +22,7 @@ import (
 	"sort"
 	"testing"
 
+	"levelup/go-api/internal/hinavmesh"
 	"levelup/go-api/internal/testutil"
 )
 
@@ -126,7 +127,7 @@ func TestOracleAncresDansLeMaillage(t *testing.T) {
 			sort.Float64s(ecarts)
 			t.Logf("%s : %d/%d ancres dans un polygone ; ecart d'altitude median %.3f m ; "+
 				"emprise X[%.2f..%.2f] Y[%.2f..%.2f] Z[%.2f..%.2f] ; %d faces, %d sommets, %.0f m2",
-				c.nom, len(ecarts), len(carte.Objectives), mediane(ecarts),
+				c.nom, len(ecarts), len(carte.Objectives), medianeTriee(ecarts),
 				m.Min.X, m.Max.X, m.Min.Y, m.Max.Y, m.Min.Z, m.Max.Z,
 				len(m.Faces), len(m.Sommets), m.AireAuSol())
 		})
@@ -178,7 +179,7 @@ func TestOracleMaillageSousLesCoques(t *testing.T) {
 // ecartAuMaillage rend l'ecart d'altitude entre un point et le polygone qui le contient en
 // XY, en gardant le polygone le plus proche verticalement. Le second retour est faux si
 // aucun polygone ne contient le point.
-func ecartAuMaillage(m *Maillage, x, y, z float64) (float64, bool) {
+func ecartAuMaillage(m *hinavmesh.Maillage, x, y, z float64) (float64, bool) {
 	meilleur, trouve := math.Inf(1), false
 	for _, f := range m.Faces {
 		contour := m.Contour(f)
@@ -195,7 +196,7 @@ func ecartAuMaillage(m *Maillage, x, y, z float64) (float64, bool) {
 
 // dansPolygone teste l'appartenance d'un point au polygone, projete dans le plan XY,
 // par la regle du nombre de croisements.
-func dansPolygone(x, y float64, contour []Point) bool {
+func dansPolygone(x, y float64, contour []hinavmesh.Point) bool {
 	dedans := false
 	for i, j := 0, len(contour)-1; i < len(contour); j, i = i, i+1 {
 		pi, pj := contour[i], contour[j]
@@ -207,7 +208,7 @@ func dansPolygone(x, y float64, contour []Point) bool {
 }
 
 // altitudePlan rend l'altitude du plan du polygone a l'aplomb de (x, y).
-func altitudePlan(x, y float64, contour []Point) float64 {
+func altitudePlan(x, y float64, contour []hinavmesh.Point) float64 {
 	a, b, c := contour[0], contour[1], contour[2]
 	ux, uy, uz := b.X-a.X, b.Y-a.Y, b.Z-a.Z
 	vx, vy, vz := c.X-a.X, c.Y-a.Y, c.Z-a.Z
@@ -218,26 +219,12 @@ func altitudePlan(x, y float64, contour []Point) float64 {
 	return a.Z - (nx*(x-a.X)+ny*(y-a.Y))/nz
 }
 
-func mediane(v []float64) float64 {
+// medianeTriee : médiane d'une série DÉJÀ TRIÉE.
+func medianeTriee(v []float64) float64 {
 	if len(v) == 0 {
 		return math.NaN()
 	}
 	return v[len(v)/2]
-}
-
-// decodeTemoin decode le navmesh verse en testdata pour un asset.
-func decodeTemoin(t *testing.T, assetID string) *Maillage {
-	t.Helper()
-	chemin := filepath.Join("testdata", assetID+".navmesh.blob")
-	blob, err := os.ReadFile(chemin) //nolint:gosec // chemin de test, versionne
-	if err != nil {
-		t.Fatalf("lecture de %s: %v", chemin, err)
-	}
-	m, err := Decode(blob)
-	if err != nil {
-		t.Fatalf("Decode(%s): %v", chemin, err)
-	}
-	return m
 }
 
 // chargeReferentiel lit le catalogue VERSIONNE des ancres d'objectif.
@@ -266,7 +253,7 @@ func chargeReferentiel(t *testing.T) referentielCartes {
 const toleranceBordure = 2.5
 
 // distanceAuBord rend la distance XY d'un point au bord le plus proche du maillage.
-func distanceAuBord(m *Maillage, x, y float64) float64 {
+func distanceAuBord(m *hinavmesh.Maillage, x, y float64) float64 {
 	meilleure := math.Inf(1)
 	for _, f := range m.Faces {
 		contour := m.Contour(f)
@@ -281,7 +268,7 @@ func distanceAuBord(m *Maillage, x, y float64) float64 {
 }
 
 // distanceAuSegment rend la distance XY d'un point au segment [a, b].
-func distanceAuSegment(x, y float64, a, b Point) float64 {
+func distanceAuSegment(x, y float64, a, b hinavmesh.Point) float64 {
 	dx, dy := b.X-a.X, b.Y-a.Y
 	long := dx*dx + dy*dy
 	t := 0.0
@@ -289,4 +276,20 @@ func distanceAuSegment(x, y float64, a, b Point) float64 {
 		t = math.Max(0, math.Min(1, ((x-a.X)*dx+(y-a.Y)*dy)/long))
 	}
 	return math.Hypot(x-(a.X+t*dx), y-(a.Y+t*dy))
+}
+
+// decodeTemoin decode le navmesh verse en testdata pour un asset (copie, dans ce paquet, des
+// deux blobs de `internal/hinavmesh/testdata`).
+func decodeTemoin(t *testing.T, assetID string) *hinavmesh.Maillage {
+	t.Helper()
+	chemin := filepath.Join("testdata", assetID+".navmesh.blob")
+	blob, err := os.ReadFile(chemin) //nolint:gosec // chemin de test, versionne
+	if err != nil {
+		t.Fatalf("lecture de %s: %v", chemin, err)
+	}
+	m, err := hinavmesh.Decode(blob)
+	if err != nil {
+		t.Fatalf("Decode(%s): %v", chemin, err)
+	}
+	return m
 }

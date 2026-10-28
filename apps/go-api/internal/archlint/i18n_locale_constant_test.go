@@ -27,8 +27,9 @@ import (
 
 // localeConstantPlafond est le nombre d'emplois de i18n.LocaleFR / i18n.LocaleEN tolérés hors
 // internal/i18n : les lectures et écritures de sources à deux colonnes fr / en (inventaire du plan i18n,
-// 8.8.c). 39 au 2026-10-27.
-const localeConstantPlafond = 39
+// 8.8.c). 39 au 2026-10-27, 37 au 2026-10-28 (D1 lot 2 : `himap/uslg.go` ne cite plus les langues
+// de l'application, `LexiqueLieux` rend des codes de langue du jeu).
+const localeConstantPlafond = 37
 
 const i18nImportPath = "levelup/go-api/internal/i18n"
 

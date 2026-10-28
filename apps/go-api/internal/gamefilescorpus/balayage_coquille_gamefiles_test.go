@@ -1,6 +1,6 @@
 //go:build gamefiles
 
-package himap
+package gamefilescorpus
 
 import (
 	"fmt"
@@ -8,6 +8,8 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	"levelup/go-api/internal/himap"
 )
 
 // LE GATE DE LA COQUILLE — elle transfere-t-elle aux 27 cartes, ou seulement aux deux qui
@@ -20,7 +22,7 @@ import (
 // Une ancre perdue = de la zone jouable effacee. C'est disqualifiant, et ca doit se voir avant
 // de livrer, pas apres.
 func TestBalayageCoquille(t *testing.T) {
-	racine, err := DeployRoot()
+	racine, err := himap.DeployRoot()
 	if err != nil {
 		t.Skip(err)
 	}
@@ -61,7 +63,7 @@ func TestBalayageCoquille(t *testing.T) {
 		// piege que celui deja documente pour `TestBalayageDesCartes`.
 		mod := mod
 		t.Run(mod, func(t *testing.T) {
-			chemin, ok := ChercheModuleInstalle(mod)
+			chemin, ok := himap.ChercheModuleInstalle(mod)
 			if !ok {
 				absentes = append(absentes, mod)
 				return
@@ -79,14 +81,14 @@ func TestBalayageCoquille(t *testing.T) {
 			// tag sbsp — instruit au §1 ter du handoff, sa geometrie n'est pas la ou celle des
 			// 26 autres se trouve. `peupleRendu` y ferait `t.Fatal` ; on la declare non mesurable
 			// AVEC SA RAISON plutot que de rougir sur un cas deja tranche.
-			if _, err := ReadModuleInstances(chemin); err != nil {
+			if _, err := himap.ReadModuleInstances(chemin); err != nil {
 				nonMesurables = append(nonMesurables, fmt.Sprintf("%s (%v)", mod, err))
 				return
 			}
 			b := bilan{carte: mod}
 			rendu := cadreSurAncres(t, ancres)
-			zJeu := MedianeZ(ancres) - AncrageDecalageSol
-			rendu.Tranche(TrancheDeJeu(zJeu))
+			zJeu := himap.MedianeZ(ancres) - himap.AncrageDecalageSol
+			rendu.Tranche(himap.TrancheDeJeu(zJeu))
 			peupleRendu(t, rendu, racine, chemin, ancres)
 			b.ancresAvant, b.pxAvant = compteAncresEtPixels(rendu, ancres)
 
@@ -96,7 +98,7 @@ func TestBalayageCoquille(t *testing.T) {
 				return
 			}
 			b.plans = len(fr.Frontieres)
-			if !FrontiereGardeLesAncres(fr, ancres, zJeu) {
+			if !himap.FrontiereGardeLesAncres(fr, ancres, zJeu) {
 				b.ancresApres, b.pxApres = b.ancresAvant, b.pxAvant
 				b.refusee = true
 				bilans = append(bilans, b)
@@ -149,7 +151,7 @@ func TestBalayageCoquille(t *testing.T) {
 	}
 }
 
-func compteAncresEtPixels(r *Rendu, ancres [][3]float64) (int, int) {
+func compteAncresEtPixels(r *himap.Rendu, ancres [][3]float64) (int, int) {
 	avecSol := 0
 	for _, a := range ancres {
 		i := int((a[0] - r.Min[0]) / r.Cell)
@@ -172,15 +174,15 @@ func compteAncresEtPixels(r *Rendu, ancres [][3]float64) (int, int) {
 	return avecSol, px
 }
 
-func frontiereDeLaCarte(t *testing.T, cheminModule string) Sddt {
+func frontiereDeLaCarte(t *testing.T, cheminModule string) himap.Sddt {
 	t.Helper()
-	chemin, err := ModuleVariante(cheminModule, "any")
+	chemin, err := himap.ModuleVariante(cheminModule, "any")
 	if err != nil {
-		return Sddt{}
+		return himap.Sddt{}
 	}
-	s, err := LitSddt(chemin)
+	s, err := himap.LitSddt(chemin)
 	if err != nil {
-		return Sddt{}
+		return himap.Sddt{}
 	}
 	return s
 }

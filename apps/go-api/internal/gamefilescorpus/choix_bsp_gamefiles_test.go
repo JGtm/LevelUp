@@ -1,11 +1,13 @@
 //go:build gamefiles
 
-package himap
+package gamefilescorpus
 
 import (
 	"path/filepath"
 	"sort"
 	"testing"
+
+	"levelup/go-api/internal/himap"
 )
 
 // LE VERROU DU CHOIX DE BSP — sur les fichiers du jeu installe.
@@ -47,7 +49,7 @@ func ancresLiveFireInstallees(t *testing.T) [][3]float64 {
 
 // TestChoixBSPLiveFireDesigneLArene verrouille le cas qui a motive le departage.
 func TestChoixBSPLiveFireDesigneLArene(t *testing.T) {
-	racine, err := DeployRoot()
+	racine, err := himap.DeployRoot()
 	if err != nil {
 		t.Skip(err)
 	}
@@ -55,7 +57,7 @@ func TestChoixBSPLiveFireDesigneLArene(t *testing.T) {
 	if len(ancres) == 0 {
 		t.Skip("catalogue sans ancre pour Live Fire")
 	}
-	bsps, err := ReadModuleInstances(filepath.Join(racine, "pc", "globals", moduleCommun))
+	bsps, err := himap.ReadModuleInstances(filepath.Join(racine, "pc", "globals", moduleCommun))
 	if err != nil {
 		t.Skip(err)
 	}
@@ -64,7 +66,7 @@ func TestChoixBSPLiveFireDesigneLArene(t *testing.T) {
 	// faut le VOIR, pas passer au vert sur un cas devenu trivial.
 	complets := 0
 	for _, b := range bsps {
-		if CompteAncresDansBoite(b.Bounds, ancres) == len(ancres) {
+		if himap.CompteAncresDansBoite(b.Bounds, ancres) == len(ancres) {
 			complets++
 		}
 	}
@@ -73,12 +75,12 @@ func TestChoixBSPLiveFireDesigneLArene(t *testing.T) {
 			"(mesure du 2026-08-27 : 2 sur 4)", moduleCommun, complets, len(ancres))
 	}
 
-	retenu := ChoisitBSP(bsps, ancres)
+	retenu := himap.ChoisitBSP(bsps, ancres)
 	t.Logf("Live Fire : %d ancres, %d bsp candidats, retenu tag#%d — %.1f x %.1f m, %d instances",
 		len(ancres), len(bsps), retenu.FileIndex,
 		retenu.Bounds.Extent(0), retenu.Bounds.Extent(1), len(retenu.Instances))
 
-	if n := CompteAncresDansBoite(retenu.Bounds, ancres); n != len(ancres) {
+	if n := himap.CompteAncresDansBoite(retenu.Bounds, ancres); n != len(ancres) {
 		t.Fatalf("le bsp retenu ne contient que %d ancres sur %d", n, len(ancres))
 	}
 	// L'ARENE, PAS L'HORIZON. Mesure : arene 63,2 x 63,8 m, horizon 7 890 x 7 776 m. Le seuil
@@ -103,7 +105,7 @@ func TestChoixBSPLiveFireDesigneLArene(t *testing.T) {
 }
 
 // instancesDansLaBoite compte les instances dont le centre tombe dans l'emprise XY des ancres.
-func instancesDansLaBoite(b BSPInstances, ancres [][3]float64) int {
+func instancesDansLaBoite(b himap.BSPInstances, ancres [][3]float64) int {
 	lo, hi := boiteDesPoints(ancres)
 	n := 0
 	for _, in := range b.Instances {
@@ -121,12 +123,12 @@ func instancesDansLaBoite(b BSPInstances, ancres [][3]float64) int {
 //
 // Elle ne vit QUE dans ce test, et pour une seule raison : prouver que le departage par
 // l'emprise ne change aucune carte native. La supprimer supprimerait la preuve.
-func choixBSPAvantDepartage(bsps []BSPInstances, ancres [][3]float64) BSPInstances {
-	var meilleur BSPInstances
+func choixBSPAvantDepartage(bsps []himap.BSPInstances, ancres [][3]float64) himap.BSPInstances {
+	var meilleur himap.BSPInstances
 	if len(ancres) > 0 {
 		mieux := 0
 		for _, b := range bsps {
-			if n := CompteAncresDansBoite(b.Bounds, ancres); n > mieux {
+			if n := himap.CompteAncresDansBoite(b.Bounds, ancres); n > mieux {
 				mieux, meilleur = n, b
 			}
 		}
@@ -147,7 +149,7 @@ func choixBSPAvantDepartage(bsps []BSPInstances, ancres [][3]float64) BSPInstanc
 // chantier — Forbidden, Chasm, Catalyst — sont verifies explicitement et leur absence est une
 // ERREUR, pas un saut : un balayage qui ne balaie rien passe au vert pour rien.
 func TestChoixBSPCartesNativesInchange(t *testing.T) {
-	if _, err := DeployRoot(); err != nil {
+	if _, err := himap.DeployRoot(); err != nil {
 		t.Skip(err)
 	}
 	chemin, err := cheminCatalogue()
@@ -180,7 +182,7 @@ func TestChoixBSPCartesNativesInchange(t *testing.T) {
 	}
 	mesurees, multi := 0, 0
 	for _, mod := range modules {
-		p, ok := ChercheModuleInstalle(mod)
+		p, ok := himap.ChercheModuleInstalle(mod)
 		if !ok {
 			continue
 		}
@@ -188,7 +190,7 @@ func TestChoixBSPCartesNativesInchange(t *testing.T) {
 		if len(ancres) == 0 {
 			continue
 		}
-		bsps, err := ReadModuleInstances(p)
+		bsps, err := himap.ReadModuleInstances(p)
 		if err != nil {
 			t.Logf("%-34s lecture KO : %v", mod, err)
 			continue
@@ -197,7 +199,7 @@ func TestChoixBSPCartesNativesInchange(t *testing.T) {
 		if len(bsps) > 1 {
 			multi++
 		}
-		avant, apres := choixBSPAvantDepartage(bsps, ancres), ChoisitBSP(bsps, ancres)
+		avant, apres := choixBSPAvantDepartage(bsps, ancres), himap.ChoisitBSP(bsps, ancres)
 		if _, estTemoin := temoins[mod]; estTemoin {
 			temoins[mod] = true
 			t.Logf("temoin %-16s %d bsp — tag#%d (%.0f x %.0f m, %d instances)",

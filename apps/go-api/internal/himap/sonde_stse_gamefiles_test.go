@@ -16,7 +16,6 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/himodule"
-	"levelup/go-api/internal/testfixtures"
 )
 
 func litStsePolygones(t *testing.T, chemin string) ([][][3]float64, tagInfo) {
@@ -96,7 +95,7 @@ func TestSondeStseDessin(t *testing.T) {
 	if _, err := DeployRoot(); err != nil {
 		t.Skip(err)
 	}
-	ref := testfixtures.Carte("carte_validee_v1.png")
+	ref := fixtureCarteValidee
 	f, err := os.Open(ref)
 	if err != nil {
 		t.Skip(err)

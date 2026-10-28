@@ -1,6 +1,6 @@
 //go:build gamefiles
 
-package himap
+package gamefilescorpus
 
 import (
 	"fmt"
@@ -11,6 +11,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"levelup/go-api/internal/himap"
 )
 
 // TestCarteCliffhanger produit l ARTEFACT DE REVUE de la carte (gate visuel de la piste B).
@@ -31,7 +33,7 @@ type optionsCarte struct {
 	Carte      string
 	ZMin, ZMax float64
 	CarteSeule bool // ne garder que les instances du module de la carte
-	Dequant    Dequant
+	Dequant    himap.Dequant
 	// BorneAABB : marge du bornage a la boite monde de l'instance, en metres. Negatif =
 	// pas de bornage (cf. AddMeshBorne).
 	BorneAABB float64
@@ -49,9 +51,9 @@ type optionsCarte struct {
 }
 
 // construitVolume rasterise la carte dans un volume, selon les options donnees.
-func construitVolume(t *testing.T, o optionsCarte) *Volume {
+func construitVolume(t *testing.T, o optionsCarte) *himap.Volume {
 	t.Helper()
-	racine, err := DeployRoot()
+	racine, err := himap.DeployRoot()
 	if err != nil {
 		t.Skip(err)
 	}
@@ -59,19 +61,19 @@ func construitVolume(t *testing.T, o optionsCarte) *Volume {
 		o.Carte = "ridgeline"
 	}
 	if o.Dequant == nil {
-		o.Dequant = DequantBrut
+		o.Dequant = himap.DequantBrut
 	}
 	modCarte := o.CheminModule
 	if modCarte == "" {
 		modCarte = moduleDuJeu(t, "pc", o.Carte)
 	}
-	chemins, _ := GeometrySearchPath(racine, modCarte)
-	idx, err := NewModuleIndex(chemins...)
+	chemins, _ := himap.GeometrySearchPath(racine, modCarte)
+	idx, err := himap.NewModuleIndex(chemins...)
 	if err != nil {
 		t.Fatal(err)
 	}
-	bsps, _ := ReadModuleInstances(modCarte)
-	bsp := ChoisitBSP(bsps, o.Ancres)
+	bsps, _ := himap.ReadModuleInstances(modCarte)
+	bsp := himap.ChoisitBSP(bsps, o.Ancres)
 	lo := [2]float64{bsp.Bounds.Min[0], bsp.Bounds.Min[1]}
 	hi := [2]float64{bsp.Bounds.Max[0], bsp.Bounds.Max[1]}
 	if o.EmpriseMin != nil && o.EmpriseMax != nil {
@@ -80,11 +82,11 @@ func construitVolume(t *testing.T, o optionsCarte) *Volume {
 			hi[k] = math.Min(hi[k], o.EmpriseMax[k])
 		}
 	}
-	vol := NewVolumeZ(lo, hi, o.ZMin, o.ZMax)
+	vol := himap.NewVolumeZ(lo, hi, o.ZMin, o.ZMax)
 	t.Logf("volume %d x %d x %d (cellule %.2f m, bande %.1f m, tranche [%.0f ; %.0f])",
 		vol.NX, vol.NY, vol.NZ, vol.Cell, vol.ZBand, vol.ZMin, vol.ZMin+float64(vol.NZ)*vol.ZBand)
 
-	assets := map[uint32]*RuntimeGeoAsset{}
+	assets := map[uint32]*himap.RuntimeGeoAsset{}
 	rendues, ecartees := 0, 0
 	for _, in := range bsp.Instances {
 		if in.QuickDeleted() {
@@ -92,7 +94,7 @@ func construitVolume(t *testing.T, o optionsCarte) *Volume {
 		}
 		id := in.RuntimeGeoID()
 		g, mod, ok := idx.Lookup(id)
-		if !ok || g != GroupeRtgo {
+		if !ok || g != himap.GroupeRtgo {
 			continue
 		}
 		if o.CarteSeule && filepath.Base(mod) != filepath.Base(modCarte) {
@@ -105,7 +107,7 @@ func construitVolume(t *testing.T, o optionsCarte) *Volume {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if a, err = NewRuntimeGeoAsset(tag, blob); err != nil {
+			if a, err = himap.NewRuntimeGeoAsset(tag, blob); err != nil {
 				t.Fatal(err)
 			}
 			a.PlafondTriangles = o.Plafond
@@ -125,7 +127,7 @@ func construitVolume(t *testing.T, o optionsCarte) *Volume {
 }
 
 func TestCarteCliffhanger(t *testing.T) {
-	zmin, zmax := VolumeZMin, VolumeZMax
+	zmin, zmax := himap.VolumeZMin, himap.VolumeZMax
 	if v := os.Getenv("PROBE_Z"); v != "" {
 		fmt.Sscanf(v, "%f,%f", &zmin, &zmax)
 	}
@@ -137,7 +139,7 @@ func TestCarteCliffhanger(t *testing.T) {
 		BorneAABB:  0.5,
 	})
 
-	degagement := HeadroomBands
+	degagement := himap.HeadroomBands
 	if v := os.Getenv("PROBE_DEGAGEMENT"); v != "" {
 		fmt.Sscanf(v, "%d", &degagement)
 	}
@@ -148,7 +150,7 @@ func TestCarteCliffhanger(t *testing.T) {
 	}
 	t.Logf("bande praticable la plus peuplee : z = %+.2f m (%d cellules)", niveau, cellules)
 
-	coupe := sol.Slice(niveau, SliceTolerance)
+	coupe := sol.Slice(niveau, himap.SliceTolerance)
 	n := 0
 	for _, b := range coupe {
 		if b {
@@ -156,7 +158,7 @@ func TestCarteCliffhanger(t *testing.T) {
 		}
 	}
 	t.Logf("coupe a z = %+.2f ± %.2f m : %d cellules (%.1f %% de l'emprise)",
-		niveau, SliceTolerance, n, 100*float64(n)/float64(len(coupe)))
+		niveau, himap.SliceTolerance, n, 100*float64(n)/float64(len(coupe)))
 
 	// Carte DERIVEE : pour chaque cellule, la bande praticable la plus proche de la surface
 	// d'altitude de reference construite sur les ancres d'objectifs de la carte. Aucun

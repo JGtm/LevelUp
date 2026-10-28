@@ -67,34 +67,19 @@ var briques = []brique{
 	{nom: "himap", paquets: []string{"internal/himap"}, permis: paquetsGamefiles},
 }
 
-// importsToleres : les fichiers d'une brique qui importent encore un paquet du dépôt hors de la
-// brique, par chemin relatif à `apps/go-api/`, avec la DATE d'inscription, l'import visé et le
-// LOT du plan qui retire l'entrée. C'est la liste des coupes de D1, pas un blanc-seing.
+// importsToleres : les fichiers d'une brique qui importent un paquet du dépôt hors de la brique,
+// par chemin relatif à `apps/go-api/`, avec la DATE d'inscription, l'import visé et le LOT du
+// plan qui retire l'entrée. Ce n'est pas un blanc-seing : toute entrée est une coupe à faire.
 //
-// Relevé à la pose (2026-10-28) : UNE coupe de production (`uslg.go` → `i18n`, lot 2, décision
-// D1-C) et seize fichiers de TEST qui lisent des données de LevelUp ou ses aides de test
-// (lot 2, décision D1-D : un test d'une brique couplé à LevelUp est un test de LevelUp, il
-// déménage sous `apps/go-api/internal/gamefilescorpus/`).
-var importsToleres = map[string]string{
-	"internal/himap/uslg.go": "2026-10-28 → internal/i18n (LexiqueLieux rend des i18n.Text) ; lot 2, D1-C",
-
-	"internal/himap/carte_ancres_gamefiles_test.go":                    "2026-10-28 → film/replay (LoadMapObjectives) ; lot 2, D1-D",
-	"internal/himap/carte_balayage_gamefiles_test.go":                  "2026-10-28 → film/replay (LoadMapObjectives) ; lot 2, D1-D",
-	"internal/himap/preuve_regions_livefire_gamefiles_test.go":         "2026-10-28 → film/replay (LoadMapObjectives) ; lot 2, D1-D",
-	"internal/himap/rendu_forge_gamefiles_test.go":                     "2026-10-28 → film/replay (LoadMapObjectives) ; lot 2, D1-D",
-	"internal/himap/sonde_toits_gamefiles_test.go":                     "2026-10-28 → film/replay (LoadMapObjectives) ; lot 2, D1-D",
-	"internal/himap/uslg_gamefiles_test.go":                            "2026-10-28 → internal/i18n ; lot 2, D1-C",
-	"internal/himap/carte_gate_gamefiles_test.go":                      "2026-10-28 → internal/testfixtures ; lot 2, D1-D",
-	"internal/himap/cloture_gamefiles_test.go":                         "2026-10-28 → internal/testfixtures ; lot 2, D1-D",
-	"internal/himap/physique_sonde_gamefiles_test.go":                  "2026-10-28 → internal/testfixtures ; lot 2, D1-D",
-	"internal/himap/rendu_gamefiles_test.go":                           "2026-10-28 → internal/testfixtures ; lot 2, D1-D",
-	"internal/himap/sddt_gamefiles_test.go":                            "2026-10-28 → internal/testfixtures ; lot 2, D1-D",
-	"internal/himap/sonde_stse_gamefiles_test.go":                      "2026-10-28 → internal/testfixtures ; lot 2, D1-D",
-	"internal/himap/origine_typage_gamefiles_test.go":                  "2026-10-28 → internal/testutil ; lot 2, D1-D",
-	"internal/hinavmesh/oracle_ancres_test.go":                         "2026-10-28 → internal/testutil ; lot 2, D1-D",
-	"internal/games/halo_infinite/film/replay/mapvar/cb2_fuzz_test.go": "2026-10-28 → internal/testfixtures ; lot 2, D1-D",
-	"internal/games/halo_infinite/film/replay/mapvar/mapvar_test.go":   "2026-10-28 → internal/testfixtures ; lot 2, D1-D",
-}
+// VIDÉE LE 2026-10-28 (lot 2 du plan D1) : la coupe de production (`himap/uslg.go` →
+// `internal/i18n`, décision D1-C : `LexiqueLieux` rend des codes de langue du jeu, l'appelant
+// `cmd/mapcallouts-build` les traduit) et les seize fichiers de test couplés à LevelUp (décision
+// D1-D : ils déménagent sous `internal/gamefilescorpus/`, ou — quand ils exercent des internes
+// de la brique — restent avec une fixture copiée dans le `testdata/` de la brique (carte de
+// référence) et des oracles lus par un parseur local sans import ; `mapvar` porte ses `.mvar` et
+// `hinavmesh` ses blobs dans leur `testdata/`). La table reste vide : le test échoue sur tout
+// nouvel import hors brique, et sur toute entrée ajoutée qui n'est pas utilisée.
+var importsToleres = map[string]string{}
 
 // fichierImports : un fichier Go et ses imports, tel que le parcours le livre au contrôle pur.
 type fichierImports struct {

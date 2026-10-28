@@ -1,6 +1,6 @@
 //go:build gamefiles
 
-package himap
+package gamefilescorpus
 
 // origine_typage_gamefiles_test.go — TYPER les points d'apparition rendus par la recette.
 //
@@ -26,6 +26,7 @@ import (
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/himap"
 	"levelup/go-api/internal/testutil"
 )
 
@@ -68,7 +69,7 @@ func origManifesteEquipement(t *testing.T) map[uint32]string {
 
 // TestOrigineTypageDesPoints publie, pour chaque type retenu, ce que son `foki` atteint.
 func TestOrigineTypageDesPoints(t *testing.T) {
-	racine, err := DeployRoot()
+	racine, err := himap.DeployRoot()
 	if err != nil {
 		t.Skip(err)
 	}
@@ -78,8 +79,8 @@ func TestOrigineTypageDesPoints(t *testing.T) {
 	}
 	idxForge := origIndexForge(t, racine)
 	modCarte := moduleDuJeu(t, "pc", "catalyst")
-	geo, _ := GeometrySearchPath(racine, modCarte)
-	idxRef, err := NewModuleIndex(append(append([]string{}, geo...),
+	geo, _ := himap.GeometrySearchPath(racine, modCarte)
+	idxRef, err := himap.NewModuleIndex(append(append([]string{}, geo...),
 		filepath.Join(racine, "any", "globals", "forge", "forge_objects-rtx-new.module"))...)
 	if err != nil {
 		t.Skipf("index de reference indisponible : %v", err)
@@ -100,7 +101,7 @@ func TestOrigineTypageDesPoints(t *testing.T) {
 			if err != nil {
 				continue
 			}
-			RefsInline(sous, func(h uint32) bool {
+			himap.RefsInline(sous, func(h uint32) bool {
 				if fam, ok := manif[h]; ok {
 					fams[fam] = true
 				}

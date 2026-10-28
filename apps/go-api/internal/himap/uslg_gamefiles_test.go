@@ -4,20 +4,15 @@ package himap
 
 // GARDE-RAIL DU DÉCODEUR uslg — il exige le jeu installé et se déclare absent sinon.
 //
-// Le témoin hors ligne (cmd/mapcallouts-build/lexique_test.go) vérifie le FICHIER PRODUIT.
-// Celui-ci vérifie la CHAÎNE : que le décodeur, relancé sur les fichiers du jeu, reproduit
-// exactement ce fichier. Les deux ensemble ferment la boucle — un décodeur qui dérive fait
-// rougir celui-ci, un lexique régénéré de travers fait rougir l'autre.
+// Il vérifie que le vocabulaire des lieux (tag `locs`) est lu en entier et que la liste de
+// chaînes retenue nomme chaque lieu en anglais et en français. La preuve que le décodage
+// reproduit le lexique VERSIONNÉ (une donnée de LevelUp) vit dans le paquet de tests de
+// LevelUp `internal/gamefilescorpus` (uslg_gamefiles_test.go) : la brique ne lit aucune donnée
+// du dépôt.
 
 import (
-	"encoding/csv"
 	"os"
-	"path/filepath"
-	"strconv"
-	"strings"
 	"testing"
-
-	"levelup/go-api/internal/i18n"
 )
 
 func racineJeu(t *testing.T) string {
@@ -65,7 +60,7 @@ func TestLexiqueLieuxCouvreToutLeVocabulaire(t *testing.T) {
 	manquants := 0
 	for _, v := range vocab {
 		l, ok := lex[v]
-		if !ok || l[i18n.LocaleEN] == "" || l[i18n.LocaleFR] == "" {
+		if !ok || l[CodeLangueEN] == "" || l[CodeLangueFR] == "" {
 			manquants++
 			if manquants <= 5 {
 				t.Errorf("StringId %08X sans texte complet (%+v)", v, l)
@@ -77,82 +72,4 @@ func TestLexiqueLieuxCouvreToutLeVocabulaire(t *testing.T) {
 	}
 	t.Logf("lexique : %d entrées, les %d noms de lieu du vocabulaire sont tous nommés en EN et FR",
 		len(lex), len(vocab))
-}
-
-// TestLexiqueLieuxReproduitLeFichierVersionne — L'ANTI-RÉGRESSION. Le décodeur relancé sur
-// les fichiers du jeu doit rendre EXACTEMENT le lexique versionné : mêmes clés, mêmes
-// textes. Une divergence signifie soit un décodeur cassé, soit une mise à jour du jeu —
-// dans les deux cas il faut regarder avant de republier, jamais laisser passer.
-func TestLexiqueLieuxReproduitLeFichierVersionne(t *testing.T) {
-	lex, err := LexiqueLieux(racineJeu(t))
-	if err != nil {
-		t.Fatalf("LexiqueLieux : %v", err)
-	}
-	fichier := litLexiqueVersionne(t)
-	if len(fichier) == 0 {
-		t.Skip("lexique versionné absent")
-	}
-	manquants, divergents := 0, 0
-	for sid, attendu := range fichier {
-		got, ok := lex[sid]
-		if !ok {
-			manquants++
-			if manquants <= 5 {
-				t.Errorf("StringId %08X du fichier absent du décodage", sid)
-			}
-			continue
-		}
-		if got[i18n.LocaleEN] != attendu[i18n.LocaleEN] || got[i18n.LocaleFR] != attendu[i18n.LocaleFR] {
-			divergents++
-			if divergents <= 5 {
-				t.Errorf("StringId %08X : décodé (%q, %q) != fichier (%q, %q)",
-					sid, got[i18n.LocaleEN], got[i18n.LocaleFR], attendu[i18n.LocaleEN], attendu[i18n.LocaleFR])
-			}
-		}
-	}
-	// L'inverse aussi : une entrée décodée que le fichier ignore = fichier périmé.
-	nouvelles := 0
-	for sid, l := range lex {
-		if l[i18n.LocaleEN] == "" || l[i18n.LocaleFR] == "" {
-			continue
-		}
-		if _, ok := fichier[sid]; !ok {
-			nouvelles++
-		}
-	}
-	if manquants != 0 || divergents != 0 || nouvelles != 0 {
-		t.Fatalf("lexique versionné (%d entrées) vs décodage : %d manquants, %d divergents, %d nouvelles "+
-			"— régénérer par `mapcallouts-build --lexique` après vérification", len(fichier), manquants, divergents, nouvelles)
-	}
-	t.Logf("%d entrées reproduites à l'identique", len(fichier))
-}
-
-// litLexiqueVersionne relit le CSV de référence sans dépendre du paquet qui l'écrit.
-func litLexiqueVersionne(t *testing.T) map[uint32]i18n.Text {
-	t.Helper()
-	p := filepath.Join("..", "..", "..", "..", "data", "titles", "halo_infinite",
-		"reference", "callouts_lexique.csv")
-	f, err := os.Open(p)
-	if err != nil {
-		return nil
-	}
-	defer f.Close()
-	r := csv.NewReader(f)
-	r.Comma = ';'
-	rows, err := r.ReadAll()
-	if err != nil {
-		t.Fatalf("lexique illisible : %v", err)
-	}
-	out := map[uint32]i18n.Text{}
-	for i, row := range rows {
-		if i == 0 || len(row) < 3 {
-			continue
-		}
-		sid, err := strconv.ParseUint(strings.TrimPrefix(row[0], "0x"), 16, 32)
-		if err != nil {
-			t.Fatalf("ligne %d : string_id %q", i+1, row[0])
-		}
-		out[uint32(sid)] = i18n.FromColumns(row[1], row[2])
-	}
-	return out
 }

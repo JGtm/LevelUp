@@ -1,12 +1,14 @@
 //go:build gamefiles
 
-package himap
+package gamefilescorpus
 
 import (
 	"fmt"
 	"path/filepath"
 	"sort"
 	"testing"
+
+	"levelup/go-api/internal/himap"
 )
 
 // DIAGNOSTIC DES TROUS — d'ou vient la geometrie qui manque sous les joueurs.
@@ -23,14 +25,14 @@ import (
 //
 // Variable : ORACLE_REPLAY. Les autres reglages suivent l'oracle.
 func TestDiagnosticTrousDeCarte(t *testing.T) {
-	racine, err := DeployRoot()
+	racine, err := himap.DeployRoot()
 	if err != nil {
 		t.Skip(err)
 	}
 	pos := chargePositions(t)
 
-	vol := construitVolume(t, optionsCarte{ZMin: VolumeZMin, ZMax: VolumeZMax, CarteSeule: true})
-	sol := vol.Floors(HeadroomBands)
+	vol := construitVolume(t, optionsCarte{ZMin: himap.VolumeZMin, ZMax: himap.VolumeZMax, CarteSeule: true})
+	sol := vol.Floors(himap.HeadroomBands)
 	var trous []pointRejeu
 	for _, p := range pos {
 		if _, _, ok := sol.SolLePlusProche(p.X, p.Y, p.Z); !ok {
@@ -43,13 +45,13 @@ func TestDiagnosticTrousDeCarte(t *testing.T) {
 	}
 
 	modCarte := moduleDuJeu(t, "pc", "ridgeline")
-	chemins, _ := GeometrySearchPath(racine, modCarte)
-	idx, err := NewModuleIndex(chemins...)
+	chemins, _ := himap.GeometrySearchPath(racine, modCarte)
+	idx, err := himap.NewModuleIndex(chemins...)
 	if err != nil {
 		t.Fatal(err)
 	}
-	bsps, _ := ReadModuleInstances(modCarte)
-	var bsp BSPInstances
+	bsps, _ := himap.ReadModuleInstances(modCarte)
+	var bsp himap.BSPInstances
 	for _, b := range bsps {
 		if len(b.Instances) > len(bsp.Instances) {
 			bsp = b
@@ -57,7 +59,7 @@ func TestDiagnosticTrousDeCarte(t *testing.T) {
 	}
 
 	// couvre : l'instance contient le point en X/Y et un sol plausible sous ses pieds.
-	couvre := func(in Instance, p pointRejeu) bool {
+	couvre := func(in himap.Instance, p pointRejeu) bool {
 		return p.X >= in.AABBMin[0] && p.X <= in.AABBMax[0] &&
 			p.Y >= in.AABBMin[1] && p.Y <= in.AABBMax[1] &&
 			in.AABBMin[2] <= p.Z+0.5 && in.AABBMax[2] >= p.Z-2.5
@@ -68,7 +70,7 @@ func TestDiagnosticTrousDeCarte(t *testing.T) {
 		maillage string
 	}
 	tally := map[cause]int{}
-	assets := map[uint32]*RuntimeGeoAsset{}
+	assets := map[uint32]*himap.RuntimeGeoAsset{}
 	orphelins := 0
 
 	// Echantillon : un point sur dix suffit a etablir la cause, et la boucle est en O(n x m).
@@ -81,7 +83,7 @@ func TestDiagnosticTrousDeCarte(t *testing.T) {
 			}
 			id := in.RuntimeGeoID()
 			g, mod, ok := idx.Lookup(id)
-			if !ok || g != GroupeRtgo {
+			if !ok || g != himap.GroupeRtgo {
 				tally[cause{"(non resolu)", "-"}]++
 				trouve = true
 				continue
@@ -94,7 +96,7 @@ func TestDiagnosticTrousDeCarte(t *testing.T) {
 					trouve = true
 					continue
 				}
-				if a, err = NewRuntimeGeoAsset(tag, blob); err != nil {
+				if a, err = himap.NewRuntimeGeoAsset(tag, blob); err != nil {
 					tally[cause{filepath.Base(mod), "asset KO"}]++
 					trouve = true
 					continue

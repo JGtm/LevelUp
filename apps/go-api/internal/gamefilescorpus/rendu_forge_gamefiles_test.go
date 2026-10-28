@@ -1,6 +1,6 @@
 //go:build gamefiles
 
-package himap
+package gamefilescorpus
 
 // LE RENDU D'UNE CARTE FORGE — Vagabond, posee depuis les objets de son `.mvar`.
 //
@@ -21,14 +21,15 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
+	"levelup/go-api/internal/himap"
 )
 
 func TestRenduForgeVagabond(t *testing.T) {
-	root, err := DeployRoot()
+	root, err := himap.DeployRoot()
 	if err != nil {
 		t.Skip(err)
 	}
-	carte := CartesForge[0]
+	carte := himap.CartesForge[0]
 	v, entree := chargeCarteForge(t, carte)
 
 	var ancres [][3]float64
@@ -40,11 +41,11 @@ func TestRenduForgeVagabond(t *testing.T) {
 	}
 	t.Logf("%s (%s) : %d objets, %d ancres", carte.Nom, carte.MapID, len(v.Objects), len(ancres))
 
-	rendu, bilan, err := CuitCarteForge(context.Background(), OptionsCuissonForge{
+	rendu, bilan, err := himap.CuitCarteForge(context.Background(), himap.OptionsCuissonForge{
 		RacineDeploy:        root,
 		Objets:              v.Objects,
 		Ancres:              ancres,
-		CheminModuleCanevas: CheminCanevasForge(carte),
+		CheminModuleCanevas: himap.CheminCanevasForge(carte),
 		Cle:                 carte.MapID,
 	})
 	if err != nil {
@@ -62,19 +63,19 @@ func TestRenduForgeVagabond(t *testing.T) {
 		cj := int((o.Pos.Y - rendu.Min[1]) / rendu.Cell)
 		if z, ok := rendu.Altitude(ci, cj); ok {
 			t.Logf("  ancre %d (%s) z=%.2f : surface dessinee %.2f (ecart %+.2f)",
-				i, o.Role, o.Pos.Z, z, o.Pos.Z-AncrageDecalageSol-z)
+				i, o.Role, o.Pos.Z, z, o.Pos.Z-himap.AncrageDecalageSol-z)
 		}
 	}
 
 	if sortie := os.Getenv("RENDU_PNG_FORGE"); sortie != "" {
-		ecritPNG(t, sortie, FondPNG(rendu, rendu.NX, rendu.NY, nil, styleDemande()))
+		ecritPNG(t, sortie, himap.FondPNG(rendu, rendu.NX, rendu.NY, nil, styleDemande()))
 		fmt.Println("carte forge ecrite:", sortie)
 	}
 }
 
 // chargeCarteForge lit le `.mvar` d'une carte Forge et son entree au catalogue, et PROUVE leur
 // jointure par le compte d'objets — sans quoi on cuirait la carte d'une autre.
-func chargeCarteForge(t *testing.T, c CarteForge) (*mapvar.Variant, replay.MapObjectivesEntry) {
+func chargeCarteForge(t *testing.T, c himap.CarteForge) (*mapvar.Variant, replay.MapObjectivesEntry) {
 	t.Helper()
 	brut := lireVarianteDuDepot(t, c.FichierMvar)
 	v, err := mapvar.Parse(brut)

@@ -1,11 +1,13 @@
 //go:build gamefiles
 
-package himap
+package gamefilescorpus
 
 import (
 	"math"
 	"path/filepath"
 	"testing"
+
+	"levelup/go-api/internal/himap"
 )
 
 // LE CANEVAS D'UNE CARTE FORGE PORTE-T-IL LA GEOMETRIE DU TERRAIN ?
@@ -23,7 +25,7 @@ import (
 // Ce test mesure ce que ces sbsp contiennent et s'ils enveloppent les ancres d'une carte batie
 // dessus. Il ne conclut pas : il donne les nombres qui tranchent.
 func TestCanevasForgePorteTIlDuTerrain(t *testing.T) {
-	racine, err := DeployRoot()
+	racine, err := himap.DeployRoot()
 	if err != nil {
 		t.Skip(err)
 	}
@@ -33,9 +35,9 @@ func TestCanevasForgePorteTIlDuTerrain(t *testing.T) {
 		t.Logf("%-16s %d ancres  X [%+7.1f ; %+7.1f]  Y [%+7.1f ; %+7.1f]  Z [%+7.1f ; %+7.1f]",
 			carte, n, lo[0], hi[0], lo[1], hi[1], lo[2], hi[2])
 	}
-	for _, canevas := range []string{CanevasWetland, CanevasBlank} {
+	for _, canevas := range []string{himap.CanevasWetland, himap.CanevasBlank} {
 		chemin := filepath.Join(racine, "pc", "levels", "multi", canevas, canevas+"-rtx-new.module")
-		bsps, err := ReadModuleInstances(chemin)
+		bsps, err := himap.ReadModuleInstances(chemin)
 		if err != nil {
 			t.Logf("%s : lecture KO : %v", canevas, err)
 			continue
@@ -76,7 +78,7 @@ func empriseAncresVariante(t *testing.T, carte string) (lo, hi [3]float64, n int
 // +242,3 mais son terrain sous les ancres — la cuisson avec canevas a rendu un fichier
 // IDENTIQUE A L'OCTET. La carte est donc batie AU-DESSUS de son terrain.
 func TestCanevasSousLaTrancheDeJeu(t *testing.T) {
-	racine, err := DeployRoot()
+	racine, err := himap.DeployRoot()
 	if err != nil {
 		t.Skip(err)
 	}
@@ -85,9 +87,9 @@ func TestCanevasSousLaTrancheDeJeu(t *testing.T) {
 		t.Skip("ancres d'Isolation introuvables dans le depot")
 	}
 	zJeu := (lo[2] + hi[2]) / 2
-	min, max := TrancheDeJeu(zJeu)
-	chemin := filepath.Join(racine, "pc", "levels", "multi", CanevasWetland, CanevasWetland+"-rtx-new.module")
-	bsps, err := ReadModuleInstances(chemin)
+	min, max := himap.TrancheDeJeu(zJeu)
+	chemin := filepath.Join(racine, "pc", "levels", "multi", himap.CanevasWetland, himap.CanevasWetland+"-rtx-new.module")
+	bsps, err := himap.ReadModuleInstances(chemin)
 	if err != nil {
 		t.Skipf("canevas illisible : %v", err)
 	}

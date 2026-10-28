@@ -153,35 +153,62 @@ le paquet. Allowlist DATÉE des coupes restantes, qui doit finir vide à la clô
 Tout se fait encore sous `apps/go-api` : les coupes sont séparées du déménagement pour que les
 diffs restent lisibles et que la recuisson témoin puisse être rejouée entre les deux.
 
-- [ ] 2.1 `himap/uslg.go` : `LexiqueLieux` et `lexiqueDUnTag` rendent
+- [x] 2.1 `himap/uslg.go` : `LexiqueLieux` et `lexiqueDUnTag` rendent
   `map[uint32]map[string]string` ; import `internal/i18n` retiré. Le texte EN/FR lu dans le jeu
-  n'a pas à connaître la liste des langues de LevelUp.
-- [ ] 2.2 `cmd/mapcallouts-build/main.go` : conversion vers `i18n.Text` au point d'appel
-  (`i18n.Parse` ou équivalent existant pour le code de langue — vérifier l'API de
-  `internal/i18n` avant d'écrire ; ne pas inventer de repli binaire fr/en, ADR 0040).
-- [ ] 2.3 `himap/uslg_gamefiles_test.go` : adapter au nouveau type (comparaison sur les codes de
-  langue du jeu, pas sur `i18n.Locale`).
-- [ ] 2.4 Créer `apps/go-api/internal/gamefilescorpus/` (tests seuls, tag `gamefiles`) et y
-  déplacer les fichiers de D1-D qui lisent des données LevelUp ou importent `testfixtures` /
-  `testutil` / `film/replay`. Relevé fermé au début du lot :
-  `grep -lE 'testfixtures|testutil|film/replay"|internal/i18n"|cheminDepuisDepot' internal/himap/*_test.go`,
-  copié dans le journal avec le sort de chaque fichier (déplacé / scindé / resté).
-- [ ] 2.5 Les helpers de test qu'ils emportent (`chemin_depot_test.go` et tout autre helper
-  partagé) suivent ou sont dupliqués UNE fois (deux copies tolérées, règle 6) — pas de paquet
-  helper commun entre module et brique.
-- [ ] 2.6 Mettre à jour `Makefile` cible `go-api-test-gamefiles` (ajouter
-  `./internal/gamefilescorpus/`) et `.github/workflows/ci.yml` (`go vet -tags=gamefiles`,
-  ligne ~450) ; `archlint/ci_*_test.go` et `gamefiles_tag_test.go` (qui lit le Makefile) doivent
-  rester verts.
-- [ ] 2.7 Vider l'allowlist du lot 1 (production ET tests) ; le garde-fou doit être vert avec une
-  allowlist vide.
-- [ ] 2.8 Gate : `go test ./internal/archlint/ ./internal/himap/ ./cmd/mapcallouts-build/ -count=1` ;
-  `make go-api-test-gamefiles` (poste avec le jeu installé, ~6 min) ;
-  `go list -deps ./internal/himap/... | grep '^levelup/go-api'` ne montre que
-  `himap`, `himodule`, `hinavmesh`, `ooz`, `.../mapvar`.
+  n'a pas à connaître la liste des langues de LevelUp. Fait le 2026-10-28 : les clés sont les
+  étiquettes du jeu, constantes exportées `CodeLangueEN = "en-US"` / `CodeLangueFR = "fr-FR"`
+  (table `codesLangues` index du jeu -> code ; helper `codeDuSlot`).
+- [x] 2.2 `cmd/mapcallouts-build/main.go` : conversion vers `i18n.Text` au point d'appel.
+  Fait : `versTextes` (lexique.go) traduit chaque code par `i18n.FromHaloTag` (l'étiquette Halo de
+  `config/locales.toml`, aucun repli binaire fr/en) ; un code inconnu est compté et journalisé
+  (`slog.Warn`), jamais rangé sous une autre langue. Test : `TestVersTextesTraduitLesCodesDuJeu`.
+- [x] 2.3 `himap/uslg_gamefiles_test.go` : adapté au nouveau type (clés `CodeLangueEN/FR`).
+  SCINDÉ : les deux tests qui n'exigent que le jeu restent dans la brique ; `TestLexiqueLieuxReproduitLeFichierVersionne`
+  (lit `callouts_lexique.csv`, donnée de LevelUp) passe dans `gamefilescorpus/uslg_gamefiles_test.go`
+  et compare par `i18n.FromHaloTag(himap.CodeLangue*)`.
+- [x] 2.4 `apps/go-api/internal/gamefilescorpus/` créé (tests seuls). RELEVÉ FERMÉ du 2026-10-28
+  (le grep du plan est insuffisant : il manquait les fichiers qui n'importent rien mais appellent
+  un helper de données défini dans un autre fichier de test ; relevé fait par graphe de
+  dépendances des helpers de test + compilation, voir « Découvertes » 1). Sort de chaque fichier :
+  - DÉPLACÉS vers `gamefilescorpus/` (`git mv`, API exportée de `himap`) : `carte_ancres`,
+    `carte_balayage`, `carte_gamefiles`, `carte_gate`, `carte_livefire`, `carte_oracle`, `carte_trous`,
+    `canevas_forge`, `balayage_coquille`, `choix_bsp_gamefiles`, `cuisson_navmesh`, `preuve_regions_livefire`,
+    `rendu` (gamefiles), `rendu_carte`, `rendu_forge`, `sonde_bsp_choix`, `sonde_toits`,
+    `sonde_levelid_cache`, `origine_typage`, `origine_fosp`, `cle_forge_test`, `chemin_depot_test`
+    (copie : l'original reste dans la brique).
+  - SCINDÉS : `uslg_gamefiles` (2 tests restent, 1 déménage), `cloture_gamefiles` (`TestClotureCliffhanger`
+    lit le champ interne `Rendu.z` : reste ; `TestCoquilleEnXY*` -> `gamefilescorpus/coquille_xy_gamefiles_test.go`),
+    `hinavmesh/oracle_ancres_test.go` (`decodeTemoin` reste dans `hinavmesh/temoin_test.go` ; les trois
+    `TestOracle*` -> `gamefilescorpus/navmesh_ancres_test.go`, avec copie des deux blobs navmesh, 462 537 octets,
+    dans `gamefilescorpus/testdata/`).
+  - RESTÉS dans la brique, sans import LevelUp : `sddt` (champs internes `Rendu.z/n`), `physique_sonde`, `sonde_stse`
+    (carte de référence `carte_validee_v1.png` copiée dans `himap/testdata/`, 618 987 octets, constante
+    `fixtureCarteValidee`), `filtres_reclaimer`, `sonde_bouillie`, `sonde_forge_saut`, `sonde_locs` (exercent ~35 internes
+    non exportés : tags sbsp/instances/forge, index Forge) ; leurs oracles du dépôt hôte (catalogue d'objectifs, rejeu)
+    passent par `himap/oracles_depot_gamefiles_test.go` (parseur local, `cheminDepuisDepot`, test sauté si absent).
+    Autres restés : `depot_variantes`, `sonde_forge`, `sonde_forge_mvar`, `sonde_canevas_orphelines`,
+    `sonde_levelid` (lisent `.ai/re_dump` par la constante exportée `DepotVariantesCarte`, convention de la brique),
+    `filtres_reclaimer_offsets`, `maillage_sain`, `callouts`, etc. (jeu installé seul).
+  - `mapvar/mapvar_test.go`, `mapvar/cb2_fuzz_test.go` : lisent `testdata/` (copie des 3 `.mvar` : 195 869 octets) ;
+    plus aucun import `testfixtures`.
+  - EXPORT UNIQUE ajouté : `himap.PeupleDepuisModule` (première étape de `CuitCarteNative`, documentée), pour
+    `rendu_carte` et `sonde_toits`.
+- [x] 2.5 Helpers dupliqués UNE fois (deux copies) : `gamefilescorpus/aides_himap_gamefiles_test.go`
+  (gate*, moduleDuJeu, moduleAny, mediane, part, orig*, itoaSimple, indexLevlInstalle, dossiersDistincts),
+  copies de `rendu_diff_gamefiles_test.go` et `depot_variantes_gamefiles_test.go` ; côté brique
+  `himap/aides_corpus_gamefiles_test.go` (ecritPNG, mesureAncresToits, chainesLisibles). Aucun paquet d'aides commun.
+- [x] 2.6 `Makefile` (cible `go-api-test-gamefiles` : `./internal/gamefilescorpus/`), `.github/workflows/ci.yml`
+  (`go vet -tags=gamefiles`), `docs/COMMANDS.md` et `docs/FR/COMMANDS.md` mis à jour ; `TestCibleMakefileGamefilesCouvreLeCorpus` vert.
+  Ratchets ajustés avec justification datée : `no_repo_root_walk_test.go` (clé de `carte_oracle` déplacée),
+  `i18n_locale_constant_test.go` (plafond 39 -> 37, cliquet descendant).
+- [x] 2.7 `importsToleres` vidée (map vide, commentaire « VIDÉE LE 2026-10-28 (lot 2) ») ; `TestBriquesImports` vert.
+- [x] 2.8 Gate passé le 2026-10-28 (sorties dans le journal) : archlint, himap, hinavmesh, mapvar, mapcallouts-build,
+  gamefilescorpus verts ; corpus gamefiles : mêmes issues qu'avant le lot (ensemble de 191 tests comparé à la base :
+  9 échecs identiques, voir journal) ; `go list -deps` = himap, himodule, hinavmesh, ooz, mapvar ; témoins avant/après
+  du lexique identiques (md5).
 
 **Clos quand** : 2.8 vert, allowlist vide, commit « refactor(himap): coupe i18n et tests couplés
-à LevelUp sortis de la brique (D1) ».
+à LevelUp sortis de la brique (D1) » (commit à la main du pilote).
 
 ## Lot 3 — Module `libs/gamefiles` + espace de travail + infrastructure
 
@@ -299,6 +326,23 @@ hinavmesh, mapvar) et espace de travail go.work (D1) ».
 
 ---
 
+## Témoins avant/après (règle utilisateur du 2026-10-28)
+
+Tout lot se prouve par des sorties capturées AVANT sur le code de base et comparées APRÈS sur le
+code modifié : identiques, sinon le lot n'est pas clos. Témoins dans le scratchpad de session
+(`temoins_<lot>_avant/`, `temoins_<lot>_apres/`), empreintes MD5 consignées au journal. Le TDD au
+sens strict (test rouge écrit avant le code) vaut pour les comportements NEUFS : le garde-fou du
+lot 1 a été écrit, vu rouge par mutation, puis vert.
+
+| Lot | Témoin | Capture (avant = code de base, après = branche) | Comparaison |
+|---|---|---|---|
+| 2 | lexique des lieux lu dans le jeu | `go test -tags=gamefiles ./internal/himap/ -run 'TestLexiqueLieux|TestVocabulaireLieux'` ; avant (2026-10-28) : 810 entrées reproduites à l'identique, 3 tests verts | mêmes 3 tests verts, mêmes comptes |
+| 2 | `mapcallouts-build -lexique -out <témoin>/map_callouts.json` (écrit aussi `callouts_lexique.csv` à côté) | avant : `temoins_lot2_avant/` ; après : `temoins_lot2_apres/` | `md5sum` identiques fichier à fichier |
+| 2 | `callouts_i18n.csv` versionné | md5 `cb36bdd205b68fb30a00d03a7f6cb648` (2026-10-28) | inchangé (`git status` propre sur `data/titles/halo_infinite/reference/`) |
+| 3, 4 | fonds publiés : Dredge (WebP), Arrival, Beaver Canyon, Perdition, Timberland Evolved (PNG) | avant = fichiers publiés sous `data/titles/halo_infinite/reference/map_backgrounds/` (md5 relevés au début du lot 3) ; après = recuisson `mapfond-build` par carte dans `temoins_lot<N>_apres/` | identiques à l'octet (WebP : MD5 des pixels décodés si l'encodeur diffère) |
+| 3, 4 | suite `make go-api-test-gamefiles` | avant : liste des tests verts/sautés (`-v`, lot 2) | même liste, aucun test disparu sans déménagement tracé |
+| 3, 4 | `go test ./...` du module `go-api` | avant : liste des paquets verts (lot 2) | aucun paquet passé au rouge ; paquets sortis = ceux déplacés dans `libs/` |
+
 ## Protocole de reprise de session
 
 1. `git branch --show-current` ; `git log --oneline -10` sur la branche D1.
@@ -327,4 +371,36 @@ hinavmesh, mapvar) et espace de travail go.work (D1) ».
 
 ## Découvertes (notées, non traitées)
 
-- (à remplir à l'exécution)
+Lot 2 (2026-10-28) :
+
+1. Le relevé D1-D du plan (16 fichiers + 3) est très en deçà du réel : l'ensemble des tests de la
+   brique couplés à LevelUp par DONNÉES forme une grappe (le banc Cliffhanger : `carte_ancres` porte
+   `ancresDuModule`/`cheminCatalogue`, `carte_oracle` porte `chargePositions`, etc.) ; 39 fichiers `himap`
+   en dépendaient directement ou par helper. Relevé final : 22 déménagés, 2 scindés + 1 hinavmesh scindé,
+   ~19 restés (voir 2.4).
+2. RÉSIDU À TRANCHER AVANT LE LOT 4 : cinq sondes de la brique (`sddt`, `physique_sonde`, `filtres_reclaimer`,
+   `sonde_bouillie`, `sonde_forge_saut`, plus `cloture` pour `TestClotureCliffhanger` et `sonde_locs`) lisent encore
+   des données du dépôt hôte (`data/titles/.../map_objectives.json`, `data/cache/replays/...`,
+   `callouts_i18n.csv`) par `cheminDepuisDepot`/chemin relatif, sans importer LevelUp. Elles exercent des
+   internes non exportés (~35 : tags sbsp/instances/forge, champs `Rendu.z/n`) que la règle D1-D (« exporter si vrai
+   contrat ») ne justifie pas d'exporter. Dans `libs/himap` autonome elles se sauteront (oracle absent) ou
+   échoueront (`.ai/re_dump` absent => `t.Fatalf` voulu). Options : les supprimer (sondes de recherche), exporter
+   des étapes de cuisson, ou ajouter une variable d'environnement de corpus. Décision de l'utilisateur.
+3. Treize fichiers de test de `hinavmesh` et `mapvar` (table `pas_de_lecture_sous_ai_test.go`) et trois de `himap`
+   lisent `.ai/re_dump` : même statut que 2 pour le lot 3/4.
+4. Casses prévisibles au lot 3/4 (chemins relatifs entre paquets) : `gamefilescorpus/cuisson_navmesh_gamefiles_test.go`
+   lit `../hinavmesh/testdata` (utiliser la copie `gamefilescorpus/testdata/` des mêmes blobs) ;
+   `himap/deploy_root_test.go` (`TestAucuneAutreCopieDuCheminDuJeu`) balaie `../..` (= `apps/go-api`) :
+   à porter dans archlint ou à borner à la brique ; les chemins `../../../../data` de `sonde_locs`.
+5. Le commentaire de `mapvar_test.go` refusait de dupliquer les `.mvar` (« actifs propriétaires 343/Microsoft ») ;
+   le plan (D1-D) l'autorise : 3 fichiers copiés (195 869 octets). Mêmes réserves que D1-H pour les copies de
+   `carte_validee_v1.png` (618 987 octets, `himap/testdata/`) et des deux blobs navmesh (462 537 octets,
+   `gamefilescorpus/testdata/`).
+6. `sonde_locs_gamefiles_test.go` contient des chemins absolus périmés (`C:\Users\Guillaume\Projects\LevelUp\.ai\re_dump`) :
+   préexistant, non traité.
+7. Poste de gate : `.ai/re_dump/mapvar` est ABSENT (même du checkout principal) et `data/cache` ne porte que
+   `career-rank-image` ; 7 tests du corpus gamefiles échouent donc par `t.Fatalf` « depot de variantes absent » AVANT
+   et APRÈS le lot, et `TestBancCliffhanger` reste le rouge connu (accord 64,4 %). Le gate de non-régression est la
+   COMPARAISON des issues test par test à la base (identiques).
+8. Le test `TestRenduForgeVagabond`, `TestOracle*` et autres changent de paquet : aucune entrée de la baseline JSONL de
+   tests (`.ai/baselines/tests_pre_migration.jsonl`) ne porte `himap`/`hinavmesh` : rien à retirer.

@@ -212,20 +212,23 @@ go-api-test:
 ## `archlint.TestCibleMakefileGamefilesCouvreLeCorpus` rougit si un paquet entre au corpus
 ## sans entrer ici.
 ##
-## Les 59 fichiers `*_gamefiles_test.go` de internal/himap/ decodent les modules du JEU
+## Les 45 fichiers `*_gamefiles_test.go` de internal/himap/ (au 2026-10-28) decodent les modules du JEU
 ## et balaient les 26 cartes du catalogue. Mesure du 2026-09-05 : `TestBalayageCoquille`
 ## seul prend 1 246 s (20 min 47 s) et passe — ce n'est pas un blocage, c'est le prix du
 ## balayage. Ils sont derriere `//go:build gamefiles` pour que `go test ./internal/himap/`
 ## reste utilisable (22 s au lieu d'interminable). Les trois paquets `cmd/` verifient qu'un
 ## catalogue COMMIS est bien celui que son outil regenere depuis l'installation (mesure du
-## 2026-09-17 : 9,0 s a eux trois).
+## 2026-09-17 : 9,0 s a eux trois). Depuis le 2026-10-28 (plan D1, lot 2), les tests de la brique
+## `himap` qui lisent des donnees de LevelUp (catalogue d'objectifs, caches de rejeu, config)
+## vivent dans `internal/gamefilescorpus/` (tests seuls, 25 fichiers `*_gamefiles_test.go`) et
+## appellent `himap` par son API exportee : la cible joue les deux paquets.
 ##
 ## Sans installation du jeu, chaque test prend son `t.Skip` et la cible est vide en 1 s.
 ## Cibler une carte : BALAYAGE_CARTES=aquarius_map ; installation ailleurs :
 ## LEVELUP_HALO_DEPLOY=<chemin>.
 go-api-test-gamefiles:
 	cd $(GO_API_DIR) && CGO_ENABLED=1 go test -tags=gamefiles -count=1 -timeout 3600s \
-		./internal/himap/ \
+		./internal/himap/ ./internal/gamefilescorpus/ \
 		./cmd/film-profiles-build/ ./cmd/mapfond-build/ ./cmd/mapstruct-build/ -v
 
 ## Go API: gate de non-regression des artefacts de rejeu sur corpus temoin. DEFAUT

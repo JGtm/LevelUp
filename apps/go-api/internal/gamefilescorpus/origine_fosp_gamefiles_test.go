@@ -1,6 +1,6 @@
 //go:build gamefiles
 
-package himap
+package gamefilescorpus
 
 // origine_fosp_gamefiles_test.go — ELUCIDER `fosp`, le quatrieme cran.
 //
@@ -17,20 +17,22 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	"levelup/go-api/internal/himap"
 )
 
 const origGroupeSpawn = "fosp"
 
 // TestOrigineFospElucidation publie ce que les `fosp` d'un point atteignent.
 func TestOrigineFospElucidation(t *testing.T) {
-	racine, err := DeployRoot()
+	racine, err := himap.DeployRoot()
 	if err != nil {
 		t.Skip(err)
 	}
 	idxForge := origIndexForge(t, racine)
 	modCarte := moduleDuJeu(t, "pc", "catalyst")
-	geo, _ := GeometrySearchPath(racine, modCarte)
-	idxRef, err := NewModuleIndex(append(append([]string{}, geo...),
+	geo, _ := himap.GeometrySearchPath(racine, modCarte)
+	idxRef, err := himap.NewModuleIndex(append(append([]string{}, geo...),
 		filepath.Join(racine, "any", "globals", "forge", "forge_objects-rtx-new.module"))...)
 	if err != nil {
 		t.Skipf("index de reference indisponible : %v", err)
@@ -48,7 +50,7 @@ func TestOrigineFospElucidation(t *testing.T) {
 			if err != nil {
 				continue
 			}
-			RefsInline(sous, func(h uint32) bool {
+			himap.RefsInline(sous, func(h uint32) bool {
 				if g, _, ok := idxRef.Lookup(h); ok && g == origGroupeSpawn && !vus[h] {
 					vus[h] = true
 					fosps = append(fosps, h)
@@ -64,7 +66,7 @@ func TestOrigineFospElucidation(t *testing.T) {
 			if err != nil {
 				continue
 			}
-			RefsInline(tag, func(h uint32) bool {
+			himap.RefsInline(tag, func(h uint32) bool {
 				if fam, ok := manif[h]; ok {
 					fams[fam] = true
 				}

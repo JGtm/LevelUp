@@ -1,6 +1,6 @@
 //go:build gamefiles
 
-package himap
+package gamefilescorpus
 
 import (
 	"context"
@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"levelup/go-api/internal/himap"
 )
 
 // TestCuitIsolationDepuisSonNavmesh — LE FOND D'ISOLATION, RENDU DEPUIS LE SOL JOUABLE.
@@ -27,9 +29,9 @@ func TestCuitIsolationDepuisSonNavmesh(t *testing.T) {
 	if len(ancres) == 0 {
 		t.Skip("ancres d'Isolation introuvables")
 	}
-	r, b, err := CuitCarteNavmesh(context.Background(), OptionsCuissonNavmesh{
+	r, b, err := himap.CuitCarteNavmesh(context.Background(), himap.OptionsCuissonNavmesh{
 		Blob: blob, Ancres: ancres, Cle: "01af558d-53ab-4f05-ba68-92d805fc6260",
-		CibleCadrePx: CibleCadrePx,
+		CibleCadrePx: himap.CibleCadrePx,
 	})
 	if err != nil {
 		t.Fatalf("cuisson depuis le navmesh : %v", err)

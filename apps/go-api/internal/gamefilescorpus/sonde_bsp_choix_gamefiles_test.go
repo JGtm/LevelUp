@@ -1,6 +1,6 @@
 //go:build gamefiles
 
-package himap
+package gamefilescorpus
 
 import (
 	"encoding/binary"
@@ -10,6 +10,7 @@ import (
 	"sort"
 	"testing"
 
+	"levelup/go-api/internal/himap"
 	"levelup/go-api/internal/himodule"
 )
 
@@ -26,7 +27,7 @@ import (
 // l'ecart vertical entre la mediane des ancres et la geometrie du bsp. C'est le tableau qu'elle
 // imprime qui doit justifier la regle, pas l'inverse.
 func TestSondeBSPCommunLiveFire(t *testing.T) {
-	racine, err := DeployRoot()
+	racine, err := himap.DeployRoot()
 	if err != nil {
 		t.Skip(err)
 	}
@@ -34,12 +35,12 @@ func TestSondeBSPCommunLiveFire(t *testing.T) {
 	if len(ancres) == 0 {
 		t.Skip("aucune ancre pour live_fire_sgh_interlock")
 	}
-	zMed := MedianeZ(ancres)
+	zMed := himap.MedianeZ(ancres)
 	t.Logf("Live Fire — %d ancres, mediane z = %+.2f", len(ancres), zMed)
 
 	for _, nom := range []string{"common-rtx-new.module", "multiplayer-rtx-new.module"} {
 		chemin := filepath.Join(racine, "pc", "globals", nom)
-		bsps, err := ReadModuleInstances(chemin)
+		bsps, err := himap.ReadModuleInstances(chemin)
 		if err != nil {
 			t.Logf("%s : lecture KO : %v", nom, err)
 			continue
@@ -54,22 +55,22 @@ func TestSondeBSPCommunLiveFire(t *testing.T) {
 // TestSondeBSPCartesNatives publie le meme tableau pour les cartes natives temoins : c'est lui
 // qui dit si une regle nouvelle changerait leur choix.
 func TestSondeBSPCartesNatives(t *testing.T) {
-	if _, err := DeployRoot(); err != nil {
+	if _, err := himap.DeployRoot(); err != nil {
 		t.Skip(err)
 	}
 	for _, module := range []string{"ctf_forbidden", "chasm_map", "catalyst_map", "cliffhanger_ridgeline", "streets_sgh_streets"} {
-		chemin, ok := ChercheModuleInstalle(module)
+		chemin, ok := himap.ChercheModuleInstalle(module)
 		if !ok {
 			t.Logf("%-24s module introuvable", module)
 			continue
 		}
-		bsps, err := ReadModuleInstances(chemin)
+		bsps, err := himap.ReadModuleInstances(chemin)
 		if err != nil {
 			t.Logf("%-24s lecture KO : %v", module, err)
 			continue
 		}
 		ancres := ancresXYZ(t, module)
-		zMed := MedianeZ(ancres)
+		zMed := himap.MedianeZ(ancres)
 		t.Logf("--- %s : %d bsp, %d ancres, mediane z = %+.2f", module, len(bsps), len(ancres), zMed)
 		for i, b := range bsps {
 			imprimeBSP(t, i, b, ancres, zMed)
@@ -77,9 +78,9 @@ func TestSondeBSPCartesNatives(t *testing.T) {
 	}
 }
 
-func imprimeBSP(t *testing.T, i int, b BSPInstances, ancres [][3]float64, zMed float64) {
+func imprimeBSP(t *testing.T, i int, b himap.BSPInstances, ancres [][3]float64, zMed float64) {
 	t.Helper()
-	n := CompteAncresDansBoite(b.Bounds, ancres)
+	n := himap.CompteAncresDansBoite(b.Bounds, ancres)
 	empriseX := b.Bounds.Extent(0)
 	empriseY := b.Bounds.Extent(1)
 	zs := make([]float64, 0, len(b.Instances))
@@ -119,7 +120,7 @@ func ancresXYZ(t *testing.T, module string) [][3]float64 {
 // COURANTE retient — et l'emprise de l'ancrage, pour dire si le bsp retenu est l'arene ou
 // l'horizon.
 func TestSondeBSPQuiEstChoisi(t *testing.T) {
-	racine, err := DeployRoot()
+	racine, err := himap.DeployRoot()
 	if err != nil {
 		t.Skip(err)
 	}
@@ -129,11 +130,11 @@ func TestSondeBSPQuiEstChoisi(t *testing.T) {
 		lo[0], hi[0], lo[1], hi[1], lo[2], hi[2], hi[0]-lo[0], hi[1]-lo[1])
 
 	chemin := filepath.Join(racine, "pc", "globals", "common-rtx-new.module")
-	bsps, err := ReadModuleInstances(chemin)
+	bsps, err := himap.ReadModuleInstances(chemin)
 	if err != nil {
 		t.Fatal(err)
 	}
-	choisi := ChoisitBSP(bsps, ancres)
+	choisi := himap.ChoisitBSP(bsps, ancres)
 	for i, b := range bsps {
 		dedans := 0
 		for _, in := range b.Instances {
@@ -175,7 +176,7 @@ func boiteDesPoints(p [][3]float64) ([3]float64, [3]float64) {
 // regroupe les entrees du catalogue par dossier installe et DEDUPLIQUE par position, donc Live
 // Fire est cuite avec l'union de sa variante libre et de sa variante classee.
 func TestSondeBSPAncresUnionLiveFire(t *testing.T) {
-	racine, err := DeployRoot()
+	racine, err := himap.DeployRoot()
 	if err != nil {
 		t.Skip(err)
 	}
@@ -195,15 +196,15 @@ func TestSondeBSPAncresUnionLiveFire(t *testing.T) {
 	lo, hi := boiteDesPoints(union)
 	t.Logf("union : %d ancres  X [%+8.2f ; %+8.2f]  Y [%+8.2f ; %+8.2f]  Z [%+8.2f ; %+8.2f]",
 		len(union), lo[0], hi[0], lo[1], hi[1], lo[2], hi[2])
-	bsps, err := ReadModuleInstances(filepath.Join(racine, "pc", "globals", "common-rtx-new.module"))
+	bsps, err := himap.ReadModuleInstances(filepath.Join(racine, "pc", "globals", "common-rtx-new.module"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	zMed := MedianeZ(union)
+	zMed := himap.MedianeZ(union)
 	for i, b := range bsps {
 		imprimeBSP(t, i, b, union, zMed)
 	}
-	choisi := ChoisitBSP(bsps, union)
+	choisi := himap.ChoisitBSP(bsps, union)
 	t.Logf("ChoisitBSP retient tag#%d (%d instances, emprise %.0f x %.0f m)",
 		choisi.FileIndex, len(choisi.Instances), choisi.Bounds.Extent(0), choisi.Bounds.Extent(1))
 }
@@ -215,12 +216,12 @@ func TestSondeBSPAncresUnionLiveFire(t *testing.T) {
 // sbsp mais porte un `levl` de 2,3 Mo : s'il reference l'un des quatre sbsp de
 // `common-rtx-new`, la carte designe elle-meme sa geometrie et il n'y a plus rien a deviner.
 func TestSondeLevlInterlockReferenceQuelBSP(t *testing.T) {
-	racine, err := DeployRoot()
+	racine, err := himap.DeployRoot()
 	if err != nil {
 		t.Skip(err)
 	}
 	commun := filepath.Join(racine, "pc", "globals", "common-rtx-new.module")
-	bsps, err := ReadModuleBSPBounds(commun)
+	bsps, err := himap.ReadModuleBSPBounds(commun)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -232,7 +233,7 @@ func TestSondeLevlInterlockReferenceQuelBSP(t *testing.T) {
 			b.Bounds.Extent(0), b.Bounds.Extent(1), b.Bounds.Extent(2))
 	}
 	for _, module := range []string{"live_fire_sgh_interlock", "academy_tutorial", "recharge_sgh_blueprint"} {
-		chemin, ok := ChercheModuleInstalle(module)
+		chemin, ok := himap.ChercheModuleInstalle(module)
 		if !ok {
 			t.Logf("%-24s introuvable", module)
 			continue

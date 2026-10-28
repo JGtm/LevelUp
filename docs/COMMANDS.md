@@ -1092,15 +1092,17 @@ make go-api-lint       # go vet
 
 Two families of tests read the **installed game**, and both sit behind `//go:build gamefiles`:
 
-- the 59 `*_gamefiles_test.go` files in `internal/himap/` decode the game's modules and sweep
-  the 26 catalogue maps. They are long by nature — measured 2026-09-05, `TestBalayageCoquille`
+- the `*_gamefiles_test.go` files of `internal/himap/` (45 on 2026-10-28) decode the game's
+  modules, and those of `internal/gamefilescorpus/` (25, a package of tests only: since the D1
+  decoupling plan the `himap` tests that read LevelUp data live there and call `himap` through
+  its exported API) sweep the 26 catalogue maps. They are long by nature — measured 2026-09-05, `TestBalayageCoquille`
   alone takes **203 s** for 26 maps (1 246 s before the module reader switched to memory
   mapping the same day). The tag keeps a plain `go test ./internal/himap/` usable (2.8 s);
 - three `cmd/` catalogue builders re-derive their **committed** catalogue from the installed
   game and compare it byte for byte: `cmd/film-profiles-build/`, `cmd/mapfond-build/`,
   `cmd/mapstruct-build/` (9.0 s for the three, measured 2026-09-17).
 
-`make go-api-test-gamefiles` runs **all four packages**. Until 2026-09-17 it only ran
+`make go-api-test-gamefiles` runs **all five packages**. Until 2026-09-17 it only ran
 `./internal/himap/`, so the three `cmd/` tests were run by no command in the repository
 (discovery D1 (3.1.2), the oldest of them tagged since 2026-09-05). The package list is
 explicit rather than `./cmd/...`: under the tag, a package with no `gamefiles` file only adds
@@ -1110,7 +1112,7 @@ corpus without joining the target.
 ```bash
 make go-api-test-gamefiles                       # whole corpus (~6 min, needs the game)
 cd apps/go-api && CGO_ENABLED=1 go test -tags=gamefiles -count=1 -timeout 3600s \
-  ./internal/himap/ \
+  ./internal/himap/ ./internal/gamefilescorpus/ \
   ./cmd/film-profiles-build/ ./cmd/mapfond-build/ ./cmd/mapstruct-build/ -v
 
 # Committed catalogues only (seconds, not minutes):
@@ -1119,7 +1121,7 @@ cd apps/go-api && CGO_ENABLED=1 go test -tags=gamefiles -count=1 \
 
 # One map only (much faster):
 BALAYAGE_CARTES=aquarius_map go test -tags=gamefiles -timeout 300s \
-  ./internal/himap/ -run TestBalayageCoquille -v
+  ./internal/gamefilescorpus/ -run TestBalayageCoquille -v
 
 # Game installed somewhere else:
 LEVELUP_HALO_DEPLOY=/path/to/Halo Infinite/deploy go test -tags=gamefiles ./internal/himap/
@@ -1127,7 +1129,7 @@ LEVELUP_HALO_DEPLOY=/path/to/Halo Infinite/deploy go test -tags=gamefiles ./inte
 
 Without the game installed every test takes its `t.Skip` and the corpus is empty in a
 second — which is exactly what happens in CI. CI therefore only **compiles** it
-(`go vet -tags=gamefiles ./internal/himap/`, job `go-test`); it never runs it. The tag
+(`go vet -tags=gamefiles ./internal/himap/ ./internal/gamefilescorpus/`, job `go-test`); it never runs it. The tag
 itself is enforced module-wide by `internal/archlint/gamefiles_tag_test.go`, which runs in the
 default build.
 

@@ -1,6 +1,6 @@
 //go:build gamefiles
 
-package himap
+package gamefilescorpus
 
 import (
 	"encoding/json"
@@ -14,6 +14,8 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	"levelup/go-api/internal/himap"
 )
 
 // L'ORACLE — les positions de joueur REELLEMENT observees jugent la carte reconstruite.
@@ -119,7 +121,7 @@ type verdict struct {
 func (v verdict) part(n int) float64 { return 100 * float64(n) / float64(v.positions) }
 
 // jugeCarte confronte un volume de praticabilite aux positions observees.
-func jugeCarte(nom string, sol *Volume, pos []pointRejeu) (verdict, []pointRejeu) {
+func jugeCarte(nom string, sol *himap.Volume, pos []pointRejeu) (verdict, []pointRejeu) {
 	v := verdict{nom: nom, positions: len(pos)}
 	ecarts := make([]float64, 0, len(pos))
 	signes := make([]float64, 0, len(pos))
@@ -155,13 +157,13 @@ func jugeCarte(nom string, sol *Volume, pos []pointRejeu) (verdict, []pointRejeu
 
 // TestOracleCarteCliffhanger joue les positions observees contre plusieurs reconstructions.
 func TestOracleCarteCliffhanger(t *testing.T) {
-	if _, err := DeployRoot(); err != nil {
+	if _, err := himap.DeployRoot(); err != nil {
 		t.Skip(err)
 	}
 	pos := chargePositions(t)
 	t.Logf("oracle : %d positions de joueur", len(pos))
 
-	zmin, zmax := VolumeZMin, VolumeZMax
+	zmin, zmax := himap.VolumeZMin, himap.VolumeZMax
 	if s := os.Getenv("ORACLE_Z"); s != "" {
 		fmt.Sscanf(s, "%f,%f", &zmin, &zmax)
 	}
@@ -171,14 +173,14 @@ func TestOracleCarteCliffhanger(t *testing.T) {
 	cas := []struct {
 		nom        string
 		carteSeule bool
-		dq         Dequant
+		dq         himap.Dequant
 		borne      float64
 		plafond    int
 	}{
-		{"tous modules · LOD 40k", false, DequantBrut, 0.5, 0},
-		{"tous modules · LOD plein", false, DequantBrut, 0.5, 100000000},
-		{"carte seule · LOD 40k", true, DequantBrut, 0.5, 0},
-		{"carte seule · LOD plein", true, DequantBrut, 0.5, 100000000},
+		{"tous modules · LOD 40k", false, himap.DequantBrut, 0.5, 0},
+		{"tous modules · LOD plein", false, himap.DequantBrut, 0.5, 100000000},
+		{"carte seule · LOD 40k", true, himap.DequantBrut, 0.5, 0},
+		{"carte seule · LOD plein", true, himap.DequantBrut, 0.5, 100000000},
 	}
 	degagements := []int{2, 4}
 	filtre := os.Getenv("ORACLE_CAS")
@@ -216,7 +218,7 @@ func TestOracleCarteCliffhanger(t *testing.T) {
 // ecritCarteDesManques dessine la carte praticable et, en rouge, les positions qu'elle rate.
 // C'est le diagnostic qui LOCALISE un trou (un pont absent, une aile non cartographiee) la
 // ou un pourcentage ne fait que le compter.
-func ecritCarteDesManques(t *testing.T, sortie string, sol *Volume, pos, manques []pointRejeu) {
+func ecritCarteDesManques(t *testing.T, sortie string, sol *himap.Volume, pos, manques []pointRejeu) {
 	t.Helper()
 	img := image.NewRGBA(image.Rect(0, 0, sol.NX, sol.NY))
 	for j := 0; j < sol.NY; j++ {

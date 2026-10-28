@@ -1,6 +1,6 @@
 //go:build gamefiles
 
-package himap
+package gamefilescorpus
 
 // LA PREUVE DES REGIONS DE LIVE FIRE, MATERIALISEE EN TEST DURABLE (lot C catalogues,
 // 2026-08-27).
@@ -30,6 +30,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/himap"
 )
 
 // liveFireLevelID est le level_id de Live Fire (preuve de module, TestPreuveLevelIDCartes).
@@ -44,7 +45,7 @@ const liveFireRegionJouee = 1
 var liveFireLargeurs = [3]int{12, 12, 11}
 
 func TestPreuveRegionsLiveFire(t *testing.T) {
-	root, err := DeployRoot()
+	root, err := himap.DeployRoot()
 	if err != nil {
 		t.Skip(err)
 	}
@@ -53,7 +54,7 @@ func TestPreuveRegionsLiveFire(t *testing.T) {
 	if err != nil || len(porteurs) == 0 {
 		t.Fatalf("globals ds introuvables (%v, %d porteur(s))", err, len(porteurs))
 	}
-	regions, err := RegionsBSPExternes(module, porteurs)
+	regions, err := himap.RegionsBSPExternes(module, porteurs)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -123,7 +124,7 @@ func ancresParLevelID(t *testing.T, levelID int64) [][3]float64 {
 	return out
 }
 
-func contientToutes(b Bounds, pts [][3]float64) bool {
+func contientToutes(b himap.Bounds, pts [][3]float64) bool {
 	for _, p := range pts {
 		for ax := 0; ax < 3; ax++ {
 			if p[ax] < b.Min[ax] || p[ax] > b.Max[ax] {
@@ -134,4 +135,4 @@ func contientToutes(b Bounds, pts [][3]float64) bool {
 	return true
 }
 
-func volume(b Bounds) float64 { return b.Extent(0) * b.Extent(1) * b.Extent(2) }
+func volume(b himap.Bounds) float64 { return b.Extent(0) * b.Extent(1) * b.Extent(2) }

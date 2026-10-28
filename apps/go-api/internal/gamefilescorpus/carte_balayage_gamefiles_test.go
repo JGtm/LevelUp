@@ -1,6 +1,6 @@
 //go:build gamefiles
 
-package himap
+package gamefilescorpus
 
 import (
 	"math"
@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/himap"
 )
 
 // LE BALAYAGE — la regle vaut-elle sur les 37 cartes, ou seulement sur celle qui l'a vue naitre ?
@@ -39,7 +40,7 @@ type bilanCarte struct {
 
 // TestBalayageDesCartes mesure la regle sur toutes les cartes du catalogue d'objectifs.
 func TestBalayageDesCartes(t *testing.T) {
-	if _, err := DeployRoot(); err != nil {
+	if _, err := himap.DeployRoot(); err != nil {
 		t.Skip(err)
 	}
 	p, err := cheminCatalogue()
@@ -68,7 +69,7 @@ func TestBalayageDesCartes(t *testing.T) {
 	var bilans []bilanCarte
 	var absents []string
 	for _, mod := range modules {
-		chemin, ok := ChercheModuleInstalle(mod)
+		chemin, ok := himap.ChercheModuleInstalle(mod)
 		if !ok {
 			absents = append(absents, mod)
 			continue
@@ -126,10 +127,10 @@ func jugeUneCarte(t *testing.T, cheminModule, module string) bilanCarte {
 	if vol == nil {
 		return b
 	}
-	sol := vol.Floors(HeadroomBands)
+	sol := vol.Floors(himap.HeadroomBands)
 	var ecarts []float64
 	for _, a := range ancres {
-		_, ecart, ok := sol.SolLePlusProche(a[0], a[1], a[2]-AncrageDecalageSol)
+		_, ecart, ok := sol.SolLePlusProche(a[0], a[1], a[2]-himap.AncrageDecalageSol)
 		if !ok {
 			continue
 		}
@@ -157,7 +158,7 @@ func jugeUneCarte(t *testing.T, cheminModule, module string) bilanCarte {
 // c est la meme regle qui cadre le dessin (cf. reference.go). Sans elle, une carte du balayage
 // a reclame 11 324 x 12 308 x 240 cellules, soit 4 Go — l emprise du sbsp porte du decor
 // lointain qui n interesse personne.
-func volumeDuModule(t *testing.T, chemin string, ancres [][3]float64) *Volume {
+func volumeDuModule(t *testing.T, chemin string, ancres [][3]float64) *himap.Volume {
 	t.Helper()
 	if len(ancres) == 0 {
 		return nil
@@ -167,11 +168,11 @@ func volumeDuModule(t *testing.T, chemin string, ancres [][3]float64) *Volume {
 	zlo, zhi := math.Inf(1), math.Inf(-1)
 	for _, a := range ancres {
 		for k := 0; k < 2; k++ {
-			lo[k] = math.Min(lo[k], a[k]-PorteeAncre)
-			hi[k] = math.Max(hi[k], a[k]+PorteeAncre)
+			lo[k] = math.Min(lo[k], a[k]-himap.PorteeAncre)
+			hi[k] = math.Max(hi[k], a[k]+himap.PorteeAncre)
 		}
-		zlo = math.Min(zlo, a[2]-PorteeAncre)
-		zhi = math.Max(zhi, a[2]+PorteeAncre)
+		zlo = math.Min(zlo, a[2]-himap.PorteeAncre)
+		zhi = math.Max(zhi, a[2]+himap.PorteeAncre)
 	}
 	return construitVolume(t, optionsCarte{
 		CheminModule: chemin, ZMin: zlo, ZMax: zhi, BorneAABB: 0.5, Ancres: ancres,

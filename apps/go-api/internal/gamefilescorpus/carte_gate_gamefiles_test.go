@@ -1,6 +1,6 @@
 //go:build gamefiles
 
-package himap
+package gamefilescorpus
 
 import (
 	"fmt"
@@ -11,6 +11,7 @@ import (
 	"os"
 	"testing"
 
+	"levelup/go-api/internal/himap"
 	"levelup/go-api/internal/testfixtures"
 )
 
@@ -58,8 +59,8 @@ func TestGateVisuelCliffhanger(t *testing.T) {
 		Carte: "ridgeline", ZMin: -25, ZMax: 25, BorneAABB: 0.5,
 		EmpriseMin: &lo, EmpriseMax: &hi, Ancres: ancres,
 	})
-	sol := vol.Floors(HeadroomBands)
-	surface := NewSurfaceReference(ancres)
+	sol := vol.Floors(himap.HeadroomBands)
+	surface := himap.NewSurfaceReference(ancres)
 	bandes := sol.CarteParReference(surface, toleranceRendu)
 
 	// Cote a cote : la reference a gauche, la reconstruction a droite, meme grille de pixels.

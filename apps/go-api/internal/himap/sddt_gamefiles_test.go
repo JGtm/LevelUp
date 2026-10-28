@@ -16,8 +16,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-
-	"levelup/go-api/internal/testfixtures"
 )
 
 // TestSddtLecture verifie le decodage complet sur les deux cartes etalonnees.
@@ -212,7 +210,7 @@ func TestBancCliffhanger(t *testing.T) {
 	if err != nil {
 		t.Skip(err)
 	}
-	ref := testfixtures.Carte("carte_validee_v1.png")
+	ref := fixtureCarteValidee
 	f, err := os.Open(ref)
 	if err != nil {
 		t.Skip(err)

@@ -278,7 +278,7 @@ func CuitCarteNative(ctx context.Context, opts OptionsCuisson) (*Rendu, BilanCui
 	s := NewSurfaceReference(opts.Ancres)
 	r.ArmeReference(s)
 
-	if err := peupleDepuisModule(ctx, r, &b, opts); err != nil {
+	if err := PeupleDepuisModule(ctx, r, &b, opts); err != nil {
 		return nil, b, err
 	}
 	if opts.EcreteToits {
@@ -333,8 +333,12 @@ func CadreSurAncresEchelle(ancres [][3]float64, cell float64) *Rendu {
 	return NewRendu(lo, hi, cell)
 }
 
-// peupleDepuisModule resout l'index de modules, choisit le bsp par les ancres, et peuple.
-func peupleDepuisModule(ctx context.Context, r *Rendu, b *BilanCuisson, opts OptionsCuisson) error {
+// PeupleDepuisModule est la PREMIERE ETAPE de CuitCarteNative : elle resout l'index de modules,
+// choisit le bsp par les ancres (opts.Ancres) et peuple le rendu `r` de ses triangles, sans
+// appliquer ni la reference de toits, ni la frontiere, ni la mesure des zones. Exposee pour les
+// sondes de mesure qui doivent lire la matiere BRUTE, avant ces etapes. Le rendu `r` doit etre
+// cadre et regle (Tranche, NiveauDeJeu) par l'appelant ; les compteurs sont inscrits dans `b`.
+func PeupleDepuisModule(ctx context.Context, r *Rendu, b *BilanCuisson, opts OptionsCuisson) error {
 	chemins, err := GeometrySearchPath(opts.RacineDeploy, opts.CheminModule)
 	if err != nil {
 		return fmt.Errorf("chemins de geometrie : %w", err)

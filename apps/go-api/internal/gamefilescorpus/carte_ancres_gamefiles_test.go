@@ -1,6 +1,6 @@
 //go:build gamefiles
 
-package himap
+package gamefilescorpus
 
 import (
 	"fmt"
@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/himap"
 )
 
 // LES ANCRES — l'oracle FAIBLE, mais disponible sur les 37 cartes.
@@ -85,7 +86,7 @@ var toleranceRendu = 6.0
 // surfaceDesAncres construit la surface de reference d'une carte depuis le catalogue
 // d'objectifs. Rend une surface VIDE si la carte n'y figure pas — l'appelant doit alors se
 // replier explicitement, jamais silencieusement.
-func surfaceDesAncres(t *testing.T, module string) *SurfaceReference {
+func surfaceDesAncres(t *testing.T, module string) *himap.SurfaceReference {
 	t.Helper()
 	if module == "" {
 		module = moduleCliffhanger
@@ -97,7 +98,7 @@ func surfaceDesAncres(t *testing.T, module string) *SurfaceReference {
 		}
 	}
 	t.Logf("surface de reference : %d ancres pour le module %s", len(pts), module)
-	return NewSurfaceReference(pts)
+	return himap.NewSurfaceReference(pts)
 }
 
 // TestAncresEtalonnageCliffhanger mesure le decalage entre le z d'une ancre et l'altitude des

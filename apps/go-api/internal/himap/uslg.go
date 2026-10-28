@@ -48,15 +48,30 @@ import (
 	"path/filepath"
 
 	"levelup/go-api/internal/himodule"
-	"levelup/go-api/internal/i18n"
 )
 
 // LangueEN et LangueFR : index de langue tels que le jeu les numérote. Les autres existent
-// (18 en tout) ; le dépôt est bilingue par typage, on n'extrait que ces deux-là.
+// (18 en tout) ; on n'extrait que ces deux-là.
 const (
 	LangueEN = 0
 	LangueFR = 3
 )
+
+// CodeLangueEN et CodeLangueFR : le code de chaque langue extraite dans le résultat de
+// LexiqueLieux, sous la forme que le jeu lui donne (étiquette BCP-47 complète, celle de l'API
+// Halo). Le paquet ne connaît aucune liste de langues de l'application : l'appelant traduit ces
+// codes vers les siens.
+const (
+	CodeLangueEN = "en-US"
+	CodeLangueFR = "fr-FR"
+)
+
+// codesLangues : index de langue du jeu -> code rendu par LexiqueLieux. Un index absent de
+// cette table n'est pas extrait.
+var codesLangues = map[int]string{
+	LangueEN: CodeLangueEN,
+	LangueFR: CodeLangueFR,
+}
 
 // Offsets de l'en-tête d'un sous-fichier `ucsh` — cf. en-tête de fichier.
 const (
@@ -143,7 +158,10 @@ func VocabulaireLieux(racineDeploy string) ([]uint32, error) {
 // `uslg`, celui qui couvre le mieux le vocabulaire `locs`, et on EXIGE qu'il le couvre
 // entièrement. Un indice en dur casserait à la prochaine mise à jour du jeu sans que rien
 // ne le signale ; ce critère-là, lui, est vérifiable et il échoue bruyamment.
-func LexiqueLieux(racineDeploy string) (map[uint32]i18n.Text, error) {
+//
+// Le résultat est indexé par string_id puis par code de langue (CodeLangueEN, CodeLangueFR) :
+// une langue sans texte pour ce string_id est absente de la carte interne.
+func LexiqueLieux(racineDeploy string) (map[uint32]map[string]string, error) {
 	vocab, err := VocabulaireLieux(racineDeploy)
 	if err != nil {
 		return nil, err
@@ -157,7 +175,7 @@ func LexiqueLieux(racineDeploy string) (map[uint32]i18n.Text, error) {
 		return nil, fmt.Errorf("himap: globals : %w", err)
 	}
 	defer func() { _ = m.Close() }()
-	var meilleur map[uint32]i18n.Text
+	var meilleur map[uint32]map[string]string
 	meilleureCouverture := -1
 	for _, f := range m.Files("uslg") {
 		lex, err := lexiqueDUnTag(m, f)
@@ -186,7 +204,7 @@ func LexiqueLieux(racineDeploy string) (map[uint32]i18n.Text, error) {
 
 // lexiqueDUnTag décode un tag `uslg` : ses 18 langues, puis les sous-fichiers `ucsh` de son
 // blob de ressources. Ne rend que l'anglais et le français.
-func lexiqueDUnTag(m *himodule.Module, f himodule.File) (map[uint32]i18n.Text, error) {
+func lexiqueDUnTag(m *himodule.Module, f himodule.File) (map[uint32]map[string]string, error) {
 	tag, err := m.Extract(f)
 	if err != nil {
 		return nil, fmt.Errorf("extraire : %w", err)
@@ -199,25 +217,21 @@ func lexiqueDUnTag(m *himodule.Module, f himodule.File) (map[uint32]i18n.Text, e
 	if err != nil {
 		return nil, fmt.Errorf("blob de ressources : %w", err)
 	}
-	out := map[uint32]i18n.Text{}
+	out := map[uint32]map[string]string{}
 	p := 0
 	for slot := 0; p+ucshEnteteFixe <= len(blob); slot++ {
 		table, suivant, err := decodeSousFichierUcsh(blob, p)
 		if err != nil {
 			return nil, err
 		}
-		if slot < len(langues) {
+		if code, ok := codeDuSlot(langues, slot); ok {
 			for h, s := range table {
 				l := out[h]
-				switch langues[slot] {
-				case LangueEN:
-					l.Set(i18n.LocaleEN, s)
-				case LangueFR:
-					l.Set(i18n.LocaleFR, s)
-				default:
-					continue
+				if l == nil {
+					l = map[string]string{}
+					out[h] = l
 				}
-				out[h] = l
+				l[code] = s
 			}
 		}
 		p = suivant
@@ -370,4 +384,15 @@ func blocDeLIndex(blob []byte, tabStructs, nStructs int) (int, error) {
 		return int(int32(binary.LittleEndian.Uint32(blob[b+ucshStructCible:]))), nil
 	}
 	return -1, nil
+}
+
+// codeDuSlot rend le code de langue du sous-fichier `slot`, d'après l'ordre des langues lu dans
+// le tag. false si le slot n'a pas d'index de langue ou si le jeu l'y numérote autrement que
+// EN/FR (langue non extraite).
+func codeDuSlot(langues []int, slot int) (string, bool) {
+	if slot >= len(langues) {
+		return "", false
+	}
+	code, ok := codesLangues[langues[slot]]
+	return code, ok
 }

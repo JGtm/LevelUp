@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/himap"
 	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/mapcatalog"
 )
@@ -175,5 +176,25 @@ func TestEcritLexiqueEcarteUnCoupleIncomplet(t *testing.T) {
 	}
 	if len(relu) != 1 || relu[0x00000002][i18n.LocaleFR] != "Rivière" {
 		t.Fatalf("relu = %+v", relu)
+	}
+}
+
+// TestVersTextesTraduitLesCodesDuJeu — les codes de langue que himap rend (CodeLangueEN/FR)
+// deviennent des langues de l'application par i18n.FromHaloTag ; un code que la liste ne porte
+// pas est compté, jamais rangé sous une autre langue.
+func TestVersTextesTraduitLesCodesDuJeu(t *testing.T) {
+	brut := map[uint32]map[string]string{
+		0x1: {himap.CodeLangueEN: "Cave", himap.CodeLangueFR: "Grotte"},
+		0x2: {himap.CodeLangueEN: "River", "xx-XX": "?"},
+	}
+	out, inconnus := versTextes(brut)
+	if inconnus != 1 {
+		t.Fatalf("codes inconnus = %d ; attendu 1", inconnus)
+	}
+	if got := out[0x1]; got[i18n.LocaleEN] != "Cave" || got[i18n.LocaleFR] != "Grotte" || len(got) != 2 {
+		t.Fatalf("0x1 = %+v", got)
+	}
+	if got := out[0x2]; got[i18n.LocaleEN] != "River" || len(got) != 1 {
+		t.Fatalf("0x2 = %+v", got)
 	}
 }
