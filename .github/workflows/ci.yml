@@ -484,7 +484,7 @@ jobs:
           go vet -tags=gamefiles ./...
           go vet -tags=gamefiles,research ./...
           go test ./... -timeout 600s -count=1
-          if go list -deps ./... | grep -E 'levelup/go-api'; then
+          if go list -deps -test ./... | grep -E 'levelup/go-api'; then
             echo "::error::libs/himap importe le module levelup/go-api"
             exit 1
           fi
@@ -507,7 +507,7 @@ jobs:
           go vet -tags=research ./...
           go vet -tags=gamefiles,research ./...
           go test ./... -timeout 600s -count=1
-          if go list -deps ./... | grep -E 'levelup/go-api'; then
+          if go list -deps -test ./... | grep -E 'levelup/go-api'; then
             echo "::error::libs/gamefiles importe le module levelup/go-api"
             exit 1
           fi

@@ -242,13 +242,13 @@ go-api-test-gamefiles:
 ## Le corpus `gamefiles` d'une brique se joue par go-api-test-gamefiles (archlint.
 ## TestCibleMakefileGamefilesCouvreLeCorpus exige sa ligne) ; les quatre vet couvrent le build par
 ## defaut et les combinaisons de tags (compilation seule, jamais d'execution sans le jeu).
-## Autonomie : `go list -deps` d'un module ne doit montrer aucun paquet levelup/go-api.
+## Autonomie : `go list -deps -test` (tests compris) d'un module ne doit montrer aucun paquet levelup/go-api.
 libs-test:
 	@set -e; for m in libs/*/go.mod; do d=$$(dirname $$m); echo "== $$d"; \
 		(cd $$d && CGO_ENABLED=1 go vet ./... && CGO_ENABLED=1 go vet -tags=research ./... \
 			&& CGO_ENABLED=1 go vet -tags=gamefiles ./... && CGO_ENABLED=1 go vet -tags=gamefiles,research ./... \
 			&& CGO_ENABLED=1 go test ./... -timeout 600s -count=1); \
-		if (cd $$d && go list -deps ./... | grep -E 'levelup/go-api'); then \
+		if (cd $$d && go list -deps -test ./... | grep -E 'levelup/go-api'); then \
 			echo "$$d importe le module levelup/go-api"; exit 1; \
 		fi; \
 	done

@@ -26,6 +26,18 @@
 // Une entrée d'allowlist que plus aucun fichier n'honore fait rougir le test : une exemption qui
 // survit à son site finit par en couvrir un autre.
 //
+// # TOLÉRANCES PAR IMPORT (2026-10-29, plan D2 lot 1)
+//
+// La brique `film` (décodeur de film) est posée AVANT son déplacement, avec une table de comptes
+// (`tolerancesFilm`, import visé -> nombre de fichiers, tests compris) au lieu d'une allowlist par
+// fichier : elle porte des centaines de franchissements, et c'est leur NOMBRE par import qui doit
+// descendre à zéro au fil du lot 2. Un compte qui monte, un import absent de la table, un compte
+// qui baisse sans que la table le suive, une entrée à zéro : rouge. La table est retirée à la
+// clôture du lot 2. Les auto-preuves et l'exhaustivité des dossiers de `libs/` sont dans
+// `briques_garde_test.go`.
+//
+// Mutation : baisser une valeur de `tolerancesFilm` de 1 (rouge, fichiers et import listés).
+//
 // # MUTATION QUI DOIT LE FAIRE ROUGIR
 //
 // Ajouter `"levelup/go-api/internal/analysis"` aux imports de
@@ -36,9 +48,11 @@ package archlint
 import (
 	"go/parser"
 	"go/token"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -56,12 +70,39 @@ const (
 type brique struct {
 	nom string
 	// paquets : répertoires relatifs à la racine du dépôt, séparateurs "/" (`libs/gamefiles/ooz`,
-	// `libs/himap/himap`). Chaque répertoire est un paquet Go (pas de descente
-	// récursive : un sous-répertoire se déclare).
+	// `libs/himap/himap`). Sans `recursif`, chaque répertoire est un paquet Go exact (un
+	// sous-répertoire se déclare).
 	paquets []string
+	// recursif : chaque entrée de `paquets` désigne un ARBRE (le répertoire et tout ce qui est
+	// dessous, hors `testdata`, `vendor`, `.x`, `_x`) ; un import vers un paquet de l'arbre est
+	// interne à la brique. Sert aux briques encore logées dans `apps/go-api/internal/` avant leur
+	// déplacement sous `libs/` (D2 : le décodeur de film).
+	recursif bool
 	// permis : les paquets (même forme) d'AUTRES briques, de rang inférieur, que celle-ci peut
 	// importer. Tout autre import `levelup/go-api/...` ou `.../libs/...` est une violation.
 	permis []string
+	// tolerances : import visé (hors brique, hors permis) -> nombre de FICHIERS de la brique,
+	// production et tests confondus, qui l'importent. Nil = aucune tolérance : tout import hors
+	// brique est une violation. Non nil : un import absent de la table, un compte supérieur à la
+	// tolérance (la dette croît) ou inférieur (la dette a baissé et la table ne le dit pas), et
+	// toute entrée à zéro sont rouges. Le ratchet ne peut que descendre.
+	tolerances map[string]int
+}
+
+// interne dit si le chemin d'import vise un paquet de la brique ou un paquet permis.
+func (b brique) interne(imp string) bool {
+	for _, p := range b.paquets {
+		base := cheminImport(p)
+		if imp == base || (b.recursif && strings.HasPrefix(imp, base+"/")) {
+			return true
+		}
+	}
+	for _, p := range b.permis {
+		if imp == cheminImport(p) {
+			return true
+		}
+	}
+	return false
 }
 
 // cheminImport rend le chemin d'import Go d'un paquet donné par son répertoire (relatif à la
@@ -87,7 +128,49 @@ var paquetsGamefiles = []string{
 // Les plans D2 (décodeur de film) et D3 (API Halo) y ajoutent leurs lignes.
 var briques = []brique{
 	{nom: "gamefiles", paquets: paquetsGamefiles},
-	{nom: "himap", paquets: []string{"libs/himap/himap"}, permis: paquetsGamefiles},
+	{nom: "himap", paquets: paquetsHimap, permis: paquetsGamefiles},
+	{
+		nom: "film",
+		// Lot 1 du plan D2 : le décodeur de film est encore dans le module `apps/go-api`. Ses trois
+		// racines sont les arbres que le lot 3 déplace sous `libs/film`, où cette ligne est réécrite.
+		paquets: []string{
+			"apps/go-api/internal/games/halo_infinite/film",
+			"apps/go-api/internal/games/weapons/filmshell",
+			"apps/go-api/internal/games/halo_infinite/equipenergy",
+		},
+		recursif:   true,
+		permis:     append(append([]string{}, paquetsGamefiles...), paquetsHimap...),
+		tolerances: tolerancesFilm,
+	},
+}
+
+// paquetsHimap : la brique « images de carte ». Elle importe `gamefiles`, rien d'autre.
+var paquetsHimap = []string{"libs/himap/himap"}
+
+// tolerancesFilm : par import visé hors de la brique `film`, le nombre de FICHIERS de la brique
+// (production et tests confondus, tests `research` compris) qui l'importent. Dette RENDUE VISIBLE
+// le 2026-10-29 (plan D2, lot 1), mesurée sur `a5bae50b4` : elle ne peut que descendre (voir
+// `brique.tolerances`) et chaque entrée nomme le lot du plan qui la vide. Table retirée à la
+// clôture du lot 2 (critère de succès 2 du plan : allowlist VIDE).
+var tolerancesFilm = map[string]int{
+	// Production (voir le relevé de départ du plan) et tests mêlés : le lot indiqué vide l'entrée.
+	"levelup/go-api/internal/filmproc":              71, // lot 2.6 : filmproc -> film/filmproc (2 prod, 69 tests, 36 research)
+	"levelup/go-api/internal/platform/atomicfile":   1,  // lot 2.6 : atomicfile sous film/internal (D2-D)
+	"levelup/go-api/internal/observability":         13, // lot 2.2 : filmobs + puits (9 prod, 4 tests)
+	"levelup/go-api/internal/domain/playerposition": 3,  // lot 2.3 : -> film/playerposition
+	"levelup/go-api/internal/domain/objectiveevent": 3,  // lot 2.3 : -> film/objectiveevent
+	"levelup/go-api/internal/games/canonical":       15, // lot 2.4 : film_identity.go -> film/identity (7 prod, 8 tests)
+	"levelup/go-api/internal/domain/highlightevent": 21, // lot 2.7 : types.HighlightEvent (6 prod, 15 tests)
+	"levelup/go-api/internal/domain/equipmentusage": 4,  // lot 2.8 : familles locales dans replay (2 prod, 2 tests)
+	"levelup/go-api/internal/i18n":                  7,  // lot 2.9 : type Text propre au replay + flatjson (5 prod, 2 tests)
+	"levelup/go-api/internal/testutil":              21, // lot 2.11 : helpers locaux R2 / filmcorpus R1 (tests seuls)
+	"levelup/go-api/internal/domain/title":          14, // lots 2.10 (prod en commentaire) et 2.11 (tests)
+	"levelup/go-api/internal/games/mappings":        7,  // lots 2.10 et 2.11 (tests)
+	"levelup/go-api/internal/games/weapons":         3,  // lot 2.11 : tests R1 -> filmcorpus
+	"levelup/go-api/internal/testfixtures":          2,  // lot 2.11 : tests R1 -> filmcorpus
+	"levelup/go-api/internal/domain/replaydoc":      2,  // lot 2.11 : tests R1 -> filmcorpus
+	"levelup/go-api/internal/domain":                1,  // lot 2.11 : test research
+	"levelup/go-api/internal/analysis/digest":       1,  // lot 2.11 : test R1 -> filmcorpus
 }
 
 // importsToleres : les fichiers d'une brique qui importent un paquet du dépôt hors de la brique,
@@ -115,7 +198,7 @@ func TestBriquesImports(t *testing.T) {
 	vus := map[string]bool{}
 	var violations []string
 	for _, b := range briques {
-		fichiers := fichiersImportsDesPaquets(t, racine, b.paquets)
+		fichiers := fichiersImportsDeLaBrique(t, racine, b)
 		violations = append(violations, violationsDeBrique(b, fichiers, importsToleres, vus)...)
 	}
 	for cle, motif := range importsToleres {
@@ -134,35 +217,23 @@ func TestBriquesImports(t *testing.T) {
 	}
 }
 
-// fichiersImportsDesPaquets parse les imports de tous les `.go` (tests compris) des paquets
-// donnés (répertoires relatifs à `racine`, la racine du dépôt). Échoue si un paquet n'existe pas
-// ou ne contient aucun fichier Go : un garde-rail qui ne voit rien ne garde rien.
-func fichiersImportsDesPaquets(t *testing.T, racine string, paquets []string) []fichierImports {
+// fichiersImportsDeLaBrique parse les imports de tous les `.go` (tests compris, quels que soient
+// leurs tags de build : `go/parser` ne les évalue pas) de la brique. Échoue si un paquet n'existe
+// pas ou ne contient aucun fichier Go : un garde-rail qui ne voit rien ne garde rien.
+func fichiersImportsDeLaBrique(t *testing.T, racine string, b brique) []fichierImports {
 	t.Helper()
 	fset := token.NewFileSet()
 	var out []fichierImports
-	for _, p := range paquets {
-		dir := filepath.Join(racine, filepath.FromSlash(p))
-		entrees, err := os.ReadDir(dir)
-		if err != nil {
-			t.Fatalf("paquet %s introuvable : %v — la table des briques décrit une arborescence qui n'existe plus", p, err)
+	for _, p := range b.paquets {
+		dirs := []string{p}
+		if b.recursif {
+			dirs = sousDossiersGo(t, racine, p)
 		}
 		n := 0
-		for _, e := range entrees {
-			if e.IsDir() || !strings.HasSuffix(e.Name(), ".go") {
-				continue
-			}
-			chemin := filepath.Join(dir, e.Name())
-			f, perr := parser.ParseFile(fset, chemin, nil, parser.ImportsOnly)
-			if perr != nil {
-				t.Fatalf("%s : %v", chemin, perr)
-			}
-			fi := fichierImports{rel: p + "/" + e.Name()}
-			for _, imp := range f.Imports {
-				fi.imports = append(fi.imports, strings.Trim(imp.Path.Value, `"`))
-			}
-			out = append(out, fi)
-			n++
+		for _, d := range dirs {
+			fichiers := importsDuDossier(t, fset, racine, d)
+			n += len(fichiers)
+			out = append(out, fichiers...)
 		}
 		if n == 0 {
 			t.Fatalf("aucun fichier Go sous %s : le garde-rail ne couvre rien", p)
@@ -171,31 +242,124 @@ func fichiersImportsDesPaquets(t *testing.T, racine string, paquets []string) []
 	return out
 }
 
+// sousDossiersGo rend le répertoire donné et tous ses sous-répertoires que l'outil Go ouvre
+// (hors `testdata`, `vendor`, `.x`, `_x`), relatifs à `racine`, séparateurs "/".
+func sousDossiersGo(t *testing.T, racine, dossier string) []string {
+	t.Helper()
+	base := filepath.Join(racine, filepath.FromSlash(dossier))
+	var out []string
+	err := filepath.WalkDir(base, func(chemin string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !d.IsDir() {
+			return nil
+		}
+		nom := d.Name()
+		if chemin != base && (dossiersInvisiblesAuGo[nom] || strings.HasPrefix(nom, ".") || strings.HasPrefix(nom, "_")) {
+			return fs.SkipDir
+		}
+		rel, _ := filepath.Rel(racine, chemin)
+		out = append(out, filepath.ToSlash(rel))
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("paquet %s introuvable : %v — la table des briques décrit une arborescence qui n'existe plus", dossier, err)
+	}
+	return out
+}
+
+// importsDuDossier parse les imports des `.go` du seul répertoire `p` (relatif à `racine`).
+func importsDuDossier(t *testing.T, fset *token.FileSet, racine, p string) []fichierImports {
+	t.Helper()
+	dir := filepath.Join(racine, filepath.FromSlash(p))
+	entrees, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("paquet %s introuvable : %v — la table des briques décrit une arborescence qui n'existe plus", p, err)
+	}
+	var out []fichierImports
+	for _, e := range entrees {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".go") {
+			continue
+		}
+		chemin := filepath.Join(dir, e.Name())
+		f, perr := parser.ParseFile(fset, chemin, nil, parser.ImportsOnly)
+		if perr != nil {
+			t.Fatalf("%s : %v", chemin, perr)
+		}
+		fi := fichierImports{rel: p + "/" + e.Name()}
+		for _, imp := range f.Imports {
+			fi.imports = append(fi.imports, strings.Trim(imp.Path.Value, `"`))
+		}
+		out = append(out, fi)
+	}
+	return out
+}
+
 // violationsDeBrique rend, pour une brique, les imports de `levelup/go-api/...` ou de
 // `github.com/JGtm/LevelUp/libs/...` qui ne visent ni un paquet de la brique ni un paquet permis.
 // Les fichiers de `toleres` sont passés et marqués dans `vus` (un fichier toléré qui n'a plus de
-// franchissement n'est PAS marqué : son entrée est morte). Fonction pure : c'est elle que
+// franchissement n'est PAS marqué : son entrée est morte). Quand la brique porte une table de
+// `tolerances`, les franchissements sont comptés par import visé (un fichier compte une fois par
+// import) et confrontés à la table par `violationsDeTolerances`. Fonction pure : c'est elle que
 // l'auto-preuve exerce.
 func violationsDeBrique(b brique, fichiers []fichierImports, toleres map[string]string, vus map[string]bool) []string {
-	interne := map[string]bool{}
-	for _, p := range b.paquets {
-		interne[cheminImport(p)] = true
-	}
-	for _, p := range b.permis {
-		interne[cheminImport(p)] = true
-	}
 	var violations []string
+	hors := map[string][]string{} // import visé -> fichiers qui l'importent
 	for _, f := range fichiers {
+		deja := map[string]bool{}
 		for _, imp := range f.imports {
 			surveille := strings.HasPrefix(imp, prefixeModuleAPI) || strings.HasPrefix(imp, prefixeBriques)
-			if !surveille || interne[imp] {
+			if !surveille || b.interne(imp) || deja[imp] {
 				continue
 			}
+			deja[imp] = true
 			if _, ok := toleres[f.rel]; ok {
 				vus[f.rel] = true
 				continue
 			}
+			if b.tolerances != nil {
+				hors[imp] = append(hors[imp], f.rel)
+				continue
+			}
 			violations = append(violations, "["+b.nom+"] "+f.rel+"  -> "+imp)
+		}
+	}
+	if b.tolerances != nil {
+		violations = append(violations, violationsDeTolerances(b, hors)...)
+	}
+	return violations
+}
+
+// violationsDeTolerances confronte les comptes mesurés (import visé -> fichiers) à la table de
+// tolérances de la brique : import absent de la table, compte supérieur (liste fichier -> import),
+// compte inférieur (la table doit descendre), entrée à zéro (à retirer), entrée sans aucun fichier.
+func violationsDeTolerances(b brique, hors map[string][]string) []string {
+	var violations []string
+	for imp, fichiers := range hors {
+		sort.Strings(fichiers)
+		tol, ok := b.tolerances[imp]
+		switch {
+		case !ok:
+			for _, f := range fichiers {
+				violations = append(violations, "["+b.nom+"] "+f+"  -> "+imp+"  (import absent de la table des tolérances)")
+			}
+		case len(fichiers) > tol:
+			for _, f := range fichiers {
+				violations = append(violations, "["+b.nom+"] "+f+"  -> "+imp+
+					"  (compte "+strconv.Itoa(len(fichiers))+" > tolérance "+strconv.Itoa(tol)+")")
+			}
+		case len(fichiers) < tol:
+			violations = append(violations, "["+b.nom+"] "+imp+" : compte mesuré "+strconv.Itoa(len(fichiers))+
+				" < tolérance "+strconv.Itoa(tol)+" — baisse la tolérance à "+strconv.Itoa(len(fichiers)))
+		}
+	}
+	for imp, tol := range b.tolerances {
+		if tol == 0 {
+			violations = append(violations, "["+b.nom+"] tolérance à 0 pour "+imp+" — retirer l'entrée de la table")
+		} else if _, mesure := hors[imp]; !mesure {
+			violations = append(violations, "["+b.nom+"] "+imp+" : compte mesuré 0 < tolérance "+
+				strconv.Itoa(tol)+" — retirer l'entrée de la table")
 		}
 	}
 	return violations

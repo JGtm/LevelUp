@@ -34,6 +34,15 @@
 //
 // Ajouter `"levelup/go-api/internal/games/halo_infinite/rankedplaylists"` à n'importe quel
 // fichier d'`internal/analysis/` hors allowlist.
+//
+// # LE DÉCODEUR DE FILM, DIRECT ET TRANSITIF (2026-10-29, plan D2 lot 1, décision D2-G c)
+//
+// Le décodeur de film est une brique (ligne `film` de `briques_imports_test.go`) : `analysis/` n'en
+// importe aucun paquet, directement (même parcours, tests compris, SANS allowlist) ni par la
+// fermeture (`TestFermetureDeAnalysisSansDecodeurDeFilm`, `go list -deps -test`, allowlist datée
+// des fuites qui ne peut que descendre). Mutation : ajouter à un fichier d'`analysis/` un import
+// de `levelup/go-api/internal/games/halo_infinite/film/types` (direct), ou faire importer
+// `games/weapons/filmshell` par un paquet que la fermeture d'`analysis` contient (transitif).
 package archlint
 
 import (
@@ -41,6 +50,7 @@ import (
 	"go/token"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -143,6 +153,10 @@ func TestAnalysisImporteAucunPaquetDeTitre(t *testing.T) {
 		rel = filepath.ToSlash(rel)
 		for _, imp := range f.Imports {
 			paquet := strings.Trim(imp.Path.Value, `"`)
+			if estPaquetDeLaBriqueFilm(paquet) {
+				violations = append(violations, rel+"  -> "+paquet+"  (brique du décodeur de film, aucune tolérance)")
+				continue
+			}
 			titre, ok := titreDuPaquetGames(paquet)
 			if !ok {
 				continue
@@ -196,4 +210,183 @@ func titreDuPaquetGames(paquet string) (string, bool) {
 		return "", false
 	}
 	return premier, true
+}
+
+// prefixeLibsFilm : le module `libs/film` (lot 3 du plan D2), nommé d'avance pour que l'interdit
+// tienne avant comme après le déplacement du décodeur.
+const prefixeLibsFilm = "github.com/JGtm/LevelUp/libs/film"
+
+// racinesDeLaBriqueFilm rend les chemins d'import racines de la brique du décodeur de film : ceux
+// de la ligne `film` de la table des briques (ses arbres actuels) et le module `libs/film`.
+func racinesDeLaBriqueFilm() []string {
+	racines := []string{prefixeLibsFilm}
+	for _, b := range briques {
+		if b.nom != "film" {
+			continue
+		}
+		for _, p := range b.paquets {
+			racines = append(racines, cheminImport(p))
+		}
+	}
+	return racines
+}
+
+// estPaquetDeLaBriqueFilm dit si le chemin d'import est une racine de la brique du décodeur ou un
+// paquet dessous (frontière de chemin : `filmprofile` n'est pas sous `film`).
+func estPaquetDeLaBriqueFilm(paquet string) bool {
+	for _, r := range racinesDeLaBriqueFilm() {
+		if paquet == r || strings.HasPrefix(paquet, r+"/") {
+			return true
+		}
+	}
+	return false
+}
+
+// fuitesTransitivesAnalysis : les paquets de la brique du décodeur de film que la fermeture
+// (`go list -deps -test`) d'`internal/analysis/...` contient malgré l'interdit direct, avec la
+// DATE d'inscription, le chemin d'arrivée et le LOT du plan D2 qui coupe la fuite. Ne peut que
+// descendre : une entrée que la fermeture ne contient plus fait rougir le test.
+//
+// VIDE LE 2026-10-29 (mesure du lot 1 sur `a5bae50b4`) : la fermeture d'`analysis` compte 312
+// lignes (paquets et variantes de test), aucune du décodeur ; `filmshell` et `equipenergy` n'y
+// sont pas non plus. Au lot 2.5 `filmshell` descend sous `film/filmshell` et `games/weapons` l'importe ;
+// si la fermeture s'en trouve atteinte, la fuite s'inscrit ICI, datée, avec le lot qui la coupe,
+// pas avant.
+var fuitesTransitivesAnalysis = map[string]string{}
+
+// paquetsDeFermeture extrait les chemins d'import d'une sortie `go list -deps -test -f
+// {{.ImportPath}}` : les variantes de test (`p [q.test]`) et les binaires de test (`q.test`)
+// ramenés au paquet qu'ils exercent.
+func paquetsDeFermeture(sortie string) []string {
+	vus := map[string]bool{}
+	var out []string
+	for _, ligne := range strings.Split(sortie, "\n") {
+		p := strings.TrimSpace(ligne)
+		if i := strings.IndexByte(p, ' '); i >= 0 {
+			p = p[:i]
+		}
+		p = strings.TrimSuffix(p, ".test")
+		if p == "" || vus[p] {
+			continue
+		}
+		vus[p] = true
+		out = append(out, p)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// fuitesDeFermeture rend, triés, les paquets de la brique du décodeur présents dans la fermeture et
+// absents de `tolerees`, et les entrées de `tolerees` que la fermeture ne contient plus.
+func fuitesDeFermeture(paquets []string, tolerees map[string]string) (fuites, mortes []string) {
+	dans := map[string]bool{}
+	for _, p := range paquets {
+		if !estPaquetDeLaBriqueFilm(p) {
+			continue
+		}
+		dans[p] = true
+		if _, ok := tolerees[p]; !ok {
+			fuites = append(fuites, p)
+		}
+	}
+	for p := range tolerees {
+		if !dans[p] {
+			mortes = append(mortes, p)
+		}
+	}
+	sort.Strings(fuites)
+	sort.Strings(mortes)
+	return fuites, mortes
+}
+
+func contientChaine(liste []string, cible string) bool {
+	for _, s := range liste {
+		if s == cible {
+			return true
+		}
+	}
+	return false
+}
+
+// TestFermetureDeAnalysisSansDecodeurDeFilm : la fermeture de dépendances d'`internal/analysis/...`
+// (production et tests) ne contient aucun paquet du décodeur de film, hors `fuitesTransitivesAnalysis`.
+// Un import indirect (analysis -> A -> décodeur) échappe au parcours des imports directs : seul
+// `go list` voit le chemin.
+func TestFermetureDeAnalysisSansDecodeurDeFilm(t *testing.T) {
+	goBin, err := exec.LookPath("go")
+	if err != nil {
+		t.Skipf("go introuvable dans le PATH : %v", err)
+	}
+	cmd := exec.Command(goBin, "list", "-deps", "-test", "-f", "{{.ImportPath}}", "./internal/analysis/...")
+	cmd.Dir = apiRootDepuisIci(t)
+	var stderr strings.Builder
+	cmd.Stderr = &stderr
+	brut, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("go list -deps -test ./internal/analysis/... : %v\n%s", err, stderr.String())
+	}
+	paquets := paquetsDeFermeture(string(brut))
+	if len(paquets) < 100 || !contientChaine(paquets, "levelup/go-api/internal/analysis") {
+		t.Fatalf("la fermeture lue compte %d paquets et ne contient pas internal/analysis : la sortie de go list "+
+			"n'est plus celle qu'on parse", len(paquets))
+	}
+	fuites, mortes := fuitesDeFermeture(paquets, fuitesTransitivesAnalysis)
+	for p, motif := range fuitesTransitivesAnalysis {
+		if strings.TrimSpace(motif) == "" {
+			t.Errorf("fuitesTransitivesAnalysis : %q sans justification datée", p)
+		}
+	}
+	for _, p := range mortes {
+		t.Errorf("fuitesTransitivesAnalysis cite %q, que la fermeture d'internal/analysis ne contient plus — retirer l'entrée", p)
+	}
+	if len(fuites) > 0 {
+		t.Errorf("la fermeture d'internal/analysis/... contient des paquets du décodeur de film (audit découplage, "+
+			"constat G ; `go list -deps -test ./internal/analysis/...` pour retrouver le chemin) : couper l'import "+
+			"qui les tire, ou inscrire la fuite datée dans fuitesTransitivesAnalysis avec le lot qui la coupe :\n  %s",
+			strings.Join(fuites, "\n  "))
+	}
+}
+
+// TestFermetureDeAnalysis_AutoPreuve : le contrôle pur lit les variantes de test, rougit sur un
+// paquet du décodeur (tous les chemins de la brique, `libs/film` compris) absent de l'allowlist,
+// laisse passer le voisin qui partage seulement le début du nom, honore l'allowlist et signale
+// une entrée morte.
+func TestFermetureDeAnalysis_AutoPreuve(t *testing.T) {
+	sortie := "levelup/go-api/internal/analysis\n" +
+		"levelup/go-api/internal/games/weapons [levelup/go-api/internal/games/weapons.test]\n" +
+		"levelup/go-api/internal/games/halo_infinite/film/types\n" +
+		"levelup/go-api/internal/games/halo_infinite/filmprofile\n" +
+		"levelup/go-api/internal/games/weapons/filmshell\n" +
+		"github.com/JGtm/LevelUp/libs/film/replay\n" +
+		"levelup/go-api/internal/analysis.test\n"
+	paquets := paquetsDeFermeture(sortie)
+	if !contientChaine(paquets, "levelup/go-api/internal/games/weapons") || contientChaine(paquets, "levelup/go-api/internal/analysis.test") {
+		t.Fatalf("variantes de test mal ramenées : %v", paquets)
+	}
+	fuites, mortes := fuitesDeFermeture(paquets, nil)
+	attendu := "github.com/JGtm/LevelUp/libs/film/replay,levelup/go-api/internal/games/halo_infinite/film/types,levelup/go-api/internal/games/weapons/filmshell"
+	if strings.Join(fuites, ",") != attendu || len(mortes) != 0 {
+		t.Fatalf("fuites = %v, mortes = %v ; attendu %s et aucune morte", fuites, mortes, attendu)
+	}
+	fuites, mortes = fuitesDeFermeture(paquets, map[string]string{
+		"levelup/go-api/internal/games/weapons/filmshell":         "2026-10-29 test",
+		"levelup/go-api/internal/games/halo_infinite/film/types":  "2026-10-29 test",
+		"github.com/JGtm/LevelUp/libs/film/replay":                "2026-10-29 test",
+		"levelup/go-api/internal/games/halo_infinite/film/absent": "2026-10-29 test",
+	})
+	if len(fuites) != 0 || len(mortes) != 1 || !strings.HasSuffix(mortes[0], "film/absent") {
+		t.Fatalf("allowlist honorée et entrée morte signalée attendues ; fuites = %v, mortes = %v", fuites, mortes)
+	}
+	for imp, attendu := range map[string]bool{
+		"levelup/go-api/internal/games/halo_infinite/film/replay": true,
+		"levelup/go-api/internal/games/weapons/filmshell":         true,
+		"levelup/go-api/internal/games/halo_infinite/equipenergy": true,
+		"github.com/JGtm/LevelUp/libs/film/decfilm":               true,
+		"levelup/go-api/internal/games/halo_infinite/filmprofile": false,
+		"levelup/go-api/internal/games/weapons":                   false,
+	} {
+		if got := estPaquetDeLaBriqueFilm(imp); got != attendu {
+			t.Errorf("estPaquetDeLaBriqueFilm(%q) = %v, attendu %v", imp, got, attendu)
+		}
+	}
 }
