@@ -22,6 +22,7 @@ import { describe, expect, it } from 'vitest'
 
 import { buildRealProgram, buildVirtualProgram, relativeToSrc } from './localeKeyedObjects.testutil'
 import { KNOWN_LOCALES } from './locale'
+import { TREE_SCAN_TIMEOUT_MS } from './localeScan.testutil'
 
 /** Les schémas du contrat qui portent un libellé par langue à plat (`i18n.MarshalFlat` côté Go). */
 const LABEL_SCHEMAS = new Set([
@@ -129,7 +130,7 @@ describe('garde-rail langue — aucun accès .fr/.en sur un libellé du document
           found.map((a) => `  ${a.file}:${a.line} [${a.schema}] ${a.text}`).join('\n'),
       ).toBeLessThanOrEqual(VIOLATION_CEILING)
     },
-    120_000,
+    TREE_SCAN_TIMEOUT_MS,
   )
 
   it('auto-preuve : les accès sur un libellé généré sont vus, sous toutes leurs formes', () => {

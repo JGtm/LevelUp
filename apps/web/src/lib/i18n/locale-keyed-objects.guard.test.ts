@@ -25,6 +25,7 @@ import {
   relativeToSrc,
   type Violation,
 } from './localeKeyedObjects.testutil'
+import { TREE_SCAN_TIMEOUT_MS } from './localeScan.testutil'
 
 /** Interdit : aucun objet à clés de langue non typé par `Locale`. */
 const VIOLATION_CEILING = 0
@@ -55,7 +56,7 @@ describe('garde-rail langue — objets à clés de langue typés par Locale', ()
           describeViolations(violations),
       ).toBeLessThanOrEqual(VIOLATION_CEILING)
     },
-    120_000,
+    TREE_SCAN_TIMEOUT_MS,
   )
 
   it('auto-preuve : les objets non typés sont vus', () => {
@@ -73,7 +74,7 @@ describe('garde-rail langue — objets à clés de langue typés par Locale', ()
       "interface Row { id: string; label: { fr: string; en: string } }\nexport const c: Row[] = [{ id: 'a', label: { fr: 'x', en: 'y' } }]\n",
     )
     expect(nested).toHaveLength(1)
-  })
+  }, TREE_SCAN_TIMEOUT_MS)
 
   it('auto-preuve : les objets typés par Locale sont acceptés', () => {
     const typed = virtualViolations(
@@ -92,10 +93,10 @@ describe('garde-rail langue — objets à clés de langue typés par Locale', ()
       ].join('\n'),
     )
     expect(typed).toEqual([])
-  })
+  }, TREE_SCAN_TIMEOUT_MS)
 
   it("auto-preuve : le type 'fr' | 'en' écrit à la main est vu", () => {
     const inline = virtualViolations("export type X = 'fr' | 'en'\nexport type Y = 'a' | 'b'\nexport type Z = 'en' | 'fr' | 'de'\n")
     expect(inline.map((v) => `${v.kind}:${v.line}`)).toEqual(['inline-union:3', 'inline-union:5'])
-  })
+  }, TREE_SCAN_TIMEOUT_MS)
 })
