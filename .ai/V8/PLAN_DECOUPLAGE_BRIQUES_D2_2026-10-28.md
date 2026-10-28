@@ -18,9 +18,12 @@ Un troisième module Go sous `libs/` :
 
 Succès = (1) `go list -deps ./...` dans `libs/film` (tests compris, `-test`) ne montre aucun paquet
 `levelup/go-api/...` ; (2) la table `archlint/briques_imports_test.go` porte la ligne `film` et son
-allowlist est VIDE à la clôture ; (3) **les cinq empreintes de couche et les goldens de périmètre
-(`film/revision`) sont INCHANGÉS à l'octet** : aucune révision ne monte, aucun fait persisté ne
-devient périmé, aucune recuisson en production ; (4) `replay-corpus-gate --reference=base` (base =
+allowlist est VIDE à la clôture ; (3) **aucune des cinq RÉVISIONS de couche ne monte** (les faits persistés sont
+clés par les constantes `Rev`, pas par les empreintes de sources) : aucun fait persisté ne devient
+périmé, aucune recuisson en production ; les empreintes et goldens de périmètre sont régénérés UNE
+SEULE FOIS, à révision constante, par la porte à deux verrous, à la fin du lot 2 (décision D2-F amendée
+le 2026-10-29, découverte D2-L2-a), avec la preuve d'équivalence des sorties (T3) ; le lot 3 ne
+régénère rien ; (4) `replay-corpus-gate --reference=base` (base =
 commit du lot 0) : les 19 témoins du corpus (`config/replay_corpus.toml`) rendent des artefacts
 identiques ; `replay-equiv` vert ; (5) même liste de tests, mêmes verdicts, avant et après (modulo le
 préfixe de paquet) ; (6) CI verte (36 contrôles), image Docker construite, lint des trois modules
@@ -166,7 +169,19 @@ pilote (2026-10-28, D1) et demandé d'enchaîner sans s'arrêter. Elles sont FER
   - Les 19 fichiers qui citent `Projects\LevelUp` perdent ce chemin dans le même geste (helper R2).
   - `film/research/cmd_*` (5 `main`, importent `grammar`, `source`, `filmshell`, `filmproc`,
     `highlightevent`) restent dans la brique sous `libs/film/research/cmd_*` : R0 les couvre.
-- **D2-F — Empreintes INCHANGÉES : le cadre de hachage devient explicitement HISTORIQUE.**
+- **D2-F — Révisions INCHANGÉES ; cadre de hachage HISTORIQUE ; une régénération à révision constante.**
+  AMENDÉE le 2026-10-29 (découverte D2-L2-a du lot 2.1) : le cadre historique rend le hachage insensible
+  au chemin du MODULE de la brique (lot 3 sans effet), mais les paquets qui changent de dossier au lot 2
+  (`domain/playerposition`, `domain/objectiveevent`, `games/weapons/filmshell`) et le passage de
+  `grammar`/`killsource` au type `types.HighlightEvent` (2.7) changent légitimement les jetons et les
+  lignes `paquet` des goldens de `grammar`, `killsource`, `objectives`. Décision du pilote : PAS de table
+  de renommage par paquet ; les goldens de révision ET de périmètre sont régénérés UNE FOIS à révision
+  constante (porte à deux verrous : drapeau `-update-<nom>` + variable `LEVELUP_UPDATE_<NOM>`, item 2.12),
+  avec dans la chronique de chaque couche touchée une entrée « empreinte régénérée, révision inchangée :
+  découplage D2, sortie identique prouvée par les digests `replay-equiv` (T3) et T1 ». Précédent : la
+  chronique de `grammar` porte déjà une régénération à révision constante (`rev_chronique.go`, « amendé au
+  lieu de monter à .4, empreinte régénérée »). Les révisions (`source-2026-09-16.2`, `profile-2026-10-16`,
+  `grammar-2026-10-28`, `killsource-2026-10-18`, `objectives-2026-10-17`) ne bougent pas. Texte d'origine :
   `film/revision` définit le cadre `cadreHistorique = "levelup/go-api/internal/games/halo_infinite/film"` :
   (a) les jetons d'une chaîne d'import qui commence par le chemin du module courant
   (`github.com/JGtm/LevelUp/libs/film`) sont hachés avec le préfixe historique à la place ; (b) les
@@ -379,8 +394,12 @@ Chaque item fait descendre une tolérance du lot 1 ; T1 à T3 relancés en fin d
 - [ ] 2.12 Gate : `grep -rhoE --include='*.go' '"levelup/go-api/internal/[^"]+"' internal/games/halo_infinite/film | grep -v halo_infinite/film | sort -u`
   vide (production ET tests) ; `go vet ./...`, `go vet -tags research ./internal/games/halo_infinite/film/...`,
   `-tags 'research campagne_overlay'` propres ; `go test ./... -count=1` = T1 (mêmes noms, mêmes
-  verdicts ; les tests déménagés en `filmcorpus` comptés comme déplacés, nommés) ; T2 identique ;
-  T3 vert ; archlint vert (`go test ./internal/archlint/`) ; lint go-api vert. Commit « D2 lot 2 ».
+  verdicts ; les tests déménagés en `filmcorpus` comptés comme déplacés, nommés) ; T3 : digests obtenus
+  identiques au témoin du lot 0 (`replay_equiv_obtenus/*.tsv`) ; PUIS régénération à révision constante
+  des goldens des couches dont le gate rougit (porte à deux verrous, entrée de chronique par couche,
+  révisions inchangées : diff des goldens = ligne `revision` réécrite seulement) ; T2 : mêmes révisions,
+  mêmes goldens pour les couches non touchées (`source`, `profile`), `testdata/equivalence` intact ;
+  archlint vert (`go test ./internal/archlint/`) ; lint go-api vert. Commit « D2 lot 2 ».
 
 **Clos quand** : 2.12 passé, CI de la branche verte, entrée thought_log, point d'étape à l'utilisateur.
 
@@ -525,7 +544,7 @@ découvertes de D1 et D2).
   sans la forme `replay.Symbole` (fait ici pour `Text`). Non traité.
 - D2-L1-c (lot 1) : la fermeture `go list -deps -test` d'`internal/analysis/...` ne contient aujourd'hui aucun paquet du décodeur ni
   `filmshell` : l'allowlist `fuitesTransitivesAnalysis` naît vide ; la fuite `games/weapons` -> `filmshell` n'apparaîtra qu'au lot 2.5.
-- D2-L2-a (lot 2.1, 2026-10-29) — **conflit entre le critère de succès (3) et les items 2.3, 2.5, 2.7 tels qu'écrits.** Les
+- D2-L2-a (lot 2.1, 2026-10-29 ; TRANCHÉE le 2026-10-29 par le pilote : décision D2-F amendée, régénération unique à révision constante à l'item 2.12) — **conflit entre le critère de succès (3) et les items 2.3, 2.5, 2.7 tels qu'écrits.** Les
   goldens de périmètre portent des paquets HORS du dossier `film` qui décident la sortie des couches :
   `internal/domain/playerposition` et `internal/games/weapons/filmshell` (grammar), `internal/domain/highlightevent` (grammar,
   killsource), `internal/domain/objectiveevent` (objectives). Les déplacer dans la brique (2.3, 2.5) change (i) les chaînes
