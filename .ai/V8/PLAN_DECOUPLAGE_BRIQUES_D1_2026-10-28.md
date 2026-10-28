@@ -362,7 +362,7 @@ n'est poussé entre 3.1 et 3.14.
 - [x] 3.13 ADR 0041 rédigé (D1-H) + ligne dans la liste des ADR de `CLAUDE.md` + tableau
   « Architecture des Données » inchangé ; `docs/ARCHITECTURE_V6.md` : une section « Bricks /
   libs » (EN + FR).
-- [!] 3.14 Gate : `go build ./...` INTERDIT (mémoire disque) — à la place :
+- [x] 3.14 Gate : `go build ./...` INTERDIT (mémoire disque) — à la place :
   `cd apps/go-api && go test ./internal/archlint/ ./internal/himap/ ./internal/games/halo_infinite/film/replay/... ./internal/mapcatalog/ ./internal/replaybuild/ ./internal/sync/... -count=1` ;
   `cd libs/gamefiles && go test ./... -count=1` ; `go vet -tags=gamefiles ./internal/himap/`
   depuis `apps/go-api` ; `docker build -t levelup-d1 .` local réussi (ou, si Docker absent du
@@ -443,7 +443,7 @@ Statuts (le texte des items ci-dessus est celui du plan ; ce bloc dit ce qui a �
 - [x] 3.12 `.golangci.yml` : aucune règle ne nomme `mapvar`/`himodule`/`hinavmesh`/`ooz` (grep) => rien à retirer. `golangci-lint run --new-from-merge-base=origin/release/v8.1.0` : `apps/go-api` 0 issue (après correction d'un
   `unused` DE LA BASE : `himap/fixture_carte_validee_test.go`, constante lue seulement sous les tags — découverte 17), `libs/gamefiles` 0 issue (plein, sans ratchet : 0 aussi) ; mutation (fonction inutilisée dans `mapvar`) => le lint la voit.
 - [x] 3.13 ADR `docs/adr/0041-go-modules-under-libs.md` (EN) ; ligne dans la liste des ADR + ligne de tableau + `make libs-test` dans `CLAUDE.md` ; `docs/ARCHITECTURE_V6.md` et `docs/FR/ARCHITECTURE_V6.md` : section « Bricks / libs » / « Briques / libs ».
-- [!] 3.14 Gate : toutes les commandes locales ont tourné (sorties au journal). NON FAIT : `docker build` (docker absent du poste => CI `Deploy Pre-Check`) ; push et CI verte sur TOUS les jobs (le lot n'est ni commité ni poussé : décision du pilote).
+- [x] 3.14 Gate : commandes locales au journal ; commit 3d579bfd0 + fusion de `release/v8.1.0` (07a77fe7b, correctif des garde-rails de langue) ; CI verte sur les 4 workflows (run 40737136591, 3e tentative : voir découverte 24) ; `docker build` tenu par « Deploy Pre-Check » (vert) ; ratchet de couverture 82,0 % >= plancher 69,0 % (découverte 21 close).
 
 Témoins (scratchpad `temoins_lot3_*`) :
 - Fonds publiés : `md5sum` des 228 fichiers de `data/titles/halo_infinite/reference/map_backgrounds/` AVANT et APRÈS : identiques (`git status data/` vide). Recuisson `mapfond-build` des 5 cartes (Dredge, Arrival, Beaver Canyon, Perdition, Timberland Evolved),
@@ -621,3 +621,4 @@ Lot 3 (2026-10-28) :
 22. Les hooks locaux `go-vet.sh` (informatif) et `govulncheck.sh` (indicatif) ne couvrent que `apps/go-api` ; seul `go-vet-cgo.sh` (bloquant) a été étendu aux modules `libs/*`.
 23. Découverte 12 (suite, lot 3) : `hinavmesh.racineDumpNavmesh` et `mapvar.cheminDump` partagent désormais le module `libs/gamefiles`, mais sur consigne du pilote (deux copies tolérées par la règle 6) AUCUN helper commun n'a été posé :
     les deux copies restent. Une troisième copie (ou le jour où `himap` rejoindra un module commun) imposera helper + garde-rail.
+24. CI (`ci.yml`, job « Go Coverage + Baseline », `download-artifact` `pattern: go-lot-*` + `merge-multiple`) : après un `gh run rerun --failed`, le lot relancé publie un SECOND artefact du même nom (`go-lot-film-grammar-reste`, 17:50 et 18:01 le 2026-10-28) et la fusion relit le JSONL périmé (`FAIL ... 600.041s` d'un dépassement de délai de runner) alors que le lot relancé est vert. Contournement appliqué : suppression de l'artefact périmé par l'API puis relance du seul job de fusion. Correctif possible (hors D1) : `overwrite: true` sur `upload-artifact` des lots, ou nommer l'artefact par tentative (`github.run_attempt`) et ne télécharger que la dernière.
