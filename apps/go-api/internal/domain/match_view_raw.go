@@ -476,7 +476,10 @@ type MatchNeighbors struct {
 
 // SkillRankRaw : données brutes de Q22 (match_skill_rank — player DB).
 type SkillRankRaw struct {
-	RatingType    string
+	RatingType string
+	// TierLabel : libellé du palier dans la langue de la requête, posé par le SERVICE depuis (Tier, SubTier)
+	// (localizeSkillRankLabels). Les lecteurs ne le renseignent pas : la colonne stockée `tier_label` n'est
+	// jamais lue.
 	TierLabel     *string
 	RatingValue   *float64
 	RatingDelta   *float64

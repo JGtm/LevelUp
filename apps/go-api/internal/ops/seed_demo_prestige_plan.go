@@ -58,9 +58,12 @@ type demoPrestigeArc struct {
 // demoPrestigeChallenge décrit un objectif démo. TerminalAt alimente la colonne
 // correspondant au Status (completed_at / expired_at / abandoned_at).
 type demoPrestigeChallenge struct {
-	ID          string
-	ArcID       string
-	Position    int
+	ID       string
+	ArcID    string
+	Position int
+	// TemplateID : origine du libellé dans le catalogue du titre (vide = objectif sans origine,
+	// servi tel quel dans une seule langue). Voir seed_demo_prestige_objectives.go.
+	TemplateID  string
 	Metric      string
 	Label       string
 	Target      float64
@@ -167,6 +170,8 @@ const demoMilestoneCount = 6
 
 // buildDemoPrestigePlan construit le plan complet depuis le corpus démo.
 // matchPP = corpus (source des événements PP « match »), won = résultat par match.
+// cat = catalogue de modèles et de presets du titre : arcs et objectifs en sont des adoptions
+// (seed_demo_prestige_objectives.go) ; un catalogue vide donne des textes de repli sans origine.
 //
 // L'identité du joueur de démo n'est PAS paramétrable : slug, xuid et gamertag
 // sont fixés par construction. C'est délibéré — les rendre variables laisserait
@@ -180,7 +185,7 @@ const demoMilestoneCount = 6
 // Progression V2 — séries, records, jalons). Les confondre viderait la moitié
 // des pages ; c'est la confusion que verrouille le garde-rail
 // xuid_identity_ratchet_test côté lecture.
-func buildDemoPrestigePlan(titleSlug string,
+func buildDemoPrestigePlan(titleSlug string, cat demoPrestigeCatalog,
 	st demoCorpusStats, matchPP []demoMatchPP) demoPrestigePlan {
 	tuning := prestige.DefaultTuning()
 	plan := demoPrestigePlan{
@@ -190,7 +195,7 @@ func buildDemoPrestigePlan(titleSlug string,
 		TitleSlug: titleSlug,
 		Anchor:    st.Last,
 	}
-	plan.Arcs, plan.Challenges = buildDemoArcsAndChallenges(tuning, st)
+	plan.Arcs, plan.Challenges = buildDemoArcsAndChallenges(tuning, cat, st)
 	plan.Campaigns = buildDemoCampaigns(st)
 	plan.Streaks = buildDemoStreaks(st)
 	plan.Records = buildDemoRecords(st)
@@ -208,89 +213,6 @@ type demoMatchPP struct {
 	MatchID string
 	Won     bool
 	At      time.Time
-}
-
-// arcIDs démo — stables entre deux reseeds (les pages profondes /arcs/{id} restent
-// atteignables par lien direct).
-const (
-	demoArcAscensionID = "demo-arc-ascension"
-	demoArcPrecisionID = "demo-arc-precision"
-)
-
-// buildDemoArcsAndChallenges construit 2 arcs (1 en cours, 1 complété) + 9
-// objectifs couvrant TOUS les stades du cycle de vie (actif, complété, expiré,
-// abandonné). Les cibles sont dérivées du corpus : sous le réalisé pour un
-// objectif complété, au-dessus pour un objectif encore en cours.
-func buildDemoArcsAndChallenges(t prestige.Tuning, st demoCorpusStats) ([]demoPrestigeArc, []demoPrestigeChallenge) {
-	arcStart, end := st.First, st.Last
-	precisionDone := demoNotBefore(end.Add(-72*time.Hour), arcStart)
-	arcs := []demoPrestigeArc{
-		{
-			ID: demoArcAscensionID, Title: "Ascension du Spartan",
-			Description: "Enchaîne les objectifs pour gravir les paliers de progression.",
-			IsPreset:    true, PresetID: "ascension", CreatedAt: arcStart,
-		},
-		{
-			ID: demoArcPrecisionID, Title: "Maîtrise du tir",
-			Description: "Un arc court centré sur la précision et la conclusion des duels.",
-			CreatedAt:   arcStart, CompletedAt: &precisionDone,
-		},
-	}
-
-	done, active := &precisionDone, (*time.Time)(nil)
-	// Bornées au début du corpus : sur une fenêtre courte (fixtures de test), un
-	// simple retrait de N heures daterait un objectif AVANT le premier match démo.
-	expired := demoNotBefore(end.Add(-120*time.Hour), arcStart)
-	abandoned := demoNotBefore(end.Add(-48*time.Hour), arcStart)
-	specs := []demoPrestigeChallenge{
-		// Arc en cours : 2 étapes acquises, 2 en cours → « Étape 2/4 » à l'écran.
-		{ArcID: demoArcAscensionID, Position: 0, Metric: metricMatchesPlayed, Label: "Mise en jambe — parties jouées",
-			Target: demoTargetBelow(st.Matches, 0.5), Tier: prestige.TierNormal, Status: prestige.StatusCompleted, TerminalAt: done},
-		{ArcID: demoArcAscensionID, Position: 1, Metric: metricKills, Label: "Montée en puissance — éliminations",
-			Target: demoTargetBelow(st.Kills, 0.55), Tier: prestige.TierHeroic, Status: prestige.StatusCompleted, TerminalAt: done},
-		{ArcID: demoArcAscensionID, Position: 2, Metric: "headshot_kills", Label: "Précision létale — tirs à la tête",
-			Target: demoTargetAbove(st.HeadshotKills, 1.30), Tier: prestige.TierHeroic, Status: prestige.StatusActive, TerminalAt: active},
-		{ArcID: demoArcAscensionID, Position: 3, Metric: metricWins, Label: "Série victorieuse — victoires",
-			Target: demoTargetAbove(st.Wins, 1.25), Tier: prestige.TierLegendary, Status: prestige.StatusActive, TerminalAt: active},
-		// Arc complété : toutes les étapes sont acquises.
-		{ArcID: demoArcPrecisionID, Position: 0, Metric: "accuracy", Label: "Viser juste — précision moyenne",
-			Target: 0.45, Tier: prestige.TierHeroic, EvalType: prestige.EvalThreshold, Status: prestige.StatusCompleted, TerminalAt: done},
-		{ArcID: demoArcPrecisionID, Position: 1, Metric: metricKills, Label: "Conclure les duels — éliminations",
-			Target: demoTargetBelow(st.Kills, 0.35), Tier: prestige.TierNormal, Status: prestige.StatusCompleted, TerminalAt: done},
-		{ArcID: demoArcPrecisionID, Position: 2, Metric: metricAssists, Label: "Jouer collectif — assistances",
-			Target: demoTargetBelow(st.Assists, 0.40), Tier: prestige.TierHeroic, Status: prestige.StatusCompleted, TerminalAt: done},
-		// Hors arc : un objectif expiré et un objectif abandonné (historique).
-		{Metric: "kda", Label: "Tenir la moyenne — FDA sur 10 parties", Target: 1.8,
-			Tier: prestige.TierLegendary, EvalType: prestige.EvalThreshold,
-			Status: prestige.StatusExpired, TerminalAt: &expired},
-		{Metric: metricMatchesPlayed, Label: "Marathon hebdomadaire — parties jouées",
-			Target: demoTargetAbove(st.Matches, 2.0), Tier: prestige.TierMythic,
-			Status: prestige.StatusAbandoned, TerminalAt: &abandoned},
-	}
-
-	out := make([]demoPrestigeChallenge, 0, len(specs))
-	for i, c := range specs {
-		out = append(out, finalizeDemoChallenge(t, c, i, arcStart))
-	}
-	return arcs, out
-}
-
-// finalizeDemoChallenge complète les champs dérivés d'un objectif démo (id,
-// fenêtre, cadence, PP). Extrait de buildDemoArcsAndChallenges pour tenir le
-// seuil de 80 lignes. NB : la table `challenge` n'a PAS de colonne d'échéance —
-// l'expiration est portée par le statut + expired_at (cf. steps_player_base.go).
-func finalizeDemoChallenge(t prestige.Tuning, c demoPrestigeChallenge, i int,
-	arcStart time.Time) demoPrestigeChallenge {
-	c.ID = fmt.Sprintf("demo-objective-%02d", i+1)
-	c.CreatedAt = arcStart
-	if c.EvalType == "" {
-		c.EvalType = prestige.EvalCumulative
-	}
-	c.Cadence = prestige.CadenceFree
-	c.WindowType = prestige.WindowLastNMatches
-	c.WindowValue = "20"
-	c.PP = prestige.PPForCompletion(t, c.Tier, false, prestige.DataFull)
-	return c
 }
 
 // demoTargetBelow retourne une cible SOUS le réalisé du corpus (objectif atteint).

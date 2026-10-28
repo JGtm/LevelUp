@@ -33,7 +33,7 @@ func testDemoCorpus() (demoCorpusStats, []demoMatchPP) {
 func testDemoPlan(t *testing.T) demoPrestigePlan {
 	t.Helper()
 	st, matches := testDemoCorpus()
-	return buildDemoPrestigePlan("halo_infinite", st, matches)
+	return buildDemoPrestigePlan("halo_infinite", testDemoCatalog(t), st, matches)
 }
 
 // TestDemoPrestigePlan_NoRealIdentity : invariant anti-fuite — le plan ne porte
@@ -176,7 +176,7 @@ func TestDemoPrestigePlan_LifecycleCoverage(t *testing.T) {
 // palier, ou « en cours » sur un palier déjà dépassé.
 func TestDemoPrestigePlan_TargetsDerivedFromCorpus(t *testing.T) {
 	st, matches := testDemoCorpus()
-	plan := buildDemoPrestigePlan("halo_infinite", st, matches)
+	plan := buildDemoPrestigePlan("halo_infinite", testDemoCatalog(t), st, matches)
 	realized := map[string]float64{
 		"matches_played": float64(st.Matches),
 		"kills":          float64(st.Kills),
@@ -194,10 +194,10 @@ func TestDemoPrestigePlan_TargetsDerivedFromCorpus(t *testing.T) {
 			if c.Target > r {
 				t.Errorf("objectif complété %s : cible %v > réalisé %v", c.ID, c.Target, r)
 			}
-		case prestige.StatusActive:
+		case prestige.StatusActive, prestige.StatusAbandoned:
 			if c.Target <= r {
-				t.Errorf("objectif actif %s : cible %v <= réalisé %v (il serait déjà atteint)",
-					c.ID, c.Target, r)
+				t.Errorf("objectif %s %s : cible %v <= réalisé %v (il serait déjà atteint)",
+					c.Status, c.ID, c.Target, r)
 			}
 		}
 	}
@@ -229,7 +229,7 @@ func TestDemoPrestigePlan_TotalPPMatchesEvents(t *testing.T) {
 // un événement « objectif » par objectif complété, un bonus par arc complété.
 func TestDemoPrestigePlan_EventsCoverCorpusAndCompletions(t *testing.T) {
 	st, matches := testDemoCorpus()
-	plan := buildDemoPrestigePlan("halo_infinite", st, matches)
+	plan := buildDemoPrestigePlan("halo_infinite", testDemoCatalog(t), st, matches)
 	bySource := map[string]int{}
 	ids := map[string]bool{}
 	for _, ev := range plan.Events {
@@ -301,7 +301,7 @@ func TestDemoPrestigePlan_RecordsPlausibleAndProgressing(t *testing.T) {
 // avant le premier match du corpus démo.
 func TestDemoPrestigePlan_DatesWithinCorpusWindow(t *testing.T) {
 	st, matches := testDemoCorpus()
-	plan := buildDemoPrestigePlan("halo_infinite", st, matches)
+	plan := buildDemoPrestigePlan("halo_infinite", testDemoCatalog(t), st, matches)
 	check := func(label string, at time.Time) {
 		if at.Before(st.First) {
 			t.Errorf("%s daté %v, avant le début du corpus %v", label, at, st.First)

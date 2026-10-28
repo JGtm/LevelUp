@@ -4,6 +4,7 @@ import (
 	"context"
 	"math"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -197,7 +198,12 @@ func briefingRankedRaw(o rankedRawOpts) domain.MatchHistoryRawRow {
 		g := o.group
 		r.PlaylistGroup = &g
 	}
-	r.SkillTierLabel = o.tierLabel
+	r.SkillStoredLabel = o.tierLabel
+	if o.tierLabel != nil {
+		var sub int
+		r.SkillTier, sub = rankCodeFromFRLabel(*o.tierLabel)
+		r.SubTier = &sub
+	}
 	r.RatingValue = o.ratingValue
 	r.PlacementDone = o.placementDone
 	r.PlacementTotal = o.placementTotal
@@ -677,7 +683,7 @@ func peakRankRaw(id string, daysAgo int, ratingType, tierEN string, subTier int,
 	r.SkillRatingType = strPtr(ratingType)
 	r.SkillTier = tierEN
 	r.SubTier = intPtr(subTier)
-	r.SkillTierLabel = strPtr(tierLabel)
+	r.SkillStoredLabel = strPtr(tierLabel)
 	return r
 }
 
@@ -692,7 +698,7 @@ func TestBuildBriefingScope_DurationAndPeaks(t *testing.T) {
 		mk("b", 1, intPtr(900), float64Ptr(3.0), float64Ptr(1600)),
 		mk("c", 0, nil, float64Ptr(2.0), nil), // durée + mmr absents sur ce match
 	}
-	s := buildBriefingScope(rows)
+	s := buildBriefingScope(rows, i18n.Default)
 	if s.TotalDurationSeconds == nil || *s.TotalDurationSeconds != 1500 {
 		t.Errorf("TotalDurationSeconds want 1500 (600+900), got %v", s.TotalDurationSeconds)
 	}
@@ -710,7 +716,7 @@ func TestBuildBriefingScope_DurationAndMMRNilWhenAbsent(t *testing.T) {
 		briefingRaw("a", 1, domain.OutcomeWin, 10, 5, 2, 60, "map1", "Aquarius", "Slayer", "Arène"),
 		briefingRaw("b", 0, domain.OutcomeLoss, 5, 10, 1, 40, "map1", "Aquarius", "Slayer", "Arène"),
 	}
-	s := buildBriefingScope(rows)
+	s := buildBriefingScope(rows, i18n.Default)
 	if s.TotalDurationSeconds != nil {
 		t.Errorf("TotalDurationSeconds want nil (aucune durée), got %v", s.TotalDurationSeconds)
 	}
@@ -726,7 +732,7 @@ func TestBuildBriefingScope_PeakRankLUSROnly(t *testing.T) {
 		peakRankRaw("b", 2, "LUSR", "Diamond", 4, "Diamant IV"),
 		peakRankRaw("c", 1, "LUSR", "Diamond", 1, "Diamant I"),
 	}
-	s := buildBriefingScope(rows)
+	s := buildBriefingScope(rows, i18n.Default)
 	if len(s.PeakRanks) != 1 {
 		t.Fatalf("want 1 peak rank (LUSR seul), got %+v", s.PeakRanks)
 	}
@@ -742,7 +748,7 @@ func TestBuildBriefingScope_PeakRankBothSystems(t *testing.T) {
 		peakRankRaw("l1", 2, "LUSR", "Gold", 5, "Or V"), // pic LUSR
 		peakRankRaw("l2", 1, "LUSR", "Silver", 2, "Argent II"),
 	}
-	s := buildBriefingScope(rows)
+	s := buildBriefingScope(rows, i18n.Default)
 	if len(s.PeakRanks) != 2 {
 		t.Fatalf("want 2 peak ranks (lusr + csr), got %+v", s.PeakRanks)
 	}
@@ -759,7 +765,7 @@ func TestBuildBriefingScope_PeakRankNilWhenNoTier(t *testing.T) {
 	rows := []domain.MatchHistoryRawRow{
 		briefingRaw("a", 0, domain.OutcomeWin, 10, 5, 2, 60, "map1", "Aquarius", "Slayer", "Arène"),
 	}
-	s := buildBriefingScope(rows)
+	s := buildBriefingScope(rows, i18n.Default)
 	if s.PeakRanks != nil {
 		t.Errorf("PeakRanks want nil (aucun palier), got %+v", s.PeakRanks)
 	}
@@ -780,7 +786,7 @@ func TestBuildBriefingScope_MinMaxTriptych(t *testing.T) {
 		mk("b", 1, 16, 4, 3, 90), // net 13.0
 		mk("c", 0, 6, 9, 9, 62),  // net 0.0
 	}
-	s := buildBriefingScope(rows)
+	s := buildBriefingScope(rows, i18n.Default)
 	// FDA : min = plus bas net (0.0) ; max (peak) = plus haut net (13.0).
 	if s.MinKDA == nil || *s.MinKDA != 0.0 {
 		t.Errorf("MinKDA want 0.0 (min r.KDA), got %v", s.MinKDA)
@@ -815,11 +821,28 @@ func TestBuildBriefingScope_MinMaxNilWhenAbsent(t *testing.T) {
 		{MatchID: "a", Outcome: domain.OutcomeWin, Kills: 10, Deaths: 5, Assists: 2},
 		{MatchID: "b", Outcome: domain.OutcomeLoss, Kills: 5, Deaths: 10, Assists: 1},
 	}
-	s := buildBriefingScope(rows)
+	s := buildBriefingScope(rows, i18n.Default)
 	if s.MinKDA != nil || s.PeakKDA != nil {
 		t.Errorf("MinKDA/PeakKDA want nil (aucun r.KDA), got %v / %v", s.MinKDA, s.PeakKDA)
 	}
 	if s.MinPerf != nil || s.MaxPerf != nil || s.AvgPerf != nil {
 		t.Errorf("MinPerf/MaxPerf/AvgPerf want nil (aucun score), got %v / %v / %v", s.MinPerf, s.MaxPerf, s.AvgPerf)
 	}
+}
+
+// rankCodeFromFRLabel retrouve le code (palier anglais, sous-palier) d'un libellé français de test
+// (« Platine VI », « Placement (7 restants) ») : les raw rows portent le code, le service en déduit
+// le libellé servi.
+func rankCodeFromFRLabel(label string) (string, int) {
+	names := map[string]string{
+		"Bronze": "Bronze", "Argent": "Silver", "Or": "Gold",
+		"Platine": "Platinum", "Diamant": "Diamond", "Onyx": "Onyx", "Placement": "Placement",
+	}
+	romans := map[string]int{"I": 1, "II": 2, "III": 3, "IV": 4, "V": 5, "VI": 6}
+	parts := strings.Fields(label)
+	tier := names[parts[0]]
+	if len(parts) > 1 {
+		return tier, romans[parts[1]]
+	}
+	return tier, 0
 }

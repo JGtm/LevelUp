@@ -1084,8 +1084,8 @@ func TestHomeRepo_LoadSpartanIdentity_WithData(t *testing.T) {
 	if identity.HighestCSR.RatingValue != 1250.5 {
 		t.Fatalf("HighestCSR.RatingValue = %v, want 1250.5", identity.HighestCSR.RatingValue)
 	}
-	if identity.HighestCSR.TierLabel == nil || *identity.HighestCSR.TierLabel != "Gold 3" {
-		t.Fatalf("HighestCSR.TierLabel = %v, want Gold 3", identity.HighestCSR.TierLabel)
+	if identity.HighestCSR.Tier != "Gold" || identity.HighestCSR.SubTier != 3 {
+		t.Fatalf("HighestCSR code = %q/%d, want Gold/3 (le libellé se déduit du code à la couche analysis)", identity.HighestCSR.Tier, identity.HighestCSR.SubTier)
 	}
 	if identity.HighestCSR.BadgeImageURL == nil || *identity.HighestCSR.BadgeImageURL != "/static/ranks/halo_infinite/120px-HINF-CSR_Gold3.png" {
 		t.Fatalf("HighestCSR.BadgeImageURL = %v, want Gold3 badge", identity.HighestCSR.BadgeImageURL)
@@ -1096,8 +1096,8 @@ func TestHomeRepo_LoadSpartanIdentity_WithData(t *testing.T) {
 	if identity.HighestLUSR.RatingValue != 1750.0 {
 		t.Fatalf("HighestLUSR.RatingValue = %v, want 1750", identity.HighestLUSR.RatingValue)
 	}
-	if identity.HighestLUSR.TierLabel == nil || *identity.HighestLUSR.TierLabel != "Platinum V" {
-		t.Fatalf("HighestLUSR.TierLabel = %v, want Platinum V", identity.HighestLUSR.TierLabel)
+	if identity.HighestLUSR.Tier != "Platinum" || identity.HighestLUSR.SubTier != 5 {
+		t.Fatalf("HighestLUSR code = %q/%d, want Platinum/5", identity.HighestLUSR.Tier, identity.HighestLUSR.SubTier)
 	}
 	// Bug #1 : LUSR utilise le slug halo_infinite (les badges existent là).
 	if identity.HighestLUSR.BadgeImageURL == nil || *identity.HighestLUSR.BadgeImageURL != "/static/ranks/halo_infinite/120px-HINF-CSR_Platinum5.png" {
@@ -1197,8 +1197,8 @@ func TestHomeRepo_LoadSpartanIdentity_ClassifiesRankedRowsAsCSR(t *testing.T) {
 	if identity.HighestCSR.RatingValue != 1250.5 {
 		t.Fatalf("HighestCSR.RatingValue = %v, want 1250.5", identity.HighestCSR.RatingValue)
 	}
-	if identity.HighestCSR.TierLabel == nil || *identity.HighestCSR.TierLabel != "Gold 3" {
-		t.Fatalf("HighestCSR.TierLabel = %v, want Gold 3", identity.HighestCSR.TierLabel)
+	if identity.HighestCSR.Tier != "Gold" || identity.HighestCSR.SubTier != 3 {
+		t.Fatalf("HighestCSR code = %q/%d, want Gold/3 (le libellé se déduit du code à la couche analysis)", identity.HighestCSR.Tier, identity.HighestCSR.SubTier)
 	}
 	if identity.HighestLUSR == nil || identity.HighestLUSR.RatingValue != 1750.0 {
 		t.Fatalf("HighestLUSR = %#v, want rating 1750", identity.HighestLUSR)
@@ -1359,8 +1359,8 @@ func TestHomeRepo_LoadRecentPlaylistRanks_InfersCSRFromRankedPlaylistName(t *tes
 	if ranks[0].RatingValue == nil || *ranks[0].RatingValue != 1250.5 {
 		t.Fatalf("RatingValue = %v, want 1250.5", ranks[0].RatingValue)
 	}
-	if ranks[0].TierLabel == nil || *ranks[0].TierLabel != "Gold 3" {
-		t.Fatalf("TierLabel = %v, want Gold 3", ranks[0].TierLabel)
+	if ranks[0].TierLabel == nil || *ranks[0].TierLabel != "Or III" {
+		t.Fatalf("TierLabel = %v, want Or III (déduit du code Gold/3, langue de la requête)", ranks[0].TierLabel)
 	}
 }
 
@@ -1394,8 +1394,8 @@ func TestHomeRepo_LoadHomeSkillPeak_CSR_InPlacement(t *testing.T) {
 	if got := *peak.MeasurementMatchesRemaining; got != 9 {
 		t.Errorf("MeasurementMatchesRemaining = %d, want 9 (1 match joué sur 10)", got)
 	}
-	if peak.TierLabel != nil {
-		t.Errorf("TierLabel = %v, want nil (masqué en placement)", peak.TierLabel)
+	if peak.Tier != "" {
+		t.Errorf("Tier = %q, want vide (masqué en placement)", peak.Tier)
 	}
 	wantBadge := "/static/ranks/halo_infinite/unranked_1.png"
 	if peak.BadgeImageURL == nil || *peak.BadgeImageURL != wantBadge {
@@ -1422,8 +1422,8 @@ func TestHomeRepo_LoadHomeSkillPeak_LUSR_InPlacement(t *testing.T) {
 	if peak.MeasurementMatchesRemaining == nil || *peak.MeasurementMatchesRemaining != 9 {
 		t.Errorf("MeasurementMatchesRemaining = %v, want 9", peak.MeasurementMatchesRemaining)
 	}
-	if peak.TierLabel != nil {
-		t.Errorf("TierLabel = %v, want nil in placement", peak.TierLabel)
+	if peak.Tier != "" {
+		t.Errorf("Tier = %q, want vide in placement", peak.Tier)
 	}
 	wantBadge := "/static/ranks/halo_infinite/unranked_1.png"
 	if peak.BadgeImageURL == nil || *peak.BadgeImageURL != wantBadge {
@@ -1481,7 +1481,7 @@ func TestHomeRepo_LoadHomeSkillPeak_LUSR_NullPlaylistGroup(t *testing.T) {
 
 // TestHomeRepo_LoadHomeSkillPeak_Matured cadenasse qu'avec >= 10 matchs dans
 // le groupe (via seedMaturedSkillRankGroups), MeasurementMatchesRemaining=0
-// et tier_label est rendu.
+// et le code du palier (Tier, SubTier) est rendu.
 func TestHomeRepo_LoadHomeSkillPeak_Matured(t *testing.T) {
 	pdb := newTestPlayerDB(t)
 	seedMaturedSkillRankGroups(t, pdb)
@@ -1496,18 +1496,19 @@ func TestHomeRepo_LoadHomeSkillPeak_Matured(t *testing.T) {
 		t.Fatal("expected both peaks matured (10 matchs par groupe via seed)")
 	}
 	for _, c := range []struct {
-		name string
-		peak *domain.HomeSkillPeakRow
-		want string
+		name     string
+		peak     *domain.HomeSkillPeakRow
+		wantTier string
+		wantSub  int
 	}{
-		{"CSR", identity.HighestCSR, "Gold 3"},
-		{"LUSR", identity.HighestLUSR, "Platinum V"},
+		{"CSR", identity.HighestCSR, "Gold", 3},
+		{"LUSR", identity.HighestLUSR, "Platinum", 5},
 	} {
 		if c.peak.MeasurementMatchesRemaining == nil || *c.peak.MeasurementMatchesRemaining != 0 {
 			t.Errorf("%s MeasurementMatchesRemaining = %v, want 0 (matured)", c.name, c.peak.MeasurementMatchesRemaining)
 		}
-		if c.peak.TierLabel == nil || *c.peak.TierLabel != c.want {
-			t.Errorf("%s TierLabel = %v, want %q", c.name, c.peak.TierLabel, c.want)
+		if c.peak.Tier != c.wantTier || c.peak.SubTier != c.wantSub {
+			t.Errorf("%s code = %q/%d, want %q/%d", c.name, c.peak.Tier, c.peak.SubTier, c.wantTier, c.wantSub)
 		}
 	}
 }

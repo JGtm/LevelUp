@@ -619,8 +619,12 @@ func TestMatchViewRepo_GetMatchSkillRank_ClassifiesRankedMatchAsCSR(t *testing.T
 	if rank.RatingType != "CSR" {
 		t.Fatalf("RatingType = %q, want CSR", rank.RatingType)
 	}
-	if rank.TierLabel == nil || *rank.TierLabel != "Gold 3" {
-		t.Fatalf("TierLabel = %v, want Gold 3", rank.TierLabel)
+	// Le lecteur rend le CODE du palier ; le libellé se déduit au service (labelSkillRank), dans la langue de la requête.
+	if rank.TierLabel != nil {
+		t.Fatalf("TierLabel = %v, want nil (la colonne stockée n'est pas lue)", *rank.TierLabel)
+	}
+	if rank.Tier == nil || *rank.Tier != "Gold" || rank.SubTier == nil || *rank.SubTier != 3 {
+		t.Fatalf("code = %v/%v, want Gold/3", rank.Tier, rank.SubTier)
 	}
 	if rank.RatingValue == nil || *rank.RatingValue != 1250.5 {
 		t.Fatalf("RatingValue = %v, want 1250.5", rank.RatingValue)

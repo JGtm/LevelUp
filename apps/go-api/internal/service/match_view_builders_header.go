@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
-	"strconv"
 	"strings"
 
 	"levelup/go-api/internal/analysis"
@@ -393,7 +392,7 @@ func int16PtrPair(a, b *int16) (*int, *int) { return int16Ptr(a), int16Ptr(b) }
 
 // resolveSkillIconURL retourne l'URL du badge CSR/LUSR depuis tier + sub_tier.
 // Extrait de buildRankBlock pour être réutilisé par le scoreboard (tous joueurs).
-func resolveSkillIconURL(tier *string, subTier *int, tierLabel *string, assetURL games.TitleAssetURLAdapter) string {
+func resolveSkillIconURL(tier *string, subTier *int, assetURL games.TitleAssetURLAdapter) string {
 	if assetURL == nil || tier == nil || *tier == "" {
 		return ""
 	}
@@ -401,14 +400,6 @@ func resolveSkillIconURL(tier *string, subTier *int, tierLabel *string, assetURL
 	st := 0
 	if subTier != nil {
 		st = *subTier
-	}
-	if st <= 0 && tierLabel != nil {
-		parts := strings.Fields(strings.TrimSpace(*tierLabel))
-		if len(parts) > 1 {
-			if n, err := strconv.Atoi(parts[len(parts)-1]); err == nil {
-				st = n
-			}
-		}
 	}
 	if strings.EqualFold(t, "Onyx") {
 		return assetURL.CSRRankImageURLOnyx()
@@ -463,6 +454,6 @@ func buildRankBlock(sr *domain.SkillRankRaw, assetURL games.TitleAssetURLAdapter
 	}
 
 	// Badge image — délégué au helper partagé avec le scoreboard.
-	rank.IconURL = resolveSkillIconURL(sr.Tier, sr.SubTier, sr.TierLabel, assetURL)
+	rank.IconURL = resolveSkillIconURL(sr.Tier, sr.SubTier, assetURL)
 	return rank
 }

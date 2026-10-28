@@ -245,7 +245,7 @@ func enrichRow(r domain.MatchHistoryRawRow, mapWR map[string][2]int, fmts rowFor
 		Kills:                    r.Kills,
 		Deaths:                   r.Deaths,
 		Assists:                  r.Assists,
-		SkillTierLabel:           r.SkillTierLabel,
+		SkillTierLabel:           analysis.SkillTierDisplayLabel(r.SkillTier, r.SubTier, loc),
 		SkillRatingType:          r.SkillRatingType,
 		SkillRankImageURL:        fmts.skillRankImageURLFor(r),
 		PersonalScore:            r.PersonalScore,

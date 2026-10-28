@@ -156,11 +156,13 @@ func (s *MatchViewService) loadMatchViewDataParallel(ctx context.Context, matchI
 	d.failures.goLoadSection(gctx, g, matchID, "skill_rank", func() error {
 		var e error
 		d.skillRank, e = s.repo.GetMatchSkillRank(gctx, matchID)
+		labelSkillRank(gctx, d.skillRank)
 		return e
 	})
 	d.failures.goLoadSection(gctx, g, matchID, "shared_csrs", func() error {
 		var e error
 		d.sharedCSRs, e = s.repo.GetMatchSharedCSRs(gctx, matchID)
+		labelSkillRanks(gctx, d.sharedCSRs)
 		return e
 	})
 	d.failures.goLoadSection(gctx, g, matchID, "encounters", func() error {

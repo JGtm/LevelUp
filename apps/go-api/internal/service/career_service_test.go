@@ -508,15 +508,15 @@ func TestCareerService_GetXPHistory_AdapterFallbackOnUnsupported(t *testing.T) {
 func TestCareerService_GetLUSRHistory_DataAdapterParity(t *testing.T) {
 	t.Parallel()
 
-	tier := "Diamant 2"
+	sub := 2
 	grp := "ranked"
 	t1 := time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC)
 	t2 := time.Date(2026, 4, 10, 0, 0, 0, 0, time.UTC)
 	delta := 35.5
 	badge := "https://img/badge.png"
 	lusr := []domain.LUSRCheckpointDTO{
-		{MatchID: "m1", RatingType: "lusr", RatingValue: 1850.0, TierLabel: &tier, PlaylistGroup: &grp, PlaylistName: "Arène", PlaylistID: "p1", RecordedAt: &t1, RatingDelta: nil, BadgeImageURL: &badge},
-		{MatchID: "m2", RatingType: "lusr", RatingValue: 1885.5, TierLabel: &tier, PlaylistGroup: &grp, PlaylistName: "Arène", PlaylistID: "p1", RecordedAt: &t2, RatingDelta: &delta, BadgeImageURL: nil},
+		{MatchID: "m1", RatingType: "lusr", RatingValue: 1850.0, Tier: "Diamond", SubTier: &sub, PlaylistGroup: &grp, PlaylistName: "Arène", PlaylistID: "p1", RecordedAt: &t1, RatingDelta: nil, BadgeImageURL: &badge},
+		{MatchID: "m2", RatingType: "lusr", RatingValue: 1885.5, Tier: "Diamond", SubTier: &sub, PlaylistGroup: &grp, PlaylistName: "Arène", PlaylistID: "p1", RecordedAt: &t2, RatingDelta: &delta, BadgeImageURL: nil},
 	}
 	// Rang non-nil pour isoler la parité LUSR (un GetLatestRank (nil,nil) du mock
 	// — irréaliste en prod où il retourne ErrNoRows/une row — diverge sur le bloc
@@ -549,9 +549,9 @@ func TestCareerService_GetLUSRHistory_DataAdapterParity(t *testing.T) {
 // CareerSource → ErrCapabilityNotSupported → fallback silencieux sur repo.
 func TestCareerService_GetLUSRHistory_AdapterFallbackOnUnsupported(t *testing.T) {
 	t.Parallel()
-	tier := "Or 1"
+	sub := 1
 	lusr := []domain.LUSRCheckpointDTO{
-		{MatchID: "m1", RatingType: "lusr", RatingValue: 1450, TierLabel: &tier, PlaylistName: "Arène", PlaylistID: "p1"},
+		{MatchID: "m1", RatingType: "lusr", RatingValue: 1450, Tier: "Gold", SubTier: &sub, PlaylistName: "Arène", PlaylistID: "p1"},
 	}
 	repo := &mockCareerRepo{lusrHist: lusr}
 	dataAdapter := halo_games.NewDataAdapter(nil, slog.New(slog.NewJSONHandler(io.Discard, nil)))
@@ -831,5 +831,51 @@ func TestCareerService_GetTopEncounters_RepoError(t *testing.T) {
 	svc := NewCareerService(repo)
 	if _, err := svc.GetTopEncounters(context.Background()); err == nil {
 		t.Error("expected error")
+	}
+}
+
+// TestCareerService_LUSRTierLabels_DansLaLangueDeLaRequete : le libellé de palier des checkpoints LUSR /
+// CSR se déduit du code (Tier, SubTier) dans la langue de la requête, par les deux voies (adaptateur
+// et repo) ; le libellé stocké (« Diamond 4 », « Or VI ») n'est pas servi ; un point en placement
+// porte le marqueur machine que le web écarte du graphe.
+func TestCareerService_LUSRTierLabels_DansLaLangueDeLaRequete(t *testing.T) {
+	t.Parallel()
+	sub4, sub6, none := 4, 6, 0
+	stored1, stored2 := "Diamond 4", "Or VI"
+	lusr := func() []domain.LUSRCheckpointDTO {
+		return []domain.LUSRCheckpointDTO{
+			{MatchID: "m1", RatingType: "CSR", RatingValue: 1200, Tier: "Diamond", SubTier: &sub4, TierLabel: &stored1},
+			{MatchID: "m2", RatingType: "LUSR", RatingValue: 1700, Tier: "Gold", SubTier: &sub6, TierLabel: &stored2},
+			{MatchID: "m3", RatingType: "CSR", RatingValue: 0, Tier: "Placement", SubTier: &none},
+		}
+	}
+	rank := &domain.CareerRankData{RankNumber: 50, CurrentXP: 1000, RecordedAt: time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC)}
+	for _, voie := range []string{"repo", "adaptateur"} {
+		for loc, want := range map[i18n.Locale][3]string{
+			i18n.LocaleFR: {"Diamant IV", "Or VI", "Placement"},
+			i18n.LocaleEN: {"Diamond IV", "Gold VI", "Placement"},
+		} {
+			repo := &mockCareerRepo{rank: rank, lusrHist: lusr()}
+			svc := NewCareerService(repo)
+			if voie == "adaptateur" {
+				svc = svc.WithDataAdapter(halo_games.NewDataAdapter(repo, slog.New(slog.NewJSONHandler(io.Discard, nil))))
+			}
+			resp, err := svc.GetCareerPage(i18n.WithContext(context.Background(), loc))
+			if err != nil {
+				t.Fatalf("%s %s : %v", voie, loc, err)
+			}
+			cps := resp.LUSR.Checkpoints
+			if len(cps) != 3 {
+				t.Fatalf("%s %s : %d checkpoints", voie, loc, len(cps))
+			}
+			for i, w := range want {
+				if cps[i].TierLabel == nil || *cps[i].TierLabel != w {
+					t.Errorf("%s %s : checkpoint %d = %v, attendu %q", voie, loc, i, cps[i].TierLabel, w)
+				}
+			}
+			if resp.LUSR.CurrentTierLabel == nil || *resp.LUSR.CurrentTierLabel != want[1] {
+				t.Errorf("%s %s : palier courant = %v, attendu %q", voie, loc, resp.LUSR.CurrentTierLabel, want[1])
+			}
+		}
 	}
 }

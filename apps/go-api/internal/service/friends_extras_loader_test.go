@@ -69,13 +69,16 @@ func TestLoadOneFriendExtras_PopulatesPerformanceScore(t *testing.T) {
 
 func TestLoadOneFriendExtras_PopulatesSkillRank(t *testing.T) {
 	t.Parallel()
-	tier := "Onyx 1500"
+	// Le libellé stocké (« Onyx 1500 ») n'est jamais servi : le palier se déduit du code.
+	stored, tier, sub := "Onyx 1500", "Gold", 3
 	val := 1500.0
 	delta := 25.0
 	repo := &mockFriendRepo{
 		rankResult: &domain.SkillRankRaw{
 			RatingType:  "CSR",
-			TierLabel:   &tier,
+			TierLabel:   &stored,
+			Tier:        &tier,
+			SubTier:     &sub,
 			RatingValue: &val,
 			RatingDelta: &delta,
 		},
@@ -90,8 +93,8 @@ func TestLoadOneFriendExtras_PopulatesSkillRank(t *testing.T) {
 	if res.SkillRank.RatingType != "CSR" {
 		t.Errorf("RatingType want CSR, got %q", res.SkillRank.RatingType)
 	}
-	if res.SkillRank.TierLabel == nil || *res.SkillRank.TierLabel != "Onyx 1500" {
-		t.Errorf("TierLabel want Onyx 1500, got %v", res.SkillRank.TierLabel)
+	if res.SkillRank.TierLabel == nil || *res.SkillRank.TierLabel != "Or III" {
+		t.Errorf("TierLabel want Or III (déduit du code, langue par défaut), got %v", res.SkillRank.TierLabel)
 	}
 }
 

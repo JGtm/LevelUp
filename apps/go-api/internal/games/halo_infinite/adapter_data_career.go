@@ -140,12 +140,13 @@ func projectLUSRCheckpoint(r domain.LUSRCheckpointDTO) canonical.LUSRCheckpoint 
 		MatchID:      r.MatchID,
 		RatingType:   r.RatingType,
 		RatingValue:  r.RatingValue,
+		Tier:         r.Tier,
 		PlaylistName: r.PlaylistName,
 		PlaylistID:   r.PlaylistID,
 	}
-	if r.TierLabel != nil {
-		v := *r.TierLabel
-		c.TierLabel = &v
+	if r.SubTier != nil {
+		v := *r.SubTier
+		c.SubTier = &v
 	}
 	if r.PlaylistGroup != nil {
 		v := *r.PlaylistGroup

@@ -227,7 +227,6 @@ SELECT
     msr.match_id,
     msr.rating_type,
     msr.rating_value,
-    msr.tier_label,
     msr.playlist_group,
     NULLIF(TRIM(COALESCE(msr.tier, '')), '')               AS tier,
     COALESCE(msr.sub_tier, 0)                              AS sub_tier

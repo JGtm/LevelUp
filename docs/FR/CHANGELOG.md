@@ -18,7 +18,7 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 - **Briefing de l'Explorateur : les cartes ne disparaissent plus selon les filtres** — « Par carte », « Par mode » et « Par sélection » retiennent une carte, un mode ou une sélection dès 5 matchs (au lieu de 10) et en comparent au moins deux ; en dessous, la carte reste à sa place avec un encadré en pointillé qui dit pourquoi. « Par contexte » demande 5 matchs en solo et 5 en escouade, et donne les deux comptes quand un côté n'y est pas. Une carte n'est absente que si le filtre ne laisse qu'une valeur (la carte filtrée, par exemple).
 - **Briefing de l'Explorateur sous 10 matchs** — plus rien n'est retiré : écarts à ton niveau habituel, cartes « Par… », Classement, arme favorite et moments forts s'affichent, et un triangle d'avertissement sur la tuile Matchs signale l'échantillon faible. Avant, seules quatre tuiles restaient, avec une ligne « Échantillon faible ».
 - **Tuiles du briefing de l'Explorateur en lignes égales** — quand les tuiles ne tiennent pas sur une ligne, elles se répartissent sur deux lignes de même largeur (4+4, 4+3, 3+3, 3+2) au lieu de laisser la dernière seule sur sa ligne. La tuile « Séries marquantes » devient « Séries » ; son infobulle garde le nom complet.
-- **Les noms suivent la langue de l'interface partout** — les noms de cartes, de modes, de listes de jeu, d'armes et de médailles, ainsi que les textes rédigés par le serveur, arrivent dans la langue choisie pour l'interface sur toutes les pages, graphiques par carte de l'Escouade compris.
+- **Les noms suivent la langue de l'interface partout** — les noms de cartes, de modes, de listes de jeu, d'armes et de médailles, ainsi que les textes rédigés par le serveur, arrivent dans la langue choisie pour l'interface sur toutes les pages.
 - **Changer de langue recharge toutes les données dans la nouvelle langue** — aucun nom ne reste dans l'ancienne langue jusqu'au prochain rafraîchissement.
 - **Export CSV dans la langue de la page** — le fichier exporté est rédigé dans la langue de la page d'où il part.
 
@@ -30,6 +30,8 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 - **Halo 5 : « Par mode » de la Synthèse était vide** — les matchs Halo 5 portent désormais leur mode (Assassin, Capture du drapeau, Bases...) sur toutes les pages, par une règle déclarée une fois par jeu ; le graphique « Par mode » de la Synthèse les liste avec leur courbe de performance.
 - **Halo 5 en anglais : cartes et listes de jeu sans nom** — elles n'affichaient rien quand l'interface était en anglais ; leur nom s'affiche désormais.
 - **Halo 5 en français : des noms restés en anglais** — certains noms (cartes, modes...) qui s'affichaient en anglais apparaissent maintenant en français.
+- **Noms de rangs dans la langue de l'interface** — les paliers s'affichaient tels qu'enregistrés au moment du match : en français sur Halo Infinite même avec l'interface en anglais, en anglais avec des chiffres arabes sur Halo 5 même en français (« Diamond 4 »). Ils suivent désormais la langue de l'interface, en chiffres romains (« Diamant IV », « Diamond IV »), dans l'Explorateur, l'Accueil, la Carrière, le Classement, les sessions et la vue d'un match.
+- **Défis créés en anglais** — un défi tiré d'un modèle pendant que l'interface était en anglais restait ensuite en anglais ; il suit maintenant la langue de l'interface, comme un défi créé en français. Un défi renommé garde son texte.
 
 ## [8.0.7] - 2026-10-26
 

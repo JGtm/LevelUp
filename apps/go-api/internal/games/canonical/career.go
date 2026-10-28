@@ -79,10 +79,13 @@ type CareerHistoryEntry struct {
 // HighestLUSR = pic scalaire ; SkillSnapshot = skill de scoreboard par match).
 // RatingType reste un string brut (le coercer en enum changerait les octets).
 type LUSRCheckpoint struct {
-	MatchID       string
-	RatingType    string
-	RatingValue   float64
-	TierLabel     *string
+	MatchID     string
+	RatingType  string
+	RatingValue float64
+	// Tier (nom canonique anglais) + SubTier : le code dont le service déduit le libellé du palier
+	// dans la langue de la requête (la colonne stockée `tier_label` n'est pas portée).
+	Tier          string
+	SubTier       *int
 	PlaylistGroup *string
 	PlaylistName  string
 	PlaylistID    string

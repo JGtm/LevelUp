@@ -69,7 +69,7 @@ func (s *MatchHistoryService) buildExplorerBriefing(
 	if len(filtered) == 0 {
 		return nil
 	}
-	b := &domain.ExplorerBriefing{Scope: buildBriefingScope(filtered)}
+	b := &domain.ExplorerBriefing{Scope: buildBriefingScope(filtered, i18n.FromContext(ctx))}
 	b.PeriodStart, b.PeriodEnd = scopePeriod(filtered)
 	b.LowSample = len(filtered) < MinBriefingModulesMatches
 	b.Baseline = buildBriefingBaseline(filtered, allRaw)
@@ -114,7 +114,7 @@ func scopePeriod(rows []domain.MatchHistoryRawRow) (start, end *time.Time) {
 // source que le tableau, pour un compteur/bilan/indicateurs cohérents. Porte aussi
 // les agrégats socle V4/V5 : durée totale + pics (FDA, MMR d'équipe, rang par
 // système) + bornes min/max des triptyques FDA & Perf (DP-1/DEC-MINMAX).
-func buildBriefingScope(scope []domain.MatchHistoryRawRow) *domain.ExplorerBriefingScope {
+func buildBriefingScope(scope []domain.MatchHistoryRawRow, loc i18n.Locale) *domain.ExplorerBriefingScope {
 	if len(scope) == 0 {
 		return nil
 	}
@@ -134,7 +134,7 @@ func buildBriefingScope(scope []domain.MatchHistoryRawRow) *domain.ExplorerBrief
 		TotalDurationSeconds: sumScopeDurations(scope),
 		PeakKDA:              maxScopeFloat(scope, func(r *domain.MatchHistoryRawRow) *float64 { return r.KDA }),
 		PeakTeamMMR:          maxScopeFloat(scope, func(r *domain.MatchHistoryRawRow) *float64 { return r.TeamMMR }),
-		PeakRanks:            scopePeakRanks(scope),
+		PeakRanks:            scopePeakRanks(scope, loc),
 	}
 }
 
@@ -193,9 +193,10 @@ func minScopeFloat(scope []domain.MatchHistoryRawRow, get func(*domain.MatchHist
 
 // scopePeakRanks retourne le meilleur palier ATTEINT par système de rating sur le
 // scope (Pic rang). Pour chaque rating_type présent, argmax des rows notées par
-// (analysis.CSRTierOrdinal(SkillTier EN), SubTier) ; TierLabel = SkillTierLabel de la
-// row gagnante. Ordre déterministe LUSR puis CSR. 0/1/2 entrées (DEC-PEAK/DEC-PEAKRANK).
-func scopePeakRanks(scope []domain.MatchHistoryRawRow) []domain.ExplorerBriefingPeakRank {
+// (analysis.CSRTierOrdinal(SkillTier EN), SubTier) ; TierLabel = libellé du palier de la row
+// gagnante, déduit de son code dans la langue `loc` (analysis.SkillTierDisplayLabel). Ordre
+// déterministe LUSR puis CSR. 0/1/2 entrées (DEC-PEAK/DEC-PEAKRANK).
+func scopePeakRanks(scope []domain.MatchHistoryRawRow, loc i18n.Locale) []domain.ExplorerBriefingPeakRank {
 	type peak struct {
 		ordinal, sub int
 		label        string
@@ -203,8 +204,12 @@ func scopePeakRanks(scope []domain.MatchHistoryRawRow) []domain.ExplorerBriefing
 	best := map[string]peak{}
 	for i := range scope {
 		r := &scope[i]
-		if r.SkillRatingType == nil || r.SkillTier == "" || r.SkillTierLabel == nil {
+		if r.SkillRatingType == nil || r.SkillTier == "" {
 			continue
+		}
+		label := analysis.SkillTierDisplayLabel(r.SkillTier, r.SubTier, loc)
+		if label == nil {
+			continue // placement : pas de palier atteint
 		}
 		ord := analysis.CSRTierOrdinal(r.SkillTier)
 		if ord == 0 {
@@ -216,7 +221,7 @@ func scopePeakRanks(scope []domain.MatchHistoryRawRow) []domain.ExplorerBriefing
 		}
 		kind := strings.ToLower(strings.TrimSpace(*r.SkillRatingType))
 		if cur, ok := best[kind]; !ok || ord > cur.ordinal || (ord == cur.ordinal && sub > cur.sub) {
-			best[kind] = peak{ordinal: ord, sub: sub, label: *r.SkillTierLabel}
+			best[kind] = peak{ordinal: ord, sub: sub, label: *label}
 		}
 	}
 	if len(best) == 0 {

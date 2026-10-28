@@ -5,7 +5,6 @@ import "levelup/go-api/internal/analysis"
 const Q22aMatchSkillRankPlayer = `
 SELECT
     UPPER(COALESCE(NULLIF(TRIM(msr.rating_type), ''), '')) AS rating_type_raw,
-    msr.tier_label,
     msr.rating_value,
     msr.rating_delta,
     msr.playlist_group,
@@ -261,7 +260,6 @@ const Q30SharedMatchCSRs = `
 SELECT
     xuid,
     rating_type,
-    tier_label,
     rating_value,
     rating_delta,
     tier,

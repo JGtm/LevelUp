@@ -170,10 +170,10 @@ func applyCSRPlacements(
 		if r.SkillRatingType == nil || *r.SkillRatingType != skillRatingTypeCSR {
 			continue
 		}
-		if r.SkillTierLabel == nil {
+		if r.SkillStoredLabel == nil {
 			continue
 		}
-		label := *r.SkillTierLabel
+		label := *r.SkillStoredLabel
 		if !domain.IsPlacementLabel(label) {
 			continue
 		}

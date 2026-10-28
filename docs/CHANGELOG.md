@@ -18,7 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Explorer briefing: cards no longer vanish under a filter** — "By map", "By mode" and "By playlist" take a map, mode or playlist from 5 matches (was 10) and need two of them to compare; below that, the card stays in place with a dotted notice saying why. "By context" needs 5 matches solo and 5 in a squad, and gives both counts when one side falls short. A card is left out only when the filter leaves a single value (the map you filtered on, for instance).
 - **Explorer briefing under 10 matches** — nothing is hidden any more: comparisons with your usual level, "By…" cards, rank, favourite weapon and highlights all show, and a warning triangle on the Matches tile says the sample is small. It used to show four tiles and a "Small sample" line.
 - **Explorer briefing tiles in even rows** — when the tiles do not fit on one line, they split into two rows of equal width (4+4, 4+3, 3+3, 3+2) instead of leaving the last one alone on its line. The "Notable streaks" tile is now "Streaks"; its tooltip keeps the full name.
-- **Names follow the interface language everywhere** — map, mode, playlist, weapon and medal names, and the texts written by the server, now come in the language chosen for the interface on every page, the Squad per-map charts included.
+- **Names follow the interface language everywhere** — map, mode, playlist, weapon and medal names, and the texts written by the server, now come in the language chosen for the interface on every page.
 - **Switching language reloads every datum in the new language** — no name stays in the previous language until the next refresh.
 - **CSV export in the page language** — the exported file is written in the language of the page it comes from.
 
@@ -30,6 +30,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Halo 5: "By mode" in the Summary was empty** — Halo 5 matches now carry their mode (Slayer, Capture the Flag, Strongholds...) on every page, from one rule declared per game; the Summary's "By mode" chart lists them with their performance curve.
 - **Halo 5 in English: maps and playlists without a name** — they showed nothing when the interface was in English; they now display their name.
 - **Halo 5 in French: names left in English** — some names (maps, modes...) that used to show in English now appear in French.
+- **Rank names in the interface language** — tier names were shown as recorded at match time: in French on Halo Infinite even with the interface in English, in English with Arabic numerals on Halo 5 even in French ("Diamond 4"). They now follow the interface language, with Roman numerals ("Diamant IV", "Diamond IV"), in the Explorer, the home page, Career, the leaderboard, sessions and the match view.
+- **Challenges created in English** — a challenge taken from a template while the interface was in English stayed in English afterwards; it now follows the interface language, like one created in French. A renamed challenge keeps its text.
 
 ## [8.0.7] - 2026-10-26
 

@@ -382,7 +382,7 @@ func SeedDemoSynthetic(ctx context.Context, opts SyntheticDemoOptions) (Syntheti
 	// records, jalons, escouade) — même générateur que la démo réelle, dérivé du
 	// corpus synthétique. Sans eux, app_settings pose prestige_enabled=true et les
 	// pages Ascension/Prestige de la fixture CI seraient vides.
-	prestigeRows, err := seedDemoPrestige(ctx, titlePkg.NewDemoLayout(opts.OutDir), titlePkg.DefaultSlug, nil)
+	prestigeRows, err := seedDemoPrestige(ctx, titlePkg.NewDemoLayout(opts.OutDir), titlePkg.DefaultSlug, "", nil)
 	if err != nil {
 		return res, fmt.Errorf("seed-demo synthetic: prestige: %w", err)
 	}

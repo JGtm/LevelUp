@@ -59,7 +59,11 @@ type MatchHistoryRawRow struct {
 	PerformanceScore *float64
 	SkillTier        string  // nom canonique anglais du palier ("Diamond"), clé de filtre ; le libellé d'une langue se déduit du code
 	SkillRatingType  *string // "LUSR" | "CSR"
-	SkillTierLabel   *string // e.g. "Diamant IV" (label formaté DB)
+	// SkillStoredLabel : colonne `tier_label` TELLE QU'ÉCRITE (langue du moment de l'écriture : « Or VI »,
+	// « Diamond 4 », « Placement (4 restants) »). Jamais servie : elle ne sert qu'à lire le nombre de
+	// matchs restants d'un placement (domain.ParsePlacementRemaining). Le libellé servi se déduit du code
+	// (SkillTier + SubTier) dans la langue de la requête : analysis.SkillTierDisplayLabel.
+	SkillStoredLabel *string
 	// PlaylistGroup / RatingValue / RatingDelta : colonnes match_skill_rank_latest
 	// exposées pour le module « Classement » du briefing, segmenté PAR CHAÎNE
 	// (rating_type, playlist_group) — DEC-RANK-BE. PlaylistGroup = "ranked" pour CSR

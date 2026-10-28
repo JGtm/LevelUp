@@ -81,12 +81,16 @@ func buildHomeSkillPeak(raw *domain.HomeSkillPeakRow, locale string) *domain.Hom
 	if raw == nil {
 		return nil
 	}
-	if raw.RatingValue <= 0 && raw.BadgeImageURL == nil && raw.TierLabel == nil {
+	loc := normalizeHomeLocale(locale)
+	// Libellé du palier : déduit du code (Tier + SubTier) dans la langue de la requête, jamais lu de la
+	// colonne stockée.
+	tierLabel := SkillTierDisplayLabel(raw.Tier, &raw.SubTier, loc)
+	if raw.RatingValue <= 0 && raw.BadgeImageURL == nil && tierLabel == nil {
 		return nil
 	}
 	summary := &domain.HomeSkillPeakSummary{
 		RatingValue:   raw.RatingValue,
-		TierLabel:     copyOptionalString(raw.TierLabel),
+		TierLabel:     tierLabel,
 		BadgeImageURL: copyOptionalString(raw.BadgeImageURL),
 	}
 	if raw.MeasurementMatchesRemaining != nil {
@@ -111,7 +115,7 @@ func buildHomeSkillPeak(raw *domain.HomeSkillPeakRow, locale string) *domain.Hom
 		if pct, ok := SkillTierBand(raw.Tier, raw.SubTier); ok {
 			summary.TierProgressPct = &pct
 			// Extrémité droite de la barre : sous-palier suivant (nil pour Onyx).
-			summary.NextTierLabel = NextSubTierLabel(raw.Tier, raw.SubTier, normalizeHomeLocale(locale))
+			summary.NextTierLabel = NextSubTierLabel(raw.Tier, raw.SubTier, loc)
 		}
 	}
 	return summary

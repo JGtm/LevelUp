@@ -263,12 +263,12 @@ en = "Tie"
 # ─── Filtre skill tier ────────────────────────────────────────────────────────
 
 [explorer.filters.skill_tier_label]
-fr = "Tier"
+fr = "Palier"
 en = "Tier"
 
 [explorer.filters.skill_tier_disabled]
 fr = "Sélectionne uniquement 'PVP classé' ou 'PVP non classé' dans Type d'expérience pour activer ce filtre"
-en = "Select only 'PVP classé' or 'PVP non classé' in Experience type to enable this filter"
+en = "Select only 'Ranked PvP' or 'Unranked PvP' in Experience type to enable this filter"
 
 [explorer.filters.skill_tier_bronze]
 fr = "Bronze"
