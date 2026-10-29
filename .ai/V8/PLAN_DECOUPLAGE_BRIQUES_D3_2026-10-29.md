@@ -853,26 +853,29 @@ aucun verdict changé (hors noms à barre oblique inverse, échappés différemm
 
 ## Lot 4 — Exploitation : `filmfetch`, `haloadapter`, `tokencache`, rebranchement, suppression
 
-## Lot 4 — Exploitation : `filmfetch`, `haloadapter`, `tokencache`, rebranchement, suppression
-
 Entrées du lot 3 à lire avant de commencer : « Exécution du lot 3 » (politique par ancien consommateur, crochets,
 fonctions de la brique) et découvertes D3-L3-a à n.
 
-- [ ] 4.1 `sync/filmfetch` : décodage/finalisation/cache (ex `halo_client_film.go` partie
+- [x] 4.1 `sync/filmfetch` : décodage/finalisation/cache (ex `halo_client_film.go` partie
   exploitation, `local_film_cache.go`) sur les octets de `infinite` ; `FilmChunk`, `LocalFilmCache`,
   `CachedChunk`, `CachedManifest`, `IsFilmGoneErr`, `ServedFromCarry` : mêmes noms exportés ; les
   consommateurs (`sync/replayartifacts`, `sync/killcollector`, `cmd/levelup`, `service`) changent
   d'import seulement.
-- [ ] 4.2 `games/halo_infinite/haloadapter` : `Provider` (mêmes méthodes que `HaloProvider`, mêmes
+  Statut : fait, commit `a1f744e97` (`ServedFromCarry` [~] : dans `haloadapter`, D3-L0-m). Voir « Exécution du lot 4 ».
+- [x] 4.2 `games/halo_infinite/haloadapter` : `Provider` (mêmes méthodes que `HaloProvider`, mêmes
   `With*` de politique), conversions DTO → `domain` (tests de parité par réflexion quand le DTO est le
   miroir du type domaine ; tests valeur à valeur sur les fixtures sinon), `assets.Ref`,
   `metadata.MedalEntry`, `analysis.MMRKnown`, `AssetFetcher`, `mapcatalog` (variante), `ctxkeys`
   (jetons, xuid, slug, langue sortis du `ctx` ICI), `duckdb.PersistSink` (si c'est une écriture :
   reste chez l'appelant qui la faisait).
-- [ ] 4.3 `platform/auth/tokencache` (ex `player_token_cache.go`, `auth_retry.go`) ; 7 appelants
+  Statut : fait, commit `7f3830ef5`. Parité par réflexion DTO <-> domaine [~] : aucun DTO ne recopie un type `domain`
+  (D3-L3-a) ; les conversions sont prouvées valeur à valeur par les tests d'origine portés (fixtures `httptest`).
+  `duckdb.PersistSink` : pas d'écriture du fournisseur (rappels de persisters, inchangés).
+- [x] 4.3 `platform/auth/tokencache` (ex `player_token_cache.go`, `auth_retry.go`) ; 7 appelants
   d'`InvalidateCachedPlayerTokens` ; `internal/duration` (ex `platform/halo/duration`, 3 fichiers
   `halo_5` + lecteurs).
-- [ ] 4.4 Rebranchement des 15 + 6 importeurs (import et constructeur seulement) ; suppression de
+  Statut : fait, commit `394c34f70` (`git mv` des deux fichiers, de leurs tests et du paquet `duration`).
+- [x] 4.4 Rebranchement des 15 + 6 importeurs (import et constructeur seulement) ; suppression de
   `platform/halo` et `sync/haloclient` (tests, fixtures, entrées de baseline JSONL par un bloc
   RETRAIT daté pointant les nouveaux paquets, ratchets qui les citent : `no_request_scoped_halo_provider_test`
   (vise désormais `haloadapter.Provider`), `sync_root_freeze_test`, `no_film_reread_test`,
@@ -881,9 +884,182 @@ fonctions de la brique) et découvertes D3-L3-a à n.
   `haloapi/infinite` ne survit en deux exemplaires (grep des noms de la table « Exécution du lot 3 » hors de la brique) ;
   les deux `parite_infinite_test.go` partent avec leurs paquets ; clés soldées : `no_halowaypoint_literal_test` (les
   entrées `haloclient/` et `platform/halo/` retirées), `.gitleaks.toml` (l'ancien chemin de la fixture du classement).
-- [ ] 4.5 Gate : `go build ./...` ; T1 (mêmes tests modulo paquet, 0 fail) ; archlint vert ;
+  Statut : fait, commit `79db7bf3e`. `sync_root_freeze_test`, `no_film_reread_test`, `no_hardcoded_film_cache_dirs_test`,
+  `sync/assetnames_wiring_test` [~] : aucune clé de chemin vers les paquets supprimés (commentaires d'historique seuls),
+  verts sans modification.
+- [x] 4.5 Gate : `go build ./...` ; T1 (mêmes tests modulo paquet, 0 fail) ; archlint vert ;
   `-tags=integration -p 1 ./internal/sync/...` vert ; lint 0 issue neuve ; `/debug/vars` : noms de
   compteurs inchangés (grep des constantes). Commit « D3 lot 4 » ; CI verte ; point d'étape.
+  Statut : fait (voir « Exécution du lot 4 »). CI : au pilote (aucun push dans ce lot).
+
+## Exécution du lot 4 (2026-10-29)
+
+Branche `refactor/decouplage-d3-api-halo`, depuis `04f8ba91c`. Commits : `a1f744e97` (4.1), `7f3830ef5` (4.2),
+`394c34f70` (4.3), `79db7bf3e` (4.4), puis la clôture (ce plan, journal). Caches `go-build-d3` / `golangci-d3`. Témoins :
+`%TEMP%\claude\c--Users-Guillaume-Downloads-Scripts-LevelUp\77a8b90a-21a6-40a0-ac64-eb152f616862\scratchpad\temoins_d3_lot4\`
+(`tests_T1.tsv`, `comparaison_T1.txt`, `t3\` avec `md5s.txt` et `commandes.md`). Aucun jeton dans un fichier, un témoin,
+un journal ou ce plan.
+
+**Ce qui existe désormais.**
+- `internal/sync/filmfetch` (592 L de production, 6 fichiers) : `Films` (deux clients de la brique : manifeste
+  authentifié et blobs du CDN, sous deux surfaces netguard ; jetons ; cache disque), `GetMatchFilm`, `GetFilmChunks`,
+  `GetFilmChunkURLs`, `GetHighlightEventsChunk`, `LocalFilmCache` (copie de `local_film_cache.go`), `FilmChunk*`,
+  `FilmChunkRef` / `BlobHTTPError` / `ErrChunkIncomplet` (alias des types de la brique), `IsFilmGoneErr`, décompression
+  (`decfilm.Decompresser`), règle de finalisation, version de film du registre, compteurs expvar posés comme crochets
+  par `New`.
+- `internal/games/halo_infinite/haloadapter` (3 189 L de production, 23 fichiers, plus grand 457 L) : `Provider`
+  (méthodes et `With*` de `HaloProvider`, `DefaultHaloProvider`, `NewHaloProvider`), `Client` (méthodes de
+  `HaloAPIClient`, constructeur `NewClient`, films délégués à `filmfetch`, accesseur `Limiter()`), `HaloClient`,
+  `HTTPError`, `IsAuthError`, skill / CSR, apparence et diagnostic, plaques (cache 6 h), confidentialité (cache),
+  classement (`LeaderboardScraper`), actifs Discovery, médailles, saisons, `ContentHash`, `CatalogFetcher`,
+  `NewAssetNameFetcher`, `EndpointsDepuisResolveur`, `netguardDoer`.
+- `internal/platform/auth/tokencache` (246 L) : cache de jetons par joueur et `RetryWithFreshTokens` (`git mv`).
+- `internal/duration` (`git mv` de `platform/halo/duration`).
+- Brique : `infinite.EstUUID` (validation avant le cache disque) ; tests portés (`reprise_limiteur_test.go`,
+  `leaderboard_page_test.go`, `playlist_parse_test.go`, `discovery_image_test.go`, `service_record_url_test.go`, sous-tests
+  de `TestParseRetryAfter`).
+
+**Ce qui n'existe plus.** `internal/platform/halo` (28 fichiers au 4.4, plus 2 tests au 4.3 ; `duration/`,
+`player_token_cache*`, `auth_retry.go` déplacés) et `internal/sync/haloclient` (39 fichiers, dont `testexports.go`,
+`dto_aliases.go`, les deux `parite_infinite_test.go`, la fixture `testdata/halo/match_history_response.json` déjà copiée
+dans la brique). `CareerRankData` n'est plus défini que dans `sync/career.go` (D3-L0-j soldée par la suppression).
+
+**Funnel `sync/haloclient_reexport.go` (alias -> destination).** `HaloAPIClient` -> `haloadapter.Client` ;
+`HaloClient`, `MatchSkillData`, `PlayerPlaylistCSR`, `CSRRankSnapshot`, `HTTPError`, `MatchHistoryEntry`,
+`PlaylistConfig`, `PlaylistEntry`, `SpartanCustomizationData`, `IsAuthError`, `ParseMatchSkillResponseJSON`,
+`ResolveNameplateURL`, `ErrSkillStatsUnavailable` -> `haloadapter.<même nom>` ; `NewHaloAPIClient` ->
+`haloadapter.NewClient` ; `FilmChunkData`, `FilmChunk`, `FilmChunkRef`, `LocalFilmCache`, `CachedChunk`,
+`CachedManifest`, `NewLocalFilmCache` -> `filmfetch.<même nom>`. Les 29 fichiers de 21 paquets qui passent par `sync.X`
+n'ont pas changé.
+
+**Importeurs rebranchés.** 4.4 : 53 fichiers de 15 paquets (`cmd/diag_api_lecture` 2, `cmd/levelup` 6, `cmd/server`,
+`cmd/refresh-metadata`, `cmd/populate-playlists-catalog`, `cmd/snapshot-world-leaderboard` 2, `api`, `api/wire` 3,
+`scheduler`, `service` 4, `sync` 2 (+ le funnel), `sync/historyretry` 2, `sync/killcollector` 20,
+`sync/replayartifacts` 6, `watcher`) par réécriture mécanique import + qualificatif + constructeur ; 4.3 : 12 fichiers
+pour le cache de jetons (`cmd/server`, `cmd/token-capture`, `cmd/token-import`, `api/handlers/auth_xbox_oauth.go`,
+`api/wire` 4, `watcher`, deux de l'adaptateur, un commentaire de `capturecli`) et 5 lecteurs de `duration`
+(`games/halo_5` 3, `openspartan/mapper`, l'adaptateur). Seule exception à « import et constructeur » :
+`sync/pooled_client_test.go` passe de `LimiterForTest()` / `RateWaitForTest()` à `Limiter()` / `Limiter().Wait`
+(décision 8).
+
+**Surfaces netguard recréées (une par `netguardDoer`, délai d'avant).** `halo_api.get` et `halo_api.download_blob`
+(client de synchronisation, 20 s ; manifeste et blobs par deux clients distincts), `halo_provider.get` (15 s),
+`halo_discovery.get` (15 s), `nameplate_resolver.mapping` et `nameplate_resolver.emblem` (`http.DefaultClient`, aucun délai
+de client, échéance de 8 s de la brique ; le transport de `http.DefaultClient` est relu à chaque appel),
+`waypoint_leaderboard.scrape` (20 s) et `waypoint_leaderboard.discover_season` (sonde sans redirection, même délai). Le
+seul site `netguard.Check` est `haloadapter/doer.go`, vu par `TestOutboundCallsAreNetguarded` (il émet `d.next.Do(req)`) ;
+l'allowlist netguard n'avait aucune clé dans les deux paquets supprimés : rien à renommer.
+
+**Politiques et sémantiques rétablies par l'adaptateur.** `RetryProvider` (essais = `maxRetries` du fournisseur) pour
+passe de combat, défis, service record, confidentialité, médailles, saisons, `FetchMatchStats` ; `RetryDiscovery` pour
+`FetchAsset` ; `RetryHaloClient` pour le client de synchronisation ET `filmfetch` (blobs compris : 4 essais, D3-L3-f).
+404/410 -> résultat vide comme avant : skill (map vide), CSR d'un joueur (tranche vide), CSR d'une playlist (nil),
+manifeste de film (absent), blob des temps forts (absent) ; 401/403 -> (nil, nil) pour carrière et apparence (portée
+joueur), repli vue publique sur 401/403 de `/customization/appearance`. Filet 401/403 du fournisseur (`retryOnAuth`) sur
+le verdict typé de la brique (`IsAuthError`, ex `IsAuthFailure`). Confidentialité : `parse_error` distingué de
+`fetch_error` par le type de l'erreur JSON. Langue des pages du classement :
+`HaloTags(i18n.Fallback)[0] + "," + Fallback + ";q=0.9"` = « en-US,en;q=0.9 », valeur identique ; `FrenchName()` (qui
+comparait à « fr-FR » en dur) remplacé par `nomsDeSaison` : boucle sur `i18n.Locales()`, la langue de repli prend
+`DisplayName`, chaque autre langue sa traduction sous ses étiquettes Halo de `config/locales.toml` — correction d'un
+littéral interdit (ADR 0040), même `i18n.Text` produit pour fr/en (`TestFetchSeasons_TranslationsFR` vert sur la fixture
+réelle). Adresses : `EndpointsDepuisResolveur` ne lit que les clés de l'appel (même journal `endpoint_missing`, une ligne
+par clé utilisée), surcharges d'instance des tests gardées, plaques sans journal (comme avant).
+
+**Ratchets (une clé pour une, datées 2026-10-29).** `briques_internes` : table réduite à `internal/haloapi`, AUCUNE
+tolérance (les 20 entrées du lot 1 à zéro ; deux entrées transitoires du 4.3, `duration` et `platform/auth/tokencache`,
+retirées au 4.4), mécanisme des dossiers à liste retiré, auto-preuves réécrites sur des extraits de la brique ; fermeture
+de `domain` / `analysis` / `canonical` sur la seule brique. `no_halowaypoint_literal` : les 10 entrées `sync/haloclient/`
+et `platform/halo/` retirées, `haloapi/infinite/endpoints.go` reste (solde -10). `no_request_scoped_halo_provider` :
+extraits et message sur `haloadapter.NewHaloProvider()`. `no_french_label_literal` : UNE entrée déplacée
+(`games/halo_infinite/haloadapter/challenges_details.go`, 1 littéral, `titreDefiParDefaut`) — le littéral existait dans
+`platform/halo`, hors des racines scannées (décision 14). `film_finalise_predicate` : texte de retrait
+(`filmfetch.FilmChunkTypeHighlightEvents`). `auth_retry_guard_test` (porté) : noms de fichiers (`provider_operations.go`)
+et vérification du verdict typé. `.gitleaks.toml` : clé `platform/halo/testdata` retirée.
+`apps/go-api/scripts/coverage_filter.sh` : `internal/platform/halo/` -> `internal/games/halo_infinite/haloadapter/`.
+`.github/ci/go-shards.txt` : aucun motif ne nommait les paquets (`ci_go_shard.sh --verifier` vert, 370 paquets, partition
+exacte). `.golangci.yml` : aucune règle de chemin concernée. Docs : aucune occurrence vivante hors `docs/CHANGELOG.md`
+(historique) et ADR (lot 6). `sync_root_freeze_test`, `no_film_reread_test`, `no_hardcoded_film_cache_dirs_test` : aucune
+clé vers les paquets supprimés (historique en commentaire seul). `sentinel_test.go`, `no_legacy_source_used_test.go`,
+netguard : inchangés et verts.
+
+**Règle 6 (fin de la duplication du lot 3).** Grep des fonctions et types de la table « Exécution du lot 3 » hors de
+`internal/haloapi` : aucune définition (seuls des alias de types dans l'adaptateur et `filmfetch`). Restent hors brique,
+hors périmètre (D3-M) : `assets/fetcher_gamecms.go` `doGet`, `games/halo_5/client.go` ; et le helper de test préexistant
+`sync/halo_client_test_helpers_test.go` `isNotFoundErr` (D3-L4-h).
+
+**Tests (T1).** `go test -json ./... -count=1 -timeout 1200s` : code 0, stderr vide, 336 paquets (195 ok, 141 sans test),
+16 479 tests et sous-tests (16 411 pass, 68 skip, 0 fail). Contre `temoins_d3_lot0_avant/tests_T1.tsv` : aucun pass->skip ;
+noms disparus : les 20 noms à barre oblique inverse déjà écartés au lot 3 (échappement de l'outil de relevé) et les 8
+sous-tests de `TestParseRetryAfter` du client de synchronisation, rétablis sous leurs noms dans le test homonyme de la
+brique (13 sous-tests verts) ; disparus par décision : les 6 tests de parité du lot 3 (absents du T1 du lot 0).
+Destinations : `filmfetch` 37 tests, `haloadapter` 132 (74 de `platform/halo`, 58 de `haloclient`), `tokencache` 16,
+`duration` 9, `infinite` +18 (fonctions pures : `BuildChunkURL` x5, `Backoff` x2, `RateWait` x3,
+`IsNotFoundErr_TypeUniquement`, `RetryBaseDelay_BorneBasse`, `ParsePlaylistConfig` x3, `BuildAssetImageURL`,
+`BuildSeasonServiceRecordURL`, `ParseLeaderboardPage` ; `TestParseRetryAfter` [~] fusionné). Skips inchangés
+(`TestResolveNameplateURL_NegativeCfgResolvesPositive` reste skip). Fixtures non dupliquées : les tests de l'adaptateur
+lisent celles de la brique par chemin relatif.
+
+**Baseline.** 767 lignes JSONL (186 paires (Package, Test)) retirées de `tests_pre_migration.jsonl` : `platform/halo`
+178 paires / 735 lignes, `platform/halo/duration` 8 / 32 (`sync/haloclient` n'y avait aucune ligne) ; chacune des 186
+paires retrouvée sous le même nom dans le run (destinations : `haloadapter` 64 tests de tête, `tokencache` 16,
+`duration` 9, `infinite` 3) ; bloc « RETRAIT DU 2026-10-29 (plan D3 lot 4 ...) » dans `scripts/check_test_baseline.sh`.
+`check_test_baseline.sh tests --from-jsonl <run -tags=integration> --baseline ...` : vert (8 114 tests de la baseline
+tous présents, aucun échec de test ni de paquet). Le JSONL du T1 sans balise ne suffit pas à ce contrôle : la baseline
+porte les tests `integration` (ceux de la CI) ; le contrôle se joue sur le run d'intégration ci-dessous.
+
+**T3 LIVE (lecture seule, `cmd/diag_api_lecture` rebranché, une exécution par surface, compte JGtm, mêmes arguments qu'au
+lot 1).** historique `60a2591c...`, stats `697ff1f0...`, skill `3abcd07b...`, manifeste `4eaf85bc...`, actif
+`3195a607...`, servicerecord `4dfdef90...` : les six MD5 IDENTIQUES au témoin `temoins_d3_lot1_avant` (aucune nouvelle
+partie entre-temps : l'historique et le service record n'ont pas bougé). Six rotations de la chaîne par le chemin canonique
+(11:02:31 à 11:02:41), aucune re-capture, journal identique au lot 1 (repli MSA natif puis `rotated=true`).
+
+**T4.** Noms de compteurs et de clé anti-rafale, avant (HEAD du lot 3, deux paquets) et après (adaptateur, `filmfetch`,
+`tokencache`, brique) : `halo_api_blob_retry_success`, `halo_api_blob_retry_exhausted`, `film_fetch_chunk_incomplet`,
+`leaderboard_empty_page1`, `log_throttle_halo_api_download_blob` — identiques.
+
+**Gate (4.5).** `go build ./...`, `go vet ./...` verts ; archlint vert ; `go list -deps -test ./...` depuis
+`internal/haloapi` : rien de `levelup/go-api/internal` hors `haloapi` ; `go list -deps -test ./internal/domain/...
+./internal/analysis/...` : aucun paquet `haloapi` ; `gofmt -l` vide ; `golangci-lint run
+--new-from-merge-base=origin/release/v8.1.0 ./...` : 0 issue ; `bash ../../scripts/ci_go_shard.sh --verifier` vert ;
+intégration : `go test -tags=integration -count=1 -timeout=1200s -p 1 -json ./...` (tout le module,
+`internal/sync/...` compris) : code 0, stderr vide, 337 paquets (197 ok, 140 sans test), 18 415 tests (18 316 pass, 99 skip,
+0 fail) ; course (`-race`) verte sur `filmfetch`, `haloadapter`, `tokencache`.
+
+**Décisions prises seul pendant le lot (consignées pour le pilote).**
+1. Ordre 4.2 avant 4.3 tenu : au 4.2 l'adaptateur passe transitoirement par `platform/halo.RetryWithFreshTokens`, au 4.3
+   par `tokencache`.
+2. Copies transitoires : les commits 4.2 et 4.3 laissent deux ratchets d'archlint rouges sur les DEUX copies de
+   `challenges_details.go` (`TestLocaleConstantUsesDoNotGrow` 38 > 37, `TestNoNewFrenchLabelLiteral`), et le 4.3 pose deux
+   tolérances transitoires datées dans `briques_internes` ; tout est vert et soldé au 4.4. Rien n'est poussé entre-temps.
+3. `filmfetch.Films` reçoit DEUX clients de la brique (manifeste / blobs) pour garder deux surfaces netguard ; les
+   compteurs sont posés par `filmfetch.New` (crochets), pas par l'appelant.
+4. Décompression APRÈS le téléchargement parallèle de la brique (`DownloadChunks`) au lieu de dans chaque goroutine : mêmes
+   octets, même texte d'erreur (`<appelant> chunk <i>(<match>): downloadBlob: ...`) ; l'annulation des téléchargements
+   voisins ne suit plus qu'une erreur de téléchargement.
+5. `infinite.EstUUID` exporté : la validation du match précède le cache disque, comme avant.
+6. Surcharges d'hôte des tests gardées sur `Provider` et `Client` ; `hostFor(ctx, cle)` remplace
+   `hostFor(ctx, key, override, legacy)` (test porté adapté).
+7. `EndpointsDepuisResolveur(ctx, res, slug, cles...)` : seules les clés de l'appel sont lues (journal identique).
+8. `testexports.go` (seams de test en production) remplacé par un accesseur `Client.Limiter()`.
+9. Tests de l'ancien GET générique (`TestDoGet_*`, `TestGetMatchHistory_Success`, `TestGetMatchStats_SuccessViaDoGet`)
+   portés sur `GetMatchStats` / `GetMatchHistory` (appels qui traversent le transport) ; alias de test pour les fonctions
+   pures de la brique (`filterHumanXUIDs`, `unwrapXUID`, `firstPositiveEmblemCfg`, `extractEmblemStem`,
+   `matchSkillResponse`) ; `parsePlaylistCSR` et les amorces du cache d'emblèmes en helpers de test (sortis du code de
+   production).
+10. Tests de fonctions pures de la brique portés DANS la brique (liste ci-dessus) ; sous-tests de `TestParseRetryAfter`
+    fusionnés dans le test homonyme de la brique.
+11. `nomsDeSaison` (ADR 0040) à la place de `FrenchName()` ; `Accept-Language` des pages construit depuis `i18n.Fallback`.
+12. Confidentialité : `parse_error` reconnu par le type de l'erreur JSON (`*json.SyntaxError`, `*json.UnmarshalTypeError`).
+13. `titreDefiParDefaut` (constante : `goconst` sur le nouveau chemin) ; anti-motifs corrigés dans le code réécrit :
+    `_ = json.Marshal` des médailles -> erreur journalisée ; `slog.Debug` sans contexte (`FetchMatchStats`, carrière) ->
+    `DebugContext` / `WarnContext`.
+14. Entrée déplacée dans `no_french_label_literal` plutôt qu'une migration au catalogue i18n (qui changerait le texte servi
+    en anglais : hors « aucun changement observable »).
+15. `briques_internes` : mécanisme des dossiers à liste retiré (plus d'usage, règle 7) ; le mécanisme de tolérances reste
+    (exercé par ses auto-preuves) avec une table vide, il part à la clôture de D3.
+16. Commentaires qui nommaient `platform/halo` ou `haloclient` comme consommateurs ou implémenteurs (ports, `games`,
+    `catalog_adapter.go`, `skill_merge.go`, ...) corrigés ; l'historique daté (chroniques d'archlint, en-têtes « Copié de »
+    de la brique, `constants.toml`) laissé tel quel (D3-L4-g, j).
 
 ## Lot 5 — Revue adversariale (une ronde, trois relecteurs)
 
@@ -1140,3 +1316,49 @@ Lot 3 (2026-10-29). Notées, NON traitées ; le lot indiqué décide.
 - **D3-L3-n (`FetchMvarForMap` sans part HTTP dans `haloclient`).** Le brief du lot 3 demandait « l'appel HTTP qui télécharge
   la variante » : il n'existe pas dans `haloclient`, qui délègue à `mapcatalog` (client UGC qui ne bouge pas, D3-M). Rien
   n'est copié ; item statué [~].
+
+Lot 4 (2026-10-29). Notées, NON traitées ; le lot indiqué décide (sinon : registre des reports au lot 6).
+
+- **D3-L4-a (garde démo après le limiteur).** La garde `netguard` est désormais vérifiée par le `Doer`, donc APRÈS
+  l'attente du limiteur de la brique (avant : avant la boucle) : en mode démo, une requête refusée consomme un jeton du
+  limiteur. Aucune sortie réseau, aucune attente de reprise (erreur définitive) ; effet nul hors démo.
+- **D3-L4-b (compteur de reprise réussie des blobs).** `halo_api_blob_retry_success` est incrémenté par le crochet de la
+  brique AVANT la décompression (avant : après) : un blob obtenu en reprise mais illisible (corps non zlib) compte
+  désormais une reprise réussie. Cas jamais observé (un corps non zlib arrive en 200 au premier essai).
+- **D3-L4-c (journaux et textes qui changent, suite de D3-L3-c).** Carrière : le journal « CurrentProgress introuvable »
+  n'a plus l'aperçu du corps (`body_preview`) ; apparence : « customization via vue publique » sans `bytes`, et l'erreur
+  de la vue publique porte deux préfixes (« fetchCustomizationAppearance (public view): fetchCustomizationAppearance: ... ») ;
+  plaques : « mapping fetch en échec » au lieu de « mapping fetch HTTP error » / « mapping non-200 » ; blob : le journal de
+  succès ne porte plus `bytes_inflated`. Verdicts et valeurs inchangés (T1, T3).
+- **D3-L4-d (Accept-Language vide).** `FetchAsset` avec une langue vide n'émet plus d'en-tête `Accept-Language` vide
+  (brique : en-tête seulement s'il a une valeur). Aucun appelant connu ne passe une langue vide.
+- **D3-L4-e (hôtes du résolveur normalisés).** `Endpoints.Avec` retire une barre finale et, pour un hôte déclaré VIDE,
+  retombe sur l'adresse par défaut (avant : l'hôte vide était utilisé tel quel). Les `constants.toml` actuels n'ont ni
+  l'un ni l'autre.
+- **D3-L4-f (validation avant journal d'adresse).** Le client construit ses adresses (et journalise un éventuel
+  `endpoint_missing`) avant que la brique ne valide les arguments ; avant, une validation en échec ne journalisait rien.
+- **D3-L4-g (`config/titles/halo_infinite/constants.toml`).** Les commentaires de provenance des hôtes nomment encore
+  des fichiers d'avant K3e (`sync/halo_client.go:46`, `platform/halo/provider.go:98`, ...) ; non touchés (configuration,
+  historique) : à réécrire vers `haloapi/infinite/endpoints.go`.
+- **D3-L4-h (helper de test `isNotFoundErr` dans `internal/sync`).** `halo_client_test_helpers_test.go` garde une copie du
+  verdict d'absence typé (préexistante, « dupliquée de haloclient ») ; elle pourrait passer par `infinite.IsNotFound`.
+- **D3-L4-i (anti-motifs D3-L0-p non corrigés : code déplacé, pas réécrit).** `battlepass_details.go` : persisters en
+  goroutine sur `context.Background()` ; `asset_name_fetcher.go` : `os.Getenv("LEVELUP_SYNC_RESOLVE_ASSETS")` (kill-switch
+  échu le 2026-09-01) ; `challenges_details.go` : alias « en-GB » écrit en dur ; `tokencache.InvalidateCachedPlayerTokens` :
+  `slog.Debug` sans contexte (la fonction n'en reçoit pas) ; préfixe de journal « halo: » des messages du cache de jetons.
+- **D3-L4-j (en-têtes « Copié de » de la brique).** Les fichiers de `haloapi/infinite` citent des fichiers de paquets
+  désormais supprimés (`sync/haloclient/...`, `platform/halo/...`) : de l'historique dans le code (règle 17) ; à déplacer
+  dans l'ADR 0042 (lot 6).
+- **D3-L4-k (couverture).** `internal/duration` et `internal/platform/auth/tokencache`, auparavant sous l'exclusion
+  `internal/platform/halo/` de `coverage_filter.sh`, entrent dans le profil de couverture (paquets bien testés : effet
+  attendu à la hausse).
+- **D3-L4-l (titre de repli d'un défi en dur).** « Défi actif » (`titreDefiParDefaut`) est servi tel quel dans toutes les
+  langues ; sa migration vers le catalogue `i18n.Msg` changerait le texte servi en anglais (décision produit).
+- **D3-L4-m (test qui sort sur le réseau, préexistant).** `TestGetCareerRank_BannerDerivedFromEmblemNameplate` rafraîchit la
+  table emblème -> nameplate sur l'hôte réel (cache vide) avant de retomber sur la configuration positive ; son verdict ne
+  dépend pas du réseau, sa durée si.
+- **D3-L4-n (nom du funnel).** `sync/haloclient_reexport.go` garde son nom alors qu'il ne réexporte plus `haloclient`
+  (`haloadapter`, `filmfetch`) : renommage à décider (aucun effet).
+- **D3-L4-o (fixtures lues dans la brique).** Les tests de l'adaptateur lisent les fixtures de la brique par chemin
+  relatif (`../../../haloapi/infinite/testdata/...`) : un déplacement de la brique les casserait (rouge, sauf
+  `TestFetchSeasons_TranslationsFR`, qui SKIP sur fixture absente comme avant : à durcir).
