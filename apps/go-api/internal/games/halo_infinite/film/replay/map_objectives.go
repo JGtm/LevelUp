@@ -74,8 +74,8 @@ type ObjectiveRoleSpec struct {
 	// décodée : afficher la couleur du fichier affirmerait une allégeance inventée).
 	Neutral bool
 	// PointsOnly force le rôle en PONCTUEL : un objet à forme sort en MARQUEUR posé à son
-	// centre, jamais en zone dessinée. Cf. `mappings.ObjectiveModeEntry.PointsOnly` pour
-	// le pourquoi (correctif « des bases s'affichent sur un CTF », 2026-08-26).
+	// centre, jamais en zone dessinée. Cf. le champ `points_only` de la table des modes d objectif du titre
+	// (objective_roles.toml) pour le pourquoi (correctif « des bases s'affichent sur un CTF », 2026-08-26).
 	PointsOnly bool
 }
 

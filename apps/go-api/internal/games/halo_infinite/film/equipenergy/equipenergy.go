@@ -1,6 +1,6 @@
 // Package equipenergy porte le catalogue de l ENERGIE DES EQUIPEMENTS d Halo Infinite : sa forme
-// sur disque (data/titles/halo_infinite/reference/equipment_energy.json, cf.
-// `title.PathResolver.EquipmentEnergyPath`), son lecteur, et la regle du jeu qui compte les usages
+// sur disque (data/titles/halo_infinite/reference/equipment_energy.json, chemin que l hote
+// resout pour le titre), son lecteur, et la regle du jeu qui compte les usages
 // restants d un equipement porte.
 //
 // D OU IL VIENT. De `cmd/equipenergy-build`, qui le lit dans les tags `eqip` et `sofa` du jeu

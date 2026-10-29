@@ -5,8 +5,9 @@
 //	<racine>/film_manifests/<short8>.json      le manifeste (index, type et debut des chunks)
 //	<racine>/film_chunks/<short8>/chunk_NN.bin les chunks BRUTS
 //
-// `short8` est la forme courte du match_id (title.FilmShortMatchID) : c'est la cle du
-// cache, pas l'uuid complet que manipule le reste de l'application.
+// `short8` est la forme courte du match_id (les 8 caracteres hexadecimaux qui precedent le
+// premier tiret) : c est la cle du cache, pas l uuid complet que manipule le reste de
+// l application.
 //
 // # Pourquoi ce paquet existe
 //

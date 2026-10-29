@@ -8,8 +8,8 @@ package replay
 // decrit une montee de schema DEJA CUITE dans le parc, elle ne se reecrit pas et ne se supprime
 // pas — la relire est precisement ce qui permet de savoir ce qu un artefact ancien porte. Le
 // scinder par tranches de versions rendrait la lecture chronologique impossible et casserait
-// l extracteur unique (`testutil.ReplayChronicleVersions`, qui lit CE fichier et dont un
-// resultat vide rend inerte le garde-rail `document_shape_test.go`). Sa croissance est donc
+// l extracteur unique des versions declarees (un helper de test cote hote, qui lit CE fichier et
+// dont un resultat vide rend inerte le garde-rail de la chronique). Sa croissance est donc
 // attendue, bornee par le rythme des montees de schema, et n est pas de la dette.
 //
 // RETRAIT DE L EXEMPTION : le jour ou la chronique deviendrait une donnee (fichier versionne
@@ -33,9 +33,9 @@ package replay
 // d un REGISTRE, et sa croissance est exactement le nombre de montees de schema du depot, pas
 // une derive de conception. Scinder par tranches (v2-v30 / v31-v60) couperait la seule lecture
 // que ce fichier existe pour rendre possible — « qu est-ce qu un artefact de version N porte » —
-// et obligerait `testutil.ReplayChronicleVersions` a balayer plusieurs fichiers, c est-a-dire a
+// et obligerait l extracteur des versions declarees a balayer plusieurs fichiers, c est-a-dire a
 // pouvoir en OUBLIER un : un extracteur qui rend une liste incomplete laisse
-// `document_shape_test.go` valider une version sans entree, le defaut precis que le garde-rail
+// la garde de forme valider une version sans entree, le defaut precis que le garde-rail
 // ferme (constat R2-1 de la revue du lot 1.0).
 //
 // CRITERE DE RETRAIT, INCHANGE ET MESURABLE : la chronique quitte la source Go pour une donnee
