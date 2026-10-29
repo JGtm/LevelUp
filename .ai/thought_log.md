@@ -1,3 +1,26 @@
+## [2026-10-29] Découplage D2 — lot 3 (module libs/film) — Complété (branche `refactor/decouplage-d2-decodeur-film`, plan `.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D2_2026-10-28.md`)
+
+**Décision technique principale** : le décodeur de film devient le module `github.com/JGtm/LevelUp/libs/film` (`git mv` de tout `film/`,
+`go.mod` écrit à la main, `go.work`), imports réécrits par analyse des `ImportSpec`, puis tout ce qui nommait l'ancien dossier rerooté :
+archlint sur une constante unique `racineBriqueFilm` et un double repère `surDisque` / `cheminDeGardeRail` (sous `libs/` relatif au
+dépôt, sinon à `apps/go-api`), CI à lots PAR MODULE (directive `module` de `go-shards.txt`, partition prouvée module par module),
+baseline de présence par module (`tests_libs_film.jsonl` = les 1 050 lignes du décodeur, préfixe réécrit, RETRAIT daté), Dockerfile,
+Makefile, gate-push, docs (ADR 0041 D8, ADR 0034 amendement bis). Le cadre historique de l'empreinte tient : AUCUN golden régénéré.
+
+**Résultats observés** : un défaut du cadre trouvé au 3.3 — l'ordre des imports est haché et `goimports` le change avec le chemin du
+module — corrigé dans 15 sources hachées (ordre historique en groupes, commentaire), pas dans les goldens ; une quinzaine de ratchets
+archlint rendus MUETS par le déplacement (Stat+continue, Skip, préfixe `levelup/go-api/` pour « import du dépôt », baisses seulement
+journalisées) rebranchés ; 7 mutations jouées rouge puis vert. Licence : `cmd/server` ne tire ni `himap` ni `ooz`, et la production du
+module non plus (seuls des tests tirent `himap`) : pas de P0. T1 : 20 263 verdicts, 0 fail, = 2.12 modulo le préfixe + 1 test neuf ; T2 :
+202/202 fichiers de témoin au MD5 du 2.12 ; T3 : 20 digests obtenus identiques au lot 0 (même verdict « 20 different », références
+périmées D2-L0-a). Lint des quatre modules à 0 issue (`--new-from-merge-base`) après exemption sur sa ligne `func` de la seule dette déplacée
+que le ratchet ne reconnaissait plus (D2-L3-e). Des tests Vitest lisaient des sources du décodeur : 4 fichiers web touchés (D2-L3-d).
+Commits `dab11f773`, `4d8cb2728`, `443bf1f8d`, `e36f1483b`, `d46cf951a` et la clôture ; PR #112 (npm audit) embarquée par fusion de la
+release avant le push.
+
+**Conclusion / prochaine étape** : lot 3 clos côté local (3.1 à 3.8 `[x]`, découvertes D2-L3-a à j consignées sans traitement) ; CI de la
+branche lancée au push ; prochaine étape = lot 4, revue adversariale (une ronde, trois relecteurs Sonnet).
+
 ## [2026-10-29] Découplage D2 — lot 2 clos (2.12) — Complété (branche `refactor/decouplage-d2-decodeur-film`, plan `.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D2_2026-10-28.md`)
 
 **Décision technique principale** : régénération unique des goldens à révision constante (décision D2-F amendée, découverte D2-L2-a), par la porte à deux verrous, pour les seules couches dont le gate rougissait (`grammar`, `killsource`, `objectives`) ; `source` et `profile` intacts. Une entrée de chronique « COMPLEMENT DU 2026-10-29 ... REVISION CONSTANTE » par couche, écrite avant la régénération. Les révisions ne bougent pas (`grammar-2026-10-28`, `killsource-2026-10-18`, `objectives-2026-10-17`) : aucune recuisson, aucun backlog killsource.

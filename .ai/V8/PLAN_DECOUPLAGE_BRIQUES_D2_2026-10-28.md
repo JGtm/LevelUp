@@ -445,15 +445,15 @@ Chaque item fait descendre une tolérance du lot 1 ; T1 à T3 relancés en fin d
 
 ## Lot 3 — Module `libs/film` + espace de travail + infrastructure
 
-- [ ] 3.1 `git mv apps/go-api/internal/games/halo_infinite/film libs/film` ; `libs/film/go.mod`
+- [x] 3.1 `git mv apps/go-api/internal/games/halo_infinite/film libs/film` ; `libs/film/go.mod`
   (`module github.com/JGtm/LevelUp/libs/film`, `go 1.26.10`, `require` tiers à la main aux versions
   d'`apps/go-api`, aucun `require` de brique) ; `go.work` (`use ./libs/film`) ; `go.work.sum`.
-- [ ] 3.2 Réécriture des imports dans LevelUp (198 + 188 fichiers) : préfixe
+- [x] 3.2 Réécriture des imports dans LevelUp (198 + 188 fichiers) : préfixe
   `levelup/go-api/internal/games/halo_infinite/film/` → `github.com/JGtm/LevelUp/libs/film/` (motif
   ancré : `filmprofile` ne bouge PAS) ; dans la brique : imports internes au même préfixe.
-- [ ] 3.3 Cadre historique (2.1) : la constante du module courant devient `github.com/JGtm/LevelUp/libs/film` ;
+- [x] 3.3 Cadre historique (2.1) : la constante du module courant devient `github.com/JGtm/LevelUp/libs/film` ;
   T2 identique (goldens non réécrits, `git diff` vide).
-- [ ] 3.4 `archlint` : les 52 fichiers rerootés (`libs/film/...` dans les 20 constantes et les
+- [x] 3.4 `archlint` : les 52 fichiers rerootés (`libs/film/...` dans les 20 constantes et les
   littéraux, parcours par `workspaceRoot` / `workspaceGoSources`), `racinesEspaceDeTravail` +=
   `libs/film`, `research_tag_test` (`dossiersInstruments`), `pas_de_lecture_sous_ai_test` (table),
   `no_repo_root_walk_test` (allowlist des helpers R2), `briques` (paquets = `libs/film`), `dockerfile_go_version_test`
@@ -461,26 +461,135 @@ Chaque item fait descendre une tolérance du lot 1 ; T1 à T3 relancés en fin d
   `himodule` → `ooz` EXISTE maintenant pour tout paquet qui importe `replay/map_background` : le
   ratchet doit le voir et `cmd/server` doit rester propre — vérifier sur pièces ce que `cmd/server`
   tire).
-- [ ] 3.5 CI (`ci.yml`) : pas vet/test/lint/govulncheck de `libs/film` (vet aussi `-tags research`
+- [x] 3.5 CI (`ci.yml`) : pas vet/test/lint/govulncheck de `libs/film` (vet aussi `-tags research`
   et `-tags 'research campagne_overlay'` : compilation des instruments), `go list -deps -test`
   garde, lots de couverture du module (D2-I ; `go-shards.txt` + `ci_go_shard.sh`), job « Film race »
   dans `libs/film`, filtre `croisee`, `cache-dependency-path` ×10, baseline JSONL de la brique +
   `check_test_baseline.sh` à deux modules (RETRAIT daté des 1 052 entrées du module go-api, qui
   renaissent dans la baseline de la brique).
-- [ ] 3.6 `Dockerfile` (COPY `libs/film/go.mod` + `go.sum`), `.github/dependabot.yml` (`/libs/film`),
+- [x] 3.6 `Dockerfile` (COPY `libs/film/go.mod` + `go.sum`), `.github/dependabot.yml` (`/libs/film`),
   `Makefile` (cibles 201, 235, 308, 362 ; `libs-test` : délai mesuré pour `libs/film`),
   `apps/go-api/Makefile` (`tidy` saute `film`), `.golangci.yml` règle 220 (module), hooks `lefthook`
   vérifiés (globs `libs/**` déjà là).
-- [ ] 3.7 Docs (D2-J) : ADR 0041, ADR 0034, CLAUDE.md, `ARCHITECTURE_V6` FR/EN et `COMMANDS.md` si
+- [x] 3.7 Docs (D2-J) : ADR 0041, ADR 0034, CLAUDE.md, `ARCHITECTURE_V6` FR/EN et `COMMANDS.md` si
   concernés ; commentaires de la brique qui citent un chemin de l'hôte : relevés, pas réécrits en
   masse (découverte à consigner, comme la 29 de D1).
-- [ ] 3.8 Gate : `go build ./...` dans `apps/go-api` ET `libs/film` ; `go vet` trois tags dans
+- [x] 3.8 Gate : `go build ./...` dans `apps/go-api` ET `libs/film` ; `go vet` trois tags dans
   `libs/film` ; `go list -deps -test ./...` dans `libs/film` sans `levelup/go-api` ; T1 (union
   go-api + brique = mêmes noms modulo préfixe, mêmes verdicts) ; T2 identique ; T3 vert ; archlint
   vert ; lint des trois modules vert ; `make libs-test` vert ; `docker build` local du stage Go si
   Docker est disponible, sinon le job CI « Docker Build » fait foi. Commit « D2 lot 3 », CI verte.
 
 **Clos quand** : 3.8 passé, CI verte, thought_log, point d'étape.
+
+**Exécution du lot 3 (2026-10-29, worktree `LevelUp-wt-decouplage-d2`, base `915203a32`)** — témoins sous
+`%TEMP%\claude\c--Users-Guillaume-Downloads-Scripts-LevelUp\77a8b90a-21a6-40a0-ac64-eb152f616862\scratchpad\temoins_d2_lot3\`.
+- **Ouverture.** Le lot s'ouvre avec la CI du lot 2 (run 40808984883 sur `915203a32`) rouge sur le SEUL job `npm audit` (avis GHSA
+  seroval publié le 2026-10-29, sans lien avec le code de la branche ; Deploy Pre-Check et gitleaks verts) : règle 9 de plan-execution,
+  arrêt propre documenté, correctif en PR séparée (#112, `fix/npm-audit-seroval`, `apps/web/package-lock.json` seul). Au préalable
+  (`git fetch origin` + `git merge origin/release/v8.1.0`) la release n'avait rien de neuf et la PR n'était pas fusionnée ; elle l'a été
+  pendant le lot (`4c5597a13` sur `origin/release/v8.1.0`) et est embarquée par un `git merge origin/release/v8.1.0` juste avant le push
+  de clôture.
+- **Commits.** 3.1+3.2+3.3 `dab11f773` ; 3.4 `4d8cb2728` ; 3.5 `443bf1f8d` ; 3.6 `e36f1483b` ; 3.7 `d46cf951a` ; clôture (3.8, plan,
+  journal, exemption de lint ci-dessous).
+- 3.1 : `git mv apps/go-api/internal/games/halo_infinite/film libs/film` (aucun fichier non suivi laissé) ; `libs/film/go.mod`
+  (`github.com/JGtm/LevelUp/libs/film`, `go 1.26.10`, `require` À LA MAIN des seules dépendances tierces importées par le module :
+  `github.com/pelletier/go-toml/v2 v2.4.3` (un test de `killicon`) et `golang.org/x/sys v0.49.0` (`filmproc`), versions d'`apps/go-api`) ;
+  `go.sum` = leurs quatre lignes copiées d'`apps/go-api/go.sum` ; `go.work` : `use ./libs/film` ; `go.work.sum` inchangé.
+- 3.2 : imports réécrits PAR ANALYSE DES `ImportSpec` (outil `go/parser` jetable, pas de sed sur le texte) : 1 767 fichiers ; vérifié :
+  les lignes ôtées, préfixe traduit, égalent les lignes ajoutées (multiset, lignes vides exclues) ; `filmprofile` intact ; puis `gofmt` et
+  `goimports` (463 fichiers regroupés : un chemin `github.com/...` se sépare du standard). Les chaînes non-import qui citaient l'ancien
+  chemin sont traitées en 3.4. Chemins de fichiers du film dans go-api (tests et outils) : `filmcorpus` x2 et
+  `testutil.ReplayChroniclePath` (D2-L2-p, traités), `filmprofile` x2, `replaybuild` x9, `replaydiff`, `replayverite`, `sync` x4,
+  `killcollector` x5, `cmd/replay-equiv`, défauts de `cmd/refresh_golden_fixture` et de `research/cmd_fermeture` (et son usage), quatre
+  messages. La garde « le banc n'importe rien du décodeur » de `replayverite/dependances_test.go` testait la sous-chaîne
+  `/games/halo_infinite/film` : elle teste le préfixe du module (sinon muette). Dans la brique, 17 échelles relatives de « .. » vers le
+  dépôt raccourcies de quatre niveaux par outil (`Join` et littéraux), trois à la main (`named_derivation_unique` : racine du module ;
+  `map_bounds` ; `world_object_precision_guard` : la garde balaie désormais la brique, clés relatives au module), et
+  `usage_summary_families_guard_test.go` lit le valideur de LevelUp par `racineDepot`.
+- 3.3 : **défaut du cadre trouvé et corrigé sans régénérer.** Après 3.2, `grammar`, `killsource` et `objectives` rougissaient
+  (`TestChaqueRevisionEgaleSonGolden` et les trois gates de couche ; périmètres verts). Cause : le flux de jetons garde l'ORDRE des
+  imports, et `gofmt` / `goimports` trient un bloc selon le chemin COURANT : `"levelup/..."` se rangeait entre `"cmp"` et `"slices"`,
+  `"github.com/..."` se range avant `"hash"` et goimports le sépare du standard. Sur pièces : 25 sources de production réordonnées, dont
+  15 dans des périmètres hachés. Correctif dans les sources, pas dans les goldens : ces 15 fichiers gardent l'ORDRE HISTORIQUE en groupes
+  séparés par une ligne vide (chacun trié, `gofmt` et `goimports` propres) et portent une ligne de commentaire au-dessus de leur
+  `import` ; `revision/cadre.go` documente la limite (« L'ORDRE DES IMPORTS N'EST PAS DANS LE CADRE »). Les trois tests de D2-L2-b
+  reracinés : `racineAPI` devient `moduleDeLaBrique` (remontée au `go.mod` du paquet), goldens et dossier de `grammar` résolus par
+  `Module.SurDisque` depuis leur nom historique. Gate : `go test ./revision/ -v -count=1` : 46 PASS, 0 FAIL, 0 SKIP, sans porte ;
+  `go test ./... -count=1` du module vert ; `git status` : aucun fichier sous `testdata/` modifié (seuls les renommages).
+- 3.4 (archlint, 64 fichiers touchés) : `racineBriqueFilm = "libs/film"` et `importBriqueFilm` (dans `film_layers_deps_helpers_test.go`),
+  dont dérivent toutes les constantes nommées ; `racinesEspaceDeTravail` += `libs/film` ; `repertoireDuDepot` (inverse de
+  `cheminImport`) ; pour les tables qui mêlent go-api et la brique, un DOUBLE REPÈRE sans recouvrement (`surDisque` /
+  `cheminDeGardeRail` : sous `libs/` relatif à la racine du dépôt, sinon relatif à `apps/go-api`) ; `marcherAPIEtBriqueFilm` pour les
+  balayages de tout go-api qui couvraient le décodeur ; `goSourcesUnder`, `balayerLaProduction`, `parcourirSourcesProduction` acceptent la
+  brique. Ligne `film` de la table des briques = `libs/film` (récursif) ; `racinesDeLaBriqueFilm` lit la table (préfixe anticipé du lot 1
+  retiré). **Ratchets que le déplacement rendait MUETS sans rougir, rebranchés** : feuilles `source` et `types` (« import du dépôt » =
+  préfixe `levelup/go-api/`, qu'aucun import de la brique ne porte plus), `no_identity_bridge_outside_registry` et `no_player_index_identity`
+  (`os.Stat` + `continue` sur le dossier disparu), `no_rewritten_slot_band` (`t.Skipf`), `no_french_label_literal` (une baisse n'est que
+  journalisée), `no_raw_kill_scope_literal`, `no_raw_headshot_category_literal`, `no_hardcoded_film_cache_dirs`, `no_local_longest_run`,
+  `killsource_recherche_sans_carte`, `no_ad_hoc_source_fingerprint`, `unarmed_family_literal`, `record36_grammaire`,
+  `no_unbounded_film_loop` (deux tests), zlib, `no_repo_root_walk` (trois gardes : la brique est balayée). Registre des replis
+  (production de la brique, `facts/fallback`, hors périmètres hachés) : `Site.Fichier` et `Appelants` relatifs à la RACINE DU DÉPÔT
+  (`libs/film/...`, `apps/go-api/...`), contrat écrit dans `repli.go`. Tests go-api qui lisaient des fichiers du film par une échelle de
+  « .. » (vus par `TestNoAdHocRepoRootLadderInTests`) : helper `testutil.CheminBriqueFilm` (+ son test), 12 sites. Trois fichiers à leur
+  plafond de taille (`imagecle_oracle_n2_research_test.go` 500, `vehicules_v2_items_test.go` 533, `killcollector/positions_test.go` 557)
+  rendent la ligne que goimports a ajoutée en retirant une ligne vide. **Licence GPL** : la chaîne `film/replay -> himap -> himodule -> ooz`
+  N'EXISTE PAS en production (`go list -deps ./...` de `libs/film` : ni `himap` ni `ooz` ; seuls des tests tirent `himap`) et
+  `go list -deps ./cmd/server | grep -E 'ooz|himap'` est VIDE (`licence_gpl.txt`) : pas de P0 ; `TestServeurNeLinkePasDeCodeGPL` et
+  `TestLaChaineDeHimapAtteintOoz` verts (le parcours suit tout `libs/`). `no_title_package_in_analysis` : l'interdit direct et la fermeture
+  voient `github.com/JGtm/LevelUp/libs/film/...` (auto-preuve mise à jour). `dockerfile_go_version` vert avec quatre `go.mod`.
+  **Mutations jouées, rouge puis vert après retrait** (`mutations_archlint.txt`) : `TestBriquesImports` (import
+  `levelup/go-api/internal/analysis` dans `libs/film/replay`), `TestFilmsourceEstUneFeuille` (import de `filmshell` dans
+  `internal/source`), `TestCouchesDuDecodeurRespectentLeSensEtLeLieu` (R1, `profile -> grammar` par un fichier sous balise inerte ; sans
+  balise le compilateur refuse le cycle), `TestNoPlayerIndexInFilmScope`, `TestAucunPredicatOSIsDansLePerimetreDuFilm`,
+  `TestGrammarEtFactsNeJournalisentPas`, `TestPasDeSentinelleBruteHorsFilmproc` : sept ratchets. Gate : `go test ./internal/archlint/
+  -count=1` vert (93 s) après 3.6 (les quatre ratchets qui lisent `ci.yml`, `go-shards.txt`, `check_test_baseline.sh` et
+  `dependabot.yml` attendaient 3.5 et 3.6).
+- 3.5 (CI). **Choix** : une directive `module <dossier>` dans `.github/ci/go-shards.txt` (source unique, pas de second fichier) ;
+  `ci_go_shard.sh` prouve la partition module par module (`--verifier` : 365 paquets, 2 modules, 7 lots) et rend `--module <lot>`,
+  `--modules`, `--lots-du-module <m>` ; un lot se joue depuis son module, ses pièces s'écrivent dans `apps/go-api` pour l'upload. Lots :
+  go-api `persist-ops` (`./internal/persist`, `./internal/ops` : 6 + 57 s hors couverture au relevé du lot 0, gardés en lot dédié plutôt
+  que d'alourdir `reste`), `platform`, `sync`, `reste` ; libs/film `film-grammar-lourd`, `film-grammar-reste` (mêmes `run:` / `skip:`),
+  `film` (complément du module). Fusion : contrôle d'ensemble et baseline par module ; la couverture des lots `libs/film` n'entre pas dans
+  le ratchet de go-api (affichée à part) : le total de go-api change mécaniquement (les paquets du décodeur sortent du dénominateur),
+  comme à la découverte 26 de D1. Baseline : les 1 050 lignes (877 paires) des paquets du décodeur quittent `tests_pre_migration.jsonl`
+  et forment `tests_libs_film.jsonl` à l'identique, préfixe réécrit (preuve : `diff` des deux transformations vide) ; bloc « RETRAIT DU
+  2026-10-29 » dans `check_test_baseline.sh` (mécanisme existant : lignes retirées du fichier, datées dans l'en-tête), option
+  `--baseline`, mode autonome à deux voies jugées chacune contre SA baseline. Vérifié : `libs/film` frais contre sa baseline vert
+  (877 présents, 0 échec) ; go-api sur le JSONL du 2.12 : liste d'absences identique avec l'ancienne et la nouvelle baseline hormis la
+  ligne du paquet du film (absences dues aux seuls tests `integration`, le JSONL du 2.12 étant sans balise). go-build : vet + tests des
+  couches du décodeur sans CGo dans `libs/film` (deux OS, même sous-ensemble que l'ancien pas « unit, no CGo DB ») ; vet `research` +
+  autonomie `go list -deps -test` (Linux) ; `campagne_overlay` NON joué (D2-L0-b, écrit dans le pas). Film race dans `libs/film`. Filtre
+  `croisee` : `libs/film/{replay,internal/grammar,killicon/data}/**`. `cache-dependency-path` : `libs/film/go.sum` aux 10 occurrences.
+  Lint : quatrième passage `libs/film` ; règle `path:` de `.golangci.yml` réécrite en `libs/film/(replay|internal/(facts|source|grammar|profile))/`
+  et PROUVÉE ACTIVE (ligne de 243 caractères : exemptée sous `replay/`, signalée sous `filmcache/`, signalée sous `replay/` quand la règle
+  est neutralisée ; `golangci_regle220_mutation.txt`). govulncheck `libs/film` ; dependabot `/libs/film`. Tests Vitest qui lisent des
+  sources du décodeur (4 fichiers, 5 chemins) reracinés et verts (101 tests) ; la garde `ci_web_reads_go_test` voit aussi les chemins
+  `libs/` (auto-preuve étendue).
+- 3.6 : Dockerfile (COPY du `go.mod` / `go.sum` de `libs/film` ; Docker absent du poste : simulation `GOPROXY=off go mod download` verte,
+  rouge sans le `go.mod` de film ; le job CI « Docker Build » fait foi) ; Makefile (`go-api-test`, repli vet de `go-api-lint`,
+  commentaires) ; `libs-test` : boucle inchangée, le `go test ./...` de `libs/film` tient sous le `-timeout 600s` (90 s pour les trois
+  briques) ; `scripts/gate-push.ps1` joue aussi `libs/film` contre sa baseline ; `apps/go-api/Makefile tidy` saute film (il importe
+  `libs/gamefiles/mapvar`) ; lefthook et `go-vet-cgo.sh` bouclent déjà sur `libs/**`.
+- 3.7 : ADR 0041 (troisième module, rang, D7 réécrit, D8 empreintes), ADR 0034 (amendement 2026-10-29 bis), CLAUDE.md, ARCHITECTURE_V6,
+  COMMANDS, SYNC_GUIDE, WEAPONS (EN + FR), runbook des profils. Relevé des chaînes de la brique qui citent un chemin de l'hôte : D2-L3-h.
+- 3.8 (gate final, sorties sous `temoins_d2_lot3\`) : `go build ./...` et `go vet ./...` verts dans `apps/go-api` et `libs/film` ;
+  `go vet -tags research ./...` vert dans `libs/film` ; `research campagne_overlay` rouge comme à la base (mêmes 10 erreurs `bis2*`,
+  `vet_research_overlay.txt`) ; `go list -deps -test ./...` de `libs/film` sans `levelup/go-api` : VIDE ; `go list -deps -test
+  ./internal/analysis/...` sans `libs/film` : VIDE (`gate_build_vet.txt`). **T1** : `go test -json ./... -count=1` dans `apps/go-api` puis
+  `libs/film` (codes 0 et 0) réduits et unis : 20 263 verdicts (19 897 pass, 366 skip, 0 fail), 218 paquets `ok` et 146 sans test ;
+  contre le 2.12 traduit (`levelup/go-api/internal/games/halo_infinite/film` -> `github.com/JGtm/LevelUp/libs/film`, à la frontière de
+  chemin : `filmprofile` ne se traduit pas) : 0 couple disparu, 1 apparu (`testutil.TestCheminBriqueFilmDesigneLeModuleDuDecodeur`,
+  neuf), 0 changement de verdict, liste des paquets et verdicts de paquet identiques. **T2** : les 202 fichiers du témoin `empreintes.txt`
+  (goldens de révision et de périmètre, 43 fichiers `equivalence`, faits, autres goldens) ont, sous `libs/film`, le MD5 de leur version au
+  commit du 2.12 (`915203a32`) : 202/202 ; 6 diffèrent du lot 0, exactement les 6 régénérés au 2.12 (`t2_md5.txt`). **T3** :
+  `replay-equiv -repo-root <racine de jonctions> -out-dir` : code 1 et « BILAN : 0 identique, 20 different » comme au lot 0 (références
+  périmées, D2-L0-a), 437 s ; les 20 fichiers de digests obtenus ont des MD5 IDENTIQUES à `temoins_d2_lot0_avant\replay_equiv_obtenus\`
+  (1 360 lignes ; `md5_obtenus_lot0.txt` = `md5_obtenus_lot3.txt`). archlint vert ; `golangci-lint run ./...` à
+  `--new-from-merge-base=origin/release/v8.1.0` (et `origin/main`, comme la CI) : 0 issue dans `apps/go-api`, `libs/film`,
+  `libs/gamefiles`, `libs/himap`, après exemption sur sa ligne `func` de la seule issue de dette déplacée (D2-L3-e) ; `make libs-test` vert
+  (88 s) ; `bash scripts/ci_go_shard.sh --verifier` vert ; `bash -n` des deux scripts ; YAML des workflows, de dependabot et de lefthook
+  relus par un analyseur (`yaml` de `apps/web`, actionlint et yamllint absents du poste). CI : voir la fin du journal de clôture.
 
 ## Lot 4 — Revue adversariale (une ronde) et corrections
 
@@ -874,3 +983,40 @@ découvertes de D1 et D2).
   stable sur l'ordre du rendu, sortie inchangée). Un déménagement vers `film/` hérite des ratchets du dossier (taille, tri, couches, `slog`) : à prévoir pour le lot 3.
 - D2-L2-r (lot 2.11) : `replay/vehicules_v2_deaths_test.go` construisait le dossier d'un film par `root + "\film_chunks\" + short8` (séparateur Windows en dur) ; `filepath.Join` le remplace.
   Sans effet sur Windows, correct ailleurs.
+- D2-L3-a (lot 3.3, 2026-10-29) : **l'ordre des imports est dans le flux haché, pas dans le cadre historique.** Renommer le module fait
+  retrier les blocs par `gofmt` / `goimports` ; 15 sources hachées gardent leur ordre historique en groupes (commentaire au-dessus de
+  `import`, limite écrite dans `revision/cadre.go`, ADR 0034 et 0041 D8). Un outil qui regroupe ces blocs fera rougir les gates de
+  couche : la parade est l'ordre historique, jamais une régénération sans montée décidée. Le test du lot 2.1
+  (`TestCadreHistorique_LaBriqueDeplaceeRendLaMemeEmpreinte`) n'avait pas de source où un import de la brique côtoie le standard :
+  à enrichir si le cadre est retouché. Non traité au-delà.
+- D2-L3-b (lot 3.4) : **ratchets muets par construction** : plusieurs gardes sautent ou ignorent un dossier introuvable
+  (`no_identity_bridge_outside_registry`, `no_player_index_identity` : `os.Stat` + `continue` ; `no_rewritten_slot_band` : `t.Skipf`)
+  ou ne rougissent pas sur une baisse (`no_french_label_literal`) ; d'autres n'avaient pas de contrôle d'entrée morte. Rebranchés sur la
+  brique, mais le défaut de forme (un dossier déplacé rend la garde muette) reste : il faudrait `t.Fatal` au lieu de `continue` / `Skip`.
+  Non traité (hors périmètre).
+- D2-L3-c (lot 3.4) : les ratchets PROPRES à go-api qui balaient `internal/` sans citer le film (ex. littéraux de langue, `Remove`
+  ignoré, lectures par périmètre) ne couvrent plus le décodeur, comme ceux qui couvraient `himap` avant D1 ; seuls ceux qui le citaient
+  ont été rebranchés (D3/ADR 0041 D7 : règle générale = espace de travail). Inventaire non fait. Non traité.
+- D2-L3-d (lot 3.5) : **des tests Vitest lisent des sources du décodeur** (4 fichiers, 5 chemins) : le lot 3 touche donc `apps/web`
+  (contrairement à l'hypothèse de 5.4 « web non touché ») ; typecheck, lint et Vitest web sont à rejouer au lot 5 (les 4 fichiers : 101
+  tests verts au lot 3).
+- D2-L3-e (lot 3.8) : le ratchet de lint `--new-from-merge-base` ne voit pas un renommage qui franchit la racine d'un module (golangci
+  tourne dans `libs/film`, l'ancien chemin est hors de sa vue) : la dette gelée des fichiers déplacés réapparaît comme neuve. Une issue
+  (`replay/document_equipement_porte.go`, `projeter`, gocyclo 16) : exemptée sur sa ligne `func` avec sa raison (règle du 2026-10-06
+  écrite dans `.golangci.yml`). Lint complet de `libs/film` : cette seule issue.
+- D2-L3-f (lot 3.4) : contrat du registre des replis changé : `Site.Fichier` et `OutilHorsProduction.Appelants` sont relatifs à la
+  racine du dépôt hôte (ils l'étaient à `apps/go-api`) ; le registre de la brique nomme encore des fichiers de LevelUp
+  (`apps/go-api/internal/sync/...`, `replaybuild`, `service`, `cmd/diag_weapons_v3`) : couplage de donnée préexistant, à revoir si la
+  brique sort du dépôt. Non traité.
+- D2-L3-g (lot 3.2) : la cible `go-api-test` du Makefile jouait (et joue, depuis `libs/film`) les couches du décodeur avec
+  `-timeout 60s` alors que `grammar` dure 71 à 125 s sur ce poste : probablement rouge depuis longtemps, gardée à l'identique. Non vérifié,
+  non traité.
+- D2-L3-h (lot 3.7) : chaînes et commentaires de `libs/film` qui citent un chemin de l'hôte, NON réécrits : ancien chemin
+  `internal/games/halo_infinite/film` 657 lignes dans 559 fichiers, dont 298 commandes de régénération `go test ./internal/games/halo_infinite/film/...`
+  (messages d'erreur et EN-TÊTES DE GOLDENS : ces dernières ne changeront qu'à une régénération) ; `apps/go-api` 145 lignes / 142 fichiers ;
+  chemins `internal/{sync,replaybuild,service,api,platform,persist,analysis,domain,games/...}` 71 lignes / 37 fichiers ; `cmd/` 129 lignes.
+- D2-L3-i (lot 3.8) : `replay-equiv` lit les références sous `<repo-root>/libs/film/...` ET le parc sous `<repo-root>/data/` ; le dépôt
+  principal (qui porte le parc) est encore à l'ancienne arborescence : T3 a tourné sur une racine de jonctions (`data` et `config` du dépôt
+  principal, `libs` du worktree). Après la fusion, plus besoin.
+- D2-L3-j (lot 3.8) : le JSONL du 2.12 converti « u8 » porte des noms de sous-tests abîmés par l'encodage (7 sous-tests de `replay`, 7 de
+  `games/halo_infinite`) ; les comparaisons T1 utilisent les JSONL écrits par redirection binaire (`cmd`).

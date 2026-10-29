@@ -297,7 +297,7 @@ func buildCarriedEquipment(in entreeDEquipementPorte) ([]CarriedEquipment, []Rif
 }
 
 // projeter publie les lectures d'un objet sur l'axe de frames, et rend ses poses de faille.
-func (o *objetLu) projeter(in entreeDEquipementPorte, cov *CarriedEquipmentCoverage) []RiftPose {
+func (o *objetLu) projeter(in entreeDEquipementPorte, cov *CarriedEquipmentCoverage) []RiftPose { //nolint:gocyclo // une passe sur les lectures d un objet, un test par sorte de lecture (energie initiale, suppression, effet, activation, energie, pose du translocateur, signal sans pose) : la complexite compte les sortes de lecture, pas des chemins imbriques
 	translocateur := o.famille == familleDuTranslocateur
 	var poses []RiftPose
 	var instants []uint64
