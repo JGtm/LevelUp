@@ -47,7 +47,7 @@ rotates faster than it is maintained, so nothing here depends on it.
 
 ### D-1 — Five layers, one dependency direction
 
-The decoder is five packages under `internal/games/halo_infinite/film/`:
+The decoder is five packages under `libs/film/` (module `github.com/JGtm/LevelUp/libs/film`; before 2026-10-29: `internal/games/halo_infinite/film/`, see the amendments at the end):
 
 | Layer | Responsibility |
 |---|---|

@@ -627,15 +627,14 @@ code de production n'a changé, seuls un test et deux commentaires.
 
 ## Lot 5 — Preuve de non-régression et clôture
 
-- [ ] 5.1 T4 : `go run ./cmd/replay-corpus-gate --reference=base --base=<sha du lot 0>` (plafond
+- [x] 5.1 T4 : `go run ./cmd/replay-corpus-gate --reference=base --base=<sha du lot 0>` (plafond
   mémoire par défaut, racine de travail jetable, 19 témoins) : code 0, rapport JSON conservé en témoin.
-- [ ] 5.2 T1, T2, T3 recapturés dans `temoins_d2_lot5_apres/` et comparés (diff vide modulo préfixe).
-- [ ] 5.3 `go test -tags=integration -p 1 ./internal/sync/... ./internal/persist/...` (imports
+- [x] 5.2 T1, T2, T3 recapturés dans `temoins_d2_lot5_apres/` et comparés (diff vide modulo préfixe).
+- [x] 5.3 `go test -tags=integration -p 1 ./internal/sync/... ./internal/persist/...` (imports
   réécrits dans `persist` et `sync`) : code de sortie 0.
-- [ ] 5.4 `gate-push` commande par commande (le `$(MAKE)` GnuWin32 du poste échoue : découverte 28/33
-  de D1), web non touché (aucun fichier `apps/web` modifié : typecheck/lint web non requis, à
-  confirmer par `git diff --stat`).
-- [ ] 5.5 Docs et registres : `.ai/REGISTRE_REPORTS.md` (une entrée par `[!]` et par découverte
+- [x] 5.4 `gate-push` commande par commande (le `$(MAKE)` GnuWin32 du poste échoue : découverte 28/33
+  de D1), web : l'hypothèse « non touché » est tombée (D2-L3-d), typecheck, lint et Vitest web rejoués (cf. Exécution du lot 5).
+- [x] 5.5 Docs et registres : `.ai/REGISTRE_REPORTS.md` (une entrée par `[!]` et par découverte
   reportée), addendum « D2 exécuté » dans l'audit, mémoire du pilote, thought_log « lot 5 ».
 - [ ] 5.6 Caches : `scripts/disk-hygiene.ps1 -Lot d2 -Apply` après la CI.
 - [ ] 5.7 PR vers `release/v8.1.0`, CI verte, fusion squash (titre Conventional Commits), branche et
@@ -643,6 +642,47 @@ code de production n'a changé, seuls un test et deux commentaires.
 
 **Clos quand** : 5.7 fait. D3 s'ouvre ensuite (plan distinct, à écrire depuis l'audit et les
 découvertes de D1 et D2).
+
+**Exécution du lot 5 (2026-10-29, worktree `LevelUp-wt-decouplage-d2`, HEAD de départ `32f118cd9`)** — témoins sous
+`%TEMP%\claude\c--Users-Guillaume-Downloads-Scripts-LevelUp\77a8b90a-21a6-40a0-ac64-eb152f616862\scratchpad\temoins_d2_lot5_apres\`.
+- 5.1 T4 : `go run ./cmd/replay-corpus-gate -reference=base -base=a5bae50b4 -parc-root <dépôt principal> -source-root <worktree> -work-root <scratchpad>\gate_work_d2
+  -json corpus_gate.json`, plafond mémoire par défaut. **Première passe** (sans `-allow-missing`, base cuite à froid, 11 min 31 s) : 18 témoins `ok` (0 gain, 0 perte,
+  0 changement, banc de vérité `ok` sur les 18) et UN témoin **ABSENT** : `f75e7053` (famille `koth_collines`), « manifeste du film f75e7053 absent du parc
+  (`data/cache/film_manifests/f75e7053.json`) » et « match absent du registre » à l'export des faits ; couverture incomplète = code 4 (`go run` le rend 1 ; la
+  ligne finale du journal dit `exit status 4`). Rapport : `corpus_gate_run1_sans_allow_missing.json`. **Seconde passe** avec `-allow-missing` (base relue du cache,
+  5 min 44 s) : **code 0**, `couverture_incomplete=false`, mêmes 18 témoins identiques, 1 ABSENT nommé (`f75e7053`) ; rapport `corpus_gate.json`. Le témoin absent est une
+  propriété du parc local (film jamais présent), pas du diff : la base ne peut pas non plus le cuire. Réserve : le serveur de développement du dépôt principal
+  (`apps/go-api/tmp/server.exe`) tenait `metadata.duckdb` en écriture pendant le gate ; l'export des faits a prévenu « résolution des noms EN dégradée (map_name brut
+  seul) » ; les faits sont exportés une seule fois et servent aux deux côtés (HEAD et base), donc la dégradation est la même des deux côtés. Racine de travail supprimée
+  après usage ; le cache de la base (`data/cache/replay_corpus_gate_base/a5bae50b4…`) reste dans le parc, ignoré par git.
+- 5.2 T1/T2/T3.
+  - **T1** : `go test -json ./... -count=1 -timeout 1200s` dans `apps/go-api` (code 0) puis `libs/film` (code 0), redirection binaire par `cmd` (jq rend des fins de
+    ligne CRLF sous Windows : retirées avant tri). Union : 20 264 verdicts (19 898 pass, 366 skip, 0 fail), 218 paquets `ok`, 146 sans test. Contre le lot 3 : **un seul
+    couple de plus**, `levelup/go-api/internal/api/wire TestNewServiceRegistryBrancheLePuitsDesCompteursDuFilm` (le test du lot 4) ; paquets et verdicts de paquet
+    identiques. Contre le lot 0 (traduit : `levelup/go-api/internal/games/halo_infinite/film` -> `github.com/JGtm/LevelUp/libs/film`) : 70 couples disparus (EXACTEMENT la
+    liste du 2.12 : 15 `analysis/digest`, 39 `filmproc`, 3 `canonical`, 3 `equipenergy`, 2 `filmshell`, 3 `filelock`, 5 tests de `replay` partis en `filmcorpus`), **0 nom de
+    test disparu** (chaque nom disparu d'un paquet existe dans un autre), 220 apparus (les 218 du 2.12 + le test du lot 3 + celui du lot 4), 0 changement de verdict, 0 fail,
+    aucun pass -> skip.
+  - **T2** : MD5 des 202 fichiers du témoin `empreintes.txt` (goldens de révision et de périmètre, `equivalence`, faits, autres goldens) sous `libs/film` : **202/202 identiques
+    au lot 3** ; 6 diffèrent du lot 0, exactement les 6 régénérés au 2.12 (`*_rev.golden` et `*_perimetre.golden` de `grammar`, `killsource`, `objectives`). `go test ./revision/ -v
+    -count=1` : 46 PASS, 0 FAIL, 0 SKIP, lignes (empreintes comprises) identiques à `temoins_d2_lot3\revision_v.txt`.
+  - **T3** : `replay-equiv` avec `-repo-root` = racine de jonctions (`data`, `config` du dépôt principal ; `libs` du worktree : le dépôt principal est encore à l'ancienne
+    arborescence et l'outil lit les références sous `<repo-root>/libs/film`, cf. D2-L3-i) et `-out-dir` : code 1, « BILAN : 0 identique(s), 20 different(s), 0 ecarte(s), 0 echec(s),
+    0 illisible(s) » comme au lot 0 (références périmées, D2-L0-a), 6 min 37 s ; **les 20 fichiers de digests obtenus ont des MD5 identiques** à `temoins_d2_lot0_avant\replay_equiv_obtenus\`
+    (1 360 lignes ; `md5_obtenus_lot5.txt`). Racine de jonctions retirée par `rmdir` (cibles intactes).
+- 5.3 `go test -tags=integration -p 1 ./internal/sync/... ./internal/persist/... -count=1 -timeout 1800s` : **code 0** (`$LASTEXITCODE`), 16 paquets `ok`, 3 sans test, aucune ligne
+  `--- FAIL`, 6 min 25 s (`integration.log`).
+- 5.4 Gates. **L'hypothèse « web non touché » tombe** (D2-L3-d : 4 tests Vitest reracinés). `node_modules` de `apps/web` = jonction vers celui du dépôt principal (vérifiée) ;
+  `node_modules\.tmp` supprimé ; `npm run typecheck` code 0 (16 s) ; `npm run lint` code 0, 0 erreur, 27 avertissements (les mêmes que D1, découverte 35) ; `npm run test -- --run`
+  (Vitest) code 0 : 1 026 fichiers passés, 5 sautés, 10 570 tests passés, 23 sautés (390 s). `gate-push` commande par commande (`make gate-push` n'est pas lancé tel quel : D1, découvertes 28 et 33) :
+  (1) `golangci-lint run --timeout 5m --new-from-merge-base=origin/main` dans `apps/go-api` : code 0, « 0 issues » ; (2) le même ratchet dans `libs/film`, `libs/gamefiles`, `libs/himap` (`--config ../../apps/go-api/.golangci.yml`) : codes 0, 0 issue chacun ; (3) `make libs-test` (depuis git-bash, `make` GnuWin32 ; sous `cmd` il est introuvable, code 9009) : code 0 ; (4) `npm run typecheck`, `npm run lint` : codes 0 (voir plus haut) ; (5) la baseline de tests, produite comme `scripts/gate-push.ps1` (`go test -tags=integration -count=1 -timeout=600s -p 1 -json ./...` dans `apps/go-api` puis `libs/film`, codes 0 et 0, aucun `fail`) et jugée par `scripts/check_test_baseline.sh tests --from-jsonl` : `apps/go-api` contre `tests_pre_migration.jsonl` (8 359 tests de baseline, 18 345 au run) code 0 « Tous les tests baseline présents », `libs/film` contre `tests_libs_film.jsonl` (877 de baseline, 3 842 au run) code 0 ; 26 min environ de calcul pour les deux modules. Écart de méthode, consigné : la première capture du JSONL par PowerShell 5.1 (`$out = & go test ...`, console cachée) a ABÎMÉ les sous-tests dont le nom porte des accents ou des flèches (« 58 absents » dans `service`, `analysis`, `sync` : faux négatif, tous les noms sont dans le run binaire) ; le JSONL jugé est celui écrit par redirection binaire de `cmd` (comme pour T1). Le script `gate-push.ps1` capture comme la première méthode : le même faux négatif y est possible selon la page de code de la console (D2-L5-a).
+- 5.5 Docs et registres : (a) `.ai/REGISTRE_REPORTS.md` : section « découplage D2 » (17 lignes, dont D2-L5-a/b/c, une par découverte reportée qui appelle une action ; aucun `[!]` ni `[~]` dans le plan ; D2-L1-b/c,
+  D2-L2-a/b/c/f/g/h/i/k/l/m/o/p/q/r, D2-L3-d/i/j sont des constats clos ou traités, non reportés) ; (b) addendum « D2 exécuté le 2026-10-29 » dans `.ai/AUDIT_DECOUPLAGE_BRIQUES_2026-10-27.md` ;
+  (c) grep de `internal/games/halo_infinite/film` : `CLAUDE.md`, ADR 0041 (ligne du cadre historique, volontaire), `ARCHITECTURE_V6` EN/FR et `COMMANDS` EN/FR ne le citent plus comme emplacement
+  actuel ; ADR 0034 : la phrase de D-1 qui donnait l'emplacement est corrigée, restent les amendements du 2026-10-29 (qui décrivent le déplacement) et l'historique de la section D-10 bis et de
+  `0034-annex-history.md` (chemins d'époque, volontaires) ; `docs/CHANGELOG.md` et sa jumelle FR gardent la ligne de l'historique de la v7 ; les ADR sont EN seul (aucune jumelle à écrire),
+  `ARCHITECTURE_V6` et `COMMANDS` ont leurs deux versions à jour ; (d) plan relu : aucune case `[ ]` hors 5.6 et 5.7, aucun `[!]` ni `[~]` ; (e) entrée `.ai/thought_log.md`.
+- 5.6 laissé au pilote (`disk-hygiene` après la CI) ; 5.7 (PR, fusion) au pilote.
 
 - 2.2 (`filmobs`). **Sur pièces** : 11 appels `AddInt` / `IncCounter` dans 9 fichiers de production (`replay` x8, `filmcache/write.go`) — le relevé de
   départ en annonçait 14 — et 4 fichiers de test qui lisaient `observability.LoadCounter` ; deux tests de `replay`
@@ -1055,3 +1095,10 @@ découvertes de D1 et D2).
   `TexteDepuisFilm`. Non traité.
 - D2-L4-d (lot 4, revue) : `libs/film/digest/digest.go` : les `sort.Slice` remplacés par des tris à comparateur total donnent la même sortie pour
   les structs de 12 champs ou moins ; non prouvé au-delà. Usage : harnais d'équivalence seulement. Non traité.
+- D2-L5-a (lot 5.4, 2026-10-29) : **la capture du JSONL de la baseline par PowerShell 5.1 abîme les noms de sous-tests non ASCII** (`$out = & go test -json ...`, console cachée) : `check_test_baseline.sh`
+  rend alors « 58 absents » dans `service`, 38 dans `analysis`, 36 dans `sync` (flèches, accents) alors que tous les tests existent. `scripts/gate-push.ps1` capture de cette façon (même cause que D2-L3-j). Le JSONL
+  écrit par redirection binaire de `cmd` est exact. Non traité (hors périmètre) ; piste : écrire le JSONL par `cmd /c` ou fixer `[Console]::OutputEncoding` à UTF-8 dans le script.
+- D2-L5-b (lot 5.1) : `f75e7053` (famille `koth_collines`) du manifeste `config/replay_corpus.toml` est ABSENT du parc local (ni manifeste de film, ni match au registre) : le gate rend 18 témoins sur 19
+  (code 4 sans `-allow-missing`). Propriété du poste, indépendante du diff. Non traité.
+- D2-L5-c (lot 5.1) : `go run ./cmd/replay-corpus-gate` ne propage pas le code 4 (couverture incomplète) : `go run` le rend 1 et ne laisse que la ligne `exit status 4` du journal ; un appelant qui lit
+  `$LASTEXITCODE` après `go run` confond « perte » (1) et « couverture incomplète » (4). Non traité ; piste : lire la ligne finale ou compiler le binaire.
