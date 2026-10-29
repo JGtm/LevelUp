@@ -337,6 +337,16 @@
 # jugée contre le JSONL des lots du module `libs/film` (`--baseline`, cf. ci-dessous). Les 2 lignes que le
 # lot 2.11 du même plan a relocalisées de `film/replay` vers `internal/filmcorpus` restent ici.
 #
+# RETRAIT DU 2026-10-29 (plan D3 lot 2 : chaîne d'authentification déplacée de `platform/auth` vers
+# `internal/haloapi/xblauth`, mêmes noms de test, voir `.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D3_2026-10-29.md`) :
+# 59 paires (Package, Test), 242 lignes JSONL, toutes du paquet `levelup/go-api/internal/platform/auth`
+# (49 tests de tête et 10 sous-tests : TestExtractUserHash_Missing/*, TestRequestClearanceTokenWith_GoldenAndRouting/*,
+# TestRequestSpartanTokenWith_GoldenAndRouting/*). Ce n'est PAS une perte de test : chacune des 59 paires existe
+# sous le même nom dans le paquet `levelup/go-api/internal/haloapi/xblauth`, vérifié par différence entre cette
+# baseline et le JSONL d'un run de `./internal/platform/auth/...` + `./internal/haloapi/...`. Le paquet
+# `haloapi/xblauth` est neuf : il n'entre pas dans la baseline (il tourne dans le lot CI `reste`). Les 161 autres
+# paires de `platform/auth` restent contrôlées.
+#
 # DEUX BASELINES, UNE PAR MODULE (ADR 0041) : `tests_pre_migration.jsonl` pour `apps/go-api` (défaut),
 # `tests_libs_film.jsonl` pour `libs/film` (`--baseline .ai/baselines/tests_libs_film.jsonl`). `./...` ne
 # franchit pas la frontière d'un module : chaque baseline se juge contre le JSONL de SON module.

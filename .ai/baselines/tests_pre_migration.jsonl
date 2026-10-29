@@ -25480,27 +25480,6 @@
 {"Time":"2026-06-26T23:47:56.3244901+02:00","Action":"output","Package":"levelup/go-api/internal/persist","Test":"TestWorker_Run_IncrementsCounters","Output":"2026/06/26 23:47:56 INFO persist worker shutdown name=test-metrics reason=ctx.Done\n"}
 {"Time":"2026-06-26T23:47:56.3250139+02:00","Action":"output","Package":"levelup/go-api/internal/persist","Test":"TestWorker_Run_IncrementsCounters","Output":"--- PASS: TestWorker_Run_IncrementsCounters (0.04s)\n"}
 {"Time":"2026-06-26T23:47:56.3250139+02:00","Action":"pass","Package":"levelup/go-api/internal/persist","Test":"TestWorker_Run_IncrementsCounters","Elapsed":0.04}
-{"Time":"2026-06-26T23:47:57.4672916+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestBuildAuthorizeURL_PKCEChallenge"}
-{"Time":"2026-06-26T23:47:57.4672916+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestBuildAuthorizeURL_PKCEChallenge","Output":"=== RUN   TestBuildAuthorizeURL_PKCEChallenge\n"}
-{"Time":"2026-06-26T23:47:57.4672916+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestBuildAuthorizeURL_PKCEChallenge","Output":"--- PASS: TestBuildAuthorizeURL_PKCEChallenge (0.00s)\n"}
-{"Time":"2026-06-26T23:47:57.4672916+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestBuildAuthorizeURL_PKCEChallenge","Elapsed":0}
-{"Time":"2026-06-26T23:47:57.4672916+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestExchangeAuthorizationCode_EmptyCode"}
-{"Time":"2026-06-26T23:47:57.4672916+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestExchangeAuthorizationCode_EmptyCode","Output":"=== RUN   TestExchangeAuthorizationCode_EmptyCode\n"}
-{"Time":"2026-06-26T23:47:57.4672916+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestExchangeAuthorizationCode_EmptyCode","Output":"--- PASS: TestExchangeAuthorizationCode_EmptyCode (0.00s)\n"}
-{"Time":"2026-06-26T23:47:57.4672916+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestExchangeAuthorizationCode_EmptyCode","Elapsed":0}
-{"Time":"2026-06-26T23:47:57.4672916+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestExchangeAuthorizationCode_EmptyRedirectURI"}
-{"Time":"2026-06-26T23:47:57.4672916+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestExchangeAuthorizationCode_EmptyRedirectURI","Output":"=== RUN   TestExchangeAuthorizationCode_EmptyRedirectURI\n"}
-{"Time":"2026-06-26T23:47:57.4672916+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestExchangeAuthorizationCode_EmptyRedirectURI","Output":"--- PASS: TestExchangeAuthorizationCode_EmptyRedirectURI (0.00s)\n"}
-{"Time":"2026-06-26T23:47:57.4672916+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestExchangeAuthorizationCode_EmptyRedirectURI","Elapsed":0}
-{"Time":"2026-06-26T23:47:57.4672916+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestBuildAuthorizeURL_Format"}
-{"Time":"2026-06-26T23:47:57.4672916+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestBuildAuthorizeURL_Format","Output":"=== RUN   TestBuildAuthorizeURL_Format\n"}
-{"Time":"2026-06-26T23:47:57.4672916+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestBuildAuthorizeURL_Format","Output":"--- PASS: TestBuildAuthorizeURL_Format (0.00s)\n"}
-{"Time":"2026-06-26T23:47:57.4672916+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestBuildAuthorizeURL_Format","Elapsed":0}
-{"Time":"2026-06-26T23:47:57.4672916+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestExchangeAuthorizationCode_MockServer_Skipped"}
-{"Time":"2026-06-26T23:47:57.4672916+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestExchangeAuthorizationCode_MockServer_Skipped","Output":"=== RUN   TestExchangeAuthorizationCode_MockServer_Skipped\n"}
-{"Time":"2026-06-26T23:47:57.4683183+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestExchangeAuthorizationCode_MockServer_Skipped","Output":"    auth_code_test.go:123: msalTokenURL non paramétrable — test à activer si l'API est ouverte\n"}
-{"Time":"2026-06-26T23:47:57.4683183+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestExchangeAuthorizationCode_MockServer_Skipped","Output":"--- SKIP: TestExchangeAuthorizationCode_MockServer_Skipped (0.00s)\n"}
-{"Time":"2026-06-26T23:47:57.4683183+02:00","Action":"skip","Package":"levelup/go-api/internal/platform/auth","Test":"TestExchangeAuthorizationCode_MockServer_Skipped","Elapsed":0}
 {"Time":"2026-06-26T23:47:57.4683183+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestResolveAzureOAuthClient_DefaultIsLevelUpHalo"}
 {"Time":"2026-06-26T23:47:57.4683183+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestResolveAzureOAuthClient_DefaultIsLevelUpHalo","Output":"=== RUN   TestResolveAzureOAuthClient_DefaultIsLevelUpHalo\n"}
 {"Time":"2026-06-26T23:47:57.4683183+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestResolveAzureOAuthClient_DefaultIsLevelUpHalo","Output":"--- PASS: TestResolveAzureOAuthClient_DefaultIsLevelUpHalo (0.00s)\n"}
@@ -25582,110 +25561,10 @@
 {"Time":"2026-06-26T23:47:57.5627361+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestHaloTokensFromExchange_Valid","Output":"=== RUN   TestHaloTokensFromExchange_Valid\n"}
 {"Time":"2026-06-26T23:47:57.5627361+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestHaloTokensFromExchange_Valid","Output":"--- PASS: TestHaloTokensFromExchange_Valid (0.00s)\n"}
 {"Time":"2026-06-26T23:47:57.5627361+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestHaloTokensFromExchange_Valid","Elapsed":0}
-{"Time":"2026-06-26T23:47:57.5668538+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestSpartanTokenWith_GoldenAndRouting"}
-{"Time":"2026-06-26T23:47:57.5668538+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestSpartanTokenWith_GoldenAndRouting","Output":"=== RUN   TestRequestSpartanTokenWith_GoldenAndRouting\n"}
-{"Time":"2026-06-26T23:47:57.5668538+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestSpartanTokenWith_GoldenAndRouting/défaut_Halo_=_byte-identique"}
-{"Time":"2026-06-26T23:47:57.5668538+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestSpartanTokenWith_GoldenAndRouting/défaut_Halo_=_byte-identique","Output":"=== RUN   TestRequestSpartanTokenWith_GoldenAndRouting/défaut_Halo_=_byte-identique\n"}
-{"Time":"2026-06-26T23:47:57.5668538+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestSpartanTokenWith_GoldenAndRouting/défaut_Halo_=_byte-identique","Output":"--- PASS: TestRequestSpartanTokenWith_GoldenAndRouting/défaut_Halo_=_byte-identique (0.00s)\n"}
-{"Time":"2026-06-26T23:47:57.5668538+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestSpartanTokenWith_GoldenAndRouting/défaut_Halo_=_byte-identique","Elapsed":0}
-{"Time":"2026-06-26T23:47:57.5668538+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestSpartanTokenWith_GoldenAndRouting/descripteur_synthétique_route"}
-{"Time":"2026-06-26T23:47:57.5668538+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestSpartanTokenWith_GoldenAndRouting/descripteur_synthétique_route","Output":"=== RUN   TestRequestSpartanTokenWith_GoldenAndRouting/descripteur_synthétique_route\n"}
-{"Time":"2026-06-26T23:47:57.5668538+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestSpartanTokenWith_GoldenAndRouting/descripteur_synthétique_route","Output":"--- PASS: TestRequestSpartanTokenWith_GoldenAndRouting/descripteur_synthétique_route (0.00s)\n"}
-{"Time":"2026-06-26T23:47:57.5668538+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestSpartanTokenWith_GoldenAndRouting/descripteur_synthétique_route","Elapsed":0}
-{"Time":"2026-06-26T23:47:57.5668538+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestSpartanTokenWith_GoldenAndRouting","Output":"--- PASS: TestRequestSpartanTokenWith_GoldenAndRouting (0.00s)\n"}
-{"Time":"2026-06-26T23:47:57.5668538+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestSpartanTokenWith_GoldenAndRouting","Elapsed":0}
-{"Time":"2026-06-26T23:47:57.5668538+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestClearanceTokenWith_GoldenAndRouting"}
-{"Time":"2026-06-26T23:47:57.5668538+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestClearanceTokenWith_GoldenAndRouting","Output":"=== RUN   TestRequestClearanceTokenWith_GoldenAndRouting\n"}
-{"Time":"2026-06-26T23:47:57.5668538+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestClearanceTokenWith_GoldenAndRouting/défaut_Halo_=_byte-identique"}
-{"Time":"2026-06-26T23:47:57.5668538+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestClearanceTokenWith_GoldenAndRouting/défaut_Halo_=_byte-identique","Output":"=== RUN   TestRequestClearanceTokenWith_GoldenAndRouting/défaut_Halo_=_byte-identique\n"}
-{"Time":"2026-06-26T23:47:57.5668538+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestClearanceTokenWith_GoldenAndRouting/défaut_Halo_=_byte-identique","Output":"--- PASS: TestRequestClearanceTokenWith_GoldenAndRouting/défaut_Halo_=_byte-identique (0.00s)\n"}
-{"Time":"2026-06-26T23:47:57.5668538+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestClearanceTokenWith_GoldenAndRouting/défaut_Halo_=_byte-identique","Elapsed":0}
-{"Time":"2026-06-26T23:47:57.5668538+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestClearanceTokenWith_GoldenAndRouting/descripteur_synthétique_route"}
-{"Time":"2026-06-26T23:47:57.5668538+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestClearanceTokenWith_GoldenAndRouting/descripteur_synthétique_route","Output":"=== RUN   TestRequestClearanceTokenWith_GoldenAndRouting/descripteur_synthétique_route\n"}
-{"Time":"2026-06-26T23:47:57.5668538+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestClearanceTokenWith_GoldenAndRouting/descripteur_synthétique_route","Output":"--- PASS: TestRequestClearanceTokenWith_GoldenAndRouting/descripteur_synthétique_route (0.00s)\n"}
-{"Time":"2026-06-26T23:47:57.5668538+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestClearanceTokenWith_GoldenAndRouting/descripteur_synthétique_route","Elapsed":0}
-{"Time":"2026-06-26T23:47:57.5668538+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestClearanceTokenWith_GoldenAndRouting","Output":"--- PASS: TestRequestClearanceTokenWith_GoldenAndRouting (0.00s)\n"}
-{"Time":"2026-06-26T23:47:57.5668538+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestClearanceTokenWith_GoldenAndRouting","Elapsed":0}
 {"Time":"2026-06-26T23:47:57.5668538+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestScopes_DescriptorDerivation_GoldenParity"}
 {"Time":"2026-06-26T23:47:57.5668538+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestScopes_DescriptorDerivation_GoldenParity","Output":"=== RUN   TestScopes_DescriptorDerivation_GoldenParity\n"}
 {"Time":"2026-06-26T23:47:57.5668538+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestScopes_DescriptorDerivation_GoldenParity","Output":"--- PASS: TestScopes_DescriptorDerivation_GoldenParity (0.00s)\n"}
 {"Time":"2026-06-26T23:47:57.5668538+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestScopes_DescriptorDerivation_GoldenParity","Elapsed":0}
-{"Time":"2026-06-26T23:47:57.5668538+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestXSTSToken_DescriptorAudience"}
-{"Time":"2026-06-26T23:47:57.5668538+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestXSTSToken_DescriptorAudience","Output":"=== RUN   TestRequestXSTSToken_DescriptorAudience\n"}
-{"Time":"2026-06-26T23:47:57.5668538+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestXSTSToken_DescriptorAudience","Output":"--- PASS: TestRequestXSTSToken_DescriptorAudience (0.00s)\n"}
-{"Time":"2026-06-26T23:47:57.5668538+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestXSTSToken_DescriptorAudience","Elapsed":0}
-{"Time":"2026-06-26T23:47:57.5668538+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractDisplayClaims_Valid"}
-{"Time":"2026-06-26T23:47:57.5668538+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractDisplayClaims_Valid","Output":"=== RUN   TestExtractDisplayClaims_Valid\n"}
-{"Time":"2026-06-26T23:47:57.5668538+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractDisplayClaims_Valid","Output":"--- PASS: TestExtractDisplayClaims_Valid (0.00s)\n"}
-{"Time":"2026-06-26T23:47:57.5668538+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractDisplayClaims_Valid","Elapsed":0}
-{"Time":"2026-06-26T23:47:57.5668538+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractDisplayClaims_Missing"}
-{"Time":"2026-06-26T23:47:57.5668538+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractDisplayClaims_Missing","Output":"=== RUN   TestExtractDisplayClaims_Missing\n"}
-{"Time":"2026-06-26T23:47:57.5668538+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractDisplayClaims_Missing","Output":"--- PASS: TestExtractDisplayClaims_Missing (0.00s)\n"}
-{"Time":"2026-06-26T23:47:57.5668538+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractDisplayClaims_Missing","Elapsed":0}
-{"Time":"2026-06-26T23:47:57.5668538+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractDisplayClaims_EmptyXUI"}
-{"Time":"2026-06-26T23:47:57.5668538+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractDisplayClaims_EmptyXUI","Output":"=== RUN   TestExtractDisplayClaims_EmptyXUI\n"}
-{"Time":"2026-06-26T23:47:57.5668538+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractDisplayClaims_EmptyXUI","Output":"--- PASS: TestExtractDisplayClaims_EmptyXUI (0.00s)\n"}
-{"Time":"2026-06-26T23:47:57.5668538+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractDisplayClaims_EmptyXUI","Elapsed":0}
-{"Time":"2026-06-26T23:47:57.5668538+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractDisplayClaims_WrongType"}
-{"Time":"2026-06-26T23:47:57.5668538+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractDisplayClaims_WrongType","Output":"=== RUN   TestExtractDisplayClaims_WrongType\n"}
-{"Time":"2026-06-26T23:47:57.5668538+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractDisplayClaims_WrongType","Output":"--- PASS: TestExtractDisplayClaims_WrongType (0.00s)\n"}
-{"Time":"2026-06-26T23:47:57.5668538+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractDisplayClaims_WrongType","Elapsed":0}
-{"Time":"2026-06-26T23:47:57.5668538+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestPostJSON_Success"}
-{"Time":"2026-06-26T23:47:57.5668538+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestPostJSON_Success","Output":"=== RUN   TestPostJSON_Success\n"}
-{"Time":"2026-06-26T23:47:57.5679261+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestPostJSON_Success","Output":"--- PASS: TestPostJSON_Success (0.00s)\n"}
-{"Time":"2026-06-26T23:47:57.5679261+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestPostJSON_Success","Elapsed":0}
-{"Time":"2026-06-26T23:47:57.5679261+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestPostJSON_HTTPError"}
-{"Time":"2026-06-26T23:47:57.5679261+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestPostJSON_HTTPError","Output":"=== RUN   TestPostJSON_HTTPError\n"}
-{"Time":"2026-06-26T23:47:57.5684465+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestPostJSON_HTTPError","Output":"--- PASS: TestPostJSON_HTTPError (0.00s)\n"}
-{"Time":"2026-06-26T23:47:57.5684465+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestPostJSON_HTTPError","Elapsed":0}
-{"Time":"2026-06-26T23:47:57.5684465+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestPostJSON_InvalidJSON"}
-{"Time":"2026-06-26T23:47:57.5684465+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestPostJSON_InvalidJSON","Output":"=== RUN   TestPostJSON_InvalidJSON\n"}
-{"Time":"2026-06-26T23:47:57.5689659+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestPostJSON_InvalidJSON","Output":"--- PASS: TestPostJSON_InvalidJSON (0.00s)\n"}
-{"Time":"2026-06-26T23:47:57.5689659+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestPostJSON_InvalidJSON","Elapsed":0}
-{"Time":"2026-06-26T23:47:57.5689659+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestPostJSON_WithHeaders"}
-{"Time":"2026-06-26T23:47:57.5689659+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestPostJSON_WithHeaders","Output":"=== RUN   TestPostJSON_WithHeaders\n"}
-{"Time":"2026-06-26T23:47:57.5694902+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestPostJSON_WithHeaders","Output":"--- PASS: TestPostJSON_WithHeaders (0.00s)\n"}
-{"Time":"2026-06-26T23:47:57.5694902+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestPostJSON_WithHeaders","Elapsed":0}
-{"Time":"2026-06-26T23:47:57.5694902+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestUserToken_Success"}
-{"Time":"2026-06-26T23:47:57.5694902+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestUserToken_Success","Output":"=== RUN   TestRequestUserToken_Success\n"}
-{"Time":"2026-06-26T23:47:57.5700113+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestUserToken_Success","Output":"--- PASS: TestRequestUserToken_Success (0.00s)\n"}
-{"Time":"2026-06-26T23:47:57.5700113+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestUserToken_Success","Elapsed":0}
-{"Time":"2026-06-26T23:47:57.5700113+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestUserToken_MissingToken"}
-{"Time":"2026-06-26T23:47:57.5700113+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestUserToken_MissingToken","Output":"=== RUN   TestRequestUserToken_MissingToken\n"}
-{"Time":"2026-06-26T23:47:57.5705329+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestUserToken_MissingToken","Output":"--- PASS: TestRequestUserToken_MissingToken (0.00s)\n"}
-{"Time":"2026-06-26T23:47:57.5705329+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestUserToken_MissingToken","Elapsed":0}
-{"Time":"2026-06-26T23:47:57.5705329+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestXSTSToken_Success"}
-{"Time":"2026-06-26T23:47:57.5705329+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestXSTSToken_Success","Output":"=== RUN   TestRequestXSTSToken_Success\n"}
-{"Time":"2026-06-26T23:47:57.5710421+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestXSTSToken_Success","Output":"--- PASS: TestRequestXSTSToken_Success (0.00s)\n"}
-{"Time":"2026-06-26T23:47:57.571556+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestXSTSToken_Success","Elapsed":0}
-{"Time":"2026-06-26T23:47:57.571556+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestXSTSToken_MissingToken"}
-{"Time":"2026-06-26T23:47:57.571556+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestXSTSToken_MissingToken","Output":"=== RUN   TestRequestXSTSToken_MissingToken\n"}
-{"Time":"2026-06-26T23:47:57.5720663+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestXSTSToken_MissingToken","Output":"--- PASS: TestRequestXSTSToken_MissingToken (0.00s)\n"}
-{"Time":"2026-06-26T23:47:57.5720663+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestXSTSToken_MissingToken","Elapsed":0}
-{"Time":"2026-06-26T23:47:57.5720663+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestSpartanToken_Success"}
-{"Time":"2026-06-26T23:47:57.5720663+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestSpartanToken_Success","Output":"=== RUN   TestRequestSpartanToken_Success\n"}
-{"Time":"2026-06-26T23:47:57.572583+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestSpartanToken_Success","Output":"--- PASS: TestRequestSpartanToken_Success (0.00s)\n"}
-{"Time":"2026-06-26T23:47:57.572583+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestSpartanToken_Success","Elapsed":0}
-{"Time":"2026-06-26T23:47:57.572583+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestSpartanToken_Missing"}
-{"Time":"2026-06-26T23:47:57.572583+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestSpartanToken_Missing","Output":"=== RUN   TestRequestSpartanToken_Missing\n"}
-{"Time":"2026-06-26T23:47:57.5731057+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestSpartanToken_Missing","Output":"--- PASS: TestRequestSpartanToken_Missing (0.00s)\n"}
-{"Time":"2026-06-26T23:47:57.5731057+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestSpartanToken_Missing","Elapsed":0}
-{"Time":"2026-06-26T23:47:57.5731057+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestClearanceToken_Success"}
-{"Time":"2026-06-26T23:47:57.5731057+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestClearanceToken_Success","Output":"=== RUN   TestRequestClearanceToken_Success\n"}
-{"Time":"2026-06-26T23:47:57.5736161+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestClearanceToken_Success","Output":"--- PASS: TestRequestClearanceToken_Success (0.00s)\n"}
-{"Time":"2026-06-26T23:47:57.5736161+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestClearanceToken_Success","Elapsed":0}
-{"Time":"2026-06-26T23:47:57.5736161+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestClearanceToken_HTTPError"}
-{"Time":"2026-06-26T23:47:57.5736161+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestClearanceToken_HTTPError","Output":"=== RUN   TestRequestClearanceToken_HTTPError\n"}
-{"Time":"2026-06-26T23:47:57.5741244+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestClearanceToken_HTTPError","Output":"--- PASS: TestRequestClearanceToken_HTTPError (0.00s)\n"}
-{"Time":"2026-06-26T23:47:57.5741244+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestClearanceToken_HTTPError","Elapsed":0}
-{"Time":"2026-06-26T23:47:57.5741244+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestClearanceToken_MissingField"}
-{"Time":"2026-06-26T23:47:57.5741244+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestClearanceToken_MissingField","Output":"=== RUN   TestRequestClearanceToken_MissingField\n"}
-{"Time":"2026-06-26T23:47:57.5746369+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestClearanceToken_MissingField","Output":"--- PASS: TestRequestClearanceToken_MissingField (0.00s)\n"}
-{"Time":"2026-06-26T23:47:57.5746369+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestClearanceToken_MissingField","Elapsed":0}
-{"Time":"2026-06-26T23:47:57.5746369+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestParseSpartanExpiry"}
-{"Time":"2026-06-26T23:47:57.5746369+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestParseSpartanExpiry","Output":"=== RUN   TestParseSpartanExpiry\n"}
-{"Time":"2026-06-26T23:47:57.5751459+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestParseSpartanExpiry","Output":"--- PASS: TestParseSpartanExpiry (0.00s)\n"}
-{"Time":"2026-06-26T23:47:57.5751459+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestParseSpartanExpiry","Elapsed":0}
 {"Time":"2026-06-26T23:47:57.662808+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestMultiUserTokenStore_ConcurrentUpdateOAuthRT_SameXUID"}
 {"Time":"2026-06-26T23:47:57.662808+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestMultiUserTokenStore_ConcurrentUpdateOAuthRT_SameXUID","Output":"=== RUN   TestMultiUserTokenStore_ConcurrentUpdateOAuthRT_SameXUID\n"}
 {"Time":"2026-06-26T23:47:58.140613+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestMultiUserTokenStore_ConcurrentUpdateOAuthRT_SameXUID","Output":"--- PASS: TestMultiUserTokenStore_ConcurrentUpdateOAuthRT_SameXUID (0.48s)\n"}
@@ -25943,14 +25822,6 @@
 {"Time":"2026-06-26T23:47:59.5869186+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestOAuthExchangeError_Class","Output":"=== RUN   TestOAuthExchangeError_Class\n"}
 {"Time":"2026-06-26T23:47:59.5869186+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestOAuthExchangeError_Class","Output":"--- PASS: TestOAuthExchangeError_Class (0.00s)\n"}
 {"Time":"2026-06-26T23:47:59.5869186+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestOAuthExchangeError_Class","Elapsed":0}
-{"Time":"2026-06-26T23:47:59.5869186+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestPeopleHubResolver_ResolveXUID"}
-{"Time":"2026-06-26T23:47:59.5869186+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestPeopleHubResolver_ResolveXUID","Output":"=== RUN   TestPeopleHubResolver_ResolveXUID\n"}
-{"Time":"2026-06-26T23:47:59.5874407+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestPeopleHubResolver_ResolveXUID","Output":"--- PASS: TestPeopleHubResolver_ResolveXUID (0.00s)\n"}
-{"Time":"2026-06-26T23:47:59.5874407+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestPeopleHubResolver_ResolveXUID","Elapsed":0}
-{"Time":"2026-06-26T23:47:59.5874407+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestPeopleHubResolver_HTTPError"}
-{"Time":"2026-06-26T23:47:59.5874407+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestPeopleHubResolver_HTTPError","Output":"=== RUN   TestPeopleHubResolver_HTTPError\n"}
-{"Time":"2026-06-26T23:47:59.5882901+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestPeopleHubResolver_HTTPError","Output":"--- PASS: TestPeopleHubResolver_HTTPError (0.00s)\n"}
-{"Time":"2026-06-26T23:47:59.5882901+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestPeopleHubResolver_HTTPError","Elapsed":0}
 {"Time":"2026-06-26T23:47:59.5882901+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestRefreshLoop_MultiUserMirror_XSTS"}
 {"Time":"2026-06-26T23:47:59.5882901+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestRefreshLoop_MultiUserMirror_XSTS","Output":"=== RUN   TestRefreshLoop_MultiUserMirror_XSTS\n"}
 {"Time":"2026-06-26T23:47:59.5968321+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestRefreshLoop_MultiUserMirror_XSTS","Output":"2026/06/26 23:47:59 INFO refresh_loop: XSTS renouvelé gamertag=Madina97294 xuid=2533274858283686 expires_at=2026-06-27T01:47:59.589+02:00\n"}
@@ -26022,10 +25893,6 @@
 {"Time":"2026-06-26T23:48:01.5346615+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestSentinel_NoNewClientSecretReaders","Output":"=== RUN   TestSentinel_NoNewClientSecretReaders\n"}
 {"Time":"2026-06-26T23:48:01.742763+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestSentinel_NoNewClientSecretReaders","Output":"--- PASS: TestSentinel_NoNewClientSecretReaders (0.21s)\n"}
 {"Time":"2026-06-26T23:48:01.742763+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestSentinel_NoNewClientSecretReaders","Elapsed":0.21}
-{"Time":"2026-06-26T23:48:01.7474322+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestGeneratePKCE"}
-{"Time":"2026-06-26T23:48:01.7474322+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestGeneratePKCE","Output":"=== RUN   TestGeneratePKCE\n"}
-{"Time":"2026-06-26T23:48:01.7474322+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestGeneratePKCE","Output":"--- PASS: TestGeneratePKCE (0.00s)\n"}
-{"Time":"2026-06-26T23:48:01.7474322+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestGeneratePKCE","Elapsed":0}
 {"Time":"2026-06-26T23:48:01.7474322+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestSISUDeviceFlow_Getters"}
 {"Time":"2026-06-26T23:48:01.7474322+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestSISUDeviceFlow_Getters","Output":"=== RUN   TestSISUDeviceFlow_Getters\n"}
 {"Time":"2026-06-26T23:48:01.7474322+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestSISUDeviceFlow_Getters","Output":"--- PASS: TestSISUDeviceFlow_Getters (0.00s)\n"}
@@ -26101,91 +25968,6 @@
 {"Time":"2026-06-26T23:48:01.8833394+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestEnsureWatcherAccessToken_NilArguments","Output":"=== RUN   TestEnsureWatcherAccessToken_NilArguments\n"}
 {"Time":"2026-06-26T23:48:01.8880204+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestEnsureWatcherAccessToken_NilArguments","Output":"--- PASS: TestEnsureWatcherAccessToken_NilArguments (0.00s)\n"}
 {"Time":"2026-06-26T23:48:01.8880204+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestEnsureWatcherAccessToken_NilArguments","Elapsed":0}
-{"Time":"2026-06-26T23:48:01.8880204+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestStartXboxDeviceCode_Success"}
-{"Time":"2026-06-26T23:48:01.8880204+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestStartXboxDeviceCode_Success","Output":"=== RUN   TestStartXboxDeviceCode_Success\n"}
-{"Time":"2026-06-26T23:48:01.8885452+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestStartXboxDeviceCode_Success","Output":"2026/06/26 23:48:01 INFO xbox_device_code: Device Code Flow initialisé expires_in=300\n"}
-{"Time":"2026-06-26T23:48:01.8890664+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestStartXboxDeviceCode_Success","Output":"--- PASS: TestStartXboxDeviceCode_Success (0.00s)\n"}
-{"Time":"2026-06-26T23:48:01.8890664+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestStartXboxDeviceCode_Success","Elapsed":0}
-{"Time":"2026-06-26T23:48:01.8890664+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestStartXboxDeviceCode_MissingDeviceCode"}
-{"Time":"2026-06-26T23:48:01.8890664+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestStartXboxDeviceCode_MissingDeviceCode","Output":"=== RUN   TestStartXboxDeviceCode_MissingDeviceCode\n"}
-{"Time":"2026-06-26T23:48:01.8895995+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestStartXboxDeviceCode_MissingDeviceCode","Output":"--- PASS: TestStartXboxDeviceCode_MissingDeviceCode (0.00s)\n"}
-{"Time":"2026-06-26T23:48:01.8895995+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestStartXboxDeviceCode_MissingDeviceCode","Elapsed":0}
-{"Time":"2026-06-26T23:48:01.8895995+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestPollXboxDeviceCode_AuthorizationPending"}
-{"Time":"2026-06-26T23:48:01.8895995+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestPollXboxDeviceCode_AuthorizationPending","Output":"=== RUN   TestPollXboxDeviceCode_AuthorizationPending\n"}
-{"Time":"2026-06-26T23:48:01.8901098+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestPollXboxDeviceCode_AuthorizationPending","Output":"2026/06/26 23:48:01 INFO xbox_device_code: Device Code Flow complété\n"}
-{"Time":"2026-06-26T23:48:01.890629+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestPollXboxDeviceCode_AuthorizationPending","Output":"--- PASS: TestPollXboxDeviceCode_AuthorizationPending (0.00s)\n"}
-{"Time":"2026-06-26T23:48:01.890629+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestPollXboxDeviceCode_AuthorizationPending","Elapsed":0}
-{"Time":"2026-06-26T23:48:01.890629+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestPollXboxDeviceCode_SlowDown"}
-{"Time":"2026-06-26T23:48:01.890629+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestPollXboxDeviceCode_SlowDown","Output":"=== RUN   TestPollXboxDeviceCode_SlowDown\n"}
-{"Time":"2026-06-26T23:48:01.890629+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestPollXboxDeviceCode_SlowDown","Output":"2026/06/26 23:48:01 WARN xbox_device_code: slow_down reçu new_interval=5\n"}
-{"Time":"2026-06-26T23:48:06.891043+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestPollXboxDeviceCode_SlowDown","Output":"2026/06/26 23:48:06 INFO xbox_device_code: Device Code Flow complété\n"}
-{"Time":"2026-06-26T23:48:06.8916977+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestPollXboxDeviceCode_SlowDown","Output":"--- PASS: TestPollXboxDeviceCode_SlowDown (5.00s)\n"}
-{"Time":"2026-06-26T23:48:06.8916977+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestPollXboxDeviceCode_SlowDown","Elapsed":5}
-{"Time":"2026-06-26T23:48:06.8916977+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestPollXboxDeviceCode_FatalError"}
-{"Time":"2026-06-26T23:48:06.8916977+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestPollXboxDeviceCode_FatalError","Output":"=== RUN   TestPollXboxDeviceCode_FatalError\n"}
-{"Time":"2026-06-26T23:48:06.8922159+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestPollXboxDeviceCode_FatalError","Output":"2026/06/26 23:48:06 ERROR xbox_device_code: erreur fatale error_code=access_denied\n"}
-{"Time":"2026-06-26T23:48:06.8922159+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestPollXboxDeviceCode_FatalError","Output":"--- PASS: TestPollXboxDeviceCode_FatalError (0.00s)\n"}
-{"Time":"2026-06-26T23:48:06.8922159+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestPollXboxDeviceCode_FatalError","Elapsed":0}
-{"Time":"2026-06-26T23:48:06.8922159+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestPollXboxDeviceCode_ContextCancel"}
-{"Time":"2026-06-26T23:48:06.8922159+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestPollXboxDeviceCode_ContextCancel","Output":"=== RUN   TestPollXboxDeviceCode_ContextCancel\n"}
-{"Time":"2026-06-26T23:48:06.9426368+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestPollXboxDeviceCode_ContextCancel","Output":"--- PASS: TestPollXboxDeviceCode_ContextCancel (0.05s)\n"}
-{"Time":"2026-06-26T23:48:06.9426368+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestPollXboxDeviceCode_ContextCancel","Elapsed":0.05}
-{"Time":"2026-06-26T23:48:06.9426368+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestXboxProfileResolver_ResolveXUID"}
-{"Time":"2026-06-26T23:48:06.9426368+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestXboxProfileResolver_ResolveXUID","Output":"=== RUN   TestXboxProfileResolver_ResolveXUID\n"}
-{"Time":"2026-06-26T23:48:06.9436836+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestXboxProfileResolver_ResolveXUID","Output":"--- PASS: TestXboxProfileResolver_ResolveXUID (0.00s)\n"}
-{"Time":"2026-06-26T23:48:06.9436836+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestXboxProfileResolver_ResolveXUID","Elapsed":0}
-{"Time":"2026-06-26T23:48:06.9436836+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestXboxProfileResolver_NotFound"}
-{"Time":"2026-06-26T23:48:06.9436836+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestXboxProfileResolver_NotFound","Output":"=== RUN   TestXboxProfileResolver_NotFound\n"}
-{"Time":"2026-06-26T23:48:06.9442077+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestXboxProfileResolver_NotFound","Output":"--- PASS: TestXboxProfileResolver_NotFound (0.00s)\n"}
-{"Time":"2026-06-26T23:48:06.9442077+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestXboxProfileResolver_NotFound","Elapsed":0}
-{"Time":"2026-06-26T23:48:06.9442077+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestXboxProfileResolver_HTTPError"}
-{"Time":"2026-06-26T23:48:06.9442077+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestXboxProfileResolver_HTTPError","Output":"=== RUN   TestXboxProfileResolver_HTTPError\n"}
-{"Time":"2026-06-26T23:48:06.9447293+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestXboxProfileResolver_HTTPError","Output":"--- PASS: TestXboxProfileResolver_HTTPError (0.00s)\n"}
-{"Time":"2026-06-26T23:48:06.9447293+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestXboxProfileResolver_HTTPError","Elapsed":0}
-{"Time":"2026-06-26T23:48:06.9447293+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestXboxProfileResolver_EmptyGamertag"}
-{"Time":"2026-06-26T23:48:06.9447293+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestXboxProfileResolver_EmptyGamertag","Output":"=== RUN   TestXboxProfileResolver_EmptyGamertag\n"}
-{"Time":"2026-06-26T23:48:06.9447293+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestXboxProfileResolver_EmptyGamertag","Output":"--- PASS: TestXboxProfileResolver_EmptyGamertag (0.00s)\n"}
-{"Time":"2026-06-26T23:48:06.9447293+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestXboxProfileResolver_EmptyGamertag","Elapsed":0}
-{"Time":"2026-06-26T23:48:06.9447293+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestXSTSResult_AuthHeader"}
-{"Time":"2026-06-26T23:48:06.9447293+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestXSTSResult_AuthHeader","Output":"=== RUN   TestXSTSResult_AuthHeader\n"}
-{"Time":"2026-06-26T23:48:06.9447293+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestXSTSResult_AuthHeader","Output":"--- PASS: TestXSTSResult_AuthHeader (0.00s)\n"}
-{"Time":"2026-06-26T23:48:06.9447293+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestXSTSResult_AuthHeader","Elapsed":0}
-{"Time":"2026-06-26T23:48:06.9447293+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestXSTSResult_AuthHeader_EmptyHash"}
-{"Time":"2026-06-26T23:48:06.9447293+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestXSTSResult_AuthHeader_EmptyHash","Output":"=== RUN   TestXSTSResult_AuthHeader_EmptyHash\n"}
-{"Time":"2026-06-26T23:48:06.9447293+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestXSTSResult_AuthHeader_EmptyHash","Output":"--- PASS: TestXSTSResult_AuthHeader_EmptyHash (0.00s)\n"}
-{"Time":"2026-06-26T23:48:06.9447293+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestXSTSResult_AuthHeader_EmptyHash","Elapsed":0}
-{"Time":"2026-06-26T23:48:06.9447293+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractUserHash_Valid"}
-{"Time":"2026-06-26T23:48:06.9447293+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractUserHash_Valid","Output":"=== RUN   TestExtractUserHash_Valid\n"}
-{"Time":"2026-06-26T23:48:06.9447293+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractUserHash_Valid","Output":"--- PASS: TestExtractUserHash_Valid (0.00s)\n"}
-{"Time":"2026-06-26T23:48:06.9447293+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractUserHash_Valid","Elapsed":0}
-{"Time":"2026-06-26T23:48:06.9447293+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractUserHash_Missing"}
-{"Time":"2026-06-26T23:48:06.9447293+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractUserHash_Missing","Output":"=== RUN   TestExtractUserHash_Missing\n"}
-{"Time":"2026-06-26T23:48:06.9447293+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractUserHash_Missing/nil"}
-{"Time":"2026-06-26T23:48:06.9447293+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractUserHash_Missing/nil","Output":"=== RUN   TestExtractUserHash_Missing/nil\n"}
-{"Time":"2026-06-26T23:48:06.9447293+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractUserHash_Missing/nil","Output":"--- PASS: TestExtractUserHash_Missing/nil (0.00s)\n"}
-{"Time":"2026-06-26T23:48:06.9447293+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractUserHash_Missing/nil","Elapsed":0}
-{"Time":"2026-06-26T23:48:06.9447293+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractUserHash_Missing/empty"}
-{"Time":"2026-06-26T23:48:06.9447293+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractUserHash_Missing/empty","Output":"=== RUN   TestExtractUserHash_Missing/empty\n"}
-{"Time":"2026-06-26T23:48:06.9447293+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractUserHash_Missing/empty","Output":"--- PASS: TestExtractUserHash_Missing/empty (0.00s)\n"}
-{"Time":"2026-06-26T23:48:06.9447293+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractUserHash_Missing/empty","Elapsed":0}
-{"Time":"2026-06-26T23:48:06.9447293+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractUserHash_Missing/no_dc"}
-{"Time":"2026-06-26T23:48:06.9447293+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractUserHash_Missing/no_dc","Output":"=== RUN   TestExtractUserHash_Missing/no_dc\n"}
-{"Time":"2026-06-26T23:48:06.9447293+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractUserHash_Missing/no_dc","Output":"--- PASS: TestExtractUserHash_Missing/no_dc (0.00s)\n"}
-{"Time":"2026-06-26T23:48:06.9447293+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractUserHash_Missing/no_dc","Elapsed":0}
-{"Time":"2026-06-26T23:48:06.9447293+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractUserHash_Missing/no_xui"}
-{"Time":"2026-06-26T23:48:06.9447293+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractUserHash_Missing/no_xui","Output":"=== RUN   TestExtractUserHash_Missing/no_xui\n"}
-{"Time":"2026-06-26T23:48:06.9447293+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractUserHash_Missing/no_xui","Output":"--- PASS: TestExtractUserHash_Missing/no_xui (0.00s)\n"}
-{"Time":"2026-06-26T23:48:06.9447293+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractUserHash_Missing/no_xui","Elapsed":0}
-{"Time":"2026-06-26T23:48:06.9447293+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractUserHash_Missing/empty_xui"}
-{"Time":"2026-06-26T23:48:06.9447293+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractUserHash_Missing/empty_xui","Output":"=== RUN   TestExtractUserHash_Missing/empty_xui\n"}
-{"Time":"2026-06-26T23:48:06.9447293+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractUserHash_Missing/empty_xui","Output":"--- PASS: TestExtractUserHash_Missing/empty_xui (0.00s)\n"}
-{"Time":"2026-06-26T23:48:06.9447293+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractUserHash_Missing/empty_xui","Elapsed":0}
-{"Time":"2026-06-26T23:48:06.9447293+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractUserHash_Missing/no_uhs"}
-{"Time":"2026-06-26T23:48:06.9447293+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractUserHash_Missing/no_uhs","Output":"=== RUN   TestExtractUserHash_Missing/no_uhs\n"}
-{"Time":"2026-06-26T23:48:06.9447293+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractUserHash_Missing/no_uhs","Output":"--- PASS: TestExtractUserHash_Missing/no_uhs (0.00s)\n"}
-{"Time":"2026-06-26T23:48:06.9447293+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractUserHash_Missing/no_uhs","Elapsed":0}
-{"Time":"2026-06-26T23:48:06.9447293+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractUserHash_Missing","Output":"--- PASS: TestExtractUserHash_Missing (0.00s)\n"}
-{"Time":"2026-06-26T23:48:06.9447293+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractUserHash_Missing","Elapsed":0}
 {"Time":"2026-06-26T23:48:06.9447293+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestTokenStore_LoadSave_Roundtrip"}
 {"Time":"2026-06-26T23:48:06.9447293+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestTokenStore_LoadSave_Roundtrip","Output":"=== RUN   TestTokenStore_LoadSave_Roundtrip\n"}
 {"Time":"2026-06-26T23:48:06.9529529+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestTokenStore_LoadSave_Roundtrip","Output":"--- PASS: TestTokenStore_LoadSave_Roundtrip (0.01s)\n"}
@@ -26194,14 +25976,6 @@
 {"Time":"2026-06-26T23:48:06.9529529+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestTokenStore_NestedDir","Output":"=== RUN   TestTokenStore_NestedDir\n"}
 {"Time":"2026-06-26T23:48:06.957057+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestTokenStore_NestedDir","Output":"--- PASS: TestTokenStore_NestedDir (0.00s)\n"}
 {"Time":"2026-06-26T23:48:06.9579127+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestTokenStore_NestedDir","Elapsed":0}
-{"Time":"2026-06-26T23:48:06.9579127+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractNotAfter_Valid"}
-{"Time":"2026-06-26T23:48:06.9579127+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractNotAfter_Valid","Output":"=== RUN   TestExtractNotAfter_Valid\n"}
-{"Time":"2026-06-26T23:48:06.9579127+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractNotAfter_Valid","Output":"--- PASS: TestExtractNotAfter_Valid (0.00s)\n"}
-{"Time":"2026-06-26T23:48:06.9579127+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractNotAfter_Valid","Elapsed":0}
-{"Time":"2026-06-26T23:48:06.9579127+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractNotAfter_Missing"}
-{"Time":"2026-06-26T23:48:06.9579127+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractNotAfter_Missing","Output":"=== RUN   TestExtractNotAfter_Missing\n"}
-{"Time":"2026-06-26T23:48:06.9579127+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractNotAfter_Missing","Output":"--- PASS: TestExtractNotAfter_Missing (0.00s)\n"}
-{"Time":"2026-06-26T23:48:06.9579127+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractNotAfter_Missing","Elapsed":0}
 {"Time":"2026-06-26T23:48:06.9579127+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestTokenStore_UpdateXSTS"}
 {"Time":"2026-06-26T23:48:06.9579127+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestTokenStore_UpdateXSTS","Output":"=== RUN   TestTokenStore_UpdateXSTS\n"}
 {"Time":"2026-06-26T23:48:06.9661583+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestTokenStore_UpdateXSTS","Output":"--- PASS: TestTokenStore_UpdateXSTS (0.01s)\n"}
@@ -26266,14 +26040,6 @@
 {"Time":"2026-06-26T23:48:07.0006269+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestRefreshLoop_Check_NoCallbackWhenNil","Output":"2026/06/26 23:48:07 INFO refresh_loop: XSTS renouvelé gamertag=\"\" xuid=\"\" expires_at=2026-06-27T00:43:07.000+02:00\n"}
 {"Time":"2026-06-26T23:48:07.003744+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestRefreshLoop_Check_NoCallbackWhenNil","Output":"--- PASS: TestRefreshLoop_Check_NoCallbackWhenNil (0.01s)\n"}
 {"Time":"2026-06-26T23:48:07.003744+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestRefreshLoop_Check_NoCallbackWhenNil","Elapsed":0.01}
-{"Time":"2026-06-26T23:48:07.003744+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractNotAfter_WrongType"}
-{"Time":"2026-06-26T23:48:07.003744+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractNotAfter_WrongType","Output":"=== RUN   TestExtractNotAfter_WrongType\n"}
-{"Time":"2026-06-26T23:48:07.003744+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractNotAfter_WrongType","Output":"--- PASS: TestExtractNotAfter_WrongType (0.00s)\n"}
-{"Time":"2026-06-26T23:48:07.003744+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractNotAfter_WrongType","Elapsed":0}
-{"Time":"2026-06-26T23:48:07.003744+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractNotAfter_InvalidFormat"}
-{"Time":"2026-06-26T23:48:07.003744+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractNotAfter_InvalidFormat","Output":"=== RUN   TestExtractNotAfter_InvalidFormat\n"}
-{"Time":"2026-06-26T23:48:07.003744+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractNotAfter_InvalidFormat","Output":"--- PASS: TestExtractNotAfter_InvalidFormat (0.00s)\n"}
-{"Time":"2026-06-26T23:48:07.003744+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestExtractNotAfter_InvalidFormat","Elapsed":0}
 {"Time":"2026-06-26T23:48:07.003744+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestIsXSTSValid_Margin20min_BoundaryBefore"}
 {"Time":"2026-06-26T23:48:07.003744+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestIsXSTSValid_Margin20min_BoundaryBefore","Output":"=== RUN   TestIsXSTSValid_Margin20min_BoundaryBefore\n"}
 {"Time":"2026-06-26T23:48:07.003744+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestIsXSTSValid_Margin20min_BoundaryBefore","Output":"--- PASS: TestIsXSTSValid_Margin20min_BoundaryBefore (0.00s)\n"}
@@ -26282,14 +26048,6 @@
 {"Time":"2026-06-26T23:48:07.003744+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestIsXSTSValid_Margin20min_BoundaryAfter","Output":"=== RUN   TestIsXSTSValid_Margin20min_BoundaryAfter\n"}
 {"Time":"2026-06-26T23:48:07.003744+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestIsXSTSValid_Margin20min_BoundaryAfter","Output":"--- PASS: TestIsXSTSValid_Margin20min_BoundaryAfter (0.00s)\n"}
 {"Time":"2026-06-26T23:48:07.003744+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestIsXSTSValid_Margin20min_BoundaryAfter","Elapsed":0}
-{"Time":"2026-06-26T23:48:07.003744+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestXSTSTokenFull_PopulatesNotAfter"}
-{"Time":"2026-06-26T23:48:07.003744+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestXSTSTokenFull_PopulatesNotAfter","Output":"=== RUN   TestRequestXSTSTokenFull_PopulatesNotAfter\n"}
-{"Time":"2026-06-26T23:48:07.0047929+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestXSTSTokenFull_PopulatesNotAfter","Output":"--- PASS: TestRequestXSTSTokenFull_PopulatesNotAfter (0.00s)\n"}
-{"Time":"2026-06-26T23:48:07.0047929+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestXSTSTokenFull_PopulatesNotAfter","Elapsed":0}
-{"Time":"2026-06-26T23:48:07.0047929+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestXSTSTokenFull_NoNotAfter_ZeroTime"}
-{"Time":"2026-06-26T23:48:07.0047929+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestXSTSTokenFull_NoNotAfter_ZeroTime","Output":"=== RUN   TestRequestXSTSTokenFull_NoNotAfter_ZeroTime\n"}
-{"Time":"2026-06-26T23:48:07.0053226+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestXSTSTokenFull_NoNotAfter_ZeroTime","Output":"--- PASS: TestRequestXSTSTokenFull_NoNotAfter_ZeroTime (0.00s)\n"}
-{"Time":"2026-06-26T23:48:07.0053226+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/auth","Test":"TestRequestXSTSTokenFull_NoNotAfter_ZeroTime","Elapsed":0}
 {"Time":"2026-06-26T23:48:07.0053226+02:00","Action":"run","Package":"levelup/go-api/internal/platform/auth","Test":"TestTokenStore_Path"}
 {"Time":"2026-06-26T23:48:07.0053226+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestTokenStore_Path","Output":"=== RUN   TestTokenStore_Path\n"}
 {"Time":"2026-06-26T23:48:07.0053226+02:00","Action":"output","Package":"levelup/go-api/internal/platform/auth","Test":"TestTokenStore_Path","Output":"--- PASS: TestTokenStore_Path (0.00s)\n"}
