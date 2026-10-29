@@ -1,0 +1,9 @@
+{
+  "_comment": "Fixture représentative d'une réponse Halo Infinite /hi/players/xuid(NNN)/matches?type=matchmaking&start=0&count=25. Champs minimum (MatchId + MatchInfo.StartTime) — les autres clés réelles (MatchInfo.{EndTime,Duration,LifecycleMode,GameVariantCategory,LevelId,MapVariant,...}, PlayerStats, etc.) sont volontairement omises pour garder le fixture petit. Ordre décroissant par StartTime (le 1er = le plus récent), tel que l'API le renvoie.",
+  "Results": [
+    {"MatchId": "11111111-1111-1111-1111-000000000001", "MatchInfo": {"StartTime": "2026-05-19T22:14:32.123Z"}},
+    {"MatchId": "11111111-1111-1111-1111-000000000002", "MatchInfo": {"StartTime": "2026-05-19T21:58:11.456Z"}},
+    {"MatchId": "11111111-1111-1111-1111-000000000003", "MatchInfo": {"StartTime": "2026-05-19T21:42:00.789Z"}},
+    {"MatchId": "b8c1b220-5ef4-4dee-9e92-77d3ff55d6d3", "MatchInfo": {"StartTime": "2026-05-06T18:01:25.539Z"}}
+  ]
+}

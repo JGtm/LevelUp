@@ -166,10 +166,15 @@ regexes = ['''^h5_(vehicle|turret)_[a-z_]+$''']
 # site, appartient à l'éditeur du jeu, n'ouvre aucun accès en lecture, et n'est pas
 # rotable de notre côté. Ciblé sur le mot-clé InstrumentationKey : un autre type de
 # secret dans cette même fixture resterait détecté.
+# 2026-10-29 (plan D3, lot 3) : la même fixture est copiée dans la brique haloapi/infinite ;
+# l'ancien chemin part au lot 4 avec platform/halo (une clé retirée pour une ajoutée).
 description = "InstrumentationKey Application Insights de la fixture Halo Waypoint"
 targetRules = ["generic-api-key"]
 condition = "AND"
-paths = ['''(^|/)apps/go-api/internal/platform/halo/testdata/leaderboard_sample\.html$''']
+paths = [
+  '''(^|/)apps/go-api/internal/platform/halo/testdata/leaderboard_sample\.html$''',
+  '''(^|/)apps/go-api/internal/haloapi/infinite/testdata/leaderboard_sample\.html$''',
+]
 regexTarget = "match"
 regexes = ['''(?i)instrumentationkey''']
 
