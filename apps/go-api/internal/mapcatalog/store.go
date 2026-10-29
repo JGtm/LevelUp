@@ -59,7 +59,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // ErrEntryExists dit que la carte est DEJA au catalogue : `AddEntry` ne fait rien.

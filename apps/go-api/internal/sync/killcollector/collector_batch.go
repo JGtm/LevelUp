@@ -11,8 +11,9 @@ import (
 	"context"
 	"log/slog"
 
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/persist"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
 )
 
 // BuildKillSourceBatch traduit le resultat du decodeur en lignes ecrivables.

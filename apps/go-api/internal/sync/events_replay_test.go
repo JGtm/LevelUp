@@ -200,7 +200,7 @@ func TestFindBrokenHighlightEventMatches_EmptyDB_ReturnsNil(t *testing.T) {
 // du package sync (les tests Go s'exécutent depuis le dossier du package).
 func loadV41Fixture(t *testing.T) []byte {
 	t.Helper()
-	path := filepath.Join("..", "games", "halo_infinite", "film", "internal", "grammar", "testdata", "v41_chunk_he.bin")
+	path := filepath.Join("..", "..", "..", "..", "libs", "film", "internal", "grammar", "testdata", "v41_chunk_he.bin")
 	data, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("read v41 fixture: %v", err)

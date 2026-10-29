@@ -57,9 +57,10 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/testutil"
+
+	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 func TestNavpoint51DrapeauSurFilm(t *testing.T) {
@@ -68,8 +69,7 @@ func TestNavpoint51DrapeauSurFilm(t *testing.T) {
 	if err != nil {
 		t.Fatalf("racine repo : %v", err)
 	}
-	factsPath := filepath.Join(repoRoot, "apps", "go-api", "internal", "games", "halo_infinite",
-		"film", "replay", "testdata", "equivalence", court+".facts.json")
+	factsPath := filepath.Join(repoRoot, "libs", "film", "replay", "testdata", "equivalence", court+".facts.json")
 	faits, err := ReadFactsFile(factsPath)
 	if err != nil {
 		t.Fatalf("faits %s : %v", factsPath, err)

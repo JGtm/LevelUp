@@ -4,6 +4,7 @@ go 1.26.10
 
 use (
 	./apps/go-api
+	./libs/film
 	./libs/gamefiles
 	./libs/himap
 )

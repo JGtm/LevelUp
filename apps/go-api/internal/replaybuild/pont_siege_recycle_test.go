@@ -28,9 +28,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
-	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"levelup/go-api/internal/port"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/LevelUp/libs/film/types"
 )
 
 var updatePontSiege = flag.Bool("update-pont-siege", false,
@@ -39,7 +40,7 @@ var updatePontSiege = flag.Bool("update-pont-siege", false,
 const (
 	pontSiegeMatch   = "bcb6d393-8f5e-40e3-806b-e3cb35bfc9b0"
 	pontSiegeFixture = "testdata/pont_bcb6d393.json.gz"
-	pontSiegeFaits   = "../games/halo_infinite/film/replay/testdata/equivalence/bcb6d393.facts.json"
+	pontSiegeFaits   = "../../../../libs/film/replay/testdata/equivalence/bcb6d393.facts.json"
 )
 
 // pontSiegeEntrees : ce que le fixture fige.

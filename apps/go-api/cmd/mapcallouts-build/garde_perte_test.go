@@ -13,9 +13,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/halo_infinite/replaylabels"
 	"levelup/go-api/internal/i18n"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // carteA fabrique une entree a `sommets` sommets repartis sur UNE zone.

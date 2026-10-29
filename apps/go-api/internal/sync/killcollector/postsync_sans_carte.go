@@ -40,8 +40,9 @@ import (
 	"sync"
 	"time"
 
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/observability"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
 )
 
 // DureeDeVieDesConstatsSansCarte : au-dela, un constat « sans carte » est OUBLIE et le match relu.

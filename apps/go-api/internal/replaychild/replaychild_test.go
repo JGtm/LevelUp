@@ -19,7 +19,8 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/filmproc"
+
+	"github.com/JGtm/LevelUp/libs/film/filmproc"
 )
 
 func TestSpawn_VerrouTenuAilleurs_RefusImmediat(t *testing.T) {

@@ -13,7 +13,7 @@ package persist
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmshell"
+	"github.com/JGtm/LevelUp/libs/film/filmshell"
 )
 
 func TestSentinellesArmesAlignees(t *testing.T) {

@@ -21,11 +21,12 @@ import (
 	"time"
 
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replaybuild"
 	"levelup/go-api/internal/replaychild"
+
+	"github.com/JGtm/LevelUp/libs/film/filmcache"
 )
 
 // demoReplayLockWait borne l'attente du verrou de décodage par film : au-delà, le rejeu reste

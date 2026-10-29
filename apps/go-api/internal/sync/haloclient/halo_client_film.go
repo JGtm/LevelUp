@@ -17,8 +17,9 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/halo_infinite/film/finalise"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/finalise"
 )
 
 // ─────────────────────────────────────────────────────────────────────────────

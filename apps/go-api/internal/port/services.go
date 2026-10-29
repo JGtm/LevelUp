@@ -12,8 +12,9 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/replaydoc"
 	"levelup/go-api/internal/games/canonical"
-	"levelup/go-api/internal/games/halo_infinite/film/objectiveevent"
-	"levelup/go-api/internal/games/halo_infinite/film/playerposition"
+
+	"github.com/JGtm/LevelUp/libs/film/objectiveevent"
+	"github.com/JGtm/LevelUp/libs/film/playerposition"
 )
 
 // ---------------------------------------------------------------------------

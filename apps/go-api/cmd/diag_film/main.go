@@ -22,11 +22,12 @@ import (
 	"os"
 	"strings"
 
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/halo_infinite/film/filmshell"
 	"levelup/go-api/internal/games/titleseams"
 	"levelup/go-api/internal/platform/auth"
 	gosync "levelup/go-api/internal/sync"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/filmshell"
 )
 
 const (

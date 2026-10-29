@@ -26,8 +26,9 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain/highlightevent"
 	haloinfinite "levelup/go-api/internal/games/halo_infinite"
-	"levelup/go-api/internal/games/halo_infinite/film/medalname"
 	"levelup/go-api/internal/persist"
+
+	"github.com/JGtm/LevelUp/libs/film/medalname"
 )
 
 // buildBatchFromFetchedMatch convertit un fetchedMatch en MatchBatch.

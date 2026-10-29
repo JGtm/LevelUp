@@ -21,10 +21,11 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/halo_infinite/replaylabels"
 	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/mapdecoupe"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // rapportDecoupe chiffre le découpage d'une carte — de quoi CONSTATER ce que la chaîne a

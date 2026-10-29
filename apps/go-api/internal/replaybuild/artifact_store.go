@@ -41,9 +41,10 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/atomicfile"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // StoredArtifact décrit ce qui a été rangé, tel qu'on le rend à l'ouvrier.

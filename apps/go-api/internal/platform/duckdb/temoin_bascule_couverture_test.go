@@ -26,7 +26,8 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/games/halo_infinite/film/damagetag"
+
+	"github.com/JGtm/LevelUp/libs/film/damagetag"
 )
 
 // ecrireCouvertureAncienne compte ce que `weapon_kills` porte reellement sur le lot.

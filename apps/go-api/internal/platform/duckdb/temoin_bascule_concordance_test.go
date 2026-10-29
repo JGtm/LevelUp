@@ -25,8 +25,9 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/halo_infinite"
-	"levelup/go-api/internal/games/halo_infinite/film/damagetag"
-	"levelup/go-api/internal/games/halo_infinite/film/killicon"
+
+	"github.com/JGtm/LevelUp/libs/film/damagetag"
+	"github.com/JGtm/LevelUp/libs/film/killicon"
 )
 
 // temoinTag : un tag de source de degat observe en base, et ce que les deux tables en font.

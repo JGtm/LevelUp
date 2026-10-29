@@ -43,10 +43,11 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/config"
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/sync/haloclient"
 	"levelup/go-api/internal/sync/killcollector"
 	"levelup/go-api/internal/sync/matchflags"
+
+	"github.com/JGtm/LevelUp/libs/film/filmcache"
 )
 
 // compteursEnLigne : ce que la passe en ligne ajoute a la restitution de fin de passe.

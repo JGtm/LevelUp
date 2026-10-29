@@ -7,8 +7,9 @@ import (
 	"maps"
 
 	"levelup/go-api/internal/domain/replaydoc"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/halo_infinite/replaylabels"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 func toReplayDocument(v replay.ReplayDocument) replaydoc.ReplayDocument {

@@ -18,7 +18,8 @@ import (
 	"time"
 
 	"levelup/go-api/internal/config"
-	"levelup/go-api/internal/games/halo_infinite/film/filmproc"
+
+	"github.com/JGtm/LevelUp/libs/film/filmproc"
 )
 
 // TestEnfantDePasse_AttendSonTourPuisPasse : l'enfant ne rend pas la main tant que le verrou est

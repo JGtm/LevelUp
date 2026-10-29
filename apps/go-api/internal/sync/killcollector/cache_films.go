@@ -25,9 +25,10 @@ import (
 	"fmt"
 	"log/slog"
 
-	"levelup/go-api/internal/games/halo_infinite/film/finalise"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/sync/haloclient"
+
+	"github.com/JGtm/LevelUp/libs/film/finalise"
 )
 
 // CompteurCacheNonFinalise : manifestes du cache refuses parce qu'ils ne portent pas le morceau

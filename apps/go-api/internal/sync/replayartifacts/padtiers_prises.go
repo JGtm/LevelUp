@@ -9,7 +9,8 @@ package replayartifacts
 
 import (
 	"levelup/go-api/internal/analysis/weapontier"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // prisesPour rassemble les PRISES D ARME EN COURS DE VIE des trois canaux qui en portent une,

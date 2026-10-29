@@ -9,9 +9,10 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/halo_infinite/replaylabels"
 	"levelup/go-api/internal/i18n"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // replayVehicleTracks fabrique des vies ne portant QUE leur famille — la seule entree de

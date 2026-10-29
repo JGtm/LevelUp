@@ -54,10 +54,11 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/mapcatalog"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/verrous"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // entreeZonesFn est la couture qui rend le CHEMIN NOMINAL testable sans `.mvar` reel porteur

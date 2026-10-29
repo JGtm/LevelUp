@@ -14,8 +14,9 @@ import (
 	"strconv"
 	"time"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmproc"
 	"levelup/go-api/internal/replaybuild"
+
+	"github.com/JGtm/LevelUp/libs/film/filmproc"
 )
 
 // replayBackfillReport : le rapport par categories.

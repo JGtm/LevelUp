@@ -49,9 +49,10 @@ import (
 	"log/slog"
 
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/replaybuild"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // ArtefactRange : UN artefact qui vient d'etre range sur disque. C'est le seul fait qui

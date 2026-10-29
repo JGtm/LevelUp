@@ -38,9 +38,10 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/filmproc"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replaybuild"
+
+	"github.com/JGtm/LevelUp/libs/film/filmproc"
 )
 
 // Flag : le drapeau qui fait d'un processus l'enfant de cuisson. Il n'est pas destine a la main

@@ -7,10 +7,11 @@ import (
 	"os"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/halo_infinite/replaylabels"
 	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/testfixtures"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 
 	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 )

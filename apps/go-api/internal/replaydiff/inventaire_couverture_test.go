@@ -22,7 +22,7 @@ import (
 )
 
 // cheminFormeDocument : le golden de forme du producteur, relatif a ce paquet.
-var cheminFormeDocument = filepath.Join("..", "games", "halo_infinite", "film", "replay",
+var cheminFormeDocument = filepath.Join("..", "..", "..", "..", "libs", "film", "replay",
 	"testdata", "document_shape.golden")
 
 // champForme est UNE ligne de champ du golden : `  Nom json:"tag,omitempty" Type`.

@@ -1,8 +1,9 @@
 package replaylabels
 
 import (
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/i18n"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // texte.go — LE PASSAGE D'UN LIBELLÉ PAR LANGUE ENTRE LEVELUP ET LE DÉCODEUR DE FILM (plan D2,

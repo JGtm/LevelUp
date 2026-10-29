@@ -33,8 +33,8 @@ import (
 )
 
 const (
-	defaultFixturePath  = "internal/games/halo_infinite/film/internal/grammar/testdata/v41_chunk_he.bin"
-	manifestFixturePath = "internal/games/halo_infinite/film/internal/grammar/testdata/v41_film_manifest.json"
+	defaultFixturePath  = "../../libs/film/internal/grammar/testdata/v41_chunk_he.bin"
+	manifestFixturePath = "../../libs/film/internal/grammar/testdata/v41_film_manifest.json"
 )
 
 func main() {

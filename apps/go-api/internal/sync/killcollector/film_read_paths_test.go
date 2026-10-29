@@ -32,8 +32,9 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain/killscope"
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/persist"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
 )
 
 func TestFilmReadPathsEgalesAuDecodeur(t *testing.T) {
@@ -195,7 +196,7 @@ func nomsDe(vs *ast.ValueSpec) []string {
 const nomDuTypeVoie = "Path"
 
 // cheminSourceDecodeur : le paquet du decodeur, RELATIF a ce fichier de test.
-const cheminSourceDecodeur = "../../games/halo_infinite/film/internal/facts/killsource"
+const cheminSourceDecodeur = "../../../../../libs/film/internal/facts/killsource"
 
 // sourceDuDecodeur : le repertoire du source de `killsource`, resolu depuis l emplacement de
 // CE fichier — pas depuis le repertoire de travail, qui varie selon l invocation.

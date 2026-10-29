@@ -39,8 +39,9 @@ import (
 	"log/slog"
 	"strconv"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmshell"
 	"levelup/go-api/internal/migration"
+
+	"github.com/JGtm/LevelUp/libs/film/filmshell"
 )
 
 // ReconcileRegistry ré-applique le seed du registre d'armes canonique

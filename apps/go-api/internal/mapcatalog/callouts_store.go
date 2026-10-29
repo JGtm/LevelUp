@@ -27,7 +27,7 @@ import (
 	"fmt"
 	"io/fs"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // sourceCatalogueGenere : le champ `source` du catalogue généré — d'où viennent ses entrées.

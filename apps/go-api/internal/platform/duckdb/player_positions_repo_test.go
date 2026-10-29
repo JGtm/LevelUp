@@ -24,8 +24,9 @@ import (
 	titlepkg "levelup/go-api/internal/domain/title"
 
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/games/halo_infinite/film/playerposition"
 	"levelup/go-api/internal/migration"
+
+	"github.com/JGtm/LevelUp/libs/film/playerposition"
 )
 
 const ppTestMatchID = "m_positions_001"

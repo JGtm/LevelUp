@@ -27,7 +27,8 @@ import (
 	"unicode/utf16"
 
 	"levelup/go-api/internal/domain/highlightevent"
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
 )
 
 // gamertagTemoin : le nom pose dans le bloc synthetique. Il n a rien de special, sinon d etre

@@ -24,10 +24,11 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain/replaydoc"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/halo_infinite/replaylabels"
 	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/service/replayview"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // champsNonServis liste les champs du document STOCKE que l'API ne publie pas, par

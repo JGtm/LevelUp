@@ -12,8 +12,9 @@ import (
 	"os"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/platform/atomicfile"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // rangerLesFaits range les faits d une cuisson qui a DECODE — SEULEMENT si le puits d artefact

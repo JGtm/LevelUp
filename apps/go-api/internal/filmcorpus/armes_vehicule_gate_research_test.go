@@ -22,8 +22,9 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/mappings"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 func TestRRM4AGatesG4(t *testing.T) {

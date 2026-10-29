@@ -8,8 +8,9 @@ package replayview
 
 import (
 	"levelup/go-api/internal/domain/replaydoc"
-	"levelup/go-api/internal/games/halo_infinite/film/identity"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
+
+	"github.com/JGtm/LevelUp/libs/film/identity"
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 func toIdentitySection(v replay.IdentitySection) replaydoc.IdentitySection {

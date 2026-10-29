@@ -103,7 +103,7 @@ func openGoldenShared(t *testing.T) *sql.DB {
 // loadGoldenChunk lit le fixture v41 réel (chemin relatif au package sync).
 func loadGoldenChunk(t *testing.T) []byte {
 	t.Helper()
-	path := filepath.Join("..", "games", "halo_infinite", "film", "internal", "grammar", "testdata", "v41_chunk_he.bin")
+	path := filepath.Join("..", "..", "..", "..", "libs", "film", "internal", "grammar", "testdata", "v41_chunk_he.bin")
 	data, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("fixture introuvable %s: %v\n  → re-capturer via : go run ./cmd/refresh_golden_fixture --gamertag JGtm", path, err)

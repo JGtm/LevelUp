@@ -14,8 +14,9 @@ import (
 	titlepkg "levelup/go-api/internal/domain/title"
 
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/games/halo_infinite/film/objectiveevent"
 	"levelup/go-api/internal/migration"
+
+	"github.com/JGtm/LevelUp/libs/film/objectiveevent"
 )
 
 const oeTestMatchID = "m_objective_001"

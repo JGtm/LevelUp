@@ -28,9 +28,10 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/halo_infinite/film/filmobs"
 	"levelup/go-api/internal/testutil"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/filmobs"
 )
 
 const (
@@ -131,7 +132,7 @@ func bobineChargee(t *testing.T, court string, muter bool) *decfilm.Film {
 	if err != nil {
 		t.Fatalf("racine du depot : %v", err)
 	}
-	dir := filepath.Join(racine, "apps", "go-api", "internal", "games", "halo_infinite", "film",
+	dir := filepath.Join(racine, "libs", "film",
 		"replay", "testdata", "minifilm_"+court)
 	noms, err := filepath.Glob(filepath.Join(dir, "chunk_*.bin"))
 	if err != nil || len(noms) == 0 {

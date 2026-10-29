@@ -11,8 +11,9 @@ package halo_infinite
 
 import (
 	"levelup/go-api/internal/domain/highlightevent"
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	filmhighlight "levelup/go-api/internal/games/halo_infinite/film/highlightevent"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	filmhighlight "github.com/JGtm/LevelUp/libs/film/highlightevent"
 )
 
 // ParseHighlightEvents lit le chunk des temps forts d un film par le decodeur et rend les

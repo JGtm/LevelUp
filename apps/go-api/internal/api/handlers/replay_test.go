@@ -16,9 +16,10 @@ import (
 	"levelup/go-api/internal/api/handlers"
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/domain/replaydoc"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // mockReplayService implémente port.ReplayService.
@@ -160,7 +161,7 @@ func TestReplayHandler_LatestSchemaVersionHeader(t *testing.T) {
 	got := w.Header().Get(middleware.ReplayLatestSchemaHeader)
 	want := strconv.Itoa(replay.SchemaVersion)
 	if got != want {
-		t.Errorf("X-Replay-Latest-Schema-Version = %q, attendu %q (games/halo_infinite/film/replay.SchemaVersion)",
+		t.Errorf("X-Replay-Latest-Schema-Version = %q, attendu %q (libs/film/replay.SchemaVersion)",
 			got, want)
 	}
 	var body replaydoc.ReplayDocument

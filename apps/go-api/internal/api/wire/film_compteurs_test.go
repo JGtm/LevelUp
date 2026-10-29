@@ -3,8 +3,9 @@ package wire
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmobs"
 	"levelup/go-api/internal/observability"
+
+	"github.com/JGtm/LevelUp/libs/film/filmobs"
 )
 
 // Les compteurs du film doivent atteindre `/debug/vars` sous leur nom d'origine : sans le puits,

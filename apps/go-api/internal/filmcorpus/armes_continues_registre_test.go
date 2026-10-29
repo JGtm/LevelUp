@@ -14,8 +14,9 @@ import (
 	"slices"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/mappings"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 func registreDesArmesDeVehicule(t *testing.T) *mappings.VehicleWeaponSet {

@@ -32,7 +32,7 @@ import (
 	"os"
 	"strings"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmproc"
+	"github.com/JGtm/LevelUp/libs/film/filmproc"
 )
 
 // childFlag : le drapeau qui fait d'un processus l'ENFANT d'une passe.

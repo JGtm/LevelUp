@@ -31,8 +31,9 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/replaybuild"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // artefactADeriver ecrit un artefact qui a QUELQUE CHOSE a deriver dans les quatre familles :

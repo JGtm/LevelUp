@@ -41,7 +41,8 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain/highlightevent"
 	haloinfinite "levelup/go-api/internal/games/halo_infinite"
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
 )
 
 // FilmHighlight : le chunk highlight d un match ET la version du film qui le porte.

@@ -26,10 +26,11 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/sync/haloclient"
 	"levelup/go-api/internal/sync/matchflags"
+
+	"github.com/JGtm/LevelUp/libs/film/filmcache"
 )
 
 // filmsTraces : une source de films qui NOTE l ordre dans lequel on la sollicite. C est cet

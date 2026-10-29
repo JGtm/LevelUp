@@ -11,7 +11,8 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // replay_vehicle_scenery_synth_test.go — LA MATIERE DANS LE CADRE (revue RR-M7-05 du 2026-09-24).

@@ -48,9 +48,10 @@ import (
 	"strings"
 	"time"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmproc"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/replaybuild"
+
+	"github.com/JGtm/LevelUp/libs/film/filmproc"
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // Les deux passes, par leur nom de drapeau. L enfant les recoit par `-passe`.

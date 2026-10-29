@@ -1,6 +1,6 @@
 package replaybuild
 
-import "levelup/go-api/internal/games/halo_infinite/film/replay"
+import "github.com/JGtm/LevelUp/libs/film/replay"
 
 // poserLeReglementDuScore pose sur l'entree du calque de score ce que le NOM DE VARIANTE et la
 // table de reglement du titre savent et que le film ne dit pas. `in` nil (aucun enregistrement

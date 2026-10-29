@@ -7,9 +7,10 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/weapons"
 	"levelup/go-api/internal/i18n"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
 )
 
 // repoRoot remonte jusqu'au répertoire qui porte config/titles.

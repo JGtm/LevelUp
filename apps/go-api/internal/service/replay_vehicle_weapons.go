@@ -28,9 +28,10 @@ import (
 	"strconv"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/halo_infinite/replaylabels"
 	"levelup/go-api/internal/games/mappings"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // vehicleWeaponsFile : le nom du registre dans les mappings d un titre.

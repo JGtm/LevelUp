@@ -34,10 +34,11 @@ import (
 	"slices"
 	"strconv"
 
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/halo_infinite/film/filmshell"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/filmshell"
 )
 
 // WeaponShotsDecoderRev — la version du producteur de tirs, ecrite sur CHAQUE ligne.

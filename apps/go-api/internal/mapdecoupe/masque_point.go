@@ -29,7 +29,7 @@ package mapdecoupe
 import (
 	"math"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // MasqueCompact : le masque praticable d une carte, un bit par cellule, avec son calage.

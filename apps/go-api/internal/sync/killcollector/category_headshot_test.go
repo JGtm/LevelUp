@@ -19,7 +19,8 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain/killscope"
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
 )
 
 func TestCategoryHeadshotEgaleAuDecodeur(t *testing.T) {

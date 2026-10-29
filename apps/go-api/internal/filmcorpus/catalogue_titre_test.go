@@ -31,10 +31,11 @@ import (
 	"reflect"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/games/weapons"
 	"levelup/go-api/internal/testutil"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 var majInstantaneCatalogue = flag.Bool("update-catalogue-titre", false,
@@ -43,8 +44,7 @@ var majInstantaneCatalogue = flag.Bool("update-catalogue-titre", false,
 const majInstantaneCatalogueEnv = "LEVELUP_UPDATE_CATALOGUE_TITRE"
 
 // cheminInstantaneCatalogue : l'instantane, depuis la racine du depot.
-var cheminInstantaneCatalogue = filepath.Join("apps", "go-api", "internal", "games", "halo_infinite",
-	"film", "replay", "testdata", "golden_catalogue_titre.json")
+var cheminInstantaneCatalogue = filepath.Join("libs", "film", "replay", "testdata", "golden_catalogue_titre.json")
 
 // texteEnFr fabrique le libelle d'un test dans les deux langues du parc, chaque langue presente,
 // vide comprise : le fil que le producteur pose.

@@ -64,8 +64,9 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/filmproc"
 	"levelup/go-api/internal/observability/logging"
+
+	"github.com/JGtm/LevelUp/libs/film/filmproc"
 )
 
 // outilNom : le nom que ce binaire porte dans le journal des protections (verrou, sentinelle,
@@ -188,8 +189,7 @@ func valider(o options) error {
 //
 // Chemin de SOURCE, pas de donnee : il ne passe donc pas par PathResolver (qui resout `data/`).
 func dossierEquivalence(repoRoot string) string {
-	return filepath.Join(repoRoot, "apps", "go-api",
-		"internal", "games", "halo_infinite", "film", "replay", "testdata", "equivalence")
+	return filepath.Join(repoRoot, "libs", "film", "replay", "testdata", "equivalence")
 }
 
 // filmsDemandes rend la liste short8 de `-films`, vide si le drapeau ne l'est pas.

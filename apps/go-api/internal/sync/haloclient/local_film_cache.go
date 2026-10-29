@@ -25,7 +25,8 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+
+	"github.com/JGtm/LevelUp/libs/film/filmcache"
 )
 
 // LocalFilmCache lit les manifestes et chunks du cache disque hérité du

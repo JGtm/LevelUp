@@ -32,7 +32,7 @@ import (
 	"fmt"
 	"os"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // ouvrirArtefact est le point d'OUVERTURE du fichier, isole de la deserialisation qui suit.

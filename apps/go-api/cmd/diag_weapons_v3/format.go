@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"levelup/go-api/internal/games/halo_infinite/film/objectiveevent"
+	"github.com/JGtm/LevelUp/libs/film/objectiveevent"
 )
 
 // fmtTimeMS rend un *int de ms en secondes (ou "?" si nil).

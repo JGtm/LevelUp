@@ -21,8 +21,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/mapcatalog"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // dumpIndex est le dépôt local de `.mvar`, indexé par nom de fichier.

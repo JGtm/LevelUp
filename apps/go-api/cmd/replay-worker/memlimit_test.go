@@ -21,7 +21,8 @@ import (
 
 	"levelup/go-api/internal/api/handlers"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/games/halo_infinite/film/filmproc"
+
+	"github.com/JGtm/LevelUp/libs/film/filmproc"
 )
 
 func TestMemoryExceededMessage_ContientMatchIDPicEtMention(t *testing.T) {

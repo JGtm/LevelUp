@@ -27,13 +27,13 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain/replaydoc"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/testutil"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // cheminGoldenDeForme : le golden de forme de la brique, depuis la racine du depot.
-var cheminGoldenDeForme = filepath.Join("apps", "go-api", "internal", "games", "halo_infinite",
-	"film", "replay", "testdata", "document_shape.golden")
+var cheminGoldenDeForme = filepath.Join("libs", "film", "replay", "testdata", "document_shape.golden")
 
 // TestDocumentShapeTwinsAgree : la forme STOCKEE et la forme SERVIE coincident-elles ?
 //

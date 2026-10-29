@@ -40,7 +40,8 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+
+	"github.com/JGtm/LevelUp/libs/film/filmcache"
 )
 
 // avertirSiCatalogueModifie logue un AVERTISSEMENT explicite si config/titles/{slug} ou

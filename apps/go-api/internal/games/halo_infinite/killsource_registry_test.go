@@ -3,7 +3,7 @@ package halo_infinite
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/damagetag"
+	"github.com/JGtm/LevelUp/libs/film/damagetag"
 )
 
 // TestKillSourceRegistryKey_LesTroisVoies : les deux voies de resolution rendent bien ce

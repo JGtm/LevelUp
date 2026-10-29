@@ -25,18 +25,19 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/halo_infinite/replayidentity"
 	"levelup/go-api/internal/testutil"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 var updateBotsFixtures = flag.Bool("update-bots-fixtures", false,
 	"reecrire film/replay/testdata/bots_<id>.json depuis les films du cache (REPLAY_FILM_CACHE)")
 
 // dossierDesFixturesDuRejeu : les fixtures du rejeu, relatives au paquet.
-const dossierDesFixturesDuRejeu = "../games/halo_infinite/film/replay/testdata"
+const dossierDesFixturesDuRejeu = "../../../../libs/film/replay/testdata"
 
 func TestBotsDesFixturesDuRejeuRegenerate(t *testing.T) {
 	cache := os.Getenv("REPLAY_FILM_CACHE")

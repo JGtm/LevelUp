@@ -9,7 +9,7 @@ import (
 
 // formeDuDocument : l'empreinte de forme du document publie, figee par le producteur
 // (`film/replay/document_shape_test.go`). Lue comme TEXTE : le banc n'importe pas le producteur.
-const formeDuDocument = "../games/halo_infinite/film/replay/testdata/document_shape.golden"
+const formeDuDocument = "../../../../libs/film/replay/testdata/document_shape.golden"
 
 // TestForme_ChaqueCleLueExisteChezLeProducteur : une cle renommee cote producteur ferait lire une
 // valeur zero au banc, qui jugerait alors un document vide « sans faux ». Ce test la rend bruyante.

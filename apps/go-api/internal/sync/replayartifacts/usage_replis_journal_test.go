@@ -27,10 +27,11 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/ctxkeys"
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/halo_infinite/replaylabels"
 	"levelup/go-api/internal/i18n"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // resumeAvecReplis forge une projection dont le rapport de replis porte ces declenchements.
