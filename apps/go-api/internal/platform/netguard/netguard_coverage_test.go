@@ -7,6 +7,12 @@
 // test, elle ralentit juste la démo jusqu'à l'affamer, cf. l'incident qui a motivé
 // le package). Ce test scanne donc `internal/` et échoue sur tout fichier
 // contenant un appel sortant sans `netguard.Check`, hors allowlist justifiée.
+//
+// BRIQUE `internal/haloapi` (plan D3, 2026-10-29) : ses fichiers recevront leur garde par un
+// `Doer` injecté et n'auront donc jamais `netguard.Check` à côté de `.Do(req)`. La règle qui tient
+// l'hermétisme à leur place — la brique ne construit ni n'atteint aucun client HTTP — vit dans
+// `archlint/haloapi_sans_client_http_test.go` (AST et auto-preuve par extrait, que ce paquet de
+// test n'a pas). Ce ratchet-ci reste inchangé.
 package netguard_test
 
 import (
