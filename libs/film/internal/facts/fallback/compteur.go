@@ -27,7 +27,6 @@ package fallback
 // d'instructions sur un chemin qui se déclenche au plus quelques milliers de fois par film,
 // face à un décodage qui pèse des dizaines de secondes.
 
-// L ordre de ces imports entre dans l empreinte de la couche (revision/cadre.go) : ne pas regrouper.
 import (
 	"cmp"
 

@@ -1,3 +1,11 @@
+## [2026-10-29] Découplage D2 — lot 4 (revue adversariale) — Complété (branche `refactor/decouplage-d2-decodeur-film`, plan `.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D2_2026-10-28.md`)
+
+**Décision technique principale** : une ronde de revue par trois relecteurs Sonnet aveugles (anti-patterns et frontière de module ; ce que les tests ne couvrent pas ; fil JSON et empreintes), triage du pilote sur pièces, corrections limitées aux P2 recevables.
+
+**Résultats observés** : 0 P0, 0 P1, 3 P2 dont 2 corrigés (test de non-régression du branchement du puits des compteurs du film par `NewServiceRegistry`, prouvé par mutation : appel remplacé par `_ = 0` -> rouge « observability a reçu 0, attendu 3 », remis -> vert ; commentaire d'ordre des imports faux retiré de `facts/fallback/compteur.go`) + 1 remarque de doc corrigée (`textLabel`) ; 49 conditions qui tiennent (24 + 11 + 14). Quatre découvertes consignées sans correction (D2-L4-a à D2-L4-d). Gate : build, vet, `wire`, `replaylabels`, `libs/film` `revision` et `facts`, `archlint`, `gofmt`, lint `--new-from-merge-base` à 0 issue (go-api et libs/film).
+
+**Conclusion / prochaine étape** : plan 4.1 à 4.3 `[x]`. Prochaine étape = lot 5 (preuve de non-régression et clôture : T4, T1 à T3 recapturés, intégration `sync`/`persist`, web typecheck/lint/Vitest).
+
 ## [2026-10-29] Découplage D2 — lot 3 (module libs/film) — Complété (branche `refactor/decouplage-d2-decodeur-film`, plan `.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D2_2026-10-28.md`)
 
 **Décision technique principale** : le décodeur de film devient le module `github.com/JGtm/LevelUp/libs/film` (`git mv` de tout `film/`,

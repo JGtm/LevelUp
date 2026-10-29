@@ -593,13 +593,37 @@ Chaque item fait descendre une tolérance du lot 1 ; T1 à T3 relancés en fin d
 
 ## Lot 4 — Revue adversariale (une ronde) et corrections
 
-- [ ] 4.1 Contrat de lot écrit (6 lignes du skill `adversarial-review`) ; trois relecteurs Sonnet en
+- [x] 4.1 Contrat de lot écrit (6 lignes du skill `adversarial-review`) ; trois relecteurs Sonnet en
   parallèle, aveugles : L3 (anti-patterns) + « frontière de module » (imports, copies, ratchets
   rerootés, lint relâché), L6 (ce que les tests ne couvrent pas : tests déménagés/réécrits, tolérances,
   baseline), et une lentille « fil JSON et empreintes » (codec à plat, cadre historique, goldens).
-- [ ] 4.2 Triage par le pilote (P0–P3) ; P0/P1 corrigés avec test de non-régression ; P2 consignés en
+- [x] 4.2 Triage par le pilote (P0–P3) ; P0/P1 corrigés avec test de non-régression ; P2 consignés en
   Découvertes ; aucune seconde ronde sauf P0/P1 corrigés (relecture des seules corrections).
-- [ ] 4.3 Gate : lot 3 rejoué (3.8) après corrections ; commit « D2 lot 4 » ; CI verte.
+- [x] 4.3 Gate : lot 3 rejoué (3.8) après corrections ; commit « D2 lot 4 » ; CI verte.
+
+**Exécution du lot 4 (2026-10-29, worktree `LevelUp-wt-decouplage-d2`, base `6542417d9`)** — une ronde, trois relecteurs Sonnet aveugles
+en parallèle, trois lentilles : L3 anti-patterns + frontière de module (imports, copies, ratchets rerootés, lint relâché), L6 ce que les
+tests ne couvrent pas (tests déménagés ou réécrits, tolérances, baseline), fil JSON et empreintes (codec à plat, cadre historique, goldens).
+Résultat : 0 P0, 0 P1, 3 constats P2 recevables et 1 remarque de documentation ; le reste = conditions qui tiennent (24 + 11 + 14 = 49).
+Triage par le pilote, sur pièces :
+- P2-1 CORRIGÉ : `brancherCompteursDuFilm()` appelé dans `NewServiceRegistry` sans test qui prouve le branchement (le relecteur l'a remplacé par
+  `_ = 0` : `wire` et `archlint` restaient verts). Nouveau test `TestNewServiceRegistryBrancheLePuitsDesCompteursDuFilm`
+  (`internal/api/wire/film_compteurs_test.go`) : puits remis à nil, construction par `NewServiceRegistry(&config.AppConfig{}, nil)` (chemin réel,
+  sans DuckDB), puis `filmobs.AddInt` de 3 lu par `observability.LoadCounter`. **Mutation** : `registry.go:285` remplacé par `_ = 0` ->
+  `--- FAIL: TestNewServiceRegistryBrancheLePuitsDesCompteursDuFilm ... observability a reçu 0, attendu 3 : NewServiceRegistry ne branche pas
+  le puits` ; appel remis (`git diff registry.go` vide) -> `PASS`.
+- P2-2 CORRIGÉ : le commentaire « L ordre de ces imports entre dans l'empreinte de la couche (revision/cadre.go) : ne pas regrouper » de
+  `libs/film/internal/facts/fallback/compteur.go` était faux pour ce fichier (`facts/fallback` n'est dans aucun golden de périmètre ; le relecteur
+  a regroupé les imports, `revision` est resté vert). Retiré de ce seul fichier ; les 14 autres sources hachées portent la contrainte et ne sont
+  pas touchées. `libs/film : go test ./revision/` vert.
+- P2-3 CORRIGÉ (doc, règle 17) : `textLabel` (`replaylabels/catalog.go`) disait « un membre par langue renseignée » ; depuis `TexteVersFilm` c'est
+  chaque langue de la liste, vides comprises.
+- Consignés sans correction : D2-L4-a à D2-L4-d (Découvertes).
+Gate : `go build ./...`, `go vet ./...` ; `go test ./internal/api/wire/ ./internal/games/halo_infinite/replaylabels/ -count=1` ; `libs/film :
+go test ./revision/ ./internal/facts/... -count=1` ; `go test ./internal/archlint/ -count=1` (112 s) ; `gofmt -l` vide ; `golangci-lint run
+--new-from-merge-base=origin/release/v8.1.0 ./...` : 0 issue dans `apps/go-api` et dans `libs/film` (avec `--config ../../apps/go-api/.golangci.yml`,
+comme la CI ; sans cette config, 30 issues de dette gelée, sans rapport avec le lot). Rejeu complet du lot 3.8 (T1 à T3) non refait : aucun
+code de production n'a changé, seuls un test et deux commentaires.
 
 ## Lot 5 — Preuve de non-régression et clôture
 
@@ -1020,3 +1044,14 @@ découvertes de D1 et D2).
   principal, `libs` du worktree). Après la fusion, plus besoin.
 - D2-L3-j (lot 3.8) : le JSONL du 2.12 converti « u8 » porte des noms de sous-tests abîmés par l'encodage (7 sous-tests de `replay`, 7 de
   `games/halo_infinite`) ; les comparaisons T1 utilisent les JSONL écrits par redirection binaire (`cmd`).
+- D2-L4-a (lot 4, revue) : la conversion de libellé neutralisée n'a aucun test qui rougisse à `service/squadagg/squad_formes.go:208` et
+  `cmd/mapcallouts-build/main.go:452` (`WeaponCatalog` sans test ; catalogue généré sans assertion de libellé). Dette de couverture
+  préexistante (`WeaponCatalog`), site de conversion neuf. Non traité.
+- D2-L4-b (lot 4, revue) : l'ordre des imports des 15 sources hachées n'a aucun garde-rail dédié ; un `goimports -w` futur n'est attrapé que par
+  le gate de couche, avec un message qui ne nomme pas la cause. Piste : un test de `revision` qui vérifie l'ordre des imports des fichiers des
+  périmètres, ou un message de gate qui le suggère (voir D2-L3-a). Non traité.
+- D2-L4-c (lot 4, revue) : `flatjson.UnmarshalFlat` s'écarte de `i18n.UnmarshalFlat` sur trois points, tous sur des fils qu'aucun producteur
+  n'écrit : casse des codes de langue, membre de langue non chaîne, langue hors liste conservée par la brique puis filtrée par
+  `TexteDepuisFilm`. Non traité.
+- D2-L4-d (lot 4, revue) : `libs/film/digest/digest.go` : les `sort.Slice` remplacés par des tris à comparateur total donnent la même sortie pour
+  les structs de 12 champs ou moins ; non prouvé au-delà. Usage : harnais d'équivalence seulement. Non traité.

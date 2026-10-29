@@ -222,7 +222,7 @@ func abilityPalettes(slug string, in []mappings.AbilityPalette) []replay.Ability
 }
 
 // textLabel projette un libellé par langue vers le DTO d'artefact : le Text est copié tel quel, toutes
-// langues comprises (l'artefact écrit un membre par langue renseignée, sans repli cuit).
+// langues comprises (l'artefact écrit un membre par langue de la liste, vide comprise, sans repli cuit).
 func textLabel(t i18n.Text) replay.Label {
 	return replay.Label{Text: TexteVersFilm(t)}
 }
