@@ -75,19 +75,8 @@ import (
 	"slices"
 	"strconv"
 
-	"levelup/go-api/internal/domain/equipmentusage"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 )
-
-// equipmentOutcomeFamilies — LE PÉRIMÈTRE DU BILAN, lu UNE FOIS depuis sa maison.
-//
-// La liste elle-même a quitté ce fichier le 2026-09-17 (item 2.5.f) pour
-// `internal/domain/equipmentusage` : l'agrégat de session la lit AUSSI, et il ne peut
-// pas importer un paquet de titre (D9). Ce que garde ce paquet est une COPIE LOCALE
-// de lecture, pas une seconde écriture — [equipmentusage.EquipmentOutcomeFamilies]
-// rend une copie défensive à chaque appel, et `estFamilleDuBilan` est sur le chemin
-// de CHAQUE changement d'équipement du film.
-var equipmentOutcomeFamilies = equipmentusage.EquipmentOutcomeFamilies()
 
 // estFamilleDuBilan dit si cette famille porte une ligne d'issue.
 func estFamilleDuBilan(family string) bool {
@@ -227,7 +216,7 @@ func usageUsedOf(t *UsagePlayerSummary, family string) int {
 		return t.CamoEpisodes
 	case family == usageFamilyPowerupOvershield:
 		return t.OvershieldEpisodes
-	case equipmentusage.UsageFamilySpawnsPiece(family):
+	case UsageFamilySpawnsPiece(family):
 		return t.DeployedByFamily[family]
 	default:
 		return t.SpentByFamily[family]

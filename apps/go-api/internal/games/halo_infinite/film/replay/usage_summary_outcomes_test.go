@@ -8,8 +8,6 @@ package replay
 
 import (
 	"testing"
-
-	"levelup/go-api/internal/domain/equipmentusage"
 )
 
 // docIssuesTest — un document minimal qui porte les trois issues sur trois
@@ -209,7 +207,7 @@ func TestUsageSummary_GardeJamaisNegatif(t *testing.T) {
 // (celui de DeployedByFamily / DroppedByFamily), pas celui des épisodes : c'est ce
 // qui permet à l'agrégat de session de joindre les quatre ventilations sur UNE clé.
 func TestUsageSummary_FamillesDuBilan(t *testing.T) {
-	fams := equipmentusage.EquipmentOutcomeFamilies()
+	fams := EquipmentOutcomeFamilies()
 	attendues := map[string]bool{
 		usageFamilyWall: true, usageFamilySensor: true, "translocator_beacon": true,
 		"shroud_screen": true, "threat_seeker": true, "repair_field": true,

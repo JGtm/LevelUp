@@ -400,7 +400,14 @@ const plafondSurfaceFacade = 179 // 2026-10-02 — retrait des replis nuls (DU-7
 //	                                           nuage, decision D-16) et `replay.PositionsDesVehicules`
 //	                                           (le nuage `ti=40` lu comme la cuisson le lit), que la passe
 //	                                           des positions du collecteur fournit. Aucun retrait.
-const plafondSurfaceReplay = 312 // 2026-10-18 — base 9d8879471 re-mesuree a 310 + 2 (LectureDuBord, PositionsDesVehicules) ; cf. l historique ci-dessus
+//	314  decouplage D2, item 2.8 (2026-10-29)  base `86b7924a1` re-mesuree a 312. +2 :
+//	                                           `replay.EquipmentOutcomeFamilies` et `replay.UsageFamilySpawnsPiece`,
+//	                                           la copie jumelle du perimetre du bilan d equipement que le
+//	                                           decodeur porte depuis qu il n importe plus
+//	                                           `domain/equipmentusage` ; le garde-rail de LevelUp
+//	                                           (`domain/equipmentusage/jumeau_film_test.go`) les compare a
+//	                                           l original (regle 6). Aucun retrait.
+const plafondSurfaceReplay = 314 // 2026-10-29 — base 86b7924a1 re-mesuree a 312 + 2 (EquipmentOutcomeFamilies, UsageFamilySpawnsPiece) ; cf. l historique ci-dessus
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.
 //

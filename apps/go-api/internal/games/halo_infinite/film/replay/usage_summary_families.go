@@ -25,31 +25,31 @@ package replay
 // « cette valeur est-elle une famille d'arme » du dépôt. Les tables ci-dessous ne
 // servent que les POSES d'équipement (`equipmentPlacements`), jamais les socles.
 
-import "levelup/go-api/internal/domain/equipmentusage"
-
 // Clés de famille du manifeste dupliquées 4 fois ou plus dans le paquet (corpus de
 // test compris) : golangci-lint (goconst, min-occurrences: 4) exige une constante
 // nommée plutôt que le littéral répété. Les autres membres des mêmes maps
 // (grenade_plasma, grenade_dynamo, grenade_spike, repulsor) restent en littéral :
 // sous le seuil, aucune obligation.
 //
-// LES QUATRE CLÉS DU BILAN VIENNENT DE LEUR MAISON (item 2.5.f, 2026-09-17) : mur,
-// capteur et les deux bonus portent une ligne d'issue, et ce périmètre a quitté le
-// paquet pour `internal/domain/equipmentusage` — l'agrégat de session le lit sans
-// importer un titre (D9). Elles sont RELUES ici plutôt que réécrites : deux
-// orthographes de la même famille finiraient par diverger. Grappin et propulseur aussi :
-// la carte « Équipement » des Séries temporelles les nomme (lignes « non mesuré »).
+// LES QUATRE CLÉS DU BILAN (mur, capteur, les deux bonus) ONT UNE COPIE JUMELLE dans
+// `internal/domain/equipmentusage`, que lit l'agrégat de session : le décodeur, brique sans
+// import de LevelUp, porte les siennes (plan D2, item 2.8), et la liste du bilan qui les
+// contient est gardée égale à celle de LevelUp par `domain/equipmentusage/jumeau_film_test.go`
+// (cf. `usage_summary_bilan.go`).
 const (
 	usageFamilyGrenadeFrag       = "grenade_frag"
-	usageFamilyGrapple           = equipmentusage.EquipmentFamilyGrapple
-	usageFamilyThruster          = equipmentusage.EquipmentFamilyThruster
-	usageFamilyPowerupCamo       = equipmentusage.EquipmentFamilyPowerupCamo
-	usageFamilyPowerupOvershield = equipmentusage.EquipmentFamilyPowerupOvershield
-	usageFamilyWall              = equipmentusage.EquipmentFamilyWall
-	usageFamilySensor            = equipmentusage.EquipmentFamilySensor
+	usageFamilyGrapple           = "grapple"
+	usageFamilyThruster          = "thruster"
+	usageFamilyPowerupCamo       = "powerup_camo"
+	usageFamilyPowerupOvershield = "powerup_overshield"
+	usageFamilyWall              = "wall"
+	usageFamilySensor            = "sensor"
 	// Ajoutée le 2026-09-09 (étape E3) : la table de reconnaissance des issues et
 	// ses tests font franchir le seuil de goconst à cette clé à son tour.
 	usageFamilyRepulsor = "repulsor"
+	// Ajoutée le 2026-10-29 (plan D2, item 2.8) : la liste du bilan, copiée dans ce paquet, lui fait
+	// franchir le seuil de goconst.
+	usageFamilyRepairField = "repair_field"
 )
 
 // UsageFamilyWallKey — LA clé de famille du mur de protection, exportée pour les
