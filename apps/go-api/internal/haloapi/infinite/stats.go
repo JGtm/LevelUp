@@ -31,6 +31,10 @@ func validMatchType(t string) bool {
 // rexUUID valide un identifiant de match (UUID).
 var rexUUID = regexp.MustCompile(`(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
 
+// EstUUID dit si `id` a la forme d'un identifiant de match (UUID), celle que tout service de la brique
+// exige avant d'émettre. Un appelant qui consulte un cache avant la brique valide d'abord par elle.
+func EstUUID(id string) bool { return rexUUID.MatchString(id) }
+
 // MatchHistoryDTO : la réponse brute de `GET /{jeu}/players/{joueur}/matches`.
 type MatchHistoryDTO struct {
 	Results []MatchHistoryResultDTO `json:"Results"`
