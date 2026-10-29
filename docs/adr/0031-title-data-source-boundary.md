@@ -134,6 +134,19 @@ not define the cross-runner seam). We **propose transitioning ADR 0027 to "Accep
 `livesync.Runner` is transitional. This ADR does not itself edit ADR 0027's status -- that
 acceptance is a human decision (the amendment is a long-term architecture commitment).
 
+## Amendment (2026-10-29): D3 realises D-1 for Halo Infinite
+
+[ADR 0042](0042-halo-api-protocol-vs-exploitation.md) carried out the intent of D-1 for Halo Infinite, with two
+differences of form. The per-title protocol client is `internal/haloapi/infinite` (with the exchange chain in
+`internal/haloapi/xblauth`), a brick inside `apps/go-api` that imports only the standard library, `errgroup`
+and its own parent package, rather than `internal/games/halo_infinite/client/`; and the shared HTTP core did
+not become `internal/platform/httpx`: the retry policy is a value (`infinite.Retry`) that the caller chooses,
+three policies being kept because the callers they came from read different answers (D-2's single core was
+not adopted). The adapter, the DTO -> domain conversions and the caches live in
+`internal/games/halo_infinite/haloadapter`; `internal/sync/haloclient` and `internal/platform/halo` no longer
+exist. D-3 to D-5 (`TitleSyncRunner`, `KnownSet`, the orchestration seam) are untouched. The paragraphs above
+describe the tree as it was on 2026-07-12.
+
 ## Sequencing note
 
 The pure move (D-1) and `httpx` extraction (D-2) should land **before Phase 1.6** (per-title

@@ -1141,12 +1141,44 @@ re-capture) : skill `3abcd07b...` et stats `697ff1f0...`, MD5 IDENTIQUES au tém
 
 ## Lot 6 — Preuve et clôture
 
-- [ ] 6.1 T3 LIVE rejoué (mêmes commandes qu'au lot 0) : JSON bruts et valeurs de domaine identiques
+- [x] 6.1 T3 LIVE rejoué (mêmes commandes qu'au lot 0) : JSON bruts et valeurs de domaine identiques
   (hors horodatages/jetons) ; T1 ; T4.
-- [ ] 6.2 Docs (D3-I) ; registre des reports ; addendum « D3 exécuté » dans l'audit (clôture des trois
+  Statut : fait (2026-10-29). Six MD5 identiques au lot 1, calendrier 403 comme avant ; T1 sans nom disparu ni pass -> skip (un échec sporadique hors périmètre, D3-L6-d) ; intégration code 0 ; T4 : dix noms identiques ; lint des quatre modules et `libs-test` verts. Voir « Exécution du lot 6 ».
+- [x] 6.2 Docs (D3-I) ; registre des reports ; addendum « D3 exécuté » dans l'audit (clôture des trois
   axes) ; thought_log ; mémoire.
+  Statut : fait (2026-10-29). ADR 0042 neuf, ADR 0023, 0031 et 0041 amendés, `CLAUDE.md`, `ARCHITECTURE_V6` EN et FR, registre (27 entrées), addendum de l'audit (« audit CLOS »), journal. La mémoire de l'assistant : au pilote.
 - [ ] 6.3 Caches `-Lot d3` ; PR, CI verte, fusion squash, branche et worktree supprimés, dépôt
   principal remis au niveau.
+
+## Exécution du lot 6 (2026-10-29)
+
+Branche `refactor/decouplage-d3-api-halo`, depuis `0d2d9adf4`. Commits : `5ed3aff79` (6.1 : corrections de la seconde ronde de revue, histoire sortie du code), puis le commit de docs (6.2 : ADR 0042, ADR 0023 et 0031, `CLAUDE.md`, `ARCHITECTURE_V6` EN et FR, registre des reports, addendum de l'audit, ce plan, journal). Caches `go-build-d3` / `golangci-d3`. Témoins :
+`%TEMP%\claude\c--Users-Guillaume-Downloads-Scripts-LevelUp\77a8b90a-21a6-40a0-ac64-eb152f616862\scratchpad\temoins_d3_lot6_apres\`
+(`commandes.md`, `md5s.txt`, `t1\`, `integration\`, `t4\`, `gate\`). Aucun jeton dans un fichier, un témoin, un journal ou ce plan.
+
+**Seconde ronde de revue (corrections seules, contexte frais) : 0 P0, 0 P1, 3 P2.**
+(a) `haloapi/doc.go` disait que le paquet « ne porte que » `Doer` et `ErrDefinitif` alors que `Garde` existe, et ni ce fichier ni `infinite/doc.go` ne disaient que `Verifie` est appelé AVANT le limiteur : les deux documents sont corrigés (règle 17). (b) `filmfetch.compterReprise` : le seuil `essais > 1` n'avait aucun test qui refuse `essais > 0` : `TestCompteurRepriseReussie_PremierEssaiNeComptePas` (un blob lisible obtenu du premier essai ne compte pas, pour le blob seul et pour un film de quatre fragments), mutation `> 0` vue ROUGE (« delta = 1 » et « delta = 4, attendu 0 »), rétablie ; les serveurs de test partagent une base (`serveurBlobs`). (c) `filmfetch/films.go` : si un fragment échoue alors que des frères ont réussi par reprise, la reprise de ces frères n'est plus comptée (avant : chaque goroutine comptait) ; effet dépendant de la course, sans portée métier : CONSIGNÉ (D3-L6-a), non corrigé. Remarques non recevables, consignées : `fonctionsTropLongues` ignore les types fonction et les méthodes d'interface (D3-L6-b) ; la coquille `// /` de `infinite/film_test.go` est corrigée (D3-L6-c).
+
+**Histoire sortie du code (règle 17), avec D3-L4-j et D3-L5-h.** Les en-têtes « Copié de `sync/haloclient/...` / `platform/halo/...` » des treize fichiers de service de `infinite`, les « la boucle de `platform/halo` ... » et « les trois boucles de LevelUp d'avant la brique » de `retry.go`, le « méthodes des deux clients d'avant la brique » de `haloadapter/doc.go`, « la copie du lot 3 est devenue l'unique exemplaire » (`aides_test.go`) sont réécrits en contrat ; les citations de `platform/halo` et `sync/haloclient` comme consommateurs vivants (`libs/film/finalise`, `internal/grammar/film_major_version.go`, `internal/source/film.go`, cinq fichiers d'`archlint`) pointent `sync/filmfetch` ou la brique. Laissés tels quels : les chroniques datées (`rev_chronique_archive_2.go`, `no_film_reread_test`, `sync_root_freeze_test`), `docs/CHANGELOG.md` et les corps historiques des ADR 0031 et 0034. L'histoire est dans l'ADR 0042 (section « History that left the code »). Les révisions de couche de `libs/film` ne bougent pas (`revision`, `internal/grammar` et `internal/source` verts sur ces commentaires).
+
+**6.1 Preuve finale.**
+- **(a) T3 LIVE** (`cmd/diag_api_lecture`, binaire du HEAD, mêmes arguments qu'au lot 1, une exécution par surface, 13:00:39 à 13:00:53, sept rotations de la chaîne de JGtm par `RefreshHaloTokensViaStoreFirst`, aucune re-capture) : historique `60a2591c...`, stats `697ff1f0...`, skill `3abcd07b...`, manifeste `4eaf85bc...`, actif `3195a607...`, servicerecord `4dfdef90...` : les six MD5 IDENTIQUES au témoin `temoins_d3_lot1_avant` (aucune nouvelle partie : la forme n'a donc pas besoin d'être comparée) ; calendrier : code 1, HTTP 403, identique au lot 1 (D3-L1-a). Journal identique (repli MSA natif puis `rotated=true`, D3-L1-f).
+- **(b) T1** `go test -json ./... -count=1 -timeout 1200s` (capture par `cmd /c ... >`, jamais `& go test` de PowerShell 5.1) : 336 paquets, 16 531 tests et sous-tests (16 462 pass, 68 skip, 1 fail). L'échec est `mapcatalog/TestAddOverlayEntryConcurrentDossierAbsentNePerdRien` (« Accès refusé » à la pose du verrou et au `rename` : verrou de fichier Windows sous charge) : paquet non touché par D3, vert en isolé trois fois, vert en paquet complet et cinq fois de suite (D3-L6-d). Contre `temoins_d3_lot0_avant/tests_T1.tsv` (16 422 paires) : 447 paires portées sous le même nom dans leur destination (`xblauth` 69, `infinite` 35, `haloadapter` 258, `filmfetch` 60, `tokencache` 16, `duration` 9), aucun nom disparu, aucun pass -> skip, aucun autre verdict changé ; 109 paires neuves (lots 1 à 6). Les noms à barre oblique inverse des lots 3 à 5 se comparent ici SANS échappement (`jq` avec interpolation, pas `@tsv`).
+- **(c) Intégration** : `go test -tags=integration -count=1 -timeout=1200s -p 1 -json ./...` sur TOUT le module (superset de `./internal/sync/... ./internal/platform/auth/...` demandé, décision 1) : code 0, stderr vide, 337 paquets (197 ok, 140 sans test), 18 454 tests et sous-tests (18 355 pass, 99 skip, 0 fail) ; les 19 paquets de `internal/sync/...` et `internal/platform/auth/...` sont `ok` (3 sans test) ; `mapcatalog` vert dans ce passage.
+- **(d) T4** : dix noms (cinq `levelup.auth.oauth_refresh_*` de `platform/auth/metrics.go`, `halo_api_blob_retry_success`, `halo_api_blob_retry_exhausted`, `film_fetch_chunk_incomplet`, `leaderboard_empty_page1`, `log_throttle_halo_api_download_blob`) : présents avant (`b92916328`) et après, identiques ; le diff du code de production ne retire ni n'ajoute aucun appel `IncCounter` / `AddInt` / `AllowThrottledLog` / `expvar.New*` qui ne soit son déplacement (`t4\avant.txt`, `apres.txt`).
+- **(e) Baseline** : `bash ../../scripts/check_test_baseline.sh tests --from-jsonl <JSONL d'intégration> --baseline ../../.ai/baselines/tests_pre_migration.jsonl` : code 0, les 8 114 tests de la baseline sont tous présents parmi les 18 454 du run, aucun échec de test ni de paquet. Sur le seul JSONL de T1 (sans balise), le script rend des absents : attendu, la baseline porte les tests `integration` (ceux de la CI) que le run nu ne contient pas (même constat qu'au lot 4).
+- **(f) Gate-push, commande par commande** (le `$(MAKE)` GnuWin32 du poste fait échouer `make gate-push` : registre D1) : `golangci-lint` des quatre modules (`apps/go-api`, `libs/film`, `libs/gamefiles`, `libs/himap`, `--new-from-merge-base=origin/release/v8.1.0`) 0 issue ; `git diff --stat b92916328...HEAD -- apps/web` VIDE : typecheck et lint web non rejoués (rien n'a changé côté web) ; `make libs-test` joué commande par commande sur les trois modules (`go vet` nu puis `-tags=research`, `gamefiles`, `gamefiles,research`, `go test ./... -count=1`, `go list -deps -test` sans `levelup/go-api`) : code 0, `libs/film` 27 paquets ok sur 33 ; `go test ./internal/archlint/ -count=1` vert sur l'arbre final (docs comprises) ; `go build ./...`, `go vet ./...`, `gofmt -l internal cmd` vide.
+- **(g)** `golangci-lint run --new-from-merge-base=origin/release/v8.1.0 ./...` : 0 issue (`gate\lint_goapi.txt`).
+
+**6.2 Docs.** ADR NEUF `docs/adr/0042-halo-api-protocol-vs-exploitation.md` (EN : vocabulaire, contexte, D-1 à D-9, conséquences, garde-rails, histoire sortie du code) ; ADR 0023 (paragraphe daté du 2026-10-29, en français comme l'ADR) ; ADR 0031 (amendement daté : D3 réalise D-1 pour Halo Infinite, avec deux écarts de forme : le client est `haloapi/infinite`, pas `games/halo_infinite/client`, et `platform/httpx` n'a pas été créé) ; ADR 0041 (la phrase du vocabulaire qui rangeait D3 parmi les briques-modules) ; `CLAUDE.md` (ligne « API Halo » du tableau, phrase de la section « Règle auth tokens », entrée `0042` de la liste des ADR) ; `docs/ARCHITECTURE_V6.md` et `docs/FR/ARCHITECTURE_V6.md` dans le même commit (section « Halo API brick » / « Brique API Halo ») ; `SYNC_GUIDE`, `COMMANDS`, `FOUNDATIONS_GUIDE` ne citent aucun chemin disparu. `grep -rnE 'platform/halo\b|sync/haloclient' docs CLAUDE.md apps/go-api libs` : restent des citations d'HISTOIRE seulement (ADR 0031 corps du 2026-07-12 et son amendement, ADR 0034, `docs/CHANGELOG.md`, chroniques et en-têtes de ratchets datés, deux chroniques de `libs/film`). Registre des reports : section « découplage D3 » (27 entrées, une par découverte qui appelle une action, plus le statut des sept `[~]`). Addendum « D3 exécuté le 2026-10-29 » de l'audit, avec la ligne de clôture « les trois axes D1, D2, D3 et le garde-fou G sont exécutés : audit CLOS ». Journal : entrée « Découplage D3 — lot 6 ».
+
+**Statut des cases.** 0 à 5 : toutes `[x]`. Items statués `[~]` (couverts ailleurs, aucun `[!]`) : 3.3 `FetchMvarForMap` (aucun HTTP dans `haloclient`, il appelle `mapcatalog`, D3-M) ; 4.1 `ServedFromCarry` (dans `haloadapter`, D3-L0-m) ; 4.2 parité DTO <-> domaine par réflexion (aucun DTO ne recopie un type `domain`, D3-L3-a ; conversions prouvées valeur à valeur) ; 4.4 `sync_root_freeze_test`, `no_film_reread_test`, `no_hardcoded_film_cache_dirs_test`, `sync/assetnames_wiring_test` (aucune clé de chemin vers les paquets supprimés) ; `TestParseRetryAfter` du client de synchronisation (fusionné dans le test homonyme de la brique, treize sous-tests) ; D3-L5-d et D3-L5-e (couverts par B6 et B11). Aucune autre case `[ ]` que 6.3 (PR, CI, fusion, caches : au pilote).
+
+**Décisions prises seul pendant le lot (consignées pour le pilote).**
+1. L'intégration est jouée sur TOUT le module (`go test -tags=integration -p 1 ./...`, superset de `./internal/sync/... ./internal/platform/auth/...`) parce que la baseline porte les tests d'intégration de tous les paquets ; la sous-commande demandée y est incluse.
+2. Les commentaires d'histoire des ratchets d'`archlint` ne sont réécrits que là où ils nomment un chemin disparu comme s'il vivait ; les chroniques datées restent.
+3. Le mécanisme de tolérance de `briques_internes_test.go` (table vide) est CONSERVÉ, contrairement à la décision 15 du lot 4 (« il part à la clôture de D3 ») : `briques_imports_test.go` garde le même mécanisme, et la sortie du mécanisme est un changement de test hors du brief du lot 6 (registre).
+4. Le test de la mutation `> 0` utilise un serveur « direct » (`serveurDirect`) à côté de `serveurReprise` ; les deux passent par `serveurBlobs` (une seule implémentation).
 
 ## Témoins avant/après
 
@@ -1457,3 +1489,22 @@ Lot 5 (2026-10-29). Notées, NON traitées ; le lot 6 décide (sinon : registre 
   `catalog_fetcher`) ; la brique est à 3 depuis A3. Hors règle « haloapi », dette de l'adaptateur.
 - **D3-L5-k (garde consultée deux fois par requête).** `netguardDoer.Verifie` au début de l'appel puis dans `Do` à chaque
   essai : la ligne de journal de `netguard` reste unique par surface et par processus ; aucun autre effet.
+
+Lot 6 (2026-10-29). Notées, NON traitées ; le registre des reports porte leur condition de reprise.
+
+- **D3-L6-a (effet de course sur le compteur de reprise de film).** Si un fragment échoue alors que des frères ont réussi par
+  reprise, la reprise de ces frères n'est plus comptée (le téléchargement parallèle de la brique rend sa première erreur avant la
+  décompression ; avant D3 chaque goroutine comptait elle-même). Dépend de la course, sans portée métier (compteur d'observation).
+- **D3-L6-b (`fonctionsTropLongues`).** Le ratchet ne mesure que les déclarations et littéraux de fonction : les types fonction et les
+  méthodes d'interface lui échappent. Remarque non recevable de la seconde ronde (ils n'ont pas de corps).
+- **D3-L6-c (coquille).** Le commentaire `// /` de `infinite/film_test.go` (ligne 58) est corrigé dans le commit 6.1.
+- **D3-L6-d (échec sporadique de `mapcatalog`).** Au T1, `TestAddOverlayEntryConcurrentDossierAbsentNePerdRien` rend « Accès refusé »
+  à la pose du verrou `.lock` et au `rename` du fichier temporaire (Windows, run complet sous charge) ; vert en isolé (trois fois),
+  en paquet complet, cinq fois de suite et dans le run d'intégration. `mapcatalog` n'est pas touché par D3 (`git diff
+  b92916328 HEAD -- internal/mapcatalog` vide).
+- **D3-L6-e (mécanisme de tolérance conservé).** La décision 15 du lot 4 annonçait que le mécanisme de tolérance de
+  `briques_internes_test.go` (table vide) « part à la clôture de D3 ». Il est conservé : `briques_imports_test.go` garde le même
+  mécanisme et le retirer est un changement de test hors du brief du lot 6 (registre).
+- **D3-L6-f (`make gate-push` toujours inutilisable sur le poste).** Le `$(MAKE)` GnuWin32 fait échouer la cible (registre D1) : le
+  gate est joué commande par commande ; la capture du JSONL se fait par `cmd /c ... >` (registre D2, D2-L5-a), jamais par
+  `& go test -json` de PowerShell 5.1.

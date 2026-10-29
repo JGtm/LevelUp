@@ -228,6 +228,17 @@ d'exception.
 tant que credential, mais pour l'exclure de l'extraction vers la démo publique.
 Une valeur résiduelle sans lecteur reste une valeur à ne pas publier.
 
+## Découpe du protocole et de l'exploitation (2026-10-29)
+
+La chaîne d'échange (jeton d'accès Microsoft -> User Token XBL -> XSTS -> Spartan et Clearance, XSTS RTA,
+rafraîchissement et code d'autorisation OAuth v2, device code, résolution gamertag -> xuid) vit désormais dans
+`internal/haloapi/xblauth` ; le magasin (`MultiUserTokenStore`), la mise en commun (ADR 0038), la politique de
+rafraîchissement et les boucles restent dans `platform/auth`, qui garde tous ses noms exportés et délègue à la
+brique par de fines façades. Rien dans la brique ne lit l'environnement, un fichier ni `sync_meta` : le client
+Azure et le descripteur de titre lui sont passés, et la lecture des identifiants Azure (`azure_credentials.go`)
+reste dans `platform/auth`. Les garde-rails de cet ADR (guards 2 et 3 du sentinel à allowlists VIDES,
+`sync/no_legacy_source_used_test.go`) sont inchangés et verts ; la brique est jugée par ADR 0042.
+
 ## Alternatives considérées
 
 ### Alt 1 : Garder DuckDB comme source unique
