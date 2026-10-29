@@ -26,7 +26,7 @@ package killsource
 //
 // Le PERIMETRE de la couche : la fermeture des imports de production de ce paquet (lot J3.2),
 // figee par `testdata/killsource_perimetre.golden` — ses sources, les paquets qu il importe hors
-// couche (`film/types`, `film/damagetag` et ses tables embarquees, `domain/highlightevent`) — et
+// couche (`film/types`, `film/damagetag` et ses tables embarquees, `film/highlightevent`) — et
 // les VALEURS des couches qu il importe : `source.Rev`, `profile.Rev`, `grammar.Rev`. Ce fichier et
 // la chronique sont EXCLUS : ils DECRIVENT la couche, ils n en font pas partie.
 //

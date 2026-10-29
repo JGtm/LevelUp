@@ -17,7 +17,7 @@ import (
 	"encoding/binary"
 	"testing"
 
-	"levelup/go-api/internal/domain/highlightevent"
+	"levelup/go-api/internal/games/halo_infinite/film/highlightevent"
 )
 
 // Les trois versions de reference de ces tests. Elles NOMMENT les deux decoupages plutot que de

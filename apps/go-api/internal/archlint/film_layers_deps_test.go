@@ -313,6 +313,10 @@ var couchesDuDecodeur = map[string]coucheFilm{
 	// 2026-10-29 (D2 2.3). Ils declarent des formes, ne decodent rien : hors couche.
 	"internal/games/halo_infinite/film/playerposition": horsCoucheFilm,
 	"internal/games/halo_infinite/film/objectiveevent": horsCoucheFilm,
+	// `highlightevent` : L EVENEMENT DE TEMPS FORT tel que la grammaire le lit (chunk des temps forts),
+	// forme propre a la brique depuis le 2026-10-29 (D2 2.7) ; LevelUp garde la sienne
+	// (`domain/highlightevent`) et convertit dans l adaptateur de titre. Feuille qui declare une forme : hors couche.
+	"internal/games/halo_infinite/film/highlightevent": horsCoucheFilm,
 	// `revision` : L OUTILLAGE D EMPREINTE partage par les revisions de couche (lot 2.6.0,
 	// 2026-09-17). Il ne lit AUCUN octet de film — il hache des octets de SOURCE — donc il n est
 	// ni une etape de decodage ni une publication : meme rangement que les trois catalogues de

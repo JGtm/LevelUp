@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/domain/highlightevent"
+	"levelup/go-api/internal/games/halo_infinite/film/highlightevent"
 )
 
 // Golden de NON-REGRESSION du temps fort (item 2.5.h du PLAN_DECODEUR_FILM_2026-09-13).

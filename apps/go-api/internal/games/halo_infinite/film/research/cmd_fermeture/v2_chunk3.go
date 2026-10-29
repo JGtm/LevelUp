@@ -17,9 +17,9 @@ package main
 import (
 	"errors"
 
-	"levelup/go-api/internal/domain/highlightevent"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/games/halo_infinite/film/finalise"
+	"levelup/go-api/internal/games/halo_infinite/film/highlightevent"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )

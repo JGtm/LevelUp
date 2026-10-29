@@ -7,7 +7,7 @@ import (
 	"slices"
 	"strings"
 
-	"levelup/go-api/internal/domain/highlightevent"
+	"levelup/go-api/internal/games/halo_infinite/film/highlightevent"
 
 	"levelup/go-api/internal/games/halo_infinite/film/finalise"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"

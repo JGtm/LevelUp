@@ -38,7 +38,7 @@ import (
 	"fmt"
 	"unicode/utf16"
 
-	"levelup/go-api/internal/domain/highlightevent"
+	"levelup/go-api/internal/games/halo_infinite/film/highlightevent"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 

@@ -40,6 +40,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain/highlightevent"
+	haloinfinite "levelup/go-api/internal/games/halo_infinite"
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 )
 
@@ -225,7 +226,7 @@ func (p passeMedailles) traiterMatch(
 // `TestEventsDuFilmSuitLaVersionDeclaree` lit le gamertag d un bloc de version 40 et rougit des
 // que la version cesse d etre transmise.
 func eventsDuFilm(film FilmHighlight) ([]highlightevent.HighlightEvent, error) {
-	return decfilm.ParseHighlightEvents(film.Chunk, film.MajorVersion)
+	return haloinfinite.ParseHighlightEvents(film.Chunk, film.MajorVersion)
 }
 
 // correction est ce qu on ecrit sur une ligne : le type_hint TOUJOURS (quantite
