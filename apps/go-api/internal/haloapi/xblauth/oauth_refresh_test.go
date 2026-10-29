@@ -71,6 +71,14 @@ func TestRefreshWithRotation_IssueTypee(t *testing.T) {
 			if out.Famille != c.famille || out.RetentePublique != c.publique || out.RetenteNatif != c.nat {
 				t.Errorf("issue = %+v, attendu famille=%q publique=%v natif=%v", out, c.famille, c.publique, c.nat)
 			}
+			// Jetons rendus : ceux de la réponse qui a abouti (reponseOK), aucun sur un échec.
+			veutAT, veutRT := "at", "rt-2"
+			if c.erreur {
+				veutAT, veutRT = "", ""
+			}
+			if out.AccessToken != veutAT || out.RotatedRefreshToken != veutRT {
+				t.Errorf("jetons rendus = (%q, %q), attendu (%q, %q)", out.AccessToken, out.RotatedRefreshToken, veutAT, veutRT)
+			}
 			if nNatif.Load() > c.appelsNatifMax {
 				t.Errorf("%d appel(s) au client natif, au plus %d attendu(s)", nNatif.Load(), c.appelsNatifMax)
 			}

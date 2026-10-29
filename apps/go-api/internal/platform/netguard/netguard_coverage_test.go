@@ -52,24 +52,13 @@ var outboundCallMarkers = []string{
 // de la démo peut déclencher — et on laisse hors garde la POIGNÉE DE MAIN
 // d'authentification interactive et les canaux désactivés en démo.
 var allowlist = map[string]string{
-	// Poignée de main d'auth INTERACTIVE (login SSO, capture de token en CLI).
-	// Jamais atteinte en démo : LEVELUP_AUTH_MODE=none, aucun flux de login monté
-	// (cf. docker-compose service levelup-demo). La porte d'entrée réellement
-	// atteignable depuis un boot démo — le rafraîchissement OAuth — EST gardée
-	// (platform/auth/xbl_oauth.go, par le Doer gardé de xbl_doer.go) : sans token frais, ces
-	// échanges ne partent pas.
+	// Les fichiers de la brique `haloapi/` n'y figurent pas : ils sont exemptés par préfixe (voir
+	// l'en-tête). La poignée de main d'auth INTERACTIVE (code d'autorisation, échanges XBL/XSTS/
+	// Spartan, résolveurs de profil), à qui la façade passe un client nu, n'est jamais atteinte en
+	// démo : LEVELUP_AUTH_MODE=none, aucun flux de login monté, et le rafraîchissement OAuth — seule
+	// porte d'entrée atteignable depuis un boot démo — EST gardé (`platform/auth/xbl_oauth.go`, par
+	// le Doer gardé de `xbl_doer.go`) : sans jeton frais, ces échanges ne partent pas.
 	//
-	// Clés RENOMMÉES le 2026-10-29 (plan D3, lot 2), une pour une, quand ces fichiers ont quitté
-	// platform/auth pour la brique haloapi/xblauth : la façade platform/auth leur passe un client NU
-	// (xbl_oauth.go, xbl_exchange.go, xbl_xsts_rta.go, xbl_resolvers.go), comme avant. Ces fichiers
-	// sont aussi couverts par l'exemption de préfixe ; l'entrée garde la trace de l'exception.
-	"haloapi/xblauth/auth_code.go": "login interactif — non monté en démo (ex platform/auth/auth_code.go)",
-	// exchange_xsts.go porte le helper `postJSON` par lequel passent toutes les jambes XBL
-	// (User Token, XSTS, Spartan, XSTS RTA) et la Clearance.
-	"haloapi/xblauth/exchange_xsts.go":         "échange Spartan (+ helper postJSON) — dépend d'un token frais, coupé en amont (ex platform/auth/halo_exchange.go)",
-	"haloapi/xblauth/peoplehub_resolver.go":    "résolution gamertag — dépend d'un token frais, coupé en amont (ex platform/auth/peoplehub_resolver.go)",
-	"haloapi/xblauth/xbox_profile_resolver.go": "résolution profil — dépend d'un token frais, coupé en amont (ex platform/auth/xbox_profile_resolver.go)",
-
 	// Canaux sortants NON liés aux données de jeu, désactivés par la config démo
 	// (app_settings émis par le seed : discord_notifications_enabled=false,
 	// watcher_presence_enabled=false).
@@ -143,6 +132,10 @@ func TestOutboundCallsAreNetguarded(t *testing.T) {
 func TestAllowlistHasNoStaleEntry(t *testing.T) {
 	root := filepath.Join("..", "..", "..", "internal")
 	for key := range allowlist {
+		if strings.HasPrefix(key, prefixeBriqueHaloapi) {
+			t.Errorf("allowlist: %s est déjà exempté par le préfixe de la brique — retirer l'entrée", key)
+			continue
+		}
 		path := filepath.Join(root, filepath.FromSlash(key))
 		content, err := os.ReadFile(path) //nolint:gosec // chemin dérivé de l'allowlist du test
 		if err != nil {

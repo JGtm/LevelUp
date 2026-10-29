@@ -18,9 +18,11 @@
 //
 // # CE QUI EST INTERDIT
 //
-//   - en production : `http.Client{...}` / `&http.Client{...}` / `new(http.Client)`, la variable
-//     `http.DefaultClient`, et les fonctions de paquet qui l'utilisent (`http.Get`, `http.Post`,
-//     `http.Head`, `http.PostForm`). Recevoir un `*http.Client` en paramètre reste permis ;
+//   - en production : toute mention de `http.Client` (type d'un paramètre ou d'un champ, zéro-valeur,
+//     `http.Client{...}`, `&http.Client{...}`, `new(http.Client)`), de `http.Transport` et de
+//     `http.DefaultTransport`, la variable `http.DefaultClient`, les fonctions de paquet qui
+//     l'utilisent (`http.Get`, `http.Post`, `http.Head`, `http.PostForm`) et tout appel
+//     `.RoundTrip(` (émettre sous le `Doer`). La brique ne connaît que `haloapi.Doer` ;
 //   - en test : seulement `http.DefaultClient` et ces quatre fonctions. Un `http.Client{}` monté
 //     autour d'un `httptest.Server` est légitime côté test.
 //
@@ -43,6 +45,10 @@ const racineHaloapiSurDisque = "internal/haloapi"
 
 // fonctionsHTTPDeClientParDefaut : les fonctions de `net/http` qui passent par `DefaultClient`.
 var fonctionsHTTPDeClientParDefaut = map[string]bool{"Get": true, "Post": true, "Head": true, "PostForm": true}
+
+// typesHTTPInterditsEnProduction : les noms de `net/http` qu'un fichier de production de la brique ne
+// mentionne jamais (client, transport) : elle n'émet que par le `haloapi.Doer` reçu.
+var typesHTTPInterditsEnProduction = []string{"Client", "Transport", "DefaultTransport"}
 
 // nomLocalNetHTTP rend le nom sous lequel le fichier importe `net/http` ("" s'il ne l'importe pas).
 func nomLocalNetHTTP(f *ast.File) string {
@@ -82,22 +88,22 @@ func violationsClientHTTP(src goSource) []string {
 	}
 	ast.Inspect(src.File, func(n ast.Node) bool {
 		switch x := n.(type) {
-		case *ast.CompositeLit:
-			if !test && estSelecteur(x.Type, pkg, "Client") {
-				signaler(x.Pos(), "construit un http.Client")
-			}
 		case *ast.CallExpr:
-			if id, ok := x.Fun.(*ast.Ident); ok && id.Name == "new" && len(x.Args) == 1 && !test &&
-				estSelecteur(x.Args[0], pkg, "Client") {
-				signaler(x.Pos(), "construit un http.Client (new)")
-			}
 			if sel, ok := x.Fun.(*ast.SelectorExpr); ok && fonctionsHTTPDeClientParDefaut[sel.Sel.Name] &&
 				estSelecteur(x.Fun, pkg, sel.Sel.Name) {
 				signaler(x.Pos(), "appelle http."+sel.Sel.Name+" (client par défaut)")
 			}
+			if sel, ok := x.Fun.(*ast.SelectorExpr); ok && !test && sel.Sel.Name == "RoundTrip" {
+				signaler(x.Pos(), "appelle .RoundTrip( (émission hors du Doer)")
+			}
 		case *ast.SelectorExpr:
 			if estSelecteur(x, pkg, "DefaultClient") {
 				signaler(x.Pos(), "atteint http.DefaultClient")
+			}
+			for _, nom := range typesHTTPInterditsEnProduction {
+				if !test && estSelecteur(x, pkg, nom) {
+					signaler(x.Pos(), "nomme http."+nom)
+				}
 			}
 		}
 		return true
@@ -154,6 +160,12 @@ func TestHaloapiNePossedeAucunClientHTTP_AutoPreuve(t *testing.T) {
 		"new(http.Client)": `package infinite; import "net/http"; var c = new(http.Client)`,
 		"DefaultClient":    `package infinite; import "net/http"; func f() { _ = http.DefaultClient }`,
 		"import aliasé":    `package infinite; import h "net/http"; func f() { _, _ = h.Get("u") }`,
+		"type paramètre":   `package infinite; import "net/http"; func f(c *http.Client) { _ = c }`,
+		"type champ":       `package infinite; import "net/http"; type T struct{ c *http.Client }`,
+		"zéro-valeur":      `package infinite; import "net/http"; func f() { var c http.Client; _ = c }`,
+		"http.Transport{":  `package infinite; import "net/http"; var t = &http.Transport{}`,
+		"DefaultTransport": `package infinite; import "net/http"; func f(r *http.Request) { _ = http.DefaultTransport; _ = r }`,
+		".RoundTrip(":      `package infinite; import "net/http"; type rt interface{ RoundTrip(*http.Request) (*http.Response, error) }; func f(t rt, r *http.Request) { _, _ = t.RoundTrip(r) }`,
 	}
 	for nom, source := range interdits {
 		if got := violationsClientHTTP(parseGoSnippet(t, rel, source)); len(got) != 1 {
@@ -162,7 +174,7 @@ func TestHaloapiNePossedeAucunClientHTTP_AutoPreuve(t *testing.T) {
 	}
 	permis := map[string]string{
 		"commentaire":        "package infinite\nimport \"net/http\"\n// ne jamais appeler http.Get( ni http.DefaultClient, ni &http.Client{}.\nfunc f() {}",
-		"client reçu":        `package infinite; import "net/http"; func f(c *http.Client, r *http.Request) { _, _ = c.Do(r) }`,
+		"Doer reçu":          `package infinite; import "net/http"; type Doer interface{ Do(*http.Request) (*http.Response, error) }; func f(d Doer, r *http.Request) { _, _ = d.Do(r) }`,
 		"pas d'import http":  `package infinite; type http struct{}; func (http) Get() {}; func f() { var h http; h.Get() }`,
 		"requête construite": `package infinite; import "net/http"; func f() { _, _ = http.NewRequest("GET", "u", nil) }`,
 	}

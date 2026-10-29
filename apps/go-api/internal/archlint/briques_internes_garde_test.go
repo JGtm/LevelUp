@@ -38,8 +38,9 @@ func briqueHaloapiACloture(t *testing.T) briqueInterne {
 
 // TestBriquesInternes_AutoPreuve_Franchissements : à la clôture (sans tolérance), un import de
 // `domain` depuis un fichier présenté comme `internal/haloapi/x.go` est un franchissement ; la
-// bibliothèque standard, `haloapi/...` et les deux tiers permis ne le sont pas ; un tiers hors
-// liste l'est ; l'exploitation des jetons (`platform/auth`) et la journalisation de LevelUp aussi.
+// bibliothèque standard et `haloapi/...` ne le sont pas ; les deux tiers permis ne le sont que sous
+// `infinite` (le paquet parent et `xblauth` n'y ont pas droit) ; un tiers hors liste l'est ;
+// l'exploitation des jetons (`platform/auth`) et la journalisation de LevelUp aussi.
 func TestBriquesInternes_AutoPreuve_Franchissements(t *testing.T) {
 	b := briqueHaloapiACloture(t)
 	fichiers := []fichierImports{
@@ -49,13 +50,14 @@ import (
 	"net/http"
 
 	"golang.org/x/sync/errgroup"
-	"golang.org/x/time/rate"
 	"levelup/go-api/internal/haloapi/xblauth"
 	"levelup/go-api/internal/domain"
 )
 `),
 		fichierImportsDeSnippet(t, "apps/go-api/internal/haloapi/infinite/y.go", `package infinite
 import (
+	"golang.org/x/sync/errgroup"
+	"golang.org/x/time/rate"
 	"levelup/go-api/internal/haloapi"
 	"golang.org/x/sync/singleflight"
 	"github.com/JGtm/LevelUp/libs/film/decfilm"
@@ -63,6 +65,7 @@ import (
 `),
 		fichierImportsDeSnippet(t, "apps/go-api/internal/haloapi/xblauth/z.go", `package xblauth
 import (
+	"golang.org/x/time/rate"
 	"levelup/go-api/internal/haloapi/xblauth"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/observability/logging"
@@ -72,7 +75,9 @@ import (
 	got := comptesDeFranchissements(b, fichiers)
 	attendu := map[string]int{
 		"domain":                         1,
+		"golang.org/x/sync/errgroup":     1, // depuis le paquet parent
 		"golang.org/x/sync/singleflight": 1,
+		"golang.org/x/time/rate":         1, // depuis xblauth
 		"libs/film/decfilm":              1,
 		"observability/logging":          1,
 		"platform/auth":                  1, // la brique n'a pas droit au paquet d'exploitation des jetons
@@ -87,8 +92,8 @@ import (
 	}
 	// Sans tolérance, le verdict est rouge et nomme l'import.
 	ecarts := confronterTolerances(got, nil)
-	if len(ecarts) != 5 || !strings.Contains(strings.Join(ecarts, "\n"), "domain : 1 fichier(s), import absent") {
-		t.Fatalf("écarts = %v, attendu 5 imports absents de la table dont domain", ecarts)
+	if len(ecarts) != len(attendu) || !strings.Contains(strings.Join(ecarts, "\n"), "domain : 1 fichier(s), import absent") {
+		t.Fatalf("écarts = %v, attendu %d imports absents de la table dont domain", ecarts, len(attendu))
 	}
 }
 

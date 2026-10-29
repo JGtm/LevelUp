@@ -75,8 +75,10 @@ type briqueInterne struct {
 	dossiers []string
 	// permis : chemins d'import (paquet exact ou préfixe `x/`) que la brique peut importer.
 	permis []string
-	// tiers : paquets tiers (chemin exact) permis hors bibliothèque standard.
-	tiers []string
+	// tiers : paquets tiers (chemin exact) permis hors bibliothèque standard, PAR SOUS-ARBRE : clé =
+	// dossier (relatif à la racine du dépôt) sous lequel ces tiers sont permis. Un fichier hors de
+	// toute clé n'a droit à aucun tiers.
+	tiers map[string][]string
 	// tolerances : import visé (voir [cleDImport]) -> tolérance.
 	tolerances map[string]toleranceImport
 }
@@ -84,10 +86,14 @@ type briqueInterne struct {
 // cheminsHaloapiPermis : la brique cible et tout ce qui est dessous.
 var cheminsHaloapiPermis = []string{prefixeInterneAPI + "haloapi"}
 
-// tiersHaloapi : les seuls tiers de la brique (D3-P, mesurés au lot 0, découverte D3-L0-o).
-var tiersHaloapi = []string{"golang.org/x/sync/errgroup", "golang.org/x/time/rate"}
-
 const dossierHaloapi = "apps/go-api/internal/haloapi"
+
+// tiersHaloapi : les seuls tiers de la brique, par sous-paquet. `infinite` télécharge les fragments
+// de film en parallèle (`errgroup`) et reçoit un limiteur (`rate`) ; `xblauth` et le paquet parent
+// n'ont droit qu'à la bibliothèque standard (contrat de `xblauth/doc.go`).
+var tiersHaloapi = map[string][]string{
+	dossierHaloapi + "/infinite": {"golang.org/x/sync/errgroup", "golang.org/x/time/rate"},
+}
 
 // briquesInternes : la table (règle 6 de CLAUDE.md : UNE table, pas un fichier par brique).
 var briquesInternes = []briqueInterne{
@@ -140,9 +146,14 @@ func (b briqueInterne) importPermis(rel, imp string) bool {
 	if estBibliothequeStandard(imp) {
 		return true
 	}
-	for _, t := range b.tiers {
-		if imp == t {
-			return true
+	for dossier, tiers := range b.tiers {
+		if !strings.HasPrefix(rel, dossier+"/") {
+			continue
+		}
+		for _, t := range tiers {
+			if imp == t {
+				return true
+			}
 		}
 	}
 	if !strings.HasPrefix(imp, prefixeModuleAPI) {
