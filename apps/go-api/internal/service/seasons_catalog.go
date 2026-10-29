@@ -330,7 +330,7 @@ func (c *SeasonsCatalog) fetchLive(ctx context.Context, titleID string) ([]domai
 // Une FIN DE CONTEXTE (annulation ou échéance de la requête appelante) n'est pas un
 // verdict de Waypoint non plus : jamais mémorisée, la requête suivante réessaie (lot
 // perf L9-go, revue adversariale B ; miroir de privacyFailure,
-// platform/halo/privacy_provider.go). Avant, un client parti pendant l'appel ouvrait
+// games/halo_infinite/haloadapter/privacy_provider.go). Avant, un client parti pendant l'appel ouvrait
 // 30 min de repli TOML pour tout le titre.
 func (c *SeasonsCatalog) recordFetchFailure(ctx context.Context, titleID string, err error) time.Duration {
 	if ctxkeys.HaloTokens(ctx) == nil {

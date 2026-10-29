@@ -24,11 +24,11 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/halo_infinite/haloadapter"
 	"levelup/go-api/internal/metadata"
 	"levelup/go-api/internal/notify"
 	authpkg "levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb"
-	"levelup/go-api/internal/platform/halo"
 )
 
 func main() {
@@ -96,14 +96,14 @@ func runSeasons(cfg *config.AppConfig, args []string, _ bool) error {
 		return fmt.Errorf("EnsureSeasonTables: %w", err)
 	}
 
-	provider := halo.DefaultHaloProvider
+	provider := haloadapter.DefaultHaloProvider
 	seasons, raw, err := provider.FetchSeasonCalendar(ctx, *titleID)
 	if err != nil {
 		return fmt.Errorf("FetchSeasonCalendar: %w", err)
 	}
 
 	// Vérification ETag / content_hash pour éviter les upserts inutiles.
-	newHash := halo.ContentHash(raw)
+	newHash := haloadapter.ContentHash(raw)
 	if !*force {
 		snap, _ := repo.GetSnapshot(ctx, *titleID, "season_calendar")
 		if snap != nil && snap.ContentHash == newHash {
@@ -147,13 +147,13 @@ func runCSRSeasons(cfg *config.AppConfig, args []string, _ bool) error {
 		return fmt.Errorf("EnsureSeasonTables: %w", err)
 	}
 
-	provider := halo.DefaultHaloProvider
+	provider := haloadapter.DefaultHaloProvider
 	seasons, raw, err := provider.FetchCSRSeasonCalendar(ctx, *titleID)
 	if err != nil {
 		return fmt.Errorf("FetchCSRSeasonCalendar: %w", err)
 	}
 
-	newHash := halo.ContentHash(raw)
+	newHash := haloadapter.ContentHash(raw)
 	if !*force {
 		snap, _ := repo.GetSnapshot(ctx, *titleID, "csr_season_calendar")
 		if snap != nil && snap.ContentHash == newHash {
@@ -223,13 +223,13 @@ func runMedals(cfg *config.AppConfig, args []string) error {
 		return fmt.Errorf("EnsureStagingTables: %w", err)
 	}
 
-	provider := halo.DefaultHaloProvider
+	provider := haloadapter.DefaultHaloProvider
 	entries, raw, err := provider.FetchMedalsMetadata(ctx, *titleID)
 	if err != nil {
 		return fmt.Errorf("FetchMedalsMetadata: %w", err)
 	}
 
-	newHash := halo.ContentHash(raw)
+	newHash := haloadapter.ContentHash(raw)
 
 	// Garde-fous (D1.3).
 	if !*force {

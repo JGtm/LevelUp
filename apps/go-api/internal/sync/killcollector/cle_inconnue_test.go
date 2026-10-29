@@ -22,7 +22,7 @@ import (
 
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/observability"
-	"levelup/go-api/internal/sync/haloclient"
+	"levelup/go-api/internal/sync/filmfetch"
 	"levelup/go-api/internal/testutil"
 
 	"github.com/JGtm/LevelUp/libs/film/decfilm"
@@ -115,7 +115,7 @@ func TestKillCollectorNEcartePasUnFilmACleConnue(t *testing.T) {
 //
 // LA MUTATION PORTE SUR LE CHUNK_00 INFLATE, et `source.Load` laisse passer un chunk deja
 // decompresse : recompresser pour le faire re-decompresser ne prouverait rien de plus.
-func bobineEnChunks(t *testing.T, court string, muter bool) []haloclient.FilmChunk {
+func bobineEnChunks(t *testing.T, court string, muter bool) []filmfetch.FilmChunk {
 	t.Helper()
 	racine, err := testutil.RepoRoot()
 	if err != nil {
@@ -128,7 +128,7 @@ func bobineEnChunks(t *testing.T, court string, muter bool) []haloclient.FilmChu
 		t.Fatalf("mini-bobine %s : aucun chunk lu (%v)", dir, err)
 	}
 	sort.Strings(noms)
-	out := make([]haloclient.FilmChunk, 0, len(noms))
+	out := make([]filmfetch.FilmChunk, 0, len(noms))
 	for idx, nom := range noms {
 		brut, err := os.ReadFile(nom)
 		if err != nil {
@@ -138,7 +138,7 @@ func bobineEnChunks(t *testing.T, court string, muter bool) []haloclient.FilmChu
 		if idx == 0 && muter {
 			data = muterLeBuild(t, data)
 		}
-		out = append(out, haloclient.FilmChunk{Index: idx, Data: data,
+		out = append(out, filmfetch.FilmChunk{Index: idx, Data: data,
 			ChunkType: typeDeChunkDeBobine(idx, len(noms))})
 	}
 	return out
@@ -173,9 +173,9 @@ func typeDeChunkDeBobine(idx, total int) int {
 // ceux de `collector_test.go` vivent derriere le tag `integration`, et ce test doit tourner
 // dans les DEUX regimes : la politique de cle inconnue est une garde de production, pas une
 // preuve d integration.
-type clientDeBobine struct{ chunks []haloclient.FilmChunk }
+type clientDeBobine struct{ chunks []filmfetch.FilmChunk }
 
-func (c *clientDeBobine) GetFilmChunks(_ context.Context, _ string) ([]haloclient.FilmChunk, bool, error) {
+func (c *clientDeBobine) GetFilmChunks(_ context.Context, _ string) ([]filmfetch.FilmChunk, bool, error) {
 	return c.chunks, true, nil
 }
 

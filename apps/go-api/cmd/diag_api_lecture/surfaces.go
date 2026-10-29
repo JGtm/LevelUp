@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/platform/halo"
+	"levelup/go-api/internal/games/halo_infinite/haloadapter"
 )
 
 // pageHistorique : taille de la page lue (le maximum de l'API).
@@ -157,7 +157,7 @@ type actifLu struct {
 }
 
 func lireActif(s *session, args []string) error {
-	a, err := s.provider.FetchAsset(s.ctx, halo.AssetType(args[0]), title.DefaultSlug, args[1], args[2], langueActif)
+	a, err := s.provider.FetchAsset(s.ctx, haloadapter.AssetType(args[0]), title.DefaultSlug, args[1], args[2], langueActif)
 	if err != nil {
 		return err
 	}

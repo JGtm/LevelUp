@@ -53,7 +53,7 @@ import (
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/port"
-	"levelup/go-api/internal/sync/haloclient"
+	"levelup/go-api/internal/sync/filmfetch"
 
 	"github.com/JGtm/LevelUp/libs/film/filmcache"
 )
@@ -128,7 +128,7 @@ type PostSyncHook struct {
 	capsErr error
 	capsOK  bool
 
-	cache       *haloclient.LocalFilmCache
+	cache       *filmfetch.LocalFilmCache
 	cacheRacine string
 	cacheOK     bool
 }
@@ -193,7 +193,7 @@ func (h *PostSyncHook) capture(ctx context.Context, d PostSyncDeps) DepsCapture 
 //
 // Resolue UNE fois : les dossiers sont crees au premier passage (sans quoi
 // `NewLocalFilmCache` rend nil pour toute la vie du process), puis le resultat est memorise.
-func (h *PostSyncHook) racineDuCache(ctx context.Context, duMoteur *haloclient.LocalFilmCache) (string, *haloclient.LocalFilmCache) {
+func (h *PostSyncHook) racineDuCache(ctx context.Context, duMoteur *filmfetch.LocalFilmCache) (string, *filmfetch.LocalFilmCache) {
 	if h.cacheOK {
 		return h.cacheRacine, h.cache
 	}
@@ -215,7 +215,7 @@ func (h *PostSyncHook) racineDuCache(ctx context.Context, duMoteur *haloclient.L
 	if duMoteur != nil {
 		h.cache = duMoteur
 	} else {
-		h.cache = haloclient.NewLocalFilmCache(h.cacheRacine)
+		h.cache = filmfetch.NewLocalFilmCache(h.cacheRacine)
 	}
 	return h.cacheRacine, h.cache
 }
@@ -229,7 +229,7 @@ type PostSyncDeps struct {
 	// capacite film ne doit pas faire echouer le cycle).
 	Fetcher filmChunkFetcher
 	// LocalCache : le cache disque deja instancie par le moteur. Peut etre nil.
-	LocalCache *haloclient.LocalFilmCache
+	LocalCache *filmfetch.LocalFilmCache
 	// WithRead ouvre un segment de LECTURE shared court (jamais le writer).
 	WithRead func(ctx context.Context, step string, fn func(sharedDB *sql.DB))
 	// AcquireWriter : le burst writer, relache par l appelant du collecteur.

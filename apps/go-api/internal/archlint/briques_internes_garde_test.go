@@ -39,8 +39,7 @@ func briqueHaloapiACloture(t *testing.T) briqueInterne {
 // TestBriquesInternes_AutoPreuve_Franchissements : à la clôture (sans tolérance), un import de
 // `domain` depuis un fichier présenté comme `internal/haloapi/x.go` est un franchissement ; la
 // bibliothèque standard, `haloapi/...` et les deux tiers permis ne le sont pas ; un tiers hors
-// liste l'est ; le paquet propre d'un fichier de `platform/auth` n'en est pas un, mais le paquet
-// d'un autre dossier hors périmètre si.
+// liste l'est ; l'exploitation des jetons (`platform/auth`) et la journalisation de LevelUp aussi.
 func TestBriquesInternes_AutoPreuve_Franchissements(t *testing.T) {
 	b := briqueHaloapiACloture(t)
 	fichiers := []fichierImports{
@@ -62,16 +61,12 @@ import (
 	"github.com/JGtm/LevelUp/libs/film/decfilm"
 )
 `),
-		fichierImportsDeSnippet(t, "apps/go-api/internal/platform/auth/xsts.go", `package auth
+		fichierImportsDeSnippet(t, "apps/go-api/internal/haloapi/xblauth/z.go", `package xblauth
 import (
+	"levelup/go-api/internal/haloapi/xblauth"
 	"levelup/go-api/internal/platform/auth"
-	"levelup/go-api/internal/platform/halo"
-	"levelup/go-api/internal/platform/halo/duration"
 	"levelup/go-api/internal/observability/logging"
 )
-`),
-		fichierImportsDeSnippet(t, "apps/go-api/internal/platform/halo/z.go", `package halo
-import "levelup/go-api/internal/platform/auth"
 `),
 	}
 	got := comptesDeFranchissements(b, fichiers)
@@ -80,7 +75,7 @@ import "levelup/go-api/internal/platform/auth"
 		"golang.org/x/sync/singleflight": 1,
 		"libs/film/decfilm":              1,
 		"observability/logging":          1,
-		"platform/auth":                  1, // `platform/halo` n'a pas droit au paquet d'exploitation des jetons
+		"platform/auth":                  1, // la brique n'a pas droit au paquet d'exploitation des jetons
 	}
 	if len(got) != len(attendu) {
 		t.Fatalf("franchissements = %v, attendu %v", got, attendu)
@@ -137,15 +132,13 @@ func TestBriquesInternes_AutoPreuve_Tolerances(t *testing.T) {
 	}
 }
 
-// TestBriquesInternes_AutoPreuve_DossierAbsent : un dossier déclaré qui n'existe pas, un fichier
-// nommé qui a disparu et un dossier à liste absent sont refusés (une table qui ne voit rien ne
-// garde rien) ; le dossier cible, lui, existe.
+// TestBriquesInternes_AutoPreuve_DossierAbsent : un dossier déclaré qui n'existe pas est refusé (une
+// table qui ne voit rien ne garde rien) ; le dossier de la brique, lui, existe.
 func TestBriquesInternes_AutoPreuve_DossierAbsent(t *testing.T) {
 	racine := workspaceRoot(t)
 	for nom, b := range map[string]briqueInterne{
-		"dossier absent":         {nom: "x", dossiers: []string{"apps/go-api/internal/ce_dossier_n_existe_pas"}},
-		"fichier disparu":        {nom: "x", fichiers: map[string][]string{dossierPlatAuth: {"fichier_disparu.go"}}},
-		"dossier à liste absent": {nom: "x", fichiers: map[string][]string{"apps/go-api/internal/absent": {"a.go"}}},
+		"dossier absent":     {nom: "x", dossiers: []string{"apps/go-api/internal/ce_dossier_n_existe_pas"}},
+		"sous-arbre disparu": {nom: "x", dossiers: []string{dossierHaloapi, "apps/go-api/internal/haloapi/disparu"}},
 	} {
 		if _, err := fichiersDeBriqueInterne(racine, b); err == nil {
 			t.Errorf("%s : une description d'arborescence disparue doit être refusée", nom)

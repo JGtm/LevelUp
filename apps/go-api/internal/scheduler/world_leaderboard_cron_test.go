@@ -24,12 +24,12 @@ import (
 
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/halo_infinite/haloadapter"
 	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
-	"levelup/go-api/internal/platform/halo"
 )
 
 // stubScraper retourne des entrées canned et compte les appels.
@@ -406,9 +406,9 @@ func TestWorldLeaderboardCron_SeasonDiscoveryFallsThrough404(t *testing.T) {
 		// Les statiques (pl-a, pl-b, essayées d'abord) et la playlist récente 404 ;
 		// seule pl-old rend le menu de saisons.
 		seasonErrForPlaylists: map[string]error{
-			"pl-a":   halo.ErrLeaderboardPageNotFound,
-			"pl-b":   halo.ErrLeaderboardPageNotFound,
-			"pl-new": halo.ErrLeaderboardPageNotFound,
+			"pl-a":   haloadapter.ErrLeaderboardPageNotFound,
+			"pl-b":   haloadapter.ErrLeaderboardPageNotFound,
+			"pl-new": haloadapter.ErrLeaderboardPageNotFound,
 		},
 	}
 	c := newTestCron(provider, scraper)
@@ -433,8 +433,8 @@ func TestWorldLeaderboardCron_SeasonDiscoveryFallsThrough404(t *testing.T) {
 func TestWorldLeaderboardCron_SeasonDiscoveryFallsBackToRedirect(t *testing.T) {
 	provider, db := newSharedProviderForTest(t)
 	scraper := &stubScraper{
-		seasonErr:      halo.ErrLeaderboardPageNotFound, // saison-graine retirée du site
-		redirectSeason: "csrseason13-3",                 // seule source encore vivante
+		seasonErr:      haloadapter.ErrLeaderboardPageNotFound, // saison-graine retirée du site
+		redirectSeason: "csrseason13-3",                        // seule source encore vivante
 		entries: []domain.LeaderboardEntry{
 			{Rank: 1, Gamertag: "Alpha", XUID: "2535000000000001", CSRValue: 1800},
 		},
@@ -462,7 +462,7 @@ func TestWorldLeaderboardCron_SeasonDiscoveryFallsBackToRedirect(t *testing.T) {
 func TestWorldLeaderboardCron_SeasonDiscoveryEscalatesAfterStreak(t *testing.T) {
 	provider, _ := newSharedProviderForTest(t)
 	scraper := &stubScraper{
-		seasonErr:   halo.ErrLeaderboardPageNotFound,
+		seasonErr:   haloadapter.ErrLeaderboardPageNotFound,
 		redirectErr: errors.New("waypoint 500"), // les DEUX chemins sont morts
 	}
 	c := newTestCron(provider, scraper)

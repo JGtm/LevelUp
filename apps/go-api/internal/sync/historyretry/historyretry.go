@@ -30,8 +30,8 @@ import (
 	"log/slog"
 	"time"
 
+	"levelup/go-api/internal/games/halo_infinite/haloadapter"
 	"levelup/go-api/internal/platform/auth/pool"
-	"levelup/go-api/internal/sync/haloclient"
 )
 
 // Sleep — seam de paquet pour l'attente entre deux tentatives. Les tests le remplacent par un
@@ -68,7 +68,7 @@ func NoSlotWait() time.Duration {
 
 // IsRateLimited indique si err est un 429 du client Halo, le seul statut rejoué immédiatement.
 func IsRateLimited(err error) bool {
-	var httpErr *haloclient.HTTPError
+	var httpErr *haloadapter.HTTPError
 	return errors.As(err, &httpErr) && httpErr.StatusCode == 429
 }
 

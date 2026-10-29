@@ -21,7 +21,7 @@ import (
 
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
-	"levelup/go-api/internal/sync/haloclient"
+	"levelup/go-api/internal/sync/filmfetch"
 
 	"github.com/JGtm/LevelUp/libs/film/finalise"
 	"github.com/JGtm/LevelUp/libs/film/replay"
@@ -100,7 +100,7 @@ func (c *KillSourceCollector) CollectMatch(ctx context.Context, matchID string) 
 // de 91 a 53 lignes et lui rend la lecture que l en-tete du paquet annonce — telecharger,
 // decoder, ecrire, chacun a sa place.
 func (c *KillSourceCollector) decodeFilmForMatch(ctx context.Context, matchID string) (
-	[]haloclient.FilmChunk, *decfilm.Film, *decfilm.Result, KillSourceOutcome, error,
+	[]filmfetch.FilmChunk, *decfilm.Film, *decfilm.Result, KillSourceOutcome, error,
 ) {
 	chunks, found, err := FilmChunksForMatch(ctx, c.client, matchID)
 	if filmPasEncoreFinalise(ctx, matchID, err) {
@@ -112,10 +112,10 @@ func (c *KillSourceCollector) decodeFilmForMatch(ctx context.Context, matchID st
 		// cette classification, l erreur remontait telle quelle et CollectMatches la comptait
 		// en Errors — jamais en OutcomeNoFilm — donc marquerFilmParOutcome ne posait JAMAIS
 		// MBitFilmAbsent : le match restait candidat A VIE aux passes `--online` suivantes
-		// (le filtre `MBitFilmAbsent` ne l excluait jamais). haloclient.IsFilmGoneErr
+		// (le filtre `MBitFilmAbsent` ne l excluait jamais). filmfetch.IsFilmGoneErr
 		// distingue ce lien DEFINITIVEMENT mort (404/410, manifeste ou blob) d une panne
 		// transitoire (503, rate-limit, reseau) qui doit rester une erreur retentee.
-		if haloclient.IsFilmGoneErr(err) {
+		if filmfetch.IsFilmGoneErr(err) {
 			observability.AddInt(metricNoFilm, 1)
 			slog.WarnContext(ctx, "killsource: film expire definitivement (404/410 sur le manifeste ou un blob, manifeste possiblement relu du cache local) — classe absent",
 				"match_id", matchID, "err", err)
@@ -168,7 +168,7 @@ func (c *KillSourceCollector) decodeFilmForMatch(ctx context.Context, matchID st
 // avec ses octets. Sans lui, « aucun kill lu » ne dit rien du film : le cache saute un chunk
 // declare au manifeste mais absent du disque (cf. `LocalCacheFilms.GetFilmChunks`), et ce film-la
 // ne doit pas sortir du backlog.
-func tempsFortsServis(chunks []haloclient.FilmChunk) bool {
+func tempsFortsServis(chunks []filmfetch.FilmChunk) bool {
 	for _, ch := range chunks {
 		if finalise.EstTempsForts(ch.ChunkType) && len(ch.Data) > 0 {
 			return true
@@ -293,7 +293,7 @@ func (c *KillSourceCollector) collect(ctx context.Context, matchID string) (Kill
 // de ventilation ferait recompter le match comme un echec alors que ses morts sont en base — et
 // un backfill le rejouerait, redecodant un film pour rien.
 func (c *KillSourceCollector) collectShots(
-	ctx context.Context, matchID string, chunks []haloclient.FilmChunk, parts MatchIdentities,
+	ctx context.Context, matchID string, chunks []filmfetch.FilmChunk, parts MatchIdentities,
 ) {
 	// DEUX FAMILLES DE DONNÉES, DEUX CAPABILITIES (§4.3 du plan de branchement). Le film
 	// est déjà téléchargé et décodé pour les morts ; un titre peut malgré tout exposer le
@@ -386,7 +386,7 @@ func (c *KillSourceCollector) writeShots(ctx context.Context, batch persist.Weap
 // FINALISE, et le compte et le journalise alors.
 //
 // FILM PAS ENCORE FINALISE = SANS KILL-FEED, PAS UNE PANNE (lot L3, 2026-09-23 ; constat L3-R2 de
-// sa revue adverse). Le client (`haloclient.fetchFilmChunks`) et le cache local
+// sa revue adverse). Le client (`filmfetch.Films.fetchFilmChunks`) et le cache local
 // (`LocalCacheFilms`) refusent un manifeste sans morceau des temps forts : le film existe, son
 // kill-feed n est juste pas encore publie. Il sort en [OutcomeSansKillFeedARelire], qui ne pose
 // AUCUN marqueur (le match reste candidat au cycle suivant, film complet). Le classer en erreur,

@@ -13,10 +13,10 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/halo_infinite/haloadapter"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/auth/tokencache"
 	"levelup/go-api/internal/platform/duckdb"
-	"levelup/go-api/internal/platform/halo"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service"
 )
@@ -143,12 +143,12 @@ func (r *ServiceRegistry) SeasonPassCtxWithAuth(ctx context.Context, slug string
 }
 
 // buildHaloProvider construit un HaloProvider configuré avec le resolver unifié et le titre du joueur.
-func (r *ServiceRegistry) buildHaloProvider(pdb *duckdb.PlayerDB) *halo.HaloProvider {
+func (r *ServiceRegistry) buildHaloProvider(pdb *duckdb.PlayerDB) *haloadapter.Provider {
 	titleSlug := title.DefaultSlug
 	if pdb != nil && pdb.TitleSlug != "" {
 		titleSlug = pdb.TitleSlug
 	}
-	return halo.DefaultHaloProvider.
+	return haloadapter.DefaultHaloProvider.
 		WithAssetResolver(r.assetResolver).
 		WithTitleSlug(titleSlug)
 }

@@ -32,7 +32,7 @@ var reRetryAfterLiteral = regexp.MustCompile(`"Retry-After"`)
 //     réel (`w.Header().Get("Retry-After")`), ce qui est exactement le contrat
 //     client à vérifier — leur imposer la constante testerait la constante
 //     contre elle-même au lieu de tester le protocole ;
-//   - les clients HTTP d'autres paquets (sync/haloclient, games/halo_5) LISENT
+//   - les clients HTTP d'autres paquets (haloapi/infinite, games/halo_5) LISENT
 //     l'en-tête d'une réponse tierce : ce n'est pas la même valeur métier et la
 //     constante, privée au paquet, ne leur est pas accessible.
 func TestNoRetryAfterLiteralInHandlers(t *testing.T) {

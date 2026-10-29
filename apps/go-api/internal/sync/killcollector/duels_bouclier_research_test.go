@@ -337,7 +337,7 @@ func duelsBLireFilm(
 // duelsBFilmDir rend le repertoire des chunks du film dans le cache local.
 //
 // LE CACHE DE FILMS N'A PAS D'ACCESSEUR `PathResolver` : il est hérité (title-agnostic, hors
-// `data/titles/`) et sa seule abstraction du depot est `haloclient.LocalFilmCache`, qui resout
+// `data/titles/`) et sa seule abstraction du depot est `filmfetch.LocalFilmCache`, qui resout
 // `<cache>/film_chunks/<court>` en interne SANS exposer le repertoire. La composition est donc
 // faite ici, une fois, et `DUELS_FILM` permet de la court-circuiter entierement.
 func duelsBFilmDir(root, matchID string) string {

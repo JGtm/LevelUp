@@ -18,7 +18,7 @@ import (
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/platform/duckdb"
-	"levelup/go-api/internal/sync/haloclient"
+	"levelup/go-api/internal/sync/filmfetch"
 	"levelup/go-api/internal/testutil"
 
 	"github.com/JGtm/LevelUp/libs/film/decfilm"
@@ -57,7 +57,7 @@ func v0Collecteur(t *testing.T, e v0Env, lecture, ecriture *sql.DB) *KillSourceC
 		games.CapFilmWeaponShots:   games.CapSupported,
 		games.CapFilmKillPositions: games.CapSupported,
 	}
-	return NewKillSourceCollector(NewLocalCacheFilms(haloclient.NewLocalFilmCache(e.cac)),
+	return NewKillSourceCollector(NewLocalCacheFilms(filmfetch.NewLocalFilmCache(e.cac)),
 		NewSharedRoster(lecture), func(context.Context) (*sql.DB, func(), error) {
 			return ecriture, func() {}, nil
 		}, caps, 0).AvecCapture(deps)

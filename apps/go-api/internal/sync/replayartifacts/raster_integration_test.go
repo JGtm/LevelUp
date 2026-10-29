@@ -35,7 +35,7 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/replaybuild"
-	"levelup/go-api/internal/sync/haloclient"
+	"levelup/go-api/internal/sync/filmfetch"
 
 	"github.com/JGtm/LevelUp/libs/film/replay"
 )
@@ -44,12 +44,12 @@ import (
 // il ne decode rien.
 type fetcherRaster struct{}
 
-func (fetcherRaster) GetFilmChunks(context.Context, string) ([]haloclient.FilmChunk, bool, error) {
+func (fetcherRaster) GetFilmChunks(context.Context, string) ([]filmfetch.FilmChunk, bool, error) {
 	// UN FILM FINALISE (lot L3, 2026-09-23) : le writer du cache refuse une liste sans morceau
 	// des temps forts.
-	return []haloclient.FilmChunk{
-		{Index: 0, ChunkType: haloclient.FilmChunkTypeReplicationData, Data: []byte("x")},
-		{Index: 1, ChunkType: haloclient.FilmChunkTypeHighlightEvents, Data: []byte("tf")},
+	return []filmfetch.FilmChunk{
+		{Index: 0, ChunkType: filmfetch.FilmChunkTypeReplicationData, Data: []byte("x")},
+		{Index: 1, ChunkType: filmfetch.FilmChunkTypeHighlightEvents, Data: []byte("tf")},
 	}, true, nil
 }
 

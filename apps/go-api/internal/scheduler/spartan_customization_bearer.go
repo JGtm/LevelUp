@@ -11,7 +11,7 @@
 //
 // Les endpoints lus ciblent le joueur dans l'URL et ne dérivent jamais l'identité du
 // token appelant : careerranks (xuid), customization et sa vue publique
-// `?view=public` (xuid, repli de haloclient.fetchCustomizationAppearance sur un 403),
+// `?view=public` (xuid, repli de haloadapter.Client.fetchCustomizationAppearance sur un 403),
 // profils Halo 5 (gamertag). Le porteur ne fait que LIRE. Aucun token n'est capturé
 // ni rafraîchi ici : le pool s'en charge (ADR 0023). La ligne écrite va dans la base
 // du joueur lu, sous son xuid, par le chemin d'écriture habituel du refresher du titre.

@@ -4,8 +4,9 @@
 // Le découplage de la brique « API Halo » déplace le code qui parle aux services Halo ; la preuve
 // que rien n'a changé est un témoin LIVE pris AVANT et rejoué APRÈS, surface par surface. Aucune
 // commande existante ne lisait ces surfaces sans écrire une base ou afficher des jetons. Cet outil
-// reste dans le dépôt comme les autres `cmd/diag_*` : il est écrit sur les clients d'aujourd'hui
-// (`platform/halo`, `sync/haloclient`) et sera rebranché sur la brique à la fin du chantier.
+// reste dans le dépôt comme les autres `cmd/diag_*` : il a été écrit sur les clients d'avant la
+// brique et rebranché au lot 4 sur l'adaptateur `games/halo_infinite/haloadapter` (import et constructeur
+// seulement).
 //
 // SORTIES (le témoin est la sérialisation, identique avant et après) :
 //   - calendrier : le CORPS JSON REÇU, octet pour octet ;
@@ -44,9 +45,8 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/halo_infinite/haloadapter"
 	"levelup/go-api/internal/platform/auth"
-	"levelup/go-api/internal/platform/halo"
-	"levelup/go-api/internal/sync/haloclient"
 )
 
 // requestsPerSecond : débit du client de l'historique et des stats (le même que les autres diag).
@@ -58,8 +58,8 @@ type session struct {
 	xuid     string
 	gamertag string
 	tokens   *domain.HaloTokens
-	client   *haloclient.HaloAPIClient
-	provider *halo.HaloProvider
+	client   *haloadapter.Client
+	provider *haloadapter.Provider
 	out      io.Writer
 }
 
@@ -117,8 +117,8 @@ func ouvrirSession(ctx context.Context, xuid string, out io.Writer) (*session, e
 		xuid:     joueur.XUID,
 		gamertag: joueur.Gamertag,
 		tokens:   exch.Tokens,
-		client:   haloclient.NewHaloAPIClient(exch.Tokens.SpartanToken, exch.Tokens.ClearanceToken, requestsPerSecond),
-		provider: halo.NewHaloProvider().WithTokens(exch.Tokens),
+		client:   haloadapter.NewClient(exch.Tokens.SpartanToken, exch.Tokens.ClearanceToken, requestsPerSecond),
+		provider: haloadapter.NewHaloProvider().WithTokens(exch.Tokens),
 		out:      out,
 	}, nil
 }

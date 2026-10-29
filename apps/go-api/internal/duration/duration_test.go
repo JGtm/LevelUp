@@ -178,3 +178,28 @@ func TestSecondsFloatBoundedPtr(t *testing.T) {
 }
 
 func ptr(n int) *int { return &n }
+
+// TestParseISO8601DurationSeconds : les durées du service record (test du fournisseur d'avant la
+// brique, porté sous son nom auprès du parseur qu'il exerçait).
+func TestParseISO8601DurationSeconds(t *testing.T) {
+	cases := []struct {
+		in   string
+		want int64
+	}{
+		{"", 0},
+		{"garbage", 0},
+		{"P1DT7H50M24.6360455S", 1*86400 + 7*3600 + 50*60 + 24}, // 114624
+		{"PT30M", 1800},
+		{"PT1H", 3600},
+		{"PT45.9S", 45},
+		{"P1D", 86400},
+		{"P2D", 172800},
+		{"PT0S", 0},
+	}
+	for _, c := range cases {
+		// Délègue au parseur canonique partagé (SecondsInt64).
+		if got := SecondsInt64(c.in); got != c.want {
+			t.Errorf("SecondsInt64(%q) = %d, want %d", c.in, got, c.want)
+		}
+	}
+}

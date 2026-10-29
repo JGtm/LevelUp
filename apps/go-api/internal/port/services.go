@@ -506,14 +506,14 @@ type LeaderboardService interface {
 }
 
 // PlayerStatsProvider fournit les stats d'un joueur distant via Waypoint.
-// Implémenté par platform/halo.CompareProvider.
+// Implémenté par haloadapter.Provider.
 type PlayerStatsProvider interface {
 	FetchRemoteStats(ctx context.Context, gamertag, titleSlug string) (*domain.NormalizedPlayerStats, error)
 }
 
 // ServiceRecordProvider fournit le service record complet d'un joueur distant
 // (stats + temps de jeu + médailles lifetime) en un seul appel Waypoint.
-// Implémenté par platform/halo.HaloProvider et décoré par service.CachedStatsProvider.
+// Implémenté par haloadapter.Provider et décoré par service.CachedStatsProvider.
 type ServiceRecordProvider interface {
 	FetchServiceRecord(ctx context.Context, gamertag, titleSlug string) (*domain.RemoteServiceRecord, error)
 }
@@ -521,13 +521,13 @@ type ServiceRecordProvider interface {
 // SeasonStatsProvider fournit le nombre de matchs matchmade complétés par un
 // joueur sur UNE saison donnée (service record Waypoint filtré par seasonId,
 // optionnellement par isRanked). isRanked=nil → total de la saison. Implémenté
-// par platform/halo.HaloProvider et décoré (cache) par service.CachedStatsProvider.
+// par haloadapter.Provider et décoré (cache) par service.CachedStatsProvider.
 type SeasonStatsProvider interface {
 	FetchSeasonServiceRecord(ctx context.Context, gamertag, seasonID string, isRanked *bool) (int, error)
 }
 
 // PrivacyProvider interroge la privacy d'un compte Halo via Waypoint.
-// Implémenté par platform/halo.HaloProvider.
+// Implémenté par haloadapter.Provider.
 type PrivacyProvider interface {
 	GetMatchPrivacy(ctx context.Context, xuid string) (*domain.MatchPrivacyInfo, error)
 }

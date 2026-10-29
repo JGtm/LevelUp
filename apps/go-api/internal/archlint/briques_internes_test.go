@@ -10,26 +10,20 @@
 // `domain`, `ctxkeys` ou `observability`. Cette table est ce refus, posé AVANT le premier
 // déplacement de fichier (même méthode que D1 et D2).
 //
-// # LA LIGNE `haloapi` AU LOT 1
+// # LA LIGNE `haloapi`
 //
-// Elle désigne les dossiers ACTUELS des coupes, pas encore le dossier cible : `platform/halo`
-// (arbre, `duration/` compris), `sync/haloclient`, et — pour `platform/auth`, qui n'est PAS une
-// brique mais l'exploitation des jetons — la LISTE des fichiers que D3-L envoie dans `xblauth`,
-// avec leurs `_test.go` jumeaux. Le dossier cible `internal/haloapi` (arbre) est déjà dans la
-// ligne : tout fichier qui y atterrit est jugé dès son premier commit. Au lot 2 les fichiers
-// d'authentification sortent de la liste en partant ; au lot 4 `platform/halo` et `sync/haloclient`
-// sortent de la table avec leur suppression. À la clôture il ne reste que `internal/haloapi` et
-// la table de tolérances est vide.
-//
-// Lot 2 fait (2026-10-29) : la liste `platform/auth` est retirée ; le mécanisme des dossiers à
-// liste (`fichiers`) reste, exercé par ses auto-preuves, et part avec la table à la clôture.
+// Au lot 1 elle désignait les dossiers des coupes (`platform/halo`, `sync/haloclient`, et la LISTE
+// des fichiers d'authentification de `platform/auth`), avec des tolérances datées par import visé.
+// Lot 2 : la liste `platform/auth` est partie dans `xblauth`. Lot 4 (2026-10-29) : `platform/halo` et
+// `sync/haloclient` sont SUPPRIMÉS ; il ne reste que `internal/haloapi` (arbre), toutes les tolérances
+// sont tombées à zéro et la table de tolérances est vide : tout import hors de la liste fermée est
+// rouge. Le mécanisme des dossiers à liste est parti avec le dernier qui s'en servait.
 //
 // # CE QU'ELLE VÉRIFIE
 //
 // Pour chaque `.go` du périmètre, tests compris, chaque import (PARSÉ, jamais cherché au grep) est :
 // de la bibliothèque standard ; un paquet de la brique elle-même (les dossiers du périmètre
-// s'importent entre eux, un fichier de `platform/auth` importe son propre paquet : ce n'est pas un
-// franchissement) ; sous `levelup/go-api/internal/haloapi` ; ou l'un des tiers nommés (`errgroup`,
+// s'importent entre eux, un fichier importe son propre paquet : ce n'est pas un franchissement) ; sous `levelup/go-api/internal/haloapi` ; ou l'un des tiers nommés (`errgroup`,
 // `rate`, décision D3-P). Tout autre import est un FRANCHISSEMENT, compté par import visé.
 //
 // # TOLÉRANCES PAR IMPORT, DATÉES, QUI NE FONT QUE DESCENDRE
@@ -39,13 +33,13 @@
 // des lots. Le compte mesuré par le parcours est confronté à la tolérance : plus de fichiers que la
 // tolérance -> rouge ; moins -> rouge « baisse à N » (le ratchet se resserre dans le commit qui
 // coupe, il ne garde pas de mou) ; tolérance 0 -> rouge « retirer l'entrée » ; import absent de la
-// table -> rouge. À la clôture de D3 la table est vide ET le mécanisme est retiré (modèle D2).
+// table -> rouge. Table vide depuis le lot 4 ; le mécanisme part à la clôture de D3 (modèle D2).
 //
 // # MUTATIONS QUI DOIVENT LE FAIRE ROUGIR
 //
 // Abaisser une tolérance de 1 ; ajouter `"levelup/go-api/internal/domain"` à un fichier posé sous
 // `internal/haloapi/` ; ajouter `"levelup/go-api/internal/observability/metrics"` à
-// `platform/halo/endpoints.go`.
+// `internal/haloapi/infinite/endpoints.go`.
 package archlint
 
 import (
@@ -79,9 +73,6 @@ type briqueInterne struct {
 	// dossiers : arbres (le répertoire et tout ce qui est dessous, hors `testdata`, `vendor`,
 	// `.x`, `_x`), relatifs à la racine du dépôt. Les imports de l'un à l'autre sont internes.
 	dossiers []string
-	// fichiers : dossier (relatif à la racine du dépôt) -> noms des seuls fichiers du périmètre.
-	// Le dossier lui-même n'est PAS un paquet de la brique : seuls ces fichiers le sont.
-	fichiers map[string][]string
 	// permis : chemins d'import (paquet exact ou préfixe `x/`) que la brique peut importer.
 	permis []string
 	// tiers : paquets tiers (chemin exact) permis hors bibliothèque standard.
@@ -96,53 +87,18 @@ var cheminsHaloapiPermis = []string{prefixeInterneAPI + "haloapi"}
 // tiersHaloapi : les seuls tiers de la brique (D3-P, mesurés au lot 0, découverte D3-L0-o).
 var tiersHaloapi = []string{"golang.org/x/sync/errgroup", "golang.org/x/time/rate"}
 
-const (
-	dossierHaloapi    = "apps/go-api/internal/haloapi"
-	dossierPlatHalo   = "apps/go-api/internal/platform/halo"
-	dossierHaloclient = "apps/go-api/internal/sync/haloclient"
-	dossierPlatAuth   = "apps/go-api/internal/platform/auth"
-)
+const dossierHaloapi = "apps/go-api/internal/haloapi"
 
 // briquesInternes : la table (règle 6 de CLAUDE.md : UNE table, pas un fichier par brique).
 var briquesInternes = []briqueInterne{
 	{
 		nom:      "haloapi",
-		dossiers: []string{dossierHaloapi, dossierPlatHalo, dossierHaloclient},
+		dossiers: []string{dossierHaloapi},
 		permis:   cheminsHaloapiPermis,
 		tiers:    tiersHaloapi,
-		// Comptes MESURÉS le 2026-10-29 (HEAD b92916328) par ce parcours, tests compris. Le lot
-		// qui vide chaque entrée est celui qui SUPPRIME ou DÉPLACE le fichier importeur : les
-		// fichiers d'authentification quittent `platform/auth` au lot 2, `platform/halo` et
-		// `sync/haloclient` sont supprimés au lot 4 (la coupe elle-même se fait au lot 3, dans la
-		// copie que reçoit `internal/haloapi/infinite`). Lot 2 (2026-10-29) : les fichiers d'authentification
-		// sont partis dans `internal/haloapi/xblauth`, la liste `platform/auth` a quitté la ligne et la part
-		// « auth » de chaque tolérance est tombée à zéro (domain 22 -> 21, domain/title 9 -> 3,
-		// platform/netguard 9 -> 6, observability/logging retirée).
-		tolerances: map[string]toleranceImport{
-			"analysis":                       {1, "2026-10-29", "lot 4 : haloclient/halo_skill.go (analysis.MMRKnown) -> haloadapter"},
-			"assetnames":                     {1, "2026-10-29", "lot 4 : halo/asset_name_fetcher.go -> haloadapter"},
-			"assets":                         {5, "2026-10-29", "lot 4 : halo/battlepass_details.go et tests (assets.Ref) -> haloadapter"},
-			"ctxkeys":                        {13, "2026-10-29", "lot 4 : halo (11) et haloclient (3) : jetons, xuid, slug, langue sortis du ctx par l'adaptateur"},
-			"domain":                         {17, "2026-10-29", "lot 4 : halo (18) et haloclient (3) -> haloadapter"},
-			"domain/title":                   {3, "2026-10-29", "lot 4 : halo (1) et haloclient (2)"},
-			"games":                          {16, "2026-10-29", "lot 4 : halo (7) et haloclient (9) : résolveur d'adresses -> infinite.Endpoints reçues"},
-			"games/halo_infinite":            {1, "2026-10-29", "lot 4 : halo/catalog_fetcher.go (AssetFetcher) -> haloadapter"},
-			"games/mappings":                 {1, "2026-10-29", "lot 4 : haloclient/halo_client_endpoints_test.go -> test de l'adaptateur"},
-			"i18n":                           {3, "2026-10-29", "lot 4 : halo/challenges_details.go et leaderboard_scraper.go -> haloadapter"},
-			"libs/film/decfilm":              {2, "2026-10-29", "lot 4 : haloclient (Inflate, Decompresser) -> sync/filmfetch"},
-			"libs/film/filmcache":            {4, "2026-10-29", "lot 4 : haloclient/local_film_cache.go et tests -> sync/filmfetch"},
-			"libs/film/finalise":             {3, "2026-10-29", "lot 4 : haloclient/halo_client_film.go et tests -> sync/filmfetch"},
-			"mapcatalog":                     {1, "2026-10-29", "lot 4 : haloclient/halo_client_mvar.go -> haloadapter"},
-			"metadata":                       {1, "2026-10-29", "lot 4 : halo/medal_provider.go (MedalEntry) -> haloadapter"},
-			"observability":                  {6, "2026-10-29", "lot 4 : halo (2) et haloclient (4) : compteurs injectés comme crochets"},
-			"observability/timing":           {2, "2026-10-29", "lot 4 : halo/privacy_provider.go et tests -> haloadapter"},
-			"platform/netguard":              {6, "2026-10-29", "lot 4 : halo (3) et haloclient (3) -> Doer garde par surface (D3-K)"},
-			"golang.org/x/sync/singleflight": {1, "2026-10-29", "lot 4 : halo/provider.go -> haloadapter"},
-			// Transitoires du lot 4.3 (2026-10-29) : `duration` et le cache de jetons ont quitté l'arbre
-			// `platform/halo` ; ses fichiers restants les importent jusqu'à sa suppression au lot 4.4.
-			"duration":                 {2, "2026-10-29", "lot 4.4 : halo/compare_provider.go et son test, supprimés"},
-			"platform/auth/tokencache": {1, "2026-10-29", "lot 4.4 : halo/auth_retry.go, supprimé"},
-		},
+		// Aucune tolérance : les comptes mesurés le 2026-10-29 au lot 1 (20 imports visés, 105
+		// franchissements) sont tombés à zéro avec la suppression de `platform/halo` et
+		// `sync/haloclient` au lot 4 (2026-10-29).
 	},
 }
 
@@ -179,7 +135,7 @@ func sousArbre(imp, base string) bool {
 
 // importPermis dit si le fichier `rel` (relatif à la racine du dépôt) peut importer `imp` sans que
 // ce soit un franchissement : bibliothèque standard, tiers nommé, paquet des dossiers de la brique
-// (un fichier d'un dossier à liste n'a que SON paquet), chemin permis.
+// (et son propre paquet), chemin permis.
 func (b briqueInterne) importPermis(rel, imp string) bool {
 	if estBibliothequeStandard(imp) {
 		return true
@@ -274,8 +230,8 @@ func anomaliesDeTable(toleres map[string]toleranceImport) []string {
 }
 
 // fichiersDeBriqueInterne parse les imports de tous les `.go` du périmètre de `b`. Rend une erreur
-// si un dossier déclaré n'existe pas, ne porte aucun fichier Go, ou si un fichier nommé est absent :
-// une table qui décrit une arborescence disparue ne garde rien.
+// si un dossier déclaré n'existe pas ou ne porte aucun fichier Go : une table qui décrit une
+// arborescence disparue ne garde rien.
 func fichiersDeBriqueInterne(racine string, b briqueInterne) ([]fichierImports, error) {
 	fset := token.NewFileSet()
 	var out []fichierImports
@@ -295,28 +251,6 @@ func fichiersDeBriqueInterne(racine string, b briqueInterne) ([]fichierImports, 
 		}
 		if n == 0 {
 			return nil, fmt.Errorf("brique %s : aucun fichier Go sous %s", b.nom, d)
-		}
-	}
-	dossiers := make([]string, 0, len(b.fichiers))
-	for d := range b.fichiers {
-		dossiers = append(dossiers, d)
-	}
-	sort.Strings(dossiers)
-	for _, d := range dossiers {
-		fs, err := importsDuDossierErr(token.NewFileSet(), racine, d)
-		if err != nil {
-			return nil, fmt.Errorf("brique %s : %w", b.nom, err)
-		}
-		par := map[string]fichierImports{}
-		for _, f := range fs {
-			par[path.Base(f.rel)] = f
-		}
-		for _, nom := range b.fichiers[d] {
-			f, ok := par[nom]
-			if !ok {
-				return nil, fmt.Errorf("brique %s : le fichier %s/%s n'existe plus : la liste décrit une arborescence disparue", b.nom, d, nom)
-			}
-			out = append(out, f)
 		}
 	}
 	return out, nil

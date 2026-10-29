@@ -35,19 +35,19 @@ import (
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/persist"
-	"levelup/go-api/internal/sync/haloclient"
+	"levelup/go-api/internal/sync/filmfetch"
 )
 
 // ─── Harnais ───────────────────────────────────────────────────────────────────────────────
 
 // fakeFilmClient : une source de chunks en memoire. Elle remplace le CDN, pas le decodeur.
 type fakeFilmClient struct {
-	chunks map[string][]haloclient.FilmChunk
+	chunks map[string][]filmfetch.FilmChunk
 	err    error
 	calls  int
 }
 
-func (f *fakeFilmClient) GetFilmChunks(_ context.Context, matchID string) ([]haloclient.FilmChunk, bool, error) {
+func (f *fakeFilmClient) GetFilmChunks(_ context.Context, matchID string) ([]filmfetch.FilmChunk, bool, error) {
 	f.calls++
 	if f.err != nil {
 		return nil, false, f.err
@@ -108,7 +108,7 @@ func capsAvecFilm() games.CapabilityMap {
 // chunk 0 type 1, footer chunk 30 type 3). Le decodeur, lui, ne se fie PAS a ces types : il
 // localise le kill-feed par son CONTENU. Ils ne servent donc ici qu a rendre le test fidele a
 // ce que le client produit.
-func chargerFilmDeFixture(t *testing.T, court string) []haloclient.FilmChunk {
+func chargerFilmDeFixture(t *testing.T, court string) []filmfetch.FilmChunk {
 	t.Helper()
 	root := os.Getenv("KILLSOURCE_FIXTURES")
 	if root == "" {
@@ -120,7 +120,7 @@ func chargerFilmDeFixture(t *testing.T, court string) []haloclient.FilmChunk {
 	if err != nil || len(names) == 0 {
 		t.Skipf("film %s absent de %s (%v) — fixture non disponible sur cette machine", court, root, err)
 	}
-	out := make([]haloclient.FilmChunk, 0, len(names))
+	out := make([]filmfetch.FilmChunk, 0, len(names))
 	for i, n := range names {
 		data, rErr := os.ReadFile(n)
 		if rErr != nil {
@@ -133,7 +133,7 @@ func chargerFilmDeFixture(t *testing.T, court string) []haloclient.FilmChunk {
 		case i == len(names)-1:
 			typ = 3
 		}
-		out = append(out, haloclient.FilmChunk{Index: i, ChunkType: typ, Data: data})
+		out = append(out, filmfetch.FilmChunk{Index: i, ChunkType: typ, Data: data})
 	}
 	return out
 }
@@ -151,7 +151,7 @@ func TestKillSourceCollecteFilmReelEtRelitParLaVue(t *testing.T) {
 	chunks := chargerFilmDeFixture(t, film)
 
 	db := openSharedTestDB(t)
-	client := &fakeFilmClient{chunks: map[string][]haloclient.FilmChunk{film: chunks}}
+	client := &fakeFilmClient{chunks: map[string][]filmfetch.FilmChunk{film: chunks}}
 	col := sousLaCarte(t, NewKillSourceCollector(client, fakeRoster{}, sharedWriter(db), capsAvecFilm(), 0), carteDe9b191a7f)
 
 	outcome, _, err := col.CollectMatch(context.Background(), film)
@@ -260,7 +260,7 @@ func TestKillSourceCollecteFilmReelEtRelitParLaVue(t *testing.T) {
 func TestTirsParArmeSuiventLeurPropreCapability(t *testing.T) {
 	const film = "9b191a7f"
 	chunks := chargerFilmDeFixture(t, film)
-	client := &fakeFilmClient{chunks: map[string][]haloclient.FilmChunk{film: chunks}}
+	client := &fakeFilmClient{chunks: map[string][]filmfetch.FilmChunk{film: chunks}}
 
 	compterTirs := func(t *testing.T, caps games.CapabilityMap) (morts, tirs int) {
 		t.Helper()
@@ -310,7 +310,7 @@ func TestKillSourceRosterResoutLesXuid(t *testing.T) {
 	chunks := chargerFilmDeFixture(t, film)
 
 	db := openSharedTestDB(t)
-	client := &fakeFilmClient{chunks: map[string][]haloclient.FilmChunk{film: chunks}}
+	client := &fakeFilmClient{chunks: map[string][]filmfetch.FilmChunk{film: chunks}}
 
 	// On lit d abord les noms du film pour fabriquer un roster credible.
 	col := sousLaCarte(t, NewKillSourceCollector(client, fakeRoster{}, sharedWriter(db), capsAvecFilm(), 0), carteDe9b191a7f)
@@ -399,12 +399,12 @@ func TestKillSourcePasseMultiMatchsCompteToutSansSArreter(t *testing.T) {
 // (le film garde son outcome interne a OutcomeNoFilm mais l erreur non-nil fait sortir
 // CollectMatches par la branche Errors AVANT d atteindre le marquage) : le match reste
 // candidat a VIE aux passes `--online` suivantes (jamais exclu par le filtre
-// `MBitFilmAbsent`). Avec `haloclient.IsFilmGoneErr`, ce cas se classe desormais comme
+// `MBitFilmAbsent`). Avec `filmfetch.IsFilmGoneErr`, ce cas se classe desormais comme
 // OutcomeNoFilm SANS erreur — memes consequences qu un manifeste 404, y compris le
 // marquage terminal.
 func TestKillSourceBlobExpirePartiellementEstDefinitif(t *testing.T) {
 	blobGoneErr := fmt.Errorf("GetFilmChunks chunk 3(m1): %w",
-		&haloclient.BlobHTTPError{StatusCode: 404, URL: "u", Attempts: 1})
+		&filmfetch.BlobHTTPError{StatusCode: 404, URL: "u", Attempts: 1})
 	client := &fakeFilmClient{err: blobGoneErr}
 	col := NewKillSourceCollector(client, fakeRoster{}, nil, capsAvecFilm(), 0)
 
@@ -436,7 +436,7 @@ func TestKillSourceBlobExpirePartiellementEstDefinitif(t *testing.T) {
 // serait marquee MBitFilmAbsent et perdrait le match pour toujours.
 func TestKillSourceErreurTransitoireResteUneErreur(t *testing.T) {
 	transitoire := fmt.Errorf("GetFilmChunks chunk 3(m1): %w",
-		&haloclient.BlobHTTPError{StatusCode: 503, URL: "u", Attempts: 3})
+		&filmfetch.BlobHTTPError{StatusCode: 503, URL: "u", Attempts: 3})
 	client := &fakeFilmClient{err: transitoire}
 	col := NewKillSourceCollector(client, fakeRoster{}, nil, capsAvecFilm(), 0)
 
@@ -486,7 +486,7 @@ func TestKillSourceLimiteDeTempsParDefaut(t *testing.T) {
 // contigus : le pont doit laisser les trous a nil sans decaler les chunks suivants (un decalage
 // changerait le film decode sans rien signaler).
 func TestPontAssembleLaSequenceCompleteAvecTrous(t *testing.T) {
-	client := &fakeFilmClient{chunks: map[string][]haloclient.FilmChunk{
+	client := &fakeFilmClient{chunks: map[string][]filmfetch.FilmChunk{
 		"m1": {
 			{Index: 0, ChunkType: 1, Data: []byte("entete")},
 			{Index: 2, ChunkType: 2, Data: []byte("replication")},
@@ -515,7 +515,7 @@ func TestPontAssembleLaSequenceCompleteAvecTrous(t *testing.T) {
 // TestPontCompteLesTypes — le diagnostic qui rend `ErrNoKillFeed` lisible : « 29 chunks de
 // replication et AUCUN kill-feed » explique, l erreur seule laisse chercher.
 func TestPontCompteLesTypes(t *testing.T) {
-	types := CountFilmChunkTypes([]haloclient.FilmChunk{
+	types := CountFilmChunkTypes([]filmfetch.FilmChunk{
 		{ChunkType: 1}, {ChunkType: 2}, {ChunkType: 2}, {ChunkType: 3},
 	})
 	if types[1] != 1 || types[2] != 2 || types[3] != 1 {

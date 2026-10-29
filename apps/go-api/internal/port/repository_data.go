@@ -462,7 +462,7 @@ type MetadataRepository interface {
 }
 
 // SeasonProvider fournit le calendrier des saisons depuis une source externe
-// (Waypoint pour Halo Infinite). Implémenté par platform/halo.HaloProvider.
+// (Waypoint pour Halo Infinite). Implémenté par haloadapter.Provider.
 //
 // Le contrat : retourne la liste des saisons + le payload brut (pour archive
 // snapshot via UpsertSnapshot) + erreur. Les tokens d'auth sont lus depuis

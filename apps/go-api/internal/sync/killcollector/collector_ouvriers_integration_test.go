@@ -32,7 +32,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/sync/haloclient"
+	"levelup/go-api/internal/sync/filmfetch"
 
 	"github.com/JGtm/LevelUp/libs/film/decfilm"
 )
@@ -68,7 +68,7 @@ var filmsDuTestDEgalite = []string{
 
 // baseDeLEgalite prepare une base de test peuplee des memes films, et rend le collecteur cable
 // comme la commande de production. `porte` non nil garde la base derriere son jeton.
-func baseDeLEgalite(t *testing.T, films map[string][]haloclient.FilmChunk, porte *PorteDeLaBase,
+func baseDeLEgalite(t *testing.T, films map[string][]filmfetch.FilmChunk, porte *PorteDeLaBase,
 	annuaire bool,
 ) (*sql.DB, *KillSourceCollector) {
 	t.Helper()
@@ -177,9 +177,9 @@ func TestAnnuaireDePasse_MemesLignesQueLaJointure(t *testing.T) {
 }
 
 // chargerLesFilmsDuTest lit les films presents, en sautant proprement les absents.
-func chargerLesFilmsDuTest(t *testing.T, ids []string) map[string][]haloclient.FilmChunk {
+func chargerLesFilmsDuTest(t *testing.T, ids []string) map[string][]filmfetch.FilmChunk {
 	t.Helper()
-	out := map[string][]haloclient.FilmChunk{}
+	out := map[string][]filmfetch.FilmChunk{}
 	for _, id := range ids {
 		if !filmPresent(id) {
 			continue

@@ -35,9 +35,9 @@ import (
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/persist"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"levelup/go-api/internal/sync/filmfetch"
 
-	"levelup/go-api/internal/sync/haloclient"
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
 )
 
 // filmsEssayesAuMax borne le nombre de films tentés.
@@ -162,7 +162,7 @@ func TestKillSourceFaitsDIsolementFilmReel(t *testing.T) {
 		}
 		db := openSharedTestDB(t)
 		col := NewKillSourceCollector(
-			&fakeFilmClient{chunks: map[string][]haloclient.FilmChunk{film: chunks}},
+			&fakeFilmClient{chunks: map[string][]filmfetch.FilmChunk{film: chunks}},
 			roster, sharedWriter(db),
 			games.CapabilityMap{
 				games.CapFilmKillSource:    games.CapSupported,

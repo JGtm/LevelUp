@@ -43,7 +43,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/config"
-	"levelup/go-api/internal/sync/haloclient"
+	"levelup/go-api/internal/sync/filmfetch"
 	"levelup/go-api/internal/sync/killcollector"
 	"levelup/go-api/internal/sync/matchflags"
 
@@ -118,7 +118,7 @@ func passeDesFilmsEnLigne(
 		return nil, err
 	}
 	source := killcollector.NewRemoteFilms(
-		killcollector.NewLocalCacheFilms(haloclient.NewLocalFilmCache(cacheRoot)),
+		killcollector.NewLocalCacheFilms(filmfetch.NewLocalFilmCache(cacheRoot)),
 		client,
 		cacheRoot,
 	)

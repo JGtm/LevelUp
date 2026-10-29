@@ -10,15 +10,15 @@
 // parcours des imports directs ne voit pas (même méthode que
 // `TestFermetureDeAnalysisSansDecodeurDeFilm`).
 //
-// Les paquets surveillés sont la brique cible (`internal/haloapi`) ET les deux paquets ACTUELS dont
-// elle est extraite (`platform/halo`, `sync/haloclient`), le temps qu'ils existent : une dépendance
-// vers eux serait demain une dépendance vers la brique.
+// Le paquet surveillé est la brique (`internal/haloapi`, arbre). Les deux paquets dont elle a été
+// extraite (`platform/halo`, `sync/haloclient`) étaient surveillés aussi tant qu'ils existaient ; ils
+// ont été supprimés au lot 4 (2026-10-29).
 //
 // MESURE du 2026-10-29 (HEAD b92916328) : 299 paquets dans la fermeture, AUCUN des paquets
 // surveillés. Il n'y a donc pas d'allowlist : toute fuite est une faute à couper, pas une dette.
 //
-// Mutation qui doit le faire rougir : importer `levelup/go-api/internal/platform/halo/duration`
-// depuis un fichier d'`internal/analysis/`.
+// Mutation qui doit le faire rougir : importer `levelup/go-api/internal/haloapi/infinite` depuis un
+// fichier d'`internal/analysis/`.
 package archlint
 
 import (
@@ -33,8 +33,6 @@ var racinesFermetureDomaine = []string{"./internal/domain/...", "./internal/anal
 // arbresHaloapiInterdits : les arbres (chemins d'import) que la fermeture du domaine ne contient pas.
 var arbresHaloapiInterdits = []string{
 	prefixeInterneAPI + "haloapi",
-	prefixeInterneAPI + "platform/halo",
-	prefixeInterneAPI + "sync/haloclient",
 }
 
 // fuitesHaloapi rend, triés, les paquets de la fermeture qui sont dans un arbre interdit. Fonction
@@ -79,22 +77,22 @@ func TestFermetureDeDomainEtAnalysisSansHaloapi(t *testing.T) {
 	}
 }
 
-// TestFermetureDeDomainEtAnalysis_AutoPreuve : le contrôle pur rougit sur chacun des trois arbres
-// (y compris les variantes de test et le sous-paquet `duration`) et laisse passer les voisins qui
-// partagent seulement le début du nom.
+// TestFermetureDeDomainEtAnalysis_AutoPreuve : le contrôle pur rougit sur l'arbre de la brique (y
+// compris les variantes de test et les sous-paquets) et laisse passer les voisins qui partagent
+// seulement le début du nom.
 func TestFermetureDeDomainEtAnalysis_AutoPreuve(t *testing.T) {
 	sortie := "levelup/go-api/internal/domain\n" +
 		"levelup/go-api/internal/haloapi/xblauth\n" +
 		"levelup/go-api/internal/haloapi\n" +
-		"levelup/go-api/internal/platform/halo/duration [levelup/go-api/internal/analysis.test]\n" +
-		"levelup/go-api/internal/sync/haloclient.test\n" +
+		"levelup/go-api/internal/haloapi/infinite [levelup/go-api/internal/analysis.test]\n" +
+		"levelup/go-api/internal/haloapi/xblauth.test\n" +
 		"levelup/go-api/internal/platform/haloextra\n" +
 		"levelup/go-api/internal/sync/haloclient_reexport\n" +
 		"levelup/go-api/internal/haloapix\n" +
 		"levelup/go-api/internal/platform/auth\n"
 	got := strings.Join(fuitesHaloapi(paquetsDeFermeture(sortie)), ",")
-	attendu := "levelup/go-api/internal/haloapi,levelup/go-api/internal/haloapi/xblauth," +
-		"levelup/go-api/internal/platform/halo/duration,levelup/go-api/internal/sync/haloclient"
+	attendu := "levelup/go-api/internal/haloapi,levelup/go-api/internal/haloapi/infinite," +
+		"levelup/go-api/internal/haloapi/xblauth"
 	if got != attendu {
 		t.Fatalf("fuites = %s, attendu %s", got, attendu)
 	}

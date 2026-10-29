@@ -21,22 +21,22 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/replaybuild"
-	"levelup/go-api/internal/sync/haloclient"
+	"levelup/go-api/internal/sync/filmfetch"
 
 	"github.com/JGtm/LevelUp/libs/film/filmcache"
 	"github.com/JGtm/LevelUp/libs/film/finalise"
 )
 
 // fetcherNonFinalise : le client Halo face a un film en cours de publication. `liste` choisit la
-// forme du refus : l'erreur typee du client reel (`haloclient.fetchFilmChunks`), ou une liste
+// forme du refus : l'erreur typee du client reel (`filmfetch.Films.fetchFilmChunks`), ou une liste
 // sans temps forts rendue par un client qui ne l'aurait pas verifiee — le writer la refuse alors.
 type fetcherNonFinalise struct{ liste bool }
 
-func (f fetcherNonFinalise) GetFilmChunks(context.Context, string) ([]haloclient.FilmChunk, bool, error) {
+func (f fetcherNonFinalise) GetFilmChunks(context.Context, string) ([]filmfetch.FilmChunk, bool, error) {
 	if f.liste {
-		return []haloclient.FilmChunk{
-			{Index: 0, ChunkType: haloclient.FilmChunkTypeHeader, Data: []byte("h")},
-			{Index: 1, ChunkType: haloclient.FilmChunkTypeReplicationData, Data: []byte("r")},
+		return []filmfetch.FilmChunk{
+			{Index: 0, ChunkType: filmfetch.FilmChunkTypeHeader, Data: []byte("h")},
+			{Index: 1, ChunkType: filmfetch.FilmChunkTypeReplicationData, Data: []byte("r")},
 		}, true, nil
 	}
 	return nil, false, fmt.Errorf("GetFilmChunks(m) : %w", finalise.ErrFilmNonFinalise)
@@ -184,11 +184,11 @@ func TestPersistFilmToCache_FilmArchive_CloreLAttente(t *testing.T) {
 // fetcherFinalise : le client Halo face a un film finalise (un morceau de chaque type).
 type fetcherFinalise struct{}
 
-func (fetcherFinalise) GetFilmChunks(context.Context, string) ([]haloclient.FilmChunk, bool, error) {
-	return []haloclient.FilmChunk{
-		{Index: 0, ChunkType: haloclient.FilmChunkTypeHeader, Data: []byte("h")},
-		{Index: 1, ChunkType: haloclient.FilmChunkTypeReplicationData, Data: []byte("r")},
-		{Index: 2, ChunkType: haloclient.FilmChunkTypeHighlightEvents, Data: []byte("t")},
+func (fetcherFinalise) GetFilmChunks(context.Context, string) ([]filmfetch.FilmChunk, bool, error) {
+	return []filmfetch.FilmChunk{
+		{Index: 0, ChunkType: filmfetch.FilmChunkTypeHeader, Data: []byte("h")},
+		{Index: 1, ChunkType: filmfetch.FilmChunkTypeReplicationData, Data: []byte("r")},
+		{Index: 2, ChunkType: filmfetch.FilmChunkTypeHighlightEvents, Data: []byte("t")},
 	}, true, nil
 }
 

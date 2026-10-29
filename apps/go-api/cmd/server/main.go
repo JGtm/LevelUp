@@ -44,6 +44,7 @@ import (
 	"levelup/go-api/internal/domain/title"
 	halo5 "levelup/go-api/internal/games/halo_5"
 	"levelup/go-api/internal/games/halo_5/livesync"
+	"levelup/go-api/internal/games/halo_infinite/haloadapter"
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
 	"levelup/go-api/internal/games/titleseams"
 	"levelup/go-api/internal/games/weapons"
@@ -63,7 +64,6 @@ import (
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 	"levelup/go-api/internal/platform/friendstore"
 	"levelup/go-api/internal/platform/groupstore"
-	"levelup/go-api/internal/platform/halo"
 	"levelup/go-api/internal/platform/netguard"
 	"levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/platform/userstore"
@@ -636,7 +636,7 @@ func main() {
 	// --- 4. Repositories + services ---
 	bootRepo := duckdb.NewBootstrapRepo(sharedReader, metaDB)
 	bootSvc := service.NewBootstrapService(cfg, bootRepo).
-		WithPrivacyProvider(halo.DefaultHaloProvider).
+		WithPrivacyProvider(haloadapter.DefaultHaloProvider).
 		// Décompte de matchs TITLE-AWARE : compte le shared du titre COURANT (pas
 		// celui figé Infinite du boot). Un switch Halo 5 n'attend plus le provider
 		// Infinite tenu par le sync Infinite. Manager.For est caché par path →
@@ -1078,7 +1078,7 @@ func main() {
 	// LEVELUP_SYNC_RESOLVE_ASSETS (ON par défaut, kill-switch). 1er passage ~60s après le
 	// boot (le temps que le pool de tokens se réchauffe), puis hebdomadaire. La résolution
 	// PRIMAIRE des noms reste in-sync ; ce cron ne rattrape que les assets jamais rejoués.
-	if halo.AssetNameResolutionEnabled() {
+	if haloadapter.AssetNameResolutionEnabled() {
 		sweepCron := scheduler.NewAssetNameSweepCron(func(cctx context.Context, ts string) (assetnames.Result, error) {
 			return reg.ResolveUnresolvedAssetNames(cctx, ts, autoSyncPool)
 		}, "", 0).
@@ -1218,7 +1218,7 @@ func main() {
 	// "different configuration" — on désactive donc le cron in-process (le CLI
 	// snapshot-world-leaderboard reste la voie manuelle, serveur arrêté).
 	if cfg.SharedProvider != nil {
-		lbScraper := halo.NewLeaderboardScraper(800 * time.Millisecond)
+		lbScraper := haloadapter.NewLeaderboardScraper(800 * time.Millisecond)
 		worldLbCron := scheduler.NewWorldLeaderboardCron(cfg.SharedProvider, lbScraper, 0)
 		worldLbTask := loopTask(taskWorldLeaderbd, true, schedulerCtx, func(sctx context.Context) {
 			// Enrichissement des stats joueur (ranked-only, dédup match-centric,

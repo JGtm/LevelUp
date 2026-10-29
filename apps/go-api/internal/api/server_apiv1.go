@@ -38,6 +38,7 @@ import (
 	"levelup/go-api/internal/games"
 	halo5 "levelup/go-api/internal/games/halo_5"
 	halo_games "levelup/go-api/internal/games/halo_infinite"
+	"levelup/go-api/internal/games/halo_infinite/haloadapter"
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/observability"
@@ -46,7 +47,6 @@ import (
 	platform_duckdb "levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/friendstore"
 	"levelup/go-api/internal/platform/groupstore"
-	"levelup/go-api/internal/platform/halo"
 	jobs_platform "levelup/go-api/internal/platform/jobs"
 	session_platform "levelup/go-api/internal/platform/session"
 	settings_platform "levelup/go-api/internal/platform/settings"
@@ -1198,7 +1198,7 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 	}
 
 	// PMT-1 / MT-01 : câble le resolver d'hosts d'ingestion title-aware partagé.
-	// Les clients d'ingestion (sync HaloAPIClient, platform/halo HaloProvider,
+	// Les clients d'ingestion (sync HaloAPIClient, haloadapter.Provider,
 	// assets) routent désormais via [endpoints] de constants.toml (fallback const
 	// Halo byte-identique pour halo_infinite).
 	games.SetDefaultEndpointResolver(games.NewMappingsEndpointResolver(fieldMappingsRegistry, titlePkg.DefaultSlug))
@@ -1443,7 +1443,7 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 	// le cache/fetch des définitions BP/challenges au resolver (P4/P5).
 	// Fournisseur des images de carte : UNE instance pour la vie du process. Son limiteur
 	// sortant est partagé par tous les clones (WithTokens), jamais recréé par requête.
-	mapImageProvider := halo.NewHaloProvider()
+	mapImageProvider := haloadapter.NewHaloProvider()
 	assetCfg := assets.AssetConfig{
 		CacheRootDir:  titlePkg.NewPathResolver(cfg.RepoRoot).CacheRootDir(),
 		MetaDBPath:    metadataDBPathFor(cfg),
@@ -1456,7 +1456,7 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 		},
 		// Résolution d'image de carte inconnue (KindMapImage) via DiscoveryUGC.
 		// Injectée ici (et non dans internal/assets) pour éviter le cycle
-		// assets→halo : réutilise halo.FetchAsset (→ DiscoveryAsset.ImageURL).
+		// assets→halo : réutilise haloadapter.FetchAsset (→ DiscoveryAsset.ImageURL).
 		// Tokens Spartan+clearance via reg.AnyPlayerTokens. Résultat caché par le
 		// resolver → fetch ~1×/carte inconnue.
 		MapImageURLFetcher: func(ctx context.Context, titleID, mapID, versionID string) (string, error) {
@@ -1465,7 +1465,7 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 				return "", terr
 			}
 			a, ferr := mapImageProvider.WithTokens(tokens).FetchAsset(
-				ctx, halo.AssetTypeMap, titleID, mapID, versionID, "en-US")
+				ctx, haloadapter.AssetTypeMap, titleID, mapID, versionID, "en-US")
 			if ferr != nil {
 				return "", ferr
 			}
@@ -1526,7 +1526,7 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 		}
 		// Toujours câbler le catalogue : repo nil ⇒ TOML-seul. db_wired distingue le
 		// mode complet (DB fraîche + lazy fetch) du mode dégradé (TOML-seul) en prod.
-		catalog := service.NewSeasonsCatalog(seasonsAssets, seasonsRepo, halo.DefaultHaloProvider, slog.Default())
+		catalog := service.NewSeasonsCatalog(seasonsAssets, seasonsRepo, haloadapter.DefaultHaloProvider, slog.Default())
 		reg.WithSeasonsCatalog(catalog)
 		slog.Info("seasons_catalog_ready",
 			"title_slug", titlePkg.DefaultSlug,
