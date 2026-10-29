@@ -114,6 +114,35 @@ if ($testOutput.Count -eq 0) {
     Add-Result -Name 'Go tests (integration)' -Ok ($baselineExit -eq 0) -Detail "check_test_baseline exit=$baselineExit (go test exit=$testExit)"
 }
 
+# Meme maillon, module libs/film (le decodeur de film, ADR 0041) : `./...` de go-api ne franchit
+# pas la frontiere d'un module. Sa suite est jugee contre SA baseline
+# (.ai/baselines/tests_libs_film.jsonl), comme dans le job CI de fusion.
+$filmDir = Join-Path $repoRoot 'libs\film'
+$filmJsonlPath = Join-Path $goApiDir 'baseline_current_libs_film.jsonl'
+$filmJsonlRelative = 'apps/go-api/baseline_current_libs_film.jsonl'
+Push-Location $filmDir
+try {
+    $env:CGO_ENABLED = '1'
+    Write-Host '  Lancement de la suite du module libs/film...'
+    $filmOutput = & go test -tags=integration -count=1 -timeout=600s -p 1 -json ./... 2>> $stderrLogPath
+    $filmTestExit = $LASTEXITCODE
+} finally {
+    Pop-Location
+}
+[System.IO.File]::WriteAllLines($filmJsonlPath, [string[]]$filmOutput, $utf8NoBom)
+if ($filmOutput.Count -eq 0) {
+    Add-Result -Name 'Go tests (libs/film)' -Ok $false -Detail "go test exit=$filmTestExit, JSONL vide (voir $stderrLogPath)"
+} else {
+    Push-Location $repoRoot
+    try {
+        & bash scripts/check_test_baseline.sh tests --from-jsonl $filmJsonlRelative --baseline .ai/baselines/tests_libs_film.jsonl
+        $filmBaselineExit = $LASTEXITCODE
+    } finally {
+        Pop-Location
+    }
+    Add-Result -Name 'Go tests (libs/film)' -Ok ($filmBaselineExit -eq 0) -Detail "check_test_baseline exit=$filmBaselineExit (go test exit=$filmTestExit)"
+}
+
 # ---------------------------------------------------------------------------
 # Maillon 3/4 -- Web typecheck
 # ---------------------------------------------------------------------------
