@@ -42,9 +42,9 @@ import (
 	"cmp"
 	"slices"
 
+	"levelup/go-api/internal/games/halo_infinite/film/filmshell"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
-	"levelup/go-api/internal/games/weapons/filmshell"
 )
 
 // LoadoutSrcBirth est la provenance d'un relevé lu dans le record de création du corps.

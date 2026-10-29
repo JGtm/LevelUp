@@ -17,13 +17,13 @@ package weaponv3
 // (cf. REFERENCE §"VÉRIFIÉ workflows v3" : 137 ids junk = high-32 aléatoires).
 //
 // SOURCE UNIQUE (DRY) : le set est DÉRIVÉ de l'enum d'armes v2 (filmshell.WeaponIDToName,
-// liste maitre `games/weapons/filmshell`), PAS d'une hand-list qui dérive. Toute arme ajoutée à
+// liste maitre `film/filmshell`), PAS d'une hand-list qui dérive. Toute arme ajoutée à
 // l'enum v2 (sandbox/Fiesta/grenades) est ainsi automatiquement connue du canon.
 
 import (
 	"maps"
 
-	"levelup/go-api/internal/games/weapons/filmshell"
+	"levelup/go-api/internal/games/halo_infinite/film/filmshell"
 )
 
 // knownWeaponHigh32 — map high-32 → nom canonique, dérivée de l enum v2. NON exportée (J12.4 résidu) :

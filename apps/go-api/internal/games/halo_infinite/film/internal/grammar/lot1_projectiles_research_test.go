@@ -47,7 +47,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/weapons/filmshell"
+	"levelup/go-api/internal/games/halo_infinite/film/filmshell"
 )
 
 // TestLot1Projectiles : grammaire (oracle de tag), en-tete (ref0), et attribution des armes

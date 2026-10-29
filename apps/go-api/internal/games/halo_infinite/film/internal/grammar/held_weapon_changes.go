@@ -22,9 +22,9 @@ package grammar
 import (
 	"fmt"
 
+	"levelup/go-api/internal/games/halo_infinite/film/filmshell"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
-	"levelup/go-api/internal/games/weapons/filmshell"
 )
 
 // HeldWeaponChangeStats compte ce que le balayage a vu, pour que l'appelant puisse juger la

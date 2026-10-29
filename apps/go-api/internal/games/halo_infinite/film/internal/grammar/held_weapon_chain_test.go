@@ -7,8 +7,8 @@ package grammar
 import (
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/filmshell"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
-	"levelup/go-api/internal/games/weapons/filmshell"
 )
 
 // naissanceAB : une vie née à t=100, arme A à l'emplacement 0, B au 1, le 2 vide.

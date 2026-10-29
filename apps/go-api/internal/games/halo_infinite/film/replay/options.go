@@ -15,7 +15,7 @@ package replay
 // cinq arguments du depot — c'est ecrit champ par champ, a chaque fois que le cas se pose.
 
 import (
-	"levelup/go-api/internal/games/halo_infinite/equipenergy"
+	"levelup/go-api/internal/games/halo_infinite/film/equipenergy"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"

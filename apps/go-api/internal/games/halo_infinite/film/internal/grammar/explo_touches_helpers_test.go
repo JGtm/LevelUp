@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/weapons/filmshell"
+	"levelup/go-api/internal/games/halo_infinite/film/filmshell"
 )
 
 // exploShot : un tir 0xD2 t36 LONG horodate (attaquant ref0 dom1 + WeaponID + lourd?).

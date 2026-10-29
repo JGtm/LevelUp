@@ -13,7 +13,7 @@ import (
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/games/weapons/filmshell"
+	"levelup/go-api/internal/games/halo_infinite/film/filmshell"
 )
 
 type weaponMetaEntry struct {

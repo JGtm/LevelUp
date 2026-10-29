@@ -10,7 +10,7 @@ import (
 
 // cheminDuCatalogue : le catalogue versionne, depuis ce paquet.
 func cheminDuCatalogue() string {
-	return filepath.Join("..", "..", "..", "..", "..", "..", "data", "titles", "halo_infinite", "reference",
+	return filepath.Join("..", "..", "..", "..", "..", "..", "..", "data", "titles", "halo_infinite", "reference",
 		"equipment_energy.json")
 }
 

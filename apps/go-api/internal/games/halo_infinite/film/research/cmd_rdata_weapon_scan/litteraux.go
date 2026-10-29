@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"sort"
 
+	"levelup/go-api/internal/games/halo_infinite/film/filmshell"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
-	"levelup/go-api/internal/games/weapons/filmshell"
 )
 
 // litScan balaie un chunk : pour chaque paquet, cherche un littéral d'arme complet

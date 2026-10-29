@@ -29,7 +29,7 @@ import (
 var unarmedLiteralRE = regexp.MustCompile(`(?i)\b0x0*7ca9(\b|[0-9a-f]{8}\b)`)
 
 // unarmedLiteralMaison : le SEUL fichier de production qui porte le litteral.
-const unarmedLiteralMaison = "internal/games/weapons/filmshell/unarmed.go"
+const unarmedLiteralMaison = "internal/games/halo_infinite/film/filmshell/unarmed.go"
 
 func TestUnarmedFamilyLiteralUnique(t *testing.T) {
 	_, ici, _, ok := runtime.Caller(0)

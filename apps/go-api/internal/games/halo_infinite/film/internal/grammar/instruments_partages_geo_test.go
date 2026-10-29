@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/weapons/filmshell"
+	"levelup/go-api/internal/games/halo_infinite/film/filmshell"
 )
 
 // geoActiveBase : base bipede DETECTEE du film courant (ref dom1 -> slot absolu = base+idx).

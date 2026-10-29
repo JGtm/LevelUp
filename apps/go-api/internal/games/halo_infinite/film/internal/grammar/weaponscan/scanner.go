@@ -34,7 +34,7 @@ import (
 	"cmp"
 	"slices"
 
-	"levelup/go-api/internal/games/weapons/filmshell"
+	"levelup/go-api/internal/games/halo_infinite/film/filmshell"
 )
 
 // ══════════════════════════════════════════════════════════════════════════════

@@ -11,8 +11,8 @@ import (
 	"strconv"
 	"strings"
 
+	"levelup/go-api/internal/games/halo_infinite/film/filmshell"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
-	"levelup/go-api/internal/games/weapons/filmshell"
 )
 
 // sizesMode liste les paquets type-0 d'un chunk par taille décroissante et compte les

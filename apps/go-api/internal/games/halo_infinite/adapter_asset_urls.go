@@ -12,8 +12,8 @@ import (
 	"levelup/go-api/internal/assets/static"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/games/halo_infinite/film/damagetag"
+	"levelup/go-api/internal/games/halo_infinite/film/filmshell"
 	"levelup/go-api/internal/games/halo_infinite/film/killicon"
-	"levelup/go-api/internal/games/weapons/filmshell"
 )
 
 // TitleSlug est le slug canonique d'Halo Infinite côté adapter.

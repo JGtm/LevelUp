@@ -390,7 +390,7 @@ re-decoded once.
    the question "does this package decide the layer's output?" is asked at review. Measured
    closures: `source` = itself + `film/types`; `profile` = itself, no upstream (it does not import
    `source`, so `source.Rev` left its fingerprint); `grammar` = its tree + `film/types`,
-   `domain/highlightevent`, `film/playerposition`, `games/weapons/filmshell`, upstream `source`,
+   `domain/highlightevent`, `film/playerposition`, `film/filmshell`, upstream `source`,
    `profile`; `killsource` = itself + `film/types`, `film/damagetag`, `domain/highlightevent`,
    upstream `source`, `profile`, `grammar`; `objectives` = itself + `film/types`, `film/objectiveevent`,
    upstream `source` (J3.3b moved `ObjectiveEvent` out of `internal/domain` into the leaf

@@ -9,7 +9,7 @@ import (
 	"sort"
 	"strings"
 
-	"levelup/go-api/internal/games/weapons/filmshell"
+	"levelup/go-api/internal/games/halo_infinite/film/filmshell"
 )
 
 // upstreamScan : pour chaque littéral d'arme (WST gate à bit B-1), cherche en amont,

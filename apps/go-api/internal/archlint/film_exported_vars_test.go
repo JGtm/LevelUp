@@ -44,6 +44,15 @@ import (
 	"testing"
 )
 
+// catalogueArmesHorsRatchet : le catalogue d'armes `film/filmshell`, EXCLU de la mesure. Entre sous
+// `film/` le 2026-10-29 (plan D2, item 2.5) en portant quinze tables exportees (`WeaponIDs`,
+// `WeaponTimingByID`, ...) lues par `games/weapons`, `platform/duckdb`, `sync/killcollector` et
+// le decodeur : il n'etait pas dans le perimetre quand il vivait sous `games/weapons`, et le
+// rapatrier n'a pas change sa nature (dette ADR 0012 preexistante, hors D2). Les rendre
+// accesseurs est un lot a part ; tant qu'il n'a pas lieu, l'exclusion est ICI, datee, au lieu
+// d'une allowlist par nom, et elle disparait avec ce lot.
+const catalogueArmesHorsRatchet = "internal/games/halo_infinite/film/filmshell"
+
 func TestAucuneVarExporteeModifiableDansLeDecodeur(t *testing.T) {
 	racine := apiRootDepuisIci(t)
 	racines := []string{
@@ -69,7 +78,7 @@ func TestAucuneVarExporteeModifiableDansLeDecodeur(t *testing.T) {
 			rel, _ := filepath.Rel(racine, p)
 			rel = filepath.ToSlash(rel)
 			if d.IsDir() {
-				if rel == "internal/games/halo_infinite/film/research" {
+				if rel == "internal/games/halo_infinite/film/research" || rel == catalogueArmesHorsRatchet {
 					return filepath.SkipDir
 				}
 				return nil

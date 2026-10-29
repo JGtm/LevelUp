@@ -37,9 +37,9 @@ import (
 	"fmt"
 	"slices"
 
+	"levelup/go-api/internal/games/halo_infinite/film/filmshell"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
-	"levelup/go-api/internal/games/weapons/filmshell"
 )
 
 // WeaponChangeKind qualifie un changement d'arme en main, tel que le document le publie.

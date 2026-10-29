@@ -40,9 +40,9 @@ import (
 	"cmp"
 	"slices"
 
+	"levelup/go-api/internal/games/halo_infinite/film/filmshell"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/weaponv3"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
-	"levelup/go-api/internal/games/weapons/filmshell"
 )
 
 // loadoutFamilies est le catalogue de familles interrogé par le balayage : la table de

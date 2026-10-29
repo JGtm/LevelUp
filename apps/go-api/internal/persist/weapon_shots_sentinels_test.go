@@ -13,7 +13,7 @@ package persist
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/weapons/filmshell"
+	"levelup/go-api/internal/games/halo_infinite/film/filmshell"
 )
 
 func TestSentinellesArmesAlignees(t *testing.T) {

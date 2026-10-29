@@ -8,7 +8,7 @@ package revision
 //
 // Jusqu au lot J3.2 chaque couche DECLARAIT a la main les racines qu elle hachait. La liste
 // oubliait ce que la couche IMPORTE hors d elle-meme : `film/types` (les formes lues),
-// `film/damagetag` (ses donnees embarquees et son seuil `Strong`), `games/weapons/filmshell`
+// `film/damagetag` (ses donnees embarquees et son seuil `Strong`), `film/filmshell`
 // (le catalogue d armes du balayage) — autant de paquets qui DECIDENT la sortie sans qu aucune
 // revision ne bouge quand ils changent. Des faits jugés frais sur un decodage perime, des lignes
 // de kill hors backlog.

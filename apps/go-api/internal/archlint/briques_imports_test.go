@@ -131,13 +131,10 @@ var briques = []brique{
 	{nom: "himap", paquets: paquetsHimap, permis: paquetsGamefiles},
 	{
 		nom: "film",
-		// Lot 1 du plan D2 : le décodeur de film est encore dans le module `apps/go-api`. Ses trois
-		// racines sont les arbres que le lot 3 déplace sous `libs/film`, où cette ligne est réécrite.
-		paquets: []string{
-			"apps/go-api/internal/games/halo_infinite/film",
-			"apps/go-api/internal/games/weapons/filmshell",
-			"apps/go-api/internal/games/halo_infinite/equipenergy",
-		},
+		// Lot 1 du plan D2 : le décodeur de film est encore dans le module `apps/go-api`. Sa racine
+		// est l'arbre que le lot 3 déplace sous `libs/film`, où cette ligne est réécrite. Depuis
+		// l'item 2.5 (2026-10-29) `filmshell` et `equipenergy` vivent dessous : une seule racine.
+		paquets:    []string{"apps/go-api/internal/games/halo_infinite/film"},
 		recursif:   true,
 		permis:     append(append([]string{}, paquetsGamefiles...), paquetsHimap...),
 		tolerances: tolerancesFilm,

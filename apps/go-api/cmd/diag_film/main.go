@@ -23,8 +23,8 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
+	"levelup/go-api/internal/games/halo_infinite/film/filmshell"
 	"levelup/go-api/internal/games/titleseams"
-	"levelup/go-api/internal/games/weapons/filmshell"
 	"levelup/go-api/internal/platform/auth"
 	gosync "levelup/go-api/internal/sync"
 )

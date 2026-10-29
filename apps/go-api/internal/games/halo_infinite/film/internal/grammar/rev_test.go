@@ -141,7 +141,7 @@ func racineDeLaCoucheGrammaire(t *testing.T) string {
 //
 // LE PERIMETRE EST LA FERMETURE DES IMPORTS de la couche (lot J3.2, DU-2 (b)) : elle rencontre
 // `profile` et `source`, dont les VALEURS entrent en tete, dans l ordre du sens unique, et les
-// paquets importes hors couche (`film/types`, `games/weapons/filmshell`...) par leurs octets —
+// paquets importes hors couche (`film/types`, `film/filmshell`...) par leurs octets —
 // `testdata/grammar_perimetre.golden` les liste.
 func empreinteDeLaCoucheGrammaire(t *testing.T) (string, int) {
 	t.Helper()

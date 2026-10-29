@@ -35,9 +35,9 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/games/halo_infinite/film/filmshell"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
-	"levelup/go-api/internal/games/weapons/filmshell"
 )
 
 // Le film etudie, lu par `filmcache.LireChunk` (J2.3, 2026-09-26) : la disposition n'est plus recopiee.

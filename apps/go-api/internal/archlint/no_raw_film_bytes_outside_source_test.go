@@ -214,6 +214,11 @@ var exclusionsOctetsBruts = []exclusionOctets{
 	{chemin: "internal/games/halo_infinite/film/internal/source", raison: "LA COUCHE SOURCE : le seul lieu " +
 		"autorise (ADR 0034 D-2). Passe sous `film/internal/source` au lot 2.5.a ; ce " +
 		"deplacement se repercute ICI, sur cette ligne."},
+	{chemin: "internal/games/halo_infinite/film/filmshell", raison: "le CATALOGUE D ARMES (hex -> nom, " +
+		"timings, sentinelles) : il NOMME les armes et decode leurs identifiants (`hexToUint64`, " +
+		"`IDFromBytes` sur huit octets deja extraits), il ne lit aucun octet d un film. Etait hors " +
+		"des racines sous `games/weapons/filmshell` (lot 2.5.e) ; entre sous `film/` le " +
+		"2026-10-29 (plan D2, item 2.5) sans changer de nature."},
 	{chemin: "cmd/weapon-sounds", raison: "lit les banques Wwise de l INSTALLATION DU JEU, " +
 		"jamais un film."},
 	{chemin: "cmd/weapon-icons-build", raison: "lit les modules et les textures BC7 de " +

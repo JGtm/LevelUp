@@ -39,7 +39,7 @@ import (
 	"math"
 	"slices"
 
-	"levelup/go-api/internal/games/halo_infinite/equipenergy"
+	"levelup/go-api/internal/games/halo_infinite/film/equipenergy"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/types"

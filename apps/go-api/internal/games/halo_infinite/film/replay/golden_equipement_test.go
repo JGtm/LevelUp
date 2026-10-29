@@ -32,7 +32,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/equipenergy"
+	"levelup/go-api/internal/games/halo_infinite/film/equipenergy"
 )
 
 // equipementPath : le fichier des poussees et de l equipement porte d un build.

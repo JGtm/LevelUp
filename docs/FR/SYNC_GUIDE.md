@@ -148,7 +148,7 @@ Une révision est une chaîne figée dans un golden à côté de l'empreinte du 
 |---|---|---|
 | `source.Rev` | la couche source (chargement, décompression, découpage en chunks et paquets, lecteur de bits canonique) et `film/types` | la façon d'atteindre les octets change — tout est redécodé |
 | `profile.Rev` | la couche profil (la table par build et par carte) ; elle n'importe aucune autre couche | une ligne de la table du profil change |
-| `grammar.Rev` | l'arbre de la grammaire et les paquets qu'il importe (`film/types`, `games/weapons/filmshell`...), plus les **valeurs** de `source.Rev` et `profile.Rev` | une largeur, un cadre, un ordre de composants, un lecteur neuf |
+| `grammar.Rev` | l'arbre de la grammaire et les paquets qu'il importe (`film/types`, `film/filmshell`...), plus les **valeurs** de `source.Rev` et `profile.Rev` | une largeur, un cadre, un ordre de composants, un lecteur neuf |
 | `killsource.Rev` | `facts/killsource` et les paquets qu'il importe (`film/damagetag` et ses tables embarquées, `film/types`...), plus les **valeurs** de `source.Rev`, `profile.Rev`, `grammar.Rev` | la sortie du kill-feed peut changer — candidates au backlog |
 | `objectives.Rev` | `facts/objectives` et les paquets qu'il importe (`film/objectiveevent`, `film/types`), plus les **valeurs** de `source.Rev` et de `grammar.Rev` (la lecture du statborg, du pied de film et des rafales de capture vit dans `grammar/signaux`) | la sortie des objectifs / du statborg peut changer — pas de backlog, les faits et les calques d'objectifs deviennent périmés |
 

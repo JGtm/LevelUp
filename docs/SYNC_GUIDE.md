@@ -148,7 +148,7 @@ A revision is a string frozen in a golden beside the fingerprint of that layer's
 |---|---|---|
 | `source.Rev` | the source layer (loading, decompression, chunk and packet cutting, the canonical bit reader) and `film/types` | the way the bytes are reached changes — everything is re-decoded |
 | `profile.Rev` | the profile layer (the table per build and per map); it imports no other layer | one row of the profile table changes |
-| `grammar.Rev` | the grammar tree and the packages it imports (`film/types`, `games/weapons/filmshell`...), plus the **values** of `source.Rev` and `profile.Rev` | a width, a frame, a component order, a new reader |
+| `grammar.Rev` | the grammar tree and the packages it imports (`film/types`, `film/filmshell`...), plus the **values** of `source.Rev` and `profile.Rev` | a width, a frame, a component order, a new reader |
 | `killsource.Rev` | `facts/killsource` and the packages it imports (`film/damagetag` with its embedded tables, `film/types`...), plus the **values** of `source.Rev`, `profile.Rev`, `grammar.Rev` | the kill-feed output can change — backlog candidate |
 | `objectives.Rev` | `facts/objectives` and the packages it imports (`film/objectiveevent`, `film/types`), plus the **values** of `source.Rev` and `grammar.Rev` (the statborg, footer and capture-burst reading lives in `grammar/signaux`) | the objectives / statborg output can change — no backlog, the facts and the objective layers go stale |
 

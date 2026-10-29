@@ -3,7 +3,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/equipenergy"
+	"levelup/go-api/internal/games/halo_infinite/film/equipenergy"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 

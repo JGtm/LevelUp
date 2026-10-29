@@ -249,9 +249,10 @@ func estPaquetDeLaBriqueFilm(paquet string) bool {
 //
 // VIDE LE 2026-10-29 (mesure du lot 1 sur `a5bae50b4`) : la fermeture d'`analysis` compte 312
 // lignes (paquets et variantes de test), aucune du décodeur ; `filmshell` et `equipenergy` n'y
-// sont pas non plus. Au lot 2.5 `filmshell` descend sous `film/filmshell` et `games/weapons` l'importe ;
-// si la fermeture s'en trouve atteinte, la fuite s'inscrit ICI, datée, avec le lot qui la coupe,
-// pas avant.
+// sont pas non plus. Re-mesuré le 2026-10-29 à l'item 2.5 (`filmshell` sous `film/filmshell`,
+// importé par `games/weapons`) : `games/weapons` n'est pas dans la fermeture d'`analysis`, donc
+// ni lui ni `filmshell` n'y entrent ; la table reste vide. Si une fuite apparaît, elle s'inscrit
+// ICI, datée, avec le lot qui la coupe, pas avant.
 var fuitesTransitivesAnalysis = map[string]string{}
 
 // paquetsDeFermeture extrait les chemins d'import d'une sortie `go list -deps -test -f
@@ -356,7 +357,7 @@ func TestFermetureDeAnalysis_AutoPreuve(t *testing.T) {
 		"levelup/go-api/internal/games/weapons [levelup/go-api/internal/games/weapons.test]\n" +
 		"levelup/go-api/internal/games/halo_infinite/film/types\n" +
 		"levelup/go-api/internal/games/halo_infinite/filmprofile\n" +
-		"levelup/go-api/internal/games/weapons/filmshell\n" +
+		"levelup/go-api/internal/games/halo_infinite/film/filmshell\n" +
 		"github.com/JGtm/LevelUp/libs/film/replay\n" +
 		"levelup/go-api/internal/analysis.test\n"
 	paquets := paquetsDeFermeture(sortie)
@@ -364,26 +365,26 @@ func TestFermetureDeAnalysis_AutoPreuve(t *testing.T) {
 		t.Fatalf("variantes de test mal ramenées : %v", paquets)
 	}
 	fuites, mortes := fuitesDeFermeture(paquets, nil)
-	attendu := "github.com/JGtm/LevelUp/libs/film/replay,levelup/go-api/internal/games/halo_infinite/film/types,levelup/go-api/internal/games/weapons/filmshell"
+	attendu := "github.com/JGtm/LevelUp/libs/film/replay,levelup/go-api/internal/games/halo_infinite/film/filmshell,levelup/go-api/internal/games/halo_infinite/film/types"
 	if strings.Join(fuites, ",") != attendu || len(mortes) != 0 {
 		t.Fatalf("fuites = %v, mortes = %v ; attendu %s et aucune morte", fuites, mortes, attendu)
 	}
 	fuites, mortes = fuitesDeFermeture(paquets, map[string]string{
-		"levelup/go-api/internal/games/weapons/filmshell":         "2026-10-29 test",
-		"levelup/go-api/internal/games/halo_infinite/film/types":  "2026-10-29 test",
-		"github.com/JGtm/LevelUp/libs/film/replay":                "2026-10-29 test",
-		"levelup/go-api/internal/games/halo_infinite/film/absent": "2026-10-29 test",
+		"levelup/go-api/internal/games/halo_infinite/film/filmshell": "2026-10-29 test",
+		"levelup/go-api/internal/games/halo_infinite/film/types":     "2026-10-29 test",
+		"github.com/JGtm/LevelUp/libs/film/replay":                   "2026-10-29 test",
+		"levelup/go-api/internal/games/halo_infinite/film/absent":    "2026-10-29 test",
 	})
 	if len(fuites) != 0 || len(mortes) != 1 || !strings.HasSuffix(mortes[0], "film/absent") {
 		t.Fatalf("allowlist honorée et entrée morte signalée attendues ; fuites = %v, mortes = %v", fuites, mortes)
 	}
 	for imp, attendu := range map[string]bool{
-		"levelup/go-api/internal/games/halo_infinite/film/replay": true,
-		"levelup/go-api/internal/games/weapons/filmshell":         true,
-		"levelup/go-api/internal/games/halo_infinite/equipenergy": true,
-		"github.com/JGtm/LevelUp/libs/film/decfilm":               true,
-		"levelup/go-api/internal/games/halo_infinite/filmprofile": false,
-		"levelup/go-api/internal/games/weapons":                   false,
+		"levelup/go-api/internal/games/halo_infinite/film/replay":      true,
+		"levelup/go-api/internal/games/halo_infinite/film/filmshell":   true,
+		"levelup/go-api/internal/games/halo_infinite/film/equipenergy": true,
+		"github.com/JGtm/LevelUp/libs/film/decfilm":                    true,
+		"levelup/go-api/internal/games/halo_infinite/filmprofile":      false,
+		"levelup/go-api/internal/games/weapons":                        false,
 	} {
 		if got := estPaquetDeLaBriqueFilm(imp); got != attendu {
 			t.Errorf("estPaquetDeLaBriqueFilm(%q) = %v, attendu %v", imp, got, attendu)

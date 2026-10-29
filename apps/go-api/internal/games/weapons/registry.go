@@ -39,7 +39,7 @@ import (
 	"log/slog"
 	"strconv"
 
-	"levelup/go-api/internal/games/weapons/filmshell"
+	"levelup/go-api/internal/games/halo_infinite/film/filmshell"
 	"levelup/go-api/internal/migration"
 )
 

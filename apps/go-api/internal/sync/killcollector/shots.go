@@ -35,7 +35,7 @@ import (
 	"strconv"
 
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/weapons/filmshell"
+	"levelup/go-api/internal/games/halo_infinite/film/filmshell"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
 )

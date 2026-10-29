@@ -33,8 +33,8 @@ import (
 
 	"levelup/go-api/internal/domain/title"
 	halo "levelup/go-api/internal/games/halo_infinite"
-	"levelup/go-api/internal/games/halo_infinite/equipenergy"
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
+	"levelup/go-api/internal/games/halo_infinite/film/equipenergy"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/halo_infinite/replayidentity"
 	"levelup/go-api/internal/games/halo_infinite/replaylabels"
