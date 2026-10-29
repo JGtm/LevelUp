@@ -53,7 +53,8 @@ func tableDesClesMatchInfo() map[AssetType]string {
 // contexte) : il est gardé pour la signature.
 func (p *Provider) FetchAsset(ctx context.Context, assetType AssetType, _ string, assetID, versionID, lang string) (*DiscoveryAsset, error) {
 	api := p.api(ctx, surfaceDiscoveryGet, infinite.RetryDiscovery(), infinite.CleDiscoveryUGC)
-	return api.FetchAsset(ctx, authDe(p.staticTokens), assetType, assetID, versionID, lang)
+	return api.FetchAsset(ctx, authDe(p.staticTokens),
+		infinite.RequeteActif{Type: assetType, AssetID: assetID, VersionID: versionID, Langue: lang})
 }
 
 // FetchMatchStats récupère les stats complètes d'un match (JSON brut) par le chemin joueur, avec

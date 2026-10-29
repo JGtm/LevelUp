@@ -87,9 +87,10 @@ func (s *LeaderboardScraper) SetSeedSeason(seasonID string) {
 // par un jumeau qui NE SUIT PAS les redirections (l'en-tête Location EST la réponse cherchée) ;
 // chaque sortie gardée par netguard sous sa surface.
 func (s *LeaderboardScraper) classement() *infinite.Classement {
-	pages := netguardDoer{surface: surfaceClassementPage, next: s.client}
-	sonde := netguardDoer{surface: surfaceClassementSaison, next: s.noRedirectClient()}
-	return infinite.NewClassement(pages, sonde).WithEndpoints(infinite.DefaultEndpoints().Avec(infinite.CleWaypointWeb, s.host))
+	return infinite.NewClassement(
+		netguardDoer{surface: surfaceClassementPage, next: s.client},
+		netguardDoer{surface: surfaceClassementSaison, next: s.noRedirectClient()},
+	).WithEndpoints(infinite.DefaultEndpoints().Avec(infinite.CleWaypointWeb, s.host))
 }
 
 // noRedirectClient : jumeau du client principal (même délai, transport par défaut) qui ne suit

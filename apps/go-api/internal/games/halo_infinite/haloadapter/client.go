@@ -172,7 +172,8 @@ func (c *Client) auth() infinite.Auth {
 //   - matchType : "all", "matchmaking", "custom", "local" ;
 //   - start     : décalage (0 = plus récent) ; count : 1..25.
 func (c *Client) GetMatchHistory(ctx context.Context, gamertag, matchType string, start, count int) ([]MatchHistoryEntry, error) {
-	dto, err := c.api(ctx, surfaceAPIGet, infinite.CleStats).GetMatchHistory(ctx, c.auth(), gamertag, matchType, start, count)
+	dto, err := c.api(ctx, surfaceAPIGet, infinite.CleStats).GetMatchHistory(ctx, c.auth(),
+		infinite.PageHistorique{Joueur: gamertag, MatchType: matchType, Start: start, Count: count})
 	if err != nil {
 		return nil, err
 	}

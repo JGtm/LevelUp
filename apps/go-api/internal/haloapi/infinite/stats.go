@@ -48,12 +48,21 @@ type MatchHistoryResultDTO struct {
 	} `json:"MatchInfo"`
 }
 
+// PageHistorique désigne une page de l'historique des matchs d'un joueur.
+type PageHistorique struct {
+	// Joueur : au format `xuid(NNN)` (un gamertag textuel rend un historique figé).
+	Joueur string
+	// MatchType : "all", "matchmaking", "custom", "local".
+	MatchType string
+	// Start : décalage (0 = plus récent).
+	Start int
+	// Count : taille de la page, 1..[MatchCountMax].
+	Count int
+}
+
 // GetMatchHistory récupère une page de l'historique des matchs d'un joueur ([CleStats]).
-//
-//   - joueur    : au format `xuid(NNN)` (un gamertag textuel rend un historique figé) ;
-//   - matchType : "all", "matchmaking", "custom", "local" ;
-//   - start     : décalage (0 = plus récent) ; count : 1..[MatchCountMax].
-func (c *Client) GetMatchHistory(ctx context.Context, auth Auth, joueur, matchType string, start, count int) (*MatchHistoryDTO, error) {
+func (c *Client) GetMatchHistory(ctx context.Context, auth Auth, p PageHistorique) (*MatchHistoryDTO, error) {
+	joueur, matchType, start, count := p.Joueur, p.MatchType, p.Start, p.Count
 	if strings.TrimSpace(joueur) == "" {
 		return nil, errors.New("GetMatchHistory: gamertag vide")
 	}

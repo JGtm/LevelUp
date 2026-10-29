@@ -111,12 +111,10 @@ func (c *Client) GetMatchSkill(ctx context.Context, auth Auth, matchID string, x
 }
 
 // DecodeMatchSkill décode un corps brut de réponse skill (la même forme est stockée hors ligne par
-// OpenSpartan). Corps vide : DTO vide.
+// OpenSpartan). Un corps vide n'est pas une réponse skill : erreur de décodage JSON ; c'est à
+// l'appelant hors ligne de décider qu'un corps stocké vide vaut « aucun skill ».
 func DecodeMatchSkill(body []byte) (*MatchSkillDTO, error) {
 	var dto MatchSkillDTO
-	if len(body) == 0 {
-		return &dto, nil
-	}
 	if err := json.Unmarshal(body, &dto); err != nil {
 		return nil, err
 	}

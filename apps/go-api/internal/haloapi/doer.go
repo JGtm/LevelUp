@@ -1,6 +1,7 @@
 package haloapi
 
 import (
+	"context"
 	"errors"
 	"net/http"
 )
@@ -10,6 +11,13 @@ import (
 // satisfait l'interface.
 type Doer interface {
 	Do(req *http.Request) (*http.Response, error)
+}
+
+// Garde : un [Doer] qui peut refuser une sortie AVANT qu'elle n'attende quoi que ce soit (limiteur,
+// reprise) l'implémente. La brique la consulte une fois au début de chaque appel ; une erreur
+// rendue arrête l'appel telle quelle (la marquer [NonRetryable], comme le refus de `Do`).
+type Garde interface {
+	Verifie(ctx context.Context) error
 }
 
 // ErrDefinitif marque une erreur qu'aucune nouvelle tentative ne corrigera (sortie réseau

@@ -369,11 +369,11 @@ func TestParseRetryAfter(t *testing.T) {
 func TestWith_CopieImmuable(t *testing.T) {
 	c := New(&doerCompteur{}, RetryProvider())
 	l := &limiteurCompteur{}
-	c2 := c.WithLimiter(l).WithRetry(RetryHaloClient()).WithEndpoints(DefaultEndpoints().Avec(CleStats, "http://autre"))
-	if c.limiter != nil || c.retry.Essais != 3 || c.Endpoints().Hote(CleStats) == "http://autre" {
+	c2 := c.WithLimiter(l).WithEndpoints(DefaultEndpoints().Avec(CleStats, "http://autre"))
+	if c.limiter != nil || c.Endpoints().Hote(CleStats) == "http://autre" {
 		t.Error("le client d'origine a changé")
 	}
-	if c2.limiter != l || c2.retry.Essais != 4 || c2.Endpoints().Hote(CleStats) != "http://autre" {
+	if c2.limiter != l || c2.retry.Essais != 3 || c2.Endpoints().Hote(CleStats) != "http://autre" {
 		t.Error("la copie ne porte pas les valeurs")
 	}
 }

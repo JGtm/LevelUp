@@ -118,13 +118,23 @@ func (f *Films) telecharger(ctx context.Context, prefixe string, chunks []infini
 	if err != nil {
 		return nil, err
 	}
+	// Chaque blob est décompressé (une reprise ne compte que sur un blob lisible), puis la première
+	// erreur de décompression est rendue.
 	out := make([]FilmChunk, len(bruts))
+	var premiere error
 	for i, b := range bruts {
 		data, iErr := inflateBlob(b.Brut)
 		if iErr != nil {
-			return nil, fmt.Errorf("%s chunk %d(%s): %w", caller, b.Index, matchID, iErr)
+			if premiere == nil {
+				premiere = fmt.Errorf("%s chunk %d(%s): %w", caller, b.Index, matchID, iErr)
+			}
+			continue
 		}
+		compterReprise(b.Essais)
 		out[i] = FilmChunk{Index: b.Index, ChunkType: b.ChunkType, Data: data, StartMS: b.StartMS, DurationMS: b.DurationMS}
+	}
+	if premiere != nil {
+		return nil, premiere
 	}
 	return out, nil
 }

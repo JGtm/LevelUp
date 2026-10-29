@@ -102,7 +102,7 @@ func TestFetchAsset(t *testing.T) {
 "Files":{"Prefix":"https://blobs/x","FileRelativePaths":["map.mvar","images/hero.jpg","images/thumbnail.png"]}}`
 	srv, cap := serveurCorps(t, []byte(corps))
 	c := New(srv.Client(), sansDelai(RetryDiscovery())).WithEndpoints(endpointsVers(srv.URL))
-	a, err := c.FetchAsset(context.Background(), authTest, AssetTypeMap, "a1", "v1", "xx-YY")
+	a, err := c.FetchAsset(context.Background(), authTest, RequeteActif{Type: AssetTypeMap, AssetID: "a1", VersionID: "v1", Langue: "xx-YY"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -113,10 +113,10 @@ func TestFetchAsset(t *testing.T) {
 	if u.Path != "/hi/maps/a1/versions/v1" || h.Get(enteteLangue) != "xx-YY" {
 		t.Errorf("URL = %s, langue = %q", u, h.Get(enteteLangue))
 	}
-	if _, err := c.FetchAsset(context.Background(), authTest, "inconnu", "a", "v", ""); err == nil {
+	if _, err := c.FetchAsset(context.Background(), authTest, RequeteActif{Type: "inconnu", AssetID: "a", VersionID: "v"}); err == nil {
 		t.Error("type invalide : erreur attendue")
 	}
-	if _, err := c.FetchAsset(context.Background(), authTest, AssetTypeMap, "a", "", ""); err == nil {
+	if _, err := c.FetchAsset(context.Background(), authTest, RequeteActif{Type: AssetTypeMap, AssetID: "a"}); err == nil {
 		t.Error("version vide : erreur attendue")
 	}
 	for _, typ := range []AssetType{AssetTypeMap, AssetTypePlaylist, AssetTypePair, AssetTypeGameVariant} {

@@ -84,9 +84,19 @@ type DiscoveryAssetDTO struct {
 	} `json:"Files"`
 }
 
-// FetchAsset récupère un actif de Discovery UGC ([CleDiscoveryUGC]) dans la langue `langue` (valeur
-// d'`Accept-Language`, donnée par l'appelant) et rend son nom localisé.
-func (c *Client) FetchAsset(ctx context.Context, auth Auth, assetType AssetType, assetID, versionID, langue string) (*DiscoveryAsset, error) {
+// RequeteActif désigne un actif de Discovery UGC et la langue de sa lecture.
+type RequeteActif struct {
+	Type      AssetType
+	AssetID   string
+	VersionID string
+	// Langue : valeur d'`Accept-Language` ("" : pas d'en-tête).
+	Langue string
+}
+
+// FetchAsset récupère un actif de Discovery UGC ([CleDiscoveryUGC]) dans la langue de la requête
+// (donnée par l'appelant) et rend son nom localisé.
+func (c *Client) FetchAsset(ctx context.Context, auth Auth, r RequeteActif) (*DiscoveryAsset, error) {
+	assetType, assetID, versionID, langue := r.Type, r.AssetID, r.VersionID, r.Langue
 	segment, ok := SegmentDAsset(assetType)
 	if !ok {
 		return nil, fmt.Errorf("asset type invalide : %s", assetType)

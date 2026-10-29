@@ -53,10 +53,10 @@ func masque(s string) string {
 }
 
 // Crochets : ce que la brique signale sans le compter elle-même (les compteurs expvar et la
-// limitation des journaux appartiennent à l'appelant). Un crochet nil est ignoré.
+// limitation des journaux appartiennent à l'appelant). Un crochet nil est ignoré. Une reprise
+// réussie n'est pas un crochet : [Client.DownloadBlob] rend le nombre d'essais, et l'appelant compte
+// la reprise une fois les octets reconnus lisibles.
 type Crochets struct {
-	// BlobRepriseReussie : un blob obtenu grâce à une nouvelle tentative.
-	BlobRepriseReussie func()
 	// BlobEpuise : abandon d'un blob après épuisement des essais.
 	BlobEpuise func()
 	// BlobIncomplet : un blob reçu d'une autre taille que celle annoncée, refusé.
@@ -96,13 +96,6 @@ func (c *Client) WithLimiter(l Limiter) *Client {
 	return &clone
 }
 
-// WithRetry rend une copie du client sur la politique de reprise `r`.
-func (c *Client) WithRetry(r Retry) *Client {
-	clone := *c
-	clone.retry = r
-	return &clone
-}
-
 // WithCrochets rend une copie du client sur les crochets `k`.
 func (c *Client) WithCrochets(k Crochets) *Client {
 	clone := *c
@@ -132,6 +125,9 @@ type essai struct {
 
 // get exécute un GET de service sous la politique de reprise du client (voir [Retry]).
 func (c *Client) get(ctx context.Context, rq requete) ([]byte, error) {
+	if err := c.verifierGarde(ctx); err != nil {
+		return nil, err
+	}
 	r := c.retry
 	if r.LimiteurUneFois {
 		if err := c.attendreLimiteur(ctx); err != nil {
@@ -164,6 +160,16 @@ func (c *Client) get(ctx context.Context, rq requete) ([]byte, error) {
 	slog.ErrorContext(ctx, "halo_api: GET échec définitif", "url", rq.url, "attempts", r.Essais,
 		"duration_ms", time.Since(start).Milliseconds(), "err", derniere)
 	return nil, fmt.Errorf("doGet %s: %d tentatives échouées — %w", rq.url, r.Essais, derniere)
+}
+
+// verifierGarde consulte la garde du `Doer` ([haloapi.Garde]) s'il en porte une : une sortie
+// refusée l'est avant toute attente du limiteur ou de reprise, et l'erreur de la garde est rendue
+// telle quelle.
+func (c *Client) verifierGarde(ctx context.Context) error {
+	if g, ok := c.doer.(haloapi.Garde); ok {
+		return g.Verifie(ctx)
+	}
+	return nil
 }
 
 // attendreLimiteur attend un jeton du limiteur ; une erreur est rendue, sauf si la politique

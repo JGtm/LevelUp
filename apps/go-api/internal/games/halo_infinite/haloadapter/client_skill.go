@@ -72,6 +72,9 @@ func (c *Client) GetMatchSkill(ctx context.Context, matchID string, xuids []stri
 // ParseMatchSkillResponseJSON décode un corps brut de réponse skill (OpenSpartan stocke ce corps
 // tel quel) avec exactement le décodage du chemin live ; corps vide : map vide.
 func ParseMatchSkillResponseJSON(body []byte) (map[string]*MatchSkillData, error) {
+	if len(body) == 0 {
+		return map[string]*MatchSkillData{}, nil
+	}
 	dto, err := infinite.DecodeMatchSkill(body)
 	if err != nil {
 		return nil, fmt.Errorf("ParseMatchSkillResponseJSON: %w", err)

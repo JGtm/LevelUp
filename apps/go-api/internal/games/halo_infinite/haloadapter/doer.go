@@ -1,6 +1,7 @@
 package haloadapter
 
 import (
+	"context"
 	"net/http"
 
 	"levelup/go-api/internal/haloapi"
@@ -31,10 +32,19 @@ type netguardDoer struct {
 	next *http.Client
 }
 
-// Do vérifie la garde puis émet.
+// Verifie consulte la garde (`haloapi.Garde`) : la brique l'appelle au début de chaque appel, avant
+// toute attente du limiteur, pour qu'une sortie refusée ne consomme aucun jeton.
+func (d netguardDoer) Verifie(ctx context.Context) error {
+	if err := netguard.Check(ctx, d.surface); err != nil {
+		return haloapi.NonRetryable(err)
+	}
+	return nil
+}
+
+// Do vérifie la garde puis émet (chaque requête, reprises comprises, repasse par la garde).
 func (d netguardDoer) Do(req *http.Request) (*http.Response, error) {
-	if err := netguard.Check(req.Context(), d.surface); err != nil {
-		return nil, haloapi.NonRetryable(err)
+	if err := d.Verifie(req.Context()); err != nil {
+		return nil, err
 	}
 	return d.next.Do(req)
 }

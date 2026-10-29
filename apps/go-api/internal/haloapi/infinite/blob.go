@@ -45,7 +45,9 @@ type blobAttempt struct {
 	fatal bool
 }
 
-// DownloadBlob télécharge un blob du CDN et rend ses octets BRUTS (compressés). Reprise : les essais
+// DownloadBlob télécharge un blob du CDN et rend ses octets BRUTS (compressés) et le nombre d'essais
+// qu'il a coûté (1 : obtenu du premier coup ; > 1 : grâce à une reprise, que l'appelant compte
+// après avoir vérifié que les octets sont lisibles). Reprise : les essais
 // et délais de la politique du client ([Retry.Essais], [Retry.DelaiBase], [Retry.Plafond],
 // [Retry.HonoreRetryAfter]) sur les statuts de [retryableBlobStatus] et les échecs de transport ;
 // jamais d'attente après le dernier essai ; une fin de contexte pendant l'attente rend `ctx.Err()`.
@@ -54,7 +56,10 @@ type blobAttempt struct {
 // `tailleAnnoncee` (> 0) est la taille du blob brut annoncée par le manifeste : un blob d'une autre
 // taille rend [*ErrChunkIncomplet], sans nouvelle tentative (un CDN qui sert un blob tronqué le
 // resservirait). 0 : aucun contrôle.
-func (c *Client) DownloadBlob(ctx context.Context, blobURL string, tailleAnnoncee int) ([]byte, error) {
+func (c *Client) DownloadBlob(ctx context.Context, blobURL string, tailleAnnoncee int) (brut []byte, essais int, err error) {
+	if err := c.verifierGarde(ctx); err != nil {
+		return nil, 0, err
+	}
 	start := time.Now()
 	var lastStatus int
 	var lastErr error
@@ -63,16 +68,17 @@ func (c *Client) DownloadBlob(ctx context.Context, blobURL string, tailleAnnonce
 		at := c.fetchBlobOnce(ctx, blobURL, revalider)
 		switch {
 		case at.fatal:
-			return nil, at.err
+			return nil, n + 1, at.err
 		case at.err != nil:
 			lastErr, lastStatus = at.err, 0
 			slog.DebugContext(ctx, "halo_api: downloadBlob échec réseau (retry)", "url", blobURL, "attempt", n+1, "err", at.err)
 		case at.status == http.StatusOK:
-			return c.blobRecu(ctx, blobURL, at.raw, tailleAnnoncee, n, revalider, start)
+			raw, err := c.blobRecu(ctx, blobURL, at.raw, tailleAnnoncee, essaiBlob{n: n, revalider: revalider, start: start})
+			return raw, n + 1, err
 		case !retryableBlobStatus(at.status):
 			slog.WarnContext(ctx, "halo_api: downloadBlob HTTP error", "url", blobURL, "status", at.status,
 				"attempts", n+1, "duration_ms", time.Since(start).Milliseconds())
-			return nil, &BlobHTTPError{StatusCode: at.status, URL: blobURL, Attempts: n + 1}
+			return nil, n + 1, &BlobHTTPError{StatusCode: at.status, URL: blobURL, Attempts: n + 1}
 		default:
 			lastErr, lastStatus = nil, at.status
 			revalider = revalider || at.status == http.StatusNotModified
@@ -85,11 +91,11 @@ func (c *Client) DownloadBlob(ctx context.Context, blobURL string, tailleAnnonce
 			case <-time.After(c.retry.delai(n, at.retryAfter)):
 			}
 			if ctx.Err() != nil {
-				return nil, ctx.Err()
+				return nil, n + 1, ctx.Err()
 			}
 		}
 	}
-	return nil, c.blobAbandon(ctx, blobURL, lastStatus, lastErr, start)
+	return nil, c.retry.Essais, c.blobAbandon(ctx, blobURL, lastStatus, lastErr, start)
 }
 
 // fetchBlobOnce exécute UNE requête GET sur le CDN, sans jeton ; `revalider` pose
@@ -121,23 +127,28 @@ func (c *Client) fetchBlobOnce(ctx context.Context, blobURL string, revalider bo
 	return blobAttempt{raw: raw, status: resp.StatusCode}
 }
 
-// blobRecu traite un blob servi en 200 : contrôle de la taille annoncée (0 = inconnue), crochet de
-// reprise réussie, journal de succès.
-func (c *Client) blobRecu(ctx context.Context, blobURL string, raw []byte, tailleAnnoncee, n int, revalider bool, start time.Time) ([]byte, error) {
+// essaiBlob : l'essai qui a obtenu un 200 (rang à partir de 0, revalidation après un 304, début du
+// téléchargement).
+type essaiBlob struct {
+	n         int
+	revalider bool
+	start     time.Time
+}
+
+// blobRecu traite un blob servi en 200 : contrôle de la taille annoncée (0 = inconnue), journal de
+// succès.
+func (c *Client) blobRecu(ctx context.Context, blobURL string, raw []byte, tailleAnnoncee int, e essaiBlob) ([]byte, error) {
 	if tailleAnnoncee > 0 && len(raw) != tailleAnnoncee {
 		appeler(c.crochets.BlobIncomplet)
 		slog.WarnContext(ctx, "halo_api: blob de film d'une autre taille que celle annoncée — refusé",
-			"url", blobURL, "annonce", tailleAnnoncee, "recu", len(raw), "attempts", n+1)
+			"url", blobURL, "annonce", tailleAnnoncee, "recu", len(raw), "attempts", e.n+1)
 		return nil, &ErrChunkIncomplet{URL: blobURL, Annonce: tailleAnnoncee, Recu: len(raw)}
 	}
-	if n > 0 {
-		appeler(c.crochets.BlobRepriseReussie)
-		if revalider {
-			slog.InfoContext(ctx, "halo_api: downloadBlob 304 puis succès", "url", blobURL, "attempts", n+1)
-		}
+	if e.n > 0 && e.revalider {
+		slog.InfoContext(ctx, "halo_api: downloadBlob 304 puis succès", "url", blobURL, "attempts", e.n+1)
 	}
 	slog.DebugContext(ctx, "halo_api: downloadBlob succès", "url", blobURL, "bytes_compressed", len(raw),
-		"attempts", n+1, "duration_ms", time.Since(start).Milliseconds())
+		"attempts", e.n+1, "duration_ms", time.Since(e.start).Milliseconds())
 	return raw, nil
 }
 

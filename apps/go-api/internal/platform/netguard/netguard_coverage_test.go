@@ -8,15 +8,19 @@
 // le package). Ce test scanne donc `internal/` et échoue sur tout fichier
 // contenant un appel sortant sans `netguard.Check`, hors allowlist justifiée.
 //
-// BRIQUE `internal/haloapi` (plan D3, lot 2, 2026-10-29) : ses fichiers reçoivent leur garde par un
-// `haloapi.Doer` injecté et n'ont donc jamais `netguard.Check` à côté de `.Do(req)` : ils sont
-// exemptés par PRÉFIXE (`prefixeBriqueHaloapi`). Ce qui tient l'hermétisme à leur place : (1) la
-// brique ne construit ni n'atteint aucun client HTTP (`archlint/haloapi_sans_client_http_test.go`,
-// AST et auto-preuve par extrait) ; (2) le `Doer` gardé que fournit l'exploitation
-// (`platform/auth/xbl_doer.go`, `netguard.Check` puis `next.Do(req)`) est un site d'émission
-// ordinaire, VU par ce ratchet. Les surfaces qui n'étaient pas gardées avant le déplacement le
-// restent (client nu passé par la façade) : leurs entrées d'allowlist ont été RENOMMÉES une pour
-// une vers le fichier de la brique qui émet, avec leur justification.
+// BRIQUE `internal/haloapi` : ses fichiers émettent par un `haloapi.Doer` reçu et n'ont jamais
+// `netguard.Check` à côté de `.Do(req)` : ils sont exemptés par PRÉFIXE (`prefixeBriqueHaloapi`).
+// Côté exploitation, ce ratchet VOIT les fichiers qui définissent un `Doer` gardé
+// (`platform/auth/xbl_doer.go`, `games/halo_infinite/haloadapter/doer.go` : `netguard.Check` puis
+// `next.Do(req)`) ; il ne voit PAS si chaque client de la brique reçoit bien ce `Doer`. Ce qui tient
+// l'hermétisme de la brique : (1) elle ne construit ni n'atteint aucun client HTTP
+// (`archlint/haloapi_sans_client_http_test.go`) ; (2) tout client de `haloapi/infinite` construit par
+// go-api reçoit un littéral `netguardDoer{...}` écrit à l'appel (`archlint/haloapi_doer_garde_test.go`) ;
+// (3) les huit surfaces de l'adaptateur sont prouvées muettes en mode démo
+// (`haloadapter/netguard_surfaces_test.go`). Les jambes d'authentification de `haloapi/xblauth` à
+// qui la façade `platform/auth` passe un client nu (échanges XBL/XSTS/Spartan, code d'autorisation,
+// résolveurs de profil) ne sont pas gardées : elles exigent un jeton frais, que le rafraîchissement
+// gardé ne produit pas en démo.
 package netguard_test
 
 import (

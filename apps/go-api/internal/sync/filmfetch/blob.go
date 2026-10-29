@@ -30,10 +30,18 @@ const (
 // crochets : les compteurs et le journal limité que ce paquet pose sur le client des blobs.
 func crochets() infinite.Crochets {
 	return infinite.Crochets{
-		BlobRepriseReussie: func() { observability.AddInt(metricBlobRetrySuccess, 1) },
-		BlobEpuise:         func() { observability.AddInt(metricBlobRetryExhausted, 1) },
-		BlobIncomplet:      func() { observability.IncCounter(compteurChunkIncomplet) },
-		JournalBlobReseau:  journalBlobReseau,
+		BlobEpuise:        func() { observability.AddInt(metricBlobRetryExhausted, 1) },
+		BlobIncomplet:     func() { observability.IncCounter(compteurChunkIncomplet) },
+		JournalBlobReseau: journalBlobReseau,
+	}
+}
+
+// compterReprise compte une reprise réussie pour un blob LISIBLE obtenu en `essais` essais (> 1).
+// L'appelant ne l'appelle qu'après la décompression : un blob obtenu en reprise mais illisible n'est
+// pas une reprise réussie.
+func compterReprise(essais int) {
+	if essais > 1 {
+		observability.AddInt(metricBlobRetrySuccess, 1)
 	}
 }
 
@@ -50,11 +58,16 @@ func journalBlobReseau(ctx context.Context, blobURL string, essais int, err erro
 // décompresse. `tailleAnnoncee` (> 0) est la taille du blob BRUT que le manifeste annonce ; 0 =
 // aucun contrôle.
 func (f *Films) downloadBlob(ctx context.Context, blobURL string, tailleAnnoncee int) ([]byte, error) {
-	brut, err := f.blobs.DownloadBlob(ctx, blobURL, tailleAnnoncee)
+	brut, essais, err := f.blobs.DownloadBlob(ctx, blobURL, tailleAnnoncee)
 	if err != nil {
 		return nil, err
 	}
-	return inflateBlob(brut)
+	data, err := inflateBlob(brut)
+	if err != nil {
+		return nil, err
+	}
+	compterReprise(essais)
+	return data, nil
 }
 
 // inflateBlob décompresse le corps zlib d'un blob (le CDN des films sert le zlib brut, format de

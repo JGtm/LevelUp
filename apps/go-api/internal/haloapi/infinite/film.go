@@ -103,6 +103,8 @@ type FragmentBrut struct {
 	Brut       []byte
 	StartMS    int
 	DurationMS int
+	// Essais : le nombre d'essais qu'a coûté le blob (> 1 : obtenu grâce à une reprise).
+	Essais int
 }
 
 // DownloadChunks télécharge en parallèle ([FilmChunkParallelism]) les fragments `chunks` du film
@@ -115,12 +117,12 @@ func (c *Client) DownloadChunks(ctx context.Context, blobPrefix string, chunks [
 	eg.SetLimit(FilmChunkParallelism)
 	for i, ch := range chunks {
 		eg.Go(func() error {
-			brut, err := c.DownloadBlob(egCtx, BuildChunkURL(blobPrefix, ch.FileRelativePath), ch.ChunkSize)
+			brut, essais, err := c.DownloadBlob(egCtx, BuildChunkURL(blobPrefix, ch.FileRelativePath), ch.ChunkSize)
 			if err != nil {
 				return fmt.Errorf("%s chunk %d(%s): %w", appelant, ch.Index, matchID, err)
 			}
 			out[i] = FragmentBrut{Index: ch.Index, ChunkType: ch.ChunkType, Brut: brut,
-				StartMS: ch.ChunkStartTimeOffsetMilliseconds, DurationMS: ch.DurationMilliseconds}
+				StartMS: ch.ChunkStartTimeOffsetMilliseconds, DurationMS: ch.DurationMilliseconds, Essais: essais}
 			return nil
 		})
 	}

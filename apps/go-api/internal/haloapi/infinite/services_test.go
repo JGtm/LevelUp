@@ -85,7 +85,7 @@ func lireFixture(t *testing.T, nom string) []byte {
 // TestGetMatchHistory_Fixture : la fixture d'historique décode le DTO ; chemin et requête exacts.
 func TestGetMatchHistory_Fixture(t *testing.T) {
 	srv, cap := serveurCorps(t, lireFixture(t, "halo/match_history_response.json"))
-	dto, err := clientSur(srv).GetMatchHistory(context.Background(), authTest, "xuid(123)", "matchmaking", 0, 25)
+	dto, err := clientSur(srv).GetMatchHistory(context.Background(), authTest, PageHistorique{Joueur: "xuid(123)", MatchType: "matchmaking", Count: 25})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,7 +105,7 @@ func TestGetMatchHistory_Fixture(t *testing.T) {
 		j, typ string
 		s, n   int
 	}{{"", "all", 0, 1}, {"x", "bof", 0, 1}, {"x", "all", -1, 1}, {"x", "all", 0, 26}} {
-		if _, err := clientSur(srv).GetMatchHistory(context.Background(), authTest, args.j, args.typ, args.s, args.n); err == nil {
+		if _, err := clientSur(srv).GetMatchHistory(context.Background(), authTest, PageHistorique{Joueur: args.j, MatchType: args.typ, Start: args.s, Count: args.n}); err == nil {
 			t.Errorf("%+v : erreur attendue", args)
 		}
 	}
@@ -205,8 +205,8 @@ func TestGetMatchSkill(t *testing.T) {
 	if err != nil || len(vide.Value) != 0 || cap.nombre() != 1 {
 		t.Errorf("sans humain : %+v, %v, %d requêtes", vide, err, cap.nombre())
 	}
-	if d, err := DecodeMatchSkill(nil); err != nil || len(d.Value) != 0 {
-		t.Errorf("corps vide : %+v, %v", d, err)
+	if d, err := DecodeMatchSkill(nil); err == nil {
+		t.Errorf("corps vide : erreur attendue, obtenu %+v", d)
 	}
 	if UnwrapXUID(" xuid(42) ") != "42" || UnwrapXUID("bid(1)") != "bid(1)" {
 		t.Error("UnwrapXUID")
