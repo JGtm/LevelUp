@@ -1,5 +1,6 @@
 // Package haloapi est le paquet parent de la brique « API Halo » (plan D3) : le code qui PARLE aux
-// services Halo, sans état ni politique. Il ne porte aucun code.
+// services Halo, sans état ni politique. Il ne porte que ce que ses sous-paquets partagent : le
+// [Doer] reçu de LevelUp et l'erreur [ErrDefinitif] qui arrête une reprise.
 //
 // Ses sous-paquets sont `xblauth` (chaîne d'authentification Xbox Live, XSTS, Spartan) et
 // `infinite` (services Halo Infinite : adresses, transport, DTO JSON bruts, octets des films).
