@@ -36,7 +36,7 @@ import (
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/games/halo_infinite/film/filmproc"
 )
 
 // rlocVariantes : l ordre des marches ; `ref` d abord (elle fixe les paquets de reference).

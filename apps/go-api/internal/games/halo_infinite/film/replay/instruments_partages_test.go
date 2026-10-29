@@ -15,7 +15,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/games/halo_infinite/film/filmproc"
 )
 
 // amArmeSentinelle arme le plafond memoire de MESURE pour un balayage de corpus, et rend la
@@ -25,7 +25,7 @@ import (
 // enchainent jusqu'a 65 films DANS UN SEUL PROCESSUS. Le decodage du statborg est borne par
 // `statMaxRecordsPerFilm` et les pics mesures restent sous le dixieme de gibioctet — mais c'est
 // une PROPRIETE OBSERVEE, pas une garantie, et la doctrine du depot ne fait pas d'exception :
-// tout processus qui enchaine des films arme sa sentinelle (cf. `internal/filmproc`).
+// tout processus qui enchaine des films arme sa sentinelle (cf. `internal/games/halo_infinite/film/filmproc`).
 func amArmeSentinelle(t *testing.T, nom string) func() {
 	t.Helper()
 	g := filmproc.Arm(nom, filmproc.MeasureLimitGiB, func(peak uint64) {

@@ -73,7 +73,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/games/halo_infinite/film/filmproc"
 )
 
 // ti11SommeLargeurs est la somme des largeurs portees de l'archetype, `i2`, `i9` et `i4` EXCLUS

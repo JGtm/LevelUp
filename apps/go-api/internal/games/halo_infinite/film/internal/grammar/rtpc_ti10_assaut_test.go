@@ -99,7 +99,7 @@ import (
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/games/halo_infinite/film/filmproc"
 )
 
 // ti10MonteeDiviseur fixe le seuil d'amplitude d'une montee : le SEIZIEME de l'etendue observee

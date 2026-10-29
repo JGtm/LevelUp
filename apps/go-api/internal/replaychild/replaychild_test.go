@@ -4,7 +4,7 @@ package replaychild
 //
 // CE QUE CES CAS TIENNENT. Le post-sync vit DANS le serveur : il ne peut ni attendre son tour
 // (la synchronisation entiere attendrait derriere lui) ni decoder en parallele d'un autre
-// processus (c'est le mecanisme des quatre sinistres RAM, cf. internal/filmproc/solo.go). Son
+// processus (c'est le mecanisme des quatre sinistres RAM, cf. internal/games/halo_infinite/film/filmproc/solo.go). Son
 // regime est donc le REFUS IMMEDIAT, pris par le PARENT — avant meme de faire naitre l'enfant,
 // pour qu'un refus ne coute pas un lancement de processus et une lecture de catalogue.
 //
@@ -19,7 +19,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/games/halo_infinite/film/filmproc"
 )
 
 func TestSpawn_VerrouTenuAilleurs_RefusImmediat(t *testing.T) {

@@ -47,7 +47,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/games/halo_infinite/film/filmproc"
 )
 
 // tpFilms : les cinq films Neutral Bomb reels et leurs explosions (copie gardee par

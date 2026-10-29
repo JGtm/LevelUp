@@ -40,8 +40,8 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/filmproc"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/games/halo_infinite/film/filmproc"
 	"levelup/go-api/internal/observability/logging"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replaybuild"
@@ -138,7 +138,7 @@ func main() {
 // pire, deux boucles en parallèle dont une en arrière-plan, ont saturé la machine de travail de
 // l'utilisateur. Le corpus connaît un film à 3,3 Go (`1b1e380f`, tué par une surveillance
 // EXTERNE le 2026-08-18) ; quatre sinistres mémoire ont suivi, le dernier le 2026-08-31.
-// Voir `internal/filmproc/solo.go` pour le récit complet.
+// Voir `internal/games/halo_infinite/film/filmproc/solo.go` pour le récit complet.
 //
 // Ordre d'armement : le VERROU d'abord (un refus doit coûter zéro décodage), puis la priorité,
 // puis la sentinelle. Aucune base n'est ouverte ici, donc la sentinelle a le droit de tuer

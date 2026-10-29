@@ -29,7 +29,7 @@ import (
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/games/halo_infinite/film/filmproc"
 )
 
 // rnSeuilScore : part des NEW propres (paquets sans liste d evenements) que l allocateur a cinq

@@ -42,7 +42,7 @@ import (
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/games/halo_infinite/film/filmproc"
 )
 
 // b4Paquet : ce que la sonde garde d un paquet delta.

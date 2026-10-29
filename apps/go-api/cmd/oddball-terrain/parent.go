@@ -15,8 +15,8 @@ import (
 	"strconv"
 	"strings"
 
-	"levelup/go-api/internal/filmproc"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/games/halo_infinite/film/filmproc"
 )
 
 // terrainFilm : le film calibrant (verite terrain).

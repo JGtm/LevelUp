@@ -15,7 +15,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/games/halo_infinite/film/filmproc"
 )
 
 // TestObjectifTi11DeltaGarde — LE COUT PAR COMPOSANT, TESTE LA OU IL S'APPLIQUE.

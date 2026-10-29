@@ -294,6 +294,15 @@ var couchesDuDecodeur = map[string]coucheFilm{
 	// `identity` : le contrat d identite des entites (types seuls, descendus de `games/canonical` le
 	// 2026-10-29, D2 2.4) ; feuille sans import du depot, declare des formes : hors couche.
 	"internal/games/halo_infinite/film/identity": horsCoucheFilm,
+	// `filmproc` : le garde-fou MEMOIRE du decodage (lanceur parent/enfant, sentinelle, verrou de
+	// decodage), descendu de `internal/filmproc` le 2026-10-29 (D2 2.6). Il ne decode rien et ne
+	// publie rien : hors couche. `atomicfile` et `filelock` sont ses deux outils (ecriture atomique,
+	// verrou du noyau), fermes sous `film/internal/` : `filelock` a ete DEPLACE (son seul importeur
+	// etait `filmproc`), `atomicfile` est une COPIE JUMELLE de `platform/atomicfile`
+	// (`copies_identiques_test.go`).
+	"internal/games/halo_infinite/film/filmproc":            horsCoucheFilm,
+	"internal/games/halo_infinite/film/internal/atomicfile": horsCoucheFilm,
+	"internal/games/halo_infinite/film/internal/filelock":   horsCoucheFilm,
 	// `filmshell`, `equipenergy` : les CATALOGUES (armes telles que le film les nomme ; capacites et
 	// couts d energie des equipements), descendus de `games/weapons` et de `games/halo_infinite` le
 	// 2026-10-29 (D2 2.5). Ils ne lisent aucun octet de film et ne publient rien : hors couche.

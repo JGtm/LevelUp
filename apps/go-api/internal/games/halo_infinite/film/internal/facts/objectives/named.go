@@ -35,7 +35,7 @@ import (
 //
 // Balayage `cmd/tmp_statnames` (outil jetable de 2026-08-05, disparu du depot — reecrit
 // en CLI durable `cmd/statnames-sweep` le 2026-08-27, meme methode, execution bornee par
-// `internal/filmproc`) : la valeur finale de chaque emplacement, pour un slot dont
+// `internal/games/halo_infinite/film/filmproc`) : la valeur finale de chaque emplacement, pour un slot dont
 // l'identite est connue, est confrontee au compte de chaque recompense de
 // `personal_score_awards`, puis les candidates sont intersectees sur les films.
 // **Controle** : la table est ajustee separement sur les films de rang pair et de rang

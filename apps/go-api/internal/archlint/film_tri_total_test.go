@@ -56,7 +56,6 @@ import (
 var racinesTriTotal = []string{
 	"internal/games/halo_infinite/film",
 	"internal/replaybuild",
-	"internal/filmproc",
 	"internal/sync/killcollector",
 }
 

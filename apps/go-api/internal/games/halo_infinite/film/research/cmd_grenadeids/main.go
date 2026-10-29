@@ -12,7 +12,7 @@
 //	  -racine <parc>/data/cache/film_chunks \
 //	  -films 111fa685,e5adf7b2,60ae07c4,a349fea8,fb1a1a72
 //
-// Le verrou de decodage de `internal/filmproc` n est PAS pris : il ecrirait un fichier sous la
+// Le verrou de decodage de `internal/games/halo_infinite/film/filmproc` n est PAS pris : il ecrirait un fichier sous la
 // racine du cache, et le cadre de ce lot interdit toute ecriture sous `data/`. La sentinelle
 // memoire, elle, est armee — elle ne fait qu abaisser un plafond dans ce processus.
 package main
@@ -25,7 +25,7 @@ import (
 	"strconv"
 	"strings"
 
-	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/games/halo_infinite/film/filmproc"
 	"levelup/go-api/internal/games/halo_infinite/film/research/grenadeids"
 )
 

@@ -26,7 +26,7 @@ import (
 	"os"
 	"testing"
 
-	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/games/halo_infinite/film/filmproc"
 )
 
 // vipFilmEnv designe LE film qualifie par ce processus — une boucle sur trois films dans un

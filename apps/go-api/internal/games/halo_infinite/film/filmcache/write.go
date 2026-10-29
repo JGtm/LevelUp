@@ -45,7 +45,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/filmobs"
 	"levelup/go-api/internal/games/halo_infinite/film/finalise"
-	"levelup/go-api/internal/platform/atomicfile"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/atomicfile"
 )
 
 // EnsureDirs cree les deux dossiers du cache et rend la racine prete a l emploi.

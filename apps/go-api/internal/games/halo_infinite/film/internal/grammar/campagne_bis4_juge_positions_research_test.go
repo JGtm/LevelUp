@@ -32,7 +32,7 @@ import (
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/games/halo_infinite/film/filmproc"
 )
 
 // b4jCompte : ce que le juge dit d une variante.

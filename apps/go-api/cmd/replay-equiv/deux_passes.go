@@ -48,7 +48,7 @@ import (
 	"strings"
 	"time"
 
-	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/games/halo_infinite/film/filmproc"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/replaybuild"
 )

@@ -48,7 +48,7 @@ import (
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/games/halo_infinite/film/filmproc"
 )
 
 // b2Forme est une forme de lecture du champ `+0x74` du bloc 0xbc.

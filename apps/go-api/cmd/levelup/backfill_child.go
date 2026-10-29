@@ -12,10 +12,10 @@ package main
 // trop gros : c'est le PROCESSUS UNIQUE qui empile les pics de tous les films et ne rend jamais
 // rien a l'OS. La regle (doctrine machine D17) : UN FILM = UN PROCESSUS.
 //
-// # LE LANCEUR EST DESORMAIS `internal/filmproc` (PLAN_CUISSON_PERF item 5.4, 2026-09-03)
+// # LE LANCEUR EST DESORMAIS `internal/games/halo_infinite/film/filmproc` (PLAN_CUISSON_PERF item 5.4, 2026-09-03)
 //
 // Ce fichier portait sa PROPRE copie du motif : codes de sortie, categories d'issue, marqueur
-// de pic memoire, relais de sortie, environnement de l'enfant. `internal/filmproc` porte
+// de pic memoire, relais de sortie, environnement de l'enfant. `internal/games/halo_infinite/film/filmproc` porte
 // EXACTEMENT le meme protocole, aux memes valeurs (0 / 10 / 11 / 12 / 13, marqueur
 // `__levelup_pic_octets__=`), et il est deja le lanceur du post-sync, du harnais d'equivalence
 // et de la passe d'attribution de zones. Deux copies d'un protocole finissent par diverger sur

@@ -4,8 +4,8 @@ package main
 // job.
 //
 // La sentinelle elle-même (armement, échantillonnage, plafond dur, Disarm) est
-// internal/filmproc.Arm depuis le lot v2 G.1 (2026-09-05) — ses propres tests vivent dans
-// internal/filmproc (filmproc_test.go) et ne sont pas dupliqués ici. ATTENTION : aucun test
+// internal/games/halo_infinite/film/filmproc.Arm depuis le lot v2 G.1 (2026-09-05) — ses propres tests vivent dans
+// internal/games/halo_infinite/film/filmproc (filmproc_test.go) et ne sont pas dupliqués ici. ATTENTION : aucun test
 // ci-dessous n'appelle reportMemoryExceeded (qui se termine par os.Exit) — l'appeler pour de
 // bon donnerait à un test le pouvoir de tuer le binaire de test. On teste donc les pièces
 // LOCALES à ce paquet : le motif explicite (memoryExceededRequest/memoryExceededMessage) et
@@ -21,7 +21,7 @@ import (
 
 	"levelup/go-api/internal/api/handlers"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/games/halo_infinite/film/filmproc"
 )
 
 func TestMemoryExceededMessage_ContientMatchIDPicEtMention(t *testing.T) {

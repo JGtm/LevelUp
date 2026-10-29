@@ -15,7 +15,7 @@ import (
 	"strconv"
 	"testing"
 
-	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/games/halo_infinite/film/filmproc"
 )
 
 // TestArgsCuissonTransmetLePlafondMemoire — LE COMPORTEMENT DEMANDE : `--mem-gib` figure dans

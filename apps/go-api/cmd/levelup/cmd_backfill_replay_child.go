@@ -24,15 +24,15 @@ import (
 
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/filmproc"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/games/halo_infinite/film/filmproc"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replaybuild"
 )
 
 // outilBackfillReplay : le nom sous lequel l'enfant de la passe tient le verrou de decodage.
-// C'est ce mot que lira l'operateur a qui le verrou est refuse (cf. internal/filmproc/solo.go).
+// C'est ce mot que lira l'operateur a qui le verrou est refuse (cf. internal/games/halo_infinite/film/filmproc/solo.go).
 const outilBackfillReplay = "backfill-replay"
 
 // attenteVerrouPasse : combien de temps l'enfant d'une PASSE attend son tour avant de renoncer.
@@ -48,7 +48,7 @@ const attenteVerrouPasse = 10 * time.Minute
 // IL NE REND JAMAIS D'ERREUR A `main` : le code de sortie EST le canal de retour. Une erreur
 // rendue a main sortirait en 1, que le protocole reserve aux morts hors categorie.
 func runBackfillReplayUn(cfg *config.AppConfig, o replayBackfillOptions, cacheRoot string) int {
-	// SENTINELLE CANONIQUE (internal/filmproc.Arm) : memes deux plafonds qu'avant (souple +
+	// SENTINELLE CANONIQUE (internal/games/halo_infinite/film/filmproc.Arm) : memes deux plafonds qu'avant (souple +
 	// 25 % dur, echantillonnage 250 ms) — le calcul vit desormais dans un seul endroit
 	// (memguard.go). onExceeded applique LA DOCTRINE DE CET ENFANT : emettre le pic sur le
 	// protocole stdout puis mourir avec le code memoire, comme avant la centralisation.

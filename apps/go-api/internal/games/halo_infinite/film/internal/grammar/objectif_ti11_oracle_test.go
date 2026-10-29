@@ -14,7 +14,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/games/halo_infinite/film/filmproc"
 )
 
 // TestObjectifTi11Oracle — L'ORACLE DE LARGEUR, ET IL DESIGNE LE COMPOSANT FAUTIF.

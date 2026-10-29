@@ -37,7 +37,7 @@ package filmproc
 // lent) se faisait deposseder pendant qu'il decodait encore, puis son Release EFFACAIT le fichier
 // de son successeur — et un troisieme decodait en parallele du second.
 //
-// Le verrou est desormais celui du NOYAU (`platform/filelock` : `LockFileEx` / `flock`) sur
+// Le verrou est desormais celui du NOYAU (`film/internal/filelock` : `LockFileEx` / `flock`) sur
 // `film_decode.lock` : exclusif tant que le processus vit, rendu par le systeme a sa mort — la
 // sentinelle memoire et l'operateur tuent, c'est le cas nominal — et a aucun autre moment. Ni
 // battement, ni reprise de verrou perime, ni intervention manuelle.
@@ -57,8 +57,8 @@ import (
 	"sync"
 	"time"
 
-	"levelup/go-api/internal/platform/atomicfile"
-	"levelup/go-api/internal/platform/filelock"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/atomicfile"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/filelock"
 )
 
 const (

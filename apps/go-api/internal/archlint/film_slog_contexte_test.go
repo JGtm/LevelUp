@@ -56,6 +56,20 @@ type fichierDuPerimetreFilm struct {
 	ast  *ast.File
 }
 
+// horsPerimetreDeJournal : les dossiers descendus sous `film/` par le plan D2 (2026-10-29) qui
+// journalisent SANS contexte et n'etaient pas dans ce perimetre quand ils vivaient hors de
+// `film/` (`internal/filmproc`, `platform/filelock`, `platform/atomicfile`). Leur donner un `ctx`
+// change la signature publique de `Arm`, `ArmBytes`, `AcquireSolo`, `Release`, `LowerOwnPriority`
+// (98 fichiers appelants) et de `atomicfile.WriteFile` (copie jumelle d'un paquet a onze fichiers importeurs
+// importeurs) : un lot a part, hors D2. Une exclusion DATEE et nommee par dossier, pas une
+// allowlist par ligne ; elle tombe avec ce lot. Chaque entree porte sa raison.
+var horsPerimetreDeJournal = map[string]string{
+	"internal/games/halo_infinite/film/filmproc": "garde-fou processus (memguard, solo, priorites) : " +
+		"slog sans ctx depuis l'origine, API publique sans contexte",
+	"internal/games/halo_infinite/film/internal/atomicfile": "copie jumelle de platform/atomicfile " +
+		"(slog.Warn sans ctx) : la signature de WriteFile est celle de onze fichiers importeurs",
+}
+
 // fichiersDuPerimetreFilm rend les fichiers de production du perimetre, hors `research`. Il
 // echoue sur un balayage vide : un ratchet qui ne mesure rien ne garde rien.
 func fichiersDuPerimetreFilm(t *testing.T, racines ...string) []fichierDuPerimetreFilm {
@@ -70,7 +84,7 @@ func fichiersDuPerimetreFilm(t *testing.T, racines ...string) []fichierDuPerimet
 			rel, _ := filepath.Rel(racine, p)
 			rel = filepath.ToSlash(rel)
 			if d.IsDir() {
-				if rel == "internal/games/halo_infinite/film/research" {
+				if rel == "internal/games/halo_infinite/film/research" || horsPerimetreDeJournal[rel] != "" {
 					return filepath.SkipDir
 				}
 				return nil

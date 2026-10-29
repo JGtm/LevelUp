@@ -76,7 +76,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/games/halo_infinite/film/filmproc"
 )
 
 // ti11DeltaBilan compte, par composant, les marches abouties et celles qui chainent.

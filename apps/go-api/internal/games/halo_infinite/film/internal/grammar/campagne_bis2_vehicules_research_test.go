@@ -25,7 +25,7 @@ import (
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/games/halo_infinite/film/filmproc"
 )
 
 // --- T6-C2 : images-cles ti=40 ------------------------------------------------------------------

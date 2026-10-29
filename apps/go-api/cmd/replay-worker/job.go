@@ -25,9 +25,9 @@ import (
 	"levelup/go-api/internal/api/handlers"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/filmproc"
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/games/halo_infinite/film/filmproc"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replaybuild"
 )
@@ -55,7 +55,7 @@ const chunkParallelism = 8
 const genericBuildFailedErrorCode = "replay_build_failed"
 
 // outilOuvrier : le nom sous lequel l'ouvrier tient le verrou de décodage de la machine. C'est
-// ce mot que lira l'opérateur à qui le verrou est refusé (cf. internal/filmproc/solo.go).
+// ce mot que lira l'opérateur à qui le verrou est refusé (cf. internal/games/halo_infinite/film/filmproc/solo.go).
 const outilOuvrier = "replay-worker"
 
 // attenteVerrouOuvrier : combien de temps l'ouvrier attend son tour avant de rendre le job en
@@ -64,7 +64,7 @@ const outilOuvrier = "replay-worker"
 // non un chevauchement ordinaire.
 const attenteVerrouOuvrier = 10 * time.Minute
 
-// exitCodeMemoryExceeded : code de sortie quand la sentinelle mémoire (internal/filmproc.Arm,
+// exitCodeMemoryExceeded : code de sortie quand la sentinelle mémoire (internal/games/halo_infinite/film/filmproc.Arm,
 // armée ci-dessous dans processJob) a isolé le job en cours. Distinct de 1 (arrêt sur erreur
 // de la boucle) et 2 (configuration manquante, cf. main.go) : un opérateur qui lit les
 // journaux du superviseur du processus doit pouvoir distinguer un dépassement mémoire
@@ -81,7 +81,7 @@ type worker struct {
 	// keepsFilms : le dossier de travail EST le cache film du dépôt (archive
 	// perpétuelle) — les morceaux ne sont alors jamais supprimés. Cf. cleanupFilm.
 	keepsFilms bool
-	// memLimitGiB : le plafond mémoire dur de CHAQUE job (0 = désarmé). Cf. internal/filmproc.Arm,
+	// memLimitGiB : le plafond mémoire dur de CHAQUE job (0 = désarmé). Cf. internal/games/halo_infinite/film/filmproc.Arm,
 	// armé ci-dessous dans processJob.
 	memLimitGiB int
 	jobsDone    int64
@@ -105,7 +105,7 @@ func (w *worker) processJob(ctx context.Context, job *domain.BuildQueueJob) {
 	go w.beatUntil(beatCtx, job.JobID)
 
 	// LA SENTINELLE EST ARMÉE POUR CE JOB SEUL, via la sentinelle canonique
-	// internal/filmproc.Arm (memes deux plafonds : 3 GiB souple, +25 % dur, échantillonnage
+	// internal/games/halo_infinite/film/filmproc.Arm (memes deux plafonds : 3 GiB souple, +25 % dur, échantillonnage
 	// 250 ms — le calcul vit desormais dans un seul endroit, memguard.go) : un pic mesuré
 	// depuis le démarrage de l'ouvrier confondrait plusieurs films. onExceeded RAPPORTE
 	// l'échec au serveur PUIS arrête ce processus — l'OS récupère la RAM par construction,
@@ -156,7 +156,7 @@ func (w *worker) processJob(ctx context.Context, job *domain.BuildQueueJob) {
 }
 
 // reportMemoryExceeded rend compte au serveur d'un dépassement du plafond mémoire dur PUIS
-// arrête ce processus (le plafond lui-même est armé par internal/filmproc.Arm dans
+// arrête ce processus (le plafond lui-même est armé par internal/games/halo_infinite/film/filmproc.Arm dans
 // processJob ; le pourquoi des deux plafonds vit dans filmproc/doc.go). Le compte rendu est
 // ISOLÉ dans completeMemoryExceeded (testable) : seule la ligne os.Exit ne l'est pas — même
 // parti pris que memlimit_test.go (on teste les pièces, jamais la coupure elle-même, pour ne
@@ -212,7 +212,7 @@ func memoryExceededMessage(matchID string, peakBytes uint64) string {
 
 // memGuardOctetsParGiB : la conversion, nommée pour ne pas semer des 1<<30 dans le code. Sert
 // uniquement à la mise en forme humaine (formatMemGuardBytes, ci-dessous) — la sentinelle
-// mémoire elle-même est armée par internal/filmproc.Arm (cf. processJob), qui porte sa propre
+// mémoire elle-même est armée par internal/games/halo_infinite/film/filmproc.Arm (cf. processJob), qui porte sa propre
 // constante interne.
 const memGuardOctetsParGiB = 1 << 30
 
@@ -277,7 +277,7 @@ func (w *worker) buildAndSend(ctx context.Context, job *domain.BuildQueueJob) (s
 	// à la fois, mais RIEN n'empêche de le lancer sur une machine qui décode déjà — un poste de
 	// développement qui fait tourner le serveur (post-sync), une passe `backfill-replay`, ou
 	// simplement deux ouvriers. C'est exactement le trou par lequel le quatrième sinistre est
-	// passé (cf. internal/filmproc/solo.go) : « un film à la fois DANS ce processus » ne dit
+	// passé (cf. internal/games/halo_infinite/film/filmproc/solo.go) : « un film à la fois DANS ce processus » ne dit
 	// rien du nombre de processus. Il ATTEND son tour plutôt que d'échouer (le job est déjà pris,
 	// son bail court, et le rendre en échec pour un chevauchement gâcherait le téléchargement
 	// qu'on vient de payer) ; passé la borne, c'est un échec ordinaire, détenteur nommé.

@@ -8,7 +8,7 @@ package main
 // sentinelle memoire. Le verrou est celui a ATTENTE BORNEE : ce harnais est le gate de chaque
 // lot, et un refus sec sur un simple chevauchement avec une cuisson en cours ferait echouer un
 // lot entier. Aucune base n'est ouverte ici — la sentinelle a donc le droit de TUER le
-// processus (cf. l'en-tete de `internal/filmproc`).
+// processus (cf. l'en-tete de `internal/games/halo_infinite/film/filmproc`).
 //
 // # POURQUOI L'ENFANT ECRIT LE TSV LUI-MEME
 //
@@ -32,9 +32,9 @@ import (
 
 	"levelup/go-api/internal/analysis/digest"
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/filmproc"
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/games/halo_infinite/film/filmproc"
 	"levelup/go-api/internal/replaybuild"
 )
 

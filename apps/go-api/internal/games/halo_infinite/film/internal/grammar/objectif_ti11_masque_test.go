@@ -68,7 +68,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/games/halo_infinite/film/filmproc"
 )
 
 // ti11ArchIndex est l'archetype des objectifs geres, et ti11Composants sa taille (le registre

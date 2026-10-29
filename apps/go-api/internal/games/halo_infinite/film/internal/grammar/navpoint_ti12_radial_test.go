@@ -80,8 +80,8 @@ import (
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/filmproc"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/games/halo_infinite/film/filmproc"
 )
 
 // Les seuils de la definition d'une MONTEE, figes avant la mesure. L'amplitude est en quanta de

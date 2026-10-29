@@ -134,7 +134,7 @@ import (
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/games/halo_infinite/film/filmproc"
 )
 
 // Les trois champs interroges. i12 et i13 sont R(32) bruts, i14 est R(3).

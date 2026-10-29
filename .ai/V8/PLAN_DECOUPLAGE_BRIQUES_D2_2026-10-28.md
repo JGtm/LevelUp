@@ -362,17 +362,17 @@ Chaque item fait descendre une tolérance du lot 1 ; T1 à T3 relancés en fin d
   `TestCadreHistoriqueDesImports` (source avec le préfixe `github.com/JGtm/LevelUp/libs/film` =
   même empreinte qu'avec l'ancien) ; goldens inchangés (`git diff` vide sur `revision/testdata`
   et les goldens de périmètre) ; T2 identique.
-- [ ] 2.2 `film/filmobs` + puits (D2-D) ; les 14 sites et 4 tests ; câblage du puits dans
+- [x] 2.2 `film/filmobs` + puits (D2-D) ; les 14 sites et 4 tests ; câblage du puits dans
   `internal/api/wire` et les binaires relevés ; tolérance `observability` = 0.
-- [ ] 2.3 `domain/playerposition` → `film/playerposition`, `domain/objectiveevent` → `film/objectiveevent`
+- [x] 2.3 `domain/playerposition` → `film/playerposition`, `domain/objectiveevent` → `film/objectiveevent`
   (`git mv`, lecteurs LevelUp réécrits, paquets `domain/*` supprimés) ; tolérances = 0.
-- [ ] 2.4 `canonical/film_identity.go` (+ test) → `film/identity` ; `replayview/convert_identity.go`
+- [x] 2.4 `canonical/film_identity.go` (+ test) → `film/identity` ; `replayview/convert_identity.go`
   réécrit ; ratchets `film_pont_identite_test`, `no_identity_bridge_outside_registry_test` ajustés ;
   texte d'amendement de l'ADR 0034 écrit ; tolérance `canonical` = 0.
-- [ ] 2.5 `filmshell` → `film/filmshell`, `equipenergy` → `film/equipenergy` (`git mv`, 7 paquets
+- [x] 2.5 `filmshell` → `film/filmshell`, `equipenergy` → `film/equipenergy` (`git mv`, 7 paquets
   réécrits) ; `paquetsInterTitres` de `no_title_package_in_analysis` relu (`weapons` importe
   désormais le film : fuite transitive inscrite datée au test de fermeture du 1.4) ; tolérances = 0.
-- [ ] 2.6 `filmproc` → `film/filmproc` ; `atomicfile`, `filelock` déplacés ou copiés selon D2-D (test
+- [x] 2.6 `filmproc` → `film/filmproc` ; `atomicfile`, `filelock` déplacés ou copiés selon D2-D (test
   d'identité des copies) ; 10 paquets LevelUp réécrits ; tolérances `filmproc`, `atomicfile` = 0.
 - [ ] 2.7 `types.HighlightEvent` + constantes ; `grammar`, `killsource`, `decfilm` basculent ;
   adaptateur dans `internal/games/halo_infinite/` ; quatre appelants de `sync` + `decfilm.Kill` /
@@ -509,6 +509,59 @@ Chaque item fait descendre une tolérance du lot 1 ; T1 à T3 relancés en fin d
 **Clos quand** : 5.7 fait. D3 s'ouvre ensuite (plan distinct, à écrire depuis l'audit et les
 découvertes de D1 et D2).
 
+- 2.2 (`filmobs`). **Sur pièces** : 11 appels `AddInt` / `IncCounter` dans 9 fichiers de production (`replay` x8, `filmcache/write.go`) — le relevé de
+  départ en annonçait 14 — et 4 fichiers de test qui lisaient `observability.LoadCounter` ; deux tests de `replay`
+  (`occupants_equipe_arbitree_test`, `positions_porte_depart_test`) lisaient la carte `expvar` « levelup » par leur helper `compteurExpvar`
+  (carte créée par `observability`, absente de la brique) : helper supprimé, ils lisent `filmobs.Load`. **Fait** : `film/filmobs`
+  (`filmobs.go`, `filmobs_test.go`) : `AddInt`, `IncCounter`, `Load`, `Snapshot`, `SetSink` ; compteurs en `sync.Map` d'`atomic.Int64`, puits en
+  `atomic.Pointer` (variable non exportée), même sémantique qu'`observability.AddInt` (création au premier usage, delta négatif admis) ; 13 fichiers du film
+  réécrits (9 prod, 4 tests) + 2 tests `replay` ; les noms de compteurs ne changent pas. **Puits câblé** : `wire.NewServiceRegistry` appelle
+  `brancherCompteursDuFilm()` (`internal/api/wire/film_compteurs.go`, `filmobs.SetSink(observability.AddInt)`) — seul point de démarrage du serveur
+  (un seul appelant, `api/server_apiv1.go`), test `film_compteurs_test.go`. **Aucun binaire à câbler** : aucun lecteur de compteur du film hors tests
+  (`cmd/levelup` ne lit que `killsource_*` et `highlight_events_parse_anomaly_total`, publiés côté LevelUp) ; les deux tests LevelUp qui lisaient un compteur
+  publié par `replay.PublierCleInconnue` (`replaybuild/cle_inconnue_test.go`, `sync/killcollector/cle_inconnue_test.go`) lisent `filmobs.Load` pour ces
+  noms-là. Ratchets : `film_layers_deps_test` classe `filmobs` hors couche ; `film_exported_vars`, `filmdec_package_vars`, `film_no_slog_in_layers` verts.
+  Tolérance `observability` retirée (13 fichiers -> 0). Commit `934616aa4`. Gates : `go build`, `go vet`, `go vet -tags research` propres ; `go test ./... -count=1`
+  = 211 paquets `ok` + `filmobs` (2 rouges de départ corrigés : classement de `filmobs`, helper `compteurExpvar`) ; `golangci-lint --new-from-rev` 0 issue.
+- 2.3 (`playerposition`, `objectiveevent`). `git mv internal/domain/{playerposition,objectiveevent}` -> `film/` ; 19 fichiers réécrits (5 dans le décodeur :
+  `decfilm`, `facts/objectives` x2, `grammar/positions` x2 ; 14 côté LevelUp : `cmd/diag_weapons_v3` x3, `api/handlers` x3, `api/wire` x1 test, `platform/duckdb` x4,
+  `port` x2, `service` x1) ; aucun import depuis `internal/analysis` (fermeture verte). Ratchet : `film_layers_deps_test` classe les deux paquets hors couche. ADR 0034
+  (lignes ~393-397) et `SYNC_GUIDE` (EN, FR, ligne 153) mis aux nouveaux chemins ; commentaires de chronique et lignes de goldens laissés (historique ; goldens à
+  régénérer au 2.12). Tolérances `domain/playerposition`, `domain/objectiveevent` retirées. Commit `6b373cc88`.
+  **TESTS ROUGES ATTENDUS (D2-L2-a, régénération au 2.12)** : `grammar` : `TestGrammarRevSuitLaGrammaire` ; `facts/objectives` : `TestObjectivesRevSuitLaSortie` ;
+  `revision` : `TestChaqueRevisionEgaleSonGolden/{grammar,objectives}` et `TestPerimetreDeChaqueCoucheEgaleSonGolden/{grammar,objectives}`. `source`, `profile`
+  et `killsource` restent verts. Les mêmes rouges restent après 2.4, 2.5 et 2.6 (aucun autre ne s'ajoute).
+- 2.4 (`identity`). `git mv games/canonical/film_identity.go` -> `film/identity/identity.go` et `film_identity_test.go` -> `identity/identity_test.go` ; clause `package identity`,
+  en-tête de paquet réécrit (la propriété du contrat est au décodeur) ; noms exportés inchangés. `canonical` ne perd que ces symboles (aucun autre fichier de
+  `canonical` ne s'en servait : `go build ./...` vert). 16 fichiers réécrits (`canonical.X` -> `identity.X`) : 15 dans `film/replay` (7 prod, 8 tests) +
+  `service/replayview/convert_identity.go`. Ratchets : `film_layers_deps_test` classe `identity` hors couche ; `no_unregistered_fallback_test` (le dossier entre dans
+  son périmètre) : `FilmTableCounts.Fallback` est un COMPTE publié, exemption datée 2026-10-29 dans `replisDeLEcrivainDuJeu` ; `film_pont_identite_test` et
+  `no_identity_bridge_outside_registry_test` ne citent pas le chemin : inchangés. ADR 0034 amendé (section « Amendment of 2026-10-29 », texte demandé). Tolérance
+  `games/canonical` retirée (15 -> 0). Commit `f01c07f4d`.
+- 2.5 (`filmshell`, `equipenergy`). `git mv` des deux dossiers sous `film/` ; 29 fichiers réécrits (décodeur : `grammar` x7 dont `weaponscan` et `weaponv3`, `replay` x8,
+  `research/cmd_rdata_weapon_scan` x4 ; LevelUp (10) : `games/weapons`, `games/halo_infinite` (adapter d'URL d'assets), `platform/duckdb`, `replaybuild` x2, `sync/killcollector` x2,
+  `persist` (test), `cmd/diag_film`, `cmd/equipenergy-build`). Table `briques` : la ligne `film` n'a plus qu'une racine. Ratchets adaptés sans les affaiblir :
+  `film_layers_deps_test` (deux paquets hors couche), `unarmed_family_literal_test` (chemin), auto-preuve du test de fermeture d'`analysis` ; deux EXCLUSIONS
+  datées et nommées pour `filmshell` (il était hors périmètre sous `games/weapons`) : `film_exported_vars_test` (`catalogueArmesHorsRatchet`, 15 variables exportées
+  modifiables) et `no_raw_film_bytes_outside_source_test` (`binary.BigEndian` de `hexToUint64`). **Fermeture d'`analysis`** : re-mesurée, elle ne contient NI `games/weapons`
+  NI `filmshell` (`go list -deps -test ./internal/analysis/...`) : `fuitesTransitivesAnalysis` reste VIDE (D2-L1-c confirmée) ; `paquetsInterTitres` ne cite pas `filmshell`.
+  `equipenergy_test` lisait le parc par un chemin relatif à `..` x6 : un `..` de plus (à remplacer par le helper R2 du 2.11). Docs `WEAPONS` (EN, FR), `SYNC_GUIDE` (EN, FR)
+  et ADR 0034 mis au nouveau chemin. Tolérances : aucune entrée n'existait pour ces deux paquets (ils sont DANS la brique). Commit `f69110026`.
+- 2.6 (`filmproc`, `filelock`, `atomicfile`). `git mv internal/filmproc` -> `film/filmproc` (20 fichiers). **Décision D2-D** : `platform/filelock` n'a QUE `filmproc` pour
+  importeur -> DÉPLACÉ (`git mv` -> `film/internal/filelock`, 4 fichiers) ; `platform/atomicfile` a 11 autres fichiers importeurs de production (`notify`, `ops`, `dbprofiles`, `settings`,
+  `replaybuild` x2, `scheduler`, `replayartifacts` x2, `cmd/replay-corpus-gate`, `pkg/duckdbbackup`) -> COPIÉ sous `film/internal/atomicfile` (3 fichiers dont 2 tests, même nom
+  de paquet, en-tête qui nomme la copie jumelle et la règle 6) + `archlint/copies_identiques_test.go` (neuf : chaque `.go` de l'original existe dans la copie et porte le
+  même contenu octet pour octet à partir de la ligne qui suit la clause `package`, aucun fichier de plus ; auto-preuve ; mutation d'une ligne de code vue rouge puis remise).
+  `filmcache/write.go` et `filmproc/solo.go` basculent sur les paquets internes. 98 fichiers importaient `filmproc` (10 paquets LevelUp de production, le film et ses tests,
+  `research` compris) : réécrits ; 23 fichiers dont les commentaires citaient `internal/filmproc` mis au nouveau chemin. Ratchets : `film_layers_deps_test` (3 paquets
+  hors couche), `film_tri_total_test` (racine `filmproc` redondante retirée), `no_accidental_goos_suffix_test` (quatre chemins), `no_unbounded_film_loop_test` (chaînes de chemin),
+  `film_slog_contexte_test` (exclusion datée `horsPerimetreDeJournal` pour `filmproc` et `atomicfile`, cf. D2-L2-d). Ni `.golangci.yml`, ni `Makefile`, ni `.github` ne citaient
+  `filmproc`. Tolérances `filmproc` (71 -> 0) et `platform/atomicfile` (1 -> 0) retirées. Vérifié aussi `GOOS=linux go vet` des paquets déplacés (propre).
+- Bilan 2.2 à 2.6 : tolérances restantes dans `tolerancesFilm` (11 imports, 83 fichiers) : `domain/highlightevent` 21 (2.7), `domain/equipmentusage` 4 (2.8), `i18n` 7 (2.9),
+  `testutil` 21, `domain/title` 14, `games/mappings` 7, `games/weapons` 3, `testfixtures` 2, `domain/replaydoc` 2, `domain` 1, `analysis/digest` 1 (2.10 / 2.11). Dernier `go test ./... -count=1` :
+  212 paquets `ok`, soit les 212 du témoin T1 moins `grammar`, `facts/objectives` et `revision` (rouges attendus) plus `filmobs`, `identity` et `internal/atomicfile` neufs ; paquets déplacés
+  comptés comme déplacés : `filmshell`, `equipenergy`, `filmproc`, `internal/filelock`.
+
 ## Témoins avant/après (règle utilisateur du 2026-10-28)
 
 | Témoin | Capture | Comparaison |
@@ -563,3 +616,15 @@ découvertes de D1 et D2).
   `racineAPI` + `internal/games/halo_infinite/film/internal`). Le test des goldens de périmètre passe déjà par `Module.SurDisque`.
 - D2-L2-c (lot 2.1) : le gate `go test ./internal/games/halo_infinite/film/...` dure 73 s sur ce poste (le brief l'estimait à
   ~10 min) ; mêmes 18 paquets `ok` qu'au témoin T1, donc pas un trou de couverture, mais l'estimation est à corriger.
+- D2-L2-d (lots 2.5 et 2.6, 2026-10-29) : `filmproc` (`memguard.go`, `solo.go`, `solo_observe.go`, `selfpriority_windows.go`, 10 sites) et la copie `film/internal/atomicfile`
+  (2 sites) journalisent par `slog.Info/Warn` SANS contexte ; ils n'étaient pas dans le périmètre du ratchet J12.3 (`film_slog_contexte_test`) tant qu'ils vivaient hors de `film/`.
+  Exclusion datée `horsPerimetreDeJournal` posée. Donner un `ctx` change l'API publique de `Arm`, `ArmBytes`, `AcquireSolo`, `Release`, `LowerOwnPriority` (98 fichiers appelants) et
+  la signature d'`atomicfile.WriteFile` (onze autres fichiers importeurs, copie jumelle). Non traité.
+- D2-L2-e (lot 2.5) : `film/filmshell` porte 15 variables exportées modifiables (`WeaponIDs`, `WeaponTimingByID`, `SentinelIDs`, ...) lues par `games/weapons`, `platform/duckdb`,
+  `sync/killcollector` et le décodeur ; exclu des ratchets `film_exported_vars` (`catalogueArmesHorsRatchet`) et `no_raw_film_bytes_outside_source`. Les rendre accesseurs est un lot à part (dette
+  ADR 0012 préexistante). Non traité.
+- D2-L2-f (lot 2.5) : `equipenergy_test.go` remonte au parc par un chemin relatif en dur (`..` x7 maintenant) ; à remplacer par le helper de remontée par `go.work` au 2.11 (règle R2).
+- D2-L2-g (lot 2.2) : le relevé de départ annonçait 14 sites `observability` de production ; il y a 11 appels dans 9 fichiers (les 14 comptaient sans doute des mentions en commentaire).
+  Sans conséquence : la tolérance comptait 13 fichiers (9 prod, 4 tests) et est tombée à 0.
+- D2-L2-h (lot 2.6) : `GOOS=linux go build ./...` échoue depuis ce poste Windows (cgo : `duckdb-go-bindings/lib/linux-amd64`, `libs/gamefiles/ooz`) : limite de la compilation croisée, sans lien avec D2 ;
+  les paquets déplacés (`filmproc`, `internal/filelock`, `filmcache`, `internal/...`) passent `GOOS=linux go vet`.

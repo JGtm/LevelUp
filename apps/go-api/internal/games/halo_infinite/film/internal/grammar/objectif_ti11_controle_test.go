@@ -13,7 +13,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/games/halo_infinite/film/filmproc"
 )
 
 // TestObjectifTi11DeltaControleTi13 — LE MEME INSTRUMENT SUR L'ARCHETYPE QUI MARCHE.

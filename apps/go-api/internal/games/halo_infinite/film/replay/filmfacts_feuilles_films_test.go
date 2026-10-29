@@ -31,7 +31,7 @@ import (
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/games/halo_infinite/film/filmproc"
 )
 
 // attenteVerrouFeuilles borne l attente du verrou de decodage : au-dela, un autre decodage tient la

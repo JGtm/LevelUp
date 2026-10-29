@@ -55,8 +55,8 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/filmproc"
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
+	"levelup/go-api/internal/games/halo_infinite/film/filmproc"
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
 	"levelup/go-api/internal/games/halo_infinite/replayidentity"
 	"levelup/go-api/internal/migration"

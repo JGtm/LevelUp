@@ -7,7 +7,7 @@ package filmproc
 // (sinon la protection devient une panne — et le cas nominal ici est justement la mort violente :
 // la sentinelle memoire tue, l'operateur aussi). Depuis le verrou OS (J2.6, 2026-09-26), la
 // seconde est une propriete du NOYAU, prouvee sur un vrai processus tue par
-// `platform/filelock.TestTryLock_LibereALaMortDuProcessus` ; ce fichier porte la premiere, et le
+// `film/internal/filelock.TestTryLock_LibereALaMortDuProcessus` ; ce fichier porte la premiere, et le
 // fait qu'un detenteur ne rende jamais que SON verrou.
 
 import (

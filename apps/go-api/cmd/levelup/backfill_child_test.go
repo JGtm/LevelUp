@@ -5,7 +5,7 @@ package main
 // LE PROTOCOLE PARENT/ENFANT N'EST PLUS TESTE ICI, ET C'EST LA CONSEQUENCE DE L'ITEM 5.4 DE
 // PLAN_CUISSON_PERF : la traduction des codes en categories, la reconnaissance du marqueur de
 // pic memoire, le relais du journal et l'imposition de la racine du depot vivent desormais dans
-// `internal/filmproc`, avec leurs tests (`filmproc_test.go`, `runner_child_test.go` — ce dernier
+// `internal/games/halo_infinite/film/filmproc`, avec leurs tests (`filmproc_test.go`, `runner_child_test.go` — ce dernier
 // exerce le protocole sur un VRAI processus, ce que la copie locale ne faisait pas). Les
 // dupliquer ici testerait deux fois la meme chose et laisserait croire qu'il existe encore deux
 // protocoles.

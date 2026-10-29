@@ -98,7 +98,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/games/halo_infinite/film/filmproc"
 )
 
 // bsBombObjectState est murmur3("bombobjectstate"), l'identifiant attendu de la propriete.

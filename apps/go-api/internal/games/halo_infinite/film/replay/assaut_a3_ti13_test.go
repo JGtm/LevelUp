@@ -37,7 +37,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/games/halo_infinite/film/filmproc"
 )
 
 // TestAssautA3Ti13 — le diagnostic A3.1 sur UN film.

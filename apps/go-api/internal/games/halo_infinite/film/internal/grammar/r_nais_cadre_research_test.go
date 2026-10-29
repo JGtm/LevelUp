@@ -27,7 +27,7 @@ import (
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/games/halo_infinite/film/filmproc"
 )
 
 // rnPredictionsUnique : le modele « pool unique » de l allocateur, next-fit sur `[0, n)` depuis
