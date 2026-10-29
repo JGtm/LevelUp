@@ -226,6 +226,14 @@ package objectives
 // A REVISION CONSTANTE (plan des durees d effets, 2026-10-28) : la VALEUR de `grammar.Rev` monte a
 // `grammar-2026-10-28` (le canal de l equipement porte rend l objet d effet) ; aucune source de cette couche ne
 // change et aucune de ses lectures n appelle ce canal, l empreinte du golden est recopiee au meme rang.
+//
+// COMPLEMENT DU 2026-10-29 (decouplage D2, lot 2 : plan `.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D2_2026-10-28.md`,
+// REVISION CONSTANTE) : empreinte regeneree, revision inchangee. Le paquet des evenements d objectif que
+// cette couche importe est deplace sous `film/` (`film/objectiveevent`, il vivait dans
+// `domain/objectiveevent`) : son chemin d import et sa ligne de perimetre changent, donc l empreinte, sans
+// qu aucun bit soit lu autrement. SORTIE IDENTIQUE, prouvee par les digests `replay-equiv` des 20 films de
+// reference (egaux au temoin d avant le lot) et par la liste des tests (memes noms, memes verdicts). Golden
+// de revision et golden de perimetre regeneres une seule fois.
 
 // Rev est la revision de la sortie des objectifs.
 const Rev = "objectives-2026-10-17"

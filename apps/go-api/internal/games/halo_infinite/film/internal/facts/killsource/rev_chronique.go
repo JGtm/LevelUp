@@ -390,3 +390,11 @@ package killsource
 // `effect-end`). Aucune source de cette couche ne change et rien de ce qui change n est sur le chemin de
 // killsource (le canal ne lit que les records ti=37 attaches et les naissances ti=38, jamais par la marche
 // de killsource ni par `sync/killcollector`). Golden regenere a revision constante.
+//
+// COMPLEMENT DU 2026-10-29 (decouplage D2, lot 2 : plan `.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D2_2026-10-28.md`,
+// REVISION CONSTANTE) : empreinte regeneree, revision inchangee. Le type d evenement que cette couche lit
+// et produit devient `film/highlightevent` (il vivait dans `domain/highlightevent`) : le chemin d import et
+// la ligne de perimetre changent, donc l empreinte, sans qu aucun bit soit lu autrement. SORTIE IDENTIQUE,
+// prouvee par les digests `replay-equiv` des 20 films de reference (egaux au temoin d avant le lot) et par
+// la liste des tests (memes noms, memes verdicts). Aucune ligne `match_kill_events` ne devient candidate au
+// redecodage. Golden de revision et golden de perimetre regeneres une seule fois.

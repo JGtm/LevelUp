@@ -15,8 +15,8 @@
 #   LEVELUP_UPDATE_PERIMETRES=1 go test ./internal/games/halo_infinite/film/revision/ \
 #     -run TestPerimetreDeChaqueCoucheEgaleSonGolden -update-perimetres
 
-paquet	internal/domain/highlightevent
 paquet	internal/games/halo_infinite/film/damagetag
+paquet	internal/games/halo_infinite/film/highlightevent
 paquet	internal/games/halo_infinite/film/internal/constat
 paquet	internal/games/halo_infinite/film/internal/facts/killsource
 paquet	internal/games/halo_infinite/film/types

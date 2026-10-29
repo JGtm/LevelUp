@@ -393,7 +393,7 @@ Chaque item fait descendre une tolérance du lot 1 ; T1 à T3 relancés en fin d
 - [x] 2.11 Tests couplés restants (R1 → `internal/filmcorpus/`, R2 → helpers locaux ; 19 chemins
   `Projects\LevelUp` retirés) : compte R0 / R1 / R2 / devenus instruments au journal, nom par nom
   pour R1 et « instrument » ; toutes les tolérances à zéro, allowlist retirée du test.
-- [ ] 2.12 Gate : `grep -rhoE --include='*.go' '"levelup/go-api/internal/[^"]+"' internal/games/halo_infinite/film | grep -v halo_infinite/film | sort -u`
+- [x] 2.12 Gate : `grep -rhoE --include='*.go' '"levelup/go-api/internal/[^"]+"' internal/games/halo_infinite/film | grep -v halo_infinite/film | sort -u`
   vide (production ET tests) ; `go vet ./...`, `go vet -tags research ./internal/games/halo_infinite/film/...`,
   `-tags 'research campagne_overlay'` propres ; `go test ./... -count=1` = T1 (mêmes noms, mêmes
   verdicts ; les tests déménagés en `filmcorpus` comptés comme déplacés, nommés) ; T3 : digests obtenus
@@ -747,6 +747,34 @@ découvertes de D1 et D2).
   passage `pass` -> `skip`, seuls changements de verdict les 11 attendus ; le parc `data/cache` est absent du worktree comme au lot 0 (mêmes tests sautés). Baseline de présence
   (`.ai/baselines/tests_pre_migration.jsonl`) : 2 lignes relocalisées `film/replay` -> `filmcorpus`, entrée datée dans `scripts/check_test_baseline.sh`. Commits : 2.10 `05bbbf8cf` ;
   2.11 `2ea08ac1b` (R2 hors replay), `07f8f0802` (replay, filmcorpus, digest, archlint) et le commit de clôture (baseline, plan, journal).
+- 2.12 (gate du lot 2, 2026-10-29). Témoins sous `scratchpad\temoins_d2_lot2_12\`. **A. Autonomie.** `grep` des imports `levelup/go-api/internal/...` hors
+  `halo_infinite/film` sous `film/` : une seule occurrence, le littéral de chaîne `"levelup/go-api/internal/domain/highlightevent"` du cas négatif de
+  `revision/cadre_test.go` (un littéral, pas un import : `go list -deps` ne le voit pas) ; `film/research` : 0. `go build ./...`, `go vet ./...`,
+  `go vet -tags research ./…/film/... ./internal/filmcorpus/...` : code 0 (CGO : gcc `C:\msys64\ucrt64\bin` dans le PATH). `go vet -tags 'research campagne_overlay'` :
+  rouge comme à la base (D2-L0-b), mêmes 10 erreurs `bis2*` indéfinies dans `grammar/campagne_bis2_positions_research_test.go` (lignes 46, 54, 55, 57, 61, 72, 73, 74, 87, 125)
+  et « too many errors », rien d'autre (`vet_research_overlay.txt`). `go test ./internal/archlint/` vert (avant et après la régénération).
+  **B. Régénération unique à révision constante** (`grammar`, `killsource`, `objectives` ; `source` et `profile` non touchés). Avant : exactement
+  `TestGrammarRevSuitLaGrammaire`, `TestKillsourceRevSuitLaSortie`, `TestObjectivesRevSuitLaSortie`, `TestChaqueRevisionEgaleSonGolden` et
+  `TestPerimetreDeChaqueCoucheEgaleSonGolden` (sous-tests des trois couches) rouges. Entrée de chronique « COMPLEMENT DU 2026-10-29 ... REVISION CONSTANTE » écrite d'abord dans
+  `grammar/rev_chronique.go`, `facts/killsource/rev_chronique.go`, `facts/objectives/rev.go` (forme des compléments existants ; `ENTREE` est réservé aux montées). Porte à deux verrous
+  (`-update-grammar-rev` + `LEVELUP_UPDATE_GRAMMAR_REV`, idem `-update-killsource-rev` / `LEVELUP_UPDATE_KILLSOURCE_REV`, `-update-objectives-rev` / `LEVELUP_UPDATE_OBJECTIVES_REV`,
+  `-update-perimetres` / `LEVELUP_UPDATE_PERIMETRES`), chaque variable retirée après usage. **Diff exact (8 lignes changées dans 6 goldens)** : révisions : `grammar-2026-10-28`
+  `8353c693...27121` -> `d47f789c...bd064` ; `killsource-2026-10-18` `3a3992d4...ebf9d` -> `2b07bd0d...f45` ; `objectives-2026-10-17` `2b45f688...62b67` -> `bbab436e...e38d` (une ligne chacun, MÊME révision) ;
+  périmètres : `killsource` `internal/domain/highlightevent` -> `internal/games/halo_infinite/film/highlightevent` ; `objectives` `internal/domain/objectiveevent` ->
+  `internal/games/halo_infinite/film/objectiveevent` ; `grammar` `internal/domain/highlightevent`, `internal/domain/playerposition`, `internal/games/weapons/filmshell` ->
+  `film/filmshell`, `film/highlightevent`, `film/playerposition` (3 lignes ; l'ordre est celui du tri). Rien d'autre (aucune ligne `amont`, aucun golden de `source` ni de `profile`).
+  Gates sans porte : `go test ./internal/games/halo_infinite/film/... -count=1` vert (27 paquets, `grammar` 71 s) ; `revision -v` : 46 verdicts PASS, 0 FAIL, 0 SKIP : les 40 du témoin y sont tous, plus 6 du lot 2.1 (`TestCadreHistoriqueDesImports` et ses 3 sous-tests, `TestCadreHistorique_LaBriqueDeplaceeRendLaMemeEmpreinte`, `TestCheminModuleCourantEstLaRacineDeLaBrique`).
+  **C. Gate complet.** T1 `go test -json ./... -count=1 -timeout 1200s` : code 0 ; 20 262 verdicts (20 114 au témoin : +148), 19 896 pass / 366 skip / 0 fail (19 748 / 366 / 0 au témoin) ; 218 paquets `ok`
+  (212), 0 rouge, 146 sans test (146). Aucun NOM de test ne disparaît ; 70 couples (paquet, test) ont changé de paquet, leurs 70 noms existent dans le run (analysis/digest 15 -> film/digest ; filmproc 39 -> film/filmproc ;
+  games/canonical 3 -> film/identity ; games/halo_infinite/equipenergy 3 -> film/equipenergy ; film/replay 5 -> filmcorpus ; games/weapons/filmshell 2 -> film/filmshell ; platform/filelock 3 -> film/internal/filelock) ;
+  0 changement de verdict sur les couples communs, 0 pass -> skip. Paquets `ok` : 5 sortent par déplacement (analysis/digest, filmproc, halo_infinite/equipenergy, weapons/filmshell, platform/filelock), 11 entrent
+  (film/digest, film/equipenergy, film/filmobs, film/filmproc, film/filmshell, film/identity, film/internal/atomicfile, film/internal/filelock, film/internal/flatjson, filmcorpus, domain/equipmentusage) : 212 - 5 + 11 = 218.
+  T3 `replay-equiv -repo-root <dépôt principal> -out-dir` : code 1 et « BILAN : 0 identique, 20 different, 0 ecarte, 0 echec, 0 illisible » comme au lot 0 (références périmées D2-L0-a, 566 s) ;
+  les 20 fichiers de digests obtenus ont des MD5 IDENTIQUES à `temoins_d2_lot0_avant\replay_equiv_obtenus\` (`md5_avant.txt` = `md5_apres.txt`, 1 360 lignes). T2 : 202 fichiers de `empreintes.txt` recalculés, 196 identiques ;
+  les 6 qui diffèrent sont exactement les 6 goldens régénérés ci-dessus ; `equivalence/*.tsv` (21), `*.facts.json` (20), goldens de `source` et de `profile` identiques. `gofmt -l` vide.
+  `golangci-lint run ./...` complet (cache dédié) : 396 issues, dette gelée (Makefile : ~479) ; ratchet CI `--new-from-merge-base=origin/main` : **0 issue** (apps/go-api, `libs/gamefiles`, `libs/himap`), donc zéro sur
+  tout fichier neuf. Un comptage de contrôle sur une copie propre de `a5bae50b4` (267) n'est pas comparable : la copie ne charge pas les fichiers non suivis du poste, des paquets n'y sont pas analysés.
+  Un premier T1 a été perdu sur ses libellés (redirection PowerShell : UTF-16 et accents illisibles) et refait avec une redirection binaire par `cmd`.
 
 ## Témoins avant/après (règle utilisateur du 2026-10-28)
 

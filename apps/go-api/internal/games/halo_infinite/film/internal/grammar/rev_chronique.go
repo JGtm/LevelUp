@@ -392,3 +392,11 @@ package grammar
 // chaque candidate. Les lectures sont des chaines de genre neuves du meme codec : `SchemaDesFaits` garde sa
 // valeur, et les faits cuits avant se refusent sur cette revision. L association (quelle candidate, pour quelle
 // famille) se tranche a la publication (`replay/document_effets.go`).
+//
+// COMPLEMENT DU 2026-10-29 (decouplage D2, lot 2 : plan `.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D2_2026-10-28.md`,
+// REVISION CONSTANTE) : empreinte regeneree, revision inchangee. Les paquets qui decident la sortie de la
+// couche et vivaient hors du dossier `film/` y sont deplaces (`playerposition`, `filmshell`) et le type
+// d evenement de la brique devient `film/highlightevent` ; leurs chemins d import et leurs lignes de
+// perimetre changent, donc l empreinte, sans qu aucun bit soit lu autrement. SORTIE IDENTIQUE, prouvee par
+// les digests `replay-equiv` des 20 films de reference (egaux au temoin d avant le lot) et par la liste des
+// tests (memes noms, memes verdicts). Golden de revision et golden de perimetre regeneres une seule fois.
