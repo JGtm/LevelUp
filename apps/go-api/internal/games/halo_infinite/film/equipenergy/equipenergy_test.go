@@ -8,10 +8,10 @@ import (
 	"testing"
 )
 
-// cheminDuCatalogue : le catalogue versionne, depuis ce paquet.
-func cheminDuCatalogue() string {
-	return filepath.Join("..", "..", "..", "..", "..", "..", "..", "data", "titles", "halo_infinite", "reference",
-		"equipment_energy.json")
+// cheminDuCatalogue : le catalogue versionne, depuis la racine du depot hote.
+func cheminDuCatalogue(t *testing.T) string {
+	t.Helper()
+	return filepath.Join(racineDepot(t), "data", "titles", "halo_infinite", "reference", "equipment_energy.json")
 }
 
 // TestUsagesRestantsSuitLeHUD : la regle de `FUN_1407e9384` sur les energies que le film ecrit
@@ -47,7 +47,7 @@ func TestUsagesRestantsSuitLeHUD(t *testing.T) {
 // TestCatalogueCommisSuitLeParc : le catalogue versionne porte les constantes que les baisses
 // d energie mesurees au parc exigent (238 films, 2026-10-14).
 func TestCatalogueCommisSuitLeParc(t *testing.T) {
-	c, err := Load(cheminDuCatalogue())
+	c, err := Load(cheminDuCatalogue(t))
 	if err != nil {
 		t.Fatal(err)
 	}

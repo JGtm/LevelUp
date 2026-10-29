@@ -50,7 +50,7 @@ type v10FilmSpec struct{ short8, mapKey string }
 // exercee ici — c'est un recensement de masques, donc insensible a toute erreur de curseur.
 func TestV10MasqueDeadState(t *testing.T) {
 	films := v10ParseFilms(t)
-	root := v10Root()
+	root := v10Root(t)
 	cat := v10LoadBounds(t)
 
 	totalRec, totalI11 := 0, 0
@@ -238,17 +238,18 @@ func v10ParseFilms(t *testing.T) []v10FilmSpec {
 	return out
 }
 
-func v10Root() string {
+func v10Root(t *testing.T) string {
+	t.Helper()
 	if r := os.Getenv("V10_FILM_ROOT"); r != "" {
 		return r
 	}
-	return `C:\Users\Guillaume\Projects\LevelUp\data\cache`
+	return cacheDuDepot(t)
 }
 
 func v10LoadBounds(t *testing.T) *profile.MapQuantCatalog {
 	path := os.Getenv("V10_BOUNDS")
 	if path == "" {
-		path = `C:\Users\Guillaume\Projects\LevelUp\data\titles\halo_infinite\reference\map_quant_bounds.json`
+		path = bornesDeCartes(t)
 	}
 	cat, err := profile.LoadMapQuantCatalog(path)
 	if err != nil {

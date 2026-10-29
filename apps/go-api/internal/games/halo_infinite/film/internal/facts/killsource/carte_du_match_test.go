@@ -31,7 +31,6 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
-	"levelup/go-api/internal/testutil"
 )
 
 const (
@@ -42,10 +41,7 @@ const (
 // carteDuCatalogue : l entree commise d une carte, par son nom affiche.
 func carteDuCatalogue(t *testing.T, nom string) profile.MapQuantEntry {
 	t.Helper()
-	racine, err := testutil.RepoRoot()
-	if err != nil {
-		t.Fatalf("racine du depot : %v", err)
-	}
+	racine := racineDepot(t)
 	cat, err := profile.LoadMapQuantCatalog(filepath.Join(racine, "data", "titles",
 		"halo_infinite", "reference", "map_quant_bounds.json"))
 	if err != nil {

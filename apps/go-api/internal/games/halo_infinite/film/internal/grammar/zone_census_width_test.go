@@ -29,7 +29,7 @@ package grammar
 // USAGE (depuis apps/go-api) :
 //
 //	$env:CGO_ENABLED=0
-//	$env:ZONE_FILM="C:/Users/Guillaume/Projects/LevelUp/data/cache/film_chunks/7344d24f"
+//	$env:ZONE_FILM="<depot>/data/cache/film_chunks/7344d24f"
 //	go test -count=1 -run TestZoneWidthLotC1a -v ./internal/games/halo_infinite/film/internal/grammar/
 
 import (

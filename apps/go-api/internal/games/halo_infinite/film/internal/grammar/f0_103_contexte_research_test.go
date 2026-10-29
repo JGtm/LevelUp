@@ -66,7 +66,7 @@ const (
 	f0IDsEnv    = "F0_IDS"    // films a mesurer, separes par des virgules
 	f0CatEnv    = "F0_CAT"    // map_quant_bounds.json
 	f0MapsEnv   = "F0_MAPS"   // "id8=NomDeCarte,..." — sortie de TestF0CalibreCarte
-	f0LabelsEnv = "F0_LABELS" // replay_labels.toml du titre
+	f0LabelsEnv = "F0_LABELS" // instantane du catalogue de libelles du titre (replay/testdata/golden_catalogue_titre.json)
 )
 
 // f0Ev103 est UNE occurrence du type 103 lue dans la liste, avec de quoi la juger.

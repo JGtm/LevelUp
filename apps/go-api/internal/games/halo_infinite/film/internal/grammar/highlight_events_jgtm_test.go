@@ -2,13 +2,21 @@
 // PLAN_FIX_SYNC_TESTS_STRATEGY_2026-05-24.md).
 //
 // Le fixture est gitignored — si absent localement, ces tests se skip
-// automatiquement via testfixtures.JGtmFullMatchAvailable().
+// automatiquement via jgtmDisponible().
+//
+// Le fixture vit chez l'hote (`apps/go-api/internal/sync/testdata/jgtm_full_match`, produit par
+// `cmd/gen_test_fixtures`) : la brique le lit par un chargeur LOCAL de la seule partie dont elle
+// a besoin (le manifeste et les chunks), et plus par le paquet `testfixtures` de LevelUp (plan
+// D2, item 2.11). Le chargeur de l'hote lit aussi les reponses d'API, dont ces tests n'ont rien
+// a faire.
 package grammar
 
 import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
-
-	"levelup/go-api/internal/testfixtures"
 )
 
 // TestParseHighlightEvents_JGtmFullMatch_HighlightChunk : parse le chunk
@@ -18,10 +26,10 @@ import (
 // Le fixture JGtm est un match Arena de ~9 min avec 8 participants → on attend
 // au moins une dizaine d'events significatifs (kills, deaths, medals).
 func TestParseHighlightEvents_JGtmFullMatch_HighlightChunk(t *testing.T) {
-	if !testfixtures.JGtmFullMatchAvailable() {
+	if !jgtmDisponible(t) {
 		t.Skip("jgtm_full_match fixture absent — regenerer via cmd/gen_test_fixtures")
 	}
-	fx := testfixtures.LoadJGtmFullMatch(t)
+	fx := chargerJGtm(t)
 
 	highlightIdx := fx.HighlightChunkIndex()
 	if highlightIdx < 0 {
@@ -62,10 +70,10 @@ func TestParseHighlightEvents_JGtmFullMatch_HighlightChunk(t *testing.T) {
 // Sentinelle anti-régression : detecte qu'un changement de parser ne casse
 // pas une variante de chunk presente dans les vraies donnees prod.
 func TestParseHighlightEvents_JGtmFullMatch_AllChunks_NoPanic(t *testing.T) {
-	if !testfixtures.JGtmFullMatchAvailable() {
+	if !jgtmDisponible(t) {
 		t.Skip("jgtm_full_match fixture absent")
 	}
-	fx := testfixtures.LoadJGtmFullMatch(t)
+	fx := chargerJGtm(t)
 
 	filmMajor := fx.Manifest.CustomData.FilmMajorVersion
 	if filmMajor == 0 {
@@ -103,10 +111,10 @@ func TestParseHighlightEvents_JGtmFullMatch_AllChunks_NoPanic(t *testing.T) {
 //
 // Le parser doit tolerer ces chunks sans erreur (0 events est OK).
 func TestParseHighlightEvents_JGtmFullMatch_ReplicationChunks_Tolerated(t *testing.T) {
-	if !testfixtures.JGtmFullMatchAvailable() {
+	if !jgtmDisponible(t) {
 		t.Skip("jgtm_full_match fixture absent")
 	}
-	fx := testfixtures.LoadJGtmFullMatch(t)
+	fx := chargerJGtm(t)
 
 	filmMajor := fx.Manifest.CustomData.FilmMajorVersion
 	if filmMajor == 0 {
@@ -135,10 +143,10 @@ func TestParseHighlightEvents_JGtmFullMatch_ReplicationChunks_Tolerated(t *testi
 // Sentinelle pour detecter une derive du parser (offset mal calcule, indice
 // negatif, etc.).
 func TestParseHighlightEvents_JGtmFullMatch_TimestampsAreBounded(t *testing.T) {
-	if !testfixtures.JGtmFullMatchAvailable() {
+	if !jgtmDisponible(t) {
 		t.Skip("jgtm_full_match fixture absent")
 	}
-	fx := testfixtures.LoadJGtmFullMatch(t)
+	fx := chargerJGtm(t)
 
 	highlightIdx := fx.HighlightChunkIndex()
 	if highlightIdx < 0 {
@@ -175,4 +183,91 @@ func TestParseHighlightEvents_JGtmFullMatch_TimestampsAreBounded(t *testing.T) {
 		t.Errorf("%d/%d events hors bornes [0, %dms] — derive parser ?",
 			outOfBounds, len(events), maxTimeMS)
 	}
+}
+
+// jgtmMatch : le fixture E2E JGtm, reduit au manifeste du film et au dossier de ses chunks.
+type jgtmMatch struct {
+	Manifest struct {
+		CustomData struct {
+			FilmLength       int `json:"FilmLength"`
+			FilmMajorVersion int `json:"FilmMajorVersion"`
+			Chunks           []struct {
+				Index     int `json:"Index"`
+				ChunkSize int `json:"ChunkSize"`
+				ChunkType int `json:"ChunkType"`
+			} `json:"Chunks"`
+		} `json:"CustomData"`
+	}
+	chunksDir string
+}
+
+// Types de chunk du manifeste : 2 = REPLICATION_DATA (le coeur du film), 3 = HIGHLIGHT_EVENTS.
+const (
+	jgtmChunkReplication = 2
+	jgtmChunkHighlight   = 3
+)
+
+// dossierJGtm : le fixture, dans le depot hote.
+func dossierJGtm(t *testing.T) string {
+	t.Helper()
+	return filepath.Join(racineDepot(t), "apps", "go-api", "internal", "sync", "testdata", "jgtm_full_match")
+}
+
+// jgtmDisponible dit si le fixture (gitignore, 6 Mo) est present : manifeste et chunk 0.
+func jgtmDisponible(t *testing.T) bool {
+	t.Helper()
+	dir := dossierJGtm(t)
+	for _, p := range []string{filepath.Join(dir, "manifest_raw.json"), filepath.Join(dir, "chunks", "filmChunk0")} {
+		if _, err := os.Stat(p); err != nil {
+			return false
+		}
+	}
+	return true
+}
+
+// chargerJGtm lit le manifeste du fixture ; le test appelant a deja verifie `jgtmDisponible`.
+func chargerJGtm(t *testing.T) jgtmMatch {
+	t.Helper()
+	dir := dossierJGtm(t)
+	brut, err := os.ReadFile(filepath.Join(dir, "manifest_raw.json")) //nolint:gosec // chemin du fixture du depot
+	if err != nil {
+		t.Fatalf("manifeste du fixture JGtm : %v", err)
+	}
+	var fx jgtmMatch
+	if err := json.Unmarshal(brut, &fx.Manifest); err != nil {
+		t.Fatalf("manifeste du fixture JGtm non decodable : %v", err)
+	}
+	fx.chunksDir = filepath.Join(dir, "chunks")
+	return fx
+}
+
+// LoadChunk rend le contenu binaire du chunk d'index donne.
+func (m jgtmMatch) LoadChunk(t *testing.T, idx int) []byte {
+	t.Helper()
+	data, err := os.ReadFile(filepath.Join(m.chunksDir, fmt.Sprintf("filmChunk%d", idx))) //nolint:gosec // chemin du fixture du depot
+	if err != nil {
+		t.Fatalf("chunk %d du fixture JGtm : %v", idx, err)
+	}
+	return data
+}
+
+// ReplicationChunkIndices rend les indices des chunks REPLICATION_DATA.
+func (m jgtmMatch) ReplicationChunkIndices() []int {
+	var out []int
+	for _, c := range m.Manifest.CustomData.Chunks {
+		if c.ChunkType == jgtmChunkReplication {
+			out = append(out, c.Index)
+		}
+	}
+	return out
+}
+
+// HighlightChunkIndex rend l'index du chunk HIGHLIGHT_EVENTS, ou -1 s'il est absent.
+func (m jgtmMatch) HighlightChunkIndex() int {
+	for _, c := range m.Manifest.CustomData.Chunks {
+		if c.ChunkType == jgtmChunkHighlight {
+			return c.Index
+		}
+	}
+	return -1
 }

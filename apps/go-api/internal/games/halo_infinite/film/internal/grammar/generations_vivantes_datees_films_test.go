@@ -20,7 +20,6 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
-	"levelup/go-api/internal/testutil"
 )
 
 type pointAberrantC2 struct {
@@ -40,10 +39,7 @@ func TestPointsAberrantsC2(t *testing.T) {
 	if cache == "" {
 		t.Skip("REPLAY_FILM_CACHE absent : gate local des points aberrants C2 saute")
 	}
-	racine, err := testutil.RepoRoot()
-	if err != nil {
-		t.Fatal(err)
-	}
+	racine := racineDepot(t)
 	cat, err := profile.LoadMapQuantCatalog(filepath.Join(racine, "data", "titles", "halo_infinite",
 		"reference", "map_quant_bounds.json"))
 	if err != nil {

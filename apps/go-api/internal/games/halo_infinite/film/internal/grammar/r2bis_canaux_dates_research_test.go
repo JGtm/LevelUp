@@ -28,7 +28,6 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
-	"levelup/go-api/internal/testutil"
 )
 
 func TestR2bisCanauxDates(t *testing.T) {
@@ -103,10 +102,7 @@ func TestR2bisCanauxDates(t *testing.T) {
 // r2bisContexte charge le film et son contexte sur la carte nommee, comme la cuisson.
 func r2bisContexte(t *testing.T, dir, carte string) (*FilmContext, profile.Vec3Range) {
 	t.Helper()
-	racine, err := testutil.RepoRoot()
-	if err != nil {
-		t.Fatal(err)
-	}
+	racine := racineDepot(t)
 	cat, err := profile.LoadMapQuantCatalog(filepath.Join(racine, "data", "titles", "halo_infinite",
 		"reference", "map_quant_bounds.json"))
 	if err != nil {

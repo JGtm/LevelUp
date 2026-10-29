@@ -90,7 +90,7 @@ type v2bMapAgg struct {
 
 func TestV2bVitalite(t *testing.T) {
 	films := v2bParseFilms(t)
-	root := v2bRoot()
+	root := v2bRoot(t)
 	cat := v2bLoadBounds(t)
 
 	aggs := map[string]*v2bMapAgg{}
@@ -459,17 +459,18 @@ func v2bParseFilms(t *testing.T) []v2bFilmSpec {
 	return out
 }
 
-func v2bRoot() string {
+func v2bRoot(t *testing.T) string {
+	t.Helper()
 	if r := os.Getenv("V2B_FILM_ROOT"); r != "" {
 		return r
 	}
-	return `C:\Users\Guillaume\Projects\LevelUp\data\cache`
+	return cacheDuDepot(t)
 }
 
 func v2bLoadBounds(t *testing.T) *profile.MapQuantCatalog {
 	path := os.Getenv("V2B_BOUNDS")
 	if path == "" {
-		path = `C:\Users\Guillaume\Projects\LevelUp\data\titles\halo_infinite\reference\map_quant_bounds.json`
+		path = bornesDeCartes(t)
 	}
 	cat, err := profile.LoadMapQuantCatalog(path)
 	if err != nil {

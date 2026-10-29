@@ -30,15 +30,11 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
-	"levelup/go-api/internal/testutil"
 )
 
 func chargerCatalogueDesCartes(t *testing.T) *profile.MapQuantCatalog {
 	t.Helper()
-	racine, err := testutil.RepoRoot()
-	if err != nil {
-		t.Fatalf("racine du depot : %v", err)
-	}
+	racine := racineDepot(t)
 	chemin := filepath.Join(racine, "data", "titles", "halo_infinite", "reference", "map_quant_bounds.json")
 	cat, err := profile.LoadMapQuantCatalog(chemin)
 	if err != nil {

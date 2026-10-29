@@ -37,7 +37,6 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/types"
-	"levelup/go-api/internal/games/mappings"
 )
 
 // f0ArtPlacement est une pose PUBLIEE : ce que le client lit.
@@ -205,20 +204,40 @@ func f0RangFamille(t *testing.T, a f0Art) (map[int]string, string) {
 	return f0ManifesteRangs(t), "manifeste (document sans table de palette)"
 }
 
-// f0ManifesteRangs fusionne les tables rang -> famille des palettes du manifeste.
-func f0ManifesteRangs(t *testing.T) map[int]string {
+// f0InstantaneCatalogue : la partie de l'instantane du catalogue de libelles du titre dont l'instrument se
+// sert (`replay.LabelCatalog` serialise : `Abilities[].Families`, `EquipmentFamilies`). Le
+// manifeste TOML est charge cote hote ; la brique ne le lit plus (plan D2, item 2.11).
+type f0InstantaneCatalogue struct {
+	EquipmentFamilies map[uint32]string `json:"EquipmentFamilies"`
+	Abilities         []struct {
+		Families map[int]string `json:"Families"`
+	} `json:"Abilities"`
+}
+
+// f0LireInstantane lit l'instantane designe par `F0_LABELS`, ou saute l'instrument.
+func f0LireInstantane(t *testing.T) f0InstantaneCatalogue {
 	t.Helper()
 	path := os.Getenv(f0LabelsEnv)
 	if path == "" {
-		t.Skipf("instrument F.0 : definir %s (replay_labels.toml) — aucun nom de famille n est "+
+		t.Skipf("instrument F.0 : definir %s (golden_catalogue_titre.json) — aucun nom de famille n est "+
 			"ecrit dans ce fichier, la table vient du manifeste", f0LabelsEnv)
 	}
-	set, err := mappings.LoadReplayLabelsFromFile(path)
+	brut, err := os.ReadFile(path) //nolint:gosec // chemin fourni par l operateur de l instrument
 	if err != nil {
-		t.Fatalf("manifeste de libelles : %v", err)
+		t.Fatalf("instantane du catalogue de libelles illisible : %v", err)
 	}
+	var cat f0InstantaneCatalogue
+	if err := json.Unmarshal(brut, &cat); err != nil {
+		t.Fatalf("instantane du catalogue de libelles non decodable : %v", err)
+	}
+	return cat
+}
+
+// f0ManifesteRangs fusionne les tables rang -> famille des palettes du manifeste.
+func f0ManifesteRangs(t *testing.T) map[int]string {
+	t.Helper()
 	out := map[int]string{}
-	for _, p := range set.AbilityPalettes() {
+	for _, p := range f0LireInstantane(t).Abilities {
 		for rang, fam := range p.Families {
 			if prev, vu := out[rang]; vu && prev != fam {
 				t.Fatalf("manifeste : le rang %d porte deux familles (%q et %q) — la fusion "+
@@ -233,15 +252,7 @@ func f0ManifesteRangs(t *testing.T) map[int]string {
 // f0ManifesteObjets rend la table GlobalID -> famille du manifeste (les objets `eqip`).
 func f0ManifesteObjets(t *testing.T) map[uint32]string {
 	t.Helper()
-	path := os.Getenv(f0LabelsEnv)
-	if path == "" {
-		t.Skipf("instrument F.0 : definir %s (replay_labels.toml)", f0LabelsEnv)
-	}
-	set, err := mappings.LoadReplayLabelsFromFile(path)
-	if err != nil {
-		t.Fatalf("manifeste de libelles : %v", err)
-	}
-	return set.EquipmentObjects()
+	return f0LireInstantane(t).EquipmentFamilies
 }
 
 // f0FinDeVie rend, par slot, la DERNIERE frame de chacune de ses vies publiees. C est ce qui

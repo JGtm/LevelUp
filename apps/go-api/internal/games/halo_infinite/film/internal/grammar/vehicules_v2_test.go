@@ -101,7 +101,7 @@ type v2MapAgg struct {
 
 func TestV2SpawnsCooldowns(t *testing.T) {
 	films := v2ParseFilms(t)
-	root := v2Root()
+	root := v2Root(t)
 	boundsCat := v2LoadBounds(t)
 	pads := v2LoadPads(t)
 

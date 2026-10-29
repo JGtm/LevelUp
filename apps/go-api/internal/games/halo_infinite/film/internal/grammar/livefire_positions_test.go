@@ -42,7 +42,6 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
-	"levelup/go-api/internal/testutil"
 )
 
 const liveFirePosEnv = "LIVEFIRE_POS_FILMS"
@@ -94,10 +93,7 @@ func TestLiveFirePositionsParPlage(t *testing.T) {
 // entreeLiveFire : l entree de catalogue commise de Live Fire.
 func entreeLiveFire(t *testing.T) profile.MapQuantEntry {
 	t.Helper()
-	racine, err := testutil.RepoRoot()
-	if err != nil {
-		t.Fatalf("racine du depot : %v", err)
-	}
+	racine := racineDepot(t)
 	cat, err := profile.LoadMapQuantCatalog(filepath.Join(racine, "data", "titles",
 		"halo_infinite", "reference", "map_quant_bounds.json"))
 	if err != nil {

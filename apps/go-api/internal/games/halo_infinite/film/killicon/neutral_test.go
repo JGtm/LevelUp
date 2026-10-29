@@ -19,7 +19,7 @@ func TestNeutralVignettesExistentSurDisque(t *testing.T) {
 		if !strings.HasPrefix(stem, atlasPrefix) {
 			t.Errorf("type %q -> %q : hors atlas %q", kind, stem, atlasPrefix)
 		}
-		if _, err := os.Stat(spritePath(stem)); err != nil {
+		if _, err := os.Stat(spritePath(t, stem)); err != nil {
 			t.Errorf("type %q -> %q : PNG absent (%v)", kind, stem, err)
 		}
 	}
@@ -87,7 +87,7 @@ func TestSplatterVignetteExisteSurDisque(t *testing.T) {
 	if !strings.HasPrefix(stem, atlasPrefix) {
 		t.Errorf("ecrasement -> %q : hors atlas %q", stem, atlasPrefix)
 	}
-	if _, err := os.Stat(spritePath(stem)); err != nil {
+	if _, err := os.Stat(spritePath(t, stem)); err != nil {
 		t.Errorf("ecrasement -> %q : PNG absent (%v)", stem, err)
 	}
 }

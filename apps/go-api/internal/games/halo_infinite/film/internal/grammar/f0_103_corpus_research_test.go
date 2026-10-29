@@ -11,10 +11,10 @@ package grammar
 // de consommations exploitables le parc porte et dans quels films — c est lui qui CHOISIT les
 // films de la mesure, au lieu de conclure sur un corpus muet.
 //
-// LECTURE SEULE. Garde : `F0_ARTS` (racine des artefacts) et `F0_LABELS` (manifeste).
+// LECTURE SEULE. Garde : `F0_ARTS` (racine des artefacts) et `F0_LABELS` (instantane du catalogue de libelles).
 //
 //	CGO_ENABLED=0 F0_ARTS=<depot>/data/cache/replays/halo_infinite \
-//	  F0_LABELS=<depot>/config/titles/halo_infinite/mappings/replay_labels.toml \
+//	  F0_LABELS=<depot>/apps/go-api/internal/games/halo_infinite/film/replay/testdata/golden_catalogue_titre.json \
 //	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestF0CorpusSpent$' -v
 
 import (

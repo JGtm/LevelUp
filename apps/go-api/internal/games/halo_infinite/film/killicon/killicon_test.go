@@ -10,7 +10,6 @@ import (
 	"github.com/pelletier/go-toml/v2"
 
 	"levelup/go-api/internal/games/halo_infinite/film/damagetag"
-	"levelup/go-api/internal/testfixtures"
 )
 
 // atlasPrefix : toutes les vignettes de ce pont viennent de l atlas KILL FEED. L atlas
@@ -18,15 +17,16 @@ import (
 // 12 % des morts (la melee) sans image.
 const atlasPrefix = "killfeed-"
 
-func spritePath(stem string) string {
-	return filepath.Join(testfixtures.RepoRoot(),
+func spritePath(t *testing.T, stem string) string {
+	t.Helper()
+	return filepath.Join(racineDepot(t),
 		"static", "weapons-assets", "halo_infinite", "jeu", stem+".png")
 }
 
 // registryEN lit le registre versionne des noms d armes : weapon_key -> nom EN.
 func registryEN(t *testing.T) map[string]string {
 	t.Helper()
-	p := filepath.Join(testfixtures.RepoRoot(),
+	p := filepath.Join(racineDepot(t),
 		"config", "titles", "halo_infinite", "mappings", "weapon_names.toml")
 	raw, err := os.ReadFile(p) //nolint:gosec // chemin construit depuis la racine du depot
 	if err != nil {
@@ -124,7 +124,7 @@ func TestChaqueRegleTrouveSaSource(t *testing.T) {
 // passerait la CI en cassant l UI : le pont ne peut pas designer un fichier absent.
 func TestChaqueVignetteExisteSurDisque(t *testing.T) {
 	for _, r := range Rules() {
-		if _, err := os.Stat(spritePath(r.Sprite)); err != nil {
+		if _, err := os.Stat(spritePath(t, r.Sprite)); err != nil {
 			t.Errorf("regle %s %q -> %q : PNG absent (%v)", r.Genre, r.Key, r.Sprite, err)
 		}
 	}

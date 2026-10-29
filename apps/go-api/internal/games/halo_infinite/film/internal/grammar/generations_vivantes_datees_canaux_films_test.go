@@ -22,7 +22,6 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
-	"levelup/go-api/internal/testutil"
 )
 
 // filmsCanauxDates : les films a slot reboucle ou le marcheur acceptait des en-tetes anterieurs a la
@@ -39,10 +38,7 @@ func TestCanauxDelta_AucunCorpsLuAvantSaCreation(t *testing.T) {
 	if cache == "" {
 		t.Skip("REPLAY_FILM_CACHE absent : gate local des canaux dates (lot R2-bis) saute")
 	}
-	racine, err := testutil.RepoRoot()
-	if err != nil {
-		t.Fatal(err)
-	}
+	racine := racineDepot(t)
 	cat, err := profile.LoadMapQuantCatalog(filepath.Join(racine, "data", "titles", "halo_infinite",
 		"reference", "map_quant_bounds.json"))
 	if err != nil {

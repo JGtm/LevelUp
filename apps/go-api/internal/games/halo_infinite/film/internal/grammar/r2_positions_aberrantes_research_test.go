@@ -23,7 +23,6 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
-	"levelup/go-api/internal/testutil"
 )
 
 func TestR2PositionsAberrantes(t *testing.T) {
@@ -36,10 +35,7 @@ func TestR2PositionsAberrantes(t *testing.T) {
 	origineMS, _ := strconv.ParseInt(os.Getenv("R2_ORIGIN_MS"), 10, 64)
 	fenetre := int64(40_000_000)
 	slot := uint32(slot64)
-	racine, err := testutil.RepoRoot()
-	if err != nil {
-		t.Fatal(err)
-	}
+	racine := racineDepot(t)
 	cat, err := profile.LoadMapQuantCatalog(filepath.Join(racine, "data", "titles", "halo_infinite",
 		"reference", "map_quant_bounds.json"))
 	if err != nil {
@@ -126,10 +122,7 @@ func TestR2BilanDesCorps(t *testing.T) {
 	if dir == "" || carte == "" {
 		t.Skip("R2_FILM / R2_MAP absents : instrument du lot R2 saute")
 	}
-	racine, err := testutil.RepoRoot()
-	if err != nil {
-		t.Fatal(err)
-	}
+	racine := racineDepot(t)
 	cat, err := profile.LoadMapQuantCatalog(filepath.Join(racine, "data", "titles", "halo_infinite",
 		"reference", "map_quant_bounds.json"))
 	if err != nil {

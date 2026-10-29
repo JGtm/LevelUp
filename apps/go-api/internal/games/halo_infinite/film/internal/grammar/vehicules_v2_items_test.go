@@ -435,18 +435,18 @@ func v2ParseFilms(t *testing.T) []v2FilmSpec {
 	return out
 }
 
-func v2Root() string {
+func v2Root(t *testing.T) string {
 	if r := os.Getenv("V2_FILM_ROOT"); r != "" {
 		return r
 	}
-	return `C:\Users\Guillaume\Projects\LevelUp\data\cache`
+	return cacheDuDepot(t)
 }
 
 func v2LoadBounds(t *testing.T) *profile.MapQuantCatalog {
 	t.Helper()
 	path := os.Getenv("V2_BOUNDS")
 	if path == "" {
-		path = `C:\Users\Guillaume\Projects\LevelUp\data\titles\halo_infinite\reference\map_quant_bounds.json`
+		path = bornesDeCartes(t)
 	}
 	cat, err := profile.LoadMapQuantCatalog(path)
 	if err != nil {
@@ -459,7 +459,7 @@ func v2LoadPads(t *testing.T) *v2PadCatalog {
 	t.Helper()
 	path := os.Getenv("V2_PADS")
 	if path == "" {
-		path = `C:\Users\Guillaume\Projects\LevelUp\data\titles\halo_infinite\reference\map_weapon_pads.json`
+		path = referenceDuDepot(t, "map_weapon_pads.json")
 	}
 	blob, err := os.ReadFile(path)
 	if err != nil {
