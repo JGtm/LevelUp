@@ -1063,13 +1063,81 @@ intégration : `go test -tags=integration -count=1 -timeout=1200s -p 1 -json ./.
 
 ## Lot 5 — Revue adversariale (une ronde, trois relecteurs)
 
-- [ ] 5.1 Contrat ; relecteurs : (A) `xblauth` + `platform/auth` : protocole vs politique, ADR 0023/0038,
+- [x] 5.1 Contrat ; relecteurs : (A) `xblauth` + `platform/auth` : protocole vs politique, ADR 0023/0038,
   sentinelles, netguard, rotation du RT (lentille L3 + lentille auth) ; (B) idem auth, lentille L6 ;
   (C) `infinite` + `haloadapter` + `filmfetch` : parité DTO → domaine, 429/`Retry-After`, erreurs
   typées, octets des films, cache local.
-- [ ] 5.2 Triage P0–P3 ; corrections P0/P1 avec test ; P2 consignés ; relecture des seules corrections
+  Statut : fait par le pilote (une ronde, trois relecteurs aveugles, contexte frais) ; comptes dans « Exécution du lot 5 ».
+- [x] 5.2 Triage P0–P3 ; corrections P0/P1 avec test ; P2 consignés ; relecture des seules corrections
   s'il y a eu P0/P1.
-- [ ] 5.3 Gate lot 4 rejoué ; commit « D3 lot 5 » ; CI verte.
+  Statut : triage du pilote exécuté : 4 P1 et 7 P2 corrigés avec test vu rouge, 2 corrections de commentaire, reste
+  consigné (D3-L5-a à k). Commits `2c0d56abe` (P1), `ff3541b46` (P2), `398301dbb` (commentaires). Relecture des seules
+  corrections (il y a eu des P1) : au pilote.
+- [x] 5.3 Gate lot 4 rejoué ; commit « D3 lot 5 » ; CI verte.
+  Statut : gate vert (voir « Exécution du lot 5 ») ; CI : au pilote (aucun push dans ce lot).
+
+## Exécution du lot 5 (2026-10-29)
+
+Branche `refactor/decouplage-d3-api-halo`, depuis `425028c32`. Commits : `2c0d56abe` (P1), `ff3541b46` (P2), `398301dbb`
+(commentaires, règle 17), puis la clôture (ce plan, journal). Caches `go-build-d3` / `golangci-d3`. Témoins :
+`%TEMP%\claude\c--Users-Guillaume-Downloads-Scripts-LevelUp\77a8b90a-21a6-40a0-ac64-eb152f616862\scratchpad\temoins_d3_lot5\`
+(`tests_T1.tsv`, `neufs.txt`, `lint.txt`, `t3\` avec `md5s.txt` et `commandes.md`). Aucun jeton dans un fichier, un témoin,
+un journal ou ce plan ; tous les tests neufs sont `httptest` (aucune sortie réseau).
+
+**Revue (pilote).** Une ronde, trois relecteurs aveugles en contexte frais : (A) `xblauth` + `platform/auth`, lentilles L3 et
+auth ; (B) les mêmes, lentille L6 ; (C) `infinite` + `haloadapter` + `filmfetch`. Comptes : 0 P0, 4 P1, 11 P2 recevables,
+74 conditions vérifiées qui tiennent. Triage du pilote : corriger les P1 (comportement et règles écrites) et sept P2 de
+couverture et de doc peu coûteux, réécrire en contrat les commentaires qui citent un lot ou une décision, consigner le reste.
+
+**Corrections, chacune avec son test et la mutation vue rouge** (« écrit d'abord » : test rouge sur le code d'avant).
+
+| Item | Correction | Test | Rouge vu |
+|---|---|---|---|
+| A1 (P1) | `infinite.DecodeMatchSkill` strict : un corps vide est une erreur de décodage (comme `GetMatchSkill` à la base : « unexpected end of JSON input ») ; « corps vide = map vide » seulement dans `ParseMatchSkillResponseJSON` (hors ligne, contrat de la base) | `haloadapter/TestGetMatchSkill_Corps200VideEstUneErreur` (+ assertion inversée dans `infinite/TestGetMatchSkill`) | écrit d'abord : « obtenu map map[] » |
+| A2a (P1) | — (comportement déjà juste, non tenu) | `haloadapter/TestNetguard_HuitSurfacesGardees` : pour chacune des huit surfaces, une méthode publique en mode démo, témoin `httptest` à zéro requête, garde consultée SOUS LE NOM de la surface (journal de `netguard` capturé), erreur `ErrOffline` + `ErrDefinitif` quand la méthode la rend (les plaques dégradent en "" par contrat) ; le blob passe par un manifeste finalisé du cache disque | mutation « `*http.Client` nu aux quatre sites » : 8 sous-tests rouges (1 ou 2 requêtes reçues chacun) |
+| A2b (P1) | `leaderboard_scraper.go` : les deux `netguardDoer{...}` écrits à l'appel de `NewClassement` | `archlint/TestBriqueInfiniteRecoitLeDoerGarde` (production de go-api hors brique : tout argument `Doer` de `infinite.New` / `NewClassement` est un littéral `netguardDoer{...}`) + auto-preuve (client nu, variable, second Doer nu, `DefaultClient`, import aliasé, autre type, fonction qui en rend un) | mutation `client.go` : « infinite.New reçoit un Doer qui n'est pas netguardDoer{...} » |
+| A2 doc | en-tête de `netguard_coverage_test.go` : ce qu'il VOIT (les fichiers qui définissent un Doer gardé) et ce qui tient l'hermétisme ailleurs (les deux ratchets AST, le test des huit surfaces) | — | — |
+| A3 (P1) | `blobRecu` (7 -> 5, struct `essaiBlob` comme à la base) ; `GetMatchHistory` (6 -> 3, `PageHistorique`) ; `FetchAsset` de la brique (6 -> 3, `RequeteActif`, vu par le ratchet, absent du brief) | `archlint/TestHaloapiCinqParametresAuPlus` (AST, toute fonction déclarée ou littérale de la production de `haloapi`) + auto-preuve | écrit d'abord : `FetchAsset` et `GetMatchHistory` à 6 (`blobRecu` déjà corrigé dans le même passage) |
+| A4 (P1) | `Client.WithRetry` supprimé (aucun appelant de production) ; `TestWith_CopieImmuable` construit par la politique | suppression : `go build ./...`, grep 0 | — (code mort) |
+| A5a (P1) | interface optionnelle `haloapi.Garde` (`Verifie(ctx) error`) consultée par la brique au début de `get` et de `DownloadBlob`, AVANT toute attente du limiteur ; `netguardDoer.Verifie` (et `Do` repasse par elle à chaque requête). Choix : interface optionnelle plutôt qu'un limiteur enveloppé (une ligne par point d'entrée, aucun type de plus côté appelant) | `infinite/TestGarde_ConsulteeAvantLeLimiteur` (trois politiques + blob : 0 attente, 0 émission, 1 garde) ; `haloadapter/TestNetguard_RefusAvantLimiteur` (limiteur 1 jeton/h : jeton intact après deux refus) | écrit d'abord (adaptateur) : « jetons du limiteur = 0.00 » ; mutation `verifierGarde` neutralisée : les deux rouges |
+| A5b (P1) | `DownloadBlob` rend aussi le nombre d'essais (`FragmentBrut.Essais`) ; crochet `BlobRepriseReussie` retiré ; `filmfetch` compte `halo_api_blob_retry_success` APRÈS la décompression (`compterReprise`), pour le blob seul et pour chaque fragment du film (tous décompressés, première erreur rendue) | `filmfetch/TestCompteurRepriseReussie_ApresDecompression` (503 puis non-zlib : delta 0 ; 503 puis zlib, film de 4 : delta 4) | écrit d'abord : « delta = 1 » et « delta = 4, attendu 0 » ; mutation compteur avant inflate : rouge |
+| B6 (P2) | — | `platform/auth/TestFacadeEchangeXBL_IdentiteEtProvenance`, `..._CreneauBorneLaConcurrence` (faux Xbox Live : six échanges simultanés, au plus 2 requêtes User Token en même temps) | mutations `Observe: nil` (« provenance observée = "" »), `Creneau: nil` (« concurrence = 6 »), gamertag/xuid inversés : rouges |
+| B7 (P2) | — | `xblauth/TestRefreshWithRotation_IssueTypee` asserte `AccessToken` et `RotatedRefreshToken` (vides sur échec) | mutation `oauth_refresh.go` (refresh_token tourné non rendu) : rouge |
+| B8 (P2) | `briques_internes` : tiers permis PAR SOUS-ARBRE (`infinite` : `errgroup`, `rate` ; `xblauth` et parent : aucun), auto-preuve réécrite | `archlint/TestXblauthSansVariableDePaquet` (sentinelles `errors.New` et `var _ I = ...` permises : immuables, sans état), `TestHaloapiSansEnvNiFichier` (`os.Getenv`, `LookupEnv`, `Environ`, `ReadFile`, `ReadDir`, `Open`, `OpenFile`, `Create`, `WriteFile`), `TestHaloapiSansEtat_AutoPreuve` | fichier de mutation sous `xblauth` (`var compteur`, `os.Getenv`, import `rate`, `http.DefaultTransport`) : 4 ratchets rouges ; table des tiers remise à la brique entière : auto-preuve rouge |
+| B9 (P2) | `haloapi_sans_client_http` : en production, toute mention de `http.Client` (paramètre, champ, zéro-valeur, littéral, `new`), `http.Transport`, `http.DefaultTransport`, et tout appel `.RoundTrip(` | auto-preuve étendue (six formes neuves ; « Doer reçu » permis à la place de « client reçu ») | même fichier de mutation : « nomme http.DefaultTransport » |
+| B10 (P2) | — | `haloadapter/TestPolitiqueParChemin` (11 chemins : signature 429/503 sous échéance courte distingue les trois politiques ; `GetMatchPrivacy` exclu, repli sans erreur par contrat), `TestAbsenceRendVide` (skill, CSR joueur, CSR playlist, blob des temps forts sur 404/410 ; carrière sur 401/403, contrat de la base vérifié), `TestClassementEtHotesParDefaut` (« en-US,en;q=0.9 » = repli de `config/locales.toml`, agent, `Accept`, hôte des défis) ; `infinite/TestEtiquettesJSON_NomsDuService` (les quatre étiquettes demandées + 3 voisines) | mutations : médailles en `RetryHaloClient`, Discovery en `RetryProvider`, client en `RetryProvider`, branche 404 de `GetPlaylistCsr` retirée, `q=0.8`, étiquette `RankedMatchPrivacy` : toutes rouges |
+| B11 (P2) | — (horloge non injectable : aucune variable de paquet ajoutée) | `tokencache/TestTTLDeRepli_SansExpiryConnue` : expiry de repli bornée par deux lectures d'horloge (50 min), servi à 44 min de vie, périmé à 46 min | mutations TTL 60 min, marge 0 : rouges |
+| B12 (P2) | 4 entrées `haloapi/xblauth/*` retirées de l'allowlist netguard ; `TestAllowlistHasNoStaleEntry` refuse une entrée sous le préfixe exempté | idem | entrée remise : « déjà exempté par le préfixe » |
+| C13 | en-têtes en contrat : `haloapi/doc.go`, `infinite/doc.go`, `infinite/retry.go`, `xblauth/doc.go`, `tokencache`, `xbl_device_code.go`, `xbl_doer.go`, `xbl_exchange.go`, `xbl_oauth.go` (en-tête et commentaire de `ExchangeAuthorizationCode`), `xbl_resolvers.go`, `xbl_xsts_rta.go`, `haloadapter/doc.go`, `filmfetch/doc.go` | grep `D3-\|lot [0-9]\|plan D3` sur les six racines : une occurrence restante, hors D3 (D3-L5-g) | — |
+| C14 | en-tête de `internal/duration` : la raison d'une source unique, sans `platform/halo` | — | — |
+
+**Gate.** `go build ./...`, `go vet ./...` verts ; `gofmt -l internal cmd` vide ; `golangci-lint run
+--new-from-merge-base=origin/release/v8.1.0 ./...` : 0 issue ; `go test ./internal/haloapi/... ./internal/platform/auth/...
+./internal/games/halo_infinite/haloadapter/... ./internal/sync/filmfetch/... ./internal/platform/netguard/...
+./internal/archlint/ -count=1` vert ; `cd internal/haloapi && go list -deps -test ./... | grep levelup/go-api/internal | grep -v
+haloapi` : vide. T1 `go test -json ./... -count=1 -timeout 1200s` : code 0, stderr vide, 336 paquets (195 ok, 141 sans test),
+16 530 tests et sous-tests (16 462 pass, 68 skip, 0 fail) ; contre le témoin du lot 4 (les deux régénérés par le même `jq`) :
+AUCUN nom disparu, aucun verdict changé, 51 noms neufs : les 38 de ce lot (19 tests) et les 13 sous-tests de
+`infinite/TestParseRetryAfter`, présents au HEAD du lot 4 (`425028c32`) mais absents de son témoin (pris avant la fusion des
+sous-tests au 4.4). T3 LIVE (HEAD `398301dbb`, mêmes arguments qu'au lot 1, deux rotations par le chemin canonique, aucune
+re-capture) : skill `3abcd07b...` et stats `697ff1f0...`, MD5 IDENTIQUES au témoin `temoins_d3_lot1_avant`.
+
+**Décisions prises seul pendant le lot (consignées pour le pilote).**
+1. A5a : interface optionnelle `haloapi.Garde` consultée par la brique, pas un limiteur enveloppant.
+2. A5a : la garde passe avant le limiteur pour les TROIS politiques ; à la base, Discovery attendait le limiteur PUIS la
+   garde (D3-L5-f) : désormais aucune requête refusée ne consomme de jeton, quelle que soit la politique.
+3. A5b : signature de `DownloadBlob` à trois retours plutôt qu'un crochet déplacé ; crochet `BlobRepriseReussie` supprimé
+   (règle 7).
+4. A3 : `FetchAsset` de la brique regroupé aussi (6 paramètres, vu par le ratchet) ; `Provider.FetchAsset` (6, port
+   inchangé, hors brique) laissé (D3-L5-j).
+5. B8 : les sentinelles `var ErrX = errors.New(...)` restent permises dans `xblauth` (immuables par convention, `errors.Is`
+   en dépend) ; `TestXblauthSansVariableDePaquet` couvre `xblauth` seulement (contrat de son `doc.go`) ; `infinite` garde
+   deux expressions régulières de paquet (`rexUUID`, `nextDataRe`).
+6. B9 : un `*http.Client` en paramètre est désormais refusé dans la production de la brique (le lot 1 le permettait) :
+   aucun fichier ne le faisait.
+7. B10 : faute de parité DTO <-> origine (les paquets d'origine sont supprimés), les étiquettes sont tenues par un test de
+   noms dans la brique.
+8. B11 : test sans horloge injectable ; les bornes réelles sont 44/46 min (TTL 50 min moins la marge de 5 min), pas 49/51.
 
 ## Lot 6 — Preuve et clôture
 
@@ -1362,3 +1430,30 @@ Lot 4 (2026-10-29). Notées, NON traitées ; le lot indiqué décide (sinon : re
 - **D3-L4-o (fixtures lues dans la brique).** Les tests de l'adaptateur lisent les fixtures de la brique par chemin
   relatif (`../../../haloapi/infinite/testdata/...`) : un déplacement de la brique les casserait (rouge, sauf
   `TestFetchSeasons_TranslationsFR`, qui SKIP sur fixture absente comme avant : à durcir).
+
+Lot 5 (2026-10-29). Notées, NON traitées ; le lot 6 décide (sinon : registre des reports).
+
+- **D3-L5-a (deux littéraux du même tenant, préexistant).** `msalTokenURL` (`platform/auth/xbl_oauth.go:24`) et
+  `MSALAuthority` (`platform/auth/azure_credentials.go:31`) écrivent deux fois l'adresse du tenant `consumers`.
+- **D3-L5-b (test d'auth qui sort sur le réseau, suite de D3-L2-h).** `xsts_provenance_test` attend l'échec d'un appel RÉEL
+  à Xbox Live avec un jeton bidon (aucun `Doer` injectable par `AcquireXSTSForRTAWithProvenance`).
+- **D3-L5-c (corps de `ExchangeAuthorizationCode` non testé, suite de D3-L2-a).** Le test placeholder reste en skip alors
+  qu'`OAuth.URLAzure` et le `Doer` reçus le rendent écrivable en `httptest`.
+- **D3-L5-d (sémaphore XBL testé isolément, soldée).** [~] couverte par B6 (`TestFacadeEchangeXBL_CreneauBorneLaConcurrence`,
+  façade de bout en bout).
+- **D3-L5-e (TTL de repli, soldée sans horloge injectable).** [~] couverte par B11 ; les bornes du brief (49/51 min)
+  ignoraient la marge de 5 min : le jeton sans expiry est servi jusqu'à 45 min de vie.
+- **D3-L5-f (ordre garde / limiteur de Discovery à la base).** La boucle `doGetWithLang` attendait le limiteur (une fois)
+  PUIS appelait la garde dans chaque essai ; depuis A5a, la garde passe avant le limiteur pour les trois politiques. Effet :
+  en démo, une lecture Discovery refusée ne consomme plus de jeton (comme les deux autres boucles à la base).
+- **D3-L5-g (référence d'une revue antérieure dans du code, préexistant).** `platform/auth/refresh_loop.go:169` « D3-03
+  (revue 2026-06-01) » : identifiant d'une revue de juin, sans lien avec ce plan ; de l'histoire dans le code (règle 17).
+- **D3-L5-h (histoire restante dans la brique et l'adaptateur).** En-têtes « Copié de » de `haloapi/infinite` (D3-L4-j),
+  « les trois boucles de LevelUp d'avant la brique » (`infinite/retry.go`), « les deux clients d'avant la brique »
+  (`haloadapter/doc.go`) : hors du grep du brief, à déplacer dans l'ADR 0042 au lot 6.
+- **D3-L5-i (`GetMatchPrivacy` hors du test des politiques).** Son erreur est avalée par contrat (repli mémorisé) : la
+  politique `RetryProvider` de son chemin n'est tenue que par la lecture du code.
+- **D3-L5-j (`Provider.FetchAsset` à 6 paramètres).** Signature du port d'avant (appelants : `asset_name_fetcher`,
+  `catalog_fetcher`) ; la brique est à 3 depuis A3. Hors règle « haloapi », dette de l'adaptateur.
+- **D3-L5-k (garde consultée deux fois par requête).** `netguardDoer.Verifie` au début de l'appel puis dans `Do` à chaque
+  essai : la ligne de journal de `netguard` reste unique par surface et par processus ; aucun autre effet.
