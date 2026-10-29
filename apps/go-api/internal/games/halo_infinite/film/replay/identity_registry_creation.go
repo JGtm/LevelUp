@@ -64,7 +64,7 @@ import (
 	"log/slog"
 	"slices"
 
-	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/games/halo_infinite/film/identity"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
@@ -106,7 +106,7 @@ type creationReport struct {
 	Recycled int
 	// causes : indice de vie -> cause de non-resolution. Une vie absente de cette table est
 	// nommee ; une vie presente ne l'est pas, et la table DIT pourquoi.
-	causes map[int]canonical.LinkMethod
+	causes map[int]identity.LinkMethod
 	// indexLu : indice de vie -> index de participant LU dans le record de creation, pour les
 	// seules vies que la resolution a refusees faute de le trouver dans la table publiee.
 	//
@@ -126,12 +126,12 @@ type creationReport struct {
 func (r creationReport) Lues() int { return r.Direct + r.Propagated }
 
 // CauseNonResolue rend la CAUSE prouvee pour laquelle la vie d'indice `i` n'est pas nommee, ou
-// [canonical.MethodNone] quand elle l'est.
+// [identity.MethodNone] quand elle l'est.
 //
 // ELLE N'EST PAS TOUJOURS RENSEIGNEE, ET C'EST EXACT : une vie que la lecture directe a laissee
 // sans nom mais qu'une DEDUCTION a ensuite nommee (fermeture, elimination, exclusion) porte une
 // cause qui ne vaut plus. Le producteur ne la lit que pour les vies restees anonymes.
-func (r IdentityRegistry) CauseNonResolue(i int) canonical.LinkMethod {
+func (r IdentityRegistry) CauseNonResolue(i int) identity.LinkMethod {
 	return r.creation.causes[i]
 }
 
@@ -140,7 +140,7 @@ func (r IdentityRegistry) CauseNonResolue(i int) canonical.LinkMethod {
 // identity_registry_index_des_chunks.go, qui decide lesquels survivent a la garde).
 func nommerAvecLesTables(lives []lifeSpan, in IdentityInput, chunks map[int]uint64) creationReport {
 	creations, idx, bots, scan := in.BipedCreations, in.PlayerIndices, in.Bots, in.Entities
-	rep := creationReport{Records: len(creations), causes: map[int]canonical.LinkMethod{},
+	rep := creationReport{Records: len(creations), causes: map[int]identity.LinkMethod{},
 		indexLu: map[int]uint32{}, parIndexDesChunks: map[int]int{}}
 	if len(lives) == 0 {
 		return rep
@@ -156,7 +156,7 @@ func nommerAvecLesTables(lives []lifeSpan, in IdentityInput, chunks map[int]uint
 		// AUCUNE LECTURE DIRECTE : toutes les vies sont `sans_record`, et c'est la SEULE
 		// situation ou le pont par morts garde un role de nommage (cf. identity_registry.go).
 		for i := range lives {
-			rep.causes[i] = canonical.MethodNoCreationRecord
+			rep.causes[i] = identity.MethodNoCreationRecord
 		}
 		return rep
 	}
@@ -172,7 +172,7 @@ func nommerAvecLesTables(lives []lifeSpan, in IdentityInput, chunks map[int]uint
 		c, ok := corps[slot]
 		if !ok {
 			for _, i := range vies {
-				rep.causes[i] = canonical.MethodNoCreationRecord
+				rep.causes[i] = identity.MethodNoCreationRecord
 			}
 			continue
 		}
@@ -227,7 +227,7 @@ func (r *creationReport) appliquerAuCorps(lives []lifeSpan, vies []int, c corpsL
 			if !connu {
 				// AUCUN CORPS ETABLI A CET INSTANT, ET DES LECTURES DIVERGENTES : departager
 				// serait un choix. On se tait.
-				r.causes[i] = canonical.MethodDivergentReadings
+				r.causes[i] = identity.MethodDivergentReadings
 				continue
 			}
 			d = occupant
@@ -286,7 +286,7 @@ func (r *creationReport) poser(lives []lifeSpan, i int, d dateDeCreation, t reso
 // refuserFauteDeTable inscrit la cause `index_hors_table` ET l'index qui l'a provoquee. Les deux
 // vont ensemble : une cause sans sa piece ne se corrige pas, elle se contemple.
 func (r *creationReport) refuserFauteDeTable(i, pi int) {
-	r.causes[i] = canonical.MethodIndexOutOfTable
+	r.causes[i] = identity.MethodIndexOutOfTable
 	r.indexLu[i] = uint32(pi)
 }
 
@@ -454,7 +454,7 @@ func indexDesBotsDeclares(bots []BotIdentity) map[int]bool {
 // tombe sous zero ou sous le vrai residu, et l'alarme se tait ou se sous-evalue — exactement le
 // defaut consigne. `causes.IndexOutOfTable`, LUI, exclut deja tout bot NOMME (bid pose) : une
 // vie qui en sort n'est plus `non_resolu`, donc plus dans ce compte. Rien a soustraire.
-func (r creationReport) alarmerSurLesRefus(ctx context.Context, matchID string, causes canonical.UnresolvedCauses,
+func (r creationReport) alarmerSurLesRefus(ctx context.Context, matchID string, causes identity.UnresolvedCauses,
 	index []string) {
 	slog.InfoContext(ctx, "rejeu : lien direct corps -> joueur",
 		"match_id", matchID, "records", r.Records, "corps", r.Slots,

@@ -1,15 +1,16 @@
-package canonical
+package identity
 
-// film_identity.go — LES TYPES DU REGISTRE D'IDENTITE DES ENTITES D'UN FILM.
+// identity.go — LES TYPES DU REGISTRE D'IDENTITE DES ENTITES D'UN FILM.
 //
-// # POURQUOI ILS SONT CANONIQUES (inventaire P1, axe (h))
+// # A QUI ILS APPARTIENNENT
 //
-// `internal/games/canonical` ne portait AUCUN type d'entite de film : ni slot de bipede, ni
-// objet d'objectif, ni vehicule. Le registre nait donc canonique parce qu'il n'y a rien a
-// casser — ce sont des types de DONNEE inter-titres, pas des adapters. `internal/games/halo_infinite/film/replay`
-// les remplit pour Halo Infinite ; un autre titre les remplirait par son propre adapter sans
-// toucher au consommateur. Aucune comparaison de slug nulle part : la porte reste la capability
-// `film.replay_artifact`.
+// Le contrat d'identite des entites (`Link`, `LinkMethod`, les comptes) est celui du DECODEUR :
+// c'est `film/replay` qui les remplit, et eux seuls disent d'ou vient un lien. Ils ont ete poses
+// dans `internal/games/canonical` (inventaire P1, axe (h)) tant que le decodeur vivait dans
+// LevelUp ; ils vivent ici depuis le 2026-10-29 (decision 3 de l'audit de decouplage, plan D2
+// item 2.4). Un second titre qui aurait son propre decodeur convertirait vers sa forme du cote
+// LevelUp (`service/replayview`) plutot que de remplir ces types. Aucune comparaison de slug
+// nulle part : la porte reste la capability `film.replay_artifact`.
 //
 // # LA PROVENANCE EXISTAIT DEJA EN CINQ EXEMPLAIRES INCOMPATIBLES
 //

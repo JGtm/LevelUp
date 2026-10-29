@@ -16,7 +16,7 @@ package replay
 // UNE ligne `non_resolu` — un lien borne dont les bornes ne se disent pas ne se publie pas nomme.
 
 import (
-	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/games/halo_infinite/film/identity"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 )
 
@@ -24,12 +24,12 @@ import (
 func lignesDesOccupations(slot, round int, occ []objectives.Occupation, c IdentityClock,
 	calage *int64) []IdentityStatborgSlot {
 	if calage == nil {
-		return []IdentityStatborgSlot{{Slot: slot, Round: round, Link: canonical.Link{
-			Source: canonical.LinkUnresolved, Method: canonical.MethodNone, From: 0, To: c.lastFrame()}}}
+		return []IdentityStatborgSlot{{Slot: slot, Round: round, Link: identity.Link{
+			Source: identity.LinkUnresolved, Method: identity.MethodNone, From: 0, To: c.lastFrame()}}}
 	}
 	out := make([]IdentityStatborgSlot, 0, len(occ))
 	for _, o := range occ {
-		lien := canonical.Link{From: 0, To: c.lastFrame()}
+		lien := identity.Link{From: 0, To: c.lastFrame()}
 		if !o.OpenFrom {
 			lien.From = c.frameOf((int64(o.FromMS) + *calage) * 1000)
 		}
@@ -37,9 +37,9 @@ func lignesDesOccupations(slot, round int, occ []objectives.Occupation, c Identi
 			lien.To = c.frameOf((int64(o.ToMS)+*calage)*1000 - 1)
 		}
 		if o.XUID == "" {
-			lien.Source, lien.Method = canonical.LinkUnresolved, canonical.MethodNone
+			lien.Source, lien.Method = identity.LinkUnresolved, identity.MethodNone
 		} else {
-			lien.Source, lien.Method = canonical.LinkInferred, methodeStatborg(o.Origin)
+			lien.Source, lien.Method = identity.LinkInferred, methodeStatborg(o.Origin)
 		}
 		out = append(out, IdentityStatborgSlot{Slot: slot, Round: round, XUID: o.XUID, Link: lien})
 	}

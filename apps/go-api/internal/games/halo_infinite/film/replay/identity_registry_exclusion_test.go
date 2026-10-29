@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/games/halo_infinite/film/identity"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
@@ -106,11 +106,11 @@ func TestExclusionMarqueLaVieDeduiteEtSaProvenance(t *testing.T) {
 			continue
 		}
 		trouve = true
-		if b.Link.Source != canonical.LinkInferred {
-			t.Fatalf("provenance = %q, attendu %q", b.Link.Source, canonical.LinkInferred)
+		if b.Link.Source != identity.LinkInferred {
+			t.Fatalf("provenance = %q, attendu %q", b.Link.Source, identity.LinkInferred)
 		}
-		if b.Link.Method != canonical.MethodTemporalExclusion {
-			t.Fatalf("voie = %q, attendu %q", b.Link.Method, canonical.MethodTemporalExclusion)
+		if b.Link.Method != identity.MethodTemporalExclusion {
+			t.Fatalf("voie = %q, attendu %q", b.Link.Method, identity.MethodTemporalExclusion)
 		}
 	}
 	if !trouve {

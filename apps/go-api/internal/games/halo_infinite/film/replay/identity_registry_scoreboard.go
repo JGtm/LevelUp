@@ -49,13 +49,13 @@ import (
 	"slices"
 	"strconv"
 
-	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/games/halo_infinite/film/identity"
 )
 
 // NomParTableauAPI : la vie est nommee par le TABLEAU DE L'API — l'identifiant du participant
 // (`bid(N.0)` d'un bot) et, sur un siege partage, la fenetre qui le departage. Cinquieme valeur
 // de l'axe `nomPar` (cf. lives.go). Ce n'est ni une lecture du film, ni une deduction : c'est
-// une SOURCE EXTERNE, et la section la publie comme telle (`canonical.LinkExternal`).
+// une SOURCE EXTERNE, et la section la publie comme telle (`identity.LinkExternal`).
 const NomParTableauAPI = "tableau_api"
 
 // Participant est UNE LIGNE DU TABLEAU DE L'API, reduite a ce que le registre consomme.
@@ -113,7 +113,7 @@ func (r *IdentityRegistry) resolveByScoreboard(ctx context.Context, in IdentityI
 		if l.xuid != 0 || l.bid != "" {
 			continue
 		}
-		if r.CauseNonResolue(i) != canonical.MethodIndexOutOfTable {
+		if r.CauseNonResolue(i) != identity.MethodIndexOutOfTable {
 			continue
 		}
 		pi, lu := r.creation.indexLu[i]

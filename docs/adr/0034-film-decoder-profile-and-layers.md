@@ -567,6 +567,14 @@ step, dated: 166 → 170 (J4.2, the four bridge reads re-exported) → 173 (J4.3
 two types) → 165 (J4.5, eight symbols without consumers removed). The companion surface
 (`replay.X` cited outside `film/`) went 281 → 276 at J4.2.
 
+## Amendment of 2026-10-29 — who owns the entity identity contract (decoupling D2, item 2.4)
+
+The entity identity contract (`Link`, `LinkMethod`, the `LinkCounts` family, the cause counters)
+is owned by the decoder: it now lives in `film/identity`, moved out of `internal/games/canonical`
+(`film_identity.go`), per audit decision 3 of 2026-10-27. A second title with a decoder would
+convert on the LevelUp side (`service/replayview/convert_identity.go` already converts to the API
+document types) rather than fill these types. Exported names are unchanged.
+
 ## Non-goals
 
 - **Not a rewrite.** Every grammar acquired by reverse engineering stays as it is; only its

@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/games/halo_infinite/film/identity"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
@@ -229,11 +229,11 @@ func TestSectionPublieLeBidEtSaProvenance(t *testing.T) {
 		if b.Bid != "bid(3.0)" {
 			t.Fatalf("ligne du slot 200 : bid = %q, attendu \"bid(3.0)\"", b.Bid)
 		}
-		if b.Link.Source != canonical.LinkExternal {
-			t.Fatalf("provenance = %q, attendu %q", b.Link.Source, canonical.LinkExternal)
+		if b.Link.Source != identity.LinkExternal {
+			t.Fatalf("provenance = %q, attendu %q", b.Link.Source, identity.LinkExternal)
 		}
-		if b.Link.Method != canonical.MethodScoreboard {
-			t.Fatalf("voie = %q, attendu %q", b.Link.Method, canonical.MethodScoreboard)
+		if b.Link.Method != identity.MethodScoreboard {
+			t.Fatalf("voie = %q, attendu %q", b.Link.Method, identity.MethodScoreboard)
 		}
 	}
 	if !vu {

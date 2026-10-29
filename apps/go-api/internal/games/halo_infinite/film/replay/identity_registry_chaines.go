@@ -25,7 +25,7 @@ package replay
 // `PlayerIndexTable`, repli nomme et compte) : la table du film se tait la ou deux lectures la
 // dementent.
 
-import "levelup/go-api/internal/games/canonical"
+import "levelup/go-api/internal/games/halo_infinite/film/identity"
 
 // membresDesChaines rend les joueurs contredits qui forment une chaine : ceux dont l'index des
 // chunks est le siege d'un autre joueur contredit, ces titulaires, et le titulaire d'un siege
@@ -81,7 +81,7 @@ func resoudreLesChaines(out *filmTableLinks, cs []contradictionDeSiege, in Ident
 			continue
 		}
 		out.table.ByXUID[c.xuid] = c.controle
-		out.voie[c.xuid] = canonical.MethodPlayerIndexTable
+		out.voie[c.xuid] = identity.MethodPlayerIndexTable
 		out.couverture.Direct--
 		out.couverture.Fallback++
 	}

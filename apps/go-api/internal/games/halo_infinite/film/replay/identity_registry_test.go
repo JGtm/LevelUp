@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/games/halo_infinite/film/identity"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
@@ -148,12 +148,12 @@ func TestRegistrePublieLeLienDirectDeLIndexDeJoueur(t *testing.T) {
 	var direct, externe int
 	for _, p := range reg.Section.Players {
 		switch p.Link.Source {
-		case canonical.LinkDirect:
+		case identity.LinkDirect:
 			direct++
-			if p.Link.Method != canonical.MethodPlayerIndexTable || p.Link.Readings != 26 {
+			if p.Link.Method != identity.MethodPlayerIndexTable || p.Link.Readings != 26 {
 				t.Fatalf("lien direct sans sa preuve : %+v", p.Link)
 			}
-		case canonical.LinkExternal:
+		case identity.LinkExternal:
 			externe++
 		}
 	}

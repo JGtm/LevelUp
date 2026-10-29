@@ -3,7 +3,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/games/halo_infinite/film/identity"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 )
 
@@ -24,12 +24,12 @@ func TestLignesDesOccupationsBornees(t *testing.T) {
 	calage := int64(2000) // horloge film = horloge du fil + 2 s
 	got := lignesDesOccupations(12, 0, occ, horlogeDesOccupations, &calage)
 	want := []IdentityStatborgSlot{
-		{Slot: 12, XUID: "A", Link: canonical.Link{Source: canonical.LinkInferred,
-			Method: canonical.MethodDeathInstants, From: 0, To: 319}},
-		{Slot: 12, Link: canonical.Link{Source: canonical.LinkUnresolved, Method: canonical.MethodNone,
+		{Slot: 12, XUID: "A", Link: identity.Link{Source: identity.LinkInferred,
+			Method: identity.MethodDeathInstants, From: 0, To: 319}},
+		{Slot: 12, Link: identity.Link{Source: identity.LinkUnresolved, Method: identity.MethodNone,
 			From: 320, To: 469}},
-		{Slot: 12, XUID: "B", Link: canonical.Link{Source: canonical.LinkInferred,
-			Method: canonical.MethodSheetTriplet, From: 470, To: 999}},
+		{Slot: 12, XUID: "B", Link: identity.Link{Source: identity.LinkInferred,
+			Method: identity.MethodSheetTriplet, From: 470, To: 999}},
 	}
 	if len(got) != len(want) {
 		t.Fatalf("%d ligne(s), attendu %d : %+v", len(got), len(want), got)
@@ -48,7 +48,7 @@ func TestLignesDesOccupationsBornees(t *testing.T) {
 func TestLignesDesOccupationsSansCalage(t *testing.T) {
 	occ := []objectives.Occupation{{OpenFrom: true, ToMS: 40000, XUID: "A"}, {FromMS: 40000, OpenTo: true, XUID: "B"}}
 	got := lignesDesOccupations(12, 0, occ, horlogeDesOccupations, nil)
-	if len(got) != 1 || got[0].XUID != "" || got[0].Link.Source != canonical.LinkUnresolved {
+	if len(got) != 1 || got[0].XUID != "" || got[0].Link.Source != identity.LinkUnresolved {
 		t.Fatalf("attendu une ligne non resolue, obtenu %+v", got)
 	}
 }

@@ -8,7 +8,7 @@ package replayview
 
 import (
 	"levelup/go-api/internal/domain/replaydoc"
-	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/games/halo_infinite/film/identity"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
@@ -43,7 +43,7 @@ func toIdentityStatborgSlot(v replay.IdentityStatborgSlot) replaydoc.IdentitySta
 	}
 }
 
-func toLink(v canonical.Link) replaydoc.Link {
+func toLink(v identity.Link) replaydoc.Link {
 	return replaydoc.Link{
 		Source:   string(v.Source),
 		Method:   string(v.Method),
@@ -63,7 +63,7 @@ func toIdentityCoverage(v replay.IdentityCoverage) replaydoc.IdentityCoverage {
 	}
 }
 
-func toFilmTableCounts(v canonical.FilmTableCounts) replaydoc.FilmTableCounts {
+func toFilmTableCounts(v identity.FilmTableCounts) replaydoc.FilmTableCounts {
 	return replaydoc.FilmTableCounts{
 		Read:          v.Read,
 		Refusal:       v.Refusal,
@@ -78,7 +78,7 @@ func toFilmTableCounts(v canonical.FilmTableCounts) replaydoc.FilmTableCounts {
 	}
 }
 
-func toBipedLinkCounts(v canonical.BipedLinkCounts) replaydoc.BipedLinkCounts {
+func toBipedLinkCounts(v identity.BipedLinkCounts) replaydoc.BipedLinkCounts {
 	return replaydoc.BipedLinkCounts{
 		LinkCounts:       toLinkCounts(v.LinkCounts),
 		DirectPropagated: v.DirectPropagated,
@@ -90,7 +90,7 @@ func toBipedLinkCounts(v canonical.BipedLinkCounts) replaydoc.BipedLinkCounts {
 	}
 }
 
-func toLinkCounts(v canonical.LinkCounts) replaydoc.LinkCounts {
+func toLinkCounts(v identity.LinkCounts) replaydoc.LinkCounts {
 	return replaydoc.LinkCounts{
 		Direct:     v.Direct,
 		Catalog:    v.Catalog,

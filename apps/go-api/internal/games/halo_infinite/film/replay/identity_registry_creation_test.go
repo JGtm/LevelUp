@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"testing"
 
-	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/games/halo_infinite/film/identity"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
@@ -293,9 +293,9 @@ func TestCauseSansRecordQuandLeFilmNePorteAucuneCreation(t *testing.T) {
 	if reg.ViesNommeesParLePont() == 0 {
 		t.Fatal("sans lecture directe, le pont doit nommer — sinon le rejeu perd tout d'un coup")
 	}
-	if reg.CauseNonResolue(0) != canonical.MethodNoCreationRecord {
+	if reg.CauseNonResolue(0) != identity.MethodNoCreationRecord {
 		t.Fatalf("cause de la vie 0 = %q, attendu %q",
-			reg.CauseNonResolue(0), canonical.MethodNoCreationRecord)
+			reg.CauseNonResolue(0), identity.MethodNoCreationRecord)
 	}
 }
 

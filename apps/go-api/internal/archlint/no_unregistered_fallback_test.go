@@ -129,6 +129,10 @@ var replisDeLEcrivainDuJeu = map[string]exemptionEcrivain{
 		"la projection du rapport du compteur vers ce type publie. Meme raison."},
 	"toFallbackHits": {"internal/service/replayview/convert_coverage.go", "2026-09-14",
 		"la projection vers le document SERVI. Meme raison."},
+	"Fallback": {"internal/games/halo_infinite/film/identity/identity.go", "2026-10-29",
+		"champ de `FilmTableCounts` : le COMPTE publie des liens que la lecture des chunks a completes. " +
+			"Il ne DECIDE rien ; le repli qu'il compte est nomme et inscrit au registre ailleurs. " +
+			"Le fichier vivait sous `games/canonical`, hors du perimetre de ce ratchet (D2 2.4)."},
 	"PosKindAbsFallback": {"internal/games/halo_infinite/film/internal/grammar/position_capture.go", "2026-09-14",
 		"la NATURE d'une capture de position telle que l'ecrivain du jeu la produit (absolu atteint par l'absence du delta predit). Grammaire, pas decision."},
 	"viaRepli": {"internal/games/halo_infinite/film/internal/grammar/position_capture.go", "2026-09-14",

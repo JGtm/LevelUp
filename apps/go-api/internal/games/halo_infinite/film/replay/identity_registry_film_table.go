@@ -55,7 +55,7 @@ import (
 	"log/slog"
 	"strconv"
 
-	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/games/halo_infinite/film/identity"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
@@ -66,11 +66,11 @@ type filmTableLinks struct {
 	// complement ». Elle n'est JAMAIS plus pauvre que la lecture des chunks seule.
 	table types.PlayerIndexTable
 	// voie dit, par xuid, laquelle des deux lectures a pose le lien.
-	voie map[uint64]canonical.LinkMethod
+	voie map[uint64]identity.LinkMethod
 	// noms porte le gamertag que LE FILM ecrit, par xuid. Vide pour un xuid sans siege.
 	noms map[uint64]string
 	// couverture est ce que la section publie.
-	couverture canonical.FilmTableCounts
+	couverture identity.FilmTableCounts
 	// contradictions porte, pour le journal, chaque xuid que la lecture des chunks place a un AUTRE
 	// index que la table du film : « xuid:siege->controle ». Hors chaine la table fait foi ; la piece reste.
 	contradictions []string
@@ -93,9 +93,9 @@ func composerTableDIndex(in IdentityInput) filmTableLinks {
 			Readings:      in.PlayerIndices.Readings,
 			Disagreements: in.PlayerIndices.Disagreements,
 		},
-		voie: map[uint64]canonical.LinkMethod{},
+		voie: map[uint64]identity.LinkMethod{},
 		noms: map[uint64]string{},
-		couverture: canonical.FilmTableCounts{
+		couverture: identity.FilmTableCounts{
 			Read: in.FilmTable.Lue(), Refusal: string(in.FilmTable.Refusal),
 			Seats: in.FilmTable.Occupied,
 		},
@@ -103,7 +103,7 @@ func composerTableDIndex(in IdentityInput) filmTableLinks {
 	if in.FilmTable.InterleavedVacant && in.FilmTable.Refusal == grammar.FilmTableRead {
 		// Une table LUE dont le rang est ambigu : le refus n'est pas une erreur de lecture, il
 		// est une abstention, et il se nomme comme tel.
-		out.couverture.Refusal = string(canonical.FilmTableInterleavedVacant)
+		out.couverture.Refusal = string(identity.FilmTableInterleavedVacant)
 	}
 	if out.couverture.Read {
 		poserSiegesDuFilm(&out, in)
@@ -152,7 +152,7 @@ func retirerLesIndexEnCollision(out *filmTableLinks) {
 		}
 		out.couverture.IndexCollisions++
 		for _, x := range xuids {
-			if out.voie[x] == canonical.MethodFilmPlayerTable {
+			if out.voie[x] == identity.MethodFilmPlayerTable {
 				out.couverture.Direct--
 			} else {
 				out.couverture.Fallback--
@@ -170,7 +170,7 @@ func poserSiegesDuFilm(out *filmTableLinks, in IdentityInput) {
 			continue
 		}
 		out.table.ByXUID[s.XUID] = s.FilmIndex
-		out.voie[s.XUID] = canonical.MethodFilmPlayerTable
+		out.voie[s.XUID] = identity.MethodFilmPlayerTable
 		out.couverture.Direct++
 		if s.Gamertag != "" {
 			out.noms[s.XUID] = s.Gamertag
@@ -196,7 +196,7 @@ func completerParLesChunks(out *filmTableLinks, in IdentityInput) {
 			continue
 		}
 		out.table.ByXUID[x] = pi
-		out.voie[x] = canonical.MethodPlayerIndexTable
+		out.voie[x] = identity.MethodPlayerIndexTable
 		out.couverture.Fallback++
 	}
 }
@@ -239,16 +239,16 @@ func (r IdentityRegistry) TableDIndex() types.PlayerIndexTable { return r.filmTa
 func (r IdentityRegistry) NomsDuFilm() map[uint64]string { return r.filmTable.noms }
 
 // CouvertureTableDuFilm rend ce que la composition publie.
-func (r IdentityRegistry) CouvertureTableDuFilm() canonical.FilmTableCounts {
+func (r IdentityRegistry) CouvertureTableDuFilm() identity.FilmTableCounts {
 	return r.filmTable.couverture
 }
 
-// voieDuLienDIndex rend la voie qui a pose le lien de ce xuid. [canonical.MethodPlayerIndexTable]
+// voieDuLienDIndex rend la voie qui a pose le lien de ce xuid. [identity.MethodPlayerIndexTable]
 // par defaut : c'est la voie historique, et un xuid sans entree ne vient d'ailleurs que d'une
 // table composee hors de ce fichier — ce que la construction interdit.
-func (l filmTableLinks) voieDuLienDIndex(xuid uint64) canonical.LinkMethod {
+func (l filmTableLinks) voieDuLienDIndex(xuid uint64) identity.LinkMethod {
 	if m, ok := l.voie[xuid]; ok {
 		return m
 	}
-	return canonical.MethodPlayerIndexTable
+	return identity.MethodPlayerIndexTable
 }

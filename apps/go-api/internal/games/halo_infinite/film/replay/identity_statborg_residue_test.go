@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/games/halo_infinite/film/identity"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 )
@@ -23,9 +23,9 @@ import (
 //
 // MUTATION : retirer le `case objectives.OriginRoundResidue` de [methodeStatborg] — ROUGE.
 func TestLeResiduDeMancheAUneVoieCanonique(t *testing.T) {
-	if got := methodeStatborg(objectives.OriginRoundResidue); got != canonical.MethodRoundResidue {
+	if got := methodeStatborg(objectives.OriginRoundResidue); got != identity.MethodRoundResidue {
 		t.Fatalf("methodeStatborg(%q) = %q, attendu %q", objectives.OriginRoundResidue, got,
-			canonical.MethodRoundResidue)
+			identity.MethodRoundResidue)
 	}
 }
 
@@ -41,7 +41,7 @@ func TestChaqueOrigineDObjectivesAUneVoieCanonique(t *testing.T) {
 			"parcours est casse", len(origines), plancher)
 	}
 	for nom, valeur := range origines {
-		if methodeStatborg(valeur) == canonical.MethodNone {
+		if methodeStatborg(valeur) == identity.MethodNone {
 			t.Errorf("objectives.%s = %q n a aucune voie canonique dans methodeStatborg", nom, valeur)
 		}
 	}
@@ -54,10 +54,10 @@ func TestChaqueOrigineDObjectivesAUneVoieCanonique(t *testing.T) {
 func TestLesSlotsNommesParLeResiduSontComptes(t *testing.T) {
 	fb := fallback.NouveauCompteur()
 	slots := []IdentityStatborgSlot{
-		{Slot: 10, Round: 0, XUID: "A", Link: canonical.Link{Method: canonical.MethodRoundResidue}},
-		{Slot: 12, Round: 0, XUID: "B", Link: canonical.Link{Method: canonical.MethodDeathInstants}},
-		{Slot: 14, Round: 1, XUID: "C", Link: canonical.Link{Method: canonical.MethodRoundResidue}},
-		{Slot: 16, Round: 1, Link: canonical.Link{Method: canonical.MethodNone}},
+		{Slot: 10, Round: 0, XUID: "A", Link: identity.Link{Method: identity.MethodRoundResidue}},
+		{Slot: 12, Round: 0, XUID: "B", Link: identity.Link{Method: identity.MethodDeathInstants}},
+		{Slot: 14, Round: 1, XUID: "C", Link: identity.Link{Method: identity.MethodRoundResidue}},
+		{Slot: 16, Round: 1, Link: identity.Link{Method: identity.MethodNone}},
 	}
 	compterLesSlotsParResidu(slots, fb)
 	if got := fb.Compte(fallback.NomIdentiteDeSlotParResiduDeManche); got != 2 {

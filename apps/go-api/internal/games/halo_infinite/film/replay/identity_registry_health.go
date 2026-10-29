@@ -12,8 +12,8 @@ import (
 	"slices"
 	"strconv"
 
-	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/games/halo_infinite/film/filmobs"
+	"levelup/go-api/internal/games/halo_infinite/film/identity"
 )
 
 // SanteDuPont rend la sante du pont slot -> joueur : sur quoi il repose, et ce qu'il refuse.
@@ -128,7 +128,7 @@ func (r IdentityRegistry) publierDiscordancesDuPont(ctx context.Context, matchID
 func (r IdentityRegistry) indexDesViesHorsTable() []string {
 	par := map[uint32]int{}
 	for i, l := range r.Vies() {
-		if l.xuid != 0 || l.bid != "" || r.creation.causes[i] != canonical.MethodIndexOutOfTable {
+		if l.xuid != 0 || l.bid != "" || r.creation.causes[i] != identity.MethodIndexOutOfTable {
 			continue
 		}
 		if pi, lu := r.creation.indexLu[i]; lu {

@@ -12,7 +12,7 @@ package replay
 //
 // Trois familles de liens, celles que le lot P2 couvre : l'index de joueur, le slot de bipede
 // dans le temps, le slot d'entite statborg par manche. Chacune porte sa PROVENANCE
-// (`canonical.Link`) et ses BORNES : un slot de bipede est reattribue a chaque reapparition, un
+// (`identity.Link`) et ses BORNES : un slot de bipede est reattribue a chaque reapparition, un
 // slot de statborg d'une manche a l'autre. Un lien aplati crediterait le premier occupant, et
 // c'est exactement le defaut P0-2.
 //
@@ -26,7 +26,7 @@ package replay
 import (
 	"strconv"
 
-	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/games/halo_infinite/film/identity"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
@@ -68,7 +68,7 @@ type IdentityPlayer struct {
 	// Name est le nom tel que le film l'ecrit (gamertag humain, ou nom du bot).
 	Name string `json:"name,omitempty"`
 	// Link dit d'ou vient ce lien.
-	Link canonical.Link `json:"link"`
+	Link identity.Link `json:"link"`
 }
 
 // IdentityBipedSlot est l'occupation d'un slot de bipede sur un intervalle de frames.
@@ -81,8 +81,8 @@ type IdentityBipedSlot struct {
 	// la base emploie. EXCLUSIF avec `XUID` : un bot n'a pas de xuid, et lui en fabriquer un le
 	// rendrait joignable avec un humain (lot 4.3). Vide pour un humain comme pour un corps que
 	// rien ne nomme.
-	Bid  string         `json:"bid,omitempty"`
-	Link canonical.Link `json:"link"`
+	Bid  string        `json:"bid,omitempty"`
+	Link identity.Link `json:"link"`
 }
 
 // IdentityStatborgSlot est l'identite d'un slot d'entite statborg POUR UNE MANCHE.
@@ -90,8 +90,8 @@ type IdentityStatborgSlot struct {
 	Slot  int `json:"slot"`
 	Round int `json:"round"`
 	// XUID du joueur. VIDE quand le pont par manche n'a pas su nommer le slot.
-	XUID string         `json:"xuid,omitempty"`
-	Link canonical.Link `json:"link"`
+	XUID string        `json:"xuid,omitempty"`
+	Link identity.Link `json:"link"`
 }
 
 // IdentityCoverage est le recapitulatif des liens PAR TYPE D'ENTITE et par provenance.
@@ -99,25 +99,25 @@ type IdentityCoverage struct {
 	// FilmIndex : les liens « index de joueur du film <-> identite ». Nomme d apres
 	// `RosterEntry.FilmIndex` — un index est un ORDRE LOCAL, valable dans CE film seulement, et
 	// jamais une identite (ratchet `no_player_index_identity_test.go`).
-	FilmIndex canonical.LinkCounts `json:"filmIndex"`
+	FilmIndex identity.LinkCounts `json:"filmIndex"`
 	// BipedSlot porte DEUX ventilations de plus que ses voisines, et elle seule : la part de
 	// `direct` obtenue par PROPAGATION du record d'un corps a ses autres sejours, et la CAUSE de
 	// chaque `non_resolu`. Les deux n'existent que la ou un meme record couvre plusieurs liens
-	// et ou l'echec est instruit (cf. canonical.BipedLinkCounts).
-	BipedSlot    canonical.BipedLinkCounts `json:"bipedSlot"`
-	StatborgSlot canonical.LinkCounts      `json:"statborgSlot"`
+	// et ou l'echec est instruit (cf. identity.BipedLinkCounts).
+	BipedSlot    identity.BipedLinkCounts `json:"bipedSlot"`
+	StatborgSlot identity.LinkCounts      `json:"statborgSlot"`
 	// FilmTable dit ce que LA TABLE DU FILM a couvert, ce que le repli a du completer, et ce que
 	// le controle en pense (lot 1.6). Elle ne compte pas des liens par provenance — `FilmIndex`
 	// le fait deja — mais l'etat d'UNE SOURCE : c'est la seule facon de voir, sur un artefact,
 	// qu'un film a ete cuit sans sa table (les 5 films sans section d'identification) ou avec un
 	// rang ambigu.
-	FilmTable canonical.FilmTableCounts `json:"filmTable"`
+	FilmTable identity.FilmTableCounts `json:"filmTable"`
 }
 
 // Total agrege les trois familles — le chiffre unique du journal, jamais celui du gate (qui
 // compare famille par famille : une famille qui monte ne doit pas masquer celle qui baisse).
-func (c IdentityCoverage) Total() canonical.LinkCounts {
-	return canonical.LinkCounts{
+func (c IdentityCoverage) Total() identity.LinkCounts {
+	return identity.LinkCounts{
 		Direct:     c.FilmIndex.Direct + c.BipedSlot.Direct + c.StatborgSlot.Direct,
 		Catalog:    c.FilmIndex.Catalog + c.BipedSlot.Catalog + c.StatborgSlot.Catalog,
 		External:   c.FilmIndex.External + c.BipedSlot.External + c.StatborgSlot.External,
@@ -146,13 +146,13 @@ func buildIdentitySection(r IdentityRegistry, in IdentityInput) IdentitySection 
 	}
 	for _, b := range s.BipedSlots {
 		s.Coverage.BipedSlot.Add(b.Link.Source)
-		if b.Link.Source == canonical.LinkUnresolved {
-			// LA CAUSE VOYAGE DANS `Method`, comme pour [canonical.MethodContested] : un
+		if b.Link.Source == identity.LinkUnresolved {
+			// LA CAUSE VOYAGE DANS `Method`, comme pour [identity.MethodContested] : un
 			// `non_resolu` sans cause ne se corrige pas. La somme des causes EGALE `Unresolved`,
 			// et c'est l'invariant que `TestCouvertureBipedeVentileChaqueNonResolu` verifie.
 			s.Coverage.BipedSlot.UnresolvedByCause.AddCause(b.Link.Method)
 		}
-		if b.Link.Method == canonical.MethodBipedCreationPropagated {
+		if b.Link.Method == identity.MethodBipedCreationPropagated {
 			s.Coverage.BipedSlot.DirectPropagated++
 		}
 	}
@@ -181,7 +181,7 @@ func identityPlayers(r IdentityRegistry, in IdentityInput) []IdentityPlayer {
 			FilmIndex: table.ByXUID[x],
 			XUID:      strconv.FormatUint(x, 10),
 			Name:      noms[x],
-			Link: canonical.Link{Source: canonical.LinkDirect,
+			Link: identity.Link{Source: identity.LinkDirect,
 				Method: r.filmTable.voieDuLienDIndex(x), Readings: table.Readings,
 				From: 0, To: in.Clock.lastFrame()},
 		})
@@ -189,7 +189,7 @@ func identityPlayers(r IdentityRegistry, in IdentityInput) []IdentityPlayer {
 	for _, b := range in.Bots {
 		out = append(out, IdentityPlayer{
 			FilmIndex: b.FilmIndex, Bid: b.Bid(), Name: b.Name,
-			Link: canonical.Link{Source: canonical.LinkDirect, Method: canonical.MethodBotID,
+			Link: identity.Link{Source: identity.LinkDirect, Method: identity.MethodBotID,
 				From: 0, To: in.Clock.lastFrame()},
 		})
 	}
@@ -202,7 +202,7 @@ func identityPlayers(r IdentityRegistry, in IdentityInput) []IdentityPlayer {
 		humains[x] = true
 		out = append(out, IdentityPlayer{
 			FilmIndex: -1, XUID: strconv.FormatUint(x, 10), Name: noms[x],
-			Link: canonical.Link{Source: canonical.LinkExternal, From: 0,
+			Link: identity.Link{Source: identity.LinkExternal, From: 0,
 				To: in.Clock.lastFrame()},
 		})
 	}
@@ -232,14 +232,14 @@ func identityBipedSlots(r IdentityRegistry, c IdentityClock) []IdentityBipedSlot
 	lives := r.Vies()
 	out := make([]IdentityBipedSlot, 0, len(lives))
 	for i, l := range lives {
-		lien := canonical.Link{From: c.frameOf(l.from), To: c.frameOf(l.to)}
+		lien := identity.Link{From: c.frameOf(l.from), To: c.frameOf(l.to)}
 		var xuid string
 		switch {
 		case l.xuid == 0 && l.bid == "":
 			// RIEN NE L'A NOMMEE : la ligne se publie quand meme, elle DIT qu'elle n'est pas
 			// resolue, et depuis le lot E2 elle dit POURQUOI. La jeter ferait de la couverture
 			// un compte de rescapes ; la publier sans cause en ferait un constat sans prise.
-			lien.Source, lien.Method = canonical.LinkUnresolved, r.CauseNonResolue(i)
+			lien.Source, lien.Method = identity.LinkUnresolved, r.CauseNonResolue(i)
 		default:
 			if l.xuid != 0 {
 				xuid = strconv.FormatUint(l.xuid, 10)
@@ -258,38 +258,38 @@ func identityBipedSlots(r IdentityRegistry, c IdentityClock) []IdentityBipedSlot
 // provenanceDeNommage dit si la voie est une LECTURE du film ou une DEDUCTION. Le record de
 // creation ECRIT le proprietaire du corps : il est `direct`, propagation comprise (le meme record
 // applique au meme corps reste une lecture). Tout le reste deduit.
-func provenanceDeNommage(nomPar string) canonical.LinkSource {
+func provenanceDeNommage(nomPar string) identity.LinkSource {
 	if nomParLecture(nomPar) {
-		return canonical.LinkDirect
+		return identity.LinkDirect
 	}
 	if nomPar == NomParTableauAPI {
 		// LE TABLEAU N'EST NI UNE LECTURE DU FILM NI UNE DEDUCTION : c'est la base qui le dit,
-		// et `externe` existe exactement pour cela (cf. canonical.LinkExternal).
-		return canonical.LinkExternal
+		// et `externe` existe exactement pour cela (cf. identity.LinkExternal).
+		return identity.LinkExternal
 	}
-	return canonical.LinkInferred
+	return identity.LinkInferred
 }
 
 // methodeDeNommage traduit l'axe `nomPar` d'une vie en voie canonique. Un `nomPar` inconnu
-// rend [canonical.MethodNone] : le producteur ne doit pas inventer une voie qu'il ne connait pas.
-func methodeDeNommage(nomPar string) canonical.LinkMethod {
+// rend [identity.MethodNone] : le producteur ne doit pas inventer une voie qu'il ne connait pas.
+func methodeDeNommage(nomPar string) identity.LinkMethod {
 	switch nomPar {
 	case NomParCreation:
-		return canonical.MethodBipedCreation
+		return identity.MethodBipedCreation
 	case NomParCreationPropagee:
-		return canonical.MethodBipedCreationPropagated
+		return identity.MethodBipedCreationPropagated
 	case NomParMort:
-		return canonical.MethodDeathBridge
+		return identity.MethodDeathBridge
 	case NomParFermeture:
-		return canonical.MethodClosure
+		return identity.MethodClosure
 	case NomParElimination:
-		return canonical.MethodRosterElimination
+		return identity.MethodRosterElimination
 	case NomParExclusionTemporelle:
-		return canonical.MethodTemporalExclusion
+		return identity.MethodTemporalExclusion
 	case NomParTableauAPI:
-		return canonical.MethodScoreboard
+		return identity.MethodScoreboard
 	}
-	return canonical.MethodNone
+	return identity.MethodNone
 }
 
 // identityStatborgSlots publie une ligne par couple (manche, slot EMETTEUR) — nomme ou non.
@@ -311,11 +311,11 @@ func identityStatborgSlots(in IdentityInput, calage *int64) []IdentityStatborgSl
 				continue
 			}
 			xuid := id.AtRound(round, slot)
-			lien := canonical.Link{From: 0, To: in.Clock.lastFrame()}
+			lien := identity.Link{From: 0, To: in.Clock.lastFrame()}
 			if xuid == "" {
-				lien.Source, lien.Method = canonical.LinkUnresolved, canonical.MethodNone
+				lien.Source, lien.Method = identity.LinkUnresolved, identity.MethodNone
 			} else {
-				lien.Source = canonical.LinkInferred
+				lien.Source = identity.LinkInferred
 				lien.Method = methodeStatborg(id.Origin(round, slot))
 			}
 			out = append(out, IdentityStatborgSlot{Slot: slot, Round: round, XUID: xuid, Link: lien})
@@ -325,18 +325,18 @@ func identityStatborgSlots(in IdentityInput, calage *int64) []IdentityStatborgSl
 }
 
 // methodeStatborg traduit la voie de `objectives` en voie canonique.
-func methodeStatborg(origin string) canonical.LinkMethod {
+func methodeStatborg(origin string) identity.LinkMethod {
 	switch origin {
 	case objectives.OriginDeathInstants:
-		return canonical.MethodDeathInstants
+		return identity.MethodDeathInstants
 	case objectives.OriginSheetTriplet:
-		return canonical.MethodSheetTriplet
+		return identity.MethodSheetTriplet
 	case objectives.OriginElimination:
-		return canonical.MethodRosterElimination
+		return identity.MethodRosterElimination
 	case objectives.OriginRoundResidue:
-		return canonical.MethodRoundResidue
+		return identity.MethodRoundResidue
 	}
-	return canonical.MethodNone
+	return identity.MethodNone
 }
 
 // frameOf place un instant du film (microsecondes) sur l'axe de frames, borne aux extremes.
@@ -379,7 +379,7 @@ func triesParXUID(byXUID map[uint64]int) []uint64 {
 // (manche, slot) que le RESIDU DE MANCHE a nomme.
 func compterLesSlotsParResidu(slots []IdentityStatborgSlot, fb *fallback.Compteur) {
 	for _, s := range slots {
-		if s.Link.Method == canonical.MethodRoundResidue {
+		if s.Link.Method == identity.MethodRoundResidue {
 			fb.Declenche(fallback.NomIdentiteDeSlotParResiduDeManche)
 		}
 	}

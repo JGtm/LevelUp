@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/games/halo_infinite/film/identity"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
@@ -129,13 +129,13 @@ func TestPontParMortsNeNommeAucuneVieQuandLeFilmNomme(t *testing.T) {
 func TestSectionPublieLaVoieDeCreationEtSaProvenance(t *testing.T) {
 	reg := BuildIdentityRegistry(context.Background(), filmPaireEchangee())
 	for _, b := range reg.Section.BipedSlots {
-		if b.Link.Source != canonical.LinkDirect {
+		if b.Link.Source != identity.LinkDirect {
 			t.Fatalf("slot %d : source = %q, attendu %q",
-				b.Slot, b.Link.Source, canonical.LinkDirect)
+				b.Slot, b.Link.Source, identity.LinkDirect)
 		}
-		if b.Link.Method != canonical.MethodBipedCreation {
+		if b.Link.Method != identity.MethodBipedCreation {
 			t.Fatalf("slot %d : voie = %q, attendu %q",
-				b.Slot, b.Link.Method, canonical.MethodBipedCreation)
+				b.Slot, b.Link.Method, identity.MethodBipedCreation)
 		}
 	}
 }

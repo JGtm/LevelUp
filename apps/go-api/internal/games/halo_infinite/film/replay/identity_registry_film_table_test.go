@@ -16,7 +16,7 @@ import (
 	"context"
 	"testing"
 
-	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/games/halo_infinite/film/identity"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
@@ -49,16 +49,16 @@ func TestCompositionLaTableDuFilmPrimeSurLeControle(t *testing.T) {
 	if got.table.ByXUID[22] != 3 {
 		t.Errorf("xuid 22 -> index %d, attendu 3 (la table du film fait foi)", got.table.ByXUID[22])
 	}
-	if got.voieDuLienDIndex(22) != canonical.MethodFilmPlayerTable {
-		t.Errorf("voie %q, attendue %q", got.voieDuLienDIndex(22), canonical.MethodFilmPlayerTable)
+	if got.voieDuLienDIndex(22) != identity.MethodFilmPlayerTable {
+		t.Errorf("voie %q, attendue %q", got.voieDuLienDIndex(22), identity.MethodFilmPlayerTable)
 	}
 	// T-REPLI : le xuid 33 n a pas de siege — il entre par la lecture des chunks.
 	if got.table.ByXUID[33] != 7 {
 		t.Errorf("xuid 33 -> index %d, attendu 7 (repli)", got.table.ByXUID[33])
 	}
-	if got.voieDuLienDIndex(33) != canonical.MethodPlayerIndexTable {
+	if got.voieDuLienDIndex(33) != identity.MethodPlayerIndexTable {
 		t.Errorf("voie du repli %q, attendue %q",
-			got.voieDuLienDIndex(33), canonical.MethodPlayerIndexTable)
+			got.voieDuLienDIndex(33), identity.MethodPlayerIndexTable)
 	}
 	// T-CONTROLE : un accord, une contradiction, zero silence, un repli.
 	c := got.couverture
@@ -134,9 +134,9 @@ func TestCompositionRefuseUnVacantIntercale(t *testing.T) {
 	if got.couverture.Read {
 		t.Fatal("une table a vacant intercale ne doit PAS etre employee")
 	}
-	if got.couverture.Refusal != canonical.FilmTableInterleavedVacant {
+	if got.couverture.Refusal != identity.FilmTableInterleavedVacant {
 		t.Errorf("refus %q, attendu %q", got.couverture.Refusal,
-			canonical.FilmTableInterleavedVacant)
+			identity.FilmTableInterleavedVacant)
 	}
 	if got.table.ByXUID[77] != 2 {
 		t.Errorf("le lien doit venir du controle : %d au lieu de 2", got.table.ByXUID[77])
