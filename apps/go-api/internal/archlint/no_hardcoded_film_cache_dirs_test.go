@@ -4,7 +4,7 @@
 //
 // Les noms des deux sous-dossiers du cache film disque (`film_manifests`,
 // `film_chunks`) sont déclarés UNE fois dans
-// `internal/games/halo_infinite/film/filmcache/filmcache.go` (constantes
+// `libs/film/filmcache/filmcache.go` (constantes
 // `manifestsDir`/`chunksDir`), qui expose [filmcache.ManifestsRoot],
 // [filmcache.ChunksRoot], [filmcache.ManifestPath] et [filmcache.ChunkDir] pour
 // construire ces chemins. Avant ce lot, le littéral était recopié à la main dans
@@ -47,9 +47,9 @@ import (
 //     `observeHaloCall` (observabilité réseau), pas un chemin disque — rien à
 //     centraliser via filmcache pour cet usage.
 var filmCacheDirAllowlist = map[string]bool{
-	"internal/games/halo_infinite/film/filmcache/filmcache.go": true,
-	"internal/domain/title/registry_film_facts.go":             true,
-	"internal/sync/pooled_client.go":                           true,
+	"libs/film/filmcache/filmcache.go":             true,
+	"internal/domain/title/registry_film_facts.go": true,
+	"internal/sync/pooled_client.go":               true,
 }
 
 // filmCacheDirRE — les TROIS sous-dossiers du cache film. `film_facts` y est
@@ -68,9 +68,9 @@ var filmCacheDirRE = regexp.MustCompile(`"film_manifests"|"film_chunks"|"film_fa
 //     `grammar` qui fait descendre la déclaration du nom dans `source` (que `filmcache`
 //     consommerait) retire les deux entrées.
 var filmChunkNameAllowlist = map[string]bool{
-	"internal/games/halo_infinite/film/filmcache/filmcache.go":           true,
-	"internal/games/halo_infinite/film/internal/source/source.go":        true,
-	"internal/games/halo_infinite/film/internal/grammar/film_packets.go": true,
+	"libs/film/filmcache/filmcache.go":           true,
+	"libs/film/internal/source/source.go":        true,
+	"libs/film/internal/grammar/film_packets.go": true,
 }
 
 // filmChunkNameRE — le nom de fichier d'un chunk sous toutes ses formes recopiables : format
@@ -97,8 +97,8 @@ func TestNoHardcodedFilmChunkName(t *testing.T) {
 	}
 }
 
-// litterauxHorsAllowlist walk tout le module (`internal/` + `cmd/`, hors tests et commentaires)
-// et rend les lignes où `re` trouve une occurrence dans un fichier absent de `allowlist`.
+// litterauxHorsAllowlist walk tout le module et la brique du décodeur (`libs/film`), hors tests et
+// commentaires, et rend les lignes où `re` trouve une occurrence dans un fichier absent de `allowlist`.
 func litterauxHorsAllowlist(t *testing.T, re *regexp.Regexp, allowlist map[string]bool) []string {
 	t.Helper()
 	_, thisFile, _, ok := runtime.Caller(0)
@@ -108,7 +108,7 @@ func litterauxHorsAllowlist(t *testing.T, re *regexp.Regexp, allowlist map[strin
 	goAPIRoot := filepath.Dir(filepath.Dir(filepath.Dir(thisFile))) // .../apps/go-api
 
 	var violations []string
-	err := filepath.WalkDir(goAPIRoot, func(path string, d os.DirEntry, err error) error {
+	err := marcherAPIEtBriqueFilm(t, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -122,8 +122,7 @@ func litterauxHorsAllowlist(t *testing.T, re *regexp.Regexp, allowlist map[strin
 		if !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
 			return nil
 		}
-		rel, _ := filepath.Rel(goAPIRoot, path)
-		rel = filepath.ToSlash(rel)
+		rel := cheminDeGardeRail(t, path)
 		if allowlist[rel] {
 			return nil
 		}

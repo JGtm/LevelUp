@@ -46,10 +46,10 @@ import (
 )
 
 const (
-	// racineDesFaits : la couche des faits, relative a `apps/go-api`.
-	racineDesFaits = "internal/games/halo_infinite/film/internal/facts"
+	// racineDesFaits : la couche des faits, relative a la racine du depot.
+	racineDesFaits = racineBriqueFilm + "/internal/facts"
 	// importDeLaSource : la couche `source`, telle qu un fichier l importe.
-	importDeLaSource = "levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	importDeLaSource = importBriqueFilm + "/internal/source"
 	// plancherFichiersDesFaits : LE PLANCHER CONTRE UN BALAYAGE MUET. 81 fichiers de production
 	// mesures le 2026-10-03 (killsource 38, objectives 26, fallback 17).
 	plancherFichiersDesFaits = 60
@@ -78,7 +78,7 @@ type lectureDesFaits struct{ fichier, detail string }
 // la couche des faits, et le nombre de fichiers de production parcourus.
 func lecturesDesFaits(t *testing.T) (map[string][]lectureDesFaits, int) {
 	t.Helper()
-	racine := racineGoAPI(t)
+	racine := workspaceRoot(t)
 	out := map[string][]lectureDesFaits{}
 	fichiers := 0
 	fset := token.NewFileSet()

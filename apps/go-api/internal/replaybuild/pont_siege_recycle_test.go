@@ -29,6 +29,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/testutil"
 
 	"github.com/JGtm/LevelUp/libs/film/replay"
 	"github.com/JGtm/LevelUp/libs/film/types"
@@ -40,7 +41,6 @@ var updatePontSiege = flag.Bool("update-pont-siege", false,
 const (
 	pontSiegeMatch   = "bcb6d393-8f5e-40e3-806b-e3cb35bfc9b0"
 	pontSiegeFixture = "testdata/pont_bcb6d393.json.gz"
-	pontSiegeFaits   = "../../../../libs/film/replay/testdata/equivalence/bcb6d393.facts.json"
 )
 
 // pontSiegeEntrees : ce que le fixture fige.
@@ -91,7 +91,7 @@ func TestPontSiegeRecycleRegenerer(t *testing.T) {
 
 func lireFaitsDuFixture(t *testing.T) port.MatchFacts {
 	t.Helper()
-	raw, err := os.ReadFile(pontSiegeFaits)
+	raw, err := os.ReadFile(testutil.CheminBriqueFilm(t, "replay", "testdata", "equivalence", "bcb6d393.facts.json"))
 	if err != nil {
 		t.Fatalf("faits : %v", err)
 	}

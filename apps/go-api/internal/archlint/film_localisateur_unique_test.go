@@ -36,9 +36,9 @@ import (
 
 const (
 	// racineLocalisateur : le perimetre, relatif a apps/go-api.
-	racineLocalisateur = "internal/games/halo_infinite/film"
+	racineLocalisateur = racineBriqueFilm
 	// hoteLocalisateur : le seul fichier qui porte le localisateur.
-	hoteLocalisateur = "internal/games/halo_infinite/film/internal/grammar/localisateur.go"
+	hoteLocalisateur = racineBriqueFilm + "/internal/grammar/localisateur.go"
 	// essaisDeLHote : les deux etages du localisateur (signature stricte, largeur libre).
 	essaisDeLHote = 2
 	// plancherFichiersLocalisateur : plancher contre un balayage muet.
@@ -48,7 +48,7 @@ const (
 	// testDuTerminateur : la seule fonction de `grammar` qui teste le bit qui precede une position.
 	testDuTerminateur = "precedeDuTerminateur"
 	// paquetGrammar : le repertoire du paquet `grammar`, relatif a apps/go-api.
-	paquetGrammar = "internal/games/halo_infinite/film/internal/grammar/"
+	paquetGrammar = racineBriqueFilm + "/internal/grammar/"
 )
 
 // formesDuSource compte, dans un source Go, les essais de position (chaque `BitAt(_, s-1)` dont

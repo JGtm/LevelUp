@@ -21,21 +21,22 @@ import (
 
 // TestBriquesImports_ParcoursRecursifEtFrontiere : un import vers l'arbre d'une brique récursive
 // est interne, mais un dossier voisin qui partage seulement le début du nom (`filmprofile` pour
-// `film`) ne l'est pas.
+// `film`) ne l'est pas, ni le même nom sous un autre module.
 func TestBriquesImports_ParcoursRecursifEtFrontiere(t *testing.T) {
 	b := brique{
 		nom:      "x",
-		paquets:  []string{"apps/go-api/internal/games/halo_infinite/film"},
+		paquets:  []string{"libs/film"},
 		recursif: true,
 		permis:   []string{"libs/y/q"},
 	}
 	for imp, attendu := range map[string]bool{
-		prefixeModuleAPI + "internal/games/halo_infinite/film":                 true,
-		prefixeModuleAPI + "internal/games/halo_infinite/film/internal/source": true,
-		prefixeModuleAPI + "internal/games/halo_infinite/filmprofile":          false,
-		prefixeModuleAPI + "internal/games/halo_infinite":                      false,
-		"github.com/JGtm/LevelUp/libs/y/q":                                     true,
-		"github.com/JGtm/LevelUp/libs/y/q/sous":                                false,
+		prefixeBriques + "film":                                       true,
+		prefixeBriques + "film/internal/source":                       true,
+		prefixeBriques + "filmprofile":                                false,
+		prefixeModuleAPI + "internal/games/halo_infinite/film":        false,
+		prefixeModuleAPI + "internal/games/halo_infinite/filmprofile": false,
+		"github.com/JGtm/LevelUp/libs/y/q":                            true,
+		"github.com/JGtm/LevelUp/libs/y/q/sous":                       false,
 	} {
 		if got := b.interne(imp); got != attendu {
 			t.Errorf("interne(%q) = %v, attendu %v", imp, got, attendu)

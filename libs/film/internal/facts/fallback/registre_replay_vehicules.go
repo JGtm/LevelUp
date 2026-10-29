@@ -19,7 +19,7 @@ const dateFalconM7b = "2026-09-24"
 
 // siteDecorM7 : la regle du decor, service de rejeu (hors du decodeur : le registre accepte les
 // sites hors du paquet film, comme `internal/sync/killcollector/`).
-const siteDecorM7 = "internal/service/replay_vehicle_scenery_rule.go"
+const siteDecorM7 = "apps/go-api/internal/service/replay_vehicle_scenery_rule.go"
 
 // COMPTE DES DEUX REPLIS DU DECOR : ils vivent A LA REQUETE, pas a la cuisson, et `coverage.fallbacks`
 // est une donnee de CUISSON que la requete ne reecrit pas. Leur compte est publie dans le calque de

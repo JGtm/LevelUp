@@ -78,7 +78,7 @@ import (
 	"testing"
 	"unicode"
 
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
 )
 
 // perimetreReplis : les répertoires où un repli de production peut vivre — ceux de l'audit 0.E,
@@ -87,10 +87,10 @@ import (
 // Chemins relatifs à `apps/go-api/`. Un répertoire neuf du décodeur s'ajoute ici : c'est le bon
 // sens de la faute (oublier d'étendre le périmètre laisse passer, l'oublier au registre rougit).
 var perimetreReplis = []string{
-	"internal/games/halo_infinite/film",
-	"internal/replaybuild",
-	"internal/sync/killcollector",
-	"internal/games/halo_infinite/film/internal/facts/objectives",
+	"libs/film",
+	"apps/go-api/internal/replaybuild",
+	"apps/go-api/internal/sync/killcollector",
+	"libs/film/internal/facts/objectives",
 }
 
 // replisDeLEcrivainDuJeu : les identifiants qui portent `fallback` SANS être un repli de
@@ -110,7 +110,7 @@ var perimetreReplis = []string{
 // Le ratchet frère `no_title_package_in_analysis_test.go` le dit depuis longtemps : « une
 // exemption qui survit à son site finit par en couvrir un autre ».
 type exemptionEcrivain struct {
-	// Fichier : le fichier qui DÉCLARE cet identifiant, relatif à `apps/go-api/`. Relu par
+	// Fichier : le fichier qui DÉCLARE cet identifiant, relatif à la racine du dépôt. Relu par
 	// [TestChaqueExemptionDeLEcrivainATouJoursSonSite].
 	Fichier string
 	// Date : le jour où l'exemption a été posée, `AAAA-MM-JJ`.
@@ -121,21 +121,21 @@ type exemptionEcrivain struct {
 }
 
 var replisDeLEcrivainDuJeu = map[string]exemptionEcrivain{
-	"attachFallbackCoverage": {"internal/games/halo_infinite/film/replay/fallbacks_publication.go", "2026-09-14",
+	"attachFallbackCoverage": {"libs/film/replay/fallbacks_publication.go", "2026-09-14",
 		"la pose du compte des replis sur le document, et sa journalisation. Il ne DECIDE rien."},
-	"FallbackHit": {"internal/games/halo_infinite/film/replay/fallbacks_publication.go", "2026-09-14",
+	"FallbackHit": {"libs/film/replay/fallbacks_publication.go", "2026-09-14",
 		"le type PUBLIE d'un repli et son compte (`coverage.fallbacks[]`). Il ne DECIDE rien : il transporte le compte jusqu'au document."},
-	"fallbackHitsOf": {"internal/games/halo_infinite/film/replay/fallbacks_publication.go", "2026-09-14",
+	"fallbackHitsOf": {"libs/film/replay/fallbacks_publication.go", "2026-09-14",
 		"la projection du rapport du compteur vers ce type publie. Meme raison."},
-	"toFallbackHits": {"internal/service/replayview/convert_coverage.go", "2026-09-14",
+	"toFallbackHits": {"apps/go-api/internal/service/replayview/convert_coverage.go", "2026-09-14",
 		"la projection vers le document SERVI. Meme raison."},
-	"Fallback": {"internal/games/halo_infinite/film/identity/identity.go", "2026-10-29",
+	"Fallback": {"libs/film/identity/identity.go", "2026-10-29",
 		"champ de `FilmTableCounts` : le COMPTE publie des liens que la lecture des chunks a completes. " +
 			"Il ne DECIDE rien ; le repli qu'il compte est nomme et inscrit au registre ailleurs. " +
 			"Le fichier vivait sous `games/canonical`, hors du perimetre de ce ratchet (D2 2.4)."},
-	"PosKindAbsFallback": {"internal/games/halo_infinite/film/internal/grammar/position_capture.go", "2026-09-14",
+	"PosKindAbsFallback": {"libs/film/internal/grammar/position_capture.go", "2026-09-14",
 		"la NATURE d'une capture de position telle que l'ecrivain du jeu la produit (absolu atteint par l'absence du delta predit). Grammaire, pas decision."},
-	"viaRepli": {"internal/games/halo_infinite/film/internal/grammar/position_capture.go", "2026-09-14",
+	"viaRepli": {"libs/film/internal/grammar/position_capture.go", "2026-09-14",
 		"le drapeau qui marque cette meme branche de l'ecrivain pendant la traversee. " +
 			"S'appelait `absViaFallback` jusqu'au lot 2.3 (2026-09-17), qui en a fait un CHAMP de " +
 			"`captureDePosition` au lieu d'une variable de paquet — meme branche, meme raison."},
@@ -143,7 +143,7 @@ var replisDeLEcrivainDuJeu = map[string]exemptionEcrivain{
 
 // TestToutReplinNommeEstAuRegistre — DIRECTION (A) : code -> registre, FICHIER PAR FICHIER.
 func TestToutReplinNommeEstAuRegistre(t *testing.T) {
-	racine := racineGoAPI(t)
+	racine := workspaceRoot(t)
 	connus := couvertureParFichier()
 	var orphelins []string
 	fichiersVus := 0
@@ -171,7 +171,7 @@ func TestToutReplinNommeEstAuRegistre(t *testing.T) {
 	sort.Strings(orphelins)
 	t.Errorf("REPLI HORS REGISTRE (%d) :\n  %s\n\n"+
 		"Un repli est NOMMÉ, ordonné, compté, daté, et il porte son critère de retrait (D14).\n"+
-		"Ajouter son entrée dans `internal/games/halo_infinite/film/internal/facts/fallback/registre_*.go`,\n"+
+		"Ajouter son entrée dans `libs/film/internal/facts/fallback/registre_*.go`,\n"+
 		"avec une ancre qui cite ce site. Si l'identifiant nomme une branche de la grammaire DU JEU\n"+
 		"et non une décision de LevelUp, l'inscrire dans `replisDeLEcrivainDuJeu` avec sa date.",
 		len(orphelins), strings.Join(orphelins, "\n  "))
@@ -184,7 +184,7 @@ const plancherFichiersPerimetreReplis = 250
 
 // TestToutSiteDuRegistreExiste — DIRECTION (B) : registre -> code.
 func TestToutSiteDuRegistreExiste(t *testing.T) {
-	racine := racineGoAPI(t)
+	racine := workspaceRoot(t)
 	cache := map[string]string{}
 	for _, r := range decfilm.Table() {
 		for _, s := range r.Sites {

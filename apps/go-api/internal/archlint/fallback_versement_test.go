@@ -36,7 +36,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
 )
 
 // tablesDeVersement : LES FICHIERS DONT LE DECLENCHEMENT PORTE UN NOM VARIABLE, lu dans une table
@@ -44,8 +44,8 @@ import (
 // elle ne s ouvre que pour un versement de comptes rendus EN DONNEES par une couche qui ne peut pas
 // declencher elle-meme. Relue par [TestChaqueTableDeVersementATouJoursSonSite].
 var tablesDeVersement = map[string]exemptionEcrivain{
-	"internal/games/halo_infinite/film/replay/versement_des_replis.go": {
-		Fichier: "internal/games/halo_infinite/film/replay/versement_des_replis.go",
+	"libs/film/replay/versement_des_replis.go": {
+		Fichier: "libs/film/replay/versement_des_replis.go",
 		Date:    "2026-09-27",
 		Raison: "la seule porte entre les comptes de replis que grammar, profile, killsource et objectives rendent EN DONNEES et le " +
 			"compteur de la cuisson (decision 1 du superviseur, lot J8.7) : une ligne par entree, un champ source par ligne.",
@@ -58,11 +58,11 @@ var tablesDeVersement = map[string]exemptionEcrivain{
 // porte le site du compte et `Ancre` le champ compte ; [TestChaqueRepliBrancheEstDeclencheOuVerse] les
 // relit. Decouverts par la direction (E) a sa pose (2026-09-27) : ils etaient branches sans constante.
 var replisComptesAuDocumentServi = map[decfilm.Nom]struct{ Fichier, Ancre, Date, Raison string }{
-	"repli_decor_carte_sans_zone_affiche": {"internal/service/replay_vehicle_scenery_rule.go", "out.ZoneUnknown++", "2026-09-27",
+	"repli_decor_carte_sans_zone_affiche": {"apps/go-api/internal/service/replay_vehicle_scenery_rule.go", "out.ZoneUnknown++", "2026-09-27",
 		"compte dans `vehicleScenery.zoneUnknown` du document servi (lot M7 des retours rejeu) : regle du service, pas de la cuisson"},
-	"repli_decor_sous_le_sol_foule_du_match": {"internal/service/replay_vehicle_scenery_rule.go", "return sceneryReasonBelowPlayedFloor", "2026-09-27",
+	"repli_decor_sous_le_sol_foule_du_match": {"apps/go-api/internal/service/replay_vehicle_scenery_rule.go", "return sceneryReasonBelowPlayedFloor", "2026-09-27",
 		"compte dans `vehicleScenery.hidden` sous la raison `below_played_floor` du document servi : regle du service, pas de la cuisson"},
-	"repli_decor_tenu_en_l_air_a_vide": {"internal/service/replay_vehicle_scenery_rule.go", "Reason: sceneryReasonAloftUnoccupied", "2026-10-02",
+	"repli_decor_tenu_en_l_air_a_vide": {"apps/go-api/internal/service/replay_vehicle_scenery_rule.go", "Reason: sceneryReasonAloftUnoccupied", "2026-10-02",
 		"compte dans `vehicleScenery.hidden` sous la raison `aloft_unoccupied` du document servi (chantier Falcon de Behemoth) : regle du service, pas de la cuisson"},
 }
 
@@ -70,7 +70,7 @@ var replisComptesAuDocumentServi = map[decfilm.Nom]struct{ Fichier, Ancre, Date,
 // registre se declenche quand meme — une passe de `sync` qui juge un fait du rejeu. Ils ne sont
 // balayes QUE pour la direction (E) : les directions (A) a (C) restent sur `perimetreReplis`.
 var perimetreDeclenchementsHorsDecodeur = []string{
-	"internal/sync/replayartifacts",
+	"apps/go-api/internal/sync/replayartifacts",
 }
 
 // declenchementsDuFichierOuDeSaTable : les declenchements d un fichier pour la direction (C). Pour
@@ -115,7 +115,7 @@ func nomsCitesParUneTable(f *ast.File) []string {
 
 // TestChaqueRepliBrancheEstDeclencheOuVerse — DIRECTION (E) : branche -> declenche.
 func TestChaqueRepliBrancheEstDeclencheOuVerse(t *testing.T) {
-	racine := racineGoAPI(t)
+	racine := workspaceRoot(t)
 	valeurDeLaConstante := nomsDuPaquetFallback(t, racine)
 	constanteDuNom := map[decfilm.Nom]string{}
 	for id, nom := range valeurDeLaConstante {
@@ -179,7 +179,7 @@ const plancherReplisBranches = 40
 // TestChaqueTableDeVersementATouJoursSonSite : une table de versement retiree laisse sinon une porte
 // ouverte a un `DeclencheN` a nom variable dans un fichier du meme nom.
 func TestChaqueTableDeVersementATouJoursSonSite(t *testing.T) {
-	racine := racineGoAPI(t)
+	racine := workspaceRoot(t)
 	for rel, ex := range tablesDeVersement {
 		if ex.Fichier != rel || !dateExemptionConforme(ex.Date) || strings.TrimSpace(ex.Raison) == "" {
 			t.Errorf("table de versement %s : fichier, date ou raison incoherents", rel)
@@ -207,13 +207,13 @@ func TestChaqueTableDeVersementATouJoursSonSite(t *testing.T) {
 // MUTATION JOUEE (2026-09-27) : un appel `decfilm.Extract(...)` ajoute dans `internal/replaybuild`
 // fait rougir ce test.
 func TestLesReplisHorsProductionNOntQueLeursOutilsPourAppelants(t *testing.T) {
-	racine := racineGoAPI(t)
+	racine := workspaceRoot(t)
 	for _, r := range decfilm.Table() {
 		h := r.HorsProduction
 		if h == nil {
 			continue
 		}
-		for _, sous := range []string{"internal", "cmd"} {
+		for _, sous := range []string{"apps/go-api/internal", "apps/go-api/cmd", racineBriqueFilm} {
 			parcourirGoProduction(t, filepath.Join(racine, sous), func(rel string, f *ast.File) {
 				if appelantAdmis(rel, h.Appelants) {
 					return
@@ -236,7 +236,7 @@ func TestLesReplisHorsProductionNOntQueLeursOutilsPourAppelants(t *testing.T) {
 
 // appelantAdmis : le fichier vit sous un appelant nomme, ou dans la facade qui renvoie le symbole.
 func appelantAdmis(rel string, appelants []string) bool {
-	if strings.HasPrefix(rel, "internal/games/halo_infinite/film/decfilm/") {
+	if strings.HasPrefix(rel, racineBriqueFilm+"/decfilm/") {
 		return true
 	}
 	for _, a := range appelants {

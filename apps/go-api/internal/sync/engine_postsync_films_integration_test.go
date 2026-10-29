@@ -19,7 +19,6 @@ import (
 	"context"
 	"database/sql"
 	"os"
-	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -30,6 +29,7 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/migration"
+	"levelup/go-api/internal/testutil"
 )
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -121,7 +121,7 @@ func (c *slowEventsClient) GetHighlightEventsChunk(_ context.Context, matchID st
 // loadHighlightFixture charge le chunk film de référence (v41). Skip si absent.
 func loadHighlightFixture(t *testing.T) []byte {
 	t.Helper()
-	data, err := os.ReadFile(filepath.Join("..", "..", "..", "..", "libs", "film", "internal", "grammar", "testdata", "v41_chunk_he.bin"))
+	data, err := os.ReadFile(testutil.CheminBriqueFilm(t, "internal", "grammar", "testdata", "v41_chunk_he.bin"))
 	if err != nil {
 		t.Skipf("fixture film absente: %v", err)
 	}

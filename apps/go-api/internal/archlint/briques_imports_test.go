@@ -72,8 +72,7 @@ type brique struct {
 	paquets []string
 	// recursif : chaque entrée de `paquets` désigne un ARBRE (le répertoire et tout ce qui est
 	// dessous, hors `testdata`, `vendor`, `.x`, `_x`) ; un import vers un paquet de l'arbre est
-	// interne à la brique. Sert aux briques encore logées dans `apps/go-api/internal/` avant leur
-	// déplacement sous `libs/` (D2 : le décodeur de film).
+	// interne à la brique. Sert aux briques dont le module porte de nombreux paquets (`film`).
 	recursif bool
 	// permis : les paquets (même forme) d'AUTRES briques, de rang inférieur, que celle-ci peut
 	// importer. Tout autre import `levelup/go-api/...` ou `.../libs/...` est une violation.
@@ -106,6 +105,15 @@ func cheminImport(paquet string) string {
 	return "github.com/JGtm/LevelUp/" + paquet
 }
 
+// repertoireDuDepot est l inverse de [cheminImport] : le repertoire, relatif a la racine du depot,
+// d un paquet du depot donne par son chemin d import ; faux pour un paquet hors du depot.
+func repertoireDuDepot(imp string) (string, bool) {
+	if reste, ok := strings.CutPrefix(imp, prefixeModuleAPI); ok {
+		return racineAPI + reste, true
+	}
+	return strings.CutPrefix(imp, "github.com/JGtm/LevelUp/")
+}
+
 // paquetsGamefiles : la brique « fichiers du jeu » (lecteurs de modules, décompresseur ooz,
 // maillage de navigation, variantes de carte). Rang le plus bas : elle n'importe RIEN du dépôt.
 var paquetsGamefiles = []string{
@@ -122,10 +130,9 @@ var briques = []brique{
 	{nom: "himap", paquets: paquetsHimap, permis: paquetsGamefiles},
 	{
 		nom: "film",
-		// Lot 1 du plan D2 : le décodeur de film est encore dans le module `apps/go-api`. Sa racine
-		// est l'arbre que le lot 3 déplace sous `libs/film`, où cette ligne est réécrite. Depuis
-		// l'item 2.5 (2026-10-29) `filmshell` et `equipenergy` vivent dessous : une seule racine.
-		paquets:  []string{"apps/go-api/internal/games/halo_infinite/film"},
+		// Le module `libs/film` entier (ADR 0041) : ses paquets sont au premier niveau et sous
+		// `internal/`, `research/` ; un arbre plutot qu une liste de paquets.
+		paquets:  []string{racineBriqueFilm},
 		recursif: true,
 		permis:   append(append([]string{}, paquetsGamefiles...), paquetsHimap...),
 	},

@@ -9,7 +9,7 @@
 // avait dû corriger le même défaut de son côté (P0-2), et le collecteur de sync avait sa propre
 // entrée exportée. Le même fait — « qui occupe ce slot » — se répondait donc de trois façons.
 //
-// LA RÈGLE POSÉE : `internal/games/halo_infinite/film/replay/identity_registry.go` est le SEUL fichier autorisé à
+// LA RÈGLE POSÉE : `libs/film/replay/identity_registry.go` est le SEUL fichier autorisé à
 // toucher les tables brutes du pont. Tout le reste passe par les accesseurs du registre, qui
 // portent déjà leurs gardes (`PontEpure` retire les slots ambigus, `XUIDAt` préfère la vie qui
 // couvre l'instant). Un lecteur ne peut plus oublier une garde : il n'a plus de quoi l'enfreindre.
@@ -48,16 +48,16 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strings"
 	"testing"
 )
 
 // identityBridgeScope : les paquets où le pont d'identité circule — la cuisson du rejeu et le
-// collecteur de sync, les deux producteurs que la décision D11 autorise.
+// collecteur de sync, les deux producteurs que la décision D11 autorise (chemins de garde-rail,
+// [surDisque]).
 var identityBridgeScope = []string{
-	filepath.Join("games", "halo_infinite", "film", "replay"),
-	filepath.Join("sync", "killcollector"),
+	racineBriqueFilm + "/replay",
+	"internal/sync/killcollector",
 }
 
 // identityBridgeAllowlist : les fichiers autorisés à toucher les tables brutes du pont.
@@ -122,15 +122,9 @@ var identityBridgePatterns = []struct {
 }
 
 func TestNoIdentityBridgeOutsideRegistry(t *testing.T) {
-	_, thisFile, ok := callerFile()
-	if !ok {
-		t.Fatal("runtime.Caller a échoué")
-	}
-	internalRoot := filepath.Dir(filepath.Dir(thisFile)) // .../internal
-
 	var violations []string
 	for _, scope := range identityBridgeScope {
-		root := filepath.Join(internalRoot, scope)
+		root := surDisque(t, scope)
 		if _, err := os.Stat(root); err != nil {
 			// Le paquet peut avoir été déplacé (le décodeur doit migrer sous
 			// `games/halo_infinite/film/` après v7.5.0) : ce n'est pas l'objet de ce test.
@@ -142,7 +136,7 @@ func TestNoIdentityBridgeOutsideRegistry(t *testing.T) {
 	}
 	if len(violations) > 0 {
 		t.Errorf("le pont d'identité est reconstruit hors du registre :\n  %s\n\n"+
-			"Le registre (`internal/games/halo_infinite/film/replay/identity_registry.go`) est le SEUL producteur : "+
+			"Le registre (`libs/film/replay/identity_registry.go`) est le SEUL producteur : "+
 			"passez par ses accesseurs (`PontEpure`, `XUIDAt`, `XUIDNumAt`, `IndexParSlot`, "+
 			"`Vies`, `SanteDuPont`). Ajouter une entrée à l'allowlist exige une justification "+
 			"écrite et datée dans ce fichier.", strings.Join(violations, "\n  "))
@@ -183,10 +177,4 @@ func visiteurDuPont(violations *[]string) filepath.WalkFunc {
 		}
 		return nil
 	}
-}
-
-// callerFile isole `runtime.Caller` pour que le test lise comme sa règle.
-func callerFile() (int, string, bool) {
-	_, file, line, ok := runtime.Caller(1)
-	return line, file, ok
 }

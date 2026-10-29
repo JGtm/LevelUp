@@ -127,7 +127,7 @@ const retraitRegle4 = "retrait au jalon suivant si le compte est nul au corpus g
 
 // fichierDeVersement : LA TABLE de `replay` qui verse au compteur de la cuisson les comptes de replis
 // que `grammar`, `profile`, `killsource` et `objectives` rendent EN DONNEES (lot J8.7, 2026-09-27).
-const fichierDeVersement = "internal/games/halo_infinite/film/replay/versement_des_replis.go"
+const fichierDeVersement = "libs/film/replay/versement_des_replis.go"
 
 // siteDeVersement rend le site d un repli verse par cette table : son ancre est la LIGNE de la table,
 // `{fallback.NomX,`. La direction (C) d `archlint` relit les noms de la table comme des declenchements,

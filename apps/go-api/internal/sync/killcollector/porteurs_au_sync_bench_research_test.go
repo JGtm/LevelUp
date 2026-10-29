@@ -42,7 +42,6 @@ package killcollector
 import (
 	"context"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
@@ -57,9 +56,6 @@ import (
 	"github.com/JGtm/LevelUp/libs/film/filmcache"
 	"github.com/JGtm/LevelUp/libs/film/replay"
 )
-
-// dossierDesFaitsDEquivalence : les faits versionnes de `replay-equiv`, relatifs au paquet.
-const dossierDesFaitsDEquivalence = "../../../../../libs/film/replay/testdata/equivalence"
 
 func BenchmarkPorteursAuSync(b *testing.B) {
 	films, cache := strings.TrimSpace(os.Getenv("PORTEURS_BENCH_FILMS")), os.Getenv("PORTEURS_BENCH_CACHE")
@@ -113,7 +109,7 @@ type bancDuFilm struct {
 // (`Builder.ResolveMapEntry`) et decode killsource comme le collecteur (`decoderSousLaCarte`).
 func preparerLeBanc(b *testing.B, constructeur *replaybuild.Builder, cache, court string) bancDuFilm {
 	b.Helper()
-	faits, err := replaybuild.ReadFactsFile(filepath.Join(dossierDesFaitsDEquivalence, court+".facts.json"))
+	faits, err := replaybuild.ReadFactsFile(testutil.CheminBriqueFilm(b, "replay", "testdata", "equivalence", court+".facts.json"))
 	if err != nil {
 		b.Fatalf("%s : %v", court, err)
 	}

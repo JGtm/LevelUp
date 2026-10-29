@@ -41,7 +41,7 @@ package archlint
 //
 //	# (a) surface de la facade
 //	grep -cE '^(const|type|var|func) [A-Z]' \
-//	  apps/go-api/internal/games/halo_infinite/film/decfilm/decfilm.go
+//	  libs/film/decfilm/decfilm.go
 //	#   -> 166 sur a5d15e634
 //
 //	# (b) plafond compagnon : IDENTIFIANTS DISTINCTS cites hors de film/, tests compris
@@ -95,8 +95,8 @@ import (
 	"testing"
 )
 
-// cheminDeLaFacade — le fichier mesure par (a), relatif a `apps/go-api`.
-const cheminDeLaFacade = "internal/games/halo_infinite/film/decfilm/decfilm.go"
+// cheminDeLaFacade — le fichier mesure par (a), relatif a la racine du depot.
+const cheminDeLaFacade = racineBriqueFilm + "/decfilm/decfilm.go"
 
 // exigenceDeJustificationDatee — LA PHRASE QUE LES TROIS MESSAGES D ERREUR DOIVENT DIRE.
 //
@@ -523,7 +523,7 @@ func racineAPIDuCompteur(t *testing.T) string {
 // donc en famille inconnue, donc en rouge.
 func surfaceDeLaFacade(t *testing.T) (map[string]int, int) {
 	t.Helper()
-	chemin := filepath.Join(racineAPIDuCompteur(t), filepath.FromSlash(cheminDeLaFacade))
+	chemin := surDisque(t, cheminDeLaFacade)
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, chemin, nil, 0)
 	if err != nil {

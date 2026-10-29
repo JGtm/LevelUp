@@ -22,7 +22,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -32,27 +31,20 @@ import (
 var rechercheSansCarteRE = regexp.MustCompile(`\bRechercheSansCarte\b`)
 
 // paquetKillsource : le seul paquet de production autorise a citer le champ (il le declare).
-const paquetKillsource = "internal/games/halo_infinite/film/internal/facts/killsource/"
+const paquetKillsource = racineBriqueFilm + "/internal/facts/killsource/"
 
 func TestRechercheSansCarteAbsenteDeLaProduction(t *testing.T) {
-	_, ici, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller a echoue")
-	}
-	goAPIRoot := filepath.Dir(filepath.Dir(filepath.Dir(ici)))
-
 	var violations []string
 	fichiers := 0
-	for _, sous := range []string{"internal", "cmd"} {
-		err := filepath.WalkDir(filepath.Join(goAPIRoot, sous), func(path string, d os.DirEntry, err error) error {
+	for _, sous := range []string{"internal", "cmd", racineBriqueFilm} {
+		err := filepath.WalkDir(surDisque(t, sous), func(path string, d os.DirEntry, err error) error {
 			if err != nil {
 				return err
 			}
 			if d.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
 				return nil
 			}
-			rel, _ := filepath.Rel(goAPIRoot, path)
-			rel = filepath.ToSlash(rel)
+			rel := cheminDeGardeRail(t, path)
 			if strings.HasPrefix(rel, paquetKillsource) && !strings.Contains(rel[len(paquetKillsource):], "/") {
 				return nil
 			}

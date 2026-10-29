@@ -38,13 +38,12 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strings"
 	"testing"
 )
 
-// slotBandScope : le paquet où les bandes de slots se construisent.
-var slotBandScope = filepath.Join("games", "halo_infinite", "film", "internal", "grammar")
+// slotBandScope : le paquet où les bandes de slots se construisent, relatif à la racine du dépôt.
+const slotBandScope = racineBriqueFilm + "/internal/grammar"
 
 // slotBandAllowed : les SEULS fichiers autorisés à tenir une liste d'exclusion de slots, avec la
 // raison de chacun. Ajouter une entrée ici est une décision, pas une formalité.
@@ -81,11 +80,7 @@ var (
 
 // TestNoRewrittenSlotBand refuse une quatrième implémentation de la règle de bande.
 func TestNoRewrittenSlotBand(t *testing.T) {
-	_, thisFile, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller a échoué")
-	}
-	root := filepath.Join(filepath.Dir(filepath.Dir(thisFile)), slotBandScope)
+	root := surDisque(t, slotBandScope)
 	if _, err := os.Stat(root); err != nil {
 		t.Skipf("paquet %s absent : ce test n'a pas d'objet ici", slotBandScope)
 	}

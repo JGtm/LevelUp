@@ -15,12 +15,12 @@ package fallback
 // rapport du `FilmContext` (`grammar/replis_du_film.go`), et `replay` le verse au compteur de la
 // cuisson par sa table (`replay/versement_des_replis.go`, [siteDeVersement]).
 
-const pkgFilmdec = "internal/games/halo_infinite/film/internal/grammar/"
+const pkgFilmdec = "libs/film/internal/grammar/"
 
 // pkgProfile : la couche `profile`, nee au lot 2.5.b. Un repli de ce registre a son site dans la
 // DONNEE et non dans le lecteur — le decoupage MPP par defaut — et son ancre a suivi le SYMBOLE,
 // pas le fichier d origine : c est la constante qui dit le repli, ou qu elle vive.
-const pkgProfile = "internal/games/halo_infinite/film/internal/profile/"
+const pkgProfile = "libs/film/internal/profile/"
 
 // LA CONSTANTE `comptageParFilmContext` A ETE SUPPRIMEE LE 2026-09-27 (lot J8.7) avec le dernier
 // compteur qu elle differait : les replis de `grammar` et `profile` se comptent au rapport du contexte.
@@ -39,10 +39,10 @@ var registreFilmdec = []Repli{
 			Fichier: pkgFilmdec + "equipment_placements.go",
 			Ancre:   "fc.NoterReplis(ComptesDesReplis{LargeursMPPCalibrees: 1})",
 		}, {
-			Fichier: "internal/games/halo_infinite/film/replay/build_ground_weapons.go",
+			Fichier: "libs/film/replay/build_ground_weapons.go",
 			Ancre:   "return calibrees",
 		}, {
-			Fichier: "internal/games/halo_infinite/film/replay/build_ground_weapons.go",
+			Fichier: "libs/film/replay/build_ground_weapons.go",
 			Ancre:   "fc.NoterReplis(grammar.ComptesDesReplis{LargeursMPPCalibrees: 1})",
 		}, siteDeVersement("NomLargeursMppCalibreesSurLeFilm")},
 		DatePose:     dateVague2,
@@ -204,7 +204,7 @@ var registreFilmdec = []Repli{
 		}, {
 			// LE SEUL SITE OU LE DEFAUT DECIDE UN BALAYAGE (socles, vehicules) : ni relue ni calibree
 			// (lot J8.7). La voie equipement ne balaie pas sans pose (`equipment_placements.go`).
-			Fichier: "internal/games/halo_infinite/film/replay/build_ground_weapons.go",
+			Fichier: "libs/film/replay/build_ground_weapons.go",
 			Ancre:   "fc.NoterReplis(grammar.ComptesDesReplis{LargeursMPPParDefaut: 1})",
 		}, siteDeVersement("NomLargeursMppParDefaut")},
 		DatePose:     dateAudit0E,

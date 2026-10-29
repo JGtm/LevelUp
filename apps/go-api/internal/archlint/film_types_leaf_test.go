@@ -1,4 +1,4 @@
-// film_types_leaf_test.go — `internal/games/halo_infinite/film/types` EST UNE FEUILLE, ET C EST
+// film_types_leaf_test.go — `libs/film/types` EST UNE FEUILLE, ET C EST
 // CE QUI AUTORISE TOUT LE MONDE A L IMPORTER (lot 2.6.2, 2026-09-16).
 //
 // # POURQUOI CE GARDE-RAIL EXISTE, ET IL A UNE DATE
@@ -32,11 +32,11 @@ import (
 	"testing"
 )
 
-// filmTypesLeafPkg : le paquet feuille, relatif a apps/go-api.
-const filmTypesLeafPkg = "internal/games/halo_infinite/film/types"
+// filmTypesLeafPkg : le paquet feuille, relatif a la racine du depot.
+const filmTypesLeafPkg = racineBriqueFilm + "/types"
 
 func TestFilmTypesEstUneFeuille(t *testing.T) {
-	pkgDir := filepath.Join(apiRootDepuisIci(t), filepath.FromSlash(filmTypesLeafPkg))
+	pkgDir := filepath.Join(workspaceRoot(t), filepath.FromSlash(filmTypesLeafPkg))
 	entries, err := os.ReadDir(pkgDir)
 	if err != nil {
 		t.Fatalf("paquet %s introuvable (%v) : s il a DEMENAGE, deplacer ce garde-rail avec lui — "+
@@ -58,7 +58,7 @@ func TestFilmTypesEstUneFeuille(t *testing.T) {
 		}
 		for _, imp := range f.Imports {
 			chemin := strings.Trim(imp.Path.Value, `"`)
-			if strings.HasPrefix(chemin, prefixeModuleFilm) {
+			if _, duDepot := repertoireDuDepot(chemin); duDepot {
 				violations = append(violations, nom+" -> "+chemin)
 			}
 		}

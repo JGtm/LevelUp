@@ -39,7 +39,6 @@ package grammar
 // portee — la correction est un lot de production, hors perimetre de la phase 5a.
 //
 // Garde CHUNK00_FILMS. Aucun code de production modifie.
-
 import (
 	"fmt"
 	"sort"

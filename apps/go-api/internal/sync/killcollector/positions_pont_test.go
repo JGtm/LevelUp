@@ -15,6 +15,7 @@ package killcollector
 
 import (
 	"context"
+	"levelup/go-api/internal/testutil"
 	"reflect"
 	"strconv"
 	"testing"
@@ -25,8 +26,11 @@ import (
 // bobineDuPont : la mini-bobine killsource du film de reference `000d5950` (Cliffhanger), prefixe
 // CONTIGU de ses chunks 00 a 05 — la seule bobine du depot dont les positions bipedes se lisent
 // (les huit bobines par build du rejeu n ont aucun bipede dans leurs images-cles). Sans
-// evenement de translocateur. Relative a CE paquet.
-const bobineDuPont = "../../../../../libs/film/internal/facts/killsource/testdata/minibobine_000d5950"
+// evenement de translocateur. Dans la brique du decodeur.
+func bobineDuPont(t *testing.T) string {
+	t.Helper()
+	return testutil.CheminBriqueFilm(t, "internal", "facts", "killsource", "testdata", "minibobine_000d5950")
+}
 
 // sequenceAvantJ43 rejoue les lectures du collecteur TELLES QU ELLES ETAIENT avant le lot J4.3.
 func sequenceAvantJ43(t *testing.T, film *decfilm.Film, entry decfilm.MapQuantEntry, roster []uint64) (lecturesDuFilm, uint64) {
@@ -56,9 +60,9 @@ func sequenceAvantJ43(t *testing.T, film *decfilm.Film, entry decfilm.MapQuantEn
 }
 
 func TestPontDuCollecteur_SeuleLExemptionChange(t *testing.T) {
-	film, err := decfilm.LoadDir(bobineDuPont, nil)
+	film, err := decfilm.LoadDir(bobineDuPont(t), nil)
 	if err != nil {
-		t.Fatalf("bobine %s : %v", bobineDuPont, err)
+		t.Fatalf("bobine %s : %v", bobineDuPont(t), err)
 	}
 	entry, err := catalogueDeBornesVersionne(t).Lookup("Cliffhanger")
 	if err != nil {

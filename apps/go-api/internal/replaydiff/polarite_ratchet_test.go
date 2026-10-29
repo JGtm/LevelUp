@@ -81,7 +81,7 @@ func inventaireOuEchec(t *testing.T, path string) []string {
 // polarite, une entree qui ne designe plus rien, une feuille heritee revenue dans la forme, ou
 // une feuille declaree deux fois : ROUGE, avec la liste.
 func TestRatchetPolarite_TableTotale(t *testing.T) {
-	inv := inventaireOuEchec(t, cheminFormeDocument)
+	inv := inventaireOuEchec(t, cheminFormeDocument(t))
 	if len(inv) < 400 {
 		t.Fatalf("inventaire de %d feuilles : la lecture de la forme a perdu la couverture", len(inv))
 	}
@@ -106,7 +106,7 @@ func TestRatchetPolarite_TableTotale(t *testing.T) {
 // un repertoire de test ; on y ajoute un compteur a `VehicleCoverage` et une map a
 // `SeatCoverage`. Le controle doit nommer EXACTEMENT ces deux feuilles comme non classees.
 func TestRatchetPolarite_FeuilleAjouteeNonClassee(t *testing.T) {
-	brut, err := os.ReadFile(cheminFormeDocument)
+	brut, err := os.ReadFile(cheminFormeDocument(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,7 +141,7 @@ func TestRatchetPolarite_FeuilleAjouteeNonClassee(t *testing.T) {
 
 	// Et l'inverse : une entree de table qui ne designe rien est orpheline.
 	fantome := []blocPolarites{{Blocs: []string{"coverage.vehicles."}, Echecs: "zzzDisparu"}}
-	b = controlerTable(inventaireOuEchec(t, cheminFormeDocument),
+	b = controlerTable(inventaireOuEchec(t, cheminFormeDocument(t)),
 		append(append([]blocPolarites{}, tablePolarites...), fantome...), polaritesHeritees)
 	if len(b.orphelines) != 1 || b.orphelines[0] != "coverage.vehicles.zzzDisparu" {
 		t.Fatalf("orphelines : %v, attendu [coverage.vehicles.zzzDisparu]", b.orphelines)
@@ -151,7 +151,7 @@ func TestRatchetPolarite_FeuilleAjouteeNonClassee(t *testing.T) {
 // TestRatchetPolarite_ComptesParClasse fige les comptes de la table (inventaire courant), pour
 // qu'une reclassification se voie au diff du test et pas seulement a celui de la table.
 func TestRatchetPolarite_ComptesParClasse(t *testing.T) {
-	inv := inventaireOuEchec(t, cheminFormeDocument)
+	inv := inventaireOuEchec(t, cheminFormeDocument(t))
 	comptes := map[Polarite]int{}
 	for _, f := range inv {
 		comptes[polarites().lire(f)]++

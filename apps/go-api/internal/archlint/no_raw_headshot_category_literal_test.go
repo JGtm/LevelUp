@@ -3,7 +3,7 @@
 // Interdit tout littéral brut `"HeadshotMultiplier"` (valeur DANGEREUSE de
 // `match_kill_events.source_category`) hors de ses deux propriétaires : `internal/domain/killscope`
 // (le comparateur `IsHeadshotCategory`, qui l'exclut explicitement) et
-// `internal/games/halo_infinite/film/internal/facts/killsource` (l'énumération `Category` qui la produit).
+// `libs/film/internal/facts/killsource` (l'énumération `Category` qui la produit).
 //
 // POURQUOI `HeadshotMultiplier` SEUL, ET PAS AUSSI `"Headshot"` — CHOIX DÉLIBÉRÉ, PAS UN OUBLI.
 // `"Headshot"` est AUSSI le nom d'une médaille du jeu (catalogue commendations/citations,
@@ -48,7 +48,7 @@ var headshotCategoryRE = regexp.MustCompile(`["'](HeadshotMultiplier)["']`)
 // headshotCategoryOwners : les deux paquets qui ont le droit d'écrire cette valeur.
 var headshotCategoryOwners = []string{
 	"internal/domain/killscope/",
-	"internal/games/halo_infinite/film/internal/facts/killsource/",
+	"libs/film/internal/facts/killsource/",
 }
 
 func TestNoRawHeadshotCategoryLiteral(t *testing.T) {
@@ -60,7 +60,7 @@ func TestNoRawHeadshotCategoryLiteral(t *testing.T) {
 	apiRoot := filepath.Dir(internalRoot)                // .../apps/go-api
 
 	var violations []string
-	for _, racine := range []string{internalRoot, filepath.Join(apiRoot, "cmd")} {
+	for _, racine := range []string{internalRoot, filepath.Join(apiRoot, "cmd"), surDisque(t, racineBriqueFilm)} {
 		err := filepath.WalkDir(racine, func(path string, d os.DirEntry, err error) error {
 			if err != nil {
 				return err
@@ -68,8 +68,7 @@ func TestNoRawHeadshotCategoryLiteral(t *testing.T) {
 			if d.IsDir() || !strings.HasSuffix(path, ".go") {
 				return nil
 			}
-			rel, _ := filepath.Rel(apiRoot, path)
-			rel = filepath.ToSlash(rel)
+			rel := cheminDeGardeRail(t, path)
 			for _, owner := range headshotCategoryOwners {
 				if strings.HasPrefix(rel, owner) {
 					return nil
@@ -113,14 +112,8 @@ func TestNoRawHeadshotCategoryLiteral(t *testing.T) {
 // désigner un fichier EXISTANT qui matche RÉELLEMENT le motif. Vide aujourd'hui : ce test ne
 // boucle sur rien, et c'est le comportement attendu tant que l'allowlist reste vide.
 func TestHeadshotCategoryAllowlistEntriesStayJustified(t *testing.T) {
-	_, thisFile, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller a échoué")
-	}
-	apiRoot := filepath.Dir(filepath.Dir(filepath.Dir(thisFile))) // .../apps/go-api
-
 	for rel := range headshotCategoryAllowlist {
-		data, err := os.ReadFile(filepath.Join(apiRoot, filepath.FromSlash(rel)))
+		data, err := os.ReadFile(surDisque(t, rel))
 		if err != nil {
 			t.Errorf("headshotCategoryAllowlist : entrée %q pointe un fichier inexistant (%v) — sa "+
 				"cause a disparu, retirer l'entrée.", rel, err)

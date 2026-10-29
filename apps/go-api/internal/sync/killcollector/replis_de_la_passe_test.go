@@ -11,11 +11,11 @@ package killcollector
 
 import (
 	"context"
-	"path/filepath"
 	"testing"
 
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
+	"levelup/go-api/internal/testutil"
 
 	"github.com/JGtm/LevelUp/libs/film/decfilm"
 )
@@ -83,8 +83,7 @@ func TestLeRapportDuContexteDuPontEstVerseALaPasse(t *testing.T) {
 	ctx := avecReplisDeLaPasse(context.Background(), passe)
 	// La mini-bobine versionnee du rejeu : trois chunks, SANS manifeste — le fil des morts se lit au
 	// dernier numero.
-	film, err := decfilm.LoadDir(filepath.Join("..", "..", "..", "..", "..", "libs", "film", "replay",
-		"testdata", "minifilm_000d5950"), nil)
+	film, err := decfilm.LoadDir(testutil.CheminBriqueFilm(t, "replay", "testdata", "minifilm_000d5950"), nil)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -17,7 +17,7 @@ package archlint
 // # MUTATION QUI DOIT LE FAIRE ROUGIR
 //
 // Changer une ligne de code (hors commentaire de paquet) de
-// `film/internal/atomicfile/atomicfile.go` sans toucher `platform/atomicfile/atomicfile.go`.
+// `libs/film/internal/atomicfile/atomicfile.go` sans toucher `platform/atomicfile/atomicfile.go`.
 
 import (
 	"bytes"
@@ -28,18 +28,18 @@ import (
 	"testing"
 )
 
-// coupleJumeau : un paquet de LevelUp et sa copie dans la brique, relatifs a `apps/go-api`.
+// coupleJumeau : un paquet de LevelUp et sa copie dans la brique, relatifs a la racine du depot.
 type coupleJumeau struct{ original, copie string }
 
 var copiesIdentiques = []coupleJumeau{
 	{
-		original: "internal/platform/atomicfile",
-		copie:    "internal/games/halo_infinite/film/internal/atomicfile",
+		original: "apps/go-api/internal/platform/atomicfile",
+		copie:    racineBriqueFilm + "/internal/atomicfile",
 	},
 }
 
 func TestLesCopiesJumellesSontIdentiques(t *testing.T) {
-	racine := apiRootDepuisIci(t)
+	racine := workspaceRoot(t)
 	for _, c := range copiesIdentiques {
 		for _, e := range ecartsDeCopie(t, racine, c) {
 			t.Errorf("%s -> %s : %s", c.original, c.copie, e)

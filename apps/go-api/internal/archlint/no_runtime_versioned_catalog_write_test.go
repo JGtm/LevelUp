@@ -284,11 +284,14 @@ func racineGoAPI(t *testing.T) string {
 }
 
 // parcourirSourcesProduction applique `visite` à chaque fichier Go non-test d'`internal/` et de
-// `cmd/`, hors exceptions déclarées.
+// `cmd/` sous `racine` (apps/go-api), et de la brique du décodeur de film (`libs/film`, qui vivait
+// sous `internal/`), hors exceptions déclarées. `rel` est relatif à `racine`, ou à la racine du
+// dépôt pour la brique ([cheminDeGardeRail]).
 func parcourirSourcesProduction(t *testing.T, racine string, visite func(rel, chemin string)) {
 	t.Helper()
-	for _, sous := range []string{"internal", "cmd"} {
-		err := filepath.WalkDir(filepath.Join(racine, sous), func(chemin string, d os.DirEntry, errMarche error) error {
+	dossiers := []string{filepath.Join(racine, "internal"), filepath.Join(racine, "cmd"), surDisque(t, racineBriqueFilm)}
+	for _, dossier := range dossiers {
+		err := filepath.WalkDir(dossier, func(chemin string, d os.DirEntry, errMarche error) error {
 			if errMarche != nil {
 				return errMarche
 			}
@@ -302,8 +305,7 @@ func parcourirSourcesProduction(t *testing.T, racine string, visite func(rel, ch
 			if !strings.HasSuffix(chemin, ".go") || strings.HasSuffix(chemin, "_test.go") {
 				return nil
 			}
-			rel, _ := filepath.Rel(racine, chemin)
-			rel = filepath.ToSlash(rel)
+			rel := cheminDeGardeRail(t, chemin)
 			for prefixe := range exceptionsChaineDeFabrication {
 				if strings.HasPrefix(rel, prefixe+"/") {
 					return nil
@@ -313,7 +315,7 @@ func parcourirSourcesProduction(t *testing.T, racine string, visite func(rel, ch
 			return nil
 		})
 		if err != nil {
-			t.Fatalf("parcours de %s : %v", sous, err)
+			t.Fatalf("parcours de %s : %v", dossier, err)
 		}
 	}
 }

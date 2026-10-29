@@ -34,7 +34,6 @@ func v2Item1Spawns(t *testing.T, ag *v2MapAgg) {
 	t.Logf("  naissances totales %d (dont %d sans chassis lu) · %d chassis distincts",
 		len(allPts), noChassis, len(byChassis))
 	v2LogBBox(t, "  bbox naissances (m)", allPts)
-
 	passAll := true
 	for _, ch := range v2SortedChassis(byChassis) {
 		pts := byChassis[ch]

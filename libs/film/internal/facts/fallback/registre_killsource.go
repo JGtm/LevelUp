@@ -5,8 +5,8 @@ package fallback
 // `registre_killsource_collecteur.go` depuis le lot J8.7 (2026-09-27, scission de taille).
 
 const (
-	pkgKillsource    = "internal/games/halo_infinite/film/internal/facts/killsource/"
-	pkgKillcollector = "internal/sync/killcollector/"
+	pkgKillsource    = "libs/film/internal/facts/killsource/"
+	pkgKillcollector = "apps/go-api/internal/sync/killcollector/"
 )
 
 var registreKillsource = []Repli{

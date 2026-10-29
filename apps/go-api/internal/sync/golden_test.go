@@ -28,13 +28,13 @@ import (
 	"database/sql"
 	"io"
 	"os"
-	"path/filepath"
 	"testing"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/migration"
+	"levelup/go-api/internal/testutil"
 )
 
 // openGoldenShared ouvre une DB DuckDB in-memory avec le schéma prod aligné
@@ -103,7 +103,7 @@ func openGoldenShared(t *testing.T) *sql.DB {
 // loadGoldenChunk lit le fixture v41 réel (chemin relatif au package sync).
 func loadGoldenChunk(t *testing.T) []byte {
 	t.Helper()
-	path := filepath.Join("..", "..", "..", "..", "libs", "film", "internal", "grammar", "testdata", "v41_chunk_he.bin")
+	path := testutil.CheminBriqueFilm(t, "internal", "grammar", "testdata", "v41_chunk_he.bin")
 	data, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("fixture introuvable %s: %v\n  → re-capturer via : go run ./cmd/refresh_golden_fixture --gamertag JGtm", path, err)

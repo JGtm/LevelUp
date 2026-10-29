@@ -54,13 +54,13 @@ import (
 
 // racinesTriTotal : le perimetre du cliquet, relatif a apps/go-api.
 var racinesTriTotal = []string{
-	"internal/games/halo_infinite/film",
+	"libs/film",
 	"internal/replaybuild",
 	"internal/sync/killcollector",
 }
 
 // exclusTriTotal : les sous-arbres exclus (instruments de recherche).
-var exclusTriTotal = []string{"internal/games/halo_infinite/film/research"}
+var exclusTriTotal = []string{"libs/film/research"}
 
 // plancherFichiersTriTotal : CONTRE UN BALAYAGE MUET. 588 fichiers de production mesures le
 // 2026-09-27 ; nettement moins veut dire que l'arborescence a bouge et que le cliquet ne garde plus

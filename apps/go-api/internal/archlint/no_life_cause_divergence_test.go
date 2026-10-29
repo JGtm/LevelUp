@@ -5,7 +5,7 @@
 //
 // Trois endroits nomment les memes valeurs, et ils ne peuvent pas partager une constante :
 //
-//	internal/games/halo_infinite/film/replay        les PRODUIT (CauseVie*, NomPar*) — paquet d'analyse pur ;
+//	libs/film/replay        les PRODUIT (CauseVie*, NomPar*) — paquet d'analyse pur ;
 //	internal/persist                les VALIDE (CauseFin*, NommePar*) — `persist` ne doit pas
 //	                                importer un paquet d'analyse pour verifier une colonne ;
 //	internal/migration              les DOCUMENTE dans le DDL de `match_lives`.
@@ -20,7 +20,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"sort"
 	"strings"
 	"testing"
@@ -32,7 +31,7 @@ var sourcesDesCauses = []struct {
 	fichier string
 	prefixe string
 }{
-	{"internal/games/halo_infinite/film/replay/lives.go", "CauseVie"},
+	{"libs/film/replay/lives.go", "CauseVie"},
 	{"internal/persist/lives_persister.go", "CauseFin"},
 }
 
@@ -43,7 +42,7 @@ var sourcesDesNommages = []struct {
 	// Le REPERTOIRE, pas le seul lives.go : le registre d'identite (E2, P2) declare ses voies
 	// dans identity_registry_*.go, et le garde qui ne lisait que lives.go a laisse passer
 	// quatre voies inconnues du persister (736 films refuses le 2026-09-09).
-	{"internal/games/halo_infinite/film/replay", "NomPar"},
+	{"libs/film/replay", "NomPar"},
 	{"internal/persist/lives_persister.go", "NommePar"},
 }
 
@@ -54,7 +53,7 @@ var sourcesDesEtats = []struct {
 	fichier string
 	prefixe string
 }{
-	{"internal/games/halo_infinite/film/replay/death_context.go", "Etat"},
+	{"libs/film/replay/death_context.go", "Etat"},
 	{"internal/persist/lives_mates_persister.go", "EtatCoequipier"},
 }
 
@@ -64,19 +63,13 @@ var sourcesDesEtats = []struct {
 // SELF-CHECK POSITIF : chaque source doit declarer AU MOINS une valeur, sinon le garde ne garde
 // plus rien — c'est ce qui arriverait si les constantes etaient renommees ou deplacees.
 func TestValeursDeFinDeVieNeDivergentPas(t *testing.T) {
-	_, thisFile, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller a echoue")
-	}
-	apiRoot := filepath.Dir(filepath.Dir(filepath.Dir(thisFile)))
-
-	comparer(t, apiRoot, "end_cause", sourcesDesCauses)
-	comparer(t, apiRoot, "named_by", sourcesDesNommages)
-	comparer(t, apiRoot, "state (match_death_mates)", sourcesDesEtats)
+	comparer(t, "end_cause", sourcesDesCauses)
+	comparer(t, "named_by", sourcesDesNommages)
+	comparer(t, "state (match_death_mates)", sourcesDesEtats)
 }
 
 // comparer lit les valeurs litterales declarees par chaque source et exige qu'elles coincident.
-func comparer(t *testing.T, apiRoot, colonne string, sources []struct {
+func comparer(t *testing.T, colonne string, sources []struct {
 	fichier string
 	prefixe string
 },
@@ -85,7 +78,7 @@ func comparer(t *testing.T, apiRoot, colonne string, sources []struct {
 	var reference []string
 	var refFichier string
 	for _, src := range sources {
-		vals := valeursDeclarees(t, filepath.Join(apiRoot, filepath.FromSlash(src.fichier)), src.prefixe)
+		vals := valeursDeclarees(t, surDisque(t, src.fichier), src.prefixe)
 		if len(vals) == 0 {
 			t.Fatalf("%s : aucune constante %s* trouvee dans %s — le garde-rail de la colonne "+
 				"%s ne verifie plus rien (constantes renommees ou deplacees ?)",

@@ -18,7 +18,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
 )
 
 // TestToutDeclenchementEstAUnSiteDuRegistre — DIRECTION (C) : déclenchement -> site.
@@ -29,7 +29,7 @@ import (
 // qui s'était produit pour `repli_vie_coupee_au_trou_de_replication` entre le lot 1.9.13 et la
 // revue de jalon M1 (2026-09-15).
 func TestToutDeclenchementEstAUnSiteDuRegistre(t *testing.T) {
-	racine := racineGoAPI(t)
+	racine := workspaceRoot(t)
 	valeurDeLaConstante := nomsDuPaquetFallback(t, racine)
 	fichiersParNom := fichiersDesSites()
 	appelsVus := 0
@@ -75,7 +75,7 @@ const plancherDeclenchements = 8
 // M1, 2026-09-15). Une documentation qui décrit un garde-rail absent est pire qu'aucune : elle
 // fait croire la direction tenue.
 func TestChaqueNomConstantEstAuRegistre(t *testing.T) {
-	noms := nomsDuPaquetFallback(t, racineGoAPI(t))
+	noms := nomsDuPaquetFallback(t, workspaceRoot(t))
 	if len(noms) < plancherNomsConstants {
 		t.Fatalf("`fallback/noms.go` n'a rendu que %d constantes (plancher %d) : le parcours "+
 			"est casse", len(noms), plancherNomsConstants)
@@ -100,7 +100,7 @@ const plancherNomsConstants = 5
 // passe. Le ratchet frère `no_title_package_in_analysis_test.go` tient la même règle sur ses
 // exemptions ; celle-ci ne l'avait pas, et trois de ses sept lignes avaient déjà dérivé.
 func TestChaqueExemptionDeLEcrivainATouJoursSonSite(t *testing.T) {
-	racine := racineGoAPI(t)
+	racine := workspaceRoot(t)
 	fset := token.NewFileSet()
 	for id, ex := range replisDeLEcrivainDuJeu {
 		chemin := filepath.Join(racine, filepath.FromSlash(ex.Fichier))
@@ -175,7 +175,7 @@ func nomsDuPaquetFallback(t *testing.T, racine string) map[string]decfilm.Nom {
 }
 
 // cheminNomsFallback : le fichier des constantes de noms, relatif a `apps/go-api/`.
-const cheminNomsFallback = "internal/games/halo_infinite/film/internal/facts/fallback/noms.go"
+const cheminNomsFallback = racineBriqueFilm + "/internal/facts/fallback/noms.go"
 
 // fichiersDesSites : `nom de repli -> ensemble des fichiers que ses sites citent`.
 func fichiersDesSites() map[decfilm.Nom]map[string]bool {

@@ -3,7 +3,7 @@ package fallback
 // registre_replay_equipement.go — les replis du calque ÉQUIPEMENT, ARMES AU SOL, CAPACITÉS et
 // INVENTAIRE (`internal/games/halo_infinite/film/replay/`).
 
-const pkgReplay = "internal/games/halo_infinite/film/replay/"
+const pkgReplay = "libs/film/replay/"
 
 // dateLotNeedler : le jour du lot qui pose la regle de la premiere prise de socle du cycle.
 const dateLotNeedler = "2026-10-09"

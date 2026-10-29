@@ -19,7 +19,7 @@ package archlint
 //
 // # PERIMETRE
 //
-// `internal/games/halo_infinite/film/`, `internal/replaybuild/`, `internal/sync/killcollector/`,
+// `libs/film/`, `internal/replaybuild/`, `internal/sync/killcollector/`,
 // `cmd/replay-*`, instruments de recherche compris (`film/research/` et `*_research_test.go`, compiles
 // sous `-tags=research`) : le balayage lit l AST sans compiler, le tag de build est sans effet. Aucune
 // exclusion.
@@ -40,10 +40,10 @@ import (
 	"testing"
 )
 
-// perimetreSansPredicatsOS : les racines (relatives a apps/go-api) du perimetre. `cmd/replay-*`
+// perimetreSansPredicatsOS : les racines (chemins de garde-rail, [surDisque]) du perimetre. `cmd/replay-*`
 // est resolu par glob.
 var perimetreSansPredicatsOS = []string{
-	"internal/games/halo_infinite/film",
+	racineBriqueFilm,
 	"internal/replaybuild",
 	"internal/sync/killcollector",
 }
@@ -64,12 +64,11 @@ func TestAucunPredicatOSIsDansLePerimetreDuFilm(t *testing.T) {
 	var fautes []string
 	fichiers := 0
 	for _, r := range racines {
-		err := filepath.WalkDir(filepath.Join(racine, filepath.FromSlash(r)), func(p string, d fs.DirEntry, err error) error {
+		err := filepath.WalkDir(surDisque(t, r), func(p string, d fs.DirEntry, err error) error {
 			if err != nil {
 				return err
 			}
-			rel, _ := filepath.Rel(racine, p)
-			rel = filepath.ToSlash(rel)
+			rel := cheminDeGardeRail(t, p)
 			if d.IsDir() {
 				return nil
 			}

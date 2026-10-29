@@ -15,7 +15,7 @@ package archlint
 //
 // # PERIMETRE
 //
-// `internal/games/halo_infinite/film/internal/grammar/` et `.../internal/facts/`, sous-paquets
+// `libs/film/internal/grammar/` et `.../internal/facts/`, sous-paquets
 // compris. Fichiers non-test, hors `//go:build research` (les instruments journalisent a leur gre).
 //
 // # ALLOWLIST
@@ -40,8 +40,8 @@ var importsDeJournal = map[string]bool{"log/slog": true, "log": true}
 func TestGrammarEtFactsNeJournalisentPas(t *testing.T) {
 	var fautes []string
 	fichiers := fichiersDuPerimetreFilm(t,
-		"internal/games/halo_infinite/film/internal/grammar",
-		"internal/games/halo_infinite/film/internal/facts",
+		"libs/film/internal/grammar",
+		"libs/film/internal/facts",
 	)
 	for _, f := range fichiers {
 		for _, imp := range f.ast.Imports {

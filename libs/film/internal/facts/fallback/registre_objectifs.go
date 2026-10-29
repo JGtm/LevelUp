@@ -17,11 +17,11 @@ package fallback
 // (`objectives.ReplisALaConsultation`), versé par la même table.
 
 const (
-	pkgObjectiveEvents = "internal/games/halo_infinite/film/internal/facts/objectives/"
-	pkgReplaybuild     = "internal/replaybuild/"
+	pkgObjectiveEvents = "libs/film/internal/facts/objectives/"
+	pkgReplaybuild     = "apps/go-api/internal/replaybuild/"
 	// pkgSignaux : la lecture du statborg, descendue de `objectives` dans la grammaire au lot 2.6 de
 	// la representation intermediaire ; ses deux replis s y decident, `objectives` les porte.
-	pkgSignaux = "internal/games/halo_infinite/film/internal/grammar/signaux/"
+	pkgSignaux = "libs/film/internal/grammar/signaux/"
 )
 
 var registreObjectifsEtConstruction = []Repli{
@@ -68,7 +68,7 @@ var registreObjectifsEtConstruction = []Repli{
 			// LE COMPTE est emis par le calque de score de `replay` (inversion de dependance : `analysis`
 			// rend une donnee pure, l appelant qui porte le compteur de la cuisson la compte). Site
 			// inscrit a la fusion du lot 1.9.11 (2026-09-17), le ratchet des sites l exigeait.
-			Fichier: "internal/games/halo_infinite/film/replay/score_timeline.go",
+			Fichier: "libs/film/replay/score_timeline.go",
 			Ancre:   "fb.Declenche(fallback.NomReplayMancheZeroDecretee)",
 		}},
 		DatePose: dateAudit0E,
@@ -202,7 +202,7 @@ var registreObjectifsEtConstruction = []Repli{
 			Date:      date0927,
 			Raison:    "le seul appelant de objectives.Extract est l outil de diagnostic cmd/diag_weapons_v3 ; aucune cuisson ni passe de synchronisation ne l execute",
 			Symbole:   "Extract",
-			Appelants: []string{"cmd/diag_weapons_v3"},
+			Appelants: []string{"apps/go-api/cmd/diag_weapons_v3"},
 		},
 	},
 	{
@@ -277,7 +277,7 @@ var registreObjectifsEtConstruction = []Repli{
 		Mecanisme: "comparaison de la REVISION et de la TAILLE en octets de l'artefact — compromis assume, pas une empreinte",
 		Condition: CondFilmMuet,
 		Ordre:     OrdreSansLecture,
-		Sites: []Site{{Fichier: "internal/sync/replayartifacts/derivations_backlog.go", Ancre: "fb.Declenche(decfilm.NomFraicheurDesDerivationsParTaille)"}, {
+		Sites: []Site{{Fichier: "apps/go-api/internal/sync/replayartifacts/derivations_backlog.go", Ancre: "fb.Declenche(decfilm.NomFraicheurDesDerivationsParTaille)"}, {
 			Fichier: pkgReplaybuild + "derivations_index.go",
 			Ancre:   "return m.Rev == DerivationsRev && int64(m.ArtifactBytes) == st.Size()",
 		}},
@@ -325,7 +325,7 @@ var registreObjectifsEtConstruction = []Repli{
 			Fichier: pkgObjectiveEvents + "slotidentity_residue.go",
 			Ancre:   "out.origins[round][slot] = OriginRoundResidue",
 		}, {
-			Fichier: "internal/games/halo_infinite/film/replay/identity_registry_section.go",
+			Fichier: "libs/film/replay/identity_registry_section.go",
 			Ancre:   "fb.Declenche(fallback.NomIdentiteDeSlotParResiduDeManche)",
 		}},
 		DatePose:        date0927,

@@ -434,7 +434,6 @@ func TestToKillOpeningRows_PorteLInstantDuKillSansArithmetique(t *testing.T) {
 func TestEntreeDuRegistrePorteLeRosterDeLaFeuille(t *testing.T) {
 	ids := MatchIdentities{XUIDs: []string{"111", "222", "bid(7.0)"}}
 	in := entreeDuRegistre(lecturesDuFilm{}, ids, nil, "m1")
-
 	if len(in.RosterXUIDs) != 2 {
 		t.Fatalf("roster transmis = %v, attendu les deux xuids humains — sans lui, "+
 			"l'identite par elimination n'a aucun candidat", in.RosterXUIDs)

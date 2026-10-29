@@ -26,7 +26,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strings"
 	"testing"
 )
@@ -41,8 +40,7 @@ var flagCarryEndAllowlist = map[string]bool{
 var flagCarryEndWrite = regexp.MustCompile(`\.(t1|closed|homed|captured|closedBy)\s*=[^=]`)
 
 func TestFinDePortageDeDrapeauEcriteSeulementDansFlagCarriesClose(t *testing.T) {
-	_, here, _, _ := runtime.Caller(0)
-	dir := filepath.Join(filepath.Dir(here), "..", "games", "halo_infinite", "film", "replay")
+	dir := surDisque(t, racineBriqueFilm+"/replay")
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		t.Fatalf("lecture de %s : %v", dir, err)

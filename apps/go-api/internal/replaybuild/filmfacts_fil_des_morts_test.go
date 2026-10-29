@@ -16,6 +16,7 @@ package replaybuild
 
 import (
 	"fmt"
+	"levelup/go-api/internal/testutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -30,8 +31,7 @@ import (
 // bobineV40 : les trois morceaux BRUTS de la bobine v40, dans l ordre des numeros.
 func bobineV40(t *testing.T) [][]byte {
 	t.Helper()
-	dir := filepath.Join("..", "..", "..", "..", "libs", "film", "internal", "facts", "killsource",
-		"testdata", "minibobine_e5adf7b2")
+	dir := testutil.CheminBriqueFilm(t, "internal", "facts", "killsource", "testdata", "minibobine_e5adf7b2")
 	out := make([][]byte, 0, 3)
 	for k := range 3 {
 		b, err := os.ReadFile(filepath.Join(dir, fmt.Sprintf("chunk_%02d.bin", k)))

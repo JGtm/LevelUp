@@ -1,4 +1,4 @@
-// filmsource_leaf_test.go — `internal/games/halo_infinite/film/internal/source` EST UNE FEUILLE, ET ELLE DOIT LE RESTER.
+// filmsource_leaf_test.go — `libs/film/internal/source` EST UNE FEUILLE, ET ELLE DOIT LE RESTER.
 //
 // # POURQUOI CE GARDE-RAIL EXISTE, ET IL A UNE DATE
 //
@@ -33,17 +33,14 @@ import (
 	"go/token"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 )
 
-// filmsourceLeafPkg : le paquet feuille, relatif a apps/go-api.
-const filmsourceLeafPkg = "internal/games/halo_infinite/film/internal/source"
-
-// filmsourceLeafPrefix : le prefixe du module. Tout import qui commence par la est un import DU
-// DEPOT, et il est interdit ici. La stdlib (et elle seule) est autorisee.
-const filmsourceLeafPrefix = "levelup/go-api/"
+// filmsourceLeafPkg : le paquet feuille, relatif a la racine du depot. Tout import DU DEPOT
+// ([repertoireDuDepot] : `apps/go-api` ou une brique de `libs/`) y est interdit ; la stdlib (et
+// elle seule) est autorisee.
+const filmsourceLeafPkg = racineBriqueFilm + "/internal/source"
 
 // filmsourceLeafImportAutorise : LA SEULE EXCEPTION, ET ELLE EST DEMONTREE (lot 2.6.2,
 // 2026-09-16).
@@ -60,15 +57,10 @@ const filmsourceLeafPrefix = "levelup/go-api/"
 // meme d un paquet qui « ne fait rien », rougit comme avant. Si `film/types` cessait d etre une
 // feuille, c est son propre ratchet qui le dirait — et cette ligne-ci deviendrait fausse au meme
 // instant, ce qui est la raison pour laquelle les deux tests vivent cote a cote.
-const filmsourceLeafImportAutorise = "levelup/go-api/internal/games/halo_infinite/film/types"
+const filmsourceLeafImportAutorise = importBriqueFilm + "/types"
 
 func TestFilmsourceEstUneFeuille(t *testing.T) {
-	_, thisFile, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller a echoue")
-	}
-	apiRoot := filepath.Dir(filepath.Dir(filepath.Dir(thisFile))) // internal/archlint -> internal -> apps/go-api
-	pkgDir := filepath.Join(apiRoot, filepath.FromSlash(filmsourceLeafPkg))
+	pkgDir := filepath.Join(workspaceRoot(t), filepath.FromSlash(filmsourceLeafPkg))
 
 	entries, err := os.ReadDir(pkgDir)
 	if err != nil {
@@ -94,7 +86,7 @@ func TestFilmsourceEstUneFeuille(t *testing.T) {
 			if chemin == filmsourceLeafImportAutorise {
 				continue
 			}
-			if strings.HasPrefix(chemin, filmsourceLeafPrefix) {
+			if _, duDepot := repertoireDuDepot(chemin); duDepot {
 				violations = append(violations, name+" -> "+chemin)
 			}
 		}

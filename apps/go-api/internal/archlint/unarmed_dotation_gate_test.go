@@ -18,7 +18,6 @@ package archlint
 import (
 	"os"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strings"
 	"testing"
@@ -35,11 +34,7 @@ var catalogueArmesSitesAutorises = map[string]int{
 }
 
 func TestDotationPasseParLaRegleDesMainsNues(t *testing.T) {
-	_, ici, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller a echoue")
-	}
-	dir := filepath.Join(filepath.Dir(filepath.Dir(ici)), "games", "halo_infinite", "film", "replay")
+	dir := surDisque(t, racineBriqueFilm+"/replay")
 	entrees, err := os.ReadDir(dir)
 	if err != nil {
 		t.Fatalf("lecture de %s : %v", dir, err)

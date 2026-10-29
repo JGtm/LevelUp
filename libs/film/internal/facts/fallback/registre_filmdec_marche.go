@@ -27,7 +27,7 @@ var registreFilmdecMarche = []Repli{
 			Fichier: pkgFilmdec + "keyframe_world.go",
 			Ancre:   "iss.dec = kfElection // repli nomme `repli_ancre_d_image_cle_par_election`",
 		}, {
-			Fichier: "internal/games/halo_infinite/film/replay/film_scan.go",
+			Fichier: "libs/film/replay/film_scan.go",
 			Ancre:   "s.opt.Fallbacks.DeclencheN(fallback.NomAncreDImageCleParElection, marche.Elections)",
 		}},
 		DatePose: "2026-09-23",
@@ -65,7 +65,7 @@ var registreFilmdecMarche = []Repli{
 			Fichier: pkgFilmdec + "generations_vivantes.go",
 			Ancre:   "func (g *GenerationsVivantes) SlotsEnRepli(pos []BipedPosition) int {",
 		}, {
-			Fichier: "internal/games/halo_infinite/film/replay/film_scan.go",
+			Fichier: "libs/film/replay/film_scan.go",
 			Ancre:   "s.opt.Fallbacks.DeclencheN(fallback.NomGenerationVivanteInconnueTag1,",
 		}},
 		DatePose:        date0927,
@@ -115,7 +115,7 @@ var registreFilmdecMarche = []Repli{
 			Fichier: pkgFilmdec + "movement_states.go",
 			Ancre:   "m.LiaisonsParRepliDAnticipation = sc.liaisonsDuRepliDAnticipation()",
 		}, {
-			Fichier: "internal/games/halo_infinite/film/replay/film_scan_mouvement.go",
+			Fichier: "libs/film/replay/film_scan_mouvement.go",
 			Ancre:   "s.opt.Fallbacks.DeclencheN(fallback.NomLiaisonParAnticipation, m.LiaisonsParRepliDAnticipation)",
 		}},
 		DatePose:        date0927,
@@ -148,7 +148,7 @@ var registreFilmdecMarche = []Repli{
 			Fichier: pkgFilmdec + "movement_states.go",
 			Ancre:   "m.DebutsDeListeParRepliFermeAuBit = sc.obs.DebutsDeListeParRepliFermeAuBit",
 		}, {
-			Fichier: "internal/games/halo_infinite/film/replay/film_scan_mouvement.go",
+			Fichier: "libs/film/replay/film_scan_mouvement.go",
 			Ancre:   "s.opt.Fallbacks.DeclencheN(fallback.NomDebutDeListeFermeAuBit, m.DebutsDeListeParRepliFermeAuBit)",
 		}},
 		DatePose:        "2026-10-02",

@@ -11,7 +11,7 @@
 // priorite basse.
 //
 // La lecon tient en une phrase : **la construction d'artefact est un amplificateur, et tout
-// appelant qui l'enchaine doit passer par `internal/games/halo_infinite/film/filmproc`** — un processus par film, un
+// appelant qui l'enchaine doit passer par `libs/film/filmproc`** — un processus par film, un
 // plafond DUR par processus, une priorite CPU basse.
 //
 // # CE QUE CE RATCHET COMPTE, ET CE QU'IL NE PEUT PAS COMPTER
@@ -54,7 +54,7 @@ var filmBuildAllowedCallers = map[string]string{
 		"appelle BuildFromFilm, elle ne boucle sur rien",
 	"cmd/levelup/cmd_backfill_replay_child.go": "2026-08-26 — ENFANT de la passe bornee : un " +
 		"film par processus, sentinelle armee, le parent compte les issues. REGIME PRECISE LE " +
-		"2026-09-03 (PLAN_CUISSON_PERF 5.4/5.7) : le parent est desormais `internal/games/halo_infinite/film/filmproc` " +
+		"2026-09-03 (PLAN_CUISSON_PERF 5.4/5.7) : le parent est desormais `libs/film/filmproc` " +
 		"(priorite CPU basse comprise, elle manquait), et cet enfant prend le VERROU SOLO EN " +
 		"ATTENTE BORNEE (10 min) — une passe n'a pas de cycle suivant, elle attend son tour " +
 		"plutot que d'echouer sur un chevauchement",
@@ -62,7 +62,7 @@ var filmBuildAllowedCallers = map[string]string{
 		"processus meurt ensuite. ARME LES TROIS PROTECTIONS (verrou solo, priorite basse, " +
 		"sentinelle a MeasureLimitGiB) — la justification du 2026-08-26 s'arretait a « aucune " +
 		"boucle DANS le processus », ce qui n'a pas empeche un operateur d'en lancer deux en " +
-		"parallele et de saturer la machine (cf. internal/games/halo_infinite/film/filmproc/solo.go)",
+		"parallele et de saturer la machine (cf. libs/film/filmproc/solo.go)",
 	"cmd/replay-worker/job.go": "2026-08-26 — ouvrier : un job a la fois, sentinelle armee PAR " +
 		"JOB (filmproc.Arm, processJob) et desarmee entre deux. Processus long-vivant, jamais " +
 		"deux films en vol. REGIME COMPLETE LE 2026-09-03 (PLAN_CUISSON_PERF 5.7) : « un film a la fois DANS " +
@@ -70,8 +70,8 @@ var filmBuildAllowedCallers = map[string]string{
 		"passe backfill, second ouvrier) — il prend donc le VERROU SOLO EN ATTENTE BORNEE " +
 		"(10 min) autour du seul decodage, rendu avant l'envoi",
 	"cmd/zone-attribution/measure.go": "2026-08-26 — ENFANT de la passe bornee (passe.go) : " +
-		"un film par processus, plafond de MESURE (2 Gio) et priorite basse via internal/games/halo_infinite/film/filmproc",
-	"internal/games/halo_infinite/film/replay/build_from_film.go": "2026-08-26 — la DEFINITION de " +
+		"un film par processus, plafond de MESURE (2 Gio) et priorite basse via libs/film/filmproc",
+	"libs/film/replay/build_from_film.go": "2026-08-26 — la DEFINITION de " +
 		"BuildFromFilm ; elle ne boucle sur rien. Fichier renomme au lot 1 de PLAN_CUISSON_PERF " +
 		"(2026-09-02) : le decodage a quitte `build.go`, qui garde l'assemblage",
 	"internal/replaychild/replaychild.go": "2026-08-26 — ENFANT BORNE du post-sync : un film " +
@@ -89,15 +89,10 @@ var filmBuildAllowedCallers = map[string]string{
 }
 
 func TestNoUnboundedFilmLoop(t *testing.T) {
-	_, thisFile, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller a echoue")
-	}
-	apiRoot := filepath.Dir(filepath.Dir(filepath.Dir(thisFile))) // internal/archlint -> internal -> apps/go-api
 
 	var violations []string
 	seen := map[string]bool{}
-	err := filepath.WalkDir(apiRoot, func(path string, d os.DirEntry, walkErr error) error {
+	err := marcherAPIEtBriqueFilm(t, func(path string, d os.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
 		}
@@ -111,8 +106,7 @@ func TestNoUnboundedFilmLoop(t *testing.T) {
 		if !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
 			return nil
 		}
-		rel, _ := filepath.Rel(apiRoot, path)
-		rel = filepath.ToSlash(rel)
+		rel := cheminDeGardeRail(t, path)
 		data, readErr := os.ReadFile(path)
 		if readErr != nil {
 			return readErr
@@ -138,13 +132,13 @@ func TestNoUnboundedFilmLoop(t *testing.T) {
 		return nil
 	})
 	if err != nil {
-		t.Fatalf("walk apps/go-api: %v", err)
+		t.Fatalf("walk apps/go-api et libs/film: %v", err)
 	}
 	if len(violations) > 0 {
 		t.Errorf("site(s) de construction d'artefact NON DECLARE(S) (%d).\n"+
 			"La construction d'artefact est un AMPLIFICATEUR memoire : elle a sature la machine "+
 			"trois fois (2026-08-20, 08-24, 08-26).\n"+
-			"Si ce site enchaine des films, il DOIT passer par internal/games/halo_infinite/film/filmproc (un processus "+
+			"Si ce site enchaine des films, il DOIT passer par libs/film/filmproc (un processus "+
 			"par film, plafond dur, priorite basse) — cf. cmd/zone-attribution/passe.go.\n"+
 			"S'il ne decode qu'un film, declare-le dans filmBuildAllowedCallers avec sa "+
 			"justification DATEE :\n  %s",
@@ -164,12 +158,12 @@ func TestNoUnboundedFilmLoop(t *testing.T) {
 // sentinelleTokens : la marque d'une sentinelle memoire armee dans un paquet.
 //
 // UNE SEULE FORME LEGITIME DEPUIS LE LOT v2 G.1 (2026-09-05) : `filmproc.Arm`, la sentinelle
-// canonique (`internal/games/halo_infinite/film/filmproc/memguard.go`). Les deux `main` qui portaient chacun leur
+// canonique (`libs/film/filmproc/memguard.go`). Les deux `main` qui portaient chacun leur
 // propre copie (`cmd/levelup/backfill_memlimit.go`, `cmd/replay-worker/memlimit.go`)
 // l'appelaient DEJA — `filmproc` n'a aucun cout de dependance (pas d'import projet
 // non-stdlib) et son callback `onExceeded` porte precisement les deux doctrines d'arret qui
 // divergent legitimement (code de sortie enfant vs rapport au serveur). Un plafond souple pose
-// en direct hors de `internal/games/halo_infinite/film/filmproc` serait une TROISIEME copie qui rouvrirait le meme
+// en direct hors de `libs/film/filmproc` serait une TROISIEME copie qui rouvrirait le meme
 // defaut : c'est [TestPasDeSentinelleBruteHorsFilmproc], plus bas, qui le rejette — retirer le
 // jeton d'ICI ne faisait que l'empecher de COMPTER comme preuve de sentinelle, pas de passer.
 var sentinelleTokens = []string{"filmproc.Arm("}
@@ -264,12 +258,12 @@ func sentinelleDansPaquet(t *testing.T, dir string) bool {
 const sentinelleBrute = "debug.SetMemoryLimit("
 
 // sentinellePaquetCanonique : le SEUL emplacement ou l'appel brut est legitime.
-const sentinellePaquetCanonique = "internal/games/halo_infinite/film/filmproc/"
+const sentinellePaquetCanonique = racineBriqueFilm + "/filmproc/"
 
 // sentinelleBruteAllowlist : les exceptions, chemin relatif a apps/go-api.
 //
 // ELLE EST VIDE, ET C'EST TOUT L'INTERET. Toute entree future doit porter sa justification
-// DATEE et sa date de retrait — un plafond souple pose hors de `internal/games/halo_infinite/film/filmproc` est une
+// DATEE et sa date de retrait — un plafond souple pose hors de `libs/film/filmproc` est une
 // sentinelle qui ne dit pas son nom : elle ne mesure rien, ne tient aucun pic, n'a aucune
 // doctrine d'arret, et elle FAIT MENTIR le pic emis par la vraie sentinelle en changeant le
 // regime du GC sous elle.
@@ -277,7 +271,7 @@ var sentinelleBruteAllowlist = map[string]string{}
 
 // TestPasDeSentinelleBruteHorsFilmproc — LE RATCHET QUE LE JOURNAL DU LOT v2 G PROMETTAIT.
 //
-// Le journal annoncait qu'« un `debug.SetMemoryLimit(` brut hors `internal/games/halo_infinite/film/filmproc` est
+// Le journal annoncait qu'« un `debug.SetMemoryLimit(` brut hors `libs/film/filmproc` est
 // desormais une violation du ratchet ». C'etait faux : retirer ce jeton de [sentinelleTokens]
 // l'a seulement empeche de COMPTER comme preuve de sentinelle dans
 // [TestPointsDEntreeDeDecodageArmentUneSentinelle] — aucune regle ne le rejetait, et un
@@ -299,7 +293,7 @@ func TestPasDeSentinelleBruteHorsFilmproc(t *testing.T) {
 
 	var violations []string
 	vuDansLeCanonique := false
-	err := filepath.WalkDir(apiRoot, func(path string, d os.DirEntry, walkErr error) error {
+	err := marcherAPIEtBriqueFilm(t, func(path string, d os.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
 		}
@@ -313,8 +307,7 @@ func TestPasDeSentinelleBruteHorsFilmproc(t *testing.T) {
 		if !strings.HasSuffix(path, ".go") {
 			return nil
 		}
-		rel, _ := filepath.Rel(apiRoot, path)
-		rel = filepath.ToSlash(rel)
+		rel := cheminDeGardeRail(t, path)
 		if rel == relSoi {
 			return nil
 		}
@@ -344,7 +337,7 @@ func TestPasDeSentinelleBruteHorsFilmproc(t *testing.T) {
 		return nil
 	})
 	if err != nil {
-		t.Fatalf("walk apps/go-api: %v", err)
+		t.Fatalf("walk apps/go-api et libs/film: %v", err)
 	}
 	if len(violations) > 0 {
 		t.Errorf("plafond memoire SOUPLE pose hors de %s (%d).\n"+

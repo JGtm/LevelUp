@@ -22,6 +22,14 @@ import (
 	"testing"
 )
 
+// racineBriqueFilm : la racine du module du decodeur de film (ADR 0041), relative a la racine du
+// depot. Tout chemin du decodeur cite par un garde-rail en derive ; ses fichiers se lisent depuis
+// `workspaceRoot`, jamais depuis `apiModuleRoot`.
+const racineBriqueFilm = "libs/film"
+
+// importBriqueFilm : le chemin d import de la racine du meme module.
+const importBriqueFilm = "github.com/JGtm/LevelUp/libs/film"
+
 // motifsDeViolationDeCouche rend les motifs pour lesquels l arete `de -> vers` sort des regles,
 // ou nil. Les deux regles sont independantes : une arete peut violer les deux.
 func motifsDeViolationDeCouche(de, vers string) []string {
@@ -46,7 +54,7 @@ func souscheminDeFilm(chemin, racine string) bool {
 	return chemin == racine || strings.HasPrefix(chemin, racine+"/")
 }
 
-// balayerPaquetsDuDecodeur rend, par paquet surveille (chemin relatif a `apps/go-api`, en
+// balayerPaquetsDuDecodeur rend, par paquet surveille (chemin relatif a la racine du depot, en
 // slash), la liste triee de ses imports DU DEPOT eux aussi en chemin relatif, plus le nombre
 // total de fichiers de production parcourus.
 //
@@ -54,7 +62,7 @@ func souscheminDeFilm(chemin, racine string) bool {
 // les cles de `couchesDuDecodeur` (ce qui couvre les couches encore posees hors du decodeur).
 func balayerPaquetsDuDecodeur(t *testing.T) (map[string][]string, int) {
 	t.Helper()
-	racineAPI := apiRootDepuisIci(t)
+	racineAPI := workspaceRoot(t)
 	surveilles := map[string]bool{}
 	for _, rel := range repertoiresDeProductionSousFilm(t, racineAPI) {
 		surveilles[rel] = true
@@ -73,7 +81,7 @@ func balayerPaquetsDuDecodeur(t *testing.T) (map[string][]string, int) {
 }
 
 // repertoiresDeProductionSousFilm rend les repertoires portant du `.go` de production sous
-// `film/`, en chemin relatif a `apps/go-api`.
+// `film/`, en chemin relatif a la racine du depot.
 func repertoiresDeProductionSousFilm(t *testing.T, racineAPI string) []string {
 	t.Helper()
 	base := filepath.Join(racineAPI, filepath.FromSlash(racineDecodeurFilm))
@@ -135,11 +143,9 @@ func importsDeProductionDuPaquet(t *testing.T, racineAPI, rel string) ([]string,
 			t.Fatalf("analyse de %s/%s : %v", rel, nom, perr)
 		}
 		for _, imp := range f.Imports {
-			chemin := strings.Trim(imp.Path.Value, `"`)
-			if !strings.HasPrefix(chemin, prefixeModuleFilm) {
-				continue
+			if rep, duDepot := repertoireDuDepot(strings.Trim(imp.Path.Value, `"`)); duDepot {
+				vus[rep] = true
 			}
-			vus[strings.TrimPrefix(chemin, prefixeModuleFilm)] = true
 		}
 	}
 	return clesTrieesFilm(vus), fichiers
@@ -148,7 +154,7 @@ func importsDeProductionDuPaquet(t *testing.T, racineAPI, rel string) ([]string,
 // siteDeChargement : un appel a un chargeur de la couche `source`, dans un fichier de
 // production de la couche de publication.
 type siteDeChargement struct {
-	fichier string // chemin relatif a `apps/go-api`
+	fichier string // chemin relatif a la racine du depot
 	detail  string // l appel vu, pour le message
 }
 
@@ -160,8 +166,7 @@ type siteDeChargement struct {
 // â et un grep rougirait sur la documentation de la regle.
 func chargementsDeSourceDansReplay(t *testing.T) []siteDeChargement {
 	t.Helper()
-	racineAPI := apiRootDepuisIci(t)
-	dir := filepath.Join(racineAPI, filepath.FromSlash(coucheQuiNeChargePas))
+	dir := filepath.Join(workspaceRoot(t), filepath.FromSlash(coucheQuiNeChargePas))
 	entrees, err := os.ReadDir(dir)
 	if err != nil {
 		t.Fatalf("lecture de %s : %v â si la couche a DEMENAGE, deplacer `coucheQuiNeChargePas` "+

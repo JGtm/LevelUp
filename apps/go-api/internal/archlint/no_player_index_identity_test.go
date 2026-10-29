@@ -26,7 +26,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strings"
 	"testing"
 )
@@ -35,23 +34,17 @@ import (
 // `PlayerIndex` désigne autre chose (position dans une équipe pour le calcul de rating) et
 // n'a rien à voir avec cette confusion.
 var playerIndexScope = []string{
-	filepath.Join("games", "halo_infinite", "film", "internal", "grammar"),
-	filepath.Join("games", "halo_infinite", "film", "replay"),
+	racineBriqueFilm + "/internal/grammar",
+	racineBriqueFilm + "/replay",
 }
 
 // playerIndexRE matche une DÉCLARATION ou un accès de champ nommé `PlayerIndex`.
 var playerIndexRE = regexp.MustCompile(`\bPlayerIndex\b`)
 
 func TestNoPlayerIndexInFilmScope(t *testing.T) {
-	_, thisFile, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller a échoué")
-	}
-	internalRoot := filepath.Dir(filepath.Dir(thisFile)) // .../internal
-
 	var violations []string
 	for _, scope := range playerIndexScope {
-		root := filepath.Join(internalRoot, scope)
+		root := surDisque(t, scope)
 		if _, err := os.Stat(root); err != nil {
 			continue // le paquet peut avoir été déplacé : ce n'est pas l'objet de ce test
 		}
@@ -70,9 +63,8 @@ func TestNoPlayerIndexInFilmScope(t *testing.T) {
 					continue
 				}
 				if playerIndexRE.MatchString(line) {
-					rel, _ := filepath.Rel(internalRoot, path)
 					violations = append(violations,
-						filepath.ToSlash(rel)+":"+itoa(i+1)+" : "+strings.TrimSpace(line))
+						cheminDeGardeRail(t, path)+":"+itoa(i+1)+" : "+strings.TrimSpace(line))
 				}
 			}
 			return nil

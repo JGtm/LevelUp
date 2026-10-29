@@ -9,7 +9,7 @@
 // importer un paquet de titre sans que rien ne rougisse.
 //
 // Ce test est posé AVANT le déplacement du décodeur de film (`grammar`, `replay`) d'
-// `internal/analysis/` vers `internal/games/halo_infinite/film/` (lot E du plan
+// `internal/analysis/` vers `libs/film/` (lot E du plan
 // `.ai/archive/V7.5/PLAN_FORK_ET_RELEASE_2026-09-11.md`). Sans lui, le déplacement transformerait des
 // imports internes à `analysis/` en franchissements de frontière INVISIBLES : c'est
 // exactement la dette que ce lot doit rendre visible, pas enfouir.
@@ -41,7 +41,7 @@
 // importe aucun paquet, directement (même parcours, tests compris, SANS allowlist) ni par la
 // fermeture (`TestFermetureDeAnalysisSansDecodeurDeFilm`, `go list -deps -test`, allowlist datée
 // des fuites qui ne peut que descendre). Mutation : ajouter à un fichier d'`analysis/` un import
-// de `levelup/go-api/internal/games/halo_infinite/film/types` (direct), ou faire importer
+// de `github.com/JGtm/LevelUp/libs/film/types` (direct), ou faire importer
 // `games/weapons/filmshell` par un paquet que la fermeture d'`analysis` contient (transitif).
 package archlint
 
@@ -96,10 +96,10 @@ var franchissementsToleres = map[string]string{
 	// `assaut_footer_research_test.go` et `extract_test.go`. Le portage attendu n'a pas eu lieu
 	// (la source du film n'est toujours pas un paramètre de ces tests) : c'est le PAQUET qui a
 	// quitté `internal/analysis/`, descendu sous
-	// `internal/games/halo_infinite/film/internal/facts/objectives` — il est désormais une couche du
+	// `libs/film/internal/facts/objectives` — il est désormais une couche du
 	// décodeur, chez lui, et ouvrir un film du cache local y est légitime. La dette décrite par
 	// ces deux entrées disparaît donc avec sa cause, et non par contournement.
-	// RETIRÉE LE 2026-09-16 (lot 2.4, item 2.4.2) : `internal/games/halo_infinite/film/internal/source/source_test.go`
+	// RETIRÉE LE 2026-09-16 (lot 2.4, item 2.4.2) : `libs/film/internal/source/source_test.go`
 	// n'importe plus `grammar` : le test compare le marcheur canonique (`source.Paquets`) à une
 	// COPIE DE RÉFÉRENCE de l'ancienne grammaire portée par le test lui-même (738 paquets).
 	// RETIRÉE LE 2026-09-16 (item 2.5.f) : `internal/analysis/sessionusage/usage_outcomes.go`
@@ -110,7 +110,7 @@ var franchissementsToleres = map[string]string{
 	// RETIRÉE LE 2026-09-16 (lot 2.5.e) : `internal/analysis/weapon_index_equivalence_test.go`
 	// était la DERNIÈRE. Le portage annoncé a eu lieu tel qu'il était écrit — « la comparaison
 	// descend côté décodeur » : le test vit désormais dans
-	// `internal/games/halo_infinite/film/internal/grammar/weaponscan/`, à côté du scanner dont il prouve
+	// `libs/film/internal/grammar/weaponscan/`, à côté du scanner dont il prouve
 	// la clé de tireur, et le catalogue d'armes qu'il opposait est sorti d'`internal/analysis`
 	// pour `games/weapons/filmshell`.
 	//
@@ -212,14 +212,10 @@ func titreDuPaquetGames(paquet string) (string, bool) {
 	return premier, true
 }
 
-// prefixeLibsFilm : le module `libs/film` (lot 3 du plan D2), nommé d'avance pour que l'interdit
-// tienne avant comme après le déplacement du décodeur.
-const prefixeLibsFilm = "github.com/JGtm/LevelUp/libs/film"
-
 // racinesDeLaBriqueFilm rend les chemins d'import racines de la brique du décodeur de film : ceux
-// de la ligne `film` de la table des briques (ses arbres actuels) et le module `libs/film`.
+// de la ligne `film` de la table des briques (le module `libs/film`).
 func racinesDeLaBriqueFilm() []string {
-	racines := []string{prefixeLibsFilm}
+	var racines []string
 	for _, b := range briques {
 		if b.nom != "film" {
 			continue
@@ -355,9 +351,9 @@ func TestFermetureDeAnalysisSansDecodeurDeFilm(t *testing.T) {
 func TestFermetureDeAnalysis_AutoPreuve(t *testing.T) {
 	sortie := "levelup/go-api/internal/analysis\n" +
 		"levelup/go-api/internal/games/weapons [levelup/go-api/internal/games/weapons.test]\n" +
-		"levelup/go-api/internal/games/halo_infinite/film/types\n" +
+		"github.com/JGtm/LevelUp/libs/film/types\n" +
 		"levelup/go-api/internal/games/halo_infinite/filmprofile\n" +
-		"levelup/go-api/internal/games/halo_infinite/film/filmshell\n" +
+		"github.com/JGtm/LevelUp/libs/film/filmshell\n" +
 		"github.com/JGtm/LevelUp/libs/film/replay\n" +
 		"levelup/go-api/internal/analysis.test\n"
 	paquets := paquetsDeFermeture(sortie)
@@ -365,26 +361,27 @@ func TestFermetureDeAnalysis_AutoPreuve(t *testing.T) {
 		t.Fatalf("variantes de test mal ramenées : %v", paquets)
 	}
 	fuites, mortes := fuitesDeFermeture(paquets, nil)
-	attendu := "github.com/JGtm/LevelUp/libs/film/replay,levelup/go-api/internal/games/halo_infinite/film/filmshell,levelup/go-api/internal/games/halo_infinite/film/types"
+	attendu := "github.com/JGtm/LevelUp/libs/film/filmshell,github.com/JGtm/LevelUp/libs/film/replay,github.com/JGtm/LevelUp/libs/film/types"
 	if strings.Join(fuites, ",") != attendu || len(mortes) != 0 {
 		t.Fatalf("fuites = %v, mortes = %v ; attendu %s et aucune morte", fuites, mortes, attendu)
 	}
 	fuites, mortes = fuitesDeFermeture(paquets, map[string]string{
-		"levelup/go-api/internal/games/halo_infinite/film/filmshell": "2026-10-29 test",
-		"levelup/go-api/internal/games/halo_infinite/film/types":     "2026-10-29 test",
-		"github.com/JGtm/LevelUp/libs/film/replay":                   "2026-10-29 test",
-		"levelup/go-api/internal/games/halo_infinite/film/absent":    "2026-10-29 test",
+		"github.com/JGtm/LevelUp/libs/film/filmshell": "2026-10-29 test",
+		"github.com/JGtm/LevelUp/libs/film/types":     "2026-10-29 test",
+		"github.com/JGtm/LevelUp/libs/film/replay":    "2026-10-29 test",
+		"github.com/JGtm/LevelUp/libs/film/absent":    "2026-10-29 test",
 	})
 	if len(fuites) != 0 || len(mortes) != 1 || !strings.HasSuffix(mortes[0], "film/absent") {
 		t.Fatalf("allowlist honorée et entrée morte signalée attendues ; fuites = %v, mortes = %v", fuites, mortes)
 	}
 	for imp, attendu := range map[string]bool{
-		"levelup/go-api/internal/games/halo_infinite/film/replay":      true,
-		"levelup/go-api/internal/games/halo_infinite/film/filmshell":   true,
-		"levelup/go-api/internal/games/halo_infinite/film/equipenergy": true,
-		"github.com/JGtm/LevelUp/libs/film/decfilm":                    true,
-		"levelup/go-api/internal/games/halo_infinite/filmprofile":      false,
-		"levelup/go-api/internal/games/weapons":                        false,
+		"github.com/JGtm/LevelUp/libs/film/replay":                true,
+		"github.com/JGtm/LevelUp/libs/film/filmshell":             true,
+		"github.com/JGtm/LevelUp/libs/film/equipenergy":           true,
+		"github.com/JGtm/LevelUp/libs/film/decfilm":               true,
+		"levelup/go-api/internal/games/halo_infinite/film":        false,
+		"levelup/go-api/internal/games/halo_infinite/filmprofile": false,
+		"levelup/go-api/internal/games/weapons":                   false,
 	} {
 		if got := estPaquetDeLaBriqueFilm(imp); got != attendu {
 			t.Errorf("estPaquetDeLaBriqueFilm(%q) = %v, attendu %v", imp, got, attendu)

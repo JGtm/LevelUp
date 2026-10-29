@@ -18,7 +18,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strings"
 	"testing"
 )
@@ -63,7 +62,7 @@ var longestRunAllowed = map[string]bool{
 // (lot E, item E.2) : le fichier est supprimé (deux fonctions de debug sans aucun
 // appelant, tests compris), l'exemption n'a plus de cible non plus.
 var longestRunAllowedPrefixes = []string{
-	"internal/games/halo_infinite/film/internal/grammar/frame_records.go",
+	"libs/film/internal/grammar/frame_records.go",
 }
 
 // longestRunExempt dit si le chemin relatif est couvert par une exemption datée.
@@ -77,16 +76,9 @@ func longestRunExempt(rel string) bool {
 }
 
 func TestNoLocalLongestRun(t *testing.T) {
-	_, thisFile, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller a échoué")
-	}
-	internalRoot := filepath.Dir(filepath.Dir(thisFile))
-	goAPIRoot := filepath.Dir(internalRoot)
-
 	var violations []string
-	for _, sub := range []string{"internal", "cmd"} {
-		root := filepath.Join(goAPIRoot, sub)
+	for _, sub := range []string{"internal", "cmd", racineBriqueFilm} {
+		root := surDisque(t, sub)
 		err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
 			if err != nil {
 				return err
@@ -105,8 +97,7 @@ func TestNoLocalLongestRun(t *testing.T) {
 				return readErr
 			}
 			if longestRunIdiomRE.Match(data) {
-				rel, _ := filepath.Rel(goAPIRoot, path)
-				slash := filepath.ToSlash(rel)
+				slash := cheminDeGardeRail(t, path)
 				if longestRunExempt(slash) {
 					return nil
 				}

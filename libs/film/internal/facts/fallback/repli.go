@@ -171,7 +171,8 @@ const (
 // 2026-09-13 ; huit jours et neuf lots plus tard, une bonne part avait déjà dérivé. Un registre
 // dont les références pourrissent ne se relit plus, donc ne se maintient plus.
 type Site struct {
-	// Fichier : chemin RELATIF à `apps/go-api/`, séparateurs `/`.
+	// Fichier : chemin RELATIF à la racine du dépôt hôte, séparateurs `/` (`libs/film/...` pour un
+	// site de la brique, `apps/go-api/...` pour un site de LevelUp).
 	Fichier string
 	// Ancre : sous-chaîne EXACTE présente dans le fichier, choisie pour être distinctive
 	// (signature de fonction, littéral de la décision, commentaire de la branche).
@@ -258,7 +259,7 @@ type OutilHorsProduction struct {
 	// Symbole : le symbole exporte qui porte le repli (`Extract`) ; ses appels se cherchent sous
 	// `decfilm.<Symbole>` et `objectives.<Symbole>` dans tout le module, tests exclus.
 	Symbole string
-	// Appelants : les SEULS repertoires (relatifs a `apps/go-api/`) ou un appel est admis.
+	// Appelants : les SEULS repertoires (relatifs a la racine du depot hote) ou un appel est admis.
 	Appelants []string
 }
 

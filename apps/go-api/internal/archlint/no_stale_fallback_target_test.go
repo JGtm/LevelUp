@@ -52,7 +52,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
 )
 
 // cheminDuPlanDecodeur : le plan est la SOURCE des cases. Chemin depuis `apps/go-api` ; le plan
