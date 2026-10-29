@@ -1147,7 +1147,7 @@ re-capture) : skill `3abcd07b...` et stats `697ff1f0...`, MD5 IDENTIQUES au tém
 - [x] 6.2 Docs (D3-I) ; registre des reports ; addendum « D3 exécuté » dans l'audit (clôture des trois
   axes) ; thought_log ; mémoire.
   Statut : fait (2026-10-29). ADR 0042 neuf, ADR 0023, 0031 et 0041 amendés, `CLAUDE.md`, `ARCHITECTURE_V6` EN et FR, registre (27 entrées), addendum de l'audit (« audit CLOS »), journal. La mémoire de l'assistant : au pilote.
-- [ ] 6.3 Caches `-Lot d3` ; PR, CI verte, fusion squash, branche et worktree supprimés, dépôt
+- [x] 6.3 (PR #114, contrôles verts, fusion squash par le pilote le 2026-10-29 ; caches `-Lot d3` supprimés, worktree et branche supprimés ensuite) Caches `-Lot d3` ; PR, CI verte, fusion squash, branche et worktree supprimés, dépôt
   principal remis au niveau.
 
 ## Exécution du lot 6 (2026-10-29)
