@@ -59,6 +59,11 @@ var halowaypointAllowlist = map[string]bool{
 	"internal/platform/halo/privacy_provider.go":    true,
 	"internal/platform/halo/provider.go":            true,
 	"internal/platform/halo/season_provider.go":     true,
+	// haloapi/infinite/ — client des services Halo Infinite de la brique « API Halo » (plan D3,
+	// lot 3, 2026-10-29) : endpoints.go est l'UNIQUE endroit de ses adresses par défaut (les autres
+	// fichiers de la brique reçoivent des Endpoints et ne nomment aucun hôte). Au lot 4 les entrées
+	// haloclient/ et platform/halo/ ci-dessus partent avec leurs dossiers : solde négatif.
+	"internal/haloapi/infinite/endpoints.go": true,
 	// platform/auth/ : plus aucune entrée. (provider.go retiré au retrait de MSAL 2026-07-15 ;
 	// halo_exchange.go retiré le 2026-10-29, plan D3 lot 2 : la chaîne d'échange est partie dans
 	// internal/haloapi/xblauth, sans état ni titre, et ne nomme plus aucun hôte halowaypoint — les
