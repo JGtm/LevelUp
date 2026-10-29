@@ -1,4 +1,4 @@
-// Package xblauth est la chaîne d'authentification Xbox Live de la brique « API Halo » (plan D3) :
+// Package xblauth est la chaîne d'authentification Xbox Live de la brique « API Halo » :
 // jeton d'accès Microsoft -> User Token XBL -> XSTS -> Spartan -> Clearance, XSTS Xbox Live pour
 // RTA, rafraîchissement et code d'autorisation OAuth v2, device code du client Xbox natif,
 // résolution gamertag -> xuid (profil Xbox, PeopleHub).

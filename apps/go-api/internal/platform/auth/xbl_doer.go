@@ -1,10 +1,10 @@
-// Package auth — xbl_doer.go : le `haloapi.Doer` gardé que la façade passe à la brique
-// `xblauth` pour les surfaces sortantes qui étaient gardées par `netguard` avant le déplacement
-// (plan D3 lot 2, décision D3-K) : rafraîchissement OAuth, démarrage et polling du device code.
+// Package auth — xbl_doer.go : le `haloapi.Doer` gardé que la façade passe à la brique `xblauth`
+// pour les surfaces sortantes qu'une démo peut atteindre : rafraîchissement OAuth, démarrage et
+// polling du device code.
 //
-// Les surfaces qui ne l'étaient pas (échange XBL/XSTS/Spartan, code d'autorisation, PeopleHub,
-// profil Xbox) reçoivent le client nu, comme avant : leur exception est tenue par l'allowlist de
-// `netguard_coverage_test.go`, au chemin du fichier de la brique qui émet.
+// Les jambes de la poignée de main interactive (échange XBL/XSTS/Spartan, code d'autorisation,
+// PeopleHub, profil Xbox) reçoivent un client nu : elles exigent un jeton frais, que le
+// rafraîchissement gardé ne produit pas en démo (voir l'en-tête de `netguard_coverage_test.go`).
 package auth
 
 import (

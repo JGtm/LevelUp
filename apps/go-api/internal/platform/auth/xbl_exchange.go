@@ -1,5 +1,5 @@
 // Package auth — xbl_exchange.go : façade d'exploitation de l'échange access_token Microsoft ->
-// jetons Halo (le protocole vit dans `internal/haloapi/xblauth`, plan D3 lot 2).
+// jetons Halo (le protocole vit dans `internal/haloapi/xblauth`).
 //
 // Ce que la façade ajoute au protocole : le descripteur Halo par défaut, le client HTTP et son
 // délai, le créneau de concurrence XBL process-wide, la provenance du jeton portée par le `ctx`

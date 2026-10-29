@@ -1,7 +1,6 @@
-// Package infinite est le client des services Halo Infinite de la brique « API Halo » (plan D3,
-// décisions D3-C, D3-J, D3-K) : transport HTTP à politique de reprise injectée, adresses des
-// services, un fichier par service, DTO JSON BRUTS (structs miroir du JSON reçu), octets
-// COMPRESSÉS des films.
+// Package infinite est le client des services Halo Infinite de la brique « API Halo » : transport
+// HTTP à politique de reprise injectée, adresses des services, un fichier par service, DTO JSON
+// BRUTS (structs miroir du JSON reçu), octets COMPRESSÉS des films.
 //
 // Contrat :
 //

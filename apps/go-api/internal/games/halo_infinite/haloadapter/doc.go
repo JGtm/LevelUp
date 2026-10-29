@@ -1,5 +1,5 @@
 // Package haloadapter est l'adaptateur de LevelUp sur la brique « API Halo » pour Halo Infinite
-// (plan D3, décision D3-D ; ADR 0012 : les adaptateurs propres à un titre vivent sous
+// (ADR 0012 : les adaptateurs propres à un titre vivent sous
 // `games/<titre>/`). La brique `internal/haloapi/infinite` PARLE aux services (transport, adresses,
 // DTO JSON bruts) sans état ni politique ; ce paquet DÉCIDE :
 //

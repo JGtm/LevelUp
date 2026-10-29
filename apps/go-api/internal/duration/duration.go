@@ -1,23 +1,15 @@
 // Package duration — source UNIQUE du parsing des durées ISO-8601 « flavoured Halo ».
 //
-// Pourquoi ce leaf neutre : trois implémentations divergentes coexistaient
-// (internal/games/halo_5, internal/platform/halo, internal/openspartan/mapper),
-// avec des REGEX différentes (bug latent, pas qu'une violation DRY) :
+// Pourquoi une source unique : chaque lecteur d'une durée Halo (mappers Halo 5, import
+// OpenSpartan, adaptateur Halo Infinite `games/halo_infinite/haloadapter`) doit accepter et
+// refuser les MÊMES chaînes ; deux expressions régulières différentes rendraient une durée comme
+// "P1D" (un jour, sans composante de temps) valide sur un chemin et invalide sur un autre.
 //
-//   - halo_5            : `^P(?:(\d+)D)?T(?:…)?$`            → `T` OBLIGATOIRE → "P1D" REJETÉ.
-//   - platform/halo     : `^P(?:(\d+)D)?(?:T(?:…)?)?$`        → `T` optionnel    → "P1D" = 86400.
-//   - openspartan/mapper: `^PT(?:…)?$`                        → pas de `D` du tout → "P1D" REJETÉ.
-//
-// Conséquence : une durée "P1D" (un jour, sans composante de temps) parsait d'un
-// côté et échouait des deux autres → résultat incohérent selon le chemin de code.
-//
-// Ce package vit volontairement comme LEAF stdlib-only (zéro import interne) afin
-// d'être importable sans cycle par les trois consommateurs, dont les mappers PURS
-// halo_5 / openspartan (qui ne doivent surtout pas dépendre du package
-// platform/halo, lourd en I/O DuckDB).
+// Ce paquet est une FEUILLE stdlib-only (zéro import interne) : il s'importe sans cycle depuis les
+// mappers PURS (halo_5, openspartan), qui ne doivent dépendre d'aucun paquet à I/O.
 //
 // Grammaire canonique acceptée : P[nD][T[nH][nM][n[.frac]S]]
-//   - le marqueur T est OPTIONNEL (corrige le bug "P1D") ;
+//   - le marqueur T est OPTIONNEL ("P1D" = 86 400 s) ;
 //   - jours / heures / minutes / secondes sont tous optionnels ;
 //   - les fractions de secondes sont préservées (ex. "PT16.48S", "AvgLifeTime") ;
 //   - AU MOINS une composante est requise : "P", "PT", "" sont invalides ;

@@ -1,4 +1,4 @@
-// Package haloapi est le paquet parent de la brique « API Halo » (plan D3) : le code qui PARLE aux
+// Package haloapi est le paquet parent de la brique « API Halo » : le code qui PARLE aux
 // services Halo, sans état ni politique. Il ne porte que ce que ses sous-paquets partagent : le
 // [Doer] reçu de LevelUp et l'erreur [ErrDefinitif] qui arrête une reprise.
 //

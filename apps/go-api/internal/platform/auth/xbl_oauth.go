@@ -1,6 +1,6 @@
 // Package auth — xbl_oauth.go : façade d'exploitation des échanges OAuth v2 Microsoft
 // (rafraîchissement d'un refresh_token, code d'autorisation du SSO web). Le protocole vit dans
-// `internal/haloapi/xblauth` (plan D3 lot 2) ; la façade y ajoute le client Azure résolu depuis
+// `internal/haloapi/xblauth` ; la façade y ajoute le client Azure résolu depuis
 // l'environnement (azure_credentials.go), les adresses, le client HTTP et son délai, la garde
 // `netguard` du rafraîchissement, l'identifiant d'événement du journal et les compteurs expvar
 // (metrics.go) tenus à partir de l'issue typée que rend la brique.
@@ -117,8 +117,8 @@ func ExchangeRefreshTokenWithRotation(ctx context.Context, refreshToken string) 
 // vers /authorize (Microsoft vérifie ce match).
 // codeVerifier : PKCE (RFC 7636) — vide = pas de PKCE (rétrocompat / device flow).
 func ExchangeAuthorizationCode(ctx context.Context, code, redirectURI, codeVerifier string) (*AuthCodeResult, error) {
-	// Poignée de main interactive (login SSO) : pas de garde netguard, comme avant le
-	// déplacement (non monté en démo, allowlist de netguard_coverage_test.go).
+	// Poignée de main interactive (login SSO) : pas de garde netguard. Le flux de connexion n'est
+	// pas monté en démo (voir l'en-tête de netguard_coverage_test.go).
 	doer := &http.Client{Timeout: oauthTimeout}
 	return oauthClient(doer).ExchangeAuthorizationCode(ctx, code, redirectURI, codeVerifier)
 }

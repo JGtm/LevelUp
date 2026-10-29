@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// Retry : la politique de reprise d'un [Client], passée à la construction (décision D3-J). Les
+// Retry : la politique de reprise d'un [Client], choisie par l'appelant à la construction. Les
 // statuts 401/403 et 404/410 et une erreur [haloapi.ErrDefinitif] ne sont JAMAIS retentés ; une
 // erreur de transport (requête en échec, corps coupé) l'est toujours, dans la limite des essais.
 //

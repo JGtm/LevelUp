@@ -1,7 +1,7 @@
 // Package auth — xbl_device_code.go : façade d'exploitation du Device Code Flow natif Xbox
-// (protocole dans `internal/haloapi/xblauth/xbox_device_code.go`, plan D3 lot 2). La façade
-// fournit le client HTTP (et son délai) sous la garde `netguard` de chaque surface
-// (« xbox_device_code.start », « xbox_device_code.poll »), comme avant le déplacement.
+// (protocole dans `internal/haloapi/xblauth/xbox_device_code.go`). La façade fournit le client HTTP
+// (et son délai) sous la garde `netguard` de chaque surface (« xbox_device_code.start »,
+// « xbox_device_code.poll ») : un flux de connexion lancé en mode démo ne sort pas.
 package auth
 
 import (

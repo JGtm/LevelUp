@@ -1,4 +1,4 @@
-// Package filmfetch est l'exploitation des films Halo Infinite (plan D3, décision D3-D) : il prend
+// Package filmfetch est l'exploitation des films Halo Infinite : il prend
 // les octets que rend la brique `internal/haloapi/infinite` (manifeste, blobs COMPRESSÉS du CDN) et
 // en fait les fragments de film que LevelUp lit.
 //

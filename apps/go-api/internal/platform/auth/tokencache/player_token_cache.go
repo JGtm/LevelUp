@@ -1,5 +1,5 @@
 // Package tokencache — player_token_cache.go : cache process-level des HaloTokens par XUID
-// (exploitation des jetons, à côté du magasin de `platform/auth` ; plan D3, décision D3-D).
+// (exploitation des jetons, à côté du magasin de `platform/auth`).
 //
 // Évite d'appeler MSAL + l'échange XBL/XSTS/Spartan à chaque requête.
 //
