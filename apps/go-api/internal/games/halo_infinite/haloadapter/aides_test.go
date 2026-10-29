@@ -13,18 +13,18 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/haloapi/infinite"
-	"levelup/go-api/internal/platform/halo"
+	"levelup/go-api/internal/platform/auth/tokencache"
 )
 
 // avecRafraichisseur câble `fn` comme rafraîchisseur de jetons du processus pour la durée du
 // test, et vide le cache de jetons de `xuid` avant et après (chaque test a son xuid).
 func avecRafraichisseur(t *testing.T, xuid string, fn func(context.Context, string) (*domain.HaloTokens, error)) {
 	t.Helper()
-	halo.InvalidateCachedPlayerTokens(xuid)
-	halo.SetPlayerTokenRefresher(fn)
+	tokencache.InvalidateCachedPlayerTokens(xuid)
+	tokencache.SetPlayerTokenRefresher(fn)
 	t.Cleanup(func() {
-		halo.SetPlayerTokenRefresher(nil)
-		halo.InvalidateCachedPlayerTokens(xuid)
+		tokencache.SetPlayerTokenRefresher(nil)
+		tokencache.InvalidateCachedPlayerTokens(xuid)
 	})
 }
 

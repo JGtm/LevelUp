@@ -16,7 +16,7 @@ import (
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/platform/halo/duration"
+	"levelup/go-api/internal/duration"
 )
 
 // serviceRecordResponse est la réponse de l'endpoint service record Waypoint.

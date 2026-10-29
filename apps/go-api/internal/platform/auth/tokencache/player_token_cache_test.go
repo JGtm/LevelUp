@@ -1,9 +1,9 @@
-// Package halo — player_token_cache_test.go : tests cache HaloTokens
+// Package tokencache — player_token_cache_test.go : tests cache HaloTokens
 // (revue 2026-04-29 P3.6).
 //
 // Cache process-level pur (pas d'appel HTTP). Tests focuses sur le TTL,
 // la concurrence, et le miss/hit pattern.
-package halo
+package tokencache
 
 import (
 	"context"

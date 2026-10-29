@@ -12,8 +12,8 @@ import (
 	"strconv"
 	"strings"
 
+	"levelup/go-api/internal/duration"
 	"levelup/go-api/internal/games/canonical"
-	"levelup/go-api/internal/platform/halo/duration"
 )
 
 // h5EventNameToType mappe l'EventName Halo 5 → type canonique. ok=false pour un
@@ -174,7 +174,7 @@ func h5Vec3(l *h5WorldLocation) *canonical.Vec3 {
 // en MILLISECONDES, en conservant la précision fractionnaire (vs
 // parseISO8601DurationSeconds qui arrondit à la seconde). Borne [0, 24h]
 // (anti-corruption). ok=false si non parsable. Délègue à la source UNIQUE
-// (internal/platform/halo/duration).
+// (internal/duration).
 func parseISO8601DurationMs(s string) (int, bool) {
 	return duration.MillisBounded(s)
 }

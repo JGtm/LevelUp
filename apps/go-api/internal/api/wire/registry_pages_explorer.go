@@ -14,8 +14,8 @@ import (
 	halo_games "levelup/go-api/internal/games/halo_infinite"
 	"levelup/go-api/internal/games/halo_infinite/rankedplaylists"
 	"levelup/go-api/internal/games/mappings"
+	"levelup/go-api/internal/platform/auth/tokencache"
 	"levelup/go-api/internal/platform/duckdb"
-	"levelup/go-api/internal/platform/halo"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service"
 	sync_pkg "levelup/go-api/internal/sync"
@@ -128,7 +128,7 @@ func (r *ServiceRegistry) newExplorerCSRProvider() service.ExplorerTargetCSRProv
 		// Filet auth (defense-in-depth) : un 401/403 sur GetPlayerCSRs (token owner
 		// révoqué en cours de requête) → re-mint + retry unique. Péremption normale déjà
 		// couverte par le cache token expiry-aware en amont.
-		return halo.RetryWithFreshTokens(ctx, sync_pkg.IsAuthError, func(c context.Context) ([]domain.CareerPlaylistCSR, error) {
+		return tokencache.RetryWithFreshTokens(ctx, sync_pkg.IsAuthError, func(c context.Context) ([]domain.CareerPlaylistCSR, error) {
 			tokens := ctxkeys.HaloTokens(c)
 			if tokens == nil || tokens.SpartanToken == "" {
 				return nil, nil
@@ -216,7 +216,7 @@ func wrapRecentMatchesAuthRetry(inner port.RecentMatchesProvider) port.RecentMat
 type authRetryRecentMatches struct{ inner port.RecentMatchesProvider }
 
 func (a authRetryRecentMatches) FetchRecentMatches(ctx context.Context, xuid string, limit int) ([]domain.ExplorerTargetRecentMatch, error) {
-	return halo.RetryWithFreshTokens(ctx, sync_pkg.IsAuthError, func(c context.Context) ([]domain.ExplorerTargetRecentMatch, error) {
+	return tokencache.RetryWithFreshTokens(ctx, sync_pkg.IsAuthError, func(c context.Context) ([]domain.ExplorerTargetRecentMatch, error) {
 		return a.inner.FetchRecentMatches(c, xuid, limit)
 	})
 }

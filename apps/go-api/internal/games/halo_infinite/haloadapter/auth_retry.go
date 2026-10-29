@@ -7,7 +7,7 @@ import (
 	"context"
 
 	"levelup/go-api/internal/haloapi/infinite"
-	"levelup/go-api/internal/platform/halo"
+	"levelup/go-api/internal/platform/auth/tokencache"
 )
 
 // IsAuthError dit si `err` est un refus d'authentification d'un service Halo (HTTP 401/403),
@@ -19,5 +19,5 @@ func IsAuthError(err error) bool { return infinite.IsAuthError(err) }
 // signée du jeton du lecteur, et si le contexte porte un xuid : cache de jetons du joueur
 // invalidé, jeton re-dérivé, UN nouvel essai.
 func retryOnAuth[T any](ctx context.Context, fn func(context.Context) (T, error)) (T, error) {
-	return halo.RetryWithFreshTokens(ctx, IsAuthError, fn)
+	return tokencache.RetryWithFreshTokens(ctx, IsAuthError, fn)
 }

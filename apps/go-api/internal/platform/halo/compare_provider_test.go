@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/duration"
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/platform/halo/duration"
 )
 
 func TestBuildSeasonServiceRecordURL(t *testing.T) {

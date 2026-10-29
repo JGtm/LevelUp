@@ -14,6 +14,7 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/platform/auth/tokencache"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/halo"
 	"levelup/go-api/internal/port"
@@ -175,7 +176,7 @@ func (r *PlayerLiveRefresher) runTicker(ctx context.Context) {
 // fetchée que si le titre du joueur la déclare (capability) — un titre sans BP ni
 // Challenges (Halo 5) n'atteint jamais ce point (ticker non démarré, cf. OnPresenceActive).
 func (r *PlayerLiveRefresher) refresh(ctx context.Context) {
-	tokens := halo.GetCachedPlayerTokens(r.xuid)
+	tokens := tokencache.GetCachedPlayerTokens(r.xuid)
 	if tokens == nil && r.tokenRefresher != nil {
 		refreshed, err := r.tokenRefresher(ctx, r.xuid)
 		if err != nil {

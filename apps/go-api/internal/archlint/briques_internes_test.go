@@ -122,8 +122,8 @@ var briquesInternes = []briqueInterne{
 			"analysis":                       {1, "2026-10-29", "lot 4 : haloclient/halo_skill.go (analysis.MMRKnown) -> haloadapter"},
 			"assetnames":                     {1, "2026-10-29", "lot 4 : halo/asset_name_fetcher.go -> haloadapter"},
 			"assets":                         {5, "2026-10-29", "lot 4 : halo/battlepass_details.go et tests (assets.Ref) -> haloadapter"},
-			"ctxkeys":                        {14, "2026-10-29", "lot 4 : halo (11) et haloclient (3) : jetons, xuid, slug, langue sortis du ctx par l'adaptateur"},
-			"domain":                         {21, "2026-10-29", "lot 4 : halo (18) et haloclient (3) -> haloadapter"},
+			"ctxkeys":                        {13, "2026-10-29", "lot 4 : halo (11) et haloclient (3) : jetons, xuid, slug, langue sortis du ctx par l'adaptateur"},
+			"domain":                         {17, "2026-10-29", "lot 4 : halo (18) et haloclient (3) -> haloadapter"},
 			"domain/title":                   {3, "2026-10-29", "lot 4 : halo (1) et haloclient (2)"},
 			"games":                          {16, "2026-10-29", "lot 4 : halo (7) et haloclient (9) : résolveur d'adresses -> infinite.Endpoints reçues"},
 			"games/halo_infinite":            {1, "2026-10-29", "lot 4 : halo/catalog_fetcher.go (AssetFetcher) -> haloadapter"},
@@ -137,7 +137,11 @@ var briquesInternes = []briqueInterne{
 			"observability":                  {6, "2026-10-29", "lot 4 : halo (2) et haloclient (4) : compteurs injectés comme crochets"},
 			"observability/timing":           {2, "2026-10-29", "lot 4 : halo/privacy_provider.go et tests -> haloadapter"},
 			"platform/netguard":              {6, "2026-10-29", "lot 4 : halo (3) et haloclient (3) -> Doer garde par surface (D3-K)"},
-			"golang.org/x/sync/singleflight": {2, "2026-10-29", "lot 4 : halo/player_token_cache.go -> tokencache, halo/provider.go -> haloadapter"},
+			"golang.org/x/sync/singleflight": {1, "2026-10-29", "lot 4 : halo/provider.go -> haloadapter"},
+			// Transitoires du lot 4.3 (2026-10-29) : `duration` et le cache de jetons ont quitté l'arbre
+			// `platform/halo` ; ses fichiers restants les importent jusqu'à sa suppression au lot 4.4.
+			"duration":                 {2, "2026-10-29", "lot 4.4 : halo/compare_provider.go et son test, supprimés"},
+			"platform/auth/tokencache": {1, "2026-10-29", "lot 4.4 : halo/auth_retry.go, supprimé"},
 		},
 	},
 }

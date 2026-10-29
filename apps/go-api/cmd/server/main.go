@@ -58,6 +58,7 @@ import (
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/auth/capturecli"
 	"levelup/go-api/internal/platform/auth/pool"
+	"levelup/go-api/internal/platform/auth/tokencache"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 	"levelup/go-api/internal/platform/friendstore"
@@ -957,7 +958,7 @@ func main() {
 	router, reg, _ = api.NewRouter(routerCtx, cfg, bootRepo, bootSvc, watcherCtrl, tokenProvider, autoScheduler, backupSched, groupStore)
 
 	// Câble le hook global de re-dérivation des tokens per-player : le cache
-	// expiry-aware (halo.ResolveFreshPlayerTokens) re-minte via le registry quand un
+	// expiry-aware (tokencache.ResolveFreshPlayerTokens) re-minte via le registry quand un
 	// token est périmé. Sans ce câblage, le re-mint singleflighté est inopérant.
 	reg.WireGlobalTokenRefresher()
 
@@ -1512,7 +1513,7 @@ func buildAutoSyncPool(
 		// Explorer). On le purge pour forcer une re-dérivation fraîche au
 		// prochain enrichWithHaloTokens. Incident 2026-06-14 (post-consolidation
 		// client ID : seuls les CLI token-capture/import invalidaient ce cache).
-		halo.InvalidateCachedPlayerTokens(xuid)
+		tokencache.InvalidateCachedPlayerTokens(xuid)
 		return nil
 	}
 

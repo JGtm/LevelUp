@@ -1,4 +1,5 @@
-// Package halo — player_token_cache.go : cache process-level des HaloTokens par XUID.
+// Package tokencache — player_token_cache.go : cache process-level des HaloTokens par XUID
+// (exploitation des jetons, à côté du magasin de `platform/auth` ; plan D3, décision D3-D).
 //
 // Évite d'appeler MSAL + l'échange XBL/XSTS/Spartan à chaque requête.
 //
@@ -9,7 +10,7 @@
 // `GetCachedPlayerTokens` applique une marge avant expiry : un token dans sa fenêtre de
 // marge est traité comme expiré → le caller re-mint. C'est CETTE garantie (et non un
 // retry sur 401) qui empêche de servir un Spartan périmé.
-package halo
+package tokencache
 
 import (
 	"context"

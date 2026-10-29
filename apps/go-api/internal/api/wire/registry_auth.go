@@ -14,6 +14,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/auth"
+	"levelup/go-api/internal/platform/auth/tokencache"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/halo"
 	"levelup/go-api/internal/port"
@@ -158,15 +159,15 @@ func (r *ServiceRegistry) buildHaloProvider(pdb *duckdb.PlayerDB) *halo.HaloProv
 // qu'il est encore valide (expiry CONNUE et fraîche, `TokensFreshStrict`). Un token de session
 // d'expiry inconnue (session créée avant la capture de SpartanExpiresAt) est parfois réellement
 // périmé → il provoquait un 401 INTERMITTENT sur les chemins sans filet (rang carrière). On le
-// re-résout donc systématiquement via halo.ResolveFreshPlayerTokens (cache expiry-aware + re-mint
+// re-résout donc systématiquement via tokencache.ResolveFreshPlayerTokens (cache expiry-aware + re-mint
 // singleflight, expiry réelle). Sur échec de re-mint (ex. SSO-only hors pool) → on garde le token
 // de session existant (mieux que rien) : dégradation, pas de régression.
 func (r *ServiceRegistry) enrichWithHaloTokens(ctx context.Context, pdb *duckdb.PlayerDB) context.Context {
-	if sess := ctxkeys.HaloTokens(ctx); halo.TokensFreshStrict(sess) {
+	if sess := ctxkeys.HaloTokens(ctx); tokencache.TokensFreshStrict(sess) {
 		return ctx // token de session présent, expiry CONNUE et encore valide → on le garde
 	}
 	xuid := pdb.XUID
-	tokens, err := halo.ResolveFreshPlayerTokens(ctx, xuid)
+	tokens, err := tokencache.ResolveFreshPlayerTokens(ctx, xuid)
 	if err != nil || tokens == nil {
 		if err != nil {
 			slog.DebugContext(ctx, "halo_auth: résolution token live impossible — fallback token de session", "xuid", xuid, "err", err)
@@ -193,14 +194,14 @@ func (r *ServiceRegistry) enrichWithHaloTokens(ctx context.Context, pdb *duckdb.
 // expvar explorer_live_token_source_{session,profile,pool,none}).
 func (r *ServiceRegistry) enrichWithHaloTokensPublicRead(ctx context.Context, pdb *duckdb.PlayerDB) context.Context {
 	// 1. Session fraîche stricte (expiry connue et valide).
-	if sess := ctxkeys.HaloTokens(ctx); halo.TokensFreshStrict(sess) {
+	if sess := ctxkeys.HaloTokens(ctx); tokencache.TokensFreshStrict(sess) {
 		incExplorerTokenSource(explorerTokenSrcSession)
 		return ctx
 	}
 	xuid := pdb.XUID
 
 	// 2. Profil sélectionné.
-	if tokens, err := halo.ResolveFreshPlayerTokens(ctx, xuid); err == nil && tokens != nil {
+	if tokens, err := tokencache.ResolveFreshPlayerTokens(ctx, xuid); err == nil && tokens != nil {
 		incExplorerTokenSource(explorerTokenSrcProfile)
 		return ctxkeys.WithHaloAuth(ctx, tokens, xuid)
 	} else if err != nil {
@@ -233,15 +234,15 @@ func (r *ServiceRegistry) enrichWithHaloTokensPublicRead(ctx context.Context, pd
 }
 
 // WireGlobalTokenRefresher branche le hook global de re-dérivation des tokens
-// (halo.ResolveFreshPlayerTokens) sur le minting registry. À appeler une fois au boot,
+// (tokencache.ResolveFreshPlayerTokens) sur le minting registry. À appeler une fois au boot,
 // après construction du registry. Idempotent.
 func (r *ServiceRegistry) WireGlobalTokenRefresher() {
-	halo.SetPlayerTokenRefresher(r.mintFreshTokensForXUID)
+	tokencache.SetPlayerTokenRefresher(r.mintFreshTokensForXUID)
 }
 
 // mintFreshTokensForXUID MINTE des tokens Halo frais pour un joueur (résolution pool +
 // refresh OAuth), SANS lire ni écrire le cache process — c'est le hook branché sur
-// halo.SetPlayerTokenRefresher (ResolveFreshPlayerTokens gère cache + singleflight).
+// tokencache.SetPlayerTokenRefresher (ResolveFreshPlayerTokens gère cache + singleflight).
 func (r *ServiceRegistry) mintFreshTokensForXUID(ctx context.Context, xuid string) (*domain.HaloTokens, error) {
 	var pdb *duckdb.PlayerDB
 	duckdb.IteratePool(func(p *duckdb.PlayerDB) bool {
@@ -356,13 +357,13 @@ func (r *ServiceRegistry) AnyPlayerTokens(ctx context.Context) (*domain.HaloToke
 // Met à jour le cache process si le refresh réussit.
 // Appelé par PlayerLiveRefresher quand le cache process est expiré.
 func (r *ServiceRegistry) RefreshTokensForXUID(ctx context.Context, xuid string) (*domain.HaloTokens, error) {
-	if cached := halo.GetCachedPlayerTokens(xuid); cached != nil {
+	if cached := tokencache.GetCachedPlayerTokens(xuid); cached != nil {
 		return cached, nil
 	}
 	tokens, err := r.mintFreshTokensForXUID(ctx, xuid)
 	if err != nil {
 		return nil, err
 	}
-	halo.SetCachedPlayerTokens(xuid, tokens)
+	tokencache.SetCachedPlayerTokens(xuid, tokens)
 	return tokens, nil
 }

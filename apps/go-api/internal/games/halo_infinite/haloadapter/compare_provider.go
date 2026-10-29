@@ -11,8 +11,8 @@ import (
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/duration"
 	"levelup/go-api/internal/haloapi/infinite"
-	"levelup/go-api/internal/platform/halo/duration"
 )
 
 // FetchRemoteStats retourne les stats normalisées d'un joueur (sans les médailles). Conservé pour

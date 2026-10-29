@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"time"
 
-	"levelup/go-api/internal/platform/halo/duration"
+	"levelup/go-api/internal/duration"
 )
 
 // Ce fichier ne contient plus qu'une fine couche d'adaptation : le parsing des
 // durées ISO-8601 « flavoured Halo » est centralisé dans le leaf neutre
-// internal/platform/halo/duration (source unique, regex canonique gérant aussi
+// internal/duration (source unique, regex canonique gérant aussi
 // les jours "P1D" — corrige un bug latent de divergence inter-packages).
 //
 // On conserve les noms ParseISO8601Duration / DurationSeconds /
