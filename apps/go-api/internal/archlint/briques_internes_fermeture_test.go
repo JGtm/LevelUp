@@ -10,9 +10,7 @@
 // parcours des imports directs ne voit pas (même méthode que
 // `TestFermetureDeAnalysisSansDecodeurDeFilm`).
 //
-// Le paquet surveillé est la brique (`internal/haloapi`, arbre). Les deux paquets dont elle a été
-// extraite (`platform/halo`, `sync/haloclient`) étaient surveillés aussi tant qu'ils existaient ; ils
-// ont été supprimés au lot 4 (2026-10-29).
+// Le paquet surveillé est la brique (`internal/haloapi`, arbre).
 //
 // MESURE du 2026-10-29 (HEAD b92916328) : 299 paquets dans la fermeture, AUCUN des paquets
 // surveillés. Il n'y a donc pas d'allowlist : toute fuite est une faute à couper, pas une dette.

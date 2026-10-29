@@ -1,7 +1,7 @@
 package infinite
 
 // skill.go — skill d'un match (MMR, attendus, RankRecap), CSR d'un joueur, CSR d'une playlist.
-// Copié de `sync/haloclient/halo_skill.go` et `halo_skill_csr.go` (GET et DTO) ; la transformation
+// GET et DTO ; la transformation
 // en valeurs de domaine (MMR connu ou non, MMR adverse moyen, choix de l'entrée d'un joueur) reste
 // chez l'appelant. Une absence (404/410) est rendue typée ([IsNotFound]) : l'appelant en fait un
 // résultat vide.

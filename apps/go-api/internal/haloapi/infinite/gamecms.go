@@ -1,8 +1,7 @@
 package infinite
 
 // gamecms.go — fichiers de progression GameCMS : métadonnées des médailles, calendrier des saisons,
-// calendrier des saisons CSR. Copié de `platform/halo/medal_provider.go` et `season_provider.go`
-// (GET et DTO) ; les entrées de domaine (identifiants de saison, empreinte, horodatage) sont
+// calendrier des saisons CSR (GET et DTO) ; les entrées de domaine (identifiants de saison, empreinte, horodatage) sont
 // construites par l'appelant depuis le DTO et le corps brut rendu.
 
 import (

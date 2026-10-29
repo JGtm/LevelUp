@@ -240,8 +240,8 @@ var frenchLabelAllowlist = map[string]int{
 	"games/halo_infinite/citations_custom.go":           1,
 	"games/halo_infinite/citations_custom_modes.go":     1,
 	// Entrée DÉPLACÉE, pas un littéral neuf (2026-10-29, plan D3 lot 4) : le titre de repli d'un défi
-	// (`titreDefiParDefaut`) vivait dans platform/halo/challenges_details.go, hors des racines
-	// scannées ; le fichier entre dans le périmètre avec l'adaptateur (ADR 0012, décision D3-D).
+	// (`titreDefiParDefaut`) vivait dans le client d'avant l'adaptateur, hors des racines
+	// scannées ; le fichier entre dans le périmètre avec l'adaptateur (ADR 0012, ADR 0042).
 	"games/halo_infinite/haloadapter/challenges_details.go": 1,
 	"games/halo_infinite/events.go":                         2,
 	"games/halo_infinite/medal_category_gen.go":             9,

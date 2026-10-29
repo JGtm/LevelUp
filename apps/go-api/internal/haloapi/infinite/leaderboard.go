@@ -1,8 +1,7 @@
 package infinite
 
 // leaderboard.go — classement CSR mondial lu dans les pages publiques du site ([CleWaypointWeb],
-// `/halo-infinite/leaderboards/{saison}/{playlist}?page=N`). Copié de
-// `platform/halo/leaderboard_scraper.go` : GET des pages, extraction du JSON Next.js
+// `/halo-infinite/leaderboards/{saison}/{playlist}?page=N`) : GET des pages, extraction du JSON Next.js
 // `__NEXT_DATA__` par expression régulière, DTO de page, menu saisons/playlists, découverte de la
 // saison active par redirection. Les entrées de domaine (rang recalculé, palier), les noms par langue,
 // la graine de découverte, la pagination polie et le compteur de page vide sont à l'appelant. Aucun

@@ -1,8 +1,7 @@
 package infinite
 
-// film.go — manifeste d'un film et téléchargement parallèle de ses fragments. Copié de
-// `sync/haloclient/halo_client_film.go` (manifeste HTTP, `buildChunkURL`, téléchargement `errgroup`,
-// références de fragments). Les octets rendus sont ceux du CDN, COMPRESSÉS : la décompression, la
+// film.go — manifeste d'un film, références de fragments et téléchargement parallèle (`errgroup`)
+// de ses fragments. Les octets rendus sont ceux du CDN, COMPRESSÉS : la décompression, la
 // règle « seul un film finalisé se télécharge », la version de film et le cache local sont à
 // `sync/filmfetch`.
 

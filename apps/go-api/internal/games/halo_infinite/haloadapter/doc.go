@@ -15,7 +15,8 @@
 //     rendues en résultat vide là où l'appelant l'attend, caches (emblèmes, confidentialité),
 //     définitions d'actifs (`assets`), métadonnées des médailles, MMR connu ou non.
 //
-// [Provider] et [Client] gardent les méthodes des deux clients d'avant la brique : leurs appelants
-// n'ont changé que leur import et leur constructeur. Les films (cache disque, décompression,
+// [Provider] (services du fournisseur : défis, passe de combat, confidentialité, classements,
+// actifs) et [Client] (synchronisation : historique, stats, skill, carrière, films, plaques) sont les
+// deux façades que les appelants de LevelUp emploient. Les films (cache disque, décompression,
 // finalisation) sont à `sync/filmfetch`, que [Client] délègue.
 package haloadapter

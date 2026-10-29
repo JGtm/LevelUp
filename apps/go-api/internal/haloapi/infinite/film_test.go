@@ -55,7 +55,7 @@ func (k *compteursCrochets) crochets() Crochets {
 	}
 }
 
-// / TestDownloadBlob_304PuisSucces : un 304 est retenté avec revalidation, le nombre d'essais (2) est
+// TestDownloadBlob_304PuisSucces : un 304 est retenté avec revalidation, le nombre d'essais (2) est
 // appelé, les octets rendus sont ceux du CDN, sans aucun jeton envoyé.
 func TestDownloadBlob_304PuisSucces(t *testing.T) {
 	var n atomic.Int32

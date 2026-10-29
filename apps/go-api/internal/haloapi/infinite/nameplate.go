@@ -1,9 +1,8 @@
 package infinite
 
 // nameplate.go — bannière (nameplate) Spartan dérivée d'un emblème : table officielle
-// emblème -> nameplate (`mapping.json`) et descripteur CMS d'un emblème. Copié de
-// `sync/haloclient/spartan_nameplate_resolver.go` (GET, DTO, extraction du radical, première
-// configuration positive, gabarits d'URL). Les GET passent par le Doer du client (plus de client par
+// emblème -> nameplate (`mapping.json`) et descripteur CMS d'un emblème (GET, DTO, extraction du
+// radical, première configuration positive, gabarits d'URL). Les GET passent par le Doer du client (plus de client par
 // défaut), une seule tentative, sous une échéance de [DelaiNameplate]. Le cache de la table (6 h),
 // la résolution et les verdicts de diagnostic sont à l'appelant.
 

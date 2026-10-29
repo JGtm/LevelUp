@@ -45,8 +45,7 @@ func (rt *redirectTransport) RoundTrip(req *http.Request) (*http.Response, error
 	return http.DefaultTransport.RoundTrip(req2)
 }
 
-// Les fonctions pures de la brique sous les noms que les tests du client d'avant la brique leur
-// donnaient (mêmes entrées, mêmes sorties : la copie du lot 3 est devenue l'unique exemplaire).
+// Les fonctions pures de la brique, sous les noms que les tests de l'adaptateur emploient.
 var (
 	filterHumanXUIDs       = infinite.FilterHumanXUIDs
 	unwrapXUID             = infinite.UnwrapXUID

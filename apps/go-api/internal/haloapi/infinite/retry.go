@@ -10,8 +10,10 @@ import (
 // statuts 401/403 et 404/410 et une erreur [haloapi.ErrDefinitif] ne sont JAMAIS retentés ; une
 // erreur de transport (requête en échec, corps coupé) l'est toujours, dans la limite des essais.
 //
-// Les trois politiques nommées ([RetryProvider], [RetryDiscovery], [RetryHaloClient]) reproduisent
-// les trois boucles de LevelUp d'avant la brique ; les faire converger est une décision à venir.
+// Les trois politiques nommées ([RetryProvider], [RetryDiscovery], [RetryHaloClient]) sont celles
+// que LevelUp emploie ; elles diffèrent à dessein (statuts retentés, 429, Retry-After, attente
+// finale, limiteur) et ne convergent pas : en faire une seule serait un changement de comportement.
+// L'appelant choisit par service.
 type Retry struct {
 	// Essais : nombre maximal de requêtes envoyées.
 	Essais int
@@ -23,7 +25,7 @@ type Retry struct {
 	DelaiBase time.Duration
 	// Plafond : borne de l'attente (Retry-After compris) ; 0 = sans borne.
 	Plafond time.Duration
-	// AttenteFinale : attendre aussi après l'échec du DERNIER essai (la boucle d'origine le faisait).
+	// AttenteFinale : attendre aussi après l'échec du DERNIER essai (RetryProvider et RetryHaloClient).
 	AttenteFinale bool
 	// ArretSurContexte : une fin de contexte pendant une attente rend aussitôt `ctx.Err()` ; sinon la
 	// boucle poursuit et les essais suivants échouent sur le contexte.
@@ -35,7 +37,7 @@ type Retry struct {
 	IgnoreErreurLimiteur bool
 }
 
-// Délais des trois boucles d'origine.
+// Délais communs aux trois politiques.
 const (
 	delaiBaseReprise = 800 * time.Millisecond
 	plafondReprise   = 10 * time.Second
@@ -45,8 +47,8 @@ const (
 	premierStatut5xx = http.StatusInternalServerError
 )
 
-// RetryProvider : la boucle de `platform/halo` `HaloProvider.doGet` (passe de combat, défis,
-// service record, confidentialité, médailles, saisons, `FetchMatchStats`). 3 essais ; TOUT statut
+// RetryProvider : la politique des services du fournisseur (passe de combat, défis, service
+// record, confidentialité, médailles, saisons, `FetchMatchStats`). 3 essais ; TOUT statut
 // non-200 hors 401/403/404/410 est retenté, 429 compris ; Retry-After ignoré ; attente
 // 800 ms·2^n bornée à 10 s, y compris après le dernier essai ; limiteur avant chaque essai, son
 // erreur arrête.
@@ -60,7 +62,7 @@ func RetryProvider() Retry {
 	}
 }
 
-// RetryDiscovery : la boucle de `platform/halo` `doGetWithLang` (actifs Discovery UGC). 3 essais ;
+// RetryDiscovery : la politique des actifs Discovery UGC. 3 essais ;
 // seuls les 5xx sont retentés (429 et tout autre 4xx sont rendus) ; Retry-After ignoré ; attente
 // 800 ms puis 1,6 s entre les essais, aucune après le dernier ; une fin de contexte pendant
 // l'attente rend `ctx.Err()` ; le limiteur n'est attendu qu'une fois, son erreur arrête.
@@ -74,8 +76,9 @@ func RetryDiscovery() Retry {
 	}
 }
 
-// RetryHaloClient : la boucle de `sync/haloclient` `doGet` (historique, stats, skill, CSR, carrière,
-// apparence, playlists, manifestes de film ; ses essais et délais servent aussi aux blobs du CDN).
+// RetryHaloClient : la politique du client de synchronisation (historique, stats, skill, CSR,
+// carrière, apparence, playlists, manifestes de film ; ses essais et délais servent aussi aux blobs
+// du CDN).
 // 4 essais ; 429 est rendu IMMÉDIATEMENT (avec sa fenêtre Retry-After : le pool de l'appelant gère
 // le refroidissement) ; tout autre statut non-200 est retenté ; attente 800 ms·2^n, au moins la
 // fenêtre Retry-After, bornée à 10 s, y compris après le dernier essai ; limiteur avant chaque

@@ -12,12 +12,9 @@
 //
 // # LA LIGNE `haloapi`
 //
-// Au lot 1 elle désignait les dossiers des coupes (`platform/halo`, `sync/haloclient`, et la LISTE
-// des fichiers d'authentification de `platform/auth`), avec des tolérances datées par import visé.
-// Lot 2 : la liste `platform/auth` est partie dans `xblauth`. Lot 4 (2026-10-29) : `platform/halo` et
-// `sync/haloclient` sont SUPPRIMÉS ; il ne reste que `internal/haloapi` (arbre), toutes les tolérances
-// sont tombées à zéro et la table de tolérances est vide : tout import hors de la liste fermée est
-// rouge. Le mécanisme des dossiers à liste est parti avec le dernier qui s'en servait.
+// Elle désigne l'arbre `internal/haloapi` ; la table de tolérances est vide : tout import hors de
+// la liste fermée est rouge. Le mécanisme de tolérance (compte par import visé, qui ne fait que
+// descendre) reste exercé par ses auto-preuves.
 //
 // # CE QU'ELLE VÉRIFIE
 //
@@ -102,9 +99,7 @@ var briquesInternes = []briqueInterne{
 		dossiers: []string{dossierHaloapi},
 		permis:   cheminsHaloapiPermis,
 		tiers:    tiersHaloapi,
-		// Aucune tolérance : les comptes mesurés le 2026-10-29 au lot 1 (20 imports visés, 105
-		// franchissements) sont tombés à zéro avec la suppression de `platform/halo` et
-		// `sync/haloclient` au lot 4 (2026-10-29).
+		// Aucune tolérance : la brique n'importe rien de LevelUp hors d'elle-même.
 	},
 }
 

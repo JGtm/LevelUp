@@ -1,7 +1,7 @@
 package infinite
 
-// playlist.go — configuration d'une playlist (Discovery UGC). Copié de
-// `sync/haloclient/halo_client_playlist.go` (GET, DTO et lecture des couples carte-mode).
+// playlist.go — configuration d'une playlist (Discovery UGC) : GET, DTO et lecture des couples
+// carte-mode.
 
 import (
 	"context"

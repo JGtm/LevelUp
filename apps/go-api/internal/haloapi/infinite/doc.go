@@ -12,7 +12,10 @@
 //     et en-tête `Accept-Language` lui sont PASSÉS. Elle ne juge pas les valeurs (un MMR nul, un
 //     401 « joueur tiers », une absence 404 sont rendus tels quels, typés : l'appelant décide).
 //   - AUCUN CLIENT HTTP CONSTRUIT : chaque requête part par le [haloapi.Doer] reçu, qui porte la
-//     garde `netguard` et le délai. Une erreur [haloapi.ErrDefinitif] arrête toute reprise.
+//     garde `netguard` et le délai. Une erreur [haloapi.ErrDefinitif] arrête toute reprise. Si ce
+//     `Doer` porte une [haloapi.Garde], la brique la consulte AVANT le limiteur et avant toute
+//     attente, au début de chaque appel (requête et blob) : une sortie refusée ne consomme aucun
+//     jeton du limiteur et ne déclenche aucune reprise.
 //   - OCTETS DE FILM COMPRESSÉS : la brique télécharge les blobs du CDN et contrôle leur taille
 //     annoncée ; elle ne décompresse pas et ne lit aucun octet de film (la décompression et la
 //     finalisation sont à `sync/filmfetch`, ratchet `no_raw_film_bytes_outside_source_test.go`).

@@ -1,9 +1,7 @@
 package infinite
 
-// blob.go — téléchargement d'un blob du CDN des films (fragments, temps forts). Copié de
-// `sync/haloclient/halo_client_http.go` (`downloadBlob`, `fetchBlobOnce`, `retryableBlobStatus`,
-// `blobAbandon`) et `halo_client_film_taille.go` (contrôle de la taille annoncée). Le CDN est
-// public : aucun en-tête de jeton. Les octets rendus sont COMPRESSÉS ; la décompression est à
+// blob.go — téléchargement d'un blob du CDN des films (fragments, temps forts), reprise sur les
+// statuts du CDN et contrôle de la taille annoncée. Le CDN est public : aucun en-tête de jeton. Les octets rendus sont COMPRESSÉS ; la décompression est à
 // l'appelant.
 
 import (

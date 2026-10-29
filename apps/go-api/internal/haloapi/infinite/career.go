@@ -1,7 +1,6 @@
 package infinite
 
-// career.go — progression du rang carrière (Economy). Copié de `sync/haloclient/halo_client_career.go`
-// (`GetCareerProgress`, `parseCareerProgressPayload`) ; un 401/403 est rendu typé ([IsAuthError]) :
+// career.go — progression du rang carrière (Economy) ; un 401/403 est rendu typé ([IsAuthError]) :
 // la lecture « jeton sans portée joueur = absent » est une politique de l'appelant.
 
 import (

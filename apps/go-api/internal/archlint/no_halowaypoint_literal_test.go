@@ -4,9 +4,9 @@
 // officielles Halo) dans un fichier .go non-test hors de l'allowlist ci-dessous.
 //
 // Contexte : le gate F du plan d'audit promettait « grep halowaypoint hors
-// games/halo_infinite + platform/halo → 0 (allowlist temporaire datée) » mais
-// aucun garde-rail n'a jamais été créé, et K3e a depuis déplacé le client HTTP
-// dans internal/sync/haloclient/. Sans ratchet, l'invariant « les URLs Halo en
+// games/halo_infinite + client HTTP → 0 (allowlist temporaire datée) » mais
+// aucun garde-rail n'a jamais été créé ; le client HTTP vit dans internal/haloapi/infinite/.
+// Sans ratchet, l'invariant « les URLs Halo en
 // dur vivent dans une poignée de fichiers frontière » re-divergera silencieusement
 // (leçon CLAUDE.md règle 6 : factorisation/frontière sans garde-rail).
 //
@@ -46,11 +46,10 @@ import (
 //
 // Toute suppression d'une URL en dur d'un de ces fichiers RETIRE son entrée.
 var halowaypointAllowlist = map[string]bool{
-	// haloapi/infinite/ — client des services Halo Infinite de la brique « API Halo » (plan D3,
-	// lot 3, 2026-10-29) : endpoints.go est l'UNIQUE endroit de ses adresses par défaut (les autres
-	// fichiers de la brique reçoivent des Endpoints et ne nomment aucun hôte). Lot 4 (2026-10-29) :
-	// les dix entrées `sync/haloclient/` et `platform/halo/` sont parties avec leurs dossiers
-	// supprimés ; `games/halo_infinite/haloadapter` et `sync/filmfetch` ne nomment aucun hôte (solde -9).
+	// haloapi/infinite/ — client des services Halo Infinite de la brique « API Halo » (ADR 0042) :
+	// endpoints.go est l'UNIQUE endroit de ses adresses par défaut (les autres fichiers de la brique
+	// reçoivent des Endpoints et ne nomment aucun hôte) ; `games/halo_infinite/haloadapter` et
+	// `sync/filmfetch` n'en nomment aucun.
 	"internal/haloapi/infinite/endpoints.go": true,
 	// platform/auth/ : plus aucune entrée. (provider.go retiré au retrait de MSAL 2026-07-15 ;
 	// halo_exchange.go retiré le 2026-10-29, plan D3 lot 2 : la chaîne d'échange est partie dans

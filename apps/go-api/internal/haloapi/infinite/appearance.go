@@ -1,9 +1,8 @@
 package infinite
 
 // appearance.go — apparence Spartan (Economy) et résolution d'une image de personnalisation
-// (GameCMS). Copié de `sync/haloclient/halo_client_career.go` (fetch et parse de l'apparence,
-// `resolveCustomizationImageURL`) et de `appearance_inputs.go`. Le repli « vue publique » d'un
-// joueur tiers (403 sur `/customization/appearance`) est une politique : l'appelant enchaîne
+// (GameCMS) : fetch et parse de l'apparence, résolution de l'adresse d'image. Le repli « vue
+// publique » d'un joueur tiers (403 sur `/customization/appearance`) est une politique : l'appelant enchaîne
 // [Client.GetCustomizationAppearance] puis [Client.GetCustomizationPublic] sur [IsAuthError].
 
 import (

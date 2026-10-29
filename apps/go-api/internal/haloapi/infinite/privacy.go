@@ -1,7 +1,6 @@
 package infinite
 
-// privacy.go — confidentialité des matchs d'un compte. Copié de `platform/halo/privacy_provider.go`
-// (GET et DTO) ; le cache (succès 30 min, échec 5 min) et la lecture du verdict sont à l'appelant.
+// privacy.go — confidentialité des matchs d'un compte (GET et DTO) ; le cache (succès 30 min, échec 5 min) et la lecture du verdict sont à l'appelant.
 
 import (
 	"context"

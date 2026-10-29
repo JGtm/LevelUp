@@ -1,9 +1,8 @@
 package infinite
 
 // discovery.go — actifs Discovery UGC (playlists, cartes, couples carte-mode, variantes de jeu)
-// avec leur nom localisé. Copié de `platform/halo/discovery_client.go` (`FetchAsset`) et
-// `discovery_types.go`. Le service exige les jetons Spartan et 343-clearance ; version_id est
-// requis (404 sans, 400 pour « latest »). Politique de reprise d'origine : [RetryDiscovery].
+// avec leur nom localisé. Le service exige les jetons Spartan et 343-clearance ; version_id est
+// requis (404 sans, 400 pour « latest »). Politique de reprise habituelle : [RetryDiscovery].
 
 import (
 	"context"

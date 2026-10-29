@@ -17,7 +17,7 @@ package finalise
 // # UN SEUL PREDICAT, ET UN RATCHET
 //
 // [Finalise] est LE predicat : le writer (`filmcache.Write`), le telechargement
-// (`sync/haloclient.fetchFilmChunks`), le killsource (`sync/killcollector.LocalCacheFilms`), la
+// (`sync/filmfetch`), le killsource (`sync/killcollector.LocalCacheFilms`), la
 // cuisson (`replaybuild`) et le fil des morts (`grammar.ScanDeaths`) le partagent. Une comparaison
 // au type 3 recopiee ailleurs re-divergerait : `archlint/film_finalise_predicate_test.go` interdit
 // toute comparaison au type des temps forts hors de ce fichier (allowlist datee des sites

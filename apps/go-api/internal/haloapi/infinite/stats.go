@@ -1,9 +1,7 @@
 package infinite
 
-// stats.go — historique et stats des matchs, service record. Copié de `sync/haloclient/halo_client.go`
-// (`GetMatchHistory`, `GetMatchStats`), de `platform/halo/discovery_client.go` (`FetchMatchStats`)
-// et de `platform/halo/compare_provider.go` (GET du service record, `buildSeasonServiceRecordURL`) ;
-// les calculs de domaine (ratios, FDA, médailles) restent chez l'appelant.
+// stats.go — historique et stats des matchs (deux hôtes de stats, `FetchMatchStats` compris), service
+// record (GET et construction de l'adresse de saison) ; les calculs de domaine (ratios, FDA, médailles) restent chez l'appelant.
 
 import (
 	"context"

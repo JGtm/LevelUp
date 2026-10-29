@@ -1,8 +1,7 @@
 package infinite
 
-// operations.go — passe de combat (opérations, Economy) et défis (decks, stats). Copié de
-// `platform/halo/provider.go` (`fetchBattlePass`, `fetchChallenges` : GET et DTO) et de
-// `challenges_details.go` (DTO des decks). Le corps brut est rendu avec le DTO : l'appelant le
+// operations.go — passe de combat (opérations, Economy) et défis (decks, stats) : GET et DTO,
+// decks compris. Le corps brut est rendu avec le DTO : l'appelant le
 // persiste tel quel. La résolution des définitions (pistes, objets, défis) passe par les actifs de
 // LevelUp, pas par la brique.
 
