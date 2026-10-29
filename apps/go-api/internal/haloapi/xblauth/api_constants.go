@@ -1,10 +1,11 @@
-// Package auth — api_constants.go : champs JSON et form-encoded partagés.
+// api_constants.go : champs JSON et form-encoded partagés.
 //
 // Ce fichier centralise les noms de champs des payloads OAuth v2 / Xbox /
 // XSTS / SISU pour réduire la duplication signalée par goconst.
 // Ces noms sont définis par les protocoles externes (Microsoft, Xbox Live)
 // — ne pas modifier sans coordination avec les endpoints distants.
-package auth
+
+package xblauth
 
 // Champs JSON Xbox / XSTS payloads (RelyingParty, TokenType, Properties, Token).
 const (
@@ -21,4 +22,5 @@ const (
 	oauthFieldCode         = "code"
 	oauthFieldRefreshToken = "refresh_token"
 	oauthFieldDeviceCode   = "device_code"
+	oauthFieldGrantType    = "grant_type"
 )

@@ -1,13 +1,12 @@
-// halo_exchange_descriptor_test.go — oracle PMT-2 Contract (MT-02) : parité
-// byte-identique PAR LEG du chemin d'échange après threading de title.AuthDescriptor.
+// exchange_descriptor_test.go — oracle PMT-2 Contract (MT-02) : parité byte-identique PAR LEG du
+// chemin d'échange avec le Descriptor (déplacé de platform/auth/halo_exchange_descriptor_test.go,
+// plan D3 lot 2).
 //
-// Le client *http.Client est construit en interne par les entrées publiques
-// (ExchangeAccessToken…), donc l'interception se fait au niveau des fonctions de
-// leg (qui prennent le client). On y prouve : (a) le défaut Halo produit des
+// L'interception se fait au niveau des fonctions de leg (qui reçoivent le Doer). On y prouve : (a) le défaut Halo produit des
 // requêtes byte-identiques aux littéraux actuels ; (b) un descripteur synthétique
 // route vers ses propres valeurs.
 
-package auth
+package xblauth
 
 import (
 	"context"
@@ -15,8 +14,6 @@ import (
 	"net/http"
 	"strings"
 	"testing"
-
-	"levelup/go-api/internal/domain/title"
 )
 
 // recordingRT capture la requête sortante et renvoie une réponse canned.
@@ -45,7 +42,7 @@ func TestRequestSpartanTokenWith_GoldenAndRouting(t *testing.T) {
 	t.Run("défaut Halo = byte-identique", func(t *testing.T) {
 		rt := &recordingRT{resp: `{"SpartanToken":"sp"}`}
 		client := &http.Client{Transport: rt}
-		d := title.DefaultHaloAuthDescriptor()
+		d := descripteurHaloTest
 		if _, _, err := requestSpartanTokenWith(ctx, client, "XSTS_TOK", d.SpartanAudience, d.SpartanTokenURL); err != nil {
 			t.Fatalf("requestSpartanTokenWith: %v", err)
 		}
@@ -83,7 +80,7 @@ func TestRequestClearanceTokenWith_GoldenAndRouting(t *testing.T) {
 	t.Run("défaut Halo = byte-identique", func(t *testing.T) {
 		rt := &recordingRT{resp: `{"FlightConfigurationId":"fc"}`}
 		client := &http.Client{Transport: rt}
-		d := title.DefaultHaloAuthDescriptor()
+		d := descripteurHaloTest
 		if _, err := requestClearanceTokenWith(ctx, client, "SPARTAN", d.ClearanceURL); err != nil {
 			t.Fatalf("requestClearanceTokenWith: %v", err)
 		}
@@ -111,17 +108,6 @@ func TestRequestClearanceTokenWith_GoldenAndRouting(t *testing.T) {
 	})
 }
 
-// TestScopes_DescriptorDerivation_GoldenParity prouve que les scopes dérivés du
-// descripteur (MT-02 leg 4) sont byte-identiques aux littéraux historiques.
-func TestScopes_DescriptorDerivation_GoldenParity(t *testing.T) {
-	if len(XboxScopes) != 2 || XboxScopes[0] != "Xboxlive.signin" || XboxScopes[1] != "Xboxlive.offline_access" {
-		t.Errorf("XboxScopes = %v, want [Xboxlive.signin Xboxlive.offline_access]", XboxScopes)
-	}
-	if xboxScopes != "Xboxlive.signin Xboxlive.offline_access" {
-		t.Errorf("xboxScopes = %q, want space-joined", xboxScopes)
-	}
-}
-
 // TestRequestXSTSToken_DescriptorAudience prouve que l'audience du descripteur
 // arrive dans le corps RelyingParty de la requête XSTS.
 func TestRequestXSTSToken_DescriptorAudience(t *testing.T) {
@@ -129,7 +115,7 @@ func TestRequestXSTSToken_DescriptorAudience(t *testing.T) {
 	rt := &recordingRT{resp: `{"Token":"x","DisplayClaims":{"xui":[{"gtg":"GT","xid":"123","uhs":"h"}]}}`}
 	client := &http.Client{Transport: rt}
 
-	d := title.DefaultHaloAuthDescriptor()
+	d := descripteurHaloTest
 	if _, _, _, err := requestXSTSToken(ctx, client, "USER_TOK", d.XSTSAudience); err != nil {
 		t.Fatalf("requestXSTSToken: %v", err)
 	}

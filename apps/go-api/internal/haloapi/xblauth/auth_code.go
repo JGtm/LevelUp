@@ -1,17 +1,18 @@
-// Package auth — auth_code.go : échange d'un Authorization Code OAuth v2 contre
-// un access_token Microsoft (PR 4 — flow redirect SSO).
+// auth_code.go : échange d'un Authorization Code OAuth v2 contre un access_token Microsoft
+// (flow redirect SSO).
 //
 // Architecture du flow Authorization Code (RFC 6749 §4.1) :
-//  1. Frontend redirect 302 vers https://login.microsoftonline.com/.../authorize
-//     avec response_type=code + state CSRF stocké en session.
+//  1. Frontend redirect 302 vers l'adresse /authorize ([BuildAuthorizeURL]) avec
+//     response_type=code + state CSRF stocké en session.
 //  2. User s'authentifie chez Microsoft + autorise l'app LevelUp.
 //  3. Microsoft redirect 302 vers redirect_uri?code=...&state=...
-//  4. Backend (handler Callback) vérifie state vs session, puis exchange code
-//     → access_token + refresh_token via ce module.
+//  4. Backend (handler Callback) vérifie state vs session, puis échange code
+//     -> access_token + refresh_token ([OAuth.ExchangeAuthorizationCode]).
 //
-// Différent du Device Code Flow (msal_client.go, RFC 8628) qui demande à l'user
-// de copier un code 9 caractères vers login.live.com/devicelogin.
-package auth
+// Différent du Device Code Flow (xbox_device_code.go, RFC 8628) qui demande à l'utilisateur de
+// copier un code court vers une page Microsoft.
+
+package xblauth
 
 import (
 	"context"
@@ -25,7 +26,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 )
 
 // GeneratePKCE génère un code_verifier et son code_challenge S256 (RFC 7636).
@@ -43,7 +43,7 @@ func GeneratePKCE() (string, string, error) {
 	return verifier, challenge, nil
 }
 
-// pkceVerifierBytes est l'entropie du code_verifier PKCE (32 octets → 43 caractères
+// pkceVerifierBytes est l'entropie du code_verifier PKCE (32 octets -> 43 caractères
 // base64url, minimum de la RFC 7636 §4.1).
 const pkceVerifierBytes = 32
 
@@ -54,14 +54,12 @@ type AuthCodeResult struct {
 	ExpiresIn    int
 }
 
-// ExchangeAuthorizationCode échange un Authorization Code OAuth v2 contre
-// un access_token + refresh_token Microsoft.
+// ExchangeAuthorizationCode échange un Authorization Code OAuth v2 contre un access_token +
+// refresh_token Microsoft, auprès de `o.URLAzure` avec le client `o.Azure`.
 //
-// Client/secret résolus par ResolveAzureOAuthClient (source unique).
-// Le redirectURI doit être strictement identique à celui passé dans la redirect
-// vers /authorize (Microsoft vérifie ce match).
-// codeVerifier : PKCE (RFC 7636) — vide = pas de PKCE (rétrocompat / device flow).
-func ExchangeAuthorizationCode(ctx context.Context, code, redirectURI, codeVerifier string) (*AuthCodeResult, error) {
+// Le redirectURI doit être strictement identique à celui passé dans la redirect vers /authorize
+// (Microsoft vérifie ce match). codeVerifier : PKCE (RFC 7636) — vide = pas de PKCE.
+func (o OAuth) ExchangeAuthorizationCode(ctx context.Context, code, redirectURI, codeVerifier string) (*AuthCodeResult, error) {
 	if code == "" {
 		return nil, fmt.Errorf("auth_code: code vide")
 	}
@@ -71,14 +69,12 @@ func ExchangeAuthorizationCode(ctx context.Context, code, redirectURI, codeVerif
 
 	slog.DebugContext(ctx, "auth_code: échange code → tokens", "pkce", codeVerifier != "")
 
-	azClient := ResolveAzureOAuthClient()
-
 	body := url.Values{
-		oauthFieldClientID: {azClient.ClientID},
-		"grant_type":       {"authorization_code"},
-		oauthFieldCode:     {code},
-		"redirect_uri":     {redirectURI},
-		oauthFieldScope:    {xboxScopes},
+		oauthFieldClientID:  {o.Azure.ID},
+		oauthFieldGrantType: {"authorization_code"},
+		oauthFieldCode:      {code},
+		"redirect_uri":      {redirectURI},
+		oauthFieldScope:     {o.Azure.ScopesParam()},
 	}
 
 	// PKCE : renvoyer le code_verifier qui matche le code_challenge de l'authorize.
@@ -86,21 +82,19 @@ func ExchangeAuthorizationCode(ctx context.Context, code, redirectURI, codeVerif
 		body.Set("code_verifier", codeVerifier)
 	}
 
-	// App confidentielle : inclure client_secret si la garde public/confidentiel
-	// l'autorise (cf. AzureOAuthClient.SecretToSend).
-	if secret := azClient.SecretToSend(); secret != "" {
+	// App confidentielle : inclure client_secret s'il est fourni.
+	if secret := o.Azure.Secret; secret != "" {
 		body.Set("client_secret", secret)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, msalTokenURL,
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, o.URLAzure,
 		strings.NewReader(body.Encode()))
 	if err != nil {
 		return nil, fmt.Errorf("auth_code: construction requête: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	client := &http.Client{Timeout: 15 * time.Second}
-	resp, err := client.Do(req)
+	resp, err := o.Doer.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("auth_code: appel token endpoint: %w", err)
 	}
@@ -140,17 +134,16 @@ func ExchangeAuthorizationCode(ctx context.Context, code, redirectURI, codeVerif
 	}, nil
 }
 
-// BuildAuthorizeURL construit l'URL de redirect vers Microsoft /authorize pour
-// initier le Authorization Code Flow. Le state doit être généré aléatoirement
-// (32+ bytes) et persisté en session pour vérification au callback.
-// codeChallenge : PKCE (RFC 7636, S256) — vide = pas de PKCE (rétrocompat).
-func BuildAuthorizeURL(redirectURI, state, codeChallenge string) string {
-	clientID := ResolveAzureOAuthClient().ClientID
+// BuildAuthorizeURL construit l'URL de redirect vers l'adresse /authorize du client `az` pour
+// initier le Authorization Code Flow. Le state doit être généré aléatoirement (32+ bytes) et
+// persisté en session pour vérification au callback. codeChallenge : PKCE (RFC 7636, S256) —
+// vide = pas de PKCE.
+func BuildAuthorizeURL(az ClientAzure, redirectURI, state, codeChallenge string) string {
 	params := url.Values{
-		oauthFieldClientID: {clientID},
+		oauthFieldClientID: {az.ID},
 		"response_type":    {"code"},
 		"redirect_uri":     {redirectURI},
-		oauthFieldScope:    {xboxScopes},
+		oauthFieldScope:    {az.ScopesParam()},
 		"state":            {state},
 		"response_mode":    {"query"},
 	}
@@ -158,5 +151,5 @@ func BuildAuthorizeURL(redirectURI, state, codeChallenge string) string {
 		params.Set("code_challenge", codeChallenge)
 		params.Set("code_challenge_method", "S256")
 	}
-	return fmt.Sprintf("%s/oauth2/v2.0/authorize?%s", MSALAuthority, params.Encode())
+	return fmt.Sprintf("%s?%s", az.URLAutorisation(), params.Encode())
 }

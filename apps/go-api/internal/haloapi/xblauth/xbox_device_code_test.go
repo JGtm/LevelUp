@@ -1,5 +1,7 @@
-// Package auth — xbox_device_code_test.go : tests unitaires pour xbox_device_code.go.
-package auth
+// xbox_device_code_test.go : tests unitaires pour xbox_device_code.go (déplacés de platform/auth,
+// plan D3 lot 2).
+
+package xblauth
 
 import (
 	"context"
@@ -30,8 +32,8 @@ func TestStartXboxDeviceCode_Success(t *testing.T) {
 		// Le scope DOIT être le scope MSA natif : le ticket rendu s'échange en User
 		// Token XBL avec le préfixe « t= » ; les scopes Azure AD produiraient un JWT
 		// AAD hors de cette famille.
-		if r.Form.Get("scope") != sisuMSAScope {
-			t.Errorf("scope attendu %q (MSA natif SISU), obtenu %q", sisuMSAScope, r.Form.Get("scope"))
+		if r.Form.Get("scope") != ScopeMSA {
+			t.Errorf("scope attendu %q (MSA natif SISU), obtenu %q", ScopeMSA, r.Form.Get("scope"))
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]any{ //nolint:errcheck
@@ -44,7 +46,7 @@ func TestStartXboxDeviceCode_Success(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	result, err := startXboxDeviceCodeWithURL(context.Background(), srv.Client(), "test-client-id", srv.URL)
+	result, err := FluxAppareil{Doer: srv.Client(), URLConnect: srv.URL}.Start(context.Background(), "test-client-id")
 	if err != nil {
 		t.Fatalf("StartXboxDeviceCode: %v", err)
 	}
@@ -70,7 +72,7 @@ func TestStartXboxDeviceCode_MissingDeviceCode(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	_, err := startXboxDeviceCodeWithURL(context.Background(), srv.Client(), "client-id", srv.URL)
+	_, err := FluxAppareil{Doer: srv.Client(), URLConnect: srv.URL}.Start(context.Background(), "client-id")
 	if err == nil {
 		t.Fatal("attendu une erreur si device_code absent")
 	}
@@ -98,7 +100,7 @@ func TestPollXboxDeviceCode_AuthorizationPending(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	at, rt, err := pollXboxDeviceCodeWithURL(ctx, srv.Client(), "client-id", "device-code", 0, srv.URL)
+	at, rt, err := FluxAppareil{Doer: srv.Client(), URLToken: srv.URL}.Poll(ctx, "client-id", "device-code", 0)
 	if err != nil {
 		t.Fatalf("PollXboxDeviceCode: %v", err)
 	}
@@ -133,7 +135,7 @@ func TestPollXboxDeviceCode_SlowDown(t *testing.T) {
 	// Avec interval=0, le slow_down doit augmenter l'intervalle à pollSlowDownIncrement (5s)
 	// mais le test utilise 0 pour accélérer l'exécution (le sleep est quand même déclenché).
 	// On vérifie juste que ça passe sans erreur.
-	_, _, err := pollXboxDeviceCodeWithURL(ctx, srv.Client(), "client-id", "device-code", 0, srv.URL)
+	_, _, err := FluxAppareil{Doer: srv.Client(), URLToken: srv.URL}.Poll(ctx, "client-id", "device-code", 0)
 	if err != nil {
 		t.Fatalf("PollXboxDeviceCode avec slow_down: %v", err)
 	}
@@ -150,7 +152,7 @@ func TestPollXboxDeviceCode_FatalError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	_, _, err := pollXboxDeviceCodeWithURL(context.Background(), srv.Client(), "client-id", "device-code", 0, srv.URL)
+	_, _, err := FluxAppareil{Doer: srv.Client(), URLToken: srv.URL}.Poll(context.Background(), "client-id", "device-code", 0)
 	if err == nil {
 		t.Fatal("attendu une erreur fatale sur access_denied")
 	}
@@ -171,7 +173,7 @@ func TestPollXboxDeviceCode_ContextCancel(t *testing.T) {
 		cancel()
 	}()
 
-	_, _, err := pollXboxDeviceCodeWithURL(ctx, srv.Client(), "client-id", "device-code", 0, srv.URL)
+	_, _, err := FluxAppareil{Doer: srv.Client(), URLToken: srv.URL}.Poll(ctx, "client-id", "device-code", 0)
 	if err == nil {
 		t.Fatal("attendu une erreur de contexte annulé")
 	}

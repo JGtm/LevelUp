@@ -1,4 +1,4 @@
-package auth
+package xblauth
 
 import (
 	"context"
@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+
+	"levelup/go-api/internal/haloapi"
 )
 
 // xboxProfileBaseURL — endpoint Xbox Live "profile settings". Contrairement à
@@ -18,7 +20,7 @@ import (
 // avaient < 8 joueurs persistés faute de résolution PeopleHub).
 //
 // Auth : MÊME token que PeopleHub — un XSTS audience http://xboxlive.com
-// (header "XBL3.0 x=<uhs>;<xsts>"). Le projet sait DÉJÀ le produire (cf. xsts.go
+// (header "XBL3.0 x=<uhs>;<xsts>"). Le projet sait DÉJÀ le produire (cf. xsts_rta.go
 // AcquireXSTSForRTA + CachedHeaderProvider câblé dans worldenrich.BuildMultiResolver) ;
 // ce résolveur RÉUTILISE le même headerFn, aucune nouvelle chaîne de token requise.
 const xboxProfileBaseURL = "https://profile.xboxlive.com/users"
@@ -26,7 +28,7 @@ const xboxProfileBaseURL = "https://profile.xboxlive.com/users"
 // XboxProfileResolver résout gamertag -> xuid via l'endpoint profil Xbox Live.
 // Title-agnostic (xuid Xbox global) : le même résolveur sert tous les titres.
 type XboxProfileResolver struct {
-	client   *http.Client
+	doer     haloapi.Doer
 	headerFn func(ctx context.Context) (string, error)
 	baseURL  string // overridable pour les tests
 }
@@ -34,12 +36,10 @@ type XboxProfileResolver struct {
 // NewXboxProfileResolver construit le résolveur. headerFn fournit un header
 // "XBL3.0 x=<uhs>;<xsts>" valide (XSTS, audience http://xboxlive.com) — le MÊME
 // que NewPeopleHubResolver (réutilisable tel quel). Le caller mémoïse/rafraîchit
-// le token (cf. CachedHeaderProvider). client nil -> http.DefaultClient.
-func NewXboxProfileResolver(client *http.Client, headerFn func(ctx context.Context) (string, error)) *XboxProfileResolver {
-	if client == nil {
-		client = http.DefaultClient
-	}
-	return &XboxProfileResolver{client: client, headerFn: headerFn, baseURL: xboxProfileBaseURL}
+// le token (cf. `platform/auth.CachedHeaderProvider`). `doer` est obligatoire (la brique n'en construit
+// aucun).
+func NewXboxProfileResolver(doer haloapi.Doer, headerFn func(ctx context.Context) (string, error)) *XboxProfileResolver {
+	return &XboxProfileResolver{doer: doer, headerFn: headerFn, baseURL: xboxProfileBaseURL}
 }
 
 // ResolveXUID retourne l'xuid numérique du gamertag (sans wrapper "xuid()"), ou
@@ -66,7 +66,7 @@ func (r *XboxProfileResolver) ResolveXUID(ctx context.Context, gamertag string) 
 	req.Header.Set("Authorization", header)
 	req.Header.Set("Accept-Language", "en-us")
 
-	resp, err := r.client.Do(req)
+	resp, err := r.doer.Do(req)
 	if err != nil {
 		return "", err
 	}

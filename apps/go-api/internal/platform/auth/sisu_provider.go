@@ -19,11 +19,12 @@ import (
 	"net/http"
 
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/haloapi/xblauth"
 )
 
 const (
 	// SISUDefaultAppID est le client_id Xbox natif utilisé par l'app Xbox sur Windows.
-	SISUDefaultAppID = "000000004c20a908"
+	SISUDefaultAppID = xblauth.IDAppXboxNatif
 	// SISUDefaultTitleID est le title_id de Halo Infinite.
 	SISUDefaultTitleID = "144209987"
 )
@@ -129,7 +130,7 @@ var _ TokenProvider = (*SISUProvider)(nil)
 
 // InitDeviceFlow démarre un Device Code Flow Xbox natif sur login.live.com.
 func (p *SISUProvider) InitDeviceFlow(ctx context.Context) (DeviceFlow, error) {
-	return p.initDeviceFlowWithURL(ctx, xboxDeviceCodeURL)
+	return p.initDeviceFlowWithURL(ctx, xblauth.URLConnectMSA)
 }
 
 // initDeviceFlowWithURL est la version testable avec l'endpoint de démarrage configurable.

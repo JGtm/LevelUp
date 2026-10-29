@@ -1,24 +1,22 @@
-// Package auth — xsts.go : obtention de tokens XSTS pour Xbox Live RTA.
+// xsts_rta.go : obtention d'un XSTS Xbox Live pour RTA (et PeopleHub, profil Xbox).
 //
-// Réutilise les fonctions internes de halo_exchange.go (XBL user token + XSTS)
-// mais avec un RelyingParty différent : http://xboxlive.com (au lieu de l'audience Halo).
-//
-// Flow :
+// Même chaîne que l'échange Halo (User Token XBL puis XSTS) mais avec la RelyingParty Xbox Live
+// (http://xboxlive.com) au lieu de l'audience du titre :
 //
 //	access_token (Microsoft)
-//	  → User Token (XBL)                   [user.auth.xboxlive.com]
-//	  → XSTS Token Xbox Live               [xsts.auth.xboxlive.com, RP=http://xboxlive.com]
-//	  → Authorization header pour RTA WS :  XBL3.0 x=<userhash>;<xsts_token>
-package auth
+//	  -> User Token (XBL)                   [user.auth.xboxlive.com]
+//	  -> XSTS Token Xbox Live               [xsts.auth.xboxlive.com, RP=http://xboxlive.com]
+//	  -> Authorization header pour RTA WS :  XBL3.0 x=<userhash>;<xsts_token>
+
+package xblauth
 
 import (
 	"context"
 	"fmt"
 	"log/slog"
-	"net/http"
 	"time"
 
-	"levelup/go-api/internal/observability/logging"
+	"levelup/go-api/internal/haloapi"
 )
 
 const (
@@ -40,50 +38,14 @@ func (r *XSTSResult) AuthHeader() string {
 	return fmt.Sprintf("XBL3.0 x=%s;%s", r.UserHash, r.Token)
 }
 
-// AcquireXSTSForRTAWithProvenance acquiert le XSTS RTA en posant la provenance
-// persistée du joueur (préfixe RpsTicket connu → aucun 401 inutile à l'échange
-// XBL), puis persiste celle qui a été MESURÉE si elle a changé.
-//
-// À préférer à AcquireXSTSForRTA partout où l'appelant dispose du store et du
-// xuid. Sans elle, l'échange repart du préfixe par défaut « d= » et les comptes
-// qui n'acceptent que « t= » encaissent un 401 puis un retry à CHAQUE boot.
-//
-// store ou xuid absents → dégrade proprement en AcquireXSTSForRTA (aucune
-// provenance posée, aucune mesure persistée).
-func AcquireXSTSForRTAWithProvenance(
-	ctx context.Context, store *MultiUserTokenStore, xuid, accessToken string,
-) (*XSTSResult, error) {
-	if store == nil || xuid == "" {
-		return AcquireXSTSForRTA(ctx, accessToken)
-	}
-	known := ""
-	if ut, err := store.Load(xuid); err == nil && ut != nil {
-		known = ut.TokenClientFamily
-	}
-	ctx, observer := WithTokenFamilyObserver(WithTokenClientFamily(ctx, known))
-
-	res, err := AcquireXSTSForRTA(ctx, accessToken)
-	if observed := observer.Observed(); observed != "" && observed != known {
-		if uerr := store.UpdateTokenClientFamily(xuid, observed); uerr != nil {
-			slog.ErrorContext(ctx, "xsts: persistance de la provenance échouée — 401 RpsTicket au prochain échange",
-				"xuid", xuid, "family", observed, "err", uerr)
-		}
-	}
-	return res, err
-}
-
-// AcquireXSTSForRTA obtient un token XSTS avec RelyingParty=http://xboxlive.com.
-// Ce token est nécessaire pour la connexion WebSocket RTA.
-func AcquireXSTSForRTA(ctx context.Context, accessToken string) (*XSTSResult, error) {
-	// Sprint B1 commit 18 : event_id pour tracer l'acquisition XSTS RTA
-	// (2 appels HTTP : User Token XBL + XSTS Xbox Live).
-	ctx, evID := logging.WithEvent(ctx, "auth.xsts.rta")
+// AcquireXSTSForRTA obtient un token XSTS avec RelyingParty=http://xboxlive.com, nécessaire à la
+// connexion WebSocket RTA. Le préfixe RpsTicket suit `ch.Famille`, la provenance acceptée est
+// rapportée à `ch.Observe`.
+func AcquireXSTSForRTA(ctx context.Context, ch Chaine, accessToken string) (*XSTSResult, error) {
 	start := time.Now()
-	slog.InfoContext(ctx, "xsts: début acquisition XSTS pour RTA", "event", evID)
-	client := &http.Client{Timeout: 20 * time.Second}
 
 	// Étape 1 : User Token XBL (identique au flow Halo)
-	userToken, err := requestUserToken(ctx, client, accessToken)
+	userToken, err := requestUserToken(ctx, ch, accessToken)
 	if err != nil {
 		slog.ErrorContext(ctx, "xsts: échec User Token XBL", "err", err)
 		return nil, fmt.Errorf("xsts rta: user token: %w", err)
@@ -91,7 +53,7 @@ func AcquireXSTSForRTA(ctx context.Context, accessToken string) (*XSTSResult, er
 	slog.DebugContext(ctx, "xsts: User Token XBL obtenu")
 
 	// Étape 2 : XSTS avec RP Xbox Live (pas Halo)
-	xstsResp, err := requestXSTSTokenFull(ctx, client, userToken, xboxLiveRelyingParty)
+	xstsResp, err := requestXSTSTokenFull(ctx, ch.Doer, userToken, xboxLiveRelyingParty)
 	if err != nil {
 		slog.ErrorContext(ctx, "xsts: échec XSTS Xbox Live", "err", err)
 		return nil, fmt.Errorf("xsts rta: xsts token: %w", err)
@@ -106,7 +68,7 @@ func AcquireXSTSForRTA(ctx context.Context, accessToken string) (*XSTSResult, er
 
 // requestXSTSTokenFull échange un User Token XBL contre un XSTS Token.
 // Retourne le token complet avec userhash (nécessaire pour l'auth RTA).
-func requestXSTSTokenFull(ctx context.Context, client *http.Client, userToken, relyingParty string) (*XSTSResult, error) {
+func requestXSTSTokenFull(ctx context.Context, doer haloapi.Doer, userToken, relyingParty string) (*XSTSResult, error) {
 	body := map[string]any{
 		xboxFieldRelyingParty: relyingParty,
 		xboxFieldTokenType:    "JWT",
@@ -115,7 +77,7 @@ func requestXSTSTokenFull(ctx context.Context, client *http.Client, userToken, r
 			"SandboxId":  "RETAIL",
 		},
 	}
-	resp, err := postJSON(ctx, client, xstsAuthorizeURL, map[string]string{
+	resp, err := postJSON(ctx, doer, xstsAuthorizeURL, map[string]string{
 		"x-xbl-contract-version": "1",
 	}, body)
 	if err != nil {

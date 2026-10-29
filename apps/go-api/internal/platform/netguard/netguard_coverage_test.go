@@ -8,11 +8,15 @@
 // le package). Ce test scanne donc `internal/` et échoue sur tout fichier
 // contenant un appel sortant sans `netguard.Check`, hors allowlist justifiée.
 //
-// BRIQUE `internal/haloapi` (plan D3, 2026-10-29) : ses fichiers recevront leur garde par un
-// `Doer` injecté et n'auront donc jamais `netguard.Check` à côté de `.Do(req)`. La règle qui tient
-// l'hermétisme à leur place — la brique ne construit ni n'atteint aucun client HTTP — vit dans
-// `archlint/haloapi_sans_client_http_test.go` (AST et auto-preuve par extrait, que ce paquet de
-// test n'a pas). Ce ratchet-ci reste inchangé.
+// BRIQUE `internal/haloapi` (plan D3, lot 2, 2026-10-29) : ses fichiers reçoivent leur garde par un
+// `haloapi.Doer` injecté et n'ont donc jamais `netguard.Check` à côté de `.Do(req)` : ils sont
+// exemptés par PRÉFIXE (`prefixeBriqueHaloapi`). Ce qui tient l'hermétisme à leur place : (1) la
+// brique ne construit ni n'atteint aucun client HTTP (`archlint/haloapi_sans_client_http_test.go`,
+// AST et auto-preuve par extrait) ; (2) le `Doer` gardé que fournit l'exploitation
+// (`platform/auth/xbl_doer.go`, `netguard.Check` puis `next.Do(req)`) est un site d'émission
+// ordinaire, VU par ce ratchet. Les surfaces qui n'étaient pas gardées avant le déplacement le
+// restent (client nu passé par la façade) : leurs entrées d'allowlist ont été RENOMMÉES une pour
+// une vers le fichier de la brique qui émet, avec leur justification.
 package netguard_test
 
 import (
@@ -21,6 +25,10 @@ import (
 	"strings"
 	"testing"
 )
+
+// prefixeBriqueHaloapi : la brique haloapi (chemin relatif à internal/), exemptée par préfixe :
+// elle émet par un Doer reçu, dont la garde est vue chez l'exploitation (voir l'en-tête).
+const prefixeBriqueHaloapi = "haloapi/"
 
 // outboundCallMarkers : formes d'émission d'une requête HTTP sortante.
 var outboundCallMarkers = []string{
@@ -44,14 +52,19 @@ var allowlist = map[string]string{
 	// Jamais atteinte en démo : LEVELUP_AUTH_MODE=none, aucun flux de login monté
 	// (cf. docker-compose service levelup-demo). La porte d'entrée réellement
 	// atteignable depuis un boot démo — le rafraîchissement OAuth — EST gardée
-	// (oauth_refresh.go) : sans token frais, ces échanges ne partent pas.
-	"platform/auth/auth_code.go": "login interactif — non monté en démo",
-	// halo_exchange.go porte aussi le helper `postJSON` par lequel passent
-	// xsts.go et sisu_provider.go : ces deux-là n'émettent rien en propre et
-	// n'ont donc pas à figurer ici.
-	"platform/auth/halo_exchange.go":         "échange Spartan (+ helper postJSON) — dépend d'un token frais, coupé en amont",
-	"platform/auth/peoplehub_resolver.go":    "résolution gamertag — dépend d'un token frais, coupé en amont",
-	"platform/auth/xbox_profile_resolver.go": "résolution profil — dépend d'un token frais, coupé en amont",
+	// (platform/auth/xbl_oauth.go, par le Doer gardé de xbl_doer.go) : sans token frais, ces
+	// échanges ne partent pas.
+	//
+	// Clés RENOMMÉES le 2026-10-29 (plan D3, lot 2), une pour une, quand ces fichiers ont quitté
+	// platform/auth pour la brique haloapi/xblauth : la façade platform/auth leur passe un client NU
+	// (xbl_oauth.go, xbl_exchange.go, xbl_xsts_rta.go, xbl_resolvers.go), comme avant. Ces fichiers
+	// sont aussi couverts par l'exemption de préfixe ; l'entrée garde la trace de l'exception.
+	"haloapi/xblauth/auth_code.go": "login interactif — non monté en démo (ex platform/auth/auth_code.go)",
+	// exchange_xsts.go porte le helper `postJSON` par lequel passent toutes les jambes XBL
+	// (User Token, XSTS, Spartan, XSTS RTA) et la Clearance.
+	"haloapi/xblauth/exchange_xsts.go":         "échange Spartan (+ helper postJSON) — dépend d'un token frais, coupé en amont (ex platform/auth/halo_exchange.go)",
+	"haloapi/xblauth/peoplehub_resolver.go":    "résolution gamertag — dépend d'un token frais, coupé en amont (ex platform/auth/peoplehub_resolver.go)",
+	"haloapi/xblauth/xbox_profile_resolver.go": "résolution profil — dépend d'un token frais, coupé en amont (ex platform/auth/xbox_profile_resolver.go)",
 
 	// Canaux sortants NON liés aux données de jeu, désactivés par la config démo
 	// (app_settings émis par le seed : discord_notifications_enabled=false,
@@ -96,6 +109,9 @@ func TestOutboundCallsAreNetguarded(t *testing.T) {
 		}
 		key := filepath.ToSlash(rel)
 		if _, ok := allowlist[key]; ok {
+			return nil
+		}
+		if strings.HasPrefix(key, prefixeBriqueHaloapi) {
 			return nil
 		}
 		leaks = append(leaks, key)

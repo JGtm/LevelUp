@@ -21,6 +21,9 @@
 // sortent de la table avec leur suppression. À la clôture il ne reste que `internal/haloapi` et
 // la table de tolérances est vide.
 //
+// Lot 2 fait (2026-10-29) : la liste `platform/auth` est retirée ; le mécanisme des dossiers à
+// liste (`fichiers`) reste, exercé par ses auto-preuves, et part avec la table à la clôture.
+//
 // # CE QU'ELLE VÉRIFIE
 //
 // Pour chaque `.go` du périmètre, tests compris, chaque import (PARSÉ, jamais cherché au grep) est :
@@ -93,22 +96,6 @@ var cheminsHaloapiPermis = []string{prefixeInterneAPI + "haloapi"}
 // tiersHaloapi : les seuls tiers de la brique (D3-P, mesurés au lot 0, découverte D3-L0-o).
 var tiersHaloapi = []string{"golang.org/x/sync/errgroup", "golang.org/x/time/rate"}
 
-// fichiersAuthVersXblauth : les fichiers de `platform/auth` que D3-L envoie dans `xblauth`, avec
-// leurs jumeaux de test. Liste NOMMÉE : le reste du paquet est de l'exploitation (magasin, pool,
-// boucles) et n'est pas jugé ici.
-var fichiersAuthVersXblauth = []string{
-	"halo_exchange.go", "halo_exchange_descriptor_test.go", "halo_exchange_test.go", "halo_exchange_throttle_test.go",
-	"sisu_provider.go", "sisu_provider_test.go", "sisu_exchange_flow_test.go",
-	"oauth_refresh.go", "oauth_refresh_test.go", "oauth_refresh_internal_test.go",
-	"xbox_device_code.go", "xbox_device_code_test.go", "xbox_device_code_netguard_test.go",
-	"xbox_device_code_reachability_integration_test.go",
-	"auth_code.go", "auth_code_test.go",
-	"oauth_error.go", "api_constants.go",
-	"xbox_profile_resolver.go", "xbox_profile_resolver_test.go",
-	"peoplehub_resolver.go", "peoplehub_resolver_test.go",
-	"xsts.go", "xsts_test.go", "xsts_provenance_test.go",
-}
-
 const (
 	dossierHaloapi    = "apps/go-api/internal/haloapi"
 	dossierPlatHalo   = "apps/go-api/internal/platform/halo"
@@ -121,21 +108,23 @@ var briquesInternes = []briqueInterne{
 	{
 		nom:      "haloapi",
 		dossiers: []string{dossierHaloapi, dossierPlatHalo, dossierHaloclient},
-		fichiers: map[string][]string{dossierPlatAuth: fichiersAuthVersXblauth},
 		permis:   cheminsHaloapiPermis,
 		tiers:    tiersHaloapi,
 		// Comptes MESURÉS le 2026-10-29 (HEAD b92916328) par ce parcours, tests compris. Le lot
 		// qui vide chaque entrée est celui qui SUPPRIME ou DÉPLACE le fichier importeur : les
 		// fichiers d'authentification quittent `platform/auth` au lot 2, `platform/halo` et
 		// `sync/haloclient` sont supprimés au lot 4 (la coupe elle-même se fait au lot 3, dans la
-		// copie que reçoit `internal/haloapi/infinite`).
+		// copie que reçoit `internal/haloapi/infinite`). Lot 2 (2026-10-29) : les fichiers d'authentification
+		// sont partis dans `internal/haloapi/xblauth`, la liste `platform/auth` a quitté la ligne et la part
+		// « auth » de chaque tolérance est tombée à zéro (domain 22 -> 21, domain/title 9 -> 3,
+		// platform/netguard 9 -> 6, observability/logging retirée).
 		tolerances: map[string]toleranceImport{
 			"analysis":                       {1, "2026-10-29", "lot 4 : haloclient/halo_skill.go (analysis.MMRKnown) -> haloadapter"},
 			"assetnames":                     {1, "2026-10-29", "lot 4 : halo/asset_name_fetcher.go -> haloadapter"},
 			"assets":                         {5, "2026-10-29", "lot 4 : halo/battlepass_details.go et tests (assets.Ref) -> haloadapter"},
 			"ctxkeys":                        {14, "2026-10-29", "lot 4 : halo (11) et haloclient (3) : jetons, xuid, slug, langue sortis du ctx par l'adaptateur"},
-			"domain":                         {22, "2026-10-29", "lot 2 : auth/halo_exchange.go (HaloTokens, 1) ; lot 4 : halo (18) et haloclient (3) -> haloadapter"},
-			"domain/title":                   {9, "2026-10-29", "lot 2 : auth (6 : descripteur, familles) ; lot 4 : halo (1) et haloclient (2)"},
+			"domain":                         {21, "2026-10-29", "lot 4 : halo (18) et haloclient (3) -> haloadapter"},
+			"domain/title":                   {3, "2026-10-29", "lot 4 : halo (1) et haloclient (2)"},
 			"games":                          {16, "2026-10-29", "lot 4 : halo (7) et haloclient (9) : résolveur d'adresses -> infinite.Endpoints reçues"},
 			"games/halo_infinite":            {1, "2026-10-29", "lot 4 : halo/catalog_fetcher.go (AssetFetcher) -> haloadapter"},
 			"games/mappings":                 {1, "2026-10-29", "lot 4 : haloclient/halo_client_endpoints_test.go -> test de l'adaptateur"},
@@ -146,9 +135,8 @@ var briquesInternes = []briqueInterne{
 			"mapcatalog":                     {1, "2026-10-29", "lot 4 : haloclient/halo_client_mvar.go -> haloadapter"},
 			"metadata":                       {1, "2026-10-29", "lot 4 : halo/medal_provider.go (MedalEntry) -> haloadapter"},
 			"observability":                  {6, "2026-10-29", "lot 4 : halo (2) et haloclient (4) : compteurs injectés comme crochets"},
-			"observability/logging":          {2, "2026-10-29", "lot 2 : auth/xsts.go et oauth_refresh.go (WithEvent) -> slog avec ctx"},
 			"observability/timing":           {2, "2026-10-29", "lot 4 : halo/privacy_provider.go et tests -> haloadapter"},
-			"platform/netguard":              {9, "2026-10-29", "lot 2 : auth (3) ; lot 4 : halo (3) et haloclient (3) -> Doer garde par surface (D3-K)"},
+			"platform/netguard":              {6, "2026-10-29", "lot 4 : halo (3) et haloclient (3) -> Doer garde par surface (D3-K)"},
 			"golang.org/x/sync/singleflight": {2, "2026-10-29", "lot 4 : halo/player_token_cache.go -> tokencache, halo/provider.go -> haloadapter"},
 		},
 	},

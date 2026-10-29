@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/haloapi/xblauth"
 )
 
@@ -41,5 +42,50 @@ func TestXblauthFamilles_PariteAvecTokenFamily(t *testing.T) {
 	}
 	if xblauth.FamilleXboxNative != TokenFamilyXboxNative {
 		t.Errorf("xblauth.FamilleXboxNative = %q, TokenFamilyXboxNative = %q", xblauth.FamilleXboxNative, TokenFamilyXboxNative)
+	}
+}
+
+// TestDescripteurXBL_PariteAvecTitre : la façade passe à la brique exactement les valeurs du
+// descripteur Halo par défaut que la chaîne lit (les tests de la brique recopient ces valeurs :
+// `descripteurHaloTest`).
+func TestDescripteurXBL_PariteAvecTitre(t *testing.T) {
+	got := descripteurXBL(title.DefaultHaloAuthDescriptor())
+	want := xblauth.Descriptor{
+		XSTSAudience:    "https://prod.xsts.halowaypoint.com/",
+		SpartanAudience: "urn:343:s3:services",
+		SpartanTokenURL: "https://settings.svc.halowaypoint.com/spartan-token",
+		ClearanceURL:    "https://settings.svc.halowaypoint.com/oban/flight-configurations/titles/hi/audiences/RETAIL/active",
+	}
+	if got != want {
+		t.Errorf("descripteurXBL(défaut Halo) = %+v\nattendu %+v", got, want)
+	}
+}
+
+// TestScopes_DescriptorDerivation_GoldenParity prouve que les scopes dérivés du
+// descripteur (MT-02 leg 4) sont byte-identiques aux littéraux historiques, sous les deux
+// formes : la liste (XboxScopes) et la forme jointe qu'envoie la brique (ClientAzure.ScopesParam,
+// ex-variable `xboxScopes` de oauth_refresh.go).
+func TestScopes_DescriptorDerivation_GoldenParity(t *testing.T) {
+	if len(XboxScopes) != 2 || XboxScopes[0] != "Xboxlive.signin" || XboxScopes[1] != "Xboxlive.offline_access" {
+		t.Errorf("XboxScopes = %v, want [Xboxlive.signin Xboxlive.offline_access]", XboxScopes)
+	}
+	if got := (AzureOAuthClient{}).versXBL().ScopesParam(); got != "Xboxlive.signin Xboxlive.offline_access" {
+		t.Errorf("scopes joints = %q, want space-joined", got)
+	}
+}
+
+// TestClientAzureXBL_Parite : le client que reçoit la brique porte l'identifiant, le secret à
+// envoyer, l'autorité et les scopes de la résolution d'exploitation (aucune autre source).
+func TestClientAzureXBL_Parite(t *testing.T) {
+	c := AzureOAuthClient{ClientID: "id-test", rawSecret: "secret-test"}
+	got := c.versXBL()
+	if got.ID != "id-test" || got.Secret != c.SecretToSend() || got.Autorite != MSALAuthority {
+		t.Errorf("versXBL = %v, attendu ID, secret à envoyer et autorité de la résolution", got)
+	}
+	if !reflect.DeepEqual(got.Scopes, XboxScopes) {
+		t.Errorf("Scopes = %v, attendu XboxScopes %v", got.Scopes, XboxScopes)
+	}
+	if got.URLAutorisation() != MSALAuthority+"/oauth2/v2.0/authorize" {
+		t.Errorf("URLAutorisation = %q", got.URLAutorisation())
 	}
 }

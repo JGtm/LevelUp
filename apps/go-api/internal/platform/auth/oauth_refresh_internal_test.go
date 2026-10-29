@@ -6,10 +6,13 @@ package auth
 import (
 	"context"
 	"errors"
+	"expvar"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"levelup/go-api/internal/haloapi/xblauth"
 )
 
 // withMockTokenEndpoint redirige msalTokenURL vers un httptest.Server le temps
@@ -176,8 +179,8 @@ func TestExchangeRefreshToken_FallbackMSAOnInvalidGrant(t *testing.T) {
 		if got := r.PostForm.Get("client_id"); got != SISUDefaultAppID {
 			t.Errorf("client_id MSA : attendu %q (client Xbox), obtenu %q", SISUDefaultAppID, got)
 		}
-		if got := r.PostForm.Get("scope"); got != sisuMSAScope {
-			t.Errorf("scope MSA : attendu %q, obtenu %q", sisuMSAScope, got)
+		if got := r.PostForm.Get("scope"); got != xblauth.ScopeMSA {
+			t.Errorf("scope MSA : attendu %q, obtenu %q", xblauth.ScopeMSA, got)
 		}
 		if r.PostForm.Get("client_secret") != "" {
 			t.Errorf("client_secret interdit sur le flux MSA natif (client public)")
@@ -269,5 +272,60 @@ func TestOAuthExchangeError_Class(t *testing.T) {
 	// Erreur non typée (réseau) → transient.
 	if got := ClassifyAuthError(errors.New("dial tcp: timeout")); got != AuthErrorTransient {
 		t.Errorf("erreur non typée : attendu transient, obtenu %s", got)
+	}
+}
+
+// compteurRevoque lit le compteur d'échecs de classe revoked (0 s'il n'existe pas encore).
+func compteurRevoque() int64 {
+	if v, ok := oauthRefreshFailByClass.Get(string(AuthErrorRevoked)).(*expvar.Int); ok {
+		return v.Value()
+	}
+	return 0
+}
+
+// TestExchangeRefreshToken_CompteursDepuisIssue : depuis le plan D3 (lot 2), la brique
+// `haloapi/xblauth` ne compte plus rien ; la façade tient les compteurs expvar à partir de l'issue
+// typée. Mêmes incréments qu'avant : un total par échange, une reprise publique par AADSTS90023,
+// une reprise MSA par repli tenté, un échec par classe.
+func TestExchangeRefreshToken_CompteursDepuisIssue(t *testing.T) {
+	type compteurs struct{ total, echec, publique, msa, revoque int64 }
+	lire := func() compteurs {
+		return compteurs{oauthRefreshTotal.Value(), oauthRefreshFailTotal.Value(),
+			oauthRefreshRetryPublicTotal.Value(), oauthRefreshRetryMSATotal.Value(), compteurRevoque()}
+	}
+
+	avant := lire()
+	withMockTokenEndpoint(t, func(w http.ResponseWriter, r *http.Request) {
+		_ = r.ParseForm()
+		if r.PostForm.Get("client_secret") != "" {
+			_, _ = w.Write([]byte(aadsts90023JSON))
+			return
+		}
+		_, _ = w.Write([]byte(`{"access_token":"at","refresh_token":"rt-2"}`))
+	}, "custom-app-id", "s3cret")
+	if _, _, _, err := ExchangeRefreshTokenWithRotation(context.Background(), "rt-1"); err != nil {
+		t.Fatalf("err inattendue : %v", err)
+	}
+	if d := lire(); d != (compteurs{avant.total + 1, avant.echec, avant.publique + 1, avant.msa, avant.revoque}) {
+		t.Errorf("retry public : compteurs %+v, avant %+v", d, avant)
+	}
+
+	avant = lire()
+	withMockTokenEndpoint(t, func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"error":"invalid_grant","error_description":"AADSTS70000: token expired"}`))
+	}, "custom-app-id", "")
+	if _, _, _, err := ExchangeRefreshTokenWithRotation(context.Background(), "rt-dead"); err == nil {
+		t.Fatal("erreur attendue")
+	}
+	if d := lire(); d != (compteurs{avant.total + 1, avant.echec + 1, avant.publique, avant.msa + 1, avant.revoque + 1}) {
+		t.Errorf("repli MSA mort : compteurs %+v, avant %+v", d, avant)
+	}
+
+	avant = lire()
+	if _, _, _, err := ExchangeRefreshTokenWithRotation(context.Background(), ""); err != nil {
+		t.Fatalf("RT vide : err %v", err)
+	}
+	if d := lire(); d != avant {
+		t.Errorf("RT vide : aucun compteur ne doit bouger, %+v -> %+v", avant, d)
 	}
 }

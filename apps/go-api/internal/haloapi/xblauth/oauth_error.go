@@ -1,10 +1,11 @@
-// Package auth — oauth_error.go : erreur typée du endpoint OAuth v2 + classification.
+// oauth_error.go : erreur typée du endpoint OAuth v2 + classification.
 //
 // Permet aux couches amont (pool/resolver, dashboard admin) de distinguer un
 // échec de configuration (déterministe, inutile de retenter à l'identique),
 // un refresh_token révoqué (action user : re-capture) et un incident
 // transitoire (réseau, 5xx) qui mérite un retry.
-package auth
+
+package xblauth
 
 import (
 	"errors"

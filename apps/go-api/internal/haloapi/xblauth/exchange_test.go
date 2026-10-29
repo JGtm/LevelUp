@@ -1,6 +1,7 @@
-// Package auth — halo_exchange_test.go : tests unitaires des helpers d'échange Halo.
-// Package auth (non _test) pour accéder aux fonctions privées.
-package auth
+// exchange_test.go : tests unitaires des jambes de la chaîne d'échange (déplacés de
+// platform/auth/halo_exchange_test.go, plan D3 lot 2). Paquet interne pour accéder aux fonctions privées.
+
+package xblauth
 
 import (
 	"context"
@@ -9,8 +10,6 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"testing"
-
-	"levelup/go-api/internal/domain/title"
 )
 
 // redirectTransport redirige toutes les requêtes vers une URL cible fixe (pour mocker les URLs hardcodées).
@@ -141,7 +140,7 @@ func TestRequestUserToken_Success(t *testing.T) {
 		_ = json.NewEncoder(w).Encode(map[string]string{"Token": "user_tok_abc"})
 	}))
 	defer srv.Close()
-	token, err := requestUserToken(context.Background(), mockClient(srv.URL), "fake_access_token")
+	token, err := requestUserToken(context.Background(), Chaine{Doer: mockClient(srv.URL)}, "fake_access_token")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -171,7 +170,7 @@ func TestRequestUserToken_RetryTPrefixOn401(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	token, err := requestUserToken(context.Background(), mockClient(srv.URL), "EwAmsa_ticket")
+	token, err := requestUserToken(context.Background(), Chaine{Doer: mockClient(srv.URL)}, "EwAmsa_ticket")
 	if err != nil {
 		t.Fatalf("retry t= attendu après 401 en d= : %v", err)
 	}
@@ -184,7 +183,7 @@ func TestRequestUserToken_RetryTPrefixOn401(t *testing.T) {
 }
 
 // TestRequestUserToken_DeterministicPrefixFromProvenance (AU4/F12) : quand la
-// provenance est connue en ctx, le préfixe RpsTicket est déterministe — xbox_native
+// provenance est connue (Chaine.Famille), le préfixe RpsTicket est déterministe — xbox_native
 // tente "t=" EN PREMIER (aucun aller-retour d= gaspillé), azure tente "d=". Le retry
 // reste un filet (testé par _RetryTPrefixOn401 en provenance inconnue).
 func TestRequestUserToken_DeterministicPrefixFromProvenance(t *testing.T) {
@@ -204,8 +203,8 @@ func TestRequestUserToken_DeterministicPrefixFromProvenance(t *testing.T) {
 		var prefixes []string
 		srv := newServer(&prefixes)
 		defer srv.Close()
-		ctx := WithTokenClientFamily(context.Background(), TokenFamilyXboxNative)
-		if _, err := requestUserToken(ctx, mockClient(srv.URL), "EwAmsa"); err != nil {
+		ch := Chaine{Doer: mockClient(srv.URL), Famille: FamilleXboxNative}
+		if _, err := requestUserToken(context.Background(), ch, "EwAmsa"); err != nil {
 			t.Fatal(err)
 		}
 		if len(prefixes) != 1 || prefixes[0] != "t=" {
@@ -217,8 +216,8 @@ func TestRequestUserToken_DeterministicPrefixFromProvenance(t *testing.T) {
 		var prefixes []string
 		srv := newServer(&prefixes)
 		defer srv.Close()
-		ctx := WithTokenClientFamily(context.Background(), TokenFamilyAzure)
-		if _, err := requestUserToken(ctx, mockClient(srv.URL), "eyJhbGc"); err != nil {
+		ch := Chaine{Doer: mockClient(srv.URL), Famille: FamilleAzure}
+		if _, err := requestUserToken(context.Background(), ch, "eyJhbGc"); err != nil {
 			t.Fatal(err)
 		}
 		if len(prefixes) != 1 || prefixes[0] != "d=" {
@@ -237,7 +236,7 @@ func TestRequestUserToken_NoRetryOnOtherError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	_, err := requestUserToken(context.Background(), mockClient(srv.URL), "tok")
+	_, err := requestUserToken(context.Background(), Chaine{Doer: mockClient(srv.URL)}, "tok")
 	if err == nil {
 		t.Fatal("erreur attendue")
 	}
@@ -252,7 +251,7 @@ func TestRequestUserToken_MissingToken(t *testing.T) {
 		_ = json.NewEncoder(w).Encode(map[string]string{"other": "value"})
 	}))
 	defer srv.Close()
-	_, err := requestUserToken(context.Background(), mockClient(srv.URL), "fake_access_token")
+	_, err := requestUserToken(context.Background(), Chaine{Doer: mockClient(srv.URL)}, "fake_access_token")
 	if err == nil {
 		t.Error("expected error when Token absent")
 	}
@@ -300,8 +299,10 @@ func TestRequestXSTSToken_MissingToken(t *testing.T) {
 
 // requestSpartanTokenWith (descripteur Halo par défaut)
 
-// haloAuth est le descripteur d'auth Halo par défaut, celui de la chaîne d'échange.
-var haloAuth = title.DefaultHaloAuthDescriptor()
+// haloAuth : le descripteur d'auth Halo Infinite, valeurs de `title.DefaultHaloAuthDescriptor()`
+// recopiées (la brique n'importe pas `domain/title` ; la parité de la conversion est tenue par
+// `platform/auth`, `TestDescripteurXBL_PariteAvecTitre`).
+var haloAuth = descripteurHaloTest
 
 func TestRequestSpartanToken_Success(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -428,25 +429,27 @@ func TestRequestUserToken_ProvenanceMesuree(t *testing.T) {
 		srv := serverAccepting("t=")
 		defer srv.Close()
 		// Provenance inconnue (état du store avant ce lot) → « d= » d'abord → 401.
-		ctx, observer := WithTokenFamilyObserver(context.Background())
-		if _, err := requestUserToken(ctx, mockClient(srv.URL), "EwA"); err != nil {
+		var observed string
+		ch := Chaine{Doer: mockClient(srv.URL), Observe: func(f string) { observed = f }}
+		if _, err := requestUserToken(context.Background(), ch, "EwA"); err != nil {
 			t.Fatal(err)
 		}
-		if got := observer.Observed(); got != TokenFamilyXboxNative {
+		if got := observed; got != FamilleXboxNative {
 			t.Errorf("provenance mesurée = %q, want %q — sans elle le boot suivant re-tente « d= » et reprend un 401",
-				got, TokenFamilyXboxNative)
+				got, FamilleXboxNative)
 		}
 	})
 
 	t.Run("le préfixe primaire accepté est mesuré", func(t *testing.T) {
 		srv := serverAccepting("d=")
 		defer srv.Close()
-		ctx, observer := WithTokenFamilyObserver(context.Background())
-		if _, err := requestUserToken(ctx, mockClient(srv.URL), "eyJ"); err != nil {
+		var observed string
+		ch := Chaine{Doer: mockClient(srv.URL), Observe: func(f string) { observed = f }}
+		if _, err := requestUserToken(context.Background(), ch, "eyJ"); err != nil {
 			t.Fatal(err)
 		}
-		if got := observer.Observed(); got != TokenFamilyAzure {
-			t.Errorf("provenance mesurée = %q, want %q", got, TokenFamilyAzure)
+		if got := observed; got != FamilleAzure {
+			t.Errorf("provenance mesurée = %q, want %q", got, FamilleAzure)
 		}
 	})
 
@@ -467,13 +470,14 @@ func TestRequestUserToken_ProvenanceMesuree(t *testing.T) {
 		}))
 		defer srv.Close()
 
-		ctx, observer := WithTokenFamilyObserver(context.Background())
-		if _, err := requestUserToken(ctx, mockClient(srv.URL), "EwA"); err != nil {
+		var observed string
+		ch := Chaine{Doer: mockClient(srv.URL), Observe: func(f string) { observed = f }}
+		if _, err := requestUserToken(context.Background(), ch, "EwA"); err != nil {
 			t.Fatal(err)
 		}
 		// 2e passage avec la provenance mesurée (ce que persiste le store).
-		ctx2 := WithTokenClientFamily(context.Background(), observer.Observed())
-		if _, err := requestUserToken(ctx2, mockClient(srv.URL), "EwA"); err != nil {
+		ch2 := Chaine{Doer: mockClient(srv.URL), Famille: observed}
+		if _, err := requestUserToken(context.Background(), ch2, "EwA"); err != nil {
 			t.Fatal(err)
 		}
 		if want := []string{"d=", "t=", "t="}; len(prefixes) != len(want) {
@@ -487,7 +491,7 @@ func TestRequestUserToken_ProvenanceMesuree(t *testing.T) {
 	t.Run("aucun observateur installé : pas de panique", func(t *testing.T) {
 		srv := serverAccepting("d=")
 		defer srv.Close()
-		if _, err := requestUserToken(context.Background(), mockClient(srv.URL), "eyJ"); err != nil {
+		if _, err := requestUserToken(context.Background(), Chaine{Doer: mockClient(srv.URL)}, "eyJ"); err != nil {
 			t.Fatal(err)
 		}
 	})

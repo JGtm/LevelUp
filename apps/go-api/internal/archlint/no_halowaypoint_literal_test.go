@@ -35,7 +35,6 @@ import (
 // Catégories :
 //   - haloclient/       : client HTTP officiel Halo Infinite (déplacé par K3e).
 //   - platform/halo/     : providers HTTP (discovery, saisons, privacy, leaderboard).
-//   - platform/auth/     : échange de tokens Xbox↔Spartan (audiences XSTS/Spartan).
 //   - domain/title/      : defaults documentés des descripteurs d'auth par titre.
 //   - assets/            : fetchers gamecms-hacs (URLs d'assets médailles/images).
 //   - games/halo_infinite: adapter d'URLs d'assets waypoint (base URL waypoint web).
@@ -60,9 +59,10 @@ var halowaypointAllowlist = map[string]bool{
 	"internal/platform/halo/privacy_provider.go":    true,
 	"internal/platform/halo/provider.go":            true,
 	"internal/platform/halo/season_provider.go":     true,
-	// platform/auth/ — échange tokens Xbox↔Spartan (audiences/hôtes officiels).
-	// (provider.go retiré de l'allowlist au retrait de MSAL 2026-07-15 : plus de littéral.)
-	"internal/platform/auth/halo_exchange.go": true,
+	// platform/auth/ : plus aucune entrée. (provider.go retiré au retrait de MSAL 2026-07-15 ;
+	// halo_exchange.go retiré le 2026-10-29, plan D3 lot 2 : la chaîne d'échange est partie dans
+	// internal/haloapi/xblauth, sans état ni titre, et ne nomme plus aucun hôte halowaypoint — les
+	// adresses Spartan/Clearance lui sont passées par le Descriptor, défauts dans domain/title.)
 	// domain/title/ — defaults documentés des descripteurs d'auth.
 	"internal/domain/title/auth_descriptor.go": true,
 	// assets/ — fetchers gamecms-hacs (URLs d'assets).

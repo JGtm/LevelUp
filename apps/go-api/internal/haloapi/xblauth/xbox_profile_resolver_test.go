@@ -1,4 +1,4 @@
-package auth
+package xblauth
 
 import (
 	"context"
@@ -71,7 +71,7 @@ func TestXboxProfileResolver_HTTPError(t *testing.T) {
 }
 
 func TestXboxProfileResolver_EmptyGamertag(t *testing.T) {
-	r := NewXboxProfileResolver(http.DefaultClient, staticHeader)
+	r := NewXboxProfileResolver(&http.Client{}, staticHeader)
 	if _, err := r.ResolveXUID(context.Background(), "  "); err == nil {
 		t.Error("attendu une erreur pour un gamertag vide")
 	}

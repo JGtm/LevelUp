@@ -1,4 +1,4 @@
-package auth
+package xblauth
 
 import (
 	"context"
@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+
+	"levelup/go-api/internal/haloapi"
 )
 
 // peopleHubSearchURL — endpoint de recherche Xbox Live PeopleHub.
@@ -17,7 +19,7 @@ const peopleHubSearchURL = "https://peoplehub.xboxlive.com/users/me/people/searc
 // correspondance exacte case-insensitive). Utilisé par l'agrégateur du classement
 // mondial pour résoudre les xuid des joueurs scrapés (single-token RTA, bas volume).
 type PeopleHubResolver struct {
-	client   *http.Client
+	doer     haloapi.Doer
 	headerFn func(ctx context.Context) (string, error)
 	baseURL  string // overridable pour les tests
 }
@@ -25,12 +27,10 @@ type PeopleHubResolver struct {
 // NewPeopleHubResolver construit un résolveur. headerFn fournit un header
 // "XBL3.0 x=<hash>;<token>" valide (RTA XSTS, audience http://xboxlive.com) —
 // invoqué à chaque résolution ; charge au fournisseur de mémoïser/rafraîchir le
-// token avant expiration (~quelques heures).
-func NewPeopleHubResolver(client *http.Client, headerFn func(ctx context.Context) (string, error)) *PeopleHubResolver {
-	if client == nil {
-		client = http.DefaultClient
-	}
-	return &PeopleHubResolver{client: client, headerFn: headerFn, baseURL: peopleHubSearchURL}
+// token avant expiration (~quelques heures). `doer` est obligatoire (la brique
+// n'en construit aucun).
+func NewPeopleHubResolver(doer haloapi.Doer, headerFn func(ctx context.Context) (string, error)) *PeopleHubResolver {
+	return &PeopleHubResolver{doer: doer, headerFn: headerFn, baseURL: peopleHubSearchURL}
 }
 
 // ResolveXUID retourne l'xuid numérique du gamertag (sans wrapper "xuid()"), ou
@@ -49,7 +49,7 @@ func (r *PeopleHubResolver) ResolveXUID(ctx context.Context, gamertag string) (s
 	req.Header.Set("Authorization", header)
 	req.Header.Set("Accept-Language", "en-us")
 
-	resp, err := r.client.Do(req)
+	resp, err := r.doer.Do(req)
 	if err != nil {
 		return "", err
 	}
