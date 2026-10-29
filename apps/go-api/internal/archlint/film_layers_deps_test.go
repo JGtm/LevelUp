@@ -291,6 +291,11 @@ var couchesDuDecodeur = map[string]coucheFilm{
 	// `filmobs` : les COMPTEURS d observation du decodeur (feuille sans import du depot ; la brique
 	// compte, l hote branche un puits). Ni decodage ni publication de faits : hors couche.
 	"internal/games/halo_infinite/film/filmobs": horsCoucheFilm,
+	// `playerposition`, `objectiveevent` : les TYPES que le decodeur produit et que LevelUp lit
+	// (ports, repos, handlers) ; feuilles sans import du depot, descendues de `internal/domain` le
+	// 2026-10-29 (D2 2.3). Ils declarent des formes, ne decodent rien : hors couche.
+	"internal/games/halo_infinite/film/playerposition": horsCoucheFilm,
+	"internal/games/halo_infinite/film/objectiveevent": horsCoucheFilm,
 	// `revision` : L OUTILLAGE D EMPREINTE partage par les revisions de couche (lot 2.6.0,
 	// 2026-09-17). Il ne lit AUCUN octet de film — il hache des octets de SOURCE — donc il n est
 	// ni une etape de decodage ni une publication : meme rangement que les trois catalogues de

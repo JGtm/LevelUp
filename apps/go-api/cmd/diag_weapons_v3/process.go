@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"sort"
 
-	"levelup/go-api/internal/domain/objectiveevent"
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/games/halo_infinite/film/objectiveevent"
 	"levelup/go-api/internal/platform/duckdb"
 )
 

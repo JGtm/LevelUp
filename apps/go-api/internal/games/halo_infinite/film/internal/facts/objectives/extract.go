@@ -15,9 +15,9 @@ import (
 	"slices"
 	"strings"
 
-	"levelup/go-api/internal/domain/objectiveevent"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/signaux"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/objectiveevent"
 )
 
 // Valeurs de objectiveevent.Event.ObjectiveType (parent mode-agnostique).

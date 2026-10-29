@@ -4,7 +4,7 @@ import (
 	"cmp"
 	"slices"
 
-	"levelup/go-api/internal/domain/playerposition"
+	"levelup/go-api/internal/games/halo_infinite/film/playerposition"
 )
 
 // minClusterSize : nb minimal de positions par groupe pour qu'un team-split soit

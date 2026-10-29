@@ -10,10 +10,10 @@ import (
 
 	"levelup/go-api/internal/analysis/temporal"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/domain/objectiveevent"
-	"levelup/go-api/internal/domain/playerposition"
 	"levelup/go-api/internal/domain/replaydoc"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/games/halo_infinite/film/objectiveevent"
+	"levelup/go-api/internal/games/halo_infinite/film/playerposition"
 )
 
 // ---------------------------------------------------------------------------

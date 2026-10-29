@@ -156,8 +156,6 @@ var tolerancesFilm = map[string]int{
 	// Production (voir le relevé de départ du plan) et tests mêlés : le lot indiqué vide l'entrée.
 	"levelup/go-api/internal/filmproc":              71, // lot 2.6 : filmproc -> film/filmproc (2 prod, 69 tests, 36 research)
 	"levelup/go-api/internal/platform/atomicfile":   1,  // lot 2.6 : atomicfile sous film/internal (D2-D)
-	"levelup/go-api/internal/domain/playerposition": 3,  // lot 2.3 : -> film/playerposition
-	"levelup/go-api/internal/domain/objectiveevent": 3,  // lot 2.3 : -> film/objectiveevent
 	"levelup/go-api/internal/games/canonical":       15, // lot 2.4 : film_identity.go -> film/identity (7 prod, 8 tests)
 	"levelup/go-api/internal/domain/highlightevent": 21, // lot 2.7 : types.HighlightEvent (6 prod, 15 tests)
 	"levelup/go-api/internal/domain/equipmentusage": 4,  // lot 2.8 : familles locales dans replay (2 prod, 2 tests)

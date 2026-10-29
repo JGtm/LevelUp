@@ -30,8 +30,8 @@ package positions
 import (
 	"math"
 
-	"levelup/go-api/internal/domain/playerposition"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/playerposition"
 )
 
 // combOffsetBits est le recul en bits depuis le début du comb jusqu'au premier

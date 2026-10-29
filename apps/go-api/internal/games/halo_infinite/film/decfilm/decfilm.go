@@ -68,8 +68,6 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain/highlightevent"
-	"levelup/go-api/internal/domain/objectiveevent"
-	"levelup/go-api/internal/domain/playerposition"
 	"levelup/go-api/internal/games/halo_infinite/film/damagetag"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/constat"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
@@ -82,6 +80,8 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/weaponv3"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/objectiveevent"
+	"levelup/go-api/internal/games/halo_infinite/film/playerposition"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 

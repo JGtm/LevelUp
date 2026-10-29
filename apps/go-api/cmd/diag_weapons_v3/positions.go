@@ -18,9 +18,9 @@ import (
 	"fmt"
 	"math"
 
-	"levelup/go-api/internal/domain/playerposition"
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/games/halo_infinite/film/playerposition"
 )
 
 // runPositions traite le panel en mode POSITIONS, match par match.

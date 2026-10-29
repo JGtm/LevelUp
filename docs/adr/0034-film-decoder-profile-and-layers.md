@@ -390,11 +390,12 @@ re-decoded once.
    the question "does this package decide the layer's output?" is asked at review. Measured
    closures: `source` = itself + `film/types`; `profile` = itself, no upstream (it does not import
    `source`, so `source.Rev` left its fingerprint); `grammar` = its tree + `film/types`,
-   `domain/highlightevent`, `domain/playerposition`, `games/weapons/filmshell`, upstream `source`,
+   `domain/highlightevent`, `film/playerposition`, `games/weapons/filmshell`, upstream `source`,
    `profile`; `killsource` = itself + `film/types`, `film/damagetag`, `domain/highlightevent`,
-   upstream `source`, `profile`, `grammar`; `objectives` = itself + `film/types`, `domain/objectiveevent`,
+   upstream `source`, `profile`, `grammar`; `objectives` = itself + `film/types`, `film/objectiveevent`,
    upstream `source` (J3.3b moved `ObjectiveEvent` out of `internal/domain` into the leaf
-   `domain/objectiveevent`, so `domain`, `domain/title` and `games/canonical` left the closure).
+   `domain/objectiveevent`, so `domain`, `domain/title` and `games/canonical` left the closure; D2 item 2.3
+   later moved that leaf, and `playerposition`, under `film/`).
 3. **One revision per consumer of facts** (DU-2 (c)). `facts.Rev`, which dated the whole `facts/`
    tree, is replaced by `killsource.Rev` — **same value**, `killsource-2026-09-24`, same series
    and history, so no killsource backlog is reopened — and `objectives.Rev`, born at

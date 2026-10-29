@@ -4,9 +4,9 @@ import (
 	"os"
 	"testing"
 
-	"levelup/go-api/internal/domain/objectiveevent"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/objectiveevent"
 )
 
 // filmCacheEnv — nom de la variable qui porte la racine du cache film

@@ -29,8 +29,8 @@ import (
 	"fmt"
 	"time"
 
-	"levelup/go-api/internal/domain/objectiveevent"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/games/halo_infinite/film/objectiveevent"
 )
 
 // ObjectiveEventsRepo persiste et relit les events objectif v3 dans la DB shared.

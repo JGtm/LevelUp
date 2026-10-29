@@ -13,8 +13,8 @@ import (
 
 	titlepkg "levelup/go-api/internal/domain/title"
 
-	"levelup/go-api/internal/domain/objectiveevent"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/games/halo_infinite/film/objectiveevent"
 	"levelup/go-api/internal/migration"
 )
 

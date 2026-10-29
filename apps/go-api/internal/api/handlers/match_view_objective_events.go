@@ -13,7 +13,7 @@ import (
 	"net/http"
 
 	"levelup/go-api/internal/api/humacore"
-	"levelup/go-api/internal/domain/objectiveevent"
+	"levelup/go-api/internal/games/halo_infinite/film/objectiveevent"
 )
 
 // objectiveEventDTO est la projection JSON camelCase d'un objectiveevent.Event.
