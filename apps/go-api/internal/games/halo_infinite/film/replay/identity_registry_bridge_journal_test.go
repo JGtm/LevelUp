@@ -13,8 +13,8 @@ import (
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/filmobs"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
-	"levelup/go-api/internal/observability"
 )
 
 // pontDeTest : quatre vies appariees. Deux discordances sur le slot 3, une concordance (slot 5),
@@ -46,9 +46,9 @@ func TestPontParMorts_DiscordancesPublieesUneFoisParFilm(t *testing.T) {
 		t.Fatalf("slots discordants = %v, attendu %v (distincts)", v.SlotsDiscordants, want)
 	}
 
-	avant := observability.LoadCounter(compteurDiscordancesDuPont)
+	avant := filmobs.Load(compteurDiscordancesDuPont)
 	IdentityRegistry{bridge: v}.publierDiscordancesDuPont(context.Background(), "m-test")
-	if d := observability.LoadCounter(compteurDiscordancesDuPont) - avant; d != 2 {
+	if d := filmobs.Load(compteurDiscordancesDuPont) - avant; d != 2 {
 		t.Fatalf("compteur %s : +%d, attendu +2", compteurDiscordancesDuPont, d)
 	}
 
@@ -89,9 +89,9 @@ func TestPontParMorts_SansDiscordanceRienNePublie(t *testing.T) {
 	slog.SetDefault(slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})))
 	defer slog.SetDefault(prev)
 
-	avant := observability.LoadCounter(compteurDiscordancesDuPont)
+	avant := filmobs.Load(compteurDiscordancesDuPont)
 	IdentityRegistry{bridge: bridgeVerification{Concordant: 4}}.publierDiscordancesDuPont(context.Background(), "m")
-	if observability.LoadCounter(compteurDiscordancesDuPont) != avant || buf.Len() != 0 {
+	if filmobs.Load(compteurDiscordancesDuPont) != avant || buf.Len() != 0 {
 		t.Fatalf("un film sans discordance ne doit rien publier (journal %q)", buf.String())
 	}
 }

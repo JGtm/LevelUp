@@ -20,6 +20,7 @@ import (
 	"context"
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/filmobs"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
@@ -91,15 +92,15 @@ func TestSansContradictionLaFeuilleNeChangeRien(t *testing.T) { // A-ACCORD
 
 func TestJournalDesContradictionsDEquipe(t *testing.T) { // A-JOURNAL
 	const extrait = "disent deux equipes"
-	contre, sansArbitre := compteurExpvar(t, metriqueEquipesContreDeclaration), compteurExpvar(t, metriqueEquipesSansArbitre)
+	contre, sansArbitre := filmobs.Load(metriqueEquipesContreDeclaration), filmobs.Load(metriqueEquipesSansArbitre)
 	tranchee := occupants{equipesContreDeclaration: 1,
 		contradictions: []contradictionDEquipe{{nom: "b", bid: "bid(7.0)", entite: 1, base: equipePtr(0)}}}
 	journal := journalDe(t, func() { journaliserLesEquipesDeclarees(context.Background(), "m", tranchee) })
 	if !aUnEnregistrement(journal, "WARN", extrait) || aUnEnregistrement(journal, "ERROR", extrait) {
 		t.Errorf("journal %v : un arbitrage par la feuille s'ecrit en avertissement, pas en ERREUR", journal)
 	}
-	if d1, d2 := compteurExpvar(t, metriqueEquipesContreDeclaration)-contre,
-		compteurExpvar(t, metriqueEquipesSansArbitre)-sansArbitre; d1 != 1 || d2 != 0 {
+	if d1, d2 := filmobs.Load(metriqueEquipesContreDeclaration)-contre,
+		filmobs.Load(metriqueEquipesSansArbitre)-sansArbitre; d1 != 1 || d2 != 0 {
 		t.Errorf("compteurs +%d contradictions, +%d sans arbitre : attendu +1 et +0", d1, d2)
 	}
 	inconnu := occupants{equipesContreDeclaration: 1,
@@ -108,8 +109,8 @@ func TestJournalDesContradictionsDEquipe(t *testing.T) { // A-JOURNAL
 	if !aUnEnregistrement(journal, "ERROR", extrait) {
 		t.Errorf("journal %v : un bot que la feuille ne connait pas s'ecrit en ERREUR", journal)
 	}
-	if d1, d2 := compteurExpvar(t, metriqueEquipesContreDeclaration)-contre,
-		compteurExpvar(t, metriqueEquipesSansArbitre)-sansArbitre; d1 != 2 || d2 != 1 {
+	if d1, d2 := filmobs.Load(metriqueEquipesContreDeclaration)-contre,
+		filmobs.Load(metriqueEquipesSansArbitre)-sansArbitre; d1 != 2 || d2 != 1 {
 		t.Errorf("compteurs +%d contradictions, +%d sans arbitre : attendu +2 et +1", d1, d2)
 	}
 }

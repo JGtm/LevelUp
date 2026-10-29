@@ -43,8 +43,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"levelup/go-api/internal/games/halo_infinite/film/filmobs"
 	"levelup/go-api/internal/games/halo_infinite/film/finalise"
-	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/atomicfile"
 )
 
@@ -139,7 +139,7 @@ func Write(ctx context.Context, root, shortID string, chunks []WriteChunk) error
 		return err
 	}
 	if sortMf == manifesteAReparer {
-		observability.IncCounter(compteurManifesteRepare)
+		filmobs.IncCounter(compteurManifesteRepare)
 	}
 	return nil
 }
@@ -161,7 +161,7 @@ func ecrireChunk(ctx context.Context, dir, shortID string, c WriteChunk) error {
 		return fmt.Errorf("filmcache: ecriture du chunk %d de %s : %w", c.Index, shortID, err)
 	}
 	if present {
-		observability.IncCounter(compteurChunkRemplace)
+		filmobs.IncCounter(compteurChunkRemplace)
 		slog.WarnContext(ctx, "filmcache: chunk present a la mauvaise taille, remplace",
 			"short_id", shortID, "chunk", c.Index, "taille_disque", info.Size(),
 			"taille_attendue", len(c.Data))

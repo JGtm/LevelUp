@@ -38,10 +38,10 @@ package replay
 // deux gestes appartiennent a l orchestrateur, qui seul connait le vocabulaire de son pipeline.
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/filmobs"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
-	"levelup/go-api/internal/observability"
 )
 
 // CleFilm porte les trois cles qu un film ECRIT et le verdict de la table de profil.
@@ -129,7 +129,7 @@ func PublierCleInconnue(c CleFilm) {
 		return
 	}
 	for _, p := range compteursDeCleInconnue(c) {
-		observability.AddInt(p.Name, p.Value)
+		filmobs.AddInt(p.Name, p.Value)
 	}
 }
 

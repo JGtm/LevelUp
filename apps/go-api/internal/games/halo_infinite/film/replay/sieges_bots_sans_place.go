@@ -23,7 +23,7 @@ import (
 	"log/slog"
 	"slices"
 
-	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/games/halo_infinite/film/filmobs"
 )
 
 // metriqueBotsSansVieNiPlace : le compteur expvar des bots ecartes du roster publie par cette regle.
@@ -75,7 +75,7 @@ func sansLesBotsEcartes(roster []RosterEntry, cov SeatCoverage) []RosterEntry {
 // bots sans place qui ont une vie — jamais masques.
 func journaliserLesBotsSansPlace(ctx context.Context, matchID string, ecartes, avecVie int) {
 	if ecartes > 0 {
-		observability.AddInt(metriqueBotsSansVieNiPlace, int64(ecartes))
+		filmobs.AddInt(metriqueBotsSansVieNiPlace, int64(ecartes))
 		slog.WarnContext(ctx, "rejeu : bot declare sans aucune vie ni place libre dans son equipe — hors du "+
 			"roster publie, aucun partant deduit", "match_id", matchID, "bots", ecartes)
 	}

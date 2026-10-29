@@ -13,7 +13,7 @@ import (
 	"strconv"
 
 	"levelup/go-api/internal/games/canonical"
-	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/games/halo_infinite/film/filmobs"
 )
 
 // SanteDuPont rend la sante du pont slot -> joueur : sur quoi il repose, et ce qu'il refuse.
@@ -115,7 +115,7 @@ func (r IdentityRegistry) publierDiscordancesDuPont(ctx context.Context, matchID
 	if n == 0 {
 		return
 	}
-	observability.AddInt(compteurDiscordancesDuPont, int64(n))
+	filmobs.AddInt(compteurDiscordancesDuPont, int64(n))
 	slog.InfoContext(ctx, "rejeu : le pont par morts contredit le lien direct sur des vies — le film "+
 		"fait foi, les noms du pont sont ecartes",
 		"match_id", matchID, "discordances", n,

@@ -288,6 +288,9 @@ var couchesDuDecodeur = map[string]coucheFilm{
 	// `grammar`, le consulte sans tirer le cache disque ni `internal/domain` dans sa revision. Il
 	// ne lit aucun octet de film : il juge des types de manifeste.
 	"internal/games/halo_infinite/film/finalise": horsCoucheFilm,
+	// `filmobs` : les COMPTEURS d observation du decodeur (feuille sans import du depot ; la brique
+	// compte, l hote branche un puits). Ni decodage ni publication de faits : hors couche.
+	"internal/games/halo_infinite/film/filmobs": horsCoucheFilm,
 	// `revision` : L OUTILLAGE D EMPREINTE partage par les revisions de couche (lot 2.6.0,
 	// 2026-09-17). Il ne lit AUCUN octet de film — il hache des octets de SOURCE — donc il n est
 	// ni une etape de decodage ni une publication : meme rangement que les trois catalogues de

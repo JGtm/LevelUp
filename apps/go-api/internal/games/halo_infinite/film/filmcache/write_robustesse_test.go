@@ -14,8 +14,8 @@ import (
 	"testing"
 	"time"
 
+	"levelup/go-api/internal/games/halo_infinite/film/filmobs"
 	"levelup/go-api/internal/games/halo_infinite/film/finalise"
-	"levelup/go-api/internal/observability"
 )
 
 func cheminChunk(root, short string, index int) string {
@@ -40,7 +40,7 @@ func TestWrite_ChunkTronqueSurDisqueEstRemplace(t *testing.T) {
 	if err := os.Link(chemin, temoin); err != nil {
 		t.Fatalf("lien physique : %v", err)
 	}
-	avant := observability.LoadCounter(compteurChunkRemplace)
+	avant := filmobs.Load(compteurChunkRemplace)
 	if err := Write(t.Context(), root, "0bad0001", filmFinalise("killfeed")); err != nil {
 		t.Fatalf("Write 2: %v", err)
 	}
@@ -51,7 +51,7 @@ func TestWrite_ChunkTronqueSurDisqueEstRemplace(t *testing.T) {
 	if vu, err := os.ReadFile(temoin); err != nil || string(vu) != "repl" {
 		t.Errorf("temoin = %q (err %v), attendu repl : le chunk a ete reecrit EN PLACE, pas atomiquement", vu, err)
 	}
-	if d := observability.LoadCounter(compteurChunkRemplace) - avant; d != 1 {
+	if d := filmobs.Load(compteurChunkRemplace) - avant; d != 1 {
 		t.Errorf("%s += %d, attendu 1", compteurChunkRemplace, d)
 	}
 }
@@ -68,7 +68,7 @@ func TestWrite_ChunkIdentiqueNestPasReecrit(t *testing.T) {
 	if err := os.Chtimes(chemin, ancien, ancien); err != nil {
 		t.Fatal(err)
 	}
-	avant := observability.LoadCounter(compteurChunkRemplace)
+	avant := filmobs.Load(compteurChunkRemplace)
 	if err := Write(t.Context(), root, "0bad0002", filmFinalise("killfeed")); err != nil {
 		t.Fatalf("Write 2: %v", err)
 	}
@@ -79,7 +79,7 @@ func TestWrite_ChunkIdentiqueNestPasReecrit(t *testing.T) {
 	if !info.ModTime().Equal(ancien) {
 		t.Errorf("chunk reecrit (mtime %v, attendu %v)", info.ModTime(), ancien)
 	}
-	if d := observability.LoadCounter(compteurChunkRemplace) - avant; d != 0 {
+	if d := filmobs.Load(compteurChunkRemplace) - avant; d != 0 {
 		t.Errorf("%s += %d, attendu 0", compteurChunkRemplace, d)
 	}
 }
@@ -145,7 +145,7 @@ func TestWrite_ManifestePorteLesTailles(t *testing.T) {
 func TestWrite_ManifesteIllisibleEstRepareParUneListeFinalisee(t *testing.T) {
 	root := t.TempDir()
 	poserManifeste(t, root, "0bad0005", []byte(`{"chunks":[{"index":0,`))
-	avant := observability.LoadCounter(compteurManifesteRepare)
+	avant := filmobs.Load(compteurManifesteRepare)
 	if err := Write(t.Context(), root, "0bad0005", filmFinalise("killfeed")); err != nil {
 		t.Fatalf("Write: %v", err)
 	}
@@ -156,7 +156,7 @@ func TestWrite_ManifesteIllisibleEstRepareParUneListeFinalisee(t *testing.T) {
 	if got := src.NumChunks(); got != 3 {
 		t.Errorf("%d entrees au manifeste repare, attendu 3", got)
 	}
-	if d := observability.LoadCounter(compteurManifesteRepare) - avant; d != 1 {
+	if d := filmobs.Load(compteurManifesteRepare) - avant; d != 1 {
 		t.Errorf("%s += %d, attendu 1", compteurManifesteRepare, d)
 	}
 }

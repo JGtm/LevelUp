@@ -22,6 +22,7 @@ import (
 
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
+	"levelup/go-api/internal/games/halo_infinite/film/filmobs"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/sync/haloclient"
 	"levelup/go-api/internal/testutil"
@@ -51,7 +52,7 @@ func TestKillCollectorEcarteUnFilmACleInconnue(t *testing.T) {
 	client := &clientDeBobine{chunks: chunks}
 	col := NewKillSourceCollector(client, rosterVide{}, nil, capsAvecFilmPourCle(), 0)
 
-	avant := observability.LoadCounter(compteurCleRefusee)
+	avant := filmobs.Load(compteurCleRefusee)
 	avantPasses := observability.LoadCounter(metricUnknownKey)
 
 	outcome, morts, err := col.CollectMatch(context.Background(), "m1")
@@ -64,7 +65,7 @@ func TestKillCollectorEcarteUnFilmACleInconnue(t *testing.T) {
 	if morts != 0 {
 		t.Errorf("morts = %d, attendu 0 — un film ecarte ne publie AUCUN fait", morts)
 	}
-	if apres := observability.LoadCounter(compteurCleRefusee); apres != avant+1 {
+	if apres := filmobs.Load(compteurCleRefusee); apres != avant+1 {
 		t.Errorf("compteur %q : %d -> %d, attendu +1 — le refus est INVISIBLE en production",
 			compteurCleRefusee, avant, apres)
 	}
@@ -92,14 +93,14 @@ func TestKillCollectorNEcartePasUnFilmACleConnue(t *testing.T) {
 	client := &clientDeBobine{chunks: chunks}
 	col := NewKillSourceCollector(client, rosterVide{}, nil, capsAvecFilmPourCle(), 0)
 
-	avantRef := observability.LoadCounter("filmdec_unknown_build_hi_1_13_0")
+	avantRef := filmobs.Load("filmdec_unknown_build_hi_1_13_0")
 	avantPasses := observability.LoadCounter(metricUnknownKey)
 
 	outcome, _, _ := col.CollectMatch(context.Background(), "m1")
 	if outcome == OutcomeUnknownKey {
 		t.Fatalf("le build de reference est ECARTE — la porte refuse ce que le profil connait")
 	}
-	if apres := observability.LoadCounter("filmdec_unknown_build_hi_1_13_0"); apres != avantRef {
+	if apres := filmobs.Load("filmdec_unknown_build_hi_1_13_0"); apres != avantRef {
 		t.Errorf("compteur de cle refusee incremente sur une cle CONNUE : %d -> %d", avantRef, apres)
 	}
 	if apres := observability.LoadCounter(metricUnknownKey); apres != avantPasses {

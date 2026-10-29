@@ -15,10 +15,10 @@ import (
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/filmobs"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
-	"levelup/go-api/internal/observability"
 )
 
 // chunk00DeLaBobine rend les octets DEJA DECOMPRESSES du `chunk_00` d'une bobine par build.
@@ -50,7 +50,7 @@ func TestScanFilmPlayerTableCableLeCompteurDeBuildInconnu(t *testing.T) {
 	const inconnu = "HI_9_99_0"
 	copy(octets[off:off+len(inconnu)+1], append([]byte(inconnu), 0))
 	const compteur = "filmdec_unknown_build_hi_9_99_0"
-	avant := observability.LoadCounter(compteur)
+	avant := filmobs.Load(compteur)
 	film, err := source.Load(source.MemoryChunks{octets}, nil)
 	if err != nil {
 		t.Fatalf("chargement du chunk_00 mute : %v", err)
@@ -63,7 +63,7 @@ func TestScanFilmPlayerTableCableLeCompteurDeBuildInconnu(t *testing.T) {
 	if got.Build != inconnu {
 		t.Errorf("le refus doit NOMMER le build : %q", got.Build)
 	}
-	if apres := observability.LoadCounter(compteur); apres != avant+1 {
+	if apres := filmobs.Load(compteur); apres != avant+1 {
 		t.Fatalf("compteur %q : %d -> %d, attendu +1 — le refus est INVISIBLE en production",
 			compteur, avant, apres)
 	}
@@ -94,7 +94,7 @@ func identiteDeLaBobine(t *testing.T, chunk0 []byte) profile.FilmIdentity {
 // `LoadCounter` rend 0 pour un compteur absent. Cette sentinelle le verifie, pour qu'un
 // changement de ce contrat ne rende pas T-CABLE vert par accident.
 func TestCompteurAbsentVautZero(t *testing.T) {
-	if got := observability.LoadCounter("filmdec_unknown_build_" + t.Name()); got != 0 {
+	if got := filmobs.Load("filmdec_unknown_build_" + t.Name()); got != 0 {
 		t.Fatalf("un compteur jamais ecrit vaut %d, attendu 0", got)
 	}
 	_ = os.Getenv(miniFilmCacheEnv)

@@ -19,12 +19,11 @@ package replay
 import (
 	"bytes"
 	"context"
-	"expvar"
 	"log/slog"
-	"strconv"
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/filmobs"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
@@ -179,7 +178,7 @@ func TestPorteDepartSeTaitSurUneEntiteInstable(t *testing.T) {
 // R-B3-JOURNAL : ce que la regle ecarte se dit, par l assemblage, en AVERTISSEMENT et au compteur
 // expvar — la couverture servie ne le porte pas, c est sa seule trace.
 func TestPorteDepartSeDitAuJournalEtAuCompteur(t *testing.T) {
-	avant := compteurExpvar(t, metriqueViesApresDepart)
+	avant := filmobs.Load(metriqueViesApresDepart)
 	var buf bytes.Buffer
 	prev := slog.Default()
 	slog.SetDefault(slog.New(slog.NewJSONHandler(&buf, nil)))
@@ -195,25 +194,7 @@ func TestPorteDepartSeDitAuJournalEtAuCompteur(t *testing.T) {
 	if !avertie {
 		t.Errorf("journal %q : attendu un AVERTISSEMENT du corps ecarte", buf.String())
 	}
-	if apres := compteurExpvar(t, metriqueViesApresDepart); apres != avant+1 {
+	if apres := filmobs.Load(metriqueViesApresDepart); apres != avant+1 {
 		t.Errorf("compteur %s : %d -> %d, attendu +1 (un corps)", metriqueViesApresDepart, avant, apres)
 	}
-}
-
-// compteurExpvar lit un compteur de la carte expvar « levelup » (0 s'il n'existe pas encore).
-func compteurExpvar(t *testing.T, nom string) int64 {
-	t.Helper()
-	m, ok := expvar.Get("levelup").(*expvar.Map)
-	if !ok || m == nil {
-		t.Fatal("carte expvar « levelup » absente")
-	}
-	v := m.Get(nom)
-	if v == nil {
-		return 0
-	}
-	n, err := strconv.ParseInt(v.String(), 10, 64)
-	if err != nil {
-		t.Fatalf("compteur %s illisible (%q) : %v", nom, v.String(), err)
-	}
-	return n
 }

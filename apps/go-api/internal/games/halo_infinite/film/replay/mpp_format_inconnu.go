@@ -41,9 +41,9 @@ import (
 	"context"
 	"log/slog"
 
+	"levelup/go-api/internal/games/halo_infinite/film/filmobs"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
-	"levelup/go-api/internal/observability"
 )
 
 // publierFormatSansProfil incremente `filmdec_unknown_format_<n>` pour un film dont la version
@@ -51,7 +51,7 @@ import (
 // 25) n est PAS compte ici : c est l etat normal du parc ancien, pas un evenement.
 func publierFormatSansProfil(format int) {
 	for _, p := range grammar.UnknownFormatExpvarPairs(format) {
-		observability.AddInt(p.Name, p.Value)
+		filmobs.AddInt(p.Name, p.Value)
 	}
 }
 

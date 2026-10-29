@@ -24,8 +24,8 @@ import (
 	"context"
 	"log/slog"
 
+	"levelup/go-api/internal/games/halo_infinite/film/filmobs"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
-	"levelup/go-api/internal/observability"
 )
 
 // metriqueViesApresDepart : le compteur expvar des corps dont la porte ecarte les positions par R-B3.
@@ -109,7 +109,7 @@ func (c couverturePorte) journaliserLesViesApresDepart(ctx context.Context, matc
 	if c.CorpsApresDepart == 0 {
 		return
 	}
-	observability.AddInt(metriqueViesApresDepart, int64(c.CorpsApresDepart))
+	filmobs.AddInt(metriqueViesApresDepart, int64(c.CorpsApresDepart))
 	slog.WarnContext(ctx, "rejeu : positions d'un corps posterieures au depart prouve de son occupant — "+
 		"aucune vie publiee", "match_id", matchID, "corps", c.CorpsApresDepart, "positions", c.ApresDepart)
 }

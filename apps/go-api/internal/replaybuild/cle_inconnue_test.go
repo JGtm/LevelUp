@@ -29,7 +29,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/games/halo_infinite/film/filmobs"
 	"levelup/go-api/internal/testutil"
 )
 
@@ -51,7 +51,7 @@ const (
 // COMPTE par cle, et le message porte la cle refusee.
 func TestCuissonEcarteUnFilmACleInconnue(t *testing.T) {
 	film := bobineChargee(t, bobineDeReference, true)
-	avant := observability.LoadCounter(compteurDeLaCleRefusee)
+	avant := filmobs.Load(compteurDeLaCleRefusee)
 
 	err := ecarterSiCleInconnue(context.Background(), "m1", film)
 	if err == nil {
@@ -64,7 +64,7 @@ func TestCuissonEcarteUnFilmACleInconnue(t *testing.T) {
 	if !strings.Contains(err.Error(), buildHorsTable) {
 		t.Errorf("le message ne NOMME pas la cle refusee : %q", err.Error())
 	}
-	if apres := observability.LoadCounter(compteurDeLaCleRefusee); apres != avant+1 {
+	if apres := filmobs.Load(compteurDeLaCleRefusee); apres != avant+1 {
 		t.Errorf("compteur %q : %d -> %d, attendu +1 — le refus est INVISIBLE en production",
 			compteurDeLaCleRefusee, avant, apres)
 	}
@@ -92,12 +92,12 @@ func TestLErreurDeCleTraverseLaFrontiereDeProcessus(t *testing.T) {
 // TOUT passerait le test ci-dessus.
 func TestCuissonNEcartePasUnFilmACleConnue(t *testing.T) {
 	film := bobineChargee(t, bobineDeReference, false)
-	avant := observability.LoadCounter("filmdec_unknown_build_hi_1_13_0")
+	avant := filmobs.Load("filmdec_unknown_build_hi_1_13_0")
 
 	if err := ecarterSiCleInconnue(context.Background(), "m1", film); err != nil {
 		t.Fatalf("le build de reference est ECARTE : %v", err)
 	}
-	if apres := observability.LoadCounter("filmdec_unknown_build_hi_1_13_0"); apres != avant {
+	if apres := filmobs.Load("filmdec_unknown_build_hi_1_13_0"); apres != avant {
 		t.Errorf("compteur de cle refusee incremente sur une cle CONNUE : %d -> %d", avant, apres)
 	}
 }

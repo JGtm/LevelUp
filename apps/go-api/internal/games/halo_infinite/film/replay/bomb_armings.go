@@ -65,11 +65,11 @@ import (
 	"slices"
 	"sort"
 
+	"levelup/go-api/internal/games/halo_infinite/film/filmobs"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
-	"levelup/go-api/internal/observability"
 )
 
 // BombFuseMS est la mèche de RÉFÉRENCE : celle des variantes à mèche courte, mesurée à 4,93 s
@@ -197,7 +197,7 @@ func decodeFilmBombReads(ctx context.Context, fc *grammar.FilmContext, matchID s
 // `KillSourceHealth.ExpvarPairs`, cable par `killcollector`.
 func publierFermetureImageCle(sc *grammar.NavpointRadialScan) {
 	for _, p := range sc.KeyframeExpvarPairs() {
-		observability.AddInt(p.Name, p.Value)
+		filmobs.AddInt(p.Name, p.Value)
 	}
 }
 

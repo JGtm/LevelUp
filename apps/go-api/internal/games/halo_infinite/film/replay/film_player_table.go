@@ -13,8 +13,8 @@ import (
 	"context"
 	"log/slog"
 
+	"levelup/go-api/internal/games/halo_infinite/film/filmobs"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
-	"levelup/go-api/internal/observability"
 )
 
 // consignerLaTableDuFilm journalise la lecture de la table des joueurs du film
@@ -57,6 +57,6 @@ func consignerLaTableDuFilm(ctx context.Context, t grammar.FilmPlayerTable, err 
 // `publierFermetureImageCle` : `grammar` NOMME ses compteurs, le consommateur les CABLE.
 func publierBuildInconnu(build string) {
 	for _, p := range grammar.UnknownBuildExpvarPairs(build) {
-		observability.AddInt(p.Name, p.Value)
+		filmobs.AddInt(p.Name, p.Value)
 	}
 }

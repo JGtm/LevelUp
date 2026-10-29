@@ -27,7 +27,7 @@ import (
 	"context"
 	"log/slog"
 
-	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/games/halo_infinite/film/filmobs"
 )
 
 // contradictionDEquipe : un bot dont l'entite et la declaration disent deux equipes, et ce que la
@@ -81,7 +81,7 @@ func journaliserLesEquipesDeclarees(ctx context.Context, matchID string, occ occ
 			"match_id", matchID, "bots", occ.equipesParDeclaration)
 	}
 	if occ.equipesContreDeclaration > 0 {
-		observability.AddInt(metriqueEquipesContreDeclaration, int64(occ.equipesContreDeclaration))
+		filmobs.AddInt(metriqueEquipesContreDeclaration, int64(occ.equipesContreDeclaration))
 	}
 	for _, c := range occ.contradictions {
 		if c.base != nil {
@@ -90,7 +90,7 @@ func journaliserLesEquipesDeclarees(ctx context.Context, matchID string, occ occ
 				"entite", c.entite, "declaration", c.declaree, "feuille", *c.base)
 			continue
 		}
-		observability.AddInt(metriqueEquipesSansArbitre, 1)
+		filmobs.AddInt(metriqueEquipesSansArbitre, 1)
 		slog.ErrorContext(ctx, "rejeu : l'entite ti=9 d'un bot et son entree BOT_METADATA disent deux equipes, "+
 			"et la feuille de match ne connait pas ce bot — l'entite est publiee, l'ecart est compte",
 			"match_id", matchID, "bot", c.nom, "bid", c.bid, "entite", c.entite, "declaration", c.declaree)

@@ -23,10 +23,10 @@ import (
 	"path/filepath"
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/filmobs"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
-	"levelup/go-api/internal/observability"
 )
 
 // formatHorsTable : une version de format que la table de profil ne connait pas. 28 est le
@@ -45,7 +45,7 @@ func TestFormatInconnuTombeSurLesLargeursCalibrees(t *testing.T) {
 	// profil au lieu du repli, la comparaison le verrait.
 	calibrees := profile.MPPWidths{Lead: 7, Index: 4}
 	const compteur = "filmdec_unknown_format_28"
-	avant := observability.LoadCounter(compteur)
+	avant := filmobs.Load(compteur)
 
 	got := gwWidthsForFilm(fc, calibrees)
 
@@ -54,7 +54,7 @@ func TestFormatInconnuTombeSurLesLargeursCalibrees(t *testing.T) {
 			"jamais sur un refus sec ni sur le profil d'un format voisin (D-4 d'ADR 0034). "+
 			"Un patch du jeu eteindrait le decodeur sur tout le parc neuf.", got, calibrees)
 	}
-	if apres := observability.LoadCounter(compteur); apres != avant+1 {
+	if apres := filmobs.Load(compteur); apres != avant+1 {
 		t.Fatalf("compteur %q : %d -> %d, attendu +1 — le repli serait SILENCIEUX, et un "+
 			"changement de format du jeu ne se verrait qu'en derive de qualite sans cause",
 			compteur, avant, apres)
