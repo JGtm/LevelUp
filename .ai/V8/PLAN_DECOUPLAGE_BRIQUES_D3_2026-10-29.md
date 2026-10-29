@@ -579,26 +579,129 @@ identiques octet pour octet ; `historique` (tête de page) et `servicerecord` (c
 
 ## Lot 2 — `haloapi/xblauth` (chaîne d'authentification) — lot à risque
 
-- [ ] 2.1 `git mv` des 12 fichiers protocole + leurs tests vers `internal/haloapi/xblauth` ; type
-  `Tokens` ; `Descriptor` ; `slog` ; client HTTP injecté (constructeur `NewExchanger(client)` ou
-  fonctions à paramètre `*http.Client` — suivre ce qui existe : `exchangeAccessTokenWithClient` prend
-  déjà un client) ; aucune variable de paquet mutable (ratchet `film_exported_vars`-like à poser ? non :
-  règle existante de lint `gochecknoglobals` si active, sinon découverte).
-- [ ] 2.2 `platform/auth` : façades d'exploitation à descripteur par défaut (mêmes noms exportés
-  qu'aujourd'hui : `ExchangeAccessToken`, `ExchangeXSTSForHaloTokens`, `AcquireXSTSForRTA`,
-  `RefreshUserXSTS`, `NewSISUProvider`, `NewXboxProfileResolver`, `NewPeopleHubResolver`,
-  `TokenCaptureClientID`, `AuthErrorConfig`/`ClassifyAuthError`... : relever les symboles appelés hors
-  de `platform/auth` et garder CHAQUE nom, en délégation vers la brique avec conversion de jetons) :
-  les 55 importeurs ne changent PAS.
-- [ ] 2.3 Ratchets : `sentinel_test.go` vert sans modification ; `no_legacy_source_used_test` vert ;
-  netguard vert avec la règle du 1.4 ; tolérances `xblauth` à zéro.
-- [ ] 2.4 Témoin : `go test ./internal/platform/auth/... ./internal/haloapi/... -count=1` = mêmes
-  tests (déplacés nommés) ; `go test -tags=integration ./internal/platform/auth/...` si des tests
-  d'intégration existent (`xbox_device_code_reachability_integration_test.go` : réseau, se saute
-  hors ligne) ; T3 partiel : un rafraîchissement de jetons par `levelup` (chemin canonique) réussit et
-  le store est réécrit comme avant (comparer la forme du fichier `data/auth/watcher_tokens/{xuid}.json`,
-  champs identiques).
-- [ ] 2.5 Gate + commit « D3 lot 2 » ; CI verte ; point d'étape.
+Numérotation ajustée à l'exécution (brief du pilote du 2026-10-29, six étapes au lieu de cinq) ; les items d'origine
+sont repris dans les étapes ci-dessous (ancien 2.1 -> 2.1 + 2.2, ancien 2.2 -> 2.3, ancien 2.3 -> 2.4, ancien 2.4 -> 2.5,
+ancien 2.5 -> 2.6). 2.2, 2.3 et 2.4 sont dans UN commit : un `git mv` sans façade ne compile pas, et D3-O impose le
+renommage des clés de ratchet dans le commit qui déplace le fichier.
+
+- [x] 2.1 Squelette : `internal/haloapi/doer.go` (`Doer`, `ErrDefinitif`, `NonRetryable`), `xblauth/doc.go` (contrat),
+  `Tokens`, `Descriptor`, `ClientAzure`, provenances, `Chaine` ; parité par réflexion `Tokens` <-> `domain.HaloTokens`
+  dans `platform/auth`.
+  Statut : fait, commit `7de69eaf3`.
+- [x] 2.2 Déplacements `git mv` (relevé du lot 0, D3-L) : voir « Exécution du lot 2 ». Aucune variable de paquet mutable
+  dans la brique (le sémaphore XBL, la provenance du `ctx` et les adresses surchargeables des tests restent dans
+  `platform/auth`) ; `gochecknoglobals` n'est pas actif, la brique n'a aucune variable de paquet (vérifié au grep).
+  Statut : fait, commit `61795015b`.
+- [x] 2.3 Façades `platform/auth` aux noms inchangés, conversion des jetons, `Doer` gardé par surface, compteurs tenus
+  depuis l'issue typée.
+  Statut : fait, commit `61795015b`. 239 symboles exportés d'avant (types, fonctions, valeurs, champs, méthodes)
+  vérifiés à la compilation.
+- [x] 2.4 Ratchets (D3-O) : netguard (exemption par préfixe + 4 clés renommées), `no_halowaypoint_literal` (1 entrée
+  retirée), `briques_internes` (liste `platform/auth` retirée, part « auth » à zéro), `sentinel_test.go` et
+  `no_legacy_source_used_test.go` INCHANGÉS et verts ; `.gitleaks.toml` et `scripts/coverage_filter.sh` non concernés.
+  Statut : fait, commit `61795015b`.
+- [x] 2.5 Témoins : tests (aucun nom disparu, aucun pass->skip), intégration, T3 partiel LIVE (`servicerecord`).
+  Statut : fait (voir « Exécution du lot 2 »).
+- [x] 2.6 Gate local : build, vet, archlint, `go list -deps` de la brique, gofmt, lint 0 issue, seuils de taille.
+  Statut : fait. CI : au pilote (aucun push dans ce lot).
+
+## Exécution du lot 2 (2026-10-29)
+
+Branche `refactor/decouplage-d3-api-halo`, depuis `c1024ef01`. Commits : `7de69eaf3` (2.1), `61795015b` (2.2 à 2.4),
+puis le commit de clôture (ce plan, journal). Caches `go-build-d3` / `golangci-d3`. Témoins :
+`%TEMP%\claude\c--Users-Guillaume-Downloads-Scripts-LevelUp\77a8b90a-21a6-40a0-ac64-eb152f616862\scratchpad\temoins_d3_lot2\`
+(`md5s.txt`). Aucun jeton ni secret dans un fichier, un témoin, un journal ou ce plan.
+
+**Fichiers déplacés (`git mv`) vers `internal/haloapi/xblauth`.** `xsts.go` -> `xsts_rta.go` (moitié protocole :
+`XSTSResult`, échange XSTS Xbox Live) ; `oauth_refresh.go` ; `xbox_device_code.go` ; `auth_code.go` ; `oauth_error.go` ;
+`api_constants.go` ; `xbox_profile_resolver.go` ; `peoplehub_resolver.go` ; tests `halo_exchange_test.go` ->
+`exchange_test.go`, `halo_exchange_descriptor_test.go` -> `exchange_descriptor_test.go`, `xbox_device_code_test.go`,
+`auth_code_test.go`, `peoplehub_resolver_test.go`, `xbox_profile_resolver_test.go`. `halo_exchange.go` (515 L) est SCINDÉ :
+`exchange_access.go` (chaîne, jambe User Token, préfixes RpsTicket, 197 L) + `exchange_xsts.go` (XSTS, Spartan, Clearance,
+`postJSON`, 194 L) ; sa part d'exploitation (sémaphore, provenance du `ctx`, observateur, `ExchangeResult` à
+`domain.HaloTokens`) va à la façade `platform/auth/xbl_exchange.go` ; git ne le voit pas comme un renommage (contenu réparti
+sur trois fichiers : `git log --follow -M30%` ou `git blame -C -C`). Nouveaux : `sisu.go` (client Xbox natif : identifiant,
+scope MSA, deux adresses login.live.com ; la « partie SISU » de `sisu_provider.go`), `xsts_rta_test.go` (10 tests du
+protocole coupés de `platform/auth/xsts_test.go`), `testdata_test.go` (`testGamertagInternal` y migre :
+`platform/auth/testdata_test.go` supprimé, plus d'usage), `oauth_refresh_test.go` (issue typée, 3 tests neufs). Plus grand
+fichier de production de la brique : 227 L (`oauth_refresh.go`) ; plus longue fonction : 74 L
+(`OAuth.ExchangeAuthorizationCode`).
+
+**Restés dans `platform/auth`, et pourquoi.** `azure_credentials.go` (lecture d'environnement ; il construit
+`ClientAzure` par `versXBL()`, clé du sentinel inchangée) ; `refresh_user_xsts.go` (magasin) ; `sisu_provider.go`
+(`SISUProvider`/`sisuDeviceFlow` implémentent `TokenProvider`/`DeviceFlow`/`FlowExchanger` : façade, `SISUDefaultAppID =
+xblauth.IDAppXboxNatif`) ; `AcquireXSTSForRTAWithProvenance` (magasin) ; `TokenFamily*` ; `XboxScopes` ; le sémaphore XBL
+process-wide (`acquireXBLUserAuthSlot`, passé à la brique par `Chaine.Creneau`) et son test `halo_exchange_throttle_test.go` ;
+la provenance portée par le `ctx` (`WithTokenClientFamily`, `TokenFamilyObserver`, `RecordObservedTokenFamily`, passées par
+`Chaine.Famille` / `Chaine.Observe`) ; les tests qui lisent le magasin ou l'environnement, ou qui testent la façade
+(`xsts_provenance_test`, `oauth_refresh_internal_test` (clé du sentinel inchangée), `azure_credentials_test`, `sisu_*_test`,
+`xbox_device_code_netguard_test`, `xbox_device_code_reachability_integration_test`, `oauth_refresh_test`, reste de
+`xsts_test`). Façades neuves : `xbl_exchange.go`, `xbl_xsts_rta.go`, `xbl_oauth.go`, `xbl_device_code.go`,
+`xbl_resolvers.go`, `xbl_doer.go` ; alias de type pour `XSTSResult`, `XboxDeviceCodeResult`, `AuthCodeResult`,
+`OAuthExchangeError`, `AuthErrorClass`, `XboxProfileResolver`, `PeopleHubResolver` ; `ExchangeResult` reste une struct de
+`platform/auth` (champ `Tokens *domain.HaloTokens`, 29 lecteurs). Conversion des jetons : sens brique -> `domain` seulement
+(`haloTokensDepuisXBL`) : aucun chemin ne passe de jetons Halo À la brique (le sens inverse serait du code mort, règle 7).
+
+**Table des délais (même valeur qu'avant, par fonction de façade).**
+
+| Façade | Doer passé à la brique | Délai | Garde netguard |
+|---|---|---|---|
+| `ExchangeAccessToken(WithDescriptor)`, `ExchangeXSTSForHaloTokens(WithDescriptor)`, `AcquireXSTSForRTA(WithProvenance)` | `*http.Client` | 20 s (`xblExchangeTimeout`) | aucune (comme avant) |
+| `sisuDeviceFlow.ExchangeFlow` | client injecté, sinon `*http.Client` | 20 s | aucune |
+| `ExchangeRefreshToken(WithRotation)` (Azure, retry public, repli MSA) | `netguardDoer{"microsoft_oauth.refresh"}` | 15 s (`oauthTimeout`) | oui, à chaque requête |
+| `ExchangeAuthorizationCode` | `*http.Client` | 15 s | aucune |
+| `StartXboxDeviceCode` / `PollXboxDeviceCode` | `netguardDoer{"xbox_device_code.start"/".poll"}` sur `http.DefaultClient` | aucun | oui |
+| `SISUProvider.InitDeviceFlow` (client nil) | `netguardDoer{"xbox_device_code.start"}` | 20 s | oui |
+| `NewXboxProfileResolver` / `NewPeopleHubResolver` | client de l'appelant, sinon `http.DefaultClient` | celui de l'appelant | aucune |
+
+Une sortie refusée (`netguard.ErrOffline`) est rendue par le `Doer` marquée `haloapi.NonRetryable` : la brique la rend
+telle quelle (rafraîchissement : même erreur, même message qu'avant, aucun repli MSA tenté) ou avec le préfixe d'avant
+(device code : « xbox_device_code: start: » / « poll: »).
+
+**Issues typées et compteurs.** `xblauth.RefreshOutcome{AccessToken, RotatedRefreshToken, Famille, RetentePublique,
+RetenteNatif}` ; `platform/auth/metrics.go` (`recordOAuthRefreshIssue`) incrémente `retry_public` si `RetentePublique`,
+`retry_msa` si `RetenteNatif`, puis `oauth_refresh_total` / `fail_total` / `fail_by_class` comme avant ; refresh_token vide :
+aucun appel, aucun compteur (comme avant). Noms expvar inchangés. Identifiant d'événement (`logging.WithEvent`) posé par la
+façade dans le `ctx` avant l'appel : les journaux `slog` de la brique le portent ; messages et clés de journal inchangés.
+
+**Symboles exportés vérifiés.** Relevé AVANT (`go/parser` sur `7de69eaf3`) : 239 symboles exportés de `platform/auth`
+(32 types, 40 fonctions, 30 valeurs, 81 champs, 56 méthodes) ; un fichier généré qui référence chacun compile sur le HEAD
+du lot (`EXPORTS_OK: 239`). `go build ./...` et `go vet ./...` verts : les 55 importeurs ne changent pas.
+
+**Ratchets touchés (une clé pour une, datées 2026-10-29).** `netguard_coverage_test.go` : exemption par préfixe
+`haloapi/` (constante `prefixeBriqueHaloapi`) ; `platform/auth/auth_code.go` -> `haloapi/xblauth/auth_code.go`,
+`platform/auth/halo_exchange.go` -> `haloapi/xblauth/exchange_xsts.go` (porte `postJSON`), `platform/auth/peoplehub_resolver.go`
+-> `haloapi/xblauth/peoplehub_resolver.go`, `platform/auth/xbox_profile_resolver.go` -> `haloapi/xblauth/xbox_profile_resolver.go`
+(justifications gardées, « ex ... » ajouté) ; le site `Check` neuf `platform/auth/xbl_doer.go` est VU par le ratchet (il émet
+`next.Do(req)` et appelle `netguard.Check`). `no_halowaypoint_literal_test.go` : entrée `internal/platform/auth/halo_exchange.go`
+RETIRÉE (la brique ne nomme plus aucun hôte halowaypoint ; les défauts vivent dans `domain/title`, déjà allowlisté) :
+l'allowlist décroît. `briques_internes_test.go` : liste `platform/auth` retirée de la ligne `haloapi` ; `domain` 22 -> 21,
+`domain/title` 9 -> 3, `platform/netguard` 9 -> 6, `observability/logging` retirée. `sentinel_test.go` (guards 2 et 3 VIDES),
+`no_legacy_source_used_test.go` : non modifiés, verts. `.gitleaks.toml` (aucun chemin déplacé), `scripts/coverage_filter.sh`
+(absent du dépôt) : non concernés. Mutation : la façade du rafraîchissement privée de son `netguardDoer` rougit
+`TestExchangeRefreshToken_DemoOffline_NEmetRien` (« erreur = <nil>, attendu netguard.ErrOffline »), puis rétablie.
+
+**Témoins.** (1) `go test -json ./internal/platform/auth/... ./internal/haloapi/... ./internal/platform/netguard/...
+./internal/sync/... ./internal/api/... ./internal/archlint/... -count=1` : tout vert après relance d'un test (le walk de
+`TestNoMutationOnAppendOnlyStateTables` a croisé un dossier temporaire de vérification des exports, créé puis supprimé
+pendant le run : relancé seul, vert). Comparaison au témoin T1 pour ces paquets (4 530 lignes avant, 4 557 après) : AUCUN
+nom disparu, aucun pass->skip ; 53 tests (69 lignes avec sous-tests) passés de `platform/auth` à `haloapi/xblauth` sous le
+même nom et le même verdict (68 pass, 1 skip `TestExchangeAuthorizationCode_MockServer_Skipped`, déjà skip) ; nouveaux :
+9 tests d'archlint du lot 1, `TestNonRetryable`, `TestClientAzure_*` (2), `TestRefreshWithRotation_*` (3), parités
+`platform/auth` (4), `TestNetguardDoer_DemoOffline`, `TestExchangeRefreshToken_DemoOffline_NEmetRien`,
+`TestExchangeRefreshToken_CompteursDepuisIssue`. (2) `go test -tags=integration ./internal/platform/auth/...
+./internal/haloapi/... -count=1` : vert ; `TestXboxDeviceCodeEndpointReachable` SKIP (garde opt-in
+`LEVELUP_DEVICE_ENDPOINT_LIVE_CHECK` non posée, comme avant). (3) T3 partiel LIVE, depuis le worktree avec
+`LEVELUP_REPO_ROOT` = dépôt principal, compte JGtm : `diag_api_lecture -xuid <JGtm> servicerecord` (une surface, une rotation
+de la chaîne par le chemin canonique, aucune re-capture) : code 0, 5 987 octets, MD5 `4dfdef90e9208e547125db378c08289b`
+IDENTIQUE au témoin du lot 1 ; journal identique au lot 1 (« invalid_grant côté Azure — retry refresh MSA natif » puis
+« échange OK rotated=true », D3-L1-f) ; fichier de jetons du compte : mêmes 16 clés JSON avant et après (comparaison des
+CHEMINS de clés seulement, valeurs jamais lues), `updated_at` avancé (réécrit par la rotation).
+
+**Gate (2.6).** `go build ./...`, `go vet ./...` verts ; `go test ./internal/archlint/ -count=1` vert ; `go list -deps -test
+./...` depuis `internal/haloapi` : aucun paquet `levelup/go-api/internal` hors `haloapi` ; `gofmt -l` vide ;
+`golangci-lint run --new-from-merge-base=origin/release/v8.1.0 ./...` : 0 issue (2 `goconst` « grant_type » apparus au
+déplacement, corrigés par la constante `oauthFieldGrantType`) ; brique : fichiers de production <= 227 L, fonctions <= 74 L.
 
 ## Lot 3 — `haloapi/infinite` (services, transport, adresses, DTO bruts)
 
@@ -823,3 +926,34 @@ Lot 1 (2026-10-29). Notées, NON traitées.
 - **D3-L1-g (`tolerances` agrège les trois origines).** Une entrée porte le total des trois groupes (auth, halo, haloclient) :
   au lot 2 elle baisse de la seule part d'`auth`, au lot 4 le reste part avec la suppression des dossiers. Un lot ne peut pas
   « emprunter » la baisse d'un autre tant que les groupes sont vidés dans l'ordre 2 puis 4 ; sinon la table devra compter par groupe.
+
+Lot 2 (2026-10-29). Notées, NON traitées.
+
+- **D3-L2-a (test placeholder désormais activable).** `TestExchangeAuthorizationCode_MockServer_Skipped` (déplacé dans
+  `haloapi/xblauth`) se saute parce que « msalTokenURL n'est pas paramétrable » : avec `OAuth.URLAzure` et le `Doer` reçus,
+  il peut devenir un vrai test `httptest`. Laissé en skip (même verdict qu'avant, aucun fix hors périmètre).
+- **D3-L2-b (historique de `halo_exchange.go`).** Scindé en trois (`exchange_access.go`, `exchange_xsts.go`, façade
+  `platform/auth/xbl_exchange.go`), il n'est pas vu comme un renommage par git (même `-M30%`) ; `oauth_refresh.go` (30 %) et
+  `xbox_device_code.go` (46 %) ne le sont qu'en dessous du seuil par défaut. Remonter l'historique : `git log --follow -M30%`,
+  `git blame -C -C`.
+- **D3-L2-c (surfaces d'authentification toujours sans garde `netguard`).** Échange XBL/XSTS/Spartan/Clearance, XSTS RTA,
+  code d'autorisation, PeopleHub, profil Xbox : client nu, comme avant (allowlist, clés renommées). Avec le `Doer`, les garder
+  ne coûterait qu'une ligne de façade chacun ; c'est un changement de comportement en mode démo : décision à prendre.
+- **D3-L2-d (texte de justification du sentinel).** `sentinel_test.go`, guard 5 : la justification de
+  `azure_credentials.go` dit « auth_code.go / oauth_refresh.go délèguent désormais à ResolveAzureOAuthClient » ; ces deux
+  fichiers sont dans la brique et ne lisent plus rien, c'est la façade `xbl_oauth.go` qui délègue. Clé et comportement exacts ;
+  texte périmé non touché (consigne : ne pas modifier le sentinel). Même historique dans l'en-tête de `azure_credentials.go`.
+- **D3-L2-e (erreur avalée préexistante).** `xblauth/xbox_device_code.go`, polling : `raw, _ := io.ReadAll(resp.Body)`
+  (erreur de lecture avalée, l'erreur JSON qui suit la masque) ; recopié tel quel.
+- **D3-L2-f (champs du descripteur non lus par la chaîne).** `title.AuthDescriptor.XboxLiveRelyingParty`, `SISUAppID`,
+  `SISUTitleID` : la chaîne ne les lisait pas avant le déplacement et ne les lit pas après (constantes `xboxLiveRelyingParty`
+  et `IDAppXboxNatif` dans la brique, `SISUDefaultTitleID` dans `platform/auth`). `xblauth.Descriptor` ne porte que ce que la
+  chaîne lit ; la double source est préexistante.
+- **D3-L2-g (mécanisme des dossiers à liste de `briques_internes`).** Plus aucune ligne de la table n'utilise `fichiers` ;
+  le mécanisme reste exercé par ses auto-preuves (`TestBriquesInternes_AutoPreuve_DossierAbsent`) et part avec la table à la
+  clôture de D3 (comme prévu au lot 1). La constante `dossierPlatAuth` ne sert plus qu'à cette auto-preuve.
+- **D3-L2-h (tests réseau de `platform/auth`).** `xsts_provenance_test` attend l'ÉCHEC d'un appel réel à Xbox Live (aucun
+  `Doer` injecté par `AcquireXSTSForRTAWithProvenance`) : la durée du paquet varie de 4 à 18 s selon le réseau.
+  Préexistant ; avec la brique, la façade pourrait accepter un `Doer` de test.
+- **D3-L2-i (texte d'`oauth_error.go`).** L'en-tête dit « refresh_token révoqué (action user : re-capture) » ; l'ADR 0023
+  parle de ré-authentification interactive et interdit la re-capture pour « réparer ». Texte déplacé tel quel.
