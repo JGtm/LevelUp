@@ -1,3 +1,8 @@
+
+## [2026-10-29] Découplage D2 — clôture (5.6, 5.7)
+
+**Statut** : Complété (D2 CLOS). PR #113 vers `release/v8.1.0`, 36 contrôles verts, fusion squash par le pilote ; caches `go-build-d2` / `golangci-d2` supprimés après la fusion ; worktree `LevelUp-wt-decouplage-d2` et branche supprimés. **Décision** : aucune nouvelle. **Résultats** : voir entrée du lot 5 (T1..T4). **Prochaine étape** : D3 (API Halo), plan `.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D3_2026-10-29.md`, branche `refactor/decouplage-d3-api-halo` depuis la release.
+
 ## [2026-10-29] Découplage D2 — lot 5 (preuve de non-régression) — Complété pour 5.1 à 5.5 ; 5.6 et 5.7 au pilote (branche `refactor/decouplage-d2-decodeur-film`, plan `.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D2_2026-10-28.md`)
 
 **Décision technique principale** : aucun code touché ; les quatre témoins (T1 à T4), l'intégration `sync`/`persist`, les gates web et `gate-push` rejoués commande par commande sur `32f118cd9`, puis docs et registres (registre des reports, addendum « D2 exécuté » de l'audit, plan).

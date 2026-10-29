@@ -636,8 +636,8 @@ code de production n'a changé, seuls un test et deux commentaires.
   de D1), web : l'hypothèse « non touché » est tombée (D2-L3-d), typecheck, lint et Vitest web rejoués (cf. Exécution du lot 5).
 - [x] 5.5 Docs et registres : `.ai/REGISTRE_REPORTS.md` (une entrée par `[!]` et par découverte
   reportée), addendum « D2 exécuté » dans l'audit, mémoire du pilote, thought_log « lot 5 ».
-- [ ] 5.6 Caches : `scripts/disk-hygiene.ps1 -Lot d2 -Apply` après la CI.
-- [ ] 5.7 PR vers `release/v8.1.0`, CI verte, fusion squash (titre Conventional Commits), branche et
+- [x] 5.6 (fait par le pilote après la fusion, 2026-10-29 : `disk-hygiene.ps1 -Lot d2 -Apply`) Caches : `scripts/disk-hygiene.ps1 -Lot d2 -Apply` après la CI.
+- [x] 5.7 (PR #113, 36 contrôles verts, fusion squash par le pilote le 2026-10-29 ; branche et worktree supprimés ensuite) PR vers `release/v8.1.0`, CI verte, fusion squash (titre Conventional Commits), branche et
   worktree supprimés, dépôt principal remis au niveau.
 
 **Clos quand** : 5.7 fait. D3 s'ouvre ensuite (plan distinct, à écrire depuis l'audit et les
