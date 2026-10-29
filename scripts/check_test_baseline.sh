@@ -328,6 +328,19 @@
 # de ce script ne franchit jamais la frontière d'un module, une entrée d'un autre module y serait « absente ».
 # Vérifié par différence des paires avant/après : aucune autre absence introduite par le lot.
 #
+# RETRAIT DU 2026-10-29 (plan D2 lot 3 : paquets du décodeur devenus module libs/film, renaissent dans
+# tests_libs_film.jsonl) : les 1 050 lignes JSONL (877 paires (Package, Test)) des paquets
+# `levelup/go-api/internal/games/halo_infinite/film/...` (`internal/grammar` 208, `internal/grammar/signaux` 9,
+# `internal/grammar/weaponscan` 48, `internal/facts/objectives` 65, `replay` 720) quittent cette baseline et
+# forment `.ai/baselines/tests_libs_film.jsonl`, À L'IDENTIQUE sauf le préfixe de paquet réécrit en
+# `github.com/JGtm/LevelUp/libs/film`. Aucun test ne sort du contrôle de présence : la seconde baseline est
+# jugée contre le JSONL des lots du module `libs/film` (`--baseline`, cf. ci-dessous). Les 2 lignes que le
+# lot 2.11 du même plan a relocalisées de `film/replay` vers `internal/filmcorpus` restent ici.
+#
+# DEUX BASELINES, UNE PAR MODULE (ADR 0041) : `tests_pre_migration.jsonl` pour `apps/go-api` (défaut),
+# `tests_libs_film.jsonl` pour `libs/film` (`--baseline .ai/baselines/tests_libs_film.jsonl`). `./...` ne
+# franchit pas la frontière d'un module : chaque baseline se juge contre le JSONL de SON module.
+#
 # DEUX MODES (le code de vérification est le MÊME — verify_tests_jsonl) :
 #   - AUTONOME (défaut) : le script lance lui-même la suite. C'est le mode du
 #     filet local `make gate-push`.
@@ -357,12 +370,17 @@
 #   bash scripts/check_test_baseline.sh tests                        # tests uniquement (lance la suite)
 #   bash scripts/check_test_baseline.sh coverage                     # coverage uniquement (lance la suite)
 #   bash scripts/check_test_baseline.sh tests --from-jsonl <fichier> # vérifie un JSONL déjà produit
+#   bash scripts/check_test_baseline.sh tests --from-jsonl <fichier> --baseline .ai/baselines/tests_libs_film.jsonl
+#                                                                    # idem pour le module libs/film
 
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BASELINE_DIR="$REPO_ROOT/.ai/baselines"
 BASELINE_TESTS="$BASELINE_DIR/tests_pre_migration.jsonl"
+# BASELINE_FILM : la baseline du module `libs/film` (le décodeur de film, ADR 0041), jugée contre le
+# JSONL de la voie film en mode autonome.
+BASELINE_FILM="$BASELINE_DIR/tests_libs_film.jsonl"
 BASELINE_COV_TXT="$BASELINE_DIR/coverage_pre_migration.txt"
 
 # JSONL du run courant (mode autonome) — chemin STABLE (pas un mktemp détruit à la
@@ -370,14 +388,18 @@ BASELINE_COV_TXT="$BASELINE_DIR/coverage_pre_migration.txt"
 # trace des tests en cause). Ignoré par git (.gitignore), uploadé en artefact par
 # la CI si échec.
 CURRENT_TESTS_JSONL="$REPO_ROOT/apps/go-api/baseline_current.jsonl"
+# JSONL de la voie film (module `libs/film`) en mode autonome, même régime que ci-dessus.
+CURRENT_FILM_JSONL="$REPO_ROOT/apps/go-api/baseline_current_libs_film.jsonl"
 
 usage() {
-  echo "Usage: $0 [tests|coverage|all] [--from-jsonl <fichier>]"
+  echo "Usage: $0 [tests|coverage|all] [--from-jsonl <fichier>] [--baseline <fichier>]"
   echo "  tests                    présence + verdict de la suite (baseline de non-régression)"
   echo "  coverage                 couverture totale ET par package vs baseline"
   echo "  all (défaut)             les deux"
   echo "  --from-jsonl <fichier>   mode consommateur : ne relance PAS la suite, vérifie"
   echo "                           le JSONL 'go test -json' fourni (mode tests uniquement)"
+  echo "  --baseline <fichier>     baseline de présence du mode consommateur (défaut :"
+  echo "                           .ai/baselines/tests_pre_migration.jsonl, module apps/go-api)"
 }
 
 MODE="all"
@@ -401,6 +423,15 @@ while [[ $# -gt 0 ]]; do
     --from-jsonl=*)
       FROM_JSONL="${1#*=}"
       shift
+      ;;
+    --baseline)
+      if [[ $# -lt 2 ]]; then
+        echo "[ECHEC] --baseline attend un chemin de fichier"
+        usage
+        exit 2
+      fi
+      BASELINE_TESTS="$2"
+      shift 2
       ;;
     -h | --help)
       usage
@@ -558,26 +589,25 @@ print_failure_output() {
 }
 
 # VOIES du mode AUTONOME (b1016, E1.7) : la suite se joue en DEUX processus `go test`
-# parallèles, dont les JSONL sont concaténés avant l'analyse (verify_tests_jsonl lit des
-# événements par paquet, l'ordre d'un fichier concaténé n'a aucune importance) :
-#   - la voie film (FILM_LANE_PATTERN) : aucun paquet ne dépend du driver DuckDB, tests
+# parallèles, un par module (ADR 0041), chacun jugé contre SA baseline :
+#   - la voie film : le module `libs/film` (FILM_LANE_MODULE, motif FILM_LANE_PATTERN depuis sa
+#     racine), jugé contre BASELINE_FILM ; aucun paquet ne dépend du driver DuckDB, tests
 #     compris — garde-rail archlint/film_lane_duckdb_free_test.go, qui juge CE motif ;
-#   - la voie DuckDB : tout le reste (`go list` moins la voie film), en `-p 1`
-#     (driver mono-process, ADR 0013).
+#   - la voie DuckDB : tout le module `apps/go-api`, en `-p 1` (driver mono-process, ADR 0013),
+#     jugé contre BASELINE_TESTS.
 # Le parallélisme ne partage donc aucune base. Il partage le cache de build Go : sur ce poste,
 # deux commandes `go` concurrentes ont déjà corrompu le cache Windows ; un échec de compilation
 # inexplicable en gate-push se rejoue avec un GOCACHE neuf avant de conclure.
-FILM_LANE_PATTERN='./internal/games/halo_infinite/film/...'
+FILM_LANE_MODULE='libs/film'
+FILM_LANE_PATTERN='./...'
 
-# run_current_suite — mode AUTONOME : exécute la suite complète et écrit le JSONL.
+# run_current_suite — mode AUTONOME : exécute la suite complète et écrit les JSONL des deux voies.
 # `-timeout=300s` : budget par package d'un run NON instrumenté. La CI, elle,
 # instrumente la couverture dans la même exécution et utilise 600s (cf. ci.yml).
 run_current_suite() {
-  local out="$1"
-  local out_film="${out}.film" out_duckdb="${out}.duckdb"
+  local out="$1" out_film="$2"
   echo "  Lancement de la suite courante : voie film et voie DuckDB en parallèle (plusieurs minutes)..."
   (
-    cd "$REPO_ROOT/apps/go-api"
     # Sur Windows local, utiliser le gcc fourni par msys64 via le PATH. Sur
     # Linux CI, utiliser le gcc système (déjà dans le PATH).
     # NE PAS exporter CC en chemin POSIX absolu (/c/msys64/.../gcc.exe) : invoqué
@@ -591,10 +621,9 @@ run_current_suite() {
     fi
     export CGO_ENABLED=1
 
-    local all film duckdb
-    mapfile -t all < <(go list -tags=integration ./... | tr -d '\r' | sort)
-    mapfile -t film < <(go list -tags=integration "$FILM_LANE_PATTERN" | tr -d '\r' | sort)
-    mapfile -t duckdb < <(comm -23 <(printf '%s\n' "${all[@]}") <(printf '%s\n' "${film[@]}"))
+    local film duckdb
+    mapfile -t film < <(cd "$REPO_ROOT/$FILM_LANE_MODULE" && go list -tags=integration "$FILM_LANE_PATTERN" | tr -d '\r' | sort)
+    mapfile -t duckdb < <(cd "$REPO_ROOT/apps/go-api" && go list -tags=integration ./... | tr -d '\r' | sort)
     if [[ ${#film[@]} -eq 0 || ${#duckdb[@]} -eq 0 ]]; then
       echo "[ECHEC] énumération des voies impossible (film=${#film[@]}, DuckDB=${#duckdb[@]} paquet(s))" > "$out"
       exit 1
@@ -602,22 +631,22 @@ run_current_suite() {
     echo "  voie film : ${#film[@]} paquet(s), voie DuckDB : ${#duckdb[@]} paquet(s)"
 
     (
+      cd "$REPO_ROOT/$FILM_LANE_MODULE"
       start=$SECONDS
-      go test -tags=integration -count=1 -timeout=300s -p 1 -json "${film[@]}" > "$out_film" 2>&1
+      go test -tags=integration -count=1 -timeout=300s -p 1 -json "$FILM_LANE_PATTERN" > "$out_film" 2>&1
       echo "  [voie film] terminée en $((SECONDS - start)) s"
     ) &
     pid_film=$!
     (
+      cd "$REPO_ROOT/apps/go-api"
       start=$SECONDS
-      go test -tags=integration -count=1 -timeout=300s -p 1 -json "${duckdb[@]}" > "$out_duckdb" 2>&1
+      go test -tags=integration -count=1 -timeout=300s -p 1 -json ./... > "$out" 2>&1
       echo "  [voie DuckDB] terminée en $((SECONDS - start)) s"
     ) &
     pid_duckdb=$!
     # Les codes retour ne comptent pas : le verdict vient de l'analyse du JSONL.
     wait "$pid_film" || true
     wait "$pid_duckdb" || true
-    cat "$out_film" "$out_duckdb" > "$out"
-    rm -f "$out_film" "$out_duckdb"
   ) || true # verdict rendu par l'ANALYSE du JSONL (présence + échecs), pas par ce code retour
 }
 
@@ -661,10 +690,10 @@ report_missing_par_paquet() {
 # ailleurs : deux implémentations divergeraient (le mode local et le gate CI ne
 # rendraient plus le même verdict, ce qui est précisément la panne qu'on évite).
 verify_tests_jsonl() {
-  local current_jsonl="$1"
+  local current_jsonl="$1" baseline="${2:-$BASELINE_TESTS}"
 
   local baseline_tests current_tests
-  baseline_tests=$(extract_test_names "$BASELINE_TESTS")
+  baseline_tests=$(extract_test_names "$baseline")
   current_tests=$(extract_test_names "$current_jsonl")
 
   local baseline_count current_count
@@ -763,8 +792,19 @@ check_tests() {
   mkdir -p "$(dirname "$current_jsonl")"
   echo "  JSONL du run courant : $current_jsonl"
 
-  run_current_suite "$current_jsonl"
-  verify_tests_jsonl "$current_jsonl"
+  echo "  JSONL de la voie film (module libs/film, baseline $BASELINE_FILM) : $CURRENT_FILM_JSONL"
+  if [[ ! -f "$BASELINE_FILM" ]]; then
+    echo "[ECHEC] Baseline du module libs/film introuvable : $BASELINE_FILM"
+    return 2
+  fi
+
+  run_current_suite "$current_jsonl" "$CURRENT_FILM_JSONL"
+  local rc=0
+  echo "[BASELINE] module apps/go-api"
+  verify_tests_jsonl "$current_jsonl" "$BASELINE_TESTS" || rc=$?
+  echo "[BASELINE] module libs/film"
+  verify_tests_jsonl "$CURRENT_FILM_JSONL" "$BASELINE_FILM" || rc=$?
+  return "$rc"
 }
 
 # check_tests_from_jsonl — mode CONSOMMATEUR : aucune exécution, on vérifie le

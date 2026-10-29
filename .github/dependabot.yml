@@ -92,6 +92,19 @@ updates:
           - "minor"
           - "patch"
 
+  - package-ecosystem: "gomod"
+    directory: "/libs/film"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 3
+    groups:
+      go-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
   # Workflows GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"

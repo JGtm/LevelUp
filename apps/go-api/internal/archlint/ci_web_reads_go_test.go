@@ -7,8 +7,8 @@
 // modifiant ces fichiers ne les rejouait pas (revue adversariale E10.1, constat C4). Un fichier
 // Go lu par un test web classe donc dans `croisee` (les deux piles tournent).
 //
-// RÈGLE. Tout chemin `go-api/...` écrit dans une ligne de code (hors commentaire) d'un test sous
-// apps/web/src est couvert par un motif de la classe `croisee` de ci.yml. Un chemin sans extension
+// RÈGLE. Tout chemin `go-api/...` ou `libs/...` (une brique Go, ADR 0041) écrit dans une ligne de
+// code (hors commentaire) d'un test sous apps/web/src est couvert par un motif de la classe `croisee` de ci.yml. Un chemin sans extension
 // désigne un dossier lu fichier par fichier : un fichier de ce dossier doit être couvert.
 // Analyse textuelle, sans parseur YAML ; les fonctions pures sont testées sur des textes
 // synthétiques défectueux (TestWebReadsGoGuardDetectsDefects).
@@ -23,10 +23,11 @@ import (
 	"testing"
 )
 
-// goPathInWebTestRe : un chemin sous go-api écrit dans une chaîne de test.
-var goPathInWebTestRe = regexp.MustCompile(`go-api/[A-Za-z0-9_./-]*[A-Za-z0-9_]`)
+// goPathInWebTestRe : un chemin sous go-api ou sous une brique de `libs/` écrit dans une chaîne de
+// test.
+var goPathInWebTestRe = regexp.MustCompile(`(?:go-api|\blibs)/[A-Za-z0-9_./-]*[A-Za-z0-9_]`)
 
-// goPathsReadByWebTest rend les chemins (relatifs au dépôt, `apps/go-api/...`) cités par les lignes
+// goPathsReadByWebTest rend les chemins (relatifs au dépôt : `apps/go-api/...`, `libs/...`) cités par les lignes
 // de code d'un fichier de test web ; les lignes de commentaire sont ignorées.
 func goPathsReadByWebTest(text string) []string {
 	seen := map[string]bool{}
@@ -37,7 +38,10 @@ func goPathsReadByWebTest(text string) []string {
 			continue
 		}
 		for _, m := range goPathInWebTestRe.FindAllString(line, -1) {
-			p := "apps/" + m
+			p := m
+			if strings.HasPrefix(m, "go-api/") {
+				p = "apps/" + m
+			}
 			if !seen[p] {
 				seen[p] = true
 				paths = append(paths, p)
@@ -174,6 +178,7 @@ func TestWebReadsGoGuardDetectsDefects(t *testing.T) {
               - 'apps/go-api/cmd/server/boot_gate.go'
               - 'apps/go-api/internal/film/replay/**'
               - 'apps/go-api/internal/mappings/loader_*.go'
+              - 'libs/film/replay/**'
             autre:
               - '**'
 `
@@ -181,18 +186,19 @@ func TestWebReadsGoGuardDetectsDefects(t *testing.T) {
 		"a.test.ts": "resolve(r, 'apps/go-api/cmd/server/boot_gate.go')\nresolve(r, 'apps/go-api/internal/film/replay')\n" +
 			"resolve(r, 'apps/go-api/internal/mappings/loader_labels.go')\nfetch('apps/go-api/api/openapi.yaml')",
 		"b.test.ts": "// apps/go-api/internal/ignore/commentaire.go\n * go-api/internal/ignore/doc.go\n",
+		"d.test.ts": "resolve(REPO, 'libs/film/replay/document_chronicle.go')\nresolve(REPO, 'apps/web/src/lib/x.ts')",
 	}
 	if got := uncoveredGoReads(ci, tests); len(got) != 0 {
 		t.Fatalf("faux positifs : %v", got)
 	}
 	tests["c.test.ts"] = "readFileSync(resolve(r, '../go-api/internal/analysis/weapon_range.go'))\n" +
-		"readdirSync(r + 'apps/go-api/internal/film/grammar')"
+		"readdirSync(r + 'apps/go-api/internal/film/grammar')\nresolve(REPO, 'libs/film/internal/grammar')"
 	got := uncoveredGoReads(ci, tests)
-	if len(got) != 2 || got["apps/go-api/internal/analysis/weapon_range.go"][0] != "c.test.ts" ||
-		got["apps/go-api/internal/film/grammar"][0] != "c.test.ts" {
+	if len(got) != 3 || got["apps/go-api/internal/analysis/weapon_range.go"][0] != "c.test.ts" ||
+		got["apps/go-api/internal/film/grammar"][0] != "c.test.ts" || got["libs/film/internal/grammar"][0] != "c.test.ts" {
 		t.Fatalf("défauts vus : %v (le fichier et le dossier non couverts étaient attendus)", got)
 	}
-	if p := croiseePatterns(ci); len(p) != 4 {
-		t.Fatalf("motifs croisee lus : %v (4 attendus, la classe suivante ne doit pas y entrer)", p)
+	if p := croiseePatterns(ci); len(p) != 5 {
+		t.Fatalf("motifs croisee lus : %v (5 attendus, la classe suivante ne doit pas y entrer)", p)
 	}
 }

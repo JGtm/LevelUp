@@ -98,7 +98,7 @@ const REPO_ROOT = racineDuDepot()
 const SOUNDS_DIR = resolve(REPO_ROOT, 'static', 'sounds', 'halo_infinite')
 const KILLICON_RULES = resolve(
   REPO_ROOT,
-  'apps/go-api/internal/games/halo_infinite/film/killicon/data/rules.tsv',
+  'libs/film/killicon/data/rules.tsv',
 )
 
 /** Les stems EFFECTIVEMENT présents dans le dossier d'assets. */
