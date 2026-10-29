@@ -151,7 +151,6 @@ var paquetsHimap = []string{"libs/himap/himap"}
 // clôture du lot 2 (critère de succès 2 du plan : allowlist VIDE).
 var tolerancesFilm = map[string]int{
 	// Production (voir le relevé de départ du plan) et tests mêlés : le lot indiqué vide l'entrée.
-	"levelup/go-api/internal/i18n":             7,  // lot 2.9 : type Text propre au replay + flatjson (5 prod, 2 tests)
 	"levelup/go-api/internal/testutil":         21, // lot 2.11 : helpers locaux R2 / filmcorpus R1 (tests seuls)
 	"levelup/go-api/internal/domain/title":     14, // lots 2.10 (prod en commentaire) et 2.11 (tests)
 	"levelup/go-api/internal/games/mappings":   7,  // lots 2.10 et 2.11 (tests)

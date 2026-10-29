@@ -407,7 +407,13 @@ const plafondSurfaceFacade = 179 // 2026-10-02 — retrait des replis nuls (DU-7
 //	                                           `domain/equipmentusage` ; le garde-rail de LevelUp
 //	                                           (`domain/equipmentusage/jumeau_film_test.go`) les compare a
 //	                                           l original (regle 6). Aucun retrait.
-const plafondSurfaceReplay = 314 // 2026-10-29 — base 86b7924a1 re-mesuree a 312 + 2 (EquipmentOutcomeFamilies, UsageFamilySpawnsPiece) ; cf. l historique ci-dessus
+//	315  decouplage D2, item 2.9 (2026-10-29)  base `464f7feb8` re-mesuree a 314. +1 :
+//	                                           `replay.Text`, le libelle par langue propre au decodeur
+//	                                           (il n importe plus `internal/i18n`) ; LevelUp le convertit
+//	                                           dans `replaylabels` (`TexteVersFilm`, `TexteDepuisFilm`) et
+//	                                           son garde-rail de fil (`fil_jumeau_test.go`) le nomme.
+//	                                           Aucun retrait.
+const plafondSurfaceReplay = 315 // 2026-10-29 — base 464f7feb8 re-mesuree a 314 + 1 (Text) ; cf. l historique ci-dessus
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.
 //

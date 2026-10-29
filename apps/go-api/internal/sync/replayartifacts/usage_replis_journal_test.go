@@ -29,6 +29,7 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/games/halo_infinite/replaylabels"
 	"levelup/go-api/internal/i18n"
 )
 
@@ -122,7 +123,7 @@ func docProjectionAvecRepli() *replay.ReplayDocument {
 		FrameCount:      1000,
 		Roster:          []replay.RosterEntry{{XUID: "111", FilmIndex: 0}},
 		Tracks:          []replay.Track{{Slot: 1, XUID: "111", StartFrame: 0, EndFrame: 900}},
-		AbilityLabels:   map[string]replay.Label{"8": {Text: i18n.Text{i18n.LocaleEN: "Camo", i18n.LocaleFR: "Camo"}, Family: "powerup_camo"}},
+		AbilityLabels:   map[string]replay.Label{"8": {Text: replaylabels.TexteVersFilm(i18n.Text{i18n.LocaleEN: "Camo", i18n.LocaleFR: "Camo"}), Family: "powerup_camo"}},
 		EquipmentChanges: []replay.EquipmentChange{
 			{Slot: 1, T: 10, Kind: replay.EquipmentTaken, R: 8, From: replay.NoAbilityRank},
 		},

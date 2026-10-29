@@ -6,6 +6,7 @@ package replayview
 import (
 	"levelup/go-api/internal/domain/replaydoc"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/games/halo_infinite/replaylabels"
 )
 
 func toObjectiveAction(v replay.ObjectiveAction) replaydoc.ObjectiveAction {
@@ -103,7 +104,7 @@ func toFlagReturnZone(v replay.FlagReturnZone) replaydoc.FlagReturnZone {
 func toObjectiveObjectLife(v replay.ObjectiveObjectLife) replaydoc.ObjectiveObjectLife {
 	return replaydoc.ObjectiveObjectLife{
 		Family: v.Family,
-		Text:   v.Text.Clone(),
+		Text:   replaylabels.TexteDepuisFilm(v.Text),
 		T0:     v.T0,
 		T1:     v.T1,
 		Pts:    sliceOf(v.Pts, toObjectiveObjectPoint),

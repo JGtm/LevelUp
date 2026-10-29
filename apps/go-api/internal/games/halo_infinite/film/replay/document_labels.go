@@ -1,7 +1,5 @@
 package replay
 
-import "levelup/go-api/internal/i18n"
-
 // document_labels.go — LES LIBELLES que l artefact embarque : le nom bilingue d une arme, d une
 // grenade ou d une capacite, et ce qui se dessine avec.
 //
@@ -17,7 +15,7 @@ import "levelup/go-api/internal/i18n"
 // chaque requête. Y figer une seule langue reviendrait à choisir la langue du lecteur au
 // moment du décodage d'un film.
 type Label struct {
-	Text i18n.Text `json:"i18n_text,omitempty" required:"true"`
+	Text Text `json:"i18n_text,omitempty" required:"true"`
 	// Img est l'URL de la vignette du HUD du jeu (grenades, capacités des fiches joueur).
 	// Vide = pas de visuel : le client garde le libellé, jamais la vignette d'un voisin.
 	// Tinted dit si le visuel est un masque à teindre (même contrat que WeaponLabel).
@@ -47,7 +45,7 @@ type Label struct {
 // le catalogue des 22 noms d'armes Halo : le client dessine ce que le document dit, il
 // n'a plus à savoir ce qu'est un Ravager.
 type WeaponLabel struct {
-	Text i18n.Text `json:"i18n_text,omitempty" required:"true"`
+	Text Text `json:"i18n_text,omitempty" required:"true"`
 	// Fx est la famille de RENDU du tir (ballistic, plasma, light, shock, explosive,
 	// bomb, melee, needles). Vide = arme non catégorisée : le client dessine le trait neutre,
 	// jamais l'effet d'une arme voisine.
@@ -112,7 +110,7 @@ type WeaponLabel struct {
 // viennent de `config/titles/{slug}/mappings/replay_labels.toml`, section `[[vehicle_families]]`.
 type VehicleFamilyInfo struct {
 	// Label : le libelle affichable de la famille, par langue.
-	Label i18n.Text
+	Label Text
 	// Kind est la NATURE publiee (`map_element` : un objet de la carte, pas un vehicule de la
 	// partie). Liste fermee, tenue par le loader du manifeste.
 	Kind string
@@ -156,8 +154,8 @@ type VehicleLabel struct {
 	// et le calque lui reserve un pictogramme dedie plutot que le marqueur neutre.
 	Kind string `json:"kind,omitempty"`
 	// Text : le libelle de la famille par langue, vide pour un nom propre du jeu (cf. l en-tete) ;
-	// au fil, un membre par langue renseignee, a plat (`i18n.MarshalFlat`).
-	Text i18n.Text `json:"i18n_text,omitempty"`
+	// au fil, un membre par langue renseignee, a plat (`flatjson.MarshalFlat`).
+	Text Text `json:"i18n_text,omitempty"`
 }
 
 // isZero dit que le libellé ne porte rien : aucune langue, aucun visuel, aucune famille. Un Label

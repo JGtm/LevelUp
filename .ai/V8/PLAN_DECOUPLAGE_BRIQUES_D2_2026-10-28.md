@@ -374,14 +374,14 @@ Chaque item fait descendre une tolérance du lot 1 ; T1 à T3 relancés en fin d
   désormais le film : fuite transitive inscrite datée au test de fermeture du 1.4) ; tolérances = 0.
 - [x] 2.6 `filmproc` → `film/filmproc` ; `atomicfile`, `filelock` déplacés ou copiés selon D2-D (test
   d'identité des copies) ; 10 paquets LevelUp réécrits ; tolérances `filmproc`, `atomicfile` = 0.
-- [ ] 2.7 `types.HighlightEvent` + constantes ; `grammar`, `killsource`, `decfilm` basculent ;
+- [x] 2.7 `types.HighlightEvent` (posé en `film/highlightevent`, cf. D2-L2-i) + constantes ; `grammar`, `killsource`, `decfilm` basculent ;
   adaptateur dans `internal/games/halo_infinite/` ; quatre appelants de `sync` + `decfilm.Kill` /
   `killcollector` / `cmd/killsource` vérifiés sur pièces ; 15 tests du film basculent ; tolérance
   `highlightevent` = 0. Témoin : `go test ./internal/sync/... ./internal/games/halo_infinite/...`
   identique à T1.
-- [ ] 2.8 Familles d'équipement locales dans `replay` + test LevelUp d'égalité des deux listes et
+- [x] 2.8 Familles d'équipement locales dans `replay` + test LevelUp d'égalité des deux listes et
   des deux prédicats ; tolérance `equipmentusage` = 0 (2 tests compris).
-- [ ] 2.9 `replay.Text` + `film/internal/flatjson` ; 8 champs et 2 catalogues (`callouts_catalog`,
+- [x] 2.9 `replay.Text` + `film/internal/flatjson` ; 8 champs et 2 catalogues (`callouts_catalog`,
   `document_labels*`, `document_objective_objects`) ; conversions dans `replaylabels` ; `replayview`
   réécrit ; test d'égalité des octets des deux codecs (deux sens, les cinq dispositions `FlatLayout`
   du fichier) ; les documents de `replay/testdata` relus à l'identique ; tolérance `i18n` = 0 (2 tests
@@ -561,6 +561,58 @@ découvertes de D1 et D2).
   `testutil` 21, `domain/title` 14, `games/mappings` 7, `games/weapons` 3, `testfixtures` 2, `domain/replaydoc` 2, `domain` 1, `analysis/digest` 1 (2.10 / 2.11). Dernier `go test ./... -count=1` :
   212 paquets `ok`, soit les 212 du témoin T1 moins `grammar`, `facts/objectives` et `revision` (rouges attendus) plus `filmobs`, `identity` et `internal/atomicfile` neufs ; paquets déplacés
   comptés comme déplacés : `filmshell`, `equipenergy`, `filmproc`, `internal/filelock`.
+- 2.7 (`HighlightEvent`). **Écart au libellé, décidé sur pièces (D2-L2-i)** : le type n'est PAS posé dans `film/types` mais dans une feuille
+  neuve `film/highlightevent` (mêmes champs, mêmes `EventType*`, aucun import), classée hors couche dans `film_layers_deps_test`. Raison : `film/types`
+  est haché par ses octets dans l'empreinte de `source` (golden de périmètre `source` : `paquet internal/games/halo_infinite/film/types`) ; y ajouter un fichier
+  aurait fait rougir `source`, qui doit rester vert, et aurait exigé une régénération du golden des formes `types/testdata/shapes.golden`
+  (`TestTousLesTypesDuPaquetSontFiges`). Le paquet porte le même nom que celui de LevelUp : les 21 fichiers du film (6 prod dont `research/cmd_fermeture/v2_chunk3.go`,
+  15 tests) ne changent que leur ligne d'import ; `killsource/rev.go` (commentaire de périmètre) mis au nouveau chemin. Adaptateur de titre
+  `internal/games/halo_infinite/film_highlight_events.go` : `ParseHighlightEvents` (appelle `decfilm.ParseHighlightEvents`, `nil` reste `nil`, erreur
+  transmise), `HighlightEventDepuisFilm` (pure) ; tests `film_highlight_events_test.go` (mêmes champs, types et tags par réflexion ; aller-retour champ par
+  champ ; `EventType*` égaux ; nil et ordre). Appelants basculés : `sync/collect.go`, `sync/convergence_backfill_events.go`, `sync/engine_highlight_events.go`,
+  `ops/medal_feed_backfill.go` (+ un message de test). **Sur pièces** : `decfilm.Kill` (= `killsource.Kill`) ne porte pas `highlightevent` (le fil est
+  interne à `buildFeed`) ; `sync/killcollector` ne lit que les constantes `EventType*` pour du SQL (côté LevelUp) ; `cmd/killsource` n'importe pas le paquet :
+  aucune autre conversion. `internal/games/halo_infinite` importait déjà `internal/analysis`, sans cycle (`go build ./...` vert). Tolérance
+  `domain/highlightevent` retirée (21 -> 0). Rouges : ceux attendus, plus `killsource` (`TestKillsourceRevSuitLaSortie`, `revision/.../killsource` x2) comme
+  annoncé. Commit `86b7924a1`.
+- 2.8 (familles d'équipement). `replay/usage_summary_bilan.go` (neuf) : liste ordonnée du bilan, table des familles à pièce engendrée,
+  `EquipmentOutcomeFamilies()` et `UsageFamilySpawnsPiece()` exportées (le garde-rail de LevelUp les compare), en-tête qui nomme la copie jumelle et la
+  règle 6 ; les six clés de `usage_summary_families.go` redeviennent des littéraux (+ `usageFamilyRepairField`, exigé par goconst), `usage_summary_outcomes.go`
+  lit la copie locale ; 2 tests réécrits (le recollement au manifeste parcourt la table locale). Garde-rail `domain/equipmentusage/jumeau_film_test.go` :
+  listes égales (ordre compris), prédicat égal sur l'union des familles des deux côtés + clés hors bilan, clé du mur ; mutation (famille renommée, famille
+  ajoutée à la table) vue rouge puis remise. **Code mort retiré (règle 7)** : `EquipmentFamilyGrapple`, `EquipmentFamilyThruster`, `EquipmentFamilySensor`,
+  `UsageFamiliesSpawningPiece` de `domain/equipmentusage`, dont le décodeur était le seul lecteur ; `EquipmentFamilyWall` gardé (un test de `sessionusage`
+  le lit). Plafond `plafondSurfaceReplay` 312 -> 314 (justification datée). Tolérance `domain/equipmentusage` retirée (4 -> 0). Commit `464f7feb8`.
+- 2.9 (`replay.Text`, `flatjson`). `replay/text.go` (neuf) : `type Text map[string]string`, `Clone`, `Empty`, `Compare` (union des codes triés : même ordre
+  que `i18n.Text.Compare` sur les codes de la liste) — aucune liste de langues, aucun `Pick`. `film/internal/flatjson` (neuf, `flat.go` + `flat_test.go`) :
+  copie de `i18n/flat.go`, fonctions génériques `MarshalFlat[T ~map[string]string]` / `UnmarshalFlat[T]` (le champ texte est trouvé par le type `T`,
+  `textType` de l'original) ; **deux différences assumées, écrites dans l'en-tête** : l'écriture émet les CLÉS du texte (triées), la lecture reconnaît une
+  langue par sa FORME (nom hors champs du parent, deux ou trois minuscules ASCII, valeur chaîne). 5 fichiers de production de `replay` réécrits (8 champs :
+  `Label`, `WeaponLabel`, `VehicleLabel`, `VehicleFamilyInfo.Label`, `CalloutZone`, `ObjectiveObjectLife`, `VehicleWeapon`), 2 tests (fixture à deux codes
+  écrite à la main ; tests neufs du contrat : la brique écrit les langues du texte, relecture par la forme). Conversions dans
+  `replaylabels/texte.go` : `TexteVersFilm` (chaque langue de la liste, vide comprise, aucune autre : le fil d'`i18n.MarshalFlat`) et `TexteDepuisFilm`
+  (langues de la liste seulement : la lecture d'`i18n.UnmarshalFlat`). Sites LevelUp convertis : producteurs `replaylabels/catalog.go`,
+  `mapcatalog/callouts_entree.go`, `service/replay_vehicle_weapons.go`, `cmd/mapcallouts-build/main.go` ; lecteurs `replayview/convert_{document,map,objectives,vehicles}.go`,
+  `service/tactical_callouts.go`, `service/squadagg/{squad_formes,vehicle_labels}.go`, `cmd/mapcallouts-build/decoupe{,_masque}.go`, `cmd/mapplafond-mesure/catalogue.go`
+  (13 fichiers de production) ; 15 tests LevelUp (dont `replayview/parity_test.go`, cf. D2-L2-j). `callouts_catalog.go` ne lit pas le CSV (c'est
+  `cmd/mapcallouts-build`, côté LevelUp) : il relit le catalogue JSON, aucune langue en dur. En-tête d'`i18n/flat.go` : la copie jumelle y est nommée.
+  Garde-rails : (a) `replaylabels/fil_jumeau_test.go` (100 sous-cas : 6 types, 10 dispositions dont les cinq de `document_labels_json.go` réécrites en
+  `i18n.FlatLayout`, 10 textes — nil, vide, complet, langues vides, partiels, hors liste, échappements) : mêmes octets, relecture croisée dans les deux
+  sens, membre du contrat `i18n.FlatMember` ; mutations (disposition changée, `OmitEmpty` ignoré) vues rouges puis remises ; (b) `replay` vert sans
+  régénération (`document_shape`, goldens d'assemblage, artefact réel `labels_flat_artefact_1d2a26d8.json` relu et réécrit à l'identique) ; (c) T3 :
+  `replay-equiv -repo-root <dépôt principal> -out-dir` (437 s, code 1 et « 20 différents » comme au lot 0, références périmées D2-L0-a) : les 20
+  `replay_equiv_obtenus/*.tsv` IDENTIQUES au témoin du lot 0 (MD5), étape `artifact` comprise. Ratchets i18n (`no_locale_literal`, `i18n_locale_constant`,
+  `i18n_text_sql`, `i18n_langue_suffixe`) verts. Plafond `plafondSurfaceReplay` 314 -> 315 (`replay.Text`, justification datée). `flatjson` classé hors
+  couche. Tolérance `i18n` retirée (7 -> 0). Commit de clôture du présent bloc.
+- Gates 2.7 à 2.9, à chaque item : `go build ./...`, `go vet ./...`, `go vet -tags research ./…/film/...` propres (au 2.9 aussi `-tags research`,
+  `-tags integration`, `-tags gamefiles` sur tout `./...`) ; `go test ./... -count=1` : 211, 212 puis 213 paquets `ok` (au 2.9 : les 212 du témoin T1 moins `grammar`,
+  `facts/objectives`, `facts/killsource`, `revision` rouges attendus, plus les paquets neufs `filmobs`, `identity`, `internal/atomicfile`, `domain/equipmentusage`
+  (premier test, 2.8), `internal/flatjson` (2.9) ; paquets déplacés comptés comme déplacés) ; `gofmt -l` vide ; `golangci-lint --new-from-rev=HEAD~1` 0 issue.
+- Bilan 2.7 à 2.9 : tolérances restantes dans `tolerancesFilm` (8 imports, 51 fichiers) : `testutil` 21, `domain/title` 14, `games/mappings` 7,
+  `games/weapons` 3, `testfixtures` 2, `domain/replaydoc` 2, `domain` 1, `analysis/digest` 1 (2.10 / 2.11). Rouges attendus (D2-L2-a, régénération unique au
+  2.12) : `grammar` `TestGrammarRevSuitLaGrammaire`, `facts/killsource` `TestKillsourceRevSuitLaSortie`, `facts/objectives` `TestObjectivesRevSuitLaSortie`,
+  `revision` `TestChaqueRevisionEgaleSonGolden/{grammar,killsource,objectives}` et `TestPerimetreDeChaqueCoucheEgaleSonGolden/{grammar,killsource,objectives}` ;
+  `source`, `profile`, `types` (golden des formes) verts.
 
 ## Témoins avant/après (règle utilisateur du 2026-10-28)
 
@@ -628,3 +680,20 @@ découvertes de D1 et D2).
   Sans conséquence : la tolérance comptait 13 fichiers (9 prod, 4 tests) et est tombée à 0.
 - D2-L2-h (lot 2.6) : `GOOS=linux go build ./...` échoue depuis ce poste Windows (cgo : `duckdb-go-bindings/lib/linux-amd64`, `libs/gamefiles/ooz`) : limite de la compilation croisée, sans lien avec D2 ;
   les paquets déplacés (`filmproc`, `internal/filelock`, `filmcache`, `internal/...`) passent `GOOS=linux go vet`.
+- D2-L2-i (lot 2.7, 2026-10-29) : **le libellé « `types.HighlightEvent` » du plan (D2-B, 2.7, D2-E R0) est en conflit avec l'exigence « `source` reste vert »** :
+  `film/types` est haché par ses octets dans l'empreinte de `source` (son golden de périmètre liste `film/types`) et chaque type de `film/types` doit être figé
+  dans `types/testdata/shapes.golden`. Exécuté : feuille `film/highlightevent` (cf. « Exécution du lot 2 », 2.7). À confirmer par le pilote ; si `film/types` est
+  voulu, déplacer le fichier coûte une régénération des goldens de `source` (révision constante) et du golden des formes, à joindre au 2.12.
+- D2-L2-j (lot 2.9) : **le contrat d'écriture des libellés a changé de porteur.** `i18n.MarshalFlat` complétait toute disposition sans `OmitEmpty` avec chaque
+  langue de la liste (vide comprise), même pour un texte nil ; `flatjson` écrit les clés du texte. Le fil est identique tant que chaque texte qui entre dans
+  la brique passe par `replaylabels.TexteVersFilm` (tous les producteurs de production le font, et le décodeur ne crée de libellé qu'en clonant ceux du
+  catalogue) ; un type du rejeu construit avec un texte nil hors de ce chemin écrirait moins de membres qu'avant. Garde-fous : `fil_jumeau_test` (producteur
+  + codec), `replay-equiv` (étape `artifact`, 20 films identiques). Conséquence assumée : `replayview/parity_test.go` remplit désormais le texte du document
+  stocké comme le producteur (`TexteVersFilm`), y compris aux bords « nul » et « vide ». Relecture : un membre de langue de la liste à valeur non chaîne
+  faisait échouer `i18n.UnmarshalFlat` ; `flatjson` l'écarte (il n'est pas une langue). Non traité au-delà.
+- D2-L2-k (lots 2.8 et 2.9) : le ratchet `TestSurfaceDeReplayCiteeHorsDuDecodeur` monte de 312 à 315 (`EquipmentOutcomeFamilies`, `UsageFamilySpawnsPiece`,
+  `Text`) : effet mécanique de toute copie jumelle dont LevelUp garde le garde-rail (le test nomme les symboles de la brique). Justifications datées
+  écrites ; à prévoir pour les copies du 2.10.
+- D2-L2-l (lot 2.9) : trois tests du film lisent des libellés de `games/mappings` (type `i18n.Text` de LevelUp) par `Pick("en")` / `Pick("fr")`
+  (`golden_catalog_test.go`, `ground_weapon_flag_exclusion_test.go`, `equipment_pickup_naming_research_test.go`) : ils relèvent de la tolérance `games/mappings`
+  (2.11) et devront, au déménagement R1 vers `filmcorpus`, passer par `TexteVersFilm` plutôt que reconstruire un texte à deux codes.

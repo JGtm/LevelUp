@@ -303,6 +303,10 @@ var couchesDuDecodeur = map[string]coucheFilm{
 	"internal/games/halo_infinite/film/filmproc":            horsCoucheFilm,
 	"internal/games/halo_infinite/film/internal/atomicfile": horsCoucheFilm,
 	"internal/games/halo_infinite/film/internal/filelock":   horsCoucheFilm,
+	// `internal/flatjson` : LE CODEC « A PLAT » des libelles par langue du document (copie jumelle de
+	// `internal/i18n/flat.go`, sans liste de langues ; D2 2.9, 2026-10-29). Il ne lit aucun octet de
+	// film et ne publie rien : hors couche.
+	"internal/games/halo_infinite/film/internal/flatjson": horsCoucheFilm,
 	// `filmshell`, `equipenergy` : les CATALOGUES (armes telles que le film les nomme ; capacites et
 	// couts d energie des equipements), descendus de `games/weapons` et de `games/halo_infinite` le
 	// 2026-10-29 (D2 2.5). Ils ne lisent aucun octet de film et ne publient rien : hors couche.

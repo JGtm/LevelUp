@@ -34,8 +34,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-
-	"levelup/go-api/internal/i18n"
 	"os"
 )
 
@@ -126,7 +124,7 @@ type CalloutZone struct {
 	// 25 % et les deux tiers des zones étaient muettes). Ils restent VIDES si le jeu
 	// introduit un nom que le lexique versionné ne connaît pas encore : le rendu dessine
 	// alors le contour SANS libellé — jamais de nom de repli inventé.
-	Text i18n.Text `json:"i18n_text,omitempty" required:"true"`
+	Text Text `json:"i18n_text,omitempty" required:"true"`
 	// X, Y, Z : le point de référence du volume. C'est le centre 3D qu'utilise zoneAt —
 	// l'affectation d'un joueur à sa zone se fait en distance 3D, sinon les étages se
 	// confondent (règle du POC).

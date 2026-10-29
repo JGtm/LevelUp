@@ -18,6 +18,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/games/halo_infinite/replaylabels"
 	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
@@ -79,9 +80,10 @@ func (s *tacticalCalloutsStore) ZonesDeLaCarte(ctx context.Context, mapID string
 func zonesNommees(zones []replay.CalloutZone) []domain.ZoneNommee {
 	out := make([]domain.ZoneNommee, 0, len(zones))
 	for _, z := range zones {
+		texte := replaylabels.TexteDepuisFilm(z.Text)
 		nom := i18n.Text{}
 		for _, l := range i18n.Locales() {
-			if v := repliDeNom(z.Text[l], z.Name); v != "" {
+			if v := repliDeNom(texte[l], z.Name); v != "" {
 				nom[l] = v
 			}
 		}

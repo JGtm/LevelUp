@@ -1,7 +1,5 @@
 package replay
 
-import "levelup/go-api/internal/i18n"
-
 // document_objective_objects.go — LES OBJETS D'OBJECTIF LIBRES : où se trouve le crâne quand
 // PERSONNE ne le porte.
 //
@@ -47,7 +45,7 @@ type ObjectiveObjectLife struct {
 	// langue, à plat). Il voyage avec la vie
 	// plutôt que dans une table à part : le client dessine ce que le document dit, et un libellé
 	// rangé ailleurs se désynchronise (même règle que les armes et les grenades).
-	Text i18n.Text `json:"i18n_text,omitempty" required:"true"`
+	Text Text `json:"i18n_text,omitempty" required:"true"`
 	// T0 / T1 bornent la vie en frames (même axe que Point.T). T1 est INCLUS.
 	//
 	// T0 == T1 EST UNE VIE RÉELLE, PAS UN DÉFAUT : l'objet est né immobile — à son socle, le

@@ -40,7 +40,7 @@ func TestCatalogueM6MainsNuesBobineEtHeatwave(t *testing.T) {
 	}
 	for fam, a := range attendus {
 		w, ok := cat.Weapons[fam]
-		if !ok || cat.Keys[fam] != a.key || w.Text[i18n.LocaleEN] != a.en || w.Text[i18n.LocaleFR] != a.fr {
+		if !ok || cat.Keys[fam] != a.key || TexteDepuisFilm(w.Text)[i18n.LocaleEN] != a.en || TexteDepuisFilm(w.Text)[i18n.LocaleFR] != a.fr {
 			t.Errorf("famille %08X : cle %q libelle %+v, attendu %q / %q / %q",
 				fam, cat.Keys[fam], w, a.key, a.en, a.fr)
 		}

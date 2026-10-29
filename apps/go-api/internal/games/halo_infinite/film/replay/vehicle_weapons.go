@@ -1,7 +1,5 @@
 package replay
 
-import "levelup/go-api/internal/i18n"
-
 // vehicle_weapons.go — LE REGISTRE DES ARMES DE VEHICULE, tel que le document le publie (schema 69,
 // retours du rejeu du 2026-09-23, lot M4a).
 //
@@ -24,8 +22,8 @@ type VehicleWeapon struct {
 	// `rockethog`, `gungoose`... : le meme vocabulaire que `VehicleTrack.Family` / `Variant`.
 	Vehicle string `json:"vehicle"`
 	// Text : le nom de l arme, dans chaque langue de `config/locales.toml` (jamais ecrit en Go ; le fil
-	// porte un membre par langue au meme niveau que les autres champs, cf. `i18n.MarshalFlat`).
-	Text i18n.Text `json:"i18n_text,omitempty" required:"true"`
+	// porte un membre par langue au meme niveau que les autres champs, cf. `flatjson.MarshalFlat`).
+	Text Text `json:"i18n_text,omitempty" required:"true"`
 	// Fire : `single` (un evenement par coup) ou `continuous` (tir tenu). Liste fermee.
 	Fire string `json:"fire"`
 	// Fx / Tint : la FORME de l eclair et la NATURE de la decharge, dans les memes listes fermees

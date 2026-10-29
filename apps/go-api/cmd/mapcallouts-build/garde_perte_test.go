@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/games/halo_infinite/replaylabels"
 	"levelup/go-api/internal/i18n"
 )
 
@@ -26,7 +27,7 @@ func carteA(module string, sommets int) replay.MapCalloutsEntry {
 	return replay.MapCalloutsEntry{
 		Module:     module,
 		Provenance: replay.CalloutsProvenanceBrut,
-		Zones:      []replay.CalloutZone{{VolumeIndex: 1, Text: i18n.Text{i18n.LocaleEN: "Zone", i18n.LocaleFR: "Zone"}, Polygon: poly}},
+		Zones:      []replay.CalloutZone{{VolumeIndex: 1, Text: replaylabels.TexteVersFilm(i18n.Text{i18n.LocaleEN: "Zone", i18n.LocaleFR: "Zone"}), Polygon: poly}},
 	}
 }
 

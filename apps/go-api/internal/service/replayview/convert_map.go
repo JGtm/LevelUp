@@ -6,6 +6,7 @@ package replayview
 import (
 	"levelup/go-api/internal/domain/replaydoc"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/games/halo_infinite/replaylabels"
 )
 
 func toMapObjectives(v replay.MapObjectives) replaydoc.MapObjectives {
@@ -146,7 +147,7 @@ func toCalloutZone(v replay.CalloutZone) replaydoc.CalloutZone {
 	return replaydoc.CalloutZone{
 		VolumeIndex: v.VolumeIndex,
 		Name:        v.Name,
-		Text:        v.Text.Clone(),
+		Text:        replaylabels.TexteDepuisFilm(v.Text),
 		X:           v.X,
 		Y:           v.Y,
 		Z:           v.Z,

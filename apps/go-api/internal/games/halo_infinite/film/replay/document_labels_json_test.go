@@ -6,8 +6,6 @@ import (
 	"os"
 	"reflect"
 	"testing"
-
-	"levelup/go-api/internal/i18n"
 )
 
 // document_labels_json_test.go — LA FORME DE FIL DES LIBELLÉS PAR LANGUE EST CELLE D'AVANT.
@@ -101,13 +99,10 @@ func TestLibellesParLangue_MemeFilQueLAncienneForme(t *testing.T) {
 	}
 	for _, c := range langues {
 		t.Run(c.nom, func(t *testing.T) {
-			tx := i18n.Text{}
-			if c.en != "" {
-				tx[i18n.LocaleEN] = c.en
-			}
-			if c.fr != "" {
-				tx[i18n.LocaleFR] = c.fr
-			}
+			// Le texte porte les deux langues, vide comprise : c'est ce que le producteur pose
+			// (`replaylabels.TexteVersFilm`), et c'est ce qui rend le fil d'avant. L'équivalence pour un
+			// texte PARTIEL vit côté LevelUp (`replaylabels/fil_jumeau_test.go`).
+			tx := enFr(c.en, c.fr)
 			poly := [][2]float64{{0, 0}, {5, 0}, {5, 5}}
 			mount := &VehicleWeaponMount{Aim: "turret", AX: 0.5, AY: 0.25, Reach: 0.12}
 			pts := []ObjectiveObjectPoint{{T: 1, X: 1.5, Y: -2}}
@@ -160,7 +155,7 @@ func TestLibellesParLangue_ArtefactReelRelu(t *testing.T) {
 	if len(calques.WeaponLabels) == 0 || len(calques.AbilityLabels) == 0 || len(calques.GrenadeLabels) == 0 || len(calques.ObjectiveObjects) == 0 {
 		t.Fatalf("la copie réduite ne porte pas les quatre calques : %+v", calques)
 	}
-	if got := calques.ObjectiveObjects[0].Text; got[i18n.LocaleEN] != "Oddball" || got[i18n.LocaleFR] != "Crane" {
+	if got := calques.ObjectiveObjects[0].Text; enOf(got) != "Oddball" || frOf(got) != "Crane" {
 		t.Errorf("libellé de l'objet = %v", got)
 	}
 	out, err := json.Marshal(calques)
@@ -172,20 +167,24 @@ func TestLibellesParLangue_ArtefactReelRelu(t *testing.T) {
 	}
 }
 
+// membreTexteDuContrat : le nom JSON du champ Text, jamais écrit sur le fil, que `openapigen`
+// remplace dans le contrat par une propriété par langue (`i18n.FlatMember` côté LevelUp ; l'égalité
+// des deux est tenue par `replaylabels/fil_jumeau_test.go`).
+const membreTexteDuContrat = "i18n_text"
+
 // TestLibellesParLangue_ChampTextSousLeNomDuContrat : le champ Text de chaque type du document porte
-// le nom JSON `i18n.FlatMember` (celui que `openapigen` remplace par une propriété par langue), et le
-// type sait se relire (un type qui oublierait ses méthodes JSON écrirait ce nom sur le fil).
+// le nom JSON [membreTexteDuContrat], et le type sait se relire (un type qui oublierait ses méthodes JSON écrirait ce nom sur le fil).
 func TestLibellesParLangue_ChampTextSousLeNomDuContrat(t *testing.T) {
 	for _, v := range []any{Label{}, WeaponLabel{}, VehicleLabel{}, CalloutZone{}, ObjectiveObjectLife{}, VehicleWeapon{}} {
 		typ := reflect.TypeOf(v)
 		var found int
 		for f := range typ.Fields() {
-			if f.Type != reflect.TypeFor[i18n.Text]() {
+			if f.Type != reflect.TypeFor[Text]() {
 				continue
 			}
 			found++
-			if tag := f.Tag.Get("json"); tag != i18n.FlatMember+",omitempty" {
-				t.Errorf("%s.%s : tag json %q, attendu %q", typ.Name(), f.Name, tag, i18n.FlatMember+",omitempty")
+			if tag := f.Tag.Get("json"); tag != membreTexteDuContrat+",omitempty" {
+				t.Errorf("%s.%s : tag json %q, attendu %q", typ.Name(), f.Name, tag, membreTexteDuContrat+",omitempty")
 			}
 		}
 		if found != 1 {
@@ -194,5 +193,51 @@ func TestLibellesParLangue_ChampTextSousLeNomDuContrat(t *testing.T) {
 		if _, ok := reflect.PointerTo(typ).MethodByName("UnmarshalJSON"); !ok {
 			t.Errorf("%s n'a pas d'UnmarshalJSON : ses langues ne se liraient pas", typ.Name())
 		}
+	}
+}
+
+// TestLibellesParLangue_LaBriqueEcritLesLanguesDuTexte : la brique ne connaît aucune liste de
+// langues ; elle écrit les langues que porte le texte, vides comprises sans `OmitEmpty`, et aucune
+// autre. Une langue absente du texte n'est donc pas émise : la complétude est la charge du
+// producteur (`replaylabels.TexteVersFilm`).
+func TestLibellesParLangue_LaBriqueEcritLesLanguesDuTexte(t *testing.T) {
+	cas := []struct {
+		nom  string
+		v    any
+		want string
+	}{
+		{"une langue", Label{Text: Text{codeTestEN: "Sentinel"}}, `{"en":"Sentinel"}`},
+		{"une langue vide", Label{Text: Text{codeTestFR: ""}}, `{"fr":""}`},
+		{"aucune", Label{}, `{}`},
+		{"trois langues, ordre alphabétique", Label{Text: Text{"zz": "c", codeTestFR: "b", codeTestEN: "a"}}, `{"en":"a","fr":"b","zz":"c"}`},
+		{"fin, vide omise", VehicleLabel{Kind: "k", Text: Text{codeTestEN: "", codeTestFR: "f"}}, `{"kind":"k","fr":"f"}`},
+	}
+	for _, c := range cas {
+		if got := marshalOrFatal(t, c.v); got != c.want {
+			t.Errorf("%s : fil %s, attendu %s", c.nom, got, c.want)
+		}
+	}
+}
+
+// TestLibellesParLangue_RelectureParLaForme : à la relecture, une langue est un membre qui n'est
+// celui d'aucun champ, de la forme d'un code de langue (deux ou trois minuscules) et à valeur
+// chaîne ; un membre à `null` ou d'un autre type n'en est pas une.
+func TestLibellesParLangue_RelectureParLaForme(t *testing.T) {
+	var l Label
+	brut := `{"en":"a","fr":"","de":null,"es":5,"Role":"x","role":"y","img":"i.png","x":"court"}`
+	if err := json.Unmarshal([]byte(brut), &l); err != nil {
+		t.Fatalf("relecture : %v", err)
+	}
+	want := Text{codeTestEN: "a", codeTestFR: ""}
+	if len(l.Text) != len(want) || l.Text[codeTestEN] != "a" || l.Text[codeTestFR] != "" || l.Img != "i.png" {
+		t.Errorf("relecture = %+v, texte attendu %v", l, want)
+	}
+	// Une relecture dans une variable déjà remplie repart de zéro.
+	l2 := Label{Text: enFr("old", "ancien")}
+	if err := json.Unmarshal([]byte(`{"en":"new"}`), &l2); err != nil {
+		t.Fatal(err)
+	}
+	if len(l2.Text) != 1 || enOf(l2.Text) != "new" {
+		t.Errorf("Text = %v, attendu seulement en=new", l2.Text)
 	}
 }

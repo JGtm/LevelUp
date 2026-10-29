@@ -20,6 +20,7 @@ import (
 	"os"
 
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/games/halo_infinite/replaylabels"
 	"levelup/go-api/internal/i18n"
 )
 
@@ -71,10 +72,10 @@ func appliqueDecoupe(e *replay.MapCalloutsEntry, zones map[int]decoupeZone) erro
 		z := &e.Zones[i]
 		d, ok := zones[z.VolumeIndex]
 		if !ok {
-			return fmt.Errorf("volume %d (%s) absent du dump découpé", z.VolumeIndex, z.Text[i18n.Fallback])
+			return fmt.Errorf("volume %d (%s) absent du dump découpé", z.VolumeIndex, replaylabels.TexteDepuisFilm(z.Text)[i18n.Fallback])
 		}
-		if d.Libelle != z.Text[i18n.Fallback] {
-			return fmt.Errorf("volume %d : libellé du dump %q != tag %q", z.VolumeIndex, d.Libelle, z.Text[i18n.Fallback])
+		if d.Libelle != replaylabels.TexteDepuisFilm(z.Text)[i18n.Fallback] {
+			return fmt.Errorf("volume %d : libellé du dump %q != tag %q", z.VolumeIndex, d.Libelle, replaylabels.TexteDepuisFilm(z.Text)[i18n.Fallback])
 		}
 		if d.Utiliser == "decoupe" && len(d.Decoupe.Parties) > 0 {
 			z.Polygon = d.Decoupe.Parties[0].Contour

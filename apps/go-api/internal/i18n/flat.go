@@ -39,6 +39,11 @@ import (
 // (`en` avant `fr`, comme l'ordre de déclaration des deux anciens champs). Un texte qui porte une
 // clé hors liste ne l'émet pas ; à la lecture, un membre dont le nom n'est pas une langue de la
 // liste n'entre pas dans le Text (un artefact cuit sous une langue retirée de la liste se lit).
+//
+// COPIE JUMELLE (plan D2, item 2.9) : le décodeur de film, brique qui n'importe rien de LevelUp,
+// porte une copie de ce codec sans liste de langues (`games/halo_infinite/film/internal/flatjson`) ;
+// `games/halo_infinite/replaylabels/fil_jumeau_test.go` exige que les deux écrivent les mêmes octets
+// et se relisent l'un l'autre. Toute modification de la forme de fil se fait des deux côtés.
 
 // FlatEnd, en valeur de FlatLayout.After, place les langues après tous les autres membres.
 const FlatEnd = "\x00end"
