@@ -135,6 +135,13 @@
 # TestStatborgManche2RejeteeParLAncienneGrammaire, TestStatborgVectorsReels et ses trois sous-tests.
 # Mêmes noms, même code, désormais dans `grammar/signaux` ; vérifié par différence avant/après.
 #
+# RELOCALISATION DU 2026-10-29 (plan D2 du découplage de la brique « décodeur de film », item 2.11) :
+# 2 lignes changent de PAQUET, rien d'autre — `film/replay` :: TestCatalogueDuTitreNommeLesArmesDuFilmDeReference
+# et TestLeManifesteNommeSesObjetsDObjectifDansLesDeuxLangues, deux gardes qui lisent les libellés
+# du titre (chargeurs de LevelUp) et que la brique ne peut plus porter ; mêmes noms, désormais dans
+# `internal/filmcorpus` ; vérifié par différence avant/après (70 paires (Package, Test) ont changé de
+# paquet ou de nom de paquet depuis le lot 0 du plan D2, 2 seulement figuraient à la baseline).
+#
 # RETRAIT DU 2026-10-06 (lot « Sessions aux formes de l'Emprise », S1 commit 65e82cbb4, constaté
 # par la revue adversariale, S8) : 8 tests RENOMMÉS de `internal/analysis` —
 # TestBuildScoreLabelCanonical_{NegativeScore, NilScore, NoTeams, OnlyOneTeam,

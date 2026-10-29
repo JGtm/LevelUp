@@ -386,9 +386,11 @@ Chaque item fait descendre une tolérance du lot 1 ; T1 à T3 relancés en fin d
   réécrit ; test d'égalité des octets des deux codecs (deux sens, les cinq dispositions `FlatLayout`
   du fichier) ; les documents de `replay/testdata` relus à l'identique ; tolérance `i18n` = 0 (2 tests
   compris). T3 vert.
-- [ ] 2.10 Reliquats de production : `title.FilmShortMatchID`, `mappings.ObjectiveModeEntry`,
-  `testutil.ReplayChronicleVersions` (règle D2-D dernier point) ; tolérances = 0.
-- [ ] 2.11 Tests couplés restants (R1 → `internal/filmcorpus/`, R2 → helpers locaux ; 19 chemins
+- [x] 2.10 Reliquats de production : `title.FilmShortMatchID`, `mappings.ObjectiveModeEntry`,
+  `testutil.ReplayChronicleVersions` (règle D2-D dernier point) ; tolérances = 0. **Statué `[x]` :
+  les trois étaient des MENTIONS EN COMMENTAIRE (lot 0, 0.5), aucun import de production ; les quatre
+  commentaires qui nommaient un symbole de LevelUp (ces trois-là et `title.PathResolver`) disent la notion.**
+- [x] 2.11 Tests couplés restants (R1 → `internal/filmcorpus/`, R2 → helpers locaux ; 19 chemins
   `Projects\LevelUp` retirés) : compte R0 / R1 / R2 / devenus instruments au journal, nom par nom
   pour R1 et « instrument » ; toutes les tolérances à zéro, allowlist retirée du test.
 - [ ] 2.12 Gate : `grep -rhoE --include='*.go' '"levelup/go-api/internal/[^"]+"' internal/games/halo_infinite/film | grep -v halo_infinite/film | sort -u`
@@ -614,6 +616,138 @@ découvertes de D1 et D2).
   `revision` `TestChaqueRevisionEgaleSonGolden/{grammar,killsource,objectives}` et `TestPerimetreDeChaqueCoucheEgaleSonGolden/{grammar,killsource,objectives}` ;
   `source`, `profile`, `types` (golden des formes) verts.
 
+- 2.10 (reliquats de production). **Sur pièces** (`grep -rn 'testutil\.\|title\.\|mappings\.' film --include='*.go' --exclude='*_test.go'`) : 5 occurrences, toutes en
+  COMMENTAIRE (aucun import de production ne subsiste : `grep` des imports `levelup/go-api/internal/...` hors du film en production = vide) :
+  `equipenergy/equipenergy.go` (`title.PathResolver.EquipmentEnergyPath`, relevée ici : le lot 0 n'en comptait que trois), `filmcache/filmcache.go`
+  (`title.FilmShortMatchID`), `replay/document_chronicle.go` (`testutil.ReplayChronicleVersions`, 2 mentions), `replay/map_objectives.go`
+  (`mappings.ObjectiveModeEntry.PointsOnly`). Quatre fichiers réécrits pour dire la notion (règle 17) : « chemin que l'hôte résout pour le titre »,
+  « les 8 caractères hexadécimaux qui précèdent le premier tiret », « l'extracteur des versions déclarées (helper de test côté hôte) », « le champ
+  `points_only` de la table des modes d'objectif du titre (objective_roles.toml) ». Aucune règle D2-D à appliquer (pas d'import). Commit `05bbbf8cf`.
+- 2.11 (tests couplés restants). **Le « 51 fichiers » de `tolerancesFilm` compte des COUPLES (fichier, import)** : 43 fichiers distincts (8 imports :
+  `testutil` 21, `domain/title` 14, `games/mappings` 7, `games/weapons` 3, `testfixtures` 2, `domain/replaydoc` 2, `domain` 1, `analysis/digest` 1) ; 11 hors de
+  `replay` (grammar 8, killsource 1, profile 1, killicon 1) et 32 dans `replay`. Les 19 fichiers qui citent `Projects\LevelUp` : UN seul est dans les 43
+  (`zone_state_p2b_temoin_test.go`) ; les 18 autres n'importent rien de LevelUp (13 en commentaire de commande, 5 avec un chemin par défaut dans le code).
+  **Lecture des règles** (décision du pilote, appliquée) : R1 = le test a besoin de CODE de LevelUp (chargeurs `mappings`, document servi `replaydoc`, extracteur
+  de chronique de `testutil`, registre d'armes) ET n'exerce que la surface exportée de la brique ; R2 = il a besoin d'un paquet interne de la brique, ou seulement
+  de DONNÉES du dépôt (catalogues versionnés, parc) : il reste, derrière `racineDepot`. Aucun des 43 fichiers n'est un R1 ENTIER (tous lisent des helpers non
+  exportés de leur paquet ou `film/internal/*`) : **43 fichiers R2, 5 tests R1 extraits de 4 fichiers, 1 instrument créé**.
+
+  *Mécanismes posés.*
+  - `racineDepot(t)` : un fichier `depot_test.go` par paquet (`replay`, `internal/grammar`, `internal/facts/killsource`, `internal/profile` [`profile_test`],
+    `killicon`, `equipenergy`), même nom, même corps : remonte depuis l'emplacement du fichier source (`runtime.Caller`) jusqu'au premier dossier qui porte
+    `go.work`, `t.Skip` s'il n'y en a pas (la brique copiée seule). `replay` y ajoute `titreDeReference` (= `"halo_infinite"`, littéral de test),
+    `bornesDeCartes(t)`, `cacheDuDepot(t)` et `idCourtDeMatch` (copie de 6 lignes de `title.FilmShortMatchID`, ids bien formés seulement ; dans `depot_research_test.go`, tag `research` : seuls les instruments s'en servent et `unused` refuse un symbole mort du build par défaut) ; `grammar` :
+    `referenceDuDepot`, `bornesDeCartes`, `cacheDuDepot`. Les chemins du parc se construisent depuis cette racine avec les MÊMES segments que `PathResolver`
+    (`data/titles/halo_infinite/reference/<fichier>` pour `MapQuantBoundsPath`, `EquipmentEnergyPath`, `MapBackgroundDir` ; `data/cache`).
+    `repoRootForTest` (replay, remontait au dossier `config/titles`, 13 fichiers) est SUPPRIMÉ au profit de `racineDepot`. **Allowlists : aucune entrée à ajouter**
+    (le helper ne porte ni échelle `../../..`, ni `title.FindRepoRoot`, ni littéral `.ai`) ; l'entrée `ctf_research_test.go` de `repoRootInTestsAllowlist`
+    est RETIRÉE (le fichier n'appelle plus le helper de production). Le helper homonyme de `facts/objectives/families_parite_ts_test.go` (marqueur
+    `apps/web/package.json`, `Fatal`) n'importe rien de LevelUp : laissé tel quel (D2-L2-n).
+  - **Instantané du catalogue de libellés du titre** (la pièce centrale). `golden_catalog_test.go` bâtissait le catalogue avec les chargeurs de LevelUp
+    (`mappings.Load*`, `weapons.FilmshellWeaponKeysByFamily`) pour une trentaine de tests de `replay` (goldens d'assemblage, de builds, de socles). Une fixture
+    inventée aurait changé les goldens (aucun golden n'est régénéré ici). Le catalogue est donc un INSTANTANÉ versionné,
+    `replay/testdata/golden_catalogue_titre.json` (`LabelCatalog` sérialisé, 9 727 octets), produit par la jointure de la production ; `goldenCatalog` le désérialise.
+    La garde de fraîcheur est côté hôte : `filmcorpus/catalogue_titre_test.go` (`TestInstantaneDuCatalogueDuTitreEstFrais` : octets égaux ET relecture
+    `reflect.DeepEqual` au catalogue construit ; porte de régénération à deux verrous `-update-catalogue-titre` + `LEVELUP_UPDATE_CATALOGUE_TITRE=1`).
+    Un libellé du titre qui change rougit d'abord cette garde ; la chaîne vers les goldens est celle d'avant avec un maillon visible de plus.
+    `goldenReplayLabels` (rendait un `*mappings.ReplayLabelSet`) est supprimé : ses 8 appelants lisent `goldenCatalog(t).EquipmentFamilies`, `.Abilities`,
+    `.Keys`. Les instruments `f0_103_*` (paquet `grammar`, qui ne peut pas importer `replay`) lisent le même JSON par une structure locale de deux champs :
+    la variable `F0_LABELS` désigne désormais l'instantané et non `replay_labels.toml` (D2-L2-o).
+  - **Digest déménagé** : `internal/analysis/digest` (feuille de la bibliothèque standard, 443 lignes + tests) → `film/digest` (`git mv`) ; ses seuls
+    utilisateurs sont le test de la mini-bobine du film et `cmd/replay-equiv` (outil d'équivalence du décodeur), réécrits. Règle D2-D (le film est le seul
+    usage : le helper déménage). Ses trois `sort.Slice` passent à `slices.SortFunc` / `SortStableFunc` (le ratchet `film_tri_total_test` couvre désormais
+    le dossier) sans changer un octet de sortie (tests de `digest` et `TestEquivalenceMiniFilm` verts) ; classé hors couche dans `film_layers_deps_test`.
+  - **Export** : `replay.ContinuousWeaponKeys()` (cles d'arme à tir continu que la table des chassis déclare ; vrai contrat avec le registre du titre) ;
+    plafond de surface de `replay` 315 → 316, justification datée.
+  - Fixtures locales : `highlight_events_jgtm_test.go` lit le fixture JGtm de l'hôte (gitignoré, 6 Mo) par un chargeur de 86 lignes (manifeste et chunks seuls,
+    `jgtmDisponible` / `chargerJGtm`) ; `vehicle_end_acceptation_test.go` lit l'artefact cuit dans le type de la brique (`ReplayDocument`) et non dans le jumeau
+    servi ; `emprise_v0_porteurs_research_test.go` remplace `domain.MatchFacts` par une structure locale à un champ lu (les joueurs et leur triplet) ;
+    `document_shape_test.go` fige la forme servie = la forme stockée (la garde est côté hôte).
+
+  *R1 — liste nominative (5 tests, 4 fichiers sources, nom CONSERVÉ ; destination `apps/go-api/internal/filmcorpus/`).*
+
+  | Test | Fichier d'origine (reste en R2 pour le reste) | Fichier destination |
+  |---|---|---|
+  | `TestCatalogueDuTitreNommeLesArmesDuFilmDeReference` | `replay/golden_catalog_test.go` | `catalogue_titre_test.go` |
+  | `TestLeManifesteNommeSesObjetsDObjectifDansLesDeuxLangues` | `replay/ground_weapon_flag_exclusion_test.go` | `objets_objectif_titre_test.go` |
+  | `TestArmesDesChassisAuRegistre` (le test de la brique qui reste s'appelle `TestArmesDesChassisOntUneCadence`, nom neuf) | `replay/tir_continu_armes_test.go` | `armes_continues_registre_test.go` |
+  | `TestDocumentShapeTwinsAgree` | `replay/document_shape_test.go` | `document_shape_jumeaux_test.go` |
+  | `TestDocumentShapeSchemaHasChronicleEntry` | `replay/document_shape_test.go` | `document_shape_jumeaux_test.go` |
+
+  *Garde-rails et instruments créés dans `filmcorpus`* : `TestInstantaneDuCatalogueDuTitreEstFrais`, `TestRenduDesFormesJumeauxSuitLeGolden` (la copie du rendu de forme
+  de `filmcorpus` rend la forme en clair et l'empreinte du golden de la brique : deux copies, règle 6), `TestRRM4AGatesG4` (instrument `research` : la gate G4
+  du lot M4a, qui lisait le registre des armes de véhicule, sortie de `TestRRM4AGates` ; les gates G3 restent dans la brique sous le même nom ; même variable
+  `RR_M4A_DOCS`). `filmcorpus/doc.go` porte le contrat du paquet.
+
+  *Table des 43 fichiers.* Imports visés → règle → mécanisme. Sauf mention, « R2 / `racineDepot` » = le test reste, `testutil.RepoRoot()` remplacé par `racineDepot(t)`.
+
+  | Fichier (sous `film/`) | Imports visés | Règle | Destination / mécanisme |
+  |---|---|---|---|
+  | `internal/facts/killsource/carte_du_match_test.go` | `testutil` | R2 | `racineDepot` |
+  | `internal/grammar/f0_103_artefact_research_test.go` | `mappings` | R2 | instantané du catalogue (`F0_LABELS`), structure locale `f0InstantaneCatalogue` |
+  | `internal/grammar/generations_vivantes_datees_canaux_films_test.go` | `testutil` | R2 | `racineDepot` |
+  | `internal/grammar/generations_vivantes_datees_films_test.go` | `testutil` | R2 | `racineDepot` |
+  | `internal/grammar/highlight_events_jgtm_test.go` | `testfixtures` | R2 | chargeur local du fixture JGtm |
+  | `internal/grammar/livefire_positions_test.go` | `testutil` | R2 | `racineDepot` |
+  | `internal/grammar/poussees_films_test.go` | `testutil` | R2 | `racineDepot` |
+  | `internal/grammar/r2_positions_aberrantes_research_test.go` | `testutil` | R2 | `racineDepot` (2 sites) |
+  | `internal/grammar/r2bis_canaux_dates_research_test.go` | `testutil` | R2 | `racineDepot` |
+  | `internal/profile/loi_largeurs_test.go` | `testutil` | R2 | `racineDepot` (`profile_test`) |
+  | `killicon/killicon_test.go` | `testfixtures` | R2 | `racineDepot` ; `spritePath(t, stem)` (+ `neutral_test.go`, 3 appels) |
+  | `replay/callouts_catalog_test.go` | `testutil` | R2 | `racineDepot` (2 sites) |
+  | `replay/contract_fixtures_test.go` | `testutil` | R2 | `racineDepot` |
+  | `replay/ctf_research_test.go` | `domain/title` | R2 | `bornesDeCartes` ; entrée d'allowlist retirée |
+  | `replay/document_shape_test.go` | `replaydoc`, `testutil` | R2 + 2 tests R1 | forme servie = forme stockée ; 2 tests → `filmcorpus` |
+  | `replay/emprise_v0_porteurs_research_test.go` | `domain`, `domain/title`, `testutil` | R2 | structure locale `Faits`, `bornesDeCartes`, `idCourtDeMatch` |
+  | `replay/emprise_v0_rapport_research_test.go` | `domain/title` | R2 | `titreDeReference` |
+  | `replay/emprise_v0_synthese_research_test.go` | `domain/title` | R2 | `idCourtDeMatch` |
+  | `replay/emprise_v1_porteurs_research_test.go` | `domain/title`, `testutil` | R2 | `bornesDeCartes`, `idCourtDeMatch` |
+  | `replay/equipment_pickup_manifest_research_test.go` | `games/weapons` | R2 | `goldenCatalog(t).Keys`, `.EquipmentFamilies` |
+  | `replay/equipment_uses_research_test.go` | `mappings` | R2 | `goldenCatalog(t).EquipmentFamilies` |
+  | `replay/equivalence_minifilm_test.go` | `analysis/digest` | R2 | `digest` déménagé sous `film/digest` |
+  | `replay/flag_spawn_neutral_label_test.go` | `testutil` | R2 | `racineDepot` |
+  | `replay/golden_catalog_test.go` | `mappings`, `games/weapons` | R2 + 1 test R1 | `goldenCatalog` = instantané ; test → `filmcorpus` |
+  | `replay/golden_equipement_test.go` | `domain/title` | R2 | chemin `reference/equipment_energy.json` depuis `racineDepot` |
+  | `replay/ground_weapon_flag_exclusion_test.go` | `mappings` | R2 + 1 test R1 | test du manifeste → `filmcorpus` |
+  | `replay/ground_weapon_pads_research_test.go` | `domain/title` | R2 | `bornesDeCartes` |
+  | `replay/lettres_ordre_research_test.go` | `domain/title` | R2 | `titreDeReference` |
+  | `replay/map_background_index_catalogue_test.go` | `domain/title`, `testutil` | R2 | `racineDepot` + `reference/map_backgrounds` |
+  | `replay/map_weapon_pads_catalog_test.go` | `testutil` | R2 | `racineDepot` |
+  | `replay/objectives_catalog_test.go` | `testutil` | R2 | `racineDepot` |
+  | `replay/origine_poses_research_test.go` | `mappings` | R2 | `goldenCatalog(t).EquipmentFamilies` |
+  | `replay/positions_porte_temoins_research_test.go` | `testutil` | R2 | `racineDepot` |
+  | `replay/reapparition_37_collation_research_test.go` | `domain/title`, `testutil` | R2 | `bornesDeCartes` |
+  | `replay/rr_m4a_gates_research_test.go` | `mappings` | R2 + instrument | G3 reste ; G4 → `TestRRM4AGatesG4` (`filmcorpus`) |
+  | `replay/tir_continu_armes_test.go` | `mappings` | R2 + 1 test R1 | `replay.ContinuousWeaponKeys` ; test du registre → `filmcorpus` |
+  | `replay/vehicle_end_acceptation_test.go` | `replaydoc` | R2 | types de la brique (`ReplayDocument`, `VehicleTrack`) |
+  | `replay/vehicle_families_test.go` | `testutil` | R2 | `racineDepot` |
+  | `replay/weapon_burst_research_test.go` | `games/weapons` | R2 | `goldenCatalog(t).Keys` |
+  | `replay/zone_56_camp_research_test.go` | `domain/title`, `testutil` | R2 | `bornesDeCartes` |
+  | `replay/zone_etat_initial_temoin_test.go` | `domain/title` | R2 | `titreDeReference` |
+  | `replay/zone_state_p2a_corpus_test.go` | `domain/title` | R2 | `titreDeReference` |
+  | `replay/zone_state_p2b_temoin_test.go` | `domain/title` | R2 | `titreDeReference` ; chemin `Projects\LevelUp` retiré |
+
+  *Autres fichiers touchés (hors des 43, conséquences directes).* 18 fichiers `Projects\LevelUp` : 13 commentaires de commande → `<depot>/data/...`
+  (`delta_walk_witness`, `ti13_*` x3, `zone_census*` x2, `zone_state_measure`, `zone_vectors`, `colline_propriete*` x2, `hill_shapes_measure`,
+  `zone_state_p2a`, `zone_gauge_temoin`) ; 5 défauts de code (`vehicules_v10_deadstate`, `vehicules_v2_items`, `vehicules_v2b_vitalite` côté `grammar` ;
+  `vehicules_v2_deaths`, `vehicules_v2b_cooldown` côté `replay`) → `cacheDuDepot(t)` / `bornesDeCartes(t)` / `referenceDuDepot(t, ...)` (les fonctions `v10Root`,
+  `v2Root`, `v2bRoot`, `v2cRoot`, `v2dDir` reçoivent `t`) ; `equipenergy_test.go` (D2-L2-f : l'échelle de `..` x7 → `racineDepot`) ;
+  8 appelants de `goldenReplayLabels` / de la remontée `repoRootForTest` ; `filmfacts_fichier.go` (commentaire). `archlint` : `briques_imports_test.go`
+  (table `tolerancesFilm`, champ `tolerances`, `violationsDeTolerances` RETIRÉS ; la ligne `film` se juge comme `gamefiles` et `himap`), `briques_garde_test.go`
+  (auto-preuve des tolérances retirée), `film_layers_deps_test.go` (`digest` hors couche), `film_file_size_test.go` (entrée de `document_shape_test.go` retirée,
+  il passe sous 500 lignes), `film_facade_surface_test.go` (316), `no_repo_root_walk_test.go` (entrée de `ctf_research_test.go`).
+- Bilan 2.10 et 2.11 : `tolerancesFilm` VIDE puis retirée ; `TestBriquesImports` vert pour `film` (le décodeur n'importe plus rien du dépôt, tests compris :
+  `grep -rhoE --include='*.go' '"levelup/go-api/internal/[^"]+"' film | grep -v halo_infinite/film` ne rend plus que le littéral de chaîne d'un test du cadre
+  historique). Rouges attendus, inchangés : `grammar/TestGrammarRevSuitLaGrammaire`, `killsource/TestKillsourceRevSuitLaSortie`, `objectives/TestObjectivesRevSuitLaSortie`,
+  `revision/TestChaqueRevisionEgaleSonGolden` et `TestPerimetreDeChaqueCoucheEgaleSonGolden` (sous-tests grammar, killsource, objectives). Aucun golden régénéré.
+  Gates : `go build ./...`, `go vet ./...`, `go vet -tags research` (film, filmcorpus) et `go test -tags research -run XXX` propres ; `gofmt` vide ; `golangci-lint --new-from-rev=0bfe57feb`
+  0 issue ; `go test ./internal/archlint/` vert ; `go test ./... -count=1` (193 s) : 214 paquets `ok`, seuls rouges les attendus. **Comparaison au témoin T1 du lot 0**
+  (`(paquet, test, verdict)` réduit par `reduire.sh`) : 70 couples (paquet, test) ont quitté leur paquet depuis le lot 0 (filmproc 39, digest 15, replay 5 -> `filmcorpus`,
+  filelock 3, equipenergy 3, canonical 3, filmshell 2) ; leurs 70 NOMS existent tous dans le run courant (aucun nom ne disparaît) ; sur les couples communs, aucun
+  passage `pass` -> `skip`, seuls changements de verdict les 11 attendus ; le parc `data/cache` est absent du worktree comme au lot 0 (mêmes tests sautés). Baseline de présence
+  (`.ai/baselines/tests_pre_migration.jsonl`) : 2 lignes relocalisées `film/replay` -> `filmcorpus`, entrée datée dans `scripts/check_test_baseline.sh`. Commits : 2.10 `05bbbf8cf` ;
+  2.11 `2ea08ac1b` (R2 hors replay), `07f8f0802` (replay, filmcorpus, digest, archlint) et le commit de clôture (baseline, plan, journal).
+
 ## Témoins avant/après (règle utilisateur du 2026-10-28)
 
 | Témoin | Capture | Comparaison |
@@ -680,7 +814,7 @@ découvertes de D1 et D2).
   Sans conséquence : la tolérance comptait 13 fichiers (9 prod, 4 tests) et est tombée à 0.
 - D2-L2-h (lot 2.6) : `GOOS=linux go build ./...` échoue depuis ce poste Windows (cgo : `duckdb-go-bindings/lib/linux-amd64`, `libs/gamefiles/ooz`) : limite de la compilation croisée, sans lien avec D2 ;
   les paquets déplacés (`filmproc`, `internal/filelock`, `filmcache`, `internal/...`) passent `GOOS=linux go vet`.
-- D2-L2-i (lot 2.7, 2026-10-29) : **le libellé « `types.HighlightEvent` » du plan (D2-B, 2.7, D2-E R0) est en conflit avec l'exigence « `source` reste vert »** :
+- D2-L2-i (lot 2.7, 2026-10-29 ; TRANCHÉE le 2026-10-29 par le pilote : le type d'événement RESTE dans la feuille `film/highlightevent`, pas dans `film/types`, qui entre dans l'empreinte de `source` ; rien à faire dans le code) : **le libellé « `types.HighlightEvent` » du plan (D2-B, 2.7, D2-E R0) est en conflit avec l'exigence « `source` reste vert »** :
   `film/types` est haché par ses octets dans l'empreinte de `source` (son golden de périmètre liste `film/types`) et chaque type de `film/types` doit être figé
   dans `types/testdata/shapes.golden`. Exécuté : feuille `film/highlightevent` (cf. « Exécution du lot 2 », 2.7). À confirmer par le pilote ; si `film/types` est
   voulu, déplacer le fichier coûte une régénération des goldens de `source` (révision constante) et du golden des formes, à joindre au 2.12.
@@ -697,3 +831,18 @@ découvertes de D1 et D2).
 - D2-L2-l (lot 2.9) : trois tests du film lisent des libellés de `games/mappings` (type `i18n.Text` de LevelUp) par `Pick("en")` / `Pick("fr")`
   (`golden_catalog_test.go`, `ground_weapon_flag_exclusion_test.go`, `equipment_pickup_naming_research_test.go`) : ils relèvent de la tolérance `games/mappings`
   (2.11) et devront, au déménagement R1 vers `filmcorpus`, passer par `TexteVersFilm` plutôt que reconstruire un texte à deux codes.
+- D2-L2-m (lot 2.11, 2026-10-29) : le « 51 fichiers » de `tolerancesFilm` est un compte de COUPLES (fichier, import) : 43 fichiers distincts. Sur les 19 fichiers qui citent
+  `Projects\LevelUp`, un seul est dans les 43 ; les 18 autres n'ont aucun import de LevelUp (leur chemin est en commentaire de commande ou en défaut de code) et ont été
+  traités dans le même geste. Non traité au-delà.
+- D2-L2-n (lot 2.11) : `facts/objectives/families_parite_ts_test.go` porte un `racineDepot` homonyme dont le marqueur est `apps/web/package.json` et qui échoue (`Fatal`) au lieu de
+  sauter ; il n'importe rien de LevelUp. Deux corps pour un nom : à unifier au lot 3, quand la remontée par `go.work` devient le marqueur de la brique. Non traité.
+- D2-L2-o (lot 2.11) : la variable `F0_LABELS` des instruments `f0_103_*` (`grammar`) désigne désormais l'instantané du catalogue (`replay/testdata/golden_catalogue_titre.json`) et non
+  `replay_labels.toml` ; les instruments `eqUses*` / `origine*` de `replay` lisent l'instantané au lieu du manifeste TOML. Les trois fichiers de commande en tête de ces instruments sont
+  mis à jour ; les valeurs sont celles du manifeste au jour de la régénération de l'instantané, que la garde de `filmcorpus` tient fraîche.
+- D2-L2-p (lot 2.11) : au lot 3, trois chemins en dur de `filmcorpus` / `testutil` visent le dossier du film et sont à reraciner sous `libs/film` : `cheminInstantaneCatalogue`
+  (`catalogue_titre_test.go`), `cheminGoldenDeForme` (`document_shape_jumeaux_test.go`) et `testutil.ReplayChroniclePath` (`replay/document_chronicle.go`, lu par
+  `TestDocumentShapeSchemaHasChronicleEntry` et par `replaybuild/artifact_schema_history_test.go`).
+- D2-L2-q (lot 2.11) : le ratchet `film_tri_total_test` (DT-9) couvre `film/**` ; le paquet `digest`, déménagé, y est tombé avec trois `sort.Slice`, convertis (comparateurs totaux ou tri
+  stable sur l'ordre du rendu, sortie inchangée). Un déménagement vers `film/` hérite des ratchets du dossier (taille, tri, couches, `slog`) : à prévoir pour le lot 3.
+- D2-L2-r (lot 2.11) : `replay/vehicules_v2_deaths_test.go` construisait le dossier d'un film par `root + "\film_chunks\" + short8` (séparateur Windows en dur) ; `filepath.Join` le remplace.
+  Sans effet sur Windows, correct ailleurs.

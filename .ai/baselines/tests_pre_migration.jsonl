@@ -58420,7 +58420,7 @@
 {"Time":"2026-09-05T23:46:31.8224188+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestSeventyGrenadeThrowsAreAllPlaced","Elapsed":0.67}
 {"Time":"2026-09-05T23:46:32.5268802+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestProjectilesAndInventoryCounts","Elapsed":0.7}
 {"Time":"2026-09-05T23:46:33.207362+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestGoldenDocumentPublishesItsOwnUncertainty","Elapsed":0.69}
-{"Time":"2026-09-05T23:46:33.207885+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestCatalogueDuTitreNommeLesArmesDuFilmDeReference","Elapsed":0}
+{"Time":"2026-09-05T23:46:33.207885+02:00","Action":"pass","Package":"levelup/go-api/internal/filmcorpus","Test":"TestCatalogueDuTitreNommeLesArmesDuFilmDeReference","Elapsed":0}
 {"Time":"2026-09-05T23:46:33.2083989+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestGoldenAssemblyPhrasesJustes","Elapsed":0}
 {"Time":"2026-09-05T23:46:33.2089291+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestGoldenAssemblyPorteSesDenominateurs","Elapsed":0}
 {"Time":"2026-09-05T23:46:33.2094409+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestGoldenAssemblyFigeLesChiffresDuChantier","Elapsed":0}
@@ -58441,7 +58441,7 @@
 {"Time":"2026-09-05T23:46:34.576264+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestGwPadsClassSansVieProcheEstSpawned","Elapsed":0}
 {"Time":"2026-09-05T23:46:34.576264+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestUnObjetDObjectifNeFaitJamaisUnSocle","Elapsed":0}
 {"Time":"2026-09-05T23:46:34.5767811+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestLeDrapeauDuManifesteNeFaitJamaisUnSocle","Elapsed":0}
-{"Time":"2026-09-05T23:46:34.5773065+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestLeManifesteNommeSesObjetsDObjectifDansLesDeuxLangues","Elapsed":0}
+{"Time":"2026-09-05T23:46:34.5773065+02:00","Action":"pass","Package":"levelup/go-api/internal/filmcorpus","Test":"TestLeManifesteNommeSesObjetsDObjectifDansLesDeuxLangues","Elapsed":0}
 {"Time":"2026-09-05T23:46:35.2519039+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestUneSeuleDeclarationParSeuilDArmeAuSol","Elapsed":0.67}
 {"Time":"2026-09-05T23:46:36.2548822+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestUneSeuleDefinitionParRegleDArmeAuSol","Elapsed":1}
 {"Time":"2026-09-05T23:46:36.2548822+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestGwPickupLessEstTotalSurDesObjetsExAequo","Elapsed":0}
