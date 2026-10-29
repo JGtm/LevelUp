@@ -45,6 +45,7 @@ package replay
 
 import (
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
@@ -90,7 +91,7 @@ func TestV2VehicleDeathDating(t *testing.T) {
 			ag = &v2dMapAgg{}
 			aggs[f.mapKey] = ag
 		}
-		dir := v2dDir(f.short8)
+		dir := v2dDir(t, f.short8)
 		t.Run(f.short8, func(t *testing.T) { v2dProcessFilm(t, dir, entry, ag) })
 	}
 
@@ -375,18 +376,19 @@ func v2dParseFilms(t *testing.T) []v2dFilmSpec {
 	return out
 }
 
-func v2dDir(short8 string) string {
+func v2dDir(t *testing.T, short8 string) string {
+	t.Helper()
 	root := os.Getenv("V2D_FILM_ROOT")
 	if root == "" {
-		root = `C:\Users\Guillaume\Projects\LevelUp\data\cache`
+		root = cacheDuDepot(t)
 	}
-	return root + `\film_chunks\` + short8
+	return filepath.Join(root, "film_chunks", short8)
 }
 
 func v2dLoadBounds(t *testing.T) *profile.MapQuantCatalog {
 	path := os.Getenv("V2D_BOUNDS")
 	if path == "" {
-		path = `C:\Users\Guillaume\Projects\LevelUp\data\titles\halo_infinite\reference\map_quant_bounds.json`
+		path = bornesDeCartes(t)
 	}
 	cat, err := profile.LoadMapQuantCatalog(path)
 	if err != nil {

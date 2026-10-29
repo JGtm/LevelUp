@@ -1,5 +1,10 @@
 package replay
 
+import (
+	"maps"
+	"slices"
+)
+
 // tir_continu_armes.go — LES ARMES A TIR CONTINU DU TITRE : quel chassis les porte, et leur CADENCE
 // lue dans le tag (lot M4b de la campagne « retours rejeu », 2026-09-24).
 //
@@ -92,4 +97,18 @@ func continuousWeaponOfChassis(chassis string) (uint32, bool) {
 	}
 	tag, ok := continuousWeaponByChassis[id]
 	return tag, ok
+}
+
+// ContinuousWeaponKeys rend, tries, les cles d arme que la table des chassis declare a tir continu :
+// le tag `weap` en huit chiffres hexadecimaux majuscules, la cle du registre des armes de vehicule
+// du titre (`vehicle_weapons.toml`). C est le CONTRAT que l hote doit tenir : chaque cle a une
+// entree `continuous` au registre, et chaque entree `continuous` du registre est une cle de cette
+// liste. Une arme de chassis sans entree sortirait sans style ni son ; une entree qu aucun chassis
+// ne declare ne serait jamais tiree.
+func ContinuousWeaponKeys() []string {
+	cles := map[string]struct{}{}
+	for _, tag := range continuousWeaponByChassis {
+		cles[formatFamille(tag)[2:]] = struct{}{}
+	}
+	return slices.Sorted(maps.Keys(cles))
 }

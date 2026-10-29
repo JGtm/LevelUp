@@ -19,9 +19,9 @@ package replay
 //	    naissance, ni le tir n y entrent. Cible : mediane <= 2 m. `G3-naissance` (piece et porteur
 //	    nes au meme point, au meme instant) est rapporte comme CONTROLE : depuis la reprise, la
 //	    regle l exige, il n est donc plus independant.
-//	G4  la part des tirs d arme de VEHICULE (moitie basse nulle) dont l arme a, au registre du
-//	    titre, un style ET un son (ou un silence decide) ; les tags `[[unknown]]` sont comptes a
-//	    part, avec leur raison.
+//	G4  (deplace cote hote : il lit le registre de LevelUp) la part des tirs d arme de VEHICULE dont
+//	    l arme a, au registre du titre, un style ET un son — `internal/filmcorpus/` ,
+//	    `TestRRM4AGatesG4`, meme variable `RR_M4A_DOCS`.
 //
 //	RR_M4A_DOCS=<dossier de documents> go test -tags research -count=1 \
 //	  -run '^TestRRM4AGates$' -v ./internal/games/halo_infinite/film/replay/
@@ -33,10 +33,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strings"
 	"testing"
-
-	"levelup/go-api/internal/games/mappings"
 )
 
 func TestRRM4AGates(t *testing.T) {
@@ -44,15 +41,9 @@ func TestRRM4AGates(t *testing.T) {
 	if dir == "" {
 		t.Skip("instrument de gate : RR_M4A_DOCS requis")
 	}
-	reg, err := mappings.LoadVehicleWeaponsFromFile(filepath.Join(repoRootForTest(t), "config",
-		"titles", "halo_infinite", "mappings", "vehicle_weapons.toml"))
-	if err != nil {
-		t.Fatal(err)
-	}
 	noms, _ := filepath.Glob(filepath.Join(dir, "*.json"))
 	sort.Strings(noms)
 	var ecarts, embarquements, embarquementsFrais, naissances []float64
-	g4 := map[string]int{}
 	for _, n := range noms {
 		raw, err := os.ReadFile(n) //nolint:gosec // instrument de mesure
 		if err != nil {
@@ -67,16 +58,12 @@ func TestRRM4AGates(t *testing.T) {
 		embarquements = append(embarquements, tous...)
 		embarquementsFrais = append(embarquementsFrais, frais...)
 		naissances = append(naissances, rrG3Naissances(doc)...)
-		rrG4Compter(doc, reg, g4)
 	}
 	t.Logf("G3-embarquement (PREUVE) : %s", rrQuantiles(embarquements))
 	t.Logf("G3-embarquement, point du bipede de moins de %d frames : %s", rrBipedeFraisFrames,
 		rrQuantiles(embarquementsFrais))
 	t.Logf("G3-naissance (controle, exige par la regle) : %s", rrQuantiles(naissances))
 	t.Logf("G3-annexe (tir -> porteur, tautologique apres le lot) : %s", rrQuantiles(ecarts))
-	t.Logf("G4 : tirs d arme de vehicule %d ; registre complet %d ; silence decide %d ; "+
-		"inconnu motive %d ; hors registre %d", g4["total"], g4["complet"], g4["silence"],
-		g4["inconnu"], g4["hors"])
 }
 
 // rrQuantiles rend « n, mediane, p90, max » d une serie en metres.
@@ -236,26 +223,4 @@ func rrPorteur(vies []VehicleTrack, vie VehicleTrack, t int) *VehicleTrack {
 		}
 	}
 	return nil
-}
-
-func rrG4Compter(doc ReplayDocument, reg *mappings.VehicleWeaponSet, n map[string]int) {
-	inconnus := reg.Unknown()
-	for _, s := range doc.Shots {
-		if len(s.Weapon) != 18 || !strings.HasSuffix(s.Weapon, "00000000") {
-			continue
-		}
-		n["total"]++
-		tag := s.Weapon[2:10]
-		w, ok := reg.Weapon(tag)
-		switch {
-		case ok && w.Sound != "":
-			n["complet"]++
-		case ok:
-			n["silence"]++
-		case inconnus[tag] != "":
-			n["inconnu"]++
-		default:
-			n["hors"]++
-		}
-	}
 }

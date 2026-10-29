@@ -1,5 +1,5 @@
-// briques_garde_test.go — auto-preuves de la table des briques (parcours récursif, tolérances) et
-// test d'exhaustivité des dossiers de `libs/`.
+// briques_garde_test.go — auto-preuves de la table des briques (parcours récursif) et test
+// d'exhaustivité des dossiers de `libs/`.
 //
 // # EXHAUSTIVITÉ (2026-10-29, plan D2 lot 1, découverte 38 de D1)
 //
@@ -44,42 +44,6 @@ func TestBriquesImports_ParcoursRecursifEtFrontiere(t *testing.T) {
 	exact := brique{nom: "e", paquets: []string{"libs/x/p"}}
 	if exact.interne("github.com/JGtm/LevelUp/libs/x/p/sous") {
 		t.Error("une brique non récursive ne couvre pas ses sous-répertoires")
-	}
-}
-
-// TestBriquesImports_TolerancesAutoPreuve : les quatre règles de la table de tolérances rougissent
-// chacune sur leur cas, et le cas exact reste vert.
-func TestBriquesImports_TolerancesAutoPreuve(t *testing.T) {
-	const (
-		a = prefixeModuleAPI + "internal/a"
-		z = prefixeModuleAPI + "internal/z"
-	)
-	fichiers := []fichierImports{
-		{rel: "libs/x/p/1.go", imports: []string{a, a}}, // un fichier compte UNE fois par import visé
-		{rel: "libs/x/p/2_test.go", imports: []string{a}},
-	}
-	avec := func(tol map[string]int) []string {
-		b := brique{nom: "x", paquets: []string{"libs/x/p"}, tolerances: tol}
-		return violationsDeBrique(b, fichiers, map[string]string{}, map[string]bool{})
-	}
-	if got := avec(map[string]int{a: 2}); len(got) != 0 {
-		t.Errorf("compte exact : aucune violation attendue, obtenu %v", got)
-	}
-	if got := avec(map[string]int{a: 1}); len(got) != 2 ||
-		!strings.Contains(got[0]+got[1], "libs/x/p/1.go  -> "+a) || !strings.Contains(got[0], "compte 2 > tolérance 1") {
-		t.Errorf("compte supérieur : fichier -> import attendu pour chaque fichier, obtenu %v", got)
-	}
-	if got := avec(map[string]int{a: 3}); len(got) != 1 || !strings.Contains(got[0], "baisse la tolérance à 2") {
-		t.Errorf("compte inférieur : « baisse la tolérance à 2 » attendu, obtenu %v", got)
-	}
-	if got := avec(map[string]int{}); len(got) != 2 || !strings.Contains(got[0], "absent de la table") {
-		t.Errorf("import absent de la table : rouge immédiat attendu, obtenu %v", got)
-	}
-	if got := avec(map[string]int{a: 2, z: 0}); len(got) != 1 || !strings.Contains(got[0], "tolérance à 0") {
-		t.Errorf("entrée à zéro : retrait exigé, obtenu %v", got)
-	}
-	if got := avec(map[string]int{a: 2, z: 4}); len(got) != 1 || !strings.Contains(got[0], "compte mesuré 0 < tolérance 4") {
-		t.Errorf("entrée sans aucun fichier : retrait exigé, obtenu %v", got)
 	}
 }
 

@@ -308,7 +308,7 @@ func TestOriginBirthRecurrenceClusters(t *testing.T) {
 	if len(poses) == 0 {
 		t.Skip("aucune pose ti=37 sur ce film")
 	}
-	familles := goldenReplayLabels(t).EquipmentObjects()
+	familles := goldenCatalog(t).EquipmentFamilies
 	t.Logf("== LOT 6 · LA RÉCURRENCE DES NAISSANCES · %s ==", s.dir)
 	t.Logf("carte %q · %d pose(s) ti=37 · calibration MPP : %s", module, len(poses), pst.Calibration)
 

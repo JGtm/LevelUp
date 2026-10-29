@@ -24,7 +24,6 @@ import (
 	"reflect"
 	"testing"
 
-	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
@@ -156,6 +155,6 @@ func etatInitialCuisson(t *testing.T, dir, short string, quant *profile.MapQuant
 	return func(zone ZoneInput, caps []objectives.IdentifiedEvent) (ReplayDocument, uint64) {
 		opt := base
 		opt.Objectives, opt.Zone = caps, zone
-		return BuildFromPositions(context.Background(), short, title.DefaultSlug, pos, nil, opt), origin
+		return BuildFromPositions(context.Background(), short, titreDeReference, pos, nil, opt), origin
 	}
 }

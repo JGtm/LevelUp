@@ -21,8 +21,6 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-
-	"levelup/go-api/internal/testutil"
 )
 
 // ecrireCatalogueSocles pose un catalogue minimal sur disque et rend son chemin.
@@ -106,7 +104,7 @@ var cartesMesurees = map[string]struct {
 	"98783453-ce40-4020-9e87-62099a290b62": {"Smallhalla (Forge, le RACK)", 27},
 }
 
-// cheminCatalogueLivre localise le fichier VERSIONNÉ par testutil.RepoRoot().
+// cheminCatalogueLivre localise le fichier VERSIONNÉ depuis la racine du dépôt hôte (`racineDepot`).
 //
 // Pas d'échelle de « .. » écrite à la main, et pas de Skip : le catalogue est versionné,
 // donc son absence est une anomalie d'arbre, pas un cas normal (garde-rail J-R1-1 —
@@ -114,10 +112,7 @@ var cartesMesurees = map[string]struct {
 // SILENCE et la garde cesse de tourner en CI sans que rien ne rougisse).
 func cheminCatalogueLivre(t *testing.T, nom string) string {
 	t.Helper()
-	root, err := testutil.RepoRoot()
-	if err != nil {
-		t.Fatalf("racine du depot introuvable : %v", err)
-	}
+	root := racineDepot(t)
 	return filepath.Join(root, "data", "titles", "halo_infinite", "reference", nom)
 }
 

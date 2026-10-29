@@ -157,7 +157,7 @@ func p2aOutDir(t *testing.T) string {
 		p2aMkdir(t, v)
 		return v
 	}
-	out := filepath.Join(repoRootForTest(t), ".ai", "archive", "V7.5", "replay2d", "registre_film", "lotCbis")
+	out := filepath.Join(racineDepot(t), ".ai", "archive", "V7.5", "replay2d", "registre_film", "lotCbis")
 	p2aMkdir(t, out)
 	return out
 }

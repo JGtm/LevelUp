@@ -24,7 +24,7 @@ package replay
 // par processus :
 //
 //	$env:CGO_ENABLED=0
-//	$env:ZONE_ARTEFACT="C:/Users/Guillaume/Projects/LevelUp-wt-jauge-live/data/cache/replays/halo_infinite/7344d24f.json"
+//	$env:ZONE_ARTEFACT="<depot>/data/cache/replays/halo_infinite/7344d24f.json"
 //	go test -count=1 -run TestZoneGaugeTemoin -v ./internal/games/halo_infinite/film/replay/
 
 import (

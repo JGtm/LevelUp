@@ -165,10 +165,9 @@ func TestNoAdHocRepoRootLadderInTests(t *testing.T) {
 // du 2026-08-19 (revue adversariale ronde 2, R2-2) ; chaque entree porte sa raison ET sa
 // condition de reprise — une allowlist sans date se perime en silence.
 var repoRootInTestsAllowlist = map[string]bool{
-	// Instrument de RECHERCHE sous garde d'environnement (CTF_RESEARCH_FILMS) : il ne
-	// tourne jamais en CI, donc le helper de production y est sans consequence. Reprise :
-	// si la garde d'environnement tombe, migrer vers testutil.RepoRoot().
-	"internal/games/halo_infinite/film/replay/ctf_research_test.go": true,
+	// (2026-10-29, plan D2 item 2.11) `film/replay/ctf_research_test.go` a quitte cette liste : il
+	// situe la racine par `racineDepot` (helper de test du paquet, remontee jusqu'au `go.work` du
+	// depot), plus par le helper de production.
 	// Lit data/cache/replays/halo_infinite/000d5950.json — un CACHE, NON versionne
 	// (git ls-files vide au 2026-08-19). Ici le skip est le comportement JUSTE : le fichier
 	// est vraiment absent d'un checkout. Reprise : s'il devient versionne, migrer + Fatal.

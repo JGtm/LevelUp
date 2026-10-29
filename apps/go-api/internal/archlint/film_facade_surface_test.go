@@ -413,7 +413,13 @@ const plafondSurfaceFacade = 179 // 2026-10-02 — retrait des replis nuls (DU-7
 //	                                           dans `replaylabels` (`TexteVersFilm`, `TexteDepuisFilm`) et
 //	                                           son garde-rail de fil (`fil_jumeau_test.go`) le nomme.
 //	                                           Aucun retrait.
-const plafondSurfaceReplay = 315 // 2026-10-29 — base 464f7feb8 re-mesuree a 314 + 1 (Text) ; cf. l historique ci-dessus
+//	316  decouplage D2, item 2.11 (2026-10-29)  base `0bfe57feb` re-mesuree a 315. +1 :
+//	                                           `replay.ContinuousWeaponKeys`, les cles d arme que la table
+//	                                           des chassis declare a tir continu ; la garde de LevelUp
+//	                                           (`internal/filmcorpus/armes_continues_registre_test.go`) la
+//	                                           confronte au registre du titre, que la brique ne charge plus.
+//	                                           Aucun retrait.
+const plafondSurfaceReplay = 316 // 2026-10-29 — base 0bfe57feb re-mesuree a 315 + 1 (ContinuousWeaponKeys) ; cf. l historique ci-dessus
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.
 //

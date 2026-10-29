@@ -31,7 +31,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/equipenergy"
 )
 
@@ -70,7 +69,7 @@ func chargerEquipementDuBuild(t *testing.T, short8 string, g *FilmFacts) {
 // (`replaybuild.energieCatalog`), pour que les usages restants des goldens soient ceux du parc.
 func goldenEnergyCatalog(t *testing.T) *equipenergy.Catalog {
 	t.Helper()
-	path := title.NewPathResolver(repoRootForTest(t)).EquipmentEnergyPath("halo_infinite")
+	path := filepath.Join(racineDepot(t), "data", "titles", titreDeReference, "reference", "equipment_energy.json")
 	cat, err := equipenergy.Load(path)
 	if err != nil {
 		t.Fatalf("catalogue de l energie des equipements %s : %v", path, err)

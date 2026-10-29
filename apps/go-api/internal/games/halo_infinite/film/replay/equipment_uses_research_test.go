@@ -59,7 +59,6 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
-	"levelup/go-api/internal/games/mappings"
 )
 
 const (
@@ -284,16 +283,11 @@ func eqUsesEntry(t *testing.T, dir string) (profile.MapQuantEntry, bool) {
 	return found, true
 }
 
-// eqUsesFamilies lit le manifeste du titre — LA MEME table que la production.
+// eqUsesFamilies lit le manifeste du titre — LA MEME table que la production, par l'instantane du
+// catalogue (`golden_catalogue_titre.json`, tenu frais cote hote).
 func eqUsesFamilies(t *testing.T) map[uint32]string {
 	t.Helper()
-	path := filepath.Join(repoRootForTest(t), "config", "titles", "halo_infinite",
-		"mappings", "replay_labels.toml")
-	labels, err := mappings.LoadReplayLabelsFromFile(path)
-	if err != nil {
-		t.Fatalf("manifeste des libelles illisible (%s) : %v", path, err)
-	}
-	return labels.EquipmentObjects()
+	return goldenCatalog(t).EquipmentFamilies
 }
 
 // eqUsesLogVolumes publie D.0.1 : ce que le masque annonce et ce que la marche a lu, champ par

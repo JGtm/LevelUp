@@ -12,13 +12,11 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-
-	"levelup/go-api/internal/testutil"
 )
 
 // vehicleSpriteIndexSegments : l index du lot A, seule source de verite des familles SERVIES.
 // Segments SOUS LA RACINE, jamais une echelle de `..` ecrite a la main (ratchet archlint
-// TestNoAdHocRepoRootLadderInTests, 2026-09-05) : la racine se demande a `testutil.RepoRoot()`,
+// TestNoAdHocRepoRootLadderInTests, 2026-09-05) : la racine se demande a `racineDepot`,
 // qui la trouve depuis le paquet appelant — un test deplace d un cran ne casse plus.
 var vehicleSpriteIndexSegments = []string{"static", "vehicles-assets", "halo_infinite", "replay", "index.json"}
 
@@ -88,10 +86,7 @@ func TestFormatChassisIDEstHexa8Minuscule(t *testing.T) {
 // lot A ; s il est absent (checkout partiel), il SAUTE plutot que d echouer, mais il ne se tait
 // jamais sur une famille manquante quand l index est la.
 func TestVehicleFamillesServiesParLeLotA(t *testing.T) {
-	root, err := testutil.RepoRoot()
-	if err != nil {
-		t.Fatalf("racine du depot introuvable : %v", err)
-	}
+	root := racineDepot(t)
 	raw, err := os.ReadFile(filepath.Join(append([]string{root}, vehicleSpriteIndexSegments...)...))
 	if err != nil {
 		t.Skipf("index des sprites de vehicule absent (%v) — garde-rail saute", err)

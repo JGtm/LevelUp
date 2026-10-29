@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis/digest"
+	"levelup/go-api/internal/games/halo_infinite/film/digest"
 )
 
 func TestLireCorpusIgnoreCommentairesEtColonnes(t *testing.T) {

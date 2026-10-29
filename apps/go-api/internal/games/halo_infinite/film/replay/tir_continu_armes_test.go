@@ -1,53 +1,25 @@
 package replay
 
-// tir_continu_armes_test.go — LA TABLE DES ARMES A TIR CONTINU ET LE REGISTRE DU TITRE DISENT LA
-// MEME CHOSE (lot M4b, 2026-09-24).
+// tir_continu_armes_test.go — LA TABLE DES ARMES A TIR CONTINU (lot M4b, 2026-09-24).
 //
 // La table Go (`tir_continu_armes.go`) decide QUELLE arme une rafale tire et a QUELLE cadence ; le
-// registre (`config/titles/halo_infinite/mappings/vehicle_weapons.toml`) dit comment la dessiner et
-// la faire sonner. Une arme de chassis sans entree `continuous` au registre sortirait sans style ni
-// son ; une entree `continuous` qu aucun chassis ne declare ne serait jamais tiree.
+// registre du titre (`vehicle_weapons.toml`) dit comment la dessiner et la faire sonner. Ce que le
+// registre doit contenir pour chaque arme de la table est garde COTE HOTE, sous le meme nom que
+// l ancien test de ce fichier : `internal/filmcorpus/armes_continues_registre_test.go`
+// (`TestArmesDesChassisAuRegistre`, qui lit `ContinuousWeaponKeys`). Ce fichier garde ce que la
+// brique decide seule : la table est coherente.
 
-import (
-	"path/filepath"
-	"runtime"
-	"testing"
+import "testing"
 
-	"levelup/go-api/internal/games/mappings"
-)
-
-func tcRegistre(t *testing.T) *mappings.VehicleWeaponSet {
-	t.Helper()
-	_, ici, _, _ := runtime.Caller(0)
-	racine := filepath.Join(filepath.Dir(ici), "..", "..", "..", "..", "..", "..", "..")
-	set, err := mappings.LoadVehicleWeaponsFromFile(filepath.Join(racine, "config", "titles", "halo_infinite",
-		"mappings", "vehicle_weapons.toml"))
-	if err != nil {
-		t.Fatalf("registre : %v", err)
-	}
-	return set
-}
-
-// TestArmesDesChassisAuRegistre — chaque arme qu un chassis declare a sa cadence et son entree
-// `continuous` ; chaque entree `continuous` est declaree par un chassis.
-func TestArmesDesChassisAuRegistre(t *testing.T) {
-	set := tcRegistre(t)
-	declarees := map[string]bool{}
+// TestArmesDesChassisOntUneCadence — chaque arme qu un chassis declare a une cadence.
+func TestArmesDesChassisOntUneCadence(t *testing.T) {
 	for chassis, tag := range continuousWeaponByChassis {
-		cle := formatFamille(tag)[2:]
-		declarees[cle] = true
 		if cw, ok := continuousWeaponsByTag[tag]; !ok || cw.rate <= 0 {
-			t.Errorf("chassis %08x : arme %s sans cadence dans continuousWeaponsByTag", chassis, cle)
-		}
-		w, ok := set.Weapon(cle)
-		if !ok || w.Fire != mappings.VehicleWeaponFireContinuous {
-			t.Errorf("chassis %08x : arme %s absente du registre ou pas `continuous` (%+v)", chassis, cle, w)
+			t.Errorf("chassis %08x : arme %s sans cadence dans continuousWeaponsByTag", chassis, formatFamille(tag)[2:])
 		}
 	}
-	for _, cle := range set.Tags() {
-		if w, _ := set.Weapon(cle); w.Fire == mappings.VehicleWeaponFireContinuous && !declarees[cle] {
-			t.Errorf("registre : %s `continuous` qu aucun chassis de la table ne declare", cle)
-		}
+	if got := len(ContinuousWeaponKeys()); got == 0 {
+		t.Error("ContinuousWeaponKeys ne rend aucune cle : la table des chassis est vide")
 	}
 }
 

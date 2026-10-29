@@ -223,7 +223,7 @@ func TestPanneauxDuMurMatchManifest(t *testing.T) {
 // lireManifesteRejeu rend les octets de `replay_labels.toml` du titre.
 func lireManifesteRejeu(t *testing.T) []byte {
 	t.Helper()
-	path := filepath.Join(repoRootForTest(t), "config", "titles", "halo_infinite", "mappings",
+	path := filepath.Join(racineDepot(t), "config", "titles", "halo_infinite", "mappings",
 		"replay_labels.toml")
 	raw, err := os.ReadFile(path) //nolint:gosec // chemin construit depuis la racine du depot
 	if err != nil {

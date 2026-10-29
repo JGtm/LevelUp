@@ -26,17 +26,15 @@
 // Une entrée d'allowlist que plus aucun fichier n'honore fait rougir le test : une exemption qui
 // survit à son site finit par en couvrir un autre.
 //
-// # TOLÉRANCES PAR IMPORT (2026-10-29, plan D2 lot 1)
+// # TOLÉRANCES PAR IMPORT : POSÉES LE 2026-10-29, RETIRÉES LE MÊME JOUR (plan D2, lots 1 et 2)
 //
-// La brique `film` (décodeur de film) est posée AVANT son déplacement, avec une table de comptes
-// (`tolerancesFilm`, import visé -> nombre de fichiers, tests compris) au lieu d'une allowlist par
-// fichier : elle porte des centaines de franchissements, et c'est leur NOMBRE par import qui doit
-// descendre à zéro au fil du lot 2. Un compte qui monte, un import absent de la table, un compte
-// qui baisse sans que la table le suive, une entrée à zéro : rouge. La table est retirée à la
-// clôture du lot 2. Les auto-preuves et l'exhaustivité des dossiers de `libs/` sont dans
-// `briques_garde_test.go`.
-//
-// Mutation : baisser une valeur de `tolerancesFilm` de 1 (rouge, fichiers et import listés).
+// La brique `film` (décodeur de film) a été posée AVANT son déplacement avec une table de comptes
+// (import visé -> nombre de fichiers, tests compris) au lieu d'une allowlist par fichier : elle
+// portait 189 franchissements, et c'est leur NOMBRE par import qui devait descendre à zéro au fil
+// du lot 2. Elle a fini VIDE à l'item 2.11 et le mécanisme (table, champ `tolerances`, règles de
+// confrontation et leurs auto-preuves) est retiré : la ligne `film` se juge comme `gamefiles` et
+// `himap`, tout import hors brique est une violation. L'exhaustivité des dossiers de `libs/` est
+// dans `briques_garde_test.go`.
 //
 // # MUTATION QUI DOIT LE FAIRE ROUGIR
 //
@@ -52,7 +50,6 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 	"testing"
 )
@@ -81,12 +78,6 @@ type brique struct {
 	// permis : les paquets (même forme) d'AUTRES briques, de rang inférieur, que celle-ci peut
 	// importer. Tout autre import `levelup/go-api/...` ou `.../libs/...` est une violation.
 	permis []string
-	// tolerances : import visé (hors brique, hors permis) -> nombre de FICHIERS de la brique,
-	// production et tests confondus, qui l'importent. Nil = aucune tolérance : tout import hors
-	// brique est une violation. Non nil : un import absent de la table, un compte supérieur à la
-	// tolérance (la dette croît) ou inférieur (la dette a baissé et la table ne le dit pas), et
-	// toute entrée à zéro sont rouges. Le ratchet ne peut que descendre.
-	tolerances map[string]int
 }
 
 // interne dit si le chemin d'import vise un paquet de la brique ou un paquet permis.
@@ -134,32 +125,14 @@ var briques = []brique{
 		// Lot 1 du plan D2 : le décodeur de film est encore dans le module `apps/go-api`. Sa racine
 		// est l'arbre que le lot 3 déplace sous `libs/film`, où cette ligne est réécrite. Depuis
 		// l'item 2.5 (2026-10-29) `filmshell` et `equipenergy` vivent dessous : une seule racine.
-		paquets:    []string{"apps/go-api/internal/games/halo_infinite/film"},
-		recursif:   true,
-		permis:     append(append([]string{}, paquetsGamefiles...), paquetsHimap...),
-		tolerances: tolerancesFilm,
+		paquets:  []string{"apps/go-api/internal/games/halo_infinite/film"},
+		recursif: true,
+		permis:   append(append([]string{}, paquetsGamefiles...), paquetsHimap...),
 	},
 }
 
 // paquetsHimap : la brique « images de carte ». Elle importe `gamefiles`, rien d'autre.
 var paquetsHimap = []string{"libs/himap/himap"}
-
-// tolerancesFilm : par import visé hors de la brique `film`, le nombre de FICHIERS de la brique
-// (production et tests confondus, tests `research` compris) qui l'importent. Dette RENDUE VISIBLE
-// le 2026-10-29 (plan D2, lot 1), mesurée sur `a5bae50b4` : elle ne peut que descendre (voir
-// `brique.tolerances`) et chaque entrée nomme le lot du plan qui la vide. Table retirée à la
-// clôture du lot 2 (critère de succès 2 du plan : allowlist VIDE).
-var tolerancesFilm = map[string]int{
-	// Production (voir le relevé de départ du plan) et tests mêlés : le lot indiqué vide l'entrée.
-	"levelup/go-api/internal/testutil":         21, // lot 2.11 : helpers locaux R2 / filmcorpus R1 (tests seuls)
-	"levelup/go-api/internal/domain/title":     14, // lots 2.10 (prod en commentaire) et 2.11 (tests)
-	"levelup/go-api/internal/games/mappings":   7,  // lots 2.10 et 2.11 (tests)
-	"levelup/go-api/internal/games/weapons":    3,  // lot 2.11 : tests R1 -> filmcorpus
-	"levelup/go-api/internal/testfixtures":     2,  // lot 2.11 : tests R1 -> filmcorpus
-	"levelup/go-api/internal/domain/replaydoc": 2,  // lot 2.11 : tests R1 -> filmcorpus
-	"levelup/go-api/internal/domain":           1,  // lot 2.11 : test research
-	"levelup/go-api/internal/analysis/digest":  1,  // lot 2.11 : test R1 -> filmcorpus
-}
 
 // importsToleres : les fichiers d'une brique qui importent un paquet du dépôt hors de la brique,
 // par chemin relatif à la racine du dépôt, avec la DATE d'inscription, l'import visé et le LOT du
@@ -287,13 +260,10 @@ func importsDuDossier(t *testing.T, fset *token.FileSet, racine, p string) []fic
 // violationsDeBrique rend, pour une brique, les imports de `levelup/go-api/...` ou de
 // `github.com/JGtm/LevelUp/libs/...` qui ne visent ni un paquet de la brique ni un paquet permis.
 // Les fichiers de `toleres` sont passés et marqués dans `vus` (un fichier toléré qui n'a plus de
-// franchissement n'est PAS marqué : son entrée est morte). Quand la brique porte une table de
-// `tolerances`, les franchissements sont comptés par import visé (un fichier compte une fois par
-// import) et confrontés à la table par `violationsDeTolerances`. Fonction pure : c'est elle que
+// franchissement n'est PAS marqué : son entrée est morte). Fonction pure : c'est elle que
 // l'auto-preuve exerce.
 func violationsDeBrique(b brique, fichiers []fichierImports, toleres map[string]string, vus map[string]bool) []string {
 	var violations []string
-	hors := map[string][]string{} // import visé -> fichiers qui l'importent
 	for _, f := range fichiers {
 		deja := map[string]bool{}
 		for _, imp := range f.imports {
@@ -306,48 +276,7 @@ func violationsDeBrique(b brique, fichiers []fichierImports, toleres map[string]
 				vus[f.rel] = true
 				continue
 			}
-			if b.tolerances != nil {
-				hors[imp] = append(hors[imp], f.rel)
-				continue
-			}
 			violations = append(violations, "["+b.nom+"] "+f.rel+"  -> "+imp)
-		}
-	}
-	if b.tolerances != nil {
-		violations = append(violations, violationsDeTolerances(b, hors)...)
-	}
-	return violations
-}
-
-// violationsDeTolerances confronte les comptes mesurés (import visé -> fichiers) à la table de
-// tolérances de la brique : import absent de la table, compte supérieur (liste fichier -> import),
-// compte inférieur (la table doit descendre), entrée à zéro (à retirer), entrée sans aucun fichier.
-func violationsDeTolerances(b brique, hors map[string][]string) []string {
-	var violations []string
-	for imp, fichiers := range hors {
-		sort.Strings(fichiers)
-		tol, ok := b.tolerances[imp]
-		switch {
-		case !ok:
-			for _, f := range fichiers {
-				violations = append(violations, "["+b.nom+"] "+f+"  -> "+imp+"  (import absent de la table des tolérances)")
-			}
-		case len(fichiers) > tol:
-			for _, f := range fichiers {
-				violations = append(violations, "["+b.nom+"] "+f+"  -> "+imp+
-					"  (compte "+strconv.Itoa(len(fichiers))+" > tolérance "+strconv.Itoa(tol)+")")
-			}
-		case len(fichiers) < tol:
-			violations = append(violations, "["+b.nom+"] "+imp+" : compte mesuré "+strconv.Itoa(len(fichiers))+
-				" < tolérance "+strconv.Itoa(tol)+" — baisse la tolérance à "+strconv.Itoa(len(fichiers)))
-		}
-	}
-	for imp, tol := range b.tolerances {
-		if tol == 0 {
-			violations = append(violations, "["+b.nom+"] tolérance à 0 pour "+imp+" — retirer l'entrée de la table")
-		} else if _, mesure := hors[imp]; !mesure {
-			violations = append(violations, "["+b.nom+"] "+imp+" : compte mesuré 0 < tolérance "+
-				strconv.Itoa(tol)+" — retirer l'entrée de la table")
 		}
 	}
 	return violations

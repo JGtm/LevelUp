@@ -163,7 +163,7 @@ func TestDrapeauBasesDuFilm(t *testing.T) {
 	if depot == "" {
 		t.Skip("instrument de mesure : L1_DEPOT requis")
 	}
-	cat, err := profile.LoadMapQuantCatalog(filepath.Join(repoRootForTest(t), "data", "titles",
+	cat, err := profile.LoadMapQuantCatalog(filepath.Join(racineDepot(t), "data", "titles",
 		"halo_infinite", "reference", "map_quant_bounds.json"))
 	if err != nil {
 		t.Fatal(err)

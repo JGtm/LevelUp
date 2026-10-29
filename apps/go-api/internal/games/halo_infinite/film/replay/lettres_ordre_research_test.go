@@ -80,7 +80,6 @@ import (
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -262,7 +261,7 @@ func lettresDoc(t *testing.T, dir string, film lettresFilm,
 		}
 	}
 	opt := lettresOptions(t, dir, film)
-	doc := BuildFromPositions(context.Background(), film.short, title.DefaultSlug, pos, nil, opt)
+	doc := BuildFromPositions(context.Background(), film.short, titreDeReference, pos, nil, opt)
 	return doc, origin
 }
 

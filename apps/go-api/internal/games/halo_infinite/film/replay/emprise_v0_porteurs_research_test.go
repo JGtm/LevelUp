@@ -56,15 +56,12 @@ import (
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
-	"levelup/go-api/internal/testutil"
 )
 
 // Les trois familles d'objet tenu (32 bits hauts de l'identifiant, `replay_labels.toml` et
@@ -140,8 +137,17 @@ type v0Col struct {
 
 // v0K1 : les faits du match lus en base par le volet collecteur.
 type v0K1 struct {
-	Noms  []string          `json:"noms"`
-	Faits domain.MatchFacts `json:"faits"`
+	Noms []string `json:"noms"`
+	// Faits : la feuille du match, reduite a ce que la mesure lit (le triplet d appariement par
+	// joueur) ; le collecteur ecrit davantage, le reste est ignore a la lecture.
+	Faits struct {
+		Players []struct {
+			XUID    string `json:"xuid"`
+			Kills   int    `json:"kills"`
+			Deaths  int    `json:"deaths"`
+			Assists int    `json:"assists"`
+		} `json:"players"`
+	} `json:"faits"`
 }
 
 // v0Base : ce que la passe du collecteur a deja en main quand les voies commencent.
@@ -163,16 +169,12 @@ type v0Base struct {
 
 func TestEmpriseV0Porteurs(t *testing.T) {
 	films, dir, cache, tours := v0Films(t)
-	repoRoot, err := testutil.RepoRoot()
-	if err != nil {
-		t.Fatalf("racine du depot : %v", err)
-	}
-	cat, err := decfilm.LoadMapQuantCatalog(title.NewPathResolver(repoRoot).MapQuantBoundsPath(title.DefaultSlug))
+	cat, err := decfilm.LoadMapQuantCatalog(bornesDeCartes(t))
 	if err != nil {
 		t.Fatalf("catalogue de bornes : %v", err)
 	}
 	for _, id := range films {
-		court := title.FilmShortMatchID(id)
+		court := idCourtDeMatch(id)
 		var ref v0Ref
 		var col v0Col
 		var k1 v0K1
@@ -216,7 +218,7 @@ func v0FamilleDuMode(variante string) string {
 // v0ChargerBase rejoue la passe du collecteur jusqu'au registre, SOUS ECHANTILLONNAGE MEMOIRE.
 func v0ChargerBase(t *testing.T, e v0Entree) (v0Base, uint64) {
 	t.Helper()
-	court := title.FilmShortMatchID(e.id)
+	court := idCourtDeMatch(e.id)
 	film, ok, err := filmcache.LoadFilm(e.cache, court)
 	if err != nil || !ok {
 		t.Fatalf("%s : film : %v", court, err)

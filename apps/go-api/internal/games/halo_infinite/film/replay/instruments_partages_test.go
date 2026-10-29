@@ -97,7 +97,7 @@ func psArtDir(t *testing.T) string {
 	if v := os.Getenv(psArtEnv); v != "" {
 		return v
 	}
-	dir := filepath.Join(repoRootForTest(t), "data", "cache", "replays", "halo_infinite")
+	dir := filepath.Join(racineDepot(t), "data", "cache", "replays", "halo_infinite")
 	if _, err := os.Stat(dir); err != nil {
 		t.Skipf("%s absent et %s introuvable : instrument saute", psArtEnv, dir)
 	}

@@ -26,6 +26,9 @@ package replay
 //	                                      ECHANTILLONS d un vehicule occupe — que le test NOMME
 //	                                      au lieu de la laisser passer.
 //
+// L ARTEFACT SE LIT DANS LA FORME CUITE du document (`ReplayDocument`, celle que la cuisson ecrit) :
+// c est elle que l artefact porte, et le jumeau servi (`replaydoc`, cote hote) n est pas necessaire.
+//
 // GARDE PAR `LOT1910_ARTEFACT` : sans artefact frais, il se saute. Il ne lit ni le cache de
 // films ni le parc.
 
@@ -34,8 +37,6 @@ import (
 	"os"
 	"strconv"
 	"testing"
-
-	"levelup/go-api/internal/domain/replaydoc"
 )
 
 // acceptation1910Env : l artefact CUIT sur lequel le test d acceptation porte.
@@ -54,7 +55,7 @@ func TestAcceptation1910GhostDeBfecd02b(t *testing.T) {
 	if err != nil {
 		t.Fatalf("artefact illisible : %v", err)
 	}
-	var doc replaydoc.ReplayDocument
+	var doc ReplayDocument
 	if err := json.Unmarshal(raw, &doc); err != nil {
 		t.Fatalf("artefact non deserialisable : %v", err)
 	}
@@ -73,8 +74,8 @@ func TestAcceptation1910GhostDeBfecd02b(t *testing.T) {
 }
 
 // acceptation1910ViesDuSlot rend les vies publiees du slot temoin.
-func acceptation1910ViesDuSlot(doc replaydoc.ReplayDocument) []replaydoc.VehicleTrack {
-	var out []replaydoc.VehicleTrack
+func acceptation1910ViesDuSlot(doc ReplayDocument) []VehicleTrack {
+	var out []VehicleTrack
 	for _, v := range doc.Vehicles {
 		if v.Slot == acceptation1910Slot {
 			out = append(out, v)
@@ -85,7 +86,7 @@ func acceptation1910ViesDuSlot(doc replaydoc.ReplayDocument) []replaydoc.Vehicle
 
 // acceptation1910Rapport colle la table des vies : elle est la mesure, le verdict n en est que
 // la conclusion.
-func acceptation1910Rapport(t *testing.T, doc replaydoc.ReplayDocument) {
+func acceptation1910Rapport(t *testing.T, doc ReplayDocument) {
 	t.Helper()
 	t.Logf("%s — %d frames, %d vies de vehicule", doc.MatchID, doc.FrameCount, len(doc.Vehicles))
 	if c := doc.Coverage; c != nil && c.Vehicles != nil {
@@ -107,7 +108,7 @@ func acceptation1910Rapport(t *testing.T, doc replaydoc.ReplayDocument) {
 }
 
 // acceptation1910VerifierUneVie applique la disjonction du lot a UNE vie du temoin.
-func acceptation1910VerifierUneVie(t *testing.T, v replaydoc.VehicleTrack, frames int) {
+func acceptation1910VerifierUneVie(t *testing.T, v VehicleTrack, frames int) {
 	t.Helper()
 	switch v.End {
 	case VehicleEndDestroyed:

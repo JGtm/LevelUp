@@ -4,8 +4,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/testutil"
-
 	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 )
 
@@ -175,10 +173,7 @@ const dbb2SoclesSansEquipeSansLabel = 9
 // la mesure qui fonde la correction ; s'il bouge, la correction se re-instruit plutot qu'elle
 // ne se suppose.
 func TestCatalogueRecensementDesSoclesNeutres(t *testing.T) {
-	root, err := testutil.RepoRoot()
-	if err != nil {
-		t.Fatalf("racine du depot: %v", err)
-	}
+	root := racineDepot(t)
 	cat, err := LoadMapObjectives(filepath.Join(root,
 		"data", "titles", "halo_infinite", "reference", "map_objectives.json"))
 	if err != nil {

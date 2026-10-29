@@ -29,7 +29,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -240,7 +239,7 @@ func p2aStartMS(film *source.Film) map[int]int {
 // p2aRefDir rend le repertoire des donnees de reference versionnees du titre.
 func p2aRefDir(t *testing.T) string {
 	t.Helper()
-	return filepath.Join(repoRootForTest(t), "data", "titles", title.DefaultSlug, "reference")
+	return filepath.Join(racineDepot(t), "data", "titles", titreDeReference, "reference")
 }
 
 // p2aQuant rend l'entree de bornes de quantification de la carte. Sans elle, les positions
@@ -331,7 +330,7 @@ func p2aDoc(t *testing.T, dir, short string, quant *profile.MapQuantEntry) Repla
 		clockUS = 0
 	}
 	opt.FilmClockOriginUS = clockUS
-	return BuildFromPositions(context.Background(), short, title.DefaultSlug, pos, nil, opt)
+	return BuildFromPositions(context.Background(), short, titreDeReference, pos, nil, opt)
 }
 
 // p2aFrameOf convertit un instant de l'horloge du MANIFESTE en index de frame du rejeu, en

@@ -12,8 +12,10 @@ package replay
 //     silencieusement illisible : la reprise du backfill se fait par `SchemaVersion`, et un
 //     artefact d'une forme ancienne portant le numero courant se lit « a jour » ;
 //  2. `SchemaVersion` monte sans entree dans `document_chronicle.go` -> rouge. Une montee sans
-//     chronique est une montee dont personne ne saura dire ce qu'elle a change ;
-//  3. la forme STOCKEE et la forme SERVIE (`internal/domain/replaydoc`) divergent -> rouge.
+//     chronique est une montee dont personne ne saura dire ce qu'elle a change (garde cote hote :
+//     `internal/filmcorpus/document_shape_jumeaux_test.go`, `TestDocumentShapeSchemaHasChronicleEntry`) ;
+//  3. la forme STOCKEE et la forme SERVIE (`internal/domain/replaydoc`) divergent -> rouge (garde
+//     cote hote, meme fichier, `TestDocumentShapeTwinsAgree`).
 //
 // SUR LE POINT 3, CE FICHIER NE REFAIT PAS LE TRAVAIL D'UN AUTRE. La parite champ par champ
 // entre les deux jumeaux est DEJA tenue, et mieux, par `internal/service/replayview/parity_test.go`
@@ -36,13 +38,9 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"slices"
 	"sort"
 	"strings"
 	"testing"
-
-	"levelup/go-api/internal/domain/replaydoc"
-	"levelup/go-api/internal/testutil"
 )
 
 // documentShapePath : le golden de forme.
@@ -74,21 +72,6 @@ func TestDocumentShapeMatchesGolden(t *testing.T) {
 		premierEcartAssembly(string(want), got))
 }
 
-// TestDocumentShapeTwinsAgree : la forme STOCKEE et la forme SERVIE coincident-elles ?
-//
-// Elles le doivent : `domain/replaydoc` est le jumeau de fil de `replay.ReplayDocument`, meme
-// noms de types, memes tags JSON, memes `omitempty` (cf. son `doc.go`). Une divergence signifie
-// qu'un calque cuit n'atteint plus le client, ou qu'un champ servi n'a plus de source.
-func TestDocumentShapeTwinsAgree(t *testing.T) {
-	stockee := documentShapeRender(reflect.TypeFor[ReplayDocument]())
-	servie := documentShapeRender(reflect.TypeFor[replaydoc.ReplayDocument]())
-	if stockee == servie {
-		return
-	}
-	t.Errorf("la forme STOCKEE et la forme SERVIE divergent (empreintes %s et %s).\n%s",
-		empreinteDe(stockee), empreinteDe(servie), premierEcartAssembly(stockee, servie))
-}
-
 // TestDocumentShapeGoldenCarriesCurrentSchema : le golden a-t-il ete gele a la version
 // COURANTE ? Un golden fige a une version anterieure signifie qu'une montee est passee sans
 // que la forme soit re-figee — le ratchet ne garderait plus rien.
@@ -97,21 +80,6 @@ func TestDocumentShapeGoldenCarriesCurrentSchema(t *testing.T) {
 		t.Errorf("le golden de forme est gele au schema %d, le producteur ecrit %d — regenerer",
 			got, SchemaVersion)
 	}
-}
-
-// TestDocumentShapeSchemaHasChronicleEntry : la version courante a-t-elle son entree de
-// chronique ? Une montee sans chronique est une montee dont personne ne saura dire ce qu'elle
-// a change — et la reprise du backfill se fait par ce numero.
-func TestDocumentShapeSchemaHasChronicleEntry(t *testing.T) {
-	versions, err := testutil.ReplayChronicleVersions()
-	if err != nil {
-		t.Fatalf("chronique illisible : %v", err)
-	}
-	if slices.Contains(versions, SchemaVersion) {
-		return
-	}
-	t.Errorf("SchemaVersion = %d n'a AUCUNE entree dans document_chronicle.go (versions "+
-		"declarees : %v) — une montee sans chronique ne dit pas ce qu'elle change", SchemaVersion, versions)
 }
 
 // TestDocumentShapeRegenerate : LA SEULE PORTE D'ECRITURE du golden de forme.
@@ -173,8 +141,11 @@ func documentShapeGolden() string {
 	b.WriteString("# Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.\n")
 	fmt.Fprintf(&b, "%s%d\n", shapeEnteteSchema, SchemaVersion)
 	fmt.Fprintf(&b, "%s%s\n", shapeEnteteEmpreinte, empreinteDe(render))
-	fmt.Fprintf(&b, "%s%s\n", shapeEnteteServie,
-		empreinteDe(documentShapeRender(reflect.TypeFor[replaydoc.ReplayDocument]())))
+	// LA FORME SERVIE EGALE LA FORME STOCKEE : c'est ce que `TestDocumentShapeTwinsAgree` exige, cote
+	// hote (`internal/filmcorpus/document_shape_jumeaux_test.go`), contre le vrai `replaydoc`. La
+	// brique ne connait pas le jumeau servi ; elle fige la meme empreinte, et la garde hote
+	// rougit des qu'il s'en ecarte.
+	fmt.Fprintf(&b, "%s%s\n", shapeEnteteServie, empreinteDe(render))
 	fmt.Fprintf(&b, "%s%s\n", shapeEnteteCuite, empreinteDe(documentShapeRenderCuite()))
 	fmt.Fprintf(&b, "%s%d\n\n", shapeEnteteCuiteRegle, cuiteRegleCourante)
 	b.WriteString(render)

@@ -50,10 +50,8 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
-	"levelup/go-api/internal/testutil"
 )
 
 // reap37PasAmas est le rayon d agglomeration des naissances de vehicule, en metres. Les
@@ -88,13 +86,9 @@ func TestReapparition37Collation(t *testing.T) {
 
 func reap37Catalogue(t *testing.T) *profile.MapQuantCatalog {
 	t.Helper()
-	// `testutil.RepoRoot` et non `title.FindRepoRoot` : le helper de PRODUCTION laisserait ce
-	// test se skipper en silence en CI (ratchet `no_repo_root_walk_test.go`). Ici on echoue.
-	root, err := testutil.RepoRoot()
-	if err != nil {
-		t.Fatalf("racine du depot : %v", err)
-	}
-	cat, err := profile.LoadMapQuantCatalog(title.NewPathResolver(root).MapQuantBoundsPath(title.DefaultSlug))
+	// La racine se deduit de l emplacement du fichier source (`racineDepot`), jamais du cwd ni
+	// d une variable d environnement : un catalogue versionne absent est une anomalie d arbre.
+	cat, err := profile.LoadMapQuantCatalog(bornesDeCartes(t))
 	if err != nil {
 		t.Fatalf("catalogue de bornes : %v", err)
 	}

@@ -54,7 +54,6 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
-	"levelup/go-api/internal/games/weapons"
 )
 
 // epmSeuilCouverture est le barreau de M1, en pourcentage.
@@ -90,8 +89,8 @@ func TestEquipmentPickupManifestNaming(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ramassages natifs illisibles : %v", err)
 	}
-	familles := goldenReplayLabels(t).EquipmentObjects()
-	armes := weapons.FilmshellWeaponKeysByFamily()
+	familles := goldenCatalog(t).EquipmentFamilies
+	armes := goldenCatalog(t).Keys
 	t.Logf("== ÉTAPE 1 — NOMMER PAR LES FICHIERS DU JEU · %s ==", dir)
 	t.Logf("ramassages natifs : %d (publiés %d) · manifeste d'équipement : %d entrée(s) · catalogue d'armes : %d famille(s)",
 		len(pickups), stats.Published, len(familles), len(armes))
@@ -229,7 +228,7 @@ func TestEquipmentPickupClassByManifest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ramassages natifs illisibles : %v", err)
 	}
-	familles := goldenReplayLabels(t).EquipmentObjects()
+	familles := goldenCatalog(t).EquipmentFamilies
 	t.Logf("== ÉTAPE 2 — CLASSE x NATURE, PAR LE MANIFESTE · %s ==", dir)
 
 	// Contingence classe -> {grenade, non-grenade, non résolu}.
@@ -348,8 +347,8 @@ func TestBuildPickupsFamilyCoverageOnRealFilms(t *testing.T) {
 	}
 	// LES MEMES TABLES QUE LA COUCHE TITRE POSE dans LabelCatalog (cf. replaylabels.Load) :
 	// `Keys` vient de FilmshellWeaponKeysByFamily, `EquipmentFamilies` du manifeste.
-	equipement := goldenReplayLabels(t).EquipmentObjects()
-	armes := weapons.FilmshellWeaponKeysByFamily()
+	equipement := goldenCatalog(t).EquipmentFamilies
+	armes := goldenCatalog(t).Keys
 
 	got, cov := buildPickups(pickups, replayClock{origin: 0, step: 100_000, families: equipement}, pickupInputs{occupant: nil, st: st, weaponKeys: armes, judge: nil})
 

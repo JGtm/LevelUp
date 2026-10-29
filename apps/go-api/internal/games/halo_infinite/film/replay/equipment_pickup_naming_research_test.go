@@ -99,16 +99,15 @@ type eqnNaming struct {
 
 // eqnPalette charge la palette de capacités du titre et rend le nom d'un rang.
 //
-// LE NOM VIENT DU MANIFESTE, JAMAIS D'UNE CONSTANTE DE TEST : si `replay_labels.toml` change,
-// ce test change avec lui. Un rang que la palette ne nomme pas reste un rang — on ne lui
+// LE NOM VIENT DE L'INSTANTANE DU MANIFESTE (`golden_catalogue_titre.json`, tenu frais cote hote),
+// JAMAIS D'UNE CONSTANTE DE TEST : si `replay_labels.toml` change, ce test change avec lui. Un rang que la palette ne nomme pas reste un rang — on ne lui
 // invente pas d'étiquette.
 func eqnPalette(t *testing.T) map[int]string {
 	t.Helper()
-	labels := goldenReplayLabels(t)
 	out := map[int]string{}
-	for _, p := range labels.AbilityPalettes() {
+	for _, p := range goldenCatalog(t).Abilities {
 		for rank, v := range p.Ranks {
-			out[rank] = fmt.Sprintf("%s / %s [%s]", v.Text.Pick("en"), v.Text.Pick("fr"), p.ID)
+			out[rank] = fmt.Sprintf("%s / %s [%s]", enOf(v.Text), frOf(v.Text), p.ID)
 		}
 	}
 	return out

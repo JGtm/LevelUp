@@ -19,8 +19,6 @@ import (
 	"sort"
 	"strings"
 	"testing"
-
-	"levelup/go-api/internal/domain/title"
 )
 
 // v0V01 : le resultat V0.1 pose par le volet collecteur (sous-ensemble).
@@ -86,7 +84,7 @@ func v0RapportV01(t *testing.T, dir string) {
 		}
 		v := c.V01
 		fmt.Fprintf(&b, "V0.1 | %s | %s | %d (sans xuid %d, proximite ecartes %d) | %d | %d | %.2f %% | %d/%d\n",
-			title.FilmShortMatchID(c.MatchID), c.Variante, v.Episodes, v.EpisodesSansXUID,
+			idCourtDeMatch(c.MatchID), c.Variante, v.Episodes, v.EpisodesSansXUID,
 			v.EpisodesProximite, v.Sondes, v.NonSitues, 100*float64(v.NonSitues)/float64(v.Sondes),
 			v.NonSitues1s, v.Sondes1s)
 		tot.Episodes += v.Episodes
@@ -118,17 +116,17 @@ func v0RapportV02(t *testing.T, dir string) {
 		if r.Famille == "" {
 			// HORS MODE A PORTEUR : la garde de mode ne lit rien, aucune des deux voies ne paie.
 			fmt.Fprintf(&b, "V0.2 | %s | %s | - | %s | %.0f | non lu | 0 | non lu | 0 | %.2f | %.2f | - | -\n",
-				title.FilmShortMatchID(r.MatchID), r.Variante, v0OuiNon(r.RegistreEcart), r.PasseMS,
+				idCourtDeMatch(r.MatchID), r.Variante, v0OuiNon(r.RegistreEcart), r.PasseMS,
 				v0G(r.PicPasse), v0G(r.PicBase))
 			continue
 		}
 		fmt.Fprintf(&b, "V0.2 | %s | %s | %s | %s | %.0f | %.0f | %.1f | %.0f | %.1f | %.2f | %.2f | %.2f | %.2f\n",
-			title.FilmShortMatchID(r.MatchID), r.Variante, r.Famille, v0OuiNon(r.RegistreEcart),
+			idCourtDeMatch(r.MatchID), r.Variante, r.Famille, v0OuiNon(r.RegistreEcart),
 			r.PasseMS, r.CoutA, r.SurcoutA, r.CoutB, r.SurcoutB, v0G(r.PicPasse), v0G(r.PicBase),
 			v0G(r.PicA), v0G(r.PicB))
 		if r.Famille == "drapeau" {
 			fmt.Fprintf(&b, "V0.2 |   %s detail (b) : statborg %.0f ms, pont %.0f ms, equipes %.0f ms, objets du monde %.0f ms, assemblage %.0f ms ; sensibilite (b) sans objets du monde %.0f ms (%.1f %%)\n",
-				title.FilmShortMatchID(r.MatchID), r.CoutStatborg, r.CoutPont, r.CoutEquipes, r.CoutMonde,
+				idCourtDeMatch(r.MatchID), r.CoutStatborg, r.CoutPont, r.CoutEquipes, r.CoutMonde,
 				r.CoutAssemblage, r.CoutBSansMonde, 100*r.CoutBSansMonde/r.PasseMS)
 		}
 		n++
@@ -144,7 +142,7 @@ func v0RapportV02(t *testing.T, dir string) {
 				x.ajouter(v)
 				agg[voie][fam] = x
 				fmt.Fprintf(&b, "V0.2 |   %s voie (%s) %s : reference %d ms, identique +-100 ms %d ms, en trop %d ms -> %.2f %%\n",
-					title.FilmShortMatchID(r.MatchID), voie, fam, v.RefMS, v.OkMS, v.ExtraMS, 100*v.Taux())
+					idCourtDeMatch(r.MatchID), voie, fam, v.RefMS, v.OkMS, v.ExtraMS, 100*v.Taux())
 			}
 		}
 	}

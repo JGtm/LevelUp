@@ -30,9 +30,9 @@ import (
 	"strings"
 	"time"
 
-	"levelup/go-api/internal/analysis/digest"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
+	"levelup/go-api/internal/games/halo_infinite/film/digest"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/games/halo_infinite/film/filmproc"
 	"levelup/go-api/internal/replaybuild"

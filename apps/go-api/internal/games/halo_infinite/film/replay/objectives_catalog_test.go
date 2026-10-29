@@ -6,8 +6,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/testutil"
-
 	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 )
 
@@ -171,10 +169,7 @@ func TestCarteReporteeEstSignalee(t *testing.T) {
 // forme et aucune forme degeneree. Le jour ou ce n'est plus vrai, c'est une nouveaute a
 // expliquer, pas un cas a rattraper en silence.
 func TestCatalogueLivreEstExploitable(t *testing.T) {
-	root, err := testutil.RepoRoot()
-	if err != nil {
-		t.Fatalf("racine du depot introuvable : %v", err)
-	}
+	root := racineDepot(t)
 	path := filepath.Join(root, "data", "titles", "halo_infinite", "reference", "map_objectives.json")
 	cat, err := LoadMapObjectives(path)
 	if err != nil {

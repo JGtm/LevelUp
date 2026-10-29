@@ -1,0 +1,426 @@
+{
+  "Weapons": {
+    "1040646679": {
+      "en": "Vestige Carbine",
+      "fr": "Carabine Vestige",
+      "fx": "plasma"
+    },
+    "1220648237": {
+      "en": "MA40 AR",
+      "fr": "MA40 AR",
+      "fx": "ballistic"
+    },
+    "1341363070": {
+      "en": "Energy Sword",
+      "fr": "Épée à énergie",
+      "fx": "melee"
+    },
+    "169448124": {
+      "en": "S7 Sniper",
+      "fr": "S7 Sniper",
+      "fx": "ballistic"
+    },
+    "1791870029": {
+      "en": "M392 Bandit",
+      "fr": "Bandit EVO",
+      "fx": "ballistic"
+    },
+    "1907034668": {
+      "en": "M41 SPNKr",
+      "fr": "M41 SPNKr",
+      "fx": "explosive"
+    },
+    "1987950957": {
+      "en": "MLRS-2 Hydra",
+      "fr": "Hydra",
+      "fx": "explosive"
+    },
+    "206927455": {
+      "en": "Energy Sword",
+      "fr": "Épée à énergie",
+      "fx": "melee"
+    },
+    "2157411237": {
+      "en": "Mangler",
+      "fr": "Déchiqueteur",
+      "fx": "ballistic"
+    },
+    "220251241": {
+      "en": "Skewer",
+      "fr": "Empaleur",
+      "fx": "ballistic"
+    },
+    "2216347109": {
+      "en": "Gravity Hammer",
+      "fr": "Marteau antigravité",
+      "fx": "melee"
+    },
+    "2226989549": {
+      "en": "Disruptor",
+      "fr": "Disrupteur",
+      "fx": "shock"
+    },
+    "2475141305": {
+      "en": "Shock Rifle",
+      "fr": "Fusil électrique",
+      "fx": "shock"
+    },
+    "2641014482": {
+      "en": "Fuel Rod SPNKr",
+      "fr": "SPNKr à combustible",
+      "fx": "explosive"
+    },
+    "2694143646": {
+      "en": "Sentinel Beam",
+      "fr": "Rayon de Sentinelle",
+      "fx": "light"
+    },
+    "3040056702": {
+      "en": "Needler",
+      "fr": "Needler",
+      "fx": "needles"
+    },
+    "3055147082": {
+      "en": "CQS48 Bulldog",
+      "fr": "CQS48 Bulldog",
+      "fx": "ballistic"
+    },
+    "3067865816": {
+      "en": "Frag Grenade",
+      "fr": "Grenade frag",
+      "fx": "explosive"
+    },
+    "31913": {
+      "en": "Unarmed",
+      "fr": "Mains nues"
+    },
+    "3252796080": {
+      "en": "Plasma Grenade",
+      "fr": "Grenade plasma",
+      "fx": "explosive"
+    },
+    "3272443847": {
+      "en": "Ravager",
+      "fr": "Ravageur",
+      "fx": "plasma"
+    },
+    "3277072710": {
+      "en": "Plasma Pistol",
+      "fr": "Pistolet à plasma",
+      "fx": "plasma"
+    },
+    "3616626021": {
+      "en": "Mutilator",
+      "fr": "Mutilateur"
+    },
+    "3673265095": {
+      "en": "Stalker Rifle",
+      "fr": "Fusil traqueur",
+      "fx": "ballistic"
+    },
+    "3924295545": {
+      "en": "UNSC Fusion Coil",
+      "fr": "Bobine à fusion UNSC"
+    },
+    "4094171407": {
+      "en": "Mk50 Sidekick",
+      "fr": "MK50 Sidekick",
+      "fx": "ballistic"
+    },
+    "4123211231": {
+      "en": "MA5K Avenger",
+      "fr": "MA5K Avenger",
+      "fx": "ballistic"
+    },
+    "4254618956": {
+      "en": "VK78 Commando",
+      "fr": "VK78 Commando",
+      "fx": "ballistic"
+    },
+    "438501094": {
+      "en": "Shock Rifle",
+      "fr": "Fusil électrique",
+      "fx": "shock"
+    },
+    "493070541": {
+      "en": "UNSC Fusion Coil",
+      "fr": "Bobine à fusion UNSC"
+    },
+    "587483057": {
+      "en": "Cindershot",
+      "fr": "Crémateur",
+      "fx": "explosive"
+    },
+    "717865727": {
+      "en": "Heatwave",
+      "fr": "Calcineur",
+      "fx": "light"
+    },
+    "723002581": {
+      "en": "BR75",
+      "fr": "BR75",
+      "fx": "ballistic"
+    },
+    "800201863": {
+      "en": "M392 Bandit",
+      "fr": "Bandit EVO",
+      "fx": "ballistic"
+    },
+    "810045094": {
+      "en": "Pulse Carbine",
+      "fr": "Carabine à impulsion",
+      "fx": "plasma"
+    },
+    "987061668": {
+      "en": "Dynamo Grenade",
+      "fr": "Grenade dynamo",
+      "fx": "shock"
+    }
+  },
+  "Grenades": [
+    {
+      "en": "Frag",
+      "fr": "Fragmentation"
+    },
+    {
+      "en": "Plasma",
+      "fr": "Plasma"
+    },
+    {
+      "en": "Dynamo",
+      "fr": "Dynamo"
+    },
+    {
+      "en": "Spike",
+      "fr": "Spike"
+    }
+  ],
+  "Abilities": [
+    {
+      "ID": "famille_a",
+      "Markers": [
+        1,
+        2,
+        4,
+        5,
+        6,
+        8,
+        9,
+        10,
+        11,
+        12,
+        23
+      ],
+      "Ranks": {
+        "1": {
+          "en": "Threat Sensor",
+          "fr": "detecteur de menaces"
+        },
+        "10": {
+          "en": "Shroud Screen",
+          "fr": "ecran occultant"
+        },
+        "11": {
+          "en": "Quantum Translocator",
+          "fr": "translocateur quantique"
+        },
+        "12": {
+          "en": "Threat Seeker",
+          "fr": "traqueur de menaces"
+        },
+        "2": {
+          "en": "Drop Wall",
+          "fr": "mur de protection"
+        },
+        "23": {
+          "en": "Repair Field",
+          "fr": "champ de reparation"
+        },
+        "4": {
+          "en": "Grappleshot",
+          "fr": "grappin"
+        },
+        "5": {
+          "en": "Thruster",
+          "fr": "propulseur"
+        },
+        "6": {
+          "en": "Repulsor",
+          "fr": "repulseur"
+        },
+        "8": {
+          "en": "Active Camouflage",
+          "fr": "camouflage actif"
+        },
+        "9": {
+          "en": "Overshield",
+          "fr": "surbouclier"
+        }
+      },
+      "Families": {
+        "1": "sensor",
+        "10": "shroud_screen",
+        "11": "translocator_beacon",
+        "12": "threat_seeker",
+        "2": "wall",
+        "23": "repair_field",
+        "4": "grapple",
+        "5": "thruster",
+        "6": "repulsor",
+        "8": "powerup_camo",
+        "9": "powerup_overshield"
+      }
+    },
+    {
+      "ID": "famille_b",
+      "Markers": [
+        19,
+        20,
+        21,
+        22
+      ],
+      "Ranks": {
+        "19": {
+          "en": "Drop Wall",
+          "fr": "mur de protection"
+        },
+        "20": {
+          "en": "Grappleshot",
+          "fr": "grappin"
+        },
+        "21": {
+          "en": "Thruster",
+          "fr": "propulseur"
+        },
+        "22": {
+          "en": "Threat Sensor",
+          "fr": "detecteur de menaces"
+        }
+      },
+      "Families": {
+        "19": "wall",
+        "20": "grapple",
+        "21": "thruster",
+        "22": "sensor"
+      }
+    }
+  ],
+  "AbilityImpulseFamilies": [
+    "thruster"
+  ],
+  "AbilityChargeFamilies": [
+    "grapple",
+    "thruster"
+  ],
+  "Icons": null,
+  "Keys": {
+    "1040646679": "hinf_vestige_carbine",
+    "1220648237": "hinf_ma40_ar",
+    "1341363070": "hinf_energy_sword",
+    "169448124": "hinf_s7_sniper",
+    "1791870029": "hinf_bandit",
+    "1907034668": "hinf_m41_spnkr",
+    "1987950957": "hinf_hydra",
+    "206927455": "hinf_energy_sword",
+    "2157411237": "hinf_mangler",
+    "220251241": "hinf_skewer",
+    "2216347109": "hinf_gravity_hammer",
+    "2226989549": "hinf_disruptor",
+    "2475141305": "hinf_shock_rifle",
+    "2641014482": "hinf_fuel_rod_spnkr",
+    "2694143646": "hinf_sentinel_beam",
+    "3040056702": "hinf_needler",
+    "3055147082": "hinf_cqs48_bulldog",
+    "3067865816": "hinf_frag_grenade",
+    "31913": "hinf_unarmed",
+    "3252796080": "hinf_plasma_grenade",
+    "3272443847": "hinf_ravager",
+    "3277072710": "hinf_plasma_pistol",
+    "3616626021": "hinf_mutilator",
+    "3673265095": "hinf_stalker_rifle",
+    "3924295545": "hinf_coil_kinetic",
+    "4094171407": "hinf_sidekick",
+    "4123211231": "hinf_ma5k_avenger",
+    "4254618956": "hinf_vk78_commando",
+    "438501094": "hinf_shock_rifle",
+    "493070541": "hinf_coil_kinetic",
+    "587483057": "hinf_cindershot",
+    "717865727": "hinf_heatwave",
+    "723002581": "hinf_br75",
+    "800201863": "hinf_bandit",
+    "810045094": "hinf_pulse_carbine",
+    "987061668": "hinf_dynamo_grenade"
+  },
+  "Tints": null,
+  "Impacts": null,
+  "Roles": null,
+  "Effects": {
+    "hinf_bandit": "ballistic",
+    "hinf_br75": "ballistic",
+    "hinf_cindershot": "explosive",
+    "hinf_cqs48_bulldog": "ballistic",
+    "hinf_disruptor": "shock",
+    "hinf_dynamo_grenade": "shock",
+    "hinf_energy_sword": "melee",
+    "hinf_frag_grenade": "explosive",
+    "hinf_fuel_rod_spnkr": "explosive",
+    "hinf_gravity_hammer": "melee",
+    "hinf_heatwave": "light",
+    "hinf_hydra": "explosive",
+    "hinf_m41_spnkr": "explosive",
+    "hinf_ma40_ar": "ballistic",
+    "hinf_ma5k_avenger": "ballistic",
+    "hinf_mangler": "ballistic",
+    "hinf_needler": "needles",
+    "hinf_plasma_grenade": "explosive",
+    "hinf_plasma_pistol": "plasma",
+    "hinf_pulse_carbine": "plasma",
+    "hinf_ravager": "plasma",
+    "hinf_rockethog": "explosive",
+    "hinf_s7_sniper": "ballistic",
+    "hinf_scorpion": "explosive",
+    "hinf_sentinel_beam": "light",
+    "hinf_shock_rifle": "shock",
+    "hinf_sidekick": "ballistic",
+    "hinf_skewer": "ballistic",
+    "hinf_stalker_rifle": "ballistic",
+    "hinf_vestige_carbine": "plasma",
+    "hinf_vk78_commando": "ballistic"
+  },
+  "EquipmentFamilies": {
+    "1124981320": "thruster",
+    "1133960002": "shroud_screen",
+    "1195693890": "threat_seeker",
+    "1385156166": "wall",
+    "1751859401": "wall",
+    "1914281146": "sensor",
+    "1924545897": "sensor",
+    "1930282767": "translocator_beacon",
+    "2091408092": "repulsor",
+    "2356674535": "grapple",
+    "2385364340": "wall",
+    "257365759": "grenade_spike",
+    "2866415603": "grenade_dynamo",
+    "3078691194": "powerup_overshield",
+    "3165371971": "grenade_frag",
+    "3400195248": "grenade_plasma",
+    "3888029532": "powerup_camo",
+    "4009088141": "thruster",
+    "658497771": "grapple",
+    "695517747": "wall",
+    "853112664": "repair_field"
+  },
+  "ObjectiveObjects": {
+    "708387624": {
+      "en": "Flag",
+      "fr": "Drapeau"
+    }
+  },
+  "ObjectiveFamilies": null,
+  "FlagReturnZone": {
+    "radiusM": 0,
+    "resetSeconds": 0,
+    "soloSeconds": 0
+  },
+  "VehicleFamilies": null
+}

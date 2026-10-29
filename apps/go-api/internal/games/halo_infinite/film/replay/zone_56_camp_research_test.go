@@ -56,11 +56,9 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
-	"levelup/go-api/internal/testutil"
 )
 
 // zone56Canal identifie un canal candidat : le slot qui parle et le TAG sous lequel il parle.
@@ -136,12 +134,7 @@ func zone56Contexte(t *testing.T, dir, carte string) *grammar.FilmContext {
 		poserProfilPuisCarte(context.Background(), fc, "lot-5.6-sans-carte", Options{})
 		return fc
 	}
-	root, err := testutil.RepoRoot()
-	if err != nil {
-		t.Fatalf("racine du depot : %v", err)
-	}
-	cat, err := profile.LoadMapQuantCatalog(
-		title.NewPathResolver(root).MapQuantBoundsPath(title.DefaultSlug))
+	cat, err := profile.LoadMapQuantCatalog(bornesDeCartes(t))
 	if err != nil {
 		t.Fatalf("catalogue de bornes : %v", err)
 	}

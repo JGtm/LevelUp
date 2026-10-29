@@ -44,7 +44,6 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
-	"levelup/go-api/internal/games/mappings"
 )
 
 const (
@@ -131,16 +130,11 @@ func origineMapEntry(t *testing.T) profile.MapQuantEntry {
 	return mapQuantEntryFromEnv(t, origineMapEnv, origineBoundsEnv)
 }
 
-// origineFamilles lit le manifeste du titre — la MEME table que la production.
+// origineFamilles lit le manifeste du titre — la MEME table que la production, par l'instantane du
+// catalogue (`golden_catalogue_titre.json`, tenu frais cote hote).
 func origineFamilles(t *testing.T) map[uint32]string {
 	t.Helper()
-	chemin := filepath.Join(repoRootForTest(t), "config", "titles", "halo_infinite",
-		"mappings", "replay_labels.toml")
-	labels, err := mappings.LoadReplayLabelsFromFile(chemin)
-	if err != nil {
-		t.Fatalf("replay_labels.toml : %v", err)
-	}
-	return labels.EquipmentObjects()
+	return goldenCatalog(t).EquipmentFamilies
 }
 
 // origineVies decoupe le nuage en vies par slot : trou de plus de lifeGapUS = nouvelle vie.

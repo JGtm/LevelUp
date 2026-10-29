@@ -65,7 +65,7 @@ package replay
 // `killsource.Kill.paquet` est NON EXPORTE ET DELIBEREMENT (`killsource/kill.go:69-72`) : c est une
 // coordonnee INTERNE au decodeur — ou l octet a ete lu — et aucun consommateur hors de
 // `killsource` ne la lit. Elle se perd donc a l aller-retour. SANS EFFET SUR LE DOCUMENT, mais AVEC
-// effet sur `digest.Of`, qui hache les champs exportes OU NON (`internal/analysis/digest/digest.go:20`) :
+// effet sur `digest.Of`, qui hache les champs exportes OU NON (`film/digest/digest.go`) :
 // c est precisement ce qui interdit a l etape `killsource` du TSV d equivalence de servir d oracle
 // a un rejeu depuis les faits. S8 se juge sur la ligne `artifact`, et sur elle seule.
 // [TestFilmFactsFichierNePerdQueLePaquetDeKillsource] est le ratchet de cette phrase : tout AUTRE

@@ -43,7 +43,7 @@ package replay
 // USAGE (depuis apps/go-api, UN film par processus, avant-plan — D17) :
 //
 //	$env:CGO_ENABLED=0
-//	$env:ZONE_FILM="C:/Users/Guillaume/Projects/LevelUp/data/cache/film_chunks/01e1f945"
+//	$env:ZONE_FILM="<depot>/data/cache/film_chunks/01e1f945"
 //	go test -count=1 -run TestCollineProprieteOracle -v -timeout 30m ./internal/games/halo_infinite/film/replay/
 
 import (

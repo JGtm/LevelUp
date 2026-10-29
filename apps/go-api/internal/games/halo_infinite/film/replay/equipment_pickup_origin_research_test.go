@@ -122,7 +122,7 @@ func TestEquipmentPickupOrigin(t *testing.T) {
 		t.Fatalf("chaîne des power-ups muette : scanned=%v pistes=%d", scan.Scanned, len(scan.Tracks))
 	}
 	lives := eqlLivesFromScan(scan)
-	familles := goldenReplayLabels(t).EquipmentObjects()
+	familles := goldenCatalog(t).EquipmentFamilies
 	t.Logf("== ÉTAPE 3 — ORIGINE : SOL OU POINT D'APPARITION · %s ==", s.dir)
 	t.Logf("ramassages natifs : %d · vies ti=37 : %d sur %d pistes · calibration MPP : %s · fenêtre %d ms · rayon %.1f m",
 		len(pickups), len(lives), len(scan.Tracks), pst.Calibration, epoFenetreUS/1000, epoRayon)

@@ -22,7 +22,7 @@ package replay
 // USAGE (depuis apps/go-api, UN film par processus, avant-plan — D17) :
 //
 //	$env:CGO_ENABLED=0
-//	$env:ZONE_FILM="C:/Users/Guillaume/Projects/LevelUp/data/cache/film_chunks/01e1f945"
+//	$env:ZONE_FILM="<depot>/data/cache/film_chunks/01e1f945"
 //	go test -count=1 -run TestCollineProprieteTemoin -v -timeout 30m ./internal/games/halo_infinite/film/replay/
 
 import (
@@ -184,7 +184,7 @@ func ctOutDir(t *testing.T) string {
 		p2aMkdir(t, v)
 		return v
 	}
-	out := filepath.Join(repoRootForTest(t), ".ai", "archive", "V7.5", "replay2d", "registre_film", ctOutDirName)
+	out := filepath.Join(racineDepot(t), ".ai", "archive", "V7.5", "replay2d", "registre_film", ctOutDirName)
 	p2aMkdir(t, out)
 	return out
 }

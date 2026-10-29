@@ -69,8 +69,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"levelup/go-api/internal/testutil"
 )
 
 // contractFixturesEnv : la seconde condition explicite de la regeneration (cf. en-tete).
@@ -216,10 +214,7 @@ type contractManifest struct {
 // Go parce que c'est le producteur qui sait ce que le document contient.
 func contractFixturesDir(t *testing.T) string {
 	t.Helper()
-	root, err := testutil.RepoRoot()
-	if err != nil {
-		t.Fatalf("racine du depot introuvable : %v", err)
-	}
+	root := racineDepot(t)
 	return filepath.Join(root, "apps", "web", "src", "features", "match-replay",
 		"test", "fixtures", "go")
 }

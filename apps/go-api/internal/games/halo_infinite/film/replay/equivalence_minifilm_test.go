@@ -32,7 +32,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis/digest"
+	"levelup/go-api/internal/games/halo_infinite/film/digest"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 )

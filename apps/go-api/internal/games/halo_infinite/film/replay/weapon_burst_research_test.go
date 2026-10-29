@@ -51,8 +51,6 @@ import (
 	"sort"
 	"strings"
 	"testing"
-
-	"levelup/go-api/internal/games/weapons"
 )
 
 // wbrCorpusEnv designe le REPERTOIRE des artefacts JSON a relire (lecture seule).
@@ -76,7 +74,7 @@ func TestWeaponBurstResearch(t *testing.T) {
 	if len(docs) == 0 {
 		t.Fatalf("aucun artefact porteur de tirs sous %s", dir)
 	}
-	registre := weapons.FilmshellWeaponKeysByFamily()
+	registre := goldenCatalog(t).Keys
 	par := wbrMeasureCadence(docs, registre)
 	wbrReportCadence(t, docs, par)
 	wbrReportSalves(t, docs, registre)
@@ -468,7 +466,7 @@ func wbrControlStems(t *testing.T, paths []string) {
 		livres[strings.TrimSuffix(filepath.Base(p), ".wav")] = true
 	}
 	registre := make(map[string]bool, 32)
-	for _, k := range weapons.FilmshellWeaponKeysByFamily() {
+	for _, k := range goldenCatalog(t).Keys {
 		registre[k] = true
 	}
 	var sansStem, sansArme []string

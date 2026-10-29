@@ -57,7 +57,6 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
@@ -346,7 +345,7 @@ func mapQuantEntryFromEnv(t *testing.T, mapEnv, boundsEnv string) profile.MapQua
 	}
 	chemin := os.Getenv(boundsEnv)
 	if chemin == "" {
-		chemin = title.NewPathResolver(repoRootForTest(t)).MapQuantBoundsPath(title.DefaultSlug)
+		chemin = bornesDeCartes(t)
 	}
 	cat, err := profile.LoadMapQuantCatalog(chemin)
 	if err != nil {

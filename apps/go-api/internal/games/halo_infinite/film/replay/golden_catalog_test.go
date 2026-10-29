@@ -1,143 +1,44 @@
 package replay
 
-// golden_catalog_test.go — LE CATALOGUE DE LIBELLÉS DU TITRE, LU DEPUIS SES VRAIS FICHIERS.
+// golden_catalog_test.go — LE CATALOGUE DE LIBELLÉS DU TITRE, TEL QUE LES GOLDENS LE LISENT.
 //
 // POURQUOI LE VRAI ET PAS UNE FIXTURE. Depuis le lot 3.2, les noms d'armes, de grenades et
 // de capacités ne sont plus dans le code : ils vivent dans
 // `config/titles/halo_infinite/mappings/`. Un golden bâti sur une fixture figerait des
 // noms inventés pour le test — donc ne verrait PAS une régression de configuration (un
-// libellé perdu, une langue vide, un effet de tir renommé). En lisant les vrais fichiers,
-// le golden d'assemblage devient aussi le garde-rail de ces trois tables.
+// libellé perdu, une langue vide, un effet de tir renommé).
 //
-// AUCUN OCTET DE FILM N'EST LU ICI : ce sont des fichiers de config versionnés.
+// COMMENT LA BRIQUE LE LIT. Elle n'importe plus les chargeurs de libellés de LevelUp (plan D2,
+// item 2.11) : le catalogue est un INSTANTANÉ, `testdata/golden_catalogue_titre.json`, produit par
+// la jointure de la production à partir des vrais fichiers du titre. La garde qui exige que
+// l'instantané soit celui des fichiers du titre — c'est-à-dire la garde de ces tables de
+// configuration — vit côté hôte : `internal/filmcorpus/catalogue_titre_test.go`
+// (`TestInstantaneDuCatalogueDuTitreEstFrais`). Un libellé qui change rougit d'abord cette garde.
+//
+// AUCUN OCTET DE FILM N'EST LU ICI.
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
-
-	"levelup/go-api/internal/games/mappings"
-	"levelup/go-api/internal/games/weapons"
 )
 
-// goldenCatalog charge le catalogue du titre de référence depuis le dépôt.
-//
-// La jointure elle-même (famille -> weapon_key -> nom/effet) N'EST PAS recopiée : on
-// appelle `NewLabelCatalog`, exactement comme la production. Une jointure recopiée dans
-// un test est une jointure qui dérive.
+// golden_catalogue_titre.json : l'instantané, relatif au paquet.
+const instantaneCatalogueTitre = "golden_catalogue_titre.json"
+
+// goldenCatalog charge le catalogue du titre de référence depuis l'instantané versionné.
 func goldenCatalog(t *testing.T) LabelCatalog {
 	t.Helper()
-	dir := filepath.Join(repoRootForTest(t), "config", "titles", "halo_infinite", "mappings")
-
-	names, err := mappings.LoadWeaponNamesFromFile(filepath.Join(dir, "weapon_names.toml"))
+	chemin := filepath.Join(goldenDir, instantaneCatalogueTitre)
+	raw, err := os.ReadFile(chemin) //nolint:gosec // chemin figé dans le code
 	if err != nil {
-		t.Fatalf("weapon_names.toml : %v", err)
+		t.Fatalf("instantané du catalogue du titre illisible (%s) : %v — il se régénère côté hôte "+
+			"(internal/filmcorpus/catalogue_titre_test.go)", chemin, err)
 	}
-	labels := goldenReplayLabels(t)
-
-	byKey := map[string]Label{}
-	for k, v := range names.Names() {
-		byKey[k] = Label{Text: enFr(v.Pick("en"), v.Pick("fr"))}
-	}
-	var abilities []AbilityPalette
-	for _, p := range labels.AbilityPalettes() {
-		ranks := map[int]Label{}
-		for rank, v := range p.Ranks {
-			ranks[rank] = Label{Text: enFr(v.Text.Pick("en"), v.Text.Pick("fr"))}
-		}
-		abilities = append(abilities, AbilityPalette{
-			ID: p.ID, Markers: p.Markers, Ranks: ranks, Families: p.Families})
-	}
-	grenades := make([]Label, 0, len(labels.GrenadeRanks()))
-	for _, v := range labels.GrenadeRanks() {
-		grenades = append(grenades, Label{Text: enFr(v.Text.Pick("en"), v.Text.Pick("fr"))})
-	}
-	cat := NewLabelCatalog(
-		weapons.FilmshellWeaponKeysByFamily(), byKey, labels.ShotEffects(), grenades, abilities)
-	// Les familles d'objets d'équipement se posent APRÈS construction, comme en production
-	// (cf. replaylabels.Load) : elles n'entrent dans aucune jointure du catalogue. Les oublier
-	// ici ferait publier au golden un document dont TOUTES les poses sont `other`, alors que
-	// le manifeste en nomme — c'est-à-dire un document que la production ne sert pas.
-	cat.EquipmentFamilies = labels.EquipmentObjects()
-	// LES FAMILLES MESUREES PAR LE CANAL D'IMPULSION, par le MÊME chemin qu'en production
-	// (cf. replaylabels.Load). Les oublier ici ferait publier au golden un document SANS
-	// impulsion sur un film qui en porte — c'est-à-dire l'inverse de ce que la production sert.
-	cat.AbilityImpulseFamilies = labels.AbilityImpulseFamilies()
-	// LES FAMILLES MESUREES PAR LE CANAL DES CHARGES (i56), même chemin, même raison : les
-	// oublier ici ferait publier au golden un document SANS releve de charge sur un film qui
-	// en porte — l'inverse de ce que la production sert.
-	cat.AbilityChargeFamilies = labels.AbilityChargeFamilies()
-	// LE DRAPEAU, pour la MÊME raison et par le MÊME chemin que les familles d'équipement
-	// (cf. replaylabels.Load) : sans cette table, la chaîne des socles ne reconnaîtrait pas
-	// l'objet d'objectif du titre, et le golden figerait un document que la production ne sert
-	// pas. Le filtrage par famille est celui de la couche titre — un seul propriétaire du
-	// littéral, `mappings.ObjectiveFamilyFlag`.
-	for id, o := range labels.ObjectiveObjects() {
-		if o.Family != mappings.ObjectiveFamilyFlag {
-			continue
-		}
-		if cat.ObjectiveObjects == nil {
-			cat.ObjectiveObjects = map[uint32]Label{}
-		}
-		cat.ObjectiveObjects[id] = Label{Text: enFr(o.Label.Text.Pick("en"), o.Label.Text.Pick("fr"))}
+	var cat LabelCatalog
+	if err := json.Unmarshal(raw, &cat); err != nil {
+		t.Fatalf("instantané du catalogue du titre non désérialisable (%s) : %v", chemin, err)
 	}
 	return cat
-}
-
-// goldenReplayLabels lit le manifeste de rejeu du titre de référence. Extrait de
-// `goldenCatalog` le 2026-08-18 : le garde-rail du drapeau interroge la table des objets
-// d'objectif SANS avoir besoin de tout le catalogue.
-func goldenReplayLabels(t *testing.T) *mappings.ReplayLabelSet {
-	t.Helper()
-	path := filepath.Join(repoRootForTest(t), "config", "titles", "halo_infinite", "mappings",
-		"replay_labels.toml")
-	labels, err := mappings.LoadReplayLabelsFromFile(path)
-	if err != nil {
-		t.Fatalf("replay_labels.toml : %v", err)
-	}
-	return labels
-}
-
-// repoRootForTest remonte jusqu'au répertoire qui porte `config/titles` — le test tourne
-// depuis le paquet, pas depuis la racine.
-func repoRootForTest(t *testing.T) string {
-	t.Helper()
-	dir, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("répertoire courant : %v", err)
-	}
-	for range 8 {
-		if _, err := os.Stat(filepath.Join(dir, "config", "titles")); err == nil {
-			return dir
-		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			break
-		}
-		dir = parent
-	}
-	t.Fatal("racine du dépôt introuvable (aucun config/titles au-dessus du paquet)")
-	return ""
-}
-
-// TestCatalogueDuTitreNommeLesArmesDuFilmDeReference — le golden compte 22 familles
-// nommées sur le film de référence ; ce test dit POURQUOI elles le sont, et il échoue si
-// la chaîne registre -> weapon_names.toml se rompt.
-func TestCatalogueDuTitreNommeLesArmesDuFilmDeReference(t *testing.T) {
-	cat := goldenCatalog(t)
-	if len(cat.Weapons) == 0 {
-		t.Fatal("aucune arme nommée : la jointure famille -> weapon_key -> nom est rompue")
-	}
-	for family, lbl := range cat.Weapons {
-		if enOf(lbl.Text) == "" || frOf(lbl.Text) == "" {
-			t.Errorf("famille %08X : libellé incomplet (en=%q fr=%q) — les deux langues sont obligatoires",
-				family, enOf(lbl.Text), frOf(lbl.Text))
-		}
-	}
-	if len(cat.Grenades) != 4 {
-		t.Errorf("%d rang(s) de grenade, attendu 4 (le film n'en porte pas d'autres)", len(cat.Grenades))
-	}
-	if len(cat.Abilities) == 0 {
-		t.Error("aucune capacité nommée : la table du titre est vide")
-	}
 }

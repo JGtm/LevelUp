@@ -67,7 +67,7 @@ package replay
 // SOUS GARDE D'ENVIRONNEMENT (`ZONE_FILM`), UN film par processus, avant-plan (D17) :
 //
 //	$env:CGO_ENABLED=0
-//	$env:ZONE_FILM="C:/Users/Guillaume/Projects/LevelUp/data/cache/film_chunks/01e1f945"
+//	$env:ZONE_FILM="<depot>/data/cache/film_chunks/01e1f945"
 //	$env:HILL_MVAR="C:/.../catalyst_map.mvar"   # optionnel ; sinon le catalogue, role hill
 //	$env:HILL_LABEL="-767961569"                 # optionnel avec HILL_MVAR (role)
 //	$env:HILL_INCLUDE="2133978317"               # optionnel avec HILL_MVAR (filtre de mode)

@@ -210,7 +210,7 @@ func TestPickupNamingSurvivesTheThreeWritingConventions(t *testing.T) {
 // ont été établis par corrélation AVANT que le manifeste soit consulté (`eef5d48d` = propulseur,
 // `8e2dc574` = mur). Ils ne sont pas choisis pour la commodité du test.
 func TestPickupFamilyResolvesAgainstTheRealManifest(t *testing.T) {
-	familles := goldenReplayLabels(t).EquipmentObjects()
+	familles := goldenCatalog(t).EquipmentFamilies
 	cas := []struct {
 		id   uint32
 		veut string

@@ -332,10 +332,9 @@ var plafondsParFichier = map[string]int{
 	// vague 2 de la famille 1.9 et le schema 60, avant que le ratchet n existe ici. Meme regle :
 	// chaque valeur ne peut que descendre. `document_vehicles.go` et `score_timeline.go` sont dans
 	// le perimetre du volet 2.7p (scission en cours) et sortiront de la table a sa fusion.
-	"internal/games/halo_infinite/film/replay/document_shape_test.go":                                          511,
 	"internal/games/halo_infinite/film/internal/facts/killsource/e197_identite_paquet_mesure_research_test.go": 654,
 	"internal/games/halo_infinite/film/internal/facts/objectives/e1911_manches_mesure_research_test.go":        524,
-	"internal/replaybuild/replaybuild.go":                                                                      577,
+	"internal/replaybuild/replaybuild.go": 577,
 	// `equipment_creation.go` EST SORTI DE CETTE TABLE LE 2026-09-17 (lot 2.6.2, volet grammaire /
 	// rejeu), pour la meme raison qu `assist.go` au volet facts : `EquipmentCreation` et
 	// `EquipmentCreationStats` ont descendu dans `film/types`, le fichier est passe de 508 a 434

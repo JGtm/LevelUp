@@ -29,24 +29,18 @@ import (
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
-	"levelup/go-api/internal/testutil"
 )
 
 func TestEmpriseV1Porteurs(t *testing.T) {
 	films, dir, cache, _ := v0Films(t)
-	repoRoot, err := testutil.RepoRoot()
-	if err != nil {
-		t.Fatalf("racine du depot : %v", err)
-	}
-	cat, err := decfilm.LoadMapQuantCatalog(title.NewPathResolver(repoRoot).MapQuantBoundsPath(title.DefaultSlug))
+	cat, err := decfilm.LoadMapQuantCatalog(bornesDeCartes(t))
 	if err != nil {
 		t.Fatalf("catalogue de bornes : %v", err)
 	}
 	for _, id := range films {
-		court := title.FilmShortMatchID(id)
+		court := idCourtDeMatch(id)
 		var e v0Entree
 		if !v0Lire(t, dir, "ref", court, &e.ref) || !v0Lire(t, dir, "col", court, &e.col) ||
 			!v0Lire(t, dir, "k1", court, &e.k1) {
@@ -60,7 +54,7 @@ func TestEmpriseV1Porteurs(t *testing.T) {
 // v1ComparerUnFilm rejoue la base, appelle l'entree de production et compare a la reference.
 func v1ComparerUnFilm(t *testing.T, e v0Entree) {
 	t.Helper()
-	court := title.FilmShortMatchID(e.id)
+	court := idCourtDeMatch(e.id)
 	fam := v0FamilleDuMode(e.ref.Variante)
 	b, _ := v0ChargerBase(t, e)
 	if ecart := v0RegistreConforme(b); ecart != "" {

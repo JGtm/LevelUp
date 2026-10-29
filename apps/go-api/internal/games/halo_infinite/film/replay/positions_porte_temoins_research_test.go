@@ -20,7 +20,6 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
-	"levelup/go-api/internal/testutil"
 )
 
 func TestPortePositionsTemoins(t *testing.T) {
@@ -28,10 +27,7 @@ func TestPortePositionsTemoins(t *testing.T) {
 	if faits == "" {
 		t.Skip("temoins sur faits reels : M1_FAITS requis")
 	}
-	root, err := testutil.RepoRoot()
-	if err != nil {
-		t.Fatal(err)
-	}
+	root := racineDepot(t)
 	cat, err := profile.LoadMapQuantCatalog(filepath.Join(root, "data", "titles", "halo_infinite",
 		"reference", "map_quant_bounds.json"))
 	if err != nil {

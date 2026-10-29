@@ -16,14 +16,14 @@ package replay
 //	  famille qui EST au catalogue, et son temoin (meme scan, table vide) publie bien le socle
 //	  que l'exclusion supprime. Sans ce temoin, un test vert ne prouverait rien ;
 //	le second prouve que c'est le manifeste DU TITRE qui alimente la table, avec l'identifiant
-//	  qu'il declare — pas une constante recopiee dans un test.
+//	  qu'il declare — pas une constante recopiee dans un test. Il lit le manifeste de LevelUp : il
+//	  vit cote hote, `internal/filmcorpus/objets_objectif_titre_test.go`, sous le meme nom.
 
 import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
-	"levelup/go-api/internal/games/mappings"
 )
 
 // gwFlagScan monte QUATRE apparitions au repos au meme endroit sous l'identifiant `id` : le cas
@@ -108,34 +108,6 @@ func TestLeDrapeauDuManifesteNeFaitJamaisUnSocle(t *testing.T) {
 		if cov.Objectives != 4 {
 			t.Errorf("%s : %d objets d'objectif comptes, attendu 4",
 				formatWeaponFamily(id), cov.Objectives)
-		}
-	}
-}
-
-// TestLeManifesteNommeSesObjetsDObjectifDansLesDeuxLangues : le nom vit dans le TOML, jamais en
-// Go — et CHAQUE famille portee doit avoir au moins un representant nomme.
-//
-// LES DEUX FAMILLES SONT EXIGEES SEPAREMENT (2026-08-27). Compter globalement laisserait passer
-// la disparition d'une famille entiere tant que l'autre survit : le jour ou l'entree du crane
-// serait retiree du manifeste, l'exclusion des socles d'armes redeviendrait ACCIDENTELLE sur
-// Oddball sans qu'aucun test ne l'annonce — exactement le defaut que ce fichier existe pour
-// empecher sur le drapeau.
-func TestLeManifesteNommeSesObjetsDObjectifDansLesDeuxLangues(t *testing.T) {
-	labels := goldenReplayLabels(t)
-	attendues := []string{mappings.ObjectiveFamilyFlag, mappings.ObjectiveFamilyBall}
-	nb := map[string]int{}
-	for id, o := range labels.ObjectiveObjects() {
-		nb[o.Family]++
-		if o.Label.Text.Pick("en") == "" || o.Label.Text.Pick("fr") == "" {
-			t.Errorf("objet d'objectif %s (famille %q) nomme dans une seule langue (en=%q fr=%q)",
-				formatWeaponFamily(id), o.Family, o.Label.Text.Pick("en"), o.Label.Text.Pick("fr"))
-		}
-	}
-	for _, f := range attendues {
-		if nb[f] == 0 {
-			t.Errorf("aucun objet d'objectif de famille %q au manifeste du titre — la chaine des "+
-				"socles ne reconnaitrait plus cet objet, elle l'ecarterait par accident "+
-				"(cf. replay_labels.toml, [[objective_objects]])", f)
 		}
 	}
 }

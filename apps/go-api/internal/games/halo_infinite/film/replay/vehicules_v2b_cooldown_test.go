@@ -80,7 +80,7 @@ var v2cAnchorNames = [3]string{"naissance->naissance", "census goneBy->naissance
 
 func TestV2bCooldown(t *testing.T) {
 	films := v2cParseFilms(t)
-	root := v2cRoot()
+	root := v2cRoot(t)
 	cat := v2cLoadBounds(t)
 
 	aggs := map[string]*v2cMapAgg{}
@@ -327,17 +327,18 @@ func v2cParseFilms(t *testing.T) []v2cFilmSpec {
 	return out
 }
 
-func v2cRoot() string {
+func v2cRoot(t *testing.T) string {
+	t.Helper()
 	if r := os.Getenv("V2B_CD_ROOT"); r != "" {
 		return r
 	}
-	return `C:\Users\Guillaume\Projects\LevelUp\data\cache`
+	return cacheDuDepot(t)
 }
 
 func v2cLoadBounds(t *testing.T) *profile.MapQuantCatalog {
 	path := os.Getenv("V2B_CD_BOUNDS")
 	if path == "" {
-		path = `C:\Users\Guillaume\Projects\LevelUp\data\titles\halo_infinite\reference\map_quant_bounds.json`
+		path = bornesDeCartes(t)
 	}
 	cat, err := profile.LoadMapQuantCatalog(path)
 	if err != nil {

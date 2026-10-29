@@ -294,6 +294,12 @@ var couchesDuDecodeur = map[string]coucheFilm{
 	// `identity` : le contrat d identite des entites (types seuls, descendus de `games/canonical` le
 	// 2026-10-29, D2 2.4) ; feuille sans import du depot, declare des formes : hors couche.
 	"internal/games/halo_infinite/film/identity": horsCoucheFilm,
+	// `digest` : L'EMPREINTE D'UNE VALEUR GO (rendu stable, sans nom de type), outil du harnais
+	// d'equivalence de la cuisson (`replay-equiv`) et de la mini-bobine de `replay`. Descendu de
+	// `internal/analysis/digest` le 2026-10-29 (D2 2.11) : ses seuls utilisateurs sont le decodeur
+	// et son outil d'equivalence. Feuille de la bibliotheque standard, ne lit aucun octet de film :
+	// hors couche.
+	"internal/games/halo_infinite/film/digest": horsCoucheFilm,
 	// `filmproc` : le garde-fou MEMOIRE du decodage (lanceur parent/enfant, sentinelle, verrou de
 	// decodage), descendu de `internal/filmproc` le 2026-10-29 (D2 2.6). Il ne decode rien et ne
 	// publie rien : hors couche. `atomicfile` et `filelock` sont ses deux outils (ecriture atomique,

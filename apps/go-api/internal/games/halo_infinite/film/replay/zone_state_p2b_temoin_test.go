@@ -18,7 +18,7 @@ package replay
 // la phase 2a, dont ce fichier reprend le corpus gele, les entrees et l'oracle.
 //
 //	$env:CGO_ENABLED=0
-//	$env:ZONE_FILM="C:/Users/Guillaume/Projects/LevelUp/data/cache/film_chunks/7344d24f"
+//	$env:ZONE_FILM="<depot>/data/cache/film_chunks/7344d24f"
 //	go test -count=1 -run TestZoneEtatPhase2bTemoin -v -timeout 30m ./internal/games/halo_infinite/film/replay/
 
 import (
@@ -29,7 +29,6 @@ import (
 
 	"testing"
 
-	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
@@ -118,7 +117,7 @@ func p2bBuild(t *testing.T, dir, short string, quant *profile.MapQuantEntry, zon
 			origin = p.TimestampUS
 		}
 	}
-	return BuildFromPositions(context.Background(), short, title.DefaultSlug, pos, nil, opt), origin
+	return BuildFromPositions(context.Background(), short, titreDeReference, pos, nil, opt), origin
 }
 
 // p2bLogCouverture publie `coverage.zones` tel que l'artefact le porte.

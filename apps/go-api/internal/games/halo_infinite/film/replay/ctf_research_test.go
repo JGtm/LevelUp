@@ -35,7 +35,6 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
@@ -121,11 +120,7 @@ func ctfReadingOnlyOwners(tracks map[uint32]slotTrack, deaths []types.Death,
 
 func loadCTFQuantCatalog(t *testing.T) *profile.MapQuantCatalog {
 	t.Helper()
-	root, err := title.FindRepoRoot()
-	if err != nil {
-		t.Fatalf("racine du dépôt : %v", err)
-	}
-	path := title.NewPathResolver(root).MapQuantBoundsPath(title.DefaultSlug)
+	path := bornesDeCartes(t)
 	cat, err := profile.LoadMapQuantCatalog(path)
 	if err != nil {
 		t.Fatalf("catalogue de bornes %s : %v", path, err)
