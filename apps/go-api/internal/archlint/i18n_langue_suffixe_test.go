@@ -48,8 +48,9 @@ const marqueContrat = "i18n-contrat"
 // `Often` ne correspondent pas (la majuscule est requise).
 var suffixeLangueRE = regexp.MustCompile(`(^|[a-z0-9_])(FR|EN|Fr|En)$`)
 
-// suffixeRacines : racines balayées, relatives à apps/go-api.
-var suffixeRacines = []string{"cmd", "internal", "pkg", "tools", "scripts"}
+// suffixeRacines : racines balayées (chemins de garde-rail, [surDisque]) : go-api et la brique du
+// décodeur de film, qui y vivait.
+var suffixeRacines = []string{"cmd", "internal", "pkg", "tools", "scripts", racineBriqueFilm}
 
 // suffixeFautif est une déclaration dont le nom porte un suffixe de langue.
 type suffixeFautif struct {
@@ -79,12 +80,12 @@ var suffixeAllowlist = []suffixeAutorise{
 		Raison: "mot français : « vivant en » (état d'un acteur « vivant en <position> »), pas une langue",
 	},
 	{
-		Fichier: "internal/games/halo_infinite/film/internal/grammar/debut_de_liste.go", Nom: "enteteNeufEn",
+		Fichier: "libs/film/internal/grammar/debut_de_liste.go", Nom: "enteteNeufEn",
 		Date:   "2026-10-26",
 		Raison: "mot français : « en-tête neuf en <position> » (lecture à une position), pas une langue",
 	},
 	{
-		Fichier: "internal/games/halo_infinite/film/internal/grammar/debut_de_liste.go", Nom: "suitLOrdreEn",
+		Fichier: "libs/film/internal/grammar/debut_de_liste.go", Nom: "suitLOrdreEn",
 		Date:   "2026-10-26",
 		Raison: "mot français : « suit l'ordre en <position> », pas une langue",
 	},

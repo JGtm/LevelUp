@@ -25,9 +25,10 @@ import (
 	"context"
 	"log/slog"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/sync/replayartifacts"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // weaponTiersForKeys résout les réglages de niveau d'arme du match.

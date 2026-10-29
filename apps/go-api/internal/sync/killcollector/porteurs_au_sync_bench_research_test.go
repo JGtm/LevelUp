@@ -42,23 +42,20 @@ package killcollector
 import (
 	"context"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/halo_infinite/replayidentity"
 	"levelup/go-api/internal/replaybuild"
 	"levelup/go-api/internal/testutil"
-)
 
-// dossierDesFaitsDEquivalence : les faits versionnes de `replay-equiv`, relatifs au paquet.
-const dossierDesFaitsDEquivalence = "../../games/halo_infinite/film/replay/testdata/equivalence"
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/LevelUp/libs/film/replay"
+)
 
 func BenchmarkPorteursAuSync(b *testing.B) {
 	films, cache := strings.TrimSpace(os.Getenv("PORTEURS_BENCH_FILMS")), os.Getenv("PORTEURS_BENCH_CACHE")
@@ -112,7 +109,7 @@ type bancDuFilm struct {
 // (`Builder.ResolveMapEntry`) et decode killsource comme le collecteur (`decoderSousLaCarte`).
 func preparerLeBanc(b *testing.B, constructeur *replaybuild.Builder, cache, court string) bancDuFilm {
 	b.Helper()
-	faits, err := replaybuild.ReadFactsFile(filepath.Join(dossierDesFaitsDEquivalence, court+".facts.json"))
+	faits, err := replaybuild.ReadFactsFile(testutil.CheminBriqueFilm(b, "replay", "testdata", "equivalence", court+".facts.json"))
 	if err != nil {
 		b.Fatalf("%s : %v", court, err)
 	}

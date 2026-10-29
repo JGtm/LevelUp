@@ -12,8 +12,9 @@ import (
 	"fmt"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/finalise"
 	"levelup/go-api/internal/replaybuild"
+
+	"github.com/JGtm/LevelUp/libs/film/finalise"
 )
 
 // refusTypes : les trois refus voulus du protocole.

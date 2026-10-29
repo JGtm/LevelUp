@@ -10,7 +10,7 @@ package main
 //     « pour aller plus vite », c'est la bombe RAM qui revient — et ce test tombe.
 //  2. CE PAQUET NE LANCE PLUS AUCUN PROCESSUS LUI-MEME. La regle s'est DURCIE le 2026-09-03
 //     (PLAN_CUISSON_PERF item 5.4) : le motif parent/enfant ne vit plus dans un fichier de ce
-//     paquet, il vit dans `internal/filmproc` — un seul lanceur pour la passe de backfill, le
+//     paquet, il vit dans `libs/film/filmproc` — un seul lanceur pour la passe de backfill, le
 //     post-sync, le harnais d'equivalence et l'attribution de zones. Auparavant le garde
 //     TOLERAIT `exec.CommandContext` dans `backfill_child.go` (et l'EXIGEAIT meme, pour que
 //     l'allowlist ne pourrisse pas) ; il l'interdit desormais PARTOUT dans le paquet. Une
@@ -37,7 +37,7 @@ type motifGarde struct {
 
 var motifsGardes = []motifGarde{
 	{motif: "BuildMatch(", proprietaire: "cmd_backfill_replay_child.go", doitExister: true},
-	// AUCUN PROPRIETAIRE : le lancement de processus a quitte ce paquet pour `internal/filmproc`.
+	// AUCUN PROPRIETAIRE : le lancement de processus a quitte ce paquet pour `libs/film/filmproc`.
 	{motif: "exec.CommandContext", proprietaire: ""},
 	{motif: "exec.Command(", proprietaire: ""},
 	{motif: "os.StartProcess", proprietaire: ""},
@@ -86,7 +86,7 @@ func TestGardeRail_MotifsCentralises(t *testing.T) {
 			}
 			if g.proprietaire == "" {
 				t.Errorf("%q apparait dans %s ; AUCUN fichier de ce paquet n a le droit de "+
-					"lancer un processus.\nLe lanceur parent/enfant est `internal/filmproc` "+
+					"lancer un processus.\nLe lanceur parent/enfant est `libs/film/filmproc` "+
 					"(un processus par film, plafond memoire dur, priorite CPU basse) — une "+
 					"copie locale, c est un second protocole de codes de sortie qui derive.", g.motif, p)
 				continue

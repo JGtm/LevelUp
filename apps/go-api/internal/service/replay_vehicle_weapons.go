@@ -28,8 +28,10 @@ import (
 	"strconv"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/games/halo_infinite/replaylabels"
 	"levelup/go-api/internal/games/mappings"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // vehicleWeaponsFile : le nom du registre dans les mappings d un titre.
@@ -109,7 +111,7 @@ func vehicleWeaponTagOf(key string) (string, bool) {
 // vehicleWeaponOf projette une entree du registre vers la forme du document.
 func vehicleWeaponOf(w mappings.VehicleWeapon) replay.VehicleWeapon {
 	out := replay.VehicleWeapon{
-		Vehicle: w.Vehicle, Text: w.Label.Clone(), Fire: w.Fire, Fx: w.Fx, Tint: w.Tint, Sound: w.Sound,
+		Vehicle: w.Vehicle, Text: replaylabels.TexteVersFilm(w.Label), Fire: w.Fire, Fx: w.Fx, Tint: w.Tint, Sound: w.Sound,
 		Loop: w.Loop, Impact: w.Impact, ImpactSound: w.ImpactSound,
 	}
 	if w.Mount != nil {

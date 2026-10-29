@@ -128,7 +128,7 @@ describe('la borne de compatibilité est ÉPINGLÉE, pas seulement écrite', () 
     const src = readFileSync(
       join(
         racineDuDepot(),
-        'apps/go-api/internal/games/halo_infinite/film/replay/document_chronicle.go',
+        'libs/film/replay/document_chronicle.go',
       ),
       'utf8',
     )

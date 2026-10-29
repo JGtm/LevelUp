@@ -25,9 +25,10 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain/highlightevent"
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/halo_infinite/film/medalname"
+	haloinfinite "levelup/go-api/internal/games/halo_infinite"
 	"levelup/go-api/internal/persist"
+
+	"github.com/JGtm/LevelUp/libs/film/medalname"
 )
 
 // buildBatchFromFetchedMatch convertit un fetchedMatch en MatchBatch.
@@ -111,7 +112,7 @@ func buildBatchFromFetchedMatchCtx(
 	// events. Le caller logge un warning via l'erreur retournée.
 	var parseErr error
 	if fm.HasHighlights && len(fm.HighlightData) > 0 {
-		events, err := decfilm.ParseHighlightEvents(fm.HighlightData, fm.FilmMajorVer)
+		events, err := haloinfinite.ParseHighlightEvents(fm.HighlightData, fm.FilmMajorVer)
 		if err != nil {
 			parseErr = fmt.Errorf("ParseHighlightEvents: %w", err)
 		} else if len(events) > 0 {

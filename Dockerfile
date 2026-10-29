@@ -65,6 +65,7 @@ WORKDIR /build
 # ajouté à go.work doit avoir sa ligne COPY ici (go.work refuse un `use` sans go.mod).
 COPY go.work go.work.sum ./
 COPY apps/go-api/go.mod apps/go-api/go.sum ./apps/go-api/
+COPY libs/film/go.mod libs/film/go.sum ./libs/film/
 COPY libs/gamefiles/go.mod libs/gamefiles/go.sum ./libs/gamefiles/
 COPY libs/himap/go.mod libs/himap/go.sum ./libs/himap/
 

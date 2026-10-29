@@ -22,8 +22,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/mapcatalog"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // forgeStats porte le décompte d'une passe, pour la mesure de couverture.

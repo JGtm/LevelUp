@@ -28,8 +28,9 @@ import (
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/port"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 func m7CartesDuJournal(t *testing.T, path string) map[string]string {

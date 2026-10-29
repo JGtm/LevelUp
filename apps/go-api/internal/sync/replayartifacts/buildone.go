@@ -82,7 +82,7 @@ type BuildOneResult struct {
 // BuildOneFunc construit l'artefact d'UN film et rend ses OCTETS SERIALISES, sans les ecrire.
 //
 // L'IMPLEMENTATION DE PRODUCTION DECODE HORS DU PROCESSUS (un enfant borne : plafond memoire
-// dur, priorite CPU basse, cf. `internal/filmproc`). Ce paquet ne connait pas les processus, et
+// dur, priorite CPU basse, cf. `internal/games/halo_infinite/film/filmproc`). Ce paquet ne connait pas les processus, et
 // c'est voulu : `internal/sync` orchestre une synchronisation, il n'a pas a savoir lancer des
 // binaires. Les tests injectent une fonction pure.
 //

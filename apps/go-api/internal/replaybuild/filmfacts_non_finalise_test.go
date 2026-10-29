@@ -27,16 +27,17 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
-	"levelup/go-api/internal/games/halo_infinite/film/finalise"
+	"levelup/go-api/internal/testutil"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/LevelUp/libs/film/finalise"
 )
 
 // temoinPartiel rend les entrees du manifeste partiel d'`ab526724`.
 func temoinPartiel(t *testing.T) []filmcache.WriteChunk {
 	t.Helper()
-	blob, err := os.ReadFile(filepath.Join("..", "games", "halo_infinite", "film", "filmcache",
-		"testdata", "manifeste_partiel_34.json"))
+	blob, err := os.ReadFile(testutil.CheminBriqueFilm(t, "filmcache", "testdata", "manifeste_partiel_34.json"))
 	if err != nil {
 		t.Fatalf("temoin : %v", err)
 	}

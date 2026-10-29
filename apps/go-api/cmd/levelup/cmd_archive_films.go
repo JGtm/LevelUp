@@ -63,11 +63,12 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/duckdb"
 	go_sync "levelup/go-api/internal/sync"
 	"levelup/go-api/internal/sync/matchflags"
+
+	"github.com/JGtm/LevelUp/libs/film/filmcache"
 )
 
 // Compteurs de la passe, publies en expvar (ADR 0009) et restitues en fin de commande.

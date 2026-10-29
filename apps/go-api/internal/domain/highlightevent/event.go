@@ -21,7 +21,8 @@
 // `MedalType` bruts. Les confondre sous un meme nom canonique melangerait la lingua
 // franca et le tuyau d'entree. Seconde raison : ce type n'est PAS propre au film. Deux
 // producteurs le remplissent — le lecteur du chunk de temps forts
-// (`grammar.ParseHighlightEvents`) et l'import OpenSpartan
+// (`halo_infinite.ParseHighlightEvents`, qui convertit la forme propre au decodeur de film,
+// `film/highlightevent`, depuis le plan D2) et l'import OpenSpartan
 // (`service.toAnalysisEvent`, depuis `mapper.HighlightEventRow`) — et un seul
 // consommateur l'ecrit (`sync.InsertHighlightEvents`). Un type que deux sources
 // remplissent et qu'une couche de persistance lit est un type de `domain/`, feuille,

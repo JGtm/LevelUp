@@ -8,8 +8,11 @@
 // (`internal/analysis/sessionusage`) l'y lisait : c'était le SEUL franchissement de
 // PRODUCTION de l'allowlist du garde-rail D9 — un algorithme title-agnostic qui
 // importait un paquet de titre (ADR 0012 / ADR 0025). Le sens des dépendances est
-// maintenant celui de l'architecture : `replay` et `sessionusage` lisent TOUS LES DEUX
-// ce paquet, aucun des deux ne lit l'autre.
+// maintenant celui de l'architecture : `sessionusage` lit ce paquet, sans lire le décodeur.
+// Depuis le plan D2 (item 2.8), le décodeur — brique qui n'importe rien de LevelUp — porte
+// une COPIE JUMELLE de la liste du bilan et du prédicat de pièce engendrée
+// (`film/replay/usage_summary_bilan.go`) ; `jumeau_film_test.go` refuse qu'elles divergent
+// (règle 6 de CLAUDE.md).
 //
 // POURQUOI SOUS `domain/` ET NON SOUS `games/canonical/`. `games/canonical` est la
 // lingua franca INTER-TITRES : y poser ces clés affirmerait que « wall », « sensor »
@@ -23,12 +26,11 @@
 // CE PAQUET NE LIT PAS LE MANIFESTE, et c'est voulu. La source de ces tables est
 // `config/titles/halo_infinite/mappings/replay_labels.toml` ; leur RECOLLEMENT au
 // manifeste reste un garde-rail du côté du titre
-// (`film/replay/usage_summary_families_guard_test.go`), là où le manifeste est. Une
+// (`film/replay/usage_summary_families_guard_test.go`, sur la copie du décodeur), là où le
+// manifeste est ; celle-ci y est recollée par `jumeau_film_test.go`. Une
 // feuille de `domain/` qui irait lire le manifeste d'un titre rouvrirait la frontière
 // que ce déplacement vient de fermer.
 package equipmentusage
-
-import "sort"
 
 // Clés de famille du manifeste portées ici parce que les deux tables ci-dessous les
 // nomment : le périmètre du bilan et la table des familles à pièce engendrée. Les
@@ -71,25 +73,10 @@ const (
 	EquipmentFamilyPowerupOvershield = usageFamilyPowerupOvershield
 )
 
-// EquipmentFamilyWall / EquipmentFamilySensor — les deux autres clés du bilan que le
-// décodeur nomme encore chez lui : le MUR classe ses poses (`usageDeployedCounts`,
-// `usageWallPanelIDs`, et la clé publique `replay.UsageFamilyWallKey` que lit la page
-// Escouade), le CAPTEUR sert de témoin aux tests du résumé. Exportées pour la même
-// raison que les deux ci-dessus, et pas une de plus : deux orthographes de la même
-// famille finiraient par diverger, et le compilateur ne dirait rien.
-const (
-	EquipmentFamilyWall   = usageFamilyWall
-	EquipmentFamilySensor = usageFamilySensor
-)
-
-// EquipmentFamilyGrapple / EquipmentFamilyThruster — deux CAPACITÉS PORTÉES (grappin,
-// propulseur) : le film publie l'appareil, lâché à la mort, mais ni prise ni usage au bilan ; elles
-// n'ont donc aucune ligne d'issue. Le décodeur relit ces deux clés
-// (`replay/usage_summary_families.go`) au lieu de les réécrire.
-const (
-	EquipmentFamilyGrapple  = "grapple"
-	EquipmentFamilyThruster = "thruster"
-)
+// EquipmentFamilyWall — la clé du MUR, seul déployable qui engendre une pièce : la famille dont le
+// côté « utilisé » se lit sur les poses. Exportée pour que les tests de l'agrégat de session
+// nomment le mur sans réécrire son orthographe.
+const EquipmentFamilyWall = usageFamilyWall
 
 // EquipmentOutcomeFamilies rend les familles qui portent une ligne d'issue, dans
 // l'ordre de la table ci-dessus. Exportée pour l'agrégat de session, qui doit
@@ -147,22 +134,4 @@ func usageFamilySpawnsPiece(family string) bool {
 // sessionusage/usage_outcomes_guard_test.go.
 func UsageFamilySpawnsPiece(family string) bool {
 	return usageFamilySpawnsPiece(family)
-}
-
-// UsageFamiliesSpawningPiece rend la table ci-dessus ÉNUMÉRÉE, triée pour que la
-// sortie d'un garde-rail soit stable.
-//
-// Exportée pour le recollement au manifeste, et pour lui seul : le garde-rail du
-// titre parcourt la table DANS LES DEUX SENS — « toute famille `kind = deployed` du
-// manifeste est ici » se répond avec le prédicat, mais « toute famille d'ici est
-// encore `kind = deployed` au manifeste » exige l'énumération. La déduire du
-// périmètre du bilan filtré par le prédicat affaiblirait le garde-rail : une entrée
-// hors bilan y échapperait aux deux contrôles.
-func UsageFamiliesSpawningPiece() []string {
-	out := make([]string, 0, len(usageFamiliesWithSpawnedPiece))
-	for family := range usageFamiliesWithSpawnedPiece {
-		out = append(out, family)
-	}
-	sort.Strings(out)
-	return out
 }

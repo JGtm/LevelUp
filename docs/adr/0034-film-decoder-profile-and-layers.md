@@ -47,7 +47,7 @@ rotates faster than it is maintained, so nothing here depends on it.
 
 ### D-1 — Five layers, one dependency direction
 
-The decoder is five packages under `internal/games/halo_infinite/film/`:
+The decoder is five packages under `libs/film/` (module `github.com/JGtm/LevelUp/libs/film`; before 2026-10-29: `internal/games/halo_infinite/film/`, see the amendments at the end):
 
 | Layer | Responsibility |
 |---|---|
@@ -319,7 +319,8 @@ goes into the registry.
 ## Current state (2026-09-30)
 
 Measured on the tree (`feat/suite-audit-decodeur`, base `8cd560673`). Go paths are relative to
-`apps/go-api/internal/`. Where a decision above reads differently from the tree, the tree wins and
+`apps/go-api/internal/`, except `film/`, which designates the decoder module `libs/film` since the
+amendment of 2026-10-29 (bis) below. Where a decision above reads differently from the tree, the tree wins and
 the difference is written here; the history of how each decision was reached is in
 [the annex](0034-annex-history.md).
 
@@ -390,11 +391,12 @@ re-decoded once.
    the question "does this package decide the layer's output?" is asked at review. Measured
    closures: `source` = itself + `film/types`; `profile` = itself, no upstream (it does not import
    `source`, so `source.Rev` left its fingerprint); `grammar` = its tree + `film/types`,
-   `domain/highlightevent`, `domain/playerposition`, `games/weapons/filmshell`, upstream `source`,
+   `domain/highlightevent`, `film/playerposition`, `film/filmshell`, upstream `source`,
    `profile`; `killsource` = itself + `film/types`, `film/damagetag`, `domain/highlightevent`,
-   upstream `source`, `profile`, `grammar`; `objectives` = itself + `film/types`, `domain/objectiveevent`,
+   upstream `source`, `profile`, `grammar`; `objectives` = itself + `film/types`, `film/objectiveevent`,
    upstream `source` (J3.3b moved `ObjectiveEvent` out of `internal/domain` into the leaf
-   `domain/objectiveevent`, so `domain`, `domain/title` and `games/canonical` left the closure).
+   `domain/objectiveevent`, so `domain`, `domain/title` and `games/canonical` left the closure; D2 item 2.3
+   later moved that leaf, and `playerposition`, under `film/`).
 3. **One revision per consumer of facts** (DU-2 (c)). `facts.Rev`, which dated the whole `facts/`
    tree, is replaced by `killsource.Rev` — **same value**, `killsource-2026-09-24`, same series
    and history, so no killsource backlog is reopened — and `objectives.Rev`, born at
@@ -565,6 +567,41 @@ The facade surface ratchet (`archlint/film_facade_surface_test.go`, decision V25
 step, dated: 166 → 170 (J4.2, the four bridge reads re-exported) → 173 (J4.3, the stage and its
 two types) → 165 (J4.5, eight symbols without consumers removed). The companion surface
 (`replay.X` cited outside `film/`) went 281 → 276 at J4.2.
+
+## Amendment of 2026-10-29 — who owns the entity identity contract (decoupling D2, item 2.4)
+
+The entity identity contract (`Link`, `LinkMethod`, the `LinkCounts` family, the cause counters)
+is owned by the decoder: it now lives in `film/identity`, moved out of `internal/games/canonical`
+(`film_identity.go`), per audit decision 3 of 2026-10-27. A second title with a decoder would
+convert on the LevelUp side (`service/replayview/convert_identity.go` already converts to the API
+document types) rather than fill these types. Exported names are unchanged.
+
+## Amendment of 2026-10-29 (bis) — the decoder is the Go module `libs/film` (decoupling D2, lot 3)
+
+The decoder left `apps/go-api/internal/games/halo_infinite/film` for its own module,
+`github.com/JGtm/LevelUp/libs/film` (ADR 0041): the facade is `libs/film/decfilm`, the publication layer
+`libs/film/replay`, the four closed layers `libs/film/internal/{source,profile,grammar,facts}`. D-1 is
+now enforced at a module boundary: `internal/` closes the layers to LevelUp, and the brick imports
+nothing from LevelUp (`archlint/briques_imports_test.go`, tests included; `go list -deps -test` in the
+module shows no `levelup/go-api` package). The layer ratchets stay in `apps/go-api/internal/archlint`
+and read the brick from the repository root (`racineBriqueFilm`).
+
+**Fingerprints across the move (D-6).** A revision golden freezes a fingerprint of the layer's tokens;
+import paths are tokens. `libs/film/revision` therefore hashes in a historical frame (plan D2,
+decision D2-F): a string literal that starts with the current import path of the brick is hashed
+under `levelup/go-api/internal/games/halo_infinite/film`, and the directories of the layers and of
+the packages they import are named by their historical location in the hash and in the perimeter
+goldens (`Module.SurDisque` resolves them on disk). The frame was posted while the decoder still
+lived in `apps/go-api` (where it is the identity), so the move changed no fingerprint. Three
+goldens had been regenerated once, at constant revision, earlier the same day (plan D2, lot 2): the
+packages that entered the brick (`playerposition`, `objectiveevent`, `filmshell`) and the decoder's
+own `highlightevent` type changed the tokens and the `paquet` lines of `grammar`, `killsource` and
+`objectives`, whose chronicles carry the entry. The five revisions (`source-2026-09-16.2`,
+`profile-2026-10-16`, `grammar-2026-10-28`, `killsource-2026-10-18`, `objectives-2026-10-17`) did not
+move, so no persisted fact went stale and nothing was re-baked. The order of import specs is a token
+order outside the frame: hashed sources whose brick import sat among standard-library imports keep
+their historical order in separate import groups, with a comment above their `import`.
+
 
 ## Non-goals
 

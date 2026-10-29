@@ -15,8 +15,9 @@ import (
 	"errors"
 	"time"
 
-	"levelup/go-api/internal/games/halo_infinite/film/finalise"
 	"levelup/go-api/internal/observability"
+
+	"github.com/JGtm/LevelUp/libs/film/finalise"
 )
 
 // haloAPICallNames : appels instrumentés (ordre d'affichage dashboard).

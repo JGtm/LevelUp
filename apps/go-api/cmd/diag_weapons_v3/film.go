@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"github.com/JGtm/LevelUp/libs/film/filmcache"
 )
 
 // matchRef relie le préfixe cache (8-char, clé de film_chunks/ + film_manifests/)

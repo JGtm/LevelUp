@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // replay_vehicle_scenery_rule_test.go — LA REGLE DU DECOR, PURE (lot M7 des retours du rejeu,

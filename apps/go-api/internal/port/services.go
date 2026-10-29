@@ -10,10 +10,11 @@ import (
 
 	"levelup/go-api/internal/analysis/temporal"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/domain/objectiveevent"
-	"levelup/go-api/internal/domain/playerposition"
 	"levelup/go-api/internal/domain/replaydoc"
 	"levelup/go-api/internal/games/canonical"
+
+	"github.com/JGtm/LevelUp/libs/film/objectiveevent"
+	"github.com/JGtm/LevelUp/libs/film/playerposition"
 )
 
 // ---------------------------------------------------------------------------

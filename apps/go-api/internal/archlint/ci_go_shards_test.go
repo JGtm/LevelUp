@@ -8,8 +8,9 @@
 //     l'inverse (un job qui échouerait sur un lot inconnu) ;
 //  2. un test « lourd » renommé ou supprimé : la liste nommée qui sert à la fois de `-run` et de
 //     `-skip` vieillirait sans bruit et le découpage de `grammar` se déséquilibrerait ;
-//  3. une définition qui perd ou duplique un paquet : le script la refuse (partition exacte contre
-//     `go list -tags=integration ./...`) — ce test exécute le script sur la définition réelle ;
+//  3. une définition qui perd ou duplique un paquet : le script la refuse (partition exacte, module
+//     par module, contre `go list -tags=integration ./...` de chaque module) — ce test exécute le
+//     script sur la définition réelle ;
 //  4. un script qui ne sait plus refuser : il est exécuté sur une définition défectueuse.
 //
 // PARSING : textuel, sans parseur YAML (cf. ci_deploy_triggers_test.go). Les tests d'exécution
@@ -32,6 +33,7 @@ import (
 // shardLot — une ligne `lot` de go-shards.txt.
 type shardLot struct {
 	name     string
+	module   string // dossier du module Go du lot, relatif à la racine du dépôt (directive `module`)
 	filter   string // "-", "run:<liste>" ou "skip:<liste>"
 	patterns []string
 }
@@ -45,8 +47,12 @@ type shardDefinition struct {
 var heavyTestNameRe = regexp.MustCompile(`^[A-Za-z0-9_]+$`)
 
 // parseShardDefinition lit la syntaxe documentée en tête de .github/ci/go-shards.txt.
+// moduleDeShardParDefaut : le module des lots écrits avant toute directive `module`.
+const moduleDeShardParDefaut = "apps/go-api"
+
 func parseShardDefinition(text string) (shardDefinition, error) {
 	def := shardDefinition{heavy: map[string][]string{}}
+	module := moduleDeShardParDefaut
 	for n, raw := range strings.Split(strings.ReplaceAll(text, "\r\n", "\n"), "\n") {
 		line := raw
 		if i := strings.Index(line, "#"); i >= 0 {
@@ -67,11 +73,16 @@ func parseShardDefinition(text string) (shardDefinition, error) {
 				}
 			}
 			def.heavy[f[1]] = f[2:]
+		case "module":
+			if len(f) != 2 {
+				return def, fmt.Errorf("ligne %d : module attend un dossier", n+1)
+			}
+			module = f[1]
 		case "lot":
 			if len(f) < 4 {
 				return def, fmt.Errorf("ligne %d : lot incomplet", n+1)
 			}
-			def.lots = append(def.lots, shardLot{name: f[1], filter: f[2], patterns: f[3:]})
+			def.lots = append(def.lots, shardLot{name: f[1], module: module, filter: f[2], patterns: f[3:]})
 		case "timeout-defaut", "timeout":
 			// Budgets : jugés par le script (durée valide, lots connus).
 		default:
@@ -175,7 +186,6 @@ func TestCIGoShardsDefinitionAndMatrixAgree(t *testing.T) {
 func TestCIGoShardsHeavyTestsExist(t *testing.T) {
 	root := repoRootForWorkflows(t)
 	def := readShardDefinition(t, root)
-	goAPI := filepath.Join(root, "apps", "go-api")
 
 	checked := 0
 	for _, lot := range def.lots {
@@ -187,7 +197,7 @@ func TestCIGoShardsHeavyTestsExist(t *testing.T) {
 			if strings.HasPrefix(pat, "!") || strings.HasSuffix(pat, "...") {
 				continue
 			}
-			dir := filepath.Join(goAPI, filepath.FromSlash(strings.TrimPrefix(pat, "./")))
+			dir := filepath.Join(root, filepath.FromSlash(lot.module), filepath.FromSlash(strings.TrimPrefix(pat, "./")))
 			src := packageTestSources(t, dir)
 			for _, name := range def.heavy[list] {
 				checked++
@@ -298,6 +308,8 @@ func TestCIGoShardScriptRefusesBrokenDefinitions(t *testing.T) {
 		"complément vide":        {head + "lot a - ./...\nlot r - @reste\n", "complément"},
 		"pas de complément":      {head + "lot a - ./internal/archlint\n", "complément"},
 		"complément pas dernier": {head + "lot r - @reste\nlot a - ./internal/archlint\n", "dernier lot"},
+		"module sans complément": {head + "lot a - ./internal/archlint\nlot r - @reste\nmodule libs/film\nlot f - ./replay\n", "pas de complément"},
+		"motif hors module":      {head + "lot r - @reste\nmodule libs/film\nlot f - ./internal/archlint\nlot g - @reste\n", "ne désigne aucun paquet du module libs/film"},
 	} {
 		_, stderr, err := runShardScript(t, root, write(tc.def), "--verifier")
 		if err == nil {
@@ -317,8 +329,13 @@ func TestCIGoShardsAnalysisDetectsDefects(t *testing.T) {
 	if err != nil || len(def.lots) != 3 || len(def.heavy["h"]) != 2 {
 		t.Fatalf("définition conforme mal lue : lots=%d heavy=%v err=%v", len(def.lots), def.heavy, err)
 	}
+	if mod, err := parseShardDefinition("lot a - ./x\nmodule libs/film\nlot b - ./y\n"); err != nil ||
+		mod.lots[0].module != moduleDeShardParDefaut || mod.lots[1].module != "libs/film" {
+		t.Fatalf("modules des lots mal lus : %+v err=%v", mod.lots, err)
+	}
 
 	for name, text := range map[string]string{
+		"module sans dossier":  "module\nlot r - @reste\n",
 		"nom de test invalide": "heavy h Test-A\nlot r - @reste\n",
 		"directive inconnue":   "lots a - ./x\n",
 		"liste non déclarée":   "lot a run:zz ./x\nlot r - @reste\n",

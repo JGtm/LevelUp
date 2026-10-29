@@ -47,13 +47,13 @@ var goosArchSuffixes = []string{
 // d'exploitation, ou type de donnee propre a une architecture) — pas un fichier metier dont le
 // nom tombe par hasard sur un suffixe.
 var goosSuffixAllowed = map[string]string{
-	"apps/go-api/internal/filmproc/alive_windows.go": "vie d'un processus : OpenProcess/GetExitCodeProcess (Win32), " +
+	"libs/film/filmproc/alive_windows.go": "vie d'un processus : OpenProcess/GetExitCodeProcess (Win32), " +
 		"ajoute le 2026-10-17 (lecture du detenteur du verrou de decodage)",
-	"apps/go-api/internal/filmproc/priority_windows.go":          "priorite de processus : SetPriorityClass (Win32)",
-	"apps/go-api/internal/filmproc/selfpriority_windows.go":      "priorite du processus courant : Win32",
+	"libs/film/filmproc/priority_windows.go":                     "priorite de processus : SetPriorityClass (Win32)",
+	"libs/film/filmproc/selfpriority_windows.go":                 "priorite du processus courant : Win32",
 	"libs/gamefiles/himodule/projection_windows.go":              "projection memoire d'un module : CreateFileMapping (Win32)",
 	"apps/go-api/internal/platform/diskfree/diskfree_windows.go": "espace disque : GetDiskFreeSpaceEx (Win32)",
-	"apps/go-api/internal/platform/filelock/filelock_windows.go": "verrou de fichier entre processus : " +
+	"libs/film/internal/filelock/filelock_windows.go": "verrou de fichier entre processus : " +
 		"LockFileEx (Win32), ajoute le 2026-09-26 (J2.6, DT-2)",
 	"apps/go-api/internal/platform/session/store_purge_windows_test.go": "purge de sessions : comportement " +
 		"de suppression propre a Windows",

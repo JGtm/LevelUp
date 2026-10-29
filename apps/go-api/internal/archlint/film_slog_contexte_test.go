@@ -20,7 +20,7 @@ package archlint
 //
 // # PERIMETRE
 //
-// `internal/games/halo_infinite/film/` (hors `research/`), `internal/replaybuild/`,
+// `libs/film/` (hors `research/`), `internal/replaybuild/`,
 // `internal/sync/killcollector/`, `cmd/replay-*`. Fichiers non-test, hors `//go:build research`.
 // `grammar` et `facts` n ont en outre AUCUN journal : `film_no_slog_in_layers_test.go`.
 //
@@ -56,21 +56,33 @@ type fichierDuPerimetreFilm struct {
 	ast  *ast.File
 }
 
+// horsPerimetreDeJournal : les dossiers descendus sous `film/` par le plan D2 (2026-10-29) qui
+// journalisent SANS contexte et n'etaient pas dans ce perimetre quand ils vivaient hors de
+// `film/` (`internal/filmproc`, `platform/filelock`, `platform/atomicfile`). Leur donner un `ctx`
+// change la signature publique de `Arm`, `ArmBytes`, `AcquireSolo`, `Release`, `LowerOwnPriority`
+// (98 fichiers appelants) et de `atomicfile.WriteFile` (copie jumelle d'un paquet a onze fichiers importeurs
+// importeurs) : un lot a part, hors D2. Une exclusion DATEE et nommee par dossier, pas une
+// allowlist par ligne ; elle tombe avec ce lot. Chaque entree porte sa raison.
+var horsPerimetreDeJournal = map[string]string{
+	"libs/film/filmproc": "garde-fou processus (memguard, solo, priorites) : " +
+		"slog sans ctx depuis l'origine, API publique sans contexte",
+	"libs/film/internal/atomicfile": "copie jumelle de platform/atomicfile " +
+		"(slog.Warn sans ctx) : la signature de WriteFile est celle de onze fichiers importeurs",
+}
+
 // fichiersDuPerimetreFilm rend les fichiers de production du perimetre, hors `research`. Il
 // echoue sur un balayage vide : un ratchet qui ne mesure rien ne garde rien.
 func fichiersDuPerimetreFilm(t *testing.T, racines ...string) []fichierDuPerimetreFilm {
 	t.Helper()
-	racine := apiRootDepuisIci(t)
 	var out []fichierDuPerimetreFilm
 	for _, r := range racines {
-		err := filepath.WalkDir(filepath.Join(racine, filepath.FromSlash(r)), func(p string, d fs.DirEntry, err error) error {
+		err := filepath.WalkDir(surDisque(t, r), func(p string, d fs.DirEntry, err error) error {
 			if err != nil {
 				return err
 			}
-			rel, _ := filepath.Rel(racine, p)
-			rel = filepath.ToSlash(rel)
+			rel := cheminDeGardeRail(t, p)
 			if d.IsDir() {
-				if rel == "internal/games/halo_infinite/film/research" {
+				if rel == racineBriqueFilm+"/research" || horsPerimetreDeJournal[rel] != "" {
 					return filepath.SkipDir
 				}
 				return nil
@@ -107,7 +119,7 @@ func fichiersDuPerimetreFilm(t *testing.T, racines ...string) []fichierDuPerimet
 func racinesDuPerimetreFilm(t *testing.T) []string {
 	t.Helper()
 	racines := []string{
-		"internal/games/halo_infinite/film",
+		racineBriqueFilm,
 		"internal/replaybuild",
 		"internal/sync/killcollector",
 	}

@@ -23,12 +23,13 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replaybuild"
 	"levelup/go-api/internal/sync/replayartifacts"
+
+	"github.com/JGtm/LevelUp/libs/film/filmcache"
 )
 
 // replayBuildMu sérialise l'action replay-build (single-flight, pattern registryNamesMu).

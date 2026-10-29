@@ -58,10 +58,11 @@ import (
 
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service"
 	syncpkg "levelup/go-api/internal/sync"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // fixtureShort : le film de la preuve — le plus petit du corpus qui rend un artefact À JOUEURS.

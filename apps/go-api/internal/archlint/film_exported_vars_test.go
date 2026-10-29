@@ -19,7 +19,7 @@ package archlint
 //
 // # PERIMETRE
 //
-// `internal/games/halo_infinite/film/` (hors `research/`), `internal/replaybuild/`,
+// `libs/film/` (hors `research/`), `internal/replaybuild/`,
 // `internal/sync/killcollector/`, `cmd/replay-*`. Fichiers non-test seulement.
 //
 // # ALLOWLIST
@@ -44,14 +44,24 @@ import (
 	"testing"
 )
 
+// catalogueArmesHorsRatchet : le catalogue d'armes `film/filmshell`, EXCLU de la mesure. Entre sous
+// `film/` le 2026-10-29 (plan D2, item 2.5) en portant quinze tables exportees (`WeaponIDs`,
+// `WeaponTimingByID`, ...) lues par `games/weapons`, `platform/duckdb`, `sync/killcollector` et
+// le decodeur : il n'etait pas dans le perimetre quand il vivait sous `games/weapons`, et le
+// rapatrier n'a pas change sa nature (dette ADR 0012 preexistante, hors D2). Les rendre
+// accesseurs est un lot a part ; tant qu'il n'a pas lieu, l'exclusion est ICI, datee, au lieu
+// d'une allowlist par nom, et elle disparait avec ce lot.
+const catalogueArmesHorsRatchet = racineBriqueFilm + "/filmshell"
+
 func TestAucuneVarExporteeModifiableDansLeDecodeur(t *testing.T) {
-	racine := apiRootDepuisIci(t)
+	// Chemins relatifs a la racine du depot : la brique et ses lecteurs de LevelUp.
+	racine := workspaceRoot(t)
 	racines := []string{
-		"internal/games/halo_infinite/film",
-		"internal/replaybuild",
-		"internal/sync/killcollector",
+		racineBriqueFilm,
+		"apps/go-api/internal/replaybuild",
+		"apps/go-api/internal/sync/killcollector",
 	}
-	cmds, _ := filepath.Glob(filepath.Join(racine, "cmd", "replay-*"))
+	cmds, _ := filepath.Glob(filepath.Join(racine, "apps", "go-api", "cmd", "replay-*"))
 	if len(cmds) == 0 {
 		t.Fatal("aucun cmd/replay-* trouve : le perimetre du ratchet a bouge")
 	}
@@ -69,7 +79,7 @@ func TestAucuneVarExporteeModifiableDansLeDecodeur(t *testing.T) {
 			rel, _ := filepath.Rel(racine, p)
 			rel = filepath.ToSlash(rel)
 			if d.IsDir() {
-				if rel == "internal/games/halo_infinite/film/research" {
+				if rel == racineBriqueFilm+"/research" || rel == catalogueArmesHorsRatchet {
 					return filepath.SkipDir
 				}
 				return nil

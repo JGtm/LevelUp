@@ -15,9 +15,10 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/netguard"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
 )
 
 // Compteurs expvar du téléchargement de blobs (convention observability :

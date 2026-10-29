@@ -13,7 +13,7 @@
 |---|---|---|
 | API + sync + analyse | **Go** (chi + Huma, slog, DuckDB) | `apps/go-api/` |
 | Frontend | **React/TypeScript** (Vite, TanStack Router/Query/Table, ECharts) | `apps/web/` |
-| Briques Go (modules séparés, ADR 0041) | **Go**, reliées à `apps/go-api` par `go.work` (racine) | `libs/<brique>/` (`libs/gamefiles` : lecteurs de fichiers du jeu ; `libs/himap` : images de carte) |
+| Briques Go (modules séparés, ADR 0041) | **Go**, reliées à `apps/go-api` par `go.work` (racine) | `libs/<brique>/` (`libs/gamefiles` : lecteurs de fichiers du jeu ; `libs/himap` : images de carte ; `libs/film` : décodeur de film) |
 | Stockage | **DuckDB** par titre + Parquet (archives) | `data/titles/{slug}/` |
 | Config | JSON + TOML | `db_profiles.json`, `app_settings.json`, `.env.local`, `config/titles/` |
 
@@ -369,10 +369,10 @@ git commit -m "refactor(phase2): ..."
   fin — quitter un match n'est pas quitter la session ; `composition_sessions[].match_count`
   seule source d'un compte de session, `/filters/resolve` en repli de chargement seulement ;
   2 ratchets) · `0034` **décodeur de film** (profil immuable par build ; cinq couches
-  `source`→`profile`→`grammar`→`facts`→`replay`, les quatre premières sous `film/internal/`,
-  fermées par le compilateur ; hors de `film/`, on passe par la façade `film/decfilm`, dont la
+  `source`→`profile`→`grammar`→`facts`→`replay`, les quatre premières sous `libs/film/internal/`,
+  fermées par le compilateur ; hors du module `libs/film`, on passe par la façade `libs/film/decfilm`, dont la
   surface est tenue par `archlint/film_facade_surface_test.go` (186 symboles et 277
-  identifiants `replay.X` hors de `film/` au 2026-09-30 ; réduction non retenue, V25) ;
+  identifiants `replay.X` hors du décodeur au 2026-09-30 ; réduction non retenue, V25) ;
   porte unique aux octets ; build inconnu = erreur typée + film mis de côté + compteur ; une
   révision par couche, empreinte insensible aux commentaires ; faits PERSISTÉS, la
   publication rejoue depuis eux quand ils sont frais ; équipe = le film seul ; replis
@@ -402,7 +402,8 @@ git commit -m "refactor(phase2): ..."
   premier niveau, relié à `apps/go-api` par `go.work` sans `replace` ni `require` ; critère d'autonomie =
   `go list -deps` sans `levelup/go-api` ; table `archlint/briques_imports_test.go` ; ratchets à règle générale
   racinés sur l'espace de travail ; aucun fichier extrait du jeu dans une brique ; `./...` ne franchit pas un
-  module : `make libs-test`, pas de `go mod tidy` dans `apps/go-api`).
+  module : `make libs-test`, pas de `go mod tidy` dans `apps/go-api` ; trois modules au rang
+  `film` → `himap` → `gamefiles`, le décodeur de film garde ses empreintes de couche par un cadre historique).
 
 READMEs catalogues : `apps/go-api/internal/analysis/{temporal,breakdown,narrative}/README.md`,
 `apps/web/src/components/charts/README.md` (wrappers ECharts).

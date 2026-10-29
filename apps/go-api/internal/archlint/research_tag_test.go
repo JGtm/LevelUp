@@ -57,7 +57,7 @@ const instrumentsResearchPlancher = 412
 // dossiersInstruments : sous ces préfixes (chemins relatifs à la racine du dépôt, en slash), tout
 // fichier tagué est un instrument par construction.
 var dossiersInstruments = []string{
-	"apps/go-api/internal/games/halo_infinite/film/research/",
+	"libs/film/research/",
 	"apps/go-api/tools/film_re/",
 }
 

@@ -17,16 +17,18 @@ package killcollector
 import (
 	"context"
 	"database/sql"
-	_ "github.com/duckdb/duckdb-go/v2"
 	"path/filepath"
 	"testing"
 	"time"
 
+	_ "github.com/duckdb/duckdb-go/v2"
+
 	"levelup/go-api/internal/domain/killscope"
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/sync/matchflags"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
 )
 
 func baseBacklog(t *testing.T) *sql.DB {

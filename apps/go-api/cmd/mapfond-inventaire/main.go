@@ -42,7 +42,8 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // voieResolution nomme le chemin par lequel le fond a ete trouve — la distinction qui manquait

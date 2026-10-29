@@ -1,6 +1,7 @@
 package replayverite
 
 import (
+	"levelup/go-api/internal/testutil"
 	"os"
 	"reflect"
 	"strings"
@@ -8,13 +9,16 @@ import (
 )
 
 // formeDuDocument : l'empreinte de forme du document publie, figee par le producteur
-// (`film/replay/document_shape_test.go`). Lue comme TEXTE : le banc n'importe pas le producteur.
-const formeDuDocument = "../games/halo_infinite/film/replay/testdata/document_shape.golden"
+// (`libs/film/replay/document_shape_test.go`). Lue comme TEXTE : le banc n'importe pas le producteur.
+func formeDuDocument(t *testing.T) string {
+	t.Helper()
+	return testutil.CheminBriqueFilm(t, "replay", "testdata", "document_shape.golden")
+}
 
 // TestForme_ChaqueCleLueExisteChezLeProducteur : une cle renommee cote producteur ferait lire une
 // valeur zero au banc, qui jugerait alors un document vide « sans faux ». Ce test la rend bruyante.
 func TestForme_ChaqueCleLueExisteChezLeProducteur(t *testing.T) {
-	blob, err := os.ReadFile(formeDuDocument)
+	blob, err := os.ReadFile(formeDuDocument(t))
 	if err != nil {
 		t.Fatalf("empreinte de forme illisible : %v", err)
 	}
@@ -37,7 +41,7 @@ func TestForme_ChaqueCleLueExisteChezLeProducteur(t *testing.T) {
 				continue
 			}
 			if !strings.Contains(forme, `json:"`+nom+`"`) && !strings.Contains(forme, `json:"`+nom+`,`) {
-				t.Errorf("%s.%s : la cle %q n'existe plus dans %s", ty.Name(), f.Name, nom, formeDuDocument)
+				t.Errorf("%s.%s : la cle %q n'existe plus dans %s", ty.Name(), f.Name, nom, formeDuDocument(t))
 			}
 			parcourir(f.Type)
 		}

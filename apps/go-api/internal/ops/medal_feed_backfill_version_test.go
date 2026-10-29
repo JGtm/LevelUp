@@ -27,7 +27,8 @@ import (
 	"unicode/utf16"
 
 	"levelup/go-api/internal/domain/highlightevent"
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
 )
 
 // gamertagTemoin : le nom pose dans le bloc synthetique. Il n a rien de special, sinon d etre
@@ -110,7 +111,7 @@ func TestEventsDuFilmSuitLaVersionDeclaree(t *testing.T) {
 Sur les versions 39-40 le gamertag vit a l octet 12 du bloc d event. Parser avec 0 le lit a
 l octet 0 et rend du rembourrage (.ai/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md).
 
-Verifier que eventsDuFilm passe film.MajorVersion a decfilm.ParseHighlightEvents, et que la
+Verifier que eventsDuFilm passe film.MajorVersion a haloinfinite.ParseHighlightEvents, et que la
 source du CLI (cmd/levelup/cmd_backfill_medailles_feed.go) lit bien la version du registre.`,
 			film.MajorVersion, events[0].Gamertag, gamertagTemoin)
 	}

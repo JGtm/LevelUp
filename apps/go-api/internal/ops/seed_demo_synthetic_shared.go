@@ -17,10 +17,11 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/killscope"
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/persist"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
 )
 
 // synthDemoSeason : season_id fixe du corpus synthétique.

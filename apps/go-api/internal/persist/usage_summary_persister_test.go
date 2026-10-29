@@ -16,9 +16,10 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
 	"levelup/go-api/internal/migration"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 func openUsageSummaryTestDB(t *testing.T) *sql.DB {

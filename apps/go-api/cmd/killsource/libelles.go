@@ -13,8 +13,8 @@ package main
 import (
 	"fmt"
 
-	"levelup/go-api/internal/games/halo_infinite/film/damagetag"
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/damagetag"
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
 )
 
 // natureLibelle : la nature de la source, en clair.

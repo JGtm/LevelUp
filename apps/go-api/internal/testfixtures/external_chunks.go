@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"github.com/JGtm/LevelUp/libs/film/filmcache"
 )
 
 // ExternalFilmDataDir retourne le chemin du dataset 942 matchs si la

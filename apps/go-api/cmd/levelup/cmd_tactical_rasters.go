@@ -49,9 +49,10 @@ import (
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/service"
 	"levelup/go-api/internal/sync/replayartifacts"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // tacticalRastersOptions : les reglages de la passe.

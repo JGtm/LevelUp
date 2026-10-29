@@ -49,11 +49,12 @@ import (
 
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/halo_infinite/film/medalname"
 	"levelup/go-api/internal/ops"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/sync/haloclient"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/medalname"
 )
 
 // medaillesFeedOptions : les reglages de la passe.

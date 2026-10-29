@@ -205,7 +205,7 @@ func WeaponCatalog(ctx context.Context, repoRoot, titleSlug, locale string) map[
 	for family, key := range cat.Keys {
 		info := squadformes.WeaponInfo{WeaponKey: key}
 		if label, ok := cat.Weapons[family]; ok {
-			info.Label = label.Text.Pick(loc)
+			info.Label = replaylabels.TexteDepuisFilm(label.Text).Pick(loc)
 		}
 		out[formesWeaponFamilyKey(family)] = info
 	}

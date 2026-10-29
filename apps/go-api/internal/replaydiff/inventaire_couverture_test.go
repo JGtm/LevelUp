@@ -15,15 +15,18 @@ package replaydiff
 import (
 	"bufio"
 	"fmt"
+	"levelup/go-api/internal/testutil"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
+	"testing"
 )
 
-// cheminFormeDocument : le golden de forme du producteur, relatif a ce paquet.
-var cheminFormeDocument = filepath.Join("..", "games", "halo_infinite", "film", "replay",
-	"testdata", "document_shape.golden")
+// cheminFormeDocument : le golden de forme du producteur, dans la brique du decodeur.
+func cheminFormeDocument(t *testing.T) string {
+	t.Helper()
+	return testutil.CheminBriqueFilm(t, "replay", "testdata", "document_shape.golden")
+}
 
 // champForme est UNE ligne de champ du golden : `  Nom json:"tag,omitempty" Type`.
 type champForme struct {

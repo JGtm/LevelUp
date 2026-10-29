@@ -24,7 +24,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // artefactDrapeau forge un artefact de CTF minimal mais complet : deux drapeaux, un jonglage

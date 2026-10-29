@@ -39,8 +39,7 @@ func cleLectureBrute(fichier, motif string) string { return fichier + " | " + mo
 // nombre de fichiers `.go` de production reellement parcourus (pour le plancher).
 func balayerLecturesBrutes(t *testing.T) ([]siteBrut, int) {
 	t.Helper()
-	racineAPI := apiRootDepuisIci(t)
-	paquets := paquetsSurveillesOctets(t, racineAPI)
+	paquets := paquetsSurveillesOctets(t)
 	var sites []siteBrut
 	var fichiers int
 	for _, dir := range clesTrieesOctets(paquets) {
@@ -51,8 +50,7 @@ func balayerLecturesBrutes(t *testing.T) ([]siteBrut, int) {
 			if err != nil {
 				t.Fatalf("parse de %s : %v", chemin, err)
 			}
-			rel, _ := filepath.Rel(racineAPI, chemin)
-			asts[filepath.ToSlash(rel)] = f
+			asts[cheminDeGardeRail(t, chemin)] = f
 			fichiers++
 		}
 		ctx := contexteDePaquetOctets{types: typesDeclaresDuPaquet(asts), consts: constantesDuPaquet(asts)}
@@ -76,20 +74,16 @@ func trierSitesBruts(sites []siteBrut) {
 
 // paquetsSurveillesOctets rend, par repertoire de paquet, les fichiers `.go` de PRODUCTION des
 // racines surveillees, exclusions deduites.
-func paquetsSurveillesOctets(t *testing.T, racineAPI string) map[string][]string {
+func paquetsSurveillesOctets(t *testing.T) map[string][]string {
 	t.Helper()
 	out := map[string][]string{}
 	for _, racine := range racinesOctetsBruts {
-		abs := filepath.Join(racineAPI, filepath.FromSlash(racine))
+		abs := surDisque(t, racine)
 		err := filepath.WalkDir(abs, func(chemin string, d fs.DirEntry, err error) error {
 			if err != nil {
 				return err
 			}
-			rel, rerr := filepath.Rel(racineAPI, chemin)
-			if rerr != nil {
-				return rerr
-			}
-			rel = filepath.ToSlash(rel)
+			rel := cheminDeGardeRail(t, chemin)
 			if d.IsDir() {
 				if exclusionDOctets(rel) {
 					return filepath.SkipDir
@@ -303,10 +297,10 @@ func estTypeDeLecteurDeBits(s *ast.StructType) bool {
 	return octets && position
 }
 
-// repertoireExisteSousAPI dit si un chemin relatif a `apps/go-api` designe un repertoire.
+// repertoireExisteSousAPI dit si un chemin de garde-rail ([surDisque]) designe un repertoire.
 func repertoireExisteSousAPI(t *testing.T, rel string) bool {
 	t.Helper()
-	info, err := os.Stat(filepath.Join(apiRootDepuisIci(t), filepath.FromSlash(rel)))
+	info, err := os.Stat(surDisque(t, rel))
 	return err == nil && info.IsDir()
 }
 

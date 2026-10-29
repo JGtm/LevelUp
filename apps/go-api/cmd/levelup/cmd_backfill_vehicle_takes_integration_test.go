@@ -20,9 +20,10 @@ import (
 	"levelup/go-api/internal/domain/killscope"
 	titlePkg "levelup/go-api/internal/domain/title"
 	halo "levelup/go-api/internal/games/halo_infinite"
-	"levelup/go-api/internal/games/halo_infinite/film/killicon"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/weapons"
+
+	"github.com/JGtm/LevelUp/libs/film/killicon"
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 func vtTagEngin(t *testing.T) uint32 {

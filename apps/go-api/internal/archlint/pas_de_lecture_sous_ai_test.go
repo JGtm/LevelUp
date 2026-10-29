@@ -73,18 +73,18 @@ var sitesAiAutorises = map[string]siteAi{
 	"libs/gamefiles/hinavmesh/depot_research_test.go":    {1, raisonReDump + " (helper unique des instruments de la brique, lot 2c du plan D1, 2026-10-28)"},
 	"libs/gamefiles/mapvar/depot_research_test.go":       {1, raisonReDump + " (helper unique des instruments de la brique, lot 2c du plan D1, 2026-10-28)"},
 	// Sorties de recherche (écriture, pas lecture de fixture).
-	"apps/go-api/internal/games/halo_infinite/film/internal/grammar/zone_census_test.go": {1, raisonSortie},
-	"apps/go-api/internal/games/halo_infinite/film/replay/colline_propriete_test.go":     {1, raisonSortie},
-	"apps/go-api/internal/games/halo_infinite/film/replay/lettres_corpus_test.go":        {1, raisonSortie},
-	"apps/go-api/internal/games/halo_infinite/film/replay/zone_state_ti13_scan_test.go":  {1, raisonSortie},
-	"apps/go-api/cmd/engagement-calibrate/main.go":                                       {1, "écrit son rapport de calibration à la racine de .ai (sortie de l'outil)"},
-	"apps/go-api/cmd/weapon-icons-build/page.go":                                         {1, "réécrit la page de nommage des icônes dans l'archive (sortie de l'outil, pas une entrée)"},
+	"libs/film/internal/grammar/zone_census_test.go": {1, raisonSortie},
+	"libs/film/replay/colline_propriete_test.go":     {1, raisonSortie},
+	"libs/film/replay/lettres_corpus_test.go":        {1, raisonSortie},
+	"libs/film/replay/zone_state_ti13_scan_test.go":  {1, raisonSortie},
+	"apps/go-api/cmd/engagement-calibrate/main.go":   {1, "écrit son rapport de calibration à la racine de .ai (sortie de l'outil)"},
+	"apps/go-api/cmd/weapon-icons-build/page.go":     {1, "réécrit la page de nommage des icônes dans l'archive (sortie de l'outil, pas une entrée)"},
 	// Contrôles de cohérence entre documents de .ai.
 	"apps/go-api/internal/archlint/doc_chemins_ai_test.go":           {4, "ratchet des chemins .ai cités en commentaire : son objet est .ai"},
 	"apps/go-api/internal/archlint/no_stale_fallback_target_test.go": {1, "contrôle de cohérence entre le registre de replis et le plan du décodeur (accepté, 2026-10-27)"},
 	"apps/go-api/internal/testfixtures/paths_test.go":                {1, "sentinelle : RepoRoot() doit retrouver la racine, reconnue à son dossier .ai"},
 	// Dette connue : fixture versionnée lue sous .ai, à migrer sous testdata/ du paquet.
-	"apps/go-api/internal/games/halo_infinite/film/internal/facts/objectives/named_test.go": {1, "DETTE (2026-10-27) : lit .ai/refs/TABLE_STATS_STATBORG.tsv, versionnée et non archivée ; à migrer sous testdata/"},
+	"libs/film/internal/facts/objectives/named_test.go": {1, "DETTE (2026-10-27) : lit .ai/refs/TABLE_STATS_STATBORG.tsv, versionnée et non archivée ; à migrer sous testdata/"},
 }
 
 // nombreSitesAiAutorisesPlafond : taille maximale de la liste (ratchet). Baisser avec elle.

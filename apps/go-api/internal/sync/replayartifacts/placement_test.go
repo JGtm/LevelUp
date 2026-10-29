@@ -16,9 +16,10 @@ import (
 	"testing"
 
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replaybuild"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // hookAvec construit un hook au réglage donné, sans store de configuration.

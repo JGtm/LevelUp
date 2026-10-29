@@ -21,7 +21,7 @@ import (
 	"testing"
 )
 
-// repoRootWalkAllowlist : fichiers (chemin relatif depuis apps/go-api/) autorisés à porter
+// repoRootWalkAllowlist : fichiers (chemin de garde-rail, [surDisque] : relatif à apps/go-api, ou au dépôt sous libs/) autorisés à porter
 // une remontée. Le helper canonique, plus deux variantes ANTÉRIEURES (2026-07-26) qui ne
 // sont pas des copies du même code : elles partent de l'exécutable, bornent la remontée et
 // cherchent un autre marqueur. Les migrer exigerait de changer leur comportement au
@@ -39,23 +39,16 @@ var repoRootWalkAllowlist = map[string]bool{
 var repoRootWalkMarkers = []string{"db_profiles.json", "filepath.Dir(dir)"}
 
 func TestNoDuplicateRepoRootWalk(t *testing.T) {
-	_, thisFile, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller a échoué")
-	}
-	goAPIRoot := filepath.Dir(filepath.Dir(filepath.Dir(thisFile))) // .../apps/go-api
-
 	var violations []string
-	for _, sub := range []string{"cmd", "internal"} {
-		err := filepath.WalkDir(filepath.Join(goAPIRoot, sub), func(path string, d os.DirEntry, err error) error {
+	for _, sub := range []string{"cmd", "internal", racineBriqueFilm} {
+		err := filepath.WalkDir(surDisque(t, sub), func(path string, d os.DirEntry, err error) error {
 			if err != nil {
 				return err
 			}
 			if d.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
 				return nil
 			}
-			rel, _ := filepath.Rel(goAPIRoot, path)
-			rel = filepath.ToSlash(rel)
+			rel := cheminDeGardeRail(t, path)
 			if repoRootWalkAllowlist[rel] {
 				return nil
 			}
@@ -97,15 +90,15 @@ func stripComments(src string) string {
 	return b.String()
 }
 
-// repoRootLadderAllowlist : fichiers de TEST (chemin relatif depuis apps/go-api/) encore
+// repoRootLadderAllowlist : fichiers de TEST (chemin de garde-rail, [surDisque] : relatif à apps/go-api, ou au dépôt sous libs/) encore
 // autorises a ecrire l'echelle de remontee a la main. Les deux entrees sont ANTERIEURES au
 // garde-rail (relevees le 2026-08-19) et hors du perimetre de gate du lot C-ter volet 2 :
 // les migrer sans rejouer leur paquet serait un fix aveugle. Condition de reprise : au
 // prochain passage sur ces paquets, remplacer l'echelle par testutil.RepoRoot() et retirer
 // l'entree ici.
 var repoRootLadderAllowlist = map[string]bool{
-	"internal/games/halo_infinite/film/internal/grammar/map_bounds_test.go": true, // echelle + Skip sur map_quant_bounds.json (versionne)
-	"internal/ops/seed_citation_assets_test.go":                             true, // const citationRepoRoot, racine des image_path seedes
+	"libs/film/internal/grammar/map_bounds_test.go": true, // echelle + Skip sur map_quant_bounds.json (versionne)
+	"internal/ops/seed_citation_assets_test.go":     true, // const citationRepoRoot, racine des image_path seedes
 }
 
 // TestNoAdHocRepoRootLadderInTests : un test qui lit un fichier VERSIONNE localise la
@@ -117,27 +110,20 @@ var repoRootLadderAllowlist = map[string]bool{
 // remontee jusqu'a un marqueur gitignore (title.FindRepoRoot) a le meme defaut cote CI ;
 // elle reste le helper des OUTILS, pas des tests de fichiers versionnes.
 func TestNoAdHocRepoRootLadderInTests(t *testing.T) {
-	_, thisFile, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller a échoué")
-	}
-	goAPIRoot := filepath.Dir(filepath.Dir(filepath.Dir(thisFile))) // .../apps/go-api
-
 	// Motif CONSTRUIT (et non ecrit en clair) pour que ce fichier de garde ne se signale
 	// pas lui-meme : quatre « .. » = la racine du depot depuis un paquet sous internal/.
 	echelle := strings.Repeat("../", 3) + ".."
 
 	var violations []string
-	for _, sub := range []string{"cmd", "internal"} {
-		err := filepath.WalkDir(filepath.Join(goAPIRoot, sub), func(path string, d os.DirEntry, err error) error {
+	for _, sub := range []string{"cmd", "internal", racineBriqueFilm} {
+		err := filepath.WalkDir(surDisque(t, sub), func(path string, d os.DirEntry, err error) error {
 			if err != nil {
 				return err
 			}
 			if d.IsDir() || !strings.HasSuffix(path, "_test.go") {
 				return nil
 			}
-			rel, _ := filepath.Rel(goAPIRoot, path)
-			rel = filepath.ToSlash(rel)
+			rel := cheminDeGardeRail(t, path)
 			if repoRootLadderAllowlist[rel] {
 				return nil
 			}
@@ -160,15 +146,14 @@ func TestNoAdHocRepoRootLadderInTests(t *testing.T) {
 	}
 }
 
-// repoRootInTestsAllowlist : fichiers de TEST (chemin relatif depuis apps/go-api/) encore
+// repoRootInTestsAllowlist : fichiers de TEST (chemin de garde-rail, [surDisque] : relatif à apps/go-api, ou au dépôt sous libs/) encore
 // autorises a situer la racine du depot autrement que par testutil.RepoRoot(). Releve DATE
 // du 2026-08-19 (revue adversariale ronde 2, R2-2) ; chaque entree porte sa raison ET sa
 // condition de reprise — une allowlist sans date se perime en silence.
 var repoRootInTestsAllowlist = map[string]bool{
-	// Instrument de RECHERCHE sous garde d'environnement (CTF_RESEARCH_FILMS) : il ne
-	// tourne jamais en CI, donc le helper de production y est sans consequence. Reprise :
-	// si la garde d'environnement tombe, migrer vers testutil.RepoRoot().
-	"internal/games/halo_infinite/film/replay/ctf_research_test.go": true,
+	// (2026-10-29, plan D2 item 2.11) `film/replay/ctf_research_test.go` a quitte cette liste : il
+	// situe la racine par `racineDepot` (helper de test du paquet, remontee jusqu'au `go.work` du
+	// depot), plus par le helper de production.
 	// Lit data/cache/replays/halo_infinite/000d5950.json — un CACHE, NON versionne
 	// (git ls-files vide au 2026-08-19). Ici le skip est le comportement JUSTE : le fichier
 	// est vraiment absent d'un checkout. Reprise : s'il devient versionne, migrer + Fatal.
@@ -214,16 +199,15 @@ func TestNoProdRepoRootHelperInTests(t *testing.T) {
 	moi = filepath.ToSlash(moi)
 
 	violations := map[string][]string{}
-	for _, sub := range []string{"cmd", "internal"} {
-		err := filepath.WalkDir(filepath.Join(goAPIRoot, sub), func(path string, d os.DirEntry, err error) error {
+	for _, sub := range []string{"cmd", "internal", racineBriqueFilm} {
+		err := filepath.WalkDir(surDisque(t, sub), func(path string, d os.DirEntry, err error) error {
 			if err != nil {
 				return err
 			}
 			if d.IsDir() || !strings.HasSuffix(path, "_test.go") {
 				return nil
 			}
-			rel, _ := filepath.Rel(goAPIRoot, path)
-			rel = filepath.ToSlash(rel)
+			rel := cheminDeGardeRail(t, path)
 			if rel == moi || repoRootInTestsAllowlist[rel] {
 				return nil
 			}

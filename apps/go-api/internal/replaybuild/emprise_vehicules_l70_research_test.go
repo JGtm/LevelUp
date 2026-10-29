@@ -44,10 +44,11 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/filmproc"
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/testutil"
+
+	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/LevelUp/libs/film/filmproc"
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // Les seuils du plan, ecrits avant la mesure.

@@ -41,7 +41,7 @@ package archlint
 //
 //	# (a) surface de la facade
 //	grep -cE '^(const|type|var|func) [A-Z]' \
-//	  apps/go-api/internal/games/halo_infinite/film/decfilm/decfilm.go
+//	  libs/film/decfilm/decfilm.go
 //	#   -> 166 sur a5d15e634
 //
 //	# (b) plafond compagnon : IDENTIFIANTS DISTINCTS cites hors de film/, tests compris
@@ -95,8 +95,8 @@ import (
 	"testing"
 )
 
-// cheminDeLaFacade — le fichier mesure par (a), relatif a `apps/go-api`.
-const cheminDeLaFacade = "internal/games/halo_infinite/film/decfilm/decfilm.go"
+// cheminDeLaFacade — le fichier mesure par (a), relatif a la racine du depot.
+const cheminDeLaFacade = racineBriqueFilm + "/decfilm/decfilm.go"
 
 // exigenceDeJustificationDatee — LA PHRASE QUE LES TROIS MESSAGES D ERREUR DOIVENT DIRE.
 //
@@ -400,7 +400,26 @@ const plafondSurfaceFacade = 179 // 2026-10-02 — retrait des replis nuls (DU-7
 //	                                           nuage, decision D-16) et `replay.PositionsDesVehicules`
 //	                                           (le nuage `ti=40` lu comme la cuisson le lit), que la passe
 //	                                           des positions du collecteur fournit. Aucun retrait.
-const plafondSurfaceReplay = 312 // 2026-10-18 — base 9d8879471 re-mesuree a 310 + 2 (LectureDuBord, PositionsDesVehicules) ; cf. l historique ci-dessus
+//	314  decouplage D2, item 2.8 (2026-10-29)  base `86b7924a1` re-mesuree a 312. +2 :
+//	                                           `replay.EquipmentOutcomeFamilies` et `replay.UsageFamilySpawnsPiece`,
+//	                                           la copie jumelle du perimetre du bilan d equipement que le
+//	                                           decodeur porte depuis qu il n importe plus
+//	                                           `domain/equipmentusage` ; le garde-rail de LevelUp
+//	                                           (`domain/equipmentusage/jumeau_film_test.go`) les compare a
+//	                                           l original (regle 6). Aucun retrait.
+//	315  decouplage D2, item 2.9 (2026-10-29)  base `464f7feb8` re-mesuree a 314. +1 :
+//	                                           `replay.Text`, le libelle par langue propre au decodeur
+//	                                           (il n importe plus `internal/i18n`) ; LevelUp le convertit
+//	                                           dans `replaylabels` (`TexteVersFilm`, `TexteDepuisFilm`) et
+//	                                           son garde-rail de fil (`fil_jumeau_test.go`) le nomme.
+//	                                           Aucun retrait.
+//	316  decouplage D2, item 2.11 (2026-10-29)  base `0bfe57feb` re-mesuree a 315. +1 :
+//	                                           `replay.ContinuousWeaponKeys`, les cles d arme que la table
+//	                                           des chassis declare a tir continu ; la garde de LevelUp
+//	                                           (`internal/filmcorpus/armes_continues_registre_test.go`) la
+//	                                           confronte au registre du titre, que la brique ne charge plus.
+//	                                           Aucun retrait.
+const plafondSurfaceReplay = 316 // 2026-10-29 — base 0bfe57feb re-mesuree a 315 + 1 (ContinuousWeaponKeys) ; cf. l historique ci-dessus
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.
 //
@@ -504,7 +523,7 @@ func racineAPIDuCompteur(t *testing.T) string {
 // donc en famille inconnue, donc en rouge.
 func surfaceDeLaFacade(t *testing.T) (map[string]int, int) {
 	t.Helper()
-	chemin := filepath.Join(racineAPIDuCompteur(t), filepath.FromSlash(cheminDeLaFacade))
+	chemin := surDisque(t, cheminDeLaFacade)
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, chemin, nil, 0)
 	if err != nil {

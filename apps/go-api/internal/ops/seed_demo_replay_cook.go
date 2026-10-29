@@ -2,7 +2,7 @@
 //
 // Même chemin que l'étape 1.58 du post-sync et que l'action admin : le parent lit les faits du
 // match et ses cartes candidates dans la base SOURCE, relâche ses handles, puis délègue le
-// décodage à UN enfant borné (`replaychild`, plafond mémoire `internal/filmproc`) qui rend les
+// décodage à UN enfant borné (`replaychild`, plafond mémoire `internal/games/halo_infinite/film/filmproc`) qui rend les
 // octets ; le parent les range lui-même (`replaybuild.StoreArtifactAt`, validations et garde
 // anti-régression compris), dans la disposition démo. Le film lu est celui du MAGASIN des films
 // de la démo, jamais un téléchargement ; rien n'est écrit hors de la démo (les faits de film ne
@@ -21,11 +21,12 @@ import (
 	"time"
 
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replaybuild"
 	"levelup/go-api/internal/replaychild"
+
+	"github.com/JGtm/LevelUp/libs/film/filmcache"
 )
 
 // demoReplayLockWait borne l'attente du verrou de décodage par film : au-delà, le rejeu reste

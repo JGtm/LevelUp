@@ -106,7 +106,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strings"
 	"testing"
@@ -144,14 +143,14 @@ const plancherFonctionsBalayees = 2300
 //     d equivalence (zero difference au corpus gate), jamais au fil de l eau ;
 //   - `tableProfilInvariants`, qui est une table litterale d invariants par build.
 var plafondsParFonction = map[string]int{
-	"internal/games/halo_infinite/film/internal/grammar/dispatch_player.go:consumeCrewFlockAndMusicComponent":       146,
-	"internal/games/halo_infinite/film/internal/grammar/dispatch_biped.go:consumeManagedAndObjectiveComponent":      143,
-	"internal/games/halo_infinite/film/internal/grammar/dispatch_item.go:consumeItemAndTacmapComponent":             139,
-	"internal/games/halo_infinite/film/internal/grammar/dispatch_player.go:consumePlayerTailAndGameEngineComponent": 122,
-	"internal/games/halo_infinite/film/internal/grammar/dispatch_object.go:consumeByName":                           118,
-	"internal/games/halo_infinite/film/internal/grammar/frame_infer.go:decodeInferLoop":                             114,
-	"internal/games/halo_infinite/film/internal/grammar/dispatch_biped.go:consumeCaptureAndBipedComponent":          112,
-	"internal/games/halo_infinite/film/internal/profile/profile_table.go:tableProfilInvariants":                     89,
+	"libs/film/internal/grammar/dispatch_player.go:consumeCrewFlockAndMusicComponent":       146,
+	"libs/film/internal/grammar/dispatch_biped.go:consumeManagedAndObjectiveComponent":      143,
+	"libs/film/internal/grammar/dispatch_item.go:consumeItemAndTacmapComponent":             139,
+	"libs/film/internal/grammar/dispatch_player.go:consumePlayerTailAndGameEngineComponent": 122,
+	"libs/film/internal/grammar/dispatch_object.go:consumeByName":                           118,
+	"libs/film/internal/grammar/frame_infer.go:decodeInferLoop":                             114,
+	"libs/film/internal/grammar/dispatch_biped.go:consumeCaptureAndBipedComponent":          112,
+	"libs/film/internal/profile/profile_table.go:tableProfilInvariants":                     89,
 }
 
 // TestLongueurDesFonctionsDuFilmNeCroitPas : aucune fonction des racines surveillees ne depasse
@@ -257,14 +256,9 @@ func TestExclusionDuTagResearch(t *testing.T) {
 //   - les declarations sans corps (`func` externes, assembleur) : rien a mesurer.
 func balayerLongueursFonctionsFilm(t *testing.T) map[string]int {
 	t.Helper()
-	_, ici, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller a echoue")
-	}
-	goAPIRoot := filepath.Dir(filepath.Dir(filepath.Dir(ici))) // .../apps/go-api
 	out := map[string]int{}
 	for _, racine := range racinesSurveilleesTaille {
-		base := filepath.Join(goAPIRoot, filepath.FromSlash(racine))
+		base := surDisque(t, racine)
 		err := filepath.WalkDir(base, func(chemin string, d fs.DirEntry, err error) error {
 			if err != nil {
 				return err
@@ -279,7 +273,7 @@ func balayerLongueursFonctionsFilm(t *testing.T) map[string]int {
 			if !strings.HasSuffix(chemin, ".go") || strings.HasSuffix(chemin, "_test.go") {
 				return nil
 			}
-			return releverFonctionsDuFichier(goAPIRoot, chemin, out)
+			return releverFonctionsDuFichier(cheminDeGardeRail(t, chemin), chemin, out)
 		})
 		if err != nil {
 			t.Fatalf("balayage de %s : %v", base, err)
@@ -291,7 +285,7 @@ func balayerLongueursFonctionsFilm(t *testing.T) map[string]int {
 // releverFonctionsDuFichier ajoute a `out` les fonctions d un fichier. Le fichier est lu une
 // seule fois : ses octets servent d abord au tag de build, puis au parseur (mode 0, sans les
 // commentaires — `fd.Pos()` reste le mot-cle `func`, ce qui est bien la borne voulue).
-func releverFonctionsDuFichier(goAPIRoot, chemin string, out map[string]int) error {
+func releverFonctionsDuFichier(rel, chemin string, out map[string]int) error {
 	blob, err := os.ReadFile(chemin) //nolint:gosec // chemin derive du paquet
 	if err != nil {
 		return err
@@ -304,11 +298,7 @@ func releverFonctionsDuFichier(goAPIRoot, chemin string, out map[string]int) err
 	if err != nil {
 		return err
 	}
-	rel, err := filepath.Rel(goAPIRoot, chemin)
-	if err != nil {
-		return err
-	}
-	prefixe := filepath.ToSlash(rel) + ":"
+	prefixe := rel + ":"
 	for _, decl := range f.Decls {
 		fd, ok := decl.(*ast.FuncDecl)
 		if !ok || fd.Body == nil {

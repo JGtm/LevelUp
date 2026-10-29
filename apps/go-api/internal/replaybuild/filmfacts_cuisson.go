@@ -61,10 +61,11 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
-	"levelup/go-api/internal/games/halo_infinite/film/finalise"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/LevelUp/libs/film/finalise"
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // EtapeRejeuDepuisLesFaits est le NOM de l etape que l observateur recoit pour dire QUELLE BRANCHE

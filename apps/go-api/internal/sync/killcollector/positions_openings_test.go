@@ -22,10 +22,11 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
-	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"levelup/go-api/internal/observability"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/LevelUp/libs/film/types"
 )
 
 // registreSynthetique monte un VRAI registre d'identite sur des trajectoires fabriquees, par le

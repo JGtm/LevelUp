@@ -40,11 +40,11 @@ var mapVariantSuffixExceptions = map[string]string{
 	"internal/games/halo_infinite/adapter_asset_urls.go": "2026-10-26 — `mapVariantSuffixes` est la liste " +
 		"d'EXCLUSION du tiroir d'assets (modes spécifiques : Heavies, Sentry Defense, Firefight), pas un " +
 		"rattachement à une carte de base ; le repli de miniature d'une variante lit les suffixes du TOML.",
-	"internal/games/halo_infinite/film/internal/profile/map_bounds.go": "2026-10-26 — couche `profile` du " +
+	"libs/film/internal/profile/map_bounds.go": "2026-10-26 — couche `profile` du " +
 		"décodeur de film, fermée par le compilateur (film_layers_deps_test) : elle ne peut pas importer " +
 		"analysis. Rabote le nom d'une carte pour les bornes de déquantification, sur la preuve du level_id " +
 		"(même niveau moteur). Convergence vers la liste TOML à statuer avec le décodeur.",
-	"internal/games/halo_infinite/film/replay/map_background_index.go": "2026-10-26 — index des fonds de " +
+	"libs/film/replay/map_background_index.go": "2026-10-26 — index des fonds de " +
 		"carte : identités normalisées (`_-_ranked`) et suffixe `_firefight` propre aux sidecars de fond ; " +
 		"rabotage en dernier recours après l'identité exacte. Convergence vers la liste TOML à statuer avec " +
 		"le décodeur.",
@@ -160,7 +160,7 @@ func listeDeSuffixes(src goSource, v ast.Expr, at func(token.Pos) string) []stri
 }
 
 func TestNoMapVariantSuffixLiteral(t *testing.T) {
-	sources := goSourcesUnder(t, "internal", "cmd")
+	sources := goSourcesUnder(t, "internal", "cmd", racineBriqueFilm)
 	consts := constantesChaine(sources)
 
 	var violations []string

@@ -17,7 +17,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"github.com/JGtm/LevelUp/libs/film/replay"
 
 	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 )

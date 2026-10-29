@@ -5,10 +5,11 @@ import (
 	"errors"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
-	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"levelup/go-api/internal/port"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/LevelUp/libs/film/types"
 )
 
 // matchfacts_test.go — LE PONT ENTRE LES FAITS DE BASE ET LE DECODEUR (revue R1, 2026-08-18).

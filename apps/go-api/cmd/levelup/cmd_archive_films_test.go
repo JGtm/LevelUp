@@ -17,8 +17,9 @@ import (
 
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
-	"levelup/go-api/internal/games/halo_infinite/film/finalise"
+
+	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/LevelUp/libs/film/finalise"
 )
 
 func TestArchiveFilms_GamertagObligatoireHorsDryRun(t *testing.T) {

@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis/digest"
+	"github.com/JGtm/LevelUp/libs/film/digest"
 )
 
 func TestLireCorpusIgnoreCommentairesEtColonnes(t *testing.T) {

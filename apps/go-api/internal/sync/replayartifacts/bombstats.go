@@ -45,9 +45,10 @@ import (
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // passeBombePrete : une projection réussie, prête à persister.

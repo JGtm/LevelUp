@@ -9,9 +9,10 @@ package killcollector
 // OBSERVE.
 
 import (
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
 )
 
 // Compteurs de sante du collecteur (ADR 0009 : entiers, snake_case, aucun ratio).

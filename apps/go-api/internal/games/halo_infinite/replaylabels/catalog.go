@@ -24,10 +24,11 @@ import (
 	"levelup/go-api/internal/assets/static"
 	"levelup/go-api/internal/domain/title"
 	halo "levelup/go-api/internal/games/halo_infinite"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/games/weapons"
 	"levelup/go-api/internal/i18n"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // Load assemble le catalogue de libellés d'un titre depuis ses mappings versionnés.
@@ -106,7 +107,7 @@ func vehicleFamilies(in map[string]mappings.VehicleFamily) map[string]replay.Veh
 	}
 	out := make(map[string]replay.VehicleFamilyInfo, len(in))
 	for fam, v := range in {
-		out[fam] = replay.VehicleFamilyInfo{Label: v.Label, Kind: v.Kind, Sprite: v.Sprite}
+		out[fam] = replay.VehicleFamilyInfo{Label: TexteVersFilm(v.Label), Kind: v.Kind, Sprite: v.Sprite}
 	}
 	return out
 }
@@ -221,9 +222,9 @@ func abilityPalettes(slug string, in []mappings.AbilityPalette) []replay.Ability
 }
 
 // textLabel projette un libellé par langue vers le DTO d'artefact : le Text est copié tel quel, toutes
-// langues comprises (l'artefact écrit un membre par langue renseignée, sans repli cuit).
+// langues comprises (l'artefact écrit un membre par langue de la liste, vide comprise, sans repli cuit).
 func textLabel(t i18n.Text) replay.Label {
-	return replay.Label{Text: t.Clone()}
+	return replay.Label{Text: TexteVersFilm(t)}
 }
 
 // toLabel joint le libellé et sa vignette de HUD quand le TOML en pointe une. Les

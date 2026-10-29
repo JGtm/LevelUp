@@ -16,9 +16,7 @@ package archlint
 import (
 	"io/fs"
 	"os"
-	"path/filepath"
 	"regexp"
-	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -29,22 +27,17 @@ import (
 var unarmedLiteralRE = regexp.MustCompile(`(?i)\b0x0*7ca9(\b|[0-9a-f]{8}\b)`)
 
 // unarmedLiteralMaison : le SEUL fichier de production qui porte le litteral.
-const unarmedLiteralMaison = "internal/games/weapons/filmshell/unarmed.go"
+const unarmedLiteralMaison = racineBriqueFilm + "/filmshell/unarmed.go"
 
 func TestUnarmedFamilyLiteralUnique(t *testing.T) {
-	_, ici, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller a echoue")
-	}
-	goAPIRoot := filepath.Dir(filepath.Dir(filepath.Dir(ici))) // .../apps/go-api
 	var violations []string
 	maisonVue := false
-	err := filepath.WalkDir(goAPIRoot, func(chemin string, d fs.DirEntry, err error) error {
+	err := marcherAPIEtBriqueFilm(t, func(chemin string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 		if d.IsDir() {
-			if chemin != goAPIRoot && (d.Name() == "testdata" || strings.HasPrefix(d.Name(), ".")) {
+			if d.Name() == "testdata" || strings.HasPrefix(d.Name(), ".") {
 				return fs.SkipDir
 			}
 			return nil
@@ -52,8 +45,7 @@ func TestUnarmedFamilyLiteralUnique(t *testing.T) {
 		if !strings.HasSuffix(chemin, ".go") || strings.HasSuffix(chemin, "_test.go") {
 			return nil
 		}
-		rel, _ := filepath.Rel(goAPIRoot, chemin)
-		rel = filepath.ToSlash(rel)
+		rel := cheminDeGardeRail(t, chemin)
 		data, rerr := os.ReadFile(chemin) //nolint:gosec // source du module, lecture seule
 		if rerr != nil {
 			return rerr

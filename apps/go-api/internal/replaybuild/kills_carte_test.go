@@ -18,8 +18,9 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/testutil"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
 )
 
 // bobineKillsource000d5950 : la mini-bobine versionnee du paquet `killsource` (film 000d5950, Cliffhanger).
@@ -29,7 +30,7 @@ func bobineKillsource000d5950(t *testing.T) *decfilm.Film {
 	if err != nil {
 		t.Fatalf("racine du depot : %v", err)
 	}
-	dir := filepath.Join(racine, "apps", "go-api", "internal", "games", "halo_infinite", "film",
+	dir := filepath.Join(racine, "libs", "film",
 		"internal", "facts", "killsource", "testdata", "minibobine_000d5950")
 	film, err := decfilm.LoadDir(dir, nil)
 	if err != nil {

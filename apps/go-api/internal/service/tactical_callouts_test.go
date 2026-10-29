@@ -10,9 +10,11 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis/tactical"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/games/halo_infinite/replaylabels"
 	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/testutil"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 func TestZonesNommees_FormeEtTranche(t *testing.T) {
@@ -20,7 +22,7 @@ func TestZonesNommees_FormeEtTranche(t *testing.T) {
 	part := [][][2]float64{{{10, 10}, {12, 10}, {12, 12}}}
 	trou := [][][2]float64{{{1, 1}, {2, 1}, {2, 2}}}
 	out := zonesNommees([]replay.CalloutZone{{
-		VolumeIndex: 7, Text: i18n.Text{i18n.LocaleEN: "Room", i18n.LocaleFR: "Salle"}, X: 1, Y: 2,
+		VolumeIndex: 7, Text: replaylabels.TexteVersFilm(i18n.Text{i18n.LocaleEN: "Room", i18n.LocaleFR: "Salle"}), X: 1, Y: 2,
 		ZBottom: -1.5, ZTop: 3.25, Polygon: poly, Parts: part, Holes: trou,
 	}})
 	if len(out) != 1 {

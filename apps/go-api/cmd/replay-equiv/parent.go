@@ -18,10 +18,11 @@ import (
 	"strings"
 	"time"
 
-	"levelup/go-api/internal/analysis/digest"
-	"levelup/go-api/internal/filmproc"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/replaybuild"
+
+	"github.com/JGtm/LevelUp/libs/film/digest"
+	"github.com/JGtm/LevelUp/libs/film/filmproc"
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // bilan compte ce qu'a donne la passe.

@@ -25,18 +25,22 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/halo_infinite/replayidentity"
 	"levelup/go-api/internal/testutil"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 var updateBotsFixtures = flag.Bool("update-bots-fixtures", false,
 	"reecrire film/replay/testdata/bots_<id>.json depuis les films du cache (REPLAY_FILM_CACHE)")
 
-// dossierDesFixturesDuRejeu : les fixtures du rejeu, relatives au paquet.
-const dossierDesFixturesDuRejeu = "../games/halo_infinite/film/replay/testdata"
+// dossierDesFixturesDuRejeu : les fixtures du rejeu, dans la brique du decodeur.
+func dossierDesFixturesDuRejeu(t *testing.T) string {
+	t.Helper()
+	return testutil.CheminBriqueFilm(t, "replay", "testdata")
+}
 
 func TestBotsDesFixturesDuRejeuRegenerate(t *testing.T) {
 	cache := os.Getenv("REPLAY_FILM_CACHE")
@@ -52,13 +56,13 @@ func TestBotsDesFixturesDuRejeuRegenerate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("constructeur : %v", err)
 	}
-	entrees, err := filepath.Glob(filepath.Join(dossierDesFixturesDuRejeu, "inputs_*.bin.gz"))
+	entrees, err := filepath.Glob(filepath.Join(dossierDesFixturesDuRejeu(t), "inputs_*.bin.gz"))
 	if err != nil || len(entrees) == 0 {
-		t.Fatalf("aucun fixture d'entrees sous %s (%v)", dossierDesFixturesDuRejeu, err)
+		t.Fatalf("aucun fixture d'entrees sous %s (%v)", dossierDesFixturesDuRejeu(t), err)
 	}
 	for _, chemin := range entrees {
 		id := strings.TrimSuffix(strings.TrimPrefix(filepath.Base(chemin), "inputs_"), ".bin.gz")
-		faits, err := ReadFactsFile(filepath.Join(dossierDesFixturesDuRejeu, "equivalence", id+".facts.json"))
+		faits, err := ReadFactsFile(filepath.Join(dossierDesFixturesDuRejeu(t), "equivalence", id+".facts.json"))
 		if err != nil {
 			t.Fatalf("%s : faits : %v", id, err)
 		}
@@ -84,9 +88,9 @@ func TestBotsDesFixturesDuRejeuRegenerate(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s : %v", id, err)
 		}
-		if err := os.WriteFile(filepath.Join(dossierDesFixturesDuRejeu, "bots_"+id+".json"), append(blob, '\n'), 0o600); err != nil {
+		if err := os.WriteFile(filepath.Join(dossierDesFixturesDuRejeu(t), "bots_"+id+".json"), append(blob, '\n'), 0o600); err != nil {
 			t.Fatalf("%s : %v", id, err)
 		}
 	}
-	t.Fatalf("bots des fixtures reecrits sous %s ; relancer sans -update-bots-fixtures", dossierDesFixturesDuRejeu)
+	t.Fatalf("bots des fixtures reecrits sous %s ; relancer sans -update-bots-fixtures", dossierDesFixturesDuRejeu(t))
 }

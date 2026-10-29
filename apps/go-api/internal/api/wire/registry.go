@@ -282,6 +282,7 @@ func (r *ServiceRegistry) TrackMetadataHandle(db *duckdb.DB) *ServiceRegistry {
 // NewServiceRegistry crée un ServiceRegistry câblé avec config.ResolvePlayer.
 // Le titleSlug est lu depuis le contexte (ctxkeys.TitleSlug), fallback "halo_infinite".
 func NewServiceRegistry(cfg *config.AppConfig, provider auth.TokenProvider) *ServiceRegistry {
+	brancherCompteursDuFilm()
 	return &ServiceRegistry{
 		cfg: cfg,
 		resolve: func(ctx context.Context, slug string) (*duckdb.PlayerDB, error) {

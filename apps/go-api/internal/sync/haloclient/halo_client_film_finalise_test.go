@@ -20,8 +20,8 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
-	"levelup/go-api/internal/games/halo_infinite/film/finalise"
+	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/LevelUp/libs/film/finalise"
 )
 
 // serveurDeFilm sert un manifeste donne et compte les blobs demandes.

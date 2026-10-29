@@ -55,12 +55,13 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/weapons"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/sync/killcollector"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // Raisons propres a ce paquet d'un appariement non lu (`persist.VehicleTakesBatch.FragsReason`).

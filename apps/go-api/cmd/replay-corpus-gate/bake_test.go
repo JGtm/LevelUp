@@ -15,7 +15,7 @@ import (
 	"strconv"
 	"testing"
 
-	"levelup/go-api/internal/filmproc"
+	"github.com/JGtm/LevelUp/libs/film/filmproc"
 )
 
 // TestArgsCuissonTransmetLePlafondMemoire — LE COMPORTEMENT DEMANDE : `--mem-gib` figure dans

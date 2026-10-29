@@ -21,8 +21,9 @@ import (
 
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain/replaydoc"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/port"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // ReplayHandler sert le rejeu 2D d'un match via un ReplayService résolu par joueur.

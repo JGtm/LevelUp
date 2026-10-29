@@ -85,9 +85,9 @@ func TestTourelleAutoBannieQualifieeParLeTitre(t *testing.T) {
 	if info.Kind != mappings.VehicleFamilyKindMapElement {
 		t.Errorf("nature = %q, attendu %q", info.Kind, mappings.VehicleFamilyKindMapElement)
 	}
-	if info.Label[i18n.LocaleEN] == "" || info.Label[i18n.LocaleFR] == "" {
+	if TexteDepuisFilm(info.Label)[i18n.LocaleEN] == "" || TexteDepuisFilm(info.Label)[i18n.LocaleFR] == "" {
 		t.Errorf("libelle incomplet (en=%q fr=%q) : les deux langues sont obligatoires",
-			info.Label[i18n.LocaleEN], info.Label[i18n.LocaleFR])
+			TexteDepuisFilm(info.Label)[i18n.LocaleEN], TexteDepuisFilm(info.Label)[i18n.LocaleFR])
 	}
 	if info.Sprite {
 		t.Error("`sprite = true` : aucun asset n existe pour cette famille a ce jour — le jour ou " +
@@ -107,7 +107,7 @@ func TestTourelleFixeQualifieeParLeTitre(t *testing.T) {
 	if !ok {
 		t.Fatal("famille `tourelle_fixe` non qualifiee par replay_labels.toml")
 	}
-	if info.Kind != mappings.VehicleFamilyKindFixedTurret || info.Label[i18n.LocaleEN] == "" || info.Label[i18n.LocaleFR] == "" || info.Sprite {
+	if info.Kind != mappings.VehicleFamilyKindFixedTurret || TexteDepuisFilm(info.Label)[i18n.LocaleEN] == "" || TexteDepuisFilm(info.Label)[i18n.LocaleFR] == "" || info.Sprite {
 		t.Errorf("tourelle fixe = %+v, attendu fixed_turret bilingue sans sprite", info)
 	}
 }

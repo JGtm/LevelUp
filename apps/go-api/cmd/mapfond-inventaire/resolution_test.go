@@ -27,8 +27,9 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/testutil"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // poseSidecar ecrit un sidecar de fond minimal mais VALIDE (le schema est verifie a la lecture).

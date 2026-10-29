@@ -42,8 +42,9 @@ import (
 	"context"
 	"fmt"
 
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/sync/haloclient"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
 )
 
 // filmChunkFetcher : le SEUL besoin du pont cote client. Interface etroite (patron du paquet,

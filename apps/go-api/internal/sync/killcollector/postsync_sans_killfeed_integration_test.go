@@ -22,10 +22,11 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
-	"levelup/go-api/internal/games/halo_infinite/film/finalise"
 	"levelup/go-api/internal/sync/haloclient"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/LevelUp/libs/film/finalise"
 )
 
 // decodeurSansKill : le decodeur rend `ErrNoKillFeed`, l issue des films du constat.

@@ -43,10 +43,11 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replaydiff"
 	"levelup/go-api/internal/testutil"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 var m1ArtefactRe = regexp.MustCompile(`^[0-9a-f]{8}\.json$`)

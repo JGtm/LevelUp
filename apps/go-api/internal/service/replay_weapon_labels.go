@@ -30,8 +30,9 @@ import (
 	"context"
 	"log/slog"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/halo_infinite/replaylabels"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // resolveWeaponLabels pose `Key` et `Tint` sur chaque libellé d'arme du document.

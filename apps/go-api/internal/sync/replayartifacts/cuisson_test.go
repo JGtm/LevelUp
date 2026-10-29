@@ -29,12 +29,13 @@ import (
 	"time"
 
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/filmproc"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replaybuild"
 	"levelup/go-api/internal/sync/haloclient"
+
+	"github.com/JGtm/LevelUp/libs/film/filmproc"
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // poserArtefactCuisson ecrit un artefact au schema courant, avec ou sans compteurs de joueur.

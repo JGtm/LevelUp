@@ -47,8 +47,9 @@ import (
 
 	"levelup/go-api/internal/ctxkeys"
 
-	"levelup/go-api/internal/games/halo_infinite/film/finalise"
 	"levelup/go-api/internal/observability"
+
+	"github.com/JGtm/LevelUp/libs/film/finalise"
 )
 
 // CompteurFilmsNonFinalises : films dont l'archivage et la cuisson sont REPORTÉS au cycle suivant

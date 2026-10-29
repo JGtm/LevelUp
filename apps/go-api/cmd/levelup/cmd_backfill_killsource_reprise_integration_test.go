@@ -47,11 +47,12 @@ import (
 
 	"levelup/go-api/internal/games"
 
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/sync/haloclient"
 	"levelup/go-api/internal/sync/killcollector"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
 )
 
 // filmsDeLaReprise : des films du bas du cout QUI ECRIVENT (les moins chers du cache ne

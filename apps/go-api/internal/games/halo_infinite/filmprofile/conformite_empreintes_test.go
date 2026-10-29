@@ -39,8 +39,7 @@ import (
 )
 
 // cheminTableDesEmpreintes : le fichier de la table des empreintes, relatif a la racine du depot.
-var cheminTableDesEmpreintes = filepath.Join("apps", "go-api", "internal", "games",
-	"halo_infinite", "film", "internal", "profile", "registre_empreintes.go")
+var cheminTableDesEmpreintes = filepath.Join("libs", "film", "internal", "profile", "registre_empreintes.go")
 
 // fonctionDeLaTableDesEmpreintes : la fonction qui CONCATENE les sous-tables.
 const fonctionDeLaTableDesEmpreintes = "EmpreintesRegistre"

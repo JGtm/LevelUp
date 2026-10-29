@@ -16,7 +16,8 @@ import (
 	"net/http"
 
 	"levelup/go-api/internal/api/humacore"
-	"levelup/go-api/internal/domain/playerposition"
+
+	"github.com/JGtm/LevelUp/libs/film/playerposition"
 )
 
 // matchPositionDTO est la projection JSON camelCase d'une playerposition.PlayerPosition.

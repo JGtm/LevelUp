@@ -16,11 +16,12 @@ import (
 
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/sync/haloclient"
 	"levelup/go-api/internal/testutil"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
 )
 
 // v0Env porte les entrees du protocole, lues dans l'environnement.

@@ -6,8 +6,9 @@ package killcollector
 // sans film et ne puisse pas diverger d'un lecteur a l'autre.
 
 import (
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/persist"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // entreeDesPositions compose l'entree de [replay.BuildKillPositions] : les positions et le registre du

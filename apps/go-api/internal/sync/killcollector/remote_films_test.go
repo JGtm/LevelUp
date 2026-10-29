@@ -8,9 +8,10 @@ import (
 	"testing"
 
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/sync/haloclient"
+
+	"github.com/JGtm/LevelUp/libs/film/filmcache"
 )
 
 const matchRemote = "aabbccdd-1111-2222-3333-444455556666"

@@ -65,10 +65,11 @@ import (
 	"levelup/go-api/internal/analysis/weapontier"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // PadTiersMinSchema est le schema d'artefact minimal exploitable : `padPickups[].xuid` — le

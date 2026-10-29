@@ -27,10 +27,11 @@ import (
 	"testing"
 )
 
-// fichiersGo parcourt les fichiers Go sous `racine` (hors testdata et dossiers caches).
+// fichiersGo parcourt les fichiers Go sous `racine` (hors testdata et dossiers caches) ; `rel` est
+// relatif a la racine du depot.
 func fichiersGo(t *testing.T, racine string, f func(rel string, data []byte)) {
 	t.Helper()
-	base := racineGoAPI(t)
+	base := workspaceRoot(t)
 	err := filepath.WalkDir(racine, func(chemin string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -61,12 +62,12 @@ func fichiersGo(t *testing.T, racine string, f func(rel string, data []byte)) {
 // `KnownWeaponHigh32Copie()` — la forme des copies retirees.
 var ensembleDesFamillesRE = regexp.MustCompile(`\[\w+\]\s*=\s*true`)
 
-const maisonDesFamillesConnues = "internal/games/halo_infinite/film/internal/grammar/weaponv3/canon.go"
+const maisonDesFamillesConnues = racineBriqueFilm + "/internal/grammar/weaponv3/canon.go"
 
 func TestLEnsembleDesFamillesConnuesSeConstruitUneFois(t *testing.T) {
 	var violations []string
 	maison := false
-	fichiersGo(t, racineGoAPI(t), func(rel string, data []byte) {
+	visiter := func(rel string, data []byte) {
 		lignes := strings.Split(string(data), "\n")
 		if rel == maisonDesFamillesConnues {
 			maison = strings.Contains(string(data), "func FamillesConnues() map[uint32]bool")
@@ -83,7 +84,10 @@ func TestLEnsembleDesFamillesConnuesSeConstruitUneFois(t *testing.T) {
 				}
 			}
 		}
-	})
+	}
+	for _, r := range racinesEspaceDeTravail {
+		fichiersGo(t, filepath.Join(workspaceRoot(t), filepath.FromSlash(r)), visiter)
+	}
 	if !maison {
 		t.Errorf("%s ne porte plus `FamillesConnues` : le garde-rail ne garde plus rien", maisonDesFamillesConnues)
 	}
@@ -94,7 +98,7 @@ func TestLEnsembleDesFamillesConnuesSeConstruitUneFois(t *testing.T) {
 }
 
 func TestUneSeuleConversionBooleenneParPaquet(t *testing.T) {
-	racine := filepath.Join(racineGoAPI(t), "internal", "games", "halo_infinite", "film")
+	racine := filepath.Join(workspaceRoot(t), filepath.FromSlash(racineBriqueFilm))
 	parGroupe := map[string][]string{}
 	fichiersGo(t, racine, func(rel string, data []byte) {
 		fset := token.NewFileSet()

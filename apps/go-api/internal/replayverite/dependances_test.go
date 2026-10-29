@@ -33,7 +33,7 @@ func TestDependances_AucunImportDuDecodeur(t *testing.T) {
 		lus++
 		for _, imp := range f.Imports {
 			chemin, _ := strconv.Unquote(imp.Path.Value)
-			if strings.Contains(chemin, "/games/halo_infinite/film") {
+			if chemin == "github.com/JGtm/LevelUp/libs/film" || strings.HasPrefix(chemin, "github.com/JGtm/LevelUp/libs/film/") {
 				t.Errorf("%s importe %s : le banc n'importe rien du decodeur", nom, chemin)
 			}
 			if strings.HasSuffix(chemin, "/internal/replaybuild") && nom != "reel_test.go" {

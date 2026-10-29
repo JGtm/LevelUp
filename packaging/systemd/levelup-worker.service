@@ -92,7 +92,7 @@ RestartSec=30s
 #     cree et donne a `deploy` par StateDirectory ci-dessus (l'inscrire est explicite, pas
 #     necessaire) ;
 #   - /opt/levelup/data/cache : le verrou de decodage commun aux outils de la machine
-#     (internal/filmproc, film_decode.lock et son fichier detenteur) et les faits de film
+#     (internal/games/halo_infinite/film/filmproc, film_decode.lock et son fichier detenteur) et les faits de film
 #     ranges apres un decodage (replaybuild, film_facts/). Le prefixe « - » tolere un dossier
 #     absent au demarrage : l'ouvrier le cree au premier job.
 # ProtectSystem=full laisse /opt inscriptible par les droits Unix ordinaires ; la liste vaut

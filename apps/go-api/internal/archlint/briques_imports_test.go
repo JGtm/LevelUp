@@ -26,6 +26,16 @@
 // Une entrée d'allowlist que plus aucun fichier n'honore fait rougir le test : une exemption qui
 // survit à son site finit par en couvrir un autre.
 //
+// # TOLÉRANCES PAR IMPORT : POSÉES LE 2026-10-29, RETIRÉES LE MÊME JOUR (plan D2, lots 1 et 2)
+//
+// La brique `film` (décodeur de film) a été posée AVANT son déplacement avec une table de comptes
+// (import visé -> nombre de fichiers, tests compris) au lieu d'une allowlist par fichier : elle
+// portait 189 franchissements, et c'est leur NOMBRE par import qui devait descendre à zéro au fil
+// du lot 2. Elle a fini VIDE à l'item 2.11 et le mécanisme (table, champ `tolerances`, règles de
+// confrontation et leurs auto-preuves) est retiré : la ligne `film` se juge comme `gamefiles` et
+// `himap`, tout import hors brique est une violation. L'exhaustivité des dossiers de `libs/` est
+// dans `briques_garde_test.go`.
+//
 // # MUTATION QUI DOIT LE FAIRE ROUGIR
 //
 // Ajouter `"levelup/go-api/internal/analysis"` aux imports de
@@ -36,6 +46,7 @@ package archlint
 import (
 	"go/parser"
 	"go/token"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -56,12 +67,32 @@ const (
 type brique struct {
 	nom string
 	// paquets : répertoires relatifs à la racine du dépôt, séparateurs "/" (`libs/gamefiles/ooz`,
-	// `libs/himap/himap`). Chaque répertoire est un paquet Go (pas de descente
-	// récursive : un sous-répertoire se déclare).
+	// `libs/himap/himap`). Sans `recursif`, chaque répertoire est un paquet Go exact (un
+	// sous-répertoire se déclare).
 	paquets []string
+	// recursif : chaque entrée de `paquets` désigne un ARBRE (le répertoire et tout ce qui est
+	// dessous, hors `testdata`, `vendor`, `.x`, `_x`) ; un import vers un paquet de l'arbre est
+	// interne à la brique. Sert aux briques dont le module porte de nombreux paquets (`film`).
+	recursif bool
 	// permis : les paquets (même forme) d'AUTRES briques, de rang inférieur, que celle-ci peut
 	// importer. Tout autre import `levelup/go-api/...` ou `.../libs/...` est une violation.
 	permis []string
+}
+
+// interne dit si le chemin d'import vise un paquet de la brique ou un paquet permis.
+func (b brique) interne(imp string) bool {
+	for _, p := range b.paquets {
+		base := cheminImport(p)
+		if imp == base || (b.recursif && strings.HasPrefix(imp, base+"/")) {
+			return true
+		}
+	}
+	for _, p := range b.permis {
+		if imp == cheminImport(p) {
+			return true
+		}
+	}
+	return false
 }
 
 // cheminImport rend le chemin d'import Go d'un paquet donné par son répertoire (relatif à la
@@ -72,6 +103,15 @@ func cheminImport(paquet string) string {
 		return prefixeModuleAPI + reste
 	}
 	return "github.com/JGtm/LevelUp/" + paquet
+}
+
+// repertoireDuDepot est l inverse de [cheminImport] : le repertoire, relatif a la racine du depot,
+// d un paquet du depot donne par son chemin d import ; faux pour un paquet hors du depot.
+func repertoireDuDepot(imp string) (string, bool) {
+	if reste, ok := strings.CutPrefix(imp, prefixeModuleAPI); ok {
+		return racineAPI + reste, true
+	}
+	return strings.CutPrefix(imp, "github.com/JGtm/LevelUp/")
 }
 
 // paquetsGamefiles : la brique « fichiers du jeu » (lecteurs de modules, décompresseur ooz,
@@ -87,8 +127,19 @@ var paquetsGamefiles = []string{
 // Les plans D2 (décodeur de film) et D3 (API Halo) y ajoutent leurs lignes.
 var briques = []brique{
 	{nom: "gamefiles", paquets: paquetsGamefiles},
-	{nom: "himap", paquets: []string{"libs/himap/himap"}, permis: paquetsGamefiles},
+	{nom: "himap", paquets: paquetsHimap, permis: paquetsGamefiles},
+	{
+		nom: "film",
+		// Le module `libs/film` entier (ADR 0041) : ses paquets sont au premier niveau et sous
+		// `internal/`, `research/` ; un arbre plutot qu une liste de paquets.
+		paquets:  []string{racineBriqueFilm},
+		recursif: true,
+		permis:   append(append([]string{}, paquetsGamefiles...), paquetsHimap...),
+	},
 }
+
+// paquetsHimap : la brique « images de carte ». Elle importe `gamefiles`, rien d'autre.
+var paquetsHimap = []string{"libs/himap/himap"}
 
 // importsToleres : les fichiers d'une brique qui importent un paquet du dépôt hors de la brique,
 // par chemin relatif à la racine du dépôt, avec la DATE d'inscription, l'import visé et le LOT du
@@ -115,7 +166,7 @@ func TestBriquesImports(t *testing.T) {
 	vus := map[string]bool{}
 	var violations []string
 	for _, b := range briques {
-		fichiers := fichiersImportsDesPaquets(t, racine, b.paquets)
+		fichiers := fichiersImportsDeLaBrique(t, racine, b)
 		violations = append(violations, violationsDeBrique(b, fichiers, importsToleres, vus)...)
 	}
 	for cle, motif := range importsToleres {
@@ -134,39 +185,81 @@ func TestBriquesImports(t *testing.T) {
 	}
 }
 
-// fichiersImportsDesPaquets parse les imports de tous les `.go` (tests compris) des paquets
-// donnés (répertoires relatifs à `racine`, la racine du dépôt). Échoue si un paquet n'existe pas
-// ou ne contient aucun fichier Go : un garde-rail qui ne voit rien ne garde rien.
-func fichiersImportsDesPaquets(t *testing.T, racine string, paquets []string) []fichierImports {
+// fichiersImportsDeLaBrique parse les imports de tous les `.go` (tests compris, quels que soient
+// leurs tags de build : `go/parser` ne les évalue pas) de la brique. Échoue si un paquet n'existe
+// pas ou ne contient aucun fichier Go : un garde-rail qui ne voit rien ne garde rien.
+func fichiersImportsDeLaBrique(t *testing.T, racine string, b brique) []fichierImports {
 	t.Helper()
 	fset := token.NewFileSet()
 	var out []fichierImports
-	for _, p := range paquets {
-		dir := filepath.Join(racine, filepath.FromSlash(p))
-		entrees, err := os.ReadDir(dir)
-		if err != nil {
-			t.Fatalf("paquet %s introuvable : %v — la table des briques décrit une arborescence qui n'existe plus", p, err)
+	for _, p := range b.paquets {
+		dirs := []string{p}
+		if b.recursif {
+			dirs = sousDossiersGo(t, racine, p)
 		}
 		n := 0
-		for _, e := range entrees {
-			if e.IsDir() || !strings.HasSuffix(e.Name(), ".go") {
-				continue
-			}
-			chemin := filepath.Join(dir, e.Name())
-			f, perr := parser.ParseFile(fset, chemin, nil, parser.ImportsOnly)
-			if perr != nil {
-				t.Fatalf("%s : %v", chemin, perr)
-			}
-			fi := fichierImports{rel: p + "/" + e.Name()}
-			for _, imp := range f.Imports {
-				fi.imports = append(fi.imports, strings.Trim(imp.Path.Value, `"`))
-			}
-			out = append(out, fi)
-			n++
+		for _, d := range dirs {
+			fichiers := importsDuDossier(t, fset, racine, d)
+			n += len(fichiers)
+			out = append(out, fichiers...)
 		}
 		if n == 0 {
 			t.Fatalf("aucun fichier Go sous %s : le garde-rail ne couvre rien", p)
 		}
+	}
+	return out
+}
+
+// sousDossiersGo rend le répertoire donné et tous ses sous-répertoires que l'outil Go ouvre
+// (hors `testdata`, `vendor`, `.x`, `_x`), relatifs à `racine`, séparateurs "/".
+func sousDossiersGo(t *testing.T, racine, dossier string) []string {
+	t.Helper()
+	base := filepath.Join(racine, filepath.FromSlash(dossier))
+	var out []string
+	err := filepath.WalkDir(base, func(chemin string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !d.IsDir() {
+			return nil
+		}
+		nom := d.Name()
+		if chemin != base && (dossiersInvisiblesAuGo[nom] || strings.HasPrefix(nom, ".") || strings.HasPrefix(nom, "_")) {
+			return fs.SkipDir
+		}
+		rel, _ := filepath.Rel(racine, chemin)
+		out = append(out, filepath.ToSlash(rel))
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("paquet %s introuvable : %v — la table des briques décrit une arborescence qui n'existe plus", dossier, err)
+	}
+	return out
+}
+
+// importsDuDossier parse les imports des `.go` du seul répertoire `p` (relatif à `racine`).
+func importsDuDossier(t *testing.T, fset *token.FileSet, racine, p string) []fichierImports {
+	t.Helper()
+	dir := filepath.Join(racine, filepath.FromSlash(p))
+	entrees, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("paquet %s introuvable : %v — la table des briques décrit une arborescence qui n'existe plus", p, err)
+	}
+	var out []fichierImports
+	for _, e := range entrees {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".go") {
+			continue
+		}
+		chemin := filepath.Join(dir, e.Name())
+		f, perr := parser.ParseFile(fset, chemin, nil, parser.ImportsOnly)
+		if perr != nil {
+			t.Fatalf("%s : %v", chemin, perr)
+		}
+		fi := fichierImports{rel: p + "/" + e.Name()}
+		for _, imp := range f.Imports {
+			fi.imports = append(fi.imports, strings.Trim(imp.Path.Value, `"`))
+		}
+		out = append(out, fi)
 	}
 	return out
 }
@@ -177,20 +270,15 @@ func fichiersImportsDesPaquets(t *testing.T, racine string, paquets []string) []
 // franchissement n'est PAS marqué : son entrée est morte). Fonction pure : c'est elle que
 // l'auto-preuve exerce.
 func violationsDeBrique(b brique, fichiers []fichierImports, toleres map[string]string, vus map[string]bool) []string {
-	interne := map[string]bool{}
-	for _, p := range b.paquets {
-		interne[cheminImport(p)] = true
-	}
-	for _, p := range b.permis {
-		interne[cheminImport(p)] = true
-	}
 	var violations []string
 	for _, f := range fichiers {
+		deja := map[string]bool{}
 		for _, imp := range f.imports {
 			surveille := strings.HasPrefix(imp, prefixeModuleAPI) || strings.HasPrefix(imp, prefixeBriques)
-			if !surveille || interne[imp] {
+			if !surveille || b.interne(imp) || deja[imp] {
 				continue
 			}
+			deja[imp] = true
 			if _, ok := toleres[f.rel]; ok {
 				vus[f.rel] = true
 				continue

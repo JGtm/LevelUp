@@ -954,7 +954,7 @@ the local film cache; the two offline ones need no DB and decode one film per bo
 
 ```bash
 cd apps/go-api
-go run ./cmd/levelup replay-facts-export --out internal/games/halo_infinite/film/replay/testdata/equivalence \
+go run ./cmd/levelup replay-facts-export --out ../../libs/film/replay/testdata/equivalence \
   [--title slug] [--oracle] <short8|match_id>...
 ```
 
@@ -985,7 +985,7 @@ of wiping a temp dir, so the obtained digests can be diffed against the referenc
 re-decoding. `-update` and the TSV reference format are unchanged. Parent and child share one binary —
 the parent plans and decodes nothing, each film is born in a bounded child (solo lock with bounded
 wait, sentinel) and dies with its RAM. References live in
-`internal/games/halo_infinite/film/replay/testdata/equivalence/<short8>.tsv`, each opening with its
+`libs/film/replay/testdata/equivalence/<short8>.tsv`, each opening with its
 `# digest-grammar: N` marker: a reference frozen under another grammar is an infrastructure failure
 ("re-freeze with `-update`"), never a decoding difference. `-update` rewrites those references
 instead of comparing them — for a declared correction only. The `-walkers` mode (divergence of the
@@ -1037,14 +1037,14 @@ mini-reel — it derives its biped slot band from keyframes and refuses a reel w
 concatenated out of continuity.)
 
 ```bash
-cd apps/go-api
+cd libs/film
 # the committed baseline (regenerate only on a declared change)
-go test -bench . -run '^$' -count 10 ./internal/games/halo_infinite/film/internal/grammar/ \
-  > internal/games/halo_infinite/film/internal/grammar/testdata/bench_baseline.txt
+go test -bench . -run '^$' -count 10 ./internal/grammar/ \
+  > internal/grammar/testdata/bench_baseline.txt
 
 # compare after a change, on the MEDIAN (what benchstat reports)
-go test -bench . -run '^$' -count 10 ./internal/games/halo_infinite/film/internal/grammar/ > /tmp/apres.txt
-benchstat internal/games/halo_infinite/film/internal/grammar/testdata/bench_baseline.txt /tmp/apres.txt
+go test -bench . -run '^$' -count 10 ./internal/grammar/ > /tmp/apres.txt
+benchstat internal/grammar/testdata/bench_baseline.txt /tmp/apres.txt
 # benchstat is not vendored: go install golang.org/x/perf/cmd/benchstat@latest
 ```
 
@@ -1090,18 +1090,20 @@ make go-api-lint       # golangci-lint ratchet (apps/go-api + every libs/ module
 
 #### Go modules under `libs/` and the workspace (ADR 0041)
 
-Two bricks live in their own Go modules: "game files", `libs/gamefiles` (module path
-`github.com/JGtm/LevelUp/libs/gamefiles`: packages `himodule`, `ooz`, `hinavmesh`, `mapvar`), and "map
+Three bricks live in their own Go modules: "game files", `libs/gamefiles` (module path
+`github.com/JGtm/LevelUp/libs/gamefiles`: packages `himodule`, `ooz`, `hinavmesh`, `mapvar`), "map
 images", `libs/himap` (`github.com/JGtm/LevelUp/libs/himap`: package `himap`, which imports `libs/gamefiles`
-only). Both are linked to `apps/go-api` by the `go.work` at the repository root (no `replace`
+only), and the "film decoder", `libs/film` (`github.com/JGtm/LevelUp/libs/film`: the facade `decfilm`, the
+publication layer `replay`, the closed layers under `internal/`, its catalogues; imports `libs/gamefiles`
+and `libs/himap` only, ADR 0034). All three are linked to `apps/go-api` by the `go.work` at the repository root (no `replace`
 directive; commit `go.work.sum`). Two consequences for every command:
 
 - `./...` never crosses a module boundary. `cd apps/go-api && go test ./...` does **not** test
   `libs/`, and `go mod tidy` cannot run in `apps/go-api` any more (it looks for the sibling
   module on the network; the workspace resolves it, so `go.mod` carries no `require` for it).
   A dependency bump of a brick is made in its own `go.mod` (`cd libs/gamefiles && go get ...`); `go mod
-  tidy` does not work in `libs/himap` either (it imports `libs/gamefiles`), so `make tidy` in `apps/go-api`
-  names it and skips it, and its `go.mod` is edited by hand.
+  tidy` does not work in `libs/himap` or `libs/film` either (they import another brick), so `make tidy` in
+  `apps/go-api` names them and skips them, and their `go.mod` is edited by hand.
 - The Go version line is the same in `apps/go-api/go.mod`, `go.work`, every `libs/*/go.mod` and the
   `Dockerfile` image (`internal/archlint/dockerfile_go_version_test.go`).
 
@@ -1112,6 +1114,10 @@ cd libs/gamefiles && go vet -tags=gamefiles,research ./...     # compile the res
 cd libs/gamefiles && go list -deps ./... | grep levelup/go-api  # must print nothing: the module is autonomous
 cd libs/himap && go test ./... -count=1                         # the map-image brick, without the game: its corpus is under the tag
 cd libs/himap && go list -deps ./... | grep levelup/go-api      # must print nothing either
+cd libs/film && go test ./... -count=1                          # the film decoder (its layer gates and goldens included)
+cd libs/film && go vet -tags=research ./...                     # compile its research instruments
+cd libs/film && go test -tags research ./internal/grammar/ -run TestE191   # run research instruments on demand
+cd libs/film && go list -deps -test ./... | grep levelup/go-api # must print nothing either
 go test ./libs/gamefiles/mapvar/ -run TestLabel -count=1       # from the repository root also works (workspace)
 ```
 
@@ -1119,7 +1125,9 @@ go test ./libs/gamefiles/mapvar/ -run TestLabel -count=1       # from the reposi
 `--config ../../apps/go-api/.golangci.yml`). The CI job `go-build` runs the same vet and tests in a
 dedicated step. A brick has no database and no LevelUp data: its tests read only its own
 `testdata/` and the installed game; tests that need LevelUp data live in `apps/go-api`
-(`internal/gamefilescorpus/`).
+(`internal/gamefilescorpus/`, `internal/filmcorpus/` for the film decoder). A film test that reads the host
+repository's versioned data finds its root by the `go.work` marker (`racineDepot`, one helper per package) and
+skips outside the repository.
 
 #### `gamefiles` build-tag corpus (map reverse engineering **and** committed catalogues)
 
@@ -1326,7 +1334,7 @@ exit 1.
 | `--keep-work` | `false` | keep the working root after the run (debugging) |
 | `--json` | (none) | path to also write the full report as JSON |
 
-**Run it before merging anything that touches** `games/halo_infinite/film/replay`, `replaybuild`, `film/internal/grammar`, or
+**Run it before merging anything that touches** `libs/film/replay`, `replaybuild`, `libs/film/internal/grammar`, or
 that bumps `SchemaVersion`. **Requires**: the local dev parc (film chunks; + already-baked
 artifacts under `data/cache/replays` in `--reference=parc` mode) and read access to the title's
 shared DB (for match facts, via `levelup replay-facts-export` run as a subprocess, per witness —
@@ -1395,11 +1403,12 @@ npm run lint
 make gate-push               # golangci-lint ratchet + web typecheck/lint + test baseline, film and DuckDB lanes in parallel (~25 min)
 ```
 
-The test baseline plays two lanes in parallel: the film lane
-(`./internal/games/halo_infinite/film/...`, no DuckDB dependency — guarded by
-`internal/archlint/film_lane_duckdb_free_test.go`) and the DuckDB lane (every other package,
-`-p 1`). The DuckDB lane sets the duration; `scripts/gate-push.ps1` below still runs a single
-serial suite.
+The test baseline plays two lanes in parallel, one per Go module (ADR 0041): the film lane (the
+`libs/film` module, no DuckDB dependency — guarded by
+`internal/archlint/film_lane_duckdb_free_test.go` — checked against
+`.ai/baselines/tests_libs_film.jsonl`) and the DuckDB lane (all of `apps/go-api`, `-p 1`, checked
+against `.ai/baselines/tests_pre_migration.jsonl`). The DuckDB lane sets the duration;
+`scripts/gate-push.ps1` below runs the two suites one after the other.
 
 On some Windows dev machines, git-bash's linker fails to resolve DuckDB's
 `libduckdb_static` when building CGO test binaries (`undefined reference

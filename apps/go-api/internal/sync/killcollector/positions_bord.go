@@ -7,8 +7,8 @@ import (
 	"context"
 	"log/slog"
 
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // lireLeBordDuCollecteur rend la lecture du bord de la passe : l occupation du decodage killsource et

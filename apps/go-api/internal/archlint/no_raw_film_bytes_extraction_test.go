@@ -280,26 +280,26 @@ const retraitParPortage = "la fonction n extrait plus de bit elle-meme (portee s
 // exceptionsDExtraction : les extractions de bits trouvees par le motif a sa pose (lot J4.6,
 // 2026-09-26) HORS des sept lecteurs du plan. Aucune n est l un des sept.
 var exceptionsDExtraction = []exceptionDExtractionDatee{
-	{fichier: "internal/games/halo_infinite/film/internal/grammar/frame_vue_controle.go",
+	{fichier: "libs/film/internal/grammar/frame_vue_controle.go",
 		fonction: "func vueCFermee", date: "2026-09-26", retrait: retraitParPortage,
 		raison: "oracle de cadrage de la vue C (carte de fermeture J4.0, instrument sans sortie de " +
 			"production) : teste que le reste du paquet est nul, bit par bit (`pay[i/8]`). Hors de " +
 			"l inventaire des sept ; une position de depart negative y paniquerait la ou " +
 			"`source.BitAt` rendrait 0, donc le portage n est pas neutre sans preuve."},
-	{fichier: "internal/games/halo_infinite/film/internal/grammar/weaponscan/scanner.go",
+	{fichier: "libs/film/internal/grammar/weaponscan/scanner.go",
 		fonction: "func matchMarkerAt", date: "2026-09-26", retrait: retraitParPortage,
 		raison: "marqueur universel de 11 bits du scanner d armes, bit par bit, SORTIE ANTICIPEE au " +
 			"premier bit discordant : hors du tampon il rend faux au lieu de paniquer quand la " +
 			"discordance precede le debordement — aucune convention de la source n a cette forme."},
-	{fichier: "internal/games/halo_infinite/film/internal/grammar/weaponscan/scanner.go",
+	{fichier: "libs/film/internal/grammar/weaponscan/scanner.go",
 		fonction: "func readBitsUint64", date: "2026-09-26", retrait: retraitParPortage,
 		raison: "lecteur du scanner d armes, indexation nue (convention `source.BitsStricts`), hors " +
 			"de l inventaire des sept."},
-	{fichier: "internal/games/halo_infinite/film/internal/grammar/weaponscan/scanner.go",
+	{fichier: "libs/film/internal/grammar/weaponscan/scanner.go",
 		fonction: "func readBitsUint8", date: "2026-09-26", retrait: retraitParPortage,
 		raison: "lecteur du scanner d armes, indexation nue (convention `source.BitsStricts`, " +
 			"accumulateur de 8 bits), hors de l inventaire des sept."},
-	{fichier: "internal/games/halo_infinite/film/research/cmd_rdata_weapon_scan/main.go",
+	{fichier: "libs/film/research/cmd_rdata_weapon_scan/main.go",
 		fonction: "func bitsAt", date: "2026-09-26", retrait: retraitParPortage,
 		raison: "outil de recherche (tag `research`) descendu sous `film/research` au lot J4.5 avec " +
 			"sa copie de lecteur (convention `source.BitsBourres`) ; son nom `bitsAt` n est pas " +

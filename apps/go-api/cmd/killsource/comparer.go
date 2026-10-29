@@ -19,7 +19,7 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
 )
 
 func comparer(args []string, o options) error {

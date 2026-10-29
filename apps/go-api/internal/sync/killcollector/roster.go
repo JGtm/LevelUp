@@ -20,11 +20,12 @@ import (
 	"database/sql"
 	"fmt"
 	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/observability"
 	"log/slog"
 	"time"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // SharedRoster : la resolution nom -> xuid depuis `shared.match_participants`.

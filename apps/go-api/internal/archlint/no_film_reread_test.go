@@ -99,18 +99,17 @@ func fichiersGoNonTest(t *testing.T, pkgDir string) map[string]*ast.File {
 // inflates du depot, et son film arrive maintenant deja charge (`Decode(ctx, name, film, opts)`).
 // Le reste du depot est couvert par l'allowlist FERMEE de la regle 4.
 var paquetsSansInflate = []string{
-	"internal/games/halo_infinite/film/internal/grammar",
-	"internal/games/halo_infinite/film/internal/facts/objectives",
-	"internal/games/halo_infinite/film/replay",
-	"internal/games/halo_infinite/film/internal/facts/killsource",
+	"libs/film/internal/grammar",
+	"libs/film/internal/facts/objectives",
+	"libs/film/replay",
+	"libs/film/internal/facts/killsource",
 }
 
 // TestPasDeZlibDansLaChaineDeCuisson — REGLE 1.
 func TestPasDeZlibDansLaChaineDeCuisson(t *testing.T) {
-	racine := apiRootDepuisIci(t)
 	var violations []string
 	for _, pkg := range paquetsSansInflate {
-		for nom, f := range fichiersGoNonTest(t, filepath.Join(racine, filepath.FromSlash(pkg))) {
+		for nom, f := range fichiersGoNonTest(t, surDisque(t, pkg)) {
 			for _, imp := range f.Imports {
 				if strings.Trim(imp.Path.Value, `"`) == "compress/zlib" {
 					violations = append(violations, pkg+"/"+nom)
@@ -152,7 +151,7 @@ var fichiersFilmdecLisantLeDisque = map[string]bool{
 // et `filepath.Glob` enumere un repertoire de chunks aussi bien que `os.ReadDir`. Une allowlist
 // qui laisse le meme geste passer sous un autre nom ne mesure plus rien.
 //
-// LA REGLE NE COUVRE QUE `internal/games/halo_infinite/film/internal/grammar` : `source` est HORS de son perimetre par
+// LA REGLE NE COUVRE QUE `libs/film/internal/grammar` : `source` est HORS de son perimetre par
 // construction (il n'est pas dans `pkgDir`), et c'est voulu — c'est LE paquet autorise a lire un
 // film, l'unique chargeur de la chaine (D1).
 var lecturesDisque = map[string]bool{
@@ -166,7 +165,7 @@ var paquetsLecteursDeDisque = map[string]bool{"os": true, "filepath": true}
 
 // TestFilmdecNeLitPasLeDisqueHorsAllowlist — REGLE 2.
 func TestFilmdecNeLitPasLeDisqueHorsAllowlist(t *testing.T) {
-	pkgDir := filepath.Join(apiRootDepuisIci(t), filepath.FromSlash("internal/games/halo_infinite/film/internal/grammar"))
+	pkgDir := surDisque(t, "libs/film/internal/grammar")
 	var violations []string
 	for nom, f := range fichiersGoNonTest(t, pkgDir) {
 		if fichiersFilmdecLisantLeDisque[nom] {
@@ -280,18 +279,18 @@ var enveloppesInterditesEnProduction = []string{
 // les quatre derniers manquaient — ils ne peuvent pas appeler d'enveloppe aujourd'hui, et c'est
 // precisement ce qu'un ratchet garde).
 //
-//	internal/games/halo_infinite/film/replay        BuildFromFilm et les balayages du document
+//	libs/film/replay        BuildFromFilm et les balayages du document
 //	internal/replaybuild            la cuisson (BuildBytes / BuildMatch)
-//	internal/games/halo_infinite/film/internal/facts/objectives  ses neuf points d'entree prennent un *source.Film
-//	internal/games/halo_infinite/film/internal/facts/killsource  Decode recoit le film deja charge
+//	libs/film/internal/facts/objectives  ses neuf points d'entree prennent un *source.Film
+//	libs/film/internal/facts/killsource  Decode recoit le film deja charge
 //	internal/sync/killcollector     positions.go : le pont disque a disparu a l'item 1.6
 //	internal/api/wire               registry_replay_build.go : le cablage de l'API
 //	cmd/zone-attribution            measure.go : charge le film UNE fois (item 1.6)
 var paquetsDeProduction = []string{
-	"internal/games/halo_infinite/film/replay",
+	"libs/film/replay",
 	"internal/replaybuild",
-	"internal/games/halo_infinite/film/internal/facts/objectives",
-	"internal/games/halo_infinite/film/internal/facts/killsource",
+	"libs/film/internal/facts/objectives",
+	"libs/film/internal/facts/killsource",
 	"internal/sync/killcollector",
 	"internal/api/wire",
 	"cmd/zone-attribution",
@@ -327,11 +326,10 @@ func TestProductionNAppellePasLesEnveloppes(t *testing.T) {
 	for _, n := range enveloppesInterditesEnProduction {
 		interdites[n] = true
 	}
-	racine := apiRootDepuisIci(t)
 	vus := map[string]bool{}
 	var violations []string
 	for _, pkg := range paquetsDeProduction {
-		for nom, f := range fichiersGoNonTest(t, filepath.Join(racine, filepath.FromSlash(pkg))) {
+		for nom, f := range fichiersGoNonTest(t, surDisque(t, pkg)) {
 			ast.Inspect(f, func(n ast.Node) bool {
 				call, ok := n.(*ast.CallExpr)
 				if !ok {
@@ -389,7 +387,7 @@ func TestProductionNAppellePasLesEnveloppes(t *testing.T) {
 // donc plus qu'a elle-meme. La mesure reste figee au §2 de `MESURES_CUISSON_PERF.md`. Les entrees
 // restantes sont PERMANENTES : aucune ne decompresse un film de cuisson.
 var sitesZlibAutorises = map[string]string{
-	"internal/games/halo_infinite/film/internal/source/film.go": "L'UNIQUE inflate de la chaine de cuisson (D1). " +
+	"libs/film/internal/source/film.go": "L'UNIQUE inflate de la chaine de cuisson (D1). " +
 		"Rend le PARTIEL sur flux tronque : un film Theater se termine parfois net.",
 }
 
@@ -416,10 +414,9 @@ var dossiersIgnoresPourZlib = map[string]bool{
 
 // TestAllowlistZlibFermee — REGLE 4.
 func TestAllowlistZlibFermee(t *testing.T) {
-	racine := apiRootDepuisIci(t)
 	fset := token.NewFileSet()
 	trouves := map[string]bool{}
-	err := filepath.WalkDir(racine, func(path string, d fs.DirEntry, err error) error {
+	err := marcherAPIEtBriqueFilm(t, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -441,11 +438,7 @@ func TestAllowlistZlibFermee(t *testing.T) {
 			if strings.Trim(imp.Path.Value, `"`) != "compress/zlib" {
 				continue
 			}
-			rel, rerr := filepath.Rel(racine, path)
-			if rerr != nil {
-				return rerr
-			}
-			trouves[filepath.ToSlash(rel)] = true
+			trouves[cheminDeGardeRail(t, path)] = true
 		}
 		return nil
 	})

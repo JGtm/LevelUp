@@ -24,11 +24,13 @@ import (
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/games/halo_infinite/replaylabels"
 	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/mapcatalog"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/port"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // Contenus de variante reconnus par l'extraction factice (cf. zrExtractionFactice).
@@ -64,7 +66,7 @@ func zrExtractionFactice(t *testing.T) {
 			couv.Nommees = 1
 		}
 		return replay.MapCalloutsEntry{Provenance: replay.CalloutsProvenanceMvar, Zones: []replay.CalloutZone{{
-			VolumeIndex: 3, Text: i18n.Text{i18n.LocaleEN: l[i18n.LocaleEN], i18n.LocaleFR: l[i18n.LocaleFR]}, Polygon: [][2]float64{{0, 0}, {5, 0}, {5, 5}},
+			VolumeIndex: 3, Text: replaylabels.TexteVersFilm(i18n.Text{i18n.LocaleEN: l[i18n.LocaleEN], i18n.LocaleFR: l[i18n.LocaleFR]}), Polygon: [][2]float64{{0, 0}, {5, 0}, {5, 5}},
 		}}}, couv, nil
 	}
 	t.Cleanup(func() { entreeZonesFn = avant })
@@ -92,7 +94,7 @@ func zrRacine(t *testing.T) string {
 		SchemaVersion: replay.MapCalloutsSchemaVersion, TitleSlug: title.DefaultSlug,
 		Maps: map[string]replay.MapCalloutsEntry{},
 		MapsByID: map[string]replay.MapCalloutsEntry{zrMapIDVersionnee: {
-			Provenance: replay.CalloutsProvenanceMvar, Zones: []replay.CalloutZone{{Text: i18n.Text{i18n.LocaleEN: "Cave", i18n.LocaleFR: "Grotte"}}},
+			Provenance: replay.CalloutsProvenanceMvar, Zones: []replay.CalloutZone{{Text: replaylabels.TexteVersFilm(i18n.Text{i18n.LocaleEN: "Cave", i18n.LocaleFR: "Grotte"})}},
 		}},
 	})
 	lexique := fmt.Sprintf("string_id;en;fr\n0x%08X;River;Rivière\n", zrSidConnu)
@@ -161,7 +163,7 @@ func TestZonesVarianteAuCacheLueHorsLigne(t *testing.T) {
 		t.Fatalf("variante au cache : statut %q, %d appel(s), err %v", res.Statut, f.appels, res.Err)
 	}
 	e, err := zrGenere(t, racine).LookupByID("bbbb")
-	if err != nil || e.Zones[0].Text[i18n.LocaleFR] != "Rivière" {
+	if err != nil || replaylabels.TexteDepuisFilm(e.Zones[0].Text)[i18n.LocaleFR] != "Rivière" {
 		t.Fatalf("catalogue généré : %+v / %v", e, err)
 	}
 	// La passe suivante voit la carte couverte PAR LE CATALOGUE GÉNÉRÉ.

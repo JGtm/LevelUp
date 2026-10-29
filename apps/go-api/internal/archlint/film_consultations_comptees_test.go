@@ -25,14 +25,15 @@ var lecturesComptees = map[string]bool{
 	"ResolveRoundIdentity": true, "SlotIdentityFrom": true,
 }
 
-// perimetreDesConsultationsComptees : la cuisson — les deux paquets qui assemblent un document.
+// perimetreDesConsultationsComptees : la cuisson — les deux paquets qui assemblent un document,
+// relatifs a la racine du depot.
 var perimetreDesConsultationsComptees = []string{
-	"internal/games/halo_infinite/film/replay",
-	"internal/replaybuild",
+	racineBriqueFilm + "/replay",
+	"apps/go-api/internal/replaybuild",
 }
 
 func TestAucuneLectureDeLaCuissonNeConsulteSansEnregistreur(t *testing.T) {
-	racine := racineGoAPI(t)
+	racine := workspaceRoot(t)
 	vus := 0
 	for _, sous := range perimetreDesConsultationsComptees {
 		parcourirGoProduction(t, filepath.Join(racine, sous), func(rel string, f *ast.File) {

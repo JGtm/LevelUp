@@ -16,8 +16,9 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/sync/killcollector"
+
+	"github.com/JGtm/LevelUp/libs/film/filmcache"
 )
 
 // registreAvecFilms inscrit `ids` au registre ET leur pose un manifeste de cache (un chunk), de

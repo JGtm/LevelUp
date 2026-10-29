@@ -36,8 +36,9 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/filmproc"
 	"levelup/go-api/internal/replaybuild"
+
+	"github.com/JGtm/LevelUp/libs/film/filmproc"
 )
 
 // outilNom : le nom que ce gate porte dans le journal des protections (verrou partage).

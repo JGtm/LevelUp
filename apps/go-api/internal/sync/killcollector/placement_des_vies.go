@@ -29,10 +29,11 @@ import (
 	"log/slog"
 	"strconv"
 
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // Compteurs de sante du placement des vies (ADR 0009 : entiers, snake_case, aucun ratio).

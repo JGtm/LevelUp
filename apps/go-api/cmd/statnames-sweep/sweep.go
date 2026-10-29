@@ -14,11 +14,11 @@ import (
 	"sort"
 	"strconv"
 
-	"levelup/go-api/internal/filmproc"
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
-	"levelup/go-api/internal/games/halo_infinite/film/types"
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/LevelUp/libs/film/filmproc"
+	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/LevelUp/libs/film/types"
 )
 
 // sweepMaxComp : le dernier index de composant balaye. L'archetype 6 declare 28

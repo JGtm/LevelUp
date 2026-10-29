@@ -25,12 +25,13 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/domain/objectiveevent"
-	"levelup/go-api/internal/domain/playerposition"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/port"
+
+	"github.com/JGtm/LevelUp/libs/film/objectiveevent"
+	"github.com/JGtm/LevelUp/libs/film/playerposition"
 )
 
 // outcomeColors : couleur hex par code d'outcome Halo Infinite.

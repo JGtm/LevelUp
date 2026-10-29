@@ -5,7 +5,9 @@ package replayview
 
 import (
 	"levelup/go-api/internal/domain/replaydoc"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/games/halo_infinite/replaylabels"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 func toVehicleTrack(v replay.VehicleTrack) replaydoc.VehicleTrack {
@@ -35,7 +37,7 @@ func toVehicleLifeRef(v replay.VehicleLifeRef) replaydoc.VehicleLifeRef {
 func toVehicleWeapon(v replay.VehicleWeapon) replaydoc.VehicleWeapon {
 	return replaydoc.VehicleWeapon{
 		Vehicle:     v.Vehicle,
-		Text:        v.Text.Clone(),
+		Text:        replaylabels.TexteDepuisFilm(v.Text),
 		Fire:        v.Fire,
 		Fx:          v.Fx,
 		Tint:        v.Tint,

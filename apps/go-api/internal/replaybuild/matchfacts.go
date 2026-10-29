@@ -36,10 +36,11 @@ import (
 	"strconv"
 
 	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
-	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"levelup/go-api/internal/port"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/LevelUp/libs/film/types"
 )
 
 // filmStats est ce que le second decodage rend au constructeur.

@@ -42,7 +42,7 @@ import (
 	"strings"
 	"time"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"github.com/JGtm/LevelUp/libs/film/filmcache"
 )
 
 func main() {

@@ -24,9 +24,10 @@ import (
 	"os"
 
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/replaybuild"
 	"levelup/go-api/internal/replayverite"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
 )
 
 const (

@@ -28,7 +28,7 @@
 // bout (et celui d'un test manuel). Sans --once, il boucle jusqu'à Ctrl-C.
 //
 // --mem-limit-gib POSE LE MÊME BLINDAGE QUE cmd/levelup backfill-replay (lot 2026-08-20/24,
-// cf. internal/filmproc.Arm, la sentinelle canonique des deux) : un film-bombe (empreinte hors
+// cf. libs/film/filmproc.Arm, la sentinelle canonique des deux) : un film-bombe (empreinte hors
 // norme, ex. 51101d1d à 7,9 Go en 2,6 s) fait
 // arrêter CE PROCESSUS plutôt que de le laisser spiraler en GC pendant des heures — mais
 // contrairement à l'enfant de la passe hors ligne, l'ouvrier RAPPORTE d'abord au serveur un
@@ -49,8 +49,9 @@ import (
 	"time"
 
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/filmproc"
 	"levelup/go-api/internal/games/titleseams"
+
+	"github.com/JGtm/LevelUp/libs/film/filmproc"
 )
 
 // defaultPollInterval : cadence d'interrogation de la file quand elle est vide.
@@ -84,7 +85,7 @@ func main() {
 	poll := flag.Duration("poll", defaultPollInterval, "cadence d'interrogation quand la file est vide")
 	once := flag.Bool("once", false, "prendre un seul job puis sortir")
 	memLimit := flag.Int("mem-limit-gib", filmproc.DefaultLimitGiB,
-		"plafond mémoire dur du décodage de CHAQUE job, en GiB (0 = désarmé ; cf. internal/filmproc.Arm)")
+		"plafond mémoire dur du décodage de CHAQUE job, en GiB (0 = désarmé ; cf. libs/film/filmproc.Arm)")
 	flag.Parse()
 
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo})))

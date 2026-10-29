@@ -31,8 +31,8 @@ package halo_infinite
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/damagetag"
-	"levelup/go-api/internal/games/halo_infinite/film/killicon"
+	"github.com/JGtm/LevelUp/libs/film/damagetag"
+	"github.com/JGtm/LevelUp/libs/film/killicon"
 )
 
 // dispenseConcordance : une règle autorisée à donner une image sans donner de clé.

@@ -10,7 +10,6 @@ import (
 	"context"
 	"database/sql"
 	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -19,6 +18,7 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/testutil"
 )
 
 // mockHLChunkFetcher implémente highlightChunkFetcher avec des réponses canned.
@@ -311,7 +311,7 @@ func TestEventsConvergence_MarkEventsEmptyFailure_Counted(t *testing.T) {
 // film (fixture v41), les events sont écrits, events_loaded passe TRUE, et la
 // passe suivante ne détecte plus rien (idempotence/convergence).
 func TestEventsConvergence_HappyPath_WritesEventsAndConverges(t *testing.T) {
-	data, err := os.ReadFile(filepath.Join("..", "games", "halo_infinite", "film", "internal", "grammar", "testdata", "v41_chunk_he.bin"))
+	data, err := os.ReadFile(testutil.CheminBriqueFilm(t, "internal", "grammar", "testdata", "v41_chunk_he.bin"))
 	if err != nil {
 		t.Skipf("fixture film absente: %v", err)
 	}

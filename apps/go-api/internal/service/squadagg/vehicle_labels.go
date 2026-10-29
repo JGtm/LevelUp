@@ -32,7 +32,7 @@ func VehicleFamilyLabels(ctx context.Context, repoRoot, titleSlug, locale string
 	}
 	labelLocale := i18n.Parse(locale)
 	for family, info := range cat.VehicleFamilies {
-		label := info.Label.Pick(labelLocale)
+		label := replaylabels.TexteDepuisFilm(info.Label).Pick(labelLocale)
 		if label != "" {
 			out[family] = label
 		}

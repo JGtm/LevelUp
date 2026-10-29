@@ -15,8 +15,8 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/weapons/filmshell"
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/filmshell"
 )
 
 // ─── L instrument : un ecrivain de bits ────────────────────────────────────────────────────

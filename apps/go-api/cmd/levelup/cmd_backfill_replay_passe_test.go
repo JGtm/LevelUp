@@ -11,9 +11,10 @@ import (
 	"testing"
 
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/filmproc"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/replaybuild"
+
+	"github.com/JGtm/LevelUp/libs/film/filmproc"
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // ecrireArtefact pose un artefact de rejeu portant la version de schema demandee.
@@ -241,7 +242,7 @@ func TestTraiterResultatEnfant_Ventilation(t *testing.T) {
 }
 
 // TestLibellePlafond et TestLibelleOctets — deplaces depuis backfill_memlimit_test.go (lot
-// v2 G.1, 2026-09-05) : la sentinelle memoire elle-meme est desormais internal/filmproc.Arm,
+// v2 G.1, 2026-09-05) : la sentinelle memoire elle-meme est desormais internal/games/halo_infinite/film/filmproc.Arm,
 // mais ces deux fonctions d'AFFICHAGE du recap restent locales a cmd/levelup.
 
 func TestLibellePlafond(t *testing.T) {

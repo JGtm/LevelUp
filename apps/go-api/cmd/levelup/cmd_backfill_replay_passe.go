@@ -14,8 +14,9 @@ import (
 	"strconv"
 	"time"
 
-	"levelup/go-api/internal/filmproc"
 	"levelup/go-api/internal/replaybuild"
+
+	"github.com/JGtm/LevelUp/libs/film/filmproc"
 )
 
 // replayBackfillReport : le rapport par categories.
@@ -62,7 +63,7 @@ func executerPasseReplay(
 	ctx context.Context, repoRoot string, o replayBackfillOptions, cacheRoot string,
 	aFaire []replayCandidat, r *replayBackfillReport,
 ) error {
-	// LE LANCEUR EST CELUI DU DEPOT (`internal/filmproc`, PLAN_CUISSON_PERF item 5.4) : meme
+	// LE LANCEUR EST CELUI DU DEPOT (`internal/games/halo_infinite/film/filmproc`, PLAN_CUISSON_PERF item 5.4) : meme
 	// protocole de codes de sortie, meme interception du marqueur de pic memoire, meme relais
 	// de journal — et EN PLUS la priorite CPU basse, qui manquait a la copie locale. Cette
 	// passe tourne sur la machine de travail de l'utilisateur pendant qu'il s'en sert.
@@ -169,7 +170,7 @@ func libelleIssue(i filmproc.Issue) string {
 
 // octetsParGiB : la conversion, nommee pour ne pas semer des 1<<30 dans le code. Sert
 // uniquement a la mise en forme humaine (libelleOctets) — la sentinelle memoire elle-meme
-// est armee par internal/filmproc.Arm (cf. cmd_backfill_replay_child.go), qui porte sa
+// est armee par internal/games/halo_infinite/film/filmproc.Arm (cf. cmd_backfill_replay_child.go), qui porte sa
 // propre constante interne.
 const octetsParGiB = 1 << 30
 

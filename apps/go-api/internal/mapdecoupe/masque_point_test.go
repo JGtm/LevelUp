@@ -6,8 +6,9 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/testutil"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // masque_point_test.go — LA FERMETURE EN UN POINT EST LA FERMETURE (lot M7 des retours du rejeu,

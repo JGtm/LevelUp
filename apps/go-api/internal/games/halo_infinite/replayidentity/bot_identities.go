@@ -34,9 +34,10 @@
 package replayidentity
 
 import (
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/observability"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // MetricBotsNonEpingles : le compteur expvar des bots NON EPINGLES retires de la projection

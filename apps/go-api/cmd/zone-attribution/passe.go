@@ -10,7 +10,7 @@ package main
 // basse : un seul film BTB a travers `replay.BuildFromFilm` suffit a prendre le poste en otage.
 //
 // « Un film = un processus » est NECESSAIRE ET PAS SUFFISANT. Il faut les trois ensemble, et
-// c'est ce que `internal/filmproc` fournit : un processus par film, un PLAFOND DUR par
+// c'est ce que `internal/games/halo_infinite/film/filmproc` fournit : un processus par film, un PLAFOND DUR par
 // processus, une PRIORITE CPU BASSE.
 //
 // # LE PARENT PLANIFIE, L'ENFANT MESURE
@@ -32,7 +32,7 @@ import (
 	"os"
 	"strings"
 
-	"levelup/go-api/internal/filmproc"
+	"github.com/JGtm/LevelUp/libs/film/filmproc"
 )
 
 // childFlag : le drapeau qui fait d'un processus l'ENFANT d'une passe.

@@ -29,7 +29,8 @@ import (
 
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // artefactAvecSocles pose un artefact PROJETABLE : schema courant, deux humains au roster, deux

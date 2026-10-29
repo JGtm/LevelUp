@@ -28,9 +28,10 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/port"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // objectiveRolesFilename est le nom du fichier de table sous mappings/ du titre.

@@ -9,7 +9,7 @@
 //
 // # Trois modes, un seul decodage borne
 //
-//	-films a,b,c            PARENT : un processus enfant PAR FILM via internal/filmproc
+//	-films a,b,c            PARENT : un processus enfant PAR FILM via internal/games/halo_infinite/film/filmproc
 //	                        (plafond de mesure 2 Gio, priorite basse, codes de protocole).
 //	-child -match a         ENFANT : balaye UN film sous la sentinelle et imprime le TSV.
 //	-confront ...           CONFRONTATION : aucune lecture de film — parse un TSV de

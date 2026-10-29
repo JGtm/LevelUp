@@ -198,10 +198,11 @@ restart: stop dev
 go-api-test:
 	cd $(GO_API_DIR) && CGO_ENABLED=0 LEVELUP_DEMO_MODE=true \
 		go test ./internal/domain/... ./internal/analysis/... \
-			./internal/games/weapons/... ./internal/games/halo_infinite/film/internal/profile/... ./internal/games/halo_infinite/film/internal/grammar/... ./internal/games/halo_infinite/film/internal/facts/... ./internal/games/halo_infinite/film/replay/... \
+			./internal/games/weapons/... \
 			./contracttest/... \
 		-v -timeout 60s -count=1
 	cd libs/gamefiles && CGO_ENABLED=0 go test ./hinavmesh/ ./mapvar/ -timeout 60s -count=1
+	cd libs/film && CGO_ENABLED=0 go test ./internal/profile/... ./internal/grammar/... ./internal/facts/... ./replay/... -timeout 60s -count=1
 
 ## Go API: corpus gamefiles du module — retro-ingenierie des cartes ET catalogues commis
 ## (EXIGE Halo Infinite installe, ~6 min)
@@ -242,13 +243,13 @@ go-api-test-gamefiles:
 ## Le corpus `gamefiles` d'une brique se joue par go-api-test-gamefiles (archlint.
 ## TestCibleMakefileGamefilesCouvreLeCorpus exige sa ligne) ; les quatre vet couvrent le build par
 ## defaut et les combinaisons de tags (compilation seule, jamais d'execution sans le jeu).
-## Autonomie : `go list -deps` d'un module ne doit montrer aucun paquet levelup/go-api.
+## Autonomie : `go list -deps -test` (tests compris) d'un module ne doit montrer aucun paquet levelup/go-api.
 libs-test:
 	@set -e; for m in libs/*/go.mod; do d=$$(dirname $$m); echo "== $$d"; \
 		(cd $$d && CGO_ENABLED=1 go vet ./... && CGO_ENABLED=1 go vet -tags=research ./... \
 			&& CGO_ENABLED=1 go vet -tags=gamefiles ./... && CGO_ENABLED=1 go vet -tags=gamefiles,research ./... \
 			&& CGO_ENABLED=1 go test ./... -timeout 600s -count=1); \
-		if (cd $$d && go list -deps ./... | grep -E 'levelup/go-api'); then \
+		if (cd $$d && go list -deps -test ./... | grep -E 'levelup/go-api'); then \
 			echo "$$d importe le module levelup/go-api"; exit 1; \
 		fi; \
 	done
@@ -261,7 +262,7 @@ libs-test:
 ## venir que du diff en cours de revue. Mode --reference=parc (balayage de release, contre
 ## l'artefact deja cuit) disponible mais INFORMATIF sauf --strict — cf. docs/COMMANDS.md.
 ##
-## A LANCER AVANT tout merge qui touche games/halo_infinite/film/replay, replaybuild, filmdec, ou qui bumpe
+## A LANCER AVANT tout merge qui touche libs/film/replay, replaybuild, filmdec, ou qui bumpe
 ## SchemaVersion. EXIGE le parc local de developpement (chunks de film) ET l'acces en lecture
 ## a la base partagee du titre pour les faits du match ; PAS le jeu installe. Marche SANS FLAG
 ## depuis un depot qui porte sa propre base partagee (le cas courant, cf. docs/COMMANDS.md pour
@@ -305,7 +306,8 @@ go-api-lint:
 		done; \
 	else \
 		echo "golangci-lint absent — REPLI go vet (domain+analysis). Le lint complet FAIT FOI en CI (job go-lint, .github/workflows/ci.yml)."; \
-		go vet ./internal/domain/... ./internal/analysis/... ./internal/games/weapons/... ./internal/games/halo_infinite/film/internal/profile/... ./internal/games/halo_infinite/film/internal/grammar/... ./internal/games/halo_infinite/film/internal/facts/... ./internal/games/halo_infinite/film/replay/...; \
+		go vet ./internal/domain/... ./internal/analysis/... ./internal/games/weapons/... && \
+		(cd ../../libs/film && go vet ./internal/profile/... ./internal/grammar/... ./internal/facts/... ./replay/...); \
 	fi
 
 ## Installe les hooks git du projet (lefthook — seul système de hooks).
@@ -360,8 +362,8 @@ go-api-test-shared-social-gate:
 ##   2. typecheck + lint web — mêmes scripts npm que le job CI Frontend ;
 ##   3. baseline de tests Go — scripts/check_test_baseline.sh tests (le plus long) :
 ##      suite complète avec -tags=integration, en DEUX voies parallèles — la voie film
-##      (./internal/games/halo_infinite/film/..., sans DuckDB) et la voie DuckDB (tout le
-##      reste, en -p 1). La durée est celle de la voie DuckDB ; voir le script.
+##      (le module libs/film, sans DuckDB, jugé contre .ai/baselines/tests_libs_film.jsonl) et la
+##      voie DuckDB (tout apps/go-api, en -p 1). La durée est celle de la voie DuckDB ; voir le script.
 ## NON reproduit : le ratchet de COUVERTURE (il rejouerait toute la suite une 2e
 ## fois avec -coverprofile, doublant la durée) — il reste au job CI go-coverage.
 ##
