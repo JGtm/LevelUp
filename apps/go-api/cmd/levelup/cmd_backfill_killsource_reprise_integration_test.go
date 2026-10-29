@@ -49,7 +49,7 @@ import (
 
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
 	"levelup/go-api/internal/migration"
-	"levelup/go-api/internal/sync/haloclient"
+	"levelup/go-api/internal/sync/filmfetch"
 	"levelup/go-api/internal/sync/killcollector"
 
 	"github.com/JGtm/LevelUp/libs/film/decfilm"
@@ -85,7 +85,7 @@ func baseDeReprise(t *testing.T, cacheRoot string, films []string) *sql.DB {
 	if err := migration.RunForDB(db, migration.TargetShared); err != nil {
 		t.Fatalf("migrate shared: %v", err)
 	}
-	cache := haloclient.NewLocalFilmCache(cacheRoot)
+	cache := filmfetch.NewLocalFilmCache(cacheRoot)
 	if cache == nil {
 		t.Skipf("cache de films introuvable sous %s", cacheRoot)
 	}
@@ -97,7 +97,7 @@ func baseDeReprise(t *testing.T, cacheRoot string, films []string) *sql.DB {
 
 // inscrireAuRegistreDeTest pose le match et ses participants, tires DU FILM (le fil des morts) :
 // les xuids que la passe resoudra sont alors les vrais.
-func inscrireAuRegistreDeTest(t *testing.T, db *sql.DB, cache *haloclient.LocalFilmCache, film string) {
+func inscrireAuRegistreDeTest(t *testing.T, db *sql.DB, cache *filmfetch.LocalFilmCache, film string) {
 	t.Helper()
 	if _, err := db.Exec(`INSERT INTO match_registry (match_id, map_name) VALUES (?, ?)`,
 		film, "streets"); err != nil {
@@ -142,7 +142,7 @@ func collecteurDeReprise(
 	suivi *suiviDeLaPasse, arret context.Context,
 ) *killcollector.KillSourceCollector {
 	return killcollector.NewKillSourceCollector(
-		killcollector.NewLocalCacheFilms(haloclient.NewLocalFilmCache(cacheRoot)),
+		killcollector.NewLocalCacheFilms(filmfetch.NewLocalFilmCache(cacheRoot)),
 		porte.GarderLeRoster(killcollector.NewSharedRoster(db).AvecAnnuaireDePasse()),
 		porte.GarderLeWriter(writerDeja(db)),
 		games.CapabilityMap{

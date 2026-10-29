@@ -36,7 +36,7 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/auth/capturecli"
-	"levelup/go-api/internal/platform/halo"
+	"levelup/go-api/internal/platform/auth/tokencache"
 )
 
 const (
@@ -120,7 +120,7 @@ func main() {
 	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
 	storeDir := pr.WatcherTokensDir()
 	store := auth.NewMultiUserTokenStore(storeDir)
-	if err := capturecli.PersistRefreshToken(store, xuid, resolvedGT, refreshToken, halo.InvalidateCachedPlayerTokens); err != nil {
+	if err := capturecli.PersistRefreshToken(store, xuid, resolvedGT, refreshToken, tokencache.InvalidateCachedPlayerTokens); err != nil {
 		fatalf("persistance RT: %v\n", err)
 	}
 

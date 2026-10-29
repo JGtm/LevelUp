@@ -136,7 +136,7 @@ import (
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/platform/duckdb"
-	"levelup/go-api/internal/sync/haloclient"
+	"levelup/go-api/internal/sync/filmfetch"
 	"levelup/go-api/internal/sync/killcollector"
 )
 
@@ -326,7 +326,7 @@ func passeDesFilms(
 	ctx context.Context, cfg *config.AppConfig, db *sql.DB, o killsourceOptions, cheminEtat string,
 ) (*suiviDeLaPasse, error) {
 	cacheRoot := resoudreCacheFilms(cfg, o.cacheDir)
-	cache := haloclient.NewLocalFilmCache(cacheRoot)
+	cache := filmfetch.NewLocalFilmCache(cacheRoot)
 	if cache == nil {
 		return nil, fmt.Errorf("cache de films introuvable sous %s — cette passe est HORS LIGNE, "+
 			"elle n a pas d autre source", cacheRoot)

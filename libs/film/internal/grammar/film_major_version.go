@@ -6,7 +6,7 @@ package grammar
 //
 // Les quatre premiers octets du REGISTRE (`chunk_00.bin`), lus en u32 little-endian, sont le
 // `FilmMajorVersion` du film — la MEME valeur que l'API publie dans le manifeste de spectate
-// (`CustomData.FilmMajorVersion`, cf. `sync/haloclient/halo_client_film.go`). Le second u32 le
+// (`CustomData.FilmMajorVersion`, cf. `sync/filmfetch`). Le second u32 le
 // suit (25 / 24 / 27 sur les films de version 40 / 37 / 41), puis la chaine
 // `game-engine-team-mapping-component` ouvre le premier bloc d'archetype.
 //

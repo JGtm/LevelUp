@@ -41,8 +41,7 @@ package killcollector
 import (
 	"context"
 	"fmt"
-
-	"levelup/go-api/internal/sync/haloclient"
+	"levelup/go-api/internal/sync/filmfetch"
 
 	"github.com/JGtm/LevelUp/libs/film/decfilm"
 )
@@ -50,7 +49,7 @@ import (
 // filmChunkFetcher : le SEUL besoin du pont cote client. Interface etroite (patron du paquet,
 // cf. `highlightChunkFetcher`) — testable sans implementer tout `HaloClient`.
 type filmChunkFetcher interface {
-	GetFilmChunks(ctx context.Context, matchID string) ([]haloclient.FilmChunk, bool, error)
+	GetFilmChunks(ctx context.Context, matchID string) ([]filmfetch.FilmChunk, bool, error)
 }
 
 // FilmForMatch assemble et CHARGE le film d un match, dans l ordre du manifeste (en-tete,
@@ -84,7 +83,7 @@ func FilmForMatch(
 // un `*decfilm.Film` ici perdrait cette information — d ou deux fonctions et pas une.
 func FilmChunksForMatch(
 	ctx context.Context, client filmChunkFetcher, matchID string,
-) ([]haloclient.FilmChunk, bool, error) {
+) ([]filmfetch.FilmChunk, bool, error) {
 	chunks, found, err := client.GetFilmChunks(ctx, matchID)
 	if err != nil {
 		return nil, found, fmt.Errorf("chunks du film %s: %w", matchID, err)
@@ -111,7 +110,7 @@ func FilmChunksForMatch(
 // plutot que sur le nombre d entrees, et on laisse les trous VIDES (un chunk vide ne rend aucun
 // paquet). Les metadonnees rendues sont POSITIONNELLES, comme `decfilm.Load` les attend, et
 // portent le type et le debut que le manifeste donne a chaque chunk present.
-func FilmOf(chunks []haloclient.FilmChunk) (*decfilm.Film, error) {
+func FilmOf(chunks []filmfetch.FilmChunk) (*decfilm.Film, error) {
 	maxIdx := 0
 	for _, c := range chunks {
 		if c.Index > maxIdx {
@@ -139,10 +138,10 @@ func FilmOf(chunks []haloclient.FilmChunk) (*decfilm.Film, error) {
 // rendait `GetMatchFilm`. Scanner en plus l en-tete et le kill-feed ajouterait des evenements
 // hors de cette population : la porte de publication (+-10 % du `shots_fired` de l API) les
 // verrait comme de la SUR-attribution, sans rien qui dise pourquoi.
-func ReplicationChunks(chunks []haloclient.FilmChunk) [][]byte {
+func ReplicationChunks(chunks []filmfetch.FilmChunk) [][]byte {
 	out := make([][]byte, 0, len(chunks))
 	for _, c := range chunks {
-		if c.ChunkType == haloclient.FilmChunkTypeReplicationData && len(c.Data) > 0 {
+		if c.ChunkType == filmfetch.FilmChunkTypeReplicationData && len(c.Data) > 0 {
 			out = append(out, c.Data)
 		}
 	}
@@ -152,7 +151,7 @@ func ReplicationChunks(chunks []haloclient.FilmChunk) [][]byte {
 // CountFilmChunkTypes compte les chunks par type de manifeste. Sert le diagnostic du collecteur :
 // « 29 chunks de replication et AUCUN kill-feed » est une phrase qui explique un `ErrNoKillFeed`,
 // la ou l erreur seule laisse chercher.
-func CountFilmChunkTypes(chunks []haloclient.FilmChunk) map[int]int {
+func CountFilmChunkTypes(chunks []filmfetch.FilmChunk) map[int]int {
 	out := make(map[int]int, 3)
 	for _, c := range chunks {
 		out[c.ChunkType]++

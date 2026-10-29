@@ -28,8 +28,8 @@ import (
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/halo_infinite/haloadapter"
 	"levelup/go-api/internal/platform/duckdb"
-	"levelup/go-api/internal/platform/halo"
 )
 
 // runPopulateAssets est le point d'entrée de la sous-commande.
@@ -75,7 +75,7 @@ func runPopulateAssets(cfg *config.AppConfig, args []string) error {
 func runPopulateAssetsPipeline(
 	ctx context.Context,
 	cfg *config.AppConfig,
-	types []halo.AssetType,
+	types []haloadapter.AssetType,
 	langs []string,
 	dryRun bool,
 	force bool,
@@ -105,9 +105,9 @@ func runPopulateAssetsPipeline(
 	}
 	defer sharedDB.Close()
 
-	provider := halo.DefaultHaloProvider
+	provider := haloadapter.DefaultHaloProvider
 
-	totals := make(map[halo.AssetType]int)
+	totals := make(map[haloadapter.AssetType]int)
 
 	for _, assetType := range types {
 		slog.Info("populate-assets: traitement asset_type", "type", assetType)
@@ -172,8 +172,8 @@ func runPopulateAssetsPipeline(
 // Pour chaque asset, récupère un match_id représentatif et fetch ses stats.
 func buildVersionCache(
 	ctx context.Context,
-	provider *halo.HaloProvider,
-	assetType halo.AssetType,
+	provider *haloadapter.Provider,
+	assetType haloadapter.AssetType,
 	assetIDs []string,
 	sharedDB *duckdb.DB,
 ) (map[string]string, error) {
@@ -221,7 +221,7 @@ func buildVersionCache(
 			}
 
 			// Mapper asset_type → clé JSON
-			jsonKey := halo.AssetTypeToMatchInfoKey[assetType]
+			jsonKey := haloadapter.AssetTypeToMatchInfoKey[assetType]
 			assetRef, ok := matchInfo[jsonKey].(map[string]interface{})
 			if !ok {
 				return
@@ -245,14 +245,14 @@ func buildVersionCache(
 // getRepresentativeMatches retourne un mapping asset_id → match_id représentatif.
 func getRepresentativeMatches(
 	ctx context.Context,
-	assetType halo.AssetType,
+	assetType haloadapter.AssetType,
 	sharedDB *duckdb.DB,
 ) (map[string]string, error) {
-	columnMap := map[halo.AssetType]string{
-		halo.AssetTypeMap:         "map_id",
-		halo.AssetTypePlaylist:    "playlist_id",
-		halo.AssetTypePair:        "pair_id",
-		halo.AssetTypeGameVariant: "game_variant_id",
+	columnMap := map[haloadapter.AssetType]string{
+		haloadapter.AssetTypeMap:         "map_id",
+		haloadapter.AssetTypePlaylist:    "playlist_id",
+		haloadapter.AssetTypePair:        "pair_id",
+		haloadapter.AssetTypeGameVariant: "game_variant_id",
 	}
 
 	column := columnMap[assetType]
@@ -289,9 +289,9 @@ func getRepresentativeMatches(
 //nolint:funlen // orchestrateur i18n : 1 boucle externe + 1 sub-pipeline retry/fallback par lang
 func fetchAllLangs(
 	ctx context.Context,
-	provider *halo.HaloProvider,
+	provider *haloadapter.Provider,
 	repo *duckdb.MetadataRepo,
-	assetType halo.AssetType,
+	assetType haloadapter.AssetType,
 	assetIDs []string,
 	versionCache map[string]string,
 	langs []string,
@@ -416,21 +416,21 @@ func filterToFetch(assetIDs []string, existing map[string]bool, force bool) []st
 }
 
 // parseAssetTypes parse la string "--types map,playlist" en slice d'AssetType.
-func parseAssetTypes(raw string) []halo.AssetType {
+func parseAssetTypes(raw string) []haloadapter.AssetType {
 	if raw == "" {
-		return []halo.AssetType{
-			halo.AssetTypeMap,
-			halo.AssetTypePlaylist,
-			halo.AssetTypePair,
-			halo.AssetTypeGameVariant,
+		return []haloadapter.AssetType{
+			haloadapter.AssetTypeMap,
+			haloadapter.AssetTypePlaylist,
+			haloadapter.AssetTypePair,
+			haloadapter.AssetTypeGameVariant,
 		}
 	}
 	parts := strings.Split(raw, ",")
-	var result []halo.AssetType
+	var result []haloadapter.AssetType
 	for _, p := range parts {
 		p = strings.TrimSpace(p)
 		if p != "" {
-			result = append(result, halo.AssetType(p))
+			result = append(result, haloadapter.AssetType(p))
 		}
 	}
 	return result

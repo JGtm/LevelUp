@@ -20,12 +20,12 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
 	halo_games "levelup/go-api/internal/games/halo_infinite"
+	"levelup/go-api/internal/games/halo_infinite/haloadapter"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/ops"
 	"levelup/go-api/internal/platform/adminstate"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb"
-	"levelup/go-api/internal/platform/halo"
 	"levelup/go-api/internal/service"
 )
 
@@ -72,8 +72,8 @@ func (r *ServiceRegistry) RunCatalogUGCDrain(ctx context.Context, titleSlug stri
 	}
 
 	// 3. Chaîne de résolution (fidèle au CLI populate-playlists-catalog).
-	provider := halo.NewHaloProvider().WithRateLimit(catalogDrainRateLimit).WithTokens(tokens)
-	fetcher := halo.NewCatalogFetcher(provider)
+	provider := haloadapter.NewHaloProvider().WithRateLimit(catalogDrainRateLimit).WithTokens(tokens)
+	fetcher := haloadapter.NewCatalogFetcher(provider)
 	rulesPath := r.catalogExperienceRulesPath(titleSlug)
 	adapter, err := halo_games.NewCatalogAdapter(fetcher, rulesPath)
 	if err != nil {

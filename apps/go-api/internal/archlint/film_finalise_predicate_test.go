@@ -37,7 +37,7 @@ package archlint
 //   - ecrire `if c.ChunkType == 3 {` dans un fichier de production hors allowlist (jouee le
 //     2026-09-23 dans `sync/killcollector/cache_films.go`, et figee par
 //     [TestDetecteurDeComparaisonAuTypeTempsForts]) ;
-//   - remettre `chunk.ChunkType != FilmChunkTypeHighlightEvents` dans `haloclient` ;
+//   - remettre `chunk.ChunkType != FilmChunkTypeHighlightEvents` dans `filmfetch` ;
 //   - ecrire `if m.ChunkType >= 3 {` a la place de `finalise.EstTempsForts` (mutation R-b de la
 //     revue adverse du lot, invisible avant que l ordre entre dans le detecteur) ;
 //   - ajouter une SECONDE comparaison dans un fichier tolere (compte gele, constat L3-R7) ;
@@ -107,7 +107,7 @@ type comparaisonAuTypeTempsFortsToleree struct {
 var comparaisonsAuTypeTempsFortsTolerees = []comparaisonAuTypeTempsFortsToleree{
 	{
 		fichier: "cmd/levelup/cmd_backfill_medailles_feed.go", sites: 1, pose: "2026-09-23",
-		retrait: "remplacer `chunk.ChunkType != haloclient.FilmChunkTypeHighlightEvents` par " +
+		retrait: "remplacer `chunk.ChunkType != filmfetch.FilmChunkTypeHighlightEvents` par " +
 			"`!finalise.EstTempsForts(chunk.ChunkType)`",
 	},
 	{

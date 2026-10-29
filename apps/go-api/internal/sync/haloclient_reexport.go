@@ -1,36 +1,40 @@
 package sync
 
-import "levelup/go-api/internal/sync/haloclient"
+import (
+	"levelup/go-api/internal/games/halo_infinite/haloadapter"
+	"levelup/go-api/internal/sync/filmfetch"
+)
 
-// haloclient_reexport.go — ré-exports du client HTTP Halo Infinite extrait vers le
-// sous-package internal/sync/haloclient (K3e). Les alias conservent les noms
+// haloclient_reexport.go — ré-exports du client Halo Infinite de la synchronisation. Le client
+// vit dans l'adaptateur `games/halo_infinite/haloadapter` (sur la brique `internal/haloapi`), la
+// lecture des films dans `sync/filmfetch` (plan D3, lot 4). Les alias conservent les noms
 // historiques : sync ET les appelants externes (qui utilisent sync.HaloAPIClient,
-// sync.MatchSkillData…) restent inchangés — zéro requalification. Le pont
-// DTO->ParticipantRow (MergeSkillIntoParticipants) reste dans sync (skill_merge.go).
+// sync.MatchSkillData…) restent inchangés — zéro requalification. Le pont DTO->ParticipantRow
+// (MergeSkillIntoParticipants) reste dans sync (skill_merge.go).
 type (
-	HaloAPIClient            = haloclient.HaloAPIClient
-	HaloClient               = haloclient.HaloClient
-	FilmChunkData            = haloclient.FilmChunkData
-	FilmChunk                = haloclient.FilmChunk
-	FilmChunkRef             = haloclient.FilmChunkRef
-	MatchSkillData           = haloclient.MatchSkillData
-	PlayerPlaylistCSR        = haloclient.PlayerPlaylistCSR
-	CSRRankSnapshot          = haloclient.CSRRankSnapshot
-	LocalFilmCache           = haloclient.LocalFilmCache
-	CachedChunk              = haloclient.CachedChunk
-	CachedManifest           = haloclient.CachedManifest
-	HTTPError                = haloclient.HTTPError
-	MatchHistoryEntry        = haloclient.MatchHistoryEntry
-	PlaylistConfig           = haloclient.PlaylistConfig
-	PlaylistEntry            = haloclient.PlaylistEntry
-	SpartanCustomizationData = haloclient.SpartanCustomizationData
+	HaloAPIClient            = haloadapter.Client
+	HaloClient               = haloadapter.HaloClient
+	FilmChunkData            = filmfetch.FilmChunkData
+	FilmChunk                = filmfetch.FilmChunk
+	FilmChunkRef             = filmfetch.FilmChunkRef
+	MatchSkillData           = haloadapter.MatchSkillData
+	PlayerPlaylistCSR        = haloadapter.PlayerPlaylistCSR
+	CSRRankSnapshot          = haloadapter.CSRRankSnapshot
+	LocalFilmCache           = filmfetch.LocalFilmCache
+	CachedChunk              = filmfetch.CachedChunk
+	CachedManifest           = filmfetch.CachedManifest
+	HTTPError                = haloadapter.HTTPError
+	MatchHistoryEntry        = haloadapter.MatchHistoryEntry
+	PlaylistConfig           = haloadapter.PlaylistConfig
+	PlaylistEntry            = haloadapter.PlaylistEntry
+	SpartanCustomizationData = haloadapter.SpartanCustomizationData
 )
 
 var (
-	NewHaloAPIClient            = haloclient.NewHaloAPIClient
-	NewLocalFilmCache           = haloclient.NewLocalFilmCache
-	IsAuthError                 = haloclient.IsAuthError
-	ParseMatchSkillResponseJSON = haloclient.ParseMatchSkillResponseJSON
-	ResolveNameplateURL         = haloclient.ResolveNameplateURL
-	ErrSkillStatsUnavailable    = haloclient.ErrSkillStatsUnavailable
+	NewHaloAPIClient            = haloadapter.NewClient
+	NewLocalFilmCache           = filmfetch.NewLocalFilmCache
+	IsAuthError                 = haloadapter.IsAuthError
+	ParseMatchSkillResponseJSON = haloadapter.ParseMatchSkillResponseJSON
+	ResolveNameplateURL         = haloadapter.ResolveNameplateURL
+	ErrSkillStatsUnavailable    = haloadapter.ErrSkillStatsUnavailable
 )

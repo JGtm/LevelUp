@@ -19,7 +19,7 @@ import (
 
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability"
-	"levelup/go-api/internal/sync/haloclient"
+	"levelup/go-api/internal/sync/filmfetch"
 
 	"github.com/JGtm/LevelUp/libs/film/filmcache"
 	"github.com/JGtm/LevelUp/libs/film/finalise"
@@ -34,17 +34,17 @@ func cacheAvecManifestePartiel(t *testing.T) string {
 	racine := cacheVide(t)
 	court := titlePkg.FilmShortMatchID(matchRemote)
 	var aEcrire []filmcache.WriteChunk
-	var entrees []haloclient.CachedChunk
+	var entrees []filmfetch.CachedChunk
 	for _, c := range chunksTemoins() {
 		aEcrire = append(aEcrire, filmcache.WriteChunk{Index: c.Index, ChunkType: c.ChunkType,
 			StartMS: c.StartMS, DurationMS: c.DurationMS, Data: c.Data})
-		entrees = append(entrees, haloclient.CachedChunk{Index: c.Index, ChunkType: c.ChunkType,
+		entrees = append(entrees, filmfetch.CachedChunk{Index: c.Index, ChunkType: c.ChunkType,
 			StartMS: c.StartMS, DurationMS: c.DurationMS})
 	}
 	if err := filmcache.Write(t.Context(), racine, court, aEcrire); err != nil {
 		t.Fatal(err)
 	}
-	blob, err := json.Marshal(haloclient.CachedManifest{Chunks: entrees[:2]})
+	blob, err := json.Marshal(filmfetch.CachedManifest{Chunks: entrees[:2]})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +62,7 @@ func cacheAvecManifestePartiel(t *testing.T) string {
 // L'erreur ne pose aucun marqueur ; en ligne, `RemoteFilms` retombe sur le reseau (test suivant).
 func TestLocalCacheFilms_ManifestePartiel_NonServi(t *testing.T) {
 	racine := cacheAvecManifestePartiel(t)
-	src := NewLocalCacheFilms(haloclient.NewLocalFilmCache(racine))
+	src := NewLocalCacheFilms(filmfetch.NewLocalFilmCache(racine))
 
 	chunks, found, err := src.GetFilmChunks(context.Background(), matchRemote)
 	if !errors.Is(err, finalise.ErrFilmNonFinalise) {
@@ -78,8 +78,8 @@ func TestLocalCacheFilms_ManifestePartiel_NonServi(t *testing.T) {
 // suivante vient du disque.
 func TestRemoteFilms_ManifesteLocalPartiel_SeRepareParLeReseau(t *testing.T) {
 	racine := cacheAvecManifestePartiel(t)
-	distant := &filmsEnMemoire{chunks: map[string][]haloclient.FilmChunk{matchRemote: chunksTemoins()}}
-	src := NewRemoteFilms(NewLocalCacheFilms(haloclient.NewLocalFilmCache(racine)), distant, racine)
+	distant := &filmsEnMemoire{chunks: map[string][]filmfetch.FilmChunk{matchRemote: chunksTemoins()}}
+	src := NewRemoteFilms(NewLocalCacheFilms(filmfetch.NewLocalFilmCache(racine)), distant, racine)
 
 	got, found, err := src.GetFilmChunks(context.Background(), matchRemote)
 	if err != nil || !found || len(got) != 3 {
@@ -88,7 +88,7 @@ func TestRemoteFilms_ManifesteLocalPartiel_SeRepareParLeReseau(t *testing.T) {
 	if distant.appels != 1 {
 		t.Fatalf("appels reseau = %d, attendu 1 — le manifeste partiel a masque le reseau", distant.appels)
 	}
-	cm, err := haloclient.NewLocalFilmCache(racine).LoadManifest(matchRemote)
+	cm, err := filmfetch.NewLocalFilmCache(racine).LoadManifest(matchRemote)
 	if err != nil || cm == nil || len(cm.Chunks) != 3 {
 		t.Fatalf("manifeste apres archivage : %+v (err %v), attendu 3 entrees", cm, err)
 	}
@@ -114,8 +114,8 @@ func journalDuTestNonFinalise(t *testing.T) *bytes.Buffer {
 // finalise n'est pas un cache illisible : le repli reseau se dit en INFO, jamais en WARN.
 func TestRemoteFilms_ManifesteLocalPartiel_RepliEnInfo(t *testing.T) {
 	racine := cacheAvecManifestePartiel(t)
-	distant := &filmsEnMemoire{chunks: map[string][]haloclient.FilmChunk{matchRemote: chunksTemoins()}}
-	src := NewRemoteFilms(NewLocalCacheFilms(haloclient.NewLocalFilmCache(racine)), distant, racine)
+	distant := &filmsEnMemoire{chunks: map[string][]filmfetch.FilmChunk{matchRemote: chunksTemoins()}}
+	src := NewRemoteFilms(NewLocalCacheFilms(filmfetch.NewLocalFilmCache(racine)), distant, racine)
 	journal := journalDuTestNonFinalise(t)
 
 	if _, _, err := src.GetFilmChunks(context.Background(), matchRemote); err != nil {
@@ -135,7 +135,7 @@ func TestRemoteFilms_ManifesteLocalPartiel_RepliEnInfo(t *testing.T) {
 // qui comptait un echec et journalisait un ERROR a chaque passe pour un film qui n'etait que frais.
 func TestDecodeFilmForMatch_NonFinalise_SansKillFeedPasUnePanne(t *testing.T) {
 	racine := cacheAvecManifestePartiel(t)
-	c := &KillSourceCollector{client: NewLocalCacheFilms(haloclient.NewLocalFilmCache(racine))}
+	c := &KillSourceCollector{client: NewLocalCacheFilms(filmfetch.NewLocalFilmCache(racine))}
 	nonFinalises := observability.LoadCounter(metricNonFinalise)
 	erreurs := observability.LoadCounter(metricDecodeError)
 

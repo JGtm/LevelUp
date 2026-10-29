@@ -2,10 +2,10 @@ package sync
 
 import "strings"
 
-// skill_merge.go — pont entre les DTOs skill (haloclient) et les ParticipantRow
+// skill_merge.go — pont entre les données skill (haloadapter) et les ParticipantRow
 // de sync. Reste dans sync (utilise ParticipantRow) alors que la récupération +
-// le parsing skill vivent dans le sous-package haloclient (extraction K3e).
-// MatchSkillData est ré-exporté depuis haloclient (cf. haloclient_reexport.go).
+// la conversion skill vivent dans games/halo_infinite/haloadapter (plan D3).
+// MatchSkillData est ré-exporté depuis haloadapter (cf. haloclient_reexport.go).
 
 // MergeSkillIntoParticipants reporte les données skill (MMR, expected/stddev) sur
 // les ParticipantRow correspondants (par XUID). No-op si skill est vide.

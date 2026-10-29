@@ -23,7 +23,7 @@ import (
 	"log/slog"
 
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/platform/halo/duration"
+	"levelup/go-api/internal/duration"
 	"levelup/go-api/internal/util/pointers"
 )
 
@@ -165,7 +165,7 @@ func participantOutcome(isTeamGame bool, teamID, rank, winTeam int, dnf bool) *i
 }
 
 // iso8601DurationSecondsFloat parse "PT16.48S" → 16.48 (secondes flottantes). nil si KO.
-// Délègue à la source UNIQUE (internal/platform/halo/duration).
+// Délègue à la source UNIQUE (internal/duration).
 func iso8601DurationSecondsFloat(s string) *float64 {
 	return duration.SecondsFloatBoundedPtr(s)
 }

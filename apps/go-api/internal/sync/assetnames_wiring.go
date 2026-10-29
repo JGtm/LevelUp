@@ -24,9 +24,9 @@ import (
 	"levelup/go-api/internal/assetnames"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/games/halo_infinite/haloadapter"
 	"levelup/go-api/internal/ops"
 	"levelup/go-api/internal/platform/auth/pool"
-	"levelup/go-api/internal/platform/halo"
 )
 
 // assetSweepMaxAssets : cap du balayage périodique. Large car la traîne d'assets
@@ -130,10 +130,10 @@ func ResolveUnresolvedAssetNames(ctx context.Context, p pool.Pool, metaDB *sql.D
 }
 
 // newPoolAssetFetcher construit le fetcher authentifié d'un lease du pool (API d'assets, rate
-// limit halo.AssetNameResolveRateLimit). Variable de paquet : les tests des sites d'appel
+// limit haloadapter.AssetNameResolveRateLimit). Variable de paquet : les tests des sites d'appel
 // (première écriture V1 et V2) lui substituent un fetcher factice, sans réseau.
 var newPoolAssetFetcher = func(tokens *domain.HaloTokens) assetnames.Fetcher {
-	return halo.NewAssetNameFetcher(halo.AssetNameResolveRateLimit, tokens)
+	return haloadapter.NewAssetNameFetcher(haloadapter.AssetNameResolveRateLimit, tokens)
 }
 
 // resolveRefsWithPool est l'UNIQUE point d'acquisition de token + résolution.
@@ -150,7 +150,7 @@ func resolveRefsWithPool(
 	maxAssets int,
 ) assetnames.Result {
 	var res assetnames.Result
-	if p == nil || metaDB == nil || len(refs) == 0 || !halo.AssetNameResolutionEnabled() {
+	if p == nil || metaDB == nil || len(refs) == 0 || !haloadapter.AssetNameResolutionEnabled() {
 		return res
 	}
 	lease, err := p.Acquire(ctx, pool.PolicyAnyPublic, "")

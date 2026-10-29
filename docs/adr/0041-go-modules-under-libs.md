@@ -11,7 +11,8 @@ its façade and layers), ADR 0011 (canonical / semantic / asset-URL boundary).
 
 - **Brick**: a body of code that is autonomous by nature (it reads a file format, decodes a stream,
   speaks a protocol) and that LevelUp uses but does not define. Three are identified: the game-file
-  readers and map images (D1), the film decoder (D2), the Halo API protocol (D3).
+  readers and map images (D1), the film decoder (D2), the Halo API protocol (D3). The first two are modules under `libs/`; the third stays
+  inside `apps/go-api` as internal packages, held by the table of internal bricks (ADR 0042).
 - **Workspace**: the set of Go modules listed in the `go.work` at the repository root.
 - **Autonomy criterion**: `go list -deps ./...` run in a brick's module shows no package of the
   `levelup/go-api` module.

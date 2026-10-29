@@ -27,7 +27,7 @@ package replayartifacts
 // ([BacklogHorizon]). La perte n'est donc réelle que si la dérive reste INVISIBLE des semaines :
 // c'est ce que le compteur hors délai et son WARN empêchent, au bout d'un quart d'heure.
 // Archiver les morceaux d'un film non finalisé « en quarantaine » demanderait de les télécharger
-// malgré le refus du client (`haloclient.fetchFilmChunks`) et une disposition de cache que
+// malgré le refus du client (`filmfetch.Films.fetchFilmChunks`) et une disposition de cache que
 // personne ne lirait — pour protéger une donnée qui ne court aucun risque à cette échelle.
 //
 // # LA MÉMOIRE EST CELLE DU PROCESSUS, ET C'EST ASSEZ

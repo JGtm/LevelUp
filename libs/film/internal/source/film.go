@@ -175,7 +175,7 @@ func alignMetaOnNumbers(nums []int, meta []types.ChunkMeta) []types.ChunkMeta {
 // raison : [Inflate] traverse un tampon deja clair (le cache porte les deux formes), ce qui est
 // le bon defaut pour un CHUNK ; un TELECHARGEMENT depuis le CDN, lui, doit rendre du zlib, et
 // un corps qui n en est pas est un incident de transport a signaler — le taire rendrait des
-// octets de HTML d erreur au decodeur. Les appelants du telechargement (`sync/haloclient`,
+// octets de HTML d erreur au decodeur. Les appelants du telechargement (`sync/filmfetch`,
 // `cmd/replay-worker`, `cmd/fetch_film_chunks`) passent donc par ici.
 //
 // UN SEUL DECOMPRESSEUR DANS LE DEPOT (lot 2.4.2) : le ratchet

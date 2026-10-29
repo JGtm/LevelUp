@@ -13,9 +13,9 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/duration"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/games/classification"
-	"levelup/go-api/internal/platform/halo/duration"
 )
 
 // h5Identity construit l'identite canonique d'un joueur Halo 5. XUID vide
@@ -32,7 +32,7 @@ func h5Identity(gamertag string) canonical.PlayerIdentity {
 // parseISO8601DurationSeconds convertit "PT12M34.5S" en secondes (arrondi). Nil si
 // vide, non-parsable, sans aucune composante ("PT"), ou hors borne plausible (le
 // canonique distingue "indisponible" de "0"). Délègue à la source UNIQUE
-// (internal/platform/halo/duration), qui gère aussi "P1D" sans marqueur T.
+// (internal/duration), qui gère aussi "P1D" sans marqueur T.
 func parseISO8601DurationSeconds(s string) *int {
 	return duration.SecondsRoundedBoundedPtr(s)
 }

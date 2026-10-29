@@ -44,9 +44,9 @@
 package archlint
 
 import (
+	"fmt"
 	"go/parser"
 	"go/token"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -214,25 +214,9 @@ func fichiersImportsDeLaBrique(t *testing.T, racine string, b brique) []fichierI
 // (hors `testdata`, `vendor`, `.x`, `_x`), relatifs à `racine`, séparateurs "/".
 func sousDossiersGo(t *testing.T, racine, dossier string) []string {
 	t.Helper()
-	base := filepath.Join(racine, filepath.FromSlash(dossier))
-	var out []string
-	err := filepath.WalkDir(base, func(chemin string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if !d.IsDir() {
-			return nil
-		}
-		nom := d.Name()
-		if chemin != base && (dossiersInvisiblesAuGo[nom] || strings.HasPrefix(nom, ".") || strings.HasPrefix(nom, "_")) {
-			return fs.SkipDir
-		}
-		rel, _ := filepath.Rel(racine, chemin)
-		out = append(out, filepath.ToSlash(rel))
-		return nil
-	})
+	out, err := sousDossiersGoErr(racine, dossier)
 	if err != nil {
-		t.Fatalf("paquet %s introuvable : %v — la table des briques décrit une arborescence qui n'existe plus", dossier, err)
+		t.Fatalf("%v — la table des briques décrit une arborescence qui n'existe plus", err)
 	}
 	return out
 }
@@ -240,10 +224,20 @@ func sousDossiersGo(t *testing.T, racine, dossier string) []string {
 // importsDuDossier parse les imports des `.go` du seul répertoire `p` (relatif à `racine`).
 func importsDuDossier(t *testing.T, fset *token.FileSet, racine, p string) []fichierImports {
 	t.Helper()
+	out, err := importsDuDossierErr(fset, racine, p)
+	if err != nil {
+		t.Fatalf("%v — la table des briques décrit une arborescence qui n'existe plus", err)
+	}
+	return out
+}
+
+// importsDuDossierErr est la forme à erreur de [importsDuDossier] : l'auto-preuve des briques
+// internes y vérifie qu'un dossier déclaré qui n'existe pas est refusé.
+func importsDuDossierErr(fset *token.FileSet, racine, p string) ([]fichierImports, error) {
 	dir := filepath.Join(racine, filepath.FromSlash(p))
 	entrees, err := os.ReadDir(dir)
 	if err != nil {
-		t.Fatalf("paquet %s introuvable : %v — la table des briques décrit une arborescence qui n'existe plus", p, err)
+		return nil, fmt.Errorf("paquet %s introuvable : %w", p, err)
 	}
 	var out []fichierImports
 	for _, e := range entrees {
@@ -253,7 +247,7 @@ func importsDuDossier(t *testing.T, fset *token.FileSet, racine, p string) []fic
 		chemin := filepath.Join(dir, e.Name())
 		f, perr := parser.ParseFile(fset, chemin, nil, parser.ImportsOnly)
 		if perr != nil {
-			t.Fatalf("%s : %v", chemin, perr)
+			return nil, fmt.Errorf("%s : %w", chemin, perr)
 		}
 		fi := fichierImports{rel: p + "/" + e.Name()}
 		for _, imp := range f.Imports {
@@ -261,7 +255,7 @@ func importsDuDossier(t *testing.T, fset *token.FileSet, racine, p string) []fic
 		}
 		out = append(out, fi)
 	}
-	return out
+	return out, nil
 }
 
 // violationsDeBrique rend, pour une brique, les imports de `levelup/go-api/...` ou de

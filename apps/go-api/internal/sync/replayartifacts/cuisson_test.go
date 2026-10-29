@@ -32,7 +32,7 @@ import (
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replaybuild"
-	"levelup/go-api/internal/sync/haloclient"
+	"levelup/go-api/internal/sync/filmfetch"
 
 	"github.com/JGtm/LevelUp/libs/film/filmproc"
 	"github.com/JGtm/LevelUp/libs/film/replay"
@@ -118,7 +118,7 @@ type fetcherFilms struct {
 	signale map[string]chan struct{}
 }
 
-func (f *fetcherFilms) GetFilmChunks(ctx context.Context, matchID string) ([]haloclient.FilmChunk, bool, error) {
+func (f *fetcherFilms) GetFilmChunks(ctx context.Context, matchID string) ([]filmfetch.FilmChunk, bool, error) {
 	f.mu.Lock()
 	f.vus = append(f.vus, matchID)
 	sig, aSignal := f.signale[matchID]
@@ -131,9 +131,9 @@ func (f *fetcherFilms) GetFilmChunks(ctx context.Context, matchID string) ([]hal
 	}
 	// UN FILM FINALISE (lot L3, 2026-09-23) : le writer du cache refuse une liste sans morceau
 	// des temps forts, et ces tests-ci portent sur la cuisson, pas sur cette regle.
-	return []haloclient.FilmChunk{
-		{Index: 0, ChunkType: haloclient.FilmChunkTypeReplicationData, Data: []byte("x")},
-		{Index: 1, ChunkType: haloclient.FilmChunkTypeHighlightEvents, Data: []byte("tf")},
+	return []filmfetch.FilmChunk{
+		{Index: 0, ChunkType: filmfetch.FilmChunkTypeReplicationData, Data: []byte("x")},
+		{Index: 1, ChunkType: filmfetch.FilmChunkTypeHighlightEvents, Data: []byte("tf")},
 	}, true, nil
 }
 

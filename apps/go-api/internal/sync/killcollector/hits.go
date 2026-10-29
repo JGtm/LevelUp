@@ -53,7 +53,7 @@ import (
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
-	"levelup/go-api/internal/sync/haloclient"
+	"levelup/go-api/internal/sync/filmfetch"
 
 	"github.com/JGtm/LevelUp/libs/film/decfilm"
 )
@@ -88,7 +88,7 @@ const (
 // precision par arme ne se voit pas reconstruire un numerateur film. Degradation gracieuse (ni
 // panic, ni erreur remontee), title-agnostic (jamais slug ==).
 func (c *KillSourceCollector) collectHits(
-	ctx context.Context, matchID string, chunks []haloclient.FilmChunk, parts MatchIdentities,
+	ctx context.Context, matchID string, chunks []filmfetch.FilmChunk, parts MatchIdentities,
 ) {
 	if !c.caps.Has(games.CapWeaponAccuracy) {
 		slog.DebugContext(ctx, "killsource: precision par arme — capability absente, passe ignoree",
@@ -126,7 +126,7 @@ func (c *KillSourceCollector) collectHits(
 // (accuracy + distance). ok=false sur tout echec de scan (best-effort, journalise). Tient le verrou
 // de decode du process (les parametres de replication de filmdec sont des globaux de paquet).
 func (c *KillSourceCollector) buildHitsBatches(
-	ctx context.Context, matchID, dir string, chunks []haloclient.FilmChunk, parts MatchIdentities,
+	ctx context.Context, matchID, dir string, chunks []filmfetch.FilmChunk, parts MatchIdentities,
 ) ([]persist.WeaponAccuracyInsert, persist.WeaponHitDistanceBatch, bool) {
 
 	// Le registre de chunk_00 n'est plus analyse ici (J10.2, 2026-09-27) : il ne servait qu'au

@@ -1,0 +1,215 @@
+// xbox_device_code.go : Device Code Flow natif Xbox sur login.live.com.
+//
+// RFC 8628 pur — aucune dépendance externe (pas de MSAL). Sert le login Xbox natif
+// (`platform/auth.SISUProvider`) : access_token + refresh_token Microsoft avant l'échange XBL.
+//
+// Endpoints (sisu.go) :
+//   - POST URLConnectMSA (start)
+//   - POST URLTokenMSA   (poll)
+
+package xblauth
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"log/slog"
+	"net/http"
+	"net/url"
+	"strings"
+	"time"
+
+	"levelup/go-api/internal/haloapi"
+)
+
+const (
+	// pollSlowDownIncrement est l'augmentation d'intervalle sur slow_down (RFC 8628 §3.5).
+	pollSlowDownIncrement = 5
+	// pollMaxInterval est le plafond d'intervalle de polling en secondes.
+	pollMaxInterval = 60
+)
+
+// XboxDeviceCodeResult contient les données retournées par [FluxAppareil.Start].
+type XboxDeviceCodeResult struct {
+	// UserCode est le code court à saisir sur la page de vérification.
+	UserCode string
+	// VerificationURL est l'URL à présenter à l'utilisateur.
+	VerificationURL string
+	// DeviceCode est le code opaque utilisé pour le polling — ne pas exposer.
+	DeviceCode string
+	// ExpiresIn est la durée de validité en secondes.
+	ExpiresIn int
+	// Interval est le délai minimum entre deux polls en secondes.
+	Interval int
+}
+
+// FluxAppareil : ce que le Device Code Flow reçoit de l'appelant.
+type FluxAppareil struct {
+	// Doer émet les requêtes (obligatoire) ; il porte la garde de sortie et le délai.
+	Doer haloapi.Doer
+	// URLConnect : endpoint de démarrage (en production [URLConnectMSA]).
+	URLConnect string
+	// URLToken : endpoint de polling (en production [URLTokenMSA]).
+	URLToken string
+}
+
+// Start initie un Device Code Flow pour le client `clientID` (ex. [IDAppXboxNatif]).
+func (f FluxAppareil) Start(ctx context.Context, clientID string) (*XboxDeviceCodeResult, error) {
+	slog.DebugContext(ctx, "xbox_device_code: démarrage Device Code Flow", "client_id", clientID)
+
+	form := url.Values{
+		oauthFieldClientID: {clientID},
+		// Scope MSA natif (ScopeMSA) et NON les scopes Azure AD : l'access_token issu de ce flow
+		// est présenté à user.auth.xboxlive.com en RpsTicket "t=<ticket>" (famille MSA). Avec
+		// Xboxlive.signin, login.live.com émettrait un JWT AAD hors de cette famille
+		// (cross-référencé sur XAL/OpenXbox : scope MBI_SSL, client_id = AppId Xbox).
+		oauthFieldScope: {ScopeMSA},
+		"response_type": {oauthFieldDeviceCode},
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, f.URLConnect, strings.NewReader(form.Encode()))
+	if err != nil {
+		return nil, fmt.Errorf("xbox_device_code: création requête start: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := f.Doer.Do(req)
+	if err != nil {
+		if errors.Is(err, haloapi.ErrDefinitif) {
+			// Sortie refusée par l'appelant (mode démo) : rien n'a été émis.
+			return nil, fmt.Errorf("xbox_device_code: start: %w", err)
+		}
+		return nil, fmt.Errorf("xbox_device_code: POST start: %w", err)
+	}
+	defer resp.Body.Close()
+
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("xbox_device_code: lecture réponse start: %w", err)
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("xbox_device_code: HTTP %d start: %s", resp.StatusCode, raw)
+	}
+	return parseDeviceCodeStart(ctx, raw)
+}
+
+// parseDeviceCodeStart décode la réponse de démarrage du Device Code Flow.
+func parseDeviceCodeStart(ctx context.Context, raw []byte) (*XboxDeviceCodeResult, error) {
+	var data map[string]any
+	if err := json.Unmarshal(raw, &data); err != nil {
+		return nil, fmt.Errorf("xbox_device_code: JSON start: %w", err)
+	}
+
+	deviceCode, _ := data[oauthFieldDeviceCode].(string)
+	userCode, _ := data["user_code"].(string)
+	verificationURI, _ := data["verification_uri"].(string)
+	if verificationURI == "" {
+		verificationURI, _ = data["verification_url"].(string) // certaines réponses utilisent _url
+	}
+	expiresIn := int(jsonFloat(data, "expires_in"))
+	interval := int(jsonFloat(data, "interval"))
+	if interval <= 0 {
+		interval = 5 // RFC 8628 §3.4 : valeur par défaut
+	}
+
+	if deviceCode == "" {
+		return nil, fmt.Errorf("xbox_device_code: device_code absent dans la réponse")
+	}
+
+	result := &XboxDeviceCodeResult{
+		UserCode:        userCode,
+		VerificationURL: verificationURI,
+		DeviceCode:      deviceCode,
+		ExpiresIn:       expiresIn,
+		Interval:        interval,
+	}
+	slog.InfoContext(ctx, "xbox_device_code: Device Code Flow initialisé", "expires_in", result.ExpiresIn)
+	return result, nil
+}
+
+// Poll attend la complétion du Device Code Flow. Bloquant — à appeler dans une goroutine.
+// Gère : authorization_pending (continuer), slow_down (augmenter interval), succès
+// (access_token + refresh_token), erreur fatale.
+func (f FluxAppareil) Poll(ctx context.Context, clientID, deviceCode string, interval int) (accessToken, refreshToken string, err error) {
+	slog.DebugContext(ctx, "xbox_device_code: début polling")
+
+	for {
+		select {
+		case <-ctx.Done():
+			return "", "", ctx.Err()
+		case <-time.After(time.Duration(interval) * time.Second):
+		}
+
+		data, status, raw, err := f.pollOnce(ctx, clientID, deviceCode)
+		if err != nil {
+			return "", "", err
+		}
+
+		// Succès
+		if at, ok := data["access_token"].(string); ok && at != "" {
+			rt, _ := data[oauthFieldRefreshToken].(string)
+			slog.InfoContext(ctx, "xbox_device_code: Device Code Flow complété")
+			return at, rt, nil
+		}
+
+		errorCode, _ := data["error"].(string)
+		switch errorCode {
+		case "authorization_pending":
+			slog.DebugContext(ctx, "xbox_device_code: poll en attente")
+			continue
+		case "slow_down":
+			interval += pollSlowDownIncrement
+			if interval > pollMaxInterval {
+				interval = pollMaxInterval
+			}
+			slog.WarnContext(ctx, "xbox_device_code: slow_down reçu", "new_interval", interval)
+			continue
+		case "":
+			return "", "", fmt.Errorf("xbox_device_code: réponse inattendue (HTTP %d): %s", status, raw)
+		default:
+			errDesc, _ := data["error_description"].(string)
+			slog.ErrorContext(ctx, "xbox_device_code: erreur fatale", "error_code", errorCode)
+			return "", "", fmt.Errorf("xbox_device_code: erreur fatale %q: %s", errorCode, errDesc)
+		}
+	}
+}
+
+// pollOnce émet UNE requête de polling et rend la réponse décodée, son statut et son corps brut.
+func (f FluxAppareil) pollOnce(ctx context.Context, clientID, deviceCode string) (map[string]any, int, []byte, error) {
+	form := url.Values{
+		oauthFieldGrantType:  {"urn:ietf:params:oauth:grant-type:device_code"},
+		oauthFieldClientID:   {clientID},
+		oauthFieldDeviceCode: {deviceCode},
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, f.URLToken, strings.NewReader(form.Encode()))
+	if err != nil {
+		return nil, 0, nil, fmt.Errorf("xbox_device_code: création requête poll: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := f.Doer.Do(req)
+	if err != nil {
+		if errors.Is(err, haloapi.ErrDefinitif) {
+			// Sortie refusée par l'appelant (mode démo) : rien n'a été émis.
+			return nil, 0, nil, fmt.Errorf("xbox_device_code: poll: %w", err)
+		}
+		return nil, 0, nil, fmt.Errorf("xbox_device_code: POST poll: %w", err)
+	}
+	raw, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+
+	var data map[string]any
+	if err := json.Unmarshal(raw, &data); err != nil {
+		return nil, 0, nil, fmt.Errorf("xbox_device_code: JSON poll: %w", err)
+	}
+	return data, resp.StatusCode, raw, nil
+}
+
+// jsonFloat extrait un nombre JSON en float64 depuis une map.
+func jsonFloat(data map[string]any, key string) float64 {
+	v, _ := data[key].(float64)
+	return v
+}

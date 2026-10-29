@@ -42,7 +42,7 @@ import (
 
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability"
-	"levelup/go-api/internal/sync/haloclient"
+	"levelup/go-api/internal/sync/filmfetch"
 
 	"github.com/JGtm/LevelUp/libs/film/filmcache"
 	"github.com/JGtm/LevelUp/libs/film/finalise"
@@ -84,7 +84,7 @@ func NewRemoteFilms(local *LocalCacheFilms, distant filmChunkFetcher, cacheRoot 
 // `killsource_films_absents`.
 func (r *RemoteFilms) GetFilmChunks(
 	ctx context.Context, matchID string,
-) ([]haloclient.FilmChunk, bool, error) {
+) ([]filmfetch.FilmChunk, bool, error) {
 	if r == nil {
 		return nil, false, nil
 	}
@@ -128,7 +128,7 @@ func (r *RemoteFilms) GetFilmChunks(
 // archiver ecrit le film au cache. Best-effort SIGNALE : l echec n empeche pas le decodage
 // (les octets sont en memoire) mais il est logge ET compte — sans quoi un disque plein
 // ferait payer le reseau a chaque passe sans que personne ne le sache.
-func (r *RemoteFilms) archiver(ctx context.Context, matchID string, chunks []haloclient.FilmChunk) {
+func (r *RemoteFilms) archiver(ctx context.Context, matchID string, chunks []filmfetch.FilmChunk) {
 	if r.cacheRoot == "" {
 		slog.WarnContext(ctx, "killsource_film_non_archive_faute_de_cache",
 			"match_id", matchID,

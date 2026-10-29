@@ -53,7 +53,7 @@ import (
 	settingsPkg "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replaybuild"
-	"levelup/go-api/internal/sync/haloclient"
+	"levelup/go-api/internal/sync/filmfetch"
 )
 
 // maxPerCycle borne le nombre d'artefacts construits par cycle : un sync initial insère
@@ -169,7 +169,7 @@ func (h *Hook) Placement(ctx context.Context) replaybuild.Placement {
 // ChunksFetcher : capacité OPTIONNELLE du client de sync (assertion côté appelant, pas
 // extension de l'interface HaloClient — les mocks des autres étapes n'ont pas à la porter).
 type ChunksFetcher interface {
-	GetFilmChunks(ctx context.Context, matchID string) ([]haloclient.FilmChunk, bool, error)
+	GetFilmChunks(ctx context.Context, matchID string) ([]filmfetch.FilmChunk, bool, error)
 }
 
 // Deps : tout ce dont l'étape a besoin, passé à plat par le paquet sync (le sous-package ne

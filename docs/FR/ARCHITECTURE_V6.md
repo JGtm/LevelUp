@@ -262,3 +262,18 @@ franchit jamais la frontière d'un module : `make libs-test` et les pas CI « br
 `go mod tidy` ne tourne pas dans `apps/go-api`. Une brique est importable de l'extérieur par le tag
 `libs/<brique>/vX.Y.Z`. Commandes : [`COMMANDS.md`](COMMANDS.md) § « Modules Go sous `libs/` » ; décision et liste à
 suivre pour ajouter une brique : [`adr/0041-go-modules-under-libs.md`](../adr/0041-go-modules-under-libs.md).
+
+### Brique API Halo (ADR 0042)
+
+Le code qui **parle aux** services Halo vit dans deux paquets internes d'`apps/go-api`, pas dans un module :
+`internal/haloapi/xblauth` (la chaîne d'échange jeton Microsoft -> Xbox Live -> XSTS -> Spartan) et
+`internal/haloapi/infinite` (adresses, transport, un fichier par service, DTO JSON bruts, octets de film
+compressés). Ils n'ont ni état ni politique et n'importent rien de LevelUp hors de `internal/haloapi` : le
+`Doer` HTTP (gardé par surface `netguard`, consulté avant le limiteur), la politique de reprise (`Retry`, trois
+politiques conservées), les adresses, le client Azure, le descripteur de titre, les jetons et la langue leur
+sont tous passés. Ce qui décide reste dans LevelUp : `platform/auth` (magasin, mise en commun, boucles de
+rafraîchissement ; `platform/auth/tokencache` pour le cache de 50 minutes par joueur),
+`games/halo_infinite/haloadapter` (DTO -> `domain`, caches, façades `Provider` et `Client`), `sync/filmfetch`
+(décompression, finalisation, cache local des films). La table des briques internes est
+`archlint/briques_internes_test.go` ; `domain`, `analysis` et `games/canonical` n'atteignent jamais la brique.
+Décision : [`adr/0042-halo-api-protocol-vs-exploitation.md`](../adr/0042-halo-api-protocol-vs-exploitation.md).

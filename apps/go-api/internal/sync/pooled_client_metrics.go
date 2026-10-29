@@ -50,7 +50,7 @@ func observeHaloCall(title, call, player string, start time.Time, err error) {
 	// UN FILM PAS ENCORE FINALISE N EST PAS UNE ERREUR D APPEL (lot L3 du 2026-09-23, constat
 	// L3-R3 de sa revue adverse). La requete a abouti et le manifeste est lisible : il dit seulement
 	// que le serveur n a pas fini de publier le film (pas de morceau des temps forts), et
-	// l appelant REPORTE (`haloclient.fetchFilmChunks`). Le compter ici le rangeait en erreur
+	// l appelant REPORTE (`filmfetch.Films.fetchFilmChunks`). Le compter ici le rangeait en erreur
 	// RESEAU (pas une `HTTPError`) : la colonne « Network » du monitoring montait pour chaque
 	// match detecte moins d une minute apres sa fin — une panne a chercher qui n existe pas. Ce
 	// report se compte chez ses appelants (`postsync_replay_films_non_finalises_total`,

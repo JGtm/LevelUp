@@ -18,7 +18,7 @@ import (
 
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/port"
-	"levelup/go-api/internal/sync/haloclient"
+	"levelup/go-api/internal/sync/filmfetch"
 
 	"github.com/JGtm/LevelUp/libs/film/decfilm"
 )
@@ -57,7 +57,7 @@ func TestKillSourcePositionsFilmReelEtRelitParLaVue(t *testing.T) {
 	cat := realMapQuantCatalog(t)
 
 	db := openSharedTestDB(t)
-	client := &fakeFilmClient{chunks: map[string][]haloclient.FilmChunk{film: chunks}}
+	client := &fakeFilmClient{chunks: map[string][]filmfetch.FilmChunk{film: chunks}}
 	caps := games.CapabilityMap{
 		games.CapFilmKillSource:    games.CapSupported,
 		games.CapFilmKillPositions: games.CapSupported,

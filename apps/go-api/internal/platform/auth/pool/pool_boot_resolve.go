@@ -10,7 +10,7 @@ import (
 // Une résolution enchaîne cinq allers-retours réseau (refresh OAuth, XBL user, XSTS,
 // Spartan, Clearance) : en série, la construction du pool attend la SOMME des comptes ;
 // en parallèle, à peu près le plus lent. L'étape XBL user garde sa propre borne,
-// process-wide (sémaphore de internal/platform/auth/halo_exchange.go), contre le 429
+// process-wide (sémaphore de internal/platform/auth/xbl_exchange.go), contre le 429
 // « currentRequests » de user.auth.xboxlive.com.
 const bootResolveConcurrency = 6
 

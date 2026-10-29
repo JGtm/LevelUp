@@ -3,7 +3,7 @@ package games
 import "levelup/go-api/internal/games/mappings"
 
 // EndpointKey ré-exporte mappings.EndpointKey afin que les consommateurs du port
-// (platform/halo, internal/sync) n'importent que le package games.
+// (games/halo_infinite/haloadapter, internal/sync) n'importent que le package games.
 type EndpointKey = mappings.EndpointKey
 
 // Clés d'endpoint canoniques (alias des constantes mappings, MT-01).
@@ -20,7 +20,7 @@ const (
 
 // EndpointResolver résout l'host d'ingestion d'un titre par clé d'endpoint (MT-01).
 //
-// Port consommé par platform/halo + internal/sync ; zéro accès DB. La résolution
+// Port consommé par games/halo_infinite/haloadapter + internal/sync ; zéro accès DB. La résolution
 // se fait TOUJOURS par clé d'endpoint, jamais par comparaison de slug (archlint
 // no_slug_comparison). HostFor retourne ok=false si le titre ne déclare pas cet
 // axe d'ingestion → le caller dégrade (skip + warn), sans fallback silencieux

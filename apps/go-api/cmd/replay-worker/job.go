@@ -42,7 +42,7 @@ const chunkDownloadTimeout = 60 * time.Second
 
 // chunkParallelism : nombre maximal de téléchargements CDN simultanés pour UN film.
 //
-// MÊME VALEUR ET MÊME RAISON QUE `haloclient.filmChunkParallelism` : le CDN Azure sert des
+// MÊME VALEUR ET MÊME RAISON QUE `infinite.FilmChunkParallelism` : le CDN Azure sert des
 // blobs indépendants, la latence domine, et huit connexions saturent la bande passante d'une
 // liaison ordinaire sans jamais faire de l'ouvrier un client abusif. Les monter n'achète plus
 // de temps (la limite devient le débit) et multiplie la mémoire tenue simultanément —
@@ -389,7 +389,7 @@ func (w *worker) cleanupFilm(ctx context.Context, job *domain.BuildQueueJob) {
 // n'avoir aucun secret Halo.
 //
 // LES TÉLÉCHARGEMENTS SONT PARALLÈLES, BORNÉS À [chunkParallelism], SUR LE MODÈLE EXACT DU
-// CLIENT DE SYNC (`haloclient.fetchFilmChunks`) : errgroup.WithContext + SetLimit, chaque
+// CLIENT DE SYNC (`filmfetch.Films.fetchFilmChunks`) : errgroup.WithContext + SetLimit, chaque
 // goroutine écrivant dans un SLOT PRÉ-ALLOUÉ. Aucun mutex, aucun tri après coup —
 // l'assemblage est fait par l'indice de boucle, donc L'ORDRE DU JOB EST L'ORDRE RENDU, et il
 // l'est par construction plutôt que par une convention que la prochaine relecture pourrait

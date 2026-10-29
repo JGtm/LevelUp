@@ -118,8 +118,8 @@ func TestSISUDeviceFlow_ExchangeFlow_ClassicChain(t *testing.T) {
 			t.Errorf("SISU /authorize appelé (%s) : la complétion ne doit plus en dépendre", c)
 		}
 	}
-	if len(fake.rps) != 1 || fake.rps[0] != rpsPrefixXboxNative {
-		t.Errorf("préfixes RpsTicket présentés = %v, attendu un seul %q", fake.rps, rpsPrefixXboxNative)
+	if len(fake.rps) != 1 || fake.rps[0] != "t=" {
+		t.Errorf("préfixes RpsTicket présentés = %v, attendu un seul %q", fake.rps, "t=")
 	}
 	want := []string{
 		"user.auth.xboxlive.com/user/authenticate",

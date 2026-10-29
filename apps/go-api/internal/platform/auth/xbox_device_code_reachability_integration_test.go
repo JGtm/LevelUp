@@ -8,7 +8,7 @@
 // tests unitaires du package injectent des URLs httptest mockées (conclusion D
 // du plan) — aucun test ne touchait jamais l'endpoint Microsoft réel.
 //
-// Ce test exerce la constante RÉELLE `xboxDeviceCodeURL` via StartXboxDeviceCode
+// Ce test exerce la constante RÉELLE `xblauth.URLConnectMSA` via StartXboxDeviceCode
 // et asserte que Microsoft répond 2xx + device_code. Si MS déplace/retire à
 // nouveau l'endpoint, ou si quelqu'un régresse l'URL, il échoue immédiatement.
 //
@@ -35,10 +35,12 @@ import (
 	"os"
 	"testing"
 	"time"
+
+	"levelup/go-api/internal/haloapi/xblauth"
 )
 
 // TestXboxDeviceCodeEndpointReachable vérifie que l'endpoint MSA de démarrage du
-// Device Code Flow natif Xbox (constante xboxDeviceCodeURL) répond réellement.
+// Device Code Flow natif Xbox (constante xblauth.URLConnectMSA) répond réellement.
 func TestXboxDeviceCodeEndpointReachable(t *testing.T) {
 	if os.Getenv("LEVELUP_DEVICE_ENDPOINT_LIVE_CHECK") == "" {
 		t.Skip("garde-rail réseau opt-in : poser LEVELUP_DEVICE_ENDPOINT_LIVE_CHECK=1 pour joindre login.live.com")
@@ -47,20 +49,20 @@ func TestXboxDeviceCodeEndpointReachable(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 
-	// StartXboxDeviceCode utilise la constante réelle xboxDeviceCodeURL + les
+	// StartXboxDeviceCode utilise la constante réelle xblauth.URLConnectMSA + les
 	// scopes Xbox réels — c'est exactement le chemin de production.
 	res, err := StartXboxDeviceCode(ctx, SISUDefaultAppID)
 	if err != nil {
-		t.Fatalf("endpoint device-code Xbox injoignable via la constante xboxDeviceCodeURL (%s) — "+
+		t.Fatalf("endpoint device-code Xbox injoignable via la constante xblauth.URLConnectMSA (%s) — "+
 			"Microsoft a-t-il déplacé/retiré l'endpoint, ou l'URL a-t-elle régressé ? err: %v",
-			xboxDeviceCodeURL, err)
+			xblauth.URLConnectMSA, err)
 	}
 	if res.DeviceCode == "" {
 		t.Fatalf("réponse 2xx mais device_code absent (%s) — schéma de réponse Microsoft changé ?",
-			xboxDeviceCodeURL)
+			xblauth.URLConnectMSA)
 	}
 	if res.UserCode == "" {
 		t.Errorf("user_code absent — l'UI ne pourrait afficher aucun code à saisir")
 	}
-	t.Logf("OK: endpoint %s joignable, user_code obtenu (expires_in=%d s)", xboxDeviceCodeURL, res.ExpiresIn)
+	t.Logf("OK: endpoint %s joignable, user_code obtenu (expires_in=%d s)", xblauth.URLConnectMSA, res.ExpiresIn)
 }

@@ -337,6 +337,29 @@
 # jugée contre le JSONL des lots du module `libs/film` (`--baseline`, cf. ci-dessous). Les 2 lignes que le
 # lot 2.11 du même plan a relocalisées de `film/replay` vers `internal/filmcorpus` restent ici.
 #
+# RETRAIT DU 2026-10-29 (plan D3 lot 2 : chaîne d'authentification déplacée de `platform/auth` vers
+# `internal/haloapi/xblauth`, mêmes noms de test, voir `.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D3_2026-10-29.md`) :
+# 59 paires (Package, Test), 242 lignes JSONL, toutes du paquet `levelup/go-api/internal/platform/auth`
+# (49 tests de tête et 10 sous-tests : TestExtractUserHash_Missing/*, TestRequestClearanceTokenWith_GoldenAndRouting/*,
+# TestRequestSpartanTokenWith_GoldenAndRouting/*). Ce n'est PAS une perte de test : chacune des 59 paires existe
+# sous le même nom dans le paquet `levelup/go-api/internal/haloapi/xblauth`, vérifié par différence entre cette
+# baseline et le JSONL d'un run de `./internal/platform/auth/...` + `./internal/haloapi/...`. Le paquet
+# `haloapi/xblauth` est neuf : il n'entre pas dans la baseline (il tourne dans le lot CI `reste`). Les 161 autres
+# paires de `platform/auth` restent contrôlées.
+#
+# RETRAIT DU 2026-10-29 (plan D3 lot 4 : `platform/halo` et `sync/haloclient` supprimés ; tests portés sous
+# `haloapi/infinite`, `haloadapter`, `filmfetch`, `tokencache` sous le même nom, voir
+# `.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D3_2026-10-29.md`) : 186 paires (Package, Test), 767 lignes JSONL —
+# `levelup/go-api/internal/platform/halo` (178 paires, 735 lignes) et `levelup/go-api/internal/platform/halo/duration`
+# (8 paires, 32 lignes ; `sync/haloclient` n'avait aucune ligne). Ce n'est PAS une perte de test : chacun des
+# 92 tests de tête (et ses sous-tests) existe sous le même nom dans son paquet de destination, vérifié par
+# différence entre ces lignes et le JSONL d'un run complet de `./...` : 64 dans
+# `levelup/go-api/internal/games/halo_infinite/haloadapter`, 16 dans `levelup/go-api/internal/platform/auth/tokencache`
+# (cache de jetons et filet RetryWithFreshTokens), 9 dans `levelup/go-api/internal/duration` (paquet déplacé tel quel,
+# plus TestParseISO8601DurationSeconds), 3 dans `levelup/go-api/internal/haloapi/infinite` (TestBuildAssetImageURL,
+# TestBuildSeasonServiceRecordURL, TestParseLeaderboardPage : fonctions pures de la brique). Les paquets de
+# destination sont neufs : ils n'entrent pas dans la baseline (ils tournent dans les lots CI `sync` et `reste`).
+#
 # DEUX BASELINES, UNE PAR MODULE (ADR 0041) : `tests_pre_migration.jsonl` pour `apps/go-api` (défaut),
 # `tests_libs_film.jsonl` pour `libs/film` (`--baseline .ai/baselines/tests_libs_film.jsonl`). `./...` ne
 # franchit pas la frontière d'un module : chaque baseline se juge contre le JSONL de SON module.

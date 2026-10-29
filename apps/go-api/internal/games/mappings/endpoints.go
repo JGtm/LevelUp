@@ -8,7 +8,7 @@ import (
 // EndpointKey identifie un host d'ingestion API d'un titre (axe MT-01).
 //
 // Chaque clé correspond à un host distinct consommé par la couche d'ingestion
-// (platform/halo + internal/sync). Deux clés peuvent pointer le même host
+// (games/halo_infinite/haloadapter + internal/sync). Deux clés peuvent pointer le même host
 // physique (ex. Nameplate et GameCMS partagent gamecms-hacs) ; elles restent
 // distinctes pour que le Contract migre chaque call-site byte-pour-byte sans
 // présumer d'une fusion.

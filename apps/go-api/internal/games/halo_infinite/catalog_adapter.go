@@ -23,8 +23,8 @@ import (
 	"levelup/go-api/internal/games/canonical"
 )
 
-// AssetType identifie le type d'asset à fetcher (miroir local de halo.AssetType
-// pour éviter le cycle d'import games/halo_infinite ↔ platform/halo).
+// AssetType identifie le type d'asset à fetcher (miroir local de haloadapter.AssetType
+// pour éviter le cycle d'import games/halo_infinite ↔ haloadapter).
 type AssetType string
 
 const (
@@ -43,9 +43,9 @@ type DiscoveryAssetRaw struct {
 	Description string
 }
 
-// AssetFetcher abstrait l'accès DiscoveryUGC. Implémenté côté platform/halo
-// par un wrapper léger qui mappe halo.AssetType ↔ AssetType. Permet à
-// games/halo_infinite de rester découplé de platform/halo.
+// AssetFetcher abstrait l'accès DiscoveryUGC. Implémenté par l'adaptateur (haloadapter)
+// par un wrapper léger qui mappe haloadapter.AssetType ↔ AssetType. Permet à
+// games/halo_infinite de rester découplé de son adaptateur.
 type AssetFetcher interface {
 	FetchAsset(ctx context.Context, assetType AssetType, titleID, assetID, versionID, lang string) (*DiscoveryAssetRaw, error)
 }

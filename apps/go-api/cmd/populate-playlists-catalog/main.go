@@ -31,12 +31,12 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/halo_infinite"
+	"levelup/go-api/internal/games/halo_infinite/haloadapter"
 	"levelup/go-api/internal/games/titleseams"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/ops"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb"
-	"levelup/go-api/internal/platform/halo"
 	"levelup/go-api/internal/service"
 )
 
@@ -126,8 +126,8 @@ func main() {
 	}
 
 	// 3. Construire le resolver + adapter Halo.
-	provider := halo.NewHaloProvider().WithRateLimit(*rateLimit).WithTokens(haloTokens)
-	fetcher := halo.NewCatalogFetcher(provider)
+	provider := haloadapter.NewHaloProvider().WithRateLimit(*rateLimit).WithTokens(haloTokens)
+	fetcher := haloadapter.NewCatalogFetcher(provider)
 	adapter, err := halo_infinite.NewCatalogAdapter(fetcher, *rulesPath)
 	if err != nil {
 		fatal("init catalog adapter: %v", err)

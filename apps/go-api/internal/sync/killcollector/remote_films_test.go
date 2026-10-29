@@ -9,7 +9,7 @@ import (
 
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability"
-	"levelup/go-api/internal/sync/haloclient"
+	"levelup/go-api/internal/sync/filmfetch"
 
 	"github.com/JGtm/LevelUp/libs/film/filmcache"
 )
@@ -20,11 +20,11 @@ const matchRemote = "aabbccdd-1111-2222-3333-444455556666"
 // avec `fakeFilmClient` (collector_test.go), qui est sous `//go:build integration` : ces
 // tests-ci doivent tourner dans la suite rapide.
 type filmsEnMemoire struct {
-	chunks map[string][]haloclient.FilmChunk
+	chunks map[string][]filmfetch.FilmChunk
 	appels int
 }
 
-func (f *filmsEnMemoire) GetFilmChunks(_ context.Context, matchID string) ([]haloclient.FilmChunk, bool, error) {
+func (f *filmsEnMemoire) GetFilmChunks(_ context.Context, matchID string) ([]filmfetch.FilmChunk, bool, error) {
 	f.appels++
 	c, ok := f.chunks[matchID]
 	if !ok {
@@ -47,8 +47,8 @@ func cacheVide(t *testing.T) string {
 	return racine
 }
 
-func chunksTemoins() []haloclient.FilmChunk {
-	return []haloclient.FilmChunk{
+func chunksTemoins() []filmfetch.FilmChunk {
+	return []filmfetch.FilmChunk{
 		{Index: 0, ChunkType: 1, Data: []byte("entete"), StartMS: 0, DurationMS: 100},
 		{Index: 1, ChunkType: 2, Data: []byte("replication"), StartMS: 100, DurationMS: 900},
 		{Index: 2, ChunkType: 3, Data: []byte("killfeed"), StartMS: 1000, DurationMS: 10},
@@ -63,8 +63,8 @@ func chunksTemoins() []haloclient.FilmChunk {
 // perdrait une donnee irremplacable qu on a eue en main.
 func TestRemoteFilms_TelechargeEtArchive(t *testing.T) {
 	racine := cacheVide(t)
-	distant := &filmsEnMemoire{chunks: map[string][]haloclient.FilmChunk{matchRemote: chunksTemoins()}}
-	src := NewRemoteFilms(NewLocalCacheFilms(haloclient.NewLocalFilmCache(racine)), distant, racine)
+	distant := &filmsEnMemoire{chunks: map[string][]filmfetch.FilmChunk{matchRemote: chunksTemoins()}}
+	src := NewRemoteFilms(NewLocalCacheFilms(filmfetch.NewLocalFilmCache(racine)), distant, racine)
 
 	got, found, err := src.GetFilmChunks(context.Background(), matchRemote)
 	if err != nil || !found {
@@ -104,8 +104,8 @@ func TestRemoteFilms_TelechargeEtArchive(t *testing.T) {
 func TestRemoteFilms_FilmExpire(t *testing.T) {
 	racine := t.TempDir()
 	src := NewRemoteFilms(
-		NewLocalCacheFilms(haloclient.NewLocalFilmCache(racine)),
-		&filmsEnMemoire{chunks: map[string][]haloclient.FilmChunk{}},
+		NewLocalCacheFilms(filmfetch.NewLocalFilmCache(racine)),
+		&filmsEnMemoire{chunks: map[string][]filmfetch.FilmChunk{}},
 		racine,
 	)
 	got, found, err := src.GetFilmChunks(context.Background(), matchRemote)
@@ -120,7 +120,7 @@ func TestRemoteFilms_FilmExpire(t *testing.T) {
 // TestRemoteFilms_SansClientDistant : source inerte, pas panne. C est le comportement d une
 // passe hors ligne qui n a rien en cache — elle ne fait rien, proprement.
 func TestRemoteFilms_SansClientDistant(t *testing.T) {
-	src := NewRemoteFilms(NewLocalCacheFilms(haloclient.NewLocalFilmCache(t.TempDir())), nil, "")
+	src := NewRemoteFilms(NewLocalCacheFilms(filmfetch.NewLocalFilmCache(t.TempDir())), nil, "")
 	if _, found, err := src.GetFilmChunks(context.Background(), matchRemote); found || err != nil {
 		t.Errorf("(found=%v, err=%v), attendu (false, nil)", found, err)
 	}
@@ -136,8 +136,8 @@ func TestRemoteFilms_EchecArchivageNonFatal_MaisCOMPTE(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(racine, "film_chunks"), []byte("x"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	distant := &filmsEnMemoire{chunks: map[string][]haloclient.FilmChunk{matchRemote: chunksTemoins()}}
-	src := NewRemoteFilms(NewLocalCacheFilms(haloclient.NewLocalFilmCache(racine)), distant, racine)
+	distant := &filmsEnMemoire{chunks: map[string][]filmfetch.FilmChunk{matchRemote: chunksTemoins()}}
+	src := NewRemoteFilms(NewLocalCacheFilms(filmfetch.NewLocalFilmCache(racine)), distant, racine)
 
 	avant := observability.LoadCounter(CompteurArchiveErreurs)
 	got, found, err := src.GetFilmChunks(context.Background(), matchRemote)
@@ -176,8 +176,8 @@ func TestRemoteFilms_ChunkTronqueSurDisqueRetelecharge(t *testing.T) {
 	if err := os.WriteFile(tronque, []byte("repl"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	distant := &filmsEnMemoire{chunks: map[string][]haloclient.FilmChunk{matchRemote: chunksTemoins()}}
-	src := NewRemoteFilms(NewLocalCacheFilms(haloclient.NewLocalFilmCache(racine)), distant, racine)
+	distant := &filmsEnMemoire{chunks: map[string][]filmfetch.FilmChunk{matchRemote: chunksTemoins()}}
+	src := NewRemoteFilms(NewLocalCacheFilms(filmfetch.NewLocalFilmCache(racine)), distant, racine)
 	journal := journalDuTestNonFinalise(t)
 
 	got, found, err := src.GetFilmChunks(context.Background(), matchRemote)

@@ -1,13 +1,13 @@
 // Package archlint — no_request_scoped_halo_provider_test.go : garde-rail « limiteur
 // sortant Halo partagé » (plan sécurité du 2026-10-15, lot L5, C3-2).
 //
-// POURQUOI. halo.NewHaloProvider() crée un limiteur sortant neuf. Appelé dans une
+// POURQUOI. haloadapter.NewHaloProvider() (le fournisseur `haloadapter.Provider`, plan D3 lot 4) crée un limiteur sortant neuf. Appelé dans une
 // fonction littérale d'un montage de routes (rappel exécuté à chaque requête), il donne
 // à chaque requête un limiteur plein : la limite de débit vers les API Halo ne limite
 // plus rien. Le fournisseur se construit UNE fois au montage ; ses clones (WithTokens,
 // WithRateLimit exclu) partagent le limiteur.
 //
-// INTERDIT dans internal/api (hors _test.go) : un appel halo.NewHaloProvider() à
+// INTERDIT dans internal/api (hors _test.go) : un appel haloadapter.NewHaloProvider() à
 // l'intérieur d'une fonction littérale.
 package archlint
 
@@ -50,7 +50,7 @@ func TestNoRequestScopedHaloProvider(t *testing.T) {
 		violations = append(violations, haloProviderInClosure(src)...)
 	}
 	if len(violations) > 0 {
-		t.Errorf("halo.NewHaloProvider() dans une fonction littérale (limiteur sortant recréé à chaque appel) : "+
+		t.Errorf("haloadapter.NewHaloProvider() dans une fonction littérale (limiteur sortant recréé à chaque appel) : "+
 			"construire le fournisseur une fois au montage et en cloner avec WithTokens :\n  %s",
 			strings.Join(violations, "\n  "))
 	}
@@ -58,17 +58,17 @@ func TestNoRequestScopedHaloProvider(t *testing.T) {
 
 func TestHaloProviderGuardDetectsClosure(t *testing.T) {
 	bad := parseGoSnippet(t, "internal/api/x.go", `package x
-import "levelup/go-api/internal/platform/halo"
+import "levelup/go-api/internal/games/halo_infinite/haloadapter"
 func mount() func() {
-	return func() { _ = halo.NewHaloProvider() }
+	return func() { _ = haloadapter.NewHaloProvider() }
 }`)
 	if got := haloProviderInClosure(bad); len(got) != 1 {
 		t.Fatalf("construction dans une closure non signalée : %v", got)
 	}
 	ok := parseGoSnippet(t, "internal/api/y.go", `package y
-import "levelup/go-api/internal/platform/halo"
+import "levelup/go-api/internal/games/halo_infinite/haloadapter"
 func mount() func() {
-	p := halo.NewHaloProvider()
+	p := haloadapter.NewHaloProvider()
 	return func() { _ = p.WithTokens(nil) }
 }`)
 	if got := haloProviderInClosure(ok); len(got) != 0 {

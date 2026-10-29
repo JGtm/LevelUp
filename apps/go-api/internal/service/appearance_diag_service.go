@@ -4,7 +4,7 @@
 //
 // Pour un player_slug de db_profiles.json, produit le verdict des 4 composants du
 // Spartan ID (bannière, emblème, backdrop, service tag) en combinant :
-//   - la résolution LIVE via les primitives de diagnostic du Lot E (haloclient) ;
+//   - la résolution LIVE via les primitives de diagnostic du Lot E (haloadapter) ;
 //   - les valeurs SERVIES (dernières connues) lues en DB (CareerServedReader).
 //
 // PIÈGE CRITIQUE (régression PR #63) : le xuid utilisé est TOUJOURS celui du
@@ -27,7 +27,7 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
-	haloclient "levelup/go-api/internal/sync/haloclient"
+	"levelup/go-api/internal/games/halo_infinite/haloadapter"
 )
 
 // ErrProfileNotFound est retourné quand le player_slug ne correspond à aucun
@@ -51,9 +51,9 @@ type CareerServedReader interface {
 // entrées brutes + primitives de diagnostic par composant du Lot E. Construit par
 // requête à partir des tokens du PROFIL.
 type AppearanceFetcher interface {
-	FetchAppearanceInputs(ctx context.Context, xuid string) (*haloclient.AppearanceInputs, error)
-	DiagnoseNameplate(ctx context.Context, emblemPath string, cfg int64) haloclient.AppearanceDiagnosis
-	DiagnoseCustomizationImage(ctx context.Context, inventoryPath string) haloclient.AppearanceDiagnosis
+	FetchAppearanceInputs(ctx context.Context, xuid string) (*haloadapter.AppearanceInputs, error)
+	DiagnoseNameplate(ctx context.Context, emblemPath string, cfg int64) haloadapter.AppearanceDiagnosis
+	DiagnoseCustomizationImage(ctx context.Context, inventoryPath string) haloadapter.AppearanceDiagnosis
 }
 
 // AppearanceFetcherFactory construit un AppearanceFetcher pour un jeu de tokens
@@ -122,7 +122,7 @@ func (s *AppearanceDiagService) Diagnose(ctx context.Context, playerSlug, titleS
 		// Titre à pipeline appearance dédié (capability spartan_customizer, ex. H5) :
 		// la résolution nameplate/emblème live n'est pas la source de vérité →
 		// not_supported, valeurs servies affichées, aucun fetch HINF cross-titre.
-		components = uniformComponents(served.row, haloclient.VerdictNotSupported)
+		components = uniformComponents(served.row, haloadapter.VerdictNotSupported)
 		slog.InfoContext(ctx, "appearance_diag: not_supported (spartan_customizer)",
 			"player", playerSlug, "titleSlug", titleSlug)
 	} else {
@@ -195,7 +195,7 @@ func (s *AppearanceDiagService) liveComponents(
 	if terr != nil || spartanToken == "" {
 		slog.WarnContext(ctx, "appearance_diag: tokens du profil indisponibles -> auth_required",
 			"player", profile.PlayerSlug, "xuid", profile.XUID, "err", terr)
-		return uniformComponents(served.row, haloclient.VerdictAuthRequired)
+		return uniformComponents(served.row, haloadapter.VerdictAuthRequired)
 	}
 
 	fetchCtx, cancel := context.WithTimeout(ctxkeys.WithTitleSlug(ctx, titleSlug), appearanceDiagFetchBudget)
@@ -206,19 +206,19 @@ func (s *AppearanceDiagService) liveComponents(
 	if ferr != nil {
 		slog.WarnContext(ctx, "appearance_diag: fetch appearance échoué -> transient",
 			"player", profile.PlayerSlug, "err", ferr)
-		return uniformComponents(served.row, haloclient.VerdictTransient)
+		return uniformComponents(served.row, haloadapter.VerdictTransient)
 	}
 	if inputs == nil {
 		// 401/403 propriétaire ou réponse vide : indéterminé, se répare au refresh.
 		slog.InfoContext(ctx, "appearance_diag: appearance vide (gated/empty) -> transient",
 			"player", profile.PlayerSlug)
-		return uniformComponents(served.row, haloclient.VerdictTransient)
+		return uniformComponents(served.row, haloadapter.VerdictTransient)
 	}
 
 	banner := fetcher.DiagnoseNameplate(fetchCtx, inputs.EmblemPath, inputs.EmblemConfigID)
 	emblem := fetcher.DiagnoseCustomizationImage(fetchCtx, inputs.EmblemPath)
 	backdrop := fetcher.DiagnoseCustomizationImage(fetchCtx, inputs.BackdropImagePath)
-	tag := haloclient.DiagnoseServiceTag(inputs.ServiceTag)
+	tag := haloadapter.DiagnoseServiceTag(inputs.ServiceTag)
 
 	return []domain.AppearanceComponentDiagnosis{
 		componentFromDiagnosis(domain.AppearanceComponentBanner, served.row, banner),
@@ -231,7 +231,7 @@ func (s *AppearanceDiagService) liveComponents(
 // componentFromDiagnosis assemble un composant DTO : la valeur SERVIE (DB) + le
 // verdict/detail/served_from issus de la primitive de diagnostic.
 func componentFromDiagnosis(
-	component string, row *domain.CareerRankRow, diag haloclient.AppearanceDiagnosis,
+	component string, row *domain.CareerRankRow, diag haloadapter.AppearanceDiagnosis,
 ) domain.AppearanceComponentDiagnosis {
 	return domain.AppearanceComponentDiagnosis{
 		Component:   component,
@@ -245,7 +245,7 @@ func componentFromDiagnosis(
 // uniformComponents produit les 4 composants avec un MÊME verdict (chemins
 // dégradés : not_supported / auth_required / transient global). ServedFrom=carry,
 // pas de détail technique — seul le verdict porte le sens.
-func uniformComponents(row *domain.CareerRankRow, verdict haloclient.Verdict) []domain.AppearanceComponentDiagnosis {
+func uniformComponents(row *domain.CareerRankRow, verdict haloadapter.Verdict) []domain.AppearanceComponentDiagnosis {
 	components := []string{
 		domain.AppearanceComponentBanner,
 		domain.AppearanceComponentEmblem,
@@ -257,7 +257,7 @@ func uniformComponents(row *domain.CareerRankRow, verdict haloclient.Verdict) []
 		out = append(out, domain.AppearanceComponentDiagnosis{
 			Component:   component,
 			ServedValue: servedValueFor(component, row),
-			ServedFrom:  string(haloclient.ServedFromCarry),
+			ServedFrom:  string(haloadapter.ServedFromCarry),
 			Verdict:     string(verdict),
 			Detail:      "",
 		})

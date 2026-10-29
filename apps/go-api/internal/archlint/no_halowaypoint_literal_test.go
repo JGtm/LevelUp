@@ -4,9 +4,9 @@
 // officielles Halo) dans un fichier .go non-test hors de l'allowlist ci-dessous.
 //
 // Contexte : le gate F du plan d'audit promettait « grep halowaypoint hors
-// games/halo_infinite + platform/halo → 0 (allowlist temporaire datée) » mais
-// aucun garde-rail n'a jamais été créé, et K3e a depuis déplacé le client HTTP
-// dans internal/sync/haloclient/. Sans ratchet, l'invariant « les URLs Halo en
+// games/halo_infinite + client HTTP → 0 (allowlist temporaire datée) » mais
+// aucun garde-rail n'a jamais été créé ; le client HTTP vit dans internal/haloapi/infinite/.
+// Sans ratchet, l'invariant « les URLs Halo en
 // dur vivent dans une poignée de fichiers frontière » re-divergera silencieusement
 // (leçon CLAUDE.md règle 6 : factorisation/frontière sans garde-rail).
 //
@@ -33,9 +33,7 @@ import (
 // halowaypointAllowlist — DÉCROISSANTE, figée au 2026-07-07. Chaque entrée est un
 // fichier frontière qui a une raison légitime de nommer l'hôte halowaypoint.
 // Catégories :
-//   - haloclient/       : client HTTP officiel Halo Infinite (déplacé par K3e).
-//   - platform/halo/     : providers HTTP (discovery, saisons, privacy, leaderboard).
-//   - platform/auth/     : échange de tokens Xbox↔Spartan (audiences XSTS/Spartan).
+//   - haloapi/infinite/  : la brique « API Halo » (UN fichier : ses adresses par défaut).
 //   - domain/title/      : defaults documentés des descripteurs d'auth par titre.
 //   - assets/            : fetchers gamecms-hacs (URLs d'assets médailles/images).
 //   - games/halo_infinite: adapter d'URLs d'assets waypoint (base URL waypoint web).
@@ -48,21 +46,15 @@ import (
 //
 // Toute suppression d'une URL en dur d'un de ces fichiers RETIRE son entrée.
 var halowaypointAllowlist = map[string]bool{
-	// haloclient/ — client HTTP officiel (endpoints matchs, skill, film, career).
-	"internal/sync/haloclient/halo_client.go":                true,
-	"internal/sync/haloclient/halo_client_career.go":         true,
-	"internal/sync/haloclient/halo_client_film.go":           true,
-	"internal/sync/haloclient/halo_skill.go":                 true,
-	"internal/sync/haloclient/spartan_nameplate_resolver.go": true,
-	// platform/halo/ — providers HTTP.
-	"internal/platform/halo/discovery_client.go":    true,
-	"internal/platform/halo/leaderboard_scraper.go": true,
-	"internal/platform/halo/privacy_provider.go":    true,
-	"internal/platform/halo/provider.go":            true,
-	"internal/platform/halo/season_provider.go":     true,
-	// platform/auth/ — échange tokens Xbox↔Spartan (audiences/hôtes officiels).
-	// (provider.go retiré de l'allowlist au retrait de MSAL 2026-07-15 : plus de littéral.)
-	"internal/platform/auth/halo_exchange.go": true,
+	// haloapi/infinite/ — client des services Halo Infinite de la brique « API Halo » (ADR 0042) :
+	// endpoints.go est l'UNIQUE endroit de ses adresses par défaut (les autres fichiers de la brique
+	// reçoivent des Endpoints et ne nomment aucun hôte) ; `games/halo_infinite/haloadapter` et
+	// `sync/filmfetch` n'en nomment aucun.
+	"internal/haloapi/infinite/endpoints.go": true,
+	// platform/auth/ : plus aucune entrée. (provider.go retiré au retrait de MSAL 2026-07-15 ;
+	// halo_exchange.go retiré le 2026-10-29, plan D3 lot 2 : la chaîne d'échange est partie dans
+	// internal/haloapi/xblauth, sans état ni titre, et ne nomme plus aucun hôte halowaypoint — les
+	// adresses Spartan/Clearance lui sont passées par le Descriptor, défauts dans domain/title.)
 	// domain/title/ — defaults documentés des descripteurs d'auth.
 	"internal/domain/title/auth_descriptor.go": true,
 	// assets/ — fetchers gamecms-hacs (URLs d'assets).
@@ -159,7 +151,7 @@ func TestNoNewHalowaypointLiteral(t *testing.T) {
 	}
 	if len(violations) > 0 {
 		t.Errorf("littéral 'halowaypoint' en dur interdit hors des fichiers frontière (F/VF-7) — "+
-			"une URL Halo en dur doit vivre dans un fichier frontière (haloclient/platform/auth/adapters) "+
+			"une URL Halo en dur doit vivre dans un fichier frontière (haloapi/infinite/endpoints.go, adapters) "+
 			"déjà allowlisté, ou l'ajouter à halowaypointAllowlist avec justification datée :\n  %s",
 			strings.Join(violations, "\n  "))
 	}

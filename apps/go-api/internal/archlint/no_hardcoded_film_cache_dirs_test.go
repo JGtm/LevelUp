@@ -10,7 +10,7 @@
 // construire ces chemins. Avant ce lot, le littéral était recopié à la main dans
 // 3 outils (`cmd/fetch_film_chunks`, `cmd/killsource`,
 // `cmd/levelup/cmd_backfill_killsource_selection.go`) et dans le lecteur legacy
-// `internal/sync/haloclient/local_film_cache.go` : une disposition de cache qui
+// `internal/sync/filmfetch/local_film_cache.go` : une disposition de cache qui
 // dérive silencieusement dès que le nom change ailleurs (même défaut que celui
 // qui a justifié la création du paquet `filmcache`, cf. son en-tête). Ce test
 // walk TOUT le module (`internal/` + `cmd/`) et interdit toute NOUVELLE
@@ -19,7 +19,7 @@
 // LE NOM DU FICHIER D'UN CHUNK (`chunk_NN.bin`) suit la même règle depuis J2.3 : il est déclaré
 // par `chunkName` dans `filmcache.go` et se construit par [filmcache.CheminDuChunk] ; un chunk du
 // cache se LIT par [filmcache.LireChunk], qui le valide contre la taille de son manifeste. Le
-// client Halo (`haloclient.LocalFilmCache.LoadChunk`) et quatre outils recomposaient le nom
+// client Halo (`filmfetch.LocalFilmCache.LoadChunk`) et quatre outils recomposaient le nom
 // chez eux — et, avec lui, une lecture sans validation.
 package archlint
 
