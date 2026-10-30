@@ -47,8 +47,8 @@ lecture et ne prescrit plus de re-capture ; deux entrées de backlog consignent 
 
 ## D. Backlog
 
-- [ ] D1 `.ai/BACKLOG.md` : entrée « Rafraîchissement OAuth : essayer d'abord la famille enregistrée ».
-- [ ] D2 `.ai/BACKLOG.md` : entrée « Publication des briques : modules, tags, README ; dépôts séparés ».
+- [x] D1 `.ai/BACKLOG.md` : entrée « Rafraîchissement OAuth : essayer d'abord la famille enregistrée ».
+- [x] D2 `.ai/BACKLOG.md` : entrée « Publication des briques : modules, tags, README ; dépôts séparés ».
 
 ## Gate final
 
@@ -148,6 +148,20 @@ code 0 ; `bash -n scripts/*.sh` ; syntaxe PowerShell de `scripts/gate-push.ps1`.
   et `refresh_token révoqué` dans `internal/haloapi` et tout `apps/go-api`). Texte conforme posé.
 - Gate C : `go test ./internal/haloapi/... ./internal/platform/netguard/ ./internal/platform/auth/
   ./internal/games/halo_infinite/... ./cmd/levelup/` vert ; golangci-lint (base release) 0 issue.
+
+
+### Groupe D et gate final (2026-10-30)
+
+- D1, D2 : deux entrées `###` ajoutées à la fin de la section « 📋 Backlog » de `.ai/BACKLOG.md`
+  (format des voisines, datées, effort marqué « estimation »). Registre des reports : neuf lignes
+  traitées retirées, la ligne du code 4 réduite au témoin `f75e7053`, la ligne D3-L1-f renvoie à
+  l'entrée de backlog ; section du lot ajoutée (S-1, S-3, S-4).
+- Gate final (depuis `apps/go-api`) : `go build ./...` 0 ; `go vet ./...` 0 ; `go test
+  ./internal/archlint/ ./internal/haloapi/... ./internal/platform/netguard/ -count=1` 0 ; `gofmt -l`
+  (go-api et libs) vide ; `golangci-lint run --new-from-merge-base=origin/release/v8.1.0 ./...`
+  0 issue ; `go test ./... -count=1` code 0 (195 paquets ok, 0 FAIL) ; `make go-api-test` code 0
+  (42 paquets ok, `grammar` 78 s) ; `bash -n scripts/*.sh` sans erreur ; `gate-push.ps1` : 0 erreur
+  d'analyse PowerShell, `Get-Command -Syntax` rend le script.
 
 ## Découvertes
 
