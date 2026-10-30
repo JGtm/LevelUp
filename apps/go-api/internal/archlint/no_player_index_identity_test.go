@@ -44,10 +44,7 @@ var playerIndexRE = regexp.MustCompile(`\bPlayerIndex\b`)
 func TestNoPlayerIndexInFilmScope(t *testing.T) {
 	var violations []string
 	for _, scope := range playerIndexScope {
-		root := surDisque(t, scope)
-		if _, err := os.Stat(root); err != nil {
-			continue // le paquet peut avoir été déplacé : ce n'est pas l'objet de ce test
-		}
+		root := racineDeclaree(t, scope)
 		err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
 			if err != nil || d.IsDir() || !strings.HasSuffix(path, ".go") {
 				return err

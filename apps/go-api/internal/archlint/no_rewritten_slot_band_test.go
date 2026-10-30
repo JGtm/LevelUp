@@ -80,10 +80,7 @@ var (
 
 // TestNoRewrittenSlotBand refuse une quatrième implémentation de la règle de bande.
 func TestNoRewrittenSlotBand(t *testing.T) {
-	root := surDisque(t, slotBandScope)
-	if _, err := os.Stat(root); err != nil {
-		t.Skipf("paquet %s absent : ce test n'a pas d'objet ici", slotBandScope)
-	}
+	root := racineDeclaree(t, slotBandScope)
 	var violations []string
 	err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
 		if err != nil || d.IsDir() || !strings.HasSuffix(path, ".go") {

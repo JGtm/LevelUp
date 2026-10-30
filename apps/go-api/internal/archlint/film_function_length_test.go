@@ -143,14 +143,14 @@ const plancherFonctionsBalayees = 2300
 //     d equivalence (zero difference au corpus gate), jamais au fil de l eau ;
 //   - `tableProfilInvariants`, qui est une table litterale d invariants par build.
 var plafondsParFonction = map[string]int{
-	"libs/film/internal/grammar/dispatch_player.go:consumeCrewFlockAndMusicComponent":       146,
-	"libs/film/internal/grammar/dispatch_biped.go:consumeManagedAndObjectiveComponent":      143,
-	"libs/film/internal/grammar/dispatch_item.go:consumeItemAndTacmapComponent":             139,
-	"libs/film/internal/grammar/dispatch_player.go:consumePlayerTailAndGameEngineComponent": 122,
-	"libs/film/internal/grammar/dispatch_object.go:consumeByName":                           118,
-	"libs/film/internal/grammar/frame_infer.go:decodeInferLoop":                             114,
-	"libs/film/internal/grammar/dispatch_biped.go:consumeCaptureAndBipedComponent":          112,
-	"libs/film/internal/profile/profile_table.go:tableProfilInvariants":                     89,
+	"libs/film/internal/grammar/dispatch_player.go:consumeCrewFlockAndMusicComponent":       123,
+	"libs/film/internal/grammar/dispatch_biped.go:consumeManagedAndObjectiveComponent":      132,
+	"libs/film/internal/grammar/dispatch_item.go:consumeItemAndTacmapComponent":             132,
+	"libs/film/internal/grammar/dispatch_player.go:consumePlayerTailAndGameEngineComponent": 96,
+	"libs/film/internal/grammar/dispatch_object.go:consumeByName":                           110,
+	"libs/film/internal/grammar/frame_infer.go:decodeInferLoop":                             109,
+	"libs/film/internal/grammar/dispatch_biped.go:consumeCaptureAndBipedComponent":          111,
+	"libs/film/internal/profile/profile_table.go:tableProfilInvariants":                     87,
 }
 
 // TestLongueurDesFonctionsDuFilmNeCroitPas : aucune fonction des racines surveillees ne depasse
@@ -216,6 +216,11 @@ func TestPlafondsDeFonctionNeSontPasPerimes(t *testing.T) {
 			t.Errorf("%s : %d lignes physiques, soit sous le seuil de %d — retirer son entree "+
 				"de plafondsParFonction. La fonction est rentree dans la regle, la table n a "+
 				"plus de raison de la porter.", cle, n, seuilLignesParFonction)
+			continue
+		}
+		if plafond := plafondsParFonction[cle]; n < plafond {
+			t.Errorf("%s : %d lignes physiques sous le plafond fige a %d — baisse le plafond a %d "+
+				"dans plafondsParFonction, dans le commit qui a retire les lignes.", cle, n, plafond, n)
 		}
 	}
 }

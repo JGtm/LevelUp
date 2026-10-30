@@ -331,9 +331,9 @@ var plafondsParFichier = map[string]int{
 	// vague 2 de la famille 1.9 et le schema 60, avant que le ratchet n existe ici. Meme regle :
 	// chaque valeur ne peut que descendre. `document_vehicles.go` et `score_timeline.go` sont dans
 	// le perimetre du volet 2.7p (scission en cours) et sortiront de la table a sa fusion.
-	"libs/film/internal/facts/killsource/e197_identite_paquet_mesure_research_test.go": 654,
-	"libs/film/internal/facts/objectives/e1911_manches_mesure_research_test.go":        524,
-	"internal/replaybuild/replaybuild.go":                                              577,
+	"libs/film/internal/facts/killsource/e197_identite_paquet_mesure_research_test.go": 649,
+	"libs/film/internal/facts/objectives/e1911_manches_mesure_research_test.go":        523,
+	"internal/replaybuild/replaybuild.go":                                              562,
 	// `equipment_creation.go` EST SORTI DE CETTE TABLE LE 2026-09-17 (lot 2.6.2, volet grammaire /
 	// rejeu), pour la meme raison qu `assist.go` au volet facts : `EquipmentCreation` et
 	// `EquipmentCreationStats` ont descendu dans `film/types`, le fichier est passe de 508 a 434
@@ -348,8 +348,8 @@ var plafondsParFichier = map[string]int{
 	// de la seule exception nommee en tete (document_chronicle.go, structure_test.go) — « un
 	// plafond ne monte pas ». `countShotsWithAim`/`countShotsWithWeapon` en sont sortis par
 	// DEPLACEMENT PUR vers `golden_assembly_counts_test.go` pour compenser.
-	"libs/film/replay/golden_assembly_test.go":      1202,
-	"libs/film/internal/grammar/i59_anchor_test.go": 1152,
+	"libs/film/replay/golden_assembly_test.go":      1184,
+	"libs/film/internal/grammar/i59_anchor_test.go": 1142,
 	// SCHEMA 61 -> 62 (2026-09-17, lot 4.2.1-b) : 1168 -> 1183, la raison ecrite de v62 que
 	// `TestStructureIsOptionalInDocument` exige au-dessus de son epinglage dur.
 	// SCHEMA 62 -> 63 (2026-09-19, post-chantier lot 5.1) : 1183 -> 1200, la raison ECRITE de la
@@ -455,27 +455,27 @@ var plafondsParFichier = map[string]int{
 	// SCHEMA 104 -> 105 (2026-10-28) : 1482 -> 1486, la justification de la montee (objets engendres).
 	// SCHEMA 105 -> 106 (2026-10-28) : 1486 -> 1491, la justification de la montee (durees d effets).
 	"libs/film/replay/structure_test.go":             1491,
-	"libs/film/replay/t0_mouvement_research_test.go": 872,
+	"libs/film/replay/t0_mouvement_research_test.go": 866,
 	// DEPLACE PAR LE LOT J4.2 (2026-09-26) de `replay` vers `grammar` avec la lecture d inventaire ;
 	// plafond inchange (827 -> 829 lignes : le predicat de lecture vide ecrit en clair, cf. le fichier).
-	"libs/film/internal/grammar/inventory_position_i22_test.go":           833,
-	"libs/film/replay/ground_link_research_test.go":                       814,
-	"libs/film/replay/ctf_retour_zone_research_test.go":                   812,
-	"libs/film/replay/assaut_manches_research_test.go":                    656,
+	"libs/film/internal/grammar/inventory_position_i22_test.go":           824,
+	"libs/film/replay/ground_link_research_test.go":                       813,
+	"libs/film/replay/ctf_retour_zone_research_test.go":                   804,
+	"libs/film/replay/assaut_manches_research_test.go":                    633,
 	"libs/film/killicon/killicon_test.go":                                 610,
 	"libs/film/internal/grammar/components_hooks_test.go":                 600,
 	"libs/film/replay/closures_test.go":                                   598,
-	"libs/film/replay/vehicules_v1a_test.go":                              587,
-	"libs/film/internal/grammar/vehicules_v13_deadstate_test.go":          583,
-	"libs/film/replay/minifilm_test.go":                                   581,
-	"libs/film/internal/grammar/ground_weapon_lifecycle_research_test.go": 574,
+	"libs/film/replay/vehicules_v1a_test.go":                              577,
+	"libs/film/internal/grammar/vehicules_v13_deadstate_test.go":          580,
+	"libs/film/replay/minifilm_test.go":                                   579,
+	"libs/film/internal/grammar/ground_weapon_lifecycle_research_test.go": 564,
 	"libs/film/replay/equipment_uses_join_test.go":                        571,
-	"libs/film/internal/facts/objectives/assaut_pied_ancre_test.go":       558,
+	"libs/film/internal/facts/objectives/assaut_pied_ancre_test.go":       556,
 	"internal/sync/killcollector/positions_test.go":                       557,
-	"libs/film/internal/grammar/golden_minibobine_test.go":                553,
+	"libs/film/internal/grammar/golden_minibobine_test.go":                552,
 	"libs/film/internal/grammar/vehicules_v2_items_test.go":               533,
-	"libs/film/replay/attachement_phase0_bord_test.go":                    529,
-	"internal/sync/killcollector/collector_test.go":                       527,
+	"libs/film/replay/attachement_phase0_bord_test.go":                    522,
+	"internal/sync/killcollector/collector_test.go":                       524,
 }
 
 // TestTailleDesFichiersDuFilmNeCroitPas : aucun fichier des racines surveillees ne depasse son
@@ -541,6 +541,12 @@ func TestPlafondsDeTailleNeSontPasPerimes(t *testing.T) {
 			t.Errorf("%s : %d lignes, soit sous le seuil de %d — retirer son entree de "+
 				"plafondsParFichier. Le fichier est rentre dans la regle, la table n a plus "+
 				"a le connaitre.", rel, n, seuilLignesParFichier)
+			continue
+		}
+		if plafond := plafondsParFichier[rel]; n < plafond {
+			t.Errorf("%s : %d lignes sous le plafond fige a %d — baisse le plafond a %d dans "+
+				"plafondsParFichier, dans le commit qui a retire les lignes (une marge laissee "+
+				"au-dessus de la mesure se reconsommerait en silence).", rel, n, plafond, n)
 		}
 	}
 }

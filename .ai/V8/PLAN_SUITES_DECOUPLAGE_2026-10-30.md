@@ -31,9 +31,9 @@ lecture et ne prescrit plus de re-capture ; deux entrées de backlog consignent 
 
 ## B. Ratchets muets (D2-L3-b/c)
 
-- [ ] B1 Inventaire des ratchets d'`internal/archlint` qui tolèrent une racine absente ou un compte qui
+- [x] B1 Inventaire des ratchets d'`internal/archlint` qui tolèrent une racine absente ou un compte qui
       baisse.
-- [ ] B2 Racine absente → `t.Fatalf` ; compte sous le plafond → rouge « baisse le plafond à N ».
+- [x] B2 Racine absente → `t.Fatalf` ; compte sous le plafond → rouge « baisse le plafond à N ».
       Gate : auto-preuve par mutation ; `go test ./internal/archlint/ -count=1` vert.
 
 ## C. Brique API (D3)
@@ -92,7 +92,49 @@ code 0 ; `bash -n scripts/*.sh` ; syntaxe PowerShell de `scripts/gate-push.ps1`.
   imprime `Erreur 2` ; `--help` rend 0. Le commentaire de la cible disait « code 2 » pour un témoin
   absent : corrigé en code 4 (doc inversée, même cible).
 
+
+### Groupe B (2026-10-30)
+
+- B1 inventaire (`grep os.Stat|IsNotExist|Skipf|Skip(` puis relecture de chaque site, et des
+  comparaisons à un plafond `> X` sans pendant `< X`) :
+  - racine absente tolérée : `no_identity_bridge_outside_registry` (`continue`),
+    `no_player_index_identity` (`continue`), `no_rewritten_slot_band` (`t.Skipf`),
+    `no_bare_duckdb_rw_open` (`continue`), `no_demo_forbidden_literal` (`continue`) ;
+  - compte sous le plafond toléré : `no_french_label_literal` (`t.Logf`), `filmdec_package_vars`
+    (`t.Logf`), `kill_feed_summaries_guard` (taille de l'allowlist), `pas_de_lecture_sous_ai`
+    (taille de la liste), `i18n_tier_label_stored_not_served` (par fichier), `film_file_size`
+    (`plafondsParFichier`), `film_function_length` (`plafondsParFonction`) ;
+  - déjà conformes (rien à faire) : `briques_internes`, `briques_imports`, `film_facade_surface`,
+    `film_finalise_predicate`, `film_tri_total`, `i18n_langue_suffixe`, `i18n_locale_constant`,
+    `liste_liee_ratchet`, `no_discarded_remove`, `no_shared_writer_on_request_path`,
+    `sync_root_freeze`, `title_slug_literal`, `unarmed_dotation_gate`, `un_seul_forcage_du_decodage`,
+    `no_locale_literal` (plafond 0), `goSourcesUnder` (`Fatalf` sur racine absente) ;
+  - hors règle : sauts sur OUTIL absent (`go`, `bash` : `ci_go_shards`, `film_lane_duckdb_free`,
+    `titleseams_wired`, `briques_internes_fermeture`, `no_title_package_in_analysis`), `-short`
+    (`i18n_text_sql`), découverte de dossiers par titre (`no_absolute_path_in_versioned_catalog`,
+    plancher `Fatal` si aucun).
+  Aucune racine déclarée n'a disparu : aucun ratchet mort à supprimer.
+- B2 : helper `racineDeclaree(t, rel)` (`go_source_walk_test.go`, `t.Fatalf`) dans les cinq ;
+  nouveau garde-rail `no_racine_absente_toleree_test.go` (AST des `*_test.go` d'archlint : `if` qui
+  appelle `os.Stat` et dont le corps fait `continue` ou `X.Skip*`) avec auto-preuve (3 formes vues,
+  0 faux positif, `exigerDossier`). Les sept ratchets de compte rougissent sous le plafond
+  (« baisse le plafond à N »). Mise à la mesure : `frenchLabelAllowlist` (3 entrées à 0 retirées,
+  `match_view_service.go` 3 -> 1), 18 entrées de `plafondsParFichier`, 8 de `plafondsParFonction`.
+  Preuves par mutation : AVANT, les cinq racines renommées (`*_DISPARU`) laissent 3 tests verts et
+  1 SKIP (le 5e rougit par hasard sur son allowlist) ; APRÈS, les cinq rougissent « racine déclarée
+  ... » ; le nouveau garde-rail, nourri des cinq fichiers de HEAD (build tag jamais posé), en
+  relève exactement cinq sites. Plafonds montés d'une marge (7 mutations) : AVANT 7 PASS ; APRÈS
+  7 FAIL « baisse le plafond à N ». `go test ./internal/archlint/ -count=1` : ok (117,9 s) ;
+  golangci-lint (base release) : 0 issue.
+
 ## Découvertes
+
+- S-1 (A1) : `make -n <cible>` est inutilisable sur le poste dès qu'une recette contient `$(MAKE)` :
+  GnuWin32 make 3.81 exécute la ligne récursive même sous `-n` et échoue (`CreateProcess(NULL, "")`,
+  e=87), guillemets ou non. Limite de l'outil ; non traité.
+- S-2 (B) : D2-L3-c (les ratchets d'`apps/go-api` qui balaient `internal/` sans citer le film ne
+  couvrent plus le décodeur) n'est pas dans le périmètre de B (racine absente, compte en baisse) :
+  inventaire non fait, reste au registre.
 
 ## Protocole de reprise
 
