@@ -1,4 +1,14 @@
 
+## [2026-10-30] Rejeu 2D — l'écran occultant passe au bleu nuit, bord électrique et éclairs — Complété (branche `feat/rejeu-ecran-occultant-bleu`, gate visuel au user)
+
+**Décision** : demande utilisateur du 2026-10-30 (« bleu nuit/électrique avec des éclairs dedans ») : la bulle de la carte quitte l'encre neutre du verdict du 2026-08-27 et reprend l'électricité de la fiche. Opaque et pions au-dessus inchangés. Cœur = `info` assombri de 60 % (`shiftLightness`), fondu du bord par `info`, 3 éclairs qui battent sur la courbe de `@keyframes replay-zone-bolt` (cycle 2,6 s, décalages partagés avec la fiche via `SHROUD_BOLT_OFFSETS_S`, horloge de la pose), éteints sous mouvement réduit. `heatmap-freq-low` écarté : le garde-rail de la rampe heatmap le réserve à `heatmapRampTokens()`.
+
+**Code** : la bulle sort de `placementShapes.ts` vers `layers/placementShroud.ts` (rayon, durée de repli, encres, éclairs) ; `PlacementInk.shroud` et `ReplayInks.shroud` neufs.
+
+**Gates** : `tsc -b --force` 0, eslint 0 erreur (warnings préexistants), `lint:colors` 0, vitest complet 10 577 verts. Tests neufs : encre bleu nuit, arrêts du dégradé, un éclair allumé à son battement, éteints sous mouvement réduit, courbe identique à la feuille CSS.
+
+**Prochaine étape** : vérification visuelle par le user (vite du worktree sur :5174), puis commit et fusion dans `release/v8.1.0` sur accord.
+
 ## [2026-10-29] Découplage D3 — clôture (6.3)
 
 **Statut** : Complété (D3 CLOS ; audit des trois briques CLOS). PR #114 vers `release/v8.1.0`, contrôles verts, fusion squash par le pilote ; caches `go-build-d3` / `golangci-d3` supprimés après la fusion ; worktree `LevelUp-wt-decouplage-d3` et branche supprimés. **Décision** : aucune nouvelle (D3-L6-e : le mécanisme de tolérances de `briques_internes_test` est conservé, table vide, par symétrie avec `briques_imports_test`). **Prochaine étape** : aucune dans ce chantier ; les reports sont au registre.

@@ -257,7 +257,7 @@ export function ReplayCanvas({
   // TOUTES LES ENCRES DU REJEU, résolues une fois par palette — voir l'en-tête d'useReplayInks.
   const {
     teamColorOf, geometry: geometryColor, shot: shotColor, grenade: grenadeColor, neutral: neutralInk, pad: padInk,
-    floor: floorStyle, fx: fxInk, grapple: grappleInk, labelStroke, self: selfInk, wall: wallInk, rift: riftInk, mark: markInk,
+    floor: floorStyle, fx: fxInk, grapple: grappleInk, labelStroke, self: selfInk, wall: wallInk, rift: riftInk, shroud: shroudInk, mark: markInk,
     zone: zoneInk,
   } = useReplayInks(paletteVersion)
   // COULEURS DISTINCTES PAR JOUEUR (option du tiroir, 2026-08-24) : une série stable par joueur
@@ -510,7 +510,7 @@ export function ReplayCanvas({
               view,
               { frame: fr, ...placements.windowTime, k, reducedMotion, ...placements.toggles },
               // FRONTIERE : objet lache a la mort, `t0 = finVie+1` — `colorOfSlotOrLast`.
-              { colorOfSlot: colorOfSlotOrLast, neutral: floorStyle.edge, wall: wallInk, rift: riftInk },
+              { colorOfSlot: colorOfSlotOrLast, neutral: floorStyle.edge, wall: wallInk, rift: riftInk, shroud: shroudInk },
             ),
           trajectoires: (_c, fr, k) =>
             drawTracksLayer(ctx, doc.tracks, view, {
@@ -563,7 +563,7 @@ export function ReplayCanvas({
       }
     },
     [
-      doc, geometryColor, zRange, timing, wallInk, riftInk,
+      doc, geometryColor, zRange, timing, wallInk, riftInk, shroudInk,
     // Refs STABLES : la regle de dependances ne le sait pas d'un hook maison.
     zonesRef, heatRef, objectivesRef, cookedRef,
     renderWidth, viewH, canvasView,
