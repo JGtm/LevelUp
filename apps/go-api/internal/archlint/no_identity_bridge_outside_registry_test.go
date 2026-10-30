@@ -124,12 +124,7 @@ var identityBridgePatterns = []struct {
 func TestNoIdentityBridgeOutsideRegistry(t *testing.T) {
 	var violations []string
 	for _, scope := range identityBridgeScope {
-		root := surDisque(t, scope)
-		if _, err := os.Stat(root); err != nil {
-			// Le paquet peut avoir été déplacé (le décodeur doit migrer sous
-			// `games/halo_infinite/film/` après v7.5.0) : ce n'est pas l'objet de ce test.
-			continue
-		}
+		root := racineDeclaree(t, scope)
 		if err := filepath.Walk(root, visiteurDuPont(&violations)); err != nil {
 			t.Fatalf("balayage de %s : %v", scope, err)
 		}

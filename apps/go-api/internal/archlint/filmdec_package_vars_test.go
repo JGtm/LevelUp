@@ -45,9 +45,9 @@ package archlint
 //
 //   - VERS LE HAUT : interdit tant que ce chantier dure. Un nouveau reglage de decodage se passe
 //     en parametre (`ScanFilmOptions`, `FilmContext` au lot 2), pas en variable de paquet.
-//   - VERS LE BAS : bienvenu. Le test NE FAIT PAS ECHOUER une baisse — il l'annonce avec le
-//     nouveau compte a inscrire dans `filmdecVarsGeles`, pour que le resserrage soit un geste
-//     CONSCIENT et date, jamais un effet de bord invisible.
+//   - VERS LE BAS : bienvenu, et le test ECHOUE tant que `filmdecVarsGeles` n'est pas abaisse au
+//     nouveau compte (qu'il imprime) : le resserrage se fait dans le commit de la baisse, geste
+//     CONSCIENT et date ; un plafond laisse au-dessus de la mesure se reconsommerait en silence.
 //
 // RE-MESURE DU 2026-09-05, A L'ARRIVEE DU CHANTIER VEHICULES : 118. Les DEUX de plus viennent
 // de la branche `feat/v75-vehicules-sons`, et chacune est justifiee :
@@ -241,8 +241,8 @@ func TestFilmdecPackageVarsNeCroitPas(t *testing.T) {
 			"queue leu leu.",
 			compte, filmdecVarsGeles, detailParFichier(parFichier))
 	case compte < filmdecVarsGeles:
-		t.Logf("l'etat global de `grammar` a BAISSE : %d variables de paquet au lieu de %d — "+
-			"resserrer le ratchet en mettant `filmdecVarsGeles` a %d (avec la date de la mesure).",
+		t.Errorf("l'etat global de `grammar` a BAISSE : %d variables de paquet au lieu de %d — "+
+			"baisse le plafond a %d (`filmdecVarsGeles`, avec la date de la mesure) dans ce commit.",
 			compte, filmdecVarsGeles, compte)
 	}
 }
