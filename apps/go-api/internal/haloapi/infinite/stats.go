@@ -33,6 +33,19 @@ var rexUUID = regexp.MustCompile(`(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a
 // exige avant d'émettre. Un appelant qui consulte un cache avant la brique valide d'abord par elle.
 func EstUUID(id string) bool { return rexUUID.MatchString(id) }
 
+// rexFormeXuid : la forme `xuid(NNN)` qu'un service record accepte à la place d'un gamertag.
+var rexFormeXuid = regexp.MustCompile(`^xuid\(\d+\)$`)
+
+// segmentJoueur rend `joueur` (gamertag ou `xuid(NNN)`) comme segment de chemin : un gamertag est
+// échappé ([url.PathEscape] : un espace, une barre ou un dièse restent dans le segment) ; la forme
+// `xuid(NNN)` passe telle quelle, parenthèses comprises.
+func segmentJoueur(joueur string) string {
+	if rexFormeXuid.MatchString(joueur) {
+		return joueur
+	}
+	return url.PathEscape(joueur)
+}
+
 // MatchHistoryDTO : la réponse brute de `GET /{jeu}/players/{joueur}/matches`.
 type MatchHistoryDTO struct {
 	Results []MatchHistoryResultDTO `json:"Results"`
@@ -111,7 +124,11 @@ const xuidArbitraire = "0"
 // (`/players/xuid(0)/matches/{id}/stats`, [CleStatsSansPort]) : le JSON brut. C'est l'hôte SANS
 // `:443` du fournisseur, distinct de [Client.GetMatchStats].
 func (c *Client) FetchMatchStats(ctx context.Context, auth Auth, matchID string) (map[string]any, error) {
-	endpoint := fmt.Sprintf("%s/players/xuid(%s)/matches/%s/stats", c.endpoints.base(CleStatsSansPort), xuidArbitraire, matchID)
+	if !rexUUID.MatchString(matchID) {
+		return nil, fmt.Errorf("fetch match stats: matchID n'est pas un UUID valide %q", matchID)
+	}
+	endpoint := fmt.Sprintf("%s/players/xuid(%s)/matches/%s/stats", c.endpoints.base(CleStatsSansPort), xuidArbitraire,
+		url.PathEscape(matchID))
 	body, err := c.get(ctx, requete{url: endpoint, auth: auth})
 	if err != nil {
 		return nil, fmt.Errorf("fetch match stats %s: %w", matchID, err)
@@ -152,9 +169,9 @@ type ServiceRecordDTO struct {
 }
 
 // GetServiceRecord récupère le service record matchmade CUMULATIF d'un joueur
-// ([CleStatsSansPort]). `joueur` est inséré tel quel dans le chemin (gamertag ou `xuid(NNN)`).
+// ([CleStatsSansPort]). `joueur` (gamertag ou `xuid(NNN)`) entre dans le chemin par [segmentJoueur].
 func (c *Client) GetServiceRecord(ctx context.Context, auth Auth, joueur string) (*ServiceRecordDTO, error) {
-	endpoint := fmt.Sprintf("%s/players/%s/Matchmade/servicerecord", c.endpoints.base(CleStatsSansPort), joueur)
+	endpoint := fmt.Sprintf("%s/players/%s/Matchmade/servicerecord", c.endpoints.base(CleStatsSansPort), segmentJoueur(joueur))
 	return c.serviceRecord(ctx, auth, endpoint, "FetchServiceRecord("+joueur+")")
 }
 
@@ -181,12 +198,13 @@ func (c *Client) serviceRecord(ctx context.Context, auth Auth, endpoint, op stri
 }
 
 // BuildSeasonServiceRecordURL construit l'URL du service record filtré par saison (et classé si
-// donné). Fonction pure ; `seasonId` (avec ses barres) et `isRanked` sont encodés en requête.
+// donné). Fonction pure ; `joueur` entre dans le chemin par [segmentJoueur], `seasonId` (avec ses
+// barres) et `isRanked` sont encodés en requête.
 func BuildSeasonServiceRecordURL(e Endpoints, joueur, seasonID string, isRanked *bool) string {
 	q := url.Values{}
 	q.Set("seasonId", seasonID)
 	if isRanked != nil {
 		q.Set("isRanked", strconv.FormatBool(*isRanked))
 	}
-	return fmt.Sprintf("%s/players/%s/Matchmade/servicerecord?%s", e.base(CleStatsSansPort), joueur, q.Encode())
+	return fmt.Sprintf("%s/players/%s/Matchmade/servicerecord?%s", e.base(CleStatsSansPort), segmentJoueur(joueur), q.Encode())
 }

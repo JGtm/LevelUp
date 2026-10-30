@@ -15,6 +15,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"path"
 	"regexp"
 	"strings"
@@ -78,7 +79,8 @@ func requetePage(ctx context.Context, u, langue string) (*http.Request, error) {
 
 // FetchPageBytes récupère le HTML brut d'une page du classement. 404 : [ErrLeaderboardPageNotFound].
 func (s *Classement) FetchPageBytes(ctx context.Context, seasonID, playlistID string, page int, langue string) ([]byte, error) {
-	u := fmt.Sprintf("%s%s/%s/%s?page=%d", s.endpoints.Hote(CleWaypointWeb), leaderboardsBasePath, seasonID, playlistID, page)
+	u := fmt.Sprintf("%s%s/%s/%s?page=%d", s.endpoints.Hote(CleWaypointWeb), leaderboardsBasePath,
+		url.PathEscape(seasonID), url.PathEscape(playlistID), page)
 	req, err := requetePage(ctx, u, langue)
 	if err != nil {
 		return nil, err

@@ -38,11 +38,11 @@ lecture et ne prescrit plus de re-capture ; deux entrées de backlog consignent 
 
 ## C. Brique API (D3)
 
-- [ ] C1 Échappement des identifiants dans les URL de `internal/haloapi/infinite` (D3-L3-j). Gate : test
+- [x] C1 Échappement des identifiants dans les URL de `internal/haloapi/infinite` (D3-L3-j). Gate : test
       de parité des URL saines figé AVANT, tests d'identifiants hostiles rouges avant / verts après.
-- [ ] C2 `xblauth/xbox_device_code.go` : erreur de lecture du corps rendue (D3-L2-e). Gate : test rouge
+- [x] C2 `xblauth/xbox_device_code.go` : erreur de lecture du corps rendue (D3-L2-e). Gate : test rouge
       avant, vert après.
-- [ ] C3 `xblauth/oauth_error.go` : texte conforme à l'ADR 0023 (D3-L2-i). Gate : aucun test ne fixe
+- [x] C3 `xblauth/oauth_error.go` : texte conforme à l'ADR 0023 (D3-L2-i). Gate : aucun test ne fixe
       l'ancien texte ; tests du paquet verts.
 
 ## D. Backlog
@@ -127,6 +127,28 @@ code 0 ; `bash -n scripts/*.sh` ; syntaxe PowerShell de `scripts/gate-push.ps1`.
   7 FAIL « baisse le plafond à N ». `go test ./internal/archlint/ -count=1` : ok (117,9 s) ;
   golangci-lint (base release) : 0 issue.
 
+
+### Groupe C (2026-10-30)
+
+- C1 : test `identifiants_url_test.go` écrit AVANT la modification (cible de requête reçue par un
+  serveur `httptest`, `r.RequestURI`). AVANT : les 9 cibles saines vertes (UUID, `JGtm`,
+  `xuid(NNN)`, xuid numérique, `csrseason13-3`), les 8 cas réservés rouges (`Foo Bar/Baz` coupé en
+  deux segments, `Nom#1234` tronqué à `/hi/players/Nom`, `xuid(1#2)` tronqué, `?` pris pour la
+  requête...), `FetchMatchStats("../x")` émis (`/matches/../x/stats`). APRÈS : tout vert, cibles
+  saines identiques octet pour octet. Changements : `FetchMatchStats` refuse un non-UUID avant
+  l'appel (`rexUUID`, comme `GetMatchStats`) et échappe ; service record et son URL de saison via
+  `segmentJoueur` (gamertag `url.PathEscape`, forme `xuid(NNN)` telle quelle) ; `GetOperations`,
+  `GetDecks`, `GetMatchPrivacy` échappent le xuid ; le classement échappe saison et playlist. Les
+  autres sites du grep échappaient déjà (`GetMatchHistory`, `GetMatchStats`, film, skill, CSR,
+  playlist, Discovery, apparence, rang de carrière) ou relèvent de S-3.
+- C2 : `pollOnce` rend l'erreur de lecture (`lecture réponse poll (HTTP n): %w`). Test
+  `httptest` à `Content-Length: 1000` pour 9 octets : AVANT « JSON poll: unexpected end of JSON
+  input » (rouge), APRÈS `errors.Is(err, io.ErrUnexpectedEOF)` (vert).
+- C3 : seul le commentaire d'en-tête portait le texte ; aucun test ne le fixait (grep `re-capture`
+  et `refresh_token révoqué` dans `internal/haloapi` et tout `apps/go-api`). Texte conforme posé.
+- Gate C : `go test ./internal/haloapi/... ./internal/platform/netguard/ ./internal/platform/auth/
+  ./internal/games/halo_infinite/... ./cmd/levelup/` vert ; golangci-lint (base release) 0 issue.
+
 ## Découvertes
 
 - S-1 (A1) : `make -n <cible>` est inutilisable sur le poste dès qu'une recette contient `$(MAKE)` :
@@ -135,6 +157,14 @@ code 0 ; `bash -n scripts/*.sh` ; syntaxe PowerShell de `scripts/gate-push.ps1`.
 - S-2 (B) : D2-L3-c (les ratchets d'`apps/go-api` qui balaient `internal/` sans citer le film ne
   couvrent plus le décodeur) n'est pas dans le périmètre de B (racine absente, compte en baisse) :
   inventaire non fait, reste au registre.
+- S-3 (C1) : les chemins CMS rendus par le service lui-même (`appearance.go` fichier de progression,
+  `nameplate.go` emblème et plaques, `film.go` préfixe de blob) entrent sans échappement. Ce sont
+  des chemins à plusieurs segments, pas des identifiants : les échapper segment par segment
+  changerait les octets émis pour les caractères réservés (`(`, `)`, `,`...) que le service écrit
+  lui-même, sans appel réel pour le vérifier. Non traité.
+- S-4 (C2) : `peoplehub_resolver.go` et `xbox_profile_resolver.go` lisent `body, _ :=
+  io.ReadAll(io.LimitReader(resp.Body, 512))` sur le chemin d'erreur (extrait pour le message) :
+  même forme, hors périmètre de C2. Non traité.
 
 ## Protocole de reprise
 

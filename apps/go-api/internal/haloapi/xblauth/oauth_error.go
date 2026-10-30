@@ -2,8 +2,9 @@
 //
 // Permet aux couches amont (pool/resolver, dashboard admin) de distinguer un
 // échec de configuration (déterministe, inutile de retenter à l'identique),
-// un refresh_token révoqué (action user : re-capture) et un incident
-// transitoire (réseau, 5xx) qui mérite un retry.
+// un refresh_token révoqué : diagnostiquer la cause (rotation perdue, mauvais xuid)
+// avant toute action, ADR 0023 ; et un incident transitoire (réseau, 5xx) qui
+// mérite un retry.
 
 package xblauth
 

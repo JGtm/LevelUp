@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 )
 
 // PrivacyDTO : la réponse brute de `GET /{jeu}/players/xuid(X)/matches-privacy`.
@@ -18,7 +19,7 @@ type PrivacyDTO struct {
 
 // GetMatchPrivacy récupère la confidentialité des matchs d'un joueur ([CleStatsSansPort]).
 func (c *Client) GetMatchPrivacy(ctx context.Context, auth Auth, xuid string) (*PrivacyDTO, error) {
-	endpoint := fmt.Sprintf("%s/players/xuid(%s)/matches-privacy", c.endpoints.base(CleStatsSansPort), xuid)
+	endpoint := fmt.Sprintf("%s/players/xuid(%s)/matches-privacy", c.endpoints.base(CleStatsSansPort), url.PathEscape(xuid))
 	body, err := c.get(ctx, requete{url: endpoint, auth: auth})
 	if err != nil {
 		return nil, err

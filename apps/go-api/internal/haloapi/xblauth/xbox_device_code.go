@@ -198,8 +198,12 @@ func (f FluxAppareil) pollOnce(ctx context.Context, clientID, deviceCode string)
 		}
 		return nil, 0, nil, fmt.Errorf("xbox_device_code: POST poll: %w", err)
 	}
-	raw, _ := io.ReadAll(resp.Body)
+	raw, err := io.ReadAll(resp.Body)
 	resp.Body.Close()
+	if err != nil {
+		// Un corps coupé se lit en partie : l'erreur JSON de ce fragment masquerait la vraie cause.
+		return nil, 0, nil, fmt.Errorf("xbox_device_code: lecture réponse poll (HTTP %d): %w", resp.StatusCode, err)
+	}
 
 	var data map[string]any
 	if err := json.Unmarshal(raw, &data); err != nil {
