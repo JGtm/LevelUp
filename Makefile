@@ -7,6 +7,7 @@
 #   make go-api-test   # Lance les tests Go
 #   make go-api-test-gamefiles # Corpus gamefiles : cartes + catalogues commis (exige Halo installe, ~6 min)
 #   make replay-corpus-gate # Non-regression rejeu sur corpus temoin (exige le parc local)
+#   make replay-equiv  # Harnais d equivalence du rejeu : digests par etape (exige le parc local, ~12 min)
 #   make install-web   # Installe les dépendances npm
 #   make test-web      # Tests Vitest frontend
 #   make openapi-gen   # Régénère api/openapi.yaml (Huma + fragment manuel)
@@ -25,7 +26,7 @@ LOAD_DOTENV := if [ -f .env.local ]; then set -a; . ./.env.local; set +a; fi; \
 .PHONY: help web dev stop restart test-web test-e2e test-e2e-ui demo-visual check-types \
         generate-types install-web \
         go-api-build go-api-test go-api-test-gamefiles libs-test go-api-dev _go-api-run \
-        go-api-test-shared-social-gate install-git-hooks gate-push replay-corpus-gate \
+        go-api-test-shared-social-gate install-git-hooks gate-push replay-corpus-gate replay-equiv \
         go-api-test-coverage-ratchet openapi-gen openapi-check
 
 ## Affiche cette aide
@@ -286,6 +287,12 @@ replay-corpus-gate:
 	cd $(GO_API_DIR) && CGO_ENABLED=0 go build -o bin/replay-corpus-gate$$(go env GOEXE) ./cmd/replay-corpus-gate \
 		&& ./bin/replay-corpus-gate$$(go env GOEXE) $(ARGS)
 
+## Harnais d equivalence du rejeu (cmd/replay-equiv) : compare les digests par etape de 20 films aux
+## references figees (libs/film/replay/testdata/equivalence). EXIGE le parc local, ~12 min ; code 1 =
+## ecart. Apres une preuve d equivalence : `cd apps/go-api && go run ./cmd/replay-equiv -update`.
+replay-equiv:
+	cd $(GO_API_DIR) && go run ./cmd/replay-equiv
+
 ## Go API: lance les tests avec rapport de couverture
 go-api-coverage:
 	cd $(GO_API_DIR) && CGO_ENABLED=0 LEVELUP_DEMO_MODE=true \
@@ -370,8 +377,9 @@ go-api-test-shared-social-gate:
 ## Contenu, dans l'ordre du plus rapide au plus lent (feedback utile d'abord) :
 ##   1. ratchet golangci-lint — MÊME commande que le job CI go-lint
 ##      (--new-from-merge-base=origin/main : la dette gelée reste invisible) ;
-##   2. typecheck + lint web — mêmes scripts npm que le job CI Frontend ;
-##   3. baseline de tests Go — scripts/check_test_baseline.sh tests (le plus long) :
+##   2. harnais d'equivalence du rejeu (make replay-equiv, ~12 min, exige le parc local) ;
+##   3. typecheck + lint web — mêmes scripts npm que le job CI Frontend ;
+##   4. baseline de tests Go — scripts/check_test_baseline.sh tests (le plus long) :
 ##      suite complète avec -tags=integration, en DEUX voies parallèles — la voie film
 ##      (le module libs/film, sans DuckDB, jugé contre .ai/baselines/tests_libs_film.jsonl) et la
 ##      voie DuckDB (tout apps/go-api, en -p 1). La durée est celle de la voie DuckDB ; voir le script.
@@ -392,6 +400,7 @@ gate-push:
 		(cd $$(dirname $$m) && golangci-lint run --config ../../apps/go-api/.golangci.yml --timeout 5m --new-from-merge-base=origin/main) || exit 1; \
 	done
 	"$(MAKE)" libs-test
+	"$(MAKE)" replay-equiv
 	cd apps/web && npm run typecheck
 	cd apps/web && npm run lint
 	bash scripts/check_test_baseline.sh tests

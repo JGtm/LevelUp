@@ -1013,6 +1013,7 @@ SÉPARÉ, exprès : les entrées de la cuisson restent identiques à l'octet. Un
 comme des faits vides.
 
 ```bash
+make replay-equiv                                  # idem, depuis la racine ; joué aussi par `make gate-push` (exige le parc local de films, ~12 min, code 1 = écart)
 go run ./cmd/replay-equiv                          # tout le corpus (CORPUS.txt), comparaison seule
 go run ./cmd/replay-equiv -films 000d5950 -update  # (re)fige les références d'un seul film
 # flags : -corpus F  -films a,b (remplace le corpus)  -update  -mem-gib N (défaut 3, 0 = désarmé)
@@ -1460,8 +1461,13 @@ npm run lint
 ### Gate local avant merge (`gate-push`)
 
 ```bash
-make gate-push               # ratchet lint Go + typecheck/lint web + baseline de tests, voies film et DuckDB en parallèle (~25 min)
+make gate-push               # ratchet lint Go + harnais replay-equiv + typecheck/lint web + baseline de tests, voies film et DuckDB en parallèle (~25 min + ~12 min)
 ```
+
+`make gate-push` joue `make replay-equiv` (le harnais d'équivalence du rejeu, juste après `make libs-test`) :
+les références de `libs/film/replay/testdata/equivalence` ont dérivé sans bruit de la v8.0.0 au re-figeage
+du 2026-10-30 faute de gate qui les joue. Il exige le parc local de films ; pour re-figer après une
+preuve d'équivalence : `cd apps/go-api && go run ./cmd/replay-equiv -update`.
 
 La baseline de tests joue deux voies en parallèle, une par module Go (ADR 0041) : la voie film (le
 module `libs/film`, sans dépendance à DuckDB — garde-rail

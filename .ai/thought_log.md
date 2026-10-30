@@ -1,3 +1,13 @@
+## [2026-10-30] Harnais replay-equiv — références re-figées
+
+**Statut** : Complété (branche `chore/harnais-references`, PR vers `release/v8.1.0`).
+
+**Décision technique principale** : les 20 références `libs/film/replay/testdata/equivalence/<short8>.tsv` sont re-figées par `replay-equiv -update` au comportement courant, après preuve que ce comportement est celui d'avant le découplage D2 ; `minifilm.tsv` et les `.facts.json` ne bougent pas. `make replay-equiv` est ajouté et joué par `make gate-push` juste après `make libs-test` (la ligne `libs-test` n'est pas touchée), car `gate-push` ne jouait pas le harnais, d'où la dérive silencieuse.
+
+**Résultats observés** : références périmées depuis la v8.0.0 (64 étapes figées, 67 attendues : `knockbacks` insérée ; `# digest-grammar: 2` avant et après). AVANT : code 1, « 20 different », 20 digests obtenus de MD5 identiques aux témoins D2 (`temoins_d2_lot5_apres`, donc lots 0, 2.12, 3, 5), 1 360 lignes. `-update` : 20 `.tsv` réécrits à 67 étapes, aucun autre fichier du dépôt modifié, contenu égal aux digests obtenus. APRÈS : code 0, « 20 identical » ; `go test ./replay/ -run Equivalence` et `go test ./replay/` verts dans `libs/film`. Poste : racine de jonctions (`data`, `config` du dépôt principal ; `libs`, `apps` du worktree) retirée par `rmdir`.
+
+**Conclusion / prochaine étape** : PR vers `release/v8.1.0`, CI, fusion squash par le pilote. Le harnais coûte environ 12 min dans `gate-push` et exige le parc local.
+
 ## [2026-10-30] Suites du découplage — outillage, ratchets muets, robustesse de la brique API, backlog
 
 **Statut** : Complété (branche `chore/suites-decouplage`, plan `.ai/V8/PLAN_SUITES_DECOUPLAGE_2026-10-30.md`, tous les items `[x]`).

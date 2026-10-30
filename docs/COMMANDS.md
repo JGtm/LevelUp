@@ -969,6 +969,7 @@ objective stats from `match_objective_stats_latest`), the oracle of the truth be
 oracle is refused like empty facts.
 
 ```bash
+make replay-equiv                                    # same, from the root; also played by `make gate-push` (needs the local film park, ~12 min, exit 1 = divergence)
 go run ./cmd/replay-equiv                            # whole corpus (CORPUS.txt), compare only
 go run ./cmd/replay-equiv -films 000d5950 -update    # (re-)freeze the references of one film
 # flags: -corpus F  -films a,b (replaces the corpus)  -update  -mem-gib N (default 3, 0 = off)
@@ -1400,8 +1401,13 @@ npm run lint
 ### Local merge gate (`gate-push`)
 
 ```bash
-make gate-push               # golangci-lint ratchet + web typecheck/lint + test baseline, film and DuckDB lanes in parallel (~25 min)
+make gate-push               # golangci-lint ratchet + replay-equiv harness + web typecheck/lint + test baseline, film and DuckDB lanes in parallel (~25 min + ~12 min)
 ```
+
+`make gate-push` plays `make replay-equiv` (the replay equivalence harness, right after `make libs-test`):
+the references under `libs/film/replay/testdata/equivalence` drifted unnoticed from v8.0.0 until the
+2026-10-30 re-freeze because no gate played them. It needs the local film park; to re-freeze after a
+proof of equivalence, run `cd apps/go-api && go run ./cmd/replay-equiv -update`.
 
 The test baseline plays two lanes in parallel, one per Go module (ADR 0041): the film lane (the
 `libs/film` module, no DuckDB dependency — guarded by
