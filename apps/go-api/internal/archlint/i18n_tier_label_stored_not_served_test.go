@@ -7,7 +7,8 @@
 // (`analysis.SkillTierDisplayLabel`). Les seules lectures SQL qui subsistent dans `internal/platform`
 // servent à lire le nombre de matchs restants d'un placement (`domain.ParsePlacementRemaining`) ou à
 // retrouver un code de palier manquant pour l'URL d'un badge : elles ne servent aucun texte. Le
-// plafond par fichier ne monte pas ; une lecture de plus doit être justifiée ici avec sa date.
+// plafond par fichier ne monte pas et suit la mesure (une baisse l'abaisse dans le même commit) ; une
+// lecture de plus doit être justifiée ici avec sa date.
 package archlint
 
 import (
@@ -46,6 +47,14 @@ func TestStoredTierLabelIsNotServed(t *testing.T) {
 	for rel, n := range found {
 		if n > tierLabelReadsAllowed[rel] {
 			offenders = append(offenders, fmt.Sprintf("%s : %d lecture(s) de tier_label (plafond %d)", rel, n, tierLabelReadsAllowed[rel]))
+		}
+	}
+	// Le plafond est la mesure : une baisse s'inscrit dans le même commit (une entrée tombée à zéro se
+	// retire), sinon la marge se reconsommerait en silence.
+	for rel, plafond := range tierLabelReadsAllowed {
+		if n := found[rel]; n < plafond {
+			t.Errorf("%s : %d lecture(s) de tier_label sous le plafond %d — baisse le plafond à %d dans "+
+				"tierLabelReadsAllowed", rel, n, plafond, n)
 		}
 	}
 	if len(offenders) > 0 {

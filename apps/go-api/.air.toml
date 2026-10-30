@@ -22,10 +22,23 @@ tmp_dir = "tmp"
     "vendor",
     "contracttest",
   ]
+  # Briques Go (ADR 0041) surveillées EN PLUS de root : un include_dir hors de root est un
+  # répertoire supplémentaire pour air (>= v1.65, runner/config.go normalizeIncludeDirs), il ne
+  # restreint pas la surveillance de root. exclude_dir compare un chemin relatif EXACT à root :
+  # il ne voit pas les testdata/ et research/ imbriqués des briques, d'où l'exclusion par motif
+  # ci-dessous (séparateur / ou \ pour Windows).
+  include_dir = [
+    "../../libs/film",
+    "../../libs/gamefiles",
+    "../../libs/himap",
+  ]
   # Fichiers exclus du watcher
   exclude_file = []
-  # Patterns exclus
-  exclude_regex = ["_test\\.go$"]
+  # Patterns exclus (appliqués au chemin absolu du fichier modifié)
+  exclude_regex = [
+    "_test\\.go$",
+    '[/\\]libs[/\\].*[/\\](testdata|research)[/\\]',
+  ]
 
   # Délai avant rebuild (évite les rebuilds en rafale lors de sauvegardes multiples)
   delay = 500 # ms

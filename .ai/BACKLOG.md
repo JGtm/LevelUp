@@ -200,6 +200,46 @@ resolver) — elle ne suit pas le sort du maillon de nom. **Effort : S** (le rel
 
 ---
 
+### [auth] Rafraîchissement OAuth : essayer d'abord la famille de jeton enregistrée
+
+**Noté le** : 2026-10-30 (lot « suites du découplage », plan `.ai/V8/PLAN_SUITES_DECOUPLAGE_2026-10-30.md`)
+
+Constat (D3-L1-f, registre `.ai/REGISTRE_REPORTS.md`, section D3) : chaque rafraîchissement de JGtm
+essaie d'abord l'application Azure, qui refuse le jeton (« jeton étranger », `invalid_grant`), puis
+réussit par le client Xbox natif. Coût : un appel HTTPS perdu et une ligne de journal toutes les
+50 minutes par joueur ; aucun effet fonctionnel. Le magasin de jetons connaît la famille du jeton
+(`azure` / `xbox_native`, `multi_user_token_store.go`). Piste : dans `platform/auth` (la politique,
+pas la brique `haloapi`), lire la famille enregistrée et tenter d'abord le client correspondant,
+l'autre en repli ; revue à deux relecteurs (ADR 0023) ; test `httptest` des deux ordres.
+**Décision du user du 2026-10-30 : reporté, pas prioritaire.** **Effort (estimation) : S.**
+
+---
+
+### [archi] Publication des briques : modules, tags, README ; dépôts séparés sur critère
+
+**Noté le** : 2026-10-30 (lot « suites du découplage »)
+
+Contexte : audit `.ai/AUDIT_DECOUPLAGE_BRIQUES_2026-10-27.md` clos (D1, D2, D3). Souhait du user
+(2026-10-30) : sortir l'API Halo (plus riche que SPNKr / Grunt, Halo 5 + Halo Infinite, ajouter un jeu
+sans retoucher LevelUp) et le générateur de cartes (contributions de la communauté sans entrer dans
+LevelUp) ; garder le décodeur de film dans le dépôt (co-évolution avec le rejeu).
+
+Étapes recommandées par le pilote, dans l'ordre :
+1. `internal/haloapi` → module `libs/haloapi` (ADR 0041), et y rapatrier le client Halo 5
+   (`games/halo_5/client.go`) et les autres clients HTTP (`mapcatalog/ugc.go`,
+   `assets/fetcher_gamecms.go`, `sync/xbox_client.go`) pour que « multi-jeu » soit vrai.
+2. README, exemples, tag `libs/<brique>/v0.1.0` sur `gamefiles`, `himap`, `haloapi` : importables
+   depuis n'importe quel dépôt sans séparation.
+3. Dépôt séparé (`git subtree split`, historique conservé) pour `gamefiles` + `himap` (générateur de
+   cartes ; `ooz` GPLv3 → dépôt GPL) et pour `haloapi`, seulement quand un contributeur externe se
+   présente ou que la cadence de changement le justifie. Coût : versions épinglées, deux PR par
+   changement transverse, deux CI.
+
+Réserve du pilote : aujourd'hui aucun consommateur externe, et la couche « exploitation » (jetons,
+mise en commun, cache) reste dans LevelUp quoi qu'il arrive. **Effort (estimation) : M (étapes 1 et 2), L (étape 3).**
+
+---
+
 ## 🎮 Backlog — Coach proactif × Prestige (post-V2)
 
 Référence : ADR 0020 — Coach proactif : pont vers Prestige. ADR 0021 — Synthèse dynamique de Template et Arc ad-hoc.

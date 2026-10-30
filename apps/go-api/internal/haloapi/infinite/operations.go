@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 )
 
 // BattlePassTrackDTO : une opération de la réponse `rewardtracks/operations`.
@@ -29,7 +30,7 @@ type OperationsDTO struct {
 // GetOperations récupère les opérations (passe de combat) d'un joueur ([CleEconomy]). Rend le DTO
 // et le corps brut ; sur un corps illisible, le corps est rendu avec l'erreur.
 func (c *Client) GetOperations(ctx context.Context, auth Auth, xuid string) (*OperationsDTO, []byte, error) {
-	endpoint := fmt.Sprintf("%s/players/xuid(%s)/rewardtracks/operations", c.endpoints.base(CleEconomy), xuid)
+	endpoint := fmt.Sprintf("%s/players/xuid(%s)/rewardtracks/operations", c.endpoints.base(CleEconomy), url.PathEscape(xuid))
 	body, err := c.get(ctx, requete{url: endpoint, auth: auth})
 	if err != nil {
 		return nil, nil, err
@@ -72,7 +73,7 @@ type DecksDTO struct {
 // GetDecks récupère les decks de défis d'un joueur ([CleChallenges]). Rend le DTO et le corps
 // brut ; sur un corps illisible, le corps est rendu avec l'erreur.
 func (c *Client) GetDecks(ctx context.Context, auth Auth, xuid string) (*DecksDTO, []byte, error) {
-	endpoint := fmt.Sprintf("%s/players/xuid(%s)/decks", c.endpoints.base(CleChallenges), xuid)
+	endpoint := fmt.Sprintf("%s/players/xuid(%s)/decks", c.endpoints.base(CleChallenges), url.PathEscape(xuid))
 	body, err := c.get(ctx, requete{url: endpoint, auth: auth})
 	if err != nil {
 		return nil, nil, err

@@ -172,9 +172,12 @@ func TestAucuneLectureDeFixtureSousAi(t *testing.T) {
 				rel, site.pourquoi, dossierAi)
 		}
 	}
-	if len(sitesAiAutorises) > nombreSitesAiAutorisesPlafond {
-		t.Errorf("%d site(s) autorisé(s), plafond %d — la liste ne grossit pas",
-			len(sitesAiAutorises), nombreSitesAiAutorisesPlafond)
+	switch n := len(sitesAiAutorises); {
+	case n > nombreSitesAiAutorisesPlafond:
+		t.Errorf("%d site(s) autorisé(s), plafond %d — la liste ne grossit pas", n, nombreSitesAiAutorisesPlafond)
+	case n < nombreSitesAiAutorisesPlafond:
+		t.Errorf("%d site(s) autorisé(s), plafond %d — baisse le plafond à %d (nombreSitesAiAutorisesPlafond) "+
+			"dans le même commit", n, nombreSitesAiAutorisesPlafond, n)
 	}
 }
 

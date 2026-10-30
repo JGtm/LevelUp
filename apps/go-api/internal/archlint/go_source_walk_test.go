@@ -20,6 +20,33 @@ type goSource struct {
 	File *ast.File
 }
 
+// racineDeclaree rend le chemin sur disque d'une racine qu'un garde-rail déclare balayer (chemin de
+// garde-rail, [surDisque]) et échoue si elle n'existe pas. Un garde-rail dont la racine a disparu ne
+// garde plus rien : il rougit, il ne saute pas et ne passe pas à la racine suivante. Le garde-rail
+// [TestAucuneRacineAbsenteToleree] interdit l'ancienne forme (`os.Stat` suivi de `continue` ou d'un
+// `t.Skip`).
+func racineDeclaree(t *testing.T, rel string) string {
+	t.Helper()
+	abs := surDisque(t, rel)
+	if err := exigerDossier(abs); err != nil {
+		t.Fatalf("racine déclarée %s : %v — le garde-rail ne garderait rien. La déplacer avec le code ; "+
+			"si le code a disparu, retirer le garde-rail avec lui (CLAUDE.md règle 7)", rel, err)
+	}
+	return abs
+}
+
+// exigerDossier rend une erreur si abs n'existe pas ou n'est pas un dossier.
+func exigerDossier(abs string) error {
+	st, err := os.Stat(abs)
+	if err != nil {
+		return err
+	}
+	if !st.IsDir() {
+		return &fs.PathError{Op: "racine", Path: abs, Err: fs.ErrInvalid}
+	}
+	return nil
+}
+
 // apiModuleRoot rend la racine du module apps/go-api.
 func apiModuleRoot(t *testing.T) string {
 	t.Helper()

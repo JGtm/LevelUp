@@ -8,6 +8,28 @@
 
 **Conclusion / prochaine étape** : PR vers `release/v8.1.0`, CI, fusion squash par le pilote. Le harnais coûte environ 12 min dans `gate-push` et exige le parc local.
 
+## [2026-10-30] Suites du découplage — outillage, ratchets muets, robustesse de la brique API, backlog
+
+**Statut** : Complété (branche `chore/suites-decouplage`, plan `.ai/V8/PLAN_SUITES_DECOUPLAGE_2026-10-30.md`, tous les items `[x]`).
+
+**Décision technique principale** : (A) gates locaux du poste Windows réparés : `"$(MAKE)"` entre guillemets dans `gate-push` ; délai de 600s dans `go-api-test` (valeur CI ; `grammar` dépassait 60s, cible rouge avant) ; `gate-push.ps1` écrit le JSONL par la redirection de `cmd.exe` (`Invoke-GoTestJson`) ; `air` surveille `libs/film`, `libs/gamefiles`, `libs/himap` (`include_dir` hors racine, `testdata`/`research` exclus par motif) ; `replay-corpus-gate` compile puis lance le binaire (`go run` écrasait le code du gate en 1). (B) `racineDeclaree(t, rel)` : une racine déclarée absente échoue en `t.Fatalf` dans cinq ratchets, garde-rail AST `no_racine_absente_toleree` ; sept ratchets de compte rougissent sous leur plafond (« baisse le plafond à N »), plafonds remis à la mesure (libellés FR, 18 fichiers et 8 fonctions du film). (C) `haloapi/infinite` : `FetchMatchStats` refuse un non-UUID avant l'appel, gamertag (service record), xuid (opérations, decks, confidentialité), saison et playlist (classement) échappés, forme `xuid(NNN)` inchangée ; `xblauth` : erreur de lecture du polling rendue ; `oauth_error.go` conforme à l'ADR 0023. (D) deux entrées de backlog (famille de jeton OAuth, reportée par le user ; publication des briques).
+
+**Résultats observés** : preuves avant/après pour chaque item : `make go-api-test` rouge (`grammar` FAIL à 61 s) puis code 0 ; capture d'origine sous page OEM 850 : 58 faux absents dans `internal/service` (le compte du registre), 0 après ; faux témoin du gate : `go run` 1, binaire 2 ; mutations de racine : silencieuses avant (3 PASS, 1 SKIP), rouges après ; plafonds montés d'une marge : 7 PASS avant, 7 FAIL après ; cibles de requête saines identiques octet pour octet, 8 cas réservés et `FetchMatchStats("../x")` rouges avant, verts après ; corps tronqué du polling : erreur JSON avant, `io.ErrUnexpectedEOF` après. Gate final : build, vet, gofmt, lint (base release) 0 issue, `go test ./...` 195 paquets 0 FAIL, `make go-api-test` code 0, `bash -n`, syntaxe PowerShell. Aucun appel réseau réel, aucun jeton lu.
+
+**Découvertes non traitées** : S-1 `make -n` inutilisable avec une recette récursive (GnuWin32) ; S-2 D2-L3-c (ratchets qui balaient `internal/` sans le décodeur) reste au registre ; S-3 chemins CMS non échappés (`appearance`, `nameplate`, préfixe de blob) ; S-4 lecture écartée sur le chemin d'erreur de `peoplehub_resolver` et `xbox_profile_resolver`. Inscrites au registre des reports (section du lot).
+
+**Conclusion / prochaine étape** : PR vers `release/v8.1.0` ; au pilote : CI, fusion squash, `scripts/disk-hygiene.ps1 -Lot suites -Apply`, suppression du worktree.
+
+
+## [2026-10-30] Rejeu 2D — l'écran occultant passe au bleu nuit, bord électrique et éclairs — Complété (branche `feat/rejeu-ecran-occultant-bleu`, gate visuel au user)
+
+**Décision** : demande utilisateur du 2026-10-30 (« bleu nuit/électrique avec des éclairs dedans ») : la bulle de la carte quitte l'encre neutre du verdict du 2026-08-27 et reprend l'électricité de la fiche. Opaque et pions au-dessus inchangés. Cœur = `info` assombri de 60 % (`shiftLightness`), fondu du bord par `info`, 3 éclairs qui battent sur la courbe de `@keyframes replay-zone-bolt` (cycle 2,6 s, décalages partagés avec la fiche via `SHROUD_BOLT_OFFSETS_S`, horloge de la pose), éteints sous mouvement réduit. `heatmap-freq-low` écarté : le garde-rail de la rampe heatmap le réserve à `heatmapRampTokens()`.
+
+**Code** : la bulle sort de `placementShapes.ts` vers `layers/placementShroud.ts` (rayon, durée de repli, encres, éclairs) ; `PlacementInk.shroud` et `ReplayInks.shroud` neufs.
+
+**Gates** : `tsc -b --force` 0, eslint 0 erreur (warnings préexistants), `lint:colors` 0, vitest complet 10 577 verts. Tests neufs : encre bleu nuit, arrêts du dégradé, un éclair allumé à son battement, éteints sous mouvement réduit, courbe identique à la feuille CSS.
+
+**Prochaine étape** : vérification visuelle par le user (vite du worktree sur :5174), puis commit et fusion dans `release/v8.1.0` sur accord.
 
 ## [2026-10-29] Découplage D3 — clôture (6.3)
 

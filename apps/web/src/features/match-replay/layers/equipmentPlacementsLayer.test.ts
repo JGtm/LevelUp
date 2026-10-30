@@ -301,7 +301,7 @@ describe('la marque « révélé », tracée dans ce calque', () => {
       colorOfSlot: (slot: number) => `slot${slot}`,
       neutral: 'neutre',
       wall: 'mur',
-      rift: { rim: 'faille-bord', core: 'faille-coeur' },
+      rift: { rim: 'faille-bord', core: 'faille-coeur' }, shroud: { core: 'ecran-coeur', glow: 'ecran-eclair' },
     })
     expect(ops.some((o) => o.op === 'set strokeStyle' && o.args[0] === 'slot3')).toBe(true)
     expect(ops.some((o) => o.op === 'set strokeStyle' && o.args[0] === 'slot7')).toBe(false)
@@ -353,7 +353,7 @@ describe('couleur d’un objet LÂCHÉ à la mort (t0 = finVie + 1)', () => {
   const teamColor = (ally: boolean) => (ally ? 'equipe' : 'adverse')
   const dropped = pose({ family: 'sensor', id: SENSOR_ID, origin: 'dropped', owner: 3, t0: 50 })
   const inkWith = (colorOfSlot: (slot: number, frame: number) => string | null) => ({
-    colorOfSlot, neutral: 'neutre', wall: 'mur', rift: { rim: 'faille-bord', core: 'faille-coeur' },
+    colorOfSlot, neutral: 'neutre', wall: 'mur', rift: { rim: 'faille-bord', core: 'faille-coeur' }, shroud: { core: 'ecran-coeur', glow: 'ecran-eclair' },
   })
   const strokesOf = (ops: ReturnType<typeof draw>) =>
     ops.filter((o) => o.op === 'set strokeStyle').map((o) => o.args[0])
@@ -515,14 +515,38 @@ describe('countDrawablePlacements — la porte du comptage est celle du tracé',
 describe("l ECRAN OCCULTANT — une bulle opaque, et les pions au-dessus", () => {
   const ecran = () => pose({ family: 'shroud_screen', id: 'sh1' })
 
-  it('trace un disque plein a l encre NEUTRE, jamais a celle de l equipe', () => {
+  it('trace un disque plein a l encre BLEU NUIT de l ecran, jamais a celle de l equipe ni au neutre', () => {
     const ops = draw([ecran()])
     const encres = ops.filter((o) => o.op === 'set fillStyle').map((o) => o.args[0])
-    expect(encres).toContain('neutre')
+    expect(encres).toContain('ecran-coeur')
     expect(encres).not.toContain('equipe')
+    expect(encres).not.toContain('neutre')
+  })
+
+  it('le bord passe par le BLEU ELECTRIQUE avant de s eteindre', () => {
+    const ops = draw([ecran()])
+    const arrets = ops.filter((o) => o.op === 'addColorStop').map((o) => o.args[1])
+    expect(arrets).toEqual(['ecran-coeur', 'ecran-eclair', 'transparent'])
+  })
+
+  // A 208 ms de la pose, le premier eclair est au sommet de son battement, les deux autres eteints.
+  const auBattement = { ...TIME, frame: 12, frameMs: 104 }
+
+  it('un ECLAIR allume a l encre electrique quand son battement tombe, sans toucher a la bulle', () => {
+    const ops = draw([ecran()], auBattement)
+    expect(ops.filter((o) => o.op === 'stroke')).toHaveLength(1)
+    expect(ops.some((o) => o.op === 'set strokeStyle' && o.args[0] === 'ecran-eclair')).toBe(true)
+    expect(ops.filter((o) => o.op === 'arc')).toHaveLength(2)
+  })
+
+  it('sous mouvement reduit, les eclairs restent eteints : le disque dit deja l etat', () => {
+    const ops = draw([ecran()], { ...auBattement, reducedMotion: true })
+    expect(ops.filter((o) => o.op === 'stroke')).toHaveLength(0)
+    expect(ops.filter((o) => o.op === 'fill')).toHaveLength(2)
   })
 
   it('le bord est un FONDU, pas une borne : un degrade et AUCUN anneau trace', () => {
+    // Entre deux battements (4 s apres la pose) : aucun eclair, donc aucun trait du tout.
     const ops = draw([ecran()])
     expect(ops.filter((o) => o.op === 'createRadialGradient')).toHaveLength(1)
     // Le champ de reparation borne son disque d un pointille parce qu il a une portee dont on

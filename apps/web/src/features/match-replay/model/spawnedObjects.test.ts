@@ -8,7 +8,8 @@ import {
   PLACEMENT_RENDER,
   type PlacementToggles,
 } from '../layers/equipmentPlacementsLayer'
-import { project, SHROUD_DURATION_MS } from '../layers/placementShapes'
+import { project } from '../layers/placementShapes'
+import { SHROUD_DURATION_MS } from '../layers/placementShroud'
 import { VIEW } from '../test/placementFixtures'
 import { testReplayDoc } from '../test/testDoc'
 import { zonePresenceAt } from './equipmentZones'

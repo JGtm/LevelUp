@@ -44,6 +44,34 @@ function Write-StepHeader {
     Write-Host ('=== {0} ===' -f $Text) -ForegroundColor Cyan
 }
 
+# Invoke-GoTestJson -- lance `go test -json` dans $Dir et ECRIT le flux dans $OutPath par la
+# redirection de cmd.exe, octet pour octet. Une capture PowerShell (`$x = & go test -json ...`)
+# decode la sortie native avec [Console]::OutputEncoding (page OEM sous PowerShell 5.1) : les noms
+# de sous-tests non ASCII (accents, fleches) arrivent abimes dans le JSONL et
+# check_test_baseline.sh les declare absents. cmd.exe ne decode rien : le JSONL reste l'UTF-8 sans
+# BOM emis par go. stderr est AJOUTE a $StderrPath. Rend le code de sortie de go test.
+function Invoke-GoTestJson {
+    param([string]$Dir, [string]$OutPath, [string]$StderrPath, [string]$Packages = './...')
+    Push-Location $Dir
+    try {
+        $env:CGO_ENABLED = '1'
+        # -timeout=600s (defaut Go) : 300s faisait paniquer internal/sync (~173s isole,
+        # davantage sous la charge du run serialise complet) depuis les tests
+        # d'autorite de schema qui rejouent des chaines de migrations completes.
+        & cmd /c "go test -tags=integration -count=1 -timeout=600s -p 1 -json $Packages > `"$OutPath`" 2>> `"$StderrPath`""
+        return $LASTEXITCODE
+    } finally {
+        Pop-Location
+    }
+}
+
+# Get-JsonlLineCount -- nombre de lignes du JSONL ecrit (0 si le fichier manque).
+function Get-JsonlLineCount {
+    param([string]$Path)
+    if (-not (Test-Path -LiteralPath $Path)) { return 0 }
+    return @([System.IO.File]::ReadAllLines($Path)).Count
+}
+
 function Add-Result {
     param([string]$Name, [bool]$Ok, [string]$Detail = '')
     $results.Add([pscustomobject]@{ Name = $Name; Ok = $Ok; Detail = $Detail })
@@ -79,26 +107,13 @@ if ($null -eq $golangciLint) {
 # verifie par check_test_baseline.sh (bash, mode consommateur --from-jsonl).
 # ---------------------------------------------------------------------------
 Write-StepHeader '2/4 -- Go tests (integration, JSONL PowerShell natif)'
-Push-Location $goApiDir
-try {
-    $env:CGO_ENABLED = '1'
-    Write-Host '  Lancement de la suite (peut prendre plusieurs minutes)...'
-    # -timeout=600s (defaut Go) : 300s faisait paniquer internal/sync (~173s isole,
-    # davantage sous la charge du run serialise complet) depuis les tests
-    # d'autorite de schema qui rejouent des chaines de migrations completes.
-    $testOutput = & go test -tags=integration -count=1 -timeout=600s -p 1 -json ./... 2> $stderrLogPath
-    $testExit = $LASTEXITCODE
-} finally {
-    Pop-Location
-}
-# Encodage UTF-8 SANS BOM explicite : un BOM en tete de fichier corromprait la
-# toute premiere ligne JSON lue par check_test_baseline.sh (piege encodage
-# PowerShell 5.1 documente au handoff, point 2).
-$utf8NoBom = New-Object System.Text.UTF8Encoding($false)
-[System.IO.File]::WriteAllLines($jsonlPath, [string[]]$testOutput, $utf8NoBom)
-Write-Host ("  go test exit={0} -- {1} ligne(s) JSONL ecrite(s) dans {2}" -f $testExit, $testOutput.Count, $jsonlRelative)
+Write-Host '  Lancement de la suite (peut prendre plusieurs minutes)...'
+if (Test-Path -LiteralPath $stderrLogPath) { Remove-Item -LiteralPath $stderrLogPath }
+$testExit = Invoke-GoTestJson -Dir $goApiDir -OutPath $jsonlPath -StderrPath $stderrLogPath
+$testLines = Get-JsonlLineCount -Path $jsonlPath
+Write-Host ("  go test exit={0} -- {1} ligne(s) JSONL ecrite(s) dans {2}" -f $testExit, $testLines, $jsonlRelative)
 
-if ($testOutput.Count -eq 0) {
+if ($testLines -eq 0) {
     # Rien n'a ete emis : echec d'infrastructure (le meme piege de lien que sur
     # git-bash, un go.mod introuvable, etc.) -- pas la peine d'invoquer
     # check_test_baseline.sh, il n'y a rien a analyser.
@@ -120,17 +135,9 @@ if ($testOutput.Count -eq 0) {
 $filmDir = Join-Path $repoRoot 'libs\film'
 $filmJsonlPath = Join-Path $goApiDir 'baseline_current_libs_film.jsonl'
 $filmJsonlRelative = 'apps/go-api/baseline_current_libs_film.jsonl'
-Push-Location $filmDir
-try {
-    $env:CGO_ENABLED = '1'
-    Write-Host '  Lancement de la suite du module libs/film...'
-    $filmOutput = & go test -tags=integration -count=1 -timeout=600s -p 1 -json ./... 2>> $stderrLogPath
-    $filmTestExit = $LASTEXITCODE
-} finally {
-    Pop-Location
-}
-[System.IO.File]::WriteAllLines($filmJsonlPath, [string[]]$filmOutput, $utf8NoBom)
-if ($filmOutput.Count -eq 0) {
+Write-Host '  Lancement de la suite du module libs/film...'
+$filmTestExit = Invoke-GoTestJson -Dir $filmDir -OutPath $filmJsonlPath -StderrPath $stderrLogPath
+if ((Get-JsonlLineCount -Path $filmJsonlPath) -eq 0) {
     Add-Result -Name 'Go tests (libs/film)' -Ok $false -Detail "go test exit=$filmTestExit, JSONL vide (voir $stderrLogPath)"
 } else {
     Push-Location $repoRoot

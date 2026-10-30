@@ -196,14 +196,17 @@ stop:
 restart: stop dev
 
 ## Go API: lance les tests (sans CGo — domain/analysis/contract)
+## Délai par processus de test : 600s, la valeur des pas miroirs du job CI (ci.yml). Le paquet
+## libs/film/internal/grammar dure à lui seul plus de deux minutes sur un poste de développement :
+## un délai plus court fait échouer la cible par dépassement, pas par régression.
 go-api-test:
 	cd $(GO_API_DIR) && CGO_ENABLED=0 LEVELUP_DEMO_MODE=true \
 		go test ./internal/domain/... ./internal/analysis/... \
 			./internal/games/weapons/... \
 			./contracttest/... \
-		-v -timeout 60s -count=1
-	cd libs/gamefiles && CGO_ENABLED=0 go test ./hinavmesh/ ./mapvar/ -timeout 60s -count=1
-	cd libs/film && CGO_ENABLED=0 go test ./internal/profile/... ./internal/grammar/... ./internal/facts/... ./replay/... -timeout 60s -count=1
+		-v -timeout 600s -count=1
+	cd libs/gamefiles && CGO_ENABLED=0 go test ./hinavmesh/ ./mapvar/ -timeout 600s -count=1
+	cd libs/film && CGO_ENABLED=0 go test ./internal/profile/... ./internal/grammar/... ./internal/facts/... ./replay/... -timeout 600s -count=1
 
 ## Go API: corpus gamefiles du module — retro-ingenierie des cartes ET catalogues commis
 ## (EXIGE Halo Infinite installe, ~6 min)
@@ -270,11 +273,19 @@ libs-test:
 ## le detail des 10 options si votre topologie l'exige) ; duree mesuree (7 temoins, 2026-09-07,
 ## les deux modes) : cf. .ai/archive/V7.5/v2/CORPUS_TEMOIN_2026-09-06.md.
 ##
-## Par defaut, un SEUL temoin absent (cache de film purge ou partiel) fait sortir en code 2 —
-## un gate qui ne compare rien ne doit jamais sortir en 0 (`--allow-missing` restaure l'ancien
-## avertissement seul, pour un usage delibere).
+## Par defaut, un SEUL temoin absent (cache de film purge ou partiel) fait sortir en code 4
+## (couverture incomplete) — un gate qui ne compare rien ne doit jamais sortir en 0
+## (`--allow-missing` restaure l'ancien avertissement seul, pour un usage delibere).
+##
+## Codes du gate : 0 ok, 1 perte, 2 usage, 3 erreur de cuisson, 4 couverture incomplete
+## (cmd/replay-corpus-gate/report.go). Le binaire est COMPILE puis lance, jamais `go run` : `go run`
+## rend 1 pour tout code non nul de son programme. make, lui, sort en 2 sur toute recette en echec et
+## imprime le code du gate dans sa ligne `*** [replay-corpus-gate] Erreur N` ; un script qui doit
+## distinguer 1 et 4 lance directement apps/go-api/bin/replay-corpus-gate (ignore par git).
+## Options du gate : make replay-corpus-gate ARGS="--temoins <id>".
 replay-corpus-gate:
-	cd $(GO_API_DIR) && CGO_ENABLED=0 go run ./cmd/replay-corpus-gate
+	cd $(GO_API_DIR) && CGO_ENABLED=0 go build -o bin/replay-corpus-gate$$(go env GOEXE) ./cmd/replay-corpus-gate \
+		&& ./bin/replay-corpus-gate$$(go env GOEXE) $(ARGS)
 
 ## Harnais d equivalence du rejeu (cmd/replay-equiv) : compare les digests par etape de 20 films aux
 ## references figees (libs/film/replay/testdata/equivalence). EXIGE le parc local, ~12 min ; code 1 =
@@ -388,7 +399,7 @@ gate-push:
 	@for m in libs/*/go.mod; do \
 		(cd $$(dirname $$m) && golangci-lint run --config ../../apps/go-api/.golangci.yml --timeout 5m --new-from-merge-base=origin/main) || exit 1; \
 	done
-	$(MAKE) libs-test
+	"$(MAKE)" libs-test
 	"$(MAKE)" replay-equiv
 	cd apps/web && npm run typecheck
 	cd apps/web && npm run lint
