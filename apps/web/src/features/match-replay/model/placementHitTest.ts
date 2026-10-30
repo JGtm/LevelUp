@@ -27,11 +27,11 @@ import {
   type PlacementView,
   project,
   REPAIR_FIELD_RADIUS_M,
-  SHROUD_RADIUS_M,
   SEEKER_IMPULSE_RADIUS_PX,
   UNNAMED_DOT_RADIUS_PX,
   viewScale,
 } from '../layers/placementShapes'
+import { SHROUD_RADIUS_M } from '../layers/placementShroud'
 import { wallRadiusM } from '../layers/placementWall'
 import { isPlacementActive, placementShows } from './placementWindow'
 import type { XY } from '../../../lib/replay/replayLogic'

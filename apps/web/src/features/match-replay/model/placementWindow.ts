@@ -17,7 +17,8 @@ import type {
   PlacementKind,
   PlacementWindowTime,
 } from '../layers/equipmentPlacementsLayer'
-import { SHROUD_DURATION_MS, seekerImpulseActive } from '../layers/placementShapes'
+import { seekerImpulseActive } from '../layers/placementShapes'
+import { SHROUD_DURATION_MS } from '../layers/placementShroud'
 import { WALL_DURATION_MS } from '../layers/placementWall'
 import { SENSOR_DURATION_MS } from './threatSensor'
 

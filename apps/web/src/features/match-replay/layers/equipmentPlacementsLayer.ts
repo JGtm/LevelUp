@@ -49,14 +49,13 @@ import {
   drawRepairField,
   drawRevealMark,
   drawSeekerImpulse,
-  drawShroud,
   drawUnnamedDot,
   type PlacementView,
   project,
   REPAIR_FIELD_RADIUS_M,
-  SHROUD_RADIUS_M,
   viewScale,
 } from './placementShapes'
+import { drawShroud, SHROUD_RADIUS_M, type ShroudInk } from './placementShroud'
 import { drawWall, wallHeading, WALL_PANEL_IDS } from './placementWall'
 // La FENÊTRE d'une pose vit à part (cf. le réexport plus haut) : elle est aussi LUE ici, et un
 // réexport ne met rien dans la portée locale. L'import inverse, lui, ne porte que des TYPES —
@@ -304,6 +303,11 @@ export interface PlacementInk {
    * interdimensionnel », et une teinte d'équipe la ferait lire comme un marqueur de camp.
    */
   rift: RiftInk
+  /**
+   * Encres FIXES de l'écran occultant (2026-10-30) : bleu nuit et bleu électrique. Comme la
+   * faille, elles disent ce qu'EST l'objet, pas qui l'a posé — elles ne passent pas par `inkOf`.
+   */
+  shroud: ShroudInk
   /** Encre neutre du thème (`--muted-foreground`), servie aux poses sans poseur. */
   neutral: string
 }
@@ -435,7 +439,7 @@ function drawPlacement(
   const pxParM = viewScale(view)
   if (kind === 'dropped') drawDroppedObject(ctx, c, time, color)
   else if (kind === 'rift') drawRift(ctx, c, time, ink.rift)
-  else if (kind === 'shroud') drawShroud(ctx, c, SHROUD_RADIUS_M * pxParM, ink.neutral)
+  else if (kind === 'shroud') drawShroud(ctx, { c, radiusPx: SHROUD_RADIUS_M * pxParM, ageMs }, time, ink.shroud)
   else if (kind === 'seeker') drawSeekerImpulse(ctx, c, ageMs, time, color)
   else if (kind === 'field')
     drawRepairField(ctx, { c, radiusPx: REPAIR_FIELD_RADIUS_M * pxParM, ageMs }, time, color)
