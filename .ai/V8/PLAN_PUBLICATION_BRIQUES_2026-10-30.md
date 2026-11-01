@@ -202,7 +202,18 @@ Dans le module go-api d'abord (comme D2 lot 2 et D3 lots 2-4 : couper AVANT de d
   nameplate, un corps coupé donne `lecture <url>: ...` au lieu de l'erreur brute (chemin d'erreur, `%w` conservé).
   Report au 2.3 : `getUnique` ne rend pas encore `Content-Type` (lint `unparam` sans lecteur) ; complexité ~11.
   T2 : 4 tests, aucune URL attendue modifiée. Gates : vet 0, brique sans exploitation, tests `ok`, lint 0.)
-- [ ] 2.3 GameCMS : service dans `infinite` ; `assets` garde la résolution ; URL figées vertes.
+- [x] 2.3 GameCMS : service dans `infinite` ; `assets` garde la résolution ; URL figées vertes.
+  (2026-11-01, agent Opus, gates rejoués par le pilote. `infinite/gamecmsfichiers.go` (76 L) : `URLFichierGameCMS(e,
+  chemin)`, `URLImageGameCMS(e, brut)` (= l'ancien `buildGameCMSImageFetchURL`, 7 formes), `TelechargerFichierGameCMS(ctx,
+  auth, url)` = GET unique SANS `Accept`, garde consultée d'abord (ordre d'avant rétabli sur décision pilote, test de
+  mutation rouge). `assets/fetcher_gamecms.go` 356 → 242 L : `infinite.New(netguard.Doer{"gamecms_assets.get"},
+  RetryAucune())`, `hoteGameCMSParDefaut()` remplace `defaultGameCMSBase` (aussi dans `fetcher_chain.go`),
+  `gamecmsHostFor/PrefixFor` restent, classement des erreurs et messages inchangés, `tokens, _ :=` (PUB-0-b) et
+  `http.DefaultClient` (PUB-0-c) conservés. D-2.3-a : pas de `Content-Type` rendu (aucun lecteur) — report du 2.2 clos.
+  Tolérances : `platform/netguard` 1, `platform/auth` 1 ; `domain`, `ctxkeys`, `games` retirées ; allowlist
+  `halowaypoint` : `fetcher_gamecms.go` retiré. Non figé (cas dégénérés) : Spartan vide avec jetons non nil → plus
+  d'en-tête vide ; hôte vide → hôte par défaut au lieu d'une URL relative. T2 : 5 tests, aucune URL attendue modifiée ;
+  18 tests existants et test démo inchangés. Gates : vet 0, brique sans exploitation, tests `ok`, lint 0.)
 - [ ] 2.4 Xbox : `internal/haloapi/xboxlive` ; `sync` appelle la brique avec le jeton en paramètre ; URL
   figées vertes.
 - [ ] 2.5 Tolérances à zéro ; `go list -deps -test ./internal/haloapi/...` propre ; T1 (aucun nom disparu),
@@ -283,5 +294,11 @@ Dans le module go-api d'abord (comme D2 lot 2 et D3 lots 2-4 : couper AVANT de d
 - PUB-2.1-b : `platform/auth/xbl_doer.go` porte sa propre copie du Doer gardé (2e copie à côté de
   `netguard.Doer`) ; une 3e déclenche la centralisation (règle 6).
 - PUB-2.1-c : `games/halo_5` a deux commentaires de paquet (`doc.go` et `client.go`), préexistant.
+- PUB-2.3-a : `infinite/appearance.go` `buildCustomizationImageURL` est un quasi-doublon plus pauvre de
+  `URLImageGameCMS` (ne reconnaît que `images/file/`, ne refuse pas `.json`) ; non fusionné (P-F).
+- PUB-2.3-b : `scripts/warm_bp_assets/main.go` porte deux constantes `gameCMSBase` locales (lignes ~359 et ~428) en
+  doublon de l'hôte de la brique.
+- PUB-2.3-c : l'en-tête de `assets/demo_offline_no_persist_test.go` (lignes 9-12) cite encore `doGet` et
+  `netguard.Check`, disparus de `fetcher_gamecms.go`.
 - PUB-0-g : première capture T1 rouge sur ce poste : `gcc` absent du PATH du PowerShell (lien DuckDB) ; recette =
   `C:\msys64\ucrt64\bin` en tête du PATH + `CGO_ENABLED=1` (mémoire `reference_air_rebuild_fails_gcc_missing_path`).

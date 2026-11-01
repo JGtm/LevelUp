@@ -36,7 +36,7 @@ import (
 //   - haloapi/infinite/  : la brique « API Halo » (UN fichier : ses adresses par défaut).
 //   - haloapi/halo5/     : la brique « API Halo », services Halo 5 (UN fichier : ses adresses par défaut).
 //   - domain/title/      : defaults documentés des descripteurs d'auth par titre.
-//   - assets/            : fetchers gamecms-hacs (URLs d'assets médailles/images).
+//   - assets/            : sources gamecms-hacs documentées des kinds (médailles/images).
 //   - games/halo_infinite: adapter d'URLs d'assets waypoint (base URL waypoint web).
 //   - halotest/          : fake server de test (héberge des URLs factices halowaypoint).
 //   - cmd/                : outils diag/probe/fixtures qui tapent l'API officielle.
@@ -62,9 +62,10 @@ var halowaypointAllowlist = map[string]bool{
 	// adresses Spartan/Clearance lui sont passées par le Descriptor, défauts dans domain/title.)
 	// domain/title/ — defaults documentés des descripteurs d'auth.
 	"internal/domain/title/auth_descriptor.go": true,
-	// assets/ — fetchers gamecms-hacs (URLs d'assets).
-	"internal/assets/fetcher_gamecms.go": true,
-	"internal/assets/kinds.go":           true,
+	// assets/ — documentation des sources gamecms-hacs des kinds. `fetcher_gamecms.go` retiré au
+	// lot 2.3 du plan PUBLICATION (2026-11-01) : l'hôte GameCMS par défaut est celui de la brique
+	// (`infinite/endpoints.go`).
+	"internal/assets/kinds.go": true,
 	// games/ — adapters/clients par titre.
 	"internal/games/halo_infinite/adapter_asset_urls.go": true,
 	// halotest/ — fake server (URLs factices halowaypoint en test-support).

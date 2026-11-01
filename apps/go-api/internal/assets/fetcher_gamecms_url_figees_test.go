@@ -18,6 +18,7 @@ import (
 
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/haloapi/haloapitest"
+	"levelup/go-api/internal/haloapi/infinite"
 )
 
 const (
@@ -143,7 +144,13 @@ func TestURLFigees_GameCMS_BaseSurchargee(t *testing.T) {
 	}
 }
 
-// TestURLFigees_GameCMS_ConstructionDeLImage : la fonction pure `buildGameCMSImageFetchURL`, une
+// cmsURLImage : la construction de l'URL d'image par la brique, sur l'hôte `h` et le segment de jeu
+// `p` (l'ancienne `buildGameCMSImageFetchURL(h, p, entree)` du fetcher).
+func cmsURLImage(h, p, entree string) string {
+	return infinite.URLImageGameCMS(infinite.DefaultEndpoints().Avec(infinite.CleGameCMS, h).AvecPrefixeJeu(p), entree)
+}
+
+// TestURLFigees_GameCMS_ConstructionDeLImage : la fonction pure `infinite.URLImageGameCMS`, une
 // ligne par forme d'entrée. Vide et `.json` -> aucune URL ; URL absolue -> telle quelle ; chemin déjà
 // préfixé du jeu -> sous l'hôte seul ; chemin `images|progression|waypoint/file/` -> préfixe du jeu
 // ajouté ; tout autre -> `images/file/` ajouté. Les comparaisons sont insensibles à la casse, le
@@ -168,14 +175,14 @@ func TestURLFigees_GameCMS_ConstructionDeLImage(t *testing.T) {
 		"h5/images/file/sans-effet-pour-hi.png":  h + "/hi/images/file/h5/images/file/sans-effet-pour-hi.png",
 		"hi/images/file/a.png?v=2#fragment-brut": h + "/hi/images/file/a.png?v=2#fragment-brut",
 	} {
-		if got := buildGameCMSImageFetchURL(h, "hi", entree); got != attendu {
-			t.Errorf("buildGameCMSImageFetchURL(%q) = %q, attendu %q", entree, got, attendu)
+		if got := cmsURLImage(h, "hi", entree); got != attendu {
+			t.Errorf("URLImageGameCMS(%q) = %q, attendu %q", entree, got, attendu)
 		}
 	}
-	if got, want := buildGameCMSImageFetchURL(h, "h5", "h5/images/file/a.png"), h+"/h5/images/file/a.png"; got != want {
+	if got, want := cmsURLImage(h, "h5", "h5/images/file/a.png"), h+"/h5/images/file/a.png"; got != want {
 		t.Errorf("préfixe de jeu h5 : %q, attendu %q", got, want)
 	}
-	if got, want := buildGameCMSImageFetchURL(h, "h5", "images/file/a.png"), h+"/h5/images/file/a.png"; got != want {
+	if got, want := cmsURLImage(h, "h5", "images/file/a.png"), h+"/h5/images/file/a.png"; got != want {
 		t.Errorf("préfixe de jeu h5 ajouté : %q, attendu %q", got, want)
 	}
 }

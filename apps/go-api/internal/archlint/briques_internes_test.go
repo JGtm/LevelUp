@@ -14,10 +14,11 @@
 //
 // Elle désigne l'arbre `internal/haloapi` (champ `dossiers`) ET les fichiers clients encore hors de
 // l'arbre (champ `fichiers`, plan PUBLICATION `.ai/V8/PLAN_PUBLICATION_BRIQUES_2026-10-30.md`,
-// lot 1.1) : `assets/fetcher_gamecms.go`, `sync/xbox_client.go` (`games/halo_5/client.go` est sorti
+// lot 1.1) : `sync/xbox_client.go` (`games/halo_5/client.go` est sorti
 // au lot 2.1 : le protocole est sous `internal/haloapi/halo5`, le fichier restant est l'adaptateur
 // de LevelUp ; `mapcatalog/ugc.go` au lot 2.2 : le protocole est `infinite/ugcmaps.go`, le fichier
-// restant est la façade de LevelUp). Un fichier nommé est jugé comme un fichier du
+// restant est la façade de LevelUp ; `assets/fetcher_gamecms.go` au lot 2.3 : le protocole est
+// `infinite/gamecmsfichiers.go`, le fichier restant est l'exploitation de `assets`). Un fichier nommé est jugé comme un fichier du
 // périmètre : ses imports sont parsés, son propre paquet et les paquets des `dossiers` lui sont
 // permis, le reste est un franchissement. Seuls les fichiers nommés sont jugés, pas les autres
 // fichiers de leur paquet. L'arbre `internal/haloapi` ne porte aucune tolérance : tout import hors
@@ -118,12 +119,10 @@ var briquesInternes = []briqueInterne{
 		tiers:    tiersHaloapi,
 		// L'arbre `internal/haloapi` n'a aucune tolérance : les entrées ci-dessous sont celles des
 		// fichiers clients nommés, comptes mesurés le 2026-11-01 (lot 2.1 fait : `platform/netguard`
-		// 4 -> 3, `golang.org/x/time/rate` retiré ; lot 2.2 fait : `platform/netguard` 3 -> 2, `domain` 2 -> 1).
+		// 4 -> 3, `golang.org/x/time/rate` retiré ; lot 2.2 fait : `platform/netguard` 3 -> 2, `domain` 2 -> 1 ;
+		// lot 2.3 fait : `platform/netguard` 2 -> 1, `domain`, `ctxkeys` et `games` retirés).
 		tolerances: map[string]toleranceImport{
-			"platform/netguard": {2, dateReleveClients, "lots 2.3 et 2.4 du plan PUBLICATION : la garde de réseau sort du client (Doer gardé fourni par l'adaptateur de LevelUp)"},
-			"domain":            {1, dateReleveClients, "lot 2.3 (fetcher_gamecms.go) du plan PUBLICATION : les jetons passent en paramètre de la brique"},
-			"ctxkeys":           {1, dateReleveClients, "lot 2.3 du plan PUBLICATION : le titre du contexte reste dans la résolution d'hôte de `assets`"},
-			"games":             {1, dateReleveClients, "lot 2.3 du plan PUBLICATION : le singleton d'adresses devient des Endpoints passés à la brique"},
+			"platform/netguard": {1, dateReleveClients, "lot 2.4 du plan PUBLICATION : la garde de réseau sort du client (Doer gardé fourni par l'adaptateur de LevelUp)"},
 			"platform/auth":     {1, dateReleveClients, "lot 2.4 du plan PUBLICATION : l'en-tête d'autorisation XSTS passe en chaîne, plus d'alias de type"},
 		},
 	},
@@ -134,9 +133,8 @@ const dateReleveClients = "2026-11-01"
 
 // fichiersClientsHaloapi : les clients HTTP Halo/Xbox restés hors de l'arbre `haloapi`, que le lot 2
 // du plan PUBLICATION coupe en protocole (brique) et exploitation (LevelUp). Halo 5 coupé au lot 2.1, UGC
-// au lot 2.2.
+// au lot 2.2, fichiers GameCMS des actifs au lot 2.3.
 var fichiersClientsHaloapi = []string{
-	"apps/go-api/internal/assets/fetcher_gamecms.go",
 	"apps/go-api/internal/sync/xbox_client.go",
 }
 

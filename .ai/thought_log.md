@@ -119508,3 +119508,11 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : témoin UGC vert sans qu'aucune URL attendue ait bougé (0 ligne `https://` dans le diff) ; brique toujours sans import d'exploitation ; `service`, `haloadapter`, `replayartifacts`, archlint verts ; lint 0. Tolérances netguard 2, domain 1 ; mutation rouge vérifiée. Deux différences de forme assumées : plus de `WarnContext` de fermeture ; message d'un corps coupé dans le résolveur de nameplate.
 
 **Conclusion / prochaine étape** : lot 2.3 GameCMS (Opus) : service d'actifs dans `infinite` sur le même GET unique (ajout du `Content-Type`), `assets` garde résolution d'hôte par titre, cache, erreurs.
+
+## [2026-11-01] Publication des briques — lot 2.3 (coupe GameCMS actifs) — Complété
+
+**Décision technique principale** : le GET des actifs GameCMS passe dans `infinite` (`gamecmsfichiers.go` : deux fonctions pures d'URL dont l'ancienne `buildGameCMSImageFetchURL` à l'identique, un GET unique sans `Accept`, garde consultée d'abord) ; `assets` garde la résolution d'hôte par titre (singleton + `ctxkeys`), le choix des jetons, le classement des erreurs et ses messages ; `defaultGameCMSBase` disparaît au profit de l'hôte par défaut de la brique (allowlist `halowaypoint` réduite d'une entrée). Pas de `Content-Type` rendu par le GET unique : aucun lecteur (report du 2.2 clos). Dettes PUB-0-b et PUB-0-c conservées hors périmètre.
+
+**Résultats observés** : témoin GameCMS vert sans qu'aucune URL attendue ait bougé ; 18 tests existants et test de mode démo inchangés ; brique sans import d'exploitation ; archlint vert (tolérances netguard 1, auth 1 ; domain/ctxkeys/games retirées ; mutation rouge) ; lint 0. Cas dégénérés non figés consignés (en-tête Spartan vide, hôte vide). Découvertes PUB-2.3-a à c. CI du lot 2.1 verte.
+
+**Conclusion / prochaine étape** : lot 2.4 Xbox (Sonnet) : `internal/haloapi/xboxlive` (succès, pagination), `sync` garde conversion et interface, en-tête d'autorisation en paramètre.
