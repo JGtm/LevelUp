@@ -66,6 +66,15 @@ That's it — LevelUp retrieves your XUID, completes your profile and persists t
 refresh token to the single token store (`data/auth/watcher_tokens/{xuid}.json`,
 see [ADR 0023](adr/0023-auth-tokens-single-source.md)), then proceeds to the smoke test.
 
+This holds in **every authentication mode**, including the single-machine mode (`none`): the
+refresh token is written to the store as soon as the profile is tracked. When you sign in before
+the profile exists (first launch: the wizard connects, then declares the profile), LevelUp keeps
+the token in memory only — never on disk — and writes it the moment the wizard creates the profile;
+if the server restarts between the two steps, sign in again. From then on the server refreshes
+the token by itself (Microsoft rotates it at each use): the sync keeps running for as long as the
+token is valid, with no re-capture. The token is never offered to other players' syncs unless its
+owner opted in ([ADR 0038](adr/0038-token-pooling-consent.md)).
+
 #### Advanced onboarding (headless / CLI)
 
 Use this path when the interactive wizard is not accessible (server, headless, reverse proxy).

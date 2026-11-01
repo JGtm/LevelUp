@@ -704,6 +704,9 @@ jobs:
         working-directory: libs/gamefiles
         run: go test -count=1 ./himodule/
 
+      - name: "Bout en bout : arrêt propre"
+        run: go test -count=1 -tags=e2e_windows -run 'TestE2E' ./cmd/server/
+
   go-lint:
     name: Go Lint (golangci-lint)
     needs: changes

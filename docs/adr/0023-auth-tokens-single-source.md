@@ -3,6 +3,7 @@
 **Date** : 2026-05-26
 **Statut** : Accepté
 **Branche** : `refactor/auth-tokens-single-source`
+**Amendé par** : ADR 0045 D-11 (2026-11-01) — port `TokenCipher` (`plain` / `dpapi`), champ `cipher` du fichier de jetons
 
 ## Contexte
 

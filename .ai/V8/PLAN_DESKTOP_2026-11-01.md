@@ -49,7 +49,7 @@ des WAV (C11), chiffrement des jetons (D-8), binaire autonome C10 (D-11).
   - `.air.toml` (L2) : rebaser sur la version de la publication si elle passe avant.
 - **Branche** : `feat/desktop-p0` depuis `release/v8.1.0` (ou la release suivante si v8.1.0 est publiée
   entre-temps), un commit par lot, PR squash vers la release. P1 : `feat/desktop-p1`. Noms à confirmer.
-- **CLAUDE.md** : la règle « Go/TS uniquement » est amendée par l'ADR 0046 (Rust limité à
+- **CLAUDE.md** : la règle « Go/TS uniquement » est amendée par l'ADR 0045 (Rust limité à
   `apps/desktop/src-tauri`, quelques centaines de lignes, aucune logique métier) dans le lot L16.
 
 ## 3. Vérification sur pièces des deux documents (2026-11-01, HEAD `8f0b512c58`, deux passes)
@@ -147,9 +147,9 @@ des WAV (C11), chiffrement des jetons (D-8), binaire autonome C10 (D-11).
   le site) ; (4) pas de logo du jeu dans le logo de l'app ; (5) clause de licence accordée à Microsoft
   sur l'Item, à lire face à l'AGPL (note dans l'ADR 0045).
 - **A20 — Application Azure unique** (`platform/auth/azure_credentials.go:30`, client public) : toutes
-  les installations partagent le même identifiant ; dépendance externe à consigner dans l'ADR 0046.
+  les installations partagent le même identifiant ; dépendance externe à consigner dans l'ADR 0045 (D-12).
 - **A21 — Clé de signature de l'updater.** Perdue = plus aucune mise à jour automatique possible :
-  procédure de sauvegarde et de rotation dans l'ADR 0046 ; clé publique allowlistée dans `.gitleaks.toml`.
+  procédure de sauvegarde et de rotation dans l'ADR 0045 (D-12) ; clé publique allowlistée dans `.gitleaks.toml`.
 - **A22 — Désinstallation.** Le désinstalleur ne supprime JAMAIS la racine de données (36 à 100 Go) ;
   l'identifiant Tauri (`info.lvelup.desktop`) est figé dès P1 (il nomme aussi le dossier WebView2).
 - **A23 — Hygiène du dépôt pour Rust.** `.gitignore` (`target/`, `gen/`), `Cargo.lock` versionné,
@@ -194,7 +194,7 @@ des WAV (C11), chiffrement des jetons (D-8), binaire autonome C10 (D-11).
    `{"event":"stopped","clean":true|false}` (`clean=false` : budget dépassé ou vidage persist en erreur).
 3. **Première page** : la coquille montre son écran embarqué (logo) jusqu'à `ready`, puis charge
    `http://127.0.0.1:N/desktop/enter?secret=<aléa>` ; le serveur pose le cookie et redirige vers `/`.
-   Sans cookie, toute route hors `/desktop/enter` répond 401 (`bare_routes_ratchet_test.go` : allowlist
+   Sans cookie, toute route hors `/desktop/enter` et `/health` (sonde de la coquille, sans donnée) répond 401 (`bare_routes_ratchet_test.go` : allowlist
    datée pour `/desktop/enter`) ; `/api/v1/desktop/strings` exige le cookie. Contrôle strict de `Host`.
    Sur `failed`, la coquille charge la page de démarrage du serveur (état servi en 503 non réessayable).
 4. **Arrêt** : fermeture de stdin (chemin principal, aussi déclenché par l'OS si la coquille meurt) OU
@@ -399,26 +399,26 @@ Fichiers : `cmd/server/flags.go` (nouveau, D-15), `cmd/server/boot_gate.go`, `cm
 
 ### 9.5 L5 — C3 Jeton longue durée en mode `none` (S ; après 0.4 et publication lot 3)
 
-- [ ] 5.1 `internal/api/server_apiv1.go:357-360` : le magasin de jetons est construit HORS de la branche
+- [x] 5.1 `internal/api/server_apiv1.go:357-360` : le magasin de jetons est construit HORS de la branche
       `xbox` et injecté dans les deux stratégies.
-- [ ] 5.2 Nouveau service `internal/service/devicecode_completion.go` (couche service, pas handler) :
+- [x] 5.2 Nouveau service `internal/service/devicecode_completion.go` (couche service, pas handler) :
       à toute connexion par code d'appareil réussie, persistance du jeton dans le store pour un profil
       suivi (porte ADR 0035 D3, résolution par xuid APRÈS création du profil selon l'ordre relevé en 0.4),
       mise en commun : aucune décision (D-4) ; `XboxSSOLinkStrategy.persistRTATokens` l'appelle (plus de
       copie).
-- [ ] 5.3 Tests : mode `none`, profil suivi → fichier écrit ; non suivi → rien ; mode `xbox` inchangé ;
+- [x] 5.3 Tests : mode `none`, profil suivi → fichier écrit ; non suivi → rien ; mode `xbox` inchangé ;
       garde-rails `auth/sentinel_test.go`, `sync/no_legacy_source_used_test.go` verts.
-- [ ] 5.4 `docs/INSTALL.md` + `docs/FR/INSTALL.md` alignés sur le comportement livré.
+- [x] 5.4 `docs/INSTALL.md` + `docs/FR/INSTALL.md` alignés sur le comportement livré.
 - Gate : `go test ./internal/service/... ./internal/api/... ./internal/platform/auth/... ./internal/sync/...`.
 
 ### 9.6 L6 — C9b Test de bout en bout de l'arrêt (S ; après L2 et L4 ; 6.2 P)
 
-- [ ] 6.1 Test Go sous tag `e2e_windows` (`cmd/server/e2e_arret_windows_test.go`) : compile `cmd/server`,
+- [x] 6.1 Test Go sous tag `e2e_windows` (`cmd/server/e2e_arret_desktop_test.go` (nom sans suffixe de plateforme : ratchet `no_accidental_goos_suffix_test.go` ; tag `e2e_windows && windows`)) : compile `cmd/server`,
       le lance avec `-arret-sur-stdin` et `LEVELUP_API_PORT` libre sur une racine de données vide
       (`LEVELUP_REPO_ROOT` = dossier temporaire avec `config/` copié), attend `/health` 200 (délai 120 s),
       ferme stdin, attend la sortie (délai 60 s), vérifie `arrêt: terminé clean=true` dans le journal et
       l'absence de `*.wal`, relance, attend `/health`, arrête. Ajouté au job C9a.
-- [ ] 6.2 **(P)** Run vert ; durée consignée.
+- [x] 6.2 **(P)** Run vert ; durée consignée. Fait le 2026-11-01 : run `41338448752` (commit `806e7cf0bb`), job Windows CGO vert avec l'étape de bout en bout (job entier 3 min 53 s sur le run précédent `41337064204`) ; test e2e local 18 à 22 s.
 
 ### 9.7 L7 — C6 Extraction de `main.go` (S, trois sous-lots, **à risque** ; après vague 1 et publication lot 3)
 
@@ -491,6 +491,9 @@ Définition : `ResourcesRoot` = la racine du dépôt aujourd'hui (`LEVELUP_RESOU
 - [ ] 11.3 Sous-lot c : `Dockerfile:246-247`, `docker-compose.yml:15,17,97,98` : variables mortes
       retirées, nouvelles posées, montage ressources en lecture seule ; `scripts/deploy.sh` relu (staging
       sous `data/`, piège `git clean`) ; `docs/INSTALL.md` EN + FR.
+- [ ] 11.5 `LogsRoot` créé AVANT tout écrivain (découverte §10, 2026-11-01 : `crash_output` ouvre
+      `logs/server.crash.log` avant la création de `logs/` sur une racine neuve) ; test : racine neuve → fichier de
+      capture présent après le premier démarrage.
 - [ ] 11.4 Tests : racines distinctes → aucun chemin de ressource sous `DataRoot`, aucun chemin de
       donnée sous `ResourcesRoot` ; garde-rail « pas de `filepath.Join(..., "data", ...)` » vert ; ratchet
       nouveau : `RepoRoot` plus lu hors `internal/config` et `PathResolver` (allowlist datée à réduire).
@@ -510,6 +513,11 @@ Définition : `ResourcesRoot` = la racine du dépôt aujourd'hui (`LEVELUP_RESOU
       en erreur.
 - [ ] 12.4 Verrou d'instance `internal/platform/instancelock` (A16) : pris au démarrage en `desktop` et
       `refresh-only`, erreur typée `ErrInstanceDejaLancee` → `failed{state:"locked"}`.
+- [ ] 12.6 Arrêt dans les premières secondes du démarrage (découverte §10, 2026-11-01) : les échanges OAuth du
+      démarrage (`refresh_loop`, présence du watcher) honorent l'annulation du contexte des tâches (requêtes HTTP sous
+      `ctx`), ou la phase `scheduler` n'attend pas une goroutine qui ne lit pas son contexte ; test : arrêt demandé
+      pendant un rafraîchissement simulé lent → `clean=true` dans le budget. Sans cet item, `stopped{clean:false}` à
+      chaque fermeture rapide de la coquille.
 - [ ] 12.5 Test « faux lanceur » : tube stdin, stdout lu ligne à ligne, séquence `listening` → `ready` →
       EOF → `stopping` → `stopped{clean:true}` ; second lancement pendant le premier → `failed locked` ;
       ajouté au job C9.
@@ -653,6 +661,10 @@ mises à jour (ressources retéléchargées à chaque version).
   worktree sans `data/` échoue sur cette étape : la jouer avec `-repo-root <dépôt principal>`.
 - **Chantier publication des briques fusionné dans `release/v8.1.0` le 2026-11-01** (`e2c449b38c` libs/haloapi + ADR 0043,
   `5c37ca56a3`, `1628f75fff`) : L5 et L7 ne sont plus bloqués ; la branche est rebasée dessus avant la PR.
+- **Capture des plantages perdue au premier démarrage sur une racine neuve (2026-11-01, L6)** : `crash_output` ouvre
+  `logs/server.crash.log` avant que `logs/` existe (créé plus tard par le handler multi-modules) : `WARN crash_output:
+  ouverture fichier échouée`, aucune capture jusqu'au second démarrage. À corriger avec L11 (deux racines : `LEVELUP_LOGS_DIR`
+  créé avant tout écrivain) ou en lot dédié.
 - `internal/mapcatalog` : `TestAddOverlayEntryConcurrentDossierAbsentNePerdRien` échoue en run complet
   (« verrou d'ecriture impossible a poser — passage force », 2 cartes perdues sur 8) et passe seul : le
   passage forcé sans verrou est le comportement testé comme défaut, déclenché par la contention du run

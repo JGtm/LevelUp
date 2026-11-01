@@ -9,7 +9,8 @@
 // La cause n'est pas un oubli ponctuel : c'est qu'il y avait DEUX endroits où l'on
 // décidait qu'un joueur existe. Il n'y en a plus qu'un.
 //
-// L'ORDRE N'EST PAS NÉGOCIABLE : profil d'abord, watcher ensuite. Depuis l'étape 2
+// L'ORDRE N'EST PAS NÉGOCIABLE : profil d'abord, jetons en attente ensuite (ADR 0023),
+// watcher en dernier. Depuis l'étape 2
 // du plan, `watcher.Daemon.AddPlayer` porte une porte qui LIT `db_profiles.json`
 // (ADR 0035 D3) : notifier le watcher avant d'avoir écrit le profil se solderait
 // par un refus systématique. Le test `TestOnboard_ProfilAvantWatcher` tient ce lien.
@@ -42,6 +43,13 @@ type ProfileCreator interface {
 type WatcherNotifier interface {
 	IsRunning() bool
 	AddPlayer(ctx context.Context, p domain.PlayerSummary) error
+}
+
+// CredentialSeeder écrit dans le magasin de jetons (ADR 0023) les jetons d'une
+// connexion antérieure à la création du profil. Implémenté par
+// *service.DeviceCodeCompletion ; no-op sans jetons en attente pour ce xuid.
+type CredentialSeeder interface {
+	SeedCredentials(ctx context.Context, xuid string)
 }
 
 // ErrOnboardNoCreator : l'annuaire a été construit sans créateur de profil (Deps
@@ -84,6 +92,12 @@ func (d *Directory) Onboard(ctx context.Context, req domain.OnboardRequest) (dom
 	}
 	slog.InfoContext(ctx, "directory: profil créé", "xuid", req.XUID, "gamertag", gamertag,
 		"player_key", playerKey, "title_slug", titleSlug, "actor", req.ActorUsername)
+
+	// Les jetons d'une connexion qui a précédé le profil sont écrits maintenant : le
+	// profil existe, et le suivi live (ci-dessous) peut les lire.
+	if d.seeder != nil && req.XUID != "" {
+		d.seeder.SeedCredentials(ctx, req.XUID)
+	}
 
 	res := domain.OnboardResult{PlayerKey: playerKey, Warnings: warnings}
 	if d.fs != nil {
