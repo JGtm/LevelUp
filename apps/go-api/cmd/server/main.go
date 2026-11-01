@@ -125,8 +125,9 @@ func main() {
 		os.Exit(replaychild.RunChild(context.Background(), os.Args))
 	}
 
-	// --- 0. Health-check mode (Docker HEALTHCHECK) ---
-	if len(os.Args) == 2 && os.Args[1] == "-health-check" {
+	// --- 0. Arguments du serveur (flags.go), puis health-check (Docker HEALTHCHECK) ---
+	flags := parseServerFlagsOrExit()
+	if flags.HealthCheck {
 		hcClient := &http.Client{Timeout: 5 * time.Second}
 		hcDo := func(url string) (*http.Response, error) {
 			req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)
@@ -368,6 +369,12 @@ func main() {
 		IdleTimeout:  60 * time.Second,
 	}
 	bootSrv := startBootServer(srv, gate)
+	// Arrêt demandé hors signal : route POST /api/v1/internal/shutdown (posée avant la
+	// construction du routeur, même patron que TitleReadyNotifier) et fermeture de stdin.
+	cfg.ShutdownRequester = func(reason string) { bootSrv.requestShutdown(reason) }
+	if flags.StopOnStdin {
+		bootSrv.watchStdin(os.Stdin)
+	}
 
 	// --- Outillage média (ffmpeg/ffprobe) — check observable NON-bloquant ---
 	// L'app exécute ffmpeg/ffprobe pour les miniatures WebP, le transcodage HLS
@@ -1312,6 +1319,7 @@ func main() {
 
 	<-bootSrv.stopRequested()
 	runShutdown(shutdownDeps{
+		reason:           bootSrv.shutdownReason(),
 		srv:              srv,
 		cancelScheduler:  cancelScheduler,
 		watcherDaemon:    watcherDaemon,

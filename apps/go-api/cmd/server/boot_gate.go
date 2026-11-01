@@ -14,7 +14,8 @@
 // "state"}} — la page s'arrête d'interroger et affiche l'état — jusqu'au signal d'arrêt, puis
 // le processus sort avec un code non nul (boot_failure.go).
 //
-// Arrêt : le premier signal (Ctrl+C, SIGTERM) pendant l'initialisation est mémorisé — main
+// Arrêt : la première demande d'arrêt (signal Ctrl+C/SIGTERM, fermeture de stdin, route HTTP
+// d'arrêt : bootServer.requestShutdown) pendant l'initialisation est mémorisée — main
 // finit l'initialisation puis enchaîne l'arrêt propre habituel (bases fermées) sans brancher
 // le routeur ; un second signal pendant l'initialisation force la sortie immédiate.
 package main
@@ -30,6 +31,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -210,8 +212,13 @@ type bootServer struct {
 	srv  *http.Server
 	gate *bootGate
 
-	// stop est fermé au premier signal d'arrêt (cf. stopRequested).
+	// stop est fermé à la première demande d'arrêt, quelle que soit sa source (cf.
+	// requestShutdown, stopRequested).
 	stop chan struct{}
+	// stopOnce garantit un seul passage vers l'arrêt ; stopReason, écrit dans ce passage
+	// avant la fermeture de stop, se lit après <-stop.
+	stopOnce   sync.Once
+	stopReason string
 	// initDone passe à vrai quand main a fini l'initialisation (openRouter) : un second
 	// signal ne force plus la sortie, l'arrêt propre est en cours.
 	initDone atomic.Bool
@@ -254,7 +261,7 @@ func (b *bootServer) serve(ln net.Listener) {
 // l'arrêt différé et force la sortie au second signal reçu avant la fin de l'initialisation.
 func (b *bootServer) watchSignals(sigCh <-chan os.Signal) {
 	first := <-sigCh
-	close(b.stop)
+	b.requestShutdown(shutdownReasonSignal + " " + first.String())
 	if b.initDone.Load() {
 		return
 	}
@@ -270,7 +277,29 @@ func (b *bootServer) watchSignals(sigCh <-chan os.Signal) {
 	b.forceExit(bootForcedExitCode)
 }
 
-// stopRequested est fermé au premier signal d'arrêt.
+// requestShutdown est le point UNIQUE de demande d'arrêt : le signal, la fermeture de stdin
+// (watchStdin) et la route POST /api/v1/internal/shutdown l'appellent tous. Le premier appel
+// ferme stop, ce qui lance la séquence d'arrêt habituelle (runShutdown, même budget) ;
+// les suivants sont journalisés et sans effet. reason dit qui a demandé (journal de fin
+// d'arrêt). Rend vrai pour l'appel qui a déclenché l'arrêt.
+func (b *bootServer) requestShutdown(reason string) bool {
+	first := false
+	b.stopOnce.Do(func() {
+		first = true
+		b.stopReason = reason
+		slog.InfoContext(context.Background(), "arrêt: demandé", "reason", reason, "step", b.gate.currentStep())
+		close(b.stop)
+	})
+	if !first {
+		slog.DebugContext(context.Background(), "arrêt: demande ignorée, déjà en cours", "reason", reason)
+	}
+	return first
+}
+
+// shutdownReason rend la cause de l'arrêt ; à lire après stopRequested (vide avant).
+func (b *bootServer) shutdownReason() string { return b.stopReason }
+
+// stopRequested est fermé à la première demande d'arrêt (signal, stdin, HTTP).
 func (b *bootServer) stopRequested() <-chan struct{} { return b.stop }
 
 // openRouter marque la fin de l'initialisation et branche le routeur, sauf si un arrêt a été

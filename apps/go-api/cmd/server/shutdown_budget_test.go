@@ -187,3 +187,21 @@ func TestShutdownBudget_PhaseCapsFitInWaitBudget(t *testing.T) {
 		}
 	}
 }
+
+// runAll rend vrai seulement si toutes les phases sont allées à leur terme dans leur délai :
+// c'est ce qui décide du champ clean de la ligne "arrêt: terminé".
+func TestShutdownClock_RunAllRendLaCompletudeDesPhases(t *testing.T) {
+	captureSlog(t)
+	ok := shutdownPhase{"ok", time.Second, blocking(func() {})}
+
+	c := newShutdownClock(time.Second, 0)
+	if !c.runAll(context.Background(), []shutdownPhase{ok, ok}) {
+		t.Error("phases toutes terminées : runAll doit rendre vrai")
+	}
+
+	c = newShutdownClock(time.Second, 0)
+	late := stuck(t, "bloquee", 50*time.Millisecond)
+	if c.runAll(context.Background(), []shutdownPhase{ok, late, ok}) {
+		t.Error("une phase hors délai : runAll doit rendre faux")
+	}
+}

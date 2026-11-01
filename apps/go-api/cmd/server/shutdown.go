@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"levelup/go-api/internal/api/wire"
@@ -20,6 +21,8 @@ import (
 
 // shutdownDeps réunit ce que la séquence d'arrêt arrête, vide ou ferme.
 type shutdownDeps struct {
+	reason           string       // cause de l'arrêt (bootServer.shutdownReason), pour le journal de fin
+	drainFailed      *atomic.Bool // posé par phaseBatchDrain sur une erreur de vidage ; nil toléré
 	srv              *http.Server
 	cancelScheduler  context.CancelFunc
 	watcherDaemon    *watcher.Daemon // nil : pas de watcher (démo)
@@ -47,16 +50,25 @@ type shutdownDeps struct {
 //
 // Ordre tenu par shutdown_budget_test.go : les requêtes HTTP finissent avant les
 // recalculs, qui finissent avant les écrivains, et les bases ne se ferment qu'après tous.
-func runShutdown(d shutdownDeps) {
+//
+// Rend vrai pour un arrêt PROPRE : toutes les phases sont allées à leur terme dans leur
+// délai, le vidage de la file de persistance n'a pas échoué et la séquence a tenu dans
+// shutdownBudget. Une ligne "arrêt: terminé" (clean, reason, duration) le dit, écrite avant
+// la fermeture des journaux fichier pour y figurer.
+func runShutdown(d shutdownDeps) bool {
 	fmt.Fprint(os.Stderr, "\n  [..] Arret en cours...")
 	ctx := context.Background()
 	clock := newShutdownClock(shutdownBudget, shutdownCloseReserve)
+	d.drainFailed = new(atomic.Bool)
 
 	d.cancelScheduler()
-	clock.runAll(ctx, shutdownPhases(d))
+	phasesOK := clock.runAll(ctx, shutdownPhases(d))
 	closeStores(ctx, d)
 
-	slog.Info("shutdown_total_duration_ms", "ms", time.Since(clock.start).Milliseconds())
+	elapsed := time.Since(clock.start)
+	slog.Info("shutdown_total_duration_ms", "ms", elapsed.Milliseconds())
+	clean := phasesOK && !d.drainFailed.Load() && elapsed <= shutdownBudget
+	slog.InfoContext(ctx, "arrêt: terminé", "clean", clean, "reason", d.reason, "duration", elapsed)
 
 	// Fermer proprement les fichiers logs/{module}.log (flush + close des handles).
 	// Idempotent.
@@ -66,6 +78,7 @@ func runShutdown(d shutdownDeps) {
 		}
 	}
 	fmt.Fprintln(os.Stderr, " terminé.")
+	return clean
 }
 
 // shutdownPhases liste les phases d'attente, dans l'ordre où elles s'exécutent.
@@ -154,6 +167,9 @@ func phaseBatchDrain(d shutdownDeps) shutdownPhase {
 			return false
 		default:
 			slog.WarnContext(ctx, "persist: BatchQueue.Drain échoué (non-bloquant)", "err", err)
+			if d.drainFailed != nil {
+				d.drainFailed.Store(true)
+			}
 			return true
 		}
 	}}

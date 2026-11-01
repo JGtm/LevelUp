@@ -31,6 +31,8 @@ package api_test
 
 import (
 	"net/http"
+	"os"
+	"path/filepath"
 	"reflect"
 	"runtime"
 	"sort"
@@ -38,6 +40,8 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi/v5"
+
+	"levelup/go-api/internal/api/openapigen"
 )
 
 // guardMarkers — sous-chaînes de nom de fonction des middlewares qui constituent
@@ -219,5 +223,52 @@ func TestBareRoutesRatchet_NoUnguardedRouteOutsideAllowlist(t *testing.T) {
 		if !hitAllow[key] {
 			t.Errorf("entrée d'allowlist INUTILE (route %q est en réalité gardée) — la retirer", key)
 		}
+	}
+}
+
+// TestBareRoutesRatchet_DesktopShutdownRouteIsGuarded : la route d'arrêt propre n'existe que
+// si un secret d'arrêt est configuré, et alors elle est gardée par LoopbackOnly (garde reconnue
+// par le ratchet : aucune entrée d'allowlist, qui serait signalée INUTILE). Absente sans secret.
+func TestBareRoutesRatchet_DesktopShutdownRouteIsGuarded(t *testing.T) {
+	const key = "POST /api/v1/internal/shutdown"
+	walk := func(t *testing.T, secret string) (guarded, found bool) {
+		t.Helper()
+		router, _, err := openapigen.BuildDemoRouter(t.Context(), openapigen.Options{
+			Root:           t.TempDir(),
+			GroupStorePath: filepath.Join(os.TempDir(), "levelup_contract_groups.json"),
+			Prestige:       true,
+			DesktopSecret:  secret,
+		})
+		if err != nil {
+			t.Fatalf("BuildDemoRouter: %v", err)
+		}
+		r, ok := router.(chi.Router)
+		if !ok {
+			t.Fatalf("le routeur n'est pas un chi.Router (%T)", router)
+		}
+		err = chi.Walk(r, func(method, route string, _ http.Handler, mws ...func(http.Handler) http.Handler) error {
+			if method+" "+route == key {
+				found, guarded = true, routeIsGuarded(mws)
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatalf("chi.Walk: %v", err)
+		}
+		return guarded, found
+	}
+
+	if _, found := walk(t, ""); found {
+		t.Errorf("%s montée sans secret d'arrêt : un serveur hébergé ne doit pas l'exposer", key)
+	}
+	guarded, found := walk(t, "secret-de-test") // pragma: allowlist secret
+	if !found {
+		t.Fatalf("%s absente avec un secret d'arrêt configuré", key)
+	}
+	if !guarded {
+		t.Errorf("%s montée sans garde reconnue (LoopbackOnly attendue)", key)
+	}
+	if _, listed := publicRoutesAllowlist[key]; listed {
+		t.Errorf("%s ne doit pas figurer dans l'allowlist : elle est gardée", key)
 	}
 }
