@@ -370,7 +370,19 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		}
 		return ok
 	}
-	deviceCodeCompletion := service.NewDeviceCodeCompletion(authStore, deviceCodeProfileGate)
+	// Porte des JETONS (distincte de la porte du suivi live) : tout profil DÉCLARÉ, synchro en
+	// pause, auth_only ou autre titre compris, a droit à son jeton de rafraîchissement (ADR 0023) ;
+	// sinon le jeton attend la création du profil. Erreur de lecture => refus journalisé.
+	deviceCodeTokenGate := func(gctx context.Context, _ string, xuid string) bool {
+		ok, err := cfg.HasDeclaredProfile(xuid)
+		if err != nil {
+			slog.ErrorContext(gctx, "devicecode: lecture de db_profiles.json échouée — profil réputé non déclaré",
+				"err", err, "xuid", xuid)
+			return false
+		}
+		return ok
+	}
+	deviceCodeCompletion := service.NewDeviceCodeCompletion(authStore, deviceCodeTokenGate)
 	var xboxLinkStrategy auth_platform.LinkStrategy
 	if cfg.AuthMode == "xbox" {
 		// PR 2.5b : daemonGetter retourne le daemon courant (capturé par closure).

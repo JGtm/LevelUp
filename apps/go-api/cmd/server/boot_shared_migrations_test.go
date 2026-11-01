@@ -308,3 +308,45 @@ func TestMigrateSharedAtBoot_Copie_PresenteAbsenteRefusee(t *testing.T) {
 func uniqueStepName(prefix string) string {
 	return fmt.Sprintf("%s_%d", prefix, time.Now().UnixNano())
 }
+
+// TestMigrateSharedAtBoot_RepriseDuVerrou_UneSeuleCopie — la reprise du verrou rejoue garde,
+// copie et montée ; la copie de sauvegarde n'est prise qu'une fois par base et par version.
+func TestMigrateSharedAtBoot_RepriseDuVerrou_UneSeuleCopie(t *testing.T) {
+	target := migration.TargetDB("boot_test_onecopy")
+	registerBootStep("boot_test_onecopy_step", target)
+	path := bootTestDB(t, "onecopy.duckdb")
+	holder, err := sql.Open("duckdb", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := holder.Exec("CREATE TABLE held (id INTEGER)"); err != nil {
+		t.Fatal(err)
+	}
+	backups := filepath.Join(t.TempDir(), "backups")
+	var attempts, runs atomic.Int32
+	d := testDeps(path, target, backups, runRW(path, target, &runs))
+	d.lockAttempts = 6
+	d.openRead = func(p string) (*sql.DB, func(), error) {
+		if attempts.Add(1) == 3 {
+			_ = holder.Close() // le détenteur s'en va au troisième essai
+		}
+		return duckdb.OpenReadForQuery(p)
+	}
+	state, err := migrateSharedAtBoot(t.Context(), d)
+	if err != nil || state != "" {
+		t.Fatalf("état %q, err %v : succès attendu après libération", state, err)
+	}
+	entries, err := os.ReadDir(backups)
+	if err != nil {
+		t.Fatalf("dossier des copies : %v", err)
+	}
+	var copies int
+	for _, e := range entries {
+		if strings.HasSuffix(e.Name(), ".duckdb") {
+			copies++
+		}
+	}
+	if copies != 1 {
+		t.Errorf("%d copies .duckdb après %d essais, attendu 1 (une par base et par version)", copies, attempts.Load())
+	}
+}

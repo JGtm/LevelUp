@@ -422,14 +422,14 @@ Fichiers : `cmd/server/flags.go` (nouveau, D-15), `cmd/server/boot_gate.go`, `cm
 
 ### 9.7 L7 — C6 Extraction de `main.go` (S, trois sous-lots, **à risque** ; après vague 1 et publication lot 3)
 
-- [ ] 7.1 Liste des fonctions qui migrent, PRODUITE AU BRIEF par le pilote (`grep -n "^func " main.go`),
+- [x] 7.1 Liste des fonctions qui migrent, PRODUITE AU BRIEF par le pilote (`grep -n "^func " main.go`),
       cible par fichier : `boot_config.go` (configuration, journaux, drapeaux), `boot_migrations.go`
       (`runMigrations` et compagnes), `boot_providers.go` (DuckDB, auth, persist), `boot_tasks.go`
       (tâches de fond), `boot_router.go`, `boot_shutdown.go`.
-- [ ] 7.2 Sous-lot a : configuration → migrations ; T2 rejoué, `diff` vide. Sous-lot b : fournisseurs,
+- [x] 7.2 Sous-lot a : configuration → migrations ; T2 rejoué, `diff` vide. Sous-lot b : fournisseurs,
       auth, persist ; T2. Sous-lot c : tâches de fond, routeur, arrêt ; T2. Chaque sous-lot = un commit.
       Déplacement PUR : aucun changement de comportement, `git diff --stat` limité à `cmd/server/`.
-- [ ] 7.3 `main()` ≤ 80 L (enchaînement), `main.go` ≤ 500 L, aucune fonction neuve > 80 L (paramètres
+- [x] 7.3 `main()` ≤ 80 L (enchaînement), `main.go` ≤ 500 L, aucune fonction neuve > 80 L (paramètres
       regroupés en struct `bootState` si > 5) ; baseline lint non accrue.
 - Gate : `go test ./cmd/server/...` ; `golangci-lint run --new-from-merge-base=origin/<release>
   ./cmd/server/...` = 0 ; T2 `diff` vide ; `go run ./cmd/server` sur copie puis `curl -fsS
@@ -448,9 +448,9 @@ Fichiers : `cmd/server/flags.go` (nouveau, D-15), `cmd/server/boot_gate.go`, `cm
 
 ### 9.9 L9 — Mesures : zstd de l'archive, formats de sons (H, scripts Go sous le scratchpad, non versionnés)
 
-- [ ] 9.1 Les 20 chunks les plus récents de `data/cache/film_chunks` : taille zlib, taille après
+- [x] 9.1 Les 20 chunks les plus récents de `data/cache/film_chunks` : taille zlib, taille après
       décompression + zstd niveaux 3 et 19 ; table en §10.
-- [ ] 9.2 10 sons (dont les 3 boucles moteur de `vehicleEngineSound.ts`) encodés en AAC, Opus (ogg), FLAC
+- [x] 9.2 10 sons (dont les 3 boucles moteur de `vehicleEngineSound.ts`) encodés en AAC, Opus (ogg), FLAC
       par ffmpeg ; taille et, pour les boucles, durée d'amorce mesurée (`ffprobe -show_packets`) ; table
       en §10 ; D-6 tranchée par le pilote sur cette table, confirmée par U.
 
@@ -665,6 +665,50 @@ mises à jour (ressources retéléchargées à chaque version).
   `logs/server.crash.log` avant que `logs/` existe (créé plus tard par le handler multi-modules) : `WARN crash_output:
   ouverture fichier échouée`, aucune capture jusqu'au second démarrage. À corriger avec L11 (deux racines : `LEVELUP_LOGS_DIR`
   créé avant tout écrivain) ou en lot dédié.
+- **L9.1 — Archive des films : 96 % des chunks sont stockés BRUTS, pas en zlib (mesure du 2026-11-01, scratchpad `l9/`)**.
+  Recensement des 43 508 chunks de `data/cache/film_chunks` : 41 993 bruts, 1 515 zlib (en-tête `78`, les plus
+  anciens) ; `decfilm.Inflate` accepte les deux (premier octet ≠ `0x78` = brut). Les 20 films les plus récents
+  (607 chunks, 526 Mo) sont tous bruts : zstd-3 les ramène à 129 Mo (−75 %), zstd-19 à 120 Mo (−77 %) ; temps CLI
+  zstd 1.5.7 : 3,4 s (niveau 3) contre 21,7 s (niveau 19) pour les 20 films. Sur les 40 seuls chunks zlib
+  comparables : zstd-3 −23 % et zstd-19 −26 % par rapport au zlib. Conséquence : l'archive (36 Go au 2026-11-01)
+  tiendrait en ~9 Go en zstd-3 ; décision à prendre pour L14 (D-18 : stockage zstd-3 des nouveaux chunks à la
+  réception + recompression des chunks existants par une CLI lancée par l'utilisateur, jamais automatique ; lecture
+  transparente dans `decfilm`/`source`). Tables complètes : `l9/table91_A.csv`, `table91_B.csv`, `cache_headers.csv`.
+- **L9.2 — Formats de sons (10 sons, 3 boucles moteur `vehicle_scorpion_idle`, `vehicle_warthog_loop`,
+  `vehicle_chopper_loop` ; WAV PCM 16 bits stéréo 48 kHz)** : total 8 419 492 o WAV → AAC 128k 715 378 (8,5 %),
+  Opus 96k 426 471 (5,1 %), FLAC 2 910 701 (34,6 %). Boucles : Opus et FLAC rendent EXACTEMENT le nombre
+  d'échantillons du WAV après décodage (le pré-skip Opus de 312 échantillons est absorbé par le décodeur) ; AAC
+  rend 128 à 960 échantillons de TROP selon le son (amorce de 1 024 échantillons + remplissage de fin) : une boucle
+  AAC a un raccord audible. Décodeur mesuré : ffmpeg 8.0.1 seul (pas le moteur du navigateur). Table :
+  `l9/sons_table.csv`. D-6 : tranchée sur cette table (voir §5).
+
+- **L7 (2026-11-01) — relevé de l'extraction, non traité** : `resolveCSRSeasonFromDB` (`boot_providers.go`) rend `""`
+  sans journal si la requête échoue (règle 3) ; la constante `serverWriteTimeout` et son littéral restent dans
+  `main.go` parce que `internal/api/wire/build_queue_writer_budget_test.go` lit `cmd/server/main.go` par son chemin ;
+  logique métier logée dans les fichiers de démarrage, à sortir de `cmd/server` un jour : repli de jetons
+  multi-utilisateur du watcher (`loadWatcherTokens`), fenêtre de rétention des rejeux (closure de
+  `launchReplayPurgeCron`), rappels du pool de jetons (`poolCallbacks`, relèvent de `platform/auth`) ; un commentaire
+  déplacé tel quel cite `.ai/archive/V7.5/DECOUVERTES_TACTIQUE_2026-09-07.md` (`boot_crons.go`) : relève du nettoyage
+  des citations `.ai/` du BACKLOG. Témoin T2 rejoué par le pilote sur l'état FINAL (L7c) seulement, pas après chaque
+  sous-lot : général 114 / 111 lignes, écarts = `janitor: fetch_cache purgé` (2 dossiers purgés au premier lancement,
+  rien au second), deux lignes `oauth_refresh` (repli MSA natif selon la réponse d'Azure) et l'ordre de `disk_watch`
+  (goroutine) ; migration 92 / 92 identiques ; T3 identique octet pour octet.
+
+- **Revue adversariale 2r (2026-11-01, deux relecteurs Opus en contexte frais, L1 + L5 + L7)** : A (DuckDB / auth) :
+  0 défaut sur les écritures et les jetons (16 conditions tiennent), 2 constats P2 corrigés dans le lot : la reprise du
+  verrou refaisait la copie de sauvegarde à chaque essai (désormais une copie par base et par version et par
+  démarrage), une copie interrompue par un arrêt brutal restait sous son nom définitif (désormais `.part` renommé à
+  la fin, restes retirés par la rétention). B (extraction / tests) : extraction = déplacement pur confirmé (14
+  conditions tiennent) ; 2 constats P1 corrigés : la garde de version lit `len(canonicalOrder)` qui BAISSERAIT à un
+  squash et ferait refuser le démarrage de toutes les installations (`schema_newer`) → ratchet
+  `migration/order_floor_test.go` (plancher 236, ne descend jamais ; un squash exige d'abord une version explicite
+  et monotone : décision à prendre AVANT le prochain squash, ADR à écrire) ; la porte des jetons hors SSO ne testait
+  que le titre par défaut avec le filtre du suivi live (synchro en pause ou profil `halo_5` seul → jeton jamais
+  écrit) → `AppConfig.HasDeclaredProfile` (tout titre, pause et auth_only compris), porte du suivi live inchangée ;
+  1 constat P2 écarté : `-mode desktop|refresh-only` refusé « jusqu'à L12/L15 » est la livraison en séquence
+  décidée en D-15 / L2.1, pas un flag « pour plus tard ». Ronde 2 : relecture des seules corrections, non lancée
+  (4 corrections de quelques lignes couvertes par des tests ; à relancer si l'utilisateur le demande).
+
 - `internal/mapcatalog` : `TestAddOverlayEntryConcurrentDossierAbsentNePerdRien` échoue en run complet
   (« verrou d'ecriture impossible a poser — passage force », 2 cartes perdues sur 8) et passe seul : le
   passage forcé sans verrou est le comportement testé comme défaut, déclenché par la contention du run

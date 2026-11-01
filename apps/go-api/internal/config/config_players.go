@@ -296,3 +296,25 @@ func (c *AppConfig) HasTrackedProfile(titleSlug, xuid string) (bool, error) {
 }
 
 // LoadAppSettings charge app_settings.json. Retourne une map vide si absent.
+
+// HasDeclaredProfile dit si xuid est DÉCLARÉ dans db_profiles.json, pour n'importe quel titre,
+// synchro en pause ou auth_only compris. C'est la porte des JETONS (ADR 0023) : un profil
+// déclaré dont la synchro est en pause, ou suivi pour un autre titre que celui par défaut, a
+// besoin de son jeton de rafraîchissement ; HasTrackedProfile (filtre SyncablePlayers) reste la
+// porte du suivi live (ADR 0035 D3). Recherche par XUID seulement, jamais par gamertag ; xuid
+// vide = false sans lecture ; l'erreur de lecture est remontée au caller.
+func (c *AppConfig) HasDeclaredProfile(xuid string) (bool, error) {
+	if xuid == "" {
+		return false, nil
+	}
+	players, err := c.LoadPlayers()
+	if err != nil {
+		return false, err
+	}
+	for _, p := range players {
+		if p.XUID == xuid {
+			return true, nil
+		}
+	}
+	return false, nil
+}

@@ -118,20 +118,35 @@ func copyBackupFile(src, dst string) (err error) {
 		return err
 	}
 	defer in.Close()
-	out, err := os.Create(dst)
+	// Écriture sous un nom temporaire (partialSuffix) renommé à la fin : un processus tué
+	// pendant la copie laisse un .part, jamais un .duckdb tronqué que la rétention compterait
+	// comme copie valide.
+	tmp := dst + partialSuffix
+	out, err := os.Create(tmp)
 	if err != nil {
 		return err
 	}
 	defer func() {
-		if cerr := out.Close(); err == nil {
-			err = cerr
+		if err != nil {
+			_ = out.Close()
+			_ = os.Remove(tmp)
 		}
 	}()
-	if _, err := io.Copy(out, in); err != nil {
+	if _, err = io.Copy(out, in); err != nil {
 		return err
 	}
-	return out.Sync()
+	if err = out.Sync(); err != nil {
+		return err
+	}
+	if err = out.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmp, dst)
 }
+
+// partialSuffix marque une copie en cours d'écriture (copyBackupFile) ; la rétention retire ces
+// restes et ne les compte jamais comme copies.
+const partialSuffix = ".part"
 
 func removeAll(ctx context.Context, paths []string) {
 	for _, p := range paths {
@@ -151,9 +166,23 @@ func pruneBackups(ctx context.Context, dir, base string) []string {
 		return nil
 	}
 	re := regexp.MustCompile(`^` + regexp.QuoteMeta(base) + `\.v\d+\.(\d{8}-\d{6})\.duckdb$`)
+	part := regexp.MustCompile(`^` + regexp.QuoteMeta(base) + `\.v\d+\.\d{8}-\d{6}\.duckdb(\.wal)?` + regexp.QuoteMeta(partialSuffix) + `$`)
+	var removed []string
 	var stems []string // noms .duckdb des copies de cette base
 	for _, e := range entries {
-		if !e.IsDir() && re.MatchString(e.Name()) {
+		if e.IsDir() {
+			continue
+		}
+		if part.MatchString(e.Name()) { // copie interrompue par un arrêt brutal : jamais une copie valide
+			path := filepath.Join(dir, e.Name())
+			if err := os.Remove(path); err == nil {
+				removed = append(removed, path)
+			} else {
+				slog.WarnContext(ctx, "migration: copie partielle non retirée", "path", path, "err", err)
+			}
+			continue
+		}
+		if re.MatchString(e.Name()) {
 			stems = append(stems, e.Name())
 		}
 	}
@@ -161,7 +190,6 @@ func pruneBackups(ctx context.Context, dir, base string) []string {
 	sort.Slice(stems, func(i, j int) bool {
 		return re.FindStringSubmatch(stems[i])[1] > re.FindStringSubmatch(stems[j])[1]
 	})
-	var removed []string
 	for _, name := range stems[min(BackupRetention, len(stems)):] {
 		for _, f := range []string{name, name + walSuffix} {
 			path := filepath.Join(dir, f)
