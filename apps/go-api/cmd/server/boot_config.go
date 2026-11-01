@@ -32,6 +32,7 @@ import (
 	"levelup/go-api/internal/platform/adminstate"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/auth/pool"
+	"levelup/go-api/internal/platform/auth/tokencipher"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/friendstore"
 	"levelup/go-api/internal/platform/groupstore"
@@ -344,6 +345,10 @@ func loadBootConfig(st *bootState) {
 		slog.Error("chargement config", "err", err)
 		os.Exit(1)
 	}
+	if err := tokenVaultRefusal(cfg, tokencipher.ProcessError()); err != nil {
+		slog.Error("démarrage refusé : coffre des jetons indisponible", "err", err)
+		os.Exit(1)
+	}
 	// Injecter la version buildée (ldflags) si LEVELUP_APP_VERSION non défini.
 	if cfg.AppVersion == "dev" && version != "dev" {
 		cfg.AppVersion = version
@@ -357,6 +362,17 @@ func loadBootConfig(st *bootState) {
 		"addr", cfg.ServerAddr(),
 	)
 	st.cfg = cfg
+}
+
+// tokenVaultRefusal refuse le démarrage d'un profil qui exige le coffre des jetons (capacité
+// TokenVault, ADR 0045 D-11) quand le système ne l'offre pas : le profil desktop est Windows seul
+// (D-2), et écrire les jetons en clair en silence trahirait le choix de l'utilisateur (D-8).
+// vaultErr : tokencipher.ProcessError() du chargement de la configuration.
+func tokenVaultRefusal(cfg *config.AppConfig, vaultErr error) error {
+	if cfg.Capabilities.TokenVault && vaultErr != nil {
+		return vaultErr
+	}
+	return nil
 }
 
 // applyBootGuards pose le coupe-circuit réseau de la démo et refuse une configuration invalide ou non sûre.

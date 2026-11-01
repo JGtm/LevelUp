@@ -102,6 +102,12 @@ type DeploymentCapabilities struct {
 	// jetons et tire un cycle de sync en retard au lancement et à la sortie de veille (ADR 0045 D-10).
 	// Faux sur un serveur hébergé : il redémarre à chaque déploiement et n'est jamais en veille.
 	WakeSequence bool
+	// TokenVault : les fichiers de jetons sont scellés par le coffre du système (DPAPI, compte Windows
+	// courant) au lieu d'être écrits en clair (ADR 0045 D-11, amende ADR 0023). Le chargement de la
+	// configuration en dérive le chiffreur du processus (tokencipher.InstallForProfile) : c'est le profil
+	// qui choisit, jamais GOOS seul. Le profil desktop est Windows seul ; le serveur refuse de démarrer
+	// sous cette capacité si le coffre est indisponible.
+	TokenVault bool
 }
 
 // DeploymentProfile est embarqué dans AppConfig : le profil résolu et ses capacités.
@@ -195,6 +201,7 @@ func capabilitiesOf(cfg *AppConfig) DeploymentCapabilities {
 		ShellEntryGate:         desktop,
 		PoolGrantedToLocalUser: desktop,
 		WakeSequence:           desktop,
+		TokenVault:             desktop,
 	}
 }
 

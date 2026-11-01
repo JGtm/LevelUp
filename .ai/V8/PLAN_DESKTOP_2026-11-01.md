@@ -548,17 +548,24 @@ Définition : `ResourcesRoot` = la racine du dépôt aujourd'hui (`LEVELUP_RESOU
 
 ### 9.13b L13b — Coffre Windows pour les jetons (S ; après L13 ; D-8)
 
-- [ ] 13b.1 ADR 0023 amendée : port `TokenCipher` (`platform/auth`), implémentations `plain` (hébergé,
+- [x] 13b.1 ADR 0023 amendée : port `TokenCipher` (`platform/auth`), implémentations `plain` (hébergé,
       conteneur Linux : comportement actuel) et `dpapi` (Windows, portée utilisateur courant,
       `CryptProtectData` via `golang.org/x/sys/windows`) ; choisie par le profil de déploiement
       (`desktop` = `dpapi`), jamais par `GOOS` seul.
-- [ ] 13b.2 Format du fichier `watcher_tokens/{xuid}.json` : champ `cipher` (`plain` | `dpapi`) et
+- [x] 13b.2 Format du fichier `watcher_tokens/{xuid}.json` : champ `cipher` (`plain` | `dpapi`) et
       champs sensibles (`OAuthRefreshToken`, jetons Spartan / XSTS) chiffrés en base64 ; lecture d'un
       fichier `plain` sur un profil `dpapi` = migration à la première écriture ; l'inverse = refus typé
       journalisé (un fichier chiffré copié sur un autre poste est illisible, c'est le but).
-- [ ] 13b.3 Tests : aller-retour `plain` ; `dpapi` sous tag Windows (voie C9) ; garde-rails
+- [x] 13b.3 Tests : aller-retour `plain` ; `dpapi` sous tag Windows (voie C9) ; garde-rails
       `auth/sentinel_test.go` et `no_legacy_source_used_test.go` verts ; `token-import` / `token-capture`
       écrivent par le même port.
+- Clôture L13b (2026-11-02). Écarts : (a) le port vit dans le sous-paquet `platform/auth/tokencipher` (alias
+  `auth.TokenCipher`) ; (b) le choix est une capacité `TokenVault` et le chiffreur du processus est posé par le chargement
+  de la configuration (`config_token_vault.go`), lu par `NewMultiUserTokenStore(dir)` : aucun des ~57 appelants ne change ;
+  (c) un fichier `plain` n'écrit pas de champ `cipher` (fichiers hébergés identiques à l'octet) ; (d) le serveur refuse de
+  démarrer si le profil exige le coffre et que le système ne l'offre pas ; (e) `token-import` / `token-capture` écrivent
+  par le chiffreur du profil résolu : un outil lancé HORS du binaire serveur résout un profil non desktop donc `plain`
+  (voir le journal).
 - Gate : `go test ./internal/platform/auth/...` ; **(P)** voie Windows verte.
 
 ### 9.14 L14 — C5 Archive des films : emplacement, occupation, choix (S ; après L11)

@@ -172,6 +172,25 @@ the reverse is a typed, logged refusal, and an encrypted file copied to another 
 purpose. `token-import` and `token-capture` write through the same port. The single-source rule and its sentinels are
 unchanged. Lot L13b.
 
+Detail of the lot. The port lives in the leaf package `internal/platform/auth/tokencipher` (`Cipher`: `Name`, `Seal`,
+`Open`; `Plain`; `NewDPAPI`, which fails with `ErrUnavailable` outside Windows). The profile decides through a new
+capability, `TokenVault` (true in `desktop` only): the configuration loader calls `tokencipher.InstallForProfile` once,
+from `internal/config/config_token_vault.go` (ratchet `archlint/token_cipher_single_decision_test.go`), and every
+`NewMultiUserTokenStore(dir)` reads that process cipher at construction, so the server and every command-line tool choose
+the same way; `NewMultiUserTokenStoreWithCipher` is for tests. The last resolved profile wins (a hosted or dev load puts
+`plain` back); a load never fails on the vault (the desktop profile is exercised on Linux CI), `cmd/server`
+(`tokenVaultRefusal`, after `LoadServer`, `refresh-only` included) refuses to start when the profile asks for the vault and
+the system lacks it. File format: `cipher` is written for `dpapi` only (a `plain` store writes no field, so hosted files are
+byte-identical to before; a missing field means `plain`); `OAuthRefreshToken`, `AccessToken`, `XSTSToken` and
+`XSTSUserHash` become the standard base64 of the DPAPI blob (current-user scope, `CRYPTPROTECT_UI_FORBIDDEN`, fixed
+entropy `levelup.watcher_tokens.v1`, description `LevelUp watcher token`); empty fields stay empty; identity, dates,
+`pool_sharing` and the reauth state stay readable. A test lists every string field of `UserTokens` as sealed or declared
+non-sensitive. Reading: a `plain` file under a `dpapi` store is accepted and rewritten sealed at the next write, never at
+load; a sealed file under a `plain` store, an unknown cipher, or a failed `Open` is `ErrTokenFileSealed` (logged once per
+file, counted in `levelup.auth.token_file_unreadable_total{sealed|decode}`); `LoadAll` skips it and serves the other
+players. A partial `Upsert` (no refresh token) on an unreadable sealed file is refused rather than overwriting a possibly
+recoverable credential; an `Upsert` that carries a fresh refresh token (a new sign-in) replaces it.
+
 **D-12 — Film archive (plan D-5, A18).** Archived by default; the choice "do not archive" is offered in the first-launch
 wizard (`features/setup`), never in the installer; occupancy is shown and the location is a setting. The unit of the
 archive is the film: `PathResolver.FilmArchiveDir()` covers `film_chunks/` and `film_manifests/` (setting
@@ -313,8 +332,12 @@ maintainer on a clean machine. A lot without a test at its level is not closed.
   `internal/service/devicecode_completion_poolgrant_test.go`, `TestParseServerFlags_AucunDrapeauNePorteLeSecret`
   (`cmd/server/flags_test.go`: the secret never travels as an argument), `apps/web/e2e/desktop-enter.spec.ts`
   (Playwright, mocked server), and `TestE2ELanceurDesktop` extended (`GET /` 401, entry 302 with the cookie, bootstrap 200).
-- To create: the `TokenCipher` tests,
-  `dpapi` under the Windows tag (L13b.3); `cargo test` against the fake sidecar (L16.4); the `desktop-build` and
+- Created by L13b: `internal/platform/auth/token_file_codec_test.go` (plain round trip, sealing of the sensitive fields only,
+  migration at the first write, typed refusals, partial write on a sealed file, every string field classified),
+  `internal/platform/auth/tokencipher/*_test.go` (`dpapi_vault_test.go` under the Windows tag), `token_file_vault_test.go`
+  (real DPAPI store, Windows tag), `internal/config/config_token_vault_test.go`, `cmd/server/boot_token_vault_test.go`,
+  `archlint/token_cipher_single_decision_test.go`.
+- To create: `cargo test` against the fake sidecar (L16.4); the `desktop-build` and
   `desktop-e2e` jobs and the version check (L17); the `desktop` filter in `ci_paths_filter_test.go`.
 
 ## Alternatives rejected

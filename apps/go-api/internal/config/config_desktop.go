@@ -38,6 +38,7 @@ func resolveDesktop(cfg *AppConfig, launchMode string) (*AppConfig, error) {
 	if err != nil {
 		return nil, err
 	}
+	installTokenCipher(cfg)
 	if !cfg.Capabilities.ShellEntryGate {
 		return cfg, nil
 	}
