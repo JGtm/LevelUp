@@ -21,7 +21,7 @@ par la référence durable (ADR, chronique de révision, ou rien si le commentai
 règle « le code porte le contrat, l'histoire va dans l'ADR ») ; (2) retirer `doc_chemins_ai_test.go` et le
 remplacer par un ratchet qui INTERDIT toute nouvelle citation `.ai/` dans le code (plafond 0) ; (3) mettre à
 jour le skill `arch-rules` (§ Commentaires, « Références vivantes »). Lot mécanique, Haiku/Sonnet, à faire
-hors de tout chantier à risque. **Effort : S.**
+hors de tout chantier à risque. **Effort : M** (mécanique, mais 897 sites : par paquets, avec un relevé avant/après).
 
 ---
 
