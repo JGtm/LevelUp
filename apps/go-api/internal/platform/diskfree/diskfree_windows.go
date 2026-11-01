@@ -19,3 +19,6 @@ func Free(path string) (free, total uint64, err error) {
 	}
 	return freeBytesAvailable, totalBytes, nil
 }
+
+// MUTATION JETABLE (item 4.3 du plan Desktop) : doit faire rougir le job go-test-windows-cgo.
+func mutationJetable() int { return "pas un entier" }
