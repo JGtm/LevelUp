@@ -119548,3 +119548,11 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : `go vet` des trois modules 0 avec les exemples, lint 0 ; archlint vert ; registre des reports (section du plan, ligne D3-L6-e soldée), backlog (addendum `[archi]`), mémoire mis à jour. Découvertes PUB-4-a à d (fixtures `testdata` de `gamefiles` d'origine non documentée ; racine du dépôt non zippable comme module ; `docs/CONFIGURATION.md` périmé ; `doc.go` manquants).
 
 **Conclusion / prochaine étape** : tous les items du plan statués `[x]`. Push, CI, PR vers `release/v8.1.0` ; fusion squash et nettoyage (worktree, caches `-Lot pub`) sur l'accord de l'utilisateur ; tags = geste de l'utilisateur après passage sur `main` ; dépôts séparés = sa décision finale, à faire ensemble.
+
+## [2026-11-01] Publication des briques — tags v0.1.0 et `require` de `himap` — En cours
+
+**Décision technique principale** : sur validation de l'utilisateur (message du 2026-11-01 après la fusion de la PR #118), les tags sont posés par le pilote sur le commit de fusion de la release `e2c449b38c` : `libs/gamefiles/v0.1.0` et `libs/haloapi/v0.1.0` poussés ; `go get ...@v0.1.0` vérifié depuis un module hors dépôt (les deux résolus, `go run` vert). `himap` suit l'ordre de l'ADR 0041 (amendement 2026-11-01) : `require github.com/JGtm/LevelUp/libs/gamefiles v0.1.0` dans `libs/himap/go.mod` (+ `go.sum` par `GOWORK=off go mod tidy`), fusion, puis tag `libs/himap/v0.1.0` sur ce commit. Vérifié : `go vet` de `himap` dans et hors espace de travail, `go vet` de `film`, ratchets archlint des modules.
+
+**Résultats observés** : tags sur un commit de la branche de release (pas encore sur `main` : le squash de la release y créera un autre commit ; le tag garde son commit vivant et la version servie est celle de son arbre). Décision de l'utilisateur sur les dépôts dédiés : validée pour les trois briques, à exécuter ensemble APRÈS le chantier « application de bureau ».
+
+**Conclusion / prochaine étape** : PR `chore/himap-require-gamefiles` → `release/v8.1.0`, CI, fusion, tag `libs/himap/v0.1.0`, vérification `go get`, mémoire.
