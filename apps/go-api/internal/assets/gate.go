@@ -132,7 +132,7 @@ func (c *negativeCache) add(key string) {
 			clear(c.entries)
 		}
 	}
-	c.entries[key] = time.Now().Add(c.ttl)
+	c.entries[key] = time.Now().Round(0).Add(c.ttl) // horloge murale, voir tokencache.cacheExpiryFor
 }
 
 // len rend le nombre d'entrées (échues comprises).
