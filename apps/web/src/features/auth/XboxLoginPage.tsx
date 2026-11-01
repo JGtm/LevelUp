@@ -1,7 +1,7 @@
 /**
  * XboxLoginPage — authentification SSO Xbox via Device Code Flow.
  *
- * Affichée par LoginPage quand auth_mode='xbox'. Permet à un user de se connecter
+ * Affichée par LoginPage quand can_sign_in_with_xbox (SSO Xbox). Permet à un user de se connecter
  * via son compte Xbox Live (login.live.com/devicelogin). Côté backend, la session
  * est créée par XboxSSOLinkStrategy (PR 2) après l'échange OAuth.
  *

@@ -25,7 +25,7 @@ import (
 // LEVELUP_DEMO_MODE=true. DemoMode garde la valeur de l'environnement (sémantique d'avant B5).
 // Lots B-C9 puis B-C10 du backlog 2026-09-26.
 func Load() (*AppConfig, error) {
-	cfg, err := load(true)
+	cfg, err := load(true, LaunchModeDefault)
 	if cfg != nil {
 		cfg.stateFromRepo = true
 	}
@@ -36,7 +36,9 @@ func Load() (*AppConfig, error) {
 // démo, sans variable explicite, les chemins d'état et d'exécution suivent la disposition
 // démo et la file persist asynchrone est coupée (lot B5, D-7) : la redirection appartient au
 // seul serveur démo. Tout ce qui tourne dans le serveur reçoit ce cfg par injection.
-func LoadServer() (*AppConfig, error) { return load(false) }
+// launchMode : le drapeau -mode du serveur (LaunchModeDefault ou LaunchModeDesktop), qui entre
+// dans la résolution du profil de déploiement (deployment.go) ; ce paquet ne lit jamais os.Args.
+func LoadServer(launchMode string) (*AppConfig, error) { return load(false, launchMode) }
 
 // demoState dit si les chemins d'état et d'exécution suivent la disposition démo : en démo,
 // sauf pour une configuration chargée par Load (binaire autre que le serveur). Une AppConfig

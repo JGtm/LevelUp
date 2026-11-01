@@ -26,7 +26,7 @@ func RequireAdmin(demoMode bool, authMode string, users authz.UserLookup) func(h
 		if demoMode {
 			return demoGuard(next, demoAdminReads)
 		}
-		if authMode == authz.AuthModeNone {
+		if authz.AuthDisabled(authMode) {
 			return next
 		}
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -18,6 +18,7 @@ import { createElement, type ReactNode } from 'react'
 
 import { useUpdateSettings } from './queries'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { testCapabilities, demoCapabilities } from '@/test/capabilities'
 
 const navigateMock = vi.fn()
 
@@ -40,7 +41,7 @@ function setPathname(pathname: string) {
 describe('useUpdateSettings — réalignement segment lang (5b, D-12)', () => {
   beforeEach(() => {
     navigateMock.mockClear()
-    useAppShellStore.setState({ locale: 'fr', demoMode: true })
+    useAppShellStore.setState({ locale: 'fr', capabilities: testCapabilities(demoCapabilities()) })
     setPathname('/')
   })
 

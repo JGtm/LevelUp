@@ -1,5 +1,6 @@
 // background_tasks_test.go — en démo, le lancement des tâches de fond ne touche à AUCUN
-// fichier hors de la racine démo (backlog 2026-09-26, lot B5.7-2 ; décision D-7).
+// fichier hors de la racine démo (backlog 2026-09-26, lot B5.7-2 ; décision D-7), et chaque
+// tâche est déclarée pour les quatre profils de déploiement (ADR 0044 D-5).
 //
 // Le harnais visuel lance la démo avec LEVELUP_REPO_ROOT = le VRAI checkout. Avant B5, le
 // janitor y purgeait data/sync_cache et le WAL, le monitoring ouvrait
@@ -136,7 +137,7 @@ func TestBackgroundTasks_Demo_ManifesteDuDepotInchange(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	var wg sync.WaitGroup
-	b := newBootTasks(cfg.DemoMode, &wg)
+	b := newBootTasks(cfg.Deployment, &wg)
 
 	runBootMigrations(ctx, b, cfg, bootFriendStore(cfg), groupstore.NewGroupStore(filepath.Join(cfg.AuthDir, "groups.json")))
 	mon, err := openMonitoringStore(ctx, cfg, title.NewPathResolver(cfg.RepoRoot))
@@ -192,71 +193,132 @@ func TestBackgroundTasks_Demo_ManifesteDuDepotInchange(t *testing.T) {
 		}
 	}
 	for nom, d := range doublures {
-		if policyOf(nom) == demoCut && d.lancee.Load() > 0 {
+		if policyOf(nom, cfg.Deployment) == taskCut && d.lancee.Load() > 0 {
 			t.Errorf("tâche coupée en démo LANCÉE : %s", nom)
 		}
-		if policyOf(nom) == demoKeep && d.lancee.Load() == 0 {
+		if policyOf(nom, cfg.Deployment) == taskKeep && d.lancee.Load() == 0 {
 			t.Errorf("tâche gardée en démo NON lancée : %s", nom)
 		}
 	}
 }
 
-// TestBackgroundTasks_HorsDemo_ToutLance : hors démo, rien n'est coupé — chaque tâche est
-// lancée et aucune étape de boot n'est sautée (le comportement hors démo ne change pas).
-func TestBackgroundTasks_HorsDemo_ToutLance(t *testing.T) {
-	var wg sync.WaitGroup
-	b := newBootTasks(false, &wg)
-	ctx, cancel := context.WithCancel(context.Background())
-	var lancees []*doublure
-	for nom := range demoPolicies {
-		if b.cutInDemo(nom) {
-			t.Errorf("étape %q sautée hors démo", nom)
-		}
-		d := &doublure{}
-		lancees = append(lancees, d)
-		if !b.launch(loopTask(nom, true, ctx, d.run)) {
-			t.Errorf("tâche %q non lancée hors démo", nom)
-		}
-	}
-	time.Sleep(200 * time.Millisecond)
-	cancel()
-	wg.Wait()
-	for i, d := range lancees {
-		if d.lancee.Load() != 1 {
-			t.Errorf("doublure %d lancée %d fois, attendu 1", i, d.lancee.Load())
-		}
-	}
-	if len(b.cut) != 0 {
-		t.Errorf("hors démo, liste des coupées = %v, attendu vide", b.cut)
+// TestBackgroundTasks_HostedEtDev_ToutLance : sur les profils hosted et dev, rien n'est coupé —
+// chaque tâche est lancée et aucune étape de boot n'est sautée (le comportement du VPS et du
+// poste de développement ne change pas).
+func TestBackgroundTasks_HostedEtDev_ToutLance(t *testing.T) {
+	for _, profil := range []config.Deployment{config.DeploymentHosted, config.DeploymentDev} {
+		t.Run(string(profil), func(t *testing.T) {
+			var wg sync.WaitGroup
+			b := newBootTasks(profil, &wg)
+			ctx, cancel := context.WithCancel(context.Background())
+			var lancees []*doublure
+			for nom := range taskPolicies {
+				if b.isCut(nom) {
+					t.Errorf("étape %q sautée en %s", nom, profil)
+				}
+				d := &doublure{}
+				lancees = append(lancees, d)
+				if !b.launch(loopTask(nom, true, ctx, d.run)) {
+					t.Errorf("tâche %q non lancée en %s", nom, profil)
+				}
+			}
+			time.Sleep(200 * time.Millisecond)
+			cancel()
+			wg.Wait()
+			for i, d := range lancees {
+				if d.lancee.Load() != 1 {
+					t.Errorf("doublure %d lancée %d fois, attendu 1", i, d.lancee.Load())
+				}
+			}
+			if len(b.cut) != 0 {
+				t.Errorf("en %s, liste des coupées = %v, attendu vide", profil, b.cut)
+			}
+		})
 	}
 }
 
-// TestBackgroundTasks_DeclarationDemo : la déclaration des statuts démo suit le tableau B5.0
-// du plan — chaque nom de tâche ou d'étape y figure, avec le statut attendu.
-func TestBackgroundTasks_DeclarationDemo(t *testing.T) {
-	gardees := map[string]bool{
-		taskSocialCkpt: true, taskDetectionFlush: true, taskAppRelease: true, taskHeartbeat: true,
+// nomsDeclares : tous les noms de tâches et d'étapes de boot, tels que le tableau B5.0 les
+// énumère (liste tenue à la main : un nom ajouté au code sans l'être ici n'est pas vu, un nom
+// absent de taskPolicies l'est).
+var nomsDeclares = []string{
+	taskJanitor, taskWALRecovery, taskSocialCkpt, taskPoolRescan, taskAutoSync, taskDataHealth,
+	taskDetectionFlush, taskDiskWatch, taskReplayNotify, taskCitationsRelance, taskCatalogCron,
+	taskAssetNameSweep, taskSpartanCron, taskWorldLeaderbd, taskReplayPurge, taskAppRelease, taskHeartbeat,
+	stepFriendsMigr, stepGroupMigr, stepTokenPool, stepPersistQueue, stepWatcher,
+}
+
+// TestBackgroundTasks_DeclarationParProfil : chaque nom de tâche ou d'étape figure dans
+// taskPolicies avec les quatre colonnes ; hosted et dev lancent tout.
+func TestBackgroundTasks_DeclarationParProfil(t *testing.T) {
+	if len(nomsDeclares) != len(taskPolicies) {
+		t.Errorf("%d noms déclarés dans taskPolicies, %d attendus", len(taskPolicies), len(nomsDeclares))
 	}
-	tous := []string{
-		taskJanitor, taskWALRecovery, taskSocialCkpt, taskPoolRescan, taskAutoSync, taskDataHealth,
-		taskDetectionFlush, taskDiskWatch, taskReplayNotify, taskCitationsRelance, taskCatalogCron,
-		taskAssetNameSweep, taskSpartanCron, taskWorldLeaderbd, taskReplayPurge, taskAppRelease, taskHeartbeat,
-		stepFriendsMigr, stepGroupMigr, stepTokenPool, stepPersistQueue, stepWatcher,
-	}
-	if len(tous) != len(demoPolicies) {
-		t.Errorf("%d noms déclarés dans demoPolicies, %d attendus", len(demoPolicies), len(tous))
-	}
-	for _, nom := range tous {
-		p, ok := demoPolicies[nom]
+	for _, nom := range nomsDeclares {
+		row, ok := taskPolicies[nom]
 		if !ok {
-			t.Errorf("%q absent de demoPolicies", nom)
+			t.Errorf("%q absent de taskPolicies", nom)
 			continue
 		}
-		if want := map[bool]demoPolicy{true: demoKeep, false: demoCut}[gardees[nom]]; p != want {
-			t.Errorf("%q : statut démo %v, attendu %v (tableau B5.0)", nom, p, want)
+		for _, profil := range config.Deployments() {
+			if _, ok := row[profil]; !ok {
+				t.Errorf("%q : colonne %s absente de la ligne", nom, profil)
+			}
+		}
+		for _, profil := range []config.Deployment{config.DeploymentHosted, config.DeploymentDev} {
+			if policyOf(nom, profil) != taskKeep {
+				t.Errorf("%q coupée en %s : hosted et dev lancent tout", nom, profil)
+			}
 		}
 	}
-	if policyOf("tâche inconnue") != demoCut {
-		t.Error("une tâche non déclarée doit être coupée en démo (défaut sûr)")
+}
+
+// TestBackgroundTasks_ColonneDemoInchangee : non-régression de la généralisation (A17) — la
+// colonne demo reproduit exactement l'ancienne table demoPolicies (tableau B5.0 : seules
+// quatre tâches sont gardées en démo).
+func TestBackgroundTasks_ColonneDemoInchangee(t *testing.T) {
+	gardeesEnDemo := map[string]bool{
+		taskSocialCkpt: true, taskDetectionFlush: true, taskAppRelease: true, taskHeartbeat: true,
+	}
+	for _, nom := range nomsDeclares {
+		want := taskCut
+		if gardeesEnDemo[nom] {
+			want = taskKeep
+		}
+		if got := policyOf(nom, config.DeploymentDemo); got != want {
+			t.Errorf("%q : statut démo %v, attendu %v (tableau B5.0)", nom, got, want)
+		}
+	}
+}
+
+// TestBackgroundTasks_ColonneDesktop : desktop lance tout sauf la capture du classement
+// mondial public (ADR 0044 D-5).
+func TestBackgroundTasks_ColonneDesktop(t *testing.T) {
+	for _, nom := range nomsDeclares {
+		want := taskKeep
+		if nom == taskWorldLeaderbd {
+			want = taskCut
+		}
+		if got := policyOf(nom, config.DeploymentDesktop); got != want {
+			t.Errorf("%q : statut desktop %v, attendu %v", nom, got, want)
+		}
+	}
+}
+
+// TestBackgroundTasks_NonDeclareeCoupeEnDemoEtDesktop : une tâche absente de la table est
+// coupée en démo et en desktop (défaut sûr), lancée en hosted et en dev ; un profil inconnu
+// coupe.
+func TestBackgroundTasks_NonDeclareeCoupeEnDemoEtDesktop(t *testing.T) {
+	want := map[config.Deployment]taskPolicy{
+		config.DeploymentHosted: taskKeep, config.DeploymentDev: taskKeep,
+		config.DeploymentDemo: taskCut, config.DeploymentDesktop: taskCut,
+		config.Deployment("inconnu"): taskCut,
+	}
+	for profil, w := range want {
+		if got := policyOf("tâche inconnue", profil); got != w {
+			t.Errorf("tâche non déclarée en %q : %v, attendu %v", profil, got, w)
+		}
+	}
+	if got := policyOf(taskJanitor, config.Deployment("inconnu")); got != taskCut {
+		t.Errorf("profil inconnu : %v, attendu taskCut (valeur zéro, défaut sûr)", got)
 	}
 }

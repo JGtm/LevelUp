@@ -14,6 +14,7 @@ import { http, HttpResponse } from 'msw'
 import { renderWithProviders } from '@/test/render-utils'
 import { server } from '@/test/setup'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { testCapabilities, accountsCapabilities } from '@/test/capabilities'
 import { LoginPage } from './LoginPage'
 
 vi.mock('@tanstack/react-router', async (importOriginal) => {
@@ -56,7 +57,7 @@ function submitLogin(usernameLabel: RegExp, passwordLabel: RegExp, submitLabel: 
 describe('LoginPage — refus de connexion', () => {
   beforeEach(() => {
     useAppShellStore.setState({
-      authMode: 'password',
+      capabilities: testCapabilities(accountsCapabilities('password')),
       isBootstrapped: true,
       firstLaunch: false,
       registrationMode: 'closed',
@@ -100,7 +101,7 @@ describe('LoginPage — refus de connexion', () => {
 describe('LoginPage — refus du callback de connexion Xbox (?oauth_error=)', () => {
   beforeEach(() => {
     useAppShellStore.setState({
-      authMode: 'xbox',
+      capabilities: testCapabilities(accountsCapabilities('xbox')),
       oauthCodeFlowEnabled: true,
       isBootstrapped: true,
       firstLaunch: false,
@@ -138,7 +139,7 @@ describe('LoginPage — refus du callback de connexion Xbox (?oauth_error=)', ()
   })
 
   it('mode mot de passe : le refus est aussi affiché', () => {
-    useAppShellStore.setState({ authMode: 'password' })
+    useAppShellStore.setState({ capabilities: testCapabilities(accountsCapabilities('password')) })
     mockSearch = { oauth_error: 'link_failed' }
     renderWithProviders(<LoginPage />)
     expect(screen.getByRole('alert')).toHaveTextContent("La connexion n'a pas pu aboutir. Réessaie.")

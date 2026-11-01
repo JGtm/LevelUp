@@ -5,6 +5,7 @@
  */
 import { http, HttpResponse } from 'msw'
 import { DEFAULT_LOCALE } from '@/lib/i18n/locale'
+import { testCapabilities } from './capabilities'
 
 const SLUG = ':playerSlug'
 const p = (path: string) => `/api/v1${path}`
@@ -34,17 +35,7 @@ const bootstrapFixture = {
     discord_configured: false,
     tailscale_enabled: false,
   },
-  capabilities: {
-    can_read_local_data: true,
-    can_run_sync: true,
-    can_use_live_halo: true,
-    can_manage_settings: true,
-    can_reset_media_index: true,
-    can_view_media: true,
-    can_self_provision: true,
-    can_start_initial_sync: true,
-    can_manage_instance: true,
-  },
+  capabilities: testCapabilities(),
   settings_excerpt: {
     lang: 'fr',
     user_timezone: 'UTC',

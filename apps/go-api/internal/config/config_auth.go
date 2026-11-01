@@ -41,7 +41,7 @@ func normalizeMode(raw, def string) string {
 // par Validate dans TOUS les environnements (démo et développement compris). Un champ
 // vide (configuration construite à la main) vaut le défaut, comme à la lecture.
 func (c *AppConfig) validateModes() error {
-	if !slices.Contains(knownAuthModes, normalizeMode(c.AuthMode, defaultAuthMode)) {
+	if !c.authModeAccepted() {
 		return fmt.Errorf("LEVELUP_AUTH_MODE=%q inconnu (valeurs admises : %s)", c.AuthMode, strings.Join(knownAuthModes, ", "))
 	}
 	if !slices.Contains(knownRegistrationModes, normalizeMode(c.RegistrationMode, defaultRegistrationMode)) {

@@ -1,0 +1,37 @@
+import type { CapabilityMap } from '@/lib/api/types'
+import { DEPLOYMENT_CAPABILITY_DEFAULTS } from '@/lib/capabilities/deploymentCapabilities'
+
+/** Capacités d'un bootstrap de test : tout offert, profil dev, aucun compte. */
+export function testCapabilities(overrides: Partial<CapabilityMap> = {}): CapabilityMap {
+  return {
+    can_read_local_data: true,
+    can_run_sync: true,
+    can_use_live_halo: true,
+    can_manage_settings: true,
+    can_reset_media_index: true,
+    can_view_media: true,
+    can_self_provision: true,
+    can_start_initial_sync: true,
+    can_manage_instance: true,
+    ...DEPLOYMENT_CAPABILITY_DEFAULTS,
+    deployment: 'dev',
+    ...overrides,
+  }
+}
+
+/**
+ * Les capacités de comptes qu'un mode d'authentification du serveur publie : `none` = aucun
+ * compte, `password` = comptes locaux, `xbox` = comptes avec le SSO Xbox (ADR 0044).
+ */
+export function accountsCapabilities(mode: 'none' | 'password' | 'xbox'): Partial<CapabilityMap> {
+  return {
+    can_use_accounts: mode !== 'none',
+    can_use_invitations: mode !== 'none',
+    can_sign_in_with_xbox: mode === 'xbox',
+  }
+}
+
+/** Les capacités de la démo : réglages et dépôt figés, mise en commun des jetons non proposée. */
+export function demoCapabilities(): Partial<CapabilityMap> {
+  return { can_edit_settings: false, can_upload_media: false, can_pool_tokens: false, deployment: 'demo' }
+}

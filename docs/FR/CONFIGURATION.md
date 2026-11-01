@@ -258,7 +258,7 @@ Les tâches de fond qui écriraient ou supprimeraient hors de la racine démo (j
 persist asynchrone et reprise du WAL, santé données, purge des rejeux, surveillance disque,
 crons catalogue, noms d'assets, Spartan et classement mondial, watcher, pool de tokens,
 migrations des amis et du groupe au boot) ne sont pas lancées ; une ligne de log
-`demo_mode: tâches de fond coupées` les liste au boot. `seed-demo` génère dans
+`tâches de fond coupées par le profil de déploiement` les liste au boot. `seed-demo` génère dans
 `<démo>.generation` et ne publie qu'une fois son contrôle d'anonymisation passé : une
 régénération en échec laisse la démo précédente intacte. La démo est en LECTURE SEULE : toute
 requête qui écrit (POST, PUT, PATCH, DELETE) répond 403 `demo_mode_forbidden`, sauf les lectures

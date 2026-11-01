@@ -99,27 +99,27 @@ describe('resolvePlayerFallback', () => {
 describe('resolveIndexRedirect', () => {
   const base: IndexRedirectInput = {
     isBootstrapped: true,
-    authMode: 'none',
+    canUseAccounts: false,
     currentUsername: null,
     currentPlayerSlug: null,
     firstAvailablePlayerSlug: null,
   }
 
   it('attend l’hydratation avant toute décision', () => {
-    // authMode par défaut 'none' pré-hydratation ne doit pas être interprété.
-    expect(resolveIndexRedirect({ ...base, isBootstrapped: false, authMode: 'xbox' })).toEqual({
+    // canUseAccounts par défaut (faux) pré-hydratation ne doit pas être interprété.
+    expect(resolveIndexRedirect({ ...base, isBootstrapped: false, canUseAccounts: true })).toEqual({
       kind: 'wait',
     })
   })
 
   it('anonyme en mode xbox → /login (régression déconnexion : jamais de fallback sans shell)', () => {
-    expect(resolveIndexRedirect({ ...base, authMode: 'xbox', currentUsername: null })).toEqual({
+    expect(resolveIndexRedirect({ ...base, canUseAccounts: true, currentUsername: null })).toEqual({
       kind: 'login',
     })
   })
 
   it('anonyme en mode password → /login', () => {
-    expect(resolveIndexRedirect({ ...base, authMode: 'password', currentUsername: null })).toEqual({
+    expect(resolveIndexRedirect({ ...base, canUseAccounts: true, currentUsername: null })).toEqual({
       kind: 'login',
     })
   })
@@ -130,7 +130,7 @@ describe('resolveIndexRedirect', () => {
     expect(
       resolveIndexRedirect({
         ...base,
-        authMode: 'xbox',
+        canUseAccounts: true,
         currentUsername: null,
         firstAvailablePlayerSlug: 'someone',
       }),
@@ -141,7 +141,7 @@ describe('resolveIndexRedirect', () => {
     expect(
       resolveIndexRedirect({
         ...base,
-        authMode: 'xbox',
+        canUseAccounts: true,
         currentUsername: 'alice',
         currentPlayerSlug: 'alice',
       }),
@@ -152,7 +152,7 @@ describe('resolveIndexRedirect', () => {
     expect(
       resolveIndexRedirect({
         ...base,
-        authMode: 'password',
+        canUseAccounts: true,
         currentUsername: 'alice',
         firstAvailablePlayerSlug: 'first',
       }),
@@ -161,11 +161,11 @@ describe('resolveIndexRedirect', () => {
 
   it('mode public/démo (none) avec un joueur → home joueur, jamais /login', () => {
     expect(
-      resolveIndexRedirect({ ...base, authMode: 'none', firstAvailablePlayerSlug: 'pub' }),
+      resolveIndexRedirect({ ...base, canUseAccounts: false, firstAvailablePlayerSlug: 'pub' }),
     ).toEqual({ kind: 'player', slug: 'pub' })
   })
 
   it('hydraté sans aucun joueur → setup', () => {
-    expect(resolveIndexRedirect({ ...base, authMode: 'none' })).toEqual({ kind: 'setup' })
+    expect(resolveIndexRedirect({ ...base, canUseAccounts: false })).toEqual({ kind: 'setup' })
   })
 })

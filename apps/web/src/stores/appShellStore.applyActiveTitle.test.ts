@@ -66,6 +66,7 @@ import { useSoloFilterStore } from '@/stores/soloFilterStore'
 import { useSquadFilterStore } from '@/stores/squadFilterStore'
 import { DEFAULT_FILTER_CONTEXT } from '@/stores/createFilterStore'
 import type { BootstrapResponse } from '@/lib/api/types'
+import { testCapabilities } from '@/test/capabilities'
 
 const PLAYER = {
   player_slug: 'p1', gamertag: 'P1', xuid: '1', waypoint_player: 'P1', is_demo: false, sync_enabled: true,
@@ -81,12 +82,9 @@ const BOOTSTRAP_H5 = {
   ],
   locale: 'fr', hints_visible_default: true,
   feature_flags: { v7_enabled: true, media_enabled: true, demo_mode: false, discord_configured: false, tailscale_enabled: false },
-  capabilities: {
-    can_read_local_data: true, can_run_sync: true, can_use_live_halo: true, can_manage_settings: true,
-    can_reset_media_index: true, can_view_media: true, can_self_provision: true, can_start_initial_sync: true, can_manage_instance: true,
-  },
+  capabilities: testCapabilities(),
   settings_excerpt: { lang: 'fr', user_timezone: 'UTC', show_records: true, normalize_mode_labels: true },
-  auth_mode: 'none', registration_mode: 'closed', is_admin: false, first_launch: false,
+  auth_mode: 'none' as const, registration_mode: 'closed', is_admin: false, first_launch: false,
   instance_locked: false, reauth_required: false, pool_sharing: 'unavailable', has_password: false, current_username: null,
   oauth_code_flow_enabled: false, demo_mode: false,
 } as const

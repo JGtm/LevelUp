@@ -7,6 +7,7 @@ import { useUploadMedia } from './queries'
 import { apiErrorCode, apiErrorMessage } from '@/lib/api/client'
 import { Spinner } from '@/components/ui/spinner'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useDeploymentCapability } from '@/stores/useDeploymentCapability'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
@@ -80,12 +81,12 @@ export function UploadButton({ playerSlug, fullWidth = false }: Props) {
   const locale = useAppShellStore((s) => s.locale)
   // En démo, l'upload est figé : la zone reste visible mais inerte (le serveur
   // refuse aussi l'upload, cf. PostUploadMedia). Pas de modification possible.
-  const demoMode = useAppShellStore((s) => s.demoMode)
+  const uploadFrozen = !useDeploymentCapability('can_upload_media')
   const t = (key: CommonManifestKey, vars?: Record<string, unknown>) =>
     formatMessage(commonManifest, key, locale, vars)
 
   function handleFiles(list: FileList | null) {
-    if (demoMode || !list || list.length === 0) return
+    if (uploadFrozen || !list || list.length === 0) return
     reset()
     mutate(Array.from(list), {
       onSuccess: (data) =>
@@ -106,7 +107,7 @@ export function UploadButton({ playerSlug, fullWidth = false }: Props) {
   }
 
   function onDragOver(e: React.DragEvent) {
-    if (demoMode) return
+    if (uploadFrozen) return
     e.preventDefault()
     setIsDragging(true)
   }
@@ -120,7 +121,7 @@ export function UploadButton({ playerSlug, fullWidth = false }: Props) {
   function onDrop(e: React.DragEvent) {
     e.preventDefault()
     setIsDragging(false)
-    if (demoMode) return
+    if (uploadFrozen) return
     const files = filterAccepted(e.dataTransfer.files)
     handleFiles(files)
   }
@@ -134,7 +135,7 @@ export function UploadButton({ playerSlug, fullWidth = false }: Props) {
         accept={ACCEPTED_EXTS}
         className="hidden"
         aria-hidden="true"
-        disabled={demoMode}
+        disabled={uploadFrozen}
         onChange={(e) => handleFiles(e.target.files)}
       />
 
@@ -143,11 +144,11 @@ export function UploadButton({ playerSlug, fullWidth = false }: Props) {
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         onDrop={onDrop}
-        onClick={() => !demoMode && !isPending && inputRef.current?.click()}
+        onClick={() => !uploadFrozen && !isPending && inputRef.current?.click()}
         className={[
           'flex flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed text-sm transition-colors select-none',
           fullWidth ? 'w-full px-6 py-6' : 'px-6 py-4',
-          demoMode
+          uploadFrozen
             ? 'cursor-not-allowed border-input text-muted-foreground opacity-50'
             : isPending
               ? 'cursor-not-allowed border-input text-muted-foreground'

@@ -11,6 +11,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
 
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useDeploymentCapability } from '@/stores/useDeploymentCapability'
 import { useSettings, useUpdateSettings } from '@/features/settings/queries'
 import { getSettingsText } from '@/features/settings/i18n'
 import { AccessibilityTab } from '@/features/settings/AccessibilityTab'
@@ -31,7 +32,7 @@ import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/com
 export function SettingsPage() {
   const { data: settings, isLoading } = useSettings()
   const mutation = useUpdateSettings()
-  const demoMode = useAppShellStore((s) => s.demoMode)
+  const settingsFrozen = !useDeploymentCapability('can_edit_settings')
   const locale = useAppShellStore((s) => s.locale)
   const t = getSettingsText(locale)
   const tc = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
@@ -80,7 +81,7 @@ export function SettingsPage() {
 
   return (
     <div className="relative flex flex-col">
-      {demoMode && (
+      {settingsFrozen && (
         <div
           className="mx-6 mt-4 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground"
           role="note"
@@ -138,23 +139,23 @@ export function SettingsPage() {
       <div className="space-y-6 p-6">
         {activeTab === 'appearance' && (
           <>
-            <InterfaceCard merged={merged} handleChange={handleChange} t={t} frozen={demoMode} />
+            <InterfaceCard merged={merged} handleChange={handleChange} t={t} frozen={settingsFrozen} />
             <AccessibilityTab t={t} locale={locale} />
           </>
         )}
-        {activeTab === 'titles' && <TitlesTab t={t} frozen={demoMode} />}
+        {activeTab === 'titles' && <TitlesTab t={t} frozen={settingsFrozen} />}
         {activeTab === 'analyse' && (
-          <AnalyseTab merged={merged} handleChange={handleChange} t={t} frozen={demoMode} />
+          <AnalyseTab merged={merged} handleChange={handleChange} t={t} frozen={settingsFrozen} />
         )}
         {activeTab === 'notifications' && (
           <>
             <NotificationsSettingsTab />
             {/* Discord = canal d'alerte externe, regroupé avec les notifications. */}
-            <DiscordCard merged={merged} handleChange={handleChange} t={t} frozen={demoMode} />
+            <DiscordCard merged={merged} handleChange={handleChange} t={t} frozen={settingsFrozen} />
           </>
         )}
         {activeTab === 'data' && (
-          <MediaCard merged={merged} handleChange={handleChange} t={t} frozen={demoMode} />
+          <MediaCard merged={merged} handleChange={handleChange} t={t} frozen={settingsFrozen} />
         )}
         {/* Compte — mise en commun du jeton (accord et retrait, lieu promis par /privacy
             et /terms), mot de passe opt-in (re-login rapide sans Microsoft) +

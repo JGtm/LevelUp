@@ -29,6 +29,26 @@ type CapabilityMap struct {
 	CanSelfProvision    bool `json:"can_self_provision"`
 	CanStartInitialSync bool `json:"can_start_initial_sync"`
 	CanManageInstance   bool `json:"can_manage_instance"`
+
+	// Capacités du profil de déploiement (ADR 0044, config.DeploymentCapabilities) : ce que
+	// l'instance OFFRE, décidé une fois au chargement de la configuration. Le client branche
+	// dessus, jamais sur Deployment.
+	CanUseAccounts          bool `json:"can_use_accounts" doc:"Comptes et inscriptions (authentification password ou xbox)."`
+	CanSignInWithXbox       bool `json:"can_sign_in_with_xbox" doc:"Connexion par le SSO Xbox (mode xbox)."`
+	CanUseInvitations       bool `json:"can_use_invitations" doc:"Codes d'invitation entre comptes et groupes."`
+	CanUseGroups            bool `json:"can_use_groups" doc:"Groupes (accès mutuel entre comptes)."`
+	CanPoolTokens           bool `json:"can_pool_tokens" doc:"Mise en commun des jetons proposée à l'utilisateur."`
+	CanUseAdmin             bool `json:"can_use_admin" doc:"Espace d'administration de l'instance."`
+	CanUseRestic            bool `json:"can_use_restic" doc:"Sauvegarde restic des bases."`
+	CanUseDiscord           bool `json:"can_use_discord" doc:"Relais d'alertes Discord."`
+	CanUseOutboundNetwork   bool `json:"can_use_outbound_network" doc:"Sortie du serveur vers les services tiers (API Halo, Microsoft)."`
+	CanUpdateApp            bool `json:"can_update_app" doc:"Mise à jour de l'application par la coquille desktop."`
+	CanOfferWindowsDownload bool `json:"can_offer_windows_download" doc:"Téléchargement de l'application Windows proposé."`
+	CanEditSettings         bool `json:"can_edit_settings" doc:"Réglages de l'instance modifiables (figés en démo)."`
+	CanUploadMedia          bool `json:"can_upload_media" doc:"Dépôt de captures (refusé en démo)."`
+
+	// Deployment : nom du profil de déploiement, pour l'affichage et le diagnostic SEULEMENT.
+	Deployment string `json:"deployment" enum:"hosted,desktop,demo,dev" doc:"Profil de déploiement (affichage et diagnostic ; ne jamais brancher dessus)."`
 }
 
 // PlayerSummary représente le résumé d'un profil joueur (couple joueur × titre).

@@ -316,7 +316,7 @@ func installLogHandlers(logHandler slog.Handler, logsCfg logging.Config) *loggin
 // loadBootConfig charge la configuration serveur ; un échec arrête le processus.
 func loadBootConfig(st *bootState) {
 	// --- 2. Configuration ---
-	cfg, err := config.LoadServer() // seul processus à suivre la disposition démo (B-C10)
+	cfg, err := config.LoadServer(st.flags.Mode) // seul processus à suivre la disposition démo (B-C10)
 	if err != nil {
 		slog.Error("chargement config", "err", err)
 		os.Exit(1)

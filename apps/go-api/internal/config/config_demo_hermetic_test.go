@@ -89,7 +89,7 @@ func TestLoadServer_DemoMode_AucunCheminDExecutionSousLeLeurre(t *testing.T) {
 	demo := t.TempDir()
 	poserEnvDemo(t, leurre, demo, true)
 
-	cfg, err := LoadServer()
+	cfg, err := LoadServer(LaunchModeDefault)
 	if err != nil {
 		t.Fatalf("LoadServer: %v", err)
 	}
@@ -115,7 +115,7 @@ func TestLoadServer_HorsDemo_CheminsInchanges(t *testing.T) {
 	demo := t.TempDir()
 	poserEnvDemo(t, racine, demo, false)
 
-	cfg, err := LoadServer()
+	cfg, err := LoadServer(LaunchModeDefault)
 	if err != nil {
 		t.Fatalf("LoadServer: %v", err)
 	}
@@ -152,7 +152,7 @@ func TestLoadServer_DemoMode_VariableExpliciteGagne(t *testing.T) {
 	explicite := filepath.Join(t.TempDir(), "sessions-explicites")
 	t.Setenv("LEVELUP_SESSION_DIR", explicite)
 
-	cfg, err := LoadServer()
+	cfg, err := LoadServer(LaunchModeDefault)
 	if err != nil {
 		t.Fatalf("LoadServer: %v", err)
 	}

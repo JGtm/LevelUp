@@ -31,6 +31,11 @@ const ANON_BOOTSTRAP = {
     can_read_local_data: false, can_run_sync: false, can_use_live_halo: false,
     can_manage_settings: false, can_reset_media_index: false, can_view_media: false,
     can_self_provision: false, can_start_initial_sync: false, can_manage_instance: false,
+    // Profil hosted avec le SSO Xbox (ADR 0044).
+    can_use_accounts: true, can_sign_in_with_xbox: true, can_use_invitations: true, can_use_groups: true,
+    can_pool_tokens: true, can_use_admin: true, can_use_restic: true, can_use_discord: true,
+    can_use_outbound_network: true, can_update_app: false, can_offer_windows_download: true,
+    can_edit_settings: true, can_upload_media: true, deployment: 'hosted',
   },
   settings_excerpt: { lang: 'fr', user_timezone: 'UTC', show_records: true, normalize_mode_labels: true },
   auth_mode: 'xbox',

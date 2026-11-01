@@ -43,7 +43,7 @@ func RequireAuth(demoMode bool, authMode ...string) func(http.Handler) http.Hand
 			// les lectures d'administration nommées, que RequireAdmin tranche ensuite.
 			return demoGuard(next, demoAdminReads, demoAuthOnlyReads)
 		}
-		if mode == authz.AuthModeNone {
+		if authz.AuthDisabled(mode) {
 			return next
 		}
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -69,7 +69,7 @@ func IsAuthenticated(r *http.Request, demoMode bool, authMode string) bool {
 // IsAuthenticatedCtx est IsAuthenticated pour un handler qui ne voit que son contexte
 // (opérations Huma).
 func IsAuthenticatedCtx(ctx context.Context, demoMode bool, authMode string) bool {
-	if demoMode || authMode == "" || authMode == authz.AuthModeNone {
+	if demoMode || authMode == "" || authz.AuthDisabled(authMode) {
 		return true
 	}
 	return sessionAuthenticated(GetSession(ctx), authMode)

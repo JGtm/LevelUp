@@ -15,7 +15,7 @@ import {
 
 /** Compte SSO connecté, non administrateur, sans aucun profil accessible. */
 const compteSansProfil: SetupAudience = {
-  authMode: 'xbox',
+  canUseAccounts: true,
   currentUsername: 'inconnuaubataillon',
   isAdmin: false,
   availablePlayerCount: 0,
@@ -37,7 +37,7 @@ describe('needsOwnProfile', () => {
   })
 
   it("faux quand l'authentification n'est pas activée (mono-utilisateur, démo)", () => {
-    expect(needsOwnProfile({ ...compteSansProfil, authMode: 'none' })).toBe(false)
+    expect(needsOwnProfile({ ...compteSansProfil, canUseAccounts: false })).toBe(false)
   })
 
   it('faux quand personne n’est connecté (la garde de login passe avant)', () => {
@@ -45,7 +45,7 @@ describe('needsOwnProfile', () => {
   })
 
   it('vrai aussi en mode mot de passe', () => {
-    expect(needsOwnProfile({ ...compteSansProfil, authMode: 'password' })).toBe(true)
+    expect(needsOwnProfile({ ...compteSansProfil, canUseAccounts: true })).toBe(true)
   })
 })
 

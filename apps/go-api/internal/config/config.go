@@ -182,8 +182,9 @@ type AppConfig struct {
 	// (replay_build_location) dégrade en « aucune construction » — enfiler quand
 	// personne ne viendra vider la file résoudrait un manifeste Halo par match, à
 	// chaque cycle, pour rien (cf. replaybuild.DecidePlacement).
-	BuildWorkerToken string
-	DesktopConfig    // secret et demande d'arrêt du lanceur (DesktopSecret, ShutdownRequester) : config_desktop.go
+	BuildWorkerToken  string
+	DesktopConfig     // secret et demande d'arrêt du lanceur (DesktopSecret, ShutdownRequester) : config_desktop.go
+	DeploymentProfile // profil de déploiement résolu et ses capacités (ADR 0044) : deployment.go
 }
 
 // DefaultEventsConvergenceMax est le plafond par défaut de matchs traités par la
@@ -214,7 +215,7 @@ func BootstrapEnvLocal() {
 }
 
 // load charge la configuration de l'environnement (défauts = dév local) ; fromRepo : cf. Load/LoadServer.
-func load(fromRepo bool) (*AppConfig, error) {
+func load(fromRepo bool, launchMode string) (*AppConfig, error) {
 	repoRoot := getEnvOrDefault("LEVELUP_REPO_ROOT", autoDetectRepoRoot())
 	// Charger .env.local avant toute lecture de variable d'environnement,
 	// pour que les variables locales (SPNKR_AZURE_*, LEVELUP_*) soient disponibles.
@@ -262,7 +263,7 @@ func load(fromRepo bool) (*AppConfig, error) {
 		cfg.EventsConvergenceMax = DefaultEventsConvergenceMax
 	}
 	cfg.BuildWorkerToken = strings.TrimSpace(getEnvOrDefault("LEVELUP_BUILD_WORKER_TOKEN", ""))
-	return withDesktopConfig(cfg), nil
+	return resolveDeployment(withDesktopConfig(cfg), launchMode) // profil de déploiement : deployment.go
 }
 
 // IsProduction indique si le serveur tourne en mode production (LEVELUP_ENV=production),
@@ -286,8 +287,7 @@ func (c *AppConfig) IsProduction() bool {
 // était émis à chaque boot n'était que du bruit (2026-09-20). Ne change RIEN au
 // garde-fou fail-fast : Validate() reste piloté par la seule production.
 func (c *AppConfig) IsExposedDeployment() bool {
-	env := strings.TrimSpace(c.Environment)
-	if env != "" && !strings.EqualFold(env, "development") {
+	if environmentDeclared(c.Environment) {
 		return true
 	}
 	return !isLoopbackHost(c.APIHost)
@@ -348,12 +348,12 @@ func (c *AppConfig) corsAllLocalhost() bool {
 
 // Validate applique le garde-fou de démarrage (cmd/server ; Load et LoadServer ne valident
 // pas). Partout : refus d'un mode d'auth ou d'inscription inconnu (config_auth.go). En
-// production hors DemoMode : refus d'une configuration non sûre (SecurityWarnings).
+// production du profil hosted : refus d'une configuration non sûre (SecurityWarnings).
 func (c *AppConfig) Validate() error {
 	if err := c.validateModes(); err != nil {
 		return err
 	}
-	if c.DemoMode || !c.IsProduction() {
+	if !c.refusesUnsafeConfig() { // ni démo ni desktop : deployment.go
 		return nil
 	}
 	if w := c.SecurityWarnings(); len(w) > 0 {

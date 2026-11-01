@@ -9,6 +9,7 @@
 import { createFileRoute, Navigate, notFound } from '@tanstack/react-router'
 import { isKnownLocale, useLangParam, useTitleSlug } from '@/lib/title-routing'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useDeploymentCapability } from '@/stores/useDeploymentCapability'
 import { resolveIndexRedirect } from '@/components/shell/shellNavigation'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
@@ -23,7 +24,7 @@ export const Route = createFileRoute('/{-$lang}/')({
 function IndexPage() {
   const currentPlayer = useAppShellStore((s) => s.currentPlayer)
   const availablePlayers = useAppShellStore((s) => s.availablePlayers)
-  const authMode = useAppShellStore((s) => s.authMode)
+  const canUseAccounts = useDeploymentCapability('can_use_accounts')
   const currentUsername = useAppShellStore((s) => s.currentUsername)
   const isBootstrapped = useAppShellStore((s) => s.isBootstrapped)
   const locale = useAppShellStore((s) => s.locale)
@@ -35,7 +36,7 @@ function IndexPage() {
 
   const redirect = resolveIndexRedirect({
     isBootstrapped,
-    authMode,
+    canUseAccounts,
     currentUsername,
     currentPlayerSlug: currentPlayer?.player_slug,
     firstAvailablePlayerSlug: availablePlayers[0]?.player_slug,

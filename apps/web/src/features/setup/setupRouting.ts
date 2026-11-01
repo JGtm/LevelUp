@@ -19,7 +19,7 @@
 
 /** Ce que la décision a besoin de savoir de l'utilisateur courant. */
 export interface SetupAudience {
-  authMode: 'none' | 'password' | 'xbox'
+  canUseAccounts: boolean
   currentUsername: string | null
   isAdmin: boolean
   availablePlayerCount: number
@@ -39,7 +39,7 @@ export const SETUP_PATH = '/setup'
  *   le cas « aucun profil du tout » est déjà couvert par `setup_required`.
  */
 export function needsOwnProfile(audience: SetupAudience): boolean {
-  if (audience.authMode === 'none') return false
+  if (!audience.canUseAccounts) return false
   if (!audience.currentUsername) return false
   if (audience.isAdmin) return false
   return audience.availablePlayerCount === 0

@@ -253,7 +253,7 @@ defaults whatever `LEVELUP_DEMO_MODE` says, since it works on the real data (bac
 Background tasks that would write or delete outside the demo root (janitor, async persist
 queue and WAL recovery, data health, replay purge, disk watch, catalog/asset/Spartan/world
 leaderboard crons, watcher, token pool, boot friend/group migrations) are not started; one
-`demo_mode: tâches de fond coupées` log line lists them at boot. `seed-demo` generates into
+`tâches de fond coupées par le profil de déploiement` log line lists them at boot. `seed-demo` generates into
 `<demo>.generation` and publishes only after its anonymization value check passes: a failed
 regen leaves the previous demo untouched. The demo is READ-ONLY: every
 write request (POST, PUT, PATCH, DELETE) answers 403 `demo_mode_forbidden`, except read queries

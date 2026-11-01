@@ -241,7 +241,7 @@ func (s *BootstrapService) Build(ctx context.Context, sess *domain.SessionData) 
 		SettingsExcerpt:      settingsExcerpt,
 		Privacy:              privacy,
 		DemoMode:             s.cfg.DemoMode,
-		AuthMode:             s.cfg.AuthMode,
+		AuthMode:             s.cfg.PublishedAuthMode(),
 		RegistrationMode:     s.cfg.RegistrationMode,
 		InstanceLocked:       s.instanceLocked != nil && s.instanceLocked(),
 		ReauthRequired:       s.resolveReauthRequired(ctx, sess),
@@ -394,6 +394,7 @@ func excludeAuthOnly(players []domain.PlayerSummary) []domain.PlayerSummary {
 
 func buildCapabilities(cfg *config.AppConfig, settings map[string]interface{}) domain.CapabilityMap {
 	mediaEnabled := getBoolSetting(settings, "media_enabled", true)
+	dc := cfg.Capabilities
 	return domain.CapabilityMap{
 		CanReadLocalData:   true,
 		CanRunSync:         !cfg.DemoMode,
@@ -408,6 +409,22 @@ func buildCapabilities(cfg *config.AppConfig, settings map[string]interface{}) d
 		CanSelfProvision:    getBoolSetting(settings, "can_self_provision", !authz.Enforced(cfg.DemoMode, cfg.AuthMode)),
 		CanStartInitialSync: getBoolSetting(settings, "can_start_initial_sync", !cfg.DemoMode),
 		CanManageInstance:   true,
+
+		// Capacités du profil de déploiement : décidées par config (ADR 0044), recopiées ici.
+		CanUseAccounts:          dc.UseAccounts,
+		CanSignInWithXbox:       dc.SignInWithXbox,
+		CanUseInvitations:       dc.UseInvitations,
+		CanUseGroups:            dc.UseGroups,
+		CanPoolTokens:           dc.PoolTokens,
+		CanUseAdmin:             dc.UseAdmin,
+		CanUseRestic:            dc.UseResticBackup,
+		CanUseDiscord:           dc.UseDiscord,
+		CanUseOutboundNetwork:   dc.UseOutboundNetwork,
+		CanUpdateApp:            dc.UpdateApp,
+		CanOfferWindowsDownload: dc.OfferWindowsDownload,
+		CanEditSettings:         dc.EditSettings,
+		CanUploadMedia:          dc.UploadMedia,
+		Deployment:              string(cfg.Deployment),
 	}
 }
 

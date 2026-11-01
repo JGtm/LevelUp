@@ -54,7 +54,7 @@ func startWatcher(st *bootState) {
 		return nil, fmt.Errorf("registry non initialisé")
 	}
 	var watcherDaemon *watcher.Daemon
-	if !boot.cutInDemo(stepWatcher) {
+	if !boot.isCut(stepWatcher) {
 		watcherDaemon = startWatcherDaemon(ctx, cfg, watcherDeps{
 			settingsStore:  settingsStore,
 			tokenProvider:  tokenProvider,

@@ -290,7 +290,7 @@ func openPersistQueue(st *bootState) {
 	// Cycle de vie : créée 1× au boot, drainée + fermée à shutdown via
 	// autoBatchQueue.Drain() + Close() AVANT duckdb.CloseAll() (ordre critique).
 	var autoBatchQueue *persist.BatchQueue
-	if !boot.cutInDemo(stepPersistQueue) && cfg.PersistBatchAsync {
+	if !boot.isCut(stepPersistQueue) && cfg.PersistBatchAsync {
 		walDir := pr.WALDir()
 		q, qErr := persist.NewBatchQueue(persist.BatchQueueConfig{
 			WALDir:      walDir,

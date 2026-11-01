@@ -14,14 +14,16 @@ import (
 	"fmt"
 	"io"
 	"os"
+
+	"levelup/go-api/internal/config"
 )
 
 // Valeurs du drapeau -mode.
 const (
 	// serverModeDefault : serveur ordinaire (hébergé ou poste de développement).
-	serverModeDefault = ""
+	serverModeDefault = config.LaunchModeDefault
 	// serverModeDesktop : serveur lancé par la coquille desktop.
-	serverModeDesktop = "desktop"
+	serverModeDesktop = config.LaunchModeDesktop
 	// serverModeRefreshOnly : serveur de rafraîchissement seul.
 	serverModeRefreshOnly = "refresh-only"
 )
