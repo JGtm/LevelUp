@@ -50,7 +50,7 @@ func (c ClientAzure) URLAutorisation() string { return c.Autorite + "/oauth2/v2.
 
 // String masque le secret (un `%v` ou `%+v` ne le révèle jamais).
 func (c ClientAzure) String() string {
-	return "ClientAzure{ID:" + c.ID + " Autorite:" + c.Autorite + " Secret:" + masque(c.Secret) + "}"
+	return "ClientAzure{ID:" + c.ID + " Autorite:" + c.Autorite + " Secret:" + haloapi.Masque(c.Secret) + "}"
 }
 
 // LogValue masque le secret dans un journal `slog`.
@@ -58,15 +58,8 @@ func (c ClientAzure) LogValue() slog.Value {
 	return slog.GroupValue(
 		slog.String("id", c.ID),
 		slog.String("autorite", c.Autorite),
-		slog.String("secret", masque(c.Secret)),
+		slog.String("secret", haloapi.Masque(c.Secret)),
 	)
-}
-
-func masque(s string) string {
-	if s == "" {
-		return ""
-	}
-	return "***"
 }
 
 // Provenances d'un jeton d'accès Microsoft : le client OAuth qui l'a émis, qui décide du préfixe

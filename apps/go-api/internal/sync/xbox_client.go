@@ -58,13 +58,17 @@ type xboxHTTPClient struct {
 // xboxTitleID est l'identifiant numérique Xbox du titre (ex: "1144039928" pour Halo Infinite) —
 // utiliser titlePkg.XboxTitleIDFor(slug) pour le résoudre depuis un slug LevelUp.
 func NewXboxHTTPClient(xstsResult *auth.XSTSResult, xboxTitleID string) XboxAchievementsClient {
-	httpClient := &http.Client{Timeout: 30 * time.Second}
 	return &xboxHTTPClient{
-		// Mode démo : aucune sortie tierce (cf. internal/platform/netguard).
-		api:         xboxlive.New(netguard.Doer{Surface: "xbox_achievements.get", Next: httpClient}),
+		api:         nouvelleXboxAPI(&http.Client{Timeout: 30 * time.Second}),
 		auth:        xboxlive.Auth{Autorisation: xstsResult.AuthHeader()},
 		xboxTitleID: xboxTitleID,
 	}
+}
+
+// nouvelleXboxAPI rend le client de la brique dont la sortie passe par `next`, gardée par netguard
+// (mode démo : aucune sortie tierce, cf. internal/platform/netguard).
+func nouvelleXboxAPI(next *http.Client) *xboxlive.Client {
+	return xboxlive.New(netguard.Doer{Surface: "xbox_achievements.get", Next: next})
 }
 
 // GetPlayerAchievements récupère tous les achievements Halo Infinite pour un joueur.

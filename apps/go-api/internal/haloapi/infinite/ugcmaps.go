@@ -6,6 +6,8 @@ package infinite
 // Distinct de [Client.FetchAsset] : autre segment (`Maps`), version facultative, DTO réduit,
 // identité (`User-Agent`, `Origin`) fournie par l'appelant. Le choix du fichier de variante, la
 // validation du DTO, les journaux et le délai de la requête (celui du Doer) sont à l'appelant.
+// Différences de FORME avec le client d'avant la brique : un refus de la garde est marqué
+// [haloapi.ErrDefinitif] (`errors.Is` de la cause reste vrai) et la garde précède la construction de l'URL.
 
 import (
 	"context"
@@ -81,8 +83,13 @@ func (c *Client) FetchCarteUGC(ctx context.Context, auth Auth, assetID, versionI
 
 // TelechargerFichierUGC télécharge un fichier du stockage blob d'une carte : `prefix` (sans sa barre
 // finale) puis `/` puis `relPath`, NON échappé. Aucun jeton n'est envoyé (le stockage blob répond
-// sans) ; seule l'identité `User-Agent` l'est. Même erreurs que [Client.FetchCarteUGC].
+// sans) ; seule l'identité `User-Agent` l'est. La garde du Doer ([haloapi.Garde]) est consultée
+// d'abord : une sortie refusée rend l'erreur de la garde telle quelle, avant toute autre erreur (URL
+// invalide comprise) et sans requête. Même erreurs que [Client.FetchCarteUGC].
 func (c *Client) TelechargerFichierUGC(ctx context.Context, prefix, relPath string, id Identite) ([]byte, error) {
+	if err := c.verifierGarde(ctx); err != nil {
+		return nil, err
+	}
 	id.Origin = "" // le stockage blob ne reçoit que le User-Agent
 	body, err := c.getUnique(ctx, requeteUnique{
 		url: strings.TrimSuffix(prefix, "/") + "/" + relPath, accept: typeJSON, lectureMax: lectureMaxUGC,

@@ -24,14 +24,18 @@
 //     [haloapi.ErrDefinitif] arrête toute reprise.
 //   - IMPORTS : bibliothèque standard et `internal/haloapi` (`archlint`, table des briques internes).
 //
-// Deux différences de FORME avec le client d'avant la brique (`games/halo_5/client.go`), sans
+// Quatre différences de FORME avec le client d'avant la brique (`games/halo_5/client.go`), sans
 // effet hors du mode démo ni pour les fenêtres Retry-After en secondes :
 //
 //   - la [haloapi.Garde] du `Doer` est consultée AVANT le limiteur, une fois au début de chaque appel
 //     (l'ancien client la consultait après le limiteur, à chaque essai : une sortie refusée
 //     consommait un jeton du limiteur) ; le `Doer` gardé la reconsulte à chaque requête émise ;
 //   - l'en-tête Retry-After est lu par [haloapi.ParseRetryAfter] (secondes ET date HTTP) puis
-//     plafonné à 10 s par la politique ; l'ancien client ne lisait que les secondes.
+//     plafonné à 10 s par la politique ; l'ancien client ne lisait que les secondes ;
+//   - un refus de la garde est marqué [haloapi.ErrDefinitif] (`errors.Is(err, netguard.ErrOffline)`
+//     reste vrai, le message est inchangé, mais l'erreur n'est plus égale par `==` à la sentinelle) ;
+//   - la garde est consultée avant la construction de l'URL : en mode démo, un identifiant qui ne
+//     donne pas d'URL valide rend le refus de la garde, non l'erreur de construction.
 //
 // La conversion des DTO vers les types canoniques, le limiteur concret, le délai du client HTTP, la
 // garde `netguard` et la lecture du jeton dans le contexte vivent dans LevelUp (`games/halo_5`).

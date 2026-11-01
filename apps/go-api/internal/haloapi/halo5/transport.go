@@ -33,18 +33,11 @@ type Auth struct {
 }
 
 // String masque le jeton (un `%v` ne le révèle jamais).
-func (a Auth) String() string { return "Auth{Spartan:" + masque(a.Spartan) + "}" }
+func (a Auth) String() string { return "Auth{Spartan:" + haloapi.Masque(a.Spartan) + "}" }
 
 // LogValue masque le jeton dans un journal `slog`.
 func (a Auth) LogValue() slog.Value {
-	return slog.GroupValue(slog.String("spartan", masque(a.Spartan)))
-}
-
-func masque(s string) string {
-	if s == "" {
-		return ""
-	}
-	return "***"
+	return slog.GroupValue(slog.String("spartan", haloapi.Masque(a.Spartan)))
 }
 
 // Client : le client des services Halo 5. Valeur immuable ; les `With*` rendent une copie, sûre en

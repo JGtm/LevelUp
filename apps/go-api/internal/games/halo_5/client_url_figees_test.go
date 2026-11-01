@@ -218,14 +218,15 @@ func TestURLFigees_Halo5_RetryAfterHonore(t *testing.T) {
 // zéro et le négatif donnent 0. Depuis la coupe (lot 2.1), une date HTTP future est lue aussi.
 func TestURLFigees_Halo5_LectureDeRetryAfter(t *testing.T) {
 	for entree, attendu := range map[string]time.Duration{
-		"":                              0,
-		"3":                             3 * time.Second,
-		" 7 ":                           7 * time.Second,
-		"99":                            10 * time.Second,
-		"0":                             0,
-		"-5":                            0,
-		"abc":                           0,
-		"Wed, 21 Oct 2026 07:28:00 GMT": 0,
+		"":    0,
+		"3":   3 * time.Second,
+		" 7 ": 7 * time.Second,
+		"99":  10 * time.Second,
+		"0":   0,
+		"-5":  0,
+		"abc": 0,
+		// l'ancien client rendait 0 pour une date (différence annoncée)
+		time.Now().Add(time.Hour).UTC().Format(http.TimeFormat): 10 * time.Second,
 	} {
 		if got := min(haloapi.ParseRetryAfter(entree, time.Now()), halo5.RetryHalo5().Plafond); got != attendu {
 			t.Errorf("Retry-After lu (%q) = %v, attendu %v", entree, got, attendu)

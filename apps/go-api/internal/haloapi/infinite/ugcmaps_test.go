@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/haloapi"
 	"levelup/go-api/internal/haloapi/haloapitest"
 )
 
@@ -74,6 +75,17 @@ func TestUGC_Non200EstUneErreurTypeeAuCorpsTronque(t *testing.T) {
 		if !errors.As(err, &he) || he.StatusCode != http.StatusNotFound || len(he.Body) != 512 || !IsNotFound(err) {
 			t.Errorf("%s : erreur %v, attendu *HTTPError 404 au corps de 512 octets", nom, err)
 		}
+	}
+}
+
+// TestTelechargerFichierUGC_GardeDAbord : une garde qui refuse arrête l'appel avant toute émission,
+// même sur une URL qui ne se construit pas, et son erreur est rendue telle quelle.
+func TestTelechargerFichierUGC_GardeDAbord(t *testing.T) {
+	cause := errors.New("sortie refusée")
+	d := &doerGarde{refus: haloapi.NonRetryable(cause)}
+	_, err := New(d, RetryAucune()).TelechargerFichierUGC(context.Background(), "https://h/%zz", "x.mvar", identiteTest)
+	if !errors.Is(err, haloapi.ErrDefinitif) || !errors.Is(err, cause) || d.n.Load() != 0 || d.verifs.Load() != 1 {
+		t.Errorf("erreur %v, émissions=%d gardes=%d, attendu la cause définitive, 0 émission, 1 garde", err, d.n.Load(), d.verifs.Load())
 	}
 }
 

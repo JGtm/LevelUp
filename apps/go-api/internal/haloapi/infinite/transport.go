@@ -31,19 +31,15 @@ type Auth struct {
 
 // String masque les jetons (un `%v` ne les révèle jamais).
 func (a Auth) String() string {
-	return "Auth{Spartan:" + masque(a.Spartan) + " Clearance:" + masque(a.Clearance) + "}"
+	return "Auth{Spartan:" + haloapi.Masque(a.Spartan) + " Clearance:" + haloapi.Masque(a.Clearance) + "}"
 }
 
 // LogValue masque les jetons dans un journal `slog`.
 func (a Auth) LogValue() slog.Value {
-	return slog.GroupValue(slog.String("spartan", masque(a.Spartan)), slog.String("clearance", masque(a.Clearance)))
-}
-
-func masque(s string) string {
-	if s == "" {
-		return ""
-	}
-	return "***"
+	return slog.GroupValue(
+		slog.String("spartan", haloapi.Masque(a.Spartan)),
+		slog.String("clearance", haloapi.Masque(a.Clearance)),
+	)
 }
 
 // Crochets : ce que la brique signale sans le compter elle-même (les compteurs expvar et la

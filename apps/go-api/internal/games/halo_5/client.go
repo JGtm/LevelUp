@@ -44,7 +44,7 @@ type Client struct {
 
 // NewClient cree un client authentifie avec le SpartanToken v4 du joueur.
 // requestsPerSecond <= 0 -> defaut 10. PAS de clearanceToken (Halo 5 ne l'utilise pas).
-func NewClient(spartanToken string, requestsPerSecond float64) *Client {
+func NewClient(spartanToken string, requestsPerSecond int) *Client {
 	if requestsPerSecond <= 0 {
 		requestsPerSecond = clientDefaultRPS
 	}

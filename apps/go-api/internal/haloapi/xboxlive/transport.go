@@ -31,18 +31,11 @@ type Auth struct {
 }
 
 // String masque le jeton (un `%v` ne le révèle jamais).
-func (a Auth) String() string { return "Auth{Autorisation:" + masque(a.Autorisation) + "}" }
+func (a Auth) String() string { return "Auth{Autorisation:" + haloapi.Masque(a.Autorisation) + "}" }
 
 // LogValue masque le jeton dans un journal `slog`.
 func (a Auth) LogValue() slog.Value {
-	return slog.GroupValue(slog.String("autorisation", masque(a.Autorisation)))
-}
-
-func masque(s string) string {
-	if s == "" {
-		return ""
-	}
-	return "***"
+	return slog.GroupValue(slog.String("autorisation", haloapi.Masque(a.Autorisation)))
 }
 
 // Page : la fenêtre demandée d'une liste de succès.

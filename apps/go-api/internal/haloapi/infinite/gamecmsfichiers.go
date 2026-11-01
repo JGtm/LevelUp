@@ -5,6 +5,8 @@ package infinite
 // construisent l'URL d'un fichier, un GET unique (sans reprise, sans en-tête `Accept`) rend ses
 // octets. Le choix du chemin, le classement des erreurs (404, autre statut), le type MIME rendu et
 // le cache sont à l'appelant ; le délai de la requête est celui du Doer.
+// Différences de FORME avec le client d'avant la brique : un refus de la garde est marqué
+// [haloapi.ErrDefinitif] (`errors.Is` de la cause reste vrai) et la garde précède la construction de l'URL.
 
 import (
 	"context"

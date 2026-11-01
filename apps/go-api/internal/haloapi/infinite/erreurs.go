@@ -32,8 +32,9 @@ type HTTPError struct {
 	// RetryAfter : fenêtre demandée par l'en-tête Retry-After (429/503), déjà parsée et bornée par
 	// [haloapi.ParseRetryAfter]. 0 = en-tête absent ou illisible.
 	RetryAfter time.Duration
-	// Body : corps de la réponse en erreur, tel que reçu (diagnostic ; jamais journalisé par la
-	// brique).
+	// Body : corps de la réponse en erreur (diagnostic ; jamais journalisé par la brique). Le GET à
+	// reprise le porte ENTIER, tel que lu ; le GET unique (UGC, GameCMS) ne garde que ses
+	// [extraitErreurMax] (512) premiers octets.
 	Body []byte
 }
 

@@ -25,6 +25,11 @@
 //     de LevelUp ; une erreur [haloapi.ErrDefinitif] est rendue telle quelle.
 //   - IMPORTS : bibliothèque standard et `internal/haloapi` (`archlint`, table des briques internes).
 //
+// Deux différences de FORME avec le client d'avant la brique (`sync/xbox_client.go`), sans effet hors
+// du mode démo : un refus de la garde est marqué [haloapi.ErrDefinitif] (`errors.Is` de la cause reste
+// vrai) et la garde est consultée avant la construction de l'URL (un `xuid` invalide en mode démo rend
+// le refus de la garde, non l'erreur de construction).
+//
 // L'interprétation d'un succès (gamerscore, icône, date de déverrouillage, progression), la boucle de
 // pagination, les journaux, le jeton et le délai du client HTTP vivent dans LevelUp (`sync`).
 package xboxlive
