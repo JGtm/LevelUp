@@ -20,17 +20,11 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"os"
-	"os/signal"
 	"path/filepath"
-	"runtime"
-	"runtime/debug"
-	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"levelup/go-api/internal/analysis"
@@ -45,9 +39,6 @@ import (
 	halo5 "levelup/go-api/internal/games/halo_5"
 	"levelup/go-api/internal/games/halo_5/livesync"
 	"levelup/go-api/internal/games/halo_infinite/haloadapter"
-	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
-	"levelup/go-api/internal/games/weapons"
-	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/notifications/external"
 	"levelup/go-api/internal/notify"
 	"levelup/go-api/internal/observability"
@@ -61,9 +52,7 @@ import (
 	"levelup/go-api/internal/platform/auth/tokencache"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
-	"levelup/go-api/internal/platform/friendstore"
 	"levelup/go-api/internal/platform/groupstore"
-	"levelup/go-api/internal/platform/netguard"
 	"levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/platform/userstore"
 	"levelup/go-api/internal/port"
@@ -114,405 +103,19 @@ func buildTokenProvider(settingsStore *settings.Store, authDesc title.AuthDescri
 }
 
 func main() {
-	// --- 0 bis. Mode ENFANT DE CUISSON (lot BUILDALL, 2026-08-26) ---
-	//
-	// LE SERVEUR SE RÉ-EXÉCUTE LUI-MÊME pour décoder un film hors de son propre processus : le
-	// décodage est un amplificateur mémoire, et l'enchaîner in-process a tué la machine trois
-	// fois. L'interception est ICI, AVANT TOUT LE RESTE — un enfant qui démarrerait le serveur
-	// ouvrirait un second écrivain sur les mêmes bases, ce que le modèle mono-processus
-	// interdit (ADR 0013/0016). Même patron que le health-check ci-dessous.
-	if replaychild.IsChild(os.Args) {
-		os.Exit(replaychild.RunChild(context.Background(), os.Args))
-	}
+	interceptReplayChild()
 
 	// --- 0. Arguments du serveur (flags.go), puis health-check (Docker HEALTHCHECK) ---
-	flags := parseServerFlagsOrExit()
-	if flags.HealthCheck {
-		hcClient := &http.Client{Timeout: 5 * time.Second}
-		hcDo := func(url string) (*http.Response, error) {
-			req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)
-			if err != nil {
-				return nil, err
-			}
-			return hcClient.Do(req) //nolint:bodyclose // body fermé par le caller via defer resp.Body.Close()
-		}
-		// Lit la MÊME variable que le serveur bind (config.Load: LEVELUP_API_PORT),
-		// pas un nom fantôme — sinon le healthcheck ne suit pas le port configuré et
-		// ne marche que sur 8000 par accident (revue P0 2026-06-02).
-		port := os.Getenv("LEVELUP_API_PORT")
-		if port == "" {
-			port = "8000"
-		}
-		resp, err := hcDo("http://127.0.0.1:" + port + "/health") //nolint:bodyclose // body fermé via defer resp.Body.Close()
-		if err != nil && port != "8000" {
-			// Fallback sur le port par défaut 8000
-			resp, err = hcDo("http://127.0.0.1:8000/health") //nolint:bodyclose // body fermé via defer resp.Body.Close()
-		}
-		if err != nil {
-			fmt.Fprintln(os.Stderr, "health-check failed:", err)
-			os.Exit(1)
-		}
-		defer resp.Body.Close()
-		if resp.StatusCode != http.StatusOK {
-			fmt.Fprintf(os.Stderr, "health-check status: %d\n", resp.StatusCode)
-			os.Exit(1)
-		}
-		os.Exit(0)
+	st := &bootState{flags: parseServerFlagsOrExit()}
+	if st.flags.HealthCheck {
+		runHealthCheck()
 	}
+	bootConfigure(st)
+	bootMigrate(st)
 
-	// --- 0.5 Charger .env.local AVANT la lecture des LEVELUP_LOG_* ---
-	// Sinon le logger boote toujours en INFO/compact même si .env.local force
-	// LEVELUP_LOG_LEVEL=warn (l'appel à config.Load qui charge .env.local
-	// arrive bien plus tard dans main, après le setup logging).
-	config.BootstrapEnvLocal()
-
-	// --- 0.6 Wirer la factory SocialPersister (ADR 0022 Phase 5) ---
-	// Permet à duckdb.openPlayerDB d'instancier un SharedSocialPersister
-	// sans cycle d'import (duckdb -> persist serait cyclique car persist
-	// -> duckdb via combined_persister.go). Le hook factory est lu à chaque
-	// openPlayerDB ; si nil les writes shared_social retombent en legacy.
-	duckdb.SocialPersisterFactory = func(db *sql.DB) duckdb.SocialPersister {
-		return persist.NewSharedSocialPersister(db)
-	}
-	// ADR 0021 Gap 1 : refuser silencieusement les écritures legacy en prod.
-	// Tout call site qui détecte SocialPersister == nil retourne désormais
-	// ErrSocialPersisterNotWired au lieu de fallback vers Exec direct. Permet
-	// de détecter immédiatement un bug de wiring boot.
-	duckdb.RequireSocialPersister = true
-
-	// --- 1. Logging structuré ---
-	// Trois formats console (LEVELUP_LOG_FORMAT) :
-	//   - compact (défaut) : ConsoleHandler — `HH:MM:SS [INFO] sync.postSync: msg k=v`
-	//     tronqué à LEVELUP_LOG_MAX_LINE (défaut 200), skip event_id/source.* pour
-	//     limiter le bruit console (préservés dans logs/{module}.log JSON).
-	//   - text             : slog.NewTextHandler natif (verbose, pre-sprint).
-	//   - json             : slog.NewJSONHandler (prod).
-	// Rétro-compat : LEVELUP_LOG_JSON=true → format=json.
-	// Niveau via LEVELUP_LOG_LEVEL (défaut INFO).
-	logLevelStr := strings.ToLower(os.Getenv("LEVELUP_LOG_LEVEL"))
-	logLevel := slog.LevelInfo
-	switch logLevelStr {
-	case "debug":
-		logLevel = slog.LevelDebug
-	case "warn":
-		logLevel = slog.LevelWarn
-	case "error":
-		logLevel = slog.LevelError
-	}
-
-	preliminaryRepoRoot := os.Getenv("LEVELUP_REPO_ROOT") // peut être vide, sera résolu plus tard
-	// Démo : logs et crash log sous `<démo>/runtime/logs` (lot B5, D-7), cf. bootLogsConfig.
-	logsCfg := bootLogsConfig(preliminaryRepoRoot)
-
-	// MT-05 (PMT-10 PR-4) : namespacer les fichiers logs par titre UNIQUEMENT
-	// quand plusieurs titres sont servis (déploiement multi-titre). En mono-titre
-	// Halo (cas actuel, len==1), no-op → LogsDir nu, byte-identique. S'active
-	// automatiquement dès qu'un 2e titre est enregistré dans le registre.
-	if len(title.NewRegistry().All()) > 1 {
-		logsCfg = logsCfg.WithTitleNamespace(title.DefaultSlug)
-	}
-
-	// Crash output : redirige les panics Go runtime + fatal errors vers un
-	// fichier dédié (sinon ils partent sur stderr qui n'est capturé nulle part
-	// sous air/Windows). Sans ça : crash silencieux, pas de stack trace, diag
-	// impossible — symptôme de l'incident 2026-05-22 (post-sync JGtm tué à
-	// 18:41:19 sans aucune trace). Best-effort : si l'ouverture échoue, on
-	// continue (le crash ira sur stderr comme avant).
-	//
-	// Phase 4.2 (plan stabilisation 2026-05-22) : on garde aussi un handle sur
-	// le crashFile pour brancher un signal handler SIGABRT/SIGSEGV — utile
-	// pour capturer les FatalException C++ de DuckDB (terminate() raise
-	// SIGABRT côté libc Linux) avant que le process ne meure silencieusement.
-	var crashFile *os.File
-	if logsCfg.LogsDir != "" {
-		crashLogPath := filepath.Join(logsCfg.LogsDir, "server.crash.log")
-		if f, err := os.OpenFile(crashLogPath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o644); err == nil {
-			_, _ = fmt.Fprintf(f, "\n=== server start %s pid=%d ===\n", time.Now().Format(time.RFC3339), os.Getpid())
-			if setErr := debug.SetCrashOutput(f, debug.CrashOptions{}); setErr != nil {
-				slog.Warn("crash_output: SetCrashOutput échoué", "err", setErr, "path", crashLogPath)
-				_ = f.Close()
-			} else {
-				crashFile = f
-			}
-		} else {
-			slog.Warn("crash_output: ouverture fichier échouée — panics resteront sur stderr",
-				"err", err, "path", crashLogPath)
-		}
-	}
-
-	// Phase 4.2 — signal handler SIGABRT (+ SIGSEGV) pour capturer les
-	// FatalException C++ levées par DuckDB depuis cgo. `recover()` Go ne capte
-	// pas ces erreurs car elles bypass la stack Go via libc terminate(). Le
-	// handler dump la stack de toutes les goroutines puis os.Exit(2) — sinon
-	// abort() ré-émet le signal après notre handler et le process meurt
-	// silencieusement.
-	//
-	// Note Windows : signal.Notify(SIGABRT) compile mais ne fire pas — sur
-	// Windows les erreurs C++ font des structured exceptions (SEH), pas des
-	// signaux POSIX. Code defensive cross-platform : on l'enregistre quand
-	// même, sur Linux/macOS ça fonctionne, sur Windows c'est un no-op.
-	if crashFile != nil {
-		installFatalSignalHandler(crashFile)
-	}
-
-	var logHandler slog.Handler
-	switch logsCfg.ConsoleFormat {
-	case "json":
-		logHandler = slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: logLevel})
-	case "text":
-		logHandler = slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: logLevel})
-	default: // "compact"
-		logHandler = logging.NewConsoleHandler(os.Stderr, logging.ConsoleHandlerOptions{
-			Level:    logLevel,
-			MaxWidth: logsCfg.MaxLineWidth,
-			Color:    logsCfg.ConsoleColor,
-		})
-	}
-
-	// P6.4 : envelopper avec ContextHandler pour attacher automatiquement
-	// request_id + event_id (depuis ctxkeys) à chaque slog.*Context(...) émis
-	// par les services. Sans ça, debug prod cassé en multi-user.
-	logHandler = observability.NewContextHandler(logHandler)
-
-	// Sprint B1 commit 16 : MultiModuleHandler tri-stream — console (comportement
-	// pré-sprint) + fichiers `logs/{module}.log` (un par module sync/provider/
-	// pool/handlers/...). Activé par défaut, désactivable via
-	// LEVELUP_LOGS_ENABLED=false. Dossier configurable via LEVELUP_LOGS_DIR.
-	// Référençabilité cross-module : event_id propagé via ctx + ContextHandler.
-	var multiHandler *logging.MultiModuleHandler
-	if logsCfg.Enabled && logsCfg.LogsDir != "" {
-		mh, err := logging.NewMultiModuleHandler(logHandler, logsCfg.LogsDir, logsCfg.FileLevel, logsCfg.Rotation)
-		if err != nil {
-			slog.New(logHandler).Warn("logging: multi-module handler indisponible (console only)",
-				"err", err, "logs_dir", logsCfg.LogsDir)
-		} else {
-			multiHandler = mh
-			logHandler = mh
-		}
-	}
-	// Tee error collector : agrège les WARN/ERROR en mémoire (panneau monitoring
-	// "erreurs récurrentes") sans altérer la sortie. Wrapper le plus externe →
-	// vu une fois par record ; Enabled délègue (permissif), seul le collecteur
-	// filtre sur >= WARN, donc le fan-out fichiers/console reste intact.
-	logHandler = observability.NewErrorCollectorHandler(logHandler)
-	slog.SetDefault(slog.New(logHandler))
-	if multiHandler != nil {
-		slog.Info("logging: multi-module actif",
-			"logs_dir", logsCfg.LogsDir,
-			"file_level", logsCfg.FileLevel.String(),
-			"console_format", logsCfg.ConsoleFormat,
-			"max_line", logsCfg.MaxLineWidth,
-			"rotation_max_size_mb", logsCfg.Rotation.MaxSizeBytes/(1024*1024),
-			"rotation_max_backups", logsCfg.Rotation.MaxBackups,
-		)
-	}
-
-	// --- 2. Configuration ---
-	cfg, err := config.LoadServer() // seul processus à suivre la disposition démo (B-C10)
-	if err != nil {
-		slog.Error("chargement config", "err", err)
-		os.Exit(1)
-	}
-	// Injecter la version buildée (ldflags) si LEVELUP_APP_VERSION non défini.
-	if cfg.AppVersion == "dev" && version != "dev" {
-		cfg.AppVersion = version
-	}
-	slog.Debug("config chargée",
-		"repo_root", cfg.RepoRoot,
-		"demo_mode", cfg.DemoMode,
-		"version", cfg.AppVersion,
-		"addr", cfg.ServerAddr(),
-	)
-
-	// Coupe-circuit réseau sortant. AVANT toute construction de client/cron : le
-	// mode démo sert des données seedées et ne doit émettre AUCUN appel tiers.
-	// Sans ce garde, une démo lancée sur un poste porteur de vrais tokens
-	// s'authentifie et martèle l'API Halo pour les xuid factices de la fixture,
-	// jusqu'à affamer le rendu des pages (cf. internal/platform/netguard).
-	netguard.SetOffline(cfg.DemoMode)
-	if cfg.DemoMode {
-		slog.Info("demo_mode: appels réseau tiers coupés (données seedées, aucune synchronisation)")
-	}
-
-	// Garde-fou de démarrage (config.Validate) : partout, un mode d'authentification ou
-	// d'inscription inconnu ; en production (LEVELUP_ENV=production), une configuration
-	// non sûre — secret de session par défaut (cookies forgeables), AuthMode=none
-	// (ownership multi-user désactivé), ou origines CORS limitées à localhost.
-	// Hors production, les réglages non sûrs ne bloquent pas mais sont signalés.
-	if err := cfg.Validate(); err != nil {
-		slog.Error("démarrage refusé : configuration invalide ou non sûre", "err", err,
-			"hint", "LEVELUP_AUTH_MODE=none|password|xbox, LEVELUP_REGISTRATION=invite|open|closed ; en production : LEVELUP_SESSION_SECRET (>=32 octets), LEVELUP_AUTH_MODE=xbox|password et LEVELUP_CORS_ORIGINS")
-		os.Exit(1)
-	}
-	logSecurityWarnings(cfg)
-
-	// Foot-gun rate-limit (incident "Too Many Requests" prod) : le limiter applicatif
-	// (httprate) clé sur l'IP cliente. En production derrière un reverse proxy SANS
-	// LEVELUP_TRUST_PROXY_HEADERS=true, X-Real-IP n'est pas lu → l'IP cliente est le
-	// pair TCP, c'est-à-dire le proxy, pour TOUS les clients → un unique bucket
-	// partagé → 429 en masse sous trafic public. Non-fatal (une expo prod directe sans
-	// proxy est un setup légitime où TrustProxyHeaders=false est correct), mais on alerte.
-	if cfg.IsProduction() && !cfg.TrustProxyHeaders {
-		slog.Warn("rate-limit keyé sur le pair TCP et LEVELUP_TRUST_PROXY_HEADERS non activé : derrière un reverse proxy, tous les clients partagent un seul bucket (429 en masse)",
-			"rate_limit_rpm", cfg.RateLimitRPM,
-			"recommendation", "si le serveur est derrière nginx/Caddy/Traefik, définir LEVELUP_TRUST_PROXY_HEADERS=true")
-	}
-
-	// --- 2 bis. Écoute immédiate (boot_gate.go) : la page est servie et l'API répond 503
-	// server_starting jusqu'à bootSrv.openRouter ; un port occupé arrête ici, avant les bases.
-	gate := newBootGate(cfg)
-	srv := &http.Server{
-		Addr:         cfg.ServerAddr(),
-		Handler:      gate,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: serverWriteTimeout,
-		IdleTimeout:  60 * time.Second,
-	}
-	bootSrv := startBootServer(srv, gate)
-	// Arrêt demandé hors signal : route POST /api/v1/internal/shutdown (posée avant la
-	// construction du routeur, même patron que TitleReadyNotifier) et fermeture de stdin.
-	cfg.ShutdownRequester = func(reason string) { bootSrv.requestShutdown(reason) }
-	if flags.StopOnStdin {
-		bootSrv.watchStdin(os.Stdin)
-	}
-
-	// --- Outillage média (ffmpeg/ffprobe) — check observable NON-bloquant ---
-	// L'app exécute ffmpeg/ffprobe pour les miniatures WebP, le transcodage HLS
-	// et le remux live des clips. Leur absence — ou un ffmpeg compilé sans
-	// libx264/libwebp/aac ou sans le muxer hls — n'empêche pas le serveur de
-	// démarrer mais casse ces surfaces au premier upload. On rend le diagnostic
-	// visible ici (slog Info si OK avec la version, Warn actionnable sinon)
-	// plutôt qu'en échec silencieux. Borné dans le temps (3 execs ffmpeg) pour
-	// ne jamais retarder le boot.
-	mediaCtx, mediaCancel := context.WithTimeout(context.Background(), 5*time.Second)
-	ops.LogMediaToolingStatus(mediaCtx)
-	mediaCancel()
-
-	// --- Registre de titres PILOTÉ PAR CONFIG (MT-16 / day-one 2e titre) ---
-	// Built-in halo_infinite + titres additionnels découverts sous
-	// config/titles/<slug>/title.toml. Posé en registre partagé AVANT toute
-	// ouverture DB / démarrage serveur → tous les call-sites DefaultRegistry()
-	// (front switcher, résolution titre, XboxTitleIDFor) voient les titres
-	// additionnels. Mono-titre = byte-identique (seul halo_infinite, built-in).
-	title.SetDefaultRegistry(title.NewRegistryFromConfig(cfg.RepoRoot, slog.Default()))
-
-	// --- 3. Connexions DuckDB ---
-	pr := title.NewPathResolver(cfg.RepoRoot)
-	titleSlug := title.DefaultSlug
-	dbPaths := resolveBootDBPaths(cfg, pr)
-	sharedPath := dbPaths.shared
-	metaPath := dbPaths.metadata
-	sharedSocialPath := dbPaths.sharedSocial
-	pvePath := dbPaths.pve
-
-	// En DEMO_MODE, les DB de la FIXTURE font autorité — INCONDITIONNELLEMENT.
-	//
-	// Cette bascule était auparavant conditionnée à l'ABSENCE de la DB de prod
-	// (« utiliser la fixture si data/titles/… n'existe pas »). Sur un poste de
-	// développement — qui a évidemment ses données réelles — la condition ne se
-	// vérifiait jamais : le serveur « démo » ouvrait le shared_matches_v2 RÉEL,
-	// où le joueur `demo-player` (xuid 0000000000000000) n'a aucun match. D'où
-	// des pages vides (`teammates … top_rows_count=0`, healthz/home 503) et un
-	// harnais visuel qui skippait 6 pages sur 7 en annonçant « données absentes ».
-	// Pire : les migrations de boot s'appliquaient alors aux DB de PRODUCTION,
-	// qu'un simple lancement de démo modifiait.
-	//
-	// Le mode démo doit être hermétique aux données comme il l'est au réseau
-	// (cf. internal/platform/netguard) : la présence ou non de données réelles
-	// sur la machine ne doit RIEN changer à ce que sert la démo.
-	if cfg.DemoMode {
-		slog.Info("demo_mode: utilisation fixture", "shared", sharedPath, "metadata", metaPath,
-			"shared_social", sharedSocialPath, "shared_pve", pvePath)
-
-		// Validation au boot — la fixture joueur doit exister, sinon les requêtes
-		// /pages/* échouent avec un IO Error opaque et le frontend affiche
-		// « DemoPlayer » en fantôme (incident 2026-04-29).
-		//
-		// On vérifie le chemin IMBRIQUÉ réellement produit par `seed-demo`
-		// ({dir}/players/DEMO/stats.duckdb). L'ancienne vérification portait sur
-		// le chemin PLAT legacy ({dir}/stats.duckdb), que le générateur n'écrit
-		// jamais : elle criait « fixture absente » sur une fixture parfaitement
-		// installée, à chaque démarrage — un WARN qui a masqué le vrai défaut
-		// ci-dessus pendant tout le chantier.
-		demoStats := demoFixturePlayerDBPath(cfg)
-		if _, err := os.Stat(demoStats); os.IsNotExist(err) {
-			slog.Warn(
-				"demo_mode: fixture joueur absente — les requêtes /pages/* échoueront avec un IO Error",
-				"path", demoStats,
-				"hint", "générer la fixture : go run ./cmd/levelup seed-demo --synthetic --out "+cfg.DemoFixturesDir,
-			)
-		}
-	}
-
-	slog.Debug("ouverture DuckDB", "shared", sharedPath, "metadata", metaPath, "shared_social", sharedSocialPath)
-
-	// --- 3a. Migrations (read-write, avant l'ouverture des connexions runtime) ---
-	// Sur un clone frais, le dossier warehouse n'existe pas encore : sans lui,
-	// runMigrations puis l'ouverture du provider shared échouent et le serveur
-	// fait os.Exit(1) avant même d'afficher /setup.
-	// En démo, ces deux étapes visent l'arborescence de la FIXTURE : sans cela
-	// elles créent/peuplent le warehouse de PRODUCTION que la démo n'ouvre plus.
-	if cfg.DemoMode {
-		if err := os.MkdirAll(filepath.Dir(sharedPath), 0o755); err != nil {
-			slog.Error("création warehouse dir démo échouée", "err", err, "path", filepath.Dir(sharedPath))
-			os.Exit(1)
-		}
-	} else {
-		if err := ensureWarehouseDir(pr, titleSlug); err != nil {
-			slog.Error("création warehouse dir échouée", "err", err)
-			os.Exit(1)
-		}
-		// Clone frais : extraire la base metadata pré-construite (référentiels prêts)
-		// si metadata.duckdb n'existe pas encore. Non-fatal — sinon les migrations
-		// créeront une base vide à repeupler via fetch live. Inutile en démo :
-		// `seed-demo` livre une metadata déjà migrée et peuplée.
-		if err := extractPrebuiltMetadataIfAbsent(pr, titleSlug); err != nil {
-			slog.Warn("prebuilt metadata: extraction échouée (non-fatal)", "err", err)
-		}
-	}
-	titleConfigDir := filepath.Join(cfg.RepoRoot, "config", "titles", titleSlug)
-	// Garde de version, copie de sécurité, migrations (boot_shared_migrations.go). Un échec ne
-	// se dégrade pas en démarrage sans migration : le serveur reste sur la porte de démarrage
-	// avec son état d'échec, puis sort en erreur au signal d'arrêt (boot_failure.go).
-	migrationBackupsDir := pr.MigrationBackupsDir()
-	if cfg.DemoMode {
-		migrationBackupsDir = "" // fixtures régénérables : pas de copie
-	}
-	if state, err := migrateSharedAtBoot(context.Background(), newBootMigrationDeps(
-		titleSlug, migrationBackupsDir, titleConfigDir, sharedMigrationTargets(dbPaths),
-		func() error { return runMigrations(metaPath, sharedPath, sharedSocialPath, pvePath, titleConfigDir) },
-	)); err != nil {
-		code := bootSrv.refuseStart(context.Background(), state, err)
-		if multiHandler != nil {
-			if cerr := multiHandler.Close(); cerr != nil {
-				fmt.Fprintf(os.Stderr, "fermeture logging multi-module: %v\n", cerr)
-			}
-		}
-		os.Exit(code)
-	}
-	slog.Debug("migrations appliquées")
-
-	// --- 3a-bis. Provisionner les DB des titres ADDITIONNELS actifs (MT-16 /
-	// day-one 2e titre). No-op en mono-titre (seul halo_infinite actif, déjà
-	// provisionné ci-dessus). Un 2e titre déclaré en config (status="active") voit
-	// ici ses warehouses créées + migrées (RunForTitleDB → jeu de migrations du
-	// titre, fallback set Halo), isolées sous data/titles/<slug>/. Non-fatal : un
-	// titre additionnel cassé ne doit jamais empêcher Halo de démarrer.
-	if !cfg.DemoMode {
-		provisionAdditionalActiveTitles(pr, title.DefaultRegistry())
-	}
-
-	// --- 3b. Migrations player DB (TargetPlayer), titre par titre ---
-	// Cf. boot_player_migrations.go. Non-fatal : une player DB verrouillée/absente ne
-	// doit pas bloquer le boot.
-	if !cfg.DemoMode {
-		if players, perr := cfg.LoadPlayers(); perr != nil {
-			slog.Warn("migrations player: chargement profils échoué (non-fatal)", "err", perr)
-		} else {
-			n := migratePlayerDBs(context.Background(), players, pr, titleSlug, RunPlayerMigrations)
-			slog.Debug("migrations player appliquées", "bases", n)
-		}
-	}
+	cfg, gate, bootSrv, srv, multiHandler := st.cfg, st.gate, st.bootSrv, st.srv, st.multiHandler
+	pr, titleSlug := st.pr, st.titleSlug
+	sharedPath, metaPath, sharedSocialPath := st.dbPaths.shared, st.dbPaths.metadata, st.dbPaths.sharedSocial
 
 	gate.setStep(context.Background(), bootStepDatabases)
 
@@ -1335,108 +938,29 @@ func main() {
 	})
 }
 
-// ensureWarehouseDir crée le répertoire warehouse du titre s'il n'existe pas.
-//
-// metadata/shared/shared_pve/shared_social vivent tous dans ce dossier.
-// runMigrations les ouvre via OpenReadWrite, qui crée le FICHIER .duckdb mais
-// PAS le dossier parent (cf. initGlobalXuidAliasesSchema qui MkdirAll
-// explicitement avant OpenReadWrite). Sur un clone frais le dossier est absent :
-// les migrations échouent puis l'ouverture du provider shared fait os.Exit(1).
-//
-// Les autres dossiers runtime (players, sessions, cache, WAL, watcher_tokens)
-// sont créés à la demande par leurs consommateurs respectifs (profile_service,
-// session.NewStore, jobs.Store, persist.BatchQueue, MultiUserTokenStore).
-func ensureWarehouseDir(pr *title.PathResolver, titleSlug string) error {
-	dir := pr.WarehouseDir(titleSlug)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return fmt.Errorf("ensureWarehouseDir %s: %w", dir, err)
+// interceptReplayChild détecte le mode enfant de cuisson et lui cède le processus.
+func interceptReplayChild() {
+	// --- 0 bis. Mode ENFANT DE CUISSON (lot BUILDALL, 2026-08-26) ---
+	//
+	// LE SERVEUR SE RÉ-EXÉCUTE LUI-MÊME pour décoder un film hors de son propre processus : le
+	// décodage est un amplificateur mémoire, et l'enchaîner in-process a tué la machine trois
+	// fois. L'interception est ICI, AVANT TOUT LE RESTE — un enfant qui démarrerait le serveur
+	// ouvrirait un second écrivain sur les mêmes bases, ce que le modèle mono-processus
+	// interdit (ADR 0013/0016). Même patron que le health-check ci-dessous.
+	if replaychild.IsChild(os.Args) {
+		os.Exit(replaychild.RunChild(context.Background(), os.Args))
 	}
-	return nil
 }
 
-// runMigrations applique les migrations DuckDB dans l'ordre :
-// metadata → shared → shared_pve → shared_social.
-// Les migrations player sont gérées à l'ouverture de chaque player DB.
-//
-// prestige ConfigDir : chemin vers config/titles/{slug}/ pour le seed du catalogue
-// Prestige (challenge_template + preset_arc). Si vide, le seed est ignoré.
-func runMigrations(metaPath, sharedPath, sharedSocialPath, pvePath, prestigeConfigDir string) error {
-	if err := prepareMigrationRegistry(prestigeConfigDir); err != nil {
-		return err
+// newBootHTTPServer construit le http.Server qui sert la porte de démarrage puis le routeur.
+func newBootHTTPServer(cfg *config.AppConfig, gate *bootGate) *http.Server {
+	return &http.Server{
+		Addr:         cfg.ServerAddr(),
+		Handler:      gate,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: serverWriteTimeout,
+		IdleTimeout:  60 * time.Second,
 	}
-
-	// 1. metadata.duckdb
-	metaDB, err := duckdb.OpenReadWrite(metaPath)
-	if err != nil {
-		return fmt.Errorf("open metadata rw: %w", err)
-	}
-	if err := migration.RunForDB(metaDB.SQLDb(), migration.TargetMetadata); err != nil {
-		metaDB.Close()
-		return fmt.Errorf("metadata migrations: %w", err)
-	}
-	// Réconciliation idempotente des seeds de traduction (mode_name_tr + playlists
-	// FR) : converge les bases dont la migration de seed est "done" mais incomplète
-	// (sous-modes / "Quick Play" restés en anglais). Cf. ReconcileMetadataSeeds.
-	if err := halomigrations.ReconcileMetadataSeeds(metaDB.SQLDb()); err != nil {
-		metaDB.Close()
-		return fmt.Errorf("metadata seed reconcile: %w", err)
-	}
-	// Réconciliation idempotente du registre d'armes canonique (weapons/weapon_ids/
-	// weapon_families) : le runner saute add_weapon_registry une fois « done », donc les
-	// lignes ajoutées au seed après coup (buckets non-combat, frag grenade…) n'atteignent
-	// jamais une DB déjà migrée. Rejeu INSERT OR IGNORE à chaque boot → auto-guérison
-	// (cf. ReconcileRegistry). Couvre le titre par défaut ; les titres additionnels
-	// sont couverts dans provisionAdditionalTitle.
-	if _, err := weapons.ReconcileRegistry(metaDB.SQLDb(), migration.DefaultSlug); err != nil {
-		metaDB.Close()
-		return fmt.Errorf("metadata weapon registry reconcile: %w", err)
-	}
-	// V72-06 : source unique des noms d'armes (weapon_name_labels keyée par weapon_key),
-	// seedée depuis config/titles/{slug}/mappings/weapon_names.toml. Idempotent au boot
-	// (comme le registre). prestigeConfigDir = config/titles/{DefaultSlug}.
-	if _, err := weapons.ReconcileNameLabels(metaDB.SQLDb(), migration.DefaultSlug,
-		filepath.Join(prestigeConfigDir, "mappings", "weapon_names.toml")); err != nil {
-		metaDB.Close()
-		return fmt.Errorf("metadata weapon name labels reconcile: %w", err)
-	}
-	metaDB.Close()
-
-	// 2. shared_matches_v2.duckdb
-	sharedDB, err := duckdb.OpenReadWrite(sharedPath)
-	if err != nil {
-		return fmt.Errorf("open shared rw: %w", err)
-	}
-	if err := migration.RunForDB(sharedDB.SQLDb(), migration.TargetShared); err != nil {
-		sharedDB.Close()
-		return fmt.Errorf("shared migrations: %w", err)
-	}
-	sharedDB.Close()
-
-	// 3. shared_pve.duckdb (optionnel, fichier peut ne pas exister)
-	if _, err := os.Stat(pvePath); err == nil {
-		pveDB, err := duckdb.OpenReadWrite(pvePath)
-		if err != nil {
-			return fmt.Errorf("open shared_pve rw: %w", err)
-		}
-		if err := migration.RunForDB(pveDB.SQLDb(), migration.TargetSharedPvE); err != nil {
-			pveDB.Close()
-			return fmt.Errorf("shared_pve migrations: %w", err)
-		}
-		pveDB.Close()
-	}
-
-	// 4. shared_social.duckdb (créé automatiquement s'il n'existe pas)
-	socialDB, err := duckdb.OpenReadWrite(sharedSocialPath)
-	if err != nil {
-		return fmt.Errorf("open shared_social rw: %w", err)
-	}
-	if err := migration.RunForDB(socialDB.SQLDb(), migration.TargetSharedSocial); err != nil {
-		socialDB.Close()
-		return fmt.Errorf("shared_social migrations: %w", err)
-	}
-	socialDB.Close()
-
-	return nil
 }
 
 // buildAutoSyncPool construit le pool de tokens utilisé par l'AutoSyncScheduler.
@@ -1855,45 +1379,6 @@ func startWatcherDaemon(
 	return daemon
 }
 
-// installFatalSignalHandler enregistre un handler SIGABRT (+ SIGSEGV) qui
-// dump la stack de toutes les goroutines vers crashFile avant exit. Capture
-// les FatalException C++ de DuckDB que recover() Go ne peut pas attraper.
-//
-// Phase 4.2 du plan stabilisation 2026-05-22. Cf. main() au boot.
-//
-// Pré-condition : crashFile non-nil, ouvert en append.
-//
-// Note : sur Windows, signal.Notify(SIGABRT) compile mais ne fire pas. Le
-// handler est un no-op sur cette plateforme — pas grave, on garde le code
-// cross-platform.
-func installFatalSignalHandler(crashFile *os.File) {
-	sigFatal := make(chan os.Signal, 1)
-	signal.Notify(sigFatal, syscall.SIGABRT, syscall.SIGSEGV)
-	go func() {
-		s := <-sigFatal
-		dumpFatalStack(crashFile, s)
-		// os.Exit(2) bypass les defers, mais le process est déjà mort logiquement —
-		// abort() ré-émettra le signal sinon. C'est le seul moyen d'éviter le
-		// double-crash silencieux.
-		os.Exit(2)
-	}()
-}
-
-// dumpFatalStack écrit un en-tête (timestamp + signal + pid) puis la stack
-// complète de toutes les goroutines dans le crashFile. Extrait pour
-// testabilité (unit test peut passer un *bytes.Buffer + un faux signal).
-func dumpFatalStack(w io.Writer, sig os.Signal) {
-	_, _ = fmt.Fprintf(w, "\n=== fatal signal %s at %s pid=%d ===\n",
-		sig, time.Now().Format(time.RFC3339), os.Getpid())
-	// Buffer 1 MB : suffit pour ~5000 goroutines avec frames raisonnables.
-	// On veut TOUTES les goroutines (all=true) pour identifier deadlocks /
-	// fuites au moment du crash.
-	buf := make([]byte, 1<<20)
-	n := runtime.Stack(buf, true)
-	_, _ = w.Write(buf[:n])
-	_, _ = w.Write([]byte("\n=== end fatal stack ===\n"))
-}
-
 // staticTokenProvider fournit les tokens Halo depuis le token store.
 type staticTokenProvider struct {
 	tokens auth.StoredTokens
@@ -1916,79 +1401,4 @@ func resolveXUIDForRotation(ctx context.Context, cfg *config.AppConfig, store *a
 		players = nil
 	}
 	return capturecli.ResolveXUIDForRotation(ctx, store, players, gamertag)
-}
-
-// migratePlayerFriendsAtBoot dote chaque profil configuré de sa propre liste
-// d'amis, héritée de l'ancienne liste globale des amis d'app_settings
-// (moins son propre gamertag). Best-effort + idempotent : no-op si le fichier
-// data/global/player_friends.json existe déjà.
-func migratePlayerFriendsAtBoot(ctx context.Context, cfg *config.AppConfig, fs *friendstore.FriendStore) {
-	players, err := cfg.LoadPlayers()
-	if err != nil {
-		slog.WarnContext(ctx, "friends: migration ignorée — lecture des profils impossible", "err", err)
-		return
-	}
-	created, err := friendstore.MigrateFromAppSettings(fs, cfg.AppSettingsPath, players)
-	if err != nil {
-		slog.WarnContext(ctx, "friends: migration des amis par joueur échouée (non bloquant)", "err", err)
-		return
-	}
-	if created > 0 {
-		slog.InfoContext(ctx, "friends: listes d'amis par joueur créées depuis l'ancienne liste globale",
-			"created", created)
-	}
-}
-
-// migrateDefaultGroupAtBoot crée un groupe par défaut "Mon foyer" depuis la liste
-// d'amis de l'admin, pour préserver la continuité d'accès au passage au modèle
-// multi-groupes. Best-effort + idempotent (no-op si un groupe existe déjà).
-// Le propriétaire est l'admin de db_profiles.json ; ses amis résolus en xuid via
-// les profils connus deviennent membres.
-//
-// Source des membres : le store d'amis PAR JOUEUR (2026-09-15), lui-même migré
-// juste avant depuis l'ancienne liste globale des amis d'app_settings —
-// d'où l'ordre imposé des deux migrations au boot.
-func migrateDefaultGroupAtBoot(ctx context.Context, cfg *config.AppConfig, fs *friendstore.FriendStore, gs *groupstore.GroupStore) {
-	adminGT := cfg.AdminPlayer()
-	if adminGT == "" {
-		return // aucun admin désigné → migration impossible
-	}
-	players, err := cfg.LoadPlayers()
-	if err != nil {
-		return
-	}
-	byGamertag := make(map[string]string, len(players))
-	for _, p := range players {
-		if p.XUID != "" {
-			byGamertag[strings.ToLower(p.Gamertag)] = p.XUID
-		}
-	}
-	ownerXUID := byGamertag[strings.ToLower(adminGT)]
-	if ownerXUID == "" {
-		slog.WarnContext(ctx, "groups: migration ignorée — xuid admin introuvable dans db_profiles", "admin", adminGT)
-		return
-	}
-
-	adminFriends, err := fs.Get(ownerXUID)
-	if err != nil {
-		slog.WarnContext(ctx, "groups: migration ignorée — lecture des amis de l'admin impossible",
-			"admin", adminGT, "err", err)
-		return
-	}
-	var members []domain.GroupMember
-	for _, gt := range adminFriends {
-		if xuid := byGamertag[strings.ToLower(gt)]; xuid != "" {
-			members = append(members, domain.GroupMember{XUID: xuid, Gamertag: gt})
-		}
-	}
-
-	created, err := gs.MigrateDefault("Mon foyer", ownerXUID, adminGT, members)
-	if err != nil {
-		slog.WarnContext(ctx, "groups: migration groupe par défaut échouée (non bloquant)", "err", err)
-		return
-	}
-	if created {
-		slog.InfoContext(ctx, "groups: groupe par défaut créé depuis les amis de l'admin",
-			"owner", adminGT, "members", len(members)+1)
-	}
 }
