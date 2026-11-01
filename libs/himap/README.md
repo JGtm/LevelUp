@@ -47,10 +47,7 @@ subdirectory tag `libs/himap/v0.1.0`.) `himap` imports `libs/gamefiles`, so inst
 From `himap/example_test.go`, compiled by `go vet` (it does not run without the game):
 
 ```go
-deploy, err := himap.DeployRoot() // LEVELUP_HALO_DEPLOY, else the usual install locations
-if err != nil {
-	log.Fatal(err)
-}
+deploy := "/path/to/Halo Infinite/deploy" // your install's deploy folder, or let himap.DeployRoot discover it
 r, bilan, err := himap.CuitCarteNative(context.Background(), himap.OptionsCuisson{
 	RacineDeploy: deploy,
 	CheminModule: deploy + "/pc/levels/multi/ridgeline/ridgeline-rtx-new.module",

@@ -13,10 +13,7 @@ import (
 // anchors (world positions of the map objectives): they frame the image and calibrate the play
 // level. The map catalogue that knows those positions is not part of this module.
 func ExampleCuitCarteNative() {
-	deploy, err := himap.DeployRoot() // LEVELUP_HALO_DEPLOY, else the usual install locations
-	if err != nil {
-		log.Fatal(err)
-	}
+	deploy := "/path/to/Halo Infinite/deploy" // your install's deploy folder, or let himap.DeployRoot discover it
 	r, bilan, err := himap.CuitCarteNative(context.Background(), himap.OptionsCuisson{
 		RacineDeploy: deploy,
 		CheminModule: deploy + "/pc/levels/multi/ridgeline/ridgeline-rtx-new.module",
