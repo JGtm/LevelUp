@@ -418,7 +418,7 @@ Fichiers : `cmd/server/flags.go` (nouveau, D-15), `cmd/server/boot_gate.go`, `cm
       (`LEVELUP_REPO_ROOT` = dossier temporaire avec `config/` copié), attend `/health` 200 (délai 120 s),
       ferme stdin, attend la sortie (délai 60 s), vérifie `arrêt: terminé clean=true` dans le journal et
       l'absence de `*.wal`, relance, attend `/health`, arrête. Ajouté au job C9a.
-- [ ] 6.2 **(P)** Run vert ; durée consignée.
+- [x] 6.2 **(P)** Run vert ; durée consignée. Fait le 2026-11-01 : run `41338448752` (commit `806e7cf0bb`), job Windows CGO vert avec l'étape de bout en bout (job entier 3 min 53 s sur le run précédent `41337064204`) ; test e2e local 18 à 22 s.
 
 ### 9.7 L7 — C6 Extraction de `main.go` (S, trois sous-lots, **à risque** ; après vague 1 et publication lot 3)
 
