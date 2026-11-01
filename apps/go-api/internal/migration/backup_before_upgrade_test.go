@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 )
@@ -152,5 +153,38 @@ func TestBackupBeforeUpgrade_ErreursDeSource(t *testing.T) {
 	})
 	if err == nil || errors.Is(err, ErrInsufficientBackupSpace) {
 		t.Errorf("espace libre illisible : err = %v, attendu une erreur distincte du refus d'espace", err)
+	}
+}
+
+// TestBackupBeforeUpgrade_CopiePartielleRetireeEtNonComptee — un reste .part d'une copie
+// interrompue est retiré par la rétention et ne compte jamais parmi les deux copies gardées.
+func TestBackupBeforeUpgrade_CopiePartielleRetireeEtNonComptee(t *testing.T) {
+	src, dest := t.TempDir(), t.TempDir()
+	db := writeBase(t, src, "metadata.duckdb", 10)
+	base := time.Date(2026, 11, 1, 10, 0, 0, 0, time.UTC)
+	stale := filepath.Join(dest, "metadata.v0.20261101-090000.duckdb"+partialSuffix)
+	if err := os.WriteFile(stale, []byte("tronq"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	full := writeBase(t, dest, "metadata.v1.20261101-095900.duckdb", 3)
+
+	res, err := BackupBeforeUpgrade(context.Background(), BackupParams{
+		DBPath: db, DestDir: dest, Version: 2, Now: base, FreeBytes: plentyOfSpace,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Contains(res.Removed, stale) {
+		t.Errorf("le reste %s n'a pas été retiré : %v", stale, res.Removed)
+	}
+	want := []string{filepath.Base(full), "metadata.v2.20261101-100000.duckdb"}
+	slices.Sort(want)
+	if got := listNames(t, dest); !slices.Equal(got, want) {
+		t.Errorf("après copie : %v, attendu %v (la copie complète antérieure reste, le .part disparaît)", got, want)
+	}
+	for _, n := range listNames(t, dest) {
+		if strings.HasSuffix(n, partialSuffix) {
+			t.Errorf("un .part subsiste : %s", n)
+		}
 	}
 }

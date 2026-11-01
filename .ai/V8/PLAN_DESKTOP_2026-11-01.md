@@ -694,6 +694,21 @@ mises à jour (ressources retéléchargées à chaque version).
   rien au second), deux lignes `oauth_refresh` (repli MSA natif selon la réponse d'Azure) et l'ordre de `disk_watch`
   (goroutine) ; migration 92 / 92 identiques ; T3 identique octet pour octet.
 
+- **Revue adversariale 2r (2026-11-01, deux relecteurs Opus en contexte frais, L1 + L5 + L7)** : A (DuckDB / auth) :
+  0 défaut sur les écritures et les jetons (16 conditions tiennent), 2 constats P2 corrigés dans le lot : la reprise du
+  verrou refaisait la copie de sauvegarde à chaque essai (désormais une copie par base et par version et par
+  démarrage), une copie interrompue par un arrêt brutal restait sous son nom définitif (désormais `.part` renommé à
+  la fin, restes retirés par la rétention). B (extraction / tests) : extraction = déplacement pur confirmé (14
+  conditions tiennent) ; 2 constats P1 corrigés : la garde de version lit `len(canonicalOrder)` qui BAISSERAIT à un
+  squash et ferait refuser le démarrage de toutes les installations (`schema_newer`) → ratchet
+  `migration/order_floor_test.go` (plancher 236, ne descend jamais ; un squash exige d'abord une version explicite
+  et monotone : décision à prendre AVANT le prochain squash, ADR à écrire) ; la porte des jetons hors SSO ne testait
+  que le titre par défaut avec le filtre du suivi live (synchro en pause ou profil `halo_5` seul → jeton jamais
+  écrit) → `AppConfig.HasDeclaredProfile` (tout titre, pause et auth_only compris), porte du suivi live inchangée ;
+  1 constat P2 écarté : `-mode desktop|refresh-only` refusé « jusqu'à L12/L15 » est la livraison en séquence
+  décidée en D-15 / L2.1, pas un flag « pour plus tard ». Ronde 2 : relecture des seules corrections, non lancée
+  (4 corrections de quelques lignes couvertes par des tests ; à relancer si l'utilisateur le demande).
+
 - `internal/mapcatalog` : `TestAddOverlayEntryConcurrentDossierAbsentNePerdRien` échoue en run complet
   (« verrou d'ecriture impossible a poser — passage force », 2 cartes perdues sur 8) et passe seul : le
   passage forcé sans verrou est le comportement testé comme défaut, déclenché par la contention du run

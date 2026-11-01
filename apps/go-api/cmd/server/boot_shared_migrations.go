@@ -102,12 +102,15 @@ func migrateSharedAtBoot(ctx context.Context, d bootMigrationDeps) (bootFailureS
 	if err := d.prepare(); err != nil {
 		return bootFailureMigrationFailed, err
 	}
+	// copied survit aux reprises du verrou : une base copiée à un essai ne l'est pas de nouveau
+	// au suivant (la reprise rejoue garde + copie + montée en entier).
+	copied := map[string]struct{}{}
 	err := retryOnFileLock(ctx, "migrations", d.lockAttempts, d.lockDelay, func() error {
 		states, err := d.inspectAll(ctx)
 		if err != nil {
 			return err
 		}
-		if err := d.backupPending(ctx, states); err != nil {
+		if err := d.backupPending(ctx, states, copied); err != nil {
 			return err
 		}
 		return d.run()
@@ -164,13 +167,18 @@ func (d bootMigrationDeps) inspectOne(ctx context.Context, t bootMigrationTarget
 }
 
 // backupPending copie chaque base qui a des étapes en attente (fermée : les poignées de lecture
-// ont été relâchées par inspectOne). Un refus (espace, E/S) échoue le démarrage.
-func (d bootMigrationDeps) backupPending(ctx context.Context, bases []inspectedBase) error {
+// ont été relâchées par inspectOne), au plus une fois par base et par version pour ce démarrage
+// (copied). Un refus (espace, E/S) échoue le démarrage.
+func (d bootMigrationDeps) backupPending(ctx context.Context, bases []inspectedBase, copied map[string]struct{}) error {
 	if d.backupsDir == "" {
 		return nil
 	}
 	for _, b := range bases {
 		if b.state.Pending == 0 {
+			continue
+		}
+		key := fmt.Sprintf("%s|v%d", b.path, b.state.Version)
+		if _, done := copied[key]; done {
 			continue
 		}
 		if _, err := migration.BackupBeforeUpgrade(ctx, migration.BackupParams{
@@ -182,6 +190,7 @@ func (d bootMigrationDeps) backupPending(ctx context.Context, bases []inspectedB
 		}); err != nil {
 			return err
 		}
+		copied[key] = struct{}{}
 	}
 	return nil
 }
