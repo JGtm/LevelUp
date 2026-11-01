@@ -382,7 +382,7 @@ package grammar
 // attestees ou non (`KeyframeWalkStats.ElectionsAttestees`, `ElectionsNonAttestees`). Les ancres lues
 // changent, donc le recensement des images-cles et tout ce qui en derive.
 //
-// ENTREE `grammar-2026-10-28` (2026-10-28, plan des durees d effets `.ai/PLAN_REJEU_DUREES_EFFETS_2026-10-28.md`,
+// ENTREE `grammar-2026-10-28` (2026-10-28, plan des durees d effets `.ai/V8/PLAN_REJEU_DUREES_EFFETS_2026-10-28.md`,
 // etape B.2) : LE CANAL DE L EQUIPEMENT PORTE RENDRE L OBJET D EFFET. Aucun bit n est lu autrement : la
 // grenade de l ecran occultant est detruite a l impact, et la bulle est une AUTRE vie (ti=38) que la pile i28
 // ne nomme pas, nee 150 a 600 ms avant la suppression de la grenade et supprimee 7,507 s plus tard (38 ecrans sur

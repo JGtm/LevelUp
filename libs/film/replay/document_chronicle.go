@@ -3632,7 +3632,7 @@ package replay
 //
 //	LE PARC         un artefact 104 : verdict `a republier` (assemblage seul, aucun fait perime).
 
-// v106 (2026-10-28, lot durees d effets, plan `.ai/PLAN_REJEU_DUREES_EFFETS_2026-10-28.md`). Le rejeu dessinait
+// v106 (2026-10-28, lot durees d effets, plan `.ai/V8/PLAN_REJEU_DUREES_EFFETS_2026-10-28.md`). Le rejeu dessinait
 // le mur et l ecran occultant sur des durees supposees (10 s et 7,5 s) ; le film ecrit leur fin.
 //
 //	`equipmentPlacements[].lifeEnd`   la frame de la SUPPRESSION LUE de l objet que la pose a cree. Le panneau
