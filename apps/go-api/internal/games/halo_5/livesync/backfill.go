@@ -23,7 +23,6 @@ import (
 	"log/slog"
 
 	"levelup/go-api/internal/config"
-	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/canonical"
 	halo5 "levelup/go-api/internal/games/halo_5"
 	"levelup/go-api/internal/persist"
@@ -199,7 +198,7 @@ func oldestStart(batches []*persist.MatchBatch) string {
 // token déjà dans le ctx). RÉUTILISE intégralement les helpers du runner.
 func BuildBackfillDeps(ctx context.Context, cfg *config.AppConfig, src halo5.CaptureSource, gamertag, xuid string) BackfillDeps {
 	logger := slog.Default()
-	sharedPath := titlePkg.NewPathResolver(cfg.RepoRoot).SharedDBPath(halo5.TitleSlug)
+	sharedPath := cfg.PathResolver().SharedDBPath(halo5.TitleSlug)
 	provider := sharedProviderForPath(cfg, sharedPath)
 
 	var resolveXUID func(string) string = func(string) string { return "" }

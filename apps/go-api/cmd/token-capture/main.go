@@ -33,7 +33,6 @@ import (
 	"time"
 
 	"levelup/go-api/internal/config"
-	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/auth/capturecli"
 	"levelup/go-api/internal/platform/auth/tokencache"
@@ -117,7 +116,7 @@ func main() {
 		fatalf("refresh_token absent de la réponse Microsoft\n")
 	}
 
-	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
+	pr := cfg.PathResolver()
 	storeDir := pr.WatcherTokensDir()
 	store := auth.NewMultiUserTokenStore(storeDir)
 	if err := capturecli.PersistRefreshToken(store, xuid, resolvedGT, refreshToken, tokencache.InvalidateCachedPlayerTokens); err != nil {

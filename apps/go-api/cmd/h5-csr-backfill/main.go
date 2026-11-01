@@ -20,7 +20,6 @@ import (
 
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
-	titlePkg "levelup/go-api/internal/domain/title"
 	halo5 "levelup/go-api/internal/games/halo_5"
 	"levelup/go-api/internal/games/halo_5/livesync"
 	"levelup/go-api/internal/games/titleseams"
@@ -75,7 +74,7 @@ func main() {
 
 	// Token store-first du COMPTE D'AUTH (emprunt possible). Le service record est
 	// indexé par gamertag cible → un token valide quelconque suffit.
-	store := auth.NewMultiUserTokenStore(titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
+	store := auth.NewMultiUserTokenStore(cfg.PathResolver().WatcherTokensDir())
 	res, err := auth.RefreshHaloTokensViaStoreFirst(ctx, store, auth.NewSISUProvider(), authXUID, authGT)
 	if err != nil || res == nil || res.Tokens == nil {
 		fatal("refresh tokens %s (auth_as=%s): err=%v", gt, authGT, err)
@@ -87,7 +86,7 @@ func main() {
 		fatal("NewCaptureSource: %v", err)
 	}
 
-	playerPath := titlePkg.NewPathResolver(cfg.RepoRoot).PlayerDBPath(halo5.TitleSlug, gt)
+	playerPath := cfg.PathResolver().PlayerDBPath(halo5.TitleSlug, gt)
 	n, err := livesync.PersistArenaCSR(ctx, src, playerPath, gt)
 	if err != nil {
 		fatal("PersistArenaCSR %s: %v", gt, err)

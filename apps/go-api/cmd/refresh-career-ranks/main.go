@@ -115,7 +115,7 @@ func run(titleID, playerSlug string) error {
 		return fmt.Errorf("aucun rang dans la payload")
 	}
 
-	metaPath := titlePkg.NewPathResolver(cfg.RepoRoot).MetadataDBPath(titleID)
+	metaPath := cfg.PathResolver().MetadataDBPath(titleID)
 	metaDB, err := duckdb.OpenReadWrite(metaPath)
 	if err != nil {
 		return fmt.Errorf("ouverture metadata.duckdb: %w", err)
@@ -169,7 +169,7 @@ func resolveTokens(ctx context.Context, cfg *config.AppConfig, playerSlug string
 	provider := authpkg.NewSISUProvider()
 
 	// ADR 0023 — pipeline canonique via MultiUserTokenStore (source unique).
-	store := authpkg.NewMultiUserTokenStore(titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
+	store := authpkg.NewMultiUserTokenStore(cfg.PathResolver().WatcherTokensDir())
 
 	result, rerr := authpkg.RefreshHaloTokensViaStoreFirst(ctx, store, provider, pdb.XUID, pdb.Gamertag)
 	if rerr != nil {

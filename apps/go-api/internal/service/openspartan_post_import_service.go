@@ -95,7 +95,7 @@ func (s *OpenSpartanPostImportService) Run(
 	// (garde-rail : TestRunStampeLeTitreAvantLaPremiereEtape).
 	ctx = postImportCtx(ctx, opts.TitleSlug)
 
-	pr := titlePkg.NewPathResolver(s.cfg.RepoRoot)
+	pr := s.cfg.PathResolver()
 	playerDBPath := config.PlayerDBPath(s.cfg, opts.TitleSlug, gamertag)
 	sharedDBPath := config.SharedDBPath(s.cfg, opts.TitleSlug)
 	metadataDBPath := pr.MetadataDBPath(opts.TitleSlug)
@@ -171,7 +171,7 @@ func (s *OpenSpartanPostImportService) recomputeLUSR(
 	defer releaseShared()
 	// Les composantes de performance (dont medal_exploit) se lisent dans la metadata du titre
 	// des bases, celui que postImportCtx a stampé sur le ctx.
-	metadataDBPath := titlePkg.NewPathResolver(s.cfg.RepoRoot).MetadataDBPath(ctxkeys.TitleSlug(ctx))
+	metadataDBPath := s.cfg.PathResolver().MetadataDBPath(ctxkeys.TitleSlug(ctx))
 	n, err := sync.RecomputeLUSRCanonicalForPlayer(ctx, playerDB, sharedDB, xuid,
 		sync.MedalExploitOption(metadataDBPath, xuid))
 	if err != nil {

@@ -45,7 +45,7 @@ func buildCLITokenPool(
 	players []domain.PlayerSummary,
 	tokenPoolSize, rps int,
 ) (auth_pool.Pool, error) {
-	pathResolver := titlePkg.NewPathResolver(cfg.RepoRoot)
+	pathResolver := cfg.PathResolver()
 	store := auth_platform.NewMultiUserTokenStore(pathResolver.WatcherTokensDir())
 
 	discovery := auth_pool.NewDiscoveryWithStore(cfg, pathResolver, titlePkg.DefaultSlug, store)

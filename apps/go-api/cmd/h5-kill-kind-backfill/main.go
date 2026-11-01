@@ -28,7 +28,6 @@ import (
 
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
-	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/canonical"
 	halo5 "levelup/go-api/internal/games/halo_5"
 	"levelup/go-api/internal/games/halo_5/livesync"
@@ -83,7 +82,7 @@ func main() {
 		fatal("xuid auth introuvable pour %q", authGT)
 	}
 
-	store := auth.NewMultiUserTokenStore(titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
+	store := auth.NewMultiUserTokenStore(cfg.PathResolver().WatcherTokensDir())
 	res, err := auth.RefreshHaloTokensViaStoreFirst(ctx, store, auth.NewSISUProvider(), authXUID, authGT)
 	if err != nil || res == nil || res.Tokens == nil {
 		fatal("refresh tokens (auth_as=%s): %v", authGT, err)
@@ -94,7 +93,7 @@ func main() {
 		fatal("NewCaptureSource: %v", err)
 	}
 
-	sharedPath := titlePkg.NewPathResolver(cfg.RepoRoot).SharedDBPath(halo5.TitleSlug)
+	sharedPath := cfg.PathResolver().SharedDBPath(halo5.TitleSlug)
 	// Provisionner le schéma shared h5 (incl. weapon_kills.kill_kind + vue v_weapon_kills)
 	// — idempotent, identique à h5-events-backfill. Ouvre+migre+ferme AVANT le RW.
 	if err := provisionH5Shared(sharedPath); err != nil {

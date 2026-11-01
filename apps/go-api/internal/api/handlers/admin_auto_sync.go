@@ -167,7 +167,7 @@ func (h *AdminAutoSyncHandler) handleProbeTokens(ctx context.Context, in *autoSy
 
 	res := TokenProbeResult{Gamertag: gamertag}
 
-	pr := titlePkg.NewPathResolver(h.cfg.RepoRoot)
+	pr := h.cfg.PathResolver()
 	authStoreForProbe := auth.NewMultiUserTokenStore(pr.WatcherTokensDir())
 	discovery := pool.NewDiscoveryWithStore(h.cfg, pr, titlePkg.DefaultSlug, authStoreForProbe)
 	sources, err := discovery.Scan(ctx)

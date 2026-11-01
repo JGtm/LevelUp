@@ -53,7 +53,7 @@ func RunnerForTitle(slug string, cfg *config.AppConfig, gamertag, xuid string) *
 // = xuid db_profiles (self autoritatif, pas de PeopleHub) ; persist/known-set sur le
 // shared h5 (provider nil — legacy, sûr).
 func newHalo5Runner(cfg *config.AppConfig, gamertag, xuid string) *Runner {
-	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
+	pr := cfg.PathResolver()
 	sharedPath := pr.SharedDBPath(halo5.TitleSlug)
 	playerPath := pr.PlayerDBPath(halo5.TitleSlug, gamertag)
 	metadataPath := pr.MetadataDBPath(halo5.TitleSlug)
@@ -214,7 +214,7 @@ func halo5ResolverFactory(cfg *config.AppConfig, viewerGamertag, viewerXUID stri
 		// précédents) → on NE re-résout PAS les joueurs déjà vus via PeopleHub.
 		// Le self (xuid db_profiles) prime. La persistance des NOUVELLES résolutions
 		// passe par l'ingest (AddXUIDAliases → shared.xuid_aliases), d'où persist=nil.
-		sharedPath := titlePkg.NewPathResolver(cfg.RepoRoot).SharedDBPath(halo5.TitleSlug)
+		sharedPath := cfg.PathResolver().SharedDBPath(halo5.TitleSlug)
 		seed := loadXUIDAliasesSeed(ctx, sharedProviderForPath(cfg, sharedPath), sharedPath)
 		seed[viewerGamertag] = viewerXUID
 		return worldenrich.NewCachingResolver(resolvers, seed, nil)

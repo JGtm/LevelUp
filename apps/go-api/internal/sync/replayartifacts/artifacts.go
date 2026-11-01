@@ -47,7 +47,6 @@ import (
 
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
-	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	settingsPkg "levelup/go-api/internal/platform/settings"
@@ -130,7 +129,7 @@ func NewHook(cfg *config.AppConfig, store SettingsReader, enqueue EnqueueFunc) *
 			WorkerConfigured: strings.TrimSpace(cfg.BuildWorkerToken) != "",
 		},
 		Enqueue:   enqueue,
-		CacheRoot: titlePkg.NewPathResolver(cfg.RepoRoot).CacheRootDir(),
+		CacheRoot: cfg.PathResolver().CacheRootDir(),
 		// LA CUISSON PART DANS UN ENFANT BORNE, TOUJOURS (lot BUILDALL) : le serveur ne
 		// decode plus un film dans son propre processus.
 		BuildOne: SpawnBuildOne,

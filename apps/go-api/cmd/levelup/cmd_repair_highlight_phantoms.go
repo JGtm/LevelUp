@@ -46,7 +46,7 @@ func runRepairHighlightPhantoms(cfg *config.AppConfig, args []string) error {
 	if !reg.Exists(*title) {
 		return fmt.Errorf("titre inconnu du registre : %q", *title)
 	}
-	path := titlePkg.NewPathResolver(cfg.RepoRoot, reg).SharedDBPath(*title)
+	path := cfg.PathResolver(reg).SharedDBPath(*title)
 	ctx := context.Background()
 	if *dryRun {
 		return detecterFantomes(ctx, path)

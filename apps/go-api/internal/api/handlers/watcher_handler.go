@@ -27,7 +27,6 @@ import (
 
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/config"
-	"levelup/go-api/internal/domain/title"
 	auth_platform "levelup/go-api/internal/platform/auth"
 	settings_platform "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/watcher"
@@ -52,7 +51,7 @@ func NewWatcherHandler(
 	tokenProvider auth_platform.TokenProvider,
 	attempts *auth_platform.WatcherAttemptStore,
 ) *WatcherHandler {
-	tokenStorePath := title.NewPathResolver(cfg.RepoRoot).WatcherTokensPath()
+	tokenStorePath := cfg.PathResolver().WatcherTokensPath()
 	return &WatcherHandler{
 		cfg:           cfg,
 		settingsStore: settingsStore,

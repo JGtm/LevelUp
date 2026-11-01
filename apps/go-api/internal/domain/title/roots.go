@@ -115,3 +115,27 @@ func rootsFor(repoRoot string) Roots {
 	}
 	return DefaultRoots(repoRoot)
 }
+
+// --- Ressources et overlays : où vit chaque famille (amendement A-2) ---
+
+// referenceDir rend le dossier de RÉFÉRENCE d'un titre (catalogues de cartes, profils de film,
+// énergie des équipements) : une ressource livrée avec le programme, lue seulement. Sa forme
+// relative `data/titles/{slug}/reference` est conservée sous la racine de ressources pour
+// qu'un arbre livré et un checkout se ressemblent ; il n'est PAS sous Data.
+func (p *PathResolver) referenceDir(titleSlug string) string {
+	return filepath.Join(p.roots.Resources, "data", "titles", titleSlug, "reference")
+}
+
+// generatedReferenceDir rend le dossier des overlays que le RUNTIME écrit à côté du référentiel
+// (cartes rattrapées au fetch d'un film) : de la donnée, donc sous Data, même s'il porte la
+// forme `reference/generated` du référentiel qu'il complète.
+func (p *PathResolver) generatedReferenceDir(titleSlug string) string {
+	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "generated")
+}
+
+// PrebuiltMetadataZipPath rend l'archive de la base metadata pré-construite d'un titre, livrée
+// avec le programme et extraite vers MetadataDBPath au premier démarrage. Ressource.
+// Ex: data/titles/halo_infinite/warehouse/metadata-prebuilt.zip (sous la racine de ressources)
+func (p *PathResolver) PrebuiltMetadataZipPath(titleSlug string) string {
+	return filepath.Join(p.roots.Resources, "data", "titles", titleSlug, "warehouse", "metadata-prebuilt.zip")
+}

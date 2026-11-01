@@ -66,10 +66,10 @@ func main() {
 
 	outDir := *outFlag
 	if outDir == "" && !*liveFlag {
-		outDir = filepath.Join(cfg.RepoRoot, "data", "restore", date)
+		outDir = filepath.Join(cfg.Roots().Data, "restore", date)
 	}
 
-	pr := title.NewPathResolver(cfg.RepoRoot)
+	pr := cfg.PathResolver()
 
 	if *dryRun {
 		fmt.Println("[dry-run] aucune modification ne sera effectuée.")

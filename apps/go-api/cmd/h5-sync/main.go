@@ -15,7 +15,6 @@ import (
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
-	titlePkg "levelup/go-api/internal/domain/title"
 	halo5 "levelup/go-api/internal/games/halo_5"
 	"levelup/go-api/internal/games/halo_5/livesync"
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
@@ -64,7 +63,7 @@ func main() {
 	}
 
 	// Token store-first (identique à probe-h5) → ctx (l'adapter h5 lit le token du ctx).
-	store := auth.NewMultiUserTokenStore(titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
+	store := auth.NewMultiUserTokenStore(cfg.PathResolver().WatcherTokensDir())
 	res, err := auth.RefreshHaloTokensViaStoreFirst(ctx, store, auth.NewSISUProvider(), xuid, gt)
 	if err != nil || res == nil || res.Tokens == nil {
 		fatal("refresh tokens %s: err=%v", gt, err)
@@ -74,7 +73,7 @@ func main() {
 
 	// Provisionner le shared h5 (schéma complet : base + migrations title-owned),
 	// comme provisionAdditionalActiveTitles au boot serveur. Idempotent.
-	sharedPath := titlePkg.NewPathResolver(cfg.RepoRoot).SharedDBPath(halo5.TitleSlug)
+	sharedPath := cfg.PathResolver().SharedDBPath(halo5.TitleSlug)
 	if err := provisionH5Shared(sharedPath); err != nil {
 		fatal("provision shared h5: %v", err)
 	}

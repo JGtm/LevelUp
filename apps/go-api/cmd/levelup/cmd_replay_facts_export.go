@@ -71,7 +71,7 @@ func runReplayFactsExport(cfg *config.AppConfig, args []string) error {
 		return errors.New("usage : levelup replay-facts-export --out <dossier> [--title slug] [--oracle] <short8|match_id> [autres ids]")
 	}
 	ctx := context.Background()
-	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
+	pr := cfg.PathResolver()
 	registre, err := registreParShort(ctx, pr, *titleSlug)
 	if err != nil {
 		return err

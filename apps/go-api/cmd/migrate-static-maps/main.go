@@ -46,7 +46,7 @@ func run(dryRun bool, staticDir, titleID string) error {
 	}
 
 	// 2. Ouvrir metadata.duckdb
-	metadataPath := titlePkg.NewPathResolver(cfg.RepoRoot).MetadataDBPath(titlePkg.DefaultSlug)
+	metadataPath := cfg.PathResolver().MetadataDBPath(titlePkg.DefaultSlug)
 	metaDB, err := duckdb.OpenReadWrite(metadataPath)
 	if err != nil {
 		return fmt.Errorf("open metadata DB: %w", err)

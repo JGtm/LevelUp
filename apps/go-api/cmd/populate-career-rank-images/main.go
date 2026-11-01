@@ -94,7 +94,7 @@ func run(titleID, playerSlug string, variants []string, maxRanks, timeoutSec int
 	df := &directFetcher{tokens: tokens}
 	fetchTimeout := time.Duration(timeoutSec) * time.Second
 
-	cacheRoot := filepath.Join(cfg.RepoRoot, "data", "cache", "career-rank-image", titleID)
+	cacheRoot := filepath.Join(cfg.PathResolver().CacheRootDir(), "career-rank-image", titleID)
 	stats := struct{ skipped, fetched, failed int }{}
 
 	for _, row := range rows {
@@ -128,7 +128,7 @@ func run(titleID, playerSlug string, variants []string, maxRanks, timeoutSec int
 }
 
 func loadCareerRanks(ctx context.Context, cfg *config.AppConfig, titleID string) ([]rankRow, error) {
-	metaPath := titlePkg.NewPathResolver(cfg.RepoRoot).MetadataDBPath(titleID)
+	metaPath := cfg.PathResolver().MetadataDBPath(titleID)
 	metaDB, err := duckdb.OpenReadWriteShared(metaPath)
 	if err != nil {
 		return nil, fmt.Errorf("ouverture metadata.duckdb: %w", err)
@@ -273,7 +273,7 @@ func resolveTokens(ctx context.Context, cfg *config.AppConfig, playerSlug string
 	provider := authpkg.NewSISUProvider()
 
 	// ADR 0023 — pipeline canonique via MultiUserTokenStore (source unique).
-	store := authpkg.NewMultiUserTokenStore(titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
+	store := authpkg.NewMultiUserTokenStore(cfg.PathResolver().WatcherTokensDir())
 
 	result, rerr := authpkg.RefreshHaloTokensViaStoreFirst(ctx, store, provider, pdb.XUID, pdb.Gamertag)
 	if rerr != nil {

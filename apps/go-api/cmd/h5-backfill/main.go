@@ -19,7 +19,6 @@ import (
 
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
-	titlePkg "levelup/go-api/internal/domain/title"
 	halo5 "levelup/go-api/internal/games/halo_5"
 	"levelup/go-api/internal/games/halo_5/livesync"
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
@@ -84,7 +83,7 @@ func main() {
 
 	// Token store-first (identique à h5-sync/probe-h5) → ctx (l'adapter h5 lit le token
 	// du ctx). On refresh le token du COMPTE D'AUTH (authGT/authXUID), pas de la cible.
-	store := auth.NewMultiUserTokenStore(titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
+	store := auth.NewMultiUserTokenStore(cfg.PathResolver().WatcherTokensDir())
 	res, err := auth.RefreshHaloTokensViaStoreFirst(ctx, store, auth.NewSISUProvider(), authXUID, authGT)
 	if err != nil || res == nil || res.Tokens == nil {
 		fatal("refresh tokens %s (auth_as=%s): err=%v", gt, authGT, err)
@@ -94,7 +93,7 @@ func main() {
 		gt, xuid, authGT, authXUID, len(res.Tokens.SpartanToken), pageSize)
 
 	// Provisionner le shared h5 (schéma complet) — identique à h5-sync. Idempotent.
-	sharedPath := titlePkg.NewPathResolver(cfg.RepoRoot).SharedDBPath(halo5.TitleSlug)
+	sharedPath := cfg.PathResolver().SharedDBPath(halo5.TitleSlug)
 	if err := provisionH5Shared(sharedPath); err != nil {
 		fatal("provision shared h5: %v", err)
 	}

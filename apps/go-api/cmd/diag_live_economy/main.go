@@ -56,7 +56,7 @@ func main() {
 	}
 
 	provider := authpkg.NewSISUProvider()
-	store := authpkg.NewMultiUserTokenStore(titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
+	store := authpkg.NewMultiUserTokenStore(cfg.PathResolver().WatcherTokensDir())
 	result, rerr := authpkg.RefreshHaloTokensViaStoreFirst(ctx, store, provider, pdb.XUID, pdb.Gamertag)
 	if rerr != nil {
 		fmt.Fprintf(os.Stderr, "AUTH FAIL: %v\n", rerr)

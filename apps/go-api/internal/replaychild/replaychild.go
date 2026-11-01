@@ -250,7 +250,7 @@ func spawnLocked(ctx context.Context, req Request) (Result, error) {
 		return Result{}, fmt.Errorf("ecriture de la requete: %w", err)
 	}
 
-	runner, err := filmproc.NewRunner(req.RepoRoot, os.Stdout)
+	runner, err := NewRunner(req.RepoRoot, os.Stdout)
 	if err != nil {
 		return Result{}, err
 	}

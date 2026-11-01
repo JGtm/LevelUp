@@ -64,7 +64,7 @@ func runEngagementCoefsAll(ctx context.Context, cfg *config.AppConfig, withScore
 	if len(players) == 0 {
 		return fmt.Errorf("aucun joueur configure")
 	}
-	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
+	resolver := cfg.PathResolver()
 	processed, skipped, failed := 0, 0, 0
 	for _, p := range players {
 		dbPath := resolver.PlayerDBPath(titlePkg.DefaultSlug, p.Gamertag)

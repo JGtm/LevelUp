@@ -87,7 +87,7 @@ func runPopulateAssetsPipeline(
 	// --title-id était threadé au fetch d'assets mais IGNORÉ pour les chemins DB →
 	// `--title-id X` écrivait dans la metadata de Halo. Corrigé : chemins résolus
 	// pour titleID. Défaut du flag = DefaultSlug → byte-identique en mono-titre.)
-	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
+	pr := cfg.PathResolver()
 	metaPath := pr.MetadataDBPath(titleID)
 	metaDB, err := duckdb.OpenReadWrite(metaPath)
 	if err != nil {

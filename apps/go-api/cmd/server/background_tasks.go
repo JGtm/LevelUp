@@ -321,7 +321,7 @@ func socialCheckpointTask(ctx context.Context, sharedSocialPath string) backgrou
 // nouveaux tokens (SSO, token-capture) sans reboot.
 func poolRescanTask(ctx context.Context, cfg *config.AppConfig, p pool.Pool) backgroundTask {
 	runRescan := func() {
-		resolver := title.NewPathResolver(cfg.RepoRoot)
+		resolver := cfg.PathResolver()
 		multiUserStore := auth.NewMultiUserTokenStore(cfg.WatcherTokensDir())
 		discovery := pool.NewDiscoveryWithStore(cfg, resolver, title.DefaultSlug, multiUserStore)
 		sources, err := discovery.Scan(ctx)

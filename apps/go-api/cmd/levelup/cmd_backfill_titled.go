@@ -190,7 +190,7 @@ func runTitledPass(ctx context.Context, cfg *config.AppConfig, t backfillTarget,
 	if err != nil {
 		return err
 	}
-	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
+	pr := cfg.PathResolver()
 	var processed, skipped, failed, total int
 	for _, p := range players {
 		if _, statErr := os.Stat(pr.PlayerDBPath(t.titleSlug, p.Gamertag)); os.IsNotExist(statErr) {
@@ -228,7 +228,7 @@ func runTitledPass(ctx context.Context, cfg *config.AppConfig, t backfillTarget,
 // runTitledPassOne migre les bases du titre, construit le moteur DU TITRE (sans jetons : calcul
 // local pur) et lance la passe pour un joueur.
 func runTitledPassOne(ctx context.Context, cfg *config.AppConfig, titleSlug string, p domain.PlayerSummary, force bool, pass titledPass) (int, error) {
-	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
+	pr := cfg.PathResolver()
 	for _, target := range pass.migrate {
 		path, err := backfillMigrationPath(pr, titleSlug, p.Gamertag, target)
 		if err != nil {

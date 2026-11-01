@@ -18,7 +18,9 @@
 
 **Résultats observés** : T4 par défaut identique au témoin d'avant, aux ajouts près (`MigrationBackupsDir` de la vague 1, accesseurs `DataRoot`/`LogsRoot`/`ResourcesRoot`/`Roots`) ; trois racines distinctes : chaque chemin de donnée sous Data. Les trois joins de `"data"` de `config` ont disparu (sortis de l'allowlist de `no_data_path_join_test`).
 
-**Conclusion / prochaine étape** : sous-lots b (ressources, données, journaux, enfants de cuisson, `LogsRoot` créé avant tout écrivain) puis c (Docker, déploiement, ratchet `RepoRoot`).
+**Sous-lot b** : le référentiel du rejeu `data/titles/{slug}/reference/` et `metadata-prebuilt.zip` (nouvel accesseur `PrebuiltMetadataZipPath`) sous la racine de ressources, forme relative conservée ; les overlays `reference/generated/` sont ÉCRITS à l'exécution (rattrapage des cartes Forge) : ils vivent sous la racine de données, même chemin relatif (affinement de A-2, T4 identique). 152 `NewPathResolver(<cfg>.RepoRoot)` deviennent `cfg.PathResolver()` ; les enfants de cuisson reçoivent les trois racines (`filmproc.NewRunnerRoots`, `replaychild.NewRunner` ; la racine de données n'est imposée que si elle a été posée) ; le dossier des journaux est créé avant la capture des plantages (plus de `WARN crash_output` sur une racine neuve, test rouge sans l'appel). T4 par défaut : aucune ligne modifiée, ajouts seuls ; trois racines distinctes : test versionné (aucune ressource sous Data, aucune donnée sous Resources).
+
+**Conclusion / prochaine étape** : sous-lot c (Docker, déploiement, documentation, ratchet `RepoRoot`).
 
 ## [2026-11-01] Desktop — revue adversariale 2r (L1 + L5 + L7) et corrections — Complété
 

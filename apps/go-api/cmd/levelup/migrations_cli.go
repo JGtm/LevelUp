@@ -55,7 +55,7 @@ func applySharedMigrationsForTitle(cfg *config.AppConfig, titleSlug string) erro
 	if titleSlug == "" {
 		titleSlug = titlePkg.DefaultSlug
 	}
-	path := titlePkg.NewPathResolver(cfg.RepoRoot).SharedDBPath(titleSlug)
+	path := cfg.PathResolver().SharedDBPath(titleSlug)
 
 	_ = migration.All()
 	db, err := duckdbpkg.OpenReadWrite(path)

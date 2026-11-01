@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"levelup/go-api/internal/config"
-	title "levelup/go-api/internal/domain/title"
 	auth "levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/ratebudget"
 	"levelup/go-api/internal/service"
@@ -92,7 +91,7 @@ func BuildHaloSource(cfg *config.AppConfig, gamertag string, rps int, eager bool
 		return nil, err
 	}
 	provider := auth.NewSISUProvider()
-	store := auth.NewMultiUserTokenStore(title.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
+	store := auth.NewMultiUserTokenStore(cfg.PathResolver().WatcherTokensDir())
 
 	src := &refreshingHaloSource{
 		ttl: 3 * time.Hour, // Spartan ~4h, marge
@@ -184,7 +183,7 @@ func BuildResolver(cfg *config.AppConfig, tokenGamertag string) (XUIDResolver, e
 		return nil, err
 	}
 	provider := auth.NewSISUProvider()
-	store := auth.NewMultiUserTokenStore(title.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
+	store := auth.NewMultiUserTokenStore(cfg.PathResolver().WatcherTokensDir())
 
 	hp := auth.NewCachedHeaderProvider(0, func(ctx context.Context) (string, error) {
 		at, e := resolveAccessToken(ctx, provider, store, xuid)

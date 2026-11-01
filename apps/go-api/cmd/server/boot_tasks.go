@@ -197,7 +197,7 @@ func buildAutoSyncPool(
 	cfg *config.AppConfig,
 	tokenProvider auth.TokenProvider,
 ) pool.Pool {
-	pr := title.NewPathResolver(cfg.RepoRoot)
+	pr := cfg.PathResolver()
 	multiUserStore := auth.NewMultiUserTokenStore(cfg.WatcherTokensDir())
 	discovery := pool.NewDiscoveryWithStore(cfg, pr, title.DefaultSlug, multiUserStore)
 	sources, err := discovery.Scan(ctx)

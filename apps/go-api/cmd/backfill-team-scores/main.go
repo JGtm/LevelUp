@@ -122,7 +122,7 @@ func main() {
 	if err != nil {
 		fatal("config: %v", err)
 	}
-	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
+	pr := cfg.PathResolver()
 	sharedPath := pr.SharedDBPath(titlePkg.DefaultSlug)
 
 	matchIDs, err := resolveMatchIDs(opts.single, opts.idsFile, cfg.RepoRoot)

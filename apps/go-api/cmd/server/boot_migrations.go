@@ -36,7 +36,7 @@ func bootMigrate(st *bootState) {
 func resolveBootPaths(st *bootState) {
 	cfg := st.cfg
 	// --- 3. Connexions DuckDB ---
-	pr := title.NewPathResolver(cfg.RepoRoot)
+	pr := cfg.PathResolver()
 	titleSlug := title.DefaultSlug
 	dbPaths := resolveBootDBPaths(cfg, pr)
 	sharedPath := dbPaths.shared

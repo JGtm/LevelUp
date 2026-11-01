@@ -877,7 +877,7 @@ func (p *PathResolver) ReplayArtifactsDir(titleSlug string) string {
 // jeu installé (cmd/mapquant-build).
 // Ex: data/titles/halo_infinite/reference/map_quant_bounds.json
 func (p *PathResolver) MapQuantBoundsPath(titleSlug string) string {
-	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "map_quant_bounds.json")
+	return filepath.Join(p.referenceDir(titleSlug), "map_quant_bounds.json")
 }
 
 // EquipmentEnergyPath retourne le chemin du catalogue de l'ÉNERGIE DES ÉQUIPEMENTS : par fiche
@@ -886,7 +886,7 @@ func (p *PathResolver) MapQuantBoundsPath(titleSlug string) string {
 // (cmd/equipenergy-build). Donnée de RÉFÉRENCE versionnée — pas un cache.
 // Ex: data/titles/halo_infinite/reference/equipment_energy.json
 func (p *PathResolver) EquipmentEnergyPath(titleSlug string) string {
-	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "equipment_energy.json")
+	return filepath.Join(p.referenceDir(titleSlug), "equipment_energy.json")
 }
 
 // FilmProfilesPath retourne le chemin du CATALOGUE DES PROFILS DE FILM d'un titre : ce que
@@ -903,7 +903,7 @@ func (p *PathResolver) EquipmentEnergyPath(titleSlug string) string {
 // dérivation il est solidaire.
 // Ex: data/titles/halo_infinite/reference/film_profiles.json
 func (p *PathResolver) FilmProfilesPath(titleSlug string) string {
-	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "film_profiles.json")
+	return filepath.Join(p.referenceDir(titleSlug), "film_profiles.json")
 }
 
 // MapFondReglagesPath retourne le chemin des RÉGLAGES DE CUISSON PAR CARTE des fonds de
@@ -917,7 +917,7 @@ func (p *PathResolver) FilmProfilesPath(titleSlug string) string {
 // fichier.
 // Ex: data/titles/halo_infinite/reference/map_fond_reglages.json
 func (p *PathResolver) MapFondReglagesPath(titleSlug string) string {
-	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "map_fond_reglages.json")
+	return filepath.Join(p.referenceDir(titleSlug), "map_fond_reglages.json")
 }
 
 // MapObjectivesPath retourne le chemin du catalogue des objets d'objectif par carte
@@ -927,7 +927,7 @@ func (p *PathResolver) MapFondReglagesPath(titleSlug string) string {
 // 100 % hors ligne à l'exécution.
 // Ex: data/titles/halo_infinite/reference/map_objectives.json
 func (p *PathResolver) MapObjectivesPath(titleSlug string) string {
-	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "map_objectives.json")
+	return filepath.Join(p.referenceDir(titleSlug), "map_objectives.json")
 }
 
 // MapPlayedPositionsPath retourne le chemin du catalogue des POSITIONS REELLEMENT JOUEES par
@@ -940,7 +940,7 @@ func (p *PathResolver) MapObjectivesPath(titleSlug string) string {
 // deduire de la geometrie.
 // Ex: data/titles/halo_infinite/reference/map_positions_jouees.json
 func (p *PathResolver) MapPlayedPositionsPath(titleSlug string) string {
-	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "map_positions_jouees.json")
+	return filepath.Join(p.referenceDir(titleSlug), "map_positions_jouees.json")
 }
 
 // MapWeaponPadsPath retourne le chemin du catalogue des EMPLACEMENTS DE SOCLE par carte
@@ -952,7 +952,7 @@ func (p *PathResolver) MapPlayedPositionsPath(titleSlug string) string {
 // publie donc que les emplacements qu'un socle du MATCH confirme (replay/map_weapon_pads.go).
 // Ex: data/titles/halo_infinite/reference/map_weapon_pads.json
 func (p *PathResolver) MapWeaponPadsPath(titleSlug string) string {
-	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "map_weapon_pads.json")
+	return filepath.Join(p.referenceDir(titleSlug), "map_weapon_pads.json")
 }
 
 // MapWeaponPadsOverlayPath retourne le chemin de l'OVERLAY NON VERSIONNÉ du catalogue des
@@ -975,7 +975,7 @@ func (p *PathResolver) MapWeaponPadsPath(titleSlug string) string {
 // pas seulement écrite.
 // Ex: data/titles/halo_infinite/reference/generated/map_weapon_pads.json
 func (p *PathResolver) MapWeaponPadsOverlayPath(titleSlug string) string {
-	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "generated", "map_weapon_pads.json")
+	return filepath.Join(p.generatedReferenceDir(titleSlug), "map_weapon_pads.json")
 }
 
 // MapCalloutsPath retourne le chemin du catalogue des CALLOUTS (zones nommées
@@ -985,7 +985,7 @@ func (p *PathResolver) MapWeaponPadsOverlayPath(titleSlug string) string {
 // La clé d'entrée est le nom de MODULE, celui de map_quant_bounds.json.
 // Ex: data/titles/halo_infinite/reference/map_callouts.json
 func (p *PathResolver) MapCalloutsPath(titleSlug string) string {
-	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "map_callouts.json")
+	return filepath.Join(p.referenceDir(titleSlug), "map_callouts.json")
 }
 
 // MapCalloutsOverlayPath retourne le chemin du catalogue GÉNÉRÉ des zones nommées : les cartes
@@ -1000,7 +1000,7 @@ func (p *PathResolver) MapCalloutsPath(titleSlug string) string {
 // et le versionné prime.
 // Ex: data/titles/halo_infinite/reference/generated/map_callouts.json
 func (p *PathResolver) MapCalloutsOverlayPath(titleSlug string) string {
-	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "generated", "map_callouts.json")
+	return filepath.Join(p.generatedReferenceDir(titleSlug), "map_callouts.json")
 }
 
 // MapCalloutsLexiquePath retourne le chemin du LEXIQUE des noms de lieu (string_id -> libellé
@@ -1009,7 +1009,7 @@ func (p *PathResolver) MapCalloutsOverlayPath(titleSlug string) string {
 // rattrape, sans le jeu.
 // Ex: data/titles/halo_infinite/reference/callouts_lexique.csv
 func (p *PathResolver) MapCalloutsLexiquePath(titleSlug string) string {
-	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "callouts_lexique.csv")
+	return filepath.Join(p.referenceDir(titleSlug), "callouts_lexique.csv")
 }
 
 // MapGeometryDir retourne le répertoire des PROPS d'UNE carte (géométrie Forge : socles,
@@ -1037,7 +1037,7 @@ func (p *PathResolver) MapCalloutsLexiquePath(titleSlug string) string {
 //
 // Ex: data/titles/halo_infinite/reference/map_geometry/ridgeline/
 func (p *PathResolver) MapGeometryDir(titleSlug, module string) string {
-	base := filepath.Join(p.TitleDataDir(titleSlug), "reference", "map_geometry")
+	base := filepath.Join(p.referenceDir(titleSlug), "map_geometry")
 	if module == "" {
 		return base
 	}
@@ -1053,7 +1053,7 @@ func (p *PathResolver) MapGeometryDir(titleSlug, module string) string {
 // Donnée de RÉFÉRENCE versionnée (cmd/mapstruct-build, exige les fichiers du jeu).
 // Ex: data/titles/halo_infinite/reference/map_structure/ridgeline.json
 func (p *PathResolver) MapStructurePath(titleSlug, module string) string {
-	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "map_structure", module+".json")
+	return filepath.Join(p.referenceDir(titleSlug), "map_structure", module+".json")
 }
 
 // MapBackgroundDir retourne le répertoire des FONDS DE CARTE : l'image vue du dessus de
@@ -1062,7 +1062,7 @@ func (p *PathResolver) MapStructurePath(titleSlug, module string) string {
 // dessine aucune forme. Donnée de RÉFÉRENCE versionnée (cmd/mapfond-build, exige les
 // fichiers du jeu). Ex: data/titles/halo_infinite/reference/map_backgrounds/
 func (p *PathResolver) MapBackgroundDir(titleSlug string) string {
-	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "map_backgrounds")
+	return filepath.Join(p.referenceDir(titleSlug), "map_backgrounds")
 }
 
 // MapBackgroundPath retourne le chemin de l'IMAGE du fond de carte d'un module (PNG RGBA,

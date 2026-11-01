@@ -57,11 +57,11 @@ func main() {
 	}
 	cpPath := strings.TrimSpace(*checkpoint)
 	if cpPath == "" {
-		cpPath = filepath.Join(cfg.RepoRoot, "data", "world_backfill_checkpoint.json")
+		cpPath = filepath.Join(cfg.Roots().Data, "world_backfill_checkpoint.json")
 	}
 	dbPath := strings.TrimSpace(*sharedDB)
 	if dbPath == "" {
-		dbPath = titlepkg.NewPathResolver(cfg.RepoRoot).SharedDBPath(titlepkg.DefaultSlug)
+		dbPath = cfg.PathResolver().SharedDBPath(titlepkg.DefaultSlug)
 	}
 	if err := run(cpPath, dbPath, *source, *dryRun); err != nil {
 		fatal("%v", err)

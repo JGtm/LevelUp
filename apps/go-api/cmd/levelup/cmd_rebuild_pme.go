@@ -39,7 +39,7 @@ func runRebuildPME(cfg *config.AppConfig, args []string) error {
 	}
 
 	ctx := context.Background()
-	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
+	resolver := cfg.PathResolver()
 
 	if *allPlayers {
 		players, err := cfg.LoadPlayers()

@@ -17,7 +17,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"path/filepath"
 
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
@@ -38,9 +37,9 @@ func runResetBitmasks(cfg *config.AppConfig, args []string) error {
 		return fmt.Errorf("--apply et --dry-run sont mutuellement exclusifs")
 	}
 
-	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
+	resolver := cfg.PathResolver()
 	sharedPath := resolver.SharedDBPath(titlePkg.DefaultSlug)
-	pvePath := filepath.Join(cfg.RepoRoot, "data", "titles", titlePkg.DefaultSlug, "warehouse", "shared_pve.duckdb")
+	pvePath := resolver.SharedPVEDBPath(titlePkg.DefaultSlug)
 
 	mode := "DRY-RUN"
 	if *apply {

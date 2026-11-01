@@ -26,7 +26,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"path/filepath"
 	"strings"
 
 	_ "github.com/duckdb/duckdb-go/v2"
@@ -48,7 +47,7 @@ func main() {
 	// Registre chargé depuis config/titles/ (comme au boot serveur) : nécessaire pour
 	// connaître les media_filename_prefixes des autres titres (--foreign-only).
 	title.SetDefaultRegistry(title.NewRegistryFromConfig(cfg.RepoRoot, slog.Default()))
-	pr := title.NewPathResolver(cfg.RepoRoot)
+	pr := cfg.PathResolver()
 	path := pr.SharedSocialDBPath(*titleSlug)
 
 	if _, err := os.Stat(path); err != nil {
@@ -96,7 +95,7 @@ func main() {
 
 	fmt.Println("Index media vidé + CHECKPOINT OK.")
 	fmt.Printf("Au prochain post-sync, IndexMedia repartira de zéro depuis %s\n",
-		filepath.Join(cfg.RepoRoot, "data", "titles", *titleSlug, "players"))
+		cfg.PathResolver().PlayersRootDir(*titleSlug))
 }
 
 // purgeForeignMedia supprime du shared_social du titre `slug` les media_files dont le

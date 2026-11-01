@@ -23,7 +23,6 @@ import (
 	"os"
 
 	"levelup/go-api/internal/config"
-	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/auth/capturecli"
 	"levelup/go-api/internal/platform/auth/tokencache"
@@ -54,7 +53,7 @@ func main() {
 		fatalf("lecture stdin: %v\n", err)
 	}
 
-	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
+	pr := cfg.PathResolver()
 	storeDir := pr.WatcherTokensDir()
 	store := auth.NewMultiUserTokenStore(storeDir)
 	if err := capturecli.PersistRefreshToken(store, xuid, canonicalGT, refreshToken, tokencache.InvalidateCachedPlayerTokens); err != nil {

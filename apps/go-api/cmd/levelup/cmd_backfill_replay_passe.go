@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/replaybuild"
+	"levelup/go-api/internal/replaychild"
 
 	"github.com/JGtm/LevelUp/libs/film/filmproc"
 )
@@ -67,7 +68,7 @@ func executerPasseReplay(
 	// protocole de codes de sortie, meme interception du marqueur de pic memoire, meme relais
 	// de journal — et EN PLUS la priorite CPU basse, qui manquait a la copie locale. Cette
 	// passe tourne sur la machine de travail de l'utilisateur pendant qu'il s'en sert.
-	runner, err := filmproc.NewRunner(repoRoot, os.Stdout)
+	runner, err := replaychild.NewRunner(repoRoot, os.Stdout)
 	if err != nil {
 		return err
 	}

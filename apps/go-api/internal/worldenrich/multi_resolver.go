@@ -8,7 +8,6 @@ import (
 	"sync"
 
 	"levelup/go-api/internal/config"
-	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/auth"
 )
 
@@ -64,7 +63,7 @@ func (c chainResolver) ResolveXUID(ctx context.Context, gamertag string) (string
 // token résolu sont sautés (warn) ; erreur seulement si AUCUN compte n'est résolu.
 func BuildMultiResolver(cfg *config.AppConfig, tokenGamertags []string) ([]XUIDResolver, []string, error) {
 	provider := auth.NewSISUProvider()
-	store := auth.NewMultiUserTokenStore(title.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
+	store := auth.NewMultiUserTokenStore(cfg.PathResolver().WatcherTokensDir())
 	var resolvers []XUIDResolver
 	var ok []string
 	for _, gt := range tokenGamertags {

@@ -273,7 +273,7 @@ func archiverUnFilm(ctx context.Context, client telechargeurDeFilm, cacheRoot, m
 // LECTURE SEULE sur la base partagee — `OpenReadForQuery`, jamais `OpenReadOnly` force : la base
 // peut etre tenue en ecriture par le serveur, et cette commande doit pouvoir tourner quand meme.
 func filmsManquants(ctx context.Context, cfg *config.AppConfig, o archiveOptions, cacheRoot string) ([]string, error) {
-	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
+	pr := cfg.PathResolver()
 	db, release, err := duckdb.OpenReadForQuery(pr.SharedDBPath(o.titleSlug))
 	if err != nil {
 		return nil, fmt.Errorf("ouverture en lecture de la base partagee: %w", err)

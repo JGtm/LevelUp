@@ -50,7 +50,7 @@ func (r *ServiceRegistry) ResourcesReport(ctx context.Context) (domain.AdminReso
 
 // resourceDisk mesure l'espace libre du volume data (seuils nommés A5.3).
 func (r *ServiceRegistry) resourceDisk() domain.ResourceDisk {
-	pr := titlePkg.NewPathResolver(r.cfg.RepoRoot)
+	pr := r.cfg.PathResolver()
 	dataDir := pr.TitleDataDir(titlePkg.DefaultSlug) // volume data (data/titles/...)
 	out := domain.ResourceDisk{Path: dataDir}
 	free, total, err := diskfree.Free(dataDir)
@@ -70,7 +70,7 @@ func (r *ServiceRegistry) resourceDisk() domain.ResourceDisk {
 // volume non monté) → statut "unavailable" + log ERROR, plutôt qu'une table de
 // tailles nulles silencieuse (os.Stat avalé) qui a l'air d'un rendu cassé.
 func (r *ServiceRegistry) fillResourceDatabases(ctx context.Context, resp *domain.AdminResourcesResponse) {
-	pr := titlePkg.NewPathResolver(r.cfg.RepoRoot)
+	pr := r.cfg.PathResolver()
 	dataRoot := pr.TitlesRootDir()
 	if info, statErr := os.Stat(dataRoot); statErr != nil || !info.IsDir() {
 		resp.DBInventoryStatus = domain.DBInventoryUnavailable

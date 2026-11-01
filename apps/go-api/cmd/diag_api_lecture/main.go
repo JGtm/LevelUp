@@ -120,7 +120,7 @@ func ouvrirSession(ctx context.Context, xuid string, out io.Writer) (*session, e
 	if err != nil {
 		return nil, err
 	}
-	store := auth.NewMultiUserTokenStore(titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
+	store := auth.NewMultiUserTokenStore(cfg.PathResolver().WatcherTokensDir())
 	exch, err := auth.RefreshHaloTokensViaStoreFirst(ctx, store, auth.NewSISUProvider(), joueur.XUID, joueur.Gamertag)
 	if err != nil || exch == nil || exch.Tokens == nil {
 		return nil, fmt.Errorf("auth %s (xuid %s): %v", joueur.Gamertag, joueur.XUID, err)

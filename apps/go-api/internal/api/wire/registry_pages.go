@@ -67,7 +67,7 @@ func (r *ServiceRegistry) matchViewSharedReader(pdb *duckdb.PlayerDB) duckdb.Sha
 	if v, ok := r.snapReaders.Load(slug); ok {
 		return v.(duckdb.SharedReader)
 	}
-	paths := title.NewPathResolver(r.cfg.RepoRoot)
+	paths := r.cfg.PathResolver()
 	sr := duckdb.SharedReader(snapshot.NewSnapshotPreferredSharedReader(paths, slug, pdb.SharedReadDB()))
 	actual, _ := r.snapReaders.LoadOrStore(slug, sr)
 	return actual.(duckdb.SharedReader)

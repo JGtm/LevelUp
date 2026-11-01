@@ -159,7 +159,7 @@ func runFormulaSims(ctx context.Context, cfg *config.AppConfig, t backfillTarget
 	if err != nil {
 		return err
 	}
-	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
+	resolver := cfg.PathResolver()
 	for _, player := range players {
 		if _, statErr := os.Stat(resolver.PlayerDBPath(t.titleSlug, player.Gamertag)); os.IsNotExist(statErr) {
 			fmt.Printf("sim-formula SKIP: title=%s gamertag=%s reason=no_player_db\n", t.titleSlug, player.Gamertag)

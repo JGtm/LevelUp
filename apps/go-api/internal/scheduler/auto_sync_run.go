@@ -15,7 +15,6 @@ import (
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
-	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_5/livesync"
 	"levelup/go-api/internal/observability/logging"
 )
@@ -444,7 +443,7 @@ func (s *AutoSyncScheduler) checkSyncPreconditions(ctx context.Context, p domain
 	if livesync.HandlesTitle(slug) {
 		return "", true
 	}
-	dbPath := titlePkg.NewPathResolver(s.cfg.RepoRoot).PlayerDBPath(slug, p.Gamertag)
+	dbPath := s.cfg.PathResolver().PlayerDBPath(slug, p.Gamertag)
 	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
 		slog.InfoContext(ctx, "auto_sync: DB joueur absente, joueur ignoré",
 			"gamertag", p.Gamertag, "title_slug", slug, "db_path", dbPath,

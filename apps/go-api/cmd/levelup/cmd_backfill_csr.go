@@ -63,7 +63,7 @@ func runBackfillAllCSR(ctx context.Context, cfg *config.AppConfig, force bool) e
 	if len(players) == 0 {
 		return fmt.Errorf("aucun joueur configure")
 	}
-	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
+	resolver := cfg.PathResolver()
 	// Un seul pool pour toute la passe : le CSR est un endpoint public, servi par
 	// n'importe quel token du parc (D1, plan 2026-09-16). Un joueur sans token propre
 	// n'est plus saute.
@@ -140,7 +140,7 @@ func runBackfillAllSharedCSR(ctx context.Context, cfg *config.AppConfig, force, 
 	if len(players) == 0 {
 		return fmt.Errorf("aucun joueur configure")
 	}
-	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
+	resolver := cfg.PathResolver()
 	// Un seul pool pour toute la passe : le CSR est un endpoint public, servi par
 	// n importe quel token du parc (D1, plan 2026-09-16). Un joueur sans token propre
 	// n est plus saute. En --dry-run : AUCUN pool (aucun appel API, aucune rotation).
@@ -197,7 +197,7 @@ func runBackfillAllSharedCSR(ctx context.Context, cfg *config.AppConfig, force, 
 }
 
 func runBackfillSharedCSRForPlayer(ctx context.Context, cfg *config.AppConfig, player *domain.PlayerSummary, force, dryRun bool) error {
-	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
+	resolver := cfg.PathResolver()
 	sharedDBPath := resolver.SharedDBPath(titlePkg.DefaultSlug)
 	if err := applyMigrationsOnDB(sharedDBPath, migration.TargetShared); err != nil {
 		return fmt.Errorf("backfill shared-csr: migrations shared: %w", err)

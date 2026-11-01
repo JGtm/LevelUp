@@ -45,7 +45,6 @@ import (
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
-	titlePkg "levelup/go-api/internal/domain/title"
 	halo5 "levelup/go-api/internal/games/halo_5"
 	"levelup/go-api/internal/games/halo_5/livesync"
 	"levelup/go-api/internal/games/titleseams"
@@ -103,7 +102,7 @@ func main() {
 		fatal("xuid auth introuvable pour %q dans db_profiles (LEVELUP_H5_AUTH_AS)", authGT)
 	}
 
-	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
+	pr := cfg.PathResolver()
 	sharedPath := pr.SharedDBPath(*titleSlug)
 	fmt.Printf("Titre=%s shared=%s auth_as=%s commit=%v resolver=%v\n",
 		*titleSlug, sharedPath, authGT, *commit, *useResolver)

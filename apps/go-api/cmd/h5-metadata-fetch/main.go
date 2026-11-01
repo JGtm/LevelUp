@@ -26,7 +26,6 @@ import (
 	_ "github.com/duckdb/duckdb-go/v2"
 
 	"levelup/go-api/internal/config"
-	titlePkg "levelup/go-api/internal/domain/title"
 	halo5 "levelup/go-api/internal/games/halo_5"
 	halo5migrations "levelup/go-api/internal/games/halo_5/migrations"
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
@@ -62,7 +61,7 @@ func main() {
 	if err != nil {
 		fatal("config.Load: %v", err)
 	}
-	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
+	pr := cfg.PathResolver()
 	metaPath := pr.MetadataDBPath(halo5.TitleSlug)
 
 	// Provisionne le schéma metadata h5 (set isolé : medal_definitions, maps_catalog,
