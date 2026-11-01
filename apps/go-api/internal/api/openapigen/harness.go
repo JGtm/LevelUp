@@ -47,6 +47,9 @@ type Options struct {
 	// « protocole ouvert » pour prouver que l'exemption CSRF ne court-circuite PAS
 	// l'authentification par jeton.
 	BuildWorkerToken string
+	// DesktopSecret : secret d'arrêt propre (POST /api/v1/internal/shutdown). VIDE PAR DÉFAUT : la
+	// route n'est pas montée et le contrat est inchangé ; renseigné par le ratchet des routes nues.
+	DesktopSecret string
 }
 
 // stubBootstrapRepo implémente port.BootstrapRepository sans DuckDB (mode démo).
@@ -101,6 +104,7 @@ func BuildDemoRouter(ctx context.Context, opts Options) (http.Handler, *huma.Ope
 		Lang:             "fr",
 		PrestigeEnabled:  opts.Prestige,
 		BuildWorkerToken: opts.BuildWorkerToken,
+		DesktopConfig:    config.DesktopConfig{DesktopSecret: opts.DesktopSecret},
 	}
 
 	repo := stubBootstrapRepo{}

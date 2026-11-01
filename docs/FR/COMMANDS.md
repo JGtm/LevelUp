@@ -1496,6 +1496,20 @@ particularité d'environnement.
 powershell -File scripts/gate-push.ps1
 ```
 
+### Voie CI Windows avec CGO (`go-test-windows-cgo`)
+
+Le job CI `go-test-windows-cgo` (`.github/workflows/ci.yml`) tourne sur `windows-latest` avec `CGO_ENABLED=1` (le runner
+fournit gcc, pas d'action MinGW). Il compile `./cmd/server` (DuckDB lié), puis joue `./cmd/server/...`,
+`./internal/platform/diskfree/...` et `./cmd/levelup/...` depuis `apps/go-api`, `./filmproc/` et `./internal/filelock/`
+depuis `libs/film`, et `./himodule/` depuis `libs/gamefiles` : les paquets qui portent les fichiers `*_windows.go` /
+`*_win.go` (arrêt propre, verrous de fichiers, espace disque libre, priorité de processus, projection mémoire des
+modules). Aucun test sous les tags `gamefiles` ou `research` n'y est joué : le jeu n'est pas installé sur le runner.
+Il se déclenche sur les pushs `release/**`, les pull requests vers `main` (les seules que ce workflow reçoit) et, le temps du chantier Desktop, les pushs des branches `feat/desktop-*` (les runners Windows coûtent
+cher : les branches de travail et les pushs sur `main` le sautent), avec un budget de 15 minutes. C'est le gate
+d'autorité des comportements propres à Windows ; les jobs Linux ne compilent jamais ces fichiers. Pour le rejouer en
+local (PowerShell, depuis `apps/go-api`, gcc dans le `PATH`) : `go build ./cmd/server`, puis les trois appels
+`go test -count=1` ci-dessus.
+
 ### Hygiène du disque (`disk-hygiene.ps1`)
 
 Go ne retire de son cache que les entrées inutilisées depuis 5 jours, et seulement quand une

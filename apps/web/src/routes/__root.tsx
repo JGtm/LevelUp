@@ -13,6 +13,7 @@ import { useEffect, useRef, useState } from 'react'
 import {
   createBootstrapRetryPolicy,
   isServerStartingError,
+  serverStartFailure,
   serverStartingStepKey,
 } from '@/app/serverStartup'
 import { api } from '@/lib/api/client'
@@ -49,7 +50,7 @@ export function RootLayout() {
   // Politique de rejeu à état (compteur cumulé de TanStack) : une par instance, stable.
   const [bootstrapRetry] = useState(() => createBootstrapRetryPolicy())
 
-  const { data, isLoading, isError, failureReason } = useQuery({
+  const { data, isLoading, isError, error, failureReason } = useQuery({
     queryKey: queryKeys.bootstrap,
     queryFn: () => api.get<BootstrapResponse>('/bootstrap'),
     staleTime: 2 * 60 * 1000,
@@ -232,6 +233,24 @@ export function RootLayout() {
   }
 
   if (isError) {
+    // Démarrage échoué (503 server_start_failed) : l'état annoncé, pas « API injoignable ».
+    const failure = serverStartFailure(error)
+    if (failure) {
+      return (
+        <div className="flex h-screen items-center justify-center">
+          <div className="text-center space-y-2 max-w-md px-4">
+            <p className="font-semibold text-destructive">{t('common.root.server_failed.title')}</p>
+            {failure.stateKey && <p className="text-sm text-muted-foreground">{t(failure.stateKey)}</p>}
+            <button
+              className="text-sm underline text-primary"
+              onClick={() => window.location.reload()}
+            >
+              {t('common.root.api_retry')}
+            </button>
+          </div>
+        </div>
+      )
+    }
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-center space-y-2">

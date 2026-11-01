@@ -5,12 +5,15 @@ root = "."
 tmp_dir = "tmp"
 
 [build]
-  # Commande de build — CGO_ENABLED est hérité de l'environnement (set dans le Makefile)
-  cmd = "go build -o ./tmp/server.exe ./cmd/server/"
-  # Binaire à exécuter après build (remplace l'ancien build.bin déprécié)
-  entrypoint = "./tmp/server.exe"
-  # Arguments passés au binaire (vide ici, config via env vars)
-  args_bin = []
+  # Commande de build — CGO_ENABLED est hérité de l'environnement (set dans le Makefile).
+  # Construit le serveur ET son lanceur de dev (cmd/devlaunch, cf. le bloc d'arrêt plus bas) :
+  # avec -o <dossier>/, go écrit tmp/server.exe et tmp/devlaunch.exe (air exécute cette commande
+  # par PowerShell 5.1 sous Windows, où && n'existe pas).
+  cmd = "go build -o ./tmp/ ./cmd/server/ ./cmd/devlaunch/"
+  # Air lance le LANCEUR, jamais le serveur directement ; le serveur est son premier argument.
+  entrypoint = "./tmp/devlaunch.exe"
+  # Arguments passés au lanceur : le chemin du serveur (le lanceur y ajoute -arret-sur-stdin).
+  args_bin = ["./tmp/server.exe"]
 
   # Fichiers déclenchant un rebuild
   include_ext = ["go"]
@@ -46,16 +49,22 @@ tmp_dir = "tmp"
 
   # Arrêt du process avant relance.
   #
-  # ATTENTION Windows : air NE supporte PAS send_interrupt sur Windows — il fait un
-  # `TASKKILL /F /T` (force-kill de l'arbre de process, cf. air runner/util_windows.go).
-  # Le shutdown gracieux Go (signal handler → duckdb.CloseAll) n'est donc JAMAIS appelé
-  # ici, et kill_delay est ignoré. Conséquence : au hot-reload, l'OS met ~1-2 s à libérer
-  # les HANDLEs DuckDB de l'ancien process tué de force, et le nouveau peut les trouver
-  # encore verrouillés. La mitigation est côté ouverture DB (retry borné sur lock) :
-  #   - metadata/shared : cmd/server/main.go (metaOpenAttempts, 12×500 ms)
-  #   - player DB        : internal/platform/duckdb/pool.go (openPlayerRWWithLockRetry)
-  # send_interrupt + kill_delay ci-dessous ne servent donc QUE sur Linux (deploy/CI), où
-  # air envoie bien SIGTERM et attend kill_delay → le shutdown gracieux Go s'exécute.
+  # WINDOWS (poste de dev) : air NE supporte PAS send_interrupt — il fait un
+  # `TASKKILL /F /T` (force-kill de l'arbre de process, cf. air runner/util_windows.go), aucun
+  # gestionnaire d'arrêt Go ne s'exécute, kill_delay est ignoré ; et pre_cmd tourne APRÈS ce
+  # kill (air v1.65.1 : stopBin puis buildRun), il ne peut donc rien y changer. L'arrêt propre
+  # passe par un lanceur : air lance cmd/devlaunch (entrypoint) et non le serveur. Le lanceur
+  # tient le bout écrivain du stdin du serveur, lancé avec -arret-sur-stdin, et le serveur n'est
+  # PAS son descendant (double lancement : le parent du serveur sort aussitôt), donc TASKKILL /T
+  # ne l'atteint pas. Air tue le lanceur -> l'OS ferme le tube -> le serveur lit EOF et exécute sa
+  # séquence d'arrêt complète (phases, CHECKPOINT, fermeture des bases ; journal
+  # « arrêt: terminé » clean=true) -> le prochain lanceur attend (45 s au plus) que le port se
+  # libère avant de lancer le nouveau serveur. C'est le contrat de la coquille desktop.
+  # Le lanceur ne lit que l'environnement pour le port (LEVELUP_API_PORT, défaut 8000).
+  #
+  # LINUX (deploy/CI) : air envoie SIGTERM au lanceur et attend kill_delay ; le lanceur meurt,
+  # le serveur s'arrête par EOF, avec le même résultat. send_interrupt + kill_delay restent pour
+  # ce cas.
   send_interrupt = true
   kill_delay = "5s"
 

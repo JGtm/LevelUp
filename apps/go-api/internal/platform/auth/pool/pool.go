@@ -538,7 +538,7 @@ func (p *poolImpl) OnHTTPError(statusCode int, retryAfter time.Duration) {
 	if dur > maxCooldown {
 		dur = maxCooldown
 	}
-	newUntil := time.Now().Add(dur)
+	newUntil := time.Now().Round(0).Add(dur) // horloge murale, voir tokencache.cacheExpiryFor
 
 	// Déjà en cooldown : n'écraser QUE si le nouveau délai est plus tardif (un
 	// Retry-After plus long ne doit pas être ignoré). Les métriques ne sont

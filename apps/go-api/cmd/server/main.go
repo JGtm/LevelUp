@@ -46,7 +46,6 @@ import (
 	"levelup/go-api/internal/games/halo_5/livesync"
 	"levelup/go-api/internal/games/halo_infinite/haloadapter"
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
-	"levelup/go-api/internal/games/titleseams"
 	"levelup/go-api/internal/games/weapons"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/notifications/external"
@@ -126,8 +125,9 @@ func main() {
 		os.Exit(replaychild.RunChild(context.Background(), os.Args))
 	}
 
-	// --- 0. Health-check mode (Docker HEALTHCHECK) ---
-	if len(os.Args) == 2 && os.Args[1] == "-health-check" {
+	// --- 0. Arguments du serveur (flags.go), puis health-check (Docker HEALTHCHECK) ---
+	flags := parseServerFlagsOrExit()
+	if flags.HealthCheck {
 		hcClient := &http.Client{Timeout: 5 * time.Second}
 		hcDo := func(url string) (*http.Response, error) {
 			req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)
@@ -369,6 +369,12 @@ func main() {
 		IdleTimeout:  60 * time.Second,
 	}
 	bootSrv := startBootServer(srv, gate)
+	// Arrêt demandé hors signal : route POST /api/v1/internal/shutdown (posée avant la
+	// construction du routeur, même patron que TitleReadyNotifier) et fermeture de stdin.
+	cfg.ShutdownRequester = func(reason string) { bootSrv.requestShutdown(reason) }
+	if flags.StopOnStdin {
+		bootSrv.watchStdin(os.Stdin)
+	}
 
 	// --- Outillage média (ffmpeg/ffprobe) — check observable NON-bloquant ---
 	// L'app exécute ffmpeg/ffprobe pour les miniatures WebP, le transcodage HLS
@@ -465,11 +471,26 @@ func main() {
 		}
 	}
 	titleConfigDir := filepath.Join(cfg.RepoRoot, "config", "titles", titleSlug)
-	if err := runMigrations(metaPath, sharedPath, sharedSocialPath, pvePath, titleConfigDir); err != nil {
-		slog.Debug("migrations ignorées (DB verrouillée), démarrage sans migration")
-	} else {
-		slog.Debug("migrations appliquées")
+	// Garde de version, copie de sécurité, migrations (boot_shared_migrations.go). Un échec ne
+	// se dégrade pas en démarrage sans migration : le serveur reste sur la porte de démarrage
+	// avec son état d'échec, puis sort en erreur au signal d'arrêt (boot_failure.go).
+	migrationBackupsDir := pr.MigrationBackupsDir()
+	if cfg.DemoMode {
+		migrationBackupsDir = "" // fixtures régénérables : pas de copie
 	}
+	if state, err := migrateSharedAtBoot(context.Background(), newBootMigrationDeps(
+		titleSlug, migrationBackupsDir, titleConfigDir, sharedMigrationTargets(dbPaths),
+		func() error { return runMigrations(metaPath, sharedPath, sharedSocialPath, pvePath, titleConfigDir) },
+	)); err != nil {
+		code := bootSrv.refuseStart(context.Background(), state, err)
+		if multiHandler != nil {
+			if cerr := multiHandler.Close(); cerr != nil {
+				fmt.Fprintf(os.Stderr, "fermeture logging multi-module: %v\n", cerr)
+			}
+		}
+		os.Exit(code)
+	}
+	slog.Debug("migrations appliquées")
 
 	// --- 3a-bis. Provisionner les DB des titres ADDITIONNELS actifs (MT-16 /
 	// day-one 2e titre). No-op en mono-titre (seul halo_infinite actif, déjà
@@ -561,32 +582,19 @@ func main() {
 		closeShared = sharedDB.Close
 		slog.Info("shared_matches_v2: mode legacy (RO direct, trade-off différent-configuration accepté)")
 	}
-	// Retry sur metadata : hot-reload peut créer une fenêtre où l'ancien processus
-	// n'a pas encore libéré le verrou DuckDB (write-ahead lock). Sur Windows, après un
-	// SIGKILL d'air, l'OS peut mettre plusieurs secondes à libérer les HANDLEs DuckDB
-	// orphelins ; 6×500 ms = 3 s ne suffisait pas dans certains cas observés.
+	// Reprise du verrou metadata (hot-reload, ancien process pas encore parti) : la MÊME reprise
+	// que celle des migrations (retryOnFileLock) ; l'échec définitif reste ERROR + exit.
 	// IMPORTANT : OpenReadWriteShared (et non OpenReadOnly) pour partager la même
 	// instance DuckDB que le pool joueur (pool.go) et le DuckDBIndexStore (assets).
 	// Sinon DuckDB rejette toute deuxième connexion sur le même fichier avec
 	// "Can't open a connection to same database file with a different configuration".
-	const metaOpenAttempts = 12
-	const metaOpenDelay = 500 * time.Millisecond
 	var metaDB *duckdb.DB
-	for attempt := range metaOpenAttempts {
-		metaDB, err = duckdb.OpenReadWriteShared(metaPath)
-		if err == nil {
-			break
-		}
-		if attempt == metaOpenAttempts-1 {
-			slog.Error("ouverture metadata échouée", "attempts", metaOpenAttempts, "err", err)
-			os.Exit(1)
-		}
-		// B6.1 : retry de boot à cause connue (lock transitoire tenu par un
-		// hot-reload Air / un ancien process qui n'a pas encore libéré) → DEBUG +
-		// compteur expvar (DC-B2). L'échec DÉFINITIF reste ERROR+exit ci-dessus.
-		observability.IncCounter("boot_metadata_lock_retry_total")
-		slog.Debug("metadata verrouillée, nouvelle tentative...", "attempt", attempt+1, "max", metaOpenAttempts, "err", err)
-		time.Sleep(metaOpenDelay)
+	if err := retryOnFileLock(context.Background(), "metadata", lockRetryAttempts, lockRetryDelay, func() (openErr error) {
+		metaDB, openErr = duckdb.OpenReadWriteShared(metaPath)
+		return openErr
+	}); err != nil {
+		slog.Error("ouverture metadata échouée", "attempts", lockRetryAttempts, "err", err)
+		os.Exit(1)
 	}
 	slog.Debug("DuckDB ouvert")
 
@@ -1311,6 +1319,7 @@ func main() {
 
 	<-bootSrv.stopRequested()
 	runShutdown(shutdownDeps{
+		reason:           bootSrv.shutdownReason(),
 		srv:              srv,
 		cancelScheduler:  cancelScheduler,
 		watcherDaemon:    watcherDaemon,
@@ -1352,40 +1361,8 @@ func ensureWarehouseDir(pr *title.PathResolver, titleSlug string) error {
 // prestige ConfigDir : chemin vers config/titles/{slug}/ pour le seed du catalogue
 // Prestige (challenge_template + preset_arc). Si vide, le seed est ignoré.
 func runMigrations(metaPath, sharedPath, sharedSocialPath, pvePath, prestigeConfigDir string) error {
-	// Ensure all step init() have been registered (side-effect imports).
-	_ = migration.All()
-
-	// Seed Prestige catalogue via migration backfill (une seule fois, idempotent).
-	if prestigeConfigDir != "" {
-		halomigrations.RegisterPrestigeSeedMigration(prestigeConfigDir)
-	}
-
-	// Seed Milestones catalogue (Phase 4 plan stabilisation 2026-05-22) via
-	// migration backfill multi-titres. Pattern identique à Prestige.
-	// configTitlesRoot = parent du dossier titre (ex: config/titles/) — itère
-	// sur tous les `<slug>/milestones/catalog.toml` présents.
-	// Cf. AUDIT_ASCENSION_PIPELINE_DISCONNECTED_2026-05-21 §4 cause A.
-	if prestigeConfigDir != "" {
-		configTitlesRoot := filepath.Dir(prestigeConfigDir)
-		halomigrations.RegisterMilestonesSeedMigration(configTitlesRoot)
-	}
-
-	// Seams title-owned (provider d'étapes, racine des jalons h5, traductions de
-	// rangs, classifiers LUSR + famille objectif) : câblage UNIQUE, partagé avec
-	// toutes les CLI depuis le 2026-09-16 (cf. internal/games/titleseams — les
-	// commentaires MT-07 / MT-15 / D-A y ont déménagé). Sans ce câblage, un sync
-	// hors serveur panique à l'étape LUSR du post-sync.
-	titleseams.RegisterAll(prestigeConfigDir)
-	// Lot B (audit robustesse) : fail-fast au boot si le classifier LUSR par
-	// défaut n'a pas été posé, au lieu du panic tardif au 1er match live.
-	if err := syncpkg.ValidateLUSRChainClassifierWired(); err != nil {
-		return fmt.Errorf("boot: %w", err)
-	}
-	// Idem pour la famille objectif : sans elle, tout le classé serait noté en
-	// ranked_slayer (le fallback existe pour les binaires hors chemin de scoring,
-	// pas pour le serveur).
-	if err := syncpkg.ValidateObjectiveFamilyClassifierWired(); err != nil {
-		return fmt.Errorf("boot: %w", err)
+	if err := prepareMigrationRegistry(prestigeConfigDir); err != nil {
+		return err
 	}
 
 	// 1. metadata.duckdb

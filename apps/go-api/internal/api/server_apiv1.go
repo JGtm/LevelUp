@@ -519,6 +519,13 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	r.Route(apiV1InternalSegment, func(r chi.Router) {
 		wire.MountBuildWorkerRoutes(r, reg,
 			humacore.WithSharedDoc(d.humaSharedConfig, apiV1InternalBasePath))
+		// Arrêt propre demandé par le lanceur du serveur (desktop, air) : montée
+		// seulement si LEVELUP_DESKTOP_SECRET est posé, boucle locale + secret en
+		// en-tête. Hors du contrat OpenAPI (route interne). Cf. handlers/internal_shutdown.go.
+		if cfg.DesktopSecret != "" {
+			r.With(middleware.NoStore, middleware.LoopbackOnly).Post("/shutdown",
+				handlers.NewInternalShutdownHandler(cfg.DesktopSecret, cfg.ShutdownRequester).Handle)
+		}
 	})
 
 	// Diagnostic — loopback (127.0.0.1) uniquement, ET admin (S5, lot S :

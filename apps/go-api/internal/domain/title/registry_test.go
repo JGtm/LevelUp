@@ -212,6 +212,18 @@ func TestPathResolver_WatcherTokensDir_Global(t *testing.T) {
 	}
 }
 
+func TestPathResolver_MigrationBackupsDir(t *testing.T) {
+	pr := NewPathResolver("/repo", NewRegistry())
+	want := filepath.Join("/repo", "data", "backups", "migrations")
+	if got := pr.MigrationBackupsDir(); got != want {
+		t.Errorf("MigrationBackupsDir: got %q, want %q", got, want)
+	}
+	// Distinct du dossier de sauvegarde par joueur.
+	if pr.MigrationBackupsDir() == pr.BackupDir("halo_infinite", "TestGT") {
+		t.Error("MigrationBackupsDir ne doit pas coïncider avec BackupDir")
+	}
+}
+
 func TestPathResolver_DemoFixturesDir(t *testing.T) {
 	r := NewRegistry()
 	pr := NewPathResolver("/repo", r)

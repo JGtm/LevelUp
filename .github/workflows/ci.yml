@@ -650,6 +650,60 @@ jobs:
         env:
           CGO_ENABLED: "1"
 
+  # Voie Windows avec CGO : le seul endroit où les fichiers `*_windows.go` /
+  # `*_win.go` (arrêt propre, verrous de fichiers, espace disque, priorité de processus) sont
+  # compilés ET joués avec DuckDB lié (CGO). `go-build` joue déjà `windows-latest`, mais sur la
+  # suite rapide ; ce job est le gate d'autorité des comportements propres à Windows.
+  #
+  # Pas de `needs: changes` : la voie est bornée (budget des runners Windows) à `release/**`, aux pull
+  # requests (le workflow ne les reçoit que vers `main`, cf. `on.pull_request.branches`) et, le temps du
+  # chantier Desktop, aux pushs des branches `feat/desktop-*` : une PR vers une branche de release ne
+  # déclenche aucun run, le verdict d'une branche de travail vient de son push. `release/**` et les PR
+  # sont exactement les contextes où le filtre de chemins est contourné (archlint/ci_paths_filter_test.go),
+  # il ne pourrait donc jamais sauter la voie ; `main` n'y figure pas (la PR vers `main` a déjà rendu son
+  # verdict). Condition `feat/desktop-*` posée le 2026-11-01 ; retrait prévu à la clôture de P1 du plan
+  # Desktop (critère : la voie devient un job ordinaire ou le chantier est fusionné).
+  #
+  # gcc : fourni par l'image `windows-latest` (MinGW) ; aucune action mingw. Aucun test sous tag
+  # `gamefiles` / `research` n'est joué (le jeu n'est pas installé sur le runner).
+  go-test-windows-cgo:
+    name: Go Windows + CGO (build, arrêt propre, verrous)
+    if: ${{ github.event_name == 'pull_request' || startsWith(github.ref, 'refs/heads/release/') || startsWith(github.ref, 'refs/heads/feat/desktop-') }}
+    runs-on: windows-latest
+    timeout-minutes: 15
+    env:
+      CGO_ENABLED: "1"
+    defaults:
+      run:
+        shell: bash
+        working-directory: apps/go-api
+    steps:
+      - uses: actions/checkout@v6.1.0
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: apps/go-api/go.mod
+          cache-dependency-path: |
+            apps/go-api/go.sum
+            libs/film/go.sum
+            libs/gamefiles/go.sum
+            libs/himap/go.sum
+
+      - name: Build du serveur (CGO, DuckDB lié)
+        run: go build ./cmd/server
+
+      - name: Tests apps/go-api (serveur, lanceur de dev, espace disque, CLI)
+        run: go test -count=1 ./cmd/server/... ./cmd/devlaunch/... ./internal/platform/diskfree/... ./cmd/levelup/...
+
+      - name: Tests libs/film (processus fils, verrou de fichier)
+        working-directory: libs/film
+        run: go test -count=1 ./filmproc/ ./internal/filelock/
+
+      - name: Tests libs/gamefiles (projection mémoire des modules)
+        working-directory: libs/gamefiles
+        run: go test -count=1 ./himodule/
+
   go-lint:
     name: Go Lint (golangci-lint)
     needs: changes

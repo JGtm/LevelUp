@@ -245,12 +245,18 @@ func RunForDB(db *sql.DB, target TargetDB) error {
 // totale, zéro step Halo) ; sinon retombe sur le chemin legacy (registre global +
 // titleStepsProvider, ordonné par canonicalOrder) — byte-identique au défaut Halo.
 func RunForTitleDB(db *sql.DB, slug string, target TargetDB) error {
+	steps, order := stepsAndOrderFor(slug, target)
+	return runSteps(db, slug, target, steps, order)
+}
+
+// stepsAndOrderFor résout le jeu d'étapes et l'ordre canonique d'un titre sur une target :
+// ceux de son TitleMigrationSet s'il possède la target, sinon le registre global Halo +
+// titleStepsProvider (héritage uniforme). Source unique du runner et de la garde de version.
+func stepsAndOrderFor(slug string, target TargetDB) ([]Migration, []string) {
 	if set, ok := migrationSetFor(slug); ok && set.ownsTarget(target) {
-		return runSteps(db, slug, target, set.Steps(target), set.CanonicalOrder)
+		return set.Steps(target), set.CanonicalOrder
 	}
-	// Pas de set, OU le set n'isole PAS ce target (OwnsTarget==false) → fallback
-	// complet (registre global Halo + titleStepsProvider), héritage uniforme.
-	return runSteps(db, slug, target, stepsForTarget(target), canonicalOrder)
+	return stepsForTarget(target), canonicalOrder
 }
 
 // RunSteps applique un ensemble EXPLICITE de migrations pour une target, tracé

@@ -256,7 +256,7 @@ func (r *resolverImpl) recordPermanentFailure(ctx context.Context, src Credentia
 	if class == auth.AuthErrorRevoked {
 		ttl = negativeTTLRevoked
 	}
-	until := time.Now().Add(ttl)
+	until := time.Now().Round(0).Add(ttl) // horloge murale, voir tokencache.cacheExpiryFor
 	r.mu.Lock()
 	r.negative[src.Gamertag] = &negativeEntry{
 		class:        class,
@@ -398,7 +398,7 @@ func (r *resolverImpl) exchangeAndCache(ctx context.Context, src CredentialSourc
 		Gamertag:  src.Gamertag,
 		XUID:      src.XUID,
 		Tokens:    result.Tokens,
-		ExpiresAt: time.Now().Add(r.cacheTTL),
+		ExpiresAt: time.Now().Round(0).Add(r.cacheTTL), // horloge murale, voir tokencache.cacheExpiryFor
 		Source:    src.Source,
 	}
 

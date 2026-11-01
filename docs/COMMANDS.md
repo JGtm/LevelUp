@@ -1435,6 +1435,19 @@ this is a local-only fallback for that specific environment quirk.
 powershell -File scripts/gate-push.ps1
 ```
 
+### Windows CGO CI lane (`go-test-windows-cgo`)
+
+The CI job `go-test-windows-cgo` (`.github/workflows/ci.yml`) runs on `windows-latest` with `CGO_ENABLED=1` (the
+runner provides gcc, no MinGW action). It builds `./cmd/server` (DuckDB linked), then plays `./cmd/server/...`,
+`./internal/platform/diskfree/...` and `./cmd/levelup/...` from `apps/go-api`, `./filmproc/` and
+`./internal/filelock/` from `libs/film`, and `./himodule/` from `libs/gamefiles`: the packages that carry the
+`*_windows.go` / `*_win.go` files (clean shutdown, file locks, free disk space, process priority, memory-mapped
+module projection). No test behind the `gamefiles` or `research` tags is played: the game is not installed on the
+runner. It triggers on `release/**` pushes, on pull requests to `main` (the only pull requests this workflow receives) and, while the Desktop project lasts, on pushes of `feat/desktop-*` branches (Windows runners are expensive:
+working branches and `main` pushes skip it), with a 15-minute budget. It is the authoritative gate for
+Windows-only behaviour; the Linux jobs never compile these files. To replay it locally (PowerShell, from
+`apps/go-api`, gcc on the `PATH`): `go build ./cmd/server`, then the three `go test -count=1` calls above.
+
 ### Disk hygiene (`disk-hygiene.ps1`)
 
 Go only trims entries unused for 5 days, and only when a command reuses that same cache: a

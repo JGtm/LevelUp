@@ -8,7 +8,14 @@
 // (bootServer.openRouter) à la toute fin de l'initialisation : il ne reçoit aucune requête
 // avant d'être entièrement câblé (registre, crons et tâches de fond compris).
 //
-// Arrêt : le premier signal (Ctrl+C, SIGTERM) pendant l'initialisation est mémorisé — main
+// Échec : si l'initialisation ne peut pas aboutir (migration en échec, base tenue par un autre
+// processus, schéma plus récent que le binaire), main appelle bootGate.fail : la porte reste
+// debout et répond 503 {"code":"server_start_failed","retryable":false,"details":{"step",
+// "state"}} — la page s'arrête d'interroger et affiche l'état — jusqu'au signal d'arrêt, puis
+// le processus sort avec un code non nul (boot_failure.go).
+//
+// Arrêt : la première demande d'arrêt (signal Ctrl+C/SIGTERM, fermeture de stdin, route HTTP
+// d'arrêt : bootServer.requestShutdown) pendant l'initialisation est mémorisée — main
 // finit l'initialisation puis enchaîne l'arrêt propre habituel (bases fermées) sans brancher
 // le routeur ; un second signal pendant l'initialisation force la sortie immédiate.
 package main
@@ -24,6 +31,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -48,6 +56,24 @@ const (
 	bootStepServices bootStep = "services"
 )
 
+// bootFailureState : état d'échec du démarrage. Codes stables, en anglais, exposés tels quels
+// aux clients (la page en tire son libellé).
+type bootFailureState string
+
+const (
+	// bootFailureLocked : une base est tenue en écriture par un autre processus et ne s'est
+	// pas libérée dans la reprise bornée (autre instance, sauvegarde, antivirus).
+	bootFailureLocked bootFailureState = "locked"
+	// bootFailureMigrationFailed : une étape de migration, la copie de sécurité ou la
+	// préparation des migrations a échoué ; la cause est dans le journal des migrations.
+	bootFailureMigrationFailed bootFailureState = "migration_failed"
+	// bootFailureSchemaNewer : une base porte un schéma plus récent que ce binaire.
+	bootFailureSchemaNewer bootFailureState = "schema_newer"
+)
+
+// serverStartFailedCode : code d'erreur de la réponse 503 servie après un échec de démarrage.
+const serverStartFailedCode = "server_start_failed"
+
 // serverStartingCode : code d'erreur de la réponse servie pendant l'initialisation.
 const serverStartingCode = "server_starting"
 
@@ -70,6 +96,8 @@ type startingBody struct {
 
 type startingDetails struct {
 	Step bootStep `json:"step"`
+	// State : état d'échec (bootFailureState), absent tant que le démarrage progresse.
+	State bootFailureState `json:"state,omitempty"`
 }
 
 // routerRef enveloppe le routeur pour l'échange atomique (atomic.Pointer exige un type).
@@ -81,6 +109,7 @@ type routerRef struct{ h http.Handler }
 type bootGate struct {
 	router  atomic.Pointer[routerRef]
 	step    atomic.Pointer[bootStep]
+	failure atomic.Pointer[bootFailureState]
 	booting http.Handler
 
 	// Chronologie des étapes, lue et écrite par la seule goroutine d'initialisation (main).
@@ -141,22 +170,36 @@ func (g *bootGate) open(ctx context.Context, router http.Handler) {
 		"steps", strings.Join(g.durations, " "))
 }
 
-// writeStarting écrit la réponse 503 server_starting (étape en cours dans details.step).
+// writeStarting écrit la réponse 503 de la porte : server_starting réessayable (étape en cours
+// dans details.step) tant que le démarrage progresse, server_start_failed NON réessayable
+// (état dans details.state, sans Retry-After) une fois l'échec posé par fail.
 func (g *bootGate) writeStarting(w http.ResponseWriter, r *http.Request) {
-	body, err := json.Marshal(startingBody{
+	payload := startingBody{
 		Code:      serverStartingCode,
 		Message:   "server starting",
 		Retryable: true,
 		Details:   startingDetails{Step: g.currentStep()},
-	})
+	}
+	failed, isFailed := g.failureState()
+	if isFailed {
+		payload = startingBody{
+			Code:      serverStartFailedCode,
+			Message:   "server start failed",
+			Retryable: false,
+			Details:   startingDetails{Step: g.currentStep(), State: failed},
+		}
+	}
+	body, err := json.Marshal(payload)
 	if err != nil {
-		slog.ErrorContext(r.Context(), "démarrage : encodage de la réponse server_starting échoué", "err", err)
-		http.Error(w, serverStartingCode, http.StatusServiceUnavailable)
+		slog.ErrorContext(r.Context(), "démarrage : encodage de la réponse de démarrage échoué", "err", err)
+		http.Error(w, payload.Code, http.StatusServiceUnavailable)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
-	w.Header().Set("Retry-After", bootRetryAfterSeconds)
+	if !isFailed {
+		w.Header().Set("Retry-After", bootRetryAfterSeconds)
+	}
 	w.WriteHeader(http.StatusServiceUnavailable)
 	if _, err := w.Write(body); err != nil {
 		// Client parti pendant l'écriture : rien à rattraper, la page réinterroge.
@@ -169,8 +212,13 @@ type bootServer struct {
 	srv  *http.Server
 	gate *bootGate
 
-	// stop est fermé au premier signal d'arrêt (cf. stopRequested).
+	// stop est fermé à la première demande d'arrêt, quelle que soit sa source (cf.
+	// requestShutdown, stopRequested).
 	stop chan struct{}
+	// stopOnce garantit un seul passage vers l'arrêt ; stopReason, écrit dans ce passage
+	// avant la fermeture de stop, se lit après <-stop.
+	stopOnce   sync.Once
+	stopReason string
 	// initDone passe à vrai quand main a fini l'initialisation (openRouter) : un second
 	// signal ne force plus la sortie, l'arrêt propre est en cours.
 	initDone atomic.Bool
@@ -213,7 +261,7 @@ func (b *bootServer) serve(ln net.Listener) {
 // l'arrêt différé et force la sortie au second signal reçu avant la fin de l'initialisation.
 func (b *bootServer) watchSignals(sigCh <-chan os.Signal) {
 	first := <-sigCh
-	close(b.stop)
+	b.requestShutdown(shutdownReasonSignal + " " + first.String())
 	if b.initDone.Load() {
 		return
 	}
@@ -229,7 +277,29 @@ func (b *bootServer) watchSignals(sigCh <-chan os.Signal) {
 	b.forceExit(bootForcedExitCode)
 }
 
-// stopRequested est fermé au premier signal d'arrêt.
+// requestShutdown est le point UNIQUE de demande d'arrêt : le signal, la fermeture de stdin
+// (watchStdin) et la route POST /api/v1/internal/shutdown l'appellent tous. Le premier appel
+// ferme stop, ce qui lance la séquence d'arrêt habituelle (runShutdown, même budget) ;
+// les suivants sont journalisés et sans effet. reason dit qui a demandé (journal de fin
+// d'arrêt). Rend vrai pour l'appel qui a déclenché l'arrêt.
+func (b *bootServer) requestShutdown(reason string) bool {
+	first := false
+	b.stopOnce.Do(func() {
+		first = true
+		b.stopReason = reason
+		slog.InfoContext(context.Background(), "arrêt: demandé", "reason", reason, "step", b.gate.currentStep())
+		close(b.stop)
+	})
+	if !first {
+		slog.DebugContext(context.Background(), "arrêt: demande ignorée, déjà en cours", "reason", reason)
+	}
+	return first
+}
+
+// shutdownReason rend la cause de l'arrêt ; à lire après stopRequested (vide avant).
+func (b *bootServer) shutdownReason() string { return b.stopReason }
+
+// stopRequested est fermé à la première demande d'arrêt (signal, stdin, HTTP).
 func (b *bootServer) stopRequested() <-chan struct{} { return b.stop }
 
 // openRouter marque la fin de l'initialisation et branche le routeur, sauf si un arrêt a été

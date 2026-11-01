@@ -17,7 +17,11 @@ const ffprobeKillGrace = 2 * time.Second
 // ffprobeCommand construit la commande ffprobe ; seul point du module qui lance ce binaire
 // (garde-rail archlint/ffprobe_single_launcher_test.go). Les tests le substituent.
 var ffprobeCommand = func(ctx context.Context, args []string) *exec.Cmd {
-	return exec.CommandContext(ctx, "ffprobe", args...)
+	ffprobeBin, err := ResolveFFprobe()
+	if err != nil {
+		return failedCommand(err)
+	}
+	return exec.CommandContext(ctx, ffprobeBin, args...)
 }
 
 // RunFFprobe lance ffprobe et rend sa sortie standard. Le processus est tué à l'annulation du
