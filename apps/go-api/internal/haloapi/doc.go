@@ -8,7 +8,8 @@
 //
 // Ses sous-paquets sont `xblauth` (chaîne d'authentification Xbox Live, XSTS, Spartan),
 // `infinite` (services Halo Infinite : adresses, transport, DTO JSON bruts, octets des films) et
-// `halo5` (services Halo 5: Guardians : adresses, transport, DTO JSON bruts, rendus PNG).
+// `halo5` (services Halo 5: Guardians : adresses, transport, DTO JSON bruts, rendus PNG) et
+// `xboxlive` (succès Xbox Live : adresse, une page par appel, DTO JSON bruts).
 // Contrat : un paquet de la brique n'importe RIEN de LevelUp hors de `internal/haloapi/...`
 // (`archlint`, table des briques internes) ; ce dont il a besoin (client HTTP, adresses, jetons,
 // langue) lui est PASSÉ, et il ne construit jamais de client HTTP (garde `netguard` par `Doer`

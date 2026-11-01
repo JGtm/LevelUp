@@ -12,13 +12,15 @@
 //
 // # LA LIGNE `haloapi`
 //
-// Elle désigne l'arbre `internal/haloapi` (champ `dossiers`) ET les fichiers clients encore hors de
-// l'arbre (champ `fichiers`, plan PUBLICATION `.ai/V8/PLAN_PUBLICATION_BRIQUES_2026-10-30.md`,
-// lot 1.1) : `sync/xbox_client.go` (`games/halo_5/client.go` est sorti
-// au lot 2.1 : le protocole est sous `internal/haloapi/halo5`, le fichier restant est l'adaptateur
-// de LevelUp ; `mapcatalog/ugc.go` au lot 2.2 : le protocole est `infinite/ugcmaps.go`, le fichier
-// restant est la façade de LevelUp ; `assets/fetcher_gamecms.go` au lot 2.3 : le protocole est
-// `infinite/gamecmsfichiers.go`, le fichier restant est l'exploitation de `assets`). Un fichier nommé est jugé comme un fichier du
+// Elle désigne l'arbre `internal/haloapi` (champ `dossiers`) ET, le temps du lot 2, les fichiers clients
+// encore hors de l'arbre (champ `fichiers`, plan PUBLICATION `.ai/V8/PLAN_PUBLICATION_BRIQUES_2026-10-30.md`,
+// lot 1.1). LOT 2 CLOS, TABLES VIDES : tous sont sortis de la liste. `games/halo_5/client.go` au lot 2.1 :
+// le protocole est sous `internal/haloapi/halo5`, le fichier restant est l'adaptateur de LevelUp ;
+// `mapcatalog/ugc.go` au lot 2.2 : le protocole est `infinite/ugcmaps.go`, le fichier restant est la
+// façade de LevelUp ; `assets/fetcher_gamecms.go` au lot 2.3 : le protocole est
+// `infinite/gamecmsfichiers.go`, le fichier restant est l'exploitation de `assets` ; `sync/xbox_client.go`
+// au lot 2.4 : le protocole est sous `internal/haloapi/xboxlive`, le fichier restant est l'exploitation
+// de `sync`. Un fichier nommé serait jugé comme un fichier du
 // périmètre : ses imports sont parsés, son propre paquet et les paquets des `dossiers` lui sont
 // permis, le reste est un franchissement. Seuls les fichiers nommés sont jugés, pas les autres
 // fichiers de leur paquet. L'arbre `internal/haloapi` ne porte aucune tolérance : tout import hors
@@ -117,26 +119,19 @@ var briquesInternes = []briqueInterne{
 		fichiers: fichiersClientsHaloapi,
 		permis:   cheminsHaloapiPermis,
 		tiers:    tiersHaloapi,
-		// L'arbre `internal/haloapi` n'a aucune tolérance : les entrées ci-dessous sont celles des
-		// fichiers clients nommés, comptes mesurés le 2026-11-01 (lot 2.1 fait : `platform/netguard`
-		// 4 -> 3, `golang.org/x/time/rate` retiré ; lot 2.2 fait : `platform/netguard` 3 -> 2, `domain` 2 -> 1 ;
-		// lot 2.3 fait : `platform/netguard` 2 -> 1, `domain`, `ctxkeys` et `games` retirés).
-		tolerances: map[string]toleranceImport{
-			"platform/netguard": {1, dateReleveClients, "lot 2.4 du plan PUBLICATION : la garde de réseau sort du client (Doer gardé fourni par l'adaptateur de LevelUp)"},
-			"platform/auth":     {1, dateReleveClients, "lot 2.4 du plan PUBLICATION : l'en-tête d'autorisation XSTS passe en chaîne, plus d'alias de type"},
-		},
+		// Lot 2 du plan PUBLICATION clos (2026-11-01) : tables vides. L'arbre `internal/haloapi` n'a aucune
+		// tolérance et plus aucun fichier client n'est nommé (lot 2.1 : `platform/netguard` 4 -> 3,
+		// `golang.org/x/time/rate` retiré ; 2.2 : `platform/netguard` 3 -> 2, `domain` 2 -> 1 ; 2.3 :
+		// `platform/netguard` 2 -> 1, `domain`, `ctxkeys` et `games` retirés ; 2.4 : `platform/netguard` et
+		// `platform/auth` 1 -> 0, le client Xbox est sorti de la liste). Le mécanisme part au lot 3.3.
+		tolerances: map[string]toleranceImport{},
 	},
 }
 
-// dateReleveClients : date de la mesure des comptes de tolérance des fichiers clients.
-const dateReleveClients = "2026-11-01"
-
-// fichiersClientsHaloapi : les clients HTTP Halo/Xbox restés hors de l'arbre `haloapi`, que le lot 2
-// du plan PUBLICATION coupe en protocole (brique) et exploitation (LevelUp). Halo 5 coupé au lot 2.1, UGC
-// au lot 2.2, fichiers GameCMS des actifs au lot 2.3.
-var fichiersClientsHaloapi = []string{
-	"apps/go-api/internal/sync/xbox_client.go",
-}
+// fichiersClientsHaloapi : les clients HTTP Halo/Xbox restés hors de l'arbre `haloapi` que le lot 2 du
+// plan PUBLICATION coupe en protocole (brique) et exploitation (LevelUp). Vide : Halo 5 coupé au lot 2.1,
+// UGC au 2.2, fichiers GameCMS des actifs au 2.3, succès Xbox au 2.4.
+var fichiersClientsHaloapi = []string{}
 
 // cleDImport rend la clé d'un import visé dans une table de tolérances : le chemin sans le préfixe
 // `levelup/go-api/internal/` pour un paquet du module, `libs/<brique>/<paquet>` pour une brique,

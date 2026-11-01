@@ -119516,3 +119516,11 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : témoin GameCMS vert sans qu'aucune URL attendue ait bougé ; 18 tests existants et test de mode démo inchangés ; brique sans import d'exploitation ; archlint vert (tolérances netguard 1, auth 1 ; domain/ctxkeys/games retirées ; mutation rouge) ; lint 0. Cas dégénérés non figés consignés (en-tête Spartan vide, hôte vide). Découvertes PUB-2.3-a à c. CI du lot 2.1 verte.
 
 **Conclusion / prochaine étape** : lot 2.4 Xbox (Sonnet) : `internal/haloapi/xboxlive` (succès, pagination), `sync` garde conversion et interface, en-tête d'autorisation en paramètre.
+
+## [2026-11-01] Publication des briques — lot 2.4 (coupe Xbox succès) — Complété
+
+**Décision technique principale** : dernier des quatre clients : nouveau paquet `internal/haloapi/xboxlive` (succès Xbox Live v2 : une page par appel, DTO bruts exportés, en-tête `Authorization` complet passé en `Auth`, garde d'abord, corps lu puis statut) ; `sync` garde l'interface de test, la conversion `parseAchievementItem`, la pagination et ses journaux, la signature `NewXboxHTTPClient` (ni `engine_postsync_csr` ni `diag_api_lecture` ne changent) et recompose les messages d'erreur à l'octet depuis les erreurs typées (test dédié). Les tables `fichiers` et tolérances du garde-fou sont vides : les quatre clients ont quitté LevelUp ; le mécanisme part au 3.3 comme prévu.
+
+**Résultats observés** : témoin Xbox vert sans qu'aucune URL attendue ait bougé ; 14 tests de succès aux mêmes noms ; `haloapi/...`, `sync` (108 s), archlint verts ; brique sans import d'exploitation ; lint 0. Différence de forme : garde avant la construction d'URL (visible seulement en mode démo avec un xuid invalide). CI des lots 2.1 et 2.2 vertes.
+
+**Conclusion / prochaine étape** : lot 2.5 — T1 complet (noms et verdicts contre le lot 0), T3 live rejoué (6 surfaces, octets identiques), T4 (cinq surfaces netguard), puis revue adversariale une ronde (deux relecteurs, parité de sortie + mutation) et corrections.

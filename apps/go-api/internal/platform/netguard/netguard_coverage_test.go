@@ -14,8 +14,8 @@
 // (`platform/auth/xbl_doer.go`, `platform/netguard/doer.go` : `netguard.Check` puis
 // `Next.Do(req)`) ; il ne voit PAS si chaque client de la brique reçoit bien ce `Doer`. Ce qui tient
 // l'hermétisme de la brique : (1) elle ne construit ni n'atteint aucun client HTTP
-// (`archlint/haloapi_sans_client_http_test.go`) ; (2) tout client de `haloapi/infinite` et de
-// `haloapi/halo5` construit par go-api reçoit un littéral `netguard.Doer{...}` écrit à l'appel
+// (`archlint/haloapi_sans_client_http_test.go`) ; (2) tout client de `haloapi/infinite`, de
+// `haloapi/halo5` et de `haloapi/xboxlive` construit par go-api reçoit un littéral `netguard.Doer{...}` écrit à l'appel
 // (`archlint/haloapi_doer_garde_test.go`) ; (3) les huit surfaces de l'adaptateur Halo Infinite sont
 // prouvées muettes en mode démo
 // (`haloadapter/netguard_surfaces_test.go`). Les jambes d'authentification de `haloapi/xblauth` à

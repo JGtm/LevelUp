@@ -2,8 +2,8 @@ package sync
 
 // Témoin T2 « URL figées » du client Xbox Achievements v2 (plan PUBLICATION, lot 1.2) : méthode,
 // URL absolue et en-têtes triés de chaque page demandée, en littéral. Le chemin HTTP de ce client
-// n'avait aucun test avant ce fichier. Il est coupé en protocole / exploitation au lot 2.4 sans
-// changement d'octet sur le fil.
+// n'avait aucun test avant ce fichier. Il a été coupé en protocole (`haloapi/xboxlive`) et exploitation
+// (ce paquet) au lot 2.4 sans changement d'octet sur le fil : ces attendus n'ont pas bougé.
 
 import (
 	"context"
@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/haloapi/haloapitest"
+	"levelup/go-api/internal/haloapi/xboxlive"
 	"levelup/go-api/internal/platform/auth"
 )
 
@@ -43,7 +44,7 @@ func xboxFigeesClient(t *testing.T, titre string, e *haloapitest.Enregistreur) X
 	if !ok {
 		t.Fatalf("NewXboxHTTPClient rend %T, attendu *xboxHTTPClient", c)
 	}
-	hc.httpClient = &http.Client{Transport: e}
+	hc.api = xboxlive.New(&http.Client{Transport: e})
 	return c
 }
 

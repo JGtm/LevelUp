@@ -214,8 +214,20 @@ Dans le module go-api d'abord (comme D2 lot 2 et D3 lots 2-4 : couper AVANT de d
   `halowaypoint` : `fetcher_gamecms.go` retiré. Non figé (cas dégénérés) : Spartan vide avec jetons non nil → plus
   d'en-tête vide ; hôte vide → hôte par défaut au lieu d'une URL relative. T2 : 5 tests, aucune URL attendue modifiée ;
   18 tests existants et test démo inchangés. Gates : vet 0, brique sans exploitation, tests `ok`, lint 0.)
-- [ ] 2.4 Xbox : `internal/haloapi/xboxlive` ; `sync` appelle la brique avec le jeton en paramètre ; URL
+- [x] 2.4 Xbox : `internal/haloapi/xboxlive` ; `sync` appelle la brique avec le jeton en paramètre ; URL
   figées vertes.
+  (2026-11-01, agent Sonnet, gates rejoués par le pilote. Paquet `xboxlive` (6 fichiers, 430 L dont 143 de
+  test) : `Endpoints{Succes}`, `Auth{Autorisation}` (valeur complète de l'en-tête, masquée), `New(doer)`,
+  `GetSuccesPage(ctx, auth, xuid, lang, Page{TitleID, SkipItems})` → `SuccesReponse`/`Succes` (DTO bruts exportés) ;
+  URL construite comme avant (`xuid(...)` non échappé, `url.Values.Encode`), 4 en-têtes, garde d'abord, corps lu en
+  entier puis statut (`HTTPError.Body` entier), `ErreurTransport`. `sync/xbox_client.go` 271 → 184 L : interface,
+  `PlayerAchievementRaw`, `parseAchievementItem(xboxlive.Succes)`, pagination et ses trois journaux inchangés,
+  `NewXboxHTTPClient` (signature inchangée) sur `netguard.Doer{"xbox_achievements.get"}`, messages recomposés à
+  l'octet (`xbox_client: HTTP %d: %s`, `xbox_client: HTTP do: %w`) prouvés par `xbox_client_erreurs_test.go`.
+  Tolérances : `fichiers` et table VIDES (mécanisme laissé pour le 3.3). Ratchet Doer gardé : `xboxlive.New` 1.
+  T2 : 3 témoins, aucune URL attendue modifiée ; 14 tests de succès aux mêmes noms (6 constructions renommées).
+  Différence de forme : garde avant la construction d'URL (un `xuid` invalide en mode démo rend `ErrOffline`).
+  Gates : vet 0 (+ `-tags=integration`), brique sans exploitation, `haloapi/...` + `sync` + archlint `ok`, lint 0.)
 - [ ] 2.5 Tolérances à zéro ; `go list -deps -test ./internal/haloapi/...` propre ; T1 (aucun nom disparu),
   T3 identique, T4 identique ; revue adversariale 1 ronde (deux relecteurs : parité de sortie ; L6) ;
   corrections ; commit « lot 2 » ; CI verte.

@@ -1,26 +1,23 @@
-// Package sync — xbox_client.go : client HTTP pour l'API Xbox Achievements v2.
-//
-// Endpoint : GET https://achievements.xboxlive.com/users/xuid({xuid})/achievements
-// Header obligatoire : x-xbl-contract-version: 2 (sinon retourne le schéma Xbox 360 v1).
-// Pagination via pagingInfo.continuationToken / skipItems.
+// Package sync — xbox_client.go : exploitation des succès Xbox (achievements v2). Le protocole
+// (adresse, en-têtes, une page par appel, DTO bruts) est dans `internal/haloapi/xboxlive` ; ce fichier
+// porte la boucle de pagination et ses journaux, le client HTTP (délai, garde réseau), le jeton et la
+// conversion des DTO en PlayerAchievementRaw.
 package sync
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
-	"net/url"
 	"strconv"
 	"time"
 
+	"levelup/go-api/internal/haloapi"
+	"levelup/go-api/internal/haloapi/xboxlive"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/netguard"
 )
-
-const xboxAchievementsBaseURL = "https://achievements.xboxlive.com"
 
 // XboxAchievementsClient abstrait les appels à l'API Xbox Achievements.
 // L'interface permet l'injection de mock dans les tests.
@@ -52,8 +49,8 @@ type PlayerAchievementRaw struct {
 
 // xboxHTTPClient implémente XboxAchievementsClient via l'API Xbox Live.
 type xboxHTTPClient struct {
-	authHeader  string
-	httpClient  *http.Client
+	api         *xboxlive.Client
+	auth        xboxlive.Auth
 	xboxTitleID string // ex: "1144039928" pour Halo Infinite
 }
 
@@ -61,9 +58,11 @@ type xboxHTTPClient struct {
 // xboxTitleID est l'identifiant numérique Xbox du titre (ex: "1144039928" pour Halo Infinite) —
 // utiliser titlePkg.XboxTitleIDFor(slug) pour le résoudre depuis un slug LevelUp.
 func NewXboxHTTPClient(xstsResult *auth.XSTSResult, xboxTitleID string) XboxAchievementsClient {
+	httpClient := &http.Client{Timeout: 30 * time.Second}
 	return &xboxHTTPClient{
-		authHeader:  xstsResult.AuthHeader(),
-		httpClient:  &http.Client{Timeout: 30 * time.Second},
+		// Mode démo : aucune sortie tierce (cf. internal/platform/netguard).
+		api:         xboxlive.New(netguard.Doer{Surface: "xbox_achievements.get", Next: httpClient}),
+		auth:        xboxlive.Auth{Autorisation: xstsResult.AuthHeader()},
 		xboxTitleID: xboxTitleID,
 	}
 }
@@ -98,122 +97,36 @@ func (c *xboxHTTPClient) GetPlayerAchievements(ctx context.Context, xuid, lang s
 	return all, nil
 }
 
-// --- structures de désérialisation de la réponse Xbox Achievements v2 ---
-
-type xboxAchievementsResponse struct {
-	Achievements []xboxAchievementItem `json:"achievements"`
-	PagingInfo   struct {
-		TotalRecords      int    `json:"totalRecords"`
-		ContinuationToken string `json:"continuationToken"`
-	} `json:"pagingInfo"`
-}
-
-type xboxAchievementItem struct {
-	ID                string `json:"id"`
-	ServiceConfigID   string `json:"serviceConfigId"`
-	Name              string `json:"name"`
-	TitleAssociations []struct {
-		Name string `json:"name"`
-		ID   int    `json:"id"`
-	} `json:"titleAssociations"`
-	ProgressState string `json:"progressState"` // "Achieved", "InProgress", "NotStarted"
-	Progression   struct {
-		Requirements []struct {
-			ID                    string `json:"id"`
-			Current               string `json:"current"`
-			Target                string `json:"target"`
-			OperationType         string `json:"operationType"`
-			ValueType             string `json:"valueType"`
-			RuleParticipationType string `json:"ruleParticipationType"`
-		} `json:"requirements"`
-		TimeUnlocked string `json:"timeUnlocked"`
-	} `json:"progression"`
-	MediaAssets []struct {
-		Name string `json:"name"`
-		Type string `json:"type"`
-		URL  string `json:"url"`
-	} `json:"mediaAssets"`
-	Platforms         []string `json:"platforms"`
-	IsSecret          bool     `json:"isSecret"`
-	Description       string   `json:"description"`
-	LockedDescription string   `json:"lockedDescription"`
-	ProductID         string   `json:"productId"`
-	ActivityID        string   `json:"activityId"`
-	Rewards           []struct {
-		Name        interface{} `json:"name"`
-		Description interface{} `json:"description"`
-		Value       string      `json:"value"`
-		Type        string      `json:"type"`
-		MediaAsset  interface{} `json:"mediaAsset"`
-	} `json:"rewards"`
-	EstimatedTime string `json:"estimatedTime"`
-	Deeplink      string `json:"deeplink"`
-	IsRevoked     bool   `json:"isRevoked"`
-	Rarity        struct {
-		CurrentCategory   string  `json:"currentCategory"`
-		CurrentPercentage float64 `json:"currentPercentage"`
-	} `json:"rarity"`
-}
-
-// fetchPage récupère une page d'achievements (avec skipItems pour la pagination).
+// fetchPage récupère une page d'achievements (avec skipItems pour la pagination) et la convertit.
 func (c *xboxHTTPClient) fetchPage(ctx context.Context, xuid, lang string, skipItems int) ([]PlayerAchievementRaw, string, error) {
-	u, err := url.Parse(fmt.Sprintf("%s/users/xuid(%s)/achievements", xboxAchievementsBaseURL, xuid))
+	page := xboxlive.Page{TitleID: c.xboxTitleID, SkipItems: skipItems}
+	rep, err := c.api.GetSuccesPage(ctx, c.auth, xuid, lang, page)
 	if err != nil {
-		return nil, "", fmt.Errorf("xbox_client: parse URL: %w", err)
+		return nil, "", erreurXbox(err)
 	}
-	q := u.Query()
-	if c.xboxTitleID != "" {
-		q.Set("titleId", c.xboxTitleID)
+	items := make([]PlayerAchievementRaw, 0, len(rep.Achievements))
+	for _, a := range rep.Achievements {
+		items = append(items, parseAchievementItem(a))
 	}
-	if skipItems > 0 {
-		q.Set("skipItems", strconv.Itoa(skipItems))
-	}
-	u.RawQuery = q.Encode()
+	return items, rep.PagingInfo.ContinuationToken, nil
+}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
-	if err != nil {
-		return nil, "", fmt.Errorf("xbox_client: new request: %w", err)
+// erreurXbox compose l'erreur rendue depuis celle de la brique : sortie refusée (mode démo) telle
+// quelle, échec d'émission `xbox_client: HTTP do`, le reste `xbox_client` ; `errors.As` voit les types.
+func erreurXbox(err error) error {
+	var transport *xboxlive.ErreurTransport
+	switch {
+	case errors.Is(err, haloapi.ErrDefinitif):
+		return err
+	case errors.As(err, &transport):
+		return fmt.Errorf("xbox_client: HTTP do: %w", err)
+	default:
+		return fmt.Errorf("xbox_client: %w", err)
 	}
-	req.Header.Set("Authorization", c.authHeader)
-	req.Header.Set("x-xbl-contract-version", "2")
-	req.Header.Set("Accept-Language", lang)
-	req.Header.Set("Accept", "application/json")
-
-	// Mode démo : aucune sortie tierce (cf. internal/platform/netguard).
-	if gErr := netguard.Check(ctx, "xbox_achievements.get"); gErr != nil {
-		return nil, "", gErr
-	}
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, "", fmt.Errorf("xbox_client: HTTP do: %w", err)
-	}
-	defer resp.Body.Close() //nolint:errcheck
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, "", fmt.Errorf("xbox_client: read body: %w", err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, "", fmt.Errorf("xbox_client: HTTP %d: %s", resp.StatusCode, string(body))
-	}
-
-	var apiResp xboxAchievementsResponse
-	if err := json.Unmarshal(body, &apiResp); err != nil {
-		return nil, "", fmt.Errorf("xbox_client: JSON decode: %w", err)
-	}
-
-	items := make([]PlayerAchievementRaw, 0, len(apiResp.Achievements))
-	for _, a := range apiResp.Achievements {
-		raw := parseAchievementItem(a)
-		items = append(items, raw)
-	}
-
-	return items, apiResp.PagingInfo.ContinuationToken, nil
 }
 
 // parseAchievementItem convertit un item API en PlayerAchievementRaw.
-func parseAchievementItem(a xboxAchievementItem) PlayerAchievementRaw {
+func parseAchievementItem(a xboxlive.Succes) PlayerAchievementRaw {
 	raw := PlayerAchievementRaw{
 		ID:              a.ID,
 		Name:            a.Name,
