@@ -124,7 +124,7 @@ type MatchParticipantRow struct {
 
 	// Mécaniques de kill NATIVES Halo 5 (assassinats + compétences spartiate).
 	// Agrégats par-joueur du carnage h5, DISJOINTS de MeleeKills. nil pour les
-	// autres titres (Infinite ne les fournit pas). Cf. halo_5/dto_carnage.go.
+	// autres titres (Infinite ne les fournit pas). Cf. haloapi/halo5/dto_carnage.go.
 	AssassinationKills *int
 	GroundPoundKills   *int
 	ShoulderBashKills  *int

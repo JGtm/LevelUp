@@ -15,7 +15,6 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -24,7 +23,7 @@ import (
 // TestGetMatchHistory_ContractAgainstFixture rejoue une réponse Halo réaliste
 // (ordre décroissant par StartTime) et vérifie URL + parsing.
 func TestGetMatchHistory_ContractAgainstFixture(t *testing.T) {
-	fixturePath := filepath.Join("..", "..", "..", "haloapi", "infinite", "testdata", "halo", "match_history_response.json")
+	fixturePath := cheminBriqueHaloapi(t, "infinite", "testdata", "halo", "match_history_response.json")
 	fixtureBody, err := os.ReadFile(fixturePath)
 	if err != nil {
 		t.Fatalf("lecture fixture %s : %v", fixturePath, err)

@@ -6,15 +6,31 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"golang.org/x/time/rate"
 
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/haloapi/infinite"
 	"levelup/go-api/internal/platform/auth/tokencache"
+	"levelup/go-api/internal/testutil"
+
+	"github.com/JGtm/LevelUp/libs/haloapi/infinite"
 )
+
+// cheminBriqueHaloapi rend le chemin, sur le disque, d'un fichier versionné de la brique « API
+// Halo » (module `libs/haloapi`, ADR 0041 : ses fixtures de réponses vivent avec le paquet qui les
+// lit). La racine vient de [testutil.RepoRoot], jamais d'une échelle de « .. » : une fixture absente
+// fait échouer le test.
+func cheminBriqueHaloapi(t *testing.T, elems ...string) string {
+	t.Helper()
+	racine, err := testutil.RepoRoot()
+	if err != nil {
+		t.Fatalf("racine du dépôt : %v", err)
+	}
+	return filepath.Join(append([]string{racine, "libs", "haloapi"}, elems...)...)
+}
 
 // avecRafraichisseur câble `fn` comme rafraîchisseur de jetons du processus pour la durée du
 // test, et vide le cache de jetons de `xuid` avant et après (chaque test a son xuid).

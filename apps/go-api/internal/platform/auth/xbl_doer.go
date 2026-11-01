@@ -10,8 +10,9 @@ package auth
 import (
 	"net/http"
 
-	"levelup/go-api/internal/haloapi"
 	"levelup/go-api/internal/platform/netguard"
+
+	"github.com/JGtm/LevelUp/libs/haloapi"
 )
 
 // netguardDoer appelle `netguard.Check` (mode démo) AVANT d'émettre par `next`. Une sortie

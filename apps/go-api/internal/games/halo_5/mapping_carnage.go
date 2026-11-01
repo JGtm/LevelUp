@@ -25,6 +25,8 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/duration"
 	"levelup/go-api/internal/util/pointers"
+
+	"github.com/JGtm/LevelUp/libs/haloapi/halo5"
 )
 
 // h5GameModeSegment mappe le GameMode numérique (liste de matchs) vers le segment
@@ -56,7 +58,7 @@ func h5GameModeSegment(gameMode int) string {
 // ne perd plus muettement : la perte est traçable (compteur CaptureStats.RosterDropped
 // + récapitulatif WARN par match) et un résolveur universel (profil Xbox)
 // vise à la combler en amont.
-func mapCarnageParticipants(ctx context.Context, matchID string, carnage *H5CarnageResponse, resolveXUID func(gamertag string) string, dropped *int) []domain.MatchParticipantRow {
+func mapCarnageParticipants(ctx context.Context, matchID string, carnage *halo5.H5CarnageResponse, resolveXUID func(gamertag string) string, dropped *int) []domain.MatchParticipantRow {
 	if carnage == nil || len(carnage.PlayerStats) == 0 {
 		return nil
 	}
@@ -123,12 +125,12 @@ func mapCarnageParticipants(ctx context.Context, matchID string, carnage *H5Carn
 // de stats que le sync live, avec son propre résolveur xuid (resolve-or-skip identique :
 // un gamertag non résolu en xuid est SAUTÉ, cf. godoc de mapCarnageParticipants). dropped
 // (nullable) compte les joueurs sautés faute de résolution — même contrat d'observabilité.
-func MapCarnageParticipants(ctx context.Context, matchID string, carnage *H5CarnageResponse, resolveXUID func(gamertag string) string, dropped *int) []domain.MatchParticipantRow {
+func MapCarnageParticipants(ctx context.Context, matchID string, carnage *halo5.H5CarnageResponse, resolveXUID func(gamertag string) string, dropped *int) []domain.MatchParticipantRow {
 	return mapCarnageParticipants(ctx, matchID, carnage, resolveXUID, dropped)
 }
 
 // winningTeamID retourne le TeamId de l'équipe au Rank 1, ou -1 si indéterminé.
-func winningTeamID(carnage *H5CarnageResponse) int {
+func winningTeamID(carnage *halo5.H5CarnageResponse) int {
 	for i := range carnage.TeamStats {
 		if carnage.TeamStats[i].Rank == 1 {
 			return carnage.TeamStats[i].TeamId

@@ -16,7 +16,8 @@ import (
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/haloapi/infinite"
+
+	"github.com/JGtm/LevelUp/libs/haloapi/infinite"
 )
 
 // privacyCtx construit un contexte avec tokens + xuid.

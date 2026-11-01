@@ -6,7 +6,8 @@ import (
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/haloapi/infinite"
+
+	"github.com/JGtm/LevelUp/libs/haloapi/infinite"
 )
 
 // stubResolver route (slug, key) → host ; le reste → ok=false.

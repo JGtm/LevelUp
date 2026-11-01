@@ -12,7 +12,8 @@ import (
 	"levelup/go-api/internal/assets"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/haloapi/infinite"
+
+	"github.com/JGtm/LevelUp/libs/haloapi/infinite"
 )
 
 // GetBattlePass rend l'opération de passe de combat active du joueur du contexte ;

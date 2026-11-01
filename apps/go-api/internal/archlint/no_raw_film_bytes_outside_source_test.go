@@ -198,15 +198,17 @@ const plancherFichiersOctets = 850
 // arborescences ou un octet de film peut apparaitre — mesure du 2026-09-17, aucun paquet hors
 // de la ne lit d octets de film.
 //
-// `internal/haloapi` (la brique API Halo, plan D3) rejoint les racines le 2026-10-29, AVANT que
-// `infinite` n y rende les octets COMPRIMES des films : sans cela ils circuleraient hors de toute
-// racine surveillee (decouverte D3-L0-n). La racine doit exister (`doc.go` du paquet parent).
+// La brique API Halo (plan D3) rejoint les racines le 2026-10-29, AVANT que `infinite` n y rende
+// les octets COMPRIMES des films : sans cela ils circuleraient hors de toute racine surveillee
+// (decouverte D3-L0-n). Module `libs/haloapi` depuis le 2026-11-01 (plan PUBLICATION, lot 3) : la
+// racine suit le module (chemin de garde-rail sous `libs/`, comme `libs/film`). La racine doit exister
+// (`doc.go` du paquet parent).
 var racinesOctetsBruts = []string{
 	"libs/film",
 	"internal/analysis",
 	"internal/sync",
 	"internal/replaybuild",
-	"internal/haloapi",
+	racineBriqueHaloapi,
 	"cmd",
 }
 

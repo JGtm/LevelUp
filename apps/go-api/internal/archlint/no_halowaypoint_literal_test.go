@@ -5,7 +5,9 @@
 //
 // Contexte : le gate F du plan d'audit promettait « grep halowaypoint hors
 // games/halo_infinite + client HTTP → 0 (allowlist temporaire datée) » mais
-// aucun garde-rail n'a jamais été créé ; le client HTTP vit dans internal/haloapi/infinite/.
+// aucun garde-rail n'a jamais été créé ; le client HTTP vit dans la brique libs/haloapi
+// (module à part depuis le 2026-11-01, balayé ici avec go-api : clés du double repère
+// [cheminDeGardeRail], `libs/...` relatif à la racine du dépôt, le reste relatif à apps/go-api).
 // Sans ratchet, l'invariant « les URLs Halo en
 // dur vivent dans une poignée de fichiers frontière » re-divergera silencieusement
 // (leçon CLAUDE.md règle 6 : factorisation/frontière sans garde-rail).
@@ -24,7 +26,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -33,36 +34,41 @@ import (
 // halowaypointAllowlist — DÉCROISSANTE, figée au 2026-07-07. Chaque entrée est un
 // fichier frontière qui a une raison légitime de nommer l'hôte halowaypoint.
 // Catégories :
-//   - haloapi/infinite/  : la brique « API Halo » (UN fichier : ses adresses par défaut).
+//   - libs/haloapi/infinite/ : la brique « API Halo » (UN fichier : ses adresses par défaut).
+//   - libs/haloapi/halo5/    : la brique « API Halo », services Halo 5 (UN fichier : ses adresses par défaut).
 //   - domain/title/      : defaults documentés des descripteurs d'auth par titre.
-//   - assets/            : fetchers gamecms-hacs (URLs d'assets médailles/images).
+//   - assets/            : sources gamecms-hacs documentées des kinds (médailles/images).
 //   - games/halo_infinite: adapter d'URLs d'assets waypoint (base URL waypoint web).
-//   - games/halo_5/       : client H5 (mêmes hôtes officiels).
 //   - halotest/          : fake server de test (héberge des URLs factices halowaypoint).
 //   - cmd/                : outils diag/probe/fixtures qui tapent l'API officielle.
 //   - scripts/            : outil de warm-up d'assets (URLs gamecms).
-//   - mapcatalog/         : client Discovery UGC (variantes de carte .mvar), partagé par
-//     les CLI de cuisson et le runtime depuis l'extraction du 2026-09-01.
+//   - mapcatalog/         : façade du client UGC des cartes (variantes .mvar), partagée par
+//     les CLI de cuisson et le runtime depuis l'extraction du 2026-09-01 ; ne garde que l'en-tête
+//     `Origin` (l'hôte Discovery est dans la brique, `infinite/endpoints.go`).
 //
 // Toute suppression d'une URL en dur d'un de ces fichiers RETIRE son entrée.
 var halowaypointAllowlist = map[string]bool{
-	// haloapi/infinite/ — client des services Halo Infinite de la brique « API Halo » (ADR 0042) :
+	// libs/haloapi/infinite/ — client des services Halo Infinite de la brique « API Halo » (ADR 0042) :
 	// endpoints.go est l'UNIQUE endroit de ses adresses par défaut (les autres fichiers de la brique
 	// reçoivent des Endpoints et ne nomment aucun hôte) ; `games/halo_infinite/haloadapter` et
-	// `sync/filmfetch` n'en nomment aucun.
-	"internal/haloapi/infinite/endpoints.go": true,
+	// `sync/filmfetch` n'en nomment aucun. Clé sous `libs/` depuis le lot 3 du plan PUBLICATION.
+	racineBriqueHaloapi + "/infinite/endpoints.go": true,
+	// libs/haloapi/halo5/ — client des services Halo 5 de la brique (plan PUBLICATION, lot 2.1, 2026-11-01) :
+	// endpoints.go est l'UNIQUE endroit de ses adresses par défaut ; l'adaptateur `games/halo_5/client.go`
+	// (entrée retirée le même jour) n'en nomme plus aucun.
+	racineBriqueHaloapi + "/halo5/endpoints.go": true,
 	// platform/auth/ : plus aucune entrée. (provider.go retiré au retrait de MSAL 2026-07-15 ;
 	// halo_exchange.go retiré le 2026-10-29, plan D3 lot 2 : la chaîne d'échange est partie dans
-	// internal/haloapi/xblauth, sans état ni titre, et ne nomme plus aucun hôte halowaypoint — les
+	// la brique haloapi (xblauth), sans état ni titre, et ne nomme plus aucun hôte halowaypoint — les
 	// adresses Spartan/Clearance lui sont passées par le Descriptor, défauts dans domain/title.)
 	// domain/title/ — defaults documentés des descripteurs d'auth.
 	"internal/domain/title/auth_descriptor.go": true,
-	// assets/ — fetchers gamecms-hacs (URLs d'assets).
-	"internal/assets/fetcher_gamecms.go": true,
-	"internal/assets/kinds.go":           true,
+	// assets/ — documentation des sources gamecms-hacs des kinds. `fetcher_gamecms.go` retiré au
+	// lot 2.3 du plan PUBLICATION (2026-11-01) : l'hôte GameCMS par défaut est celui de la brique
+	// (`infinite/endpoints.go`).
+	"internal/assets/kinds.go": true,
 	// games/ — adapters/clients par titre.
 	"internal/games/halo_infinite/adapter_asset_urls.go": true,
-	"internal/games/halo_5/client.go":                    true,
 	// halotest/ — fake server (URLs factices halowaypoint en test-support).
 	"internal/sync/halotest/fake_server.go": true,
 	// cmd/ — outils diag/probe/fixtures.
@@ -88,7 +94,9 @@ var halowaypointAllowlist = map[string]bool{
 	// l'exécution. Le fichier a été EXTRAIT vers `internal/mapcatalog/ugc.go`, que les
 	// deux CLI (mapobj-build, mapopads-build) et le runtime partagent — l'entrée suit sa
 	// cause, elle ne s'ajoute pas à elle. Même frontière, même justification, un seul
-	// exemplaire. Les deux littéraux : l'hôte Discovery UGC et l'en-tête `Origin`.
+	// exemplaire. Depuis le lot 2.2 du plan PUBLICATION (2026-11-01) le protocole est dans la
+	// brique (`infinite/ugcmaps.go`, l'hôte Discovery passe par `Endpoints`) : le seul littéral
+	// restant est l'`Origin` que LevelUp présente.
 	"internal/mapcatalog/ugc.go": true,
 	// cmd/mapnav-fetch (campagne des fonds de carte, 2026-08-30) : meme frontiere que
 	// mapobj-build ci-dessus — il telecharge navmesh.blob, map.mvar et les miniatures
@@ -105,17 +113,15 @@ var halowaypointAllowlist = map[string]bool{
 
 var halowaypointRE = regexp.MustCompile(`halowaypoint`)
 
-func TestNoNewHalowaypointLiteral(t *testing.T) {
-	_, thisFile, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller a échoué")
-	}
-	internalRoot := filepath.Dir(filepath.Dir(thisFile))
-	goAPIRoot := filepath.Dir(internalRoot)
+// racinesHalowaypoint : les racines balayées, chemins de garde-rail ([surDisque]) : go-api et la
+// brique « API Halo » (module `libs/haloapi`), qui porte les adresses par défaut des services.
+var racinesHalowaypoint = []string{"internal", "cmd", "scripts", racineBriqueHaloapi}
 
+func TestNoNewHalowaypointLiteral(t *testing.T) {
 	var violations []string
-	for _, sub := range []string{"internal", "cmd", "scripts"} {
-		root := filepath.Join(goAPIRoot, sub)
+	for _, sub := range racinesHalowaypoint {
+		root := racineDeclaree(t, sub)
+		vus := 0
 		err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
 			if err != nil {
 				return err
@@ -129,8 +135,8 @@ func TestNoNewHalowaypointLiteral(t *testing.T) {
 			if !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
 				return nil
 			}
-			rel, _ := filepath.Rel(goAPIRoot, path)
-			rel = filepath.ToSlash(rel)
+			vus++
+			rel := cheminDeGardeRail(t, path)
 			if halowaypointAllowlist[rel] {
 				return nil
 			}
@@ -148,10 +154,13 @@ func TestNoNewHalowaypointLiteral(t *testing.T) {
 		if err != nil {
 			t.Fatalf("walk %s/: %v", sub, err)
 		}
+		if vus == 0 {
+			t.Fatalf("aucun fichier Go de production sous %s : le garde-rail ne couvre rien", sub)
+		}
 	}
 	if len(violations) > 0 {
 		t.Errorf("littéral 'halowaypoint' en dur interdit hors des fichiers frontière (F/VF-7) — "+
-			"une URL Halo en dur doit vivre dans un fichier frontière (haloapi/infinite/endpoints.go, adapters) "+
+			"une URL Halo en dur doit vivre dans un fichier frontière (libs/haloapi/infinite/endpoints.go, adapters) "+
 			"déjà allowlisté, ou l'ajouter à halowaypointAllowlist avec justification datée :\n  %s",
 			strings.Join(violations, "\n  "))
 	}
@@ -163,16 +172,8 @@ func TestNoNewHalowaypointLiteral(t *testing.T) {
 // disparu (déplacé/supprimé par un refactor) est un trou latent : un fichier recréé
 // plus tard à ce chemin pourrait nommer halowaypoint sans déclencher le ratchet.
 func TestHalowaypointAllowlistEntriesPointToExistingFiles(t *testing.T) {
-	_, thisFile, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller a échoué")
-	}
-	internalRoot := filepath.Dir(filepath.Dir(thisFile))
-	goAPIRoot := filepath.Dir(internalRoot)
-
 	for rel := range halowaypointAllowlist {
-		path := filepath.Join(goAPIRoot, filepath.FromSlash(rel))
-		data, err := os.ReadFile(path)
+		data, err := os.ReadFile(surDisque(t, rel))
 		if err != nil {
 			t.Errorf("halowaypointAllowlist : entrée %q pointe un fichier inexistant (%v) — "+
 				"refactor de renommage/suppression ? Retirer l'entrée morte (trou latent : un "+

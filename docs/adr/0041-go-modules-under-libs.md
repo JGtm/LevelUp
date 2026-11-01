@@ -2,7 +2,8 @@
 
 Status: accepted (2026-10-28); implementation tracked in
 `.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D1_2026-10-28.md` (lot 3 creates the first module, `libs/gamefiles`; lot 4 the second, `libs/himap`)
-and `.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D2_2026-10-28.md` (lot 3 creates the third, `libs/film`, 2026-10-29).
+and `.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D2_2026-10-28.md` (lot 3 creates the third, `libs/film`, 2026-10-29); the fourth,
+`libs/haloapi`, comes with the publication plan (amendment of 2026-11-01 at the end of this ADR, ADR 0043).
 Source: `.ai/AUDIT_DECOUPLAGE_BRIQUES_2026-10-27.md` (decision 1 and the addendum of 2026-10-28).
 Relates to: ADR 0012 (title-specific adapters live under `games/<slug>/`), ADR 0034 (film decoder,
 its façade and layers), ADR 0011 (canonical / semantic / asset-URL boundary).
@@ -13,6 +14,8 @@ its façade and layers), ADR 0011 (canonical / semantic / asset-URL boundary).
   speaks a protocol) and that LevelUp uses but does not define. Three are identified: the game-file
   readers and map images (D1), the film decoder (D2), the Halo API protocol (D3). The first two are modules under `libs/`; the third stays
   inside `apps/go-api` as internal packages, held by the table of internal bricks (ADR 0042).
+  *Superseded on 2026-11-01 (amendment below, ADR 0043): the Halo API brick is the fourth module, `libs/haloapi`,
+  and the table of internal bricks no longer exists.*
 - **Workspace**: the set of Go modules listed in the `go.work` at the repository root.
 - **Autonomy criterion**: `go list -deps ./...` run in a brick's module shows no package of the
   `levelup/go-api` module.
@@ -41,7 +44,9 @@ keeps `levelup/go-api`. The first module is `libs/gamefiles` (`himodule`, `ooz`,
 the third is `libs/film` (the film decoder, `github.com/JGtm/LevelUp/libs/film`: the facade `decfilm`, the
 publication layer `replay`, its catalogues and output types at the first level, and the closed layers of
 ADR 0034 D-1 under `libs/film/internal/` — the `internal/` rule now closes them to LevelUp at the module
-boundary, which is what D-1 asks).
+boundary, which is what D-1 asks); the fourth is `libs/haloapi` (the Halo API,
+`github.com/JGtm/LevelUp/libs/haloapi`: the root package `haloapi` and the sub-packages `xblauth`, `infinite`,
+`halo5`, `xboxlive`, `haloapitest`; ADR 0042, ADR 0043).
 
 **D2 — The workspace.** The `go.work` at the root lists `./apps/go-api` and every `./libs/<brick>`;
 `go.work.sum` is versioned. There is **no `replace` directive** and **no `require` line for a
@@ -67,8 +72,9 @@ relative to the repository root) + permitted imports of other bricks; any import
 with an allowlist that must stay empty or dated and whose dead entries fail. Rank today: `gamefiles`
 imports nothing from the repository; `himap` imports `gamefiles` only; `film` imports `gamefiles` and
 `himap` (its production imports only `gamefiles/mapvar`; `himap` is reached by tests), and no brick
-imports `film`. The `film` row is a whole tree (`libs/film`, recursive): the module has several dozen
-packages.
+imports `film`; `haloapi` imports no other brick (and none imports it). The `film` and `haloapi` rows are whole
+trees (`libs/film`, `libs/haloapi`, recursive): `film` has several dozen packages. The `haloapi` row also carries
+`tiers`, the third-party packages allowed per sub-tree (amendment below).
 
 **D4 — Import from outside.** A module in a subdirectory is tagged `libs/<brick>/vX.Y.Z`; that is
 Go's rule for the module path above. Until the first tag the workspace is the only way to build
@@ -104,7 +110,7 @@ to `apps/go-api`; its path filter treats `libs/**`, `go.work` and `go.work.sum` 
 not as web changes. The coverage shards of `go-coverage` belong to a module (`module` directive of
 `.github/ci/go-shards.txt`, partition proved module by module by `scripts/ci_go_shard.sh --verifier`) and run
 from it. The test baseline is one file per module whose tests run in the shards
-(`.ai/baselines/tests_pre_migration.jsonl` for `apps/go-api`, `tests_libs_film.jsonl` for `libs/film`;
+(`.ai/baselines/tests_pre_migration.jsonl` for `apps/go-api`, `tests_libs_film.jsonl` for `libs/film`, `tests_libs_haloapi.jsonl` for `libs/haloapi`;
 `go list ./...` of the module is the reference set; a package that leaves a module leaves its baseline in a
 dated `RETRAIT` entry of `scripts/check_test_baseline.sh` and, when it keeps its tests, enters the baseline
 of its new module with its import path rewritten). The coverage ratchet stays on `apps/go-api`. `archlint` ratchets with a general rule
@@ -136,7 +142,7 @@ in the `Dockerfile`, the steps of `ci.yml` (vet/test, lint, `govulncheck`), a `g
 (`archlint/go_source_walk_test.go`). `make libs-test`, `make go-api-lint` and `make gate-push` loop on
 `libs/*/go.mod`: no line to add there; a brick that carries `*_gamefiles_test.go` files adds its line to
 `go-api-test-gamefiles` (`TestCibleMakefileGamefilesCouvreLeCorpus`). A brick whose tests run in the coverage
-shards (`libs/film`) also has a `module` block in `.github/ci/go-shards.txt` (its lots in the `go-coverage`
+shards (`libs/film`, `libs/haloapi`) also has a `module` block in `.github/ci/go-shards.txt` (its lots in the `go-coverage`
 matrix) and its own baseline file under `.ai/baselines/`.
 
 ## Consequences
@@ -163,4 +169,33 @@ matrix) and its own baseline file under `.ai/baselines/`.
 - Ratchets: `apps/go-api/internal/archlint/briques_imports_test.go`, `dockerfile_go_version_test.go`,
   `go_source_walk_test.go`, `gamefiles_tag_test.go`; `apps/go-api/cmd/server/licence_gplv3_test.go`.
 - Plans: `.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D2_2026-10-28.md` (film decoder).
-- Modules: `libs/film/`, `libs/gamefiles/`, `libs/himap/`; workspace: `go.work`; commands: `docs/COMMANDS.md` § "Go modules under `libs/`".
+- Modules: `libs/film/`, `libs/gamefiles/`, `libs/haloapi/`, `libs/himap/`; workspace: `go.work`; commands: `docs/COMMANDS.md` § "Go modules under `libs/`".
+- Publication: ADR 0043; plan `.ai/V8/PLAN_PUBLICATION_BRIQUES_2026-10-30.md`.
+
+## Amendment 2026-11-01 (ADR 0043) — a fourth module, tags and the `require` order
+
+Plan: `.ai/V8/PLAN_PUBLICATION_BRIQUES_2026-10-30.md` (lots 3 and 4).
+
+- **Fourth module: `libs/haloapi`.** The Halo API brick of ADR 0042 is now the module
+  `github.com/JGtm/LevelUp/libs/haloapi`. Its rank: it imports no other brick (the line `haloapi` of
+  `briques_imports_test.go` permits none) and no brick imports it. It holds `xblauth`, `infinite`, `halo5`,
+  `xboxlive` and `haloapitest` besides the root package. The module is linked by `go.work` with no `require` or
+  `replace`, like the three others; its own `go.mod` carries its third parties (`golang.org/x/sync`,
+  `golang.org/x/time`) and `go mod tidy` runs inside it, since it imports no sibling.
+- **A sentence of the vocabulary is superseded.** "The third stays inside `apps/go-api` as internal packages, held by
+  the table of internal bricks (ADR 0042)" is no longer true: the brick left `apps/go-api/internal/haloapi` for
+  `libs/haloapi`. It is kept above, marked, as history.
+- **`tiers` in the modules table.** A row of `briques_imports_test.go` may carry `tiers`: the third-party packages
+  allowed per sub-tree of the brick, beyond the standard library. A row without `tiers` does not judge third parties;
+  one with it refuses any import outside the standard library, the repository and the list of the sub-tree that
+  contains the file (a workspace's build list is the union of all modules, so a `go.mod` alone cannot bound them).
+  The `haloapi` row allows `errgroup` and `rate` under `infinite` only.
+- **The table of internal bricks is retired.** `briques_internes_test.go` and its self-proofs had one line, the Halo
+  API; once that line became a module the compiler refuses any import of `levelup/go-api` from it, and the line moved
+  to the modules table. The mechanism was removed with it (CLAUDE.md rule 7). The closure test of the domain was kept
+  under the name `haloapi_fermeture_domaine_test.go`.
+- **D4 is made operative by ADR 0043.** Tags `libs/<brick>/vX.Y.Z` are set by the maintainer only, at `v0.x`, one per
+  module. D2's rule "no `require` line for a workspace module" holds until a module is tagged: a module that imports
+  another brick (`himap` imports `gamefiles`) gains a `require` on the tag of the brick below before its own tag, which
+  is then tagged first. The workspace keeps resolving the local copy. `libs/film` is not published (ADR 0043 D-1).
+  Licences of the published modules are in ADR 0043 D-4 (D5's GPL note on `ooz` is unchanged).

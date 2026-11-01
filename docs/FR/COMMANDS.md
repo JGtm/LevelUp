@@ -1143,12 +1143,14 @@ make go-api-lint       # golangci-lint ratchet (apps/go-api + chaque module libs
 
 #### Modules Go sous `libs/` et espace de travail (ADR 0041)
 
-Trois briques vivent dans leur propre module Go : « fichiers du jeu », `libs/gamefiles` (chemin de module
+Quatre briques vivent dans leur propre module Go : « fichiers du jeu », `libs/gamefiles` (chemin de module
 `github.com/JGtm/LevelUp/libs/gamefiles` : paquets `himodule`, `ooz`, `hinavmesh`, `mapvar`), « images de
 carte », `libs/himap` (`github.com/JGtm/LevelUp/libs/himap` : paquet `himap`, qui n'importe que `libs/gamefiles`),
 et le « décodeur de film », `libs/film` (`github.com/JGtm/LevelUp/libs/film` : la façade `decfilm`, la couche de
 publication `replay`, les couches fermées sous `internal/`, ses catalogues ; n'importe que `libs/gamefiles` et
-`libs/himap`, ADR 0034). Toutes trois sont reliées à `apps/go-api` par le `go.work` de la racine du dépôt (aucune directive
+`libs/himap`, ADR 0034), et l'« API Halo », `libs/haloapi` (`github.com/JGtm/LevelUp/libs/haloapi` : paquets
+`xblauth`, `infinite`, `halo5`, `xboxlive` ; n'importe aucune autre brique, ADR 0042). Toutes quatre sont reliées à
+`apps/go-api` par le `go.work` de la racine du dépôt (aucune directive
 `replace` ; `go.work.sum` est versionné). Deux conséquences pour toute commande :
 
 - `./...` ne franchit jamais la frontière d'un module. `cd apps/go-api && go test ./...` ne teste **pas**
@@ -1170,6 +1172,7 @@ cd libs/himap && go list -deps ./... | grep levelup/go-api      # ne doit rien a
 cd libs/film && go test ./... -count=1                          # le décodeur de film (gates de couche et goldens compris)
 cd libs/film && go vet -tags=research ./...                     # compile ses instruments de recherche
 cd libs/film && go test -tags research ./internal/grammar/ -run TestE191   # joue des instruments de recherche à la demande
+cd libs/haloapi && go test ./... -count=1                       # le protocole de l'API Halo (httptest seulement, sans CGo)
 cd libs/film && go list -deps -test ./... | grep levelup/go-api # ne doit rien afficher non plus
 go test ./libs/gamefiles/mapvar/ -run TestLabel -count=1       # depuis la racine du dépôt fonctionne aussi (espace de travail)
 ```

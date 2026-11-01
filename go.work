@@ -6,5 +6,6 @@ use (
 	./apps/go-api
 	./libs/film
 	./libs/gamefiles
+	./libs/haloapi
 	./libs/himap
 )

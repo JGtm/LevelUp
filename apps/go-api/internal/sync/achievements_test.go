@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"levelup/go-api/internal/i18n"
+
+	"github.com/JGtm/LevelUp/libs/haloapi/xboxlive"
 )
 
 // ---------------------------------------------------------------------------
@@ -133,7 +135,7 @@ func findAchievementByID(achievements []PlayerAchievement, id string) *PlayerAch
 // ---------------------------------------------------------------------------
 
 func TestParseAchievementItem_GamerscoreFromRewards(t *testing.T) {
-	item := xboxAchievementItem{
+	item := xboxlive.Succes{
 		ID:            "a1",
 		Name:          "Test",
 		ProgressState: "NotStarted",
@@ -157,7 +159,7 @@ func TestParseAchievementItem_GamerscoreFromRewards(t *testing.T) {
 }
 
 func TestParseAchievementItem_UnlockedFromProgressState(t *testing.T) {
-	item := xboxAchievementItem{
+	item := xboxlive.Succes{
 		ID:            "a2",
 		ProgressState: "Achieved",
 		Progression: struct {
@@ -185,7 +187,7 @@ func TestParseAchievementItem_UnlockedFromProgressState(t *testing.T) {
 }
 
 func TestParseAchievementItem_ImageFromMediaAssets(t *testing.T) {
-	item := xboxAchievementItem{
+	item := xboxlive.Succes{
 		ID:            "a3",
 		ProgressState: "NotStarted",
 		MediaAssets: []struct {
@@ -203,7 +205,7 @@ func TestParseAchievementItem_ImageFromMediaAssets(t *testing.T) {
 }
 
 func TestParseAchievementItem_ProgressionRequirement(t *testing.T) {
-	item := xboxAchievementItem{
+	item := xboxlive.Succes{
 		ID:            "a4",
 		ProgressState: "InProgress",
 		Progression: struct {
@@ -239,7 +241,7 @@ func TestParseAchievementItem_ProgressionRequirement(t *testing.T) {
 }
 
 func TestParseAchievementItem_RarityPreserved(t *testing.T) {
-	item := xboxAchievementItem{
+	item := xboxlive.Succes{
 		ID:            "a5",
 		ProgressState: "NotStarted",
 		IsSecret:      true,
@@ -264,7 +266,7 @@ func TestParseAchievementItem_RarityPreserved(t *testing.T) {
 }
 
 func TestParseAchievementItem_TimeUnlocked_ZeroValue_Ignored(t *testing.T) {
-	item := xboxAchievementItem{
+	item := xboxlive.Succes{
 		ID:            "a6",
 		ProgressState: "Achieved",
 		Progression: struct {

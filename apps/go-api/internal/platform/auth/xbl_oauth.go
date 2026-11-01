@@ -1,6 +1,6 @@
 // Package auth — xbl_oauth.go : façade d'exploitation des échanges OAuth v2 Microsoft
 // (rafraîchissement d'un refresh_token, code d'autorisation du SSO web). Le protocole vit dans
-// `internal/haloapi/xblauth` ; la façade y ajoute le client Azure résolu depuis
+// `libs/haloapi/xblauth` ; la façade y ajoute le client Azure résolu depuis
 // l'environnement (azure_credentials.go), les adresses, le client HTTP et son délai, la garde
 // `netguard` du rafraîchissement, l'identifiant d'événement du journal et les compteurs expvar
 // (metrics.go) tenus à partir de l'issue typée que rend la brique.
@@ -15,9 +15,10 @@ import (
 	"net/http"
 	"time"
 
-	"levelup/go-api/internal/haloapi"
-	"levelup/go-api/internal/haloapi/xblauth"
 	"levelup/go-api/internal/observability/logging"
+
+	"github.com/JGtm/LevelUp/libs/haloapi"
+	"github.com/JGtm/LevelUp/libs/haloapi/xblauth"
 )
 
 // msalTokenURL : endpoint /token de l'app Azure. var (pas const) pour l'override httptest.

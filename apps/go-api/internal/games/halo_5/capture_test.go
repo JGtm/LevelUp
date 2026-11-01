@@ -10,6 +10,8 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+
+	"github.com/JGtm/LevelUp/libs/haloapi/halo5"
 )
 
 // --- fixtures -------------------------------------------------------------
@@ -29,7 +31,7 @@ func matchJSONMode(id string, gameMode int) string {
 		`"TotalKills":5,"TotalDeaths":3,"TotalAssists":2}],"IsTeamGame":true,"SeasonId":""}`, id, gameMode)
 }
 
-func mustMatches(t *testing.T, ids ...string) *H5MatchesResponse {
+func mustMatches(t *testing.T, ids ...string) *halo5.H5MatchesResponse {
 	t.Helper()
 	parts := make([]string, len(ids))
 	for i, id := range ids {
@@ -37,7 +39,7 @@ func mustMatches(t *testing.T, ids ...string) *H5MatchesResponse {
 	}
 	raw := fmt.Sprintf(`{"Start":0,"Count":%d,"ResultCount":%d,"Results":[%s]}`,
 		len(ids), len(ids), strings.Join(parts, ","))
-	var resp H5MatchesResponse
+	var resp halo5.H5MatchesResponse
 	if err := json.Unmarshal([]byte(raw), &resp); err != nil {
 		t.Fatalf("mustMatches unmarshal: %v", err)
 	}
@@ -45,51 +47,51 @@ func mustMatches(t *testing.T, ids ...string) *H5MatchesResponse {
 }
 
 // killEvents : une timeline avec 1 kill (arme) + 1 médaille.
-func killEvents() *h5MatchEventsResponse {
-	return &h5MatchEventsResponse{GameEvents: []h5GameEvent{
+func killEvents() *halo5.H5MatchEventsResponse {
+	return &halo5.H5MatchEventsResponse{GameEvents: []halo5.H5GameEvent{
 		{EventName: "Death", TimeSinceStart: "PT1M0S", IsWeapon: true,
-			Killer: &h5EventPlayer{Gamertag: "JGtm"}, Victim: &h5EventPlayer{Gamertag: "Foe"},
+			Killer: &halo5.H5EventPlayer{Gamertag: "JGtm"}, Victim: &halo5.H5EventPlayer{Gamertag: "Foe"},
 			KillerWeaponStockId: 523953283},
 		{EventName: "Medal", TimeSinceStart: "PT1M2S",
-			Player: &h5EventPlayer{Gamertag: "JGtm"}, MedalId: 824733727},
+			Player: &halo5.H5EventPlayer{Gamertag: "JGtm"}, MedalId: 824733727},
 	}}
 }
 
 // fakeH5Source — source live mockée (par page de matchs + par timeline de match).
 type fakeH5Source struct {
-	pages      map[int]*H5MatchesResponse        // start -> page
-	events     map[string]*h5MatchEventsResponse // matchID -> timeline
-	eventsErr  map[string]error                  // matchID -> erreur fetch events
-	carnage    map[string]*H5CarnageResponse     // matchID -> carnage (roster)
-	carnageErr map[string]error                  // matchID -> erreur fetch carnage
+	pages      map[int]*halo5.H5MatchesResponse        // start -> page
+	events     map[string]*halo5.H5MatchEventsResponse // matchID -> timeline
+	eventsErr  map[string]error                        // matchID -> erreur fetch events
+	carnage    map[string]*halo5.H5CarnageResponse     // matchID -> carnage (roster)
+	carnageErr map[string]error                        // matchID -> erreur fetch carnage
 }
 
-func (f *fakeH5Source) GetServiceRecords(context.Context, string, string) (*H5ServiceRecordResponse, error) {
+func (f *fakeH5Source) GetServiceRecords(context.Context, string, string) (*halo5.H5ServiceRecordResponse, error) {
 	return nil, errors.New("unused")
 }
-func (f *fakeH5Source) GetPlayerMatches(_ context.Context, _ string, start, _ int) (*H5MatchesResponse, error) {
+func (f *fakeH5Source) GetPlayerMatches(_ context.Context, _ string, start, _ int) (*halo5.H5MatchesResponse, error) {
 	if r, ok := f.pages[start]; ok {
 		return r, nil
 	}
-	return &H5MatchesResponse{}, nil // page vide = fin
+	return &halo5.H5MatchesResponse{}, nil // page vide = fin
 }
-func (f *fakeH5Source) GetMatchEvents(_ context.Context, matchID string) (*h5MatchEventsResponse, error) {
+func (f *fakeH5Source) GetMatchEvents(_ context.Context, matchID string) (*halo5.H5MatchEventsResponse, error) {
 	if err := f.eventsErr[matchID]; err != nil {
 		return nil, err
 	}
 	if r, ok := f.events[matchID]; ok {
 		return r, nil
 	}
-	return &h5MatchEventsResponse{}, nil
+	return &halo5.H5MatchEventsResponse{}, nil
 }
-func (f *fakeH5Source) GetMatchCarnage(_ context.Context, matchID, _ string) (*H5CarnageResponse, error) {
+func (f *fakeH5Source) GetMatchCarnage(_ context.Context, matchID, _ string) (*halo5.H5CarnageResponse, error) {
 	if err := f.carnageErr[matchID]; err != nil {
 		return nil, err
 	}
 	if r, ok := f.carnage[matchID]; ok {
 		return r, nil
 	}
-	return &H5CarnageResponse{}, nil // pas de roster = pas de participants (toléré)
+	return &halo5.H5CarnageResponse{}, nil // pas de roster = pas de participants (toléré)
 }
 
 var _ CaptureSource = (*fakeH5Source)(nil)
@@ -109,8 +111,8 @@ func idResolver(gt string) string {
 
 func TestCollectRecentMatches_HappyPath(t *testing.T) {
 	src := &fakeH5Source{
-		pages:  map[int]*H5MatchesResponse{0: mustMatches(t, "m1", "m2")},
-		events: map[string]*h5MatchEventsResponse{"m1": killEvents(), "m2": killEvents()},
+		pages:  map[int]*halo5.H5MatchesResponse{0: mustMatches(t, "m1", "m2")},
+		events: map[string]*halo5.H5MatchEventsResponse{"m1": killEvents(), "m2": killEvents()},
 	}
 	batches, stats, err := CollectRecentMatches(context.Background(), src, jgtmViewer(), idResolver, nil,
 		CaptureOptions{PageSize: 25})
@@ -136,13 +138,13 @@ func TestCollectRecentMatches_HappyPath(t *testing.T) {
 func TestCollectRecentMatches_ExcludesCampaignAndWarzone(t *testing.T) {
 	raw := fmt.Sprintf(`{"Start":0,"Count":3,"ResultCount":3,"Results":[%s,%s,%s]}`,
 		matchJSONMode("arena1", 1), matchJSONMode("camp1", 2), matchJSONMode("wz1", 4))
-	var page H5MatchesResponse
+	var page halo5.H5MatchesResponse
 	if err := json.Unmarshal([]byte(raw), &page); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
 	src := &fakeH5Source{
-		pages:  map[int]*H5MatchesResponse{0: &page},
-		events: map[string]*h5MatchEventsResponse{"arena1": killEvents()},
+		pages:  map[int]*halo5.H5MatchesResponse{0: &page},
+		events: map[string]*halo5.H5MatchEventsResponse{"arena1": killEvents()},
 	}
 	batches, stats, err := CollectRecentMatches(context.Background(), src, jgtmViewer(), idResolver, nil,
 		CaptureOptions{PageSize: 25})
@@ -166,8 +168,8 @@ func TestCollectRecentMatches_ExcludesCampaignAndWarzone(t *testing.T) {
 
 func TestCollectRecentMatches_DeltaStopOnKnown(t *testing.T) {
 	src := &fakeH5Source{
-		pages:  map[int]*H5MatchesResponse{0: mustMatches(t, "m1", "m2", "m3")},
-		events: map[string]*h5MatchEventsResponse{"m1": killEvents()},
+		pages:  map[int]*halo5.H5MatchesResponse{0: mustMatches(t, "m1", "m2", "m3")},
+		events: map[string]*halo5.H5MatchEventsResponse{"m1": killEvents()},
 	}
 	// m2 déjà connu -> on collecte m1 puis on s'arrête (delta).
 	isKnown := func(id string) bool { return id == "m2" }
@@ -186,7 +188,7 @@ func TestCollectRecentMatches_DeltaStopOnKnown(t *testing.T) {
 
 func TestCollectRecentMatches_EventsFailureStillCollects(t *testing.T) {
 	src := &fakeH5Source{
-		pages:     map[int]*H5MatchesResponse{0: mustMatches(t, "m1")},
+		pages:     map[int]*halo5.H5MatchesResponse{0: mustMatches(t, "m1")},
 		eventsErr: map[string]error{"m1": errors.New("403 token expiré")},
 	}
 	batches, stats, err := CollectRecentMatches(context.Background(), src, jgtmViewer(), idResolver, nil,
@@ -201,7 +203,7 @@ func TestCollectRecentMatches_EventsFailureStillCollects(t *testing.T) {
 }
 
 func TestCollectRecentMatches_MaxMatchesCap(t *testing.T) {
-	src := &fakeH5Source{pages: map[int]*H5MatchesResponse{0: mustMatches(t, "m1", "m2", "m3")}}
+	src := &fakeH5Source{pages: map[int]*halo5.H5MatchesResponse{0: mustMatches(t, "m1", "m2", "m3")}}
 	batches, stats, err := CollectRecentMatches(context.Background(), src, jgtmViewer(), idResolver, nil,
 		CaptureOptions{PageSize: 25, MaxMatches: 2})
 	if err != nil {
@@ -213,7 +215,7 @@ func TestCollectRecentMatches_MaxMatchesCap(t *testing.T) {
 }
 
 func TestCollectRecentMatches_Paginates(t *testing.T) {
-	src := &fakeH5Source{pages: map[int]*H5MatchesResponse{
+	src := &fakeH5Source{pages: map[int]*halo5.H5MatchesResponse{
 		0: mustMatches(t, "m1", "m2"), // page pleine -> on continue
 		2: mustMatches(t, "m3"),       // page incomplète -> dernière
 	}}
@@ -233,8 +235,8 @@ func TestCollectRecentMatches_Paginates(t *testing.T) {
 // produit, et hasMore reflète la complétude de la page.
 func TestCapturePageAt_SkipKnownNoStop(t *testing.T) {
 	src := &fakeH5Source{
-		pages:  map[int]*H5MatchesResponse{0: mustMatches(t, "m1", "m2", "m3")},
-		events: map[string]*h5MatchEventsResponse{"m3": killEvents()},
+		pages:  map[int]*halo5.H5MatchesResponse{0: mustMatches(t, "m1", "m2", "m3")},
+		events: map[string]*halo5.H5MatchEventsResponse{"m3": killEvents()},
 	}
 	isKnown := func(id string) bool { return id == "m1" || id == "m2" } // 2 connus, m3 nouveau
 	var stats CaptureStats
@@ -260,7 +262,7 @@ func TestCapturePageAt_SkipKnownNoStop(t *testing.T) {
 // TestCapturePageAt_EmptyPageStops — une page vide (fin d'historique) → aucun batch +
 // hasMore=false (signal d'arrêt du backfill).
 func TestCapturePageAt_EmptyPageStops(t *testing.T) {
-	src := &fakeH5Source{pages: map[int]*H5MatchesResponse{}} // tout start -> page vide
+	src := &fakeH5Source{pages: map[int]*halo5.H5MatchesResponse{}} // tout start -> page vide
 	var stats CaptureStats
 	batches, hasMore, err := CapturePageAt(context.Background(), src, jgtmViewer(), idResolver, nil,
 		CaptureOptions{}, 100, 25, nil, &stats)
@@ -281,20 +283,20 @@ func TestCollectRecentMatches_GetMatchesError(t *testing.T) {
 
 type errSource struct{ fakeH5Source }
 
-func (errSource) GetPlayerMatches(context.Context, string, int, int) (*H5MatchesResponse, error) {
+func (errSource) GetPlayerMatches(context.Context, string, int, int) (*halo5.H5MatchesResponse, error) {
 	return nil, errors.New("réseau KO")
 }
 
 // roster2 : carnage d'équipe 2 joueurs (JGtm équipe gagnante Rank 1, Foe perdante).
-func roster2() *H5CarnageResponse {
-	return &H5CarnageResponse{
+func roster2() *halo5.H5CarnageResponse {
+	return &halo5.H5CarnageResponse{
 		IsTeamGame: true,
-		TeamStats:  []H5CarnageTeam{{TeamId: 0, Rank: 2}, {TeamId: 1, Rank: 1}},
-		PlayerStats: []H5CarnagePlayer{
-			{Player: H5PlayerRef{Gamertag: "JGtm"}, TeamId: 1, Rank: 1,
+		TeamStats:  []halo5.H5CarnageTeam{{TeamId: 0, Rank: 2}, {TeamId: 1, Rank: 1}},
+		PlayerStats: []halo5.H5CarnagePlayer{
+			{Player: halo5.H5PlayerRef{Gamertag: "JGtm"}, TeamId: 1, Rank: 1,
 				TotalKills: 10, TotalDeaths: 14, TotalAssists: 11,
 				TotalTimePlayed: "PT5M0S", AvgLifeTimeOfPlayer: "PT16S"},
-			{Player: H5PlayerRef{Gamertag: "Foe"}, TeamId: 0, Rank: 5,
+			{Player: halo5.H5PlayerRef{Gamertag: "Foe"}, TeamId: 0, Rank: 5,
 				TotalKills: 8, TotalDeaths: 13, TotalAssists: 6},
 		},
 	}
@@ -302,8 +304,8 @@ func roster2() *H5CarnageResponse {
 
 func TestCollectRecentMatches_Participants(t *testing.T) {
 	src := &fakeH5Source{
-		pages:   map[int]*H5MatchesResponse{0: mustMatches(t, "m1")},
-		carnage: map[string]*H5CarnageResponse{"m1": roster2()},
+		pages:   map[int]*halo5.H5MatchesResponse{0: mustMatches(t, "m1")},
+		carnage: map[string]*halo5.H5CarnageResponse{"m1": roster2()},
 	}
 	batches, stats, err := CollectRecentMatches(context.Background(), src, jgtmViewer(), idResolver, nil,
 		CaptureOptions{PageSize: 25})
@@ -348,7 +350,7 @@ func TestCollectRecentMatches_Participants(t *testing.T) {
 
 func TestCollectRecentMatches_CarnageFailureStillCollects(t *testing.T) {
 	src := &fakeH5Source{
-		pages:      map[int]*H5MatchesResponse{0: mustMatches(t, "m1")},
+		pages:      map[int]*halo5.H5MatchesResponse{0: mustMatches(t, "m1")},
 		carnageErr: map[string]error{"m1": errors.New("403 token expiré")},
 	}
 	batches, stats, err := CollectRecentMatches(context.Background(), src, jgtmViewer(), idResolver, nil,

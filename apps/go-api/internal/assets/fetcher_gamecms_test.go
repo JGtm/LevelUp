@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/domain"
@@ -165,6 +166,37 @@ func TestGameCMSFetcher_MedalMetadata_OK(t *testing.T) {
 	}
 	if string(jp.RawJSON) != string(jsonData) {
 		t.Errorf("RawJSON inattendu: %q", jp.RawJSON)
+	}
+}
+
+// TestGameCMSFetcher_MedalMetadata_404 : contrairement aux images, un 404 sur les métadonnées de
+// médailles n'est PAS un ErrNotFound (le document doit exister) : il est ErrUpstreamUnavailable.
+func TestGameCMSFetcher_MedalMetadata_404(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	f := NewGameCMSFetcher(srv.Client(), nil, srv.URL)
+	_, err := f.Fetch(context.Background(), Ref{Kind: KindMedalMetadata, TitleID: "hi", ID: "metadata"})
+	if !errors.Is(err, ErrUpstreamUnavailable) || errors.Is(err, ErrNotFound) {
+		t.Errorf("attendu ErrUpstreamUnavailable et pas ErrNotFound, got %v", err)
+	}
+}
+
+// TestGameCMSFetcher_CorpsCoupe : un corps 200 coupé en cours de lecture (connexion fermée avant la
+// longueur annoncée) est ErrUpstreamUnavailable « read body », jamais un payload partiel.
+func TestGameCMSFetcher_CorpsCoupe(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Length", "100")
+		_, _ = w.Write([]byte("partiel"))
+	}))
+	defer srv.Close()
+
+	f := NewGameCMSFetcher(srv.Client(), nil, srv.URL)
+	res, err := f.Fetch(context.Background(), Ref{Kind: KindMedalMetadata, TitleID: "hi", ID: "metadata"})
+	if res != nil || !errors.Is(err, ErrUpstreamUnavailable) || !strings.Contains(err.Error(), "read body: ") {
+		t.Errorf("payload %v, erreur %v, attendu aucun payload et ErrUpstreamUnavailable « read body: »", res, err)
 	}
 }
 

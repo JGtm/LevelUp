@@ -16,7 +16,8 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/haloapi/infinite"
+
+	"github.com/JGtm/LevelUp/libs/haloapi/infinite"
 )
 
 // SpartanCustomizationData : l'identité visuelle Spartan (tag de service, images bannière,

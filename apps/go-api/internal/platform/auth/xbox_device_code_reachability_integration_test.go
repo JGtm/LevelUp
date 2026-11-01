@@ -36,7 +36,7 @@ import (
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/haloapi/xblauth"
+	"github.com/JGtm/LevelUp/libs/haloapi/xblauth"
 )
 
 // TestXboxDeviceCodeEndpointReachable vérifie que l'endpoint MSA de démarrage du

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"sort"
 
-	"levelup/go-api/internal/haloapi/infinite"
+	"github.com/JGtm/LevelUp/libs/haloapi/infinite"
 
 	"github.com/JGtm/LevelUp/libs/film/finalise"
 )

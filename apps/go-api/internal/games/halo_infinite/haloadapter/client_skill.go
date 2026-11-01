@@ -10,7 +10,8 @@ import (
 	"fmt"
 
 	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/haloapi/infinite"
+
+	"github.com/JGtm/LevelUp/libs/haloapi/infinite"
 )
 
 // MatchSkillData regroupe le skill d'un joueur dans un match ; un champ nil n'est pas fourni par

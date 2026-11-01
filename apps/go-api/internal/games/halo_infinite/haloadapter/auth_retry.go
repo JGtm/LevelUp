@@ -6,8 +6,9 @@ package haloadapter
 import (
 	"context"
 
-	"levelup/go-api/internal/haloapi/infinite"
 	"levelup/go-api/internal/platform/auth/tokencache"
+
+	"github.com/JGtm/LevelUp/libs/haloapi/infinite"
 )
 
 // IsAuthError dit si `err` est un refus d'authentification d'un service Halo (HTTP 401/403),

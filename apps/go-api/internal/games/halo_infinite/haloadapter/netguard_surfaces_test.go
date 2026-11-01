@@ -25,11 +25,11 @@ import (
 	"golang.org/x/time/rate"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/haloapi"
 	"levelup/go-api/internal/platform/netguard"
 	"levelup/go-api/internal/sync/filmfetch"
 
 	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/LevelUp/libs/haloapi"
 )
 
 // surfacesJournal capture les surfaces que `netguard` journalise (une ligne par surface coupée).

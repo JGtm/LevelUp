@@ -17,8 +17,10 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/haloapi/infinite"
+	"levelup/go-api/internal/platform/netguard"
 	"levelup/go-api/internal/sync/filmfetch"
+
+	"github.com/JGtm/LevelUp/libs/haloapi/infinite"
 )
 
 const (
@@ -152,7 +154,7 @@ func (c *Client) adresses(ctx context.Context, cles ...infinite.Cle) infinite.En
 // api rend le client de la brique pour un appel : sortie gardée sous `surface`, politique
 // `RetryHaloClient`, limiteur du client, adresses des clés `cles`.
 func (c *Client) api(ctx context.Context, surface string, cles ...infinite.Cle) *infinite.Client {
-	api := infinite.New(netguardDoer{surface: surface, next: c.http}, infinite.RetryHaloClient()).
+	api := infinite.New(netguard.Doer{Surface: surface, Next: c.http}, infinite.RetryHaloClient()).
 		WithEndpoints(c.adresses(ctx, cles...))
 	if c.limiter != nil {
 		api = api.WithLimiter(c.limiter)

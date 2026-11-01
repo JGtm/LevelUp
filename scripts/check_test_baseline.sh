@@ -360,9 +360,17 @@
 # TestBuildSeasonServiceRecordURL, TestParseLeaderboardPage : fonctions pures de la brique). Les paquets de
 # destination sont neufs : ils n'entrent pas dans la baseline (ils tournent dans les lots CI `sync` et `reste`).
 #
-# DEUX BASELINES, UNE PAR MODULE (ADR 0041) : `tests_pre_migration.jsonl` pour `apps/go-api` (défaut),
-# `tests_libs_film.jsonl` pour `libs/film` (`--baseline .ai/baselines/tests_libs_film.jsonl`). `./...` ne
-# franchit pas la frontière d'un module : chaque baseline se juge contre le JSONL de SON module.
+# ENTRÉE DU 2026-11-01 (plan PUBLICATION lot 3 : la brique `internal/haloapi` devient le module
+# `libs/haloapi`, lot CI `haloapi`) : aucune ligne ne quitte `tests_pre_migration.jsonl` (les paquets
+# `haloapi` y étaient absents, cf. les deux retraits du 2026-10-29 ci-dessus : neufs, ils tournaient dans le
+# lot `reste` sans y être inscrits). `.ai/baselines/tests_libs_haloapi.jsonl` est créée depuis un run
+# `go test -json ./... -count=1` du module (216 événements terminaux `pass`/`skip` de test, 6 paquets).
+#
+# TROIS BASELINES, UNE PAR MODULE DES LOTS CI (ADR 0041) : `tests_pre_migration.jsonl` pour `apps/go-api`
+# (défaut), `tests_libs_film.jsonl` pour `libs/film` (`--baseline .ai/baselines/tests_libs_film.jsonl`),
+# `tests_libs_haloapi.jsonl` pour `libs/haloapi`. `./...` ne franchit pas la frontière d'un module : chaque
+# baseline se juge contre le JSONL de SON module. Le mode AUTONOME ne joue que les voies go-api et film ;
+# `libs/haloapi` s'y joue par `make libs-test` (appelé par `make gate-push`), sans jugement de présence.
 #
 # DEUX MODES (le code de vérification est le MÊME — verify_tests_jsonl) :
 #   - AUTONOME (défaut) : le script lance lui-même la suite. C'est le mode du

@@ -9,33 +9,35 @@ import (
 
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
+
+	"github.com/JGtm/LevelUp/libs/haloapi/halo5"
 )
 
 // fakeSource implemente h5Source sans reseau (injecte des reponses / erreurs).
 type fakeSource struct {
-	sr         *H5ServiceRecordResponse
+	sr         *halo5.H5ServiceRecordResponse
 	srErr      error
-	ev         *h5MatchEventsResponse
+	ev         *halo5.H5MatchEventsResponse
 	evErr      error
-	matches    *H5MatchesResponse
+	matches    *halo5.H5MatchesResponse
 	matchesErr error
-	carnage    *H5CarnageResponse
+	carnage    *halo5.H5CarnageResponse
 	carnageErr error
 }
 
-func (f *fakeSource) GetServiceRecords(_ context.Context, _, _ string) (*H5ServiceRecordResponse, error) {
+func (f *fakeSource) GetServiceRecords(_ context.Context, _, _ string) (*halo5.H5ServiceRecordResponse, error) {
 	return f.sr, f.srErr
 }
 
-func (f *fakeSource) GetPlayerMatches(_ context.Context, _ string, _, _ int) (*H5MatchesResponse, error) {
+func (f *fakeSource) GetPlayerMatches(_ context.Context, _ string, _, _ int) (*halo5.H5MatchesResponse, error) {
 	return f.matches, f.matchesErr
 }
 
-func (f *fakeSource) GetMatchCarnage(_ context.Context, _, _ string) (*H5CarnageResponse, error) {
+func (f *fakeSource) GetMatchCarnage(_ context.Context, _, _ string) (*halo5.H5CarnageResponse, error) {
 	return f.carnage, f.carnageErr
 }
 
-func (f *fakeSource) GetMatchEvents(_ context.Context, _ string) (*h5MatchEventsResponse, error) {
+func (f *fakeSource) GetMatchEvents(_ context.Context, _ string) (*halo5.H5MatchEventsResponse, error) {
 	return f.ev, f.evErr
 }
 
@@ -45,9 +47,9 @@ func srcFactory(s h5Source) SourceFactory {
 	return func(context.Context) (h5Source, error) { return s, nil }
 }
 
-func mustServiceRecord(t *testing.T) *H5ServiceRecordResponse {
+func mustServiceRecord(t *testing.T) *halo5.H5ServiceRecordResponse {
 	t.Helper()
-	var sr H5ServiceRecordResponse
+	var sr halo5.H5ServiceRecordResponse
 	if err := json.Unmarshal([]byte(fixtureServiceRecord), &sr); err != nil {
 		t.Fatalf("fixture: %v", err)
 	}
@@ -120,7 +122,7 @@ func TestAdapter_NilFactory_NotSupported(t *testing.T) {
 }
 
 func TestAdapter_NotFound_EmptyNotError(t *testing.T) {
-	notFound := &HTTPError{StatusCode: http.StatusNotFound, URL: "x", Err: errors.New("absent")}
+	notFound := &halo5.HTTPError{StatusCode: http.StatusNotFound, URL: "x", Err: errors.New("absent")}
 	a := NewDataAdapter(srcFactory(&fakeSource{srErr: notFound}), nil)
 	s, err := a.LoadPlayerStats(context.Background(), "Inconnu", canonical.StatsScope{})
 	if err != nil {
@@ -134,7 +136,7 @@ func TestAdapter_NotFound_EmptyNotError(t *testing.T) {
 func TestAdapter_TokenExpired401_GracefulEmpty(t *testing.T) {
 	// Un 401 (token expire/tourne) sur un endpoint read-only ne doit pas casser la
 	// page : degradation gracieuse (vide identite-seule + warn), pas erreur dure.
-	unauth := &HTTPError{StatusCode: http.StatusUnauthorized, URL: "x", Err: errors.New("expire")}
+	unauth := &halo5.HTTPError{StatusCode: http.StatusUnauthorized, URL: "x", Err: errors.New("expire")}
 	a := NewDataAdapter(srcFactory(&fakeSource{srErr: unauth}), nil)
 	s, err := a.LoadPlayerStats(context.Background(), "JGtm", canonical.StatsScope{})
 	if err != nil {

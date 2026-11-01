@@ -14,6 +14,8 @@ import (
 
 	"levelup/go-api/internal/duration"
 	"levelup/go-api/internal/games/canonical"
+
+	"github.com/JGtm/LevelUp/libs/haloapi/halo5"
 )
 
 // h5EventNameToType mappe l'EventName Halo 5 → type canonique. ok=false pour un
@@ -42,7 +44,7 @@ func h5EventNameToType(name string) (canonical.MatchEventType, bool) {
 
 // mapH5Events convertit la réponse /events en []canonical.MatchEvent, filtrée par
 // opts.Types (Types vide = tout). Les events sans timestamp parsable sont ignorés.
-func mapH5Events(resp *h5MatchEventsResponse, opts canonical.MatchEventOptions) []canonical.MatchEvent {
+func mapH5Events(resp *halo5.H5MatchEventsResponse, opts canonical.MatchEventOptions) []canonical.MatchEvent {
 	if resp == nil {
 		return nil
 	}
@@ -99,7 +101,7 @@ func mapH5Events(resp *h5MatchEventsResponse, opts canonical.MatchEventOptions) 
 
 // h5EventIdentity construit une PlayerIdentity gamertag-keyée (XUID vide en Halo 5).
 // nil si l'acteur est absent (ex. kill d'environnement → Killer nil).
-func h5EventIdentity(p *h5EventPlayer) *canonical.PlayerIdentity {
+func h5EventIdentity(p *halo5.H5EventPlayer) *canonical.PlayerIdentity {
 	if p == nil || strings.TrimSpace(p.Gamertag) == "" {
 		return nil
 	}
@@ -108,7 +110,7 @@ func h5EventIdentity(p *h5EventPlayer) *canonical.PlayerIdentity {
 
 // h5Assistants convertit la liste d'assistants Halo 5 en []PlayerIdentity
 // (gamertag-keyé). Les entrées sans gamertag sont ignorées. nil si vide.
-func h5Assistants(list []h5EventPlayer) []canonical.PlayerIdentity {
+func h5Assistants(list []halo5.H5EventPlayer) []canonical.PlayerIdentity {
 	if len(list) == 0 {
 		return nil
 	}
@@ -129,7 +131,7 @@ func h5Assistants(list []h5EventPlayer) []canonical.PlayerIdentity {
 // melee > groundpound > shoulderbash > weapon). L'assassinat prime car il est aussi
 // tagué IsMelee côté API (déclenché depuis un corps-à-corps) mais reste sa propre
 // catégorie. Le headshot est porté séparément (Headshot).
-func h5KillKind(e *h5GameEvent) canonical.KillKind {
+func h5KillKind(e *halo5.H5GameEvent) canonical.KillKind {
 	switch {
 	case e.IsAssassination:
 		return canonical.KillKindAssassination
@@ -163,7 +165,7 @@ func h5IDString(id int64) *string {
 }
 
 // h5Vec3 convertit une position monde Halo 5 en canonical.Vec3. nil si absente.
-func h5Vec3(l *h5WorldLocation) *canonical.Vec3 {
+func h5Vec3(l *halo5.H5WorldLocation) *canonical.Vec3 {
 	if l == nil {
 		return nil
 	}

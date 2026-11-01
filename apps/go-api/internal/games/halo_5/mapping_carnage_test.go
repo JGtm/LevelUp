@@ -5,18 +5,20 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain"
+
+	"github.com/JGtm/LevelUp/libs/haloapi/halo5"
 )
 
 func TestMapCarnageParticipants_TeamOutcomeAndNoFabrication(t *testing.T) {
-	c := &H5CarnageResponse{
+	c := &halo5.H5CarnageResponse{
 		IsTeamGame: true,
-		TeamStats:  []H5CarnageTeam{{TeamId: 0, Rank: 1}, {TeamId: 1, Rank: 2}},
-		PlayerStats: []H5CarnagePlayer{
-			{Player: H5PlayerRef{Gamertag: "Win"}, TeamId: 0, Rank: 3,
+		TeamStats:  []halo5.H5CarnageTeam{{TeamId: 0, Rank: 1}, {TeamId: 1, Rank: 2}},
+		PlayerStats: []halo5.H5CarnagePlayer{
+			{Player: halo5.H5PlayerRef{Gamertag: "Win"}, TeamId: 0, Rank: 3,
 				TotalKills: 5, TotalDeaths: 2, TotalAssists: 4,
 				TotalShotsFired: 100, TotalShotsLanded: 40, TotalWeaponDamage: 1234.5,
 				TotalTimePlayed: "PT5M0S", AvgLifeTimeOfPlayer: "PT16.5S"},
-			{Player: H5PlayerRef{Gamertag: "Lose"}, TeamId: 1, Rank: 1,
+			{Player: halo5.H5PlayerRef{Gamertag: "Lose"}, TeamId: 1, Rank: 1,
 				TotalKills: 9, TotalDeaths: 3, TotalAssists: 1},
 		},
 	}
@@ -79,10 +81,10 @@ func TestMapCarnageParticipants_TeamOutcomeAndNoFabrication(t *testing.T) {
 // (assassinats + compétences spartiate : ground pound, shoulder bash) sont
 // projetées tel quel depuis le carnage vers la row participant.
 func TestMapCarnageParticipants_KillMechanics(t *testing.T) {
-	c := &H5CarnageResponse{
+	c := &halo5.H5CarnageResponse{
 		IsTeamGame: false,
-		PlayerStats: []H5CarnagePlayer{
-			{Player: H5PlayerRef{Gamertag: "A"}, Rank: 1,
+		PlayerStats: []halo5.H5CarnagePlayer{
+			{Player: halo5.H5PlayerRef{Gamertag: "A"}, Rank: 1,
 				TotalKills:             10,
 				TotalAssassinations:    3,
 				TotalGroundPoundKills:  2,
@@ -106,11 +108,11 @@ func TestMapCarnageParticipants_KillMechanics(t *testing.T) {
 }
 
 func TestMapCarnageParticipants_ResolveOrSkip(t *testing.T) {
-	c := &H5CarnageResponse{
+	c := &halo5.H5CarnageResponse{
 		IsTeamGame: false,
-		PlayerStats: []H5CarnagePlayer{
-			{Player: H5PlayerRef{Gamertag: "Known"}, Rank: 1},
-			{Player: H5PlayerRef{Gamertag: "Unresolved"}, Rank: 2},
+		PlayerStats: []halo5.H5CarnagePlayer{
+			{Player: halo5.H5PlayerRef{Gamertag: "Known"}, Rank: 1},
+			{Player: halo5.H5PlayerRef{Gamertag: "Unresolved"}, Rank: 2},
 		},
 	}
 	var dropped int
@@ -135,12 +137,12 @@ func TestMapCarnageParticipants_ResolveOrSkip(t *testing.T) {
 }
 
 func TestMapCarnageParticipants_FFAandDNF(t *testing.T) {
-	c := &H5CarnageResponse{
+	c := &halo5.H5CarnageResponse{
 		IsTeamGame: false,
-		PlayerStats: []H5CarnagePlayer{
-			{Player: H5PlayerRef{Gamertag: "First"}, Rank: 1},
-			{Player: H5PlayerRef{Gamertag: "Third"}, Rank: 3},
-			{Player: H5PlayerRef{Gamertag: "Quitter"}, Rank: 8, DNF: true},
+		PlayerStats: []halo5.H5CarnagePlayer{
+			{Player: halo5.H5PlayerRef{Gamertag: "First"}, Rank: 1},
+			{Player: halo5.H5PlayerRef{Gamertag: "Third"}, Rank: 3},
+			{Player: halo5.H5PlayerRef{Gamertag: "Quitter"}, Rank: 8, DNF: true},
 		},
 	}
 	rows := mapCarnageParticipants(context.Background(), "m1", c, func(gt string) string { return "x_" + gt }, nil) // tous résolus
@@ -162,7 +164,7 @@ func TestMapCarnageParticipants_NilEmpty(t *testing.T) {
 	if mapCarnageParticipants(context.Background(), "m1", nil, nil, nil) != nil {
 		t.Error("carnage nil → nil")
 	}
-	if mapCarnageParticipants(context.Background(), "m1", &H5CarnageResponse{}, func(string) string { return "" }, nil) != nil {
+	if mapCarnageParticipants(context.Background(), "m1", &halo5.H5CarnageResponse{}, func(string) string { return "" }, nil) != nil {
 		t.Error("carnage vide → nil")
 	}
 }

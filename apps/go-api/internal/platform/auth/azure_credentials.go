@@ -16,7 +16,8 @@ import (
 	"os"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/haloapi/xblauth"
+
+	"github.com/JGtm/LevelUp/libs/haloapi/xblauth"
 )
 
 // Constantes de l'app Azure (rapatriées de msal_client.go lors du retrait de

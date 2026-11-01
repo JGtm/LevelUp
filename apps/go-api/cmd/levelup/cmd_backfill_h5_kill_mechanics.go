@@ -63,6 +63,8 @@ import (
 	halo5 "levelup/go-api/internal/games/halo_5"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb"
+
+	h5api "github.com/JGtm/LevelUp/libs/haloapi/halo5"
 )
 
 // defaultH5MechCutoff : borne created_at par defaut. Fixee APRES le 2e batch corrompu
@@ -323,7 +325,7 @@ func loadMatchMechanics(ctx context.Context, db *sql.DB, matchID string) ([]stor
 
 // carnageMechByGamertag projette le carnage -> map gamertag -> 3 mecaniques (verite). PURE
 // (aucun DB/reseau) -> unit-testable. Un gamertag vide est ignore (jamais cle de jointure).
-func carnageMechByGamertag(carnage *halo5.H5CarnageResponse) map[string]mechTriple {
+func carnageMechByGamertag(carnage *h5api.H5CarnageResponse) map[string]mechTriple {
 	out := map[string]mechTriple{}
 	if carnage == nil {
 		return out

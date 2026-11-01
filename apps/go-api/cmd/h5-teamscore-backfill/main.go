@@ -27,6 +27,8 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	halo5 "levelup/go-api/internal/games/halo_5"
 	"levelup/go-api/internal/platform/auth"
+
+	h5api "github.com/JGtm/LevelUp/libs/haloapi/halo5"
 )
 
 func main() {
@@ -146,7 +148,7 @@ func loadMatchesMissingTeamScore(ctx context.Context, shared *sql.DB, maxMatches
 
 // teamScores extrait (team0, team1) depuis le carnage. ok=false si < 2 équipes
 // (FFA / carnage vide) — la dominance 2-équipes ne s'applique pas.
-func teamScores(c *halo5.H5CarnageResponse) (int, int, bool) {
+func teamScores(c *h5api.H5CarnageResponse) (int, int, bool) {
 	if c == nil {
 		return 0, 0, false
 	}

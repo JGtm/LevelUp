@@ -1,5 +1,5 @@
 // Package auth — xbl_resolvers.go : façade des résolveurs gamertag -> xuid de Xbox Live (profil
-// Xbox, PeopleHub ; protocole dans `internal/haloapi/xblauth`). Constructeurs : client nil ->
+// Xbox, PeopleHub ; protocole dans `libs/haloapi/xblauth`). Constructeurs : client nil ->
 // http.DefaultClient, sans garde `netguard` : ces résolutions exigent un jeton frais, que le
 // rafraîchissement gardé ne produit pas en mode démo.
 package auth
@@ -8,7 +8,7 @@ import (
 	"context"
 	"net/http"
 
-	"levelup/go-api/internal/haloapi/xblauth"
+	"github.com/JGtm/LevelUp/libs/haloapi/xblauth"
 )
 
 // XboxProfileResolver résout gamertag -> xuid via l'endpoint profil Xbox Live.

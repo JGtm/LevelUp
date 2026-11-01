@@ -19,6 +19,8 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
+
+	"github.com/JGtm/LevelUp/libs/haloapi/halo5"
 )
 
 // LoadCareerSnapshot projette la carrière Halo 5 (palier CSR + rang XP « SR ») vers
@@ -146,7 +148,7 @@ func (a *DataAdapter) enrichSpartanRank(ctx context.Context, src h5Source, gamer
 // read-only de profil ne doit pas casser la page). Les autres erreurs (reseau,
 // 5xx, decode) sont des pannes a propager.
 func (a *DataAdapter) degradeUnavailable(ctx context.Context, err error, gamertag, op string) bool {
-	var he *HTTPError
+	var he *halo5.HTTPError
 	if !errors.As(err, &he) {
 		return false
 	}

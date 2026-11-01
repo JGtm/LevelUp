@@ -1,5 +1,5 @@
 // Package auth — xbl_xsts_rta.go : façade d'exploitation de l'XSTS Xbox Live pour RTA (le
-// protocole vit dans `internal/haloapi/xblauth/xsts_rta.go`). La façade ajoute
+// protocole vit dans `libs/haloapi/xblauth/xsts_rta.go`). La façade ajoute
 // l'identifiant d'événement du journal, le client HTTP, le créneau XBL, la provenance du `ctx`
 // et, pour la variante à magasin, la lecture et la persistance de la provenance du joueur.
 package auth
@@ -9,8 +9,9 @@ import (
 	"log/slog"
 	"net/http"
 
-	"levelup/go-api/internal/haloapi/xblauth"
 	"levelup/go-api/internal/observability/logging"
+
+	"github.com/JGtm/LevelUp/libs/haloapi/xblauth"
 )
 
 // XSTSResult contient le token XSTS + userhash nécessaires pour la connexion RTA.

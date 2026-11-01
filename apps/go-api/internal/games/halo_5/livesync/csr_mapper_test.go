@@ -3,26 +3,27 @@ package livesync
 import (
 	"testing"
 
-	halo5 "levelup/go-api/internal/games/halo_5"
 	syncpkg "levelup/go-api/internal/sync"
+
+	h5api "github.com/JGtm/LevelUp/libs/haloapi/halo5"
 )
 
 // arenaResp construit un H5ServiceRecordResponse OK (ResultCode 0) portant un seul
 // résultat arena avec les playlists fournies.
-func arenaResp(playlists []halo5.H5ArenaPlaylistStat) *halo5.H5ServiceRecordResponse {
-	return &halo5.H5ServiceRecordResponse{
-		Results: []halo5.H5ServiceRecordResult{{
+func arenaResp(playlists []h5api.H5ArenaPlaylistStat) *h5api.H5ServiceRecordResponse {
+	return &h5api.H5ServiceRecordResponse{
+		Results: []h5api.H5ServiceRecordResult{{
 			Id:         "JGtm",
 			ResultCode: 0,
-			Result: halo5.H5ServiceRecordBody{
-				ArenaStats: &halo5.H5ArenaStats{ArenaPlaylistStats: playlists},
+			Result: h5api.H5ServiceRecordBody{
+				ArenaStats: &h5api.H5ArenaStats{ArenaPlaylistStats: playlists},
 			},
 		}},
 	}
 }
 
-func csrPtr(designation, tier, value int) *halo5.H5Csr {
-	return &halo5.H5Csr{DesignationId: designation, Tier: tier, Csr: value}
+func csrPtr(designation, tier, value int) *h5api.H5Csr {
+	return &h5api.H5Csr{DesignationId: designation, Tier: tier, Csr: value}
 }
 
 func findCSR(t *testing.T, out []syncpkg.PlayerPlaylistCSR, playlistID string) syncpkg.PlayerPlaylistCSR {
@@ -38,7 +39,7 @@ func findCSR(t *testing.T, out []syncpkg.PlayerPlaylistCSR, playlistID string) s
 
 func TestMapH5ArenaToPlaylistCSRs_TierAndAllTime(t *testing.T) {
 	// Diamant 5 courant, pic AllTime Onyx (sous-palier ignoré).
-	resp := arenaResp([]halo5.H5ArenaPlaylistStat{{
+	resp := arenaResp([]h5api.H5ArenaPlaylistStat{{
 		PlaylistId:             "pl-slayer",
 		MeasurementMatchesLeft: 0,
 		Csr:                    csrPtr(4, 5, 1450), // Diamond, sub 5
@@ -67,7 +68,7 @@ func TestMapH5ArenaToPlaylistCSRs_TierAndAllTime(t *testing.T) {
 
 func TestMapH5ArenaToPlaylistCSRs_Placement(t *testing.T) {
 	// En placement : Csr nil, 7 matchs restants → Current sans tier + remaining=7.
-	resp := arenaResp([]halo5.H5ArenaPlaylistStat{{
+	resp := arenaResp([]h5api.H5ArenaPlaylistStat{{
 		PlaylistId:             "pl-ctf",
 		MeasurementMatchesLeft: 7,
 		Csr:                    nil,
@@ -103,7 +104,7 @@ func TestMapH5ArenaToPlaylistCSRs_DesignationLabels(t *testing.T) {
 		{-1, ""},
 	}
 	for _, tc := range cases {
-		resp := arenaResp([]halo5.H5ArenaPlaylistStat{{
+		resp := arenaResp([]h5api.H5ArenaPlaylistStat{{
 			PlaylistId: "pl",
 			Csr:        csrPtr(tc.designation, 1, 100),
 		}})
@@ -125,19 +126,19 @@ func TestMapH5ArenaToPlaylistCSRs_EmptyAndNil(t *testing.T) {
 		t.Errorf("arena sans playlist: got %v, want nil", out)
 	}
 	// Playlist sans PlaylistId → ignorée → résultat nil.
-	resp := arenaResp([]halo5.H5ArenaPlaylistStat{{PlaylistId: "", Csr: csrPtr(2, 1, 100)}})
+	resp := arenaResp([]h5api.H5ArenaPlaylistStat{{PlaylistId: "", Csr: csrPtr(2, 1, 100)}})
 	if out := mapH5ArenaToPlaylistCSRs(resp); out != nil {
 		t.Errorf("playlist sans id: got %v, want nil", out)
 	}
 }
 
 func TestMapH5ArenaToPlaylistCSRs_SkipsNonOKResult(t *testing.T) {
-	resp := &halo5.H5ServiceRecordResponse{
-		Results: []halo5.H5ServiceRecordResult{{
+	resp := &h5api.H5ServiceRecordResponse{
+		Results: []h5api.H5ServiceRecordResult{{
 			Id:         "JGtm",
 			ResultCode: 1, // non OK → ignoré
-			Result: halo5.H5ServiceRecordBody{
-				ArenaStats: &halo5.H5ArenaStats{ArenaPlaylistStats: []halo5.H5ArenaPlaylistStat{{
+			Result: h5api.H5ServiceRecordBody{
+				ArenaStats: &h5api.H5ArenaStats{ArenaPlaylistStats: []h5api.H5ArenaPlaylistStat{{
 					PlaylistId: "pl", Csr: csrPtr(2, 1, 100),
 				}}},
 			},

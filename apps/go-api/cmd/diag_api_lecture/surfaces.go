@@ -25,8 +25,9 @@ type surface struct {
 	executer func(s *session, args []string) error
 }
 
-// surfaces : les lectures du témoin T3 (les six du plan, plus le service record, repli de la surface
-// « calendrier » quand le service de saisons répond 403).
+// surfaces : les lectures du témoin T3 (les six du plan D3, plus le service record, repli de la
+// surface « calendrier » quand le service de saisons répond 403, plus les quatre clients du plan
+// PUBLICATION : Halo 5, Discovery UGC des cartes, actifs GameCMS, succès Xbox).
 var surfaces = []surface{
 	{"historique", nil, "une page (25 matchs) de l'historique du compte", lireHistorique},
 	{"stats", []string{"match_id"}, "les statistiques d'un match", lireStats},
@@ -35,6 +36,11 @@ var surfaces = []surface{
 	{"actif", []string{"type", "asset_id", "version_id"}, "un actif de découverte (map|playlist|pair|game_variant)", lireActif},
 	{"calendrier", nil, "le calendrier de saisons (corps JSON reçu)", lireCalendrier},
 	{"servicerecord", nil, "le service record matchmade du compte (cumul, valeurs normalisées)", lireServiceRecord},
+	{"halo5-servicerecord", nil, "le service record arena Halo 5 du compte (client Halo 5)", lireServiceRecordH5},
+	{"ugc-carte", []string{"asset_id"}, "le DTO Discovery de la dernière version d'une carte (sans .mvar)", lireCarteUGC},
+	{"ugc-carte", []string{"asset_id", "version_id"}, "le DTO Discovery d'une version d'une carte (sans .mvar)", lireCarteUGC},
+	{"gamecms-actif", []string{"chemin"}, "un actif public GameCMS : longueur et SHA-256 des octets", lireActifGameCMS},
+	{"xbox-succes", nil, "les succès Halo Infinite du compte (toutes les pages, DTO brut converti)", lireSuccesXbox},
 }
 
 // run exécute la surface avec ses arguments.
@@ -58,7 +64,7 @@ func usage() string {
 	var b strings.Builder
 	b.WriteString("usage: diag_api_lecture [-xuid X] <sous-commande> [arguments]\n")
 	for _, sf := range surfaces {
-		fmt.Fprintf(&b, "  %-11s %-34s %s\n", sf.nom, signature(sf.args), sf.resume)
+		fmt.Fprintf(&b, "  %-19s %-34s %s\n", sf.nom, signature(sf.args), sf.resume)
 	}
 	return b.String()
 }

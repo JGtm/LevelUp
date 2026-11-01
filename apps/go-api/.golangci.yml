@@ -223,6 +223,17 @@ linters:
         linters:
           - lll
 
+      # DTO bruts de l'API Halo 5 (brique `libs/haloapi`, ADR 0042) : chaque champ porte le nom du
+      # JSON du service (`Id`, `MatchId`, ...), d'où la seule remarque de nommage sur le suffixe `Id`
+      # (revive var-naming et staticcheck ST1003, le même constat).
+      # Dette gelée par le ratchet tant que ces fichiers vivaient dans go-api ; depuis que la brique est
+      # un module (plan PUBLICATION, lot 3, 2026-11-01), golangci tourne dans `libs/haloapi` et ne voit
+      # plus le renommage qui franchit la racine du module (même angle mort que D2-L3-e) : les 21
+      # champs réapparaissaient comme neufs. Règle bornée aux trois fichiers de DTO et à ce motif.
+      - path: "libs/haloapi/halo5/(dto|dto_carnage|events_dto)\\.go$"
+        linters: [revive, staticcheck]
+        text: "(var-naming|ST1003): struct field \\w*Id should be \\w*ID"
+
       # handlers : setup + sync complexes par conception (orchestration I/O)
       - path: "internal/api/handlers/"
         linters:

@@ -26,7 +26,9 @@ import (
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/haloapi/infinite"
+	"levelup/go-api/internal/platform/netguard"
+
+	"github.com/JGtm/LevelUp/libs/haloapi/infinite"
 )
 
 // emblemMappingTTL : la table change peu (nouveaux emblèmes à chaque lot de contenu) ; 6 h, comme
@@ -48,7 +50,7 @@ var (
 // `surface`, adresses du titre du contexte (résolveur partagé, sans journal sur une clé absente).
 func nameplateAPI(ctx context.Context, surface string) *infinite.Client {
 	e := adressesDuTitre(ctx, games.DefaultEndpointResolver(), ctxkeys.TitleSlug(ctx), false, infinite.CleNameplate)
-	return infinite.New(netguardDoer{surface: surface, next: http.DefaultClient}, infinite.Retry{}).WithEndpoints(e)
+	return infinite.New(netguard.Doer{Surface: surface, Next: http.DefaultClient}, infinite.Retry{}).WithEndpoints(e)
 }
 
 // getEmblemMappingEntry rend l'entrée exacte de (emblemID, cfg) depuis le cache, rafraîchi s'il a

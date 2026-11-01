@@ -17,18 +17,19 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
-	halo5 "levelup/go-api/internal/games/halo_5"
 	syncpkg "levelup/go-api/internal/sync"
 	"levelup/go-api/internal/sync/skill"
+
+	h5api "github.com/JGtm/LevelUp/libs/haloapi/halo5"
 )
 
 // fakeCarnage implémente carnageGetter : réponses/erreurs par matchID.
 type fakeCarnage struct {
-	byID map[string]*halo5.H5CarnageResponse
+	byID map[string]*h5api.H5CarnageResponse
 	err  map[string]error
 }
 
-func (f *fakeCarnage) GetMatchCarnage(_ context.Context, matchID, _ string) (*halo5.H5CarnageResponse, error) {
+func (f *fakeCarnage) GetMatchCarnage(_ context.Context, matchID, _ string) (*h5api.H5CarnageResponse, error) {
 	if e, ok := f.err[matchID]; ok {
 		return nil, e
 	}
@@ -38,10 +39,10 @@ func (f *fakeCarnage) GetMatchCarnage(_ context.Context, matchID, _ string) (*ha
 	return nil, errors.New("fake: match inconnu")
 }
 
-func carnageForOwner(gt string, csr *halo5.H5Csr) *halo5.H5CarnageResponse {
-	return &halo5.H5CarnageResponse{
-		PlayerStats: []halo5.H5CarnagePlayer{
-			{Player: halo5.H5PlayerRef{Gamertag: gt}, CurrentCsr: csr},
+func carnageForOwner(gt string, csr *h5api.H5Csr) *h5api.H5CarnageResponse {
+	return &h5api.H5CarnageResponse{
+		PlayerStats: []h5api.H5CarnagePlayer{
+			{Player: h5api.H5PlayerRef{Gamertag: gt}, CurrentCsr: csr},
 		},
 	}
 }
@@ -84,11 +85,11 @@ func TestPersistPerMatchRatings_SummaryVentilatesSkips(t *testing.T) {
 
 	const gt = "JGtm"
 	src := &fakeCarnage{
-		byID: map[string]*halo5.H5CarnageResponse{
-			"m_csr":    carnageForOwner(gt, &halo5.H5Csr{DesignationId: 5, Tier: 0, Csr: 1700}),  // Onyx
+		byID: map[string]*h5api.H5CarnageResponse{
+			"m_csr":    carnageForOwner(gt, &h5api.H5Csr{DesignationId: 5, Tier: 0, Csr: 1700}),  // Onyx
 			"m_place":  carnageForOwner(gt, nil),                                                 // placement (CurrentCsr nil)
 			"m_social": carnageForOwner(gt, nil),                                                 // social : pas de CSR attendu
-			"m_absent": carnageForOwner("SomeoneElse", &halo5.H5Csr{DesignationId: 2, Csr: 900}), // owner absent
+			"m_absent": carnageForOwner("SomeoneElse", &h5api.H5Csr{DesignationId: 2, Csr: 900}), // owner absent
 		},
 		err: map[string]error{"m_carn": errors.New("HTTP 401 token mort")},
 	}

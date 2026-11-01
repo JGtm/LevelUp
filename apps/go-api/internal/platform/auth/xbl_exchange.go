@@ -1,5 +1,5 @@
 // Package auth — xbl_exchange.go : façade d'exploitation de l'échange access_token Microsoft ->
-// jetons Halo (le protocole vit dans `internal/haloapi/xblauth`).
+// jetons Halo (le protocole vit dans `libs/haloapi/xblauth`).
 //
 // Ce que la façade ajoute au protocole : le descripteur Halo par défaut, le client HTTP et son
 // délai, le créneau de concurrence XBL process-wide, la provenance du jeton portée par le `ctx`
@@ -15,8 +15,9 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/haloapi"
-	"levelup/go-api/internal/haloapi/xblauth"
+
+	"github.com/JGtm/LevelUp/libs/haloapi"
+	"github.com/JGtm/LevelUp/libs/haloapi/xblauth"
 )
 
 // xblExchangeTimeout borne chaque appel HTTP de la chaîne d'échange (échange Halo, XSTS RTA,

@@ -423,6 +423,7 @@ jobs:
             apps/go-api/go.sum
             libs/film/go.sum
             libs/gamefiles/go.sum
+            libs/haloapi/go.sum
             libs/himap/go.sum
 
       - name: go vet (domain + analysis — sans CGo)
@@ -561,6 +562,25 @@ jobs:
         env:
           CGO_ENABLED: "1"
 
+      # BRIQUE `libs/haloapi` (l'API Halo : protocole sans état ni politique, ADR 0041 et 0042, plan
+      # PUBLICATION lot 3) : module séparé, SANS CGo (bibliothèque standard, `errgroup`, `rate` en
+      # test). Ses tests tournent en entier dans le lot `haloapi` du job go-coverage (Linux) ; ce pas
+      # les joue sur les DEUX systèmes, avec le vet et l'autonomie du module — `go list -deps -test` ne
+      # doit montrer aucun paquet `levelup/go-api`, doublée par archlint/briques_imports_test.go.
+      - name: go vet + go test + autonomie (brique haloapi — module libs/haloapi, sans CGo)
+        working-directory: libs/haloapi
+        shell: bash
+        run: |
+          set -e
+          go vet ./...
+          go test ./... -timeout 600s -count=1
+          if go list -deps -test ./... | grep -E 'levelup/go-api'; then
+            echo "::error::libs/haloapi importe le module levelup/go-api"
+            exit 1
+          fi
+        env:
+          CGO_ENABLED: "0"
+
       # INSTRUMENTS `research` (2026-09-16, chantier du decodeur de film). Les instruments de
       # recherche qui REBALAYENT les 7 bobines versionnees (`e191b_carte_ti37_*`, `e191c_*` dans
       # `filmdec`) sont derriere `//go:build research` : ils tournent a la demande
@@ -622,6 +642,7 @@ jobs:
             apps/go-api/go.sum
             libs/film/go.sum
             libs/gamefiles/go.sum
+            libs/haloapi/go.sum
             libs/himap/go.sum
 
       - name: go test -race (deux films en parallele)
@@ -654,6 +675,7 @@ jobs:
             apps/go-api/go.sum
             libs/film/go.sum
             libs/gamefiles/go.sum
+            libs/haloapi/go.sum
             libs/himap/go.sum
 
       # golangci-lint : équivalent ruff + ruff-format + enforce_size_limits + McCabe pour Go
@@ -729,6 +751,15 @@ jobs:
           working-directory: libs/film
           args: --config ../../apps/go-api/.golangci.yml --timeout 5m ${{ steps.lint_base.outputs.args }}
 
+      # Brique `libs/haloapi` (ADR 0041, plan PUBLICATION lot 3) : cinquième passage, même config, même
+      # ratchet. Aucune règle `path:` de la config ne visait `internal/haloapi` : rien à réécrire.
+      - name: golangci-lint (ratchet, brique libs/haloapi)
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.12.2
+          working-directory: libs/haloapi
+          args: --config ../../apps/go-api/.golangci.yml --timeout 5m ${{ steps.lint_base.outputs.args }}
+
   go-lease-enforcement:
     name: Go Lease Enforcement (ADR 0013)
     needs: changes
@@ -773,6 +804,7 @@ jobs:
             apps/go-api/go.sum
             libs/film/go.sum
             libs/gamefiles/go.sum
+            libs/haloapi/go.sum
             libs/himap/go.sum
 
       # Version exacte : un outil de sécurité flottant changerait de verdict sans commit.
@@ -814,6 +846,14 @@ jobs:
         env:
           CGO_ENABLED: "1"
 
+      # Brique `libs/haloapi` (ADR 0041, plan PUBLICATION lot 3) : même raison ; aucun paquet CGo.
+      - name: govulncheck libs/haloapi
+        working-directory: libs/haloapi
+        run: |
+          "$(go env GOPATH)/bin/govulncheck" ./...
+        env:
+          CGO_ENABLED: "0"
+
   npm-audit:
     name: npm audit (dépendances de production)
     runs-on: ubuntu-latest
@@ -841,8 +881,8 @@ jobs:
   # job go-baseline-tests qui la rejouait est supprimé).
   #
   # DÉCOUPAGE : .github/ci/go-shards.txt (lots, durées, listes de tests lourds de `grammar`), lu
-  # par scripts/ci_go_shard.sh. Chaque lot appartient à un MODULE (`apps/go-api`, `libs/film`, ADR
-  # 0041) et se joue depuis lui ; le dernier lot d'un module est le COMPLÉMENT de son `go list
+  # par scripts/ci_go_shard.sh. Chaque lot appartient à un MODULE (`apps/go-api`, `libs/film`,
+  # `libs/haloapi`, ADR 0041) et se joue depuis lui ; le dernier lot d'un module est le COMPLÉMENT de son `go list
   # -tags=integration ./...` : l'union des lots couvre chaque module par construction, et le job de
   # fusion le revérifie contre le JSONL, module par module. La liste des lots ci-dessous est celle du fichier (archlint/ci_go_shards_test.go).
   #
@@ -868,7 +908,7 @@ jobs:
       # lot rouge est une information de plus, pas du bruit.
       fail-fast: false
       matrix:
-        lot: [persist-ops, platform, sync, reste, film-grammar-lourd, film-grammar-reste, film]
+        lot: [persist-ops, platform, sync, reste, film-grammar-lourd, film-grammar-reste, film, haloapi]
     defaults:
       run:
         working-directory: apps/go-api
@@ -883,6 +923,7 @@ jobs:
             apps/go-api/go.sum
             libs/film/go.sum
             libs/gamefiles/go.sum
+            libs/haloapi/go.sum
             libs/himap/go.sum
 
       # S45 T8 — décision : CGO=0 fast-check = job go-build ; CGO=1 full = ce job.
@@ -970,6 +1011,7 @@ jobs:
             apps/go-api/go.sum
             libs/film/go.sum
             libs/gamefiles/go.sum
+            libs/haloapi/go.sum
             libs/himap/go.sum
 
       - name: Télécharger les artefacts des lots
@@ -979,7 +1021,7 @@ jobs:
           merge-multiple: true
           path: apps/go-api/lots
 
-      # Contrôle d'ensemble (D-3), MODULE PAR MODULE (ADR 0041 : `apps/go-api`, `libs/film`) : un lot
+      # Contrôle d'ensemble (D-3), MODULE PAR MODULE (ADR 0041 : `apps/go-api`, `libs/film`, `libs/haloapi`) : un lot
       # sans artefact, un paquet que personne n'a exécuté ou un paquet exécuté qui n'existe plus dans
       # son module = échec nommé, jamais une suite plus petite qui passe au vert. L'ensemble de
       # référence d'un module est son `go list -tags=integration ./...`, la même énumération que
@@ -1057,7 +1099,7 @@ jobs:
       # Gate de NON-RÉGRESSION — ex-job `go-baseline-tests`, fusionné ici (D3).
       # Contrôles : présence de TOUS les tests de la baseline de chaque module
       # (.ai/baselines/tests_pre_migration.jsonl pour apps/go-api, tests_libs_film.jsonl pour
-      # libs/film), aucun test en échec, aucun package en échec hors test. Mode CONSOMMATEUR
+      # libs/film, tests_libs_haloapi.jsonl pour libs/haloapi), aucun test en échec, aucun package en échec hors test. Mode CONSOMMATEUR
       # (`--from-jsonl`) : analyse le JSONL concaténé des lots de chaque module, ne relance RIEN.
       #
       # `!cancelled()` NON NÉGOCIABLE : ce gate doit rendre son verdict même quand un lot est
@@ -1095,14 +1137,15 @@ jobs:
           path: |
             apps/go-api/baseline_current.jsonl
             apps/go-api/baseline_libs_film.jsonl
+            apps/go-api/baseline_libs_haloapi.jsonl
           if-no-files-found: warn
           retention-days: 7
 
       # Fusion des profils (D-4) : UNE ligne `mode: atomic`, puis tous les blocs des lots du module
       # `apps/go-api`. `go tool cover` additionne les blocs identiques (chaque lot instrumente tout le
       # module ; un bloc couvert dans un lot et pas dans l'autre compte comme couvert). Un profil d'un
-      # autre mode ferait un total faux : refusé. Les profils des lots d'un AUTRE module (libs/film)
-      # n'entrent pas dans le ratchet de go-api : ils s'affichent à part (étape suivante).
+      # autre mode ferait un total faux : refusé. Les profils des lots d'un AUTRE module (libs/film,
+      # libs/haloapi) n'entrent pas dans le ratchet de go-api : ils s'affichent à part (étapes suivantes).
       - name: Fusionner les profils de couverture
         if: ${{ !cancelled() }}
         run: |
@@ -1133,6 +1176,19 @@ jobs:
           [ "${#profils[@]}" -gt 0 ] || { echo "aucun profil des lots libs/film — étape sautée"; exit 0; }
           { echo "mode: atomic"; for f in "${profils[@]}"; do tail -n +2 "$f"; done; } > coverage_libs_film.raw
           (cd ../../libs/film && go tool cover -func="$OLDPWD/coverage_libs_film.raw" | tail -1)
+
+      # Couverture du module libs/haloapi (l'API Halo, ADR 0041 et 0042) : affichage seul, comme libs/film.
+      # Ses paquets ont quitté le dénominateur du ratchet de go-api au lot 3 du plan PUBLICATION.
+      - name: Afficher couverture libs/haloapi
+        if: ${{ !cancelled() }}
+        run: |
+          profils=()
+          for lot in $(bash ../../scripts/ci_go_shard.sh --lots-du-module libs/haloapi); do
+            [ ! -f "lots/coverage.$lot.raw" ] || profils+=("lots/coverage.$lot.raw")
+          done
+          [ "${#profils[@]}" -gt 0 ] || { echo "aucun profil des lots libs/haloapi — étape sautée"; exit 0; }
+          { echo "mode: atomic"; for f in "${profils[@]}"; do tail -n +2 "$f"; done; } > coverage_libs_haloapi.raw
+          (cd ../../libs/haloapi && go tool cover -func="$OLDPWD/coverage_libs_haloapi.raw" | tail -1)
 
       # S45 T3 : filtrer internal/api/gen/ et cmd/msal-poc/ du profil
       - name: Filtrer exclusions (gen/ + msal-poc/)
@@ -1230,6 +1286,7 @@ jobs:
             apps/go-api/go.sum
             libs/film/go.sum
             libs/gamefiles/go.sum
+            libs/haloapi/go.sum
             libs/himap/go.sum
 
       # Tests YAML-only : vérifie que openapi.yaml est valide, complet (≥20 paths)
@@ -1282,6 +1339,7 @@ jobs:
             apps/go-api/go.sum
             libs/film/go.sum
             libs/gamefiles/go.sum
+            libs/haloapi/go.sum
             libs/himap/go.sum
 
       - name: Build Go backend

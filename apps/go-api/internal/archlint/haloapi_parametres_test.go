@@ -1,4 +1,4 @@
-// haloapi_parametres_test.go — aucune fonction de production de la brique `internal/haloapi` ne
+// haloapi_parametres_test.go — aucune fonction de production de la brique `libs/haloapi` ne
 // prend plus de cinq paramètres (CLAUDE.md, règle 5 : au-delà, regrouper dans une structure). La
 // règle est tenue ici, sans baseline : la brique est neuve, elle n'a aucune dette à geler.
 //
@@ -60,7 +60,7 @@ func fonctionsTropLongues(src goSource) []string {
 
 func TestHaloapiCinqParametresAuPlus(t *testing.T) {
 	var violations []string
-	for _, src := range goSourcesUnder(t, racineHaloapiSurDisque) {
+	for _, src := range goSourcesUnder(t, racineBriqueHaloapi) {
 		violations = append(violations, fonctionsTropLongues(src)...)
 	}
 	if len(violations) > 0 {
@@ -72,7 +72,7 @@ func TestHaloapiCinqParametresAuPlus(t *testing.T) {
 // TestHaloapiCinqParametresAuPlus_AutoPreuve : six paramètres rougissent (déclaration, méthode,
 // littérale, noms groupés) ; cinq, un récepteur en plus ou un variadique passent.
 func TestHaloapiCinqParametresAuPlus_AutoPreuve(t *testing.T) {
-	const rel = "internal/haloapi/infinite/x.go"
+	const rel = racineBriqueHaloapi + "/infinite/x.go"
 	interdits := map[string]string{
 		"déclaration": `package infinite; func f(a, b, c, d, e, f int) {}`,
 		"méthode":     `package infinite; type T struct{}; func (T) f(a int, b string, c, d, e bool, f []byte) {}`,

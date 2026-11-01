@@ -8,15 +8,18 @@
 // le package). Ce test scanne donc `internal/` et échoue sur tout fichier
 // contenant un appel sortant sans `netguard.Check`, hors allowlist justifiée.
 //
-// BRIQUE `internal/haloapi` : ses fichiers émettent par un `haloapi.Doer` reçu et n'ont jamais
-// `netguard.Check` à côté de `.Do(req)` : ils sont exemptés par PRÉFIXE (`prefixeBriqueHaloapi`).
+// BRIQUE `libs/haloapi` : ses fichiers émettent par un `haloapi.Doer` reçu et n'ont jamais
+// `netguard.Check` à côté de `.Do(req)`. Depuis qu'elle est un module à part (lot 3 du plan
+// PUBLICATION, 2026-11-01), elle est hors du parcours (`apps/go-api/internal/`) : l'exemption par
+// préfixe qu'elle portait sous `internal/haloapi/` est retirée avec son objet.
 // Côté exploitation, ce ratchet VOIT les fichiers qui définissent un `Doer` gardé
-// (`platform/auth/xbl_doer.go`, `games/halo_infinite/haloadapter/doer.go` : `netguard.Check` puis
-// `next.Do(req)`) ; il ne voit PAS si chaque client de la brique reçoit bien ce `Doer`. Ce qui tient
+// (`platform/auth/xbl_doer.go`, `platform/netguard/doer.go` : `netguard.Check` puis
+// `Next.Do(req)`) ; il ne voit PAS si chaque client de la brique reçoit bien ce `Doer`. Ce qui tient
 // l'hermétisme de la brique : (1) elle ne construit ni n'atteint aucun client HTTP
-// (`archlint/haloapi_sans_client_http_test.go`) ; (2) tout client de `haloapi/infinite` construit par
-// go-api reçoit un littéral `netguardDoer{...}` écrit à l'appel (`archlint/haloapi_doer_garde_test.go`) ;
-// (3) les huit surfaces de l'adaptateur sont prouvées muettes en mode démo
+// (`archlint/haloapi_sans_client_http_test.go`) ; (2) tout client de `haloapi/infinite`, de
+// `haloapi/halo5` et de `haloapi/xboxlive` construit par go-api reçoit un littéral `netguard.Doer{...}` écrit à l'appel
+// (`archlint/haloapi_doer_garde_test.go`) ; (3) les huit surfaces de l'adaptateur Halo Infinite sont
+// prouvées muettes en mode démo
 // (`haloadapter/netguard_surfaces_test.go`). Les jambes d'authentification de `haloapi/xblauth` à
 // qui la façade `platform/auth` passe un client nu (échanges XBL/XSTS/Spartan, code d'autorisation,
 // résolveurs de profil) ne sont pas gardées : elles exigent un jeton frais, que le rafraîchissement
@@ -29,10 +32,6 @@ import (
 	"strings"
 	"testing"
 )
-
-// prefixeBriqueHaloapi : la brique haloapi (chemin relatif à internal/), exemptée par préfixe :
-// elle émet par un Doer reçu, dont la garde est vue chez l'exploitation (voir l'en-tête).
-const prefixeBriqueHaloapi = "haloapi/"
 
 // outboundCallMarkers : formes d'émission d'une requête HTTP sortante.
 var outboundCallMarkers = []string{
@@ -52,7 +51,7 @@ var outboundCallMarkers = []string{
 // de la démo peut déclencher — et on laisse hors garde la POIGNÉE DE MAIN
 // d'authentification interactive et les canaux désactivés en démo.
 var allowlist = map[string]string{
-	// Les fichiers de la brique `haloapi/` n'y figurent pas : ils sont exemptés par préfixe (voir
+	// Les fichiers de la brique `libs/haloapi` n'y figurent pas : ils sont hors du parcours (voir
 	// l'en-tête). La poignée de main d'auth INTERACTIVE (code d'autorisation, échanges XBL/XSTS/
 	// Spartan, résolveurs de profil), à qui la façade passe un client nu, n'est jamais atteinte en
 	// démo : LEVELUP_AUTH_MODE=none, aucun flux de login monté, et le rafraîchissement OAuth — seule
@@ -104,9 +103,6 @@ func TestOutboundCallsAreNetguarded(t *testing.T) {
 		if _, ok := allowlist[key]; ok {
 			return nil
 		}
-		if strings.HasPrefix(key, prefixeBriqueHaloapi) {
-			return nil
-		}
 		leaks = append(leaks, key)
 		return nil
 	})
@@ -132,10 +128,6 @@ func TestOutboundCallsAreNetguarded(t *testing.T) {
 func TestAllowlistHasNoStaleEntry(t *testing.T) {
 	root := filepath.Join("..", "..", "..", "internal")
 	for key := range allowlist {
-		if strings.HasPrefix(key, prefixeBriqueHaloapi) {
-			t.Errorf("allowlist: %s est déjà exempté par le préfixe de la brique — retirer l'entrée", key)
-			continue
-		}
 		path := filepath.Join(root, filepath.FromSlash(key))
 		content, err := os.ReadFile(path) //nolint:gosec // chemin dérivé de l'allowlist du test
 		if err != nil {

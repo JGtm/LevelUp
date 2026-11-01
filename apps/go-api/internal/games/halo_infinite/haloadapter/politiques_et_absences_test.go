@@ -15,8 +15,9 @@ import (
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/haloapi/infinite"
 	"levelup/go-api/internal/i18n"
+
+	"github.com/JGtm/LevelUp/libs/haloapi/infinite"
 )
 
 // serveurStatut : un serveur qui rend toujours `statut`.

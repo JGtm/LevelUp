@@ -7,7 +7,7 @@ package auth
 import (
 	"expvar"
 
-	"levelup/go-api/internal/haloapi/xblauth"
+	"github.com/JGtm/LevelUp/libs/haloapi/xblauth"
 )
 
 var (
