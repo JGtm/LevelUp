@@ -22,13 +22,16 @@ import (
 	"syscall"
 	"time"
 
+	"levelup/go-api/internal/api/wire"
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/observability/logging"
 	"levelup/go-api/internal/ops"
 	"levelup/go-api/internal/persist"
+	"levelup/go-api/internal/platform/adminstate"
 	"levelup/go-api/internal/platform/auth"
+	"levelup/go-api/internal/platform/auth/pool"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/friendstore"
 	"levelup/go-api/internal/platform/groupstore"
@@ -37,6 +40,8 @@ import (
 	"levelup/go-api/internal/platform/userstore"
 	"levelup/go-api/internal/scheduler"
 	"levelup/go-api/internal/service"
+	"levelup/go-api/internal/watcher"
+	"levelup/go-api/pkg/duckdbbackup"
 )
 
 // bootState réunit ce que les étapes de démarrage se transmettent. Chaque champ est posé par
@@ -65,10 +70,22 @@ type bootState struct {
 	settingsStore *settings.Store
 	tokenProvider auth.TokenProvider
 
-	boot           *bootTasks
-	autoScheduler  *scheduler.AutoSyncScheduler
-	autoBatchQueue *persist.BatchQueue // nil : persistance synchrone
-	workerWG       sync.WaitGroup      // suit la goroutine du worker de la file de persistance
+	boot               *bootTasks
+	schedulerWG        sync.WaitGroup // goroutines « suivies », attendues à l'arrêt avant duckdb.CloseAll
+	autoSyncPool       pool.Pool      // nil : aucun credential découvert
+	autoScheduler      *scheduler.AutoSyncScheduler
+	schedulerCtx       context.Context
+	cancelScheduler    context.CancelFunc
+	adminActionJournal *adminstate.ActionJournal
+	autoBatchQueue     *persist.BatchQueue // nil : persistance synchrone
+	workerWG           sync.WaitGroup      // suit la goroutine du worker de la file de persistance
+
+	watcherDaemon   *watcher.Daemon // nil : watcher désactivé (réglage ou démo)
+	watcherCtrl     watcher.DaemonController
+	healthScheduler *scheduler.HealthScheduler
+	backupSched     *duckdbbackup.Scheduler
+	reg             *wire.ServiceRegistry // nil jusqu'à la construction du routeur
+	router          http.Handler
 }
 
 // bootConfigure enchaîne les étapes du démarrage qui précèdent l'accès aux bases : crochets
