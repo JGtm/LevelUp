@@ -119556,3 +119556,11 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : tags sur un commit de la branche de release (pas encore sur `main` : le squash de la release y créera un autre commit ; le tag garde son commit vivant et la version servie est celle de son arbre). Décision de l'utilisateur sur les dépôts dédiés : validée pour les trois briques, à exécuter ensemble APRÈS le chantier « application de bureau ».
 
 **Conclusion / prochaine étape** : PR `chore/himap-require-gamefiles` → `release/v8.1.0`, CI, fusion, tag `libs/himap/v0.1.0`, vérification `go get`, mémoire.
+
+## [2026-11-01] Publication des briques — clôture et handoff — Complété
+
+**Décision technique principale** : le chantier est clos (PR #118 et #119 fusionnées dans `release/v8.1.0`, tags `libs/{gamefiles,haloapi,himap}/v0.1.0` posés et vérifiés par `go get` hors dépôt, worktree et caches `-pub` supprimés). Le handoff `.ai/HANDOFF_PUBLICATION_BRIQUES_2026-11-01.md` fixe l'ordre des suites : chantier desktop d'abord, puis `release/v8.1.0` -> `main`, puis PUB-2.5-e et PUB-4-a à trancher, puis les trois dépôts dédiés ensemble (ADR 0043 D-5). Convention rappelée par l'utilisateur : la racine de `.ai/` porte le vivant (handoffs, plans actifs), `.ai/V8/` est l'archive des chantiers finis.
+
+**Résultats observés** : plan et relevé restent dans `.ai/V8/` (archive) ; checkout principal propre sur `origin/release/v8.1.0` avant ce commit.
+
+**Conclusion / prochaine étape** : aucune action sur ce chantier avant la fin du desktop ; les dettes sont au `.ai/REGISTRE_REPORTS.md` (section du 2026-11-01).
