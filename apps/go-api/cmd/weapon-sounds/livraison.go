@@ -12,8 +12,10 @@ package main
 // contre CPython) pour l'unique arme rendue par evenement plutot que copiee depuis un
 // fichier vote (Covenant_provoker -> hinf_ravager).
 //
-// CE QUE CE MODE REMPLACE, ET RIEN D'AUTRE : les fichiers d'ARMES (`hinf_*.wav`) de
-// `static/sounds/halo_infinite/`. Les sons d'evenements du pack utilisateur (lancers,
+// CE QUE CE MODE REMPLACE, ET RIEN D'AUTRE : les fichiers d'ARMES (`hinf_*.ogg`) de
+// `static/sounds/halo_infinite/`. Le mixage et la troncature restent en PCM (WAV, repertoire
+// d'attente) ; seul le fichier publie est encode en Opus/Ogg, par media.EncodeSound — le code
+// de cmd/sounds-encode. Les sons d'evenements du pack utilisateur (lancers,
 // explosions, melee_kill, camo_*, overshield_*) ne sont JAMAIS touches. Il GENERE AUSSI
 // `weaponSoundVariations.ts` : les fourchettes RANGED (volume, hauteur) par stem, extraites
 // des banks du jeu.
@@ -167,7 +169,14 @@ type livraisonChemins struct {
 	SonsRacine string
 	Cible      string
 	Tmp        string
+	// Encodeur transforme le WAV tronque d une arme en son livre (Opus/Ogg) : le moteur de mixage
+	// et la troncature restent en PCM, seul le fichier publie est encode.
+	Encodeur livraisonEncodeur
 }
+
+// livraisonEncodeur encode le WAV `wav` vers le fichier livre `ogg`. En production c est
+// media.EncodeSound, le meme code que cmd/sounds-encode ; un test peut le remplacer.
+type livraisonEncodeur func(wav, ogg string) error
 
 type livraisonEtat struct {
 	Livres     map[string]string // cle canonique -> dossier qui l'a livree
@@ -305,7 +314,7 @@ func livraisonVotesDe(dossier string, votes []livraisonVote) []livraisonVote {
 // appelants qui l'ecartent : le vote est saute, et l'on passe au SUIVANT (jamais un repli
 // sur `exemples_proposes` du meme vote). Rendre `("", true)` faisait construire une source
 // `"<dossier>/"`, que `os.Stat` accepte (c'est un repertoire) et que la troncature refuse :
-// le run entier avortait — apres que le miroir avait deja efface les `hinf_*.wav` (constat
+// le run entier avortait — apres que le miroir avait deja efface les `hinf_*.ogg` (constat
 // C7 de la revue R1).
 func livraisonFichierDuVote(v livraisonVote) (string, bool) {
 	f := ""

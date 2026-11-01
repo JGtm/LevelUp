@@ -5,6 +5,13 @@
 **Résultats observés** : voir les gates du compte rendu de lot ; `openapi.yaml` et `generated.ts` ne diffèrent que sur `CapabilityMap` (+31 lignes TS). `config.go` reste à 629 lignes (champ embarqué compensé par `environmentDeclared`).
 
 **Conclusion / prochaine étape** : 10.1 à 10.6 faits. Le pilote fusionne avec L11 (`config.go`, allowlists du ratchet et de `demo_state_guard_test.go` à recompter après fusion) ; les valeurs desktop des capacités et la colonne desktop de la table des tâches sont des propositions à confirmer. Témoin T3 à jouer par le pilote.
+## [2026-11-01] Desktop - L8 : sons du rejeu en Opus (D-6), outil `sounds-encode` - Complete cote code (8.4 ecoute = utilisateur)
+
+**Decision technique principale** : Opus 96 kbit/s en Ogg, recette unique dans `internal/media/sound_encode.go` (`EncodeSound`, `CheckSameFrames`), appelee par `cmd/sounds-encode` (idempotent, `-check`, `-remove-sources`) ET par la livraison des armes de `cmd/weapon-sounds` (mixage et troncature restent en PCM, seul le fichier publie est encode). Encodage reproductible (bitexact, sans metadonnees). Cote web : `soundUrlOf` demande `.ogg` ; les garde-rails lisaient des en-tetes RIFF et du PCM : remplaces par `test/oggOpusFile.ts` (en-tetes Ogg : duree exacte = granule finale moins pre-skip ; decodeur WASM `opus-decoder`, dependance de developpement MIT, pour le garde-rail de niveau). Goldens de `livrer` : les `hinf_*.wav` Python restent la preuve du PCM (encodeur identite injecte), un second test encode pour de vrai et compare les echantillons decodes.
+
+**Resultats observes** : 184 WAV -> 184 OGG, `static/sounds` 87 207 226 o -> 4 560 797 o ; `-check` : 184 controles, 0 echec, second passage 184 deja a jour ; niveaux des fanfares et voix (decodes) = releves du WAV (-16,1 a -18,7 dBFS) ; durees identiques a l'echantillon.
+
+**Conclusion / prochaine etape** : 8.1 a 8.3 faits ; 8.4 : ecoute comparee par l'utilisateur (navigateur reel, boucles moteur). Hors perimetre releve : l'instrument `libs/film/replay/weapon_burst_research_test.go` (tag `research`) lit des `hinf_*.wav` qui n'existent plus.
 
 ## [2026-11-01] Desktop — revue adversariale 2r (L1 + L5 + L7) et corrections — Complété
 

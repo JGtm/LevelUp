@@ -21,7 +21,7 @@ import { SOUND_MAX_SPEED } from './replaySoundCursor'
 import { useReplaySound, type ReplaySoundContext } from './useReplaySound'
 
 const NO_CONTEXT: ReplaySoundContext = { allegiance: NO_ALLEGIANCE, endMatch: null, locale: undefined }
-const INTRO_URL = `/static/sounds/halo_infinite/${INTRO_MUSIC_STEM}.wav`
+const INTRO_URL = `/static/sounds/halo_infinite/${INTRO_MUSIC_STEM}.ogg`
 /** La durée factice de l'extrait (1 octet = 0,1 s dans le faux décodeur) : c'est elle qu'on lit. */
 const INTRO_S = 3.3
 

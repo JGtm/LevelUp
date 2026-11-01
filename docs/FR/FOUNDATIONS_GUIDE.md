@@ -239,7 +239,7 @@ n'est jamais servie par un repli silencieux. Exemple : l'espagnol (`es`).
    autre objet à clés de langue soit typé par `Locale`. `tsc` nomme aussi les fixtures de test typées par le
    contrat généré (les libellés de rejeu portent un membre par langue : une vingtaine de fichiers
    `*.test.ts(x)` sous `features/match-replay/`). Les données par langue qui ne sont pas du texte demandent
-   leurs propres fichiers : les sons de l'annonceur de `features/match-replay/sound/` veulent un `.wav` par
+   leurs propres fichiers : les sons de l'annonceur de `features/match-replay/sound/` veulent un `.ogg` par
    langue (`replaySoundAssets.guard.test.ts`). Le sélecteur de langue de la page Réglages ne liste que `fr`
    et `en` (ADR 0040, hors périmètre du plan) : il fait partie de la première vraie langue.
 

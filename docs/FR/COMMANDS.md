@@ -716,7 +716,8 @@ v4tool.exe render -variant=any -cote=256 -out=<dir> \
 go run ./cmd/weapon-sounds -mode livrer -donnees <chantier>/_donnees [-sons <chantier>] [-depot <depot>]
 ```
 
-- Sortie : `static/sounds/halo_infinite/hinf_*.wav` (26 fichiers) +
+- Sortie : `static/sounds/halo_infinite/hinf_*.ogg` (26 fichiers, Opus 96 kbit/s en Ogg, encodés à la livraison par
+  le même code que `sounds-encode` ; mixage et troncature restent en PCM) +
   `apps/web/src/features/match-replay/weaponSoundVariations.ts`.
 - Prérequis : les étapes antérieures de la recette, encore hors dépôt (extraction, analyse
   des banks, vote humain), doivent déjà avoir produit `_donnees/*.json` et l'arborescence de
@@ -726,6 +727,22 @@ go run ./cmd/weapon-sounds -mode livrer -donnees <chantier>/_donnees [-sons <cha
   (décompression Kraken) pour ses autres modes.
 - À rejouer : un vote d'arme est finalisé, ou la recette complète est rejouée (mise à jour du
   jeu, nouvelle arme). Recette complète : `.ai/archive/V7.5/RECETTE_SONS_ARMES.md`.
+
+#### sounds-encode (sons du rejeu, WAV -> Opus)
+
+```bash
+go run ./cmd/sounds-encode [-src static/sounds] [-dst <src>] [-check] [-remove-sources]
+```
+
+- Convertit chaque `.wav` sous `-src` en Opus 96 kbit/s dans un conteneur Ogg (`.ogg`, même arborescence ; nombre de
+  canaux conservé). ffmpeg et ffprobe sont requis (résolus par `internal/media` : `LEVELUP_FFMPEG_DIR`, puis le
+  dossier de l'exécutable, puis le PATH). Idempotent : un `.ogg` au moins aussi récent que son `.wav` est sauté.
+  Sortie reproductible.
+- `-check` vérifie, pour chaque son (ceux déjà à jour compris), que le `.ogg` se décode en exactement le nombre
+  d'échantillons du `.wav` ; `-remove-sources` supprime chaque `.wav` dont le `.ogg` est en place (et contrôlé avec
+  `-check`). Code de sortie 1 si un son a échoué (chaque échec est journalisé).
+- À utiliser quand : un son est déposé à la main (véhicules, fin de partie...). L'arbre ne garde jamais de `.wav`
+  (`replaySoundAssets.guard.test.ts`) : lancer `-check -remove-sources`.
 
 ### Médias
 

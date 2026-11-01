@@ -689,7 +689,8 @@ v4tool.exe render -variant=any -cote=256 -out=<dir> \
 go run ./cmd/weapon-sounds -mode livrer -donnees <chantier>/_donnees [-sons <chantier>] [-depot <repo>]
 ```
 
-- Output: `static/sounds/halo_infinite/hinf_*.wav` (26 files) +
+- Output: `static/sounds/halo_infinite/hinf_*.ogg` (26 files, Opus 96 kbit/s in Ogg, encoded at delivery by
+  the same code as `sounds-encode`; mixing and truncation stay in PCM) +
   `apps/web/src/features/match-replay/weaponSoundVariations.ts`.
 - Prereq: the recipe's earlier, still-external steps (extraction, banks analysis, human vote)
   must already have produced `_donnees/*.json` and the per-weapon source/rendered `.wav`
@@ -698,6 +699,21 @@ go run ./cmd/weapon-sounds -mode livrer -donnees <chantier>/_donnees [-sons <cha
   `libs/gamefiles/himodule` -> `libs/gamefiles/ooz` (Kraken decompression) for its other modes.
 - Replay when: a weapon vote is finalized, or the full recipe is redone (game update, new
   weapon). Full recipe: `.ai/archive/V7.5/RECETTE_SONS_ARMES.md`.
+
+#### sounds-encode (replay sounds, WAV -> Opus)
+
+```bash
+go run ./cmd/sounds-encode [-src static/sounds] [-dst <src>] [-check] [-remove-sources]
+```
+
+- Converts every `.wav` under `-src` to Opus 96 kbit/s in an Ogg container (`.ogg`, same tree; channel count kept).
+  ffmpeg and ffprobe are required (resolved by `internal/media`: `LEVELUP_FFMPEG_DIR`, then the executable's
+  folder, then PATH). Idempotent: an `.ogg` at least as recent as its `.wav` is skipped. Reproducible output.
+- `-check` verifies, for every sound (up-to-date ones included), that the `.ogg` decodes to exactly the number of
+  samples of the `.wav`; `-remove-sources` deletes each `.wav` whose `.ogg` is in place (and checked with `-check`).
+  Exit code 1 if any sound failed (each failure is logged).
+- Use when: a sound is dropped by hand (vehicles, end of match...). The tree never keeps a `.wav`
+  (`replaySoundAssets.guard.test.ts`): run `-check -remove-sources`.
 
 ### Media
 

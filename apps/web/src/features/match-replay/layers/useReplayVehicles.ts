@@ -13,7 +13,7 @@
  * en plus du `scale_mm_per_px` par famille, qui n'existe que dans ce fichier statique. Il est
  * donc lu ICI, par un `fetch` brut — PAS DE QUERY KEY NOUVELLE (contrainte du plan) : un asset
  * statique n'est pas une donnée de l'API, exactement le même choix que les sons du rejeu
- * (`replayAudio.ts`, qui charge ses WAV hors TanStack Query).
+ * (`replayAudio.ts`, qui charge ses sons hors TanStack Query).
  *
  * TOUT CE QUI EST ASYNCHRONE EST LU DANS DES RÉFÉRENCES, jamais dans un état React (même règle
  * et même conséquence assumée que `useReplayWeaponPads`) : un chargement qui aboutit sous un

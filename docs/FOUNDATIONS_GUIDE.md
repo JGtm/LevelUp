@@ -236,7 +236,7 @@ through a silent fallback. Worked example: Spanish (`es`).
    be typed by `Locale`. `tsc` also names the test fixtures typed by the generated contract (the replay
    labels carry one member per language: about twenty `*.test.ts(x)` files under `features/match-replay/`).
    Per-language data that is not text needs its own files: the announcer sound stems of
-   `features/match-replay/sound/` need one `.wav` per language (`replaySoundAssets.guard.test.ts`). The
+   `features/match-replay/sound/` need one `.ogg` per language (`replaySoundAssets.guard.test.ts`). The
    language selector of the Settings page lists `fr` and `en` only (ADR 0040, out of scope of the plan): it
    belongs to the first real language.
 

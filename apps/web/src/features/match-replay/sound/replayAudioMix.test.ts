@@ -169,13 +169,13 @@ describe('la conclusion — même règle à la page et à l’export', () => {
 
     const { ctx } = installFakeAudio(1)
     const p = new ReplayAudioPlayer(1)
-    p.preload(sons.map((s) => `/${s.stem}.wav`))
+    p.preload(sons.map((s) => `/${s.stem}.ogg`))
     await flushAudio()
     const joues: string[] = []
     for (const s of sons) {
       const avant = ctx.sources.length
-      if (s.conclusion) p.playConclusion(`/${s.stem}.wav`)
-      else p.play(`/${s.stem}.wav`)
+      if (s.conclusion) p.playConclusion(`/${s.stem}.ogg`)
+      else p.play(`/${s.stem}.ogg`)
       if (ctx.sources.length > avant) joues.push(s.stem)
     }
 
@@ -220,13 +220,13 @@ describe('la voix de manche — hors plafond à la page et à l’export', () =>
 
     const { ctx } = installFakeAudio(1)
     const p = new ReplayAudioPlayer(1)
-    p.preload(planned.map((s) => `/${s.stem}.wav`))
+    p.preload(planned.map((s) => `/${s.stem}.ogg`))
     await flushAudio()
     const joues: string[] = []
     for (const s of planned) {
       const avant = ctx.sources.length
-      if (s.announcer) p.playAnnouncer(`/${s.stem}.wav`)
-      else p.play(`/${s.stem}.wav`)
+      if (s.announcer) p.playAnnouncer(`/${s.stem}.ogg`)
+      else p.play(`/${s.stem}.ogg`)
       if (ctx.sources.length > avant) joues.push(s.stem)
     }
     expect(joues).toEqual(exportes)

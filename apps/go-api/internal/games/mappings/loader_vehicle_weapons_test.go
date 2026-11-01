@@ -138,7 +138,7 @@ func TestRegistreArmesVehicule_SonsEtSpritesServis(t *testing.T) {
 			if stem == "" {
 				continue
 			}
-			p := filepath.Join(root, "static", "sounds", "halo_infinite", stem+".wav")
+			p := filepath.Join(root, "static", "sounds", "halo_infinite", stem+".ogg")
 			if _, err := os.Stat(p); err != nil {
 				t.Errorf("%s : son %q absent des assets servis", tag, stem)
 			}

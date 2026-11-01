@@ -89,7 +89,7 @@ import (
 // Une famille n est PAS un libelle (rien n en est traduit : ce sont des noms propres du jeu) :
 // c est la CLE qui joint trois choses independantes — le sprite servi
 // (`static/vehicles-assets/{slug}/replay/{famille}.png`), la ligne de l index du lot A, et,
-// depuis le 2026-09-05, les stems sonores du rejeu (`vehicle_{famille}_{clip}.wav`). La table
+// depuis le 2026-09-05, les stems sonores du rejeu (`vehicle_{famille}_{clip}.ogg`). La table
 // ci-dessous ecrit certaines d entre elles jusqu a douze fois (un chassis par variante observee) :
 // une faute de frappe dans UNE de ces douze produirait une famille fantome — sprite 404, moteur
 // muet — sans erreur ni compteur. La constante rend cette faute impossible a la compilation.
