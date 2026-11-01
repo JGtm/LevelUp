@@ -393,9 +393,9 @@ Fichiers : `cmd/server/flags.go` (nouveau, D-15), `cmd/server/boot_gate.go`, `cm
       `timeout-minutes: 15` ; déclencheur `release/**` et pull requests (D-7). Règle au brief : un
       échec propre à Windows est CONSIGNÉ en §10, jamais corrigé dans ce lot.
 - [x] 4.2 `docs/COMMANDS.md` et `docs/FR/COMMANDS.md` : la voie décrite.
-- [ ] 4.3 **(P)** Mutation jouée : un `*_windows.go` cassé sur une branche jetable → job rouge ; lien
+- [x] 4.3 **(P)** Mutation jouée : un `*_windows.go` cassé sur une branche jetable → job rouge ; lien
       du run consigné.
-- [ ] 4.4 **(P)** Run vert sur la branche du plan.
+- [x] 4.4 **(P)** Run vert sur la branche du plan. Fait le 2026-11-01 : run `41330468268` (commit `ef40d59e79`), job vert en 3 min 54 s (https://github.com/JGtm/LevelUp/actions/runs/41330468268/job/124919357210) ; 4.3 : branche jetable `feat/desktop-mutation-win` (test `_windows_test.go` en échec, un `_windows.go` cassé est arrêté avant le push par le hook `go-vet-cgo`), job ROUGE en 3 min 13 s (https://github.com/JGtm/LevelUp/actions/runs/41330598748/job/124919671555), branche supprimée.
 
 ### 9.5 L5 — C3 Jeton longue durée en mode `none` (S ; après 0.4 et publication lot 3)
 
