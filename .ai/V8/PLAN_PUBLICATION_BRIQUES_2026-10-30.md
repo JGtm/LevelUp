@@ -228,9 +228,21 @@ Dans le module go-api d'abord (comme D2 lot 2 et D3 lots 2-4 : couper AVANT de d
   T2 : 3 témoins, aucune URL attendue modifiée ; 14 tests de succès aux mêmes noms (6 constructions renommées).
   Différence de forme : garde avant la construction d'URL (un `xuid` invalide en mode démo rend `ErrOffline`).
   Gates : vet 0 (+ `-tags=integration`), brique sans exploitation, `haloapi/...` + `sync` + archlint `ok`, lint 0.)
-- [ ] 2.5 Tolérances à zéro ; `go list -deps -test ./internal/haloapi/...` propre ; T1 (aucun nom disparu),
+- [x] 2.5 Tolérances à zéro ; `go list -deps -test ./internal/haloapi/...` propre ; T1 (aucun nom disparu),
   T3 identique, T4 identique ; revue adversariale 1 ronde (deux relecteurs : parité de sortie ; L6) ;
   corrections ; commit « lot 2 » ; CI verte.
+  (2026-11-01. Tolérances et `fichiers` vides ; brique sans import d'exploitation. T1 : 16 612 verdicts contre 16 537,
+  0 nom disparu hors les 14 cas de `TestParseRetryAfter` déplacés d'`infinite` à `haloapi` (retrouvés), 1 rouge =
+  `mapcatalog.TestAddOverlayEntryConcurrentDossierAbsentNePerdRien` (verrou de fichier, « Accès refusé » sous charge,
+  vert seul 3 fois : flake Windows, PUB-2.5-a). T3 : les 6 surfaces identiques à l'octet (SHA-256 égaux ;
+  `calendrier` 403 des deux côtés). T4 : cinq surfaces netguard, mêmes noms. Revue A (parité, lecture seule, Sonnet) :
+  0 bloquant, 2 à corriger (quatre copies de `masque` ; mode démo plus prouvé pour Halo 5 / UGC / Xbox), 7 mineurs ;
+  corrigés (commit `a049bf3d5c`) : `haloapi.Masque` + garde-rail `haloapi_masque_unique_test`, trois tests de mode
+  démo sur les constructeurs de production, garde en tête du blob UGC, `NewClient(int)` rétabli, commentaire
+  `HTTPError.Body`, doc des différences de forme (4), cas de date future dans `LectureDeRetryAfter`. Revue B (L6,
+  54 mutations, Sonnet) : 29 rouges, 25 vertes dont 12 observables → 12 tests + 2 compléments écrits sans toucher la
+  production (`reprise_test.go`, `get_unique_test.go`, `netguard/doer_test.go`, `client_debit_test.go`, …), chacun
+  prouvé rouge sous sa mutation ; aucun écart code / annonce. Gates pilote : vet 0, 11 paquets `ok`, lint 0.)
 
 ## Lot 3 — Module `libs/haloapi` + infrastructure
 
@@ -312,5 +324,17 @@ Dans le module go-api d'abord (comme D2 lot 2 et D3 lots 2-4 : couper AVANT de d
   doublon de l'hôte de la brique.
 - PUB-2.3-c : l'en-tête de `assets/demo_offline_no_persist_test.go` (lignes 9-12) cite encore `doGet` et
   `netguard.Check`, disparus de `fetcher_gamecms.go`.
+- PUB-2.5-a : `mapcatalog.TestAddOverlayEntryConcurrentDossierAbsentNePerdRien` flake sous charge sur Windows
+  (« verrou d'ecriture impossible a poser : Accès refusé », une carte perdue) ; vert seul. Test de verrou à durcir.
+- PUB-2.5-b (revue A) : lecture du corps d'un non-200 (512 octets puis drainage 64 Kio) pour UGC et GameCMS, là où
+  l'ancien GameCMS ne lisait rien ; avec `http.DefaultClient` sans délai (PUB-0-c) un corps suspendu peut bloquer.
+- PUB-2.5-c (revue A) : `mapcatalog.Client` copie les jetons à la construction (l'ancien relisait le pointeur à chaque
+  requête) ; `WithHTTPClient` exporté avec des appelants de test seulement (comme `games/halo_5`).
+- PUB-2.5-d (revue A) : alias d'import de `haloapi/halo5` hétérogènes (`halo5` dans `games/halo_5`, `h5api` dans
+  `cmd/*`) ; le T2 Xbox remplace le Doer gardé par un client nu (le test de mode démo couvre le constructeur).
+- PUB-2.5-e (revue A, N3) : la redirection 302 des rendus Halo 5 réémet le jeton Spartan vers `image.halocdn.com`
+  (comportement préexistant, figé par T2) : à garder en tête pour la publication de la brique.
+- PUB-2.5-f (revue B) : `Retry.Delai/Attendre/RetenteStatut` ne sont testés que depuis `infinite` et `halo5` ; le
+  paquet racine `haloapi` ne porte que `TestParseRetryAfter`, `TestNonRetryable`, et le test de `Masque`.
 - PUB-0-g : première capture T1 rouge sur ce poste : `gcc` absent du PATH du PowerShell (lien DuckDB) ; recette =
   `C:\msys64\ucrt64\bin` en tête du PATH + `CGO_ENABLED=1` (mémoire `reference_air_rebuild_fails_gcc_missing_path`).

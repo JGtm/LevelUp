@@ -7,6 +7,7 @@ package infinite
 import (
 	"context"
 	"errors"
+	"io"
 	"net/http"
 	"strings"
 	"testing"
@@ -98,5 +99,55 @@ func TestTelechargerFichierUGC_SansAuthNiOrigine(t *testing.T) {
 	}
 	if got := e.Requetes(); len(got) != 1 || got[0] != attendu {
 		t.Errorf("requêtes = %q\nattendu    %q", got, attendu)
+	}
+}
+
+// TestFetchCarteUGC_GardeDAbord : une garde qui refuse arrête l'appel AVANT la vérification du jeton
+// Spartan : l'erreur est celle de la garde (définitive), pas « aucun jeton Spartan disponible », sans
+// émission.
+func TestFetchCarteUGC_GardeDAbord(t *testing.T) {
+	cause := errors.New("sortie refusée")
+	d := &doerGarde{refus: haloapi.NonRetryable(cause)}
+	_, err := New(d, RetryAucune()).FetchCarteUGC(context.Background(), Auth{}, "a", "", identiteTest)
+	if !errors.Is(err, haloapi.ErrDefinitif) || !errors.Is(err, cause) || d.n.Load() != 0 || d.verifs.Load() != 1 {
+		t.Errorf("erreur %v, émissions=%d gardes=%d, attendu la cause définitive, 0 émission, 1 garde", err, d.n.Load(), d.verifs.Load())
+	}
+	if err != nil && strings.Contains(err.Error(), "jeton Spartan") {
+		t.Errorf("erreur %q : le refus de la garde doit précéder le contrôle du jeton", err)
+	}
+}
+
+// repeteur : un lecteur sans fin d'octets 'x' (le corps n'est pas alloué d'avance).
+type repeteur struct{}
+
+func (repeteur) Read(p []byte) (int, error) {
+	for i := range p {
+		p[i] = 'x'
+	}
+	return len(p), nil
+}
+
+// TestTelechargerFichierUGC_LectureBornee : un fichier de variante de taille réaliste (200 Ko) est
+// lu en entier ; un corps plus long que [lectureMaxUGC] est lu jusqu'à cette borne exactement, sans
+// erreur (le surplus est ignoré).
+func TestTelechargerFichierUGC_LectureBornee(t *testing.T) {
+	for nom, c := range map[string]struct{ servi, attendu int64 }{
+		"200 Ko revient entier":  {200_000, 200_000},
+		"au-delà de la borne":    {lectureMaxUGC + 100, lectureMaxUGC},
+		"juste à la borne":       {lectureMaxUGC, lectureMaxUGC},
+		"un octet sous la borne": {lectureMaxUGC - 1, lectureMaxUGC - 1},
+	} {
+		t.Run(nom, func(t *testing.T) {
+			e := &haloapitest.Enregistreur{Repondre: func(int, *http.Request) *http.Response {
+				rep := haloapitest.Reponse(http.StatusOK, "")
+				rep.Body = io.NopCloser(io.LimitReader(repeteur{}, c.servi))
+				return rep
+			}}
+			client := New(&http.Client{Transport: e}, RetryAucune())
+			octets, err := client.TelechargerFichierUGC(context.Background(), "https://blob.test/m", "x.mvar", identiteTest)
+			if err != nil || int64(len(octets)) != c.attendu {
+				t.Errorf("%d octet(s) lus (erreur %v), attendu %d sans erreur", len(octets), err, c.attendu)
+			}
+		})
 	}
 }

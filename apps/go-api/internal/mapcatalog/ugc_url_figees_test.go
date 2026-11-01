@@ -144,6 +144,13 @@ func TestURLFigees_UGC_Erreurs(t *testing.T) {
 		t.Errorf("statut 404 : erreur %v, attendu %q", err, want)
 	}
 
+	// Échec d'émission : message `GET <url>: <cause du client HTTP>` (client sans transport
+	// personnalisé, schéma que le transport par défaut refuse sans ouvrir de connexion).
+	_, err = NewClient(nil).WithHTTPClient(&http.Client{}).FetchFileAt(context.Background(), "ftp://blob.test/m", "x.mvar")
+	if want := `GET ftp://blob.test/m/x.mvar: Get "ftp://blob.test/m/x.mvar": unsupported protocol scheme "ftp"`; err == nil || err.Error() != want {
+		t.Errorf("échec d'émission : erreur %v, attendu %q", err, want)
+	}
+
 	client, e := ugcClientEnregistreur(nil, http.StatusOK, "")
 	if _, err := client.FetchFileAt(context.Background(), "", "x"); err == nil || len(e.Requetes()) != 0 {
 		t.Errorf("préfixe vide : erreur %v, %d requête(s), attendu un refus sans requête", err, len(e.Requetes()))
