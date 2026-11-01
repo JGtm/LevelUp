@@ -8,8 +8,9 @@ package haloadapter
 import (
 	"context"
 
-	"levelup/go-api/internal/haloapi/infinite"
 	"levelup/go-api/internal/sync/filmfetch"
+
+	"github.com/JGtm/LevelUp/libs/haloapi/infinite"
 )
 
 // PlaylistEntry : un couple carte-mode d'une playlist, sa version et son poids de rotation.

@@ -8,8 +8,8 @@
 // garde par un `Doer` injecté (un par surface, fourni par LevelUp) : ils auront `.Do(req)` sans
 // jamais nommer `netguard`. Pour que le coupe-circuit démo reste hermétique, la brique doit donc
 // ne JAMAIS construire ni atteindre un client HTTP de son cru : tout octet sortant passe par le
-// `Doer` reçu, qui est gardé. C'est cette interdiction que ce test tient, AVANT le premier
-// déplacement de fichier (le dossier ne porte aujourd'hui que `doc.go`).
+// `Doer` reçu, qui est gardé. C'est cette interdiction que ce test tient (posé avant le premier
+// déplacement de fichier du plan D3).
 //
 // Le test vit dans `archlint` et non dans `platform/netguard` : il lit l'AST (un commentaire qui
 // CITE `http.DefaultClient` ne doit pas rougir, et la doc de la brique le citera), réutilise le
@@ -26,8 +26,11 @@
 //   - en test : seulement `http.DefaultClient` et ces quatre fonctions. Un `http.Client{}` monté
 //     autour d'un `httptest.Server` est légitime côté test.
 //
+// Le parcours est le module `libs/haloapi` (ADR 0041 ; la brique a quitté `apps/go-api/internal/haloapi`
+// au lot 3 du plan PUBLICATION, 2026-11-01), tests compris.
+//
 // Mutation qui doit le faire rougir : `resp, _ := http.Get(u)` dans un fichier de
-// `internal/haloapi/infinite/`.
+// `libs/haloapi/infinite/`.
 package archlint
 
 import (
@@ -40,8 +43,13 @@ import (
 	"testing"
 )
 
-// racineHaloapiSurDisque : la brique cible, relative à `apps/go-api`.
-const racineHaloapiSurDisque = "internal/haloapi"
+// racineBriqueHaloapi : la brique « API Halo », module `libs/haloapi` (ADR 0041), relative à la racine
+// du dépôt ; c'est aussi un chemin de garde-rail du double repère ([surDisque]) : les ratchets de la
+// brique en dérivent leurs racines. importBriqueHaloapi : son chemin d'import.
+const (
+	racineBriqueHaloapi = "libs/haloapi"
+	importBriqueHaloapi = prefixeBriques + "haloapi"
+)
 
 // fonctionsHTTPDeClientParDefaut : les fonctions de `net/http` qui passent par `DefaultClient`.
 var fonctionsHTTPDeClientParDefaut = map[string]bool{"Get": true, "Post": true, "Head": true, "PostForm": true}
@@ -113,10 +121,10 @@ func violationsClientHTTP(src goSource) []string {
 }
 
 func TestHaloapiNePossedeAucunClientHTTP(t *testing.T) {
-	racine := surDisque(t, racineHaloapiSurDisque)
+	racine := surDisque(t, racineBriqueHaloapi)
 	var violations []string
 	vus := 0
-	for _, f := range workspaceGoSources(t, "apps/go-api/"+racineHaloapiSurDisque) {
+	for _, f := range workspaceGoSources(t, racineBriqueHaloapi) {
 		src, err := parseFichierGo(f.Chemin)
 		if err != nil {
 			t.Fatalf("%s : %v", f.Rel, err)
@@ -149,7 +157,7 @@ func parseFichierGo(chemin string) (goSource, error) {
 // présenté comme un fichier de la brique ; la même construction passe dans un test ; une mention en
 // commentaire, la réception d'un client en paramètre et un import aliasé sont jugés comme il faut.
 func TestHaloapiNePossedeAucunClientHTTP_AutoPreuve(t *testing.T) {
-	const rel = "apps/go-api/internal/haloapi/infinite/x.go"
+	const rel = racineBriqueHaloapi + "/infinite/x.go"
 	interdits := map[string]string{
 		"http.Get":         `package infinite; import "net/http"; func f() { _, _ = http.Get("u") }`,
 		"http.Post":        `package infinite; import "net/http"; func f() { _, _ = http.Post("u", "", nil) }`,
@@ -185,7 +193,7 @@ func TestHaloapiNePossedeAucunClientHTTP_AutoPreuve(t *testing.T) {
 	}
 	// Côté test : un client monté autour d'un httptest.Server est légitime, DefaultClient et les
 	// fonctions de paquet ne le sont pas.
-	const relTest = "apps/go-api/internal/haloapi/infinite/x_test.go"
+	const relTest = racineBriqueHaloapi + "/infinite/x_test.go"
 	if got := violationsClientHTTP(parseGoSnippet(t, relTest,
 		`package infinite; import "net/http"; var c = &http.Client{}; var d = http.Client{}`)); len(got) != 0 {
 		t.Errorf("http.Client{} en test : %v, aucune violation attendue", got)

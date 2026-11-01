@@ -12,7 +12,8 @@ import (
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/haloapi/infinite"
+
+	"github.com/JGtm/LevelUp/libs/haloapi/infinite"
 )
 
 // FetchSeasonCalendar récupère le calendrier des saisons. Jetons lus dans le contexte ; filet

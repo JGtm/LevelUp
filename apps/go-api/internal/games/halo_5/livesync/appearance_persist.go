@@ -32,10 +32,11 @@ import (
 
 	"levelup/go-api/internal/assets"
 	halo5 "levelup/go-api/internal/games/halo_5"
-	h5api "levelup/go-api/internal/haloapi/halo5"
 	"levelup/go-api/internal/platform/duckdb"
 	syncpkg "levelup/go-api/internal/sync"
 	"levelup/go-api/internal/util/pointers"
+
+	h5api "github.com/JGtm/LevelUp/libs/haloapi/halo5"
 )
 
 // AppearanceSource est la surface live minimale consommée par le hook appearance.

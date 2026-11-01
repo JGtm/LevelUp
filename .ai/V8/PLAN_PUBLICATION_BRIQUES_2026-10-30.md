@@ -246,18 +246,44 @@ Dans le module go-api d'abord (comme D2 lot 2 et D3 lots 2-4 : couper AVANT de d
 
 ## Lot 3 — Module `libs/haloapi` + infrastructure
 
-- [ ] 3.1 `git mv apps/go-api/internal/haloapi libs/haloapi` ; `go.mod` ; `go.work` ; imports réécrits
+- [x] 3.1 `git mv apps/go-api/internal/haloapi libs/haloapi` ; `go.mod` ; `go.work` ; imports réécrits
   (`levelup/go-api/internal/haloapi/` → `github.com/JGtm/LevelUp/libs/haloapi/`) ; tiers.
-- [ ] 3.2 Infrastructure (recette D2 lot 3) : Dockerfile, `ci.yml` (pas du module, cache paths, lots
+  (2026-11-01, agent Opus. 90 fichiers déplacés (`testdata` compris) ; `go.mod` à la main (`x/sync v0.24.0`,
+  `x/time v0.16.0`, `go.sum` 4 lignes copiées) ; `go.work` `use ./libs/haloapi` ; 123 imports réécrits par outil
+  `go/parser` dans 109 fichiers (84 go-api, 25 brique), multiset ôté = ajouté ; `go mod tidy -diff` vide, `go mod verify`
+  ok, compile aussi `GOWORK=off`.)
+- [x] 3.2 Infrastructure (recette D2 lot 3) : Dockerfile, `ci.yml` (pas du module, cache paths, lots
   `go-shards.txt`, baseline par module, race si utile), lint, govulncheck, dependabot, Makefile
   (`libs-test` boucle déjà sur `libs/*`), `.air.toml`.
-- [ ] 3.3 Ratchets rerootés : `briques_imports_test` (ligne `haloapi`, rien de permis), `briques_internes_test`
+  (Dockerfile `COPY` ; `ci.yml` : pas go-build sans CGO sur les deux OS (vet, test, autonomie), 5e passage de lint,
+  govulncheck, lot `haloapi` dans la matrice, artefact JSONL et couverture affichée ; `cache-dependency-path` ×10
+  (ci, release, shared-social-gate) ; `go-shards.txt` : `module libs/haloapi` + `lot haloapi - @reste` ; baseline
+  `.ai/baselines/tests_libs_haloapi.jsonl` (216 tests, exigée par la CI pour tout module présent dans les lots ; la
+  baseline go-api ne portait aucune ligne `haloapi`) + entrée datée dans `check_test_baseline.sh` ; dependabot,
+  `.air.toml`, `.gitleaks.toml` ; Makefile et lefthook : rien à changer. Docker absent du poste : `go mod download` hors
+  ligne simulé ; la CI « Docker Build » fait foi.)
+- [x] 3.3 Ratchets rerootés : `briques_imports_test` (ligne `haloapi`, rien de permis), `briques_internes_test`
   (ligne retirée ; si la table devient vide, retirer le mécanisme avec sa doc : règle 7),
   `haloapi_sans_client_http`, invariants `xblauth`, `TestBriqueInfiniteRecoitLeDoerGarde`, netguard préfixe,
   `racinesEspaceDeTravail`, `racinesOctetsBruts`, licence GPL (`cmd/server` ne doit pas lier `ooz` : sans
   changement), `no_halowaypoint_literal` (clés), `.gitleaks.toml`.
-- [ ] 3.4 Gate : build go-api + libs/haloapi ; `go list -deps -test` vide ; T1 (modulo préfixe), T3, T4 ;
+  (`briques_imports_test` : ligne `haloapi` + champ `tiers` par sous-arbre (errgroup/rate sous `infinite` seulement,
+  porté depuis la table interne) ; `briques_internes_test.go` et `_garde_test.go` SUPPRIMÉS ;
+  `briques_internes_fermeture_test.go` → `haloapi_fermeture_domaine_test.go` (contrôle distinct conservé) ;
+  `haloapi_*`, `racinesOctetsBruts`, `racinesEspaceDeTravail` rerootés avec compteurs « aucun fichier → rouge » ;
+  `enregistreur_http_unique` et `no_halowaypoint_literal` à double repère ; exemption netguard par préfixe retirée (le
+  parcours ne balaie que go-api) ; trois tests go-api qui lisaient la brique par une échelle de `..` passent par
+  `testutil.RepoRoot` (deux seraient devenus muets). Lint : règle `.golangci.yml` bornée aux trois fichiers DTO Halo 5 et
+  au motif `Id` (dette gelée que le renommage inter-module faisait réapparaître ; justifiée et datée). Docs du même
+  commit : CLAUDE.md (tableau, ligne auth, résumés ADR 0041/0042), amendement daté ADR 0042, `ARCHITECTURE_V6` et
+  `COMMANDS` EN+FR.)
+- [x] 3.4 Gate : build go-api + libs/haloapi ; `go list -deps -test` vide ; T1 (modulo préfixe), T3, T4 ;
   archlint ; lint des cinq modules ; `make libs-test` ; CI verte ; commit « lot 3 ».
+  (Rejoué par le pilote : vet des deux modules 0 (+ `-tags=integration`), `cmd/server` compilé, brique sans
+  `levelup/go-api`, 6 paquets de la brique `ok`, archlint `ok` (100 s), lint brique avec la config du dépôt 0 issue, lint
+  go-api `--new-from-rev` 0, `make libs-test` vert (4 modules), `ci_go_shard.sh --verifier` : 373 paquets, 3 modules,
+  8 lots. T1 (agent) : 16 648 verdicts, 0 fail ; 6 disparus = les tests de la table interne supprimée ; T3 : 6 SHA-256
+  identiques au lot 2 ; T2 : seules les lignes d'import. CI : au push.)
 
 ## Lot 4 — README, tags, critère de séparation, clôture
 
@@ -336,5 +362,12 @@ Dans le module go-api d'abord (comme D2 lot 2 et D3 lots 2-4 : couper AVANT de d
   (comportement préexistant, figé par T2) : à garder en tête pour la publication de la brique.
 - PUB-2.5-f (revue B) : `Retry.Delai/Attendre/RetenteStatut` ne sont testés que depuis `infinite` et `halo5` ; le
   paquet racine `haloapi` ne porte que `TestParseRetryAfter`, `TestNonRetryable`, et le test de `Masque`.
+- PUB-3-a : la baseline de la brique n'est vérifiée qu'en CI (en local `make libs-test` joue ses tests sans la confronter).
+- PUB-3-b : la couverture de go-api change mécaniquement (paquets de la brique hors du dénominateur) ; CI fait foi.
+- PUB-3-c : `leaderboard_scraper_test` garde un `t.Skipf` sur fixture absente ; devrait être un échec.
+- PUB-3-d : dix ratchets archlint ne balaient que go-api (sujets étrangers à la brique) ; non étendus.
+- PUB-3-e : `haloapitest` (enregistreur de tests) sera importable par les utilisateurs du module une fois le tag posé :
+  à trancher au lot 4 (le garder public comme `net/http/httptest`, ou le documenter « usage interne »).
+- PUB-3-f : ADR 0041 affirme encore que la troisième brique « reste dans apps/go-api » → lot 4.3.
 - PUB-0-g : première capture T1 rouge sur ce poste : `gcc` absent du PATH du PowerShell (lien DuckDB) ; recette =
   `C:\msys64\ucrt64\bin` en tête du PATH + `CGO_ENABLED=1` (mémoire `reference_air_rebuild_fails_gcc_missing_path`).

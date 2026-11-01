@@ -11,8 +11,9 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"levelup/go-api/internal/haloapi"
 	"levelup/go-api/internal/platform/netguard"
+
+	"github.com/JGtm/LevelUp/libs/haloapi"
 )
 
 // TestNetguardDoer_DemoOffline : en mode démo, Do n'émet rien et rend ErrOffline marquée

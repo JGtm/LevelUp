@@ -61,9 +61,10 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	titlePkg "levelup/go-api/internal/domain/title"
 	halo5 "levelup/go-api/internal/games/halo_5"
-	h5api "levelup/go-api/internal/haloapi/halo5"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb"
+
+	h5api "github.com/JGtm/LevelUp/libs/haloapi/halo5"
 )
 
 // defaultH5MechCutoff : borne created_at par defaut. Fixee APRES le 2e batch corrompu

@@ -11,9 +11,10 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/haloapi/haloapitest"
-	"levelup/go-api/internal/haloapi/xboxlive"
 	"levelup/go-api/internal/platform/auth"
+
+	"github.com/JGtm/LevelUp/libs/haloapi/haloapitest"
+	"github.com/JGtm/LevelUp/libs/haloapi/xboxlive"
 )
 
 const (

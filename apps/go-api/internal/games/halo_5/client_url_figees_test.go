@@ -16,9 +16,9 @@ import (
 
 	"golang.org/x/time/rate"
 
-	"levelup/go-api/internal/haloapi"
-	"levelup/go-api/internal/haloapi/halo5"
-	"levelup/go-api/internal/haloapi/haloapitest"
+	"github.com/JGtm/LevelUp/libs/haloapi"
+	"github.com/JGtm/LevelUp/libs/haloapi/halo5"
+	"github.com/JGtm/LevelUp/libs/haloapi/haloapitest"
 )
 
 const (

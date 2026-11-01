@@ -12,7 +12,8 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/haloapi/infinite"
+
+	"github.com/JGtm/LevelUp/libs/haloapi/infinite"
 )
 
 // EndpointsDepuisResolveur construit les adresses de la brique pour le titre `slug` : le segment

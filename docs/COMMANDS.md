@@ -1091,12 +1091,14 @@ make go-api-lint       # golangci-lint ratchet (apps/go-api + every libs/ module
 
 #### Go modules under `libs/` and the workspace (ADR 0041)
 
-Three bricks live in their own Go modules: "game files", `libs/gamefiles` (module path
+Four bricks live in their own Go modules: "game files", `libs/gamefiles` (module path
 `github.com/JGtm/LevelUp/libs/gamefiles`: packages `himodule`, `ooz`, `hinavmesh`, `mapvar`), "map
 images", `libs/himap` (`github.com/JGtm/LevelUp/libs/himap`: package `himap`, which imports `libs/gamefiles`
 only), and the "film decoder", `libs/film` (`github.com/JGtm/LevelUp/libs/film`: the facade `decfilm`, the
 publication layer `replay`, the closed layers under `internal/`, its catalogues; imports `libs/gamefiles`
-and `libs/himap` only, ADR 0034). All three are linked to `apps/go-api` by the `go.work` at the repository root (no `replace`
+and `libs/himap` only, ADR 0034), and the "Halo API", `libs/haloapi` (`github.com/JGtm/LevelUp/libs/haloapi`:
+packages `xblauth`, `infinite`, `halo5`, `xboxlive`; imports no other brick, ADR 0042). All four are linked to
+`apps/go-api` by the `go.work` at the repository root (no `replace`
 directive; commit `go.work.sum`). Two consequences for every command:
 
 - `./...` never crosses a module boundary. `cd apps/go-api && go test ./...` does **not** test
@@ -1118,6 +1120,7 @@ cd libs/himap && go list -deps ./... | grep levelup/go-api      # must print not
 cd libs/film && go test ./... -count=1                          # the film decoder (its layer gates and goldens included)
 cd libs/film && go vet -tags=research ./...                     # compile its research instruments
 cd libs/film && go test -tags research ./internal/grammar/ -run TestE191   # run research instruments on demand
+cd libs/haloapi && go test ./... -count=1                       # the Halo API protocol (httptest only, no CGo)
 cd libs/film && go list -deps -test ./... | grep levelup/go-api # must print nothing either
 go test ./libs/gamefiles/mapvar/ -run TestLabel -count=1       # from the repository root also works (workspace)
 ```

@@ -14,7 +14,8 @@ import (
 	"log/slog"
 
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/haloapi/infinite"
+
+	"github.com/JGtm/LevelUp/libs/haloapi/infinite"
 )
 
 // AssetType : les types d'actifs de Discovery UGC.

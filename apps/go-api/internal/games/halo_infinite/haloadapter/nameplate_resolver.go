@@ -26,8 +26,9 @@ import (
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/haloapi/infinite"
 	"levelup/go-api/internal/platform/netguard"
+
+	"github.com/JGtm/LevelUp/libs/haloapi/infinite"
 )
 
 // emblemMappingTTL : la table change peu (nouveaux emblèmes à chaque lot de contenu) ; 6 h, comme

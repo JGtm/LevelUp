@@ -11,8 +11,9 @@ import (
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/haloapi/infinite"
 	"levelup/go-api/internal/observability"
+
+	"github.com/JGtm/LevelUp/libs/haloapi/infinite"
 )
 
 // Tests du retry de downloadBlob (volet C, 2026-09-05). Le blob CDN est public :

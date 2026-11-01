@@ -16,8 +16,9 @@
 // Infinite, aucune requête reçue en mode démo) ; cette règle empêche un site de construction non
 // gardé de plus, dans chaque paquet de la table.
 //
-// Périmètre : la production de go-api (`internal/`, `cmd/`), hors la brique elle-même (ses tests
-// construisent des clients sur des serveurs de test).
+// Périmètre : la production de go-api (`internal/`, `cmd/`). La brique elle-même (ses tests
+// construisent des clients sur des serveurs de test) est un autre module, `libs/haloapi`, hors du
+// parcours.
 package archlint
 
 import (
@@ -30,9 +31,9 @@ import (
 
 // Les chemins d'import des paquets de la brique qui construisent un client.
 const (
-	cheminBriqueInfinite = "levelup/go-api/internal/haloapi/infinite"
-	cheminBriqueHalo5    = "levelup/go-api/internal/haloapi/halo5"
-	cheminBriqueXboxlive = "levelup/go-api/internal/haloapi/xboxlive"
+	cheminBriqueInfinite = importBriqueHaloapi + "/infinite"
+	cheminBriqueHalo5    = importBriqueHaloapi + "/halo5"
+	cheminBriqueXboxlive = importBriqueHaloapi + "/xboxlive"
 )
 
 // cheminNetguard : le paquet du Doer gardé ; typeDoerGarde : son nom dans ce paquet.
@@ -125,9 +126,6 @@ func TestBriqueInfiniteRecoitLeDoerGarde(t *testing.T) {
 	var violations []string
 	gardes := map[string]int{}
 	for _, src := range goSourcesUnder(t, "internal", "cmd") {
-		if strings.HasPrefix(src.Rel, racineHaloapiSurDisque+"/") {
-			continue
-		}
 		v, g := doersDesConstructeurs(src)
 		violations = append(violations, v...)
 		for chemin, n := range g {
@@ -150,11 +148,11 @@ func TestBriqueInfiniteRecoitLeDoerGarde(t *testing.T) {
 // littéraux gardés passent, import de netguard aliasé compris.
 func TestBriqueInfiniteRecoitLeDoerGarde_AutoPreuve(t *testing.T) {
 	const rel = "internal/games/halo_infinite/haloadapter/x.go"
-	const entete = "package haloadapter\nimport (\n\"net/http\"\n\"levelup/go-api/internal/haloapi/infinite\"\n" +
+	const entete = "package haloadapter\nimport (\n\"net/http\"\n\"" + cheminBriqueInfinite + "\"\n" +
 		"\"levelup/go-api/internal/platform/netguard\"\n)\n"
-	const enteteH5 = "package halo_5\nimport (\n\"net/http\"\n\"levelup/go-api/internal/haloapi/halo5\"\n" +
+	const enteteH5 = "package halo_5\nimport (\n\"net/http\"\n\"" + cheminBriqueHalo5 + "\"\n" +
 		"\"levelup/go-api/internal/platform/netguard\"\n)\n"
-	const enteteXbox = "package sync\nimport (\n\"net/http\"\n\"levelup/go-api/internal/haloapi/xboxlive\"\n" +
+	const enteteXbox = "package sync\nimport (\n\"net/http\"\n\"" + cheminBriqueXboxlive + "\"\n" +
 		"\"levelup/go-api/internal/platform/netguard\"\n)\n"
 	interdits := map[string]struct {
 		src string
@@ -164,7 +162,7 @@ func TestBriqueInfiniteRecoitLeDoerGarde_AutoPreuve(t *testing.T) {
 		"variable":              {entete + `func f(c *http.Client) { d := netguard.Doer{Next: c}; _ = infinite.New(d, infinite.Retry{}) }`, 1},
 		"second Doer nu":        {entete + `func f(c *http.Client) { _ = infinite.NewClassement(netguard.Doer{Next: c}, c) }`, 1},
 		"DefaultClient":         {entete + `func f() { _ = infinite.New(http.DefaultClient, infinite.Retry{}) }`, 1},
-		"import aliasé":         {"package haloadapter\nimport (\n\"net/http\"\ninf \"levelup/go-api/internal/haloapi/infinite\"\n)\nfunc f(c *http.Client) { _ = inf.New(c, inf.Retry{}) }", 1},
+		"import aliasé":         {"package haloadapter\nimport (\n\"net/http\"\ninf \"" + cheminBriqueInfinite + "\"\n)\nfunc f(c *http.Client) { _ = inf.New(c, inf.Retry{}) }", 1},
 		"autre type de Doer":    {entete + `type nu struct{ *http.Client }; func f(c *http.Client) { _ = infinite.New(nu{c}, infinite.Retry{}) }`, 1},
 		"constructeur en ligne": {entete + `func g() netguard.Doer { return netguard.Doer{} }; func f() { _ = infinite.New(g(), infinite.Retry{}) }`, 1},
 		"type local homonyme":   {entete + `type Doer struct{ Next *http.Client }; func f(c *http.Client) { _ = infinite.New(Doer{Next: c}, infinite.Retry{}) }`, 1},
@@ -184,7 +182,7 @@ func TestBriqueInfiniteRecoitLeDoerGarde_AutoPreuve(t *testing.T) {
 		"classement gardé": entete + `func f(c *http.Client) { _ = infinite.NewClassement(netguard.Doer{Next: c}, netguard.Doer{Next: c}) }`,
 		"halo5 gardé":      enteteH5 + `func f(c *http.Client) { _ = halo5.New(netguard.Doer{Next: c}, netguard.Doer{Next: c}, halo5.RetryHalo5()) }`,
 		"xboxlive gardé":   enteteXbox + `func f(c *http.Client) { _ = xboxlive.New(netguard.Doer{Surface: "s", Next: c}) }`,
-		"netguard aliasé":  "package haloadapter\nimport (\n\"net/http\"\n\"levelup/go-api/internal/haloapi/infinite\"\nng \"levelup/go-api/internal/platform/netguard\"\n)\nfunc f(c *http.Client) { _ = infinite.New(ng.Doer{Next: c}, infinite.Retry{}) }",
+		"netguard aliasé":  "package haloadapter\nimport (\n\"net/http\"\n\"" + cheminBriqueInfinite + "\"\nng \"levelup/go-api/internal/platform/netguard\"\n)\nfunc f(c *http.Client) { _ = infinite.New(ng.Doer{Next: c}, infinite.Retry{}) }",
 		"sans la brique":   "package x\nimport \"net/http\"\ntype infinite struct{}\nfunc (infinite) New(*http.Client) {}\nfunc f(c *http.Client) { var i infinite; i.New(c) }",
 	}
 	for nom, source := range permis {

@@ -1,9 +1,12 @@
 // enregistreur_http_unique_test.go — l'enregistreur de requêtes HTTP des tests est UN seul
-// (`internal/haloapi/haloapitest.Enregistreur`).
+// (`libs/haloapi/haloapitest.Enregistreur`).
 //
-// Contrat : un fichier `_test.go` du module `apps/go-api` qui déclare une méthode `RoundTrip`
-// (un `http.RoundTripper` maison) doit être sous `internal/haloapi/haloapitest/` ou figurer dans
-// [copiesPreexistantesDEnregistreur]. Un nouveau fichier est rouge : utiliser
+// Contrat : un fichier `_test.go` du module `apps/go-api` ou de la brique `libs/haloapi` (son
+// enregistreur y vit depuis que la brique est un module, lot 3 du plan PUBLICATION) qui déclare une
+// méthode `RoundTrip` (un `http.RoundTripper` maison) doit être sous `libs/haloapi/haloapitest/` ou
+// figurer dans [copiesPreexistantesDEnregistreur]. Les chemins parlent le double repère des
+// garde-rails ([cheminDeGardeRail] : sous `libs/` relatif à la racine du dépôt, sinon relatif à
+// `apps/go-api`). Un nouveau fichier est rouge : utiliser
 // `haloapitest.Enregistreur`. Un fichier de la liste qui ne déclare plus de `RoundTrip` est rouge
 // « retirer l'entrée » : la liste ne fait que descendre. Le parcours lit l'AST : un commentaire ou
 // une chaîne qui cite `RoundTrip(` ne compte pas.
@@ -18,22 +21,25 @@ import (
 	"testing"
 )
 
-// copiesPreexistantesDEnregistreur : les `_test.go` (relatifs à `apps/go-api`) qui déclaraient déjà
+// copiesPreexistantesDEnregistreur : les `_test.go` (chemins de garde-rail) qui déclaraient déjà
 // un `RoundTrip` le 2026-11-01, avant l'enregistreur partagé. Aucune entrée n'est ajoutée.
 var copiesPreexistantesDEnregistreur = map[string]bool{
 	"internal/games/halo_infinite/haloadapter/aides_test.go":                    true,
 	"internal/games/halo_infinite/haloadapter/client_url_dryrun_test.go":        true,
 	"internal/games/halo_infinite/haloadapter/privacy_provider_failure_test.go": true,
-	"internal/haloapi/xblauth/exchange_descriptor_test.go":                      true,
-	"internal/haloapi/xblauth/exchange_test.go":                                 true,
+	racineBriqueHaloapi + "/xblauth/exchange_descriptor_test.go":                true,
+	racineBriqueHaloapi + "/xblauth/exchange_test.go":                           true,
 	"internal/platform/auth/sisu_exchange_flow_test.go":                         true,
 	"internal/presence/rest_client_test.go":                                     true,
 	"internal/sync/filmfetch/aides_test.go":                                     true,
 	"internal/sync/filmfetch/blob_reprise_test.go":                              true,
 }
 
+// racinesEnregistreur : les modules balayés (relatifs à la racine du dépôt).
+var racinesEnregistreur = []string{"apps/go-api", racineBriqueHaloapi}
+
 // dossierEnregistreurPartage : l'unique endroit où un `RoundTrip` de test est chez lui.
-const dossierEnregistreurPartage = "internal/haloapi/haloapitest/"
+const dossierEnregistreurPartage = racineBriqueHaloapi + "/haloapitest/"
 
 // declareRoundTrip dit si `src` déclare une méthode nommée RoundTrip. Fonction pure.
 func declareRoundTrip(src goSource) bool {
@@ -46,7 +52,7 @@ func declareRoundTrip(src goSource) bool {
 }
 
 // ecartsEnregistreur rend, triés, les écarts entre les fichiers qui déclarent un RoundTrip
-// (`declarent`, chemins relatifs au module) et la liste `permis`.
+// (`declarent`, chemins de garde-rail) et la liste `permis`.
 func ecartsEnregistreur(declarent []string, permis map[string]bool) []string {
 	var out []string
 	vus := map[string]bool{}
@@ -67,7 +73,7 @@ func ecartsEnregistreur(declarent []string, permis map[string]bool) []string {
 
 func TestEnregistreurHTTPUnique(t *testing.T) {
 	var declarent []string
-	for _, f := range workspaceGoSources(t, "apps/go-api") {
+	for _, f := range workspaceGoSources(t, racinesEnregistreur...) {
 		if !strings.HasSuffix(f.Rel, "_test.go") {
 			continue
 		}
@@ -76,7 +82,7 @@ func TestEnregistreurHTTPUnique(t *testing.T) {
 			t.Fatalf("%s : %v", f.Rel, err)
 		}
 		if declareRoundTrip(src) {
-			declarent = append(declarent, strings.TrimPrefix(f.Rel, "apps/go-api/"))
+			declarent = append(declarent, cheminDeGardeRail(t, f.Chemin))
 		}
 	}
 	if ecarts := ecartsEnregistreur(declarent, copiesPreexistantesDEnregistreur); len(ecarts) > 0 {
@@ -92,7 +98,7 @@ func TestEnregistreurHTTPUnique_AutoPreuve(t *testing.T) {
 	}
 	permis := map[string]bool{"internal/x/ancien_test.go": true}
 	ecarts := strings.Join(ecartsEnregistreur(
-		[]string{"internal/x/nouveau_test.go", "internal/haloapi/haloapitest/enregistreur_test.go"}, permis), "\n")
+		[]string{"internal/x/nouveau_test.go", dossierEnregistreurPartage + "enregistreur_test.go"}, permis), "\n")
 	if !strings.Contains(ecarts, "internal/x/nouveau_test.go : déclare un RoundTrip hors de l'allowlist — utiliser haloapitest.Enregistreur") ||
 		!strings.Contains(ecarts, "internal/x/ancien_test.go : ne déclare plus de RoundTrip — retirer l'entrée") ||
 		strings.Contains(ecarts, "haloapitest/enregistreur_test.go") {

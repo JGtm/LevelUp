@@ -26,8 +26,9 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	titlePkg "levelup/go-api/internal/domain/title"
 	halo5 "levelup/go-api/internal/games/halo_5"
-	h5api "levelup/go-api/internal/haloapi/halo5"
 	"levelup/go-api/internal/platform/auth"
+
+	h5api "github.com/JGtm/LevelUp/libs/haloapi/halo5"
 )
 
 func main() {

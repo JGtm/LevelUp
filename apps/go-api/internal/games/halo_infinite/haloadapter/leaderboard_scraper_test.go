@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"path/filepath"
 	"sync/atomic"
 	"testing"
 
@@ -16,7 +15,10 @@ import (
 )
 
 // fixtureClassement : la page réelle du classement, fixture de la brique qui la lit.
-var fixtureClassement = filepath.Join("..", "..", "..", "haloapi", "infinite", "testdata", "leaderboard_sample.html")
+func fixtureClassement(t *testing.T) string {
+	t.Helper()
+	return cheminBriqueHaloapi(t, "infinite", "testdata", "leaderboard_sample.html")
+}
 
 // buildLeaderboardHTML fabrique une page Halo Waypoint synthétique avec un bloc
 // __NEXT_DATA__ contenant `gamertags` (rank=0 dans le payload, comme en prod).
@@ -205,7 +207,7 @@ func TestFetchActiveSeasonAndCatalog(t *testing.T) {
 // retombe sur le DisplayName EN quand aucune traduction FR n'existe (csrseason13-2
 // "Infinite" n'a que des locales qps-ploc).
 func TestFetchSeasons_TranslationsFR(t *testing.T) {
-	body, err := os.ReadFile(fixtureClassement)
+	body, err := os.ReadFile(fixtureClassement(t))
 	if err != nil {
 		t.Skipf("fixture absente (%v)", err)
 	}

@@ -10,7 +10,18 @@
 //
 // Depuis les lots 3 et 4, une brique est un MODULE Go sous `libs/<brique>/` (ADR 0041) : le compilateur
 // refuse déjà qu'elle importe `levelup/go-api/internal/...` ; ce test tient en plus la liste
-// fermée des briques de rang inférieur qu'elle a le droit d'importer.
+// fermée des briques de rang inférieur qu'elle a le droit d'importer. Les trois briques de l'audit
+// sont des modules : `himap` (D1), `film` (D2) et, depuis le lot 3 du plan PUBLICATION
+// (`.ai/V8/PLAN_PUBLICATION_BRIQUES_2026-10-30.md`, 2026-11-01), `haloapi` (l'API Halo), qui vivait
+// jusque-là dans `apps/go-api/internal/haloapi`, tenue par une table des briques INTERNES retirée le
+// même jour (le compilateur la remplace).
+//
+// # TIERS PAR SOUS-ARBRE (champ `tiers`, ligne `haloapi`)
+//
+// Une ligne qui porte `tiers` juge aussi les imports HORS DU DÉPÔT : hors bibliothèque standard, un
+// fichier n'importe que les tiers nommés pour le sous-arbre qui le contient. Dans un espace de travail,
+// le `go.mod` d'une brique ne suffit pas à les borner (la liste de construction est l'union des modules
+// du `go.work`). Les autres lignes n'ont pas de `tiers` : leurs tiers ne sont pas jugés ici.
 //
 // # CE QU'IL VÉRIFIE
 //
@@ -40,7 +51,8 @@
 //
 // Ajouter `"levelup/go-api/internal/analysis"` aux imports de
 // `libs/himap/himap/cuisson_forge.go`, ou `"github.com/JGtm/LevelUp/libs/himap/himap"`
-// à ceux de `libs/gamefiles/mapvar/mapvar.go`.
+// à ceux de `libs/gamefiles/mapvar/mapvar.go`, ou `"golang.org/x/sync/errgroup"` à ceux de
+// `libs/haloapi/xblauth/doc.go` (tiers hors de son sous-arbre).
 package archlint
 
 import (
@@ -77,6 +89,50 @@ type brique struct {
 	// permis : les paquets (même forme) d'AUTRES briques, de rang inférieur, que celle-ci peut
 	// importer. Tout autre import `levelup/go-api/...` ou `.../libs/...` est une violation.
 	permis []string
+	// tiers : nil, ou les paquets tiers (chemin exact) permis PAR SOUS-ARBRE : clé = dossier relatif à
+	// la racine du dépôt sous lequel ils sont permis. Non nil, tout autre import hors bibliothèque
+	// standard et hors dépôt est une violation (voir l'en-tête).
+	tiers map[string][]string
+}
+
+// franchit dit si l'import `imp` du fichier `rel` (relatif à la racine du dépôt) sort de la brique :
+// un paquet du dépôt qui n'est ni de la brique ni permis ; ou, si la brique porte `tiers`, un paquet
+// hors bibliothèque standard et hors dépôt qui n'est pas permis pour le sous-arbre du fichier.
+func (b brique) franchit(rel, imp string) bool {
+	if strings.HasPrefix(imp, prefixeModuleAPI) || strings.HasPrefix(imp, prefixeBriques) {
+		return !b.interne(imp)
+	}
+	return b.tiers != nil && !estBibliothequeStandard(imp) && !b.tiersPermis(rel, imp)
+}
+
+// tiersPermis dit si le fichier `rel` (relatif à la racine du dépôt) peut importer le tiers `imp`.
+func (b brique) tiersPermis(rel, imp string) bool {
+	for dossier, liste := range b.tiers {
+		if !strings.HasPrefix(rel, dossier+"/") {
+			continue
+		}
+		for _, t := range liste {
+			if imp == t {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// estBibliothequeStandard : le premier élément du chemin n'a pas de point, et le chemin n'est pas
+// un paquet du module (`levelup/...`).
+func estBibliothequeStandard(imp string) bool {
+	if strings.HasPrefix(imp, prefixeModuleAPI) {
+		return false
+	}
+	premier, _, _ := strings.Cut(imp, "/")
+	return !strings.Contains(premier, ".")
+}
+
+// sousArbre dit si `imp` est le paquet `base` ou un paquet dessous.
+func sousArbre(imp, base string) bool {
+	return imp == base || strings.HasPrefix(imp, base+"/")
 }
 
 // interne dit si le chemin d'import vise un paquet de la brique ou un paquet permis.
@@ -124,7 +180,7 @@ var paquetsGamefiles = []string{
 }
 
 // briques : la table des briques (règle 6 de CLAUDE.md : UNE table, pas un fichier par brique).
-// Les plans D2 (décodeur de film) et D3 (API Halo) y ajoutent leurs lignes.
+// Le plan D2 (décodeur de film) et le plan PUBLICATION (API Halo) y ont ajouté leurs lignes.
 var briques = []brique{
 	{nom: "gamefiles", paquets: paquetsGamefiles},
 	{nom: "himap", paquets: paquetsHimap, permis: paquetsGamefiles},
@@ -136,6 +192,22 @@ var briques = []brique{
 		recursif: true,
 		permis:   append(append([]string{}, paquetsGamefiles...), paquetsHimap...),
 	},
+	{
+		nom: "haloapi",
+		// Le module `libs/haloapi` entier (ADR 0041 et 0042) : `xblauth`, `infinite`, `halo5`,
+		// `xboxlive`, `haloapitest` et le paquet racine. Il n'importe AUCUNE autre brique.
+		paquets:  []string{racineBriqueHaloapi},
+		recursif: true,
+		tiers:    tiersHaloapi,
+	},
+}
+
+// tiersHaloapi : les seuls tiers de la brique « API Halo », par sous-paquet. `infinite` télécharge les
+// fragments de film en parallèle (`errgroup`) et ses tests construisent un limiteur (`rate`) ;
+// `xblauth`, `halo5`, `xboxlive`, `haloapitest` et le paquet racine n'ont droit qu'à la bibliothèque
+// standard (contrats de leurs `doc.go`).
+var tiersHaloapi = map[string][]string{
+	racineBriqueHaloapi + "/infinite": {"golang.org/x/sync/errgroup", "golang.org/x/time/rate"},
 }
 
 // paquetsHimap : la brique « images de carte ». Elle importe `gamefiles`, rien d'autre.
@@ -221,6 +293,31 @@ func sousDossiersGo(t *testing.T, racine, dossier string) []string {
 	return out
 }
 
+// sousDossiersGoErr est la forme à erreur de [sousDossiersGo] : erreur si la racine n'existe pas.
+func sousDossiersGoErr(racine, dossier string) ([]string, error) {
+	base := filepath.Join(racine, filepath.FromSlash(dossier))
+	if st, err := os.Stat(base); err != nil || !st.IsDir() {
+		return nil, fmt.Errorf("%s n'existe pas : la table décrit une arborescence disparue", dossier)
+	}
+	var out []string
+	err := filepath.WalkDir(base, func(chemin string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !d.IsDir() {
+			return nil
+		}
+		nom := d.Name()
+		if chemin != base && (dossiersInvisiblesAuGo[nom] || strings.HasPrefix(nom, ".") || strings.HasPrefix(nom, "_")) {
+			return filepath.SkipDir
+		}
+		rel, _ := filepath.Rel(racine, chemin)
+		out = append(out, filepath.ToSlash(rel))
+		return nil
+	})
+	return out, err
+}
+
 // importsDuDossier parse les imports des `.go` du seul répertoire `p` (relatif à `racine`).
 func importsDuDossier(t *testing.T, fset *token.FileSet, racine, p string) []fichierImports {
 	t.Helper()
@@ -231,8 +328,8 @@ func importsDuDossier(t *testing.T, fset *token.FileSet, racine, p string) []fic
 	return out
 }
 
-// importsDuDossierErr est la forme à erreur de [importsDuDossier] : l'auto-preuve des briques
-// internes y vérifie qu'un dossier déclaré qui n'existe pas est refusé.
+// importsDuDossierErr est la forme à erreur de [importsDuDossier] : un dossier déclaré qui n'existe
+// pas est refusé.
 func importsDuDossierErr(fset *token.FileSet, racine, p string) ([]fichierImports, error) {
 	dir := filepath.Join(racine, filepath.FromSlash(p))
 	entrees, err := os.ReadDir(dir)
@@ -259,7 +356,8 @@ func importsDuDossierErr(fset *token.FileSet, racine, p string) ([]fichierImport
 }
 
 // violationsDeBrique rend, pour une brique, les imports de `levelup/go-api/...` ou de
-// `github.com/JGtm/LevelUp/libs/...` qui ne visent ni un paquet de la brique ni un paquet permis.
+// `github.com/JGtm/LevelUp/libs/...` qui ne visent ni un paquet de la brique ni un paquet permis,
+// et, si la brique porte `tiers`, les imports tiers hors de la liste du sous-arbre du fichier.
 // Les fichiers de `toleres` sont passés et marqués dans `vus` (un fichier toléré qui n'a plus de
 // franchissement n'est PAS marqué : son entrée est morte). Fonction pure : c'est elle que
 // l'auto-preuve exerce.
@@ -268,8 +366,7 @@ func violationsDeBrique(b brique, fichiers []fichierImports, toleres map[string]
 	for _, f := range fichiers {
 		deja := map[string]bool{}
 		for _, imp := range f.imports {
-			surveille := strings.HasPrefix(imp, prefixeModuleAPI) || strings.HasPrefix(imp, prefixeBriques)
-			if !surveille || b.interne(imp) || deja[imp] {
+			if deja[imp] || !b.franchit(f.rel, imp) {
 				continue
 			}
 			deja[imp] = true
@@ -318,12 +415,51 @@ func TestBriquesImports_AutoPreuve(t *testing.T) {
 	}
 }
 
+// TestBriquesImports_AutoPreuve_Tiers : une brique qui porte `tiers` refuse un tiers hors de la liste
+// du sous-arbre du fichier (le paquet parent et un sous-arbre voisin n'y ont pas droit, un tiers non
+// nommé non plus) et laisse passer la bibliothèque standard et les tiers nommés sous leur sous-arbre ;
+// une brique sans `tiers` ne juge pas les siens.
+func TestBriquesImports_AutoPreuve_Tiers(t *testing.T) {
+	const (
+		errgroup    = "golang.org/x/sync/errgroup"
+		rate        = "golang.org/x/time/rate"
+		singleflite = "golang.org/x/sync/singleflight"
+	)
+	b := brique{nom: "x", paquets: []string{"libs/x"}, recursif: true,
+		tiers: map[string][]string{"libs/x/infinite": {errgroup, rate}}}
+	fichiers := []fichierImports{
+		{rel: "libs/x/infinite/a.go", imports: []string{"fmt", "net/http", errgroup, rate, prefixeBriques + "x"}},
+		{rel: "libs/x/b.go", imports: []string{"context", errgroup}},
+		{rel: "libs/x/xblauth/c.go", imports: []string{rate}},
+		{rel: "libs/x/infinite/d_test.go", imports: []string{singleflite}},
+	}
+	got := violationsDeBrique(b, fichiers, nil, map[string]bool{})
+	sort.Strings(got)
+	attendu := []string{
+		"[x] libs/x/b.go  -> " + errgroup,
+		"[x] libs/x/infinite/d_test.go  -> " + singleflite,
+		"[x] libs/x/xblauth/c.go  -> " + rate,
+	}
+	if strings.Join(got, "\n") != strings.Join(attendu, "\n") {
+		t.Fatalf("violations = %v, attendu %v", got, attendu)
+	}
+	sansTiers := brique{nom: "y", paquets: []string{"libs/x"}, recursif: true}
+	if v := violationsDeBrique(sansTiers, fichiers, nil, map[string]bool{}); len(v) != 0 {
+		t.Fatalf("une brique sans `tiers` ne juge pas ses tiers ; obtenu %v", v)
+	}
+	if estBibliothequeStandard(prefixeModuleAPI+"internal/x") || !estBibliothequeStandard("net/http") ||
+		estBibliothequeStandard(rate) {
+		t.Error("estBibliothequeStandard : stdlib = premier élément sans point et hors module")
+	}
+}
+
 // TestCheminImport : la dérivation du chemin d'import suit la forme des deux sortes de modules.
 func TestCheminImport(t *testing.T) {
 	for paquet, attendu := range map[string]string{
 		"apps/go-api/internal/i18n": "levelup/go-api/internal/i18n",
 		"libs/himap/himap":          "github.com/JGtm/LevelUp/libs/himap/himap",
 		"libs/gamefiles/ooz":        "github.com/JGtm/LevelUp/libs/gamefiles/ooz",
+		"libs/haloapi/infinite":     "github.com/JGtm/LevelUp/libs/haloapi/infinite",
 	} {
 		if got := cheminImport(paquet); got != attendu {
 			t.Errorf("cheminImport(%q) = %q, attendu %q", paquet, got, attendu)

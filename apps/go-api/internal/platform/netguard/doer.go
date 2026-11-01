@@ -4,10 +4,10 @@ import (
 	"context"
 	"net/http"
 
-	"levelup/go-api/internal/haloapi"
+	"github.com/JGtm/LevelUp/libs/haloapi"
 )
 
-// Doer est le `haloapi.Doer` GARDÉ que LevelUp passe aux clients de la brique `internal/haloapi` :
+// Doer est le `haloapi.Doer` GARDÉ que LevelUp passe aux clients de la brique `libs/haloapi` :
 // il appelle `netguard.Check` (mode démo) AVANT d'émettre par `Next`. Une sortie refusée rend
 // [ErrOffline] marquée définitive (`haloapi.NonRetryable`) : la brique la rend aussitôt, sans
 // reprise ni attente ; `errors.Is(err, netguard.ErrOffline)` reste vrai. Il implémente aussi

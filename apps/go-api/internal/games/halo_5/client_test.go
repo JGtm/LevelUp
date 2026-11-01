@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/haloapi/halo5"
+	"github.com/JGtm/LevelUp/libs/haloapi/halo5"
 )
 
 // TestClient_RequestRecipe verrouille la recette de requete Halo 5 confirmee par

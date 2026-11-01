@@ -1,6 +1,6 @@
 package netguard_test
 
-// doer_test.go — le `netguard.Doer` que LevelUp passe aux clients de la brique `internal/haloapi` :
+// doer_test.go — le `netguard.Doer` que LevelUp passe aux clients de la brique `libs/haloapi` :
 // en mode démo, `Verifie` et `Do` refusent avec une erreur à la fois `ErrOffline` et
 // `haloapi.ErrDefinitif` (la brique s'arrête dessus sans reprise ni attente), sans émettre ; hors
 // mode démo, CHAQUE `Do` repasse par la garde (une bascule en démo entre deux requêtes bloque la
@@ -12,9 +12,10 @@ import (
 	"net/http"
 	"testing"
 
-	"levelup/go-api/internal/haloapi"
-	"levelup/go-api/internal/haloapi/haloapitest"
 	"levelup/go-api/internal/platform/netguard"
+
+	"github.com/JGtm/LevelUp/libs/haloapi"
+	"github.com/JGtm/LevelUp/libs/haloapi/haloapitest"
 )
 
 // doerDeTest rend un Doer gardé sur un enregistreur de requêtes.

@@ -17,8 +17,9 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/haloapi/haloapitest"
-	"levelup/go-api/internal/haloapi/infinite"
+
+	"github.com/JGtm/LevelUp/libs/haloapi/haloapitest"
+	"github.com/JGtm/LevelUp/libs/haloapi/infinite"
 )
 
 const (

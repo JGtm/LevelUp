@@ -9,7 +9,8 @@ import (
 
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
-	"levelup/go-api/internal/haloapi/halo5"
+
+	"github.com/JGtm/LevelUp/libs/haloapi/halo5"
 )
 
 // fakeSource implemente h5Source sans reseau (injecte des reponses / erreurs).

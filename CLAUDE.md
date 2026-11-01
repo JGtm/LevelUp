@@ -13,8 +13,8 @@
 |---|---|---|
 | API + sync + analyse | **Go** (chi + Huma, slog, DuckDB) | `apps/go-api/` |
 | Frontend | **React/TypeScript** (Vite, TanStack Router/Query/Table, ECharts) | `apps/web/` |
-| Briques Go (modules séparés, ADR 0041) | **Go**, reliées à `apps/go-api` par `go.work` (racine) | `libs/<brique>/` (`libs/gamefiles` : lecteurs de fichiers du jeu ; `libs/himap` : images de carte ; `libs/film` : décodeur de film) |
-| API Halo (protocole, ADR 0042) | **Go**, paquets internes sans état ni politique (pas un module `libs/`) | `apps/go-api/internal/haloapi/` (`xblauth` : chaîne d'échange ; `infinite` : services Halo Infinite) ; l'exploitation reste dans `platform/auth`, `games/halo_infinite/haloadapter`, `sync/filmfetch` |
+| Briques Go (modules séparés, ADR 0041) | **Go**, reliées à `apps/go-api` par `go.work` (racine) | `libs/<brique>/` (`libs/gamefiles` : lecteurs de fichiers du jeu ; `libs/himap` : images de carte ; `libs/film` : décodeur de film ; `libs/haloapi` : API Halo) |
+| API Halo (protocole, ADR 0042) | **Go**, paquets sans état ni politique | `libs/haloapi/` (`xblauth` : chaîne d'échange ; `infinite` : services Halo Infinite ; `halo5` : services Halo 5 ; `xboxlive` : succès Xbox) ; l'exploitation reste dans `platform/auth`, `games/halo_infinite/haloadapter`, `games/halo_5`, `sync/filmfetch` |
 | Stockage | **DuckDB** par titre + Parquet (archives) | `data/titles/{slug}/` |
 | Config | JSON + TOML | `db_profiles.json`, `app_settings.json`, `.env.local`, `config/titles/` |
 
@@ -155,7 +155,7 @@ des DBs en prod. L'éradication (ADR 0019/0026) repose sur des invariants NON N�
   `data/auth/watcher_tokens.json` (celui-ci ne porte plus que l'état du watcher RTA :
   access_token + XSTS). Un joueur absent du store n'a pas de token.
 - **Chaîne d'échange (ADR 0042)** : jeton d'accès Microsoft -> XBL -> XSTS -> Spartan vit dans
-  `internal/haloapi/xblauth`, qui ne lit ni env ni fichier ni `sync_meta` (client Azure et descripteur de
+  `libs/haloapi/xblauth`, qui ne lit ni env ni fichier ni `sync_meta` (client Azure et descripteur de
   titre passés par l'appelant) ; le magasin, la mise en commun et la politique de rafraîchissement restent dans
   `platform/auth`, helper canonique et ratchets inchangés. Cache de jetons par joueur :
   `platform/auth/tokencache`.
@@ -408,14 +408,16 @@ git commit -m "refactor(phase2): ..."
   premier niveau, relié à `apps/go-api` par `go.work` sans `replace` ni `require` ; critère d'autonomie =
   `go list -deps` sans `levelup/go-api` ; table `archlint/briques_imports_test.go` ; ratchets à règle générale
   racinés sur l'espace de travail ; aucun fichier extrait du jeu dans une brique ; `./...` ne franchit pas un
-  module : `make libs-test`, pas de `go mod tidy` dans `apps/go-api` ; trois modules au rang
-  `film` → `himap` → `gamefiles`, le décodeur de film garde ses empreintes de couche par un cadre historique) ·
-  `0042` **API Halo : protocole et exploitation** (deux paquets internes `haloapi/xblauth` et
+  module : `make libs-test`, pas de `go mod tidy` dans `apps/go-api` ; modules au rang
+  `film` → `himap` → `gamefiles`, plus `haloapi` qui n'importe aucune brique ; le décodeur de film garde ses
+  empreintes de couche par un cadre historique) ·
+  `0042` **API Halo : protocole et exploitation** (paquets `haloapi/xblauth` et
   `haloapi/infinite`, sans état ni politique ni import de LevelUp hors d'eux ; tout est passé :
   `Doer` gardé par surface `netguard` et consulté avant le limiteur, `Retry` en valeur — trois politiques
   conservées —, `Endpoints`, `ClientAzure`, `Descriptor`, jetons et langue en paramètres ; octets de film
   COMPRESSÉS, `filmfetch` décompresse ; conversions DTO -> domaine dans `games/halo_infinite/haloadapter` ;
-  table des briques internes `archlint/briques_internes_test.go` ; amende 0031 D-1, précise 0023).
+  ligne `haloapi` de `archlint/briques_imports_test.go` (module `libs/haloapi` depuis le 2026-11-01, avec
+  `halo5` et `xboxlive`) ; amende 0031 D-1, précise 0023).
 
 READMEs catalogues : `apps/go-api/internal/analysis/{temporal,breakdown,narrative}/README.md`,
 `apps/web/src/components/charts/README.md` (wrappers ECharts).

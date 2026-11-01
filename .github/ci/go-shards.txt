@@ -52,6 +52,11 @@ lot film-grammar-lourd  run:grammar-lourds ./internal/grammar
 lot film-grammar-reste  skip:grammar-lourds ./internal/grammar
 lot film                - @reste
 
+# Module libs/haloapi (l'API Halo, ADR 0041 et 0042, plan PUBLICATION lot 3) : ses paquets tournaient
+# dans le lot `reste` de go-api ; sans CGo ni DuckDB, quelques secondes de test : un seul lot.
+module libs/haloapi
+lot haloapi             - @reste
+
 # Budget `-timeout` PAR PROCESSUS DE TEST (un paquet = un processus), pas par lot : 600 s partout.
 # Mesures sous couverture (run 38979844734) : moitiés de `grammar` 245 et 248 s, platform/duckdb
 # 301 s, internal/sync 261 s. Le critère de retour à 600 s (une moitié de `grammar` sous 450 s) est

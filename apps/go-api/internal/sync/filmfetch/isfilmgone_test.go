@@ -12,7 +12,7 @@ import (
 	"fmt"
 	"testing"
 
-	"levelup/go-api/internal/haloapi/infinite"
+	"github.com/JGtm/LevelUp/libs/haloapi/infinite"
 )
 
 func TestIsFilmGoneErr(t *testing.T) {

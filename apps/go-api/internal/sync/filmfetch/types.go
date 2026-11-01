@@ -1,7 +1,7 @@
 package filmfetch
 
 import (
-	"levelup/go-api/internal/haloapi/infinite"
+	"github.com/JGtm/LevelUp/libs/haloapi/infinite"
 
 	"github.com/JGtm/LevelUp/libs/film/finalise"
 )

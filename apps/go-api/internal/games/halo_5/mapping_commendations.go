@@ -19,8 +19,9 @@ package halo_5
 // directement le type persist consommé par ingest.CollectMatchBatch.AddCommendations.
 
 import (
-	"levelup/go-api/internal/haloapi/halo5"
 	"levelup/go-api/internal/persist"
+
+	"github.com/JGtm/LevelUp/libs/haloapi/halo5"
 )
 
 // mapCarnageCommendations projette les deltas de commendations natives du carnage

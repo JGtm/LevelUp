@@ -242,13 +242,15 @@ une brique est `github.com/JGtm/LevelUp/libs/<brique>`, ses paquets au premier n
 paquet `internal/` ne serait pas importable par l'application).
 
 ```text
-go.work                  use ./apps/go-api ./libs/film ./libs/gamefiles ./libs/himap
+go.work                  use ./apps/go-api ./libs/film ./libs/gamefiles ./libs/haloapi ./libs/himap
 apps/go-api/             l'application (module levelup/go-api)
 libs/film/               la brique « décodeur de film » (ADR 0034) : la façade decfilm, la couche de
                          publication replay, les couches fermées sous internal/ (source, profile,
                          grammar, facts) et ses catalogues — n'importe que libs/gamefiles et libs/himap
 libs/gamefiles/          la brique « fichiers du jeu » : himodule, ooz (GPLv3, jamais linké par cmd/server),
                          hinavmesh, mapvar — n'importe rien de LevelUp
+libs/haloapi/            la brique « API Halo » (ADR 0042) : xblauth, infinite, halo5, xboxlive —
+                         n'importe rien de LevelUp ni d'aucune autre brique
 libs/himap/              la brique « images de carte » : paquet himap (géométrie des cartes et fonds vus du
                          dessus, lus dans les fichiers du jeu) — n'importe que libs/gamefiles
 ```
@@ -257,23 +259,24 @@ Règles, tenues par des garde-rails : une brique n'importe rien de `levelup/go-a
 rang inférieur (`archlint/briques_imports_test.go`, tests compris) ; `go list -deps` dans le module ne montre
 aucun paquet `levelup/go-api` ; aucun fichier extrait du jeu installé n'entre dans une brique ; la ligne `go` est
 la même dans `go.work`, `apps/go-api/go.mod`, chaque `libs/*/go.mod` et l'image du `Dockerfile`. `./...` ne
-franchit jamais la frontière d'un module : `make libs-test` et les pas CI « brique film », « brique gamefiles » et « brique himap »
-(plus les lots `film*` de la matrice de couverture) couvrent les briques,
+franchit jamais la frontière d'un module : `make libs-test` et les pas CI « brique film », « brique gamefiles », « brique haloapi » et « brique himap »
+(plus les lots `film*` et `haloapi` de la matrice de couverture) couvrent les briques,
 `go mod tidy` ne tourne pas dans `apps/go-api`. Une brique est importable de l'extérieur par le tag
 `libs/<brique>/vX.Y.Z`. Commandes : [`COMMANDS.md`](COMMANDS.md) § « Modules Go sous `libs/` » ; décision et liste à
 suivre pour ajouter une brique : [`adr/0041-go-modules-under-libs.md`](../adr/0041-go-modules-under-libs.md).
 
 ### Brique API Halo (ADR 0042)
 
-Le code qui **parle aux** services Halo vit dans deux paquets internes d'`apps/go-api`, pas dans un module :
-`internal/haloapi/xblauth` (la chaîne d'échange jeton Microsoft -> Xbox Live -> XSTS -> Spartan) et
-`internal/haloapi/infinite` (adresses, transport, un fichier par service, DTO JSON bruts, octets de film
-compressés). Ils n'ont ni état ni politique et n'importent rien de LevelUp hors de `internal/haloapi` : le
+Le code qui **parle aux** services Halo est le module `libs/haloapi` (depuis le 2026-11-01 ; c'étaient avant
+des paquets internes d'`apps/go-api`) : `libs/haloapi/xblauth` (la chaîne d'échange jeton Microsoft -> Xbox Live
+-> XSTS -> Spartan), `libs/haloapi/infinite` (adresses, transport, un fichier par service, DTO JSON bruts, octets
+de film compressés), `libs/haloapi/halo5` (services Halo 5) et `libs/haloapi/xboxlive` (succès Xbox Live). Ils
+n'ont ni état ni politique et n'importent rien de LevelUp : le
 `Doer` HTTP (gardé par surface `netguard`, consulté avant le limiteur), la politique de reprise (`Retry`, trois
 politiques conservées), les adresses, le client Azure, le descripteur de titre, les jetons et la langue leur
 sont tous passés. Ce qui décide reste dans LevelUp : `platform/auth` (magasin, mise en commun, boucles de
 rafraîchissement ; `platform/auth/tokencache` pour le cache de 50 minutes par joueur),
 `games/halo_infinite/haloadapter` (DTO -> `domain`, caches, façades `Provider` et `Client`), `sync/filmfetch`
-(décompression, finalisation, cache local des films). La table des briques internes est
-`archlint/briques_internes_test.go` ; `domain`, `analysis` et `games/canonical` n'atteignent jamais la brique.
+(décompression, finalisation, cache local des films). La brique est la ligne `haloapi` de
+`archlint/briques_imports_test.go` ; `domain`, `analysis` et `games/canonical` n'atteignent jamais la brique.
 Décision : [`adr/0042-halo-api-protocol-vs-exploitation.md`](../adr/0042-halo-api-protocol-vs-exploitation.md).

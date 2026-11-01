@@ -6,7 +6,8 @@ import (
 	"strconv"
 
 	"levelup/go-api/internal/games/canonical"
-	"levelup/go-api/internal/haloapi/halo5"
+
+	"github.com/JGtm/LevelUp/libs/haloapi/halo5"
 )
 
 // h5Designations mappe DesignationId (palier CSR majeur) -> labels EN/FR.

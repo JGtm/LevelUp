@@ -12,8 +12,9 @@ import (
 	"net/http"
 	"testing"
 
-	"levelup/go-api/internal/haloapi/haloapitest"
 	"levelup/go-api/internal/platform/netguard"
+
+	"github.com/JGtm/LevelUp/libs/haloapi/haloapitest"
 )
 
 func TestClient_Demo_AucuneRequeteSurLesDeuxChemins(t *testing.T) {

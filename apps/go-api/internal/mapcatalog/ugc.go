@@ -3,7 +3,7 @@
 // rattrapage au fetch de films (RUNTIME) en partagent le code : une seule copie.
 //
 // ugc.go : la façade LevelUp du client UGC des cartes. Le protocole (URL, en-têtes, lecture
-// bornée) est dans `internal/haloapi/infinite` (`FetchCarteUGC`, `TelechargerFichierUGC`) ; ici
+// bornée) est dans `libs/haloapi/infinite` (`FetchCarteUGC`, `TelechargerFichierUGC`) ; ici
 // restent l'identité présentée, le client HTTP et son délai, la garde `netguard`, la validation du
 // DTO, les journaux et la forme des erreurs. Deux étapes : le Discovery UGC (AUTHENTIFIÉ, jeton
 // Spartan, ADR 0023) résout assetId → Files.Prefix ; le stockage blob télécharge chaque *.mvar.
@@ -19,8 +19,9 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/haloapi/infinite"
 	"levelup/go-api/internal/platform/netguard"
+
+	"github.com/JGtm/LevelUp/libs/haloapi/infinite"
 )
 
 const (

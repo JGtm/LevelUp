@@ -30,6 +30,7 @@ tmp_dir = "tmp"
   include_dir = [
     "../../libs/film",
     "../../libs/gamefiles",
+    "../../libs/haloapi",
     "../../libs/himap",
   ]
   # Fichiers exclus du watcher

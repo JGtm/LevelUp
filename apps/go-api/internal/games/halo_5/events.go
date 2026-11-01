@@ -14,7 +14,8 @@ import (
 
 	"levelup/go-api/internal/duration"
 	"levelup/go-api/internal/games/canonical"
-	"levelup/go-api/internal/haloapi/halo5"
+
+	"github.com/JGtm/LevelUp/libs/haloapi/halo5"
 )
 
 // h5EventNameToType mappe l'EventName Halo 5 → type canonique. ok=false pour un

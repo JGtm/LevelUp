@@ -3,7 +3,7 @@ package halo_5
 import (
 	"testing"
 
-	"levelup/go-api/internal/haloapi/halo5"
+	"github.com/JGtm/LevelUp/libs/haloapi/halo5"
 )
 
 // carnageWithCommendations construit un carnage 2 joueurs avec des deltas de

@@ -3,8 +3,9 @@ package livesync
 import (
 	"testing"
 
-	h5api "levelup/go-api/internal/haloapi/halo5"
 	syncpkg "levelup/go-api/internal/sync"
+
+	h5api "github.com/JGtm/LevelUp/libs/haloapi/halo5"
 )
 
 // arenaResp construit un H5ServiceRecordResponse OK (ResultCode 0) portant un seul

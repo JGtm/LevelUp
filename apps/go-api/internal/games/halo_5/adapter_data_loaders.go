@@ -19,7 +19,8 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
-	"levelup/go-api/internal/haloapi/halo5"
+
+	"github.com/JGtm/LevelUp/libs/haloapi/halo5"
 )
 
 // LoadCareerSnapshot projette la carrière Halo 5 (palier CSR + rang XP « SR ») vers

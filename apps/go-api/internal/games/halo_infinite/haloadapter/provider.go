@@ -20,8 +20,9 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/haloapi/infinite"
 	"levelup/go-api/internal/platform/netguard"
+
+	"github.com/JGtm/LevelUp/libs/haloapi/infinite"
 )
 
 // Hints d'erreur retournés dans domain.*Response.ErrorHint pour signaler pourquoi un appel live

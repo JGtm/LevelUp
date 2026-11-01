@@ -9,9 +9,10 @@ import (
 	"net/http"
 	"testing"
 
-	"levelup/go-api/internal/haloapi"
-	"levelup/go-api/internal/haloapi/xboxlive"
 	"levelup/go-api/internal/platform/netguard"
+
+	"github.com/JGtm/LevelUp/libs/haloapi"
+	"github.com/JGtm/LevelUp/libs/haloapi/xboxlive"
 )
 
 // doerQuiEchoue : un Doer dont l'émission échoue avec `err`.

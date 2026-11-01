@@ -17,9 +17,10 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
-	h5api "levelup/go-api/internal/haloapi/halo5"
 	syncpkg "levelup/go-api/internal/sync"
 	"levelup/go-api/internal/sync/skill"
+
+	h5api "github.com/JGtm/LevelUp/libs/haloapi/halo5"
 )
 
 // fakeCarnage implémente carnageGetter : réponses/erreurs par matchID.

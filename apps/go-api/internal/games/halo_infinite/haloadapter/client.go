@@ -17,9 +17,10 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/haloapi/infinite"
 	"levelup/go-api/internal/platform/netguard"
 	"levelup/go-api/internal/sync/filmfetch"
+
+	"github.com/JGtm/LevelUp/libs/haloapi/infinite"
 )
 
 const (

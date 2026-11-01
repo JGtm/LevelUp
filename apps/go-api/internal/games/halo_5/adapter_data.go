@@ -27,7 +27,8 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
-	"levelup/go-api/internal/haloapi/halo5"
+
+	"github.com/JGtm/LevelUp/libs/haloapi/halo5"
 )
 
 // h5Source est la surface live minimale consommee par l'adapter (interface ->

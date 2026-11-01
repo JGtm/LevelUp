@@ -21,8 +21,9 @@ import (
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/games/classification"
 	"levelup/go-api/internal/games/halo_5/ingest"
-	"levelup/go-api/internal/haloapi/halo5"
 	"levelup/go-api/internal/persist"
+
+	"github.com/JGtm/LevelUp/libs/haloapi/halo5"
 )
 
 // CaptureSource = source live enrichie pour la capture sync : ajoute le carnage

@@ -10,8 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/haloapi/xboxlive"
 	"levelup/go-api/internal/i18n"
+
+	"github.com/JGtm/LevelUp/libs/haloapi/xboxlive"
 )
 
 // ---------------------------------------------------------------------------

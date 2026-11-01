@@ -6,7 +6,7 @@ import (
 )
 
 // haloclient_reexport.go — ré-exports du client Halo Infinite de la synchronisation. Le client
-// vit dans l'adaptateur `games/halo_infinite/haloadapter` (sur la brique `internal/haloapi`), la
+// vit dans l'adaptateur `games/halo_infinite/haloadapter` (sur la brique `libs/haloapi`), la
 // lecture des films dans `sync/filmfetch` (plan D3, lot 4). Les alias conservent les noms
 // historiques : sync ET les appelants externes (qui utilisent sync.HaloAPIClient,
 // sync.MatchSkillData…) restent inchangés — zéro requalification. Le pont DTO->ParticipantRow

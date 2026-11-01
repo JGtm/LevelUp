@@ -1,5 +1,5 @@
 // Package sync — xbox_client.go : exploitation des succès Xbox (achievements v2). Le protocole
-// (adresse, en-têtes, une page par appel, DTO bruts) est dans `internal/haloapi/xboxlive` ; ce fichier
+// (adresse, en-têtes, une page par appel, DTO bruts) est dans `libs/haloapi/xboxlive` ; ce fichier
 // porte la boucle de pagination et ses journaux, le client HTTP (délai, garde réseau), le jeton et la
 // conversion des DTO en PlayerAchievementRaw.
 package sync
@@ -13,10 +13,11 @@ import (
 	"strconv"
 	"time"
 
-	"levelup/go-api/internal/haloapi"
-	"levelup/go-api/internal/haloapi/xboxlive"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/netguard"
+
+	"github.com/JGtm/LevelUp/libs/haloapi"
+	"github.com/JGtm/LevelUp/libs/haloapi/xboxlive"
 )
 
 // XboxAchievementsClient abstrait les appels à l'API Xbox Achievements.

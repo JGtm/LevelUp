@@ -1,5 +1,5 @@
 // Package filmfetch est l'exploitation des films Halo Infinite : il prend
-// les octets que rend la brique `internal/haloapi/infinite` (manifeste, blobs COMPRESSÉS du CDN) et
+// les octets que rend la brique `libs/haloapi/infinite` (manifeste, blobs COMPRESSÉS du CDN) et
 // en fait les fragments de film que LevelUp lit.
 //
 // Ce qui vit ici et pas dans la brique :

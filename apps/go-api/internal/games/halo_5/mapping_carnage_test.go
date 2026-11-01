@@ -5,7 +5,8 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/haloapi/halo5"
+
+	"github.com/JGtm/LevelUp/libs/haloapi/halo5"
 )
 
 func TestMapCarnageParticipants_TeamOutcomeAndNoFabrication(t *testing.T) {

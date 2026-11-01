@@ -1,5 +1,5 @@
 // haloapi_sans_etat_test.go — deux invariants du contrat de la brique « API Halo »
-// (`internal/haloapi/doc.go`, `internal/haloapi/xblauth/doc.go`), tenus sur l'AST :
+// (`libs/haloapi/doc.go`, `libs/haloapi/xblauth/doc.go`), tenus sur l'AST :
 //
 //   - `xblauth` est SANS ÉTAT : aucune variable de paquet en production. Deux formes restent
 //     permises, parce qu'elles ne portent aucun état : l'assertion d'interface `var _ I = ...` et
@@ -20,8 +20,8 @@ import (
 	"testing"
 )
 
-// racineXblauthSurDisque : la chaîne d'authentification de la brique, relative à `apps/go-api`.
-const racineXblauthSurDisque = racineHaloapiSurDisque + "/xblauth"
+// racineXblauth : la chaîne d'authentification de la brique (chemin de garde-rail, [surDisque]).
+const racineXblauth = racineBriqueHaloapi + "/xblauth"
 
 // fonctionsOSInterditesBrique : les fonctions de `os` qui lisent l'environnement ou touchent un
 // fichier.
@@ -85,7 +85,7 @@ func lecturesEnvOuFichier(src goSource) []string {
 
 func TestXblauthSansVariableDePaquet(t *testing.T) {
 	var violations []string
-	for _, src := range goSourcesUnder(t, racineXblauthSurDisque) {
+	for _, src := range goSourcesUnder(t, racineXblauth) {
 		violations = append(violations, variablesDePaquet(src)...)
 	}
 	if len(violations) > 0 {
@@ -96,7 +96,7 @@ func TestXblauthSansVariableDePaquet(t *testing.T) {
 
 func TestHaloapiSansEnvNiFichier(t *testing.T) {
 	var violations []string
-	for _, src := range goSourcesUnder(t, racineHaloapiSurDisque) {
+	for _, src := range goSourcesUnder(t, racineBriqueHaloapi) {
 		violations = append(violations, lecturesEnvOuFichier(src)...)
 	}
 	if len(violations) > 0 {
@@ -108,7 +108,7 @@ func TestHaloapiSansEnvNiFichier(t *testing.T) {
 // TestHaloapiSansEtat_AutoPreuve : chaque forme interdite rougit dans un extrait présenté comme un
 // fichier de la brique ; les formes permises passent.
 func TestHaloapiSansEtat_AutoPreuve(t *testing.T) {
-	const rel = "internal/haloapi/xblauth/x.go"
+	const rel = racineXblauth + "/x.go"
 	for nom, source := range map[string]string{
 		"compteur":          `package xblauth; var n int`,
 		"carte":             `package xblauth; var cache = map[string]string{}`,

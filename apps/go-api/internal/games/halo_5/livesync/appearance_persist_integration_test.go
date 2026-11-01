@@ -19,9 +19,10 @@ import (
 	_ "github.com/duckdb/duckdb-go/v2"
 
 	halo5 "levelup/go-api/internal/games/halo_5"
-	h5api "levelup/go-api/internal/haloapi/halo5"
 	"levelup/go-api/internal/platform/dblease"
 	syncpkg "levelup/go-api/internal/sync"
+
+	h5api "github.com/JGtm/LevelUp/libs/haloapi/halo5"
 )
 
 type fakeAppearanceSource struct {

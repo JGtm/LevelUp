@@ -9,7 +9,8 @@ import (
 
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
-	"levelup/go-api/internal/haloapi/halo5"
+
+	"github.com/JGtm/LevelUp/libs/haloapi/halo5"
 )
 
 // fixtureEvents — slice RÉELLE (shapes exactes capturées par cmd/probe-h5 sur un

@@ -12,9 +12,10 @@ import (
 	"net/http"
 	"testing"
 
-	"levelup/go-api/internal/haloapi/haloapitest"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/netguard"
+
+	"github.com/JGtm/LevelUp/libs/haloapi/haloapitest"
 )
 
 func TestXboxClient_Demo_AucuneRequete(t *testing.T) {

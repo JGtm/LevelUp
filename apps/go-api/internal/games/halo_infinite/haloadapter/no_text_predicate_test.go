@@ -54,12 +54,17 @@ var fonctionsDeTestTextuel = map[string]bool{
 
 func TestGardeRail_PasDePredicatTextuelSurLesErreursHTTP(t *testing.T) {
 	// Le paquet, et les deux paquets qui classent les mêmes erreurs : la lecture des films et la
-	// brique qui les type.
+	// brique qui les type (module `libs/haloapi`). Chaque motif doit trouver des fichiers : un motif
+	// qui ne désigne plus rien (paquet déplacé) laisserait ce garde-rail muet sur ce paquet.
 	var fichiers []string
-	for _, motif := range []string{"*.go", "../../../sync/filmfetch/*.go", "../../../haloapi/infinite/*.go"} {
+	motifs := []string{"*.go", "../../../sync/filmfetch/*.go", filepath.Join(cheminBriqueHaloapi(t, "infinite"), "*.go")}
+	for _, motif := range motifs {
 		f, err := filepath.Glob(motif)
 		if err != nil {
 			t.Fatalf("glob %s: %v", motif, err)
+		}
+		if len(f) == 0 {
+			t.Fatalf("glob %s : aucun fichier, le garde-rail ne couvre plus ce paquet", motif)
 		}
 		fichiers = append(fichiers, f...)
 	}

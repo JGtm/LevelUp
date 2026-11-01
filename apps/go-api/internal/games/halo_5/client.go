@@ -1,7 +1,7 @@
 // Package halo_5 — adapter multi-titre EXPERIMENTAL pour Halo 5: Guardians.
 //
 // client.go : l'adaptateur du client Halo 5 de la brique « API Halo »
-// (`internal/haloapi/halo5`, qui porte la recette du protocole : hôtes, segment `h5`,
+// (`libs/haloapi/halo5`, qui porte la recette du protocole : hôtes, segment `h5`,
 // en-têtes, `?auth=st`, reprise). Ici l'exploitation : le jeton Spartan v4 du joueur
 // (le même que celui du pool Infinite), le client HTTP et son délai, le limiteur, la
 // garde `netguard` (mode démo) par surface, la politique de reprise choisie.
@@ -17,8 +17,9 @@ import (
 
 	"golang.org/x/time/rate"
 
-	"levelup/go-api/internal/haloapi/halo5"
 	"levelup/go-api/internal/platform/netguard"
+
+	"github.com/JGtm/LevelUp/libs/haloapi/halo5"
 )
 
 // TitleSlug est l'identite canonique du titre Halo 5 (constante de package
