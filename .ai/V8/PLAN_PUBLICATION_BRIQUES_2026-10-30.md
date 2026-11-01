@@ -57,7 +57,38 @@ avec la même méthode que D3).
 - Singleton `games.DefaultEndpointResolver` : lu par huit fichiers de `games/`, `assets/fetcher_gamecms.go`,
   `haloadapter/endpoints.go` (D3-F : il reste côté exploitation ; la brique reçoit ses adresses).
 
-## Décisions tranchées avant exécution (pilote, 2026-10-30 ; à confirmer par l'utilisateur au lancement)
+## Relevé du lot 0 (2026-11-01, HEAD `8f0b512c58`) — FAIT FOI pour les coupes du lot 2
+
+Relevé complet symbole par symbole, URL, en-têtes, reprises, appelants :
+`.ai/V8/RELEVE_PUBLICATION_BRIQUES_LOT0_2026-11-01.md` (agent Sonnet, lecture seule ; points clés vérifiés
+sur pièces par le pilote). Les chiffres de départ du 2026-10-30 (tailles, imports internes) sont exacts.
+
+| Client | Protocole / exploitation | Reprise actuelle | Surface netguard | Destination | Appelants prod | Tests HTTP existants |
+|---|---|---|---|---|---|---|
+| `games/halo_5/client.go` (462 L + DTO `dto.go` 154 L, `dto_carnage.go` 103 L, `events_dto.go` 65 L) | ~85 % protocole (URL `/h5/...` + `?auth=st`, en-têtes `X-343-Authorization-Spartan`, `User-Agent: cpprestsdk/2.4.0`, pas de clearance, reprise, `HTTPError`) ; exploitation = `TitleSlug` (~90 usages, RESTE), `NewClient` (client HTTP 20 s, limiteur 10 rps), jeton stocké | 4 essais, tout non-200 hors 401/403/404/410 retenté (429 compris), `Retry-After` secondes plafonné 10 s, limiteur avant chaque essai, garde APRÈS le limiteur ; = aucune des 3 politiques d'`infinite`, exprimable en `Retry` (Retente toujours, HonoreRetryAfter, AttenteFinale, erreur du limiteur rendue) | `halo5_api.get`, `halo5_api.get_binary` | `haloapi/halo5` (client + DTO exportés, `h5MatchEventsResponse` à exporter) ; adaptateur dans `games/halo_5` (Doer gardé, limiteur, alias `HTTPError`) | `games/halo_5/adapter_data.go:76` (seul `NewClient`), sources `capture.go` → `wire/server_titles_additional.go`, `cmd/server`, 9 CLI `h5-*` | 8 tests (`client_test.go`, `client_appearance_test.go`) ; aucun test de reprise ni de `GetMatchCarnage`/`GetMatchEvents` |
+| `mapcatalog/ugc.go` (185 L) | ~55 % protocole (URL `{discovery}/hi/Maps/{id}[/versions/{v}]`, en-têtes Spartan/clearance/`Origin`/`User-Agent` LevelUp, GET blob sans jeton, lecture bornée 64 MiB) ; exploitation = `MvarPaths`, validation `Files` vide, logs, client HTTP 30 s | aucune (un GET) | `mapcatalog_ugc.get` (deux hôtes) | service UGC-cartes dans `haloapi/infinite` : PAS un doublon de `FetchAsset` (`Maps` majuscule, préfixe `hi` en dur, version optionnelle, DTO différent, `Origin`+UA, blob sans jeton) ; `mapcatalog` garde façade, choix et logs | `haloadapter/client_mvar.go`, `cmd/mapobj-build`, `cmd/mapcallouts-build` (blob seul) | AUCUN |
+| `assets/fetcher_gamecms.go` (356 L) | ~35 % protocole (URL `Progression/file/...`, `waypoint/file/...`, `buildGameCMSImageFetchURL`, `doGet`) ; exploitation = hôte par titre via singleton + `ctxkeys`, dispatch `Kind`, `Payload`, `Err*`, `TokenProvider` ; `defaultGameCMSBase`, `gamecmsHostFor/PrefixFor` partagés avec `fetcher_chain.go` | aucune ; `http.DefaultClient` sans délai en prod | `gamecms_assets.get` | service GameCMS-actifs dans `infinite` (GET binaire + JSON SANS `Accept` ni UA : le transport `get` d'`infinite` impose `Accept: application/json` et une reprise, il ne convient pas tel quel) ; `assets` garde résolution, cache, erreurs ; aucun recouvrement d'URL avec `infinite/gamecms.go` | `assets/wire.go:72`, `cmd/refresh-career-ranks`, `scripts/warm_bp_assets` | 18 tests `fetcher_gamecms_test.go` + `demo_offline_no_persist_test.go` |
+| `sync/xbox_client.go` (271 L) | ~60 % protocole (URL `achievements.xboxlive.com/users/xuid({xuid})/achievements?skipItems&titleId`, en-têtes `Authorization` XBL3.0, `x-xbl-contract-version: 2`, `Accept-Language`, `Accept`, pagination par `continuationToken`, DTO `xboxAchievementItem`) ; exploitation = `PlayerAchievementRaw`, `parseAchievementItem`, interface `XboxAchievementsClient`, client HTTP 30 s | aucune (un GET par page, corps entier dans l'erreur) | `xbox_achievements.get` | `haloapi/xboxlive` (SUCCÈS Xbox seulement : le plan disait « profils, présence », c'est faux) ; l'en-tête d'autorisation en `string` par appel (`XSTSResult.AuthHeader()` est déjà dans `xblauth`) ; `sync` garde conversion et interface | `sync/engine_postsync_csr.go:197` | AUCUN du chemin HTTP (6 tests de `sync` construisent `xboxAchievementItem` en littéral) |
+
+Conséquences pour le plan (amendements, pas de nouvelle décision produit) :
+- P-B UGC et GameCMS : « rejoint `FetchAsset` » devient « nouveau service à côté » ; `infinite` reçoit un chemin GET
+  qui n'impose ni `Accept` ni reprise pour servir des octets (les en-têtes produits restent ceux d'aujourd'hui, P-C).
+- P-B Xbox : sous-paquet `xboxlive` = succès (achievements v2) ; rien d'autre n'existe dans ce fichier.
+- P-A : le tiers `golang.org/x/time/rate` doit être permis sous `haloapi/halo5` (`tiersHaloapi`) ou remplacé par
+  l'interface `Limiter` ; `argumentsDoerDesConstructeurs` (`haloapi_doer_garde_test`) reçoit les constructeurs
+  `halo5.New` et `xboxlive.New` ; `no_halowaypoint_literal_test` : 3 entrées d'allowlist à déplacer avec les fichiers.
+- T4 : aucun des quatre fichiers ne déclare de compteur expvar ; le témoin T4 devient « les cinq surfaces
+  netguard » (`halo5_api.get`, `halo5_api.get_binary`, `mapcatalog_ugc.get`, `gamecms_assets.get`,
+  `xbox_achievements.get`) : mêmes noms, consultées aux mêmes appels.
+- T2 « URL figées » couvre, par client : chaque URL du relevé (§1.E, 2.E, 3.E, 4.E) pour des identifiants sains,
+  chaque en-tête posé ET l'absence des en-têtes non posés (GameCMS : ni `Accept` ni `User-Agent` ; Halo 5 : pas de
+  `343-clearance`), l'échappement tel qu'il est (`xuid(...)` non échappé, `relPath` non échappé), la pagination Xbox
+  (ordre `skipItems` puis `titleId`), la redirection 302 de Halo 5 avec le jeton réémis.
+- T3 : sous-commandes nouvelles de `diag_api_lecture` : `halo5-servicerecord` (compte Halo 5 suivi), `ugc-carte
+  <asset_id>` (DTO Discovery de la carte, sans `.mvar`), `gamecms-actif <chemin>` (octets d'un actif public :
+  longueur + SHA-256, pas les octets), `xbox-succes` (première page, DTO brut).
+
+## Décisions tranchées avant exécution (pilote, 2026-10-30 ; confirmées par le go de l'utilisateur du 2026-11-01)
 
 - **P-A — Un module `libs/haloapi`**, chemin `github.com/JGtm/LevelUp/libs/haloapi`, paquets au premier
   niveau : `xblauth`, `infinite`, `halo5`, `xboxlive`, plus `doer.go` à la racine (paquet `haloapi` :
@@ -98,14 +129,21 @@ avec la même méthode que D3).
 
 ## Lot 0 — Préalable : branche, relevé, témoins
 
-- [ ] 0.1 Worktree, branche, CI de la base verte ; PR « harnais » et « suites » fusionnées (sinon attendre).
-- [ ] 0.2 Relevé fichier par fichier des quatre clients (protocole / exploitation / mixte, symboles de
+- [x] 0.1 Worktree, branche, CI de la base verte ; PR « harnais » et « suites » fusionnées (sinon attendre).
+  (2026-11-01 : `../LevelUp-wt-publication`, `refactor/publication-briques` depuis `release/v8.1.0` à
+  `8f0b512c58` ; PR #116 et #117 fusionnées ; trois derniers runs CI de la release verts.)
+- [x] 0.2 Relevé fichier par fichier des quatre clients (protocole / exploitation / mixte, symboles de
   couplage, destination) → tableau dans le plan. Relevé des appelants de chacun.
-- [ ] 0.3 Témoins : T1 (`go test -json ./...` → paquet/test/verdict) ; T2 « URL figées » : pour chaque client,
+  (Section « Relevé du lot 0 » ci-dessus + `RELEVE_PUBLICATION_BRIQUES_LOT0_2026-11-01.md`.)
+- [x] 0.3 Témoins : T1 (`go test -json ./...` → paquet/test/verdict) ; T2 « URL figées » : pour chaque client,
   un test qui enregistre les URL et en-têtes produits pour des identifiants sains (écrit AVANT, sur le code
   actuel, commité au lot 1) ; T3 LIVE lecture seule (sous-commandes existantes de `diag_api_lecture` +
   les quatre nouvelles écrites au lot 1 sur les clients ACTUELS) ; T4 noms de compteurs expvar.
-- [ ] 0.4 Gate : témoins écrits, thought_log.
+  (T1 capturé : `go test -json ./... -count=1 -timeout 1200s` dans `apps/go-api`, code 0 en 206 s, 336 paquets
+  dont 195 `ok`, 16 469 pass / 68 skip / 0 fail ; verdicts triés dans
+  `%TEMP%\claude\...\scratchpad\temoins_pub_lot0_avant\T1_goapi.verdicts.txt`. T2, T3, T4 : périmètre fixé dans
+  la section « Relevé du lot 0 », écriture au lot 1 comme prévu.)
+- [x] 0.4 Gate : témoins écrits, thought_log. (Commit « lot 0 ».)
 
 ## Lot 1 — Garde-fou et outil témoin
 
@@ -177,4 +215,18 @@ Dans le module go-api d'abord (comme D2 lot 2 et D3 lots 2-4 : couper AVANT de d
 
 ## Découvertes (notées, non traitées)
 
-(vide au 2026-10-30)
+- PUB-0-a (2026-11-01, relevé) : `halo_5.(*Client).GetMatchDetail` (client.go:187-205) n'a aucun appelant dans le
+  dépôt, ni prod ni test (règle 7 « 0 code mort » : à trancher au lot 2.1 — porter ou supprimer ; le pilote propose
+  de ne pas le porter).
+- PUB-0-b : `assets/fetcher_gamecms.go:170` ignore l'erreur du `TokenProvider` sans journal (`tokens, _ :=`) —
+  anti-pattern n° 10 ; comportement conservé par P-C, à corriger hors de ce chantier.
+- PUB-0-c : `GameCMSFetcher` tourne en prod sur `http.DefaultClient` (sans délai) : `AssetConfig.HTTPClient` jamais
+  renseigné (`server_apiv1.go:1450`). Conservé par P-C ; à traiter séparément.
+- PUB-0-d : `sync/xbox_client.go:160` insère le `xuid` non échappé dans le chemin ; `mapcatalog/ugc.go:132` idem pour
+  `relPath`. Conservé tel quel (témoin T2 fige la forme actuelle).
+- PUB-0-e : les cinq surfaces netguard de ces clients ne figurent dans aucune table ni dans la liste D-6 de l'ADR
+  0042 (huit surfaces, toutes Infinite) : la liste est à compléter au lot 4.3 (ADR 0042, périmètre élargi).
+- PUB-0-f : `mapcatalog/ugc.go` et le chemin HTTP de `sync/xbox_client.go` n'ont aucun test : T2 les couvre pour la
+  première fois (lot 1.2).
+- PUB-0-g : première capture T1 rouge sur ce poste : `gcc` absent du PATH du PowerShell (lien DuckDB) ; recette =
+  `C:\msys64\ucrt64\bin` en tête du PATH + `CGO_ENABLED=1` (mémoire `reference_air_rebuild_fails_gcc_missing_path`).
