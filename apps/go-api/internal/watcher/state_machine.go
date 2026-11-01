@@ -163,7 +163,7 @@ func (f *FSM) GoCooling(cooldown time.Duration) error {
 	if f.state != StateSyncing {
 		return fmt.Errorf("fsm(%s): transition invalide %s → Cooling", f.gamertag, f.state)
 	}
-	f.cooldownEnd = time.Now().Add(cooldown)
+	f.cooldownEnd = time.Now().Round(0).Add(cooldown) // horloge murale, voir tokencache.cacheExpiryFor
 	f.transition(StateCooling)
 	return nil
 }

@@ -116,7 +116,7 @@ func (w *rotatingWriter) Write(p []byte) (int, error) {
 			// Best-effort : on continue d'écrire dans le fichier courant plutôt
 			// que de perdre la ligne. Jamais avalé en silence (CLAUDE.md règle 3) —
 			// stderr est la seule sortie possible ici (on EST le logger).
-			w.retryAfterTS = time.Now().Add(rotationRetryAfter)
+			w.retryAfterTS = time.Now().Round(0).Add(rotationRetryAfter) // horloge murale, voir tokencache.cacheExpiryFor
 			fmt.Fprintf(os.Stderr, "logging: rotation de %s impossible: %v\n", w.path, err)
 		}
 	}

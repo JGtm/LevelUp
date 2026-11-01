@@ -80,7 +80,9 @@ func cacheExpiryFor(tokens *domain.HaloTokens) time.Time {
 	if tokens != nil && !tokens.SpartanExpiresAt.IsZero() {
 		return tokens.SpartanExpiresAt
 	}
-	return time.Now().Add(fallbackTokenTTL)
+	// Round(0) retire la lecture monotone : sous Windows l'horloge monotone de Go exclut la
+	// veille (QueryUnbiasedInterruptTime) ; une expiration monotone survivrait à une mise en veille.
+	return time.Now().Round(0).Add(fallbackTokenTTL)
 }
 
 // GetCachedPlayerTokens retourne les HaloTokens en cache s'ils sont encore valides

@@ -76,8 +76,8 @@ type MediaToolingReport struct {
 // n'échoue jamais, ne bloque jamais — tout est reflété dans le rapport.
 func InspectMediaTooling(ctx context.Context) MediaToolingReport {
 	var r MediaToolingReport
-	r.FFmpegPath, r.FFmpegFound = lookupBinary("ffmpeg")
-	r.FFprobePath, r.FFprobeFound = lookupBinary("ffprobe")
+	r.FFmpegPath, r.FFmpegFound = lookupBinary(mediapkg.ResolveFFmpeg)
+	r.FFprobePath, r.FFprobeFound = lookupBinary(mediapkg.ResolveFFprobe)
 	if !r.FFmpegFound {
 		return r // sans ffmpeg, impossible d'interroger version/capacités
 	}
@@ -160,12 +160,12 @@ func (r MediaToolingReport) Summary() string {
 			fmt.Fprintf(&sb, "  [OK] ffmpeg  : %s\n", r.FFmpegPath)
 		}
 	} else {
-		sb.WriteString("  [KO] ffmpeg  : introuvable dans le PATH\n")
+		sb.WriteString("  [KO] ffmpeg  : introuvable (LEVELUP_FFMPEG_DIR, dossier de l'exécutable, PATH)\n")
 	}
 	if r.FFprobeFound {
 		fmt.Fprintf(&sb, "  [OK] ffprobe : %s\n", r.FFprobePath)
 	} else {
-		sb.WriteString("  [KO] ffprobe : introuvable dans le PATH\n")
+		sb.WriteString("  [KO] ffprobe : introuvable (LEVELUP_FFMPEG_DIR, dossier de l'exécutable, PATH)\n")
 	}
 	switch {
 	case r.CapabilitiesProbed:

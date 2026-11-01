@@ -166,6 +166,20 @@ func TestPlayerTokenCache_FallbackTTLWhenExpiryUnknown(t *testing.T) {
 	}
 }
 
+// L'expiry de repli ne porte pas de lecture monotone (voir cacheExpiryFor) : elle se compare
+// en horloge murale, donc survit à une mise en veille.
+func TestPlayerTokenCache_FallbackExpiryWithoutMonotonic(t *testing.T) {
+	resetPlayerTokenStore()
+	t.Cleanup(resetPlayerTokenStore)
+	SetCachedPlayerTokens("xuid-mono", &domain.HaloTokens{SpartanToken: "no-expiry"})
+	playerTokenStore.mu.RLock()
+	exp := playerTokenStore.store["xuid-mono"].expiresAt
+	playerTokenStore.mu.RUnlock()
+	if exp.Round(0) != exp {
+		t.Fatalf("expiry de repli porte une lecture monotone : %v", exp)
+	}
+}
+
 func TestTokensFresh(t *testing.T) {
 	if TokensFresh(nil) {
 		t.Error("nil → pas frais")
