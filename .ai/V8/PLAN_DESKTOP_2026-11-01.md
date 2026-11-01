@@ -170,7 +170,7 @@ des WAV (C11), chiffrement des jetons (D-8), binaire autonome C10 (D-11).
 | D-4 | C3-a : mise en commun en mode `none` | **Non** (sans décision = refus, ADR 0038) ; le profil `desktop` l'accorde d'office au seul utilisateur | cohérence ADR 0038 |
 | D-5 | C5-a : archive des films | **Archiver par défaut** ; choix « ne pas archiver » dans l'assistant de premier lancement (`features/setup`), pas dans NSIS ; occupation affichée ; emplacement réglable | donnée irremplaçable ; choix informé |
 | D-6 | C11-a : format des sons | **Mesurer d'abord** (L9 : AAC, Opus, FLAC sur 10 sons dont 3 boucles moteur), décision à la clôture de L9 | l'AAC ajoute une amorce qui peut casser les boucles |
-| D-7 | C9 : budget Windows | voie CGO sur `release/**` et PR vers `main` seulement, `timeout-minutes: 15` | runners Windows plus chers |
+| D-7 | C9 : budget Windows | voie CGO sur `release/**` et sur les pull requests seulement (la CI du dépôt se déclenche sur toute PR, quelle que soit la cible : la PR de ce chantier vise la branche de release ; précisé le 2026-11-01), `timeout-minutes: 15` | runners Windows plus chers |
 | D-8 | Chiffrement des jetons (q5) | **OUI dès la v1 (décision utilisateur 2026-11-01, contre la reco)** : coffre Windows (DPAPI, portée utilisateur) derrière un port Go `TokenCipher` dans `platform/auth` ; ADR 0023 amendée ; lot L13b | choix de l'utilisateur ; le fichier reste illisible depuis un autre compte Windows ou une copie du disque |
 | D-9 | ffmpeg (q6) | **LIVRÉ dans l'installeur (décision utilisateur 2026-11-01, contre la reco)** : build LGPL officiel, ~80 Mo, mentions et sources LGPL jointes ; résolveur C12 cherche d'abord le dossier de l'exécutable | prêt à l'emploi ; coût : 80 Mo par mise à jour |
 | D-10 | Signature de code (q6) | **JAMAIS (décision utilisateur 2026-11-01)** : avertissement SmartScreen à chaque installation, documenté sur la page de téléchargement ; l'updater Tauri reste signé par sa propre clé (indépendante) | pas de budget ; réversible si la diffusion le justifie |
@@ -309,26 +309,26 @@ Fichiers : `cmd/server/main.go:460-475,563-583,1354-1400`, `cmd/server/boot_gate
 `internal/migration/backup_before_upgrade.go`, `internal/domain/title/registry.go` (une méthode),
 `apps/web/src/app/serverStartup.ts` et ses manifests i18n.
 
-- [ ] 1.1 La reprise bornée du verrou (`main.go:572`, 12 × 500 ms) est DÉPLACÉE avant `runMigrations`
+- [x] 1.1 La reprise bornée du verrou (`main.go:572`, 12 × 500 ms) est DÉPLACÉE avant `runMigrations`
       (une seule reprise, les deux appelants l'utilisent) ; l'erreur est classée par
       `duckdb.IsFileLockError` / `errors.Is(err, duckdb.ErrBaseTenueEnEcriture)`.
-- [ ] 1.2 Après reprise épuisée (verrou) ou sur toute autre erreur de `runMigrations` :
+- [x] 1.2 Après reprise épuisée (verrou) ou sur toute autre erreur de `runMigrations` :
       `slog.ErrorContext(ctx, "migration: échec, démarrage refusé", "err", err, "state", s)` ; le serveur
       RESTE debout sur la porte de démarrage avec un état d'échec (`locked`, `migration_failed`,
       `schema_newer`) servi en 503 **non réessayable** (`Retryable: false`, champ nouveau de `bootStep`),
       événement `failed` (§6.2) ; il sort avec un code non nul au signal, à l'EOF stdin ou au point
       d'arrêt. Supprimer la ligne `migrations ignorées` (`main.go:469`).
-- [ ] 1.3 Garde de version : lecture de `title_schema_version` SANS ouverture en écriture (connexion
+- [x] 1.3 Garde de version : lecture de `title_schema_version` SANS ouverture en écriture (connexion
       lecture seule, fermée aussitôt) avant toute migration ; version > binaire = `ErrSchemaNewerThanBinary`
       → état `schema_newer`.
-- [ ] 1.4 Copie avant montée : si des étapes sont en attente, copier `<base>.duckdb` + `<base>.duckdb.wal`
+- [x] 1.4 Copie avant montée : si des étapes sont en attente, copier `<base>.duckdb` + `<base>.duckdb.wal`
       (base FERMÉE, avant l'ouverture RW) vers `PathResolver.MigrationBackupsDir()` (nouveau, distinct de
       `BackupDir`), nom `<base>.v<version>.<date>.duckdb[.wal]`, rétention 2, refus si l'espace libre
       (`platform/diskfree`) est inférieur à la taille à copier (état `migration_failed`, cause journalisée).
-- [ ] 1.5 Web : `serverStartup.ts` distingue un 503 non réessayable (arrêt de l'interrogation, écran
+- [x] 1.5 Web : `serverStartup.ts` distingue un 503 non réessayable (arrêt de l'interrogation, écran
       explicite par état, libellés fr + en dans le manifest), et prolonge l'attente de 120 s tant que le
       serveur répond `migrating` (progression) ; `serverStartup.test.ts` mis à jour.
-- [ ] 1.6 Tests Go : étape en échec → état `migration_failed`, journal Error, code de sortie non nul ;
+- [x] 1.6 Tests Go : étape en échec → état `migration_failed`, journal Error, code de sortie non nul ;
       verrou tenu par un second processus de test → reprise puis `locked` ; base N+1 → `schema_newer` ;
       copie présente / absente / espace insuffisant.
 - Gate : `go test ./internal/migration/... ./cmd/server/... ./internal/domain/title/...` ;
@@ -364,18 +364,18 @@ Fichiers : `cmd/server/flags.go` (nouveau, D-15), `cmd/server/boot_gate.go`, `cm
 
 ### 9.3 L3 — C4 horloge monotone + C12 police et résolveur ffmpeg (H)
 
-- [ ] 3.1 `tokencache/player_token_cache.go:83` : `time.Now().Round(0).Add(fallbackTokenTTL)` ; test
+- [x] 3.1 `tokencache/player_token_cache.go:83` : `time.Now().Round(0).Add(fallbackTokenTTL)` ; test
       `exp.Round(0) == exp` ; commentaire citant la preuve (A24).
-- [ ] 3.2 Recensement `grep -rn "time.Now().Add(" --include=*.go apps/go-api/internal | grep -v _test`
+- [x] 3.2 Recensement `grep -rn "time.Now().Add(" --include=*.go apps/go-api/internal | grep -v _test`
       avec le critère écrit : garder une ligne si la valeur est CONSERVÉE dans une structure (champ,
       map, cache) ET comparée plus tard à `time.Now()` ; jeter si consommée dans la même fonction
       (délai, contexte, backoff). Lignes gardées → même correction ; liste complète (gardées et jetées,
       avec la raison) dans le compte rendu, contrôlée par le pilote.
-- [ ] 3.3 Roboto auto-hébergée : fichiers woff2 (400/500/700/900, sous-ensembles latin + latin-ext,
-      licence Apache 2.0 jointe) FOURNIS PAR LE PILOTE dans le worktree sous `apps/web/public/fonts/`
+- [x] 3.3 Roboto auto-hébergée : fichiers woff2 (400/500/700/900, sous-ensembles latin + latin-ext,
+      licence SIL OFL 1.1 jointe — Roboto est sous OFL sur Google Fonts, pas Apache ; police VARIABLE 100-900, deux fichiers) FOURNIS PAR LE PILOTE dans le worktree sous `apps/web/public/fonts/`
       (pas de dépendance npm) ; `@font-face` dans le CSS global ; suppression de `index.html:23-25` ;
       garde-rail Vitest : `index.html` et `dist/index.html` sans `fonts.googleapis`.
-- [ ] 3.4 Résolveur unique `internal/media/binpath.go` (`LEVELUP_FFMPEG_DIR`, puis dossier de
+- [x] 3.4 Résolveur unique `internal/media/binpath.go` (`LEVELUP_FFMPEG_DIR`, puis dossier de
       l'exécutable, puis PATH) utilisé par `ffmpeg_slot.go:125`, `ffprobe.go:20`, `ops/healthcheck.go:93`,
       `ops/media_tooling.go:79-80` ; garde-rail archlint interdisant `"ffmpeg"` / `"ffprobe"` hors du
       résolveur dans `internal/` ET `cmd/` ; test de l'ordre de recherche.
@@ -385,13 +385,13 @@ Fichiers : `cmd/server/flags.go` (nouveau, D-15), `cmd/server/boot_gate.go`, `cm
 
 ### 9.4 L4 — C9a Voie CI Windows avec CGO (S ; 4.3 et 4.4 P)
 
-- [ ] 4.1 Job `go-test-windows-cgo` dans `ci.yml` : mêmes étapes de toolchain que `release.yml:44-69`
+- [x] 4.1 Job `go-test-windows-cgo` dans `ci.yml` : mêmes étapes de toolchain que `release.yml:44-69`
       (gcc du runner, PAS d'action mingw), `CGO_ENABLED=1`, `go build ./cmd/server`, puis `go test` sur
       `./cmd/server/...`, `./internal/platform/diskfree/...`, `./cmd/levelup/...` (fichier `_win.go`) et,
       depuis `libs/film` et `libs/gamefiles`, les paquets `filmproc`, `internal/filelock`, `himodule` ;
-      `timeout-minutes: 15` ; déclencheur `release/**` et PR vers `main` (D-7). Règle au brief : un
+      `timeout-minutes: 15` ; déclencheur `release/**` et pull requests (D-7). Règle au brief : un
       échec propre à Windows est CONSIGNÉ en §10, jamais corrigé dans ce lot.
-- [ ] 4.2 `docs/COMMANDS.md` et `docs/FR/COMMANDS.md` : la voie décrite.
+- [x] 4.2 `docs/COMMANDS.md` et `docs/FR/COMMANDS.md` : la voie décrite.
 - [ ] 4.3 **(P)** Mutation jouée : un `*_windows.go` cassé sur une branche jetable → job rouge ; lien
       du run consigné.
 - [ ] 4.4 **(P)** Run vert sur la branche du plan.
@@ -629,14 +629,13 @@ mises à jour (ressources retéléchargées à chaque version).
 
 ## 10. Découvertes (notées, non traitées)
 
-- **C2 observé en direct sur le poste (2026-11-01, témoin T2)** : à CHAQUE démarrage depuis le
-  2026-05-20, l'étape de migration `purge_data_health_warning_notifs` sur `shared_social` échoue avec
-  le bug ART #23645 (`Failed to delete all rows from index. Only deleted 0 out of 198 rows`, erreur
-  `FATAL` DuckDB) et le serveur démarre quand même (une ligne ERROR dans `logs/migration.log`, rien en
-  console). La base locale `shared_social` porte donc un index corrompu sur 198 notifications
-  `data_health_warning` ; réparation = recette append-only (ADR 0026), HORS périmètre de ce plan.
-  À vérifier sur le VPS (`logs/migration.log`, lecture seule, prévenir avant) : si la prod a la même
-  ligne, c'est un incident C2 en cours.
+- **C2 : le témoin T2 « avant » était trompeur (corrigé le 2026-11-01 à la clôture de L1)** : sa recette filtrait
+  `logs/migration.log` sur l'heure seule (`HH:MM`), sans la date, et a ramené 8 lignes ERROR de
+  `purge_data_health_warning_notifs` (bug ART #23645 sur `shared_social`) datées du 2026-05-20, pas du jour.
+  Relecture du journal : cette étape a échoué en mai 2026, le serveur a démarré quand même (c'est bien C2),
+  puis elle a été appliquée le 2026-06-25. Au 2026-11-01 la base locale est à jour (version 236, 0 étape en
+  attente) et le serveur L1 démarre en 12 s (`t2_apres_l1`). Aucun index corrompu à réparer, aucune
+  vérification VPS nécessaire. Recette T2 à rejouer avec un filtre sur la DATE à la comparaison de fin de vague.
 
 - `internal/mapcatalog` : `TestAddOverlayEntryConcurrentDossierAbsentNePerdRien` échoue en run complet
   (« verrou d'ecriture impossible a poser — passage force », 2 cartes perdues sur 8) et passe seul : le

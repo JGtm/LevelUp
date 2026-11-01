@@ -811,6 +811,14 @@ func (p *PathResolver) BackupDir(titleSlug, gamertag string) string {
 	return filepath.Join(p.TitleDataDir(titleSlug), "backups", gamertag)
 }
 
+// MigrationBackupsDir retourne le dossier des copies de sécurité prises avant une montée de
+// schéma (migration.BackupBeforeUpgrade). Global (une copie par base, tous titres), distinct de
+// BackupDir (sauvegarde par joueur et par titre).
+// Ex: data/backups/migrations/
+func (p *PathResolver) MigrationBackupsDir() string {
+	return filepath.Join(p.repoRoot, "data", "backups", "migrations")
+}
+
 // DemoFixturesDir retourne le répertoire de fixtures démo pour un titre.
 // Ex: tests/fixtures/titles/halo_infinite/ref_player/
 func (p *PathResolver) DemoFixturesDir(titleSlug string) string {

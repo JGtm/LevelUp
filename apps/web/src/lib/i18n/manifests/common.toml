@@ -1040,6 +1040,24 @@ en = "Connecting accounts"
 fr = "Lancement des services"
 en = "Starting services"
 
+# Démarrage échoué : réponse 503 server_start_failed, non réessayable (details.state ;
+# codes : apps/go-api/cmd/server/boot_gate.go).
+[common.root.server_failed.title]
+fr = "Le serveur n'a pas pu démarrer."
+en = "The server could not start."
+
+[common.root.server_failed.locked]
+fr = "Une base de données est utilisée par un autre processus. Fermez l'autre instance de LevelUp, puis relancez."
+en = "A database is in use by another process. Close the other LevelUp instance, then restart."
+
+[common.root.server_failed.migration_failed]
+fr = "La mise à jour des bases a échoué. Vos données n'ont pas été servies ; consultez le journal des migrations."
+en = "Updating the databases failed. Your data was not served; check the migration log."
+
+[common.root.server_failed.schema_newer]
+fr = "Les bases ont été mises à jour par une version plus récente de LevelUp. Installez cette version ou restaurez une copie."
+en = "The databases were upgraded by a newer version of LevelUp. Install that version or restore a backup."
+
 # ─── Reauth banner (refresh_token Xbox mort) ────────────────────────────
 
 [common.reauth.message]
