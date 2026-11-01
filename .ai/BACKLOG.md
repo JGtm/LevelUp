@@ -10,6 +10,21 @@
 
 ---
 
+### [dette/commentaires] Retirer les citations de `.ai/` dans le code, puis le ratchet `doc_chemins_ai_test.go`
+
+Demande du user le 2026-11-01 : le commit « Archivage » du chantier publication a déplacé deux documents
+sous `.ai/V8/` et le ratchet `archlint/doc_chemins_ai_test.go` (posé le 2026-09-25, DU-5 b) a rougi la CI de
+`release/v8.1.0` sur trois COMMENTAIRES (PR #127). Le user juge l'habitude de citer des plans `.ai/` dans
+le code « hyper discutable » : un déplacement de document ne doit jamais casser une CI. Nettoyage à faire :
+(1) remplacer chaque citation `.ai/...` dans `apps/` et `libs/` (897 citations dans 716 fichiers au 2026-11-01)
+par la référence durable (ADR, chronique de révision, ou rien si le commentaire ne porte que de l'histoire :
+règle « le code porte le contrat, l'histoire va dans l'ADR ») ; (2) retirer `doc_chemins_ai_test.go` et le
+remplacer par un ratchet qui INTERDIT toute nouvelle citation `.ai/` dans le code (plafond 0) ; (3) mettre à
+jour le skill `arch-rules` (§ Commentaires, « Références vivantes »). Lot mécanique, Haiku/Sonnet, à faire
+hors de tout chantier à risque. **Effort : S.**
+
+---
+
 ### [rejeu/identité] 15 vies sans nom restantes dans les rejeux cuits
 
 Reste du lot film E8.4 (plan `.ai/PLAN_BACKLOG_2026-10-16.md`) : sur les 36 films en cause (449 vies
