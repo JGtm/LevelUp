@@ -241,6 +241,7 @@ signatures non-chaîne), `t5` (36 Go de films, 63 Go de `data/`, 108 Mo de `stat
 `t6_avant.txt`) :
 - T2 se lit dans les journaux par catégorie (`logs/general.log`, `logs/migration.log`, JSON, console au niveau
   WARN seulement) : la recette retire `time`, `source` (les noms de fonction changent avec C6) et les durées.
+- **Recette T2 corrigée (2026-11-01, fin de vague 1)** : fenêtre par DATE-HEURE UTC complète (`time` >= lancement et <= arrêt), jamais par heure seule ; après `del(.time,.source)` et retrait des durées, retirer aussi `event` (identifiant par cycle), `not_after` (jeton) et TRIER les lignes (les goroutines du démarrage s'entrelacent différemment d'un lancement à l'autre) ; la dernière ligne de la fenêtre peut différer (tâche de fond en cours à l'arrêt). Fin de vague 1 : `t2_avant2_*` (binaire `8f0b512c58`) et `t2_apres1_*` (L2) équivalents sous cette recette (98/97 lignes general, 92/92 migration) ; T3 bootstrap `xbox` identique octet pour octet avant/après ; T6 après = 0 WAL.
 - T6 « avant » = l'état APRÈS un arrêt forcé (ce que fait air aujourd'hui, le signal propre n'existant pas
   sous Windows) : WAL laissés sur `metadata` (105 Ko), `monitoring` (4,8 Mo, présent avant et après les deux
   lancements : jamais résorbé), `shared_social`, 4 bases joueur. C'est le défaut C1 mesuré ; l'« après » de L2
@@ -644,6 +645,14 @@ mises à jour (ressources retéléchargées à chaque version).
   échange HTTP. À 75 s après le démarrage : `clean=true` en 156 ms, aucun WAL. Hors périmètre de L2 (fichiers
   `platform/auth/refresh_loop.go`, `watcher`) ; à traiter avant L12 (la coquille fermée aussitôt ouverte doit
   rendre `stopped clean=true`) : item à ajouter à L12 ou lot dédié à la vague 2.
+- **`make replay-equiv` : le film `11de8353` diffère de sa référence (2026-11-01, gate de fin de vague 1)** sur
+  `spawnPoints` (attendu 0, obtenu 54), `spawnPointsState` (10 / 11) et `artifact` ; REPRODUIT à l'identique sur le
+  checkout `release/v8.1.0` (`1628f75fff`, décodeur non touché par la vague 1) avec les mêmes données du poste :
+  écart préexistant, dépendant des données de carte (points d'apparition) et non de ce chantier. Les 19 autres films
+  sont identiques. À re-figer par le chantier qui a changé les points d'apparition, pas ici. Le gate-push joué dans un
+  worktree sans `data/` échoue sur cette étape : la jouer avec `-repo-root <dépôt principal>`.
+- **Chantier publication des briques fusionné dans `release/v8.1.0` le 2026-11-01** (`e2c449b38c` libs/haloapi + ADR 0043,
+  `5c37ca56a3`, `1628f75fff`) : L5 et L7 ne sont plus bloqués ; la branche est rebasée dessus avant la PR.
 - `internal/mapcatalog` : `TestAddOverlayEntryConcurrentDossierAbsentNePerdRien` échoue en run complet
   (« verrou d'ecriture impossible a poser — passage force », 2 cartes perdues sur 8) et passe seul : le
   passage forcé sans verrou est le comportement testé comme défaut, déclenché par la contention du run
