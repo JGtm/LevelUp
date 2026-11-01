@@ -30,8 +30,13 @@ tag garde le sien. Un `v0.1.1` sur `main` est possible plus tard si l'alignement
      (préexistant, figé par le témoin T2) ; décider si le `Doer` retire l'en-tête sur changement d'hôte.
    - PUB-4-a : origine des fixtures `libs/gamefiles/{mapvar,hinavmesh}/testdata` à documenter (ADR 0041 interdit
      tout fichier extrait du jeu dans une brique).
-4. Dépôts dédiés `JGtm/gamefiles`, `JGtm/himap`, `JGtm/haloapi` : `git subtree split`, chemin de module conservé,
-   les trois en une fois, jamais un seul (ADR 0043 D-5 ; décision user 2026-11-01).
+4. Dépôts dédiés, les trois en une fois, jamais un seul (ADR 0043 D-5 ; décision user 2026-11-01). Noms et
+   descriptions fixés le 2026-11-01 (table dans l'ADR 0043 D-5) : `JGtm/halo-api` (« Halo API »),
+   `JGtm/halo-infinite-map-images` (« Halo Infinite Map Images »), `JGtm/halo-infinite-files-reader`
+   (« Halo Infinite Files Reader »). Mode : `git subtree split`, chemin de module nouveau
+   `github.com/JGtm/<dépôt>/<paquet>` (ou conservé avec `replace` transitoire).
+5. Décodeur de film (`libs/film`) : hors de cette vague ; le user veut le même traitement plus tard (README, exemple,
+   tag, dépôt), chantier à part une fois la façade `decfilm` gelée. Entrée `[archi]` au `.ai/BACKLOG.md`.
 
 ## 3. Dettes laissées au registre
 

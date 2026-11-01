@@ -119678,3 +119678,11 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : le socle est publié (`weaponPads[3]`, `powerup_overshield`, croisé à l'emplacement `powerup` du catalogue Bazaar à 4 mm) ; la chaîne web (normalisation, croisement, datation native, raffinement, état, compte à rebours) rejouée sur l'artefact de prod le rend plein / vide / compte à rebours selon l'instant. Cause de l'invisibilité NON trouvée dans le code : vérification visuelle nécessaire. Découverte annexe : chaque apparition « majeure » du socle (0, 90, 210, 330 s) est suivie 30 s plus tard d'une seconde (1,2, 120, 240, 360 s) ; seule la seconde est ramassée ou activée. Le calque montre donc le socle plein ~30 s trop tôt et un compte à rebours faux de 30 s. Hypothèse non vérifiée : le premier objet n'est pas le surbouclier ramassable.
 
 **Conclusion / prochaine étape** : attendre du user ce qu'il voit (calque des socles allumé, autres socles visibles, instant regardé) ou son accord pour ouvrir le navigateur ; décider s'il faut instruire la découverte des apparitions doublées.
+
+## [2026-11-01] Publication des briques — noms des dépôts dédiés et décodeur de film au backlog — Complété
+
+**Décision technique principale** : sur demande de l'utilisateur (messages du 2026-11-01, soir), les noms et descriptions des trois dépôts dédiés sont fixés dans l'ADR 0043 D-5 : `JGtm/halo-api` (« Halo API »), `JGtm/halo-infinite-map-images` (« Halo Infinite Map Images »), `JGtm/halo-infinite-files-reader` (« Halo Infinite Files Reader »). Slugs parce que GitHub refuse les espaces et que le nom du dépôt devient le chemin d'import Go ; les noms de paquets ne changent pas. Le décodeur de film reste hors de cette vague (ADR 0043 D-1) : l'utilisateur veut le même traitement plus tard, entrée `[archi]` ajoutée au `.ai/BACKLOG.md` (gel de la façade `decfilm`, témoins, README, tag, dépôt).
+
+**Résultats observés** : ADR 0043, handoff et backlog alignés ; aucun code touché.
+
+**Conclusion / prochaine étape** : création des dépôts après le chantier desktop, sous ces noms ; décodeur de film = chantier à part, après.

@@ -101,10 +101,27 @@ a statement that the project is not affiliated with or endorsed by Microsoft, 34
 - (b) its change cadence became independent of LevelUp (fewer than one cross-cutting pull request per month);
 - (c) its CI weighs on LevelUp's.
 
-Mode: `git subtree split` (history kept), repository `JGtm/<brick>`; the module path is kept, or changed with a
-transitional `replace` in LevelUp. The exploitation layer stays in LevelUp (D-6). The decision belongs to the
+Mode: `git subtree split` (history kept), one repository per brick under `JGtm/`; the module path is kept, or changed
+with a transitional `replace` in LevelUp. The exploitation layer stays in LevelUp (D-6). The decision belongs to the
 maintainer, is taken last, and is executed together (user decision, 2026-11-01). Until then the question stays open
 and this ADR is the only place that states when it closes.
+
+Decision of the maintainer, 2026-11-01: the split is **approved for the three bricks together**, to be executed after
+the desktop-application work, never one brick alone. Repository names and descriptions are fixed now so that the
+import path (`github.com/JGtm/<repository>/<package>`) is chosen once:
+
+| Brick | Repository | Title | Description (GitHub, one line) |
+|---|---|---|---|
+| `libs/haloapi` | `JGtm/halo-api` | Halo API | Stateless Go clients for the Halo web services (Halo Infinite, Halo 5, Xbox Live achievements) and the Xbox Live auth chain: URLs, headers, retries, raw DTOs. No storage, no policy. |
+| `libs/himap` | `JGtm/halo-infinite-map-images` | Halo Infinite Map Images | Top-down map image generator for Halo Infinite: renders a map's background from the geometry in the game's own .module archives (native and Forge maps). |
+| `libs/gamefiles` | `JGtm/halo-infinite-files-reader` | Halo Infinite Files Reader | Readers for the files of a local Halo Infinite installation: .module archives (Kraken decoder included), Forge map variants (.mvar) and navigation meshes. Pure Go except the vendored ooz. |
+
+Package names (`himap`, `himodule`, `infinite`, ...) do not change; hyphens are legal in a module path element.
+Licences as in D-1 and the READMEs: GPL-3.0 for the files reader (because of `ooz`), AGPL-3.0 for the two others.
+
+The film decoder (`libs/film`, D-1) is not part of this split. The maintainer asked on 2026-11-01 that it follow the
+same path later (README, compiled example, tag, then its own repository), as a separate piece of work once its
+facade is frozen; tracked in `.ai/BACKLOG.md`.
 
 **D-6 — What stays in LevelUp.** The bricks hold the protocol; LevelUp keeps:
 
