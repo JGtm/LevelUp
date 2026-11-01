@@ -399,21 +399,21 @@ Fichiers : `cmd/server/flags.go` (nouveau, D-15), `cmd/server/boot_gate.go`, `cm
 
 ### 9.5 L5 — C3 Jeton longue durée en mode `none` (S ; après 0.4 et publication lot 3)
 
-- [ ] 5.1 `internal/api/server_apiv1.go:357-360` : le magasin de jetons est construit HORS de la branche
+- [x] 5.1 `internal/api/server_apiv1.go:357-360` : le magasin de jetons est construit HORS de la branche
       `xbox` et injecté dans les deux stratégies.
-- [ ] 5.2 Nouveau service `internal/service/devicecode_completion.go` (couche service, pas handler) :
+- [x] 5.2 Nouveau service `internal/service/devicecode_completion.go` (couche service, pas handler) :
       à toute connexion par code d'appareil réussie, persistance du jeton dans le store pour un profil
       suivi (porte ADR 0035 D3, résolution par xuid APRÈS création du profil selon l'ordre relevé en 0.4),
       mise en commun : aucune décision (D-4) ; `XboxSSOLinkStrategy.persistRTATokens` l'appelle (plus de
       copie).
-- [ ] 5.3 Tests : mode `none`, profil suivi → fichier écrit ; non suivi → rien ; mode `xbox` inchangé ;
+- [x] 5.3 Tests : mode `none`, profil suivi → fichier écrit ; non suivi → rien ; mode `xbox` inchangé ;
       garde-rails `auth/sentinel_test.go`, `sync/no_legacy_source_used_test.go` verts.
-- [ ] 5.4 `docs/INSTALL.md` + `docs/FR/INSTALL.md` alignés sur le comportement livré.
+- [x] 5.4 `docs/INSTALL.md` + `docs/FR/INSTALL.md` alignés sur le comportement livré.
 - Gate : `go test ./internal/service/... ./internal/api/... ./internal/platform/auth/... ./internal/sync/...`.
 
 ### 9.6 L6 — C9b Test de bout en bout de l'arrêt (S ; après L2 et L4 ; 6.2 P)
 
-- [ ] 6.1 Test Go sous tag `e2e_windows` (`cmd/server/e2e_arret_windows_test.go`) : compile `cmd/server`,
+- [x] 6.1 Test Go sous tag `e2e_windows` (`cmd/server/e2e_arret_windows_test.go`) : compile `cmd/server`,
       le lance avec `-arret-sur-stdin` et `LEVELUP_API_PORT` libre sur une racine de données vide
       (`LEVELUP_REPO_ROOT` = dossier temporaire avec `config/` copié), attend `/health` 200 (délai 120 s),
       ferme stdin, attend la sortie (délai 60 s), vérifie `arrêt: terminé clean=true` dans le journal et
@@ -653,6 +653,10 @@ mises à jour (ressources retéléchargées à chaque version).
   worktree sans `data/` échoue sur cette étape : la jouer avec `-repo-root <dépôt principal>`.
 - **Chantier publication des briques fusionné dans `release/v8.1.0` le 2026-11-01** (`e2c449b38c` libs/haloapi + ADR 0043,
   `5c37ca56a3`, `1628f75fff`) : L5 et L7 ne sont plus bloqués ; la branche est rebasée dessus avant la PR.
+- **Capture des plantages perdue au premier démarrage sur une racine neuve (2026-11-01, L6)** : `crash_output` ouvre
+  `logs/server.crash.log` avant que `logs/` existe (créé plus tard par le handler multi-modules) : `WARN crash_output:
+  ouverture fichier échouée`, aucune capture jusqu'au second démarrage. À corriger avec L11 (deux racines : `LEVELUP_LOGS_DIR`
+  créé avant tout écrivain) ou en lot dédié.
 - `internal/mapcatalog` : `TestAddOverlayEntryConcurrentDossierAbsentNePerdRien` échoue en run complet
   (« verrou d'ecriture impossible a poser — passage force », 2 cartes perdues sur 8) et passe seul : le
   passage forcé sans verrou est le comportement testé comme défaut, déclenché par la contention du run

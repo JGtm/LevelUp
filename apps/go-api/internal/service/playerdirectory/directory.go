@@ -91,6 +91,9 @@ type Deps struct {
 	// nil ⇒ pas de watcher dans ce process (CLI, serveur sans watcher) : le
 	// profil suffit, `initPlayers` reprendra le joueur au prochain démarrage.
 	Watcher WatcherNotifier
+	// Credentials rejoue les jetons d'une connexion qui a précédé le profil
+	// (wizard : connexion puis déclaration). nil ⇒ rien à rejouer (CLI).
+	Credentials CredentialSeeder
 	// Purge porte les écritures DESTRUCTRICES (cf. purge.go). Regroupées : ce
 	// sont les seules de l'annuaire, et une purge incomplète est pire qu'une
 	// purge refusée — les voir ensemble rend l'oubli visible au câblage.
@@ -113,6 +116,7 @@ type Directory struct {
 	fs       FS
 	creator  ProfileCreator
 	watcher  WatcherNotifier
+	seeder   CredentialSeeder
 	purge    PurgeDeps
 	titles   []string
 	now      func() time.Time
@@ -140,6 +144,7 @@ func New(d Deps) *Directory {
 		fs:       d.FS,
 		creator:  d.Creator,
 		watcher:  d.Watcher,
+		seeder:   d.Credentials,
 		purge:    d.Purge,
 		titles:   titles,
 		now:      now,

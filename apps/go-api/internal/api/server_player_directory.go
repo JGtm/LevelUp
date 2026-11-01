@@ -40,6 +40,9 @@ type playerDirectoryDeps struct {
 	// profiles est le *service.ProfileService partagé : writer unique de
 	// db_profiles.json, donc à la fois créateur (Onboard) et purgeur.
 	profiles profileWriter
+	// credentials rejoue, à la création du profil, les jetons d'une connexion qui l'a
+	// précédé (wizard : connexion puis déclaration). nil = rien à rejouer.
+	credentials playerdirectory.CredentialSeeder
 }
 
 // profileWriter est ce que l'annuaire attend du service de profils : créer et
@@ -74,6 +77,9 @@ func buildPlayerDirectory(d playerDirectoryDeps) port.PlayerDirectory {
 	}
 	if d.groups != nil {
 		deps.Purge.Groups = d.groups
+	}
+	if d.credentials != nil {
+		deps.Credentials = d.credentials
 	}
 	// Le watcher peut être désactivé (daemon nil) ou n'être qu'un contrôleur de
 	// test : sans WatchedPlayers, l'annuaire se lit sur les registres fichiers.

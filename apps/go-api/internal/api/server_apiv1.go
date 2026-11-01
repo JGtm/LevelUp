@@ -354,13 +354,25 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// est XboxSSOLinkStrategy (login direct via XUID + création user si nouveau).
 	// Hors mode xbox, c'est PasswordLinkStrategy (LinkIdentity sur user déjà connecté).
 	authHandler := handlers.NewAuthHandler(sessionStore, attemptStore, tokenProvider)
+	// Un SEUL magasin de jetons par chemin (authStore, ADR 0023), construit hors de
+	// toute branche de mode : toute connexion par code d'appareil, en mode "xbox" comme
+	// en mode "none" ou mot de passe, y persiste son jeton de rafraîchissement.
+	// Porte « profil suivi » (ADR 0035 D3) : le login SSO crée le compte et
+	// persiste les tokens, mais ne met le joueur sous surveillance que s'il a
+	// un profil déclaré ; hors SSO, les tokens eux-mêmes attendent le profil.
+	// Erreur de lecture ⇒ refus journalisé.
+	deviceCodeProfileGate := func(gctx context.Context, titleSlug, xuid string) bool {
+		ok, err := cfg.HasTrackedProfile(titleSlug, xuid)
+		if err != nil {
+			slog.ErrorContext(gctx, "devicecode: lecture de db_profiles.json échouée — profil réputé non suivi",
+				"err", err, "title_slug", titleSlug, "xuid", xuid)
+			return false
+		}
+		return ok
+	}
+	deviceCodeCompletion := service.NewDeviceCodeCompletion(authStore, deviceCodeProfileGate)
 	var xboxLinkStrategy auth_platform.LinkStrategy
 	if cfg.AuthMode == "xbox" {
-		// PR 2.5a : injection du MultiUserTokenStore pour persister les tokens RTA
-		// après login (data/auth/watcher_tokens/{xuid}.json).
-		watcherTokensDir := cfg.WatcherTokensDir()
-		multiUserTokens := auth_platform.NewMultiUserTokenStore(watcherTokensDir)
-
 		// PR 2.5b : daemonGetter retourne le daemon courant (capturé par closure).
 		// Nil si le watcher n'est pas démarré (watcher_presence_enabled=false ou
 		// pas de tokens initiaux). XboxSSOLinkStrategy résout lazy à chaque login.
@@ -370,28 +382,20 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 			}
 			return daemon
 		}
-		// Porte « profil suivi » (ADR 0035 D3) : le login SSO crée le compte et
-		// persiste les tokens, mais ne met le joueur sous surveillance que s'il a
-		// un profil déclaré. Erreur de lecture ⇒ refus journalisé.
-		ssoProfileGate := func(gctx context.Context, titleSlug, xuid string) bool {
-			ok, err := cfg.HasTrackedProfile(titleSlug, xuid)
-			if err != nil {
-				slog.ErrorContext(gctx, "xbox_sso: lecture de db_profiles.json échouée — watcher non notifié",
-					"err", err, "title_slug", titleSlug, "xuid", xuid)
-				return false
-			}
-			return ok
-		}
 		xboxLinkStrategy = service.NewXboxSSOLinkStrategy(users).
-			WithTokenStore(multiUserTokens).
+			WithTokenStore(authStore).
 			WithDaemonGetter(daemonGetter).
 			WithInstanceLock(instanceLockedFn).
-			WithProfileGate(ssoProfileGate).
+			WithProfileGate(deviceCodeProfileGate).
 			WithInviteStore(invites).
 			WithGroupStore(groupStore)
 		authHandler.WithLinkStrategy(xboxLinkStrategy)
 	} else {
-		authHandler.WithUserStore(users)
+		// Mode "none" / mot de passe : la stratégie historique lie l'identité Halo à
+		// un compte déjà connecté ; la connexion réussie persiste en plus le jeton
+		// (profil suivi) ou le garde jusqu'à la création du profil.
+		authHandler.WithLinkStrategy(service.NewDeviceCodeLinkStrategy(
+			auth_platform.NewPasswordLinkStrategy(users), deviceCodeCompletion))
 	}
 	authHandler.MountDeviceFlow(r, apiOpt) // POST /auth/device-flow/start + GET /auth/device-flow/{attempt_id} (Huma)
 
@@ -449,7 +453,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// que le créateur de profil qu'elle porte est le writer unique ci-dessus.
 	playerDirectory := buildPlayerDirectory(playerDirectoryDeps{
 		cfg: cfg, users: users, tokens: authStore, groups: groupStore, daemon: daemon,
-		profiles: profileService,
+		profiles: profileService, credentials: deviceCodeCompletion,
 	})
 
 	// Admin : gestion utilisateurs + invitations (protégé par RequireAuth + RequireAdmin).
