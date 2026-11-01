@@ -17,13 +17,13 @@ import (
 )
 
 // writeFakePrebuiltZip écrit un zip contenant une entrée metadata.duckdb avec le
-// contenu fourni, dans le dossier warehouse du titre.
+// contenu fourni, à l'emplacement des ressources du titre (PrebuiltMetadataZipPath).
 func writeFakePrebuiltZip(t *testing.T, pr *titlePkg.PathResolver, slug, content string) {
 	t.Helper()
-	if err := os.MkdirAll(pr.WarehouseDir(slug), 0o755); err != nil {
+	zipPath := pr.PrebuiltMetadataZipPath(slug)
+	if err := os.MkdirAll(filepath.Dir(zipPath), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	zipPath := filepath.Join(pr.WarehouseDir(slug), prebuiltMetadataZipName)
 	f, err := os.Create(zipPath)
 	if err != nil {
 		t.Fatal(err)

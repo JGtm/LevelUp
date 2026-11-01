@@ -126,7 +126,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -214,7 +213,7 @@ func runBackfillKillSource(cfg *config.AppConfig, args []string) error {
 	// de TRAVAIL en est derive par `context.WithoutCancel` la ou il faut aller au bout.
 	ctx, arreterLeReleveur := contexteDArret()
 	defer arreterLeReleveur()
-	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
+	pr := cfg.PathResolver()
 	// `--status` SORT AVANT TOUT LE RESTE, et avant meme la validation des autres drapeaux :
 	// c est une LECTURE de fichier, elle n a rien a valider et surtout rien a ouvrir. La passe
 	// qu on interroge tient le shared en ecriture (ADR 0013) — une sous-commande d etat qui
@@ -456,7 +455,7 @@ func resoudreCacheFilms(cfg *config.AppConfig, flagValue string) string {
 	if v := strings.TrimSpace(os.Getenv("LEVELUP_LEGACY_FILM_CACHE_DIR")); v != "" {
 		return v
 	}
-	return filepath.Join(cfg.RepoRoot, "data", "cache")
+	return cfg.PathResolver().CacheRootDir()
 }
 
 // capabilitesDuTitre : les capabilities lues dans `capabilities.toml`.

@@ -158,7 +158,7 @@ func artefactsDuTitre(ctx context.Context, cfg *config.AppConfig, slug string) (
 func projeterCorpusRasters(ctx context.Context, cfg *config.AppConfig,
 	o tacticalRastersOptions, shorts []string) bilanTacticalRasters {
 	b := bilanTacticalRasters{}
-	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
+	pr := cfg.PathResolver()
 	for _, short := range shorts {
 		if o.limit > 0 && b.lus >= o.limit {
 			break

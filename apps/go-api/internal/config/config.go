@@ -39,7 +39,8 @@ const DefaultRateLimitRPM = 300
 
 // AppConfig centralise la configuration de l'application.
 type AppConfig struct {
-	RepoRoot        string
+	RepoRoot        string // racine des ressources (nom historique) ; les trois racines : Roots()
+	roots           titlePkg.Roots
 	DBProfilesPath  string
 	AppSettingsPath string
 	SessionDir      string
@@ -182,8 +183,9 @@ type AppConfig struct {
 	// (replay_build_location) dégrade en « aucune construction » — enfiler quand
 	// personne ne viendra vider la file résoudrait un manifeste Halo par match, à
 	// chaque cycle, pour rien (cf. replaybuild.DecidePlacement).
-	BuildWorkerToken string
-	DesktopConfig    // secret et demande d'arrêt du lanceur (DesktopSecret, ShutdownRequester) : config_desktop.go
+	BuildWorkerToken  string
+	DesktopConfig     // secret et demande d'arrêt du lanceur (DesktopSecret, ShutdownRequester) : config_desktop.go
+	DeploymentProfile // profil de déploiement résolu et ses capacités (ADR 0044) : deployment.go
 }
 
 // DefaultEventsConvergenceMax est le plafond par défaut de matchs traités par la
@@ -206,29 +208,27 @@ type BackupConfig struct {
 // loadBackupConfig lit le comportement depuis app_settings.json et les chemins
 // depuis les variables d'environnement. Suit le même pattern que loadUserTimezone.
 func BootstrapEnvLocal() {
-	repoRoot := getEnvOrDefault("LEVELUP_REPO_ROOT", autoDetectRepoRoot())
-	if repoRoot == "" {
-		return
-	}
-	loadEnvLocal(filepath.Join(repoRoot, ".env.local"))
+	loadEnvLocal(filepath.Join(ResolveRoots().StateFilesDir(), ".env.local"))
 }
 
 // load charge la configuration de l'environnement (défauts = dév local) ; fromRepo : cf. Load/LoadServer.
-func load(fromRepo bool) (*AppConfig, error) {
-	repoRoot := getEnvOrDefault("LEVELUP_REPO_ROOT", autoDetectRepoRoot())
+func load(fromRepo bool, launchMode string) (*AppConfig, error) {
+	roots := ResolveRoots()
 	// Charger .env.local avant toute lecture de variable d'environnement,
 	// pour que les variables locales (SPNKR_AZURE_*, LEVELUP_*) soient disponibles.
 	// (No-op si main() a déjà appelé BootstrapEnvLocal — loadEnvLocal n'écrase
 	// jamais une var déjà définie.)
-	loadEnvLocal(filepath.Join(repoRoot, ".env.local"))
-	st := loadStatePaths(repoRoot, fromRepo) // mode démo + chemins d'état et d'exécution, cf. config_demo.go
-	appSettingsPath := st.path("LEVELUP_APP_SETTINGS", filepath.Join(repoRoot, "app_settings.json"), titlePkg.DemoLayout.AppSettingsPath)
-
+	loadEnvLocal(filepath.Join(roots.StateFilesDir(), ".env.local"))
+	titlePkg.InstallProcessRoots(roots)
+	pr := titlePkg.NewPathResolverRoots(roots)
+	st := loadStatePaths(roots.Data, fromRepo) // mode démo + chemins d'état et d'exécution, cf. config_demo.go
+	appSettingsPath := st.path("LEVELUP_APP_SETTINGS", pr.AppSettingsPath(), titlePkg.DemoLayout.AppSettingsPath)
 	cfg := &AppConfig{
-		RepoRoot:          repoRoot,
-		DBProfilesPath:    st.path("LEVELUP_DB_PROFILES", filepath.Join(repoRoot, "db_profiles.json"), titlePkg.DemoLayout.DBProfilesPath),
+		RepoRoot:          roots.Resources,
+		roots:             roots,
+		DBProfilesPath:    st.path("LEVELUP_DB_PROFILES", pr.DBProfilesPath(), titlePkg.DemoLayout.DBProfilesPath),
 		AppSettingsPath:   appSettingsPath,
-		SessionDir:        st.path("LEVELUP_SESSION_DIR", filepath.Join(repoRoot, "data", "sessions"), titlePkg.DemoLayout.SessionDir),
+		SessionDir:        st.path("LEVELUP_SESSION_DIR", pr.SessionDir(), titlePkg.DemoLayout.SessionDir),
 		DemoMode:          st.demoMode,
 		DemoFixturesDir:   st.fixturesDir,
 		DemoLocale:        getEnvOrDefault("LEVELUP_DEMO_LOCALE", "en"),
@@ -239,7 +239,7 @@ func load(fromRepo bool) (*AppConfig, error) {
 		Lang:              getEnvOrDefault("LEVELUP_LANG", "fr"),
 		AppVersion:        getEnvOrDefault("LEVELUP_APP_VERSION", "dev"),
 		DiscordWebhookURL: loadDiscordWebhookURL(appSettingsPath),
-		AuthDir:           st.path("LEVELUP_AUTH_DIR", filepath.Join(repoRoot, "data", "auth"), titlePkg.DemoLayout.AuthDir),
+		AuthDir:           st.path("LEVELUP_AUTH_DIR", filepath.Join(roots.Data, "auth"), titlePkg.DemoLayout.AuthDir),
 		AuthMode:          normalizeMode(getEnvOrDefault("LEVELUP_AUTH_MODE", ""), defaultAuthMode),
 		OAuthRedirectURI:  getEnvOrDefault("LEVELUP_OAUTH_REDIRECT_URI", ""),
 		RegistrationMode:  normalizeMode(getEnvOrDefault("LEVELUP_REGISTRATION", ""), defaultRegistrationMode),
@@ -253,7 +253,7 @@ func load(fromRepo bool) (*AppConfig, error) {
 	cfg.UserTimezone = loadUserTimezone(appSettingsPath)
 	cfg.CurrentCSRSeasonID = loadCSRSeasonID(appSettingsPath)
 	cfg.MediaCapturesBaseDir = loadMediaCapturesBaseDir(appSettingsPath)
-	cfg.Backup = st.backupConfig(repoRoot, appSettingsPath)
+	cfg.Backup = st.backupConfig(roots.Data, appSettingsPath)
 	cfg.PrestigeEnabled = prestige.IsEnabled(appSettingsPath)
 	cfg.PersistBatchAsync = st.persistBatchAsync()
 	cfg.EventsConvergence = getEnvOrDefault("LEVELUP_EVENTS_CONVERGENCE", "") != "0"
@@ -262,7 +262,7 @@ func load(fromRepo bool) (*AppConfig, error) {
 		cfg.EventsConvergenceMax = DefaultEventsConvergenceMax
 	}
 	cfg.BuildWorkerToken = strings.TrimSpace(getEnvOrDefault("LEVELUP_BUILD_WORKER_TOKEN", ""))
-	return withDesktopConfig(cfg), nil
+	return resolveDeployment(withDesktopConfig(cfg), launchMode) // profil de déploiement : deployment.go
 }
 
 // IsProduction indique si le serveur tourne en mode production (LEVELUP_ENV=production),
@@ -286,8 +286,7 @@ func (c *AppConfig) IsProduction() bool {
 // était émis à chaque boot n'était que du bruit (2026-09-20). Ne change RIEN au
 // garde-fou fail-fast : Validate() reste piloté par la seule production.
 func (c *AppConfig) IsExposedDeployment() bool {
-	env := strings.TrimSpace(c.Environment)
-	if env != "" && !strings.EqualFold(env, "development") {
+	if environmentDeclared(c.Environment) {
 		return true
 	}
 	return !isLoopbackHost(c.APIHost)
@@ -348,12 +347,12 @@ func (c *AppConfig) corsAllLocalhost() bool {
 
 // Validate applique le garde-fou de démarrage (cmd/server ; Load et LoadServer ne valident
 // pas). Partout : refus d'un mode d'auth ou d'inscription inconnu (config_auth.go). En
-// production hors DemoMode : refus d'une configuration non sûre (SecurityWarnings).
+// production du profil hosted : refus d'une configuration non sûre (SecurityWarnings).
 func (c *AppConfig) Validate() error {
 	if err := c.validateModes(); err != nil {
 		return err
 	}
-	if c.DemoMode || !c.IsProduction() {
+	if !c.refusesUnsafeConfig() { // ni démo ni desktop : deployment.go
 		return nil
 	}
 	if w := c.SecurityWarnings(); len(w) > 0 {
@@ -480,7 +479,7 @@ func (c *AppConfig) CSRSeasonIDForTitle(ctx context.Context, slug string, reg *t
 		slog.DebugContext(ctx, "csr_season.degraded", "title", slug, "reason", "cap_ranked_absent")
 		return ""
 	}
-	pr := titlePkg.NewPathResolver(c.RepoRoot, reg)
+	pr := c.PathResolver(reg)
 	if id := readCSRSeasonIDFromFile(pr.TitleSettingsPath(slug)); id != "" {
 		return id // overlay fichier du titre (data/titles/<slug>/settings.json)
 	}
@@ -557,8 +556,9 @@ func loadEnvLocal(path string) {
 		if len(val) >= 2 && ((val[0] == '"' && val[len(val)-1] == '"') || (val[0] == '\'' && val[len(val)-1] == '\'')) {
 			val = val[1 : len(val)-1]
 		}
-		// Ne pas écraser une variable déjà définie dans l'environnement réel.
-		if os.Getenv(key) == "" {
+		// Ne pas écraser une variable déjà définie dans l'environnement réel ; les racines
+		// ne se posent que par l'environnement (config_roots.go).
+		if os.Getenv(key) == "" && !skipRootEnvKey(path, key) {
 			_ = os.Setenv(key, val)
 		}
 	}

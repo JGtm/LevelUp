@@ -72,7 +72,7 @@ func main() {
 	if err != nil {
 		fail(ctx, "config.Load", err)
 	}
-	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
+	resolver := cfg.PathResolver()
 	outPath := resolver.MapObjectivesPath(*titleSlug)
 
 	// Chemin hors ligne complet : re-parse du catalogue entier, aucune requête.
@@ -154,7 +154,7 @@ func resolveTargets(ctx context.Context, cfg *config.AppConfig, explicit []strin
 		}
 		return out, nil
 	}
-	sharedPath := titlePkg.NewPathResolver(cfg.RepoRoot).SharedDBPath(titlePkg.DefaultSlug)
+	sharedPath := cfg.PathResolver().SharedDBPath(titlePkg.DefaultSlug)
 	db, err := sql.Open("duckdb", "")
 	if err != nil {
 		return nil, err

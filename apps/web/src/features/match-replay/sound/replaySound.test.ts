@@ -680,7 +680,7 @@ describe('killSourceSpriteStem', () => {
     expect(killSourceSpriteStem(vignette('killfeed-46') + '?v=2')).toBe('killfeed-46')
     expect(killSourceSpriteStem('')).toBe('')
     expect(killSourceSpriteStem(undefined)).toBe('')
-    expect(killSourceSpriteStem('/static/sounds/halo_infinite/melee_kill.wav')).toBe('')
+    expect(killSourceSpriteStem('/static/sounds/halo_infinite/melee_kill.ogg')).toBe('')
   })
 })
 

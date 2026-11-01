@@ -64,7 +64,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "config: %v\n", err)
 		os.Exit(1)
 	}
-	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
+	pr := cfg.PathResolver()
 
 	xuid, err := resolveXUID(cfg, *gamertag)
 	if err != nil {

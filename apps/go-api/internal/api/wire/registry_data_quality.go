@@ -17,7 +17,6 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
-	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/ops"
 	"levelup/go-api/internal/platform/duckdb"
@@ -39,7 +38,7 @@ func (r *ServiceRegistry) dataQualityHandles(ctx context.Context, titleSlug stri
 
 // lectureSharedDuTitre ouvre la base partagée du titre en lecture ; release la rend.
 func (r *ServiceRegistry) lectureSharedDuTitre(ctx context.Context, titleSlug string) (*sql.DB, func(), error) {
-	sharedPath := titlePkg.NewPathResolver(r.cfg.RepoRoot).SharedDBPath(titleSlug)
+	sharedPath := r.cfg.PathResolver().SharedDBPath(titleSlug)
 	if _, statErr := os.Stat(sharedPath); statErr != nil {
 		return nil, nil, fmt.Errorf("shared DB absente pour %s: %w", titleSlug, statErr)
 	}
@@ -63,7 +62,7 @@ func (r *ServiceRegistry) lectureSharedDuTitre(ctx context.Context, titleSlug st
 // metadataDuTitre ouvre metadata du titre (RW partagé, handle process ref-compté) ; release le
 // rend. Absente ou illisible → nil (journalisé), jamais d'erreur : les appelants dégradent.
 func (r *ServiceRegistry) metadataDuTitre(ctx context.Context, titleSlug string) (*sql.DB, func()) {
-	metaPath := titlePkg.NewPathResolver(r.cfg.RepoRoot).MetadataDBPath(titleSlug)
+	metaPath := r.cfg.PathResolver().MetadataDBPath(titleSlug)
 	if _, statErr := os.Stat(metaPath); statErr != nil {
 		return nil, func() {}
 	}

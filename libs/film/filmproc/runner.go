@@ -52,6 +52,24 @@ const (
 // EnvRepoRoot : la variable d'environnement qui fixe la racine du depot.
 const EnvRepoRoot = "LEVELUP_REPO_ROOT"
 
+// Les variables des trois racines du programme (ressources, donnees, journaux). Le paquet ne
+// lit aucune racine : il les transmet a l'enfant, qui resout les memes chemins que son parent
+// quel que soit son repertoire de travail.
+const (
+	EnvResourcesDir = "LEVELUP_RESOURCES_DIR"
+	EnvDataDir      = "LEVELUP_DATA_DIR"
+	EnvLogsDir      = "LEVELUP_LOGS_DIR"
+)
+
+// Roots : les racines que le parent impose a l'enfant. Une racine VIDE n'est pas imposee : sa
+// variable est retiree de l'environnement de l'enfant, qui retombe alors sur le defaut du
+// programme (donnees et journaux sous la racine de ressources).
+type Roots struct {
+	Resources string
+	Data      string
+	Logs      string
+}
+
 // Issue : la categorie d'un film, deduite du code de sortie de son enfant.
 type Issue int
 
@@ -186,17 +204,48 @@ func NewRunner(repoRoot string, out io.Writer) (*Runner, error) {
 	return &Runner{exe: exe, env: childEnv(repoRoot), out: out}, nil
 }
 
-// childEnv recopie l'environnement en y IMPOSANT la racine du depot.
+// NewRunnerRoots est NewRunner pour un parent qui impose les TROIS racines a ses enfants
+// (le serveur). Les racines de donnees et de journaux vides ne sont pas imposees.
+func NewRunnerRoots(roots Roots, out io.Writer) (*Runner, error) {
+	r, err := NewRunner(roots.Resources, out)
+	if err != nil {
+		return nil, err
+	}
+	r.env = childEnvRoots(roots)
+	return r, nil
+}
+
+// childEnv recopie l'environnement en y IMPOSANT la racine du depot (et la racine de ressources,
+// qui l'emporte sur elle dans l'enfant) ; donnees et journaux restent ceux de l'environnement.
 func childEnv(repoRoot string) []string {
-	raw := os.Environ()
-	out := make([]string, 0, len(raw)+1)
-	for _, kv := range raw {
-		if strings.HasPrefix(strings.ToUpper(kv), EnvRepoRoot+"=") {
+	return withRoots(os.Environ(), map[string]string{EnvRepoRoot: repoRoot, EnvResourcesDir: repoRoot})
+}
+
+// childEnvRoots recopie l'environnement en y imposant exactement les racines du parent.
+func childEnvRoots(roots Roots) []string {
+	return withRoots(os.Environ(), map[string]string{
+		EnvRepoRoot: roots.Resources, EnvResourcesDir: roots.Resources,
+		EnvDataDir: roots.Data, EnvLogsDir: roots.Logs,
+	})
+}
+
+// withRoots retire de env chaque variable de set puis ajoute celles dont la valeur n'est pas
+// vide : une seule occurrence par variable, jamais deux dont la derniere gagnerait par hasard.
+func withRoots(env []string, set map[string]string) []string {
+	out := make([]string, 0, len(env)+len(set))
+	for _, kv := range env {
+		name, _, _ := strings.Cut(kv, "=")
+		if _, imposed := set[strings.ToUpper(name)]; imposed {
 			continue
 		}
 		out = append(out, kv)
 	}
-	return append(out, EnvRepoRoot+"="+repoRoot)
+	for _, name := range []string{EnvRepoRoot, EnvResourcesDir, EnvDataDir, EnvLogsDir} {
+		if v := set[name]; v != "" {
+			out = append(out, name+"="+v)
+		}
+	}
+	return out
 }
 
 // Run lance UN enfant, relaie sa sortie et rend son issue.

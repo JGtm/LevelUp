@@ -12,6 +12,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { screen, waitFor, fireEvent } from '@testing-library/react'
 import { renderWithProviders } from '@/test/render-utils'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { testCapabilities } from '@/test/capabilities'
 import { WatcherCard } from './WatcherCard'
 import { WATCHER_TEST_TEXT as t } from './watcherCardTestText'
 import type { WatcherStatusResponse } from '@/lib/api/types'
@@ -59,17 +60,7 @@ beforeEach(() => {
     isTitleSwitching: false,
     locale: 'fr',
     hintsVisible: true,
-    capabilities: {
-      can_read_local_data: true,
-      can_run_sync: true,
-      can_use_live_halo: true,
-      can_manage_settings: true,
-      can_reset_media_index: true,
-      can_view_media: true,
-      can_self_provision: true,
-      can_start_initial_sync: true,
-      can_manage_instance: true,
-    },
+    capabilities: testCapabilities(),
     setupRequired: false,
     authState: 'ready',
     setupState: 'ready',

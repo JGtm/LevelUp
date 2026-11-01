@@ -6,6 +6,7 @@ package main
 // livraison.py (la boucle d'assemblage et la generation du fichier TS).
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -16,10 +17,19 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/media"
 )
 
 // livrer est le mode `livrer`. Voir l'en-tete de livraison.go pour le contrat complet.
 func livrer(donneesDir, sonsRacine, depotCible string) error {
+	ctx := context.Background()
+	return livrerAvec(func(wav, ogg string) error { return media.EncodeSound(ctx, wav, ogg) },
+		donneesDir, sonsRacine, depotCible)
+}
+
+// livrerAvec est `livrer` avec l'encodeur des sons livres injecte : les tests de fidelite du
+// mixage y passent un encodeur sans ffmpeg.
+func livrerAvec(encodeur livraisonEncodeur, donneesDir, sonsRacine, depotCible string) error {
 	if sonsRacine == "" {
 		sonsRacine = filepath.Dir(filepath.Clean(donneesDir))
 	}
@@ -41,7 +51,7 @@ func livrer(donneesDir, sonsRacine, depotCible string) error {
 		return err
 	}
 
-	// ECRITURE ATOMIQUE DU LOT. Le script Python vidait la cible de ses `hinf_*.wav` AVANT de
+	// ECRITURE ATOMIQUE DU LOT. Le script Python vidait la cible de ses `hinf_*` AVANT de
 	// produire quoi que ce soit : toute erreur en cours de route (source illisible, vote mal
 	// forme, disque plein) laissait la cible A MOITIE VIDEE, avec un `weaponSoundVariations.ts`
 	// jamais reecrit — un depot casse pour un accident de donnees (constat C7 de la revue R1).
@@ -57,7 +67,8 @@ func livrer(donneesDir, sonsRacine, depotCible string) error {
 	ch := livraisonChemins{
 		SonsRacine: sonsRacine,
 		Cible:      attente,
-		Tmp:        filepath.Join(attente, "_rendu.wav"),
+		Tmp:        filepath.Join(attente, "_rendu"+media.SoundSourceExt),
+		Encodeur:   encodeur,
 	}
 	e := &livraisonEtat{Livres: map[string]string{}, Variations: map[string]*livraisonVariationOut{}}
 	for _, dossier := range ordre {
@@ -80,7 +91,7 @@ func livrer(donneesDir, sonsRacine, depotCible string) error {
 }
 
 // livraisonPublier fait passer le lot complet du repertoire d'attente a la cible, PUIS retire
-// les `hinf_*.wav` que le nouveau lot ne remplace pas.
+// les `hinf_*.ogg` que le nouveau lot ne remplace pas.
 //
 // L'ORDRE EST L'INVERSE DE CELUI DU SCRIPT PYTHON, ET C'EST VOULU : deplacer d'abord fait
 // passer la cible de l'ancien lot a « ancien PLUS nouveau » puis au nouveau seul, sans jamais
@@ -122,7 +133,9 @@ func livraisonTraiterUnDossier(dossier string, ch livraisonChemins, d *livraison
 		e.Lignes = append(e.Lignes, "  SANS FICHIER "+dossier)
 		return nil
 	}
-	dst := filepath.Join(ch.Cible, cle+".wav")
+	// Le WAV tronque est un INTERMEDIAIRE du repertoire d'attente (jamais publie : seul le
+	// fichier encode porte le perimetre « arme »), efface des qu'il est encode.
+	dst := filepath.Join(ch.Cible, cle+media.SoundSourceExt)
 	if strings.HasPrefix(choix.Source, "__RENDRE__") {
 		if err := livraisonRendreEtTronquer(dossier, choix.Source, dst, ch, d); err != nil {
 			return err
@@ -137,14 +150,25 @@ func livraisonTraiterUnDossier(dossier string, ch livraisonChemins, d *livraison
 			return err
 		}
 	}
+	if err := livraisonEncoderEtRetirer(ch, dst, filepath.Join(ch.Cible, cle+media.SoundExt)); err != nil {
+		return err
+	}
 	e.Livres[cle] = dossier
 	suffixe := ""
 	if v := livraisonVariationDe(dossier, choix.EvHex, d.Lot1, d.Lot2); v != nil {
 		e.Variations[cle] = v
 		suffixe = "  +variation"
 	}
-	e.Lignes = append(e.Lignes, fmt.Sprintf("  %-34s %-20s -> %s.wav%s", dossier, choix.Groupe, cle, suffixe))
+	e.Lignes = append(e.Lignes, fmt.Sprintf("  %-34s %-20s -> %s%s%s", dossier, choix.Groupe, cle, media.SoundExt, suffixe))
 	return nil
+}
+
+// livraisonEncoderEtRetirer encode le WAV tronque vers le fichier livre, puis efface le WAV.
+func livraisonEncoderEtRetirer(ch livraisonChemins, wav, ogg string) error {
+	if err := ch.Encodeur(wav, ogg); err != nil {
+		return fmt.Errorf("livraison: encodage de %s: %w", filepath.Base(wav), err)
+	}
+	return os.Remove(wav)
 }
 
 // livraisonRendreEtTronquer rend l'evenement designe par le sentinel "__RENDRE__<hex>" dans
@@ -165,10 +189,10 @@ func livraisonRendreEtTronquer(dossier, source, dst string, ch livraisonChemins,
 // livraisonEstFichierArme : le PERIMETRE du miroir, et rien d'autre. Les sons d'evenements du
 // pack utilisateur (melee_kill, camo_*, overshield_*...) ne portent pas ce prefixe.
 func livraisonEstFichierArme(nom string) bool {
-	return strings.HasPrefix(nom, "hinf_") && strings.HasSuffix(nom, ".wav")
+	return strings.HasPrefix(nom, "hinf_") && strings.HasSuffix(nom, media.SoundExt)
 }
 
-// livraisonNettoyerArmes efface les `hinf_*.wav` de la cible qui ne font pas partie du lot
+// livraisonNettoyerArmes efface les `hinf_*.ogg` de la cible qui ne font pas partie du lot
 // qu'on vient de publier — MIROIR, PERIMETRE ARMES UNIQUEMENT.
 func livraisonNettoyerArmes(cible string, publies map[string]bool) error {
 	entries, err := os.ReadDir(cible)

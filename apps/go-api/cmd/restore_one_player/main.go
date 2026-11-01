@@ -25,7 +25,6 @@ import (
 	_ "github.com/duckdb/duckdb-go/v2"
 
 	"levelup/go-api/internal/config"
-	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/ops"
 	"levelup/go-api/pkg/duckdbbackup"
 )
@@ -46,7 +45,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "config: %v\n", err)
 		os.Exit(1)
 	}
-	pr := title.NewPathResolver(cfg.RepoRoot)
+	pr := cfg.PathResolver()
 	targetPath := pr.PlayerDBPath("halo_infinite", *player)
 
 	expectedKey := "halo_infinite:player:" + *player

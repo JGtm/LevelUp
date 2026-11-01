@@ -37,7 +37,7 @@ func (r *ServiceRegistry) DiagnoseAppearance(ctx context.Context, playerSlug str
 
 // newAppearanceDiagService câble le service avec les dépendances PROD.
 func (r *ServiceRegistry) newAppearanceDiagService() *service.AppearanceDiagService {
-	store := auth.NewMultiUserTokenStore(titlePkg.NewPathResolver(r.cfg.RepoRoot).WatcherTokensDir())
+	store := auth.NewMultiUserTokenStore(r.cfg.PathResolver().WatcherTokensDir())
 	return service.NewAppearanceDiagService(service.AppearanceDiagDeps{
 		LoadPlayers: func(ts string) ([]domain.PlayerSummary, error) {
 			return r.cfg.LoadPlayers(ts)

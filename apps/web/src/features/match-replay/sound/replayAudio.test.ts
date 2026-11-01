@@ -49,30 +49,30 @@ const okResponse = okAudioResponse
 describe('ReplayAudioPlayer — déclenchement', () => {
   it('joue un son chargé : une source démarrée à l instant courant', async () => {
     const p = new ReplayAudioPlayer(1)
-    p.preload(['/static/sounds/halo_infinite/hinf_br75.wav'])
+    p.preload(['/static/sounds/halo_infinite/hinf_br75.ogg'])
     await flush()
-    p.play('/static/sounds/halo_infinite/hinf_br75.wav')
+    p.play('/static/sounds/halo_infinite/hinf_br75.ogg')
     expect(ctx.sources).toHaveLength(1)
     expect(ctx.sources[0].started).toBe(ctx.currentTime)
   })
 
   it('ne charge qu UNE fois la même URL, même précédée de plusieurs demandes', async () => {
     const p = new ReplayAudioPlayer(1)
-    p.preload(['/a.wav', '/a.wav'])
-    p.preload(['/a.wav'])
+    p.preload(['/a.ogg', '/a.ogg'])
+    p.preload(['/a.ogg'])
     await flush()
-    p.preload(['/a.wav'])
+    p.preload(['/a.ogg'])
     await flush()
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
   it('plusieurs sons SIMULTANÉS partent ensemble (un échange, pas une file)', async () => {
     const p = new ReplayAudioPlayer(1)
-    p.preload(['/a.wav', '/b.wav', '/c.wav'])
+    p.preload(['/a.ogg', '/b.ogg', '/c.ogg'])
     await flush()
-    p.play('/a.wav')
-    p.play('/b.wav')
-    p.play('/c.wav')
+    p.play('/a.ogg')
+    p.play('/b.ogg')
+    p.play('/c.ogg')
     expect(ctx.sources).toHaveLength(3)
     expect(ctx.sources.every((s) => s.started === ctx.currentTime)).toBe(true)
   })
@@ -81,9 +81,9 @@ describe('ReplayAudioPlayer — déclenchement', () => {
 describe('ReplayAudioPlayer — coupure', () => {
   it('joue un son jusqu au bout de son fichier : fondu sur la fin, pas à la seconde', async () => {
     const p = new ReplayAudioPlayer(1)
-    p.preload(['/explosion.wav']) // 3 s de source (une explosion de grenade livrée)
+    p.preload(['/explosion.ogg']) // 3 s de source (une explosion de grenade livrée)
     await flush()
-    p.play('/explosion.wav')
+    p.play('/explosion.ogg')
     const t0 = ctx.currentTime
     // Le gain de voix est le dernier créé (le maître naît avec le lecteur).
     const voice = ctx.gains[ctx.gains.length - 1]
@@ -98,9 +98,9 @@ describe('ReplayAudioPlayer — coupure', () => {
   it('un son plus long que le plafond de sûreté y est coupé (asset livré trop long)', async () => {
     const p = new ReplayAudioPlayer(1)
     fetchMock.mockResolvedValueOnce(okResponse(30))
-    p.preload(['/entier.wav'])
+    p.preload(['/entier.ogg'])
     await flush()
-    p.play('/entier.wav')
+    p.play('/entier.ogg')
     const t0 = ctx.currentTime
     const voice = ctx.gains[ctx.gains.length - 1]
     expect(voice.gain.calls).toEqual([
@@ -114,9 +114,9 @@ describe('ReplayAudioPlayer — coupure', () => {
   it('un son très court joue entier, fondu borné à sa moitié', async () => {
     const p = new ReplayAudioPlayer(1)
     fetchMock.mockResolvedValueOnce(okResponse(0.4))
-    p.preload(['/court.wav'])
+    p.preload(['/court.ogg'])
     await flush()
-    p.play('/court.wav')
+    p.play('/court.ogg')
     expect(ctx.sources[0].stopped).toBeCloseTo(ctx.currentTime + 0.4, 6)
     expect(soundEnvelope(0.4).fadeStartS).toBeCloseTo(0.2, 6)
   })
@@ -126,30 +126,30 @@ describe('ReplayAudioPlayer — silence propre', () => {
   it('fichier absent (404) : AUCUNE source, et pas de re-tentative à chaque passage', async () => {
     const p = new ReplayAudioPlayer(1)
     fetchMock.mockResolvedValue({ ok: false, status: 404 })
-    p.preload(['/absent.wav'])
+    p.preload(['/absent.ogg'])
     await flush()
-    p.play('/absent.wav')
-    p.play('/absent.wav')
+    p.play('/absent.ogg')
+    p.play('/absent.ogg')
     expect(ctx.sources).toHaveLength(0)
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
   it('URL jamais demandée : silence à cet instant, chargement pour les suivants', async () => {
     const p = new ReplayAudioPlayer(1)
-    p.play('/tard.wav')
+    p.play('/tard.ogg')
     expect(ctx.sources).toHaveLength(0)
     expect(fetchMock).toHaveBeenCalledTimes(1)
     await flush()
-    p.play('/tard.wav')
+    p.play('/tard.ogg')
     expect(ctx.sources).toHaveLength(1)
   })
 
   it('fichier indécodable : silence mémorisé, jamais une exception qui casse la lecture', async () => {
     const p = new ReplayAudioPlayer(1)
     vi.spyOn(ctx, 'decodeAudioData').mockRejectedValue(new Error('bouillie'))
-    p.preload(['/casse.wav'])
+    p.preload(['/casse.ogg'])
     await flush()
-    expect(() => p.play('/casse.wav')).not.toThrow()
+    expect(() => p.play('/casse.ogg')).not.toThrow()
     expect(ctx.sources).toHaveLength(0)
   })
 })
@@ -157,42 +157,42 @@ describe('ReplayAudioPlayer — silence propre', () => {
 describe('ReplayAudioPlayer — voix et volume', () => {
   it('plafonne les voix simultanées, et en libère une quand un son se termine', async () => {
     const p = new ReplayAudioPlayer(1)
-    p.preload(['/a.wav'])
+    p.preload(['/a.ogg'])
     await flush()
-    for (let i = 0; i < SOUND_MAX_VOICES + 3; i++) p.play('/a.wav')
+    for (let i = 0; i < SOUND_MAX_VOICES + 3; i++) p.play('/a.ogg')
     expect(ctx.sources).toHaveLength(SOUND_MAX_VOICES)
     ctx.sources[0].end()
-    p.play('/a.wav')
+    p.play('/a.ogg')
     expect(ctx.sources).toHaveLength(SOUND_MAX_VOICES + 1)
   })
 
   it('la CONCLUSION passe hors plafond, avec l’enveloppe normale, sans occuper de voix', async () => {
     const p = new ReplayAudioPlayer(1)
-    p.preload(['/a.wav', '/voix.wav', '/fanfare.wav'])
+    p.preload(['/a.ogg', '/voix.ogg', '/fanfare.ogg'])
     await flush()
-    for (let i = 0; i < SOUND_MAX_VOICES; i++) p.play('/a.wav')
-    p.playConclusion('/voix.wav')
-    p.playConclusion('/fanfare.wav')
+    for (let i = 0; i < SOUND_MAX_VOICES; i++) p.play('/a.ogg')
+    p.playConclusion('/voix.ogg')
+    p.playConclusion('/fanfare.ogg')
     expect(ctx.sources).toHaveLength(SOUND_MAX_VOICES + 2)
     // Enveloppe normale : jusqu'au bout du fichier (3 s ici), fondu compris.
     expect(ctx.sources[SOUND_MAX_VOICES].stopped).toBeCloseTo(ctx.currentTime + 3)
     // Un son ordinaire reste refusé : le plafond n'a pas bougé.
-    p.play('/a.wav')
+    p.play('/a.ogg')
     expect(ctx.sources).toHaveLength(SOUND_MAX_VOICES + 2)
     // La fin des conclusions ne rend aucune voix qu'elles n'avaient pas prise.
     ctx.sources[SOUND_MAX_VOICES].end()
     ctx.sources[SOUND_MAX_VOICES + 1].end()
-    p.play('/a.wav')
+    p.play('/a.ogg')
     expect(ctx.sources).toHaveLength(SOUND_MAX_VOICES + 2)
   })
 
   it('stopAll (la PAUSE) éteint TOUT ce qui est en vol, la conclusion exceptée', async () => {
     const p = new ReplayAudioPlayer(1)
-    p.preload(['/a.wav', '/voix.wav'])
+    p.preload(['/a.ogg', '/voix.ogg'])
     await flush()
-    p.play('/a.wav')
-    p.play('/a.wav')
-    p.playConclusion('/voix.wav')
+    p.play('/a.ogg')
+    p.play('/a.ogg')
+    p.playConclusion('/voix.ogg')
     p.stopAll()
     const rampEnd = ctx.currentTime + VOLUME_RAMP_S
     // Les deux sons ordinaires sont arrêtés par la rampe courte, pas à la fin de leur fichier.
@@ -204,11 +204,11 @@ describe('ReplayAudioPlayer — voix et volume', () => {
 
   it('la voix d’ANNONCEUR (manche terminée) est hors plafond ET coupée par la pause : deux règles distinctes', async () => {
     const p = new ReplayAudioPlayer(1)
-    p.preload(['/a.wav', '/manche.wav', '/voix.wav'])
+    p.preload(['/a.ogg', '/manche.ogg', '/voix.ogg'])
     await flush()
-    for (let i = 0; i < SOUND_MAX_VOICES; i++) p.play('/a.wav')
-    p.playAnnouncer('/manche.wav') // plafond atteint : l'annonce passe quand même
-    p.playConclusion('/voix.wav')
+    for (let i = 0; i < SOUND_MAX_VOICES; i++) p.play('/a.ogg')
+    p.playAnnouncer('/manche.ogg') // plafond atteint : l'annonce passe quand même
+    p.playConclusion('/voix.ogg')
     expect(ctx.sources).toHaveLength(SOUND_MAX_VOICES + 2)
     p.stopAll()
     const rampEnd = ctx.currentTime + VOLUME_RAMP_S
@@ -218,9 +218,9 @@ describe('ReplayAudioPlayer — voix et volume', () => {
 
   it('stopAll rend leurs voix aux sons éteints (un son terminé ne se coupe pas deux fois)', async () => {
     const p = new ReplayAudioPlayer(1)
-    p.preload(['/a.wav'])
+    p.preload(['/a.ogg'])
     await flush()
-    p.play('/a.wav')
+    p.play('/a.ogg')
     ctx.sources[0].end()
     p.stopAll()
     expect(ctx.sources[0].stopped).toBeCloseTo(ctx.currentTime + 3)

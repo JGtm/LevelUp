@@ -35,6 +35,11 @@ import (
 type HealthcheckOptions struct {
 	RepoRoot string
 	Verbose  bool
+	// DBProfilesPath et AppSettingsPath : chemins RÉSOLUS par la configuration (LEVELUP_DB_PROFILES /
+	// LEVELUP_APP_SETTINGS, ou la tête de DataRoot / du dépôt). Vides : ceux du PathResolver, ce
+	// qui ignore une variable explicite et rend un faux « introuvable » (Docker prod).
+	DBProfilesPath  string
+	AppSettingsPath string
 }
 
 // HealthReport résume le résultat du diagnostic.
@@ -71,7 +76,14 @@ func RunHealthcheck(ctx context.Context, opts HealthcheckOptions) HealthReport {
 	checks = append(checks, checkDirExists("repo_root", opts.RepoRoot))
 
 	// 3. Fichiers de configuration
-	for _, cfg := range []string{pr.DBProfilesPath(), pr.AppSettingsPath()} {
+	dbProfiles, appSettings := opts.DBProfilesPath, opts.AppSettingsPath
+	if dbProfiles == "" {
+		dbProfiles = pr.DBProfilesPath()
+	}
+	if appSettings == "" {
+		appSettings = pr.AppSettingsPath()
+	}
+	for _, cfg := range []string{dbProfiles, appSettings} {
 		checks = append(checks, checkFileExists(filepath.Base(cfg), cfg))
 	}
 

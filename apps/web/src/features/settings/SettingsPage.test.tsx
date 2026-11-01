@@ -11,6 +11,7 @@ import { createTestQueryClient, renderWithProviders } from '@/test/render-utils'
 import { queryKeys } from '@/lib/query/keys'
 import type { SettingsResponse } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { testCapabilities } from '@/test/capabilities'
 import { useRouterState } from '@tanstack/react-router'
 import { SettingsPage } from './SettingsPage'
 
@@ -25,17 +26,7 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
   }
 })
 
-const ENABLED_CAPABILITIES = {
-  can_read_local_data: true,
-  can_run_sync: true,
-  can_use_live_halo: true,
-  can_manage_settings: true,
-  can_reset_media_index: true,
-  can_view_media: true,
-  can_self_provision: true,
-  can_start_initial_sync: true,
-  can_manage_instance: true,
-}
+const ENABLED_CAPABILITIES = testCapabilities()
 
 beforeEach(() => {
   vi.mocked(useRouterState).mockReturnValue({

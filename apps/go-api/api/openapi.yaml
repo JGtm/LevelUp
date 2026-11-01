@@ -10554,9 +10554,18 @@ components:
     CapabilityMap:
       additionalProperties: false
       properties:
+        can_edit_settings:
+          description: Réglages de l'instance modifiables (figés en démo).
+          type: boolean
         can_manage_instance:
           type: boolean
         can_manage_settings:
+          type: boolean
+        can_offer_windows_download:
+          description: Téléchargement de l'application Windows proposé.
+          type: boolean
+        can_pool_tokens:
+          description: Mise en commun des jetons proposée à l'utilisateur.
           type: boolean
         can_read_local_data:
           type: boolean
@@ -10566,12 +10575,50 @@ components:
           type: boolean
         can_self_provision:
           type: boolean
+        can_sign_in_with_xbox:
+          description: Connexion par le SSO Xbox (mode xbox).
+          type: boolean
         can_start_initial_sync:
+          type: boolean
+        can_update_app:
+          description: Mise à jour de l'application par la coquille desktop.
+          type: boolean
+        can_upload_media:
+          description: Dépôt de captures (refusé en démo).
+          type: boolean
+        can_use_accounts:
+          description: Comptes et inscriptions (authentification password ou xbox).
+          type: boolean
+        can_use_admin:
+          description: Espace d'administration de l'instance.
+          type: boolean
+        can_use_discord:
+          description: Relais d'alertes Discord.
+          type: boolean
+        can_use_groups:
+          description: Groupes (accès mutuel entre comptes).
+          type: boolean
+        can_use_invitations:
+          description: Codes d'invitation entre comptes et groupes.
           type: boolean
         can_use_live_halo:
           type: boolean
+        can_use_outbound_network:
+          description: Sortie du serveur vers les services tiers (API Halo, Microsoft).
+          type: boolean
+        can_use_restic:
+          description: Sauvegarde restic des bases.
+          type: boolean
         can_view_media:
           type: boolean
+        deployment:
+          description: Profil de déploiement (affichage et diagnostic ; ne jamais brancher dessus).
+          enum:
+            - hosted
+            - desktop
+            - demo
+            - dev
+          type: string
       required:
         - can_read_local_data
         - can_run_sync
@@ -10582,6 +10629,20 @@ components:
         - can_self_provision
         - can_start_initial_sync
         - can_manage_instance
+        - can_use_accounts
+        - can_sign_in_with_xbox
+        - can_use_invitations
+        - can_use_groups
+        - can_pool_tokens
+        - can_use_admin
+        - can_use_restic
+        - can_use_discord
+        - can_use_outbound_network
+        - can_update_app
+        - can_offer_windows_download
+        - can_edit_settings
+        - can_upload_media
+        - deployment
       type: object
     CareerCSRRank:
       additionalProperties: false

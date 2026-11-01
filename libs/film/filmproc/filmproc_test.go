@@ -197,3 +197,52 @@ func TestChildEnvImposeUneSeuleRacine(t *testing.T) {
 		t.Errorf("%d occurrence(s) de %s dans l'environnement de l'enfant, attendu 1", n, EnvRepoRoot)
 	}
 }
+
+// LES TROIS RACINES SONT IMPOSEES A L'ENFANT, chacune en une seule occurrence ; une racine
+// vide est RETIREE (l'enfant retombe sur son defaut, jamais sur une valeur heritee du parent).
+func TestChildEnvRootsImposeLesTroisRacines(t *testing.T) {
+	t.Setenv(EnvResourcesDir, "/ancienne")
+	t.Setenv(EnvDataDir, "/ancienne-donnees")
+	t.Setenv(EnvLogsDir, "/ancien-journal")
+	env := childEnvRoots(Roots{Resources: "/res", Data: "/donnees"})
+	got := map[string][]string{}
+	for _, kv := range env {
+		name, val, _ := strings.Cut(kv, "=")
+		switch strings.ToUpper(name) {
+		case EnvRepoRoot, EnvResourcesDir, EnvDataDir, EnvLogsDir:
+			got[strings.ToUpper(name)] = append(got[strings.ToUpper(name)], val)
+		}
+	}
+	want := map[string]string{EnvRepoRoot: "/res", EnvResourcesDir: "/res", EnvDataDir: "/donnees"}
+	for k, v := range want {
+		if len(got[k]) != 1 || got[k][0] != v {
+			t.Errorf("%s = %v, attendu une seule occurrence %q", k, got[k], v)
+		}
+	}
+	if len(got[EnvLogsDir]) != 0 {
+		t.Errorf("une racine vide ne doit pas etre imposee : %s = %v", EnvLogsDir, got[EnvLogsDir])
+	}
+}
+
+// Le lanceur historique impose la racine de ressources en plus de LEVELUP_REPO_ROOT, sinon une
+// LEVELUP_RESOURCES_DIR heritee l'emporterait dans l'enfant.
+func TestChildEnvImposeAussiLaRacineDeRessources(t *testing.T) {
+	t.Setenv(EnvResourcesDir, "/heritee")
+	t.Setenv(EnvDataDir, "/donnees-heritees")
+	env := childEnv("/nouvelle")
+	var res, data string
+	for _, kv := range env {
+		switch {
+		case strings.HasPrefix(kv, EnvResourcesDir+"="):
+			res = kv
+		case strings.HasPrefix(kv, EnvDataDir+"="):
+			data = kv
+		}
+	}
+	if res != EnvResourcesDir+"=/nouvelle" {
+		t.Errorf("racine de ressources transmise = %q", res)
+	}
+	if data != EnvDataDir+"=/donnees-heritees" {
+		t.Errorf("le lanceur historique laisse les donnees heritees : %q", data)
+	}
+}

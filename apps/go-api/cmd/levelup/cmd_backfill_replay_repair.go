@@ -131,7 +131,7 @@ func passeReparation(
 	ctx context.Context, cfg *config.AppConfig, candidats []replayCandidat,
 	o replayBackfillOptions, report *replayBackfillReport,
 ) ([]replayCandidat, error) {
-	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
+	pr := cfg.PathResolver()
 	sharedPath := pr.SharedDBPath(o.titleSlug)
 	db, release, err := duckdb.OpenReadForQuery(sharedPath)
 	if err != nil {

@@ -45,7 +45,7 @@ func runReplayEvents(cfg *config.AppConfig, args []string) error {
 		return err
 	}
 	// 2. Ouvrir la shared DB en RW (échoue si serveur tient le lock).
-	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
+	resolver := cfg.PathResolver()
 	sharedPath := resolver.SharedDBPath(titlePkg.DefaultSlug)
 	sharedHandle, err := duckdbpkg.OpenReadWrite(sharedPath)
 	if err != nil {

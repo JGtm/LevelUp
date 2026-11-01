@@ -59,7 +59,6 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
-	titlePkg "levelup/go-api/internal/domain/title"
 	halo5 "levelup/go-api/internal/games/halo_5"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb"
@@ -129,7 +128,7 @@ func runBackfillH5KillMechanics(cfg *config.AppConfig, args []string) error {
 		return err
 	}
 
-	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
+	pr := cfg.PathResolver()
 	sharedPath := pr.SharedDBPath(*titleSlug)
 	if _, statErr := os.Stat(sharedPath); statErr != nil {
 		return fmt.Errorf("shared_matches introuvable (%s): %w", sharedPath, statErr)

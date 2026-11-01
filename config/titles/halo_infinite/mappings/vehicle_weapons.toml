@@ -31,7 +31,7 @@
 #             explosive | bomb | melee | needles
 #   tint      nature de la decharge — liste de [shot_tints] : kinetic | plasma_cool | plasma_hot |
 #             forerunner | electric | needle | blast
-#   sound     stem de la PREMIERE variante du son de tir (fichier `static/sounds/{slug}/<stem>.wav`,
+#   sound     stem de la PREMIERE variante du son de tir (fichier `static/sounds/{slug}/<stem>.ogg`,
 #             les variantes se tirent cote client) — OU `silence`, la raison d un silence DECIDE
 #   mount     ancre sur le sprite, en fractions (repere nez en haut ; ax -0,5 gauche .. +0,5
 #             droite, ay -0,5 nez .. +0,5 arriere) et classe de visee : aim = fixed (solidaire du

@@ -43,7 +43,7 @@ func (r *ServiceRegistry) buildCrossGameCooccurrence(pdb *duckdb.PlayerDB) port.
 		currentSlug: pdb.TitleSlug,
 		myXUID:      pdb.XUID,
 		registry:    reg,
-		resolver:    title.NewPathResolver(r.cfg.RepoRoot, reg),
+		resolver:    r.cfg.PathResolver(reg),
 	}
 }
 

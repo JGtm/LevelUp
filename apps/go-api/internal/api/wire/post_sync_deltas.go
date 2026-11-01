@@ -19,7 +19,6 @@ import (
 	"time"
 
 	"levelup/go-api/internal/api/handlers"
-	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/notifications"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/port"
@@ -183,7 +182,7 @@ func readCoachProactiveMode(reg *ServiceRegistry, titleSlug string) bool {
 	if store == nil {
 		return false
 	}
-	pr := titlePkg.NewPathResolver(reg.cfg.RepoRoot)
+	pr := reg.cfg.PathResolver()
 	cfg, err := store.ResolveForTitle(pr.TitleSettingsPath(titleSlug))
 	if err != nil || cfg == nil {
 		return false

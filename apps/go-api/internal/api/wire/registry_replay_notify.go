@@ -108,7 +108,7 @@ func (r *ServiceRegistry) flushReplayNotify(ctx context.Context, now time.Time) 
 func (r *ServiceRegistry) sendReplayBatch(ctx context.Context, b replaynotify.Batch) {
 	cfg := notify.LoadNotifyConfigForTitle(
 		r.cfg.AppSettingsPath,
-		titlePkg.NewPathResolver(r.cfg.RepoRoot).TitleSettingsPath(b.TitleSlug))
+		r.cfg.PathResolver().TitleSettingsPath(b.TitleSlug))
 	cfg.Labels = notify.LabelsForSlug(b.TitleSlug)
 	observability.AddInt("replay_notify_artifacts_total", int64(b.Total))
 
@@ -194,7 +194,7 @@ func (r *ServiceRegistry) replayLinkTargets(
 		xuids = append(xuids, p.XUID)
 	}
 
-	sharedPath := titlePkg.NewPathResolver(r.cfg.RepoRoot).SharedDBPath(b.TitleSlug)
+	sharedPath := r.cfg.PathResolver().SharedDBPath(b.TitleSlug)
 	sqlDB, release, err := duckdb.OpenReadForQuery(sharedPath)
 	if err != nil {
 		observability.IncCounter("replay_notify_link_read_failed_total")

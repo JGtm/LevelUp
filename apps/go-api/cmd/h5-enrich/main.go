@@ -23,7 +23,6 @@ import (
 
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
-	titlePkg "levelup/go-api/internal/domain/title"
 	halo5 "levelup/go-api/internal/games/halo_5"
 	halo5migrations "levelup/go-api/internal/games/halo_5/migrations"
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
@@ -87,7 +86,7 @@ func main() {
 	// Famille de la chaîne de perf classée (ranked_slayer / ranked_objectif) : h5
 	// n'a pas de sous-mode → classifier dédié qui répond false.
 
-	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
+	pr := cfg.PathResolver()
 	sharedPath := pr.SharedDBPath(halo5.TitleSlug)
 	playerPath := pr.PlayerDBPath(halo5.TitleSlug, gt)
 

@@ -11,17 +11,18 @@ import { Link } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useDeploymentCapability } from '@/stores/useDeploymentCapability'
 import { getPoolSharingText } from '@/features/settings/poolSharingText'
 import { useSetPoolSharing } from '@/features/settings/poolSharingQueries'
 
 export function PoolSharingBanner() {
   const poolSharing = useAppShellStore((s) => s.poolSharing)
-  const demoMode = useAppShellStore((s) => s.demoMode)
+  const canPoolTokens = useDeploymentCapability('can_pool_tokens')
   const locale = useAppShellStore((s) => s.locale)
   const mutation = useSetPoolSharing()
   const t = getPoolSharingText(locale)
 
-  if (demoMode || poolSharing !== 'undecided') return null
+  if (!canPoolTokens || poolSharing !== 'undecided') return null
 
   function decide(granted: boolean) {
     mutation.mutate(granted, {

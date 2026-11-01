@@ -7,6 +7,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useDeploymentCapability } from '@/stores/useDeploymentCapability'
 import { useRegister } from '@/features/auth/queries'
 import { queryKeys } from '@/lib/query/keys'
 import { registerErrorKey } from '@/features/auth/loginError'
@@ -16,7 +17,7 @@ import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/com
 export function RegisterPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const authMode = useAppShellStore((s) => s.authMode)
+  const canSignInWithXbox = useDeploymentCapability('can_sign_in_with_xbox')
   const registrationMode = useAppShellStore((s) => s.registrationMode)
   const instanceLocked = useAppShellStore((s) => s.instanceLocked)
   const firstLaunch = useAppShellStore((s) => s.firstLaunch)
@@ -34,7 +35,7 @@ export function RegisterPage() {
   // D3 cohabitation : en mode xbox, register password est réservé au bootstrap
   // admin initial (firstLaunch=true). Hors bootstrap, on redirige vers /login
   // pour que l'user utilise le flow SSO Xbox.
-  if (authMode === 'xbox' && !firstLaunch) {
+  if (canSignInWithXbox && !firstLaunch) {
     navigate({ to: '/login' })
     return null
   }

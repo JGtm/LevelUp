@@ -72,7 +72,7 @@ type VehicleWeapon struct {
 	// Fait declare, jamais deduit de `fx` (le mortier est `plasma`, le canon du Scorpion
 	// `explosive` sans projectile publie).
 	Impact bool `toml:"impact"`
-	// ImpactSound : stem du son de la detonation (static/sounds/{slug}/<stem>.wav), choisi A L OREILLE
+	// ImpactSound : stem du son de la detonation (static/sounds/{slug}/<stem>.ogg), choisi A L OREILLE
 	// sur les rendus extraits du jeu. Vide = explosion muette. N existe qu avec Impact.
 	ImpactSound string              `toml:"impact_sound"`
 	Silence     string              `toml:"silence"`

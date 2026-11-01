@@ -19,7 +19,6 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
-	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/observability"
@@ -288,7 +287,7 @@ func (r *ServiceRegistry) RunCatalogRefresh(ctx context.Context, titleSlug strin
 // metadataRWHandle ouvre metadata en RW partagé (ref-count, jamais de second
 // sql.Open concurrent). closeMeta décrémente — à defer.
 func (r *ServiceRegistry) metadataRWHandle(titleSlug string) (*duckdb.DB, func(), error) {
-	metaPath := titlePkg.NewPathResolver(r.cfg.RepoRoot).MetadataDBPath(titleSlug)
+	metaPath := r.cfg.PathResolver().MetadataDBPath(titleSlug)
 	if _, err := os.Stat(metaPath); err != nil {
 		return nil, nil, fmt.Errorf("metadata absente pour %s: %w", titleSlug, err)
 	}

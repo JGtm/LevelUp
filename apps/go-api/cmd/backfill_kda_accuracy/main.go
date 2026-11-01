@@ -53,7 +53,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "config: %v\n", err)
 		os.Exit(1)
 	}
-	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
+	pr := cfg.PathResolver()
 	sharedPath := pr.SharedDBPath(titlePkg.DefaultSlug)
 
 	// 1. Ouvrir la shared DB en RW (échoue si le serveur tient le lock).

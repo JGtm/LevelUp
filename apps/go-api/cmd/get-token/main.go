@@ -39,7 +39,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "config.Load: %v\n", cerr)
 		return
 	}
-	storeDir := titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir()
+	storeDir := cfg.PathResolver().WatcherTokensDir()
 	if len(os.Args) > 2 {
 		storeDir = os.Args[2]
 	}

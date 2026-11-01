@@ -169,7 +169,7 @@ des WAV (C11), chiffrement des jetons (D-8), binaire autonome C10 (D-11).
 | D-3 | Autonome ou client (q3) | **Autonome**, option « se connecter à un serveur » en P2 | valeur locale (rejeu, fin de match) |
 | D-4 | C3-a : mise en commun en mode `none` | **Non** (sans décision = refus, ADR 0038) ; le profil `desktop` l'accorde d'office au seul utilisateur | cohérence ADR 0038 |
 | D-5 | C5-a : archive des films | **Archiver par défaut** ; choix « ne pas archiver » dans l'assistant de premier lancement (`features/setup`), pas dans NSIS ; occupation affichée ; emplacement réglable | donnée irremplaçable ; choix informé |
-| D-6 | C11-a : format des sons | **Mesurer d'abord** (L9 : AAC, Opus, FLAC sur 10 sons dont 3 boucles moteur), décision à la clôture de L9 | l'AAC ajoute une amorce qui peut casser les boucles |
+| D-6 | C11-a : format des sons | **Opus 96 kbit/s en Ogg** (décision utilisateur du 2026-11-01 sur la table L9 §10 : 5 % du WAV, boucles rendues à l'échantillon près ; AAC écarté car il ajoute 128 à 960 échantillons ; FLAC écarté, 35 %) ; risque accepté : Safari iOS sur le site hébergé | mesure L9 |
 | D-7 | C9 : budget Windows | voie CGO sur `release/**`, les PR vers `main` (seules PR reçues par le workflow : `on.pull_request.branches: [main]`, une PR vers une branche de release ne déclenche RIEN) et, le temps du chantier, les pushs `feat/desktop-*` (ajout du 2026-11-01 après constat : sans lui, aucun verdict Windows avant la fusion dans la release ; retrait à la clôture de P1), `timeout-minutes: 15` | runners Windows plus chers |
 | D-8 | Chiffrement des jetons (q5) | **OUI dès la v1 (décision utilisateur 2026-11-01, contre la reco)** : coffre Windows (DPAPI, portée utilisateur) derrière un port Go `TokenCipher` dans `platform/auth` ; ADR 0023 amendée ; lot L13b | choix de l'utilisateur ; le fichier reste illisible depuis un autre compte Windows ou une copie du disque |
 | D-9 | ffmpeg (q6) | **LIVRÉ dans l'installeur (décision utilisateur 2026-11-01, contre la reco)** : build LGPL officiel, ~80 Mo, mentions et sources LGPL jointes ; résolveur C12 cherche d'abord le dossier de l'exécutable | prêt à l'emploi ; coût : 80 Mo par mise à jour |
@@ -181,6 +181,7 @@ des WAV (C11), chiffrement des jetons (D-8), binaire autonome C10 (D-11).
 | D-15 | Réglages (drapeaux ou variables) | **Variables d'environnement** pour les racines (`LEVELUP_DATA_DIR`, `LEVELUP_RESOURCES_DIR`, `LEVELUP_LOGS_DIR`), **drapeaux** pour le mode (`-mode desktop`, `-mode refresh-only`, `-arret-sur-stdin`) ; un seul fichier `cmd/server/flags.go`, créé par L2 et étendu par les lots suivants EN SÉQUENCE | aujourd'hui aucun parseur : `os.Args` testé à la main (`main.go:125,130`) |
 | D-16 | Un seul concept de profil | `Deployment` (`hosted`, `desktop`, `demo`, `dev`) résolu par `internal/config` ; `AuthMode=desktop` et l'hôte loopback sont DÉRIVÉS par le résolveur, jamais posés à la main | trois formulations du même concept dans la première version du plan |
 | D-17 | Rechargement air sous Windows | pré-commande d'air qui appelle le point d'arrêt (serveur arrêté pendant la reconstruction, comme aujourd'hui mais proprement) | le relais stdin ne survit pas au `TASKKILL /T` d'air |
+| D-18 | Archive des films : compression (découverte L9.1) | **Oui, zstd-3** (décision utilisateur du 2026-11-01) : les nouveaux chunks sont écrits en zstd-3 à la réception, la lecture (`decfilm`/`source`) accepte brut, zlib et zstd ; les chunks existants sont recompressés par une CLI lancée par l'utilisateur, JAMAIS automatiquement ; lot L14 (items 14.5 à 14.7) | 96 % des chunks sont bruts ; −75 % mesuré, 3 s pour 20 films |
 
 ## 6. Contrat coquille ↔ serveur (référence des lots L12, L13, L16)
 
@@ -437,12 +438,12 @@ Fichiers : `cmd/server/flags.go` (nouveau, D-15), `cmd/server/boot_gate.go`, `cm
 
 ### 9.8 L8 — C11 Sons compressés (S ; après L9 et décision D-6)
 
-- [ ] 8.1 Outil Go `cmd/sounds-encode` (ffmpeg requis) : WAV → format retenu, même arborescence.
-- [ ] 8.2 Tous les sites liés à `.wav` (liste fermée au brief : table des sons `features/match-replay/
+- [x] 8.1 Outil Go `cmd/sounds-encode` (ffmpeg requis) : WAV → format retenu, même arborescence.
+- [x] 8.2 Tous les sites liés à `.wav` (liste fermée au brief : table des sons `features/match-replay/
       sound/*.ts`, `exportSoundFamilies.ts`, `vehicleEngineSound.ts`, `replaySoundAssets.guard.test.ts`,
       `games/mappings/loader_vehicle_weapons.go:75`, `cmd/weapon-sounds` et ses goldens,
       `livraison_orchestrate.go:39`) ; test Vitest : chaque entrée de la table pointe un fichier existant.
-- [ ] 8.3 WAV supprimés de l'arbre ; `du -sh static/sounds` consigné.
+- [x] 8.3 WAV supprimés de l'arbre ; `du -sh static/sounds` consigné.
 - [ ] 8.4 **(U)** Écoute comparée sur 5 sons nommés par l'utilisateur, dont une boucle moteur.
 - Gate : `npm run test`, `npm run build` ; `go test ./internal/games/mappings/... ./cmd/weapon-sounds/...`.
 
@@ -456,19 +457,19 @@ Fichiers : `cmd/server/flags.go` (nouveau, D-15), `cmd/server/boot_gate.go`, `cm
 
 ### 9.10 L10 — C7 Profil de déploiement (S ; après ADR 0044)
 
-- [ ] 10.1 `internal/config/deployment.go` : type `Deployment` (D-16) résolu une fois depuis les réglages
+- [x] 10.1 `internal/config/deployment.go` : type `Deployment` (D-16) résolu une fois depuis les réglages
       actuels (`LEVELUP_ENV`, `LEVELUP_DEMO_MODE`, `AuthMode`, `-mode desktop`) ; dérive `AuthMode`,
       hôte d'écoute (A7), capacités fines : comptes et inscriptions, invitations, groupes, mise en commun,
       administration, sauvegarde restic, Discord, sortie réseau, mises à jour, téléchargement Windows.
-- [ ] 10.2 `CapabilityMap` de `/bootstrap` étendue (A6), champ `deployment` ; OpenAPI régénéré
+- [x] 10.2 `CapabilityMap` de `/bootstrap` étendue (A6), champ `deployment` ; OpenAPI régénéré
       (`make generate-types`) ; `FeatureFlags.demo_mode` conservé.
-- [ ] 10.3 `demoPolicies` (`background_tasks.go:84`) généralisé en politique par profil (A17) ; garde-rail
+- [x] 10.3 `demoPolicies` (`background_tasks.go:84`) généralisé en politique par profil (A17) ; garde-rail
       existant (chaque tâche déclarée) étendu aux quatre profils.
-- [ ] 10.4 Garde-rail archlint : aucune NOUVELLE lecture de `.DemoMode` / `.AuthMode` / `LEVELUP_ENV`
+- [x] 10.4 Garde-rail archlint : aucune NOUVELLE lecture de `.DemoMode` / `.AuthMode` / `LEVELUP_ENV`
       hors du résolveur (allowlist datée des 89 + 55 + 13 occurrences, compte figé).
-- [ ] 10.5 Front : les 66 occurrences de `demo_mode|demoMode|auth_mode|authMode` dans 23 fichiers
+- [x] 10.5 Front : les 66 occurrences de `demo_mode|demoMode|auth_mode|authMode` dans 23 fichiers
       (hors tests et `generated.ts`, liste au brief) lisent les capacités.
-- [ ] 10.6 Tests : chaque combinaison actuelle → mêmes capacités (T3) ; profil `desktop` → hôte loopback
+- [x] 10.6 Tests : chaque combinaison actuelle → mêmes capacités (T3) ; profil `desktop` → hôte loopback
       quelle que soit `LEVELUP_API_HOST`.
 - Gate : `go test ./internal/config/... ./internal/service/... ./internal/archlint/... ./cmd/server/...` ;
   `make generate-types` sans diff hors `deployment` ; `cd apps/web && npm run typecheck && npm run test`.
@@ -479,22 +480,22 @@ Définition : `ResourcesRoot` = la racine du dépôt aujourd'hui (`LEVELUP_RESOU
 `LEVELUP_REPO_ROOT`, repli détection actuelle) ; `DataRoot` = ce qui est aujourd'hui `<repoRoot>/data`
 (`LEVELUP_DATA_DIR`, défaut `<ResourcesRoot>/data`) ; `LogsRoot` = `LEVELUP_LOGS_DIR` (existant).
 
-- [ ] 11.1 Sous-lot a : table COMPLÈTE chemin → racine produite au brief par le pilote (les 193 + 18
+- [x] 11.1 Sous-lot a : table COMPLÈTE chemin → racine produite au brief par le pilote (les 193 + 18
       usages de `RepoRoot`, les 41 jointures du littéral `"data"`, `server_apiv1.go:661,1565`,
       `main.go:1256`, `provision_title.go:165`, `config.go:230,241`) ; `PathResolver` reçoit les racines ;
       T4 identique avec racines par défaut.
-- [ ] 11.2 Sous-lot b : ressources (référentiel du rejeu `data/titles/*/reference/`,
+- [x] 11.2 Sous-lot b : ressources (référentiel du rejeu `data/titles/*/reference/`,
       `metadata-prebuilt.zip`, `config/`, `static/`, dist web) par `ResourcesRoot` ; données
       (`db_profiles.json`, `app_settings.json`, `.env.local`, sessions, auth, caches, journaux) par
       `DataRoot` / `LogsRoot` ; les enfants de cuisson reçoivent les trois racines (`replaychild.go:60,253`,
       `runner.go:189-200`).
-- [ ] 11.3 Sous-lot c : `Dockerfile:246-247`, `docker-compose.yml:15,17,97,98` : variables mortes
+- [x] 11.3 Sous-lot c : `Dockerfile:246-247`, `docker-compose.yml:15,17,97,98` : variables mortes
       retirées, nouvelles posées, montage ressources en lecture seule ; `scripts/deploy.sh` relu (staging
       sous `data/`, piège `git clean`) ; `docs/INSTALL.md` EN + FR.
-- [ ] 11.5 `LogsRoot` créé AVANT tout écrivain (découverte §10, 2026-11-01 : `crash_output` ouvre
+- [x] 11.5 `LogsRoot` créé AVANT tout écrivain (découverte §10, 2026-11-01 : `crash_output` ouvre
       `logs/server.crash.log` avant la création de `logs/` sur une racine neuve) ; test : racine neuve → fichier de
       capture présent après le premier démarrage.
-- [ ] 11.4 Tests : racines distinctes → aucun chemin de ressource sous `DataRoot`, aucun chemin de
+- [x] 11.4 Tests : racines distinctes → aucun chemin de ressource sous `DataRoot`, aucun chemin de
       donnée sous `ResourcesRoot` ; garde-rail « pas de `filepath.Join(..., "data", ...)` » vert ; ratchet
       nouveau : `RepoRoot` plus lu hors `internal/config` et `PathResolver` (allowlist datée à réduire).
 - Gate : `go test ./internal/... ./cmd/server/...` ; démarrage réel avec trois racines distinctes puis
@@ -565,6 +566,9 @@ Définition : `ResourcesRoot` = la racine du dépôt aujourd'hui (`LEVELUP_RESOU
       rejeu produits, chunks non conservés, rétention des rejeux forcée illimitée (A18) ; fr + en.
 - [ ] 14.4 Tests `PathResolver` (archive hors racine) ; garde-rail de disposition `filmcache` vert ;
       test de la combinaison refusée.
+- [ ] 14.5 (D-18) Écriture des chunks en zstd-3 à la réception (`sync/filmfetch` ou le point unique d'écriture du cache de film : relève-le) ; lecture dans `libs/film` (`source` / `decfilm.Inflate`) acceptant brut, zlib ET zstd par en-tête magique (`28 b5 2f fd`), aucune autre couche ne lit les octets ; empreinte du film inchangée (les faits sont calculés sur les octets DÉCOMPRESSÉS : vérifier sur `replay-equiv`, 20 films identiques).
+- [ ] 14.6 (D-18) CLI `levelup film recompress` (ou sous-commande existante la plus proche) : recompresse en zstd-3 les chunks bruts et zlib existants, un film à la fois, écriture atomique (`.part` + renommage), reprise possible, journal par film, JAMAIS lancée automatiquement (décision utilisateur : purge et recompression manuelles) ; `--dry-run` qui chiffre le gain.
+- [ ] 14.7 (D-18) Tests : lecture des trois formats ; `replay-equiv` identique après recompression d'un film de l'harnais ; mesure consignée (`du -sh data/cache/film_chunks` avant/après sur le poste, lancée par l'utilisateur).
 - Gate : `go test ./internal/domain/title/... ./internal/service/... ./internal/scheduler/...` ;
   `cd libs/film && go test ./filmcache/...` ; `cd apps/web && npm run typecheck`.
 
@@ -708,6 +712,56 @@ mises à jour (ressources retéléchargées à chaque version).
   1 constat P2 écarté : `-mode desktop|refresh-only` refusé « jusqu'à L12/L15 » est la livraison en séquence
   décidée en D-15 / L2.1, pas un flag « pour plus tard ». Ronde 2 : relecture des seules corrections, non lancée
   (4 corrections de quelques lignes couvertes par des tests ; à relancer si l'utilisateur le demande).
+
+- **L10 (2026-11-01) — relevé** : T3 `xbox` identique à avant hors `capabilities.deployment` et les 13 `can_*` neufs ;
+  T3 `none` identique une fois `available_titles` TRIÉ : l'ordre de cette liste varie d'un lancement à l'autre
+  (`BuildAvailableTitles` sur le registre, lot 0 `halo_5, halo_infinite`, après L7 et L10 `halo_infinite, halo_5`),
+  préexistant et hors périmètre (ordre non déterministe à figer un jour par le rang du registre). Trois capacités de
+  plus que l'ADR 0044 D-3 (`can_sign_in_with_xbox`, `can_edit_settings`, `can_upload_media`), `auth_mode` publié
+  `none` en desktop, `deployment` sous `capabilities` : écarts documentés dans l'ADR (« Implementation notes »).
+  Colonne `desktop` des tâches de fond : seul le classement mondial est coupé (scraping sur le jeton du joueur) ;
+  `can_use_admin=false` en desktop, L13 peut le basculer. Allowlists du ratchet `deployment_single_resolver_test.go`
+  (83 `.DemoMode`, 52 `.AuthMode`, 3 `LEVELUP_ENV` dans 23 fichiers) et de `demo_state_guard_test.go` à recompter à
+  la fusion avec L11.
+
+- **L8 (2026-11-01) — relevé** : `static/sounds` 84 Mo → 4,9 Mo (184 `.ogg`, `-check` 184/184 à l'échantillon près) ;
+  devDependency `opus-decoder` 0.7.12 (MIT) pour mesurer le PCM dans les garde-rails Vitest (`ogg-opus-decoder` écarté :
+  tire `codec-parser` LGPL) ; `libs/film/replay/weapon_burst_research_test.go` (tag `research`) lit encore des
+  `hinf_*.wav` qui n'existent plus : instrument mort, à supprimer (règle 7) hors de ce lot ; Safari ne lit l'Ogg Opus
+  qu'à partir de 18.4 (de mémoire, non vérifié) : risque accepté en D-6 ; l'absence de raccord des boucles est
+  mesurée par ffmpeg, pas par un navigateur : l'écoute 8.4 de l'utilisateur tranche.
+
+- **L11 (2026-11-01) — relevé et écarts acceptés par le pilote** : pont transitoire `title.InstallProcessRoots` (les
+  ~100 services qui reçoivent `repoRoot string` et bâtissent leur résolveur obtiennent les racines du processus
+  installées par `config.load()` ; `NewPathResolver(racine)` les rend quand `racine` est la racine de ressources
+  installée) — documenté dans l'ADR 0008, s'éteint quand l'allowlist du ratchet `RepoRoot` (149 lectures dans
+  91 fichiers) est vide ; `reference/generated/*` (cartes Forge écrites pendant que le serveur tourne) sous
+  `DataRoot`, le reste de `reference/` sous `ResourcesRoot` (affine A-2) ; pas de montage en lecture seule du
+  référentiel en prod pour cette raison ; Docker : le service prod pose `LEVELUP_DB_PROFILES` / `LEVELUP_APP_SETTINGS`
+  pour garder les fichiers montés sous `/app` (A-3 déplacerait `db_profiles.json` sous `/app/data`), la démo pose
+  `LEVELUP_LOGS_DIR=/app/data/demo/runtime/logs` → **à relire avant le prochain déploiement prod (push main =
+  déploiement)** ; sans `LEVELUP_REPO_ROOT`, les journaux vont sous `<racine détectée>/logs` et plus sous le `logs/`
+  du répertoire courant ; `data/cache/career-rank-image/` (images versionnées dans git mais servies par le cache
+  d'assets) reste sous `DataRoot/cache` : absentes sur une installation à racines distinctes tant que l'installeur
+  (L17) ne les copie pas, sinon retéléchargées ; `LEVELUP_WEB_DIST` reste une variable explicite. Hors périmètre :
+  `cmd/replay-corpus-gate` pose `LEVELUP_REPO_ROOT` pour une racine jetable mais pas `LEVELUP_DATA_DIR` (ses enfants
+  écriraient dans les vraies données si la variable est posée) ; une quinzaine d'outils `cmd/` ont leur copie de
+  `loadEnvLocal` et une trentaine bâtissent `data/titles/...` à la main, hors des garde-rails. Table chemin → racine :
+  scratchpad `l11_table_finale.tsv` (998 lignes). Fusion L10 + L11 : un conflit (`config.load` : signature
+  `launchMode` de L10 + `ResolveRoots()` de L11), résolu à la main ; `config.go` reste à 629 lignes.
+
+- **Revue adversariale 3r (2026-11-01, deux relecteurs Opus, L10 + L11)** : D (profil, accès, non-régression hébergée) :
+  0 défaut, 14 conditions tiennent (table de vérité de `AuthDisabled` identique hors desktop, `LEVELUP_AUTH_MODE=desktop`
+  posé à la main sur un serveur hébergé = démarrage refusé, colonnes `hosted`/`dev`/`demo` des tâches identiques,
+  équivalences front, champs OpenAPI neufs `required` sans casse de client ancien). C (racines, chemins, pont) :
+  2 constats corrigés dans le lot — P1 : l'enfant de cuisson `-film-child` est intercepté AVANT `config.Load`, le pont
+  n'était jamais installé dans l'enfant qui écrivait ses faits de film sous `<Resources>/data` et cherchait l'overlay
+  des socles au mauvais endroit (`config.InstallProcessRootsFromEnv()` appelé par les deux interceptions, test) ;
+  P2 : `levelup check-env` / `healthcheck` lisaient `db_profiles.json` et `app_settings.json` par le PathResolver et
+  non par les chemins résolus (`LEVELUP_DB_PROFILES` / `LEVELUP_APP_SETTINGS` du compose prod) → faux « introuvable »
+  après déploiement (`HealthcheckOptions.DBProfilesPath/AppSettingsPath`, test). 16 conditions tiennent, dont : aucun
+  volume Docker orphelin, démo inchangée, tests non contaminés par le pont. Remarque sans défaut : `taskAppRelease`
+  est désormais annulé à l'arrêt (sous `schedulerCtx`), changement annoncé par l'ADR 0045 D-4.
 
 - `internal/mapcatalog` : `TestAddOverlayEntryConcurrentDossierAbsentNePerdRien` échoue en run complet
   (« verrou d'ecriture impossible a poser — passage force », 2 cartes perdues sur 8) et passe seul : le

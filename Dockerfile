@@ -244,8 +244,15 @@ EXPOSE 8000
 # Variables d'environnement par défaut (runtime Go)
 # LEVELUP_API_HOST=0.0.0.0 : indispensable en conteneur — sans ça le serveur bind
 # 127.0.0.1 (défaut dev) et le port publié + le reverse proxy ne l'atteignent pas.
-ENV LEVELUP_ROOT=/app \
-    LEVELUP_DATA=/app/data \
+# Les trois racines (ADR 0008, amendement « two roots ») : ressources livrées avec l'image
+# (config/, static/, build web), données (volume ./data), journaux (sous le volume : ils survivent
+# aux recréations du conteneur). Les anciennes LEVELUP_ROOT et LEVELUP_DATA, que rien ne lisait,
+# sont retirées. LEVELUP_DATA_DIR posé = db_profiles.json, app_settings.json et .env.local se
+# cherchent en tête de /app/data : le service levelup du compose garde ses fichiers montés sous
+# /app par LEVELUP_DB_PROFILES et LEVELUP_APP_SETTINGS.
+ENV LEVELUP_RESOURCES_DIR=/app \
+    LEVELUP_DATA_DIR=/app/data \
+    LEVELUP_LOGS_DIR=/app/data/logs \
     LEVELUP_WEB_DIST=/app/apps/web/dist \
     LEVELUP_API_HOST=0.0.0.0 \
     LEVELUP_LOG_JSON=true

@@ -60,7 +60,7 @@ func (r *ServiceRegistry) RunReplayBuild(ctx context.Context, titleSlug, matchID
 		return nil, err
 	}
 
-	cacheRoot := titlePkg.NewPathResolver(r.cfg.RepoRoot).CacheRootDir()
+	cacheRoot := r.cfg.PathResolver().CacheRootDir()
 	short := titlePkg.FilmShortMatchID(fullID)
 	if _, found, ferr := filmcache.Open(cacheRoot, short); ferr != nil {
 		return nil, fmt.Errorf("cache film illisible: %w", ferr)

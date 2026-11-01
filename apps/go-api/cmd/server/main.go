@@ -83,6 +83,9 @@ func interceptReplayChild() {
 	// ouvrirait un second écrivain sur les mêmes bases, ce que le modèle mono-processus
 	// interdit (ADR 0013/0016). Même patron que le health-check ci-dessous.
 	if replaychild.IsChild(os.Args) {
+		// Les racines du parent (ResourcesRoot, DataRoot, LogsRoot) arrivent par l'environnement :
+		// sans Load, c'est le seul moyen pour l'enfant de résoudre les mêmes chemins que lui.
+		config.InstallProcessRootsFromEnv()
 		os.Exit(replaychild.RunChild(context.Background(), os.Args))
 	}
 }

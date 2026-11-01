@@ -34,7 +34,7 @@ func runBackup(cfg *config.AppConfig, args []string) error {
 	if *gamertag == "" {
 		return fmt.Errorf("--gamertag est obligatoire")
 	}
-	pr := title.NewPathResolver(cfg.RepoRoot)
+	pr := cfg.PathResolver()
 	dbPath := pr.PlayerDBPath(*titleSlug, *gamertag)
 	outDir := *outputDir
 	if outDir == "" {
@@ -76,7 +76,7 @@ func runRestore(cfg *config.AppConfig, args []string) error {
 	if *gamertag == "" || *backupDir == "" {
 		return fmt.Errorf("--gamertag et --backup-dir sont obligatoires")
 	}
-	pr := title.NewPathResolver(cfg.RepoRoot)
+	pr := cfg.PathResolver()
 	dbPath := pr.PlayerDBPath(*titleSlug, *gamertag)
 	var tableList []string
 	if *tables != "" {
@@ -120,7 +120,7 @@ func runArchive(cfg *config.AppConfig, args []string) error {
 	if err != nil {
 		return fmt.Errorf("format --cutoff invalide (attendu: YYYY-MM-DD): %w", err)
 	}
-	pr := title.NewPathResolver(cfg.RepoRoot)
+	pr := cfg.PathResolver()
 	result, err := ops.ArchiveMatches(context.Background(), ops.ArchiveOptions{
 		Gamertag:     *gamertag,
 		XUID:         *xuid,
@@ -156,7 +156,7 @@ func runIndexMedia(cfg *config.AppConfig, args []string) error {
 	if *gamertag == "" {
 		return fmt.Errorf("--gamertag est obligatoire")
 	}
-	pr := title.NewPathResolver(cfg.RepoRoot)
+	pr := cfg.PathResolver()
 	// Priorité : flag CLI > app_settings.json:media_captures_base_dir > fallback
 	// interne PlayerCapturesDir. La centralisation par ResolveCapturesDir
 	// garantit qu'on partage le même comportement que les handlers HTTP et
@@ -244,7 +244,7 @@ func runSeedDemo(cfg *config.AppConfig, args []string) error {
 
 	profilesPath := cfg.DBProfilesPath
 	if profilesPath == "" {
-		profilesPath = filepath.Join(cfg.RepoRoot, "db_profiles.json")
+		profilesPath = cfg.PathResolver().DBProfilesPath()
 	}
 
 	// Titres à seeder : flag CSV explicite, sinon dérivés de db_profiles (titres où
@@ -335,10 +335,10 @@ func runSeed(cfg *config.AppConfig, args []string) error {
 		return fmt.Errorf("composant requis: career-ranks | citation-mappings | medals | rank-translations")
 	}
 	// seed utilise toujours metadata.duckdb du titre par défaut
-	pr := title.NewPathResolver(cfg.RepoRoot)
+	pr := cfg.PathResolver()
 	opts := ops.SeedOptions{
 		MetaDBPath: pr.MetadataDBPath(title.DefaultSlug),
-		DataDir:    filepath.Join(cfg.RepoRoot, "data"),
+		DataDir:    cfg.Roots().Data,
 	}
 	// Garantir que le schéma est à jour avant tout seed (idempotent — DuckDB
 	// passe les migrations déjà appliquées via schema_migrations).

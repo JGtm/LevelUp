@@ -29,7 +29,7 @@ func initBootTasks(st *bootState) {
 	// schedulerWG track les goroutines « suivies » pour que le shutdown les attende
 	// (sur ctx.Done()) avant duckdb.CloseAll() — sans ce wait, un cycle RunOnce en cours
 	// peut encore toucher metaDB après la fermeture.
-	boot := newBootTasks(cfg.DemoMode, &st.schedulerWG)
+	boot := newBootTasks(cfg.Deployment, &st.schedulerWG)
 
 	// Migrations boot-time (amis par joueur, puis groupe par défaut « Mon foyer ») —
 	// idempotentes, ordre imposé ; cf. runBootMigrations.
@@ -54,7 +54,7 @@ func initAccountsPool(st *bootState) {
 	// invalid_grant (Microsoft rotate systématiquement le RT à chaque usage).
 	gate.setStep(ctx, bootStepAccounts)
 	var autoSyncPool pool.Pool
-	if !boot.cutInDemo(stepTokenPool) {
+	if !boot.isCut(stepTokenPool) {
 		autoSyncPool = buildAutoSyncPool(ctx, cfg, tokenProvider)
 	}
 	gate.setStep(ctx, bootStepServices)
@@ -197,7 +197,7 @@ func buildAutoSyncPool(
 	cfg *config.AppConfig,
 	tokenProvider auth.TokenProvider,
 ) pool.Pool {
-	pr := title.NewPathResolver(cfg.RepoRoot)
+	pr := cfg.PathResolver()
 	multiUserStore := auth.NewMultiUserTokenStore(cfg.WatcherTokensDir())
 	discovery := pool.NewDiscoveryWithStore(cfg, pr, title.DefaultSlug, multiUserStore)
 	sources, err := discovery.Scan(ctx)

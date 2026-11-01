@@ -17,7 +17,6 @@ import (
 	gosync "sync"
 
 	"levelup/go-api/internal/domain"
-	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
 	halo_games "levelup/go-api/internal/games/halo_infinite"
 	"levelup/go-api/internal/games/halo_infinite/haloadapter"
@@ -127,7 +126,7 @@ func (r *ServiceRegistry) RunCatalogUGCDrain(ctx context.Context, titleSlug stri
 // (FATAL ART), le Reopen in-place pour rétablir toute l'app sans restart.
 // Best-effort : emprunt non-possédant du cache (pas de Close).
 func (r *ServiceRegistry) reopenMetadataIfInvalidated(ctx context.Context, titleSlug string) {
-	pr := titlePkg.NewPathResolver(r.cfg.RepoRoot)
+	pr := r.cfg.PathResolver()
 	metaPath := pr.MetadataDBPath(titleSlug)
 	wrapper, ok := duckdb.LookupCachedDB(metaPath)
 	if !ok || wrapper == nil {
@@ -151,7 +150,7 @@ func (r *ServiceRegistry) reopenMetadataIfInvalidated(ctx context.Context, title
 // joueur authentifié). L'API DiscoveryUGC est par-asset, pas par-joueur — tout
 // joueur valide convient.
 func (r *ServiceRegistry) haloTokensForDrain(ctx context.Context, titleSlug string) (*domain.HaloTokens, error) {
-	pr := titlePkg.NewPathResolver(r.cfg.RepoRoot)
+	pr := r.cfg.PathResolver()
 	store := auth.NewMultiUserTokenStore(pr.WatcherTokensDir())
 	provider := auth.NewSISUProvider()
 

@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"os"
-	"path/filepath"
 
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain/title"
@@ -62,7 +61,7 @@ func discoverLevelUpDBs(pr *title.PathResolver) ([]duckdbbackup.Target, error) {
 	// shared.xuid_aliases (refactor 2026-06-19, `levelup consolidate-aliases`).
 	var targets []duckdbbackup.Target
 
-	titlesDir := filepath.Join(pr.RepoRoot(), "data", "titles")
+	titlesDir := pr.TitlesRootDir()
 	titleEntries, err := os.ReadDir(titlesDir)
 	if err != nil {
 		return attachExistingHandles(targets), nil // no titles dir is non-fatal

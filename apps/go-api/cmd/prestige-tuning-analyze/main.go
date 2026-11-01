@@ -155,7 +155,7 @@ func filterPlayers(players []domain.PlayerSummary, want string) []domain.PlayerS
 func collectAll(ctx context.Context, cfg *config.AppConfig, titleSlug string, players []domain.PlayerSummary) (
 	[]prestigetuning.MetricWindowCount, []prestigetuning.SourceAcceptance, int) {
 
-	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
+	pr := cfg.PathResolver()
 	var counts []prestigetuning.MetricWindowCount
 	var accept []prestigetuning.SourceAcceptance
 	scanned := 0

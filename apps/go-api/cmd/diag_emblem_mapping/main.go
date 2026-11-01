@@ -19,7 +19,6 @@ import (
 	"time"
 
 	"levelup/go-api/internal/config"
-	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/auth"
 )
 
@@ -31,7 +30,7 @@ func acquireDiagTokens(ctx context.Context, gamertag string) (*auth.ExchangeResu
 	if err != nil {
 		return nil, fmt.Errorf("config.Load: %w", err)
 	}
-	store := auth.NewMultiUserTokenStore(titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
+	store := auth.NewMultiUserTokenStore(cfg.PathResolver().WatcherTokensDir())
 
 	var xuid string
 	if user, err := store.LoadByGamertag(gamertag); err == nil && user != nil {

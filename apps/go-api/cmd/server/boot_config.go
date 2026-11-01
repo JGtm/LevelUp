@@ -172,9 +172,10 @@ func setupLogging(st *bootState) {
 	// Niveau via LEVELUP_LOG_LEVEL (défaut INFO).
 	logLevel := bootLogLevel()
 
-	preliminaryRepoRoot := os.Getenv("LEVELUP_REPO_ROOT") // peut être vide, sera résolu plus tard
+	// Les racines se lisent dans l'environnement seul (config.ResolveRoots) : la même résolution
+	// que config.LoadServer, donc le même dossier de journaux que celui de la configuration.
 	// Démo : logs et crash log sous `<démo>/runtime/logs` (lot B5, D-7), cf. bootLogsConfig.
-	logsCfg := bootLogsConfig(preliminaryRepoRoot)
+	logsCfg := bootLogsConfig(config.ResolveRoots().Resources)
 
 	// MT-05 (PMT-10 PR-4) : namespacer les fichiers logs par titre UNIQUEMENT
 	// quand plusieurs titres sont servis (déploiement multi-titre). En mono-titre
@@ -184,9 +185,23 @@ func setupLogging(st *bootState) {
 		logsCfg = logsCfg.WithTitleNamespace(title.DefaultSlug)
 	}
 
+	ensureLogsRoot(logsCfg)
 	installCrashOutput(logsCfg)
 	logHandler := newConsoleLogHandler(logsCfg, logLevel)
 	st.multiHandler = installLogHandlers(logHandler, logsCfg)
+}
+
+// ensureLogsRoot crée la racine des journaux AVANT tout écrivain : sur une racine neuve, la
+// capture des plantages (server.crash.log) s'ouvre avant le gestionnaire multi-modules et
+// n'aurait aucun dossier où naître. Un échec est journalisé (sur la sortie d'erreur, le journal
+// par défaut n'étant pas encore posé) et le démarrage continue : les écrivains dégradent seuls.
+func ensureLogsRoot(logsCfg logging.Config) {
+	if logsCfg.LogsDir == "" {
+		return // journaux désactivés (LEVELUP_LOGS_ENABLED=false)
+	}
+	if err := os.MkdirAll(logsCfg.LogsDir, 0o755); err != nil {
+		slog.Warn("logs_root: création impossible", "err", err, "path", logsCfg.LogsDir)
+	}
 }
 
 // bootLogLevel lit le niveau de journalisation demandé (LEVELUP_LOG_LEVEL, défaut INFO).
@@ -316,7 +331,7 @@ func installLogHandlers(logHandler slog.Handler, logsCfg logging.Config) *loggin
 // loadBootConfig charge la configuration serveur ; un échec arrête le processus.
 func loadBootConfig(st *bootState) {
 	// --- 2. Configuration ---
-	cfg, err := config.LoadServer() // seul processus à suivre la disposition démo (B-C10)
+	cfg, err := config.LoadServer(st.flags.Mode) // seul processus à suivre la disposition démo (B-C10)
 	if err != nil {
 		slog.Error("chargement config", "err", err)
 		os.Exit(1)
@@ -326,7 +341,9 @@ func loadBootConfig(st *bootState) {
 		cfg.AppVersion = version
 	}
 	slog.Debug("config chargée",
-		"repo_root", cfg.RepoRoot,
+		"resources_root", cfg.RepoRoot,
+		"data_root", cfg.Roots().Data,
+		"logs_root", cfg.Roots().Logs,
 		"demo_mode", cfg.DemoMode,
 		"version", cfg.AppVersion,
 		"addr", cfg.ServerAddr(),

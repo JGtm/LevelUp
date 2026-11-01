@@ -188,19 +188,19 @@ func runBackfillReplay(cfg *config.AppConfig, args []string) error {
 
 	// LE MENAGE NE CUIT RIEN : il s'arrete ici, sans toucher au film ni au registre.
 	if o.purgeNonGeres {
-		return purgerNonGeresSeul(ctx, titlePkg.NewPathResolver(cfg.RepoRoot), o)
+		return purgerNonGeresSeul(ctx, cfg.PathResolver(), o)
 	}
 
 	// FORME ENFANT : un film, puis ce processus meurt. Le code de sortie EST le canal de
 	// retour vers le parent (cf. backfill_child.go) — d'ou l'`os.Exit` plutot qu'un `return`.
 	if strings.TrimSpace(o.one) != "" {
-		if err := refuserUnMatchNonGere(ctx, titlePkg.NewPathResolver(cfg.RepoRoot), o.titleSlug, o.one); err != nil {
+		if err := refuserUnMatchNonGere(ctx, cfg.PathResolver(), o.titleSlug, o.one); err != nil {
 			return err
 		}
 		os.Exit(runBackfillReplayUn(cfg, o, cacheRoot))
 	}
 
-	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
+	pr := cfg.PathResolver()
 	report := replayBackfillReport{}
 	candidats, err := replaysACuire(ctx, pr, cacheRoot, o, &report)
 	if err != nil {

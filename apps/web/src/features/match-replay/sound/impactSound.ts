@@ -10,7 +10,7 @@
  * reconstitué couche par couche) ; une arme absente de la table explose en silence, et n'emprunte
  * JAMAIS le son d'une explosion de grenade (ce serait affirmer une arme qu'on ignore). Pour en
  * déclarer un : ajouter `weapon_key -> stem` ci-dessous ; le fichier
- * `static/sounds/{slug}/<stem>.wav` doit exister (garde-rail `replaySoundAssets.guard.test.ts`), et
+ * `static/sounds/{slug}/<stem>.ogg` doit exister (garde-rail `replaySoundAssets.guard.test.ts`), et
  * la lecture passe par `grenadeSoundEvents`.
  */
 export const IMPACT_SOUND_STEMS: Readonly<Record<string, string>> = {}

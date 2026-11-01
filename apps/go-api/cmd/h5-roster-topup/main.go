@@ -30,7 +30,6 @@ import (
 	_ "github.com/duckdb/duckdb-go/v2"
 
 	"levelup/go-api/internal/config"
-	titlePkg "levelup/go-api/internal/domain/title"
 )
 
 func main() {
@@ -45,7 +44,7 @@ func main() {
 		fatal("config.Load: %v", err)
 	}
 
-	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
+	pr := cfg.PathResolver()
 	sharedPath := pr.SharedDBPath(*titleSlug)
 	fmt.Printf("Titre=%s shared=%s commit=%v\n", *titleSlug, sharedPath, *commit)
 	if !*commit {

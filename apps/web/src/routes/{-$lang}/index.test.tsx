@@ -27,6 +27,7 @@ import type { RouterContext } from '@/app/router'
 import { routeTree } from '@/routeTree.gen'
 import { queryClient } from '@/app/queryClient'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { testCapabilities, accountsCapabilities } from '@/test/capabilities'
 import { Route as IndexRoute } from './index'
 
 const INDEX_ID = '/{-$lang}/'
@@ -139,7 +140,7 @@ describe('comportement de l’index (options réelles de la route)', () => {
     act(() => {
       useAppShellStore.setState({
         isBootstrapped: true,
-        authMode: 'xbox',
+        capabilities: testCapabilities(accountsCapabilities('xbox')),
         currentUsername: 'alice',
         currentPlayer: PLAYER,
         availablePlayers: [PLAYER],

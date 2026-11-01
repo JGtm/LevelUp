@@ -188,7 +188,7 @@ func run(ctx context.Context, cfg *config.AppConfig, f cliFlags) error {
 	// 3. Shared DB en RW (serveur stoppé) + migrations.
 	sharedPath := f.sharedDB
 	if strings.TrimSpace(sharedPath) == "" {
-		sharedPath = titlepkg.NewPathResolver(cfg.RepoRoot).SharedDBPath(f.title)
+		sharedPath = cfg.PathResolver().SharedDBPath(f.title)
 	}
 	f.sharedDB = sharedPath // propagé aux flush ultérieurs
 	fmt.Printf("shared DB: %s\n", sharedPath)
@@ -215,7 +215,7 @@ func run(ctx context.Context, cfg *config.AppConfig, f cliFlags) error {
 	// 5. Checkpoint (reprise). Défaut dérivé de RepoRoot (dossier garanti existant
 	// après MkdirAll au save), pas relatif au CWD.
 	if strings.TrimSpace(f.checkpoint) == "" {
-		f.checkpoint = filepath.Join(cfg.RepoRoot, "data", "world_backfill_checkpoint.json")
+		f.checkpoint = filepath.Join(cfg.Roots().Data, "world_backfill_checkpoint.json")
 	}
 	cp := loadCheckpoint(f.checkpoint, f.force)
 	fmt.Printf("checkpoint: %s\n", f.checkpoint)

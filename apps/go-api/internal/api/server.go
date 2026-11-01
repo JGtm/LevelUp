@@ -480,7 +480,7 @@ func buildTitleRuntime(serverCtx context.Context, cfg *config.AppConfig, titleRe
 	// (Halo 5 attendu vide : aucune image de rang SR → le SR s'affiche en chiffre, plus
 	// d'image de rang HINF erronée). En démo on saute (metadata title = coquille vide).
 	if !cfg.DemoMode {
-		rankImgPathResolver := titlePkg.NewPathResolver(cfg.RepoRoot)
+		rankImgPathResolver := cfg.PathResolver()
 		for _, td := range titleRegistry.Active() {
 			if td.Slug == titlePkg.DefaultSlug {
 				continue // HINF déjà chargé ci-dessus (byte-identique)

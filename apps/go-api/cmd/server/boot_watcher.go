@@ -54,7 +54,7 @@ func startWatcher(st *bootState) {
 		return nil, fmt.Errorf("registry non initialisé")
 	}
 	var watcherDaemon *watcher.Daemon
-	if !boot.cutInDemo(stepWatcher) {
+	if !boot.isCut(stepWatcher) {
 		watcherDaemon = startWatcherDaemon(ctx, cfg, watcherDeps{
 			settingsStore:  settingsStore,
 			tokenProvider:  tokenProvider,
@@ -173,7 +173,7 @@ func watcherPresenceEnabled(settingsStore *settings.Store) bool {
 // loadWatcherTokens charge l'état du tracker (mono-user) ; s'il est vide, adopte un compte du
 // store multi-user dont le XSTS est valide.
 func loadWatcherTokens(cfg *config.AppConfig) (*auth.TokenStore, *auth.StoredTokens, bool) {
-	tokenStorePath := title.NewPathResolver(cfg.RepoRoot).WatcherTokensPath()
+	tokenStorePath := cfg.PathResolver().WatcherTokensPath()
 	slog.Debug("watcher: tokens path", "path", tokenStorePath)
 	store := auth.NewTokenStore(tokenStorePath)
 	tokens, err := store.Load()
@@ -188,7 +188,7 @@ func loadWatcherTokens(cfg *config.AppConfig) (*auth.TokenStore, *auth.StoredTok
 	// le tracker ; les autres seront subscribés via Daemon.AddPlayer (post-login
 	// pour les nouveaux, ou au prochain boot pour les existants).
 	if tokens.XSTSToken == "" {
-		multiDir := title.NewPathResolver(cfg.RepoRoot).WatcherTokensDir()
+		multiDir := cfg.PathResolver().WatcherTokensDir()
 		multi := auth.NewMultiUserTokenStore(multiDir)
 		all, scanErr := multi.LoadAll()
 		if scanErr != nil {
@@ -228,7 +228,7 @@ func refreshWatcherTokens(ctx context.Context, cfg *config.AppConfig, tokenProvi
 	//    EnsureWatcherAccessToken réutilise l'access_token courant s'il est
 	//    valide, sinon tente un OAuth v2 refresh depuis le MultiUserTokenStore
 	//    (source unique ADR 0023) et persiste la rotation dans ce store.
-	multiStore := auth.NewMultiUserTokenStore(title.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
+	multiStore := auth.NewMultiUserTokenStore(cfg.PathResolver().WatcherTokensDir())
 	freshAccessToken, err := auth.EnsureWatcherAccessToken(ctx, multiStore, store, tokenProvider, tokens.XSTSGamertag)
 	if err != nil {
 		slog.Warn("watcher: EnsureWatcherAccessToken erreur structurelle", "err", err)
@@ -342,7 +342,7 @@ func newWatcherDaemon(cfg *config.AppConfig, deps watcherDeps, titleReg *title.R
 	// daemon est déclaré ici pour permettre à la closure RefreshRTAAuth d'y référer
 	// avant que NewDaemon retourne (pattern forward-reference via pointeur).
 	var daemon *watcher.Daemon
-	watcherPR := title.NewPathResolver(cfg.RepoRoot)
+	watcherPR := cfg.PathResolver()
 	daemon = watcher.NewDaemon(watcher.DaemonConfig{
 		RepoRoot:        cfg.RepoRoot,
 		SteamAPIKey:     os.Getenv("STEAM_API_KEY"),
@@ -405,7 +405,7 @@ func runWatcherRefreshLoop(ctx context.Context, cfg *config.AppConfig, daemon *w
 	// le MultiUserTokenStore est à la fois la SOURCE du refresh_token du tracker
 	// et la destination miroir de ses écritures XSTS/access_token. Sans lui, la
 	// boucle n'a plus aucune credential et skippe silencieusement (log Debug).
-	multiMirror := auth.NewMultiUserTokenStore(title.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
+	multiMirror := auth.NewMultiUserTokenStore(cfg.PathResolver().WatcherTokensDir())
 	refreshLoop := auth.NewRefreshLoop(store, func(result *auth.XSTSResult) {
 		daemon.UpdateAuth(result.AuthHeader())
 	}).WithMultiUserMirror(multiMirror).

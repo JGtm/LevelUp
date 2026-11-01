@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
-	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/notify"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/ops"
@@ -42,7 +41,7 @@ const diskWatchInterval = 15 * time.Minute
 // à chaque push main, crash-loop disque plein) re-notifiait via le chemin « boot »
 // à CHAQUE boot → rafale d'alertes Discord identiques observée en prod.
 func (r *ServiceRegistry) RunDiskWatchLoop(ctx context.Context) {
-	store := adminstate.NewFileStore(titlePkg.NewPathResolver(r.cfg.RepoRoot).DiskWatchStatePath())
+	store := adminstate.NewFileStore(r.cfg.PathResolver().DiskWatchStatePath())
 	state := loadDiskWatchState(ctx, store)
 	state = r.diskWatchTick(ctx, state, store)
 	t := time.NewTicker(diskWatchInterval)

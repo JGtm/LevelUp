@@ -188,7 +188,7 @@ func resolveTokensWithoutPlayerDB(ctx context.Context, cfg *config.AppConfig, pl
 	if xuid == "" {
 		return nil, fmt.Errorf("joueur %q absent (ou sans xuid) de db_profiles.json pour le titre %s", playerSlug, titleSlug)
 	}
-	store := authpkg.NewMultiUserTokenStore(titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
+	store := authpkg.NewMultiUserTokenStore(cfg.PathResolver().WatcherTokensDir())
 	result, err := authpkg.RefreshHaloTokensViaStoreFirst(ctx, store, authpkg.NewSISUProvider(), xuid, gamertag)
 	if err != nil {
 		return nil, err

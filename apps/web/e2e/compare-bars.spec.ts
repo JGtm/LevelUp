@@ -44,6 +44,11 @@ const BOOTSTRAP = {
     can_read_local_data: true, can_run_sync: false, can_use_live_halo: false,
     can_manage_settings: true, can_reset_media_index: false, can_view_media: false,
     can_self_provision: false, can_start_initial_sync: false, can_manage_instance: false,
+    // Profil demo (ADR 0044) : réglages et dépôt figés, mise en commun des jetons non proposée.
+    can_use_accounts: false, can_sign_in_with_xbox: false, can_use_invitations: false, can_use_groups: false,
+    can_pool_tokens: false, can_use_admin: true, can_use_restic: false, can_use_discord: false,
+    can_use_outbound_network: false, can_update_app: false, can_offer_windows_download: true,
+    can_edit_settings: false, can_upload_media: false, deployment: 'demo',
   },
   settings_excerpt: { lang: 'fr', user_timezone: 'UTC', show_records: true, normalize_mode_labels: true },
   auth_mode: 'none',

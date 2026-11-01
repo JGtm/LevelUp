@@ -130,6 +130,31 @@ so that the plan and the code agree; the file names are fixed at L10.
 - Web, L10.5: the 66 reads of `demo_mode|demoMode|auth_mode|authMode` read capabilities; `make generate-types` shows no
   diff outside `deployment`.
 
+## Implementation notes (L10, 2026-11-01)
+
+- **Resolver.** `internal/config/deployment.go`; `LoadServer(launchMode)` and `Load()` both call it through `load`
+  (`Load()` always with the default launch mode, so command-line tools get a profile too). `AppConfig` embeds
+  `DeploymentProfile` (`Deployment`, `Capabilities`). `refresh-only` is refused by the resolver like any launch mode
+  other than the default and `desktop`, until its own lot opens it.
+- **Capabilities published.** `deployment` lives inside `capabilities` (witness T3: `jq 'del(.capabilities.deployment)'`).
+  Besides the ten families named in D-3 (`can_use_accounts`, `can_use_invitations`, `can_use_groups`, `can_pool_tokens`,
+  `can_use_admin`, `can_use_restic`, `can_use_discord`, `can_use_outbound_network`, `can_update_app`,
+  `can_offer_windows_download`), three capabilities were needed so that every `demo_mode` / `auth_mode` reader of the web
+  client (L10.5) keeps its exact meaning: `can_sign_in_with_xbox` (SSO sign-in versus password sign-in),
+  `can_edit_settings` and `can_upload_media` (frozen in the demo).
+- **Derived authentication mode.** `AuthMode` is `desktop` internally; `/bootstrap` still publishes `none` (the API
+  contract keeps `none`, `password`, `xbox`). `authz.Enforced` is false for it by construction, and the session
+  middlewares (`RequireAuth`, `RequireAdmin`, `IsAuthenticatedCtx`) treat it like `none` through `authz.AuthDisabled`.
+- **Task table.** `taskPolicies` in `cmd/server/background_tasks.go`: columns `hosted`, `dev`, `demo` reproduce the former
+  `demoPolicies` (asserted by `TestBackgroundTasks_ColonneDemoInchangee`); the `desktop` column cuts only the public
+  world-leaderboard capture. A task absent from the table is cut in `demo` and `desktop`, kept in `hosted` and `dev`. The
+  boot log line is now `tâches de fond coupées par le profil de déploiement` (attribute `profil`). `taskAppRelease`
+  runs under the scheduler context.
+- **Ratchet.** `archlint/deployment_single_resolver_test.go`; the dated allowlist counts, per file, the selectors
+  `.DemoMode` / `.AuthMode` and the `LEVELUP_ENV` string literals found in non-test code by the AST (comments excluded:
+  83, 52 and 3 reads in 23 files on 2026-11-01), plus the ban on comparing a `config.Deployment` outside the resolver.
+  The existing `demo_state_guard_test.go` allowlist for raw `.DemoMode` reads moved from `config.go` to `deployment.go`.
+
 ## Alternatives rejected
 
 - **A boolean `DesktopMode` next to `DemoMode`.** A fourth reader axis: each existing `if DemoMode` would have to decide

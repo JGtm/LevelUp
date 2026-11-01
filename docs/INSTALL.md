@@ -271,6 +271,22 @@ docker compose down
 | `./db_profiles.json` | `/app/db_profiles.json` | Player profiles |
 | `./app_settings.json` | `/app/app_settings.json` | Application settings |
 
+### The three roots
+
+The program reads and writes in three places, each set by one environment variable (ADR 0008, amendment
+"two roots"). On a checkout, with no variable set, they are the folders you already know and nothing changes.
+
+| Root | Variable | Default | Holds |
+|------|----------|---------|-------|
+| Resources | `LEVELUP_RESOURCES_DIR` (then `LEVELUP_REPO_ROOT`) | the checkout, auto-detected | what ships with the program: `config/`, `static/`, the web build, `data/titles/{slug}/reference/`, `metadata-prebuilt.zip` |
+| Data | `LEVELUP_DATA_DIR` | `<resources>/data` | databases, sessions, auth, caches, backups; with the variable set, also `db_profiles.json`, `app_settings.json` and `.env.local` |
+| Logs | `LEVELUP_LOGS_DIR` | `<resources>/logs` | log files and the crash capture |
+
+The Docker image sets all three (`/app`, `/app/data`, `/app/data/logs`); the compose file keeps
+`db_profiles.json` and `app_settings.json` mounted under `/app` through `LEVELUP_DB_PROFILES` and
+`LEVELUP_APP_SETTINGS`, so the layout on the host does not change. Never point `LEVELUP_DATA_DIR` at a
+folder inside the resources root of an installed (read-only) program.
+
 ---
 
 ## Troubleshooting

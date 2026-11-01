@@ -102,7 +102,7 @@ export interface EngineStems {
 
 /**
  * LA TABLE FAMILLE -> STEMS, alignée sur `family` du document (`VehicleTrack.family`) et sur
- * les fichiers `static/sounds/halo_infinite/vehicle_<famille>_<clip>.wav` (garde-rail
+ * les fichiers `static/sounds/halo_infinite/vehicle_<famille>_<clip>.ogg` (garde-rail
  * `replaySoundAssets.guard.test.ts` : manifeste et dossier sont la même liste). Une famille
  * absente de cette table (tourelles, châssis non résolu) est un SILENCE PROPRE.
  *

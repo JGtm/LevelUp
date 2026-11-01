@@ -6,22 +6,18 @@ import (
 	"io"
 	"log/slog"
 	"os"
-	"path/filepath"
 
 	"levelup/go-api/internal/domain/title"
 )
 
-const (
-	prebuiltMetadataZipName = "metadata-prebuilt.zip"
-	prebuiltMetadataEntry   = "metadata.duckdb"
-)
+const prebuiltMetadataEntry = "metadata.duckdb"
 
 // extractPrebuiltMetadataIfAbsent décompresse metadata-prebuilt.zip vers
 // metadata.duckdb si cette base n'existe pas encore.
 //
 // Sur un clone frais, metadata.duckdb est absent : sans ce pas, les référentiels
 // (career_ranks, playlists, citations…) seraient vides jusqu'à un fetch live.
-// Le zip (tracké git, dans le dossier warehouse) contient une base metadata prête
+// Le zip (tracké git, livré avec le programme : PathResolver.PrebuiltMetadataZipPath) contient une base metadata prête
 // à l'emploi ; on l'extrait AVANT runMigrations, qui applique ensuite tout schéma
 // plus récent (idempotent).
 //
@@ -37,7 +33,7 @@ func extractPrebuiltMetadataIfAbsent(pr *title.PathResolver, titleSlug string) e
 		return nil // base déjà présente — ne pas écraser
 	}
 
-	zipPath := filepath.Join(pr.WarehouseDir(titleSlug), prebuiltMetadataZipName)
+	zipPath := pr.PrebuiltMetadataZipPath(titleSlug)
 	if _, err := os.Stat(zipPath); err != nil {
 		slog.Debug("prebuilt metadata: zip absent, skip (migrations créeront une base vide)",
 			"zip", zipPath)

@@ -315,7 +315,7 @@ func (r *ServiceRegistry) requireArtifactBeforeSuccess(ctx context.Context, req 
 	if slug == "" {
 		slug = titlePkg.DefaultSlug
 	}
-	path := titlePkg.NewPathResolver(r.cfg.RepoRoot).ReplayArtifactPath(slug, job.MatchID)
+	path := r.cfg.PathResolver().ReplayArtifactPath(slug, job.MatchID)
 	if replaybuild.ArtifactUpToDate(path) {
 		return nil
 	}

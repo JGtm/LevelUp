@@ -20,6 +20,8 @@ import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
 import { resolvePageTitle } from '@/lib/pageTitle'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useDeploymentCapability } from '@/stores/useDeploymentCapability'
+import { deploymentCapabilityOf } from '@/lib/capabilities/deploymentCapabilities'
 import { AppShell } from '@/components/shell/AppShell'
 import { log } from '@/components/shell/_logger'
 import { isAnonymousPath } from '@/components/shell/shellNavigation'
@@ -40,7 +42,7 @@ export function RootLayout() {
   const hydrateFromBootstrap = useAppShellStore((s) => s.hydrateFromBootstrap)
   const isBootstrapped = useAppShellStore((s) => s.isBootstrapped)
   const setupRequired = useAppShellStore((s) => s.setupRequired)
-  const authMode = useAppShellStore((s) => s.authMode)
+  const canUseAccounts = useDeploymentCapability('can_use_accounts')
   const currentUsername = useAppShellStore((s) => s.currentUsername)
   const firstLaunch = useAppShellStore((s) => s.firstLaunch)
   const isAdmin = useAppShellStore((s) => s.isAdmin)
@@ -162,10 +164,10 @@ export function RootLayout() {
 
     hydrateFromBootstrap(data)
 
-    // Auth locale : rediriger si pas connecté (modes password ET xbox).
+    // Auth locale : rediriger si pas connecté (comptes en service : modes password ET xbox).
     // En mode xbox, /register reste accessible UNIQUEMENT pour le bootstrap admin
     // initial (firstLaunch=true) — RegisterPage redirige vers /login sinon.
-    if (data.auth_mode === 'password' || data.auth_mode === 'xbox') {
+    if (deploymentCapabilityOf(data.capabilities, 'can_use_accounts')) {
       const path = window.location.pathname
       // Pages consultables sans compte (confidentialité) : ne jamais les
       // éjecter vers /login, le pied de page de l'écran de connexion y renvoie.
@@ -206,7 +208,7 @@ export function RootLayout() {
     // derniers matchs » et n'en sortait jamais.
     const setupPath = setupRedirectPath(
       {
-        authMode: data.auth_mode ?? 'none',
+        canUseAccounts: deploymentCapabilityOf(data.capabilities, 'can_use_accounts'),
         currentUsername: data.current_username ?? null,
         isAdmin: data.is_admin ?? false,
         availablePlayerCount: data.available_players?.length ?? 0,
@@ -279,7 +281,7 @@ export function RootLayout() {
     return <Outlet />
   }
   const ownProfileMissing = needsOwnProfile({
-    authMode,
+    canUseAccounts,
     currentUsername,
     isAdmin,
     availablePlayerCount: availablePlayers.length,
@@ -288,13 +290,13 @@ export function RootLayout() {
     return <Outlet />
   }
 
-  // Auth locale non connectée → pages login/register sans shell (password ET xbox)
-  if ((authMode === 'password' || authMode === 'xbox') && !currentUsername) {
+  // Auth locale non connectée → pages login/register sans shell (comptes en service)
+  if (canUseAccounts && !currentUsername) {
     return <Outlet />
   }
 
   // Premier lancement → page register sans shell
-  if ((authMode === 'password' || authMode === 'xbox') && firstLaunch) {
+  if (canUseAccounts && firstLaunch) {
     return <Outlet />
   }
 

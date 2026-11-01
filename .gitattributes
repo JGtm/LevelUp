@@ -17,3 +17,4 @@
 *.eot binary
 *.db binary
 *.duckdb binary
+*.ogg binary

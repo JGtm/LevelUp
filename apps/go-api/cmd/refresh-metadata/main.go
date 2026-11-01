@@ -346,7 +346,7 @@ func openMetadataDB(cfg *config.AppConfig, slug string) (*duckdb.DB, error) {
 	if cfg.RepoRoot == "" {
 		return nil, fmt.Errorf("LEVELUP_REPO_ROOT non défini — ne peut pas localiser metadata.duckdb")
 	}
-	metaPath := titlePkg.NewPathResolver(cfg.RepoRoot).MetadataDBPath(slug)
+	metaPath := cfg.PathResolver().MetadataDBPath(slug)
 	return duckdb.OpenReadWrite(metaPath)
 }
 
@@ -383,7 +383,7 @@ func resolveTokens(ctx context.Context, cfg *config.AppConfig, playerSlug string
 	}
 
 	// ADR 0023 — pipeline canonique via MultiUserTokenStore (source unique).
-	store := authpkg.NewMultiUserTokenStore(titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
+	store := authpkg.NewMultiUserTokenStore(cfg.PathResolver().WatcherTokensDir())
 
 	result, err := authpkg.RefreshHaloTokensViaStoreFirst(ctx, store, provider, pdb.XUID, pdb.Gamertag)
 	if err != nil {

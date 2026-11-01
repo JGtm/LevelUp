@@ -8,6 +8,7 @@ import { http, HttpResponse } from 'msw'
 import { renderWithProviders } from '@/test/render-utils'
 import { server } from '@/test/setup'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { testCapabilities } from '@/test/capabilities'
 import { UploadButton } from './UploadButton'
 
 const { toastError, toastSuccess } = vi.hoisted(() => ({ toastError: vi.fn(), toastSuccess: vi.fn() }))
@@ -22,7 +23,7 @@ function pickFile(container: HTMLElement) {
 describe('UploadButton — serveur occupé', () => {
   beforeEach(() => {
     toastError.mockClear()
-    useAppShellStore.setState({ demoMode: false, locale: 'fr' })
+    useAppShellStore.setState({ capabilities: testCapabilities(), locale: 'fr' })
     server.use(
       http.post('/api/v1/players/:slug/media/upload', () =>
         HttpResponse.json(
@@ -57,7 +58,7 @@ describe('UploadButton — serveur occupé', () => {
 describe('UploadButton — contenu non concordant avec l’extension (415)', () => {
   beforeEach(() => {
     toastError.mockClear()
-    useAppShellStore.setState({ demoMode: false, locale: 'fr' })
+    useAppShellStore.setState({ capabilities: testCapabilities(), locale: 'fr' })
     server.use(
       http.post('/api/v1/players/:slug/media/upload', () =>
         HttpResponse.json(

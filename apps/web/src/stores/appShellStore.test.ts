@@ -8,6 +8,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { useAppShellStore, buildTitleSwitcherEntries } from '@/stores/appShellStore'
 import { DEFAULT_LOCALE } from '@/lib/i18n/locale'
+import { testCapabilities } from '@/test/capabilities'
 
 const PLAYER = {
   player_slug: 'test-player',
@@ -37,17 +38,7 @@ const BOOTSTRAP_READY = {
     discord_configured: false,
     tailscale_enabled: false,
   },
-  capabilities: {
-    can_read_local_data: true,
-    can_run_sync: true,
-    can_use_live_halo: true,
-    can_manage_settings: true,
-    can_reset_media_index: true,
-    can_view_media: true,
-    can_self_provision: true,
-    can_start_initial_sync: true,
-    can_manage_instance: true,
-  },
+  capabilities: testCapabilities(),
   settings_excerpt: {
     lang: 'fr',
     user_timezone: 'UTC',

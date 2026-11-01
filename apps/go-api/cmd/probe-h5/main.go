@@ -29,7 +29,6 @@ import (
 	"time"
 
 	"levelup/go-api/internal/config"
-	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
 	halo5 "levelup/go-api/internal/games/halo_5"
 	"levelup/go-api/internal/games/mappings"
@@ -90,7 +89,7 @@ func main() {
 		fatalf("owner %q introuvable dans db_profiles", ownerGT)
 	}
 
-	storeDir := titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir()
+	storeDir := cfg.PathResolver().WatcherTokensDir()
 	store := auth.NewMultiUserTokenStore(storeDir)
 	provider := auth.NewSISUProvider()
 

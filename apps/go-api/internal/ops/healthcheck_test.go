@@ -5,6 +5,7 @@
 package ops
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -69,5 +70,35 @@ func TestHealthReport_Summary_WithFailures(t *testing.T) {
 	s := report.Summary()
 	if s == "" {
 		t.Error("expected non-empty summary with failures")
+	}
+}
+
+// TestRunHealthcheck_FichiersDeConfigurationExplicites — les chemins résolus par la configuration
+// (LEVELUP_DB_PROFILES / LEVELUP_APP_SETTINGS, fichiers montés hors de DataRoot) priment sur ceux
+// du PathResolver : le contrôle porte sur le fichier réellement lu.
+func TestRunHealthcheck_FichiersDeConfigurationExplicites(t *testing.T) {
+	root, elsewhere := t.TempDir(), t.TempDir()
+	dbp := filepath.Join(elsewhere, "db_profiles.json")
+	app := filepath.Join(elsewhere, "app_settings.json")
+	for _, p := range []string{dbp, app} {
+		if err := os.WriteFile(p, []byte("{}"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	report := RunHealthcheck(context.Background(), HealthcheckOptions{RepoRoot: root, DBProfilesPath: dbp, AppSettingsPath: app})
+	for _, c := range report.Checks {
+		if (c.Name == "db_profiles.json" || c.Name == "app_settings.json") && !c.OK {
+			t.Errorf("%s : %s — le chemin explicite %s n'a pas été utilisé", c.Name, c.Message, elsewhere)
+		}
+	}
+	report = RunHealthcheck(context.Background(), HealthcheckOptions{RepoRoot: root})
+	var absent int
+	for _, c := range report.Checks {
+		if (c.Name == "db_profiles.json" || c.Name == "app_settings.json") && !c.OK {
+			absent++
+		}
+	}
+	if absent != 2 {
+		t.Errorf("sans chemin explicite, les deux fichiers doivent manquer sous %s (absents=%d)", root, absent)
 	}
 }

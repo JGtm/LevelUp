@@ -68,9 +68,9 @@ export function routeShowsSoloFilters(pathname: string): boolean {
  * composant, règle 7) : IndexPage se contente de projeter le résultat.
  *
  * Gardes, du plus prioritaire au moins prioritaire :
- *  1. `wait`   — bootstrap pas encore hydraté. Avant hydratation `authMode` vaut son
- *               défaut 'none', donc la garde `login` ne serait pas fiable : on attend.
- *  2. `login`  — auth requise (password|xbox) mais session anonyme. Typiquement juste
+ *  1. `wait`   — bootstrap pas encore hydraté. Avant hydratation `canUseAccounts` vaut son
+ *               défaut faux, donc la garde `login` ne serait pas fiable : on attend.
+ *  2. `login`  — comptes en service (can_use_accounts) mais session anonyme. Typiquement juste
  *               après « Se déconnecter » (qui recharge sur '/'). En anonyme xbox
  *               `available_players` est vide (filtrage ownership, ADR 0029) : sans
  *               cette garde on tombait sur `setup`, rendu via le <Outlet/> nu de
@@ -89,7 +89,7 @@ export type IndexRedirect =
 
 export interface IndexRedirectInput {
   isBootstrapped: boolean
-  authMode: 'none' | 'password' | 'xbox'
+  canUseAccounts: boolean
   currentUsername: string | null
   currentPlayerSlug?: string | null
   firstAvailablePlayerSlug?: string | null
@@ -99,8 +99,7 @@ export function resolveIndexRedirect(input: IndexRedirectInput): IndexRedirect {
   if (!input.isBootstrapped) {
     return { kind: 'wait' }
   }
-  const authRequired = input.authMode === 'password' || input.authMode === 'xbox'
-  if (authRequired && !input.currentUsername) {
+  if (input.canUseAccounts && !input.currentUsername) {
     return { kind: 'login' }
   }
   const slug = input.currentPlayerSlug ?? input.firstAvailablePlayerSlug

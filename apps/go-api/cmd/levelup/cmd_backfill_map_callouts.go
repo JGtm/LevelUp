@@ -115,7 +115,7 @@ func cartesDeLaPasse(ctx context.Context, cfg *config.AppConfig, o mapCalloutsOp
 		}
 		return out, nil
 	}
-	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
+	pr := cfg.PathResolver()
 	sharedDB, releaseShared, err := duckdb.OpenReadForQuery(pr.SharedDBPath(o.titleSlug))
 	if err != nil {
 		return nil, fmt.Errorf("ouverture en lecture de la base partagée (serveur arrêté ?) : %w", err)
@@ -175,7 +175,7 @@ func racineDesVariantes(cfg *config.AppConfig, o mapCalloutsOptions) string {
 	if v := strings.TrimSpace(o.cacheDir); v != "" {
 		return v
 	}
-	return titlePkg.NewPathResolver(cfg.RepoRoot).CacheRootDir()
+	return cfg.PathResolver().CacheRootDir()
 }
 
 func identitesDe(c replayartifacts.CarteJouee) mapcatalog.IdentitesDeCarte {

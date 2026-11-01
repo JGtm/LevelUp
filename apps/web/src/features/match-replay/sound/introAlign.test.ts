@@ -18,7 +18,7 @@ import { type FakeContext, flushAudio, installFakeAudio, okAudioResponse } from 
 import { introLateBoundS, playIntroAligned } from './introSound'
 import { ReplayAudioPlayer } from './replayAudio'
 
-const URL = '/static/sounds/halo_infinite/intro_music_01.wav'
+const URL = '/static/sounds/halo_infinite/intro_music_01.ogg'
 
 let ctx: FakeContext
 let fetchMock: ReturnType<typeof vi.fn>

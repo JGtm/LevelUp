@@ -5,6 +5,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '@/test/render-utils'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { testCapabilities, demoCapabilities } from '@/test/capabilities'
 import { api } from '@/lib/api/client'
 import { PoolSharingBanner } from './PoolSharingBanner'
 
@@ -19,7 +20,7 @@ vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
 describe('PoolSharingBanner', () => {
   afterEach(() => {
-    useAppShellStore.setState({ poolSharing: 'unavailable', demoMode: false, locale: 'fr' })
+    useAppShellStore.setState({ poolSharing: 'unavailable', capabilities: testCapabilities(), locale: 'fr' })
     vi.restoreAllMocks()
   })
 
@@ -32,8 +33,8 @@ describe('PoolSharingBanner', () => {
     },
   )
 
-  it('ne rend rien en démo même sans décision', () => {
-    useAppShellStore.setState({ poolSharing: 'undecided', demoMode: true })
+  it('ne rend rien quand la mise en commun n’est pas proposée (démo), même sans décision', () => {
+    useAppShellStore.setState({ poolSharing: 'undecided', capabilities: testCapabilities(demoCapabilities()) })
     const { container } = renderWithProviders(<PoolSharingBanner />)
     expect(container).toBeEmptyDOMElement()
   })

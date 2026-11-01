@@ -25,8 +25,8 @@ func runHealthcheck(cfg *config.AppConfig, args []string) error {
 		return err
 	}
 	report := ops.RunHealthcheck(context.Background(), ops.HealthcheckOptions{
-		RepoRoot: cfg.RepoRoot,
-		Verbose:  *verbose,
+		RepoRoot: cfg.RepoRoot, Verbose: *verbose,
+		DBProfilesPath: cfg.DBProfilesPath, AppSettingsPath: cfg.AppSettingsPath,
 	})
 	fmt.Print(report.Summary())
 	if !report.OK {
@@ -68,7 +68,7 @@ func runCheckEnv(cfg *config.AppConfig) error {
 	fmt.Printf("app_settings.json : %s\n", cfg.AppSettingsPath)
 	fmt.Println()
 	// Healthcheck rapide
-	report := ops.RunHealthcheck(context.Background(), ops.HealthcheckOptions{RepoRoot: cfg.RepoRoot})
+	report := ops.RunHealthcheck(context.Background(), ops.HealthcheckOptions{RepoRoot: cfg.RepoRoot, DBProfilesPath: cfg.DBProfilesPath, AppSettingsPath: cfg.AppSettingsPath})
 	fmt.Print(report.Summary())
 
 	// Capacités de l'outillage média (ffmpeg/ffprobe) : présence + encodeurs

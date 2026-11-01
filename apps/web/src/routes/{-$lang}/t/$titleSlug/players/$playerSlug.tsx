@@ -7,6 +7,7 @@
 import { createFileRoute, Navigate, Outlet, redirect, useRouterState } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { passwordOnlyAccounts } from '@/lib/capabilities/deploymentCapabilities'
 import { useSoloFilterStore } from '@/stores/soloFilterStore'
 import { useEffect, useRef } from 'react'
 import { NavL2 } from '@/components/shell/NavL2'
@@ -25,7 +26,7 @@ export const Route = createFileRoute('/{-$lang}/t/$titleSlug/players/$playerSlug
     const {
       isBootstrapped,
       setupRequired,
-      authMode,
+      capabilities,
       currentUsername,
       availablePlayers,
       currentPlayer,
@@ -33,7 +34,7 @@ export const Route = createFileRoute('/{-$lang}/t/$titleSlug/players/$playerSlug
     if (!isBootstrapped) return // Bootstrap pas encore terminé — __root gère l'écran de chargement
     if (setupRequired) throw redirect({ to: '/setup' })
     // Rediriger vers login uniquement en mode password sans utilisateur connecté
-    if (authMode === 'password' && !currentUsername) throw redirect({ to: '/login' })
+    if (passwordOnlyAccounts(capabilities) && !currentUsername) throw redirect({ to: '/login' })
 
     // Slug inexistant → rediriger vers le joueur courant ou le premier disponible.
     if (availablePlayers.length > 0) {

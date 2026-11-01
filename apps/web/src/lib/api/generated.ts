@@ -5367,15 +5367,46 @@ export interface components {
             Severity: string;
         };
         CapabilityMap: {
+            /** @description Réglages de l'instance modifiables (figés en démo). */
+            can_edit_settings: boolean;
             can_manage_instance: boolean;
             can_manage_settings: boolean;
+            /** @description Téléchargement de l'application Windows proposé. */
+            can_offer_windows_download: boolean;
+            /** @description Mise en commun des jetons proposée à l'utilisateur. */
+            can_pool_tokens: boolean;
             can_read_local_data: boolean;
             can_reset_media_index: boolean;
             can_run_sync: boolean;
             can_self_provision: boolean;
+            /** @description Connexion par le SSO Xbox (mode xbox). */
+            can_sign_in_with_xbox: boolean;
             can_start_initial_sync: boolean;
+            /** @description Mise à jour de l'application par la coquille desktop. */
+            can_update_app: boolean;
+            /** @description Dépôt de captures (refusé en démo). */
+            can_upload_media: boolean;
+            /** @description Comptes et inscriptions (authentification password ou xbox). */
+            can_use_accounts: boolean;
+            /** @description Espace d'administration de l'instance. */
+            can_use_admin: boolean;
+            /** @description Relais d'alertes Discord. */
+            can_use_discord: boolean;
+            /** @description Groupes (accès mutuel entre comptes). */
+            can_use_groups: boolean;
+            /** @description Codes d'invitation entre comptes et groupes. */
+            can_use_invitations: boolean;
             can_use_live_halo: boolean;
+            /** @description Sortie du serveur vers les services tiers (API Halo, Microsoft). */
+            can_use_outbound_network: boolean;
+            /** @description Sauvegarde restic des bases. */
+            can_use_restic: boolean;
             can_view_media: boolean;
+            /**
+             * @description Profil de déploiement (affichage et diagnostic ; ne jamais brancher dessus).
+             * @enum {string}
+             */
+            deployment: "hosted" | "desktop" | "demo" | "dev";
         };
         CareerCSRRank: {
             badge_image_url?: string;

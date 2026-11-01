@@ -51,7 +51,7 @@ func runBackfillSquadCreators(cfg *config.AppConfig, args []string) error {
 	}
 	ctx := context.Background()
 
-	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
+	resolver := cfg.PathResolver()
 	socialPath := resolver.SharedSocialDBPath(*titleSlug)
 	if _, err := os.Stat(socialPath); err != nil {
 		return fmt.Errorf("shared_social introuvable (%s): %w", socialPath, err)

@@ -87,7 +87,7 @@ func runBackfillMatchSummaries(cfg *config.AppConfig, args []string) error {
 		return fmt.Errorf("--batch doit être > 0 (reçu %d)", o.batch)
 	}
 
-	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
+	pr := cfg.PathResolver()
 	sharedPath := pr.SharedDBPath(o.titleSlug)
 	if _, err := os.Stat(sharedPath); err != nil {
 		return fmt.Errorf("shared_matches introuvable (%s): %w", sharedPath, err)

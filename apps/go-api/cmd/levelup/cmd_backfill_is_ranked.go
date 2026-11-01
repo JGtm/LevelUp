@@ -44,7 +44,7 @@ func runBackfillIsRanked(cfg *config.AppConfig, args []string) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	sharedPath := titlePkg.NewPathResolver(cfg.RepoRoot).SharedDBPath(*titleSlug)
+	sharedPath := cfg.PathResolver().SharedDBPath(*titleSlug)
 	if _, err := os.Stat(sharedPath); err != nil {
 		return fmt.Errorf("base introuvable (%s): %w", sharedPath, err)
 	}

@@ -15,6 +15,7 @@ import { DEFAULT_LOCALE, normalizeLocale, type Locale } from '@/lib/i18n/locale'
 import { rememberLocale } from '@/lib/i18n/bootLocale'
 import { useSoloFilterStore } from '@/stores/soloFilterStore'
 import { useSquadFilterStore } from '@/stores/squadFilterStore'
+import { DEPLOYMENT_CAPABILITY_DEFAULTS } from '@/lib/capabilities/deploymentCapabilities'
 
 interface AppShellState {
   // Joueur courant
@@ -50,8 +51,8 @@ interface AppShellState {
   /** ID de job de sync initiale actif pour cette session. Null si aucun. */
   activeSyncJobId: string | null
 
-  // Auth locale
-  authMode: 'none' | 'password' | 'xbox'
+  // Auth locale (le mode d'authentification se lit dans les capacités : can_use_accounts,
+  // can_sign_in_with_xbox — useDeploymentCapability)
   registrationMode: 'invite' | 'open' | 'closed'
   /** Instance fermée : aucune nouvelle inscription / identité / BDD. */
   instanceLocked: boolean
@@ -66,9 +67,6 @@ interface AppShellState {
   firstLaunch: boolean
   /** PR 4 — Auth Code Flow OAuth dispo (true si cfg.OAuthRedirectURI configuré). */
   oauthCodeFlowEnabled: boolean
-  /** Instance démo : settings figés (read-only sauf langue/accessibilité), switch
-   * de langue client-side (le PATCH /settings est refusé en démo). */
-  demoMode: boolean
   /**
    * Code de refus (`?oauth_error=`) d'une reconnexion Xbox d'un utilisateur déjà connecté,
    * gardé par la racine quand elle le renvoie à l'accueil : le shell l'affiche
@@ -98,6 +96,8 @@ const DEFAULT_CAPABILITIES: CapabilityMap = {
   can_self_provision: false,
   can_start_initial_sync: false,
   can_manage_instance: false,
+  ...DEPLOYMENT_CAPABILITY_DEFAULTS,
+  deployment: 'dev',
 }
 
 export const useAppShellStore = create<AppShellState>((set) => ({
@@ -117,7 +117,6 @@ export const useAppShellStore = create<AppShellState>((set) => ({
   isBootstrapped: false,
   linkedHaloIdentity: null,
   activeSyncJobId: null,
-  authMode: 'none',
   registrationMode: 'invite',
   instanceLocked: false,
   reauthRequired: false,
@@ -127,7 +126,6 @@ export const useAppShellStore = create<AppShellState>((set) => ({
   currentUsername: null,
   firstLaunch: false,
   oauthCodeFlowEnabled: false,
-  demoMode: false,
   oauthRefusal: null,
 
   hydrateFromBootstrap: (data: BootstrapResponse) => {
@@ -154,7 +152,6 @@ export const useAppShellStore = create<AppShellState>((set) => ({
       isBootstrapped: true,
       linkedHaloIdentity: data.linked_halo_identity ?? null,
       activeSyncJobId: data.active_sync_job_id ?? null,
-      authMode: data.auth_mode ?? 'none',
       registrationMode: data.registration_mode ?? 'invite',
       instanceLocked: data.instance_locked ?? false,
       reauthRequired: data.reauth_required ?? false,
@@ -164,7 +161,6 @@ export const useAppShellStore = create<AppShellState>((set) => ({
       currentUsername: data.current_username ?? null,
       firstLaunch: data.first_launch ?? false,
       oauthCodeFlowEnabled: data.oauth_code_flow_enabled ?? false,
-      demoMode: data.demo_mode ?? false,
     })
     // Garde deep-link (fresh-load / bookmark) : si un `?f=` (share-link) a hydraté
     // le store solo avec un filtre généré pour un AUTRE titre, le reset. Le reset

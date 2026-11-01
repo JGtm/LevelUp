@@ -681,7 +681,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 			ImportService:     osImportSvc,
 			PostImportService: osPostImportSvc,
 			JobStore:          jobStore,
-			StashDir:          filepath.Join(cfg.RepoRoot, "data", "players"),
+			StashDir:          filepath.Join(cfg.Roots().Data, "players"),
 		}
 		// Trigger de convergence events immédiat post-import (réutilise le pool
 		// d'auth du scheduler). Conditionnel : éviter un typed-nil dans l'interface
@@ -1468,7 +1468,7 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 	// sortant est partagé par tous les clones (WithTokens), jamais recréé par requête.
 	mapImageProvider := haloadapter.NewHaloProvider()
 	assetCfg := assets.AssetConfig{
-		CacheRootDir:  titlePkg.NewPathResolver(cfg.RepoRoot).CacheRootDir(),
+		CacheRootDir:  cfg.PathResolver().CacheRootDir(),
 		MetaDBPath:    metadataDBPathFor(cfg),
 		TokenProvider: reg.AnyPlayerTokens,
 		TitleKnown:    titleRegistry.Exists,

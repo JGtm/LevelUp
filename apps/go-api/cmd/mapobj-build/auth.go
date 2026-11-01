@@ -18,7 +18,6 @@ import (
 
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
-	titlePkg "levelup/go-api/internal/domain/title"
 	authpkg "levelup/go-api/internal/platform/auth"
 )
 
@@ -45,7 +44,7 @@ func resolveTokens(ctx context.Context, cfg *config.AppConfig, playerSlug, title
 	// un joueur déclaré dans db_profiles.json a son jeton dans le store, et s'il n'en a
 	// pas, échouer ici est exactement le comportement voulu (diagnostiquer, ne pas
 	// re-capturer).
-	store := authpkg.NewMultiUserTokenStore(titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
+	store := authpkg.NewMultiUserTokenStore(cfg.PathResolver().WatcherTokensDir())
 
 	result, err := authpkg.RefreshHaloTokensViaStoreFirst(
 		ctx, store, authpkg.NewSISUProvider(), xuid, gamertag)
