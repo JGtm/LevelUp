@@ -196,7 +196,9 @@ auto-detection) before any `os.Getenv` read.
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `LEVELUP_REPO_ROOT` | Repo root (resolves `db_profiles.json`, `app_settings.json`, `data/`). | Auto-detected |
+| `LEVELUP_RESOURCES_DIR` | Resources root: what ships with the program, read-only by convention (`config/`, `static/`, the web build, the replay reference files `data/titles/{slug}/reference/`, `metadata-prebuilt.zip`). Takes precedence over `LEVELUP_REPO_ROOT`. Environment only (a `.env.local` cannot set it). | `LEVELUP_REPO_ROOT`, else auto-detected |
+| `LEVELUP_REPO_ROOT` | Compatible name of `LEVELUP_RESOURCES_DIR` (a checkout is both the resources and, by default, the data root). | Auto-detected |
+| `LEVELUP_DATA_DIR` | Data root: everything the program creates or modifies (databases, sessions, auth, caches, backups, generated map overlays). When set, `db_profiles.json`, `app_settings.json` and `.env.local` live at its top instead of the top of the resources root. Environment only. | `<resources>/data` |
 | `LEVELUP_API_HOST` | HTTP bind host. | `127.0.0.1` |
 | `LEVELUP_API_PORT` | HTTP listen port. | `8000` |
 | `LEVELUP_DB_PROFILES` | Path to `db_profiles.json`. | `<root>/db_profiles.json` |
@@ -225,7 +227,7 @@ auto-detection) before any `os.Getenv` read.
 |----------|-------------|---------|
 | `LEVELUP_LOG_LEVEL` | Log level (`debug`/`info`/`warn`/`error`). | `info` |
 | `LEVELUP_LOG_FORMAT` | Console format. | text |
-| `LEVELUP_LOGS_DIR` | Per-category log file directory. | `<root>/logs` |
+| `LEVELUP_LOGS_DIR` | Logs root: per-category log files and the crash capture. Created at startup before any writer opens a file in it. Environment only. | `<resources>/logs` |
 | `LEVELUP_LOGS_ENABLED` | Set `false` to disable file logging. | enabled |
 | `LEVELUP_LOGS_MAX_SIZE_MB` | Size cap of each `{category}.log` before rotation. `0` disables rotation (unbounded growth). | `100` |
 | `LEVELUP_LOGS_MAX_BACKUPS` | Rotated archives kept per category (`{category}.log.1..N`). `0` keeps none. | `3` |

@@ -159,6 +159,22 @@ environment, so that a child resolves the same paths as its parent, whatever its
 **A-7 — Docker.** The image sets the three variables explicitly, the dead `LEVELUP_ROOT` and `LEVELUP_DATA` are removed
 from the Dockerfile and the compose files, and the resources are mounted read-only. The data volume stays `./data`.
 
+**Implementation notes (L11, 2026-11-01).**
+
+- *Generated overlays are data.* `data/titles/{slug}/reference/generated/` (map weapon pads and callouts caught up by
+  the runtime) is written while the server runs: it lives under `DataRoot`, with the same relative path, not under
+  `ResourcesRoot`. Everything else under `reference/` stays a resource. This refines A-2.
+- *Transitional bridge.* About a hundred services receive a bare root (`repoRoot string`) and build their own
+  `PathResolver`. `internal/config` installs the process roots once (`title.InstallProcessRoots`);
+  `NewPathResolver(root)` returns them when `root` is that resources root and the default layout otherwise. The bridge
+  goes away when the allowlist of the A-5 ratchet (`archlint/repo_root_readers_test.go`) is empty.
+- *Docker.* Setting `LEVELUP_DATA_DIR` moves `db_profiles.json` and `app_settings.json` to the top of `DataRoot` (A-3);
+  the compose service keeps its host files mounted under `/app` through `LEVELUP_DB_PROFILES` and
+  `LEVELUP_APP_SETTINGS`. The `reference/` directory is not mounted read-only on the production service, because
+  `reference/generated/` shares it.
+- *Children.* `filmproc.NewRunnerRoots` imposes the three roots (an empty root is removed from the child environment);
+  the data root is imposed only when it was set explicitly.
+
 **Consequences.** `PathResolver` gains a second root and resource accessors; the 41 hand-built joins of `"data"` and the
 readers of `RepoRoot` move in three sub-lots (L11a table of path to root, L11b resources and data, L11c Docker and
 deploy scripts), each proved by T4. The journals directory is created before any writer opens a file in it, which also

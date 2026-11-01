@@ -273,6 +273,22 @@ docker compose down
 | `./db_profiles.json` | `/app/db_profiles.json` | Profils joueurs |
 | `./app_settings.json` | `/app/app_settings.json` | Paramètres applicatifs |
 
+### Les trois racines
+
+Le programme lit et écrit à trois endroits, chacun fixé par une variable d'environnement (ADR 0008, amendement
+« two roots »). Sur un checkout, sans variable posée, ce sont les dossiers habituels et rien ne change.
+
+| Racine | Variable | Défaut | Contient |
+|--------|----------|--------|----------|
+| Ressources | `LEVELUP_RESOURCES_DIR` (puis `LEVELUP_REPO_ROOT`) | le checkout, auto-détecté | ce qui est livré avec le programme : `config/`, `static/`, le build web, `data/titles/{slug}/reference/`, `metadata-prebuilt.zip` |
+| Données | `LEVELUP_DATA_DIR` | `<ressources>/data` | bases, sessions, auth, caches, sauvegardes ; variable posée, aussi `db_profiles.json`, `app_settings.json` et `.env.local` |
+| Journaux | `LEVELUP_LOGS_DIR` | `<ressources>/logs` | fichiers de log et capture des plantages |
+
+L'image Docker pose les trois (`/app`, `/app/data`, `/app/data/logs`) ; le compose garde `db_profiles.json` et
+`app_settings.json` montés sous `/app` par `LEVELUP_DB_PROFILES` et `LEVELUP_APP_SETTINGS`, donc la disposition
+sur l'hôte ne change pas. Ne jamais pointer `LEVELUP_DATA_DIR` sur un dossier de la racine des ressources d'un
+programme installé (en lecture seule).
+
 ---
 
 ## Dépannage

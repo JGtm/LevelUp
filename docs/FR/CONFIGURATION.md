@@ -199,7 +199,9 @@ ou auto-détection) avant toute lecture `os.Getenv`.
 
 | Variable | Description | Défaut |
 |----------|-------------|--------|
-| `LEVELUP_REPO_ROOT` | Racine du repo (résout `db_profiles.json`, `app_settings.json`, `data/`). | Auto-détecté |
+| `LEVELUP_RESOURCES_DIR` | Racine des ressources : ce qui est livré avec le programme, en lecture seule par convention (`config/`, `static/`, le build web, le référentiel du rejeu `data/titles/{slug}/reference/`, `metadata-prebuilt.zip`). L'emporte sur `LEVELUP_REPO_ROOT`. Environnement seul (un `.env.local` ne la pose pas). | `LEVELUP_REPO_ROOT`, sinon auto-détecté |
+| `LEVELUP_REPO_ROOT` | Nom compatible de `LEVELUP_RESOURCES_DIR` (un checkout est à la fois la racine des ressources et, par défaut, celle des données). | Auto-détecté |
+| `LEVELUP_DATA_DIR` | Racine des données : tout ce que le programme crée ou modifie (bases, sessions, auth, caches, sauvegardes, overlays de cartes générés). Posée, elle accueille `db_profiles.json`, `app_settings.json` et `.env.local` en tête, au lieu de la tête de la racine des ressources. Environnement seul. | `<ressources>/data` |
 | `LEVELUP_API_HOST` | Host de bind HTTP. | `127.0.0.1` |
 | `LEVELUP_API_PORT` | Port d'écoute HTTP. | `8000` |
 | `LEVELUP_DB_PROFILES` | Chemin de `db_profiles.json`. | `<root>/db_profiles.json` |
@@ -228,7 +230,7 @@ ou auto-détection) avant toute lecture `os.Getenv`.
 |----------|-------------|--------|
 | `LEVELUP_LOG_LEVEL` | Niveau de log (`debug`/`info`/`warn`/`error`). | `info` |
 | `LEVELUP_LOG_FORMAT` | Format console. | texte |
-| `LEVELUP_LOGS_DIR` | Répertoire des fichiers de log par catégorie. | `<root>/logs` |
+| `LEVELUP_LOGS_DIR` | Racine des journaux : fichiers de log par catégorie et capture des plantages. Créée au démarrage avant tout écrivain. Environnement seul. | `<ressources>/logs` |
 | `LEVELUP_LOGS_ENABLED` | Mettre `false` pour désactiver les logs fichiers. | activé |
 | `LEVELUP_LOGS_MAX_SIZE_MB` | Taille max de chaque `{catégorie}.log` avant rotation. `0` désactive la rotation (croissance illimitée). | `100` |
 | `LEVELUP_LOGS_MAX_BACKUPS` | Archives conservées par catégorie (`{catégorie}.log.1..N`). `0` = aucune. | `3` |

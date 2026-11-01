@@ -12,9 +12,15 @@ services:
     environment:
       # Optionnel: forcer une base explicite (sinon sélection via profils/UI)
       # - LEVELUP_DB=/app/data/players/MonGamertag/stats.duckdb
-      - LEVELUP_ROOT=/app
-      # Chemin des données dans le conteneur (obligatoire : sans .venv, _is_dev_mode()=False)
-      - LEVELUP_DATA=/app/data
+      # Les trois racines (ADR 0008, amendement « two roots ») : ressources livrées avec l'image
+      # (config/, static/, build web), données (volume ./data), journaux (ci-dessous).
+      - LEVELUP_RESOURCES_DIR=/app
+      - LEVELUP_DATA_DIR=/app/data
+      # LEVELUP_DATA_DIR posé déplace db_profiles.json et app_settings.json en tête de /app/data ;
+      # ces deux variables gardent les fichiers montés ci-dessous sous /app (disposition de l'hôte
+      # inchangée : db_profiles.json et app_settings.json à la racine du dépôt).
+      - LEVELUP_DB_PROFILES=/app/db_profiles.json
+      - LEVELUP_APP_SETTINGS=/app/app_settings.json
       # React static files (dist Vite buildé dans l'image)
       - LEVELUP_WEB_DIST=/app/apps/web/dist
       # Logs catégorie (auth.log, handlers.log, pool.log…) écrits sous le volume host
@@ -94,8 +100,11 @@ services:
     ports:
       - "127.0.0.1:8001:8000"
     environment:
-      - LEVELUP_ROOT=/app
-      - LEVELUP_DATA=/app/data
+      - LEVELUP_RESOURCES_DIR=/app
+      - LEVELUP_DATA_DIR=/app/data
+      # Journaux de la démo : le dossier que la disposition démo donnerait (<démo>/runtime/logs),
+      # posé explicitement parce que l'image fixe LEVELUP_LOGS_DIR à /app/data/logs.
+      - LEVELUP_LOGS_DIR=/app/data/demo/runtime/logs
       - LEVELUP_WEB_DIST=/app/apps/web/dist
       - LEVELUP_DEMO_MODE=true
       # Derriere nginx (demo.conf ecrase X-Real-IP a chaque requete) : sans cette variable,
