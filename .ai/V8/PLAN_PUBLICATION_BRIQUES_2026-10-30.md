@@ -147,11 +147,27 @@ Conséquences pour le plan (amendements, pas de nouvelle décision produit) :
 
 ## Lot 1 — Garde-fou et outil témoin
 
-- [ ] 1.1 `briques_internes_test` : les quatre fichiers clients entrent dans le périmètre `haloapi` avec des
+- [x] 1.1 `briques_internes_test` : les quatre fichiers clients entrent dans le périmètre `haloapi` avec des
   tolérances datées par import visé (comptes mesurés), à zéro à la fin du lot 2.
-- [ ] 1.2 Tests « URL figées » (T2) et sous-commandes `diag_api_lecture` (T3) sur les clients actuels ;
+  (2026-11-01 : champ `fichiers` (fichiers nommés jugés comme le périmètre) + auto-preuve ; tolérances
+  mesurées = attendu : `platform/netguard` 4, `domain` 2, `ctxkeys` 1, `games` 1, `platform/auth` 1,
+  `golang.org/x/time/rate` 1 ; mutation -1 → rouge vérifiée sur deux entrées.)
+- [x] 1.2 Tests « URL figées » (T2) et sous-commandes `diag_api_lecture` (T3) sur les clients actuels ;
   capture « avant ».
-- [ ] 1.3 Gate : archlint vert, mutations (tolérance -1 → rouge), témoins capturés ; commit « lot 1 ».
+  (T2 : quatre `*_url_figees_test.go` dans le paquet de chaque client, 19 tests / 29 sous-tests, attendus en
+  littéral ; enregistreur UNIQUE `internal/haloapi/haloapitest` (stdlib seule) + garde-rail
+  `archlint/enregistreur_http_unique_test.go` (allowlist datée des 9 copies préexistantes, ne descend
+  que). Non figé : le délai de base de 800 ms (contexte annulé au premier essai) ; `Retry-After` mesuré 1 s.
+  T3 : `halo5-servicerecord`, `ugc-carte <asset_id> [version_id]`, `gamecms-actif <chemin>`, `xbox-succes`
+  dans `cmd/diag_api_lecture` (`titleseams.RegisterAll` exigé par le ratchet des binaires liés à `sync`).
+  Captures « avant » (compte Chocoboflor) dans `%TEMP%\claude\...\scratchpad\temoins_pub_lot0_avant\` avec
+  `T3_md5s.txt` : `servicerecord` 4 565 o, `halo5-servicerecord` 955 o, `ugc-carte` (Absolution
+  `78da545f-a168-4a5e-9c8d-dd379067c352`) 659 o, `gamecms-actif`
+  (`Waypoint/file/images/nameplates/104-001-olympus-campa-2ddbe23b_n809699482.png`) 103 o, `xbox-succes`
+  103 415 o ; `calendrier` 403 (état connu depuis D3 : repli = `servicerecord`).)
+- [x] 1.3 Gate : archlint vert, mutations (tolérance -1 → rouge), témoins capturés ; commit « lot 1 ».
+  (Rejoué par le pilote : `go test` archlint + haloapi/... + halo_5 + mapcatalog + assets + sync, 9 paquets `ok`,
+  code 0 ; `go vet` 0 ; `golangci-lint --new-from-rev=HEAD` 0 issue.)
 
 ## Lot 2 — Les quatre coupes (protocole dans `internal/haloapi`, exploitation dans LevelUp)
 
@@ -228,5 +244,13 @@ Dans le module go-api d'abord (comme D2 lot 2 et D3 lots 2-4 : couper AVANT de d
   0042 (huit surfaces, toutes Infinite) : la liste est à compléter au lot 4.3 (ADR 0042, périmètre élargi).
 - PUB-0-f : `mapcatalog/ugc.go` et le chemin HTTP de `sync/xbox_client.go` n'ont aucun test : T2 les couvre pour la
   première fois (lot 1.2).
+- PUB-1-a (lot 1) : GameCMS `/hi/Progression/file/...` (médailles, fond, sprite CSR) répond 403 au compte de
+  diagnostic alors que `/hi/Waypoint/file/...` répond 200 ; les chemins `images/file/Progression/...` des
+  fixtures de tests répondent 404. À instruire hors chantier (droits du jeton ? chemins morts ?).
+- PUB-1-b : `diag_api_lecture xbox-succes` fait deux rotations de refresh token par exécution (l'`ExchangeResult`
+  n'expose pas l'access_token) et ne consulte pas la porte des jetons morts de la passe de succès. Accepté
+  pour un outil de lecture ; documenté dans l'en-tête de `main.go`.
+- PUB-1-c : neuf `_test.go` déclaraient déjà leur propre `RoundTrip` enregistreur (allowlist datée du
+  garde-rail `enregistreur_http_unique_test.go`) ; migration vers `haloapitest.Enregistreur` hors chantier.
 - PUB-0-g : première capture T1 rouge sur ce poste : `gcc` absent du PATH du PowerShell (lien DuckDB) ; recette =
   `C:\msys64\ucrt64\bin` en tête du PATH + `CGO_ENABLED=1` (mémoire `reference_air_rebuild_fails_gcc_missing_path`).

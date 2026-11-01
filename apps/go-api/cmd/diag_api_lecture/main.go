@@ -1,24 +1,28 @@
-// cmd/diag_api_lecture — LECTURE SEULE de sept surfaces de l'API Halo, sortie sur stdout.
+// cmd/diag_api_lecture — LECTURE SEULE de onze surfaces de l'API Halo et Xbox, sortie sur stdout.
 //
-// POURQUOI CET OUTIL EXISTE (plan D3, `.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D3_2026-10-29.md`, D3-N).
+// POURQUOI CET OUTIL EXISTE (plan D3, `.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D3_2026-10-29.md`, D3-N, puis
+// plan PUBLICATION, `.ai/V8/PLAN_PUBLICATION_BRIQUES_2026-10-30.md`, T3).
 // Le découplage de la brique « API Halo » déplace le code qui parle aux services Halo ; la preuve
 // que rien n'a changé est un témoin LIVE pris AVANT et rejoué APRÈS, surface par surface. Aucune
 // commande existante ne lisait ces surfaces sans écrire une base ou afficher des jetons. Cet outil
-// reste dans le dépôt comme les autres `cmd/diag_*` : il a été écrit sur les clients d'avant la
-// brique et rebranché au lot 4 sur l'adaptateur `games/halo_infinite/haloadapter` (import et constructeur
-// seulement).
+// reste dans le dépôt comme les autres `cmd/diag_*` : les sept premières surfaces passent par
+// l'adaptateur `games/halo_infinite/haloadapter` ; les quatre dernières appellent directement les
+// clients de Halo 5, de Discovery UGC des cartes, de GameCMS et des succès Xbox.
 //
 // SORTIES (le témoin est la sérialisation, identique avant et après) :
 //   - calendrier : le CORPS JSON REÇU, octet pour octet ;
-//   - historique, stats, skill, manifeste, actif, servicerecord : le client rend un type Go, pas
-//     les octets ; la sortie est `json.MarshalIndent(valeur, "", "  ")` de ce type (clés de table
-//     triées par le codec, donc stable), sans saut de ligne final.
+//   - gamecms-actif : `{"longueur": N, "sha256": "..."}` des octets reçus, jamais les octets ;
+//   - ugc-carte : le DTO Discovery de la carte, jamais le fichier .mvar ;
+//   - les autres : le client rend un type Go, pas les octets ; la sortie est
+//     `json.MarshalIndent(valeur, "", "  ")` de ce type (clés de table triées par le codec, donc
+//     stable), sans saut de ligne final.
 //
 // CE QU'IL NE FAIT PAS : aucune ouverture de base, aucune écriture hors stdout/stderr, aucun jeton
 // ni en-tête écrit. Le seul effet de bord est celui du chemin d'auth canonique (ADR 0023) : un
 // refresh token Microsoft est à USAGE UNIQUE, donc `RefreshHaloTokensViaStoreFirst` en obtient un
-// nouveau et le persiste dans le magasin — au plus UNE rotation par exécution. Aucune re-capture :
-// si le refresh échoue, l'outil s'arrête en le disant.
+// nouveau et le persiste dans le magasin — une rotation par exécution, deux pour `xbox-succes` qui
+// résout en plus son access_token Xbox Live par le magasin. Aucune re-capture : si le refresh
+// échoue, l'outil s'arrête en le disant.
 //
 // Usage (depuis apps/go-api/ d'un worktree sans data/ : LEVELUP_REPO_ROOT vers le dépôt qui les porte) :
 //
@@ -29,6 +33,10 @@
 //	diag_api_lecture [-xuid X] actif    <type> <asset_id> <version_id>   (type : map|playlist|pair|game_variant)
 //	diag_api_lecture [-xuid X] calendrier
 //	diag_api_lecture [-xuid X] servicerecord
+//	diag_api_lecture [-xuid X] halo5-servicerecord
+//	diag_api_lecture [-xuid X] ugc-carte <asset_id> [version_id]
+//	diag_api_lecture [-xuid X] gamecms-actif <chemin>
+//	diag_api_lecture [-xuid X] xbox-succes
 //
 // Sans -xuid : le premier joueur de db_profiles.json. Journal slog sur stderr.
 package main
@@ -46,6 +54,7 @@ import (
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/haloadapter"
+	"levelup/go-api/internal/games/titleseams"
 	"levelup/go-api/internal/platform/auth"
 )
 
@@ -58,12 +67,16 @@ type session struct {
 	xuid     string
 	gamertag string
 	tokens   *domain.HaloTokens
+	store    *auth.MultiUserTokenStore
 	client   *haloadapter.Client
 	provider *haloadapter.Provider
 	out      io.Writer
 }
 
 func main() {
+	// Le client des succès Xbox vient du paquet `sync` : tout binaire qui en dépend câble les seams
+	// title-owned (migrations, classifieurs). Sans effet sur les lectures HTTP du diagnostic.
+	titleseams.RegisterAll("")
 	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
 }
 
@@ -117,6 +130,7 @@ func ouvrirSession(ctx context.Context, xuid string, out io.Writer) (*session, e
 		xuid:     joueur.XUID,
 		gamertag: joueur.Gamertag,
 		tokens:   exch.Tokens,
+		store:    store,
 		client:   haloadapter.NewClient(exch.Tokens.SpartanToken, exch.Tokens.ClearanceToken, requestsPerSecond),
 		provider: haloadapter.NewHaloProvider().WithTokens(exch.Tokens),
 		out:      out,

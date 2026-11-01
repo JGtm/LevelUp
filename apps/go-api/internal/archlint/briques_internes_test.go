@@ -12,35 +12,46 @@
 //
 // # LA LIGNE `haloapi`
 //
-// Elle désigne l'arbre `internal/haloapi` ; la table de tolérances est vide : tout import hors de
-// la liste fermée est rouge. Le mécanisme de tolérance (compte par import visé, qui ne fait que
-// descendre) reste exercé par ses auto-preuves.
+// Elle désigne l'arbre `internal/haloapi` (champ `dossiers`) ET quatre fichiers clients encore
+// hors de l'arbre (champ `fichiers`, plan PUBLICATION `.ai/V8/PLAN_PUBLICATION_BRIQUES_2026-10-30.md`,
+// lot 1.1) : `games/halo_5/client.go`, `mapcatalog/ugc.go`, `assets/fetcher_gamecms.go`,
+// `sync/xbox_client.go`. Un fichier nommé est jugé comme un fichier du périmètre : ses imports sont
+// parsés, son propre paquet et les paquets des `dossiers` lui sont permis, le reste est un
+// franchissement. Seuls les fichiers nommés sont jugés, pas les autres fichiers de leur paquet.
+// L'arbre `internal/haloapi` ne porte aucune tolérance : tout import hors de la liste fermée y est
+// rouge. Les tolérances de la table sont celles des quatre fichiers nommés.
 //
 // # CE QU'ELLE VÉRIFIE
 //
-// Pour chaque `.go` du périmètre, tests compris, chaque import (PARSÉ, jamais cherché au grep) est :
+// Pour chaque `.go` du périmètre (les dossiers, tests compris, et les fichiers nommés), chaque import
+// (PARSÉ, jamais cherché au grep) est :
 // de la bibliothèque standard ; un paquet de la brique elle-même (les dossiers du périmètre
 // s'importent entre eux, un fichier importe son propre paquet : ce n'est pas un franchissement) ; sous `levelup/go-api/internal/haloapi` ; ou l'un des tiers nommés (`errgroup`,
-// `rate`, décision D3-P). Tout autre import est un FRANCHISSEMENT, compté par import visé.
+// `rate`, décision D3-P), seulement sous le sous-arbre qui le porte (`infinite`) : pour un fichier
+// nommé, un tiers est toujours un franchissement, de clé son chemin complet. Tout autre import est
+// un FRANCHISSEMENT, compté par import visé.
 //
 // # TOLÉRANCES PAR IMPORT, DATÉES, QUI NE FONT QUE DESCENDRE
 //
-// Comme la ligne `film` de D2 : une table (import visé -> nombre de fichiers, tests compris) au
+// Comme la ligne `film` de D2 : une table (import visé -> nombre de fichiers) au
 // lieu d'une allowlist par fichier, parce que ce sont les COMPTES qui doivent tomber à zéro au fil
 // des lots. Le compte mesuré par le parcours est confronté à la tolérance : plus de fichiers que la
 // tolérance -> rouge ; moins -> rouge « baisse à N » (le ratchet se resserre dans le commit qui
 // coupe, il ne garde pas de mou) ; tolérance 0 -> rouge « retirer l'entrée » ; import absent de la
-// table -> rouge. Table vide depuis le lot 4 ; le mécanisme part à la clôture de D3 (modèle D2).
+// table -> rouge. La table est à zéro à la fin du lot 2 du plan PUBLICATION ; le mécanisme part à la
+// clôture de ce plan (modèle D2).
 //
 // # MUTATIONS QUI DOIVENT LE FAIRE ROUGIR
 //
 // Abaisser une tolérance de 1 ; ajouter `"levelup/go-api/internal/domain"` à un fichier posé sous
 // `internal/haloapi/` ; ajouter `"levelup/go-api/internal/observability/metrics"` à
-// `internal/haloapi/infinite/endpoints.go`.
+// `internal/haloapi/infinite/endpoints.go` ; ajouter un import de LevelUp hors table à l'un des
+// quatre fichiers nommés.
 package archlint
 
 import (
 	"fmt"
+	"go/parser"
 	"go/token"
 	"os"
 	"path"
@@ -61,7 +72,7 @@ const prefixeInterneAPI = prefixeModuleAPI + "internal/"
 type toleranceImport struct {
 	n    int
 	date string // AAAA-MM-JJ
-	lot  string // lot(s) du plan D3 qui vident l'entrée, avec le motif de la coupe
+	lot  string // lot(s) du plan qui vident l'entrée, avec le motif de la coupe
 }
 
 // briqueInterne : une brique dont les paquets vivent dans le module `go-api`.
@@ -70,6 +81,9 @@ type briqueInterne struct {
 	// dossiers : arbres (le répertoire et tout ce qui est dessous, hors `testdata`, `vendor`,
 	// `.x`, `_x`), relatifs à la racine du dépôt. Les imports de l'un à l'autre sont internes.
 	dossiers []string
+	// fichiers : fichiers nommés (relatifs à la racine du dépôt) jugés comme des fichiers du
+	// périmètre alors que leur dossier n'en fait pas partie. Seuls ces fichiers sont parsés.
+	fichiers []string
 	// permis : chemins d'import (paquet exact ou préfixe `x/`) que la brique peut importer.
 	permis []string
 	// tiers : paquets tiers (chemin exact) permis hors bibliothèque standard, PAR SOUS-ARBRE : clé =
@@ -97,10 +111,32 @@ var briquesInternes = []briqueInterne{
 	{
 		nom:      "haloapi",
 		dossiers: []string{dossierHaloapi},
+		fichiers: fichiersClientsHaloapi,
 		permis:   cheminsHaloapiPermis,
 		tiers:    tiersHaloapi,
-		// Aucune tolérance : la brique n'importe rien de LevelUp hors d'elle-même.
+		// L'arbre `internal/haloapi` n'a aucune tolérance : les entrées ci-dessous sont celles des
+		// quatre fichiers clients nommés, comptes mesurés le 2026-11-01.
+		tolerances: map[string]toleranceImport{
+			"platform/netguard":      {4, dateReleveClients, "lots 2.1 à 2.4 du plan PUBLICATION : la garde de réseau sort du client (Doer gardé fourni par l'adaptateur de LevelUp)"},
+			"domain":                 {2, dateReleveClients, "lots 2.2 (ugc.go) et 2.3 (fetcher_gamecms.go) du plan PUBLICATION : les jetons passent en paramètre de la brique"},
+			"ctxkeys":                {1, dateReleveClients, "lot 2.3 du plan PUBLICATION : le titre du contexte reste dans la résolution d'hôte de `assets`"},
+			"games":                  {1, dateReleveClients, "lot 2.3 du plan PUBLICATION : le singleton d'adresses devient des Endpoints passés à la brique"},
+			"platform/auth":          {1, dateReleveClients, "lot 2.4 du plan PUBLICATION : l'en-tête d'autorisation XSTS passe en chaîne, plus d'alias de type"},
+			"golang.org/x/time/rate": {1, dateReleveClients, "lot 2.1 du plan PUBLICATION : le limiteur concret devient l'interface Limiter"},
+		},
 	},
+}
+
+// dateReleveClients : date de la mesure des comptes de tolérance des quatre fichiers clients.
+const dateReleveClients = "2026-11-01"
+
+// fichiersClientsHaloapi : les quatre clients HTTP Halo/Xbox restés hors de l'arbre `haloapi`, que
+// le lot 2 du plan PUBLICATION coupe en protocole (brique) et exploitation (LevelUp).
+var fichiersClientsHaloapi = []string{
+	"apps/go-api/internal/games/halo_5/client.go",
+	"apps/go-api/internal/mapcatalog/ugc.go",
+	"apps/go-api/internal/assets/fetcher_gamecms.go",
+	"apps/go-api/internal/sync/xbox_client.go",
 }
 
 // cleDImport rend la clé d'un import visé dans une table de tolérances : le chemin sans le préfixe
@@ -259,7 +295,28 @@ func fichiersDeBriqueInterne(racine string, b briqueInterne) ([]fichierImports, 
 			return nil, fmt.Errorf("brique %s : aucun fichier Go sous %s", b.nom, d)
 		}
 	}
+	for _, f := range b.fichiers {
+		fi, err := importsDuFichierErr(fset, racine, f)
+		if err != nil {
+			return nil, fmt.Errorf("brique %s : %w", b.nom, err)
+		}
+		out = append(out, fi)
+	}
 	return out, nil
+}
+
+// importsDuFichierErr parse les imports du fichier `rel` (relatif à la racine du dépôt). Erreur si
+// le fichier n'existe pas : un fichier nommé qui a disparu ou changé de nom ne garde plus rien.
+func importsDuFichierErr(fset *token.FileSet, racine, rel string) (fichierImports, error) {
+	f, err := parser.ParseFile(fset, filepath.Join(racine, filepath.FromSlash(rel)), nil, parser.ImportsOnly)
+	if err != nil {
+		return fichierImports{}, fmt.Errorf("fichier nommé %s : %w", rel, err)
+	}
+	fi := fichierImports{rel: rel}
+	for _, imp := range f.Imports {
+		fi.imports = append(fi.imports, strings.Trim(imp.Path.Value, `"`))
+	}
+	return fi, nil
 }
 
 // sousDossiersGoErr : le répertoire et ses sous-répertoires que l'outil Go ouvre ; erreur si la
@@ -300,7 +357,7 @@ func TestBriquesInternes_Imports(t *testing.T) {
 		}
 		if ecarts := confronterTolerances(comptesDeFranchissements(b, fichiers), b.tolerances); len(ecarts) > 0 {
 			t.Errorf("brique %s : les imports hors brique ne correspondent pas à la table des tolérances "+
-				"(audit découplage, constat G ; plan D3). Couper l'import (la brique reçoit la valeur, "+
+				"(audit découplage, constat G ; plans D3 et PUBLICATION). Couper l'import (la brique reçoit la valeur, "+
 				"LevelUp la remplit) ou, si le compte BAISSE, abaisser la tolérance dans le même commit :\n  %s",
 				b.nom, strings.Join(ecarts, "\n  "))
 		}

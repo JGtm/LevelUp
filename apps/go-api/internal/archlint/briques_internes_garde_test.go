@@ -154,6 +154,58 @@ func TestBriquesInternes_AutoPreuve_DossierAbsent(t *testing.T) {
 	}
 }
 
+// TestBriquesInternes_AutoPreuve_FichiersNommes : un fichier nommé hors des `dossiers` est jugé comme
+// un fichier du périmètre. Son propre paquet et les paquets des `dossiers` lui sont permis ; les
+// paquets d'exploitation, un paquet voisin du sien et un tiers (permis seulement sous `infinite`)
+// sont des franchissements, comptés une fois par fichier ; un fichier nommé absent est refusé.
+func TestBriquesInternes_AutoPreuve_FichiersNommes(t *testing.T) {
+	b := briqueHaloapiACloture(t)
+	fichiers := []fichierImports{
+		fichierImportsDeSnippet(t, "apps/go-api/internal/sync/xbox_client.go", `package sync
+import (
+	"net/http"
+
+	"levelup/go-api/internal/haloapi/xblauth"
+	"levelup/go-api/internal/sync"
+	"levelup/go-api/internal/platform/auth"
+	"levelup/go-api/internal/platform/netguard"
+	"levelup/go-api/internal/mapcatalog"
+)
+`),
+		fichierImportsDeSnippet(t, "apps/go-api/internal/games/halo_5/client.go", `package halo5
+import (
+	"golang.org/x/time/rate"
+	"levelup/go-api/internal/platform/netguard"
+	"levelup/go-api/internal/platform/netguard"
+)
+`),
+	}
+	got := comptesDeFranchissements(b, fichiers)
+	attendu := map[string]int{
+		"platform/auth":          1,
+		"platform/netguard":      2, // un fichier chacun, le doublon d'import d'un même fichier ne compte qu'une fois
+		"mapcatalog":             1, // un paquet voisin n'est pas le sien
+		"golang.org/x/time/rate": 1, // un fichier nommé n'a droit à aucun tiers
+	}
+	if len(got) != len(attendu) {
+		t.Fatalf("franchissements = %v, attendu %v", got, attendu)
+	}
+	for imp, n := range attendu {
+		if got[imp] != n {
+			t.Errorf("franchissements[%q] = %d, attendu %d (tous : %v)", imp, got[imp], n, got)
+		}
+	}
+
+	racine := workspaceRoot(t)
+	if _, err := fichiersDeBriqueInterne(racine, briqueInterne{nom: "x", fichiers: []string{"apps/go-api/internal/sync/ce_fichier_n_existe_pas.go"}}); err == nil {
+		t.Error("un fichier nommé absent doit être refusé")
+	}
+	lus, err := fichiersDeBriqueInterne(racine, briqueInterne{nom: "ok", fichiers: fichiersClientsHaloapi})
+	if err != nil || len(lus) != len(fichiersClientsHaloapi) {
+		t.Errorf("les %d fichiers clients nommés doivent exister et être lus tous : %d lus, erreur %v", len(fichiersClientsHaloapi), len(lus), err)
+	}
+}
+
 // TestCleDImport : la clé suit la forme des trois sortes d'imports.
 func TestCleDImport(t *testing.T) {
 	for imp, attendu := range map[string]string{
