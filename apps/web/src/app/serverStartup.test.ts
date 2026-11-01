@@ -15,7 +15,9 @@ import {
   SERVER_STARTUP_MAX_WAIT_MS,
   SERVER_STARTUP_POLL_MS,
   createBootstrapRetryPolicy,
+  isServerStartFailedError,
   isServerStartingError,
+  serverStartFailure,
   serverStartingStepKey,
 } from './serverStartup'
 
@@ -25,6 +27,14 @@ const starting = (step?: string) => ({
   retryable: true,
   status: 503,
   details: step === undefined ? undefined : { step },
+})
+
+const failed = (state?: string) => ({
+  code: 'server_start_failed',
+  message: 'server start failed',
+  retryable: false,
+  status: 503,
+  details: { step: 'migrations', ...(state === undefined ? {} : { state }) },
 })
 
 describe('isServerStartingError', () => {
@@ -43,6 +53,49 @@ describe('isServerStartingError', () => {
     expect(isServerStartingError(new SyntaxError('Unexpected token <'))).toBe(false)
     expect(isServerStartingError(null)).toBe(false)
     expect(isServerStartingError(undefined)).toBe(false)
+  })
+})
+
+describe('démarrage échoué (503 server_start_failed, non réessayable)', () => {
+  it('reconnu comme échec, jamais comme « le serveur démarre »', () => {
+    expect(isServerStartFailedError(failed('migration_failed'))).toBe(true)
+    expect(isServerStartingError(failed('migration_failed'))).toBe(false)
+    expect(isServerStartFailedError(starting('migrations'))).toBe(false)
+    expect(isServerStartFailedError({ code: 'server_start_failed', status: 500, retryable: false })).toBe(false)
+    expect(isServerStartFailedError({ code: 'server_start_failed', status: 503, retryable: true })).toBe(false)
+    expect(isServerStartFailedError(new TypeError('Failed to fetch'))).toBe(false)
+    expect(isServerStartFailedError(null)).toBe(false)
+  })
+
+  it('chaque état : un libellé présent en FR et en EN', () => {
+    for (const state of ['locked', 'migration_failed', 'schema_newer']) {
+      const failure = serverStartFailure(failed(state))
+      expect(failure?.stateKey, `état « ${state} » sans libellé`).toBe(`common.root.server_failed.${state}`)
+      expect(commonManifest[failure!.stateKey!].fr).not.toBe('')
+      expect(commonManifest[failure!.stateKey!].en).not.toBe('')
+    }
+    expect(commonManifest['common.root.server_failed.title'].fr).not.toBe('')
+    expect(commonManifest['common.root.server_failed.title'].en).not.toBe('')
+  })
+
+  it('état absent ou inconnu : l’écran d’échec sans détail ; autre erreur : pas d’écran', () => {
+    expect(serverStartFailure(failed())).toEqual({ stateKey: undefined })
+    expect(serverStartFailure(failed('constructor'))).toEqual({ stateKey: undefined })
+    expect(serverStartFailure(failed('toString'))).toEqual({ stateKey: undefined })
+    expect(serverStartFailure(starting('migrations'))).toBeNull()
+    expect(serverStartFailure(new TypeError('Failed to fetch'))).toBeNull()
+  })
+
+  it('chaque état déclaré par le serveur Go a un libellé', () => {
+    const goSource = readFileSync(
+      resolve(__dirname, '../../../go-api/cmd/server/boot_gate.go'),
+      'utf8',
+    )
+    const goStates = [...goSource.matchAll(/bootFailure\w+\s+bootFailureState\s*=\s*"([a-z_]+)"/g)].map((m) => m[1])
+    expect(goStates.length).toBeGreaterThan(0)
+    for (const state of goStates) {
+      expect(serverStartFailure(failed(state))?.stateKey, `état Go « ${state} » sans libellé web`).toBeDefined()
+    }
   })
 })
 
@@ -112,6 +165,21 @@ describe('createBootstrapRetryPolicy', () => {
     const { delays, stoppedAt } = runRetryLoop(repeat(200, () => starting('accounts')))
     expect(stoppedAt).toBe(SERVER_STARTUP_MAX_WAIT_MS / SERVER_STARTUP_POLL_MS)
     expect(new Set(delays)).toEqual(new Set([SERVER_STARTUP_POLL_MS]))
+  })
+
+  it('démarrage échoué : aucun rejeu, même après des attentes de démarrage', () => {
+    expect(runRetryLoop([failed('locked')])).toEqual({ delays: [], stoppedAt: 0 })
+    const { delays, stoppedAt } = runRetryLoop([...repeat(5, () => starting('migrations')), failed('migration_failed')])
+    expect(stoppedAt).toBe(5)
+    expect(delays).toEqual(repeat(5, () => SERVER_STARTUP_POLL_MS))
+  })
+
+  it('migrations en cours : l’attente de 120 s repart à chaque réponse', () => {
+    // 300 s de réponses « migrations » : jamais d’arrêt.
+    expect(runRetryLoop(repeat(300, () => starting('migrations'))).stoppedAt).toBeNull()
+    // Puis une autre étape : 120 s à compter de la dernière réponse « migrations » (rang 199).
+    const errors = [...repeat(200, () => starting('migrations')), ...repeat(200, () => starting('accounts'))]
+    expect(runRetryLoop(errors).stoppedAt).toBe(199 + SERVER_STARTUP_MAX_WAIT_MS / SERVER_STARTUP_POLL_MS)
   })
 
   it('réseau et 502 comptent aussi comme démarrage', () => {
