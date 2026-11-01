@@ -109,3 +109,25 @@ func estStatutAuth(code int) bool {
 func estStatutAbsent(code int) bool {
 	return code == http.StatusNotFound || code == http.StatusGone
 }
+
+// ErreurTransport : le [haloapi.Doer] a échoué à émettre un GET unique (réseau, délai, contexte).
+// Son message est celui de l'erreur du Doer, inchangé ; `URL` permet à l'appelant de le composer.
+// Une erreur [haloapi.ErrDefinitif] (sortie refusée par l'appelant) n'est jamais enveloppée.
+type ErreurTransport struct {
+	URL string
+	Err error
+}
+
+func (e *ErreurTransport) Error() string { return e.Err.Error() }
+
+func (e *ErreurTransport) Unwrap() error { return e.Err }
+
+// ErreurLecture : le corps d'une réponse 200 d'un GET unique n'a pas pu être lu en entier.
+type ErreurLecture struct {
+	URL string
+	Err error
+}
+
+func (e *ErreurLecture) Error() string { return fmt.Sprintf("lecture %s: %v", e.URL, e.Err) }
+
+func (e *ErreurLecture) Unwrap() error { return e.Err }

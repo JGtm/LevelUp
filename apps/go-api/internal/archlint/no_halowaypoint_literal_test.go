@@ -41,8 +41,9 @@ import (
 //   - halotest/          : fake server de test (héberge des URLs factices halowaypoint).
 //   - cmd/                : outils diag/probe/fixtures qui tapent l'API officielle.
 //   - scripts/            : outil de warm-up d'assets (URLs gamecms).
-//   - mapcatalog/         : client Discovery UGC (variantes de carte .mvar), partagé par
-//     les CLI de cuisson et le runtime depuis l'extraction du 2026-09-01.
+//   - mapcatalog/         : façade du client UGC des cartes (variantes .mvar), partagée par
+//     les CLI de cuisson et le runtime depuis l'extraction du 2026-09-01 ; ne garde que l'en-tête
+//     `Origin` (l'hôte Discovery est dans la brique, `infinite/endpoints.go`).
 //
 // Toute suppression d'une URL en dur d'un de ces fichiers RETIRE son entrée.
 var halowaypointAllowlist = map[string]bool{
@@ -91,7 +92,9 @@ var halowaypointAllowlist = map[string]bool{
 	// l'exécution. Le fichier a été EXTRAIT vers `internal/mapcatalog/ugc.go`, que les
 	// deux CLI (mapobj-build, mapopads-build) et le runtime partagent — l'entrée suit sa
 	// cause, elle ne s'ajoute pas à elle. Même frontière, même justification, un seul
-	// exemplaire. Les deux littéraux : l'hôte Discovery UGC et l'en-tête `Origin`.
+	// exemplaire. Depuis le lot 2.2 du plan PUBLICATION (2026-11-01) le protocole est dans la
+	// brique (`infinite/ugcmaps.go`, l'hôte Discovery passe par `Endpoints`) : le seul littéral
+	// restant est l'`Origin` que LevelUp présente.
 	"internal/mapcatalog/ugc.go": true,
 	// cmd/mapnav-fetch (campagne des fonds de carte, 2026-08-30) : meme frontiere que
 	// mapobj-build ci-dessus — il telecharge navmesh.blob, map.mvar et les miniatures

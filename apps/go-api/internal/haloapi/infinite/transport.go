@@ -240,3 +240,71 @@ func poserAuth(req *http.Request, a Auth) {
 
 // estDefinitif dit si une erreur du Doer arrête toute reprise ([haloapi.ErrDefinitif]).
 func estDefinitif(err error) bool { return errors.Is(err, haloapi.ErrDefinitif) }
+
+// extraitErreurMax : les premiers octets d'un corps non-200 conservés dans [HTTPError.Body] par le GET
+// unique.
+const extraitErreurMax = 512
+
+// entete : un en-tête posé par l'appelant d'un GET unique (identité, origine : jamais une
+// connaissance de la brique).
+type entete struct{ nom, valeur string }
+
+// requeteUnique : un GET unique paramétré, base des services qui ne se retentent pas.
+type requeteUnique struct {
+	url  string
+	auth Auth
+	// entetes : posés, dans cet ordre, APRÈS Accept et les jetons.
+	entetes []entete
+	// accept : valeur de l'en-tête Accept ; "" = aucun en-tête Accept.
+	accept string
+	// echeance : durée maximale de la requête, lecture du corps comprise ; 0 = celle du contexte et
+	// du Doer seulement.
+	echeance time.Duration
+	// lectureMax : octets lus au plus d'une réponse 200 (le surplus est ignoré) ; 0 = sans borne.
+	lectureMax int64
+}
+
+// getUnique exécute UN GET (sans reprise ni limiteur) et rend le corps d'une réponse 200. Tout
+// autre statut rend un [*HTTPError] dont `Body` porte les [extraitErreurMax] premiers octets ; un
+// échec du Doer rend un [*ErreurTransport] (sauf une erreur [haloapi.ErrDefinitif], rendue telle
+// quelle) ; un corps coupé rend un [*ErreurLecture].
+func (c *Client) getUnique(ctx context.Context, rq requeteUnique) ([]byte, error) {
+	if rq.echeance > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, rq.echeance)
+		defer cancel()
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rq.url, nil)
+	if err != nil {
+		return nil, err
+	}
+	if rq.accept != "" {
+		req.Header.Set(enteteAccept, rq.accept)
+	}
+	poserAuth(req, rq.auth)
+	for _, h := range rq.entetes {
+		req.Header.Set(h.nom, h.valeur)
+	}
+	resp, err := c.doer.Do(req)
+	if err != nil {
+		if estDefinitif(err) {
+			return nil, err
+		}
+		return nil, &ErreurTransport{URL: rq.url, Err: err}
+	}
+	defer func() { _ = resp.Body.Close() }() // la fermeture ne change pas l'issue
+	if resp.StatusCode != http.StatusOK {
+		extrait, _ := io.ReadAll(io.LimitReader(resp.Body, extraitErreurMax)) // diagnostic best-effort
+		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, drainBlobMax))   // drainage best-effort
+		return nil, &HTTPError{StatusCode: resp.StatusCode, URL: rq.url, Err: fmt.Errorf("HTTP %d", resp.StatusCode), Body: extrait}
+	}
+	var corps io.Reader = resp.Body
+	if rq.lectureMax > 0 {
+		corps = io.LimitReader(resp.Body, rq.lectureMax)
+	}
+	octets, err := io.ReadAll(corps)
+	if err != nil {
+		return nil, &ErreurLecture{URL: rq.url, Err: err}
+	}
+	return octets, nil
+}

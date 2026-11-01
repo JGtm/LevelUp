@@ -34,7 +34,7 @@ func (c *Client) FetchMvarForMap(ctx context.Context, mapID, mvarFile string,
 	if err != nil {
 		return nil, "", err
 	}
-	chemins := asset.MvarPaths()
+	chemins := mapcatalog.MvarPaths(asset)
 	if len(chemins) == 0 {
 		return nil, "", fmt.Errorf("aucun .mvar dans l asset %s", mapID)
 	}

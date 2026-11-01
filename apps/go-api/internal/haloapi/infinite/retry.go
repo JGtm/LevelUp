@@ -72,3 +72,7 @@ func RetryHaloClient() Retry {
 		IgnoreErreurLimiteur: true,
 	}
 }
+
+// RetryAucune : un seul essai, pour les services au GET unique (aucune reprise, aucun limiteur) ;
+// [New] exige une politique, le GET unique ne la consulte pas.
+func RetryAucune() Retry { return Retry{Essais: 1} }

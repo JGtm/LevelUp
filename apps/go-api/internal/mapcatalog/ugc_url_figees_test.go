@@ -13,6 +13,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/haloapi/haloapitest"
+	"levelup/go-api/internal/haloapi/infinite"
 )
 
 const (
@@ -33,8 +34,7 @@ func ugcClientEnregistreur(tokens *domain.HaloTokens, statut int, corps string) 
 	e := &haloapitest.Enregistreur{Repondre: func(int, *http.Request) *http.Response {
 		return haloapitest.Reponse(statut, corps)
 	}}
-	c := NewClient(tokens)
-	c.http = &http.Client{Transport: e}
+	c := NewClient(tokens).WithHTTPClient(&http.Client{Transport: e})
 	return c, e
 }
 
@@ -65,7 +65,7 @@ func TestURLFigees_UGC_FetchAsset(t *testing.T) {
 				t.Errorf("requêtes = %q\nattendu    %q", e.Requetes(), c.attendu)
 			}
 			if a.VersionID != ugcFigeesVersion || a.CustomData.NumOfObjectsOnMap != 12 || !a.CustomData.IsBaked ||
-				len(a.MvarPaths()) != 1 || a.MvarPaths()[0] != "MapVariant.mvar" {
+				len(MvarPaths(a)) != 1 || MvarPaths(a)[0] != "MapVariant.mvar" {
 				t.Errorf("DTO mal décodé : %+v", a)
 			}
 		})
@@ -91,7 +91,7 @@ func TestURLFigees_UGC_SansClearance(t *testing.T) {
 // relatif n'est NI échappé NI nettoyé (les `/` internes restent, l'espace n'est encodé qu'à
 // l'émission) ; `FetchMvar` prend le préfixe de l'asset.
 func TestURLFigees_UGC_Blob(t *testing.T) {
-	asset := &Asset{AssetID: ugcFigeesAsset}
+	asset := &infinite.CarteUGC{AssetID: ugcFigeesAsset}
 	asset.Files.Prefix = ugcFigeesBlob
 	cas := []struct {
 		nom     string

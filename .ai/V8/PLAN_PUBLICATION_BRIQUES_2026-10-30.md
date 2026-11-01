@@ -189,7 +189,19 @@ Dans le module go-api d'abord (comme D2 lot 2 et D3 lots 2-4 : couper AVANT de d
   dans `halo5/doc.go` : garde consultée avant le limiteur ; `Retry-After` en date HTTP désormais lu. Gates :
   vet 0, `go list -deps -test` de la brique sans exploitation, 14 paquets `ok` + livesync `-tags=integration`,
   archlint vert avec deux mutations rouges, lint 0 issue.)
-- [ ] 2.2 UGC : service dans `infinite` ; `mapcatalog` appelle la brique ; URL figées vertes.
+- [x] 2.2 UGC : service dans `infinite` ; `mapcatalog` appelle la brique ; URL figées vertes.
+  (2026-11-01, agent Sonnet, gates rejoués par le pilote. `infinite/ugcmaps.go` : `CarteUGC` (DTO brut),
+  `FetchCarteUGC(ctx, auth, assetID, versionID, Identite)`, `TelechargerFichierUGC(ctx, prefix, relPath, Identite)` ;
+  `Identite{UserAgent, Origin}` = valeur de l'appelant ; GET unique paramétré `getUnique(ctx, requeteUnique)` dans
+  `transport.go` (accept, en-têtes, échéance, borne de lecture ; `nameplate.go` l'appelle avec ses en-têtes et
+  `DelaiNameplate` inchangés) ; `RetryAucune()` ; erreurs `ErreurTransport`, `ErreurLecture`, `HTTPError.Body`
+  = 512 premiers octets. `mapcatalog/ugc.go` 185 → 137 L : façade `NewClient(tokens)` + `WithHTTPClient`,
+  `MvarPaths(a *infinite.CarteUGC)`, messages `GET %s: HTTP %d (%s)` / `GET %s: %w` reformés depuis les erreurs
+  typées ; `Asset` supprimé sans alias (2 appelants réécrits). Tolérances `platform/netguard` 2, `domain` 1.
+  Non figé / différences de forme : le `WarnContext` de fermeture du corps disparaît ; dans le résolveur de
+  nameplate, un corps coupé donne `lecture <url>: ...` au lieu de l'erreur brute (chemin d'erreur, `%w` conservé).
+  Report au 2.3 : `getUnique` ne rend pas encore `Content-Type` (lint `unparam` sans lecteur) ; complexité ~11.
+  T2 : 4 tests, aucune URL attendue modifiée. Gates : vet 0, brique sans exploitation, tests `ok`, lint 0.)
 - [ ] 2.3 GameCMS : service dans `infinite` ; `assets` garde la résolution ; URL figées vertes.
 - [ ] 2.4 Xbox : `internal/haloapi/xboxlive` ; `sync` appelle la brique avec le jeton en paramètre ; URL
   figées vertes.

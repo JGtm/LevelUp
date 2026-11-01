@@ -119500,3 +119500,11 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : messages d'erreur et en-têtes identiques à l'octet (vérifié contre l'ancien fichier : `token invalide/expire`, `ressource absente`, `corps vide`, `HTTP %d: %s`, `%d tentatives echouees`) ; T2 Halo 5 vert sans qu'aucune URL attendue ait changé ; 14 paquets `ok` + livesync en intégration ; `go list -deps -test` de la brique sans paquet d'exploitation ; archlint vert, mutations rouges (tolérance -1, `halo5.New` sans `netguard.Doer`) ; lint 0 issue. Deux différences de forme assumées et documentées : garde avant limiteur ; `Retry-After` en date HTTP lu. Découvertes PUB-2.1-a (ratchet de couverture netguard sur chaîne), b (copie du Doer gardé dans `platform/auth`), c notées. CI du lot 1 verte.
 
 **Conclusion / prochaine étape** : lot 2.2 (UGC-cartes : service dans `infinite`, `mapcatalog` appelle la brique) en Sonnet.
+
+## [2026-11-01] Publication des briques — lot 2.2 (coupe UGC cartes) — Complété
+
+**Décision technique principale** : le client Discovery UGC des cartes devient deux GET uniques d'un service d'`infinite` (`FetchCarteUGC`, `TelechargerFichierUGC`) sur un `getUnique` paramétré (Accept, en-têtes d'identité de l'appelant, échéance, borne de lecture) qui remplace celui du résolveur de nameplate et servira GameCMS au 2.3 ; `mapcatalog` garde façade, choix `.mvar`, validation, journaux, et reforme les messages d'erreur d'aujourd'hui depuis les erreurs typées (`HTTPError.Body`, `ErreurTransport`) ; `Asset` supprimé sans alias.
+
+**Résultats observés** : témoin UGC vert sans qu'aucune URL attendue ait bougé (0 ligne `https://` dans le diff) ; brique toujours sans import d'exploitation ; `service`, `haloadapter`, `replayartifacts`, archlint verts ; lint 0. Tolérances netguard 2, domain 1 ; mutation rouge vérifiée. Deux différences de forme assumées : plus de `WarnContext` de fermeture ; message d'un corps coupé dans le résolveur de nameplate.
+
+**Conclusion / prochaine étape** : lot 2.3 GameCMS (Opus) : service d'actifs dans `infinite` sur le même GET unique (ajout du `Content-Type`), `assets` garde résolution d'hôte par titre, cache, erreurs.

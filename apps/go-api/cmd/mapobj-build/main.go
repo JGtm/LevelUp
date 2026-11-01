@@ -194,7 +194,7 @@ func ingestRemote(ctx context.Context, cat *catalog, c *mapcatalog.Client, t tar
 	if err != nil {
 		return err
 	}
-	files := asset.MvarPaths()
+	files := mapcatalog.MvarPaths(asset)
 	if len(files) == 0 {
 		return fmt.Errorf("aucun fichier .mvar dans l'asset (fichiers: %v)",
 			asset.Files.FileRelativePaths)

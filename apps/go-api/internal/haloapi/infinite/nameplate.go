@@ -10,9 +10,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log/slog"
-	"net/http"
 	"strings"
 	"time"
 )
@@ -35,7 +33,7 @@ type EmblemMappingDTO map[string]map[string]EmblemMappingEntry
 
 // GetEmblemMapping récupère la table emblème -> nameplate ([CleNameplate]).
 func (c *Client) GetEmblemMapping(ctx context.Context, auth Auth) (EmblemMappingDTO, error) {
-	body, err := c.getUnique(ctx, requete{url: c.endpoints.base(CleNameplate) + emblemMappingPathSuffix, auth: auth})
+	body, err := c.getUnique(ctx, requeteNameplate(c.endpoints.base(CleNameplate)+emblemMappingPathSuffix, auth))
 	if err != nil {
 		slog.DebugContext(ctx, "nameplate_resolver: mapping fetch en échec", "err", err)
 		return nil, err
@@ -54,7 +52,7 @@ func (c *Client) GetEmblemMapping(ctx context.Context, auth Auth) (EmblemMapping
 // échec indéterminé (transport, statut, JSON illisible).
 func (c *Client) GetEmblemPositiveCfg(ctx context.Context, auth Auth, emblemPath string) (int64, error) {
 	cmsURL := c.endpoints.base(CleNameplate) + "/progression/file/" + strings.TrimPrefix(emblemPath, "/")
-	body, err := c.getUnique(ctx, requete{url: cmsURL, auth: auth})
+	body, err := c.getUnique(ctx, requeteNameplate(cmsURL, auth))
 	if err != nil {
 		slog.DebugContext(ctx, "nameplate_resolver: CMS emblème en échec", "emblem_path", emblemPath, "err", err)
 		return 0, err
@@ -119,24 +117,8 @@ func NameplateURLDepuisCfg(e Endpoints, stem string, cfg int64) string {
 	return fmt.Sprintf("%s/Waypoint/file/images/nameplates/%s_%d.png", e.base(CleNameplate), stem, cfg)
 }
 
-// getUnique exécute UN GET (sans reprise ni limiteur) sous l'échéance [DelaiNameplate] ; tout
-// statut non-200 rend un [*HTTPError].
-func (c *Client) getUnique(ctx context.Context, rq requete) ([]byte, error) {
-	reqCtx, cancel := context.WithTimeout(ctx, DelaiNameplate)
-	defer cancel()
-	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, rq.url, nil)
-	if err != nil {
-		return nil, err
-	}
-	poserEntetes(req, rq)
-	resp, err := c.doer.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = resp.Body.Close() }() // la fermeture ne change pas l'issue
-	if resp.StatusCode != http.StatusOK {
-		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, drainBlobMax)) // drainage best-effort
-		return nil, &HTTPError{StatusCode: resp.StatusCode, URL: rq.url, Err: fmt.Errorf("HTTP %d", resp.StatusCode)}
-	}
-	return io.ReadAll(resp.Body)
+// requeteNameplate : le GET unique d'un service nameplate (Accept JSON, jetons, échéance
+// [DelaiNameplate]).
+func requeteNameplate(url string, auth Auth) requeteUnique {
+	return requeteUnique{url: url, auth: auth, accept: typeJSON, echeance: DelaiNameplate}
 }
