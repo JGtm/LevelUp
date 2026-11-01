@@ -19,6 +19,7 @@ package halo_5
 // directement le type persist consommé par ingest.CollectMatchBatch.AddCommendations.
 
 import (
+	"levelup/go-api/internal/haloapi/halo5"
 	"levelup/go-api/internal/persist"
 )
 
@@ -32,7 +33,7 @@ import (
 // FILTRE : seuls les deltas à count = Progress − PreviousProgress > 0 produisent une
 // row (une commendation listée sans progression réelle n'est pas « gagnée CE match »).
 // L'ordre suit l'ordre du payload (déterminisme des tests).
-func mapCarnageCommendations(matchID string, carnage *H5CarnageResponse, resolveXUID func(gamertag string) string) []persist.CommendationInsert {
+func mapCarnageCommendations(matchID string, carnage *halo5.H5CarnageResponse, resolveXUID func(gamertag string) string) []persist.CommendationInsert {
 	if carnage == nil || len(carnage.PlayerStats) == 0 {
 		return nil
 	}
@@ -52,7 +53,7 @@ func mapCarnageCommendations(matchID string, carnage *H5CarnageResponse, resolve
 
 // appendCommendationDeltas convertit une liste de deltas (count = Progress −
 // PreviousProgress) en rows, en filtrant les count ≤ 0 et les Id vides.
-func appendCommendationDeltas(out []persist.CommendationInsert, matchID, xuid string, deltas []H5CommendationDelta) []persist.CommendationInsert {
+func appendCommendationDeltas(out []persist.CommendationInsert, matchID, xuid string, deltas []halo5.H5CommendationDelta) []persist.CommendationInsert {
 	for j := range deltas {
 		d := deltas[j]
 		if d.Id == "" {

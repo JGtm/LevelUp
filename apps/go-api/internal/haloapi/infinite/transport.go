@@ -21,12 +21,6 @@ const (
 	typeJSON        = "application/json"
 )
 
-// Limiter borne le débit des requêtes. `*rate.Limiter` (`golang.org/x/time/rate`) la satisfait ;
-// le limiteur appartient à l'appelant (un limiteur partagé entre clients borne leur débit commun).
-type Limiter interface {
-	Wait(ctx context.Context) error
-}
-
 // Auth : les en-têtes d'authentification d'une requête de service, passés à CHAQUE appel. Spartan
 // vide : aucun en-tête d'authentification (page ou CDN publics) ; Clearance vide : pas d'en-tête
 // `343-clearance`.
@@ -153,7 +147,7 @@ func (c *Client) get(ctx context.Context, rq requete) ([]byte, error) {
 		}
 		derniere = e.err
 		slog.DebugContext(ctx, "halo_api: GET échec (retry)", "url", rq.url, "attempt", n+1, "err", e.err)
-		if !r.attendre(ctx, n, e.retryAfter) {
+		if !r.Attendre(ctx, n, e.retryAfter) {
 			return nil, ctx.Err()
 		}
 	}
@@ -211,9 +205,9 @@ func (c *Client) classer(ctx context.Context, url string, resp *http.Response, b
 		slog.DebugContext(ctx, "halo_api: GET ressource absente", "url", url, "status", code)
 		return essai{err: &HTTPError{StatusCode: code, URL: url, Err: errRessourceAbsente, Body: body}, definitif: true}
 	case code != http.StatusOK:
-		ra := ParseRetryAfter(resp.Header.Get("Retry-After"), time.Now())
+		ra := haloapi.ParseRetryAfter(resp.Header.Get("Retry-After"), time.Now())
 		he := &HTTPError{StatusCode: code, URL: url, Err: fmt.Errorf("HTTP %d", code), RetryAfter: ra, Body: body}
-		if !c.retry.retente(code) {
+		if !c.retry.RetenteStatut(code) {
 			slog.DebugContext(ctx, "halo_api: GET HTTP error (pas de retry)", "url", url, "status", code,
 				"retry_after_s", ra.Seconds())
 			return essai{err: he, definitif: true}

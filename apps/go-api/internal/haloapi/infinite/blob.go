@@ -11,6 +11,8 @@ import (
 	"log/slog"
 	"net/http"
 	"time"
+
+	"levelup/go-api/internal/haloapi"
 )
 
 // drainBlobMax : ce qui est lu d'un corps non-200 avant fermeture (rendre la connexion au pool).
@@ -86,7 +88,7 @@ func (c *Client) DownloadBlob(ctx context.Context, blobURL string, tailleAnnonce
 		if n < c.retry.Essais-1 {
 			select {
 			case <-ctx.Done():
-			case <-time.After(c.retry.delai(n, at.retryAfter)):
+			case <-time.After(c.retry.Delai(n, at.retryAfter)):
 			}
 			if ctx.Err() != nil {
 				return nil, n + 1, ctx.Err()
@@ -116,7 +118,7 @@ func (c *Client) fetchBlobOnce(ctx context.Context, blobURL string, revalider bo
 	defer func() { _ = resp.Body.Close() }() // corps lu ou drainé ; la fermeture ne change pas l'issue
 	if resp.StatusCode != http.StatusOK {
 		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, drainBlobMax)) // drainage best-effort
-		return blobAttempt{status: resp.StatusCode, retryAfter: ParseRetryAfter(resp.Header.Get("Retry-After"), time.Now())}
+		return blobAttempt{status: resp.StatusCode, retryAfter: haloapi.ParseRetryAfter(resp.Header.Get("Retry-After"), time.Now())}
 	}
 	raw, err := io.ReadAll(resp.Body)
 	if err != nil {

@@ -8,6 +8,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"levelup/go-api/internal/haloapi/halo5"
 )
 
 // TestClient_RequestRecipe verrouille la recette de requete Halo 5 confirmee par
@@ -113,7 +115,7 @@ func TestClient_Unauthorized(t *testing.T) {
 	if err == nil {
 		t.Fatal("401 doit produire une erreur")
 	}
-	var he *HTTPError
+	var he *halo5.HTTPError
 	if !errors.As(err, &he) || he.StatusCode != http.StatusUnauthorized {
 		t.Errorf("attendu *HTTPError 401, got %v", err)
 	}

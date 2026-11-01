@@ -27,15 +27,16 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/haloapi/halo5"
 )
 
 // h5Source est la surface live minimale consommee par l'adapter (interface ->
 // mockable en tests sans reseau). *Client l'implemente.
 type h5Source interface {
-	GetServiceRecords(ctx context.Context, gamertag, recordType string) (*H5ServiceRecordResponse, error)
-	GetPlayerMatches(ctx context.Context, gamertag string, start, count int) (*H5MatchesResponse, error)
-	GetMatchCarnage(ctx context.Context, matchID, mode string) (*H5CarnageResponse, error)
-	GetMatchEvents(ctx context.Context, matchID string) (*h5MatchEventsResponse, error)
+	GetServiceRecords(ctx context.Context, gamertag, recordType string) (*halo5.H5ServiceRecordResponse, error)
+	GetPlayerMatches(ctx context.Context, gamertag string, start, count int) (*halo5.H5MatchesResponse, error)
+	GetMatchCarnage(ctx context.Context, matchID, mode string) (*halo5.H5CarnageResponse, error)
+	GetMatchEvents(ctx context.Context, matchID string) (*halo5.H5MatchEventsResponse, error)
 }
 
 var _ h5Source = (*Client)(nil)

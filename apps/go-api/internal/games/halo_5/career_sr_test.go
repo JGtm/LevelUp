@@ -7,6 +7,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/haloapi/halo5"
 )
 
 // TestApplySpartanRank_MidRank : un SR intermédiaire (JGtm SR111, 3 908 120 XP)
@@ -87,7 +88,7 @@ func TestApplySpartanRank_OutOfBounds(t *testing.T) {
 func TestLoadCareerSnapshot_AlwaysRankMax152(t *testing.T) {
 	src := &fakeSource{
 		sr:      mustServiceRecord(t),
-		matches: &H5MatchesResponse{Results: nil}, // pas de match → SR non enrichi
+		matches: &halo5.H5MatchesResponse{Results: nil}, // pas de match → SR non enrichi
 	}
 	a := NewDataAdapter(srcFactory(src), nil)
 
@@ -141,12 +142,12 @@ func TestApplyDefaultSpartanRankBounds_NoOverwrite(t *testing.T) {
 func TestLoadCareerSnapshot_EnrichesSpartanRank(t *testing.T) {
 	src := &fakeSource{
 		sr: mustServiceRecord(t),
-		matches: &H5MatchesResponse{Results: []H5MatchResult{
-			{Id: H5MatchID{MatchId: "m1", GameMode: 1}},
+		matches: &halo5.H5MatchesResponse{Results: []halo5.H5MatchResult{
+			{Id: halo5.H5MatchID{MatchId: "m1", GameMode: 1}},
 		}},
-		carnage: &H5CarnageResponse{PlayerStats: []H5CarnagePlayer{
-			{Player: H5PlayerRef{Gamertag: "OtherGuy"}, XpInfo: &H5XpInfo{SpartanRank: 50, TotalXP: 900000}},
-			{Player: H5PlayerRef{Gamertag: "JGtm"}, XpInfo: &H5XpInfo{SpartanRank: 111, TotalXP: 3908120}},
+		carnage: &halo5.H5CarnageResponse{PlayerStats: []halo5.H5CarnagePlayer{
+			{Player: halo5.H5PlayerRef{Gamertag: "OtherGuy"}, XpInfo: &halo5.H5XpInfo{SpartanRank: 50, TotalXP: 900000}},
+			{Player: halo5.H5PlayerRef{Gamertag: "JGtm"}, XpInfo: &halo5.H5XpInfo{SpartanRank: 111, TotalXP: 3908120}},
 		}},
 	}
 	a := NewDataAdapter(srcFactory(src), nil)
@@ -258,7 +259,7 @@ func TestLoadCareerSnapshot_LiveFails_FallbackLocalSR(t *testing.T) {
 func TestLoadCareerSnapshot_LiveOK_PrefersLive(t *testing.T) {
 	live := &fakeSource{
 		sr:      mustServiceRecord(t),
-		matches: &H5MatchesResponse{Results: nil}, // pas de match → SR live non enrichi
+		matches: &halo5.H5MatchesResponse{Results: nil}, // pas de match → SR live non enrichi
 	}
 	// Local renvoie un SR ARBITRAIRE différent : il NE doit PAS être servi si le live marche.
 	local := fakeCareerLocal{data: &domain.H5CareerLocal{SpartanRank: 1, TotalXP: 1}}

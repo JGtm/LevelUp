@@ -16,6 +16,8 @@ import (
 
 	"golang.org/x/time/rate"
 
+	"levelup/go-api/internal/haloapi"
+	"levelup/go-api/internal/haloapi/halo5"
 	"levelup/go-api/internal/haloapi/haloapitest"
 )
 
@@ -36,7 +38,7 @@ const (
 	entetesBinaires = " [Accept=image/png,image/*; User-Agent=cpprestsdk/2.4.0; X-343-Authorization-Spartan=" + figeesJeton + "]"
 )
 
-// TestURLFigees_Halo5_Methodes : les huit méthodes Get*, une requête chacune, sans reprise.
+// TestURLFigees_Halo5_Methodes : les sept méthodes Get*, une requête chacune, sans reprise.
 func TestURLFigees_Halo5_Methodes(t *testing.T) {
 	cas := []struct {
 		nom     string
@@ -51,10 +53,6 @@ func TestURLFigees_Halo5_Methodes(t *testing.T) {
 			_, err := c.GetServiceRecords(context.Background(), "JGtm", "arena")
 			return err
 		}, "GET https://spartanstats.svc.halowaypoint.com/h5/servicerecords/arena?players=JGtm&auth=st" + entetesJSON},
-		{"GetMatchDetail", func(c *Client) error {
-			_, err := c.GetMatchDetail(context.Background(), figeesMatchID, "arena")
-			return err
-		}, "GET https://spartanstats.svc.halowaypoint.com/h5/arena/matches/" + figeesMatchID + "?auth=st" + entetesJSON},
 		{"GetMatchCarnage", func(c *Client) error {
 			_, err := c.GetMatchCarnage(context.Background(), figeesMatchID, "arena")
 			return err
@@ -155,7 +153,7 @@ func TestURLFigees_Halo5_StatutsTerminaux(t *testing.T) {
 		e := &haloapitest.Enregistreur{Repondre: func(int, *http.Request) *http.Response { return haloapitest.Reponse(statut, "") }}
 		c := clientEnregistreur(e)
 		_, err := c.GetAppearance(context.Background(), "JGtm")
-		var he *HTTPError
+		var he *halo5.HTTPError
 		if !errors.As(err, &he) || he.StatusCode != statut || len(e.Requetes()) != 1 {
 			t.Errorf("JSON %d : erreur %v, %d essai(s), attendu *HTTPError %d et 1 essai", statut, err, len(e.Requetes()), statut)
 		}
@@ -165,7 +163,7 @@ func TestURLFigees_Halo5_StatutsTerminaux(t *testing.T) {
 		}
 	}
 	e := &haloapitest.Enregistreur{Repondre: func(int, *http.Request) *http.Response { return haloapitest.Reponse(http.StatusOK, "") }}
-	var he *HTTPError
+	var he *halo5.HTTPError
 	if _, _, err := clientEnregistreur(e).GetEmblemPNG(context.Background(), "JGtm"); !errors.As(err, &he) || he.Err.Error() != "corps vide" {
 		t.Errorf("200 au corps vide : erreur %v, attendu *HTTPError « corps vide »", err)
 	}
@@ -173,7 +171,7 @@ func TestURLFigees_Halo5_StatutsTerminaux(t *testing.T) {
 
 // TestURLFigees_Halo5_ReprisePuisEchec : tout autre statut (500 comme 429) est retenté, quatre essais
 // en tout, puis « 4 tentatives echouees » enveloppant le dernier `*HTTPError`. L'attente entre essais
-// (800 ms de base) est coupée en annulant le contexte au premier appel : `waitRetry` rend aussitôt
+// (800 ms de base) est coupée en annulant le contexte au premier appel : `Retry.Attendre` rend aussitôt
 // sur `ctx.Done()` et la boucle continue, les quatre essais ont lieu quand même (fait Go figé).
 func TestURLFigees_Halo5_ReprisePuisEchec(t *testing.T) {
 	for _, statut := range []int{500, 429} {
@@ -183,14 +181,14 @@ func TestURLFigees_Halo5_ReprisePuisEchec(t *testing.T) {
 			SurAppel: func(int) { annuler() },
 		}
 		c := clientEnregistreur(e)
-		c.limiter = nil // un limiteur rend l'erreur du contexte annulé avant l'essai suivant
+		c.api = c.api.WithLimiter(nil) // un limiteur rend l'erreur du contexte annulé avant l'essai suivant
 		_, err := c.GetAppearance(ctx, "JGtm")
 		url := "https://haloplayer.svc.halowaypoint.com/h5/profiles/JGtm/appearance?auth=st"
 		attendu := fmt.Sprintf("GetAppearance(JGtm): doGet %s: 4 tentatives echouees: HTTP %d: %s", url, statut, url)
 		if err == nil || err.Error() != attendu {
 			t.Errorf("statut %d : erreur %v, attendu %q", statut, err, attendu)
 		}
-		var he *HTTPError
+		var he *halo5.HTTPError
 		if !errors.As(err, &he) || he.StatusCode != statut || len(e.Requetes()) != 4 {
 			t.Errorf("statut %d : %d essai(s), attendu 4 et un *HTTPError %d", statut, len(e.Requetes()), statut)
 		}
@@ -215,8 +213,9 @@ func TestURLFigees_Halo5_RetryAfterHonore(t *testing.T) {
 	}
 }
 
-// TestURLFigees_Halo5_LectureDeRetryAfter : secondes entières seulement, plafonnées à 10 s ; la date
-// HTTP, le texte, zéro et le négatif donnent 0.
+// TestURLFigees_Halo5_LectureDeRetryAfter : la fenêtre Retry-After lue (`haloapi.ParseRetryAfter`)
+// puis plafonnée à 10 s par la politique Halo 5 : secondes entières ; une date HTTP PASSÉE, le texte,
+// zéro et le négatif donnent 0. Depuis la coupe (lot 2.1), une date HTTP future est lue aussi.
 func TestURLFigees_Halo5_LectureDeRetryAfter(t *testing.T) {
 	for entree, attendu := range map[string]time.Duration{
 		"":                              0,
@@ -228,8 +227,8 @@ func TestURLFigees_Halo5_LectureDeRetryAfter(t *testing.T) {
 		"abc":                           0,
 		"Wed, 21 Oct 2026 07:28:00 GMT": 0,
 	} {
-		if got := parseRetryAfterSeconds(entree); got != attendu {
-			t.Errorf("parseRetryAfterSeconds(%q) = %v, attendu %v", entree, got, attendu)
+		if got := min(haloapi.ParseRetryAfter(entree, time.Now()), halo5.RetryHalo5().Plafond); got != attendu {
+			t.Errorf("Retry-After lu (%q) = %v, attendu %v", entree, got, attendu)
 		}
 	}
 }

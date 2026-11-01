@@ -4,8 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strconv"
-	"strings"
 	"time"
 )
 
@@ -32,7 +30,7 @@ type HTTPError struct {
 	URL        string
 	Err        error
 	// RetryAfter : fenêtre demandée par l'en-tête Retry-After (429/503), déjà parsée et bornée par
-	// [maxRetryAfter]. 0 = en-tête absent ou illisible.
+	// [haloapi.ParseRetryAfter]. 0 = en-tête absent ou illisible.
 	RetryAfter time.Duration
 	// Body : corps de la réponse en erreur, tel que reçu (diagnostic ; jamais journalisé par la
 	// brique).
@@ -110,33 +108,4 @@ func estStatutAuth(code int) bool {
 
 func estStatutAbsent(code int) bool {
 	return code == http.StatusNotFound || code == http.StatusGone
-}
-
-// maxRetryAfter borne la valeur de l'en-tête Retry-After : une valeur aberrante ne fige pas
-// l'appelant indéfiniment.
-const maxRetryAfter = 5 * time.Minute
-
-// ParseRetryAfter lit l'en-tête Retry-After (RFC 7231) : un entier de secondes ou une date HTTP.
-// Rend une durée dans [0, maxRetryAfter] ; 0 si absent ou illisible.
-func ParseRetryAfter(h string, now time.Time) time.Duration {
-	if h == "" {
-		return 0
-	}
-	if secs, err := strconv.Atoi(strings.TrimSpace(h)); err == nil {
-		if secs <= 0 {
-			return 0
-		}
-		if d := time.Duration(secs) * time.Second; d <= maxRetryAfter {
-			return d
-		}
-		return maxRetryAfter
-	}
-	if t, err := http.ParseTime(h); err == nil {
-		d := t.Sub(now)
-		if d <= 0 {
-			return 0
-		}
-		return min(d, maxRetryAfter)
-	}
-	return 0
 }

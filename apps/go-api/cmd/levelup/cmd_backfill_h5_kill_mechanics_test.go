@@ -8,15 +8,15 @@ import (
 	"testing"
 	"time"
 
-	halo5 "levelup/go-api/internal/games/halo_5"
+	h5api "levelup/go-api/internal/haloapi/halo5"
 )
 
 func TestCarnageMechByGamertag(t *testing.T) {
-	carnage := &halo5.H5CarnageResponse{
-		PlayerStats: []halo5.H5CarnagePlayer{
-			{Player: halo5.H5PlayerRef{Gamertag: "JGtm"}, TotalAssassinations: 3, TotalGroundPoundKills: 1, TotalShoulderBashKills: 2},
-			{Player: halo5.H5PlayerRef{Gamertag: "Ally"}, TotalAssassinations: 0, TotalGroundPoundKills: 0, TotalShoulderBashKills: 0},
-			{Player: halo5.H5PlayerRef{Gamertag: ""}, TotalAssassinations: 9}, // gamertag vide -> ignore
+	carnage := &h5api.H5CarnageResponse{
+		PlayerStats: []h5api.H5CarnagePlayer{
+			{Player: h5api.H5PlayerRef{Gamertag: "JGtm"}, TotalAssassinations: 3, TotalGroundPoundKills: 1, TotalShoulderBashKills: 2},
+			{Player: h5api.H5PlayerRef{Gamertag: "Ally"}, TotalAssassinations: 0, TotalGroundPoundKills: 0, TotalShoulderBashKills: 0},
+			{Player: h5api.H5PlayerRef{Gamertag: ""}, TotalAssassinations: 9}, // gamertag vide -> ignore
 		},
 	}
 	got := carnageMechByGamertag(carnage)

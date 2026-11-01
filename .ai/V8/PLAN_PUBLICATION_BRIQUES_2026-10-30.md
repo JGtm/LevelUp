@@ -173,8 +173,22 @@ Conséquences pour le plan (amendements, pas de nouvelle décision produit) :
 
 Dans le module go-api d'abord (comme D2 lot 2 et D3 lots 2-4 : couper AVANT de déplacer le module).
 
-- [ ] 2.1 `halo5` : `internal/haloapi/halo5` + adaptateur côté `games/halo_5` ; politique en valeur ; `Doer`
+- [x] 2.1 `halo5` : `internal/haloapi/halo5` + adaptateur côté `games/halo_5` ; politique en valeur ; `Doer`
   gardé ; URL figées vertes ; tests portés sous leur nom.
+  (2026-11-01, agent Opus, CR vérifié et gates rejoués par le pilote. Décisions appliquées : D-2.1-a `Retry`,
+  `Limiter`, `ParseRetryAfter` montés à la racine `haloapi` (`retry.go`), alias dans `infinite`, méthode
+  `RetenteStatut` (un champ `Retente` existe) ; D-2.1-b paquet `halo5` (`New(doerJSON, doerBinaire, retry)`,
+  `Endpoints`, `Auth` par appel, `RetryHalo5()` = politique d'aujourd'hui, une seule boucle `faire`) ; DTO
+  déménagés par `git mv`, `H5MatchEventsResponse`/`H5EventPlayer`/`H5WorldLocation`/`H5GameEvent` exportés ;
+  `GetMatchDetail` NON porté (PUB-0-a) ; D-2.1-c `netguard.Doer` centralisé (`platform/netguard/doer.go`),
+  `haloadapter` perd sa copie (4 sites), ratchet `haloapi_doer_garde_test` par paquet (`infinite.New` 1,
+  `infinite.NewClassement` 2, `halo5.New` 2) ; D-2.1-d adaptateur `games/halo_5/client.go` 462 → 140 L, API des
+  appelants inchangée, 27 fichiers d'appelants réécrits sur les DTO de la brique (`gofmt -r`), aucun alias de type ;
+  D-2.1-e 8 tests existants et T2 sous leurs noms, aucune URL attendue modifiée (seul le cas `GetMatchDetail`
+  retiré) ; D-2.1-f tolérances `platform/netguard` 3, `rate` retirée. Deux différences de forme documentées
+  dans `halo5/doc.go` : garde consultée avant le limiteur ; `Retry-After` en date HTTP désormais lu. Gates :
+  vet 0, `go list -deps -test` de la brique sans exploitation, 14 paquets `ok` + livesync `-tags=integration`,
+  archlint vert avec deux mutations rouges, lint 0 issue.)
 - [ ] 2.2 UGC : service dans `infinite` ; `mapcatalog` appelle la brique ; URL figées vertes.
 - [ ] 2.3 GameCMS : service dans `infinite` ; `assets` garde la résolution ; URL figées vertes.
 - [ ] 2.4 Xbox : `internal/haloapi/xboxlive` ; `sync` appelle la brique avec le jeton en paramètre ; URL
@@ -252,5 +266,10 @@ Dans le module go-api d'abord (comme D2 lot 2 et D3 lots 2-4 : couper AVANT de d
   pour un outil de lecture ; documenté dans l'en-tête de `main.go`.
 - PUB-1-c : neuf `_test.go` déclaraient déjà leur propre `RoundTrip` enregistreur (allowlist datée du
   garde-rail `enregistreur_http_unique_test.go`) ; migration vers `haloapitest.Enregistreur` hors chantier.
+- PUB-2.1-a : `netguard_coverage_test` cherche la CHAÎNE `netguard.Check` dans un fichier qui fait `.Do(` ;
+  `platform/netguard/doer.go` passe grâce à son doc-commentaire, pas à un appel détecté. Ratchet à durcir (AST).
+- PUB-2.1-b : `platform/auth/xbl_doer.go` porte sa propre copie du Doer gardé (2e copie à côté de
+  `netguard.Doer`) ; une 3e déclenche la centralisation (règle 6).
+- PUB-2.1-c : `games/halo_5` a deux commentaires de paquet (`doc.go` et `client.go`), préexistant.
 - PUB-0-g : première capture T1 rouge sur ce poste : `gcc` absent du PATH du PowerShell (lien DuckDB) ; recette =
   `C:\msys64\ucrt64\bin` en tête du PATH + `CGO_ENABLED=1` (mémoire `reference_air_rebuild_fails_gcc_missing_path`).

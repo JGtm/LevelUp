@@ -23,6 +23,7 @@ import (
 	"levelup/go-api/internal/haloapi/infinite"
 	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/platform/netguard"
 )
 
 // logModule est l'attribut de routage des journaux du classement vers logs/leaderboard.log
@@ -88,8 +89,8 @@ func (s *LeaderboardScraper) SetSeedSeason(seasonID string) {
 // chaque sortie gardée par netguard sous sa surface.
 func (s *LeaderboardScraper) classement() *infinite.Classement {
 	return infinite.NewClassement(
-		netguardDoer{surface: surfaceClassementPage, next: s.client},
-		netguardDoer{surface: surfaceClassementSaison, next: s.noRedirectClient()},
+		netguard.Doer{Surface: surfaceClassementPage, Next: s.client},
+		netguard.Doer{Surface: surfaceClassementSaison, Next: s.noRedirectClient()},
 	).WithEndpoints(infinite.DefaultEndpoints().Avec(infinite.CleWaypointWeb, s.host))
 }
 

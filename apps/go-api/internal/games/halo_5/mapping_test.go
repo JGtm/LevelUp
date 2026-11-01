@@ -8,6 +8,7 @@ import (
 
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/games/classification"
+	"levelup/go-api/internal/haloapi/halo5"
 )
 
 // fixtureMatches reproduit le shape REEL capture par la sonde live (cmd/probe-h5,
@@ -100,7 +101,7 @@ func TestDeriveOutcome(t *testing.T) {
 }
 
 func TestMapMatchSummaries_RealShape(t *testing.T) {
-	var resp H5MatchesResponse
+	var resp halo5.H5MatchesResponse
 	if err := json.Unmarshal([]byte(fixtureMatches), &resp); err != nil {
 		t.Fatalf("unmarshal fixture: %v", err)
 	}
@@ -154,7 +155,7 @@ func TestMapMatchSummaries_RealShape(t *testing.T) {
 // au niveau du mapper pur (pré-câblage Phase 2 LoadMatchSummaries).
 func TestMapMatchSummaries_RankedClassifier(t *testing.T) {
 	const hopper = "f0c9ef9a-48bd-4b24-9db3-2c76b4e23450" // HopperId du fixture
-	var resp H5MatchesResponse
+	var resp halo5.H5MatchesResponse
 	if err := json.Unmarshal([]byte(fixtureMatches), &resp); err != nil {
 		t.Fatalf("unmarshal fixture: %v", err)
 	}
@@ -191,7 +192,7 @@ func TestMapMatchSummaries_RankedClassifier(t *testing.T) {
 }
 
 func TestAggregatePlayerStats_RealShape(t *testing.T) {
-	var resp H5ServiceRecordResponse
+	var resp halo5.H5ServiceRecordResponse
 	if err := json.Unmarshal([]byte(fixtureServiceRecord), &resp); err != nil {
 		t.Fatalf("unmarshal fixture: %v", err)
 	}
@@ -226,7 +227,7 @@ func TestAggregatePlayerStats_RealShape(t *testing.T) {
 }
 
 func TestMapCareerSnapshot_CSRDesignation(t *testing.T) {
-	var resp H5ServiceRecordResponse
+	var resp halo5.H5ServiceRecordResponse
 	if err := json.Unmarshal([]byte(fixtureServiceRecord), &resp); err != nil {
 		t.Fatalf("unmarshal fixture: %v", err)
 	}
@@ -255,9 +256,9 @@ func TestMapCareerSnapshot_CSRDesignation(t *testing.T) {
 
 func TestMapCareerSnapshot_InPlacement(t *testing.T) {
 	// Joueur PAS encore classe (pas de HighestCsrAttained) + playlists en placement.
-	inPlacement := &H5ServiceRecordResponse{Results: []H5ServiceRecordResult{{
-		Id: "P", ResultCode: 0, Result: H5ServiceRecordBody{ArenaStats: &H5ArenaStats{
-			ArenaPlaylistStats: []H5ArenaPlaylistStat{
+	inPlacement := &halo5.H5ServiceRecordResponse{Results: []halo5.H5ServiceRecordResult{{
+		Id: "P", ResultCode: 0, Result: halo5.H5ServiceRecordBody{ArenaStats: &halo5.H5ArenaStats{
+			ArenaPlaylistStats: []halo5.H5ArenaPlaylistStat{
 				{PlaylistId: "a", MeasurementMatchesLeft: 7},
 				{PlaylistId: "b", MeasurementMatchesLeft: 3},
 			},
@@ -285,9 +286,9 @@ func TestMapCareerSnapshot_InPlacement(t *testing.T) {
 
 func TestMapCareerSnapshot_OnyxVsSubOnyxCSR(t *testing.T) {
 	// #8 : la valeur CSR brute n'est exposee QU'A Onyx.
-	onyx := &H5ServiceRecordResponse{Results: []H5ServiceRecordResult{{
-		Id: "P", ResultCode: 0, Result: H5ServiceRecordBody{ArenaStats: &H5ArenaStats{
-			HighestCsrAttained: &H5Csr{DesignationId: 5, Tier: 0, Csr: 1632},
+	onyx := &halo5.H5ServiceRecordResponse{Results: []halo5.H5ServiceRecordResult{{
+		Id: "P", ResultCode: 0, Result: halo5.H5ServiceRecordBody{ArenaStats: &halo5.H5ArenaStats{
+			HighestCsrAttained: &halo5.H5Csr{DesignationId: 5, Tier: 0, Csr: 1632},
 		}},
 	}}}
 	snap := mapCareerSnapshot(onyx, "P", 10)
@@ -299,9 +300,9 @@ func TestMapCareerSnapshot_OnyxVsSubOnyxCSR(t *testing.T) {
 	}
 
 	// Sous-Onyx (Gold) AVEC un Csr>0 : ne doit PAS exposer une valeur brute orpheline.
-	gold := &H5ServiceRecordResponse{Results: []H5ServiceRecordResult{{
-		Id: "P", ResultCode: 0, Result: H5ServiceRecordBody{ArenaStats: &H5ArenaStats{
-			HighestCsrAttained: &H5Csr{DesignationId: 2, Tier: 3, Csr: 850},
+	gold := &halo5.H5ServiceRecordResponse{Results: []halo5.H5ServiceRecordResult{{
+		Id: "P", ResultCode: 0, Result: halo5.H5ServiceRecordBody{ArenaStats: &halo5.H5ArenaStats{
+			HighestCsrAttained: &halo5.H5Csr{DesignationId: 2, Tier: 3, Csr: 850},
 		}},
 	}}}
 	snap = mapCareerSnapshot(gold, "P", 10)
@@ -313,9 +314,9 @@ func TestMapCareerSnapshot_OnyxVsSubOnyxCSR(t *testing.T) {
 	}
 
 	// Designation hors borne : ni palier ni HighestCSR orphelin.
-	unknown := &H5ServiceRecordResponse{Results: []H5ServiceRecordResult{{
-		Id: "P", ResultCode: 0, Result: H5ServiceRecordBody{ArenaStats: &H5ArenaStats{
-			HighestCsrAttained: &H5Csr{DesignationId: 99, Tier: 1, Csr: 500},
+	unknown := &halo5.H5ServiceRecordResponse{Results: []halo5.H5ServiceRecordResult{{
+		Id: "P", ResultCode: 0, Result: halo5.H5ServiceRecordBody{ArenaStats: &halo5.H5ArenaStats{
+			HighestCsrAttained: &halo5.H5Csr{DesignationId: 99, Tier: 1, Csr: 500},
 		}},
 	}}}
 	snap = mapCareerSnapshot(unknown, "P", 10)

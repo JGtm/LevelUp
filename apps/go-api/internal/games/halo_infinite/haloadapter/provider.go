@@ -21,6 +21,7 @@ import (
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/haloapi/infinite"
+	"levelup/go-api/internal/platform/netguard"
 )
 
 // Hints d'erreur retournés dans domain.*Response.ErrorHint pour signaler pourquoi un appel live
@@ -241,7 +242,7 @@ func (p *Provider) hostFor(ctx context.Context, cle infinite.Cle) string {
 // politique `politique` (essais du fournisseur), limiteur partagé, adresses des clés `cles`.
 func (p *Provider) api(ctx context.Context, surface string, politique infinite.Retry, cles ...infinite.Cle) *infinite.Client {
 	politique.Essais = p.maxRetries
-	c := infinite.New(netguardDoer{surface: surface, next: p.client}, politique).WithEndpoints(p.adresses(ctx, cles...))
+	c := infinite.New(netguard.Doer{Surface: surface, Next: p.client}, politique).WithEndpoints(p.adresses(ctx, cles...))
 	if p.limiter != nil {
 		c = c.WithLimiter(p.limiter)
 	}

@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/haloapi/halo5"
 )
 
 // h5Designations mappe DesignationId (palier CSR majeur) -> labels EN/FR.
@@ -29,7 +30,7 @@ func designationLabels(designationID int) (string, string) {
 }
 
 // firstArenaResult retourne le corps arena du joueur requete (ResultCode 0), ou nil.
-func firstArenaResult(resp *H5ServiceRecordResponse) *H5ArenaStats {
+func firstArenaResult(resp *halo5.H5ServiceRecordResponse) *halo5.H5ArenaStats {
 	if resp == nil {
 		return nil
 	}
@@ -44,7 +45,7 @@ func firstArenaResult(resp *H5ServiceRecordResponse) *H5ArenaStats {
 // aggregatePlayerStats agrege les ArenaPlaylistStats du service record en
 // PlayerStats canonique. nil si pas de stats arena. Les ratios sont des pointeurs
 // (distinction "indisponible" vs "0").
-func aggregatePlayerStats(resp *H5ServiceRecordResponse, gamertag string) *canonical.PlayerStats {
+func aggregatePlayerStats(resp *halo5.H5ServiceRecordResponse, gamertag string) *canonical.PlayerStats {
 	arena := firstArenaResult(resp)
 	if arena == nil {
 		return nil
@@ -104,7 +105,7 @@ const h5DefaultPlacementMatches = 10
 // (RankTier/RankName, valeur Onyx) et l'etat PLACEMENT (matchs restants / total
 // du titre) sont alimentes. nil si pas de stats arena. placementTotal = nb de
 // matchs de placement du titre (TitleDescriptor.PlacementMatches).
-func mapCareerSnapshot(resp *H5ServiceRecordResponse, gamertag string, placementTotal int) *canonical.CareerSnapshot {
+func mapCareerSnapshot(resp *halo5.H5ServiceRecordResponse, gamertag string, placementTotal int) *canonical.CareerSnapshot {
 	arena := firstArenaResult(resp)
 	if arena == nil {
 		return nil
@@ -156,7 +157,7 @@ func mapCareerSnapshot(resp *H5ServiceRecordResponse, gamertag string, placement
 
 // maxMeasurementMatchesLeft retourne le maximum de MeasurementMatchesLeft sur les
 // playlists arena (0 si aucune en placement).
-func maxMeasurementMatchesLeft(arena *H5ArenaStats) int {
+func maxMeasurementMatchesLeft(arena *halo5.H5ArenaStats) int {
 	best := 0
 	for i := range arena.ArenaPlaylistStats {
 		if n := arena.ArenaPlaylistStats[i].MeasurementMatchesLeft; n > best {

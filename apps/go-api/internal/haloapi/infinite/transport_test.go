@@ -8,7 +8,6 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
-	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -19,7 +18,7 @@ import (
 )
 
 // sansDelai rend la politique avec des attentes nulles (les séquences testent le NOMBRE d'essais ;
-// les durées sont testées par [Retry.delai]).
+// les durées sont testées par [Retry.Delai]).
 func sansDelai(r Retry) Retry {
 	r.DelaiBase = 0
 	return r
@@ -71,7 +70,7 @@ func TestRetry_Delais(t *testing.T) {
 		{"haloclient plafond", RetryHaloClient(), 4, 0, 10 * time.Second},
 	}
 	for _, c := range cas {
-		if got := c.r.delai(c.n, c.ra); got != c.veut {
+		if got := c.r.Delai(c.n, c.ra); got != c.veut {
 			t.Errorf("%s : delai = %v, veut %v", c.nom, got, c.veut)
 		}
 	}
@@ -84,17 +83,17 @@ func TestRetry_Parametres(t *testing.T) {
 		t.Fatalf("essais = %d/%d/%d, veut 3/3/4", p.Essais, d.Essais, h.Essais)
 	}
 	for _, s := range []int{400, 429, 500, 503} {
-		if !p.retente(s) {
+		if !p.RetenteStatut(s) {
 			t.Errorf("provider doit retenter %d", s)
 		}
 	}
 	for s, veut := range map[int]bool{400: false, 429: false, 500: true, 503: true} {
-		if d.retente(s) != veut {
+		if d.RetenteStatut(s) != veut {
 			t.Errorf("discovery retente(%d) = %v", s, !veut)
 		}
 	}
 	for s, veut := range map[int]bool{400: true, 429: false, 500: true, 503: true} {
-		if h.retente(s) != veut {
+		if h.RetenteStatut(s) != veut {
 			t.Errorf("haloclient retente(%d) = %v", s, !veut)
 		}
 	}
@@ -110,7 +109,7 @@ func TestRetry_Parametres(t *testing.T) {
 	if !h.IgnoreErreurLimiteur || p.IgnoreErreurLimiteur || d.IgnoreErreurLimiteur {
 		t.Error("IgnoreErreurLimiteur : haloclient seul")
 	}
-	if (Retry{}).retente(500) {
+	if (Retry{}).RetenteStatut(500) {
 		t.Error("Retente nil : aucun statut retenté")
 	}
 }
@@ -330,38 +329,6 @@ func TestAuth_JetonsMasques(t *testing.T) {
 		if strings.Contains(rendu, "secret") {
 			t.Errorf("rendu %q contient un jeton", rendu)
 		}
-	}
-}
-
-// TestParseRetryAfter : secondes, date HTTP, borne, illisible.
-func TestParseRetryAfter(t *testing.T) {
-	now := time.Date(2026, 10, 29, 12, 0, 0, 0, time.UTC)
-	// Les huit premiers cas portent les noms du test du client de synchronisation d'avant la brique.
-	cas := []struct {
-		nom  string
-		h    string
-		veut time.Duration
-	}{
-		{"empty", "", 0},
-		{"seconds", "120", 120 * time.Second},
-		{"zero", "0", 0},
-		{"negative", "-5", 0},
-		{"garbage", "abc", 0},
-		{"clamp_over_max", "99999", maxRetryAfter},
-		{"http_date_future", now.Add(90 * time.Second).Format(http.TimeFormat), 90 * time.Second},
-		{"http_date_past", now.Add(-time.Minute).Format(http.TimeFormat), 0},
-		{"secondes_bordees_d_espaces", " 3 ", 3 * time.Second},
-		{"une_heure_bornee", strconv.Itoa(3600), maxRetryAfter},
-		{"texte_libre", "n'importe quoi", 0},
-		{"date_http_bornee", now.Add(time.Hour).Format(http.TimeFormat), maxRetryAfter},
-		{"douze_secondes", "12", 12 * time.Second},
-	}
-	for _, c := range cas {
-		t.Run(c.nom, func(t *testing.T) {
-			if got := ParseRetryAfter(c.h, now); got != c.veut {
-				t.Errorf("ParseRetryAfter(%q) = %v, veut %v", c.h, got, c.veut)
-			}
-		})
 	}
 }
 

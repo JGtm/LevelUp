@@ -1,4 +1,4 @@
-package halo_5
+package halo5
 
 // dto_carnage.go — projection du carnage report Halo 5 (/h5/{mode}/matches/{id}).
 //

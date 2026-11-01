@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	halo5 "levelup/go-api/internal/games/halo_5"
+	h5api "levelup/go-api/internal/haloapi/halo5"
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/sync/skill"
 )
@@ -22,7 +23,7 @@ import (
 // implémenter tout h5Source (dont un type de retour non exporté). *halo5.Client et
 // toute CaptureSource le satisfont.
 type carnageGetter interface {
-	GetMatchCarnage(ctx context.Context, matchID, mode string) (*halo5.H5CarnageResponse, error)
+	GetMatchCarnage(ctx context.Context, matchID, mode string) (*h5api.H5CarnageResponse, error)
 }
 
 // PerMatchRatingsSummary — bilan instrumenté d'un run PersistPerMatchRatings :
@@ -126,7 +127,7 @@ func PersistPerMatchRatings(ctx context.Context, src carnageGetter, playerDB, sh
 // de la player DB) : le header match view ignore la valeur pour ce tier (buildRankBlock,
 // isPlacement) et affiche « Placement » au lieu d'un rang vide, ET --missing-only ne
 // re-fetch plus ces matchs (ils portent désormais une ligne CSR). DEC-4.
-func buildPerMatchCSRInsert(matchID string, cur *halo5.H5Csr) *persist.SkillRankInsert {
+func buildPerMatchCSRInsert(matchID string, cur *h5api.H5Csr) *persist.SkillRankInsert {
 	pg := "h5_arena"
 	if cur == nil {
 		zero := 0.0
@@ -190,7 +191,7 @@ func buildCareerProgressionInsert(xuid string, spartanRank, totalXP int, start s
 }
 
 // ownerStat trouve l'entrée du joueur (par gamertag) dans le carnage. nil si absent.
-func ownerStat(c *halo5.H5CarnageResponse, gamertag string) *halo5.H5CarnagePlayer {
+func ownerStat(c *h5api.H5CarnageResponse, gamertag string) *h5api.H5CarnagePlayer {
 	if c == nil {
 		return nil
 	}

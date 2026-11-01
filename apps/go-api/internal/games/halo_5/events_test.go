@@ -9,6 +9,7 @@ import (
 
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/haloapi/halo5"
 )
 
 // fixtureEvents — slice RÉELLE (shapes exactes capturées par cmd/probe-h5 sur un
@@ -26,9 +27,9 @@ const fixtureEvents = `{"GameEvents":[
  {"RoundIndex":0,"TimeSinceStart":"PT5M41.7899986S","EventName":"RoundEnd"}
 ]}`
 
-func parseFixture(t *testing.T) *h5MatchEventsResponse {
+func parseFixture(t *testing.T) *halo5.H5MatchEventsResponse {
 	t.Helper()
-	var r h5MatchEventsResponse
+	var r halo5.H5MatchEventsResponse
 	if err := json.Unmarshal([]byte(fixtureEvents), &r); err != nil {
 		t.Fatalf("fixture: %v", err)
 	}
@@ -96,16 +97,16 @@ func TestMapH5Events_MeleeAndIdentities(t *testing.T) {
 func TestH5KillKind_AssassinationPriority(t *testing.T) {
 	cases := []struct {
 		name string
-		ev   h5GameEvent
+		ev   halo5.H5GameEvent
 		want canonical.KillKind
 	}{
 		// L'assassinat est aussi tagué IsMelee par l'API → il DOIT primer.
-		{"assassination bat melee", h5GameEvent{IsAssassination: true, IsMelee: true}, canonical.KillKindAssassination},
-		{"assassination seul", h5GameEvent{IsAssassination: true}, canonical.KillKindAssassination},
-		{"melee sans assassinat", h5GameEvent{IsMelee: true}, canonical.KillKindMelee},
-		{"groundpound", h5GameEvent{IsGroundPound: true}, canonical.KillKindGroundPound},
-		{"shoulderbash", h5GameEvent{IsShoulderBash: true}, canonical.KillKindShoulderBash},
-		{"weapon par défaut", h5GameEvent{IsWeapon: true}, canonical.KillKindWeapon},
+		{"assassination bat melee", halo5.H5GameEvent{IsAssassination: true, IsMelee: true}, canonical.KillKindAssassination},
+		{"assassination seul", halo5.H5GameEvent{IsAssassination: true}, canonical.KillKindAssassination},
+		{"melee sans assassinat", halo5.H5GameEvent{IsMelee: true}, canonical.KillKindMelee},
+		{"groundpound", halo5.H5GameEvent{IsGroundPound: true}, canonical.KillKindGroundPound},
+		{"shoulderbash", halo5.H5GameEvent{IsShoulderBash: true}, canonical.KillKindShoulderBash},
+		{"weapon par défaut", halo5.H5GameEvent{IsWeapon: true}, canonical.KillKindWeapon},
 	}
 	for _, c := range cases {
 		ev := c.ev
@@ -163,7 +164,7 @@ func TestAdapter_LoadMatchEvents_Live(t *testing.T) {
 }
 
 func TestAdapter_LoadMatchEvents_404Graceful(t *testing.T) {
-	notFound := &HTTPError{StatusCode: http.StatusNotFound, URL: "x", Err: errors.New("absent")}
+	notFound := &halo5.HTTPError{StatusCode: http.StatusNotFound, URL: "x", Err: errors.New("absent")}
 	a := NewDataAdapter(srcFactory(&fakeSource{evErr: notFound}), nil)
 	tl, err := a.LoadMatchEvents(context.Background(), "m", canonical.MatchEventOptions{})
 	if err != nil {

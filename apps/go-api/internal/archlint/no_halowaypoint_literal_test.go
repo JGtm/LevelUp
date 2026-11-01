@@ -34,10 +34,10 @@ import (
 // fichier frontière qui a une raison légitime de nommer l'hôte halowaypoint.
 // Catégories :
 //   - haloapi/infinite/  : la brique « API Halo » (UN fichier : ses adresses par défaut).
+//   - haloapi/halo5/     : la brique « API Halo », services Halo 5 (UN fichier : ses adresses par défaut).
 //   - domain/title/      : defaults documentés des descripteurs d'auth par titre.
 //   - assets/            : fetchers gamecms-hacs (URLs d'assets médailles/images).
 //   - games/halo_infinite: adapter d'URLs d'assets waypoint (base URL waypoint web).
-//   - games/halo_5/       : client H5 (mêmes hôtes officiels).
 //   - halotest/          : fake server de test (héberge des URLs factices halowaypoint).
 //   - cmd/                : outils diag/probe/fixtures qui tapent l'API officielle.
 //   - scripts/            : outil de warm-up d'assets (URLs gamecms).
@@ -51,6 +51,10 @@ var halowaypointAllowlist = map[string]bool{
 	// reçoivent des Endpoints et ne nomment aucun hôte) ; `games/halo_infinite/haloadapter` et
 	// `sync/filmfetch` n'en nomment aucun.
 	"internal/haloapi/infinite/endpoints.go": true,
+	// haloapi/halo5/ — client des services Halo 5 de la brique (plan PUBLICATION, lot 2.1, 2026-11-01) :
+	// endpoints.go est l'UNIQUE endroit de ses adresses par défaut ; l'adaptateur `games/halo_5/client.go`
+	// (entrée retirée le même jour) n'en nomme plus aucun.
+	"internal/haloapi/halo5/endpoints.go": true,
 	// platform/auth/ : plus aucune entrée. (provider.go retiré au retrait de MSAL 2026-07-15 ;
 	// halo_exchange.go retiré le 2026-10-29, plan D3 lot 2 : la chaîne d'échange est partie dans
 	// internal/haloapi/xblauth, sans état ni titre, et ne nomme plus aucun hôte halowaypoint — les
@@ -62,7 +66,6 @@ var halowaypointAllowlist = map[string]bool{
 	"internal/assets/kinds.go":           true,
 	// games/ — adapters/clients par titre.
 	"internal/games/halo_infinite/adapter_asset_urls.go": true,
-	"internal/games/halo_5/client.go":                    true,
 	// halotest/ — fake server (URLs factices halowaypoint en test-support).
 	"internal/sync/halotest/fake_server.go": true,
 	// cmd/ — outils diag/probe/fixtures.

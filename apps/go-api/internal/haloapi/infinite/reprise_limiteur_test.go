@@ -2,7 +2,7 @@ package infinite
 
 // reprise_limiteur_test.go — les tests du transport du client de synchronisation d'avant la brique
 // (attente de reprise, limiteur, verdict « absent » typé, adresses des fragments), portés sous leur
-// nom sur le code de la brique qui les remplace : `Retry.attendre`, `Client.attendreLimiteur`,
+// nom sur le code de la brique qui les remplace : `Retry.Attendre`, `Client.attendreLimiteur`,
 // `IsNotFound`, `BuildChunkURL`.
 
 import (
@@ -20,7 +20,7 @@ func TestBackoff_Short(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	start := time.Now()
-	RetryHaloClient().attendre(ctx, 0, 0) // 2^0 × délai de base, sans Retry-After
+	RetryHaloClient().Attendre(ctx, 0, 0) // 2^0 × délai de base, sans Retry-After
 	if elapsed := time.Since(start); elapsed > 3*time.Second {
 		t.Fatalf("attente trop longue : %v", elapsed)
 	}
@@ -30,7 +30,7 @@ func TestBackoff_CancelledContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // déjà annulé
 	start := time.Now()
-	RetryHaloClient().attendre(ctx, 2, 0)
+	RetryHaloClient().Attendre(ctx, 2, 0)
 	if time.Since(start) > 100*time.Millisecond {
 		t.Fatal("l'attente doit rendre la main aussitôt sur un contexte annulé")
 	}
