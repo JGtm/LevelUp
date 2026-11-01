@@ -39,7 +39,8 @@ const DefaultRateLimitRPM = 300
 
 // AppConfig centralise la configuration de l'application.
 type AppConfig struct {
-	RepoRoot        string
+	RepoRoot        string // racine des ressources (nom historique) ; les trois racines : Roots()
+	roots           titlePkg.Roots
 	DBProfilesPath  string
 	AppSettingsPath string
 	SessionDir      string
@@ -207,29 +208,27 @@ type BackupConfig struct {
 // loadBackupConfig lit le comportement depuis app_settings.json et les chemins
 // depuis les variables d'environnement. Suit le même pattern que loadUserTimezone.
 func BootstrapEnvLocal() {
-	repoRoot := getEnvOrDefault("LEVELUP_REPO_ROOT", autoDetectRepoRoot())
-	if repoRoot == "" {
-		return
-	}
-	loadEnvLocal(filepath.Join(repoRoot, ".env.local"))
+	loadEnvLocal(filepath.Join(ResolveRoots().StateFilesDir(), ".env.local"))
 }
 
 // load charge la configuration de l'environnement (défauts = dév local) ; fromRepo : cf. Load/LoadServer.
 func load(fromRepo bool, launchMode string) (*AppConfig, error) {
-	repoRoot := getEnvOrDefault("LEVELUP_REPO_ROOT", autoDetectRepoRoot())
+	roots := ResolveRoots()
 	// Charger .env.local avant toute lecture de variable d'environnement,
 	// pour que les variables locales (SPNKR_AZURE_*, LEVELUP_*) soient disponibles.
 	// (No-op si main() a déjà appelé BootstrapEnvLocal — loadEnvLocal n'écrase
 	// jamais une var déjà définie.)
-	loadEnvLocal(filepath.Join(repoRoot, ".env.local"))
-	st := loadStatePaths(repoRoot, fromRepo) // mode démo + chemins d'état et d'exécution, cf. config_demo.go
-	appSettingsPath := st.path("LEVELUP_APP_SETTINGS", filepath.Join(repoRoot, "app_settings.json"), titlePkg.DemoLayout.AppSettingsPath)
-
+	loadEnvLocal(filepath.Join(roots.StateFilesDir(), ".env.local"))
+	titlePkg.InstallProcessRoots(roots)
+	pr := titlePkg.NewPathResolverRoots(roots)
+	st := loadStatePaths(roots.Data, fromRepo) // mode démo + chemins d'état et d'exécution, cf. config_demo.go
+	appSettingsPath := st.path("LEVELUP_APP_SETTINGS", pr.AppSettingsPath(), titlePkg.DemoLayout.AppSettingsPath)
 	cfg := &AppConfig{
-		RepoRoot:          repoRoot,
-		DBProfilesPath:    st.path("LEVELUP_DB_PROFILES", filepath.Join(repoRoot, "db_profiles.json"), titlePkg.DemoLayout.DBProfilesPath),
+		RepoRoot:          roots.Resources,
+		roots:             roots,
+		DBProfilesPath:    st.path("LEVELUP_DB_PROFILES", pr.DBProfilesPath(), titlePkg.DemoLayout.DBProfilesPath),
 		AppSettingsPath:   appSettingsPath,
-		SessionDir:        st.path("LEVELUP_SESSION_DIR", filepath.Join(repoRoot, "data", "sessions"), titlePkg.DemoLayout.SessionDir),
+		SessionDir:        st.path("LEVELUP_SESSION_DIR", pr.SessionDir(), titlePkg.DemoLayout.SessionDir),
 		DemoMode:          st.demoMode,
 		DemoFixturesDir:   st.fixturesDir,
 		DemoLocale:        getEnvOrDefault("LEVELUP_DEMO_LOCALE", "en"),
@@ -240,7 +239,7 @@ func load(fromRepo bool, launchMode string) (*AppConfig, error) {
 		Lang:              getEnvOrDefault("LEVELUP_LANG", "fr"),
 		AppVersion:        getEnvOrDefault("LEVELUP_APP_VERSION", "dev"),
 		DiscordWebhookURL: loadDiscordWebhookURL(appSettingsPath),
-		AuthDir:           st.path("LEVELUP_AUTH_DIR", filepath.Join(repoRoot, "data", "auth"), titlePkg.DemoLayout.AuthDir),
+		AuthDir:           st.path("LEVELUP_AUTH_DIR", filepath.Join(roots.Data, "auth"), titlePkg.DemoLayout.AuthDir),
 		AuthMode:          normalizeMode(getEnvOrDefault("LEVELUP_AUTH_MODE", ""), defaultAuthMode),
 		OAuthRedirectURI:  getEnvOrDefault("LEVELUP_OAUTH_REDIRECT_URI", ""),
 		RegistrationMode:  normalizeMode(getEnvOrDefault("LEVELUP_REGISTRATION", ""), defaultRegistrationMode),
@@ -254,7 +253,7 @@ func load(fromRepo bool, launchMode string) (*AppConfig, error) {
 	cfg.UserTimezone = loadUserTimezone(appSettingsPath)
 	cfg.CurrentCSRSeasonID = loadCSRSeasonID(appSettingsPath)
 	cfg.MediaCapturesBaseDir = loadMediaCapturesBaseDir(appSettingsPath)
-	cfg.Backup = st.backupConfig(repoRoot, appSettingsPath)
+	cfg.Backup = st.backupConfig(roots.Data, appSettingsPath)
 	cfg.PrestigeEnabled = prestige.IsEnabled(appSettingsPath)
 	cfg.PersistBatchAsync = st.persistBatchAsync()
 	cfg.EventsConvergence = getEnvOrDefault("LEVELUP_EVENTS_CONVERGENCE", "") != "0"
@@ -480,7 +479,7 @@ func (c *AppConfig) CSRSeasonIDForTitle(ctx context.Context, slug string, reg *t
 		slog.DebugContext(ctx, "csr_season.degraded", "title", slug, "reason", "cap_ranked_absent")
 		return ""
 	}
-	pr := titlePkg.NewPathResolver(c.RepoRoot, reg)
+	pr := c.PathResolver(reg)
 	if id := readCSRSeasonIDFromFile(pr.TitleSettingsPath(slug)); id != "" {
 		return id // overlay fichier du titre (data/titles/<slug>/settings.json)
 	}
@@ -557,8 +556,9 @@ func loadEnvLocal(path string) {
 		if len(val) >= 2 && ((val[0] == '"' && val[len(val)-1] == '"') || (val[0] == '\'' && val[len(val)-1] == '\'')) {
 			val = val[1 : len(val)-1]
 		}
-		// Ne pas écraser une variable déjà définie dans l'environnement réel.
-		if os.Getenv(key) == "" {
+		// Ne pas écraser une variable déjà définie dans l'environnement réel ; les racines
+		// ne se posent que par l'environnement (config_roots.go).
+		if os.Getenv(key) == "" && !skipRootEnvKey(path, key) {
 			_ = os.Setenv(key, val)
 		}
 	}

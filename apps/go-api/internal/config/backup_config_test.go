@@ -44,8 +44,8 @@ func TestLoadBackupConfig_Defaults(t *testing.T) {
 	if cfg.KeepMonthly != 12 {
 		t.Errorf("default KeepMonthly: got %d, want 12", cfg.KeepMonthly)
 	}
-	// BackupDir defaults to {repoRoot}/data/backups
-	if cfg.BackupDir != filepath.Join(dir, "data", "backups") {
+	// BackupDir defaults to {dataRoot}/backups
+	if cfg.BackupDir != filepath.Join(dir, "backups") {
 		t.Errorf("default BackupDir: got %q", cfg.BackupDir)
 	}
 }

@@ -59,7 +59,7 @@ func (c *AppConfig) RuntimePaths() *title.PathResolver {
 	if c.demoState() {
 		return c.DemoLayout().RuntimePaths()
 	}
-	return title.NewPathResolver(c.RepoRoot)
+	return c.PathResolver()
 }
 
 // WatcherTokensDir rend le magasin de tokens multi-utilisateur (ADR 0023). En démo : le
@@ -69,7 +69,7 @@ func (c *AppConfig) WatcherTokensDir() string {
 	if c.demoState() {
 		return c.DemoLayout().WatcherTokensDir()
 	}
-	return title.NewPathResolver(c.RepoRoot).WatcherTokensDir()
+	return c.PathResolver().WatcherTokensDir()
 }
 
 // TitleSettingsPath rend l'overlay de réglages d'un titre : celui de la fixture en démo,
@@ -78,7 +78,7 @@ func (c *AppConfig) TitleSettingsPath(slug string) string {
 	if c.demoState() {
 		return c.DemoLayout().TitleSettingsPath(slug)
 	}
-	return title.NewPathResolver(c.RepoRoot).TitleSettingsPath(slug)
+	return c.PathResolver().TitleSettingsPath(slug)
 }
 
 // demoModeEnabledValue : la seule valeur (insensible à la casse) de LEVELUP_DEMO_MODE qui
@@ -99,8 +99,7 @@ func DemoLogsDir() (string, bool) {
 	if !demoModeFromEnv() || os.Getenv("LEVELUP_LOGS_DIR") != "" {
 		return "", false
 	}
-	repoRoot := getEnvOrDefault("LEVELUP_REPO_ROOT", autoDetectRepoRoot())
-	return title.NewDemoLayout(demoFixturesDirFromEnv(repoRoot)).LogsDir(), true
+	return title.NewDemoLayout(demoFixturesDirFromEnv(ResolveRoots().Data)).LogsDir(), true
 }
 
 // statePaths résout les chemins d'état et d'exécution de Load (sessions, auth, profils,
@@ -117,16 +116,16 @@ type statePaths struct {
 // loadStatePaths lit le mode démo (LEVELUP_DEMO_MODE) et la racine démo
 // (LEVELUP_DEMO_FIXTURES_DIR) de l'environnement, pour load. fromRepo (Load, hors serveur) : aucune
 // redirection démo des chemins d'état.
-func loadStatePaths(repoRoot string, fromRepo bool) statePaths {
-	fixturesDir := demoFixturesDirFromEnv(repoRoot)
+func loadStatePaths(dataRoot string, fromRepo bool) statePaths {
+	fixturesDir := demoFixturesDirFromEnv(dataRoot)
 	demoMode := demoModeFromEnv()
 	return statePaths{demo: demoMode && !fromRepo, demoMode: demoMode, fixturesDir: fixturesDir,
 		layout: title.NewDemoLayout(fixturesDir)}
 }
 
-// demoFixturesDirFromEnv lit LEVELUP_DEMO_FIXTURES_DIR (défaut `<repoRoot>/data/demo`).
-func demoFixturesDirFromEnv(repoRoot string) string {
-	return getEnvOrDefault("LEVELUP_DEMO_FIXTURES_DIR", filepath.Join(repoRoot, "data", "demo"))
+// demoFixturesDirFromEnv lit LEVELUP_DEMO_FIXTURES_DIR (défaut `<dataRoot>/demo`).
+func demoFixturesDirFromEnv(dataRoot string) string {
+	return getEnvOrDefault("LEVELUP_DEMO_FIXTURES_DIR", filepath.Join(dataRoot, "demo"))
 }
 
 func (s statePaths) path(envKey, prodDefault string, demoPath func(title.DemoLayout) string) string {
@@ -147,8 +146,8 @@ func demoBackupDir(l title.DemoLayout) string {
 
 // backupConfig lit la configuration de sauvegarde (loadBackupConfig) ; en démo, sans
 // LEVELUP_BACKUP_DIR explicite, le dossier de sauvegarde va sous `<démo>/runtime/`.
-func (s statePaths) backupConfig(repoRoot, appSettingsPath string) BackupConfig {
-	b := loadBackupConfig(repoRoot, appSettingsPath)
+func (s statePaths) backupConfig(dataRoot, appSettingsPath string) BackupConfig {
+	b := loadBackupConfig(dataRoot, appSettingsPath)
 	b.BackupDir = s.path("LEVELUP_BACKUP_DIR", b.BackupDir, demoBackupDir)
 	return b
 }

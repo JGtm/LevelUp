@@ -530,25 +530,30 @@ func (r *Registry) ForeignMediaFilenamePrefixes(slug string) []string {
 // Tous les chemins passent par ce résolveur — aucun filepath.Join(repoRoot, "data", ...)
 // n'est autorisé dans les handlers, services, ops ou tests.
 type PathResolver struct {
-	repoRoot string
+	roots    Roots
 	registry *Registry
 }
 
-// NewPathResolver crée un PathResolver.
-// Si registry n'est pas fourni, un registre par défaut est utilisé.
+// NewPathResolver crée un PathResolver enraciné en repoRoot, aux racines par défaut (roots.go :
+// data/ et logs/ sous repoRoot, ou les racines du processus quand repoRoot est leur racine de
+// ressources). Si registry n'est pas fourni, un registre par défaut est utilisé.
 func NewPathResolver(repoRoot string, registry ...*Registry) *PathResolver {
+	return newPathResolver(rootsFor(repoRoot), registry)
+}
+
+func newPathResolver(roots Roots, registry []*Registry) *PathResolver {
 	var reg *Registry
 	if len(registry) > 0 && registry[0] != nil {
 		reg = registry[0]
 	} else {
 		reg = NewRegistry()
 	}
-	return &PathResolver{repoRoot: repoRoot, registry: reg}
+	return &PathResolver{roots: roots, registry: reg}
 }
 
-// RepoRoot retourne la racine du repo.
+// RepoRoot retourne la racine des ressources (nom historique de ResourcesRoot).
 func (p *PathResolver) RepoRoot() string {
-	return p.repoRoot
+	return p.roots.Resources
 }
 
 // --- Chemins title-aware ---
@@ -559,13 +564,13 @@ func (p *PathResolver) RepoRoot() string {
 // introuvable » — RepoRoot mal résolu / volume non monté — de « aucune base »).
 // Ex: data/titles/
 func (p *PathResolver) TitlesRootDir() string {
-	return filepath.Join(p.repoRoot, "data", "titles")
+	return filepath.Join(p.roots.Data, "titles")
 }
 
 // TitleDataDir retourne le répertoire racine des données d'un titre.
 // Ex: data/titles/halo_infinite/
 func (p *PathResolver) TitleDataDir(titleSlug string) string {
-	return filepath.Join(p.repoRoot, "data", "titles", titleSlug)
+	return filepath.Join(p.roots.Data, "titles", titleSlug)
 }
 
 // WarehouseDir retourne le répertoire warehouse d'un titre.
@@ -609,7 +614,7 @@ func (p *PathResolver) SnapshotCurrentManifestPath(titleSlug string) string {
 //
 // Ex: data/global/xbox_aliases.duckdb
 func (p *PathResolver) GlobalXuidAliasesDBPath() string {
-	return filepath.Join(p.repoRoot, "data", "global", "xbox_aliases.duckdb")
+	return filepath.Join(p.roots.Data, "global", "xbox_aliases.duckdb")
 }
 
 // PlayerFriendsPath retourne le chemin du fichier des listes d'amis par profil
@@ -619,7 +624,7 @@ func (p *PathResolver) GlobalXuidAliasesDBPath() string {
 //
 // Ex: data/global/player_friends.json
 func (p *PathResolver) PlayerFriendsPath() string {
-	return filepath.Join(p.repoRoot, "data", "global", "player_friends.json")
+	return filepath.Join(p.roots.Data, "global", "player_friends.json")
 }
 
 // GlobalMonitoringDB retourne le chemin de la base monitoring globale
@@ -631,7 +636,7 @@ func (p *PathResolver) PlayerFriendsPath() string {
 //
 // Ex: data/global/monitoring.duckdb
 func (p *PathResolver) GlobalMonitoringDB() string {
-	return filepath.Join(p.repoRoot, "data", "global", "monitoring.duckdb")
+	return filepath.Join(p.roots.Data, "global", "monitoring.duckdb")
 }
 
 // AdminStateDir retourne le répertoire de l'état runtime PERSISTANT du dashboard
@@ -642,7 +647,7 @@ func (p *PathResolver) GlobalMonitoringDB() string {
 //
 // Ex: data/global/admin_state/
 func (p *PathResolver) AdminStateDir() string {
-	return filepath.Join(p.repoRoot, "data", "global", "admin_state")
+	return filepath.Join(p.roots.Data, "global", "admin_state")
 }
 
 // PostSyncSnapshotPath retourne le chemin du snapshot post-sync persistant
@@ -712,7 +717,7 @@ func (p *PathResolver) DemoManifestPath(gamertag, titleSlug string) string {
 	if titleSlug == "" {
 		titleSlug = DefaultSlug
 	}
-	return filepath.Join(p.repoRoot, "config", "demo", gamertag, titleSlug+".json")
+	return filepath.Join(p.roots.Resources, "config", "demo", gamertag, titleSlug+".json")
 }
 
 // DemoFilmsCacheRoot rend le MAGASIN PERSISTANT des films des rejeux figés de la démo :
@@ -721,7 +726,7 @@ func (p *PathResolver) DemoManifestPath(gamertag, titleSlug string) string {
 // lise comme ceux du cache. Provisionné une fois là où le cache de films n'existe pas (VPS).
 // Ex: data/demo_films/halo_infinite/film_chunks/abcd1234/
 func (p *PathResolver) DemoFilmsCacheRoot(slug string) string {
-	return filepath.Join(p.repoRoot, "data", "demo_films", slug)
+	return filepath.Join(p.roots.Data, "demo_films", slug)
 }
 
 // SharedPVEDBPath retourne le chemin de la base PvE partagée d'un titre.
@@ -802,7 +807,7 @@ func (p *PathResolver) ResolveCapturesDir(titleSlug, gamertag, baseDir string) s
 // configuré est absent ou invalide (garde-fou incident prod 2026-06-13 : un chemin
 // Windows déployé sur le VPS Linux rendait TOUS les médias illisibles).
 func (p *PathResolver) MediaDataDir() string {
-	return filepath.Join(p.repoRoot, "data", "media")
+	return filepath.Join(p.roots.Data, "media")
 }
 
 // BackupDir retourne le répertoire de backup d'un joueur pour un titre.
@@ -816,13 +821,13 @@ func (p *PathResolver) BackupDir(titleSlug, gamertag string) string {
 // BackupDir (sauvegarde par joueur et par titre).
 // Ex: data/backups/migrations/
 func (p *PathResolver) MigrationBackupsDir() string {
-	return filepath.Join(p.repoRoot, "data", "backups", "migrations")
+	return filepath.Join(p.roots.Data, "backups", "migrations")
 }
 
 // DemoFixturesDir retourne le répertoire de fixtures démo pour un titre.
 // Ex: tests/fixtures/titles/halo_infinite/ref_player/
 func (p *PathResolver) DemoFixturesDir(titleSlug string) string {
-	return filepath.Join(p.repoRoot, "tests", "fixtures", "titles", titleSlug, "ref_player")
+	return filepath.Join(p.roots.Resources, "tests", "fixtures", "titles", titleSlug, "ref_player")
 }
 
 // --- Chemins globaux (non namespacés par titre) ---
@@ -830,14 +835,14 @@ func (p *PathResolver) DemoFixturesDir(titleSlug string) string {
 // SessionDir retourne le répertoire des sessions.
 // Ex: data/sessions/
 func (p *PathResolver) SessionDir() string {
-	return filepath.Join(p.repoRoot, "data", "sessions")
+	return filepath.Join(p.roots.Data, "sessions")
 }
 
 // CacheRootDir retourne le répertoire racine du cache applicatif (jobs, cache
 // BP/challenges, release notes...). Source unique du sous-chemin "data/cache".
 // Ex: data/cache/
 func (p *PathResolver) CacheRootDir() string {
-	return filepath.Join(p.repoRoot, "data", "cache")
+	return filepath.Join(p.roots.Data, "cache")
 }
 
 // JobsCachePath retourne le chemin du cache des jobs.
@@ -863,7 +868,7 @@ func (p *PathResolver) ReplayArtifactPath(titleSlug, matchID string) string {
 // fichier {short8}.json par match). Sert la purge récurrente (replay_purge_cron) — qui
 // supprime des ARTEFACTS, jamais des films.
 func (p *PathResolver) ReplayArtifactsDir(titleSlug string) string {
-	return filepath.Join(p.repoRoot, "data", "cache", "replays", titleSlug)
+	return filepath.Join(p.roots.Data, "cache", "replays", titleSlug)
 }
 
 // MapQuantBoundsPath retourne le chemin du catalogue des bornes de quantification par
@@ -1096,14 +1101,14 @@ func (p *PathResolver) MapBackgroundMetaPath(titleSlug, module string) string {
 // (Phase 2 refactor Collect→Persist). Chaque cycle de sync crée un
 // sous-dossier `{cycle_id}/` à l'intérieur. Ex: data/sync_cache/
 func (p *PathResolver) SyncCacheDir() string {
-	return filepath.Join(p.repoRoot, "data", "sync_cache")
+	return filepath.Join(p.roots.Data, "sync_cache")
 }
 
 // WALDir retourne le répertoire WAL de la BatchQueue persist (Phase 4.7
 // closure). Contient les batches JSON pending entre Submit et ACK Persister.
 // Recovery au boot via persist.BatchQueue.RecoverPending. Ex: data/wal/
 func (p *PathResolver) WALDir() string {
-	return filepath.Join(p.repoRoot, "data", "wal")
+	return filepath.Join(p.roots.Data, "wal")
 }
 
 // TitleMappingsDir retourne le répertoire des mappings VERSIONNÉS d'un titre
@@ -1114,17 +1119,17 @@ func (p *PathResolver) TitleMappingsDir(slug string) string {
 	if slug == "" {
 		slug = DefaultSlug
 	}
-	return filepath.Join(p.repoRoot, "config", "titles", slug, "mappings")
+	return filepath.Join(p.roots.Resources, "config", "titles", slug, "mappings")
 }
 
 // DBProfilesPath retourne le chemin de db_profiles.json (global).
 func (p *PathResolver) DBProfilesPath() string {
-	return filepath.Join(p.repoRoot, "db_profiles.json")
+	return filepath.Join(p.roots.StateFilesDir(), "db_profiles.json")
 }
 
 // AppSettingsPath retourne le chemin de app_settings.json (global).
 func (p *PathResolver) AppSettingsPath() string {
-	return filepath.Join(p.repoRoot, "app_settings.json")
+	return filepath.Join(p.roots.StateFilesDir(), "app_settings.json")
 }
 
 // TitleSettingsPath retourne le chemin de l'overlay de settings d'un titre
@@ -1136,7 +1141,7 @@ func (p *PathResolver) TitleSettingsPath(slug string) string {
 	if slug == "" {
 		slug = DefaultSlug
 	}
-	return filepath.Join(p.repoRoot, "data", "titles", slug, "settings.json")
+	return filepath.Join(p.roots.Data, "titles", slug, "settings.json")
 }
 
 // WatcherTokensPath retourne le chemin du fichier de tokens watcher.
@@ -1145,7 +1150,7 @@ func (p *PathResolver) TitleSettingsPath(slug string) string {
 // LEGACY (mono-user) : conservé pour le watcher daemon historique.
 // Pour le SSO Xbox multi-user, utiliser WatcherTokensDir() + 1 fichier par XUID.
 func (p *PathResolver) WatcherTokensPath() string {
-	return filepath.Join(p.repoRoot, "data", "auth", "watcher_tokens.json")
+	return filepath.Join(p.roots.Data, "auth", "watcher_tokens.json")
 }
 
 // WatcherTokensDir retourne le répertoire des tokens watcher multi-user (SSO Xbox).
@@ -1155,7 +1160,7 @@ func (p *PathResolver) WatcherTokensPath() string {
 // Décision D4 (cf. SPRINT_XBOX_SSO §0bis) : source unique, write-to-temp + rename atomique,
 // perms 0600 sur fichiers / 0700 sur répertoire.
 func (p *PathResolver) WatcherTokensDir() string {
-	return filepath.Join(p.repoRoot, "data", "auth", "watcher_tokens")
+	return filepath.Join(p.roots.Data, "auth", "watcher_tokens")
 }
 
 // --- Validation ---

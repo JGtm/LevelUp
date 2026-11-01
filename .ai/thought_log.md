@@ -12,6 +12,13 @@
 **Resultats observes** : 184 WAV -> 184 OGG, `static/sounds` 87 207 226 o -> 4 560 797 o ; `-check` : 184 controles, 0 echec, second passage 184 deja a jour ; niveaux des fanfares et voix (decodes) = releves du WAV (-16,1 a -18,7 dBFS) ; durees identiques a l'echantillon.
 
 **Conclusion / prochaine etape** : 8.1 a 8.3 faits ; 8.4 : ecoute comparee par l'utilisateur (navigateur reel, boucles moteur). Hors perimetre releve : l'instrument `libs/film/replay/weapon_burst_research_test.go` (tag `research`) lit des `hinf_*.wav` qui n'existent plus.
+## [2026-11-01] Desktop — L11 trois racines de chemins (ADR 0008, amendement « two roots ») — En cours (sous-lot a livré)
+
+**Décision technique principale** : `title.Roots{Resources, Data, Logs, DataSet}` + `NewPathResolverRoots` (racines explicites) ; `NewPathResolver(racine)` garde sa signature et rend les racines par défaut (`data/`, `logs/` sous la racine), ou les racines du PROCESSUS quand la racine passée est la racine de ressources installée par `config` (pont transitoire `title.InstallProcessRoots`, nécessaire parce qu'une centaine de services reçoivent une racine nue et bâtissent leur propre résolveur ; retrait quand l'allowlist du ratchet RepoRoot est vide). Résolution UNE fois dans `internal/config` (`ResolveRoots` : `LEVELUP_RESOURCES_DIR`, puis `LEVELUP_REPO_ROOT`, puis détection ; `LEVELUP_DATA_DIR` défaut `<Resources>/data` ; `LEVELUP_LOGS_DIR` défaut `<Resources>/logs`) ; un `.env.local` ne pose pas les racines (clés ignorées, journalisées) ; `db_profiles.json`, `app_settings.json`, `.env.local` en tête de Data seulement si `LEVELUP_DATA_DIR` est posé (A-3).
+
+**Résultats observés** : T4 par défaut identique au témoin d'avant, aux ajouts près (`MigrationBackupsDir` de la vague 1, accesseurs `DataRoot`/`LogsRoot`/`ResourcesRoot`/`Roots`) ; trois racines distinctes : chaque chemin de donnée sous Data. Les trois joins de `"data"` de `config` ont disparu (sortis de l'allowlist de `no_data_path_join_test`).
+
+**Conclusion / prochaine étape** : sous-lots b (ressources, données, journaux, enfants de cuisson, `LogsRoot` créé avant tout écrivain) puis c (Docker, déploiement, ratchet `RepoRoot`).
 
 ## [2026-11-01] Desktop — revue adversariale 2r (L1 + L5 + L7) et corrections — Complété
 
