@@ -71,3 +71,14 @@ func skipRootEnvKey(path, key string) bool {
 		"file", path, "key", key)
 	return true
 }
+
+// InstallProcessRootsFromEnv résout les racines depuis l'environnement (ResolveRoots) et les
+// installe comme racines du processus, pour un processus qui n'appelle pas Load : l'enfant de
+// cuisson (-film-child), intercepté avant toute configuration. Sans cet appel, l'enfant bâtirait
+// ses chemins sous la disposition par défaut de la racine de ressources et écrirait ses faits de
+// film sous ResourcesRoot au lieu de DataRoot (amendement ADR 0008, A-5 et A-6).
+func InstallProcessRootsFromEnv() title.Roots {
+	roots := ResolveRoots()
+	title.InstallProcessRoots(roots)
+	return roots
+}

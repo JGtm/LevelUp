@@ -122,3 +122,27 @@ func TestAppConfigRoots_ConfigurationConstruiteALaMain(t *testing.T) {
 		t.Fatalf("RepoRoot réaffecté : Data = %q", got)
 	}
 }
+
+// TestInstallProcessRootsFromEnv_EnfantDeCuisson — un processus qui n'appelle pas Load (enfant
+// -film-child) obtient, par un simple appel, les racines transmises par son parent : un résolveur
+// bâti sur la racine de ressources rend alors la racine de données explicite, pas <res>/data.
+func TestInstallProcessRootsFromEnv_EnfantDeCuisson(t *testing.T) {
+	res, data, logs := t.TempDir(), t.TempDir(), t.TempDir()
+	t.Setenv(EnvResourcesDir, res)
+	t.Setenv(EnvRepoRoot, "")
+	t.Setenv(EnvDataDir, data)
+	t.Setenv(EnvLogsDir, logs)
+	t.Cleanup(title.ResetProcessRoots)
+
+	got := InstallProcessRootsFromEnv()
+	if !title.SameRoot(got.Data, data) || !title.SameRoot(got.Logs, logs) {
+		t.Fatalf("racines résolues %+v, attendu data=%s logs=%s", got, data, logs)
+	}
+	pr := title.NewPathResolver(res)
+	if !title.SameRoot(pr.DataRoot(), data) {
+		t.Fatalf("NewPathResolver(res).DataRoot() = %s, attendu la racine de données du parent %s", pr.DataRoot(), data)
+	}
+	if !title.SameRoot(pr.LogsRoot(), logs) {
+		t.Fatalf("NewPathResolver(res).LogsRoot() = %s, attendu %s", pr.LogsRoot(), logs)
+	}
+}

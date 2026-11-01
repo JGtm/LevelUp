@@ -68,6 +68,7 @@ func main() {
 	// Enfant de cuisson d'un film (protocole replaychild) : `seed-demo` recuit les rejeux
 	// figés de la démo en relançant CE binaire avec ce drapeau, un film par processus.
 	if replaychild.IsChild(os.Args) {
+		config.InstallProcessRootsFromEnv() // racines du parent, transmises par l'environnement (sans Load)
 		os.Exit(replaychild.RunChild(context.Background(), os.Args))
 	}
 	if len(os.Args) < 2 {

@@ -438,12 +438,12 @@ Fichiers : `cmd/server/flags.go` (nouveau, D-15), `cmd/server/boot_gate.go`, `cm
 
 ### 9.8 L8 — C11 Sons compressés (S ; après L9 et décision D-6)
 
-- [ ] 8.1 Outil Go `cmd/sounds-encode` (ffmpeg requis) : WAV → format retenu, même arborescence.
-- [ ] 8.2 Tous les sites liés à `.wav` (liste fermée au brief : table des sons `features/match-replay/
+- [x] 8.1 Outil Go `cmd/sounds-encode` (ffmpeg requis) : WAV → format retenu, même arborescence.
+- [x] 8.2 Tous les sites liés à `.wav` (liste fermée au brief : table des sons `features/match-replay/
       sound/*.ts`, `exportSoundFamilies.ts`, `vehicleEngineSound.ts`, `replaySoundAssets.guard.test.ts`,
       `games/mappings/loader_vehicle_weapons.go:75`, `cmd/weapon-sounds` et ses goldens,
       `livraison_orchestrate.go:39`) ; test Vitest : chaque entrée de la table pointe un fichier existant.
-- [ ] 8.3 WAV supprimés de l'arbre ; `du -sh static/sounds` consigné.
+- [x] 8.3 WAV supprimés de l'arbre ; `du -sh static/sounds` consigné.
 - [ ] 8.4 **(U)** Écoute comparée sur 5 sons nommés par l'utilisateur, dont une boucle moteur.
 - Gate : `npm run test`, `npm run build` ; `go test ./internal/games/mappings/... ./cmd/weapon-sounds/...`.
 
@@ -480,22 +480,22 @@ Définition : `ResourcesRoot` = la racine du dépôt aujourd'hui (`LEVELUP_RESOU
 `LEVELUP_REPO_ROOT`, repli détection actuelle) ; `DataRoot` = ce qui est aujourd'hui `<repoRoot>/data`
 (`LEVELUP_DATA_DIR`, défaut `<ResourcesRoot>/data`) ; `LogsRoot` = `LEVELUP_LOGS_DIR` (existant).
 
-- [ ] 11.1 Sous-lot a : table COMPLÈTE chemin → racine produite au brief par le pilote (les 193 + 18
+- [x] 11.1 Sous-lot a : table COMPLÈTE chemin → racine produite au brief par le pilote (les 193 + 18
       usages de `RepoRoot`, les 41 jointures du littéral `"data"`, `server_apiv1.go:661,1565`,
       `main.go:1256`, `provision_title.go:165`, `config.go:230,241`) ; `PathResolver` reçoit les racines ;
       T4 identique avec racines par défaut.
-- [ ] 11.2 Sous-lot b : ressources (référentiel du rejeu `data/titles/*/reference/`,
+- [x] 11.2 Sous-lot b : ressources (référentiel du rejeu `data/titles/*/reference/`,
       `metadata-prebuilt.zip`, `config/`, `static/`, dist web) par `ResourcesRoot` ; données
       (`db_profiles.json`, `app_settings.json`, `.env.local`, sessions, auth, caches, journaux) par
       `DataRoot` / `LogsRoot` ; les enfants de cuisson reçoivent les trois racines (`replaychild.go:60,253`,
       `runner.go:189-200`).
-- [ ] 11.3 Sous-lot c : `Dockerfile:246-247`, `docker-compose.yml:15,17,97,98` : variables mortes
+- [x] 11.3 Sous-lot c : `Dockerfile:246-247`, `docker-compose.yml:15,17,97,98` : variables mortes
       retirées, nouvelles posées, montage ressources en lecture seule ; `scripts/deploy.sh` relu (staging
       sous `data/`, piège `git clean`) ; `docs/INSTALL.md` EN + FR.
-- [ ] 11.5 `LogsRoot` créé AVANT tout écrivain (découverte §10, 2026-11-01 : `crash_output` ouvre
+- [x] 11.5 `LogsRoot` créé AVANT tout écrivain (découverte §10, 2026-11-01 : `crash_output` ouvre
       `logs/server.crash.log` avant la création de `logs/` sur une racine neuve) ; test : racine neuve → fichier de
       capture présent après le premier démarrage.
-- [ ] 11.4 Tests : racines distinctes → aucun chemin de ressource sous `DataRoot`, aucun chemin de
+- [x] 11.4 Tests : racines distinctes → aucun chemin de ressource sous `DataRoot`, aucun chemin de
       donnée sous `ResourcesRoot` ; garde-rail « pas de `filepath.Join(..., "data", ...)` » vert ; ratchet
       nouveau : `RepoRoot` plus lu hors `internal/config` et `PathResolver` (allowlist datée à réduire).
 - Gate : `go test ./internal/... ./cmd/server/...` ; démarrage réel avec trois racines distinctes puis
@@ -723,6 +723,45 @@ mises à jour (ressources retéléchargées à chaque version).
   `can_use_admin=false` en desktop, L13 peut le basculer. Allowlists du ratchet `deployment_single_resolver_test.go`
   (83 `.DemoMode`, 52 `.AuthMode`, 3 `LEVELUP_ENV` dans 23 fichiers) et de `demo_state_guard_test.go` à recompter à
   la fusion avec L11.
+
+- **L8 (2026-11-01) — relevé** : `static/sounds` 84 Mo → 4,9 Mo (184 `.ogg`, `-check` 184/184 à l'échantillon près) ;
+  devDependency `opus-decoder` 0.7.12 (MIT) pour mesurer le PCM dans les garde-rails Vitest (`ogg-opus-decoder` écarté :
+  tire `codec-parser` LGPL) ; `libs/film/replay/weapon_burst_research_test.go` (tag `research`) lit encore des
+  `hinf_*.wav` qui n'existent plus : instrument mort, à supprimer (règle 7) hors de ce lot ; Safari ne lit l'Ogg Opus
+  qu'à partir de 18.4 (de mémoire, non vérifié) : risque accepté en D-6 ; l'absence de raccord des boucles est
+  mesurée par ffmpeg, pas par un navigateur : l'écoute 8.4 de l'utilisateur tranche.
+
+- **L11 (2026-11-01) — relevé et écarts acceptés par le pilote** : pont transitoire `title.InstallProcessRoots` (les
+  ~100 services qui reçoivent `repoRoot string` et bâtissent leur résolveur obtiennent les racines du processus
+  installées par `config.load()` ; `NewPathResolver(racine)` les rend quand `racine` est la racine de ressources
+  installée) — documenté dans l'ADR 0008, s'éteint quand l'allowlist du ratchet `RepoRoot` (149 lectures dans
+  91 fichiers) est vide ; `reference/generated/*` (cartes Forge écrites pendant que le serveur tourne) sous
+  `DataRoot`, le reste de `reference/` sous `ResourcesRoot` (affine A-2) ; pas de montage en lecture seule du
+  référentiel en prod pour cette raison ; Docker : le service prod pose `LEVELUP_DB_PROFILES` / `LEVELUP_APP_SETTINGS`
+  pour garder les fichiers montés sous `/app` (A-3 déplacerait `db_profiles.json` sous `/app/data`), la démo pose
+  `LEVELUP_LOGS_DIR=/app/data/demo/runtime/logs` → **à relire avant le prochain déploiement prod (push main =
+  déploiement)** ; sans `LEVELUP_REPO_ROOT`, les journaux vont sous `<racine détectée>/logs` et plus sous le `logs/`
+  du répertoire courant ; `data/cache/career-rank-image/` (images versionnées dans git mais servies par le cache
+  d'assets) reste sous `DataRoot/cache` : absentes sur une installation à racines distinctes tant que l'installeur
+  (L17) ne les copie pas, sinon retéléchargées ; `LEVELUP_WEB_DIST` reste une variable explicite. Hors périmètre :
+  `cmd/replay-corpus-gate` pose `LEVELUP_REPO_ROOT` pour une racine jetable mais pas `LEVELUP_DATA_DIR` (ses enfants
+  écriraient dans les vraies données si la variable est posée) ; une quinzaine d'outils `cmd/` ont leur copie de
+  `loadEnvLocal` et une trentaine bâtissent `data/titles/...` à la main, hors des garde-rails. Table chemin → racine :
+  scratchpad `l11_table_finale.tsv` (998 lignes). Fusion L10 + L11 : un conflit (`config.load` : signature
+  `launchMode` de L10 + `ResolveRoots()` de L11), résolu à la main ; `config.go` reste à 629 lignes.
+
+- **Revue adversariale 3r (2026-11-01, deux relecteurs Opus, L10 + L11)** : D (profil, accès, non-régression hébergée) :
+  0 défaut, 14 conditions tiennent (table de vérité de `AuthDisabled` identique hors desktop, `LEVELUP_AUTH_MODE=desktop`
+  posé à la main sur un serveur hébergé = démarrage refusé, colonnes `hosted`/`dev`/`demo` des tâches identiques,
+  équivalences front, champs OpenAPI neufs `required` sans casse de client ancien). C (racines, chemins, pont) :
+  2 constats corrigés dans le lot — P1 : l'enfant de cuisson `-film-child` est intercepté AVANT `config.Load`, le pont
+  n'était jamais installé dans l'enfant qui écrivait ses faits de film sous `<Resources>/data` et cherchait l'overlay
+  des socles au mauvais endroit (`config.InstallProcessRootsFromEnv()` appelé par les deux interceptions, test) ;
+  P2 : `levelup check-env` / `healthcheck` lisaient `db_profiles.json` et `app_settings.json` par le PathResolver et
+  non par les chemins résolus (`LEVELUP_DB_PROFILES` / `LEVELUP_APP_SETTINGS` du compose prod) → faux « introuvable »
+  après déploiement (`HealthcheckOptions.DBProfilesPath/AppSettingsPath`, test). 16 conditions tiennent, dont : aucun
+  volume Docker orphelin, démo inchangée, tests non contaminés par le pont. Remarque sans défaut : `taskAppRelease`
+  est désormais annulé à l'arrêt (sous `schedulerCtx`), changement annoncé par l'ADR 0045 D-4.
 
 - `internal/mapcatalog` : `TestAddOverlayEntryConcurrentDossierAbsentNePerdRien` échoue en run complet
   (« verrou d'ecriture impossible a poser — passage force », 2 cartes perdues sur 8) et passe seul : le
