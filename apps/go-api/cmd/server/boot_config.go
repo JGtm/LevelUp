@@ -18,6 +18,7 @@ import (
 	"runtime"
 	"runtime/debug"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -27,13 +28,21 @@ import (
 	"levelup/go-api/internal/observability/logging"
 	"levelup/go-api/internal/ops"
 	"levelup/go-api/internal/persist"
+	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/platform/friendstore"
+	"levelup/go-api/internal/platform/groupstore"
 	"levelup/go-api/internal/platform/netguard"
+	"levelup/go-api/internal/platform/settings"
+	"levelup/go-api/internal/platform/userstore"
+	"levelup/go-api/internal/scheduler"
+	"levelup/go-api/internal/service"
 )
 
 // bootState réunit ce que les étapes de démarrage se transmettent. Chaque champ est posé par
 // l'étape qui le produit et lu par celles qui la suivent, dans l'ordre de main().
 type bootState struct {
+	ctx          context.Context
 	flags        serverFlags
 	cfg          *config.AppConfig
 	multiHandler *logging.MultiModuleHandler // nil : journalisation console seule
@@ -43,6 +52,23 @@ type bootState struct {
 	pr           *title.PathResolver
 	titleSlug    string
 	dbPaths      bootDBPaths
+
+	sharedReader duckdb.SharedReader
+	closeShared  func() error
+	metaDB       *duckdb.DB
+
+	bootRepo      *duckdb.BootstrapRepo
+	bootSvc       *service.BootstrapService
+	us            *userstore.Store
+	groupStore    *groupstore.GroupStore
+	friendStore   *friendstore.FriendStore
+	settingsStore *settings.Store
+	tokenProvider auth.TokenProvider
+
+	boot           *bootTasks
+	autoScheduler  *scheduler.AutoSyncScheduler
+	autoBatchQueue *persist.BatchQueue // nil : persistance synchrone
+	workerWG       sync.WaitGroup      // suit la goroutine du worker de la file de persistance
 }
 
 // bootConfigure enchaîne les étapes du démarrage qui précèdent l'accès aux bases : crochets
