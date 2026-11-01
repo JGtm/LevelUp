@@ -655,17 +655,20 @@ jobs:
   # compilés ET joués avec DuckDB lié (CGO). `go-build` joue déjà `windows-latest`, mais sur la
   # suite rapide ; ce job est le gate d'autorité des comportements propres à Windows.
   #
-  # Pas de `needs: changes` : la voie est bornée à `release/**` et aux pull requests (toutes cibles) (budget des
-  # runners Windows) ; ces deux contextes sont exactement ceux où le filtre de chemins est
-  # contourné (archlint/ci_paths_filter_test.go), il ne pourrait donc jamais la sauter, et `main`
-  # n'y figure pas (une PR a déjà rendu son verdict avant la fusion). Sur une branche de travail
-  # le job n'existe pas : le déclencheur `push` y est sans effet sur lui.
+  # Pas de `needs: changes` : la voie est bornée (budget des runners Windows) à `release/**`, aux pull
+  # requests (le workflow ne les reçoit que vers `main`, cf. `on.pull_request.branches`) et, le temps du
+  # chantier Desktop, aux pushs des branches `feat/desktop-*` : une PR vers une branche de release ne
+  # déclenche aucun run, le verdict d'une branche de travail vient de son push. `release/**` et les PR
+  # sont exactement les contextes où le filtre de chemins est contourné (archlint/ci_paths_filter_test.go),
+  # il ne pourrait donc jamais sauter la voie ; `main` n'y figure pas (la PR vers `main` a déjà rendu son
+  # verdict). Condition `feat/desktop-*` posée le 2026-11-01 ; retrait prévu à la clôture de P1 du plan
+  # Desktop (critère : la voie devient un job ordinaire ou le chantier est fusionné).
   #
   # gcc : fourni par l'image `windows-latest` (MinGW) ; aucune action mingw. Aucun test sous tag
   # `gamefiles` / `research` n'est joué (le jeu n'est pas installé sur le runner).
   go-test-windows-cgo:
     name: Go Windows + CGO (build, arrêt propre, verrous)
-    if: ${{ github.event_name == 'pull_request' || startsWith(github.ref, 'refs/heads/release/') }}
+    if: ${{ github.event_name == 'pull_request' || startsWith(github.ref, 'refs/heads/release/') || startsWith(github.ref, 'refs/heads/feat/desktop-') }}
     runs-on: windows-latest
     timeout-minutes: 15
     env:

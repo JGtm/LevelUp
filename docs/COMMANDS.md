@@ -1443,7 +1443,7 @@ runner provides gcc, no MinGW action). It builds `./cmd/server` (DuckDB linked),
 `./internal/filelock/` from `libs/film`, and `./himodule/` from `libs/gamefiles`: the packages that carry the
 `*_windows.go` / `*_win.go` files (clean shutdown, file locks, free disk space, process priority, memory-mapped
 module projection). No test behind the `gamefiles` or `research` tags is played: the game is not installed on the
-runner. It triggers on `release/**` pushes and on pull requests (any target branch) (Windows runners are expensive:
+runner. It triggers on `release/**` pushes, on pull requests to `main` (the only pull requests this workflow receives) and, while the Desktop project lasts, on pushes of `feat/desktop-*` branches (Windows runners are expensive:
 working branches and `main` pushes skip it), with a 15-minute budget. It is the authoritative gate for
 Windows-only behaviour; the Linux jobs never compile these files. To replay it locally (PowerShell, from
 `apps/go-api`, gcc on the `PATH`): `go build ./cmd/server`, then the three `go test -count=1` calls above.
