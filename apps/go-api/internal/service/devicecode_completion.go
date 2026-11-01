@@ -87,8 +87,8 @@ func NewDeviceCodeCompletion(store CredentialStore, gate domain.ProfileGate) *De
 
 // Persist écrit sans condition les jetons de la tentative. Rend false, sans erreur,
 // quand la tentative ne porte rien à écrire (ni jeton de rafraîchissement ni XSTS) ou
-// quand le magasin est absent. Un échec d'écriture est journalisé et rendu en erreur :
-// l'appelant décide s'il est bloquant (il ne l'est jamais pour la connexion).
+// quand le magasin est absent. Un échec d'écriture est rendu en erreur, sans journal :
+// l'appelant le journalise et décide s'il est bloquant (il ne l'est jamais pour la connexion).
 func (c *DeviceCodeCompletion) Persist(ctx context.Context, attempt *auth.Attempt) (bool, error) {
 	tokens := c.tokensFromAttempt(attempt)
 	if tokens == nil {
@@ -97,8 +97,6 @@ func (c *DeviceCodeCompletion) Persist(ctx context.Context, attempt *auth.Attemp
 		return false, nil
 	}
 	if err := c.write(tokens); err != nil {
-		slog.WarnContext(ctx, "devicecode: persistance des jetons échouée (non bloquant)",
-			"xuid", attempt.XUID, "err", err)
 		return false, err
 	}
 	slog.InfoContext(ctx, "devicecode: jetons persistés", "xuid", attempt.XUID, "gamertag", attempt.Gamertag,

@@ -1,6 +1,6 @@
-//go:build e2e_windows
+//go:build e2e_windows && windows
 
-// e2e_arret_windows_test.go — bout en bout de l'arrêt propre du serveur compilé.
+// e2e_arret_desktop_test.go — bout en bout de l'arrêt propre du serveur compilé.
 //
 // Le test compile cmd/server, le lance comme le fait la coquille desktop (drapeau
 // -arret-sur-stdin, stdin tenu par le test) sur une racine de données VIDE, attend /health,

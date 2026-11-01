@@ -413,7 +413,7 @@ Fichiers : `cmd/server/flags.go` (nouveau, D-15), `cmd/server/boot_gate.go`, `cm
 
 ### 9.6 L6 — C9b Test de bout en bout de l'arrêt (S ; après L2 et L4 ; 6.2 P)
 
-- [x] 6.1 Test Go sous tag `e2e_windows` (`cmd/server/e2e_arret_windows_test.go`) : compile `cmd/server`,
+- [x] 6.1 Test Go sous tag `e2e_windows` (`cmd/server/e2e_arret_desktop_test.go` (nom sans suffixe de plateforme : ratchet `no_accidental_goos_suffix_test.go` ; tag `e2e_windows && windows`)) : compile `cmd/server`,
       le lance avec `-arret-sur-stdin` et `LEVELUP_API_PORT` libre sur une racine de données vide
       (`LEVELUP_REPO_ROOT` = dossier temporaire avec `config/` copié), attend `/health` 200 (délai 120 s),
       ferme stdin, attend la sortie (délai 60 s), vérifie `arrêt: terminé clean=true` dans le journal et

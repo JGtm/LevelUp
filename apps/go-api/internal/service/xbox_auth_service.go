@@ -290,5 +290,8 @@ func (s *XboxSSOLinkStrategy) notifyWatcher(ctx context.Context, attempt *auth.A
 // le service et n'interrompt pas le login. Le compte existe, donc l'écriture ne dépend
 // pas de la porte "profil suivi" (cf. l'en-tête du fichier).
 func (s *XboxSSOLinkStrategy) persistRTATokens(ctx context.Context, attempt *auth.Attempt) {
-	s.credentials.Persist(ctx, attempt) // l'échec est journalisé par le service (Warn), jamais bloquant
+	if _, err := s.credentials.Persist(ctx, attempt); err != nil {
+		slog.WarnContext(ctx, "xbox_sso: persistance des jetons échouée (non bloquant)",
+			"xuid", attempt.XUID, "err", err)
+	}
 }
