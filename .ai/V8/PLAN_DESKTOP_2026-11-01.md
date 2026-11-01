@@ -507,7 +507,7 @@ Définition : `ResourcesRoot` = la racine du dépôt aujourd'hui (`LEVELUP_RESOU
 - [x] 12.1 Port : `<DataRoot>/desktop/port` lu (`PathResolver.DesktopPortPath`), sinon port libre choisi puis écrit
       atomiquement (Warn « port de repli » si l'ancien était occupé) ; `startBootServer` reçoit le listener lié
       (`cmd/server/desktop_port.go`, `boot_listen.go`) ; `os.Exit(1)` gardé hors `-mode desktop`, en desktop l'échec
-      d'écoute annonce `failed{state:"port"}` ; `-mode desktop` n'est plus refusé (`refresh-only` l'est jusqu'à L15).
+      d'écoute annonce `failed{state:"port"}` ; `-mode desktop` n'est plus refusé (`refresh-only` ne l'est plus depuis L15).
 - [x] 12.2 Événements §6.2 par un écrivain unique sous verrou (`cmd/server/desktop_events.go`), seulement en
       `-mode desktop` ; le gestionnaire console écrivait déjà sur stderr (vérifié), garde-rail `stdout_guard_test.go`.
 - [x] 12.3 Arrêt des enfants : cuisson sous `schedulerCtx` (relevé 0.3 confirmé, test
@@ -586,13 +586,13 @@ Définition : `ResourcesRoot` = la racine du dépôt aujourd'hui (`LEVELUP_RESOU
 
 ### 9.15 L15 — Séquence réveil (S ; après L5, L12)
 
-- [ ] 15.1 Rattrapage au lancement SOUS LA CAPACITÉ `desktop` seulement (le VPS redémarre à chaque
+- [x] 15.1 Rattrapage au lancement SOUS LA CAPACITÉ `desktop` seulement (le VPS redémarre à chaque
       déploiement : §1 « aucun changement sur le VPS ») : premier tick immédiat si la dernière sync est
       plus vieille que l'intervalle.
-- [ ] 15.2 Vérification des jetons au boot (chaque profil suivi) : réseau absent = rien marqué ; mort =
+- [x] 15.2 Vérification des jetons au boot (chaque profil suivi) : réseau absent = rien marqué ; mort =
       `reauth_required` + bannière ; vivant = RT rotaté écrit.
-- [ ] 15.3 Sortie de veille côté Go : écart heure murale / monotone > 2 min (A24) → même séquence.
-- [ ] 15.4 `-mode refresh-only` (A10) : verrou d'instance, aucune ouverture de base, rotation, sortie ;
+- [x] 15.3 Sortie de veille côté Go : écart heure murale / monotone > 2 min (A24) → même séquence.
+- [x] 15.4 `-mode refresh-only` (A10) : verrou d'instance, aucune ouverture de base, rotation, sortie ;
       si le verrou est tenu (application ouverte) : sortie 0 sans rien faire (une seule rotation à la fois,
       ADR 0023).
 - Gate : `go test ./internal/scheduler/... ./internal/platform/auth/... ./cmd/server/...`.

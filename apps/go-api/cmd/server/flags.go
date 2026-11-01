@@ -24,8 +24,8 @@ const (
 	serverModeDefault = config.LaunchModeDefault
 	// serverModeDesktop : serveur lancé par la coquille desktop.
 	serverModeDesktop = config.LaunchModeDesktop
-	// serverModeRefreshOnly : serveur de rafraîchissement seul.
-	serverModeRefreshOnly = "refresh-only"
+	// serverModeRefreshOnly : processus de rafraîchissement des jetons seul (refresh_only.go).
+	serverModeRefreshOnly = config.LaunchModeRefreshOnly
 )
 
 // flagsExitCode : code de sortie d'une ligne de commande refusée (convention du paquet flag).
@@ -34,23 +34,19 @@ const flagsExitCode = 2
 // serverUsage : rappel affiché avec toute erreur de ligne de commande.
 const serverUsage = "usage : server [-health-check] [-arret-sur-stdin] [-mode desktop|refresh-only]"
 
-// errModeUnavailable : le mode est reconnu mais son code n'est pas encore livré (refresh-only).
-var errModeUnavailable = errors.New("mode non disponible dans cette version")
-
 // serverFlags : les arguments du serveur, validés.
 type serverFlags struct {
 	// HealthCheck : interroger /health du serveur local puis sortir (HEALTHCHECK Docker).
 	HealthCheck bool
 	// StopOnStdin : arrêt propre à la fermeture de stdin (lanceur parent qui meurt ou ferme).
-	StopOnStdin bool
+	StopOnStdin bool // sans effet en refresh-only : ce mode ne sert rien et sort seul
 	// Mode : serverModeDefault, serverModeDesktop ou serverModeRefreshOnly.
 	Mode string
 }
 
 // parseServerFlags lit args (os.Args[1:]) et valide les valeurs. Erreurs : drapeau inconnu,
-// argument positionnel, mode inconnu, mode reconnu mais pas encore disponible
-// (errModeUnavailable : refresh-only le reste jusqu'à sa livraison). Une demande d'aide rend
-// flag.ErrHelp. Le parseur n'écrit rien : main affiche l'erreur.
+// argument positionnel, mode inconnu. Une demande d'aide rend flag.ErrHelp. Le parseur n'écrit
+// rien : main affiche l'erreur.
 func parseServerFlags(args []string) (serverFlags, error) {
 	var f serverFlags
 	fs := flag.NewFlagSet("server", flag.ContinueOnError)
@@ -65,9 +61,7 @@ func parseServerFlags(args []string) (serverFlags, error) {
 		return serverFlags{}, fmt.Errorf("argument inattendu %q", fs.Arg(0))
 	}
 	switch f.Mode {
-	case serverModeDefault, serverModeDesktop:
-	case serverModeRefreshOnly:
-		return serverFlags{}, fmt.Errorf("-mode %s : %w", f.Mode, errModeUnavailable)
+	case serverModeDefault, serverModeDesktop, serverModeRefreshOnly:
 	default:
 		return serverFlags{}, fmt.Errorf("-mode %q inconnu (valeurs admises : %s, %s)",
 			f.Mode, serverModeDesktop, serverModeRefreshOnly)

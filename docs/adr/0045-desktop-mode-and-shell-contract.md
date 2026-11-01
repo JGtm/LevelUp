@@ -37,8 +37,8 @@ database held by a killed process stays locked for a few seconds, so a relaunch 
 `LEVELUP_DATA_DIR`, `LEVELUP_RESOURCES_DIR`, `LEVELUP_LOGS_DIR` and `LEVELUP_DESKTOP_SECRET=<random>` (never an argument,
 never logged), and the arguments `-mode desktop -arret-sur-stdin`. The port is read from `<DataRoot>/desktop/port` (D-9).
 State: the single flag parser `cmd/server/flags.go` exists and recognises `-health-check`, `-arret-sur-stdin` and `-mode`;
-`-mode desktop` is accepted since L12 (it reaches `config.LoadServer(launchMode)`); `-mode refresh-only` is still refused
-with `errModeUnavailable` until L15.
+`-mode desktop` is accepted since L12 and `-mode refresh-only` since L15 (both reach `config.LoadServer(launchMode)`; the two
+resolve the `desktop` profile).
 
 **D-2 — Events on stdout.** One JSON line per event, written by a single writer under a lock; in this mode every console
 log goes to stderr. `{"event":"listening","port":N}` when the port is bound (before the migrations);
@@ -152,7 +152,16 @@ than 2 minutes, because Go's monotonic clock on Windows does not count the sleep
 `_INTERRUPT_TIME`). The cached-token deadline already drops the monotonic reading (`time.Now().Round(0)` in
 `tokencache`). Lots L12, L15. State: the lock and its refusal are delivered by L12 (the lock is taken before the port,
 released before `stopped`; an I/O error taking the lock refuses the start as `migration_failed`, the data root being
-unusable); `refresh-only` and the wake-up sequence come with L15.
+unusable). State of `refresh-only` and the wake-up sequence: delivered by L15. The capability `WakeSequence` (true in the
+`desktop` profile only) arms `internal/wakeup` once the router is open: the token check (`deadtoken.Gate.Resolve` per
+tracked profile, one profile after the other, no Halo exchange: dead = `reauth_required` and the banner, alive = rotated
+token written atomically, no answer = nothing marked and a retry at the 30 s ticks with a growing delay up to 10 minutes,
+the sync catch-up waiting with it), then `AutoSyncScheduler.CatchUpDue` / `RequestCatchUp` (the immediate tick runs inside
+`Run`'s loop; the age of the last cycle, read back from the post-sync snapshot, is measured on the wall clock). The 30 s
+tick compares the wall-clock and the monotonic advance (`SleepDetector`, gap above 2 minutes). `refresh-only`
+(`cmd/server/refresh_only.go`) takes the lock before anything, opens no database and binds no port, writes nothing on
+stdout, runs the same token check once and exits 0 whatever the tokens say; a held lock exits 0 without any exchange. Exit
+1 only when the configuration cannot be read or the lock cannot be taken for another reason than a running instance.
 
 **D-11 — Tokens encrypted by the Windows vault (plan D-8, amends ADR 0023).** A `TokenCipher` port in `platform/auth`
 with two implementations: `plain` (hosted, Linux containers: today's behaviour) and `dpapi` (Windows,

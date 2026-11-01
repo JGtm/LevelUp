@@ -47,6 +47,9 @@ func main() {
 	if st.flags.HealthCheck {
 		runHealthCheck()
 	}
+	if st.flags.Mode == serverModeRefreshOnly {
+		os.Exit(runRefreshOnly(st)) // rafraîchit les jetons puis sort : ni base, ni port, ni événements
+	}
 	bootConfigure(st)
 	bootMigrate(st)
 	bootOpenDatabases(st)
@@ -69,6 +72,7 @@ func main() {
 	launchReplayPurgeCron(st)
 	wireTitleHooks(st)
 	openRouterAndHeartbeat(st)
+	launchWakeSequence(st)
 	awaitShutdown(st)
 }
 

@@ -35,49 +35,61 @@ func (s *AutoSyncScheduler) Run(ctx context.Context) {
 	for {
 		select {
 		case <-ticker.C:
-			// Sprint B1 commit 17 : event_id sur chaque tick pour tracer le
-			// cycle scheduler complet à travers les modules (scheduler →
-			// auth → sync → provider → pool → handlers post-sync).
-			tickCtx, tickID := logging.WithEvent(ctx, "scheduler.tick")
-			cfg, err := s.settings.Load()
-			if err != nil {
-				slog.WarnContext(tickCtx, "auto_sync: lecture settings échouée — tick ignoré", "err", err)
-				continue
-			}
-			if !cfg.SpnkrAutoSyncEnabled {
-				slog.DebugContext(tickCtx, "auto_sync: désactivé dans les settings, tick ignoré")
-				continue
-			}
-			if newInterval := resolveInterval(cfg.SpnkrAutoSyncIntervalMinutes, cfg.SpnkrAutoSyncIntervalHours); newInterval != interval {
-				slog.InfoContext(tickCtx, "auto_sync: intervalle mis à jour", "old", interval, "new", newInterval)
-				interval = newInterval
-				ticker.Reset(interval)
-			}
-			slog.InfoContext(tickCtx, "auto_sync: tick démarré", "event", tickID)
-			res := s.RunOnceTrigger(tickCtx, "tick")
-			slog.InfoContext(tickCtx, "auto_sync: cycle terminé",
-				"total", res.Total,
-				"synced", res.Synced,
-				"skipped", res.Skipped,
-				"failed", res.Failed,
-				"duration", res.Duration.Round(time.Millisecond),
-			)
-			if res.Failed > 0 {
-				slog.WarnContext(tickCtx, "auto_sync: des joueurs ont échoué — consulter le snapshot diag",
-					"failed_count", res.Failed,
-				)
-			}
-			if res.Total > 0 && res.Skipped == res.Total {
-				slog.WarnContext(tickCtx, "auto_sync: aucun joueur synchronisé — vérifier le pool",
-					"pool_size", s.poolSizeSafe(),
-					"hint", "voir GET /api/v1/_diag/auto-sync/snapshot pour le détail",
-				)
-			}
+			interval = s.runTick(ctx, interval, ticker, "")
+		case reason := <-s.catchUpCh:
+			// Rattrapage demandé (RequestCatchUp) : le même tick, exécuté dans CETTE boucle, donc
+			// jamais en même temps qu'un tick périodique.
+			interval = s.runTick(ctx, interval, ticker, reason)
 		case <-ctx.Done():
 			slog.InfoContext(ctx, "auto_sync: arrêt du scheduler (contexte annulé)")
 			return
 		}
 	}
+}
+
+// runTick exécute un tick : relit les settings (activation, intervalle), lance un cycle et journalise
+// son issue. catchUpReason non vide : le tick est un rattrapage demandé hors horloge, non le tick
+// périodique. Rend l'intervalle en vigueur (le ticker est recalé s'il a changé).
+func (s *AutoSyncScheduler) runTick(ctx context.Context, interval time.Duration, ticker *time.Ticker, catchUpReason string) time.Duration {
+	// Sprint B1 commit 17 : event_id sur chaque tick pour tracer le
+	// cycle scheduler complet à travers les modules (scheduler →
+	// auth → sync → provider → pool → handlers post-sync).
+	tickCtx, tickID := logging.WithEvent(ctx, "scheduler.tick")
+	cfg, err := s.settings.Load()
+	if err != nil {
+		slog.WarnContext(tickCtx, "auto_sync: lecture settings échouée — tick ignoré", "err", err)
+		return interval
+	}
+	if !cfg.SpnkrAutoSyncEnabled {
+		slog.DebugContext(tickCtx, "auto_sync: désactivé dans les settings, tick ignoré")
+		return interval
+	}
+	if newInterval := resolveInterval(cfg.SpnkrAutoSyncIntervalMinutes, cfg.SpnkrAutoSyncIntervalHours); newInterval != interval {
+		slog.InfoContext(tickCtx, "auto_sync: intervalle mis à jour", "old", interval, "new", newInterval)
+		interval = newInterval
+		ticker.Reset(interval)
+	}
+	slog.InfoContext(tickCtx, "auto_sync: tick démarré", "event", tickID, "rattrapage", catchUpReason)
+	res := s.RunOnceTrigger(tickCtx, "tick")
+	slog.InfoContext(tickCtx, "auto_sync: cycle terminé",
+		"total", res.Total,
+		"synced", res.Synced,
+		"skipped", res.Skipped,
+		"failed", res.Failed,
+		"duration", res.Duration.Round(time.Millisecond),
+	)
+	if res.Failed > 0 {
+		slog.WarnContext(tickCtx, "auto_sync: des joueurs ont échoué — consulter le snapshot diag",
+			"failed_count", res.Failed,
+		)
+	}
+	if res.Total > 0 && res.Skipped == res.Total {
+		slog.WarnContext(tickCtx, "auto_sync: aucun joueur synchronisé — vérifier le pool",
+			"pool_size", s.poolSizeSafe(),
+			"hint", "voir GET /api/v1/_diag/auto-sync/snapshot pour le détail",
+		)
+	}
+	return interval
 }
 
 // RunOnce exécute un cycle de sync pour tous les joueurs configurés.
