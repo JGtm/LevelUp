@@ -49,7 +49,7 @@ des WAV (C11), chiffrement des jetons (D-8), binaire autonome C10 (D-11).
   - `.air.toml` (L2) : rebaser sur la version de la publication si elle passe avant.
 - **Branche** : `feat/desktop-p0` depuis `release/v8.1.0` (ou la release suivante si v8.1.0 est publiée
   entre-temps), un commit par lot, PR squash vers la release. P1 : `feat/desktop-p1`. Noms à confirmer.
-- **CLAUDE.md** : la règle « Go/TS uniquement » est amendée par l'ADR 0046 (Rust limité à
+- **CLAUDE.md** : la règle « Go/TS uniquement » est amendée par l'ADR 0045 (Rust limité à
   `apps/desktop/src-tauri`, quelques centaines de lignes, aucune logique métier) dans le lot L16.
 
 ## 3. Vérification sur pièces des deux documents (2026-11-01, HEAD `8f0b512c58`, deux passes)
@@ -147,9 +147,9 @@ des WAV (C11), chiffrement des jetons (D-8), binaire autonome C10 (D-11).
   le site) ; (4) pas de logo du jeu dans le logo de l'app ; (5) clause de licence accordée à Microsoft
   sur l'Item, à lire face à l'AGPL (note dans l'ADR 0045).
 - **A20 — Application Azure unique** (`platform/auth/azure_credentials.go:30`, client public) : toutes
-  les installations partagent le même identifiant ; dépendance externe à consigner dans l'ADR 0046.
+  les installations partagent le même identifiant ; dépendance externe à consigner dans l'ADR 0045 (D-12).
 - **A21 — Clé de signature de l'updater.** Perdue = plus aucune mise à jour automatique possible :
-  procédure de sauvegarde et de rotation dans l'ADR 0046 ; clé publique allowlistée dans `.gitleaks.toml`.
+  procédure de sauvegarde et de rotation dans l'ADR 0045 (D-12) ; clé publique allowlistée dans `.gitleaks.toml`.
 - **A22 — Désinstallation.** Le désinstalleur ne supprime JAMAIS la racine de données (36 à 100 Go) ;
   l'identifiant Tauri (`info.lvelup.desktop`) est figé dès P1 (il nomme aussi le dossier WebView2).
 - **A23 — Hygiène du dépôt pour Rust.** `.gitignore` (`target/`, `gen/`), `Cargo.lock` versionné,
@@ -194,7 +194,7 @@ des WAV (C11), chiffrement des jetons (D-8), binaire autonome C10 (D-11).
    `{"event":"stopped","clean":true|false}` (`clean=false` : budget dépassé ou vidage persist en erreur).
 3. **Première page** : la coquille montre son écran embarqué (logo) jusqu'à `ready`, puis charge
    `http://127.0.0.1:N/desktop/enter?secret=<aléa>` ; le serveur pose le cookie et redirige vers `/`.
-   Sans cookie, toute route hors `/desktop/enter` répond 401 (`bare_routes_ratchet_test.go` : allowlist
+   Sans cookie, toute route hors `/desktop/enter` et `/health` (sonde de la coquille, sans donnée) répond 401 (`bare_routes_ratchet_test.go` : allowlist
    datée pour `/desktop/enter`) ; `/api/v1/desktop/strings` exige le cookie. Contrôle strict de `Host`.
    Sur `failed`, la coquille charge la page de démarrage du serveur (état servi en 503 non réessayable).
 4. **Arrêt** : fermeture de stdin (chemin principal, aussi déclenché par l'OS si la coquille meurt) OU
@@ -491,6 +491,9 @@ Définition : `ResourcesRoot` = la racine du dépôt aujourd'hui (`LEVELUP_RESOU
 - [ ] 11.3 Sous-lot c : `Dockerfile:246-247`, `docker-compose.yml:15,17,97,98` : variables mortes
       retirées, nouvelles posées, montage ressources en lecture seule ; `scripts/deploy.sh` relu (staging
       sous `data/`, piège `git clean`) ; `docs/INSTALL.md` EN + FR.
+- [ ] 11.5 `LogsRoot` créé AVANT tout écrivain (découverte §10, 2026-11-01 : `crash_output` ouvre
+      `logs/server.crash.log` avant la création de `logs/` sur une racine neuve) ; test : racine neuve → fichier de
+      capture présent après le premier démarrage.
 - [ ] 11.4 Tests : racines distinctes → aucun chemin de ressource sous `DataRoot`, aucun chemin de
       donnée sous `ResourcesRoot` ; garde-rail « pas de `filepath.Join(..., "data", ...)` » vert ; ratchet
       nouveau : `RepoRoot` plus lu hors `internal/config` et `PathResolver` (allowlist datée à réduire).
@@ -510,6 +513,11 @@ Définition : `ResourcesRoot` = la racine du dépôt aujourd'hui (`LEVELUP_RESOU
       en erreur.
 - [ ] 12.4 Verrou d'instance `internal/platform/instancelock` (A16) : pris au démarrage en `desktop` et
       `refresh-only`, erreur typée `ErrInstanceDejaLancee` → `failed{state:"locked"}`.
+- [ ] 12.6 Arrêt dans les premières secondes du démarrage (découverte §10, 2026-11-01) : les échanges OAuth du
+      démarrage (`refresh_loop`, présence du watcher) honorent l'annulation du contexte des tâches (requêtes HTTP sous
+      `ctx`), ou la phase `scheduler` n'attend pas une goroutine qui ne lit pas son contexte ; test : arrêt demandé
+      pendant un rafraîchissement simulé lent → `clean=true` dans le budget. Sans cet item, `stopped{clean:false}` à
+      chaque fermeture rapide de la coquille.
 - [ ] 12.5 Test « faux lanceur » : tube stdin, stdout lu ligne à ligne, séquence `listening` → `ready` →
       EOF → `stopping` → `stopped{clean:true}` ; second lancement pendant le premier → `failed locked` ;
       ajouté au job C9.

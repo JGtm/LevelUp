@@ -1,6 +1,6 @@
 # ADR 0008 — DB schema multi-title : isolation par chemin FS, xuid_aliases globalisé
 
-**Status** — Proposed (2026-04-29). Triggered by code review axe 2 (BLOQUANT « schéma DuckDB transverse sans `title_id` »).
+**Status** — Proposed (2026-04-29), amended 2026-11-01 (two roots: see the last section). Triggered by code review axe 2 (BLOQUANT « schéma DuckDB transverse sans `title_id` »).
 
 **Deciders** — Guillaume (GS).
 
@@ -97,3 +97,71 @@ C'est la seule méthode du resolver qui ne prend pas de `titleSlug` en paramètr
 - Plan d'action : `PLAN_ACTION.md` P1.4, P5.
 - Skill `db-schema` : `.claude/skills/db-schema/SKILL.md` (à mettre à jour avec ce nouveau chemin).
 - PathResolver : `apps/go-api/internal/domain/title/registry.go`.
+
+## Amendment 2026-11-01 — two roots
+
+**Source** — decisions D-14 and D-15 of `.ai/V8/PLAN_DESKTOP_2026-11-01.md`, audit worksite C8, lot L11.
+**Relates to** — ADR 0044 (deployment profile: the desktop profile is what sets the roots), ADR 0045 (the shell
+launches the server with the three roots in its environment).
+
+The decision above stands: isolation by file-system path, every path through `PathResolver`. What changes is the origin
+of the paths. `PathResolver` is built from one root (`NewPathResolver(repoRoot)`) and each data path is
+`filepath.Join(repoRoot, "data", ...)`; `config.RepoRoot` is read at some 190 sites of `internal/` outside the tests.
+A checkout of the repository is therefore both the place the program reads its versioned resources (`config/`,
+`static/`, the web build, the replay reference files) and the place it writes its state. A per-user Windows installation
+(program under `%LOCALAPPDATA%\Programs\LevelUp`, state elsewhere, never deleted by the uninstaller) needs the two apart.
+Two variables were already declared and read by nothing (`LEVELUP_ROOT`, `LEVELUP_DATA` in the Dockerfile and the
+compose file); `LEVELUP_REPO_ROOT` and `LEVELUP_LOGS_DIR` already exist and keep working. The demo already separates the
+two in its own way (`config_demo.go`: versioned configuration read from the repository, state under the demo root).
+
+**A-1 — Three roots.**
+
+- `ResourcesRoot`: what ships with the program, read-only by convention (not by ACL, D-14). Variable
+  `LEVELUP_RESOURCES_DIR`, then `LEVELUP_REPO_ROOT` (kept as the compatible name), then the current detection
+  (`config.autoDetectRepoRoot` for the server, `title.FindRepoRoot` for the offline tools; both walk upwards looking for
+  checkout markers, which an installed tree does not need because the shell sets the variable).
+- `DataRoot`: everything the program creates or modifies. Variable `LEVELUP_DATA_DIR`; default
+  `<ResourcesRoot>/data`, which is today's `data/`.
+- `LogsRoot`: journals. Variable `LEVELUP_LOGS_DIR` (existing); default as today, `<ResourcesRoot>/logs`.
+
+Explicit variables are environment only (a `.env.local` cannot set the root it is read from). Resolution happens once, in
+`internal/config`, and the roots are given to `PathResolver`; in the `desktop` profile the shell passes all three.
+
+**A-2 — Which family lives under which root.**
+
+| Root | Paths |
+|---|---|
+| `ResourcesRoot` | `config/` (manifests, `locales.toml`), `static/`, the web build (`dist`), `metadata-prebuilt.zip`, the replay reference files `data/titles/{slug}/reference/` |
+| `DataRoot` | the warehouse and player databases (`titles/{slug}/...`, `global/xbox_aliases.duckdb`), `db_profiles.json`, `app_settings.json`, `.env.local`, `sessions/`, `auth/` (tokens, users, groups, `session_secret`), caches (film chunks and manifests, replay artifacts), `backups/migrations/` (`MigrationBackupsDir`), `desktop/port`, `levelup.lock` |
+| `LogsRoot` | `server.log`, per-category journals, `server.crash.log`, `desktop.log` |
+
+Resource paths keep their relative shape under `ResourcesRoot` (`data/titles/{slug}/reference/...`,
+`data/titles/{slug}/warehouse/metadata-prebuilt.zip`), so that a shipped tree and a checkout look alike; the resolver
+exposes them through resource accessors, not through `TitleDataDir`.
+
+**A-3 — Default layout reproduces today's paths.** With `LEVELUP_DATA_DIR` unset, every path the resolver returns is
+the path of before (witness T4: the sorted list of the paths of every exported method, identical with default roots), and
+the three files that sit at the top of the checkout today (`db_profiles.json`, `app_settings.json`, `.env.local`) stay
+there. With `LEVELUP_DATA_DIR` set, they live at the top of `DataRoot`.
+
+**A-4 — Per-user installation (D-14).** Program and resources under `%LOCALAPPDATA%\Programs\LevelUp`, data under
+`%LOCALAPPDATA%\LevelUp` (logs in its `logs/`), no elevation, so that the updater needs no UAC prompt. The uninstaller
+never removes `DataRoot` (36 to 100 GB of films and databases on the maintainer's machine); the Tauri identifier
+(`info.lvelup.desktop`) is frozen from P1 because it also names the WebView2 profile folder.
+
+**A-5 — Invariants.** With distinct roots: no resource path is under `DataRoot`, no data path is under `ResourcesRoot`.
+`RepoRoot` is no longer read outside `internal/config` and `PathResolver` (a dated allowlist, which only goes down, holds
+the readers not yet migrated). The existing rule stands: no `filepath.Join(..., "data", ...)` by hand.
+
+**A-6 — Child processes.** The replay build children (`replaychild`, `filmproc`) receive the three roots in their
+environment, so that a child resolves the same paths as its parent, whatever its working directory.
+
+**A-7 — Docker.** The image sets the three variables explicitly, the dead `LEVELUP_ROOT` and `LEVELUP_DATA` are removed
+from the Dockerfile and the compose files, and the resources are mounted read-only. The data volume stays `./data`.
+
+**Consequences.** `PathResolver` gains a second root and resource accessors; the 41 hand-built joins of `"data"` and the
+readers of `RepoRoot` move in three sub-lots (L11a table of path to root, L11b resources and data, L11c Docker and
+deploy scripts), each proved by T4. The journals directory is created before any writer opens a file in it, which also
+removes the lost crash capture on a fresh root (`crash_output` opens `server.crash.log` before `logs/` exists).
+**Guard-rails** (to create at L11): a `PathResolver` test with distinct roots for the two invariants; the `RepoRoot`
+ratchet in `internal/archlint/`; the existing `filepath.Join(..., "data", ...)` guard stays green.

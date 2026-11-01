@@ -1,0 +1,259 @@
+# ADR 0045 — Desktop mode and the shell-server contract
+
+Status: accepted (2026-11-01); implementation tracked in `.ai/V8/PLAN_DESKTOP_2026-11-01.md` (wave 1 and 1b delivered
+on the branch, lots L12 to L17 to come; each decision below says which).
+Source: decisions D-1 to D-17 of the plan, confirmed by the maintainer on 2026-11-01 (D-8, D-9 and D-10 against the
+recommendation); additions A1 to A24; section 6 of the plan (the contract).
+Amends: ADR 0023 (D-11 below: the token file may be encrypted by a `TokenCipher` port, the single source stays the
+single source); the Go/TypeScript-only rule of `CLAUDE.md` (D-18: Rust limited to `apps/desktop/src-tauri`).
+Relates to: ADR 0044 (the `desktop` deployment profile), ADR 0008 as amended on 2026-11-01 (the two roots), ADR 0035
+(no sync without a tracked profile), ADR 0038 (pooling consent), ADR 0013/0016 (one writer per database), ADR 0040
+(languages are data), ADR 0041/0042/0043 (the bricks; the shell does not touch them).
+
+## Vocabulary
+
+- **Shell**: the Windows application in `apps/desktop` (Tauri 2). It owns the window, the updater and the installer; it
+  holds no business logic.
+- **Sidecar**: the Go server, the same binary as the hosted one (`cmd/server`), launched by the shell as a child
+  process with `-mode desktop`.
+- **Clean stop**: the single observable of section D-5.
+- **Fake sidecar / fake launcher**: the test doubles of D-21, one for each side of the contract.
+
+## Context
+
+The goal is an installable, single-user, autonomous Windows application that runs the existing server and the existing
+web interface, closes without leaving a write-ahead log, updates itself, and **does not fork the server**. Three facts
+shape the contract. Windows has no usable stop signal for a process without a shared console (`os.Interrupt` does not
+reach it, `SIGTERM` does not exist), and air's `TASKKILL /F /T` left WAL files on the maintainer's machine (witness T6).
+Browser storage is keyed by origin, which includes the port: a random port empties `localStorage` and IndexedDB at every
+launch (297 occurrences in 85 web files) while cookies, not partitioned by port, would leak to any local service. And a
+database held by a killed process stays locked for a few seconds, so a relaunch after a forced stop is a normal case.
+
+## Decision
+
+### The contract (plan section 6)
+
+**D-1 — Launch.** The shell starts the sidecar with the working directory set to the resources root, the environment
+`LEVELUP_DATA_DIR`, `LEVELUP_RESOURCES_DIR`, `LEVELUP_LOGS_DIR` and `LEVELUP_DESKTOP_SECRET=<random>` (never an argument,
+never logged), and the arguments `-mode desktop -arret-sur-stdin`. The port is read from `<DataRoot>/desktop/port` (D-9).
+State: the single flag parser `cmd/server/flags.go` exists and recognises `-health-check`, `-arret-sur-stdin` and `-mode`;
+`-mode desktop` and `-mode refresh-only` are refused with `errModeUnavailable` until L12/L15 deliver them.
+
+**D-2 — Events on stdout.** One JSON line per event, written by a single writer under a lock; in this mode every console
+log goes to stderr. `{"event":"listening","port":N}` when the port is bound (before the migrations);
+`{"event":"ready","port":N}` when the router opens (`bootServer.openRouter`);
+`{"event":"failed","state":"migration_failed"|"schema_newer"|"locked"}`; `{"event":"stopping"}`;
+`{"event":"stopped","clean":true|false}`. `locked` has two causes: a database file held by another process after the
+bounded retry, and the instance lock of D-10. The first three states come from the migration step, which is fatal: a
+failed step, a database whose schema is newer than the binary (`migration.InspectSchema`, `ErrSchemaNewerThanBinary`,
+read without a write connection) or a lock that outlives the bounded retry refuse the start instead of serving data the
+code does not understand, and a copy of each database about to be upgraded is taken first (`BackupBeforeUpgrade` into
+`PathResolver.MigrationBackupsDir()`, two kept, refused when the free space is short). State: all of this exists, with
+the 503 `server_start_failed`, `retryable:false` answer of the startup gate (`bootFailureState` in
+`cmd/server/boot_failure.go`); the stdout writer and the other events arrive with L12. The shell drains stdout
+continuously (a full pipe blocks the server) and relays stderr to `<LogsRoot>/desktop.log`.
+
+**D-3 — First page and access.** The shell shows an embedded screen (logo) until `ready`, then loads
+`http://127.0.0.1:N/desktop/enter?secret=<random>`; the server sets the session cookie and redirects to `/`. The cookie
+name carries the port (A15) and lasts 30 days, renewed at each entry. Without the cookie every route other than
+`/desktop/enter` and `/health` answers 401 (both allowlisted with a date in `bare_routes_ratchet_test.go`; `/health`
+stays open because the shell and the end-to-end script probe it before any cookie exists, and it carries no data); the
+`Host` header must be the exact loopback authority of the bound port and CORS allows that exact origin only. On
+`failed` the shell loads the page of the startup gate, which answers before the router opens and says the state in a
+non-retryable 503. Lot L13.
+
+**D-4 — Stop.** The principal path is the closing of the sidecar's stdin (the shell closes it; the OS closes it if the
+shell dies). The alternative is `POST /api/v1/internal/shutdown`, mounted only when `LEVELUP_DESKTOP_SECRET` is set,
+behind `LoopbackOnly` (decided on the TCP peer), with the secret in `X-LevelUp-Shutdown-Secret` compared in constant time
+(404 not configured, 403 wrong secret or non-loopback peer, 202 and an asynchronous request otherwise). Signal, stdin and
+HTTP all call `bootServer.requestShutdown`, a `sync.Once`: one pass, the same 40 s budget (`shutdownBudget`). The shell
+waits for `stopped` or the budget plus 5 s, and only then kills. Background work that outlives the request joins the
+shutdown context (`taskAppRelease` is started under `context.Background()` today; L12.3). There is **no Job object**
+(A2): it would kill the sidecar at the death of the shell, which is exactly when the stdin EOF must trigger a clean stop.
+Replay build children are killed by context cancellation (`exec.CommandContext`) and their kernel lock is released by the
+OS; the residual risk is an orphan child after a hard crash of the server, bounded by the film it was decoding. State:
+delivered (`shutdown_stdin.go`, `internal/api/handlers/internal_shutdown.go`, `cmd/devlaunch` for air).
+
+**D-5 — One definition of a clean stop.** The log line `arrêt: terminé` with `clean=true` **and** no `*.wal` file under
+`<DataRoot>`. In code `clean` is "every phase finished in its time, the persist queue drained without error, and the
+whole sequence fit in the budget" (`runShutdown`); the absence of WAL is checked by the tests that use the definition
+(L2, L6, L12, L17) and by the end-to-end script. Nothing else is called a clean stop.
+
+**D-6 — Downloads.** The WebView download handler (`on_download`) opens the native save dialog. No change in `apps/web`.
+
+### Desktop mode (server side)
+
+**D-7 — Single user.** The `desktop` profile (ADR 0044) is single-user: `authz.Enforced` is false, every profile of the
+machine is the user's. The session secret is generated at the first launch and written `0600` to
+`<DataRoot>/auth/session_secret` (mode bits are advisory on Windows; the file sits under the user's profile); the public
+default secret is never used. A Microsoft sign-in by device code persists the refresh token for a tracked profile in
+every authentication mode, `none` included (`service.DeviceCodeCompletion`, the profile gate of ADR 0035; if the profile
+does not exist yet, the tokens are kept in memory and replayed when the directory creates it); this is what keeps a
+single-user installation syncing after the first hour. The listening host is forced to loopback (ADR 0044 D-2).
+`/api/v1/desktop/strings` serves the shell's strings from `internal/i18n/messages/desktop.toml` in the request's
+language (D-13).
+
+**D-8 — Pooling for the local user (plan D-4).** In `desktop` the pooling decision is recorded as granted for the local
+user, with a basis value of its own, and the consent banner is hidden by the capability. This is an exception to
+ADR 0038 D4 (the choice is asked, not defaulted), and it holds because the only token in the pool is the user's own and
+never leaves the machine. Without a decision the rule of ADR 0038 stays: refusal.
+
+**D-9 — Stable port (plan D-13, A15).** The port is stored in `<DataRoot>/desktop/port`; if it is taken, a free port is
+chosen, written, and a warning is logged (the browser storage of that user is then lost once). Never `:0` without that
+fallback. `startBootServer` returns the bound port instead of exiting; the `os.Exit(1)` on a taken port stays outside
+`-mode desktop`.
+
+**D-10 — Instance lock and wake-up (A16, A10, A24).** A kernel lock `<DataRoot>/levelup.lock`
+(`internal/platform/instancelock`, the pattern of `libs/film/internal/filelock`, which is not importable) is taken at
+start in `desktop` and `refresh-only`; a second holder fails with `ErrInstanceDejaLancee` and `failed{state:"locked"}`.
+The single-instance plugin of the shell protects neither the scheduled task nor a `go run`. `-mode refresh-only` is a
+mode of the same binary: it takes the lock, opens no database, rotates the tokens and exits; if the lock is held it
+exits 0 without doing anything (one rotation at a time, ADR 0023). Wake-up sequence, under the `desktop` capability only
+(the VPS restarts at every deployment): an immediate first sync tick when the last sync is older than the interval; a
+token check at boot for each tracked profile (no network: nothing is marked; dead: `reauth_required` and the banner;
+alive: the rotated token is written); and the same sequence when the wall clock and the monotonic clock differ by more
+than 2 minutes, because Go's monotonic clock on Windows does not count the sleep (`runtime·nanotime1` reads
+`_INTERRUPT_TIME`). The cached-token deadline already drops the monotonic reading (`time.Now().Round(0)` in
+`tokencache`). Lots L12, L15.
+
+**D-11 — Tokens encrypted by the Windows vault (plan D-8, amends ADR 0023).** A `TokenCipher` port in `platform/auth`
+with two implementations: `plain` (hosted, Linux containers: today's behaviour) and `dpapi` (Windows,
+`CryptProtectData`, current-user scope, through `golang.org/x/sys/windows`). The profile chooses, never `GOOS` alone. The
+token file `watcher_tokens/{xuid}.json` carries a `cipher` field and its sensitive fields (`OAuthRefreshToken`, Spartan
+and XSTS tokens) encrypted in base64. A `plain` file under a `dpapi` profile is rewritten encrypted at the next write;
+the reverse is a typed, logged refusal, and an encrypted file copied to another account or machine is unreadable on
+purpose. `token-import` and `token-capture` write through the same port. The single-source rule and its sentinels are
+unchanged. Lot L13b.
+
+**D-12 — Film archive (plan D-5, A18).** Archived by default; the choice "do not archive" is offered in the first-launch
+wizard (`features/setup`), never in the installer; occupancy is shown and the location is a setting. The unit of the
+archive is the film: `PathResolver.FilmArchiveDir()` covers `film_chunks/` and `film_manifests/` (setting
+`film_archive_dir`, a non-empty target refuses an assisted move). Without archive, facts and replay are still produced,
+chunks are not kept, and the replay retention is forced to unlimited, because the purge assumes a re-cook from the film
+cache; the combination "no archive, finite retention" is refused in the settings. The disk alert is the existing
+`taskDiskWatch` (80 and 90 %). Lot L14.
+
+### The shell
+
+**D-13 — Tauri 2 (D-1), Windows only (D-2), autonomous (D-3).** The shell runs its own server; "connect to a server" is
+a P2 option. No language literal in the Rust (A4): labels come from `GET /api/v1/desktop/strings`; for the states where
+the server does not answer (start, stop, death) a fallback catalogue is generated at build time from the same TOML
+(`build.rs`), in every language of `config/locales.toml`. macOS is P3.
+
+**D-14 — WebView2 and plugins.** `webviewInstallMode` Evergreen (the bootstrapper): the runtime is not guaranteed on
+Windows 10 (A5). Plugins: `single-instance`, `window-state`, `opener`, `updater`. Sidecar started with
+`std::process::Command` (stdin pipe, stdout drained, stderr relayed). Lot L16.
+
+**D-15 — Installer, version, identity (plan D-14, A9, A22).** NSIS, per user, no elevation: program in
+`%LOCALAPPDATA%\Programs\LevelUp`, data in `%LOCALAPPDATA%\LevelUp` (ADR 0008 amendment); the uninstaller never deletes
+the data root. The Tauri identifier `info.lvelup.desktop` is frozen from P1. One version: the git tag feeds
+`-ldflags -X main.version`, `Cargo.toml` and `tauri.conf.json`, and a "version check" step of `release.yml` refuses any
+difference among the four.
+
+**D-16 — Updater signed by its own key; no code signing (plan D-10, A21, A3).** The installer is **not** code-signed:
+SmartScreen warns at each installation, said on the download page. The updater is signed by a Tauri key pair
+independent of any certificate; `latest.json` is signed, published on GitHub Releases, and the installer runs only after
+`stopped` (an installer cannot replace a running executable). The updater is offered, never imposed. The private key and
+its password are repository secrets only as working copies (`TAURI_SIGNING_PRIVATE_KEY`,
+`TAURI_SIGNING_PRIVATE_KEY_PASSWORD`); workflows reading `secrets.` pin their actions by SHA
+(`ci_workflows_security_test.go`); the public key, which is not a secret, is allowlisted in `.gitleaks.toml`.
+*Backup.* Two independent copies of the private key and password under the maintainer's control, outside the repository;
+at each release the restore is proved by signing a test artifact from the backup copy and verifying it with the public
+key embedded in the application (L17.6). *Rotation.* The configuration carries one public key, so a new key reaches
+installed applications only through a release signed by the old key that embeds the new public key; the next release is
+signed with the new one. If the old key is lost or compromised, no automatic update can carry the change: users
+reinstall from the download page, which is why the backup is checked at every release.
+
+**D-17 — ffmpeg shipped (plan D-9).** The official LGPL build (about 80 MB) is installed next to the server binary,
+pinned by checksum, with the LGPL text and the link to the sources in the third-party notices. `media.ResolveFFmpeg`
+looks in `LEVELUP_FFMPEG_DIR`, then the directory of the executable, then `PATH`. Cost: 80 MB per update.
+
+**D-18 — Rust hygiene and the language rule (A23).** The `CLAUDE.md` rule "Go/TS only" is amended: Rust is allowed
+under `apps/desktop/src-tauri` only, a few hundred lines, no business logic (everything decidable is decided by the
+server). `.gitignore` (`target/`, `gen/`), `Cargo.lock` versioned and listed in `NOTICE` §6, Dependabot `cargo`,
+`cargo audit` and `cargo clippy -- -D warnings` in CI, Makefile targets, `docs/COMMANDS.md` EN and FR, a `desktop` filter
+in `ci.yml` (`ci_paths_filter_test.go`).
+
+### External dependencies
+
+**D-19 — One Azure application (A20).** All installations share the client identifier of the public client
+(`platform/auth/azure_credentials.go`). It is an external dependency of every installation: if Microsoft revokes or
+throttles it, all of them are affected at once. There is no per-install secret (a public client).
+
+**D-20 — Microsoft content rules (A19).** Read on 2026-11-01 (`xbox.com/en-US/developers/rules`, last updated January
+2015): a donation link is allowed on a page that uses the content, the application stays free and ad-free; the notice is
+**mandatory** and worded by Microsoft ("Halo Infinite © Microsoft Corporation. LevelUp was created under Microsoft's
+"Game Content Usage Rules" using assets from Halo Infinite, and it is not endorsed by or affiliated with Microsoft."),
+with a link to the rules, visible to anyone who sees the content: web footer, installer and download page (L17.1);
+no game logo in the application's logo; `NOTICE` §2(b), §4 and §6 updated. **Sounds**: the rules warn that audio effects
+are often third-party licensed and not covered. The maintainer keeps the 184 sounds on 2026-11-01, the posture of the
+website, with a line in the third-party notices ("game sound effects, property of Microsoft and its licensors, removed on
+simple request"); the risk is the maintainer's. The licence the rules grant Microsoft over the content must be read
+against the AGPL of the repository; this ADR records the question, it does not settle it.
+
+### Tests
+
+**D-21 — Strategy (plan section 7).** Each side of the contract is tested against a double of the other: a **fake
+sidecar** in Go (`apps/desktop/testdata/fake-sidecar`, its own `go.mod`, `GOWORK=off`: events, `/desktop/enter`, EOF,
+variants "never ready", `failed`, late `stopped`, crash, chatty 10 MB stdout) for `cargo test`, and a **fake launcher**
+(stdin pipe, stdout read line by line) in the tests of `cmd/server` for the sequence `listening`, `ready`, EOF,
+`stopping`, `stopped{clean:true}` and the second launch `failed locked`. The Windows CGO lane (`go-test-windows-cgo`)
+runs the server tests and `TestE2EArretPropre` (tag `e2e_windows`); the `desktop-e2e` job on `release/**` runs a
+PowerShell script (silent install, launch, port read from the file, `/health`, `WM_CLOSE`, clean stop, relaunch);
+`tauri-driver` is not used (it needs an `msedgedriver` aligned with the runtime). Visual gates are witnesses named by the
+maintainer on a clean machine. A lot without a test at its level is not closed.
+
+## Known risks
+
+- **Stop in the first seconds gives `clean=false`.** If the stop arrives while the token refresh of the start-up is
+  running, the scheduler phase (3 s) expires: `oauth_refresh` loops over the players, about 1 s per exchange, and the
+  presence tracking goroutines of the scheduler wait group do not honour cancellation during an HTTP exchange. Measured
+  at 75 s after the start: `clean=true` in 156 ms. A shell closed right after opening would therefore get `stopped
+  clean=false`. To be treated before L12 (item of L12 or a dedicated wave-2 lot; files in `platform/auth/refresh_loop.go`
+  and the watcher), with a test that requests a stop during the start-up refresh and expects `clean=true`.
+- **Crash capture lost at the first start on a fresh root.** `crash_output` opens `server.crash.log` before `logs/`
+  exists: a warning, and no capture until the second start. This is the normal first start of every installation. Treated
+  by L11 (`LogsRoot` created before any writer) or a dedicated lot.
+- **SmartScreen at each installation** (D-16), **sound licensing** (D-20), **a single Azure application** (D-19).
+
+## Consequences
+
+- The server stays one binary for hosted and desktop; what differs is the profile (ADR 0044), the roots (ADR 0008) and
+  the launch arguments.
+- Every stop path ends in one sequence, so the contract is the same for air, the shell, the end-to-end tests and a
+  terminal Ctrl+C.
+- The shell is small enough to be replaced; the contract (D-1 to D-6) is what a replacement must satisfy.
+- Cost: a Windows CI lane with CGO, a second toolchain (Rust 1.97, Node 24), 80 MB more per update (ffmpeg), and a key to
+  keep safe.
+
+## Guard-rails
+
+- Exist: `cmd/server/flags_test.go`, `shutdown_stdin_test.go` (one pass for any number of triggers),
+  `shutdown_budget_test.go`, `boot_failure_test.go`, `internal/api/bare_routes_ratchet_test.go`
+  (`TestBareRoutesRatchet_DesktopShutdownRouteIsGuarded`), `internal/archlint/media_binpath_single_resolver_test.go`,
+  `internal/platform/auth/sentinel_test.go` and `internal/sync/no_legacy_source_used_test.go` (allowlists empty),
+  `cmd/server/e2e_arret_windows_test.go` (`TestE2EArretPropre`, tag `e2e_windows`), the CI job `go-test-windows-cgo`.
+- To create: the fake-launcher test (L12.5); the instance-lock tests (L12.4); `desktop-enter.spec.ts` (Playwright) and the
+  `httptest` cases of `/desktop/enter` including a secret absent from `os.Args` (L13.4); the `TokenCipher` tests,
+  `dpapi` under the Windows tag (L13b.3); `cargo test` against the fake sidecar (L16.4); the `desktop-build` and
+  `desktop-e2e` jobs and the version check (L17); the `desktop` filter in `ci_paths_filter_test.go`.
+
+## Alternatives rejected
+
+- **Wails** (D-1): no signed updater and a smaller plugin set than Tauri 2 for the NSIS and updater chain needed.
+- **A Job object** (A2): see D-4.
+- **Port `:0`** (A15, D-13): empties the browser storage at each launch.
+- **Code signing** (D-10): no budget; reversible if the distribution justifies it.
+- **A stop signal** (D-4): none usable on Windows without a shared console.
+- **A standalone binary embedding the site** (C10, D-11 of the plan): not retained, resources travel as Tauri resources;
+  stays in the backlog.
+- **`tauri-driver` for the end-to-end test** (D-21): depends on a driver aligned with the installed WebView2.
+
+## References
+
+- Plan: `.ai/V8/PLAN_DESKTOP_2026-11-01.md` (sections 4, 5, 6, 7, 9.10 to 9.17, 10).
+- Code: `apps/go-api/cmd/server/` (`flags.go`, `boot_gate.go`, `boot_failure.go`, `shutdown.go`, `shutdown_stdin.go`,
+  `shutdown_budget.go`), `internal/api/handlers/internal_shutdown.go`, `internal/config/config_desktop.go`,
+  `cmd/devlaunch/`, `internal/migration/` (`InspectSchema`, `BackupBeforeUpgrade`, `ErrSchemaNewerThanBinary`),
+  `internal/service/devicecode_completion.go`, `internal/media/binpath.go`, `.github/workflows/ci.yml`.
+- ADR 0044, ADR 0008 (amendment), ADR 0023, ADR 0035, ADR 0038.

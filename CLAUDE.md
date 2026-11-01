@@ -424,7 +424,18 @@ git commit -m "refactor(phase2): ..."
   `v0.x` sans promesse de stabilité, un numéro par module ; un README modèle unique par brique, exemple compilé
   par `example_test.go` ; licences : `gamefiles` GPL-3.0 à cause de `ooz`, `himap` et `haloapi` AGPL-3.0 ;
   critère de séparation en dépôt : contributeur externe, ou cadence indépendante, ou CI qui pèse, décision finale de
-  l'utilisateur exécutée ensemble ; `haloapitest` public ; l'exploitation reste dans LevelUp ; amende 0041 et 0042).
+  l'utilisateur exécutée ensemble ; `haloapitest` public ; l'exploitation reste dans LevelUp ; amende 0041 et 0042) ·
+  `0044` **profil de déploiement** (un seul concept `Deployment` : `hosted`, `desktop`, `demo`, `dev`, résolu UNE fois
+  dans `internal/config` ; `AuthMode`, hôte d'écoute et capacités fines DÉRIVÉS, jamais posés à la main ; consommateurs
+  branchés sur les capacités de `/bootstrap`, jamais sur le profil ; tâches de fond déclarées par profil ; ratchet :
+  aucune nouvelle lecture de `.DemoMode` / `.AuthMode` / `LEVELUP_ENV` hors du résolveur) ·
+  `0045` **mode desktop et contrat coquille ↔ serveur** (Tauri 2, Windows seul, autonome ; serveur Go en sidecar lancé
+  `-mode desktop -arret-sur-stdin`, événements stdout `listening` / `ready` / `failed` / `stopping` / `stopped`, arrêt
+  par EOF stdin ou `POST /api/v1/internal/shutdown` secret, arrêt propre = `arrêt: terminé clean=true` ET aucun WAL ;
+  `/desktop/enter?secret=` pose le cookie suffixé par le port, `/health` seule route ouverte ; port stable mémorisé,
+  verrou d'instance, jetons chiffrés DPAPI derrière le port `TokenCipher` (amende 0023), archive des films par défaut,
+  updater signé par sa propre clé sans signature de code, ffmpeg livré, Rust limité à `apps/desktop` ; amende 0008 :
+  trois racines `ResourcesRoot` / `DataRoot` / `LogsRoot`).
 
 READMEs catalogues : `apps/go-api/internal/analysis/{temporal,breakdown,narrative}/README.md`,
 `apps/web/src/components/charts/README.md` (wrappers ECharts).
