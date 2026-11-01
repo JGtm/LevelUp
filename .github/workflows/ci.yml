@@ -690,8 +690,8 @@ jobs:
       - name: Build du serveur (CGO, DuckDB lié)
         run: go build ./cmd/server
 
-      - name: Tests apps/go-api (serveur, espace disque, CLI)
-        run: go test -count=1 ./cmd/server/... ./internal/platform/diskfree/... ./cmd/levelup/...
+      - name: Tests apps/go-api (serveur, lanceur de dev, espace disque, CLI)
+        run: go test -count=1 ./cmd/server/... ./cmd/devlaunch/... ./internal/platform/diskfree/... ./cmd/levelup/...
 
       - name: Tests libs/film (processus fils, verrou de fichier)
         working-directory: libs/film

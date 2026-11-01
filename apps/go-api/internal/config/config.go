@@ -183,6 +183,7 @@ type AppConfig struct {
 	// personne ne viendra vider la file résoudrait un manifeste Halo par match, à
 	// chaque cycle, pour rien (cf. replaybuild.DecidePlacement).
 	BuildWorkerToken string
+	DesktopConfig    // secret et demande d'arrêt du lanceur (DesktopSecret, ShutdownRequester) : config_desktop.go
 }
 
 // DefaultEventsConvergenceMax est le plafond par défaut de matchs traités par la
@@ -261,7 +262,7 @@ func load(fromRepo bool) (*AppConfig, error) {
 		cfg.EventsConvergenceMax = DefaultEventsConvergenceMax
 	}
 	cfg.BuildWorkerToken = strings.TrimSpace(getEnvOrDefault("LEVELUP_BUILD_WORKER_TOKEN", ""))
-	return cfg, nil
+	return withDesktopConfig(cfg), nil
 }
 
 // IsProduction indique si le serveur tourne en mode production (LEVELUP_ENV=production),

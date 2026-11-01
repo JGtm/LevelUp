@@ -343,20 +343,20 @@ Fichiers : `cmd/server/flags.go` (nouveau, D-15), `cmd/server/boot_gate.go`, `cm
 `internal/config/config.go` (`DesktopSecret` lu depuis l'environnement, jamais journalisé),
 `apps/go-api/.air.toml`, `bare_routes_ratchet_test.go` (allowlist datée).
 
-- [ ] 2.1 `flags.go` : parseur unique (`flag.NewFlagSet`), drapeaux `-arret-sur-stdin`, `-mode`
+- [x] 2.1 `flags.go` : parseur unique (`flag.NewFlagSet`), drapeaux `-arret-sur-stdin`, `-mode`
       (valeurs admises : vide, `desktop`, `refresh-only` ; les deux derniers refusés jusqu'à L12/L15
       avec une erreur explicite), compatibilité des tests `os.Args` existants (`-health-check`,
       `-film-child`).
-- [ ] 2.2 `-arret-sur-stdin` : goroutine lisant stdin jusqu'à EOF → `requestShutdown(reason)`, fonction
+- [x] 2.2 `-arret-sur-stdin` : goroutine lisant stdin jusqu'à EOF → `requestShutdown(reason)`, fonction
       unique sous `sync.Once` que le signal et le point d'arrêt appellent aussi ; ligne de journal
       `arrêt: terminé` avec `clean` (§6.5) écrite en fin de `shutdown.go`.
-- [ ] 2.3 `POST /api/v1/internal/shutdown` : `LoopbackOnly`, en-tête `X-LevelUp-Shutdown-Secret` comparé
+- [x] 2.3 `POST /api/v1/internal/shutdown` : `LoopbackOnly`, en-tête `X-LevelUp-Shutdown-Secret` comparé
       en temps constant à `cfg.DesktopSecret` ; 404 si non configuré, 403 si faux, 202 sinon ; injection
       de `requestShutdown` par le patron de `cfg.TitleReadyNotifier` (`main.go:1280`) ; route allowlistée
       dans le ratchet des routes nues avec date.
-- [ ] 2.4 Air (D-17) : `pre_cmd` qui appelle le point d'arrêt avec le secret de dev (`.env.local`),
+- [x] 2.4 Air (D-17, RÉVISÉ le 2026-11-01 : `pre_cmd` tourne APRÈS le `TASKKILL` d'air 1.65, engine.go `stopBin` puis `buildRun`→`runPreCmd` ; remplacé par un lanceur `cmd/devlaunch` qui tient le stdin du serveur, serveur détaché de l'arbre, EOF = arrêt propre) ; ancien énoncé : `pre_cmd` qui appelle le point d'arrêt avec le secret de dev (`.env.local`),
       tolère l'absence de serveur ; commentaire `.air.toml:48-59` réécrit.
-- [ ] 2.5 Tests : EOF stdin → `requestShutdown` appelé une fois ; double déclenchement → une seule
+- [x] 2.5 Tests : EOF stdin → `requestShutdown` appelé une fois ; double déclenchement → une seule
       séquence ; handler : hors boucle locale 403, sans secret 404, mauvais secret 403, bon secret 202 ;
       `shutdown_budget_test.go` vert ; ratchet des routes nues vert.
 - Gate : `go test ./cmd/server/... ./internal/api/... ./internal/config/...` ; **(P)** rechargement air
@@ -637,6 +637,13 @@ mises à jour (ressources retéléchargées à chaque version).
   attente) et le serveur L1 démarre en 12 s (`t2_apres_l1`). Aucun index corrompu à réparer, aucune
   vérification VPS nécessaire. Recette T2 à rejouer avec un filtre sur la DATE à la comparaison de fin de vague.
 
+- **Arrêt dans les premières secondes après le démarrage = `clean=false` (2026-11-01, gate L2 sur les données du
+  poste)** : la phase `scheduler` de l'arrêt (3 s) expire quand la demande arrive pendant le rafraîchissement des
+  jetons au démarrage (`oauth_refresh` enchaîne les joueurs, chaque échange ~1 s, et le suivi de présence continue
+  après `watcher_daemon: arrêté`) : ces goroutines du `schedulerWG` n'honorent pas l'annulation pendant un
+  échange HTTP. À 75 s après le démarrage : `clean=true` en 156 ms, aucun WAL. Hors périmètre de L2 (fichiers
+  `platform/auth/refresh_loop.go`, `watcher`) ; à traiter avant L12 (la coquille fermée aussitôt ouverte doit
+  rendre `stopped clean=true`) : item à ajouter à L12 ou lot dédié à la vague 2.
 - `internal/mapcatalog` : `TestAddOverlayEntryConcurrentDossierAbsentNePerdRien` échoue en run complet
   (« verrou d'ecriture impossible a poser — passage force », 2 cartes perdues sur 8) et passe seul : le
   passage forcé sans verrou est le comportement testé comme défaut, déclenché par la contention du run
