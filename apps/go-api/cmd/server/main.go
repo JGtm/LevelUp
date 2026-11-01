@@ -55,7 +55,6 @@ func main() {
 	initSettingsAndAuth(st)
 	initBootTasks(st)
 	initAccountsPool(st)
-	defer st.closeAutoSyncPool() // au retour de main, donc après la séquence d'arrêt
 	initScheduler(st)
 	openPersistQueue(st)
 	launchCoreTasks(st)

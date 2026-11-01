@@ -35,6 +35,7 @@ type shutdownDeps struct {
 	closeShared      func() error
 	metaDB           *duckdb.DB
 	multiHandler     *logging.MultiModuleHandler // nil : journalisation simple
+	events           *desktopEvents              // nil hors -mode desktop : annonce `stopping`
 }
 
 // runShutdown exécute la séquence d'arrêt du serveur, une fois l'arrêt demandé.
@@ -56,6 +57,7 @@ type shutdownDeps struct {
 // shutdownBudget. Une ligne "arrêt: terminé" (clean, reason, duration) le dit, écrite avant
 // la fermeture des journaux fichier pour y figurer.
 func runShutdown(d shutdownDeps) bool {
+	d.events.Stopping()
 	fmt.Fprint(os.Stderr, "\n  [..] Arret en cours...")
 	ctx := context.Background()
 	clock := newShutdownClock(shutdownBudget, shutdownCloseReserve)

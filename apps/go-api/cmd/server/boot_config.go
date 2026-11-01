@@ -35,6 +35,7 @@ import (
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/friendstore"
 	"levelup/go-api/internal/platform/groupstore"
+	"levelup/go-api/internal/platform/instancelock"
 	"levelup/go-api/internal/platform/netguard"
 	"levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/platform/userstore"
@@ -54,9 +55,15 @@ type bootState struct {
 	gate         *bootGate
 	srv          *http.Server
 	bootSrv      *bootServer
-	pr           *title.PathResolver
-	titleSlug    string
-	dbPaths      bootDBPaths
+	// events : les événements du contrat coquille <-> serveur ; nil hors -mode desktop.
+	events *desktopEvents
+	// instanceLock : le verrou d'instance tenu par ce processus (nil hors -mode desktop, ou si une
+	// autre instance le tient : instanceLockErr). Rendu à l'arrêt (releaseInstanceLock).
+	instanceLock    *instancelock.Lock
+	instanceLockErr error
+	pr              *title.PathResolver
+	titleSlug       string
+	dbPaths         bootDBPaths
 
 	sharedReader duckdb.SharedReader
 	closeShared  func() error
@@ -97,6 +104,7 @@ func bootConfigure(st *bootState) {
 	loadBootConfig(st)
 	applyBootGuards(st.cfg)
 	openBootGate(st)
+	refuseIfInstanceLockFailed(st)
 	initToolingAndRegistry(st.cfg)
 }
 
@@ -387,23 +395,6 @@ func applyBootGuards(cfg *config.AppConfig) {
 			"rate_limit_rpm", cfg.RateLimitRPM,
 			"recommendation", "si le serveur est derrière nginx/Caddy/Traefik, définir LEVELUP_TRUST_PROXY_HEADERS=true")
 	}
-}
-
-// openBootGate ouvre le port sur la porte de démarrage et branche les demandes d'arrêt.
-func openBootGate(st *bootState) {
-	cfg, flags := st.cfg, st.flags
-	// --- 2 bis. Écoute immédiate (boot_gate.go) : la page est servie et l'API répond 503
-	// server_starting jusqu'à bootSrv.openRouter ; un port occupé arrête ici, avant les bases.
-	gate := newBootGate(cfg)
-	srv := newBootHTTPServer(cfg, gate)
-	bootSrv := startBootServer(srv, gate)
-	// Arrêt demandé hors signal : route POST /api/v1/internal/shutdown (posée avant la
-	// construction du routeur, même patron que TitleReadyNotifier) et fermeture de stdin.
-	cfg.ShutdownRequester = func(reason string) { bootSrv.requestShutdown(reason) }
-	if flags.StopOnStdin {
-		bootSrv.watchStdin(os.Stdin)
-	}
-	st.gate, st.srv, st.bootSrv = gate, srv, bootSrv
 }
 
 // initToolingAndRegistry vérifie l'outillage média et pose le registre de titres piloté par config.

@@ -504,24 +504,25 @@ Définition : `ResourcesRoot` = la racine du dépôt aujourd'hui (`LEVELUP_RESOU
 
 ### 9.12 L12 — Port stable, événements stdout, verrou d'instance (S ; après L7, L11)
 
-- [ ] 12.1 Port : `<DataRoot>/desktop/port` lu, sinon port libre choisi puis écrit ; `startBootServer`
-      (`boot_gate.go:190-195`) retourne le port lié (`ln.Addr()`) au lieu de sortir ; `os.Exit(1)` gardé
-      seulement hors `-mode desktop`.
-- [ ] 12.2 Événements §6.2 (`listening`, `ready`, `failed`, `stopping`, `stopped`) par un écrivain unique
-      sous verrou, seulement en `-mode desktop` ; tout journal console sur stderr dans ce mode.
-- [ ] 12.3 Arrêt des enfants : selon 0.3, rattacher la cuisson au contexte d'arrêt ; `taskAppRelease`
-      (`main.go:1291`) rattaché au contexte des tâches ; `clean=false` si budget dépassé ou vidage persist
-      en erreur.
-- [ ] 12.4 Verrou d'instance `internal/platform/instancelock` (A16) : pris au démarrage en `desktop` et
-      `refresh-only`, erreur typée `ErrInstanceDejaLancee` → `failed{state:"locked"}`.
-- [ ] 12.6 Arrêt dans les premières secondes du démarrage (découverte §10, 2026-11-01) : les échanges OAuth du
-      démarrage (`refresh_loop`, présence du watcher) honorent l'annulation du contexte des tâches (requêtes HTTP sous
-      `ctx`), ou la phase `scheduler` n'attend pas une goroutine qui ne lit pas son contexte ; test : arrêt demandé
-      pendant un rafraîchissement simulé lent → `clean=true` dans le budget. Sans cet item, `stopped{clean:false}` à
-      chaque fermeture rapide de la coquille.
-- [ ] 12.5 Test « faux lanceur » : tube stdin, stdout lu ligne à ligne, séquence `listening` → `ready` →
-      EOF → `stopping` → `stopped{clean:true}` ; second lancement pendant le premier → `failed locked` ;
-      ajouté au job C9.
+- [x] 12.1 Port : `<DataRoot>/desktop/port` lu (`PathResolver.DesktopPortPath`), sinon port libre choisi puis écrit
+      atomiquement (Warn « port de repli » si l'ancien était occupé) ; `startBootServer` reçoit le listener lié
+      (`cmd/server/desktop_port.go`, `boot_listen.go`) ; `os.Exit(1)` gardé hors `-mode desktop`, en desktop l'échec
+      d'écoute annonce `failed{state:"port"}` ; `-mode desktop` n'est plus refusé (`refresh-only` l'est jusqu'à L15).
+- [x] 12.2 Événements §6.2 par un écrivain unique sous verrou (`cmd/server/desktop_events.go`), seulement en
+      `-mode desktop` ; le gestionnaire console écrivait déjà sur stderr (vérifié), garde-rail `stdout_guard_test.go`.
+- [x] 12.3 Arrêt des enfants : cuisson sous `schedulerCtx` (relevé 0.3 confirmé, test
+      `libs/film/filmproc/runner_annulation_test.go` : contexte annulé = enfant tué) ; `taskAppRelease` sous
+      `schedulerCtx` ET suivie par `schedulerWG` (`appReleaseTask`, test) ; `clean=false` sur budget dépassé ou vidage
+      en erreur : déjà fait (L2), `shutdown_budget_test.go`.
+- [x] 12.4 Verrou d'instance `internal/platform/instancelock` (patron recopié de `libs/film/internal/filelock`), pris
+      avant le port, rendu avant `stopped` ; `ErrInstanceDejaLancee` -> `failed{state:"locked"}` ; test à deux
+      processus. Prise en `refresh-only` : L15.
+- [x] 12.6 Arrêt dans les premières secondes : `worldenrich.BuildEnricher/BuildMultiHaloSource/BuildHaloSource`
+      reçoivent `ctx` (la résolution eager n'utilisait que `context.Background()`), la boucle de rafraîchissement
+      du watcher tourne sous `schedulerCtx` et dans `schedulerWG` ; tests `refresh_loop_stop_test.go`,
+      `wiring_ctx_test.go`.
+- [x] 12.5 Test « faux lanceur » : `cmd/server/desktop_launcher_test.go` (`TestE2ELanceurDesktop`, tag
+      `e2e_windows`, entre dans l'étape CI `-run TestE2E` existante).
 - Gate : `go test ./cmd/server/... ./internal/platform/instancelock/...` ; **(P)** voie Windows verte.
 
 ### 9.13 L13 — Mode `desktop` (S ; après L12, ADR 0045)
@@ -762,6 +763,19 @@ mises à jour (ressources retéléchargées à chaque version).
   après déploiement (`HealthcheckOptions.DBProfilesPath/AppSettingsPath`, test). 16 conditions tiennent, dont : aucun
   volume Docker orphelin, démo inchangée, tests non contaminés par le pont. Remarque sans défaut : `taskAppRelease`
   est désormais annulé à l'arrêt (sous `schedulerCtx`), changement annoncé par l'ADR 0045 D-4.
+
+- **L12 (2026-11-02) — relevé** : témoin du pilote sur les données du poste en `-mode desktop` : `listening` à 26 ms,
+  `ready` à 10,1 s, arrêt 1 s après `ready` → `stopping` puis `stopped{clean:true}` 150 ms plus tard (12.6 tenu :
+  l'arrêt dans les premières secondes est propre), relancement sur le MÊME port (`data/desktop/port`), 0 WAL, aucune
+  ligne d'événement sur stderr. Cause réelle de l'ancien `clean=false` : résolution « eager » des comptes de
+  `worldenrich.BuildHaloSource` sous `context.Background()` (un échange Microsoft par compte, dans le cron du
+  classement mondial suivi par `schedulerWG`) et boucle de rafraîchissement du watcher hors `schedulerCtx` ; corrigé
+  par propagation du contexte, sans attente bornée, les écritures de jeton obtenues avant l'annulation terminent.
+  `taskAppRelease` désormais suivie par `schedulerWG` (elle écrit dans les bases joueur et pouvait finir après
+  `CloseAll`). Écarts à l'ADR 0045 consignés dans l'ADR : verrou pris AVANT le port ; état `failed{state:"port"}`
+  ajouté ; `stopped` émis après le rendu du verrou ; pas de `Sync` sur stdout (tube Windows bloquant). Hors
+  périmètre : `pool.refresherLoop` détaché sous `context.Background()` (fenêtre d'une milliseconde pour une rotation
+  coupée) ; un arrêt demandé pendant l'initialisation attend la fin de l'initialisation (porte de démarrage).
 
 - `internal/mapcatalog` : `TestAddOverlayEntryConcurrentDossierAbsentNePerdRien` échoue en run complet
   (« verrou d'ecriture impossible a poser — passage force », 2 cartes perdues sur 8) et passe seul : le

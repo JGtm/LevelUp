@@ -214,6 +214,14 @@ func loopTask(name string, tracked bool, ctx context.Context, run func(context.C
 	return backgroundTask{name: name, tracked: tracked, run: func() { run(ctx) }}
 }
 
+// appReleaseTask : la notification de version, émise une fois par joueur au démarrage. Elle écrit
+// dans les bases joueur : elle tourne sous le contexte des tâches de fond (annulée à l'arrêt) ET
+// dans leur groupe d'attente, pour que la phase scheduler de l'arrêt l'attende avant la fermeture
+// des bases (ADR 0045 D-4).
+func appReleaseTask(ctx context.Context, run func(context.Context)) backgroundTask {
+	return loopTask(taskAppRelease, true, ctx, run)
+}
+
 // citationsRelanceTask : la relance des citations du film (délai du débrief). Branchée comme
 // notifieur des dérivations le temps de sa boucle, débranchée à l'arrêt — les dérivations
 // d'après ne posent plus rien. Coupée en démo : elle écrit les bases joueurs.

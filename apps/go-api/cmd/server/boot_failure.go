@@ -7,18 +7,20 @@
 // d'arrêt, puis le processus sort avec un code non nul.
 //
 // bootFailureState est aussi le vocabulaire de l'événement stdout `failed` du contrat
-// coquille <-> serveur (événements stdout, lot ultérieur) : le lot qui écrit les événements lit
-// bootGate.failureState et n'a rien d'autre à classer.
+// coquille <-> serveur (desktop_events.go) : refuseStart l'annonce avec l'état posé sur la porte.
 package main
 
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
+	"os"
 	"time"
 
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/platform/instancelock"
 )
 
 // bootFailureExitCode : code de sortie d'un démarrage refusé, rendu une fois l'arrêt demandé.
@@ -58,13 +60,16 @@ func (g *bootGate) failureState() (bootFailureState, bool) {
 	return "", false
 }
 
-// refuseStart journalise le refus de démarrer (Error), pose l'état d'échec sur la porte, garde
-// le port jusqu'au signal d'arrêt, ferme le serveur HTTP et rend le code de sortie non nul.
+// refuseStart journalise le refus de démarrer (Error), pose l'état d'échec sur la porte, annonce
+// l'événement `failed` (mode desktop), garde le port jusqu'au signal d'arrêt, ferme le serveur HTTP
+// et rend le code de sortie non nul. L'événement vient APRÈS l'état posé : la coquille qui le lit
+// charge la page de la porte, qui doit déjà répondre l'état.
 func (b *bootServer) refuseStart(ctx context.Context, state bootFailureState, err error) int {
-	slog.ErrorContext(ctx, "migration: échec, démarrage refusé", "err", err, "state", state)
+	slog.ErrorContext(ctx, "démarrage refusé", "err", err, "state", state)
 	// Pas d'initialisation à finir : le premier signal d'arrêt suffit, sans second signal.
 	b.initDone.Store(true)
 	b.gate.fail(state)
+	b.events.Failed(state)
 	<-b.stopRequested()
 	shutCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), bootFailureShutdownTimeout)
 	defer cancel()
@@ -72,4 +77,32 @@ func (b *bootServer) refuseStart(ctx context.Context, state bootFailureState, er
 		slog.ErrorContext(ctx, "démarrage refusé : fermeture du serveur HTTP échouée", "err", shutErr)
 	}
 	return bootFailureExitCode
+}
+
+// exitAfterRefusal refuse le démarrage (refuseStart : porte debout jusqu'au signal d'arrêt), ferme
+// les journaux fichier puis termine le processus avec le code non nul. Elle ne rend jamais la main.
+func exitAfterRefusal(st *bootState, state bootFailureState, err error) {
+	code := st.bootSrv.refuseStart(context.Background(), state, err)
+	if st.multiHandler != nil {
+		if cerr := st.multiHandler.Close(); cerr != nil {
+			fmt.Fprintf(os.Stderr, "fermeture logging multi-module: %v\n", cerr)
+		}
+	}
+	os.Exit(code)
+}
+
+// refuseIfInstanceLockFailed refuse le démarrage si le verrou d'instance n'a pas été pris : une
+// autre instance le tient (state locked, comme un verrou de base : la coquille ne distingue pas les
+// deux), ou la racine de données n'a pu le recevoir (state migration_failed : la préparation du
+// démarrage a échoué). Sans effet quand le verrou est tenu par ce processus ou n'est pas demandé
+// (hors -mode desktop).
+func refuseIfInstanceLockFailed(st *bootState) {
+	if st.instanceLockErr == nil {
+		return
+	}
+	state := bootFailureMigrationFailed
+	if errors.Is(st.instanceLockErr, instancelock.ErrInstanceDejaLancee) {
+		state = bootFailureLocked
+	}
+	exitAfterRefusal(st, state, st.instanceLockErr)
 }

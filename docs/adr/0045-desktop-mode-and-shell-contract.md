@@ -1,7 +1,7 @@
 # ADR 0045 — Desktop mode and the shell-server contract
 
-Status: accepted (2026-11-01); implementation tracked in `.ai/V8/PLAN_DESKTOP_2026-11-01.md` (wave 1 and 1b delivered
-on the branch, lots L12 to L17 to come; each decision below says which).
+Status: accepted (2026-11-01); implementation tracked in `.ai/V8/PLAN_DESKTOP_2026-11-01.md` (waves 1 to 3 and lot L12
+delivered on the branch, lots L13 to L17 to come; each decision below says which).
 Source: decisions D-1 to D-17 of the plan, confirmed by the maintainer on 2026-11-01 (D-8, D-9 and D-10 against the
 recommendation); additions A1 to A24; section 6 of the plan (the contract).
 Amends: ADR 0023 (D-11 below: the token file may be encrypted by a `TokenCipher` port, the single source stays the
@@ -37,7 +37,8 @@ database held by a killed process stays locked for a few seconds, so a relaunch 
 `LEVELUP_DATA_DIR`, `LEVELUP_RESOURCES_DIR`, `LEVELUP_LOGS_DIR` and `LEVELUP_DESKTOP_SECRET=<random>` (never an argument,
 never logged), and the arguments `-mode desktop -arret-sur-stdin`. The port is read from `<DataRoot>/desktop/port` (D-9).
 State: the single flag parser `cmd/server/flags.go` exists and recognises `-health-check`, `-arret-sur-stdin` and `-mode`;
-`-mode desktop` and `-mode refresh-only` are refused with `errModeUnavailable` until L12/L15 deliver them.
+`-mode desktop` is accepted since L12 (it reaches `config.LoadServer(launchMode)`); `-mode refresh-only` is still refused
+with `errModeUnavailable` until L15.
 
 **D-2 — Events on stdout.** One JSON line per event, written by a single writer under a lock; in this mode every console
 log goes to stderr. `{"event":"listening","port":N}` when the port is bound (before the migrations);
@@ -50,8 +51,12 @@ read without a write connection) or a lock that outlives the bounded retry refus
 code does not understand, and a copy of each database about to be upgraded is taken first (`BackupBeforeUpgrade` into
 `PathResolver.MigrationBackupsDir()`, two kept, refused when the free space is short). State: all of this exists, with
 the 503 `server_start_failed`, `retryable:false` answer of the startup gate (`bootFailureState` in
-`cmd/server/boot_failure.go`); the stdout writer and the other events arrive with L12. The shell drains stdout
-continuously (a full pipe blocks the server) and relays stderr to `<LogsRoot>/desktop.log`.
+`cmd/server/boot_failure.go`). The stdout writer (`cmd/server/desktop_events.go`, active in `-mode desktop` only) and
+every event are delivered by L12; `failed` also carries the state `port` when no port can be bound (nothing serves the
+gate then, the event is the only witness). The console log handler writes to stderr in every mode, so stdout carries
+events only. `stopped` is written last, after the journals are closed, the token pool is closed and the instance lock is
+released, so a relaunch triggered by `stopped` finds the lock free. The shell drains stdout continuously (a full pipe
+blocks the server) and relays stderr to `<LogsRoot>/desktop.log`.
 
 **D-3 — First page and access.** The shell shows an embedded screen (logo) until `ready`, then loads
 `http://127.0.0.1:N/desktop/enter?secret=<random>`; the server sets the session cookie and redirects to `/`. The cookie
@@ -68,11 +73,13 @@ behind `LoopbackOnly` (decided on the TCP peer), with the secret in `X-LevelUp-S
 (404 not configured, 403 wrong secret or non-loopback peer, 202 and an asynchronous request otherwise). Signal, stdin and
 HTTP all call `bootServer.requestShutdown`, a `sync.Once`: one pass, the same 40 s budget (`shutdownBudget`). The shell
 waits for `stopped` or the budget plus 5 s, and only then kills. Background work that outlives the request joins the
-shutdown context (`taskAppRelease` is started under `context.Background()` today; L12.3). There is **no Job object**
+shutdown context and the scheduler wait group (`taskAppRelease`, the token refresh loop of the watcher, the world
+leaderboard enricher: L12.3 and L12.6). There is **no Job object**
 (A2): it would kill the sidecar at the death of the shell, which is exactly when the stdin EOF must trigger a clean stop.
 Replay build children are killed by context cancellation (`exec.CommandContext`) and their kernel lock is released by the
 OS; the residual risk is an orphan child after a hard crash of the server, bounded by the film it was decoding. State:
-delivered (`shutdown_stdin.go`, `internal/api/handlers/internal_shutdown.go`, `cmd/devlaunch` for air).
+delivered (`shutdown_stdin.go`, `internal/api/handlers/internal_shutdown.go`, `cmd/devlaunch` for air); L12 adds the test
+that a cancelled context kills the build child (`libs/film/filmproc/runner_annulation_test.go`).
 
 **D-5 — One definition of a clean stop.** The log line `arrêt: terminé` with `clean=true` **and** no `*.wal` file under
 `<DataRoot>`. In code `clean` is "every phase finished in its time, the persist queue drained without error, and the
@@ -100,8 +107,11 @@ never leaves the machine. Without a decision the rule of ADR 0038 stays: refusal
 
 **D-9 — Stable port (plan D-13, A15).** The port is stored in `<DataRoot>/desktop/port`; if it is taken, a free port is
 chosen, written, and a warning is logged (the browser storage of that user is then lost once). Never `:0` without that
-fallback. `startBootServer` returns the bound port instead of exiting; the `os.Exit(1)` on a taken port stays outside
-`-mode desktop`.
+fallback. `startBootServer` receives the bound listener instead of exiting; the `os.Exit(1)` on a taken port stays outside
+`-mode desktop`, where a listen failure is announced `failed{state:"port"}`. State: delivered by L12
+(`cmd/server/desktop_port.go`, `PathResolver.DesktopPortPath`); the configuration's `APIPort` is set to the bound port. An
+instance that lost the instance lock (D-10) binds a free port without writing the file: it must not change the port of the
+instance that runs.
 
 **D-10 — Instance lock and wake-up (A16, A10, A24).** A kernel lock `<DataRoot>/levelup.lock`
 (`internal/platform/instancelock`, the pattern of `libs/film/internal/filelock`, which is not importable) is taken at
@@ -114,7 +124,9 @@ token check at boot for each tracked profile (no network: nothing is marked; dea
 alive: the rotated token is written); and the same sequence when the wall clock and the monotonic clock differ by more
 than 2 minutes, because Go's monotonic clock on Windows does not count the sleep (`runtime·nanotime1` reads
 `_INTERRUPT_TIME`). The cached-token deadline already drops the monotonic reading (`time.Now().Round(0)` in
-`tokencache`). Lots L12, L15.
+`tokencache`). Lots L12, L15. State: the lock and its refusal are delivered by L12 (the lock is taken before the port,
+released before `stopped`; an I/O error taking the lock refuses the start as `migration_failed`, the data root being
+unusable); `refresh-only` and the wake-up sequence come with L15.
 
 **D-11 — Tokens encrypted by the Windows vault (plan D-8, amends ADR 0023).** A `TokenCipher` port in `platform/auth`
 with two implementations: `plain` (hosted, Linux containers: today's behaviour) and `dpapi` (Windows,
@@ -205,12 +217,14 @@ maintainer on a clean machine. A lot without a test at its level is not closed.
 
 ## Known risks
 
-- **Stop in the first seconds gives `clean=false`.** If the stop arrives while the token refresh of the start-up is
-  running, the scheduler phase (3 s) expires: `oauth_refresh` loops over the players, about 1 s per exchange, and the
-  presence tracking goroutines of the scheduler wait group do not honour cancellation during an HTTP exchange. Measured
-  at 75 s after the start: `clean=true` in 156 ms. A shell closed right after opening would therefore get `stopped
-  clean=false`. To be treated before L12 (item of L12 or a dedicated wave-2 lot; files in `platform/auth/refresh_loop.go`
-  and the watcher), with a test that requests a stop during the start-up refresh and expects `clean=true`.
+- **Stop in the first seconds gave `clean=false`** (treated by L12.6). If the stop arrived while a token exchange of the
+  start-up was running, the scheduler phase (3 s) expired: the world leaderboard cron resolved every tracked account
+  with `context.Background()` (about 1 s per exchange, loop over the players), and the refresh loop of the watcher ran
+  under the process context, outside the wait group. The exchanges now carry the cancellable context of the background
+  tasks and the loop is tracked by the wait group; token writes never depend on the context, so a token obtained before
+  the cancellation is written before the databases close (tests in `internal/platform/auth/refresh_loop_stop_test.go`
+  and `internal/worldenrich/wiring_ctx_test.go`). Residual: a stop requested DURING the start-up waits for the end of the
+  initialisation (boot-time token refresh included, 15 s per exchange at most), as the gate documents.
 - **Crash capture lost at the first start on a fresh root.** `crash_output` opens `server.crash.log` before `logs/`
   exists: a warning, and no capture until the second start. This is the normal first start of every installation. Treated
   by L11 (`LogsRoot` created before any writer) or a dedicated lot.
@@ -233,7 +247,10 @@ maintainer on a clean machine. A lot without a test at its level is not closed.
   (`TestBareRoutesRatchet_DesktopShutdownRouteIsGuarded`), `internal/archlint/media_binpath_single_resolver_test.go`,
   `internal/platform/auth/sentinel_test.go` and `internal/sync/no_legacy_source_used_test.go` (allowlists empty),
   `cmd/server/e2e_arret_windows_test.go` (`TestE2EArretPropre`, tag `e2e_windows`), the CI job `go-test-windows-cgo`.
-- To create: the fake-launcher test (L12.5); the instance-lock tests (L12.4); `desktop-enter.spec.ts` (Playwright) and the
+- Created by L12: `cmd/server/desktop_launcher_test.go` (`TestE2ELanceurDesktop`, tag `e2e_windows`: the fake launcher),
+  `internal/platform/instancelock/instancelock_test.go` (two processes), `cmd/server/desktop_events_test.go`,
+  `cmd/server/desktop_port_test.go`, `cmd/server/stdout_guard_test.go`.
+- To create: `desktop-enter.spec.ts` (Playwright) and the
   `httptest` cases of `/desktop/enter` including a secret absent from `os.Args` (L13.4); the `TokenCipher` tests,
   `dpapi` under the Windows tag (L13b.3); `cargo test` against the fake sidecar (L16.4); the `desktop-build` and
   `desktop-e2e` jobs and the version check (L17); the `desktop` filter in `ci_paths_filter_test.go`.

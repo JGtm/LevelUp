@@ -34,7 +34,7 @@ const flagsExitCode = 2
 // serverUsage : rappel affiché avec toute erreur de ligne de commande.
 const serverUsage = "usage : server [-health-check] [-arret-sur-stdin] [-mode desktop|refresh-only]"
 
-// errModeUnavailable : le mode est reconnu mais son code n'est pas encore livré.
+// errModeUnavailable : le mode est reconnu mais son code n'est pas encore livré (refresh-only).
 var errModeUnavailable = errors.New("mode non disponible dans cette version")
 
 // serverFlags : les arguments du serveur, validés.
@@ -49,8 +49,8 @@ type serverFlags struct {
 
 // parseServerFlags lit args (os.Args[1:]) et valide les valeurs. Erreurs : drapeau inconnu,
 // argument positionnel, mode inconnu, mode reconnu mais pas encore disponible
-// (errModeUnavailable : desktop et refresh-only le restent jusqu'à leur livraison). Une
-// demande d'aide rend flag.ErrHelp. Le parseur n'écrit rien : main affiche l'erreur.
+// (errModeUnavailable : refresh-only le reste jusqu'à sa livraison). Une demande d'aide rend
+// flag.ErrHelp. Le parseur n'écrit rien : main affiche l'erreur.
 func parseServerFlags(args []string) (serverFlags, error) {
 	var f serverFlags
 	fs := flag.NewFlagSet("server", flag.ContinueOnError)
@@ -65,8 +65,8 @@ func parseServerFlags(args []string) (serverFlags, error) {
 		return serverFlags{}, fmt.Errorf("argument inattendu %q", fs.Arg(0))
 	}
 	switch f.Mode {
-	case serverModeDefault:
-	case serverModeDesktop, serverModeRefreshOnly:
+	case serverModeDefault, serverModeDesktop:
+	case serverModeRefreshOnly:
 		return serverFlags{}, fmt.Errorf("-mode %s : %w", f.Mode, errModeUnavailable)
 	default:
 		return serverFlags{}, fmt.Errorf("-mode %q inconnu (valeurs admises : %s, %s)",

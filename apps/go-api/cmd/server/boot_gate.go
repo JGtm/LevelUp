@@ -62,13 +62,18 @@ type bootFailureState string
 
 const (
 	// bootFailureLocked : une base est tenue en écriture par un autre processus et ne s'est
-	// pas libérée dans la reprise bornée (autre instance, sauvegarde, antivirus).
+	// pas libérée dans la reprise bornée (autre instance, sauvegarde, antivirus), ou une autre
+	// instance tient le verrou d'instance (instancelock). La coquille ne distingue pas les deux.
 	bootFailureLocked bootFailureState = "locked"
 	// bootFailureMigrationFailed : une étape de migration, la copie de sécurité ou la
-	// préparation des migrations a échoué ; la cause est dans le journal des migrations.
+	// préparation des migrations a échoué (la racine de données qui ne peut recevoir le verrou
+	// d'instance en fait partie) ; la cause est dans le journal des migrations.
 	bootFailureMigrationFailed bootFailureState = "migration_failed"
 	// bootFailureSchemaNewer : une base porte un schéma plus récent que ce binaire.
 	bootFailureSchemaNewer bootFailureState = "schema_newer"
+	// bootFailurePort : le mode desktop n'a pu lier aucun port. Aucune porte n'est debout pour le
+	// servir : l'événement stdout `failed` est son seul témoin (desktop_events.go).
+	bootFailurePort bootFailureState = "port"
 )
 
 // serverStartFailedCode : code d'erreur de la réponse 503 servie après un échec de démarrage.
@@ -224,26 +229,26 @@ type bootServer struct {
 	initDone atomic.Bool
 	// forceExit termine le processus (os.Exit ; remplacé par les tests).
 	forceExit func(code int)
+	// events écrit les événements du contrat coquille <-> serveur ; nil hors -mode desktop
+	// (écrivain désactivé, cf. desktop_events.go). Posé juste après la création, avant que le
+	// serveur ne serve ou ne reçoive un arrêt.
+	events *desktopEvents
+	// port est le port lié, 0 tant que le serveur n'écoute pas (tests sans écoute réelle).
+	port int
 }
 
 func newBootServer(srv *http.Server, gate *bootGate, forceExit func(code int)) *bootServer {
 	return &bootServer{srv: srv, gate: gate, stop: make(chan struct{}), forceExit: forceExit}
 }
 
-// startBootServer ouvre le port de srv (son handler doit être gate), le sert en arrière-plan
-// et surveille les signaux d'arrêt. Port indisponible : sortie immédiate, avant toute
-// ouverture de base.
-func startBootServer(srv *http.Server, gate *bootGate) *bootServer {
-	var lc net.ListenConfig
-	ln, err := lc.Listen(context.Background(), "tcp", srv.Addr)
-	if err != nil {
-		slog.ErrorContext(context.Background(), "démarrage : port indisponible", "addr", srv.Addr, "err", err)
-		fmt.Fprintf(os.Stderr, "  [ERR] Port %s deja occupe -- fermez l'ancien processus\n", srv.Addr)
-		os.Exit(1)
-	}
+// startBootServer sert srv (son handler doit être gate) sur ln, déjà lié, en arrière-plan et
+// surveille les signaux d'arrêt. Le port est lié AVANT, par l'appelant (openBootGate) : l'échec
+// d'écoute n'est pas la même décision hors et en -mode desktop.
+func startBootServer(srv *http.Server, gate *bootGate, ln net.Listener) *bootServer {
 	sigCh := make(chan os.Signal, 2)
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
 	b := newBootServer(srv, gate, os.Exit)
+	b.port = listenerPort(ln)
 	go b.watchSignals(sigCh)
 	go b.serve(ln)
 	return b
@@ -314,4 +319,5 @@ func (b *bootServer) openRouter(ctx context.Context, router http.Handler) {
 	}
 	b.gate.open(ctx, router)
 	fmt.Fprintf(os.Stderr, "\n  [OK] LevelUp API ready -> http://%s\n\n", b.srv.Addr)
+	b.events.Ready(b.port)
 }

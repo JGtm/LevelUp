@@ -202,13 +202,17 @@ func launchWorldLeaderboardCron(st *bootState) {
 			// ÉLIMINE les comptes au RT mort (invalid_grant). Indispensable — sinon le
 			// round-robin taperait des sources mortes et raterait des fetchs. Un build en
 			// échec (aucun compte résolu) dégrade en scrape-only sans paniquer.
-			if enr, gts, eerr := worldenrich.BuildEnricher(cfg, worldenrich.EnricherOptions{
+			enr, gts, eerr := worldenrich.BuildEnricher(sctx, cfg, worldenrich.EnricherOptions{
 				RPS:   5,
 				Eager: true, // filtre les comptes db_profiles dont le RT ne résout pas
-			}); eerr != nil {
+			})
+			switch {
+			case sctx.Err() != nil:
+				return // arrêt demandé pendant la résolution des comptes : rien à planifier
+			case eerr != nil:
 				slog.WarnContext(ctx, "world_leaderboard_cron: enricher non construit — cron en scrape-only",
 					"err", eerr)
-			} else {
+			default:
 				worldLbCron.WithStatsEnricher(enr)
 				slog.InfoContext(ctx, "world_leaderboard_cron: enrichissement actif (pool multi-token)",
 					"token_accounts", gts)

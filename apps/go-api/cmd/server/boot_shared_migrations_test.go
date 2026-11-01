@@ -117,7 +117,7 @@ func TestMigrateSharedAtBoot_EtapeEnEchec_MigrationFailedPuisRefusDeDemarrer(t *
 		t.Fatal("refuseStart ne rend pas la main")
 	}
 	assertFailed(t, b.gate, bootFailureMigrationFailed)
-	for _, want := range []string{"level=ERROR", "migration: échec, démarrage refusé", "state=migration_failed", "boom d'étape"} {
+	for _, want := range []string{"level=ERROR", "démarrage refusé", "state=migration_failed", "boom d'étape"} {
 		if !strings.Contains(logs.String(), want) {
 			t.Errorf("journal sans %q", want)
 		}
