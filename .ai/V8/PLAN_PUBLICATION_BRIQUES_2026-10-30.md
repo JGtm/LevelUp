@@ -287,17 +287,60 @@ Dans le module go-api d'abord (comme D2 lot 2 et D3 lots 2-4 : couper AVANT de d
 
 ## Lot 4 — README, tags, critère de séparation, clôture
 
-- [ ] 4.1 README EN pour `libs/gamefiles`, `libs/himap`, `libs/haloapi` (modèle unique, P-D) ; vérification
+- [x] 4.1 README EN pour `libs/gamefiles`, `libs/himap`, `libs/haloapi` (modèle unique, P-D) ; vérification
   que chaque exemple compile (`go vet` d'un `example_test.go` par brique).
-- [ ] 4.2 Vérification `go get` depuis un module jetable HORS dépôt (`go mod init essai && go get
+  (2026-11-01, agent Sonnet, vérifié par le pilote : trois README (70 à 79 L, modèle en 10 sections : statut,
+  objet, non-objet, install, exemple, prérequis, licence, contribution, non-affiliation) ; exemples copiés de
+  `libs/haloapi/infinite/example_test.go`, `libs/gamefiles/himodule/example_test.go`, `libs/himap/himap/example_test.go`
+  (`go vet` 0 dans les trois modules, avec et sans `-tags gamefiles` ; lint 0). Licences écrites : `gamefiles` GPL-3.0
+  (`ooz/NOTICE.md`, importé par `himodule` seul), `himap` et `haloapi` AGPL-3.0-only (NOTICE racine). Forme
+  d'installation : `go get <module>@v0.1.0` (Go résout le tag `libs/<brique>/v0.1.0`). `haloapitest` public (PUB-3-e
+  tranché, ADR 0043 D-7). Constats du relecteur : `hinavmesh`/`mapvar` sans `doc.go` ; origine des fixtures
+  `mapvar/testdata`, `hinavmesh/testdata` non documentée (PUB-4-a).)
+- [x] 4.2 Vérification `go get` depuis un module jetable HORS dépôt (`go mod init essai && go get
   github.com/JGtm/LevelUp/libs/haloapi@<sha ou tag>`), consignée ; commande de tag préparée pour l'utilisateur
   (`git tag libs/haloapi/v0.1.0 <sha> && git push origin --tags`) — le pilote ne pousse pas de tag.
-- [ ] 4.3 ADR 0043 « Publication des briques » (EN) : modules, README, politique de version (`v0.x` sans
+  (2026-11-01, pilote, module `essai` dans le scratchpad, `GOWORK=off`, `GOPROXY=direct`, `GONOSUMDB=github.com/JGtm/LevelUp`,
+  sha `f1a5bfbf82` (lot 3 poussé) : `go get github.com/JGtm/LevelUp/libs/haloapi@f1a5bfbf82` →
+  `v0.0.0-20261101134051-f1a5bfbf82ab`, `go.mod` de l'essai ne requiert que la brique et `x/sync` indirect, `go run` d'un
+  `main` qui appelle `infinite.DefaultEndpoints().PrefixeJeu()` imprime `hi` ; `go get` de `libs/gamefiles` et `libs/himap`
+  au même sha résolu (pseudo-versions). Note : Go télécharge aussi la racine `github.com/JGtm/LevelUp v8.0.8-…+incompatible`
+  pour résoudre (tags `vX.Y.Z` du dépôt sans `go.mod` racine) : sans effet, mais un tag `libs/<brique>/v0.1.0` évitera la
+  pseudo-version. **Commandes de publication, à exécuter par l'utilisateur après fusion dans la release puis `main`**
+  (un tag publie ; depuis le checkout principal, sur le sha de `main` qui porte la fusion) :
+  `git tag libs/gamefiles/v0.1.0 <sha> ; git tag libs/himap/v0.1.0 <sha> ; git tag libs/haloapi/v0.1.0 <sha> ;
+  git push origin libs/gamefiles/v0.1.0 libs/himap/v0.1.0 libs/haloapi/v0.1.0` — puis vérification :
+  `go get github.com/JGtm/LevelUp/libs/haloapi@v0.1.0` depuis le module `essai` (attendu : `v0.1.0` ; Go résout
+  lui-même le tag `libs/haloapi/v0.1.0`, la forme `@libs/haloapi/v0.1.0` serait lue comme une révision).
+  **`himap` hors espace de travail** (constaté par essai `essai_himap` au sha `f1a5bfbf82`) : `libs/himap/go.mod` ne
+  requiert pas `libs/gamefiles` qu'il importe (ADR 0041 : `go.work` sans `require`) ; un consommateur doit donc faire
+  `go get` des DEUX modules (`himap` puis `gamefiles`, puis `go mod tidy`) : vérifié, `go build` et `go run` passent
+  alors (README de `himap` le dit). La forme propre (ADR 0041, amendement 2026-11-01) : après le tag de `gamefiles`,
+  ajouter `require github.com/JGtm/LevelUp/libs/gamefiles v0.1.0` à `libs/himap/go.mod` (+ `go.sum` par
+  `GOWORK=off go mod tidy` dans `libs/himap`), fusionner, PUIS taguer `himap` sur ce commit — deux temps, à faire avec
+  l'utilisateur au moment des tags. Constat annexe : `go mod tidy` d'un consommateur qui doit sonder la RACINE
+  `github.com/JGtm/LevelUp` échoue sur des chemins `static/maps/halo_infinite/<nom>'<...>.jpg` (apostrophe interdite
+  dans un zip de module) : sans effet quand les `require` sont complets, à garder en tête (PUB-4-b).)
+- [x] 4.3 ADR 0043 « Publication des briques » (EN) : modules, README, politique de version (`v0.x` sans
   stabilité promise), critère de séparation P-E, ce qui reste dans LevelUp ; CLAUDE.md (tableau) ; ADR 0041
   (quatrième module) ; ADR 0042 (périmètre élargi : Halo 5, Xbox, UGC, GameCMS).
-- [ ] 4.4 Registre des reports, addendum au backlog (entrée `[archi]` → faite / reste : tags par
+  (2026-11-01, agent Sonnet, relu par le pilote : `docs/adr/0043-publishing-the-bricks.md` (212 L, D-1 à D-8 :
+  trois modules sans séparation, tags `libs/<brique>/vX.Y.Z` par le mainteneur et `v0.x`, README modèle, licences
+  GPL-3.0 / AGPL-3.0-only, critère P-E et mode `subtree split` décidé en dernier et exécuté ensemble, ce qui reste dans
+  LevelUp, `haloapitest` public, différences de forme acceptées ; garde-rails cités par nom, les tests de licence
+  vivant dans `cmd/server/licence_gplv3_test.go`) ; ADR 0041 mis à jour en place (D1, D3 `tiers`, D7) + amendement
+  daté (4e module, table interne retirée, ordre des `require` avant tag) ; ADR 0042 : amendement du lot 3 étendu
+  (périmètre, `getUnique`, racine, `netguard.Doer`, 13 surfaces) ; CLAUDE.md : entrée 0043, résumé 0042, tableau, et
+  trois affirmations fausses corrigées (`tokencache.InvalidateCachedPlayerTokens`, 34 fichiers `*_gamefiles_test.go`,
+  résumé 0042). Hors périmètre noté : `docs/CONFIGURATION.md:150` cite encore `halo.InvalidateCachedPlayerTokens`
+  (PUB-4-c).)
+- [x] 4.4 Registre des reports, addendum au backlog (entrée `[archi]` → faite / reste : tags par
   l'utilisateur, séparation sur critère), thought_log, mémoire ; caches `-Lot pub` ; PR, CI verte, fusion
   squash, nettoyage.
+  (2026-11-01 : `.ai/REGISTRE_REPORTS.md` (section « Publication des briques », ligne D3-L6-e soldée),
+  `.ai/BACKLOG.md` (addendum à l'entrée `[archi]`), thought_log, mémoire du pilote ; PR ouverte vers
+  `release/v8.1.0` ; fusion squash et nettoyage du worktree et des caches `-Lot pub` APRÈS l'accord de l'utilisateur
+  et la CI verte — voir le journal de clôture.)
 
 ## Témoins avant/après
 
@@ -369,5 +412,12 @@ Dans le module go-api d'abord (comme D2 lot 2 et D3 lots 2-4 : couper AVANT de d
 - PUB-3-e : `haloapitest` (enregistreur de tests) sera importable par les utilisateurs du module une fois le tag posé :
   à trancher au lot 4 (le garder public comme `net/http/httptest`, ou le documenter « usage interne »).
 - PUB-3-f : ADR 0041 affirme encore que la troisième brique « reste dans apps/go-api » → lot 4.3.
+- PUB-4-a : origine des fixtures `libs/gamefiles/{mapvar,hinavmesh}/testdata` non documentée ; ADR 0041 interdit tout
+  fichier extrait du jeu dans une brique : à vérifier et à documenter (NOTICE ou commentaire) avant le tag.
+- PUB-4-b : la racine `github.com/JGtm/LevelUp` n'est pas un module zip valide (`static/maps/halo_infinite/*'*.jpg`,
+  apostrophe interdite) ; sans effet pour les modules en sous-répertoire tant que leurs `require` sont complets.
+- PUB-4-c : `docs/CONFIGURATION.md:150` cite `halo.InvalidateCachedPlayerTokens` (paquet disparu ; la fonction est
+  `tokencache.InvalidateCachedPlayerTokens`).
+- PUB-4-d : `hinavmesh`, `mapvar`, `himap` n'ont pas de `doc.go` (en-têtes de fichier seulement : `go doc` sans synthèse).
 - PUB-0-g : première capture T1 rouge sur ce poste : `gcc` absent du PATH du PowerShell (lien DuckDB) ; recette =
   `C:\msys64\ucrt64\bin` en tête du PATH + `CGO_ENABLED=1` (mémoire `reference_air_rebuild_fails_gcc_missing_path`).

@@ -13,8 +13,8 @@
 |---|---|---|
 | API + sync + analyse | **Go** (chi + Huma, slog, DuckDB) | `apps/go-api/` |
 | Frontend | **React/TypeScript** (Vite, TanStack Router/Query/Table, ECharts) | `apps/web/` |
-| Briques Go (modules séparés, ADR 0041) | **Go**, reliées à `apps/go-api` par `go.work` (racine) | `libs/<brique>/` (`libs/gamefiles` : lecteurs de fichiers du jeu ; `libs/himap` : images de carte ; `libs/film` : décodeur de film ; `libs/haloapi` : API Halo) |
-| API Halo (protocole, ADR 0042) | **Go**, paquets sans état ni politique | `libs/haloapi/` (`xblauth` : chaîne d'échange ; `infinite` : services Halo Infinite ; `halo5` : services Halo 5 ; `xboxlive` : succès Xbox) ; l'exploitation reste dans `platform/auth`, `games/halo_infinite/haloadapter`, `games/halo_5`, `sync/filmfetch` |
+| Briques Go (modules séparés, ADR 0041 ; publication, ADR 0043) | **Go**, reliées à `apps/go-api` par `go.work` (racine) | `libs/<brique>/` (`libs/gamefiles` : lecteurs de fichiers du jeu ; `libs/himap` : images de carte ; `libs/film` : décodeur de film ; `libs/haloapi` : API Halo) |
+| API Halo (protocole, ADR 0042) | **Go**, paquets sans état ni politique | `libs/haloapi/` (`xblauth` : chaîne d'échange ; `infinite` : services Halo Infinite ; `halo5` : services Halo 5 ; `xboxlive` : succès Xbox ; services UGC cartes et fichiers GameCMS dans `infinite` ; `haloapitest` : enregistreur de tests, public) ; l'exploitation reste dans `platform/auth`, `games/halo_infinite/haloadapter`, `games/halo_5`, `sync/filmfetch` |
 | Stockage | **DuckDB** par titre + Parquet (archives) | `data/titles/{slug}/` |
 | Config | JSON + TOML | `db_profiles.json`, `app_settings.json`, `.env.local`, `config/titles/` |
 
@@ -168,7 +168,7 @@ des DBs en prod. L'éradication (ADR 0019/0026) repose sur des invariants NON N�
 - **Onboarding** : SSO web (`/auth/xbox/callback`) ; avancé : `go run ./cmd/token-capture/ <GT>`
   ou `token-import` (RT sur stdin). Pré-requis : joueur déclaré dans `db_profiles.json`.
 - **Cache process** : après rotation externe d'un RT, appeler
-  `halo.InvalidateCachedPlayerTokens(xuid)` (sinon le cache 50 min sert l'ancien chain).
+  `tokencache.InvalidateCachedPlayerTokens(xuid)` (`platform/auth/tokencache` ; sinon le cache 50 min sert l'ancien chain).
 - **Aucune exception legacy** : la migration one-shot du boot a été retirée le 2026-09-13
   (critère tenu en prod depuis le 2026-06-14 : `rt_migrated=0` à chaque boot). Plus aucun
   code ne lit env ni `sync_meta` pour un credential. Garde-rails : `auth/sentinel_test.go`
@@ -241,7 +241,7 @@ go run apps/go-api/cmd/inspect_bp/main.go            # outil Go (CGO : gcc msys6
 go run ./apps/go-api/cmd/levelup --help              # sync, backfill, diag
 ```
 
-**Tag `gamefiles` (2026-09-05)** : les 59 `*_gamefiles_test.go` de `libs/himap/himap/` (module `libs/himap`) lisent
+**Tag `gamefiles` (2026-09-05)** : les 34 `*_gamefiles_test.go` de `libs/himap/himap/` (module `libs/himap`) lisent
 l'installation locale de Halo Infinite et coûtent des dizaines de minutes
 (`TestBalayageCoquille` seul : 203 s pour 26 cartes ; 1 246 s avant le passage du lecteur
  de modules en projection mémoire le 2026-09-05). Ils sont derrière
@@ -411,13 +411,20 @@ git commit -m "refactor(phase2): ..."
   module : `make libs-test`, pas de `go mod tidy` dans `apps/go-api` ; modules au rang
   `film` → `himap` → `gamefiles`, plus `haloapi` qui n'importe aucune brique ; le décodeur de film garde ses
   empreintes de couche par un cadre historique) ·
-  `0042` **API Halo : protocole et exploitation** (paquets `haloapi/xblauth` et
-  `haloapi/infinite`, sans état ni politique ni import de LevelUp hors d'eux ; tout est passé :
+  `0042` **API Halo : protocole et exploitation** (paquets `xblauth`, `infinite`, `halo5` et
+  `xboxlive` de `libs/haloapi`, sans état ni politique ni import de LevelUp hors d'eux ; tout est passé :
   `Doer` gardé par surface `netguard` et consulté avant le limiteur, `Retry` en valeur — trois politiques
   conservées —, `Endpoints`, `ClientAzure`, `Descriptor`, jetons et langue en paramètres ; octets de film
-  COMPRESSÉS, `filmfetch` décompresse ; conversions DTO -> domaine dans `games/halo_infinite/haloadapter` ;
+  COMPRESSÉS, `filmfetch` décompresse ; conversions DTO -> domaine dans `games/halo_infinite/haloadapter` et `games/halo_5` ;
   ligne `haloapi` de `archlint/briques_imports_test.go` (module `libs/haloapi` depuis le 2026-11-01, avec
-  `halo5` et `xboxlive`) ; amende 0031 D-1, précise 0023).
+  `halo5`, `xboxlive`, et les services UGC cartes et fichiers GameCMS dans `infinite`) ; amende 0031 D-1,
+  précise 0023) ·
+  `0043` **publication des briques** (trois modules publiables, `libs/gamefiles`, `libs/himap` et `libs/haloapi`,
+  depuis le dépôt unique ; `libs/film` non publié ; tags `libs/<brique>/vX.Y.Z` posés par l'utilisateur seul,
+  `v0.x` sans promesse de stabilité, un numéro par module ; un README modèle unique par brique, exemple compilé
+  par `example_test.go` ; licences : `gamefiles` GPL-3.0 à cause de `ooz`, `himap` et `haloapi` AGPL-3.0 ;
+  critère de séparation en dépôt : contributeur externe, ou cadence indépendante, ou CI qui pèse, décision finale de
+  l'utilisateur exécutée ensemble ; `haloapitest` public ; l'exploitation reste dans LevelUp ; amende 0041 et 0042).
 
 READMEs catalogues : `apps/go-api/internal/analysis/{temporal,breakdown,narrative}/README.md`,
 `apps/web/src/components/charts/README.md` (wrappers ECharts).

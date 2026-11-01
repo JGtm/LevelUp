@@ -238,6 +238,14 @@ LevelUp) ; garder le décodeur de film dans le dépôt (co-évolution avec le re
 Réserve du pilote : aujourd'hui aucun consommateur externe, et la couche « exploitation » (jetons,
 mise en commun, cache) reste dans LevelUp quoi qu'il arrive. **Effort (estimation) : M (étapes 1 et 2), L (étape 3).**
 
+**Addendum du 2026-11-01 (plan `.ai/V8/PLAN_PUBLICATION_BRIQUES_2026-10-30.md`, branche
+`refactor/publication-briques`)** : étapes 1 et 2 FAITES — module `libs/haloapi` (xblauth, infinite, halo5,
+xboxlive, haloapitest ; les quatre clients coupés en protocole / exploitation sans changement observable :
+URL figées, lectures live identiques), README EN des trois briques, `go get` vérifié depuis un module hors dépôt,
+ADR 0043. **Reste** : (a) les tags `libs/{gamefiles,himap,haloapi}/v0.1.0` = geste de l'utilisateur (commande dans
+le plan, 4.2) ; (b) l'étape 3 (dépôts séparés) = décision de l'utilisateur en tout dernier, exécutée ensemble
+(critère P-E dans l'ADR 0043), jamais seul.
+
 ---
 
 ## 🎮 Backlog — Coach proactif × Prestige (post-V2)
