@@ -2,7 +2,7 @@
 //
 // # POURQUOI (2026-10-28, plan `.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D1_2026-10-28.md`, lots 1 et 3)
 //
-// L'audit `.ai/AUDIT_DECOUPLAGE_BRIQUES_2026-10-27.md` (constat G) montre comment trois briques
+// L'audit `.ai/V8/AUDIT_DECOUPLAGE_BRIQUES_2026-10-27.md` (constat G) montre comment trois briques
 // autonomes par nature (images de carte, décodeur de film, API Halo) se sont liées au reste de
 // LevelUp : chaque import ajouté était local et raisonnable, et rien ne le refusait. Ce test est
 // cette liste fermée. Il a été posé AVANT le premier déplacement de paquet, avec une allowlist
