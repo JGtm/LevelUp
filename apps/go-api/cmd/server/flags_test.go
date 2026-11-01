@@ -3,6 +3,8 @@ package main
 import (
 	"errors"
 	"flag"
+	"os"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -66,3 +68,28 @@ func TestParseServerFlags_FilmChildNEstPasUnDrapeauDuServeur(t *testing.T) {
 		t.Error("-film-child accepté par le parseur du serveur : il doit rester l'affaire de replaychild.IsChild")
 	}
 }
+
+// TestParseServerFlags_AucunDrapeauNePorteLeSecret : le secret du lanceur ne voyage JAMAIS en argument
+// de ligne de commande (visible dans la liste des processus) ; il passe par l'environnement
+// (LEVELUP_DESKTOP_SECRET). Aucun drapeau de ce nom n'existe, et le parseur n'en déclare aucun dont le
+// nom évoque un secret (ADR 0045 D-1 et D-3, lot L13.4).
+func TestParseServerFlags_AucunDrapeauNePorteLeSecret(t *testing.T) {
+	for _, name := range []string{"secret", "desktop-secret", "desktop_secret", "session-secret", "token", "password"} {
+		for _, args := range [][]string{{"-" + name, "valeur"}, {"-" + name + "=valeur"}, {"--" + name, "valeur"}} {
+			if _, err := parseServerFlags(args); err == nil || !strings.Contains(err.Error(), "not defined") {
+				t.Errorf("parseServerFlags(%q) = %v, attendu un drapeau inconnu", args, err)
+			}
+		}
+	}
+	src, err := os.ReadFile("flags.go")
+	if err != nil {
+		t.Fatalf("lecture de flags.go : %v", err)
+	}
+	for _, line := range strings.Split(string(src), "\n") {
+		if strings.Contains(line, "fs.") && strings.Contains(line, "Var(") && secretish.MatchString(line) {
+			t.Errorf("flags.go déclare un drapeau qui évoque un secret : %s", strings.TrimSpace(line))
+		}
+	}
+}
+
+var secretish = regexp.MustCompile(`(?i)secret|token|passw`)

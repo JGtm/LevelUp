@@ -20,3 +20,12 @@ func (p *PathResolver) DesktopPortPath() string {
 func (p *PathResolver) InstanceLockPath() string {
 	return filepath.Join(p.roots.Data, "levelup.lock")
 }
+
+// SessionSecretPath retourne le fichier du secret de signature des cookies du mode desktop : généré
+// au premier lancement (32 octets aléatoires, en hexadécimal), lu aux suivants, jamais la valeur
+// publique par défaut (ADR 0045 D-7). Il vit sous la racine de données, dans le dossier d'authentification.
+//
+// Ex: data/auth/session_secret
+func (p *PathResolver) SessionSecretPath() string {
+	return filepath.Join(p.roots.Data, "auth", "session_secret")
+}

@@ -86,6 +86,14 @@ type DeploymentCapabilities struct {
 	EditSettings bool
 	// UploadMedia : le dépôt de captures est offert (refusé en démo).
 	UploadMedia bool
+	// ShellEntryGate : l'accès au serveur passe par l'entrée de la coquille (ADR 0045 D-3) : route
+	// /desktop/enter, cookie lié au port, Host strict, CORS limité à l'origine du port lié. Hors de
+	// cette capacité rien de cela n'est monté.
+	ShellEntryGate bool
+	// PoolGrantedToLocalUser : la mise en commun du jeton est accordée d'office à l'utilisateur local
+	// (ADR 0045 D-8, exception à ADR 0038 D4) : le seul jeton du pool est le sien et ne quitte pas le
+	// poste. Distincte de PoolTokens, qui dit que le choix est DEMANDÉ à l'utilisateur.
+	PoolGrantedToLocalUser bool
 }
 
 // DeploymentProfile est embarqué dans AppConfig : le profil résolu et ses capacités.
@@ -161,19 +169,21 @@ func capabilitiesOf(cfg *AppConfig) DeploymentCapabilities {
 	demo := cfg.Deployment == DeploymentDemo
 	accounts := !desktop && (cfg.AuthMode == authModePassword || cfg.AuthMode == authModeXbox)
 	return DeploymentCapabilities{
-		UseAccounts:          accounts,
-		SignInWithXbox:       !desktop && cfg.AuthMode == authModeXbox,
-		UseInvitations:       accounts,
-		UseGroups:            !desktop && !demo,
-		PoolTokens:           !desktop && !demo,
-		UseAdmin:             !desktop,
-		UseResticBackup:      !desktop && !demo,
-		UseDiscord:           !desktop && !demo,
-		UseOutboundNetwork:   !demo,
-		UpdateApp:            desktop,
-		OfferWindowsDownload: !desktop,
-		EditSettings:         !demo,
-		UploadMedia:          !demo,
+		UseAccounts:            accounts,
+		SignInWithXbox:         !desktop && cfg.AuthMode == authModeXbox,
+		UseInvitations:         accounts,
+		UseGroups:              !desktop && !demo,
+		PoolTokens:             !desktop && !demo,
+		UseAdmin:               !desktop,
+		UseResticBackup:        !desktop && !demo,
+		UseDiscord:             !desktop && !demo,
+		UseOutboundNetwork:     !demo,
+		UpdateApp:              desktop,
+		OfferWindowsDownload:   !desktop,
+		EditSettings:           !demo,
+		UploadMedia:            !demo,
+		ShellEntryGate:         desktop,
+		PoolGrantedToLocalUser: desktop,
 	}
 }
 

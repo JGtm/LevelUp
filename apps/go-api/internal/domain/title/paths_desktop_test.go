@@ -16,3 +16,11 @@ func TestPathResolver_DesktopPortEtVerrouSousLaRacineDeDonnees(t *testing.T) {
 		t.Errorf("InstanceLockPath() = %q, attendu %q", got, want)
 	}
 }
+
+// Le secret de session du mode desktop vit sous la racine de données (ADR 0045 D-7).
+func TestPathResolver_SessionSecretSousLaRacineDeDonnees(t *testing.T) {
+	pr := NewPathResolverRoots(Roots{Resources: "/res", Data: "/donnees", Logs: "/journaux", DataSet: true})
+	if got, want := pr.SessionSecretPath(), filepath.Join("/donnees", "auth", "session_secret"); got != want {
+		t.Errorf("SessionSecretPath() = %q, attendu %q", got, want)
+	}
+}

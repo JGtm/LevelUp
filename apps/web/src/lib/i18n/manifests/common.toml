@@ -1058,6 +1058,20 @@ en = "Updating the databases failed. Your data was not served; check the migrati
 fr = "Les bases ont été mises à jour par une version plus récente de LevelUp. Installez cette version ou restaurez une copie."
 en = "The databases were upgraded by a newer version of LevelUp. Install that version or restore a backup."
 
+[common.root.server_failed.port]
+fr = "Aucun port local n'a pu être ouvert. Vérifiez qu'aucun logiciel de sécurité ne le bloque, puis relancez."
+en = "No local port could be opened. Check that no security software is blocking it, then start again."
+
+# Application desktop : la requête n'a pas (ou plus) le cookie d'entrée posé par la coquille
+# (401 desktop_unauthorized, ADR 0045 D-3). Seule la coquille le repose, en rouvrant l'application.
+[common.root.desktop_entry_required.title]
+fr = "L'accès à LevelUp a expiré."
+en = "Access to LevelUp has expired."
+
+[common.root.desktop_entry_required.body]
+fr = "Fermez cette fenêtre, puis rouvrez LevelUp."
+en = "Close this window, then open LevelUp again."
+
 # ─── Reauth banner (refresh_token Xbox mort) ────────────────────────────
 
 [common.reauth.message]

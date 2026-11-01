@@ -614,6 +614,9 @@ func applyTransverseMiddlewares(
 	r.Use(chimiddleware.Recoverer)
 	// Pair TCP, lu par middleware.PeerAddr (LoopbackOnly), jamais un en-tête.
 	r.Use(middleware.PreserveRemoteAddr)
+	// Entrée de la coquille desktop (ADR 0045 D-3) : Host strict puis cookie exigé, avant tout le
+	// reste de la pile. Sans effet hors du profil desktop.
+	useDesktopGate(r, cfg)
 	// IP cliente (chimiddleware.GetClientIP : clé du limiteur, `ip` des journaux) : le pair
 	// TCP, remplacé derrière le proxy de confiance (LEVELUP_TRUST_PROXY_HEADERS) par la
 	// dernière valeur de X-Real-IP, que nginx écrase à chaque requête (garde-rail
@@ -748,6 +751,9 @@ func NewRouter(
 			xboxOAuthRoot.Callback(w, req)
 		})
 	}
+
+	// Entrée de la coquille desktop : GET /desktop/enter (profil desktop seulement).
+	mountDesktopEntry(r, cfg)
 
 	// v1 API
 	r.Route(apiV1BasePath, func(r chi.Router) {

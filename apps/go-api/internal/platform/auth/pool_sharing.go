@@ -25,6 +25,11 @@ const (
 	// l'existence du réglage, enregistré par l'opérateur (levelup pool-sharing
 	// grandfather).
 	PoolSharingBasisGrandfathered = "grandfathered_explicit"
+	// PoolSharingBasisDesktopSingleUser : accord posé d'office à l'écriture du jeton de
+	// l'utilisateur local d'une installation desktop (ADR 0045 D-8). Exception à ADR 0038 D4 :
+	// le seul jeton du pool est le sien et ne quitte pas le poste. Ne s'applique jamais à un
+	// jeton qui porte déjà une décision.
+	PoolSharingBasisDesktopSingleUser = "desktop_single_user"
 )
 
 // PoolSharing est la décision d'un joueur sur la mise en commun de son jeton.

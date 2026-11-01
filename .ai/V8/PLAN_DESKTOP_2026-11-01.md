@@ -527,17 +527,22 @@ Définition : `ResourcesRoot` = la racine du dépôt aujourd'hui (`LEVELUP_RESOU
 
 ### 9.13 L13 — Mode `desktop` (S ; après L12, ADR 0045)
 
-- [ ] 13.1 `config.Validate` (`main.go:339-345`) accepte `desktop` (dérivé par L10) y compris sous
-      `LEVELUP_ENV=production` ; `authz.Enforced` reste faux pour `desktop` (mono-utilisateur, décision
-      écrite dans l'ADR 0045).
-- [ ] 13.2 `/desktop/enter?secret=` : pose le cookie (nom suffixé par le port, A15, durée 30 jours,
-      renouvelé à chaque entrée) et redirige ; 401 ailleurs sans cookie ; `Host` strict ; CORS = origine
-      exacte ; secret de session `<DataRoot>/auth/session_secret` (A12) ; `/api/v1/desktop/strings`
-      (catalogue `messages/desktop.toml`, langue de la requête).
-- [ ] 13.3 Mise en commun accordée d'office au seul utilisateur local (D-4) ; bannière de consentement
-      masquée par la capacité ; libellés fr + en.
-- [ ] 13.4 Tests `httptest` : chaque refus, le succès, `Host` étranger, secret absent de `os.Args` ;
-      allowlist datée des routes nues ; un scénario Playwright `desktop-enter.spec.ts` ; `sentinel_test`.
+- [x] 13.1 `config.Validate` accepte `desktop` (dérivé par L10, `refusesUnsafeConfig`) y compris sous
+      `LEVELUP_ENV=production` ; `authz.Enforced` reste faux pour `desktop` (mono-utilisateur, ADR 0045 D-7).
+      Secret de session (A12) : `<DataRoot>/auth/session_secret` (`PathResolver.SessionSecretPath`), généré au
+      premier lancement (32 octets, `0600`), `Validate` refuse le défaut et un secret court en `desktop`
+      (`validateStartup`). Tests `config_desktop_session_test.go`.
+- [x] 13.2 `GET /desktop/enter?secret=` (capacité `ShellEntryGate`, `LoopbackOnly`) : cookie `levelup_session_<port>`
+      (HMAC lié au port, 30 jours, renouvelé à chaque entrée, `HttpOnly`, `SameSite=Strict`), 302 vers `/` ;
+      `middleware.DesktopGate` : Host strict (421), cookie exigé (401 `desktop_unauthorized`), `/health` ouvert ;
+      CORS/CSRF = origine exacte du port lié (`AppConfig.SetBoundPort`) ; `GET /api/v1/desktop/strings`
+      (`messages/desktop.toml`, fr + en). Écran web « accès expiré » sur le 401. Pas d'entrée d'allowlist des
+      routes nues (route gardée par `LoopbackOnly`, `/health` déjà listée) : `TestBareRoutesRatchet_DesktopEntryRoutes`.
+- [x] 13.3 Mise en commun accordée d'office : `DeviceCodeCompletion.WithLocalPoolGrant` (capacité
+      `PoolGrantedToLocalUser`), base `desktop_single_user` ; bannière masquée par `can_pool_tokens` (faux en desktop
+      depuis L10, aucun libellé neuf).
+- [x] 13.4 Tests `httptest` sur la pile réelle, tests du garde, secret absent de `os.Args`
+      (`TestParseServerFlags_AucunDrapeauNePorteLeSecret`), `desktop-enter.spec.ts`, `TestE2ELanceurDesktop` étendu.
 - Gate : `go test ./internal/api/... ./internal/config/... ./internal/authz/...` ; `cd apps/web && npm run
   typecheck && npm run test && npx playwright test desktop-enter`.
 

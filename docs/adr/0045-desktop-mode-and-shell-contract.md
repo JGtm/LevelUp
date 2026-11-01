@@ -1,7 +1,7 @@
 # ADR 0045 — Desktop mode and the shell-server contract
 
-Status: accepted (2026-11-01); implementation tracked in `.ai/V8/PLAN_DESKTOP_2026-11-01.md` (waves 1 to 3 and lot L12
-delivered on the branch, lots L13 to L17 to come; each decision below says which).
+Status: accepted (2026-11-01); implementation tracked in `.ai/V8/PLAN_DESKTOP_2026-11-01.md` (waves 1 to 3 and lots L12 and L13
+delivered on the branch, lots L13b to L17 to come; each decision below says which).
 Source: decisions D-1 to D-17 of the plan, confirmed by the maintainer on 2026-11-01 (D-8, D-9 and D-10 against the
 recommendation); additions A1 to A24; section 6 of the plan (the contract).
 Amends: ADR 0023 (D-11 below: the token file may be encrypted by a `TokenCipher` port, the single source stays the
@@ -61,11 +61,24 @@ blocks the server) and relays stderr to `<LogsRoot>/desktop.log`.
 **D-3 — First page and access.** The shell shows an embedded screen (logo) until `ready`, then loads
 `http://127.0.0.1:N/desktop/enter?secret=<random>`; the server sets the session cookie and redirects to `/`. The cookie
 name carries the port (A15) and lasts 30 days, renewed at each entry. Without the cookie every route other than
-`/desktop/enter` and `/health` answers 401 (both allowlisted with a date in `bare_routes_ratchet_test.go`; `/health`
-stays open because the shell and the end-to-end script probe it before any cookie exists, and it carries no data); the
-`Host` header must be the exact loopback authority of the bound port and CORS allows that exact origin only. On
-`failed` the shell loads the page of the startup gate, which answers before the router opens and says the state in a
-non-retryable 503. Lot L13.
+`/desktop/enter` and `/health` answers 401 (`/health` stays open because the shell and the end-to-end script probe it
+before any cookie exists, and it carries no data); the `Host` header must be the exact loopback authority of the bound
+port (otherwise 421, logged) and CORS allows that exact origin only. On `failed` the shell loads the page of the startup
+gate, which answers before the router opens and says the state in a non-retryable 503. State: delivered by L13.
+The whole entry hangs on one capability, `ShellEntryGate` (`internal/config/deployment.go`), so no consumer compares the
+profile name. `middleware.DesktopGate` (`internal/api/middleware/desktop_gate.go`) is mounted right after
+`PreserveRemoteAddr`: Host first (421 `desktop_host_refused`, `/health` and `/desktop/enter` included, which is what cuts
+DNS rebinding), then the cookie (401 `desktop_unauthorized`, `retryable:false`, a path that `AmbiguousPath` flags never
+passes as `/health`). The cookie is not a session: its value is `<expiry>.<hex HMAC-SHA256>` over `(port, expiry)` with
+the session secret of D-7, checked without state, valid 30 days and renewed at each entry; it is `HttpOnly`,
+`SameSite=Strict`, not `Secure` (plain http on loopback). Its name is `levelup_session_<port>`. `GET /desktop/enter` sits
+behind `LoopbackOnly`, compares `?secret=` with `LEVELUP_DESKTOP_SECRET` in constant time (403 wrong, 404 when the
+launcher gave no secret), never logs it, and answers 302 to `/`. CORS and the CSRF origin list are
+`AppConfig.SetBoundPort`'s output: the single origin `http://127.0.0.1:<bound port>`, `LEVELUP_CORS_ORIGINS` ignored.
+The bare-route allowlist gets no entry: `/health` is already listed, and `/desktop/enter` is guarded by a recognised
+guard (an entry would be flagged useless by the ratchet's own self-check); `TestBareRoutesRatchet_DesktopEntryRoutes`
+proves instead that both desktop routes exist only under the capability and that every route of the desktop router sits
+behind the gate. The web client recognises the 401 code and shows a non-retried "access expired, reopen LevelUp" screen.
 
 **D-4 — Stop.** The principal path is the closing of the sidecar's stdin (the shell closes it; the OS closes it if the
 shell dies). The alternative is `POST /api/v1/internal/shutdown`, mounted only when `LEVELUP_DESKTOP_SECRET` is set,
@@ -98,12 +111,25 @@ every authentication mode, `none` included (`service.DeviceCodeCompletion`, the 
 does not exist yet, the tokens are kept in memory and replayed when the directory creates it); this is what keeps a
 single-user installation syncing after the first hour. The listening host is forced to loopback (ADR 0044 D-2).
 `/api/v1/desktop/strings` serves the shell's strings from `internal/i18n/messages/desktop.toml` in the request's
-language (D-13).
+language (D-13). State: delivered by L13. `config.Validate` accepts the profile under `LEVELUP_ENV=production` (the
+production refusal is the hosted profile's) but refuses, in `desktop` as in production, the public default secret or one
+shorter than 32 bytes (`validateStartup`); `LEVELUP_SESSION_SECRET` is ignored with a warning in this profile; a file that
+is empty, too short or equal to the public default is replaced with a warning, an unreadable one fails the start. The
+route answers `{locale, strings}` with eight identifiers (`starting`, `failed_locked`, `failed_migration_failed`,
+`failed_schema_newer`, `failed_port`, `stopping`, `stopped`, `update_available`); the last carries the `{version}`
+placeholder untouched, the shell knows the number. It is mounted only under `ShellEntryGate` and requires the cookie.
 
 **D-8 — Pooling for the local user (plan D-4).** In `desktop` the pooling decision is recorded as granted for the local
 user, with a basis value of its own, and the consent banner is hidden by the capability. This is an exception to
 ADR 0038 D4 (the choice is asked, not defaulted), and it holds because the only token in the pool is the user's own and
-never leaves the machine. Without a decision the rule of ADR 0038 stays: refusal.
+never leaves the machine. Without a decision the rule of ADR 0038 stays: refusal. State: delivered by L13. The capability
+`PoolGrantedToLocalUser` (distinct from `PoolTokens`, which says the choice is *asked*) makes
+`DeviceCodeCompletion.WithLocalPoolGrant` record `granted` with the basis `desktop_single_user` when a refresh token is
+written for a token file that carries no decision; an existing decision (grant or refusal) is never overwritten and an
+unreadable file gets no grant. The banner needs no new code: `PoolTokens` is already false in `desktop`, and
+`PoolSharingBanner` reads `can_pool_tokens`. Known limits: a token written by the CLI (`token-import`, `token-capture`)
+gets no grant; the in-memory pool learns the grant at its next rescan (at most 15 minutes), the owner's own token serving
+its owner meanwhile (ADR 0038 D2).
 
 **D-9 — Stable port (plan D-13, A15).** The port is stored in `<DataRoot>/desktop/port`; if it is taken, a free port is
 chosen, written, and a warning is logged (the browser storage of that user is then lost once). Never `:0` without that
@@ -250,8 +276,14 @@ maintainer on a clean machine. A lot without a test at its level is not closed.
 - Created by L12: `cmd/server/desktop_launcher_test.go` (`TestE2ELanceurDesktop`, tag `e2e_windows`: the fake launcher),
   `internal/platform/instancelock/instancelock_test.go` (two processes), `cmd/server/desktop_events_test.go`,
   `cmd/server/desktop_port_test.go`, `cmd/server/stdout_guard_test.go`.
-- To create: `desktop-enter.spec.ts` (Playwright) and the
-  `httptest` cases of `/desktop/enter` including a secret absent from `os.Args` (L13.4); the `TokenCipher` tests,
+- Created by L13: `internal/api/desktop_entry_cgo_test.go` (every refusal, the success, `/health` open, the strings in
+  both languages, CORS and CSRF on the exact origin, nothing mounted outside the profile),
+  `internal/api/middleware/desktop_gate_test.go` (expiry, signature, renewal, closed entry),
+  `TestBareRoutesRatchet_DesktopEntryRoutes`, `internal/config/config_desktop_session_test.go`,
+  `internal/service/devicecode_completion_poolgrant_test.go`, `TestParseServerFlags_AucunDrapeauNePorteLeSecret`
+  (`cmd/server/flags_test.go`: the secret never travels as an argument), `apps/web/e2e/desktop-enter.spec.ts`
+  (Playwright, mocked server), and `TestE2ELanceurDesktop` extended (`GET /` 401, entry 302 with the cookie, bootstrap 200).
+- To create: the `TokenCipher` tests,
   `dpapi` under the Windows tag (L13b.3); `cargo test` against the fake sidecar (L16.4); the `desktop-build` and
   `desktop-e2e` jobs and the version check (L17); the `desktop` filter in `ci_paths_filter_test.go`.
 

@@ -30,7 +30,7 @@ func openBootGate(st *bootState) {
 	if flags.Mode == serverModeDesktop {
 		// Le port réel n'est connu qu'une fois lié : le serveur HTTP et la configuration le voient.
 		srv.Addr = ln.Addr().String()
-		cfg.APIPort = listenerPort(ln)
+		cfg.SetBoundPort(listenerPort(ln))
 	}
 	bootSrv := startBootServer(srv, gate, ln)
 	bootSrv.events = st.events

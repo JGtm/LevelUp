@@ -12,6 +12,7 @@ import type { RouterContext } from '@/app/router'
 import { useEffect, useRef, useState } from 'react'
 import {
   createBootstrapRetryPolicy,
+  isDesktopEntryRequiredError,
   isServerStartingError,
   serverStartFailure,
   serverStartingStepKey,
@@ -235,6 +236,17 @@ export function RootLayout() {
   }
 
   if (isError) {
+    // Application desktop sans son cookie d'entrée (expiré) : rien ne se rejoue, la coquille doit rouvrir.
+    if (isDesktopEntryRequiredError(error)) {
+      return (
+        <div className="flex h-screen items-center justify-center">
+          <div className="text-center space-y-2 max-w-md px-4">
+            <p className="font-semibold text-destructive">{t('common.root.desktop_entry_required.title')}</p>
+            <p className="text-sm text-muted-foreground">{t('common.root.desktop_entry_required.body')}</p>
+          </div>
+        </div>
+      )
+    }
     // Démarrage échoué (503 server_start_failed) : l'état annoncé, pas « API injoignable ».
     const failure = serverStartFailure(error)
     if (failure) {

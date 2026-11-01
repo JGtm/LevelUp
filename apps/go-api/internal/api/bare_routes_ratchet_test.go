@@ -272,3 +272,81 @@ func TestBareRoutesRatchet_DesktopShutdownRouteIsGuarded(t *testing.T) {
 		t.Errorf("%s ne doit pas figurer dans l'allowlist : elle est gardée", key)
 	}
 }
+
+// TestBareRoutesRatchet_DesktopEntryRoutes : sous l'entrée de la coquille desktop (ADR 0045 D-3),
+//   - GET /desktop/enter n'existe que là, et y est gardée par LoopbackOnly (garde reconnue : aucune
+//     entrée d'allowlist, qui serait signalée INUTILE) ;
+//   - GET /api/v1/desktop/strings n'existe que là ;
+//   - TOUTE route du routeur y est derrière le garde de la coquille (Host strict, cookie exigé),
+//     monté sur la racine : /health reste ouvert par exception DU GARDE, pas par route nue.
+//
+// Hors de cette capacité, aucune de ces deux routes n'est montée (le routeur du ratchet principal,
+// en démo, ne les voit pas).
+func TestBareRoutesRatchet_DesktopEntryRoutes(t *testing.T) {
+	const enterKey, stringsKey = "GET /desktop/enter", "GET /api/v1/desktop/strings"
+	walk := func(t *testing.T, desktop bool) (found map[string]bool, guarded map[string]bool, behindGate map[string]bool) {
+		t.Helper()
+		opts := openapigen.Options{
+			Root:           t.TempDir(),
+			GroupStorePath: filepath.Join(os.TempDir(), "levelup_contract_groups.json"),
+			Prestige:       true,
+		}
+		if desktop {
+			opts.DesktopSecret = "secret-du-lanceur" // pragma: allowlist secret
+			opts.ShellEntryPort = 49555
+			opts.ShellCookieKey = "cle-de-cookie-de-test-de-trente-deux-octets" // pragma: allowlist secret
+		}
+		router, _, err := openapigen.BuildDemoRouter(t.Context(), opts)
+		if err != nil {
+			t.Fatalf("BuildDemoRouter: %v", err)
+		}
+		r, ok := router.(chi.Router)
+		if !ok {
+			t.Fatalf("le routeur n'est pas un chi.Router (%T)", router)
+		}
+		found, guarded, behindGate = map[string]bool{}, map[string]bool{}, map[string]bool{}
+		err = chi.Walk(r, func(method, route string, _ http.Handler, mws ...func(http.Handler) http.Handler) error {
+			key := method + " " + route
+			found[key], guarded[key] = true, routeIsGuarded(mws)
+			behindGate[key] = false
+			for _, mw := range mws {
+				if strings.Contains(runtime.FuncForPC(reflect.ValueOf(mw).Pointer()).Name(), "DesktopGate") {
+					behindGate[key] = true
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatalf("chi.Walk: %v", err)
+		}
+		return found, guarded, behindGate
+	}
+
+	foundHosted, _, gateHosted := walk(t, false)
+	if foundHosted[enterKey] || foundHosted[stringsKey] {
+		t.Errorf("%s ou %s montée hors du profil desktop", enterKey, stringsKey)
+	}
+	for key, behind := range gateHosted {
+		if behind {
+			t.Errorf("%s est derrière le garde de la coquille hors du profil desktop", key)
+		}
+	}
+
+	found, guarded, behindGate := walk(t, true)
+	if !found[enterKey] || !found[stringsKey] {
+		t.Fatalf("routes absentes sous l'entrée de la coquille : %s=%v %s=%v", enterKey, found[enterKey], stringsKey, found[stringsKey])
+	}
+	if !guarded[enterKey] {
+		t.Errorf("%s montée sans garde reconnue (LoopbackOnly attendue)", enterKey)
+	}
+	for _, key := range []string{enterKey, stringsKey} {
+		if _, listed := publicRoutesAllowlist[key]; listed {
+			t.Errorf("%s ne doit pas figurer dans l'allowlist : elle n'existe que sous le garde de la coquille", key)
+		}
+	}
+	for key, behind := range behindGate {
+		if !behind {
+			t.Errorf("%s n'est pas derrière le garde de la coquille (Host strict, cookie exigé)", key)
+		}
+	}
+}

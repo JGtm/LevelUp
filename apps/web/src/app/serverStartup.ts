@@ -34,6 +34,15 @@ export const SERVER_STARTING_CODE = 'server_starting'
 /** Code d'erreur de la réponse 503 d'un démarrage qui a échoué (non réessayable). */
 export const SERVER_START_FAILED_CODE = 'server_start_failed'
 
+/**
+ * Code d'erreur du 401 de l'application desktop : la requête ne porte pas le cookie posé par
+ * l'entrée de la coquille (ADR 0045 D-3), par exemple après son expiration. Rejouer n'y change rien.
+ */
+export const DESKTOP_UNAUTHORIZED_CODE = 'desktop_unauthorized'
+
+/** Statut du 401 de l'entrée de la coquille. */
+const DESKTOP_UNAUTHORIZED_STATUS = 401
+
 /** Étape annoncée pendant les migrations : la progression prolonge l'attente maximale. */
 const MIGRATIONS_STEP = 'migrations'
 
@@ -64,6 +73,7 @@ const FAILURE_STATE_KEYS: Readonly<Record<string, CommonManifestKey>> = {
   locked: 'common.root.server_failed.locked',
   migration_failed: 'common.root.server_failed.migration_failed',
   schema_newer: 'common.root.server_failed.schema_newer',
+  port: 'common.root.server_failed.port',
 }
 
 interface ErrorShape {
@@ -86,6 +96,15 @@ export function isServerStartingError(error: unknown): boolean {
   const e = asErrorShape(error)
   if (e?.status === PROXY_NO_SERVER_STATUS) return true
   return e?.status === SERVER_STARTING_STATUS && e?.code === SERVER_STARTING_CODE
+}
+
+/**
+ * Vrai si l'erreur est le 401 `desktop_unauthorized` : l'application desktop n'a plus (ou n'a pas
+ * encore) son cookie d'entrée. Seule la coquille sait le reposer, en rouvrant l'application.
+ */
+export function isDesktopEntryRequiredError(error: unknown): boolean {
+  const e = asErrorShape(error)
+  return e?.status === DESKTOP_UNAUTHORIZED_STATUS && e?.code === DESKTOP_UNAUTHORIZED_CODE
 }
 
 /** Lit un champ texte de `details` (étape, état) ; undefined si absent ou non textuel. */
@@ -147,7 +166,8 @@ export interface BootstrapRetryPolicy {
  *   - serveur qui démarre : réinterrogation chaque seconde tant que moins de
  *     SERVER_STARTUP_MAX_WAIT_MS se sont écoulées depuis le premier échec « en
  *     démarrage » de la série (plafond mesuré en temps) ;
- *   - démarrage échoué (503 server_start_failed, non réessayable) : aucun rejeu ;
+ *   - démarrage échoué (503 server_start_failed, non réessayable) ou entrée de la coquille
+ *     manquante (401 desktop_unauthorized) : aucun rejeu ;
  *   - autre erreur : BOOTSTRAP_OTHER_ERROR_RETRIES rejeux espacés de 0,5 s à 4 s, comptés
  *     à partir de la dernière erreur « en démarrage » (pas sur le compteur cumulé) : un
  *     serveur enfin prêt qui rend une erreur ordinaire obtient tous ses rejeux.
@@ -178,8 +198,8 @@ export function createBootstrapRetryPolicy(now: () => number = Date.now): Bootst
   return {
     retry(failureCount, error) {
       observe(failureCount, error)
-      // Démarrage échoué : le serveur a déclaré qu'un rejeu ne changera rien.
-      if (isServerStartFailedError(error)) return false
+      // Démarrage échoué, ou entrée de la coquille manquante : un rejeu ne changera rien.
+      if (isServerStartFailedError(error) || isDesktopEntryRequiredError(error)) return false
       if (isServerStartingError(error)) {
         return now() - (startupSince ?? now()) < SERVER_STARTUP_MAX_WAIT_MS
       }

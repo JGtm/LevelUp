@@ -10,6 +10,9 @@
 //
 //   - la séquence `listening` (port > 0) puis `ready` (même port, et <DataRoot>/desktop/port le
 //     contient), /health répondant sur ce port ;
+//   - l'entrée de la coquille (lot L13) : GET / sans cookie répond 401, GET /desktop/enter?secret=
+//     répond 302 et pose le cookie levelup_session_<port>, puis GET /api/v1/bootstrap avec ce cookie
+//     répond 200 (et 401 sans) ;
 //   - un second lancement sur les mêmes racines PENDANT le premier : `failed{state:"locked"}` puis
 //     sortie non nulle, sans toucher au fichier de port du premier ;
 //   - la fermeture de stdin : `stopping` puis `stopped{clean:true}`, sortie 0, aucun *.wal ;
@@ -251,6 +254,64 @@ func getHealth(t *testing.T, port int) {
 	}
 }
 
+// desktopGet envoie GET path au serveur du port donné, sans suivre les redirections, avec le cookie
+// donné (nil : aucun), et rend la réponse (corps fermé).
+func desktopGet(t *testing.T, port int, path string, cookie *http.Cookie) *http.Response {
+	t.Helper()
+	client := &http.Client{
+		Timeout:       10 * time.Second,
+		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+	}
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet,
+		"http://127.0.0.1:"+strconv.Itoa(port)+path, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cookie != nil {
+		req.AddCookie(cookie)
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatalf("GET %s : %v", path, err)
+	}
+	_ = resp.Body.Close()
+	return resp
+}
+
+// assertDesktopEntry rejoue le parcours de la coquille sur le vrai binaire : sans cookie 401, entrée
+// par secret 302 avec le cookie lié au port, puis une route de l'API répond 200 avec ce cookie.
+func assertDesktopEntry(t *testing.T, port int) {
+	t.Helper()
+	if resp := desktopGet(t, port, "/", nil); resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("GET / sans cookie : %d, attendu 401", resp.StatusCode)
+	}
+	if resp := desktopGet(t, port, "/desktop/enter?secret=pas-le-bon", nil); resp.StatusCode != http.StatusForbidden {
+		t.Errorf("GET /desktop/enter avec un faux secret : %d, attendu 403", resp.StatusCode)
+	}
+	resp := desktopGet(t, port, "/desktop/enter?secret="+launcherSecret, nil)
+	if resp.StatusCode != http.StatusFound || resp.Header.Get("Location") != "/" {
+		t.Fatalf("GET /desktop/enter?secret= : %d vers %q, attendu 302 vers /", resp.StatusCode, resp.Header.Get("Location"))
+	}
+	var cookie *http.Cookie
+	for _, c := range resp.Cookies() {
+		if c.Name == "levelup_session_"+strconv.Itoa(port) {
+			cookie = c
+		}
+	}
+	if cookie == nil {
+		t.Fatalf("aucun cookie levelup_session_%d posé (%v)", port, resp.Cookies())
+	}
+	if resp := desktopGet(t, port, "/api/v1/bootstrap", nil); resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("GET /api/v1/bootstrap sans cookie : %d, attendu 401", resp.StatusCode)
+	}
+	if resp := desktopGet(t, port, "/api/v1/bootstrap", cookie); resp.StatusCode != http.StatusOK {
+		t.Errorf("GET /api/v1/bootstrap avec le cookie : %d, attendu 200", resp.StatusCode)
+	}
+	if resp := desktopGet(t, port, "/api/v1/desktop/strings", cookie); resp.StatusCode != http.StatusOK {
+		t.Errorf("GET /api/v1/desktop/strings avec le cookie : %d, attendu 200", resp.StatusCode)
+	}
+}
+
 // readPortFile lit <DataRoot>/desktop/port.
 func readPortFile(t *testing.T, r launcherRoots) int {
 	t.Helper()
@@ -303,6 +364,12 @@ func TestE2ELanceurDesktop(t *testing.T) {
 		t.Errorf("fichier de port = %d, attendu le port annoncé %d", got, port)
 	}
 	getHealth(t, port)
+	assertDesktopEntry(t, port)
+	if raw, err := os.ReadFile(filepath.Join(roots.data, "auth", "session_secret")); err != nil {
+		t.Errorf("secret de session absent après le premier lancement : %v", err)
+	} else if secret := strings.TrimSpace(string(raw)); len(secret) != 64 || secret == "CHANGE_ME_IN_PRODUCTION" {
+		t.Errorf("secret de session = %d caractères, attendu 64 tirés au hasard", len(secret))
+	}
 
 	// --- Second lancement pendant le premier : failed locked, sortie non nulle, port intact. ---
 	second := startLauncherServer(t, bin, roots)

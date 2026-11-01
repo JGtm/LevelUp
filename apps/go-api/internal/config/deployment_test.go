@@ -102,7 +102,8 @@ func TestDeployment_CapacitesParProfil(t *testing.T) {
 		{DeploymentDemo, "", "true", LaunchModeDefault, DeploymentCapabilities{
 			UseAdmin: true, OfferWindowsDownload: true}},
 		{DeploymentDesktop, "", "", LaunchModeDesktop, DeploymentCapabilities{
-			UseOutboundNetwork: true, UpdateApp: true, EditSettings: true, UploadMedia: true}},
+			UseOutboundNetwork: true, UpdateApp: true, EditSettings: true, UploadMedia: true,
+			ShellEntryGate: true, PoolGrantedToLocalUser: true}},
 	}
 	for _, c := range cas {
 		t.Run(string(c.profil), func(t *testing.T) {
