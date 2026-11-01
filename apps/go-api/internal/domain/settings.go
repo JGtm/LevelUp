@@ -9,6 +9,8 @@ import "errors"
 // SettingsResponse est le payload retourné par GET /settings.
 // discord_webhook_url n'est JAMAIS inclus — seulement discord_webhook_url_present.
 type SettingsResponse struct {
+	// FilmArchiveSettings : archive des films (lot L14), clés aplaties.
+	FilmArchiveSettings
 	Lang                 string `json:"lang" enum:"fr,en"`
 	DiscordLang          string `json:"discord_lang" enum:"fr,en"`
 	UserTimezone         string `json:"user_timezone"`
@@ -99,6 +101,8 @@ type SettingsResponse struct {
 // UpdateSettingsRequest contient les champs modifiables (tous optionnels).
 // discord_webhook_url peut être envoyé ici (écriture) mais n'est jamais retourné.
 type UpdateSettingsRequest struct {
+	// FilmArchiveUpdate : archive des films (lot L14), clés aplaties.
+	FilmArchiveUpdate
 	Lang                 *string `json:"lang,omitempty"`
 	DiscordLang          *string `json:"discord_lang,omitempty"`
 	UserTimezone         *string `json:"user_timezone,omitempty"`

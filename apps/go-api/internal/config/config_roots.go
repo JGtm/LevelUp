@@ -8,8 +8,13 @@ package config
 // title.InstallProcessRoots pour les services qui ne reçoivent qu'une racine nue.
 
 import (
+	"encoding/json"
+	"errors"
+	"io/fs"
 	"log/slog"
 	"os"
+	"path/filepath"
+	"strings"
 
 	title "levelup/go-api/internal/domain/title"
 )
@@ -31,7 +36,8 @@ var rootEnvKeys = map[string]bool{
 // ResolveRoots lit l'environnement et rend les trois racines :
 //   - Resources : LEVELUP_RESOURCES_DIR, puis LEVELUP_REPO_ROOT, puis la détection (autoDetectRepoRoot) ;
 //   - Data : LEVELUP_DATA_DIR, défaut <Resources>/data ;
-//   - Logs : LEVELUP_LOGS_DIR, défaut <Resources>/logs.
+//   - Logs : LEVELUP_LOGS_DIR, défaut <Resources>/logs ;
+//   - FilmArchive : app_settings.json:film_archive_dir (chemin absolu), défaut <Data>/cache.
 func ResolveRoots() title.Roots {
 	resources := getEnvOrDefault(EnvResourcesDir, getEnvOrDefault(EnvRepoRoot, ""))
 	if resources == "" {
@@ -44,7 +50,49 @@ func ResolveRoots() title.Roots {
 	if v := os.Getenv(EnvLogsDir); v != "" {
 		roots.Logs = v
 	}
+	settingsPath := os.Getenv("LEVELUP_APP_SETTINGS") // même surcharge que loadStatePaths
+	if settingsPath == "" {
+		settingsPath = filepath.Join(roots.StateFilesDir(), "app_settings.json")
+	}
+	roots.FilmArchive = filmArchiveFromSettings(settingsPath)
 	return roots
+}
+
+// SettingFilmArchiveDir : la clé de app_settings.json qui pose l'emplacement de l'archive des
+// films (setting du lot L14). Les racines sont résolues avant que le store des réglages n'existe :
+// la clé se lit ici dans le JSON brut, une seule fois.
+const SettingFilmArchiveDir = "film_archive_dir"
+
+// filmArchiveFromSettings lit `film_archive_dir` dans app_settings.json. Un fichier absent ou sans
+// la clé donne "" (disposition par défaut). Une valeur illisible ou non absolue est IGNORÉE avec
+// un avertissement : un réglage corrompu ne doit pas envoyer l'archive dans le dossier courant.
+func filmArchiveFromSettings(path string) string {
+	raw, err := os.ReadFile(path) //nolint:gosec // chemin d'état du programme
+	if errors.Is(err, fs.ErrNotExist) {
+		return ""
+	}
+	if err != nil {
+		slog.Warn("film_archive_dir: app_settings.json illisible, archive à l'emplacement par défaut",
+			"file", path, "err", err)
+		return ""
+	}
+	var keys map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &keys); err != nil {
+		slog.Warn("film_archive_dir: app_settings.json invalide, archive à l'emplacement par défaut",
+			"file", path, "err", err)
+		return ""
+	}
+	var dir string
+	if v, ok := keys[SettingFilmArchiveDir]; !ok || json.Unmarshal(v, &dir) != nil {
+		return ""
+	}
+	dir = strings.TrimSpace(dir)
+	if dir != "" && !filepath.IsAbs(dir) {
+		slog.Warn("film_archive_dir: chemin non absolu ignoré, archive à l'emplacement par défaut",
+			"file", path, "film_archive_dir", dir)
+		return ""
+	}
+	return dir
 }
 
 // Roots rend les trois racines de la configuration. Une AppConfig construite à la main (tests)

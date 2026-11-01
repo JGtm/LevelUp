@@ -123,6 +123,10 @@ two in its own way (`config_demo.go`: versioned configuration read from the repo
 - `DataRoot`: everything the program creates or modifies. Variable `LEVELUP_DATA_DIR`; default
   `<ResourcesRoot>/data`, which is today's `data/`.
 - `LogsRoot`: journals. Variable `LEVELUP_LOGS_DIR` (existing); default as today, `<ResourcesRoot>/logs`.
+- `FilmArchive` (lot L14, ADR 0045 D-12): the film archive, a sub-root of the data family that can live elsewhere
+  (`film_chunks/` and `film_manifests/`, the film being the unit). Read once from `app_settings.json:film_archive_dir`
+  (absolute path; empty = `<DataRoot>/cache`); `PathResolver.FilmArchiveDir()`. The decoded facts (`film_facts`) and
+  the replay artifacts stay under `<DataRoot>/cache`: they are rebuilt from a film, the archive is not rebuilt.
 
 Explicit variables are environment only (a `.env.local` cannot set the root it is read from). Resolution happens once, in
 `internal/config`, and the roots are given to `PathResolver`; in the `desktop` profile the shell passes all three.

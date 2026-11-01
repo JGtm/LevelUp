@@ -143,7 +143,7 @@ func NewPostSyncHook(repoRoot string, perCycle int) *PostSyncHook {
 	}
 	return &PostSyncHook{
 		repoRoot:  repoRoot,
-		cacheRoot: titlePkg.NewPathResolver(repoRoot).CacheRootDir(),
+		cacheRoot: titlePkg.NewPathResolver(repoRoot).FilmArchiveDir(),
 		perCycle:  perCycle,
 		horizon:   PostSyncBacklogHorizon,
 	}

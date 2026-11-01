@@ -62,10 +62,18 @@ func LireChunk(root, shortID string, numero int) ([]byte, error) {
 }
 
 // lireChunkValide lit le fichier d'un chunk et le compare a la taille attendue (0 = inconnue).
+//
+// Les octets rendus sont LOGIQUES : un fichier zstd (D-18) est decode, de sorte que ni le client
+// Halo ni les outils qui relisent un chunk pour le re-ecrire ne voient la forme de stockage. La
+// taille comparee est celle de ces octets, comme celle que [controlerFichiers] lit dans l'en-tete.
 func lireChunkValide(path string, numero int, attendu int64) ([]byte, error) {
-	raw, err := os.ReadFile(path) //nolint:gosec // chemin compose par CheminDuChunk
+	fichier, err := os.ReadFile(path) //nolint:gosec // chemin compose par CheminDuChunk
 	if err != nil {
 		return nil, err
+	}
+	raw, err := octetsLogiques(fichier)
+	if err != nil {
+		return nil, fmt.Errorf("chunk %d illisible (%s) : %w", numero, path, err)
 	}
 	if attendu > 0 && int64(len(raw)) != attendu {
 		return nil, &ErrChunkTronque{Index: numero, Attendu: attendu, Lu: int64(len(raw))}
@@ -119,8 +127,15 @@ func (s *Source) controlerFichiers() (manquant bool, err error) {
 		if err != nil {
 			return manquant, fmt.Errorf("filmcache: etat du chunk %d de %s : %w", c.Index, s.short, err)
 		}
-		if s.tailles[i] > 0 && info.Size() != s.tailles[i] {
-			return manquant, &ErrChunkTronque{Index: c.Index, Attendu: s.tailles[i], Lu: info.Size()}
+		if s.tailles[i] <= 0 {
+			continue
+		}
+		lu, err := tailleLogiqueFichier(CheminDuChunk(dir, c.Index), info.Size())
+		if err != nil {
+			return manquant, fmt.Errorf("filmcache: taille du chunk %d de %s : %w", c.Index, s.short, err)
+		}
+		if lu != tailleLogiqueInconnue && lu != s.tailles[i] {
+			return manquant, &ErrChunkTronque{Index: c.Index, Attendu: s.tailles[i], Lu: lu}
 		}
 	}
 	return manquant, nil

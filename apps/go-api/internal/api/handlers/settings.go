@@ -50,6 +50,7 @@ type SettingsHandler struct {
 	mediaIndexer  service.MediaIndexer
 	backupSched   *duckdbbackup.Scheduler // nil = backup désactivé
 	users         authz.UserLookup        // relecture du rôle admin (settings_admin.go)
+	filmMeter     filmArchiveMeter        // occupation de l'archive des films, en cache (settings_film_archive.go)
 }
 
 // NewSettingsHandler crée un SettingsHandler avec le DirMediaIndexer par défaut.
@@ -103,6 +104,7 @@ func (h *SettingsHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 		humacore.DefaultStatus(http.StatusAccepted))
 	huma.Post(api, "/settings/sessions/recalculate", h.handlePostRecalculateSessions, humacore.Op("postSettingsSessionsRecalculate", "Recalcule les sessions à partir de la base actuelle", "settings"),
 		humacore.DefaultStatus(http.StatusAccepted))
+	huma.Get(api, "/settings/film-archive", h.handleGetFilmArchive, humacore.Op("getFilmArchive", "Occupation et emplacement de l'archive des films", "settings"))
 	huma.Get(api, "/settings/backup/status", h.handleGetBackupStatus, humacore.Op("getBackupStatus", "Statut du scheduler de sauvegarde", "settings"))
 	huma.Post(api, "/settings/backup/run", h.handlePostBackupRun, humacore.Op("postBackupRun", "Déclenche un cycle de sauvegarde immédiat", "settings"))
 }
@@ -282,7 +284,11 @@ func (h *SettingsHandler) handlePatchSettings(ctx context.Context, in *settingsB
 		return nil, humacore.NewError(http.StatusInternalServerError, "settings_load_error", "Impossible de charger la configuration.")
 	}
 
+	prev := *cfg
 	settings_platform.Apply(cfg, &req)
+	if err := h.validateFilmArchive(ctx, &req, &prev, cfg); err != nil {
+		return nil, err
+	}
 
 	if err := h.settingsStore.Save(cfg); err != nil {
 		return nil, humacore.NewError(http.StatusInternalServerError, "settings_save_error", "Impossible de sauvegarder la configuration.")

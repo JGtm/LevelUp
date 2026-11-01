@@ -214,7 +214,7 @@ func betterDemoReplay(a, b demoReplayCandidate) bool {
 // les données de la famille « véhicules » (seed_demo_replay_vehicles.go).
 func loadDemoReplayCandidates(ctx context.Context, opts SeedDemoOptions) ([]demoReplayCandidate, error) {
 	pr := titlePkg.NewPathResolver(opts.cacheRepoRoot())
-	films, err := filmcache.ListShortIDs(pr.CacheRootDir())
+	films, err := filmcache.ListShortIDs(pr.FilmArchiveDir())
 	if err != nil {
 		return nil, err
 	}

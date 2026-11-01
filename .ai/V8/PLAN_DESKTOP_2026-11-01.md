@@ -563,18 +563,24 @@ Définition : `ResourcesRoot` = la racine du dépôt aujourd'hui (`LEVELUP_RESOU
 
 ### 9.14 L14 — C5 Archive des films : emplacement, occupation, choix (S ; après L11)
 
-- [ ] 14.1 `PathResolver.FilmArchiveDir()` = `film_chunks/` ET `film_manifests/` (l'unité d'archive est le
+- [x] 14.1 `PathResolver.FilmArchiveDir()` = `film_chunks/` ET `film_manifests/` (l'unité d'archive est le
       film ; les faits restent sous `DataRoot`), réglable (`app_settings.json`, clé `film_archive_dir`),
       déplacement assisté refusé si la cible n'est pas vide ; `libs/film/filmcache` reçoit le dossier.
-- [ ] 14.2 Occupation exposée dans les réglages ; alerte par `taskDiskWatch` existant (seuils 80 / 90 %),
+- [x] 14.2 Occupation exposée dans les réglages ; alerte par `taskDiskWatch` existant (seuils 80 / 90 %),
       pas de second mécanisme.
-- [ ] 14.3 Réglage « archiver les films » (défaut oui, D-5, proposé dans `features/setup`) ; non = faits et
+- [x] 14.3 Réglage « archiver les films » (défaut oui, D-5, proposé dans `features/setup`) ; non = faits et
       rejeu produits, chunks non conservés, rétention des rejeux forcée illimitée (A18) ; fr + en.
-- [ ] 14.4 Tests `PathResolver` (archive hors racine) ; garde-rail de disposition `filmcache` vert ;
+- [x] 14.4 Tests `PathResolver` (archive hors racine) ; garde-rail de disposition `filmcache` vert ;
       test de la combinaison refusée.
-- [ ] 14.5 (D-18) Écriture des chunks en zstd-3 à la réception (`sync/filmfetch` ou le point unique d'écriture du cache de film : relève-le) ; lecture dans `libs/film` (`source` / `decfilm.Inflate`) acceptant brut, zlib ET zstd par en-tête magique (`28 b5 2f fd`), aucune autre couche ne lit les octets ; empreinte du film inchangée (les faits sont calculés sur les octets DÉCOMPRESSÉS : vérifier sur `replay-equiv`, 20 films identiques).
-- [ ] 14.6 (D-18) CLI `levelup film recompress` (ou sous-commande existante la plus proche) : recompresse en zstd-3 les chunks bruts et zlib existants, un film à la fois, écriture atomique (`.part` + renommage), reprise possible, journal par film, JAMAIS lancée automatiquement (décision utilisateur : purge et recompression manuelles) ; `--dry-run` qui chiffre le gain.
-- [ ] 14.7 (D-18) Tests : lecture des trois formats ; `replay-equiv` identique après recompression d'un film de l'harnais ; mesure consignée (`du -sh data/cache/film_chunks` avant/après sur le poste, lancée par l'utilisateur).
+- [x] 14.5 (D-18) Écriture des chunks en zstd-3 à la réception (`sync/filmfetch` ou le point unique d'écriture du cache de film : relève-le) ; lecture dans `libs/film` (`source` / `decfilm.Inflate`) acceptant brut, zlib ET zstd par en-tête magique (`28 b5 2f fd`), aucune autre couche ne lit les octets ; empreinte du film inchangée (les faits sont calculés sur les octets DÉCOMPRESSÉS : vérifier sur `replay-equiv`, 20 films identiques).
+- [x] 14.6 (D-18) CLI `levelup film recompress` (ou sous-commande existante la plus proche) : recompresse en zstd-3 les chunks bruts et zlib existants, un film à la fois, écriture atomique (`.part` + renommage), reprise possible, journal par film, JAMAIS lancée automatiquement (décision utilisateur : purge et recompression manuelles) ; `--dry-run` qui chiffre le gain.
+- [x] 14.7 (D-18) Tests : lecture des trois formats ; `replay-equiv` identique après recompression d'un film de l'harnais ; mesure consignée (`du -sh data/cache/film_chunks` avant/après sur le poste, lancée par l'utilisateur).
+- Clôture L14 (2026-11-02). Écarts : (a) 14.1 le déplacement n'est pas fait par le réglage mais par `levelup film
+  archive-move` (serveur arrêté) : le réglage refuse un changement tant que l'archive contient des films ou que la
+  cible n'est pas vide ; (b) 14.6 l'écriture atomique est `atomicfile.WriteFileStrict` (temporaire du même dossier +
+  fsync + renommage) et non un `.part` nommé ; (c) 14.7 : la mesure `du -sh data/cache/film_chunks` avant/après
+  sur le cache réel reste à l'utilisateur ; la simulation sur copie de 3 films (57,3 Mio -> 14,9 Mio, -74 %) et
+  `replay-equiv` identique avant/après sur le film 51101d1d (copie, 11,2 Mo -> 2,4 Mo) sont consignés au journal.
 - Gate : `go test ./internal/domain/title/... ./internal/service/... ./internal/scheduler/...` ;
   `cd libs/film && go test ./filmcache/...` ; `cd apps/web && npm run typecheck`.
 

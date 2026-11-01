@@ -64,8 +64,9 @@ package archlint
 //	                  les racines ci-dessous, les seuls octets qu on lit sont ceux d un film ;
 //	                  les fichiers d installation du jeu sont declares hors racines. Mesure du
 //	                  2026-09-17 : aucun usage non lie au film dans le perimetre.
-//	motifInflate      import de `compress/zlib` ou `compress/flate`. La decompression est au
-//	                  source, et rien qu a lui (`source.Inflate`).
+//	motifInflate      import de `compress/zlib`, `compress/flate` ou (D-18) de
+//	                  `klauspost/compress/zstd`. La decompression est au source, et rien qu a
+//	                  lui (`source.Inflate`, `source.CompresserZstd`).
 //
 // # LA CIBLE
 //
@@ -280,7 +281,11 @@ var nomsDeChunk = map[string]bool{"chunk": true, "chunks": true, "chunk0": true}
 
 var ordresDOctets = map[string]bool{"LittleEndian": true, "BigEndian": true}
 
-var paquetsDeDecompression = map[string]bool{"compress/zlib": true, "compress/flate": true}
+// paquetsDeDecompression : zlib et flate, et zstd depuis D-18 (2026-11-01, stockage des chunks du
+// cache en zstd-3) — `source/zstd.go` est le seul fichier du depot qui importe la bibliotheque.
+var paquetsDeDecompression = map[string]bool{
+	"compress/zlib": true, "compress/flate": true, "github.com/klauspost/compress/zstd": true,
+}
 
 // TestAucuneLectureDOctetsBrutsHorsDeLaSource : hors de la couche `source`, aucun site des
 // racines surveillees ne lit d octets de film — sauf les couples dates ci-dessus.

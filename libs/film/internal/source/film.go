@@ -216,6 +216,15 @@ func Inflate(raw []byte) []byte { return inflate(raw) }
 // tampon est RECOPIE, soit ~2N octets deplaces pour N octets utiles, sur des chunks de plusieurs
 // megaoctets et pour chacun des ~40 decodages d'un film.
 func inflate(raw []byte) []byte {
+	if EstZstd(raw) {
+		// Forme de stockage du cache depuis D-18 (zstd.go). Meme tolerance que pour zlib : une
+		// trame abimee rend ce qui a ete decode, et seulement faute de tout, l'entree.
+		out, err := DecompresserZstd(raw)
+		if err != nil && len(out) == 0 {
+			return raw
+		}
+		return out
+	}
 	if len(raw) < 2 || raw[0] != 0x78 {
 		return raw
 	}

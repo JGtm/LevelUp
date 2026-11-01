@@ -168,8 +168,29 @@ wizard (`features/setup`), never in the installer; occupancy is shown and the lo
 archive is the film: `PathResolver.FilmArchiveDir()` covers `film_chunks/` and `film_manifests/` (setting
 `film_archive_dir`, a non-empty target refuses an assisted move). Without archive, facts and replay are still produced,
 chunks are not kept, and the replay retention is forced to unlimited, because the purge assumes a re-cook from the film
-cache; the combination "no archive, finite retention" is refused in the settings. The disk alert is the existing
-`taskDiskWatch` (80 and 90 %). Lot L14.
+cache; the combination "no archive, finite retention" is refused in the settings (and folded to unlimited on read, so
+a hand-edited file cannot arm an irreversible purge). The disk alert is the existing `taskDiskWatch` (80 and 90 %),
+which watches the archive volume with its own anti-spam state when the archive lives outside the data root.
+Lot L14.
+
+Detail of the lot. The archive root is the fourth field of `Roots` (`FilmArchive`, read once from
+`app_settings.json:film_archive_dir` by `config.ResolveRoots`, absolute path only; applied at the next start). Changing
+the folder in the settings is refused while the archive holds films (the move is `levelup film archive-move`, server
+stopped, which records the setting itself once every film is relocated) and while the target is not empty. Without
+archive, a cooked film's chunks are removed by the post-sync cook right after its artifact is stored, never before. The
+occupancy (`GET /settings/film-archive`) is measured once and cached for ten minutes with a 20 s walk budget.
+
+**D-12b — Chunks stored in zstd-3 (plan D-18, 2026-11-01).** The single write point of film chunks is
+`filmcache.Write` (every downloader goes through it); it stores a chunk in zstd level 3 when that shortens it, raw
+otherwise. The manifest `size_bytes` keeps meaning "the size of what the writer received" (decoded bytes), so a
+manifest written before this change stays valid after a chunk is recompressed, and the truncation check compares the
+logical size (the size declared in the zstd frame header). The `source` layer, the only one that touches film bytes
+(ADR 0034 D-2), recognises raw, zlib (`0x78`) and zstd (`28 b5 2f fd`) by header and is the only importer of the zstd
+library (ratchet `no_raw_film_bytes_outside_source`). Existing chunks are converted by `levelup film recompress`,
+launched by the user and never automatically (ratchet `no_auto_film_recompress`): one film at a time, each chunk
+compressed, decoded back and compared before an atomic replacement, resumable. The source revision is unchanged (a
+raw or zlib chunk reads to the same bytes; its golden fingerprint is re-recorded), and `replay-equiv` is identical on a
+film before and after recompression.
 
 ### The shell
 

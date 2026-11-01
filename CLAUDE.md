@@ -98,6 +98,7 @@ Tous les chemins passent par `PathResolver` (`internal/domain/title/registry.go`
 | Social (followers, activité) | `data/titles/{slug}/warehouse/shared_social.duckdb` |
 | Enrichissements joueur | `data/titles/{slug}/players/{gamertag}/stats.duckdb` |
 | Aliases Xbox globaux | `data/global/xbox_aliases.duckdb` |
+| Archive des films (chunks zstd-3/brut/zlib + manifestes) | `PathResolver.FilmArchiveDir()` : `film_chunks/{short8}/` et `film_manifests/` (réglage `film_archive_dir`, défaut `data/cache`) ; recompression et déplacement = commandes de l'utilisateur (`levelup film recompress`, `film archive-move`), jamais automatiques |
 | Tokens auth (source unique) | `data/auth/watcher_tokens/{xuid}.json` |
 | Comptes utilisateurs (rôle, mot de passe, xuid lié) | `data/auth/users.json` |
 | Groupes / escouades | `data/auth/groups.json` |

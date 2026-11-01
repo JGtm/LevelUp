@@ -433,6 +433,38 @@ go run ./cmd/levelup pool-sharing grandfather --all [--yes]            # tous le
   La lancer en `appuser` (`-u appuser`) : le conteneur durci retire à root les capacités qui lui
   permettaient d'écrire les fichiers de l'application, et la commande échoue sinon en `permission denied`.
 
+### Archive des films (recompression et déplacement — ADR 0045 D-12, décision D-18)
+
+L'archive contient chaque film téléchargé (`film_chunks/` et `film_manifests/`, sous
+`film_archive_dir` ou `<données>/cache` par défaut). Un film expire côté Halo et ne se retélécharge
+jamais : les deux opérations ci-dessous sont **à lancer soi-même, serveur arrêté** ; rien ne les
+lance seul (ni cron, ni tâche au démarrage).
+
+Les nouveaux chunks s'écrivent en zstd niveau 3 (environ 75 % plus petits). Les chunks bruts et zlib
+existants se recompressent par `film recompress`, un film à la fois : chaque chunk est compressé,
+redécodé et comparé à l'original avant que le fichier ne soit remplacé atomiquement. Un chunk déjà en
+zstd est sauté : une passe interrompue reprend en relançant la commande. Les lecteurs acceptent les
+chunks bruts, zlib et zstd à leur en-tête, et les faits décodés d'un film ne dépendent pas de la forme
+de stockage.
+
+```bash
+go run ./cmd/levelup film recompress --dry-run               # lit et compresse en mémoire, affiche le gain, n'écrit rien
+go run ./cmd/levelup film recompress                         # convertit toute l'archive
+go run ./cmd/levelup film recompress --films 000d5950,01e1f945   # seulement ces films (courts)
+go run ./cmd/levelup film archive-move --to D:\Films          # range l'archive dans un dossier vide, puis enregistre film_archive_dir
+go run ./cmd/levelup film archive-move --default             # la ramène sous <données>/cache
+go run ./cmd/levelup film archive-move --to D:\Films --resume   # reprend un déplacement interrompu
+```
+
+- L'écran des réglages (Réglages, onglet Données) affiche la taille de l'archive et l'espace libre, et
+  l'assistant de premier lancement propose de conserver les films ou non. Y changer le dossier est
+  refusé tant que l'archive contient des films ou que la cible n'est pas vide ; `archive-move` fait le
+  déplacement. Le nouveau dossier est pris en compte au démarrage suivant.
+- Sans archive (`archive_films` désactivé), les rejeux sont construits et les faits persistés, les
+  chunks sont retirés une fois cuits, et la rétention des rejeux doit rester illimitée (la purge suppose
+  une reconstruction depuis l'archive).
+- Pour mesurer le gain sur son poste : `du -sh data/cache/film_chunks` avant et après `film recompress`.
+
 ### Référentiels / seed / migration
 
 ```bash

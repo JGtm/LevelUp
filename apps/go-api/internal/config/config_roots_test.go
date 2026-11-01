@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -145,4 +146,40 @@ func TestInstallProcessRootsFromEnv_EnfantDeCuisson(t *testing.T) {
 	if !title.SameRoot(pr.LogsRoot(), logs) {
 		t.Fatalf("NewPathResolver(res).LogsRoot() = %s, attendu %s", pr.LogsRoot(), logs)
 	}
+}
+
+// TestResolveRoots_ArchiveDesFilmsDepuisLesReglages : `film_archive_dir` d'app_settings.json pose
+// la racine de l'archive ; absent, vide, non absolu ou illisible, l'archive reste sous le cache.
+func TestResolveRoots_ArchiveDesFilmsDepuisLesReglages(t *testing.T) {
+	clearRootEnv(t)
+	t.Setenv("LEVELUP_APP_SETTINGS", "")
+	donnees := t.TempDir()
+	t.Setenv(EnvResourcesDir, t.TempDir())
+	t.Setenv(EnvDataDir, donnees)
+	reglages := filepath.Join(donnees, "app_settings.json")
+
+	if got := ResolveRoots(); got.FilmArchive != "" || got.FilmArchiveDir() != filepath.Join(donnees, "cache") {
+		t.Fatalf("sans fichier : %+v", got)
+	}
+	externe := filepath.Join(t.TempDir(), "films")
+	cas := map[string]string{
+		`{"film_archive_dir": ` + jsonString(externe) + `}`: externe,
+		`{"film_archive_dir": ""}`:                          "",
+		`{"film_archive_dir": "relatif/films"}`:             "",
+		`{"lang": "fr"}`:                                    "",
+		`{pas du json`:                                      "",
+	}
+	for contenu, attendu := range cas {
+		if err := os.WriteFile(reglages, []byte(contenu), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if got := ResolveRoots().FilmArchive; got != attendu {
+			t.Errorf("%s : FilmArchive = %q, attendu %q", contenu, got, attendu)
+		}
+	}
+}
+
+func jsonString(s string) string {
+	b, _ := json.Marshal(s)
+	return string(b)
 }

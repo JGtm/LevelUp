@@ -29,6 +29,9 @@ type Roots struct {
 	// db_profiles.json, app_settings.json et .env.local vivent en tête de Data au lieu de la
 	// tête de Resources (amendement A-3).
 	DataSet bool
+	// FilmArchive : dossier de l'archive des films (setting `film_archive_dir`, lot L14), chemin
+	// absolu ; vide = <Data>/cache, la disposition d'avant le réglage. Cf. FilmArchiveDir.
+	FilmArchive string
 }
 
 // DefaultRoots rend les racines d'un checkout enraciné en resources.
@@ -82,6 +85,28 @@ func (p *PathResolver) Roots() Roots { return p.roots }
 
 // ResourcesRoot rend la racine des ressources livrées avec le programme.
 func (p *PathResolver) ResourcesRoot() string { return p.roots.Resources }
+
+// FilmArchiveDir rend la racine de l'ARCHIVE DES FILMS : le dossier qui contient `film_chunks/` ET
+// `film_manifests/` (l'unité d'archive est le film, ADR 0045 D-12). Le réglage `film_archive_dir`
+// la pose ; sans lui c'est la racine du cache applicatif (<Data>/cache), exactement le chemin
+// d'avant le réglage. Les faits décodés (`film_facts`) et les artefacts de rejeu restent sous
+// CacheRootDir : ils se refont du film, l'archive ne se refait pas.
+//
+// Le résolveur ne sait rien de `libs/film/filmcache` : la disposition interne de l'archive (les
+// deux sous-dossiers) n'est déclarée que là, et cette méthode ne rend que sa racine.
+func (p *PathResolver) FilmArchiveDir() string { return p.roots.FilmArchiveDir() }
+
+// FilmArchiveDir rend la racine de l'archive des films de ces racines (cf. la méthode du résolveur).
+func (r Roots) FilmArchiveDir() string {
+	if r.FilmArchive != "" {
+		return r.FilmArchive
+	}
+	return r.DefaultFilmArchiveDir()
+}
+
+// DefaultFilmArchiveDir rend l'emplacement de l'archive sans réglage : la racine du cache
+// applicatif, là où `film_chunks/` et `film_manifests/` ont toujours vécu.
+func (r Roots) DefaultFilmArchiveDir() string { return filepath.Join(r.Data, "cache") }
 
 // DataRoot rend la racine des données écrites par le programme.
 func (p *PathResolver) DataRoot() string { return p.roots.Data }

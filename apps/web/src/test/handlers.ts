@@ -159,6 +159,20 @@ const settingsFixture = {
   spnkr_auto_sync_interval_minutes: 360,
   watcher_presence_enabled: false,
   watcher_subscribed_players: [],
+  archive_films: true,
+  film_archive_dir: '',
+}
+
+/** Archive des films : vide, emplacement par défaut (GET /settings/film-archive). */
+export const filmArchiveFixture = {
+  dir: '/donnees/cache',
+  configured_dir: '',
+  restart_required: false,
+  archive_films: true,
+  films: 0,
+  bytes: 0,
+  partial: false,
+  measured_at: '2026-11-02T10:00:00Z',
 }
 
 const emptyKPIs = {
@@ -296,6 +310,8 @@ export const handlers = [
     const body = await request.json()
     return HttpResponse.json({ ...settingsFixture, ...(body as Record<string, unknown>) })
   }),
+
+  http.get(p('/settings/film-archive'), () => HttpResponse.json(filmArchiveFixture)),
 
   // Career
   http.get(p(`/players/${SLUG}/pages/career`), () => HttpResponse.json(careerFixture)),
