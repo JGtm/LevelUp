@@ -31,9 +31,14 @@ vi.mock('./TopProgressBar', () => ({
   ),
 }))
 vi.mock('@/features/notifications/toastBridge', () => ({ NotificationsToastBridge: () => null }))
+let mockDockedInset = 0
 vi.mock('@/features/asset-drawer', () => ({
   AssetDrawer: () => <div data-testid="asset-drawer" />,
   AssetDockedPanel: () => <aside data-testid="asset-docked" />,
+  useDockedPanelInset: () => mockDockedInset,
+}))
+vi.mock('sonner', () => ({
+  Toaster: ({ offset }: { offset?: unknown }) => <div data-testid="toaster" data-offset={JSON.stringify(offset)} />,
 }))
 vi.mock('@/features/feedback-drawer', () => ({ FeedbackDrawer: () => null }))
 
@@ -45,6 +50,7 @@ function setCapabilities(desktop: boolean) {
 
 describe('AppShell — chrome selon la capacité', () => {
   afterEach(() => {
+    mockDockedInset = 0
     act(() => {
       useAppShellStore.setState({ capabilities: null })
     })
@@ -57,8 +63,26 @@ describe('AppShell — chrome selon la capacité', () => {
     expect(screen.queryByTestId('nav-l1')).not.toBeInTheDocument()
     expect(screen.queryByTestId('app-footer')).not.toBeInTheDocument()
     expect(screen.getByTestId('outlet')).toBeInTheDocument()
-    // La barre de progression se pose contre la barre latérale, pas sous une barre haute absente.
-    expect(screen.getByTestId('progress')).toHaveAttribute('data-placement', 'left-60 right-0 top-0')
+    // La barre de progression est rangée DANS la colonne du contenu (position relative) : elle ne
+    // couvre ni la barre latérale ni le volet des référentiels.
+    const progress = screen.getByTestId('progress')
+    expect(progress).toHaveAttribute('data-placement', 'absolute inset-x-0 top-0')
+    expect(progress.parentElement?.className).toContain('relative')
+    expect(progress.parentElement).toContainElement(screen.getByTestId('outlet'))
+    expect(progress.parentElement).not.toContainElement(screen.getByTestId('asset-docked'))
+  })
+
+  it('capacité vraie : les toasts restent à gauche du volet ancré, contre le bord quand il est fermé', () => {
+    setCapabilities(true)
+    renderWithProviders(<AppShell />)
+    expect(screen.getByTestId('toaster')).toHaveAttribute('data-offset', JSON.stringify({ top: 16, right: 16 }))
+  })
+
+  it('capacité vraie : le décalage des toasts suit la largeur du volet ouvert', () => {
+    mockDockedInset = 420
+    setCapabilities(true)
+    renderWithProviders(<AppShell />)
+    expect(screen.getByTestId('toaster')).toHaveAttribute('data-offset', JSON.stringify({ top: 16, right: 436 }))
   })
 
   it('capacité vraie : le volet des référentiels est un frère du contenu dans la rangée, qui le pousse', () => {
@@ -92,6 +116,13 @@ describe('AppShell — chrome selon la capacité', () => {
     expect(screen.queryByTestId('sidebar-nav')).not.toBeInTheDocument()
     expect(screen.getByTestId('outlet')).toBeInTheDocument()
     expect(screen.getByTestId('progress')).toHaveAttribute('data-placement', 'defaut')
+  })
+
+  it('capacité fausse (site) : toasts sous la barre haute, jamais décalés par un volet', () => {
+    mockDockedInset = 420
+    setCapabilities(false)
+    renderWithProviders(<AppShell />)
+    expect(screen.getByTestId('toaster')).toHaveAttribute('data-offset', '56')
   })
 
   it('avant l’hydratation du bootstrap : la disposition du site', () => {

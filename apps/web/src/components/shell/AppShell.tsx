@@ -27,7 +27,7 @@ import { ErrorBoundary } from './ErrorBoundary'
 import { AppFooter } from './AppFooter'
 import { piedDePageAffiche } from './piedDePage'
 import { NotificationsToastBridge } from '@/features/notifications/toastBridge'
-import { AssetDockedPanel, AssetDrawer } from '@/features/asset-drawer'
+import { AssetDockedPanel, AssetDrawer, useDockedPanelInset } from '@/features/asset-drawer'
 import { FeedbackDrawer } from '@/features/feedback-drawer'
 import { useSettingsDraftStore } from '@/stores/settingsDraftStore'
 
@@ -45,21 +45,31 @@ function SessionBanners() {
   )
 }
 
-/** Éléments hors flux : progression, toasts, tiroirs. `compact` : disposition de l'application de bureau. */
+/** Marge des toasts contre le bord de la colonne du contenu (px). */
+const TOAST_EDGE_PX = 16
+
+/** Position de la barre de progression dans la colonne du contenu (bureau) : contre son bord haut. */
+const COMPACT_PROGRESS_PLACEMENT = 'absolute inset-x-0 top-0'
+
+/** Éléments hors flux : toasts, tiroirs (et barre de progression du site). `compact` : disposition de l'application de bureau. */
 function ShellOverlays({ compact }: { compact: boolean }) {
   // Lie le thème Sonner au thème app pour que les toasts respectent dark/light.
   const theme = useSettingsDraftStore((s) => s.localUiPrefs.theme)
   const locale = useAppShellStore((s) => s.locale)
+  // Volet des référentiels ancré (bureau) : les toasts, posés par rapport à la fenêtre, se décalent de sa
+  // largeur pour rester dans la colonne du contenu.
+  const dockedInset = useDockedPanelInset()
   return (
     <>
-      {/* Barre de progression — flottante, hors du flux, collée sous NavL1 (site) ou en tête du contenu (bureau) */}
-      <TopProgressBar placement={compact ? 'left-60 right-0 top-0' : undefined} />
+      {/* Barre de progression du site — flottante, hors du flux, collée sous NavL1. En bureau elle est
+          rendue DANS la colonne du contenu (voir AppShell), qui la borne. */}
+      {!compact && <TopProgressBar />}
 
-      {/* Toasts globaux (Sonner) — décalés sous la NavL1 (h-12 = 48px + 8px marge) sur le site, contre le
-          bord haut en bureau. theme={theme} synchronise les toasts avec le thème dark/light de l'app. */}
+      {/* Toasts globaux (Sonner) — décalés sous la NavL1 (h-12 = 48px + 8px marge) sur le site ; en bureau
+          contre le bord haut et à gauche du volet ancré. theme={theme} synchronise les toasts avec le thème. */}
       <Toaster
         position="top-right"
-        offset={compact ? 16 : 56}
+        offset={compact ? { top: TOAST_EDGE_PX, right: TOAST_EDGE_PX + dockedInset } : 56}
         theme={theme}
         containerAriaLabel={formatMessage(commonManifest, 'common.notifications.container_aria', locale)}
         toastOptions={{
@@ -119,7 +129,8 @@ export function AppShell() {
     return (
       <div className="flex h-screen flex-row overflow-hidden bg-background text-foreground">
         <SidebarNav />
-        <div className="flex min-w-0 flex-1 flex-col gap-3 overflow-hidden">
+        <div className="relative flex min-w-0 flex-1 flex-col gap-3 overflow-hidden">
+          <TopProgressBar placement={COMPACT_PROGRESS_PLACEMENT} />
           <div className="shrink-0">
             <SessionBanners />
           </div>
