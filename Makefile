@@ -14,9 +14,11 @@
 #   make generate-types # Génère les types TypeScript depuis openapi.yaml
 #   make check-types   # Vérifie les types TypeScript
 #   make gate-push     # Filet local avant merge vers main (~25 min, cf. cible)
-#   make desktop-build # Serveur Go + coquille Tauri (profil debug ; l installeur est le lot L17)
+#   make desktop-build # Serveur Go + coquille Tauri (profil debug)
 #   make desktop-test  # Tests de la coquille Rust contre le faux serveur + faux serveur Go
 #   make desktop-dev   # Coquille Tauri sur le vrai serveur, donnees de developpement
+#   make desktop-installer # Installeur NSIS (serveur, front, ffmpeg LGPL, ressources), sans secret
+#   make desktop-e2e   # Installe, lance, ferme, relance, desinstalle l installeur construit (donnees jetables)
 # =============================================================================
 
 # Charge .env.local (puis .env) s'ils existent — permet aux worktrees
@@ -31,7 +33,7 @@ LOAD_DOTENV := if [ -f .env.local ]; then set -a; . ./.env.local; set +a; fi; \
         go-api-build go-api-test go-api-test-gamefiles libs-test go-api-dev _go-api-run \
         go-api-test-shared-social-gate install-git-hooks gate-push replay-corpus-gate replay-equiv \
         go-api-test-coverage-ratchet openapi-gen openapi-check \
-        desktop-build desktop-test desktop-dev
+        desktop-build desktop-test desktop-dev desktop-installer desktop-e2e
 
 ## Affiche cette aide
 help:
@@ -263,7 +265,7 @@ libs-test:
 	done
 
 ## Coquille desktop (Tauri 2, ADR 0045) : compile le vrai serveur Go sous le nom du sidecar, puis la
-## coquille en profil debug. L installeur NSIS et l updater signe sont le lot L17 (CI de release).
+## coquille en profil debug. L installeur NSIS est la cible desktop-installer.
 desktop-build:
 	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/desktop-dev.ps1
 	cd apps/desktop/src-tauri && cargo build
@@ -278,6 +280,17 @@ desktop-test:
 ## depot et sur %LOCALAPPDATA%\LevelUp-dev (jamais les donnees de l application installee).
 desktop-dev:
 	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/desktop-dev.ps1 -Tauri
+
+## Installeur NSIS de LevelUp : memes etapes que le job desktop-build de release.yml (front, serveur Go,
+## ffmpeg et ffprobe LGPL a somme de controle epinglee, ressources, tauri build), sans cle de signature.
+## Pour signer aussi l updater : powershell -File apps/desktop/scripts/build-installer.ps1 -SigningKey <cle>.
+desktop-installer:
+	powershell -NoProfile -ExecutionPolicy Bypass -File apps/desktop/scripts/build-installer.ps1
+
+## Test de bout en bout de l installeur construit par desktop-installer : installation silencieuse, deux
+## lancements, fermeture par WM_CLOSE, arret propre, desinstallation qui conserve les donnees (racine jetable).
+desktop-e2e:
+	powershell -NoProfile -ExecutionPolicy Bypass -File apps/desktop/scripts/e2e-install.ps1 -Installer "$$(ls apps/desktop/src-tauri/target/release/bundle/nsis/LevelUp_*_x64-setup.exe | head -n 1)"
 
 ## Go API: gate de non-regression des artefacts de rejeu sur corpus temoin. DEFAUT
 ## (--reference=base) : cuit chaque temoin DEUX FOIS (code du HEAD, code d'une revision de

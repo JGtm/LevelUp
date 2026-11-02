@@ -646,9 +646,13 @@ Définition : `ResourcesRoot` = la racine du dépôt aujourd'hui (`LEVELUP_RESOU
       par le CLI (`tauri.updater.conf.json`, `.sig` produit en local avec la clé de génération), `latest.json` par `jq` dans
       `publish` (gabarit rejoué en local), clé publique dans `tauri.conf.json` et `.gitleaks.toml`, déclenchement aussi
       sur `release/**` (sans signature ni publication). Le run CI lui-même est 17.6 (pilote).
-- [ ] 17.3 Job `desktop-e2e` (`release/**`) : script PowerShell : installation silencieuse, lancement de
+- [x] 17.3 Job `desktop-e2e` (`release/**`) : script PowerShell : installation silencieuse, lancement de
       l'exécutable, port lu dans `<DataRoot>/desktop/port`, `/health` 200, `WM_CLOSE`, attente de sortie,
-      `arrêt: terminé clean=true` dans `desktop.log`, aucun `*.wal`, relancement, `/health`, fermeture.
+      `arrêt: terminé clean=true` dans `desktop.log`, aucun `*.wal`, relancement, `/health`, fermeture. FAIT 2026-11-02 :
+      `apps/desktop/scripts/e2e-install.ps1` (ajoute la désinstallation silencieuse et l'assertion « racine de données
+      conservée ») joué en local sur l'installeur construit : exit 0, deux lancements sur le même port, `clean=true` deux
+      fois, 0 WAL ; refus vérifié si une installation existe (exit 1) ; job `desktop-e2e` de `release.yml` (le journal
+      qui porte la ligne est `general.log`, `desktop.log` la recopie). Cibles `make desktop-installer` / `desktop-e2e`.
 - [ ] 17.4 Updater : proposé, jamais imposé ; n'exécute l'installeur qu'après `stopped` (A3) ; changelog
       in-app (`docs/RELEASE_NOTES.md`) ; poids de la mise à jour mesuré et consigné (§10).
 - [ ] 17.5 Page « Télécharger pour Windows » côté hébergé (capacité du profil `hosted`), fr + en, avec
