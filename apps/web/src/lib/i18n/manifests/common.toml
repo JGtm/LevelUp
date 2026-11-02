@@ -2615,6 +2615,75 @@ en = "Privacy"
 fr = "Conditions d'utilisation"
 en = "Terms of use"
 
+# ── Application de bureau : barre latérale et fenêtre « À propos » (remplace le pied de page) ──
+[common.shell.nav_about]
+fr = "À propos"
+en = "About"
+
+[common.shell.sidebar_footer_aria]
+fr = "Aide, paramètres et informations sur l'application"
+en = "Help, settings and application information"
+
+[common.shell.sidebar_version]
+fr = "Version {version}"
+en = "Version {version}"
+
+[common.about.dialog_aria]
+fr = "À propos de LevelUp"
+en = "About LevelUp"
+
+[common.about.close]
+fr = "Fermer"
+en = "Close"
+
+[common.about.version]
+fr = "Version {version} · Windows"
+en = "Version {version} · Windows"
+
+[common.about.check_update]
+fr = "Rechercher une mise à jour"
+en = "Check for updates"
+
+[common.about.update_hint]
+fr = "Vérifiée au lancement. Le résultat s'affiche dans une boîte de dialogue."
+en = "Checked at launch. The result appears in a dialog box."
+
+[common.about.update_requested]
+fr = "Recherche lancée : le résultat s'affiche dans une boîte de dialogue."
+en = "Check started: the result appears in a dialog box."
+
+[common.about.update_unreachable]
+fr = "La recherche n'a pas pu être lancée depuis cette fenêtre."
+en = "The check could not be started from this window."
+
+[common.about.third_party]
+fr = "Mentions tierces"
+en = "Third-party notices"
+
+[common.about.data_heading]
+fr = "Données"
+en = "Data"
+
+[common.about.data_folder]
+fr = "Dossier des données"
+en = "Data folder"
+
+[common.about.copy]
+fr = "Copier"
+en = "Copy"
+
+[common.about.copied]
+fr = "Copié"
+en = "Copied"
+
+[common.about.ffmpeg_notice]
+fr = "ffmpeg et ffprobe sont livrés sous licence LGPL."
+en = "ffmpeg and ffprobe are shipped under the LGPL licence."
+
+[common.about.sounds_notice]
+fr = "Sons du jeu retirés sur simple demande."
+en = "Game sounds removed on simple request."
+
 # ── Amis d'un joueur (liste par profil, remplace l'ancien réglage d'instance) ──
 [common.friends.page_title]
 fr = "Amis et groupes"

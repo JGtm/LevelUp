@@ -17,6 +17,8 @@ import type { components } from './generated'
 export type PlayerSummary = components['schemas']['PlayerSummary']
 
 export type CapabilityMap = components['schemas']['CapabilityMap']
+/** Version et dossier des données de l'application de bureau (bootstrap `app_info`). */
+export type AppInfo = components['schemas']['AppInfo']
 
 // Diagnostic apparence Spartan ID (admin, volet 2) — re-exports du contrat
 // OpenAPI (source unique), pas de mirror manuel (Lot G, règle G4).

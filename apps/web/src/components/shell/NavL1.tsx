@@ -7,20 +7,19 @@
  * Les sections avec plusieurs onglets (Palmarès, Stats, Escouade, Carrière) utilisent un
  * split button : clic sur le label → landing, clic sur ▾ → dropdown des onglets.
  */
-import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
+import { Link, useRouterState } from '@tanstack/react-router'
 import { useRef, useEffect, useState } from 'react'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { ThemeToggle } from './ThemeToggle'
 import { TitleSwitcher } from './TitleSwitcher'
-import { resolvePlayerSwitch } from './shellNavigation'
+import { usePlayerSwitch } from './usePlayerSwitch'
 import { HelpSplitButton } from './HelpSplitButton'
 import { LogoutButton } from './LogoutButton'
 import { NavL1MobileMenu } from './NavL1MobileMenu'
 import { PlayerSwitcher } from './PlayerSwitcher'
 import { NavL1MobileActions, type SettingsTabItem } from './NavL1MobileActions'
-import { L1_SECTIONS, type L1Section, type L1Tab } from './navL1Sections'
-import { useTitleCapabilities, hasCapabilityIn } from '@/lib/capabilities/capabilities'
-import { useSettings } from '@/features/settings/queries'
+import type { L1Section, L1Tab } from './navL1Sections'
+import { useVisibleNavSections } from './useVisibleNavSections'
 import { getSettingsText } from '@/features/settings/i18n'
 import { NotificationsBell } from '@/features/notifications/NotificationsBell'
 import { useCanWritePlayer } from '@/lib/players/playerWriteAccess'
@@ -244,56 +243,20 @@ function SettingsSplitButton({ tabs, isActive, isAdmin }: SettingsSplitButtonPro
 // ─── Composant principal ──────────────────────────────────────────────────────
 
 export function NavL1() {
-  const navigate = useNavigate()
   const currentPlayer = useAppShellStore((s) => s.currentPlayer)
   const currentTitleSlug = useAppShellStore((s) => s.currentTitleSlug)
   const availablePlayers = useAppShellStore((s) => s.availablePlayers)
-  const setCurrentPlayer = useAppShellStore((s) => s.setCurrentPlayer)
   const isAdmin = useAppShellStore((s) => s.isAdmin)
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
-  const { data: settings } = useSettings()
-  const showProgression = settings?.show_progression ?? true
   const routerState = useRouterState()
   const pathname = routerState.location.pathname
   const playerSlug = currentPlayer?.player_slug ?? ''
   // Joueur courant = profil d'un ami : ses notifications ne sont pas celles de la session, pas de cloche.
   const canWriteCurrent = useCanWritePlayer(playerSlug)
 
-  // Gating multi-titre (Phase 5) : on masque les sections / onglets dont la
-  // capability n'est pas déclarée par le titre courant. Fail-open (titleCaps null
-  // pendant le bootstrap → tout visible) ⇒ NO-OP pour halo_infinite. Le filtre
-  // alimente à la fois le rendu desktop inline ET le drawer mobile (même tableau).
-  const titleCaps = useTitleCapabilities()
-  const sectionVisible = (s: L1Section) => s.capability == null || hasCapabilityIn(titleCaps, s.capability)
-  const tabVisible = (tab: L1Tab) => tab.capability == null || hasCapabilityIn(titleCaps, tab.capability)
-  const visibleSections = (showProgression
-    ? L1_SECTIONS
-    : L1_SECTIONS.filter((s) => s.key !== 'ascension'))
-    .filter(sectionVisible)
-    .map((s) => {
-      if (!s.tabs) return s
-      // Titre sans citations calculées (Halo 5) : « Citations » (moteur dérivé) →
-      // « Commendations » natif — cohérent avec NavL2. Signal : capability `citations`.
-      const tabs = s.tabs.filter(tabVisible).map((tab): L1Tab =>
-        !hasCapabilityIn(titleCaps, 'citations') && tab.key === 'citations'
-          ? {
-              // Commendations natives. On conserve la clé i18n d'origine
-              // (`tab_citations` = FR « Citations » / EN « Commendations », terme
-              // officiel Halo) et on ne change QUE la clé de tab + le chemin.
-              ...tab,
-              key: 'commendations',
-              path: '/{-$lang}/t/$titleSlug/players/$playerSlug/commendations',
-            }
-          : tab,
-      )
-      // Si l'onglet servant de landing par défaut est masqué (ex: « Classements »
-      // gaté sur world.leaderboard), replier le défaut sur le 1er onglet visible.
-      const defaultPath = tabs.some((tab) => tab.path === s.defaultPath)
-        ? s.defaultPath
-        : (tabs[0]?.path ?? s.defaultPath)
-      return { ...s, tabs: tabs.length > 0 ? tabs : undefined, defaultPath }
-    })
+  // Sections filtrées par capability de titre : source unique partagée avec la barre latérale de bureau.
+  const visibleSections = useVisibleNavSections()
 
   // Onglets Paramètres — source unique partagée entre le split button desktop
   // et le menu compte/outils mobile.
@@ -310,22 +273,7 @@ export function NavL1() {
     { key: 'account', label: st.tabAccount, tab: 'account' },
   ]
 
-  function handlePlayerChange(slug: string) {
-    const player = availablePlayers.find((p) => p.player_slug === slug)
-    if (!player) return
-    setCurrentPlayer(player)
-    // Changement de JOUEUR (même titre) : sur une sous-page joueur, rester sur la même
-    // route en ne changeant que le playerSlug (titre + langue hérités des params
-    // courants) ; sinon aller à l'accueil title-scoped du nouveau joueur.
-    if (resolvePlayerSwitch(pathname).kind === 'same-route') {
-      void navigate({ to: '.', params: (prev) => ({ ...prev, playerSlug: slug }) })
-    } else {
-      void navigate({
-        to: '/{-$lang}/t/$titleSlug/players/$playerSlug/home',
-        params: { titleSlug: currentTitleSlug, playerSlug: slug },
-      })
-    }
-  }
+  const handlePlayerChange = usePlayerSwitch()
 
   const logoInner = (
     <>

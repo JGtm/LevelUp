@@ -30,6 +30,7 @@ import { useSettings } from '@/features/settings/queries'
 import { useSoloFilterStore } from '@/stores/soloFilterStore'
 import { DEFAULT_GAP_MINUTES } from '@/stores/filterDefaults'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useDeploymentCapability } from '@/stores/useDeploymentCapability'
 import { intlLocale } from '@/lib/formatters'
 import { useCapability, useCapabilityStrict } from '@/lib/capabilities/capabilities'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
@@ -49,6 +50,8 @@ export function HomePage() {
   const { data: fieldMappings } = useFieldMappings()
   const { data: settings } = useSettings()
   const showProgression = settings?.show_progression ?? true
+  // Application de bureau : pas d'image de couverture, la bannière d'identité ouvre la page.
+  const compactChrome = useDeploymentCapability('can_use_compact_chrome')
   const t = (key: HomeManifestKey, values?: Record<string, string | number>) =>
     formatMessage(homeManifest, key, locale, values)
   // Gating multi-titre (Phase 5) : la carte « Playlists récentes » (CSR) dépend de
@@ -198,9 +201,11 @@ export function HomePage() {
 
   return (
     <div className="relative isolate flex flex-col">
-      <div className="sticky top-0 z-0 px-6 pt-0" data-testid="home-hero-banner-sticky">
-        <HomeHeroBanner />
-      </div>
+      {!compactChrome && (
+        <div className="sticky top-0 z-0 px-6 pt-0" data-testid="home-hero-banner-sticky">
+          <HomeHeroBanner />
+        </div>
+      )}
 
       <div className="relative z-10 space-y-6 bg-background px-6 pb-6 pt-6">
         {/* B9 : signal discret si données partielles (compte privé) */}

@@ -108,6 +108,11 @@ type DeploymentCapabilities struct {
 	// qui choisit, jamais GOOS seul. Le profil desktop est Windows seul ; le serveur refuse de démarrer
 	// sous cette capacité si le coffre est indisponible.
 	TokenVault bool
+	// CompactChrome : l'interface adopte le chrome d'une application de bureau — barre latérale à la place de
+	// la barre haute, fenêtre « À propos » à la place du pied de page, accueil sans image de couverture,
+	// sans les éléments qui n'ont de sens que sur un site (déconnexion, téléchargement, liens du développeur).
+	// Le client branche dessus, jamais sur le profil (D-4).
+	CompactChrome bool
 }
 
 // DeploymentProfile est embarqué dans AppConfig : le profil résolu et ses capacités.
@@ -202,6 +207,7 @@ func capabilitiesOf(cfg *AppConfig) DeploymentCapabilities {
 		PoolGrantedToLocalUser: desktop,
 		WakeSequence:           desktop,
 		TokenVault:             desktop,
+		CompactChrome:          desktop,
 	}
 }
 

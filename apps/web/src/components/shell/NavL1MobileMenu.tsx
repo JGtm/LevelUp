@@ -6,17 +6,16 @@
  * déborde hors viewport : on le remplace par un bouton hamburger qui ouvre un
  * panneau latéral gauche listant toutes les sections + leurs onglets.
  *
- * Source des sections : `L1_SECTIONS` (module partagé navL1Sections), donc
- * aucune duplication de structure avec le rendu desktop.
+ * Le rendu des sections et de leurs onglets est `NavSectionList`, partagé avec la
+ * barre latérale de l'application de bureau (SidebarNav).
  */
-import { Link } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
-import { playerRelativePath, routeTemplateSuffix } from '@/lib/title-routing'
 import { log } from './_logger'
 import type { L1Section } from './navL1Sections'
+import { NavSectionList } from './NavSectionList'
 
 interface NavL1MobileMenuProps {
   /** Sections visibles (déjà filtrées, ex: Ascension masquée si progression off). */
@@ -118,56 +117,14 @@ export function NavL1MobileMenu({ sections, pathname, titleSlug, playerSlug }: N
 
         {/* Liste des sections (scrollable) */}
         <nav className="flex-1 overflow-y-auto py-2" aria-label={t('common.nav.sections_aria')}>
-          {sections.map((section) => {
-            const isActive = section.matchPathname(pathname)
-            const suffix = playerRelativePath(pathname)
-            return (
-              <div key={section.key} className="px-2">
-                <Link
-                  to={section.defaultPath}
-                  params={{ titleSlug, playerSlug }}
-                  onClick={() => setOpen(false)}
-                  role="menuitem"
-                  aria-current={isActive ? 'page' : undefined}
-                  className={[
-                    'flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors',
-                    isActive
-                      ? 'bg-sidebar-primary text-sidebar-primary-foreground'
-                      : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-                  ].join(' ')}
-                >
-                  {section.icon}
-                  {t(section.labelKey)}
-                </Link>
-
-                {section.tabs && (
-                  <div className="mb-1 ml-3 mt-0.5 flex flex-col border-l border-border pl-2">
-                    {section.tabs.map((tab) => {
-                      const tabActive = suffix !== null && suffix === routeTemplateSuffix(tab.path)
-                      return (
-                        <Link
-                          key={tab.key}
-                          to={tab.path}
-                          params={{ titleSlug, playerSlug }}
-                          onClick={() => setOpen(false)}
-                          role="menuitem"
-                          aria-current={tabActive ? 'page' : undefined}
-                          className={[
-                            'rounded-md px-3 py-1.5 text-sm transition-colors',
-                            tabActive
-                              ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                              : 'text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-                          ].join(' ')}
-                        >
-                          {t(tab.labelKey)}
-                        </Link>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
-            )
-          })}
+          <NavSectionList
+            variant="drawer"
+            sections={sections}
+            pathname={pathname}
+            titleSlug={titleSlug}
+            playerSlug={playerSlug}
+            onNavigate={() => setOpen(false)}
+          />
         </nav>
       </div>
     </div>

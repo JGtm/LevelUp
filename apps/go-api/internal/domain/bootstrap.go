@@ -46,6 +46,7 @@ type CapabilityMap struct {
 	CanOfferWindowsDownload bool `json:"can_offer_windows_download" doc:"Téléchargement de l'application Windows proposé."`
 	CanEditSettings         bool `json:"can_edit_settings" doc:"Réglages de l'instance modifiables (figés en démo)."`
 	CanUploadMedia          bool `json:"can_upload_media" doc:"Dépôt de captures (refusé en démo)."`
+	CanUseCompactChrome     bool `json:"can_use_compact_chrome" doc:"Chrome d'application de bureau : barre latérale, fenêtre À propos, accueil sans image de couverture."`
 
 	// Deployment : nom du profil de déploiement, pour l'affichage et le diagnostic SEULEMENT.
 	Deployment string `json:"deployment" enum:"hosted,desktop,demo,dev" doc:"Profil de déploiement (affichage et diagnostic ; ne jamais brancher dessus)."`
@@ -195,6 +196,15 @@ type BootstrapResponse struct {
 	// settings (read-only, sauf langue/accessibilité) et basculer le changement de
 	// langue en client-side (le PATCH /settings est refusé en démo).
 	DemoMode bool `json:"demo_mode"`
+	// AppInfo : version et dossier des données de l'application, servis seulement quand l'instance
+	// adopte le chrome d'application de bureau (capacité can_use_compact_chrome) ; absent sinon.
+	AppInfo *AppInfo `json:"app_info,omitempty" doc:"Version de l'application et racine des données, pour la fenêtre À propos (chrome de bureau seulement)."`
+}
+
+// AppInfo : ce que la fenêtre « À propos » de l'application de bureau montre de l'installation.
+type AppInfo struct {
+	Version  string `json:"version" doc:"Version de l'application (celle du serveur)."`
+	DataRoot string `json:"data_root" doc:"Dossier des données de l'utilisateur (bases, jetons, archive des films)."`
 }
 
 // PlayersListResponse est la réponse de GET /api/v1/players.

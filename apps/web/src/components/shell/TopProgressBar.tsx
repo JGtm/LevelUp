@@ -47,7 +47,12 @@ function trickleIncrement(current: number): number {
   return 0
 }
 
-export function TopProgressBar() {
+export interface TopProgressBarProps {
+  /** Position fixe de la barre. Défaut : sous la barre haute (h-12) ; le chrome de bureau la pose contre la barre latérale. */
+  placement?: string
+}
+
+export function TopProgressBar({ placement = 'left-0 right-0 top-12' }: TopProgressBarProps) {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   // Uniquement les queries sans données en cache (premier chargement d'une page).
   // Les refetch background ne maintiennent pas la barre.
@@ -181,7 +186,7 @@ export function TopProgressBar() {
   if (!visible && progress === 0) return null
 
   return (
-    <div aria-hidden className="pointer-events-none fixed left-0 right-0 top-12 z-50 h-1">
+    <div aria-hidden className={`pointer-events-none fixed ${placement} z-50 h-1`}>
       <div
         className="h-full bg-sidebar-primary shadow-[0_0_8px_color-mix(in_oklch,var(--sidebar-primary)_60%,transparent)]"
         style={{

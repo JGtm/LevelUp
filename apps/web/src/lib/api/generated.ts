@@ -4734,6 +4734,12 @@ export interface components {
             /** @description Vrai si l'appelant peut réessayer (5xx / indisponibilité transitoire) */
             retryable: boolean;
         };
+        AppInfo: {
+            /** @description Dossier des données de l'utilisateur (bases, jetons, archive des films). */
+            data_root: string;
+            /** @description Version de l'application (celle du serveur). */
+            version: string;
+        };
         AppearanceComponentDiagnosis: {
             component: string;
             detail: string;
@@ -5069,6 +5075,8 @@ export interface components {
         };
         BootstrapResponse: {
             active_sync_job_id?: string;
+            /** @description Version de l'application et racine des données, pour la fenêtre À propos (chrome de bureau seulement). */
+            app_info?: components["schemas"]["AppInfo"];
             /** @enum {string} */
             auth_mode: "none" | "password" | "xbox";
             /** @enum {string} */
@@ -5407,6 +5415,8 @@ export interface components {
             can_use_accounts: boolean;
             /** @description Espace d'administration de l'instance. */
             can_use_admin: boolean;
+            /** @description Chrome d'application de bureau : barre latérale, fenêtre À propos, accueil sans image de couverture. */
+            can_use_compact_chrome: boolean;
             /** @description Relais d'alertes Discord. */
             can_use_discord: boolean;
             /** @description Groupes (accès mutuel entre comptes). */

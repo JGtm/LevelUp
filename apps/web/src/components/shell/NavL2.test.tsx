@@ -9,6 +9,7 @@ import { screen } from '@testing-library/react'
 import { renderWithProviders } from '@/test/render-utils'
 import { resolveRoutePath } from '@/test/routeLinkMock'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { desktopCapabilities, testCapabilities } from '@/test/capabilities'
 
 vi.mock('@tanstack/react-router', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-router')>()
@@ -76,5 +77,26 @@ describe('NavL2 : onglet Citations / Commendations', () => {
       'href',
       '/t/halo_5/players/test-player/career/citations',
     )
+  })
+})
+
+describe('NavL2 : chrome de bureau', () => {
+  beforeEach(() => useAppShellStore.setState({ locale: 'fr', capabilities: null }))
+
+  it('la barre d’onglets Carrière fait double emploi avec la barre latérale : absente', () => {
+    setTitle('partial', ['career', 'citations'])
+    useAppShellStore.setState({ capabilities: testCapabilities(desktopCapabilities()) })
+    renderWithProviders(<NavL2 />)
+
+    expect(screen.queryByRole('link', { name: 'Citations' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('navigation')).not.toBeInTheDocument()
+  })
+
+  it('le site (capacité fausse) garde la barre d’onglets Carrière', () => {
+    setTitle('partial', ['career', 'citations'])
+    useAppShellStore.setState({ capabilities: testCapabilities() })
+    renderWithProviders(<NavL2 />)
+
+    expect(screen.getByRole('link', { name: 'Citations' })).toBeInTheDocument()
   })
 })
