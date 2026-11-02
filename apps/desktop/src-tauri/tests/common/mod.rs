@@ -140,7 +140,7 @@ impl Host for Recorder {
     fn announce_port(&mut self, port: u16) {
         self.push(Call::Port(port));
     }
-    fn exit_app(&mut self) {
+    fn exit_app(&mut self, _outcome: Outcome) {
         self.push(Call::Exit);
     }
 }

@@ -2,7 +2,9 @@
 //! boite de dialogue native derriere [`Prompt`]. Aucune decision ici (elles sont dans
 //! `levelup_desktop::updater`), aucun libelle (ils viennent du catalogue).
 
-use levelup_desktop::updater::{Decision, Installer, Offer, Prompt, PromptText, UpdateSource};
+use levelup_desktop::updater::{
+    Decision, Installer, Notice, Notifier, Offer, Prompt, PromptText, UpdateSource, notice_text,
+};
 use tauri::AppHandle;
 use tauri_plugin_updater::{Update, UpdaterExt};
 
@@ -67,5 +69,23 @@ impl Prompt for DialogPrompt {
             rfd::MessageDialogResult::Custom(label) if label == text.install => Decision::Install,
             _ => Decision::Later,
         }
+    }
+}
+
+/// La boite d'information native posee apres l'arret du serveur (mise a jour repoussee, installation
+/// echouee) : un seul bouton, le texte vient du catalogue.
+pub struct DialogNotifier {
+    pub locale: &'static str,
+}
+
+impl Notifier for DialogNotifier {
+    fn show(&mut self, notice: Notice) {
+        let text = notice_text(self.locale, notice);
+        rfd::MessageDialog::new()
+            .set_title(text.title.as_str())
+            .set_description(text.message.as_str())
+            .set_level(rfd::MessageLevel::Warning)
+            .set_buttons(rfd::MessageButtons::Ok)
+            .show();
     }
 }

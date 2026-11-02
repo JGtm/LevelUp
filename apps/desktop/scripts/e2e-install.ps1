@@ -17,11 +17,15 @@
          ne reste sous la racine de donnees (hors backups) : l'observable d'un arret propre
          (contrat coquille/serveur, plan section 6, point 5) ;
       4. relancement (meme port memorise, /health 200) puis nouvelle fermeture propre ;
-      5. desinstallation silencieuse : le programme disparait, la racine de donnees existe encore.
+      5. desinstallation silencieuse : le programme disparait ; la racine de donnees par defaut
+         (%LOCALAPPDATA%\LevelUp), ou le script a pose une sentinelle avant l'installation, existe
+         encore avec sa sentinelle (le desinstalleur ne la supprime jamais), comme la racine jetable.
 
-    Le script refuse de s'executer si LevelUp est deja installe (il ne touche jamais a une
-    installation reelle). Il rend la main avec le code 0 ou 1 ; en cas d'echec il copie les
-    journaux sous -ArtifactsDir.
+    Verifications prealables, AVANT tout lancement et sans aucun nettoyage : le script refuse (code 1)
+    si LevelUp est deja installe (dossier du programme, cle de registre NSIS du produit ou de
+    desinstallation) ou si levelup-desktop.exe / levelup-server.exe tourne. Il ne tue que les
+    processus qu'il a lui-meme lances et ne desinstalle que ce qu'il a lui-meme installe. Il rend la
+    main avec le code 0 ou 1 ; en cas d'echec il copie les journaux sous -ArtifactsDir.
 
 .PARAMETER Installer
     L'installeur NSIS (LevelUp_X.Y.Z_x64-setup.exe).
@@ -50,6 +54,10 @@ param(
 $ErrorActionPreference = 'Stop'
 $InstallDir = Join-Path $env:LOCALAPPDATA 'Programs\LevelUp'
 $DefaultDataRoot = Join-Path $env:LOCALAPPDATA 'LevelUp'
+$Sentinel = Join-Path $DefaultDataRoot 'e2e-sentinelle.txt'
+# Editeur de la cle de registre NSIS (HKCU:\Software\<editeur>\LevelUp) : deduit par Tauri de `identifier`
+# (info.lvelup.desktop) dans tauri.conf.json.
+$Manufacturer = 'lvelup'
 $MainExe = Join-Path $InstallDir 'levelup-desktop.exe'
 # Ligne de journal du serveur a l'arret, construite sans caracteres non ASCII dans ce fichier.
 $StopMessage = 'arr' + [char]0xEA + 't: termin' + [char]0xE9
@@ -105,6 +113,7 @@ function Invoke-Run([int]$Number) {
     $portFile = Join-Path $DataDir 'desktop\port'
     Step "lancement $Number"
     $process = Start-Process -FilePath $MainExe -PassThru
+    $script:Launched += $process
     try {
         $port = Wait-Until { if (Test-Path $portFile) { $text = (Get-Content $portFile -Raw).Trim(); if ($text -match '^\d+$') { [int]$text } } } "le fichier $portFile"
         Step "port $port"
@@ -139,11 +148,68 @@ function Copy-Failure {
     Write-Host "[e2e] journaux copies sous $ArtifactsDir"
 }
 
-$script:FirstPort = 0
-try {
-    if (Test-Path $InstallDir) { Fail "$InstallDir existe deja : le test ne touche pas a une installation reelle (desinstaller d'abord)" }
-    if (Get-Process -Name 'levelup-desktop', 'levelup-server' -ErrorAction SilentlyContinue) { Fail 'LevelUp est deja lance' }
+# Les emplacements ou NSIS note une installation : la cle du produit (valeur par defaut = dossier,
+# relue par RestorePreviousInstallLocation) et les cles de desinstallation (HKCU et HKLM).
+function Get-Registrations {
+    $sources = @(
+        @{ Path = "HKCU:\Software\$Manufacturer\LevelUp"; Name = ''; Uninstall = $false },
+        @{ Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\LevelUp'; Name = 'InstallLocation'; Uninstall = $true },
+        @{ Path = 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\LevelUp'; Name = 'InstallLocation'; Uninstall = $true }
+    )
+    foreach ($source in $sources) {
+        if (-not (Test-Path $source.Path)) { continue }
+        $value = [string](Get-Item $source.Path).GetValue($source.Name)
+        [pscustomobject]@{ Path = $source.Path; Location = $value.Trim().Trim('"'); Uninstall = $source.Uninstall }
+    }
+}
 
+# Verifications prealables : tout ce qui ressemble a une installation ou a un LevelUp en cours refuse
+# le test, SANS aucun nettoyage (ce script ne desinstalle et ne tue que ce qu'il a lui-meme cree).
+function Test-Preconditions {
+    $problems = @()
+    if (Test-Path $InstallDir) { $problems += "$InstallDir existe deja" }
+    foreach ($registration in @(Get-Registrations)) {
+        $where = $registration.Location
+        if ($registration.Uninstall) {
+            $problems += "installation enregistree sous $($registration.Path) ($where)"
+        }
+        elseif ($where -and (Test-Path $where)) {
+            $problems += "installation enregistree sous $($registration.Path) : $where existe"
+        }
+        elseif ($where -and $where -ne $InstallDir) {
+            # Cle perimee vers un autre dossier : l'installeur la relirait et installerait ailleurs.
+            $problems += "cle $($registration.Path) vers $where : l'installeur s'y installerait"
+        }
+    }
+    $running = @(Get-Process -Name 'levelup-desktop', 'levelup-server' -ErrorAction SilentlyContinue)
+    if ($running.Count -gt 0) { $problems += 'LevelUp est deja lance (pid ' + (($running | ForEach-Object Id) -join ', ') + ')' }
+    return $problems
+}
+
+# Sentinelle posee dans la racine de donnees PAR DEFAUT : le desinstalleur ne doit jamais la supprimer.
+function Remove-Sentinel {
+    if (-not $script:SentinelPlaced) { return }
+    Remove-Item -Path $Sentinel -Force -ErrorAction SilentlyContinue
+    $script:SentinelPlaced = $false
+    if ($script:CreatedDefaultRoot -and (Test-Path $DefaultDataRoot) -and -not (Get-ChildItem -Path $DefaultDataRoot -Force)) {
+        Remove-Item -Path $DefaultDataRoot -Force -ErrorAction SilentlyContinue
+    }
+}
+
+$script:FirstPort = 0
+$script:Launched = @()
+$script:SentinelPlaced = $false
+$script:CreatedDefaultRoot = $false
+$problems = @(Test-Preconditions)
+if ($problems.Count -gt 0) {
+    foreach ($problem in $problems) { Write-Host "[e2e] REFUS : $problem" }
+    Write-Host "[e2e] le test ne touche pas a une installation reelle ni a un LevelUp en cours : rien n'a ete lance, installe ni retire"
+    exit 1
+}
+
+$installedByScript = $false
+$uninstalledByScript = $false
+try {
     # Environnement du test : racine de donnees jetable, aucun reglage herite de la session.
     foreach ($name in (Get-ChildItem Env: | Where-Object { $_.Name -like 'LEVELUP_*' -or $_.Name -like 'SPNKR_*' }).Name) {
         Remove-Item "Env:$name"
@@ -151,7 +217,16 @@ try {
     New-Item -ItemType Directory -Force -Path $DataDir | Out-Null
     $env:LEVELUP_DATA_DIR = $DataDir
 
+    if (-not (Test-Path $DefaultDataRoot)) {
+        New-Item -ItemType Directory -Force -Path $DefaultDataRoot | Out-Null
+        $script:CreatedDefaultRoot = $true
+    }
+    Set-Content -Path $Sentinel -Value 'sentinelle e2e : le desinstalleur ne doit jamais la supprimer' -Encoding ASCII
+    $script:SentinelPlaced = $true
+
     Step "installation silencieuse de $Installer"
+    # Des ici, ce qui se trouve sous $InstallDir est du fait de ce script (les verifications ont garanti qu'il n'y avait rien).
+    $installedByScript = $true
     $setup = Start-Process -FilePath $Installer -ArgumentList '/S' -Wait -PassThru
     if ($setup.ExitCode -ne 0) { Fail "l'installeur a rendu le code $($setup.ExitCode)" }
     foreach ($relative in 'levelup-desktop.exe', 'levelup-server.exe', 'ffmpeg.exe', 'ffprobe.exe', 'LICENSE.LGPL',
@@ -168,12 +243,15 @@ try {
     $marker = Join-Path $DataDir 'desktop\port'
     $uninstaller = Start-Process -FilePath (Join-Path $InstallDir 'uninstall.exe') -ArgumentList '/S' -Wait -PassThru
     if ($uninstaller.ExitCode -ne 0) { Fail "le desinstalleur a rendu le code $($uninstaller.ExitCode)" }
+    $uninstalledByScript = $true
     # Le desinstalleur NSIS se recopie et rend la main avant la fin : on attend la disparition du programme.
     Wait-Until { -not (Test-Path $MainExe) } "la disparition de $MainExe" 120 | Out-Null
     Wait-Until { -not (Test-Path $InstallDir) } "la disparition de $InstallDir" 60 | Out-Null
+    # L'invariant reel : le desinstalleur ne supprime JAMAIS la racine de donnees par defaut de l'utilisateur.
+    if (-not (Test-Path $Sentinel)) { Fail "le desinstalleur a supprime la sentinelle de $DefaultDataRoot : la racine de donnees par defaut n'est pas conservee" }
     if (-not (Test-Path $marker)) { Fail "la racine de donnees $DataDir a perdu $marker a la desinstallation" }
     if (-not (Test-Path (Join-Path $DataDir 'logs'))) { Fail 'la racine de donnees a perdu ses journaux a la desinstallation' }
-    Step 'programme retire, racine de donnees conservee'
+    Step 'programme retire, racine de donnees par defaut (sentinelle) et racine jetable conservees'
 
     Write-Host '[e2e] OK'
     $exitCode = 0
@@ -184,12 +262,18 @@ catch {
     $exitCode = 1
 }
 finally {
-    Get-Process -Name 'levelup-desktop', 'levelup-server' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    # Seulement ce que ce script a cree : les processus qu'il a lances (arbre compris), jamais un LevelUp d'ailleurs.
+    foreach ($launched in $script:Launched) {
+        if (-not $launched.HasExited) {
+            & taskkill.exe /PID $launched.Id /T /F | Out-Null
+        }
+    }
     # Un echec laisse l'installation du test en place : la retirer pour qu'un nouvel essai reparte propre.
     $leftover = Join-Path $InstallDir 'uninstall.exe'
-    if ($exitCode -ne 0 -and (Test-Path $leftover)) {
+    if ($installedByScript -and -not $uninstalledByScript -and (Test-Path $leftover)) {
         Start-Process -FilePath $leftover -ArgumentList '/S' -Wait | Out-Null
         Write-Host '[e2e] installation du test retiree apres l''echec'
     }
+    Remove-Sentinel
 }
 exit $exitCode

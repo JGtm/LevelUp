@@ -897,6 +897,29 @@ mises à jour (ressources retéléchargées à chaque version).
   inchangé (L16) ; (7) en CI les caches cargo du job `desktop-build` pèsent la cible de release entière : à surveiller (limite
   de 10 Go du dépôt) ; (8) un push sur `release/**` lance maintenant 2 jobs Windows lourds (~15 à 25 min) en plus de ci.yml.
 
+- **Revue adversariale L17 (2026-11-02, deux relecteurs Opus) : 6 constats recevables (3 P1, 3 P2 retenus), 0 P0, corrigés.**
+  (C1, P1) l'installeur de mise à jour ne part plus que si `stopped` est arrivé avec `clean=true` ET que le serveur n'a
+  pas été tué : `updater::install_allowed` (fonction pure sur l'issue du superviseur, qui porte maintenant `kill_failed` ;
+  `Host::exit_app` reçoit cette issue) ; sinon événement `update_skipped_unclean_stop reason=killed|kill_failed|unclean|no_stopped`
+  dans `desktop.log`, boîte native (`update_skipped_unclean`, fr et en, catalogue de repli et route `/desktop/strings`) et sortie
+  sans installer ; faux serveur : option `FAKE_STOP_CLEAN=false` ; tests `tests/updater.rs` (arrêt non propre ; serveur tué
+  au budget) + test unitaire de la décision ; commentaire de `updater.rs` et phrase de l'ADR 0045 corrigés.
+  (C2, P1) commentaire inversé de `desktop.toml` réécrit : les libellés de la boîte sont servis par la route ET présents dans le
+  catalogue de repli compilé (la boîte peut s'afficher serveur arrêté). (C3, P2) un échec de `Update::install` est journalisé
+  (`update_install_failed`) et montré dans une boîte native (`update_install_failed`, fr et en) ; le test de l'installation
+  refusée vérifie le message. (C4, P1) `e2e-install.ps1` : vérifications préalables AVANT le `try/finally` (dossier, clé de
+  registre NSIS `HKCU\Software\lvelup\LevelUp` et clés de désinstallation, processus en cours) avec refus code 1 sans aucun
+  nettoyage ; le `finally` ne tue que les processus lancés par le script (arbre) et ne désinstalle que ce qu'il a installé ;
+  témoin : dossier factice, clé factice et faux `levelup-server.exe` en cours, script sorti 1, rien tué ni retiré.
+  (C5, P2) sentinelle `e2e-sentinelle.txt` posée dans `%LOCALAPPDATA%\LevelUp` avant l'installation, exigée après la
+  désinstallation (l'assertion sur la racine jetable reste). (C6, P2) `cmd/updater-verify` (vérification minisign du `.sig` contre
+  `plugins.updater.pubkey`, tests sur les deux algorithmes) et étape de `release.yml` juste après « Installeur et signature
+  présents » ; joué sur l'installeur et le `.sig` du lot (succès, puis échec avec un octet modifié).
+  **Relevé, non traité** : le fichier `.sig` de Tauri est le base64 du fichier minisign ENTIER (comme la clé publique de
+  `tauri.conf.json`), pas le fichier minisign nu ; la clé `HKCU\Software\lvelup\LevelUp` (valeur par défaut = dossier
+  d'installation) subsistait sur ce poste sans installation réelle (reste d'un essai antérieur) : le contrôle préalable l'accepte
+  seulement quand elle désigne le dossier par défaut et que ce dossier est absent.
+
 ## 11. Protocole de reprise de session
 
 1. Lire ce plan (§9, statuts) et la dernière entrée `thought_log` du chantier.

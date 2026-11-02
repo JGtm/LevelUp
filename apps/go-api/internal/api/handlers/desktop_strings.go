@@ -52,11 +52,14 @@ func (h *DesktopStringsHandler) handle(ctx context.Context, _ *struct{}) (*deskt
 		"stopped":                 i18n.Msg(loc, "desktop.stopped", nil),
 		// Le gabarit voyage tel quel : la coquille connaît le numéro de version, pas le serveur.
 		"update_available": i18n.Msg(loc, "desktop.update_available", i18n.Params{"version": "{version}"}),
-		// Boîte de dialogue de mise à jour : la coquille les lit dans son catalogue de repli (même fichier).
+		// Boîte de dialogue de mise à jour : servis ici ET présents dans le catalogue de repli de la coquille (même fichier).
 		"update_title":         i18n.Msg(loc, "desktop.update_title", nil),
 		"update_install":       i18n.Msg(loc, "desktop.update_install", nil),
 		"update_later":         i18n.Msg(loc, "desktop.update_later", nil),
 		"update_notes_heading": i18n.Msg(loc, "desktop.update_notes_heading", nil),
+		// Fin de mise à jour sans installation : montrés par la coquille après l'arrêt du serveur, depuis son catalogue de repli.
+		"update_skipped_unclean": i18n.Msg(loc, "desktop.update_skipped_unclean", nil),
+		"update_install_failed":  i18n.Msg(loc, "desktop.update_install_failed", nil),
 	}
 	return out, nil
 }

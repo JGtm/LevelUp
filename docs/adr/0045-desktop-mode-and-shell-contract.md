@@ -269,7 +269,7 @@ difference among the four.
 **D-16 — Updater signed by its own key; no code signing (plan D-10, A21, A3).** The installer is **not** code-signed:
 SmartScreen warns at each installation, said on the download page. The updater is signed by a Tauri key pair
 independent of any certificate; `latest.json` is signed, published on GitHub Releases, and the installer runs only after
-`stopped` (an installer cannot replace a running executable). The updater is offered, never imposed. The private key and
+a clean `stopped` (an installer cannot replace a running executable). The updater is offered, never imposed. The private key and
 its password are repository secrets only as working copies (`TAURI_SIGNING_PRIVATE_KEY`,
 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`); workflows reading `secrets.` pin their actions by SHA
 (`ci_workflows_security_test.go`); the public key, which is not a secret, is allowlisted in `.gitleaks.toml`.
@@ -368,8 +368,12 @@ maintainer on a clean machine. A lot without a test at its level is not closed.
   `update_available` of `desktop.toml`, compiled into the fallback catalogue, no language literal in the Rust); "Later" ends
   the proposal for this launch, nothing is downloaded. After "Install" the package is downloaded while the server keeps
   running, then the gate is armed and the ordinary clean close starts (stdin closed, `stopped`, process exit); the
-  installer is launched by `exit_app`, which the supervisor calls only after the server process has left (on Windows the
-  installer quits the application). The notes shown are the `notes` field of `latest.json` (the French changelog section of
+  installer is launched by `exit_app` only after a clean stop: `stopped` with `clean=true` and the process gone without
+  being killed (`install_allowed`, a pure function of the supervisor outcome). Otherwise (killed, kill failed,
+  `clean=false`, no `stopped`) nothing is installed: `desktop.log` gets `update_skipped_unclean_stop` with the reason, a
+  native box (`update_skipped_unclean`) says the update will be offered at the next launch, and the application exits. A
+  refused install logs `update_install_failed` and shows `update_install_failed` (on Windows the installer quits the
+  application). The notes shown are the `notes` field of `latest.json` (the French changelog section of
   the release). Debug builds never register the updater. `tests/updater.rs` plays the sequence against the fake sidecar.
 - **Updater key: procedure (D-16, L17.6).** Generation: `npx tauri signer generate -w <file>` in `apps/desktop`; the
   public half goes to `plugins.updater.pubkey` of `tauri.conf.json` and to `.gitleaks.toml` in the same commit; the
@@ -381,6 +385,9 @@ maintainer on a clean machine. A lot without a test at its level is not closed.
   bad signature: install a test build signed from the copy over a build carrying the public key). Rotation: release N
   signed with the old key embeds the new public key; release N+1 is signed with the new one; a lost or compromised key
   cannot be rotated this way (users reinstall from the download page).
+  Release check: the Tauri CLI only warns when the secret key does not match `plugins.updater.pubkey`, so the release
+  workflow runs `go run ./cmd/updater-verify` (minisign verification of the `.sig` against the embedded public key,
+  key id and ed25519 signature) right after building the installer; a mismatch fails the release with an explicit error.
 
 ## Consequences
 

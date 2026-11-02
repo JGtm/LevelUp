@@ -283,6 +283,21 @@ jobs:
           fi
           ls -la "$dir"
 
+      # Le CLI Tauri ne fait qu'avertir quand TAURI_SIGNING_PRIVATE_KEY n'est pas la moitié de la clé publique
+      # embarquée (plugins.updater.pubkey) : sans ce contrôle la release partirait avec un installeur qui refuse
+      # toutes les mises à jour suivantes.
+      - name: Signature de l'updater conforme à la clé publique embarquée
+        if: steps.ver.outputs.tag == 'true'
+        working-directory: apps/go-api
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          installer="../desktop/src-tauri/target/release/bundle/nsis/LevelUp_${VERSION}_x64-setup.exe"
+          if ! go run ./cmd/updater-verify -pubkey ../desktop/src-tauri/tauri.conf.json -sig "$installer.sig" -file "$installer"; then
+            echo "::error::la signature de l'installeur ne correspond pas à la clé publique embarquée (plugins.updater.pubkey de tauri.conf.json) : le secret TAURI_SIGNING_PRIVATE_KEY et la clé publique sont différents (rotation non faite ?). Lire l'ADR 0045 D-16 avant de relancer."
+            exit 1
+          fi
+
       - name: Upload installeur
         uses: actions/upload-artifact@v4
         with:

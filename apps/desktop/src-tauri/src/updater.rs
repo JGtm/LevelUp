@@ -1,5 +1,5 @@
-//! La mise a jour (ADR 0045 D-16, plan A3) : proposee, jamais imposee, installee seulement apres
-//! l'arret du serveur.
+//! La mise a jour (ADR 0045 D-16, plan A3) : proposee, jamais imposee, installee seulement apres un
+//! arret propre du serveur.
 //!
 //! Tout ce qui se decide sans fenetre vit ici, sans tauri : la machine d'etats ([`UpdateFlow`]), la
 //! porte d'installation ([`InstallGate`]), l'hote qui installe a la sortie ([`UpdateHost`]) et le
@@ -16,7 +16,9 @@
 //!                  |-- echec     --> rien (journalise)
 //!                  `-- termine   --> porte armee, demande de fermeture propre
 //!                        ... fermeture : stdin ferme, `stopped`, sortie du serveur ...
-//!                        --> `exit_app` : l'installeur se lance (il quitte l'application)
+//!                        --> `exit_app` : l'installeur se lance si l'arret a ete propre (`stopped`
+//!                            avec `clean=true`, serveur non tue), sinon rien n'est installe, la raison
+//!                            est journalisee et une boite previent ; l'installeur quitte l'application
 //! ```
 
 use std::sync::{Arc, Condvar, Mutex};
@@ -25,7 +27,7 @@ use std::time::{Duration, Instant};
 use crate::catalogue;
 use crate::logfile::{LogSink, Source};
 use crate::screen::Screen;
-use crate::supervisor::{Closer, Host};
+use crate::supervisor::{Closer, Host, Outcome};
 
 /// Longueur maximale des notes montrees dans la boite de dialogue (en caracteres).
 pub const MAX_NOTES_CHARS: usize = 1200;
@@ -300,23 +302,134 @@ fn log_shell(log: &LogSink, text: &str) {
     log.write_line(Source::Shell, text);
 }
 
+/// Pourquoi l'installation ne part pas : l'arret du serveur n'a pas ete propre.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SkipReason {
+    /// Le kill a echoue : le serveur peut tourner encore.
+    KillFailed,
+    /// La coquille a du tuer le serveur (budget d'arret depasse).
+    Killed,
+    /// Le serveur a annonce `stopped` avec `clean=false`.
+    Unclean,
+    /// Aucun `stopped` n'est arrive.
+    NoStopped,
+}
+
+impl SkipReason {
+    /// Le nom journalise (`reason=` de l'evenement `update_skipped_unclean_stop`).
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::KillFailed => "kill_failed",
+            Self::Killed => "killed",
+            Self::Unclean => "unclean",
+            Self::NoStopped => "no_stopped",
+        }
+    }
+}
+
+/// La decision d'installer, PURE : l'installeur ne part que si `stopped` est arrive avec `clean=true`
+/// ET que le serveur n'a pas ete tue. Un installeur lance sur un serveur qui vit encore (ou dont la
+/// base n'a pas ete fermee proprement) remplacerait l'executable sous ses pieds.
+pub fn install_allowed(outcome: Outcome) -> Result<(), SkipReason> {
+    if outcome.kill_failed {
+        Err(SkipReason::KillFailed)
+    } else if outcome.killed {
+        Err(SkipReason::Killed)
+    } else {
+        match outcome.stopped_clean {
+            Some(true) => Ok(()),
+            Some(false) => Err(SkipReason::Unclean),
+            None => Err(SkipReason::NoStopped),
+        }
+    }
+}
+
+/// Un message que la coquille montre apres l'arret du serveur, quand la mise a jour ne s'est pas faite.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Notice {
+    /// Arret du serveur non propre : la mise a jour est repoussee au prochain lancement.
+    SkippedUnclean,
+    /// L'installeur a echoue : l'application se ferme sans installation.
+    InstallFailed,
+}
+
+impl Notice {
+    fn message_key(self) -> &'static str {
+        match self {
+            Self::SkippedUnclean => "update_skipped_unclean",
+            Self::InstallFailed => "update_install_failed",
+        }
+    }
+}
+
+/// Les textes d'une boite d'information, dans la langue de la coquille.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NoticeText {
+    pub title: String,
+    pub message: String,
+}
+
+/// Compose le texte d'un message depuis le catalogue de repli.
+pub fn notice_text(locale: &str, notice: Notice) -> NoticeText {
+    let text = |key: &str| catalogue::text(locale, key).unwrap_or_default().to_string();
+    NoticeText {
+        title: text("update_title"),
+        message: text(notice.message_key()),
+    }
+}
+
+/// Une boite d'information native (bloquante). Le serveur est deja arrete quand elle s'affiche : le
+/// texte vient du catalogue compile dans la coquille.
+pub trait Notifier: Send + 'static {
+    fn show(&mut self, notice: Notice);
+}
+
 /// L'hote qui enveloppe celui de la fenetre : lance la verification quand le serveur est pret et
-/// installe la mise a jour armee, juste avant la sortie de l'application et seulement alors (le
-/// superviseur n'appelle `exit_app` qu'apres la sortie du serveur : `stopped` recu, processus parti).
+/// installe la mise a jour armee, juste avant la sortie de l'application et seulement apres un arret
+/// propre (voir [`install_allowed`]) : sinon il journalise la raison, previent l'utilisateur et sort
+/// sans installer.
 pub struct UpdateHost<H: Host> {
     inner: H,
     gate: InstallGate,
     on_ready: Option<Box<dyn FnOnce() + Send>>,
     log: Arc<LogSink>,
+    notifier: Box<dyn Notifier>,
 }
 
 impl<H: Host> UpdateHost<H> {
-    pub fn new(inner: H, gate: InstallGate, log: Arc<LogSink>, on_ready: Box<dyn FnOnce() + Send>) -> Self {
+    pub fn new(
+        inner: H,
+        gate: InstallGate,
+        log: Arc<LogSink>,
+        on_ready: Box<dyn FnOnce() + Send>,
+        notifier: Box<dyn Notifier>,
+    ) -> Self {
         Self {
             inner,
             gate,
             on_ready: Some(on_ready),
             log,
+            notifier,
+        }
+    }
+
+    /// Lance l'installeur armee quand l'arret le permet ; sinon journalise et previent.
+    fn install_if_allowed(&mut self, install: Installer, outcome: Outcome) {
+        match install_allowed(outcome) {
+            Ok(()) => {
+                log_shell(&self.log, "event=update_install");
+                if let Err(e) = install() {
+                    log_shell(&self.log, &format!("event=update_install_failed err={e}"));
+                    self.notifier.show(Notice::InstallFailed);
+                }
+            }
+            Err(reason) => {
+                log_shell(
+                    &self.log,
+                    &format!("event=update_skipped_unclean_stop reason={}", reason.name()),
+                );
+                self.notifier.show(Notice::SkippedUnclean);
+            }
         }
     }
 }
@@ -342,14 +455,11 @@ impl<H: Host> Host for UpdateHost<H> {
         self.inner.announce_port(port);
     }
 
-    fn exit_app(&mut self) {
+    fn exit_app(&mut self, outcome: Outcome) {
         if let Some(install) = self.gate.take() {
-            log_shell(&self.log, "event=update_install");
-            if let Err(e) = install() {
-                log_shell(&self.log, &format!("event=update_install_failed err={e}"));
-            }
+            self.install_if_allowed(install, outcome);
         }
-        self.inner.exit_app();
+        self.inner.exit_app(outcome);
     }
 }
 
@@ -505,5 +615,62 @@ mod tests {
     #[test]
     fn la_poignee_de_fermeture_expire_si_elle_n_est_jamais_posee() {
         assert!(CloserSlot::default().wait(Duration::from_millis(50)).is_none());
+    }
+
+    fn outcome(stopped_clean: Option<bool>, killed: bool, kill_failed: bool) -> Outcome {
+        Outcome {
+            stopped_clean,
+            killed,
+            kill_failed,
+        }
+    }
+
+    #[test]
+    fn l_installation_ne_part_que_sur_un_arret_propre_sans_kill() {
+        assert_eq!(install_allowed(outcome(Some(true), false, false)), Ok(()));
+        assert_eq!(
+            install_allowed(outcome(Some(false), false, false)),
+            Err(SkipReason::Unclean)
+        );
+        assert_eq!(install_allowed(outcome(None, false, false)), Err(SkipReason::NoStopped));
+        // Un `stopped` propre ne rachete pas un kill : le serveur a ete tue ou a refuse de sortir.
+        assert_eq!(
+            install_allowed(outcome(Some(true), true, false)),
+            Err(SkipReason::Killed)
+        );
+        assert_eq!(install_allowed(outcome(None, true, false)), Err(SkipReason::Killed));
+        // Un kill echoue est la raison la plus precise : le processus vit peut-etre encore.
+        assert_eq!(
+            install_allowed(outcome(Some(true), true, true)),
+            Err(SkipReason::KillFailed)
+        );
+    }
+
+    #[test]
+    fn chaque_raison_a_un_nom_journalise_distinct() {
+        let names = [
+            SkipReason::KillFailed,
+            SkipReason::Killed,
+            SkipReason::Unclean,
+            SkipReason::NoStopped,
+        ]
+        .map(SkipReason::name);
+        assert_eq!(names, ["kill_failed", "killed", "unclean", "no_stopped"]);
+    }
+
+    #[test]
+    fn les_messages_apres_arret_sont_complets_dans_chaque_langue() {
+        for code in catalogue::LOCALES {
+            let skipped = notice_text(code, Notice::SkippedUnclean);
+            let failed = notice_text(code, Notice::InstallFailed);
+            for (name, value) in [
+                ("title", &skipped.title),
+                ("skipped", &skipped.message),
+                ("failed", &failed.message),
+            ] {
+                assert!(!value.trim().is_empty(), "{code}/{name} vide");
+            }
+            assert_ne!(skipped.message, failed.message, "{code} : deux messages identiques");
+        }
     }
 }

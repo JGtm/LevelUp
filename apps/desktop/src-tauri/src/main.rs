@@ -21,13 +21,13 @@ use levelup_desktop::roots::{self, Roots};
 use levelup_desktop::screen::Screen;
 use levelup_desktop::secret::Secret;
 use levelup_desktop::sidecar::SidecarSpec;
-use levelup_desktop::supervisor::{self, Closer, Host, ShellConfig};
+use levelup_desktop::supervisor::{self, Closer, Host, Outcome, ShellConfig};
 use levelup_desktop::updater::{CloserSlot, InstallGate, UpdateHost, run_update};
 use tauri::webview::DownloadEvent;
 use tauri::window::Color;
 use tauri::{AppHandle, Manager, RunEvent, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent};
 use tauri_plugin_opener::OpenerExt;
-use update_tauri::{DialogPrompt, PluginSource};
+use update_tauri::{DialogNotifier, DialogPrompt, PluginSource};
 use url::Url;
 
 /// Etiquette de la fenetre principale.
@@ -228,7 +228,7 @@ fn start_server(
     } else {
         Box::new(|| {})
     };
-    let host = UpdateHost::new(host, gate, log, on_ready);
+    let host = UpdateHost::new(host, gate, log, on_ready, Box::new(DialogNotifier { locale }));
     let handle = supervisor::start(config, host).map_err(|e| format!("lancement du serveur : {e}"))?;
     closer.set(handle.closer());
     let shell = app.state::<Shell>();
@@ -388,7 +388,7 @@ impl Host for TauriHost {
         self.port.store(port, Ordering::SeqCst);
     }
 
-    fn exit_app(&mut self) {
+    fn exit_app(&mut self, _outcome: Outcome) {
         self.exiting.store(true, Ordering::SeqCst);
         self.app.exit(0);
     }

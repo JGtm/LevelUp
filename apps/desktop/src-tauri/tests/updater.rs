@@ -11,11 +11,14 @@ use std::time::{Duration, Instant};
 
 use common::{Call, Recorder, Run, fresh_roots, launch_with_host, short_timeouts};
 use levelup_desktop::catalogue;
+use levelup_desktop::lifecycle::Timeouts;
 use levelup_desktop::logfile::{LogSink, MAX_LOG_BYTES};
 use levelup_desktop::roots;
 use levelup_desktop::screen::Screen;
+use levelup_desktop::supervisor::Outcome;
 use levelup_desktop::updater::{
-    CloserSlot, Decision, InstallGate, Installer, Offer, Prompt, PromptText, UpdateHost, UpdateSource, run_update,
+    CloserSlot, Decision, InstallGate, Installer, Notice, Notifier, Offer, Prompt, PromptText, UpdateHost,
+    UpdateSource, run_update,
 };
 
 type Events = Arc<Mutex<Vec<String>>>;
@@ -122,14 +125,27 @@ impl Prompt for FakePrompt {
     }
 }
 
+struct RecordingNotifier(Arc<Mutex<Vec<Notice>>>);
+
+impl Notifier for RecordingNotifier {
+    fn show(&mut self, notice: Notice) {
+        self.0.lock().unwrap().push(notice);
+    }
+}
+
 struct Harness {
     run: Run,
     events: Events,
     gate: InstallGate,
+    notices: Arc<Mutex<Vec<Notice>>>,
 }
 
 impl Harness {
     fn start(name: &str, scenario: Scenario, fake_env: &[(&str, &str)]) -> Self {
+        Self::start_with(name, scenario, fake_env, short_timeouts())
+    }
+
+    fn start_with(name: &str, scenario: Scenario, fake_env: &[(&str, &str)], timeouts: Timeouts) -> Self {
         let roots = fresh_roots(name);
         let recorder = Recorder::default();
         let events: Events = Arc::default();
@@ -155,14 +171,26 @@ impl Harness {
                 });
             })
         };
-        let host = UpdateHost::new(recorder.clone(), gate.clone(), log, on_ready);
-        let run = launch_with_host(&roots, fake_env, short_timeouts(), recorder, host);
+        let notices: Arc<Mutex<Vec<Notice>>> = Arc::default();
+        let host = UpdateHost::new(
+            recorder.clone(),
+            gate.clone(),
+            log,
+            on_ready,
+            Box::new(RecordingNotifier(notices.clone())),
+        );
+        let run = launch_with_host(&roots, fake_env, timeouts, recorder, host);
         slot.set(run.handle.as_ref().expect("poignee").closer());
-        Self { run, events, gate }
+        Self {
+            run,
+            events,
+            gate,
+            notices,
+        }
     }
 
     /// Fermeture demandee par l'utilisateur, puis attente de la sortie de l'application.
-    fn close_and_finish(&mut self) -> levelup_desktop::supervisor::Outcome {
+    fn close_and_finish(&mut self) -> Outcome {
         self.run.request_close();
         self.run.recorder.wait_exit();
         self.run.finish()
@@ -198,6 +226,11 @@ fn acceptee_la_mise_a_jour_s_installe_apres_l_arret_du_serveur_et_avant_la_sorti
     assert!(log.contains("event=update_close_requested"), "{log}");
     assert!(log.contains("event=update_install"), "{log}");
     assert!(!log.contains("event=update_install_failed"), "{log}");
+    assert!(!log.contains("event=update_skipped_unclean_stop"), "{log}");
+    assert!(
+        h.notices.lock().unwrap().is_empty(),
+        "aucun message sur un arret propre"
+    );
 }
 
 #[test]
@@ -285,6 +318,11 @@ fn une_installation_refusee_est_journalisee_et_l_application_sort_quand_meme() {
             .log()
             .contains("event=update_install_failed err=installeur refuse")
     );
+    assert_eq!(
+        *h.notices.lock().unwrap(),
+        vec![Notice::InstallFailed],
+        "l'utilisateur est prevenu que l'installation a echoue"
+    );
 }
 
 #[test]
@@ -300,6 +338,7 @@ fn l_hote_n_installe_rien_sans_mise_a_jour_armee() {
         InstallGate::default(),
         log,
         Box::new(move || flag.store(true, Ordering::SeqCst)),
+        Box::new(RecordingNotifier(Arc::default())),
     );
     let mut run = launch_with_host(&roots, &[], short_timeouts(), recorder, host);
     run.recorder.wait_url();
@@ -312,4 +351,64 @@ fn l_hote_n_installe_rien_sans_mise_a_jour_armee() {
         "le signal de pret est donne une fois l'entree chargee"
     );
     assert!(!run.log().contains("event=update_install"));
+}
+
+#[test]
+fn un_arret_non_propre_n_installe_rien_previent_et_sort_quand_meme() {
+    let mut h = Harness::start(
+        "maj-arret-non-propre",
+        Scenario::accepted(),
+        &[("FAKE_STOP_CLEAN", "false")],
+    );
+    h.run.wait_log("event=update_close_requested");
+    h.run.recorder.wait_exit();
+    let outcome = h.run.finish();
+
+    assert_eq!(outcome.stopped_clean, Some(false));
+    assert!(
+        !outcome.killed,
+        "le serveur est sorti seul : c'est `clean=false` qui interdit l'installation"
+    );
+    let events = snapshot(&h.events);
+    assert!(
+        !events.iter().any(|e| e.starts_with("install")),
+        "l'installeur ne doit pas partir : {events:?}"
+    );
+    let log = h.run.log();
+    assert!(
+        log.contains("event=update_skipped_unclean_stop reason=unclean"),
+        "{log}"
+    );
+    assert!(!log.contains("event=update_install"), "{log}");
+    assert_eq!(*h.notices.lock().unwrap(), vec![Notice::SkippedUnclean]);
+    assert!(
+        !h.gate.is_armed(),
+        "la porte est ouverte une seule fois, meme sans installer"
+    );
+}
+
+#[test]
+fn un_serveur_qui_ne_sort_pas_dans_le_budget_est_tue_et_rien_ne_s_installe() {
+    let timeouts = Timeouts {
+        close: Duration::from_secs(1),
+        grace: Duration::from_secs(1),
+        ..short_timeouts()
+    };
+    let env = [("FAKE_VARIANT", "late_stopped"), ("FAKE_STOP_DELAY_MS", "30000")];
+    let mut h = Harness::start_with("maj-serveur-tue", Scenario::accepted(), &env, timeouts);
+    h.run.wait_log("event=update_close_requested");
+    h.run.recorder.wait_exit();
+    let outcome = h.run.finish();
+
+    assert!(outcome.killed, "le serveur etait encore vivant apres le budget");
+    assert_eq!(outcome.stopped_clean, None);
+    let events = snapshot(&h.events);
+    assert!(
+        !events.iter().any(|e| e.starts_with("install")),
+        "l'installeur ne doit pas partir sur un serveur tue : {events:?}"
+    );
+    let log = h.run.log();
+    assert!(log.contains("event=update_skipped_unclean_stop reason=killed"), "{log}");
+    assert!(!log.contains("event=update_install"), "{log}");
+    assert_eq!(*h.notices.lock().unwrap(), vec![Notice::SkippedUnclean]);
 }
