@@ -239,7 +239,8 @@ func TestDesktopEntry_LibellesDeLaCoquilleDansLaLangueDeLaRequete(t *testing.T) 
 	}
 	wantKeys := []string{"starting", "failed_locked", "failed_migration_failed", "failed_schema_newer",
 		"failed_port", "failed_timeout", "stopping", "stopped", "update_available", "update_title",
-		"update_install", "update_later", "update_notes_heading", "update_skipped_unclean", "update_install_failed"}
+		"update_install", "update_later", "update_notes_heading", "update_skipped_unclean", "update_install_failed",
+		"update_none", "update_check_failed", "update_unavailable_debug", "update_busy"}
 	frLoc, fr := get("fr")
 	enLoc, en := get("en")
 	_, def := get("")
@@ -264,8 +265,10 @@ func TestDesktopEntry_LibellesDeLaCoquilleDansLaLangueDeLaRequete(t *testing.T) 
 		t.Errorf("écran de démarrage : fr=%q en=%q", fr["starting"], en["starting"])
 	}
 	for _, m := range []map[string]string{fr, en} {
-		if !strings.Contains(m["update_available"], "{version}") {
-			t.Errorf("update_available = %q : le gabarit {version} doit voyager tel quel", m["update_available"])
+		for _, k := range []string{"update_available", "update_none"} {
+			if !strings.Contains(m[k], "{version}") {
+				t.Errorf("%s = %q : le gabarit {version} doit voyager tel quel", k, m[k])
+			}
 		}
 	}
 }

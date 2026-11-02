@@ -16,13 +16,14 @@ use levelup_desktop::catalogue;
 use levelup_desktop::lifecycle::Timeouts;
 use levelup_desktop::logfile::{LogSink, MAX_LOG_BYTES, Source};
 use levelup_desktop::navigation::{self, Navigation};
-use levelup_desktop::render::{self, SCHEME};
+use levelup_desktop::render::{self, Route, SCHEME};
 use levelup_desktop::roots::{self, Roots};
 use levelup_desktop::screen::Screen;
 use levelup_desktop::secret::Secret;
 use levelup_desktop::sidecar::SidecarSpec;
 use levelup_desktop::supervisor::{self, Closer, Host, Outcome, ShellConfig};
-use levelup_desktop::updater::{CloserSlot, InstallGate, UpdateHost, run_update};
+use levelup_desktop::update_manual::{UpdateBusy, report_unavailable, run_manual_check};
+use levelup_desktop::updater::{CloserSlot, InstallGate, UpdateContext, UpdateHost, run_update};
 use tauri::webview::DownloadEvent;
 use tauri::window::Color;
 use tauri::{AppHandle, Manager, RunEvent, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent};
@@ -48,11 +49,25 @@ struct Shell {
 }
 
 /// Ce que la mise a jour partage avec le superviseur : la porte d'installation (ouverte a la sortie de
-/// l'application) et la poignee de fermeture (posee apres le lancement du superviseur).
+/// l'application), la poignee de fermeture (posee apres le lancement du superviseur) et le verrou de la
+/// verification en cours.
 struct UpdateWiring {
     gate: InstallGate,
     closer: CloserSlot,
+    busy: UpdateBusy,
     locale: &'static str,
+}
+
+/// Ce dont la verification demandee depuis la page (`/check-update` du protocole embarque) a besoin :
+/// les memes pieces que la verification du lancement, plus l'etat du plugin d'update.
+struct UpdateCheck {
+    /// Le plugin d'update est enregistre (faux en build de developpement ou sans cle publique).
+    enabled: bool,
+    gate: InstallGate,
+    closer: CloserSlot,
+    busy: UpdateBusy,
+    locale: &'static str,
+    log: Option<Arc<LogSink>>,
 }
 
 fn main() {
@@ -62,11 +77,14 @@ fn main() {
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| focus_main(app)))
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .plugin(tauri_plugin_opener::init())
-        .register_uri_scheme_protocol(SCHEME, move |_ctx, request| {
-            let reply = render::respond(request.uri().path(), locale);
-            let (status, content_type, body) = match reply {
-                Some(page) => (200, page.content_type, page.body),
-                None => (404, "text/plain; charset=utf-8", Vec::new()),
+        .register_uri_scheme_protocol(SCHEME, move |ctx, request| {
+            let (status, content_type, body) = match render::route(request.uri().path(), locale) {
+                Route::Page(page) => (200, page.content_type, page.body),
+                Route::CheckUpdate => {
+                    request_update_check(ctx.app_handle().clone());
+                    (204, "text/plain; charset=utf-8", Vec::new())
+                }
+                Route::NotFound => (404, "text/plain; charset=utf-8", Vec::new()),
             };
             tauri::http::Response::builder()
                 .status(status)
@@ -182,8 +200,17 @@ fn setup(app: &AppHandle) {
     let update = UpdateWiring {
         gate: InstallGate::default(),
         closer: CloserSlot::default(),
+        busy: UpdateBusy::default(),
         locale: catalogue::resolve_locale(&sys_locale::get_locale().unwrap_or_default()),
     };
+    app.manage(UpdateCheck {
+        enabled: updater_enabled,
+        gate: update.gate.clone(),
+        closer: update.closer.clone(),
+        busy: update.busy.clone(),
+        locale: update.locale,
+        log: log.clone(),
+    });
 
     let started = prepared.and_then(|p| start_server(app, p, port, exiting_flag, update, updater_enabled));
     if let Err(e) = started {
@@ -222,9 +249,14 @@ fn start_server(
         exiting: exiting_flag,
         log: log.clone(),
     };
-    let UpdateWiring { gate, closer, locale } = update;
+    let UpdateWiring {
+        gate,
+        closer,
+        busy,
+        locale,
+    } = update;
     let on_ready = if updater_enabled {
-        spawn_update_check(app.clone(), locale, gate.clone(), closer.clone(), log.clone())
+        spawn_update_check(app.clone(), locale, gate.clone(), closer.clone(), busy, log.clone())
     } else {
         Box::new(|| {})
     };
@@ -243,11 +275,17 @@ fn spawn_update_check(
     locale: &'static str,
     gate: InstallGate,
     closer: CloserSlot,
+    busy: UpdateBusy,
     log: Arc<LogSink>,
 ) -> Box<dyn FnOnce() + Send> {
     Box::new(move || {
         let thread_log = log.clone();
         let spawned = std::thread::Builder::new().name("update".into()).spawn(move || {
+            // La verification du lancement tient le verrou : une demande de l'utilisateur pendant ce temps
+            // est annoncee comme deja en cours.
+            let Some(_guard) = busy.try_acquire() else {
+                return;
+            };
             run_update(
                 PluginSource::new(app),
                 DialogPrompt,
@@ -261,6 +299,44 @@ fn spawn_update_check(
             report(Some(log.as_ref()), &format!("event=update_thread_failed err={e}"));
         }
     })
+}
+
+/// La verification demandee par l'utilisateur depuis la page (`/check-update`) : sur son propre fil, car les
+/// boites natives bloquent et la reponse au protocole ne doit pas attendre. Meme sequence que celle du
+/// lancement ; en build sans updater, la raison est dite dans une boite.
+fn request_update_check(app: AppHandle) {
+    let Some(check) = app.try_state::<UpdateCheck>() else {
+        return;
+    };
+    let (enabled, gate, closer, busy, locale, log) = (
+        check.enabled,
+        check.gate.clone(),
+        check.closer.clone(),
+        check.busy.clone(),
+        check.locale,
+        check.log.clone(),
+    );
+    let Some(log) = log else {
+        return;
+    };
+    let thread_log = log.clone();
+    let spawned = std::thread::Builder::new().name("update-check".into()).spawn(move || {
+        let mut notifier = DialogNotifier { locale };
+        if !enabled {
+            report_unavailable(&mut notifier, &thread_log);
+            return;
+        }
+        let context = UpdateContext {
+            locale,
+            gate: &gate,
+            closer: &closer,
+            log: &thread_log,
+        };
+        run_manual_check(PluginSource::new(app), DialogPrompt, &mut notifier, &busy, &context);
+    });
+    if let Err(e) = spawned {
+        report(Some(log.as_ref()), &format!("event=update_check_thread_failed err={e}"));
+    }
 }
 
 /// L'updater n'est branche que si la cle publique est posee (`build.rs` refuse une release sans elle) et

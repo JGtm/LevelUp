@@ -21,6 +21,7 @@
 //!                            est journalisee et une boite previent ; l'installeur quitte l'application
 //! ```
 
+use std::collections::VecDeque;
 use std::sync::{Arc, Condvar, Mutex};
 use std::time::{Duration, Instant};
 
@@ -133,12 +134,17 @@ pub enum UpdateAction {
     ArmAndClose,
     /// Journaliser une raison de ne rien faire.
     Log(String),
+    /// Dire a l'utilisateur ce qu'a donne une verification qu'il a demandee (jamais emis pour la
+    /// verification du lancement, qui reste silencieuse sans mise a jour).
+    Inform(Notice),
 }
 
 /// La machine d'etats de la proposition, PURE.
 #[derive(Debug)]
 pub struct UpdateFlow {
     state: UpdateState,
+    /// Verification demandee par l'utilisateur : « a jour » et « echec » se disent dans une boite.
+    manual: bool,
 }
 
 impl Default for UpdateFlow {
@@ -148,9 +154,20 @@ impl Default for UpdateFlow {
 }
 
 impl UpdateFlow {
+    /// La verification du lancement : silencieuse tant qu'il n'y a rien a proposer.
     pub fn new() -> Self {
         Self {
             state: UpdateState::Idle,
+            manual: false,
+        }
+    }
+
+    /// Une verification demandee par l'utilisateur : meme sequence, mais chaque issue sans mise a
+    /// jour est annoncee.
+    pub fn manual() -> Self {
+        Self {
+            state: UpdateState::Idle,
+            manual: true,
         }
     }
 
@@ -170,10 +187,10 @@ impl UpdateFlow {
                 vec![UpdateAction::Ask(offer)]
             }
             (UpdateState::Checking, UpdateInput::Checked(Ok(None))) => {
-                vec![UpdateAction::Log("event=update_none".into())]
+                self.with_notice("event=update_none".into(), Notice::UpToDate)
             }
             (UpdateState::Checking, UpdateInput::Checked(Err(e))) => {
-                vec![UpdateAction::Log(format!("event=update_check_failed err={e}"))]
+                self.with_notice(format!("event=update_check_failed err={e}"), Notice::CheckFailed)
             }
             (UpdateState::Offered(offer), UpdateInput::Decided(Decision::Install)) => {
                 self.state = UpdateState::Downloading;
@@ -198,6 +215,15 @@ impl UpdateFlow {
                 Vec::new()
             }
         }
+    }
+
+    /// Le journal, puis la boite si l'utilisateur a demande cette verification.
+    fn with_notice(&self, log: String, notice: Notice) -> Vec<UpdateAction> {
+        let mut actions = vec![UpdateAction::Log(log)];
+        if self.manual {
+            actions.push(UpdateAction::Inform(notice));
+        }
+        actions
     }
 }
 
@@ -248,21 +274,53 @@ impl CloserSlot {
     }
 }
 
+/// Ce que partagent toutes les verifications : la langue des boites, la porte d'installation, la
+/// poignee de fermeture du superviseur et le journal.
+pub struct UpdateContext<'a> {
+    pub locale: &'a str,
+    pub gate: &'a InstallGate,
+    pub closer: &'a CloserSlot,
+    pub log: &'a LogSink,
+}
+
 /// Une fois le serveur pret : verifie, propose, telecharge, arme la porte et demande la fermeture.
 /// Tourne sur son propre fil et ne bloque jamais l'interface ; chaque issue sans installation est
 /// journalisee.
 pub fn run_update(
-    mut source: impl UpdateSource,
-    mut prompt: impl Prompt,
+    source: impl UpdateSource,
+    prompt: impl Prompt,
     locale: &str,
     gate: &InstallGate,
     closer: &CloserSlot,
     log: &LogSink,
 ) {
-    let mut flow = UpdateFlow::new();
+    let context = UpdateContext {
+        locale,
+        gate,
+        closer,
+        log,
+    };
+    run_flow(UpdateFlow::new(), source, prompt, None, &context);
+}
+
+/// Deroule une verification de bout en bout. `notifier` n'est donne que pour une verification
+/// demandee par l'utilisateur : c'est par lui que « a jour » et « echec » se disent.
+pub(crate) fn run_flow(
+    mut flow: UpdateFlow,
+    mut source: impl UpdateSource,
+    mut prompt: impl Prompt,
+    mut notifier: Option<&mut dyn Notifier>,
+    context: &UpdateContext<'_>,
+) {
+    let UpdateContext {
+        locale,
+        gate,
+        closer,
+        log,
+    } = *context;
     let mut installer: Option<Installer> = None;
-    let mut pending = flow.step(UpdateInput::ServerReady);
-    while let Some(action) = pending.pop() {
+    let mut pending: VecDeque<UpdateAction> = flow.step(UpdateInput::ServerReady).into();
+    while let Some(action) = pending.pop_front() {
         let next = match action {
             UpdateAction::Check => flow.step(UpdateInput::Checked(source.check())),
             UpdateAction::Ask(offer) => {
@@ -291,6 +349,12 @@ pub fn run_update(
             }
             UpdateAction::Log(line) => {
                 log_shell(log, &line);
+                Vec::new()
+            }
+            UpdateAction::Inform(notice) => {
+                if let Some(notifier) = notifier.as_mut() {
+                    notifier.show(notice);
+                }
                 Vec::new()
             }
         };
@@ -344,21 +408,49 @@ pub fn install_allowed(outcome: Outcome) -> Result<(), SkipReason> {
     }
 }
 
-/// Un message que la coquille montre apres l'arret du serveur, quand la mise a jour ne s'est pas faite.
+/// Un message que la coquille montre dans une boite native : apres l'arret du serveur quand la mise a
+/// jour ne s'est pas faite, ou en reponse a une verification demandee par l'utilisateur.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Notice {
     /// Arret du serveur non propre : la mise a jour est repoussee au prochain lancement.
     SkippedUnclean,
     /// L'installeur a echoue : l'application se ferme sans installation.
     InstallFailed,
+    /// Verification demandee : la version installee est la derniere.
+    UpToDate,
+    /// Verification demandee : le serveur de mises a jour n'a pas repondu (hors ligne, indisponible).
+    CheckFailed,
+    /// Verification demandee : la mise a jour n'est pas branchee dans ce build (developpement).
+    Unavailable,
+    /// Verification demandee pendant qu'une autre est en cours.
+    Busy,
 }
 
 impl Notice {
+    /// Tous les messages, pour les tests de completude.
+    pub const ALL: [Notice; 6] = [
+        Self::SkippedUnclean,
+        Self::InstallFailed,
+        Self::UpToDate,
+        Self::CheckFailed,
+        Self::Unavailable,
+        Self::Busy,
+    ];
+
     fn message_key(self) -> &'static str {
         match self {
             Self::SkippedUnclean => "update_skipped_unclean",
             Self::InstallFailed => "update_install_failed",
+            Self::UpToDate => "update_none",
+            Self::CheckFailed => "update_check_failed",
+            Self::Unavailable => "update_unavailable_debug",
+            Self::Busy => "update_busy",
         }
+    }
+
+    /// Vrai pour une simple information, faux pour un message qui previent d'un probleme.
+    pub fn is_informational(self) -> bool {
+        matches!(self, Self::UpToDate | Self::Unavailable | Self::Busy)
     }
 }
 
@@ -369,12 +461,15 @@ pub struct NoticeText {
     pub message: String,
 }
 
-/// Compose le texte d'un message depuis le catalogue de repli.
+/// Version de l'application installee (celle du paquet : `Cargo.toml` fait foi, A9).
+pub const CURRENT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+/// Compose le texte d'un message depuis le catalogue de repli ; `{version}` vaut la version installee.
 pub fn notice_text(locale: &str, notice: Notice) -> NoticeText {
     let text = |key: &str| catalogue::text(locale, key).unwrap_or_default().to_string();
     NoticeText {
         title: text("update_title"),
-        message: text(notice.message_key()),
+        message: text(notice.message_key()).replace("{version}", CURRENT_VERSION),
     }
 }
 
@@ -659,18 +754,68 @@ mod tests {
     }
 
     #[test]
-    fn les_messages_apres_arret_sont_complets_dans_chaque_langue() {
+    fn les_messages_de_boite_sont_complets_et_distincts_dans_chaque_langue() {
         for code in catalogue::LOCALES {
-            let skipped = notice_text(code, Notice::SkippedUnclean);
-            let failed = notice_text(code, Notice::InstallFailed);
-            for (name, value) in [
-                ("title", &skipped.title),
-                ("skipped", &skipped.message),
-                ("failed", &failed.message),
-            ] {
-                assert!(!value.trim().is_empty(), "{code}/{name} vide");
+            let mut seen = Vec::new();
+            for notice in Notice::ALL {
+                let text = notice_text(code, notice);
+                assert!(!text.title.trim().is_empty(), "{code}/{notice:?} : titre vide");
+                assert!(!text.message.trim().is_empty(), "{code}/{notice:?} : message vide");
+                assert!(
+                    !text.message.contains("{version}"),
+                    "{code}/{notice:?} : version non remplacee"
+                );
+                assert!(
+                    !seen.contains(&text.message),
+                    "{code}/{notice:?} : message deja utilise"
+                );
+                seen.push(text.message);
             }
-            assert_ne!(skipped.message, failed.message, "{code} : deux messages identiques");
         }
+    }
+
+    #[test]
+    fn le_message_a_jour_nomme_la_version_installee() {
+        for code in catalogue::LOCALES {
+            assert!(notice_text(code, Notice::UpToDate).message.contains(CURRENT_VERSION));
+        }
+    }
+
+    #[test]
+    fn une_verification_demandee_annonce_a_jour_et_echec_pas_celle_du_lancement() {
+        let mut silent = UpdateFlow::new();
+        silent.step(UpdateInput::ServerReady);
+        let none = silent.step(UpdateInput::Checked(Ok(None)));
+        assert_eq!(none, vec![UpdateAction::Log("event=update_none".into())]);
+
+        let mut asked = UpdateFlow::manual();
+        asked.step(UpdateInput::ServerReady);
+        let none = asked.step(UpdateInput::Checked(Ok(None)));
+        assert_eq!(
+            none,
+            vec![
+                UpdateAction::Log("event=update_none".into()),
+                UpdateAction::Inform(Notice::UpToDate)
+            ]
+        );
+
+        let mut asked = UpdateFlow::manual();
+        asked.step(UpdateInput::ServerReady);
+        let failed = asked.step(UpdateInput::Checked(Err("hors ligne".into())));
+        assert_eq!(
+            failed,
+            vec![
+                UpdateAction::Log("event=update_check_failed err=hors ligne".into()),
+                UpdateAction::Inform(Notice::CheckFailed)
+            ]
+        );
+    }
+
+    #[test]
+    fn une_verification_demandee_propose_la_mise_a_jour_comme_au_lancement() {
+        let mut flow = UpdateFlow::manual();
+        flow.step(UpdateInput::ServerReady);
+        let ask = flow.step(UpdateInput::Checked(Ok(Some(offer("8.2.0")))));
+        assert_eq!(ask, vec![UpdateAction::Ask(offer("8.2.0"))]);
     }
 }

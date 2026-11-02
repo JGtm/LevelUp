@@ -18,6 +18,31 @@ pub struct Embedded {
     pub body: Vec<u8>,
 }
 
+/// Chemin que la page du serveur appelle pour demander la verification de mise a jour : la page tourne
+/// sans aucune commande de la coquille (ADR 0045), ce chemin du protocole embarque est son seul canal.
+pub const CHECK_UPDATE_PATH: &str = "/check-update";
+
+/// Ce que le protocole embarque fait d'un chemin.
+pub enum Route {
+    /// Un ecran ou le logo : la reponse est servie telle quelle.
+    Page(Embedded),
+    /// La demande de verification de mise a jour : la coquille la lance, la reponse est vide (204).
+    CheckUpdate,
+    /// Tout autre chemin : 404.
+    NotFound,
+}
+
+/// Aiguille un chemin du protocole embarque. Le chemin est exact : ni suffixe, ni autre casse.
+pub fn route(path: &str, locale: &str) -> Route {
+    if path == CHECK_UPDATE_PATH {
+        return Route::CheckUpdate;
+    }
+    match respond(path, locale) {
+        Some(page) => Route::Page(page),
+        None => Route::NotFound,
+    }
+}
+
 /// Repond au chemin demande : un ecran, le logo, ou `None` (404).
 pub fn respond(path: &str, locale: &str) -> Option<Embedded> {
     if path == "/logo.png" {
@@ -100,6 +125,30 @@ mod tests {
     #[test]
     fn le_texte_est_echappe() {
         assert_eq!(escape("a<b>&\"'"), "a&lt;b&gt;&amp;&quot;&#39;");
+    }
+
+    #[test]
+    fn seul_le_chemin_exact_declenche_la_verification_de_mise_a_jour() {
+        let locale = catalogue::DEFAULT_LOCALE;
+        assert!(matches!(route("/check-update", locale), Route::CheckUpdate));
+        for other in [
+            "/check-update/",
+            "/check-update/x",
+            "/Check-Update",
+            "/check_update",
+            "/check-updates",
+            "check-update",
+            "/",
+            "",
+            "/update",
+        ] {
+            assert!(
+                matches!(route(other, locale), Route::NotFound),
+                "{other:?} ne doit rien declencher"
+            );
+        }
+        assert!(matches!(route("/stopping", locale), Route::Page(_)));
+        assert!(matches!(route("/logo.png", locale), Route::Page(_)));
     }
 
     #[test]

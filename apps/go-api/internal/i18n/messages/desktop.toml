@@ -80,3 +80,24 @@ en = "The server did not stop cleanly: the update will be offered again at the n
 [desktop.update_install_failed]
 fr = "L'installation de la mise à jour a échoué. Relancez LevelUp : la mise à jour sera proposée de nouveau."
 en = "The update could not be installed. Relaunch LevelUp: the update will be offered again."
+
+# Verification de mise a jour demandee par l'utilisateur (bouton « Rechercher une mise à jour » de « À propos ») :
+# boîtes natives de la coquille, montrées depuis son catalogue de repli. {version} est la version installée.
+[desktop.update_none]
+fr = "Vous avez la dernière version de LevelUp ({version})."
+en = "You have the latest version of LevelUp ({version})."
+
+# Le serveur de mises à jour n'a pas répondu (pas de connexion, service indisponible) : rien n'est modifié.
+[desktop.update_check_failed]
+fr = "La recherche de mise à jour a échoué. Vérifiez votre connexion et réessayez plus tard."
+en = "The update check failed. Check your connection and try again later."
+
+# Build de développement (ou clé de signature absente) : la mise à jour n'est pas branchée.
+[desktop.update_unavailable_debug]
+fr = "La recherche de mise à jour n'est pas disponible dans ce build de développement."
+en = "Update checking is not available in this development build."
+
+# Une recherche est déjà en cours (celle du lancement, ou une demande précédente).
+[desktop.update_busy]
+fr = "Une recherche de mise à jour est déjà en cours."
+en = "An update check is already in progress."

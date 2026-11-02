@@ -11,6 +11,7 @@
 //! - [`sidecar`]   : lancement du serveur, environnement, tubes (D-1, A14).
 //! - [`screen`], [`catalogue`], [`render`] : les ecrans embarques et leurs libelles (A4).
 //! - [`updater`]   : la mise a jour proposee, jamais imposee, installee apres l'arret du serveur (D-16).
+//! - [`update_manual`] : la meme verification, demandee par l'utilisateur depuis « A propos ».
 //! - [`roots`], [`secret`], [`logfile`], [`linereader`], [`navigation`] : petits outils.
 
 pub mod catalogue;
@@ -25,4 +26,5 @@ pub mod screen;
 pub mod secret;
 pub mod sidecar;
 pub mod supervisor;
+pub mod update_manual;
 pub mod updater;
