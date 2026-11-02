@@ -113,8 +113,6 @@ type MultiUserTokenStore struct {
 	dir    string
 	cipher TokenCipher // jamais nil ; scelle les champs sensibles (token_file_codec.go)
 	mu     sync.RWMutex
-	// sealedLogged : fichiers dont le refus ErrTokenFileSealed a déjà été journalisé.
-	sealedLogged sync.Map
 }
 
 // ErrUserTokensNotFound est retourné par Load quand aucun fichier n'existe pour le xuid.
@@ -248,7 +246,7 @@ func (s *MultiUserTokenStore) LoadAll() (map[string]*UserTokens, error) {
 		}
 		t, err := s.loadLocked(xuid)
 		if err != nil {
-			slog.Warn("multi_user_token_store: lecture échouée, fichier ignoré", "xuid", xuid, "err", err)
+			logUnreadableScan("multi_user_token_store: lecture échouée, fichier ignoré", "xuid", xuid, err)
 			continue
 		}
 		result[xuid] = t
@@ -514,8 +512,8 @@ func (s *MultiUserTokenStore) LoadByGamertag(gamertag string) (*UserTokens, erro
 			// watcher_refresh.lookupRefreshToken). Même politique que LoadAll.
 			// Récurrent tant que le fichier est corrompu : c'est voulu, l'anomalie
 			// demande une action humaine.
-			slog.Warn("multi_user_token_store: fichier de tokens illisible, ignoré du scan",
-				"file", name, "dir", s.dir, "err", err)
+			logUnreadableScan("multi_user_token_store: fichier de tokens illisible, ignoré du scan",
+				"file", name, err, "dir", s.dir)
 			unreadableErr = err
 			unreadable++
 			continue

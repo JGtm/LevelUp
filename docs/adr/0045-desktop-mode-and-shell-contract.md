@@ -182,19 +182,23 @@ Detail of the lot. The port lives in the leaf package `internal/platform/auth/to
 `Open`; `Plain`; `NewDPAPI`, which fails with `ErrUnavailable` outside Windows). The profile decides through a new
 capability, `TokenVault` (true in `desktop` only): the configuration loader calls `tokencipher.InstallForProfile` once,
 from `internal/config/config_token_vault.go` (ratchet `archlint/token_cipher_single_decision_test.go`), and every
-`NewMultiUserTokenStore(dir)` reads that process cipher at construction, so the server and every command-line tool choose
-the same way; `NewMultiUserTokenStoreWithCipher` is for tests. The last resolved profile wins (a hosted or dev load puts
+`NewMultiUserTokenStore(dir)` and `NewTokenStore(path)` read that process cipher at construction, so the server and every
+command-line tool choose the same way; `NewMultiUserTokenStoreWithCipher` is for tests. The last resolved profile wins (a hosted or dev load puts
 `plain` back); a load never fails on the vault (the desktop profile is exercised on Linux CI), `cmd/server`
 (`tokenVaultRefusal`, after `LoadServer`, `refresh-only` included) refuses to start when the profile asks for the vault and
 the system lacks it. File format: `cipher` is written for `dpapi` only (a `plain` store writes no field, so hosted files are
 byte-identical to before; a missing field means `plain`); `OAuthRefreshToken`, `AccessToken`, `XSTSToken` and
 `XSTSUserHash` become the standard base64 of the DPAPI blob (current-user scope, `CRYPTPROTECT_UI_FORBIDDEN`, fixed
 entropy `levelup.watcher_tokens.v1`, description `LevelUp watcher token`); empty fields stay empty; identity, dates,
-`pool_sharing` and the reauth state stay readable. A test lists every string field of `UserTokens` as sealed or declared
-non-sensitive. Reading: a `plain` file under a `dpapi` store is accepted and rewritten sealed at the next write, never at
+`pool_sharing` and the reauth state stay readable. The single-user watcher state file `data/auth/watcher_tokens.json`
+(`TokenStore`: `access_token`, `xsts_token`, `xsts_user_hash`, no refresh token since ADR 0023 Phase 5) goes through the SAME
+codec, cipher, `cipher` field and rules (it would otherwise keep in the clear three of the four fields sealed next to it); its
+sealed fields are `AccessToken`, `XSTSToken` and `XSTSUserHash`, while `XSTSGamertag` and `XSTSXUID` stay readable. A test
+lists every string field of `UserTokens` and of `StoredTokens` as sealed or declared non-sensitive. Reading: a `plain` file under a `dpapi` store is accepted and rewritten sealed at the next write, never at
 load; a sealed file under a `plain` store, an unknown cipher, or a failed `Open` is `ErrTokenFileSealed` (logged once per
-file, counted in `levelup.auth.token_file_unreadable_total{sealed|decode}`); `LoadAll` skips it and serves the other
-players. A partial `Upsert` (no refresh token) on an unreadable sealed file is refused rather than overwriting a possibly
+file AND per process, the key being the file path, because stores are rebuilt at every sync pass; every refusal is counted in
+`levelup.auth.token_file_unreadable_total{sealed|decode}`; the scans and callers that used to warn or error on each read log a
+sealed file at Debug only); `LoadAll` skips it and serves the other players. A partial `Upsert` (no refresh token) on an unreadable sealed file is refused rather than overwriting a possibly
 recoverable credential; an `Upsert` that carries a fresh refresh token (a new sign-in) replaces it.
 
 **D-12 — Film archive (plan D-5, A18).** Archived by default; the choice "do not archive" is offered in the first-launch
@@ -208,9 +212,13 @@ which watches the archive volume with its own anti-spam state when the archive l
 Lot L14.
 
 Detail of the lot. The archive root is the fourth field of `Roots` (`FilmArchive`, read once from
-`app_settings.json:film_archive_dir` by `config.ResolveRoots`, absolute path only; applied at the next start). Changing
-the folder in the settings is refused while the archive holds films (the move is `levelup film archive-move`, server
-stopped, which records the setting itself once every film is relocated) and while the target is not empty. Without
+`app_settings.json:film_archive_dir` by `config.ResolveRoots`, absolute path only). Changing the folder in the settings
+is refused while the archive holds films (the move is `levelup film archive-move`, server stopped, which records the
+setting itself once every film is relocated; each film is copied to a `.part` folder of the target, then renamed in one
+step, then removed from the origin, so a film is whole on one side only) and while the target is not empty (the default
+location only has to hold no film). On an EMPTY archive the change applies at once (`title.SetFilmArchiveRuntime`, a
+process variable read by every resolver, like the process roots): the first sync of the wizard writes to the new folder.
+The disk watch keeps one watch per volume, not per path. Without
 archive, a cooked film's chunks are removed by the post-sync cook right after its artifact is stored, never before. The
 occupancy (`GET /settings/film-archive`) is measured once and cached for ten minutes with a 20 s walk budget.
 
@@ -338,7 +346,7 @@ maintainer on a clean machine. A lot without a test at its level is not closed.
   `internal/service/devicecode_completion_poolgrant_test.go`, `TestParseServerFlags_AucunDrapeauNePorteLeSecret`
   (`cmd/server/flags_test.go`: the secret never travels as an argument), `apps/web/e2e/desktop-enter.spec.ts`
   (Playwright, mocked server), and `TestE2ELanceurDesktop` extended (`GET /` 401, entry 302 with the cookie, bootstrap 200).
-- Created by L13b: `internal/platform/auth/token_file_codec_test.go` (plain round trip, sealing of the sensitive fields only,
+- Created by L13b (and extended by its review: watcher state file, process-wide log dedup): `internal/platform/auth/token_file_codec_test.go` (plain round trip, sealing of the sensitive fields only,
   migration at the first write, typed refusals, partial write on a sealed file, every string field classified),
   `internal/platform/auth/tokencipher/*_test.go` (`dpapi_vault_test.go` under the Windows tag), `token_file_vault_test.go`
   (real DPAPI store, Windows tag), `internal/config/config_token_vault_test.go`, `cmd/server/boot_token_vault_test.go`,

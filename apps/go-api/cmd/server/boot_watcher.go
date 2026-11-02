@@ -186,7 +186,7 @@ func loadWatcherTokens(cfg *config.AppConfig) (*auth.TokenStore, *auth.StoredTok
 	store := auth.NewTokenStore(tokenStorePath)
 	tokens, err := store.Load()
 	if err != nil {
-		slog.Info("watcher: pas de token store, daemon désactivé", "path", tokenStorePath)
+		slog.Info("watcher: pas de token store, daemon désactivé", "path", tokenStorePath, "err", err)
 		return nil, nil, false
 	}
 
