@@ -501,7 +501,7 @@ type MedalDigestEntry struct {
 //
 // Le champ historique `solo_reference` a été retiré : la page Solo a son
 // propre endpoint dédié, et la page Escouade ne compare plus contre une
-// baseline solo (cf. .ai/thought_log.md 2026-04-26 refonte UX Escouade).
+// baseline solo (refonte UX Escouade du 2026-04-26).
 type TeammatesPageResponse struct {
 	Options       []TeammateOption  `json:"options"`
 	Teammates     []TeammateRow     `json:"teammates"`

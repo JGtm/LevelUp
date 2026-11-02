@@ -477,8 +477,8 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		r.Use(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
 		r.Use(middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode, users))
 		adminHandler.Mount(r, adminOpt) // users/invites (Huma, sous RequireAuth+RequireAdmin)
-		// Intégrité des données : invariants du pipeline sync par joueur
-		// (Phase 4 du plan .ai/archive/V7/PLAN_SYNC_INVARIANTS_GATE.md). NoStore : le
+		// Intégrité des données : invariants du pipeline sync par joueur.
+		// NoStore : le
 		// résultat reflète l'état courant des DBs, jamais de cache.
 		invariantsHandler := handlers.NewAdminInvariantsHandler(reg.RunDataInvariants)
 		invariantsHandler.Mount(r.With(middleware.NoStore), adminOpt)
@@ -1019,8 +1019,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		notifH := handlers.NewNotificationsHandler(reg.Notifications)
 		notifH.Mount(r.With(middleware.RequirePlayerOwner(playerAccess)), playerOpt)
 
-		// Couche progression V2 (Ascension) — streaks / records / milestones.
-		// Cf. .ai/archive/V7/PLAN_PROGRESSION_TRACKING_ASCENSION.md §8.1.
+		// Couche progression V2 (Ascension) — streaks / records / milestones (ADR 0014).
 		progressionResolve := func(ctx context.Context, slug string) (*platform_duckdb.PlayerDB, error) {
 			return reg.Resolve()(ctx, slug)
 		}

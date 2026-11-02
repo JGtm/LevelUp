@@ -7,8 +7,7 @@ import (
 	"testing"
 )
 
-// porteurs_gardes_test.go — DEPLACE de `replaybuild/bombvariant_test.go` le 2026-09-28 (lot V1.4 du
-// plan `.ai/archive/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md`) avec la garde qu'il teste (`GardesDeLaVariante`).
+// porteurs_gardes_test.go — DEPLACE de `replaybuild/bombvariant_test.go` le 2026-09-28 avec la garde qu'il teste (`GardesDeLaVariante`).
 //
 // LA GARDE DE MODE de la bombe : la FAMILLE, et rien d'autre.
 //

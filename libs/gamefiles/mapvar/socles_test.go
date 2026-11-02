@@ -2,8 +2,7 @@ package mapvar
 
 // Tests — socles.go : LA FAMILLE, LE REGROUPEMENT, L'ORDRE.
 //
-// CE QUE CE FICHIER VERROUILLE, et chaque point est une clause mesuree du plan
-// `.ai/archive/V7.5/replay2d/PLAN_SOCLES_MVAR.md` :
+// CE QUE CE FICHIER VERROUILLE, et chaque point est une clause mesuree :
 //   - trois type_id et TROIS SEULEMENT sont des socles ; un type voisin ne l'est pas ;
 //   - deux objets a moins d'un metre sont LE MEME emplacement (Catalyst : 13 objets,
 //     11 emplacements) et le compte des objets fusionnes est publie ;

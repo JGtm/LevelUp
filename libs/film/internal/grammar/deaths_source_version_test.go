@@ -70,8 +70,7 @@ func TestScanDeathsSuitLaVersionDuFilm(t *testing.T) {
   attendu   : 199 morts, 26 noms (mesure du 2026-09-12)
 
 Sur un film de version 39-40 le gamertag vit a l OCTET 12 du bloc d event. Passer 0 au parseur
-rend ici 2 noms pour 199 morts : l artefact de rejeu nomme alors ses vies avec du rembourrage
-(.ai/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md).
+rend ici 2 noms pour 199 morts : l artefact de rejeu nomme alors ses vies avec du rembourrage.
 
 Verifier que ScanDeaths passe la version lue par FilmMajorVersion a
 ParseHighlightEvents.`,

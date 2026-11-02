@@ -12,8 +12,7 @@
 // internal/games/*/migrations ne garde que l'enregistrement versionné du premier
 // passage (steps qui délèguent à ApplyLabels / ApplyRegistry).
 //
-// Registre d'armes canonique = passage PRINCIPAL de la résolution d'arme (cf.
-// .ai/archive/V7/PLAN_WEAPON_TAXONOMY.md). 3 tables référentielles dans metadata.duckdb :
+// Registre d'armes canonique = passage PRINCIPAL de la résolution d'arme. 3 tables référentielles dans metadata.duckdb :
 //   - weapons          : 1 ligne par arme par titre (class/role/family/faction/damage_type + extra JSON).
 //   - weapon_ids       : N ids par arme (filmshell/stock_id/module…) → un id résout vers UN weapon_key.
 //   - weapon_families  : whitelist référentielle des clés de famille cross-titre (plus
@@ -312,8 +311,8 @@ func FilmshellWeaponKeysByFamily() map[uint32]string {
 //
 // POURQUOI EXPORTÉ (lot armes au sol, 2026-09-10). Le rejeu 2D publie déjà `WeaponLabel.Key`
 // à la requête (`resolveWeaponLabels`, depuis `cat.Keys[family]`, lui-même construit sur
-// `FilmshellWeaponKeysByFamily`) : le filtre « armes spéciales » (rôles sniper/power/special,
-// cf. rapport `.ai/archive/V7.5/RAPPORT_ARMES_AU_SOL_2026-09-10.md`) a besoin du MÊME weapon_key pour
+// `FilmshellWeaponKeysByFamily`) : le filtre « armes spéciales » (rôles sniper/power/special)
+// a besoin du MÊME weapon_key pour
 // trouver le rôle, SANS seconde jointure ni recuisson — c'est la donnée déjà en mémoire du
 // registre statique, jamais une lecture de metadata.duckdb.
 //

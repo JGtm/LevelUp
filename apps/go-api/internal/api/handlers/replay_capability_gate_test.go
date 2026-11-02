@@ -3,8 +3,7 @@
 // Jusqu'au 2026-09-05, les quatre routes du rejeu 2D etaient montees HORS de tout sous-groupe
 // de capability, sous un commentaire qui l'assumait : « la disponibilite EST la presence
 // d'artefact, pas une declaration de titre ». La consequence, sur un titre sans decodeur de
-// film : trois requetes 404 et un etat vide, la ou rien n'aurait du etre servi du tout
-// (registre `.ai/archive/V7.5/v2/AUDIT_V75_DEPUIS_V7.3.0_2026-09-05.md`, constats D1 et L2).
+// film : trois requetes 404 et un etat vide, la ou rien n'aurait du etre servi du tout.
 //
 // La decision utilisateur du 2026-09-05 pose DEUX portes qui disent deux choses differentes :
 // `CapReplay` (« ce TITRE a-t-il un rejeu ? » -> 503) et la presence d'artefact (« CE MATCH

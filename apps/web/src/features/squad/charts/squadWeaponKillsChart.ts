@@ -2,9 +2,7 @@
  * squadWeaponKillsChart — barres horizontales groupées, une barre par joueur et par ligne :
  * « Outils de destruction » (frags par outil) et « Mécaniques de frag » (Halo 5).
  *
- * Spec d'origine : .ai/charts_specs/teammates/09_weapon_kills_bar_chart.yaml ; forme revue par
- * le lot L2 du plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26 (maquette C3EW, colonne
- * « Proposition ») pour les Outils de destruction :
+ * Forme revue pour les Outils de destruction :
  *   - le COMPTE de frags au bout de CHAQUE barre non nulle (`valueLabel: 'count'`, défaut) ;
  *     la part du total du joueur passe en infobulle ;
  *   - une pastille à la couleur de la CLASSE devant le nom de la ligne quand elle en porte

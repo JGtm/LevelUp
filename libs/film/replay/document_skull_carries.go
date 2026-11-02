@@ -3,8 +3,7 @@ package replay
 // document_skull_carries.go — LE PORTEUR DU CRANE D'ODDBALL : la forme qu'il prend dans
 // l'artefact.
 //
-// CHRONIQUE — v23 (2026-08-28, lot PORTEUR ODDBALL,
-// `.ai/archive/V7.5/replay2d/registre_film/ODDBALL_PORTEUR_PROTOCOLE.md`). Le document publie
+// CHRONIQUE — v23 (2026-08-28, lot PORTEUR ODDBALL). Le document publie
 // `skullCarries` — LES PERIODES DE PORTAGE DU CRANE, en intervalles de frames, chacun nomme par
 // le xuid du porteur. Un champ de document, un schema de plus (`SkullCarry`) et un bloc de
 // couverture (`SkullCarriesCoverage`).

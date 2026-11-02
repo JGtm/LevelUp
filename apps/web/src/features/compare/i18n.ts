@@ -24,7 +24,7 @@ export interface CompareText {
   catPrecision: string
   catBilan: string
   /**
-   * Profil d'armes (plan .ai/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md, lot 4).
+   * Profil d'armes.
    *
    * FR SANS ANGLICISME : « frags », « morts », « portée », « armes les plus utilisées » —
    * jamais « kills », « range » ou « top weapons ». La parité stricte des clés FR/EN est

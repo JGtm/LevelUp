@@ -1,8 +1,7 @@
 package grammar
 
 // components_managed_object_test.go — les trois desers du lot C phase 1b, contraints par les
-// VECTEURS D'OCTETS REELS releves en phase 1a sur les films Strongholds `7344d24f` et `696a9d7c`
-// (`.ai/archive/V7.5/replay2d/registre_film/lotC/*_vecteurs.tsv`).
+// VECTEURS D'OCTETS REELS releves en phase 1a sur les films Strongholds `7344d24f` et `696a9d7c`.
 //
 // POURQUOI CES VECTEURS SONT DES ORACLES ET PAS DES FIXTURES AUTO-VALIDANTES. Chacun vient d'un
 // record delta dont le masque annonce EXACTEMENT le composant vise : la charge utile commence

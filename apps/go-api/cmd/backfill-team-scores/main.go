@@ -3,8 +3,7 @@
 //
 // # CE QU'IL RÉPARE, ET POURQUOI UN RE-SYNC NE SUFFIT PAS
 //
-// Mesure du 2026-08-24 sur les 1 934 matchs du corpus
-// (`.ai/archive/V7.5/replay2d/RAPPORT_QUALITE_SCORE_EQUIPE.md`) : 80 lignes portent une valeur qui
+// Mesure du 2026-08-24 sur les 1 934 matchs du corpus : 80 lignes portent une valeur qui
 // n'est pas le score affiché — 69 d'entre elles portent, au tick près, le compteur brut du
 // mode (`Teams[].Stats.ZonesStats.StrongholdScoringTicks`). Héritage d'une période où l'API
 // 343 servait ce compteur dans `CoreStats.Score` ; elle a été corrigée entre avril et mai

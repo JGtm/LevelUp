@@ -13,7 +13,7 @@
  * DIFFÉRENT : la fabrication et la PROJECTION monde -> canvas (Y inversé côté rejeu, pas
  * côté tactique) — abstraite derrière `HeatSource`/`HeatGeometry`, fournis par
  * `drawHeatmapLayer` / `drawTacticalHeatmap`. `k` reste un réglage de style : dpr côté
- * rejeu, 1 côté tactique (flou déjà consigné, `.ai/DECOUVERTES_TACTIQUE_2026-09-07.md`).
+ * rejeu, 1 côté tactique.
  *
  * Pas de React : logique pure + un CanvasRenderingContext2D (même règle que replayDraw).
  */

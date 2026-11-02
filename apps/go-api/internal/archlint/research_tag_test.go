@@ -91,7 +91,7 @@ func contrainteAvecTerme(texte, terme string) bool {
 
 // balayerGoTexte appelle `visiter` pour CHAQUE `.go` de l'espace de travail, avec son contenu et son
 // chemin relatif à la racine du dépôt. S appuie sur
-// `balayerGo` (doc_chemins_ai_test.go) : un seul parcours.
+// `balayerGo` (go_source_walk_test.go) : un seul parcours.
 func balayerGoTexte(t *testing.T, visiter func(rel, texte string)) {
 	t.Helper()
 	balayerGo(t, func(rel, chemin string) {

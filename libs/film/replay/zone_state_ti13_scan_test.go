@@ -42,7 +42,7 @@ const (
 	// p2aFilmEnv porte le repertoire des chunks d'UN film (chemin absolu). Meme nom qu'en
 	// phase 1 : c'est la meme garde, pour le meme corpus.
 	p2aFilmEnv = "ZONE_FILM"
-	// p2aOutEnv redirige les TSV ; par defaut `.ai/archive/V7.5/replay2d/registre_film/lotCbis/`.
+	// p2aOutEnv redirige les TSV ; par defaut un dossier de mesures du depot.
 	p2aOutEnv = "ZONE_OUT"
 )
 

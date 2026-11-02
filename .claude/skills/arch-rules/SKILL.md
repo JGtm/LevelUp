@@ -176,10 +176,14 @@ Décision DU-5 b du plan `.ai/archive/V7.5/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-0
   garde-rail ou le compilateur la tient, et on le nomme.
 - **Doc comment collé** : `// Nom ...` juste au-dessus de `Nom`. Insérer une déclaration entre
   un doc comment et sa cible le décolle — déplacer le commentaire avec.
-- **Références vivantes** : un chemin `.ai/…` cité existe (ratchet
-  `archlint/doc_chemins_ai_test.go`) ; une commande `go test` citée vise un paquet existant.
+- **Aucune citation de `.ai/`** dans un commentaire (Go, TS) : les documents de travail
+  déménagent et s'archivent, la citation pourrit. Citer un ADR, un fichier de code, ou rien
+  (ratchet `archlint/commentaires_references_test.go`, plafond 0 ; seule exception : le dépôt
+  local de dumps `.ai/re_dump/`, dossier de données). Une commande `go test` citée vise un
+  paquet existant.
 - **Portée** : code neuf, et toute affirmation fausse rencontrée (corrigée dans le commit où on
-  la voit). Pas de réécriture de masse des commentaires existants.
+  la voit). Pas de réécriture de masse des commentaires existants (le retrait des citations
+  `.ai/`, fait en une passe le 2026-11-02, est l'exception).
 
 ## Multi-titres — règles
 

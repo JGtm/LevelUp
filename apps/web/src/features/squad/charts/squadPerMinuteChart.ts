@@ -1,8 +1,6 @@
 /**
  * squadPerMinuteChart — teammates.14 : K/D/A par minute, bars groupées.
  *
- * Spec : .ai/charts_specs/teammates/14_per_minute_stats.yaml
- *
  *   - 3 catégories X : Frags/min, Morts/min, Assists/min.
  *   - 1 série bar par joueur (main + coéquipiers, 1..4 séries).
  *   - Frags & Assists au-dessus de l'axe X (positifs), Morts en dessous (négatifs).

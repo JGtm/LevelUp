@@ -1,8 +1,7 @@
 package migration
 
 // steps_metadata_purge_weapon_families_labels.go — purge des colonnes inertes
-// weapon_families.name_en / weapon_families.name_fr (plan libellés en dur, lot M5 L4,
-// .ai/archive/V7.5/PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md §4 L4).
+// weapon_families.name_en / weapon_families.name_fr (libellés en dur).
 //
 // Contexte : `weapon_families` (games/weapons/registry.go, ApplyRegistry) porte un
 // libellé EN/FR par famille d'arme (« battle_rifle » -> "Battle Rifle"/"Fusil de
@@ -20,8 +19,7 @@ package migration
 // Pourquoi une purge et pas une migration vers un TOML : un libellé qui n'a AUCUN
 // lecteur n'a pas de destination utile — le déplacer vers `assets.toml` recopierait du
 // contenu mort dans un second fichier au lieu de l'éteindre (règle dépôt « 0 code mort »,
-// CLAUDE.md règle 7). Suppression au lieu de migration, décision consignée dans le
-// journal (.ai/thought_log.md, entrée du lot M5 L4).
+// CLAUDE.md règle 7). Suppression au lieu de migration.
 //
 // Pattern : rebuild CTAS-swap transactionnel, calqué EXACTEMENT sur
 // `purge_weapons_name_fr_column` (steps_metadata_purge_weapons_name_fr.go, V721-05.1) —

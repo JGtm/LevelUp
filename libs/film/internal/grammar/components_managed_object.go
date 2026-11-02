@@ -8,8 +8,7 @@ package grammar
 // Slayer pour ti=10, et deux de leurs composants portent a eux seuls l'essentiel du trafic de
 // leur archetype (`managed-navpoint-radial-progress` : 74,7 % et 93,1 % des records ti=12 des
 // deux films Strongholds ; `managed-object-rtpc-component` : 17 a 53 % des records ti=10).
-// La phase 1a a lu leur grammaire dans le binaire, adresse par adresse
-// (`.ai/archive/V7.5/replay2d/registre_film/LOTC_PHASE1A.md` sections 3 et 4).
+// La phase 1a a lu leur grammaire dans le binaire, adresse par adresse.
 //
 // LA GRAMMAIRE VIENT DU DESERIALISEUR DU JEU, PAS D'UN AJUSTEMENT. Chaque largeur ci-dessous est
 // un immediat lu dans le desassemblage (par exemple `MOV dword ptr [RSP + 0x20],0x8` a

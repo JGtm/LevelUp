@@ -8,8 +8,7 @@ package replay
 // la tient ; il lui manque le DENOMINATEUR de la progression vers le prochain point. Cet
 // instrument le mesure — il ne change rien a la production.
 //
-// LE PROTOCOLE, SES SEUILS ET SON REPLI SONT ECRITS AVANT CETTE MESURE dans
-// `.ai/archive/V7.5/PLAN_KOTH_GARDE_VIVANTE_2026-08-30.md` (etape E1). Ce fichier l'applique, il ne le
+// LE PROTOCOLE, SES SEUILS ET SON REPLI SONT ECRITS AVANT CETTE MESURE (etape E1). Ce fichier l'applique, il ne le
 // decide pas.
 //
 // CE QUI EST MESURE, EN UNE PHRASE : entre deux points, le temps pendant lequel le camp QUI

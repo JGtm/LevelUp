@@ -1,9 +1,6 @@
 // Package temporal expose les algorithmes purs de mesure temporelle pour
 // l'analyse Halo : moyennes mobiles, lissage LOWESS, bucketing, et le score
 // d'engagement (engagement_score.go).
-//
-// Reference conceptuelle pour engagement : .ai/archive/V7/REFLEXION_ENGAGEMENT_SCORE_INTRA_MATCH.md
-// Plan d'implementation : .ai/archive/V7/PLAN_ENGAGEMENT_IMPLEMENTATION.md
 package temporal
 
 import (

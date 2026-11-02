@@ -18,7 +18,7 @@ import (
 
 // Les quatre surfaces ci-dessous lisent les clients HTTP Halo/Xbox qui ne passent pas par
 // l'adaptateur `haloadapter` : Halo 5, Discovery UGC des cartes, actifs GameCMS, succès Xbox. Elles
-// sont le témoin T3 du plan PUBLICATION (`.ai/V8/PLAN_PUBLICATION_BRIQUES_2026-10-30.md`).
+// sont des témoins de la preuve que le découplage de la brique ne change rien.
 
 // requetesH5ParSeconde : débit du client Halo 5 (le même que les autres lectures du diagnostic).
 const requetesH5ParSeconde = 3

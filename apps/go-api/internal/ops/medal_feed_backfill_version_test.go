@@ -109,7 +109,7 @@ func TestEventsDuFilmSuitLaVersionDeclaree(t *testing.T) {
   attendu          : %q
 
 Sur les versions 39-40 le gamertag vit a l octet 12 du bloc d event. Parser avec 0 le lit a
-l octet 0 et rend du rembourrage (.ai/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md).
+l octet 0 et rend du rembourrage.
 
 Verifier que eventsDuFilm passe film.MajorVersion a haloinfinite.ParseHighlightEvents, et que la
 source du CLI (cmd/levelup/cmd_backfill_medailles_feed.go) lit bien la version du registre.`,

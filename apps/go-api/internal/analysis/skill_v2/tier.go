@@ -48,7 +48,7 @@ type TierBoundary struct {
 // Bornes strictement ordonnées par MinMu croissant. Grille ouverte :
 // Bronze couvre [-∞, MinMu_Silver) ; Onyx couvre [MinMu_Onyx, +∞).
 func DefaultTierBoundaries() []TierBoundary {
-	// SubTiers calibrés (étude volatilité .ai/thought_log.md [2026-05-31]) pour
+	// SubTiers calibrés (étude de volatilité du 2026-05-31) pour
 	// UNIFORMISER la largeur d'un sous-palier (~0.33–0.5 μ) SANS toucher les
 	// bornes (la calibration tier↔CSR validée — Madina Diamant, etc. — est
 	// préservée). Les tiers étroits (Argent 1.0 μ, Platine 0.8 μ, Diamant 1.2 μ)

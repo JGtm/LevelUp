@@ -26,8 +26,7 @@ type fakeSquadLoader struct {
 
 	// active/maxActive : PREUVE DE CONCURRENCE par compteur de chevauchement, pas par
 	// horloge murale. Un seuil temporel (« elapsed < 130ms ») rougit sous charge CI sans
-	// que le comportement testé ait changé (registre .ai/REGISTRE_REPORTS.md, lot
-	// hygiène 5.3, L603) — maxActive>=2 est vrai dès que deux appels LoadFor se sont
+	// que le comportement testé ait changé — maxActive>=2 est vrai dès que deux appels LoadFor se sont
 	// réellement recouverts dans le temps, quelle que soit la lenteur de la machine.
 	active    int32
 	maxActive int32

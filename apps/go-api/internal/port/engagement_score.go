@@ -1,10 +1,7 @@
 // Package port — engagement_score.go : interfaces de persistence et service
 // pour la metrique EngagementScore.
 //
-// Reference conceptuelle : .ai/archive/V7/REFLEXION_ENGAGEMENT_SCORE_INTRA_MATCH.md
-// Plan d'implementation : .ai/archive/V7/PLAN_ENGAGEMENT_IMPLEMENTATION.md
-//
-// Phase 1.4 du plan : decouplage handler/service via interface, et
+// Decouplage handler/service via interface, et
 // service/repository via interface. Le service ne connait pas l'implementation
 // DuckDB ; le handler ne connait pas le service concret.
 package port
@@ -39,7 +36,7 @@ type EngagementHistoryFilter struct {
 	ModeCategory string
 
 	// Limit borne le nombre de matchs renvoyes. Le service utilise typiquement
-	// 200 (cf. doc reflexion §6.2). Si 0, le repo retourne une erreur.
+	// 200. Si 0, le repo retourne une erreur.
 	Limit int
 
 	// ExcludeMatchID permet d'exclure un match precis de l'historique

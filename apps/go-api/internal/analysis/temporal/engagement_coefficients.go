@@ -1,8 +1,6 @@
 // Package temporal — engagement_coefficients.go : calcul du coefficient
 // d'engagement lobby global (coef_lobby_share).
 //
-// Reference plan : .ai/archive/V7/PLAN_ENGAGEMENT_REFONTE_LOBBY_2026-07.md (modele v2).
-//
 // Concept : coef_lobby_share = mediane glissante des ratios pace_joueur/pace_lobby
 // sur les N derniers matchs PvP du joueur dans une categorie (PvP_ranked /
 // PvP_unranked). Caracterise la reponse habituelle GLOBALE du joueur a l'action

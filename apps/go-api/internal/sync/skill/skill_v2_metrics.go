@@ -1,7 +1,7 @@
 package skill
 
 // skill_v2_metrics.go — métriques expvar + sentinelle dual-row pour la
-// Stratégie C (cf. ADR 0024 + .ai/archive/V7/LUSR v2/LUSR_V2_HANDOFF.md).
+// Stratégie C (cf. ADR 0024).
 //
 // Exporte via /debug/vars (stdlib expvar) — conforme à ADR 0009 (pas de
 // Prometheus). Les compteurs sont incrémentés par writeCanonicalLUSRRow
@@ -41,7 +41,7 @@ var (
 	predictionsTotal       = expvar.NewInt("levelup.lusr_v2.predictions_total")
 	// canonicalWriteHeldWatermark : écritures canonical échouées dont le watermark
 	// (player_skill_state_v2, shared) a été VOLONTAIREMENT tenu → le match repassera
-	// au prochain cycle (fix désync 2026-06-07, cf. .ai/thought_log.md). Croissance
+	// au prochain cycle (fix désync 2026-06-07). Croissance
 	// soutenue = player DB durablement en échec → investiguer (sinon poison-pill du
 	// groupe : le watermark ne peut plus avancer tant que ce match n'est pas écrit).
 	canonicalWriteHeldWatermark = expvar.NewInt("levelup.lusr_v2.canonical_write_held_watermark_total")

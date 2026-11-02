@@ -1,8 +1,8 @@
 // Package archlint — briques_imports_test.go : une BRIQUE n'importe rien du dépôt hors d'elle-même.
 //
-// # POURQUOI (2026-10-28, plan `.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D1_2026-10-28.md`, lots 1 et 3)
+// # POURQUOI (2026-10-28, ADR 0041)
 //
-// L'audit `.ai/V8/AUDIT_DECOUPLAGE_BRIQUES_2026-10-27.md` (constat G) montre comment trois briques
+// L'audit de découplage des briques du 2026-10-27 (constat G) montre comment trois briques
 // autonomes par nature (images de carte, décodeur de film, API Halo) se sont liées au reste de
 // LevelUp : chaque import ajouté était local et raisonnable, et rien ne le refusait. Ce test est
 // cette liste fermée. Il a été posé AVANT le premier déplacement de paquet, avec une allowlist
@@ -11,8 +11,8 @@
 // Depuis les lots 3 et 4, une brique est un MODULE Go sous `libs/<brique>/` (ADR 0041) : le compilateur
 // refuse déjà qu'elle importe `levelup/go-api/internal/...` ; ce test tient en plus la liste
 // fermée des briques de rang inférieur qu'elle a le droit d'importer. Les trois briques de l'audit
-// sont des modules : `himap` (D1), `film` (D2) et, depuis le lot 3 du plan PUBLICATION
-// (`.ai/V8/PLAN_PUBLICATION_BRIQUES_2026-10-30.md`, 2026-11-01), `haloapi` (l'API Halo), qui vivait
+// sont des modules : `himap` (D1), `film` (D2) et, depuis le 2026-11-01
+// (ADR 0043), `haloapi` (l'API Halo), qui vivait
 // jusque-là dans `apps/go-api/internal/haloapi`, tenue par une table des briques INTERNES retirée le
 // même jour (le compilateur la remplace).
 //

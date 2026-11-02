@@ -81,7 +81,7 @@ import (
 // aucune renumerotation (l empreinte heritee des cinq racines egalait `7994ce19…`, figee au rang
 // `.38`). Ce qui a fait monter le rang au `.39` est le PERIMETRE, pas le cadre.
 //
-// LE CADRE EST HISTORIQUE (decision D2-F du plan `.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D2_2026-10-28.md`) :
+// LE CADRE EST HISTORIQUE (ADR 0041) :
 // les chaines d import de la brique et les dossiers des paquets importes entrent dans le hachage
 // sous leur nom du module `levelup/go-api`, quel que soit le module qui porte la brique, parce que
 // le chemin du module n est pas de la grammaire. Ce que le `git mv` d une couche ne coutait deja

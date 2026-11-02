@@ -10,8 +10,7 @@
  * `intlLocale()`) : un littéral fige un format de nombre ou de date dans une langue, quelle que
  * soit celle de l'interface. Le plafond est 0 : toute occurrence est une erreur.
  *
- * Regex : celle de l'état des lieux (`.ai/V8/ETAT_DES_LIEUX_I18N_MULTILANGUE_2026-10-23.md`,
- * section F). Périmètre : voir `localeScan.testutil.ts`.
+ * Périmètre : voir `localeScan.testutil.ts`.
  */
 import { describe, expect, it } from 'vitest'
 import { formatOverflow, scanLines, scanUntaggedIntl, TREE_SCAN_TIMEOUT_MS, untaggedIntlLines } from './localeScan.testutil'

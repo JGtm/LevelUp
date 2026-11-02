@@ -193,7 +193,7 @@ describe('garde-rail : manifeste sonore = dossier d assets', () => {
     // SOUND_VARIANTS ci-dessus, comme celles du grappin.
     ...Object.values(SKULL_SOUND_STEMS),
     // Les MOTEURS DE VÉHICULES (lot du 2026-09-04) : une NOUVELLE catégorie — des BOUCLES
-    // continues (enter/loop/exit + idle du Scorpion), pas des one-shots. Elles ont leur propre
+    // continues (enter/loop/exit), pas des one-shots. Elles ont leur propre
     // garde-rail de durée et de format plus bas ; ici, seulement manifeste <-> dossier.
     ...allEngineStems(),
     // Les BOUCLES DE TIR TENU (lot M6.1, câblées au lot M4b, schéma 71) : la table de production
@@ -615,7 +615,7 @@ describe('garde-rail : tout son livre est un Ogg Opus decodable par un navigateu
  * CINQUIEME GARDE-RAIL : LES MOTEURS DE VEHICULES (lot du 2026-09-04) — une categorie a part.
  *
  * Ce ne sont PAS des sons d'evenement : ce sont des BOUCLES continues (enter -> loop x N ->
- * exit, + idle du Scorpion), produites par la banque SFX_vehicules validee par l'utilisateur
+ * exit), produites par la banque SFX_vehicules validee par l'utilisateur
  * le 2026-09-04. Trois proprietes du CONTRAT de la banque se verifient sur fichiers :
  *
  *  - FORMAT CANONIQUE 48 kHz / STEREO : le rebouclage sans clic suppose que le
@@ -624,8 +624,7 @@ describe('garde-rail : tout son livre est un Ogg Opus decodable par un navigateu
  *  - DUREES DE LA BANQUE (1,45 a 6,70 s livrees) : elles ne sont PAS soumises a la coupe de
  *    1,2 s des armes — une re-livraison qui retronquerait un moteur a la coupe des armes
  *    transformerait sa boucle en hoquet. La borne haute est le plafond de surete du lecteur ;
- *  - COMPLETUDE PAR FAMILLE : chaque famille de la table a ses trois clips (l'idle du
- *    Scorpion en plus), dans les deux sens (le manifeste <-> dossier est deja rejoue par le
+ *  - COMPLETUDE PAR FAMILLE : chaque famille de la table a ses trois clips, dans les deux sens (le manifeste <-> dossier est deja rejoue par le
  *    premier garde-rail, `allEngineStems` etant dans `referenced`).
  *
  * LES BOOSTS NE SONT PAS LIVRES, et c'est une mesure : la detection par vitesse a echoue au
@@ -637,10 +636,7 @@ describe('garde-rail : tout son livre est un Ogg Opus decodable par un navigateu
 describe('garde-rail : moteurs de vehicules (categorie boucles, banque du 2026-09-04)', () => {
   it('chaque famille de la table a ses clips, et chaque clip son fichier', () => {
     for (const [famille, stems] of Object.entries(VEHICLE_ENGINE_STEMS)) {
-      const clips = stems.idle
-        ? [stems.enter, stems.loop, stems.idle, stems.exit]
-        : [stems.enter, stems.loop, stems.exit]
-      for (const stem of clips) {
+      for (const stem of [stems.enter, stems.loop, stems.exit]) {
         expect(shipped.has(stem), `${famille} : ${stem}`).toBe(true)
       }
     }

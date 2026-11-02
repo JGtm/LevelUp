@@ -7,8 +7,7 @@ package grammar
 // La chronique ne peut que grandir : un lot, un rang, une entree. `rev_chronique.go` a repasse
 // les 500 lignes en recevant l entree de la garde de table de vue, et `rev_chronique_archive_2.go`
 // est EXACTEMENT a 500 : il ne peut plus rien recevoir. Le fichier suivant s appelle `_3`, comme
-// l en-tete de la seconde archive l avait annonce. LA ROTATION SE FAIT EN CHAINE, comme pour
-// `.ai/thought_log.md`.
+// l en-tete de la seconde archive l avait annonce. LA ROTATION SE FAIT EN CHAINE.
 //
 // L ORDRE DE LECTURE EST CELUI DE `fichiersDeChroniqueGrammar` (`rev_test.go`) : archive,
 // archive_2, archive_3, puis la chronique vivante. Le gate exige que les rangs s y suivent sans

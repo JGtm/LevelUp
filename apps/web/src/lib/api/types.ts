@@ -2354,7 +2354,7 @@ export interface CompareResponse {
   /** C3.6 : indique si les données de joueur B sont partielles (champs null). */
   player_b_partial?: boolean
   /**
-   * Profil d'armes des deux joueurs (plan .ai/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md).
+   * Profil d'armes des deux joueurs.
    * ADDITIF et absent quand il n'est pas lisible : titre sans registre d'armes, joueur B
    * absent de la base partagée, câblage manquant.
    *

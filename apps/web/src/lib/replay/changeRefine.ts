@@ -183,8 +183,7 @@ export interface AbilityRankReading {
  * UN ÉVÉNEMENT À VENIR N'EST JAMAIS LU (`c.t <= frame`) : le rejeu connaît la suite, la fiche
  * n'a pas le droit de s'en servir.
  *
- * `lifeStart` BORNE AUSSI LE PASSÉ (correctif P0-2, 2026-09-06,
- * `.ai/AUDIT_LECTEURS_VIES_ANONYMES_2026-09-06.md`) — SITE FRÈRE DU MÊME DÉFAUT QUE
+ * `lifeStart` BORNE AUSSI LE PASSÉ (correctif du 2026-09-06) — SITE FRÈRE DU MÊME DÉFAUT QUE
  * `nearestReading` (`rosterLogic.ts`) : avant ce correctif, seul `c.t <= frame` bornait la
  * recherche, et un `spent` de la vie PRÉCÉDENTE du même slot (recyclé) restait « le dernier
  * changement », faisant DISPARAÎTRE la vignette d'une vie neuve qui n'avait pourtant rien

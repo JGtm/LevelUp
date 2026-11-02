@@ -1,7 +1,7 @@
 /**
  * CompareWeaponsSection — LE PROFIL D'ARMES DU FACE-À-FACE, en trois blocs.
  *
- * Plan `.ai/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md`, lot 4 :
+ * Les trois blocs :
  *
  *  1. la PART DES FRAGS PAR CLASSE, une barre par classe, les deux joueurs face à face ;
  *  2. la PORTÉE PAR RÔLE, deux graphes (« Où ils fraguent », « Où ils meurent »), chacun

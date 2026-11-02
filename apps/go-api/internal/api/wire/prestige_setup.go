@@ -103,9 +103,7 @@ type PrestigeBundle struct {
 // Infinite. Les données déjà écrites y resteraient après tout correctif de
 // câblage — leur déplacement demanderait une migration dédiée.
 //
-// Ne pas « corriger » ce point en n'isolant qu'une des deux bases : l'analyse
-// complète et les options chiffrées sont dans .ai/archive/V7.2.1/PLAN_V721_NOTION_BATCH.md,
-// lot V721-14a, découverte D-06.
+// Ne pas « corriger » ce point en n'isolant qu'une des deux bases.
 func NewPrestigeBundleAt(repoRoot, sharedSocialPath, metadataPath string,
 	resolve PlayerResolver, enabled bool) (*PrestigeBundle, error) {
 	// 1. Charger tuning.toml (fallback géré dans LoadTuning)

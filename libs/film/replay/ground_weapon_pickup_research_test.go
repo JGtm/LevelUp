@@ -3,8 +3,7 @@
 package replay
 
 // ground_weapon_pickup_research_test.go — LE RAMASSAGE d'une arme au sol : disparition BORNEE
-// par le recensement des images-cles, DATEE par le passage d'un joueur (phase 2 du plan
-// .ai/archive/V7.5/replay2d/PLAN_ARMES_AU_SOL_2E_LECTURE.md).
+// par le recensement des images-cles, DATEE par le passage d'un joueur (phase 2).
 //
 // L'ENTREE EST CELLE DE LA PHASE 1 : les records de CREATION `ti=42` dont le mot MPP de 32 bits
 // se resout dans le catalogue d'armes (`weaponv3.KnownWeaponHigh32`). Le filtre d'identite est

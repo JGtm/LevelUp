@@ -2,8 +2,7 @@
 
 package replaybuild
 
-// emprise_v0_reference_research_test.go — LOT V0 DU PLAN `.ai/archive/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md`,
-// VOLET CUISSON : la REFERENCE des mesures V0.1 et V0.2.
+// emprise_v0_reference_research_test.go — VOLET CUISSON : la REFERENCE des mesures V0.1 et V0.2.
 //
 // # CE QU'IL REND
 //

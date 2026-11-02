@@ -89,8 +89,7 @@ describe('garde-rail : un seul foyer pour le point de vue de la page de rejeu', 
     expect(
       fautifs,
       `ces fichiers relisent \`is_me\` au lieu de recevoir le point de vue en paramètre : ` +
-        `[${fautifs.join(', ')}]. Le foyer est \`model/replayViewpoint.ts\` ; ` +
-        `voir .ai/PLAN_FRISE_POINT_DE_VUE_2026-09-06.md, lot L2b.`,
+        `[${fautifs.join(', ')}]. Le foyer est \`model/replayViewpoint.ts\`.`,
     ).toEqual([])
   })
 

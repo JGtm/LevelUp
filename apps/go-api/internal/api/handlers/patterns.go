@@ -14,8 +14,6 @@ package handlers
 //
 // L'accès données vit dans duckdb.PatternsRepo (port.PatternsRepository) :
 // ce handler ne connaît ni le SQL ni le moteur de stockage (refactor Axe 1).
-//
-// Ref : .ai/archive/V7/PLAN_PATTERN_ENGINE.md
 
 import (
 	"context"

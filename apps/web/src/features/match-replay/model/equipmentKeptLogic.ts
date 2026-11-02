@@ -14,15 +14,13 @@
  * # LE CÔTÉ « UTILISÉ » A DEUX LECTURES (lot 5.7, aligné sur le Go `us6`)
  *
  * CORRIGÉ LE 2026-09-10 (lot 5.7, jumeau web du lot 5.5 Go —
- * `internal/games/halo_infinite/film/replay/usage_summary_outcomes.go` / `usage_summary_families.go`,
- * `.ai/REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md` §1 bis). Ce fichier lisait « utilisé » sur les
+ * `internal/games/halo_infinite/film/replay/usage_summary_outcomes.go` / `usage_summary_families.go`). Ce fichier lisait « utilisé » sur les
  * POSES `deployed` pour TOUTES les familles : c'était juste pour le MUR (qui engendre une pièce
  * distincte, ses panneaux) et FAUX pour tout le reste — une pose `deployed` sur un objet PORTÉ
  * ne mesure pas un déploiement, elle mesure un LÂCHER VOLONTAIRE À MI-VIE (l'objet qui tombe
  * parce que son porteur en ramasse un autre) ; le Go a mesuré ZÉRO consommation de charge
  * couverte par une pose de la même famille du même joueur à moins de 2 s, hors mur (84 %).
- * L'écart était CONNU et documenté (`.ai/REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md` §4 : « ÉCART
- * GO / WEB OUVERT DEPUIS LE 2026-09-10 ») ; ce lot le referme côté web.
+ * L'écart était CONNU ; ce lot le referme côté web.
  *
  * La règle, désormais commune aux deux dépôts :
  *   - les deux BONUS (`camo`, `overshield`) : le compte d'ÉPISODES d'état actif ;

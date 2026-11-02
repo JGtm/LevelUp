@@ -20,8 +20,7 @@ package migrations
 // présent dans schema_migrations) est réputée porter la baseline → le runner
 // l'enregistre SANS rejouer le DDL (aucune régression sur les player DB en prod).
 //
-// Les 33 sources squashées sont archivées dans .ai/migrations/squashed/player_v1/
-// (DM-3) ; git conserve l'historique complet.
+// Les 33 sources squashées ne sont plus dans l'arbre ; git conserve l'historique complet.
 
 import (
 	"database/sql"

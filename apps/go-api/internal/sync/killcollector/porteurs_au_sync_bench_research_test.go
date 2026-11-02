@@ -2,8 +2,7 @@
 
 package killcollector
 
-// porteurs_au_sync_bench_research_test.go — LE BANC DU COUT DE LA LECTURE DES PORTEURS AU SYNC
-// (`.ai/archive/V7.5/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, item 0.6, critere 4 et commande G-perf).
+// porteurs_au_sync_bench_research_test.go — LE BANC DU COUT DE LA LECTURE DES PORTEURS AU SYNC.
 //
 // # CE QU'IL CHRONOMETRE, ET RIEN D'AUTRE
 //

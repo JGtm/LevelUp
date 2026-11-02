@@ -15,7 +15,7 @@ import (
 // Pourquoi les events et pas le carnage : le carnage `WeaponStats[]` (arsenal complet
 // par joueur) est servi VIDE par 343 ; la timeline WeaponDrop est la SEULE source de
 // la précision par arme. La somme par joueur reconstitue exactement le carnage
-// TotalShotsFired/TotalShotsLanded (validé 8/8 joueurs, cf. .ai/H5_EXPLORATION).
+// TotalShotsFired/TotalShotsLanded (validé 8/8 joueurs).
 //
 // Sont ignorés : les drops sans arme (weapon_id 0 / non numérique), sans joueur, et
 // les drops à 0 tir tiré ET 0 touché (arme ramassée puis lâchée sans usage → bruit,

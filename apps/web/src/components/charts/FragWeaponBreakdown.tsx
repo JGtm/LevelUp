@@ -2,7 +2,7 @@
  * FragWeaponBreakdown — breakdown « Frags par arme » en barres horizontales,
  * chaque barre RECOLORÉE par la couleur de sa CLASSE d'arme (fragClassColor) →
  * cohérence visuelle avec le sunburst FragSunburst. Composant PARTAGÉ (Synthesis/
- * Match view/Timeseries/Sessions) — cf. .ai/V7/PLAN_FRAG_DISTRIBUTION_V2.md P1.5.
+ * Match view/Timeseries/Sessions).
  *
  * Double encodage : la classe est portée par la couleur, l'arme par le label d'axe,
  * et le tooltip nomme les deux (couleur jamais seule porteuse d'info). Les armes

@@ -2,8 +2,6 @@
 // publie contre des ORACLES (les verites officielles du match) et par des COMPTES DE VIOLATIONS
 // (ce qu'aucun match reel ne peut contenir), puis compare deux revisions du meme temoin.
 //
-// Conception : .ai/archive/V7.5/film_re/BANC_DE_VERITE_CONCEPTION_2026-09-30.md (decisions D-1 a D-8).
-//
 // # Ce qu'il lit, et ce qu'il ne lit pas
 //
 // Le JSON PUBLIE (la forme que le client lit), les faits du match (`domain.MatchFacts`, ceux-la

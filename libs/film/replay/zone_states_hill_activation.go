@@ -6,8 +6,7 @@ package replay
 // connue (par sa garde, zone_states_hill_garde.go), sa periode peut commencer a l instant ou la
 // colline existe en jeu, et non au premier contact d un joueur.
 //
-// CE QUE LE FILM DIT DE CET INSTANT (mesure sur les films a colline du parc, journal du plan
-// `.ai/archive/V7.5/PLAN_KOTH_REJEU_2026-10-09.md`) :
+// CE QUE LE FILM DIT DE CET INSTANT (mesure sur les films a colline du parc) :
 //
 //	images-cles   l objet de mode (le bloc designateur, proprietaire, pousseur, jauge) est ABSENT
 //	              d une image-cle et PRESENT a la suivante, avec la designation de la 1re colline.

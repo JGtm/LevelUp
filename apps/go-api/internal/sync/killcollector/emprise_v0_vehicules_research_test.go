@@ -2,8 +2,7 @@
 
 package killcollector
 
-// emprise_v0_vehicules_research_test.go — LOT V0.1 DU PLAN `.ai/archive/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md` :
-// LE JOUEUR EN VEHICULE N'EST PAS SITUE.
+// emprise_v0_vehicules_research_test.go — LE JOUEUR EN VEHICULE N'EST PAS SITUE.
 //
 // LA QUESTION. La cause `unplaced` (« en vehicule ou position non lue ») ne couvre le vehicule que
 // si, pendant un episode d'occupation, le collecteur ne SITUE pas l'occupant. Le seuil du plan,

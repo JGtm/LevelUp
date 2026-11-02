@@ -6,8 +6,7 @@ import "testing"
 // genre, nom de debogage (`vtable + 0x08`), adresse du descripteur (affectee par `FUN_140e453b4` a
 // `+0x210 + genre * 8`), adresse du lecteur de charge (`vtable + 0x68`) et domaines des trois
 // references (rendus de `vtable + 0x58` pour i = 0, 1, 2), ecrits ici en LITTERAUX : le test ne
-// derive rien de [tableDesGenresVueA], il la confronte au releve
-// (`.ai/archive/V7.5/film_re/campagne_grammaire_2026-10-01/ln_ghidra/table_genres.tsv`).
+// derive rien de [tableDesGenresVueA], il la confronte au releve Ghidra.
 
 type genreReleve struct {
 	genre                               int

@@ -9,7 +9,7 @@
 // post-sync (cf. post_sync_progression.go). Les endpoints sont purement
 // lecture pour l'UI.
 //
-// Réf : .ai/archive/V7/PLAN_PROGRESSION_TRACKING_ASCENSION.md §8.1 (handlers).
+// Réf : ADR 0014.
 package handlers
 
 import (

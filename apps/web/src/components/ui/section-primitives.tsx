@@ -3,8 +3,7 @@
  *
  * `AccentCard` (la tuile de KPI à filet coloré) et `SectionSubtitle` (le sous-titre à filet)
  * vivaient dans `SynthesisPage.tsx`, seul consommateur jusqu'au 2026-09-06, puis dans
- * `features/synthesis/SynthesisCards.tsx` quand la section « Portée des engagements » (lot 5
- * du plan `.ai/PLAN_DUELS_PORTEE_2026-09-06.md`) en a eu besoin : les recopier en aurait fait
+ * `features/synthesis/SynthesisCards.tsx` quand la section « Portée des engagements » en a eu besoin : les recopier en aurait fait
  * deux gabarits pour la même chose, exactement ce que `SectionCard` a corrigé ailleurs.
  *
  * Elles sont DESCENDUES ici le 2026-09-19 (aucune modification de rendu) : ce sont des

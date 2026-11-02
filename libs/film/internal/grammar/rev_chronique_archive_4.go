@@ -9,8 +9,7 @@ package grammar
 // 495 lignes en recevant l entree de la garde de table de vue et celle d `i57` ; l entree des
 // deux autres classes de vue le fait repasser les 500, et le ratchet de taille
 // (`archlint/film_file_size_test.go`) le refuse — a juste titre. Les trois archives existantes
-// sont pleines ou proches du seuil. LA ROTATION SE FAIT EN CHAINE, comme pour
-// `.ai/thought_log.md` : c est le geste ordinaire annonce par l en-tete des archives, pas un
+// sont pleines ou proches du seuil. LA ROTATION SE FAIT EN CHAINE : c est le geste ordinaire annonce par l en-tete des archives, pas un
 // incident.
 //
 // L ORDRE DE LECTURE EST CELUI DE `fichiersDeChroniqueGrammar` (`rev_test.go`) : archive,

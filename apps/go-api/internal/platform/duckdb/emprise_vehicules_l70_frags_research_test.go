@@ -2,9 +2,8 @@
 
 package duckdb
 
-// emprise_vehicules_l70_frags_research_test.go — LOT L7.0 DU PLAN
-// `.ai/archive/V7.5/PLAN_EMPRISE_VEHICULES_2026-09-28.md`, VOLET BASE : les frags de CLASSE VEHICULE
-// (decision D5), lus comme la « Repartition des frags » les lit.
+// emprise_vehicules_l70_frags_research_test.go — VOLET BASE : les frags de CLASSE VEHICULE,
+// lus comme la « Repartition des frags » les lit.
 //
 // # UNE SEULE DEFINITION DE LA CLASSE
 //

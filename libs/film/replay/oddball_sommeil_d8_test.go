@@ -2,8 +2,7 @@ package replay
 
 // oddball_sommeil_d8_test.go — D8 VOLET 1 : LE SOMMEIL DE L'OBJET EXISTE-T-IL ?
 //
-// LE PROTOCOLE EST ECRIT ET COMMITE AVANT CE FICHIER (`.ai/archive/V7.5/PLAN_OBJECTIFS_ETAT_VIVANT_
-// 2026-08.md`, section « D8 »). Ce qui suit l'applique.
+// LE PROTOCOLE EST ECRIT ET COMMITE AVANT CE FICHIER. Ce qui suit l'applique.
 //
 // # L'HYPOTHESE, ET D'OU ELLE VIENT
 //

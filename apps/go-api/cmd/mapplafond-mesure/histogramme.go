@@ -5,7 +5,7 @@ package main
 // POURQUOI PAS UN TABLEAU DE VALEURS. Le corpus de rejeux porte des centaines de milliers de
 // positions et une carte cuite jusqu'a quatre millions de pixels : tout garder en memoire pour
 // en tirer trois centiles coute cher sans rien apprendre de plus (lecon « balayage corpus =
-// bombe RAM », `.ai/` registre). Un histogramme au CENTIMETRE rend les memes centiles a la
+// bombe RAM »). Un histogramme au CENTIMETRE rend les memes centiles a la
 // precision de la source — les artefacts de rejeu publient deux decimales (cf.
 // `replay.Point`) — pour quelques milliers d'entrees quelle que soit la taille du corpus.
 

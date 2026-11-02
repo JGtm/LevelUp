@@ -6,7 +6,7 @@ package grammar
 //
 // La chronique est ne pouvoir que grandir : un lot, un rang, une entree. Sortie de
 // `rev.go` au lot 2.4.1 parce que ce fichier avait atteint 500 lignes, elle a atteint le
-// meme seuil deux rangs plus loin. ELLE SE ROTATIONNE DONC, comme `.ai/thought_log.md` : les
+// meme seuil deux rangs plus loin. ELLE SE ROTATIONNE DONC : les
 // rangs anciens passent ici, `rev_chronique.go` ne garde que la suite VIVANTE. Le geste
 // se refait quand ce dernier repasse 500 lignes — c est un geste ordinaire, pas un incident.
 //

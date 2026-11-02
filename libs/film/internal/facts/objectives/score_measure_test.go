@@ -16,8 +16,7 @@ import (
 	"github.com/JGtm/LevelUp/libs/film/types"
 )
 
-// score_measure_test.go — INSTRUMENT de la phase 0 du lot A de
-// `.ai/archive/V7.5/replay2d/PLAN_EXPLOITATION_REGISTRE_FILM.md` (items A.0.1 a A.0.4).
+// score_measure_test.go — INSTRUMENT de la phase 0 de l'exploitation du registre du film.
 //
 // Il ne publie RIEN et ne change AUCUN code de production : il confronte ce que le statborg
 // du film dit (score de mode par slot d'equipe, frags/morts/assistances par slot de joueur)

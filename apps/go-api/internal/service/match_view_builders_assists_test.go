@@ -146,8 +146,7 @@ func TestBuildAssistPairs_AssistantAussiNommeParLeScoreboard(t *testing.T) {
 // sont séparément.
 //
 // « aucune ligne » se corrige en produisant des kill-events pour ce match ; « aucune
-// mesure » se corrige en DÉCODANT SON FILM. C'est le second qui a explosé le 2026-04-07
-// (registre `.ai/archive/V7.5/REGISTRE_ASSISTANCES_2026-08-29.md`) : les additionner rendrait
+// mesure » se corrige en DÉCODANT SON FILM. C'est le second qui a explosé le 2026-04-07 : les additionner rendrait
 // l'alerte inexploitable, et n'en compter aucun est ce qui a laissé le trou invisible.
 func TestBuildAssistPairs_CompteursDesDeuxCauses(t *testing.T) {
 	sansLigne := observability.LoadCounter(compteurMatchAssistSansLigne)

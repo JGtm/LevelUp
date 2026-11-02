@@ -1,9 +1,8 @@
 package replay
 
-// placement_des_vies_test.go — UNE RÈGLE DE LA MESURE D'UNE VIE PAR TEST (lot V1.2 du plan
-// `.ai/archive/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md`).
+// placement_des_vies_test.go — UNE RÈGLE DE LA MESURE D'UNE VIE PAR TEST.
 //
-// Chaque test a été vu ROUGE sous une mutation nommée au journal du lot V1 du plan, puis la
+// Chaque test a été vu ROUGE sous une mutation nommée, puis la
 // mutation a été retirée. Les fixtures nomment leurs vies comme un film : par les morts du fil,
 // avec le VRAI registre (`BuildIdentityRegistry`) — deux morts à deux instants différents épinglent
 // le calage d'horloge à zéro, si bien que l'horloge du match est celle des positions.

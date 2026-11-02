@@ -21,8 +21,8 @@ package archlint
 // # LES EXCEPTIONS, DATEES
 //
 // Aucune : la liste [exceptionsDesFaits] est VIDE, et c est un cliquet. La seule qu elle ait portee,
-// `facts/killsource` (sa propre marche du film), est partie au lot 2.7.c du plan de l etape 2
-// (`.ai/archive/V7.5/PLAN_REPRESENTATION_INTERMEDIAIRE_ETAPE2_2026-10-03.md`) : killsource prend ses morts et
+// `facts/killsource` (sa propre marche du film), est partie a l etape 2 de la representation
+// intermediaire (ADR 0037) : killsource prend ses morts et
 // ses messages de kill dans la marche unique. Une exception ajoutee porte sa date, sa raison et son
 // critere de retrait ; celle qui ne couvre plus aucune lecture ROUGIT
 // (`TestExceptionsDesFaitsSontDateesEtVivantes`).

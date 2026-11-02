@@ -2,8 +2,7 @@ package skill
 
 // skill_v2_canonical.go — Stratégie C (write-through aliasing) : v2 écrit
 // dans match_skill_rank avec rating_type='LUSR' (slot historique lu par
-// l'UI) + rating_type='LUSR_V2' (audit trail). Cf. ADR 0024 +
-// .ai/archive/V7/LUSR v2/LUSR_V2_HANDOFF.md. La v2 est le seul modèle : le mode
+// l'UI) + rating_type='LUSR_V2' (audit trail). Cf. ADR 0024. La v2 est le seul modèle : le mode
 // « canonique » est inconditionnel dès qu'une base joueur est fournie (aucun
 // drapeau d'environnement ; ADR 0024, amendement du 2026-10-17).
 //
@@ -48,7 +47,7 @@ func writeCanonicalLUSRRow(ctx context.Context, c shadowRunContext, matchID stri
 	// Palier CIBLE (μ brut) puis lissage d'affichage : montée immédiate, descente
 	// ≤1 sous-palier/match (hystérésis / demotion protection), désactivé pendant
 	// la phase de placement. μ interne reste honnête ; seul l'AFFICHÉ est lissé.
-	// Cf. skill_v2/display_smoothing.go + étude .ai/thought_log.md [2026-05-31].
+	// Cf. skill_v2/display_smoothing.go.
 	tgtTier, tgtSub := skillv2.InferTier(state.Mu, boundaries)
 	targetOrd := skillv2.TierOrdinal(boundaries, tgtTier.Name, tgtSub)
 	prev := previousQuery{group: state.PlaylistGroup, matchID: matchID, start: startTime, excluded: c.excluded}

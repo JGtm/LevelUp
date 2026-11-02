@@ -99,7 +99,7 @@ func LegacySubTierRange(tier TierBoundary, sub int) (min, max float64) {
 // interpole linéairement la position de μ DANS son tier sur la plage legacy
 // [min, max[ du tier. Le résultat bouge donc à chaque variation de μ — c'est lui
 // qui alimente rating_value pour LUSR v2, de sorte que rating_delta devienne un
-// vrai « gain de skill par match » (cf. .ai/thought_log.md [2026-06-10]).
+// vrai « gain de skill par match ».
 //
 // Continue par morceaux (une pente par tier) ET continue aux frontières de tier,
 // car LegacyTierRange(T).max == LegacyTierRange(T+1).min sur toute la grille.

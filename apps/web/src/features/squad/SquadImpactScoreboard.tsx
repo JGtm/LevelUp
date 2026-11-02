@@ -1,8 +1,6 @@
 /**
  * SquadImpactScoreboard — teammates.07 : tableau scoreboard "Impact des coéquipiers".
  *
- * Spec : .ai/charts_specs/teammates/07_impact_taquinerie.yaml
- *
  * Implémentation TanStack Table :
  *  - Colonnes dynamiques : Joueur (sticky) + 1 par match avec ≥1 badge + 8 colonnes
  *    agrégat (1 par badge_key) + Score + Badge ranking.

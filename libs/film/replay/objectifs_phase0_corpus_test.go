@@ -1,7 +1,6 @@
 package replay
 
-// objectifs_phase0_corpus_test.go — PHASE 0 du plan
-// `.ai/archive/V7.5/replay2d/PLAN_OBJECTIFS_VIVANTS_2E_LECTURE.md` : LE SOCLE COMMUN des mesures.
+// objectifs_phase0_corpus_test.go — PHASE 0 : LE SOCLE COMMUN des mesures.
 //
 // CE QUE LA PHASE 0 CHERCHE. Le drapeau de CTF et le crane d'Oddball sont, selon la
 // decision 1 du plan, des `weap` TENUS EN MAIN : leur position est celle de leur PORTEUR,

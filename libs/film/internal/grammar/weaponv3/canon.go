@@ -2,7 +2,7 @@ package weaponv3
 
 // canon.go — identité d'arme par high-32 (fold des variantes).
 //
-// Règle (réf .ai/REFERENCE_WEAPON_IDS.md) : l'identité d'une arme = ses 32 bits
+// Règle : l'identité d'une arme = ses 32 bits
 // HAUTS (high-32 = uint32(id>>32)). Le suffixe bas (le plus souvent 0x42c9679f)
 // est ignoré : il porte la variante cosmétique/upgrade et NON l'identité du type
 // d'arme. Folder par high-32 récupère les variantes partageant la même base

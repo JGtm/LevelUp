@@ -90,8 +90,8 @@ type killFeed struct {
 // registre, mais c est le profil qui en est la source unique) et commande le decoupage du
 // gamertag dans le bloc d event. Le 0 qui trainait ici designait « gamertag en tete » pour TOUS les films, y
 // compris les versions 39-40 ou il vit douze octets plus loin — d ou 68 a 96 % de morts sans
-// source de degat sur les films de mars a novembre 2025
-// (.ai/archive/V7.5/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md). Film sans registre : `f.versionLue` est faux,
+// source de degat sur les films de mars a novembre 2025.
+// Film sans registre : `f.versionLue` est faux,
 // `f.majorVersion` vaut 0 et le comportement historique tient — l appelant l a consigne.
 func loadKillFeed(f *film) (*killFeed, error) {
 	best := grammar.FilDesKills(f.src, f.majorVersion)

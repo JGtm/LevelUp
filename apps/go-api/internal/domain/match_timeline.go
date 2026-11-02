@@ -6,8 +6,6 @@
 // Les événements `highlight_events.time_ms` sont stockés relatifs au début du
 // film. CorrectEventTime() les ramène au début du gameplay (T0 = 0 dans le
 // référentiel gameplay).
-//
-// Cf. .ai/archive/V7/PLAN_MATCH_TIMELINE_T0.md §4 et docs/adr/0024-match-timeline-t0.md.
 package domain
 
 import "time"

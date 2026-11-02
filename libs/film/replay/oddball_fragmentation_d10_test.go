@@ -2,8 +2,7 @@ package replay
 
 // oddball_fragmentation_d10_test.go — D10 / O1 : POURQUOI UN LONG PORTAGE SE FRAGMENTE.
 //
-// LE PROTOCOLE EST ECRIT ET COMMITE AVANT CE FICHIER
-// (`.ai/archive/V7.5/replay2d/registre_film/D10_PROTOCOLE.md`, commit O0). Ce qui suit l'applique.
+// LE PROTOCOLE EST ECRIT ET COMMITE AVANT CE FICHIER. Ce qui suit l'applique.
 //
 // # CE QUE CETTE CAMPAGNE N'EST PAS
 //

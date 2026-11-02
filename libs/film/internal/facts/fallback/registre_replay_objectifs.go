@@ -5,8 +5,8 @@ package fallback
 //
 // UN FICHIER NEUF, ET C'EST LA LIMITE DE 500 LIGNES : `registre_replay_identites.go` l'avait
 // franchie (509 lignes) à la fusion du jalon J9 (drapeau, bombe, zones) dans J5, chacun y ayant
-// inscrit un repli (plan `.ai/archive/V7.5/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25.md`, lot J5.5,
-// 2026-09-27). Déplacement pur : les entrées sont recopiées à l'octet, dans leur ordre.
+// inscrit un repli
+// (2026-09-27). Déplacement pur : les entrées sont recopiées à l'octet, dans leur ordre.
 
 // dateLotColline : le jour du lot qui place une colline par la garde de son camp proprietaire.
 const dateLotColline = "2026-10-09"

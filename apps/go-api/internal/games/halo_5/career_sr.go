@@ -8,7 +8,7 @@
 //
 // Données STATIQUES (Halo 5 est un jeu figé) : seuils issus du SpartanRankManifest
 // (content-hacs.svc/contents/SpartanRankManifest), dump den.dev VÉRIFIÉ contre les
-// jalons publiés (cf. .ai/refs/h5_spartan_rank_xp.csv). SR152 = MAXIMUM (pas un
+// jalons publiés. SR152 = MAXIMUM (pas un
 // seuil « 0 », pas de rang suivant).
 package halo_5
 

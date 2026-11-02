@@ -3,9 +3,8 @@
  *
  * POURQUOI CE FICHIER, ET POURQUOI MAINTENANT. `resolveXuidMeta` décide QUI EST ALLIÉ sur les
  * cinq charts de la page match (le rejeu 2D n'en lit plus que les noms depuis le 2026-10-06 : son
- * allégeance vient du film). Le chantier « point de vue de la frise » (plan
- * `.ai/PLAN_FRISE_POINT_DE_VUE_2026-09-06.md`) lui a un temps ajouté un troisième paramètre, et
- * sa décision 15 exigeait que RIEN NE CHANGE HORS DE LA PAGE DE REJEU. Or jusqu'ici
+ * allégeance vient du film). Le chantier « point de vue de la frise » lui a un temps ajouté un troisième paramètre, et
+ * il fallait que RIEN NE CHANGE HORS DE LA PAGE DE REJEU. Or jusqu'ici
  * RIEN ne fixait les SORTIES de cette fonction : `xuidMeta.guard.test.ts` interdit bien que la
  * cascade d'appartenance soit recopiée ailleurs, mais un grep ne dit pas ce que la fonction
  * rend. Une inversion d'allié y passerait sans un test rouge, et se verrait à l'écran, tard,

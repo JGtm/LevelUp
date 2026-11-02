@@ -1,5 +1,5 @@
 // Package sync — no_art_patterns_test.go : Phase 6 du plan d'éradication
-// ART (cf. .ai/archive/V7/PLAN_LUSR_ART_HOME_CRASH.md).
+// ART (cf. ADR 0026).
 //
 // **Guard-rail anti-régression** : ce test scanne les fichiers Go du
 // projet pour détecter l'apparition de patterns SQL à risque ART

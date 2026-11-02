@@ -7,7 +7,7 @@
  * Périmètre : les `.ts` / `.tsx` de `src/`, hors tests (`*.test.*`), hors fichiers générés
  * (`generated/`, `generated.ts`, `routeTree.gen.ts`) et hors des deux dossiers qui possèdent la
  * langue (`lib/i18n/`, `lib/formatters/`). Le compte est en LIGNES (une ligne qui matche = 1),
- * comme `rg -c` dans l'état des lieux (`.ai/V8/ETAT_DES_LIEUX_I18N_MULTILANGUE_2026-10-23.md`).
+ * comme `rg -c`.
  */
 import { readdirSync, readFileSync } from 'node:fs'
 import { join, relative, resolve, sep } from 'node:path'

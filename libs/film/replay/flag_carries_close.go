@@ -94,8 +94,7 @@ func flagCloseAt(r *flagCarryRaw, at int64, by flagCloser) {
 // oracle de 17,2 s — l'ecart passe de +7,8 s a -9,9 s. Le fait ne date donc PAS la chute de ce
 // porteur-la, et le faire clore serait une regression.
 //
-// LE DESACCORD ENTRE `t1` ET L'ETAT PUBLIE EST CONSIGNE, PAS TRAITE (decouverte de la revue 6.R,
-// rapport `.ai/archive/V7.5/REVUE_VAGUE6_2026-09-11.md`) : la borne bouge sans que la publication la
+// LE DESACCORD ENTRE `t1` ET L'ETAT PUBLIE EST CONSIGNE, PAS TRAITE (decouverte de revue) : la borne bouge sans que la publication la
 // suive. Le trancher demande de qualifier ce que `flag_carriers_killed` date vraiment quand
 // plusieurs portages se succedent — un sujet de mesure, pas de refactorisation.
 func (c flagCloser) ferme() bool { return c != flagCloserCarrierKill }

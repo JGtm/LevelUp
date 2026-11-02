@@ -240,8 +240,8 @@ func (r IdentityRegistry) PontEtabli() bool { return len(r.own.SlotXUID) > 0 }
 // l'instant demande — sous une exemption ecrite « ramassages, marques de portage, frags sous
 // equipement actif ». Ses six lecteurs connaissaient tous l'instant de leur lecture ; ils sont
 // passes a `XUIDNumAt`. Mesure qui a commande le retrait :
-// `.ai/archive/V7.5/RAPPORT_PONT_APLATI_2026-09-10.md` (un siege ambigu sur 74 films, deux ramassages
-// publies sous le nom d'un joueur que le film place ailleurs). Garde-rail contre la
+// un siege ambigu sur 74 films, deux ramassages
+// publies sous le nom d'un joueur que le film place ailleurs. Garde-rail contre la
 // reintroduction : `internal/archlint/no_identity_bridge_outside_registry_test.go`.
 
 // IndexParSlot rend le pont slot -> INDEX DE JOUEUR du film. C'est la forme qu'attendent les

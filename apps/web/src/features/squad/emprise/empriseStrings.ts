@@ -1,7 +1,6 @@
 /**
- * empriseStrings.ts — les textes de l'onglet « Emprise » de l'Escouade (lot L5 du plan
- * PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26) : titres (§3 du plan), aides ⓘ (trois phrases au
- * plus) et libellés de la maquette `.ai/archive/V7.5/MAQUETTE_ONGLET_TACTIQUE_ESCOUADE_2026-09-26.html`.
+ * empriseStrings.ts — les textes de l'onglet « Emprise » de l'Escouade : titres, aides ⓘ (trois phrases au
+ * plus) et libellés.
  * Fichier à part du dictionnaire de la feature (précédent : `objectif/objectifStrings.ts`).
  *
  * Le type est déclaré une fois (`i18n/contract.ts`) ; chaque langue vit dans son fichier

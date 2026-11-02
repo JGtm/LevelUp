@@ -15,9 +15,9 @@ package grammar
 //	`objectives/extract.go` tranchait : « le champ team du film etant non fiable, l'equipe
 //	  d'un event vient TOUJOURS du roster via le xuid de l'acteur » — le roster reste la source
 //	  de `TeamID` jusqu'au lot 1.7.3, mais plus pour cette raison-la : elle est REFUTEE ;
-//	`.ai/archive/V7/RESEARCH_THEATER_RE.md:534` identifie l'equipe a `b37`/`b38`
-//	  (« CONFIRME : le split 4/4 des events colle exactement au roster DB »), sa ligne 624 la
-//	  dit fiable en `b55`, et sa ligne 645 la dit FAUSSE.
+//	le journal de recherche sur le Theater identifie l'equipe a `b37`/`b38`
+//	  (« CONFIRME : le split 4/4 des events colle exactement au roster DB »), la dit
+//	  fiable en `b55` a un endroit, et FAUSSE a un autre.
 //
 // Les phases 3 et 4 ont laisse la question ouverte faute d'equipe de reference interne. Elle ne
 // l'est plus : la phase 3 a etabli l'equipe par joueur dans la TRAME (designateur de 4 bits a

@@ -8,8 +8,7 @@ package replay
 // gelé par la baseline. La forme publiée vit donc ici, la RÈGLE qui la remplit reste dans
 // `ground_weapon_pads.go`, et le DÉCODAGE dans `build_ground_weapons.go`.
 //
-// CHRONIQUE — v11 (2026-08-17, plan `.ai/archive/V7.5/replay2d/PLAN_ARMES_AU_SOL_2E_LECTURE.md`,
-// phase 3). Le document publie `weaponPads` — les SOCLES D'ARME du match, avec leurs
+// CHRONIQUE — v11 (2026-08-17). Le document publie `weaponPads` — les SOCLES D'ARME du match, avec leurs
 // apparitions, leurs intervalles de présence bornés par le recensement des images-clés et leur
 // cycle de réapparition quand il est établi — et `padPickups`, les occupations qui se sont
 // achevées. Les deux champs sont optionnels, mais la version monte : le calque des socles côté

@@ -30,7 +30,7 @@ package signaux
 // quatre films et deux builds (`bcb6d393`, `53ce4390`, `7344d24f`, `64e8adfa`), 190 blocs sur
 // 190 avec `b37 == b38`. Aucune fixture ne peut donc les séparer, et c'est précisément ce qui
 // fonde la règle du lot : on lit UN des deux (l'octet 37, celui que
-// `.ai/archive/V7/RESEARCH_THEATER_RE.md:534` identifie) et on ne lit JAMAIS l'autre, parce que
+// la recherche sur le Theater identifie) et on ne lit JAMAIS l'autre, parce que
 // deux lectures d'un même fait divergent un jour sans que rien ne le dise. Le contre-test
 // ci-dessous le vérifie dans les deux sens : 36 et 55 séparent, 38 ne sépare pas.
 //

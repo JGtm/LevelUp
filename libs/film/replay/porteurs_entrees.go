@@ -3,8 +3,7 @@ package replay
 // porteurs_entrees.go — LES GARDES DE MODE ET LES ENTREES DES QUATRE CALQUES DE PORTEUR
 // (drapeau, crane, couronne VIP, bombe), POUR LA CUISSON ET POUR LE SYNC.
 //
-// DEPLACE depuis `replaybuild/matchfacts.go` et `replaybuild/zones.go` le 2026-09-28 (lot V1.4
-// du plan `.ai/archive/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md`), sans changement de regle. Le plan exige que le
+// DEPLACE depuis `replaybuild/matchfacts.go` et `replaybuild/zones.go` le 2026-09-28, sans changement de regle. Le contrat exige que le
 // collecteur lise les porteurs « sous la meme garde de mode que la cuisson » : une garde recopiee
 // au sync aurait diverge au premier ajustement d'un nom de variante. Elle est ecrite ICI, une fois,
 // et `replaybuild` comme `PortagesAuSync` l'appellent.

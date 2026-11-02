@@ -1,6 +1,5 @@
 // Package domain — combat_profile.go : types du profil combat 3 axes.
 //
-// Ref : .ai/archive/V7/PLAN_COMBAT_PROFILE_WIRING.md
 // Le profil combat est exposé dans Synthesis, Squad (par joueur) et Session Compare.
 package domain
 

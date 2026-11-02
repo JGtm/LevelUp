@@ -16,8 +16,7 @@ import (
 //   - structurel / passif (Spawn / Death / Revived / Suicides) ;
 //   - ticks de score (PlayerScoreImpulse) et bonus PvE/Warzone par round.
 //
-// IDs = catalogue officiel /metadata/h5/metadata/impulses (cf. .ai/H5_EXPLORATION/
-// 02_impulses_catalogue.json). À ajuster si la narration produit l'exige.
+// IDs = catalogue officiel /metadata/h5/metadata/impulses. À ajuster si la narration produit l'exige.
 var objectiveImpulseIDs = map[int64]bool{
 	2944278681: true, // FlagCapturedImpulse
 	1039658009: true, // Flag Pulls

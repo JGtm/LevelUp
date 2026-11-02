@@ -5,8 +5,7 @@
  * S'inspire de afonsolopez/colorblind (port Go) — réimplémenté en TS
  * pour rester sans dépendance.
  *
- * Si un test échoue, le plan d'action est dans
- * .ai/PLAN_ACCESSIBILITY_PALETTES_V2.md § C.5 :
+ * Si un test échoue, le plan d'action est :
  *   1. ajuster la couleur de texte (noir ↔ blanc) ;
  *   2. ajuster la couleur de fond ;
  *   3. en dernier recours : `.skip` + commentaire `// FIXME: WCAG-fail-by-design`.

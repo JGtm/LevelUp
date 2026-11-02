@@ -1,7 +1,6 @@
 package grammar
 
-// keyframe_fullstate_loop_test.go — INSTRUMENT DU LOT R7-e
-// (cf. .ai/archive/V7.5/replay2d/PLAN_R7E_BOUCLE_ETAT_COMPLET.md).
+// keyframe_fullstate_loop_test.go — INSTRUMENT DU LOT R7-e.
 //
 // LA QUESTION : la boucle d'ETAT COMPLET du jeu (`FUN_142e2bfd0` -> `FUN_1428e2b68` ->
 // `FUN_142e2c690`, lue par R7-d) portee TELLE QUELLE sur le payload type-2 atterrit-elle

@@ -115,7 +115,7 @@ from it. The test baseline is one file per module whose tests run in the shards
 dated `RETRAIT` entry of `scripts/check_test_baseline.sh` and, when it keeps its tests, enters the baseline
 of its new module with its import path rewritten). The coverage ratchet stays on `apps/go-api`. `archlint` ratchets with a general rule
 (`gamefiles_tag`, `research_tag`, `pas_de_lecture_sous_ai`, `todo_expiry`, `no_mojibake`,
-`no_accidental_goos_suffix`, `doc_chemins_ai`, `briques_imports`, the Go version check) are rooted
+`no_accidental_goos_suffix`, `commentaires_references`, `briques_imports`, the Go version check) are rooted
 at the workspace through `workspaceGoSources`; ratchets about the SQL or `go-api` layers stay on
 `apiModuleRoot`. Ratchets about the film decoder name its paths from one constant (`racineBriqueFilm`,
 `libs/film`) and read them from the workspace root; a table that mixes `go-api` and brick paths speaks

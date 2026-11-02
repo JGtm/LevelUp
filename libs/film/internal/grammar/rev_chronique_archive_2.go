@@ -8,7 +8,7 @@ package grammar
 // La chronique ne peut que grandir : un lot, un rang, une entree. `rev_chronique.go` a atteint
 // 500 lignes une seconde fois, et `rev_chronique_archive.go` — qui porte les rangs `.12` a `.28`
 // — en est a 456 : y verser dix rangs de plus l aurait fait depasser le meme seuil. LA ROTATION
-// SE FAIT DONC EN CHAINE, comme pour `.ai/thought_log.md` : chaque archive garde le bloc de rangs
+// SE FAIT DONC EN CHAINE : chaque archive garde le bloc de rangs
 // qu elle nomme dans son titre, et la suite VIVANTE reste dans `rev_chronique.go`. Le geste est
 // ordinaire ; il se refera, et le fichier suivant s appellera `_3`.
 //

@@ -7,8 +7,7 @@
  * 1. **EXACTE** (`groundWeapons[].ammo`, lot 6.10 du 2026-09-11). Le record de CRÉATION de
  *    l'objet porte un composant `weapon-ammo-component` dont deux champs sont prouvés : le
  *    chargeur et la réserve. Ce record est daté à l'INSTANT DU LÂCHER — il n'y a donc rien à
- *    dater, et la phrase n'écrit pas de « ≈ ». Preuve et chiffres :
- *    `.ai/archive/V7.5/RAPPORT_MUNITIONS_EXACTES_2026-09-11.md`. Elle est ABSENTE sur la majorité des
+ *    dater, et la phrase n'écrit pas de « ≈ ». Elle est ABSENTE sur la majorité des
  *    objets : c'est une réserve de LECTURE du décodeur, chiffrée par
  *    `coverage.groundWeaponItems.ammoRead`, pas une absence de l'objet.
  *

@@ -5,7 +5,7 @@ package replay
 // visee_env114_research_test.go — LOT A1 : LES FRONTIERES DE CHAMPS DE L'ENVELOPPE DU TYPE 114,
 // INFEREES PAR LA VARIANCE.
 //
-// CE QUI EST ACQUIS (phases 6 / 6bis, cf. .ai/thought_log.md du 2026-08-30) : la mise a la
+// CE QUI EST ACQUIS (phases 6 / 6bis, 2026-08-30) : la mise a la
 // lunette est l'evenement de paquet delta de type 114 (« biped_board_vehicle » — la lunette est
 // un siege de l'arme) ; 11 des 12 transitions relevees a la main par l'utilisateur sur le film
 // 00162144 tombent a moins d'une seconde d'un paquet 114. La grammaire GENERALE d'un paquet

@@ -10,8 +10,6 @@ package grammar
 // les noms, la version >= 41 sur le meme flux rend le rembourrage (et c'est ce qui s'est
 // produit en production tant que 0 etait passe en dur), et la version 0 — film sans registre —
 // garde le comportement historique « gamertag en tete ».
-//
-// Cause et mesures : .ai/archive/V7.5/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md.
 
 import (
 	"encoding/binary"

@@ -1,8 +1,6 @@
 /**
  * squadSynergyRadarChart — teammates.06 : radar 6 axes (1 trace par joueur).
  *
- * Spec : .ai/charts_specs/teammates/06_synergy_radar.yaml
- *
  * - 1 série par joueur (main + coéquipiers).
  * - Lignes seules (PAS d'aire centrale) — multi-profils superposés
  *   deviennent illisibles avec `areaStyle`.

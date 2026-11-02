@@ -1,6 +1,5 @@
 // Package duckdb — home_repo_asset_url_fallback_test.go : tests pour le
-// fallback name-based d'image map quand `map_images_registry` est vide
-// (Option B 2026-05-08, cf. .ai/archive/V7/PLAN_RECENT_MATCH_REGRESSION_FIX.md).
+// fallback name-based d'image map quand `map_images_registry` est vide.
 package duckdb
 
 import (

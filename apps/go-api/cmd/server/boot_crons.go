@@ -240,8 +240,7 @@ func launchReplayPurgeCron(st *bootState) {
 			if err != nil {
 				// LOGUE AVANT DE DÉGRADER (règle n°3) : sans cette ligne, un
 				// app_settings.json illisible faisait passer la fenêtre à 0 EN SILENCE —
-				// c'est-à-dire rétention illimitée, donc purge désactivée sans un mot (Q8,
-				// .ai/archive/V7.5/DECOUVERTES_TACTIQUE_2026-09-07.md).
+				// c'est-à-dire rétention illimitée, donc purge désactivée sans un mot.
 				slog.WarnContext(ctx, "replay_purge_cron: settings illisibles, "+
 					"rétention illimitée (purge désactivée)", "err", err)
 				return 0

@@ -152,7 +152,7 @@ var fixturesLegacyAutorisees = map[string]bool{
 // de session. La forme canonique est migration.TimestampDefaultUTC.
 //
 // Nom conserve depuis S2 bien que le perimetre soit desormais toute la classe : le
-// renommer sortirait le test de la baseline `.ai/baselines/tests_pre_migration.jsonl`,
+// renommer sortirait le test de la baseline des tests,
 // qui indexe les tests par nom.
 func TestWrittenAtEcrituresEnUTC(t *testing.T) {
 	racine := filepath.Join("..", "..") // apps/go-api

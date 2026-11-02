@@ -10,7 +10,7 @@ import "levelup/go-api/internal/i18n"
 // éviter les "grosses chutes en un match" sans corrompre la convergence du
 // modèle bayésien.
 //
-// Justification chiffrée : étude .ai/thought_log.md [2026-05-31]. Sur les 3
+// Justification chiffrée : étude de volatilité du 2026-05-31. Sur les 3
 // joueurs trackés (full history, σ convergé ~0.67), la volatilité résiduelle
 // est un problème de QUEUE (matchs rares à fort Δμ : btb max 2.13 μ, quits).
 // L'hystérésis élimine 100 % des chutes abruptes (−≥2 sous-paliers) avec un lag

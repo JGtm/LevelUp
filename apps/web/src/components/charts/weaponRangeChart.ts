@@ -12,8 +12,7 @@
  *
  * Grammaire reprise du graphe de portée par match validé le 2026-09-02
  * (`features/match-view/_killDistanceChart.ts`) : un bâton par arme, un losange sur la
- * valeur centrale. Transposition à l'agrégat multi-matchs (décision D6 du plan
- * `.ai/PLAN_DUELS_PORTEE_2026-09-06.md`) : le bâton court du 10e au 90e centile et le
+ * valeur centrale. Transposition à l'agrégat multi-matchs : le bâton court du 10e au 90e centile et le
  * losange marque la MÉDIANE — sur des centaines de frags, min et max décrivent deux
  * accidents, pas une portée. L'utilisateur a demandé le 2026-09-06 la FUSION des deux
  * graphes jumeaux : une ligne par arme, deux bâtons (frags en haut, morts en bas), même axe.
@@ -197,9 +196,8 @@ export interface WeaponRangeOptionInput {
    * frags »/« Mes morts » à la Synthèse, deux gamertags au Face-à-face.
    *
    * `observed` est OPTIONNEL : quand il est fourni ET que le contrat porte `min_m`/`max_m`,
-   * l'infobulle ajoute « min – max observés ». Les deux extrêmes ne sont JAMAIS tracés (D5
-   * du plan .ai/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md) — les mettre dans la géométrie du
-   * bâton ferait exactement ce que D6 refuse : décrire deux accidents. Absent = la Synthèse,
+   * l'infobulle ajoute « min – max observés ». Les deux extrêmes ne sont JAMAIS tracés : les mettre dans la géométrie du
+   * bâton décrirait deux accidents, pas une portée. Absent = la Synthèse,
    * dont l'affichage reste inchangé.
    */
   labels: {

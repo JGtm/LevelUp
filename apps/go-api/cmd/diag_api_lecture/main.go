@@ -1,7 +1,6 @@
 // cmd/diag_api_lecture — LECTURE SEULE de onze surfaces de l'API Halo et Xbox, sortie sur stdout.
 //
-// POURQUOI CET OUTIL EXISTE (plan D3, `.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D3_2026-10-29.md`, D3-N, puis
-// plan PUBLICATION, `.ai/V8/PLAN_PUBLICATION_BRIQUES_2026-10-30.md`, T3).
+// POURQUOI CET OUTIL EXISTE.
 // Le découplage de la brique « API Halo » déplace le code qui parle aux services Halo ; la preuve
 // que rien n'a changé est un témoin LIVE pris AVANT et rejoué APRÈS, surface par surface. Aucune
 // commande existante ne lisait ces surfaces sans écrire une base ou afficher des jetons. Cet outil

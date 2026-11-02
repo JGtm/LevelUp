@@ -13,9 +13,7 @@ package service
 // Ce littéral n'existe plus : le stamp a remonté à l'entrée de Run, donc le ratchet
 // aurait échoué sur un code DEVENU MEILLEUR. Sa garantie est reprise, élargie, par
 // TestRunStampeLeTitreAvantLaPremiereEtape ci-dessous — qui couvre TOUTES les étapes
-// au lieu d'une seule. Le test supprimé n'était pas dans
-// `.ai/baselines/tests_pre_migration.jsonl` (né le 2026-09-13, baseline du 2026-06-26) :
-// aucune entrée à y retirer, vérifié par grep.
+// au lieu d'une seule.
 //
 // C.1 n'avait fermé que le volet LUSR — le stamp était posé sur le seul appel à
 // recomputeLUSR. `recomputePerfScores` recevait encore le ctx brut, et sa

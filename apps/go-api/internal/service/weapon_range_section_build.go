@@ -102,8 +102,7 @@ func mergeWeaponSides(rows []analysis.WeaponRange) []domain.WeaponRangeRow {
 // tels quels, les trois classes de dénivelé deviennent des pourcentages (convention `*Pct` du
 // dépôt, 0..100).
 //
-// MIN ET MAX SONT PORTÉS JUSQU'AU CONTRAT MAIS NE SE TRACENT PAS (D5 du plan
-// .ai/archive/V7.5/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md) : ils vivent dans l'infobulle. La section
+// MIN ET MAX SONT PORTÉS JUSQU'AU CONTRAT MAIS NE SE TRACENT PAS : ils vivent dans l'infobulle. La section
 // Synthèse ne les lit pas — son affichage est inchangé.
 //
 // Le dénominateur est `Measured`, qui ne peut pas être nul : un couple (arme, côté) naît d'au

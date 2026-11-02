@@ -1,8 +1,7 @@
 /**
  * fragClass.ts — Échelle couleur des CLASSES d'arme du sunburst « Répartition des
  * frags » v2 (classe→rôle). SOURCE UNIQUE réutilisée par toutes les surfaces
- * (Synthesis, Match view, Timeseries, Sessions, Escouade) — cf.
- * .ai/V7/PLAN_FRAG_DISTRIBUTION_V2.md P1.
+ * (Synthesis, Match view, Timeseries, Sessions, Escouade).
  *
  * GAMME « ANTAGONISTES » (réactive à la palette) : chaque classe est mappée sur un
  * TOKEN sémantique de la gamme Antagonistes (la même que MatchAntagonistChart :

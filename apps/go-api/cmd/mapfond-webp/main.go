@@ -1,9 +1,9 @@
 // cmd/mapfond-webp — BANC D'ESSAI : PNG -> WebP sans perte pour les fonds de carte.
 //
-// POURQUOI CET OUTIL. Le plan `.ai/archive/V7.5/PLAN_FONDS_CARTE_WEBP_ETAG_2026-09-09.md` propose de
+// POURQUOI CET OUTIL. On envisage de
 // remplacer les 109 PNG de `data/titles/{slug}/reference/map_backgrounds/` par du WebP sans
-// perte (D1) pour reduire leur poids (44 Mo actuellement). Avant de toucher un seul octet de
-// donnee versionnee, l'Etape 0 exige de PROUVER que l'aller-retour est identique au bit pres et
+// perte pour reduire leur poids (44 Mo actuellement). Avant de toucher un seul octet de
+// donnee versionnee, il faut PROUVER que l'aller-retour est identique au bit pres et
 // de CHIFFRER le gain reel — pas une estimation. C'est le role de cet outil, et de lui seul.
 //
 // DEUX MODES, UNE SEULE LOGIQUE DE VERIFICATION (roundtrip.go) :

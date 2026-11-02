@@ -10,8 +10,7 @@ import (
 // extract_test.go : SKIP propre si le film est absent, donc verts en CI sans films).
 //
 // Ils encodent la verite terrain etablie le 2026-08-01 par confrontation avec une capture
-// Cheat Engine et avec un releve terrain ecrit a l'oeil AVANT tout decodage
-// (.ai/archive/V7.5/ETAT_DE_L_ART_MODE_SCORE_EVENEMENTS.md §15).
+// Cheat Engine et avec un releve terrain ecrit a l'oeil AVANT tout decodage.
 
 // finalScores rend le dernier score connu de chaque slot d'equipe.
 func finalScores(pts []types.ScorePoint) map[int]int64 {
