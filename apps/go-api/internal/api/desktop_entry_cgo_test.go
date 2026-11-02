@@ -238,7 +238,8 @@ func TestDesktopEntry_LibellesDeLaCoquilleDansLaLangueDeLaRequete(t *testing.T) 
 		return body.Locale, body.Strings
 	}
 	wantKeys := []string{"starting", "failed_locked", "failed_migration_failed", "failed_schema_newer",
-		"failed_port", "failed_timeout", "stopping", "stopped", "update_available"}
+		"failed_port", "failed_timeout", "stopping", "stopped", "update_available", "update_title",
+		"update_install", "update_later", "update_notes_heading", "update_skipped_unclean", "update_install_failed"}
 	frLoc, fr := get("fr")
 	enLoc, en := get("en")
 	_, def := get("")

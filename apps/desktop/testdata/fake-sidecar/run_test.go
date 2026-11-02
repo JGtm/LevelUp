@@ -162,6 +162,7 @@ func TestLancementRefuse(t *testing.T) {
 		{"arguments manquants", []string{"-mode", "desktop"}, nil, exitSetup},
 		{"variante inconnue", contractArgs, map[string]string{"FAKE_VARIANT": "rien"}, exitSetup},
 		{"delai illisible", contractArgs, map[string]string{"FAKE_READY_DELAY_MS": "vite"}, exitSetup},
+		{"arret propre illisible", contractArgs, map[string]string{"FAKE_STOP_CLEAN": "peut-etre"}, exitSetup},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -345,4 +346,21 @@ func TestVarianteBavarde(t *testing.T) {
 	}
 	_ = r.stdin.Close()
 	r.wait(t)
+}
+
+func TestArretNonPropre(t *testing.T) {
+	env := baseEnv(t, map[string]string{"FAKE_STOP_CLEAN": "false"})
+	r := launch(t, contractArgs, env)
+	r.waitEvent(t, "ready")
+	_ = r.stdin.Close()
+	stopped := r.waitEvent(t, "stopped")
+	if stopped["clean"] != false {
+		t.Errorf("stopped = %v, attendu clean false", stopped)
+	}
+	if _, err := os.Stat(filepath.Join(env["LEVELUP_DATA_DIR"], stoppedMarker)); err == nil {
+		t.Error("le marqueur d'arret propre existe apres un arret non propre")
+	}
+	if code := r.wait(t); code != exitOK {
+		t.Errorf("code %d, attendu %d", code, exitOK)
+	}
 }

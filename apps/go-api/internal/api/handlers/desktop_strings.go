@@ -33,7 +33,7 @@ func (h *DesktopStringsHandler) Mount(r chi.Router, opts ...humacore.MountOption
 type desktopStringsOutput struct {
 	Body struct {
 		Locale  string            `json:"locale" doc:"Language the labels are written in."`
-		Strings map[string]string `json:"strings" doc:"Label by identifier (starting, failed_*, stopping, stopped, update_available); update_available keeps the {version} placeholder."`
+		Strings map[string]string `json:"strings" doc:"Label by identifier (starting, failed_*, stopping, stopped, update_*); update_available keeps the {version} placeholder."`
 	}
 }
 
@@ -52,6 +52,14 @@ func (h *DesktopStringsHandler) handle(ctx context.Context, _ *struct{}) (*deskt
 		"stopped":                 i18n.Msg(loc, "desktop.stopped", nil),
 		// Le gabarit voyage tel quel : la coquille connaît le numéro de version, pas le serveur.
 		"update_available": i18n.Msg(loc, "desktop.update_available", i18n.Params{"version": "{version}"}),
+		// Boîte de dialogue de mise à jour : servis ici ET présents dans le catalogue de repli de la coquille (même fichier).
+		"update_title":         i18n.Msg(loc, "desktop.update_title", nil),
+		"update_install":       i18n.Msg(loc, "desktop.update_install", nil),
+		"update_later":         i18n.Msg(loc, "desktop.update_later", nil),
+		"update_notes_heading": i18n.Msg(loc, "desktop.update_notes_heading", nil),
+		// Fin de mise à jour sans installation : montrés par la coquille après l'arrêt du serveur, depuis son catalogue de repli.
+		"update_skipped_unclean": i18n.Msg(loc, "desktop.update_skipped_unclean", nil),
+		"update_install_failed":  i18n.Msg(loc, "desktop.update_install_failed", nil),
 	}
 	return out, nil
 }

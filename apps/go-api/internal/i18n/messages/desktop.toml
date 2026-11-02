@@ -48,3 +48,35 @@ en = "LevelUp has stopped."
 [desktop.update_available]
 fr = "La version {version} de LevelUp est disponible."
 en = "LevelUp version {version} is available."
+
+# Boîte de dialogue de mise à jour, affichée par la coquille une fois le serveur prêt. Jamais imposée :
+# « Plus tard » la ferme et rien ne se télécharge. Ces textes sont servis par GET /api/v1/desktop/strings ET
+# présents dans le catalogue de repli que la coquille compile depuis ce fichier : la boîte peut s'afficher
+# quand le serveur est déjà arrêté (messages de fin de mise à jour ci-dessous), donc sans route à interroger.
+[desktop.update_title]
+fr = "Mise à jour de LevelUp"
+en = "LevelUp update"
+
+[desktop.update_install]
+fr = "Installer et redémarrer"
+en = "Install and restart"
+
+[desktop.update_later]
+fr = "Plus tard"
+en = "Later"
+
+# Introduit les notes de version (section du journal des modifications de la version proposée).
+[desktop.update_notes_heading]
+fr = "Nouveautés :"
+en = "What's new:"
+
+# Fin de mise à jour sans installation, affichée par la coquille après l'arrêt du serveur : l'arrêt n'a pas été
+# propre (le serveur a dû être tué, ou a annoncé un arrêt non propre), la mise à jour est reproposée au lancement suivant.
+[desktop.update_skipped_unclean]
+fr = "Le serveur ne s'est pas arrêté proprement : la mise à jour sera proposée au prochain lancement."
+en = "The server did not stop cleanly: the update will be offered again at the next launch."
+
+# Fin de mise à jour sans installation : l'installeur a échoué (disque plein, antivirus). L'application se ferme.
+[desktop.update_install_failed]
+fr = "L'installation de la mise à jour a échoué. Relancez LevelUp : la mise à jour sera proposée de nouveau."
+en = "The update could not be installed. Relaunch LevelUp: the update will be offered again."

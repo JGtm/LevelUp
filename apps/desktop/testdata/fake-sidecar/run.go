@@ -42,6 +42,7 @@ type options struct {
 	listenDelay  time.Duration
 	readyDelay   time.Duration
 	stopDelay    time.Duration
+	stopUnclean  bool
 	crashAfter   time.Duration
 	chattyBytes  int
 	failedState  string
@@ -81,6 +82,13 @@ func readOptions(getenv func(string) string) (options, error) {
 			return o, err
 		}
 		*dst = time.Duration(ms) * time.Millisecond
+	}
+	switch getenv("FAKE_STOP_CLEAN") {
+	case "", "true":
+	case "false":
+		o.stopUnclean = true
+	default:
+		return o, fmt.Errorf("FAKE_STOP_CLEAN %q n'est ni true ni false", getenv("FAKE_STOP_CLEAN"))
 	}
 	var err error
 	o.chattyBytes, err = intEnv(getenv, "FAKE_CHATTY_BYTES")
@@ -207,19 +215,20 @@ func serve(opts options, out *emitter, port int, srv *http.Server, eof <-chan st
 	return stop(opts, out, srv, stderr)
 }
 
-// stop : `stopping`, delai d'arret, marqueur, `stopped{clean:true}`, sortie 0.
+// stop : `stopping`, delai d'arret, puis (si l'arret est propre) marqueur et `stopped{clean:true}`, sortie 0.
+// Avec FAKE_STOP_CLEAN=false : pas de marqueur, `stopped{clean:false}`.
 func stop(opts options, out *emitter, srv *http.Server, stderr io.Writer) int {
 	out.stopping()
 	fmt.Fprintln(stderr, "fake: stdin ferme, arret demande")
 	time.Sleep(opts.stopDelay)
 	_ = srv.Close()
-	if opts.dataDir != "" {
+	if opts.dataDir != "" && !opts.stopUnclean {
 		marker := filepath.Join(opts.dataDir, stoppedMarker)
 		if err := os.WriteFile(marker, []byte("clean\n"), 0o600); err != nil {
 			fmt.Fprintf(stderr, "fake: marqueur d'arret : %v\n", err)
 		}
 	}
-	out.stopped(true)
+	out.stopped(!opts.stopUnclean)
 	return exitOK
 }
 

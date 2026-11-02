@@ -140,7 +140,7 @@ impl Host for Recorder {
     fn announce_port(&mut self, port: u16) {
         self.push(Call::Port(port));
     }
-    fn exit_app(&mut self) {
+    fn exit_app(&mut self, _outcome: Outcome) {
         self.push(Call::Exit);
     }
 }
@@ -185,6 +185,19 @@ pub fn short_timeouts() -> Timeouts {
 /// Lance le faux serveur sur `roots` ; `fake_env` regle ses variantes (FAKE_*).
 pub fn launch(roots: &Roots, fake_env: &[(&str, &str)], timeouts: Timeouts) -> Run {
     let recorder = Recorder::default();
+    let host = recorder.clone();
+    launch_with_host(roots, fake_env, timeouts, recorder, host)
+}
+
+/// Comme [`launch`], avec l'hote que le superviseur pilote (un hote qui enveloppe l'enregistreur) ;
+/// `recorder` reste celui que le test interroge.
+pub fn launch_with_host(
+    roots: &Roots,
+    fake_env: &[(&str, &str)],
+    timeouts: Timeouts,
+    recorder: Recorder,
+    host: impl Host,
+) -> Run {
     let secret = Secret::generate().expect("secret");
     let exposed = secret.expose().to_string();
     let log = Arc::new(LogSink::open(roots::desktop_log_path(roots), MAX_LOG_BYTES).expect("journal"));
@@ -194,8 +207,7 @@ pub fn launch(roots: &Roots, fake_env: &[(&str, &str)], timeouts: Timeouts) -> R
         secret,
         extra_env: fake_env.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect(),
     };
-    let handle =
-        supervisor::start(ShellConfig { spec, timeouts, log }, recorder.clone()).expect("lancement du faux serveur");
+    let handle = supervisor::start(ShellConfig { spec, timeouts, log }, host).expect("lancement du faux serveur");
     Run {
         roots: roots.clone(),
         secret: exposed,

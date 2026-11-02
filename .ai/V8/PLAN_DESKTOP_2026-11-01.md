@@ -629,25 +629,39 @@ Définition : `ResourcesRoot` = la racine du dépôt aujourd'hui (`LEVELUP_RESOU
 
 ### 9.17 L17 — CI Desktop, NSIS, updater (S ; après L16 ; 17.6 P, 17.7 U)
 
-- [ ] 17.1 Job `desktop-build` (Windows) : build Go CGO, build Tauri, NSIS par utilisateur (D-14),
+- [x] 17.1 Job `desktop-build` (Windows) : build Go CGO, build Tauri, NSIS par utilisateur (D-14),
       désinstalleur qui conserve les données (A22) ; **ffmpeg et ffprobe LGPL livrés** à côté du
       binaire (D-9 : archive officielle épinglée par somme de contrôle, texte LGPL et lien vers les
       sources dans les mentions tierces) ; fichier de mentions tierces (A19) avec le **texte imposé par
       les règles Microsoft et le lien vers ces règles**, repris aussi dans le pied de page web
-      (`lib/appLinks.ts`, manifest `common.toml`, fr + en) ; artefact.
-- [ ] 17.2 `release.yml` : étape « version check » (tag, `Cargo.toml`, `tauri.conf.json`, `-ldflags`,
+      (`lib/appLinks.ts`, manifest `common.toml`, fr + en) ; artefact. FAIT 2026-11-02 : scripts `apps/desktop/scripts/`
+      (`fetch-ffmpeg.ps1`, `stage-bundle.ps1`, `build-installer.ps1`), `tauri.bundle.conf.json`, crochet NSIS
+      `src-tauri/windows/hooks.nsh`, `THIRD_PARTY_NOTICES.md`, mention Microsoft du pied de page (`MicrosoftNotice`),
+      `LEVELUP_WEB_DIST` par défaut `<ResourcesRoot>/web` en desktop (`config_desktop.go`, test) ; job dans `release.yml`.
+- [x] 17.2 `release.yml` : étape « version check » (tag, `Cargo.toml`, `tauri.conf.json`, `-ldflags`,
       A9) ; `latest.json` signé (clé Tauri en secret du dépôt, actions épinglées par SHA, clé publique
       allowlistée `.gitleaks.toml`) ; publication GitHub Releases ; section de notes FR présente (le
-      workflow échoue sinon).
-- [ ] 17.3 Job `desktop-e2e` (`release/**`) : script PowerShell : installation silencieuse, lancement de
+      workflow échoue sinon). FAIT 2026-11-02 : `check-version.sh` (tag/Cargo.toml/tauri.conf.json/`-ldflags` relus dans le
+      binaire, testé en local avec écart), échec avant compilation sans le secret `TAURI_SIGNING_PRIVATE_KEY`, signature
+      par le CLI (`tauri.updater.conf.json`, `.sig` produit en local avec la clé de génération), `latest.json` par `jq` dans
+      `publish` (gabarit rejoué en local), clé publique dans `tauri.conf.json` et `.gitleaks.toml`, déclenchement aussi
+      sur `release/**` (sans signature ni publication). Le run CI lui-même est 17.6 (pilote).
+- [x] 17.3 Job `desktop-e2e` (`release/**`) : script PowerShell : installation silencieuse, lancement de
       l'exécutable, port lu dans `<DataRoot>/desktop/port`, `/health` 200, `WM_CLOSE`, attente de sortie,
-      `arrêt: terminé clean=true` dans `desktop.log`, aucun `*.wal`, relancement, `/health`, fermeture.
-- [ ] 17.4 Updater : proposé, jamais imposé ; n'exécute l'installeur qu'après `stopped` (A3) ; changelog
+      `arrêt: terminé clean=true` dans `desktop.log`, aucun `*.wal`, relancement, `/health`, fermeture. FAIT 2026-11-02 :
+      `apps/desktop/scripts/e2e-install.ps1` (ajoute la désinstallation silencieuse et l'assertion « racine de données
+      conservée ») joué en local sur l'installeur construit : exit 0, deux lancements sur le même port, `clean=true` deux
+      fois, 0 WAL ; refus vérifié si une installation existe (exit 1) ; job `desktop-e2e` de `release.yml` (le journal
+      qui porte la ligne est `general.log`, `desktop.log` la recopie). Cibles `make desktop-installer` / `desktop-e2e`.
+- [x] 17.4 Updater : proposé, jamais imposé ; n'exécute l'installeur qu'après `stopped` (A3) ; changelog
       in-app (`docs/RELEASE_NOTES.md`) ; poids de la mise à jour mesuré et consigné (§10).
-- [ ] 17.5 Page « Télécharger pour Windows » côté hébergé (capacité du profil `hosted`), fr + en, avec
-      l'avertissement SmartScreen expliqué (D-10 : installeur non signé) et la mention Microsoft.
-- [ ] 17.6 **(P)** Runs verts ; procédure de sauvegarde de la clé d'updater exécutée (ADR 0045).
-- [ ] 17.7 **(U)** Installation sur une machine vierge, désinstallation, données conservées : témoins.
+- [x] 17.5 Page « Télécharger pour Windows » côté hébergé (capacité du profil `hosted`), fr + en, avec
+      l'avertissement SmartScreen expliqué (D-10 : installeur non signé) et la mention Microsoft. FAIT 2026-11-02 : route
+      `/telecharger` (chemin anonyme), `features/download/` (dictionnaire `Record<Locale, T>`), capacité existante
+      `can_offer_windows_download` (aucune capacité neuve), lien « Application Windows » du pied de page conditionné par la
+      même capacité, lien vers `releases/latest`, tests Vitest (capacité vraie/fausse x fr/en, pied de page, chemin anonyme).
+- [ ] 17.6 **(P, au pilote)** Runs verts ; procédure de sauvegarde de la clé d'updater exécutée (ADR 0045). PRÉPARÉ : procédure écrite dans l'ADR 0045 (« Implementation notes (L17) »), reports au registre ; la clé du gate (mot de passe vide) est à remplacer par une clé protégée.
+- [ ] 17.7 **(U, à l'utilisateur)** Installation sur une machine vierge, désinstallation, données conservées : témoins. PRÉPARÉ : mode d'emploi en cinq étapes dans `docs/RUNBOOK_DESKTOP.md`.
 
 ### 9.17b L18 — Interface bureau (S après maquette validée par U ; EN DERNIER, décision utilisateur du 2026-11-02)
 
@@ -854,6 +868,57 @@ mises à jour (ressources retéléchargées à chaque version).
 - `.ai/project_map.md` gelé depuis avril 2026.
 - Archive de films : 36 Go le 2026-11-01 contre 104 Go annoncés le 2026-10-27 (films rapatriés puis
   purge manuelle du 26/10 ; à remesurer en T5).
+
+- **L17 (2026-11-02) — décisions, mesures et relevé.** **Poids** : l'installeur NSIS produit en local pèse
+  202 211 522 octets (192,84 Mio) ; l'updater télécharge ce même `.exe` en entier (aucune mise à jour différentielle) : 192,8 Mio
+  par mise à jour. Contenu avant compression LZMA : serveur 160,8 Mo, ressources assemblées 281,6 Mo (dont ffmpeg et ses DLL
+  165 Mo, `static/` 29 Mo, référentiel `data/titles` 45 Mo, front, config), coquille 4,9 Mo. **`LEVELUP_WEB_DIST`** : défaut
+  `<ResourcesRoot>/web` posé par `config_desktop.go` quand le profil est desktop et la variable absente (la variable
+  l'emporte ; test `TestLoad_DesktopWebDistParDefaut`). **Emplacement du programme** : Tauri 2 installe en `currentUser` sous
+  `%LOCALAPPDATA%LevelUp`, c'est-à-dire LA RACINE DE DONNÉES par défaut (constaté sur l'installeur construit) : le crochet
+  NSIS `src-tauri/windows/hooks.nsh` ramène ce seul défaut à `%LOCALAPPDATA%ProgramsLevelUp` (D-14) ; le désinstalleur de
+  Tauri ne supprime que ses fichiers (un `Delete` par fichier, `RMDir` sans `/r`), prouvé par `e2e-install.ps1` (la racine de
+  données jetable survit). **ffmpeg** : BtbN/FFmpeg-Builds `autobuild-2026-10-31-12-59`,
+  `ffmpeg-n8.1.3-27-g8dca1586f4-win64-lgpl-shared-8.1.zip`, SHA-256 `5cef7bc48e513f3cee7c881e8b2999d835541edb1846c3e89443a67f8f8556ab`
+  (celui du `checksums.sha256` de la release), épinglé dans `fetch-ffmpeg.ps1` ; `ffplay.exe` écarté. `data/cache/career-rank-image` NON livré
+  (17 Mo par mise à jour ; le serveur les cherche sous la racine de données et les retélécharge à la demande). **Clé de
+  l'updater** : paire générée hors dépôt, clé publique dans `tauri.conf.json` et `.gitleaks.toml` ; un secret GitHub ne
+  pouvant pas être vide, `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` est facultatif (clé générée sans mot de passe) ; la clé privée du
+  gate a un mot de passe vide : à REMPLACER par une clé protégée avant la première release publique (17.6, pilote).
+  **Relevé, non traité** : (1) le build LGPL n'a PAS libx264 (`--disable-libx264`, `--enable-libopenh264` présent) alors que le serveur
+  le déclare requis (`ops/media_tooling.go`, avertissement au démarrage) et le demande pour le transcodage HLS
+  (`internal/media/hls.go:601`, `-c:v libx264`) et d'autres rendus : ces chemins échouent sur l'installation de bureau tant que le choix
+  de l'encodeur n'est pas rendu configurable (openh264 ou `h264_mf`) ; (2) l'installeur étant non signé, l'updater n'est
+  protégé que par sa clé minisign : tout est dans `latest.json` + `.sig` ; (3) la boîte de mise à jour utilise les boutons
+  personnalisés de `rfd` (contrôles Windows v6, manifeste par défaut de tauri-build) : non vue à l'écran, la mise à jour réelle
+  (téléchargement signé, arrêt, installeur) ne peut se jouer qu'avec deux releases publiées : à vérifier par le pilote en 17.6 ;
+  (4) les notes de mise à jour sont en français seulement (section FR du changelog) quelle que soit la langue de la boîte ;
+  (5) `cargo audit` n'est toujours pas en CI (ADR 0045 D-18) ; (6) un secret d'entrée mort reste dans l'historique WebView2 :
+  inchangé (L16) ; (7) en CI les caches cargo du job `desktop-build` pèsent la cible de release entière : à surveiller (limite
+  de 10 Go du dépôt) ; (8) un push sur `release/**` lance maintenant 2 jobs Windows lourds (~15 à 25 min) en plus de ci.yml.
+
+- **Revue adversariale L17 (2026-11-02, deux relecteurs Opus) : 6 constats recevables (3 P1, 3 P2 retenus), 0 P0, corrigés.**
+  (C1, P1) l'installeur de mise à jour ne part plus que si `stopped` est arrivé avec `clean=true` ET que le serveur n'a
+  pas été tué : `updater::install_allowed` (fonction pure sur l'issue du superviseur, qui porte maintenant `kill_failed` ;
+  `Host::exit_app` reçoit cette issue) ; sinon événement `update_skipped_unclean_stop reason=killed|kill_failed|unclean|no_stopped`
+  dans `desktop.log`, boîte native (`update_skipped_unclean`, fr et en, catalogue de repli et route `/desktop/strings`) et sortie
+  sans installer ; faux serveur : option `FAKE_STOP_CLEAN=false` ; tests `tests/updater.rs` (arrêt non propre ; serveur tué
+  au budget) + test unitaire de la décision ; commentaire de `updater.rs` et phrase de l'ADR 0045 corrigés.
+  (C2, P1) commentaire inversé de `desktop.toml` réécrit : les libellés de la boîte sont servis par la route ET présents dans le
+  catalogue de repli compilé (la boîte peut s'afficher serveur arrêté). (C3, P2) un échec de `Update::install` est journalisé
+  (`update_install_failed`) et montré dans une boîte native (`update_install_failed`, fr et en) ; le test de l'installation
+  refusée vérifie le message. (C4, P1) `e2e-install.ps1` : vérifications préalables AVANT le `try/finally` (dossier, clé de
+  registre NSIS `HKCU\Software\lvelup\LevelUp` et clés de désinstallation, processus en cours) avec refus code 1 sans aucun
+  nettoyage ; le `finally` ne tue que les processus lancés par le script (arbre) et ne désinstalle que ce qu'il a installé ;
+  témoin : dossier factice, clé factice et faux `levelup-server.exe` en cours, script sorti 1, rien tué ni retiré.
+  (C5, P2) sentinelle `e2e-sentinelle.txt` posée dans `%LOCALAPPDATA%\LevelUp` avant l'installation, exigée après la
+  désinstallation (l'assertion sur la racine jetable reste). (C6, P2) `cmd/updater-verify` (vérification minisign du `.sig` contre
+  `plugins.updater.pubkey`, tests sur les deux algorithmes) et étape de `release.yml` juste après « Installeur et signature
+  présents » ; joué sur l'installeur et le `.sig` du lot (succès, puis échec avec un octet modifié).
+  **Relevé, non traité** : le fichier `.sig` de Tauri est le base64 du fichier minisign ENTIER (comme la clé publique de
+  `tauri.conf.json`), pas le fichier minisign nu ; la clé `HKCU\Software\lvelup\LevelUp` (valeur par défaut = dossier
+  d'installation) subsistait sur ce poste sans installation réelle (reste d'un essai antérieur) : le contrôle préalable l'accepte
+  seulement quand elle désigne le dossier par défaut et que ce dossier est absent.
 
 ## 11. Protocole de reprise de session
 

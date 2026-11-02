@@ -40,7 +40,7 @@ serde_json = "1"
 getrandom = "0.3"
 url = "2"
 sys-locale = "0.3"
-rfd = { version = "0.15", default-features = false }
+rfd = { version = "0.15", default-features = false, features = ["common-controls-v6"] }
 
 [profile.release]
 # Binaire plus petit : la coquille ne calcule rien, elle attend.

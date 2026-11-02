@@ -44,8 +44,9 @@ pub trait Host: Send + 'static {
     fn load_entry(&mut self, url: &str);
     /// Le port du serveur est connu.
     fn announce_port(&mut self, port: u16);
-    /// Terminer l'application.
-    fn exit_app(&mut self);
+    /// Terminer l'application. `outcome` dit comment le serveur s'est arrete : l'hote qui installe une
+    /// mise a jour s'en sert pour decider (voir `updater::install_allowed`).
+    fn exit_app(&mut self, outcome: Outcome);
 }
 
 pub struct ShellConfig {
@@ -61,6 +62,8 @@ pub struct Outcome {
     pub stopped_clean: Option<bool>,
     /// La coquille a du tuer le serveur.
     pub killed: bool,
+    /// Le kill a echoue : le processus peut vivre encore.
+    pub kill_failed: bool,
 }
 
 /// Poignee de demande de fermeture, copiable entre fils (l'etat de l'application, les gestionnaires
@@ -142,20 +145,28 @@ fn run(
     mut machine: Lifecycle,
     initial: Vec<Action>,
     sidecar: &Sidecar,
-    mut host: Box<dyn Host>,
+    host: Box<dyn Host>,
     secret: &Secret,
     log: &LogSink,
 ) -> Outcome {
-    let mut timers: Vec<(Timer, Instant)> = Vec::new();
+    let mut effects = Effects {
+        sidecar,
+        host,
+        secret,
+        log,
+        timers: Vec::new(),
+        kill_failed: false,
+    };
     let mut actions = initial;
     loop {
         for action in actions.drain(..) {
-            apply(action, sidecar, host.as_mut(), secret, log, &mut timers);
+            effects.apply(action, &machine);
         }
         if machine.is_done() {
             break;
         }
-        let wait = timers
+        let wait = effects
+            .timers
             .iter()
             .map(|(_, at)| *at)
             .min()
@@ -173,8 +184,8 @@ fn run(
             }
             Err(RecvTimeoutError::Timeout) => {
                 let now = Instant::now();
-                let (due, pending): (Vec<_>, Vec<_>) = timers.drain(..).partition(|(_, at)| *at <= now);
-                timers = pending;
+                let (due, pending): (Vec<_>, Vec<_>) = effects.timers.drain(..).partition(|(_, at)| *at <= now);
+                effects.timers = pending;
                 for (timer, _) in due {
                     log_shell(log, &format!("event=timer_fired timer={timer:?}"));
                     actions.extend(machine.step(Input::TimerFired(timer)));
@@ -183,55 +194,69 @@ fn run(
             Err(RecvTimeoutError::Disconnected) => break,
         }
     }
-    Outcome {
-        stopped_clean: machine.stopped_clean(),
-        killed: machine.was_killed(),
-    }
+    effects.outcome(&machine)
 }
 
-fn apply(
-    action: Action,
-    sidecar: &Sidecar,
-    host: &mut dyn Host,
-    secret: &Secret,
-    log: &LogSink,
-    timers: &mut Vec<(Timer, Instant)>,
-) {
-    match action {
-        Action::ShowScreen(screen) => {
-            log_shell(log, &format!("event=show_screen screen={}", screen.message_key()));
-            host.show_screen(screen);
+/// Ce que le superviseur execute pour la machine : la fenetre, le serveur, les minuteries, et ce
+/// qu'il retient de l'execution (un kill echoue) pour dire a l'hote comment l'arret s'est passe.
+struct Effects<'a> {
+    sidecar: &'a Sidecar,
+    host: Box<dyn Host>,
+    secret: &'a Secret,
+    log: &'a LogSink,
+    timers: Vec<(Timer, Instant)>,
+    kill_failed: bool,
+}
+
+impl Effects<'_> {
+    fn outcome(&self, machine: &Lifecycle) -> Outcome {
+        Outcome {
+            stopped_clean: machine.stopped_clean(),
+            killed: machine.was_killed(),
+            kill_failed: self.kill_failed,
         }
-        Action::LoadEntry { port } => {
-            log_shell(log, &format!("event=load_entry port={port}"));
-            host.load_entry(&format!(
-                "http://127.0.0.1:{port}/desktop/enter?secret={}",
-                secret.expose()
-            ));
-        }
-        Action::LoadServerPage { port } => {
-            log_shell(log, &format!("event=load_server_page port={port}"));
-            host.load_url(&format!("http://127.0.0.1:{port}/"));
-        }
-        Action::AnnouncePort { port } => host.announce_port(port),
-        Action::CloseStdin => {
-            log_shell(log, "event=close_stdin");
-            sidecar.close_stdin();
-        }
-        Action::Kill => {
-            log_shell(log, "event=kill");
-            if let Err(e) = sidecar.kill() {
-                log_shell(log, &format!("event=kill_failed err={e}"));
+    }
+
+    fn apply(&mut self, action: Action, machine: &Lifecycle) {
+        let log = self.log;
+        match action {
+            Action::ShowScreen(screen) => {
+                log_shell(log, &format!("event=show_screen screen={}", screen.message_key()));
+                self.host.show_screen(screen);
             }
-        }
-        Action::Arm(timer, after) => {
-            timers.retain(|(t, _)| *t != timer);
-            timers.push((timer, Instant::now() + after));
-        }
-        Action::Disarm(timer) => timers.retain(|(t, _)| *t != timer),
-        Action::ExitApp => {
-            log_shell(log, "event=exit_app");
-            host.exit_app();
+            Action::LoadEntry { port } => {
+                log_shell(log, &format!("event=load_entry port={port}"));
+                self.host.load_entry(&format!(
+                    "http://127.0.0.1:{port}/desktop/enter?secret={}",
+                    self.secret.expose()
+                ));
+            }
+            Action::LoadServerPage { port } => {
+                log_shell(log, &format!("event=load_server_page port={port}"));
+                self.host.load_url(&format!("http://127.0.0.1:{port}/"));
+            }
+            Action::AnnouncePort { port } => self.host.announce_port(port),
+            Action::CloseStdin => {
+                log_shell(log, "event=close_stdin");
+                self.sidecar.close_stdin();
+            }
+            Action::Kill => {
+                log_shell(log, "event=kill");
+                if let Err(e) = self.sidecar.kill() {
+                    self.kill_failed = true;
+                    log_shell(log, &format!("event=kill_failed err={e}"));
+                }
+            }
+            Action::Arm(timer, after) => {
+                self.timers.retain(|(t, _)| *t != timer);
+                self.timers.push((timer, Instant::now() + after));
+            }
+            Action::Disarm(timer) => self.timers.retain(|(t, _)| *t != timer),
+            Action::ExitApp => {
+                log_shell(log, "event=exit_app");
+                let outcome = self.outcome(machine);
+                self.host.exit_app(outcome);
+            }
         }
     }
 }

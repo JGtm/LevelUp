@@ -158,10 +158,13 @@ export function resolvePlayerFallback(
  * encore de compte, et le renvoyer vers /login perdrait le code — il se connecterait sans
  * invitation et l'instance fermée le refuserait (`instance_locked`).
  *
+ * La page de téléchargement `/telecharger` l'est aussi : on installe l'application avant d'avoir un
+ * compte (la page se retire d'elle-même quand l'instance ne propose pas l'application).
+ *
  * Le préfixe est comparé avec sa frontière de segment : `/privacy-autre` n'est
  * PAS anonyme.
  */
-const ANONYMOUS_PATHS: readonly string[] = ['/privacy', '/terms', '/join']
+const ANONYMOUS_PATHS: readonly string[] = ['/privacy', '/terms', '/join', '/telecharger']
 
 export function isAnonymousPath(pathname: string): boolean {
   return ANONYMOUS_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))

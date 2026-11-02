@@ -132,6 +132,7 @@ const STATIC_ROUTE_TITLES: RouteTitleRule[] = [
   { pattern: '/onboarding/openspartan', title: { fr: 'Bienvenue', en: 'Welcome' } },
   { pattern: '/privacy', title: { fr: 'Confidentialité', en: 'Privacy' } },
   { pattern: '/terms', title: { fr: "Conditions d'utilisation", en: 'Terms of use' } },
+  { pattern: '/telecharger', title: { fr: 'Télécharger pour Windows', en: 'Download for Windows' } },
   { pattern: '/register', title: { fr: 'Inscription', en: 'Register' } },
   { pattern: '/settings', title: { fr: 'Paramètres', en: 'Settings' } },
   { pattern: '/setup', title: { fr: 'Configuration', en: 'Setup' } },

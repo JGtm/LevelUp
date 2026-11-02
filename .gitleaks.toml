@@ -213,3 +213,18 @@ condition = "AND"
 paths = ['''(^|/)\.ai/archive/V7\.5/killweapon/REFERENCE_VARIANTES_ARMES_REDDIT\.md$''']
 regexTarget = "secret"
 regexes = ['''^hinf_[a-z0-9_]+$''']
+
+[[allowlists]]
+# 2026-11-02 — clé PUBLIQUE de l'updater de l'application desktop (ADR 0045 D-16, plan A21).
+# Une clé publique minisign encodée en base64 (elle commence par dW50cnVzdGVk, soit
+# « untrusted comment » en base64) : elle sert à VÉRIFIER les mises à jour, elle ne signe rien et
+# doit être publique, versionnée dans tauri.conf.json. La clé PRIVÉE n'est jamais dans le dépôt
+# (secrets du dépôt GitHub, deux sauvegardes hors dépôt). Exception sur la valeur exacte et le
+# fichier : une autre valeur, ou la même hors de ce fichier, resterait détectée. Rotation :
+# remplacer la valeur ici dans le même commit que tauri.conf.json.
+description = "Clé publique de l'updater Tauri (tauri.conf.json)"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''(^|/)apps/desktop/src-tauri/tauri\.conf\.json$''']
+regexTarget = "secret"
+regexes = ['''^dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDNGNDNDQzE5QTk5RTE0OEIKUldTTEZKNnBHY3hEUDhIQ053NUdoeDRRcGdWTE4zOExtZTRHRVBUY3doZXhtM25IenkvRlg0d0EK$''']

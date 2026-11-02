@@ -25,13 +25,13 @@
     "externalBin": ["binaries/levelup-server"],
     "windows": {
       "webviewInstallMode": { "type": "embedBootstrapper" },
-      "nsis": { "installMode": "currentUser" }
+      "nsis": { "installMode": "currentUser", "installerHooks": "./windows/hooks.nsh" }
     },
     "createUpdaterArtifacts": false
   },
   "plugins": {
     "updater": {
-      "pubkey": "",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDNGNDNDQzE5QTk5RTE0OEIKUldTTEZKNnBHY3hEUDhIQ053NUdoeDRRcGdWTE4zOExtZTRHRVBUY3doZXhtM25IenkvRlg0d0EK",
       "endpoints": ["https://github.com/JGtm/LevelUp/releases/latest/download/latest.json"]
     }
   }

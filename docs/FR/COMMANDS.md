@@ -1185,6 +1185,8 @@ msys64) pour le vrai serveur.
 make desktop-build   # vrai serveur (scripts/desktop-dev.ps1) -> src-tauri/binaries/, puis cargo build
 make desktop-test    # cargo test + clippy -D warnings + fmt --check, puis vet et tests du faux serveur
 make desktop-dev     # compile le serveur, puis `npx tauri dev` sur la racine du dépôt et une racine de données de développement
+make desktop-installer  # installeur NSIS (front, serveur, ffmpeg LGPL, ressources), sans clé de signature
+make desktop-e2e        # installe, lance, ferme, relance et désinstalle cet installeur sur une racine de données jetable
 ```
 
 `desktop-dev` prend `%LOCALAPPDATA%\LevelUp-dev` pour racine de données (`-DataDir` pour la changer), jamais
@@ -1200,7 +1202,38 @@ est retirée avant le lancement du serveur. Le journal de la coquille est `<raci
 (`never_ready`, `failed`, `failed_no_port`, `late_stopped`, `crash`, `crash_after_ready`),
 `FAKE_CHATTY_BYTES`, `FAKE_*_DELAY_MS`. `cargo audit` (`cargo install cargo-audit --locked`) contrôle les
 dépendances de `Cargo.lock`. Une compilation de release (`--release`) refuse une clé publique d'updater vide et
-un binaire serveur absent ; l'installeur, l'updater signé et leur job de CI sont le lot L17.
+un binaire serveur absent.
+
+### Installeur, updater et test de bout en bout (L17)
+
+`apps/desktop/scripts/` (PowerShell et bash, les mêmes scripts que les jobs `desktop-build` et `desktop-e2e` de
+`.github/workflows/release.yml`) :
+
+```powershell
+powershell -File apps/desktop/scripts/build-installer.ps1 [-SkipWeb] [-SigningKey <fichier> [-SigningPassword <mdp>]]
+powershell -File apps/desktop/scripts/e2e-install.ps1 -Installer <LevelUp_X.Y.Z_x64-setup.exe>
+bash apps/desktop/scripts/check-version.sh <X.Y.Z> [<serveur.exe>]
+```
+
+- `build-installer.ps1` compile le front, le serveur (`-ldflags "-X main.version=<version de Cargo.toml>"`), télécharge
+  le ffmpeg LGPL épinglé (`fetch-ffmpeg.ps1` : l'URL et la somme SHA-256 sont des constantes du script, une somme
+  différente arrête tout), assemble les ressources (`stage-bundle.ps1` vers `src-tauri/bundle-staging`, ignoré par git)
+  et lance `npx tauri build --config src-tauri/tauri.bundle.conf.json`. Le résultat est
+  `src-tauri/target/release/bundle/nsis/LevelUp_<version>_x64-setup.exe`. Sans `-SigningKey` aucun secret n'est
+  nécessaire (`createUpdaterArtifacts` reste faux) ; avec, l'installeur est aussi signé pour l'updater (fichier
+  `.sig`). L'installation est par utilisateur : programme sous `%LOCALAPPDATA%ProgramsLevelUp`, données sous
+  `%LOCALAPPDATA%LevelUp`, jamais supprimées par le désinstalleur.
+- `e2e-install.ps1` refuse de s'exécuter si LevelUp est déjà installé. Il installe en silencieux (`/S`), lance
+  l'application avec un `LEVELUP_DATA_DIR` jetable, attend `<données>desktopport` et `GET /health` = 200, la ferme
+  par `WM_CLOSE`, vérifie la ligne de journal `arrêt: terminé` avec `clean=true` et l'absence de fichier `*.wal`,
+  relance (même port), ferme de nouveau, désinstalle en silencieux et vérifie que la racine de données existe encore.
+  Code de sortie 0 ou 1 ; en cas d'échec les journaux sont copiés sous `-ArtifactsDir`.
+- `check-version.sh` refuse tout écart entre la version attendue (le tag git sans `v`), `Cargo.toml`,
+  `tauri.conf.json` et les `-ldflags` embarqués dans le binaire serveur (`go version -m`).
+- Workflow de release : un tag `vX.Y.Z` compile et signe l'installeur (secrets `TAURI_SIGNING_PRIVATE_KEY` et, si la
+  clé a un mot de passe, `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` ; sans la clé le job échoue avant de compiler), joue le
+  test de bout en bout, puis publie l'installeur, sa signature et `latest.json` (le fichier que lit l'updater) avec la
+  release. Un push sur `release/**` compile l'installeur sans signature et ne joue que le test de bout en bout.
 
 ---
 

@@ -61,3 +61,17 @@ const PRIVACY_CONTACT_PARTS = ['contact', 'lvelup.info'] as const
 export function privacyContactEmail(): string {
   return PRIVACY_CONTACT_PARTS.join('@')
 }
+
+/**
+ * Règles d'usage du contenu de jeu de Microsoft (« Game Content Usage Rules »). La mention
+ * ci-dessous est IMPOSÉE par ces règles : visible de quiconque voit le contenu (pied de page,
+ * page de téléchargement, installeur). Son texte reste en anglais dans toutes les langues de
+ * l'application — c'est le libellé de Microsoft, pas une chaîne d'interface.
+ */
+export const XBOX_GAME_CONTENT_RULES_URL = 'https://www.xbox.com/en-US/developers/rules'
+
+export const MICROSOFT_CONTENT_NOTICE =
+  'Halo Infinite © Microsoft Corporation. LevelUp was created under Microsoft\'s "Game Content Usage Rules" using assets from Halo Infinite, and it is not endorsed by or affiliated with Microsoft.'
+
+/** Dernière version publiée de l'application Windows (page de téléchargement). */
+export const GITHUB_LATEST_RELEASE_URL = `${GITHUB_URL}/releases/latest`
