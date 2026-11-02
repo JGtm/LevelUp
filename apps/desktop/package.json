@@ -1,0 +1,13 @@
+{
+  "name": "levelup-desktop",
+  "private": true,
+  "version": "0.0.0",
+  "license": "AGPL-3.0-or-later",
+  "description": "Coquille Tauri de LevelUp : seul usage de npm ici, le CLI Tauri (aucune dependance de rendu).",
+  "scripts": {
+    "tauri": "tauri"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  }
+}

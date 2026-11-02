@@ -379,3 +379,11 @@ data/global/player_friends.json
 # (NOTICE par. 4). Elles vivent hors du depot ; les releves ecrits (Markdown) restent.
 .ai/**/*.c
 data/titles/halo_infinite/warehouse/shared_matches_v2.duckdb.avant-purge-20261026
+
+# Coquille desktop (Rust, ADR 0045 D-18) : sorties de compilation, schemas generes par tauri-build,
+# dependances npm du CLI Tauri et serveur Go copie sous le nom du sidecar (scripts/desktop-dev.ps1).
+# Cargo.lock reste VERSIONNE (inventaire des dependances Rust, NOTICE par. 6).
+apps/desktop/src-tauri/target/
+apps/desktop/src-tauri/gen/
+apps/desktop/node_modules/
+apps/desktop/src-tauri/binaries/*.exe

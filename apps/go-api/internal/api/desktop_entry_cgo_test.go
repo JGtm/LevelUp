@@ -184,13 +184,21 @@ func TestDesktopEntry_SuccesPoseLeCookieEtRedirige(t *testing.T) {
 	if rec.Code != http.StatusFound || rec.Header().Get("Location") != "/" {
 		t.Fatalf("entrée : %d vers %q, attendu 302 vers /", rec.Code, rec.Header().Get("Location"))
 	}
-	cookie := enterDesktop(t, h)
+	var cookie *http.Cookie
+	for _, c := range rec.Result().Cookies() {
+		if c.Name == middleware.DesktopCookieName(desktopTestPort) {
+			cookie = c
+		}
+	}
+	if cookie == nil {
+		t.Fatalf("entrée : aucun cookie posé (%v)", rec.Result().Cookies())
+	}
 	if cookie.Name != "levelup_session_49555" {
 		t.Errorf("nom du cookie = %q, attendu levelup_session_49555 (nom lié au port)", cookie.Name)
 	}
-	if !cookie.HttpOnly || cookie.SameSite != http.SameSiteStrictMode || cookie.Secure ||
+	if !cookie.HttpOnly || cookie.SameSite != http.SameSiteLaxMode || cookie.Secure ||
 		cookie.Path != "/" || cookie.MaxAge != 30*24*3600 {
-		t.Errorf("attributs du cookie = %+v, attendu HttpOnly, SameSite=Strict, sans Secure, Path=/, MaxAge=30 jours", cookie)
+		t.Errorf("attributs du cookie = %+v, attendu HttpOnly, SameSite=Lax (l'entrée est lancée depuis l'origine embarquée de la coquille), sans Secure, Path=/, MaxAge=30 jours", cookie)
 	}
 	if strings.Contains(cookie.Value, desktopTestLauncherSecret) || strings.Contains(cookie.Value, desktopTestCookieKey) {
 		t.Error("la valeur du cookie contient un secret en clair")
@@ -230,7 +238,7 @@ func TestDesktopEntry_LibellesDeLaCoquilleDansLaLangueDeLaRequete(t *testing.T) 
 		return body.Locale, body.Strings
 	}
 	wantKeys := []string{"starting", "failed_locked", "failed_migration_failed", "failed_schema_newer",
-		"failed_port", "stopping", "stopped", "update_available"}
+		"failed_port", "failed_timeout", "stopping", "stopped", "update_available"}
 	frLoc, fr := get("fr")
 	enLoc, en := get("en")
 	_, def := get("")
@@ -359,5 +367,19 @@ func TestDesktopEntry_RouteDArretSansCookie(t *testing.T) {
 	// L'exemption est celle du POST de cette route seule.
 	if got := shutdown(desktopTestLauncherSecret, "", "", http.MethodGet); got != http.StatusUnauthorized {
 		t.Errorf("GET sur la route d'arrêt sans cookie : %d, attendu 401", got)
+	}
+}
+
+// Le secret d'entrée est à usage unique : après l'entrée de la coquille, le rejouer (l'URL reste dans
+// l'historique de la WebView) est refusé sans cookie, et le cookie déjà posé continue de servir.
+func TestDesktopEntry_SecretAUsageUnique(t *testing.T) {
+	h := buildDesktopRouter(t)
+	cookie := enterDesktop(t, h)
+	rec := desktopReq{target: middleware.DesktopEnterPath + "?secret=" + desktopTestLauncherSecret}.do(h)
+	if rec.Code != http.StatusForbidden || len(rec.Result().Cookies()) != 0 {
+		t.Errorf("seconde entrée : %d (%d cookie), attendu 403 sans cookie", rec.Code, len(rec.Result().Cookies()))
+	}
+	if rec := (desktopReq{target: "/api/v1/bootstrap", cookie: cookie}).do(h); rec.Code != http.StatusOK {
+		t.Errorf("cookie de la première entrée : %d, attendu 200", rec.Code)
 	}
 }

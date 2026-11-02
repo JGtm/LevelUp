@@ -1174,6 +1174,36 @@ Liste complète : `go run ./cmd/levelup help`.
 
 ---
 
+## Coquille desktop (Tauri 2, Rust)
+
+L'application Windows vit dans `apps/desktop` (ADR 0045). C'est une fenêtre autour du même serveur Go,
+lancé comme processus fils avec `-mode desktop -arret-sur-stdin` ; Rust n'est admis qu'ici, sans aucune
+logique métier (D-18). Prérequis : `cargo` et `rustc` (stable, 1.88 ou plus), Node 24, Go avec CGO (gcc de
+msys64) pour le vrai serveur.
+
+```bash
+make desktop-build   # vrai serveur (scripts/desktop-dev.ps1) -> src-tauri/binaries/, puis cargo build
+make desktop-test    # cargo test + clippy -D warnings + fmt --check, puis vet et tests du faux serveur
+make desktop-dev     # compile le serveur, puis `npx tauri dev` sur la racine du dépôt et une racine de données de développement
+```
+
+`desktop-dev` prend `%LOCALAPPDATA%\LevelUp-dev` pour racine de données (`-DataDir` pour la changer), jamais
+celle de l'application installée. La coquille lit trois surcharges facultatives dans son propre environnement,
+`LEVELUP_RESOURCES_DIR`, `LEVELUP_DATA_DIR` et `LEVELUP_WEB_DIST` (chemins absolus ; le dernier est le front
+compilé que le serveur sert, `scripts/desktop-dev.ps1 -BuildWeb` le construit) ; toute autre variable `LEVELUP_*` ou `SPNKR_*`
+est retirée avant le lancement du serveur. Le journal de la coquille est `<racine des données>\logs\desktop.log`
+(5 Mo, un fichier `.1`) : la sortie d'erreur du serveur relayée ligne à ligne, et les lignes propres de la coquille.
+
+`cargo test` tourne sans fenêtre. Ses tests de contrat (`src-tauri/tests/contract.rs`) compilent le faux serveur
+`apps/desktop/testdata/fake-sidecar` (son propre module, `GOWORK=off`, aucun import de `levelup/go-api`) par
+`go build` dans un dossier temporaire et jouent contre lui chaque cas du contrat : `FAKE_VARIANT`
+(`never_ready`, `failed`, `failed_no_port`, `late_stopped`, `crash`, `crash_after_ready`),
+`FAKE_CHATTY_BYTES`, `FAKE_*_DELAY_MS`. `cargo audit` (`cargo install cargo-audit --locked`) contrôle les
+dépendances de `Cargo.lock`. Une compilation de release (`--release`) refuse une clé publique d'updater vide et
+un binaire serveur absent ; l'installeur, l'updater signé et leur job de CI sont le lot L17.
+
+---
+
 ## Tests
 
 ### Go (voir [../testing.md](../testing.md))

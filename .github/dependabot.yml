@@ -118,6 +118,21 @@ updates:
           - "minor"
           - "patch"
 
+  # Coquille desktop (Rust, ADR 0045 D-18) : Cargo.lock est versionne, les bumps passent par la CI
+  # (cargo test contre le faux serveur, clippy, audit).
+  - package-ecosystem: "cargo"
+    directory: "/apps/desktop/src-tauri"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 3
+    groups:
+      cargo-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
   # Workflows GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"

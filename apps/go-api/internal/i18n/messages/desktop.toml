@@ -29,6 +29,11 @@ en = "Your data comes from a newer version of LevelUp. Install the latest versio
 fr = "LevelUp n'a pas pu ouvrir de port local. Vérifiez qu'aucun logiciel de sécurité ne le bloque, puis relancez."
 en = "LevelUp could not open a local port. Check that no security software is blocking it, then start again."
 
+# Le serveur n'a pas annoncé qu'il était prêt dans le délai de la coquille : il est arrêté.
+[desktop.failed.timeout]
+fr = "LevelUp a mis trop de temps à démarrer et a été arrêté. Relancez l'application ; si cela se reproduit, les journaux du dossier des données en donnent la cause."
+en = "LevelUp took too long to start and was stopped. Start it again; if it happens again, the logs in the data folder explain why."
+
 # Fermeture demandée : le serveur termine ses écritures avant de s'arrêter.
 [desktop.stopping]
 fr = "LevelUp se ferme…"

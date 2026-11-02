@@ -1,7 +1,7 @@
 # ADR 0045 — Desktop mode and the shell-server contract
 
-Status: accepted (2026-11-01); implementation tracked in `.ai/V8/PLAN_DESKTOP_2026-11-01.md` (waves 1 to 3 and lots L12 and L13
-delivered on the branch, lots L13b to L17 to come; each decision below says which).
+Status: accepted (2026-11-01); implementation tracked in `.ai/V8/PLAN_DESKTOP_2026-11-01.md` (P0 delivered, lot L16 delivered on the branch,
+lot L17 to come; each decision below says which).
 Source: decisions D-1 to D-17 of the plan, confirmed by the maintainer on 2026-11-01 (D-8, D-9 and D-10 against the
 recommendation); additions A1 to A24; section 6 of the plan (the contract).
 Amends: ADR 0023 (D-11 below: the token file may be encrypted by a `TokenCipher` port, the single source stays the
@@ -71,9 +71,24 @@ profile name. `middleware.DesktopGate` (`internal/api/middleware/desktop_gate.go
 DNS rebinding), then the cookie (401 `desktop_unauthorized`, `retryable:false`, a path that `AmbiguousPath` flags never
 passes as `/health`). The cookie is not a session: its value is `<expiry>.<hex HMAC-SHA256>` over `(port, expiry)` with
 the session secret of D-7, checked without state, valid 30 days and renewed at each entry; it is `HttpOnly`,
-`SameSite=Strict`, not `Secure` (plain http on loopback). Its name is `levelup_session_<port>`. `GET /desktop/enter` sits
+`SameSite=Lax` (not Strict: the entry navigation is started from the embedded page, origin `levelup-shell://`, which is
+another site for Chromium, so the redirect to `/` is a cross-site top-level navigation on which a Strict cookie is not
+sent and `/` would answer 401; Lax travels on top-level navigations only, mutations stay behind the exact-origin CSRF
+check, the strict `Host` and the loopback), not `Secure` (plain http on loopback). Its name is `levelup_session_<port>`. `GET /desktop/enter` sits
 behind `LoopbackOnly`, compares `?secret=` with `LEVELUP_DESKTOP_SECRET` in constant time (403 wrong, 404 when the
-launcher gave no secret), never logs it, and answers 302 to `/`. CORS and the CSRF origin list are
+launcher gave no secret), never logs it, and answers 302 to `/`.
+**The entry secret is single-use per launch** (review of L16, 2026-11-02): WebView2 writes every URL it
+visits, redirect sources included, into its history database
+(`%LOCALAPPDATA%info.lvelup.desktopEBWebViewDefaultHistory`), so `/desktop/enter?secret=<64 hex>` stays on
+disk in the clear. Measured on a launched shell: one `urls` row and one visit carry the secret, with a plain
+navigation as well as with `location.replace` from the embedded page (the latter was also what exposed the Strict
+cookie problem above: 401 on `/`). No setting of the window avoids
+the record without losing the browser storage that A15 protects (a non-persistent profile empties it at each launch),
+and clearing only the history needs a WebView2 interface that wry does not expose. Mitigation, which makes the record
+harmless: `EnterHandler` accepts the correct secret once (an atomic swap, 403 and a `secret d'entrée déjà consommé`
+warning afterwards, a wrong secret does not consume it), the shell loads the entry once per launch (a repeated
+`ready` does not reload it, `lifecycle` test), the secret is drawn again at every launch, and the cookie carries
+the session. What survives in the history is a dead secret of a previous launch. CORS and the CSRF origin list are
 `AppConfig.SetBoundPort`'s output: the single origin `http://127.0.0.1:<bound port>`, `LEVELUP_CORS_ORIGINS` ignored.
 Two exceptions and one extension, found by the wave 4 review: `POST /api/v1/internal/shutdown` is exempt from the
 cookie (the shell cannot forge a signed `HttpOnly` cookie; the route keeps `LoopbackOnly`, the constant-time header
@@ -121,8 +136,8 @@ language (D-13). State: delivered by L13. `config.Validate` accepts the profile 
 production refusal is the hosted profile's) but refuses, in `desktop` as in production, the public default secret or one
 shorter than 32 bytes (`validateStartup`); `LEVELUP_SESSION_SECRET` is ignored with a warning in this profile; a file that
 is empty, too short or equal to the public default is replaced with a warning, an unreadable one fails the start. The
-route answers `{locale, strings}` with eight identifiers (`starting`, `failed_locked`, `failed_migration_failed`,
-`failed_schema_newer`, `failed_port`, `stopping`, `stopped`, `update_available`); the last carries the `{version}`
+route answers `{locale, strings}` with nine identifiers (`starting`, `failed_locked`, `failed_migration_failed`,
+`failed_schema_newer`, `failed_port`, `failed_timeout` (the shell's own start-up deadline, L16), `stopping`, `stopped`, `update_available`); the last carries the `{version}`
 placeholder untouched, the shell knows the number. It is mounted only under `ShellEntryGate` and requires the cookie.
 
 **D-8 — Pooling for the local user (plan D-4).** In `desktop` the pooling decision is recorded as granted for the local
@@ -351,8 +366,12 @@ maintainer on a clean machine. A lot without a test at its level is not closed.
   `internal/platform/auth/tokencipher/*_test.go` (`dpapi_vault_test.go` under the Windows tag), `token_file_vault_test.go`
   (real DPAPI store, Windows tag), `internal/config/config_token_vault_test.go`, `cmd/server/boot_token_vault_test.go`,
   `archlint/token_cipher_single_decision_test.go`.
-- To create: `cargo test` against the fake sidecar (L16.4); the `desktop-build` and
-  `desktop-e2e` jobs and the version check (L17); the `desktop` filter in `ci_paths_filter_test.go`.
+- Created by L16: `apps/desktop/src-tauri/tests/contract.rs` (`cargo test` against the fake sidecar
+  `apps/desktop/testdata/fake-sidecar`: nominal entry and clean close, never ready, `failed` with and without a port,
+  crash before and after `ready`, late `stopped` killed after the budget, close during start-up, 10 MB of stdout,
+  stable port, secret absent from arguments and journal), the state machine tests (`src/lifecycle/tests.rs`), the
+  `desktop` filter and the `desktop-test` job of `ci.yml` (`ci_paths_filter_test.go` unchanged and green).
+- To create: the `desktop-build` and `desktop-e2e` jobs, `cargo audit` in CI and the version check (L17).
 
 ## Alternatives rejected
 

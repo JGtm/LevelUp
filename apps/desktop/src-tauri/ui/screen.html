@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="{{lang}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LevelUp</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --fond: #0b1220;
+    --texte: #e6edf7;
+    --accent: #3da5ff;
+    --alerte: #ffb454;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 28px;
+    padding: 24px;
+    background: var(--fond);
+    color: var(--texte);
+    font-family: "Segoe UI", system-ui, sans-serif;
+    text-align: center;
+    user-select: none;
+  }
+  img { width: 144px; height: 144px; }
+  .waiting img { animation: respire 2.4s ease-in-out infinite; }
+  p { margin: 0; max-width: 34em; font-size: 1.125rem; line-height: 1.5; }
+  .failed p { color: var(--alerte); }
+  .points { display: flex; gap: 10px; height: 12px; }
+  .points i { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); opacity: 0.25; animation: points 1.2s ease-in-out infinite; }
+  .points i:nth-child(2) { animation-delay: 0.2s; }
+  .points i:nth-child(3) { animation-delay: 0.4s; }
+  .failed .points, .stopped .points { display: none; }
+  @keyframes respire { 0%, 100% { transform: scale(1); opacity: 0.85; } 50% { transform: scale(1.06); opacity: 1; } }
+  @keyframes points { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { .waiting img, .points i { animation: none; } .points i { opacity: 0.7; } }
+</style>
+</head>
+<body class="{{kind}}">
+<img src="logo.png" alt="">
+<p role="status" aria-live="polite">{{message}}</p>
+<div class="points" aria-hidden="true"><i></i><i></i><i></i></div>
+</body>
+</html>

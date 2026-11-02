@@ -14,6 +14,9 @@
 #   make generate-types # Génère les types TypeScript depuis openapi.yaml
 #   make check-types   # Vérifie les types TypeScript
 #   make gate-push     # Filet local avant merge vers main (~25 min, cf. cible)
+#   make desktop-build # Serveur Go + coquille Tauri (profil debug ; l installeur est le lot L17)
+#   make desktop-test  # Tests de la coquille Rust contre le faux serveur + faux serveur Go
+#   make desktop-dev   # Coquille Tauri sur le vrai serveur, donnees de developpement
 # =============================================================================
 
 # Charge .env.local (puis .env) s'ils existent — permet aux worktrees
@@ -27,7 +30,8 @@ LOAD_DOTENV := if [ -f .env.local ]; then set -a; . ./.env.local; set +a; fi; \
         generate-types install-web \
         go-api-build go-api-test go-api-test-gamefiles libs-test go-api-dev _go-api-run \
         go-api-test-shared-social-gate install-git-hooks gate-push replay-corpus-gate replay-equiv \
-        go-api-test-coverage-ratchet openapi-gen openapi-check
+        go-api-test-coverage-ratchet openapi-gen openapi-check \
+        desktop-build desktop-test desktop-dev
 
 ## Affiche cette aide
 help:
@@ -257,6 +261,23 @@ libs-test:
 			echo "$$d importe le module levelup/go-api"; exit 1; \
 		fi; \
 	done
+
+## Coquille desktop (Tauri 2, ADR 0045) : compile le vrai serveur Go sous le nom du sidecar, puis la
+## coquille en profil debug. L installeur NSIS et l updater signe sont le lot L17 (CI de release).
+desktop-build:
+	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/desktop-dev.ps1
+	cd apps/desktop/src-tauri && cargo build
+
+## Coquille desktop : cargo test (contrat contre le faux serveur Go, compile par go build), clippy
+## sans avertissement, format, puis vet et tests du faux serveur (GOWORK=off : module a part).
+desktop-test:
+	cd apps/desktop/src-tauri && cargo test && cargo clippy --all-targets -- -D warnings && cargo fmt --check
+	cd apps/desktop/testdata/fake-sidecar && GOWORK=off go vet ./... && GOWORK=off go test -count=1 ./...
+
+## Coquille desktop en developpement : compile le serveur, lance `tauri dev` sur la racine du
+## depot et sur %LOCALAPPDATA%\LevelUp-dev (jamais les donnees de l application installee).
+desktop-dev:
+	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/desktop-dev.ps1 -Tauri
 
 ## Go API: gate de non-regression des artefacts de rejeu sur corpus temoin. DEFAUT
 ## (--reference=base) : cuit chaque temoin DEUX FOIS (code du HEAD, code d'une revision de

@@ -444,7 +444,7 @@ Fichiers : `cmd/server/flags.go` (nouveau, D-15), `cmd/server/boot_gate.go`, `cm
       `games/mappings/loader_vehicle_weapons.go:75`, `cmd/weapon-sounds` et ses goldens,
       `livraison_orchestrate.go:39`) ; test Vitest : chaque entrée de la table pointe un fichier existant.
 - [x] 8.3 WAV supprimés de l'arbre ; `du -sh static/sounds` consigné.
-- [ ] 8.4 **(U)** Écoute comparée sur 5 sons nommés par l'utilisateur, dont une boucle moteur.
+- [x] 8.4 **(U)** Écoute comparée sur 5 sons nommés par l'utilisateur, dont une boucle moteur. Fait le 2026-11-02 : dossier `Downloadsecoute_sons_levelup` (WAV d'origine + Opus, page `ecoute.html`) ; verdict de l'utilisateur : « Sons ok, parfaits ».
 - Gate : `npm run test`, `npm run build` ; `go test ./internal/games/mappings/... ./cmd/weapon-sounds/...`.
 
 ### 9.9 L9 — Mesures : zstd de l'archive, formats de sons (H, scripts Go sous le scratchpad, non versionnés)
@@ -533,7 +533,7 @@ Définition : `ResourcesRoot` = la racine du dépôt aujourd'hui (`LEVELUP_RESOU
       premier lancement (32 octets, `0600`), `Validate` refuse le défaut et un secret court en `desktop`
       (`validateStartup`). Tests `config_desktop_session_test.go`.
 - [x] 13.2 `GET /desktop/enter?secret=` (capacité `ShellEntryGate`, `LoopbackOnly`) : cookie `levelup_session_<port>`
-      (HMAC lié au port, 30 jours, renouvelé à chaque entrée, `HttpOnly`, `SameSite=Strict`), 302 vers `/` ;
+      (HMAC lié au port, 30 jours, renouvelé à chaque entrée, `HttpOnly`, `SameSite=Lax`), 302 vers `/` ;
       `middleware.DesktopGate` : Host strict (421), cookie exigé (401 `desktop_unauthorized`), `/health` ouvert ;
       CORS/CSRF = origine exacte du port lié (`AppConfig.SetBoundPort`) ; `GET /api/v1/desktop/strings`
       (`messages/desktop.toml`, fr + en). Écran web « accès expiré » sur le 401. Pas d'entrée d'allowlist des
@@ -606,21 +606,21 @@ Définition : `ResourcesRoot` = la racine du dépôt aujourd'hui (`LEVELUP_RESOU
 
 ### 9.16 L16 — Coquille Tauri (S, **à risque** ; P1)
 
-- [ ] 16.1 `apps/desktop/` (Tauri 2, `src-tauri/`, identifiant `info.lvelup.desktop`, A22) ; page
+- [x] 16.1 `apps/desktop/` (Tauri 2, `src-tauri/`, identifiant `info.lvelup.desktop`, A22) ; page
       embarquée minimale (logo + animation, écran « Fermeture en cours… » avec le catalogue de repli
       A4 généré par `build.rs` depuis `messages/desktop.toml`) ; plugins `single-instance`,
       `window-state`, `opener`, `updater` ; `webviewInstallMode` Evergreen (A5) ; sidecar lancé par
       `std::process::Command` (stdin tube, stdout vidé en continu, stderr relayé, répertoire courant =
       ressources, environnement §6.1).
-- [ ] 16.2 Machine d'états : `listening` → `ready` → charge `/desktop/enter` ; `failed` → charge la page
+- [x] 16.2 Machine d'états : `listening` → `ready` → charge `/desktop/enter` ; `failed` → charge la page
       de démarrage du serveur ; `ExitRequested` → fermeture de stdin, attente `stopped` (budget + 5 s),
       puis kill ; téléchargements par `on_download` (§6.6).
-- [ ] 16.3 Faux sidecar `apps/desktop/testdata/fake-sidecar` (Go, `go.mod` propre, `GOWORK=off`) : émet
+- [x] 16.3 Faux sidecar `apps/desktop/testdata/fake-sidecar` (Go, `go.mod` propre, `GOWORK=off`) : émet
       les événements, sert `/desktop/enter` et `/`, réagit à l'EOF ; variantes : jamais `ready`, `failed`,
       `stopped` tardif, crash.
-- [ ] 16.4 `cargo test` contre le faux sidecar : chaque variante, kill après budget, secret absent des
+- [x] 16.4 `cargo test` contre le faux sidecar : chaque variante, kill après budget, secret absent des
       arguments, stdout vidé (sidecar bavard de 10 Mo).
-- [ ] 16.5 Hygiène (A23) : `.gitignore`, `Cargo.lock`, `dependabot.yml`, `Makefile` (`desktop-build`,
+- [x] 16.5 Hygiène (A23) : `.gitignore`, `Cargo.lock`, `dependabot.yml`, `Makefile` (`desktop-build`,
       `desktop-test`), `docs/COMMANDS.md` EN + FR, filtre `desktop` dans `ci.yml` + `ci_paths_filter_test`,
       CLAUDE.md amendé (§2), `NOTICE` §6 (`Cargo.lock`).
 - Gate : `cargo test` ; `cargo clippy -- -D warnings` ; `cargo audit` ; **(U)** lancement local avec le
@@ -648,6 +648,24 @@ Définition : `ResourcesRoot` = la racine du dépôt aujourd'hui (`LEVELUP_RESOU
       l'avertissement SmartScreen expliqué (D-10 : installeur non signé) et la mention Microsoft.
 - [ ] 17.6 **(P)** Runs verts ; procédure de sauvegarde de la clé d'updater exécutée (ADR 0045).
 - [ ] 17.7 **(U)** Installation sur une machine vierge, désinstallation, données conservées : témoins.
+
+### 9.17b L18 — Interface bureau (S après maquette validée par U ; EN DERNIER, décision utilisateur du 2026-11-02)
+
+Constat de l'utilisateur au premier lancement de la coquille : pied de page de site, barre de navigation de site,
+image de couverture de l'accueil « ça ne fait pas app de bureau ». Décision : lot fait en dernier, après L17.
+
+- [ ] 18.1 Maquette (Claude Design ou artefact) validée par l'utilisateur AVANT tout code : accueil sans image de
+      couverture (tableau de bord, en-tête compact), **barre latérale** (celle de la vue mobile, retenue par
+      l'utilisateur) à la place de la barre haute, fenêtre « À propos » (version, licences, mention Microsoft
+      obligatoire A19, lien de dons, « retirés sur simple demande » pour les sons).
+- [ ] 18.2 Branché sur les capacités de `/bootstrap` (jamais sur le nom du profil, ADR 0044 D-4) : capacité fine
+      `compact_chrome` (ou nom retenu) vraie en `desktop` ; pied de page retiré, éléments « site » de la navigation
+      retirés (déjà portés par `can_offer_windows_download`, `can_use_accounts`), « À propos » ajouté ; le site hébergé
+      ne change pas (tests fixtures `hosted` identiques).
+- [ ] 18.3 Libellés fr + en ; tokens sémantiques ; tests Vitest par capacité ; un scénario Playwright `desktop-chrome`.
+- [ ] 18.4 **(U)** Gate visuel sur l'application installée.
+- Gate : `cd apps/web && npm run typecheck && npm run lint && npm run test` ; pilote : DevTools WebView2 (titre,
+  URL) sur le binaire de dev.
 
 ### 9.18 P2 — à planifier à la clôture de P1 (liste fermée des sujets)
 
@@ -810,6 +828,21 @@ mises à jour (ressources retéléchargées à chaque version).
   illisible (dossier déplacé sur un autre PC, autre compte Windows) = joueur « sans jeton » sans aucune bannière → à
   prévoir (P2 ou L17 : bannière « jetons illisibles sur ce poste, reconnectez-vous »). Ronde 2 non lancée (corrections
   testées une à une).
+
+- **L16 (2026-11-02) — relevé et gate du pilote** : revue H (Opus) : 17 conditions tiennent, 2 constats P2 corrigés
+  (secret d'entrée désormais à USAGE UNIQUE côté serveur et chargé une seule fois côté coquille — il reste inscrit,
+  mort, dans l'historique WebView2 `EBWebView\Default\History`, aucune interface wry pour l'effacer sans vider le
+  stockage que A15 protège : documenté ADR 0045 D-3 ; rotation de `desktop.log` sans perte quand le fichier est tenu).
+  Constat du pilote reproduit sur le poste (DevTools distant de WebView2, `--remote-debugging-port`) : la fenêtre finissait
+  sur `/` en 401 `desktop_unauthorized` avec le cookie `SameSite=Strict` (navigation d'entrée initiée depuis la page
+  embarquée `levelup-shell://`, autre site pour Chromium : cookie non envoyé sur la chaîne 302) → `SameSite=Lax`, test
+  figé. Gate visuel : utilisateur (premier lancement : assistant puis matchs chargés) + pilote (deux lancements
+  consécutifs : titre « LevelUp - Accueil », fermeture par `WM_CLOSE` → `stopped{clean:true}`, 0 WAL, 0 processus).
+  Piège de dev : `tauri dev` redémarre l'application dès qu'un fichier `src-tauri` change (un agent qui édite pendant un
+  essai de l'utilisateur tue le serveur en cours de migration) : pour les essais, lancer `target/debug/levelup-desktop.exe`
+  avec l'environnement du script, jamais `-Tauri` pendant qu'un lot Rust est ouvert. Hors périmètre : `LEVELUP_WEB_DIST`
+  sans défaut desktop (L17 tranche l'emplacement du front installé) ; `on_new_window` pour `target=_blank` ; `cargo audit`
+  10 avis « unmaintained » sur des crates tiers.
 
 - `internal/mapcatalog` : `TestAddOverlayEntryConcurrentDossierAbsentNePerdRien` échoue en run complet
   (« verrou d'ecriture impossible a poser — passage force », 2 cartes perdues sur 8) et passe seul : le
