@@ -69,6 +69,9 @@ func TestDesktop_SecretDeSession_LEnvironnementEstIgnore(t *testing.T) {
 	t.Setenv("LEVELUP_SESSION_SECRET", strings.Repeat("v", 40)) // valeur de forme, pas un secret : le test prouve qu'elle est ignorée
 	t.Setenv("LEVELUP_REPO_ROOT", t.TempDir())
 	t.Setenv("LEVELUP_DATA_DIR", data)
+	t.Setenv("LEVELUP_DEMO_MODE", "") // la CI pose LEVELUP_DEMO_MODE=true : incompatible avec le profil desktop
+	t.Setenv("LEVELUP_AUTH_MODE", "")
+	t.Setenv("LEVELUP_API_HOST", "")
 	cfg, err := LoadServer(LaunchModeDesktop)
 	if err != nil {
 		t.Fatalf("LoadServer(desktop) : %v", err)
@@ -100,6 +103,9 @@ func TestDesktop_SecretDeSession_FichierInutilisable(t *testing.T) {
 	}
 	t.Setenv("LEVELUP_REPO_ROOT", t.TempDir())
 	t.Setenv("LEVELUP_DATA_DIR", data)
+	t.Setenv("LEVELUP_DEMO_MODE", "")
+	t.Setenv("LEVELUP_AUTH_MODE", "")
+	t.Setenv("LEVELUP_API_HOST", "")
 	if _, err := LoadServer(LaunchModeDesktop); err == nil {
 		t.Error("LoadServer(desktop) a réussi alors que le secret de session est illisible")
 	}
