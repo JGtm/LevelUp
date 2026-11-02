@@ -17,9 +17,9 @@ func pendingAttempt(xuid string) *auth.Attempt {
 func closedGate(context.Context, string, string) bool { return false }
 
 // Les jetons en attente expirent : passé le délai, la création du profil n'écrit rien.
-func TestDeviceCodeCompletion_AttenteExpiree(t *testing.T) {
+func TestAuthCompletion_AttenteExpiree(t *testing.T) {
 	store := auth.NewMultiUserTokenStore(filepath.Join(t.TempDir(), "watcher_tokens"))
-	c := NewDeviceCodeCompletion(store, closedGate)
+	c := NewAuthCompletion(store, closedGate)
 	now := time.Now()
 	c.now = func() time.Time { return now }
 
@@ -33,9 +33,9 @@ func TestDeviceCodeCompletion_AttenteExpiree(t *testing.T) {
 }
 
 // L'attente est bornée : au plafond, l'identité la plus ancienne est oubliée.
-func TestDeviceCodeCompletion_AttentePlafonnee(t *testing.T) {
+func TestAuthCompletion_AttentePlafonnee(t *testing.T) {
 	store := auth.NewMultiUserTokenStore(filepath.Join(t.TempDir(), "watcher_tokens"))
-	c := NewDeviceCodeCompletion(store, closedGate)
+	c := NewAuthCompletion(store, closedGate)
 	now := time.Now()
 	c.now = func() time.Time { return now }
 

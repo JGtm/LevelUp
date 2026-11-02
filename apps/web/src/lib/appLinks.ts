@@ -73,6 +73,13 @@ export const XBOX_GAME_CONTENT_RULES_URL = 'https://www.xbox.com/en-US/developer
 export const MICROSOFT_CONTENT_NOTICE =
   'Halo Infinite © Microsoft Corporation. LevelUp was created under Microsoft\'s "Game Content Usage Rules" using assets from Halo Infinite, and it is not endorsed by or affiliated with Microsoft.'
 
+/**
+ * Liste des « Media Feature Pack » de Microsoft : les éditions Windows N ou KN n'embarquent pas
+ * Media Foundation, d'où l'absence d'encodeur H.264 (message de la page Médias).
+ */
+export const MEDIA_FEATURE_PACK_URL =
+  'https://support.microsoft.com/topic/media-feature-pack-list-for-windows-n-editions-c1c6fffa-d052-8338-7a79-a4bb980a700a'
+
 /** Dernière version publiée de l'application Windows (page de téléchargement). */
 export const GITHUB_LATEST_RELEASE_URL = `${GITHUB_URL}/releases/latest`
 

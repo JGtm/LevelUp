@@ -2,7 +2,8 @@
  * Largeur du volet des référentiels ancré à droite du contenu (application de bureau).
  *
  * Bornes 280 à 640 px ; la borne haute recule quand la fenêtre est étroite pour que le contenu garde
- * `MIN_CONTENT_WIDTH` à côté de la barre latérale. La largeur choisie survit au redémarrage
+ * `MIN_CONTENT_WIDTH` à côté de la barre latérale, dont la largeur réelle (dépliée ou repliée,
+ * `lib/layout/sidebarWidth`) est un paramètre. La largeur choisie survit au redémarrage
  * (`localStorage`, clé `PANEL_WIDTH_STORAGE_KEY`) ; un stockage indisponible (fenêtre privée, accès
  * refusé) ramène la largeur par défaut sans casser l'écran.
  */
@@ -15,21 +16,20 @@ export const PANEL_DEFAULT_WIDTH = 360
 export const PANEL_KEY_STEP = 16
 export const PANEL_KEY_STEP_LARGE = 64
 
-/** Largeur de la barre latérale du bureau (`w-60`). */
-const SIDEBAR_WIDTH = 240
 /** Largeur minimale laissée au contenu de la page. */
 const MIN_CONTENT_WIDTH = 480
 
 /** Borne haute effective : 640 px au plus, moins si la fenêtre ne laisse pas sa place au contenu. */
-export function maxPanelWidth(viewportWidth: number): number {
-  const room = viewportWidth - SIDEBAR_WIDTH - MIN_CONTENT_WIDTH
+export function maxPanelWidth(viewportWidth: number, sidebarWidth: number): number {
+  const room = viewportWidth - sidebarWidth - MIN_CONTENT_WIDTH
   return Math.max(PANEL_MIN_WIDTH, Math.min(PANEL_MAX_WIDTH, Math.floor(room)))
 }
 
 /** Ramène une largeur dans les bornes ; une valeur non finie donne la largeur par défaut. */
-export function clampPanelWidth(width: number, viewportWidth: number): number {
-  if (!Number.isFinite(width)) return Math.min(PANEL_DEFAULT_WIDTH, maxPanelWidth(viewportWidth))
-  return Math.min(maxPanelWidth(viewportWidth), Math.max(PANEL_MIN_WIDTH, Math.round(width)))
+export function clampPanelWidth(width: number, viewportWidth: number, sidebarWidth: number): number {
+  const max = maxPanelWidth(viewportWidth, sidebarWidth)
+  if (!Number.isFinite(width)) return Math.min(PANEL_DEFAULT_WIDTH, max)
+  return Math.min(max, Math.max(PANEL_MIN_WIDTH, Math.round(width)))
 }
 
 let storageWarned = false

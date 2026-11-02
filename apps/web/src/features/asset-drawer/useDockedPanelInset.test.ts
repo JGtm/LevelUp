@@ -5,6 +5,7 @@
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+import { SIDEBAR_PANEL_WIDTH, SIDEBAR_RAIL_WIDTH, useSidebarWidthStore } from '@/lib/layout/sidebarWidth'
 import { useAssetDrawerStore } from './assetDrawer.store'
 import { clampPanelWidth, PANEL_DEFAULT_WIDTH, PANEL_MAX_WIDTH } from './panelWidth'
 import { useDockedPanelInset } from './useDockedPanelInset'
@@ -18,6 +19,7 @@ function setViewport(width: number) {
 beforeEach(() => {
   setViewport(1600)
   useAssetDrawerStore.setState({ isOpen: false, panelWidth: PANEL_DEFAULT_WIDTH })
+  useSidebarWidthStore.getState().setCollapsed(false)
 })
 afterEach(() => {
   setViewport(initialInnerWidth)
@@ -34,7 +36,7 @@ describe('useDockedPanelInset', () => {
   it('ouvert : la largeur du volet, bornée comme le volet lui-même', () => {
     useAssetDrawerStore.setState({ isOpen: true, panelWidth: 500 })
     const { result } = renderHook(() => useDockedPanelInset())
-    expect(result.current).toBe(clampPanelWidth(500, 1600))
+    expect(result.current).toBe(clampPanelWidth(500, 1600, SIDEBAR_PANEL_WIDTH))
     expect(result.current).toBe(500)
   })
 
@@ -55,9 +57,19 @@ describe('useDockedPanelInset', () => {
       setViewport(900)
       window.dispatchEvent(new Event('resize'))
     })
-    expect(result.current).toBe(clampPanelWidth(600, 900))
+    expect(result.current).toBe(clampPanelWidth(600, 900, SIDEBAR_PANEL_WIDTH))
     expect(result.current).toBeLessThan(600)
     act(() => useAssetDrawerStore.setState({ isOpen: false }))
     expect(result.current).toBe(0)
+  })
+
+  it('barre latérale repliée : la borne haute lit sa largeur réelle (56 px) et rend la marge au volet', () => {
+    setViewport(1024)
+    useAssetDrawerStore.setState({ isOpen: true, panelWidth: 600 })
+    const { result } = renderHook(() => useDockedPanelInset())
+    expect(result.current).toBe(clampPanelWidth(600, 1024, SIDEBAR_PANEL_WIDTH))
+    act(() => useSidebarWidthStore.getState().setCollapsed(true))
+    expect(result.current).toBe(clampPanelWidth(600, 1024, SIDEBAR_RAIL_WIDTH))
+    expect(result.current).toBe(488)
   })
 })

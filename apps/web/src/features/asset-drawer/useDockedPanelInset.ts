@@ -4,6 +4,7 @@
  * la colonne du contenu au lieu de couvrir le volet.
  */
 import { useEffect, useState } from 'react'
+import { useSidebarWidthStore } from '@/lib/layout/sidebarWidth'
 import { useAssetDrawerStore } from './assetDrawer.store'
 import { clampPanelWidth } from './panelWidth'
 
@@ -22,5 +23,6 @@ export function useViewportWidth(): number {
 export function useDockedPanelInset(): number {
   const { isOpen, panelWidth } = useAssetDrawerStore()
   const viewport = useViewportWidth()
-  return isOpen ? clampPanelWidth(panelWidth, viewport) : 0
+  const sidebarWidth = useSidebarWidthStore((s) => s.width)
+  return isOpen ? clampPanelWidth(panelWidth, viewport, sidebarWidth) : 0
 }

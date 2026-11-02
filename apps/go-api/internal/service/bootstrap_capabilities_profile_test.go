@@ -142,3 +142,32 @@ func TestBuildCapabilities_ChromeDeBureauSeulementEnDesktop(t *testing.T) {
 		})
 	}
 }
+
+// TestBuildCapabilities_ConnexionNavigateurEtComparaisonDeComptes : la connexion par le navigateur
+// n'est offerte que par le profil desktop ; la comparaison de comptes l'est partout SAUF en desktop
+// (un seul compte suivi).
+func TestBuildCapabilities_ConnexionNavigateurEtComparaisonDeComptes(t *testing.T) {
+	cas := []struct {
+		nom         string
+		launch      string
+		env         string
+		demo        string
+		wantBrowser bool
+		wantCompare bool
+	}{
+		{"hosted", config.LaunchModeDefault, "production", "", false, true},
+		{"dev", config.LaunchModeDefault, "", "", false, true},
+		{"demo", config.LaunchModeDefault, "", "true", false, true},
+		{"desktop", config.LaunchModeDesktop, "", "", true, false},
+	}
+	for _, c := range cas {
+		t.Run(c.nom, func(t *testing.T) {
+			cfg := chargerPourBootstrap(t, c.launch, c.env, c.demo, "")
+			caps := buildCapabilities(cfg, map[string]interface{}{})
+			if caps.CanLoginViaBrowser != c.wantBrowser || caps.CanCompareAccounts != c.wantCompare {
+				t.Errorf("can_login_via_browser = %v, can_compare_accounts = %v ; attendu %v, %v",
+					caps.CanLoginViaBrowser, caps.CanCompareAccounts, c.wantBrowser, c.wantCompare)
+			}
+		})
+	}
+}

@@ -73,8 +73,8 @@ type GroupJoiner interface {
 // login aboutit et les tokens sont persistés, mais rien n'est mis en marche.
 type XboxSSOLinkStrategy struct {
 	users        *userstore.Store
-	credentials  *DeviceCodeCompletion // optionnel — écriture des jetons après login
-	daemonGetter WatcherDaemonGetter   // optionnel — lazy resolve
+	credentials  *AuthCompletion     // optionnel — écriture des jetons après login
+	daemonGetter WatcherDaemonGetter // optionnel — lazy resolve
 	// instanceLocked résout le verrou « instance fermée ». Quand true, un XUID
 	// INCONNU est refusé (pas de CreateFromXbox) ; un XUID connu se connecte
 	// normalement. nil → jamais verrouillé. Cf. WithInstanceLock.
@@ -104,7 +104,7 @@ func (s *XboxSSOLinkStrategy) WithTokenStore(ts *auth.MultiUserTokenStore) *Xbox
 		s.credentials = nil
 		return s
 	}
-	s.credentials = NewDeviceCodeCompletion(ts, nil)
+	s.credentials = NewAuthCompletion(ts, nil)
 	return s
 }
 

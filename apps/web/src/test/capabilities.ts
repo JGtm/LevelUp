@@ -40,6 +40,8 @@ export function demoCapabilities(): Partial<CapabilityMap> {
 export function desktopCapabilities(): Partial<CapabilityMap> {
   return {
     can_use_compact_chrome: true,
+    can_login_via_browser: true,
+    can_compare_accounts: false,
     can_update_app: true,
     can_offer_windows_download: false,
     can_use_accounts: false,

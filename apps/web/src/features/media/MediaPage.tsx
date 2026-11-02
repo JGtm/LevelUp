@@ -13,6 +13,7 @@ import { MediaLightbox, MediaThumbnailCard } from './MediaViewer'
 import { buildOwnerColorMap } from './mediaOwnerColors'
 import { MediaToolbar } from './MediaToolbar'
 import { MediaMatchPicker } from './MediaMatchPicker'
+import { MediaNoEncoderNotice } from './MediaNoEncoderNotice'
 import { useMediaPicker } from './useMediaPicker'
 import { usePlayerGamertag } from './usePlayerGamertag'
 import { UploadButton } from './UploadButton'
@@ -345,6 +346,8 @@ export function MediaPage() {
           onClose={picker.close}
         />
       )}
+
+      <MediaNoEncoderNotice />
 
       {/* Zone d'upload pleine largeur (vient en premier pour rapprocher les filtres de la grille) */}
       {canWrite && <UploadButton playerSlug={playerSlug} fullWidth />}

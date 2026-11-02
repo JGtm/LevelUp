@@ -41,6 +41,8 @@ interface AppShellState {
   capabilities: CapabilityMap | null
   /** Version et dossier des données, publiés seulement avec le chrome de bureau (fenêtre « À propos »). */
   appInfo: AppInfo | null
+  /** Aucun encodeur H.264 utilisable côté serveur : la page Médias le dit et pointe le Media Feature Pack. */
+  mediaH264Missing: boolean
 
   // État app
   setupRequired: boolean
@@ -114,6 +116,7 @@ export const useAppShellStore = create<AppShellState>((set) => ({
   hintsVisible: true,
   capabilities: null,
   appInfo: null,
+  mediaH264Missing: false,
   setupRequired: false,
   authState: 'missing',
   setupState: 'no_halo_link',
@@ -150,6 +153,7 @@ export const useAppShellStore = create<AppShellState>((set) => ({
       hintsVisible: data.hints_visible_default,
       capabilities: data.capabilities ?? DEFAULT_CAPABILITIES,
       appInfo: data.app_info ?? null,
+      mediaH264Missing: data.media_h264_missing ?? false,
       setupRequired: data.setup_required,
       authState: data.auth_state,
       setupState: data.setup_state ?? 'no_halo_link',

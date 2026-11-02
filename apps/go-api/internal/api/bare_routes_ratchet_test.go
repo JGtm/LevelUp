@@ -20,7 +20,8 @@
 //
 // PÉRIMÈTRE. Routes montées sous le routeur assemblé (`/api/v1`, `/health*`,
 // `/static/*`). Le catch-all SPA `/*` (handler NotFound, non walkable) et les
-// routes racine /auth/xbox/{login,callback} (mode "xbox" only) sont publics par
+// routes racine /auth/xbox/{login,callback} (mode "xbox", ou profil desktop sous la capacité
+// LoginViaBrowser : cf. TestBareRoutesRatchet_DesktopEntryRoutes) sont publics par
 // conception, hors surface, couverts par LOT_S_ROUTE_GUARD_TABLE.
 //
 // MAINTENANCE. Route publique légitime = 1 ligne d'allowlist AVEC justification.
@@ -274,16 +275,23 @@ func TestBareRoutesRatchet_DesktopShutdownRouteIsGuarded(t *testing.T) {
 }
 
 // TestBareRoutesRatchet_DesktopEntryRoutes : sous l'entrée de la coquille desktop (ADR 0045 D-3),
+//
 //   - GET /desktop/enter n'existe que là, et y est gardée par LoopbackOnly (garde reconnue : aucune
 //     entrée d'allowlist, qui serait signalée INUTILE) ;
+//
 //   - GET /api/v1/desktop/strings n'existe que là ;
+//
 //   - TOUTE route du routeur y est derrière le garde de la coquille (Host strict, cookie exigé),
 //     monté sur la racine : /health reste ouvert par exception DU GARDE, pas par route nue.
 //
-// Hors de cette capacité, aucune de ces deux routes n'est montée (le routeur du ratchet principal,
+//   - GET /auth/xbox/callback et GET /api/v1/auth/xbox/login (connexion par le navigateur, L21,
+//     2026-11-02) n'existent que sous la capacité LoginViaBrowser, le retour derrière LoopbackOnly.
+//
+// Hors de cette capacité, aucune de ces routes n'est montée (le routeur du ratchet principal,
 // en démo, ne les voit pas).
 func TestBareRoutesRatchet_DesktopEntryRoutes(t *testing.T) {
 	const enterKey, stringsKey = "GET /desktop/enter", "GET /api/v1/desktop/strings"
+	const loginKey, callbackKey = "GET /api/v1/auth/xbox/login", "GET /auth/xbox/callback"
 	walk := func(t *testing.T, desktop bool) (found map[string]bool, guarded map[string]bool, behindGate map[string]bool) {
 		t.Helper()
 		opts := openapigen.Options{
@@ -323,8 +331,8 @@ func TestBareRoutesRatchet_DesktopEntryRoutes(t *testing.T) {
 	}
 
 	foundHosted, _, gateHosted := walk(t, false)
-	if foundHosted[enterKey] || foundHosted[stringsKey] {
-		t.Errorf("%s ou %s montée hors du profil desktop", enterKey, stringsKey)
+	if foundHosted[enterKey] || foundHosted[stringsKey] || foundHosted[loginKey] || foundHosted[callbackKey] {
+		t.Errorf("%s, %s, %s ou %s montée hors du profil desktop", enterKey, stringsKey, loginKey, callbackKey)
 	}
 	for key, behind := range gateHosted {
 		if behind {
@@ -347,6 +355,22 @@ func TestBareRoutesRatchet_DesktopEntryRoutes(t *testing.T) {
 	for key, behind := range behindGate {
 		if !behind {
 			t.Errorf("%s n'est pas derrière le garde de la coquille (Host strict, cookie exigé)", key)
+		}
+	}
+	// Connexion par le navigateur (L21, 2026-11-02) : le retour de Microsoft est la seule route racine
+	// que le garde laisse passer sans cookie (AllowBrowserCallback, Host localhost ou 127.0.0.1 du
+	// port lié) ; il est monté derrière LoopbackOnly et protégé par le state à usage unique de la
+	// tentative. Le démarrage reste derrière le cookie. Ni l'un ni l'autre ne figure dans l'allowlist
+	// des routes publiques : ils n'existent que sous le garde de la coquille.
+	if !found[loginKey] || !found[callbackKey] {
+		t.Fatalf("routes de connexion par le navigateur absentes : %s=%v %s=%v", loginKey, found[loginKey], callbackKey, found[callbackKey])
+	}
+	if !guarded[callbackKey] {
+		t.Errorf("%s montée sans garde reconnue (LoopbackOnly attendue)", callbackKey)
+	}
+	for _, key := range []string{loginKey, callbackKey} {
+		if _, listed := publicRoutesAllowlist[key]; listed {
+			t.Errorf("%s ne doit pas figurer dans l'allowlist : elle n'existe que sous le garde de la coquille", key)
 		}
 	}
 }

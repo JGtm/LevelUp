@@ -72,7 +72,7 @@ func TestDeployment_TableDesCombinaisonsActuelles(t *testing.T) {
 					if c.EditSettings == wantDemo || c.UploadMedia == wantDemo || c.PoolTokens == wantDemo {
 						t.Errorf("capacités figées en démo seulement : %+v pour demo=%v", c, wantDemo)
 					}
-					if c.CompactChrome || c.AdoptSystemLocale || c.FrequentCheckpoint {
+					if c.CompactChrome || c.AdoptSystemLocale || c.FrequentCheckpoint || c.LoginViaBrowser {
 						t.Errorf("hors desktop : chrome de bureau ou langue du système offerts : %+v", c)
 					}
 					if c.UpdateApp || !c.OfferWindowsDownload {
@@ -98,16 +98,16 @@ func TestDeployment_CapacitesParProfil(t *testing.T) {
 	}{
 		{DeploymentHosted, "production", "", LaunchModeDefault, DeploymentCapabilities{
 			UseGroups: true, PoolTokens: true, UseAdmin: true, UseResticBackup: true, UseDiscord: true,
-			UseOutboundNetwork: true, OfferWindowsDownload: true, EditSettings: true, UploadMedia: true}},
+			UseOutboundNetwork: true, OfferWindowsDownload: true, EditSettings: true, UploadMedia: true, CompareAccounts: true}},
 		{DeploymentDev, "", "", LaunchModeDefault, DeploymentCapabilities{
 			UseGroups: true, PoolTokens: true, UseAdmin: true, UseResticBackup: true, UseDiscord: true,
-			UseOutboundNetwork: true, OfferWindowsDownload: true, EditSettings: true, UploadMedia: true}},
+			UseOutboundNetwork: true, OfferWindowsDownload: true, EditSettings: true, UploadMedia: true, CompareAccounts: true}},
 		{DeploymentDemo, "", "true", LaunchModeDefault, DeploymentCapabilities{
-			UseAdmin: true, OfferWindowsDownload: true}},
+			UseAdmin: true, OfferWindowsDownload: true, CompareAccounts: true}},
 		{DeploymentDesktop, "", "", LaunchModeDesktop, DeploymentCapabilities{
 			UseOutboundNetwork: true, UpdateApp: true, EditSettings: true, UploadMedia: true,
 			ShellEntryGate: true, PoolGrantedToLocalUser: true, WakeSequence: true, TokenVault: true,
-			CompactChrome: true, AdoptSystemLocale: true, FrequentCheckpoint: true}},
+			CompactChrome: true, AdoptSystemLocale: true, FrequentCheckpoint: true, LoginViaBrowser: true}},
 	}
 	for _, c := range cas {
 		t.Run(string(c.profil), func(t *testing.T) {

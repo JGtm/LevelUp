@@ -55,6 +55,7 @@ const ALLOWLIST = new Set<string>([
   'HealthResponse',             // GET /health — endpoint infra hors openapi.yaml
   'FilterMatchIdsResponse',     // POST /filters/match-ids — wrapper trivial { match_ids }
   'DeviceFlowStartResponse',    // POST /auth/device-flow/start — champ deprecated alias
+  'BrowserLoginStartResponse',  // GET /auth/xbox/login (2026-11-02, L21.00) — route montée sous la capacité LoginViaBrowser seulement, donc hors du document généré (comme /desktop/strings) ; à migrer si le générateur monte un jour les routes de bureau
   'SettingsResponse',           // GET /settings — large struct settings, non migrée
   'CareerPageResponse',         // sous-types view-model (CareerSummary/LusrSection) hors schéma
   'CareerHighlightMatchesResponse', // agrégat composite ExplorerMatchRow + cascade counts

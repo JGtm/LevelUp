@@ -122,6 +122,7 @@ func BuildDemoRouter(ctx context.Context, opts Options) (http.Handler, *huma.Ope
 		cfg.APIPort = opts.ShellEntryPort
 		cfg.SessionSecret = opts.ShellCookieKey
 		cfg.Capabilities.ShellEntryGate = true
+		cfg.Capabilities.LoginViaBrowser = true
 		cfg.SetBoundPort(opts.ShellEntryPort)
 	}
 

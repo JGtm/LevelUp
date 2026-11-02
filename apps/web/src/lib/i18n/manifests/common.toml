@@ -1424,6 +1424,35 @@ en = "Microsoft Sign-In"
 fr = "Rends-toi sur"
 en = "Go to"
 
+# Connexion Microsoft par le navigateur par défaut (application de bureau, BrowserLoginPanel).
+[common.setup.browser_login_lead]
+fr = "Une fenêtre de votre navigateur s'ouvre pour vous connecter à Microsoft. Revenez ensuite ici : LevelUp continue seul."
+en = "A window of your browser opens so you can sign in to Microsoft. Then come back here: LevelUp carries on by itself."
+
+[common.setup.browser_login_button]
+fr = "Se connecter avec Microsoft"
+en = "Sign in with Microsoft"
+
+[common.setup.browser_login_opening]
+fr = "Ouverture du navigateur…"
+en = "Opening your browser…"
+
+[common.setup.browser_login_waiting]
+fr = "En attente de la connexion dans votre navigateur…"
+en = "Waiting for the sign-in in your browser…"
+
+[common.setup.browser_login_reopen_hint]
+fr = "Rien ne s'est ouvert ?"
+en = "Nothing opened?"
+
+[common.setup.browser_login_reopen_link]
+fr = "Ouvrir la page Microsoft"
+en = "Open the Microsoft page"
+
+[common.setup.browser_login_use_code]
+fr = "Impossible d'ouvrir le navigateur ? Utiliser un code"
+en = "Can't open the browser? Use a code instead"
+
 [common.setup.enter_this_code]
 fr = "et entrez ce code :"
 en = "and enter this code:"
@@ -1725,6 +1754,16 @@ en = "Prestige leaderboard with friends derived from the squad and relations."
 [common.prestige.select_player_for_leaderboard]
 fr = "Sélectionne un joueur pour voir le classement."
 en = "Select a player to see the leaderboard."
+
+# Page de la communauté qui confronte plusieurs comptes, ouverte sur une instance qui n'en suit qu'un
+# (application de bureau).
+[common.community.accounts_only_title]
+fr = "Pas de comparaison entre comptes"
+en = "No comparison between accounts"
+
+[common.community.accounts_only_body]
+fr = "Cette page compare plusieurs comptes ; l'application de bureau n'en suit qu'un."
+en = "This page compares several accounts; the desktop application follows only one."
 
 [common.prestige.select_player_for_objectives]
 fr = "Sélectionne un joueur pour voir les objectifs."
@@ -2654,6 +2693,14 @@ en = "Help, settings and application information"
 [common.shell.sidebar_version]
 fr = "Version {version}"
 en = "Version {version}"
+
+[common.shell.sidebar_collapse]
+fr = "Replier la barre latérale"
+en = "Collapse the sidebar"
+
+[common.shell.sidebar_expand]
+fr = "Déplier la barre latérale"
+en = "Expand the sidebar"
 
 [common.about.close]
 fr = "Fermer"

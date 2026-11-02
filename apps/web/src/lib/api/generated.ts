@@ -5100,6 +5100,8 @@ export interface components {
             linked_halo_identity?: components["schemas"]["HaloIdentitySummary"] | null;
             /** @default fr */
             locale: string;
+            /** @description Aucun encodeur H.264 utilisable : le transcodage vidéo des clips est refusé. */
+            media_h264_missing?: boolean;
             oauth_code_flow_enabled: boolean;
             /** @enum {string} */
             pool_sharing: "granted" | "declined" | "undecided" | "unavailable";
@@ -5392,8 +5394,12 @@ export interface components {
             Severity: string;
         };
         CapabilityMap: {
+            /** @description L'instance suit plusieurs comptes : les pages qui les confrontent (classements de la communauté) sont offertes. */
+            can_compare_accounts: boolean;
             /** @description Réglages de l'instance modifiables (figés en démo). */
             can_edit_settings: boolean;
+            /** @description Connexion Microsoft dans le navigateur par défaut, sans code à recopier (application de bureau). */
+            can_login_via_browser: boolean;
             can_manage_instance: boolean;
             can_manage_settings: boolean;
             /** @description Téléchargement de l'application Windows proposé. */
@@ -9871,6 +9877,7 @@ export interface components {
             ffmpeg: boolean;
             ffmpeg_version?: string;
             ffprobe: boolean;
+            h264_encoder_missing: boolean;
         };
         MilestoneDTO: {
             condition?: string;

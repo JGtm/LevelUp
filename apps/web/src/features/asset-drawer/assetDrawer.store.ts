@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { useSidebarWidthStore } from '@/lib/layout/sidebarWidth'
 import { clampPanelWidth, loadPanelWidth, savePanelWidth } from './panelWidth'
 
 export type AssetTab = 'maps' | 'weapons' | 'medals'
@@ -48,7 +49,7 @@ export const useAssetDrawerStore = create<AssetDrawerState>()(
       setTab: (tab) => set({ activeTab: tab, search: '' }),
       setSearch: (q) => set({ search: q }),
       setPanelWidth: (width) => {
-        const next = clampPanelWidth(width, currentViewportWidth())
+        const next = clampPanelWidth(width, currentViewportWidth(), useSidebarWidthStore.getState().width)
         savePanelWidth(next)
         set({ panelWidth: next })
       },

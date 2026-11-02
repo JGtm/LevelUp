@@ -14,6 +14,10 @@
 //     session.
 //   - Cookie exigé : hors /desktop/enter et /health (la sonde du lanceur, sans donnée), toute
 //     requête sans le cookie valide répond 401.
+//   - Une seule exception d'entrée, sous la capacité de connexion par le navigateur (AllowBrowserCallback) :
+//     le retour de Microsoft arrive dans le navigateur par défaut, sans cookie, sur http://localhost:<port>.
+//     GET /auth/xbox/callback, et lui seul, passe sans cookie ET avec un Host « localhost » ou
+//     « 127.0.0.1 » du port lié ; il est protégé par le state à usage unique de la tentative.
 //
 // Le cookie n'est pas une session : sa valeur est une échéance signée (HMAC-SHA256 avec le secret de
 // session du fichier, lié au port), vérifiée sans état, valable 30 jours et renouvelée à chaque
@@ -48,6 +52,9 @@ const (
 	DesktopShutdownPath = "/api/v1/internal/shutdown"
 	// desktopHealthPath : la sonde du lanceur, ouverte sans cookie (aucune donnée).
 	desktopHealthPath = "/health"
+	// DesktopBrowserCallbackPath : le retour de Microsoft de la connexion par le navigateur, déclaré
+	// côté Azure (http://localhost/auth/xbox/callback ; tout port est admis sur localhost).
+	DesktopBrowserCallbackPath = "/auth/xbox/callback"
 	// DesktopCookieTTL : durée de validité du cookie, posée à l'entrée de chaque lancement.
 	DesktopCookieTTL = 30 * 24 * time.Hour
 	// desktopCookiePrefix : début du nom du cookie, suivi du port lié.
@@ -76,6 +83,9 @@ type DesktopGate struct {
 	// entered : le secret a été présenté avec succès une fois ; toute présentation suivante est refusée.
 	entered atomic.Bool
 	now     func() time.Time
+	// callbackAuthority : l'autorité « localhost:<port> » du retour de la connexion par le navigateur ;
+	// vide tant que AllowBrowserCallback n'a pas ouvert cette route.
+	callbackAuthority string
 }
 
 // NewDesktopGate construit l'entrée pour l'autorité authority (« 127.0.0.1:<port> ») et le port
@@ -91,6 +101,21 @@ func NewDesktopGate(authority string, port int, cookieKey, launcherSecret string
 		configured:   launcherSecret != "" && cookieKey != "",
 		now:          time.Now,
 	}
+}
+
+// AllowBrowserCallback ouvre GET /auth/xbox/callback sans cookie, avec le Host « localhost:<port> » (ou
+// l'autorité numérique) du port lié, et lui seul : tout autre chemin, toute autre méthode, tout autre
+// Host gardent les contrôles d'entrée. À appeler sous la capacité LoginViaBrowser seulement.
+func (g *DesktopGate) AllowBrowserCallback() *DesktopGate {
+	g.callbackAuthority = "localhost:" + strconv.Itoa(g.port)
+	return g
+}
+
+// isBrowserCallback dit si la requête est le retour de la connexion par le navigateur : route ouverte,
+// méthode GET, chemin exact (jamais ambigu), Host de la boucle locale du port lié.
+func (g *DesktopGate) isBrowserCallback(r *http.Request) bool {
+	return g.callbackAuthority != "" && r.Method == http.MethodGet && !AmbiguousPath(r) &&
+		r.URL.Path == DesktopBrowserCallbackPath && (r.Host == g.callbackAuthority || r.Host == g.authority)
 }
 
 // DesktopCookieName rend le nom du cookie d'un serveur lié au port port.
@@ -132,6 +157,10 @@ func (g *DesktopGate) validCookie(r *http.Request) bool {
 // PreserveRemoteAddr : rien d'autre (CORS, session, routeur) ne voit une requête refusée ici.
 func (g *DesktopGate) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if g.isBrowserCallback(r) {
+			next.ServeHTTP(w, r)
+			return
+		}
 		if refuseForeignHost(w, r, g.authority) {
 			return
 		}

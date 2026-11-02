@@ -9852,6 +9852,9 @@ components:
         locale:
           default: fr
           type: string
+        media_h264_missing:
+          description: 'Aucun encodeur H.264 utilisable : le transcodage vidéo des clips est refusé.'
+          type: boolean
         oauth_code_flow_enabled:
           type: boolean
         pool_sharing:
@@ -10589,8 +10592,14 @@ components:
     CapabilityMap:
       additionalProperties: false
       properties:
+        can_compare_accounts:
+          description: 'L''instance suit plusieurs comptes : les pages qui les confrontent (classements de la communauté) sont offertes.'
+          type: boolean
         can_edit_settings:
           description: Réglages de l'instance modifiables (figés en démo).
+          type: boolean
+        can_login_via_browser:
+          description: Connexion Microsoft dans le navigateur par défaut, sans code à recopier (application de bureau).
           type: boolean
         can_manage_instance:
           type: boolean
@@ -10681,6 +10690,8 @@ components:
         - can_edit_settings
         - can_upload_media
         - can_use_compact_chrome
+        - can_login_via_browser
+        - can_compare_accounts
         - deployment
       type: object
     CareerCSRRank:
@@ -21103,9 +21114,12 @@ components:
           type: string
         ffprobe:
           type: boolean
+        h264_encoder_missing:
+          type: boolean
       required:
         - ffmpeg
         - ffprobe
+        - h264_encoder_missing
       type: object
     MilestoneDTO:
       additionalProperties: false

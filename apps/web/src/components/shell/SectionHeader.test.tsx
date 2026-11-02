@@ -18,6 +18,7 @@ import { screen } from '@testing-library/react'
 import { renderWithProviders } from '@/test/render-utils'
 import { resolveRoutePath } from '@/test/routeLinkMock'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { desktopCapabilities, testCapabilities } from '@/test/capabilities'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest } from '@/lib/i18n/generated/common'
 import { KNOWN_LOCALES } from '@/lib/i18n/generated/locales'
@@ -210,6 +211,22 @@ describe('SectionHeader : onglets', () => {
     renderWithProviders(<SectionHeader />)
     expect(screen.queryByText('Classements')).toBeNull()
     expect(screen.getByRole('link', { name: 'Relations' })).toHaveAttribute('aria-current', 'page')
+  })
+
+  it('Communauté : sans la capacité can_compare_accounts (bureau), pas de Classements même si le titre les déclare', () => {
+    useAppShellStore.setState({ capabilities: testCapabilities(desktopCapabilities()) })
+    mockPathname = '/t/un_titre/players/p/community/relations'
+    renderWithProviders(<SectionHeader />)
+    expect(screen.queryByText('Classements')).toBeNull()
+    expect(screen.getByRole('link', { name: 'Relations' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: 'Face-à-face' })).toBeInTheDocument()
+    useAppShellStore.setState({ capabilities: null })
+  })
+
+  it('Communauté : le site (capacité vraie ou pas encore connue) garde Classements', () => {
+    mockPathname = '/t/un_titre/players/p/community/relations'
+    renderWithProviders(<SectionHeader />)
+    expect(screen.getByRole('link', { name: 'Classements' })).toBeInTheDocument()
   })
 
   it('Médias et Explorer : pas d’onglets, mais la ligne est réservée (même hauteur que Carrière)', () => {

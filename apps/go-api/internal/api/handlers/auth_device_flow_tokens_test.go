@@ -29,7 +29,7 @@ const noneModeXUID = "2535400000000042"
 type noneModeRig struct {
 	router     http.Handler
 	store      *auth_platform.MultiUserTokenStore
-	completion *service.DeviceCodeCompletion
+	completion *service.AuthCompletion
 	attempts   *auth_platform.AttemptStore
 	cookie     *http.Cookie
 	attemptID  string
@@ -44,8 +44,8 @@ func newNoneModeRig(t *testing.T, tracked bool) *noneModeRig {
 	store := auth_platform.NewMultiUserTokenStore(filepath.Join(dir, "watcher_tokens"))
 
 	gate := func(_ context.Context, _, xuid string) bool { return tracked && xuid == noneModeXUID }
-	completion := service.NewDeviceCodeCompletion(store, gate)
-	strategy := service.NewDeviceCodeLinkStrategy(auth_platform.NewPasswordLinkStrategy(users), completion)
+	completion := service.NewAuthCompletion(store, gate)
+	strategy := service.NewAuthLinkStrategy(auth_platform.NewPasswordLinkStrategy(users), completion)
 	authHandler := handlers.NewAuthHandler(sessStore, attempts, &stubTokenProvider{}).WithLinkStrategy(strategy)
 
 	r := chi.NewRouter()

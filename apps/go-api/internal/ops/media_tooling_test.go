@@ -3,6 +3,7 @@ package ops
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -249,5 +250,30 @@ func TestMediaToolingReport_ToHealthStatus(t *testing.T) {
 	absent := MediaToolingReport{}.ToHealthStatus()
 	if absent.FFmpeg || absent.FFprobe || absent.FFmpegVersion != "" {
 		t.Errorf("rapport vide devrait projeter des faux/vide, obtenu %+v", absent)
+	}
+}
+
+// TestMediaToolingReport_H264EncoderMissing : seul le verdict définitif (détection aboutie, aucun
+// candidat utilisable) est publié ; un encodeur retenu, une détection interrompue ou non faite ne
+// le sont pas.
+func TestMediaToolingReport_H264EncoderMissing(t *testing.T) {
+	cas := []struct {
+		nom  string
+		r    MediaToolingReport
+		want bool
+	}{
+		{"aucun encodeur utilisable", MediaToolingReport{FFmpegFound: true, CapabilitiesProbed: true, H264Err: mediapkg.ErrNoH264Encoder}, true},
+		{"verdict enveloppé", MediaToolingReport{FFmpegFound: true, CapabilitiesProbed: true, H264Err: fmt.Errorf("sonde: %w", mediapkg.ErrNoH264Encoder)}, true},
+		{"un encodeur retenu", MediaToolingReport{FFmpegFound: true, CapabilitiesProbed: true, H264Retained: mediapkg.H264Encoder("h264_mf")}, false},
+		{"détection interrompue", MediaToolingReport{FFmpegFound: true, CapabilitiesProbed: true, H264Err: context.DeadlineExceeded}, false},
+		{"capacités non interrogées", MediaToolingReport{FFmpegFound: true, H264Err: mediapkg.ErrNoH264Encoder}, false},
+		{"ffmpeg absent", MediaToolingReport{}, false},
+	}
+	for _, c := range cas {
+		t.Run(c.nom, func(t *testing.T) {
+			if got := c.r.ToHealthStatus().H264EncoderMissing; got != c.want {
+				t.Errorf("H264EncoderMissing = %v, attendu %v", got, c.want)
+			}
+		})
 	}
 }

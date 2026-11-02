@@ -47,6 +47,8 @@ type CapabilityMap struct {
 	CanEditSettings         bool `json:"can_edit_settings" doc:"Réglages de l'instance modifiables (figés en démo)."`
 	CanUploadMedia          bool `json:"can_upload_media" doc:"Dépôt de captures (refusé en démo)."`
 	CanUseCompactChrome     bool `json:"can_use_compact_chrome" doc:"Chrome d'application de bureau : barre latérale, fenêtre À propos, accueil sans image de couverture."`
+	CanLoginViaBrowser      bool `json:"can_login_via_browser" doc:"Connexion Microsoft dans le navigateur par défaut, sans code à recopier (application de bureau)."`
+	CanCompareAccounts      bool `json:"can_compare_accounts" doc:"L'instance suit plusieurs comptes : les pages qui les confrontent (classements de la communauté) sont offertes."`
 
 	// Deployment : nom du profil de déploiement, pour l'affichage et le diagnostic SEULEMENT.
 	Deployment string `json:"deployment" enum:"hosted,desktop,demo,dev" doc:"Profil de déploiement (affichage et diagnostic ; ne jamais brancher dessus)."`
@@ -199,6 +201,10 @@ type BootstrapResponse struct {
 	// AppInfo : version et dossier des données de l'application, servis seulement quand l'instance
 	// adopte le chrome d'application de bureau (capacité can_use_compact_chrome) ; absent sinon.
 	AppInfo *AppInfo `json:"app_info,omitempty" doc:"Version de l'application et racine des données, pour la fenêtre À propos (chrome de bureau seulement)."`
+	// MediaH264Missing : le ffmpeg de l'instance n'a aucun encodeur H.264 utilisable (une édition Windows N
+	// sans Media Foundation, par exemple) : les clips que le navigateur ne lit pas tels quels ne se
+	// transcodent pas. Sondé une fois au démarrage (MediaToolingStatus.H264EncoderMissing).
+	MediaH264Missing bool `json:"media_h264_missing,omitempty" doc:"Aucun encodeur H.264 utilisable : le transcodage vidéo des clips est refusé."`
 }
 
 // AppInfo : ce que la fenêtre « À propos » de l'application de bureau montre de l'installation.

@@ -101,3 +101,22 @@ en = "Update checking is not available in this development build."
 [desktop.update_busy]
 fr = "Une recherche de mise à jour est déjà en cours."
 en = "An update check is already in progress."
+
+# Page de retour de la connexion Microsoft par le navigateur (GET /auth/xbox/callback), affichée dans
+# le navigateur par défaut, dans la langue de la page qui a lancé la connexion.
+[desktop.browser_login.ok_title]
+fr = "Connexion réussie"
+en = "Signed in"
+
+[desktop.browser_login.ok_body]
+fr = "Vous pouvez fermer cet onglet et revenir à LevelUp."
+en = "You can close this tab and go back to LevelUp."
+
+[desktop.browser_login.error_title]
+fr = "La connexion a échoué"
+en = "Sign-in failed"
+
+# Le code est un identifiant fixe du serveur (state_expired, oauth_denied...), jamais un détail.
+[desktop.browser_login.error_body]
+fr = "Fermez cet onglet, puis réessayez depuis LevelUp. Code d'erreur : {code}"
+en = "Close this tab, then try again from LevelUp. Error code: {code}"
