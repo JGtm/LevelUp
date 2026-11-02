@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // DesktopWebDistDirName : sous-dossier de la racine de ressources qui porte le front compilé de
@@ -30,6 +31,9 @@ type DesktopConfig struct {
 	// SystemLocale : fuseau et langue du système, lus sous la capacité AdoptSystemLocale
 	// (valeur zéro sinon). Défaut des clés absentes d'app_settings.json (settings.Store.WithSystemDefaults).
 	SystemLocale SystemLocale
+	// CheckpointInterval : intervalle du CHECKPOINT périodique des bases tenues en RW, lu sous la
+	// capacité FrequentCheckpoint (zéro sinon : la tâche n'est pas lancée).
+	CheckpointInterval time.Duration
 }
 
 // withDesktopConfig lit les réglages desktop de l'environnement dans cfg et le rend.
@@ -48,6 +52,7 @@ func resolveDesktop(cfg *AppConfig, launchMode string) (*AppConfig, error) {
 	}
 	installTokenCipher(cfg)
 	adoptSystemLocale(cfg)
+	adoptCheckpointInterval(cfg)
 	if !cfg.Capabilities.ShellEntryGate {
 		return cfg, nil
 	}

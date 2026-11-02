@@ -496,6 +496,14 @@ maintainer on a clean machine. A lot without a test at its level is not closed.
   ABSENT from `app_settings.json` (`settings.Store.WithSystemDefaults`): a written value always wins and the file is not
   rewritten. The server embeds `time/tzdata`: without it `time.LoadLocation` fails on a machine with no Go installation,
   which is what an installed application is.
+- **Periodic CHECKPOINT (L20.g).** Capability `FrequentCheckpoint` (desktop only) and key
+  `desktop_checkpoint_interval` (default 5 minutes, bounds 30 s to 1 h): `duckdb.CheckpointHeld` runs `CHECKPOINT` on every
+  database this process holds in read-write (the process-wide handle cache, never a second process, never an opening of
+  its own) under the database write lease (`dblease`), so a persist or sync write burst, or a B-swap of `shared_matches`,
+  makes it skip that database (counted `skipped_busy`). A failing CHECKPOINT is logged (WARN) and counted
+  (`levelup.checkpoint.periodic`, `failed`), never swallowed. `shared_social` keeps its own 5-minute task and is skipped
+  here. Guard: `archlint/checkpoint_single_site_test.go` forbids a CHECKPOINT statement outside `internal/platform/duckdb`
+  except the existing sites of its dated allowlist.
 
 ## Alternatives rejected
 

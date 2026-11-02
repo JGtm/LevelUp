@@ -118,6 +118,10 @@ type DeploymentCapabilities struct {
 	// application locale hors de France). Faux sur un serveur : le fuseau et la langue y sont ceux de
 	// l'instance, pas ceux de la machine qui l'héberge.
 	AdoptSystemLocale bool
+	// FrequentCheckpoint : le serveur CHECKPOINT toutes les quelques minutes les bases qu'il tient en
+	// lecture-écriture (`desktop_checkpoint_interval`), pour qu'une coupure brutale du poste ne laisse
+	// qu'un court WAL. Faux sur un serveur hébergé, que le déploiement et l'arrêt propre vident.
+	FrequentCheckpoint bool
 }
 
 // DeploymentProfile est embarqué dans AppConfig : le profil résolu et ses capacités.
@@ -214,6 +218,7 @@ func capabilitiesOf(cfg *AppConfig) DeploymentCapabilities {
 		TokenVault:             desktop,
 		CompactChrome:          desktop,
 		AdoptSystemLocale:      desktop,
+		FrequentCheckpoint:     desktop,
 	}
 }
 

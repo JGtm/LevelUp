@@ -323,7 +323,7 @@ Keys read by the Go backend from `app_settings.json` (some are not in the exampl
 | `spnkr_refresh_backfill_performance_scores` | bool | `true` | Compute performance scores. |
 | `spnkr_refresh_backfill_aliases` | bool | `false` | Backfill XUID→gamertag aliases. |
 | `spnkr_refresh_backfill_lusr` | bool | `true` | Backfill LUSR skill rating. |
-| `lang` | string | `"fr"` | UI language (`fr`, `en`). |
+| `lang` | string | `"fr"` | UI language (`fr`, `en`). Desktop application: while the key is absent, the system UI language (when the application has it). |
 | `discord_lang` | string | `"fr"` | Discord notification language. |
 | `discord_notifications_enabled` | bool | `false` | Enable Discord sync notifications (master switch for the whole Discord channel). |
 | `discord_notify_coach` | bool | `false` | Relay the coach's strongest proposals (progression signals) to the Discord webhook. **OFF by default — opt-in**: requires `discord_notifications_enabled` + a webhook. Emitting to an external service is a deliberate privacy choice, never on by default. Forwarded categories = coach categories only. |
@@ -332,7 +332,8 @@ Keys read by the Go backend from `app_settings.json` (some are not in the exampl
 | `discord_notify_replay` | bool | `true` | Grouped "2D replays ready" notification. One message per 10-minute window and per title, never one per artifact: the first stored artifact arms the window, the message lists the matches at expiry. Covers every server-side write path — post-sync local build, remote worker delivery and the admin action. The CLI backfill runs in a separate process and never notifies. |
 | `discord_webhook_url` | string | `""` | Discord webhook URL (env vars take precedence). |
 | `tailscale_enabled` | bool | `false` | Enable Tailscale Funnel remote access. |
-| `user_timezone` | string | `"Europe/Paris"` | IANA timezone for display. |
+| `user_timezone` | string | `"Europe/Paris"` | IANA timezone for display. Desktop application: while the key is absent, the system time zone. |
+| `desktop_checkpoint_interval` | string | `"5m"` | Desktop application only: interval of the periodic `CHECKPOINT` of the databases the server holds in read-write (Go duration, `30s` to `1h`; outside the bounds the nearest bound applies). Read at startup. |
 | `watcher_presence_enabled` | bool | `true` | Enable presence watcher. |
 | `csr_season_id` | string | `"CsrSeason13-1"` | CSR season id (overridable via `LEVELUP_CSR_SEASON_ID`). |
 | `backup_enabled` | bool | `false` | Enable scheduled DuckDB backups. |

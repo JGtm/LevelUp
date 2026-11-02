@@ -328,7 +328,7 @@ Clés lues par le backend Go depuis `app_settings.json` (certaines absentes du t
 | `spnkr_refresh_backfill_performance_scores` | bool | `true` | Calcule les performance scores. |
 | `spnkr_refresh_backfill_aliases` | bool | `false` | Backfill des alias XUID→gamertag. |
 | `spnkr_refresh_backfill_lusr` | bool | `true` | Backfill du rating LUSR. |
-| `lang` | string | `"fr"` | Langue de l'UI (`fr`, `en`). |
+| `lang` | string | `"fr"` | Langue de l'UI (`fr`, `en`). Application de bureau : tant que la clé est absente, la langue d'interface du système (si l'application la propose). |
 | `discord_lang` | string | `"fr"` | Langue des notifications Discord. |
 | `discord_notifications_enabled` | bool | `false` | Active les notifications de sync Discord (interrupteur maître de tout le canal Discord). |
 | `discord_notify_coach` | bool | `false` | Relaie les proposals coach les plus fortes (signaux de progression) vers le webhook Discord. **OFF par défaut — opt-in** : requiert `discord_notifications_enabled` + un webhook. Émettre vers un service externe est une décision vie privée volontaire, jamais activée par défaut. Catégories relayées = catégories coach uniquement. |
@@ -337,7 +337,8 @@ Clés lues par le backend Go depuis `app_settings.json` (certaines absentes du t
 | `discord_notify_replay` | bool | `true` | Notification groupée « rejeux 2D prêts ». Un message par fenêtre de 10 minutes et par titre, jamais un par artefact : le premier artefact rangé arme la fenêtre, le message énumère les matchs à l'échéance. Couvre tous les chemins d'écriture du serveur — construction locale post-sync, livraison d'un ouvrier distant et action admin. Le backfill CLI tourne dans un autre process et ne notifie jamais. |
 | `discord_webhook_url` | string | `""` | URL webhook Discord (les vars d'env priment). |
 | `tailscale_enabled` | bool | `false` | Active l'accès distant Tailscale Funnel. |
-| `user_timezone` | string | `"Europe/Paris"` | Timezone IANA pour l'affichage. |
+| `user_timezone` | string | `"Europe/Paris"` | Timezone IANA pour l'affichage. Application de bureau : tant que la clé est absente, le fuseau du système. |
+| `desktop_checkpoint_interval` | string | `"5m"` | Application de bureau seulement : intervalle du `CHECKPOINT` périodique des bases que le serveur tient en lecture-écriture (durée Go, de `30s` à `1h` ; hors bornes, la borne la plus proche s'applique). Lu au démarrage. |
 | `watcher_presence_enabled` | bool | `true` | Active le watcher de présence. |
 | `csr_season_id` | string | `"CsrSeason13-1"` | Id de saison CSR (surchargeable via `LEVELUP_CSR_SEASON_ID`). |
 | `backup_enabled` | bool | `false` | Active les backups DuckDB planifiés. |

@@ -137,6 +137,13 @@ func launchCoreTasks(st *bootState) {
 	// joueur n'a pas encore été chargé, on skip le tick silencieusement.
 	boot.launch(socialCheckpointTask(ctx, sharedSocialPath))
 
+	// CHECKPOINT périodique des AUTRES bases tenues en RW (bases joueur, métadonnées, PvE) : posé
+	// seulement sous la capacité FrequentCheckpoint, dont l'intervalle est la seule trace (zéro
+	// ailleurs). shared_social a déjà le sien, ci-dessus.
+	if cfg.CheckpointInterval > 0 {
+		boot.launch(periodicCheckpointTask(schedulerCtx, cfg.CheckpointInterval, map[string]bool{sharedSocialPath: true}))
+	}
+
 	// Phase 4.9 / PLAN_AUTH E.v2 (2026-05-24) : periodic Discovery re-scan
 	// pour hot-add nouveaux tokens (nouveau SSO / token-capture écrivant dans
 	// watcher_tokens/) sans reboot. Skip si pool nil (aucun credential au boot).

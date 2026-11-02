@@ -54,6 +54,7 @@ const (
 	taskJanitor          = "janitor (sync_cache, WAL)"
 	taskWALRecovery      = "recovery WAL périodique"
 	taskSocialCkpt       = "checkpoint shared_social"
+	taskPeriodicCkpt     = "checkpoint périodique des bases tenues en RW"
 	taskPoolRescan       = "re-scan du pool de tokens"
 	taskAutoSync         = "scheduler d'auto-sync"
 	taskDataHealth       = "santé données"
@@ -113,6 +114,7 @@ var taskPolicies = map[string]profilePolicies{
 	taskJanitor:          exceptDemo,
 	taskWALRecovery:      exceptDemo,
 	taskSocialCkpt:       everywhere,
+	taskPeriodicCkpt:     exceptDemo,
 	taskPoolRescan:       exceptDemo,
 	taskAutoSync:         exceptDemo,
 	taskDataHealth:       exceptDemo,
@@ -320,6 +322,25 @@ func socialCheckpointTask(ctx context.Context, sharedSocialPath string) backgrou
 						"duration_ms", time.Since(ckptStart).Milliseconds())
 				}
 				ckptCancel()
+			}
+		}
+	}}
+}
+
+// periodicCheckpointTask CHECKPOINT toutes les `interval` les bases que le serveur tient en RW
+// (profil desktop : un poste est coupé sans préavis, cf. duckdb.CheckpointHeld). Suivie : le
+// scheduler l'attend avant de fermer les bases, un CHECKPOINT en cours n'est jamais coupé net.
+// skip : chemins déjà couverts par un autre CHECKPOINT périodique (shared_social).
+func periodicCheckpointTask(ctx context.Context, interval time.Duration, skip map[string]bool) backgroundTask {
+	return backgroundTask{name: taskPeriodicCkpt, tracked: true, run: func() {
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				duckdb.CheckpointHeld(ctx, skip)
 			}
 		}
 	}}
