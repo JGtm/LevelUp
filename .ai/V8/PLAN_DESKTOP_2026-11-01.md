@@ -504,83 +504,102 @@ Définition : `ResourcesRoot` = la racine du dépôt aujourd'hui (`LEVELUP_RESOU
 
 ### 9.12 L12 — Port stable, événements stdout, verrou d'instance (S ; après L7, L11)
 
-- [ ] 12.1 Port : `<DataRoot>/desktop/port` lu, sinon port libre choisi puis écrit ; `startBootServer`
-      (`boot_gate.go:190-195`) retourne le port lié (`ln.Addr()`) au lieu de sortir ; `os.Exit(1)` gardé
-      seulement hors `-mode desktop`.
-- [ ] 12.2 Événements §6.2 (`listening`, `ready`, `failed`, `stopping`, `stopped`) par un écrivain unique
-      sous verrou, seulement en `-mode desktop` ; tout journal console sur stderr dans ce mode.
-- [ ] 12.3 Arrêt des enfants : selon 0.3, rattacher la cuisson au contexte d'arrêt ; `taskAppRelease`
-      (`main.go:1291`) rattaché au contexte des tâches ; `clean=false` si budget dépassé ou vidage persist
-      en erreur.
-- [ ] 12.4 Verrou d'instance `internal/platform/instancelock` (A16) : pris au démarrage en `desktop` et
-      `refresh-only`, erreur typée `ErrInstanceDejaLancee` → `failed{state:"locked"}`.
-- [ ] 12.6 Arrêt dans les premières secondes du démarrage (découverte §10, 2026-11-01) : les échanges OAuth du
-      démarrage (`refresh_loop`, présence du watcher) honorent l'annulation du contexte des tâches (requêtes HTTP sous
-      `ctx`), ou la phase `scheduler` n'attend pas une goroutine qui ne lit pas son contexte ; test : arrêt demandé
-      pendant un rafraîchissement simulé lent → `clean=true` dans le budget. Sans cet item, `stopped{clean:false}` à
-      chaque fermeture rapide de la coquille.
-- [ ] 12.5 Test « faux lanceur » : tube stdin, stdout lu ligne à ligne, séquence `listening` → `ready` →
-      EOF → `stopping` → `stopped{clean:true}` ; second lancement pendant le premier → `failed locked` ;
-      ajouté au job C9.
+- [x] 12.1 Port : `<DataRoot>/desktop/port` lu (`PathResolver.DesktopPortPath`), sinon port libre choisi puis écrit
+      atomiquement (Warn « port de repli » si l'ancien était occupé) ; `startBootServer` reçoit le listener lié
+      (`cmd/server/desktop_port.go`, `boot_listen.go`) ; `os.Exit(1)` gardé hors `-mode desktop`, en desktop l'échec
+      d'écoute annonce `failed{state:"port"}` ; `-mode desktop` n'est plus refusé (`refresh-only` ne l'est plus depuis L15).
+- [x] 12.2 Événements §6.2 par un écrivain unique sous verrou (`cmd/server/desktop_events.go`), seulement en
+      `-mode desktop` ; le gestionnaire console écrivait déjà sur stderr (vérifié), garde-rail `stdout_guard_test.go`.
+- [x] 12.3 Arrêt des enfants : cuisson sous `schedulerCtx` (relevé 0.3 confirmé, test
+      `libs/film/filmproc/runner_annulation_test.go` : contexte annulé = enfant tué) ; `taskAppRelease` sous
+      `schedulerCtx` ET suivie par `schedulerWG` (`appReleaseTask`, test) ; `clean=false` sur budget dépassé ou vidage
+      en erreur : déjà fait (L2), `shutdown_budget_test.go`.
+- [x] 12.4 Verrou d'instance `internal/platform/instancelock` (patron recopié de `libs/film/internal/filelock`), pris
+      avant le port, rendu avant `stopped` ; `ErrInstanceDejaLancee` -> `failed{state:"locked"}` ; test à deux
+      processus. Prise en `refresh-only` : L15.
+- [x] 12.6 Arrêt dans les premières secondes : `worldenrich.BuildEnricher/BuildMultiHaloSource/BuildHaloSource`
+      reçoivent `ctx` (la résolution eager n'utilisait que `context.Background()`), la boucle de rafraîchissement
+      du watcher tourne sous `schedulerCtx` et dans `schedulerWG` ; tests `refresh_loop_stop_test.go`,
+      `wiring_ctx_test.go`.
+- [x] 12.5 Test « faux lanceur » : `cmd/server/desktop_launcher_test.go` (`TestE2ELanceurDesktop`, tag
+      `e2e_windows`, entre dans l'étape CI `-run TestE2E` existante).
 - Gate : `go test ./cmd/server/... ./internal/platform/instancelock/...` ; **(P)** voie Windows verte.
 
 ### 9.13 L13 — Mode `desktop` (S ; après L12, ADR 0045)
 
-- [ ] 13.1 `config.Validate` (`main.go:339-345`) accepte `desktop` (dérivé par L10) y compris sous
-      `LEVELUP_ENV=production` ; `authz.Enforced` reste faux pour `desktop` (mono-utilisateur, décision
-      écrite dans l'ADR 0045).
-- [ ] 13.2 `/desktop/enter?secret=` : pose le cookie (nom suffixé par le port, A15, durée 30 jours,
-      renouvelé à chaque entrée) et redirige ; 401 ailleurs sans cookie ; `Host` strict ; CORS = origine
-      exacte ; secret de session `<DataRoot>/auth/session_secret` (A12) ; `/api/v1/desktop/strings`
-      (catalogue `messages/desktop.toml`, langue de la requête).
-- [ ] 13.3 Mise en commun accordée d'office au seul utilisateur local (D-4) ; bannière de consentement
-      masquée par la capacité ; libellés fr + en.
-- [ ] 13.4 Tests `httptest` : chaque refus, le succès, `Host` étranger, secret absent de `os.Args` ;
-      allowlist datée des routes nues ; un scénario Playwright `desktop-enter.spec.ts` ; `sentinel_test`.
+- [x] 13.1 `config.Validate` accepte `desktop` (dérivé par L10, `refusesUnsafeConfig`) y compris sous
+      `LEVELUP_ENV=production` ; `authz.Enforced` reste faux pour `desktop` (mono-utilisateur, ADR 0045 D-7).
+      Secret de session (A12) : `<DataRoot>/auth/session_secret` (`PathResolver.SessionSecretPath`), généré au
+      premier lancement (32 octets, `0600`), `Validate` refuse le défaut et un secret court en `desktop`
+      (`validateStartup`). Tests `config_desktop_session_test.go`.
+- [x] 13.2 `GET /desktop/enter?secret=` (capacité `ShellEntryGate`, `LoopbackOnly`) : cookie `levelup_session_<port>`
+      (HMAC lié au port, 30 jours, renouvelé à chaque entrée, `HttpOnly`, `SameSite=Strict`), 302 vers `/` ;
+      `middleware.DesktopGate` : Host strict (421), cookie exigé (401 `desktop_unauthorized`), `/health` ouvert ;
+      CORS/CSRF = origine exacte du port lié (`AppConfig.SetBoundPort`) ; `GET /api/v1/desktop/strings`
+      (`messages/desktop.toml`, fr + en). Écran web « accès expiré » sur le 401. Pas d'entrée d'allowlist des
+      routes nues (route gardée par `LoopbackOnly`, `/health` déjà listée) : `TestBareRoutesRatchet_DesktopEntryRoutes`.
+- [x] 13.3 Mise en commun accordée d'office : `DeviceCodeCompletion.WithLocalPoolGrant` (capacité
+      `PoolGrantedToLocalUser`), base `desktop_single_user` ; bannière masquée par `can_pool_tokens` (faux en desktop
+      depuis L10, aucun libellé neuf).
+- [x] 13.4 Tests `httptest` sur la pile réelle, tests du garde, secret absent de `os.Args`
+      (`TestParseServerFlags_AucunDrapeauNePorteLeSecret`), `desktop-enter.spec.ts`, `TestE2ELanceurDesktop` étendu.
 - Gate : `go test ./internal/api/... ./internal/config/... ./internal/authz/...` ; `cd apps/web && npm run
   typecheck && npm run test && npx playwright test desktop-enter`.
 
 ### 9.13b L13b — Coffre Windows pour les jetons (S ; après L13 ; D-8)
 
-- [ ] 13b.1 ADR 0023 amendée : port `TokenCipher` (`platform/auth`), implémentations `plain` (hébergé,
+- [x] 13b.1 ADR 0023 amendée : port `TokenCipher` (`platform/auth`), implémentations `plain` (hébergé,
       conteneur Linux : comportement actuel) et `dpapi` (Windows, portée utilisateur courant,
       `CryptProtectData` via `golang.org/x/sys/windows`) ; choisie par le profil de déploiement
       (`desktop` = `dpapi`), jamais par `GOOS` seul.
-- [ ] 13b.2 Format du fichier `watcher_tokens/{xuid}.json` : champ `cipher` (`plain` | `dpapi`) et
+- [x] 13b.2 Format du fichier `watcher_tokens/{xuid}.json` : champ `cipher` (`plain` | `dpapi`) et
       champs sensibles (`OAuthRefreshToken`, jetons Spartan / XSTS) chiffrés en base64 ; lecture d'un
       fichier `plain` sur un profil `dpapi` = migration à la première écriture ; l'inverse = refus typé
       journalisé (un fichier chiffré copié sur un autre poste est illisible, c'est le but).
-- [ ] 13b.3 Tests : aller-retour `plain` ; `dpapi` sous tag Windows (voie C9) ; garde-rails
+- [x] 13b.3 Tests : aller-retour `plain` ; `dpapi` sous tag Windows (voie C9) ; garde-rails
       `auth/sentinel_test.go` et `no_legacy_source_used_test.go` verts ; `token-import` / `token-capture`
       écrivent par le même port.
+- Clôture L13b (2026-11-02). Écarts : (a) le port vit dans le sous-paquet `platform/auth/tokencipher` (alias
+  `auth.TokenCipher`) ; (b) le choix est une capacité `TokenVault` et le chiffreur du processus est posé par le chargement
+  de la configuration (`config_token_vault.go`), lu par `NewMultiUserTokenStore(dir)` : aucun des ~57 appelants ne change ;
+  (c) un fichier `plain` n'écrit pas de champ `cipher` (fichiers hébergés identiques à l'octet) ; (d) le serveur refuse de
+  démarrer si le profil exige le coffre et que le système ne l'offre pas ; (e) `token-import` / `token-capture` écrivent
+  par le chiffreur du profil résolu : un outil lancé HORS du binaire serveur résout un profil non desktop donc `plain`
+  (voir le journal).
 - Gate : `go test ./internal/platform/auth/...` ; **(P)** voie Windows verte.
 
 ### 9.14 L14 — C5 Archive des films : emplacement, occupation, choix (S ; après L11)
 
-- [ ] 14.1 `PathResolver.FilmArchiveDir()` = `film_chunks/` ET `film_manifests/` (l'unité d'archive est le
+- [x] 14.1 `PathResolver.FilmArchiveDir()` = `film_chunks/` ET `film_manifests/` (l'unité d'archive est le
       film ; les faits restent sous `DataRoot`), réglable (`app_settings.json`, clé `film_archive_dir`),
       déplacement assisté refusé si la cible n'est pas vide ; `libs/film/filmcache` reçoit le dossier.
-- [ ] 14.2 Occupation exposée dans les réglages ; alerte par `taskDiskWatch` existant (seuils 80 / 90 %),
+- [x] 14.2 Occupation exposée dans les réglages ; alerte par `taskDiskWatch` existant (seuils 80 / 90 %),
       pas de second mécanisme.
-- [ ] 14.3 Réglage « archiver les films » (défaut oui, D-5, proposé dans `features/setup`) ; non = faits et
+- [x] 14.3 Réglage « archiver les films » (défaut oui, D-5, proposé dans `features/setup`) ; non = faits et
       rejeu produits, chunks non conservés, rétention des rejeux forcée illimitée (A18) ; fr + en.
-- [ ] 14.4 Tests `PathResolver` (archive hors racine) ; garde-rail de disposition `filmcache` vert ;
+- [x] 14.4 Tests `PathResolver` (archive hors racine) ; garde-rail de disposition `filmcache` vert ;
       test de la combinaison refusée.
-- [ ] 14.5 (D-18) Écriture des chunks en zstd-3 à la réception (`sync/filmfetch` ou le point unique d'écriture du cache de film : relève-le) ; lecture dans `libs/film` (`source` / `decfilm.Inflate`) acceptant brut, zlib ET zstd par en-tête magique (`28 b5 2f fd`), aucune autre couche ne lit les octets ; empreinte du film inchangée (les faits sont calculés sur les octets DÉCOMPRESSÉS : vérifier sur `replay-equiv`, 20 films identiques).
-- [ ] 14.6 (D-18) CLI `levelup film recompress` (ou sous-commande existante la plus proche) : recompresse en zstd-3 les chunks bruts et zlib existants, un film à la fois, écriture atomique (`.part` + renommage), reprise possible, journal par film, JAMAIS lancée automatiquement (décision utilisateur : purge et recompression manuelles) ; `--dry-run` qui chiffre le gain.
-- [ ] 14.7 (D-18) Tests : lecture des trois formats ; `replay-equiv` identique après recompression d'un film de l'harnais ; mesure consignée (`du -sh data/cache/film_chunks` avant/après sur le poste, lancée par l'utilisateur).
+- [x] 14.5 (D-18) Écriture des chunks en zstd-3 à la réception (`sync/filmfetch` ou le point unique d'écriture du cache de film : relève-le) ; lecture dans `libs/film` (`source` / `decfilm.Inflate`) acceptant brut, zlib ET zstd par en-tête magique (`28 b5 2f fd`), aucune autre couche ne lit les octets ; empreinte du film inchangée (les faits sont calculés sur les octets DÉCOMPRESSÉS : vérifier sur `replay-equiv`, 20 films identiques).
+- [x] 14.6 (D-18) CLI `levelup film recompress` (ou sous-commande existante la plus proche) : recompresse en zstd-3 les chunks bruts et zlib existants, un film à la fois, écriture atomique (`.part` + renommage), reprise possible, journal par film, JAMAIS lancée automatiquement (décision utilisateur : purge et recompression manuelles) ; `--dry-run` qui chiffre le gain.
+- [x] 14.7 (D-18) Tests : lecture des trois formats ; `replay-equiv` identique après recompression d'un film de l'harnais ; mesure consignée (`du -sh data/cache/film_chunks` avant/après sur le poste, lancée par l'utilisateur).
+- Clôture L14 (2026-11-02). Écarts : (a) 14.1 le déplacement n'est pas fait par le réglage mais par `levelup film
+  archive-move` (serveur arrêté) : le réglage refuse un changement tant que l'archive contient des films ou que la
+  cible n'est pas vide ; (b) 14.6 l'écriture atomique est `atomicfile.WriteFileStrict` (temporaire du même dossier +
+  fsync + renommage) et non un `.part` nommé ; (c) 14.7 : la mesure `du -sh data/cache/film_chunks` avant/après
+  sur le cache réel reste à l'utilisateur ; la simulation sur copie de 3 films (57,3 Mio -> 14,9 Mio, -74 %) et
+  `replay-equiv` identique avant/après sur le film 51101d1d (copie, 11,2 Mo -> 2,4 Mo) sont consignés au journal.
 - Gate : `go test ./internal/domain/title/... ./internal/service/... ./internal/scheduler/...` ;
   `cd libs/film && go test ./filmcache/...` ; `cd apps/web && npm run typecheck`.
 
 ### 9.15 L15 — Séquence réveil (S ; après L5, L12)
 
-- [ ] 15.1 Rattrapage au lancement SOUS LA CAPACITÉ `desktop` seulement (le VPS redémarre à chaque
+- [x] 15.1 Rattrapage au lancement SOUS LA CAPACITÉ `desktop` seulement (le VPS redémarre à chaque
       déploiement : §1 « aucun changement sur le VPS ») : premier tick immédiat si la dernière sync est
       plus vieille que l'intervalle.
-- [ ] 15.2 Vérification des jetons au boot (chaque profil suivi) : réseau absent = rien marqué ; mort =
+- [x] 15.2 Vérification des jetons au boot (chaque profil suivi) : réseau absent = rien marqué ; mort =
       `reauth_required` + bannière ; vivant = RT rotaté écrit.
-- [ ] 15.3 Sortie de veille côté Go : écart heure murale / monotone > 2 min (A24) → même séquence.
-- [ ] 15.4 `-mode refresh-only` (A10) : verrou d'instance, aucune ouverture de base, rotation, sortie ;
+- [x] 15.3 Sortie de veille côté Go : écart heure murale / monotone > 2 min (A24) → même séquence.
+- [x] 15.4 `-mode refresh-only` (A10) : verrou d'instance, aucune ouverture de base, rotation, sortie ;
       si le verrou est tenu (application ouverte) : sortie 0 sans rien faire (une seule rotation à la fois,
       ADR 0023).
 - Gate : `go test ./internal/scheduler/... ./internal/platform/auth/... ./cmd/server/...`.
@@ -762,6 +781,35 @@ mises à jour (ressources retéléchargées à chaque version).
   après déploiement (`HealthcheckOptions.DBProfilesPath/AppSettingsPath`, test). 16 conditions tiennent, dont : aucun
   volume Docker orphelin, démo inchangée, tests non contaminés par le pont. Remarque sans défaut : `taskAppRelease`
   est désormais annulé à l'arrêt (sous `schedulerCtx`), changement annoncé par l'ADR 0045 D-4.
+
+- **L12 (2026-11-02) — relevé** : témoin du pilote sur les données du poste en `-mode desktop` : `listening` à 26 ms,
+  `ready` à 10,1 s, arrêt 1 s après `ready` → `stopping` puis `stopped{clean:true}` 150 ms plus tard (12.6 tenu :
+  l'arrêt dans les premières secondes est propre), relancement sur le MÊME port (`data/desktop/port`), 0 WAL, aucune
+  ligne d'événement sur stderr. Cause réelle de l'ancien `clean=false` : résolution « eager » des comptes de
+  `worldenrich.BuildHaloSource` sous `context.Background()` (un échange Microsoft par compte, dans le cron du
+  classement mondial suivi par `schedulerWG`) et boucle de rafraîchissement du watcher hors `schedulerCtx` ; corrigé
+  par propagation du contexte, sans attente bornée, les écritures de jeton obtenues avant l'annulation terminent.
+  `taskAppRelease` désormais suivie par `schedulerWG` (elle écrit dans les bases joueur et pouvait finir après
+  `CloseAll`). Écarts à l'ADR 0045 consignés dans l'ADR : verrou pris AVANT le port ; état `failed{state:"port"}`
+  ajouté ; `stopped` émis après le rendu du verrou ; pas de `Sync` sur stdout (tube Windows bloquant). Hors
+  périmètre : `pool.refresherLoop` détaché sous `context.Background()` (fenêtre d'une milliseconde pour une rotation
+  coupée) ; un arrêt demandé pendant l'initialisation attend la fin de l'initialisation (porte de démarrage).
+
+- **Revue adversariale 4r (2026-11-02, trois relecteurs Opus : E mode desktop + réveil, F archive + zstd, G coffre)** :
+  E : 26 conditions tiennent, 3 constats corrigés (P1 : la sortie des enfants de cuisson était recopiée sur stdout du
+  serveur, là où la coquille lit les événements → stderr + ratchet « aucun `os.Stdout` / `fmt.Print*` dans
+  `internal/` » ; P2 : la route d'arrêt HTTP bloquée par le garde du cookie → exemptée, loopback + secret gardés ; P2 :
+  la porte de démarrage servie à tout `Host` → `StrictHost` 421 sur la porte en desktop, sans cookie). F : 16
+  conditions tiennent (aucune collision de l'en-tête zstd sur 43 508 chunks réels, golden `source` byte-identique,
+  `--dry-run` sans écriture), 5 constats P2 corrigés (manifeste corrigé par chunk + reprise réparatrice ; cible par
+  défaut d'`archive-move` admise sans film ; déplacement atomique par film via `<id>.part/` ; changement de dossier
+  à chaud sur archive vide par `title.SetFilmArchiveRuntime`, hooks de cuisson et post-sync dynamiques ; une
+  surveillance disque par VOLUME via `diskfree.SameVolume`). G : 16 conditions tiennent (aucun RT perdu ni écrasé,
+  fichiers hébergés identiques à l'octet), 2 constats P2 corrigés (`watcher_tokens.json` scellé par le même
+  chiffreur ; un seul avertissement par fichier scellé et par processus). Hors périmètre consigné : un fichier scellé
+  illisible (dossier déplacé sur un autre PC, autre compte Windows) = joueur « sans jeton » sans aucune bannière → à
+  prévoir (P2 ou L17 : bannière « jetons illisibles sur ce poste, reconnectez-vous »). Ronde 2 non lancée (corrections
+  testées une à une).
 
 - `internal/mapcatalog` : `TestAddOverlayEntryConcurrentDossierAbsentNePerdRien` échoue en run complet
   (« verrou d'ecriture impossible a poser — passage force », 2 cartes perdues sur 8) et passe seul : le

@@ -59,6 +59,10 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   // via useSettings — même source que la section d'admin qui les édite, zéro
   // duplication de query. Dépendance durable (2026-08-16, chantier sons-rejeu).
   'match-replay=>settings',
+  // L'assistant de premier lancement propose le réglage de l'archive des films par le MÊME
+  // panneau que la page des réglages (même formulaire, même mutation) : dépendance durable
+  // (2026-11-02, chantier Desktop L14).
+  'setup=>settings',
   // Leaderboard consommé par palmarès
   'palmares=>leaderboard',
   // Achievements consommé par carrière (section progression)

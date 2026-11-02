@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"sync"
 	"time"
 
 	"levelup/go-api/internal/config"
@@ -62,6 +63,8 @@ func startWatcher(st *bootState) {
 			tokenRefresher: tokenRefresher,
 			haloPool:       autoSyncPool,
 			autoScheduler:  autoScheduler,
+			loopCtx:        st.schedulerCtx,
+			loopWG:         &st.schedulerWG,
 		})
 	}
 	if watcherDaemon != nil {
@@ -90,6 +93,11 @@ type watcherDeps struct {
 	// Source of truth UNIQUE du wiring engine (cf. trigger.go godoc + ADR
 	// incident 2026-05-26). Doit être non-nil en production.
 	autoScheduler *scheduler.AutoSyncScheduler
+	// loopCtx est le contexte des boucles de fond que le daemon laisse derrière lui (schedulerCtx,
+	// annulé au début de l'arrêt) ; loopWG les suit : la phase scheduler de l'arrêt les attend, donc
+	// un jeton obtenu avant l'annulation est écrit avant la fermeture des bases.
+	loopCtx context.Context
+	loopWG  *sync.WaitGroup
 }
 
 // startWatcherDaemon tente de démarrer le daemon de présence.
@@ -141,7 +149,7 @@ func startWatcherDaemon(ctx context.Context, cfg *config.AppConfig, deps watcher
 
 	daemon.Start(ctx, xstsResult.AuthHeader(), playerSummaries)
 
-	runWatcherRefreshLoop(ctx, cfg, daemon, store)
+	runWatcherRefreshLoop(deps, cfg, daemon, store)
 
 	// Cleanup 2026-05-26 : la boucle de boot reload des userClients (PR 2.5c)
 	// est supprimée. Les joueurs sont surveillés via REST poll partagé créé
@@ -178,7 +186,7 @@ func loadWatcherTokens(cfg *config.AppConfig) (*auth.TokenStore, *auth.StoredTok
 	store := auth.NewTokenStore(tokenStorePath)
 	tokens, err := store.Load()
 	if err != nil {
-		slog.Info("watcher: pas de token store, daemon désactivé", "path", tokenStorePath)
+		slog.Info("watcher: pas de token store, daemon désactivé", "path", tokenStorePath, "err", err)
 		return nil, nil, false
 	}
 
@@ -398,8 +406,11 @@ func newWatcherDaemon(cfg *config.AppConfig, deps watcherDeps, titleReg *title.R
 	return daemon
 }
 
-// runWatcherRefreshLoop lance la boucle qui rafraîchit les tokens XSTS du tracker et du daemon.
-func runWatcherRefreshLoop(ctx context.Context, cfg *config.AppConfig, daemon *watcher.Daemon, store *auth.TokenStore) {
+// runWatcherRefreshLoop lance la boucle qui rafraîchit les tokens XSTS du tracker et du daemon,
+// sous le contexte d'arrêt des boucles de fond (deps.loopCtx) et suivie par leur groupe d'attente :
+// ses échanges Microsoft s'interrompent à l'annulation, et un jeton déjà obtenu est écrit avant que
+// l'arrêt ne ferme les bases (les écritures de jeton ne dépendent pas du contexte).
+func runWatcherRefreshLoop(deps watcherDeps, cfg *config.AppConfig, daemon *watcher.Daemon, store *auth.TokenStore) {
 	// Refresh loop : met à jour les tokens XSTS et le daemon.
 	// WithMultiUserMirror est OBLIGATOIRE depuis ADR 0023 Phase 5 (2026-08-25) :
 	// le MultiUserTokenStore est à la fois la SOURCE du refresh_token du tracker
@@ -413,5 +424,9 @@ func runWatcherRefreshLoop(ctx context.Context, cfg *config.AppConfig, daemon *w
 		WithReauthNotify(func(_, gamertag string) {
 			notify.NotifyReauthRequired(notify.LoadNotifyConfig(cfg.AppSettingsPath), gamertag)
 		})
-	go refreshLoop.Run(ctx)
+	deps.loopWG.Add(1)
+	go func() {
+		defer deps.loopWG.Done()
+		refreshLoop.Run(deps.loopCtx)
+	}()
 }

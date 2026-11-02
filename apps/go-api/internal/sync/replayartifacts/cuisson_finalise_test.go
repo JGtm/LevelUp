@@ -67,7 +67,7 @@ func TestPersistFilmToCache_NonFinalise_ReporteEtCompte(t *testing.T) {
 	for _, liste := range []bool{false, true} {
 		t.Run(fmt.Sprintf("liste=%v", liste), func(t *testing.T) {
 			racine := t.TempDir()
-			d := Deps{Gamertag: "g", TitleSlug: titlePkg.DefaultSlug, CacheRoot: racine,
+			d := Deps{Gamertag: "g", TitleSlug: titlePkg.DefaultSlug, FilmRoot: racine,
 				Fetcher: fetcherNonFinalise{liste: liste}}
 			avant := compteur(CompteurFilmsNonFinalises)
 
@@ -96,7 +96,7 @@ func TestBuildAll_NonFinalise_ReporteSansCuisson(t *testing.T) {
 	horlogeDeTest(t)
 	var appels int
 	d := Deps{
-		RepoRoot: t.TempDir(), TitleSlug: titlePkg.DefaultSlug, CacheRoot: t.TempDir(),
+		RepoRoot: t.TempDir(), TitleSlug: titlePkg.DefaultSlug, FilmRoot: t.TempDir(),
 		Fetcher: fetcherNonFinalise{}, Budget: time.Minute,
 		BuildOne: func(context.Context, BuildOneRequest) (BuildOneResult, error) {
 			appels++
@@ -168,7 +168,7 @@ func TestPersistFilmToCache_FilmArchive_CloreLAttente(t *testing.T) {
 	reporterNonFinalise(ctx, Deps{}, "0000a001", finalise.ErrFilmNonFinalise)
 	*instant = instant.Add(time.Minute)
 
-	d := Deps{Gamertag: "g", TitleSlug: titlePkg.DefaultSlug, CacheRoot: t.TempDir(),
+	d := Deps{Gamertag: "g", TitleSlug: titlePkg.DefaultSlug, FilmRoot: t.TempDir(),
 		Fetcher: fetcherFinalise{}}
 	if r := persistFilmToCache(ctx, d, "0000a001"); r != (resultatFilm{sauve: true, dispo: true}) {
 		t.Fatalf("film finalise : %+v, attendu {sauve, dispo}", r)
@@ -208,7 +208,7 @@ func (r refusDontLeTexteNeDitRien) Is(target error) bool { return target == r.ci
 func TestReplayArtifacts_FilmNonFinaliseReporteSansEchec(t *testing.T) {
 	for _, cible := range []error{finalise.ErrFilmNonFinalise, replaybuild.ErrUnknownFilmKey} {
 		d := Deps{
-			RepoRoot: t.TempDir(), TitleSlug: titlePkg.DefaultSlug, CacheRoot: t.TempDir(),
+			RepoRoot: t.TempDir(), TitleSlug: titlePkg.DefaultSlug, FilmRoot: t.TempDir(),
 			BuildOne: func(context.Context, BuildOneRequest) (BuildOneResult, error) {
 				return BuildOneResult{}, fmt.Errorf("cuisson m1 : %w", refusDontLeTexteNeDitRien{cible})
 			},

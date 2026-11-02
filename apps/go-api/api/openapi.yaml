@@ -7049,6 +7049,25 @@ paths:
       summary: Statut du scheduler de sauvegarde
       tags:
         - settings
+  /settings/film-archive:
+    get:
+      operationId: getFilmArchive
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FilmArchiveStatus'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Occupation et emplacement de l'archive des films
+      tags:
+        - settings
   /settings/media/reset-index:
     post:
       operationId: postSettingsMediaResetIndex
@@ -15014,6 +15033,75 @@ components:
         - content_type
         - download_path
         - expires_at
+      type: object
+    FilmArchiveStatus:
+      additionalProperties: false
+      properties:
+        archive_films:
+          description: Réglage « archiver les films ».
+          type: boolean
+        bytes:
+          description: Taille occupée par l'archive, en octets.
+          format: int64
+          type: integer
+        configured_dir:
+          description: Valeur enregistrée du réglage ; vide = emplacement par défaut.
+          type: string
+        dir:
+          description: Dossier effectif de l'archive des films.
+          type: string
+        films:
+          description: Nombre de films dans l'archive.
+          format: int64
+          type: integer
+        measured_at:
+          description: Instant de la mesure (mise en cache).
+          format: date-time
+          type: string
+        partial:
+          description: 'Vrai si la mesure a été interrompue : les totaux sont des minorants.'
+          type: boolean
+        restart_required:
+          description: Vrai quand le dossier enregistré diffère du dossier effectif (redémarrage nécessaire).
+          type: boolean
+        volume:
+          $ref: '#/components/schemas/FilmArchiveVolume'
+      required:
+        - dir
+        - configured_dir
+        - restart_required
+        - archive_films
+        - films
+        - bytes
+        - partial
+        - measured_at
+      type: object
+    FilmArchiveVolume:
+      additionalProperties: false
+      properties:
+        free_bytes:
+          format: int64
+          minimum: 0
+          type: integer
+        status:
+          enum:
+            - ok
+            - warn
+            - critical
+            - unknown
+          type: string
+        total_bytes:
+          format: int64
+          minimum: 0
+          type: integer
+        used_percent:
+          format: int64
+          type: integer
+      required:
+        - free_bytes
+        - total_bytes
+        - used_percent
+        - status
       type: object
     FilmTableCounts:
       additionalProperties: false

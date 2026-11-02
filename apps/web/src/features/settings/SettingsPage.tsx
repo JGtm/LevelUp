@@ -20,6 +20,7 @@ import { NotificationsSettingsTab } from '@/features/notifications/Notifications
 import type { SettingsResponse } from '@/lib/api/types'
 import { useServerDraft } from '@/lib/hooks/useServerDraft'
 import { AnalyseTab } from './AnalyseTab'
+import { FilmArchivePanel } from './FilmArchivePanel'
 import { PoolSharingCard } from './PoolSharingCard'
 import { TitlesTab } from './TitlesTab'
 import { InterfaceCard, DiscordCard, MediaCard } from './_settingsCards'
@@ -155,7 +156,10 @@ export function SettingsPage() {
           </>
         )}
         {activeTab === 'data' && (
-          <MediaCard merged={merged} handleChange={handleChange} t={t} frozen={settingsFrozen} />
+          <>
+            <MediaCard merged={merged} handleChange={handleChange} t={t} frozen={settingsFrozen} />
+            <FilmArchivePanel />
+          </>
         )}
         {/* Compte — mise en commun du jeton (accord et retrait, lieu promis par /privacy
             et /terms), mot de passe opt-in (re-login rapide sans Microsoft) +

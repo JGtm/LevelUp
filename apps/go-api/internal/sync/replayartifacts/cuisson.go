@@ -345,13 +345,14 @@ func cuireUnMatch(ctx context.Context, d Deps, w buildWork, b *bilanCuisson, res
 	observability.ReportMatchStep(d.TitleSlug, w.matchID, domain.MatchStepReplayBuildStarted, "")
 	cctx, annuler := context.WithTimeout(ctx, deadlineDuFilm(d, restant))
 	defer annuler()
-	out, berr := buildAndStoreOne(cctx, d, w, filmcache.ChunkDir(d.CacheRoot, short))
+	out, berr := buildAndStoreOne(cctx, d, w, filmcache.ChunkDir(d.FilmRoot, short))
 	if berr != nil {
 		classerRefus(ctx, d, w, b, berr)
 		return
 	}
 	b.construits++
 	observability.ReportMatchStep(d.TitleSlug, w.matchID, domain.MatchStepArtifactStored, "local")
+	retirerFilmNonArchive(ctx, d, short)
 	// L'ARTEFACT EST RANGÉ : c'est le seul fait qui déclenche les dérivations (cf.
 	// derivations.go). Il est mis de côté, jamais dérivé ici — les projections lisent le
 	// FICHIER RANGÉ (jamais les octets candidats, que `StoreArtifact` peut refuser) et
@@ -364,6 +365,23 @@ func cuireUnMatch(ctx context.Context, d Deps, w buildWork, b *bilanCuisson, res
 		"gamertag", d.Gamertag, "match_id", w.matchID,
 		"tracks", out.stored.Tracks, "bytes", out.stored.Bytes,
 		"duration", out.dur, "pic_octets", out.peak)
+}
+
+// retirerFilmNonArchive retire les chunks d'un film cuit quand l'archive est désactivée
+// (ADR 0045 D-12) : l'artefact est rangé et les faits persistés par la cuisson, le film n'a plus
+// d'usage. Jamais avant : un film non cuit (budget, carte hors catalogue) reste, c'est ce qui
+// permet de le cuire au cycle suivant. Un échec de retrait se journalise et ne casse rien : le
+// film reste, il sera retiré à la prochaine cuisson ou par l'utilisateur.
+func retirerFilmNonArchive(ctx context.Context, d Deps, short string) {
+	if !d.SansArchive {
+		return
+	}
+	if err := filmcache.Supprimer(d.FilmRoot, short); err != nil {
+		slog.WarnContext(ctx, "post-sync: film cuit non retiré (archive désactivée)",
+			"gamertag", d.Gamertag, "short_id", short, "err", err)
+		return
+	}
+	observability.IncCounter(CompteurFilmsRetiresSansArchive)
 }
 
 // classerRefus range le refus d'une cuisson : écarté (clé de profil inconnue, film non finalisé),
@@ -449,7 +467,7 @@ func persistFilmToCache(ctx context.Context, d Deps, matchID string) resultatFil
 			DurationMS: c.DurationMS, Data: c.Data,
 		})
 	}
-	if err := filmcache.Write(ctx, d.CacheRoot, titlePkg.FilmShortMatchID(matchID), wc); err != nil {
+	if err := filmcache.Write(ctx, d.FilmRoot, titlePkg.FilmShortMatchID(matchID), wc); err != nil {
 		// Un client qui n'aurait pas vérifié la finalisation : le writer la vérifie, et c'est le
 		// même report.
 		if reporterNonFinalise(ctx, d, matchID, err) {

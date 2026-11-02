@@ -95,22 +95,3 @@ export function formatIntervalMinutes(minutes: number | undefined): string {
   if (rest === 0) return `${hours} h`
   return `${hours} h ${rest} min`
 }
-
-/** Unités d'octets par langue (puissances de 1 000) : octet, kilo, méga, giga. */
-const BYTE_UNITS = {
-  fr: ['o', 'Ko', 'Mo', 'Go'],
-  en: ['B', 'KB', 'MB', 'GB'],
-} as const satisfies Record<Locale, readonly [string, string, string, string]>
-
-/** Formate un volume d'octets en unité lisible (décimal : 1 Ko = 1 000 o). */
-export function formatBytes(bytes: number | undefined, locale: AdminLocale): string {
-  if (bytes == null || Number.isNaN(bytes)) return '—'
-  const abs = Math.abs(bytes)
-  const fmt = (v: number, unit: string) =>
-    `${v.toLocaleString(intlLocale(locale), { maximumFractionDigits: 1 })} ${unit}`
-  const [unit, kilo, mega, giga] = BYTE_UNITS[locale]
-  if (abs < 1_000) return fmt(bytes, unit)
-  if (abs < 1_000_000) return fmt(bytes / 1_000, kilo)
-  if (abs < 1_000_000_000) return fmt(bytes / 1_000_000, mega)
-  return fmt(bytes / 1_000_000_000, giga)
-}

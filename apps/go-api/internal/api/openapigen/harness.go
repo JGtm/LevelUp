@@ -50,6 +50,17 @@ type Options struct {
 	// DesktopSecret : secret d'arrêt propre (POST /api/v1/internal/shutdown). VIDE PAR DÉFAUT : la
 	// route n'est pas montée et le contrat est inchangé ; renseigné par le ratchet des routes nues.
 	DesktopSecret string
+	// ShutdownRequester : reçoit la demande d'arrêt de POST /api/v1/internal/shutdown (nil : la route
+	// répond 404 même avec un secret). Renseigné par les tests de la route d'arrêt.
+	ShutdownRequester func(reason string)
+	// ShellEntryPort : non nul, le routeur est assemblé SOUS l'entrée de la coquille desktop (Host
+	// strict, cookie exigé, /desktop/enter, /api/v1/desktop/strings) pour ce port, avec
+	// ShellCookieKey comme clé du cookie et DesktopSecret comme secret d'entrée. ZÉRO PAR DÉFAUT :
+	// le document OpenAPI et les tests de contrat sont inchangés ; renseigné par les tests de
+	// l'entrée de la coquille.
+	ShellEntryPort int
+	// ShellCookieKey : clé de signature du cookie de la coquille (le secret de session du fichier).
+	ShellCookieKey string
 }
 
 // stubBootstrapRepo implémente port.BootstrapRepository sans DuckDB (mode démo).
@@ -104,7 +115,14 @@ func BuildDemoRouter(ctx context.Context, opts Options) (http.Handler, *huma.Ope
 		Lang:             "fr",
 		PrestigeEnabled:  opts.Prestige,
 		BuildWorkerToken: opts.BuildWorkerToken,
-		DesktopConfig:    config.DesktopConfig{DesktopSecret: opts.DesktopSecret},
+		DesktopConfig:    config.DesktopConfig{DesktopSecret: opts.DesktopSecret, ShutdownRequester: opts.ShutdownRequester},
+	}
+
+	if opts.ShellEntryPort != 0 {
+		cfg.APIPort = opts.ShellEntryPort
+		cfg.SessionSecret = opts.ShellCookieKey
+		cfg.Capabilities.ShellEntryGate = true
+		cfg.SetBoundPort(opts.ShellEntryPort)
 	}
 
 	repo := stubBootstrapRepo{}

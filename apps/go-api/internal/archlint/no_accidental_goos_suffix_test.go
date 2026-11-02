@@ -55,6 +55,10 @@ var goosSuffixAllowed = map[string]string{
 	"apps/go-api/internal/platform/diskfree/diskfree_windows.go": "espace disque : GetDiskFreeSpaceEx (Win32)",
 	"libs/film/internal/filelock/filelock_windows.go": "verrou de fichier entre processus : " +
 		"LockFileEx (Win32), ajoute le 2026-09-26 (J2.6, DT-2)",
+	"apps/go-api/internal/platform/instancelock/instancelock_windows.go": "verrou d'instance du serveur : " +
+		"LockFileEx (Win32), ajoute le 2026-11-01 (L12.4, ADR 0045 D-10 ; motif de filelock_windows.go)",
+	"apps/go-api/internal/platform/auth/tokencipher/dpapi_windows.go": "coffre des jetons : CryptProtectData/" +
+		"CryptUnprotectData (DPAPI, Win32), ajoute le 2026-11-02 (L13b, ADR 0045 D-11 ; motif d'instancelock_windows.go)",
 	"apps/go-api/internal/platform/session/store_purge_windows_test.go": "purge de sessions : comportement " +
 		"de suppression propre a Windows",
 }

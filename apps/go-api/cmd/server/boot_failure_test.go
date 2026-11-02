@@ -121,7 +121,7 @@ func TestRefuseStart_JournalErrorPorteGardeeCodeNonNul(t *testing.T) {
 	}
 
 	out := logs.String()
-	for _, want := range []string{"level=ERROR", "migration: échec, démarrage refusé", "state=migration_failed", "boom"} {
+	for _, want := range []string{"level=ERROR", "démarrage refusé", "state=migration_failed", "boom"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("journal sans %q :\n%s", want, out)
 		}

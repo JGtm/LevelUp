@@ -3897,6 +3897,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/settings/film-archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Occupation et emplacement de l'archive des films */
+        get: operations["getFilmArchive"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/settings/media/reset-index": {
         parameters: {
             query?: never;
@@ -7270,6 +7287,44 @@ export interface components {
             expires_at: string;
             file_name: string;
             file_token: string;
+        };
+        FilmArchiveStatus: {
+            /** @description Réglage « archiver les films ». */
+            archive_films: boolean;
+            /**
+             * Format: int64
+             * @description Taille occupée par l'archive, en octets.
+             */
+            bytes: number;
+            /** @description Valeur enregistrée du réglage ; vide = emplacement par défaut. */
+            configured_dir: string;
+            /** @description Dossier effectif de l'archive des films. */
+            dir: string;
+            /**
+             * Format: int64
+             * @description Nombre de films dans l'archive.
+             */
+            films: number;
+            /**
+             * Format: date-time
+             * @description Instant de la mesure (mise en cache).
+             */
+            measured_at: string;
+            /** @description Vrai si la mesure a été interrompue : les totaux sont des minorants. */
+            partial: boolean;
+            /** @description Vrai quand le dossier enregistré diffère du dossier effectif (redémarrage nécessaire). */
+            restart_required: boolean;
+            volume?: components["schemas"]["FilmArchiveVolume"];
+        };
+        FilmArchiveVolume: {
+            /** Format: int64 */
+            free_bytes: number;
+            /** @enum {string} */
+            status: "ok" | "warn" | "critical" | "unknown";
+            /** Format: int64 */
+            total_bytes: number;
+            /** Format: int64 */
+            used_percent: number;
         };
         FilmTableCounts: {
             /** Format: int64 */
@@ -22660,6 +22715,35 @@ export interface operations {
                 };
             };
             500: components["responses"]["InternalError"];
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getFilmArchive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FilmArchiveStatus"];
+                };
+            };
             /** @description Error */
             default: {
                 headers: {

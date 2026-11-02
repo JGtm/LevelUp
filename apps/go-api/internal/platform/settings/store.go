@@ -18,6 +18,8 @@ import (
 // Seuls les champs exposés par l'API sont typés — les champs inconnus sont
 // préservés dans Extra pour ne pas les effacer lors d'un PATCH.
 type AppSettings struct {
+	// FilmArchiveSettings : archive des films (lot L14) ; règles dans film_archive.go.
+	domain.FilmArchiveSettings
 	Lang                 string `json:"lang"`
 	DiscordLang          string `json:"discord_lang"`
 	UserTimezone         string `json:"user_timezone"`
@@ -170,6 +172,7 @@ func (s *Store) Load() (*AppSettings, error) {
 	}
 	cfg.raw = raw
 	applyAbsentDefaults(cfg, raw, s.enforcedDefaults)
+	enforceFilmArchiveInvariant(cfg)
 	return cfg, nil
 }
 
@@ -222,6 +225,7 @@ func (s *Store) ResolveForTitle(overlayPath string) (*AppSettings, error) {
 	}
 	out.raw = merged
 	applyAbsentDefaults(out, merged, s.enforcedDefaults)
+	enforceFilmArchiveInvariant(out)
 	return out, nil
 }
 
@@ -442,11 +446,13 @@ func Apply(cfg *AppSettings, req *domain.UpdateSettingsRequest) {
 	if req.ReplaySoundDistancePercent != nil {
 		cfg.ReplaySoundDistancePercent = *req.ReplaySoundDistancePercent
 	}
+	applyFilmArchive(cfg, &req.FilmArchiveUpdate)
 }
 
 // ToResponse convertit AppSettings en SettingsResponse (sans discord_webhook_url).
 func ToResponse(cfg *AppSettings) *domain.SettingsResponse {
 	return &domain.SettingsResponse{
+		FilmArchiveSettings:  cfg.FilmArchiveSettings,
 		Lang:                 cfg.Lang,
 		DiscordLang:          cfg.DiscordLang,
 		UserTimezone:         cfg.UserTimezone,

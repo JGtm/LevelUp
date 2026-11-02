@@ -455,7 +455,7 @@ func resoudreCacheFilms(cfg *config.AppConfig, flagValue string) string {
 	if v := strings.TrimSpace(os.Getenv("LEVELUP_LEGACY_FILM_CACHE_DIR")); v != "" {
 		return v
 	}
-	return cfg.PathResolver().CacheRootDir()
+	return cfg.PathResolver().FilmArchiveDir()
 }
 
 // capabilitesDuTitre : les capabilities lues dans `capabilities.toml`.

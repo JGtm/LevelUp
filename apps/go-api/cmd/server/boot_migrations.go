@@ -122,7 +122,6 @@ func prepareWarehouse(st *bootState) {
 // serveur sur la porte de démarrage (état d'échec) puis sort au signal d'arrêt.
 func migrateSharedOrRefuse(st *bootState) {
 	cfg, pr, titleSlug, dbPaths := st.cfg, st.pr, st.titleSlug, st.dbPaths
-	bootSrv, multiHandler := st.bootSrv, st.multiHandler
 	metaPath, sharedPath, sharedSocialPath, pvePath := dbPaths.metadata, dbPaths.shared, dbPaths.sharedSocial, dbPaths.pve
 	titleConfigDir := filepath.Join(cfg.RepoRoot, "config", "titles", titleSlug)
 	// Garde de version, copie de sécurité, migrations (boot_shared_migrations.go). Un échec ne
@@ -136,13 +135,7 @@ func migrateSharedOrRefuse(st *bootState) {
 		titleSlug, migrationBackupsDir, titleConfigDir, sharedMigrationTargets(dbPaths),
 		func() error { return runMigrations(metaPath, sharedPath, sharedSocialPath, pvePath, titleConfigDir) },
 	)); err != nil {
-		code := bootSrv.refuseStart(context.Background(), state, err)
-		if multiHandler != nil {
-			if cerr := multiHandler.Close(); cerr != nil {
-				fmt.Fprintf(os.Stderr, "fermeture logging multi-module: %v\n", cerr)
-			}
-		}
-		os.Exit(code)
+		exitAfterRefusal(st, state, err)
 	}
 	slog.Debug("migrations appliquées")
 }

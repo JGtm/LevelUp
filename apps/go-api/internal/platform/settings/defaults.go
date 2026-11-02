@@ -7,7 +7,11 @@
 // seuil (CLAUDE.md règle 5, ≤ 500 L) est réduite, pas résorbée.
 package settings
 
-import "encoding/json"
+import (
+	"encoding/json"
+
+	"levelup/go-api/internal/domain"
+)
 
 // WithEnforcedDefaults déclare que l'instance applique la propriété des joueurs
 // (authz.Enforced : ni démo, ni auth_mode ouvert). Dans ce mode, une clé ABSENTE
@@ -52,6 +56,9 @@ func applyAbsentDefaults(cfg *AppSettings, raw map[string]json.RawMessage, enfor
 	if _, ok := raw["coach_proactive_mode"]; !ok {
 		cfg.CoachProactiveMode = true // DEC-2 : défaut ON (bascule 2026-07-22)
 	}
+	if _, ok := raw["archive_films"]; !ok {
+		cfg.ArchiveFilms = true // D-5 : archiver par défaut (un film expire côté serveur Halo)
+	}
 	if _, ok := raw["replay_sound_variation_percent"]; !ok {
 		// 100 = les fourchettes du jeu telles quelles. 0 est un réglage LÉGITIME
 		// (variation coupée) : sans ce ré-application, un fichier sans la clé serait
@@ -88,5 +95,6 @@ func defaultSettings() *AppSettings {
 		// Sons du rejeu 2D : variation du jeu telle quelle, aucune distance.
 		ReplaySoundVariationPercent: 100,
 		ReplaySoundDistancePercent:  0,
+		FilmArchiveSettings:         domain.FilmArchiveSettings{ArchiveFilms: true},
 	}
 }

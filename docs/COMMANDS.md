@@ -420,6 +420,37 @@ go run ./cmd/levelup pool-sharing grandfather --all [--yes]            # every p
   `appuser` (`-u appuser`): the hardened container drops the capabilities that let root write files
   owned by the app, and the command fails with `permission denied` otherwise.
 
+### Film archive (recompression and relocation — ADR 0045 D-12, decision D-18)
+
+The archive holds every downloaded film (`film_chunks/` and `film_manifests/`, under
+`film_archive_dir` or `<data>/cache` by default). A film expires on the Halo side and can never be
+downloaded again, so both operations below are **yours to launch, with the server stopped**: nothing
+runs them on its own (no cron, no startup task).
+
+New chunks are written in zstd level 3 (about 75 % smaller). Existing raw and zlib chunks are
+recompressed by `film recompress`, one film at a time: each chunk is compressed, decoded back and
+compared to the original before the file is replaced atomically. A chunk already in zstd is skipped,
+so an interrupted run resumes by running it again. Readers accept raw, zlib and zstd chunks by their
+header, and a film's decoded facts do not depend on the storage form.
+
+```bash
+go run ./cmd/levelup film recompress --dry-run               # reads and compresses in memory, prints the gain, writes nothing
+go run ./cmd/levelup film recompress                         # converts the whole archive
+go run ./cmd/levelup film recompress --films 000d5950,01e1f945   # only these films (short ids)
+go run ./cmd/levelup film archive-move --to D:\Films          # moves the archive to an empty folder, then records film_archive_dir
+go run ./cmd/levelup film archive-move --default             # brings it back under <data>/cache
+go run ./cmd/levelup film archive-move --to D:\Films --resume   # resumes an interrupted move
+```
+
+- The settings screen (Settings, Data tab) shows the archive size and free space, and the first-launch
+  wizard offers to keep films or not. Changing the folder there is refused while the archive holds
+  films or the target is not empty; `archive-move` does the move (run with the server stopped; the saved
+  folder applies at the next start). On an empty archive (first-launch wizard) the new folder applies at once.
+- Without an archive (`archive_films` off) replays are still built and facts persisted, the chunks
+  are removed once cooked, and the replay retention must stay unlimited (the purge assumes a rebuild
+  from the archive).
+- To measure the gain on your machine: `du -sh data/cache/film_chunks` before and after `film recompress`.
+
 ### Metadata / seed / migration
 
 ```bash

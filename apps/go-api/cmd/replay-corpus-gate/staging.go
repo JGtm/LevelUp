@@ -108,8 +108,8 @@ func stageReferenceOnce(sourceRoot, workRoot, titleSlug string) error {
 // nommee — l'appelant la traduit en avertissement `slog` et saute le temoin, sans faire
 // echouer les autres.
 func stageFilm(parcRoot, workRoot, short string) error {
-	srcCache := title.NewPathResolver(parcRoot).CacheRootDir()
-	dstCache := title.NewPathResolver(workRoot).CacheRootDir()
+	srcCache := title.NewPathResolver(parcRoot).FilmArchiveDir()
+	dstCache := title.NewPathResolver(workRoot).FilmArchiveDir()
 
 	srcManifest := filmcache.ManifestPath(srcCache, short)
 	if _, statErr := os.Stat(srcManifest); statErr != nil {

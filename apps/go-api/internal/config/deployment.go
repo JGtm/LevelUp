@@ -43,6 +43,10 @@ const (
 	LaunchModeDefault = ""
 	// LaunchModeDesktop : serveur lancé par la coquille desktop.
 	LaunchModeDesktop = "desktop"
+	// LaunchModeRefreshOnly : processus de rafraîchissement des jetons seul (tâche planifiée du
+	// poste, ADR 0045 D-10). Il ne sert rien et n'ouvre aucune base, mais il agit sur les données
+	// de l'utilisateur desktop : il résout le MÊME profil que [LaunchModeDesktop].
+	LaunchModeRefreshOnly = "refresh-only"
 )
 
 const (
@@ -86,6 +90,24 @@ type DeploymentCapabilities struct {
 	EditSettings bool
 	// UploadMedia : le dépôt de captures est offert (refusé en démo).
 	UploadMedia bool
+	// ShellEntryGate : l'accès au serveur passe par l'entrée de la coquille (ADR 0045 D-3) : route
+	// /desktop/enter, cookie lié au port, Host strict, CORS limité à l'origine du port lié. Hors de
+	// cette capacité rien de cela n'est monté.
+	ShellEntryGate bool
+	// PoolGrantedToLocalUser : la mise en commun du jeton est accordée d'office à l'utilisateur local
+	// (ADR 0045 D-8, exception à ADR 0038 D4) : le seul jeton du pool est le sien et ne quitte pas le
+	// poste. Distincte de PoolTokens, qui dit que le choix est DEMANDÉ à l'utilisateur.
+	PoolGrantedToLocalUser bool
+	// WakeSequence : l'instance rattrape ce que l'arrêt de la machine lui a fait manquer — vérifie les
+	// jetons et tire un cycle de sync en retard au lancement et à la sortie de veille (ADR 0045 D-10).
+	// Faux sur un serveur hébergé : il redémarre à chaque déploiement et n'est jamais en veille.
+	WakeSequence bool
+	// TokenVault : les fichiers de jetons sont scellés par le coffre du système (DPAPI, compte Windows
+	// courant) au lieu d'être écrits en clair (ADR 0045 D-11, amende ADR 0023). Le chargement de la
+	// configuration en dérive le chiffreur du processus (tokencipher.InstallForProfile) : c'est le profil
+	// qui choisit, jamais GOOS seul. Le profil desktop est Windows seul ; le serveur refuse de démarrer
+	// sous cette capacité si le coffre est indisponible.
+	TokenVault bool
 }
 
 // DeploymentProfile est embarqué dans AppConfig : le profil résolu et ses capacités.
@@ -106,25 +128,27 @@ func environmentDeclared(env string) bool {
 
 // resolveDeployment résout le profil de cfg (lu depuis l'environnement par load) et en dérive
 // le mode d'authentification, l'hôte d'écoute et les capacités. launchMode : drapeau -mode
-// du serveur ([LaunchModeDefault] ou [LaunchModeDesktop]).
+// du serveur ([LaunchModeDefault], [LaunchModeDesktop] ou [LaunchModeRefreshOnly]).
 //
-// Ordre, premier qui correspond : le mode desktop donne desktop ; LEVELUP_DEMO_MODE=true donne
-// demo ; un LEVELUP_ENV déclaré donne hosted ; sinon dev. Le mode desktop avec la démo est
+// Ordre, premier qui correspond : les modes desktop et refresh-only donnent desktop ;
+// LEVELUP_DEMO_MODE=true donne demo ;
+// un LEVELUP_ENV déclaré donne hosted ; sinon dev. Un mode desktop ou refresh-only avec la démo est
 // REFUSÉ (les deux n'ont aucun sens commun). Sous desktop, LEVELUP_AUTH_MODE et LEVELUP_API_HOST
 // sont ignorés avec un avertissement : une variable oubliée dans l'environnement d'un
 // utilisateur ne doit pas changer le modèle de sécurité d'une application locale.
 func resolveDeployment(cfg *AppConfig, launchMode string) (*AppConfig, error) {
 	switch launchMode {
-	case LaunchModeDefault, LaunchModeDesktop:
+	case LaunchModeDefault, LaunchModeDesktop, LaunchModeRefreshOnly:
 	default:
 		return nil, fmt.Errorf("mode de lancement %q inconnu pour le profil de déploiement", launchMode)
 	}
 	demo := cfg.DemoMode // mode déclaré (LEVELUP_DEMO_MODE), pas un choix de source de données
+	desktopRun := launchMode == LaunchModeDesktop || launchMode == LaunchModeRefreshOnly
 	switch {
-	case launchMode == LaunchModeDesktop && demo:
-		return nil, fmt.Errorf("-mode desktop est incompatible avec LEVELUP_DEMO_MODE=true : " +
-			"une application locale à un seul utilisateur n'a rien de commun avec la démo publique")
-	case launchMode == LaunchModeDesktop:
+	case desktopRun && demo:
+		return nil, fmt.Errorf("-mode %s est incompatible avec LEVELUP_DEMO_MODE=true : "+
+			"une application locale à un seul utilisateur n'a rien de commun avec la démo publique", launchMode)
+	case desktopRun:
 		cfg.Deployment = DeploymentDesktop
 		forceDesktopAuthAndHost(cfg)
 	case demo:
@@ -161,19 +185,23 @@ func capabilitiesOf(cfg *AppConfig) DeploymentCapabilities {
 	demo := cfg.Deployment == DeploymentDemo
 	accounts := !desktop && (cfg.AuthMode == authModePassword || cfg.AuthMode == authModeXbox)
 	return DeploymentCapabilities{
-		UseAccounts:          accounts,
-		SignInWithXbox:       !desktop && cfg.AuthMode == authModeXbox,
-		UseInvitations:       accounts,
-		UseGroups:            !desktop && !demo,
-		PoolTokens:           !desktop && !demo,
-		UseAdmin:             !desktop,
-		UseResticBackup:      !desktop && !demo,
-		UseDiscord:           !desktop && !demo,
-		UseOutboundNetwork:   !demo,
-		UpdateApp:            desktop,
-		OfferWindowsDownload: !desktop,
-		EditSettings:         !demo,
-		UploadMedia:          !demo,
+		UseAccounts:            accounts,
+		SignInWithXbox:         !desktop && cfg.AuthMode == authModeXbox,
+		UseInvitations:         accounts,
+		UseGroups:              !desktop && !demo,
+		PoolTokens:             !desktop && !demo,
+		UseAdmin:               !desktop,
+		UseResticBackup:        !desktop && !demo,
+		UseDiscord:             !desktop && !demo,
+		UseOutboundNetwork:     !demo,
+		UpdateApp:              desktop,
+		OfferWindowsDownload:   !desktop,
+		EditSettings:           !demo,
+		UploadMedia:            !demo,
+		ShellEntryGate:         desktop,
+		PoolGrantedToLocalUser: desktop,
+		WakeSequence:           desktop,
+		TokenVault:             desktop,
 	}
 }
 

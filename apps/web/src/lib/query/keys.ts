@@ -43,6 +43,8 @@ export const queryKeys = {
   deviceFlow: (attemptId: string) => ['device-flow', attemptId] as const,
   job: (jobId: string) => ['job', jobId] as const,
   settings: ['settings'] as const,
+  // Occupation et emplacement de l'archive des films (GET /settings/film-archive).
+  filmArchive: ['film-archive'] as const,
   // Groupes/familles (accès mutuel) — gestion end-user
   groups: ['groups'] as const,
   // Amis d'un joueur (liste par profil, pas un réglage d'instance).

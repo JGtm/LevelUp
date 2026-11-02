@@ -1,7 +1,7 @@
 # ADR 0045 — Desktop mode and the shell-server contract
 
-Status: accepted (2026-11-01); implementation tracked in `.ai/V8/PLAN_DESKTOP_2026-11-01.md` (wave 1 and 1b delivered
-on the branch, lots L12 to L17 to come; each decision below says which).
+Status: accepted (2026-11-01); implementation tracked in `.ai/V8/PLAN_DESKTOP_2026-11-01.md` (waves 1 to 3 and lots L12 and L13
+delivered on the branch, lots L13b to L17 to come; each decision below says which).
 Source: decisions D-1 to D-17 of the plan, confirmed by the maintainer on 2026-11-01 (D-8, D-9 and D-10 against the
 recommendation); additions A1 to A24; section 6 of the plan (the contract).
 Amends: ADR 0023 (D-11 below: the token file may be encrypted by a `TokenCipher` port, the single source stays the
@@ -37,7 +37,8 @@ database held by a killed process stays locked for a few seconds, so a relaunch 
 `LEVELUP_DATA_DIR`, `LEVELUP_RESOURCES_DIR`, `LEVELUP_LOGS_DIR` and `LEVELUP_DESKTOP_SECRET=<random>` (never an argument,
 never logged), and the arguments `-mode desktop -arret-sur-stdin`. The port is read from `<DataRoot>/desktop/port` (D-9).
 State: the single flag parser `cmd/server/flags.go` exists and recognises `-health-check`, `-arret-sur-stdin` and `-mode`;
-`-mode desktop` and `-mode refresh-only` are refused with `errModeUnavailable` until L12/L15 deliver them.
+`-mode desktop` is accepted since L12 and `-mode refresh-only` since L15 (both reach `config.LoadServer(launchMode)`; the two
+resolve the `desktop` profile).
 
 **D-2 — Events on stdout.** One JSON line per event, written by a single writer under a lock; in this mode every console
 log goes to stderr. `{"event":"listening","port":N}` when the port is bound (before the migrations);
@@ -50,17 +51,40 @@ read without a write connection) or a lock that outlives the bounded retry refus
 code does not understand, and a copy of each database about to be upgraded is taken first (`BackupBeforeUpgrade` into
 `PathResolver.MigrationBackupsDir()`, two kept, refused when the free space is short). State: all of this exists, with
 the 503 `server_start_failed`, `retryable:false` answer of the startup gate (`bootFailureState` in
-`cmd/server/boot_failure.go`); the stdout writer and the other events arrive with L12. The shell drains stdout
-continuously (a full pipe blocks the server) and relays stderr to `<LogsRoot>/desktop.log`.
+`cmd/server/boot_failure.go`). The stdout writer (`cmd/server/desktop_events.go`, active in `-mode desktop` only) and
+every event are delivered by L12; `failed` also carries the state `port` when no port can be bound (nothing serves the
+gate then, the event is the only witness). The console log handler writes to stderr in every mode, so stdout carries
+events only. `stopped` is written last, after the journals are closed, the token pool is closed and the instance lock is
+released, so a relaunch triggered by `stopped` finds the lock free. The shell drains stdout continuously (a full pipe
+blocks the server) and relays stderr to `<LogsRoot>/desktop.log`.
 
 **D-3 — First page and access.** The shell shows an embedded screen (logo) until `ready`, then loads
 `http://127.0.0.1:N/desktop/enter?secret=<random>`; the server sets the session cookie and redirects to `/`. The cookie
 name carries the port (A15) and lasts 30 days, renewed at each entry. Without the cookie every route other than
-`/desktop/enter` and `/health` answers 401 (both allowlisted with a date in `bare_routes_ratchet_test.go`; `/health`
-stays open because the shell and the end-to-end script probe it before any cookie exists, and it carries no data); the
-`Host` header must be the exact loopback authority of the bound port and CORS allows that exact origin only. On
-`failed` the shell loads the page of the startup gate, which answers before the router opens and says the state in a
-non-retryable 503. Lot L13.
+`/desktop/enter` and `/health` answers 401 (`/health` stays open because the shell and the end-to-end script probe it
+before any cookie exists, and it carries no data); the `Host` header must be the exact loopback authority of the bound
+port (otherwise 421, logged) and CORS allows that exact origin only. On `failed` the shell loads the page of the startup
+gate, which answers before the router opens and says the state in a non-retryable 503. State: delivered by L13.
+The whole entry hangs on one capability, `ShellEntryGate` (`internal/config/deployment.go`), so no consumer compares the
+profile name. `middleware.DesktopGate` (`internal/api/middleware/desktop_gate.go`) is mounted right after
+`PreserveRemoteAddr`: Host first (421 `desktop_host_refused`, `/health` and `/desktop/enter` included, which is what cuts
+DNS rebinding), then the cookie (401 `desktop_unauthorized`, `retryable:false`, a path that `AmbiguousPath` flags never
+passes as `/health`). The cookie is not a session: its value is `<expiry>.<hex HMAC-SHA256>` over `(port, expiry)` with
+the session secret of D-7, checked without state, valid 30 days and renewed at each entry; it is `HttpOnly`,
+`SameSite=Strict`, not `Secure` (plain http on loopback). Its name is `levelup_session_<port>`. `GET /desktop/enter` sits
+behind `LoopbackOnly`, compares `?secret=` with `LEVELUP_DESKTOP_SECRET` in constant time (403 wrong, 404 when the
+launcher gave no secret), never logs it, and answers 302 to `/`. CORS and the CSRF origin list are
+`AppConfig.SetBoundPort`'s output: the single origin `http://127.0.0.1:<bound port>`, `LEVELUP_CORS_ORIGINS` ignored.
+Two exceptions and one extension, found by the wave 4 review: `POST /api/v1/internal/shutdown` is exempt from the
+cookie (the shell cannot forge a signed `HttpOnly` cookie; the route keeps `LoopbackOnly`, the constant-time header
+secret and the strict `Host`), and the startup gate, which answers before the router and its guard exist, is wrapped by
+the same strict `Host` check (`middleware.StrictHost`, 421) without any cookie, since the shell loads the startup or
+failure page before it has one. Cooking children (`internal/replaychild`) relay their output on stderr, never on the
+server's stdout, which carries the D-2 events only (`internal/archlint/server_stdout_internal_test.go`).
+The bare-route allowlist gets no entry: `/health` is already listed, and `/desktop/enter` is guarded by a recognised
+guard (an entry would be flagged useless by the ratchet's own self-check); `TestBareRoutesRatchet_DesktopEntryRoutes`
+proves instead that both desktop routes exist only under the capability and that every route of the desktop router sits
+behind the gate. The web client recognises the 401 code and shows a non-retried "access expired, reopen LevelUp" screen.
 
 **D-4 — Stop.** The principal path is the closing of the sidecar's stdin (the shell closes it; the OS closes it if the
 shell dies). The alternative is `POST /api/v1/internal/shutdown`, mounted only when `LEVELUP_DESKTOP_SECRET` is set,
@@ -68,11 +92,13 @@ behind `LoopbackOnly` (decided on the TCP peer), with the secret in `X-LevelUp-S
 (404 not configured, 403 wrong secret or non-loopback peer, 202 and an asynchronous request otherwise). Signal, stdin and
 HTTP all call `bootServer.requestShutdown`, a `sync.Once`: one pass, the same 40 s budget (`shutdownBudget`). The shell
 waits for `stopped` or the budget plus 5 s, and only then kills. Background work that outlives the request joins the
-shutdown context (`taskAppRelease` is started under `context.Background()` today; L12.3). There is **no Job object**
+shutdown context and the scheduler wait group (`taskAppRelease`, the token refresh loop of the watcher, the world
+leaderboard enricher: L12.3 and L12.6). There is **no Job object**
 (A2): it would kill the sidecar at the death of the shell, which is exactly when the stdin EOF must trigger a clean stop.
 Replay build children are killed by context cancellation (`exec.CommandContext`) and their kernel lock is released by the
 OS; the residual risk is an orphan child after a hard crash of the server, bounded by the film it was decoding. State:
-delivered (`shutdown_stdin.go`, `internal/api/handlers/internal_shutdown.go`, `cmd/devlaunch` for air).
+delivered (`shutdown_stdin.go`, `internal/api/handlers/internal_shutdown.go`, `cmd/devlaunch` for air); L12 adds the test
+that a cancelled context kills the build child (`libs/film/filmproc/runner_annulation_test.go`).
 
 **D-5 — One definition of a clean stop.** The log line `arrêt: terminé` with `clean=true` **and** no `*.wal` file under
 `<DataRoot>`. In code `clean` is "every phase finished in its time, the persist queue drained without error, and the
@@ -91,17 +117,33 @@ every authentication mode, `none` included (`service.DeviceCodeCompletion`, the 
 does not exist yet, the tokens are kept in memory and replayed when the directory creates it); this is what keeps a
 single-user installation syncing after the first hour. The listening host is forced to loopback (ADR 0044 D-2).
 `/api/v1/desktop/strings` serves the shell's strings from `internal/i18n/messages/desktop.toml` in the request's
-language (D-13).
+language (D-13). State: delivered by L13. `config.Validate` accepts the profile under `LEVELUP_ENV=production` (the
+production refusal is the hosted profile's) but refuses, in `desktop` as in production, the public default secret or one
+shorter than 32 bytes (`validateStartup`); `LEVELUP_SESSION_SECRET` is ignored with a warning in this profile; a file that
+is empty, too short or equal to the public default is replaced with a warning, an unreadable one fails the start. The
+route answers `{locale, strings}` with eight identifiers (`starting`, `failed_locked`, `failed_migration_failed`,
+`failed_schema_newer`, `failed_port`, `stopping`, `stopped`, `update_available`); the last carries the `{version}`
+placeholder untouched, the shell knows the number. It is mounted only under `ShellEntryGate` and requires the cookie.
 
 **D-8 — Pooling for the local user (plan D-4).** In `desktop` the pooling decision is recorded as granted for the local
 user, with a basis value of its own, and the consent banner is hidden by the capability. This is an exception to
 ADR 0038 D4 (the choice is asked, not defaulted), and it holds because the only token in the pool is the user's own and
-never leaves the machine. Without a decision the rule of ADR 0038 stays: refusal.
+never leaves the machine. Without a decision the rule of ADR 0038 stays: refusal. State: delivered by L13. The capability
+`PoolGrantedToLocalUser` (distinct from `PoolTokens`, which says the choice is *asked*) makes
+`DeviceCodeCompletion.WithLocalPoolGrant` record `granted` with the basis `desktop_single_user` when a refresh token is
+written for a token file that carries no decision; an existing decision (grant or refusal) is never overwritten and an
+unreadable file gets no grant. The banner needs no new code: `PoolTokens` is already false in `desktop`, and
+`PoolSharingBanner` reads `can_pool_tokens`. Known limits: a token written by the CLI (`token-import`, `token-capture`)
+gets no grant; the in-memory pool learns the grant at its next rescan (at most 15 minutes), the owner's own token serving
+its owner meanwhile (ADR 0038 D2).
 
 **D-9 — Stable port (plan D-13, A15).** The port is stored in `<DataRoot>/desktop/port`; if it is taken, a free port is
 chosen, written, and a warning is logged (the browser storage of that user is then lost once). Never `:0` without that
-fallback. `startBootServer` returns the bound port instead of exiting; the `os.Exit(1)` on a taken port stays outside
-`-mode desktop`.
+fallback. `startBootServer` receives the bound listener instead of exiting; the `os.Exit(1)` on a taken port stays outside
+`-mode desktop`, where a listen failure is announced `failed{state:"port"}`. State: delivered by L12
+(`cmd/server/desktop_port.go`, `PathResolver.DesktopPortPath`); the configuration's `APIPort` is set to the bound port. An
+instance that lost the instance lock (D-10) binds a free port without writing the file: it must not change the port of the
+instance that runs.
 
 **D-10 — Instance lock and wake-up (A16, A10, A24).** A kernel lock `<DataRoot>/levelup.lock`
 (`internal/platform/instancelock`, the pattern of `libs/film/internal/filelock`, which is not importable) is taken at
@@ -114,7 +156,18 @@ token check at boot for each tracked profile (no network: nothing is marked; dea
 alive: the rotated token is written); and the same sequence when the wall clock and the monotonic clock differ by more
 than 2 minutes, because Go's monotonic clock on Windows does not count the sleep (`runtime·nanotime1` reads
 `_INTERRUPT_TIME`). The cached-token deadline already drops the monotonic reading (`time.Now().Round(0)` in
-`tokencache`). Lots L12, L15.
+`tokencache`). Lots L12, L15. State: the lock and its refusal are delivered by L12 (the lock is taken before the port,
+released before `stopped`; an I/O error taking the lock refuses the start as `migration_failed`, the data root being
+unusable). State of `refresh-only` and the wake-up sequence: delivered by L15. The capability `WakeSequence` (true in the
+`desktop` profile only) arms `internal/wakeup` once the router is open: the token check (`deadtoken.Gate.Resolve` per
+tracked profile, one profile after the other, no Halo exchange: dead = `reauth_required` and the banner, alive = rotated
+token written atomically, no answer = nothing marked and a retry at the 30 s ticks with a growing delay up to 10 minutes,
+the sync catch-up waiting with it), then `AutoSyncScheduler.CatchUpDue` / `RequestCatchUp` (the immediate tick runs inside
+`Run`'s loop; the age of the last cycle, read back from the post-sync snapshot, is measured on the wall clock). The 30 s
+tick compares the wall-clock and the monotonic advance (`SleepDetector`, gap above 2 minutes). `refresh-only`
+(`cmd/server/refresh_only.go`) takes the lock before anything, opens no database and binds no port, writes nothing on
+stdout, runs the same token check once and exits 0 whatever the tokens say; a held lock exits 0 without any exchange. Exit
+1 only when the configuration cannot be read or the lock cannot be taken for another reason than a running instance.
 
 **D-11 — Tokens encrypted by the Windows vault (plan D-8, amends ADR 0023).** A `TokenCipher` port in `platform/auth`
 with two implementations: `plain` (hosted, Linux containers: today's behaviour) and `dpapi` (Windows,
@@ -125,13 +178,61 @@ the reverse is a typed, logged refusal, and an encrypted file copied to another 
 purpose. `token-import` and `token-capture` write through the same port. The single-source rule and its sentinels are
 unchanged. Lot L13b.
 
+Detail of the lot. The port lives in the leaf package `internal/platform/auth/tokencipher` (`Cipher`: `Name`, `Seal`,
+`Open`; `Plain`; `NewDPAPI`, which fails with `ErrUnavailable` outside Windows). The profile decides through a new
+capability, `TokenVault` (true in `desktop` only): the configuration loader calls `tokencipher.InstallForProfile` once,
+from `internal/config/config_token_vault.go` (ratchet `archlint/token_cipher_single_decision_test.go`), and every
+`NewMultiUserTokenStore(dir)` and `NewTokenStore(path)` read that process cipher at construction, so the server and every
+command-line tool choose the same way; `NewMultiUserTokenStoreWithCipher` is for tests. The last resolved profile wins (a hosted or dev load puts
+`plain` back); a load never fails on the vault (the desktop profile is exercised on Linux CI), `cmd/server`
+(`tokenVaultRefusal`, after `LoadServer`, `refresh-only` included) refuses to start when the profile asks for the vault and
+the system lacks it. File format: `cipher` is written for `dpapi` only (a `plain` store writes no field, so hosted files are
+byte-identical to before; a missing field means `plain`); `OAuthRefreshToken`, `AccessToken`, `XSTSToken` and
+`XSTSUserHash` become the standard base64 of the DPAPI blob (current-user scope, `CRYPTPROTECT_UI_FORBIDDEN`, fixed
+entropy `levelup.watcher_tokens.v1`, description `LevelUp watcher token`); empty fields stay empty; identity, dates,
+`pool_sharing` and the reauth state stay readable. The single-user watcher state file `data/auth/watcher_tokens.json`
+(`TokenStore`: `access_token`, `xsts_token`, `xsts_user_hash`, no refresh token since ADR 0023 Phase 5) goes through the SAME
+codec, cipher, `cipher` field and rules (it would otherwise keep in the clear three of the four fields sealed next to it); its
+sealed fields are `AccessToken`, `XSTSToken` and `XSTSUserHash`, while `XSTSGamertag` and `XSTSXUID` stay readable. A test
+lists every string field of `UserTokens` and of `StoredTokens` as sealed or declared non-sensitive. Reading: a `plain` file under a `dpapi` store is accepted and rewritten sealed at the next write, never at
+load; a sealed file under a `plain` store, an unknown cipher, or a failed `Open` is `ErrTokenFileSealed` (logged once per
+file AND per process, the key being the file path, because stores are rebuilt at every sync pass; every refusal is counted in
+`levelup.auth.token_file_unreadable_total{sealed|decode}`; the scans and callers that used to warn or error on each read log a
+sealed file at Debug only); `LoadAll` skips it and serves the other players. A partial `Upsert` (no refresh token) on an unreadable sealed file is refused rather than overwriting a possibly
+recoverable credential; an `Upsert` that carries a fresh refresh token (a new sign-in) replaces it.
+
 **D-12 — Film archive (plan D-5, A18).** Archived by default; the choice "do not archive" is offered in the first-launch
 wizard (`features/setup`), never in the installer; occupancy is shown and the location is a setting. The unit of the
 archive is the film: `PathResolver.FilmArchiveDir()` covers `film_chunks/` and `film_manifests/` (setting
 `film_archive_dir`, a non-empty target refuses an assisted move). Without archive, facts and replay are still produced,
 chunks are not kept, and the replay retention is forced to unlimited, because the purge assumes a re-cook from the film
-cache; the combination "no archive, finite retention" is refused in the settings. The disk alert is the existing
-`taskDiskWatch` (80 and 90 %). Lot L14.
+cache; the combination "no archive, finite retention" is refused in the settings (and folded to unlimited on read, so
+a hand-edited file cannot arm an irreversible purge). The disk alert is the existing `taskDiskWatch` (80 and 90 %),
+which watches the archive volume with its own anti-spam state when the archive lives outside the data root.
+Lot L14.
+
+Detail of the lot. The archive root is the fourth field of `Roots` (`FilmArchive`, read once from
+`app_settings.json:film_archive_dir` by `config.ResolveRoots`, absolute path only). Changing the folder in the settings
+is refused while the archive holds films (the move is `levelup film archive-move`, server stopped, which records the
+setting itself once every film is relocated; each film is copied to a `.part` folder of the target, then renamed in one
+step, then removed from the origin, so a film is whole on one side only) and while the target is not empty (the default
+location only has to hold no film). On an EMPTY archive the change applies at once (`title.SetFilmArchiveRuntime`, a
+process variable read by every resolver, like the process roots): the first sync of the wizard writes to the new folder.
+The disk watch keeps one watch per volume, not per path. Without
+archive, a cooked film's chunks are removed by the post-sync cook right after its artifact is stored, never before. The
+occupancy (`GET /settings/film-archive`) is measured once and cached for ten minutes with a 20 s walk budget.
+
+**D-12b — Chunks stored in zstd-3 (plan D-18, 2026-11-01).** The single write point of film chunks is
+`filmcache.Write` (every downloader goes through it); it stores a chunk in zstd level 3 when that shortens it, raw
+otherwise. The manifest `size_bytes` keeps meaning "the size of what the writer received" (decoded bytes), so a
+manifest written before this change stays valid after a chunk is recompressed, and the truncation check compares the
+logical size (the size declared in the zstd frame header). The `source` layer, the only one that touches film bytes
+(ADR 0034 D-2), recognises raw, zlib (`0x78`) and zstd (`28 b5 2f fd`) by header and is the only importer of the zstd
+library (ratchet `no_raw_film_bytes_outside_source`). Existing chunks are converted by `levelup film recompress`,
+launched by the user and never automatically (ratchet `no_auto_film_recompress`): one film at a time, each chunk
+compressed, decoded back and compared before an atomic replacement, resumable. The source revision is unchanged (a
+raw or zlib chunk reads to the same bytes; its golden fingerprint is re-recorded), and `replay-equiv` is identical on a
+film before and after recompression.
 
 ### The shell
 
@@ -205,12 +306,14 @@ maintainer on a clean machine. A lot without a test at its level is not closed.
 
 ## Known risks
 
-- **Stop in the first seconds gives `clean=false`.** If the stop arrives while the token refresh of the start-up is
-  running, the scheduler phase (3 s) expires: `oauth_refresh` loops over the players, about 1 s per exchange, and the
-  presence tracking goroutines of the scheduler wait group do not honour cancellation during an HTTP exchange. Measured
-  at 75 s after the start: `clean=true` in 156 ms. A shell closed right after opening would therefore get `stopped
-  clean=false`. To be treated before L12 (item of L12 or a dedicated wave-2 lot; files in `platform/auth/refresh_loop.go`
-  and the watcher), with a test that requests a stop during the start-up refresh and expects `clean=true`.
+- **Stop in the first seconds gave `clean=false`** (treated by L12.6). If the stop arrived while a token exchange of the
+  start-up was running, the scheduler phase (3 s) expired: the world leaderboard cron resolved every tracked account
+  with `context.Background()` (about 1 s per exchange, loop over the players), and the refresh loop of the watcher ran
+  under the process context, outside the wait group. The exchanges now carry the cancellable context of the background
+  tasks and the loop is tracked by the wait group; token writes never depend on the context, so a token obtained before
+  the cancellation is written before the databases close (tests in `internal/platform/auth/refresh_loop_stop_test.go`
+  and `internal/worldenrich/wiring_ctx_test.go`). Residual: a stop requested DURING the start-up waits for the end of the
+  initialisation (boot-time token refresh included, 15 s per exchange at most), as the gate documents.
 - **Crash capture lost at the first start on a fresh root.** `crash_output` opens `server.crash.log` before `logs/`
   exists: a warning, and no capture until the second start. This is the normal first start of every installation. Treated
   by L11 (`LogsRoot` created before any writer) or a dedicated lot.
@@ -233,9 +336,22 @@ maintainer on a clean machine. A lot without a test at its level is not closed.
   (`TestBareRoutesRatchet_DesktopShutdownRouteIsGuarded`), `internal/archlint/media_binpath_single_resolver_test.go`,
   `internal/platform/auth/sentinel_test.go` and `internal/sync/no_legacy_source_used_test.go` (allowlists empty),
   `cmd/server/e2e_arret_windows_test.go` (`TestE2EArretPropre`, tag `e2e_windows`), the CI job `go-test-windows-cgo`.
-- To create: the fake-launcher test (L12.5); the instance-lock tests (L12.4); `desktop-enter.spec.ts` (Playwright) and the
-  `httptest` cases of `/desktop/enter` including a secret absent from `os.Args` (L13.4); the `TokenCipher` tests,
-  `dpapi` under the Windows tag (L13b.3); `cargo test` against the fake sidecar (L16.4); the `desktop-build` and
+- Created by L12: `cmd/server/desktop_launcher_test.go` (`TestE2ELanceurDesktop`, tag `e2e_windows`: the fake launcher),
+  `internal/platform/instancelock/instancelock_test.go` (two processes), `cmd/server/desktop_events_test.go`,
+  `cmd/server/desktop_port_test.go`, `cmd/server/stdout_guard_test.go`.
+- Created by L13: `internal/api/desktop_entry_cgo_test.go` (every refusal, the success, `/health` open, the strings in
+  both languages, CORS and CSRF on the exact origin, nothing mounted outside the profile),
+  `internal/api/middleware/desktop_gate_test.go` (expiry, signature, renewal, closed entry),
+  `TestBareRoutesRatchet_DesktopEntryRoutes`, `internal/config/config_desktop_session_test.go`,
+  `internal/service/devicecode_completion_poolgrant_test.go`, `TestParseServerFlags_AucunDrapeauNePorteLeSecret`
+  (`cmd/server/flags_test.go`: the secret never travels as an argument), `apps/web/e2e/desktop-enter.spec.ts`
+  (Playwright, mocked server), and `TestE2ELanceurDesktop` extended (`GET /` 401, entry 302 with the cookie, bootstrap 200).
+- Created by L13b (and extended by its review: watcher state file, process-wide log dedup): `internal/platform/auth/token_file_codec_test.go` (plain round trip, sealing of the sensitive fields only,
+  migration at the first write, typed refusals, partial write on a sealed file, every string field classified),
+  `internal/platform/auth/tokencipher/*_test.go` (`dpapi_vault_test.go` under the Windows tag), `token_file_vault_test.go`
+  (real DPAPI store, Windows tag), `internal/config/config_token_vault_test.go`, `cmd/server/boot_token_vault_test.go`,
+  `archlint/token_cipher_single_decision_test.go`.
+- To create: `cargo test` against the fake sidecar (L16.4); the `desktop-build` and
   `desktop-e2e` jobs and the version check (L17); the `desktop` filter in `ci_paths_filter_test.go`.
 
 ## Alternatives rejected

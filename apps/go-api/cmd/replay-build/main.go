@@ -101,7 +101,7 @@ func main() {
 	}
 
 	// La disposition du cache film n'est déclarée que dans filmcache (garde-rail).
-	cacheRoot := title.NewPathResolver(repoRoot).CacheRootDir()
+	cacheRoot := title.NewPathResolver(repoRoot).FilmArchiveDir()
 	filmDir := filmcache.ChunkDir(cacheRoot, title.FilmShortMatchID(matchID))
 	if len(args) >= 2 {
 		filmDir = args[1]

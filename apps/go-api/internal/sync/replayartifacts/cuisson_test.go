@@ -153,7 +153,7 @@ func TestBuildAll_CuissonBloquee_CoupeeEtComptee(t *testing.T) {
 	var appels int
 	d := Deps{
 		RepoRoot: t.TempDir(), TitleSlug: titlePkg.DefaultSlug,
-		CacheRoot: t.TempDir(), Fetcher: &fetcherFilms{},
+		FilmRoot: t.TempDir(), Fetcher: &fetcherFilms{},
 		Budget: time.Minute, DeadlineParFilm: 80 * time.Millisecond,
 		BuildOne: func(ctx context.Context, req BuildOneRequest) (BuildOneResult, error) {
 			appels++
@@ -209,7 +209,7 @@ func TestBuildAll_SoldeSousLePlancher_ReporteSansEchec(t *testing.T) {
 	avant := runtime.NumGoroutine()
 	var appels int
 	d := Deps{
-		RepoRoot: t.TempDir(), TitleSlug: titlePkg.DefaultSlug, CacheRoot: t.TempDir(),
+		RepoRoot: t.TempDir(), TitleSlug: titlePkg.DefaultSlug, FilmRoot: t.TempDir(),
 		Fetcher: f, Budget: PlancherCuisson / 2,
 		BuildOne: func(context.Context, BuildOneRequest) (BuildOneResult, error) {
 			appels++
@@ -247,7 +247,7 @@ func TestBuildAll_SoldeSousLePlancher_ReporteSansEchec(t *testing.T) {
 func TestBuildAll_SoldeSousLePlancher_SansCuissonCablee_PersisteQuandMeme(t *testing.T) {
 	f := &fetcherFilms{}
 	d := Deps{
-		RepoRoot: t.TempDir(), TitleSlug: titlePkg.DefaultSlug, CacheRoot: t.TempDir(),
+		RepoRoot: t.TempDir(), TitleSlug: titlePkg.DefaultSlug, FilmRoot: t.TempDir(),
 		Fetcher: f, Budget: PlancherCuisson / 2, // sous le plancher, mais positif
 	}
 	b := buildAll(context.Background(), d, []buildWork{{matchID: "0000a001"}, {matchID: "0000a002"}})
@@ -275,7 +275,7 @@ func TestBuildAll_PrechargeLeFilmSuivantPendantLaCuisson(t *testing.T) {
 	avant := runtime.NumGoroutine()
 
 	d := Deps{
-		RepoRoot: t.TempDir(), TitleSlug: titlePkg.DefaultSlug, CacheRoot: t.TempDir(),
+		RepoRoot: t.TempDir(), TitleSlug: titlePkg.DefaultSlug, FilmRoot: t.TempDir(),
 		Fetcher: f, Budget: time.Minute,
 		BuildOne: func(ctx context.Context, req BuildOneRequest) (BuildOneResult, error) {
 			if req.MatchID == "0000a001" {
@@ -310,7 +310,7 @@ func TestBuildAll_BudgetEpuise_NePrechargePlus(t *testing.T) {
 	f := &fetcherFilms{}
 	avant := runtime.NumGoroutine()
 	d := Deps{
-		RepoRoot: t.TempDir(), TitleSlug: titlePkg.DefaultSlug, CacheRoot: t.TempDir(),
+		RepoRoot: t.TempDir(), TitleSlug: titlePkg.DefaultSlug, FilmRoot: t.TempDir(),
 		Fetcher: f, Budget: -1, // deja epuise : la garde s'applique avant le premier match
 		BuildOne: func(context.Context, BuildOneRequest) (BuildOneResult, error) {
 			return BuildOneResult{}, errors.New("pas de cuisson reelle dans ce cas")
@@ -334,7 +334,7 @@ func TestBuildAll_BudgetEpuise_NePrechargePlus(t *testing.T) {
 // decodage qui ne lui appartient pas.
 func TestBuildAll_VerrouTenuAilleurs_CompteEnEchec(t *testing.T) {
 	d := Deps{
-		RepoRoot: t.TempDir(), TitleSlug: titlePkg.DefaultSlug, CacheRoot: t.TempDir(),
+		RepoRoot: t.TempDir(), TitleSlug: titlePkg.DefaultSlug, FilmRoot: t.TempDir(),
 		Fetcher: &fetcherFilms{}, Budget: time.Minute,
 		BuildOne: func(context.Context, BuildOneRequest) (BuildOneResult, error) {
 			return BuildOneResult{}, filmproc.ErrDecodeBusy

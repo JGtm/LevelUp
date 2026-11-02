@@ -115,7 +115,7 @@ func main() {
 	// et c'est précisément pour ça que l'ouvrier n'y supprime RIEN — ce cache est
 	// une archive irremplaçable (cf. cleanupFilm). Un ouvrier distant passe --work.
 	workDir := *work
-	repoCache := titlePkg.NewPathResolver(*repoRoot).CacheRootDir()
+	repoCache := titlePkg.NewPathResolver(*repoRoot).FilmArchiveDir()
 	if workDir == "" {
 		workDir = repoCache
 	}

@@ -97,6 +97,7 @@ func depsCuisson(t *testing.T, racine string, db *sql.DB, build BuildOneFunc) De
 		RepoRoot:  racine,
 		TitleSlug: titlePkg.DefaultSlug,
 		CacheRoot: t.TempDir(),
+		FilmRoot:  t.TempDir(),
 		Placement: replaybuild.PlacementLocal,
 		Fetcher:   fetcherRaster{},
 		WithRead:  func(_ context.Context, _ string, fn func(*sql.DB)) { fn(db) },

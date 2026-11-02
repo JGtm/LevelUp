@@ -3,7 +3,7 @@
 // Disposition, tenue par les repertoires deja presents :
 //
 //	<racine>/film_manifests/<short8>.json      le manifeste (index, type et debut des chunks)
-//	<racine>/film_chunks/<short8>/chunk_NN.bin les chunks BRUTS
+//	<racine>/film_chunks/<short8>/chunk_NN.bin les chunks (zstd-3, brut ou zlib : cf. stockage.go)
 //
 // `short8` est la forme courte du match_id (les 8 caracteres hexadecimaux qui precedent le
 // premier tiret) : c est la cle du cache, pas l uuid complet que manipule le reste de
@@ -115,7 +115,8 @@ func (s *Source) Meta() []types.ChunkMeta { return s.chunks }
 // NumChunks implemente [source.Source] : le nombre d'entrees du manifeste.
 func (s *Source) NumChunks() int { return len(s.chunks) }
 
-// Chunk implemente [source.Source] : les octets BRUTS (compresses) du chunk d'INDICE `i`,
+// Chunk implemente [source.Source] : les octets (zlib ou clairs ; la forme de stockage zstd est
+// decodee ici, cf. stockage.go) du chunk d'INDICE `i`,
 // lu au fichier que le manifeste lui donne. Un chunk manquant au cache est une ERREUR ici —
 // l'appelant qui veut la degradation gracieuse d'un cache partiel passe par [LoadFilm], qui
 // charge les FICHIERS PRESENTS et non les entrees du manifeste. Quand le manifeste porte la
@@ -212,6 +213,16 @@ func ListShortIDs(root string) ([]string, error) {
 }
 
 func chunkName(index int) string { return fmt.Sprintf("chunk_%02d.bin", index) }
+
+// numeroDuFichier est la réciproque de [chunkName] : le numéro d'un nom de fichier que le cache
+// écrit, et faux pour tout autre nom (un temporaire, une image de recherche rangée dans le dossier).
+func numeroDuFichier(nom string) (int, bool) {
+	var n int
+	if _, err := fmt.Sscanf(nom, "chunk_%d.bin", &n); err != nil || chunkName(n) != nom {
+		return 0, false
+	}
+	return n, true
+}
 
 // OpenChunkDir ouvre le film dont on connait le REPERTOIRE DE CHUNKS.
 //

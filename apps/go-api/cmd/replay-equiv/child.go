@@ -83,7 +83,8 @@ func (c *collecteur) etape(step string, v any) {
 
 // enfantEquivalence cuit UN film et ecrit ses digests. Rend un code du protocole filmproc.
 func enfantEquivalence(ctx context.Context, o options) int {
-	cacheRoot := title.NewPathResolver(o.repoRoot).CacheRootDir()
+	pr := title.NewPathResolver(o.repoRoot)
+	cacheRoot := pr.CacheRootDir() // le verrou machine de décodage vit sous le cache applicatif
 	filmproc.LowerOwnPriority(outilNom)
 	lock, err := filmproc.AcquireSoloWait(ctx, cacheRoot, outilNom, o.film, attenteVerrouMax)
 	if err != nil {
@@ -103,7 +104,7 @@ func enfantEquivalence(ctx context.Context, o options) int {
 		filmproc.EmitPeak(g.Peak())
 	}()
 
-	lignes, err := digestsDuFilm(ctx, o, cacheRoot)
+	lignes, err := digestsDuFilm(ctx, o, pr.FilmArchiveDir())
 	if err != nil {
 		if errors.Is(err, replaybuild.ErrMapNotInCatalog) {
 			slog.WarnContext(ctx, "film ecarte — carte hors catalogue de bornes", "err", err, "film", o.film)
@@ -123,7 +124,7 @@ func enfantEquivalence(ctx context.Context, o options) int {
 }
 
 // digestsDuFilm cuit le film et rend une ligne `etape\tcompte\tsha` par etape observee.
-func digestsDuFilm(ctx context.Context, o options, cacheRoot string) ([]string, error) {
+func digestsDuFilm(ctx context.Context, o options, archiveRoot string) ([]string, error) {
 	factsPath := filepath.Join(dossierEquivalence(o.repoRoot), o.film+".facts.json")
 	faits, err := replaybuild.ReadFactsFile(factsPath)
 	if err != nil {
@@ -155,7 +156,7 @@ func digestsDuFilm(ctx context.Context, o options, cacheRoot string) ([]string, 
 		"cartes", faits.MapNames, "joueurs", len(faits.Players), "variante", faits.GameVariantName,
 		"passe", o.passe)
 	if _, err := b.BuildBytes(ctx, faits.MatchID, faits.MapNames,
-		filmcache.ChunkDir(cacheRoot, o.film), faits.MatchFacts); err != nil {
+		filmcache.ChunkDir(archiveRoot, o.film), faits.MatchFacts); err != nil {
 		return nil, err
 	}
 	if err := verifierLaBrancheServie(o.passe, col.booleens); err != nil {

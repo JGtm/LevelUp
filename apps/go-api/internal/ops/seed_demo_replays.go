@@ -79,7 +79,7 @@ func seedDemoReplays(ctx context.Context, opts SeedDemoOptions, layout titlePkg.
 			continue // un match qui représente deux familles (ex. « véhicules » et son mode) : rangé et indexé une fois
 		}
 		keep[short] = true
-		filmOK := embedDemoFilm(ctx, titlePkg.NewPathResolver(opts.cacheRepoRoot()).CacheRootDir(), films, short)
+		filmOK := embedDemoFilm(ctx, titlePkg.NewPathResolver(opts.cacheRepoRoot()).FilmArchiveDir(), films, short)
 		if filmOK {
 			rep.Films++
 		}

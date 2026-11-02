@@ -178,9 +178,8 @@ func wireTitleHooks(st *bootState) {
 	cfg.ProgressionAfterSync = wire.BuildProgressionAfterSyncHook(reg, cfg)
 
 	// app_release : émission asynchrone d'une notification in-app par joueur si la
-	// version a changé depuis sync_meta.last_seen_app_version. Ne bloque pas le boot ; sous le
-	// contexte des tâches de fond, donc annulée à l'arrêt (ADR 0045 D-4).
-	boot.launch(loopTask(taskAppRelease, false, schedulerCtx, func(c context.Context) {
+	// version a changé depuis sync_meta.last_seen_app_version. Ne bloque pas le boot.
+	boot.launch(appReleaseTask(schedulerCtx, func(c context.Context) {
 		wire.EmitAppReleaseForAllPlayers(c, cfg, reg, cfg.AppVersion)
 	}))
 

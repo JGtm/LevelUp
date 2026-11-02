@@ -170,6 +170,11 @@ func lookupRefreshToken(ctx context.Context, multiStore *MultiUserTokenStore, ga
 				"gamertag", gamertag)
 			return "", "", ""
 		}
+		if errors.Is(err, ErrTokenFileSealed) {
+			// Déjà journalisé une fois par fichier et par processus par le codec (token_file_codec.go).
+			slog.DebugContext(ctx, "watcher_refresh: fichier de jetons scellé illisible", "gamertag", gamertag)
+			return "", "", ""
+		}
 		slog.ErrorContext(ctx, "watcher_refresh: lecture du store échouée — état anormal (I/O ou JSON corrompu), pas une absence de token",
 			"gamertag", gamertag, "err", err)
 		return "", "", ""

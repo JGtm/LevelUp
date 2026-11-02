@@ -29,6 +29,8 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
+
+	"levelup/go-api/internal/platform/auth/tokencipher"
 )
 
 // StoredTokens représente les tokens persistés sur disque.
@@ -40,6 +42,19 @@ type StoredTokens struct {
 	XSTSXUID       string    `json:"xsts_xuid"`
 	XSTSExpiresAt  time.Time `json:"xsts_expires_at"`
 	OAuthExpiresAt time.Time `json:"oauth_expires_at"`
+}
+
+// storedTokensFile est la forme JSON du fichier d'état du watcher : [StoredTokens] à plat, précédé du
+// chiffreur (token_file_codec.go : mêmes règles que les fichiers de jetons par joueur).
+type storedTokensFile struct {
+	Cipher string `json:"cipher,omitempty"`
+	StoredTokens
+}
+
+// sensitiveFields rend les champs que le chiffreur scelle. Toute chaîne secrète ajoutée à StoredTokens
+// DOIT entrer ici ; token_file_codec_test.go refuse une chaîne ni ici ni déclarée non sensible.
+func (t *StoredTokens) sensitiveFields() []*string {
+	return []*string{&t.AccessToken, &t.XSTSToken, &t.XSTSUserHash}
 }
 
 // IsXSTSValid retourne true si le token XSTS est encore valide (avec marge de sécurité).
@@ -60,14 +75,24 @@ func (t *StoredTokens) IsOAuthValid(margin time.Duration) bool {
 
 // TokenStore persiste et lit les tokens sur disque (thread-safe).
 type TokenStore struct {
-	path string
-	mu   sync.RWMutex
+	path   string
+	cipher TokenCipher // jamais nil ; scelle les champs sensibles (token_file_codec.go)
+	mu     sync.RWMutex
 }
 
-// NewTokenStore crée un token store au chemin donné.
+// NewTokenStore crée un token store au chemin donné, avec le chiffreur du processus
+// (tokencipher.Process, comme NewMultiUserTokenStore : un seul endroit décide).
 // Le répertoire parent est créé si nécessaire.
 func NewTokenStore(path string) *TokenStore {
-	return &TokenStore{path: path}
+	return NewTokenStoreWithCipher(path, tokencipher.Process())
+}
+
+// NewTokenStoreWithCipher est NewTokenStore avec un chiffreur explicite (tests). nil vaut `plain`.
+func NewTokenStoreWithCipher(path string, cipher TokenCipher) *TokenStore {
+	if cipher == nil {
+		cipher = tokencipher.Plain()
+	}
+	return &TokenStore{path: path, cipher: cipher}
 }
 
 // Path retourne le chemin du fichier token.
@@ -88,9 +113,14 @@ func (s *TokenStore) Load() (*StoredTokens, error) {
 		return nil, fmt.Errorf("token_store: lecture %s: %w", s.path, err)
 	}
 
-	var tokens StoredTokens
-	if err := json.Unmarshal(data, &tokens); err != nil {
+	var file storedTokensFile
+	if err := json.Unmarshal(data, &file); err != nil {
+		tokenFileUnreadable.Add(unreadableDecode, 1)
 		return nil, fmt.Errorf("token_store: décodage JSON %s: %w", s.path, err)
+	}
+	tokens := file.StoredTokens
+	if err := openFields(s.cipher, file.Cipher, s.path, tokens.sensitiveFields()); err != nil {
+		return nil, err
 	}
 	slog.Debug("token_store: tokens chargés",
 		"path", s.path,
@@ -109,7 +139,13 @@ func (s *TokenStore) Save(tokens *StoredTokens) error {
 		return fmt.Errorf("token_store: mkdir %s: %w", filepath.Dir(s.path), err)
 	}
 
-	data, err := json.MarshalIndent(tokens, "", "  ")
+	file := storedTokensFile{StoredTokens: *tokens}
+	name, err := sealFields(s.cipher, file.sensitiveFields())
+	if err != nil {
+		return fmt.Errorf("token_store: %w", err)
+	}
+	file.Cipher = name
+	data, err := json.MarshalIndent(&file, "", "  ")
 	if err != nil {
 		return fmt.Errorf("token_store: encodage JSON: %w", err)
 	}

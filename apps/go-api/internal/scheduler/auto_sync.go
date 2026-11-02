@@ -249,6 +249,9 @@ type AutoSyncScheduler struct {
 	// actionJournal enregistre la dernière exécution du cycle de sync (C2 —
 	// action « sync_cycle », déclencheur tick/manual). Nil → non journalisé.
 	actionJournal *adminstate.ActionJournal
+	// catchUpCh porte les demandes de rattrapage (RequestCatchUp) jusqu'à la boucle de Run.
+	catchUpCh chan string
+
 	// replayEnqueue met la construction d'un rejeu dans la file durable (chemin
 	// « ouvrier »). Injecté par main.go après le ServiceRegistry ; nil → le
 	// placement « worker » dégrade en « aucune construction ».
@@ -273,7 +276,8 @@ func New(
 		postSyncHistory: make(map[string][]int64),
 		// Défaut no-op : pas de dédup cross-source tant que main.go n'injecte pas
 		// le Coordinator partagé du watcher. Évite un nil-check à chaque appel.
-		SyncGate: sync.NopSyncGate{},
+		SyncGate:  sync.NopSyncGate{},
+		catchUpCh: make(chan string, catchUpQueue),
 	}
 	s.RunnerFactory = s.defaultRunnerFactory
 	s.liveRunner = s.acquireLiveTitleRunner

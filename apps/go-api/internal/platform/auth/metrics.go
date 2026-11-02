@@ -39,3 +39,13 @@ func recordOAuthRefreshOutcome(err error) {
 	oauthRefreshFailTotal.Add(1)
 	oauthRefreshFailByClass.Add(string(ClassifyAuthError(err)), 1)
 }
+
+// Fichiers de jetons que le magasin n'a pas pu lire, par raison (jamais un jeton dans une clé).
+var tokenFileUnreadable = expvar.NewMap("levelup.auth.token_file_unreadable_total")
+
+const (
+	// unreadableDecode : JSON invalide.
+	unreadableDecode = "decode"
+	// unreadableSealed : fichier scellé que le chiffreur du magasin n'ouvre pas (ErrTokenFileSealed).
+	unreadableSealed = "sealed"
+)

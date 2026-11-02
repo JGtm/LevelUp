@@ -96,5 +96,13 @@
 #               `grammar` n a plus de fin de table par sentinelles : `Motif64.Tete/AvecTete` et
 #               `SuiteDeUns`, qu elle seule employait, sont retires ; [PremierMotif64] rend les memes
 #               positions pour tout motif sans tete. Aucune lecture d octets ne change.
+#
+#   2026-11-01  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (lot L14, decision D-18). UNE FORME DE
+#               STOCKAGE NEUVE, AUCUNE LECTURE CHANGEE : `zstd.go` apprend a la couche a ecrire et a
+#               lire un chunk du cache en zstd-3 (reconnu a sa magie `28 b5 2f fd`), et `Inflate`
+#               decompresse cette forme comme il decompresse zlib. Pour un chunk brut ou zlib la
+#               sortie est identique a l octet ; un chunk zstd decompresse vers les memes octets que
+#               l entree d ou il vient (preuve : `replay-equiv` identique avant et apres la
+#               recompression d un film). Aucun match deja decode n est candidat a quoi que ce soit.
 source-2026-09-16	4d8427e406555c7cca2bbe0e94c3658a639cb394c4be305a08d7e413ab998913
-source-2026-09-16.2	92ce10aeedc51ceea7d3dc2ebc3b293fdfe9d30673211d586c1e4ebdad6d5087
+source-2026-09-16.2	1110e2ab8d490f020878d5ac1bacfcb4deaaad4027aa208a9eb9eedcb2804415

@@ -1,0 +1,23 @@
+# Refus des réglages composés par le serveur.
+
+# « Ne pas archiver » exige une rétention illimitée des rejeux (la purge suppose une recuisson
+# depuis l'archive des films).
+[settings.film_archive.retention_conflict]
+fr = "Sans archive des films, la rétention des rejeux doit rester illimitée (0) : la purge suppose de pouvoir recuire un rejeu depuis ses films."
+en = "Without a film archive, replay retention must stay unlimited (0): the purge assumes a replay can be rebuilt from its films."
+
+# Le dossier de l'archive doit être un chemin absolu.
+[settings.film_archive.not_absolute]
+fr = "Le dossier de l'archive des films doit être un chemin absolu."
+en = "The film archive folder must be an absolute path."
+
+# Déplacement refusé : le dossier cible contient déjà quelque chose.
+[settings.film_archive.target_not_empty]
+fr = "Le dossier cible n'est pas vide : {dir}. Choisir un dossier vide ou inexistant."
+en = "The target folder is not empty: {dir}. Choose an empty or non-existent folder."
+
+# Déplacement refusé : l'archive actuelle contient des films, que seule la commande de
+# déplacement range (serveur arrêté).
+[settings.film_archive.move_required]
+fr = "L'archive actuelle contient {films} films : les déplacer avec la commande « levelup film archive-move --to <dossier> » (serveur arrêté), qui enregistre ensuite le nouveau dossier."
+en = "The current archive holds {films} films: move them with the \"levelup film archive-move --to <folder>\" command (server stopped), which then saves the new folder."

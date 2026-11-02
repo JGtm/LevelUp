@@ -3,6 +3,8 @@ package main
 import (
 	"errors"
 	"flag"
+	"os"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -21,12 +23,10 @@ func TestParseServerFlags(t *testing.T) {
 		{name: "arret sur stdin et mode vide", args: []string{"-arret-sur-stdin", "-mode", ""},
 			want: serverFlags{StopOnStdin: true}},
 		{name: "double tiret", args: []string{"--arret-sur-stdin"}, want: serverFlags{StopOnStdin: true}},
-		{name: "mode desktop refuse", args: []string{"-mode", "desktop"},
-			wantErr: "mode non disponible dans cette version", is: errModeUnavailable},
-		{name: "mode refresh-only refuse", args: []string{"-mode=refresh-only"},
-			wantErr: "mode non disponible dans cette version", is: errModeUnavailable},
-		{name: "desktop avec arret sur stdin refuse", args: []string{"-mode", "desktop", "-arret-sur-stdin"},
-			wantErr: "-mode desktop", is: errModeUnavailable},
+		{name: "mode desktop", args: []string{"-mode", "desktop"}, want: serverFlags{Mode: serverModeDesktop}},
+		{name: "desktop avec arret sur stdin", args: []string{"-mode", "desktop", "-arret-sur-stdin"},
+			want: serverFlags{Mode: serverModeDesktop, StopOnStdin: true}},
+		{name: "mode refresh-only", args: []string{"-mode=refresh-only"}, want: serverFlags{Mode: serverModeRefreshOnly}},
 		{name: "mode inconnu", args: []string{"-mode", "wat"}, wantErr: `-mode "wat" inconnu`},
 		{name: "drapeau inconnu", args: []string{"-nope"}, wantErr: "not defined"},
 		{name: "argument positionnel", args: []string{"extra"}, wantErr: `argument inattendu "extra"`},
@@ -67,3 +67,28 @@ func TestParseServerFlags_FilmChildNEstPasUnDrapeauDuServeur(t *testing.T) {
 		t.Error("-film-child accepté par le parseur du serveur : il doit rester l'affaire de replaychild.IsChild")
 	}
 }
+
+// TestParseServerFlags_AucunDrapeauNePorteLeSecret : le secret du lanceur ne voyage JAMAIS en argument
+// de ligne de commande (visible dans la liste des processus) ; il passe par l'environnement
+// (LEVELUP_DESKTOP_SECRET). Aucun drapeau de ce nom n'existe, et le parseur n'en déclare aucun dont le
+// nom évoque un secret (ADR 0045 D-1 et D-3, lot L13.4).
+func TestParseServerFlags_AucunDrapeauNePorteLeSecret(t *testing.T) {
+	for _, name := range []string{"secret", "desktop-secret", "desktop_secret", "session-secret", "token", "password"} {
+		for _, args := range [][]string{{"-" + name, "valeur"}, {"-" + name + "=valeur"}, {"--" + name, "valeur"}} {
+			if _, err := parseServerFlags(args); err == nil || !strings.Contains(err.Error(), "not defined") {
+				t.Errorf("parseServerFlags(%q) = %v, attendu un drapeau inconnu", args, err)
+			}
+		}
+	}
+	src, err := os.ReadFile("flags.go")
+	if err != nil {
+		t.Fatalf("lecture de flags.go : %v", err)
+	}
+	for _, line := range strings.Split(string(src), "\n") {
+		if strings.Contains(line, "fs.") && strings.Contains(line, "Var(") && secretish.MatchString(line) {
+			t.Errorf("flags.go déclare un drapeau qui évoque un secret : %s", strings.TrimSpace(line))
+		}
+	}
+}
+
+var secretish = regexp.MustCompile(`(?i)secret|token|passw`)

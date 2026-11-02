@@ -262,6 +262,7 @@ const nePasDependreDeLaLangue: Record<string, string> = {
   sessionContext: 'contexte de session (identifiants)',
   health: "état du serveur",
   settings: "réglages d'instance (valeurs)",
+  filmArchive: "occupation de l'archive des films (nombres et chemins, aucun libellé)",
   groups: "groupes d'accès (noms saisis par les utilisateurs)",
   changelog: 'un seul fichier, non localisé',
   feedbackSimilarIssues: 'recherche de tickets par texte saisi',

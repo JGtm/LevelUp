@@ -1,0 +1,45 @@
+# Libellés de la coquille desktop (ADR 0045 D-13, A4). Servis par GET /api/v1/desktop/strings
+# dans la langue de la requête. Les états où le serveur ne répond pas (démarrage, arrêt, mort)
+# tirent un catalogue de repli de ce même fichier à la compilation de la coquille : aucun
+# libellé de langue n'est écrit dans le code Rust.
+
+# Écran embarqué, tant que le serveur n'a pas annoncé qu'il est prêt.
+[desktop.starting]
+fr = "LevelUp démarre…"
+en = "LevelUp is starting…"
+
+# Le démarrage est refusé : une autre instance tient les données (verrou d'instance ou fichier
+# de base tenu par un autre processus).
+[desktop.failed.locked]
+fr = "LevelUp est déjà ouvert, ou ses données sont encore utilisées par un autre processus. Fermez l'autre fenêtre puis relancez."
+en = "LevelUp is already open, or its data is still in use by another process. Close the other window and start again."
+
+# Une migration de base a échoué ; la copie faite avant la montée de version reste disponible.
+[desktop.failed.migration_failed]
+fr = "La mise à niveau des données a échoué. Vos données n'ont pas été modifiées ; une copie d'avant la mise à niveau est conservée."
+en = "The data upgrade failed. Your data has not been changed; a copy made before the upgrade is kept."
+
+# Les données sont d'une version plus récente que l'application.
+[desktop.failed.schema_newer]
+fr = "Vos données viennent d'une version plus récente de LevelUp. Installez la dernière version pour les ouvrir."
+en = "Your data comes from a newer version of LevelUp. Install the latest version to open it."
+
+# Aucun port local n'a pu être ouvert.
+[desktop.failed.port]
+fr = "LevelUp n'a pas pu ouvrir de port local. Vérifiez qu'aucun logiciel de sécurité ne le bloque, puis relancez."
+en = "LevelUp could not open a local port. Check that no security software is blocking it, then start again."
+
+# Fermeture demandée : le serveur termine ses écritures avant de s'arrêter.
+[desktop.stopping]
+fr = "LevelUp se ferme…"
+en = "LevelUp is closing…"
+
+# Le serveur s'est arrêté (fermeture terminée ou arrêt inattendu).
+[desktop.stopped]
+fr = "LevelUp est arrêté."
+en = "LevelUp has stopped."
+
+# Mise à jour signée disponible ; {version} est le numéro de la nouvelle version.
+[desktop.update_available]
+fr = "La version {version} de LevelUp est disponible."
+en = "LevelUp version {version} is available."

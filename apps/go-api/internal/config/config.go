@@ -262,7 +262,7 @@ func load(fromRepo bool, launchMode string) (*AppConfig, error) {
 		cfg.EventsConvergenceMax = DefaultEventsConvergenceMax
 	}
 	cfg.BuildWorkerToken = strings.TrimSpace(getEnvOrDefault("LEVELUP_BUILD_WORKER_TOKEN", ""))
-	return resolveDeployment(withDesktopConfig(cfg), launchMode) // profil de déploiement : deployment.go
+	return resolveDesktop(cfg, launchMode) // profil de déploiement (deployment.go) et secret de session desktop (config_desktop.go)
 }
 
 // IsProduction indique si le serveur tourne en mode production (LEVELUP_ENV=production),
@@ -322,7 +322,7 @@ func (c *AppConfig) SecurityWarnings() []string {
 	if strings.EqualFold(c.AuthMode, "none") {
 		w = append(w, "LEVELUP_AUTH_MODE=none : le contrôle d'accès par joueur (ownership xuid) est entièrement désactivé")
 	}
-	if c.corsAllLocalhost() {
+	if c.corsAllLocalhost() && !c.Capabilities.ShellEntryGate { // desktop : l'origine exacte du port lié, pas un défaut oublié
 		w = append(w, "LEVELUP_CORS_ORIGINS non défini : les origines CORS/CSRF autorisées sont limitées à localhost")
 	}
 	if strings.EqualFold(c.CookieSecure, "false") {
@@ -349,7 +349,7 @@ func (c *AppConfig) corsAllLocalhost() bool {
 // pas). Partout : refus d'un mode d'auth ou d'inscription inconnu (config_auth.go). En
 // production du profil hosted : refus d'une configuration non sûre (SecurityWarnings).
 func (c *AppConfig) Validate() error {
-	if err := c.validateModes(); err != nil {
+	if err := c.validateStartup(); err != nil {
 		return err
 	}
 	if !c.refusesUnsafeConfig() { // ni démo ni desktop : deployment.go

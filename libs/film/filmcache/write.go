@@ -24,6 +24,12 @@ package filmcache
 // chunk (`size_bytes`), que le lecteur compare (cf. [ErrChunkTronque]) ; un manifeste historique
 // sans taille reste lisible et n'est pas rempli apres coup.
 //
+// UN CHUNK S'ECRIT EN ZSTD-3 (decision D-18, 2026-11-01) quand cela le raccourcit, brut sinon.
+// `size_bytes` et le test « deja entier » parlent de la taille LOGIQUE — celle des octets recus,
+// pas celle du fichier (cf. stockage.go) : un chunk deja present en zstd se reconnait et ne se
+// reecrit pas. Les chunks existants se recompressent par [Recompresser], commande de
+// l'utilisateur, jamais automatiquement.
+//
 // SEUL UN FILM FINALISE SE VALIDE (lot L3, 2026-09-23 — cf. `film/finalise`). Une liste sans
 // morceau de temps forts est refusee AVANT toute ecriture ([ErrFilmNonFinalise]) : ni
 // manifeste, ni morceau orphelin. Deux manifestes deja presents se remplacent, et eux seuls :
@@ -84,6 +90,9 @@ const (
 	// compteurChunkRemplace : un chunk present sur disque dont la taille ne valait pas celle du
 	// telechargement (ecriture interrompue d'avant l'ecriture atomique) a ete remplace.
 	compteurChunkRemplace = "film_cache_chunk_remplace"
+	// compteurChunkZstd : un chunk a ete ecrit en zstd-3 (D-18). Sans lui la compression serait
+	// invisible, et un chunk ecrit brut faute d'encodeur passerait pour le cas nominal.
+	compteurChunkZstd = "film_cache_chunk_zstd"
 	// compteurManifesteRepare : un manifeste illisible a ete remplace par une liste finalisee.
 	compteurManifesteRepare = "film_cache_manifeste_repare"
 )
@@ -151,19 +160,40 @@ func ecrireChunk(ctx context.Context, dir, shortID string, c WriteChunk) error {
 	path := CheminDuChunk(dir, c.Index)
 	info, err := os.Stat(path)
 	present := err == nil
-	switch {
-	case present && info.Mode().IsRegular() && info.Size() == int64(len(c.Data)):
-		return nil // deja entier : le film est immuable, on ne reecrit pas
-	case !present && !errors.Is(err, os.ErrNotExist):
+	if !present && !errors.Is(err, os.ErrNotExist) {
 		return fmt.Errorf("filmcache: etat du chunk %d de %s : %w", c.Index, shortID, err)
 	}
-	if err := atomicfile.WriteFileStrict(path, c.Data, 0o644); err != nil {
+	var tailleDisque int64
+	if present {
+		tailleDisque = info.Size()
+		if info.Mode().IsRegular() {
+			lu, err := tailleLogiqueFichier(path, tailleDisque)
+			if err == nil && lu == int64(len(c.Data)) {
+				return nil // deja entier : le film est immuable, on ne reecrit pas
+			}
+			if err != nil {
+				slog.WarnContext(ctx, "filmcache: chunk present illisible, remplace",
+					"short_id", shortID, "chunk", c.Index, "err", err)
+			}
+		}
+	}
+	stocke, comprime, err := octetsAEcrire(c.Data)
+	if err != nil {
+		// Le chunk est irremplacable : on le garde tel quel plutot que de ne pas l'archiver.
+		slog.WarnContext(ctx, "filmcache: compression zstd impossible, chunk ecrit tel quel",
+			"short_id", shortID, "chunk", c.Index, "err", err)
+		stocke, comprime = c.Data, false
+	}
+	if err := atomicfile.WriteFileStrict(path, stocke, 0o644); err != nil {
 		return fmt.Errorf("filmcache: ecriture du chunk %d de %s : %w", c.Index, shortID, err)
+	}
+	if comprime {
+		filmobs.IncCounter(compteurChunkZstd)
 	}
 	if present {
 		filmobs.IncCounter(compteurChunkRemplace)
 		slog.WarnContext(ctx, "filmcache: chunk present a la mauvaise taille, remplace",
-			"short_id", shortID, "chunk", c.Index, "taille_disque", info.Size(),
+			"short_id", shortID, "chunk", c.Index, "taille_disque", tailleDisque,
 			"taille_attendue", len(c.Data))
 	}
 	return nil

@@ -15,6 +15,7 @@ import {
   SERVER_STARTUP_MAX_WAIT_MS,
   SERVER_STARTUP_POLL_MS,
   createBootstrapRetryPolicy,
+  isDesktopEntryRequiredError,
   isServerStartFailedError,
   isServerStartingError,
   serverStartFailure,
@@ -159,6 +160,37 @@ function createClockedPolicy() {
 
 const ordinary = () => ({ code: 'bootstrap_error', status: 500, retryable: true })
 const repeat = (n: number, make: () => unknown) => Array.from({ length: n }, make)
+
+const desktopUnauthorized = () => ({
+  code: 'desktop_unauthorized',
+  message: 'entrée de la coquille requise',
+  retryable: false,
+  status: 401,
+})
+
+describe('entrée de la coquille desktop manquante (401 desktop_unauthorized)', () => {
+  it('reconnue par son statut ET son code, jamais comme un démarrage ni un démarrage échoué', () => {
+    expect(isDesktopEntryRequiredError(desktopUnauthorized())).toBe(true)
+    expect(isDesktopEntryRequiredError({ code: 'auth_required', status: 401, retryable: false })).toBe(false)
+    expect(isDesktopEntryRequiredError({ code: 'desktop_unauthorized', status: 403, retryable: false })).toBe(false)
+    expect(isDesktopEntryRequiredError(new TypeError('Failed to fetch'))).toBe(false)
+    expect(isDesktopEntryRequiredError(null)).toBe(false)
+    expect(isServerStartingError(desktopUnauthorized())).toBe(false)
+    expect(isServerStartFailedError(desktopUnauthorized())).toBe(false)
+  })
+
+  it('aucun rejeu', () => {
+    expect(runRetryLoop([desktopUnauthorized()])).toEqual({ delays: [], stoppedAt: 0 })
+  })
+
+  it('libellés de l’écran présents en FR et en EN', () => {
+    for (const key of ['common.root.desktop_entry_required.title', 'common.root.desktop_entry_required.body'] as const) {
+      expect(commonManifest[key].fr).not.toBe('')
+      expect(commonManifest[key].en).not.toBe('')
+      expect(commonManifest[key].fr).not.toBe(commonManifest[key].en)
+    }
+  })
+})
 
 describe('createBootstrapRetryPolicy', () => {
   it('serveur qui démarre : chaque seconde, jusqu’à 120 s mesurées en temps', () => {

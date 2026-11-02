@@ -102,7 +102,8 @@ func TestDeployment_CapacitesParProfil(t *testing.T) {
 		{DeploymentDemo, "", "true", LaunchModeDefault, DeploymentCapabilities{
 			UseAdmin: true, OfferWindowsDownload: true}},
 		{DeploymentDesktop, "", "", LaunchModeDesktop, DeploymentCapabilities{
-			UseOutboundNetwork: true, UpdateApp: true, EditSettings: true, UploadMedia: true}},
+			UseOutboundNetwork: true, UpdateApp: true, EditSettings: true, UploadMedia: true,
+			ShellEntryGate: true, PoolGrantedToLocalUser: true, WakeSequence: true, TokenVault: true}},
 	}
 	for _, c := range cas {
 		t.Run(string(c.profil), func(t *testing.T) {
@@ -207,9 +208,32 @@ func TestDeployment_DesktopEtDemoRefuses(t *testing.T) {
 	}
 }
 
+// TestDeployment_RefreshOnlyResoutLeProfilDesktop : le processus de rafraîchissement agit sur les
+// données de l'utilisateur desktop : même profil, mêmes capacités (dont la séquence de réveil, que
+// seule la capacité commande), avec la démo refusée comme pour desktop.
+func TestDeployment_RefreshOnlyResoutLeProfilDesktop(t *testing.T) {
+	desktop, err := chargerServeur(t, LaunchModeDesktop, "", "", "", "")
+	if err != nil {
+		t.Fatalf("LoadServer desktop : %v", err)
+	}
+	refresh, err := chargerServeur(t, LaunchModeRefreshOnly, "production", "", "xbox", "0.0.0.0")
+	if err != nil {
+		t.Fatalf("LoadServer refresh-only : %v", err)
+	}
+	if refresh.Deployment != DeploymentDesktop || refresh.Capabilities != desktop.Capabilities {
+		t.Errorf("refresh-only = %q %+v, attendu le profil desktop %+v", refresh.Deployment, refresh.Capabilities, desktop.Capabilities)
+	}
+	if refresh.AuthMode != "desktop" || refresh.APIHost != "127.0.0.1" {
+		t.Errorf("refresh-only : auth=%q hôte=%q, attendu desktop et la boucle locale", refresh.AuthMode, refresh.APIHost)
+	}
+	if _, err := chargerServeur(t, LaunchModeRefreshOnly, "", "true", "", ""); err == nil {
+		t.Error("refresh-only avec la démo accepté")
+	}
+}
+
 // TestDeployment_ModeDeLancementInconnuRefuse : seuls les modes livrés entrent dans le résolveur.
 func TestDeployment_ModeDeLancementInconnuRefuse(t *testing.T) {
-	for _, mode := range []string{"refresh-only", "Desktop", "autre"} {
+	for _, mode := range []string{"Desktop", "Refresh-Only", "autre"} {
 		if _, err := chargerServeur(t, mode, "", "", "", ""); err == nil {
 			t.Errorf("mode %q accepté", mode)
 		}

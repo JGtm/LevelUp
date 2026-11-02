@@ -22,6 +22,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useDeploymentCapability } from '@/stores/useDeploymentCapability'
+import { FilmArchivePanel } from '@/features/settings/FilmArchivePanel'
 import { StepDeviceCode } from './StepDeviceCode'
 import { StepPlayer } from './StepPlayer'
 import { StepInitialSync } from './StepInitialSync'
@@ -78,7 +79,14 @@ export function SetupPage() {
           </div>
         </CardHeader>
         <CardContent>
-          {step === 'device_code' && <StepDeviceCode />}
+          {step === 'device_code' && (
+            <div className="space-y-6">
+              {/* Premier lancement : le choix de l'archive des films se fait avant le premier
+                  film téléchargé (ADR 0045 D-12), jamais dans l'installeur. */}
+              <FilmArchivePanel variant="wizard" />
+              <StepDeviceCode />
+            </div>
+          )}
           {step === 'player' && <StepPlayer />}
           {step === 'initial_sync' && currentPlayer && (
             <StepInitialSync playerSlug={currentPlayer.player_slug} />

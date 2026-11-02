@@ -438,6 +438,13 @@ export interface SettingsResponse {
   // distance 0 = son pur, aucun traitement dans le chemin du signal.
   replay_sound_variation_percent: number
   replay_sound_distance_percent: number
+  // --- Archive des films (ADR 0045 D-12) ---
+  // Conserver les chunks des films après la cuisson du rejeu (défaut vrai). Faux : retirés
+  // après cuisson, et la fenêtre de rétention des rejeux doit rester illimitée (0).
+  archive_films: boolean
+  // Dossier de l'archive (chemin absolu) ; '' = emplacement par défaut. Pris en compte au
+  // redémarrage. L'occupation se lit par GET /settings/film-archive.
+  film_archive_dir: string
 }
 
 export type UpdateSettingsRequest = Partial<

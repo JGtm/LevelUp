@@ -20,8 +20,10 @@
 // perd ces jetons : le joueur se reconnecte, rien n'est jamais écrit pour un profil
 // qui n'existe pas.
 //
-// Mise en commun du jeton (ADR 0038) : ce service n'écrit AUCUNE décision. Un jeton
-// sans décision n'entre pas dans le pool public.
+// Mise en commun du jeton (ADR 0038) : ce service n'écrit AUCUNE décision, sauf sous
+// WithLocalPoolGrant (installation desktop à utilisateur unique, ADR 0045 D-8), qui enregistre
+// l'accord du jeton qui n'en porte aucune. Sans cela, un jeton sans décision n'entre pas
+// dans le pool public.
 package service
 
 import (
@@ -70,6 +72,9 @@ type DeviceCodeCompletion struct {
 	// sont gardés en attente, jamais écrits (défaut sûr).
 	gate domain.ProfileGate
 	now  func() time.Time
+	// grantLocalPool : un jeton sans décision de mise en commun reçoit l'accord de
+	// l'utilisateur local (WithLocalPoolGrant).
+	grantLocalPool bool
 
 	mu      sync.Mutex
 	pending map[string]pendingCredentials
@@ -83,6 +88,16 @@ func NewDeviceCodeCompletion(store CredentialStore, gate domain.ProfileGate) *De
 		now:     time.Now,
 		pending: make(map[string]pendingCredentials),
 	}
+}
+
+// WithLocalPoolGrant fait enregistrer, à l'écriture d'un jeton de rafraîchissement qui ne porte
+// aucune décision de mise en commun, l'accord de l'utilisateur local avec la base
+// auth.PoolSharingBasisDesktopSingleUser (ADR 0045 D-8). Une décision existante, accord comme
+// refus, n'est jamais écrasée. À activer par la capacité PoolGrantedToLocalUser du profil, jamais
+// sur une instance à plusieurs utilisateurs.
+func (c *DeviceCodeCompletion) WithLocalPoolGrant(enabled bool) *DeviceCodeCompletion {
+	c.grantLocalPool = enabled
+	return c
 }
 
 // Persist écrit sans condition les jetons de la tentative. Rend false, sans erreur,
@@ -174,14 +189,25 @@ func (c *DeviceCodeCompletion) tokensFromAttempt(attempt *auth.Attempt) *auth.Us
 
 // write fait l'Upsert. Upsert remplace le fichier ENTIER (ADR 0023 : source unique par
 // xuid) : le refresh token durable déjà semé est préservé quand CE flux n'en porte pas,
-// sinon une connexion sans RT effacerait le credential existant.
+// sinon une connexion sans RT effacerait le credential existant. Sous WithLocalPoolGrant,
+// un jeton de rafraîchissement sans décision de mise en commun reçoit l'accord local.
 func (c *DeviceCodeCompletion) write(tokens *auth.UserTokens) error {
 	if c.store == nil {
 		return errors.New("devicecode: magasin de jetons absent")
 	}
-	if tokens.OAuthRefreshToken == "" {
-		if existing, err := c.store.Load(tokens.XUID); err == nil && existing != nil {
-			tokens.OAuthRefreshToken = existing.OAuthRefreshToken
+	existing, err := c.store.Load(tokens.XUID)
+	// Fichier illisible : l'état de la décision est inconnu, l'accord n'est pas posé (une décision
+	// de refus ne doit pas être remplacée sur un doute).
+	decisionKnown := err == nil || errors.Is(err, auth.ErrUserTokensNotFound)
+	if err != nil {
+		existing = nil
+	}
+	if tokens.OAuthRefreshToken == "" && existing != nil {
+		tokens.OAuthRefreshToken = existing.OAuthRefreshToken
+	}
+	if c.grantLocalPool && decisionKnown && tokens.OAuthRefreshToken != "" && (existing == nil || existing.PoolSharing == nil) {
+		tokens.PoolSharing = &auth.PoolSharing{
+			Granted: true, DecidedAt: c.now().UTC(), Basis: auth.PoolSharingBasisDesktopSingleUser,
 		}
 	}
 	return c.store.Upsert(tokens)

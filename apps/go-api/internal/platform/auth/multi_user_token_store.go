@@ -16,7 +16,6 @@
 package auth
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -25,6 +24,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"levelup/go-api/internal/platform/auth/tokencipher"
 )
 
 // UserTokens regroupe les tokens persistés pour un utilisateur Xbox SSO.
@@ -109,17 +110,30 @@ func (u *UserTokens) AuthHeader() string {
 // MultiUserTokenStore persiste les UserTokens d'un ensemble d'utilisateurs.
 // Thread-safe. Chaque fichier `{xuid}.json` est écrit/lu de manière atomique.
 type MultiUserTokenStore struct {
-	dir string
-	mu  sync.RWMutex
+	dir    string
+	cipher TokenCipher // jamais nil ; scelle les champs sensibles (token_file_codec.go)
+	mu     sync.RWMutex
 }
 
 // ErrUserTokensNotFound est retourné par Load quand aucun fichier n'existe pour le xuid.
 var ErrUserTokensNotFound = errors.New("multi_user_token_store: user tokens not found")
 
-// NewMultiUserTokenStore crée un MultiUserTokenStore pointant vers le dossier donné.
+// NewMultiUserTokenStore crée un MultiUserTokenStore pointant vers le dossier donné, avec le
+// chiffreur du processus (tokencipher.Process : posé par le chargement de la configuration d'après
+// le profil de déploiement, `plain` tant qu'aucun profil n'est résolu). Tous les constructeurs du
+// dépôt, serveur et outils en ligne de commande, passent par là : un seul endroit décide.
 // Le répertoire est créé avec perms 0700 si absent.
 func NewMultiUserTokenStore(dir string) *MultiUserTokenStore {
-	return &MultiUserTokenStore{dir: dir}
+	return NewMultiUserTokenStoreWithCipher(dir, tokencipher.Process())
+}
+
+// NewMultiUserTokenStoreWithCipher est NewMultiUserTokenStore avec un chiffreur explicite (tests).
+// Un chiffreur nil vaut `plain`.
+func NewMultiUserTokenStoreWithCipher(dir string, cipher TokenCipher) *MultiUserTokenStore {
+	if cipher == nil {
+		cipher = tokencipher.Plain()
+	}
+	return &MultiUserTokenStore{dir: dir, cipher: cipher}
 }
 
 // Dir retourne le chemin du répertoire de stockage.
@@ -198,11 +212,7 @@ func (s *MultiUserTokenStore) loadLocked(xuid string) (*UserTokens, error) {
 		}
 		return nil, fmt.Errorf("multi_user_token_store: lecture %s: %w", path, err)
 	}
-	var t UserTokens
-	if err := json.Unmarshal(data, &t); err != nil {
-		return nil, fmt.Errorf("multi_user_token_store: décodage %s: %w", path, err)
-	}
-	return &t, nil
+	return s.decodeFile(data, path)
 }
 
 // LoadAll scanne le répertoire et retourne tous les tokens persistés, indexés par XUID.
@@ -236,7 +246,7 @@ func (s *MultiUserTokenStore) LoadAll() (map[string]*UserTokens, error) {
 		}
 		t, err := s.loadLocked(xuid)
 		if err != nil {
-			slog.Warn("multi_user_token_store: lecture échouée, fichier ignoré", "xuid", xuid, "err", err)
+			logUnreadableScan("multi_user_token_store: lecture échouée, fichier ignoré", "xuid", xuid, err)
 			continue
 		}
 		result[xuid] = t
@@ -502,8 +512,8 @@ func (s *MultiUserTokenStore) LoadByGamertag(gamertag string) (*UserTokens, erro
 			// watcher_refresh.lookupRefreshToken). Même politique que LoadAll.
 			// Récurrent tant que le fichier est corrompu : c'est voulu, l'anomalie
 			// demande une action humaine.
-			slog.Warn("multi_user_token_store: fichier de tokens illisible, ignoré du scan",
-				"file", name, "dir", s.dir, "err", err)
+			logUnreadableScan("multi_user_token_store: fichier de tokens illisible, ignoré du scan",
+				"file", name, err, "dir", s.dir)
 			unreadableErr = err
 			unreadable++
 			continue
@@ -553,28 +563,28 @@ func (s *MultiUserTokenStore) upsertLocked(tokens *UserTokens) error {
 		return fmt.Errorf("multi_user_token_store: path résolu vide pour xuid=%q", tokens.XUID)
 	}
 
-	if existing, err := s.loadLocked(tokens.XUID); err == nil {
-		if !existing.CreatedAt.IsZero() {
-			tokens.CreatedAt = existing.CreatedAt
-		} else if tokens.CreatedAt.IsZero() {
+	existing, lerr := s.loadLocked(tokens.XUID)
+	switch {
+	case lerr == nil:
+		mergeExistingTokens(tokens, existing)
+	case errors.Is(lerr, ErrTokenFileSealed):
+		// Fichier scellé que ce magasin n'ouvre pas. Un Upsert PARTIEL (sans refresh token) ne peut rien
+		// réparer et écraserait un credential peut-être récupérable (échec d'ouverture passager) :
+		// refusé. Un Upsert qui apporte un refresh token neuf (nouvelle connexion) remplace le fichier.
+		if tokens.OAuthRefreshToken == "" {
+			return fmt.Errorf("multi_user_token_store: écriture partielle refusée sur un fichier scellé illisible: %w", lerr)
+		}
+		slog.Warn("multi_user_token_store: fichier scellé illisible remplacé par une nouvelle connexion",
+			"xuid", tokens.XUID, "err", lerr)
+		fallthrough
+	default:
+		if tokens.CreatedAt.IsZero() {
 			tokens.CreatedAt = time.Now().UTC()
 		}
-		// Merge-preserve du credential COÛTEUX à ré-obtenir : un Upsert PARTIEL
-		// (mirror, link/AddPlayer… qui ne poussent que XSTS/access) ne doit JAMAIS
-		// effacer le refresh_token déjà persisté. Aucun appelant ne le vide
-		// volontairement via Upsert (clear = Delete du fichier). Incident
-		// 2026-06-13/14 : RT e1cb35ab frais écrasé à vide par le mirror PUIS par le
-		// link → migration boot refill un RT mort (39829f7a) → AADSTS70000 en boucle.
-		if tokens.OAuthRefreshToken == "" && existing.OAuthRefreshToken != "" {
-			tokens.OAuthRefreshToken = existing.OAuthRefreshToken
-		}
-		preservePoolSharing(tokens, existing)
-	} else if tokens.CreatedAt.IsZero() {
-		tokens.CreatedAt = time.Now().UTC()
 	}
 	tokens.UpdatedAt = time.Now().UTC()
 
-	data, err := json.MarshalIndent(tokens, "", "  ")
+	data, err := s.encodeFile(tokens)
 	if err != nil {
 		return fmt.Errorf("multi_user_token_store: marshal: %w", err)
 	}
@@ -589,4 +599,23 @@ func (s *MultiUserTokenStore) upsertLocked(tokens *UserTokens) error {
 	}
 
 	return nil
+}
+
+// mergeExistingTokens reporte sur tokens ce qu'un Upsert ne doit pas perdre du fichier existant.
+func mergeExistingTokens(tokens, existing *UserTokens) {
+	if !existing.CreatedAt.IsZero() {
+		tokens.CreatedAt = existing.CreatedAt
+	} else if tokens.CreatedAt.IsZero() {
+		tokens.CreatedAt = time.Now().UTC()
+	}
+	// Merge-preserve du credential COÛTEUX à ré-obtenir : un Upsert PARTIEL
+	// (mirror, link/AddPlayer… qui ne poussent que XSTS/access) ne doit JAMAIS
+	// effacer le refresh_token déjà persisté. Aucun appelant ne le vide
+	// volontairement via Upsert (clear = Delete du fichier). Incident
+	// 2026-06-13/14 : RT e1cb35ab frais écrasé à vide par le mirror PUIS par le
+	// link → migration boot refill un RT mort (39829f7a) → AADSTS70000 en boucle.
+	if tokens.OAuthRefreshToken == "" && existing.OAuthRefreshToken != "" {
+		tokens.OAuthRefreshToken = existing.OAuthRefreshToken
+	}
+	preservePoolSharing(tokens, existing)
 }
