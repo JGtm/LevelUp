@@ -813,6 +813,18 @@ plus les découvertes de P1 qui changent ce que l'utilisateur verra. Pondératio
 Ordre proposé : L20 → L21 → L22 → première release signée (tag) → L23. Chaque lot = une PR vers la release, revue adversariale,
 gate utilisateur sur l'installeur. Décisions de l'utilisateur (2026-11-02) : ordre validé ; L20, L21 et L22 entrent TOUS dans la v8.1.0 (L23 après le tag par nature) ; réglages de L21 off par défaut.
 
+### 9.20 L20 — items
+
+- [x] 20.a Encodeur H.264 sans libx264 : détection des encodeurs au démarrage (`ffmpeg -encoders`, une fois, en cache), ordre `libx264` -> `h264_mf` -> `libopenh264`, options propres à chacun, `media_tooling` exige « un encodeur H.264 parmi la liste » et journalise le retenu, aucun encodeur = erreur typée et transcodage refusé. Témoin : transcodage réel avec le ffmpeg LGPL du lot. FAIT 2026-11-02 : `media.SelectedH264Encoder` (liste `-encoders` lue une fois par chemin de binaire dans `AvailableEncoders`, essai réel sur une image par candidat, repli journalisé, `ErrNoH264Encoder` et transcodage HLS refusé avant tout lancement) ; ordre `libx264` -> `h264_mf` -> `libopenh264`, `h264_mf` et `libopenh264` à débit cible 12M, GOP 240 et images-clés forcées à la durée du segment (pas de preset ni de CRF) ; `media_tooling` n'exige plus libx264, journalise l'encodeur retenu, `check-env` ajoute une ligne. Témoin : `scratchpad/l20/witness_20a_*.log` (ffmpeg LGPL du lot, `h264_mf` puis `libopenh264`, sortie lue par ffprobe).
+- [x] 20.b Fuseau et langue du système au premier lancement (capacité `desktop`, jamais le nom du profil) ; une valeur déjà écrite n'est jamais écrasée ; repli journalisé sur `Europe/Paris`. FAIT 2026-11-02 : capacité `AdoptSystemLocale` (vraie en `desktop` seulement) ; `internal/platform/syslocale` lit le registre (`TimeZoneKeyName`) et `GetUserPreferredUILanguages`, table CLDR 001 de 139 clés Windows vers IANA ; `config.adoptSystemLocale` valide par `time.LoadLocation` (repli journalisé `Europe/Paris`) et pose `UserTimezone` quand app_settings.json n'en porte pas ; `settings.Store.WithSystemDefaults` donne la langue et le fuseau système aux clés ABSENTES (aucune réécriture, une valeur écrite gagne). **Défaut trouvé et corrigé dans ce lot** : le serveur n'embarquait pas la base de fuseaux, donc `time.LoadLocation` échouait sur un poste sans Go (l'application installée) : `time/tzdata` importé dans `cmd/server`. Témoin : `scratchpad/l20/witness_20b_*.log`.
+- [ ] 20.c Notes de mise à jour dans la langue de la boîte : `latest.json` porte `notes` (FR) + `notes_en` ; la coquille choisit selon la langue.
+- [ ] 20.d Échéance sur le téléchargement de l'installeur (verrou de vérification rendu) ; décision d'abandon pure et testée.
+- [ ] 20.e Toasts et barre de progression limités à la colonne du contenu en bureau (volet des référentiels non couvert).
+- [ ] 20.f `HomeCitationsNearCompletion` pointe sur la route finale `career/commendations`.
+- [ ] 20.g CHECKPOINT périodiques en profil `desktop` (`desktop_checkpoint_interval`, défaut 5 min), par l'écrivain titulaire, journalisés avec durée, échec compté (expvar) ; garde-rail archlint sur le site unique du CHECKPOINT.
+- [ ] 20.h En-têtes de page uniformes (`PageHeader`, huit sections L1, chapeau fr/en par section, hauteur fixe) + garde-rail par layout de section. SUSPENDU le 2026-11-02 : en attente de la décision utilisateur sur la forme de l'en-tête (aucun code écrit).
+- [ ] 20.i (U) Gate utilisateur sur l'installeur issu de la fusion. À l'utilisateur.
+
 ## 10. Découvertes (notées, non traitées)
 
 - **C2 : le témoin T2 « avant » était trompeur (corrigé le 2026-11-01 à la clôture de L1)** : sa recette filtrait

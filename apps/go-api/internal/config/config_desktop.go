@@ -27,6 +27,9 @@ type DesktopConfig struct {
 	// TitleReadyNotifier, avant celle du routeur ; nil en CLI/tests, où la route d'arrêt
 	// répond 404.
 	ShutdownRequester func(reason string)
+	// SystemLocale : fuseau et langue du système, lus sous la capacité AdoptSystemLocale
+	// (valeur zéro sinon). Défaut des clés absentes d'app_settings.json (settings.Store.WithSystemDefaults).
+	SystemLocale SystemLocale
 }
 
 // withDesktopConfig lit les réglages desktop de l'environnement dans cfg et le rend.
@@ -44,6 +47,7 @@ func resolveDesktop(cfg *AppConfig, launchMode string) (*AppConfig, error) {
 		return nil, err
 	}
 	installTokenCipher(cfg)
+	adoptSystemLocale(cfg)
 	if !cfg.Capabilities.ShellEntryGate {
 		return cfg, nil
 	}

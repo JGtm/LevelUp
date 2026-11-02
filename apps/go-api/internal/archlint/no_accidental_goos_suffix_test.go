@@ -59,6 +59,8 @@ var goosSuffixAllowed = map[string]string{
 		"LockFileEx (Win32), ajoute le 2026-11-01 (L12.4, ADR 0045 D-10 ; motif de filelock_windows.go)",
 	"apps/go-api/internal/platform/auth/tokencipher/dpapi_windows.go": "coffre des jetons : CryptProtectData/" +
 		"CryptUnprotectData (DPAPI, Win32), ajoute le 2026-11-02 (L13b, ADR 0045 D-11 ; motif d'instancelock_windows.go)",
+	"apps/go-api/internal/platform/syslocale/syslocale_windows.go": "fuseau et langue du systeme : registre " +
+		"(TimeZoneKeyName) et GetUserPreferredUILanguages (Win32), ajoute le 2026-11-02 (L20.b ; motif de diskfree_windows.go)",
 	"apps/go-api/internal/platform/session/store_purge_windows_test.go": "purge de sessions : comportement " +
 		"de suppression propre a Windows",
 }

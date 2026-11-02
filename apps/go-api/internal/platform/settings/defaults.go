@@ -10,8 +10,18 @@ package settings
 import (
 	"encoding/json"
 
+	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
 )
+
+// absentDefaults : ce qui décide la valeur d'une clé ABSENTE d'app_settings.json au-delà des
+// défauts historiques.
+type absentDefaults struct {
+	// enforced : l'instance applique la propriété des joueurs (WithEnforcedDefaults).
+	enforced bool
+	// system : fuseau et langue du système, posés sous le profil desktop (WithSystemDefaults).
+	system config.SystemLocale
+}
 
 // WithEnforcedDefaults déclare que l'instance applique la propriété des joueurs
 // (authz.Enforced : ni démo, ni auth_mode ouvert). Dans ce mode, une clé ABSENTE
@@ -28,7 +38,18 @@ import (
 // Hors mode appliqué (mono-utilisateur, auth_mode=none, démo), les défauts
 // historiques restent inchangés (false / true).
 func (s *Store) WithEnforcedDefaults(enforced bool) *Store {
-	s.enforcedDefaults = enforced
+	s.absent.enforced = enforced
+	return s
+}
+
+// WithSystemDefaults déclare le fuseau et la langue du système comme défaut des clés
+// `user_timezone` et `lang` ABSENTES d'app_settings.json (profil desktop : un premier lancement
+// hors de France n'hérite plus d'Europe/Paris ni de l'anglais par défaut). Une valeur explicite
+// du fichier gagne toujours ; un champ vide de sys laisse le défaut historique. Aucune
+// réécriture du fichier : la valeur du système suit le système tant que l'utilisateur n'a rien
+// enregistré.
+func (s *Store) WithSystemDefaults(sys config.SystemLocale) *Store {
+	s.absent.system = sys
 	return s
 }
 
@@ -36,11 +57,18 @@ func (s *Store) WithEnforcedDefaults(enforced bool) *Store {
 // AppSettings dérivé de la map raw donnée (rétrocompatibilité fichiers existants).
 // Partagé entre Load et ResolveForTitle pour garder une seule source de vérité.
 //
-// `enforced` (cf. Store.WithEnforcedDefaults, ADR 0035 D5) bascule les deux clés
+// `d.enforced` (cf. Store.WithEnforcedDefaults, ADR 0035 D5) bascule les deux clés
 // de sécurité sur leur défaut SÛR quand la propriété des joueurs est appliquée.
 // Une clé PRÉSENTE dans le fichier n'est jamais touchée, dans un mode comme dans
 // l'autre.
-func applyAbsentDefaults(cfg *AppSettings, raw map[string]json.RawMessage, enforced bool) {
+func applyAbsentDefaults(cfg *AppSettings, raw map[string]json.RawMessage, d absentDefaults) {
+	enforced := d.enforced
+	if _, ok := raw["lang"]; !ok && d.system.Lang != "" {
+		cfg.Lang = d.system.Lang
+	}
+	if _, ok := raw["user_timezone"]; !ok && d.system.Timezone != "" {
+		cfg.UserTimezone = d.system.Timezone
+	}
 	if _, ok := raw["instance_locked"]; !ok && enforced {
 		cfg.InstanceLocked = true
 	}
