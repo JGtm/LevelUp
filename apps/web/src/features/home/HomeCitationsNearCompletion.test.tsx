@@ -7,12 +7,16 @@
  * choisie compte ici.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, screen } from '@testing-library/react'
 
 import { renderWithProviders } from '@/test/render-utils'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { formatMessage } from '@/lib/i18n/format'
+import { homeManifest } from '@/lib/i18n/generated/home'
 
 const useCitationsPage = vi.fn()
 const useCommendationTotals = vi.fn()
+const navigateMock = vi.fn()
 
 vi.mock('@/features/citations/queries', () => ({
   useCitationsPage: (...args: unknown[]) => useCitationsPage(...args),
@@ -22,8 +26,18 @@ vi.mock('@/features/commendations/queries', () => ({
 }))
 vi.mock('@tanstack/react-router', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-router')>()
-  return { ...actual, useNavigate: () => vi.fn() }
+  return { ...actual, useNavigate: () => navigateMock }
 })
+// Tout est maîtrisé : la section se rend (message de félicitations) et son lien « Tout voir » est actif.
+vi.mock('@/lib/citations/normalize', () => ({
+  normalizeInfinitePage: () => ({ categories: [] }),
+  normalizeNativeTotals: () => ({ categories: [] }),
+}))
+vi.mock('@/lib/citations/nearCompletion', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/citations/nearCompletion')>()),
+  selectNearCompletion: () => [],
+  allCitationsMastered: () => true,
+}))
 
 import { HomeCitationsNearCompletion } from './HomeCitationsNearCompletion'
 
@@ -42,6 +56,7 @@ describe('HomeCitationsNearCompletion : choix de la source', () => {
   beforeEach(() => {
     useCitationsPage.mockReset().mockReturnValue({ data: undefined, isLoading: true })
     useCommendationTotals.mockReset().mockReturnValue({ data: undefined, isLoading: true })
+    navigateMock.mockReset()
   })
 
   it('lit les citations calculées quand le titre déclare la capability citations', () => {
@@ -74,5 +89,21 @@ describe('HomeCitationsNearCompletion : choix de la source', () => {
 
     expect(useCitationsPage).toHaveBeenCalled()
     expect(useCommendationTotals).not.toHaveBeenCalled()
+  })
+
+  it('« Tout voir » navigue vers la route finale, jamais vers la redirection', () => {
+    for (const [capabilities, finale] of [
+      [['career', 'citations'], '/{-$lang}/t/$titleSlug/players/$playerSlug/career/citations'],
+      [['career'], '/{-$lang}/t/$titleSlug/players/$playerSlug/career/commendations'],
+    ] as const) {
+      navigateMock.mockReset()
+      setTitle('titre_x', [...capabilities])
+      useCitationsPage.mockReturnValue({ data: {}, isLoading: false })
+      useCommendationTotals.mockReturnValue({ data: {}, isLoading: false })
+      const { unmount } = renderWithProviders(<HomeCitationsNearCompletion playerSlug="p" />)
+      fireEvent.click(screen.getByRole('button', { name: formatMessage(homeManifest, 'home.near_completion.view_all', useAppShellStore.getState().locale) }))
+      expect(navigateMock).toHaveBeenCalledWith(expect.objectContaining({ to: finale }))
+      unmount()
+    }
   })
 })

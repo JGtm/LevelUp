@@ -73,7 +73,7 @@ function InfiniteNearCompletion({ playerSlug }: { playerSlug: string }) {
     <NearCompletionSection
       near={near}
       allDone={allDone}
-      onSeeAll={() => void navigate({ to: '/{-$lang}/t/$titleSlug/players/$playerSlug/citations', params: { titleSlug, playerSlug } })}
+      onSeeAll={() => void navigate({ to: '/{-$lang}/t/$titleSlug/players/$playerSlug/career/citations', params: { titleSlug, playerSlug } })}
     />
   )
 }
@@ -93,7 +93,7 @@ function NativeNearCompletion({ playerSlug }: { playerSlug: string }) {
     <NearCompletionSection
       near={near}
       allDone={allDone}
-      onSeeAll={() => void navigate({ to: '/{-$lang}/t/$titleSlug/players/$playerSlug/commendations', params: { titleSlug, playerSlug } })}
+      onSeeAll={() => void navigate({ to: '/{-$lang}/t/$titleSlug/players/$playerSlug/career/commendations', params: { titleSlug, playerSlug } })}
     />
   )
 }
