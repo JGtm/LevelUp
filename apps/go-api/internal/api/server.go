@@ -727,6 +727,7 @@ func NewRouter(
 		titleRegistry: titleRegistry, humaSharedConfig: humaSharedConfig,
 	})
 	reg := deps.reg
+	deps.browserLogin = newBrowserLogin(cfg, sessionStore, attemptStore, tokenProvider)
 	// /auth/xbox/callback (sans /api/v1). Comme le SPA est servi par ce backend, ce
 	// chemin tombait sur le catch-all `/*` (index.html) → le handler OAuth ne tournait
 	// jamais → l'utilisateur retombait sur /login. On expose donc login + callback AUSSI
@@ -755,6 +756,8 @@ func NewRouter(
 
 	// Entrée de la coquille desktop : GET /desktop/enter (profil desktop seulement).
 	mountDesktopEntry(r, cfg)
+	// Retour de la connexion par le navigateur : GET /auth/xbox/callback (profil desktop seulement).
+	mountBrowserLoginCallback(r, deps.browserLogin)
 
 	// v1 API
 	r.Route(apiV1BasePath, func(r chi.Router) {

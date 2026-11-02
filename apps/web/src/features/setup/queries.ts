@@ -26,6 +26,26 @@ export function useStartDeviceFlow() {
   })
 }
 
+/**
+ * Réponse de GET /auth/xbox/login (profil desktop, capacité `can_login_via_browser`) : la route est
+ * montée à la main, hors du contrat OpenAPI, donc son type vit ici.
+ */
+export interface BrowserLoginStartResponse {
+  attempt_id: string
+  /** Adresse Microsoft à ouvrir dans le navigateur par défaut (jamais dans la fenêtre de l'app). */
+  authorize_url: string
+  /** Durée de validité de la tentative, en secondes. */
+  expires_in: number
+  poll_interval_sec: number
+}
+
+/** Ouvre une tentative de connexion par le navigateur ; son état se sonde comme celui du code d'appareil. */
+export function useStartBrowserLogin() {
+  return useMutation({
+    mutationFn: () => api.get<BrowserLoginStartResponse>('/auth/xbox/login'),
+  })
+}
+
 /** Intervalle de sondage d'une tentative de connexion (ms). */
 const DEVICE_FLOW_POLL_MS = 5_000
 

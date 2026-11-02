@@ -14,9 +14,9 @@ import (
 	"levelup/go-api/internal/service"
 )
 
-func TestDeviceCodeCompletion_AccordLocal_PoseEnEcrivantLeJeton(t *testing.T) {
+func TestAuthCompletion_AccordLocal_PoseEnEcrivantLeJeton(t *testing.T) {
 	store := dcStore(t)
-	c := service.NewDeviceCodeCompletion(store, nil).WithLocalPoolGrant(true)
+	c := service.NewAuthCompletion(store, nil).WithLocalPoolGrant(true)
 	before := time.Now().UTC().Add(-time.Second)
 
 	if ok, err := c.Persist(context.Background(), dcAttempt()); err != nil || !ok {
@@ -39,10 +39,10 @@ func TestDeviceCodeCompletion_AccordLocal_PoseEnEcrivantLeJeton(t *testing.T) {
 }
 
 // Le jeton qui attend la création du profil reçoit lui aussi l'accord, au moment où il est écrit.
-func TestDeviceCodeCompletion_AccordLocal_PoseAuReplayDuJetonEnAttente(t *testing.T) {
+func TestAuthCompletion_AccordLocal_PoseAuReplayDuJetonEnAttente(t *testing.T) {
 	store := dcStore(t)
 	tracked := false
-	c := service.NewDeviceCodeCompletion(store, gateFor(&tracked, nil)).WithLocalPoolGrant(true)
+	c := service.NewAuthCompletion(store, gateFor(&tracked, nil)).WithLocalPoolGrant(true)
 	c.CompleteForTrackedProfile(context.Background(), dcAttempt())
 	if _, err := store.Load(dcXUID); err == nil {
 		t.Fatal("le jeton a été écrit pour un profil non suivi")
@@ -55,7 +55,7 @@ func TestDeviceCodeCompletion_AccordLocal_PoseAuReplayDuJetonEnAttente(t *testin
 }
 
 // Une décision existante n'est jamais écrasée : un refus reste un refus, un accord garde sa base.
-func TestDeviceCodeCompletion_AccordLocal_NEcraseJamaisUneDecision(t *testing.T) {
+func TestAuthCompletion_AccordLocal_NEcraseJamaisUneDecision(t *testing.T) {
 	for _, granted := range []bool{false, true} {
 		store := dcStore(t)
 		if err := store.Upsert(&auth.UserTokens{XUID: dcXUID, Gamertag: "Spartan42", OAuthRefreshToken: "rt-ancien"}); err != nil {
@@ -64,7 +64,7 @@ func TestDeviceCodeCompletion_AccordLocal_NEcraseJamaisUneDecision(t *testing.T)
 		if err := store.SetPoolSharing(dcXUID, granted, auth.PoolSharingBasisUserChoice); err != nil {
 			t.Fatal(err)
 		}
-		c := service.NewDeviceCodeCompletion(store, nil).WithLocalPoolGrant(true)
+		c := service.NewAuthCompletion(store, nil).WithLocalPoolGrant(true)
 		if _, err := c.Persist(context.Background(), dcAttempt()); err != nil {
 			t.Fatal(err)
 		}
@@ -83,9 +83,9 @@ func TestDeviceCodeCompletion_AccordLocal_NEcraseJamaisUneDecision(t *testing.T)
 
 // Sans la capacité (instance hébergée), aucune décision n'est écrite ; sans jeton de rafraîchissement
 // non plus (rien à mettre en commun).
-func TestDeviceCodeCompletion_AccordLocal_AbsentSansCapaciteOuSansRT(t *testing.T) {
+func TestAuthCompletion_AccordLocal_AbsentSansCapaciteOuSansRT(t *testing.T) {
 	store := dcStore(t)
-	if _, err := service.NewDeviceCodeCompletion(store, nil).WithLocalPoolGrant(false).Persist(context.Background(), dcAttempt()); err != nil {
+	if _, err := service.NewAuthCompletion(store, nil).WithLocalPoolGrant(false).Persist(context.Background(), dcAttempt()); err != nil {
 		t.Fatal(err)
 	}
 	if stored, _ := store.Load(dcXUID); stored == nil || stored.PoolSharing != nil {
@@ -95,7 +95,7 @@ func TestDeviceCodeCompletion_AccordLocal_AbsentSansCapaciteOuSansRT(t *testing.
 	store = dcStore(t)
 	a := dcAttempt()
 	a.OAuthRefreshToken = ""
-	if _, err := service.NewDeviceCodeCompletion(store, nil).WithLocalPoolGrant(true).Persist(context.Background(), a); err != nil {
+	if _, err := service.NewAuthCompletion(store, nil).WithLocalPoolGrant(true).Persist(context.Background(), a); err != nil {
 		t.Fatal(err)
 	}
 	if stored, _ := store.Load(dcXUID); stored == nil || stored.PoolSharing != nil {

@@ -5392,8 +5392,12 @@ export interface components {
             Severity: string;
         };
         CapabilityMap: {
+            /** @description L'instance suit plusieurs comptes : les pages qui les confrontent (classements de la communauté) sont offertes. */
+            can_compare_accounts: boolean;
             /** @description Réglages de l'instance modifiables (figés en démo). */
             can_edit_settings: boolean;
+            /** @description Connexion Microsoft dans le navigateur par défaut, sans code à recopier (application de bureau). */
+            can_login_via_browser: boolean;
             can_manage_instance: boolean;
             can_manage_settings: boolean;
             /** @description Téléchargement de l'application Windows proposé. */

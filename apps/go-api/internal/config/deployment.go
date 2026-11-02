@@ -122,6 +122,15 @@ type DeploymentCapabilities struct {
 	// lecture-écriture (`desktop_checkpoint_interval`), pour qu'une coupure brutale du poste ne laisse
 	// qu'un court WAL. Faux sur un serveur hébergé, que le déploiement et l'arrêt propre vident.
 	FrequentCheckpoint bool
+	// LoginViaBrowser : la connexion Microsoft se fait dans le navigateur par défaut, sans code à
+	// recopier (code d'autorisation + PKCE, adresse de retour loopback servie par ce serveur, ADR 0045
+	// D-22). Ouvre GET /auth/xbox/callback sans cookie de la coquille, sous le garde du `state`.
+	// Hors desktop, le code d'appareil ou le SSO du site restent les seuls chemins.
+	LoginViaBrowser bool
+	// CompareAccounts : l'instance suit plusieurs comptes, donc les pages qui les confrontent entre eux
+	// (classements de la communauté) ont de quoi s'afficher. Faux sur une application de bureau, qui
+	// n'en suit qu'un (ADR 0045 D-7).
+	CompareAccounts bool
 }
 
 // DeploymentProfile est embarqué dans AppConfig : le profil résolu et ses capacités.
@@ -219,6 +228,8 @@ func capabilitiesOf(cfg *AppConfig) DeploymentCapabilities {
 		CompactChrome:          desktop,
 		AdoptSystemLocale:      desktop,
 		FrequentCheckpoint:     desktop,
+		LoginViaBrowser:        desktop,
+		CompareAccounts:        !desktop,
 	}
 }
 

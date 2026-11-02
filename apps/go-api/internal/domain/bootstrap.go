@@ -47,6 +47,8 @@ type CapabilityMap struct {
 	CanEditSettings         bool `json:"can_edit_settings" doc:"Réglages de l'instance modifiables (figés en démo)."`
 	CanUploadMedia          bool `json:"can_upload_media" doc:"Dépôt de captures (refusé en démo)."`
 	CanUseCompactChrome     bool `json:"can_use_compact_chrome" doc:"Chrome d'application de bureau : barre latérale, fenêtre À propos, accueil sans image de couverture."`
+	CanLoginViaBrowser      bool `json:"can_login_via_browser" doc:"Connexion Microsoft dans le navigateur par défaut, sans code à recopier (application de bureau)."`
+	CanCompareAccounts      bool `json:"can_compare_accounts" doc:"L'instance suit plusieurs comptes : les pages qui les confrontent (classements de la communauté) sont offertes."`
 
 	// Deployment : nom du profil de déploiement, pour l'affichage et le diagnostic SEULEMENT.
 	Deployment string `json:"deployment" enum:"hosted,desktop,demo,dev" doc:"Profil de déploiement (affichage et diagnostic ; ne jamais brancher dessus)."`

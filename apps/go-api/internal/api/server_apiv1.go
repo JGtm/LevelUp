@@ -108,6 +108,9 @@ type apiV1Deps struct {
 	jobStore              *jobs_platform.Store
 	titleRegistry         *titlePkg.Registry
 	backupScheduler       *duckdbbackup.Scheduler
+	// browserLogin : connexion par le navigateur (profil desktop, nil ailleurs) ; ses deux routes se
+	// montent l'une sous /api/v1, l'autre à la racine (server_desktop.go).
+	browserLogin *handlers.BrowserLoginHandler
 	// healthHandler : sonde publique (racine) ET détail admin (/admin/health).
 	healthHandler *handlers.HealthHandler
 	// humaSharedConfig : LE document OpenAPI PARTAGÉ (V72-01 / H1). Toutes les routes
@@ -364,7 +367,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	deviceCodeProfileGate := func(gctx context.Context, titleSlug, xuid string) bool {
 		ok, err := cfg.HasTrackedProfile(titleSlug, xuid)
 		if err != nil {
-			slog.ErrorContext(gctx, "devicecode: lecture de db_profiles.json échouée — profil réputé non suivi",
+			slog.ErrorContext(gctx, "auth_completion: lecture de db_profiles.json échouée — profil réputé non suivi",
 				"err", err, "title_slug", titleSlug, "xuid", xuid)
 			return false
 		}
@@ -376,14 +379,14 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	deviceCodeTokenGate := func(gctx context.Context, _ string, xuid string) bool {
 		ok, err := cfg.HasDeclaredProfile(xuid)
 		if err != nil {
-			slog.ErrorContext(gctx, "devicecode: lecture de db_profiles.json échouée — profil réputé non déclaré",
+			slog.ErrorContext(gctx, "auth_completion: lecture de db_profiles.json échouée — profil réputé non déclaré",
 				"err", err, "xuid", xuid)
 			return false
 		}
 		return ok
 	}
 	// Installation desktop à utilisateur unique : l'accord de mise en commun est posé d'office (ADR 0045 D-8).
-	deviceCodeCompletion := service.NewDeviceCodeCompletion(authStore, deviceCodeTokenGate).
+	deviceCodeCompletion := service.NewAuthCompletion(authStore, deviceCodeTokenGate).
 		WithLocalPoolGrant(cfg.Capabilities.PoolGrantedToLocalUser)
 	var xboxLinkStrategy auth_platform.LinkStrategy
 	if cfg.AuthMode == "xbox" {
@@ -408,10 +411,11 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		// Mode "none" / mot de passe : la stratégie historique lie l'identité Halo à
 		// un compte déjà connecté ; la connexion réussie persiste en plus le jeton
 		// (profil suivi) ou le garde jusqu'à la création du profil.
-		authHandler.WithLinkStrategy(service.NewDeviceCodeLinkStrategy(
+		authHandler.WithLinkStrategy(service.NewAuthLinkStrategy(
 			auth_platform.NewPasswordLinkStrategy(users), deviceCodeCompletion))
 	}
 	authHandler.MountDeviceFlow(r, apiOpt) // POST /auth/device-flow/start + GET /auth/device-flow/{attempt_id} (Huma)
+	mountBrowserLoginStart(r, d.browserLogin, apiOpt)
 
 	// PR 4 — Authorization Code Flow SSO Xbox (UX redirect, plus aboutie que
 	// le Device Code). Enregistré uniquement en mode "xbox" + redirect URI

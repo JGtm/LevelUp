@@ -1,5 +1,8 @@
 /**
- * StepDeviceCode — étape 1 du wizard SetupPage : Device Code Flow Microsoft.
+ * StepDeviceCode — étape 1 du wizard SetupPage : connexion Microsoft.
+ *
+ * Application de bureau (capacité `can_login_via_browser`) : le navigateur par défaut, sans code
+ * (BrowserLoginPanel) ; le Device Code Flow reste le secours, et le chemin unique ailleurs.
  *
  * P8.4 (revue 2026-04-29) : extrait de SetupPage.tsx (~145L).
  */
@@ -17,6 +20,8 @@ import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 import { isDemoRefusal } from '@/lib/api/demoReadOnly'
 import { deviceFlowFailureKey } from '@/features/auth/loginError'
+import { useDeploymentCapability } from '@/stores/useDeploymentCapability'
+import { BrowserLoginPanel } from './BrowserLoginPanel'
 
 /** Statut d'un démarrage refusé par le plafond de connexions en cours (serveur ou nginx). */
 const HTTP_TOO_MANY_REQUESTS = 429
@@ -27,6 +32,14 @@ const HTTP_TOO_MANY_REQUESTS = 429
 const MAX_AUTO_RECOVERY = 3
 
 export function StepDeviceCode() {
+  const canLoginViaBrowser = useDeploymentCapability('can_login_via_browser')
+  const [useCode, setUseCode] = useState(false)
+  if (canLoginViaBrowser && !useCode) return <BrowserLoginPanel onUseDeviceCode={() => setUseCode(true)} />
+  return <DeviceCodePanel />
+}
+
+/** Connexion par code d'appareil : le code à recopier sur la page Microsoft. */
+function DeviceCodePanel() {
   const currentAttemptId = useSetupFlowStore((s) => s.currentAttemptId)
   const setCurrentAttemptId = useSetupFlowStore((s) => s.setCurrentAttemptId)
   const deviceFlowUserCode = useSetupFlowStore((s) => s.deviceFlowUserCode)

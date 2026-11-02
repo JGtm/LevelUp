@@ -66,6 +66,15 @@ type Attempt struct {
 	// Référence interne au Device Code Flow (jamais exposé)
 	DevFlow DeviceFlow
 
+	// Connexion par le navigateur (attempt_browser.go) : Browser distingue la tentative du code
+	// d'appareil ; BrowserState et CodeVerifier sont des secrets de la poignée de main, jamais
+	// exposés, effacés dès que le retour de Microsoft les a consommés ; Locale est la langue de la
+	// page qui a lancé la connexion, celle de la page de retour (le navigateur externe n'en envoie pas).
+	Browser      bool
+	BrowserState string
+	CodeVerifier string
+	Locale       string
+
 	// HaloTokens contient les tokens Halo obtenus après ExchangeAccessToken.
 	// Transférés en session lors du prochain GetDeviceFlowStatus.
 	SpartanToken     string
@@ -89,6 +98,7 @@ type AttemptStore struct {
 	mu        sync.RWMutex
 	attempts  map[string]*Attempt // clé : attempt_id
 	bySession map[string]string   // session_id → attempt_id (pour single-flight)
+	byState   map[string]string   // state OAuth → attempt_id (connexion par le navigateur)
 	ttl       time.Duration       // durée de vie max d'une tentative (purge lazy)
 }
 
@@ -106,6 +116,7 @@ func NewAttemptStoreWithTTL(ttl time.Duration) *AttemptStore {
 	return &AttemptStore{
 		attempts:  make(map[string]*Attempt),
 		bySession: make(map[string]string),
+		byState:   make(map[string]string),
 		ttl:       ttl,
 	}
 }
@@ -129,6 +140,9 @@ func (s *AttemptStore) purgeExpiredLocked() int {
 			if s.bySession[a.SessionID] == id {
 				delete(s.bySession, a.SessionID)
 			}
+			if a.BrowserState != "" {
+				delete(s.byState, a.BrowserState)
+			}
 			removed++
 		}
 	}
@@ -147,8 +161,10 @@ func (s *AttemptStore) GetOrCreate(sessionID, ip string) (*Attempt, bool, error)
 	// Purge lazy : borne la mémoire et évite de renvoyer une tentative périmée.
 	s.purgeExpiredLocked()
 
+	// Une tentative de connexion par le navigateur n'est jamais resservie à un démarrage de
+	// code d'appareil : elle n'a pas de code à rendre, le démarrage attendrait en vain.
 	if id, ok := s.bySession[sessionID]; ok {
-		if a := s.attempts[id]; a != nil && a.Status == AttemptStatusPending {
+		if a := s.attempts[id]; a != nil && a.Status == AttemptStatusPending && !a.Browser {
 			return a, false, nil
 		}
 	}

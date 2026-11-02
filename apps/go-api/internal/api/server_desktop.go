@@ -11,12 +11,21 @@ import (
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/config"
+	auth_platform "levelup/go-api/internal/platform/auth"
+	session_platform "levelup/go-api/internal/platform/session"
 )
 
 // desktopGateFor construit l'entrée de la coquille du port lié de cfg (SetBoundPort a déjà posé le
 // port ; la clé du cookie est le secret de session du fichier).
+//
+// Sous la capacité LoginViaBrowser, le retour de Microsoft (GET /auth/xbox/callback) est la seule route
+// qui passe sans cookie : le navigateur par défaut n'a pas celui de la coquille.
 func desktopGateFor(cfg *config.AppConfig) *middleware.DesktopGate {
-	return middleware.NewDesktopGate(cfg.DesktopAuthority(), cfg.APIPort, cfg.SessionSecret, cfg.DesktopSecret)
+	g := middleware.NewDesktopGate(cfg.DesktopAuthority(), cfg.APIPort, cfg.SessionSecret, cfg.DesktopSecret)
+	if cfg.Capabilities.LoginViaBrowser {
+		g.AllowBrowserCallback()
+	}
+	return g
 }
 
 // useDesktopGate monte le garde (Host strict puis cookie exigé) sur le routeur racine, sous
@@ -41,5 +50,35 @@ func mountDesktopEntry(r chi.Router, cfg *config.AppConfig) {
 func mountDesktopStrings(r chi.Router, cfg *config.AppConfig, opts ...humacore.MountOption) {
 	if cfg.Capabilities.ShellEntryGate {
 		handlers.NewDesktopStringsHandler().Mount(r, opts...)
+	}
+}
+
+// newBrowserLogin construit le handler de la connexion par le navigateur sous la capacité
+// LoginViaBrowser (nil sinon : aucune route montée). Le port est celui que le serveur a lié : c'est
+// lui que porte l'adresse de retour déclarée à Microsoft.
+func newBrowserLogin(
+	cfg *config.AppConfig, sessions *session_platform.Store, attempts *auth_platform.AttemptStore,
+	provider auth_platform.TokenProvider,
+) *handlers.BrowserLoginHandler {
+	if !cfg.Capabilities.LoginViaBrowser {
+		return nil
+	}
+	return handlers.NewBrowserLoginHandler(sessions, attempts, provider, cfg.APIPort)
+}
+
+// mountBrowserLoginStart monte GET /auth/xbox/login (Huma) sous /api/v1 (la page de la coquille l'appelle
+// en fetch avec son cookie) : sans effet quand la connexion par le navigateur n'est pas offerte.
+func mountBrowserLoginStart(r chi.Router, h *handlers.BrowserLoginHandler, opts ...humacore.MountOption) {
+	if h != nil {
+		h.MountStart(r, opts...)
+	}
+}
+
+// mountBrowserLoginCallback monte GET /auth/xbox/callback à la RACINE (l'adresse déclarée côté Azure),
+// derrière LoopbackOnly. Le garde de la coquille la laisse passer sans cookie (AllowBrowserCallback) ;
+// le `state` à usage unique de la tentative est sa protection.
+func mountBrowserLoginCallback(r chi.Router, h *handlers.BrowserLoginHandler) {
+	if h != nil {
+		r.With(middleware.NoStore, middleware.LoopbackOnly).Get(handlers.BrowserLoginCallbackPath, h.Callback)
 	}
 }

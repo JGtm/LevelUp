@@ -228,3 +228,64 @@ func TestDesktopGate_CookieSameSiteLax(t *testing.T) {
 		t.Errorf("cookie = %+v, attendu HttpOnly, Path=/, sans Secure", cookie)
 	}
 }
+
+// callbackReq fait passer une requête de retour de connexion (sans cookie) par le garde ; rend le
+// statut et si le handler aval a été atteint.
+func callbackReq(g *DesktopGate, method, target, host string) (int, bool) {
+	reached := false
+	h := g.Middleware(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		reached = true
+		w.WriteHeader(http.StatusOK)
+	}))
+	req := httptest.NewRequest(method, target, nil)
+	req.Host = host
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	return rec.Code, reached
+}
+
+// Le retour de la connexion par le navigateur passe sans cookie, avec le Host localhost ou 127.0.0.1
+// du port lié, et SEULEMENT pour GET /auth/xbox/callback.
+func TestDesktopGate_RetourDeConnexion_OuvertSansCookieSeulementCommeIlFaut(t *testing.T) {
+	g := newTestGate(time.Now()).AllowBrowserCallback()
+	loopbackName := "localhost:" + strconv.Itoa(gateTestPort)
+
+	for _, host := range []string{loopbackName, gateTestAuthority} {
+		if code, reached := callbackReq(g, http.MethodGet, DesktopBrowserCallbackPath+"?code=c&state=s", host); code != http.StatusOK || !reached {
+			t.Errorf("GET callback, Host %q, sans cookie : %d (atteint=%v), attendu 200", host, code, reached)
+		}
+	}
+	refuses := []struct {
+		nom, method, target, host string
+		want                      int
+	}{
+		{"autre méthode, Host localhost", http.MethodPost, DesktopBrowserCallbackPath, loopbackName, http.StatusMisdirectedRequest},
+		{"HEAD, Host localhost", http.MethodHead, DesktopBrowserCallbackPath, loopbackName, http.StatusMisdirectedRequest},
+		{"autre méthode, Host numérique", http.MethodPost, DesktopBrowserCallbackPath, gateTestAuthority, http.StatusUnauthorized},
+		{"autre chemin, Host localhost", http.MethodGet, "/api/v1/bootstrap", loopbackName, http.StatusMisdirectedRequest},
+		{"racine, Host localhost", http.MethodGet, "/", loopbackName, http.StatusMisdirectedRequest},
+		{"autre chemin, Host numérique", http.MethodGet, "/api/v1/bootstrap", gateTestAuthority, http.StatusUnauthorized},
+		{"autre port", http.MethodGet, DesktopBrowserCallbackPath, "localhost:49556", http.StatusMisdirectedRequest},
+		{"autre nom", http.MethodGet, DesktopBrowserCallbackPath, "evil.example:49555", http.StatusMisdirectedRequest},
+		{"sous-chemin", http.MethodGet, DesktopBrowserCallbackPath + "/x", loopbackName, http.StatusMisdirectedRequest},
+		{"chemin ambigu", http.MethodGet, "//auth/xbox/callback", loopbackName, http.StatusMisdirectedRequest},
+		{"chemin ambigu relatif", http.MethodGet, "/auth/xbox/../xbox/callback", loopbackName, http.StatusMisdirectedRequest},
+	}
+	for _, c := range refuses {
+		if code, reached := callbackReq(g, c.method, c.target, c.host); code != c.want || reached {
+			t.Errorf("%s : %d (atteint=%v), attendu %d sans atteindre l'aval", c.nom, code, reached, c.want)
+		}
+	}
+}
+
+// Sans AllowBrowserCallback (aucune capacité de connexion par le navigateur), la route reste derrière
+// le cookie et le Host strict : le retour n'est ouvert nulle part ailleurs.
+func TestDesktopGate_RetourDeConnexion_FermeSansLaCapacite(t *testing.T) {
+	g := newTestGate(time.Now())
+	if code, reached := callbackReq(g, http.MethodGet, DesktopBrowserCallbackPath, "localhost:"+strconv.Itoa(gateTestPort)); code != http.StatusMisdirectedRequest || reached {
+		t.Errorf("Host localhost sans capacité : %d (atteint=%v), attendu 421", code, reached)
+	}
+	if code, reached := callbackReq(g, http.MethodGet, DesktopBrowserCallbackPath, gateTestAuthority); code != http.StatusUnauthorized || reached {
+		t.Errorf("sans cookie sans capacité : %d (atteint=%v), attendu 401", code, reached)
+	}
+}

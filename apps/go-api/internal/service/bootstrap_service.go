@@ -427,6 +427,8 @@ func buildCapabilities(cfg *config.AppConfig, settings map[string]interface{}) d
 		CanEditSettings:         dc.EditSettings,
 		CanUploadMedia:          dc.UploadMedia,
 		CanUseCompactChrome:     dc.CompactChrome,
+		CanLoginViaBrowser:      dc.LoginViaBrowser,
+		CanCompareAccounts:      dc.CompareAccounts,
 		Deployment:              string(cfg.Deployment),
 	}
 }

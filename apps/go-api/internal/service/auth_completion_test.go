@@ -40,9 +40,9 @@ func gateFor(tracked *bool, seen *[]string) domain.ProfileGate {
 	}
 }
 
-func TestDeviceCodeCompletion_Persist_EcritLeJetonDeRafraichissement(t *testing.T) {
+func TestAuthCompletion_Persist_EcritLeJetonDeRafraichissement(t *testing.T) {
 	store := dcStore(t)
-	c := service.NewDeviceCodeCompletion(store, nil)
+	c := service.NewAuthCompletion(store, nil)
 
 	ok, err := c.Persist(context.Background(), dcAttempt())
 	if err != nil || !ok {
@@ -60,9 +60,9 @@ func TestDeviceCodeCompletion_Persist_EcritLeJetonDeRafraichissement(t *testing.
 	}
 }
 
-func TestDeviceCodeCompletion_Persist_RTSeulSansXSTS(t *testing.T) {
+func TestAuthCompletion_Persist_RTSeulSansXSTS(t *testing.T) {
 	store := dcStore(t)
-	c := service.NewDeviceCodeCompletion(store, nil)
+	c := service.NewAuthCompletion(store, nil)
 	a := dcAttempt()
 	a.XSTSRTAToken = "" // AcquireXSTSForRTA a échoué : le RT, lui, est durable.
 
@@ -75,9 +75,9 @@ func TestDeviceCodeCompletion_Persist_RTSeulSansXSTS(t *testing.T) {
 	}
 }
 
-func TestDeviceCodeCompletion_Persist_RienAEcrire(t *testing.T) {
+func TestAuthCompletion_Persist_RienAEcrire(t *testing.T) {
 	store := dcStore(t)
-	c := service.NewDeviceCodeCompletion(store, nil)
+	c := service.NewAuthCompletion(store, nil)
 	a := dcAttempt()
 	a.XSTSRTAToken, a.OAuthRefreshToken = "", ""
 
@@ -89,12 +89,12 @@ func TestDeviceCodeCompletion_Persist_RienAEcrire(t *testing.T) {
 	}
 }
 
-func TestDeviceCodeCompletion_Persist_PreserveLeRTExistant(t *testing.T) {
+func TestAuthCompletion_Persist_PreserveLeRTExistant(t *testing.T) {
 	store := dcStore(t)
 	if err := store.Upsert(&auth.UserTokens{XUID: dcXUID, Gamertag: "Spartan42", OAuthRefreshToken: "rt-ancien"}); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
-	c := service.NewDeviceCodeCompletion(store, nil)
+	c := service.NewAuthCompletion(store, nil)
 	a := dcAttempt()
 	a.OAuthRefreshToken = ""
 
@@ -110,11 +110,11 @@ func TestDeviceCodeCompletion_Persist_PreserveLeRTExistant(t *testing.T) {
 	}
 }
 
-func TestDeviceCodeCompletion_ProfilSuivi_EcritImmediatement(t *testing.T) {
+func TestAuthCompletion_ProfilSuivi_EcritImmediatement(t *testing.T) {
 	store := dcStore(t)
 	tracked := true
 	var seen []string
-	c := service.NewDeviceCodeCompletion(store, gateFor(&tracked, &seen))
+	c := service.NewAuthCompletion(store, gateFor(&tracked, &seen))
 
 	if !c.CompleteForTrackedProfile(context.Background(), dcAttempt()) {
 		t.Fatal("profil suivi : le magasin doit être écrit")
@@ -128,10 +128,10 @@ func TestDeviceCodeCompletion_ProfilSuivi_EcritImmediatement(t *testing.T) {
 	}
 }
 
-func TestDeviceCodeCompletion_ProfilNonSuivi_RienSurDisqueJusquAuProfil(t *testing.T) {
+func TestAuthCompletion_ProfilNonSuivi_RienSurDisqueJusquAuProfil(t *testing.T) {
 	store := dcStore(t)
 	tracked := false
-	c := service.NewDeviceCodeCompletion(store, gateFor(&tracked, nil))
+	c := service.NewAuthCompletion(store, gateFor(&tracked, nil))
 
 	if c.CompleteForTrackedProfile(context.Background(), dcAttempt()) {
 		t.Fatal("profil non suivi : rien ne doit être écrit")
@@ -151,9 +151,9 @@ func TestDeviceCodeCompletion_ProfilNonSuivi_RienSurDisqueJusquAuProfil(t *testi
 	c.SeedCredentials(context.Background(), dcXUID)
 }
 
-func TestDeviceCodeCompletion_SeedSansJetonEnAttente(t *testing.T) {
+func TestAuthCompletion_SeedSansJetonEnAttente(t *testing.T) {
 	store := dcStore(t)
-	c := service.NewDeviceCodeCompletion(store, nil)
+	c := service.NewAuthCompletion(store, nil)
 
 	c.SeedCredentials(context.Background(), dcXUID)
 	if _, err := store.Load(dcXUID); err == nil {
@@ -161,10 +161,10 @@ func TestDeviceCodeCompletion_SeedSansJetonEnAttente(t *testing.T) {
 	}
 }
 
-func TestDeviceCodeCompletion_SeedNeServtPasUnAutreXUID(t *testing.T) {
+func TestAuthCompletion_SeedNeServtPasUnAutreXUID(t *testing.T) {
 	store := dcStore(t)
 	tracked := false
-	c := service.NewDeviceCodeCompletion(store, gateFor(&tracked, nil))
+	c := service.NewAuthCompletion(store, gateFor(&tracked, nil))
 	c.CompleteForTrackedProfile(context.Background(), dcAttempt())
 
 	c.SeedCredentials(context.Background(), "2535400000000099")
@@ -176,9 +176,9 @@ func TestDeviceCodeCompletion_SeedNeServtPasUnAutreXUID(t *testing.T) {
 	}
 }
 
-func TestDeviceCodeCompletion_SansGate_GardeEnAttente(t *testing.T) {
+func TestAuthCompletion_SansGate_GardeEnAttente(t *testing.T) {
 	store := dcStore(t)
-	c := service.NewDeviceCodeCompletion(store, nil)
+	c := service.NewAuthCompletion(store, nil)
 
 	if c.CompleteForTrackedProfile(context.Background(), dcAttempt()) {
 		t.Fatal("sans porte, le défaut sûr est de ne rien écrire")
@@ -203,7 +203,7 @@ func TestDeviceCodeLinkStrategy_ModeNone_SessionSansCompteEtProfilSuivi(t *testi
 	store := dcStore(t)
 	tracked := true
 	inner := &stubInner{err: auth.ErrSessionNotAuthenticated} // mode "none" : aucun compte local
-	s := service.NewDeviceCodeLinkStrategy(inner, service.NewDeviceCodeCompletion(store, gateFor(&tracked, nil)))
+	s := service.NewAuthLinkStrategy(inner, service.NewAuthCompletion(store, gateFor(&tracked, nil)))
 
 	err := s.OnAuthSuccess(context.Background(), dcAttempt(), &domain.SessionData{})
 	if !errors.Is(err, auth.ErrSessionNotAuthenticated) {
@@ -219,7 +219,7 @@ func TestDeviceCodeLinkStrategy_RefusInterne_NEcritRien(t *testing.T) {
 	store := dcStore(t)
 	tracked := true
 	inner := &stubInner{err: auth.ErrInstanceLocked}
-	s := service.NewDeviceCodeLinkStrategy(inner, service.NewDeviceCodeCompletion(store, gateFor(&tracked, nil)))
+	s := service.NewAuthLinkStrategy(inner, service.NewAuthCompletion(store, gateFor(&tracked, nil)))
 
 	err := s.OnAuthSuccess(context.Background(), dcAttempt(), &domain.SessionData{})
 	if !errors.Is(err, auth.ErrInstanceLocked) {

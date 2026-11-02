@@ -1,12 +1,14 @@
-// Package service — devicecode_completion.go : ce qu'une connexion Microsoft par code
-// d'appareil réussie écrit dans le magasin de jetons (ADR 0023), quel que soit le mode
-// d'authentification.
+// Package service — auth_completion.go : ce qu'une connexion Microsoft réussie écrit dans le
+// magasin de jetons (ADR 0023), quel que soit le mode d'authentification ET le chemin de connexion :
+// code d'appareil, ou navigateur par défaut (code d'autorisation + PKCE, ADR 0045 D-22). Les deux
+// aboutissent à la même tentative autorisée, remise à la session, donc à la même stratégie post-flux
+// et à ce service.
 //
 // POURQUOI. Le jeton de rafraîchissement est la seule credential durable d'un joueur :
 // sans lui le poste n'a plus de jeton au bout d'une heure et le sync s'arrête. Seule la
 // stratégie du mode "xbox" l'écrivait ; en mode "none" (poste seul) la connexion posait
 // la session et laissait le magasin vide. Ce service est le point unique d'écriture
-// après une connexion par code d'appareil : la stratégie SSO l'appelle sans condition
+// après une connexion hors SSO : la stratégie SSO l'appelle sans condition
 // (le compte existe, le jeton rendra le profil utilisable plus tard), la stratégie des
 // autres modes ne l'appelle que pour un profil SUIVI (ADR 0035 D3 : aucune écriture
 // disque pour une identité que rien ne suit).
@@ -63,10 +65,10 @@ type pendingCredentials struct {
 	since  time.Time
 }
 
-// DeviceCodeCompletion écrit les jetons d'une connexion par code d'appareil dans le
+// AuthCompletion écrit les jetons d'une connexion Microsoft aboutie (code d'appareil ou navigateur) dans le
 // magasin, directement (Persist) ou sous la porte "profil suivi" (CompleteForTrackedProfile
 // puis SeedCredentials). Sûr pour un usage concurrent.
-type DeviceCodeCompletion struct {
+type AuthCompletion struct {
 	store CredentialStore
 	// gate : porte "profil suivi" (ADR 0035 D3). nil = aucun profil connu : les jetons
 	// sont gardés en attente, jamais écrits (défaut sûr).
@@ -80,9 +82,9 @@ type DeviceCodeCompletion struct {
 	pending map[string]pendingCredentials
 }
 
-// NewDeviceCodeCompletion crée le service. gate peut être nil si seul Persist sert.
-func NewDeviceCodeCompletion(store CredentialStore, gate domain.ProfileGate) *DeviceCodeCompletion {
-	return &DeviceCodeCompletion{
+// NewAuthCompletion crée le service. gate peut être nil si seul Persist sert.
+func NewAuthCompletion(store CredentialStore, gate domain.ProfileGate) *AuthCompletion {
+	return &AuthCompletion{
 		store:   store,
 		gate:    gate,
 		now:     time.Now,
@@ -95,7 +97,7 @@ func NewDeviceCodeCompletion(store CredentialStore, gate domain.ProfileGate) *De
 // auth.PoolSharingBasisDesktopSingleUser (ADR 0045 D-8). Une décision existante, accord comme
 // refus, n'est jamais écrasée. À activer par la capacité PoolGrantedToLocalUser du profil, jamais
 // sur une instance à plusieurs utilisateurs.
-func (c *DeviceCodeCompletion) WithLocalPoolGrant(enabled bool) *DeviceCodeCompletion {
+func (c *AuthCompletion) WithLocalPoolGrant(enabled bool) *AuthCompletion {
 	c.grantLocalPool = enabled
 	return c
 }
@@ -104,17 +106,17 @@ func (c *DeviceCodeCompletion) WithLocalPoolGrant(enabled bool) *DeviceCodeCompl
 // quand la tentative ne porte rien à écrire (ni jeton de rafraîchissement ni XSTS) ou
 // quand le magasin est absent. Un échec d'écriture est rendu en erreur, sans journal :
 // l'appelant le journalise et décide s'il est bloquant (il ne l'est jamais pour la connexion).
-func (c *DeviceCodeCompletion) Persist(ctx context.Context, attempt *auth.Attempt) (bool, error) {
+func (c *AuthCompletion) Persist(ctx context.Context, attempt *auth.Attempt) (bool, error) {
 	tokens := c.tokensFromAttempt(attempt)
 	if tokens == nil {
-		slog.DebugContext(ctx, "devicecode: ni jeton de rafraîchissement ni XSTS capturés, rien à persister",
+		slog.DebugContext(ctx, "auth_completion: ni jeton de rafraîchissement ni XSTS capturés, rien à persister",
 			"xuid", attempt.XUID)
 		return false, nil
 	}
 	if err := c.write(tokens); err != nil {
 		return false, err
 	}
-	slog.InfoContext(ctx, "devicecode: jetons persistés", "xuid", attempt.XUID, "gamertag", attempt.Gamertag,
+	slog.InfoContext(ctx, "auth_completion: jetons persistés", "xuid", attempt.XUID, "gamertag", attempt.Gamertag,
 		"refresh_token", tokens.OAuthRefreshToken != "", "xsts_expires_at", attempt.XSTSRTAExpiresAt)
 	return true, nil
 }
@@ -122,25 +124,25 @@ func (c *DeviceCodeCompletion) Persist(ctx context.Context, attempt *auth.Attemp
 // CompleteForTrackedProfile persiste les jetons si l'identité a un profil suivi (titre
 // par défaut, comme la stratégie SSO) ; sinon les garde en mémoire pour SeedCredentials.
 // Rend true si le magasin a été écrit.
-func (c *DeviceCodeCompletion) CompleteForTrackedProfile(ctx context.Context, attempt *auth.Attempt) bool {
+func (c *AuthCompletion) CompleteForTrackedProfile(ctx context.Context, attempt *auth.Attempt) bool {
 	tokens := c.tokensFromAttempt(attempt)
 	if tokens == nil {
-		slog.DebugContext(ctx, "devicecode: ni jeton de rafraîchissement ni XSTS capturés, rien à persister",
+		slog.DebugContext(ctx, "auth_completion: ni jeton de rafraîchissement ni XSTS capturés, rien à persister",
 			"xuid", attempt.XUID)
 		return false
 	}
 	if c.gate != nil && c.gate(ctx, title.DefaultSlug, attempt.XUID) {
 		if err := c.write(tokens); err != nil {
-			slog.ErrorContext(ctx, "devicecode: persistance des jetons échouée — le poste perdra son jeton",
+			slog.ErrorContext(ctx, "auth_completion: persistance des jetons échouée — le poste perdra son jeton",
 				"xuid", attempt.XUID, "err", err)
 			return false
 		}
-		slog.InfoContext(ctx, "devicecode: jetons persistés pour un profil suivi",
+		slog.InfoContext(ctx, "auth_completion: jetons persistés pour un profil suivi",
 			"xuid", attempt.XUID, "gamertag", attempt.Gamertag, "refresh_token", tokens.OAuthRefreshToken != "")
 		return true
 	}
 	c.stash(tokens)
-	slog.InfoContext(ctx, "devicecode: aucun profil suivi, jetons gardés en mémoire jusqu'à la création du profil",
+	slog.InfoContext(ctx, "auth_completion: aucun profil suivi, jetons gardés en mémoire jusqu'à la création du profil",
 		"xuid", attempt.XUID, "gamertag", attempt.Gamertag)
 	return false
 }
@@ -149,26 +151,26 @@ func (c *DeviceCodeCompletion) CompleteForTrackedProfile(ctx context.Context, at
 // créé (appelé par l'annuaire, entre la création du profil et le suivi live). Sans
 // jeton en attente (autre administrateur, redémarrage, délai écoulé) c'est un no-op
 // journalisé en debug : le joueur se connectera par le wizard.
-func (c *DeviceCodeCompletion) SeedCredentials(ctx context.Context, xuid string) {
+func (c *AuthCompletion) SeedCredentials(ctx context.Context, xuid string) {
 	tokens := c.takePending(xuid)
 	if tokens == nil {
-		slog.DebugContext(ctx, "devicecode: aucun jeton en attente pour ce profil", "xuid", xuid)
+		slog.DebugContext(ctx, "auth_completion: aucun jeton en attente pour ce profil", "xuid", xuid)
 		return
 	}
 	if err := c.write(tokens); err != nil {
-		slog.ErrorContext(ctx, "devicecode: persistance des jetons en attente échouée — jetons conservés en mémoire",
+		slog.ErrorContext(ctx, "auth_completion: persistance des jetons en attente échouée — jetons conservés en mémoire",
 			"xuid", xuid, "err", err)
 		c.stash(tokens)
 		return
 	}
-	slog.InfoContext(ctx, "devicecode: jetons en attente persistés à la création du profil",
+	slog.InfoContext(ctx, "auth_completion: jetons en attente persistés à la création du profil",
 		"xuid", xuid, "gamertag", tokens.Gamertag, "refresh_token", tokens.OAuthRefreshToken != "")
 }
 
 // tokensFromAttempt construit les UserTokens d'une tentative, ou nil quand elle ne porte
 // ni jeton de rafraîchissement ni XSTS. Le jeton de rafraîchissement suffit : le XSTS
 // RTA (best-effort à la connexion) ne conditionne pas la durabilité du poste.
-func (c *DeviceCodeCompletion) tokensFromAttempt(attempt *auth.Attempt) *auth.UserTokens {
+func (c *AuthCompletion) tokensFromAttempt(attempt *auth.Attempt) *auth.UserTokens {
 	if c.store == nil || attempt == nil || attempt.XUID == "" {
 		return nil
 	}
@@ -191,9 +193,9 @@ func (c *DeviceCodeCompletion) tokensFromAttempt(attempt *auth.Attempt) *auth.Us
 // xuid) : le refresh token durable déjà semé est préservé quand CE flux n'en porte pas,
 // sinon une connexion sans RT effacerait le credential existant. Sous WithLocalPoolGrant,
 // un jeton de rafraîchissement sans décision de mise en commun reçoit l'accord local.
-func (c *DeviceCodeCompletion) write(tokens *auth.UserTokens) error {
+func (c *AuthCompletion) write(tokens *auth.UserTokens) error {
 	if c.store == nil {
-		return errors.New("devicecode: magasin de jetons absent")
+		return errors.New("auth_completion: magasin de jetons absent")
 	}
 	existing, err := c.store.Load(tokens.XUID)
 	// Fichier illisible : l'état de la décision est inconnu, l'accord n'est pas posé (une décision
@@ -215,7 +217,7 @@ func (c *DeviceCodeCompletion) write(tokens *auth.UserTokens) error {
 
 // stash garde les jetons en mémoire (le plus récent d'une identité l'emporte), après
 // avoir purgé les entrées expirées puis, au plafond, la plus ancienne.
-func (c *DeviceCodeCompletion) stash(tokens *auth.UserTokens) {
+func (c *AuthCompletion) stash(tokens *auth.UserTokens) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	now := c.now()
@@ -238,7 +240,7 @@ func (c *DeviceCodeCompletion) stash(tokens *auth.UserTokens) {
 }
 
 // takePending retire et rend les jetons en attente d'un xuid (nil si absents ou périmés).
-func (c *DeviceCodeCompletion) takePending(xuid string) *auth.UserTokens {
+func (c *AuthCompletion) takePending(xuid string) *auth.UserTokens {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	p, ok := c.pending[xuid]
@@ -252,23 +254,23 @@ func (c *DeviceCodeCompletion) takePending(xuid string) *auth.UserTokens {
 	return p.tokens
 }
 
-// deviceCodeLinkStrategy décore la stratégie d'un mode sans SSO (mot de passe, "none") :
+// authLinkStrategy décore la stratégie d'un mode sans SSO (mot de passe, "none") :
 // après la stratégie interne, la connexion réussie est complétée par le service.
-type deviceCodeLinkStrategy struct {
+type authLinkStrategy struct {
 	inner      auth.LinkStrategy
-	completion *DeviceCodeCompletion
+	completion *AuthCompletion
 }
 
-// NewDeviceCodeLinkStrategy décore inner : les jetons sont persistés (profil suivi) ou
+// NewAuthLinkStrategy décore inner : les jetons sont persistés (profil suivi) ou
 // mis en attente (profil à venir) une fois la stratégie interne passée. Un refus de la
 // stratégie interne (hors ErrSessionNotAuthenticated, qui signale seulement l'absence
 // de compte local à lier) n'écrit rien.
-func NewDeviceCodeLinkStrategy(inner auth.LinkStrategy, completion *DeviceCodeCompletion) auth.LinkStrategy {
-	return &deviceCodeLinkStrategy{inner: inner, completion: completion}
+func NewAuthLinkStrategy(inner auth.LinkStrategy, completion *AuthCompletion) auth.LinkStrategy {
+	return &authLinkStrategy{inner: inner, completion: completion}
 }
 
 // OnAuthSuccess implémente auth.LinkStrategy.
-func (s *deviceCodeLinkStrategy) OnAuthSuccess(ctx context.Context, attempt *auth.Attempt, sess *domain.SessionData) error {
+func (s *authLinkStrategy) OnAuthSuccess(ctx context.Context, attempt *auth.Attempt, sess *domain.SessionData) error {
 	var err error
 	if s.inner != nil {
 		err = s.inner.OnAuthSuccess(ctx, attempt, sess)

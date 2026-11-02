@@ -47,7 +47,7 @@ type WatcherNotifier interface {
 
 // CredentialSeeder écrit dans le magasin de jetons (ADR 0023) les jetons d'une
 // connexion antérieure à la création du profil. Implémenté par
-// *service.DeviceCodeCompletion ; no-op sans jetons en attente pour ce xuid.
+// *service.AuthCompletion ; no-op sans jetons en attente pour ce xuid.
 type CredentialSeeder interface {
 	SeedCredentials(ctx context.Context, xuid string)
 }

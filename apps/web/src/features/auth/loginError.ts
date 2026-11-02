@@ -100,6 +100,13 @@ const DEVICE_FLOW_FAILURE_KEYS: Readonly<Record<string, DeviceFlowFailureKey>> =
   halo_exchange_error: 'common.device_code.err_halo',
   device_flow_acquire_error: 'common.device_code.err_ms',
   identity_missing: 'common.device_code.err_identity',
+  // Connexion par le navigateur (retour de Microsoft, handlers/auth_browser_login.go).
+  oauth_denied: 'common.auth.oauth_denied',
+  state_invalid: 'common.auth.oauth_interrupted',
+  state_expired: 'common.auth.oauth_interrupted',
+  missing_params: 'common.auth.oauth_interrupted',
+  code_exchange_failed: 'common.auth.oauth_exchange_failed',
+  halo_exchange_failed: 'common.auth.oauth_exchange_failed',
 }
 
 /**

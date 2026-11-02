@@ -54,6 +54,7 @@ func (s *AttemptStore) Rebind(attemptID, newSessionID string) {
 
 // clearAttemptSecrets efface les jetons portés par une tentative. L'appelant tient s.mu.
 func clearAttemptSecrets(a *Attempt) {
+	a.CodeVerifier = ""
 	a.SpartanToken = ""
 	a.ClearanceToken = ""
 	a.SpartanExpiresAt = time.Time{}
