@@ -720,8 +720,16 @@ image de couverture de l'accueil « ça ne fait pas app de bureau ». Décision 
 Retours de l'utilisateur à l'installation (17.7 et 18.4 passés le 2026-11-02 : premier lancement, connexion par code,
 arrêt propre, désinstallation avec données conservées, vérifiés dans les journaux) :
 
-- [ ] 19.1 Installeur : après l'extraction, passer seul à la dernière page (crochet NSIS `SetAutoClose true` ou
+- [x] 19.1 Installeur : après l'extraction, passer seul à la dernière page (crochet NSIS `SetAutoClose true` ou
       équivalent, vérifié sur le modèle NSIS de Tauri extrait du CLI) ; témoin : installation réelle.
+      FAIT 2026-11-02 : le modèle extrait du CLI (`@tauri-apps/cli-win32-x64-msvc`) pose `!define
+      MUI_FINISHPAGE_NOAUTOCLOSE` avant la page finale (commentaire du modèle : garder la page d'extraction pour le
+      débogage) ; MUI2 (`Pages/Finish.nsh`) n'émet alors pas son `SetAutoClose true`, et le modèle ne le pose que pour
+      le mode passif (fin de `Section Install`). Correction : crochet `NSIS_HOOK_POSTINSTALL` de `windows/hooks.nsh`
+      = `SetAutoClose true` (instruction d'exécution évaluée à la fin de la section, après le crochet ; un échec garde
+      la page). Vérifié : `.nsi` généré (`target/release/nsis/x64/installer.nsi`) inclut `hooks.nsh` (l.32) et appelle
+      le crochet en fin de `Section Install` (l.3685) ; `e2e-install.ps1` sur l'installeur local : exit 0. Le clic
+      réel de la page d'extraction est vérifié par l'utilisateur (19.5).
 - [ ] 19.2 Liens à nouvel onglet (`target=_blank`, dont le lien de connexion par code `microsoft.com/link`) :
       la fenêtre les envoie au navigateur par défaut (`on_new_window` de Tauri 2.11, même politique que
       `navigation.rs` : hors origine locale et écrans embarqués = navigateur, jamais une seconde fenêtre) ;
