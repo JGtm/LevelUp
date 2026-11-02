@@ -108,7 +108,7 @@ fn l_entree_de_demarrage_n_est_ecrite_que_par_le_reglage() {
         );
     }
     let main = lire("src/main.rs");
-    let init = entre(&main, "tauri_plugin_autostart::init(", "))");
+    let init = entre(&main, "tauri_plugin_autostart::Builder::new()", ".build()");
     assert!(
         init.contains("MINIMIZED_ARG"),
         "le plugin d'autostart doit lancer l'application avec l'argument `--minimized` : {init}"

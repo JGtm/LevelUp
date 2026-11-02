@@ -17,6 +17,7 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU16, Ordering};
 use std::sync::{Arc, Mutex};
 
+use levelup_desktop::autostart;
 use levelup_desktop::catalogue;
 use levelup_desktop::events::Toast;
 use levelup_desktop::launch::{self, InitialWindow, MINIMIZED_ARG};
@@ -35,7 +36,6 @@ use levelup_desktop::updater::UpdateHost;
 use tauri::webview::{DownloadEvent, NewWindowResponse};
 use tauri::window::Color;
 use tauri::{AppHandle, Manager, RunEvent, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent};
-use tauri_plugin_autostart::MacosLauncher;
 use tauri_plugin_opener::OpenerExt;
 use tauri_plugin_window_state::StateFlags;
 use toast_tauri::{PluginNotifier, window_state};
@@ -84,10 +84,12 @@ fn main() {
         )
         // Entree de demarrage avec Windows (L21.d) : par utilisateur, jamais ecrite tant que le reglage
         // `start_with_windows` n'est pas actif (`autostart::reconcile`).
-        .plugin(tauri_plugin_autostart::init(
-            MacosLauncher::LaunchAgent,
-            Some(vec![MINIMIZED_ARG]),
-        ))
+        .plugin(
+            tauri_plugin_autostart::Builder::new()
+                .app_name(autostart::ENTRY_NAME)
+                .arg(MINIMIZED_ARG)
+                .build(),
+        )
         // Notifications Windows relayees depuis la cloche (L21.b) : montrees depuis Rust seulement, la page
         // du serveur n'a aucune commande a appeler.
         .plugin(tauri_plugin_notification::init())

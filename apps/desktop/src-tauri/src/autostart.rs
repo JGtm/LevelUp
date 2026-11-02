@@ -8,6 +8,11 @@
 //!
 //! Le plugin est derriere [`AutostartControl`] : les tests branchent un faux, aucune entree reelle n'est creee.
 
+/// Le nom de l'entree de demarrage (valeur de la cle `Run` de l'utilisateur courant). Pose explicitement : le
+/// plugin prendrait sinon le nom du paquet Cargo, et une entree qu'on veut retrouver (a la main, ou par un
+/// futur crochet de desinstallation) doit porter un nom connu.
+pub const ENTRY_NAME: &str = "LevelUp";
+
 /// Ce qui lit et ecrit l'entree de demarrage (le plugin d'autostart dans l'application).
 pub trait AutostartControl {
     /// L'entree de demarrage existe-t-elle ?
