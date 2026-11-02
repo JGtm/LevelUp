@@ -19,6 +19,15 @@ clean machine (plan item L17.7) follows these five steps and records witnesses (
    removed; `%LOCALAPPDATA%\LevelUp` stays, so a reinstall finds the data again. Delete that folder by hand to remove
    everything (it can reach tens of GB because of the film archive).
 
+## Window conveniences
+
+- **References pane.** "References" at the bottom of the sidebar (or `Ctrl+Shift+L`) opens the maps, weapons and medals
+  pane to the right of the page and pushes the page; it stays open from page to page until it is closed (button, `Esc`
+  inside it, or the same shortcut). Drag its left edge, or focus the edge and use the arrow keys (`Shift` for larger
+  steps, `Home` and `End` for the bounds), to resize it from 280 to 640 px; the width is remembered.
+- **Links that open in a new tab** (device-code sign-in, rules of use, "Report a problem") open in the default browser; the
+  window never opens a second window. `desktop.log` records `event=new_window url=<origin only> decision=open|deny`.
+
 ## Automated proof
 
 `powershell -File apps/desktop/scripts/e2e-install.ps1 -Installer <setup.exe>` plays steps 1 to 5 on a throwaway data

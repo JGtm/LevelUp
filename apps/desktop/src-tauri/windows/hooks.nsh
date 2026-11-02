@@ -21,3 +21,12 @@
     RMDir "$LOCALAPPDATA\${PRODUCTNAME}"
   ${EndIf}
 !macroend
+
+; Le modele de Tauri pose MUI_FINISHPAGE_NOAUTOCLOSE (la page d'extraction reste affichee
+; jusqu'a un clic, pour lire le detail en cas d'incident) et ne ferme seul que le mode passif.
+; L'installeur interactif de LevelUp passe de lui-meme a la page finale quand l'extraction a
+; REUSSI : SetAutoClose true est evalue a la fin de la section d'installation, apres ce crochet.
+; Un echec (Abort, erreur de copie) garde la page d'extraction, et son journal, affichee.
+!macro NSIS_HOOK_POSTINSTALL
+  SetAutoClose true
+!macroend

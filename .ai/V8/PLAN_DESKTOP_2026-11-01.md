@@ -661,7 +661,7 @@ Définition : `ResourcesRoot` = la racine du dépôt aujourd'hui (`LEVELUP_RESOU
       `can_offer_windows_download` (aucune capacité neuve), lien « Application Windows » du pied de page conditionné par la
       même capacité, lien vers `releases/latest`, tests Vitest (capacité vraie/fausse x fr/en, pied de page, chemin anonyme).
 - [x] 17.6 **(P, au pilote)** Runs verts ; procédure de sauvegarde de la clé d'updater exécutée (ADR 0045). Premier run Release vert sur la release le 2026-11-02 (desktop-build + desktop-e2e sur runner Windows, sans signature) ; clé sauvegardée hors PC par l'utilisateur et secret `TAURI_SIGNING_PRIVATE_KEY` en place le 2026-11-02 ; le run signé aura lieu au premier tag. Procédure écrite dans l'ADR 0045 (« Implementation notes (L17) »), reports au registre.
-- [ ] 17.7 **(U, à l'utilisateur)** Installation sur une machine vierge, désinstallation, données conservées : témoins. À l'utilisateur, avec 18.4. PRÉPARÉ : mode d'emploi en cinq étapes dans `docs/RUNBOOK_DESKTOP.md`.
+- [x] 17.7 **(U)** PASSÉ le 2026-11-02 (sur ce poste, sans installation préalable ; journaux vérifiés par le pilote) — Installation sur une machine vierge, désinstallation, données conservées : témoins. À l'utilisateur, avec 18.4. PRÉPARÉ : mode d'emploi en cinq étapes dans `docs/RUNBOOK_DESKTOP.md`.
 
 ### 9.17b L18 — Interface bureau (S après maquette validée par U ; EN DERNIER, décision utilisateur du 2026-11-02)
 
@@ -711,9 +711,81 @@ image de couverture de l'accueil « ça ne fait pas app de bureau ». Décision 
       FAIT 2026-11-02 : Vitest `AppShell.chrome`, `SidebarNav`, `NavSectionList`, `AboutDialog`, `NavL2` (bureau),
       `HomePage.compactChrome`, `shellBridge`, `appLinks.thirdParty` ; Playwright `e2e/desktop-chrome.spec.ts` (4 cas, joués
       sur Vite local : verts).
-- [ ] 18.4 **(U, à l'utilisateur)** Gate visuel sur l'application installée.
+- [x] 18.4 **(U)** PASSÉ le 2026-11-02 (retours installeur, lien de connexion, panneaux latéraux → L19) — Gate visuel sur l'application installée.
 - Gate : `cd apps/web && npm run typecheck && npm run lint && npm run test` ; pilote : DevTools WebView2 (titre,
   URL) sur le binaire de dev.
+
+### 9.17c L19 — Confort bureau après le gate visuel (S ; décisions utilisateur du 2026-11-02)
+
+Retours de l'utilisateur à l'installation (17.7 et 18.4 passés le 2026-11-02 : premier lancement, connexion par code,
+arrêt propre, désinstallation avec données conservées, vérifiés dans les journaux) :
+
+- [x] 19.1 Installeur : après l'extraction, passer seul à la dernière page (crochet NSIS `SetAutoClose true` ou
+      équivalent, vérifié sur le modèle NSIS de Tauri extrait du CLI) ; témoin : installation réelle.
+      FAIT 2026-11-02 : le modèle extrait du CLI (`@tauri-apps/cli-win32-x64-msvc`) pose `!define
+      MUI_FINISHPAGE_NOAUTOCLOSE` avant la page finale (commentaire du modèle : garder la page d'extraction pour le
+      débogage) ; MUI2 (`Pages/Finish.nsh`) n'émet alors pas son `SetAutoClose true`, et le modèle ne le pose que pour
+      le mode passif (fin de `Section Install`). Correction : crochet `NSIS_HOOK_POSTINSTALL` de `windows/hooks.nsh`
+      = `SetAutoClose true` (instruction d'exécution évaluée à la fin de la section, après le crochet ; un échec garde
+      la page). Vérifié : `.nsi` généré (`target/release/nsis/x64/installer.nsi`) inclut `hooks.nsh` (l.32) et appelle
+      le crochet en fin de `Section Install` (l.3685) ; `e2e-install.ps1` sur l'installeur local : exit 0. Le clic
+      réel de la page d'extraction est vérifié par l'utilisateur (19.5).
+- [x] 19.2 Liens à nouvel onglet (`target=_blank`, dont le lien de connexion par code `microsoft.com/link`) :
+      la fenêtre les envoie au navigateur par défaut (`on_new_window` de Tauri 2.11, même politique que
+      `navigation.rs` : hors origine locale et écrans embarqués = navigateur, jamais une seconde fenêtre) ;
+      test Rust de la décision ; témoin : clic sur le lien de connexion.
+      FAIT 2026-11-02 : `navigation::decide_new_window` (`OpenExternally` / `Deny`, même politique que `decide` : externe
+      -> navigateur, local, embarqué, blob, `javascript:`, `data:`, `file:` -> refus), `origin_for_log` (origine seule :
+      le lien de connexion porte un code), `external_open_mode` (`LEVELUP_SHELL_OPEN_EXTERNAL=log` remplace l'ouverture du
+      navigateur par le journal, pour les essais) ; `main.rs` : `.on_new_window(...)` renvoie toujours `Deny` et journalise
+      `event=new_window url=<origine> decision=open|deny` puis `event=open_external origin=...`. **Cause réelle du lien
+      muet** : `tauri_plugin_opener::init()` injecte par défaut un script qui attrape le clic sur `target=_blank`,
+      `preventDefault()` puis appelle la commande `open_url` par le pont IPC, refusée à la page du serveur (aucune
+      capacité) : le clic était avalé et `on_new_window` ne voyait jamais le lien (seul `window.open` y arrivait).
+      Correction : `Builder::new().open_js_links_on_click(false)`. Témoin (binaire de débogage, front du poste,
+      DevTools WebView2 9333, clic de souris de confiance sur le lien `microsoft.com/link` de `/setup`) : `desktop.log`
+      `event=new_window url=https://www.microsoft.com decision=open` + `event=open_external origin=https://www.microsoft.com
+      mode=log`, une seule page ; liens `target=_blank` vers `127.0.0.1:<port>`, `levelup-shell.localhost`, `javascript:` :
+      `decision=deny` ; vers `example.org/a?code=SECRET` : `decision=open`, `SECRET` absent du journal (`l19/desktop_l192_temoin.log`).
+      Avant la correction, mêmes clics : aucune ligne. Tests : 5 nouveaux dans `navigation.rs`.
+
+- [x] 19.3 Référentiels en **panneau ancré** (décision utilisateur : option 1) : en profil bureau (capacité
+      `can_use_compact_chrome`), le panneau des référentiels s'ouvre à droite du contenu et le POUSSE (pas de voile,
+      la page se réorganise), largeur redimensionnable et mémorisée (`localStorage`), reste ouvert de page en page
+      tant qu'on ne le ferme pas, champ de recherche en tête (celui du panneau actuel), bouton « Référentiels » au
+      bas de la barre latérale + raccourci clavier ; le site hébergé garde son panneau coulissant actuel.
+      FAIT 2026-11-02 : `AppShell` (capacité vraie) range `AssetDockedPanel` dans la rangée `[barre latérale | contenu | volet]`
+      (il pousse le contenu : `aside` dans le flux, `shrink-0`, largeur en style, aucun voile) et ne monte plus le panneau
+      coulissant ; capacité fausse : `AssetDrawer` et son mini-onglet inchangés, `HelpSplitButton` non touché. Contenu commun
+      `AssetPanelContent` (onglets, recherche, `AssetGrid`/`AssetCard`, requêtes) partagé par le panneau du site et le volet
+      (`searchFirst` : recherche en tête). Poignée `role="separator"` (souris, flèches, Maj = grand pas, Début/Fin), bornes
+      280 à 640 px, borne haute réduite sur fenêtre étroite (`maxPanelWidth` : 240 de barre + 480 de contenu préservés),
+      largeur en `localStorage` `levelup-asset-panel-width` (`panelWidth.ts`, lecture/écriture sous `try/catch`, alerte
+      unique), état ouvert/fermé persisté par le store existant, focus dans la recherche à l'ouverture demandée
+      (`focusToken`, jamais au démarrage), Échap dans le volet le ferme et rend le focus au bouton. Bouton « Référentiels » au
+      pied de la barre latérale + raccourci `Ctrl+Maj+L` (`Ctrl+Maj+R` écarté : rechargement sans cache du moteur ;
+      `Ctrl+Maj+L` sans accélérateur connu, rien dans la page ne l'utilise) en infobulle fr/en. Témoins sur l'application
+      construite (CDP, clics et touches de confiance) : ouverture au bouton (focus dans la recherche), `Ctrl+Maj+L` ferme
+      puis rouvre, Maj+Gauche x3 : 360 -> 552 px et `main` 648 px, Droite 536, Fin 640, Début 280, glisser de 140 px : 280 ->
+      419 px, mémorisé ; navigation Carrière puis Explorer : volet ouvert, même largeur ; rechargement : volet ouvert, focus
+      sur `body` (`l19/s1_ouvert.png`, `s4_page.png`). Tests : `AssetDockedPanel.test.tsx` (13), `panelWidth.test.ts` (6),
+      `AppShell.chrome.test.tsx` (volet frère de la rangée, site inchangé), `SidebarNav.test.tsx`.
+
+- [x] 19.4 « Signaler un problème » : entrée au bas de la barre latérale (à côté de Aide), formulaire actuel, GitHub
+      s'ouvre dans le navigateur (dépend de 19.2).
+      FAIT 2026-11-02 : entrée « Signaler un problème » au pied de `SidebarNav` (`common.shell.nav_feedback`, fr + en),
+      ouvre `useFeedbackDrawerStore` ; le mini-onglet du bord du formulaire est masqué en bureau (capacité). Le formulaire
+      ouvrait GitHub par `window.open(url, '_blank', 'noopener,noreferrer')` : avec `noopener` le retour est TOUJOURS `null`
+      (constaté sur la fenêtre : refus de la nouvelle fenêtre = `null`), donc la branche « fenêtre bloquée » (copie de
+      l'URL, formulaire laissé ouvert) s'exécutait à tort, sur le site aussi ; remplacé par un lien `target="_blank"` cliqué
+      par programme (`openInNewTab`), qui passe par `on_new_window` ; branche de repli et clé `feedback_drawer.popup_blocked`
+      supprimées (code mort). Témoin : formulaire rempli, clic « Ouvrir sur GitHub » : `desktop.log`
+      `event=new_window url=https://github.com decision=open` + `event=open_external origin=https://github.com mode=log`.
+      Tests : `FeedbackDrawer.test.tsx` (lien cliqué, formulaire refermé, mini-onglet masqué en bureau), `openInNewTab.test.ts`,
+      `SidebarNav.test.tsx`.
+
+- [ ] 19.5 **(U)** Gate visuel sur l'installeur issu de la fusion. À l'utilisateur (clic réel de la page d'extraction de l'installeur, volet des référentiels, lien de connexion, signalement).
+- Gate : web `typecheck + lint + test`, Rust `fmt + clippy + test`, `e2e-install.ps1` sur l'installeur local.
 
 ### 9.18 P2 — à planifier à la clôture de P1 (liste fermée des sujets)
 
@@ -991,6 +1063,32 @@ mises à jour (ressources retéléchargées à chaque version).
   **Relevé, non traité** : (a) `HomeCitationsNearCompletion` navigue encore vers la route de redirection `.../commendations` (un
   saut de redirection, sans effet visible) ; (b) le téléchargement de l'installeur n'a pas d'échéance : un flux bloqué garde le
   verrou de vérification (une échéance totale couperait un téléchargement lent légitime ; il faudrait une échéance d'inactivité).
+
+- **L19 (2026-11-02) — relevé, découvertes et témoins.** (a) Modèle NSIS de Tauri (extrait de
+  `cli.win32-x64-msvc.node`, texte en clair) : `!define MUI_FINISHPAGE_NOAUTOCLOSE` juste avant `MUI_PAGE_FINISH` ; MUI2
+  (`Contrib/Modern UI 2/Pages/Finish.nsh`) ne pose alors pas son `SetAutoClose true`, et le modèle ne le pose que pour le
+  mode passif et la mise à jour (fin de `Section Install`) ; aucune option de configuration Tauri n'existe (`bundle.windows.nsis`
+  : `installMode`, `installerHooks`, ...), d'où le crochet `NSIS_HOOK_POSTINSTALL` (`SetAutoClose true`). (b) **La cause du
+  lien `target="_blank"` muet n'était pas l'absence de `on_new_window`** (relevé L16 et L18) : le plugin `opener` injecte
+  par défaut un script de clic qui appelle `open_url` par IPC (refusé à la page : aucune capacité) ; désactivé par
+  `open_js_links_on_click(false)`, voir 19.2. (c) `window.open(url, '_blank', 'noopener,noreferrer')` rend toujours `null` :
+  le formulaire de signalement prenait cela pour « fenêtre bloquée » (copie de l'URL dans le presse-papier, formulaire non
+  refermé) sur le site aussi ; remplacé par un lien cliqué par programme (19.4), garde-rail presse-papier
+  (`useCopyToClipboard.guard.test.ts`) : entrée `FeedbackDrawer.tsx` retirée. (d) Écart de lecture de la demande : les
+  référentiels ne s'ouvraient pas depuis `HelpSplitButton` (aide et notes de version) mais par le mini-onglet vertical du
+  bord droit de `AssetDrawer` ; `HelpSplitButton` est resté intact. (e) **Raccourci** : `Ctrl+Maj+R` est le rechargement sans
+  cache du moteur ; retenu `Ctrl+Maj+L`. Les touches de confiance envoyées par DevTools (CDP) ne passent pas par les
+  accélérateurs natifs du moteur : l'absence de conflit natif repose sur la liste connue des accélérateurs, pas sur un
+  essai ; le défaut est neutralisé (`preventDefault`) par précaution. (f) **Relevé, non traité** : en bureau les toasts
+  (`top-right`) et la barre de progression (`left-60 right-0`) passent au-dessus du volet ancré ; l'infobulle du bouton est le
+  seul endroit où le raccourci est écrit (la page d'aide n'en parle pas). (g) **Observation non expliquée** : au premier
+  lancement du binaire de développement sur `LevelUp-dev`, une capture montrait le volet ouvert avec le focus dans la
+  recherche, alors que `localStorage` le donnait fermé quelques secondes plus tard ; non reproduit ensuite (ouverture par
+  bouton, par raccourci, rechargement : état et focus conformes) ; à surveiller au gate visuel (19.5). Témoins :
+  `scratchpad/l19/` (`desktop_l192_temoin.log`, `desktop_l193_l194_temoin.log`, captures `s1_ouvert.png`, `s2_large.png`,
+  `s3_drag.png`, `s4_page.png`, `s5_feedback.png`, `installer_genere.nsi`).
+- **Revue adversariale L19 (2026-11-02, un relecteur Opus) : 3 constats recevables (2 P1, 1 P2 retenu), 0 P0, corrigés ; 4 trous de tests comblés par des tests de texte.**
+  (C1, P1) doc inversée : les commentaires de `childproc`, de l'archlint `childproc_single_spawn`, de `filmproc/hideconsole_win.go` et du témoin `fenetre_e2e_win_test.go` affirmaient qu'un serveur lancé avec `CREATE_NO_WINDOW` donnait une fenêtre à chaque enfant console ; la mesure du lot dit le contraire (console cachée partagée par les enfants ; seul un parent sans aucune console, `DETACHED_PROCESS`, exécutable `-H windowsgui` ou service, donne une fenêtre par enfant). Les quatre commentaires disent le contrat vrai : aucun enfant n'ouvre de fenêtre quel que soit le mode de lancement du serveur (console visible, cachée, aucune), cas mesurés le 2026-11-02 ; le helper n'explique PAS, à lui seul, une fenêtre vue sur l'application installée. Aucun changement de code. (C2, P1) `SidebarNav` faisait 131 lignes : le pied de barre (Aide, référentiels, signalement, Paramètres, thème, À propos, version) est extrait dans `SidebarFooter.tsx` (chemin, langue et version en props ; stores des deux panneaux lus dans le pied, aucun store nouveau), `SidebarNav` passe à 79 lignes ; tests existants inchangés et verts. (C3, P2) le lien d'exemple de match de `IssueTable` (`target="_blank"` vers une route locale) était muet dans la fenêtre de bureau (nouvelle fenêtre refusée) : sous `can_use_compact_chrome` il navigue dans la même fenêtre (sans `target` ni `rel`), le site hébergé garde le nouvel onglet ; libellé sans « nouvel onglet » en bureau (clé `admin.dq.example_open_here`, fr et en) ; deux tests par capacité. (C4) tests de texte : `tests/textes_de_configuration.rs` (`SetAutoClose true` dans `NSIS_HOOK_POSTINSTALL` ; `.open_js_links_on_click(false)` ; la closure `on_new_window` rend `NewWindowResponse::Deny` en dernier, jamais `Allow` ni `Create` ; pas de runtime Tauri ni d'installeur en test) et `libs/film/filmproc/sansfenetre_source_test.go` (tout lanceur d'enfant du paquet appelle `sansFenetre`, vérifié en échec sans l'appel de `runner.go`).
 
 ## 11. Protocole de reprise de session
 

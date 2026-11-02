@@ -2620,6 +2620,10 @@ en = "Terms of use"
 fr = "À propos"
 en = "About"
 
+[common.shell.nav_feedback]
+fr = "Signaler un problème"
+en = "Report a problem"
+
 [common.shell.sidebar_footer_aria]
 fr = "Aide, paramètres et informations sur l'application"
 en = "Help, settings and application information"

@@ -15,6 +15,7 @@ import { SortableTh } from '@/components/ui/sortable-th'
 import type { AdminDataQualityIssue } from '@/lib/api/types'
 import { playerScopedHref } from '@/lib/title-routing'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useDeploymentCapability } from '@/stores/useDeploymentCapability'
 import { adminAbsoluteTime, adminRelativeTime } from '../format'
 import { useAdminT, useAdminLocale, type TAdmin } from '../useAdminText'
 
@@ -294,9 +295,11 @@ function IssueTablePagination({ pagination, tA }: { pagination: IssuePagination;
 }
 
 /**
- * Liens de match d'exemple (≤3) — ouverture NOUVEL onglet vers la vue de match
- * (player-scopée). match_id tronqué (UUID), complet en title/aria. Sans joueur
- * cible résolu, on affiche l'ID en clair (non cliquable) plutôt que rien.
+ * Liens de match d'exemple (≤3) vers la vue de match (player-scopée), en NOUVEL onglet
+ * sur le site hébergé ; dans la fenêtre de bureau (capacité `can_use_compact_chrome`) la
+ * nouvelle fenêtre est refusée, le lien navigue donc dans la même fenêtre. match_id
+ * tronqué (UUID), complet en title/aria. Sans joueur cible résolu, on affiche l'ID en
+ * clair (non cliquable) plutôt que rien.
  */
 function ExampleMatchLinks({
   ids,
@@ -309,6 +312,8 @@ function ExampleMatchLinks({
   playerSlug: string | undefined
   tA: TAdmin
 }) {
+  const sameWindow = useDeploymentCapability('can_use_compact_chrome')
+  const openLabel = tA(sameWindow ? 'admin.dq.example_open_here' : 'admin.dq.example_open')
   const items = (ids ?? []).slice(0, 3)
   if (items.length === 0) {
     return <span className="text-xs text-muted-foreground">—</span>
@@ -328,10 +333,10 @@ function ExampleMatchLinks({
           <a
             key={id}
             href={playerScopedHref(titleSlug, playerSlug, `/matches/${id}`)}
-            target="_blank"
-            rel="noopener noreferrer"
-            title={`${tA('admin.dq.example_open')} · ${id}`}
-            aria-label={tA('admin.dq.example_open')}
+            target={sameWindow ? undefined : '_blank'}
+            rel={sameWindow ? undefined : 'noopener noreferrer'}
+            title={`${openLabel} · ${id}`}
+            aria-label={openLabel}
             className="font-mono text-xs text-muted-foreground underline decoration-dotted underline-offset-2 transition-colors hover:text-foreground hover:decoration-solid"
           >
             {short}

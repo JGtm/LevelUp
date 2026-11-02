@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"time"
 
+	"levelup/go-api/internal/platform/childproc"
 	"levelup/go-api/internal/platform/slots"
 )
 
@@ -126,7 +127,7 @@ var ffmpegCommand = func(ctx context.Context, args []string) *exec.Cmd {
 	if err != nil {
 		return failedCommand(err)
 	}
-	return exec.CommandContext(ctx, ffmpegBin, args...)
+	return childproc.Command(ctx, ffmpegBin, args...)
 }
 
 // RunFFmpeg lance ffmpeg et attend sa fin en tenant une place du pool demandé, avec le délai

@@ -4,6 +4,8 @@ import (
 	"context"
 	"os/exec"
 	"time"
+
+	"levelup/go-api/internal/platform/childproc"
 )
 
 // ffprobeMaxDuration borne une sonde : un fichier qui bloque ffprobe ne suspend pas la requête
@@ -21,7 +23,7 @@ var ffprobeCommand = func(ctx context.Context, args []string) *exec.Cmd {
 	if err != nil {
 		return failedCommand(err)
 	}
-	return exec.CommandContext(ctx, ffprobeBin, args...)
+	return childproc.Command(ctx, ffprobeBin, args...)
 }
 
 // RunFFprobe lance ffprobe et rend sa sortie standard. Le processus est tué à l'annulation du

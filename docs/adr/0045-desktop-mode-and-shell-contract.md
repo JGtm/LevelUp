@@ -409,6 +409,28 @@ maintainer on a clean machine. A lot without a test at its level is not closed.
   open window and the page state are lost) and needs a return URL validated against the local origin; the no-cors call
   needs neither.
 
+## Implementation notes (L19, 2026-11-02)
+
+- **New-window requests.** The window never opens a second window. `WebviewWindowBuilder::on_new_window` always answers
+  `Deny` and applies the navigation policy through `navigation::decide_new_window`: a link that `decide` would send to the
+  default browser (`OpenExternally`) goes there, everything else (embedded screens, the local server, `blob:`, `javascript:`,
+  `data:`, `file:`) is refused. The log carries `event=new_window url=<origin only> decision=open|deny`: an external URL can
+  carry a code (the device-code sign-in link), so the path and the query are never written. `LEVELUP_SHELL_OPEN_EXTERNAL=log`
+  replaces the browser launch by the log line, for automated runs.
+- **Why `target="_blank"` used to do nothing.** `tauri-plugin-opener` injects by default a script that catches clicks on
+  `target="_blank"` links, calls `preventDefault()` and invokes the `open_url` command over IPC. The server page has no
+  capability, so the invocation is refused and the click was swallowed before the engine asked for a new window (only
+  `window.open` reached `on_new_window`). The plugin is built with `open_js_links_on_click(false)`; the Rust side keeps
+  using `AppHandle::opener()` for the launch. Ctrl+click and Shift+click, which the script also routed, now reach the engine
+  as new-window requests and follow the same policy.
+- **`window.open` and `noopener`.** A refused new window makes `window.open` return `null`, as `noopener` already does in a
+  browser: the web client must not read that value as "blocked". The feedback form opens GitHub through a clicked
+  `target="_blank"` link (`openInNewTab`).
+- **Installer.** Tauri's NSIS template defines `MUI_FINISHPAGE_NOAUTOCLOSE` (the extraction page stays until a click, to
+  read the details after an incident) and only sets `SetAutoClose true` for the passive mode. `NSIS_HOOK_POSTINSTALL`
+  (`windows/hooks.nsh`) sets it for the interactive installer: the setting is evaluated when the install section ends, so a
+  failure (`Abort`) still keeps the page and its log.
+
 ## Consequences
 
 - The server stays one binary for hosted and desktop; what differs is the profile (ADR 0044), the roots (ADR 0008) and

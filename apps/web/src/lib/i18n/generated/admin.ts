@@ -264,6 +264,7 @@ export const adminManifest = {
   "admin.dq.col_sample": { fr: "Exemple de pair_name", en: "Sample pair_name" },
   "admin.dq.counts_section": { fr: "Inconnus restants", en: "Remaining unknowns" },
   "admin.dq.example_open": { fr: "Ouvrir le match (nouvel onglet)", en: "Open match (new tab)" },
+  "admin.dq.example_open_here": { fr: "Ouvrir le match", en: "Open match" },
   "admin.dq.form_cancel": { fr: "Annuler", en: "Cancel" },
   "admin.dq.form_name_in": { fr: "Nom ({language})", en: "Name ({language})" },
   "admin.dq.form_submit": { fr: "Enregistrer", en: "Save" },

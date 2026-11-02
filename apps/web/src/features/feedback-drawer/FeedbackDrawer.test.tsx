@@ -1,6 +1,9 @@
 import { describe, expect, it, beforeEach, vi, afterEach } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '@/test/render-utils'
+import { act } from '@testing-library/react'
+import { desktopCapabilities, testCapabilities } from '@/test/capabilities'
+import { useAppShellStore } from '@/stores/appShellStore'
 import { FeedbackDrawer } from './FeedbackDrawer'
 import { useFeedbackDrawerStore } from './feedbackDrawer.store'
 import { _resetSubmitsForTests } from './rateLimit'
@@ -8,7 +11,7 @@ import { resetCaptureBuffersForTests } from '@/lib/global-capture/buffers'
 import { log } from './_logger'
 
 let originalFetch: typeof window.fetch
-let originalOpen: typeof window.open
+let clickedLinks: HTMLAnchorElement[] = []
 
 beforeEach(() => {
   useFeedbackDrawerStore.setState({ isOpen: false })
@@ -16,16 +19,17 @@ beforeEach(() => {
   resetCaptureBuffersForTests()
   log._resetForTests()
   originalFetch = window.fetch
-  originalOpen = window.open
   window.fetch = vi.fn().mockResolvedValue(
     new Response(JSON.stringify({ items: [], total_count: 0 }), { status: 200 }),
   ) as typeof window.fetch
-  window.open = vi.fn().mockReturnValue({ focus() {} } as unknown as Window) as typeof window.open
+  clickedLinks = []
+  vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+    clickedLinks.push(this)
+  })
 })
 
 afterEach(() => {
   window.fetch = originalFetch
-  window.open = originalOpen
   vi.restoreAllMocks()
 })
 
@@ -50,6 +54,25 @@ describe('FeedbackDrawer — rendu et accessibilité', () => {
   })
 })
 
+describe('FeedbackDrawer — application de bureau', () => {
+  afterEach(() => {
+    act(() => useAppShellStore.setState({ capabilities: null }))
+  })
+
+  it('le mini-onglet du bord est masqué : l’entrée est au pied de la barre latérale', () => {
+    act(() => useAppShellStore.setState({ capabilities: testCapabilities(desktopCapabilities()) }))
+    renderWithProviders(<FeedbackDrawer />)
+    expect(screen.getByRole('button', { name: /Envoyer un retour/i }).className).toMatch(/(^|\s)hidden(\s|$)/)
+    expect(screen.getByRole('button', { name: /Envoyer un retour/i }).className).not.toMatch(/sm:flex/)
+  })
+
+  it('sur le site, le mini-onglet reste affiché dès sm', () => {
+    act(() => useAppShellStore.setState({ capabilities: testCapabilities() }))
+    renderWithProviders(<FeedbackDrawer />)
+    expect(screen.getByRole('button', { name: /Envoyer un retour/i }).className).toMatch(/sm:flex/)
+  })
+})
+
 describe('FeedbackDrawer — interactions', () => {
   it("Escape ferme le drawer", () => {
     useFeedbackDrawerStore.setState({ isOpen: true })
@@ -65,7 +88,8 @@ describe('FeedbackDrawer — interactions', () => {
     expect(btn).toBeDisabled()
   })
 
-  it("submit ouvre window.open avec URL GitHub valide", async () => {
+  it("submit ouvre l'URL GitHub dans un nouvel onglet (lien target=_blank, sans window.open)", async () => {
+    const openSpy = vi.spyOn(window, 'open')
     useFeedbackDrawerStore.setState({ isOpen: true })
     renderWithProviders(<FeedbackDrawer />)
     const titleInput = screen.getByPlaceholderText(/Résume ton retour/i)
@@ -73,13 +97,16 @@ describe('FeedbackDrawer — interactions', () => {
     const submitBtn = screen.getByRole('button', { name: /Ouvrir sur GitHub/i })
     await waitFor(() => expect(submitBtn).toBeEnabled())
     fireEvent.click(submitBtn)
-    expect(window.open).toHaveBeenCalled()
-    const [url, target, features] = (window.open as unknown as ReturnType<typeof vi.fn>).mock
-      .calls[0]
-    expect(url).toContain('https://github.com/JGtm/LevelUp/issues/new?')
-    expect(url).toContain('labels=feedback%2Cbug')
-    expect(target).toBe('_blank')
-    expect(features).toContain('noopener')
+    expect(clickedLinks).toHaveLength(1)
+    const link = clickedLinks[0]
+    expect(link.href).toContain('https://github.com/JGtm/LevelUp/issues/new?')
+    expect(link.href).toContain('labels=feedback%2Cbug')
+    expect(link.target).toBe('_blank')
+    expect(link.rel).toContain('noopener')
+    expect(openSpy).not.toHaveBeenCalled()
+    // Le formulaire se referme et le lien temporaire ne reste pas dans la page.
+    expect(useFeedbackDrawerStore.getState().isOpen).toBe(false)
+    expect(document.body.querySelector('a[target="_blank"][hidden]')).toBeNull()
   })
 
   it("change de type via segmented control", () => {
@@ -88,29 +115,6 @@ describe('FeedbackDrawer — interactions', () => {
     const ideaTab = screen.getByRole('tab', { name: /Idée/i })
     fireEvent.click(ideaTab)
     expect(ideaTab).toHaveAttribute('aria-selected', 'true')
-  })
-})
-
-describe('FeedbackDrawer — popup blocker fallback', () => {
-  it("utilise clipboard si window.open retourne null", async () => {
-    useFeedbackDrawerStore.setState({ isOpen: true })
-    window.open = vi.fn().mockReturnValue(null) as typeof window.open
-    const writeTextSpy = vi.fn().mockResolvedValue(undefined)
-    Object.defineProperty(navigator, 'clipboard', {
-      value: { writeText: writeTextSpy },
-      configurable: true,
-    })
-    renderWithProviders(<FeedbackDrawer />)
-    fireEvent.change(screen.getByPlaceholderText(/Résume ton retour/i), {
-      target: { value: 'titre' },
-    })
-    const submitBtn = screen.getByRole('button', { name: /Ouvrir sur GitHub/i })
-    await waitFor(() => expect(submitBtn).toBeEnabled())
-    fireEvent.click(submitBtn)
-    await waitFor(() => expect(writeTextSpy).toHaveBeenCalled())
-    expect((writeTextSpy.mock.calls[0]?.[0] as string)).toContain(
-      'https://github.com/JGtm/LevelUp/issues/new',
-    )
   })
 })
 
@@ -151,21 +155,5 @@ describe('FeedbackDrawer — observabilité', () => {
     // Pas de PII : titre user n'apparait pas dans la metadata loggée
     const allArgs = JSON.stringify(call)
     expect(allArgs).not.toContain('top secret')
-  })
-
-  it("clipboard indisponible (HTTP context) → toast erreur sans crash", async () => {
-    useFeedbackDrawerStore.setState({ isOpen: true })
-    window.open = vi.fn().mockReturnValue(null) as typeof window.open
-    Object.defineProperty(navigator, 'clipboard', {
-      value: undefined,
-      configurable: true,
-    })
-    renderWithProviders(<FeedbackDrawer />)
-    fireEvent.change(screen.getByPlaceholderText(/Résume ton retour/i), {
-      target: { value: 'titre' },
-    })
-    const submitBtn = screen.getByRole('button', { name: /Ouvrir sur GitHub/i })
-    await waitFor(() => expect(submitBtn).toBeEnabled())
-    expect(() => fireEvent.click(submitBtn)).not.toThrow()
   })
 })

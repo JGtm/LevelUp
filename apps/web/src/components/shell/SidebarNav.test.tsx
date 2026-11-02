@@ -8,6 +8,8 @@ import { fireEvent, screen, within } from '@testing-library/react'
 import { renderWithProviders } from '@/test/render-utils'
 import { resolveRoutePath } from '@/test/routeLinkMock'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useAssetDrawerStore } from '@/features/asset-drawer'
+import { useFeedbackDrawerStore } from '@/features/feedback-drawer'
 
 import { SidebarNav } from './SidebarNav'
 
@@ -41,6 +43,8 @@ type State = ReturnType<typeof useAppShellStore.getState>
 describe('SidebarNav', () => {
   beforeEach(() => {
     mockPathname = '/t/halo_infinite/players/test-player/stats/sessions'
+    useAssetDrawerStore.setState({ isOpen: false, search: '', focusToken: 0 })
+    useFeedbackDrawerStore.setState({ isOpen: false })
     useAppShellStore.setState({
       currentPlayer: { player_slug: 'test-player', gamertag: 'TestPlayer' } as unknown as State['currentPlayer'],
       availablePlayers: [{ player_slug: 'test-player', gamertag: 'TestPlayer' }] as unknown as State['availablePlayers'],
@@ -92,6 +96,28 @@ describe('SidebarNav', () => {
     expect(screen.getByTestId('sidebar-version')).toHaveTextContent('Version 8.1.0')
   })
 
+  it('« Référentiels » bascule le volet ancré, annonce son état et porte le raccourci en infobulle', () => {
+    renderWithProviders(<SidebarNav />)
+    const trigger = within(screen.getByRole('group', { name: /Aide, paramètres/ })).getByRole('button', {
+      name: 'Référentiels',
+    })
+    expect(trigger).toHaveAttribute('title', 'Référentiels (Ctrl+Maj+L)')
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
+    fireEvent.click(trigger)
+    expect(useAssetDrawerStore.getState().isOpen).toBe(true)
+    expect(trigger).toHaveAttribute('aria-expanded', 'true')
+    expect(trigger).toHaveAttribute('aria-controls', 'asset-docked-panel')
+    fireEvent.click(trigger)
+    expect(useAssetDrawerStore.getState().isOpen).toBe(false)
+  })
+
+  it('« Signaler un problème » ouvre le formulaire de retour', () => {
+    renderWithProviders(<SidebarNav />)
+    const foot = screen.getByRole('group', { name: /Aide, paramètres/ })
+    fireEvent.click(within(foot).getByRole('button', { name: 'Signaler un problème' }))
+    expect(useFeedbackDrawerStore.getState().isOpen).toBe(true)
+  })
+
   it('ne porte rien de ce qui n’a de sens que sur un site', () => {
     useAppShellStore.setState({ currentUsername: 'quelquun' })
     renderWithProviders(<SidebarNav />)
@@ -123,6 +149,8 @@ describe('SidebarNav', () => {
     renderWithProviders(<SidebarNav />)
     expect(screen.getByRole('button', { name: 'About' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Help' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'References' })).toHaveAttribute('title', 'References (Ctrl+Shift+L)')
+    expect(screen.getByRole('button', { name: 'Report a problem' })).toBeInTheDocument()
     expect(screen.getByTestId('sidebar-version')).toHaveTextContent('Version 8.1.0')
   })
 })
