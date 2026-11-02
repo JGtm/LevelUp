@@ -100,15 +100,14 @@ func (c *countingStrategy) OnAuthSuccess(ctx context.Context, a *auth_platform.A
 
 // browserRig : le serveur httptest, le client de la coquille, le client du navigateur externe.
 type browserRig struct {
-	srv       *httptest.Server
-	port      int
-	azure     *fakeAzure
-	store     *auth_platform.MultiUserTokenStore
-	attempts  *auth_platform.AttemptStore
-	strategy  *countingStrategy
-	shell     *http.Client
-	external  *http.Client
-	providers *stubTokenProvider
+	srv      *httptest.Server
+	port     int
+	azure    *fakeAzure
+	store    *auth_platform.MultiUserTokenStore
+	attempts *auth_platform.AttemptStore
+	strategy *countingStrategy
+	shell    *http.Client
+	external *http.Client
 }
 
 func newBrowserRig(t *testing.T) *browserRig {

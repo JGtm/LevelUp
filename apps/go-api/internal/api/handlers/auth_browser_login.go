@@ -43,6 +43,9 @@ import (
 // garde et le montage du routeur le partagent.
 const BrowserLoginCallbackPath = middleware.DesktopBrowserCallbackPath
 
+// browserLoginCodeParam : la variable {code} du message d'échec (desktop.browser_login.error_body).
+const browserLoginCodeParam = "code"
+
 // Codes d'échec d'une tentative de navigateur : posés sur la tentative (le sondage de la page les lit)
 // et montrés tels quels dans la page de retour.
 const (
@@ -271,15 +274,17 @@ func renderBrowserLoginPage(w http.ResponseWriter, loc i18n.Locale, failure stri
 	if failure != "" {
 		status = http.StatusBadRequest
 		title = i18n.Msg(loc, "desktop.browser_login.error_title", nil)
-		body = i18n.Msg(loc, "desktop.browser_login.error_body", i18n.Params{"code": failure})
+		body = i18n.Msg(loc, "desktop.browser_login.error_body", i18n.Params{browserLoginCodeParam: failure})
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'")
 	w.Header().Set("Referrer-Policy", "no-referrer")
 	w.WriteHeader(status)
-	fmt.Fprintf(w, browserLoginPageTemplate, html.EscapeString(string(loc)), html.EscapeString(title),
-		html.EscapeString(title), html.EscapeString(body))
+	if _, err := fmt.Fprintf(w, browserLoginPageTemplate, html.EscapeString(string(loc)), html.EscapeString(title),
+		html.EscapeString(title), html.EscapeString(body)); err != nil {
+		slog.Debug("auth_browser_login: écriture de la page interrompue", "err", err)
+	}
 }
 
 // browserLoginPageTemplate : lang, title, h1, p.

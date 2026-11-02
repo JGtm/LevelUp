@@ -61,7 +61,8 @@ blocks the server) and relays stderr to `<LogsRoot>/desktop.log`.
 **D-3 — First page and access.** The shell shows an embedded screen (logo) until `ready`, then loads
 `http://127.0.0.1:N/desktop/enter?secret=<random>`; the server sets the session cookie and redirects to `/`. The cookie
 name carries the port (A15) and lasts 30 days, renewed at each entry. Without the cookie every route other than
-`/desktop/enter` and `/health` answers 401 (`/health` stays open because the shell and the end-to-end script probe it
+`/desktop/enter` and `/health` answers 401 (one exception, under the capability `LoginViaBrowser`: the return of the
+sign-in through the default browser, D-22; `/health` stays open because the shell and the end-to-end script probe it
 before any cookie exists, and it carries no data); the `Host` header must be the exact loopback authority of the bound
 port (otherwise 421, logged) and CORS allows that exact origin only. On `failed` the shell loads the page of the startup
 gate, which answers before the router opens and says the state in a non-retryable 503. State: delivered by L13.
@@ -128,7 +129,7 @@ whole sequence fit in the budget" (`runShutdown`); the absence of WAL is checked
 machine is the user's. The session secret is generated at the first launch and written `0600` to
 `<DataRoot>/auth/session_secret` (mode bits are advisory on Windows; the file sits under the user's profile); the public
 default secret is never used. A Microsoft sign-in by device code persists the refresh token for a tracked profile in
-every authentication mode, `none` included (`service.DeviceCodeCompletion`, the profile gate of ADR 0035; if the profile
+every authentication mode, `none` included (`service.AuthCompletion`, formerly `DeviceCodeCompletion`: the single arrival point of every Microsoft sign-in, D-22; the profile gate of ADR 0035; if the profile
 does not exist yet, the tokens are kept in memory and replayed when the directory creates it); this is what keeps a
 single-user installation syncing after the first hour. The listening host is forced to loopback (ADR 0044 D-2).
 `/api/v1/desktop/strings` serves the shell's strings from `internal/i18n/messages/desktop.toml` in the request's
@@ -145,7 +146,7 @@ user, with a basis value of its own, and the consent banner is hidden by the cap
 ADR 0038 D4 (the choice is asked, not defaulted), and it holds because the only token in the pool is the user's own and
 never leaves the machine. Without a decision the rule of ADR 0038 stays: refusal. State: delivered by L13. The capability
 `PoolGrantedToLocalUser` (distinct from `PoolTokens`, which says the choice is *asked*) makes
-`DeviceCodeCompletion.WithLocalPoolGrant` record `granted` with the basis `desktop_single_user` when a refresh token is
+`AuthCompletion.WithLocalPoolGrant` record `granted` with the basis `desktop_single_user` when a refresh token is
 written for a token file that carries no decision; an existing decision (grant or refusal) is never overwritten and an
 unreadable file gets no grant. The banner needs no new code: `PoolTokens` is already false in `desktop`, and
 `PoolSharingBanner` reads `can_pool_tokens`. Known limits: a token written by the CLI (`token-import`, `token-capture`)
@@ -307,6 +308,33 @@ website, with a line in the third-party notices ("game sound effects, property o
 simple request"); the risk is the maintainer's. The licence the rules grant Microsoft over the content must be read
 against the AGPL of the repository; this ADR records the question, it does not settle it.
 
+### Sign-in through the default browser (L21)
+
+**D-22 - Authorization code flow in the user's browser, no code to copy (L21.00, 2026-11-02).** Under the capability
+`LoginViaBrowser` (true in `desktop` only, published as `can_login_via_browser`), the setup assistant offers "Sign in with
+Microsoft": the page calls `GET /api/v1/auth/xbox/login` (with the shell cookie), receives `{attempt_id, authorize_url}` and
+opens the URL by a `target="_blank"` link, which the shell sends to the default browser (D-13: the window never shows the
+Microsoft page). The flow is the authorization code with PKCE S256 of the shared public client (D-19), the redirect URI is
+`http://localhost:<bound port>/auth/xbox/callback` (the user added `http://localhost/auth/xbox/callback` to the Azure
+application; the loopback exemption accepts any port, and the name is `localhost`, not the numeric address).
+
+The attempt lives in the same registry as the device code (`AttemptStore.StartBrowser`), bound to the shell's session, with
+a 256-bit `state`, the PKCE verifier and the language of the page. The return reaches the server **without the shell
+cookie** (it is in the user's browser), so `DesktopGate.AllowBrowserCallback` lets exactly one request through without it:
+`GET /auth/xbox/callback`, exact path (never an ambiguous one, D-3), `Host` equal to `localhost:<port>` or `127.0.0.1:<port>`
+of the bound port; any other method, path, port or name keeps the Host and cookie checks (421, 401). The route is mounted
+behind `LoopbackOnly` (the TCP peer, not a header) and protected by the `state`: single use (`ClaimBrowserState` removes it
+and the verifier at the first presentation), valid 10 minutes (`BrowserStateTTL`), unknown, replayed or expired states render
+the failure page without any outbound call. The code is exchanged with the verifier, the chain runs through
+`platform/auth` and `libs/haloapi/xblauth` (XBL, XSTS, Spartan; the Xbox Live XSTS is best-effort as for the device code), and
+the attempt becomes `authorized`. The assistant's polling (`GET /auth/device-flow/{attempt_id}`, unchanged) hands the attempt to
+the session once and runs the same post-flow strategy as the device code: **`AuthCompletion` is the single arrival point**
+(tracked profile created by `Onboard`, ADR 0035; tokens sealed by the `TokenCipher`, D-11; `InvalidateCachedPlayerTokens`;
+pending tokens replayed at profile creation). The return page is minimal HTML in the language of the page that started the
+sign-in (`desktop.toml`, `desktop.browser_login.*`), carries only a fixed error code on failure, and neither the `code`, the
+`state` nor the verifier is ever logged. The device code stays the fallback ("Can't open the browser? Use a code instead"); the
+hosted site keeps its own `/auth/xbox/login` redirect flow in mode `xbox`, untouched.
+
 ### Tests
 
 **D-21 — Strategy (plan section 7).** Each side of the contract is tested against a double of the other: a **fake
@@ -455,7 +483,7 @@ maintainer on a clean machine. A lot without a test at its level is not closed.
   both languages, CORS and CSRF on the exact origin, nothing mounted outside the profile),
   `internal/api/middleware/desktop_gate_test.go` (expiry, signature, renewal, closed entry),
   `TestBareRoutesRatchet_DesktopEntryRoutes`, `internal/config/config_desktop_session_test.go`,
-  `internal/service/devicecode_completion_poolgrant_test.go`, `TestParseServerFlags_AucunDrapeauNePorteLeSecret`
+  `internal/service/auth_completion_poolgrant_test.go`, `TestParseServerFlags_AucunDrapeauNePorteLeSecret`
   (`cmd/server/flags_test.go`: the secret never travels as an argument), `apps/web/e2e/desktop-enter.spec.ts`
   (Playwright, mocked server), and `TestE2ELanceurDesktop` extended (`GET /` 401, entry 302 with the cookie, bootstrap 200).
 - Created by L13b (and extended by its review: watcher state file, process-wide log dedup): `internal/platform/auth/token_file_codec_test.go` (plain round trip, sealing of the sensitive fields only,
@@ -472,6 +500,13 @@ maintainer on a clean machine. A lot without a test at its level is not closed.
   (`check-version.sh`, `e2e-install.ps1`, `fetch-ffmpeg.ps1`, `stage-bundle.ps1`, `build-installer.ps1`), the NSIS hook, the
   default web dist of the desktop profile (`TestLoad_DesktopWebDistParDefaut`), `ci_workflows_security_test.go` (unchanged,
   green on the new workflow).
+- Created by L21a: `internal/api/handlers/auth_browser_login_test.go` (the whole flow with a simulated Azure that checks PKCE
+  S256 and the redirect URI: right, wrong, replayed and expired `state`, Microsoft refusal, exchange failure, the arrival
+  point called once, the profile tokens written), `internal/api/middleware/desktop_gate_test.go` (the callback opens without a
+  cookie for GET on the exact path and the loopback hosts only, and stays closed without the capability),
+  `internal/api/desktop_browser_login_cgo_test.go` and `TestBareRoutesRatchet_DesktopEntryRoutes` (the two routes exist under
+  the capability only), `internal/platform/auth/attempt_browser_test.go`, `apps/web/src/features/setup/BrowserLoginPanel.test.tsx`,
+  `apps/web/e2e/desktop-sidebar.spec.ts` (Playwright on `vite preview`, mocked server).
 - To create: `cargo audit` in CI.
 
 ## Implementation notes (L20, 2026-11-02)
@@ -505,6 +540,28 @@ maintainer on a clean machine. A lot without a test at its level is not closed.
   here. Guard: `archlint/checkpoint_single_site_test.go` forbids a CHECKPOINT statement outside `internal/platform/duckdb`
   except the existing sites of its dated allowlist.
 
+## Implementation notes (L21a, 2026-11-02)
+
+- **Browser sign-in (D-22, L21.00).** Detailed in D-22. The page that serves it is the setup assistant's sign-in step
+  (`StepDeviceCode`, which switches to `BrowserLoginPanel` under the capability), not `XboxLoginPage`, which belongs to the
+  hosted SSO.
+- **Collapsible sidebar (L21.0).** `SidebarNav` is either the 240 px sidebar or the 56 px icon rail (`SidebarRail`). The
+  preference has three states, `auto` (collapsed under `(max-width: 1099px)`, expanded above), `collapsed` and `expanded`
+  (a manual choice, button at the foot of the sidebar or `Ctrl+B`, kept in `localStorage`); a manual choice is never
+  overwritten by the window width and nothing collapses on scroll. The rail shows a tooltip on hover and focus, and a flyout
+  `role="menu"` of the tabs of the sections that have some (hover or click, arrows, `Esc`); the game switch and the player
+  shrink to initials. Icons are copied from Lucide (ISC, `components/icons/lucide.tsx`, notice in
+  `apps/desktop/THIRD_PARTY_NOTICES.md`); the hosted site is unchanged (the sidebar exists under `can_use_compact_chrome` only).
+- **Community without comparison (L21.0b).** Capability `CompareAccounts` (`can_compare_accounts`, false in `desktop`, D-7:
+  one tracked account). The tab "Rankings" requires it (`L1Tab.deploymentCapability`, read by `useVisibleNavSections`), the
+  section leads to "Relations" and `/community` redirects there; the Prestige leaderboard page, reachable by address only,
+  says "This page compares several accounts; the desktop application follows only one." instead of an empty ranking.
+- **No H.264 encoder (L21.0d).** The start-up probe of the media tooling publishes its definitive verdict (detection done, no
+  usable candidate; a doubt is not a verdict) as `media_h264_missing` in `/bootstrap` and `h264_encoder_missing` in
+  `/admin/health`; the Media page explains the Windows N and KN editions without Media Foundation and links Microsoft's
+  Media Feature Pack. Known limit: a verdict reached later than the start-up probe (a transcode that finds no encoder) is not
+  published until the next start.
+
 ## Alternatives rejected
 
 - **Wails** (D-1): no signed updater and a smaller plugin set than Tauri 2 for the NSIS and updater chain needed.
@@ -522,5 +579,5 @@ maintainer on a clean machine. A lot without a test at its level is not closed.
 - Code: `apps/go-api/cmd/server/` (`flags.go`, `boot_gate.go`, `boot_failure.go`, `shutdown.go`, `shutdown_stdin.go`,
   `shutdown_budget.go`), `internal/api/handlers/internal_shutdown.go`, `internal/config/config_desktop.go`,
   `cmd/devlaunch/`, `internal/migration/` (`InspectSchema`, `BackupBeforeUpgrade`, `ErrSchemaNewerThanBinary`),
-  `internal/service/devicecode_completion.go`, `internal/media/binpath.go`, `.github/workflows/ci.yml`.
+  `internal/service/auth_completion.go`, `internal/api/handlers/auth_browser_login.go`, `internal/media/binpath.go`, `.github/workflows/ci.yml`.
 - ADR 0044, ADR 0008 (amendment), ADR 0023, ADR 0035, ADR 0038.

@@ -835,6 +835,19 @@ gate utilisateur sur l'installeur. Décisions de l'utilisateur (2026-11-02) : or
 
 ## 10. Découvertes (notées, non traitées)
 
+- **L21a (2026-11-02) — relevé de la première moitié de L21, non traité** :
+  - **Risque à jouer au gate 21.z (flux Azure réel)** : le serveur de bureau n'envoie AUCUN secret (`SPNKR_AZURE_CLIENT_SECRET` absent, D-19) à l'échange du code. Si l'application Azure `e1cb35ab` n'accepte le code d'autorisation que comme client confidentiel (plateforme « Web »), Microsoft répondra `AADSTS70002` : la page d'échec du navigateur affichera `code_exchange_failed` et le journal `auth_browser_login: échange du code échoué` le détail. L'utilisateur a ajouté l'URI `http://localhost/auth/xbox/callback` à l'application publique : le test réel dit si la plateforme « client public / mobile et bureau » suffit. Le code d'appareil reste le secours.
+  - Le jeton de rafraîchissement de ce flux est de la famille Azure (comme le SSO du site) ; `onRotated` ne persiste pas `client_family` à l'écriture. À regarder au premier rafraîchissement réel (`ExchangeRefreshTokenWithRotation` essaie Azure puis le client natif).
+  - La demande disait `XboxLoginPage` ; c'est l'étape de connexion de l'assistant (`StepDeviceCode`) qui sert le bureau, `XboxLoginPage` étant réservée au SSO du site (`can_sign_in_with_xbox`, faux en bureau). Le panneau est dans `features/setup/BrowserLoginPanel.tsx`.
+  - `GET /api/v1/auth/xbox/login` est un GET qui crée un état serveur (voulu par la demande). Il n'est atteignable qu'avec le cookie de la coquille (Host strict) et ne rend qu'une adresse ; une tentative en attente est remplacée au clic suivant, les plafonds du code d'appareil (20 au total, 3 par IP) s'appliquent.
+  - La page de retour parle la langue de la page qui a lancé la connexion (le navigateur externe n'envoie pas `X-LevelUp-Locale`) ; un `state` inconnu ou rejoué tombe sur la langue par défaut.
+  - La route cachée `community/prestige` (Leaderboard PP) n'a aucun lien dans la navigation ; en bureau elle dit « Cette page compare plusieurs comptes… ». Aucune autre page de la communauté n'attend d'autres comptes (Relations et Face-à-face dérivent des matchs).
+  - `features/asset-drawer/panelWidth.ts` garde `SIDEBAR_WIDTH = 240` pour borner le volet des référentiels : barre repliée (56 px) la borne haute est donc prudente de 184 px. Non traité (aucun défaut visible).
+  - La flamme d'Ascension de `navL1Sections.tsx` a le même tracé que `flame` de Lucide : rien à remplacer.
+  - `TestFetchPrivacy_BudgetExceededMemorized` (`internal/service`) a échoué une fois pendant que le gate web tournait en parallèle (attente de 103 ms contre un budget de 40 ms) ; vert seul, trois fois. Sensible à la charge, sans rapport avec le lot.
+  - Un verdict « aucun encodeur H.264 » atteint APRÈS la sonde du démarrage (un transcodage qui ne trouve aucun encodeur) n'est publié qu'au démarrage suivant ; la sonde du démarrage couvre le cas de la machine Windows N.
+  - Les glyphes Lucide ont été copiés de `lucide-static@0.552.0` (lecture HTTP de jsDelivr, aucune dépendance npm ajoutée).
+
 - **C2 : le témoin T2 « avant » était trompeur (corrigé le 2026-11-01 à la clôture de L1)** : sa recette filtrait
   `logs/migration.log` sur l'heure seule (`HH:MM`), sans la date, et a ramené 8 lignes ERROR de
   `purge_data_health_warning_notifs` (bug ART #23645 sur `shared_social`) datées du 2026-05-20, pas du jour.

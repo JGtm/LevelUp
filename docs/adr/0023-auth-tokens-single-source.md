@@ -286,3 +286,12 @@ cat token-madina.txt | go run ./cmd/token-import/ Madina97294
 ### Pré-requis communs
 
 Le joueur doit être déclaré dans `db_profiles.json` avec son `xuid` avant `token-capture` ou `token-import`. Sans xuid, le store ne peut pas adresser l'entrée correctement.
+
+## Note d'implémentation (L21a, 2026-11-02)
+
+La connexion par le navigateur par défaut de l'application de bureau (ADR 0045 D-22 : code d'autorisation + PKCE, retour
+loopback) n'ajoute aucune source de jeton : le jeton de rafraîchissement de l'échange du code passe par la tentative autorisée
+puis par le point d'arrivée unique des connexions Microsoft hors SSO du site, `service.AuthCompletion` (anciennement
+`DeviceCodeCompletion`, renommé parce qu'il sert désormais le code d'appareil ET le navigateur), qui l'écrit au
+`MultiUserTokenStore` sous la porte « profil suivi » (ADR 0035) et purge le cache process des jetons. Les règles de cet ADR
+(source unique, jamais de re-capture, aucun fallback) sont inchangées.
