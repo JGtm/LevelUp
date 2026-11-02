@@ -142,6 +142,9 @@ so that the plan and the code agree; the file names are fixed at L10.
   `can_offer_windows_download`), three capabilities were needed so that every `demo_mode` / `auth_mode` reader of the web
   client (L10.5) keeps its exact meaning: `can_sign_in_with_xbox` (SSO sign-in versus password sign-in),
   `can_edit_settings` and `can_upload_media` (frozen in the demo).
+- **Desktop chrome (L18).** `can_use_compact_chrome` (true for `desktop` only) tells the web client to draw the
+  application chrome of a desktop program (sidebar, "About" window, no site footer). `/bootstrap` adds `app_info`
+  (`version`, `data_root`), present only under that capability. Data, not a capability: it is read by the "About" window.
 - **Derived authentication mode.** `AuthMode` is `desktop` internally; `/bootstrap` still publishes `none` (the API
   contract keeps `none`, `password`, `xbox`). `authz.Enforced` is false for it by construction, and the session
   middlewares (`RequireAuth`, `RequireAdmin`, `IsAuthenticatedCtx`) treat it like `none` through `authz.AuthDisabled`.

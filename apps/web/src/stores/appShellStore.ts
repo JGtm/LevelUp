@@ -9,7 +9,7 @@
  */
 
 import { create } from 'zustand'
-import type { BootstrapResponse, CapabilityMap, HaloIdentitySummary, PlayerSummary, TitleSummary } from '@/lib/api/types'
+import type { AppInfo, BootstrapResponse, CapabilityMap, HaloIdentitySummary, PlayerSummary, TitleSummary } from '@/lib/api/types'
 import { api, setApiTitleSlug, setApiLocale } from '@/lib/api/client'
 import { DEFAULT_LOCALE, normalizeLocale, type Locale } from '@/lib/i18n/locale'
 import { rememberLocale } from '@/lib/i18n/bootLocale'
@@ -39,6 +39,8 @@ interface AppShellState {
   userTimezone: string
   hintsVisible: boolean
   capabilities: CapabilityMap | null
+  /** Version et dossier des données, publiés seulement avec le chrome de bureau (fenêtre « À propos »). */
+  appInfo: AppInfo | null
 
   // État app
   setupRequired: boolean
@@ -111,6 +113,7 @@ export const useAppShellStore = create<AppShellState>((set) => ({
   userTimezone: 'Europe/Paris',
   hintsVisible: true,
   capabilities: null,
+  appInfo: null,
   setupRequired: false,
   authState: 'missing',
   setupState: 'no_halo_link',
@@ -146,6 +149,7 @@ export const useAppShellStore = create<AppShellState>((set) => ({
       userTimezone: data.settings_excerpt?.user_timezone || 'Europe/Paris',
       hintsVisible: data.hints_visible_default,
       capabilities: data.capabilities ?? DEFAULT_CAPABILITIES,
+      appInfo: data.app_info ?? null,
       setupRequired: data.setup_required,
       authState: data.auth_state,
       setupState: data.setup_state ?? 'no_halo_link',

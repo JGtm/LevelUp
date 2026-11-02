@@ -90,7 +90,7 @@ func TestBuildCapabilities_Desktop(t *testing.T) {
 		t.Errorf("neuf capacités en desktop :\n got %+v\nwant %+v", got, want)
 	}
 	if caps.Deployment != "desktop" || caps.CanUseAccounts || caps.CanPoolTokens || caps.CanUseRestic ||
-		caps.CanUseDiscord || !caps.CanUpdateApp || caps.CanOfferWindowsDownload {
+		caps.CanUseDiscord || !caps.CanUpdateApp || caps.CanOfferWindowsDownload || !caps.CanUseCompactChrome {
 		t.Errorf("capacités desktop inattendues : %+v", caps)
 	}
 }
@@ -105,5 +105,40 @@ func TestBootstrap_AuthModePublieSansDesktop(t *testing.T) {
 	cfg = chargerPourBootstrap(t, config.LaunchModeDefault, "", "", "xbox")
 	if got := cfg.PublishedAuthMode(); got != "xbox" {
 		t.Errorf("auth_mode publié = %q, attendu xbox", got)
+	}
+}
+
+// TestBuildCapabilities_ChromeDeBureauSeulementEnDesktop : la capacité de chrome compact et la
+// section app_info (version, racine des données) ne sortent que du profil desktop ; les trois
+// autres profils ne publient ni l'une ni l'autre (une instance hébergée ne donne pas le chemin
+// de ses données).
+func TestBuildCapabilities_ChromeDeBureauSeulementEnDesktop(t *testing.T) {
+	cas := []struct {
+		nom        string
+		launch     string
+		env        string
+		demo       string
+		wantChrome bool
+	}{
+		{"hosted", config.LaunchModeDefault, "production", "", false},
+		{"dev", config.LaunchModeDefault, "", "", false},
+		{"demo", config.LaunchModeDefault, "", "true", false},
+		{"desktop", config.LaunchModeDesktop, "", "", true},
+	}
+	for _, c := range cas {
+		t.Run(c.nom, func(t *testing.T) {
+			cfg := chargerPourBootstrap(t, c.launch, c.env, c.demo, "")
+			cfg.AppVersion = "9.8.7"
+			if got := buildCapabilities(cfg, map[string]interface{}{}).CanUseCompactChrome; got != c.wantChrome {
+				t.Errorf("can_use_compact_chrome = %v, attendu %v", got, c.wantChrome)
+			}
+			info := buildAppInfo(cfg)
+			if (info != nil) != c.wantChrome {
+				t.Fatalf("app_info publié = %v, attendu %v", info != nil, c.wantChrome)
+			}
+			if info != nil && (info.Version != "9.8.7" || info.DataRoot != cfg.Roots().Data || info.DataRoot == "") {
+				t.Errorf("app_info = %+v, attendu version 9.8.7 et la racine des données %q", info, cfg.Roots().Data)
+			}
+		})
 	}
 }

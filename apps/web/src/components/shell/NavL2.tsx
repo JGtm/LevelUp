@@ -18,6 +18,7 @@ import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useCapability } from '@/lib/capabilities/capabilities'
+import { useDeploymentCapability } from '@/stores/useDeploymentCapability'
 import { isCommunityPath, routeShowsSoloFilters, type RouteTo } from './shellNavigation'
 import { playerRelativePath, routeTemplateSuffix, useTitleSlug } from '@/lib/title-routing'
 
@@ -142,11 +143,16 @@ export function NavL2() {
   const hasCareer = useCapability('career')
   const hasWorldLeaderboard = useCapability('world.leaderboard')
   const hasCitations = useCapability('citations')
+  // Chrome de bureau : la barre latérale montre déjà les onglets de la section active, la barre
+  // d'onglets Carrière / Communauté ferait double emploi (les filtres Stats restent).
+  const sidebarShowsTabs = useDeploymentCapability('can_use_compact_chrome')
 
   const section = detectSection(pathname)
   if (!section) return null
   // La section squad gère sa propre barre de filtres complète dans SquadLayout.
   if (section === 'squad') return null
+
+  if (sidebarShowsTabs && (section === 'career' || section === 'community')) return null
 
   // Carrière & Communauté : barre d'onglets uniquement, pas de filtres analytiques.
   if (section === 'career') {

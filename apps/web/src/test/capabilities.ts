@@ -35,3 +35,17 @@ export function accountsCapabilities(mode: 'none' | 'password' | 'xbox'): Partia
 export function demoCapabilities(): Partial<CapabilityMap> {
   return { can_edit_settings: false, can_upload_media: false, can_pool_tokens: false, deployment: 'demo' }
 }
+
+/** Les capacités du profil desktop : chrome d'application de bureau, aucun compte, mise à jour par la coquille. */
+export function desktopCapabilities(): Partial<CapabilityMap> {
+  return {
+    can_use_compact_chrome: true,
+    can_update_app: true,
+    can_offer_windows_download: false,
+    can_use_accounts: false,
+    can_use_admin: false,
+    can_use_groups: false,
+    can_pool_tokens: false,
+    deployment: 'desktop',
+  }
+}

@@ -9,6 +9,9 @@ import { screen } from '@testing-library/react'
 import { renderWithProviders } from '@/test/render-utils'
 import { resolveRoutePath } from '@/test/routeLinkMock'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { desktopCapabilities, testCapabilities } from '@/test/capabilities'
+
+let mockPathname = '/t/partial/players/test-player/career'
 
 vi.mock('@tanstack/react-router', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-router')>()
@@ -25,10 +28,10 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
       </a>
     ),
     useParams: () => ({ playerSlug: 'test-player' }),
-    useRouterState: () => ({ location: { pathname: '/t/partial/players/test-player/career' } }),
+    useRouterState: () => ({ location: { pathname: mockPathname } }),
   }
 })
-vi.mock('./FilterOmnibar', () => ({ FilterOmnibar: () => null }))
+vi.mock('./FilterOmnibar', () => ({ FilterOmnibar: () => <div data-testid="filter-omnibar" /> }))
 vi.mock('./PeriodSessionRail', () => ({ PeriodSessionRail: () => null }))
 
 import { NavL2 } from './NavL2'
@@ -46,7 +49,10 @@ function setTitle(slug: string, capabilities: string[]) {
 }
 
 describe('NavL2 : onglet Citations / Commendations', () => {
-  beforeEach(() => useAppShellStore.setState({ locale: 'fr' }))
+  beforeEach(() => {
+    mockPathname = '/t/partial/players/test-player/career'
+    useAppShellStore.setState({ locale: 'fr' })
+  })
 
   it('pointe vers la page des citations calculées quand le titre déclare citations', () => {
     setTitle('partial', ['career', 'citations'])
@@ -76,5 +82,53 @@ describe('NavL2 : onglet Citations / Commendations', () => {
       'href',
       '/t/halo_5/players/test-player/career/citations',
     )
+  })
+})
+
+describe('NavL2 : chrome de bureau', () => {
+  beforeEach(() => {
+    mockPathname = '/t/partial/players/test-player/career'
+    useAppShellStore.setState({ locale: 'fr', capabilities: null })
+  })
+
+  it('la barre d’onglets Carrière fait double emploi avec la barre latérale : absente', () => {
+    setTitle('partial', ['career', 'citations'])
+    useAppShellStore.setState({ capabilities: testCapabilities(desktopCapabilities()) })
+    renderWithProviders(<NavL2 />)
+
+    expect(screen.queryByRole('link', { name: 'Citations' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('navigation')).not.toBeInTheDocument()
+  })
+
+  it('le site (capacité fausse) garde la barre d’onglets Carrière', () => {
+    setTitle('partial', ['career', 'citations'])
+    useAppShellStore.setState({ capabilities: testCapabilities() })
+    renderWithProviders(<NavL2 />)
+
+    expect(screen.getByRole('link', { name: 'Citations' })).toBeInTheDocument()
+  })
+
+  it('les filtres Stats restent rendus : seules les barres d’onglets font double emploi', () => {
+    mockPathname = '/t/partial/players/test-player/stats/timeseries'
+    setTitle('partial', ['career', 'citations'])
+    useAppShellStore.setState({ capabilities: testCapabilities(desktopCapabilities()) })
+    renderWithProviders(<NavL2 />)
+
+    expect(screen.getByTestId('filter-omnibar')).toBeInTheDocument()
+    expect(screen.getByRole('navigation')).toBeInTheDocument()
+  })
+
+  it('la barre d’onglets Communauté est absente, et présente sur le site', () => {
+    mockPathname = '/t/partial/players/test-player/community/relations'
+    setTitle('partial', ['career', 'citations', 'world.leaderboard'])
+    useAppShellStore.setState({ capabilities: testCapabilities(desktopCapabilities()) })
+    const { unmount } = renderWithProviders(<NavL2 />)
+    expect(screen.queryByRole('navigation')).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Relations' })).not.toBeInTheDocument()
+    unmount()
+
+    useAppShellStore.setState({ capabilities: testCapabilities() })
+    renderWithProviders(<NavL2 />)
+    expect(screen.getByRole('link', { name: 'Relations' })).toBeInTheDocument()
   })
 })

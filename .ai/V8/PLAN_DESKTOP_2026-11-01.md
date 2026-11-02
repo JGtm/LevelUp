@@ -660,24 +660,58 @@ Définition : `ResourcesRoot` = la racine du dépôt aujourd'hui (`LEVELUP_RESOU
       `/telecharger` (chemin anonyme), `features/download/` (dictionnaire `Record<Locale, T>`), capacité existante
       `can_offer_windows_download` (aucune capacité neuve), lien « Application Windows » du pied de page conditionné par la
       même capacité, lien vers `releases/latest`, tests Vitest (capacité vraie/fausse x fr/en, pied de page, chemin anonyme).
-- [ ] 17.6 **(P, au pilote)** Runs verts ; procédure de sauvegarde de la clé d'updater exécutée (ADR 0045). PRÉPARÉ : procédure écrite dans l'ADR 0045 (« Implementation notes (L17) »), reports au registre ; la clé du gate (mot de passe vide) est à remplacer par une clé protégée.
-- [ ] 17.7 **(U, à l'utilisateur)** Installation sur une machine vierge, désinstallation, données conservées : témoins. PRÉPARÉ : mode d'emploi en cinq étapes dans `docs/RUNBOOK_DESKTOP.md`.
+- [x] 17.6 **(P, au pilote)** Runs verts ; procédure de sauvegarde de la clé d'updater exécutée (ADR 0045). Premier run Release vert sur la release le 2026-11-02 (desktop-build + desktop-e2e sur runner Windows, sans signature) ; clé sauvegardée hors PC par l'utilisateur et secret `TAURI_SIGNING_PRIVATE_KEY` en place le 2026-11-02 ; le run signé aura lieu au premier tag. Procédure écrite dans l'ADR 0045 (« Implementation notes (L17) »), reports au registre.
+- [ ] 17.7 **(U, à l'utilisateur)** Installation sur une machine vierge, désinstallation, données conservées : témoins. À l'utilisateur, avec 18.4. PRÉPARÉ : mode d'emploi en cinq étapes dans `docs/RUNBOOK_DESKTOP.md`.
 
 ### 9.17b L18 — Interface bureau (S après maquette validée par U ; EN DERNIER, décision utilisateur du 2026-11-02)
 
 Constat de l'utilisateur au premier lancement de la coquille : pied de page de site, barre de navigation de site,
 image de couverture de l'accueil « ça ne fait pas app de bureau ». Décision : lot fait en dernier, après L17.
 
-- [ ] 18.1 Maquette (Claude Design ou artefact) validée par l'utilisateur AVANT tout code : accueil sans image de
+- [x] 18.1 Maquette (Claude Design ou artefact) validée par l'utilisateur AVANT tout code : accueil sans image de
       couverture (tableau de bord, en-tête compact), **barre latérale** (celle de la vue mobile, retenue par
       l'utilisateur) à la place de la barre haute, fenêtre « À propos » (version, licences, mention Microsoft
-      obligatoire A19, lien de dons, « retirés sur simple demande » pour les sons).
-- [ ] 18.2 Branché sur les capacités de `/bootstrap` (jamais sur le nom du profil, ADR 0044 D-4) : capacité fine
+      obligatoire A19, lien de dons, « retirés sur simple demande » pour les sons). FAIT : maquette validée par
+      l'utilisateur le 2026-11-02, avec cinq décisions : (1) barre latérale TOUJOURS dépliée (pas de mode icônes) ;
+      (2) « À propos » = fenêtre MODALE dans l'application ; (3) dossier des données dans « À propos » : chemin affiché +
+      bouton « Copier » (pas d'ouverture de l'Explorateur) ; (4) en-tête de l'accueil : bannière d'identité et indicateurs
+      EXACTEMENT comme sur le site, seule l'image de couverture disparaît en bureau ; (5) le bouton « Rechercher une mise à
+      jour » de « À propos » DOIT fonctionner réellement.
+- [x] 18.2 Branché sur les capacités de `/bootstrap` (jamais sur le nom du profil, ADR 0044 D-4) : capacité fine
       `compact_chrome` (ou nom retenu) vraie en `desktop` ; pied de page retiré, éléments « site » de la navigation
       retirés (déjà portés par `can_offer_windows_download`, `can_use_accounts`), « À propos » ajouté ; le site hébergé
-      ne change pas (tests fixtures `hosted` identiques).
-- [ ] 18.3 Libellés fr + en ; tokens sémantiques ; tests Vitest par capacité ; un scénario Playwright `desktop-chrome`.
-- [ ] 18.4 **(U)** Gate visuel sur l'application installée.
+      ne change pas (tests fixtures `hosted` identiques). FAIT 2026-11-02 : capacité `can_use_compact_chrome`
+      (`DeploymentCapabilities.CompactChrome`, vraie en `desktop` seulement, tests des quatre profils) ; `/bootstrap` porte
+      `app_info` (`version` = version du serveur, `data_root` = racine des données) SEULEMENT sous cette capacité ;
+      `AppShell` rend `SidebarNav` (barre latérale : marque, sélecteur de jeu, joueur + cloche, sections, pied Aide /
+      Paramètres / thème / À propos / version) à la place de `NavL1`, sans `AppFooter` ; le rendu des sections est
+      `NavSectionList`, PARTAGÉ avec le tiroir mobile (migré), le filtrage par capacité de titre est
+      `useVisibleNavSections` (extrait de `NavL1`), la bascule de joueur `usePlayerSwitch` ; retirés du chrome bureau :
+      déconnexion, Application Windows, CSinsight, Développeur ; accueil sans `HomeHeroBanner` (bannière d'identité et
+      indicateurs inchangés). Décision `NavL2` : la barre d'onglets Carrière / Communauté est retirée en bureau (la barre
+      latérale montre déjà les onglets de la section active), les filtres Stats restent (ce n'est pas une barre d'onglets).
+      Site hébergé : tests existants de `NavL1`, `AppFooter`, `HomePage` inchangés et verts.
+- [x] 18.2b Fenêtre « À propos » (`components/shell/AboutDialog.tsx`) : modale (rôle `dialog`, `aria-modal`, focus sur
+      « Fermer » puis rendu au déclencheur, Tab bouclé, Échap et clic sur le fond ferment) ; logo, version, bloc mise à
+      jour, colonnes Le projet (Nouveautés, Code source, Signaler un problème, Licence AGPL-3.0, Mentions tierces au tag de
+      la version via `thirdPartyNoticesUrl`) / Soutenir / Données (chemin + « Copier » via `useCopyToClipboard`,
+      Confidentialité, Conditions), mention Microsoft (`MicrosoftNotice`), ffmpeg LGPL, sons retirés sur simple demande,
+      copyright ; liens externes par `lib/appLinks.ts` ; libellés dans `common.toml` (fr + en). FAIT 2026-11-02.
+- [x] 18.2c Recherche de mise à jour qui fonctionne. FAIT 2026-11-02 : le bouton appelle `GET
+      http://levelup-shell.localhost/check-update` (`lib/desktop/shellBridge.ts`, `fetch` en `no-cors`) ; le protocole
+      embarqué répond 204 et lance la vérification dans la coquille (`render::route`, `update_manual.rs`,
+      `updater::run_flow` partagé avec la vérification du lancement : proposée, jamais imposée, installée après l'arrêt
+      propre) ; boîtes natives `update_none`, `update_check_failed`, `update_unavailable_debug`, `update_busy` (fr + en,
+      `desktop.toml`, `desktop_strings.go`, catalogue de repli) ; une vérification à la fois (`UpdateBusy`). Écart avec le
+      mécanisme proposé : pas de navigation ni de redirection `?back=` (la page ne quitte jamais l'application : rien à
+      ramener, aucune URL de retour à valider), voir ADR 0045 notes L18. Tests : `render.rs` (seul le chemin exact),
+      `navigation.rs`, `updater.rs` (machine d'états manuelle), `tests/update_manual.rs` (à jour, échec, proposée, verrou,
+      indisponible).
+- [x] 18.3 Libellés fr + en ; tokens sémantiques ; tests Vitest par capacité ; un scénario Playwright `desktop-chrome`.
+      FAIT 2026-11-02 : Vitest `AppShell.chrome`, `SidebarNav`, `NavSectionList`, `AboutDialog`, `NavL2` (bureau),
+      `HomePage.compactChrome`, `shellBridge`, `appLinks.thirdParty` ; Playwright `e2e/desktop-chrome.spec.ts` (4 cas, joués
+      sur Vite local : verts).
+- [ ] 18.4 **(U, à l'utilisateur)** Gate visuel sur l'application installée.
 - Gate : `cd apps/web && npm run typecheck && npm run lint && npm run test` ; pilote : DevTools WebView2 (titre,
   URL) sur le binaire de dev.
 
@@ -919,6 +953,44 @@ mises à jour (ressources retéléchargées à chaque version).
   `tauri.conf.json`), pas le fichier minisign nu ; la clé `HKCU\Software\lvelup\LevelUp` (valeur par défaut = dossier
   d'installation) subsistait sur ce poste sans installation réelle (reste d'un essai antérieur) : le contrôle préalable l'accepte
   seulement quand elle désigne le dossier par défaut et que ce dossier est absent.
+
+- **L18 (2026-11-02) — relevé et témoins.** Application construite (`scripts/desktop-dev.ps1`, `cargo build`, front
+  `npm run build`) lancée sur `%LOCALAPPDATA%\LevelUp-dev` avec DevTools WebView2 (port 9333) : titre « LevelUp - Accueil »,
+  URL `http://127.0.0.1:59184/fr/t/halo_infinite/players/JGtm/home` AVANT et APRÈS le clic « Rechercher une mise à jour »
+  (identiques, la page ne bouge pas) ; `desktop.log` : `[shell] event=update_check_unavailable` à chaque clic (build de
+  débogage : updater absent) ; boîte native « Mise à jour de LevelUp » lue par UI Automation : « La recherche de mise à jour
+  n'est pas disponible dans ce build de développement. », fermée par `WM_CLOSE`, second clic : la boîte revient ; fermeture
+  par `WM_CLOSE` : `stopped clean=true`, 0 WAL, 0 processus. Les issues « à jour », « échec » et « proposée » ne sont jouées
+  que par les tests (`tests/update_manual.rs`, faux `UpdateSource`) : un build de débogage n'a pas d'updater, la vraie
+  réponse de `latest.json` est affaire du pilote (17.6) sur un build de release. **Relevé, non traité** : (a) `target="_blank"`
+  (lien « Règles d'usage… » de `MicrosoftNotice`, repris dans « À propos ») : la fenêtre ne le traite pas (`on_new_window`
+  absent, déjà au relevé L16) : les liens du projet de « À propos » sont posés SANS `target`, la navigation passe par
+  `navigation.rs` (navigateur par défaut) ; ce seul lien Microsoft garde `target="_blank"` ; (b) la version affichée est
+  celle du serveur (`-ldflags -X main.version`) : `dev` sur le binaire de développement, `8.1.0` sur l'installeur ; (c)
+  la première boîte native du premier lancement de la session de test n'a pas été retrouvée par l'énumération des fenêtres
+  du processus (le journal avait bien la ligne) ; rejouée une seconde fois, la boîte est apparue à chaque clic.
+
+- **Revue adversariale L18 (2026-11-02, un relecteur Opus) : 6 constats recevables (3 P1, 3 P2 retenus), 1 jeté (voile), 0 P0,
+  corrigés.**
+  (C1, P1) « À propos » : Échap et Tab ne tenaient plus quand le focus quittait la fenêtre (clic sur le chemin des données,
+  bouton de mise à jour qui se désactive : `activeElement` = `body`) ; le clavier est écouté sur `window` (modèle
+  `alert-dialog`), Tab ramène le focus dans la fenêtre quand il en sort, et le focus passe au titre (`tabIndex=-1`) quand le
+  bouton se désactive ; 4 tests dont Échap et Tab sur `document.body`, chacun en échec sans la correction. (C2, P2) la
+  vérification de mise à jour n'avait pas d'échéance : `UpdaterBuilder::timeout(CHECK_TIMEOUT)` de 30 s (constante nommée) sur
+  la vérification, et la décision du verrou (`run_launch_check`) rend le verrou par garde RAII y compris sur panique
+  (`catch_unwind` en test ; en release `panic = "abort"` ferme de toute façon la coquille). (C3, P2) Halo 5 : l'onglet Carrière
+  réécrit visait la route de redirection `commendations` : il vise la route finale `career/commendations`, donc l'onglet est
+  actif (test `SidebarNav` avec les capacités Halo 5 ; test `NavL1` aligné). (C4, P1) clé morte `common.about.dialog_aria`
+  supprimée (fr et en), manifests régénérés. (C5, P1) `main.rs` 517 -> 374 L (`update_setup.rs`) et `updater.rs` 821 -> 456 L
+  (`updater_tests.rs`, `updater_decision.rs` : `SkipReason`, `install_allowed`, messages d'après-arrêt, re-exportés par
+  `updater`) ; `cargo test` identique (81 + 13 + 7 + 9) avant les tests ajoutés. (C6, P2) trous de tests comblés : vérification
+  du lancement sautée quand le verrou est pris, `!enabled` mène à `Unavailable` (`ensure_available`), l'aiguillage
+  `Route::CheckUpdate` (`render::reply`, 204 et rappel) et le fil séparé (`spawn_check_thread`), `NavL2` : filtres Stats rendus
+  et Communauté masquée en bureau ; chaque test échoue condition inversée (vérifié une fois). **Jeté** : voile `bg-black/55` de la
+  modale, même convention que `NavL1MobileMenu` et `alert-dialog` ; dette commune « jeton de voile à créer ».
+  **Relevé, non traité** : (a) `HomeCitationsNearCompletion` navigue encore vers la route de redirection `.../commendations` (un
+  saut de redirection, sans effet visible) ; (b) le téléchargement de l'installeur n'a pas d'échéance : un flux bloqué garde le
+  verrou de vérification (une échéance totale couperait un téléchargement lent légitime ; il faudrait une échéance d'inactivité).
 
 ## 11. Protocole de reprise de session
 

@@ -9039,6 +9039,19 @@ components:
         - message
         - retryable
       type: object
+    AppInfo:
+      additionalProperties: false
+      properties:
+        data_root:
+          description: Dossier des données de l'utilisateur (bases, jetons, archive des films).
+          type: string
+        version:
+          description: Version de l'application (celle du serveur).
+          type: string
+      required:
+        - version
+        - data_root
+      type: object
     AppearanceComponentDiagnosis:
       additionalProperties: false
       properties:
@@ -9776,6 +9789,9 @@ components:
       properties:
         active_sync_job_id:
           type: string
+        app_info:
+          $ref: '#/components/schemas/AppInfo'
+          description: Version de l'application et racine des données, pour la fenêtre À propos (chrome de bureau seulement).
         auth_mode:
           enum:
             - none
@@ -10611,6 +10627,9 @@ components:
         can_use_admin:
           description: Espace d'administration de l'instance.
           type: boolean
+        can_use_compact_chrome:
+          description: 'Chrome d''application de bureau : barre latérale, fenêtre À propos, accueil sans image de couverture.'
+          type: boolean
         can_use_discord:
           description: Relais d'alertes Discord.
           type: boolean
@@ -10661,6 +10680,7 @@ components:
         - can_offer_windows_download
         - can_edit_settings
         - can_upload_media
+        - can_use_compact_chrome
         - deployment
       type: object
     CareerCSRRank:

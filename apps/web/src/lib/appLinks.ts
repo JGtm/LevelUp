@@ -75,3 +75,15 @@ export const MICROSOFT_CONTENT_NOTICE =
 
 /** Dernière version publiée de l'application Windows (page de téléchargement). */
 export const GITHUB_LATEST_RELEASE_URL = `${GITHUB_URL}/releases/latest`
+
+/**
+ * Mentions tierces de l'application de bureau (licences des composants livrés : ffmpeg LGPL, mentions
+ * Microsoft). Le fichier suit la version installée : `v<version>` est le tag de la release ; une version
+ * de développement (« dev », ou tout ce qui n'est pas X.Y.Z) retombe sur la branche principale.
+ */
+const THIRD_PARTY_NOTICES_PATH = 'apps/desktop/THIRD_PARTY_NOTICES.md'
+
+export function thirdPartyNoticesUrl(version: string | null | undefined): string {
+  const ref = version && /^\d+\.\d+\.\d+$/.test(version) ? `v${version}` : 'main'
+  return `${GITHUB_URL}/blob/${ref}/${THIRD_PARTY_NOTICES_PATH}`
+}

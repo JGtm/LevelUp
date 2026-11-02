@@ -213,7 +213,7 @@ describe('NavL1', () => {
 
     expect(screen.getByRole('menuitem', { name: 'Citations' })).toHaveAttribute(
       'href',
-      '/t/partial/players/test-player/commendations',
+      '/t/partial/players/test-player/career/commendations',
     )
   })
 

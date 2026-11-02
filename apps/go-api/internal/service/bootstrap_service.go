@@ -251,6 +251,7 @@ func (s *BootstrapService) Build(ctx context.Context, sess *domain.SessionData) 
 		CurrentUsername:      resolveUsername(sess),
 		FirstLaunch:          s.isFirstLaunch(),
 		OAuthCodeFlowEnabled: s.cfg.AuthMode == "xbox" && s.cfg.OAuthRedirectURI != "",
+		AppInfo:              buildAppInfo(s.cfg),
 	}, nil
 }
 
@@ -424,6 +425,7 @@ func buildCapabilities(cfg *config.AppConfig, settings map[string]interface{}) d
 		CanOfferWindowsDownload: dc.OfferWindowsDownload,
 		CanEditSettings:         dc.EditSettings,
 		CanUploadMedia:          dc.UploadMedia,
+		CanUseCompactChrome:     dc.CompactChrome,
 		Deployment:              string(cfg.Deployment),
 	}
 }

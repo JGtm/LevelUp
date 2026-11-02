@@ -29,6 +29,7 @@ export const DEPLOYMENT_CAPABILITY_DEFAULTS = {
   can_offer_windows_download: true,
   can_edit_settings: true,
   can_upload_media: true,
+  can_use_compact_chrome: false,
 } as const satisfies Partial<CapabilityMap>
 
 /** Clé d'une capacité de profil de déploiement (booléen de `capabilities`). */

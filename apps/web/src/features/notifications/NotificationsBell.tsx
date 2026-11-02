@@ -23,11 +23,13 @@ import type { Notification } from './types'
 
 export interface NotificationsBellProps {
   playerSlug: string
+  /** Côté d'ancrage du panneau : `end` (défaut, barre haute) ou `start` (barre latérale, panneau vers la droite). */
+  panelAlign?: 'start' | 'end'
 }
 
 const DROPDOWN_LIMIT = 12
 
-export function NotificationsBell({ playerSlug }: NotificationsBellProps) {
+export function NotificationsBell({ playerSlug, panelAlign = 'end' }: NotificationsBellProps) {
   const locale = useAppShellStore((s) => s.locale)
   const t = getNotificationsText(locale)
   const [open, setOpen] = useState(false)
@@ -173,7 +175,7 @@ export function NotificationsBell({ playerSlug }: NotificationsBellProps) {
         <div
           role="menu"
           aria-label={t.dropdownTitle}
-          className="absolute right-0 top-full z-50 mt-1 max-h-[70vh] w-[22rem] overflow-hidden rounded-md border border-border bg-popover shadow-lg"
+          className={`absolute ${panelAlign === 'start' ? 'left-0' : 'right-0'} top-full z-50 mt-1 max-h-[70vh] w-[22rem] overflow-hidden rounded-md border border-border bg-popover shadow-lg`}
         >
           <BellHeader
             title={t.dropdownTitle}

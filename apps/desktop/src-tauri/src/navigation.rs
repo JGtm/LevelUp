@@ -83,6 +83,34 @@ mod tests {
     }
 
     #[test]
+    fn le_declencheur_de_mise_a_jour_est_un_chemin_du_protocole_embarque() {
+        let port = Some(8123);
+        // Sous Windows le protocole embarque s'adresse par `http://levelup-shell.localhost` ; ailleurs par
+        // son schema. Dans les deux cas le chemin reste interne a la coquille.
+        assert_eq!(
+            decide_str("http://levelup-shell.localhost/check-update", port),
+            Navigation::Allow
+        );
+        assert_eq!(
+            decide_str("levelup-shell://localhost/check-update", port),
+            Navigation::Allow
+        );
+        // Un autre hote, meme avec ce chemin, n'est pas la coquille : navigateur ou refus, jamais la fenetre.
+        assert_eq!(
+            decide_str("http://levelup-shell.example.test/check-update", port),
+            Navigation::OpenExternally
+        );
+        assert_eq!(
+            decide_str("https://levelup-shell.localhost/check-update", port),
+            Navigation::OpenExternally
+        );
+        assert_eq!(
+            decide_str("http://127.0.0.1:9999/check-update", port),
+            Navigation::OpenExternally
+        );
+    }
+
+    #[test]
     fn le_web_part_dans_le_navigateur() {
         let port = Some(8123);
         assert_eq!(

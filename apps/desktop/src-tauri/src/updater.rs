@@ -21,6 +21,7 @@
 //!                            est journalisee et une boite previent ; l'installeur quitte l'application
 //! ```
 
+use std::collections::VecDeque;
 use std::sync::{Arc, Condvar, Mutex};
 use std::time::{Duration, Instant};
 
@@ -31,6 +32,9 @@ use crate::supervisor::{Closer, Host, Outcome};
 
 /// Longueur maximale des notes montrees dans la boite de dialogue (en caracteres).
 pub const MAX_NOTES_CHARS: usize = 1200;
+/// Echeance de l'interrogation du serveur de mises a jour : sans elle, un serveur qui accepte la connexion
+/// puis ne repond jamais garderait le verrou de verification toute la session.
+pub const CHECK_TIMEOUT: Duration = Duration::from_secs(30);
 /// Delai d'attente de la poignee de fermeture, posee juste apres le lancement du superviseur.
 pub const CLOSER_WAIT: Duration = Duration::from_secs(30);
 
@@ -133,12 +137,17 @@ pub enum UpdateAction {
     ArmAndClose,
     /// Journaliser une raison de ne rien faire.
     Log(String),
+    /// Dire a l'utilisateur ce qu'a donne une verification qu'il a demandee (jamais emis pour la
+    /// verification du lancement, qui reste silencieuse sans mise a jour).
+    Inform(Notice),
 }
 
 /// La machine d'etats de la proposition, PURE.
 #[derive(Debug)]
 pub struct UpdateFlow {
     state: UpdateState,
+    /// Verification demandee par l'utilisateur : « a jour » et « echec » se disent dans une boite.
+    manual: bool,
 }
 
 impl Default for UpdateFlow {
@@ -148,9 +157,20 @@ impl Default for UpdateFlow {
 }
 
 impl UpdateFlow {
+    /// La verification du lancement : silencieuse tant qu'il n'y a rien a proposer.
     pub fn new() -> Self {
         Self {
             state: UpdateState::Idle,
+            manual: false,
+        }
+    }
+
+    /// Une verification demandee par l'utilisateur : meme sequence, mais chaque issue sans mise a
+    /// jour est annoncee.
+    pub fn manual() -> Self {
+        Self {
+            state: UpdateState::Idle,
+            manual: true,
         }
     }
 
@@ -170,10 +190,10 @@ impl UpdateFlow {
                 vec![UpdateAction::Ask(offer)]
             }
             (UpdateState::Checking, UpdateInput::Checked(Ok(None))) => {
-                vec![UpdateAction::Log("event=update_none".into())]
+                self.with_notice("event=update_none".into(), Notice::UpToDate)
             }
             (UpdateState::Checking, UpdateInput::Checked(Err(e))) => {
-                vec![UpdateAction::Log(format!("event=update_check_failed err={e}"))]
+                self.with_notice(format!("event=update_check_failed err={e}"), Notice::CheckFailed)
             }
             (UpdateState::Offered(offer), UpdateInput::Decided(Decision::Install)) => {
                 self.state = UpdateState::Downloading;
@@ -198,6 +218,15 @@ impl UpdateFlow {
                 Vec::new()
             }
         }
+    }
+
+    /// Le journal, puis la boite si l'utilisateur a demande cette verification.
+    fn with_notice(&self, log: String, notice: Notice) -> Vec<UpdateAction> {
+        let mut actions = vec![UpdateAction::Log(log)];
+        if self.manual {
+            actions.push(UpdateAction::Inform(notice));
+        }
+        actions
     }
 }
 
@@ -248,21 +277,53 @@ impl CloserSlot {
     }
 }
 
+/// Ce que partagent toutes les verifications : la langue des boites, la porte d'installation, la
+/// poignee de fermeture du superviseur et le journal.
+pub struct UpdateContext<'a> {
+    pub locale: &'a str,
+    pub gate: &'a InstallGate,
+    pub closer: &'a CloserSlot,
+    pub log: &'a LogSink,
+}
+
 /// Une fois le serveur pret : verifie, propose, telecharge, arme la porte et demande la fermeture.
 /// Tourne sur son propre fil et ne bloque jamais l'interface ; chaque issue sans installation est
 /// journalisee.
 pub fn run_update(
-    mut source: impl UpdateSource,
-    mut prompt: impl Prompt,
+    source: impl UpdateSource,
+    prompt: impl Prompt,
     locale: &str,
     gate: &InstallGate,
     closer: &CloserSlot,
     log: &LogSink,
 ) {
-    let mut flow = UpdateFlow::new();
+    let context = UpdateContext {
+        locale,
+        gate,
+        closer,
+        log,
+    };
+    run_flow(UpdateFlow::new(), source, prompt, None, &context);
+}
+
+/// Deroule une verification de bout en bout. `notifier` n'est donne que pour une verification
+/// demandee par l'utilisateur : c'est par lui que « a jour » et « echec » se disent.
+pub(crate) fn run_flow(
+    mut flow: UpdateFlow,
+    mut source: impl UpdateSource,
+    mut prompt: impl Prompt,
+    mut notifier: Option<&mut dyn Notifier>,
+    context: &UpdateContext<'_>,
+) {
+    let UpdateContext {
+        locale,
+        gate,
+        closer,
+        log,
+    } = *context;
     let mut installer: Option<Installer> = None;
-    let mut pending = flow.step(UpdateInput::ServerReady);
-    while let Some(action) = pending.pop() {
+    let mut pending: VecDeque<UpdateAction> = flow.step(UpdateInput::ServerReady).into();
+    while let Some(action) = pending.pop_front() {
         let next = match action {
             UpdateAction::Check => flow.step(UpdateInput::Checked(source.check())),
             UpdateAction::Ask(offer) => {
@@ -293,6 +354,12 @@ pub fn run_update(
                 log_shell(log, &line);
                 Vec::new()
             }
+            UpdateAction::Inform(notice) => {
+                if let Some(notifier) = notifier.as_mut() {
+                    notifier.show(notice);
+                }
+                Vec::new()
+            }
         };
         pending.extend(next);
     }
@@ -301,89 +368,6 @@ pub fn run_update(
 fn log_shell(log: &LogSink, text: &str) {
     log.write_line(Source::Shell, text);
 }
-
-/// Pourquoi l'installation ne part pas : l'arret du serveur n'a pas ete propre.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SkipReason {
-    /// Le kill a echoue : le serveur peut tourner encore.
-    KillFailed,
-    /// La coquille a du tuer le serveur (budget d'arret depasse).
-    Killed,
-    /// Le serveur a annonce `stopped` avec `clean=false`.
-    Unclean,
-    /// Aucun `stopped` n'est arrive.
-    NoStopped,
-}
-
-impl SkipReason {
-    /// Le nom journalise (`reason=` de l'evenement `update_skipped_unclean_stop`).
-    pub fn name(self) -> &'static str {
-        match self {
-            Self::KillFailed => "kill_failed",
-            Self::Killed => "killed",
-            Self::Unclean => "unclean",
-            Self::NoStopped => "no_stopped",
-        }
-    }
-}
-
-/// La decision d'installer, PURE : l'installeur ne part que si `stopped` est arrive avec `clean=true`
-/// ET que le serveur n'a pas ete tue. Un installeur lance sur un serveur qui vit encore (ou dont la
-/// base n'a pas ete fermee proprement) remplacerait l'executable sous ses pieds.
-pub fn install_allowed(outcome: Outcome) -> Result<(), SkipReason> {
-    if outcome.kill_failed {
-        Err(SkipReason::KillFailed)
-    } else if outcome.killed {
-        Err(SkipReason::Killed)
-    } else {
-        match outcome.stopped_clean {
-            Some(true) => Ok(()),
-            Some(false) => Err(SkipReason::Unclean),
-            None => Err(SkipReason::NoStopped),
-        }
-    }
-}
-
-/// Un message que la coquille montre apres l'arret du serveur, quand la mise a jour ne s'est pas faite.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Notice {
-    /// Arret du serveur non propre : la mise a jour est repoussee au prochain lancement.
-    SkippedUnclean,
-    /// L'installeur a echoue : l'application se ferme sans installation.
-    InstallFailed,
-}
-
-impl Notice {
-    fn message_key(self) -> &'static str {
-        match self {
-            Self::SkippedUnclean => "update_skipped_unclean",
-            Self::InstallFailed => "update_install_failed",
-        }
-    }
-}
-
-/// Les textes d'une boite d'information, dans la langue de la coquille.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct NoticeText {
-    pub title: String,
-    pub message: String,
-}
-
-/// Compose le texte d'un message depuis le catalogue de repli.
-pub fn notice_text(locale: &str, notice: Notice) -> NoticeText {
-    let text = |key: &str| catalogue::text(locale, key).unwrap_or_default().to_string();
-    NoticeText {
-        title: text("update_title"),
-        message: text(notice.message_key()),
-    }
-}
-
-/// Une boite d'information native (bloquante). Le serveur est deja arrete quand elle s'affiche : le
-/// texte vient du catalogue compile dans la coquille.
-pub trait Notifier: Send + 'static {
-    fn show(&mut self, notice: Notice);
-}
-
 /// L'hote qui enveloppe celui de la fenetre : lance la verification quand le serveur est pret et
 /// installe la mise a jour armee, juste avant la sortie de l'application et seulement apres un arret
 /// propre (voir [`install_allowed`]) : sinon il journalise la raison, previent l'utilisateur et sort
@@ -463,214 +447,10 @@ impl<H: Host> Host for UpdateHost<H> {
     }
 }
 
+pub use crate::updater_decision::{
+    CURRENT_VERSION, Notice, NoticeText, Notifier, SkipReason, install_allowed, notice_text,
+};
+
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn offer(version: &str) -> Offer {
-        Offer {
-            version: version.into(),
-            notes: Some("- un changement\n- un autre".into()),
-        }
-    }
-
-    fn drive(flow: &mut UpdateFlow, inputs: Vec<UpdateInput>) -> Vec<Vec<UpdateAction>> {
-        inputs.into_iter().map(|input| flow.step(input)).collect()
-    }
-
-    #[test]
-    fn la_verification_ne_commence_qu_au_serveur_pret_et_une_seule_fois() {
-        let mut flow = UpdateFlow::new();
-        assert_eq!(flow.state(), &UpdateState::Idle);
-        assert_eq!(flow.step(UpdateInput::ServerReady), vec![UpdateAction::Check]);
-        assert!(flow.step(UpdateInput::ServerReady).is_empty());
-        assert_eq!(flow.state(), &UpdateState::Checking);
-    }
-
-    #[test]
-    fn rien_ne_se_passe_avant_la_verification() {
-        let mut flow = UpdateFlow::new();
-        assert!(flow.step(UpdateInput::Decided(Decision::Install)).is_empty());
-        assert!(flow.step(UpdateInput::Downloaded(Ok(()))).is_empty());
-        assert_eq!(flow.state(), &UpdateState::Idle);
-    }
-
-    #[test]
-    fn proposee_acceptee_telechargee_puis_porte_armee_et_fermeture() {
-        let mut flow = UpdateFlow::new();
-        let steps = drive(
-            &mut flow,
-            vec![
-                UpdateInput::ServerReady,
-                UpdateInput::Checked(Ok(Some(offer("8.2.0")))),
-                UpdateInput::Decided(Decision::Install),
-                UpdateInput::Downloaded(Ok(())),
-            ],
-        );
-        assert_eq!(steps[0], vec![UpdateAction::Check]);
-        assert_eq!(steps[1], vec![UpdateAction::Ask(offer("8.2.0"))]);
-        assert_eq!(steps[2], vec![UpdateAction::Download(offer("8.2.0"))]);
-        assert_eq!(steps[3], vec![UpdateAction::ArmAndClose]);
-        assert_eq!(flow.state(), &UpdateState::Armed);
-    }
-
-    #[test]
-    fn plus_tard_ne_telecharge_rien_et_ne_ferme_rien() {
-        let mut flow = UpdateFlow::new();
-        let steps = drive(
-            &mut flow,
-            vec![
-                UpdateInput::ServerReady,
-                UpdateInput::Checked(Ok(Some(offer("8.2.0")))),
-                UpdateInput::Decided(Decision::Later),
-                // Une reponse tardive ou repetee ne ressuscite pas la proposition.
-                UpdateInput::Decided(Decision::Install),
-                UpdateInput::Downloaded(Ok(())),
-            ],
-        );
-        assert!(matches!(steps[2].as_slice(), [UpdateAction::Log(l)] if l.contains("update_declined")));
-        assert!(steps[3].is_empty() && steps[4].is_empty());
-        assert_eq!(flow.state(), &UpdateState::Done);
-    }
-
-    #[test]
-    fn a_jour_ou_erreur_de_verification_ne_proposent_rien() {
-        for checked in [Ok(None), Err("reseau".to_string())] {
-            let mut flow = UpdateFlow::new();
-            flow.step(UpdateInput::ServerReady);
-            let actions = flow.step(UpdateInput::Checked(checked));
-            assert!(matches!(actions.as_slice(), [UpdateAction::Log(_)]), "{actions:?}");
-            assert_eq!(flow.state(), &UpdateState::Done);
-        }
-    }
-
-    #[test]
-    fn un_telechargement_en_echec_n_arme_pas_la_porte() {
-        let mut flow = UpdateFlow::new();
-        drive(
-            &mut flow,
-            vec![
-                UpdateInput::ServerReady,
-                UpdateInput::Checked(Ok(Some(offer("8.2.0")))),
-                UpdateInput::Decided(Decision::Install),
-            ],
-        );
-        let actions = flow.step(UpdateInput::Downloaded(Err("coupe".into())));
-        assert!(matches!(actions.as_slice(), [UpdateAction::Log(l)] if l.contains("update_download_failed")));
-        assert_eq!(flow.state(), &UpdateState::Done);
-    }
-
-    #[test]
-    fn la_boite_de_dialogue_est_complete_dans_chaque_langue() {
-        for code in catalogue::LOCALES {
-            let text = prompt_text(code, &offer("8.2.0"));
-            for (name, value) in [
-                ("title", &text.title),
-                ("message", &text.message),
-                ("install", &text.install),
-                ("later", &text.later),
-            ] {
-                assert!(!value.trim().is_empty(), "{code}/{name} vide");
-            }
-            assert!(text.message.contains("8.2.0"), "{code} : version absente");
-            assert!(!text.message.contains("{version}"), "{code} : gabarit non rempli");
-            assert!(text.message.contains("- un changement"), "{code} : notes absentes");
-            assert_ne!(text.install, text.later);
-        }
-    }
-
-    #[test]
-    fn sans_notes_le_message_n_a_pas_d_entete_de_notes() {
-        let without = Offer {
-            version: "8.2.0".into(),
-            notes: Some("  \n".into()),
-        };
-        let locale = catalogue::DEFAULT_LOCALE;
-        let message = prompt_text(locale, &without).message;
-        assert!(!message.contains(catalogue::text(locale, "update_notes_heading").unwrap()));
-        assert!(!message.contains('\n'));
-    }
-
-    #[test]
-    fn les_notes_trop_longues_sont_coupees_net_avec_une_ellipse() {
-        let long = Offer {
-            version: "8.2.0".into(),
-            notes: Some("Z".repeat(MAX_NOTES_CHARS * 2)),
-        };
-        let message = prompt_text(catalogue::DEFAULT_LOCALE, &long).message;
-        assert!(message.ends_with('\u{2026}'));
-        assert_eq!(message.matches('Z').count(), MAX_NOTES_CHARS);
-    }
-
-    #[test]
-    fn la_porte_s_ouvre_une_seule_fois() {
-        let gate = InstallGate::default();
-        assert!(!gate.is_armed() && gate.take().is_none());
-        gate.arm(Box::new(|| Ok(())));
-        assert!(gate.is_armed());
-        assert!(gate.take().is_some());
-        assert!(gate.take().is_none());
-    }
-
-    #[test]
-    fn la_poignee_de_fermeture_expire_si_elle_n_est_jamais_posee() {
-        assert!(CloserSlot::default().wait(Duration::from_millis(50)).is_none());
-    }
-
-    fn outcome(stopped_clean: Option<bool>, killed: bool, kill_failed: bool) -> Outcome {
-        Outcome {
-            stopped_clean,
-            killed,
-            kill_failed,
-        }
-    }
-
-    #[test]
-    fn l_installation_ne_part_que_sur_un_arret_propre_sans_kill() {
-        assert_eq!(install_allowed(outcome(Some(true), false, false)), Ok(()));
-        assert_eq!(
-            install_allowed(outcome(Some(false), false, false)),
-            Err(SkipReason::Unclean)
-        );
-        assert_eq!(install_allowed(outcome(None, false, false)), Err(SkipReason::NoStopped));
-        // Un `stopped` propre ne rachete pas un kill : le serveur a ete tue ou a refuse de sortir.
-        assert_eq!(
-            install_allowed(outcome(Some(true), true, false)),
-            Err(SkipReason::Killed)
-        );
-        assert_eq!(install_allowed(outcome(None, true, false)), Err(SkipReason::Killed));
-        // Un kill echoue est la raison la plus precise : le processus vit peut-etre encore.
-        assert_eq!(
-            install_allowed(outcome(Some(true), true, true)),
-            Err(SkipReason::KillFailed)
-        );
-    }
-
-    #[test]
-    fn chaque_raison_a_un_nom_journalise_distinct() {
-        let names = [
-            SkipReason::KillFailed,
-            SkipReason::Killed,
-            SkipReason::Unclean,
-            SkipReason::NoStopped,
-        ]
-        .map(SkipReason::name);
-        assert_eq!(names, ["kill_failed", "killed", "unclean", "no_stopped"]);
-    }
-
-    #[test]
-    fn les_messages_apres_arret_sont_complets_dans_chaque_langue() {
-        for code in catalogue::LOCALES {
-            let skipped = notice_text(code, Notice::SkippedUnclean);
-            let failed = notice_text(code, Notice::InstallFailed);
-            for (name, value) in [
-                ("title", &skipped.title),
-                ("skipped", &skipped.message),
-                ("failed", &failed.message),
-            ] {
-                assert!(!value.trim().is_empty(), "{code}/{name} vide");
-            }
-            assert_ne!(skipped.message, failed.message, "{code} : deux messages identiques");
-        }
-    }
-}
+#[path = "updater_tests.rs"]
+mod updater_tests;

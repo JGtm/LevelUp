@@ -6,6 +6,7 @@
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod update_setup;
 mod update_tauri;
 
 use std::path::PathBuf;
@@ -22,12 +23,13 @@ use levelup_desktop::screen::Screen;
 use levelup_desktop::secret::Secret;
 use levelup_desktop::sidecar::SidecarSpec;
 use levelup_desktop::supervisor::{self, Closer, Host, Outcome, ShellConfig};
-use levelup_desktop::updater::{CloserSlot, InstallGate, UpdateHost, run_update};
+use levelup_desktop::updater::UpdateHost;
 use tauri::webview::DownloadEvent;
 use tauri::window::Color;
 use tauri::{AppHandle, Manager, RunEvent, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent};
 use tauri_plugin_opener::OpenerExt;
-use update_tauri::{DialogNotifier, DialogPrompt, PluginSource};
+use update_setup::{UpdateWiring, request_update_check, spawn_update_check};
+use update_tauri::DialogNotifier;
 use url::Url;
 
 /// Etiquette de la fenetre principale.
@@ -47,14 +49,6 @@ struct Shell {
     log: Mutex<Option<Arc<LogSink>>>,
 }
 
-/// Ce que la mise a jour partage avec le superviseur : la porte d'installation (ouverte a la sortie de
-/// l'application) et la poignee de fermeture (posee apres le lancement du superviseur).
-struct UpdateWiring {
-    gate: InstallGate,
-    closer: CloserSlot,
-    locale: &'static str,
-}
-
 fn main() {
     let locale = catalogue::resolve_locale(&sys_locale::get_locale().unwrap_or_default());
     let app = tauri::Builder::default()
@@ -62,17 +56,15 @@ fn main() {
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| focus_main(app)))
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .plugin(tauri_plugin_opener::init())
-        .register_uri_scheme_protocol(SCHEME, move |_ctx, request| {
-            let reply = render::respond(request.uri().path(), locale);
-            let (status, content_type, body) = match reply {
-                Some(page) => (200, page.content_type, page.body),
-                None => (404, "text/plain; charset=utf-8", Vec::new()),
-            };
+        .register_uri_scheme_protocol(SCHEME, move |ctx, request| {
+            let reply = render::reply(request.uri().path(), locale, || {
+                request_update_check(ctx.app_handle().clone());
+            });
             tauri::http::Response::builder()
-                .status(status)
-                .header("Content-Type", content_type)
+                .status(reply.status)
+                .header("Content-Type", reply.content_type)
                 .header("Cache-Control", "no-store")
-                .body(body)
+                .body(reply.body)
                 .expect("reponse du protocole embarque")
         })
         .setup(move |app| {
@@ -178,12 +170,7 @@ fn setup(app: &AppHandle) {
         app.exit(1);
         return;
     }
-    let updater_enabled = register_updater(app, log.as_deref());
-    let update = UpdateWiring {
-        gate: InstallGate::default(),
-        closer: CloserSlot::default(),
-        locale: catalogue::resolve_locale(&sys_locale::get_locale().unwrap_or_default()),
-    };
+    let (update, updater_enabled) = update_setup::install(app, log.clone());
 
     let started = prepared.and_then(|p| start_server(app, p, port, exiting_flag, update, updater_enabled));
     if let Err(e) = started {
@@ -222,9 +209,9 @@ fn start_server(
         exiting: exiting_flag,
         log: log.clone(),
     };
-    let UpdateWiring { gate, closer, locale } = update;
+    let (gate, closer, locale) = (update.gate.clone(), update.closer.clone(), update.locale);
     let on_ready = if updater_enabled {
-        spawn_update_check(app.clone(), locale, gate.clone(), closer.clone(), log.clone())
+        spawn_update_check(app.clone(), update, log.clone())
     } else {
         Box::new(|| {})
     };
@@ -234,60 +221,6 @@ fn start_server(
     let shell = app.state::<Shell>();
     *shell.closer.lock().unwrap_or_else(|p| p.into_inner()) = Some(handle.closer());
     Ok(())
-}
-
-/// La verification de mise a jour, lancee une fois par lancement quand le serveur est pret : sur son
-/// propre fil, jamais bloquante, chaque issue sans installation est journalisee.
-fn spawn_update_check(
-    app: AppHandle,
-    locale: &'static str,
-    gate: InstallGate,
-    closer: CloserSlot,
-    log: Arc<LogSink>,
-) -> Box<dyn FnOnce() + Send> {
-    Box::new(move || {
-        let thread_log = log.clone();
-        let spawned = std::thread::Builder::new().name("update".into()).spawn(move || {
-            run_update(
-                PluginSource::new(app),
-                DialogPrompt,
-                locale,
-                &gate,
-                &closer,
-                &thread_log,
-            );
-        });
-        if let Err(e) = spawned {
-            report(Some(log.as_ref()), &format!("event=update_thread_failed err={e}"));
-        }
-    })
-}
-
-/// L'updater n'est branche que si la cle publique est posee (`build.rs` refuse une release sans elle) et
-/// hors des builds de developpement (un build de debug ne se remplace pas par la derniere release).
-/// Rend vrai quand le plugin est enregistre.
-fn register_updater(app: &AppHandle, log: Option<&LogSink>) -> bool {
-    if cfg!(debug_assertions) {
-        report(log, "event=updater_disabled reason=debug_build");
-        return false;
-    }
-    let configured = app
-        .config()
-        .plugins
-        .0
-        .get("updater")
-        .and_then(|conf| conf.get("pubkey"))
-        .and_then(|key| key.as_str())
-        .is_some_and(|key| !key.trim().is_empty());
-    if !configured {
-        report(log, "event=updater_disabled reason=no_public_key");
-        return false;
-    }
-    if let Err(e) = app.plugin(tauri_plugin_updater::Builder::new().build()) {
-        report(log, &format!("event=updater_failed err={e}"));
-        return false;
-    }
-    true
 }
 
 fn create_window(app: &AppHandle, port: Arc<AtomicU16>, log: Option<Arc<LogSink>>) -> tauri::Result<WebviewWindow> {

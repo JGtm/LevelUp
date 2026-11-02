@@ -72,6 +72,9 @@ func TestDeployment_TableDesCombinaisonsActuelles(t *testing.T) {
 					if c.EditSettings == wantDemo || c.UploadMedia == wantDemo || c.PoolTokens == wantDemo {
 						t.Errorf("capacités figées en démo seulement : %+v pour demo=%v", c, wantDemo)
 					}
+					if c.CompactChrome {
+						t.Errorf("hors desktop : chrome de bureau offert : %+v", c)
+					}
 					if c.UpdateApp || !c.OfferWindowsDownload {
 						t.Errorf("hors desktop : mise à jour offerte ou téléchargement absent : %+v", c)
 					}
@@ -103,7 +106,8 @@ func TestDeployment_CapacitesParProfil(t *testing.T) {
 			UseAdmin: true, OfferWindowsDownload: true}},
 		{DeploymentDesktop, "", "", LaunchModeDesktop, DeploymentCapabilities{
 			UseOutboundNetwork: true, UpdateApp: true, EditSettings: true, UploadMedia: true,
-			ShellEntryGate: true, PoolGrantedToLocalUser: true, WakeSequence: true, TokenVault: true}},
+			ShellEntryGate: true, PoolGrantedToLocalUser: true, WakeSequence: true, TokenVault: true,
+			CompactChrome: true}},
 	}
 	for _, c := range cas {
 		t.Run(string(c.profil), func(t *testing.T) {

@@ -3,7 +3,7 @@
 //! `levelup_desktop::updater`), aucun libelle (ils viennent du catalogue).
 
 use levelup_desktop::updater::{
-    Decision, Installer, Notice, Notifier, Offer, Prompt, PromptText, UpdateSource, notice_text,
+    CHECK_TIMEOUT, Decision, Installer, Notice, Notifier, Offer, Prompt, PromptText, UpdateSource, notice_text,
 };
 use tauri::AppHandle;
 use tauri_plugin_updater::{Update, UpdaterExt};
@@ -23,7 +23,12 @@ impl PluginSource {
 
 impl UpdateSource for PluginSource {
     fn check(&mut self) -> Result<Option<Offer>, String> {
-        let updater = self.app.updater().map_err(|e| e.to_string())?;
+        let updater = self
+            .app
+            .updater_builder()
+            .timeout(CHECK_TIMEOUT)
+            .build()
+            .map_err(|e| e.to_string())?;
         // Le fil de mise a jour n'est pas un fil asynchrone : il attend le plugin sur le moteur de Tauri.
         let found = tauri::async_runtime::block_on(updater.check()).map_err(|e| e.to_string())?;
         let offer = found.as_ref().map(|update| Offer {
@@ -72,8 +77,8 @@ impl Prompt for DialogPrompt {
     }
 }
 
-/// La boite d'information native posee apres l'arret du serveur (mise a jour repoussee, installation
-/// echouee) : un seul bouton, le texte vient du catalogue.
+/// La boite d'information native (mise a jour repoussee, installation echouee, resultat d'une verification
+/// demandee) : un seul bouton, le texte vient du catalogue.
 pub struct DialogNotifier {
     pub locale: &'static str,
 }
@@ -84,7 +89,11 @@ impl Notifier for DialogNotifier {
         rfd::MessageDialog::new()
             .set_title(text.title.as_str())
             .set_description(text.message.as_str())
-            .set_level(rfd::MessageLevel::Warning)
+            .set_level(if notice.is_informational() {
+                rfd::MessageLevel::Info
+            } else {
+                rfd::MessageLevel::Warning
+            })
             .set_buttons(rfd::MessageButtons::Ok)
             .show();
     }

@@ -18,6 +18,64 @@ pub struct Embedded {
     pub body: Vec<u8>,
 }
 
+/// Chemin que la page du serveur appelle pour demander la verification de mise a jour : la page tourne
+/// sans aucune commande de la coquille (ADR 0045), ce chemin du protocole embarque est son seul canal.
+pub const CHECK_UPDATE_PATH: &str = "/check-update";
+
+/// Ce que le protocole embarque fait d'un chemin.
+pub enum Route {
+    /// Un ecran ou le logo : la reponse est servie telle quelle.
+    Page(Embedded),
+    /// La demande de verification de mise a jour : la coquille la lance, la reponse est vide (204).
+    CheckUpdate,
+    /// Tout autre chemin : 404.
+    NotFound,
+}
+
+/// Aiguille un chemin du protocole embarque. Le chemin est exact : ni suffixe, ni autre casse.
+pub fn route(path: &str, locale: &str) -> Route {
+    if path == CHECK_UPDATE_PATH {
+        return Route::CheckUpdate;
+    }
+    match respond(path, locale) {
+        Some(page) => Route::Page(page),
+        None => Route::NotFound,
+    }
+}
+
+/// La reponse HTTP du protocole embarque.
+pub struct Reply {
+    pub status: u16,
+    pub content_type: &'static str,
+    pub body: Vec<u8>,
+}
+
+/// Repond a une requete du protocole embarque. `on_check_update` n'est appele que pour la demande de
+/// verification de mise a jour, et la reponse (204) ne l'attend pas : c'est a lui de rendre la main tout de suite.
+pub fn reply(path: &str, locale: &str, on_check_update: impl FnOnce()) -> Reply {
+    const TEXT: &str = "text/plain; charset=utf-8";
+    match route(path, locale) {
+        Route::Page(page) => Reply {
+            status: 200,
+            content_type: page.content_type,
+            body: page.body,
+        },
+        Route::CheckUpdate => {
+            on_check_update();
+            Reply {
+                status: 204,
+                content_type: TEXT,
+                body: Vec::new(),
+            }
+        }
+        Route::NotFound => Reply {
+            status: 404,
+            content_type: TEXT,
+            body: Vec::new(),
+        },
+    }
+}
+
 /// Repond au chemin demande : un ecran, le logo, ou `None` (404).
 pub fn respond(path: &str, locale: &str) -> Option<Embedded> {
     if path == "/logo.png" {
@@ -103,6 +161,30 @@ mod tests {
     }
 
     #[test]
+    fn seul_le_chemin_exact_declenche_la_verification_de_mise_a_jour() {
+        let locale = catalogue::DEFAULT_LOCALE;
+        assert!(matches!(route("/check-update", locale), Route::CheckUpdate));
+        for other in [
+            "/check-update/",
+            "/check-update/x",
+            "/Check-Update",
+            "/check_update",
+            "/check-updates",
+            "check-update",
+            "/",
+            "",
+            "/update",
+        ] {
+            assert!(
+                matches!(route(other, locale), Route::NotFound),
+                "{other:?} ne doit rien declencher"
+            );
+        }
+        assert!(matches!(route("/stopping", locale), Route::Page(_)));
+        assert!(matches!(route("/logo.png", locale), Route::Page(_)));
+    }
+
+    #[test]
     fn le_protocole_sert_les_ecrans_et_le_logo_et_refuse_le_reste() {
         let locale = catalogue::DEFAULT_LOCALE;
         let page = respond(&Screen::Stopping.path(), locale).expect("ecran");
@@ -112,5 +194,29 @@ mod tests {
         assert!(logo.body.starts_with(&[0x89, b'P', b'N', b'G']));
         assert!(respond("/inconnu", locale).is_none());
         assert!(respond("/../Cargo.toml", locale).is_none());
+    }
+
+    #[test]
+    fn la_demande_de_verification_est_lancee_et_repond_204_sans_l_attendre() {
+        let mut launched = 0;
+        let reply = reply("/check-update", catalogue::DEFAULT_LOCALE, || launched += 1);
+        assert_eq!(launched, 1);
+        assert_eq!(reply.status, 204);
+        assert!(reply.body.is_empty());
+    }
+
+    #[test]
+    fn les_autres_chemins_ne_lancent_aucune_verification() {
+        for (path, status) in [
+            ("/stopping", 200),
+            ("/logo.png", 200),
+            ("/inconnu", 404),
+            ("/check-update/", 404),
+        ] {
+            let mut launched = 0;
+            let reply = reply(path, catalogue::DEFAULT_LOCALE, || launched += 1);
+            assert_eq!(launched, 0, "{path} ne doit rien lancer");
+            assert_eq!(reply.status, status, "{path}");
+        }
     }
 }
