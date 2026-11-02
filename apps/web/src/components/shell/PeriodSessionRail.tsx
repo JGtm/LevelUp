@@ -185,7 +185,7 @@ function formatSessionLabel(
 }
 
 // Layout 3-zones : [◀ Précédente | Label centré | Suivante ▶]
-// Pas de sticky propre — le parent (NavL2 ou SquadLayout) gère sa propre
+// Pas de sticky propre — le parent (SoloFiltersBar ou SquadLayout) gère sa propre
 // barre sticky qui contient le rail. La border-t/-b délimite visuellement
 // le rail des filtres au-dessus et du contenu en dessous.
 const RAIL_BASE_CLASS =
@@ -199,7 +199,7 @@ const NAV_BTN_CLASS =
   'rounded-md border border-input bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-30'
 
 interface PeriodSessionRailProps {
-  /** Store à utiliser. Défaut : useSoloFilterStore (rétrocompat NavL2). */
+  /** Store à utiliser. Défaut : useSoloFilterStore (rétrocompat SoloFiltersBar). */
   filterStore?: FilterStore
   /** Total de matchs après filtres — affiché au centre du rail dans les modes qui
    *  n'ont pas déjà leur propre compteur (tous sauf session unique). Côté Escouade,

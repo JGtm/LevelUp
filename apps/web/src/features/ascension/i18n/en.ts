@@ -2,14 +2,6 @@
 import type { AscensionText } from './contract'
 
 export const EN_TEXT = {
-  pageTitle: 'Ascension',
-  pageSubtitle: 'Play profile, objectives and achievements.',
-  tabsAriaLabel: 'Ascension sections',
-  tabProfile: 'Profile',
-  tabObjectives: 'Objectives',
-  tabCoaching: 'Training',
-  tabRealisations: 'Achievements',
-  tabTactical: 'Tactics',
   tipsTickerAriaLabel: 'Gameplay tips to improve',
   profilLayerTitle: 'Play profile',
   profilLayerDescription:

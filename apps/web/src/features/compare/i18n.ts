@@ -4,7 +4,6 @@ import type { Locale } from '@/lib/i18n/locale'
 
 export interface CompareText {
   intlLocale: string
-  pageTitle: string
   backToExplorer: string
   searchPlaceholder: string
   emptyPrompt: string
@@ -47,7 +46,6 @@ export interface CompareText {
 
 const FR_TEXT: CompareText = {
   intlLocale: intlLocale('fr'),
-  pageTitle: 'Face-à-face',
   backToExplorer: 'Retour à l\'Explorer',
   searchPlaceholder: 'Rechercher un joueur…',
   emptyPrompt: 'Recherchez un joueur pour lancer le face-à-face.',
@@ -90,7 +88,6 @@ const FR_TEXT: CompareText = {
 
 const EN_TEXT: CompareText = {
   intlLocale: intlLocale('en'),
-  pageTitle: 'Head-to-head',
   backToExplorer: 'Back to Explorer',
   searchPlaceholder: 'Search a player…',
   emptyPrompt: 'Search a player to start the head-to-head.',

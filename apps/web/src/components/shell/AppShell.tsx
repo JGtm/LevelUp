@@ -8,7 +8,7 @@
  *   des référentiels ancré à droite (il pousse le contenu, rien ne se superpose), sans pied de page
  *   (la fenêtre « À propos » en porte le contenu).
  *
- * La NavL2 (bandeau contextuel Stats/Escouade) et la KPIBar sont gérées
+ * L'en-tête de page (SectionHeader), les filtres Stats (SoloFiltersBar) et la KPIBar sont gérés
  * au niveau du layout joueur ($playerSlug.tsx).
  */
 import { Outlet, useMatches } from '@tanstack/react-router'

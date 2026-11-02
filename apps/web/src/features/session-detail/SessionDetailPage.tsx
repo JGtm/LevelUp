@@ -3,7 +3,7 @@
  *
  * Quand le compare est ouvert, la page passe en deux colonnes côte-à-côte (≥ xl)
  * dans le même conteneur de scroll (`main`), donnant un scroll synchronisé naturel.
- * La colonne compare commence sous la NavL2 car elle est dans le flux DOM de l'Outlet,
+ * La colonne compare commence sous le bandeau des filtres car elle est dans le flux DOM de l'Outlet,
  * pas en position fixed.
  *
  * Animation : le conteneur est une grille dont la 2e piste passe de 0fr à 1fr via
@@ -102,17 +102,18 @@ export function SessionDetailPage() {
     locale,
   )
 
-  // En-tête L3 sticky : il doit se coller SOUS la NavL2 (elle-même sticky top-0 dans
-  // le même conteneur de scroll). On mesure la hauteur réelle de la NavL2 (sibling
-  // précédent du root de la page dans PlayerLayout) et on l'applique en `top` — sinon
-  // les deux se chevauchent à top-0 et le header L3 disparaît derrière la NavL2 au scroll.
+  // En-tête L3 sticky : il doit se coller SOUS le bandeau des filtres (SoloFiltersBar, lui-même
+  // sticky top-0 dans le même conteneur de scroll). On mesure la hauteur réelle de ce bandeau (sibling
+  // précédent du root de la page dans PlayerLayout, repéré par son rôle `navigation`) et on
+  // l'applique en `top` — sinon les deux se chevauchent à top-0 et le header L3 disparaît derrière le
+  // bandeau au scroll. Le sibling précédent peut aussi être l'en-tête de page (non sticky) : ignoré.
   const rootRef = useRef<HTMLDivElement>(null)
   const [navHeight, setNavHeight] = useState(0)
   useEffect(() => {
     const root = rootRef.current
     if (!root) return
     const nav = root.previousElementSibling as HTMLElement | null
-    if (!nav) return
+    if (!nav || nav.getAttribute('role') !== 'navigation') return
     const update = () => setNavHeight(nav.offsetHeight)
     update()
     const ro = new ResizeObserver(update)
@@ -296,7 +297,7 @@ export function SessionDetailPage() {
       >
         {hasSessions ? (
           <>
-            {/* En-tete session "L3" : sticky sous la NavL2 (top = hauteur NavL2 mesurée),
+            {/* En-tete session "L3" : sticky sous le bandeau des filtres (top = sa hauteur mesurée),
                 bleed horizontal via -mx-6 pour s'aligner sur les bords de la colonne.
                 xl:h-14 → hauteur fixe en vue côte-à-côte, identique au L3 drawer, pour
                 que les deux headers (et le contenu sous eux) s'alignent pile. */}
@@ -316,7 +317,7 @@ export function SessionDetailPage() {
                 </button>
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2 xl:flex-nowrap">
-                    <h1 className="min-w-0 truncate text-lg font-semibold text-foreground">{selectedSessionLabel}</h1>
+                    <h2 className="min-w-0 truncate text-lg font-semibold text-foreground">{selectedSessionLabel}</h2>
                     <SessionParamPills entry={data.current_session} />
                   </div>
                 </div>

@@ -1,5 +1,5 @@
 /**
- * useTabStripScroll — la barre d'onglets d'Ascension défile à l'horizontale quand la fenêtre est
+ * useTabStripScroll — la barre d'onglets d'un en-tête de page défile à l'horizontale quand la fenêtre est
  * plus étroite que ses onglets (sous ~620 px, « Tactique » sortait de l'écran sans moyen de
  * l'atteindre).
  *
@@ -57,7 +57,7 @@ export function useTabStripScroll(activeKey: string): {
 
   const revealActive = useCallback(() => {
     const strip = ref.current
-    const active = strip?.querySelector<HTMLElement>('[aria-selected="true"]')
+    const active = strip?.querySelector<HTMLElement>('[aria-current="page"]')
     if (!strip || !active) return
     // La barre est positionnée (`relative`) : `offsetLeft` d'un onglet se lit depuis elle.
     const left = active.offsetLeft

@@ -361,7 +361,6 @@ export function ComparePage() {
           </Link>
         )}
         <div className="flex items-center gap-4">
-          <h1 className="text-lg font-semibold text-foreground shrink-0">{text.pageTitle}</h1>
           <div className="flex-1 max-w-sm">
             <GamertagCombobox
               selected={[target, target2].filter((v): v is string => !!v)}

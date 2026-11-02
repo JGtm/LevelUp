@@ -5,16 +5,7 @@
 import type { StreakType, ContextType, BehaviorType } from '../types'
 
 export interface AscensionText {
-  // Page wrapper (layout 4 onglets — refonte 2026-07, DEC-3)
-  pageTitle: string
-  pageSubtitle: string
-  tabsAriaLabel: string
-  tabProfile: string
-  tabObjectives: string
-  tabCoaching: string
-  tabRealisations: string
-  /** Onglet « Tactique » (5e rang, 2026-09-06) — masqué pour un titre sans rejeu. */
-  tabTactical: string
+  // Page wrapper (layout : bandeau d'astuces sous l'en-tête de section)
   tipsTickerAriaLabel: string
   profilLayerTitle: string
   profilLayerDescription: string

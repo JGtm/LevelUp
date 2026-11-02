@@ -28,6 +28,9 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
     useSearch: () => ({}),
     useMatchRoute: () => ({ to }: { to: string }) => (to === routeActive ? {} : null),
     useNavigate: () => vi.fn(),
+    // L'en-tête de page (onglets) lit le chemin courant : un chemin de l'escouade suffit ici.
+    useRouterState: ({ select }: { select: (s: unknown) => unknown }) =>
+      select({ location: { pathname: '/t/halo_infinite/players/p/squad/synergies' } }),
     Outlet: () => <div data-testid="contenu-onglet" />,
     Link: ({ children, to }: { children?: ReactNode; to?: string }) => <a href={to}>{children}</a>,
   }

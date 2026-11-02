@@ -5,7 +5,7 @@
  *
  * Mesure d'origine : un
  * POST /filters/resolve solo sur TOUTES les pages joueur, alors que seules les
- * pages Stats le lisent. Oracle : les POST reçus par MSW. NavL2 est neutralisée —
+ * pages Stats le lisent. Oracle : les POST reçus par MSW. SoloFiltersBar et SectionHeader sont neutralisées —
  * elle monte FilterOmnibar et son propre aperçu, hors sujet : on ne compte ici que
  * les résolutions de PlayerLayout.
  */
@@ -44,7 +44,8 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
   }
 })
 
-vi.mock('@/components/shell/NavL2', () => ({ NavL2: () => null }))
+vi.mock('@/components/shell/SoloFiltersBar', () => ({ SoloFiltersBar: () => null }))
+vi.mock('@/components/shell/SectionHeader', () => ({ SectionHeader: () => null }))
 
 // Import APRÈS les mocks (le module lit createFileRoute au chargement).
 import { Route } from './$playerSlug'

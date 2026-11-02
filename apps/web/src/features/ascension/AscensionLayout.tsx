@@ -7,29 +7,25 @@
  *   /ascension/objectifs     → tab "Objectifs" (couche Prestige)
  *   /ascension/coaching      → tab "Entraînement"
  *   /ascension/realisations  → tab "Réalisations"
- *   /ascension/tactique      → tab "Tactique" (2026-09-06)
+ *   /ascension/tactique      → tab "Tactique"
  *
- * Le layout fournit le header (H1 + sous-titre), le bandeau TipsTicker
- * partagé, et la barre d'onglets. Le contenu de chaque tab est rendu
- * via <Outlet />.
+ * L'en-tête (titre, chapeau) et la barre d'onglets sont posés au-dessus par `SectionHeader`
+ * (layout joueur), comme pour toutes les sections : les onglets viennent de `L1_SECTIONS`. Ce
+ * layout ne rend que le bandeau d'astuces TipsTicker, sous l'en-tête, puis le contenu de l'onglet
+ * (<Outlet />).
  *
- * Refonte Ascension UX (2026-07) : restructuration 3 → 4 onglets (DEC-3).
- * Phase 4 du plan Tactique (2026-09-06) : 5e onglet « Tactique », derrière
- * `FeatureGate capability="replay"` — un titre sans décodage de film ne produit
- * aucune position mesurée, donc aucune lecture de placement : l'onglet n'apparaît
- * pas plutôt que de mener à une page morte. C'est la PREMIÈRE des deux portes ; la
- * seconde est sur la route elle-même (cf. `features/tactical/TacticalTab`), parce
- * qu'une URL peut être ouverte directement sans passer par cette barre.
+ * L'onglet « Tactique » est derrière la capacité `replay` (déclarée sur son onglet de `L1_SECTIONS`) :
+ * un titre sans décodage de film ne produit aucune position mesurée, donc aucune lecture de
+ * placement ; l'onglet n'apparaît pas plutôt que de mener à une page morte. C'est la PREMIÈRE des deux
+ * portes ; la seconde est sur la route elle-même (cf. `features/tactical/TacticalTab`), parce
+ * qu'une URL peut être ouverte directement sans passer par la barre.
  */
 import { useMemo } from 'react'
-import { Link, Outlet, useMatchRoute, useParams } from '@tanstack/react-router'
-import { FeatureGate } from '@/lib/capabilities/FeatureGate'
+import { Outlet } from '@tanstack/react-router'
 import { useAppShellStore } from '@/stores/appShellStore'
-import { useTitleSlug } from '@/lib/title-routing'
 import { TipsTicker } from '@/components/ui/tips-ticker'
 import { buildAscensionTips } from './tips'
 import { getAscensionText } from './i18n'
-import { edgeFadeMask, useTabStripScroll } from './useTabStripScroll'
 
 function LightbulbIcon() {
   return (
@@ -53,109 +49,19 @@ function LightbulbIcon() {
 }
 
 export function AscensionLayout() {
-  const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
-  const titleSlug = useTitleSlug()
   const locale = useAppShellStore((s) => s.locale)
   const t = getAscensionText(locale)
-  const matchRoute = useMatchRoute()
-
   const tips = useMemo(() => buildAscensionTips(locale), [locale])
-
-  const profileRoute = '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension' as const
-  const objectivesRoute = '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/objectifs' as const
-  const coachingRoute = '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/coaching' as const
-  const realisationsRoute = '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/realisations' as const
-  const tacticalRoute = '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/tactique' as const
-  const isObjectives = !!matchRoute({ to: objectivesRoute })
-  const isCoaching = !!matchRoute({ to: coachingRoute })
-  const isRealisations = !!matchRoute({ to: realisationsRoute })
-  const isTactical = !!matchRoute({ to: tacticalRoute })
-  const isProfile = !isObjectives && !isCoaching && !isRealisations && !isTactical
-  const activeTab = isObjectives ? 'objectives' : isCoaching ? 'coaching' : isRealisations ? 'realisations' : isTactical ? 'tactical' : 'profile'
-  const { ref: stripRef, edges: stripEdges, onScroll: onStripScroll } = useTabStripScroll(activeTab)
 
   return (
     <main className="space-y-6 p-6">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-bold">{t.pageTitle}</h1>
-        <p className="text-sm text-muted-foreground">{t.pageSubtitle}</p>
-      </header>
-
       <TipsTicker
         tips={tips}
         ariaLabel={t.tipsTickerAriaLabel}
         leadingIcon={<LightbulbIcon />}
       />
 
-      {/* Étroite, la barre défile à l'horizontale (barre de défilement masquée, fondu au bord
-          qui cache encore des onglets) et garde l'onglet actif visible. */}
-      <nav
-        ref={stripRef}
-        role="tablist"
-        aria-label={t.tabsAriaLabel}
-        className="relative flex overflow-x-auto border-b border-border [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        style={edgeFadeMask(stripEdges)}
-        onScroll={onStripScroll}
-      >
-        <Link
-          to={profileRoute}
-          params={{ titleSlug, playerSlug }}
-          role="tab"
-          aria-selected={isProfile}
-          className={tabClass(isProfile)}
-        >
-          {t.tabProfile}
-        </Link>
-        <Link
-          to={objectivesRoute}
-          params={{ titleSlug, playerSlug }}
-          role="tab"
-          aria-selected={isObjectives}
-          className={tabClass(isObjectives)}
-        >
-          {t.tabObjectives}
-        </Link>
-        <Link
-          to={coachingRoute}
-          params={{ titleSlug, playerSlug }}
-          role="tab"
-          aria-selected={isCoaching}
-          className={tabClass(isCoaching)}
-        >
-          {t.tabCoaching}
-        </Link>
-        <Link
-          to={realisationsRoute}
-          params={{ titleSlug, playerSlug }}
-          role="tab"
-          aria-selected={isRealisations}
-          className={tabClass(isRealisations)}
-        >
-          {t.tabRealisations}
-        </Link>
-        <FeatureGate capability="replay">
-          <Link
-            to={tacticalRoute}
-            params={{ titleSlug, playerSlug }}
-            role="tab"
-            aria-selected={isTactical}
-            className={tabClass(isTactical)}
-          >
-            {t.tabTactical}
-          </Link>
-        </FeatureGate>
-      </nav>
-
       <Outlet />
     </main>
   )
-}
-
-function tabClass(active: boolean): string {
-  return [
-    'shrink-0 whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium transition-colors',
-    active
-      ? 'border-primary text-foreground'
-      : 'border-transparent text-muted-foreground hover:text-foreground',
-  ].join(' ')
 }

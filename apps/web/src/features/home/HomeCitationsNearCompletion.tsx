@@ -9,7 +9,7 @@
  *   - Infinite : moteur de citations dérivé (`/pages/citations`).
  *   - Halo 5   : commendations NATIVES, totaux à vie (`/commendations/totals`).
  * Signal de choix : la capability de titre `citations` (moteur de citations calculées
- * servi ou non) — même règle que NavL1/NavL2. Chaque source appelle EXACTEMENT
+ * servi ou non) — même règle que NavL1/SectionHeader. Chaque source appelle EXACTEMENT
  * un data-hook → règles des hooks respectées.
  *
  * Frontière front-only : aucune plomberie backend (les deux endpoints existaient
