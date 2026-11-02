@@ -12,6 +12,7 @@
 //! - [`screen`], [`catalogue`], [`render`] : les ecrans embarques et leurs libelles (A4).
 //! - [`updater`]   : la mise a jour proposee, jamais imposee, installee apres l'arret du serveur (D-16).
 //! - [`update_manual`] : la meme verification, demandee par l'utilisateur depuis « A propos ».
+//! - `updater_decision` : l'arret propre qui autorise l'installation et les messages d'apres-arret (re-exportes par [`updater`]).
 //! - [`roots`], [`secret`], [`logfile`], [`linereader`], [`navigation`] : petits outils.
 
 pub mod catalogue;
@@ -28,3 +29,4 @@ pub mod sidecar;
 pub mod supervisor;
 pub mod update_manual;
 pub mod updater;
+mod updater_decision;

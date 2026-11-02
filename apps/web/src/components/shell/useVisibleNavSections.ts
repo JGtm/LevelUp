@@ -32,7 +32,7 @@ export function useVisibleNavSections(): L1Section[] {
               // officiel Halo) et on ne change QUE la clé de tab + le chemin.
               ...tab,
               key: 'commendations',
-              path: '/{-$lang}/t/$titleSlug/players/$playerSlug/commendations',
+              path: '/{-$lang}/t/$titleSlug/players/$playerSlug/career/commendations',
             }
           : tab,
       )

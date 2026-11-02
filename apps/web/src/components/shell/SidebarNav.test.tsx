@@ -68,6 +68,20 @@ describe('SidebarNav', () => {
     expect(screen.queryByRole('link', { name: 'Synergies' })).not.toBeInTheDocument()
   })
 
+  it('titre sans citations calculées : l’onglet Commendations est actif sur la page des commendations', () => {
+    mockPathname = '/t/halo_5/players/test-player/career/commendations'
+    useAppShellStore.setState({
+      currentTitleSlug: 'halo_5',
+      availableTitles: [
+        { slug: 'halo_5', name: 'Halo 5', status: 'active', capabilities: ['career'], is_default: false, effective_hp_to_kill: 225 },
+      ] as unknown as State['availableTitles'],
+    })
+    renderWithProviders(<SidebarNav />)
+    const tab = screen.getByRole('link', { name: 'Citations' })
+    expect(tab).toHaveAttribute('href', '/t/halo_5/players/test-player/career/commendations')
+    expect(tab).toHaveAttribute('aria-current', 'page')
+  })
+
   it('le pied de barre porte Aide, Paramètres, la bascule de thème, À propos et la version', () => {
     renderWithProviders(<SidebarNav />)
     const foot = screen.getByRole('group', { name: /Aide, paramètres/ })

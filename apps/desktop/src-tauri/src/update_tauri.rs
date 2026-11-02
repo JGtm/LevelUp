@@ -3,7 +3,7 @@
 //! `levelup_desktop::updater`), aucun libelle (ils viennent du catalogue).
 
 use levelup_desktop::updater::{
-    Decision, Installer, Notice, Notifier, Offer, Prompt, PromptText, UpdateSource, notice_text,
+    CHECK_TIMEOUT, Decision, Installer, Notice, Notifier, Offer, Prompt, PromptText, UpdateSource, notice_text,
 };
 use tauri::AppHandle;
 use tauri_plugin_updater::{Update, UpdaterExt};
@@ -23,7 +23,12 @@ impl PluginSource {
 
 impl UpdateSource for PluginSource {
     fn check(&mut self) -> Result<Option<Offer>, String> {
-        let updater = self.app.updater().map_err(|e| e.to_string())?;
+        let updater = self
+            .app
+            .updater_builder()
+            .timeout(CHECK_TIMEOUT)
+            .build()
+            .map_err(|e| e.to_string())?;
         // Le fil de mise a jour n'est pas un fil asynchrone : il attend le plugin sur le moteur de Tauri.
         let found = tauri::async_runtime::block_on(updater.check()).map_err(|e| e.to_string())?;
         let offer = found.as_ref().map(|update| Offer {

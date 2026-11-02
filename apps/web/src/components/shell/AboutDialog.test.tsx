@@ -110,6 +110,56 @@ describe('AboutDialog', () => {
     expect(last).toHaveFocus()
   })
 
+  it('Échap ferme la fenêtre même quand le focus est tombé sur le corps de la page', async () => {
+    renderWithProviders(<Harness />)
+    ;(document.activeElement as HTMLElement).blur()
+    expect(document.body).toHaveFocus()
+    fireEvent.keyDown(document.body, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  })
+
+  it('Tab ramène le focus dans la fenêtre quand il en est sorti (corps de la page)', () => {
+    renderWithProviders(<Harness />)
+    const dialog = screen.getByRole('dialog')
+    const items = Array.from(dialog.querySelectorAll<HTMLElement>('a[href], button:not([disabled])'))
+    ;(document.activeElement as HTMLElement).blur()
+    fireEvent.keyDown(document.body, { key: 'Tab' })
+    expect(dialog).toContainElement(document.activeElement as HTMLElement)
+    expect(items[0]).toHaveFocus()
+    ;(document.activeElement as HTMLElement).blur()
+    fireEvent.keyDown(document.body, { key: 'Tab', shiftKey: true })
+    expect(items[items.length - 1]).toHaveFocus()
+  })
+
+  it('Tab depuis le dernier élément, événement reçu hors de la fenêtre, revient au premier', () => {
+    renderWithProviders(<Harness />)
+    const dialog = screen.getByRole('dialog')
+    const items = Array.from(dialog.querySelectorAll<HTMLElement>('a[href], button:not([disabled])'))
+    items[items.length - 1].focus()
+    fireEvent.keyDown(document, { key: 'Tab' })
+    expect(items[0]).toHaveFocus()
+  })
+
+  it('pendant la recherche de mise à jour, le focus reste dans la fenêtre et Échap ferme', async () => {
+    let release: (r: Response) => void = () => {}
+    vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise<Response>((resolve) => (release = resolve))))
+    renderWithProviders(<Harness />)
+    const check = screen.getByRole('button', { name: 'Rechercher une mise à jour' })
+    check.focus()
+    await act(async () => {
+      fireEvent.click(check)
+    })
+    expect(check).toBeDisabled()
+    expect(screen.getByRole('dialog')).toContainElement(document.activeElement as HTMLElement)
+    // Chromium renvoie le focus sur le corps quand le bouton focalisé se désactive.
+    ;(document.activeElement as HTMLElement).blur()
+    fireEvent.keyDown(document.body, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await act(async () => {
+      release(new Response(null))
+    })
+  })
+
   it('porte les liens du projet, du soutien et des données, par lib/appLinks', () => {
     renderWithProviders(<Harness />)
     expect(hrefOf(/^Nouveautés$/)).toBe('/changelog')

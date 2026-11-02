@@ -2628,10 +2628,6 @@ en = "Help, settings and application information"
 fr = "Version {version}"
 en = "Version {version}"
 
-[common.about.dialog_aria]
-fr = "À propos de LevelUp"
-en = "About LevelUp"
-
 [common.about.close]
 fr = "Fermer"
 en = "Close"

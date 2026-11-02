@@ -4,14 +4,14 @@
  * Prend la place du pied de page du site (absent du chrome de bureau) : version, recherche de mise
  * à jour, liens du projet, soutien, dossier des données, mentions légales dont la mention imposée
  * par Microsoft. Modale accessible : rôle `dialog`, focus renvoyé au déclencheur à la fermeture,
- * Tab bouclé dans la fenêtre, Échap et clic sur le fond ferment.
+ * Tab bouclé dans la fenêtre (et ramené dedans quand le focus en sort), Échap et clic sur le fond ferment.
  *
  * Les liens externes viennent de `lib/appLinks` (garde-rail `appLinks.guard.test.ts`) et se posent
  * SANS `target="_blank"` : la coquille ouvre tout lien web dans le navigateur par défaut et laisse
  * la fenêtre où elle est (navigation.rs).
  */
 import { Link } from '@tanstack/react-router'
-import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { MicrosoftNotice } from '@/components/shell/MicrosoftNotice'
 import { useFeedbackDrawerStore } from '@/features/feedback-drawer/feedbackDrawer.store'
 import { APP_NAME } from '@/lib/appBrand'
@@ -63,6 +63,7 @@ function AboutDialogBody({ onClose }: { onClose: () => void }) {
   const titleId = useId()
   const dialogRef = useRef<HTMLDivElement>(null)
   const closeRef = useRef<HTMLButtonElement>(null)
+  const titleRef = useRef<HTMLHeadingElement>(null)
   const { copy, copied } = useCopyToClipboard()
   const [update, setUpdate] = useState<UpdateStatus>('idle')
   const [checking, setChecking] = useState(false)
@@ -74,28 +75,40 @@ function AboutDialogBody({ onClose }: { onClose: () => void }) {
     return () => opener?.focus()
   }, [])
 
-  function onKeyDown(e: KeyboardEvent<HTMLDivElement>) {
-    if (e.key === 'Escape') {
-      e.stopPropagation()
-      onClose()
-      return
+  // Clavier posé sur la fenêtre du navigateur, pas sur le conteneur : quand le focus tombe sur
+  // `body` (clic sur du texte, bouton qui se désactive), Échap et Tab doivent encore être tenus.
+  useEffect(() => {
+    function onKeyDown(e: globalThis.KeyboardEvent) {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        onClose()
+        return
+      }
+      if (e.key !== 'Tab') return
+      const items = Array.from(dialogRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? [])
+      if (items.length === 0) return
+      const first = items[0]
+      const last = items[items.length - 1]
+      const active = document.activeElement
+      const inside = active !== null && dialogRef.current?.contains(active) === true
+      if (!inside) {
+        e.preventDefault()
+        ;(e.shiftKey ? last : first).focus()
+      } else if (e.shiftKey && active === first) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault()
+        first.focus()
+      }
     }
-    if (e.key !== 'Tab') return
-    const items = Array.from(dialogRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? [])
-    if (items.length === 0) return
-    const first = items[0]
-    const last = items[items.length - 1]
-    const active = document.activeElement
-    if (e.shiftKey && active === first) {
-      e.preventDefault()
-      last.focus()
-    } else if (!e.shiftKey && active === last) {
-      e.preventDefault()
-      first.focus()
-    }
-  }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [onClose])
 
   async function checkForUpdate() {
+    // Le bouton se désactive pendant la recherche : le focus passe au titre de la fenêtre au lieu de tomber sur `body`.
+    titleRef.current?.focus()
     setChecking(true)
     const sent = await requestUpdateCheck()
     setChecking(false)
@@ -127,13 +140,12 @@ function AboutDialogBody({ onClose }: { onClose: () => void }) {
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        onKeyDown={onKeyDown}
         className="flex max-h-full w-full max-w-xl flex-col gap-4 overflow-y-auto rounded-xl border border-border bg-background p-5 text-foreground shadow-xl"
       >
         <header className="flex items-center gap-3">
           <img src="/logo.png" alt="" className="h-10 w-10 shrink-0 object-contain" />
           <div className="min-w-0">
-            <h2 id={titleId} className="text-lg font-bold">
+            <h2 ref={titleRef} id={titleId} tabIndex={-1} className="text-lg font-bold outline-none">
               {APP_NAME}
             </h2>
             {version && (

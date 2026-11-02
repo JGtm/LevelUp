@@ -43,6 +43,39 @@ pub fn route(path: &str, locale: &str) -> Route {
     }
 }
 
+/// La reponse HTTP du protocole embarque.
+pub struct Reply {
+    pub status: u16,
+    pub content_type: &'static str,
+    pub body: Vec<u8>,
+}
+
+/// Repond a une requete du protocole embarque. `on_check_update` n'est appele que pour la demande de
+/// verification de mise a jour, et la reponse (204) ne l'attend pas : c'est a lui de rendre la main tout de suite.
+pub fn reply(path: &str, locale: &str, on_check_update: impl FnOnce()) -> Reply {
+    const TEXT: &str = "text/plain; charset=utf-8";
+    match route(path, locale) {
+        Route::Page(page) => Reply {
+            status: 200,
+            content_type: page.content_type,
+            body: page.body,
+        },
+        Route::CheckUpdate => {
+            on_check_update();
+            Reply {
+                status: 204,
+                content_type: TEXT,
+                body: Vec::new(),
+            }
+        }
+        Route::NotFound => Reply {
+            status: 404,
+            content_type: TEXT,
+            body: Vec::new(),
+        },
+    }
+}
+
 /// Repond au chemin demande : un ecran, le logo, ou `None` (404).
 pub fn respond(path: &str, locale: &str) -> Option<Embedded> {
     if path == "/logo.png" {
@@ -161,5 +194,29 @@ mod tests {
         assert!(logo.body.starts_with(&[0x89, b'P', b'N', b'G']));
         assert!(respond("/inconnu", locale).is_none());
         assert!(respond("/../Cargo.toml", locale).is_none());
+    }
+
+    #[test]
+    fn la_demande_de_verification_est_lancee_et_repond_204_sans_l_attendre() {
+        let mut launched = 0;
+        let reply = reply("/check-update", catalogue::DEFAULT_LOCALE, || launched += 1);
+        assert_eq!(launched, 1);
+        assert_eq!(reply.status, 204);
+        assert!(reply.body.is_empty());
+    }
+
+    #[test]
+    fn les_autres_chemins_ne_lancent_aucune_verification() {
+        for (path, status) in [
+            ("/stopping", 200),
+            ("/logo.png", 200),
+            ("/inconnu", 404),
+            ("/check-update/", 404),
+        ] {
+            let mut launched = 0;
+            let reply = reply(path, catalogue::DEFAULT_LOCALE, || launched += 1);
+            assert_eq!(launched, 0, "{path} ne doit rien lancer");
+            assert_eq!(reply.status, status, "{path}");
+        }
     }
 }

@@ -10,7 +10,9 @@ use std::sync::{Arc, Mutex};
 
 use levelup_desktop::catalogue;
 use levelup_desktop::logfile::{LogSink, MAX_LOG_BYTES};
-use levelup_desktop::update_manual::{UpdateBusy, report_unavailable, run_manual_check};
+use levelup_desktop::update_manual::{
+    UpdateBusy, ensure_available, report_unavailable, run_launch_check, run_manual_check, spawn_check_thread,
+};
 use levelup_desktop::updater::{
     CloserSlot, Decision, InstallGate, Installer, Notice, Notifier, Offer, Prompt, PromptText, UpdateContext,
     UpdateSource,
@@ -210,4 +212,79 @@ fn sans_updater_la_raison_est_dite_dans_une_boite() {
     report_unavailable(&mut notifier, &rig.log);
     assert_eq!(rig.notices(), vec![Notice::Unavailable]);
     assert!(rig.journal().contains("event=update_check_unavailable"));
+}
+
+#[test]
+fn la_verification_du_lancement_est_sautee_quand_le_verrou_est_pris() {
+    let busy = UpdateBusy::default();
+    let held = busy.try_acquire().expect("verrou libre");
+    let mut ran = false;
+    assert!(!run_launch_check(&busy, || ran = true));
+    assert!(
+        !ran,
+        "la verification ne doit pas partir pendant qu'une autre tient le verrou"
+    );
+    drop(held);
+    assert!(run_launch_check(&busy, || ran = true));
+    assert!(ran);
+}
+
+#[test]
+fn la_verification_du_lancement_tient_le_verrou_puis_le_rend_meme_sur_panique() {
+    let busy = UpdateBusy::default();
+    let probe = busy.clone();
+    assert!(run_launch_check(&busy, || {
+        assert!(
+            probe.try_acquire().is_none(),
+            "le verrou est tenu pendant la verification"
+        );
+    }));
+    assert!(
+        busy.try_acquire().is_some(),
+        "verrou rendu apres une verification normale"
+    );
+
+    let panicked = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        run_launch_check(&busy, || panic!("verification en panne"));
+    }));
+    assert!(panicked.is_err());
+    assert!(
+        busy.try_acquire().is_some(),
+        "verrou rendu meme quand la verification panique"
+    );
+}
+
+#[test]
+fn sans_updater_la_verification_demandee_ne_part_pas_et_dit_pourquoi() {
+    let rig = Rig::new("non-branche");
+    let mut notifier = RecordingNotifier(rig.notices.clone());
+    assert!(!ensure_available(false, &mut notifier, &rig.log));
+    assert_eq!(rig.notices(), vec![Notice::Unavailable]);
+
+    let mut quiet = RecordingNotifier(Arc::default());
+    let seen = quiet.0.clone();
+    assert!(ensure_available(true, &mut quiet, &rig.log));
+    assert!(seen.lock().unwrap().is_empty(), "un build branche ne dit rien");
+}
+
+#[test]
+fn la_verification_part_sur_un_fil_separe_sans_faire_attendre_l_appelant() {
+    let (release, wait) = std::sync::mpsc::channel::<()>();
+    let (report, seen) = std::sync::mpsc::channel::<(std::thread::ThreadId, Option<String>)>();
+    let caller = std::thread::current().id();
+    let handle = spawn_check_thread("update-check", move || {
+        wait.recv().expect("liberation");
+        let current = std::thread::current();
+        report
+            .send((current.id(), current.name().map(String::from)))
+            .expect("rapport");
+    })
+    .expect("fil");
+    // L'appelant est deja revenu alors que le travail attend encore : il n'est pas execute en ligne.
+    assert!(seen.try_recv().is_err());
+    release.send(()).expect("liberation");
+    let (thread, name) = seen.recv().expect("rapport");
+    handle.join().expect("fin du fil");
+    assert_ne!(thread, caller);
+    assert_eq!(name.as_deref(), Some("update-check"));
 }

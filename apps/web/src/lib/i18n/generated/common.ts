@@ -8,7 +8,6 @@ export const commonManifest = {
   "common.about.copy": { fr: "Copier", en: "Copy" },
   "common.about.data_folder": { fr: "Dossier des données", en: "Data folder" },
   "common.about.data_heading": { fr: "Données", en: "Data" },
-  "common.about.dialog_aria": { fr: "À propos de LevelUp", en: "About LevelUp" },
   "common.about.ffmpeg_notice": { fr: "ffmpeg et ffprobe sont livrés sous licence LGPL.", en: "ffmpeg and ffprobe are shipped under the LGPL licence." },
   "common.about.sounds_notice": { fr: "Sons du jeu retirés sur simple demande.", en: "Game sounds removed on simple request." },
   "common.about.third_party": { fr: "Mentions tierces", en: "Third-party notices" },

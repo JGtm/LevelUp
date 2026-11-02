@@ -660,8 +660,8 @@ Définition : `ResourcesRoot` = la racine du dépôt aujourd'hui (`LEVELUP_RESOU
       `/telecharger` (chemin anonyme), `features/download/` (dictionnaire `Record<Locale, T>`), capacité existante
       `can_offer_windows_download` (aucune capacité neuve), lien « Application Windows » du pied de page conditionné par la
       même capacité, lien vers `releases/latest`, tests Vitest (capacité vraie/fausse x fr/en, pied de page, chemin anonyme).
-- [ ] 17.6 **(P, au pilote)** Runs verts ; procédure de sauvegarde de la clé d'updater exécutée (ADR 0045). PRÉPARÉ : procédure écrite dans l'ADR 0045 (« Implementation notes (L17) »), reports au registre ; la clé du gate (mot de passe vide) est à remplacer par une clé protégée.
-- [ ] 17.7 **(U, à l'utilisateur)** Installation sur une machine vierge, désinstallation, données conservées : témoins. PRÉPARÉ : mode d'emploi en cinq étapes dans `docs/RUNBOOK_DESKTOP.md`.
+- [x] 17.6 **(P, au pilote)** Runs verts ; procédure de sauvegarde de la clé d'updater exécutée (ADR 0045). Premier run Release vert sur la release le 2026-11-02 (desktop-build + desktop-e2e sur runner Windows, sans signature) ; clé sauvegardée hors PC par l'utilisateur et secret `TAURI_SIGNING_PRIVATE_KEY` en place le 2026-11-02 ; le run signé aura lieu au premier tag. Procédure écrite dans l'ADR 0045 (« Implementation notes (L17) »), reports au registre.
+- [ ] 17.7 **(U, à l'utilisateur)** Installation sur une machine vierge, désinstallation, données conservées : témoins. À l'utilisateur, avec 18.4. PRÉPARÉ : mode d'emploi en cinq étapes dans `docs/RUNBOOK_DESKTOP.md`.
 
 ### 9.17b L18 — Interface bureau (S après maquette validée par U ; EN DERNIER, décision utilisateur du 2026-11-02)
 
@@ -969,6 +969,28 @@ mises à jour (ressources retéléchargées à chaque version).
   celle du serveur (`-ldflags -X main.version`) : `dev` sur le binaire de développement, `8.1.0` sur l'installeur ; (c)
   la première boîte native du premier lancement de la session de test n'a pas été retrouvée par l'énumération des fenêtres
   du processus (le journal avait bien la ligne) ; rejouée une seconde fois, la boîte est apparue à chaque clic.
+
+- **Revue adversariale L18 (2026-11-02, un relecteur Opus) : 6 constats recevables (3 P1, 3 P2 retenus), 1 jeté (voile), 0 P0,
+  corrigés.**
+  (C1, P1) « À propos » : Échap et Tab ne tenaient plus quand le focus quittait la fenêtre (clic sur le chemin des données,
+  bouton de mise à jour qui se désactive : `activeElement` = `body`) ; le clavier est écouté sur `window` (modèle
+  `alert-dialog`), Tab ramène le focus dans la fenêtre quand il en sort, et le focus passe au titre (`tabIndex=-1`) quand le
+  bouton se désactive ; 4 tests dont Échap et Tab sur `document.body`, chacun en échec sans la correction. (C2, P2) la
+  vérification de mise à jour n'avait pas d'échéance : `UpdaterBuilder::timeout(CHECK_TIMEOUT)` de 30 s (constante nommée) sur
+  la vérification, et la décision du verrou (`run_launch_check`) rend le verrou par garde RAII y compris sur panique
+  (`catch_unwind` en test ; en release `panic = "abort"` ferme de toute façon la coquille). (C3, P2) Halo 5 : l'onglet Carrière
+  réécrit visait la route de redirection `commendations` : il vise la route finale `career/commendations`, donc l'onglet est
+  actif (test `SidebarNav` avec les capacités Halo 5 ; test `NavL1` aligné). (C4, P1) clé morte `common.about.dialog_aria`
+  supprimée (fr et en), manifests régénérés. (C5, P1) `main.rs` 517 -> 374 L (`update_setup.rs`) et `updater.rs` 821 -> 456 L
+  (`updater_tests.rs`, `updater_decision.rs` : `SkipReason`, `install_allowed`, messages d'après-arrêt, re-exportés par
+  `updater`) ; `cargo test` identique (81 + 13 + 7 + 9) avant les tests ajoutés. (C6, P2) trous de tests comblés : vérification
+  du lancement sautée quand le verrou est pris, `!enabled` mène à `Unavailable` (`ensure_available`), l'aiguillage
+  `Route::CheckUpdate` (`render::reply`, 204 et rappel) et le fil séparé (`spawn_check_thread`), `NavL2` : filtres Stats rendus
+  et Communauté masquée en bureau ; chaque test échoue condition inversée (vérifié une fois). **Jeté** : voile `bg-black/55` de la
+  modale, même convention que `NavL1MobileMenu` et `alert-dialog` ; dette commune « jeton de voile à créer ».
+  **Relevé, non traité** : (a) `HomeCitationsNearCompletion` navigue encore vers la route de redirection `.../commendations` (un
+  saut de redirection, sans effet visible) ; (b) le téléchargement de l'installeur n'a pas d'échéance : un flux bloqué garde le
+  verrou de vérification (une échéance totale couperait un téléchargement lent légitime ; il faudrait une échéance d'inactivité).
 
 ## 11. Protocole de reprise de session
 
