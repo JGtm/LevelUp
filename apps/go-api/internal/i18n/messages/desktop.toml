@@ -48,3 +48,23 @@ en = "LevelUp has stopped."
 [desktop.update_available]
 fr = "La version {version} de LevelUp est disponible."
 en = "LevelUp version {version} is available."
+
+# Boîte de dialogue de mise à jour, affichée par la coquille une fois le serveur prêt. Jamais imposée :
+# « Plus tard » la ferme et rien ne se télécharge. Ces textes ne passent que par le catalogue de repli de
+# la coquille (compilé depuis ce fichier), pas par GET /api/v1/desktop/strings.
+[desktop.update_title]
+fr = "Mise à jour de LevelUp"
+en = "LevelUp update"
+
+[desktop.update_install]
+fr = "Installer et redémarrer"
+en = "Install and restart"
+
+[desktop.update_later]
+fr = "Plus tard"
+en = "Later"
+
+# Introduit les notes de version (section du journal des modifications de la version proposée).
+[desktop.update_notes_heading]
+fr = "Nouveautés :"
+en = "What's new:"

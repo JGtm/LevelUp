@@ -653,7 +653,7 @@ Définition : `ResourcesRoot` = la racine du dépôt aujourd'hui (`LEVELUP_RESOU
       conservée ») joué en local sur l'installeur construit : exit 0, deux lancements sur le même port, `clean=true` deux
       fois, 0 WAL ; refus vérifié si une installation existe (exit 1) ; job `desktop-e2e` de `release.yml` (le journal
       qui porte la ligne est `general.log`, `desktop.log` la recopie). Cibles `make desktop-installer` / `desktop-e2e`.
-- [ ] 17.4 Updater : proposé, jamais imposé ; n'exécute l'installeur qu'après `stopped` (A3) ; changelog
+- [x] 17.4 Updater : proposé, jamais imposé ; n'exécute l'installeur qu'après `stopped` (A3) ; changelog
       in-app (`docs/RELEASE_NOTES.md`) ; poids de la mise à jour mesuré et consigné (§10).
 - [ ] 17.5 Page « Télécharger pour Windows » côté hébergé (capacité du profil `hosted`), fr + en, avec
       l'avertissement SmartScreen expliqué (D-10 : installeur non signé) et la mention Microsoft.
@@ -865,6 +865,34 @@ mises à jour (ressources retéléchargées à chaque version).
 - `.ai/project_map.md` gelé depuis avril 2026.
 - Archive de films : 36 Go le 2026-11-01 contre 104 Go annoncés le 2026-10-27 (films rapatriés puis
   purge manuelle du 26/10 ; à remesurer en T5).
+
+- **L17 (2026-11-02) — décisions, mesures et relevé.** **Poids** : l'installeur NSIS produit en local pèse
+  202 211 522 octets (192,84 Mio) ; l'updater télécharge ce même `.exe` en entier (aucune mise à jour différentielle) : 192,8 Mio
+  par mise à jour. Contenu avant compression LZMA : serveur 160,8 Mo, ressources assemblées 281,6 Mo (dont ffmpeg et ses DLL
+  165 Mo, `static/` 29 Mo, référentiel `data/titles` 45 Mo, front, config), coquille 4,9 Mo. **`LEVELUP_WEB_DIST`** : défaut
+  `<ResourcesRoot>/web` posé par `config_desktop.go` quand le profil est desktop et la variable absente (la variable
+  l'emporte ; test `TestLoad_DesktopWebDistParDefaut`). **Emplacement du programme** : Tauri 2 installe en `currentUser` sous
+  `%LOCALAPPDATA%LevelUp`, c'est-à-dire LA RACINE DE DONNÉES par défaut (constaté sur l'installeur construit) : le crochet
+  NSIS `src-tauri/windows/hooks.nsh` ramène ce seul défaut à `%LOCALAPPDATA%ProgramsLevelUp` (D-14) ; le désinstalleur de
+  Tauri ne supprime que ses fichiers (un `Delete` par fichier, `RMDir` sans `/r`), prouvé par `e2e-install.ps1` (la racine de
+  données jetable survit). **ffmpeg** : BtbN/FFmpeg-Builds `autobuild-2026-10-31-12-59`,
+  `ffmpeg-n8.1.3-27-g8dca1586f4-win64-lgpl-shared-8.1.zip`, SHA-256 `5cef7bc48e513f3cee7c881e8b2999d835541edb1846c3e89443a67f8f8556ab`
+  (celui du `checksums.sha256` de la release), épinglé dans `fetch-ffmpeg.ps1` ; `ffplay.exe` écarté. `data/cache/career-rank-image` NON livré
+  (17 Mo par mise à jour ; le serveur les cherche sous la racine de données et les retélécharge à la demande). **Clé de
+  l'updater** : paire générée hors dépôt, clé publique dans `tauri.conf.json` et `.gitleaks.toml` ; un secret GitHub ne
+  pouvant pas être vide, `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` est facultatif (clé générée sans mot de passe) ; la clé privée du
+  gate a un mot de passe vide : à REMPLACER par une clé protégée avant la première release publique (17.6, pilote).
+  **Relevé, non traité** : (1) le build LGPL n'a PAS libx264 (`--disable-libx264`, `--enable-libopenh264` présent) alors que le serveur
+  le déclare requis (`ops/media_tooling.go`, avertissement au démarrage) et le demande pour le transcodage HLS
+  (`internal/media/hls.go:601`, `-c:v libx264`) et d'autres rendus : ces chemins échouent sur l'installation de bureau tant que le choix
+  de l'encodeur n'est pas rendu configurable (openh264 ou `h264_mf`) ; (2) l'installeur étant non signé, l'updater n'est
+  protégé que par sa clé minisign : tout est dans `latest.json` + `.sig` ; (3) la boîte de mise à jour utilise les boutons
+  personnalisés de `rfd` (contrôles Windows v6, manifeste par défaut de tauri-build) : non vue à l'écran, la mise à jour réelle
+  (téléchargement signé, arrêt, installeur) ne peut se jouer qu'avec deux releases publiées : à vérifier par le pilote en 17.6 ;
+  (4) les notes de mise à jour sont en français seulement (section FR du changelog) quelle que soit la langue de la boîte ;
+  (5) `cargo audit` n'est toujours pas en CI (ADR 0045 D-18) ; (6) un secret d'entrée mort reste dans l'historique WebView2 :
+  inchangé (L16) ; (7) en CI les caches cargo du job `desktop-build` pèsent la cible de release entière : à surveiller (limite
+  de 10 Go du dépôt) ; (8) un push sur `release/**` lance maintenant 2 jobs Windows lourds (~15 à 25 min) en plus de ci.yml.
 
 ## 11. Protocole de reprise de session
 

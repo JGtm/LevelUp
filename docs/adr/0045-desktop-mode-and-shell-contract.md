@@ -360,6 +360,17 @@ maintainer on a clean machine. A lot without a test at its level is not closed.
   and the `-ldflags` read back from the server binary), refuses to start without the signing secret on a tag, builds with
   `createUpdaterArtifacts` switched on by `--config` only for a tag, and `publish` builds `latest.json` (version, the FR
   changelog section as `notes`, `pub_date`, `platforms.windows-x86_64` with the signature and the installer URL).
+- **Updater flow (D-16, plan A3).** `src-tauri/src/updater.rs` (no tauri import) holds the decisions: a pure state machine
+  (`UpdateFlow`: idle, checking, offered, downloading, armed, done), the install gate (`InstallGate`) and the host wrapper
+  (`UpdateHost`). The check starts once per launch, on its own thread, when the server has announced `ready` (the entry
+  page is loaded); an error is logged and nothing else happens. The offer is a native dialog (two buttons named by the
+  catalogue, closing it means "Later"; texts `update_title`, `update_install`, `update_later`, `update_notes_heading` and
+  `update_available` of `desktop.toml`, compiled into the fallback catalogue, no language literal in the Rust); "Later" ends
+  the proposal for this launch, nothing is downloaded. After "Install" the package is downloaded while the server keeps
+  running, then the gate is armed and the ordinary clean close starts (stdin closed, `stopped`, process exit); the
+  installer is launched by `exit_app`, which the supervisor calls only after the server process has left (on Windows the
+  installer quits the application). The notes shown are the `notes` field of `latest.json` (the French changelog section of
+  the release). Debug builds never register the updater. `tests/updater.rs` plays the sequence against the fake sidecar.
 - **Updater key: procedure (D-16, L17.6).** Generation: `npx tauri signer generate -w <file>` in `apps/desktop`; the
   public half goes to `plugins.updater.pubkey` of `tauri.conf.json` and to `.gitleaks.toml` in the same commit; the
   private half to the repository secret `TAURI_SIGNING_PRIVATE_KEY` (and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` if it has

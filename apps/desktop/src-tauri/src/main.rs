@@ -6,6 +6,8 @@
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod update_tauri;
+
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU16, Ordering};
 use std::sync::{Arc, Mutex};
@@ -20,10 +22,12 @@ use levelup_desktop::screen::Screen;
 use levelup_desktop::secret::Secret;
 use levelup_desktop::sidecar::SidecarSpec;
 use levelup_desktop::supervisor::{self, Closer, Host, ShellConfig};
+use levelup_desktop::updater::{CloserSlot, InstallGate, UpdateHost, run_update};
 use tauri::webview::DownloadEvent;
 use tauri::window::Color;
 use tauri::{AppHandle, Manager, RunEvent, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent};
 use tauri_plugin_opener::OpenerExt;
+use update_tauri::{DialogPrompt, PluginSource};
 use url::Url;
 
 /// Etiquette de la fenetre principale.
@@ -41,6 +45,14 @@ struct Shell {
     exiting: Arc<AtomicBool>,
     /// Journal, pour les ecrans montres avant que le superviseur existe.
     log: Mutex<Option<Arc<LogSink>>>,
+}
+
+/// Ce que la mise a jour partage avec le superviseur : la porte d'installation (ouverte a la sortie de
+/// l'application) et la poignee de fermeture (posee apres le lancement du superviseur).
+struct UpdateWiring {
+    gate: InstallGate,
+    closer: CloserSlot,
+    locale: &'static str,
 }
 
 fn main() {
@@ -166,9 +178,14 @@ fn setup(app: &AppHandle) {
         app.exit(1);
         return;
     }
-    register_updater(app, log.as_deref());
+    let updater_enabled = register_updater(app, log.as_deref());
+    let update = UpdateWiring {
+        gate: InstallGate::default(),
+        closer: CloserSlot::default(),
+        locale: catalogue::resolve_locale(&sys_locale::get_locale().unwrap_or_default()),
+    };
 
-    let started = prepared.and_then(|p| start_server(app, p, port, exiting_flag));
+    let started = prepared.and_then(|p| start_server(app, p, port, exiting_flag, update, updater_enabled));
     if let Err(e) = started {
         report(log.as_deref(), &format!("event=start_failed err={e}"));
         show(app, Screen::Stopped);
@@ -180,6 +197,8 @@ fn start_server(
     prepared: Prepared,
     port: Arc<AtomicU16>,
     exiting_flag: Arc<AtomicBool>,
+    update: UpdateWiring,
+    updater_enabled: bool,
 ) -> Result<(), String> {
     let Prepared {
         roots,
@@ -201,17 +220,57 @@ fn start_server(
         app: app.clone(),
         port,
         exiting: exiting_flag,
-        log,
+        log: log.clone(),
     };
+    let UpdateWiring { gate, closer, locale } = update;
+    let on_ready = if updater_enabled {
+        spawn_update_check(app.clone(), locale, gate.clone(), closer.clone(), log.clone())
+    } else {
+        Box::new(|| {})
+    };
+    let host = UpdateHost::new(host, gate, log, on_ready);
     let handle = supervisor::start(config, host).map_err(|e| format!("lancement du serveur : {e}"))?;
+    closer.set(handle.closer());
     let shell = app.state::<Shell>();
     *shell.closer.lock().unwrap_or_else(|p| p.into_inner()) = Some(handle.closer());
     Ok(())
 }
 
-/// L'updater n'est branche que si la cle publique est posee (lot L17) ; `build.rs` refuse une
-/// release sans elle.
-fn register_updater(app: &AppHandle, log: Option<&LogSink>) {
+/// La verification de mise a jour, lancee une fois par lancement quand le serveur est pret : sur son
+/// propre fil, jamais bloquante, chaque issue sans installation est journalisee.
+fn spawn_update_check(
+    app: AppHandle,
+    locale: &'static str,
+    gate: InstallGate,
+    closer: CloserSlot,
+    log: Arc<LogSink>,
+) -> Box<dyn FnOnce() + Send> {
+    Box::new(move || {
+        let thread_log = log.clone();
+        let spawned = std::thread::Builder::new().name("update".into()).spawn(move || {
+            run_update(
+                PluginSource::new(app),
+                DialogPrompt,
+                locale,
+                &gate,
+                &closer,
+                &thread_log,
+            );
+        });
+        if let Err(e) = spawned {
+            report(Some(log.as_ref()), &format!("event=update_thread_failed err={e}"));
+        }
+    })
+}
+
+/// L'updater n'est branche que si la cle publique est posee (`build.rs` refuse une release sans elle) et
+/// hors des builds de developpement (un build de debug ne se remplace pas par la derniere release).
+/// Rend vrai quand le plugin est enregistre.
+fn register_updater(app: &AppHandle, log: Option<&LogSink>) -> bool {
+    if cfg!(debug_assertions) {
+        report(log, "event=updater_disabled reason=debug_build");
+        return false;
+    }
     let configured = app
         .config()
         .plugins
@@ -222,11 +281,13 @@ fn register_updater(app: &AppHandle, log: Option<&LogSink>) {
         .is_some_and(|key| !key.trim().is_empty());
     if !configured {
         report(log, "event=updater_disabled reason=no_public_key");
-        return;
+        return false;
     }
     if let Err(e) = app.plugin(tauri_plugin_updater::Builder::new().build()) {
         report(log, &format!("event=updater_failed err={e}"));
+        return false;
     }
+    true
 }
 
 fn create_window(app: &AppHandle, port: Arc<AtomicU16>, log: Option<Arc<LogSink>>) -> tauri::Result<WebviewWindow> {
