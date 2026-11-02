@@ -77,6 +77,14 @@ describe('DesktopIntegrationCard', () => {
     await waitFor(() => expect(patches).toEqual([{ close_to_tray: true }]))
   })
 
+  it('activer le démarrage avec Windows envoie le PATCH (désactivé par défaut)', async () => {
+    serveurPatch()
+    renderWithProviders(<DesktopIntegrationCard />)
+    await screen.findByText('Démarrer avec Windows')
+    fireEvent.click(screen.getAllByRole('button')[3])
+    await waitFor(() => expect(patches).toEqual([{ start_with_windows: true }]))
+  })
+
   it('sans la capacité de la coquille, les notifications Windows ne sont pas offertes', async () => {
     useAppShellStore.setState({ capabilities: testCapabilities({ can_watch_game_process: true }) })
     renderWithProviders(<DesktopIntegrationCard />)

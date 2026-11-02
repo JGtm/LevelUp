@@ -45,6 +45,7 @@ export function DesktopIntegrationCard() {
   const gameWatch = settings?.game_process_watch ?? true
   const nativeNotifications = settings?.native_notifications ?? false
   const closeToTray = settings?.close_to_tray ?? false
+  const startWithWindows = settings?.start_with_windows ?? false
 
   return (
     <Card>
@@ -87,6 +88,16 @@ export function DesktopIntegrationCard() {
                 onChange={(v) => save({ close_to_tray: v })}
               />
               <p className="text-xs text-muted-foreground">{t.closeToTrayHint}</p>
+            </div>
+          )}
+          {canIntegrateShell && (
+            <div>
+              <ToggleRow
+                label={t.startWithWindowsLabel}
+                value={startWithWindows}
+                onChange={(v) => save({ start_with_windows: v })}
+              />
+              <p className="text-xs text-muted-foreground">{t.startWithWindowsHint}</p>
             </div>
           )}
         </fieldset>

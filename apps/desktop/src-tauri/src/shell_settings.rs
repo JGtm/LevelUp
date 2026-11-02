@@ -108,6 +108,9 @@ pub struct ShellState {
     tray_locale: String,
     /// Des reglages ont ete recus au moins une fois.
     configured: bool,
+    /// La fenetre a ete cachee au lancement (demarrage avec Windows, `--minimized`) et n'a pas encore ete
+    /// montree : l'icone est alors son seul acces, meme si `close_to_tray` est coupe.
+    hidden_at_start: bool,
 }
 
 impl ShellState {
@@ -124,9 +127,37 @@ impl ShellState {
         self.tray_present
     }
 
-    /// L'icone est voulue : tant que le reglage `close_to_tray` est actif.
+    /// L'icone est voulue : tant que le reglage `close_to_tray` est actif, ou tant que la fenetre cachee
+    /// d'un demarrage reduit n'a pas ete montree (pas d'icone surprise hors de ces deux cas).
     fn tray_wanted(&self) -> bool {
-        self.settings.close_to_tray
+        self.settings.close_to_tray || self.hidden_at_start
+    }
+
+    /// Ce qu'il faut faire de l'icone pour que son etat reel suive l'etat voulu.
+    fn tray_change(&self) -> TrayChange {
+        match (self.tray_wanted(), self.tray_present) {
+            (true, false) => TrayChange::Create,
+            (true, true) if self.tray_locale != self.settings.locale => TrayChange::Recreate,
+            (false, true) => TrayChange::Remove,
+            _ => TrayChange::Keep,
+        }
+    }
+
+    /// Le lancement demande un demarrage reduit : la fenetre est cachee, l'icone doit exister des maintenant
+    /// (avant meme les reglages du serveur) pour qu'on puisse la rouvrir.
+    pub fn start_minimized(&mut self) -> TrayChange {
+        self.hidden_at_start = true;
+        self.tray_change()
+    }
+
+    /// La fenetre vient d'etre montree : si elle etait cachee depuis le lancement, l'icone ne se justifie
+    /// plus que par `close_to_tray`.
+    pub fn on_window_shown(&mut self) -> TrayChange {
+        if !self.hidden_at_start {
+            return TrayChange::Keep;
+        }
+        self.hidden_at_start = false;
+        self.tray_change()
     }
 
     /// Prend les reglages annonces et dit quoi faire de l'icone. L'appelant execute puis rend compte par
@@ -134,12 +165,7 @@ impl ShellState {
     pub fn apply_settings(&mut self, settings: ShellSettings) -> TrayChange {
         self.settings = settings;
         self.configured = true;
-        match (self.tray_wanted(), self.tray_present) {
-            (true, false) => TrayChange::Create,
-            (true, true) if self.tray_locale != self.settings.locale => TrayChange::Recreate,
-            (false, true) => TrayChange::Remove,
-            _ => TrayChange::Keep,
-        }
+        self.tray_change()
     }
 
     /// L'icone a ete creee avec les libelles de la langue courante.
@@ -250,6 +276,49 @@ mod tests {
         assert_eq!(state.apply_settings(settings(true, "en")), TrayChange::Recreate);
         state.tray_created();
         assert_eq!(state.apply_settings(settings(true, "en")), TrayChange::Keep);
+    }
+
+    #[test]
+    fn un_demarrage_reduit_cree_l_icone_avant_meme_les_reglages_du_serveur() {
+        let mut state = ShellState::new();
+        assert_eq!(state.start_minimized(), TrayChange::Create);
+        state.tray_created();
+        // Les reglages arrivent, `close_to_tray` coupe : la fenetre est toujours cachee, l'icone reste.
+        assert_eq!(state.apply_settings(settings(false, "fr")), TrayChange::Recreate); // langue du joueur
+        state.tray_created();
+        assert_eq!(state.apply_settings(settings(false, "fr")), TrayChange::Keep);
+        // La croix quitte (reglage coupe) : la fenetre cachee ne se ferme pas, elle est rouverte par l'icone.
+        assert_eq!(state.on_close_requested(), CloseAction::Quit);
+    }
+
+    #[test]
+    fn la_fenetre_montree_apres_un_demarrage_reduit_retire_l_icone_si_le_reglage_est_coupe() {
+        let mut state = ShellState::new();
+        state.start_minimized();
+        state.tray_created();
+        state.apply_settings(settings(false, ""));
+        assert_eq!(state.on_window_shown(), TrayChange::Remove);
+        state.tray_removed();
+        // Montrer une seconde fois ne change rien.
+        assert_eq!(state.on_window_shown(), TrayChange::Keep);
+    }
+
+    #[test]
+    fn la_fenetre_montree_garde_l_icone_quand_close_to_tray_est_actif() {
+        let mut state = ShellState::new();
+        state.start_minimized();
+        state.tray_created();
+        state.apply_settings(settings(true, ""));
+        assert_eq!(state.on_window_shown(), TrayChange::Keep);
+        assert!(state.tray_present());
+        assert_eq!(state.on_close_requested(), CloseAction::HideToTray);
+    }
+
+    #[test]
+    fn un_lancement_ordinaire_ne_cree_aucune_icone_et_montrer_la_fenetre_ne_change_rien() {
+        let mut state = ShellState::new();
+        assert_eq!(state.on_window_shown(), TrayChange::Keep);
+        assert_eq!(state.apply_settings(settings(false, "fr")), TrayChange::Keep);
     }
 
     #[test]

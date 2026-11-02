@@ -18,6 +18,8 @@ export interface DesktopIntegrationText {
   nativeNotificationsHint: string
   closeToTrayLabel: string
   closeToTrayHint: string
+  startWithWindowsLabel: string
+  startWithWindowsHint: string
   saved: string
   saveFailed: string
 }
@@ -37,6 +39,9 @@ const FR: DesktopIntegrationText = {
   closeToTrayLabel: 'Réduire dans la zone de notification à la fermeture',
   closeToTrayHint:
     "La croix de la fenêtre réduit LevelUp dans la zone de notification au lieu de le quitter : le serveur continue de tourner. Un clic sur l'icône rouvre la fenêtre ; son menu propose Ouvrir, Synchroniser maintenant et Quitter. Désactivé, la croix quitte LevelUp.",
+  startWithWindowsLabel: 'Démarrer avec Windows',
+  startWithWindowsHint:
+    "LevelUp se lance, réduit dans la zone de notification, à l'ouverture de ta session Windows. L'entrée de démarrage est la tienne seulement (jamais pour toute la machine) ; la désactiver la supprime.",
   saved: 'Enregistré.',
   saveFailed: "Le réglage n'a pas pu être enregistré.",
 }
@@ -56,6 +61,9 @@ const EN: DesktopIntegrationText = {
   closeToTrayLabel: 'Minimize to the notification area when closing',
   closeToTrayHint:
     'The window close button minimizes LevelUp to the notification area instead of quitting: the server keeps running. Click the icon to reopen the window; its menu offers Open, Sync now and Quit. When off, the close button quits LevelUp.',
+  startWithWindowsLabel: 'Start with Windows',
+  startWithWindowsHint:
+    'LevelUp starts, minimized in the notification area, when your Windows session opens. The startup entry is yours only (never machine-wide); turning this off deletes it.',
   saved: 'Saved.',
   saveFailed: 'The setting could not be saved.',
 }
