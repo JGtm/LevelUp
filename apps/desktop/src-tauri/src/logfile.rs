@@ -2,12 +2,14 @@
 //!
 //! Y arrivent la sortie d'erreur du serveur (relayee ligne a ligne) et les lignes de la coquille
 //! elle-meme. Rotation simple : au-dela de la taille maximale, le fichier devient `desktop.log.1`
-//! (le precedent `.1` est remplace) et un nouveau fichier commence. Deux fichiers au plus.
+//! (le precedent `.1` est remplace) et un nouveau fichier commence. Deux fichiers au plus. Une rotation
+//! impossible (fichier tenu par un autre processus) n'interrompt jamais l'ecriture : le fichier courant
+//! continue de grossir et la rotation est retentee plus tard.
 
 use std::ffi::OsString;
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -33,10 +35,13 @@ impl Source {
 struct Inner {
     path: PathBuf,
     rotated: PathBuf,
-    /// `None` le temps d'une rotation ratee : l'ecriture suivante rouvre le journal.
+    /// `None` seulement si le journal n'a pas pu etre rouvert : l'ecriture suivante retente l'ouverture.
     file: Option<File>,
     size: u64,
     max: u64,
+    /// Taille a partir de laquelle la prochaine rotation est tentee : `max`, relevee apres une
+    /// rotation impossible (fichier tenu par un autre processus) pour ne pas la retenter a chaque ligne.
+    rotate_at: u64,
 }
 
 pub struct LogSink {
@@ -49,7 +54,7 @@ impl LogSink {
         if let Some(dir) = path.parent() {
             fs::create_dir_all(dir)?;
         }
-        let file = OpenOptions::new().create(true).append(true).open(&path)?;
+        let file = open_append(&path)?;
         let size = file.metadata()?.len();
         let mut rotated = OsString::from(path.as_os_str());
         rotated.push(".1");
@@ -60,12 +65,14 @@ impl LogSink {
                 file: Some(file),
                 size,
                 max: max_bytes,
+                rotate_at: max_bytes,
             }),
         })
     }
 
     /// Ecrit une ligne horodatee (UTC). Un echec d'ecriture ne bloque jamais l'appelant : il est
-    /// signale une fois par ligne perdue sur la sortie d'erreur de la coquille.
+    /// signale sur la sortie d'erreur de la coquille (invisible en release : la rotation impossible,
+    /// elle, se dit dans le journal meme).
     pub fn write_line(&self, source: Source, text: &str) {
         let line = format!("{} [{}] {}\n", format_utc(now_secs()), source.tag(), text);
         let mut inner = match self.inner.lock() {
@@ -87,12 +94,30 @@ impl LogSink {
 }
 
 impl Inner {
+    /// Ajoute une ligne. Une rotation impossible ne fait JAMAIS perdre une ligne : le journal courant
+    /// est rouvert et l'ecriture continue, la rotation est retentee quand le fichier a double (au moins `max` de plus), jamais a chaque ligne.
     fn append(&mut self, bytes: &[u8]) -> io::Result<()> {
-        if self.size > 0 && self.size + bytes.len() as u64 > self.max {
-            self.rotate()?;
+        if self.size > 0 && self.size + bytes.len() as u64 > self.rotate_at {
+            match self.rotate() {
+                Ok(()) => self.rotate_at = self.max,
+                Err(e) => {
+                    self.rotate_at = self.size.saturating_mul(2).max(self.size.saturating_add(self.max));
+                    let note = format!(
+                        "{} [shell] event=log_rotation_failed err={e} next_attempt_at_bytes={}
+",
+                        format_utc(now_secs()),
+                        self.rotate_at
+                    );
+                    self.write(note.as_bytes())?;
+                }
+            }
         }
+        self.write(bytes)
+    }
+
+    fn write(&mut self, bytes: &[u8]) -> io::Result<()> {
         if self.file.is_none() {
-            self.file = Some(OpenOptions::new().create(true).append(true).open(&self.path)?);
+            self.file = Some(open_append(&self.path)?);
         }
         if let Some(file) = self.file.as_mut() {
             file.write_all(bytes)?;
@@ -101,18 +126,23 @@ impl Inner {
         Ok(())
     }
 
-    /// `desktop.log` -> `desktop.log.1`, puis un fichier neuf. Sous Windows on ne renomme pas par
-    /// dessus un fichier existant : l'ancien `.1` est supprime d'abord.
+    /// `desktop.log` -> `desktop.log.1`, puis un fichier neuf. Le renommage remplace l'ancien `.1` en
+    /// une operation : il n'est perdu que si le renommage reussit. Dans tous les cas le journal
+    /// courant est rouvert en ajout (un autre processus qui le tient, un lecteur sans partage de
+    /// suppression, fait echouer le renommage, pas l'ecriture).
     fn rotate(&mut self) -> io::Result<()> {
         self.file = None; // ferme le descripteur avant de renommer
-        if self.rotated.exists() {
-            fs::remove_file(&self.rotated)?;
+        let renamed = fs::rename(&self.path, &self.rotated);
+        if renamed.is_ok() {
+            self.size = 0;
         }
-        fs::rename(&self.path, &self.rotated)?;
-        self.file = Some(OpenOptions::new().create(true).append(true).open(&self.path)?);
-        self.size = 0;
-        Ok(())
+        self.file = Some(open_append(&self.path)?);
+        renamed
     }
+}
+
+fn open_append(path: &Path) -> io::Result<File> {
+    OpenOptions::new().create(true).append(true).open(path)
 }
 
 fn now_secs() -> u64 {
@@ -203,6 +233,56 @@ mod tests {
         assert!(!PathBuf::from(format!("{}.2", path.display())).exists());
         // La derniere ligne est dans le fichier courant, jamais perdue par la rotation.
         assert!(fs::read_to_string(&path).unwrap().contains("ligne numero 39"));
+        fs::remove_dir_all(path.parent().unwrap()).unwrap();
+    }
+
+    /// Un lecteur qui tient le journal sans partage de suppression (un `Get-Content -Wait` sans
+    /// `FileShare.Delete`) rend la rotation impossible : aucune ligne n'est perdue, la rotation n'est
+    /// pas retentee a chaque ligne, et elle reussit des que le fichier est libere.
+    #[cfg(windows)]
+    #[test]
+    fn une_rotation_impossible_ne_perd_aucune_ligne() {
+        use std::os::windows::fs::OpenOptionsExt;
+        const FILE_SHARE_READ_WRITE: u32 = 0x1 | 0x2; // pas FILE_SHARE_DELETE
+
+        let path = temp_log("rotation-impossible");
+        let rotated = PathBuf::from(format!("{}.1", path.display()));
+        let sink = LogSink::open(path.clone(), 200).unwrap();
+        fs::write(&rotated, "ancien journal").unwrap();
+        sink.write_line(Source::Shell, "avant le lecteur");
+        let holder = OpenOptions::new()
+            .read(true)
+            .share_mode(FILE_SHARE_READ_WRITE)
+            .open(&path)
+            .unwrap();
+        for i in 0..40 {
+            sink.write_line(Source::Sidecar, &format!("ligne numero {i:02} {}", "x".repeat(20)));
+        }
+        let text = fs::read_to_string(&path).unwrap();
+        for i in 0..40 {
+            assert!(text.contains(&format!("ligne numero {i:02} ")), "ligne {i} perdue");
+        }
+        assert_eq!(
+            fs::read_to_string(&rotated).unwrap(),
+            "ancien journal",
+            "l'ancien .1 n'est retire qu'apres un renommage reussi"
+        );
+        let failures = text.matches("event=log_rotation_failed").count();
+        assert!(
+            (1..=10).contains(&failures),
+            "{failures} echecs journalises pour 40 lignes"
+        );
+
+        // Libere : la rotation reussit a la croissance suivante et le journal courant repart propre.
+        drop(holder);
+        for i in 40..120 {
+            sink.write_line(Source::Sidecar, &format!("ligne numero {i:03} {}", "x".repeat(20)));
+        }
+        assert!(
+            rotated.exists(),
+            "la rotation devait reussir une fois le fichier libere"
+        );
+        assert!(fs::read_to_string(&path).unwrap().contains("ligne numero 119"));
         fs::remove_dir_all(path.parent().unwrap()).unwrap();
     }
 }

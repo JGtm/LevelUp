@@ -533,7 +533,7 @@ Définition : `ResourcesRoot` = la racine du dépôt aujourd'hui (`LEVELUP_RESOU
       premier lancement (32 octets, `0600`), `Validate` refuse le défaut et un secret court en `desktop`
       (`validateStartup`). Tests `config_desktop_session_test.go`.
 - [x] 13.2 `GET /desktop/enter?secret=` (capacité `ShellEntryGate`, `LoopbackOnly`) : cookie `levelup_session_<port>`
-      (HMAC lié au port, 30 jours, renouvelé à chaque entrée, `HttpOnly`, `SameSite=Strict`), 302 vers `/` ;
+      (HMAC lié au port, 30 jours, renouvelé à chaque entrée, `HttpOnly`, `SameSite=Lax`), 302 vers `/` ;
       `middleware.DesktopGate` : Host strict (421), cookie exigé (401 `desktop_unauthorized`), `/health` ouvert ;
       CORS/CSRF = origine exacte du port lié (`AppConfig.SetBoundPort`) ; `GET /api/v1/desktop/strings`
       (`messages/desktop.toml`, fr + en). Écran web « accès expiré » sur le 401. Pas d'entrée d'allowlist des
@@ -810,6 +810,21 @@ mises à jour (ressources retéléchargées à chaque version).
   illisible (dossier déplacé sur un autre PC, autre compte Windows) = joueur « sans jeton » sans aucune bannière → à
   prévoir (P2 ou L17 : bannière « jetons illisibles sur ce poste, reconnectez-vous »). Ronde 2 non lancée (corrections
   testées une à une).
+
+- **L16 (2026-11-02) — relevé et gate du pilote** : revue H (Opus) : 17 conditions tiennent, 2 constats P2 corrigés
+  (secret d'entrée désormais à USAGE UNIQUE côté serveur et chargé une seule fois côté coquille — il reste inscrit,
+  mort, dans l'historique WebView2 `EBWebView\Default\History`, aucune interface wry pour l'effacer sans vider le
+  stockage que A15 protège : documenté ADR 0045 D-3 ; rotation de `desktop.log` sans perte quand le fichier est tenu).
+  Constat du pilote reproduit sur le poste (DevTools distant de WebView2, `--remote-debugging-port`) : la fenêtre finissait
+  sur `/` en 401 `desktop_unauthorized` avec le cookie `SameSite=Strict` (navigation d'entrée initiée depuis la page
+  embarquée `levelup-shell://`, autre site pour Chromium : cookie non envoyé sur la chaîne 302) → `SameSite=Lax`, test
+  figé. Gate visuel : utilisateur (premier lancement : assistant puis matchs chargés) + pilote (deux lancements
+  consécutifs : titre « LevelUp - Accueil », fermeture par `WM_CLOSE` → `stopped{clean:true}`, 0 WAL, 0 processus).
+  Piège de dev : `tauri dev` redémarre l'application dès qu'un fichier `src-tauri` change (un agent qui édite pendant un
+  essai de l'utilisateur tue le serveur en cours de migration) : pour les essais, lancer `target/debug/levelup-desktop.exe`
+  avec l'environnement du script, jamais `-Tauri` pendant qu'un lot Rust est ouvert. Hors périmètre : `LEVELUP_WEB_DIST`
+  sans défaut desktop (L17 tranche l'emplacement du front installé) ; `on_new_window` pour `target=_blank` ; `cargo audit`
+  10 avis « unmaintained » sur des crates tiers.
 
 - `internal/mapcatalog` : `TestAddOverlayEntryConcurrentDossierAbsentNePerdRien` échoue en run complet
   (« verrou d'ecriture impossible a poser — passage force », 2 cartes perdues sur 8) et passe seul : le

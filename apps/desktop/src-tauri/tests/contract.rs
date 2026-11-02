@@ -67,6 +67,11 @@ fn nominal_listening_ready_entree_puis_fermeture_propre() {
         .expect("ecran de fermeture");
     assert_eq!(calls.iter().position(|c| *c == Call::Exit), Some(calls.len() - 1));
     assert!(stopping < calls.len() - 1);
+    // L'entree n'est chargee qu'une fois par lancement, par la voie de l'entree (jamais la voie des pages
+    // d'echec) : son URL porte le secret.
+    let entries = calls.iter().filter(|c| matches!(c, Call::LoadEntry(_))).count();
+    assert_eq!(entries, 1, "appels : {calls:?}");
+    assert!(!calls.iter().any(|c| matches!(c, Call::LoadUrl(_))));
     let log = run.log();
     assert!(log.contains("event=sidecar_exited code=Some(0)"), "{log}");
     assert!(log.contains("event=close_stdin"), "{log}");
@@ -165,7 +170,7 @@ fn jamais_ready_dans_le_delai_montre_le_delai_et_tue_le_serveur() {
         "le serveur a ete tue, pas arrete : {log}"
     );
     assert!(
-        !run.recorder.calls().iter().any(|c| matches!(c, Call::LoadUrl(_))),
+        !run.recorder.calls().iter().any(|c| c.is_navigation()),
         "aucune entree sans ready"
     );
     let outcome = close_and_finish(&mut run);
@@ -210,7 +215,7 @@ fn un_echec_sans_port_montre_l_ecran_embarque_de_sa_cause() {
         let mut run = launch(&roots, &env, short_timeouts());
         run.recorder.wait_screen(Screen::Failed(kind));
         assert!(
-            !run.recorder.calls().iter().any(|c| matches!(c, Call::LoadUrl(_))),
+            !run.recorder.calls().iter().any(|c| c.is_navigation()),
             "{state} : pas de page serveur sans port"
         );
         close_and_finish(&mut run);
@@ -240,7 +245,7 @@ fn un_crash_apres_ready_montre_l_ecran_arrete_apres_l_entree() {
     let calls = run.recorder.calls();
     let entry = calls
         .iter()
-        .position(|c| matches!(c, Call::LoadUrl(_)))
+        .position(|c| c.is_navigation())
         .expect("entree avant le crash");
     assert!(entry < calls.iter().position(|c| *c == Call::Screen(Screen::Stopped)).unwrap());
     close_and_finish(&mut run);

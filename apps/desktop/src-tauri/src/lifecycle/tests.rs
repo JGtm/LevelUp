@@ -242,3 +242,14 @@ fn apres_la_sortie_ordonnee_plus_rien_ne_repond() {
     assert_eq!(m.step(ready(8123)), vec![]);
     assert_eq!(m.step(Input::CloseRequested), vec![]);
 }
+
+#[test]
+fn l_entree_n_est_chargee_qu_une_fois_meme_si_ready_est_repete() {
+    // Le secret d'entree est a usage unique cote serveur : un second chargement donnerait un 403.
+    let mut m = machine();
+    let first = m.step(ready(8123));
+    assert!(first.contains(&Action::LoadEntry { port: 8123 }));
+    assert_eq!(m.step(ready(8123)), vec![]);
+    assert_eq!(m.step(ready(9000)), vec![]);
+    assert_eq!(m.step(listening(8123)), vec![Action::AnnouncePort { port: 8123 }]);
+}

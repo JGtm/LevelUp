@@ -11,7 +11,8 @@
 //   - la séquence `listening` (port > 0) puis `ready` (même port, et <DataRoot>/desktop/port le
 //     contient), /health répondant sur ce port ;
 //   - l'entrée de la coquille (lot L13) : GET / sans cookie répond 401, GET /desktop/enter?secret=
-//     répond 302 et pose le cookie levelup_session_<port>, puis GET /api/v1/bootstrap avec ce cookie
+//     répond 302 et pose le cookie levelup_session_<port> (une seconde entrée : 403, le secret est à usage
+//     unique), puis GET /api/v1/bootstrap avec ce cookie
 //     répond 200 (et 401 sans) ;
 //   - un second lancement sur les mêmes racines PENDANT le premier : `failed{state:"locked"}` puis
 //     sortie non nulle, sans toucher au fichier de port du premier ;
@@ -300,6 +301,10 @@ func assertDesktopEntry(t *testing.T, port int) {
 	}
 	if cookie == nil {
 		t.Fatalf("aucun cookie levelup_session_%d posé (%v)", port, resp.Cookies())
+	}
+	// Le secret sert une fois : son URL reste dans l'historique de la WebView, rejouée elle ne donne rien.
+	if resp := desktopGet(t, port, "/desktop/enter?secret="+launcherSecret, nil); resp.StatusCode != http.StatusForbidden || len(resp.Cookies()) != 0 {
+		t.Errorf("seconde entrée avec le bon secret : %d (%d cookie), attendu 403 sans cookie", resp.StatusCode, len(resp.Cookies()))
 	}
 	if resp := desktopGet(t, port, "/api/v1/bootstrap", nil); resp.StatusCode != http.StatusUnauthorized {
 		t.Errorf("GET /api/v1/bootstrap sans cookie : %d, attendu 401", resp.StatusCode)

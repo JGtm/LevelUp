@@ -38,8 +38,10 @@ const STDOUT_DRAIN_GRACE: Duration = Duration::from_secs(2);
 pub trait Host: Send + 'static {
     /// Montrer un ecran embarque.
     fn show_screen(&mut self, screen: Screen);
-    /// Charger une URL du serveur local. Peut porter le secret d'entree : ne pas la journaliser.
+    /// Charger une URL du serveur local (sa page d'echec). Ne porte aucun secret.
     fn load_url(&mut self, url: &str);
+    /// Charger l'URL d'entree du serveur, qui PORTE le secret d'entree : ne jamais la journaliser.
+    fn load_entry(&mut self, url: &str);
     /// Le port du serveur est connu.
     fn announce_port(&mut self, port: u16);
     /// Terminer l'application.
@@ -202,7 +204,7 @@ fn apply(
         }
         Action::LoadEntry { port } => {
             log_shell(log, &format!("event=load_entry port={port}"));
-            host.load_url(&format!(
+            host.load_entry(&format!(
                 "http://127.0.0.1:{port}/desktop/enter?secret={}",
                 secret.expose()
             ));

@@ -8,7 +8,10 @@
 //     exception (sondes comprises). Un autre nom, un autre port ou une adresse IPv6 sont refusés
 //     avec 421 et journalisés : c'est ce qui coupe le rebond DNS.
 //   - Entrée par secret : GET /desktop/enter?secret=<aléa> compare le secret du lanceur en temps
-//     constant et pose un cookie lié au port ; la coquille le charge une fois, au démarrage.
+//     constant et pose un cookie lié au port ; la coquille le charge une fois, au démarrage. Le secret
+//     est À USAGE UNIQUE par lancement : l'URL d'entrée entre dans l'historique de la WebView, un secret
+//     rejouable y survivrait vivant ; après une entrée réussie il est refusé (403), le cookie porte la
+//     session.
 //   - Cookie exigé : hors /desktop/enter et /health (la sonde du lanceur, sans donnée), toute
 //     requête sans le cookie valide répond 401.
 //
@@ -29,6 +32,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -44,12 +48,19 @@ const (
 	DesktopShutdownPath = "/api/v1/internal/shutdown"
 	// desktopHealthPath : la sonde du lanceur, ouverte sans cookie (aucune donnée).
 	desktopHealthPath = "/health"
-	// DesktopCookieTTL : durée de validité du cookie, renouvelée à chaque entrée.
+	// DesktopCookieTTL : durée de validité du cookie, posée à l'entrée de chaque lancement.
 	DesktopCookieTTL = 30 * 24 * time.Hour
 	// desktopCookiePrefix : début du nom du cookie, suivi du port lié.
 	desktopCookiePrefix = "levelup_session_"
 	// desktopCookieDomain : séparation des usages de la clé HMAC (jamais réutilisée par un autre cookie).
 	desktopCookieDomain = "levelup-desktop-entry/v1"
+	// desktopCookieSameSite : Lax, jamais Strict. La navigation vers /desktop/enter est lancée depuis la
+	// page embarquée de la coquille (origine levelup-shell://, un autre site pour Chromium) : la chaîne
+	// 302 vers « / » est une navigation de premier niveau d'initiateur inter-sites, sur laquelle Chromium
+	// n'envoie PAS un cookie Strict (« / » arriverait sans cookie : 401). Lax est envoyé sur les
+	// navigations de premier niveau et jamais sur les sous-requêtes inter-sites ; les mutations restent
+	// protégées par le CSRF d'origine exacte, le Host strict et la boucle locale.
+	desktopCookieSameSite = http.SameSiteLaxMode
 	// desktopEnterSecretParam : paramètre de requête qui porte le secret du lanceur.
 	desktopEnterSecretParam = "secret"
 )
@@ -62,7 +73,9 @@ type DesktopGate struct {
 	key          []byte
 	secretDigest [sha256.Size]byte
 	configured   bool
-	now          func() time.Time
+	// entered : le secret a été présenté avec succès une fois ; toute présentation suivante est refusée.
+	entered atomic.Bool
+	now     func() time.Time
 }
 
 // NewDesktopGate construit l'entrée pour l'autorité authority (« 127.0.0.1:<port> ») et le port
@@ -166,8 +179,9 @@ func StrictHost(authority string) func(http.Handler) http.Handler {
 }
 
 // EnterHandler sert GET /desktop/enter?secret=… : 404 si l'entrée n'est pas configurée, 403 si le
-// secret manque ou est faux (comparé en temps constant), sinon pose le cookie (nouvelle échéance
-// de 30 jours) et redirige vers « / ». Le secret n'est jamais journalisé.
+// secret manque, est faux (comparé en temps constant) ou a déjà servi (usage unique par lancement :
+// l'URL d'entrée reste dans l'historique de la WebView), sinon pose le cookie (échéance de 30 jours)
+// et redirige vers « / ». Le secret n'est jamais journalisé.
 func (g *DesktopGate) EnterHandler(w http.ResponseWriter, r *http.Request) {
 	if !g.configured {
 		http.NotFound(w, r)
@@ -179,12 +193,18 @@ func (g *DesktopGate) EnterHandler(w http.ResponseWriter, r *http.Request) {
 		writeGateError(w, http.StatusForbidden, "forbidden", "secret d'entrée refusé")
 		return
 	}
+	// Un seul gagnant, même sous deux requêtes simultanées.
+	if !g.entered.CompareAndSwap(false, true) {
+		slog.WarnContext(r.Context(), "middleware.desktop_gate: secret d'entrée déjà consommé")
+		writeGateError(w, http.StatusForbidden, "forbidden", "secret d'entrée déjà consommé")
+		return
+	}
 	http.SetCookie(w, &http.Cookie{
 		Name:     DesktopCookieName(g.port),
 		Value:    g.cookieValue(g.now().Add(DesktopCookieTTL)),
 		Path:     "/",
 		HttpOnly: true,
-		SameSite: http.SameSiteStrictMode,
+		SameSite: desktopCookieSameSite,
 		MaxAge:   int(DesktopCookieTTL / time.Second),
 	})
 	w.Header().Set("Cache-Control", "no-store")

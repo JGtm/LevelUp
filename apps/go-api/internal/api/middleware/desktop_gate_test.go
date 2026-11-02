@@ -120,7 +120,8 @@ func TestDesktopGate_EcheanceEtSignatureDuCookie(t *testing.T) {
 	}
 }
 
-// Chaque entrée renouvelle l'échéance : une entrée plus tardive donne un cookie qui vit plus longtemps.
+// Chaque lancement (donc chaque garde) renouvelle l'échéance : une entrée plus tardive donne un cookie qui
+// vit plus longtemps.
 func TestDesktopGate_ChaqueEntreeRenouvelleLEcheance(t *testing.T) {
 	t0 := time.Date(2026, 11, 2, 12, 0, 0, 0, time.UTC)
 	_, first := enter(newTestGate(t0), gateTestSecret)
@@ -167,5 +168,63 @@ func TestDesktopGate_LeSecretNeFuitPas(t *testing.T) {
 		if strings.Contains(dump, secret) {
 			t.Errorf("le secret %q figure dans la réponse : %s", secret, dump)
 		}
+	}
+}
+
+// Le secret d'entrée sert une seule fois : la seconde présentation du bon secret est refusée (403) sans
+// cookie, une présentation fausse ne le consomme pas, et le cookie de la première entrée reste valide.
+func TestDesktopGate_SecretAUsageUnique(t *testing.T) {
+	g := newTestGate(time.Now())
+	if rec, cookie := enter(g, "faux"); rec.Code != http.StatusForbidden || cookie != nil {
+		t.Fatalf("faux secret : %d cookie=%v, attendu 403 sans cookie", rec.Code, cookie)
+	}
+	first, cookie := enter(g, gateTestSecret)
+	if first.Code != http.StatusFound || cookie == nil {
+		t.Fatalf("première entrée : %d cookie=%v, attendu 302 avec cookie", first.Code, cookie)
+	}
+	second, again := enter(g, gateTestSecret)
+	if second.Code != http.StatusForbidden || again != nil {
+		t.Errorf("seconde entrée : %d cookie=%v, attendu 403 sans cookie", second.Code, again)
+	}
+	if code, _ := serve(g, "/api/v1/x", cookie); code != http.StatusOK {
+		t.Errorf("le cookie de la première entrée : %d, attendu 200", code)
+	}
+}
+
+// Deux entrées simultanées avec le bon secret : une seule réussit.
+func TestDesktopGate_SecretAUsageUniqueSousConcurrence(t *testing.T) {
+	g := newTestGate(time.Now())
+	const racers = 16
+	codes := make(chan int, racers)
+	for range racers {
+		go func() {
+			rec, _ := enter(g, gateTestSecret)
+			codes <- rec.Code
+		}()
+	}
+	won := 0
+	for range racers {
+		if <-codes == http.StatusFound {
+			won++
+		}
+	}
+	if won != 1 {
+		t.Errorf("%d entrées réussies sur %d simultanées, attendu exactement 1", won, racers)
+	}
+}
+
+// Le cookie est SameSite=Lax, pas Strict : la coquille entre depuis sa page embarquée (origine
+// levelup-shell://), la redirection vers « / » est une navigation inter-sites et Chromium n'y enverrait
+// pas un cookie Strict (401 sur la première page). HttpOnly et le chemin racine restent exigés.
+func TestDesktopGate_CookieSameSiteLax(t *testing.T) {
+	_, cookie := enter(newTestGate(time.Now()), gateTestSecret)
+	if cookie == nil {
+		t.Fatal("aucun cookie posé")
+	}
+	if cookie.SameSite != http.SameSiteLaxMode {
+		t.Errorf("SameSite = %v, attendu Lax", cookie.SameSite)
+	}
+	if !cookie.HttpOnly || cookie.Path != "/" || cookie.Secure {
+		t.Errorf("cookie = %+v, attendu HttpOnly, Path=/, sans Secure", cookie)
 	}
 }

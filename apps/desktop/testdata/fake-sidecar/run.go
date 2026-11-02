@@ -284,7 +284,7 @@ func newMux(port int, opts options) http.Handler {
 			http.Error(w, "forbidden", http.StatusForbidden)
 			return
 		}
-		http.SetCookie(w, &http.Cookie{Name: "levelup_session_" + strconv.Itoa(port), Value: "ok", Path: "/", HttpOnly: true, SameSite: http.SameSiteStrictMode})
+		http.SetCookie(w, &http.Cookie{Name: "levelup_session_" + strconv.Itoa(port), Value: "ok", Path: "/", HttpOnly: true, SameSite: http.SameSiteLaxMode})
 		http.Redirect(w, r, "/", http.StatusFound)
 	})
 	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) { _, _ = io.WriteString(w, "ok") })

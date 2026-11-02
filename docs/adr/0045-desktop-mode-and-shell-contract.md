@@ -71,9 +71,24 @@ profile name. `middleware.DesktopGate` (`internal/api/middleware/desktop_gate.go
 DNS rebinding), then the cookie (401 `desktop_unauthorized`, `retryable:false`, a path that `AmbiguousPath` flags never
 passes as `/health`). The cookie is not a session: its value is `<expiry>.<hex HMAC-SHA256>` over `(port, expiry)` with
 the session secret of D-7, checked without state, valid 30 days and renewed at each entry; it is `HttpOnly`,
-`SameSite=Strict`, not `Secure` (plain http on loopback). Its name is `levelup_session_<port>`. `GET /desktop/enter` sits
+`SameSite=Lax` (not Strict: the entry navigation is started from the embedded page, origin `levelup-shell://`, which is
+another site for Chromium, so the redirect to `/` is a cross-site top-level navigation on which a Strict cookie is not
+sent and `/` would answer 401; Lax travels on top-level navigations only, mutations stay behind the exact-origin CSRF
+check, the strict `Host` and the loopback), not `Secure` (plain http on loopback). Its name is `levelup_session_<port>`. `GET /desktop/enter` sits
 behind `LoopbackOnly`, compares `?secret=` with `LEVELUP_DESKTOP_SECRET` in constant time (403 wrong, 404 when the
-launcher gave no secret), never logs it, and answers 302 to `/`. CORS and the CSRF origin list are
+launcher gave no secret), never logs it, and answers 302 to `/`.
+**The entry secret is single-use per launch** (review of L16, 2026-11-02): WebView2 writes every URL it
+visits, redirect sources included, into its history database
+(`%LOCALAPPDATA%info.lvelup.desktopEBWebViewDefaultHistory`), so `/desktop/enter?secret=<64 hex>` stays on
+disk in the clear. Measured on a launched shell: one `urls` row and one visit carry the secret, with a plain
+navigation as well as with `location.replace` from the embedded page (the latter was also what exposed the Strict
+cookie problem above: 401 on `/`). No setting of the window avoids
+the record without losing the browser storage that A15 protects (a non-persistent profile empties it at each launch),
+and clearing only the history needs a WebView2 interface that wry does not expose. Mitigation, which makes the record
+harmless: `EnterHandler` accepts the correct secret once (an atomic swap, 403 and a `secret d'entrée déjà consommé`
+warning afterwards, a wrong secret does not consume it), the shell loads the entry once per launch (a repeated
+`ready` does not reload it, `lifecycle` test), the secret is drawn again at every launch, and the cookie carries
+the session. What survives in the history is a dead secret of a previous launch. CORS and the CSRF origin list are
 `AppConfig.SetBoundPort`'s output: the single origin `http://127.0.0.1:<bound port>`, `LEVELUP_CORS_ORIGINS` ignored.
 Two exceptions and one extension, found by the wave 4 review: `POST /api/v1/internal/shutdown` is exempt from the
 cookie (the shell cannot forge a signed `HttpOnly` cookie; the route keeps `LoopbackOnly`, the constant-time header

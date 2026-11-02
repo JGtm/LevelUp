@@ -55,8 +55,17 @@ pub fn fake_sidecar() -> &'static Path {
 pub enum Call {
     Screen(Screen),
     LoadUrl(String),
+    /// L'URL d'entree (porte le secret).
+    LoadEntry(String),
     Port(u16),
     Exit,
+}
+
+impl Call {
+    /// Vrai pour tout chargement d'une URL du serveur, entree ou page d'echec.
+    pub fn is_navigation(&self) -> bool {
+        matches!(self, Call::LoadUrl(_) | Call::LoadEntry(_))
+    }
 }
 
 type Shared = Arc<(Mutex<Vec<Call>>, Condvar)>;
@@ -95,12 +104,13 @@ impl Recorder {
 
     /// L'URL de la premiere navigation vers le serveur.
     pub fn wait_url(&self) -> String {
-        let calls = self.wait_for("une URL du serveur", |c| {
-            c.iter().any(|x| matches!(x, Call::LoadUrl(_)))
-        });
+        let calls = self.wait_for("une URL du serveur", |c| c.iter().any(Call::is_navigation));
         calls
             .into_iter()
-            .find_map(|c| if let Call::LoadUrl(url) = c { Some(url) } else { None })
+            .find_map(|c| match c {
+                Call::LoadUrl(url) | Call::LoadEntry(url) => Some(url),
+                _ => None,
+            })
             .expect("URL")
     }
 
@@ -123,6 +133,9 @@ impl Host for Recorder {
     }
     fn load_url(&mut self, url: &str) {
         self.push(Call::LoadUrl(url.to_string()));
+    }
+    fn load_entry(&mut self, url: &str) {
+        self.push(Call::LoadEntry(url.to_string()));
     }
     fn announce_port(&mut self, port: u16) {
         self.push(Call::Port(port));

@@ -311,6 +311,18 @@ impl Host for TauriHost {
         }
     }
 
+    fn load_entry(&mut self, url: &str) {
+        // Navigation de la barre d'adresse, PAS `location.replace` depuis la page embarquee : mesure faite,
+        // une navigation lancee par un script de l'origine embarquee est inter-sites pour le serveur, et le
+        // cookie SameSite=Strict qu'il pose n'est pas renvoye a la redirection vers `/` (401). L'historique
+        // de WebView2 inscrit l'URL dans les deux cas ; le secret etant a usage unique cote serveur, cette
+        // trace est morte (ADR 0045 D-3). Jamais l'URL dans le journal.
+        match Url::parse(url) {
+            Ok(url) => self.navigate(url),
+            Err(e) => report(Some(self.log.as_ref()), &format!("event=bad_entry_url err={e}")),
+        }
+    }
+
     fn announce_port(&mut self, port: u16) {
         self.port.store(port, Ordering::SeqCst);
     }
