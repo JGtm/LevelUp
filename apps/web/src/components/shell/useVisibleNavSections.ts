@@ -6,10 +6,13 @@
  *
  * Gating multi-titre (Phase 5) : on masque les sections / onglets dont la capability n'est pas
  * déclarée par le titre courant. Fail-open (titleCaps null pendant le bootstrap → tout visible)
- * ⇒ NO-OP pour halo_infinite.
+ * ⇒ NO-OP pour halo_infinite. Gating de déploiement (ADR 0044) : un onglet qui exige une capacité du
+ * profil (`deploymentCapability`) disparaît quand l'instance ne l'offre pas.
  */
 import { useSettings } from '@/features/settings/queries'
 import { hasCapabilityIn, useTitleCapabilities } from '@/lib/capabilities/capabilities'
+import { deploymentCapabilityOf } from '@/lib/capabilities/deploymentCapabilities'
+import { useAppShellStore } from '@/stores/appShellStore'
 import { L1_SECTIONS, type L1Section, type L1Tab } from './navL1Sections'
 
 export function useVisibleNavSections(): L1Section[] {
@@ -17,7 +20,10 @@ export function useVisibleNavSections(): L1Section[] {
   const showProgression = settings?.show_progression ?? true
   const titleCaps = useTitleCapabilities()
   const sectionVisible = (s: L1Section) => s.capability == null || hasCapabilityIn(titleCaps, s.capability)
-  const tabVisible = (tab: L1Tab) => tab.capability == null || hasCapabilityIn(titleCaps, tab.capability)
+  const deploymentCapabilities = useAppShellStore((s) => s.capabilities)
+  const tabVisible = (tab: L1Tab) =>
+    (tab.capability == null || hasCapabilityIn(titleCaps, tab.capability)) &&
+    (tab.deploymentCapability == null || deploymentCapabilityOf(deploymentCapabilities, tab.deploymentCapability))
   return (showProgression ? L1_SECTIONS : L1_SECTIONS.filter((s) => s.key !== 'ascension'))
     .filter(sectionVisible)
     .map((s) => {

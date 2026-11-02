@@ -1,7 +1,8 @@
 /**
- * E2E — Barre latérale repliable de l'application de bureau (L21.0) : sous la capacité
- * `can_use_compact_chrome` de /bootstrap, la barre se replie en icônes (bouton du pied, Ctrl+B, fenêtre
- * étroite), mémorise le choix manuel, ouvre un menu volant des onglets.
+ * E2E — Barre latérale repliable de l'application de bureau (L21.0) et capacités de la communauté
+ * (L21.0b) : sous la capacité `can_use_compact_chrome` de /bootstrap, la barre se replie en icônes (bouton
+ * du pied, Ctrl+B, fenêtre étroite), mémorise le choix manuel, ouvre un menu volant des onglets ; sans
+ * `can_compare_accounts`, « Classements » disparaît de la Communauté et son adresse renvoie à « Relations ».
  *
  * Le serveur est simulé (bootstrap du profil desktop), comme dans desktop-chrome.spec.ts. La variable
  * L21_WITNESS_DIR, quand elle est posée, reçoit les captures témoins des deux états de la barre.
@@ -140,5 +141,24 @@ test.describe('Barre latérale repliable', () => {
     await open(page, false)
     await expect(sidebar(page)).toHaveCount(0)
     await expect(page.getByRole('navigation', { name: 'Navigation principale' })).toBeVisible()
+  })
+})
+
+test.describe('Communauté sans comparaison de comptes', () => {
+  test.use({ viewport: { width: 1440, height: 900 } })
+  const RELATIONS = '/t/halo_infinite/players/jgtm/community/relations'
+
+  test('bureau : pas d’onglet Classements, et /community renvoie à Relations', async ({ page }) => {
+    await open(page, true, RELATIONS)
+    await expect(page.getByRole('link', { name: 'Face-à-face' }).first()).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Classements' })).toHaveCount(0)
+
+    await page.goto('/t/halo_infinite/players/jgtm/community')
+    await page.waitForURL('**/community/relations')
+  })
+
+  test('site : Classements reste offert', async ({ page }) => {
+    await open(page, false, RELATIONS)
+    await expect(page.getByRole('link', { name: 'Classements' }).first()).toBeVisible()
   })
 })

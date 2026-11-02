@@ -12,6 +12,7 @@ import { isCommunityPath, type RouteTo } from './shellNavigation'
 import { playerRelativePath } from '@/lib/title-routing'
 import type { TitleCapability } from '@/lib/capabilities/capabilities'
 import type { CommonManifestKey } from '@/lib/i18n/generated/common'
+import type { DeploymentCapabilityKey } from '@/lib/capabilities/deploymentCapabilities'
 
 // Matcher de section : `re` s'applique au SUFFIXE relatif au joueur (playerRelativePath),
 // jamais au pathname brut — aucun littéral `/players/` (garde-rail D-10). Retourne false
@@ -54,6 +55,12 @@ export interface L1Tab {
    * Absente ⇒ onglet toujours visible. NO-OP pour `halo_infinite`.
    */
   capability?: TitleCapability
+  /**
+   * Capacité du profil de déploiement requise pour afficher cet onglet (ADR 0044) : une instance qui
+   * ne l'offre pas ne le montre pas (ex. « Classements » sans `can_compare_accounts`, application de
+   * bureau). Absente ⇒ onglet visible quel que soit le profil.
+   */
+  deploymentCapability?: DeploymentCapabilityKey
 }
 
 export interface L1Section {
@@ -184,13 +191,14 @@ export const L1_SECTIONS: L1Section[] = [
     defaultPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/community',
     matchPathname: isCommunityPath,
     // Section transverse non gatée (Relations / Face-à-face dérivent des matchs) ;
-    // seul l'onglet « Classements » dépend de `world.leaderboard`.
+    // seul l'onglet « Classements » dépend de `world.leaderboard` et de la comparaison de comptes.
     tabs: [
       {
         key: 'leaderboard',
         labelKey: 'common.nav.tab_leaderboard',
         path: '/{-$lang}/t/$titleSlug/players/$playerSlug/community',
         capability: 'world.leaderboard',
+        deploymentCapability: 'can_compare_accounts',
       },
       { key: 'relations', labelKey: 'common.nav.tab_relations', path: '/{-$lang}/t/$titleSlug/players/$playerSlug/community/relations' },
       { key: 'compare', labelKey: 'common.nav.tab_compare', path: '/{-$lang}/t/$titleSlug/players/$playerSlug/community/compare' },

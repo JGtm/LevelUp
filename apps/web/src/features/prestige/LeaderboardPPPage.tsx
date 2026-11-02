@@ -13,12 +13,27 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { LeaderboardPP, type LeaderboardEntry } from './components/LeaderboardPP'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
+import { EmptyStateNotice } from '@/components/ui/empty-state'
+import { useDeploymentCapability } from '@/stores/useDeploymentCapability'
 
 export function LeaderboardPPPage() {
   const currentPlayer = useAppShellStore((s) => s.currentPlayer)
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
   const [period, setPeriod] = useState<'week' | 'month' | 'all'>('all')
+  const compareAccounts = useDeploymentCapability('can_compare_accounts')
+
+  // Application de bureau : un seul compte suivi, un classement entre comptes n'a rien à comparer.
+  if (!compareAccounts) {
+    return (
+      <div className="p-4">
+        <EmptyStateNotice
+          title={t('common.community.accounts_only_title')}
+          description={t('common.community.accounts_only_body')}
+        />
+      </div>
+    )
+  }
 
   // Phase 5 minimale : pas de fetch backend tant que le leaderboard cross-amis
   // n'est pas exposé. Le composant LeaderboardPP gère l'état vide proprement.

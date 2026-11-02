@@ -1755,6 +1755,16 @@ en = "Prestige leaderboard with friends derived from the squad and relations."
 fr = "Sélectionne un joueur pour voir le classement."
 en = "Select a player to see the leaderboard."
 
+# Page de la communauté qui confronte plusieurs comptes, ouverte sur une instance qui n'en suit qu'un
+# (application de bureau).
+[common.community.accounts_only_title]
+fr = "Pas de comparaison entre comptes"
+en = "No comparison between accounts"
+
+[common.community.accounts_only_body]
+fr = "Cette page compare plusieurs comptes ; l'application de bureau n'en suit qu'un."
+en = "This page compares several accounts; the desktop application follows only one."
+
 [common.prestige.select_player_for_objectives]
 fr = "Sélectionne un joueur pour voir les objectifs."
 en = "Select a player to see the objectives."
