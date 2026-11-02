@@ -228,7 +228,7 @@ func TestBuildHLSArgs_HEVCTag(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			args := buildHLSArgs(tc.plan, "src.mkv", "out", 4)
+			args := buildHLSArgs(tc.plan, "src.mkv", "out", 4, EncoderLibx264)
 			if got := argsContainPair(args, "-tag:v", "hvc1"); got != tc.wantTag {
 				t.Errorf("tag hvc1 présent = %v, want %v\nargs=%v", got, tc.wantTag, args)
 			}

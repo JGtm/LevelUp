@@ -418,10 +418,10 @@ func initToolingAndRegistry(cfg *config.AppConfig) {
 	// --- Outillage média (ffmpeg/ffprobe) — check observable NON-bloquant ---
 	// L'app exécute ffmpeg/ffprobe pour les miniatures WebP, le transcodage HLS
 	// et le remux live des clips. Leur absence — ou un ffmpeg compilé sans
-	// libx264/libwebp/aac ou sans le muxer hls — n'empêche pas le serveur de
+	// encodeur H.264 (libx264, h264_mf, libopenh264)/libwebp/aac ou sans le muxer hls — n'empêche pas le serveur de
 	// démarrer mais casse ces surfaces au premier upload. On rend le diagnostic
 	// visible ici (slog Info si OK avec la version, Warn actionnable sinon)
-	// plutôt qu'en échec silencieux. Borné dans le temps (3 execs ffmpeg) pour
+	// plutôt qu'en échec silencieux. Borné dans le temps (4 lancements de ffmpeg) pour
 	// ne jamais retarder le boot.
 	mediaCtx, mediaCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	ops.LogMediaToolingStatus(mediaCtx)

@@ -545,7 +545,17 @@ func buildHLS(ctx context.Context, srcPath, outDir string, opts HLSOptions) (HLS
 		segDur = defaultSegmentDuration
 	}
 
-	args := buildHLSArgs(plan, srcPath, outDir, segDur)
+	var enc H264Encoder
+	if plan.VideoAction != actionCopy {
+		// La vidéo est réencodée : sans encodeur H.264 utilisable le transcodage est refusé
+		// avant de lancer ffmpeg (aucun arbre partiel écrit).
+		if enc, err = SelectedH264Encoder(ctx); err != nil {
+			slog.ErrorContext(ctx, "BuildHLS: aucun encodeur H.264 utilisable, transcodage refusé",
+				"src", srcPath, "err", err)
+			return HLSResult{}, fmt.Errorf("transcodage HLS refusé: %w", err)
+		}
+	}
+	args := buildHLSArgs(plan, srcPath, outDir, segDur, enc)
 	stderr := &bytes.Buffer{}
 	if err := RunFFmpeg(ctx, FFmpegJob{Args: args, Stderr: stderr}); err != nil {
 		slog.ErrorContext(ctx, "BuildHLS ffmpeg failed",
@@ -579,8 +589,9 @@ func renditionSlugs(audios []audioRendition) []string {
 }
 
 // buildHLSArgs construit les arguments ffmpeg depuis le plan. Découpé de
-// BuildHLS pour rester sous la limite de taille et faciliter les tests.
-func buildHLSArgs(plan hlsPlan, src, outDir string, segDur int) []string {
+// BuildHLS pour rester sous la limite de taille et faciliter les tests. enc n'est lu que
+// quand la vidéo est réencodée.
+func buildHLSArgs(plan hlsPlan, src, outDir string, segDur int, enc H264Encoder) []string {
 	args := ffmpegQuietArgs("-y", "-i", src)
 	if plan.FilterComplex != "" {
 		args = append(args, "-filter_complex", plan.FilterComplex)
@@ -598,7 +609,7 @@ func buildHLSArgs(plan hlsPlan, src, outDir string, segDur int) []string {
 			args = append(args, "-tag:v", "hvc1")
 		}
 	} else {
-		args = append(args, "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p")
+		args = append(args, h264VideoArgs(enc, segDur)...)
 	}
 	for i, a := range plan.Audios {
 		if a.Action == actionCopy {

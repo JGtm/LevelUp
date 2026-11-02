@@ -3,23 +3,25 @@
 //
 // L'app exécute ffmpeg/ffprobe pour trois surfaces :
 //   - miniatures WebP animées      (internal/ops/media_thumbnails.go : encodeur libwebp) ;
-//   - transcodage HLS-fMP4         (internal/media/hls.go : muxer hls + mp4, encodeurs libx264/aac) ;
+//   - transcodage HLS-fMP4         (internal/media/hls.go : muxer hls + mp4, un encodeur H.264 parmi
+//     libx264 / h264_mf / libopenh264, encodeur audio aac) ;
 //   - remux live des clips MKV/AVI (internal/media/remux.go).
 //
-// Un ffmpeg présent mais compilé sans libx264/libwebp/aac ou sans le muxer hls
+// Un ffmpeg présent mais compilé sans encodeur H.264, sans libwebp/aac ou sans le muxer hls
 // échoue silencieusement au premier upload. Ce fichier rend ce risque observable
 // à deux endroits, sans dupliquer les execs :
 //   - au boot serveur (cmd/server)  : LogMediaToolingStatus — slog non-bloquant ;
 //   - dans la CLI `check-env`        : InspectMediaTooling + Report.Summary (stdout).
 //
 // Le PARSING des sorties ffmpeg (parseFFmpegComponents, missingComponents,
-// firstLine) est PUR et testable avec une sortie simulée — aucun test ne dépend
+// firstLine, et media.ParseFFmpegComponents) est PUR et testable avec une sortie simulée — aucun test ne dépend
 // d'un ffmpeg réellement installé (cf. media_tooling_test.go).
 package ops
 
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -30,9 +32,11 @@ import (
 
 // requiredEncoders liste les encodeurs ffmpeg dont dépend LevelUp :
 //   - libwebp : miniatures animées WebP (media_thumbnails.go, -c:v libwebp) ;
-//   - libx264 : ré-encodage vidéo H.264 quand la copy fMP4 est impossible (hls.go, -c:v libx264) ;
 //   - aac     : ré-encodage audio des renditions HLS (hls.go, -c:a aac).
-var requiredEncoders = []string{"libwebp", "libx264", "aac"}
+//
+// L'encodeur vidéo H.264 (ré-encodage quand la copy fMP4 est impossible) n'est pas dans cette
+// liste : il se choisit parmi plusieurs (media.SelectedH264Encoder), voir MediaToolingReport.
+var requiredEncoders = []string{"libwebp", "aac"}
 
 // requiredMuxers liste les muxers ffmpeg requis :
 //   - hls : arbre HLS (master + sous-playlists), hls.go (-f hls) ;
@@ -44,7 +48,6 @@ var requiredMuxers = []string{"hls", "mp4"}
 // composant — sert de contexte actionnable dans les logs et la sortie check-env.
 var mediaComponentImpact = map[string]string{
 	"libwebp": "miniatures animées WebP",
-	"libx264": "ré-encodage vidéo H.264 (HLS quand la copy est impossible)",
 	"aac":     "ré-encodage audio des renditions HLS",
 	"hls":     "transcodage HLS (sélection de piste audio + seek)",
 	"mp4":     "segments fMP4 des flux HLS",
@@ -68,6 +71,12 @@ type MediaToolingReport struct {
 	CapabilitiesProbeErr error
 	MissingEncoders      []string // sous-ensemble de requiredEncoders absent
 	MissingMuxers        []string // sous-ensemble de requiredMuxers absent
+
+	// H264Candidates : encodeurs H.264 listés par ffmpeg, dans l'ordre de préférence.
+	H264Candidates []mediapkg.H264Encoder
+	// H264Retained : encodeur retenu après essai ("" si aucun ; alors H264Err porte la cause).
+	H264Retained mediapkg.H264Encoder
+	H264Err      error
 }
 
 // InspectMediaTooling résout ffmpeg/ffprobe dans le PATH puis, si ffmpeg est
@@ -84,7 +93,7 @@ func InspectMediaTooling(ctx context.Context) MediaToolingReport {
 	if verOut, err := runFFmpeg(ctx, "-version"); err == nil {
 		r.FFmpegVersion = firstLine(verOut)
 	}
-	encOut, encErr := runFFmpeg(ctx, "-hide_banner", "-encoders")
+	encoders, encErr := mediapkg.AvailableEncoders(ctx)
 	muxOut, muxErr := runFFmpeg(ctx, "-hide_banner", "-muxers")
 	switch {
 	case encErr != nil:
@@ -93,8 +102,10 @@ func InspectMediaTooling(ctx context.Context) MediaToolingReport {
 		r.CapabilitiesProbeErr = muxErr
 	default:
 		r.CapabilitiesProbed = true
-		r.MissingEncoders = missingComponents(parseFFmpegComponents(encOut), requiredEncoders)
-		r.MissingMuxers = missingComponents(parseFFmpegComponents(muxOut), requiredMuxers)
+		r.MissingEncoders = missingComponents(encoders, requiredEncoders)
+		r.MissingMuxers = missingComponents(mediapkg.ParseFFmpegComponents(muxOut), requiredMuxers)
+		r.H264Candidates = mediapkg.H264Candidates(encoders)
+		r.H264Retained, r.H264Err = mediapkg.SelectedH264Encoder(ctx)
 	}
 	return r
 }
@@ -129,11 +140,39 @@ func LogMediaToolingStatus(ctx context.Context) {
 			"component", name, "impact", mediaComponentImpact[name],
 			"hint", "installer un build ffmpeg incluant l'encodeur "+name)
 	}
+	logH264Status(ctx, log, r)
 	for _, name := range r.MissingMuxers {
 		log.WarnContext(ctx, "media tooling: muxer ffmpeg requis manquant",
 			"component", name, "impact", mediaComponentImpact[name],
 			"hint", "installer un build ffmpeg incluant le muxer "+name)
 	}
+}
+
+// logH264Status journalise l'encodeur H.264 retenu, ou l'absence de tout encodeur utilisable
+// (transcodage vidéo HLS alors refusé ; la copie sans réencodage reste possible).
+func logH264Status(ctx context.Context, log *slog.Logger, r MediaToolingReport) {
+	if r.H264Retained != "" {
+		log.InfoContext(ctx, "media tooling: encodeur H.264 retenu",
+			"encoder", string(r.H264Retained), "candidates", h264Names(r.H264Candidates))
+		return
+	}
+	if !errors.Is(r.H264Err, mediapkg.ErrNoH264Encoder) {
+		log.WarnContext(ctx, "media tooling: détection de l'encodeur H.264 non aboutie, reprise au premier transcodage",
+			"candidates", h264Names(r.H264Candidates), "err", r.H264Err)
+		return
+	}
+	log.WarnContext(ctx, "media tooling: aucun encodeur H.264 utilisable — le transcodage vidéo HLS (clips VP8/VP9) sera refusé",
+		"candidates", h264Names(r.H264Candidates), "err", r.H264Err,
+		"hint", "installer un build ffmpeg incluant libx264, h264_mf ou libopenh264")
+}
+
+// h264Names convertit une liste d'encodeurs en noms (champ de journal).
+func h264Names(encs []mediapkg.H264Encoder) []string {
+	names := make([]string, len(encs))
+	for i, e := range encs {
+		names[i] = string(e)
+	}
+	return names
 }
 
 // ToHealthStatus projette le rapport sur le DTO exposé par GET /health. On ne
@@ -171,6 +210,7 @@ func (r MediaToolingReport) Summary() string {
 	case r.CapabilitiesProbed:
 		writeCapLine(&sb, "encodeurs requis", requiredEncoders, r.MissingEncoders)
 		writeCapLine(&sb, "muxers requis   ", requiredMuxers, r.MissingMuxers)
+		writeH264Line(&sb, r)
 	case r.FFmpegFound && r.CapabilitiesProbeErr != nil:
 		fmt.Fprintf(&sb, "  [??] capacités : non vérifiées (%v)\n", r.CapabilitiesProbeErr)
 	}
@@ -188,6 +228,20 @@ func writeCapLine(sb *strings.Builder, label string, required, missing []string)
 		label, strings.Join(required, ", "), strings.Join(missing, ", "))
 }
 
+// writeH264Line écrit la ligne de l'encodeur H.264 : [OK] avec l'encodeur retenu, sinon [KO].
+func writeH264Line(sb *strings.Builder, r MediaToolingReport) {
+	if r.H264Retained != "" {
+		fmt.Fprintf(sb, "  [OK] encodeur H.264 : %s (candidats : %s)\n",
+			r.H264Retained, strings.Join(h264Names(r.H264Candidates), ", "))
+		return
+	}
+	if !errors.Is(r.H264Err, mediapkg.ErrNoH264Encoder) {
+		fmt.Fprintf(sb, "  [??] encodeur H.264 : non vérifié (%v)\n", r.H264Err)
+		return
+	}
+	fmt.Fprintf(sb, "  [KO] encodeur H.264 : aucun utilisable parmi libx264, h264_mf, libopenh264 (%v)\n", r.H264Err)
+}
+
 // runFFmpeg exécute `ffmpeg <args>` et retourne sa sortie standard. Les listings
 // (-version, -encoders, -muxers) sont écrits sur stdout par ffmpeg ; RunFFmpeg les
 // relaie dans un tampon et tient la place des transcodages (PoolTranscode). Le ctx borne la durée
@@ -198,43 +252,6 @@ func runFFmpeg(ctx context.Context, args ...string) (string, error) {
 		return "", err
 	}
 	return out.String(), nil
-}
-
-// parseFFmpegComponents extrait l'ensemble des noms de composants d'une sortie
-// `ffmpeg -encoders` ou `ffmpeg -muxers`. Chaque ligne de composant a la forme
-// "<flags> <name>  <description>" (flags = lettres majuscules + points, ex
-// "V....D" pour un encodeur, "E"/"DE" pour un muxer) ; le nom est le 2e champ.
-// Les en-têtes et la légende (« V..... = Video ») sont écartés car leur 2e champ
-// vaut "=" ou leur 1er champ n'est pas un jeu de flags. Pur — aucune IO.
-func parseFFmpegComponents(output string) map[string]bool {
-	set := make(map[string]bool)
-	for _, line := range strings.Split(output, "\n") {
-		fields := strings.Fields(line)
-		if len(fields) < 2 {
-			continue
-		}
-		flags, name := fields[0], fields[1]
-		if name == "=" || !isFlagsToken(flags) {
-			continue
-		}
-		set[name] = true
-	}
-	return set
-}
-
-// isFlagsToken retourne true si tok est un jeu de flags ffmpeg (1 à 6 caractères,
-// uniquement lettres majuscules et points). Les noms de composants sont en
-// minuscules → aucune ambiguïté avec un nom.
-func isFlagsToken(tok string) bool {
-	if tok == "" || len(tok) > 6 {
-		return false
-	}
-	for _, r := range tok {
-		if r != '.' && (r < 'A' || r > 'Z') {
-			return false
-		}
-	}
-	return true
 }
 
 // missingComponents retourne les composants de required absents de present.
