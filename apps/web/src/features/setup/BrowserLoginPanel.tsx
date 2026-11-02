@@ -36,13 +36,10 @@ function openInBrowser(url: string): void {
   link.remove()
 }
 
-interface BrowserLoginPanelProps {
-  onUseDeviceCode: () => void
-}
+type Translate = (key: CommonManifestKey) => string
 
-export function BrowserLoginPanel({ onUseDeviceCode }: BrowserLoginPanelProps) {
-  const locale = useAppShellStore((s) => s.locale)
-  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
+/** L'état de la connexion par le navigateur : la tentative ouverte, son sondage, le démarrage. */
+function useBrowserLogin(t: Translate) {
   const queryClient = useQueryClient()
   const start = useStartBrowserLogin()
   const [attempt, setAttempt] = useState<{ id: string; url: string } | null>(null)
@@ -80,7 +77,15 @@ export function BrowserLoginPanel({ onUseDeviceCode }: BrowserLoginPanelProps) {
     })
   }
 
-  const useCodeLink = (
+  return { attempt, startError, status, isStarting: start.isPending, handleStart }
+}
+
+interface BrowserLoginPanelProps {
+  onUseDeviceCode: () => void
+}
+
+function UseCodeLink({ onUseDeviceCode, t }: BrowserLoginPanelProps & { t: Translate }) {
+  return (
     <p className="text-center text-xs text-muted-foreground">
       <button
         type="button"
@@ -91,9 +96,15 @@ export function BrowserLoginPanel({ onUseDeviceCode }: BrowserLoginPanelProps) {
       </button>
     </p>
   )
+}
 
-  const failed = status?.status === 'failed' || status?.status === 'expired'
-  if (startError || failed) {
+export function BrowserLoginPanel({ onUseDeviceCode }: BrowserLoginPanelProps) {
+  const locale = useAppShellStore((s) => s.locale)
+  const t: Translate = (key) => formatMessage(commonManifest, key, locale)
+  const { attempt, startError, status, isStarting, handleStart } = useBrowserLogin(t)
+  const useCodeLink = <UseCodeLink onUseDeviceCode={onUseDeviceCode} t={t} />
+
+  if (startError || status?.status === 'failed' || status?.status === 'expired') {
     const message = startError ?? t(deviceFlowFailureKey(status?.status ?? 'failed', status?.error_code))
     return (
       <div className="space-y-3">
@@ -121,33 +132,29 @@ export function BrowserLoginPanel({ onUseDeviceCode }: BrowserLoginPanelProps) {
     )
   }
 
-  if (start.isPending) {
-    return <Spinner label={t('common.setup.browser_login_opening')} />
-  }
-
-  if (attempt) {
-    return (
-      <div className="space-y-4">
-        <h2 className="text-lg font-semibold">{t('common.setup.microsoft_connection_title')}</h2>
-        <p className="animate-pulse text-sm text-muted-foreground">{t('common.setup.browser_login_waiting')}</p>
-        <p className="text-xs text-muted-foreground">
-          {t('common.setup.browser_login_reopen_hint')}{' '}
-          <a href={attempt.url} target="_blank" rel="noopener noreferrer" className="text-primary underline">
-            {t('common.setup.browser_login_reopen_link')}
-          </a>
-        </p>
-        {useCodeLink}
-      </div>
-    )
-  }
+  if (isStarting) return <Spinner label={t('common.setup.browser_login_opening')} />
 
   return (
     <div className="space-y-4">
       <h2 className="text-lg font-semibold">{t('common.setup.microsoft_connection_title')}</h2>
-      <p className="text-sm text-muted-foreground">{t('common.setup.browser_login_lead')}</p>
-      <Button onClick={handleStart} className="w-full">
-        {t('common.setup.browser_login_button')}
-      </Button>
+      {attempt ? (
+        <>
+          <p className="animate-pulse text-sm text-muted-foreground">{t('common.setup.browser_login_waiting')}</p>
+          <p className="text-xs text-muted-foreground">
+            {t('common.setup.browser_login_reopen_hint')}{' '}
+            <a href={attempt.url} target="_blank" rel="noopener noreferrer" className="text-primary underline">
+              {t('common.setup.browser_login_reopen_link')}
+            </a>
+          </p>
+        </>
+      ) : (
+        <>
+          <p className="text-sm text-muted-foreground">{t('common.setup.browser_login_lead')}</p>
+          <Button onClick={handleStart} className="w-full">
+            {t('common.setup.browser_login_button')}
+          </Button>
+        </>
+      )}
       {useCodeLink}
     </div>
   )

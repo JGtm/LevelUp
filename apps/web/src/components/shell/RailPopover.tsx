@@ -19,6 +19,7 @@ import {
   type FocusEvent,
   type KeyboardEvent,
   type ReactNode,
+  type RefObject,
 } from 'react'
 
 const TIP_GAP_PX = 8
@@ -92,7 +93,31 @@ interface RailMenuProps {
   children: (close: () => void) => ReactNode
 }
 
-export function RailMenu({ label, trigger, triggerClassName, current = false, children }: RailMenuProps) {
+/** Un menu ouvert au clavier prend le focus sur sa première entrée ; ouvert au survol, il ne le vole pas. */
+function useFocusFirstItem(menuRef: RefObject<HTMLDivElement | null>, token: number) {
+  useEffect(() => {
+    if (token > 0) menuRef.current?.querySelector<HTMLElement>('[role^="menuitem"]')?.focus()
+  }, [menuRef, token])
+}
+
+/** Un clic hors de l'entrée ferme le menu épinglé. */
+function useDismissOnOutsidePress(ref: RefObject<HTMLDivElement | null>, active: boolean, close: () => void) {
+  useEffect(() => {
+    if (!active) return
+    function onDown(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) close()
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [active, close, ref])
+}
+
+/**
+ * L'état d'un menu volant : ouvert par le survol (`hovered`) ou épinglé (`pinned`, clic ou clavier), focus
+ * de l'entrée, jeton qui donne le focus à la première entrée à une ouverture au clavier, et les gestes
+ * (clic, flèches, Échap, sortie du focus). Rend aussi les références du conteneur, du déclencheur et du menu.
+ */
+function useRailMenu() {
   const { ref, anchor, measure } = useAnchor()
   const triggerRef = useRef<HTMLButtonElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -103,26 +128,13 @@ export function RailMenu({ label, trigger, triggerClassName, current = false, ch
   const [focusToken, setFocusToken] = useState(0)
   const open = hovered || pinned
 
-  const items = () => Array.from(menuRef.current?.querySelectorAll<HTMLElement>('[role^="menuitem"]') ?? [])
   const close = useCallback(() => {
     setHovered(false)
     setPinned(false)
   }, [])
 
-  // Un menu ouvert au clavier prend le focus sur sa première entrée ; ouvert au survol, il ne le vole pas.
-  useEffect(() => {
-    if (focusToken > 0) menuRef.current?.querySelector<HTMLElement>('[role^="menuitem"]')?.focus()
-  }, [focusToken])
-
-  // Un clic hors de l'entrée ferme le menu épinglé.
-  useEffect(() => {
-    if (!pinned) return
-    function onDown(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) close()
-    }
-    document.addEventListener('mousedown', onDown)
-    return () => document.removeEventListener('mousedown', onDown)
-  }, [pinned, close, ref])
+  useFocusFirstItem(menuRef, focusToken)
+  useDismissOnOutsidePress(ref, pinned, close)
 
   function openFromKeyboard() {
     measure()
@@ -130,14 +142,14 @@ export function RailMenu({ label, trigger, triggerClassName, current = false, ch
     setFocusToken((n) => n + 1)
   }
 
-  function onTriggerKeyDown(e: KeyboardEvent<HTMLButtonElement>) {
+  const onTriggerKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
     if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
       e.preventDefault()
       openFromKeyboard()
     }
   }
 
-  function onTriggerClick(e: { detail: number }) {
+  const onTriggerClick = (e: { detail: number }) => {
     measure()
     if (e.detail === 0) {
       // Entrée ou Espace : le clic vient du clavier.
@@ -148,7 +160,7 @@ export function RailMenu({ label, trigger, triggerClassName, current = false, ch
     setPinned((p) => !p)
   }
 
-  function onMenuKeyDown(e: KeyboardEvent<HTMLDivElement>) {
+  const onMenuKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key === 'Escape') {
       close()
       triggerRef.current?.focus()
@@ -156,31 +168,36 @@ export function RailMenu({ label, trigger, triggerClassName, current = false, ch
     }
     if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
     e.preventDefault()
-    const list = items()
+    const list = Array.from(menuRef.current?.querySelectorAll<HTMLElement>('[role^="menuitem"]') ?? [])
     if (list.length === 0) return
     const at = list.indexOf(document.activeElement as HTMLElement)
     list[(at + (e.key === 'ArrowDown' ? 1 : -1) + list.length) % list.length]?.focus()
   }
 
-  function onBlur(e: FocusEvent<HTMLDivElement>) {
-    setFocused(false)
-    if (!e.currentTarget.contains(e.relatedTarget as Node | null)) close()
+  const wrapperProps = {
+    onMouseEnter: () => {
+      measure()
+      setHovered(true)
+    },
+    onMouseLeave: () => setHovered(false),
+    onFocus: () => {
+      measure()
+      setFocused(true)
+    },
+    onBlur: (e: FocusEvent<HTMLDivElement>) => {
+      setFocused(false)
+      if (!e.currentTarget.contains(e.relatedTarget as Node | null)) close()
+    },
   }
 
+  return { ref, anchor, triggerRef, menuRef, open, focused, close, wrapperProps, onTriggerClick, onTriggerKeyDown, onMenuKeyDown }
+}
+
+export function RailMenu({ label, trigger, triggerClassName, current = false, children }: RailMenuProps) {
+  const { ref, triggerRef, menuRef, anchor, open, focused, close, wrapperProps, onTriggerClick, onTriggerKeyDown, onMenuKeyDown } =
+    useRailMenu()
   return (
-    <div
-      ref={ref}
-      onMouseEnter={() => {
-        measure()
-        setHovered(true)
-      }}
-      onMouseLeave={() => setHovered(false)}
-      onFocus={() => {
-        measure()
-        setFocused(true)
-      }}
-      onBlur={onBlur}
-    >
+    <div ref={ref} {...wrapperProps}>
       <button
         ref={triggerRef}
         type="button"

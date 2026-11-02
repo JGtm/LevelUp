@@ -9,6 +9,7 @@
  * `useSidebarCollapse`, le contenu des sections et du joueur est calculé par `SidebarNav`.
  */
 import { Link } from '@tanstack/react-router'
+import type { ButtonHTMLAttributes, ReactNode } from 'react'
 import {
   BookOpenIcon,
   BookOpenTextIcon,
@@ -201,6 +202,26 @@ function RailSections({
   )
 }
 
+interface RailButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'children'> {
+  /** Nom accessible du bouton, et texte de l'infobulle sauf `tip`. */
+  label: string
+  /** Texte de l'infobulle quand il diffère du nom accessible (raccourci clavier annoncé). */
+  tip?: string
+  active?: boolean
+  children: ReactNode
+}
+
+/** Un bouton d'icône du pied de barre repliée, avec son infobulle. */
+function RailButton({ label, tip, active = false, children, ...rest }: RailButtonProps) {
+  return (
+    <RailTip label={tip ?? label}>
+      <button type="button" aria-label={label} className={railItemClass(active)} {...rest}>
+        {children}
+      </button>
+    </RailTip>
+  )
+}
+
 function RailFooter({ pathname, locale, onExpand }: Pick<SidebarRailProps, 'pathname' | 'locale' | 'onExpand'>) {
   const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
   const { aboutOpen, setAboutOpen, assetsOpen, toggleAssets, openFeedback } = useSidebarFooterActions()
@@ -208,7 +229,6 @@ function RailFooter({ pathname, locale, onExpand }: Pick<SidebarRailProps, 'path
   const toggleTheme = useSettingsDraftStore((s) => s.toggleTheme)
   const helpLabel = t('common.shell.nav_help')
   const settingsLabel = t('common.shell.nav_settings')
-  const assetsLabel = formatMessage(assetDrawerManifest, 'asset_drawer.mini_tab', locale)
   const helpActive = pathname.startsWith('/help')
   const settingsActive = pathname.startsWith('/settings')
   const expandLabel = t('common.shell.sidebar_expand')
@@ -231,24 +251,19 @@ function RailFooter({ pathname, locale, onExpand }: Pick<SidebarRailProps, 'path
             <BookOpenTextIcon className={ICON_CLASS} />
           </Link>
         </RailTip>
-        <RailTip label={assetsLabel}>
-          <button
-            type="button"
-            id={ASSET_PANEL_TRIGGER_ID}
-            onClick={toggleAssets}
-            aria-label={assetsLabel}
-            aria-expanded={assetsOpen}
-            aria-controls={assetsOpen ? ASSET_PANEL_ID : undefined}
-            className={railItemClass(assetsOpen)}
-          >
-            <BookOpenIcon className={ICON_CLASS} />
-          </button>
-        </RailTip>
-        <RailTip label={t('common.shell.nav_feedback')}>
-          <button type="button" onClick={openFeedback} aria-label={t('common.shell.nav_feedback')} className={railItemClass(false)}>
-            <BugIcon className={ICON_CLASS} />
-          </button>
-        </RailTip>
+        <RailButton
+          label={formatMessage(assetDrawerManifest, 'asset_drawer.mini_tab', locale)}
+          active={assetsOpen}
+          id={ASSET_PANEL_TRIGGER_ID}
+          onClick={toggleAssets}
+          aria-expanded={assetsOpen}
+          aria-controls={assetsOpen ? ASSET_PANEL_ID : undefined}
+        >
+          <BookOpenIcon className={ICON_CLASS} />
+        </RailButton>
+        <RailButton label={t('common.shell.nav_feedback')} onClick={openFeedback}>
+          <BugIcon className={ICON_CLASS} />
+        </RailButton>
         <RailTip label={settingsLabel}>
           <Link
             to="/settings"
@@ -260,34 +275,20 @@ function RailFooter({ pathname, locale, onExpand }: Pick<SidebarRailProps, 'path
             <SettingsIcon className={ICON_CLASS} />
           </Link>
         </RailTip>
-        <RailTip label={t('common.shell.nav_theme')}>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={theme === 'dark'}
-            onClick={toggleTheme}
-            aria-label={t('common.shell.nav_theme')}
-            className={railItemClass(false)}
-          >
-            <SunMoonIcon className={ICON_CLASS} />
-          </button>
-        </RailTip>
-        <RailTip label={t('common.shell.nav_about')}>
-          <button type="button" onClick={() => setAboutOpen(true)} aria-label={t('common.shell.nav_about')} className={railItemClass(false)}>
-            <InfoIcon className={ICON_CLASS} />
-          </button>
-        </RailTip>
-        <RailTip label={`${expandLabel} (${SIDEBAR_SHORTCUT_LABEL})`}>
-          <button
-            type="button"
-            onClick={onExpand}
-            aria-label={expandLabel}
-            aria-keyshortcuts="Control+B"
-            className={railItemClass(false)}
-          >
-            <PanelLeftOpenIcon className={ICON_CLASS} />
-          </button>
-        </RailTip>
+        <RailButton label={t('common.shell.nav_theme')} role="switch" aria-checked={theme === 'dark'} onClick={toggleTheme}>
+          <SunMoonIcon className={ICON_CLASS} />
+        </RailButton>
+        <RailButton label={t('common.shell.nav_about')} onClick={() => setAboutOpen(true)}>
+          <InfoIcon className={ICON_CLASS} />
+        </RailButton>
+        <RailButton
+          label={expandLabel}
+          tip={`${expandLabel} (${SIDEBAR_SHORTCUT_LABEL})`}
+          onClick={onExpand}
+          aria-keyshortcuts="Control+B"
+        >
+          <PanelLeftOpenIcon className={ICON_CLASS} />
+        </RailButton>
       </div>
       <AboutDialog open={aboutOpen} onClose={() => setAboutOpen(false)} />
     </>
