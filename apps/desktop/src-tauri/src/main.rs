@@ -16,7 +16,7 @@ use std::sync::{Arc, Mutex};
 use levelup_desktop::catalogue;
 use levelup_desktop::lifecycle::Timeouts;
 use levelup_desktop::logfile::{LogSink, MAX_LOG_BYTES, Source};
-use levelup_desktop::navigation::{self, Navigation};
+use levelup_desktop::navigation::{self, ExternalOpen, Navigation, NewWindowDecision, OPEN_EXTERNAL_ENV};
 use levelup_desktop::render::{self, SCHEME};
 use levelup_desktop::roots::{self, Roots};
 use levelup_desktop::screen::Screen;
@@ -24,7 +24,7 @@ use levelup_desktop::secret::Secret;
 use levelup_desktop::sidecar::SidecarSpec;
 use levelup_desktop::supervisor::{self, Closer, Host, Outcome, ShellConfig};
 use levelup_desktop::updater::UpdateHost;
-use tauri::webview::DownloadEvent;
+use tauri::webview::{DownloadEvent, NewWindowResponse};
 use tauri::window::Color;
 use tauri::{AppHandle, Manager, RunEvent, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent};
 use tauri_plugin_opener::OpenerExt;
@@ -55,7 +55,15 @@ fn main() {
         // Premier plugin : une seconde ouverture est detectee avant tout autre travail.
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| focus_main(app)))
         .plugin(tauri_plugin_window_state::Builder::default().build())
-        .plugin(tauri_plugin_opener::init())
+        // Le script que le plugin injecte par defaut attrape les clics sur `target="_blank"` et appelle la commande
+        // `open_url` par le pont IPC, que la page du serveur n'a pas le droit d'appeler (aucune capacite) : le clic
+        // etait avale sans rien ouvrir. Sans lui, le clic arrive au moteur, qui demande une nouvelle fenetre :
+        // `on_new_window` (create_window) l'envoie au navigateur par `open_external`.
+        .plugin(
+            tauri_plugin_opener::Builder::new()
+                .open_js_links_on_click(false)
+                .build(),
+        )
         .register_uri_scheme_protocol(SCHEME, move |ctx, request| {
             let reply = render::reply(request.uri().path(), locale, || {
                 request_update_check(ctx.app_handle().clone());
@@ -226,6 +234,9 @@ fn start_server(
 fn create_window(app: &AppHandle, port: Arc<AtomicU16>, log: Option<Arc<LogSink>>) -> tauri::Result<WebviewWindow> {
     let nav_app = app.clone();
     let nav_log = log.clone();
+    let nav_port = port.clone();
+    let new_window_app = app.clone();
+    let new_window_log = log.clone();
     let download_log = log;
     WebviewWindowBuilder::new(app, MAIN_WINDOW, WebviewUrl::External(embedded_url(Screen::Starting)))
         .title("LevelUp")
@@ -233,18 +244,48 @@ fn create_window(app: &AppHandle, port: Arc<AtomicU16>, log: Option<Arc<LogSink>
         .min_inner_size(1024.0, 640.0)
         .center()
         .background_color(WINDOW_BACKGROUND)
-        .on_navigation(move |url| match navigation::decide(url, current_port(&port)) {
+        .on_navigation(move |url| match navigation::decide(url, current_port(&nav_port)) {
             Navigation::Allow => true,
             Navigation::OpenExternally => {
-                if let Err(e) = nav_app.opener().open_url(url.as_str(), None::<&str>) {
-                    report(nav_log.as_deref(), &format!("event=open_external_failed err={e}"));
-                }
+                open_external(&nav_app, url, nav_log.as_deref());
                 false
             }
             Navigation::Deny => false,
         })
+        // `target="_blank"` et `window.open` : l'application n'a qu'une fenetre. Sans ce filtre le
+        // moteur en ouvrirait une seconde, hors de la politique de navigation.
+        .on_new_window(move |url, _features| {
+            let decision = navigation::decide_new_window(&url, current_port(&port));
+            let verdict = match decision {
+                NewWindowDecision::OpenExternally => "open",
+                NewWindowDecision::Deny => "deny",
+            };
+            let origin = navigation::origin_for_log(&url);
+            let log = new_window_log.as_deref();
+            report(log, &format!("event=new_window url={origin} decision={verdict}"));
+            if decision == NewWindowDecision::OpenExternally {
+                open_external(&new_window_app, &url, log);
+            }
+            NewWindowResponse::Deny
+        })
         .on_download(move |_webview, event| on_download(event, download_log.as_deref()))
         .build()
+}
+
+/// Envoie un lien dans le navigateur par defaut. Le journal ne porte que l'origine : l'URL entiere
+/// peut porter un code (lien de connexion). `LEVELUP_SHELL_OPEN_EXTERNAL=log` remplace l'ouverture
+/// par le journal seul, pour les essais automatises qui ne doivent pas ouvrir le navigateur du poste.
+fn open_external(app: &AppHandle, url: &Url, log: Option<&LogSink>) {
+    let origin = navigation::origin_for_log(url);
+    let env = std::env::var(OPEN_EXTERNAL_ENV).ok();
+    if navigation::external_open_mode(env.as_deref()) == ExternalOpen::LogOnly {
+        report(log, &format!("event=open_external origin={origin} mode=log"));
+        return;
+    }
+    match app.opener().open_url(url.as_str(), None::<&str>) {
+        Ok(()) => report(log, &format!("event=open_external origin={origin}")),
+        Err(e) => report(log, &format!("event=open_external_failed origin={origin} err={e}")),
+    }
 }
 
 fn current_port(port: &AtomicU16) -> Option<u16> {

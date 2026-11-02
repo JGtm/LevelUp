@@ -730,10 +730,25 @@ arrêt propre, désinstallation avec données conservées, vérifiés dans les j
       la page). Vérifié : `.nsi` généré (`target/release/nsis/x64/installer.nsi`) inclut `hooks.nsh` (l.32) et appelle
       le crochet en fin de `Section Install` (l.3685) ; `e2e-install.ps1` sur l'installeur local : exit 0. Le clic
       réel de la page d'extraction est vérifié par l'utilisateur (19.5).
-- [ ] 19.2 Liens à nouvel onglet (`target=_blank`, dont le lien de connexion par code `microsoft.com/link`) :
+- [x] 19.2 Liens à nouvel onglet (`target=_blank`, dont le lien de connexion par code `microsoft.com/link`) :
       la fenêtre les envoie au navigateur par défaut (`on_new_window` de Tauri 2.11, même politique que
       `navigation.rs` : hors origine locale et écrans embarqués = navigateur, jamais une seconde fenêtre) ;
       test Rust de la décision ; témoin : clic sur le lien de connexion.
+      FAIT 2026-11-02 : `navigation::decide_new_window` (`OpenExternally` / `Deny`, même politique que `decide` : externe
+      -> navigateur, local, embarqué, blob, `javascript:`, `data:`, `file:` -> refus), `origin_for_log` (origine seule :
+      le lien de connexion porte un code), `external_open_mode` (`LEVELUP_SHELL_OPEN_EXTERNAL=log` remplace l'ouverture du
+      navigateur par le journal, pour les essais) ; `main.rs` : `.on_new_window(...)` renvoie toujours `Deny` et journalise
+      `event=new_window url=<origine> decision=open|deny` puis `event=open_external origin=...`. **Cause réelle du lien
+      muet** : `tauri_plugin_opener::init()` injecte par défaut un script qui attrape le clic sur `target=_blank`,
+      `preventDefault()` puis appelle la commande `open_url` par le pont IPC, refusée à la page du serveur (aucune
+      capacité) : le clic était avalé et `on_new_window` ne voyait jamais le lien (seul `window.open` y arrivait).
+      Correction : `Builder::new().open_js_links_on_click(false)`. Témoin (binaire de débogage, front du poste,
+      DevTools WebView2 9333, clic de souris de confiance sur le lien `microsoft.com/link` de `/setup`) : `desktop.log`
+      `event=new_window url=https://www.microsoft.com decision=open` + `event=open_external origin=https://www.microsoft.com
+      mode=log`, une seule page ; liens `target=_blank` vers `127.0.0.1:<port>`, `levelup-shell.localhost`, `javascript:` :
+      `decision=deny` ; vers `example.org/a?code=SECRET` : `decision=open`, `SECRET` absent du journal (`l19/desktop_l192_temoin.log`).
+      Avant la correction, mêmes clics : aucune ligne. Tests : 5 nouveaux dans `navigation.rs`.
+
 - [ ] 19.3 Référentiels en **panneau ancré** (décision utilisateur : option 1) : en profil bureau (capacité
       `can_use_compact_chrome`), le panneau des référentiels s'ouvre à droite du contenu et le POUSSE (pas de voile,
       la page se réorganise), largeur redimensionnable et mémorisée (`localStorage`), reste ouvert de page en page
