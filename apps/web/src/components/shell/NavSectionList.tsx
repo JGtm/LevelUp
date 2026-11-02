@@ -16,6 +16,7 @@ import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 import { playerRelativePath, routeTemplateSuffix } from '@/lib/title-routing'
 import type { L1Section } from './navL1Sections'
+import { SectionIcon } from './sidebarIcons'
 
 export interface NavSectionListProps {
   variant: 'drawer' | 'sidebar'
@@ -79,7 +80,7 @@ export function NavSectionList({
                     : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
                 ].join(' ')}
               >
-                {section.icon}
+                {drawer ? section.icon : <SectionIcon sectionKey={section.key} className="h-4 w-4 shrink-0" />}
                 {label}
               </Link>
               {!drawer && section.tabs && (

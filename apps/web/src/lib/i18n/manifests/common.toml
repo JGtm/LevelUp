@@ -2684,6 +2684,14 @@ en = "Help, settings and application information"
 fr = "Version {version}"
 en = "Version {version}"
 
+[common.shell.sidebar_collapse]
+fr = "Replier la barre latérale"
+en = "Collapse the sidebar"
+
+[common.shell.sidebar_expand]
+fr = "Déplier la barre latérale"
+en = "Expand the sidebar"
+
 [common.about.close]
 fr = "Fermer"
 en = "Close"

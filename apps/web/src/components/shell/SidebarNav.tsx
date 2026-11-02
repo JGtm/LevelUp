@@ -2,7 +2,9 @@
  * SidebarNav — barre latérale de l'application de bureau (capacité `can_use_compact_chrome`).
  *
  * Remplace la barre haute du site (NavL1) : mêmes sections et mêmes onglets que le tiroir de la vue
- * mobile (`NavSectionList`, `useVisibleNavSections`), toujours dépliée. De haut en bas : marque,
+ * mobile (`NavSectionList`, `useVisibleNavSections`). Dépliée (240 px) ou repliée en icônes
+ * (`SidebarRail`, 56 px) selon `useSidebarCollapse` : bouton au pied de la barre, `Ctrl+B`, repli
+ * automatique d'une fenêtre étroite. Dépliée, de haut en bas : marque,
  * sélecteur de jeu, joueur actif et cloche, sections, puis le pied de barre (`SidebarFooter` : Aide,
  * Paramètres, bascule de thème, « À propos », version, et les deux panneaux qui remplacent les
  * mini-onglets du site : référentiels et signalement d'un problème).
@@ -17,6 +19,8 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { NavSectionList } from './NavSectionList'
 import { PlayerSwitcher } from './PlayerSwitcher'
 import { SidebarFooter } from './SidebarFooter'
+import { SidebarRail } from './SidebarRail'
+import { useSidebarCollapse } from './sidebarCollapse'
 import { TitleSwitcher } from './TitleSwitcher'
 import { usePlayerSwitch } from './usePlayerSwitch'
 import { useVisibleNavSections } from './useVisibleNavSections'
@@ -35,6 +39,24 @@ export function SidebarNav() {
   const playerSlug = currentPlayer?.player_slug ?? ''
   // Joueur courant = profil d'un ami : ses notifications ne sont pas celles de la session, pas de cloche.
   const canWriteCurrent = useCanWritePlayer(playerSlug)
+  const { collapsed, toggle } = useSidebarCollapse()
+
+  if (collapsed) {
+    return (
+      <SidebarRail
+        sections={sections}
+        pathname={pathname}
+        locale={locale}
+        titleSlug={currentTitleSlug}
+        playerSlug={playerSlug}
+        currentPlayer={currentPlayer}
+        availablePlayers={availablePlayers}
+        canWriteCurrent={canWriteCurrent}
+        onPlayerChange={handlePlayerChange}
+        onExpand={toggle}
+      />
+    )
+  }
 
   const logo = (
     <>
@@ -46,6 +68,7 @@ export function SidebarNav() {
 
   return (
     <aside
+      data-sidebar="expanded"
       className="flex h-full w-60 shrink-0 flex-col border-r border-border bg-sidebar text-sidebar-foreground"
       aria-label={t('common.shell.nav_main_aria')}
     >
@@ -95,7 +118,7 @@ export function SidebarNav() {
         )}
       </nav>
 
-      <SidebarFooter pathname={pathname} locale={locale} appVersion={appVersion} />
+      <SidebarFooter pathname={pathname} locale={locale} appVersion={appVersion} onCollapse={toggle} />
     </aside>
   )
 }

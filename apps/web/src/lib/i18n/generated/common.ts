@@ -640,6 +640,8 @@ export const commonManifest = {
   "common.shell.player_in_game_on": { fr: "En jeu sur {title}", en: "In game on {title}" },
   "common.shell.player_select": { fr: "Sélectionner un joueur", en: "Select a player" },
   "common.shell.settings_tabs_aria": { fr: "Onglets Paramètres", en: "Settings tabs" },
+  "common.shell.sidebar_collapse": { fr: "Replier la barre latérale", en: "Collapse the sidebar" },
+  "common.shell.sidebar_expand": { fr: "Déplier la barre latérale", en: "Expand the sidebar" },
   "common.shell.sidebar_footer_aria": { fr: "Aide, paramètres et informations sur l'application", en: "Help, settings and application information" },
   "common.shell.sidebar_version": { fr: "Version {version}", en: "Version {version}" },
   "common.shell.sync_running_aria": { fr: "Synchronisation en cours", en: "Sync running" },
