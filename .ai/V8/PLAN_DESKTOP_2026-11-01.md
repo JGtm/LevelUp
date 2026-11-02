@@ -795,6 +795,22 @@ mises à jour (ressources retéléchargées à chaque version).
   périmètre : `pool.refresherLoop` détaché sous `context.Background()` (fenêtre d'une milliseconde pour une rotation
   coupée) ; un arrêt demandé pendant l'initialisation attend la fin de l'initialisation (porte de démarrage).
 
+- **Revue adversariale 4r (2026-11-02, trois relecteurs Opus : E mode desktop + réveil, F archive + zstd, G coffre)** :
+  E : 26 conditions tiennent, 3 constats corrigés (P1 : la sortie des enfants de cuisson était recopiée sur stdout du
+  serveur, là où la coquille lit les événements → stderr + ratchet « aucun `os.Stdout` / `fmt.Print*` dans
+  `internal/` » ; P2 : la route d'arrêt HTTP bloquée par le garde du cookie → exemptée, loopback + secret gardés ; P2 :
+  la porte de démarrage servie à tout `Host` → `StrictHost` 421 sur la porte en desktop, sans cookie). F : 16
+  conditions tiennent (aucune collision de l'en-tête zstd sur 43 508 chunks réels, golden `source` byte-identique,
+  `--dry-run` sans écriture), 5 constats P2 corrigés (manifeste corrigé par chunk + reprise réparatrice ; cible par
+  défaut d'`archive-move` admise sans film ; déplacement atomique par film via `<id>.part/` ; changement de dossier
+  à chaud sur archive vide par `title.SetFilmArchiveRuntime`, hooks de cuisson et post-sync dynamiques ; une
+  surveillance disque par VOLUME via `diskfree.SameVolume`). G : 16 conditions tiennent (aucun RT perdu ni écrasé,
+  fichiers hébergés identiques à l'octet), 2 constats P2 corrigés (`watcher_tokens.json` scellé par le même
+  chiffreur ; un seul avertissement par fichier scellé et par processus). Hors périmètre consigné : un fichier scellé
+  illisible (dossier déplacé sur un autre PC, autre compte Windows) = joueur « sans jeton » sans aucune bannière → à
+  prévoir (P2 ou L17 : bannière « jetons illisibles sur ce poste, reconnectez-vous »). Ronde 2 non lancée (corrections
+  testées une à une).
+
 - `internal/mapcatalog` : `TestAddOverlayEntryConcurrentDossierAbsentNePerdRien` échoue en run complet
   (« verrou d'ecriture impossible a poser — passage force », 2 cartes perdues sur 8) et passe seul : le
   passage forcé sans verrou est le comportement testé comme défaut, déclenché par la contention du run
