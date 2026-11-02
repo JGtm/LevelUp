@@ -47,6 +47,7 @@ func (h *DesktopStringsHandler) handle(ctx context.Context, _ *struct{}) (*deskt
 		"failed_migration_failed": i18n.Msg(loc, "desktop.failed.migration_failed", nil),
 		"failed_schema_newer":     i18n.Msg(loc, "desktop.failed.schema_newer", nil),
 		"failed_port":             i18n.Msg(loc, "desktop.failed.port", nil),
+		"failed_timeout":          i18n.Msg(loc, "desktop.failed.timeout", nil),
 		"stopping":                i18n.Msg(loc, "desktop.stopping", nil),
 		"stopped":                 i18n.Msg(loc, "desktop.stopped", nil),
 		// Le gabarit voyage tel quel : la coquille connaît le numéro de version, pas le serveur.

@@ -606,21 +606,21 @@ Définition : `ResourcesRoot` = la racine du dépôt aujourd'hui (`LEVELUP_RESOU
 
 ### 9.16 L16 — Coquille Tauri (S, **à risque** ; P1)
 
-- [ ] 16.1 `apps/desktop/` (Tauri 2, `src-tauri/`, identifiant `info.lvelup.desktop`, A22) ; page
+- [x] 16.1 `apps/desktop/` (Tauri 2, `src-tauri/`, identifiant `info.lvelup.desktop`, A22) ; page
       embarquée minimale (logo + animation, écran « Fermeture en cours… » avec le catalogue de repli
       A4 généré par `build.rs` depuis `messages/desktop.toml`) ; plugins `single-instance`,
       `window-state`, `opener`, `updater` ; `webviewInstallMode` Evergreen (A5) ; sidecar lancé par
       `std::process::Command` (stdin tube, stdout vidé en continu, stderr relayé, répertoire courant =
       ressources, environnement §6.1).
-- [ ] 16.2 Machine d'états : `listening` → `ready` → charge `/desktop/enter` ; `failed` → charge la page
+- [x] 16.2 Machine d'états : `listening` → `ready` → charge `/desktop/enter` ; `failed` → charge la page
       de démarrage du serveur ; `ExitRequested` → fermeture de stdin, attente `stopped` (budget + 5 s),
       puis kill ; téléchargements par `on_download` (§6.6).
-- [ ] 16.3 Faux sidecar `apps/desktop/testdata/fake-sidecar` (Go, `go.mod` propre, `GOWORK=off`) : émet
+- [x] 16.3 Faux sidecar `apps/desktop/testdata/fake-sidecar` (Go, `go.mod` propre, `GOWORK=off`) : émet
       les événements, sert `/desktop/enter` et `/`, réagit à l'EOF ; variantes : jamais `ready`, `failed`,
       `stopped` tardif, crash.
-- [ ] 16.4 `cargo test` contre le faux sidecar : chaque variante, kill après budget, secret absent des
+- [x] 16.4 `cargo test` contre le faux sidecar : chaque variante, kill après budget, secret absent des
       arguments, stdout vidé (sidecar bavard de 10 Mo).
-- [ ] 16.5 Hygiène (A23) : `.gitignore`, `Cargo.lock`, `dependabot.yml`, `Makefile` (`desktop-build`,
+- [x] 16.5 Hygiène (A23) : `.gitignore`, `Cargo.lock`, `dependabot.yml`, `Makefile` (`desktop-build`,
       `desktop-test`), `docs/COMMANDS.md` EN + FR, filtre `desktop` dans `ci.yml` + `ci_paths_filter_test`,
       CLAUDE.md amendé (§2), `NOTICE` §6 (`Cargo.lock`).
 - Gate : `cargo test` ; `cargo clippy -- -D warnings` ; `cargo audit` ; **(U)** lancement local avec le

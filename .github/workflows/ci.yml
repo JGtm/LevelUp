@@ -105,6 +105,10 @@ jobs:
   # aucun motif exclu). Conservateur : dans le doute, les deux piles tournent.
   #   web      apps/web/**
   #   go       apps/go-api/**, libs/** et go.work* (modules Go de l'espace de travail, ADR 0041) hors openapi.yaml
+  #   desktop  la coquille Tauri (apps/desktop/**) et les deux fichiers dont son build.rs tire le
+  #            catalogue de repli (desktop.toml, locales.toml) ; `autre` la couvre aussi : un push
+  #            qui ne touche que la coquille rejoue donc aussi les deux autres piles (conservateur,
+  #            les tests Go et les lints web lisent des fichiers hors de leur dossier)
   #   croisee  le contrat OpenAPI (relie les deux piles) et les miroirs TypeScript que des tests
   #            Go relisent (parité des capacités, variations sonores, familles d'objectifs,
   #            fixtures de contrat du rejeu), et les sources Go que des tests Vitest relisent
@@ -123,6 +127,7 @@ jobs:
     outputs:
       go: ${{ steps.fichiers.outputs.tous != 'true' || steps.fichiers.outputs.go == 'true' || steps.fichiers.outputs.croisee == 'true' || steps.fichiers.outputs.autre == 'true' }}
       web: ${{ steps.fichiers.outputs.tous != 'true' || steps.fichiers.outputs.web == 'true' || steps.fichiers.outputs.croisee == 'true' || steps.fichiers.outputs.autre == 'true' }}
+      desktop: ${{ steps.fichiers.outputs.tous != 'true' || steps.fichiers.outputs.desktop == 'true' || steps.fichiers.outputs.autre == 'true' }}
     steps:
       - uses: actions/checkout@v6.1.0
         if: ${{ github.event_name == 'push' && github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/heads/release/') }}
@@ -149,6 +154,10 @@ jobs:
               - 'go.work'
               - 'go.work.sum'
               - '!**/openapi.yaml'
+            desktop:
+              - 'apps/desktop/**'
+              - 'apps/go-api/internal/i18n/messages/desktop.toml'
+              - 'config/locales.toml'
             croisee:
               - '**/openapi.yaml'
               - 'apps/web/src/lib/capabilities/**'
@@ -706,6 +715,57 @@ jobs:
 
       - name: "Bout en bout : arrêt propre"
         run: go test -count=1 -tags=e2e_windows -run 'TestE2E' ./cmd/server/
+
+  # Coquille desktop (ADR 0045 D-18, lot L16) : le contrat coquille <-> serveur joue contre le faux
+  # serveur Go (`cargo test` le compile par `go build`, GOWORK=off), clippy sans avertissement et
+  # format. Sans fenetre : un runner n'a pas d'ecran. `cargo audit`, l'installeur NSIS et l'updater
+  # signe sont le job `desktop-build` du lot L17.
+  desktop-test:
+    name: Coquille desktop (cargo test, clippy, format)
+    needs: changes
+    if: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/') || needs.changes.outputs.desktop == 'true' }}
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+        working-directory: apps/desktop/src-tauri
+    steps:
+      - uses: actions/checkout@v6.1.0
+
+      - name: Set up Go (compilation du faux serveur)
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: apps/go-api/go.mod
+          cache: false
+
+      - name: Set up Rust
+        run: rustup toolchain install stable --profile minimal --component clippy --component rustfmt
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            apps/desktop/src-tauri/target
+          key: desktop-cargo-${{ runner.os }}-${{ hashFiles('apps/desktop/src-tauri/Cargo.lock') }}
+          restore-keys: desktop-cargo-${{ runner.os }}-
+
+      - name: Tests (contrat contre le faux serveur)
+        run: cargo test --locked
+
+      - name: Clippy
+        run: cargo clippy --locked --all-targets -- -D warnings
+
+      - name: Format
+        run: cargo fmt --check
+
+      - name: Faux serveur (vet, tests)
+        working-directory: apps/desktop/testdata/fake-sidecar
+        env:
+          GOWORK: "off"
+        run: go vet ./... && go test -count=1 ./...
 
   go-lint:
     name: Go Lint (golangci-lint)

@@ -1119,6 +1119,36 @@ Full list: `go run ./cmd/levelup help`.
 
 ---
 
+## Desktop shell (Tauri 2, Rust)
+
+The Windows application lives in `apps/desktop` (ADR 0045). It is a window around the same Go server,
+launched as a child process with `-mode desktop -arret-sur-stdin`; Rust is allowed there and nowhere
+else, with no business logic (D-18). Prerequisites: `cargo` and `rustc` (stable, 1.88 or later), Node 24,
+Go with CGO (gcc from msys64) for the real server.
+
+```bash
+make desktop-build   # real server (scripts/desktop-dev.ps1) -> src-tauri/binaries/, then cargo build
+make desktop-test    # cargo test + clippy -D warnings + fmt --check, then vet and tests of the fake server
+make desktop-dev     # build the server, then `npx tauri dev` on the repository root and a development data root
+```
+
+`desktop-dev` uses `%LOCALAPPDATA%\LevelUp-dev` as data root (`-DataDir` to change it), never the root of
+the installed application. The shell reads three optional overrides from its own environment,
+`LEVELUP_RESOURCES_DIR`, `LEVELUP_DATA_DIR` and `LEVELUP_WEB_DIST` (absolute paths; the last one is the
+compiled front the server serves, `scripts/desktop-dev.ps1 -BuildWeb` builds it); every other `LEVELUP_*` and `SPNKR_*`
+variable is dropped before the server starts. The shell journal is `<data root>\logs\desktop.log` (5 MB,
+one `.1` file): the server stderr relayed line by line, and the shell's own lines.
+
+`cargo test` runs without a window. Its contract tests (`src-tauri/tests/contract.rs`) compile the fake
+server `apps/desktop/testdata/fake-sidecar` (its own module, `GOWORK=off`, no import of `levelup/go-api`) with
+`go build` in a temporary folder and play every case of the contract against it: `FAKE_VARIANT`
+(`never_ready`, `failed`, `failed_no_port`, `late_stopped`, `crash`, `crash_after_ready`),
+`FAKE_CHATTY_BYTES`, `FAKE_*_DELAY_MS`. `cargo audit` (`cargo install cargo-audit --locked`) checks the
+dependencies of `Cargo.lock`. A release build (`--release`) refuses an empty updater public key and a missing
+server binary; the installer, the signed updater and their CI job are lot L17.
+
+---
+
 ## Tests
 
 ### Go (see [testing.md](testing.md))

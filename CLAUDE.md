@@ -15,6 +15,7 @@
 | Frontend | **React/TypeScript** (Vite, TanStack Router/Query/Table, ECharts) | `apps/web/` |
 | Briques Go (modules séparés, ADR 0041 ; publication, ADR 0043) | **Go**, reliées à `apps/go-api` par `go.work` (racine) | `libs/<brique>/` (`libs/gamefiles` : lecteurs de fichiers du jeu ; `libs/himap` : images de carte ; `libs/film` : décodeur de film ; `libs/haloapi` : API Halo) |
 | API Halo (protocole, ADR 0042) | **Go**, paquets sans état ni politique | `libs/haloapi/` (`xblauth` : chaîne d'échange ; `infinite` : services Halo Infinite ; `halo5` : services Halo 5 ; `xboxlive` : succès Xbox ; services UGC cartes et fichiers GameCMS dans `infinite` ; `haloapitest` : enregistreur de tests, public) ; l'exploitation reste dans `platform/auth`, `games/halo_infinite/haloadapter`, `games/halo_5`, `sync/filmfetch` |
+| Coquille Windows (ADR 0045) | **Rust / Tauri 2** : fenêtre, sidecar Go, updater ; aucune logique métier | `apps/desktop/` |
 | Stockage | **DuckDB** par titre + Parquet (archives) | `data/titles/{slug}/` |
 | Config | JSON + TOML | `db_profiles.json`, `app_settings.json`, `.env.local`, `config/titles/` |
 
@@ -22,7 +23,7 @@ La migration Python→Go est **terminée** : les anciens dossiers Python (code s
 environnement virtuel) n'existent plus. Il reste 3
 scripts `.py` utilitaires (2 générateurs de fixtures sous `apps/go-api/tests/`, 1 analyse
 ponctuelle sous `scripts/`). **Ne pas écrire de nouveau Python** : tout code applicatif est
-en Go ou TypeScript. **SQLite interdit** : DuckDB uniquement.
+en Go ou TypeScript (seule exception : la coquille Rust de `apps/desktop/`, règle 2). **SQLite interdit** : DuckDB uniquement.
 
 ## Workflow Agentique
 
@@ -220,6 +221,7 @@ cd apps/go-api && go test ./...                      # suite complète
 cd apps/go-api && go test -tags=integration ./...    # inclut les tests persist anti-ART (OBLIGATOIRE avant livraison sync/persist)
 make go-api-test-gamefiles  # corpus cartes libs/himap + internal/gamefilescorpus (tag `gamefiles`, EXIGE Halo installe, ~6 min)
 make go-api-lint            # golangci-lint
+make desktop-test           # coquille Rust (apps/desktop) : cargo test contre le faux serveur Go, clippy, fmt
 make libs-test              # vet + tests des modules libs/ (ADR 0041 ; `./...` de go-api ne les couvre pas)
 make gate-push              # filet local avant merge vers main (~25 min) : ratchet lint Go + typecheck/lint web + baseline de tests (voies film et DuckDB en parallèle) ; la CI reste le gate d'autorité
 powershell -File scripts/disk-hygiene.ps1                  # disque : simulation (caches Go dédiés, dossiers de session, C:\t) ; -Apply supprime
@@ -261,8 +263,10 @@ Référence complète des commandes : `docs/COMMANDS.md`. Déploiement : `docs/R
    `config/locales.toml` (fr et en obligatoires ; une langue listée est complète ou refusée par le
    build) : manifests web `lib/i18n/manifests/*.toml` et dictionnaires de feature typés
    `Record<Locale, T>` (parité par typage). Section « i18n » ci-dessus.
-2. **Go/TS uniquement.** Pas de nouveau Python, pas de SQLite, pas de Pandas/Polars (morts
-   avec la migration).
+2. **Go/TS, plus Rust limité à `apps/desktop/`.** Pas de nouveau Python, pas de SQLite, pas de
+   Pandas/Polars (morts avec la migration). Le Rust n'existe que dans la coquille Tauri
+   (`apps/desktop/src-tauri`) et n'y porte aucune logique métier : tout ce qui se décide est décidé
+   par le serveur Go (ADR 0045 D-18).
 3. **Logging Go** : `slog.InfoContext/ErrorContext(ctx, "...", "err", err)` structuré.
    Jamais `fmt.Println`/`log.Printf`. Jamais d'erreur avalée en silence : logger AVANT
    toute dégradation best-effort.

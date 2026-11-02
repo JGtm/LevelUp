@@ -1,7 +1,7 @@
 # ADR 0045 — Desktop mode and the shell-server contract
 
-Status: accepted (2026-11-01); implementation tracked in `.ai/V8/PLAN_DESKTOP_2026-11-01.md` (waves 1 to 3 and lots L12 and L13
-delivered on the branch, lots L13b to L17 to come; each decision below says which).
+Status: accepted (2026-11-01); implementation tracked in `.ai/V8/PLAN_DESKTOP_2026-11-01.md` (P0 delivered, lot L16 delivered on the branch,
+lot L17 to come; each decision below says which).
 Source: decisions D-1 to D-17 of the plan, confirmed by the maintainer on 2026-11-01 (D-8, D-9 and D-10 against the
 recommendation); additions A1 to A24; section 6 of the plan (the contract).
 Amends: ADR 0023 (D-11 below: the token file may be encrypted by a `TokenCipher` port, the single source stays the
@@ -121,8 +121,8 @@ language (D-13). State: delivered by L13. `config.Validate` accepts the profile 
 production refusal is the hosted profile's) but refuses, in `desktop` as in production, the public default secret or one
 shorter than 32 bytes (`validateStartup`); `LEVELUP_SESSION_SECRET` is ignored with a warning in this profile; a file that
 is empty, too short or equal to the public default is replaced with a warning, an unreadable one fails the start. The
-route answers `{locale, strings}` with eight identifiers (`starting`, `failed_locked`, `failed_migration_failed`,
-`failed_schema_newer`, `failed_port`, `stopping`, `stopped`, `update_available`); the last carries the `{version}`
+route answers `{locale, strings}` with nine identifiers (`starting`, `failed_locked`, `failed_migration_failed`,
+`failed_schema_newer`, `failed_port`, `failed_timeout` (the shell's own start-up deadline, L16), `stopping`, `stopped`, `update_available`); the last carries the `{version}`
 placeholder untouched, the shell knows the number. It is mounted only under `ShellEntryGate` and requires the cookie.
 
 **D-8 — Pooling for the local user (plan D-4).** In `desktop` the pooling decision is recorded as granted for the local
@@ -351,8 +351,12 @@ maintainer on a clean machine. A lot without a test at its level is not closed.
   `internal/platform/auth/tokencipher/*_test.go` (`dpapi_vault_test.go` under the Windows tag), `token_file_vault_test.go`
   (real DPAPI store, Windows tag), `internal/config/config_token_vault_test.go`, `cmd/server/boot_token_vault_test.go`,
   `archlint/token_cipher_single_decision_test.go`.
-- To create: `cargo test` against the fake sidecar (L16.4); the `desktop-build` and
-  `desktop-e2e` jobs and the version check (L17); the `desktop` filter in `ci_paths_filter_test.go`.
+- Created by L16: `apps/desktop/src-tauri/tests/contract.rs` (`cargo test` against the fake sidecar
+  `apps/desktop/testdata/fake-sidecar`: nominal entry and clean close, never ready, `failed` with and without a port,
+  crash before and after `ready`, late `stopped` killed after the budget, close during start-up, 10 MB of stdout,
+  stable port, secret absent from arguments and journal), the state machine tests (`src/lifecycle/tests.rs`), the
+  `desktop` filter and the `desktop-test` job of `ci.yml` (`ci_paths_filter_test.go` unchanged and green).
+- To create: the `desktop-build` and `desktop-e2e` jobs, `cargo audit` in CI and the version check (L17).
 
 ## Alternatives rejected
 

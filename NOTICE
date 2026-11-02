@@ -108,6 +108,7 @@ everything published from that date.
 6. Dependencies
 ---------------
 
-Third-party libraries keep their own licences (see apps/go-api/go.mod and
-apps/web/package-lock.json). Prior art that informed this work is credited in
+Third-party libraries keep their own licences (see apps/go-api/go.mod,
+apps/web/package-lock.json and, for the Rust dependencies of the desktop shell,
+apps/desktop/src-tauri/Cargo.lock). Prior art that informed this work is credited in
 docs/ACKNOWLEDGMENTS.md.
