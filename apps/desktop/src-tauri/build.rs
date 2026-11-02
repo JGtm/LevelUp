@@ -46,6 +46,11 @@ fn generate_catalogue(repo: &Path) {
         .and_then(toml::Value::as_str)
         .unwrap_or_else(|| panic!("{} : cle `default` absente", locales_path.display()))
         .to_string();
+    let fallback = locales
+        .get("fallback")
+        .and_then(toml::Value::as_str)
+        .unwrap_or(default.as_str())
+        .to_string();
     let codes: Vec<String> = locales
         .get("locale")
         .and_then(toml::Value::as_array)
@@ -75,6 +80,7 @@ fn generate_catalogue(repo: &Path) {
 
     let mut out = String::from("// @generated par build.rs depuis desktop.toml et locales.toml : ne pas editer.\n\n");
     let _ = writeln!(out, "pub const DEFAULT_LOCALE: &str = {default:?};");
+    let _ = writeln!(out, "pub const FALLBACK_LOCALE: &str = {fallback:?};");
     let _ = writeln!(out, "pub const LOCALES: &[&str] = &{codes:?};");
     let key_list: Vec<&String> = keys.keys().collect();
     let _ = writeln!(out, "pub const KEYS: &[&str] = &{key_list:?};\n");

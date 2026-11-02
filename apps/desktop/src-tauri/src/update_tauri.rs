@@ -2,6 +2,10 @@
 //! boite de dialogue native derriere [`Prompt`]. Aucune decision ici (elles sont dans
 //! `levelup_desktop::updater`), aucun libelle (ils viennent du catalogue).
 
+use std::sync::{Arc, Mutex};
+
+use levelup_desktop::download_watch::{POLL_INTERVAL, Progress};
+use levelup_desktop::update_notes::notes_for_locale;
 use levelup_desktop::updater::{
     CHECK_TIMEOUT, Decision, Installer, Notice, Notifier, Offer, Prompt, PromptText, UpdateSource, notice_text,
 };
@@ -12,12 +16,18 @@ use tauri_plugin_updater::{Update, UpdaterExt};
 /// est verifiee par le plugin avec la cle publique de `tauri.conf.json`) et le lance.
 pub struct PluginSource {
     app: AppHandle,
+    locale: &'static str,
     found: Option<Update>,
 }
 
 impl PluginSource {
-    pub fn new(app: AppHandle) -> Self {
-        Self { app, found: None }
+    /// `locale` : la langue de la coquille, qui choisit les notes montrees (`notes_for_locale`).
+    pub fn new(app: AppHandle, locale: &'static str) -> Self {
+        Self {
+            app,
+            locale,
+            found: None,
+        }
     }
 }
 
@@ -33,7 +43,8 @@ impl UpdateSource for PluginSource {
         let found = tauri::async_runtime::block_on(updater.check()).map_err(|e| e.to_string())?;
         let offer = found.as_ref().map(|update| Offer {
             version: update.version.clone(),
-            notes: update.body.clone(),
+            // `body` est la cle `notes` : le repli quand le document n'en porte aucune pour la langue.
+            notes: notes_for_locale(self.locale, &update.raw_json).or_else(|| update.body.clone()),
         });
         self.found = found;
         Ok(offer)
@@ -47,9 +58,37 @@ impl UpdateSource for PluginSource {
                 update.version, offer.version
             ));
         }
-        let bytes = tauri::async_runtime::block_on(update.download(|_, _| {}, || {})).map_err(|e| e.to_string())?;
+        let bytes = download_watched(&update)?;
         // Sous Windows `install` lance l'installeur puis quitte l'application.
         Ok(Box::new(move || update.install(bytes).map_err(|e| e.to_string())))
+    }
+}
+
+/// Telecharge l'installeur sous surveillance : le telechargement tourne sur le moteur de Tauri, ce fil
+/// lit le compteur de progression et abandonne (`abort`) sur le verdict de `download_watch` (aucun octet
+/// depuis la limite d'inactivite, ou duree maximale). L'abandon rend une erreur : le verrou de
+/// verification est rendu par l'appelant, qui journalise.
+fn download_watched(update: &Update) -> Result<Vec<u8>, String> {
+    type Slot = Arc<Mutex<Option<Result<Vec<u8>, String>>>>;
+    let progress = Progress::new();
+    let slot: Slot = Arc::default();
+    let (seen, done, target) = (progress.clone(), slot.clone(), update.clone());
+    let task = tauri::async_runtime::spawn(async move {
+        let result = target
+            .download(move |_, _| seen.record(), || {})
+            .await
+            .map_err(|e| e.to_string());
+        *done.lock().unwrap_or_else(|p| p.into_inner()) = Some(result);
+    });
+    loop {
+        if let Some(result) = slot.lock().unwrap_or_else(|p| p.into_inner()).take() {
+            return result;
+        }
+        if let Some(reason) = progress.check().reason() {
+            task.abort();
+            return Err(reason.to_string());
+        }
+        std::thread::sleep(POLL_INTERVAL);
     }
 }
 

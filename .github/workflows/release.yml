@@ -157,17 +157,20 @@ jobs:
         run: bash apps/desktop/scripts/check-version.sh "${{ steps.ver.outputs.version }}"
 
       # Une release sans notes n'est pas une release : `publish` échouerait, mais après 25 minutes de
-      # compilation. Même extraction que `publish`.
-      - name: Section de notes FR présente (tag)
+      # compilation. Même extraction que `publish`, pour les DEUX langues : l'updater sert la section
+      # de la langue de l'utilisateur (`notes` en français, `notes_en` en anglais).
+      - name: Sections de notes FR et EN présentes (tag)
         if: steps.ver.outputs.tag == 'true'
         run: |
           version="${{ steps.ver.outputs.version }}"
-          awk -v h="## [${version}]" 'index($0,h)==1{f=1; next} f && index($0,"## [")==1{exit} f' \
-            docs/FR/CHANGELOG.md > "$RUNNER_TEMP/notes_section.md"
-          if ! grep -q '[^[:space:]]' "$RUNNER_TEMP/notes_section.md"; then
-            echo "::error::section ## [${version}] absente ou vide dans docs/FR/CHANGELOG.md : les notes de l'updater et de la release en dépendent"
-            exit 1
-          fi
+          for changelog in docs/FR/CHANGELOG.md docs/CHANGELOG.md; do
+            awk -v h="## [${version}]" 'index($0,h)==1{f=1; next} f && index($0,"## [")==1{exit} f' \
+              "$changelog" > "$RUNNER_TEMP/notes_section.md"
+            if ! grep -q '[^[:space:]]' "$RUNNER_TEMP/notes_section.md"; then
+              echo "::error::section ## [${version}] absente ou vide dans ${changelog} : les notes de l'updater et de la release en dépendent"
+              exit 1
+            fi
+          done
 
       # Secrets : lus seulement ici et à l'étape de compilation d'un tag. Le mot de passe peut être
       # absent (un secret GitHub ne peut pas être vide : une clé générée sans mot de passe n'en a pas).
@@ -377,6 +380,12 @@ jobs:
             echo "::error::section ## [${version}] absente ou vide dans docs/FR/CHANGELOG.md"
             exit 1
           fi
+          awk -v h="## [${version}]" 'index($0,h)==1{f=1; next} f && index($0,"## [")==1{exit} f' \
+            docs/CHANGELOG.md > notes_section_en.md
+          if ! grep -q '[^[:space:]]' notes_section_en.md; then
+            echo "::error::section ## [${version}] absente ou vide dans docs/CHANGELOG.md"
+            exit 1
+          fi
           {
             echo "## Nouveautés et correctifs"
             cat notes_section.md
@@ -420,7 +429,9 @@ jobs:
 
       # latest.json : le fichier que l'updater de l'application interroge
       # (https://github.com/<dépôt>/releases/latest/download/latest.json). `notes` = la section FR du
-      # changelog (affichée à l'utilisateur avant d'installer) ; `signature` = contenu du .sig produit
+      # changelog (affichée à l'utilisateur avant d'installer ; seule clé que lit un client sans
+      # `notes_en`) et `notes_en` = la section EN de la même version (choisie par la coquille quand
+      # la langue de l'utilisateur n'est pas la langue par défaut) ; `signature` = contenu du .sig produit
       # par le CLI Tauri avec la clé privée ; `url` = l'installeur de CETTE release.
       - name: latest.json de l'updater
         env:
@@ -436,13 +447,14 @@ jobs:
           jq -n \
             --arg version "$version" \
             --rawfile notes notes_section.md \
+            --rawfile notes_en notes_section_en.md \
             --arg pub_date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             --rawfile signature "dist/${installer}.sig" \
             --arg url "https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/${installer}" \
-            '{version: $version, notes: $notes, pub_date: $pub_date,
+            '{version: $version, notes: $notes, notes_en: $notes_en, pub_date: $pub_date,
               platforms: {"windows-x86_64": {signature: ($signature | rtrimstr("\n")), url: $url}}}' \
             > dist/latest.json
-          jq -e '.version != "" and (.platforms["windows-x86_64"].signature | length) > 0 and (.platforms["windows-x86_64"].url | startswith("https://"))' dist/latest.json
+          jq -e '.version != "" and ([.notes | explode[] | select(. > 32)] | length) > 0 and ([.notes_en | explode[] | select(. > 32)] | length) > 0 and (.platforms["windows-x86_64"].signature | length) > 0 and (.platforms["windows-x86_64"].url | startswith("https://"))' dist/latest.json
           cat dist/latest.json
 
       - name: Create GitHub Release

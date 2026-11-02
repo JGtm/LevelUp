@@ -209,8 +209,10 @@ impl UpdateFlow {
                 self.state = UpdateState::Armed;
                 vec![UpdateAction::ArmAndClose]
             }
+            // Un telechargement abandonne (coupe, inactivite, duree maximale) se dit comme un echec de
+            // verification : la boite ne s'ouvre que pour une verification demandee par l'utilisateur.
             (UpdateState::Downloading, UpdateInput::Downloaded(Err(e))) => {
-                vec![UpdateAction::Log(format!("event=update_download_failed err={e}"))]
+                self.with_notice(format!("event=update_download_failed err={e}"), Notice::CheckFailed)
             }
             // Une entree hors sequence (deuxieme `ServerReady`, reponse apres coup) ne change rien.
             (state, _) => {
