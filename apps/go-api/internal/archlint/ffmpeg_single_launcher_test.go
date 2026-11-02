@@ -52,7 +52,8 @@ func isFFmpegArg(arg ast.Expr) bool {
 // ffmpegLaunchSites rend « fichier:ligne » de chaque exec.Command* qui désigne ffmpeg.
 func ffmpegLaunchSites(src goSource) []string { return execLaunchSites(src, isFFmpegArg) }
 
-// execLaunchSites rend « fichier:ligne » de chaque exec.Command* dont un argument vérifie match.
+// execLaunchSites rend « fichier:ligne » de chaque exec.Command* ou childproc.Command* (le lanceur
+// unique des enfants, internal/platform/childproc) dont un argument vérifie match.
 func execLaunchSites(src goSource, match func(ast.Expr) bool) []string {
 	var sites []string
 	ast.Inspect(src.File, func(n ast.Node) bool {
@@ -64,7 +65,7 @@ func execLaunchSites(src goSource, match func(ast.Expr) bool) []string {
 		if !ok || (sel.Sel.Name != "Command" && sel.Sel.Name != "CommandContext") {
 			return true
 		}
-		if pkg, ok := sel.X.(*ast.Ident); !ok || pkg.Name != "exec" {
+		if pkg, ok := sel.X.(*ast.Ident); !ok || (pkg.Name != "exec" && pkg.Name != "childproc") {
 			return true
 		}
 		for _, arg := range call.Args {
@@ -114,6 +115,9 @@ func TestFFmpegLauncherGuardDetectsDefects(t *testing.T) {
 		{"littéral", "internal/ops/x.go", `package ops
 import "os/exec"
 func f() { _ = exec.CommandContext(nil, "ffmpeg", "-i", "a") }`, 1},
+		{"via childproc", "internal/ops/x.go", `package ops
+import "levelup/go-api/internal/platform/childproc"
+func f() { _ = childproc.Command(nil, "ffmpeg", "-i", "a") }`, 1},
 		{"sans contexte", "internal/ops/x.go", `package ops
 import "os/exec"
 func f() { _ = exec.Command("ffmpeg") }`, 1},

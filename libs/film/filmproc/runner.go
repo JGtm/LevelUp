@@ -258,6 +258,7 @@ func (r *Runner) Run(ctx context.Context, args []string) Result {
 	cmd := exec.CommandContext(ctx, r.exe, args...)
 	cmd.Env = r.env
 	lowPriority(cmd) // la machine doit rester utilisable pendant la boucle
+	sansFenetre(cmd) // sans console (cf. hideconsole_win.go)
 
 	read, write, err := os.Pipe()
 	if err != nil {
