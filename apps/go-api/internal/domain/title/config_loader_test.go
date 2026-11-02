@@ -395,3 +395,37 @@ func TestModeSourceFor_ManifestsReels(t *testing.T) {
 		t.Errorf("titre inconnu : %q, want %q", got, ModeSourcePair)
 	}
 }
+
+// TestProcessNames_ParsedAndUnion : [title].process_names est parsé (vides filtrés) et
+// Registry.GameProcessNames rend l'union sans doublon (casse ignorée) de tous les titres, triée ; un
+// titre sans client PC (liste vide) ne contribue pas. Le built-in porte HaloInfinite.exe.
+func TestProcessNames_ParsedAndUnion(t *testing.T) {
+	manifest := strings.Replace(validSyntheticManifest,
+		`capabilities = ["matchmaking", "career", "media"]`,
+		"capabilities = [\"matchmaking\", \"career\", \"media\"]\nprocess_names = [\"Synthetic.exe\", \"  \", \"haloinfinite.EXE\"]",
+		1)
+	desc, err := LoadTitleManifestFromBytes("title.toml", "synthetic_title_b", []byte(manifest))
+	if err != nil {
+		t.Fatalf("manifest: %v", err)
+	}
+	if len(desc.ProcessNames) != 2 || desc.ProcessNames[0] != "Synthetic.exe" {
+		t.Fatalf("ProcessNames = %v, want [Synthetic.exe haloinfinite.EXE]", desc.ProcessNames)
+	}
+	reg := NewRegistry()
+	if got := reg.GameProcessNames(); len(got) != 1 || got[0] != "HaloInfinite.exe" {
+		t.Fatalf("registre built-in : %v, want [HaloInfinite.exe]", got)
+	}
+	reg.Register(desc)
+	got := reg.GameProcessNames()
+	if len(got) != 2 || got[0] != "HaloInfinite.exe" || got[1] != "Synthetic.exe" {
+		t.Fatalf("union = %v, want [HaloInfinite.exe Synthetic.exe] (doublon de casse retiré, tri stable)", got)
+	}
+	// Un titre sans process_names ne contribue pas.
+	bare, err := LoadTitleManifestFromBytes("title.toml", "synthetic_title_b", []byte(validSyntheticManifest))
+	if err != nil {
+		t.Fatalf("manifest nu: %v", err)
+	}
+	if len(bare.ProcessNames) != 0 {
+		t.Fatalf("sans clé : ProcessNames = %v, want vide", bare.ProcessNames)
+	}
+}

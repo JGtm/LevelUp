@@ -37,6 +37,7 @@ export interface SettingsText {
   tabData: string
   tabAccount: string
   tabNotifications: string
+  tabDesktop: string
 
   // Carte « Groupes et partage » (onglet Compte) — lien vers /groups
   groupsCardTitle: string

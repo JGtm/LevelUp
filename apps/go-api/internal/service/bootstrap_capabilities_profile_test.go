@@ -171,3 +171,31 @@ func TestBuildCapabilities_ConnexionNavigateurEtComparaisonDeComptes(t *testing.
 		})
 	}
 }
+
+// TestBuildCapabilities_IntegrationDuPoste : détection du jeu, intégration de la coquille et tâche
+// planifiée ne sont offertes que par le profil desktop (un navigateur n'a ni processus de jeu à
+// sonder ni zone de notification).
+func TestBuildCapabilities_IntegrationDuPoste(t *testing.T) {
+	cas := []struct {
+		nom    string
+		launch string
+		env    string
+		demo   string
+		want   bool
+	}{
+		{"hosted", config.LaunchModeDefault, "production", "", false},
+		{"dev", config.LaunchModeDefault, "", "", false},
+		{"demo", config.LaunchModeDefault, "", "true", false},
+		{"desktop", config.LaunchModeDesktop, "", "", true},
+	}
+	for _, c := range cas {
+		t.Run(c.nom, func(t *testing.T) {
+			cfg := chargerPourBootstrap(t, c.launch, c.env, c.demo, "")
+			caps := buildCapabilities(cfg, map[string]interface{}{})
+			if caps.CanWatchGameProcess != c.want || caps.CanIntegrateShell != c.want || caps.CanScheduleRefresh != c.want {
+				t.Errorf("can_watch_game_process = %v, can_integrate_shell = %v, can_schedule_refresh = %v ; attendu %v",
+					caps.CanWatchGameProcess, caps.CanIntegrateShell, caps.CanScheduleRefresh, c.want)
+			}
+		})
+	}
+}

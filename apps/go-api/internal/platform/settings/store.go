@@ -20,6 +20,8 @@ import (
 type AppSettings struct {
 	// FilmArchiveSettings : archive des films (lot L14) ; règles dans film_archive.go.
 	domain.FilmArchiveSettings
+	// DesktopSettings : intégration au poste de l'application de bureau (lot L21).
+	domain.DesktopSettings
 	Lang                 string `json:"lang"`
 	DiscordLang          string `json:"discord_lang"`
 	UserTimezone         string `json:"user_timezone"`
@@ -444,12 +446,14 @@ func Apply(cfg *AppSettings, req *domain.UpdateSettingsRequest) {
 		cfg.ReplaySoundDistancePercent = *req.ReplaySoundDistancePercent
 	}
 	applyFilmArchive(cfg, &req.FilmArchiveUpdate)
+	applyDesktop(cfg, &req.DesktopUpdate)
 }
 
 // ToResponse convertit AppSettings en SettingsResponse (sans discord_webhook_url).
 func ToResponse(cfg *AppSettings) *domain.SettingsResponse {
 	return &domain.SettingsResponse{
 		FilmArchiveSettings:  cfg.FilmArchiveSettings,
+		DesktopSettings:      cfg.DesktopSettings,
 		Lang:                 cfg.Lang,
 		DiscordLang:          cfg.DiscordLang,
 		UserTimezone:         cfg.UserTimezone,

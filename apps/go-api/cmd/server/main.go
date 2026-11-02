@@ -77,6 +77,7 @@ func main() {
 	wireTitleHooks(st)
 	openRouterAndHeartbeat(st)
 	launchWakeSequence(st)
+	launchGameWatch(st)
 	awaitShutdown(st)
 }
 

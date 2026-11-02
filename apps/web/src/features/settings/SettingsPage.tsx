@@ -20,6 +20,7 @@ import { NotificationsSettingsTab } from '@/features/notifications/Notifications
 import type { SettingsResponse } from '@/lib/api/types'
 import { useServerDraft } from '@/lib/hooks/useServerDraft'
 import { AnalyseTab } from './AnalyseTab'
+import { DesktopIntegrationCard } from './DesktopIntegrationCard'
 import { FilmArchivePanel } from './FilmArchivePanel'
 import { PoolSharingCard } from './PoolSharingCard'
 import { TitlesTab } from './TitlesTab'
@@ -34,6 +35,11 @@ export function SettingsPage() {
   const { data: settings, isLoading } = useSettings()
   const mutation = useUpdateSettings()
   const settingsFrozen = !useDeploymentCapability('can_edit_settings')
+  const watchGame = useDeploymentCapability('can_watch_game_process')
+  const integrateShell = useDeploymentCapability('can_integrate_shell')
+  const scheduleRefresh = useDeploymentCapability('can_schedule_refresh')
+  // L'onglet « Application » n'existe que là où une intégration au poste est offerte (bureau).
+  const hasDesktopTab = watchGame || integrateShell || scheduleRefresh
   const locale = useAppShellStore((s) => s.locale)
   const t = getSettingsText(locale)
   const tc = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
@@ -115,6 +121,7 @@ export function SettingsPage() {
               { id: 'notifications', label: t.tabNotifications },
               { id: 'data', label: t.tabData },
               { id: 'account', label: t.tabAccount },
+              ...(hasDesktopTab ? [{ id: 'desktop' as SettingsTab, label: t.tabDesktop }] : []),
               // « Sauvegarde » a migré vers Admin · Système ; « Synchronisation » et
               // « Utilisateurs » vers Admin · Sync & Jobs / Accès.
             ] as { id: SettingsTab; label: string }[]
@@ -161,6 +168,7 @@ export function SettingsPage() {
             <FilmArchivePanel />
           </>
         )}
+        {activeTab === 'desktop' && hasDesktopTab && <DesktopIntegrationCard />}
         {/* Compte — mise en commun du jeton (accord et retrait, lieu promis par /privacy
             et /terms), mot de passe opt-in (re-login rapide sans Microsoft) +
             accès à la gestion des groupes/familles (page /groups, auparavant

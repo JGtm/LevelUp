@@ -131,6 +131,20 @@ type DeploymentCapabilities struct {
 	// (classements de la communauté) ont de quoi s'afficher. Faux sur une application de bureau, qui
 	// n'en suit qu'un (ADR 0045 D-7).
 	CompareAccounts bool
+	// GameProcessWatch : le serveur sonde la liste des processus du poste pour savoir si le jeu tourne
+	// (noms d'exécutables `process_names` des titres, énumération seule, jamais de lecture de mémoire) :
+	// le « mode jeu » suspend la cuisson des rejeux et les tâches lourdes pendant la partie, et la
+	// fermeture du jeu déclenche une synchronisation. Réglage `game_process_watch`. Faux sur un serveur,
+	// qui n'héberge pas le jeu de l'utilisateur.
+	GameProcessWatch bool
+	// ShellIntegration : le serveur pilote l'intégration de la coquille avec le poste, par les réglages
+	// `native_notifications`, `close_to_tray` et `start_with_windows` (événement stdout `shell_settings`,
+	// ADR 0045) : notifications Windows, icône de la zone de notification, démarrage avec la session.
+	// Faux hors de la coquille : un navigateur n'a ni zone de notification ni entrée de démarrage.
+	ShellIntegration bool
+	// ScheduledRefresh : le serveur peut poser une tâche planifiée Windows qui lance `-mode refresh-only`
+	// pour garder les jetons vivants quand l'application est fermée (réglage `scheduled_refresh`).
+	ScheduledRefresh bool
 }
 
 // DeploymentProfile est embarqué dans AppConfig : le profil résolu et ses capacités.
@@ -230,6 +244,9 @@ func capabilitiesOf(cfg *AppConfig) DeploymentCapabilities {
 		FrequentCheckpoint:     desktop,
 		LoginViaBrowser:        desktop,
 		CompareAccounts:        !desktop,
+		GameProcessWatch:       desktop,
+		ShellIntegration:       desktop,
+		ScheduledRefresh:       desktop,
 	}
 }
 

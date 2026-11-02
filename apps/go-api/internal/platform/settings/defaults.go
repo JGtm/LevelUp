@@ -88,6 +88,9 @@ func applyAbsentDefaults(cfg *AppSettings, raw map[string]json.RawMessage, d abs
 	if _, ok := raw["archive_films"]; !ok {
 		cfg.ArchiveFilms = true // D-5 : archiver par défaut (un film expire côté serveur Halo)
 	}
+	if _, ok := raw["game_process_watch"]; !ok {
+		cfg.GameProcessWatch = true // L21 : la détection seule est sans effet visible, défaut ON
+	}
 	if _, ok := raw["replay_sound_variation_percent"]; !ok {
 		// 100 = les fourchettes du jeu telles quelles. 0 est un réglage LÉGITIME
 		// (variation coupée) : sans ce ré-application, un fichier sans la clé serait
@@ -145,5 +148,6 @@ func defaultSettings() *AppSettings {
 		ReplaySoundVariationPercent: 100,
 		ReplaySoundDistancePercent:  0,
 		FilmArchiveSettings:         domain.FilmArchiveSettings{ArchiveFilms: true},
+		DesktopSettings:             domain.DesktopSettings{GameProcessWatch: true},
 	}
 }

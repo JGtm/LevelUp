@@ -49,6 +49,9 @@ type CapabilityMap struct {
 	CanUseCompactChrome     bool `json:"can_use_compact_chrome" doc:"Chrome d'application de bureau : barre latérale, fenêtre À propos, accueil sans image de couverture."`
 	CanLoginViaBrowser      bool `json:"can_login_via_browser" doc:"Connexion Microsoft dans le navigateur par défaut, sans code à recopier (application de bureau)."`
 	CanCompareAccounts      bool `json:"can_compare_accounts" doc:"L'instance suit plusieurs comptes : les pages qui les confrontent (classements de la communauté) sont offertes."`
+	CanWatchGameProcess     bool `json:"can_watch_game_process" doc:"Détection du jeu en cours (mode jeu : cuisson et tâches lourdes suspendues pendant la partie, synchronisation à sa fermeture)."`
+	CanIntegrateShell       bool `json:"can_integrate_shell" doc:"Intégration de la coquille avec le poste : notifications Windows, zone de notification, démarrage avec Windows."`
+	CanScheduleRefresh      bool `json:"can_schedule_refresh" doc:"Tâche planifiée Windows qui rafraîchit les jetons quand l'application est fermée."`
 
 	// Deployment : nom du profil de déploiement, pour l'affichage et le diagnostic SEULEMENT.
 	Deployment string `json:"deployment" enum:"hosted,desktop,demo,dev" doc:"Profil de déploiement (affichage et diagnostic ; ne jamais brancher dessus)."`

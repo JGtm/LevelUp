@@ -32,6 +32,9 @@ export const DEPLOYMENT_CAPABILITY_DEFAULTS = {
   can_use_compact_chrome: false,
   can_login_via_browser: false,
   can_compare_accounts: true,
+  can_watch_game_process: false,
+  can_integrate_shell: false,
+  can_schedule_refresh: false,
 } as const satisfies Partial<CapabilityMap>
 
 /** Clé d'une capacité de profil de déploiement (booléen de `capabilities`). */

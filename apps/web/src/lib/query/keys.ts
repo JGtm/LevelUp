@@ -45,6 +45,8 @@ export const queryKeys = {
   settings: ['settings'] as const,
   // Occupation et emplacement de l'archive des films (GET /settings/film-archive).
   filmArchive: ['film-archive'] as const,
+  // État vivant de l'intégration au poste (GET /settings/desktop) : le jeu tourne-t-il.
+  desktopStatus: ['desktop-status'] as const,
   // Groupes/familles (accès mutuel) — gestion end-user
   groups: ['groups'] as const,
   // Amis d'un joueur (liste par profil, pas un réglage d'instance).

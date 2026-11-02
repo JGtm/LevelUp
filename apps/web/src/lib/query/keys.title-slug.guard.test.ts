@@ -169,6 +169,7 @@ const agnosticKeys = new Set<string>([
   'job',
   'settings',
   'filmArchive', // archive des films : une par instance, tous titres confondus
+  'desktopStatus', // intégration au poste : état du poste, indépendant du titre
   'groups',
   // Amis d'un profil : un ami est une PERSONNE, transverse aux titres — la même
   // liste vaut pour Halo Infinite et Halo 5 (décision PMT-4 : le cercle de

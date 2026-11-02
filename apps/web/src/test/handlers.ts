@@ -161,6 +161,16 @@ const settingsFixture = {
   watcher_subscribed_players: [],
   archive_films: true,
   film_archive_dir: '',
+  game_process_watch: true,
+  native_notifications: false,
+  close_to_tray: false,
+  start_with_windows: false,
+  scheduled_refresh: false,
+}
+
+/** État vivant de l'intégration au poste (GET /settings/desktop) : le jeu ne tourne pas. */
+export const desktopStatusFixture = {
+  game_running: false,
 }
 
 /** Archive des films : vide, emplacement par défaut (GET /settings/film-archive). */
@@ -312,6 +322,7 @@ export const handlers = [
   }),
 
   http.get(p('/settings/film-archive'), () => HttpResponse.json(filmArchiveFixture)),
+  http.get(p('/settings/desktop'), () => HttpResponse.json(desktopStatusFixture)),
 
   // Career
   http.get(p(`/players/${SLUG}/pages/career`), () => HttpResponse.json(careerFixture)),

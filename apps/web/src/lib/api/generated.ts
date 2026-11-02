@@ -3897,6 +3897,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/settings/desktop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Etat vivant de l'integration au poste (application de bureau) */
+        get: operations["getDesktopStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/settings/film-archive": {
         parameters: {
             query?: never;
@@ -5398,6 +5415,8 @@ export interface components {
             can_compare_accounts: boolean;
             /** @description Réglages de l'instance modifiables (figés en démo). */
             can_edit_settings: boolean;
+            /** @description Intégration de la coquille avec le poste : notifications Windows, zone de notification, démarrage avec Windows. */
+            can_integrate_shell: boolean;
             /** @description Connexion Microsoft dans le navigateur par défaut, sans code à recopier (application de bureau). */
             can_login_via_browser: boolean;
             can_manage_instance: boolean;
@@ -5409,6 +5428,8 @@ export interface components {
             can_read_local_data: boolean;
             can_reset_media_index: boolean;
             can_run_sync: boolean;
+            /** @description Tâche planifiée Windows qui rafraîchit les jetons quand l'application est fermée. */
+            can_schedule_refresh: boolean;
             can_self_provision: boolean;
             /** @description Connexion par le SSO Xbox (mode xbox). */
             can_sign_in_with_xbox: boolean;
@@ -5435,6 +5456,8 @@ export interface components {
             /** @description Sauvegarde restic des bases. */
             can_use_restic: boolean;
             can_view_media: boolean;
+            /** @description Détection du jeu en cours (mode jeu : cuisson et tâches lourdes suspendues pendant la partie, synchronisation à sa fermeture). */
+            can_watch_game_process: boolean;
             /**
              * @description Profil de déploiement (affichage et diagnostic ; ne jamais brancher dessus).
              * @enum {string}
@@ -6435,6 +6458,10 @@ export interface components {
             profileRev: string;
             registry?: components["schemas"]["RegistryCoverage"];
             sourceRev: string;
+        };
+        DesktopStatus: {
+            /** @description Le jeu tourne en ce moment : la cuisson des rejeux et les tâches lourdes sont suspendues. */
+            game_running: boolean;
         };
         DetectionPatchInputBody: {
             note?: string;
@@ -22732,6 +22759,35 @@ export interface operations {
                 };
             };
             500: components["responses"]["InternalError"];
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getDesktopStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DesktopStatus"];
+                };
+            };
             /** @description Error */
             default: {
                 headers: {
