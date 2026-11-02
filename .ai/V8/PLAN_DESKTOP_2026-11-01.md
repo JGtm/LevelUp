@@ -661,7 +661,7 @@ Définition : `ResourcesRoot` = la racine du dépôt aujourd'hui (`LEVELUP_RESOU
       `can_offer_windows_download` (aucune capacité neuve), lien « Application Windows » du pied de page conditionné par la
       même capacité, lien vers `releases/latest`, tests Vitest (capacité vraie/fausse x fr/en, pied de page, chemin anonyme).
 - [x] 17.6 **(P, au pilote)** Runs verts ; procédure de sauvegarde de la clé d'updater exécutée (ADR 0045). Premier run Release vert sur la release le 2026-11-02 (desktop-build + desktop-e2e sur runner Windows, sans signature) ; clé sauvegardée hors PC par l'utilisateur et secret `TAURI_SIGNING_PRIVATE_KEY` en place le 2026-11-02 ; le run signé aura lieu au premier tag. Procédure écrite dans l'ADR 0045 (« Implementation notes (L17) »), reports au registre.
-- [ ] 17.7 **(U, à l'utilisateur)** Installation sur une machine vierge, désinstallation, données conservées : témoins. À l'utilisateur, avec 18.4. PRÉPARÉ : mode d'emploi en cinq étapes dans `docs/RUNBOOK_DESKTOP.md`.
+- [x] 17.7 **(U)** PASSÉ le 2026-11-02 (sur ce poste, sans installation préalable ; journaux vérifiés par le pilote) — Installation sur une machine vierge, désinstallation, données conservées : témoins. À l'utilisateur, avec 18.4. PRÉPARÉ : mode d'emploi en cinq étapes dans `docs/RUNBOOK_DESKTOP.md`.
 
 ### 9.17b L18 — Interface bureau (S après maquette validée par U ; EN DERNIER, décision utilisateur du 2026-11-02)
 
@@ -711,7 +711,7 @@ image de couverture de l'accueil « ça ne fait pas app de bureau ». Décision 
       FAIT 2026-11-02 : Vitest `AppShell.chrome`, `SidebarNav`, `NavSectionList`, `AboutDialog`, `NavL2` (bureau),
       `HomePage.compactChrome`, `shellBridge`, `appLinks.thirdParty` ; Playwright `e2e/desktop-chrome.spec.ts` (4 cas, joués
       sur Vite local : verts).
-- [ ] 18.4 **(U, à l'utilisateur)** Gate visuel sur l'application installée.
+- [x] 18.4 **(U)** PASSÉ le 2026-11-02 (retours installeur, lien de connexion, panneaux latéraux → L19) — Gate visuel sur l'application installée.
 - Gate : `cd apps/web && npm run typecheck && npm run lint && npm run test` ; pilote : DevTools WebView2 (titre,
   URL) sur le binaire de dev.
 
