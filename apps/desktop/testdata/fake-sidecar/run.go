@@ -50,6 +50,8 @@ type options struct {
 	resourcesDir string
 	logsDir      string
 	secret       string
+	// afterReady : lignes JSON ecrites telles quelles sur stdout juste apres `ready` (variante ok).
+	afterReady []string
 }
 
 // readOptions lit l'environnement ; une valeur illisible est une erreur (jamais un defaut muet).
@@ -89,6 +91,14 @@ func readOptions(getenv func(string) string) (options, error) {
 		o.stopUnclean = true
 	default:
 		return o, fmt.Errorf("FAKE_STOP_CLEAN %q n'est ni true ni false", getenv("FAKE_STOP_CLEAN"))
+	}
+	if raw := getenv("FAKE_EVENTS_AFTER_READY"); raw != "" {
+		for _, line := range strings.Split(raw, "|") {
+			if !json.Valid([]byte(line)) {
+				return o, fmt.Errorf("FAKE_EVENTS_AFTER_READY : %q n'est pas du JSON", line)
+			}
+			o.afterReady = append(o.afterReady, line)
+		}
 	}
 	var err error
 	o.chattyBytes, err = intEnv(getenv, "FAKE_CHATTY_BYTES")
@@ -131,6 +141,13 @@ func (e *emitter) failed(state string) {
 func (e *emitter) stopping() { e.emit(map[string]any{"event": "stopping"}) }
 func (e *emitter) stopped(clean bool) {
 	e.emit(map[string]any{"event": "stopped", "clean": clean})
+}
+
+// raw ecrit une ligne JSON deja formee, d'un seul Write, sous verrou.
+func (e *emitter) raw(line string) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	_, _ = e.w.Write(append([]byte(line), '\n'))
 }
 
 // chatter ecrit n octets de lignes non JSON : un tube qui n'est pas vide en continu bloque ce
@@ -210,6 +227,9 @@ func serve(opts options, out *emitter, port int, srv *http.Server, eof <-chan st
 		return exitCrash
 	default:
 		out.ready(port)
+		for _, line := range opts.afterReady {
+			out.raw(line)
+		}
 	}
 	<-eof
 	return stop(opts, out, srv, stderr)

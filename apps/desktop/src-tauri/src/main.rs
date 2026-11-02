@@ -6,6 +6,7 @@
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod toast_tauri;
 mod update_setup;
 mod update_tauri;
 
@@ -14,8 +15,10 @@ use std::sync::atomic::{AtomicBool, AtomicU16, Ordering};
 use std::sync::{Arc, Mutex};
 
 use levelup_desktop::catalogue;
+use levelup_desktop::events::Toast;
 use levelup_desktop::lifecycle::Timeouts;
 use levelup_desktop::logfile::{LogSink, MAX_LOG_BYTES, Source};
+use levelup_desktop::native_notice;
 use levelup_desktop::navigation::{self, ExternalOpen, Navigation, NewWindowDecision, OPEN_EXTERNAL_ENV};
 use levelup_desktop::render::{self, SCHEME};
 use levelup_desktop::roots::{self, Roots};
@@ -28,6 +31,7 @@ use tauri::webview::{DownloadEvent, NewWindowResponse};
 use tauri::window::Color;
 use tauri::{AppHandle, Manager, RunEvent, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent};
 use tauri_plugin_opener::OpenerExt;
+use toast_tauri::{PluginNotifier, window_state};
 use update_setup::{UpdateWiring, request_update_check, spawn_update_check};
 use update_tauri::DialogNotifier;
 use url::Url;
@@ -55,6 +59,9 @@ fn main() {
         // Premier plugin : une seconde ouverture est detectee avant tout autre travail.
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| focus_main(app)))
         .plugin(tauri_plugin_window_state::Builder::default().build())
+        // Notifications Windows relayees depuis la cloche (L21.b) : montrees depuis Rust seulement, la page
+        // du serveur n'a aucune commande a appeler.
+        .plugin(tauri_plugin_notification::init())
         // Le script que le plugin injecte par defaut attrape les clics sur `target="_blank"` et appelle la commande
         // `open_url` par le pont IPC, que la page du serveur n'a pas le droit d'appeler (aucune capacite) : le clic
         // etait avale sans rien ouvrir. Sans lui, le clic arrive au moteur, qui demande une nouvelle fenetre :
@@ -365,6 +372,12 @@ impl Host for TauriHost {
     fn exit_app(&mut self, _outcome: Outcome) {
         self.exiting.store(true, Ordering::SeqCst);
         self.app.exit(0);
+    }
+
+    fn notify(&mut self, toast: &Toast) {
+        let window = window_state(&self.app, &self.log);
+        let mut notifier = PluginNotifier { app: self.app.clone() };
+        native_notice::deliver(window, toast, &mut notifier, &self.log);
     }
 }
 

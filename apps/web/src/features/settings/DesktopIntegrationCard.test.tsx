@@ -56,16 +56,31 @@ describe('DesktopIntegrationCard', () => {
     serveurPatch()
     renderWithProviders(<DesktopIntegrationCard />)
     await screen.findByText('Détecter le jeu en cours')
-    fireEvent.click(screen.getByRole('button'))
+    fireEvent.click(screen.getAllByRole('button')[0])
     await waitFor(() => expect(patches).toEqual([{ game_process_watch: false }]))
     expect(await screen.findByText('Enregistré.')).toBeInTheDocument()
+  })
+
+  it('activer les notifications Windows envoie le PATCH (désactivées par défaut)', async () => {
+    serveurPatch()
+    renderWithProviders(<DesktopIntegrationCard />)
+    await screen.findByText('Notifications Windows')
+    fireEvent.click(screen.getAllByRole('button')[1])
+    await waitFor(() => expect(patches).toEqual([{ native_notifications: true }]))
+  })
+
+  it('sans la capacité de la coquille, les notifications Windows ne sont pas offertes', async () => {
+    useAppShellStore.setState({ capabilities: testCapabilities({ can_watch_game_process: true }) })
+    renderWithProviders(<DesktopIntegrationCard />)
+    await screen.findByText('Détecter le jeu en cours')
+    expect(screen.queryByText('Notifications Windows')).not.toBeInTheDocument()
   })
 
   it('affiche tel quel un refus du serveur', async () => {
     serveurPatch({ status: 400, message: 'Ce réglage n’existe que dans l’application de bureau.' })
     renderWithProviders(<DesktopIntegrationCard />)
     await screen.findByText('Détecter le jeu en cours')
-    fireEvent.click(screen.getByRole('button'))
+    fireEvent.click(screen.getAllByRole('button')[0])
     expect(await screen.findByRole('alert')).toHaveTextContent('Ce réglage n’existe que dans l’application de bureau.')
   })
 

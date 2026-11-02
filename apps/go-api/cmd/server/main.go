@@ -78,6 +78,7 @@ func main() {
 	openRouterAndHeartbeat(st)
 	launchWakeSequence(st)
 	launchGameWatch(st)
+	launchShellIntegration(st)
 	awaitShutdown(st)
 }
 

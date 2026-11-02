@@ -26,6 +26,7 @@ use std::sync::{Arc, Condvar, Mutex};
 use std::time::{Duration, Instant};
 
 use crate::catalogue;
+use crate::events::Toast;
 use crate::logfile::{LogSink, Source};
 use crate::screen::Screen;
 use crate::supervisor::{Closer, Host, Outcome};
@@ -446,6 +447,10 @@ impl<H: Host> Host for UpdateHost<H> {
             self.install_if_allowed(install, outcome);
         }
         self.inner.exit_app(outcome);
+    }
+
+    fn notify(&mut self, toast: &Toast) {
+        self.inner.notify(toast);
     }
 }
 

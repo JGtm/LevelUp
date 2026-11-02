@@ -24,6 +24,7 @@ export function DesktopIntegrationCard() {
   const t = getDesktopIntegrationText(locale)
   const frozen = !useDeploymentCapability('can_edit_settings')
   const canWatchGame = useDeploymentCapability('can_watch_game_process')
+  const canIntegrateShell = useDeploymentCapability('can_integrate_shell')
   const qc = useQueryClient()
   const { data: settings } = useSettings()
   const { data: status } = useDesktopStatus(canWatchGame)
@@ -42,6 +43,7 @@ export function DesktopIntegrationCard() {
   }
 
   const gameWatch = settings?.game_process_watch ?? true
+  const nativeNotifications = settings?.native_notifications ?? false
 
   return (
     <Card>
@@ -64,6 +66,16 @@ export function DesktopIntegrationCard() {
                   {status.game_running ? t.gameRunning : t.gameNotRunning}
                 </p>
               )}
+            </div>
+          )}
+          {canIntegrateShell && (
+            <div>
+              <ToggleRow
+                label={t.nativeNotificationsLabel}
+                value={nativeNotifications}
+                onChange={(v) => save({ native_notifications: v })}
+              />
+              <p className="text-xs text-muted-foreground">{t.nativeNotificationsHint}</p>
             </div>
           )}
         </fieldset>

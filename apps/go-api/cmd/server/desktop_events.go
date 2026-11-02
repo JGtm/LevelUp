@@ -9,6 +9,10 @@
 //	{"event":"failed","state":"<état>"}       le démarrage est refusé (bootFailureState)
 //	{"event":"stopping"}                      la séquence d'arrêt commence
 //	{"event":"stopped","clean":true|false}    la séquence est finie, journaux fermés
+//	{"event":"notification","title":"…","body":"…","kind":"sync"}
+//	                                          une notification de la cloche à montrer comme notification
+//	                                          Windows (réglage native_notifications) ; texte déjà composé
+//	                                          dans la langue du joueur
 //
 // L'écrivain est unique et tient un verrou : deux goroutines (démarrage, signal d'arrêt) ne
 // mélangent jamais leurs octets. Un *desktopEvents nil est un écrivain désactivé : hors du mode
@@ -30,6 +34,8 @@ const (
 	eventFailed    = "failed"
 	eventStopping  = "stopping"
 	eventStopped   = "stopped"
+	// eventNotification : voir l'en-tête (L21.b).
+	eventNotification = "notification"
 )
 
 // desktopEvents écrit les événements du contrat sur w, une ligne chacun, sous un verrou.
@@ -61,6 +67,12 @@ type (
 		Event string `json:"event"`
 		Clean bool   `json:"clean"`
 	}
+	eventNotificationBody struct {
+		Event string `json:"event"`
+		Title string `json:"title"`
+		Body  string `json:"body"`
+		Kind  string `json:"kind"`
+	}
 )
 
 // Listening annonce le port lié.
@@ -80,6 +92,12 @@ func (e *desktopEvents) Stopping() { e.emit(eventBare{Event: eventStopping}) }
 // Stopped annonce la fin de la séquence d'arrêt ; clean est la définition de runShutdown.
 func (e *desktopEvents) Stopped(clean bool) {
 	e.emit(eventStoppedBody{Event: eventStopped, Clean: clean})
+}
+
+// Notification annonce une notification de la cloche à montrer comme notification Windows : titre et
+// corps déjà composés dans la langue du joueur, kind le type (journal de la coquille).
+func (e *desktopEvents) Notification(title, body, kind string) {
+	e.emit(eventNotificationBody{Event: eventNotification, Title: title, Body: body, Kind: kind})
 }
 
 // emit écrit v en une ligne JSON, d'un seul Write. Un événement perdu (sortie fermée par la

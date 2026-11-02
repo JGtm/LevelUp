@@ -56,6 +56,7 @@ func TestDesktopEvents_FormesExactes(t *testing.T) {
 	e.Stopping()
 	e.Stopped(true)
 	e.Stopped(false)
+	e.Notification("Synchronisation terminée", "Tes dernières parties sont à jour.", "sync")
 
 	want := []string{
 		`{"event":"listening","port":51234}`,
@@ -67,6 +68,7 @@ func TestDesktopEvents_FormesExactes(t *testing.T) {
 		`{"event":"stopping"}`,
 		`{"event":"stopped","clean":true}`,
 		`{"event":"stopped","clean":false}`,
+		`{"event":"notification","title":"Synchronisation terminée","body":"Tes dernières parties sont à jour.","kind":"sync"}`,
 	}
 	got := lignes(&buf)
 	if len(got) != len(want) {

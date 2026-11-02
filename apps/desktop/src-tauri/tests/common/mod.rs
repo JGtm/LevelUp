@@ -11,6 +11,7 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, Condvar, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
+use levelup_desktop::events::Toast;
 use levelup_desktop::lifecycle::Timeouts;
 use levelup_desktop::logfile::{LogSink, MAX_LOG_BYTES};
 use levelup_desktop::roots::{self, Roots};
@@ -59,6 +60,8 @@ pub enum Call {
     LoadEntry(String),
     Port(u16),
     Exit,
+    /// Une notification que la machine a demande de montrer (L21.b).
+    Notify(Toast),
 }
 
 impl Call {
@@ -142,6 +145,9 @@ impl Host for Recorder {
     }
     fn exit_app(&mut self, _outcome: Outcome) {
         self.push(Call::Exit);
+    }
+    fn notify(&mut self, notice: &Toast) {
+        self.push(Call::Notify(notice.clone()));
     }
 }
 

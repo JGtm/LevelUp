@@ -21,7 +21,7 @@
 
 use std::time::Duration;
 
-use crate::events::SidecarEvent;
+use crate::events::{SidecarEvent, Toast};
 use crate::screen::{FailureKind, Screen};
 
 /// Delai accorde au serveur pour annoncer `ready` (plan, section 6).
@@ -89,6 +89,8 @@ pub enum Action {
     Arm(Timer, Duration),
     Disarm(Timer),
     ExitApp,
+    /// Montrer une notification systeme relayee depuis la cloche (L21.b).
+    Notify(Toast),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -192,6 +194,9 @@ impl Lifecycle {
                 // Arret decide par le serveur lui-meme (signal, route d'arret) : meme ecran que la fermeture.
                 vec![Action::ShowScreen(Screen::Stopping)]
             }
+            // Une notification n'a de sens que pour une application ouverte : avant `ready` il n'y a rien a
+            // montrer, pendant la fermeture ou apres un echec non plus.
+            SidecarEvent::Notification(notice) if self.phase == Phase::Ready => vec![Action::Notify(notice)],
             SidecarEvent::Stopped { clean } => {
                 self.stopped_clean = Some(clean);
                 if self.phase == Phase::Closing {

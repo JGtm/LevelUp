@@ -10,6 +10,7 @@
 //! - [`supervisor`]: la boucle qui relie la machine au processus, aux minuteries et a l'hote.
 //! - [`sidecar`]   : lancement du serveur, environnement, tubes (D-1, A14).
 //! - [`screen`], [`catalogue`], [`render`] : les ecrans embarques et leurs libelles (A4).
+//! - [`native_notice`] : les notifications Windows relayees depuis la cloche (L21.b), decisions pures.
 //! - [`updater`]   : la mise a jour proposee, jamais imposee, installee apres l'arret du serveur (D-16).
 //! - [`update_manual`] : la meme verification, demandee par l'utilisateur depuis « A propos ».
 //! - [`download_watch`] : l'echeance d'inactivite du telechargement de l'installeur.
@@ -23,6 +24,7 @@ pub mod events;
 pub mod lifecycle;
 pub mod linereader;
 pub mod logfile;
+pub mod native_notice;
 pub mod navigation;
 pub mod render;
 pub mod roots;

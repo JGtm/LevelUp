@@ -332,3 +332,56 @@ fn un_serveur_absent_est_une_erreur_de_lancement() {
         "un serveur introuvable doit etre une erreur, pas un ecran qui attend"
     );
 }
+
+/// L21.b : la notification que le serveur ecrit sur stdout arrive a l'hote telle quelle (texte compose
+/// par le serveur), apres l'entree, et sans effet sur le reste du cycle de vie.
+#[test]
+fn une_notification_du_serveur_arrive_a_l_hote_apres_l_entree() {
+    let roots = fresh_roots("notification");
+    let line = r#"{"event":"notification","title":"Sync complete","body":"Your latest matches are up to date.","kind":"sync"}"#;
+    let mut run = launch(&roots, &[("FAKE_EVENTS_AFTER_READY", line)], short_timeouts());
+
+    let calls = run.recorder.wait_for("la notification", |c| {
+        c.iter().any(|call| matches!(call, Call::Notify(_)))
+    });
+    let notice = calls
+        .iter()
+        .find_map(|c| match c {
+            Call::Notify(n) => Some(n.clone()),
+            _ => None,
+        })
+        .expect("notification");
+    assert_eq!(notice.title, "Sync complete");
+    assert_eq!(notice.body, "Your latest matches are up to date.");
+    assert_eq!(notice.kind, "sync");
+    let entry = calls
+        .iter()
+        .position(|c| matches!(c, Call::LoadEntry(_)))
+        .expect("entree");
+    let shown = calls
+        .iter()
+        .position(|c| matches!(c, Call::Notify(_)))
+        .expect("notification");
+    assert!(entry < shown, "la notification vient apres l'entree : {calls:?}");
+
+    let outcome = close_and_finish(&mut run);
+    assert_eq!(outcome.stopped_clean, Some(true));
+    let log = run.log();
+    assert!(log.contains("kind=notification toast_kind=sync"), "{log}");
+    assert!(
+        !log.contains("Your latest matches"),
+        "le texte n'est jamais journalise : {log}"
+    );
+}
+
+/// Une ligne `notification` mal formee (champ manquant) n'est jamais fatale : journalisee, ignoree.
+#[test]
+fn une_notification_mal_formee_est_ignoree_sans_effet() {
+    let roots = fresh_roots("notification-bad");
+    let line = r#"{"event":"notification","title":"t","kind":"sync"}"#;
+    let mut run = launch(&roots, &[("FAKE_EVENTS_AFTER_READY", line)], short_timeouts());
+    run.wait_log("reason=bad_field:body");
+    assert!(!run.recorder.calls().iter().any(|c| matches!(c, Call::Notify(_))));
+    let outcome = close_and_finish(&mut run);
+    assert_eq!(outcome.stopped_clean, Some(true));
+}

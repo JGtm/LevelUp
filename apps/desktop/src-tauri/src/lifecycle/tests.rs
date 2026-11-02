@@ -253,3 +253,40 @@ fn l_entree_n_est_chargee_qu_une_fois_meme_si_ready_est_repete() {
     assert_eq!(m.step(ready(9000)), vec![]);
     assert_eq!(m.step(listening(8123)), vec![Action::AnnouncePort { port: 8123 }]);
 }
+
+fn notification() -> Input {
+    Input::Event(SidecarEvent::Notification(Toast {
+        title: "Synchronisation terminee".into(),
+        body: "Tes dernieres parties sont a jour.".into(),
+        kind: "sync".into(),
+    }))
+}
+
+#[test]
+fn une_notification_du_serveur_pret_est_montree_telle_quelle() {
+    let mut m = machine();
+    m.step(ready(8123));
+    let expected = Toast {
+        title: "Synchronisation terminee".into(),
+        body: "Tes dernieres parties sont a jour.".into(),
+        kind: "sync".into(),
+    };
+    assert_eq!(m.step(notification()), vec![Action::Notify(expected)]);
+}
+
+#[test]
+fn une_notification_hors_application_ouverte_est_ignoree() {
+    // Avant `ready` : rien a montrer.
+    let mut m = machine();
+    assert!(m.step(notification()).is_empty());
+    m.step(listening(8123));
+    assert!(m.step(notification()).is_empty());
+    // Apres un echec, et pendant la fermeture.
+    let mut failed_machine = machine();
+    failed_machine.step(failed("locked"));
+    assert!(failed_machine.step(notification()).is_empty());
+    let mut closing = machine();
+    closing.step(ready(8123));
+    closing.step(Input::CloseRequested);
+    assert!(closing.step(notification()).is_empty());
+}

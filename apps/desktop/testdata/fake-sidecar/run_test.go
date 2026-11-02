@@ -364,3 +364,25 @@ func TestArretNonPropre(t *testing.T) {
 		t.Errorf("code %d, attendu %d", code, exitOK)
 	}
 }
+
+// TestEvenementsApresReady : FAKE_EVENTS_AFTER_READY ecrit ses lignes JSON telles quelles, dans
+// l'ordre, juste apres `ready` ; une ligne qui n'est pas du JSON refuse le lancement.
+func TestEvenementsApresReady(t *testing.T) {
+	lines := `{"event":"notification","title":"t","body":"b","kind":"sync"}|{"event":"shell_settings","close_to_tray":true}`
+	r := launch(t, contractArgs, baseEnv(t, map[string]string{"FAKE_EVENTS_AFTER_READY": lines}))
+	r.waitEvent(t, "shell_settings")
+	events, noise := r.stdout.events(t)
+	if got := strings.Join(names(events), ","); got != "listening,ready,notification,shell_settings" || noise != 0 {
+		t.Errorf("evenements %s (bruit %d)", got, noise)
+	}
+	_ = r.stdin.Close()
+	r.wait(t)
+
+	if code := run(contractArgs, func(k string) string {
+		return map[string]string{
+			"LEVELUP_DESKTOP_SECRET": testSecret, "FAKE_EVENTS_AFTER_READY": "pas du json",
+		}[k]
+	}, "/", strings.NewReader(""), &bytes.Buffer{}, &bytes.Buffer{}); code != exitSetup {
+		t.Errorf("code %d, attendu %d pour une ligne qui n'est pas du JSON", code, exitSetup)
+	}
+}

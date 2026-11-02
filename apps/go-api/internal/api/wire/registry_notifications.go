@@ -15,6 +15,7 @@ import (
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/notifications"
 	"levelup/go-api/internal/notifications/external"
+	"levelup/go-api/internal/notifications/native"
 	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/platform/duckdb"
 )
@@ -73,9 +74,11 @@ func notifServiceFor(pdb *duckdb.PlayerDB, appSettingsPath string) *notification
 		TitleSlug:       pdb.TitleSlug,
 		AppBaseURL:      publicBaseURL(),
 	})
+	// Le relais natif (notifications Windows de l'application de bureau) se branche sur le même point :
+	// inerte tant que le boot du profil desktop n'a pas installé son sink (native.Default().Install).
 	svc := notifications.NewService(repo,
 		notifications.WithWriterAcquirer(acquirer),
-		notifications.WithExternalForwarder(forwarder))
+		notifications.WithExternalForwarder(notifications.Fanout(forwarder, native.Default())))
 	// LoadOrStore évite la race : si un autre goroutine a inséré
 	// entre Load et Store, on retourne celle-là.
 	if existing, loaded := notifServicesByXUID.LoadOrStore(pdb.XUID, svc); loaded {

@@ -41,6 +41,9 @@ getrandom = "0.3"
 url = "2"
 sys-locale = "0.3"
 rfd = { version = "0.15", default-features = false, features = ["common-controls-v6"] }
+# Notifications Windows relayees depuis la cloche (L21.b). La 2.4 est la derniere compatible avec
+# `rust-version = 1.88` ci-dessus ; la resolution suit l'outillage, `Cargo.lock` fait foi.
+tauri-plugin-notification = "2.4"
 
 [profile.release]
 # Binaire plus petit : la coquille ne calcule rien, elle attend.

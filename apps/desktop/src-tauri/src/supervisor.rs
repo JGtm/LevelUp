@@ -13,7 +13,7 @@ use std::sync::mpsc::{self, RecvTimeoutError, Sender};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
-use crate::events::{ParseError, SidecarEvent, parse_line};
+use crate::events::{ParseError, SidecarEvent, Toast, parse_line};
 use crate::lifecycle::{Action, Input, Lifecycle, Timeouts, Timer};
 use crate::linereader::read_line_bounded;
 use crate::logfile::{LogSink, Source};
@@ -47,6 +47,9 @@ pub trait Host: Send + 'static {
     /// Terminer l'application. `outcome` dit comment le serveur s'est arrete : l'hote qui installe une
     /// mise a jour s'en sert pour decider (voir `updater::install_allowed`).
     fn exit_app(&mut self, outcome: Outcome);
+    /// Montrer une notification systeme relayee depuis la cloche ; l'hote decide, selon l'etat de la
+    /// fenetre, s'il la montre ou la retient (`native_notice::deliver`).
+    fn notify(&mut self, notice: &Toast);
 }
 
 pub struct ShellConfig {
@@ -252,6 +255,7 @@ impl Effects<'_> {
                 self.timers.push((timer, Instant::now() + after));
             }
             Action::Disarm(timer) => self.timers.retain(|(t, _)| *t != timer),
+            Action::Notify(notice) => self.host.notify(&notice),
             Action::ExitApp => {
                 log_shell(log, "event=exit_app");
                 let outcome = self.outcome(machine);
@@ -360,5 +364,7 @@ fn describe(event: &SidecarEvent) -> String {
         SidecarEvent::Failed { state } => format!("kind=failed state={state}"),
         SidecarEvent::Stopping => "kind=stopping".into(),
         SidecarEvent::Stopped { clean } => format!("kind=stopped clean={clean}"),
+        // Jamais le texte : seulement le type.
+        SidecarEvent::Notification(notice) => format!("kind=notification toast_kind={}", notice.kind),
     }
 }
