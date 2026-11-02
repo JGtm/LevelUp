@@ -31,7 +31,10 @@ vi.mock('./TopProgressBar', () => ({
   ),
 }))
 vi.mock('@/features/notifications/toastBridge', () => ({ NotificationsToastBridge: () => null }))
-vi.mock('@/features/asset-drawer', () => ({ AssetDrawer: () => null }))
+vi.mock('@/features/asset-drawer', () => ({
+  AssetDrawer: () => <div data-testid="asset-drawer" />,
+  AssetDockedPanel: () => <aside data-testid="asset-docked" />,
+}))
 vi.mock('@/features/feedback-drawer', () => ({ FeedbackDrawer: () => null }))
 
 function setCapabilities(desktop: boolean) {
@@ -56,6 +59,29 @@ describe('AppShell — chrome selon la capacité', () => {
     expect(screen.getByTestId('outlet')).toBeInTheDocument()
     // La barre de progression se pose contre la barre latérale, pas sous une barre haute absente.
     expect(screen.getByTestId('progress')).toHaveAttribute('data-placement', 'left-60 right-0 top-0')
+  })
+
+  it('capacité vraie : le volet des référentiels est un frère du contenu dans la rangée, qui le pousse', () => {
+    setCapabilities(true)
+    renderWithProviders(<AppShell />)
+    const docked = screen.getByTestId('asset-docked')
+    const row = docked.parentElement as HTMLElement
+    // Même rangée horizontale que la barre latérale et le contenu, à droite du contenu : rien ne se superpose.
+    expect(row.className).toContain('flex-row')
+    const kids = Array.from(row.children)
+    expect(kids.indexOf(screen.getByTestId('sidebar-nav'))).toBeLessThan(
+      kids.indexOf(screen.getByTestId('outlet').closest('main')!.parentElement!),
+    )
+    expect(kids.indexOf(screen.getByTestId('outlet').closest('main')!.parentElement!)).toBeLessThan(kids.indexOf(docked))
+    // Le panneau coulissant du site n'est pas monté.
+    expect(screen.queryByTestId('asset-drawer')).not.toBeInTheDocument()
+  })
+
+  it('capacité fausse (site) : panneau coulissant des référentiels, aucun volet ancré', () => {
+    setCapabilities(false)
+    renderWithProviders(<AppShell />)
+    expect(screen.getByTestId('asset-drawer')).toBeInTheDocument()
+    expect(screen.queryByTestId('asset-docked')).not.toBeInTheDocument()
   })
 
   it('capacité fausse (site) : barre haute et pied de page, aucune barre latérale', () => {

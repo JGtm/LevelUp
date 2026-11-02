@@ -4,8 +4,9 @@
  * Deux dispositions, choisies par la capacité `can_use_compact_chrome` de /bootstrap (ADR 0044 :
  * jamais le nom du profil) :
  * - site : NavL1 (barre haute, h-12) au-dessus de la zone de contenu, pied de page dans le flux ;
- * - application de bureau : barre latérale (SidebarNav) à gauche, zone de contenu à droite, sans
- *   pied de page (la fenêtre « À propos » en porte le contenu).
+ * - application de bureau : barre latérale (SidebarNav) à gauche, zone de contenu au centre, volet
+ *   des référentiels ancré à droite (il pousse le contenu, rien ne se superpose), sans pied de page
+ *   (la fenêtre « À propos » en porte le contenu).
  *
  * La NavL2 (bandeau contextuel Stats/Escouade) et la KPIBar sont gérées
  * au niveau du layout joueur ($playerSlug.tsx).
@@ -26,7 +27,7 @@ import { ErrorBoundary } from './ErrorBoundary'
 import { AppFooter } from './AppFooter'
 import { piedDePageAffiche } from './piedDePage'
 import { NotificationsToastBridge } from '@/features/notifications/toastBridge'
-import { AssetDrawer } from '@/features/asset-drawer'
+import { AssetDockedPanel, AssetDrawer } from '@/features/asset-drawer'
 import { FeedbackDrawer } from '@/features/feedback-drawer'
 import { useSettingsDraftStore } from '@/stores/settingsDraftStore'
 
@@ -74,8 +75,9 @@ function ShellOverlays({ compact }: { compact: boolean }) {
       {/* Bridge invisible : observe la query unread et déclenche les toasts */}
       <NotificationsToastBridge />
 
-      {/* Asset Drawer — panneau latéral fixe, toujours monté, état géré par le store */}
-      <AssetDrawer />
+      {/* Référentiels du site : panneau latéral fixe, toujours monté, état géré par le store. Le bureau
+          a son volet ancré (rendu par la disposition), pas ce panneau superposé. */}
+      {!compact && <AssetDrawer />}
 
       {/* Feedback Drawer — second panneau latéral sous AssetDrawer (mini-tab + form) */}
       <FeedbackDrawer />
@@ -123,6 +125,7 @@ export function AppShell() {
           </div>
           <ShellMain footer={false} />
         </div>
+        <AssetDockedPanel />
         <ShellOverlays compact />
       </div>
     )

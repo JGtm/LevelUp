@@ -5,13 +5,17 @@
  * mobile (`NavSectionList`, `useVisibleNavSections`), toujours dépliée. De haut en bas : marque,
  * sélecteur de jeu, joueur actif et cloche, sections, puis le pied de barre — Aide, Paramètres,
  * bascule de thème, « À propos » (qui porte tout ce que le pied de page du site portait) et la
- * version de l'application.
+ * version de l'application. Le pied porte aussi les deux panneaux qui remplacent les mini-onglets
+ * du site : les référentiels (volet ancré, raccourci Ctrl+Maj+L) et le signalement d'un problème.
  */
 import { Link, useRouterState } from '@tanstack/react-router'
 import { useState, type ReactNode } from 'react'
+import { ASSET_PANEL_ID, ASSET_PANEL_TRIGGER_ID, useAssetDrawerStore } from '@/features/asset-drawer'
+import { useFeedbackDrawerStore } from '@/features/feedback-drawer'
 import { NotificationsBell } from '@/features/notifications/NotificationsBell'
 import { APP_NAME } from '@/lib/appBrand'
 import { formatMessage } from '@/lib/i18n/format'
+import { assetDrawerManifest } from '@/lib/i18n/generated/asset_drawer'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 import { useCanWritePlayer } from '@/lib/players/playerWriteAccess'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -46,6 +50,9 @@ export function SidebarNav() {
   const sections = useVisibleNavSections()
   const handlePlayerChange = usePlayerSwitch()
   const [aboutOpen, setAboutOpen] = useState(false)
+  const assetsOpen = useAssetDrawerStore((s) => s.isOpen)
+  const toggleAssets = useAssetDrawerStore((s) => s.toggle)
+  const openFeedback = useFeedbackDrawerStore((s) => s.open)
   const playerSlug = currentPlayer?.player_slug ?? ''
   // Joueur courant = profil d'un ami : ses notifications ne sont pas celles de la session, pas de cloche.
   const canWriteCurrent = useCanWritePlayer(playerSlug)
@@ -122,6 +129,20 @@ export function SidebarNav() {
         >
           {t('common.shell.nav_help')}
         </Link>
+        <button
+          type="button"
+          id={ASSET_PANEL_TRIGGER_ID}
+          onClick={toggleAssets}
+          aria-expanded={assetsOpen}
+          aria-controls={assetsOpen ? ASSET_PANEL_ID : undefined}
+          title={formatMessage(assetDrawerManifest, 'asset_drawer.trigger.title', locale)}
+          className={footItemClass(assetsOpen)}
+        >
+          {formatMessage(assetDrawerManifest, 'asset_drawer.mini_tab', locale)}
+        </button>
+        <button type="button" onClick={openFeedback} className={footItemClass(false)}>
+          {t('common.shell.nav_feedback')}
+        </button>
         <Link
           to="/settings"
           search={{ tab: 'appearance' }}
