@@ -143,6 +143,11 @@ function useRailMenu() {
   }
 
   const onTriggerKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
+    // Menu épinglé à la souris, focus resté sur le bouton : Échap le ferme comme au clavier dans le menu.
+    if (e.key === 'Escape' && open) {
+      close()
+      return
+    }
     if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
       e.preventDefault()
       openFromKeyboard()

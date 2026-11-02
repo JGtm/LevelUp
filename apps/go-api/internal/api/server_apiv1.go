@@ -1196,6 +1196,10 @@ type apiV1Inputs struct {
 	humaSharedConfig  huma.Config
 }
 
+// inspectMediaTooling : la sonde de l'outillage média du démarrage ; variable pour qu'un test pose un
+// verdict (ex. sans encodeur H.264) sans dépendre du ffmpeg du poste.
+var inspectMediaTooling = ops.InspectMediaTooling
+
 //nolint:funlen,gocyclo // phase de construction DI + montage diag racine : séquentiel.
 func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 	serverCtx := in.serverCtx
@@ -1607,7 +1611,7 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 	// disponibilité observable en prod malgré LEVELUP_LOG_LEVEL=warn qui masque
 	// la ligne INFO du démarrage.
 	mediaCtx, mediaCancel := context.WithTimeout(serverCtx, 5*time.Second)
-	mediaStatus := ops.InspectMediaTooling(mediaCtx).ToHealthStatus()
+	mediaStatus := inspectMediaTooling(mediaCtx).ToHealthStatus()
 	mediaCancel()
 	if bootSvc != nil {
 		bootSvc.WithMediaH264Missing(mediaStatus.H264EncoderMissing)

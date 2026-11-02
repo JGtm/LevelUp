@@ -3,11 +3,11 @@
  * joueur actif et cloche, sections, pied de barre (`SidebarFooter`). Les sections, le joueur et les
  * actions viennent de `SidebarNav`, qui choisit entre cette barre et `SidebarRail`.
  */
-import { Link } from '@tanstack/react-router'
 import { NotificationsBell } from '@/features/notifications/NotificationsBell'
 import { APP_NAME } from '@/lib/appBrand'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
+import { HomeLink } from './HomeLink'
 import { NavSectionList } from './NavSectionList'
 import { PlayerSwitcher } from './PlayerSwitcher'
 import { SidebarFooter } from './SidebarFooter'
@@ -33,6 +33,7 @@ export function SidebarPanel({
   onPlayerChange,
   appVersion,
   onCollapse,
+  onOpenAbout,
 }: SidebarPanelProps) {
   const t = (key: CommonManifestKey, vars?: Record<string, unknown>) =>
     formatMessage(commonManifest, key, locale, vars)
@@ -51,20 +52,9 @@ export function SidebarPanel({
       aria-label={t('common.shell.nav_main_aria')}
     >
       <div className="shrink-0 border-b border-border px-2 py-2">
-        {playerSlug ? (
-          <Link
-            to="/{-$lang}/t/$titleSlug/players/$playerSlug/home"
-            params={{ titleSlug, playerSlug }}
-            className={logoClass}
-            aria-label={t('common.shell.logo_aria')}
-          >
-            {logo}
-          </Link>
-        ) : (
-          <Link to="/{-$lang}" className={logoClass} aria-label={t('common.shell.logo_aria')}>
-            {logo}
-          </Link>
-        )}
+        <HomeLink locale={locale} titleSlug={titleSlug} playerSlug={playerSlug} className={logoClass}>
+          {logo}
+        </HomeLink>
         {/* Sélecteur de jeu : s'auto-masque en mono-titre. */}
         <TitleSwitcher />
       </div>
@@ -96,7 +86,7 @@ export function SidebarPanel({
         )}
       </nav>
 
-      <SidebarFooter pathname={pathname} locale={locale} appVersion={appVersion} onCollapse={onCollapse} />
+      <SidebarFooter pathname={pathname} locale={locale} appVersion={appVersion} onCollapse={onCollapse} onOpenAbout={onOpenAbout} />
     </aside>
   )
 }

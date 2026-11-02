@@ -66,15 +66,16 @@ type BrowserLoginBackend interface {
 	AcquireRTA(ctx context.Context, accessToken string) (*auth_platform.XSTSResult, error)
 }
 
-// microsoftBackend : le vrai Microsoft, par la façade d'exploitation de platform/auth.
+// microsoftBackend : le vrai Microsoft, par la façade d'exploitation de platform/auth, en client PUBLIC
+// de l'application partagée (ADR 0045 D-19) : jamais le client de l'environnement, donc jamais de secret.
 type microsoftBackend struct{}
 
 func (microsoftBackend) AuthorizeURL(redirectURI, state, challenge string) string {
-	return auth_platform.BuildAuthorizeURL(redirectURI, state, challenge)
+	return auth_platform.BuildAuthorizeURLPublic(redirectURI, state, challenge)
 }
 
 func (microsoftBackend) ExchangeCode(ctx context.Context, code, redirectURI, verifier string) (*auth_platform.AuthCodeResult, error) {
-	return auth_platform.ExchangeAuthorizationCode(ctx, code, redirectURI, verifier)
+	return auth_platform.ExchangeAuthorizationCodePublic(ctx, code, redirectURI, verifier)
 }
 
 func (microsoftBackend) AcquireRTA(ctx context.Context, accessToken string) (*auth_platform.XSTSResult, error) {

@@ -30,10 +30,11 @@ import type { Locale } from '@/lib/i18n/locale'
 import { routeTemplateSuffix, playerRelativePath } from '@/lib/title-routing'
 import { buildTitleSwitcherEntries, useAppShellStore } from '@/stores/appShellStore'
 import { useSettingsDraftStore } from '@/stores/settingsDraftStore'
-import { AboutDialog } from './AboutDialog'
+import { HomeLink } from './HomeLink'
 import type { L1Section } from './navL1Sections'
 import { RailMenu, RailTip } from './RailPopover'
 import { playerInitial, titleInitials } from './railLabels'
+import { SIDEBAR_TOGGLE_ATTR } from './sidebarCollapse'
 import { SIDEBAR_SHORTCUT_LABEL, useSidebarFooterActions } from './sidebarFooterActions'
 import { SectionIcon } from './sidebarIcons'
 import { useSelectTitle } from './useSelectTitle'
@@ -67,6 +68,8 @@ export interface SidebarRailProps {
   onPlayerChange: (playerSlug: string) => void
   /** Déplie la barre. */
   onExpand: () => void
+  /** Ouvre la fenêtre « À propos » (tenue par `SidebarNav`). */
+  onOpenAbout: () => void
 }
 
 function RailTitleMenu({ locale }: { locale: Locale }) {
@@ -222,9 +225,9 @@ function RailButton({ label, tip, active = false, children, ...rest }: RailButto
   )
 }
 
-function RailFooter({ pathname, locale, onExpand }: Pick<SidebarRailProps, 'pathname' | 'locale' | 'onExpand'>) {
+function RailFooter({ pathname, locale, onExpand, onOpenAbout }: Pick<SidebarRailProps, 'pathname' | 'locale' | 'onExpand' | 'onOpenAbout'>) {
   const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
-  const { aboutOpen, setAboutOpen, assetsOpen, toggleAssets, openFeedback } = useSidebarFooterActions()
+  const { assetsOpen, toggleAssets, openFeedback } = useSidebarFooterActions()
   const theme = useSettingsDraftStore((s) => s.localUiPrefs.theme)
   const toggleTheme = useSettingsDraftStore((s) => s.toggleTheme)
   const helpLabel = t('common.shell.nav_help')
@@ -234,64 +237,62 @@ function RailFooter({ pathname, locale, onExpand }: Pick<SidebarRailProps, 'path
   const expandLabel = t('common.shell.sidebar_expand')
 
   return (
-    <>
-      <div
-        className="flex shrink-0 flex-col items-center gap-1 border-t border-border py-2"
-        role="group"
-        aria-label={t('common.shell.sidebar_footer_aria')}
+    <div
+      className="flex shrink-0 flex-col items-center gap-1 border-t border-border py-2"
+      role="group"
+      aria-label={t('common.shell.sidebar_footer_aria')}
+    >
+      <RailTip label={helpLabel}>
+        <Link
+          to="/help"
+          search={{ tab: 'glossary' }}
+          aria-label={helpLabel}
+          aria-current={helpActive ? 'page' : undefined}
+          className={railItemClass(helpActive)}
+        >
+          <BookOpenTextIcon className={ICON_CLASS} />
+        </Link>
+      </RailTip>
+      <RailButton
+        label={formatMessage(assetDrawerManifest, 'asset_drawer.mini_tab', locale)}
+        active={assetsOpen}
+        id={ASSET_PANEL_TRIGGER_ID}
+        onClick={toggleAssets}
+        aria-expanded={assetsOpen}
+        aria-controls={assetsOpen ? ASSET_PANEL_ID : undefined}
       >
-        <RailTip label={helpLabel}>
-          <Link
-            to="/help"
-            search={{ tab: 'glossary' }}
-            aria-label={helpLabel}
-            aria-current={helpActive ? 'page' : undefined}
-            className={railItemClass(helpActive)}
-          >
-            <BookOpenTextIcon className={ICON_CLASS} />
-          </Link>
-        </RailTip>
-        <RailButton
-          label={formatMessage(assetDrawerManifest, 'asset_drawer.mini_tab', locale)}
-          active={assetsOpen}
-          id={ASSET_PANEL_TRIGGER_ID}
-          onClick={toggleAssets}
-          aria-expanded={assetsOpen}
-          aria-controls={assetsOpen ? ASSET_PANEL_ID : undefined}
+        <BookOpenIcon className={ICON_CLASS} />
+      </RailButton>
+      <RailButton label={t('common.shell.nav_feedback')} onClick={openFeedback}>
+        <BugIcon className={ICON_CLASS} />
+      </RailButton>
+      <RailTip label={settingsLabel}>
+        <Link
+          to="/settings"
+          search={{ tab: 'appearance' }}
+          aria-label={settingsLabel}
+          aria-current={settingsActive ? 'page' : undefined}
+          className={railItemClass(settingsActive)}
         >
-          <BookOpenIcon className={ICON_CLASS} />
-        </RailButton>
-        <RailButton label={t('common.shell.nav_feedback')} onClick={openFeedback}>
-          <BugIcon className={ICON_CLASS} />
-        </RailButton>
-        <RailTip label={settingsLabel}>
-          <Link
-            to="/settings"
-            search={{ tab: 'appearance' }}
-            aria-label={settingsLabel}
-            aria-current={settingsActive ? 'page' : undefined}
-            className={railItemClass(settingsActive)}
-          >
-            <SettingsIcon className={ICON_CLASS} />
-          </Link>
-        </RailTip>
-        <RailButton label={t('common.shell.nav_theme')} role="switch" aria-checked={theme === 'dark'} onClick={toggleTheme}>
-          <SunMoonIcon className={ICON_CLASS} />
-        </RailButton>
-        <RailButton label={t('common.shell.nav_about')} onClick={() => setAboutOpen(true)}>
-          <InfoIcon className={ICON_CLASS} />
-        </RailButton>
-        <RailButton
-          label={expandLabel}
-          tip={`${expandLabel} (${SIDEBAR_SHORTCUT_LABEL})`}
-          onClick={onExpand}
-          aria-keyshortcuts="Control+B"
-        >
-          <PanelLeftOpenIcon className={ICON_CLASS} />
-        </RailButton>
-      </div>
-      <AboutDialog open={aboutOpen} onClose={() => setAboutOpen(false)} />
-    </>
+          <SettingsIcon className={ICON_CLASS} />
+        </Link>
+      </RailTip>
+      <RailButton label={t('common.shell.nav_theme')} role="switch" aria-checked={theme === 'dark'} onClick={toggleTheme}>
+        <SunMoonIcon className={ICON_CLASS} />
+      </RailButton>
+      <RailButton label={t('common.shell.nav_about')} onClick={onOpenAbout}>
+        <InfoIcon className={ICON_CLASS} />
+      </RailButton>
+      <RailButton
+        label={expandLabel}
+        tip={`${expandLabel} (${SIDEBAR_SHORTCUT_LABEL})`}
+        onClick={onExpand}
+        {...{ [SIDEBAR_TOGGLE_ATTR]: '' }}
+        aria-keyshortcuts="Control+B"
+      >
+        <PanelLeftOpenIcon className={ICON_CLASS} />
+      </RailButton>
+    </div>
   )
 }
 
@@ -309,20 +310,9 @@ export function SidebarRail(props: SidebarRailProps) {
     >
       <div className="flex shrink-0 flex-col items-center gap-1 border-b border-border py-2">
         <RailTip label={APP_NAME}>
-          {playerSlug ? (
-            <Link
-              to="/{-$lang}/t/$titleSlug/players/$playerSlug/home"
-              params={{ titleSlug, playerSlug }}
-              className={logoClass}
-              aria-label={t('common.shell.logo_aria')}
-            >
-              {logo}
-            </Link>
-          ) : (
-            <Link to="/{-$lang}" className={logoClass} aria-label={t('common.shell.logo_aria')}>
-              {logo}
-            </Link>
-          )}
+          <HomeLink locale={locale} titleSlug={titleSlug} playerSlug={playerSlug} className={logoClass}>
+            {logo}
+          </HomeLink>
         </RailTip>
         <RailTitleMenu locale={locale} />
       </div>
@@ -354,7 +344,7 @@ export function SidebarRail(props: SidebarRailProps) {
         )}
       </nav>
 
-      <RailFooter pathname={pathname} locale={locale} onExpand={props.onExpand} />
+      <RailFooter pathname={pathname} locale={locale} onExpand={props.onExpand} onOpenAbout={props.onOpenAbout} />
     </aside>
   )
 }

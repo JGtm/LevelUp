@@ -314,7 +314,10 @@ against the AGPL of the repository; this ADR records the question, it does not s
 `LoginViaBrowser` (true in `desktop` only, published as `can_login_via_browser`), the setup assistant offers "Sign in with
 Microsoft": the page calls `GET /api/v1/auth/xbox/login` (with the shell cookie), receives `{attempt_id, authorize_url}` and
 opens the URL by a `target="_blank"` link, which the shell sends to the default browser (D-13: the window never shows the
-Microsoft page). The flow is the authorization code with PKCE S256 of the shared public client (D-19), the redirect URI is
+Microsoft page). The flow is the authorization code with PKCE S256 of the shared public client (D-19), **built explicitly**
+(`platform/auth` `ExchangeAuthorizationCodePublic` and `BuildAuthorizeURLPublic`: the fixed client identifier of the shared
+application, no secret, never read from the environment, so that a repository `.env.local` loaded by a desktop server cannot turn
+the `/token` request into a confidential client's), the redirect URI is
 `http://localhost:<bound port>/auth/xbox/callback` (the user added `http://localhost/auth/xbox/callback` to the Azure
 application; the loopback exemption accepts any port, and the name is `localhost`, not the numeric address).
 

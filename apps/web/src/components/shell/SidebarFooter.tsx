@@ -5,8 +5,8 @@
  * bascule de thème, « À propos » (qui porte tout ce que le pied de page du site portait), version
  * de l'application et bouton de repliement de la barre (Ctrl+B). Le chemin courant, la langue et la
  * version viennent du parent ; l'état des deux panneaux (référentiels, signalement) est lu dans leurs
- * stores de feature, l'ouverture de « À propos » reste locale (`useSidebarFooterActions`, partagé avec la
- * barre repliée).
+ * stores de feature (`useSidebarFooterActions`, partagé avec la barre repliée) ; « À propos » est ouvert par
+ * `onOpenAbout`, son état et sa fenêtre étant tenus par `SidebarNav`.
  */
 import { Link } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
@@ -24,7 +24,7 @@ import {
   SettingsIcon,
   SunMoonIcon,
 } from '@/components/icons/lucide'
-import { AboutDialog } from './AboutDialog'
+import { SIDEBAR_TOGGLE_ATTR } from './sidebarCollapse'
 import { SIDEBAR_SHORTCUT_LABEL, useSidebarFooterActions } from './sidebarFooterActions'
 import { ThemeToggle } from './ThemeToggle'
 
@@ -48,83 +48,82 @@ export interface SidebarFooterProps {
   appVersion: string
   /** Replie la barre en icônes. */
   onCollapse: () => void
+  /** Ouvre la fenêtre « À propos ». */
+  onOpenAbout: () => void
 }
 
-export function SidebarFooter({ pathname, locale, appVersion, onCollapse }: SidebarFooterProps) {
+export function SidebarFooter({ pathname, locale, appVersion, onCollapse, onOpenAbout }: SidebarFooterProps) {
   const t = (key: CommonManifestKey, vars?: Record<string, unknown>) =>
     formatMessage(commonManifest, key, locale, vars)
-  const { aboutOpen, setAboutOpen, assetsOpen, toggleAssets, openFeedback } = useSidebarFooterActions()
+  const { assetsOpen, toggleAssets, openFeedback } = useSidebarFooterActions()
 
   return (
-    <>
-      <div
-        className="flex shrink-0 flex-col gap-0.5 border-t border-border p-2"
-        role="group"
-        aria-label={t('common.shell.sidebar_footer_aria')}
+    <div
+      className="flex shrink-0 flex-col gap-0.5 border-t border-border p-2"
+      role="group"
+      aria-label={t('common.shell.sidebar_footer_aria')}
+    >
+      <Link
+        to="/help"
+        search={{ tab: 'glossary' }}
+        className={footItemClass(pathname.startsWith('/help'))}
+        aria-current={pathname.startsWith('/help') ? 'page' : undefined}
       >
-        <Link
-          to="/help"
-          search={{ tab: 'glossary' }}
-          className={footItemClass(pathname.startsWith('/help'))}
-          aria-current={pathname.startsWith('/help') ? 'page' : undefined}
-        >
-          <BookOpenTextIcon className={ICON_CLASS} />
-          {t('common.shell.nav_help')}
-        </Link>
-        <button
-          type="button"
-          id={ASSET_PANEL_TRIGGER_ID}
-          onClick={toggleAssets}
-          aria-expanded={assetsOpen}
-          aria-controls={assetsOpen ? ASSET_PANEL_ID : undefined}
-          title={formatMessage(assetDrawerManifest, 'asset_drawer.trigger.title', locale)}
-          className={footItemClass(assetsOpen)}
-        >
-          <BookOpenIcon className={ICON_CLASS} />
-          {formatMessage(assetDrawerManifest, 'asset_drawer.mini_tab', locale)}
-        </button>
-        <button type="button" onClick={openFeedback} className={footItemClass(false)}>
-          <BugIcon className={ICON_CLASS} />
-          {t('common.shell.nav_feedback')}
-        </button>
-        <Link
-          to="/settings"
-          search={{ tab: 'appearance' }}
-          className={footItemClass(pathname.startsWith('/settings'))}
-          aria-current={pathname.startsWith('/settings') ? 'page' : undefined}
-        >
-          <SettingsIcon className={ICON_CLASS} />
-          {t('common.shell.nav_settings')}
-        </Link>
-        <FootRow>
-          <span className="flex items-center gap-2 text-sm text-sidebar-foreground/70">
-            <SunMoonIcon className={ICON_CLASS} />
-            {t('common.shell.nav_theme')}
-          </span>
-          <ThemeToggle />
-        </FootRow>
-        <button type="button" onClick={() => setAboutOpen(true)} className={footItemClass(false)}>
-          <InfoIcon className={ICON_CLASS} />
-          {t('common.shell.nav_about')}
-        </button>
-        <button
-          type="button"
-          onClick={onCollapse}
-          title={`${t('common.shell.sidebar_collapse')} (${SIDEBAR_SHORTCUT_LABEL})`}
-          aria-keyshortcuts="Control+B"
-          className={footItemClass(false)}
-        >
-          <PanelLeftCloseIcon className={ICON_CLASS} />
-          {t('common.shell.sidebar_collapse')}
-        </button>
-        {appVersion && (
-          <p className="px-3 pt-1 font-mono text-xs text-sidebar-foreground/60" data-testid="sidebar-version">
-            {t('common.shell.sidebar_version', { version: appVersion })}
-          </p>
-        )}
-      </div>
-
-      <AboutDialog open={aboutOpen} onClose={() => setAboutOpen(false)} />
-    </>
+        <BookOpenTextIcon className={ICON_CLASS} />
+        {t('common.shell.nav_help')}
+      </Link>
+      <button
+        type="button"
+        id={ASSET_PANEL_TRIGGER_ID}
+        onClick={toggleAssets}
+        aria-expanded={assetsOpen}
+        aria-controls={assetsOpen ? ASSET_PANEL_ID : undefined}
+        title={formatMessage(assetDrawerManifest, 'asset_drawer.trigger.title', locale)}
+        className={footItemClass(assetsOpen)}
+      >
+        <BookOpenIcon className={ICON_CLASS} />
+        {formatMessage(assetDrawerManifest, 'asset_drawer.mini_tab', locale)}
+      </button>
+      <button type="button" onClick={openFeedback} className={footItemClass(false)}>
+        <BugIcon className={ICON_CLASS} />
+        {t('common.shell.nav_feedback')}
+      </button>
+      <Link
+        to="/settings"
+        search={{ tab: 'appearance' }}
+        className={footItemClass(pathname.startsWith('/settings'))}
+        aria-current={pathname.startsWith('/settings') ? 'page' : undefined}
+      >
+        <SettingsIcon className={ICON_CLASS} />
+        {t('common.shell.nav_settings')}
+      </Link>
+      <FootRow>
+        <span className="flex items-center gap-2 text-sm text-sidebar-foreground/70">
+          <SunMoonIcon className={ICON_CLASS} />
+          {t('common.shell.nav_theme')}
+        </span>
+        <ThemeToggle />
+      </FootRow>
+      <button type="button" onClick={onOpenAbout} className={footItemClass(false)}>
+        <InfoIcon className={ICON_CLASS} />
+        {t('common.shell.nav_about')}
+      </button>
+      <button
+        type="button"
+        onClick={onCollapse}
+        {...{ [SIDEBAR_TOGGLE_ATTR]: '' }}
+        title={`${t('common.shell.sidebar_collapse')} (${SIDEBAR_SHORTCUT_LABEL})`}
+        aria-keyshortcuts="Control+B"
+        className={footItemClass(false)}
+      >
+        <PanelLeftCloseIcon className={ICON_CLASS} />
+        {t('common.shell.sidebar_collapse')}
+      </button>
+      {appVersion && (
+        <p className="px-3 pt-1 font-mono text-xs text-sidebar-foreground/60" data-testid="sidebar-version">
+          {t('common.shell.sidebar_version', { version: appVersion })}
+        </p>
+      )}
+    </div>
   )
 }

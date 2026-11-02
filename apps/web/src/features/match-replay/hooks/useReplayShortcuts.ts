@@ -26,6 +26,7 @@
  * double pas : sur la frise focalisée, ←/→ ferait NOTRE saut PLUS le pas natif du champ.
  */
 import { useEffect, useRef } from 'react'
+import { isEditableTarget } from '@/lib/dom/editableTarget'
 
 /**
  * L'ATTRIBUT QUI REND SA FRAPPE À LA FRISE. Il est posé par `ReplayTimelineTracks` sur le seul
@@ -138,9 +139,7 @@ export function isTypingTarget(target: EventTarget | null): boolean {
   // les flèches doivent rester natives. `hasAttribute` est appelé en optionnel : la cible d'un
   // événement clavier peut être `window` ou `document`, qui n'ont pas de méthode d'attribut.
   if (el.hasAttribute?.(TIMELINE_SHORTCUT_ATTR)) return false
-  const tag = el.tagName
-  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true
-  return el.isContentEditable === true
+  return isEditableTarget(el)
 }
 
 export function useReplayShortcuts(h: ReplayShortcutHandlers): void {

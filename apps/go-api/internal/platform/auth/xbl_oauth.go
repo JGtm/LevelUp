@@ -58,9 +58,14 @@ func ClassifyAuthError(err error) AuthErrorClass { return xblauth.ClassifyAuthEr
 // oauthClient assemble ce que les échanges OAuth de la brique reçoivent : le client Azure résolu
 // (environnement), les adresses /token et le Doer.
 func oauthClient(doer haloapi.Doer) xblauth.OAuth {
+	return oauthClientFor(doer, ResolveAzureOAuthClient().versXBL())
+}
+
+// oauthClientFor assemble les échanges OAuth de la brique pour le client Azure az.
+func oauthClientFor(doer haloapi.Doer, az xblauth.ClientAzure) xblauth.OAuth {
 	return xblauth.OAuth{
 		Doer:     doer,
-		Azure:    ResolveAzureOAuthClient().versXBL(),
+		Azure:    az,
 		URLAzure: msalTokenURL,
 		URLNatif: msaTokenURL,
 	}
@@ -135,3 +140,25 @@ func BuildAuthorizeURL(redirectURI, state, codeChallenge string) string {
 // GeneratePKCE génère un code_verifier et son code_challenge S256 (RFC 7636).
 // Retourne (codeVerifier, codeChallenge, error).
 func GeneratePKCE() (string, string, error) { return xblauth.GeneratePKCE() }
+
+// publicOAuthClient : le client Azure PUBLIC de l'application partagée (ADR 0045 D-19, D-22) :
+// identifiant fixe (celui du code d'appareil, DeviceFlowClientID), aucun secret. Ne lit ni
+// LEVELUP_OAUTH_CLIENT_ID ni le secret Azure de l'environnement : un `.env.local` de dépôt chargé par un
+// serveur de bureau ne doit jamais faire d'une requête /token celle d'un client confidentiel.
+func publicOAuthClient() xblauth.ClientAzure {
+	return xblauth.ClientAzure{ID: DeviceFlowClientID(), Autorite: MSALAuthority, Scopes: XboxScopes}
+}
+
+// ExchangeAuthorizationCodePublic échange un code d'autorisation (PKCE) du client PUBLIC de
+// l'application partagée : jamais de client_secret, quel que soit l'environnement. Flux de la
+// connexion par le navigateur du poste de bureau.
+func ExchangeAuthorizationCodePublic(ctx context.Context, code, redirectURI, codeVerifier string) (*AuthCodeResult, error) {
+	doer := &http.Client{Timeout: oauthTimeout}
+	return oauthClientFor(doer, publicOAuthClient()).ExchangeAuthorizationCode(ctx, code, redirectURI, codeVerifier)
+}
+
+// BuildAuthorizeURLPublic construit l'adresse /authorize du client PUBLIC de l'application partagée
+// (identifiant fixe, voir publicOAuthClient).
+func BuildAuthorizeURLPublic(redirectURI, state, codeChallenge string) string {
+	return xblauth.BuildAuthorizeURL(publicOAuthClient(), redirectURI, state, codeChallenge)
+}

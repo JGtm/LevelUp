@@ -9,9 +9,11 @@
  * Paramètres, bascule de thème, « À propos », version, et les deux panneaux qui remplacent les
  * mini-onglets du site : référentiels et signalement d'un problème).
  */
+import { useState } from 'react'
 import { useRouterState } from '@tanstack/react-router'
 import { useCanWritePlayer } from '@/lib/players/playerWriteAccess'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { AboutDialog } from './AboutDialog'
 import { SidebarPanel } from './SidebarPanel'
 import { SidebarRail } from './SidebarRail'
 import { useSidebarCollapse } from './sidebarCollapse'
@@ -31,6 +33,9 @@ export function SidebarNav() {
   // Joueur courant = profil d'un ami : ses notifications ne sont pas celles de la session, pas de cloche.
   const canWriteCurrent = useCanWritePlayer(playerSlug)
   const { collapsed, toggle } = useSidebarCollapse()
+  // « À propos » est tenu ICI : la barre dépliée et le rail sont deux composants, remontés au
+  // basculement (Ctrl+B, fenêtre élargie ou rétrécie) ; un état local au pied de barre fermerait la fenêtre.
+  const [aboutOpen, setAboutOpen] = useState(false)
 
   const shared = {
     sections,
@@ -42,10 +47,16 @@ export function SidebarNav() {
     availablePlayers,
     canWriteCurrent,
     onPlayerChange: handlePlayerChange,
+    onOpenAbout: () => setAboutOpen(true),
   }
-  return collapsed ? (
-    <SidebarRail {...shared} onExpand={toggle} />
-  ) : (
-    <SidebarPanel {...shared} appVersion={appVersion} onCollapse={toggle} />
+  return (
+    <>
+      {collapsed ? (
+        <SidebarRail {...shared} onExpand={toggle} />
+      ) : (
+        <SidebarPanel {...shared} appVersion={appVersion} onCollapse={toggle} />
+      )}
+      <AboutDialog open={aboutOpen} onClose={() => setAboutOpen(false)} />
+    </>
   )
 }

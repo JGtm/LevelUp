@@ -7,6 +7,7 @@
  */
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useSidebarWidthStore } from '@/lib/layout/sidebarWidth'
 import { formatMessage } from '@/lib/i18n/format'
 import { assetDrawerManifest } from '@/lib/i18n/generated/asset_drawer'
 import { useAssetDrawerStore } from './assetDrawer.store'
@@ -20,6 +21,7 @@ export function AssetDockedPanel() {
   const locale = useAppShellStore((s) => s.locale)
   const { isOpen, panelWidth, focusToken } = useAssetDrawerStore()
   const viewport = useViewportWidth()
+  const sidebarWidth = useSidebarWidthStore((s) => s.width)
   const panelRef = useRef<HTMLElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
@@ -34,8 +36,8 @@ export function AssetDockedPanel() {
 
   if (!isOpen) return null
 
-  const width = clampPanelWidth(panelWidth, viewport)
-  const max = maxPanelWidth(viewport)
+  const width = clampPanelWidth(panelWidth, viewport, sidebarWidth)
+  const max = maxPanelWidth(viewport, sidebarWidth)
 
   function onPanelKeyDown(e: KeyboardEvent<HTMLElement>) {
     if (e.key === 'Escape') {

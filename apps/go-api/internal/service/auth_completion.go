@@ -38,6 +38,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/auth"
+	"levelup/go-api/internal/platform/auth/tokencache"
 )
 
 const (
@@ -192,7 +193,9 @@ func (c *AuthCompletion) tokensFromAttempt(attempt *auth.Attempt) *auth.UserToke
 // write fait l'Upsert. Upsert remplace le fichier ENTIER (ADR 0023 : source unique par
 // xuid) : le refresh token durable déjà semé est préservé quand CE flux n'en porte pas,
 // sinon une connexion sans RT effacerait le credential existant. Sous WithLocalPoolGrant,
-// un jeton de rafraîchissement sans décision de mise en commun reçoit l'accord local.
+// un jeton de rafraîchissement sans décision de mise en commun reçoit l'accord local. Après
+// chaque écriture réussie (Persist, CompleteForTrackedProfile, SeedCredentials, code d'appareil
+// comme navigateur), le cache process des HaloTokens du xuid est purgé.
 func (c *AuthCompletion) write(tokens *auth.UserTokens) error {
 	if c.store == nil {
 		return errors.New("auth_completion: magasin de jetons absent")
@@ -212,7 +215,14 @@ func (c *AuthCompletion) write(tokens *auth.UserTokens) error {
 			Granted: true, DecidedAt: c.now().UTC(), Basis: auth.PoolSharingBasisDesktopSingleUser,
 		}
 	}
-	return c.store.Upsert(tokens)
+	if err := c.store.Upsert(tokens); err != nil {
+		return err
+	}
+	// Nouvelle connexion = nouvelle chaîne d'authentification : le cache process des HaloTokens
+	// (TTL 50 min) servirait encore l'ancienne chaîne aux lectures live (carrière, défis, passe de
+	// combat) ; même invalidation que le SSO du site après l'écriture du jeton.
+	tokencache.InvalidateCachedPlayerTokens(tokens.XUID)
+	return nil
 }
 
 // stash garde les jetons en mémoire (le plus récent d'une identité l'emporte), après

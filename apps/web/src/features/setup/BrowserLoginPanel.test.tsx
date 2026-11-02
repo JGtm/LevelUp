@@ -141,6 +141,46 @@ describe('StepDeviceCode — connexion par le navigateur', () => {
     expect(await screen.findByText('ABCD1234')).toBeInTheDocument()
   })
 
+  it('finir la connexion dans le navigateur après avoir basculé vers le code fait quand même avancer l’étape', async () => {
+    // Le sondage de la tentative du navigateur répond « autorisé » APRÈS la bascule vers le code
+    // d'appareil : il doit encore être suivi (le serveur ne remet la tentative à la session qu'au sondage).
+    let releaseBrowserPoll: () => void = () => {}
+    const browserPollGate = new Promise<void>((resolve) => {
+      releaseBrowserPoll = resolve
+    })
+    const browserPolls = vi.fn()
+    server.use(
+      http.get('/api/v1/auth/xbox/login', () =>
+        HttpResponse.json({ attempt_id: 'att-browser', authorize_url: AUTHORIZE_URL, expires_in: 600, poll_interval_sec: 5 }),
+      ),
+      http.post('/api/v1/auth/device-flow/start', () =>
+        HttpResponse.json({
+          attempt_id: 'att-code',
+          user_code: 'ABCD1234',
+          verification_uri: 'https://microsoft.com/devicelogin',
+          expires_in: 900,
+          poll_interval_sec: 5,
+        }),
+      ),
+      http.get('/api/v1/auth/device-flow/:attemptId', async ({ params }) => {
+        if (params.attemptId !== 'att-browser') return HttpResponse.json({ attempt_id: 'att-code', status: 'pending' })
+        browserPolls()
+        await browserPollGate
+        return HttpResponse.json({ attempt_id: 'att-browser', status: 'provisioned', gamertag: 'PosteSeul' })
+      }),
+    )
+    const { invalidate } = renderStep()
+    await userEvent.click(screen.getByRole('button', { name: 'Se connecter avec Microsoft' }))
+    expect(await screen.findByText('En attente de la connexion dans votre navigateur…')).toBeInTheDocument()
+    await waitFor(() => expect(browserPolls).toHaveBeenCalled())
+
+    await userEvent.click(screen.getByRole('button', { name: /Utiliser un code/ }))
+    expect(await screen.findByText('ABCD1234')).toBeInTheDocument()
+
+    releaseBrowserPoll()
+    await waitFor(() => expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.bootstrap }))
+  })
+
   it('sans la capacité, le code d’appareil est le seul chemin', async () => {
     useAppShellStore.setState({ capabilities: testCapabilities({}) })
     server.use(

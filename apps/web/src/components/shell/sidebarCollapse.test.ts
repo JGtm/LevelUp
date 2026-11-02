@@ -26,12 +26,27 @@ describe('resolveSidebarCollapsed', () => {
 })
 
 describe('toggledPreference', () => {
-  it('rend le contraire de l’état affiché, toujours en choix manuel', () => {
-    expect(toggledPreference('auto', false)).toBe('collapsed')
-    expect(toggledPreference('auto', true)).toBe('expanded')
-    expect(toggledPreference('collapsed', false)).toBe('expanded')
-    expect(toggledPreference('expanded', true)).toBe('collapsed')
-    expect(toggledPreference('expanded', false)).toBe('collapsed')
+  it.each<[SidebarPreference, boolean, SidebarPreference]>([
+    // auto : le contraire de l'état affiché est contraire à auto, donc mémorisé.
+    ['auto', false, 'collapsed'],
+    ['auto', true, 'expanded'],
+    // choix manuel qui contredisait auto : le basculer ramène l'état que produit auto, donc auto.
+    ['collapsed', false, 'auto'],
+    ['expanded', true, 'auto'],
+    // choix manuel dont le contraire reste contraire à auto : mémorisé.
+    ['collapsed', true, 'expanded'],
+    ['expanded', false, 'collapsed'],
+  ])('préférence %s, fenêtre étroite %s : devient %s', (preference, narrow, expected) => {
+    expect(toggledPreference(preference, narrow)).toBe(expected)
+  })
+
+  it('un aller-retour manuel revient à auto : la barre suit de nouveau la fenêtre', () => {
+    for (const narrow of [false, true]) {
+      const out = toggledPreference('auto', narrow)
+      const back = toggledPreference(out, narrow)
+      expect(back).toBe('auto')
+      expect(resolveSidebarCollapsed(back, narrow)).toBe(narrow)
+    }
   })
 })
 

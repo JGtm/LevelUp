@@ -11,6 +11,7 @@ import { Link, useRouterState } from '@tanstack/react-router'
 import { useRef, useEffect, useState } from 'react'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { ThemeToggle } from './ThemeToggle'
+import { HomeLink } from './HomeLink'
 import { TitleSwitcher } from './TitleSwitcher'
 import { usePlayerSwitch } from './usePlayerSwitch'
 import { HelpSplitButton } from './HelpSplitButton'
@@ -291,20 +292,9 @@ export function NavL1() {
       aria-label={t('common.shell.nav_main_aria')}
     >
       {/* ── Logo ────────────────────────────────────────────────────────── */}
-      {playerSlug ? (
-        <Link
-          to="/{-$lang}/t/$titleSlug/players/$playerSlug/home"
-          params={{ titleSlug: currentTitleSlug, playerSlug }}
-          className={logoClass}
-          aria-label={t('common.shell.logo_aria')}
-        >
-          {logoInner}
-        </Link>
-      ) : (
-        <Link to="/{-$lang}" className={logoClass} aria-label={t('common.shell.logo_aria')}>
-          {logoInner}
-        </Link>
-      )}
+      <HomeLink locale={locale} titleSlug={currentTitleSlug} playerSlug={playerSlug} className={logoClass}>
+        {logoInner}
+      </HomeLink>
 
       {/* ── Hamburger mobile (< md) — ouvre le drawer des sections ────────── */}
       {playerSlug && (

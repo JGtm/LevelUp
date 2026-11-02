@@ -22,6 +22,7 @@ import { isDemoRefusal } from '@/lib/api/demoReadOnly'
 import { deviceFlowFailureKey } from '@/features/auth/loginError'
 import { useDeploymentCapability } from '@/stores/useDeploymentCapability'
 import { BrowserLoginPanel } from './BrowserLoginPanel'
+import { useBrowserLogin } from './useBrowserLogin'
 
 /** Statut d'un démarrage refusé par le plafond de connexions en cours (serveur ou nginx). */
 const HTTP_TOO_MANY_REQUESTS = 429
@@ -34,7 +35,12 @@ const MAX_AUTO_RECOVERY = 3
 export function StepDeviceCode() {
   const canLoginViaBrowser = useDeploymentCapability('can_login_via_browser')
   const [useCode, setUseCode] = useState(false)
-  if (canLoginViaBrowser && !useCode) return <BrowserLoginPanel onUseDeviceCode={() => setUseCode(true)} />
+  // Tenu ICI et non dans le panneau : la connexion ouverte dans le navigateur reste sondée (donc
+  // réclamée par le serveur) même quand l'utilisateur a basculé vers le code d'appareil.
+  const browserLogin = useBrowserLogin()
+  if (canLoginViaBrowser && !useCode) {
+    return <BrowserLoginPanel login={browserLogin} onUseDeviceCode={() => setUseCode(true)} />
+  }
   return <DeviceCodePanel />
 }
 

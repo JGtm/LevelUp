@@ -13,6 +13,7 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { useAssetDrawerStore } from '@/features/asset-drawer'
 import { useFeedbackDrawerStore } from '@/features/feedback-drawer'
 
+import { SIDEBAR_PANEL_WIDTH, SIDEBAR_RAIL_WIDTH, useSidebarWidthStore } from '@/lib/layout/sidebarWidth'
 import { SidebarNav } from './SidebarNav'
 import { SIDEBAR_AUTO_COLLAPSE_QUERY, SIDEBAR_PREFERENCE_STORAGE_KEY } from './sidebarCollapse'
 
@@ -132,20 +133,124 @@ describe('SidebarNav — repliement en icônes', () => {
     expect(state()).toBe('collapsed')
   })
 
-  it('un choix manuel n’est jamais écrasé par la largeur de la fenêtre', () => {
+  it('un choix manuel contraire à auto n’est jamais écrasé par la largeur de la fenêtre', () => {
     const media = installMatchMedia(true)
     renderWithProviders(<SidebarNav />)
     // Déplié à la main sur une fenêtre étroite : il le reste quand la fenêtre change.
     fireEvent.click(screen.getByRole('button', { name: 'Déplier la barre latérale' }))
     expect(state()).toBe('expanded')
+    expect(localStorage.getItem(SIDEBAR_PREFERENCE_STORAGE_KEY)).toBe('expanded')
     media.resize(false)
     media.resize(true)
     expect(state()).toBe('expanded')
+  })
 
-    // Replié à la main sur une fenêtre large : il le reste.
+  it('replié à la main sur une fenêtre large : il le reste', () => {
+    const media = installMatchMedia(false)
+    renderWithProviders(<SidebarNav />)
     fireEvent.click(screen.getByRole('button', { name: 'Replier la barre latérale' }))
+    expect(localStorage.getItem(SIDEBAR_PREFERENCE_STORAGE_KEY)).toBe('collapsed')
+    media.resize(true)
     media.resize(false)
     expect(state()).toBe('collapsed')
+  })
+
+  it('un choix manuel qui coïncide avec auto remet la préférence à auto : la barre suit de nouveau la fenêtre', () => {
+    const media = installMatchMedia(false)
+    renderWithProviders(<SidebarNav />)
+    // Aller-retour manuel sur une fenêtre large : replier puis redéplier.
+    fireEvent.click(screen.getByRole('button', { name: 'Replier la barre latérale' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Déplier la barre latérale' }))
+    expect(state()).toBe('expanded')
+    expect(localStorage.getItem(SIDEBAR_PREFERENCE_STORAGE_KEY)).toBe('auto')
+    // Le repli automatique revient : la fenêtre se rétrécit, la barre se replie.
+    media.resize(true)
+    expect(state()).toBe('collapsed')
+    media.resize(false)
+    expect(state()).toBe('expanded')
+  })
+
+  it('fenêtre étroite : déplié à la main puis replié à la main revient à auto', () => {
+    const media = installMatchMedia(true)
+    renderWithProviders(<SidebarNav />)
+    fireEvent.click(screen.getByRole('button', { name: 'Déplier la barre latérale' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Replier la barre latérale' }))
+    expect(localStorage.getItem(SIDEBAR_PREFERENCE_STORAGE_KEY)).toBe('auto')
+    media.resize(false)
+    expect(state()).toBe('expanded')
+  })
+
+  it('Ctrl+B ne replie pas la barre pendant une saisie dans un champ', () => {
+    installMatchMedia(false)
+    renderWithProviders(
+      <>
+        <SidebarNav />
+        <input aria-label="Saisie" />
+        <textarea aria-label="Zone" />
+      </>,
+    )
+    for (const name of ['Saisie', 'Zone']) {
+      const field = screen.getByLabelText(name)
+      field.focus()
+      fireEvent.keyDown(field, { key: 'b', ctrlKey: true })
+      expect(state()).toBe('expanded')
+    }
+    fireEvent.keyDown(document.body, { key: 'b', ctrlKey: true })
+    expect(state()).toBe('collapsed')
+  })
+
+  it('au basculement, le focus qui était dans la barre revient au bouton de bascule de la nouvelle barre', () => {
+    installMatchMedia(false)
+    renderWithProviders(<SidebarNav />)
+    const collapse = screen.getByRole('button', { name: 'Replier la barre latérale' })
+    collapse.focus()
+    fireEvent.click(collapse)
+    expect(state()).toBe('collapsed')
+    expect(screen.getByRole('button', { name: 'Déplier la barre latérale' })).toHaveFocus()
+
+    // Même chose au clavier (Ctrl+B) depuis un autre élément de la barre, dans l'autre sens.
+    screen.getByRole('link', { name: 'Aide' }).focus()
+    fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'b', ctrlKey: true })
+    expect(state()).toBe('expanded')
+    expect(screen.getByRole('button', { name: 'Replier la barre latérale' })).toHaveFocus()
+  })
+
+  it('le focus hors de la barre n’est pas volé par un basculement', () => {
+    installMatchMedia(false)
+    renderWithProviders(
+      <>
+        <SidebarNav />
+        <input aria-label="Saisie" />
+      </>,
+    )
+    document.body.focus()
+    fireEvent.keyDown(document.body, { key: 'b', ctrlKey: true })
+    expect(state()).toBe('collapsed')
+    expect(screen.getByRole('button', { name: 'Déplier la barre latérale' })).not.toHaveFocus()
+  })
+
+  it('« À propos » reste ouvert quand la barre bascule (Ctrl+B) ou quand la fenêtre change de largeur', () => {
+    const media = installMatchMedia(false)
+    renderWithProviders(<SidebarNav />)
+    fireEvent.click(screen.getByRole('button', { name: 'À propos' }))
+    expect(screen.getByRole('dialog', { name: 'LevelUp' })).toBeInTheDocument()
+
+    fireEvent.keyDown(document, { key: 'b', ctrlKey: true })
+    expect(state()).toBe('collapsed')
+    expect(screen.getByRole('dialog', { name: 'LevelUp' })).toBeInTheDocument()
+
+    fireEvent.keyDown(document, { key: 'b', ctrlKey: true })
+    media.resize(true)
+    expect(state()).toBe('collapsed')
+    expect(screen.getByRole('dialog', { name: 'LevelUp' })).toBeInTheDocument()
+  })
+
+  it('publie la largeur réelle de la barre (240 px dépliée, 56 px repliée)', () => {
+    installMatchMedia(false)
+    renderWithProviders(<SidebarNav />)
+    expect(useSidebarWidthStore.getState().width).toBe(SIDEBAR_PANEL_WIDTH)
+    fireEvent.click(screen.getByRole('button', { name: 'Replier la barre latérale' }))
+    expect(useSidebarWidthStore.getState().width).toBe(SIDEBAR_RAIL_WIDTH)
   })
 
   it('ne se replie jamais au défilement', () => {
@@ -218,6 +323,19 @@ describe('SidebarNav — repliement en icônes', () => {
       expect(screen.getByRole('menu', { name: 'Solo' })).toBeInTheDocument()
 
       fireEvent.mouseDown(document.body)
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+    })
+
+    it('Échap ferme un menu épinglé à la souris même si le focus est resté sur le bouton', () => {
+      renderWithProviders(<SidebarNav />)
+      const solo = screen.getByRole('button', { name: 'Solo' })
+      fireEvent.mouseEnter(solo.parentElement as HTMLElement)
+      fireEvent.click(solo, { detail: 1 })
+      fireEvent.mouseLeave(solo.parentElement as HTMLElement)
+      expect(screen.getByRole('menu', { name: 'Solo' })).toBeInTheDocument()
+
+      solo.focus()
+      fireEvent.keyDown(solo, { key: 'Escape' })
       expect(screen.queryByRole('menu')).not.toBeInTheDocument()
     })
 

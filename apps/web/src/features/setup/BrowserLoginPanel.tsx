@@ -4,87 +4,29 @@
  *
  * Le clic demande au serveur une adresse d'autorisation (GET /auth/xbox/login) et l'ouvre par un lien
  * `target="_blank"` : la coquille l'envoie au navigateur du système, jamais dans sa fenêtre. Le retour de
- * Microsoft arrive dans le navigateur ; ici, le sondage de la tentative (le même que celui du code
- * d'appareil) apprend qu'elle a abouti et fait avancer l'assistant par le bootstrap. Le code d'appareil
- * reste le secours (`onUseDeviceCode`).
+ * Microsoft arrive dans le navigateur ; le sondage de la tentative (le même que celui du code
+ * d'appareil) apprend qu'elle a abouti et fait avancer l'assistant par le bootstrap. Ce panneau ne fait
+ * qu'afficher : l'état et le sondage vivent dans l'étape (useBrowserLogin), pour survivre à la bascule
+ * vers le code d'appareil, le secours (`onUseDeviceCode`).
  */
-import { useEffect, useRef, useState } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { useAppShellStore } from '@/stores/appShellStore'
-import { queryKeys } from '@/lib/query/keys'
-import { type ApiError } from '@/lib/api/client'
-import { isDemoRefusal } from '@/lib/api/demoReadOnly'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
-import { deviceFlowFailureKey, isTooManyLoginAttempts } from '@/features/auth/loginError'
-import { isDeviceFlowSucceeded, useDeviceFlowStatus, useStartBrowserLogin } from './queries'
-
-/**
- * Ouvre une adresse par un lien `target="_blank"` : la coquille intercepte la demande de nouvelle
- * fenêtre et l'envoie au navigateur du système. Le lien est créé dans la foulée du clic (l'activation
- * de l'utilisateur vaut encore) ; le même lien reste affiché à l'écran en repli.
- */
-function openInBrowser(url: string): void {
-  const link = document.createElement('a')
-  link.href = url
-  link.target = '_blank'
-  link.rel = 'noopener noreferrer'
-  document.body.appendChild(link)
-  link.click()
-  link.remove()
-}
+import { deviceFlowFailureKey } from '@/features/auth/loginError'
+import { isDeviceFlowSucceeded } from './queries'
+import { type BrowserLogin } from './useBrowserLogin'
 
 type Translate = (key: CommonManifestKey) => string
 
-/** L'état de la connexion par le navigateur : la tentative ouverte, son sondage, le démarrage. */
-function useBrowserLogin(t: Translate) {
-  const queryClient = useQueryClient()
-  const start = useStartBrowserLogin()
-  const [attempt, setAttempt] = useState<{ id: string; url: string } | null>(null)
-  const [startError, setStartError] = useState<string | null>(null)
-  const { data: status } = useDeviceFlowStatus(attempt?.id ?? '', !!attempt)
-  const advancedRef = useRef(false)
-
-  // La tentative a abouti : le bootstrap avance l'assistant (étape du profil), comme au code d'appareil.
-  useEffect(() => {
-    if (isDeviceFlowSucceeded(status?.status) && !advancedRef.current) {
-      advancedRef.current = true
-      void queryClient.invalidateQueries({ queryKey: queryKeys.bootstrap })
-    }
-  }, [status?.status, queryClient])
-
-  function handleStart() {
-    setStartError(null)
-    setAttempt(null)
-    advancedRef.current = false
-    start.mutate(undefined, {
-      onSuccess: (data) => {
-        setAttempt({ id: data.attempt_id, url: data.authorize_url })
-        openInBrowser(data.authorize_url)
-      },
-      onError: (err) => {
-        const apiErr = err as unknown as ApiError
-        setStartError(
-          isDemoRefusal(apiErr)
-            ? t('common.xbox_login.err_demo')
-            : isTooManyLoginAttempts(apiErr)
-              ? t('common.xbox_login.err_busy')
-              : t('common.setup.device_start_failed'),
-        )
-      },
-    })
-  }
-
-  return { attempt, startError, status, isStarting: start.isPending, handleStart }
-}
-
 interface BrowserLoginPanelProps {
+  /** L'état de la connexion, tenu par l'étape de connexion (voir useBrowserLogin). */
+  login: BrowserLogin
   onUseDeviceCode: () => void
 }
 
-function UseCodeLink({ onUseDeviceCode, t }: BrowserLoginPanelProps & { t: Translate }) {
+function UseCodeLink({ onUseDeviceCode, t }: Omit<BrowserLoginPanelProps, 'login'> & { t: Translate }) {
   return (
     <p className="text-center text-xs text-muted-foreground">
       <button
@@ -98,10 +40,10 @@ function UseCodeLink({ onUseDeviceCode, t }: BrowserLoginPanelProps & { t: Trans
   )
 }
 
-export function BrowserLoginPanel({ onUseDeviceCode }: BrowserLoginPanelProps) {
+export function BrowserLoginPanel({ login, onUseDeviceCode }: BrowserLoginPanelProps) {
   const locale = useAppShellStore((s) => s.locale)
   const t: Translate = (key) => formatMessage(commonManifest, key, locale)
-  const { attempt, startError, status, isStarting, handleStart } = useBrowserLogin(t)
+  const { attempt, startError, status, isStarting, handleStart } = login
   const useCodeLink = <UseCodeLink onUseDeviceCode={onUseDeviceCode} t={t} />
 
   if (startError || status?.status === 'failed' || status?.status === 'expired') {
