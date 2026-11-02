@@ -28,6 +28,7 @@
  * Une copie initialisée au montage serait restée figée sur l'état d'arrivée.
  */
 import { useMemo, useState, type ReactNode } from 'react'
+import { STICKY_BELOW_TABS_CLASS } from '@/components/foundations/pageHeaderLogic'
 import { useFiltersPreview } from '@/features/filters/queries'
 import { PeriodePill, SaisonPill, DEFAULT_PERIOD } from '@/components/shell/FilterOmnibar'
 import { ViewDropdown } from '@/features/_shared/ViewDropdown'
@@ -336,7 +337,7 @@ export function useLocalFilterBar({
   }
 
   const bar = (
-    <div className={gouttiere ? 'sticky top-0 z-20 px-6' : 'sticky top-0 z-20'} style={{ background: 'var(--background)' }}>
+    <div className={gouttiere ? `sticky ${STICKY_BELOW_TABS_CLASS} z-20 px-6` : `sticky ${STICKY_BELOW_TABS_CLASS} z-20`} style={{ background: 'var(--background)' }}>
       <div className="flex min-h-10 items-center gap-1.5 border-b border-border py-1.5 flex-wrap">
         <ExperienceDropdown
           value={pendingExperience}

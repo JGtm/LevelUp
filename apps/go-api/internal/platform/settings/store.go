@@ -129,11 +129,8 @@ type AppSettings struct {
 type Store struct {
 	mu   sync.RWMutex
 	path string
-	// enforcedDefaults bascule les défauts des DEUX clés de sécurité
-	// (`instance_locked`, `can_self_provision`) sur leur valeur sûre quand
-	// l'instance applique la propriété des joueurs (ADR 0035, D5). Cf.
-	// WithEnforcedDefaults.
-	enforcedDefaults bool
+	// absent : défauts des clés absentes du fichier (WithEnforcedDefaults, WithSystemDefaults).
+	absent absentDefaults
 }
 
 // NewStore crée un Store pour le fichier donné.
@@ -153,7 +150,7 @@ func (s *Store) Load() (*AppSettings, error) {
 			// Fichier absent = TOUTES les clés absentes : mêmes défauts que pour un
 			// fichier présent mais muet (dont les défauts sûrs en mode appliqué).
 			cfg := defaultSettings()
-			applyAbsentDefaults(cfg, nil, s.enforcedDefaults)
+			applyAbsentDefaults(cfg, nil, s.absent)
 			return cfg, nil
 		}
 		return nil, fmt.Errorf("settings.Load: %w", err)
@@ -171,7 +168,7 @@ func (s *Store) Load() (*AppSettings, error) {
 		return nil, fmt.Errorf("settings.Load typed: %w", err)
 	}
 	cfg.raw = raw
-	applyAbsentDefaults(cfg, raw, s.enforcedDefaults)
+	applyAbsentDefaults(cfg, raw, s.absent)
 	enforceFilmArchiveInvariant(cfg)
 	return cfg, nil
 }
@@ -224,7 +221,7 @@ func (s *Store) ResolveForTitle(overlayPath string) (*AppSettings, error) {
 		return nil, fmt.Errorf("settings.ResolveForTitle unmarshal merged: %w", err)
 	}
 	out.raw = merged
-	applyAbsentDefaults(out, merged, s.enforcedDefaults)
+	applyAbsentDefaults(out, merged, s.absent)
 	enforceFilmArchiveInvariant(out)
 	return out, nil
 }

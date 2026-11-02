@@ -2,9 +2,9 @@
  * Tests composant — CareerHubPage.
  *
  * Refacto 2026-05 : les onglets Progression / Citations / Pass saisonnier ont
- * été déplacés dans la NavL2 globale (cf. components/shell/NavL2.tsx). Cette
+ * été déplacés dans l'en-tête de page (cf. components/shell/SectionHeader.tsx). Cette
  * page délègue désormais directement à `<CareerProgressionTab>` ; les tests
- * d'onglets vivent désormais avec NavL2.
+ * d'onglets vivent désormais avec SectionHeader.
  *
  * On ne garde ici que les invariants vraiment liés au hub :
  *   - rendu sans erreur

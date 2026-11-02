@@ -113,6 +113,15 @@ type DeploymentCapabilities struct {
 	// sans les éléments qui n'ont de sens que sur un site (déconnexion, téléchargement, liens du développeur).
 	// Le client branche dessus, jamais sur le profil (D-4).
 	CompactChrome bool
+	// AdoptSystemLocale : le fuseau horaire et la langue d'interface du système servent de défaut aux
+	// réglages `user_timezone` et `lang` absents d'app_settings.json (premier lancement d'une
+	// application locale hors de France). Faux sur un serveur : le fuseau et la langue y sont ceux de
+	// l'instance, pas ceux de la machine qui l'héberge.
+	AdoptSystemLocale bool
+	// FrequentCheckpoint : le serveur CHECKPOINT toutes les quelques minutes les bases qu'il tient en
+	// lecture-écriture (`desktop_checkpoint_interval`), pour qu'une coupure brutale du poste ne laisse
+	// qu'un court WAL. Faux sur un serveur hébergé, que le déploiement et l'arrêt propre vident.
+	FrequentCheckpoint bool
 }
 
 // DeploymentProfile est embarqué dans AppConfig : le profil résolu et ses capacités.
@@ -208,6 +217,8 @@ func capabilitiesOf(cfg *AppConfig) DeploymentCapabilities {
 		WakeSequence:           desktop,
 		TokenVault:             desktop,
 		CompactChrome:          desktop,
+		AdoptSystemLocale:      desktop,
+		FrequentCheckpoint:     desktop,
 	}
 }
 

@@ -530,7 +530,7 @@ export const handlers = [
     })
   }),
 
-  // Filters resolve (NavL2 / FilterOmnibar / SessionNavBar via useFiltersResolve)
+  // Filters resolve (SoloFiltersBar / FilterOmnibar / SessionNavBar via useFiltersResolve)
   http.post(p(`/players/${SLUG}/filters/resolve`), () =>
     HttpResponse.json({
       effective: {

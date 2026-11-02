@@ -23,7 +23,7 @@ export function useVisibleNavSections(): L1Section[] {
     .map((s) => {
       if (!s.tabs) return s
       // Titre sans citations calculées (Halo 5) : « Citations » (moteur dérivé) →
-      // « Commendations » natif — cohérent avec NavL2. Signal : capability `citations`.
+      // « Commendations » natif — cohérent avec l'en-tête de page. Signal : capability `citations`.
       const tabs = s.tabs.filter(tabVisible).map((tab): L1Tab =>
         !hasCapabilityIn(titleCaps, 'citations') && tab.key === 'citations'
           ? {

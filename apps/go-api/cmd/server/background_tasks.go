@@ -54,6 +54,7 @@ const (
 	taskJanitor          = "janitor (sync_cache, WAL)"
 	taskWALRecovery      = "recovery WAL périodique"
 	taskSocialCkpt       = "checkpoint shared_social"
+	taskPeriodicCkpt     = "checkpoint périodique des bases tenues en RW"
 	taskPoolRescan       = "re-scan du pool de tokens"
 	taskAutoSync         = "scheduler d'auto-sync"
 	taskDataHealth       = "santé données"
@@ -113,6 +114,7 @@ var taskPolicies = map[string]profilePolicies{
 	taskJanitor:          exceptDemo,
 	taskWALRecovery:      exceptDemo,
 	taskSocialCkpt:       everywhere,
+	taskPeriodicCkpt:     exceptDemo,
 	taskPoolRescan:       exceptDemo,
 	taskAutoSync:         exceptDemo,
 	taskDataHealth:       exceptDemo,
@@ -294,11 +296,12 @@ func walRecoveryTask(ctx context.Context, queue *persist.BatchQueue) backgroundT
 	}}
 }
 
-// socialCheckpointTask vide le WAL de shared_social toutes les 5 min (ADR 0022) sans ouvrir
-// de connexion propre : il réutilise le handle du pool process-wide (LookupCachedDB) et
-// saute le tick tant que la base n'est pas ouverte. Gardée en démo : la base est celle de la
-// fixture.
-func socialCheckpointTask(ctx context.Context, sharedSocialPath string) backgroundTask {
+// socialCheckpointTask vide le WAL de chaque shared_social de paths (un par titre, ADR 0022) toutes
+// les 5 min, sans ouvrir de connexion propre : il réutilise le handle du pool process-wide
+// (LookupCachedDB) et saute une base tant qu'elle n'est pas ouverte. Gardée en démo : la base est
+// celle de la fixture. C'est le SEUL CHECKPOINT périodique des shared_social : periodicCheckpointTask
+// les saute tous.
+func socialCheckpointTask(ctx context.Context, paths ...string) backgroundTask {
 	return backgroundTask{name: taskSocialCkpt, run: func() {
 		ckptTicker := time.NewTicker(socialCkptPeriod)
 		defer ckptTicker.Stop()
@@ -307,19 +310,49 @@ func socialCheckpointTask(ctx context.Context, sharedSocialPath string) backgrou
 			case <-ctx.Done():
 				return
 			case <-ckptTicker.C:
-				socialDB, ok := duckdb.LookupCachedDB(sharedSocialPath)
-				if !ok {
-					continue // DB pas encore ouverte, skip
+				for _, path := range paths {
+					checkpointSharedSocial(path)
 				}
-				ckptStart := time.Now()
-				ckptCtx, ckptCancel := context.WithTimeout(context.Background(), socialCkptTimeout)
-				if _, err := socialDB.SQLDb().ExecContext(ckptCtx, "CHECKPOINT"); err != nil {
-					slog.WarnContext(ckptCtx, "shared_social: periodic checkpoint failed", "err", err)
-				} else {
-					slog.DebugContext(ckptCtx, "shared_social: periodic checkpoint",
-						"duration_ms", time.Since(ckptStart).Milliseconds())
-				}
-				ckptCancel()
+			}
+		}
+	}}
+}
+
+// checkpointSharedSocial : un CHECKPOINT de la base du pool process-wide, ignoré tant qu'elle n'est
+// pas ouverte.
+func checkpointSharedSocial(sharedSocialPath string) {
+	socialDB, ok := duckdb.LookupCachedDB(sharedSocialPath)
+	if !ok {
+		return // DB pas encore ouverte, skip
+	}
+	ckptStart := time.Now()
+	ckptCtx, ckptCancel := context.WithTimeout(context.Background(), socialCkptTimeout)
+	defer ckptCancel()
+	if _, err := socialDB.SQLDb().ExecContext(ckptCtx, "CHECKPOINT"); err != nil {
+		slog.WarnContext(ckptCtx, "shared_social: periodic checkpoint failed", "path", sharedSocialPath, "err", err)
+		return
+	}
+	slog.DebugContext(ckptCtx, "shared_social: periodic checkpoint",
+		"path", sharedSocialPath, "duration_ms", time.Since(ckptStart).Milliseconds())
+}
+
+// periodicCheckpointTask CHECKPOINT toutes les `interval` les bases que le serveur tient en RW
+// (profil desktop : un poste est coupé sans préavis, cf. duckdb.CheckpointHeld). Suivie : le
+// scheduler l'attend avant de fermer les bases. À l'arrêt le contexte est annulé et la requête en
+// cours avec lui (duckdb_interrupt) : le passage est compté `interrupted`, le CHECKPOINT DuckDB
+// étant atomique (la base et son WAL restent tels qu'ils étaient) et duckdb.CloseAll checkpointant
+// à la fermeture. skip : chemins déjà couverts par un autre CHECKPOINT périodique (les shared_social
+// de tous les titres, cf. socialCheckpointTask).
+func periodicCheckpointTask(ctx context.Context, interval time.Duration, skip map[string]bool) backgroundTask {
+	return backgroundTask{name: taskPeriodicCkpt, tracked: true, run: func() {
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				duckdb.CheckpointHeld(ctx, skip)
 			}
 		}
 	}}

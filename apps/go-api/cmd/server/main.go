@@ -21,6 +21,10 @@ import (
 	"net/http"
 	"os"
 	"time"
+	// La base de fuseaux est embarquée : sans elle time.LoadLocation ne trouve rien sur un poste
+	// sans installation de Go (application de bureau installée), et chaque lecture du fuseau de
+	// l'utilisateur retombe sur son repli.
+	_ "time/tzdata"
 
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/replaychild"

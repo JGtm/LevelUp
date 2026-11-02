@@ -17,6 +17,7 @@
  * interroge `useTeammates` avec ces valeurs.
  */
 import type { ReactNode } from 'react'
+import { STICKY_BELOW_TABS_CLASS } from '@/components/foundations/pageHeaderLogic'
 
 import { SessionMultiSelect } from '@/components/ui/SessionMultiSelect'
 import { FiltresPill, PeriodePill, SaisonPill, DEFAULT_PERIOD } from '@/components/shell/FilterOmnibar'
@@ -104,7 +105,7 @@ export function SquadFilterBar({
   } = useSquadFilterBarState({ playerSlug, locale, pickedSquadSessionLabels, compositionSessions })
 
   return (
-    <div className="sticky top-0 z-30 px-6" style={{ background: 'var(--background)' }}>
+    <div className={`sticky ${STICKY_BELOW_TABS_CLASS} z-30 px-6`} style={{ background: 'var(--background)' }}>
       <div className="flex min-h-10 items-center gap-1.5 overflow-visible border-b border-border py-1.5">
 
         {/* Joueur actif (pill de tête non-supprimable) + coéquipiers (multi-select

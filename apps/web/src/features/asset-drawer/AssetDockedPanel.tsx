@@ -14,16 +14,7 @@ import { ASSET_PANEL_ID, closeAssetPanel, useAssetPanelShortcut } from './assetP
 import { AssetPanelContent } from './AssetPanelContent'
 import { PanelResizeHandle } from './PanelResizeHandle'
 import { clampPanelWidth, maxPanelWidth } from './panelWidth'
-
-function useViewportWidth(): number {
-  const [width, setWidth] = useState(() => window.innerWidth)
-  useEffect(() => {
-    const onResize = () => setWidth(window.innerWidth)
-    window.addEventListener('resize', onResize)
-    return () => window.removeEventListener('resize', onResize)
-  }, [])
-  return width
-}
+import { useViewportWidth } from './useDockedPanelInset'
 
 export function AssetDockedPanel() {
   const locale = useAppShellStore((s) => s.locale)

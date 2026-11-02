@@ -83,7 +83,7 @@ en = "Loading…"
 fr = "Erreur de chargement"
 en = "Loading error"
 
-# ─── Shell : navigation et sync status (NavL1, NavL2, AppShellHeader) ───────
+# ─── Shell : navigation et sync status (NavL1, SectionHeader, AppShellHeader) ───────
 
 [common.shell.sync_running_title]
 fr = "Synchronisation en cours…"
@@ -206,17 +206,9 @@ en = "Game"
 fr = "Bientôt disponible"
 en = "Coming soon"
 
-[common.shell.nav_career_aria]
-fr = "Navigation carrière"
-en = "Career navigation"
-
 [common.shell.nav_analytics_aria]
 fr = "Navigation analytique"
 en = "Analytics navigation"
-
-[common.shell.nav_community_aria]
-fr = "Navigation communauté"
-en = "Community navigation"
 
 [common.shell.nav_player_aria]
 fr = "Navigation joueur"
@@ -2306,7 +2298,7 @@ en = "✓ Applied"
 
 # ─── Nav L1 / L2 — sections et onglets (GH-4, 2026-07-08) ───────────────────
 # Libellés de navigation rendus par NavL1/NavL1MobileMenu (via navL1Sections) et
-# NavL2. Auparavant en dur FR ; passés bilingues (parité FR/EN typée).
+# SectionHeader. Auparavant en dur FR ; passés bilingues (parité FR/EN typée).
 
 [common.nav.section_home]
 fr = "Accueil"
@@ -2339,6 +2331,37 @@ en = "Media"
 [common.nav.section_explorer]
 fr = "Explorer"
 en = "Explorer"
+
+# Chapeau de l'en-tête de page de chaque section L1 (PageHeader). Phrases factuelles, sans possessif
+# ni pronom ; l'accueil n'en a pas (sa bannière d'identité fait office d'en-tête).
+
+[common.page_lead.solo]
+fr = "Statistiques du joueur par période, par mode et par carte."
+en = "Player statistics by period, mode and map."
+
+[common.page_lead.squad]
+fr = "Synergies, contributions et dynamique de l'escouade sur les matchs joués ensemble."
+en = "Synergies, contributions and dynamics of the squad across matches played together."
+
+[common.page_lead.career]
+fr = "Progression de rang, citations, médailles et pass saisonnier."
+en = "Rank progression, citations, medals and season pass."
+
+[common.page_lead.ascension]
+fr = "Profil de performance, objectifs, entraînement et réalisations."
+en = "Performance profile, objectives, training and achievements."
+
+[common.page_lead.community]
+fr = "Classements, relations entre joueurs et comparaisons en face-à-face."
+en = "Leaderboards, relations between players and head-to-head comparisons."
+
+[common.page_lead.media]
+fr = "Captures vidéo et images associées aux matchs."
+en = "Video captures and screenshots linked to matches."
+
+[common.page_lead.explorer]
+fr = "Exploration libre des matchs par filtre, avec synthèse et tableau détaillé."
+en = "Free exploration of matches by filter, with a summary and a detailed table."
 
 [common.nav.tab_synthesis]
 fr = "Synthèse"

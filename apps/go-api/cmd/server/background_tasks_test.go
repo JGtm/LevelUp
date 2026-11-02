@@ -241,7 +241,7 @@ func TestBackgroundTasks_HostedEtDev_ToutLance(t *testing.T) {
 // énumère (liste tenue à la main : un nom ajouté au code sans l'être ici n'est pas vu, un nom
 // absent de taskPolicies l'est).
 var nomsDeclares = []string{
-	taskJanitor, taskWALRecovery, taskSocialCkpt, taskPoolRescan, taskAutoSync, taskDataHealth,
+	taskJanitor, taskWALRecovery, taskSocialCkpt, taskPeriodicCkpt, taskPoolRescan, taskAutoSync, taskDataHealth,
 	taskDetectionFlush, taskDiskWatch, taskReplayNotify, taskCitationsRelance, taskCatalogCron,
 	taskAssetNameSweep, taskSpartanCron, taskWorldLeaderbd, taskReplayPurge, taskAppRelease, taskHeartbeat,
 	stepFriendsMigr, stepGroupMigr, stepTokenPool, stepPersistQueue, stepWatcher,

@@ -1,8 +1,9 @@
 /**
  * SquadLayout — layout partagé de la section Escouade.
  *
- * Gère la sélection des coéquipiers (via data.options), les KPI cards et la
- * navigation par onglets (Synergies / Contributions / Dynamique / Emprise). Expose les données
+ * Gère la sélection des coéquipiers (via data.options), les KPI cards et l'en-tête de page de la
+ * section (titre, chapeau, onglets Synergies / Contributions / Dynamique / Emprise — Emprise
+ * dépend des données, d'où un en-tête rendu ici et non par `SectionHeader`). Expose les données
  * sélectionnées via SquadContext pour les onglets enfants.
  *
  * Multi-titres : tous les libellés métier passent par useFieldMappings
@@ -23,8 +24,9 @@
  * (/squad/usages, l'ancien nom de l'onglet, redirige vers /squad/emprise).
  */
 import { useState, useMemo } from 'react'
-import { Outlet, useParams, Link, useMatchRoute } from '@tanstack/react-router'
-import { useTitleSlug } from '@/lib/title-routing'
+import { Outlet, useParams, useMatchRoute } from '@tanstack/react-router'
+import { PageHeader } from '@/components/foundations/PageHeader'
+import type { PageHeaderTab } from '@/components/foundations/pageHeaderLogic'
 import { useSquadFilterStore } from '@/stores/squadFilterStore'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useSquadPageRequests } from './useSquadPageRequests'
@@ -87,7 +89,6 @@ function formatError(err: unknown): string {
 
 export function SquadLayout() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
-  const titleSlug = useTitleSlug()
   const {
     filterContext,
     filterContextHash,
@@ -115,7 +116,8 @@ export function SquadLayout() {
   // coéquipier à une session qu'il n'avait pas jouée).
   const locale = useAppShellStore((s) => s.locale)
   const t = getSquadText(locale)
-  const tCommon = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
+  const tCommon = (key: CommonManifestKey, values?: Record<string, string>) =>
+    formatMessage(commonManifest, key, locale, values)
 
   const confirmedGts = selectedGts
   const [addFriendGamertag, setAddFriendGamertag] = useState<string | null>(null)
@@ -231,19 +233,23 @@ export function SquadLayout() {
     ) : null
 
   // ── Routes actives ───────────────────────────────────────────────────────
-  const synergiesRoute = '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/synergies' as const
-  const contributionsRoute = '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/contributions' as const
-  const dynamiqueRoute = '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/dynamique' as const
   const empriseRoute = '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/emprise' as const
-  const isSynergies = !!matchRoute({ to: synergiesRoute, fuzzy: true })
-  const isContributions = !!matchRoute({ to: contributionsRoute, fuzzy: true })
-  const isDynamique = !!matchRoute({ to: dynamiqueRoute, fuzzy: true })
   const isEmprise = !!matchRoute({ to: empriseRoute, fuzzy: true })
   // D10 (plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26) : sans rien à montrer (Halo 5 sans objectif ni
   // frags aux armes spéciales, périmètre vide), l'onglet Emprise se masque — même prédicat que
   // la page. Visible tant que la réponse n'est pas arrivée, et tant qu'on est dessus.
   const empriseVisible = useMemo(() => !data || empriseTabHasContent(data), [data])
   const showEmprise = isEmprise || empriseVisible
+  // Onglets de l'en-tête de page : les trois de `L1_SECTIONS` plus Emprise quand les données en portent.
+  const headerTabs = useMemo<PageHeaderTab[]>(
+    () => [
+      { key: 'synergies', label: t.nav.synergies, to: '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/synergies' },
+      { key: 'contributions', label: t.nav.contributions, to: '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/contributions' },
+      { key: 'dynamique', label: t.nav.dynamique, to: '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/dynamique' },
+      ...(showEmprise ? [{ key: 'emprise', label: t.nav.emprise, to: empriseRoute } satisfies PageHeaderTab] : []),
+    ],
+    [t, showEmprise],
+  )
 
   // ── Gestion chargement / erreur ──────────────────────────────────────────
   // La barre de filtres (sticky) est toujours rendue; seul le contenu est
@@ -294,6 +300,13 @@ export function SquadLayout() {
 
   return (
     <SquadContext.Provider value={squadContextValue}>
+      {/* En-tête de page (titre, chapeau, onglets) : posé par le layout car l'onglet Emprise dépend des données. */}
+      <PageHeader
+        title={tCommon('common.nav.section_squad')}
+        lead={tCommon('common.page_lead.squad')}
+        tabs={headerTabs}
+        tabsAriaLabel={tCommon('common.nav.section_tabs_aria', { section: tCommon('common.nav.section_squad') })}
+      />
       <SquadFilterBar
         playerSlug={playerSlug}
         locale={locale}
@@ -399,42 +412,6 @@ export function SquadLayout() {
           {/* « Cap d'escouade » (Enregistrer cette compo) — remonté AU-DESSUS de la
               barre d'onglets L3, commun aux deux onglets (Synergies / Contributions). */}
           <SquadFocusStrip />
-
-          {/* Navigation onglets */}
-          <div className="border-b">
-            <nav className="flex gap-0">
-              <Link
-                to="/{-$lang}/t/$titleSlug/players/$playerSlug/squad/synergies"
-                params={{ titleSlug, playerSlug }}
-                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${isSynergies ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
-              >
-                {t.nav.synergies}
-              </Link>
-              <Link
-                to="/{-$lang}/t/$titleSlug/players/$playerSlug/squad/contributions"
-                params={{ titleSlug, playerSlug }}
-                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${isContributions ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
-              >
-                {t.nav.contributions}
-              </Link>
-              <Link
-                to="/{-$lang}/t/$titleSlug/players/$playerSlug/squad/dynamique"
-                params={{ titleSlug, playerSlug }}
-                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${isDynamique ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
-              >
-                {t.nav.dynamique}
-              </Link>
-              {showEmprise && (
-                <Link
-                  to="/{-$lang}/t/$titleSlug/players/$playerSlug/squad/emprise"
-                  params={{ titleSlug, playerSlug }}
-                  className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${isEmprise ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
-                >
-                  {t.nav.emprise}
-                </Link>
-              )}
-            </nav>
-          </div>
 
           <Outlet />
         </div>

@@ -96,6 +96,25 @@ fn un_telechargement_en_echec_n_arme_pas_la_porte() {
 }
 
 #[test]
+fn un_telechargement_abandonne_se_dit_seulement_a_une_verification_demandee() {
+    let steps = || {
+        vec![
+            UpdateInput::ServerReady,
+            UpdateInput::Checked(Ok(Some(offer("8.2.0")))),
+            UpdateInput::Decided(Decision::Install),
+        ]
+    };
+    let mut manual = UpdateFlow::manual();
+    drive(&mut manual, steps());
+    let actions = manual.step(UpdateInput::Downloaded(Err("download_stalled".into())));
+    assert!(matches!(
+        actions.as_slice(),
+        [UpdateAction::Log(l), UpdateAction::Inform(Notice::CheckFailed)] if l.contains("download_stalled")
+    ));
+    assert_eq!(manual.state(), &UpdateState::Done);
+}
+
+#[test]
 fn la_boite_de_dialogue_est_complete_dans_chaque_langue() {
     for code in catalogue::LOCALES {
         let text = prompt_text(code, &offer("8.2.0"));

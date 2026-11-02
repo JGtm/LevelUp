@@ -12,10 +12,13 @@
 //! - [`screen`], [`catalogue`], [`render`] : les ecrans embarques et leurs libelles (A4).
 //! - [`updater`]   : la mise a jour proposee, jamais imposee, installee apres l'arret du serveur (D-16).
 //! - [`update_manual`] : la meme verification, demandee par l'utilisateur depuis « A propos ».
+//! - [`download_watch`] : l'echeance d'inactivite du telechargement de l'installeur.
+//! - [`update_notes`] : les notes de mise a jour dans la langue de la coquille (`notes`, `notes_<code>` de `latest.json`).
 //! - `updater_decision` : l'arret propre qui autorise l'installation et les messages d'apres-arret (re-exportes par [`updater`]).
 //! - [`roots`], [`secret`], [`logfile`], [`linereader`], [`navigation`] : petits outils.
 
 pub mod catalogue;
+pub mod download_watch;
 pub mod events;
 pub mod lifecycle;
 pub mod linereader;
@@ -28,5 +31,6 @@ pub mod secret;
 pub mod sidecar;
 pub mod supervisor;
 pub mod update_manual;
+pub mod update_notes;
 pub mod updater;
 mod updater_decision;

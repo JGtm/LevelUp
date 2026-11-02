@@ -26,12 +26,9 @@ export function LeaderboardPPPage() {
 
   return (
     <div className="space-y-4 p-4">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-bold">Leaderboard PP</h1>
-        <p className="text-sm text-muted-foreground">
-          {t('common.prestige.leaderboard_intro')}
-        </p>
-      </header>
+      <p className="text-sm text-muted-foreground">
+        {t('common.prestige.leaderboard_intro')}
+      </p>
 
       {currentPlayer ? (
         <LeaderboardPP entries={entries} period={period} onPeriodChange={setPeriod} />

@@ -474,6 +474,37 @@ maintainer on a clean machine. A lot without a test at its level is not closed.
   green on the new workflow).
 - To create: `cargo audit` in CI.
 
+## Implementation notes (L20, 2026-11-02)
+
+- **Updater notes per language (D-16, L20.c).** `latest.json` carries `notes` (the changelog section of the default
+  language, the only key an older client reads) and `notes_en` (the same version in `docs/CHANGELOG.md`). The release
+  workflow fails, before compiling and again in `publish`, when either section is missing or empty, and the final `jq`
+  check rejects an empty `notes` or `notes_en`. The shell reads the whole document (`Update::raw_json` of
+  `tauri-plugin-updater` 2.12) and picks `notes` for the default language, otherwise `notes_<language>`, then
+  `notes_<fallback language>` (codes from `config/locales.toml` through `build.rs`, none written in the Rust code), then
+  `notes` (`update_notes.rs`, a pure function).
+- **Installer download deadline (L20.d).** The download runs on the Tauri runtime while the update thread reads a
+  progress counter: no byte for 60 s, or 60 minutes in total, aborts it (`download_stalled`, `download_too_long`), the
+  verification lock is released and a requested check says `update_check_failed`. An inactivity limit, not a short total
+  deadline, so a slow but live download of the 200 MB installer is never cut (`download_watch.rs`, a pure verdict).
+- **Video encoder of the shipped ffmpeg (L20.a).** The LGPL build has no `libx264`: the HLS transcode picks the first
+  usable of `libx264`, `h264_mf` (Media Foundation), `libopenh264`, each tried on one frame, the choice logged once per
+  ffmpeg path; none usable means `ErrNoH264Encoder` and a refused transcode, never a panic.
+- **System time zone and language at first launch (L20.b).** Capability `AdoptSystemLocale` (true under the desktop
+  profile only): the Windows time zone key becomes an IANA name through the CLDR table of `platform/syslocale`, the UI
+  language comes from `GetUserPreferredUILanguages`, and both are the default of the `user_timezone` and `lang` keys
+  ABSENT from `app_settings.json` (`settings.Store.WithSystemDefaults`): a written value always wins and the file is not
+  rewritten. The server embeds `time/tzdata`: without it `time.LoadLocation` fails on a machine with no Go installation,
+  which is what an installed application is.
+- **Periodic CHECKPOINT (L20.g).** Capability `FrequentCheckpoint` (desktop only) and key
+  `desktop_checkpoint_interval` (default 5 minutes, bounds 30 s to 1 h): `duckdb.CheckpointHeld` runs `CHECKPOINT` on every
+  database this process holds in read-write (the process-wide handle cache, never a second process, never an opening of
+  its own) under the database write lease (`dblease`), so a persist or sync write burst, or a B-swap of `shared_matches`,
+  makes it skip that database (counted `skipped_busy`). A failing CHECKPOINT is logged (WARN) and counted
+  (`levelup.checkpoint.periodic`, `failed`), never swallowed. `shared_social` keeps its own 5-minute task and is skipped
+  here. Guard: `archlint/checkpoint_single_site_test.go` forbids a CHECKPOINT statement outside `internal/platform/duckdb`
+  except the existing sites of its dated allowlist.
+
 ## Alternatives rejected
 
 - **Wails** (D-1): no signed updater and a smaller plugin set than Tauri 2 for the NSIS and updater chain needed.

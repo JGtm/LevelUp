@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sort"
 
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain/title"
@@ -135,7 +136,15 @@ func launchCoreTasks(st *bootState) {
 	// LookupCachedDB : pas d'ouverture propre — on réutilise la connexion du
 	// pool process-wide (même *sql.DB que SharedSocialPersister). Si le premier
 	// joueur n'a pas encore été chargé, on skip le tick silencieusement.
-	boot.launch(socialCheckpointTask(ctx, sharedSocialPath))
+	socialPaths := sharedSocialPaths(pr, registeredSlugs(title.DefaultRegistry()), sharedSocialPath)
+	boot.launch(socialCheckpointTask(ctx, socialPaths...))
+
+	// CHECKPOINT périodique des AUTRES bases tenues en RW (bases joueur, métadonnées, PvE) : posé
+	// seulement sous la capacité FrequentCheckpoint, dont l'intervalle est la seule trace (zéro
+	// ailleurs). Les shared_social de TOUS les titres ont déjà le leur, ci-dessus.
+	if task, ok := periodicCheckpointFor(schedulerCtx, cfg, socialPaths); ok {
+		boot.launch(task)
+	}
 
 	// Phase 4.9 / PLAN_AUTH E.v2 (2026-05-24) : periodic Discovery re-scan
 	// pour hot-add nouveaux tokens (nouveau SSO / token-capture écrivant dans
@@ -143,6 +152,47 @@ func launchCoreTasks(st *bootState) {
 	if autoSyncPool != nil {
 		boot.launch(poolRescanTask(schedulerCtx, cfg, autoSyncPool))
 	}
+}
+
+// registeredSlugs rend les slugs des titres du registre (tous statuts : une base existe pour un
+// titre « bientôt disponible » comme pour un actif).
+func registeredSlugs(reg *title.Registry) []string {
+	titles := reg.All()
+	slugs := make([]string, 0, len(titles))
+	for _, td := range titles {
+		slugs = append(slugs, td.Slug)
+	}
+	return slugs
+}
+
+// sharedSocialPaths rend le shared_social de chaque titre de slugs (via le PathResolver, jamais un
+// chemin écrit à la main) plus bootPath (celui que le boot ouvre : en démo, la fixture), sans
+// doublon, trié.
+func sharedSocialPaths(pr *title.PathResolver, slugs []string, bootPath string) []string {
+	seen := map[string]bool{bootPath: true}
+	paths := []string{bootPath}
+	for _, slug := range slugs {
+		if p := pr.SharedSocialDBPath(slug); !seen[p] {
+			seen[p] = true
+			paths = append(paths, p)
+		}
+	}
+	sort.Strings(paths)
+	return paths
+}
+
+// periodicCheckpointFor rend la tâche du CHECKPOINT périodique des bases tenues en RW, hors les
+// chemins de socialPaths (qui ont le leur), ou false quand le profil n'a pas la capacité
+// FrequentCheckpoint (intervalle nul : la tâche n'est pas lancée).
+func periodicCheckpointFor(ctx context.Context, cfg *config.AppConfig, socialPaths []string) (backgroundTask, bool) {
+	if cfg.CheckpointInterval <= 0 {
+		return backgroundTask{}, false
+	}
+	skip := make(map[string]bool, len(socialPaths))
+	for _, p := range socialPaths {
+		skip[p] = true
+	}
+	return periodicCheckpointTask(ctx, cfg.CheckpointInterval, skip), true
 }
 
 // launchSchedulers lance l'auto-sync et le contrôle de santé des données, crée le planificateur

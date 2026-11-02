@@ -16,6 +16,8 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { SquadLayout } from './SquadLayout'
 import { getSquadText } from './i18n'
 import { EMPRISE_2209 } from './emprise/emprise.fixtures'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest } from '@/lib/i18n/generated/common'
 
 /** La route active simulée (null = aucune) : `useMatchRoute` ne reconnaît qu'elle. */
 let routeActive: string | null = null
@@ -28,6 +30,9 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
     useSearch: () => ({}),
     useMatchRoute: () => ({ to }: { to: string }) => (to === routeActive ? {} : null),
     useNavigate: () => vi.fn(),
+    // L'en-tête de page (onglets) lit le chemin courant : un chemin de l'escouade suffit ici.
+    useRouterState: ({ select }: { select: (s: unknown) => unknown }) =>
+      select({ location: { pathname: '/t/halo_infinite/players/p/squad/synergies' } }),
     Outlet: () => <div data-testid="contenu-onglet" />,
     Link: ({ children, to }: { children?: ReactNode; to?: string }) => <a href={to}>{children}</a>,
   }
@@ -87,6 +92,14 @@ async function monter() {
 }
 
 describe('SquadLayout — barre d\'onglets', () => {
+  it('rend l’en-tête de la section : UN h1 au libellé Escouade et son chapeau', async () => {
+    await monter()
+    const titres = screen.getAllByRole('heading', { level: 1 })
+    expect(titres).toHaveLength(1)
+    expect(titres[0]).toHaveTextContent(formatMessage(commonManifest, 'common.nav.section_squad', 'fr'))
+    expect(screen.getByText(formatMessage(commonManifest, 'common.page_lead.squad', 'fr'))).toBeInTheDocument()
+  })
+
   it('rend QUATRE onglets, dans l\'ordre, vers les quatre sous-routes', async () => {
     await monter()
     const t = getSquadText('fr')

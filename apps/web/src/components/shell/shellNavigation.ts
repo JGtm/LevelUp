@@ -5,7 +5,7 @@ import { playerRelativePath } from '@/lib/title-routing'
  * Cible de route valide du routeur généré (union des `to`). Typer les champs `to` des
  * items de nav ainsi (et non `string`) fait ENTRER la nav L1/L2 dans le typecheck : un
  * chemin inexistant devient une erreur tsc au lieu d'un lien mort silencieux. Source
- * unique réutilisée par NavL1/NavL2/navL1Sections.
+ * unique réutilisée par NavL1/SoloFiltersBar/navL1Sections.
  */
 export type RouteTo = FileRouteTypes['to']
 
@@ -14,7 +14,7 @@ export type RouteTo = FileRouteTypes['to']
 // (labels FR figés, eyebrow/description) ont été supprimées ici : leur SEUL
 // consommateur restant était `lib/pageTitle.ts` (dérivation du titre d'onglet), qui
 // vient de basculer sur sa propre table locale-aware (Record<Locale,string>). La nav
-// réelle (L1/L2, tabs) vit depuis longtemps dans `navL1Sections.tsx` + `NavL2.tsx`,
+// réelle (L1/L2, tabs) vit depuis longtemps dans `navL1Sections.tsx` + `SectionHeader.tsx`,
 // locale-aware via `commonManifest` — ces exports n'y étaient plus branchés (0 code
 // mort, règle CLAUDE.md n°7).
 
@@ -23,7 +23,7 @@ export type RouteTo = FileRouteTypes['to']
  * passé sous Carrière) et /compare (Face-à-face). Raisonne sur le SUFFIXE relatif
  * au joueur (playerRelativePath) — aucun littéral `/players/` (garde-rail D-10).
  *
- * Source unique partagée par NavL1 (surlignage du bouton) et NavL2 (sous-onglets).
+ * Source unique partagée par NavL1 (surlignage du bouton) et SectionHeader (onglets de l'en-tête de page).
  */
 export function isCommunityPath(pathname: string): boolean {
   const suffix = playerRelativePath(pathname)
@@ -49,7 +49,7 @@ const STATS_RE = /^\/stats\//
  * store solo) ? Pages Stats uniquement, hors stats personnelles, Synthèse et Tendances, qui
  * ont chacune leur propre barre.
  *
- * Source UNIQUE (lot perf L4a, D4.4, 2026-09-23) : NavL2 s'en sert pour rendre la
+ * Source UNIQUE (lot perf L4a, D4.4, 2026-09-23) : SoloFiltersBar s'en sert pour rendre la
  * barre, PlayerLayout pour n'activer QUE là la résolution des filtres solo et le
  * suivi de la dernière session solo — ailleurs (Escouade, Carrière, Accueil…)
  * personne ne lit ce résolu, et il coûtait un POST /filters/resolve par page.

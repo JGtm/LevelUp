@@ -20,7 +20,7 @@ interface RouteTitleRule {
 // échouer le test). Remplace l'ancienne dérivation depuis
 // `shellNavigation.{PLAYER_PRIMARY,PLAYER_SECONDARY}_NAV_ITEMS` : ces deux exports
 // n'avaient plus AUCUN autre consommateur (la nav réelle vit dans `navL1Sections.tsx` /
-// `NavL2.tsx`, locale-aware via `commonManifest`), portaient des libellés FR figés sans
+// `SectionHeader.tsx`, locale-aware via `commonManifest`), portaient des libellés FR figés sans
 // variante EN, et sont supprimés du même coup avec `shellNavigation.ts` (règle CLAUDE.md
 // n°7, 0 code mort). Les libellés EN ci-dessous reprennent VERBATIM les traductions
 // canoniques déjà établies ailleurs (`lib/i18n/generated/common.ts` `common.nav.*`,

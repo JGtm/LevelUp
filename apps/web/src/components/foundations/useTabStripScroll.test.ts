@@ -1,5 +1,5 @@
 /**
- * useTabStripScroll — la barre d'onglets d'Ascension défile et garde l'onglet actif visible.
+ * useTabStripScroll — la barre d'onglets d'un en-tête de page défile et garde l'onglet actif visible.
  */
 import { describe, expect, it } from 'vitest'
 

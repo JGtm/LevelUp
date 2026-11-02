@@ -5,6 +5,8 @@ import (
 	"errors"
 	"strings"
 	"testing"
+
+	mediapkg "levelup/go-api/internal/media"
 )
 
 // Sortie simulée de `ffmpeg -hide_banner -encoders` (en-tête + légende +
@@ -43,7 +45,7 @@ const sampleMuxers = `Muxers:
 `
 
 func TestParseFFmpegComponents_Encoders(t *testing.T) {
-	got := parseFFmpegComponents(sampleEncoders)
+	got := mediapkg.ParseFFmpegComponents(sampleEncoders)
 	for _, want := range []string{"libx264", "aac", "libwebp", "libwebp_anim", "libx265", "libmp3lame"} {
 		if !got[want] {
 			t.Errorf("encodeur %q attendu absent du set parsé", want)
@@ -58,7 +60,7 @@ func TestParseFFmpegComponents_Encoders(t *testing.T) {
 }
 
 func TestParseFFmpegComponents_Muxers(t *testing.T) {
-	got := parseFFmpegComponents(sampleMuxers)
+	got := mediapkg.ParseFFmpegComponents(sampleMuxers)
 	for _, want := range []string{"hls", "mp4", "mov", "matroska", "webm"} {
 		if !got[want] {
 			t.Errorf("muxer %q attendu absent du set parsé", want)
@@ -70,35 +72,35 @@ func TestParseFFmpegComponents_Muxers(t *testing.T) {
 }
 
 func TestParseFFmpegComponents_Empty(t *testing.T) {
-	if len(parseFFmpegComponents("")) != 0 {
+	if len(mediapkg.ParseFFmpegComponents("")) != 0 {
 		t.Error("une sortie vide doit produire un set vide")
 	}
 }
 
 func TestMissingComponents_AllPresent(t *testing.T) {
-	present := parseFFmpegComponents(sampleEncoders)
+	present := mediapkg.ParseFFmpegComponents(sampleEncoders)
 	if missing := missingComponents(present, requiredEncoders); len(missing) != 0 {
 		t.Errorf("aucun encodeur requis ne devrait manquer, obtenu %v", missing)
 	}
-	presentMux := parseFFmpegComponents(sampleMuxers)
+	presentMux := mediapkg.ParseFFmpegComponents(sampleMuxers)
 	if missing := missingComponents(presentMux, requiredMuxers); len(missing) != 0 {
 		t.Errorf("aucun muxer requis ne devrait manquer, obtenu %v", missing)
 	}
 }
 
 func TestMissingComponents_DetectsAbsence(t *testing.T) {
-	// ffmpeg compilé SANS libx264 (l'encodeur est absent de la liste).
+	// ffmpeg compilé SANS aac (l'encodeur est absent de la liste).
 	stripped := strings.ReplaceAll(sampleEncoders,
-		" V....D libx264              libx264 H.264 / AVC / MPEG-4 AVC / MPEG-4 part 10 (codec h264)\n", "")
-	missing := missingComponents(parseFFmpegComponents(stripped), requiredEncoders)
-	if len(missing) != 1 || missing[0] != "libx264" {
-		t.Fatalf("attendu [libx264] manquant, obtenu %v", missing)
+		" A....D aac                  AAC (Advanced Audio Coding)\n", "")
+	missing := missingComponents(mediapkg.ParseFFmpegComponents(stripped), requiredEncoders)
+	if len(missing) != 1 || missing[0] != "aac" {
+		t.Fatalf("attendu [aac] manquant, obtenu %v", missing)
 	}
 }
 
 func TestMissingComponents_MuxerAbsence(t *testing.T) {
 	stripped := strings.ReplaceAll(sampleMuxers, "  E mp4             MP4 (MPEG-4 Part 14)\n", "")
-	missing := missingComponents(parseFFmpegComponents(stripped), requiredMuxers)
+	missing := missingComponents(mediapkg.ParseFFmpegComponents(stripped), requiredMuxers)
 	if len(missing) != 1 || missing[0] != "mp4" {
 		t.Fatalf("attendu [mp4] manquant, obtenu %v", missing)
 	}
@@ -139,14 +141,42 @@ func TestMediaToolingReport_Summary_MissingEncoder(t *testing.T) {
 		FFmpegFound: true, FFmpegPath: "/usr/bin/ffmpeg",
 		FFprobeFound: true, FFprobePath: "/usr/bin/ffprobe",
 		CapabilitiesProbed: true,
-		MissingEncoders:    []string{"libx264"},
+		MissingEncoders:    []string{"libwebp"},
 	}
 	out := r.Summary()
-	if !strings.Contains(out, "MANQUANT: libx264") {
-		t.Errorf("Summary devrait signaler libx264 manquant, obtenu:\n%s", out)
+	if !strings.Contains(out, "MANQUANT: libwebp") {
+		t.Errorf("Summary devrait signaler libwebp manquant, obtenu:\n%s", out)
 	}
 	if !strings.Contains(out, "[KO] encodeurs requis") {
 		t.Errorf("Summary devrait marquer [KO] la ligne encodeurs, obtenu:\n%s", out)
+	}
+}
+
+// TestMediaToolingReport_Summary_H264 : la ligne de l'encodeur H.264 nomme l'encodeur retenu, ou
+// marque [KO] quand aucun n'est utilisable.
+func TestMediaToolingReport_Summary_H264(t *testing.T) {
+	base := MediaToolingReport{FFmpegFound: true, FFprobeFound: true, CapabilitiesProbed: true}
+
+	retained := base
+	retained.H264Candidates = []mediapkg.H264Encoder{mediapkg.EncoderMediaFoundation, mediapkg.EncoderOpenH264}
+	retained.H264Retained = mediapkg.EncoderMediaFoundation
+	out := retained.Summary()
+	if !strings.Contains(out, "[OK] encodeur H.264 : h264_mf (candidats : h264_mf, libopenh264)") {
+		t.Errorf("Summary devrait nommer l'encodeur retenu, obtenu:\n%s", out)
+	}
+
+	none := base
+	none.H264Err = mediapkg.ErrNoH264Encoder
+	out = none.Summary()
+	if !strings.Contains(out, "[KO] encodeur H.264 : aucun utilisable") {
+		t.Errorf("Summary sans encodeur devrait marquer [KO], obtenu:\n%s", out)
+	}
+
+	unknown := base
+	unknown.H264Err = errors.New("délai dépassé")
+	out = unknown.Summary()
+	if !strings.Contains(out, "[??] encodeur H.264 : non vérifié") || strings.Contains(out, "[KO] encodeur H.264") {
+		t.Errorf("une détection non aboutie n'est pas une absence d'encodeur, obtenu:\n%s", out)
 	}
 }
 

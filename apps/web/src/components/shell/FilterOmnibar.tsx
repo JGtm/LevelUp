@@ -74,7 +74,7 @@ interface FilterOmnibarProps {
    *  dans le store global (contexte page, pas contexte utilisateur). */
   matchContext?: 'solo' | 'squad' | 'all'
   /** Store de filtres à utiliser. Défaut : `useSoloFilterStore` (compat
-   *  rétroactive avec NavL2/Stats Solo). SquadLayout injecte
+   *  rétroactive avec SoloFiltersBar/Stats Solo). SquadLayout injecte
    *  `useSquadFilterStore` quand il consomme ce composant. */
   filterStore?: FilterStore
   /** Affiche le sélecteur de contexte (Solo / Escouade / Mixte) et fait piloter

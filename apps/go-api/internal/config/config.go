@@ -493,18 +493,8 @@ func (c *AppConfig) CSRSeasonIDForTitle(ctx context.Context, slug string, reg *t
 // loadUserTimezone lit user_timezone depuis app_settings.json.
 // Retourne "Europe/Paris" par défaut si le fichier est absent ou le champ manquant.
 func loadUserTimezone(settingsPath string) string {
-	data, err := os.ReadFile(settingsPath)
-	if err != nil {
-		return defaultUserTimezone
-	}
-	var m map[string]any
-	if err := json.Unmarshal(data, &m); err != nil {
-		return defaultUserTimezone
-	}
-	if s, ok := m["user_timezone"].(string); ok && s != "" {
-		return s
-	}
-	return defaultUserTimezone
+	tz, _ := readUserTimezone(settingsPath)
+	return tz
 }
 
 // dbProfilesFile représente le format du fichier db_profiles.json (v2.1).
