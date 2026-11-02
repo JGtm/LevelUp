@@ -715,6 +715,27 @@ image de couverture de l'accueil « ça ne fait pas app de bureau ». Décision 
 - Gate : `cd apps/web && npm run typecheck && npm run lint && npm run test` ; pilote : DevTools WebView2 (titre,
   URL) sur le binaire de dev.
 
+### 9.17c L19 — Confort bureau après le gate visuel (S ; décisions utilisateur du 2026-11-02)
+
+Retours de l'utilisateur à l'installation (17.7 et 18.4 passés le 2026-11-02 : premier lancement, connexion par code,
+arrêt propre, désinstallation avec données conservées, vérifiés dans les journaux) :
+
+- [ ] 19.1 Installeur : après l'extraction, passer seul à la dernière page (crochet NSIS `SetAutoClose true` ou
+      équivalent, vérifié sur le modèle NSIS de Tauri extrait du CLI) ; témoin : installation réelle.
+- [ ] 19.2 Liens à nouvel onglet (`target=_blank`, dont le lien de connexion par code `microsoft.com/link`) :
+      la fenêtre les envoie au navigateur par défaut (`on_new_window` de Tauri 2.11, même politique que
+      `navigation.rs` : hors origine locale et écrans embarqués = navigateur, jamais une seconde fenêtre) ;
+      test Rust de la décision ; témoin : clic sur le lien de connexion.
+- [ ] 19.3 Référentiels en **panneau ancré** (décision utilisateur : option 1) : en profil bureau (capacité
+      `can_use_compact_chrome`), le panneau des référentiels s'ouvre à droite du contenu et le POUSSE (pas de voile,
+      la page se réorganise), largeur redimensionnable et mémorisée (`localStorage`), reste ouvert de page en page
+      tant qu'on ne le ferme pas, champ de recherche en tête (celui du panneau actuel), bouton « Référentiels » au
+      bas de la barre latérale + raccourci clavier ; le site hébergé garde son panneau coulissant actuel.
+- [ ] 19.4 « Signaler un problème » : entrée au bas de la barre latérale (à côté de Aide), formulaire actuel, GitHub
+      s'ouvre dans le navigateur (dépend de 19.2).
+- [ ] 19.5 **(U)** Gate visuel sur l'installeur issu de la fusion.
+- Gate : web `typecheck + lint + test`, Rust `fmt + clippy + test`, `e2e-install.ps1` sur l'installeur local.
+
 ### 9.18 P2 — à planifier à la clôture de P1 (liste fermée des sujets)
 
 Fin de match par détection du processus du jeu (énumération seule), mode jeu (pas de cuisson pendant
