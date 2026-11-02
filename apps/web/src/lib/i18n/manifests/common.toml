@@ -2576,9 +2576,16 @@ en = "GitHub Sponsors"
 fr = "PayPal"
 en = "PayPal"
 
-[common.footer.disclaimer]
-fr = "Projet indépendant, sans lien avec Microsoft ni Halo Studios."
-en = "Independent project, not affiliated with Microsoft or Halo Studios."
+# Mention imposée par Microsoft (règles d'usage du contenu de jeu) : le texte lui-même est en anglais
+# dans toutes les langues (lib/appLinks, MICROSOFT_CONTENT_NOTICE) ; seules l'introduction et l'étiquette
+# du lien vers les règles se traduisent.
+[common.footer.microsoft_notice_intro]
+fr = "Mention exigée par Microsoft pour le contenu du jeu :"
+en = "Notice required by Microsoft for the game content:"
+
+[common.footer.microsoft_rules_link]
+fr = "Règles d'usage du contenu de jeu de Microsoft"
+en = "Microsoft Game Content Usage Rules"
 
 [common.footer.copyright]
 fr = "© JGtm — LevelUp"

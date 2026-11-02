@@ -6,9 +6,14 @@ package config
 import (
 	"fmt"
 	"net"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
+
+// DesktopWebDistDirName : sous-dossier de la racine de ressources qui porte le front compilé de
+// l'application installée (le bundle NSIS le dépose là). LEVELUP_WEB_DIST l'emporte quand il est posé.
+const DesktopWebDistDirName = "web"
 
 // DesktopConfig est embarquée dans AppConfig : ses champs s'y lisent directement.
 type DesktopConfig struct {
@@ -41,6 +46,9 @@ func resolveDesktop(cfg *AppConfig, launchMode string) (*AppConfig, error) {
 	installTokenCipher(cfg)
 	if !cfg.Capabilities.ShellEntryGate {
 		return cfg, nil
+	}
+	if cfg.WebDistDir == "" {
+		cfg.WebDistDir = filepath.Join(cfg.Roots().Resources, DesktopWebDistDirName)
 	}
 	if err := applyDesktopSessionSecret(cfg); err != nil {
 		return nil, err

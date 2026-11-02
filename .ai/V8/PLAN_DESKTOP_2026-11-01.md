@@ -629,12 +629,15 @@ Définition : `ResourcesRoot` = la racine du dépôt aujourd'hui (`LEVELUP_RESOU
 
 ### 9.17 L17 — CI Desktop, NSIS, updater (S ; après L16 ; 17.6 P, 17.7 U)
 
-- [ ] 17.1 Job `desktop-build` (Windows) : build Go CGO, build Tauri, NSIS par utilisateur (D-14),
+- [x] 17.1 Job `desktop-build` (Windows) : build Go CGO, build Tauri, NSIS par utilisateur (D-14),
       désinstalleur qui conserve les données (A22) ; **ffmpeg et ffprobe LGPL livrés** à côté du
       binaire (D-9 : archive officielle épinglée par somme de contrôle, texte LGPL et lien vers les
       sources dans les mentions tierces) ; fichier de mentions tierces (A19) avec le **texte imposé par
       les règles Microsoft et le lien vers ces règles**, repris aussi dans le pied de page web
-      (`lib/appLinks.ts`, manifest `common.toml`, fr + en) ; artefact.
+      (`lib/appLinks.ts`, manifest `common.toml`, fr + en) ; artefact. FAIT 2026-11-02 : scripts `apps/desktop/scripts/`
+      (`fetch-ffmpeg.ps1`, `stage-bundle.ps1`, `build-installer.ps1`), `tauri.bundle.conf.json`, crochet NSIS
+      `src-tauri/windows/hooks.nsh`, `THIRD_PARTY_NOTICES.md`, mention Microsoft du pied de page (`MicrosoftNotice`),
+      `LEVELUP_WEB_DIST` par défaut `<ResourcesRoot>/web` en desktop (`config_desktop.go`, test) ; job dans `release.yml`.
 - [ ] 17.2 `release.yml` : étape « version check » (tag, `Cargo.toml`, `tauri.conf.json`, `-ldflags`,
       A9) ; `latest.json` signé (clé Tauri en secret du dépôt, actions épinglées par SHA, clé publique
       allowlistée `.gitleaks.toml`) ; publication GitHub Releases ; section de notes FR présente (le

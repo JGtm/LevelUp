@@ -8,7 +8,14 @@ import { renderWithProviders } from '@/test/render-utils'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useFeedbackDrawerStore } from '@/features/feedback-drawer/feedbackDrawer.store'
 import { AppFooter } from './AppFooter'
-import { GITHUB_URL, GITHUB_PROFILE_URL, SPONSORS_URL, PAYPAL_URL } from '@/lib/appLinks'
+import {
+  GITHUB_URL,
+  GITHUB_PROFILE_URL,
+  SPONSORS_URL,
+  PAYPAL_URL,
+  MICROSOFT_CONTENT_NOTICE,
+  XBOX_GAME_CONTENT_RULES_URL,
+} from '@/lib/appLinks'
 
 vi.mock('@tanstack/react-router', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-router')>()
@@ -40,7 +47,8 @@ describe('AppFooter', () => {
     expect(hrefOf(/Nouveautés/i)).toBe('/changelog')
     expect(hrefOf(/Confidentialité/i)).toBe('/privacy')
     expect(hrefOf(/Développeur/i)).toBe(GITHUB_PROFILE_URL)
-    expect(screen.getByText(/sans lien avec Microsoft/i)).toBeInTheDocument()
+    expect(screen.getByTestId('microsoft-notice')).toHaveTextContent(MICROSOFT_CONTENT_NOTICE)
+    expect(hrefOf(/Règles d'usage du contenu de jeu de Microsoft/i)).toBe(XBOX_GAME_CONTENT_RULES_URL)
   })
 
   it('le lien CSinsight suit la locale de l’app', () => {
@@ -89,7 +97,10 @@ describe('AppFooter', () => {
   it('rend les libellés en anglais quand locale=en', () => {
     useAppShellStore.setState({ locale: 'en' })
     renderWithProviders(<AppFooter />)
-    expect(screen.getByText(/not affiliated with Microsoft/i)).toBeInTheDocument()
+    // Le texte imposé reste en anglais mot pour mot ; l'introduction et le lien suivent la langue.
+    expect(screen.getByTestId('microsoft-notice')).toHaveTextContent(MICROSOFT_CONTENT_NOTICE)
+    expect(screen.getByText(/Notice required by Microsoft/i)).toBeInTheDocument()
+    expect(hrefOf(/Microsoft Game Content Usage Rules/i)).toBe(XBOX_GAME_CONTENT_RULES_URL)
     expect(screen.getByRole('link', { name: /Source code/i })).toBeInTheDocument()
   })
 })

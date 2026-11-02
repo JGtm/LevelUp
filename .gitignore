@@ -387,3 +387,5 @@ apps/desktop/src-tauri/target/
 apps/desktop/src-tauri/gen/
 apps/desktop/node_modules/
 apps/desktop/src-tauri/binaries/*.exe
+# Ressources assemblees pour l'installeur (apps/desktop/scripts/stage-bundle.ps1) et sorties locales du lot L17.
+apps/desktop/src-tauri/bundle-staging/
