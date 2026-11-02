@@ -1609,6 +1609,9 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 	mediaCtx, mediaCancel := context.WithTimeout(serverCtx, 5*time.Second)
 	mediaStatus := ops.InspectMediaTooling(mediaCtx).ToHealthStatus()
 	mediaCancel()
+	if bootSvc != nil {
+		bootSvc.WithMediaH264Missing(mediaStatus.H264EncoderMissing)
+	}
 	healthH := handlers.NewHealthHandlerWithVersion(bootRepo, cfg.AppVersion).
 		WithMediaTooling(mediaStatus)
 	// Racine (r = routeur racine, pas /api/v1) → préfixe de document "" : les chemins

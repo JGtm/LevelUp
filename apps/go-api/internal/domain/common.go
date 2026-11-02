@@ -60,6 +60,10 @@ type MediaToolingStatus struct {
 	FFmpeg        bool   `json:"ffmpeg"`
 	FFprobe       bool   `json:"ffprobe"`
 	FFmpegVersion string `json:"ffmpeg_version,omitempty"`
+	// H264EncoderMissing : ffmpeg a répondu et aucun encodeur H.264 n'est utilisable (aucun de libx264,
+	// h264_mf, libopenh264) : le transcodage vidéo HLS est refusé (media.ErrNoH264Encoder). Faux tant que la
+	// détection n'a pas abouti : un doute n'est pas un verdict.
+	H264EncoderMissing bool `json:"h264_encoder_missing"`
 }
 
 // PublicHealthResponse est la réponse de GET /health, sonde publique : l'état et rien

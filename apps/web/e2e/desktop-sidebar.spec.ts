@@ -1,6 +1,6 @@
 /**
- * E2E — Barre latérale repliable de l'application de bureau (L21.0) et capacités de la communauté
- * (L21.0b) : sous la capacité `can_use_compact_chrome` de /bootstrap, la barre se replie en icônes (bouton
+ * E2E — Barre latérale repliable de l'application de bureau (L21.0), capacités de la communauté
+ * (L21.0b) et message sans encodeur H.264 (L21.0d) : sous la capacité `can_use_compact_chrome` de /bootstrap, la barre se replie en icônes (bouton
  * du pied, Ctrl+B, fenêtre étroite), mémorise le choix manuel, ouvre un menu volant des onglets ; sans
  * `can_compare_accounts`, « Classements » disparaît de la Communauté et son adresse renvoie à « Relations ».
  *
@@ -23,7 +23,7 @@ const PLAYER = {
   sync_enabled: true,
 }
 
-function bootstrap(desktop: boolean) {
+function bootstrap(desktop: boolean, extra: Record<string, unknown> = {}) {
   return {
     setup_required: false,
     auth_state: 'ready',
@@ -64,6 +64,7 @@ function bootstrap(desktop: boolean) {
     is_admin: false,
     first_launch: false,
     pool_sharing: 'unavailable',
+    ...extra,
   }
 }
 
@@ -71,9 +72,9 @@ function json(body: unknown) {
   return { status: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
 }
 
-async function open(page: Page, desktop: boolean, path = '/help') {
+async function open(page: Page, desktop: boolean, path = '/help', extra: Record<string, unknown> = {}) {
   await page.route(`**${API}/**`, (route) => route.fulfill(json({})))
-  await page.route(`**${API}/bootstrap`, (route) => route.fulfill(json(bootstrap(desktop))))
+  await page.route(`**${API}/bootstrap`, (route) => route.fulfill(json(bootstrap(desktop, extra))))
   await page.goto(path)
   await page.waitForLoadState('networkidle')
 }
@@ -160,5 +161,26 @@ test.describe('Communauté sans comparaison de comptes', () => {
   test('site : Classements reste offert', async ({ page }) => {
     await open(page, false, RELATIONS)
     await expect(page.getByRole('link', { name: 'Classements' }).first()).toBeVisible()
+  })
+})
+
+test.describe('Médias sans encodeur H.264', () => {
+  test.use({ viewport: { width: 1440, height: 900 } })
+  const MEDIA = '/t/halo_infinite/players/jgtm/media'
+
+  test('le serveur signale l’absence d’encodeur : la page explique et pointe le Media Feature Pack', async ({ page }) => {
+    await open(page, true, MEDIA, { media_h264_missing: true })
+    const notice = page.getByTestId('media-no-h264')
+    await expect(notice).toBeVisible()
+    await expect(notice).toContainText('aucun encodeur vidéo H.264')
+    const link = notice.getByRole('link', { name: 'Page du Media Feature Pack' })
+    await expect(link).toHaveAttribute('href', /media-feature-pack-list-for-windows-n-editions/)
+    await expect(link).toHaveAttribute('target', '_blank')
+    await witness(page, 'medias_sans_encodeur')
+  })
+
+  test('un encodeur existe : aucun message', async ({ page }) => {
+    await open(page, true, MEDIA)
+    await expect(page.getByTestId('media-no-h264')).toHaveCount(0)
   })
 })

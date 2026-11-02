@@ -27,6 +27,17 @@ describe('MediaPage', () => {
     })
   })
 
+  it('sans encodeur H.264 côté serveur, la page dit pourquoi et pointe le Media Feature Pack', () => {
+    act(() => {
+      useAppShellStore.setState({ mediaH264Missing: true })
+    })
+    renderWithProviders(<MediaPage />)
+    expect(screen.getByTestId('media-no-h264')).toBeInTheDocument()
+    act(() => {
+      useAppShellStore.setState({ mediaH264Missing: false })
+    })
+  })
+
   it('monte sans erreur', () => {
     const { container } = renderWithProviders(<MediaPage />)
     expect(container).toBeTruthy()

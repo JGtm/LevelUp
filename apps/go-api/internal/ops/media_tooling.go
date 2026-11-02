@@ -187,6 +187,9 @@ func (r MediaToolingReport) ToHealthStatus() domain.MediaToolingStatus {
 		FFmpeg:        r.FFmpegFound,
 		FFprobe:       r.FFprobeFound,
 		FFmpegVersion: r.FFmpegVersion,
+		// Seul verdict définitif : la détection a abouti et n'a retenu aucun candidat. Une détection
+		// interrompue (échéance, contexte) ne l'est pas, et le premier transcodage la refait.
+		H264EncoderMissing: r.CapabilitiesProbed && errors.Is(r.H264Err, mediapkg.ErrNoH264Encoder),
 	}
 }
 

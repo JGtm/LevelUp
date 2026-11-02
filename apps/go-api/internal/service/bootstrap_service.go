@@ -50,6 +50,9 @@ type BootstrapService struct {
 	// privacyLive borne l'appel live de privacy et mémorise ses échecs
 	// (bootstrap_privacy.go, plan perf 2026-09-23 D5b.7).
 	privacyLive *privacyLiveFetch
+	// mediaH264Missing : aucun encodeur H.264 utilisable dans le ffmpeg de l'instance, sondé une fois au
+	// démarrage (WithMediaH264Missing).
+	mediaH264Missing bool
 }
 
 // setupCountBudget borne le temps d'attente du décompte des matchs servant à
@@ -87,6 +90,14 @@ func (s *BootstrapService) WithUserStoreEmpty(fn func() (bool, error)) *Bootstra
 // mort (reauth_required). Sans elle, reauth_required est toujours false. PR-B.
 func (s *BootstrapService) WithReauthChecker(fn func(xuid string) bool) *BootstrapService {
 	s.reauthCheck = fn
+	return s
+}
+
+// WithMediaH264Missing pose le verdict de la sonde de l'outillage média faite au démarrage : aucun
+// encodeur H.264 utilisable (ops.MediaToolingReport.ToHealthStatus). L'interface l'explique sur la page
+// Médias au lieu de laisser un clip refusé sans raison.
+func (s *BootstrapService) WithMediaH264Missing(missing bool) *BootstrapService {
+	s.mediaH264Missing = missing
 	return s
 }
 
@@ -253,6 +264,7 @@ func (s *BootstrapService) Build(ctx context.Context, sess *domain.SessionData) 
 		FirstLaunch:          s.isFirstLaunch(),
 		OAuthCodeFlowEnabled: s.cfg.AuthMode == "xbox" && s.cfg.OAuthRedirectURI != "",
 		AppInfo:              buildAppInfo(s.cfg),
+		MediaH264Missing:     s.mediaH264Missing,
 	}, nil
 }
 

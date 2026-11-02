@@ -201,6 +201,10 @@ type BootstrapResponse struct {
 	// AppInfo : version et dossier des données de l'application, servis seulement quand l'instance
 	// adopte le chrome d'application de bureau (capacité can_use_compact_chrome) ; absent sinon.
 	AppInfo *AppInfo `json:"app_info,omitempty" doc:"Version de l'application et racine des données, pour la fenêtre À propos (chrome de bureau seulement)."`
+	// MediaH264Missing : le ffmpeg de l'instance n'a aucun encodeur H.264 utilisable (une édition Windows N
+	// sans Media Foundation, par exemple) : les clips que le navigateur ne lit pas tels quels ne se
+	// transcodent pas. Sondé une fois au démarrage (MediaToolingStatus.H264EncoderMissing).
+	MediaH264Missing bool `json:"media_h264_missing,omitempty" doc:"Aucun encodeur H.264 utilisable : le transcodage vidéo des clips est refusé."`
 }
 
 // AppInfo : ce que la fenêtre « À propos » de l'application de bureau montre de l'installation.
