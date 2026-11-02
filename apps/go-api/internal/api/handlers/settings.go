@@ -293,6 +293,10 @@ func (h *SettingsHandler) handlePatchSettings(ctx context.Context, in *settingsB
 	if err := h.settingsStore.Save(cfg); err != nil {
 		return nil, humacore.NewError(http.StatusInternalServerError, "settings_save_error", "Impossible de sauvegarder la configuration.")
 	}
+	if cfg.FilmArchiveDir != prev.FilmArchiveDir {
+		// Archive vide (sinon la validation a refusé) : le nouveau dossier sert tout de suite.
+		titlePkg.SetFilmArchiveRuntime(cfg.FilmArchiveDir)
+	}
 
 	// Le rendement combat (OffensiveConversion) est un réglage global process :
 	// propager immédiatement pour que les recomputes au query-time reflètent le

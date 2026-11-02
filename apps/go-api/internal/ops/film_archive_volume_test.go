@@ -5,18 +5,13 @@ import (
 	"testing"
 )
 
-func TestIsUnder(t *testing.T) {
-	racine := filepath.Join(string(filepath.Separator), "donnees")
-	for dir, attendu := range map[string]bool{
-		filepath.Join(racine, "cache"): true,
-		racine:                         true,
-		filepath.Join(racine, "cache", "x", "..", "y"):              true,
-		filepath.Join(string(filepath.Separator), "donnees-autres"): false,
-		filepath.Join(string(filepath.Separator), "ailleurs"):       false,
-	} {
-		if got := IsUnder(dir, racine); got != attendu {
-			t.Errorf("IsUnder(%q, %q) = %v, attendu %v", dir, racine, got, attendu)
-		}
+// TestSameVolume : un dossier et un chemin pas encore cree sous un autre dossier du meme disque
+// sont sur le meme volume, qu'ils partagent ou non une racine.
+func TestSameVolume(t *testing.T) {
+	donnees, archive := t.TempDir(), t.TempDir() // deux racines sans lien, meme disque
+	same, err := SameVolume(filepath.Join(archive, "pas", "encore"), donnees)
+	if err != nil || !same {
+		t.Fatalf("SameVolume = %v, %v ; attendu vrai (meme disque, racines distinctes)", same, err)
 	}
 }
 

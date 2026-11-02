@@ -14,6 +14,7 @@ import (
 	"github.com/JGtm/LevelUp/libs/film/finalise"
 
 	"levelup/go-api/internal/config"
+	titlePkg "levelup/go-api/internal/domain/title"
 	settings_platform "levelup/go-api/internal/platform/settings"
 )
 
@@ -163,5 +164,56 @@ func TestFilm_SousCommandeInconnueEtUsage(t *testing.T) {
 	}
 	if err := runFilmTo(cfg, []string{subcmdFilmArchiveMove}, &bytes.Buffer{}); err == nil {
 		t.Fatal("archive-move sans --to ni --default doit être refusé")
+	}
+}
+
+// TestFilmArchiveMove_VersLEmplacementParDefaut : le cache par défaut n'est jamais vide (faits,
+// verrous, images) ; il suffit qu'il ne contienne aucun film. Le réglage est vidé.
+func TestFilmArchiveMove_VersLEmplacementParDefaut(t *testing.T) {
+	dir := t.TempDir()
+	cfg := &config.AppConfig{RepoRoot: dir, AppSettingsPath: filepath.Join(dir, "app_settings.json")}
+	custom := filepath.Join(t.TempDir(), "films")
+	titlePkg.SetFilmArchiveRuntime(custom) // l'archive vit ailleurs que par défaut
+	t.Cleanup(titlePkg.ResetFilmArchiveRuntime)
+	defaut := cfg.PathResolver().Roots().DefaultFilmArchiveDir()
+	if err := os.MkdirAll(filepath.Join(defaut, "film_facts"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(defaut, "jobs.json"), []byte("{}"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	poserFilmBrut(t, custom, "0000d003")
+	store := settings_platform.NewStore(cfg.AppSettingsPath)
+	reglages, _ := store.Load()
+	reglages.FilmArchiveDir = custom
+	if err := store.Save(reglages); err != nil {
+		t.Fatal(err)
+	}
+
+	var out bytes.Buffer
+	if err := runFilmTo(cfg, []string{subcmdFilmArchiveMove, "--default"}, &out); err != nil {
+		t.Fatalf("archive-move --default : %v\n%s", err, out.String())
+	}
+	if ok, err := filmcache.FilmComplet(defaut, "0000d003"); err != nil || !ok {
+		t.Fatalf("film absent de l'emplacement par défaut : %v, %v", ok, err)
+	}
+	if apres, _ := store.Load(); apres.FilmArchiveDir != "" {
+		t.Fatalf("film_archive_dir = %q, attendu vide", apres.FilmArchiveDir)
+	}
+}
+
+// TestFilmArchiveMove_ResumeSansDeplacementEnCoursNEstPasUneDerogation : la cible non vide reste
+// refusée.
+func TestFilmArchiveMove_ResumeSansDeplacementEnCoursNEstPasUneDerogation(t *testing.T) {
+	dir := t.TempDir()
+	cfg := &config.AppConfig{RepoRoot: dir, AppSettingsPath: filepath.Join(dir, "app_settings.json")}
+	poserFilmBrut(t, cfg.PathResolver().FilmArchiveDir(), "0000d004")
+	plein := t.TempDir()
+	if err := os.WriteFile(filepath.Join(plein, "autre.txt"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	err := runFilmTo(cfg, []string{subcmdFilmArchiveMove, "--to", plein, "--resume"}, &bytes.Buffer{})
+	if !errors.Is(err, filmcache.ErrCibleNonVide) {
+		t.Fatalf("erreur = %v, attendu ErrCibleNonVide", err)
 	}
 }

@@ -459,7 +459,8 @@ go run ./cmd/levelup film archive-move --to D:\Films --resume   # reprend un dé
 - L'écran des réglages (Réglages, onglet Données) affiche la taille de l'archive et l'espace libre, et
   l'assistant de premier lancement propose de conserver les films ou non. Y changer le dossier est
   refusé tant que l'archive contient des films ou que la cible n'est pas vide ; `archive-move` fait le
-  déplacement. Le nouveau dossier est pris en compte au démarrage suivant.
+  déplacement (serveur arrêté ; le dossier enregistré sert au démarrage suivant). Sur une archive vide
+  (assistant de premier lancement), le nouveau dossier sert tout de suite.
 - Sans archive (`archive_films` désactivé), les rejeux sont construits et les faits persistés, les
   chunks sont retirés une fois cuits, et la rétention des rejeux doit rester illimitée (la purge suppose
   une reconstruction depuis l'archive).

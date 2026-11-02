@@ -87,29 +87,30 @@ func Recompresser(ctx context.Context, root, shortID string, simulation bool) (R
 	// LE DOSSIER que le décodeur lit ([source.LoadDir]). Un chunk présent hors manifeste se
 	// recompresse comme les autres, sinon une part de l'archive resterait en clair.
 	declare := map[int]int64{}
-	nouvellesTailles := map[int]int64{}
 	for i, c := range src.chunks {
 		declare[c.Index] = src.tailles[i]
 	}
+	manifeste := ManifestPath(root, shortID)
 	for _, numero := range fichiers {
 		if err := ctx.Err(); err != nil {
 			return rap, err
 		}
-		logique, err := recompresserChunk(CheminDuChunk(dir, numero), simulation, &rap)
+		logique, err := recompresserChunk(CheminDuChunk(dir, numero), declare[numero], simulation, &rap)
 		if err != nil {
 			return rap, fmt.Errorf("filmcache: chunk %d de %s : %w", numero, shortID, err)
 		}
-		if taille := declare[numero]; logique > 0 && taille > 0 && taille != logique {
-			nouvellesTailles[numero] = logique
+		// LE MANIFESTE SUIT CHAQUE CHUNK, pas la fin du film : une interruption entre deux chunks ne
+		// laisse jamais un chunk converti derrière une taille périmée. Et la fenêtre qui reste (entre
+		// le renommage du chunk et cette écriture) est réparée à la reprise : un chunk déjà zstd dont
+		// la taille logique diffère du manifeste y est corrigé (cf. [recompresserChunk]).
+		if taille := declare[numero]; logique > 0 && taille > 0 && taille != logique && !simulation {
+			if err := corrigerTaillesDuManifeste(manifeste, map[int]int64{numero: logique}); err != nil {
+				return rap, fmt.Errorf("filmcache: manifeste de %s : %w", shortID, err)
+			}
+			rap.ManifesteCorrige = true
 		}
 	}
 	rap.Absents = len(src.chunks) - nombreDeclaresPresents(src, fichiers)
-	if len(nouvellesTailles) > 0 && !simulation {
-		if err := corrigerTaillesDuManifeste(ManifestPath(root, shortID), nouvellesTailles); err != nil {
-			return rap, fmt.Errorf("filmcache: manifeste de %s : %w", shortID, err)
-		}
-		rap.ManifesteCorrige = true
-	}
 	return rap, nil
 }
 
@@ -149,8 +150,11 @@ func nombreDeclaresPresents(src *Source, fichiers []int) int {
 }
 
 // recompresserChunk traite UN fichier de chunk, cumule son bilan dans `rap` et rend la taille
-// logique du chunk quand il a ete converti (0 sinon).
-func recompresserChunk(path string, simulation bool, rap *RapportRecompression) (int64, error) {
+// logique du chunk quand le manifeste peut avoir à la corriger : un chunk converti, ou un chunk DÉJÀ
+// zstd dont la taille logique diffère de `declare` (la taille que le manifeste lui donne, 0 =
+// inconnue). Ce second cas est la reprise d'une passe interrompue entre la conversion d'un chunk
+// zlib et la correction du manifeste ; la trame est alors décodée en entier avant d'être crue.
+func recompresserChunk(path string, declare int64, simulation bool, rap *RapportRecompression) (int64, error) {
 	fichier, err := os.ReadFile(path) //nolint:gosec // chemin compose par CheminDuChunk
 	if errors.Is(err, os.ErrNotExist) {
 		rap.Absents++
@@ -162,7 +166,7 @@ func recompresserChunk(path string, simulation bool, rap *RapportRecompression) 
 	if source.EstZstd(fichier) {
 		rap.DejaZstd++
 		rap.OctetsDejaZstd += int64(len(fichier))
-		return 0, nil
+		return tailleLogiqueVerifiee(fichier, declare)
 	}
 	logique, err := octetsLogiquesStrict(fichier)
 	if err != nil {
@@ -190,6 +194,27 @@ func recompresserChunk(path string, simulation bool, rap *RapportRecompression) 
 	rap.OctetsAvant += int64(len(fichier))
 	rap.OctetsApres += int64(len(z))
 	return int64(len(logique)), nil
+}
+
+// tailleLogiqueVerifiee rend la taille logique d'une trame zstd quand elle diffère de `declare`
+// (rien à corriger sinon : 0). La taille de l'en-tête n'est crue qu'une fois la trame décodée à
+// cette longueur : un chunk réellement tronqué ne doit pas faire corriger le manifeste.
+func tailleLogiqueVerifiee(trame []byte, declare int64) (int64, error) {
+	if declare <= 0 {
+		return 0, nil
+	}
+	entete, err := source.TailleLogiqueZstd(trame[:min(len(trame), source.TailleEnteteZstd)])
+	if errors.Is(err, source.ErrZstdTailleInconnue) || entete == declare {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, err
+	}
+	decode, err := source.DecompresserZstd(trame)
+	if err != nil || int64(len(decode)) != entete {
+		return 0, fmt.Errorf("trame zstd illisible ou d'une autre longueur que son en-tête (%v)", err)
+	}
+	return entete, nil
 }
 
 // octetsLogiquesStrict rend les octets d'un chunk NON zstd : decompresses s'il est en zlib, tels

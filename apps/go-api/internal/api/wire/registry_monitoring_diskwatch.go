@@ -44,7 +44,7 @@ const diskWatchInterval = 15 * time.Minute
 // à chaque push main, crash-loop disque plein) re-notifiait via le chemin « boot »
 // à CHAQUE boot → rafale d'alertes Discord identiques observée en prod.
 //
-// L'ARCHIVE DES FILMS, quand elle vit hors du volume des données (réglage `film_archive_dir`,
+// L'ARCHIVE DES FILMS, quand elle vit sur un AUTRE VOLUME que les données (réglage `film_archive_dir`,
 // lot L14), est surveillée par la MÊME boucle, aux mêmes seuils, avec son propre état anti-spam :
 // un disque d'archive qui se remplit ne doit ni masquer ni être masqué par celui des données.
 func (r *ServiceRegistry) RunDiskWatchLoop(ctx context.Context) {
@@ -90,7 +90,7 @@ type volumeWatch struct {
 }
 
 // filmArchiveWatch rend la surveillance du volume de l'archive des films, ou nil quand elle vit
-// sous la racine des données (même volume, déjà surveillé).
+// sur le même volume que les données (déjà surveillé, une seule surveillance par volume).
 func (r *ServiceRegistry) filmArchiveWatch() *volumeWatch {
 	return filmArchiveWatchFor(r.cfg.PathResolver())
 }
@@ -98,7 +98,9 @@ func (r *ServiceRegistry) filmArchiveWatch() *volumeWatch {
 // filmArchiveWatchFor est filmArchiveWatch pour un résolveur donné.
 func filmArchiveWatchFor(pr *titlePkg.PathResolver) *volumeWatch {
 	dir := pr.FilmArchiveDir()
-	if ops.IsUnder(dir, pr.DataRoot()) {
+	// UN VOLUME, UNE SURVEILLANCE : on compare les volumes et non les chemins. Une archive hors de
+	// la racine des donnees mais sur le meme disque doublerait journaux et notifications.
+	if same, err := ops.SameVolume(dir, pr.DataRoot()); err == nil && same {
 		return nil
 	}
 	return &volumeWatch{

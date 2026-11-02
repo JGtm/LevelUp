@@ -5,7 +5,13 @@
 // graphe). Utilisée par le monitoring ressources (A5).
 package diskfree
 
-import "golang.org/x/sys/windows"
+import (
+	"fmt"
+	"path/filepath"
+	"strings"
+
+	"golang.org/x/sys/windows"
+)
 
 // Free retourne (libre, total) en octets pour le volume contenant path.
 func Free(path string) (free, total uint64, err error) {
@@ -18,4 +24,35 @@ func Free(path string) (free, total uint64, err error) {
 		return 0, 0, err
 	}
 	return freeBytesAvailable, totalBytes, nil
+}
+
+// volumeKey rend la racine du volume qui porte path (point de montage compris), en minuscules :
+// deux chemins d'un même volume donnent la même clé, `C:\Films` et `c:\Users\x` aussi.
+func volumeKey(path string) (string, error) {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return "", err
+	}
+	p, err := windows.UTF16PtrFromString(abs)
+	if err != nil {
+		return "", err
+	}
+	buf := make([]uint16, windows.MAX_PATH+1)
+	if err := windows.GetVolumePathName(p, &buf[0], uint32(len(buf))); err != nil {
+		return "", fmt.Errorf("diskfree: volume de %s : %w", abs, err)
+	}
+	return strings.ToLower(windows.UTF16ToString(buf)), nil
+}
+
+// SameVolume dit si a et b (un chemin absent se résout par son préfixe existant) sont sur le même volume.
+func SameVolume(a, b string) (bool, error) {
+	ka, err := volumeKey(a)
+	if err != nil {
+		return false, err
+	}
+	kb, err := volumeKey(b)
+	if err != nil {
+		return false, err
+	}
+	return ka == kb, nil
 }

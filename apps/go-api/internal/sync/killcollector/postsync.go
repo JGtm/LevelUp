@@ -119,7 +119,10 @@ type FilmChunkFetcher = filmChunkFetcher
 type PostSyncHook struct {
 	repoRoot  string
 	cacheRoot string
-	perCycle  int
+	// archiveRoot rend la racine de l'archive des films, relue à chaque passe : une archive vide
+	// peut changer d'emplacement à chaud (title.SetFilmArchiveRuntime). Nil : `cacheRoot` seul.
+	archiveRoot func() string
+	perCycle    int
 	// horizon : la taille d une PAGE de backlog lue par cycle ([PostSyncBacklogHorizon]). Un champ
 	// et non la constante en dur, pour que les tests exercent la pagination sans inscrire 64 matchs.
 	horizon int
@@ -130,6 +133,7 @@ type PostSyncHook struct {
 
 	cache       *filmfetch.LocalFilmCache
 	cacheRacine string
+	cacheVoulue string
 	cacheOK     bool
 }
 
@@ -142,10 +146,10 @@ func NewPostSyncHook(repoRoot string, perCycle int) *PostSyncHook {
 		perCycle = DefaultPostSyncPerCycle
 	}
 	return &PostSyncHook{
-		repoRoot:  repoRoot,
-		cacheRoot: titlePkg.NewPathResolver(repoRoot).FilmArchiveDir(),
-		perCycle:  perCycle,
-		horizon:   PostSyncBacklogHorizon,
+		repoRoot:    repoRoot,
+		archiveRoot: titlePkg.NewPathResolver(repoRoot).FilmArchiveDir,
+		perCycle:    perCycle,
+		horizon:     PostSyncBacklogHorizon,
 	}
 }
 
@@ -191,17 +195,22 @@ func (h *PostSyncHook) capture(ctx context.Context, d PostSyncDeps) DepsCapture 
 // lecture ne consulte jamais — le repli disque ne prend plus et chaque cycle repaie le reseau
 // en entier. La racine du moteur gagne, et elle sert aux DEUX sens.
 //
-// Resolue UNE fois : les dossiers sont crees au premier passage (sans quoi
-// `NewLocalFilmCache` rend nil pour toute la vie du process), puis le resultat est memorise.
+// Resolue au premier passage : les dossiers sont crees alors (sans quoi `NewLocalFilmCache` rend
+// nil), puis le resultat est memorise TANT QUE LA RACINE VOULUE NE CHANGE PAS — une archive vide
+// qui change d'emplacement a chaud est reprise a la passe suivante.
 func (h *PostSyncHook) racineDuCache(ctx context.Context, duMoteur *filmfetch.LocalFilmCache) (string, *filmfetch.LocalFilmCache) {
-	if h.cacheOK {
+	voulue := duMoteur.RootDir()
+	if voulue == "" {
+		voulue = h.cacheRoot
+		if h.archiveRoot != nil {
+			voulue = h.archiveRoot()
+		}
+	}
+	if h.cacheOK && h.cacheVoulue == voulue {
 		return h.cacheRacine, h.cache
 	}
-	h.cacheOK = true
-	h.cacheRacine = duMoteur.RootDir()
-	if h.cacheRacine == "" {
-		h.cacheRacine = h.cacheRoot
-	}
+	h.cacheOK, h.cacheVoulue, h.cache = true, voulue, nil
+	h.cacheRacine = voulue
 	if h.cacheRacine == "" {
 		slog.WarnContext(ctx, "post-sync: killsource sans racine de cache — aucun film ne sera archive")
 		return "", nil

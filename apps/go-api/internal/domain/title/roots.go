@@ -98,11 +98,33 @@ func (p *PathResolver) FilmArchiveDir() string { return p.roots.FilmArchiveDir()
 
 // FilmArchiveDir rend la racine de l'archive des films de ces racines (cf. la méthode du résolveur).
 func (r Roots) FilmArchiveDir() string {
+	if o := filmArchiveRuntime.Load(); o != nil {
+		if *o == "" {
+			return r.DefaultFilmArchiveDir()
+		}
+		return *o
+	}
 	if r.FilmArchive != "" {
 		return r.FilmArchive
 	}
 	return r.DefaultFilmArchiveDir()
 }
+
+// filmArchiveRuntime : le dossier de l'archive posé À CHAUD par les réglages (lot L14, revue
+// adversariale). Une archive VIDE peut changer d'emplacement sans redémarrage — c'est le cas de
+// l'assistant de premier lancement, avant la première synchronisation : sans cela, les films de
+// cette synchronisation iraient dans l'ancien dossier et ne seraient plus trouvés au démarrage
+// suivant. Même mécanisme que les racines du processus : une variable de processus que lit chaque
+// résolveur, ancienne comme nouvelle. Vide (pointeur non nul, chaîne vide) = emplacement par défaut.
+var filmArchiveRuntime atomic.Pointer[string]
+
+// SetFilmArchiveRuntime pose le dossier de l'archive pour la vie du processus ("" = défaut). Le
+// réglage `film_archive_dir` est enregistré par l'appelant : au démarrage suivant, c'est lui qui
+// fait foi et cette valeur lui est égale.
+func SetFilmArchiveRuntime(dir string) { filmArchiveRuntime.Store(&dir) }
+
+// ResetFilmArchiveRuntime retire la valeur posée à chaud (tests).
+func ResetFilmArchiveRuntime() { filmArchiveRuntime.Store(nil) }
 
 // DefaultFilmArchiveDir rend l'emplacement de l'archive sans réglage : la racine du cache
 // applicatif, là où `film_chunks/` et `film_manifests/` ont toujours vécu.

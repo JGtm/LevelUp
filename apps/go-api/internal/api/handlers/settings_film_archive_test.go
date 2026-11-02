@@ -35,6 +35,9 @@ type archiveFixture struct {
 
 func newArchiveFixture(t *testing.T) archiveFixture {
 	t.Helper()
+	// Le dossier posé à chaud est une variable de processus : la remettre à zéro avant et après.
+	titlePkg.ResetFilmArchiveRuntime()
+	t.Cleanup(titlePkg.ResetFilmArchiveRuntime)
 	dir := t.TempDir()
 	cfg := &config.AppConfig{RepoRoot: dir, DBProfilesPath: filepath.Join(dir, "db_profiles.json")}
 	store := settings_platform.NewStore(filepath.Join(dir, "app_settings.json"))
@@ -227,5 +230,58 @@ func TestFilmArchive_LeRefusEstRedigeDansLaLangueDeLaRequete(t *testing.T) {
 	}
 	if !strings.Contains(fr.Body.String(), "doit rester illimitée") || !strings.Contains(en.Body.String(), "must stay unlimited") {
 		t.Fatalf("messages non rédigés dans la langue de la requête : fr=%s ; en=%s", fr.Body.String(), en.Body.String())
+	}
+}
+
+// TestFilmArchive_ArchiveVideChangeeAChaud : sur une archive vide (assistant de premier lancement),
+// le nouveau dossier sert tout de suite — sans redémarrage — et est enregistré ; l'occupation
+// l'annonce comme dossier effectif, sans « redémarrage requis ».
+func TestFilmArchive_ArchiveVideChangeeAChaud(t *testing.T) {
+	f := newArchiveFixture(t)
+	cible := filepath.Join(t.TempDir(), "films")
+	if w := f.patch(t, map[string]any{"film_archive_dir": cible}); w.Code != http.StatusOK {
+		t.Fatalf("PATCH : %d %s", w.Code, w.Body.String())
+	}
+	if got := titlePkg.NewPathResolver(f.dir).FilmArchiveDir(); got != cible {
+		t.Fatalf("FilmArchiveDir après PATCH = %q, attendu %q (sans redémarrage)", got, cible)
+	}
+	if cfg, _ := f.store.Load(); cfg.FilmArchiveDir != cible {
+		t.Fatalf("réglage enregistré = %q", cfg.FilmArchiveDir)
+	}
+	req := httptest.NewRequest(http.MethodGet, "/settings/film-archive", nil)
+	w := httptest.NewRecorder()
+	f.r.ServeHTTP(w, req)
+	var st map[string]any
+	_ = json.Unmarshal(w.Body.Bytes(), &st)
+	if st["dir"] != cible || st["restart_required"] != false {
+		t.Fatalf("statut = %v", st)
+	}
+	// La première synchronisation écrit dans le nouveau dossier : le retour à l'ancien est refusé.
+	ecrireFilm(t, cible, "0000f010")
+	if w := f.patch(t, map[string]any{"film_archive_dir": ""}); w.Code != http.StatusBadRequest ||
+		!strings.Contains(w.Body.String(), "film_archive_move_required") {
+		t.Fatalf("retour avec un film : %d %s", w.Code, w.Body.String())
+	}
+	if got := titlePkg.NewPathResolver(f.dir).FilmArchiveDir(); got != cible {
+		t.Fatalf("un refus a déplacé l'archive : %q", got)
+	}
+}
+
+// TestFilmArchive_RetourALEmplacementParDefaut : l'archive vide revient au défaut, dossier de
+// cache non vide compris (faits, verrous).
+func TestFilmArchive_RetourALEmplacementParDefaut(t *testing.T) {
+	f := newArchiveFixture(t)
+	if err := os.MkdirAll(filepath.Join(f.archive, "film_facts"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	cible := filepath.Join(t.TempDir(), "films")
+	if w := f.patch(t, map[string]any{"film_archive_dir": cible}); w.Code != http.StatusOK {
+		t.Fatalf("PATCH : %d %s", w.Code, w.Body.String())
+	}
+	if w := f.patch(t, map[string]any{"film_archive_dir": ""}); w.Code != http.StatusOK {
+		t.Fatalf("retour au défaut : %d %s", w.Code, w.Body.String())
+	}
+	if got := titlePkg.NewPathResolver(f.dir).FilmArchiveDir(); got != f.archive {
+		t.Fatalf("FilmArchiveDir = %q, attendu le défaut %q", got, f.archive)
 	}
 }

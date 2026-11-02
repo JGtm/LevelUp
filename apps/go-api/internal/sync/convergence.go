@@ -655,7 +655,7 @@ func (s postSyncFilmSteps) runReplayArtifacts(ctx context.Context, insertedIDs [
 		TitleSlug:       e.titleSlug,
 		Gamertag:        e.gamertag,
 		CacheRoot:       e.replayArtifacts.CacheRoot,
-		FilmRoot:        e.replayArtifacts.FilmRoot,
+		FilmRoot:        e.replayArtifacts.Film(),
 		SansArchive:     !e.replayArtifacts.Archive(),
 		RetentionMonths: e.replayArtifacts.Months(),
 		Placement:       placement,

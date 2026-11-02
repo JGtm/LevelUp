@@ -183,7 +183,7 @@ func filmArchiveMove(cfg *config.AppConfig, args []string, out io.Writer) error 
 	fs.SetOutput(out)
 	fs.StringVar(&o.to, "to", "", "nouveau dossier de l'archive (chemin absolu, vide ou inexistant)")
 	fs.BoolVar(&o.toDef, "default", false, "ramener l'archive sous le cache applicatif (emplacement par defaut)")
-	fs.BoolVar(&o.resume, "resume", false, "reprendre un deplacement interrompu (la cible n'est alors pas vide)")
+	fs.BoolVar(&o.resume, "resume", false, "reprendre un deplacement interrompu (reconnu a son marqueur dans la cible ; sinon la cible est controlee comme d'habitude)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -206,7 +206,7 @@ func filmArchiveMove(cfg *config.AppConfig, args []string, out io.Writer) error 
 	s := &sortie{w: out}
 	s.printf("film archive-move : %s -> %s (serveur arrete)\n", source, cible)
 	debut := time.Now()
-	n, err := filmcache.Deplacer(ctx, source, cible, o.resume)
+	n, err := filmcache.Deplacer(ctx, source, cible, filmcache.OptionsDeplacement{Reprise: o.resume, CibleParDefaut: o.toDef})
 	if err != nil {
 		slog.ErrorContext(ctx, "film archive-move: deplacement interrompu", "source", source, "cible", cible, "deplaces", n, "err", err)
 		return fmt.Errorf("deplacement interrompu apres %d films (relancer avec --resume reprend les films restants): %w", n, err)

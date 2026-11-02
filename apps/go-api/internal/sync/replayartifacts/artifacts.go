@@ -86,9 +86,10 @@ type Hook struct {
 	// CacheRoot : racine du cache applicatif (PathResolver.CacheRootDir) : variantes de carte,
 	// zones. Les films n'y vivent plus (FilmRoot).
 	CacheRoot string
-	// FilmRoot : racine de l'ARCHIVE des films (PathResolver.FilmArchiveDir), celle que
-	// `filmcache` lit et écrit.
-	FilmRoot string
+	// FilmRoot rend la racine de l'ARCHIVE des films (PathResolver.FilmArchiveDir), celle que
+	// `filmcache` lit et écrit. Une FONCTION, relue à chaque cycle : une archive vide peut changer
+	// d'emplacement à chaud (title.SetFilmArchiveRuntime).
+	FilmRoot func() string
 	// ArchiveFilms relit à CHAQUE cycle le réglage « archiver les films ». Nil = oui (le défaut
 	// d'ADR 0045 D-12 : un film expire côté serveur, on ne le jette pas sans l'avoir demandé).
 	ArchiveFilms func() bool
@@ -141,11 +142,19 @@ func NewHook(cfg *config.AppConfig, store SettingsReader, enqueue EnqueueFunc) *
 		},
 		Enqueue:   enqueue,
 		CacheRoot: cfg.PathResolver().CacheRootDir(),
-		FilmRoot:  cfg.PathResolver().FilmArchiveDir(),
+		FilmRoot:  cfg.PathResolver().FilmArchiveDir,
 		// LA CUISSON PART DANS UN ENFANT BORNE, TOUJOURS (lot BUILDALL) : le serveur ne
 		// decode plus un film dans son propre processus.
 		BuildOne: SpawnBuildOne,
 	}
+}
+
+// Film rend la racine de l'archive des films du cycle courant ("" si le hook n'en porte pas).
+func (h *Hook) Film() string {
+	if h == nil || h.FilmRoot == nil {
+		return ""
+	}
+	return h.FilmRoot()
 }
 
 // Archive dit si le cycle courant conserve les films après cuisson, hook ou closure nils compris

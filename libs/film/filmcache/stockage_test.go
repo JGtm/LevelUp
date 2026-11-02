@@ -296,16 +296,16 @@ func TestValiderCible(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(plein, "x"), []byte("x"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := ValiderCible(vide); err != nil {
+	if err := ValiderCible(vide, false); err != nil {
 		t.Errorf("dossier vide refuse : %v", err)
 	}
-	if err := ValiderCible(filepath.Join(vide, "nouveau")); err != nil {
+	if err := ValiderCible(filepath.Join(vide, "nouveau"), false); err != nil {
 		t.Errorf("dossier inexistant refuse : %v", err)
 	}
-	if err := ValiderCible(plein); !errors.Is(err, ErrCibleNonVide) {
+	if err := ValiderCible(plein, false); !errors.Is(err, ErrCibleNonVide) {
 		t.Errorf("dossier non vide : %v, attendu ErrCibleNonVide", err)
 	}
-	if err := ValiderCible("relatif/dossier"); err == nil {
+	if err := ValiderCible("relatif/dossier", false); err == nil {
 		t.Error("un chemin relatif doit etre refuse")
 	}
 }
@@ -318,7 +318,7 @@ func TestDeplacer_RangeLesFilmsEtRefuseUneCibleNonVide(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	n, err := Deplacer(t.Context(), origine, cible, false)
+	n, err := Deplacer(t.Context(), origine, cible, OptionsDeplacement{})
 	if err != nil || n != 2 {
 		t.Fatalf("Deplacer = %d, %v", n, err)
 	}
@@ -335,7 +335,7 @@ func TestDeplacer_RangeLesFilmsEtRefuseUneCibleNonVide(t *testing.T) {
 	if err := Write(t.Context(), origine, "bbbb0003", film); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Deplacer(t.Context(), origine, cible, false); !errors.Is(err, ErrCibleNonVide) {
+	if _, err := Deplacer(t.Context(), origine, cible, OptionsDeplacement{}); !errors.Is(err, ErrCibleNonVide) {
 		t.Fatalf("cible non vide : %v, attendu ErrCibleNonVide", err)
 	}
 	if ids, _ := ListShortIDs(origine); len(ids) != 1 {

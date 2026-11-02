@@ -124,25 +124,9 @@ func (h *SettingsHandler) validateFilmArchiveMove(ctx context.Context, target st
 		return filmArchiveRefus(codeFilmArchiveMove,
 			i18n.Msg(i18n.FromContext(ctx), "settings.film_archive.move_required", i18n.Params{"films": len(films)}))
 	}
-	if err := checkFilmArchiveTarget(resolved, target == ""); err != nil {
+	if err := filmcache.ValiderCible(resolved, target == ""); err != nil {
 		return filmArchiveRefus(codeFilmArchiveTarget,
 			i18n.Msg(i18n.FromContext(ctx), "settings.film_archive.target_not_empty", i18n.Params{"dir": resolved}))
-	}
-	return nil
-}
-
-// checkFilmArchiveTarget : un dossier explicite doit être vide ou absent ; le dossier par défaut
-// (le cache applicatif, jamais vide) ne doit pas contenir de film.
-func checkFilmArchiveTarget(dir string, isDefault bool) error {
-	if !isDefault {
-		return filmcache.ValiderCible(dir)
-	}
-	films, err := filmcache.ListShortIDs(dir)
-	if err != nil {
-		return err
-	}
-	if len(films) > 0 {
-		return filmcache.ErrCibleNonVide
 	}
 	return nil
 }

@@ -13,9 +13,9 @@ type FilmArchiveSettings struct {
 	// et le rejeu sont produits, les chunks sont retirés après la cuisson, et la rétention des
 	// rejeux est forcée illimitée (la purge suppose une recuisson depuis l'archive).
 	ArchiveFilms bool `json:"archive_films" doc:"Conserver les films (chunks) après la cuisson du rejeu. Non : les chunks sont retirés après cuisson et la rétention des rejeux est illimitée."`
-	// FilmArchiveDir : dossier de l'archive, chemin absolu. Vide = <données>/cache. Pris en
-	// compte au prochain démarrage.
-	FilmArchiveDir string `json:"film_archive_dir" doc:"Dossier de l'archive des films (chemin absolu). Vide = emplacement par défaut. Pris en compte au redémarrage."`
+	// FilmArchiveDir : dossier de l'archive, chemin absolu. Vide = <données>/cache. Changé à chaud
+	// tant que l'archive est vide ; sinon le changement est refusé (commande de déplacement).
+	FilmArchiveDir string `json:"film_archive_dir" doc:"Dossier de l'archive des films (chemin absolu). Vide = emplacement par défaut. Appliqué tout de suite tant que l'archive est vide."`
 }
 
 // FilmArchiveUpdate : les deux clés, en écriture partielle (PATCH /settings).

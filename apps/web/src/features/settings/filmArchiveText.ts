@@ -48,7 +48,7 @@ const FR: FilmArchiveText = {
   locationLabel: "Dossier de l'archive",
   locationPlaceholder: 'Emplacement par défaut',
   locationHint:
-    "Chemin absolu d'un dossier vide. Vide : emplacement par défaut. Le nouveau dossier est pris en compte au redémarrage.",
+    "Chemin absolu d'un dossier vide. Vide : emplacement par défaut. Tant que l'archive est vide, le nouveau dossier sert tout de suite.",
   locationSave: 'Enregistrer le dossier',
   moveHint:
     "L'archive contient déjà des films : pour la déplacer, lancer « levelup film archive-move --to <dossier> » programme arrêté.",
@@ -79,7 +79,7 @@ const EN: FilmArchiveText = {
   locationLabel: 'Archive folder',
   locationPlaceholder: 'Default location',
   locationHint:
-    'Absolute path of an empty folder. Empty: default location. The new folder is used after a restart.',
+    'Absolute path of an empty folder. Empty: default location. While the archive is empty, the new folder is used right away.',
   locationSave: 'Save folder',
   moveHint:
     'The archive already holds films: to move it, run "levelup film archive-move --to <folder>" with the program stopped.',

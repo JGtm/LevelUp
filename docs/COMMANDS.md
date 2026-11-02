@@ -444,7 +444,8 @@ go run ./cmd/levelup film archive-move --to D:\Films --resume   # resumes an int
 
 - The settings screen (Settings, Data tab) shows the archive size and free space, and the first-launch
   wizard offers to keep films or not. Changing the folder there is refused while the archive holds
-  films or the target is not empty; `archive-move` does the move. The new folder applies at the next start.
+  films or the target is not empty; `archive-move` does the move (run with the server stopped; the saved
+  folder applies at the next start). On an empty archive (first-launch wizard) the new folder applies at once.
 - Without an archive (`archive_films` off) replays are still built and facts persisted, the chunks
   are removed once cooked, and the replay retention must stay unlimited (the purge assumes a rebuild
   from the archive).

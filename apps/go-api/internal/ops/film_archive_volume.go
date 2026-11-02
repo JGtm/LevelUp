@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"levelup/go-api/internal/platform/diskfree"
 )
@@ -51,13 +50,11 @@ func nearestExisting(dir string) string {
 	}
 }
 
-// IsUnder dit si `dir` est `root` ou se trouve dessous (comparaison lexicale après nettoyage,
-// insensible à la casse sous Windows). Sert à décider si l'archive partage le volume des données :
-// sous la racine de données, c'est le même volume et la surveillance déjà en place suffit.
-func IsUnder(dir, root string) bool {
-	rel, err := filepath.Rel(strings.ToLower(filepath.Clean(root)), strings.ToLower(filepath.Clean(dir)))
-	if err != nil {
-		return false
-	}
-	return rel == "." || (rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)))
+// SameVolume dit si `a` et `b` sont sur le MEME VOLUME (disque, partition, point de montage), pas
+// seulement sous la meme racine : une archive en C:/Films et des donnees sous le profil utilisateur
+// partagent un disque et n'ont qu'une surveillance. Un chemin pas encore cree se compare par son
+// plus proche ancetre existant. Une erreur de mesure est rendue : l'appelant prefere alors
+// surveiller deux fois que ne pas surveiller.
+func SameVolume(a, b string) (bool, error) {
+	return diskfree.SameVolume(nearestExisting(a), nearestExisting(b))
 }
