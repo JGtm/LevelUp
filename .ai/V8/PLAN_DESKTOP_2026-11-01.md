@@ -444,7 +444,7 @@ Fichiers : `cmd/server/flags.go` (nouveau, D-15), `cmd/server/boot_gate.go`, `cm
       `games/mappings/loader_vehicle_weapons.go:75`, `cmd/weapon-sounds` et ses goldens,
       `livraison_orchestrate.go:39`) ; test Vitest : chaque entrée de la table pointe un fichier existant.
 - [x] 8.3 WAV supprimés de l'arbre ; `du -sh static/sounds` consigné.
-- [ ] 8.4 **(U)** Écoute comparée sur 5 sons nommés par l'utilisateur, dont une boucle moteur.
+- [x] 8.4 **(U)** Écoute comparée sur 5 sons nommés par l'utilisateur, dont une boucle moteur. Fait le 2026-11-02 : dossier `Downloadsecoute_sons_levelup` (WAV d'origine + Opus, page `ecoute.html`) ; verdict de l'utilisateur : « Sons ok, parfaits ».
 - Gate : `npm run test`, `npm run build` ; `go test ./internal/games/mappings/... ./cmd/weapon-sounds/...`.
 
 ### 9.9 L9 — Mesures : zstd de l'archive, formats de sons (H, scripts Go sous le scratchpad, non versionnés)
