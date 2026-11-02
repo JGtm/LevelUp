@@ -649,6 +649,24 @@ Définition : `ResourcesRoot` = la racine du dépôt aujourd'hui (`LEVELUP_RESOU
 - [ ] 17.6 **(P)** Runs verts ; procédure de sauvegarde de la clé d'updater exécutée (ADR 0045).
 - [ ] 17.7 **(U)** Installation sur une machine vierge, désinstallation, données conservées : témoins.
 
+### 9.17b L18 — Interface bureau (S après maquette validée par U ; EN DERNIER, décision utilisateur du 2026-11-02)
+
+Constat de l'utilisateur au premier lancement de la coquille : pied de page de site, barre de navigation de site,
+image de couverture de l'accueil « ça ne fait pas app de bureau ». Décision : lot fait en dernier, après L17.
+
+- [ ] 18.1 Maquette (Claude Design ou artefact) validée par l'utilisateur AVANT tout code : accueil sans image de
+      couverture (tableau de bord, en-tête compact), **barre latérale** (celle de la vue mobile, retenue par
+      l'utilisateur) à la place de la barre haute, fenêtre « À propos » (version, licences, mention Microsoft
+      obligatoire A19, lien de dons, « retirés sur simple demande » pour les sons).
+- [ ] 18.2 Branché sur les capacités de `/bootstrap` (jamais sur le nom du profil, ADR 0044 D-4) : capacité fine
+      `compact_chrome` (ou nom retenu) vraie en `desktop` ; pied de page retiré, éléments « site » de la navigation
+      retirés (déjà portés par `can_offer_windows_download`, `can_use_accounts`), « À propos » ajouté ; le site hébergé
+      ne change pas (tests fixtures `hosted` identiques).
+- [ ] 18.3 Libellés fr + en ; tokens sémantiques ; tests Vitest par capacité ; un scénario Playwright `desktop-chrome`.
+- [ ] 18.4 **(U)** Gate visuel sur l'application installée.
+- Gate : `cd apps/web && npm run typecheck && npm run lint && npm run test` ; pilote : DevTools WebView2 (titre,
+  URL) sur le binaire de dev.
+
 ### 9.18 P2 — à planifier à la clôture de P1 (liste fermée des sujets)
 
 Fin de match par détection du processus du jeu (énumération seule), mode jeu (pas de cuisson pendant
