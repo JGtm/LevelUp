@@ -79,6 +79,10 @@ export const OBJECTIVE_SOUND_STEMS: Readonly<
   Record<string, { ally?: string; enemy?: string } | { any: string }>
 > = {
   flag_captures: { ally: 'objective_flag_scored_team', enemy: 'objective_flag_scored_enemy' },
+  // LE DRAPEAU PRIS PAR NOTRE ÉQUIPE SONNE UNE FOIS (verdict utilisateur du 2026-11-02, à
+  // l'écoute du jeu). L'événement déclare sa seconde couche (alerte à +400 ms, +3 dB) répétée
+  // trois fois toutes les 850 ms ; le fichier n'en garde qu'une lecture, superposée à la première
+  // couche. Le côté adverse n'est pas concerné : ses trois impulsions sont DANS son média.
   flag_steals: { ally: 'objective_flag_stolen_team', enemy: 'objective_flag_stolen_enemy' },
   flag_grabs: { ally: 'objective_flag_grabbed_team', enemy: 'objective_flag_grabbed_enemy' },
   flag_returns: { any: 'objective_flag_returned' },

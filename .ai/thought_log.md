@@ -119828,3 +119828,21 @@ abaissés (4 fichiers, lignes de commentaire retirées).
 
 **Conclusion / prochaine étape.** Commit puis PR vers `release/v8.1.0` sur accord du user ; écoute du moteur
 au rejeu par le user (Warthog arrêté puis reparti).
+
+## [2026-11-02] Rejeu : le drapeau pris par notre équipe sonne une fois — Complété (PR vers la release)
+
+**Contexte.** Retour du user : quand notre équipe prend le drapeau ennemi, le rejeu sonne trois fois, le jeu
+une seule.
+
+**Décision technique.** L'événement `fefed142` (`play_004_mod_mp_ctf_flag_taken_team`, banque CTF
+`61007dcf`) a deux couches : `411873637` à 0 s, et `226438283` à +400 ms, +3 dB, déclarée répétée 3 fois
+toutes les 850 ms (`sLoopCount` = 3, mode 5). Le rendu du 2026-08-27 suivait cette déclaration (4,59 s, trois
+alertes) ; le user, à l'écoute du jeu, n'en entend qu'une. Rendu refait avec UNE lecture de la couche répétée :
+médias extraits de la banque (`weapon-sounds -mode embarques -sbnk 61007dcf`), décodés vgmstream, sommés en
+flottant aux gains et délai déclarés, crête à -1 dBFS, stéréo 48 kHz, encodés par `sounds-encode -check`
+(Opus 96k). Nouveau fichier : 2,89 s. Le côté adverse (`objective_flag_stolen_enemy`) reste tel quel : ses
+trois impulsions sont dans le média `145749690` lui-même, pas dans une répétition déclarée.
+
+**Résultats.** Enveloppe vérifiée : une seule alerte. Tests du rejeu (garde-rails d'assets compris) verts.
+
+**Conclusion / prochaine étape.** Écoute du user au rejeu.
