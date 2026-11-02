@@ -19,6 +19,7 @@
  * Le profil de participation reste en miroir (axe a droite a gauche / a gauche a droite).
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { PAGE_HEADER_TABS_HEIGHT_REM } from '@/components/foundations/pageHeaderLogic'
 import { useNavigate, useParams, useSearch, useRouter } from '@tanstack/react-router'
 import { useTitleSlug } from '@/lib/title-routing'
 
@@ -106,9 +107,11 @@ export function SessionDetailPage() {
   // sticky top-0 dans le même conteneur de scroll). On mesure la hauteur réelle de ce bandeau (sibling
   // précédent du root de la page dans PlayerLayout, repéré par son rôle `navigation`) et on
   // l'applique en `top` — sinon les deux se chevauchent à top-0 et le header L3 disparaît derrière le
-  // bandeau au scroll. Le sibling précédent peut aussi être l'en-tête de page (non sticky) : ignoré.
+  // bandeau au scroll. Le sibling précédent peut aussi être l'en-tête de page : ignoré.
   const rootRef = useRef<HTMLDivElement>(null)
   const [navHeight, setNavHeight] = useState(0)
+  // Sous la ligne d'onglets collante de l'en-tête de page, puis sous le bandeau des filtres.
+  const stickyTop = `calc(${PAGE_HEADER_TABS_HEIGHT_REM}rem + ${navHeight}px)`
   useEffect(() => {
     const root = rootRef.current
     if (!root) return
@@ -303,7 +306,7 @@ export function SessionDetailPage() {
                 que les deux headers (et le contenu sous eux) s'alignent pile. */}
             <div
               className="sticky z-20 -mx-6 -mt-6 flex flex-col gap-3 border-b border-border bg-background px-6 py-3 sm:flex-row sm:items-center sm:justify-between xl:h-14 xl:overflow-x-clip"
-              style={{ top: navHeight }}
+              style={{ top: stickyTop }}
             >
               <div className="flex items-center gap-3">
                 <button
@@ -423,13 +426,13 @@ export function SessionDetailPage() {
             <>
               {/* En-tête L3 du drawer — équivalent du L3 page : une seule ligne
                   "Comparaison · [sélecteur de session] [pills]" + fermeture. STICKY au
-                  même `top: navHeight` que le L3 principal (→ alignés côte-à-côte, figés
+                  même `top` (`stickyTop`) que le L3 principal (→ alignés côte-à-côte, figés
                   au scroll) et de hauteur fixe h-14 identique. bleed -mx-6 -mt-6 vers les
                   bords de la colonne (p-6 aligné sur la colonne principale). Le sticky ne
                   tient QUE parce que la piste parente clippe via `overflow-x: clip`. */}
               <div
                 className="sticky z-20 -mx-6 -mt-6 flex h-14 items-center gap-2 border-b border-border bg-background px-6"
-                style={{ top: navHeight }}
+                style={{ top: stickyTop }}
               >
                 <h2 className="whitespace-nowrap text-sm font-semibold text-foreground">
                   {t('session.detail.compare_label')}

@@ -4,6 +4,7 @@
  * Types ref: SynthesisPageResponse, SynthesisKPIs, ComparisonMetricItem, HeatmapCell, TopWeekItem
  */
 import { useMemo, useState } from 'react'
+import { STICKY_BELOW_TABS_CLASS } from '@/components/foundations/pageHeaderLogic'
 import { useParams } from '@tanstack/react-router'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { intlLocale } from '@/lib/formatters'
@@ -695,7 +696,7 @@ export function SynthesisPage() {
       {/* ─── Barre filtres (cascade locale) ─────────────────────────────────── */}
       {/* Ordre : Expérience → Saison → Période → Playlist → Mode. Counts cascade-aware
           calculés via /filters/resolve (useFiltersPreview). Commit atomique au clic Analyser. */}
-      <div className="sticky top-0 z-20 px-6" style={{ background: 'var(--background)' }}>
+      <div className={`sticky ${STICKY_BELOW_TABS_CLASS} z-20 px-6`} style={{ background: 'var(--background)' }}>
         <div className="flex min-h-10 items-center gap-1.5 border-b border-border py-1.5 flex-wrap">
           <ExperienceDropdown
             value={pendingExperience}

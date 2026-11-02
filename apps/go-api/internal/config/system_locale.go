@@ -23,6 +23,37 @@ type SystemLocale struct {
 	Lang string
 }
 
+// DeclaredString rend la valeur d'une clé chaîne d'app_settings.json quand elle est ÉCRITE. Règle
+// UNIQUE de la configuration, du magasin de réglages et de /bootstrap : une clé absente, vide ou non
+// textuelle n'est pas écrite, et c'est alors le défaut (celui du système sous la capacité
+// AdoptSystemLocale) qui sert.
+func DeclaredString(v any) (string, bool) {
+	s, ok := v.(string)
+	if !ok || s == "" {
+		return "", false
+	}
+	return s, true
+}
+
+// LangOr rend la langue du système, ou fallback quand le système n'en désigne aucune de l'application
+// (ou hors profil desktop : valeur zéro). Défaut d'une clé `lang` non écrite, pour le magasin de
+// réglages comme pour /bootstrap.
+func (sys SystemLocale) LangOr(fallback string) string {
+	if sys.Lang != "" {
+		return sys.Lang
+	}
+	return fallback
+}
+
+// TimezoneOr rend le fuseau du système, ou fallback hors profil desktop (valeur zéro). Défaut d'une
+// clé `user_timezone` non écrite, pour le magasin de réglages comme pour /bootstrap.
+func (sys SystemLocale) TimezoneOr(fallback string) string {
+	if sys.Timezone != "" {
+		return sys.Timezone
+	}
+	return fallback
+}
+
 // readSystemLocale lit le système ; substituée par les tests.
 var readSystemLocale = syslocale.ReadRaw
 
@@ -98,7 +129,7 @@ func readUserTimezone(settingsPath string) (tz string, declared bool) {
 	if err := json.Unmarshal(data, &m); err != nil {
 		return defaultUserTimezone, false
 	}
-	if s, ok := m["user_timezone"].(string); ok && s != "" {
+	if s, ok := DeclaredString(m["user_timezone"]); ok {
 		return s, true
 	}
 	return defaultUserTimezone, false

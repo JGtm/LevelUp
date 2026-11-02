@@ -36,6 +36,17 @@ var h264Preference = []H264Encoder{EncoderLibx264, EncoderMediaFoundation, Encod
 // ErrNoH264Encoder : le ffmpeg résolu n'a aucun encodeur H.264 utilisable parmi h264Preference.
 var ErrNoH264Encoder = errors.New("aucun encodeur H.264 utilisable (libx264, h264_mf, libopenh264)")
 
+// Options ffmpeg citées par plusieurs fabricants d'arguments du paquet.
+const (
+	ffArgVideoCodec = "-c:v"
+	ffArgPreset     = "-preset"
+	ffArgCRF        = "-crf"
+	ffArgBitrate    = "-b:v"
+	ffArgRCMode     = "-rc_mode"
+	ffArgPixFmt     = "-pix_fmt"
+	ffPixFmtYUV420P = "yuv420p"
+)
+
 const (
 	// h264FallbackBitrate est le débit cible des encodeurs sans CRF : un clip de jeu 1080p60 y
 	// reste net sans produire des segments démesurés.
@@ -64,11 +75,11 @@ func H264Candidates(listed map[string]bool) []H264Encoder {
 func h264VideoArgs(enc H264Encoder, segDur int) []string {
 	switch enc {
 	case EncoderMediaFoundation:
-		return append([]string{"-c:v", string(enc)}, fallbackRateArgs(segDur)...)
+		return append([]string{ffArgVideoCodec, string(enc)}, fallbackRateArgs(segDur)...)
 	case EncoderOpenH264:
-		return append([]string{"-c:v", string(enc), "-rc_mode", "bitrate"}, fallbackRateArgs(segDur)...)
+		return append([]string{ffArgVideoCodec, string(enc), ffArgRCMode, "bitrate"}, fallbackRateArgs(segDur)...)
 	default: // EncoderLibx264
-		return []string{"-c:v", string(EncoderLibx264), "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p"}
+		return []string{ffArgVideoCodec, string(EncoderLibx264), ffArgPreset, "veryfast", ffArgCRF, "20", ffArgPixFmt, ffPixFmtYUV420P}
 	}
 }
 
@@ -76,10 +87,10 @@ func h264VideoArgs(enc H264Encoder, segDur int) []string {
 // segment (une coupure de segment HLS ne tombe que sur une image-clé).
 func fallbackRateArgs(segDur int) []string {
 	return []string{
-		"-b:v", h264FallbackBitrate,
+		ffArgBitrate, h264FallbackBitrate,
 		"-g", strconv.Itoa(h264FallbackGOP),
 		"-force_key_frames", "expr:gte(t,n_forced*" + strconv.Itoa(segDur) + ")",
-		"-pix_fmt", "yuv420p",
+		ffArgPixFmt, ffPixFmtYUV420P,
 	}
 }
 
@@ -91,12 +102,19 @@ func h264ProbeArgs(enc H264Encoder) []string {
 }
 
 // chooseH264 rend le premier candidat que probe accepte ; les refus sont journalisés. Sans
-// candidat accepté, ErrNoH264Encoder. Logique pure à la sonde près (injectée par les tests).
+// candidat accepté, ErrNoH264Encoder ; contexte expiré ou annulé, l'erreur du contexte (enveloppée),
+// jamais ErrNoH264Encoder. Logique pure à la sonde près (injectée par les tests).
 func chooseH264(ctx context.Context, candidates []H264Encoder, probe func(context.Context, H264Encoder) error) (H264Encoder, error) {
 	for _, enc := range candidates {
 		err := probe(ctx, enc)
 		if err == nil {
 			return enc, nil
+		}
+		// Échéance ou annulation pendant l'essai : la détection n'a pas abouti, ce n'est pas « aucun
+		// encodeur » (faux verdict que garderait check-env). Le choix n'est pas gardé : le premier
+		// transcodage le refait.
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return "", fmt.Errorf("détection de l'encodeur H.264 interrompue: %w", ctxErr)
 		}
 		slog.WarnContext(ctx, "media: encodeur H.264 listé mais inutilisable, suivant essayé",
 			"encoder", string(enc), "err", err)

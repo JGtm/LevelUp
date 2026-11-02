@@ -145,6 +145,31 @@ func TestChooseH264_NoneUsableIsATypedError(t *testing.T) {
 	}
 }
 
+// Une échéance qui expire PENDANT l'essai n'est pas « aucun encodeur » : la détection n'a pas abouti
+// (check-env ne doit pas afficher un faux [KO], le premier transcodage refera le choix).
+func TestChooseH264_ExpiredDeadlineIsNotNoEncoder(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	probe := func(ctx context.Context, _ H264Encoder) error {
+		cancel() // l'échéance tombe pendant l'essai ; l'essai échoue avec elle
+		return ctx.Err()
+	}
+	probed := 0
+	counting := func(ctx context.Context, enc H264Encoder) error {
+		probed++
+		return probe(ctx, enc)
+	}
+	got, err := chooseH264(ctx, []H264Encoder{EncoderLibx264, EncoderMediaFoundation}, counting)
+	if err == nil || errors.Is(err, ErrNoH264Encoder) {
+		t.Fatalf("chooseH264 = %q, %v ; attendu l'erreur du contexte, jamais ErrNoH264Encoder", got, err)
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Errorf("err = %v ; attendu une erreur enveloppant context.Canceled", err)
+	}
+	if probed != 1 {
+		t.Errorf("sondes = %d ; la détection s'arrête à l'interruption, sans essayer les suivants", probed)
+	}
+}
+
 // stubEncodersListing remplace le lanceur par le processus d'aide : avec `-encoders` il écrit
 // listing ; sans, c'est un essai d'encodage, accepté (sortie 0) ou refusé selon probeFails. Le
 // résolveur est dirigé vers un faux binaire pour que le chemin résolu existe. Rend les compteurs

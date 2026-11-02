@@ -14,7 +14,14 @@ package duckdb
 //   - le CHECKPOINT passe sous le bail d'écriture de la base (`dblease`) : un lot d'écriture en
 //     cours (persist, sync, bascule B-swap de shared_matches) le tient, la base est alors sautée
 //     et comptée, jamais attendue longtemps ;
-//   - un CHECKPOINT qui échoue est journalisé (WARN, avec la base) et compté, jamais avalé.
+//   - un CHECKPOINT qui échoue est journalisé (WARN, avec la base) et compté, jamais avalé ;
+//   - la liste des bases est figée avant la prise du bail, et un handle RW peut être fermé entre
+//     les deux (B-swap : releaseWriter ferme le handle AVANT de rendre le bail) : l'état « fermé »
+//     est donc relu APRÈS la prise du bail, et une base fermée est sautée, pas comptée en échec ;
+//   - l'arrêt du serveur annule le contexte, donc la requête (duckdb_interrupt) : un CHECKPOINT
+//     coupé ainsi est compté à part (`interrupted`), ce n'est pas une panne de la base. DuckDB
+//     rend un CHECKPOINT atomique (un CHECKPOINT interrompu laisse la base et son WAL tels qu'ils
+//     étaient) et CloseAll checkpointe à la fermeture : rien n'est perdu.
 
 import (
 	"context"
@@ -36,8 +43,9 @@ const checkpointLeaseWait = 2 * time.Second
 const checkpointPerDBTimeout = 30 * time.Second
 
 // metricPeriodicCheckpoint compte les passages du CHECKPOINT périodique, par issue : `ok`,
-// `failed` (CHECKPOINT refusé ou en erreur), `skipped_busy` (bail d'écriture tenu).
-// Exposé sous /debug/vars.
+// `failed` (CHECKPOINT refusé ou en erreur), `skipped_busy` (bail d'écriture tenu),
+// `skipped_closed` (handle fermé entre la liste et le bail), `interrupted` (contexte annulé
+// pendant le CHECKPOINT : arrêt du serveur). Exposé sous /debug/vars.
 var metricPeriodicCheckpoint = expvar.NewMap("levelup.checkpoint.periodic")
 
 // metricPeriodicCheckpointMs : durée du dernier passage complet (ms).
@@ -51,6 +59,10 @@ type CheckpointReport struct {
 	Failed int
 	// Busy : bases sautées parce que leur bail d'écriture était tenu.
 	Busy int
+	// Closed : bases sautées parce que leur handle a été fermé entre la liste et le bail.
+	Closed int
+	// Interrupted : CHECKPOINT coupés par l'annulation du contexte (arrêt du serveur).
+	Interrupted int
 	// Duration : durée du passage entier.
 	Duration time.Duration
 }
@@ -91,13 +103,18 @@ func CheckpointHeld(ctx context.Context, skip map[string]bool) CheckpointReport 
 			report.Failed++
 		case checkpointBusy:
 			report.Busy++
+		case checkpointClosed:
+			report.Closed++
+		case checkpointInterrupted:
+			report.Interrupted++
 		}
 	}
 	report.Duration = time.Since(start)
 	metricPeriodicCheckpointMs.Set(float64(report.Duration.Milliseconds()))
-	if report.Done+report.Failed+report.Busy > 0 {
+	if report.Done+report.Failed+report.Busy+report.Closed+report.Interrupted > 0 {
 		slog.InfoContext(ctx, "duckdb: checkpoint périodique",
 			"done", report.Done, "failed", report.Failed, "busy", report.Busy,
+			"closed", report.Closed, "interrupted", report.Interrupted,
 			"duration_ms", report.Duration.Milliseconds())
 	}
 	return report
@@ -109,6 +126,8 @@ const (
 	checkpointDone checkpointOutcome = iota
 	checkpointFailed
 	checkpointBusy
+	checkpointClosed
+	checkpointInterrupted
 )
 
 // checkpointOne : bail d'écriture (attente bornée), CHECKPOINT, métrique et journal de la base.
@@ -121,10 +140,24 @@ func checkpointOne(ctx context.Context, db *DB) checkpointOutcome {
 	}
 	defer release()
 
+	// Relu APRÈS le bail : la liste a été faite avant, et releaseWriter ferme le handle RW avant de
+	// rendre le bail. Un CHECKPOINT sur ce handle échouerait en « database is closed ».
+	if db.closed.Load() {
+		metricPeriodicCheckpoint.Add("skipped_closed", 1)
+		slog.DebugContext(ctx, "duckdb: checkpoint périodique sauté, handle fermé entre-temps", "path", db.path)
+		return checkpointClosed
+	}
+
 	cpCtx, cancel := context.WithTimeout(ctx, checkpointPerDBTimeout)
 	defer cancel()
 	start := time.Now()
 	if _, err := db.loadSQL().ExecContext(cpCtx, "CHECKPOINT"); err != nil {
+		if ctx.Err() != nil {
+			metricPeriodicCheckpoint.Add("interrupted", 1)
+			slog.InfoContext(ctx, "duckdb: checkpoint périodique interrompu par l'arrêt",
+				"path", db.path, "duration_ms", time.Since(start).Milliseconds(), "err", err)
+			return checkpointInterrupted
+		}
 		metricPeriodicCheckpoint.Add("failed", 1)
 		slog.WarnContext(ctx, "duckdb: checkpoint périodique échoué",
 			"path", db.path, "duration_ms", time.Since(start).Milliseconds(), "err", err)

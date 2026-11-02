@@ -8,8 +8,8 @@
 //! s'arreter. La decision ([`verdict`]) est pure ; [`Progress`] n'est que le compteur que le
 //! rappel de progression du plugin alimente.
 
-use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 /// Duree sans aucun octet recu apres laquelle le telechargement est abandonne.
@@ -90,9 +90,36 @@ impl Progress {
     }
 }
 
+/// Ou la tache de telechargement depose son resultat pour la surveillance.
+pub type Slot<T> = Arc<Mutex<Option<Result<T, String>>>>;
+
+/// La boucle de surveillance : a chaque tour, lit D'ABORD le resultat de la tache (un telechargement
+/// fini a l'instant ou le verdict tombe est rendu, pas abandonne), puis demande le verdict ; sur un
+/// abandon appelle `abort` UNE fois et rend la raison en erreur. `pause` attend entre deux tours
+/// (le fil dort `POLL_INTERVAL`). Les entrees sont des fermetures pour que la boucle se teste sans
+/// horloge ni reseau.
+pub fn watch_download<T>(
+    slot: &Mutex<Option<Result<T, String>>>,
+    mut verdict_now: impl FnMut() -> Verdict,
+    abort: impl FnOnce(),
+    mut pause: impl FnMut(),
+) -> Result<T, String> {
+    loop {
+        if let Some(result) = slot.lock().unwrap_or_else(|p| p.into_inner()).take() {
+            return result;
+        }
+        if let Some(reason) = verdict_now().reason() {
+            abort();
+            return Err(reason.to_string());
+        }
+        pause();
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::cell::Cell;
 
     const SECOND: Duration = Duration::from_secs(1);
 
@@ -140,5 +167,82 @@ mod tests {
         let progress = Progress::new();
         progress.record();
         assert_eq!(progress.check(), Verdict::Wait);
+    }
+
+    fn empty_slot() -> Slot<u32> {
+        Arc::default()
+    }
+
+    fn deposit(slot: &Slot<u32>, result: Result<u32, String>) {
+        *slot.lock().unwrap() = Some(result);
+    }
+
+    #[test]
+    fn la_boucle_rend_le_resultat_arrive_avant_le_verdict() {
+        // Le verdict dirait « abandon » : le resultat deja la passe d'abord, aucun abandon.
+        let slot = empty_slot();
+        deposit(&slot, Ok(7));
+        let aborted = Cell::new(0);
+        let out = watch_download(&slot, || Verdict::Stalled, || aborted.set(aborted.get() + 1), || {});
+        assert_eq!(out, Ok(7));
+        assert_eq!(aborted.get(), 0, "un telechargement fini ne doit pas etre abandonne");
+    }
+
+    #[test]
+    fn la_boucle_attend_tant_que_le_verdict_attend_puis_rend_le_resultat() {
+        let slot = empty_slot();
+        let pauses = Cell::new(0);
+        let out = watch_download(
+            &slot,
+            || Verdict::Wait,
+            || panic!("aucun abandon attendu"),
+            || {
+                pauses.set(pauses.get() + 1);
+                if pauses.get() == 3 {
+                    deposit(&slot, Ok(42));
+                }
+            },
+        );
+        assert_eq!(out, Ok(42));
+        assert_eq!(pauses.get(), 3);
+    }
+
+    #[test]
+    fn un_flux_inactif_est_abandonne_une_fois_avec_sa_raison() {
+        let slot = empty_slot();
+        let aborted = Cell::new(0);
+        let out = watch_download(&slot, || Verdict::Stalled, || aborted.set(aborted.get() + 1), || {});
+        assert_eq!(out, Err("download_stalled".to_string()));
+        assert_eq!(aborted.get(), 1);
+    }
+
+    #[test]
+    fn le_plafond_de_duree_abandonne_apres_quelques_tours() {
+        let slot = empty_slot();
+        let ticks = Cell::new(0);
+        let aborted = Cell::new(false);
+        let out = watch_download(
+            &slot,
+            || {
+                ticks.set(ticks.get() + 1);
+                if ticks.get() > 2 {
+                    Verdict::TooLong
+                } else {
+                    Verdict::Wait
+                }
+            },
+            || aborted.set(true),
+            || {},
+        );
+        assert_eq!(out, Err("download_too_long".to_string()));
+        assert!(aborted.get());
+    }
+
+    #[test]
+    fn l_erreur_de_la_tache_est_rendue_telle_quelle() {
+        let slot = empty_slot();
+        deposit(&slot, Err("signature invalide".to_string()));
+        let out = watch_download(&slot, || Verdict::Wait, || panic!("aucun abandon"), || {});
+        assert_eq!(out, Err("signature invalide".to_string()));
     }
 }

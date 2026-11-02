@@ -13,8 +13,8 @@
 //   - au boot serveur (cmd/server)  : LogMediaToolingStatus — slog non-bloquant ;
 //   - dans la CLI `check-env`        : InspectMediaTooling + Report.Summary (stdout).
 //
-// Le PARSING des sorties ffmpeg (parseFFmpegComponents, missingComponents,
-// firstLine, et media.ParseFFmpegComponents) est PUR et testable avec une sortie simulée — aucun test ne dépend
+// Le PARSING des sorties ffmpeg (media.ParseFFmpegComponents, missingComponents,
+// firstLine) est PUR et testable avec une sortie simulée — aucun test ne dépend
 // d'un ffmpeg réellement installé (cf. media_tooling_test.go).
 package ops
 
@@ -30,13 +30,16 @@ import (
 	mediapkg "levelup/go-api/internal/media"
 )
 
+// encoderLibwebp : encodeur ffmpeg des miniatures WebP animées.
+const encoderLibwebp = "libwebp"
+
 // requiredEncoders liste les encodeurs ffmpeg dont dépend LevelUp :
 //   - libwebp : miniatures animées WebP (media_thumbnails.go, -c:v libwebp) ;
 //   - aac     : ré-encodage audio des renditions HLS (hls.go, -c:a aac).
 //
 // L'encodeur vidéo H.264 (ré-encodage quand la copy fMP4 est impossible) n'est pas dans cette
 // liste : il se choisit parmi plusieurs (media.SelectedH264Encoder), voir MediaToolingReport.
-var requiredEncoders = []string{"libwebp", "aac"}
+var requiredEncoders = []string{encoderLibwebp, "aac"}
 
 // requiredMuxers liste les muxers ffmpeg requis :
 //   - hls : arbre HLS (master + sous-playlists), hls.go (-f hls) ;
@@ -47,10 +50,10 @@ var requiredMuxers = []string{"hls", "mp4"}
 // mediaComponentImpact décrit la surface produit cassée par l'absence de chaque
 // composant — sert de contexte actionnable dans les logs et la sortie check-env.
 var mediaComponentImpact = map[string]string{
-	"libwebp": "miniatures animées WebP",
-	"aac":     "ré-encodage audio des renditions HLS",
-	"hls":     "transcodage HLS (sélection de piste audio + seek)",
-	"mp4":     "segments fMP4 des flux HLS",
+	encoderLibwebp: "miniatures animées WebP",
+	"aac":          "ré-encodage audio des renditions HLS",
+	"hls":          "transcodage HLS (sélection de piste audio + seek)",
+	"mp4":          "segments fMP4 des flux HLS",
 }
 
 // MediaToolingReport résume l'état de l'outillage média. Construit par

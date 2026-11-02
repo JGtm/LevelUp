@@ -1,6 +1,6 @@
 /**
  * SoloFiltersBar — bandeau des filtres analytiques des pages Stats (FilterOmnibar + rail période et
- * session), sticky sous l'en-tête de page.
+ * session), collant sous la ligne d'onglets de l'en-tête de page.
  *
  * Seules les pages qui montrent les filtres solo le rendent (règle `routeShowsSoloFilters`, source
  * unique partagée avec la résolution des filtres du layout joueur). Les onglets de section
@@ -10,6 +10,7 @@
  * Les filtres (Session, Période, cascade) sont gérés par FilterOmnibar via des pills.
  */
 import { FilterOmnibar } from './FilterOmnibar'
+import { STICKY_BELOW_TABS_CLASS } from '@/components/foundations/pageHeaderLogic'
 import { PeriodSessionRail } from './PeriodSessionRail'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest } from '@/lib/i18n/generated/common'
@@ -29,7 +30,7 @@ export function SoloFiltersBar() {
   const isSessionsPage = /^\/stats\/sessions/.test(playerRelativePath(pathname) ?? '')
   return (
     <div
-      className="sticky top-0 z-30 shrink-0 bg-background px-6"
+      className={`sticky ${STICKY_BELOW_TABS_CLASS} z-30 shrink-0 bg-background px-6`}
       role="navigation"
       aria-label={formatMessage(commonManifest, 'common.shell.nav_analytics_aria', locale)}
     >

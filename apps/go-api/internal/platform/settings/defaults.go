@@ -63,11 +63,12 @@ func (s *Store) WithSystemDefaults(sys config.SystemLocale) *Store {
 // l'autre.
 func applyAbsentDefaults(cfg *AppSettings, raw map[string]json.RawMessage, d absentDefaults) {
 	enforced := d.enforced
-	if _, ok := raw["lang"]; !ok && d.system.Lang != "" {
-		cfg.Lang = d.system.Lang
+	// Langue et fuseau : une clé vide vaut absente (config.DeclaredString), comme pour /bootstrap.
+	if !declaredString(raw, "lang") {
+		cfg.Lang = d.system.LangOr(defaultLang)
 	}
-	if _, ok := raw["user_timezone"]; !ok && d.system.Timezone != "" {
-		cfg.UserTimezone = d.system.Timezone
+	if !declaredString(raw, "user_timezone") {
+		cfg.UserTimezone = d.system.TimezoneOr(defaultTimezone)
 	}
 	if _, ok := raw["instance_locked"]; !ok && enforced {
 		cfg.InstanceLocked = true
@@ -95,6 +96,26 @@ func applyAbsentDefaults(cfg *AppSettings, raw map[string]json.RawMessage, d abs
 	}
 }
 
+// declaredString dit si la clé chaîne est ÉCRITE dans le fichier (règle config.DeclaredString).
+func declaredString(raw map[string]json.RawMessage, key string) bool {
+	m, ok := raw[key]
+	if !ok {
+		return false
+	}
+	var v any
+	if err := json.Unmarshal(m, &v); err != nil {
+		return false
+	}
+	_, declared := config.DeclaredString(v)
+	return declared
+}
+
+// Défauts historiques de la langue et du fuseau (clé non écrite, sans valeur du système).
+const (
+	defaultLang     = "en"
+	defaultTimezone = "Europe/Paris"
+)
+
 // Defaults retourne les valeurs par défaut de app_settings.json.
 func Defaults() *AppSettings {
 	return defaultSettings()
@@ -103,9 +124,9 @@ func Defaults() *AppSettings {
 // defaultSettings retourne les valeurs par défaut de app_settings.json.
 func defaultSettings() *AppSettings {
 	return &AppSettings{
-		Lang:                "en",
+		Lang:                defaultLang,
 		DiscordLang:         "fr",
-		UserTimezone:        "Europe/Paris",
+		UserTimezone:        defaultTimezone,
 		MediaBufferMinutes:  2,
 		CanSelfProvision:    true,
 		CanStartInitialSync: true,

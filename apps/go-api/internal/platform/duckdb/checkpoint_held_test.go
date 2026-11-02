@@ -134,3 +134,119 @@ func TestHeldRWHandles_ListsTheOpenRWHandle(t *testing.T) {
 	}
 	t.Fatal("le handle RW ouvert n'est pas listé")
 }
+
+// markClosed pose l'état « fermé » du handle comme le fait releaseWriter (le B-swap), sans fermer
+// le handle SQL ; le rend à la fin du test pour que le nettoyage ferme vraiment la base.
+func markClosed(t *testing.T, db *DB) {
+	t.Helper()
+	db.closed.Store(true)
+	t.Cleanup(func() { db.closed.Store(false) })
+}
+
+// TestCheckpointHeld_ClosedAfterTheListIsSkippedNotFailed : la liste est figée avant le bail ;
+// releaseWriter ferme le handle AVANT de rendre le bail. Un handle fermé pendant l'attente du bail
+// est sauté et compté (skipped_closed), jamais compté en échec.
+func TestCheckpointHeld_ClosedAfterTheListIsSkippedNotFailed(t *testing.T) {
+	db, path := openWithWAL(t, "f.duckdb")
+	release, err := dblease.AcquireLease(path, time.Second)
+	if err != nil {
+		t.Fatalf("AcquireLease: %v", err)
+	}
+	closedBefore, failedBefore := metricCount("skipped_closed"), metricCount("failed")
+
+	reports := make(chan CheckpointReport, 1)
+	go func() { reports <- CheckpointHeld(context.Background(), nil) }()
+	// La base est déjà listée et attend le bail : le B-swap ferme le handle, puis rend le bail.
+	time.Sleep(300 * time.Millisecond)
+	markClosed(t, db)
+	release()
+
+	report := <-reports
+	if report.Closed != 1 || report.Done != 0 || report.Failed != 0 {
+		t.Fatalf("rapport = %+v ; attendu une base sautée comme fermée, ni faite ni en échec", report)
+	}
+	if metricCount("skipped_closed") != closedBefore+1 {
+		t.Error("la métrique skipped_closed n'a pas augmenté")
+	}
+	if metricCount("failed") != failedBefore {
+		t.Error("un handle fermé ne doit pas être compté en échec")
+	}
+}
+
+// TestHeldRWHandles_DropsAClosedHandle : un handle déjà fermé n'est pas listé.
+func TestHeldRWHandles_DropsAClosedHandle(t *testing.T) {
+	db, path := openWithWAL(t, "g.duckdb")
+	markClosed(t, db)
+	for _, h := range heldRWHandles(nil) {
+		if h.path == path {
+			t.Fatal("un handle fermé est listé")
+		}
+	}
+}
+
+// TestCheckpointHeld_ACancelledContextStopsThePass : le contexte annulé (arrêt du serveur) arrête le
+// passage avant toute base : rien n'est checkpointé, rien n'est compté en échec.
+func TestCheckpointHeld_ACancelledContextStopsThePass(t *testing.T) {
+	_, path := openWithWAL(t, "h.duckdb")
+	before := walSize(path)
+	failedBefore := metricCount("failed")
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	report := CheckpointHeld(ctx, nil)
+	if report.Done+report.Failed+report.Busy+report.Closed+report.Interrupted != 0 {
+		t.Errorf("rapport = %+v ; attendu aucun traitement", report)
+	}
+	if walSize(path) != before || metricCount("failed") != failedBefore {
+		t.Error("le passage annulé a touché la base ou compté un échec")
+	}
+}
+
+// TestCheckpointOne_InterruptedByShutdownIsCountedApart : un CHECKPOINT coupé par l'annulation du
+// contexte (arrêt) est compté `interrupted`, pas `failed` : ce n'est pas une panne de la base.
+func TestCheckpointOne_InterruptedByShutdownIsCountedApart(t *testing.T) {
+	db, _ := openWithWAL(t, "i.duckdb")
+	interruptedBefore, failedBefore := metricCount("interrupted"), metricCount("failed")
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if got := checkpointOne(ctx, db); got != checkpointInterrupted {
+		t.Fatalf("checkpointOne = %v ; attendu checkpointInterrupted", got)
+	}
+	if metricCount("interrupted") != interruptedBefore+1 {
+		t.Error("la métrique interrupted n'a pas augmenté")
+	}
+	if metricCount("failed") != failedBefore {
+		t.Error("un CHECKPOINT interrompu par l'arrêt ne doit pas être compté en échec")
+	}
+}
+
+// TestCheckpointHeld_NeverTouchesAReadOnlyHandle : un handle ouvert en lecture seule n'est pas
+// listé et n'est jamais checkpointé (DuckDB le refuserait, et un second process peut l'écrire).
+func TestCheckpointHeld_NeverTouchesAReadOnlyHandle(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "ro.duckdb")
+	rw, err := OpenReadWrite(path)
+	if err != nil {
+		t.Fatalf("OpenReadWrite: %v", err)
+	}
+	if _, err := rw.loadSQL().Exec(`CREATE TABLE t (id INTEGER)`); err != nil {
+		t.Fatal(err)
+	}
+	if err := rw.Close(); err != nil { // le fichier existe, plus aucun handle RW
+		t.Fatalf("Close: %v", err)
+	}
+	ro, err := OpenReadOnly(path)
+	if err != nil {
+		t.Fatalf("OpenReadOnly: %v", err)
+	}
+	t.Cleanup(func() { _ = ro.Close() })
+
+	for _, h := range heldRWHandles(nil) {
+		if h.path == path {
+			t.Fatal("un handle en lecture seule est listé parmi les handles RW")
+		}
+	}
+	failedBefore, okBefore := metricCount("failed"), metricCount("ok")
+	report := CheckpointHeld(context.Background(), nil)
+	if report.Failed != 0 || metricCount("failed") != failedBefore || metricCount("ok") != okBefore {
+		t.Errorf("rapport = %+v ; le handle en lecture seule ne doit donner ni échec ni CHECKPOINT", report)
+	}
+}

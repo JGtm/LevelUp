@@ -617,8 +617,6 @@ export const commonManifest = {
   "common.shell.nav_actions_open": { fr: "Ouvrir le menu compte et outils", en: "Open account and tools menu" },
   "common.shell.nav_actions_title": { fr: "Compte & outils", en: "Account & tools" },
   "common.shell.nav_analytics_aria": { fr: "Navigation analytique", en: "Analytics navigation" },
-  "common.shell.nav_career_aria": { fr: "Navigation carrière", en: "Career navigation" },
-  "common.shell.nav_community_aria": { fr: "Navigation communauté", en: "Community navigation" },
   "common.shell.nav_feedback": { fr: "Signaler un problème", en: "Report a problem" },
   "common.shell.nav_game": { fr: "Jeu", en: "Game" },
   "common.shell.nav_help": { fr: "Aide", en: "Help" },

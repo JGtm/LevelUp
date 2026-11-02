@@ -141,3 +141,21 @@ func TestLoadServer_DesktopAdoptsTheSystemLocaleOnly(t *testing.T) {
 		t.Errorf("hébergé : lectures=%d UserTimezone=%q SystemLocale=%+v", *calls-before, hosted.UserTimezone, hosted.SystemLocale)
 	}
 }
+
+// TestDeclaredString_EmptyOrNonTextIsNotDeclared : la règle unique de la clé « écrite ».
+func TestDeclaredString_EmptyOrNonTextIsNotDeclared(t *testing.T) {
+	for name, v := range map[string]any{"absente": nil, "vide": "", "nombre": 3.0, "booléen": true} {
+		if got, ok := DeclaredString(v); ok || got != "" {
+			t.Errorf("%s : DeclaredString = %q, %v ; attendu non écrite", name, got, ok)
+		}
+	}
+	if got, ok := DeclaredString("fr"); !ok || got != "fr" {
+		t.Errorf("DeclaredString(fr) = %q, %v", got, ok)
+	}
+	if got := (SystemLocale{}).LangOr("en"); got != "en" {
+		t.Errorf("valeur zéro : LangOr = %q ; attendu le repli", got)
+	}
+	if got := (SystemLocale{Timezone: "Asia/Tokyo"}).TimezoneOr("Europe/Paris"); got != "Asia/Tokyo" {
+		t.Errorf("TimezoneOr = %q ; le fuseau du système gagne", got)
+	}
+}

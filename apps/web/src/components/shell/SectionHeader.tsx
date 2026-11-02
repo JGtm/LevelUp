@@ -13,6 +13,7 @@
 import { useRouterState } from '@tanstack/react-router'
 import { PageHeader } from '@/components/foundations/PageHeader'
 import type { PageHeaderTab } from '@/components/foundations/pageHeaderLogic'
+import { useTitleCapabilities } from '@/lib/capabilities/capabilities'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -22,8 +23,9 @@ import { useVisibleNavSections } from './useVisibleNavSections'
 export function SectionHeader() {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const sections = useVisibleNavSections()
+  const titleCaps = useTitleCapabilities()
   const locale = useAppShellStore((s) => s.locale)
-  const section = sectionWithHeader(sections, pathname)
+  const section = sectionWithHeader(sections, pathname, titleCaps)
   if (!section?.leadKey) return null
   const t = (key: CommonManifestKey, values?: Record<string, string>) =>
     formatMessage(commonManifest, key, locale, values)

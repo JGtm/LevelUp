@@ -601,7 +601,7 @@ func buildHLSArgs(plan hlsPlan, src, outDir string, segDur int, enc H264Encoder)
 		args = append(args, "-map", a.MapSpec)
 	}
 	if plan.VideoAction == actionCopy {
-		args = append(args, "-c:v", "copy")
+		args = append(args, ffArgVideoCodec, "copy")
 		// HEVC copié depuis un MKV : ffmpeg écrit par défaut le sample entry hev1,
 		// que Safari refuse. hvc1 (config codec dans le sample description) est le
 		// seul accepté en HLS-fMP4. Sans effet sur H.264/AV1.

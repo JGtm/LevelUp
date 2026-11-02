@@ -2,9 +2,7 @@
 //! boite de dialogue native derriere [`Prompt`]. Aucune decision ici (elles sont dans
 //! `levelup_desktop::updater`), aucun libelle (ils viennent du catalogue).
 
-use std::sync::{Arc, Mutex};
-
-use levelup_desktop::download_watch::{POLL_INTERVAL, Progress};
+use levelup_desktop::download_watch::{POLL_INTERVAL, Progress, Slot, watch_download};
 use levelup_desktop::update_notes::notes_for_locale;
 use levelup_desktop::updater::{
     CHECK_TIMEOUT, Decision, Installer, Notice, Notifier, Offer, Prompt, PromptText, UpdateSource, notice_text,
@@ -69,9 +67,8 @@ impl UpdateSource for PluginSource {
 /// depuis la limite d'inactivite, ou duree maximale). L'abandon rend une erreur : le verrou de
 /// verification est rendu par l'appelant, qui journalise.
 fn download_watched(update: &Update) -> Result<Vec<u8>, String> {
-    type Slot = Arc<Mutex<Option<Result<Vec<u8>, String>>>>;
     let progress = Progress::new();
-    let slot: Slot = Arc::default();
+    let slot: Slot<Vec<u8>> = Slot::default();
     let (seen, done, target) = (progress.clone(), slot.clone(), update.clone());
     let task = tauri::async_runtime::spawn(async move {
         let result = target
@@ -80,16 +77,13 @@ fn download_watched(update: &Update) -> Result<Vec<u8>, String> {
             .map_err(|e| e.to_string());
         *done.lock().unwrap_or_else(|p| p.into_inner()) = Some(result);
     });
-    loop {
-        if let Some(result) = slot.lock().unwrap_or_else(|p| p.into_inner()).take() {
-            return result;
-        }
-        if let Some(reason) = progress.check().reason() {
-            task.abort();
-            return Err(reason.to_string());
-        }
-        std::thread::sleep(POLL_INTERVAL);
-    }
+    // La boucle (resultat lu avant le verdict, abandon une fois) vit dans `download_watch`, testee.
+    watch_download(
+        &slot,
+        || progress.check(),
+        || task.abort(),
+        || std::thread::sleep(POLL_INTERVAL),
+    )
 }
 
 /// La boite de dialogue native : deux boutons nommes par le catalogue (« Installer et redemarrer »,

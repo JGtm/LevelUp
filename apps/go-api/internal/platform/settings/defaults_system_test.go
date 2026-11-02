@@ -73,3 +73,29 @@ func TestLoad_SystemDefaults_ZeroValueKeepsHistoricalDefaults(t *testing.T) {
 		})
 	}
 }
+
+// TestLoad_SystemDefaults_EmptyKeyIsAbsent : une clé vide vaut absente (règle config.DeclaredString,
+// la même que pour la configuration et /bootstrap) : le système sert de défaut, sinon le défaut
+// historique, jamais une chaîne vide.
+func TestLoad_SystemDefaults_EmptyKeyIsAbsent(t *testing.T) {
+	path := writeSettings(t, map[string]any{"lang": "", "user_timezone": ""})
+	for name, tc := range map[string]struct {
+		store    *settings.Store
+		wantLang string
+		wantTZ   string
+	}{
+		"avec le système": {settings.NewStore(path).WithSystemDefaults(systemLocaleTokyo), "en", "Asia/Tokyo"},
+		"sans le système": {settings.NewStore(path), "en", "Europe/Paris"},
+		"langue inconnue": {settings.NewStore(path).WithSystemDefaults(config.SystemLocale{Timezone: "Asia/Tokyo"}), "en", "Asia/Tokyo"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			cfg, err := tc.store.Load()
+			if err != nil {
+				t.Fatalf("Load: %v", err)
+			}
+			if cfg.Lang != tc.wantLang || cfg.UserTimezone != tc.wantTZ {
+				t.Errorf("Lang=%q UserTimezone=%q ; attendu %q / %q", cfg.Lang, cfg.UserTimezone, tc.wantLang, tc.wantTZ)
+			}
+		})
+	}
+}

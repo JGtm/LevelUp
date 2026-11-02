@@ -7,14 +7,21 @@ import (
 	_ "time/tzdata"
 )
 
+// Valeurs de table citées plusieurs fois par les tests : une constante, pour que la table reste le
+// seul endroit du paquet qui les porte en littéral répété.
+const (
+	zoneRomance = "Romance Standard Time"
+	ianaTokyo   = "Asia/Tokyo"
+)
+
 func TestIANAFromWindows(t *testing.T) {
 	cas := map[string]string{
-		"Romance Standard Time":          "Europe/Paris",
+		zoneRomance:                      "Europe/Paris",
 		"W. Europe Standard Time":        "Europe/Berlin",
 		"GMT Standard Time":              "Europe/London",
 		"Eastern Standard Time":          "America/New_York",
 		"Pacific Standard Time":          "America/Los_Angeles",
-		"Tokyo Standard Time":            "Asia/Tokyo",
+		"Tokyo Standard Time":            ianaTokyo,
 		"Central Standard Time (Mexico)": "America/Mexico_City",
 		"UTC":                            "Etc/UTC",
 		"AUS Eastern Standard Time":      "Australia/Sydney",
@@ -42,11 +49,11 @@ func TestWindowsZones_EveryTargetLoads(t *testing.T) {
 }
 
 func TestRawTimezone_PrefersAnExplicitIANAName(t *testing.T) {
-	r := Raw{IANAZone: "Asia/Tokyo", WindowsZone: "Romance Standard Time"}
-	if got, ok := r.Timezone(); !ok || got != "Asia/Tokyo" {
+	r := Raw{IANAZone: ianaTokyo, WindowsZone: zoneRomance}
+	if got, ok := r.Timezone(); !ok || got != ianaTokyo {
 		t.Errorf("Timezone = %q, %v ; le nom IANA fourni gagne", got, ok)
 	}
-	if got, ok := (Raw{WindowsZone: "Romance Standard Time"}).Timezone(); !ok || got != "Europe/Paris" {
+	if got, ok := (Raw{WindowsZone: zoneRomance}).Timezone(); !ok || got != "Europe/Paris" {
 		t.Errorf("Timezone = %q, %v ; attendu Europe/Paris", got, ok)
 	}
 	if _, ok := (Raw{ReadErr: errors.New("registre illisible")}).Timezone(); ok {

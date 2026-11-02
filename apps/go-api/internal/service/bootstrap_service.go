@@ -13,6 +13,7 @@ import (
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
+	settings_platform "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/port"
 )
 
@@ -430,11 +431,29 @@ func buildCapabilities(cfg *config.AppConfig, settings map[string]interface{}) d
 	}
 }
 
+// buildSettingsExcerpt : langue et fuseau servis à l'interface. Une clé écrite gagne ; une clé non
+// écrite (absente ou vide, config.DeclaredString) prend le défaut, qui est celui du magasin de
+// réglages (le serveur et l'interface voient la même valeur) : sous la capacité AdoptSystemLocale,
+// la langue et le fuseau du système, et « en » tant que le système ne désigne aucune langue de
+// l'application (l'interface choisit alors la sienne) ; hors capacité, LEVELUP_LANG et le fuseau
+// historique.
 func buildSettingsExcerpt(cfg *config.AppConfig, settings map[string]interface{}) domain.SettingsExcerpt {
-	lang := getStringSetting(settings, "lang", cfg.Lang)
+	defaults := settings_platform.Defaults()
+	fallbackLang := cfg.Lang
+	if cfg.Capabilities.AdoptSystemLocale {
+		fallbackLang = defaults.Lang
+	}
+	lang, ok := config.DeclaredString(settings["lang"])
+	if !ok {
+		lang = cfg.SystemLocale.LangOr(fallbackLang)
+	}
+	tz, ok := config.DeclaredString(settings["user_timezone"])
+	if !ok {
+		tz = cfg.SystemLocale.TimezoneOr(defaults.UserTimezone)
+	}
 	return domain.SettingsExcerpt{
 		Lang:                lang,
-		UserTimezone:        getStringSetting(settings, "user_timezone", "Europe/Paris"),
+		UserTimezone:        tz,
 		ShowRecords:         getBoolSetting(settings, "show_records", true),
 		NormalizeModeLabels: getBoolSetting(settings, "normalize_mode_labels", true),
 	}

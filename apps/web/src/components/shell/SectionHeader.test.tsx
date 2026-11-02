@@ -4,6 +4,9 @@
  * chapeau fr et en. Une section nouvelle sans chapeau, ou dont ni `SectionHeader` ni son layout ne
  * rend d'en-tête, fait échouer ce test.
  *
+ * La section dont le layout rend lui-même l'en-tête (Escouade) est cadenassée par un rendu réel de
+ * `SquadLayout` (`features/squad/SquadLayout.nav.test.tsx`).
+ *
  * Sont aussi cadenassés ici les onglets d'Ascension (5e onglet « Tactique » derrière la capacité
  * `replay`, « un onglet mort ment ») et le remplacement Citations -> Commendations des titres sans
  * citations calculées.
@@ -18,7 +21,6 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest } from '@/lib/i18n/generated/common'
 import { KNOWN_LOCALES } from '@/lib/i18n/generated/locales'
-import squadLayoutSource from '@/features/squad/SquadLayout.tsx?raw'
 
 let mockPathname = ''
 
@@ -45,6 +47,7 @@ vi.mock('@/features/settings/queries', () => ({
   useSettings: () => ({ data: { show_progression: true } }),
 }))
 
+import { PAGE_HEADER_TABS_HEIGHT_CLASS } from '@/components/foundations/pageHeaderLogic'
 import { SectionHeader } from './SectionHeader'
 import { sectionWithHeader } from './sectionHeaderLogic'
 import { L1_SECTIONS } from './navL1Sections'
@@ -116,11 +119,8 @@ describe('SectionHeader : une section dont le layout rend l’en-tête', () => {
     }
   })
 
-  it('et son layout rend bien un PageHeader au titre et au chapeau de la section', () => {
+  it('la liste de ces sections est connue : chacune a son rendu réel d’en-tête dans son layout', () => {
     expect(dansLeLayout.map((s) => s.key)).toEqual(['squad'])
-    expect(squadLayoutSource).toContain('<PageHeader')
-    expect(squadLayoutSource).toContain("tCommon('common.nav.section_squad')")
-    expect(squadLayoutSource).toContain("tCommon('common.page_lead.squad')")
   })
 })
 
@@ -212,27 +212,54 @@ describe('SectionHeader : onglets', () => {
     expect(screen.getByRole('link', { name: 'Relations' })).toHaveAttribute('aria-current', 'page')
   })
 
-  it('Médias et Explorer : pas d’onglets, donc pas de ligne d’onglets', () => {
+  it('Médias et Explorer : pas d’onglets, mais la ligne est réservée (même hauteur que Carrière)', () => {
+    mockPathname = '/t/un_titre/players/p/career'
+    const carriere = renderWithProviders(<SectionHeader />)
+    const hauteurCarriere = carriere.container.querySelector(`.${PAGE_HEADER_TABS_HEIGHT_CLASS}`)
+    expect(hauteurCarriere).not.toBeNull()
+    carriere.unmount()
     for (const path of ['/t/un_titre/players/p/media', '/t/un_titre/players/p/explorer']) {
       mockPathname = path
       const { container, unmount } = renderWithProviders(<SectionHeader />)
       expect(container.querySelector('nav')).toBeNull()
+      expect(container.querySelector(`.${PAGE_HEADER_TABS_HEIGHT_CLASS}`)).not.toBeNull()
       unmount()
     }
   })
 })
 
+describe('SectionHeader : titre sans la capacité de la section', () => {
+  it.each([
+    ['ascension', 'lusr'],
+    ['career', 'career'],
+    ['media', 'media'],
+  ])('%s : sans la capacité %s, ni titre ni onglets au-dessus de « fonction indisponible »', (section, capability) => {
+    setTitle(ALL_CAPABILITIES.filter((c) => c !== capability))
+    mockPathname = `/t/un_titre/players/p/${section}`
+    const { container } = renderWithProviders(<SectionHeader />)
+    expect(container).toBeEmptyDOMElement()
+  })
+})
+
 describe('sectionWithHeader', () => {
   it('rend la section du chemin, et null pour l’accueil et pour un chemin hors section', () => {
-    expect(sectionWithHeader(L1_SECTIONS, pathOf('/{-$lang}/t/$titleSlug/players/$playerSlug/career'))?.key).toBe('career')
-    expect(sectionWithHeader(L1_SECTIONS, pathOf('/{-$lang}/t/$titleSlug/players/$playerSlug/home'))).toBeNull()
-    expect(sectionWithHeader(L1_SECTIONS, '/settings')).toBeNull()
+    expect(sectionWithHeader(L1_SECTIONS, pathOf('/{-$lang}/t/$titleSlug/players/$playerSlug/career'), ALL_CAPABILITIES)?.key).toBe('career')
+    expect(sectionWithHeader(L1_SECTIONS, pathOf('/{-$lang}/t/$titleSlug/players/$playerSlug/home'), ALL_CAPABILITIES)).toBeNull()
+    expect(sectionWithHeader(L1_SECTIONS, '/settings', ALL_CAPABILITIES)).toBeNull()
   })
 
   it('une section absente de la navigation (réglage show_progression coupé) garde son en-tête par URL', () => {
     const sansAscension = L1_SECTIONS.filter((s) => s.key !== 'ascension')
     expect(
-      sectionWithHeader(sansAscension, pathOf('/{-$lang}/t/$titleSlug/players/$playerSlug/ascension'))?.key,
+      sectionWithHeader(sansAscension, pathOf('/{-$lang}/t/$titleSlug/players/$playerSlug/ascension'), ALL_CAPABILITIES)?.key,
     ).toBe('ascension')
+  })
+
+  it('ce repli respecte la capacité de la section : titre sans `lusr`, pas d’en-tête d’Ascension', () => {
+    const sansAscension = L1_SECTIONS.filter((s) => s.key !== 'ascension')
+    const chemin = pathOf('/{-$lang}/t/$titleSlug/players/$playerSlug/ascension')
+    expect(sectionWithHeader(sansAscension, chemin, ['career'])).toBeNull()
+    // Capacités pas encore chargées : tout est permis (comme la navigation).
+    expect(sectionWithHeader(sansAscension, chemin, null)?.key).toBe('ascension')
   })
 })
