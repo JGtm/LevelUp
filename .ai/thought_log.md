@@ -119934,3 +119934,19 @@ trois impulsions sont dans le média `145749690` lui-même, pas dans une répét
 **Résultats.** Enveloppe vérifiée : une seule alerte. Tests du rejeu (garde-rails d'assets compris) verts.
 
 **Conclusion / prochaine étape.** Écoute du user au rejeu.
+
+## [2026-11-02] Backlog : entrées faites retirées, section « Récemment complété » mise à jour — Complété (branche `release/v8.1.0`, non commité)
+
+**Décision.** Vérification sur pièces de chaque entrée avant retrait. Retirées : « Analyse en cours » (livré le
+2026-10-17, composants `analysis-pending-*`), « Cible desktop Tauri V9 » (chantier en cours, plan
+`.ai/V8/PLAN_DESKTOP_2026-11-01.md` fait foi, cité en tête du backlog), étapes 1-2 de la publication des briques
+(l'entrée ne garde que les dépôts dédiés, après le desktop), sous-item `gate-push` en série (deux voies depuis E1).
+Restent ouvertes après contrôle : 15 vies sans nom, découvertes E8 (châssis `b857fb95` toujours sans règle),
+découvertes du 2026-10-16 (Q8 sans `is_excluded`, `continue` de `weapon_resolver`, `research` en
+`filepath.Join(depot, "data")` : 9 fichiers au lieu de ~31), famille de jeton OAuth (non faite).
+
+**Résultats.** « Récemment complété » : 5 lignes ajoutées (Analyse en cours, i18n N langues, découplage D1-D3,
+publication des briques, citations `.ai/` du code) ; 75 lignes antérieures à 2026-07 (ère Python) déplacées vers
+`.ai/archive/BACKLOG_COMPLETE_avant_2026-07.md` ; chemins `.ai/` périmés réalignés sur l'archive (0 lien mort).
+
+**Conclusion / prochaine étape.** Rien à exécuter ; commit au choix du user.
