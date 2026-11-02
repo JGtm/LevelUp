@@ -1387,6 +1387,10 @@ en = "Examples"
 fr = "Ouvrir le match (nouvel onglet)"
 en = "Open match (new tab)"
 
+[admin.dq.example_open_here]
+fr = "Ouvrir le match"
+en = "Open match"
+
 [admin.dq.col_mode]
 fr = "Mode (clé EN normalisée)"
 en = "Mode (normalized EN key)"

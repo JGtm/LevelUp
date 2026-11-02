@@ -2,8 +2,9 @@
 
 package childproc
 
-// Temoin de bout en bout : un parent lance SANS console (CREATE_NO_WINDOW, comme la coquille lance le
-// serveur) fait-il naitre une fenetre de terminal visible quand il lance un enfant console ?
+// Temoin de bout en bout : un parent lance SANS aucune console (DETACHED_PROCESS) fait-il naitre une
+// fenetre de terminal visible quand il lance un enfant console ? (Un parent CREATE_NO_WINDOW, lui,
+// partage sa console cachee avec ses enfants : voir TestFenetreEnfantConsole.)
 //
 // Le test se re-execute comme parent sans console (role "parent"), qui lance `ping` (assez long pour
 // etre observe) par childproc.Command ou par exec.Command nu ; le test exterieur compte les fenetres

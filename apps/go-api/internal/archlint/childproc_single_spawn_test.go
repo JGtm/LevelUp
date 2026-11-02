@@ -1,10 +1,11 @@
 // Package archlint — childproc_single_spawn_test.go : garde-rail « tout enfant du serveur naît par
 // internal/platform/childproc ».
 //
-// POURQUOI. Le profil desktop lance le serveur sans console (CREATE_NO_WINDOW). Windows donne alors
-// une console visible et vide à chaque processus console que le serveur lance : ffmpeg, ffprobe,
-// enfant de cuisson. Le paquet childproc pose les drapeaux qui l'évitent ; un `exec.Command` direct
-// rouvre la fenêtre.
+// POURQUOI. Le paquet childproc garantit qu'aucun enfant console du serveur (ffmpeg, ffprobe,
+// enfant de cuisson) n'ouvre de fenêtre, quel que soit le mode de lancement du serveur : console
+// visible, console cachée (CREATE_NO_WINDOW) ou aucune console (DETACHED_PROCESS, où un `exec.Command`
+// nu ouvre une fenêtre par enfant ; cas mesurés le 2026-11-02). Un `exec.Command` direct perd cette
+// garantie. Le paquet n'explique pas, à lui seul, une fenêtre vue sur l'application installée.
 //
 // INTERDIT dans internal/ et dans les briques de libs/ (hors _test.go) : un appel
 // `exec.Command` / `exec.CommandContext`, hors du paquet childproc. Les outils de cmd/ ont une
