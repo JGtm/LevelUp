@@ -121,5 +121,15 @@ describe('HomePage — navigation cards Sessions récentes', () => {
         search: { session: SQUAD_LABEL, teammates: undefined },
       }),
     )
+    // Une seule tuile : elle occupe toute la largeur du bloc (pas de 2e colonne vide).
+    expect(card.closest('.grid')?.className).not.toContain('sm:grid-cols-2')
+  })
+
+  it('tuiles solo ET escouade → deux colonnes', async () => {
+    renderWithProviders(<HomePage />)
+    const card = await screen.findByRole('button', {
+      name: `Voir le détail de la session ${SOLO_LABEL}`,
+    })
+    expect(card.closest('.grid')?.className).toContain('sm:grid-cols-2')
   })
 })

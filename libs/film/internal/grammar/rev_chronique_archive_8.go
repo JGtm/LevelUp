@@ -11,8 +11,7 @@ package grammar
 // archive est dans `fichiersDeChroniqueGrammar` (`rev_test.go`), donc hors de l empreinte : y ecrire
 // ne fait pas monter la couche.
 
-// ENTREE `grammar-2026-10-03` (2026-10-03, lot L4a de la campagne de grammaire,
-// `.ai/archive/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`) : LES COMPOSANTS PROPRES AU VEHICULE (`ti=40`, i30 a
+// ENTREE `grammar-2026-10-03` (2026-10-03, lot L4a de la campagne de grammaire) : LES COMPOSANTS PROPRES AU VEHICULE (`ti=40`, i30 a
 // i47) SE LISENT DANS LES RECORDS A MASQUE, ET LA PORTE `+0x818` EST UNE LOI DU MASQUE.
 //
 // Ce qui change : `composants_vehicule_ti40.go`, dernier maillon de la chaine de dispatch, lit
@@ -41,7 +40,7 @@ package grammar
 // `replay.SchemaVersion` ne monte pas, la revision des calques le signale.
 //
 // ENTREE `grammar-2026-10-03.2` (2026-10-03, integration de la vague 1 de la campagne de grammaire
-// et corrections de sa revue adverse, `.ai/archive/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`) : `low-frequency`
+// et corrections de sa revue adverse) : `low-frequency`
 // N EST PAS PORTE DANS UN ETAT COMPLET D IMAGE-CLE, ET LA TETE PORTE UNE VALEUR A ELLE.
 //
 // La boucle d etat complet du jeu (`FUN_142e2c690`) pose la portee `DAT_144e61ea0` sur toute la
@@ -62,8 +61,7 @@ package grammar
 // identiques hors chaines de revision. `killsource.Rev` reste `killsource-2026-09-27` (empreinte
 // recopiee, cf. sa chronique) ; `replay.SchemaVersion` reste 77.
 //
-// ENTREE `grammar-2026-10-03.3` (2026-10-04, lot LS de la campagne de grammaire,
-// `.ai/archive/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`) : LA SIGNATURE DU LOCALISATEUR SE LIT SUR TOUT OBJET DE
+// ENTREE `grammar-2026-10-03.3` (2026-10-04, lot LS de la campagne de grammaire) : LA SIGNATURE DU LOCALISATEUR SE LIT SUR TOUT OBJET DE
 // L ARCHETYPE `high-frequency`, PAS SUR LE SEUL SLOT 123.
 //
 // Ce qui change (`localisateur.go`) : dans un paquet a evenements dont le slot 123 ne porte aucune
@@ -84,8 +82,7 @@ package grammar
 // RETIRE au rang `.5` (revue adverse de la vague 2) : ce rang n a vecu que sur la branche de la
 // campagne.
 //
-// ENTREE `grammar-2026-10-03.4` (2026-10-04, lot LT de la campagne de grammaire,
-// `.ai/archive/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`) : LA PREUVE PAR CHAINE REFUSE UN RECORD DONT LE
+// ENTREE `grammar-2026-10-03.4` (2026-10-04, lot LT de la campagne de grammaire) : LA PREUVE PAR CHAINE REFUSE UN RECORD DONT LE
 // MASQUE CONTREDIT L ECRIVAIN.
 //
 // Ce qui change (`debut_de_liste.go`, [pasDEssai]) : la chaine de tete d une liste d evenements
@@ -103,7 +100,7 @@ package grammar
 // chaine de tete).
 //
 // ENTREE `grammar-2026-10-03.5` (2026-10-04, vague 2 de la campagne de grammaire apres sa revue
-// adverse, `.ai/archive/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`) : LU ET LT SUR `feat/v75`, LS RETIRE ; LA
+// adverse) : LU ET LT SUR `feat/v75`, LS RETIRE ; LA
 // CHAINE DE TETE SUIT L ORDRE DE LA VUE B ; LA LARGEUR DE LA SIGNATURE SE DERIVE DU CADRE.
 //
 // Ce qui change, contre `grammar-2026-10-03.2` tel que `feat/v75` le porte (`6fa631df0`) :
@@ -128,8 +125,7 @@ package grammar
 // rang remplace la valeur du meme nom de la tete d integration d avant la revue (`da6ecda38`, jamais
 // fusionnee, empreinte egale a celle du `.4`).
 //
-// ENTREE `grammar-2026-10-04` (2026-10-04, lot 2.7.a de la representation intermediaire,
-// `.ai/archive/V7.5/PLAN_REPRESENTATION_INTERMEDIAIRE_ETAPE2_2026-10-03.md`) : LES MORTS D OBJET ET L OCCUPATION
+// ENTREE `grammar-2026-10-04` (2026-10-04, lot 2.7.a de la representation intermediaire) : LES MORTS D OBJET ET L OCCUPATION
 // SONT UN CANAL DE LA MARCHE DES TRAMES ; LA MARCHE A HUIT VUES EST RETIREE.
 //
 // Ce qui change, contre `grammar-2026-10-03.5` :
@@ -268,8 +264,7 @@ package grammar
 // `LOT_VA_V3.md` (etape V3, contre `8c83e2d3a` ; §15 : fusion et corrections de la revue, contre
 // `fed1efed2` ; §16 : decisions du pilote, contre `b033d30f0`).
 //
-// ENTREE `grammar-2026-10-06.5` (2026-10-06, lot 2.7.b de la representation intermediaire,
-// `.ai/archive/V7.5/PLAN_REPRESENTATION_INTERMEDIAIRE_ETAPE2_2026-10-03.md`) : LES HUIT LECTEURS DE COMPOSANTS
+// ENTREE `grammar-2026-10-06.5` (2026-10-06, lot 2.7.b de la representation intermediaire) : LES HUIT LECTEURS DE COMPOSANTS
 // BIPEDES LISENT LA MARCHE DES TRAMES, L ANCRAGE PASSE DERRIERE ELLE.
 //
 // Ce qui change, contre `grammar-2026-10-06.4` :

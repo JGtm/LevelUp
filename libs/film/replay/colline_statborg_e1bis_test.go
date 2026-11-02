@@ -19,9 +19,8 @@ package replay
 // `TimesSelectedAsVip` exactement par joueur, 3 films sur 3) et Oddball (`comp 0 A` =
 // `skull_scoring_ticks`). On balaie les composants, on compare le total par entite a l'oracle.
 //
-// LE GATE EST ECRIT AVANT LA MESURE, dans `.ai/archive/V7.5/PLAN_KOTH_GARDE_VIVANTE_2026-08-30.md`
-// (E1b.3), et les valeurs d'oracle sont GELEES ci-dessous : elles ne peuvent pas bouger apres
-// coup pour arranger un resultat.
+// LE GATE EST ECRIT AVANT LA MESURE, et les valeurs d'oracle sont GELEES ci-dessous : elles ne
+// peuvent pas bouger apres coup pour arranger un resultat.
 //
 // REGIME : garde `ZONE_FILM`, un film par processus, lecture seule, AUCUNE base ouverte.
 //

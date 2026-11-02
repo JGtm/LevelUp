@@ -5,8 +5,7 @@ package grammar
 // mouvement_5_26_tir_research_test.go — LE TIR D ARME COMME ACTE DE NAISSANCE ? (lot 5.26.2,
 // mesure seule.)
 //
-// CE QUE L ECRIVAIN DIT DU RECORD 36 (`action_weapon_fire`), EN ENTIER (Ghidra, lecture seule,
-// `.ai/archive/V7.5/film_re/NOTE_5_26_*`) :
+// CE QUE L ECRIVAIN DIT DU RECORD 36 (`action_weapon_fire`), EN ENTIER (Ghidra, lecture seule) :
 //
 //	repartiteur `FUN_14080a9d4` : R(7) type ; puis TROIS references gardees — R(1) garde, et si
 //	    posee `FUN_1406d3140(lecteur, domaine, &ref)` — dont le domaine est rendu par la vtable du

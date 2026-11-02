@@ -9,8 +9,7 @@ package replay
 // `ownersFromLives` garde dans `Owner` le PREMIER occupant nomme d'un slot recycle et marque le
 // slot ambigu sans trancher : sur un slot que deux joueurs d'EQUIPES DIFFERENTES se partagent,
 // la vie du SECOND recevait donc l'equipe du PREMIER, et `coverage.teams.tracksNamed` l'affirmait
-// nommee. C'est exactement le defaut qui a fait retirer le pont aplati `PontParSlot` au lot 6.1
-// (rapport `.ai/archive/V7.5/RAPPORT_PONT_APLATI_2026-09-10.md`), et `PontDeSlot` s'en abstient depuis.
+// nommee. C'est exactement le defaut qui a fait retirer le pont aplati `PontParSlot` au lot 6.1, et `PontDeSlot` s'en abstient depuis.
 // Le parc mesure le volume (9 artefacts portent `slotCollisions > 0`) ; ce fichier epingle la
 // REGLE sur un slot synthetique.
 //

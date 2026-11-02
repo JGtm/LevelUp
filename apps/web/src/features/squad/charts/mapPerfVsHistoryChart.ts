@@ -1,8 +1,6 @@
 /**
  * mapPerfVsHistoryChart — Performance par carte « Session vs Historique » (teammates.13).
  *
- * Spec : .ai/charts_specs/teammates/13_map_perf_vs_history.yaml
- *
  * Barres horizontales groupées (côte à côte, pas overlay) :
  *   - Historique (gris neutre rgba(120,120,120,0.45)) — référence visuelle
  *   - Session (couleur par palier perf-tier-1..5 selon performance_avg)

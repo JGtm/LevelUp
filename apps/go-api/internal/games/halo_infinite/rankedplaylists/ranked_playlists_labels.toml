@@ -3,8 +3,7 @@
 # config/titles/halo_infinite/mappings/ : ce fichier alimente un usage interne
 # Go (sync/leaderboard/migrations, fallback quand asset_translations n'a pas
 # encore la traduction) et n'est pas — à ce jour — exposé au web via
-# /api/v1/titles/{slug}/field-mappings (cf. .ai/PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md
-# §11, découverte M5 L3 : un lot futur peut le déplacer vers le assets.toml
+# /api/v1/titles/{slug}/field-mappings (il pourrait être déplacé vers le assets.toml
 # canonique du titre + brancher useAssetLabel('playlist_ranked', id) côté web
 # si ce besoin apparaît).
 #

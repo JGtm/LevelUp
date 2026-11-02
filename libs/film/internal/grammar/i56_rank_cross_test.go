@@ -2,8 +2,7 @@
 
 package grammar
 
-// i56_rank_cross_test.go — INSTRUMENT DE MESURE de l'item 0.4 du plan
-// .ai/archive/V7.5/replay2d/PLAN_CAPACITES_ACTIVES.md : le canal DÉDIÉ d'un usage de répulseur ou
+// i56_rank_cross_test.go — INSTRUMENT DE MESURE de l'item 0.4 : le canal DÉDIÉ d'un usage de répulseur ou
 // de propulseur, cherché PAR RANG comme il l'a été pour le camouflage (i28) et le
 // surbouclier (i5), et NON par croisement temporel avec `i54` (mort, décision D1).
 //

@@ -8,7 +8,7 @@ import (
 )
 
 // TestRepoRoot_FindsCorrectAnchor verifie que RepoRoot() pointe bien sur
-// la racine du repo (presence de go.mod racine + de .ai/).
+// la racine du repo (presence de go.mod racine + du dossier .ai).
 func TestRepoRoot_FindsCorrectAnchor(t *testing.T) {
 	root := RepoRoot()
 	if root == "" {
@@ -16,7 +16,7 @@ func TestRepoRoot_FindsCorrectAnchor(t *testing.T) {
 	}
 
 	// Sentinelles : le repo a un go.mod a la racine du sous-projet Go,
-	// et un dossier .ai/ a la racine du repo global.
+	// et un dossier .ai a la racine du repo global.
 	aiDir := filepath.Join(root, ".ai")
 	if _, err := os.Stat(aiDir); err != nil {
 		t.Errorf("RepoRoot()=%s : dossier .ai/ introuvable (root incorrect ?): %v", root, err)

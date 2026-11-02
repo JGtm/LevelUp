@@ -5,8 +5,8 @@ package profile
 // # CE QUE CE FICHIER EST
 //
 // La transcription de `FUN_140be9b88` / `FUN_140be9c78` — le REMPLISSEUR que le moteur execute
-// en fin de chargement de carte (`FUN_140be9a14`) — ouverte dans Ghidra au lot 3.4 preparation
-// (`.ai/archive/V7.5/film_re/NOTE_3_4_REMPLISSEUR_LARGEURS_2026-09-16.md`). Les largeurs de
+// en fin de chargement de carte (`FUN_140be9a14`) — ouverte dans Ghidra au lot 3.4 preparation.
+// Les largeurs de
 // quantification d une position ne sont NI une constante de code NI une donnee recopiee de la
 // carte : elles sont CALCULEES, par une loi fermee, a partir des seules BORNES.
 //

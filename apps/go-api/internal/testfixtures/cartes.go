@@ -31,7 +31,7 @@ const (
 // vivent dans la brique qui les lit (voir MapvarFixturesDir, NavmeshFixturesDir,
 // CarteValideeFixturesDir) et Carte les y resout.
 //
-// Les tests ne lisent jamais .ai/ : ce dossier est un espace de travail, pas une source de
+// Les tests ne lisent jamais le dossier `.ai` : c'est un espace de travail, pas une source de
 // fixtures (garde-rail archlint/pas_de_lecture_sous_ai_test.go).
 func CartesDir() string {
 	return filepath.Join(RepoRoot(), "apps", "go-api", "internal", "testfixtures", "testdata", "cartes")

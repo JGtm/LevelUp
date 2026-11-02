@@ -15,10 +15,15 @@
  *    le seek : jamais de re-enter pour un démarrage que le clip ne montre pas) ;
  *  - un épisode COUPÉ par la borne de fin s'éteint par le fondu de jonction (150 ms) qui se
  *    termine PILE sur la borne — pas d'enveloppe ajoutée à un `exit`, qui ne joue ici que si
- *    la sortie est DANS le clip (ses fins sont gravées, il déborde alors en queue).
+ *    la sortie est DANS le clip (ses fins sont gravées, il déborde alors en queue) ;
+ *  - un ARRÊT LONG ne pose aucune source : la boucle qui le précède finit par le fondu
+ *    d'extinction (`ENGINE_STOP_FADE_S`), celle qui le suit commence par le fondu de reprise
+ *    (`ENGINE_RESTART_FADE_S`) — les mêmes que la page.
  */
 import {
   ENGINE_CROSSFADE_S,
+  ENGINE_RESTART_FADE_S,
+  ENGINE_STOP_FADE_S,
   equalPowerCurves,
   VEHICLE_ENGINE_BUS_GAIN,
   VEHICLE_ENGINE_STEMS,
@@ -41,20 +46,19 @@ export interface EngineSegment {
   fadeOutS?: number
 }
 
-/** Les phases tenues d'un épisode, dans l'ordre : alternance loop/idle bornée à [a, b]. */
-function heldPhases(ep: EngineEpisode, a: number, b: number): { stemKey: 'loop' | 'idle'; span: EngineSpan }[] {
-  const cuts: { stemKey: 'loop' | 'idle'; span: EngineSpan }[] = []
+/** Les périodes de COURSE d'un épisode bornées à [a, b], dans l'ordre (les arrêts en moins). */
+function courseSpans(ep: EngineEpisode, a: number, b: number): EngineSpan[] {
+  const out: EngineSpan[] = []
   let cursor = a
-  for (const s of ep.idle) {
+  for (const s of ep.arrets) {
     const i0 = Math.max(s.t0Ms, a)
     const i1 = Math.min(s.t1Ms, b)
     if (i1 <= i0) continue
-    if (i0 > cursor) cuts.push({ stemKey: 'loop', span: { t0Ms: cursor, t1Ms: i0 } })
-    cuts.push({ stemKey: 'idle', span: { t0Ms: i0, t1Ms: i1 } })
+    if (i0 > cursor) out.push({ t0Ms: cursor, t1Ms: i0 })
     cursor = i1
   }
-  if (cursor < b) cuts.push({ stemKey: 'loop', span: { t0Ms: cursor, t1Ms: b } })
-  return cuts
+  if (cursor < b) out.push({ t0Ms: cursor, t1Ms: b })
+  return out
 }
 
 /**
@@ -94,25 +98,25 @@ export function planEngineSegments(
       heldFadeIn = ENGINE_CROSSFADE_S
     }
     const exits = ep.t1Ms <= bounds.endMs
-    const phases = heldPhases(ep, a, b)
-    for (let i = 0; i < phases.length; i++) {
-      const p = phases[i]
-      const stem = p.stemKey === 'idle' ? stems.idle : stems.loop
-      if (!stem || durOf(stem) === null) continue
-      const first = i === 0
-      const last = i === phases.length - 1
-      const atS = first ? heldStart : rel(p.span.t0Ms)
-      // La fin d'une phase : jonction interne (le suivant entre au même instant), sortie vers
-      // `exit`, ou bord du clip — dans les trois cas le fondu de 150 ms termine la voix.
-      const stopS = (last ? rel(b) : rel(p.span.t1Ms)) + ENGINE_CROSSFADE_S
-      const clippedEnd = last && !exits
+    const courses = durOf(stems.loop) === null ? [] : courseSpans(ep, a, b)
+    for (let i = 0; i < courses.length; i++) {
+      const c = courses[i]
+      // La course qui ouvre l'épisode prend la jonction de l'enter (ou le bord du clip) ; les
+      // suivantes REPARTENT d'un arrêt.
+      const opens = c.t0Ms === a
+      const atS = opens ? heldStart : rel(c.t0Ms)
+      const fadeInS = opens ? heldFadeIn : ENGINE_RESTART_FADE_S
+      // La fin d'une course : vers `exit` (fondu croisé), vers un arrêt (fondu d'extinction),
+      // ou coupée net par le bord du clip.
+      const closes = c.t1Ms === b
+      const fadeOutS = closes ? ENGINE_CROSSFADE_S : ENGINE_STOP_FADE_S
       out.push({
-        stem,
+        stem: stems.loop,
         atS,
         loop: true,
-        stopS: clippedEnd ? rel(b) : stopS,
-        fadeInS: first ? heldFadeIn : ENGINE_CROSSFADE_S,
-        fadeOutS: ENGINE_CROSSFADE_S,
+        stopS: closes && !exits ? rel(b) : rel(c.t1Ms) + fadeOutS,
+        fadeInS,
+        fadeOutS,
       })
     }
     if (exits && durOf(stems.exit) !== null) {
@@ -128,9 +132,7 @@ export function engineStemsOf(plans: readonly EnginePlan[]): string[] {
   for (const p of plans) {
     const stems = VEHICLE_ENGINE_STEMS[p.family]
     if (!stems) continue
-    for (const s of [stems.enter, stems.loop, stems.idle, stems.exit]) {
-      if (s) out.add(s)
-    }
+    for (const s of [stems.enter, stems.loop, stems.exit]) out.add(s)
   }
   return [...out]
 }

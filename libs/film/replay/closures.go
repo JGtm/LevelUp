@@ -76,9 +76,6 @@ import (
 // LES CHIFFRES BAISSENT, ET C'EST LE SENS ATTENDU d'un correctif de justesse : quatre films sont
 // inchangés, trois reculent (90,8 -> 87,4 · 89,7 -> 89,2 · 91,6 -> 91,3). Un correctif de ce genre
 // qui ferait MONTER le compte serait le signal qu'il a élargi au lieu de resserrer.
-//
-// Détail, méthode et échec de réglage : `.ai/archive/V7.5/RECHERCHE_CTF_TIRS_PERDUS.md` §7.5, §7.5bis
-// et §7.5ter.
 
 // closureReport compte ce que les fermetures ont attribué ET refusé. Publier l'un sans l'autre
 // laisserait croire que la déduction ne se trompe jamais.

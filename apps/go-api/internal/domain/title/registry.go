@@ -145,8 +145,7 @@ const (
 	// toujours vide. Pendant title-level de la capability data-level
 	// `film.replay_artifact` (games/adapter.go) qui gouverne, elle, la PRODUCTION de
 	// l'artefact — même partage des rôles que `match.objective.stats` (données) et
-	// `objective_stats` (UI). Décision utilisateur du 2026-09-05, registre
-	// `.ai/archive/V7.5/v2/AUDIT_V75_DEPUIS_V7.3.0_2026-09-05.md` (D1, L2, L5).
+	// `objective_stats` (UI). Décision utilisateur du 2026-09-05.
 	CapReplay Capability = "replay"
 	// CapWeaponRange — le titre expose la PORTÉE ET LE DÉNIVELÉ MESURÉS des engagements,
 	// par arme et des deux côtés (« où je frague », « où je meurs »). Absente ⇒ le front
@@ -398,7 +397,7 @@ func NewRegistry() *Registry {
 			// useCapability('weapon_accuracy') repasse à false et masque les graphes pour
 			// Infinite. La capability reste accordée par Halo 5 (natif, title.toml) ; la
 			// précision GLOBALE d'Infinite reste servie par l'API. Reprise : piste compteur
-			// ECS (cf. .ai/REGISTRE_REPORTS.md).
+			// ECS.
 		},
 		IsDefault:        true,
 		XboxTitleID:      "2043073184",

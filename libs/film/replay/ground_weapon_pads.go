@@ -3,8 +3,7 @@ package replay
 // ground_weapon_pads.go — LES SOCLES D'ARME du match : où une arme réapparaît, quand elle y est,
 // et quand le socle redevient vide.
 //
-// CE QUE LE CALQUE PUBLIE, ET CE QU'IL REFUSE DE PUBLIER (plan
-// `.ai/archive/V7.5/replay2d/PLAN_ARMES_AU_SOL_2E_LECTURE.md`, arbitrages des 2026-08-17) :
+// CE QUE LE CALQUE PUBLIE, ET CE QU'IL REFUSE DE PUBLIER (arbitrages des 2026-08-17) :
 //
 //	PUBLIÉ    les SOCLES du match — une position où des armes de MÊME famille réapparaissent
 //	          (>= 2 fois, à moins d'un mètre) ; leurs apparitions ; l'intervalle de présence

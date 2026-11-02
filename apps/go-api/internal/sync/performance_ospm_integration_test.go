@@ -1,7 +1,6 @@
 //go:build integration
 
-// performance_ospm_integration_test.go — lot 3 de .ai/archive/V7.5/PLAN_PERF_NOTE_OBJECTIFS.md
-// (B3.1 loader, B3.5 test « futur match »).
+// performance_ospm_integration_test.go — loader et test « futur match ».
 //
 // EXIGENCE UTILISATEUR du 2026-08-27 : un match d'objectif classé qui arrive APRÈS
 // ce chantier doit ressortir du batch avec la chaîne `ranked_objectif` ET une note

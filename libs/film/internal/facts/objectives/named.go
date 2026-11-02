@@ -41,8 +41,7 @@ import (
 // **Controle** : la table est ajustee separement sur les films de rang pair et de rang
 // impair (aucun film partage) et ne garde que les cles sur lesquelles les deux moities sont
 // d'accord — le controle a rejete 8 des 19 cles CTF que le balayage donnait pour resolues.
-// Table figee : `.ai/refs/TABLE_STATS_STATBORG.tsv` ; detail :
-// `.ai/archive/V7.5/ETAT_DE_L_ART_MODE_SCORE_EVENEMENTS.md` §17.
+// Table figee : `TABLE_STATS_STATBORG.tsv`.
 //
 // ATTENTION a ce que cette table figee EST, et a ce qu'elle n'est pas (arbitrage du
 // 2026-08-05) : elle recense TOUS les emplacements decodes du statborg, tous consommateurs

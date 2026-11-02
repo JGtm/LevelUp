@@ -350,7 +350,15 @@ export function HomePage() {
             <Card className="flex flex-1 flex-col">
             <CardContent className="pt-6 pb-0">
               {soloSessions.length > 0 || squadSessions.length > 0 ? (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                // Deux colonnes seulement quand les deux carrousels existent : un joueur
+                // qui ne joue que solo (ou qu'en escouade) a une seule tuile, pleine largeur.
+                <div
+                  className={
+                    soloSessions.length > 0 && squadSessions.length > 0
+                      ? 'grid grid-cols-1 gap-4 sm:grid-cols-2'
+                      : 'grid grid-cols-1 gap-4'
+                  }
+                >
                   {soloSessions.length > 0 && (
                     <HomeSessionCarousel
                       sessions={soloSessions}

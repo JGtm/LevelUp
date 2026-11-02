@@ -581,7 +581,7 @@ func outcomeToTeamResult(o int) (skillv2.TeamResult, bool) {
 // persistance. Sépare le COMPUTE (pur, idempotent, aucune écriture) de la
 // PERSIST, pour que processOneShadowMatch puisse gater l'avance du watermark
 // (player_skill_state_v2) sur le succès de l'écriture canonical
-// (match_skill_rank). Fix désync 2026-06-07 (cf. .ai/thought_log.md).
+// (match_skill_rank). Fix désync 2026-06-07.
 type shadowMatchComputed struct {
 	teamAStates     []domain.SkillV2State
 	teamBStates     []domain.SkillV2State

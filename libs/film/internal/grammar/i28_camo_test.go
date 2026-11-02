@@ -1,7 +1,6 @@
 package grammar
 
-// i28_camo_test.go — INSTRUMENT DE MESURE de la PHASE A du plan
-// .ai/archive/V7.5/replay2d/PLAN_ETAT_ACTIF_EQUIPEMENT.md : le composant i28
+// i28_camo_test.go — INSTRUMENT DE MESURE de la PHASE A : le composant i28
 // `unit-active-camo-state` — LE composant NOMMÉ camouflage — est-il l'ÉTAT ACTIF ?
 //
 // CE QU'IL PUBLIE : chaque lecture d'i28 par le déser de PRODUCTION (observateur.CamoStateHook,

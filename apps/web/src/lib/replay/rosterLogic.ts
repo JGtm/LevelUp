@@ -72,8 +72,7 @@ export function botKey(name: string): string {
  * et `playerCardReadings` en portaient chacun une occurrence). Centralisée ici pour que les
  * deux jointures roster -> joueur du dépôt qui en avaient besoin partagent une seule
  * dérivation (règle des ≤ 2 copies, CLAUDE.md n°6). `seatLogic.filmIndexByIdentity` portait une
- * 3e copie inline (correcte, mais non centralisée) : migrée le 2026-09-10 (lot hygiène 5.3,
- * `.ai/REGISTRE_REPORTS.md`) — garde-rail grep :
+ * 3e copie inline (correcte, mais non centralisée) : migrée le 2026-09-10 — garde-rail grep :
  * `apps/web/src/lib/replay/rosterEntryKey_no_new_copies.guard.test.ts`. `buildPlayers` la
  * consomme aussi : c'est par elle que l'équipe d'une entrée rejoint son joueur.
  */
@@ -589,8 +588,7 @@ export interface LoadoutReading {
  * un slot est réattribué à chaque réapparition. C'est aussi ce qui rend le report SÛR — une
  * dotation ne peut pas franchir une mort, puisqu'elle ne survit pas à son porteur.
  *
- * BORNÉE À LA VIE EN COURS DU SLOT (correctif P0-2, 2026-09-06,
- * `.ai/AUDIT_LECTEURS_VIES_ANONYMES_2026-09-06.md`) : un slot réattribué n'accueille pas
+ * BORNÉE À LA VIE EN COURS DU SLOT (correctif du 2026-09-06) : un slot réattribué n'accueille pas
  * qu'une mort, il accueille une AUTRE vie — parfois un AUTRE joueur. Chercher « la dernière
  * lecture du slot » sans borne de vie reportait donc l'armement de la vie PRÉCÉDENTE.
  * `currentLifeOf` désigne la vie qui couvre `frame` sur ce slot ; sans elle, aucune recherche
@@ -687,8 +685,7 @@ export function currentLifeOf(
  *     un âge NÉGATIF publié tel quel. L'affichage l'estompe sur sa valeur absolue et le dit
  *     « à venir » — jamais déguisé en lecture passée.
  *
- * `life` BORNE DÉSORMAIS LA RECHERCHE À LA VIE EN COURS DU SLOT (correctif P0-2, 2026-09-06,
- * `.ai/AUDIT_LECTEURS_VIES_ANONYMES_2026-09-06.md`) — NI `best` NI `ahead` NE REGARDAIENT LA
+ * `life` BORNE DÉSORMAIS LA RECHERCHE À LA VIE EN COURS DU SLOT (correctif du 2026-09-06) — NI `best` NI `ahead` NE REGARDAIENT LA
  * FRONTIÈRE DE VIE AVANT CE CORRECTIF : sur un slot recyclé ou un film multi-manche, `best`
  * retenait TOUJOURS la lecture passée la plus proche, quelle que soit sa vie, avant même de
  * considérer `ahead` — le repli « à venir » documenté ci-dessus était donc INERTE dès que le

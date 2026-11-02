@@ -1,9 +1,6 @@
 /**
  * SquadEngagementView — Mock 15 v2 dans la Squad Page principale.
  *
- * Reference visuelle : .ai/mockups/engagement/engagement_visualizations.html (Mock 15 v2)
- * Plan : .ai/PLAN_ENGAGEMENT_IMPLEMENTATION.md §6.6.1 (Squad page) + §8.7 doc reflexion
- *
  * Format :
  *   - 3 courbes team-level toujours visibles (lobby pointille pale, attendu
  *     pointille marque, equipe pleine epaisse)

@@ -9,8 +9,7 @@ package grammar
 // duree COURANTE, `R(17)` chacun, quantifiees au pas de 50 ms, sans indirection ni index a
 // resoudre. C'est le chemin le moins cher vers un compte a rebours d'objectif, et le lot 3.7 a
 // MESURE que l'autre — le bassin de minuteurs du moteur, designe par `ti=11 i0` — ne porte PAS
-// le minuteur du drapeau : `(-1, -1)`, « aucun minuteur », sur 446 records d'objectif sur 446
-// (`.ai/archive/V7.5/film_re/NOTE_3_7_REAPPARITION_2026-09-17.md` § 6 bis.3).
+// le minuteur du drapeau : `(-1, -1)`, « aucun minuteur », sur 446 records d'objectif sur 446.
 //
 // LE BLOQUANT ETAIT `i1`, DIX COMPOSANTS AVANT. Une image-cle est un etat COMPLET : son record
 // cite tous les composants declares, donc la marche de `ti=12` s'arretait sur `i1` avant
@@ -19,8 +18,7 @@ package grammar
 //
 // # LA SOURCE DE CHAQUE LARGEUR
 //
-// `.ai/archive/V7.5/film_re/NOTE_3_6_TI12_GRAMMAIRES_A_2026-09-17.md`, une section par composant (§ 5 a
-// § 16), chaque largeur etant un immediat lu au desassemblage du deserialiseur `+0x40` du
+// Chaque largeur est un immediat lu au desassemblage du deserialiseur `+0x40` du
 // descripteur, recoupe par son serialiseur `+0x28`. AUCUNE largeur n'est ici « parce qu'elle
 // marche » : le bloc de filtres de `i2`..`i6` vit dans `components_navpoint_filters.go`, la
 // largeur de reference d'entite vient de la table des domaines du depot, et le `param_4` des

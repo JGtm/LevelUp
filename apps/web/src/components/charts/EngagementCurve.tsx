@@ -1,9 +1,6 @@
 /**
  * EngagementCurve — Mock 10 (intra-match) et Mock 11 (session/periode).
  *
- * Reference visuelle : .ai/mockups/engagement/engagement_visualizations.html
- * Plan : .ai/PLAN_ENGAGEMENT_IMPLEMENTATION.md §6.6.2 (Match View) + §6.6.3 (Timeseries)
- *
  * Trois courbes superposees :
  *   - Equipe alliee (gris fonce, fine)        — pace per_player
  *   - Attendu (gris medium, pointille)         — coef × team

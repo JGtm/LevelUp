@@ -5,8 +5,7 @@ import "github.com/JGtm/LevelUp/libs/film/types"
 // composants_vehicule_ti40.go — LES COMPOSANTS PROPRES AU VEHICULE (`ti=40`, i30 a i47).
 //
 // Chaque grammaire est celle du DESERIALISEUR du jeu (Ghidra, HaloInfinite.exe, base
-// 0x140000000 ; table nom -> descripteur -> deserialiseur relevee dans
-// `.ai/archive/V7.5/film_re/campagne_grammaire_2026-10-01/T6_vehicules_ti40.md` §1 et §4). Aucune valeur
+// 0x140000000 ; table nom -> descripteur -> deserialiseur relevee). Aucune valeur
 // n est interpretee ni publiee : ces lecteurs rendent la LARGEUR juste, pour que la liste de la
 // vue B continue.
 //

@@ -9,8 +9,7 @@
 // importer un paquet de titre sans que rien ne rougisse.
 //
 // Ce test est posé AVANT le déplacement du décodeur de film (`grammar`, `replay`) d'
-// `internal/analysis/` vers `libs/film/` (lot E du plan
-// `.ai/archive/V7.5/PLAN_FORK_ET_RELEASE_2026-09-11.md`). Sans lui, le déplacement transformerait des
+// `internal/analysis/` vers `libs/film/`. Sans lui, le déplacement transformerait des
 // imports internes à `analysis/` en franchissements de frontière INVISIBLES : c'est
 // exactement la dette que ce lot doit rendre visible, pas enfouir.
 //

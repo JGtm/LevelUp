@@ -1,7 +1,6 @@
 package replay
 
-// vehicle_takes_frags.go — L'APPARIEMENT DES FRAGS DE CLASSE ENGIN AUX EPISODES PUBLIES (plan
-// `.ai/archive/V7.5/PLAN_EMPRISE_VEHICULES_2026-09-28.md`, decision D9).
+// vehicle_takes_frags.go — L'APPARIEMENT DES FRAGS DE CLASSE ENGIN AUX EPISODES PUBLIES.
 //
 // # POURQUOI
 //

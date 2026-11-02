@@ -2,20 +2,20 @@ package archlint
 
 // pas_de_lecture_sous_ai_test.go — aucun fichier Go du module ne construit un chemin sous `.ai`.
 //
-// `.ai/` est l'espace de travail des agents (plans, journaux, archives de recherche) : il
+// `.ai` est l'espace de travail des agents (plans, journaux, archives de recherche) : il
 // tourne, se range, s'archive. Un test ou un outil qui y lit une fixture casse à chaque
 // déménagement de document, et la CI le découvre seule (l'archivage du dossier de recherche
-// vers `.ai/archive/` a ainsi rougi douze tests). Les fixtures vivent sous `testdata/` du
+// vers l'archive de `.ai` a ainsi rougi douze tests). Les fixtures vivent sous `testdata/` du
 // paquet qui les lit, ou sous `internal/testfixtures/testdata/` quand plusieurs paquets les
 // partagent (`testfixtures.Carte`).
 //
 // Le garde-rail lit l'AST de TOUS les fichiers `.go` de l'espace de travail (tests et outils compris) et
 // compte les littéraux de chaîne qui construisent un chemin sous `.ai` :
-//   - un littéral qui commence par `.ai/` ou contient `/.ai/` ;
+//   - un littéral qui commence par `.ai` suivi d'une barre, ou qui contient `.ai` entre deux barres ;
 //   - un littéral égal à `.ai` passé à un `Join` (`filepath.Join(racine, ".ai", ...)`).
 //
-// Les commentaires ne sont pas lus : la citation d'un document est couverte par
-// `TestCheminsAiCitesDansLeCodeExistent`.
+// Les commentaires ne sont pas lus : ils ne citent jamais `.ai`
+// (`TestAucunCommentaireGoNeCiteLeDossierAi`, commentaires_references_test.go).
 //
 // RATCHET. `sitesAiAutorises` liste les sites légitimes au compte EXACT, justification d'une
 // ligne chacun. Il ne peut que décroître : un site en plus échoue (le chemin est nouveau), un
@@ -80,7 +80,6 @@ var sitesAiAutorises = map[string]siteAi{
 	"apps/go-api/cmd/engagement-calibrate/main.go":   {1, "écrit son rapport de calibration à la racine de .ai (sortie de l'outil)"},
 	"apps/go-api/cmd/weapon-icons-build/page.go":     {1, "réécrit la page de nommage des icônes dans l'archive (sortie de l'outil, pas une entrée)"},
 	// Contrôles de cohérence entre documents de .ai.
-	"apps/go-api/internal/archlint/doc_chemins_ai_test.go":           {4, "ratchet des chemins .ai cités en commentaire : son objet est .ai"},
 	"apps/go-api/internal/archlint/no_stale_fallback_target_test.go": {1, "contrôle de cohérence entre le registre de replis et le plan du décodeur (accepté, 2026-10-27)"},
 	"apps/go-api/internal/testfixtures/paths_test.go":                {1, "sentinelle : RepoRoot() doit retrouver la racine, reconnue à son dossier .ai"},
 	// Dette connue : fixture versionnée lue sous .ai, à migrer sous testdata/ du paquet.
@@ -88,7 +87,7 @@ var sitesAiAutorises = map[string]siteAi{
 }
 
 // nombreSitesAiAutorisesPlafond : taille maximale de la liste (ratchet). Baisser avec elle.
-const nombreSitesAiAutorisesPlafond = 16
+const nombreSitesAiAutorisesPlafond = 15
 
 // sitesSousAi compte, dans une source Go, les littéraux qui construisent un chemin sous `.ai`.
 func sitesSousAi(t *testing.T, nom string, src []byte) int {

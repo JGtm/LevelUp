@@ -6,8 +6,7 @@
 // ComputePerformanceSeries) qui alimentait l'onglet « Forme » de /stats. Cet onglet n'avait
 // plus aucun consommateur web (confirmé par l'utilisateur, chantier note de perf,
 // 2026-08-27) : l'algorithme, buildFormTab (internal/service/stats_service.go) et leurs
-// tests ont été retirés le 2026-09-10 (CLAUDE.md règle 0 code mort, lot hygiène 5.3,
-// `.ai/REGISTRE_REPORTS.md`).
+// tests ont été retirés le 2026-09-10 (CLAUDE.md règle 0 code mort, lot hygiène 5.3).
 package analysis
 
 // Codes numériques des issues de match Halo Infinite.

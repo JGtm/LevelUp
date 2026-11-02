@@ -133,7 +133,7 @@ func TestLesViesDUnMemeJoueurSontFusionnees(t *testing.T) {
 // sans identite.
 //
 // LE NOM DU TEST EST CONSERVE TEL QUEL, et c'est deliberé : il figure dans la baseline de
-// non-regression (`.ai/baselines/tests_pre_migration.jsonl`), un artefact GELE dont la
+// non-regression, un artefact GELE dont la
 // disparition d'une entree fait rougir le gate CI. Depuis la decision du 2026-09-07 une vie
 // « anonyme » n'est plus une categorie de donnee mais un DEFAUT de nommage — la doctrine est
 // dans le corps du test et dans `unnamed_lives.go`, pas dans un renommage qui couterait un

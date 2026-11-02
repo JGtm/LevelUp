@@ -1,7 +1,6 @@
 /**
  * Tests squadCompositionGapHint — contenu de l'info-bulle qui EXPLIQUE l'ecart
- * "composition exacte" publie sur la L2 (ADR 0033, D1 : phase A3 du plan
- * `.ai/PLAN_ESCOUADE_HORS_CADRE_2026-09-09.md`).
+ * "composition exacte" publie sur la L2 (ADR 0033, D1).
  *
  * TDD ROUGE : le module `./squadCompositionGapHint` n'existe pas encore.
  * Echec attendu (avant tout code) : echec de RESOLUTION DE MODULE (Vite).

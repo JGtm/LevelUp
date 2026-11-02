@@ -75,7 +75,7 @@ export default defineConfig([
     },
   },
   // ── Seuil de taille R5 (CLAUDE.md n°5) ──────────────────────────────────
-  // Decision utilisateur 4 du 2026-09-05 (.ai/PLAN_V2_REJEU_FILM_2026-09-05.md) :
+  // Decision utilisateur 4 du 2026-09-05 :
   // le seuil de 500 lignes se mesure en lignes de CODE, pas en lignes brutes.
   // `skipComments` + `skipBlankLines` sont donc les deux moities de cette
   // decision : un fichier bien documente n'est pas un god file, et 17 extractions

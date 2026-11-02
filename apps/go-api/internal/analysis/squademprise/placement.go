@@ -1,7 +1,6 @@
 package squademprise
 
-// placement.go — LE BLOC « GROUPÉS OU ISOLÉS » (plan `.ai/archive/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md`, lot
-// V3.2 ; type publié : domain.SquadEmprisePlacement).
+// placement.go — LE BLOC « GROUPÉS OU ISOLÉS » (type publié : domain.SquadEmprisePlacement).
 //
 // # L'UNIVERS D'UNE VIE
 //

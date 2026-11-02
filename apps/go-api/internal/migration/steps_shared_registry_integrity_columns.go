@@ -4,8 +4,7 @@ package migration
 // match_registry.player_count et de l'index idx_registry_player_count ; réparation du bit
 // « participants » (matchflags.BackfillParticipants) de backfill_completed.
 //
-// POURQUOI. Les deux colonnes n'ont ni lecteur ni écrivain dans le code (verdict V-1/V-2 du plan
-// `.ai/archive/V7.5/PLAN_BACKLOG_2026-10-15.md`) ; player_count est en plus INDEXÉE, donc toute réécriture de
+// POURQUOI. Les deux colonnes n'ont ni lecteur ni écrivain dans le code ; player_count est en plus INDEXÉE, donc toute réécriture de
 // la colonne serait un vecteur du bug DuckDB ART #23645. Le bit participants, lui, est LU par la
 // sélection du backfill (garde « participants » de sync/backfill.go) et manque sur des matchs qui
 // ont leur roster : sans lui, ces matchs sont re-sélectionnés à chaque backfill.

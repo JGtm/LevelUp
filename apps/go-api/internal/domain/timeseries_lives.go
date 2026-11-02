@@ -1,8 +1,7 @@
 package domain
 
-// timeseries_lives.go — « MES VIES : PRÈS D'UN COÉQUIPIER OU SEUL » (Séries temporelles › Usages,
-// plan `.ai/archive/V7.5/PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05.md`, décision D5 ; calcul :
-// analysis/coordination/vies_pres_ou_seul.go).
+// timeseries_lives.go — « MES VIES : PRÈS D'UN COÉQUIPIER OU SEUL » (Séries temporelles › Usages ;
+// calcul : analysis/coordination/vies_pres_ou_seul.go).
 //
 // Une vie du joueur terminée par une mort est rangée selon la distance au coéquipier VISIBLE le
 // plus proche À L'INSTANT DE LA MORT (`match_death_context`) : à portée du radar du match (borne

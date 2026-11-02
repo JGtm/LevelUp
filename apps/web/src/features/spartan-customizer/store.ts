@@ -14,8 +14,7 @@ import type { RecolorColors } from './recolor'
  * la capability `spartan_customizer` garde sa propre apparence (ids emblème/bannière
  * spécifiques au titre). Dimension JOUEUR (V72-14) : la composition est propre au joueur
  * affiché (Home = joueur de la page ; Explorer = cible du bandeau), sinon un unique
- * réglage fuitait sur tous les joueurs. Follow-up backend cross-device : cf.
- * .ai/PLAN_H5_SPARTAN_CUSTOMIZER.md.
+ * réglage fuitait sur tous les joueurs. Follow-up backend cross-device.
  */
 export interface SpartanAppearance {
   /** id d'emblème (clé de spartan-catalog.json), null = aucun choix. */
@@ -31,8 +30,7 @@ export interface SpartanAppearance {
 export const DEFAULT_SPARTAN_APPEARANCE: SpartanAppearance = {
   // Défaut neutre #160 → la bannière d'identité n'est jamais vide pour un nouveau
   // joueur. Convention : un titre activant `spartan_customizer` doit fournir un asset
-  // d'id 160 (sinon la modale resélectionne le 1er id du catalogue). Cf.
-  // .ai/PLAN_H5_SPARTAN_CUSTOMIZER.md.
+  // d'id 160 (sinon la modale resélectionne le 1er id du catalogue).
   emblemId: '160',
   nameplateId: '160',
   // Emblème et bannière partent des mêmes couleurs par défaut (jamais de bandeau vide),

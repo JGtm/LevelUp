@@ -18,7 +18,7 @@ package replay
 // Deux etiquettes OPPOSEES, sur la MEME classe d'arme, a des instants EXACTS. C'est l'oracle que
 // le proxy « kill au sniper => sans doute zoome » n'etait pas.
 //
-// Correspondance (type_hint, medal_type) -> medaille : `.ai/refs/TABLE_MEDAILLES_FILM.tsv`.
+// Correspondance (type_hint, medal_type) -> medaille : fichier de recherche local, hors depot.
 // Libelles et descriptions : `medal_definitions` (metadata.duckdb).
 //
 // CE QUE CE FICHIER FAIT, ET RIEN DE PLUS. Il compte. Il ne decode aucun paquet de position : il
@@ -32,7 +32,7 @@ package replay
 // USAGE (depuis apps/go-api) :
 //
 //	CGO_ENABLED=0 ADS_FILMS_DIR=<repo>/data/cache/film_chunks \
-//	  ADS_TSV=<repo>/.ai/archive/V7.5/film_re \
+//	  ADS_TSV=<dossier de mesures> \
 //	  go test ./internal/games/halo_infinite/film/replay/ -run TestViseeMedaillesRecensement -v -timeout 120m
 
 import (

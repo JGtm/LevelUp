@@ -1,7 +1,6 @@
 package grammar
 
-// i59_anchor_test.go — INSTRUMENT DE MESURE de la PHASE 0 du plan
-// .ai/archive/V7.5/replay2d/PLAN_GRAPPIN_LIGNE.md : PROUVER le port du corps tag==3 d'i59
+// i59_anchor_test.go — INSTRUMENT DE MESURE de la PHASE 0 : PROUVER le port du corps tag==3 d'i59
 // (FUN_142f25e90, components_biped_anchor.go) puis CONTRÔLER que ce qu'il lit est bien
 // l'ANCRE du grappin.
 //

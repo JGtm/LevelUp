@@ -5,7 +5,7 @@ package killsource
 // # LE DEFAUT QU IL FERME
 //
 // Le correctif du 2026-09-12 fait LIRE la version du film dans l en-tete de son registre au lieu
-// de passer 0 en dur au parseur d events (.ai/archive/V7.5/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md). Revue
+// de passer 0 en dur au parseur d events. Revue
 // adversariale du meme jour, constat P1-1 : REPASSER 0 a la place de `f.majorVersion` dans
 // [loadKillFeed] laissait toute la CI verte. La raison est mecanique — la seule bobine versionnee
 // etait `minibobine_000d5950`, un film de version 41, et sur une version >= 41 le decoupage 0 et
@@ -117,7 +117,7 @@ func TestMiniBobineV40RosterSuitLaVersionLue(t *testing.T) {
 Sur un film de version 39-40 le gamertag vit a l OCTET 12 du bloc d event, pas a l octet 0.
 Passer 0 au lieu de la version lue rend ici 2 gamertags : le roster humain
 s effondre, et les portes « indice < nPlay » du decodeur de source de degat rejettent les trois
-quarts des morts (.ai/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md).
+quarts des morts.
 
 Verifier que loadFilm pose majorVersion/versionLue et que loadKillFeed passe f.majorVersion
 a grammar.ParseHighlightEvents.`,

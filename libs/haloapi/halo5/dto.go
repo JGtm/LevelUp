@@ -3,7 +3,7 @@ package halo5
 // dto.go : projections Go des reponses JSON internes Halo 5.
 //
 // Champs calques sur les shapes REELS captures par la sonde live (cmd/probe-h5,
-// 2026-06-19, JGtm) et documentes dans .ai/archive/V7/HANDOFF_HALO5_EXPERIMENTAL.md §0-ter.
+// 2026-06-19, JGtm).
 // On ne projette que les champs consommes en Phase 1 (mapping -> canonical) ; le
 // carnage report etendu (scoreboard par-joueur, CSR pre/post) est Phase 2.
 

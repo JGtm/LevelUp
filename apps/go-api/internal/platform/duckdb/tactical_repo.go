@@ -1,6 +1,5 @@
 // Package duckdb — tactical_repo.go : implementation DuckDB de
-// port.TacticalRepository (onglet Tactique, plan .ai/archive/V7.5/PLAN_TACTIQUE_2026-09-06.md
-// phase 2).
+// port.TacticalRepository (onglet Tactique).
 //
 // Source : `match_registry` x `match_participants` pour l'UNIVERS (les matchs
 // retenus par le filtre) ; `kill_positions_latest` x `match_kill_events_latest`

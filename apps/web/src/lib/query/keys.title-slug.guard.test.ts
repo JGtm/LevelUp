@@ -5,7 +5,7 @@
  * clés par-joueur SANS `titleSlug` — seule la purge `queryClient.clear()` au switch les
  * séparait, donc toute course (refetch background, réponse en vol) re-exposait des données
  * d'un autre titre. Le correctif : `titleSlug` en 2e segment de chaque clé title-dependante
- * (cf. lib/query/keys.ts en-tête + .ai/archive/V7/PLAN_TITLE_HEADER_LEAK_2026-07.md).
+ * (cf. lib/query/keys.ts en-tête).
  *
  * Ce test verrouille l'invariant en DEUX volets :
  *   1. INVOCATION : chaque fabrique title-scopée, appelée avec un slug sentinelle, DOIT

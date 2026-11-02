@@ -312,7 +312,7 @@ var plafondsParFichier = map[string]int{
 	// un equipement porte). Exception ecrite, dans le commit qui monte `SchemaVersion`.
 	// SCHEMA 105 -> 106 (2026-10-28), +26 : l entree v106 (fin lue du mur, objet d effet de l ecran occultant).
 	// Exception ecrite, dans le commit qui monte `SchemaVersion`.
-	"libs/film/replay/document_chronicle.go": 3659,
+	"libs/film/replay/document_chronicle.go": 3639,
 	// `film_scan.go` N ENTRE PAS EN TABLE (2026-10-22, lot detonations, correction CI) : l appel a
 	// `grammar.ScanProjectileDetonations` (item 1) l avait fait passer de 500 a 504 lignes, mais
 	// « mettre le fichier dans plafondsParFichier n est pas une reponse » (cette table est close au
@@ -349,7 +349,7 @@ var plafondsParFichier = map[string]int{
 	// plafond ne monte pas ». `countShotsWithAim`/`countShotsWithWeapon` en sont sortis par
 	// DEPLACEMENT PUR vers `golden_assembly_counts_test.go` pour compenser.
 	"libs/film/replay/golden_assembly_test.go":      1184,
-	"libs/film/internal/grammar/i59_anchor_test.go": 1142,
+	"libs/film/internal/grammar/i59_anchor_test.go": 1141,
 	// SCHEMA 61 -> 62 (2026-09-17, lot 4.2.1-b) : 1168 -> 1183, la raison ecrite de v62 que
 	// `TestStructureIsOptionalInDocument` exige au-dessus de son epinglage dur.
 	// SCHEMA 62 -> 63 (2026-09-19, post-chantier lot 5.1) : 1183 -> 1200, la raison ECRITE de la
@@ -454,7 +454,7 @@ var plafondsParFichier = map[string]int{
 	// justification de la montee (lien tir -> projectile, images-cles sans vehicule).
 	// SCHEMA 104 -> 105 (2026-10-28) : 1482 -> 1486, la justification de la montee (objets engendres).
 	// SCHEMA 105 -> 106 (2026-10-28) : 1486 -> 1491, la justification de la montee (durees d effets).
-	"libs/film/replay/structure_test.go":             1491,
+	"libs/film/replay/structure_test.go":             1479,
 	"libs/film/replay/t0_mouvement_research_test.go": 866,
 	// DEPLACE PAR LE LOT J4.2 (2026-09-26) de `replay` vers `grammar` avec la lecture d inventaire ;
 	// plafond inchange (827 -> 829 lignes : le predicat de lecture vide ecrit en clair, cf. le fichier).
@@ -472,7 +472,7 @@ var plafondsParFichier = map[string]int{
 	"libs/film/replay/equipment_uses_join_test.go":                        571,
 	"libs/film/internal/facts/objectives/assaut_pied_ancre_test.go":       556,
 	"internal/sync/killcollector/positions_test.go":                       557,
-	"libs/film/internal/grammar/golden_minibobine_test.go":                552,
+	"libs/film/internal/grammar/golden_minibobine_test.go":                549,
 	"libs/film/internal/grammar/vehicules_v2_items_test.go":               533,
 	"libs/film/replay/attachement_phase0_bord_test.go":                    522,
 	"internal/sync/killcollector/collector_test.go":                       524,

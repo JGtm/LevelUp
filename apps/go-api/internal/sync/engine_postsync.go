@@ -321,7 +321,7 @@ func (e *SyncEngine) runPostSyncPipeline(
 	// 3. Career rank — DÉCOUPLÉ du post-sync depuis 2026-05-14.
 	// Le flow XP + Spartan ID est désormais géré par service.CareerLiveService
 	// (throttle 5 min / 6 h + fallback DB per-field), appelé depuis HomeService
-	// à chaque chargement de /pages/home. Voir .ai/thought_log.md.
+	// à chaque chargement de /pages/home.
 	// domain.PostSyncResult.CareerSynced reste dans le struct (compat e2e tests)
 	// mais n'est plus jamais positionné à true ici.
 

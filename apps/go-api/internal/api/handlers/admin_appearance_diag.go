@@ -1,6 +1,5 @@
 // Package handlers — admin_appearance_diag.go : endpoint admin du diagnostic
-// apparence Spartan ID (volet 2 du plan .ai/archive/V7.1/PLAN_DIAG_APPARENCE_ADMIN_2026-07.md,
-// Lot F).
+// apparence Spartan ID.
 //
 // GET /admin/diag/appearance/{player_slug} → verdict par composant (bannière,
 // emblème, backdrop, service tag) d'un joueur suivi, à la demande. ZÉRO logique

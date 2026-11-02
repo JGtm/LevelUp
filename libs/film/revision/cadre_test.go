@@ -1,7 +1,6 @@
 package revision
 
-// cadre_test.go — LE CADRE HISTORIQUE DU HACHAGE (decision D2-F du plan
-// `.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D2_2026-10-28.md`) : la brique hachee depuis le module de demain
+// cadre_test.go — LE CADRE HISTORIQUE DU HACHAGE (ADR 0041) : la brique hachee depuis le module de demain
 // rend les memes empreintes que depuis celui d aujourd hui.
 //
 // Ces tests sont INTERNES au paquet : ils posent le chemin courant de la brique a la valeur du

@@ -35,7 +35,7 @@ package grammar
 // `grammar-2026-09-24` a `grammar-2026-10-02.3` dans `rev_chronique_archive_7.go`,
 // `grammar-2026-10-03` a `grammar-2026-10-08` dans `rev_chronique_archive_8.go`.
 // La chronique se ROTATIONNE quand ce fichier
-// atteint 500 lignes, comme `.ai/thought_log.md` ; le geste a ete refait le 2026-09-16 (lot
+// atteint 500 lignes ; le geste a ete refait le 2026-09-16 (lot
 // 2.5.b, rangs `.21` a `.26`), le 2026-09-18 (lot 5.1.7, rangs `.29` a `.38`, dans une
 // SECONDE archive parce que la premiere frolait le meme seuil), le 2026-09-21 (lot 5.9.4,
 // rangs `.39` a `.42`, verses dans cette meme seconde archive qui avait la place), puis le
@@ -136,8 +136,8 @@ package grammar
 // aucun bit n est lu autrement, aucune vue ne s arrete ailleurs ; seuls les messages a couple sont
 // gardes en plus.
 //
-// ENTREE `grammar-2026-10-09.2` (2026-10-09, jalon LK du plan
-// `.ai/archive/V7.5/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, branche `feat/ri-lk-images-cles`) : LES
+// ENTREE `grammar-2026-10-09.2` (2026-10-09, jalon LK, branche
+// `feat/ri-lk-images-cles`) : LES
 // RECORDS D IMAGE-CLE SE LISENT SOUS LA PORTEE `DAT_144e61ea0` DE L ETAT COMPLET.
 //
 // RENUMEROTEE (2026-10-09, fusion de `feat/v75` `54b47a2b8` dans `feat/ri-lk-images-cles`) : cette
@@ -176,8 +176,7 @@ package grammar
 // unit-actor-state, world-object i0, generic-rigid-body-transforms, low-frequency (plan LK, §7 D-17,
 // D-18, D-21, D-23).
 //
-// ENTREE `grammar-2026-10-09.3` (2026-10-09, lot 2.7.d1 du plan
-// `.ai/archive/V7.5/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, etapes D1.1 a D1.3, branche
+// ENTREE `grammar-2026-10-09.3` (2026-10-09, lot 2.7.d1, branche
 // `feat/ri-lk-images-cles`) : L ETAT COMPLET DU BIPEDE AUX IMAGES-CLES EST LU PAR LA GRAMMAIRE, LES
 // FENETRES DE BITS PASSENT DERRIERE LA LECTURE.
 //
@@ -221,7 +220,7 @@ package grammar
 // de format 20 ; admis inchanges (6 507) ; fermetures `ti=35` 5 401 -> 5 397 ; `replay-equiv` (20
 // films) : seuls `a349fea8` et `a521164d` changent (4 selections tues) ; killsource identique.
 //
-// ENTREE `grammar-2026-10-14` (2026-10-14, lot F du plan `.ai/archive/V7.5/PLAN_AJUSTEMENTS_2026-10-14.md`, branche
+// ENTREE `grammar-2026-10-14` (2026-10-14, lot F, branche
 // `feat/aj14-f`) : LA LECTURE DE LA VUE A RANGE SES MESSAGES DE POUSSEE. Aucun bit n est lu autrement :
 // [lireUnMessage] garde les references qu il lisait et jetait, les charges des genres 104 et 105
 // ([chargePousseeDuJoueur], [chargeObjetRepousse], `vue_a_poussees.go`) gardent leurs valeurs, et
@@ -235,8 +234,8 @@ package grammar
 // accelerent le slot pousse dans les 300 ms (temoin decale de 5 s : 1 sur 14) ; auteur porteur du
 // repulseur sur 130 paires sur 130.
 //
-// ENTREE `grammar-2026-10-14.2` (2026-10-14, lot « equipement porte » du plan
-// `.ai/archive/V7.5/PLAN_AJUSTEMENTS_2026-10-14.md`, branche `feat/equip-porte`) : `ti=37 i28
+// ENTREE `grammar-2026-10-14.2` (2026-10-14, lot « equipement porte »,
+// branche `feat/equip-porte`) : `ti=37 i28
 // equipment-tracked-object-handles-stack-component` LIT n ENTREES, PLUS n+1. Le lecteur du jeu
 // `FUN_140f72dec` lit R(4) n (`FUN_1424e1d48`), le range en `+0x544`, puis avance le pointeur de
 // 8 octets AVANT de le comparer a `+0x544 + (n+1)*8` : n appels de `FUN_1408f0ac4(…,0)`. Le port
@@ -280,7 +279,7 @@ package grammar
 // ecran 241, traqueur 49 : tous ti=41 nes dans le paquet. Le retrait de la pile precede la
 // suppression de 0,2 a 0,7 s (5676a9ba).
 //
-// ENTREE `grammar-2026-10-15.2` (2026-10-15, plan `.ai/archive/V7.5/PLAN_RI_RESIDU_IMAGES_CLES_2026-10-14.md`, branche
+// ENTREE `grammar-2026-10-15.2` (2026-10-15, branche
 // `feat/ri-ecart-108`, etapes R1 a R3) : TROIS LECTURES DU JEU ENTRENT DANS LA MARCHE DES IMAGES-CLES.
 //
 //   - R1, LA TABLE D ENTREES (`keyframe_entrees.go`). La table d image-cle compte une entree par slot
@@ -348,8 +347,8 @@ package grammar
 // Contre l arrivee du premier echange (74) : ecart XY mediane 0,02 m, max 0,13 (l arrivee est 0,11 a
 // 0,53 m plus haut) ; contre le porteur a l image de la pose (120) : XY mediane 0,04 m, max 0,17.
 //
-// ENTREE `grammar-2026-10-18` (2026-10-18, plan `.ai/archive/V7.5/PLAN_BACKLOG_2026-10-16.md`, E8.1 (b) (c),
-// decision utilisateur D-16, option B du pilote) : L OCCUPATION DES VEHICULES QUE LA MARCHE DE
+// ENTREE `grammar-2026-10-18` (2026-10-18, decision
+// utilisateur, option B du pilote) : L OCCUPATION DES VEHICULES QUE LA MARCHE DE
 // KILLSOURCE RECOLTE EST RENDUE. Aucun bit n est lu autrement : le canal des morts recoltait deja les
 // lectures d `object-parent-state` (i10) de la bande bipede pendant la marche de killsource, et les
 // jetait. [LectureDeKillsource.Occupation] les rend, triees et dedoublonnees comme celles de la
@@ -382,7 +381,7 @@ package grammar
 // attestees ou non (`KeyframeWalkStats.ElectionsAttestees`, `ElectionsNonAttestees`). Les ancres lues
 // changent, donc le recensement des images-cles et tout ce qui en derive.
 //
-// ENTREE `grammar-2026-10-28` (2026-10-28, plan des durees d effets `.ai/V8/PLAN_REJEU_DUREES_EFFETS_2026-10-28.md`,
+// ENTREE `grammar-2026-10-28` (2026-10-28, durees d effets,
 // etape B.2) : LE CANAL DE L EQUIPEMENT PORTE RENDRE L OBJET D EFFET. Aucun bit n est lu autrement : la
 // grenade de l ecran occultant est detruite a l impact, et la bulle est une AUTRE vie (ti=38) que la pile i28
 // ne nomme pas, nee 150 a 600 ms avant la suppression de la grenade et supprimee 7,507 s plus tard (38 ecrans sur
@@ -393,7 +392,7 @@ package grammar
 // valeur, et les faits cuits avant se refusent sur cette revision. L association (quelle candidate, pour quelle
 // famille) se tranche a la publication (`replay/document_effets.go`).
 //
-// COMPLEMENT DU 2026-10-29 (decouplage D2, lot 2 : plan `.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D2_2026-10-28.md`,
+// COMPLEMENT DU 2026-10-29 (decouplage du decodeur en module `libs/film`, ADR 0041,
 // REVISION CONSTANTE) : empreinte regeneree, revision inchangee. Les paquets qui decident la sortie de la
 // couche et vivaient hors du dossier `film/` y sont deplaces (`playerposition`, `filmshell`) et le type
 // d evenement de la brique devient `film/highlightevent` ; leurs chemins d import et leurs lignes de

@@ -5,7 +5,7 @@
  * Le test instances.test.ts snapshot ces valeurs : toute modification
  * non-intentionnelle fait échouer la CI.
  *
- * Décisions arbitrées (2026-04-25, cf. .ai/PLAN_OKABE_ITO_ACCESSIBILITY.md §9) :
+ * Décisions arbitrées (2026-04-25) :
  * - K/D : 3 tiers [1.0, 0.0] — ≥1 / [0,1[ / <0
  * - Bande neutre divergente : strict [0,0] par défaut
  * - mmrDeltaScale : ±10 justifié (bruit MMR < 10 non significatif)

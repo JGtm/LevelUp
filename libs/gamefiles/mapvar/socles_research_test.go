@@ -10,8 +10,7 @@ package mapvar
 // seule fois est donc invisible, et l'objet deja pose a t=0 n'est pas repliqué. Si le
 // `.mvar` de la carte portait les spawners, on connaitrait TOUS les socles des le depart.
 //
-// LECTURE SEULE, aucune base, aucune ecriture. Plan (hypotheses et seuils ECRITS AVANT la
-// mesure) : `.ai/archive/V7.5/replay2d/PLAN_SOCLES_MVAR.md`.
+// LECTURE SEULE, aucune base, aucune ecriture. Hypotheses et seuils ECRITS AVANT la mesure.
 //
 // USAGE (depuis apps/go-api) :
 //

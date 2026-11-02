@@ -1,5 +1,4 @@
-BLOC DE PIED DE FILM — un evenement th=10 reel, pose le 2026-09-14 (lot 1.1.3 du
-.ai/PLAN_DECODEUR_FILM_2026-09-13.md), RE-CHOISI le meme jour a la revue R1 (constat R1-1).
+BLOC DE PIED DE FILM — un evenement th=10 reel, pose le 2026-09-14, RE-CHOISI le meme jour a la revue R1 (constat R1-1).
 
 CE FICHIER DIT D OU VIENT CHAQUE OCTET. Une fixture binaire sans provenance ecrite est un fait
 sans source ; celle-ci se REGENERE, elle ne s edite pas :
@@ -43,8 +42,7 @@ table des slots de chunk_00 -> xuid, i-eme entite ti=9 -> designateur d equipe).
 l oracle corpus `grammar.TestResidusPiedOctetEquipe`, rejoue le 2026-09-14 sur trois films
 (53ce4390, 64e8adfa, 7344d24f) : 173 evenements sur 173 pour l octet 37, 84 sur 173 pour l
 octet 55, quatre lectures en accord parfait sur cent quatre-vingts essayees. Mesure d origine
-du 2026-09-13 : 665/665 sur quatorze films
-(.ai/archive/V7.5/film_re/NOTE_RESIDUS_CHUNK00_2026-09-13.md §6).
+du 2026-09-13 : 665/665 sur quatorze films.
 
 POURQUOI CE BLOC-LA, ET PAS LE PREMIER VENU. La premiere version de cette fixture (bloc
 t=61155, xuid 2533274823110022) portait 1 aux octets 36, 37 ET 38 : elle ne discriminait que
@@ -67,7 +65,7 @@ d ou les 2 rouges de la quatrieme ligne et non 3.)
 L octet 38 est un DOUBLON EXACT de l octet 37 : mesure du 2026-09-14 sur TOUS les blocs de
 quatre films et deux builds (bcb6d393, 53ce4390, 7344d24f, 64e8adfa), 190 blocs sur 190 avec
 b37 == b38. Aucune fixture ne peut les separer. C est precisement ce qui fonde la regle du lot :
-on lit UN des deux (l octet 37, celui que .ai/archive/V7/RESEARCH_THEATER_RE.md:534 identifie)
+on lit UN des deux (l octet 37, celui que la recherche sur le Theater identifie)
 et on ne lit JAMAIS l autre, parce que deux lectures d un meme fait divergent un jour sans que
 rien ne le dise.
 

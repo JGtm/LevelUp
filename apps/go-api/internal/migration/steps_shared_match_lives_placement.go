@@ -1,5 +1,5 @@
 // Package migration — steps_shared_match_lives_placement.go : la table du PLACEMENT DES VIES,
-// ecrite AU SYNC par le collecteur de kills (plan `.ai/archive/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md`, lot V2).
+// ecrite AU SYNC par le collecteur de kills.
 //
 // ─── UNE TROISIEME PROJECTION DU MEME MATERIAU ───────────────────────────────────────────
 //

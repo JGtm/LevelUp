@@ -1,8 +1,7 @@
 package grammar
 
 // zone_census_test.go — INSTRUMENT DE RECENSEMENT des archetypes de ZONE et d'OBJECTIF du
-// mode, phase 0 (items C.0.1 et C.0.3) du lot C de
-// `.ai/archive/V7.5/replay2d/PLAN_EXPLOITATION_REGISTRE_FILM.md`.
+// mode, phase 0 (items C.0.1 et C.0.3) du lot C.
 //
 // CE QU'IL MESURE, et pourquoi il ne peut pas se contenter de la traversee canonique.
 // La traversee d'un record (`traverseComponentLoop`) s'ARRETE au premier composant PRESENT
@@ -26,7 +25,7 @@ package grammar
 //	                POSITIF : il doit rendre des records, sinon le balayeur ne voit rien.
 //
 // IL NE MODIFIE RIEN : aucun code de production, aucune ecriture en base, aucun champ
-// d'artefact. Lecture seule du film, sortie en TSV sous `.ai/archive/V7.5/replay2d/registre_film/lotC/`.
+// d'artefact. Lecture seule du film, sortie en TSV sous le dossier d'archive de recherche (ZONE_OUT le redirige).
 // SOUS GARDE D'ENVIRONNEMENT (ZONE_FILM), donc saute partout ailleurs, CI comprise.
 //
 // UN SEUL FILM PAR PROCESSUS (memoire de depot `reference_statrecords_corpus_sweep_ram_bomb`,
@@ -48,7 +47,7 @@ import (
 const (
 	// zcFilmEnv porte le repertoire des chunks d'UN film (chemin absolu).
 	zcFilmEnv = "ZONE_FILM"
-	// zcOutEnv permet de rediriger les TSV ; par defaut ils vont sous `.ai/` du depot.
+	// zcOutEnv permet de rediriger les TSV ; par defaut ils vont sous le dossier d'archive de recherche du depot.
 	zcOutEnv = "ZONE_OUT"
 )
 

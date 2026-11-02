@@ -206,3 +206,13 @@ func marcherAPIEtBriqueFilm(t *testing.T, fn fs.WalkDirFunc) error {
 	}
 	return nil
 }
+
+// balayerGo appelle `visiter` pour chaque fichier `.go` de l'espace de travail (tests compris), avec
+// son chemin relatif à la RACINE DU DÉPÔT en slash (`apps/go-api/…`, `libs/gamefiles/…`). Mêmes
+// répertoires sautés que `workspaceGoSources`, le parcours unique des garde-rails à règle générale.
+func balayerGo(t *testing.T, visiter func(rel, chemin string)) {
+	t.Helper()
+	for _, f := range workspaceGoSources(t, racinesEspaceDeTravail...) {
+		visiter(f.Rel, f.Chemin)
+	}
+}

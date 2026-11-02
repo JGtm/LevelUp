@@ -82,8 +82,7 @@ export interface InventoryReading {
  * vide dans `empty` ET la dernière lecture PLEINE du même slot dans `state`. C'est la seule
  * façon de dire les deux choses vraies à la fois — « il portait ceci » et « il est mort ».
  *
- * BORNÉE À LA VIE EN COURS DU SLOT (correctif P0-2, 2026-09-06,
- * `.ai/AUDIT_LECTEURS_VIES_ANONYMES_2026-09-06.md`, même défaut et même remède que
+ * BORNÉE À LA VIE EN COURS DU SLOT (correctif du 2026-09-06, même défaut et même remède que
  * `loadoutAt`) : sans vie couvrante pour ce slot à cette image, `null` — jamais l'inventaire
  * d'une autre vie. `window.start` descend jusqu'à `lastFullBefore`, qui borne à son tour son
  * repli sur la dernière lecture PLEINE.

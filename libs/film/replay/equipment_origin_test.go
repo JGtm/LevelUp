@@ -76,7 +76,6 @@ func TestEquipmentLivesIgnoreLesQuantaSansBornes(t *testing.T) {
 // La fenetre ne classe plus aucune pose d'equipement — une pose dont le film ne dit rien sort
 // `unknown`. Ce que la LECTURE decide est verrouille par `equipment_origin_lecture_test.go`, et
 // la regle retiree survit comme TEMOIN de mesure (`f1OrigineParFenetre`, fichier de recherche).
-// `.ai/baselines/tests_pre_migration.jsonl` est mis a jour dans le meme commit.
 
 // TestPlacementCoverageEquilibreLesOrigines — L'INVARIANT : tout ce qui est publie porte une
 // origine, et les trois comptes somment au total. Un ecart signale une origine non comptee,

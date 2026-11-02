@@ -1,7 +1,6 @@
 package grammar
 
-// keyframe_entity_queue_test.go — INSTRUMENT DE MESURE du lot R6
-// (cf. `.ai/archive/V7.5/replay2d/PLAN_R6_FILE_PAR_ENTITE.md`).
+// keyframe_entity_queue_test.go — INSTRUMENT DE MESURE du lot R6.
 //
 // CE QU'IL MESURE :
 //

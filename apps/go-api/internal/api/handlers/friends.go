@@ -19,8 +19,8 @@
 // lecture seule côté front, qui n'a jamais à interpréter un 403 pour décider de
 // son affichage.
 //
-// LES ERREURS NE PORTENT QU'UN CODE MACHINE, PAS DE PHRASE. C'est la décision D6
-// du plan « libellés en dur » (.ai/archive/V7.5/PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md), que le
+// LES ERREURS NE PORTENT QU'UN CODE MACHINE, PAS DE PHRASE. C'est la règle
+// des libellés en dur, que le
 // ratchet internal/archlint/no_french_label_literal_test.go fait respecter aux
 // fichiers neufs : un libellé lisible se traduit, donc il vit côté web
 // (features/friends/errors.ts, FR + EN), jamais en dur ici. Pour la même raison,

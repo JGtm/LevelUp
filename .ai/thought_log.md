@@ -119790,3 +119790,41 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : ADR 0043, handoff et backlog alignés ; aucun code touché.
 
 **Conclusion / prochaine étape** : création des dépôts après le chantier desktop, sous ces noms ; décodeur de film = chantier à part, après.
+
+## [2026-11-02] QoL : citations `.ai/` retirées du code, tuile seule des sessions récentes, moteur des véhicules au mouvement — Complété (PR vers la release)
+
+**Contexte.** Trois demandes du user, branche `chore/qol-commentaires-son-sessions` depuis `release/v8.1.0`
+(worktree `LevelUp-wt-qol`) : (1) dette [dette/commentaires] du BACKLOG ; (2) moteur du Warthog qui « roule »
+à l'arrêt ; (3) accueil, « Sessions récentes » : la tuile restante doit occuper la largeur du bloc.
+
+**Décision technique.**
+- (1) 1 074 citations `.ai/` dans 828 fichiers de `apps/` et `libs/`. Cinq agents Sonnet en parallèle, périmètres
+  disjoints, même brief (retirer la référence, garder le contrat ; ADR seulement si vérifié ; ne pas toucher
+  aux chaînes ni à `.ai/re_dump/`). `archlint/doc_chemins_ai_test.go` supprimé, remplacé par
+  `archlint/commentaires_references_test.go` : plafond 0 dans les commentaires Go de l'espace de travail
+  (exception : `.ai/re_dump/`, dossier de données) et dans tout source web (`src`, `e2e`, `scripts`),
+  commentaires et chaînes. `balayerGo` déplacé dans `go_source_walk_test.go`. `pas_de_lecture_sous_ai`
+  perd l'entrée de l'ancien ratchet (plafond 16 -> 15). Skill `arch-rules` et ADR 0041 mis à jour.
+  Messages de test citant un plan nettoyés à la main (5). Restent volontairement des CHAÎNES : chemins réels
+  d'outils (`weapon-icons-build`, `engagement-calibrate`, `diag_perfsim`, `no_stale_fallback_target`), la
+  description d'une migration, le `_doc` d'une fixture JSON, et deux chaînes des couches du décodeur
+  (`profile_table.go`, `registre_replay_equipement.go`) : les changer bougerait une empreinte de révision.
+- (3) `HomePage.tsx` : grille à deux colonnes seulement quand solo ET escouade existent ; deux tests.
+- (2) Cause : seul le Scorpion avait un clip `idle` ; tout autre véhicule occupé jouait sa boucle de course,
+  immobile compris. Décision du user (2026-11-02, après proposition de clips de ralenti dérivés) : AUCUN
+  ralenti, le moteur ne sonne que si le véhicule bouge vraiment, un petit arrêt bien fondu. Mesure sur 500
+  rejeux (608 trajets conducteurs terrestres) : à l'arrêt vitesse <= 0,05, croisière 3 à 12 ; 16 trajets ne
+  bougent jamais. Règle : mouvement = vitesse > 1 ; arrêts < 1,5 s fusionnés (la boucle continue) ;
+  mouvement < 0,5 s ignoré ; épisode = premier -> dernier mouvement (`enter` / `exit` à ses bornes) ; arrêt
+  long = boucle éteinte en fondu de 0,6 s, rallumée en 0,3 s, sans rejouer enter/exit. Même règle en lecture
+  (`vehicleEnginePlayer.ts`, phase `arret` sans voix) et à l'export (`vehicleEngineMix.ts`).
+  `vehicle_scorpion_idle.ogg` supprimé (plus aucun lecteur).
+
+**Résultats.** gofmt propre ; `go vet` go-api (sans tag, `integration`, `research`, `gamefiles`) et vet des 4 briques
+(4 jeux de tags) propres ; `go test ./...` go-api et tests des briques verts ; web : typecheck forcé 0, lint 0,
+vitest 10 619 verts, puis rejeu (3 401) vert après le changement du moteur. Mutation vérifiée : une citation ajoutée à
+`internal/sync/scope.go` et à `web/src/main.tsx` rougit les deux tests. Plafonds de taille du décodeur
+abaissés (4 fichiers, lignes de commentaire retirées).
+
+**Conclusion / prochaine étape.** Commit puis PR vers `release/v8.1.0` sur accord du user ; écoute du moteur
+au rejeu par le user (Warthog arrêté puis reparti).

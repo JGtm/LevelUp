@@ -13,8 +13,7 @@ package grammar
 //	   si 0 -> UN SEUL variant                     la valeur scalaire               -> i1
 //	   si 1 -> BOUCLE DE 32 variants               une valeur PAR JOUEUR            -> i2..i33
 //
-// LA GRAMMAIRE VIENT DU DESERIALISEUR DU JEU (lot C-bis phase 0,
-// `.ai/archive/V7.5/replay2d/registre_film/LOTCBIS_PHASE0.md` sections 2 a 4). Recette R7-d habituelle :
+// LA GRAMMAIRE VIENT DU DESERIALISEUR DU JEU (lot C-bis phase 0). Recette R7-d habituelle :
 // chaine `.rdata` -> getter de nom -> case de vtable `+0x08` -> lecteur en `+0x30`. Les deux
 // composants partagent leur coeur, `FUN_140ce59bc`, qui lit `R(4)` puis dispatche sur
 // `FUN_140ce5aa4`.

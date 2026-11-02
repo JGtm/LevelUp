@@ -1,9 +1,6 @@
 /**
  * squadPerformanceLineCharts — teammates.16 : 8 sous-charts performance escouade.
  *
- * Spec : .ai/charts_specs/teammates/16_trio_performance_charts.yaml (étendue
- *        à 8 charts par demande utilisateur — ajout MaxKillingSpree + HS+Perfect).
- *
  * Builders disponibles :
  *   - buildPerformanceLineOption        : 1 line par joueur sur une métrique simple.
  *   - buildKillsDeathsButterflyOption   : sous-chart spécial #1 (kills positifs / deaths négatifs).

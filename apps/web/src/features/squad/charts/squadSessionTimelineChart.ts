@@ -1,8 +1,6 @@
 /**
  * squadSessionTimelineChart — teammates.04 : performance d'escouade par session.
  *
- * Spec : .ai/charts_specs/teammates/04_squad_timeline.yaml
- *
  * Composition :
  *   - Bars perf squad colorées par tier (perf-tier-1..5 selon seuils 75/60/45/30)
  *   - Line winrate (% sur même axe Y) si winRate non nul sur ≥1 point

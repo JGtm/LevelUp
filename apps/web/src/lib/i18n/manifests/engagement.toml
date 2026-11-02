@@ -1,8 +1,5 @@
 # Engagement i18n manifest — strings de la metrique Engagement (single-player + squad).
 #
-# Reference conceptuelle : .ai/REFLEXION_ENGAGEMENT_SCORE_INTRA_MATCH.md
-# Plan : .ai/PLAN_ENGAGEMENT_IMPLEMENTATION.md §6.4
-#
 # Format ICU MessageFormat. Regenerer via :
 #   node apps/web/scripts/build_i18n_manifests.mjs
 

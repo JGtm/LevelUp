@@ -18,9 +18,7 @@ import { useAppShellStore } from '@/stores/appShellStore'
  * Le canal existait — servi, sans auth, dans le contrat OpenAPI — mais AUCUN client
  * ne le consommait : le front ne pouvait donc pas distinguer « ce titre ne sait pas
  * produire ce calque » de « ce match-là n'en a pas », et rendait des cartes vides sur
- * des titres qui n'auraient jamais de données (registre
- * `.ai/AUDIT_V75_DEPUIS_V7.3.0_2026-09-05.md`, L1 réfuté : « il manque un client, pas
- * un canal » ; L3, L4, L5).
+ * des titres qui n'auraient jamais de données.
  *
  * LA RÈGLE DES DEUX PORTES. Une surface alimentée par l'artefact de rejeu ou par une
  * table `film.*` en porte DEUX :

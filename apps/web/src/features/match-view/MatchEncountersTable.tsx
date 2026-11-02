@@ -2,9 +2,6 @@
  * MatchEncountersTable — historique des rencontres avec les joueurs du match
  * (mock match_view.14).
  *
- * Spec visuelle : .ai/charts_specs/_generated/match_view/mock-echarts.html
- *   section "match_view.14 — Historique des rencontres (joueurs du match)".
- *
  * Colonnes :
  *  - Joueur (lien vers Explorer + badges narratifs ally_plus/tough_enemy/ordinal)
  *  - Rôle (badge allié / ennemi sur ce match courant)

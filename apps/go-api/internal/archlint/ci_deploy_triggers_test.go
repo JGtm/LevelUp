@@ -104,7 +104,7 @@ func patternCoveredByAny(pattern string, coverers []string) bool {
 //   - égalité stricte ;
 //   - `**` / `**/*` : englobe tout ;
 //   - `prefixe/**` : englobe tout motif commençant par `prefixe/`
-//     (c'est le cas réel `.ai/**` de deploy.yml qui englobe `.ai/**.md` de ci.yml) ;
+//     (c'est le cas réel d'un motif `dossier/**` de deploy.yml qui englobe `dossier/**.md` de ci.yml) ;
 //   - `prefixe/*` : idem (moins large en réalité, mais toujours suffisant pour
 //     l'usage « ce chemin est-il ignoré/déclenché aussi de l'autre côté »).
 func patternCovers(wide, narrow string) bool {

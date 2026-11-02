@@ -1,8 +1,7 @@
 /**
  * weaponRecords_logic — la GÉOMÉTRIE de « la règle » des records de distance, sans React.
  *
- * Plan : .ai/archive/V7.5/PLAN_RECORDS_DISTANCE_2026-09-20.md (rendu A de la maquette
- * MAQUETTE_REGLE_RECORDS_2026-09-20.html). Une ligne graduée du contact vers la longue portée,
+ * Une ligne graduée du contact vers la longue portée,
  * un losange par arme à son record, et les libellés ÉTAGÉS au-dessus pour qu'aucun n'en
  * recouvre un autre : c'est ce dernier point qui justifie un module pur et testé — un
  * placement glouton se prouve sur des boîtes, pas en regardant un écran.

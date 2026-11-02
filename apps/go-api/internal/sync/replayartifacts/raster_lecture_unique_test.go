@@ -1,8 +1,6 @@
 package replayartifacts
 
-// raster_lecture_unique_test.go — LE COMPTEUR QUI PROUVE LA DOUBLE LECTURE (lot M6,
-// `.ai/archive/V7.5/PLAN_ORCHESTRATION_2026-09-07.md`, decouverte du registre `DECOUVERTES_TACTIQUE`
-// section « Fusion origin/feat/v75 -> feat/tactique »).
+// raster_lecture_unique_test.go — LE COMPTEUR QUI PROUVE LA DOUBLE LECTURE.
 //
 // # LE DEFAUT MESURE ICI
 //

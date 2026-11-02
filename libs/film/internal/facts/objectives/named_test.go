@@ -294,7 +294,7 @@ func TestKnownStatsCoverBothModes(t *testing.T) {
 	}
 }
 
-// TestTableStatborgConcordeAvecNamedStatSlots — la table figee `.ai/refs/TABLE_STATS_STATBORG.tsv`
+// TestTableStatborgConcordeAvecNamedStatSlots — la table figee `TABLE_STATS_STATBORG.tsv`
 // et `namedStatSlots` doivent dire LA MEME CHOSE, dans les deux sens.
 //
 // Pourquoi ce test existe (arbitrage du 2026-08-05, integration piste C-bis). La revue
@@ -368,7 +368,7 @@ type ligneStatborg struct {
 	lecteur string
 }
 
-// lireTableStatborg lit `.ai/refs/TABLE_STATS_STATBORG.tsv`. Les lignes de commentaire, la
+// lireTableStatborg lit `TABLE_STATS_STATBORG.tsv`. Les lignes de commentaire, la
 // ligne d'en-tete et les lignes sans emplacement (`hill`) sont ecartees.
 //
 // La table est VERSIONNEE : son absence est une anomalie du depot, pas une fixture

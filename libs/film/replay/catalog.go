@@ -98,8 +98,7 @@ type LabelCatalog struct {
 	// TITRE après NewLabelCatalog, comme Icons et Tints — un sixième paramètre ferait sauter
 	// le seuil du dépôt, et cette table n'entre dans aucune jointure de construction.
 	//
-	// POURQUOI ELLE EXISTE (lot armes au sol, 2026-09-10, rapport
-	// `.ai/archive/V7.5/RAPPORT_ARMES_AU_SOL_2026-09-10.md`). Le filtre « armes spéciales » du rejeu
+	// POURQUOI ELLE EXISTE (lot armes au sol, 2026-09-10). Le filtre « armes spéciales » du rejeu
 	// (sniper/power/special : ce qu'un socle distribue et qu'un adversaire a intérêt à
 	// ramasser) a besoin du RÔLE, jamais publié dans l'artefact — l'ajouter ici, à la
 	// requête, évite toute recuisson : les 64 artefacts locaux et toute la production

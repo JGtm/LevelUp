@@ -530,8 +530,7 @@ func (r *ServiceRegistry) killDistanceRepoFor(pdb *duckdb.PlayerDB) port.KillDis
 // WeaponImageURLFromAdapter rend LA fonction canonique « identifiant d'arme -> icône » du
 // dépôt : son URL, et si cette icône est un MASQUE à teinter plutôt qu'un dessin fini.
 //
-// # POURQUOI UNE FONCTION EXPORTÉE, ET NON UNE CLOSURE RECOPIÉE (D11 du plan
-// # .ai/archive/V7.5/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md)
+// # POURQUOI UNE FONCTION EXPORTÉE, ET NON UNE CLOSURE RECOPIÉE
 //
 // Elle vivait INLINE dans `api/server.go` (drawer d'assets). Le profil d'armes du Face-à-face
 // en aurait été la deuxième écriture, et la règle du dépôt veut une définition unique dès

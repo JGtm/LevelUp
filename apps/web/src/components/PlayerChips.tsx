@@ -1,9 +1,6 @@
 /**
  * PlayerChips — selecteur radio-like de joueur (1 actif a la fois).
  *
- * Reference visuelle : Mock 15 v2 dans .ai/mockups/engagement/.
- * Plan : .ai/PLAN_ENGAGEMENT_IMPLEMENTATION.md §6.3
- *
  * Generic et reutilisable hors contexte engagement (selecteur de joueur
  * partout dans Squad page, comparaisons, etc.).
  *

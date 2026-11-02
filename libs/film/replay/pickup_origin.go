@@ -9,9 +9,8 @@ import "github.com/JGtm/LevelUp/libs/film/internal/grammar"
 // s'il gisait au sol, lache par un mort. Trois voies geometriques ont echoue avant celle-ci :
 // la distance seule (mediane 1,33 m, 46 % sous le metre — sans pouvoir de separation), la fin
 // de vie d'objet (25,6 % d'injectivite), la levitation (separation 0,00 m) et la recurrence des
-// naissances (elle mesure le trafic des joueurs, pas les points d'apparition). Elles sont
-// consignees dans `.ai/archive/V7.5/film_re/NOTE_ORIGINE_LEVITATION_2026-09-01.md`, section « ce qu'il
-// ne faut plus retenter ».
+// naissances (elle mesure le trafic des joueurs, pas les points d'apparition). Ces voies sont
+// ecartees : ne plus les retenter.
 //
 // CE QUI DEBLOQUE : LA CARTE, PAS LE FILM. Le fichier de variante declare les points
 // d'apparition — la recette `himap.EstPointDApparition` les reconnait sans connaitre la carte,

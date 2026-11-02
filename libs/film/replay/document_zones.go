@@ -3,8 +3,7 @@ package replay
 // document_zones.go — L'ETAT DES ZONES : la forme que « qui tient quelle zone » prend dans
 // l'artefact, et ce que la mesure a refuse d'y mettre.
 //
-// CHRONIQUE — v16 (2026-08-18, plan `.ai/archive/V7.5/replay2d/PLAN_EXPLOITATION_REGISTRE_FILM.md`,
-// lot C-bis phase 2b). Le document publie `zoneStates` — L'ETAT DE CHAQUE ZONE sur toute la
+// CHRONIQUE — v16 (2026-08-18, lot C-bis phase 2b). Le document publie `zoneStates` — L'ETAT DE CHAQUE ZONE sur toute la
 // partie, en intervalles — et `coverage.zones`, ses denominateurs. Le champ est optionnel, mais
 // la version monte : la teinte de propriete cote client N'EXISTE que si l'artefact la porte, et
 // la reprise du backfill se fait par SchemaVersion — un artefact v15 doit se voir « a re-cuire »,
@@ -22,8 +21,7 @@ package replay
 // VERSION NE MONTE PAS : v16 n'a jamais ete servie, ces champs entrent dans le contrat qu'elle
 // publiera. Un artefact deja cuit sur cette branche avant la revue est a re-cuire comme les autres.
 //
-// CHRONIQUE — v18 (2026-08-18, plan `.ai/archive/V7.5/replay2d/PLAN_EXPLOITATION_REGISTRE_FILM.md`,
-// lot C-ter volet 3). `ZoneState.gauge` — LA JAUGE DE CAPTURE EN DIRECT : la serie datee des
+// CHRONIQUE — v18 (2026-08-18, lot C-ter volet 3). `ZoneState.gauge` — LA JAUGE DE CAPTURE EN DIRECT : la serie datee des
 // valeurs de la jauge de chaque zone PENDANT ses rampes (allegee : un point par variation
 // >= 0,02 ou par seconde de rampe, rien hors rampe, chaque rampe fermee par son retour a zero
 // quand le film le porte), SUR LES MODES A ZONES SIMULTANEES SEULEMENT — jamais sur une colline

@@ -2,8 +2,7 @@
 
 // Package sync — film_retry_policy_test.go : verrouille la politique de marquage
 // events_loaded sur film absent (404). Un film simplement RETARDÉ (match récent)
-// ne doit pas être marqué définitif, sinon perte définitive des events de combat
-// (cf. .ai/archive/V7/HANDOFF_sync_combat_completion.md).
+// ne doit pas être marqué définitif, sinon perte définitive des events de combat.
 package sync
 
 import (

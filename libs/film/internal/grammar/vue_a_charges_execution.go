@@ -5,8 +5,7 @@ import "github.com/JGtm/LevelUp/libs/film/internal/profile"
 // vue_a_charges_execution.go — LES CHARGES DE LA VUE A GARDEES PAR UNE VALEUR D EXECUTION, ET CE QUI
 // LA FIXE (lot VA de la campagne de grammaire, recherche R2 du 2026-10-04 et etape V3) : Script (15),
 // biped_throw_initiate (39), PlayerKilledEvent (85) et teleport_effects (116). Memes conventions que
-// `vue_a_charges.go`. Releve Ghidra `HaloInfinite.exe` HI_1_13_0, base 0x140000000, lecture seule
-// (`.ai/archive/V7.5/film_re/campagne_grammaire_2026-10-01/va_ghidra/`).
+// `vue_a_charges.go`. Releve Ghidra `HaloInfinite.exe` HI_1_13_0, base 0x140000000, lecture seule.
 //
 // # SCRIPT (15) : LE FILM PORTE LA VALEUR DE SON ENREGISTREUR
 //

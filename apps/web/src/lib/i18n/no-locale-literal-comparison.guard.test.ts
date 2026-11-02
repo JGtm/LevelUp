@@ -12,15 +12,13 @@
  *  - le PRINCIPAL : plus aucune comparaison de langue littérale ;
  *  - les lignes balisées `i18n-contrat` (sous-chaîne sur la ligne ou sur la ligne directement
  *    au-dessus) qui choisissaient un champ d'API suffixé `_fr` / `_en` : le contrat d'API sert UN
- *    libellé résolu par le serveur dans la langue de la requête (ADR 0040 D2 ; plan
- *    `.ai/V8/PLAN_I18N_MULTILANGUE.md`, étape 6). La balise ne sert plus : la réintroduire échoue ici.
+ *    libellé résolu par le serveur dans la langue de la requête (ADR 0040 D2). La balise ne sert plus : la réintroduire échoue ici.
  *
  * Troisième compteur, à 0 (étape 4, item 4.7) : un littéral `'fr'` / `'en'` comme DÉFAUT d'une valeur de langue
  * (`locale = 'fr'`, `locale ?? 'fr'`) fige la langue par défaut hors de `config/locales.toml` ; le défaut est
  * `DEFAULT_LOCALE`.
  *
- * Regex : celle de l'état des lieux (`.ai/V8/ETAT_DES_LIEUX_I18N_MULTILANGUE_2026-10-23.md`,
- * section A), étendue aux variantes de casse `isEN` / `isFR` (étape 3, lot B). Périmètre : voir
+ * Regex étendue aux variantes de casse `isEN` / `isFR`. Périmètre : voir
  * `localeScan.testutil.ts`.
  */
 import { describe, expect, it } from 'vitest'

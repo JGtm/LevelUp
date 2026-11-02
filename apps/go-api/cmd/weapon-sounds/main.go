@@ -7,8 +7,6 @@
 // les banks ont ete converties en tags `sbnk` (1305 dans `pc/globals/globals-rtx-new`),
 // et les IDs `.wem` d'une arme s'y retrouvent.
 //
-// Plan de rattachement : `.ai/archive/V7.5/PLAN_EXTRACTION_SONS_ARMES.md`.
-//
 // MODES :
 //
 //	probe    (etape 1) statue sur le format des `sbnk` (bank Wwise verbatim ?)
@@ -53,7 +51,7 @@
 // les `sbnk` fait 7,24 Go, celui qui porte les `snd!`/`weap` 0,62 Go. Ne jamais charger les
 // deux dans le meme processus : les modes s'echangent leurs resultats par le fichier JSON.
 //
-// SORTIE JSON — CHAMP `variation` (plan `.ai/archive/V7.5/PLAN_SONS_REJEU_INAPP.md`, etape 2).
+// SORTIE JSON — CHAMP `variation`.
 //
 // Les `.wav` extraits sont purs ; le jeu, lui, deplace volume et hauteur A CHAQUE LECTURE
 // dans une fourchette declaree par le paquet RANGED. Cette fourchette est desormais lue et
@@ -253,7 +251,7 @@ func main() {
 		err = banquesDEquipement(chemin, *sortie, *sortieTir, *emb)
 	case "eqip-arbre":
 		// "-banks all" : BALAYAGE STRUCTUREL de toutes les banques du module, hors du
-		// graphe eqip deja ecoute (`.ai/archive/V7.5/replay2d/PLAN_BALISE_MIX_WWISE.md`, phase 5.1).
+		// graphe eqip deja ecoute.
 		// Le booleen se decide ICI, une seule fois : `structureDesBanques` n'a pas a
 		// re-interpreter la chaine source.
 		toutes := strings.EqualFold(strings.TrimSpace(*banksSup), "all")

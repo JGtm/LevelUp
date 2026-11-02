@@ -85,8 +85,7 @@ var famillesAttendues = map[string]string{
 	"0x5E86D110": "powerup",
 }
 
-// cartesMesurees — le compte d'emplacements des trois cartes du plan
-// `.ai/archive/V7.5/replay2d/PLAN_SOCLES_MVAR.md`, par map_id.
+// cartesMesurees — le compte d'emplacements des trois cartes mesurees, par map_id.
 //
 // CATALYST 11 est la mesure du plan au socle près (13 objets, 11 emplacements — deux
 // déclarations doubles à 4,7 cm et 9 mm). CLIFFHANGER 18 = les 17 socles d'ARME du plan

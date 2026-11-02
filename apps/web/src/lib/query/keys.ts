@@ -10,7 +10,7 @@
  * Ne PAS s'appuyer sur le seul `queryClient.clear()` du switch (applyActiveTitle) pour
  * séparer les titres : une course (refetch background, réponse en vol au switch) re-clé
  * sinon des DONNÉES d'un autre titre sous la clé du titre courant (fuite cross-titre
- * corrigée le 2026-07 — cf. .ai/archive/V7/PLAN_TITLE_HEADER_LEAK_2026-07.md §Secondaire).
+ * corrigée le 2026-07).
  * La clé EST la garde, indépendante du timing. Position imposée (2e segment) : les
  * préfixes larges d'invalidation `['x', playerSlug]` (ex. matchHistoryAll, mediaBase,
  * notificationsAll, coachAll) restent des préfixes valides des clés enrichies du titre —

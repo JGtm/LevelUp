@@ -172,8 +172,7 @@ describe('inventoryAt — une lecture VIDE n’efface plus la fiche', () => {
 })
 
 /**
- * inventoryAt — BORNÉE À LA VIE EN COURS DU SLOT (correctif P0-2, 2026-09-06,
- * `.ai/AUDIT_LECTEURS_VIES_ANONYMES_2026-09-06.md`).
+ * inventoryAt — BORNÉE À LA VIE EN COURS DU SLOT (correctif du 2026-09-06).
  *
  * PAS UN ÉTAT D'IDENTITÉ (décision produit du 2026-09-06 : une vie est un humain ou un bot,
  * jamais une entité anonyme) : `null` dit seulement qu'aucune lecture n'a encore été observée

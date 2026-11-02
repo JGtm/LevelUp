@@ -13,7 +13,7 @@
 //	go run -tags cgo ./cmd/lusr_v2_replay --reset
 //	go run -tags cgo ./cmd/lusr_v2_replay --reset Madina97294 JGtm
 //
-// Sortie : rapport markdown sur stdout (pipe possible dans .ai/).
+// Sortie : rapport markdown sur stdout.
 package main
 
 import (

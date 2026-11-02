@@ -126,8 +126,7 @@ type BridgeHealth struct {
 	// client puisse convertir un instant reçu sur l'horloge du MATCH (contrat
 	// `TacticalContribution`, questions `morts`/`kills`/`gagne`/`isole`) en frame EXACTE du
 	// rejeu, plutôt que l'approximation que `?frame=` servait jusqu'ici pour ces quatre
-	// questions sur six (décalage mesuré de 3,6 à 50,8 s selon le match — cf.
-	// `.ai/archive/V7.5/DECOUVERTES_TACTIQUE_2026-09-07.md`).
+	// questions sur six (décalage mesuré de 3,6 à 50,8 s selon le match).
 	//
 	// POINTEUR, PAS int64 : MÊME PIÈGE omitempty que `ReplayDocument.OriginMs`/`T0FilmMs`
 	// (document.go). ZÉRO N'EST PAS UNE VALEUR PAR DÉFAUT ACCEPTABLE — un film dont le calage

@@ -1,7 +1,7 @@
 package revision
 
 // cadre.go — LE CADRE HISTORIQUE DU HACHAGE : le chemin du module n est pas de la grammaire
-// (decision D2-F du plan `.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D2_2026-10-28.md`).
+// (ADR 0041).
 //
 // Deux choses de l empreinte nomment l emplacement de la brique dans son module : les chaines
 // d import que le flux de jetons garde ([jetonsDe]), et les dossiers des paquets importes, qui

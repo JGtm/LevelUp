@@ -12,8 +12,7 @@ import "github.com/JGtm/LevelUp/libs/film/internal/grammar"
 //
 // # POURQUOI UN PROXY ET PAS LE VRAI PREMIER DÉGÂT
 //
-// La vraie ouverture exigerait le PREMIER dégât de l'échange. Mesuré le 2026-09-06 (sonde
-// `.ai/archive/V7.5/film_re/SONDE_DUELS_2026-09-06.md`) : le film n'émet que 91 à 428
+// La vraie ouverture exigerait le PREMIER dégât de l'échange. Mesuré le 2026-09-06 : le film n'émet que 91 à 428
 // enregistrements de dégât pour 90 à 117 morts, et le dégât fatal lui-même n'est capturé que
 // dans 10 à 50 % des morts selon le film. Le flux de dégâts complet N'EST PAS dans le film ;
 // aucune amélioration de décodage n'y changera rien (le sous-type 0xC0 non décodé n'ouvre

@@ -265,7 +265,7 @@ func computeHistoricalDominanceFlag(
 	}
 	if len(events) == 0 {
 		// Pas de timeline → fallback marge de score FINALE (DOMINATION/HUMILIATION
-		// title-agnostic, cf. analysis.ComputeScoreMarginDominance + .ai/STEAKTACULAR.md).
+		// title-agnostic, cf. analysis.ComputeScoreMarginDominance).
 		// Gate HINF (byte-identique) : la prémisse historique « Infinite a TOUJOURS des
 		// kill-events » est FAUSSE pour ~244 matchs BTB sans kill-event. Pour ne pas
 		// relabelliser rétroactivement des badges dominance HINF existants (règle projet

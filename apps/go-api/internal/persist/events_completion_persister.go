@@ -14,8 +14,7 @@
 // complétion legacy (sync.InsertHighlightEvents + sync.InsertKillerVictimPairs-
 // FromEvents + sync.MarkEventsLoaded/MarkKillerVictimLoaded), 3 opérations NON
 // atomiques. Ici tout passe en UNE transaction sur le writer RW (cf. règle
-// absolue : zéro écriture shared hors package persist ; cf. ADR 0019 +
-// .ai/archive/V7/HANDOFF_sync_combat_completion.md).
+// absolue : zéro écriture shared hors package persist ; cf. ADR 0019).
 //
 // Schéma killer_victim_pairs : on écrit la forme **par-kill** (1 row par kill,
 // avec gamertags + time_ms) — c'est ce que lit le match-view (tug-of-war, KD

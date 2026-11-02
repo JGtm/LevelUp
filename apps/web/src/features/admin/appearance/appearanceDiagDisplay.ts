@@ -1,6 +1,6 @@
 /**
  * appearanceDiagDisplay — logique PURE d'affichage du diagnostic apparence
- * Spartan ID (Lot G du plan .ai/PLAN_DIAG_APPARENCE_ADMIN_2026-07.md).
+ * Spartan ID.
  *
  * Mappe les clés STABLES du DTO Go (verdict / detail / component / served_from /
  * last_fetch_status) vers la sémantique UI : statut du badge canonique

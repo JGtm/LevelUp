@@ -2,8 +2,7 @@ package wire
 
 // registry_pages_film_test.go — LE 503 DES DEUX PROJECTIONS DE L'ARTEFACT, DE BOUT EN BOUT.
 //
-// Ce que ce fichier prouve, et qu'aucun test ne prouvait avant le 2026-09-05 (registre
-// `.ai/archive/V7.5/v2/AUDIT_V75_DEPUIS_V7.3.0_2026-09-05.md`, constat D2) : sur un titre qui ne declare pas
+// Ce que ce fichier prouve, et qu'aucun test ne prouvait avant le 2026-09-05 : sur un titre qui ne declare pas
 // `film.replay_artifact`, `/objective-events` et `/positions` rendent un 503
 // `capability_not_supported` — la ou ils rendaient 200 `[]`, indistinguable d'un match sans
 // donnees.

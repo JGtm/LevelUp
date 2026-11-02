@@ -1,7 +1,6 @@
 /**
  * squadCompositionGapHint — contenu de l'info-bulle qui EXPLIQUE l'écart
- * "composition exacte" publié sur la L2 (ADR 0033, D1 : phase A3 du plan
- * `.ai/PLAN_ESCOUADE_HORS_CADRE_2026-09-09.md`).
+ * "composition exacte" publié sur la L2 (ADR 0033, D1).
  *
  * La L2 (`PeriodSessionRail`) affiche déjà « 4 sur 7 matchs » quand la
  * composition exacte écarte des matchs d'une session (chantier A2). Ce module

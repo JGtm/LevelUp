@@ -1,6 +1,5 @@
 // cmd/mapplafond-mesure — MESURE ce qu'un plafond deduit des hauteurs jouees couperait sur
-// chaque carte. Phase C0 du lot « plafonds » (`.ai/archive/V7.5/PLAN_REPLAY2D_NOTION_2026-08-25.md`,
-// point 10 de l'encadre Notion REPLAY 2D).
+// chaque carte.
 //
 // LA QUESTION PRODUIT : « pour les cartes non validees, peut-on dataminer les hauteurs ou le
 // joueur ne se rend jamais et virer les toits ou plafonds au-dessus de cette hauteur ».

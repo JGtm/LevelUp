@@ -2,8 +2,7 @@
 
 package replay
 
-// emprise_v0_rapport_research_test.go — LOT V0 DU PLAN `.ai/archive/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md` :
-// LA COMPARAISON DES PORTAGES ET LE RAPPORT AGREGE.
+// emprise_v0_rapport_research_test.go — LA COMPARAISON DES PORTAGES ET LE RAPPORT AGREGE.
 //
 // # LA MESURE DE FIDELITE, ECRITE AVANT LES CHIFFRES
 //

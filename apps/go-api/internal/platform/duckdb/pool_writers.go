@@ -4,8 +4,6 @@
 // comme garantie compile-time. Ce fichier ajoute les méthodes d'acquisition à
 // *PlayerDB pour que les services et le sync engine n'aient jamais à manipuler
 // directement un *string path — ils manipulent l'abstraction par-DB existante.
-//
-// Référence : .ai/archive/V7/PLAN_DB_WRITE_CONCURRENCY.md commits 0-7.
 package duckdb
 
 import (

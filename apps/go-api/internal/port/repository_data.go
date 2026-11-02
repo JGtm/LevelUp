@@ -161,8 +161,7 @@ type ObjectiveEventsRepository interface {
 	LoadMatch(ctx context.Context, matchID string) ([]objectiveevent.Event, error)
 }
 
-// PlayerPositionsRepository relit les positions joueurs keyframe v3 (match-level,
-// §N de .ai/archive/V7/RESEARCH_THEATER_RE.md) d'un match. Implémenté par
+// PlayerPositionsRepository relit les positions joueurs keyframe v3 (match-level) d'un match. Implémenté par
 // platform/duckdb.PlayerPositionsRepo.
 //
 // Capability gating : retourne games.ErrCapabilityNotSupported si la table
@@ -497,8 +496,7 @@ type CompareRepository interface {
 	// dans la base partagée (campagne exclue, mêmes clauses que GetLocalStats) et ses
 	// totaux sur cet ensemble.
 	//
-	// C'EST LE SEUL SCOPE, POUR LES DEUX JOUEURS (plan
-	// .ai/archive/V7.5/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md, D2 amendé au lot 3-bis, 2026-09-17). Un
+	// C'EST LE SEUL SCOPE, POUR LES DEUX JOUEURS. Un
 	// second scope « croisé » (les matchs communs à A et B) a été retiré : il lisait la
 	// même table avec la même exclusion et n'y ajoutait qu'un EXISTS, donc son résultat
 	// était un SOUS-ENSEMBLE de celui-ci et la branche qui l'appelait était morte.

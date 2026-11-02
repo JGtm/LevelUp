@@ -1,7 +1,6 @@
 // Package haloadapter — nameplate_diagnosis.go : diagnostic structuré de
 // la résolution d'apparence Spartan (bannière/nameplate, emblème, backdrop,
-// service tag) pour la surface admin « diagnostic apparence » (volet 2 du plan
-// .ai/archive/V7.1/PLAN_DIAG_APPARENCE_ADMIN_2026-07.md).
+// service tag) pour la surface admin « diagnostic apparence ».
 //
 // Ce fichier N'AJOUTE AUCUNE logique de fetch : il expose le POURQUOI de la
 // résolution existante. DiagnoseNameplate partage la fonction interne

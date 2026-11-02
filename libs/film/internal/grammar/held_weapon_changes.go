@@ -14,8 +14,7 @@ package grammar
 // CE QUE ÇA NE DONNE PAS. Ni le socle d'origine d'une prise, ni la fin de vie de l'arme lâchée.
 // Le lâcher fait naître une entité `ti=42` dans le MÊME paquet (mesuré, écart médian nul), mais
 // sa disparition n'est enregistrée que dans 5 à 14 % des cas — et c'est le comportement du jeu,
-// pas un défaut de lecture : le despawn dépend de la position et du regard des joueurs
-// (cf. `.ai/archive/V7.5/reference/DESPAWN_ARMES_HALO_INFINITE.md`).
+// pas un défaut de lecture : le despawn dépend de la position et du regard des joueurs.
 //
 // HORS LIGNE par construction (I/O disque sur tout le film) — jamais depuis un chemin de requête.
 

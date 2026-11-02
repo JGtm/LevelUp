@@ -30,7 +30,7 @@ package replay
 //
 // Les noms ne sont pas resolus en clair : ce sont des empreintes relevees dans les films, par
 // l'instrument `grammar/zone_proprietaire_noms_research_test.go`, et confrontees au vote la ou il
-// aboutit (mesure au journal `.ai/thought_log.md`, 2026-10-07).
+// aboutit (mesure du 2026-10-07).
 
 import (
 	"slices"

@@ -7,8 +7,7 @@ package main
 // `replayService.resolveBackgroundKeyDepuis` (la cascade partagee par les deux enveloppes,
 // par match et par carte). Le jour ou la production gagne un chemin de resolution et
 // pas l inventaire, celui-ci se met a compter des manques qui n existent pas — c est deja arrive
-// deux fois a la main, et les deux fois la conclusion a ete fausse
-// (`.ai/archive/V7.5/cartes/HANDOFF_FONDS_CARTE_2026-09-03.md`, sections 2.2 et 7).
+// deux fois a la main, et les deux fois la conclusion a ete fausse.
 //
 // DEUX FAMILLES DE TESTS, ET IL FAUT LES DEUX :
 //
