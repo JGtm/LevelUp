@@ -389,6 +389,26 @@ maintainer on a clean machine. A lot without a test at its level is not closed.
   workflow runs `go run ./cmd/updater-verify` (minisign verification of the `.sig` against the embedded public key,
   key id and ed25519 signature) right after building the installer; a mismatch fails the release with an explicit error.
 
+
+## Implementation notes (L18, 2026-11-02)
+
+- **Desktop chrome.** The web client adopts the application chrome (sidebar instead of the top bar, no footer, a modal
+  "About" window, home page without the cover image) on the capability `can_use_compact_chrome` of `/bootstrap`
+  (`DeploymentCapabilities.CompactChrome`, true for the `desktop` profile only; ADR 0044 D-4: never on the profile name).
+  `/bootstrap` also carries `app_info` (`version`, `data_root`) when, and only when, that capability is true: a hosted
+  instance never publishes the path of its data.
+- **Update check requested by the user.** The page runs in WebView2 without any shell command, so the only channel from
+  page to shell is the embedded protocol. The "About" window calls `GET http://levelup-shell.localhost/check-update`
+  (`fetch`, `no-cors`, response unread) and the page stays where it is. The protocol answers 204 and the shell runs the
+  same sequence as the launch check (`updater::run_flow`: offered, never imposed, installed after the clean stop) on its own
+  thread, because the native boxes block. Differences with the launch check: "up to date" and "failed" are said in a native
+  box (`update_none`, `update_check_failed` of `desktop.toml`), a build without updater says why
+  (`update_unavailable_debug`), and one check runs at a time (`UpdateBusy`, shared with the launch check; a request made
+  meanwhile gets `update_busy`). Only the exact path `/check-update` triggers it (`render::route`); `navigation.rs` already
+  keeps any other host out of the window. A navigation plus a 302 back to the page was not retained: it reloads the page (the
+  open window and the page state are lost) and needs a return URL validated against the local origin; the no-cors call
+  needs neither.
+
 ## Consequences
 
 - The server stays one binary for hosted and desktop; what differs is the profile (ADR 0044), the roots (ADR 0008) and
