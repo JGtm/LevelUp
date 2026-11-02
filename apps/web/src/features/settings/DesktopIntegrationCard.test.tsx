@@ -69,6 +69,14 @@ describe('DesktopIntegrationCard', () => {
     await waitFor(() => expect(patches).toEqual([{ native_notifications: true }]))
   })
 
+  it('activer la réduction dans la zone de notification envoie le PATCH (croix = quitter par défaut)', async () => {
+    serveurPatch()
+    renderWithProviders(<DesktopIntegrationCard />)
+    await screen.findByText('Réduire dans la zone de notification à la fermeture')
+    fireEvent.click(screen.getAllByRole('button')[2])
+    await waitFor(() => expect(patches).toEqual([{ close_to_tray: true }]))
+  })
+
   it('sans la capacité de la coquille, les notifications Windows ne sont pas offertes', async () => {
     useAppShellStore.setState({ capabilities: testCapabilities({ can_watch_game_process: true }) })
     renderWithProviders(<DesktopIntegrationCard />)

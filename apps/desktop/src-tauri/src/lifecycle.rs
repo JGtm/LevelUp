@@ -23,6 +23,7 @@ use std::time::Duration;
 
 use crate::events::{SidecarEvent, Toast};
 use crate::screen::{FailureKind, Screen};
+use crate::shell_settings::ShellSettings;
 
 /// Delai accorde au serveur pour annoncer `ready` (plan, section 6).
 pub const STARTUP_TIMEOUT: Duration = Duration::from_secs(120);
@@ -64,6 +65,8 @@ pub enum Input {
     Exited,
     /// L'utilisateur (ou le systeme) demande la fermeture.
     CloseRequested,
+    /// « Synchroniser maintenant » du menu de la zone de notification.
+    SyncRequested,
     TimerFired(Timer),
 }
 
@@ -91,6 +94,10 @@ pub enum Action {
     ExitApp,
     /// Montrer une notification systeme relayee depuis la cloche (L21.b).
     Notify(Toast),
+    /// Appliquer les reglages annonces par le serveur : icone de la zone de notification, croix (L21.c).
+    ApplyShellSettings(ShellSettings),
+    /// Ecrire la commande `sync` sur la stdin du serveur : un cycle de synchronisation immediat (L21.c).
+    SendSync,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -166,6 +173,7 @@ impl Lifecycle {
             Input::Event(event) => self.on_event(event),
             Input::Exited => self.on_exited(),
             Input::CloseRequested => self.on_close_requested(),
+            Input::SyncRequested => self.on_sync_requested(),
             Input::TimerFired(timer) => self.on_timer(timer),
         }
     }
@@ -196,7 +204,11 @@ impl Lifecycle {
             }
             // Une notification n'a de sens que pour une application ouverte : avant `ready` il n'y a rien a
             // montrer, pendant la fermeture ou apres un echec non plus.
-            SidecarEvent::Notification(notice) if self.phase == Phase::Ready => vec![Action::Notify(notice)],
+            SidecarEvent::Notification(toast) if self.phase == Phase::Ready => vec![Action::Notify(toast)],
+            // Les reglages n'ont de sens que pour une application ouverte, et ne retiennent rien a la fermeture.
+            SidecarEvent::ShellSettings(settings) if self.phase == Phase::Ready => {
+                vec![Action::ApplyShellSettings(settings)]
+            }
             SidecarEvent::Stopped { clean } => {
                 self.stopped_clean = Some(clean);
                 if self.phase == Phase::Closing {
@@ -254,6 +266,16 @@ impl Lifecycle {
             Phase::Dead | Phase::Done => {}
         }
         actions
+    }
+
+    /// La commande de synchronisation n'est ecrite que pour un serveur pret : avant `ready`, pendant la
+    /// fermeture ou apres un echec, personne ne l'executerait.
+    fn on_sync_requested(&mut self) -> Vec<Action> {
+        if self.phase == Phase::Ready && self.process_alive {
+            vec![Action::SendSync]
+        } else {
+            Vec::new()
+        }
     }
 
     fn on_close_requested(&mut self) -> Vec<Action> {

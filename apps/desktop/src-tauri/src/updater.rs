@@ -29,6 +29,7 @@ use crate::catalogue;
 use crate::events::Toast;
 use crate::logfile::{LogSink, Source};
 use crate::screen::Screen;
+use crate::shell_settings::ShellSettings;
 use crate::supervisor::{Closer, Host, Outcome};
 
 /// Longueur maximale des notes montrees dans la boite de dialogue (en caracteres).
@@ -451,6 +452,10 @@ impl<H: Host> Host for UpdateHost<H> {
 
     fn notify(&mut self, toast: &Toast) {
         self.inner.notify(toast);
+    }
+
+    fn apply_shell_settings(&mut self, settings: &ShellSettings) {
+        self.inner.apply_shell_settings(settings);
     }
 }
 

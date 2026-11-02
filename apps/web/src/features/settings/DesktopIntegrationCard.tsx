@@ -44,6 +44,7 @@ export function DesktopIntegrationCard() {
 
   const gameWatch = settings?.game_process_watch ?? true
   const nativeNotifications = settings?.native_notifications ?? false
+  const closeToTray = settings?.close_to_tray ?? false
 
   return (
     <Card>
@@ -76,6 +77,16 @@ export function DesktopIntegrationCard() {
                 onChange={(v) => save({ native_notifications: v })}
               />
               <p className="text-xs text-muted-foreground">{t.nativeNotificationsHint}</p>
+            </div>
+          )}
+          {canIntegrateShell && (
+            <div>
+              <ToggleRow
+                label={t.closeToTrayLabel}
+                value={closeToTray}
+                onChange={(v) => save({ close_to_tray: v })}
+              />
+              <p className="text-xs text-muted-foreground">{t.closeToTrayHint}</p>
             </div>
           )}
         </fieldset>

@@ -290,3 +290,59 @@ fn une_notification_hors_application_ouverte_est_ignoree() {
     closing.step(Input::CloseRequested);
     assert!(closing.step(notification()).is_empty());
 }
+
+fn shell_settings(close_to_tray: bool) -> ShellSettings {
+    ShellSettings {
+        close_to_tray,
+        locale: "fr".into(),
+        ..ShellSettings::default()
+    }
+}
+
+#[test]
+fn les_reglages_du_serveur_pret_sont_appliques_tels_quels() {
+    let mut m = machine();
+    m.step(ready(8123));
+    let wanted = shell_settings(true);
+    assert_eq!(
+        m.step(Input::Event(SidecarEvent::ShellSettings(wanted.clone()))),
+        vec![Action::ApplyShellSettings(wanted)]
+    );
+}
+
+#[test]
+fn les_reglages_hors_application_ouverte_sont_ignores() {
+    let event = || Input::Event(SidecarEvent::ShellSettings(shell_settings(true)));
+    let mut m = machine();
+    assert!(m.step(event()).is_empty(), "avant ready");
+    let mut failed_machine = machine();
+    failed_machine.step(failed("locked"));
+    assert!(failed_machine.step(event()).is_empty(), "apres un echec");
+    let mut closing = machine();
+    closing.step(ready(8123));
+    closing.step(Input::CloseRequested);
+    assert!(closing.step(event()).is_empty(), "pendant la fermeture");
+}
+
+#[test]
+fn la_synchronisation_demandee_part_vers_le_serveur_pret_seulement() {
+    let mut m = machine();
+    assert!(m.step(Input::SyncRequested).is_empty(), "avant ready");
+    m.step(ready(8123));
+    assert_eq!(m.step(Input::SyncRequested), vec![Action::SendSync]);
+    assert_eq!(
+        m.step(Input::SyncRequested),
+        vec![Action::SendSync],
+        "autant de fois qu'on la demande"
+    );
+
+    let mut closing = machine();
+    closing.step(ready(8123));
+    closing.step(Input::CloseRequested);
+    assert!(closing.step(Input::SyncRequested).is_empty(), "pendant la fermeture");
+
+    let mut dead = machine();
+    dead.step(ready(8123));
+    dead.step(Input::Exited);
+    assert!(dead.step(Input::SyncRequested).is_empty(), "serveur sorti");
+}

@@ -11,6 +11,7 @@
 //! - [`sidecar`]   : lancement du serveur, environnement, tubes (D-1, A14).
 //! - [`screen`], [`catalogue`], [`render`] : les ecrans embarques et leurs libelles (A4).
 //! - [`native_notice`] : les notifications Windows relayees depuis la cloche (L21.b), decisions pures.
+//! - [`shell_settings`] : les reglages annonces par le serveur et la machine d'etats de la zone de notification (L21.c).
 //! - [`updater`]   : la mise a jour proposee, jamais imposee, installee apres l'arret du serveur (D-16).
 //! - [`update_manual`] : la meme verification, demandee par l'utilisateur depuis « A propos ».
 //! - [`download_watch`] : l'echeance d'inactivite du telechargement de l'installeur.
@@ -30,6 +31,7 @@ pub mod render;
 pub mod roots;
 pub mod screen;
 pub mod secret;
+pub mod shell_settings;
 pub mod sidecar;
 pub mod supervisor;
 pub mod update_manual;

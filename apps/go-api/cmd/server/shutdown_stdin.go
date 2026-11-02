@@ -19,13 +19,14 @@ const (
 )
 
 // watchStdin lit r (stdin du processus) en arrière-plan jusqu'à EOF ou erreur, puis demande
-// l'arrêt par requestShutdown. Les octets lus sont ignorés : seule la fermeture compte. La
-// goroutine rend la main dès la demande ; si l'arrêt vient d'ailleurs avant, elle reste
-// bloquée sur la lecture jusqu'à la fin du processus.
+// l'arrêt par requestShutdown. Seule la fermeture demande l'arrêt : les lignes lues avant sont
+// des commandes de la coquille (stdin_commands.go), jamais un ordre d'arrêt. La goroutine rend
+// la main dès la demande ; si l'arrêt vient d'ailleurs avant, elle reste bloquée sur la lecture
+// jusqu'à la fin du processus.
 func (b *bootServer) watchStdin(r io.Reader) {
 	go func() {
 		ctx := context.Background()
-		if _, err := io.Copy(io.Discard, r); err != nil {
+		if err := drainStdin(ctx, r, &b.commands); err != nil {
 			slog.WarnContext(ctx, "arrêt: lecture de stdin en erreur, arrêt demandé", "err", err)
 		} else {
 			slog.InfoContext(ctx, "arrêt: stdin fermé")

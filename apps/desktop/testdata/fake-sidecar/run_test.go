@@ -386,3 +386,34 @@ func TestEvenementsApresReady(t *testing.T) {
 		t.Errorf("code %d, attendu %d pour une ligne qui n'est pas du JSON", code, exitSetup)
 	}
 }
+
+// TestCommandesDeLaCoquille : une ligne ecrite sur stdin avant la fermeture est une commande, ajoutee au
+// fichier des commandes ; elle n'arrete pas le serveur (seul l'EOF le fait).
+func TestCommandesDeLaCoquille(t *testing.T) {
+	env := baseEnv(t, nil)
+	r := launch(t, contractArgs, env)
+	r.waitEvent(t, "ready")
+	if _, err := io.WriteString(r.stdin, "sync\n"); err != nil {
+		t.Fatal(err)
+	}
+	file := filepath.Join(env["LEVELUP_DATA_DIR"], commandsFile)
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		if raw, err := os.ReadFile(file); err == nil && strings.TrimSpace(string(raw)) == "sync" {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("la commande sync n'est jamais arrivee dans %s", file)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	select {
+	case code := <-r.code:
+		t.Fatalf("une commande ne doit pas arreter le serveur (code %d)", code)
+	case <-time.After(100 * time.Millisecond):
+	}
+	_ = r.stdin.Close()
+	if code := r.wait(t); code != exitOK {
+		t.Errorf("code %d, attendu 0", code)
+	}
+}

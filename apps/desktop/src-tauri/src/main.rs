@@ -6,7 +6,9 @@
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod shell_tauri;
 mod toast_tauri;
+mod tray_tauri;
 mod update_setup;
 mod update_tauri;
 
@@ -24,6 +26,7 @@ use levelup_desktop::render::{self, SCHEME};
 use levelup_desktop::roots::{self, Roots};
 use levelup_desktop::screen::Screen;
 use levelup_desktop::secret::Secret;
+use levelup_desktop::shell_settings::{CloseAction, ShellSettings, ShellState};
 use levelup_desktop::sidecar::SidecarSpec;
 use levelup_desktop::supervisor::{self, Closer, Host, Outcome, ShellConfig};
 use levelup_desktop::updater::UpdateHost;
@@ -51,6 +54,9 @@ struct Shell {
     exiting: Arc<AtomicBool>,
     /// Journal, pour les ecrans montres avant que le superviseur existe.
     log: Mutex<Option<Arc<LogSink>>>,
+    /// Les reglages annonces par le serveur et l'icone de la zone de notification : ce qui decide ce que
+    /// fait la croix (`levelup_desktop::shell_settings`).
+    shell: Mutex<ShellState>,
 }
 
 fn main() {
@@ -97,7 +103,10 @@ fn main() {
             ..
         } if label == MAIN_WINDOW && !exiting(app) => {
             api.prevent_close();
-            begin_close(app);
+            match shell_tauri::close_action(app) {
+                CloseAction::HideToTray => shell_tauri::hide_main(app),
+                CloseAction::Quit => begin_close(app),
+            }
         }
         // Une sortie demandee sans fenetre (fin de session) : meme chemin ; `exit(0)` du superviseur passe.
         RunEvent::ExitRequested { api, code, .. } if code.is_none() && !exiting(app) => {
@@ -178,6 +187,7 @@ fn setup(app: &AppHandle) {
         closer: Mutex::new(None),
         exiting: exiting_flag.clone(),
         log: Mutex::new(log.clone()),
+        shell: Mutex::new(ShellState::new()),
     });
 
     if let Err(e) = create_window(app, port.clone(), log.clone()) {
@@ -378,6 +388,10 @@ impl Host for TauriHost {
         let window = window_state(&self.app, &self.log);
         let mut notifier = PluginNotifier { app: self.app.clone() };
         native_notice::deliver(window, toast, &mut notifier, &self.log);
+    }
+
+    fn apply_shell_settings(&mut self, settings: &ShellSettings) {
+        shell_tauri::apply_shell_settings(&self.app, settings);
     }
 }
 

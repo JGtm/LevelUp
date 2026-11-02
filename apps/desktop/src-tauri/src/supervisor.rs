@@ -19,6 +19,7 @@ use crate::linereader::read_line_bounded;
 use crate::logfile::{LogSink, Source};
 use crate::screen::Screen;
 use crate::secret::Secret;
+use crate::shell_settings::ShellSettings;
 use crate::sidecar::{self, Sidecar, SidecarSpec, Spawned};
 
 /// Longueur maximale d'une ligne lue sur les sorties du serveur.
@@ -50,6 +51,9 @@ pub trait Host: Send + 'static {
     /// Montrer une notification systeme relayee depuis la cloche ; l'hote decide, selon l'etat de la
     /// fenetre, s'il la montre ou la retient (`native_notice::deliver`).
     fn notify(&mut self, notice: &Toast);
+    /// Appliquer les reglages annonces par le serveur (icone de la zone de notification, croix) ; l'hote
+    /// execute ce que decide `shell_settings::ShellState`.
+    fn apply_shell_settings(&mut self, settings: &ShellSettings);
 }
 
 pub struct ShellConfig {
@@ -79,6 +83,13 @@ impl Closer {
     pub fn request_close(&self) {
         // Un superviseur deja termine n'a plus rien a fermer.
         let _ = self.0.send(Input::CloseRequested);
+    }
+
+    /// Demande un cycle de synchronisation immediat (menu de la zone de notification) : la commande `sync`
+    /// part sur la stdin du serveur s'il est pret, sinon rien.
+    pub fn request_sync(&self) {
+        // Un superviseur deja termine n'a plus rien a synchroniser.
+        let _ = self.0.send(Input::SyncRequested);
     }
 }
 
@@ -256,6 +267,24 @@ impl Effects<'_> {
             }
             Action::Disarm(timer) => self.timers.retain(|(t, _)| *t != timer),
             Action::Notify(notice) => self.host.notify(&notice),
+            Action::ApplyShellSettings(settings) => {
+                log_shell(
+                    log,
+                    &format!(
+                        "event=shell_settings close_to_tray={} start_with_windows={} native_notifications={} locale={}",
+                        settings.close_to_tray,
+                        settings.start_with_windows,
+                        settings.native_notifications,
+                        settings.locale
+                    ),
+                );
+                self.host.apply_shell_settings(&settings);
+            }
+            Action::SendSync => match self.sidecar.send_command(sidecar::COMMAND_SYNC) {
+                Ok(true) => log_shell(log, "event=sync_requested"),
+                Ok(false) => log_shell(log, "event=sync_skipped reason=stdin_closed"),
+                Err(e) => log_shell(log, &format!("event=sync_failed err={e}")),
+            },
             Action::ExitApp => {
                 log_shell(log, "event=exit_app");
                 let outcome = self.outcome(machine);
@@ -366,5 +395,6 @@ fn describe(event: &SidecarEvent) -> String {
         SidecarEvent::Stopped { clean } => format!("kind=stopped clean={clean}"),
         // Jamais le texte : seulement le type.
         SidecarEvent::Notification(notice) => format!("kind=notification toast_kind={}", notice.kind),
+        SidecarEvent::ShellSettings(_) => "kind=shell_settings".into(),
     }
 }

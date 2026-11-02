@@ -233,6 +233,9 @@ type bootServer struct {
 	// (écrivain désactivé, cf. desktop_events.go). Posé juste après la création, avant que le
 	// serveur ne serve ou ne reçoive un arrêt.
 	events *desktopEvents
+	// commands : les commandes écrites par la coquille sur stdin (stdin_commands.go), branchées une
+	// fois le serveur prêt à les exécuter.
+	commands stdinCommands
 	// port est le port lié, 0 tant que le serveur n'écoute pas (tests sans écoute réelle).
 	port int
 }

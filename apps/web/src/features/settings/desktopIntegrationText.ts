@@ -16,6 +16,8 @@ export interface DesktopIntegrationText {
   gameNotRunning: string
   nativeNotificationsLabel: string
   nativeNotificationsHint: string
+  closeToTrayLabel: string
+  closeToTrayHint: string
   saved: string
   saveFailed: string
 }
@@ -32,6 +34,9 @@ const FR: DesktopIntegrationText = {
   nativeNotificationsLabel: 'Notifications Windows',
   nativeNotificationsHint:
     "Les notifications de la cloche (synchronisation, défis, séries, records, rang) s'affichent aussi comme notifications Windows quand la fenêtre est réduite, masquée ou derrière une autre application. Jamais quand LevelUp est au premier plan.",
+  closeToTrayLabel: 'Réduire dans la zone de notification à la fermeture',
+  closeToTrayHint:
+    "La croix de la fenêtre réduit LevelUp dans la zone de notification au lieu de le quitter : le serveur continue de tourner. Un clic sur l'icône rouvre la fenêtre ; son menu propose Ouvrir, Synchroniser maintenant et Quitter. Désactivé, la croix quitte LevelUp.",
   saved: 'Enregistré.',
   saveFailed: "Le réglage n'a pas pu être enregistré.",
 }
@@ -48,6 +53,9 @@ const EN: DesktopIntegrationText = {
   nativeNotificationsLabel: 'Windows notifications',
   nativeNotificationsHint:
     'Bell notifications (sync, challenges, streaks, records, rank) also show as Windows notifications when the window is minimized, hidden or behind another application. Never while LevelUp is in the foreground.',
+  closeToTrayLabel: 'Minimize to the notification area when closing',
+  closeToTrayHint:
+    'The window close button minimizes LevelUp to the notification area instead of quitting: the server keeps running. Click the icon to reopen the window; its menu offers Open, Sync now and Quit. When off, the close button quits LevelUp.',
   saved: 'Saved.',
   saveFailed: 'The setting could not be saved.',
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"crypto/subtle"
 	"encoding/json"
 	"fmt"
@@ -143,6 +144,25 @@ func (e *emitter) stopped(clean bool) {
 	e.emit(map[string]any{"event": "stopped", "clean": clean})
 }
 
+// commandsFile : fichier de la racine de donnees ou le faux serveur ajoute chaque commande recue sur stdin
+// (une par ligne), pour que les tests prouvent qu'une commande de la coquille est arrivee.
+const commandsFile = "fake-sidecar-commands.txt"
+
+// recordCommand ajoute une commande recue sur stdin a commandsFile.
+func recordCommand(dataDir, command string, stderr io.Writer) {
+	fmt.Fprintf(stderr, "fake: commande recue %q\n", command)
+	if dataDir == "" {
+		return
+	}
+	f, err := os.OpenFile(filepath.Join(dataDir, commandsFile), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
+	if err != nil {
+		fmt.Fprintf(stderr, "fake: fichier des commandes : %v\n", err)
+		return
+	}
+	defer f.Close()
+	fmt.Fprintln(f, command)
+}
+
 // raw ecrit une ligne JSON deja formee, d'un seul Write, sous verrou.
 func (e *emitter) raw(line string) {
 	e.mu.Lock()
@@ -178,7 +198,12 @@ func run(args []string, getenv func(string) string, cwd string, stdin io.Reader,
 	out := &emitter{w: stdout}
 	eof := make(chan struct{})
 	go func() {
-		_, _ = io.Copy(io.Discard, stdin) // lit jusqu'a l'EOF : fermeture du tube = ordre d'arret
+		// Lit jusqu'a l'EOF : la fermeture du tube est l'ordre d'arret ; les lignes lues avant sont des
+		// commandes de la coquille, enregistrees pour que les tests les voient.
+		sc := bufio.NewScanner(stdin)
+		for sc.Scan() {
+			recordCommand(opts.dataDir, sc.Text(), stderr)
+		}
 		close(eof)
 	}()
 

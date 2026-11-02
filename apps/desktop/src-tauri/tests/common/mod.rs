@@ -17,6 +17,7 @@ use levelup_desktop::logfile::{LogSink, MAX_LOG_BYTES};
 use levelup_desktop::roots::{self, Roots};
 use levelup_desktop::screen::Screen;
 use levelup_desktop::secret::Secret;
+use levelup_desktop::shell_settings::ShellSettings;
 use levelup_desktop::sidecar::SidecarSpec;
 use levelup_desktop::supervisor::{self, Host, Outcome, ShellConfig, ShellHandle};
 
@@ -62,6 +63,8 @@ pub enum Call {
     Exit,
     /// Une notification que la machine a demande de montrer (L21.b).
     Notify(Toast),
+    /// Les reglages que le serveur a annonces (L21.c).
+    Settings(ShellSettings),
 }
 
 impl Call {
@@ -148,6 +151,9 @@ impl Host for Recorder {
     }
     fn notify(&mut self, notice: &Toast) {
         self.push(Call::Notify(notice.clone()));
+    }
+    fn apply_shell_settings(&mut self, settings: &ShellSettings) {
+        self.push(Call::Settings(settings.clone()));
     }
 }
 

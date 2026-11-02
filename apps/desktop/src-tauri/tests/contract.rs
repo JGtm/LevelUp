@@ -385,3 +385,77 @@ fn une_notification_mal_formee_est_ignoree_sans_effet() {
     let outcome = close_and_finish(&mut run);
     assert_eq!(outcome.stopped_clean, Some(true));
 }
+
+/// L21.c : les reglages que le serveur annonce arrivent a l'hote, apres l'entree.
+#[test]
+fn les_reglages_du_serveur_arrivent_a_l_hote_apres_l_entree() {
+    let roots = fresh_roots("shell-settings");
+    let line = r#"{"event":"shell_settings","native_notifications":false,"close_to_tray":true,"start_with_windows":false,"locale":"en"}"#;
+    let mut run = launch(&roots, &[("FAKE_EVENTS_AFTER_READY", line)], short_timeouts());
+
+    let calls = run.recorder.wait_for("les reglages", |c| {
+        c.iter().any(|call| matches!(call, Call::Settings(_)))
+    });
+    let settings = calls
+        .iter()
+        .find_map(|c| match c {
+            Call::Settings(s) => Some(s.clone()),
+            _ => None,
+        })
+        .expect("reglages");
+    assert!(settings.close_to_tray && !settings.native_notifications && !settings.start_with_windows);
+    assert_eq!(settings.locale, "en");
+    let entry = calls
+        .iter()
+        .position(|c| matches!(c, Call::LoadEntry(_)))
+        .expect("entree");
+    let applied = calls
+        .iter()
+        .position(|c| matches!(c, Call::Settings(_)))
+        .expect("reglages");
+    assert!(entry < applied, "les reglages viennent apres l'entree : {calls:?}");
+    close_and_finish(&mut run);
+}
+
+/// L21.c : « Synchroniser maintenant » ecrit la commande `sync` sur la stdin du serveur (une ligne), sans
+/// l'arreter ; avant `ready`, rien n'est ecrit. Quitter reste la fermeture propre (stdin ferme, `stopped`).
+#[test]
+fn la_synchronisation_demandee_atteint_le_serveur_par_sa_stdin() {
+    let roots = fresh_roots("sync-command");
+    let mut run = launch(&roots, &[], short_timeouts());
+    run.recorder.wait_url();
+    let closer = run.handle.as_ref().expect("poignee").closer();
+    closer.request_sync();
+    closer.request_sync();
+
+    let commands = roots.data.join("fake-sidecar-commands.txt");
+    let deadline = Instant::now() + common::WAIT;
+    loop {
+        let text = std::fs::read_to_string(&commands).unwrap_or_default();
+        if text.lines().filter(|l| *l == "sync").count() == 2 {
+            break;
+        }
+        assert!(Instant::now() < deadline, "la commande sync n'arrive jamais : {text:?}");
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    run.wait_log("event=sync_requested");
+
+    // La commande n'a pas arrete le serveur : la fermeture reste propre.
+    let outcome = close_and_finish(&mut run);
+    assert_eq!(outcome.stopped_clean, Some(true));
+    assert!(!outcome.killed);
+    assert!(run.stopped_marker());
+}
+
+/// Une demande de synchronisation avant `ready` n'ecrit rien : le serveur n'est pas pret a l'executer.
+#[test]
+fn la_synchronisation_demandee_avant_ready_n_ecrit_rien() {
+    let roots = fresh_roots("sync-before-ready");
+    let mut run = launch(&roots, &[("FAKE_READY_DELAY_MS", "700")], short_timeouts());
+    run.handle.as_ref().expect("poignee").closer().request_sync();
+    run.recorder.wait_url();
+    let outcome = close_and_finish(&mut run);
+    assert_eq!(outcome.stopped_clean, Some(true));
+    let text = std::fs::read_to_string(roots.data.join("fake-sidecar-commands.txt")).unwrap_or_default();
+    assert!(text.is_empty(), "aucune commande avant ready : {text:?}");
+}

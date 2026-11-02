@@ -6,7 +6,7 @@
 //! la coquille, exactement quand l'EOF de stdin doit declencher l'arret propre.
 
 use std::ffi::{OsStr, OsString};
-use std::io;
+use std::io::{self, Write};
 use std::path::PathBuf;
 use std::process::{Child, ChildStderr, ChildStdin, ChildStdout, Command, ExitStatus, Stdio};
 use std::sync::Mutex;
@@ -16,6 +16,8 @@ use crate::secret::Secret;
 
 /// Variable qui porte le secret d'entree.
 pub const ENV_DESKTOP_SECRET: &str = "LEVELUP_DESKTOP_SECRET";
+/// La commande qui demande un cycle de synchronisation immediat (stdin du serveur, D-4).
+pub const COMMAND_SYNC: &str = "sync";
 /// Les arguments du serveur : le mode, et l'arret a la fermeture de stdin. Jamais le secret.
 pub const SERVER_ARGS: [&str; 3] = ["-mode", "desktop", "-arret-sur-stdin"];
 /// Prefixes d'environnement que le serveur ne doit pas heriter de la session de l'utilisateur :
@@ -116,6 +118,22 @@ impl Sidecar {
     pub fn close_stdin(&self) {
         let mut stdin = self.stdin.lock().unwrap_or_else(|p| p.into_inner());
         stdin.take();
+    }
+
+    /// Ecrit une commande sur la stdin du serveur : une ligne, sans reponse (D-4, L21.c). Sans effet quand
+    /// stdin est deja ferme (la fermeture est l'ordre d'arret : plus aucune commande ne le suit).
+    pub fn send_command(&self, command: &str) -> io::Result<bool> {
+        let mut stdin = self.stdin.lock().unwrap_or_else(|p| p.into_inner());
+        let Some(pipe) = stdin.as_mut() else {
+            return Ok(false);
+        };
+        // La commande et son saut de ligne partent en UN write : deux commandes ne s'entrelacent pas.
+        let mut line = Vec::with_capacity(command.len() + 1);
+        line.extend_from_slice(command.as_bytes());
+        line.push(b'\n');
+        pipe.write_all(&line)?;
+        pipe.flush()?;
+        Ok(true)
     }
 
     /// Tue le serveur (TerminateProcess). Une erreur n'est pas fatale : un processus deja sorti

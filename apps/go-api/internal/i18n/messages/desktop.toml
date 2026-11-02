@@ -171,3 +171,18 @@ en = "New rank"
 [desktop.notify.rank_body]
 fr = "Ton rang ou ton niveau vient de changer."
 en = "Your rank or tier just changed."
+
+# Menu de l'icône de la zone de notification (réglage close_to_tray). La coquille affiche ces libellés
+# depuis son catalogue de repli compilé, dans la langue que le serveur lui annonce (événement shell_settings) ;
+# ils sont aussi servis par GET /api/v1/desktop/strings.
+[desktop.tray.open]
+fr = "Ouvrir LevelUp"
+en = "Open LevelUp"
+
+[desktop.tray.sync]
+fr = "Synchroniser maintenant"
+en = "Sync now"
+
+[desktop.tray.quit]
+fr = "Quitter"
+en = "Quit"
