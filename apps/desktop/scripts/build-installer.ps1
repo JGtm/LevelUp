@@ -85,7 +85,7 @@ try {
     if ($SigningKey) {
         $env:TAURI_SIGNING_PRIVATE_KEY = (Resolve-Path $SigningKey).Path
         $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = $SigningPassword
-        $tauriArgs += @('--config', '{"bundle":{"createUpdaterArtifacts":true}}')
+        $tauriArgs += @('--config', 'src-tauri/tauri.updater.conf.json')
     }
     Remove-Item -Recurse -Force (Join-Path $tauri 'target\release\bundle') -ErrorAction SilentlyContinue
     Invoke-Native 'tauri build' { npx tauri build @tauriArgs }

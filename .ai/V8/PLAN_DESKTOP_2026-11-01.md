@@ -638,10 +638,14 @@ Définition : `ResourcesRoot` = la racine du dépôt aujourd'hui (`LEVELUP_RESOU
       (`fetch-ffmpeg.ps1`, `stage-bundle.ps1`, `build-installer.ps1`), `tauri.bundle.conf.json`, crochet NSIS
       `src-tauri/windows/hooks.nsh`, `THIRD_PARTY_NOTICES.md`, mention Microsoft du pied de page (`MicrosoftNotice`),
       `LEVELUP_WEB_DIST` par défaut `<ResourcesRoot>/web` en desktop (`config_desktop.go`, test) ; job dans `release.yml`.
-- [ ] 17.2 `release.yml` : étape « version check » (tag, `Cargo.toml`, `tauri.conf.json`, `-ldflags`,
+- [x] 17.2 `release.yml` : étape « version check » (tag, `Cargo.toml`, `tauri.conf.json`, `-ldflags`,
       A9) ; `latest.json` signé (clé Tauri en secret du dépôt, actions épinglées par SHA, clé publique
       allowlistée `.gitleaks.toml`) ; publication GitHub Releases ; section de notes FR présente (le
-      workflow échoue sinon).
+      workflow échoue sinon). FAIT 2026-11-02 : `check-version.sh` (tag/Cargo.toml/tauri.conf.json/`-ldflags` relus dans le
+      binaire, testé en local avec écart), échec avant compilation sans le secret `TAURI_SIGNING_PRIVATE_KEY`, signature
+      par le CLI (`tauri.updater.conf.json`, `.sig` produit en local avec la clé de génération), `latest.json` par `jq` dans
+      `publish` (gabarit rejoué en local), clé publique dans `tauri.conf.json` et `.gitleaks.toml`, déclenchement aussi
+      sur `release/**` (sans signature ni publication). Le run CI lui-même est 17.6 (pilote).
 - [ ] 17.3 Job `desktop-e2e` (`release/**`) : script PowerShell : installation silencieuse, lancement de
       l'exécutable, port lu dans `<DataRoot>/desktop/port`, `/health` 200, `WM_CLOSE`, attente de sortie,
       `arrêt: terminé clean=true` dans `desktop.log`, aucun `*.wal`, relancement, `/health`, fermeture.
