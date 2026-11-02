@@ -69,6 +69,13 @@
 **Résultats observés** : flux complet joué en Go avec un Azure simulé qui vérifie le PKCE et l'adresse de retour (state faux, rejoué, expiré, refus Microsoft, échec d'échange, point d'arrivée appelé une fois, jeton écrit pour le profil suivi) ; garde de la coquille testé méthode par méthode et chemin par chemin ; Playwright headless sur `vite preview` (12 tests, témoins `scratchpad/l21a/temoins/`) ; le gate web complet a trouvé un garde-rail que les tests ciblés ne voyaient pas (types de réponse écrits à la main : entrée datée ajoutée, la route étant hors du document généré).
 
 **Conclusion / prochaine étape** : 21.00, 21.0, 21.0b et 21.0d `[x]` ; 21.z (flux Azure réel, barre repliée, classements, message média) à l'utilisateur. Risque principal au gate : l'échange du code sans secret client (voir §10 du plan). Les items (a) à (e) de L21 restent à l'autre session.
+## [2026-11-02] Rejeu — vitesse 1.5× au menu de vitesse — Complété
+
+**Décision technique principale** : `SPEED_MULTIPLIERS` passe à `[0.5, 1, 1.5, 2, 4]` ; le format du déclencheur garde une décimale seulement pour les vitesses non entières (l ancien format arrondissait 1.5 à « 2× »). Le son reste actif à 1.5× (borne `SOUND_MAX_SPEED` = 2).
+
+**Résultats observés** : tests du menu et des réglages verts (33/33), dont un test qui affiche « 1.5× ». Pas de vérification visuelle.
+
+**Conclusion / prochaine étape** : aucune ; une vitesse 1.5× déjà stockée dans le navigateur est désormais acceptée.
 
 ## [2026-11-02] Desktop — L20 : revue adversariale M (DuckDB, configuration, release) et N (web, encodeur) — Complété (commit local, pas de push)
 
