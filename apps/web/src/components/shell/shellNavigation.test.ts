@@ -50,6 +50,11 @@ describe('isAnonymousPath', () => {
     expect(isAnonymousPath('/joint')).toBe(false)
   })
 
+  it('la page de téléchargement est atteignable sans compte', () => {
+    expect(isAnonymousPath('/telecharger')).toBe(true)
+    expect(isAnonymousPath('/telechargement')).toBe(false)
+  })
+
   it('les pages applicatives ne le sont pas', () => {
     expect(isAnonymousPath('/')).toBe(false)
     expect(isAnonymousPath('/settings')).toBe(false)

@@ -655,10 +655,13 @@ Définition : `ResourcesRoot` = la racine du dépôt aujourd'hui (`LEVELUP_RESOU
       qui porte la ligne est `general.log`, `desktop.log` la recopie). Cibles `make desktop-installer` / `desktop-e2e`.
 - [x] 17.4 Updater : proposé, jamais imposé ; n'exécute l'installeur qu'après `stopped` (A3) ; changelog
       in-app (`docs/RELEASE_NOTES.md`) ; poids de la mise à jour mesuré et consigné (§10).
-- [ ] 17.5 Page « Télécharger pour Windows » côté hébergé (capacité du profil `hosted`), fr + en, avec
-      l'avertissement SmartScreen expliqué (D-10 : installeur non signé) et la mention Microsoft.
-- [ ] 17.6 **(P)** Runs verts ; procédure de sauvegarde de la clé d'updater exécutée (ADR 0045).
-- [ ] 17.7 **(U)** Installation sur une machine vierge, désinstallation, données conservées : témoins.
+- [x] 17.5 Page « Télécharger pour Windows » côté hébergé (capacité du profil `hosted`), fr + en, avec
+      l'avertissement SmartScreen expliqué (D-10 : installeur non signé) et la mention Microsoft. FAIT 2026-11-02 : route
+      `/telecharger` (chemin anonyme), `features/download/` (dictionnaire `Record<Locale, T>`), capacité existante
+      `can_offer_windows_download` (aucune capacité neuve), lien « Application Windows » du pied de page conditionné par la
+      même capacité, lien vers `releases/latest`, tests Vitest (capacité vraie/fausse x fr/en, pied de page, chemin anonyme).
+- [ ] 17.6 **(P, au pilote)** Runs verts ; procédure de sauvegarde de la clé d'updater exécutée (ADR 0045). PRÉPARÉ : procédure écrite dans l'ADR 0045 (« Implementation notes (L17) »), reports au registre ; la clé du gate (mot de passe vide) est à remplacer par une clé protégée.
+- [ ] 17.7 **(U, à l'utilisateur)** Installation sur une machine vierge, désinstallation, données conservées : témoins. PRÉPARÉ : mode d'emploi en cinq étapes dans `docs/RUNBOOK_DESKTOP.md`.
 
 ### 9.17b L18 — Interface bureau (S après maquette validée par U ; EN DERNIER, décision utilisateur du 2026-11-02)
 

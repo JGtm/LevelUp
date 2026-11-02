@@ -17,6 +17,7 @@
  */
 import { Link } from '@tanstack/react-router'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useDeploymentCapability } from '@/stores/useDeploymentCapability'
 import { MicrosoftNotice } from '@/components/shell/MicrosoftNotice'
 import { useFeedbackDrawerStore } from '@/features/feedback-drawer/feedbackDrawer.store'
 import { formatMessage } from '@/lib/i18n/format'
@@ -30,8 +31,7 @@ import {
   csinsightUrl,
 } from '@/lib/appLinks'
 
-const LINK_CLASS =
-  'text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline'
+const LINK_CLASS = 'text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline'
 
 interface ExternalLinkProps {
   href: string
@@ -53,6 +53,8 @@ export interface AppFooterProps {
 export function AppFooter({ variant = 'full' }: AppFooterProps) {
   const locale = useAppShellStore((s) => s.locale)
   const openFeedback = useFeedbackDrawerStore((s) => s.open)
+  // Le serveur décide si cette instance propose l'application Windows (capacité de /bootstrap).
+  const offersDownload = useDeploymentCapability('can_offer_windows_download')
   const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
   if (variant === 'minimal') {
@@ -69,6 +71,11 @@ export function AppFooter({ variant = 'full' }: AppFooterProps) {
           <Link to="/terms" className={LINK_CLASS}>
             {t('common.footer.terms')}
           </Link>
+          {offersDownload && (
+            <Link to="/telecharger" className={LINK_CLASS}>
+              {t('common.footer.download')}
+            </Link>
+          )}
           <ExternalLink href={GITHUB_URL}>{t('common.footer.source_code')}</ExternalLink>
           <ExternalLink href={csinsightUrl(locale)}>{t('common.footer.csinsight')}</ExternalLink>
         </p>
@@ -98,6 +105,11 @@ export function AppFooter({ variant = 'full' }: AppFooterProps) {
           <Link to="/terms" className={LINK_CLASS}>
             {t('common.footer.terms')}
           </Link>
+          {offersDownload && (
+            <Link to="/telecharger" className={LINK_CLASS}>
+              {t('common.footer.download')}
+            </Link>
+          )}
         </nav>
 
         <nav className="flex flex-col gap-1.5">

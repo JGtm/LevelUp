@@ -215,6 +215,7 @@ export const commonManifest = {
   "common.footer.copyright": { fr: "© JGtm — LevelUp", en: "© JGtm — LevelUp" },
   "common.footer.csinsight": { fr: "CSinsight — stats CS2", en: "CSinsight — CS2 stats" },
   "common.footer.developer": { fr: "Développeur", en: "Developer" },
+  "common.footer.download": { fr: "Application Windows", en: "Windows app" },
   "common.footer.elsewhere_heading": { fr: "Ailleurs", en: "Elsewhere" },
   "common.footer.license": { fr: "Licence AGPL-3.0", en: "AGPL-3.0 licence" },
   "common.footer.microsoft_notice_intro": { fr: "Mention exigée par Microsoft pour le contenu du jeu :", en: "Notice required by Microsoft for the game content:" },

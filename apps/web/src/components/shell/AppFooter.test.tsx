@@ -6,6 +6,7 @@ import type { ComponentPropsWithoutRef } from 'react'
 import { screen, fireEvent } from '@testing-library/react'
 import { renderWithProviders } from '@/test/render-utils'
 import { useAppShellStore } from '@/stores/appShellStore'
+import type { CapabilityMap } from '@/lib/api/types'
 import { useFeedbackDrawerStore } from '@/features/feedback-drawer/feedbackDrawer.store'
 import { AppFooter } from './AppFooter'
 import {
@@ -35,7 +36,7 @@ function hrefOf(name: RegExp): string | null {
 
 describe('AppFooter', () => {
   afterEach(() => {
-    useAppShellStore.setState({ locale: 'fr' })
+    useAppShellStore.setState({ locale: 'fr', capabilities: null })
     useFeedbackDrawerStore.setState({ isOpen: false })
   })
 
@@ -92,6 +93,24 @@ describe('AppFooter', () => {
     // Contre-preuve : la variante complète, elle, les porte.
     expect(SPONSORS_URL).toBeTruthy()
     expect(PAYPAL_URL).toBeTruthy()
+  })
+
+  it('le lien vers la page de téléchargement suit la capacité du serveur, dans les deux variantes', () => {
+    const { unmount } = renderWithProviders(<AppFooter />)
+    expect(hrefOf(/Application Windows/i)).toBe('/telecharger')
+    unmount()
+    const minimal = renderWithProviders(<AppFooter variant="minimal" />)
+    expect(hrefOf(/Application Windows/i)).toBe('/telecharger')
+    minimal.unmount()
+
+    useAppShellStore.setState({
+      capabilities: { can_offer_windows_download: false } as CapabilityMap,
+    })
+    for (const variant of ['full', 'minimal'] as const) {
+      const view = renderWithProviders(<AppFooter variant={variant} />)
+      expect(screen.queryByRole('link', { name: /Application Windows/i })).toBeNull()
+      view.unmount()
+    }
   })
 
   it('rend les libellés en anglais quand locale=en', () => {

@@ -2599,6 +2599,10 @@ en = "Elsewhere"
 fr = "Développeur"
 en = "Developer"
 
+[common.footer.download]
+fr = "Application Windows"
+en = "Windows app"
+
 [common.footer.csinsight]
 fr = "CSinsight — stats CS2"
 en = "CSinsight — CS2 stats"
