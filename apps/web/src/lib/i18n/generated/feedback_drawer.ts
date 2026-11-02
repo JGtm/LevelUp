@@ -50,7 +50,6 @@ export const feedbackDrawerManifest = {
   "feedback_drawer.issue_title.question_prefix": { fr: "[?] ", en: "[?] " },
   "feedback_drawer.mini_tab.aria_close": { fr: "Fermer le panneau de retour", en: "Close feedback panel" },
   "feedback_drawer.mini_tab.aria_open": { fr: "Envoyer un retour", en: "Send feedback" },
-  "feedback_drawer.popup_blocked": { fr: "Lien copié dans le presse-papier — collez-le dans un onglet pour ouvrir GitHub.", en: "Link copied to clipboard — paste it in a tab to open GitHub." },
   "feedback_drawer.rate_limit": { fr: "Merci, 5 retours ont déjà été envoyés dans la dernière heure.", en: "Thanks, 5 feedback submissions were already sent in the last hour." },
   "feedback_drawer.similar.label": { fr: "Une issue existe peut-être déjà :", en: "A similar issue may already exist:" },
   "feedback_drawer.submit": { fr: "Ouvrir sur GitHub", en: "Open on GitHub" },

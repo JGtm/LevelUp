@@ -749,14 +749,42 @@ arrêt propre, désinstallation avec données conservées, vérifiés dans les j
       `decision=deny` ; vers `example.org/a?code=SECRET` : `decision=open`, `SECRET` absent du journal (`l19/desktop_l192_temoin.log`).
       Avant la correction, mêmes clics : aucune ligne. Tests : 5 nouveaux dans `navigation.rs`.
 
-- [ ] 19.3 Référentiels en **panneau ancré** (décision utilisateur : option 1) : en profil bureau (capacité
+- [x] 19.3 Référentiels en **panneau ancré** (décision utilisateur : option 1) : en profil bureau (capacité
       `can_use_compact_chrome`), le panneau des référentiels s'ouvre à droite du contenu et le POUSSE (pas de voile,
       la page se réorganise), largeur redimensionnable et mémorisée (`localStorage`), reste ouvert de page en page
       tant qu'on ne le ferme pas, champ de recherche en tête (celui du panneau actuel), bouton « Référentiels » au
       bas de la barre latérale + raccourci clavier ; le site hébergé garde son panneau coulissant actuel.
-- [ ] 19.4 « Signaler un problème » : entrée au bas de la barre latérale (à côté de Aide), formulaire actuel, GitHub
+      FAIT 2026-11-02 : `AppShell` (capacité vraie) range `AssetDockedPanel` dans la rangée `[barre latérale | contenu | volet]`
+      (il pousse le contenu : `aside` dans le flux, `shrink-0`, largeur en style, aucun voile) et ne monte plus le panneau
+      coulissant ; capacité fausse : `AssetDrawer` et son mini-onglet inchangés, `HelpSplitButton` non touché. Contenu commun
+      `AssetPanelContent` (onglets, recherche, `AssetGrid`/`AssetCard`, requêtes) partagé par le panneau du site et le volet
+      (`searchFirst` : recherche en tête). Poignée `role="separator"` (souris, flèches, Maj = grand pas, Début/Fin), bornes
+      280 à 640 px, borne haute réduite sur fenêtre étroite (`maxPanelWidth` : 240 de barre + 480 de contenu préservés),
+      largeur en `localStorage` `levelup-asset-panel-width` (`panelWidth.ts`, lecture/écriture sous `try/catch`, alerte
+      unique), état ouvert/fermé persisté par le store existant, focus dans la recherche à l'ouverture demandée
+      (`focusToken`, jamais au démarrage), Échap dans le volet le ferme et rend le focus au bouton. Bouton « Référentiels » au
+      pied de la barre latérale + raccourci `Ctrl+Maj+L` (`Ctrl+Maj+R` écarté : rechargement sans cache du moteur ;
+      `Ctrl+Maj+L` sans accélérateur connu, rien dans la page ne l'utilise) en infobulle fr/en. Témoins sur l'application
+      construite (CDP, clics et touches de confiance) : ouverture au bouton (focus dans la recherche), `Ctrl+Maj+L` ferme
+      puis rouvre, Maj+Gauche x3 : 360 -> 552 px et `main` 648 px, Droite 536, Fin 640, Début 280, glisser de 140 px : 280 ->
+      419 px, mémorisé ; navigation Carrière puis Explorer : volet ouvert, même largeur ; rechargement : volet ouvert, focus
+      sur `body` (`l19/s1_ouvert.png`, `s4_page.png`). Tests : `AssetDockedPanel.test.tsx` (13), `panelWidth.test.ts` (6),
+      `AppShell.chrome.test.tsx` (volet frère de la rangée, site inchangé), `SidebarNav.test.tsx`.
+
+- [x] 19.4 « Signaler un problème » : entrée au bas de la barre latérale (à côté de Aide), formulaire actuel, GitHub
       s'ouvre dans le navigateur (dépend de 19.2).
-- [ ] 19.5 **(U)** Gate visuel sur l'installeur issu de la fusion.
+      FAIT 2026-11-02 : entrée « Signaler un problème » au pied de `SidebarNav` (`common.shell.nav_feedback`, fr + en),
+      ouvre `useFeedbackDrawerStore` ; le mini-onglet du bord du formulaire est masqué en bureau (capacité). Le formulaire
+      ouvrait GitHub par `window.open(url, '_blank', 'noopener,noreferrer')` : avec `noopener` le retour est TOUJOURS `null`
+      (constaté sur la fenêtre : refus de la nouvelle fenêtre = `null`), donc la branche « fenêtre bloquée » (copie de
+      l'URL, formulaire laissé ouvert) s'exécutait à tort, sur le site aussi ; remplacé par un lien `target="_blank"` cliqué
+      par programme (`openInNewTab`), qui passe par `on_new_window` ; branche de repli et clé `feedback_drawer.popup_blocked`
+      supprimées (code mort). Témoin : formulaire rempli, clic « Ouvrir sur GitHub » : `desktop.log`
+      `event=new_window url=https://github.com decision=open` + `event=open_external origin=https://github.com mode=log`.
+      Tests : `FeedbackDrawer.test.tsx` (lien cliqué, formulaire refermé, mini-onglet masqué en bureau), `openInNewTab.test.ts`,
+      `SidebarNav.test.tsx`.
+
+- [ ] 19.5 **(U)** Gate visuel sur l'installeur issu de la fusion. À l'utilisateur (clic réel de la page d'extraction de l'installeur, volet des référentiels, lien de connexion, signalement).
 - Gate : web `typecheck + lint + test`, Rust `fmt + clippy + test`, `e2e-install.ps1` sur l'installeur local.
 
 ### 9.18 P2 — à planifier à la clôture de P1 (liste fermée des sujets)
@@ -1035,6 +1063,30 @@ mises à jour (ressources retéléchargées à chaque version).
   **Relevé, non traité** : (a) `HomeCitationsNearCompletion` navigue encore vers la route de redirection `.../commendations` (un
   saut de redirection, sans effet visible) ; (b) le téléchargement de l'installeur n'a pas d'échéance : un flux bloqué garde le
   verrou de vérification (une échéance totale couperait un téléchargement lent légitime ; il faudrait une échéance d'inactivité).
+
+- **L19 (2026-11-02) — relevé, découvertes et témoins.** (a) Modèle NSIS de Tauri (extrait de
+  `cli.win32-x64-msvc.node`, texte en clair) : `!define MUI_FINISHPAGE_NOAUTOCLOSE` juste avant `MUI_PAGE_FINISH` ; MUI2
+  (`Contrib/Modern UI 2/Pages/Finish.nsh`) ne pose alors pas son `SetAutoClose true`, et le modèle ne le pose que pour le
+  mode passif et la mise à jour (fin de `Section Install`) ; aucune option de configuration Tauri n'existe (`bundle.windows.nsis`
+  : `installMode`, `installerHooks`, ...), d'où le crochet `NSIS_HOOK_POSTINSTALL` (`SetAutoClose true`). (b) **La cause du
+  lien `target="_blank"` muet n'était pas l'absence de `on_new_window`** (relevé L16 et L18) : le plugin `opener` injecte
+  par défaut un script de clic qui appelle `open_url` par IPC (refusé à la page : aucune capacité) ; désactivé par
+  `open_js_links_on_click(false)`, voir 19.2. (c) `window.open(url, '_blank', 'noopener,noreferrer')` rend toujours `null` :
+  le formulaire de signalement prenait cela pour « fenêtre bloquée » (copie de l'URL dans le presse-papier, formulaire non
+  refermé) sur le site aussi ; remplacé par un lien cliqué par programme (19.4), garde-rail presse-papier
+  (`useCopyToClipboard.guard.test.ts`) : entrée `FeedbackDrawer.tsx` retirée. (d) Écart de lecture de la demande : les
+  référentiels ne s'ouvraient pas depuis `HelpSplitButton` (aide et notes de version) mais par le mini-onglet vertical du
+  bord droit de `AssetDrawer` ; `HelpSplitButton` est resté intact. (e) **Raccourci** : `Ctrl+Maj+R` est le rechargement sans
+  cache du moteur ; retenu `Ctrl+Maj+L`. Les touches de confiance envoyées par DevTools (CDP) ne passent pas par les
+  accélérateurs natifs du moteur : l'absence de conflit natif repose sur la liste connue des accélérateurs, pas sur un
+  essai ; le défaut est neutralisé (`preventDefault`) par précaution. (f) **Relevé, non traité** : en bureau les toasts
+  (`top-right`) et la barre de progression (`left-60 right-0`) passent au-dessus du volet ancré ; l'infobulle du bouton est le
+  seul endroit où le raccourci est écrit (la page d'aide n'en parle pas). (g) **Observation non expliquée** : au premier
+  lancement du binaire de développement sur `LevelUp-dev`, une capture montrait le volet ouvert avec le focus dans la
+  recherche, alors que `localStorage` le donnait fermé quelques secondes plus tard ; non reproduit ensuite (ouverture par
+  bouton, par raccourci, rechargement : état et focus conformes) ; à surveiller au gate visuel (19.5). Témoins :
+  `scratchpad/l19/` (`desktop_l192_temoin.log`, `desktop_l193_l194_temoin.log`, captures `s1_ouvert.png`, `s2_large.png`,
+  `s3_drag.png`, `s4_page.png`, `s5_feedback.png`, `installer_genere.nsi`).
 
 ## 11. Protocole de reprise de session
 

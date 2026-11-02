@@ -11,7 +11,6 @@
  *   - `similar:fetch_failed` — GitHub search API down → section masquée
  *   - `similar:rate_limited` — HTTP 403 GitHub (60 req/h dépassé)
  *   - `url:truncated` — body Markdown > 7000 chars, troncature appliquée
- *   - `clipboard:open_failed` — window.open retourne null (popup bloqué)
  *   - `capture:install_failed` — installGlobalCapture() a throw (très rare)
  */
 

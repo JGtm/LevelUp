@@ -34,10 +34,6 @@ const FORBIDDEN: Array<{ label: string; re: RegExp }> = [
 /** `fichier` → raison de l'exemption (chemins relatifs à src/, séparateurs `/`). */
 const ALLOWED = new Map<string, string>([
   [
-    'features/feedback-drawer/FeedbackDrawer.tsx',
-    'retour par toast (succès ET échec visibles), pas de coche transitoire — 2026-09-17',
-  ],
-  [
     'features/admin/sections/InvitesSection.tsx',
     'retour par toast sur le lien d\'invitation, pas de coche transitoire — 2026-09-17',
   ],
