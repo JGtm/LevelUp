@@ -9,8 +9,11 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"net/http"
 	"os"
 
+	"levelup/go-api/internal/api/middleware"
+	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/platform/instancelock"
 )
 
@@ -31,6 +34,7 @@ func openBootGate(st *bootState) {
 		// Le port réel n'est connu qu'une fois lié : le serveur HTTP et la configuration le voient.
 		srv.Addr = ln.Addr().String()
 		cfg.SetBoundPort(listenerPort(ln))
+		srv.Handler = bootHandler(cfg, gate)
 	}
 	bootSrv := startBootServer(srv, gate, ln)
 	bootSrv.events = st.events
@@ -42,6 +46,17 @@ func openBootGate(st *bootState) {
 		bootSrv.watchStdin(os.Stdin)
 	}
 	st.gate, st.srv, st.bootSrv = gate, srv, bootSrv
+}
+
+// bootHandler rend le handler du serveur HTTP de démarrage. Sous l'entrée de la coquille desktop,
+// la porte répond avant le routeur et son garde : le même contrôle de Host (421) l'enveloppe, sans
+// cookie (la coquille charge la page de démarrage ou d'échec avant de l'avoir, ADR 0045 D-3). Ailleurs,
+// la porte seule.
+func bootHandler(cfg *config.AppConfig, gate *bootGate) http.Handler {
+	if cfg.Capabilities.ShellEntryGate {
+		return middleware.StrictHost(cfg.DesktopAuthority())(gate)
+	}
+	return gate
 }
 
 // bindBootListener lie le port du serveur. Hors -mode desktop : le port configuré (addr), qui doit

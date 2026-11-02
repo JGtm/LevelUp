@@ -18,6 +18,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/api/openapigen"
@@ -37,13 +38,20 @@ const (
 // buildDesktopRouter assemble le vrai routeur sous l'entrée de la coquille, port desktopTestPort.
 func buildDesktopRouter(t *testing.T) http.Handler {
 	t.Helper()
+	return buildDesktopRouterWith(t, nil)
+}
+
+// buildDesktopRouterWith est buildDesktopRouter avec la demande d'arrêt branchée sur requester.
+func buildDesktopRouterWith(t *testing.T, requester func(string)) http.Handler {
+	t.Helper()
 	router, _, err := openapigen.BuildDemoRouter(t.Context(), openapigen.Options{
-		Root:           t.TempDir(),
-		GroupStorePath: filepath.Join(t.TempDir(), "groups.json"),
-		Prestige:       true,
-		DesktopSecret:  desktopTestLauncherSecret,
-		ShellEntryPort: desktopTestPort,
-		ShellCookieKey: desktopTestCookieKey,
+		Root:              t.TempDir(),
+		GroupStorePath:    filepath.Join(t.TempDir(), "groups.json"),
+		Prestige:          true,
+		DesktopSecret:     desktopTestLauncherSecret,
+		ShellEntryPort:    desktopTestPort,
+		ShellCookieKey:    desktopTestCookieKey,
+		ShutdownRequester: requester,
 	})
 	if err != nil {
 		t.Fatalf("BuildDemoRouter(desktop) : %v", err)
@@ -303,5 +311,53 @@ func TestDesktopEntry_AbsenteHorsDuProfilDesktop(t *testing.T) {
 	}
 	if rec := get("/api/v1/bootstrap", "example.org"); rec.Code != http.StatusOK {
 		t.Errorf("GET /api/v1/bootstrap hors desktop : %d, attendu 200 sans cookie ni Host strict", rec.Code)
+	}
+}
+
+// La route d'arrêt de secours (ADR 0045 D-4) n'exige pas le cookie de la coquille, que celle-ci ne peut
+// pas fabriquer : elle garde LoopbackOnly et le secret d'en-tête. Le Host strict s'y applique.
+func TestDesktopEntry_RouteDArretSansCookie(t *testing.T) {
+	requested := make(chan string, 4)
+	h := buildDesktopRouterWith(t, func(reason string) { requested <- reason })
+	shutdown := func(secret, host, peer string, method string) int {
+		req := httptest.NewRequest(method, middleware.DesktopShutdownPath, nil)
+		req.Host = desktopTestHost
+		if host != "" {
+			req.Host = host
+		}
+		req.RemoteAddr = loopbackPeer
+		if peer != "" {
+			req.RemoteAddr = peer
+		}
+		if secret != "" {
+			req.Header.Set("X-LevelUp-Shutdown-Secret", secret)
+		}
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		return rec.Code
+	}
+	if got := shutdown(desktopTestLauncherSecret, "", "", http.MethodPost); got != http.StatusAccepted {
+		t.Errorf("arrêt sans cookie, bon secret : %d, attendu 202", got)
+	}
+	select {
+	case <-requested:
+	case <-time.After(5 * time.Second):
+		t.Error("202 rendu mais aucune demande d'arrêt transmise")
+	}
+	for name, got := range map[string]int{
+		"mauvais secret":   shutdown("mauvais", "", "", http.MethodPost),
+		"secret absent":    shutdown("", "", "", http.MethodPost),
+		"pair hors boucle": shutdown(desktopTestLauncherSecret, "", "192.0.2.10:4000", http.MethodPost),
+	} {
+		if got != http.StatusForbidden {
+			t.Errorf("arrêt sans cookie, %s : %d, attendu 403", name, got)
+		}
+	}
+	if got := shutdown(desktopTestLauncherSecret, "evil.example", "", http.MethodPost); got != http.StatusMisdirectedRequest {
+		t.Errorf("arrêt avec un Host étranger : %d, attendu 421", got)
+	}
+	// L'exemption est celle du POST de cette route seule.
+	if got := shutdown(desktopTestLauncherSecret, "", "", http.MethodGet); got != http.StatusUnauthorized {
+		t.Errorf("GET sur la route d'arrêt sans cookie : %d, attendu 401", got)
 	}
 }

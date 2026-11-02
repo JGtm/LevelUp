@@ -75,6 +75,12 @@ the session secret of D-7, checked without state, valid 30 days and renewed at e
 behind `LoopbackOnly`, compares `?secret=` with `LEVELUP_DESKTOP_SECRET` in constant time (403 wrong, 404 when the
 launcher gave no secret), never logs it, and answers 302 to `/`. CORS and the CSRF origin list are
 `AppConfig.SetBoundPort`'s output: the single origin `http://127.0.0.1:<bound port>`, `LEVELUP_CORS_ORIGINS` ignored.
+Two exceptions and one extension, found by the wave 4 review: `POST /api/v1/internal/shutdown` is exempt from the
+cookie (the shell cannot forge a signed `HttpOnly` cookie; the route keeps `LoopbackOnly`, the constant-time header
+secret and the strict `Host`), and the startup gate, which answers before the router and its guard exist, is wrapped by
+the same strict `Host` check (`middleware.StrictHost`, 421) without any cookie, since the shell loads the startup or
+failure page before it has one. Cooking children (`internal/replaychild`) relay their output on stderr, never on the
+server's stdout, which carries the D-2 events only (`internal/archlint/server_stdout_internal_test.go`).
 The bare-route allowlist gets no entry: `/health` is already listed, and `/desktop/enter` is guarded by a recognised
 guard (an entry would be flagged useless by the ratchet's own self-check); `TestBareRoutesRatchet_DesktopEntryRoutes`
 proves instead that both desktop routes exist only under the capability and that every route of the desktop router sits

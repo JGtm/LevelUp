@@ -38,6 +38,10 @@ const (
 	DesktopUnauthorizedCode = "desktop_unauthorized"
 	// DesktopEnterPath : la route d'entrée de la coquille.
 	DesktopEnterPath = "/desktop/enter"
+	// DesktopShutdownPath : la route d'arrêt de secours (POST), exemptée du cookie : elle a ses propres
+	// portes (LoopbackOnly et secret d'en-tête en temps constant) et la coquille ne peut pas fabriquer
+	// le cookie, signé et HttpOnly. Le Host strict s'y applique comme ailleurs.
+	DesktopShutdownPath = "/api/v1/internal/shutdown"
 	// desktopHealthPath : la sonde du lanceur, ouverte sans cookie (aucune donnée).
 	desktopHealthPath = "/health"
 	// DesktopCookieTTL : durée de validité du cookie, renouvelée à chaque entrée.
@@ -115,14 +119,12 @@ func (g *DesktopGate) validCookie(r *http.Request) bool {
 // PreserveRemoteAddr : rien d'autre (CORS, session, routeur) ne voit une requête refusée ici.
 func (g *DesktopGate) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Host != g.authority {
-			slog.WarnContext(r.Context(), "middleware.desktop_gate: Host refusé",
-				"host", r.Host, "attendu", g.authority, "path", r.URL.Path)
-			writeGateError(w, http.StatusMisdirectedRequest, "desktop_host_refused", "Host non autorisé")
+		if refuseForeignHost(w, r, g.authority) {
 			return
 		}
 		// Un chemin ambigu (cf. AmbiguousPath) n'est jamais ouvert : il passe par le cookie.
-		if !AmbiguousPath(r) && (r.URL.Path == DesktopEnterPath || r.URL.Path == desktopHealthPath) {
+		if !AmbiguousPath(r) && (r.URL.Path == DesktopEnterPath || r.URL.Path == desktopHealthPath ||
+			(r.Method == http.MethodPost && r.URL.Path == DesktopShutdownPath)) {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -134,6 +136,33 @@ func (g *DesktopGate) Middleware(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// refuseForeignHost répond 421 (journalisé) et rend vrai quand l'en-tête Host n'est pas exactement
+// l'autorité attendue.
+func refuseForeignHost(w http.ResponseWriter, r *http.Request, authority string) bool {
+	if r.Host == authority {
+		return false
+	}
+	slog.WarnContext(r.Context(), "middleware.desktop_gate: Host refusé",
+		"host", r.Host, "attendu", authority, "path", r.URL.Path)
+	writeGateError(w, http.StatusMisdirectedRequest, "desktop_host_refused", "Host non autorisé")
+	return true
+}
+
+// StrictHost n'accepte que l'autorité exacte authority dans l'en-tête Host (421 sinon). Elle enveloppe
+// la porte de démarrage du mode desktop, qui répond avant que le routeur (et son garde) existe : sans
+// elle, la page de démarrage serait servie à tout nom d'hôte (rebond DNS). Aucun cookie n'y est exigé :
+// la coquille charge cette page avant de l'avoir.
+func StrictHost(authority string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if refuseForeignHost(w, r, authority) {
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
 }
 
 // EnterHandler sert GET /desktop/enter?secret=… : 404 si l'entrée n'est pas configurée, 403 si le

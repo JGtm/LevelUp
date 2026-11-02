@@ -149,7 +149,9 @@ func RunChild(ctx context.Context, args []string) int {
 		fmt.Fprintf(os.Stderr, "enfant de cuisson : depot des octets impossible : %v\n", err)
 		return filmproc.CodeFailed
 	}
-	fmt.Printf("  %s : %d tracks, %d octets (%s)\n",
+	// Sur stderr comme le reste du compte rendu de l'enfant : le parent le relaie tel quel, et la sortie
+	// standard du serveur est reservee aux evenements du contrat desktop.
+	fmt.Fprintf(os.Stderr, "  %s : %d tracks, %d octets (%s)\n",
 		req.MatchID, built.Tracks, len(built.Blob), built.Module)
 	return filmproc.CodeOK
 }
@@ -250,7 +252,10 @@ func spawnLocked(ctx context.Context, req Request) (Result, error) {
 		return Result{}, fmt.Errorf("ecriture de la requete: %w", err)
 	}
 
-	runner, err := NewRunner(req.RepoRoot, os.Stdout)
+	// Le relais de l'enfant va sur STDERR : en -mode desktop la coquille lit la sortie standard du
+	// serveur ligne a ligne comme des evenements JSON. Le parent ne lit de l'enfant que les lignes
+	// de protocole (pic memoire, raison du refus), interceptees par le lanceur avant tout relais.
+	runner, err := NewRunner(req.RepoRoot, os.Stderr)
 	if err != nil {
 		return Result{}, err
 	}
