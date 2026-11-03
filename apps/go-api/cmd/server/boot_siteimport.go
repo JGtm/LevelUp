@@ -2,11 +2,14 @@
 // un import en cours est annulé à l'arrêt, puis attendu avant la fermeture des bases.
 package main
 
-import "levelup/go-api/internal/service"
+import (
+	"levelup/go-api/internal/api/wire"
+	"levelup/go-api/internal/service"
+)
 
 // bindSiteImport relie le service de l'import depuis le site sous la capacité ImportFromSite.
 func bindSiteImport(st *bootState) {
 	if st.cfg.Capabilities.ImportFromSite {
-		service.DefaultSiteImport().Bind(st.schedulerCtx, &st.schedulerWG, st.cfg)
+		service.DefaultSiteImport().Bind(st.schedulerCtx, &st.schedulerWG, st.cfg, wire.PlayerReadCaches{})
 	}
 }

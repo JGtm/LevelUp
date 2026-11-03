@@ -16,7 +16,7 @@ import (
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/dblease"
-	duckdbpkg "levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/port"
 	syncpkg "levelup/go-api/internal/sync"
 	"levelup/go-api/internal/transfer"
 )
@@ -43,6 +43,8 @@ type SiteImport struct {
 	ctx    context.Context
 	wg     *sync.WaitGroup
 	runner *transfer.Runner
+	// caches : invalidation des lectures du joueur après un import (nil : aucune).
+	caches port.PlayerReadCacheInvalidator
 }
 
 var defaultSiteImport = &SiteImport{runner: transfer.NewRunner()}
@@ -51,11 +53,11 @@ var defaultSiteImport = &SiteImport{runner: transfer.NewRunner()}
 func DefaultSiteImport() *SiteImport { return defaultSiteImport }
 
 // Bind relie l'import à la configuration et au contexte du serveur : ctx annule un import en cours à
-// l'arrêt, wg le fait attendre avant la fermeture des bases.
-func (s *SiteImport) Bind(ctx context.Context, wg *sync.WaitGroup, cfg *config.AppConfig) {
+// l'arrêt, wg le fait attendre avant la fermeture des bases, caches est invalidé une fois l'import écrit.
+func (s *SiteImport) Bind(ctx context.Context, wg *sync.WaitGroup, cfg *config.AppConfig, caches port.PlayerReadCacheInvalidator) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.ctx, s.wg, s.cfg = ctx, wg, cfg
+	s.ctx, s.wg, s.cfg, s.caches = ctx, wg, cfg, caches
 }
 
 // Status rend l'état de l'import courant ou du dernier.
@@ -65,7 +67,7 @@ func (s *SiteImport) Status() transfer.Status { return s.runner.Status() }
 // un import est en cours.
 func (s *SiteImport) Start(req SiteImportRequest) error {
 	s.mu.Lock()
-	cfg, ctx, wg := s.cfg, s.ctx, s.wg
+	cfg, ctx, wg, caches := s.cfg, s.ctx, s.wg, s.caches
 	s.mu.Unlock()
 	if cfg == nil || ctx == nil {
 		return ErrSiteImportUnbound
@@ -85,7 +87,11 @@ func (s *SiteImport) Start(req SiteImportRequest) error {
 		WorkDir: cfg.PathResolver().CacheRootDir(),
 		// Les lectures du joueur déjà en cache (liste des matchs, filtres) ignorent les lignes importées : même
 		// invalidation qu'en fin de synchronisation.
-		AfterImport: func(ctx context.Context) { duckdbpkg.InvalidatePlayerReadCaches(ctx, player.XUID, slug) },
+		AfterImport: func(ctx context.Context) {
+			if caches != nil {
+				caches.InvalidatePlayerReadCaches(ctx, player.XUID, slug)
+			}
+		},
 	}
 	return s.runner.Start(ctx, wg, in)
 }
