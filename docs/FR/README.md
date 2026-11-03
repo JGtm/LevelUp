@@ -42,7 +42,7 @@ Tout cela se règle dans Paramètres, onglet Application, et reste désactivé p
 
 **Sur le site aussi**
 - **Une page « Télécharger LevelUp pour Windows »**, qui explique aussi l'avertissement de Windows décrit plus bas
-- **Le même en-tête sur toutes les pages**, sur le site comme dans l'application : un titre, un court chapeau, les onglets de la section
+- **Le même en-tête sur toutes les sections hors accueil**, sur le site comme dans l'application : un titre, un court chapeau, les onglets de la section
 - **La mention Microsoft** exigée par les règles d'usage du contenu Halo, dans le pied de page
 
 **À savoir**
@@ -289,6 +289,8 @@ Tout ce qui figure dans les versions précédentes (rejeu 2D, onglet Tactique, m
 ---
 
 ## Démarrage rapide
+
+**Application Windows** : télécharge l'installeur (`LevelUp_X.Y.Z_x64-setup.exe`) depuis la [page des releases GitHub](https://github.com/JGtm/LevelUp/releases/latest) ou depuis la page « Télécharger LevelUp pour Windows » du site hébergé, puis lance-le. L'installeur n'est pas signé par un certificat de code : Windows SmartScreen avertit une fois (« Informations complémentaires », puis « Exécuter quand même »). Tes données vivent dans `%LOCALAPPDATA%\LevelUp` et y restent après une désinstallation. Détails : [docs/RUNBOOK_DESKTOP.md](../RUNBOOK_DESKTOP.md) (en anglais). Le reste de cette section sert à lancer LevelUp depuis les sources.
 
 **Prérequis** : Go 1.26+, Node.js + npm, GNU Make, Air pour le rechargement à chaud du Go, et une **chaîne C** — le pilote DuckDB est en CGO, et sous Windows un `gcc` absent du `PATH` fait servir à Air un binaire périmé sans le dire (MinGW/UCRT64 ; voir [INSTALL.md](INSTALL.md)).
 

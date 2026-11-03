@@ -42,7 +42,7 @@ All of these are in Settings, Application tab, and off by default (game detectio
 
 **On the site too**
 - **A "Download LevelUp for Windows" page**, which also explains the Windows warning described below
-- **The same header on every page**, on the site and in the app: a title, a short lead, the tabs of the section
+- **The same header on every section but the home**, on the site and in the app: a title, a short lead, the tabs of the section
 - **The Microsoft notice** required by the Halo content rules, in the page footer
 
 **Good to know**
@@ -289,6 +289,8 @@ Everything in earlier versions (2D replay, Tactics tab, film-derived measurement
 ---
 
 ## Quick start
+
+**Windows app**: download the installer (`LevelUp_X.Y.Z_x64-setup.exe`) from the [GitHub releases page](https://github.com/JGtm/LevelUp/releases/latest) or from the "Download LevelUp for Windows" page of the hosted site, then run it. The installer is not code-signed, so Windows SmartScreen warns once ("More info", then "Run anyway"). Your data lives in `%LOCALAPPDATA%\LevelUp` and stays there after an uninstall. Details: [docs/RUNBOOK_DESKTOP.md](docs/RUNBOOK_DESKTOP.md). The rest of this section is for running LevelUp from the source.
 
 **Prerequisites**: Go 1.26+, Node.js + npm, GNU Make, Air for Go hot reload, and a **C toolchain** — the DuckDB driver is CGO, and on Windows a `gcc` missing from the `PATH` makes Air silently serve a stale binary (MinGW/UCRT64; see [docs/INSTALL.md](docs/INSTALL.md)).
 
