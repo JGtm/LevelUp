@@ -40,6 +40,7 @@ export const DEPLOYMENT_CAPABILITY_DEFAULTS = {
   can_export_for_desktop: false,
   can_report_diagnostic: false,
   can_limit_memory: false,
+  can_regenerate_replays: false,
 } as const satisfies Partial<CapabilityMap>
 
 /** Clé d'une capacité de profil de déploiement (booléen de `capabilities`). */

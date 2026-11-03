@@ -49,6 +49,7 @@ export function desktopCapabilities(): Partial<CapabilityMap> {
     can_import_from_site: true,
     can_report_diagnostic: true,
     can_limit_memory: true,
+    can_regenerate_replays: true,
     can_update_app: true,
     can_offer_windows_download: false,
     can_use_accounts: false,

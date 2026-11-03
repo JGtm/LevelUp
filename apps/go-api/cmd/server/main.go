@@ -86,6 +86,7 @@ func main() {
 	launchScheduledRefresh(st)
 	launchParquetBackup(st)
 	bindSiteImport(st)
+	bindReplayRegen(st)
 	awaitShutdown(st)
 }
 

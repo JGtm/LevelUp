@@ -449,6 +449,7 @@ func buildCapabilities(cfg *config.AppConfig, settings map[string]interface{}) d
 		CanExportForDesktop:     dc.ExportForDesktop,
 		CanReportDiagnostic:     dc.DiagnosticReport,
 		CanLimitMemory:          dc.MemoryLimit,
+		CanRegenerateReplays:    dc.ReplayRegen,
 		Deployment:              string(cfg.Deployment),
 	}
 }

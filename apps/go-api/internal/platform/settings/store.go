@@ -125,14 +125,21 @@ type AppSettings struct {
 	// Valeurs : "msal" (défaut, Azure app) | "sisu" (Xbox natif, sans Azure app).
 	AuthProvider string `json:"auth_provider"`
 
+	// ReplayRegenPending : la file de régénération des rejeux était active (état interne du serveur, jamais un
+	// réglage de l'utilisateur ; cf. replay_regen.go).
+	ReplayRegenPending bool `json:"replay_regen_pending"`
+
 	// raw conserve tous les autres champs pour ne pas les perdre au Save
 	raw map[string]json.RawMessage
 }
 
 // Store gère la lecture/écriture de app_settings.json.
 type Store struct {
-	mu   sync.RWMutex
-	path string
+	mu sync.RWMutex
+	// writeMu sérialise les lectures-modifications-écritures du serveur lui-même (SetReplayRegenPending) : le
+	// couple Load puis Save ne tient pas mu entre ses deux temps.
+	writeMu sync.Mutex
+	path    string
 	// absent : défauts des clés absentes du fichier (WithEnforcedDefaults, WithSystemDefaults).
 	absent absentDefaults
 }

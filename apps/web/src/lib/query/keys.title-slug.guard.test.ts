@@ -171,6 +171,7 @@ const agnosticKeys = new Set<string>([
   'filmArchive', // archive des films : une par instance, tous titres confondus
   'desktopStatus', // intégration au poste : état du poste, indépendant du titre
   'dataStatus', // sauvegarde et mémoire du processus : état du poste, indépendant du titre
+  'replayRegen', // régénération des rejeux : état du poste, tous titres confondus
   'siteImport', // import depuis le site : une instance, tous titres confondus
   'groups',
   // Amis d'un profil : un ami est une PERSONNE, transverse aux titres — la même

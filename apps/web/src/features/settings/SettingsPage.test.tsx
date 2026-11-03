@@ -152,6 +152,16 @@ describe('SettingsPage', () => {
     expect(await screen.findByText('Importer depuis le site')).toBeInTheDocument()
   })
 
+  it("l'onglet « Application » porte la ligne de régénération des rejeux sous sa capacité", async () => {
+    useAppShellStore.setState({ capabilities: testCapabilities({ can_regenerate_replays: true }) })
+    vi.mocked(useRouterState).mockReturnValue({
+      location: { pathname: '/settings', search: '?tab=desktop' },
+    } as ReturnType<typeof useRouterState>)
+    renderWithProviders(<SettingsPage />)
+    expect(await screen.findByRole('tab', { name: 'Application' })).toBeInTheDocument()
+    expect(await screen.findByText('Rejeux')).toBeInTheDocument()
+  })
+
   it("l'onglet « Application » existe pour les seules données, sans l'intégration au poste", async () => {
     useAppShellStore.setState({ capabilities: testCapabilities({ can_backup_to_folder: true }) })
     vi.mocked(useRouterState).mockReturnValue({
