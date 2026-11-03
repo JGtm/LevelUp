@@ -7,7 +7,7 @@
  * _settingsShared.tsx. Ce fichier ne porte que l'orchestrateur. La Sauvegarde
  * (ops d'instance) vit désormais dans Admin · Système.
  */
-import { useState, useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
 
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -29,6 +29,8 @@ import { SiteImportPanel } from './SiteImportPanel'
 import { TitlesTab } from './TitlesTab'
 import { InterfaceCard, DiscordCard, MediaCard } from './_settingsCards'
 import { resolveSettingsTab, type SettingsTab } from './tabs'
+import { SaveStatusBadge } from './SaveStatusBadge'
+import { flashSaveStatus, useSaveFeedbackStore } from './saveFeedbackStore'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
@@ -53,8 +55,6 @@ export function SettingsPage() {
 
   // Copie éditable des réglages serveur, réalignée à chaque objet servi.
   const [localSettings, setLocalSettings] = useServerDraft(settings)
-  const [saveStatus, setSaveStatus] = useState<'saved' | 'error' | null>(null)
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const routerState = useRouterState()
   const navigate = useNavigate()
@@ -67,25 +67,14 @@ export function SettingsPage() {
   }
 
 
-  useEffect(() => {
-    return () => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
-    }
-  }, [])
+  // Un badge encore affiché ne survit pas à la page.
+  useEffect(() => () => useSaveFeedbackStore.getState().clear(), [])
 
   function handleChange<K extends keyof SettingsResponse>(field: K, value: SettingsResponse[K]) {
     setLocalSettings((prev) => ({ ...prev, [field]: value }))
     mutation.mutate({ [field]: value } as Partial<SettingsResponse>, {
-      onSuccess: () => {
-        setSaveStatus('saved')
-        if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
-        saveTimerRef.current = setTimeout(() => setSaveStatus(null), 2000)
-      },
-      onError: () => {
-        setSaveStatus('error')
-        if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
-        saveTimerRef.current = setTimeout(() => setSaveStatus(null), 4000)
-      },
+      onSuccess: () => flashSaveStatus('saved'),
+      onError: () => flashSaveStatus('error'),
     })
   }
 
@@ -103,19 +92,7 @@ export function SettingsPage() {
           {t.demoModeNotice}
         </div>
       )}
-      {saveStatus && (
-        <div className="pointer-events-none absolute right-6 top-4 z-10">
-          {saveStatus === 'saved' ? (
-            <span className="rounded-md bg-success/10 px-2 py-1 text-sm text-success shadow-sm" role="status" aria-live="polite">
-              {t.savedStatus}
-            </span>
-          ) : (
-            <span className="rounded-md bg-destructive/10 px-2 py-1 text-sm text-destructive shadow-sm" role="alert">
-              {t.errorStatus}
-            </span>
-          )}
-        </div>
-      )}
+      <SaveStatusBadge />
 
       {/* Onglets */}
       <div className="border-b border-border px-6">

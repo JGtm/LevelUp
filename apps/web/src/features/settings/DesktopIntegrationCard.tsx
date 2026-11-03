@@ -3,8 +3,9 @@
  * du jeu en cours, et les réglages qui touchent à Windows. Chaque ligne est offerte par sa capacité de
  * déploiement (`can_watch_game_process`, …) : sur le site, l'onglet n'existe pas.
  *
- * Chaque changement part tout de suite en PATCH /settings, comme le reste des Réglages. Un refus du
- * serveur arrive rédigé dans la langue de la requête et s'affiche tel quel.
+ * Chaque changement part tout de suite en PATCH /settings, comme le reste des Réglages, et se confirme par
+ * le badge d'enregistrement de la page. Un refus du serveur arrive rédigé dans la langue de la requête et
+ * s'affiche tel quel sous les réglages, en plus du badge d'échec.
  */
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
@@ -18,6 +19,7 @@ import { useSettings, useUpdateSettings } from './queries'
 import { useDesktopStatus } from './desktopIntegrationQueries'
 import { getDesktopIntegrationText, type DesktopIntegrationText } from './desktopIntegrationText'
 import { ToggleRow } from './_settingsShared'
+import { flashSaveStatus } from './saveFeedbackStore'
 
 /** Le texte de l'état de la tâche planifiée ; l'erreur dit sa cause par le code fixe du serveur. */
 function taskStatusText(t: DesktopIntegrationText, task: { state: string; error_code?: string }): string {
@@ -44,16 +46,19 @@ export function DesktopIntegrationCard() {
   const { data: settings } = useSettings()
   const { data: status } = useDesktopStatus(canWatchGame || canScheduleRefresh)
   const update = useUpdateSettings()
-  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   function save(req: UpdateSettingsRequest) {
-    setMessage(null)
+    setError(null)
     update.mutate(req, {
       onSuccess: () => {
-        setMessage({ ok: true, text: t.saved })
+        flashSaveStatus('saved')
         void qc.invalidateQueries({ queryKey: queryKeys.desktopStatus })
       },
-      onError: (err) => setMessage({ ok: false, text: apiErrorMessage(err) ?? t.saveFailed }),
+      onError: (err) => {
+        flashSaveStatus('error')
+        setError(apiErrorMessage(err) ?? t.saveFailed)
+      },
     })
   }
 
@@ -136,12 +141,9 @@ export function DesktopIntegrationCard() {
             </div>
           )}
         </fieldset>
-        {message && (
-          <p
-            role={message.ok ? 'status' : 'alert'}
-            className={`text-xs ${message.ok ? 'text-success' : 'text-destructive'}`}
-          >
-            {message.text}
+        {error && (
+          <p role="alert" className="text-xs text-destructive">
+            {error}
           </p>
         )}
       </CardContent>

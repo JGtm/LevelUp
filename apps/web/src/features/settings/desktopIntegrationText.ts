@@ -27,7 +27,6 @@ export interface DesktopIntegrationText {
   taskError: string
   taskUnknown: string
   taskErrorPath: string
-  saved: string
   saveFailed: string
 }
 
@@ -58,7 +57,6 @@ const FR: DesktopIntegrationText = {
   taskUnknown: 'Tâche planifiée : pas encore vérifiée.',
   taskErrorPath:
     "Tâche planifiée : erreur. Un dossier de LevelUp contient un caractère que la tâche ne sait pas protéger (guillemet, %, &, ^, !).",
-  saved: 'Enregistré.',
   saveFailed: "Le réglage n'a pas pu être enregistré.",
 }
 
@@ -89,7 +87,6 @@ const EN: DesktopIntegrationText = {
   taskUnknown: 'Scheduled task: not checked yet.',
   taskErrorPath:
     'Scheduled task: error. A LevelUp folder contains a character the task cannot protect (quote, %, &, ^, !).',
-  saved: 'Saved.',
   saveFailed: 'The setting could not be saved.',
 }
 
