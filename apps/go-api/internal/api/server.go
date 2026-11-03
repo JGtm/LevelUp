@@ -688,7 +688,8 @@ func NewRouter(
 	// prennent leur valeur sûre (verrouillé / sans auto-provisioning).
 	settingsStore := settings_platform.NewStore(cfg.AppSettingsPath).
 		WithEnforcedDefaults(authz.Enforced(cfg.DemoMode, cfg.AuthMode)).
-		WithSystemDefaults(cfg.SystemLocale)
+		WithSystemDefaults(cfg.SystemLocale).
+		WithAutoSyncDefault(cfg.Capabilities.AutoSyncByDefault)
 	jobsPath := cfg.RuntimePaths().JobsCachePath() // démo : sous `<démo>/runtime/` (lot B5.5)
 	jobStore := jobs_platform.NewStore(jobsPath)
 	// Amis PAR JOUEUR (data/global/player_friends.json) : remplace l'ancien réglage

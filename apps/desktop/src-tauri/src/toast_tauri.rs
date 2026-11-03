@@ -20,6 +20,8 @@ pub struct PluginNotifier {
     pub app: AppHandle,
 }
 
+/// Le plugin met la notification en file et jette l'erreur de la bibliotheque sous-jacente : `Ok` veut dire
+/// « demandee », jamais « affichee » (voir `NativeNotifier::show`).
 impl NativeNotifier for PluginNotifier {
     fn show(&mut self, toast: &Toast) -> Result<(), String> {
         self.app

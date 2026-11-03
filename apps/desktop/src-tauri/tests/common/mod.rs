@@ -65,6 +65,8 @@ pub enum Call {
     Notify(Toast),
     /// Les reglages que le serveur a annonces (L21.c).
     Settings(ShellSettings),
+    /// La machine a demande de montrer la fenetre si elle est cachee (serveur mort).
+    Reveal,
 }
 
 impl Call {
@@ -154,6 +156,9 @@ impl Host for Recorder {
     }
     fn apply_shell_settings(&mut self, settings: &ShellSettings) {
         self.push(Call::Settings(settings.clone()));
+    }
+    fn reveal_window_if_hidden(&mut self) {
+        self.push(Call::Reveal);
     }
 }
 

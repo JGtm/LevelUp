@@ -117,3 +117,46 @@ func TestKinds_ChaqueTypeEstComposeDansChaqueLangue(t *testing.T) {
 		}
 	}
 }
+
+// TestForPlayer_SeulLeJoueurLocalEstRelaye : le service de chaque profil suivi se branche sur le relais ;
+// un ami suivi qui change de palier ne produit pas de notification Windows « ton rang vient de changer ».
+func TestForPlayer_SeulLeJoueurLocalEstRelaye(t *testing.T) {
+	r := &Relay{}
+	c := &collect{}
+	r.Install(c.sink, fakeStore{cfg: settingsWith(true, "fr")})
+	local := map[string]bool{"2533274001": true}
+	r.InstallOwnerFilter(func(xuid string) bool { return local[xuid] })
+	ctx := context.Background()
+	before := observability.LoadCounter(MetricForeign)
+
+	r.ForPlayer("2533274999").Forward(ctx, notif(notifications.CategoryMatchSynced)) // un ami suivi
+	if len(c.got) != 0 {
+		t.Fatalf("un profil suivi non local ne produit aucune notification Windows : %d", len(c.got))
+	}
+	if observability.LoadCounter(MetricForeign)-before != 1 {
+		t.Error("une notification d'un autre joueur doit être comptée")
+	}
+	r.ForPlayer("2533274001").Forward(ctx, notif(notifications.CategoryMatchSynced))
+	if len(c.got) != 1 {
+		t.Fatalf("le joueur local est relayé : %d notices, attendu 1", len(c.got))
+	}
+	// Une connexion faite après le démarrage prend effet sans redémarrage : le filtre se relit.
+	local["2533274999"] = true
+	r.ForPlayer("2533274999").Forward(ctx, notif(notifications.CategoryMatchSynced))
+	if len(c.got) != 2 {
+		t.Fatalf("filtre relu à chaque notification : %d notices, attendu 2", len(c.got))
+	}
+}
+
+// TestForPlayer_SansFiltreRienNEstRelaye : le défaut est sûr, aucun joueur n'est local tant que le boot n'a
+// pas installé le filtre.
+func TestForPlayer_SansFiltreRienNEstRelaye(t *testing.T) {
+	r := &Relay{}
+	c := &collect{}
+	r.Install(c.sink, fakeStore{cfg: settingsWith(true, "fr")})
+	r.ForPlayer("2533274001").Forward(context.Background(), notif(notifications.CategoryMatchSynced))
+	if len(c.got) != 0 {
+		t.Fatalf("sans filtre : %d notices relayées", len(c.got))
+	}
+	r.ForPlayer("2533274001").Forward(context.Background(), nil)
+}

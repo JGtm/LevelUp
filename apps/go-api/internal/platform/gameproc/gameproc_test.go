@@ -57,7 +57,7 @@ func newWatcher(l Lister, clock *time.Time, syncs *[]string) *Watcher {
 		Lister:       l,
 		Mode:         NewMode(),
 		Names:        func() []string { return []string{"HaloInfinite.exe"} },
-		OnGameClosed: func(reason string) { *syncs = append(*syncs, reason) },
+		OnGameClosed: func(reason string) SyncOutcome { *syncs = append(*syncs, reason); return SyncRequested },
 		Now:          func() time.Time { return *clock },
 	}
 }
@@ -247,5 +247,110 @@ func TestWaitHeavyAllowed_AttendLaFinDeLaPartieOuLAnnulation(t *testing.T) {
 	cancel()
 	if err := m.WaitHeavyAllowed(ctx, nil); !errors.Is(err, context.Canceled) {
 		t.Fatalf("l'annulation interrompt l'attente : %v", err)
+	}
+}
+
+// TestAvantLePremierReleve_LaPorteEstFermee : détection armée, aucun relevé encore fait — on ne sait
+// pas si le jeu tourne, donc le travail lourd ne part pas ; le premier relevé, quelle qu'en soit
+// l'issue (jeu absent, panne d'énumération, réglage coupé), rouvre la porte.
+func TestAvantLePremierReleve_LaPorteEstFermee(t *testing.T) {
+	names := func() []string { return []string{"HaloInfinite.exe"} }
+	cases := []struct {
+		name    string
+		lister  Lister
+		enabled func() bool
+	}{
+		{"jeu absent", ListerFunc(func() ([]string, error) { return []string{"explorer.exe"}, nil }), nil},
+		{"énumération en panne", ListerFunc(func() ([]string, error) { return nil, errors.New("panne") }), nil},
+		{"réglage coupé", ListerFunc(func() ([]string, error) { return []string{"HaloInfinite.exe"}, nil }), func() bool { return false }},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			m := NewMode()
+			m.ExpectFirstPoll()
+			if m.HeavyWorkAllowed() {
+				t.Fatal("avant le premier relevé, le travail lourd doit être refusé")
+			}
+			w := &Watcher{Lister: c.lister, Mode: m, Names: names, Enabled: c.enabled}
+			w.Poll(context.Background())
+			if !m.HeavyWorkAllowed() {
+				t.Fatal("après le premier relevé (jeu absent), le travail lourd doit être permis")
+			}
+		})
+	}
+}
+
+// TestAvantLePremierReleve_JeuDejaOuvertResteRefuse : le jeu tourne à l'ouverture de l'application ;
+// le premier relevé le voit et la porte reste fermée, sans fenêtre où le travail lourd partirait.
+func TestAvantLePremierReleve_JeuDejaOuvertResteRefuse(t *testing.T) {
+	m := NewMode()
+	m.ExpectFirstPoll()
+	w := &Watcher{
+		Lister: ListerFunc(func() ([]string, error) { return []string{"HaloInfinite.exe"}, nil }),
+		Mode:   m,
+		Names:  func() []string { return []string{"HaloInfinite.exe"} },
+	}
+	w.Poll(context.Background())
+	if m.HeavyWorkAllowed() {
+		t.Fatal("jeu déjà ouvert : le travail lourd doit rester refusé")
+	}
+}
+
+func TestModeNil_ExpectFirstPollSansEffet(t *testing.T) {
+	var m *Mode
+	m.ExpectFirstPoll()
+	if !m.HeavyWorkAllowed() {
+		t.Fatal("un mode nil permet tout")
+	}
+}
+
+// TestFinDePartie_CompteursSelonLIssueDeLaDemande : « déclenchée » ne se compte et ne se dit que si une
+// synchronisation va avoir lieu ; auto-sync coupée = compteur « ignorée », et l'anti-rebond ne
+// s'arme pas sur une demande qui n'a rien lancé.
+func TestFinDePartie_CompteursSelonLIssueDeLaDemande(t *testing.T) {
+	ctx := context.Background()
+	clock := time.Date(2026, 11, 2, 20, 0, 0, 0, time.UTC)
+	outcome := SyncDisabled
+	calls := 0
+	run, off := []string{"HaloInfinite.exe"}, []string{"explorer.exe"}
+	w := &Watcher{
+		Lister: &scriptedLister{steps: [][]string{run, off, run, off, run, off}},
+		Mode:   NewMode(),
+		Names:  func() []string { return []string{"HaloInfinite.exe"} },
+		OnGameClosed: func(string) SyncOutcome {
+			calls++
+			return outcome
+		},
+		Now: func() time.Time { return clock },
+	}
+	trig := observability.LoadCounter(MetricSyncTriggered)
+	skip := observability.LoadCounter(MetricSyncSkipped)
+
+	w.Poll(ctx) // lancé
+	w.Poll(ctx) // fermé, auto-sync coupée
+	if d := observability.LoadCounter(MetricSyncTriggered) - trig; d != 0 {
+		t.Fatalf("auto-sync coupée : aucune synchronisation déclenchée, compteur +%d", d)
+	}
+	if d := observability.LoadCounter(MetricSyncSkipped) - skip; d != 1 {
+		t.Fatalf("auto-sync coupée : compteur « ignorée » +%d, attendu +1", d)
+	}
+	// Réglage rallumé 5 s plus tard : pas d'anti-rebond hérité d'une demande qui n'a rien lancé.
+	outcome = SyncRequested
+	clock = clock.Add(5 * time.Second)
+	w.Poll(ctx)
+	w.Poll(ctx)
+	if calls != 2 {
+		t.Fatalf("la seconde fermeture doit appeler la demande (appels=%d)", calls)
+	}
+	if d := observability.LoadCounter(MetricSyncTriggered) - trig; d != 1 {
+		t.Fatalf("synchronisation lancée : compteur +%d, attendu +1", d)
+	}
+	// Demande couverte par une autre déjà en attente : ni « déclenchée » ni « ignorée ».
+	outcome = SyncCovered
+	clock = clock.Add(2 * DefaultDebounce)
+	w.Poll(ctx)
+	w.Poll(ctx)
+	if d := observability.LoadCounter(MetricSyncTriggered) - trig; d != 1 {
+		t.Fatalf("demande couverte : le compteur ne bouge pas (+%d)", d)
 	}
 }

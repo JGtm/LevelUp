@@ -49,7 +49,7 @@ func launchScheduledRefresh(st *bootState) {
 		runScheduledRefreshLoop(ctx, st.settingsStore, newRefreshReconciler(mgr, obs), nil, shellSettingsEvery)
 	}()
 	slog.InfoContext(ctx, "schedtask: tâche planifiée refresh-only armée (réglage scheduled_refresh)",
-		"tache", schedtask.TaskName, "periode", schedtask.Interval)
+		"tache", mgr.TaskName(), "periode", schedtask.Interval)
 }
 
 // refreshReconciler ramène la tâche planifiée à l'état que le réglage demande.
@@ -65,9 +65,10 @@ func newRefreshReconciler(mgr taskManager, obs *schedtask.Observed) *refreshReco
 
 // reconcile traite la valeur voulue du réglage.
 //
-// Au démarrage (première valeur) elle VÉRIFIE seulement : réglage actif et tâche absente, la tâche est posée ;
-// réglage coupé et tâche présente (reste d'une installation précédente), elle est retirée ; sinon rien. Ensuite,
-// chaque CHANGEMENT du réglage pose ou retire la tâche. Une valeur déjà traitée ne refait rien : un échec n'est
+// Au démarrage (première valeur), réglage actif : la tâche est TOUJOURS réécrite (`/F`, un seul appel), présente
+// ou non : une réinstallation dans un autre dossier ou une racine changée laisserait sinon une tâche périmée
+// affichée « présente » ; réglage coupé et tâche présente (reste d'une installation précédente), elle est
+// retirée ; réglage coupé et tâche absente, rien. Ensuite, chaque CHANGEMENT du réglage pose ou retire la tâche. Une valeur déjà traitée ne refait rien : un échec n'est
 // pas retenté à chaque tic (le réglage qui bascule, ou le prochain démarrage, retente), il est journalisé et
 // exposé.
 func (r *refreshReconciler) reconcile(ctx context.Context, want bool) {
@@ -82,7 +83,7 @@ func (r *refreshReconciler) reconcile(ctx context.Context, want bool) {
 		r.obs.Set(schedtask.StateError, schedtask.ErrorCodeSchtasks)
 		return
 	}
-	if first && ((want && state == schedtask.StatePresent) || (!want && state == schedtask.StateAbsent)) {
+	if first && !want && state == schedtask.StateAbsent {
 		r.obs.Set(state, "")
 		return
 	}

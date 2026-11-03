@@ -3,12 +3,14 @@
 //! sont testees dans la bibliotheque ; ici ne reste que ce qui touche tauri.
 
 use std::sync::Arc;
+use std::sync::atomic::Ordering;
 
 use levelup_desktop::autostart::{self, AutostartOutcome};
-use levelup_desktop::catalogue;
+use levelup_desktop::launch::{self, InitialWindow};
 use levelup_desktop::logfile::LogSink;
 use levelup_desktop::shell_settings::{CloseAction, ShellAction, ShellSettings, ShellState, TrayChange, TrayCommand};
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Manager, WebviewWindow};
+use tauri_plugin_window_state::{StateFlags, WindowExt};
 
 use crate::autostart_tauri::PluginAutostart;
 use crate::{MAIN_WINDOW, Shell, begin_close, focus_main, report, tray_tauri};
@@ -28,6 +30,17 @@ pub fn hide_main(app: &AppHandle) {
             Ok(()) => report(log.as_deref(), "event=window_hidden reason=close_to_tray"),
             Err(e) => report(log.as_deref(), &format!("event=window_hide_failed err={e}")),
         }
+    }
+}
+
+/// Montre la fenetre principale si elle est cachee (zone de notification) ; une fenetre deja visible n'est pas
+/// touchee (pas de vol de focus). Une visibilite illisible vaut « cachee » : mieux vaut montrer que rester muet.
+pub fn reveal_if_hidden(app: &AppHandle) {
+    let hidden = app
+        .get_webview_window(MAIN_WINDOW)
+        .is_some_and(|w| !matches!(w.is_visible(), Ok(true)));
+    if hidden {
+        focus_main(app);
     }
 }
 
@@ -65,15 +78,6 @@ pub fn on_tray_command(app: &AppHandle, command: TrayCommand) {
     }
 }
 
-/// La langue des libelles de la coquille : celle que le serveur annonce, sinon celle du systeme.
-fn tray_locale(announced: &str) -> String {
-    if announced.is_empty() {
-        catalogue::resolve_locale(&sys_locale::get_locale().unwrap_or_default()).to_string()
-    } else {
-        announced.to_string()
-    }
-}
-
 /// Execute sur la vraie fenetre ce que `ShellState` decide des reglages que le serveur annonce : l'icone de
 /// la zone de notification et l'entree de demarrage avec Windows.
 pub fn apply_shell_settings(app: &AppHandle, settings: &ShellSettings) {
@@ -85,7 +89,7 @@ pub fn apply_shell_settings(app: &AppHandle, settings: &ShellSettings) {
         .lock()
         .unwrap_or_else(|p| p.into_inner())
         .apply_settings(settings.clone());
-    execute_tray_change(app, change, &tray_locale(&settings.locale));
+    dispatch_tray_change(app, change);
     apply_autostart(app, settings.start_with_windows);
 }
 
@@ -98,6 +102,8 @@ fn apply_autostart(app: &AppHandle, wanted: bool) {
         AutostartOutcome::Disabled => "event=autostart outcome=disabled".to_string(),
         // L'etat voulu est deja l'etat reel : rien a dire a chaque annonce des reglages.
         AutostartOutcome::Unchanged => return,
+        // Le choix de l'utilisateur (gestionnaire des taches) prime sur le reglage : rien n'est reecrit.
+        AutostartOutcome::LeftDisabled => "event=autostart outcome=left_disabled reason=disabled_by_user".to_string(),
         AutostartOutcome::Failed(reason) => format!("event=autostart outcome=failed err={reason}"),
     };
     report(log.as_deref(), &text);
@@ -109,7 +115,7 @@ pub fn start_minimized(app: &AppHandle) {
         return;
     };
     let change = shell.shell.lock().unwrap_or_else(|p| p.into_inner()).start_minimized();
-    execute_tray_change(app, change, &tray_locale(""));
+    dispatch_tray_change(app, change);
 }
 
 /// La fenetre vient d'etre montree. Apres un demarrage reduit, l'icone se retire si `close_to_tray` est coupe ;
@@ -123,23 +129,28 @@ pub fn window_shown(app: &AppHandle) {
     if change == TrayChange::Keep {
         return;
     }
+    dispatch_tray_change(app, change);
+}
+
+/// Confie une decision sur l'icone au fil principal, SEUL fil qui peut la creer ou la detruire : la fenetre
+/// cachee de `tray-icon` et son sous-classement appartiennent au fil createur, et leur destruction depuis un
+/// autre fil echoue (fenetre qui fuit, icone fantome apres un redemarrage de l'Explorateur). L'appelant peut
+/// etre n'importe quel fil (superviseur, gestionnaire de fenetre, `setup`) ; l'execution part apres lui,
+/// ce qui retire aussi l'icone apres le gestionnaire qui vient de montrer la fenetre.
+fn dispatch_tray_change(app: &AppHandle, change: TrayChange) {
+    if change == TrayChange::Keep {
+        return;
+    }
     let deferred = app.clone();
-    let locale = tray_locale(
-        &shell
-            .shell
-            .lock()
-            .unwrap_or_else(|p| p.into_inner())
-            .settings()
-            .locale
-            .clone(),
-    );
-    if let Err(e) = app.run_on_main_thread(move || execute_tray_change(&deferred, change, &locale)) {
+    if let Err(e) = app.run_on_main_thread(move || execute_tray_change(&deferred, change)) {
         report(shell_log(app).as_deref(), &format!("event=tray_change_failed err={e}"));
     }
 }
 
-/// Execute une decision sur l'icone et rend compte a l'etat.
-fn execute_tray_change(app: &AppHandle, change: TrayChange, locale: &str) {
+/// Execute une decision sur l'icone et rend compte a l'etat. FIL PRINCIPAL SEULEMENT (voir
+/// [`dispatch_tray_change`]). La langue des libelles se lit ICI, a l'execution : c'est celle des reglages
+/// les plus recents.
+fn execute_tray_change(app: &AppHandle, change: TrayChange) {
     let Some(shell) = app.try_state::<Shell>() else {
         return;
     };
@@ -147,10 +158,11 @@ fn execute_tray_change(app: &AppHandle, change: TrayChange, locale: &str) {
     let state = |f: &dyn Fn(&mut ShellState)| f(&mut shell.shell.lock().unwrap_or_else(|p| p.into_inner()));
     match change {
         TrayChange::Create | TrayChange::Recreate => {
+            let locale = shell.shell.lock().unwrap_or_else(|p| p.into_inner()).tray_locale();
             tray_tauri::remove(app);
             match tray_tauri::create(app, locale) {
                 Ok(()) => {
-                    state(&ShellState::tray_created);
+                    state(&|s| s.tray_created(locale));
                     report(log.as_deref(), &format!("event=tray_created locale={locale}"));
                 }
                 Err(e) => {
@@ -167,5 +179,28 @@ fn execute_tray_change(app: &AppHandle, change: TrayChange, locale: &str) {
             focus_main(app);
         }
         TrayChange::Keep => {}
+    }
+}
+
+/// Ce que la memoire de fenetre restaure : tout sauf la visibilite (decidee par la coquille) ; et, quand la
+/// fenetre demarre cachee, sauf l'etat maximise, que `maximize()` afficherait (`launch::restores_maximized_at_start`).
+pub fn window_state_flags(initial: InitialWindow) -> StateFlags {
+    let flags = StateFlags::all() & !StateFlags::VISIBLE;
+    if launch::restores_maximized_at_start(initial) {
+        flags
+    } else {
+        flags & !StateFlags::MAXIMIZED
+    }
+}
+
+/// Apres un demarrage cache, restaure l'etat maximise que la memoire de fenetre n'a pas restaure au lancement
+/// (une seule fois, juste avant que la fenetre soit montree). Sans effet si la fenetre n'etait pas maximisee.
+pub fn restore_maximized_if_pending(app: &AppHandle, window: &WebviewWindow) {
+    let pending = app
+        .try_state::<Shell>()
+        .is_some_and(|s| s.restore_maximized_on_show.swap(false, Ordering::SeqCst));
+    if pending && let Err(e) = window.restore_state(StateFlags::MAXIMIZED) {
+        let log = shell_log(app);
+        report(log.as_deref(), &format!("event=restore_maximized_failed err={e}"));
     }
 }

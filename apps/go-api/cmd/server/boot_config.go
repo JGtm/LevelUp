@@ -35,6 +35,7 @@ import (
 	"levelup/go-api/internal/platform/auth/tokencipher"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/friendstore"
+	"levelup/go-api/internal/platform/gameproc"
 	"levelup/go-api/internal/platform/groupstore"
 	"levelup/go-api/internal/platform/instancelock"
 	"levelup/go-api/internal/platform/netguard"
@@ -90,6 +91,7 @@ type bootState struct {
 
 	watcherDaemon   *watcher.Daemon // nil : watcher désactivé (réglage ou démo)
 	watcherCtrl     watcher.DaemonController
+	gameWatcher     *gameproc.Watcher // nil : détection du jeu absente du profil
 	healthScheduler *scheduler.HealthScheduler
 	backupSched     *duckdbbackup.Scheduler
 	reg             *wire.ServiceRegistry // nil jusqu'à la construction du routeur

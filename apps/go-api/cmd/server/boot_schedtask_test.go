@@ -65,25 +65,36 @@ func newReconciler(f *fakeTasks) (*refreshReconciler, *schedtask.Observed) {
 	return newRefreshReconciler(f, obs), obs
 }
 
-// TestRefreshReconciler_DemarrageVerifieSansEcrireQuandToutEstEnOrdre : réglage coupé sans tâche (le défaut),
-// ou réglage actif avec sa tâche : le démarrage lit et n'écrit rien.
-func TestRefreshReconciler_DemarrageVerifieSansEcrireQuandToutEstEnOrdre(t *testing.T) {
-	for _, c := range []struct {
-		want, present bool
-		state         schedtask.State
-	}{
-		{false, false, schedtask.StateAbsent},
-		{true, true, schedtask.StatePresent},
-	} {
-		f := &fakeTasks{present: c.present}
-		r, obs := newReconciler(f)
-		r.reconcile(context.Background(), c.want)
-		if len(f.writes()) != 0 {
-			t.Errorf("voulue=%v présente=%v : écritures %v, attendu aucune", c.want, c.present, f.writes())
-		}
-		if s, code := obs.Get(); s != c.state || code != "" {
-			t.Errorf("voulue=%v présente=%v : état observé %q %q, attendu %q", c.want, c.present, s, code, c.state)
-		}
+// TestRefreshReconciler_DemarrageReglageCoupeSansTacheNEcritRien : réglage coupé sans tâche (le défaut) : le
+// démarrage lit et n'écrit rien.
+func TestRefreshReconciler_DemarrageReglageCoupeSansTacheNEcritRien(t *testing.T) {
+	f := &fakeTasks{present: false}
+	r, obs := newReconciler(f)
+	r.reconcile(context.Background(), false)
+	if len(f.writes()) != 0 {
+		t.Errorf("écritures %v, attendu aucune", f.writes())
+	}
+	if s, code := obs.Get(); s != schedtask.StateAbsent || code != "" {
+		t.Errorf("état observé %q %q, attendu absent", s, code)
+	}
+}
+
+// TestRefreshReconciler_DemarrageReglageActifReecritToujoursLaTache : réglage actif et tâche DÉJÀ listée : elle est
+// réécrite (un seul Ensure, `/F`), car une réinstallation dans un autre dossier ou une racine changée
+// laisserait une tâche périmée affichée « présente ».
+func TestRefreshReconciler_DemarrageReglageActifReecritToujoursLaTache(t *testing.T) {
+	f := &fakeTasks{present: true}
+	r, obs := newReconciler(f)
+	r.reconcile(context.Background(), true)
+	if !reflect.DeepEqual(f.writes(), []string{"ensure"}) {
+		t.Fatalf("écritures = %v, attendu un seul ensure", f.writes())
+	}
+	if s, _ := obs.Get(); s != schedtask.StatePresent {
+		t.Errorf("état observé = %q, attendu present", s)
+	}
+	r.reconcile(context.Background(), true)
+	if !reflect.DeepEqual(f.writes(), []string{"ensure"}) {
+		t.Fatalf("une valeur déjà traitée ne réécrit pas : %v", f.writes())
 	}
 }
 

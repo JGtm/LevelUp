@@ -37,7 +37,6 @@ use tauri::webview::{DownloadEvent, NewWindowResponse};
 use tauri::window::Color;
 use tauri::{AppHandle, Manager, RunEvent, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent};
 use tauri_plugin_opener::OpenerExt;
-use tauri_plugin_window_state::StateFlags;
 use toast_tauri::{PluginNotifier, window_state};
 use update_setup::{UpdateWiring, request_update_check, spawn_update_check};
 use update_tauri::DialogNotifier;
@@ -58,6 +57,9 @@ struct Shell {
     exiting: Arc<AtomicBool>,
     /// Journal, pour les ecrans montres avant que le superviseur existe.
     log: Mutex<Option<Arc<LogSink>>>,
+    /// L'etat maximise de la fenetre n'a pas ete restaure au lancement (demarrage cache) : il l'est a la premiere
+    /// montre de la fenetre (`launch::restores_maximized_when_first_shown`).
+    restore_maximized_on_show: AtomicBool,
     /// Les reglages annonces par le serveur et l'icone de la zone de notification : ce qui decide ce que
     /// fait la croix (`levelup_desktop::shell_settings`).
     shell: Mutex<ShellState>,
@@ -79,7 +81,7 @@ fn main() {
         // ne la memorise ni ne la restaure, sinon il remontrerait une fenetre cachee au lancement.
         .plugin(
             tauri_plugin_window_state::Builder::default()
-                .with_state_flags(StateFlags::all() & !StateFlags::VISIBLE)
+                .with_state_flags(shell_tauri::window_state_flags(initial))
                 .build(),
         )
         // Entree de demarrage avec Windows (L21.d) : par utilisateur, jamais ecrite tant que le reglage
@@ -167,6 +169,7 @@ fn focus_main(app: &AppHandle) {
     if let Some(window) = app.get_webview_window(MAIN_WINDOW) {
         // Mettre au premier plan est un effort : une fenetre deja la ne signale rien.
         let _ = window.unminimize();
+        shell_tauri::restore_maximized_if_pending(app, &window);
         let _ = window.show();
         let _ = window.set_focus();
         // Apres un demarrage reduit, montrer la fenetre peut retirer l'icone de la zone de notification.
@@ -213,8 +216,11 @@ fn setup(app: &AppHandle, initial: InitialWindow) {
     app.manage(Shell {
         closer: Mutex::new(None),
         exiting: exiting_flag.clone(),
+        restore_maximized_on_show: AtomicBool::new(launch::restores_maximized_when_first_shown(initial)),
         log: Mutex::new(log.clone()),
-        shell: Mutex::new(ShellState::new()),
+        shell: Mutex::new(ShellState::with_system_locale(
+            sys_locale::get_locale().unwrap_or_default(),
+        )),
     });
 
     if let Err(e) = create_window(app, port.clone(), log.clone(), initial) {
@@ -231,6 +237,8 @@ fn setup(app: &AppHandle, initial: InitialWindow) {
     let started = prepared.and_then(|p| start_server(app, p, port, exiting_flag, update, updater_enabled));
     if let Err(e) = started {
         report(log.as_deref(), &format!("event=start_failed err={e}"));
+        // Demarrage reduit : la fenetre est cachee, l'ecran d'arret doit etre vu.
+        shell_tauri::reveal_if_hidden(app);
         show(app, Screen::Stopped);
     }
 }
@@ -429,6 +437,10 @@ impl Host for TauriHost {
 
     fn apply_shell_settings(&mut self, settings: &ShellSettings) {
         shell_tauri::apply_shell_settings(&self.app, settings);
+    }
+
+    fn reveal_window_if_hidden(&mut self) {
+        shell_tauri::reveal_if_hidden(&self.app);
     }
 }
 

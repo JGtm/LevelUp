@@ -54,6 +54,9 @@ pub trait Host: Send + 'static {
     /// Appliquer les reglages annonces par le serveur (icone de la zone de notification, croix) ; l'hote
     /// execute ce que decide `shell_settings::ShellState`.
     fn apply_shell_settings(&mut self, settings: &ShellSettings);
+    /// Montrer la fenetre principale si elle est cachee (zone de notification) : l'ecran terminal qui
+    /// suit un serveur mort serait sinon affiche sur une fenetre que personne ne voit.
+    fn reveal_window_if_hidden(&mut self);
 }
 
 pub struct ShellConfig {
@@ -280,6 +283,11 @@ impl Effects<'_> {
                 );
                 self.host.apply_shell_settings(&settings);
             }
+            Action::RevealWindow => {
+                log_shell(log, "event=reveal_window reason=server_dead");
+                self.host.reveal_window_if_hidden();
+            }
+            Action::SyncSkipped { phase } => log_shell(log, &format!("event=sync_skipped phase={phase}")),
             Action::SendSync => match self.sidecar.send_command(sidecar::COMMAND_SYNC) {
                 Ok(true) => log_shell(log, "event=sync_requested"),
                 Ok(false) => log_shell(log, "event=sync_skipped reason=stdin_closed"),

@@ -75,10 +75,12 @@ func notifServiceFor(pdb *duckdb.PlayerDB, appSettingsPath string) *notification
 		AppBaseURL:      publicBaseURL(),
 	})
 	// Le relais natif (notifications Windows de l'application de bureau) se branche sur le même point :
-	// inerte tant que le boot du profil desktop n'a pas installé son sink (native.Default().Install).
+	// inerte tant que le boot du profil desktop n'a pas installé son sink (native.Default().Install), et
+	// limité au joueur LOCAL : le service de chaque profil suivi s'y branche, mais seul le joueur connecté
+	// sur la machine voit ses changements de rang devenir des notifications Windows.
 	svc := notifications.NewService(repo,
 		notifications.WithWriterAcquirer(acquirer),
-		notifications.WithExternalForwarder(notifications.Fanout(forwarder, native.Default())))
+		notifications.WithExternalForwarder(notifications.Fanout(forwarder, native.Default().ForPlayer(pdb.XUID))))
 	// LoadOrStore évite la race : si un autre goroutine a inséré
 	// entre Load et Store, on retourne celle-là.
 	if existing, loaded := notifServicesByXUID.LoadOrStore(pdb.XUID, svc); loaded {

@@ -457,6 +457,10 @@ impl<H: Host> Host for UpdateHost<H> {
     fn apply_shell_settings(&mut self, settings: &ShellSettings) {
         self.inner.apply_shell_settings(settings);
     }
+
+    fn reveal_window_if_hidden(&mut self) {
+        self.inner.reveal_window_if_hidden();
+    }
 }
 
 pub use crate::updater_decision::{

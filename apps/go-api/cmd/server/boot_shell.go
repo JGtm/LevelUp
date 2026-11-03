@@ -6,6 +6,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sync/atomic"
@@ -13,6 +14,7 @@ import (
 
 	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/notifications/native"
+	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/scheduler"
 )
@@ -28,6 +30,7 @@ func launchShellIntegration(st *bootState) {
 		return
 	}
 	installNativeRelay(native.Default(), st.events, st.settingsStore)
+	native.Default().InstallOwnerFilter(localPlayerFilter(auth.NewMultiUserTokenStore(st.cfg.WatcherTokensDir())))
 	if st.autoScheduler != nil {
 		st.bootSrv.commands.Handle(stdinCommandSync, newManualSync(st, st.autoScheduler))
 	}
@@ -50,6 +53,27 @@ func installNativeRelay(relay *native.Relay, w notificationWriter, store native.
 	relay.Install(func(n native.Notice) {
 		w.Notification(n.Title, n.Body, string(n.Kind))
 	}, store)
+}
+
+// tokenLoader : la lecture des jetons d'un joueur (satisfaite par *auth.MultiUserTokenStore).
+type tokenLoader interface {
+	Load(xuid string) (*auth.UserTokens, error)
+}
+
+// localPlayerFilter rend le filtre du joueur local du relais natif : un joueur est local quand le magasin
+// de jetons porte un jeton de rafraîchissement pour son xuid, c'est-à-dire quand l'utilisateur de la machine
+// s'est connecté avec ce compte. Un profil suivi sans jeton (un ami, un adversaire) ne l'est pas.
+func localPlayerFilter(store tokenLoader) native.OwnerFilter {
+	return func(xuid string) bool {
+		tokens, err := store.Load(xuid)
+		if err != nil {
+			if !errors.Is(err, auth.ErrUserTokensNotFound) {
+				slog.Warn("shell: jetons du joueur illisibles, notification native non relayée", "xuid", xuid, "err", err)
+			}
+			return false
+		}
+		return tokens != nil && tokens.OAuthRefreshToken != ""
+	}
 }
 
 // shellSettings : ce que la coquille lit des réglages (événement `shell_settings`) : les trois réglages

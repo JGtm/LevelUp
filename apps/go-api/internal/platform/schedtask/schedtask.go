@@ -15,6 +15,8 @@ package schedtask
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -24,8 +26,18 @@ import (
 	"time"
 )
 
-// TaskName : le nom de la tâche, dans le dossier LevelUp du planificateur.
-const TaskName = `LevelUp\Refresh`
+// TaskNamePrefix : le début du nom de la tâche, dans le dossier LevelUp du planificateur. Le nom complet
+// porte l'empreinte de la racine des données ([TaskNameFor]).
+const TaskNamePrefix = `LevelUp\Refresh`
+
+// TaskNameFor rend le nom de la tâche d'une racine de données : le préfixe et huit chiffres hexadécimaux
+// de l'empreinte de la racine (chemin nettoyé, casse ignorée : le système de fichiers de Windows l'ignore).
+// Un serveur lancé sur une autre racine (test, développement, seconde installation) pose, interroge et
+// supprime SA tâche, jamais celle de l'application de l'utilisateur.
+func TaskNameFor(dataRoot string) string {
+	sum := sha256.Sum256([]byte(strings.ToLower(filepath.Clean(dataRoot))))
+	return TaskNamePrefix + "-" + hex.EncodeToString(sum[:4])
+}
 
 // Interval : la période de la tâche.
 const Interval = 6 * time.Hour
@@ -70,7 +82,7 @@ type Manager struct {
 	Runner Runner
 	// Spec : ce que la tâche lance.
 	Spec Spec
-	// Name : le nom de la tâche ; vide = [TaskName].
+	// Name : le nom de la tâche ; vide = [TaskNameFor] de la racine des données du Spec.
 	Name string
 	// Now : l'horloge du premier déclenchement ; nil = time.Now.
 	Now func() time.Time
@@ -82,8 +94,11 @@ func (m *Manager) name() string {
 	if m.Name != "" {
 		return m.Name
 	}
-	return TaskName
+	return TaskNameFor(m.Spec.DataRoot)
 }
+
+// TaskName rend le nom de la tâche que ce gestionnaire pose, interroge et supprime.
+func (m *Manager) TaskName() string { return m.name() }
 
 func (m *Manager) now() time.Time {
 	if m.Now != nil {

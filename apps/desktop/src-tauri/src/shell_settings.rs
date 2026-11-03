@@ -9,7 +9,26 @@
 //! Invariant : la fenetre n'est jamais cachee sans que l'icone, seul moyen de la rouvrir, existe. Si la creation
 //! de l'icone echoue, la croix quitte.
 
+use std::sync::atomic::{AtomicBool, Ordering};
+
 use crate::catalogue;
+
+/// Une garde « une seule fois » : `claim` rend vrai au premier appel, faux ensuite. Sert a un
+/// enregistrement qui ne doit jamais etre repete (un gestionnaire d'evenements global de l'application
+/// que chaque creation d'icone ajouterait de nouveau).
+#[derive(Debug, Default)]
+pub struct RegisterOnce(AtomicBool);
+
+impl RegisterOnce {
+    pub const fn new() -> Self {
+        Self(AtomicBool::new(false))
+    }
+
+    /// Vrai pour le premier appelant seulement : c'est lui qui enregistre.
+    pub fn claim(&self) -> bool {
+        !self.0.swap(true, Ordering::SeqCst)
+    }
+}
 
 /// Identifiants des entrees du menu de l'icone.
 pub const MENU_OPEN: &str = "open";
@@ -104,8 +123,10 @@ pub struct ShellState {
     settings: ShellSettings,
     /// L'icone existe vraiment (la creation a reussi).
     tray_present: bool,
-    /// Langue des libelles de l'icone existante.
+    /// Langue (resolue, celle du catalogue) des libelles de l'icone existante.
     tray_locale: String,
+    /// Langue du systeme, que prennent les libelles quand le serveur n'annonce aucune langue.
+    system_locale: String,
     /// Des reglages ont ete recus au moins une fois.
     configured: bool,
     /// La fenetre a ete cachee au lancement (demarrage avec Windows, `--minimized`) et n'a pas encore ete
@@ -116,6 +137,27 @@ pub struct ShellState {
 impl ShellState {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Un etat qui connait la langue du systeme (etiquette BCP-47 ou POSIX) : tant que le serveur n'annonce
+    /// aucune langue, les libelles de l'icone la prennent.
+    pub fn with_system_locale(system_locale: impl Into<String>) -> Self {
+        Self {
+            system_locale: system_locale.into(),
+            ..Self::default()
+        }
+    }
+
+    /// La langue (du catalogue) que doivent porter les libelles de l'icone : celle que le serveur annonce,
+    /// sinon celle du systeme. C'est la valeur RESOLUE qui se compare a celle de l'icone existante : une
+    /// icone creee dans la langue du systeme n'est pas refaite quand le serveur annonce la meme langue.
+    pub fn tray_locale(&self) -> &'static str {
+        let tag = if self.settings.locale.is_empty() {
+            &self.system_locale
+        } else {
+            &self.settings.locale
+        };
+        catalogue::resolve_locale(tag)
     }
 
     /// Les reglages courants (ceux du dernier `shell_settings`).
@@ -137,7 +179,7 @@ impl ShellState {
     fn tray_change(&self) -> TrayChange {
         match (self.tray_wanted(), self.tray_present) {
             (true, false) => TrayChange::Create,
-            (true, true) if self.tray_locale != self.settings.locale => TrayChange::Recreate,
+            (true, true) if self.tray_locale != self.tray_locale() => TrayChange::Recreate,
             (false, true) => TrayChange::Remove,
             _ => TrayChange::Keep,
         }
@@ -168,10 +210,11 @@ impl ShellState {
         self.tray_change()
     }
 
-    /// L'icone a ete creee avec les libelles de la langue courante.
-    pub fn tray_created(&mut self) {
+    /// L'icone a ete creee avec les libelles de `locale` (la valeur de [`ShellState::tray_locale`] lue
+    /// avant la creation : les reglages ont pu changer entre-temps).
+    pub fn tray_created(&mut self, locale: &str) {
         self.tray_present = true;
-        self.tray_locale = self.settings.locale.clone();
+        self.tray_locale = catalogue::resolve_locale(locale).to_string();
     }
 
     /// L'icone a ete retiree.
@@ -237,7 +280,7 @@ mod tests {
         assert_eq!(state.apply_settings(settings(true, "fr")), TrayChange::Create);
         // Avant que l'icone existe vraiment, la croix quitte : jamais de fenetre cachee sans icone.
         assert_eq!(state.on_close_requested(), CloseAction::Quit);
-        state.tray_created();
+        state.tray_created(state.tray_locale());
         assert_eq!(state.on_close_requested(), CloseAction::HideToTray);
         // La croix cache : l'etat ne change pas, le serveur continue (aucune action d'arret).
         assert_eq!(state.on_close_requested(), CloseAction::HideToTray);
@@ -258,7 +301,7 @@ mod tests {
     fn couper_le_reglage_retire_l_icone_et_la_croix_quitte_de_nouveau() {
         let mut state = ShellState::new();
         state.apply_settings(settings(true, "fr"));
-        state.tray_created();
+        state.tray_created(state.tray_locale());
         assert_eq!(state.apply_settings(settings(false, "fr")), TrayChange::Remove);
         // Tant que l'icone n'est pas retiree, le reglage coupe decide deja : la croix quitte.
         assert_eq!(state.on_close_requested(), CloseAction::Quit);
@@ -271,31 +314,65 @@ mod tests {
     fn un_envoi_identique_ne_fait_rien_et_un_changement_de_langue_refait_l_icone() {
         let mut state = ShellState::new();
         state.apply_settings(settings(true, "fr"));
-        state.tray_created();
+        state.tray_created(state.tray_locale());
         assert_eq!(state.apply_settings(settings(true, "fr")), TrayChange::Keep);
         assert_eq!(state.apply_settings(settings(true, "en")), TrayChange::Recreate);
-        state.tray_created();
+        state.tray_created(state.tray_locale());
         assert_eq!(state.apply_settings(settings(true, "en")), TrayChange::Keep);
     }
 
     #[test]
     fn un_demarrage_reduit_cree_l_icone_avant_meme_les_reglages_du_serveur() {
-        let mut state = ShellState::new();
+        let mut state = ShellState::with_system_locale("fr-FR");
         assert_eq!(state.start_minimized(), TrayChange::Create);
-        state.tray_created();
-        // Les reglages arrivent, `close_to_tray` coupe : la fenetre est toujours cachee, l'icone reste.
-        assert_eq!(state.apply_settings(settings(false, "fr")), TrayChange::Recreate); // langue du joueur
-        state.tray_created();
+        assert_eq!(state.tray_locale(), "fr", "avant les reglages, la langue du systeme");
+        state.tray_created(state.tray_locale());
+        // Les reglages arrivent dans la meme langue (le serveur annonce celle du joueur, ici le francais) :
+        // l'icone n'est PAS refaite pour rien (refaire l'icone hors de son fil la fait fuir, et la fait clignoter).
         assert_eq!(state.apply_settings(settings(false, "fr")), TrayChange::Keep);
+        assert_eq!(state.apply_settings(settings(false, "")), TrayChange::Keep);
         // La croix quitte (reglage coupe) : la fenetre cachee ne se ferme pas, elle est rouverte par l'icone.
         assert_eq!(state.on_close_requested(), CloseAction::Quit);
+    }
+
+    #[test]
+    fn un_demarrage_reduit_refait_l_icone_seulement_si_la_langue_du_joueur_differe() {
+        let mut state = ShellState::with_system_locale("fr-FR");
+        state.start_minimized();
+        state.tray_created(state.tray_locale());
+        assert_eq!(state.apply_settings(settings(false, "en")), TrayChange::Recreate);
+        state.tray_created(state.tray_locale());
+        assert_eq!(state.apply_settings(settings(false, "en")), TrayChange::Keep);
+    }
+
+    #[test]
+    fn la_langue_est_comparee_resolue_pas_en_texte_brut() {
+        let mut state = ShellState::with_system_locale("en_GB");
+        state.apply_settings(settings(true, ""));
+        state.tray_created(state.tray_locale());
+        // `en-US` et la langue `en` du systeme sont la meme langue du catalogue.
+        assert_eq!(state.apply_settings(settings(true, "en-US")), TrayChange::Keep);
+        // Une langue inconnue retombe sur la langue par defaut, comme les libelles eux-memes.
+        assert_eq!(state.tray_locale(), "en");
+        assert_eq!(
+            ShellState::with_system_locale("zz-ZZ").tray_locale(),
+            catalogue::DEFAULT_LOCALE
+        );
+    }
+
+    #[test]
+    fn la_garde_une_seule_fois_n_autorise_que_le_premier_appelant() {
+        let once = RegisterOnce::new();
+        assert!(once.claim());
+        assert!(!once.claim());
+        assert!(!once.claim());
     }
 
     #[test]
     fn la_fenetre_montree_apres_un_demarrage_reduit_retire_l_icone_si_le_reglage_est_coupe() {
         let mut state = ShellState::new();
         state.start_minimized();
-        state.tray_created();
+        state.tray_created(state.tray_locale());
         state.apply_settings(settings(false, ""));
         assert_eq!(state.on_window_shown(), TrayChange::Remove);
         state.tray_removed();
@@ -307,7 +384,7 @@ mod tests {
     fn la_fenetre_montree_garde_l_icone_quand_close_to_tray_est_actif() {
         let mut state = ShellState::new();
         state.start_minimized();
-        state.tray_created();
+        state.tray_created(state.tray_locale());
         state.apply_settings(settings(true, ""));
         assert_eq!(state.on_window_shown(), TrayChange::Keep);
         assert!(state.tray_present());

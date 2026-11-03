@@ -549,6 +549,9 @@ func (s postSyncFilmSteps) runKillSource(ctx context.Context, insertedIDs []stri
 	if e.killSource == nil {
 		return 0
 	}
+	if killcollector.ReporteeEnModeJeu(ctx, e.gamertag, len(insertedIDs)) {
+		return 0
+	}
 	// GetFilmChunks est une capacité OPTIONNELLE du client (assertion, pas extension de
 	// HaloClient : les mocks des autres étapes n'ont pas à la porter).
 	//

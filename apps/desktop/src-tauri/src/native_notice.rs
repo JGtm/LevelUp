@@ -39,18 +39,23 @@ pub fn should_show(window: WindowState) -> bool {
     window != WindowState::Foreground
 }
 
-/// Ce qui montre une notification systeme (le plugin de notification dans l'application).
+/// Ce qui demande a Windows de montrer une notification systeme (le plugin de notification dans l'application).
 pub trait NativeNotifier {
-    /// Montre la notification ; une erreur est rendue en texte pour le journal.
+    /// Demande la notification ; une erreur est rendue en texte pour le journal. `Ok` dit que la demande est
+    /// partie, PAS que Windows a affiche la notification : le plugin l'envoie en tache de fond et jette
+    /// l'erreur de la bibliotheque sous-jacente (notifications refusees, assistant de concentration). Seules
+    /// les erreurs de preparation de la demande (executable introuvable) reviennent ici.
     fn show(&mut self, notice: &Toast) -> Result<(), String>;
 }
 
 /// Ce qu'est devenue une notification.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Delivery {
-    Shown,
+    /// Demandee a Windows ; l'affichage lui-meme n'est pas observable.
+    Requested,
     /// Retenue : la fenetre est au premier plan.
     Suppressed,
+    /// La demande n'a pas pu partir (erreur rendue par le plugin).
     Failed,
 }
 
@@ -71,11 +76,11 @@ pub fn deliver(window: WindowState, notice: &Toast, notifier: &mut dyn NativeNot
             log.write_line(
                 Source::Shell,
                 &format!(
-                    "event=native_notification kind={} outcome=shown window={window:?}",
+                    "event=native_notification kind={} outcome=requested window={window:?}",
                     notice.kind
                 ),
             );
-            Delivery::Shown
+            Delivery::Requested
         }
         Err(e) => {
             log.write_line(
@@ -139,16 +144,20 @@ mod tests {
     }
 
     #[test]
-    fn fenetre_masquee_ou_sans_focus_la_notification_est_montree_telle_quelle() {
+    fn fenetre_masquee_ou_sans_focus_la_notification_est_demandee_telle_quelle() {
         for window in [WindowState::Hidden, WindowState::Background] {
-            let (log, path) = sink("shown");
+            let (log, path) = sink("requested");
             let mut notifier = Recorder::default();
-            assert_eq!(deliver(window, &notice(), &mut notifier, &log), Delivery::Shown);
+            assert_eq!(deliver(window, &notice(), &mut notifier, &log), Delivery::Requested);
             assert_eq!(notifier.shown, vec![notice()], "texte du serveur, sans retouche");
             let journal = std::fs::read_to_string(&path).unwrap();
             assert!(
-                journal.contains("event=native_notification kind=sync outcome=shown"),
+                journal.contains("event=native_notification kind=sync outcome=requested"),
                 "{journal}"
+            );
+            assert!(
+                !journal.contains("outcome=shown"),
+                "l'affichage n'est pas observable : le journal ne dit jamais « shown » : {journal}"
             );
             assert!(
                 !journal.contains("Synchronisation terminee"),

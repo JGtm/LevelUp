@@ -99,3 +99,31 @@ func TestLoad_SystemDefaults_EmptyKeyIsAbsent(t *testing.T) {
 		})
 	}
 }
+
+// TestLoad_AutoSyncDefault : la synchronisation automatique est active par défaut sous la capacité
+// (clé absente ou fichier absent) ; une valeur écrite, true ou false, gagne et le fichier n'est pas réécrit.
+func TestLoad_AutoSyncDefault(t *testing.T) {
+	muet := writeSettings(t, map[string]any{"show_records": true})
+	absent := filepath.Join(t.TempDir(), "app_settings.json")
+	for name, path := range map[string]string{"fichier muet": muet, "fichier absent": absent} {
+		t.Run(name, func(t *testing.T) {
+			cfg, err := settings.NewStore(path).WithAutoSyncDefault(true).Load()
+			if err != nil || !cfg.SpnkrAutoSyncEnabled {
+				t.Fatalf("clé absente sous la capacité : actif attendu (err=%v)", err)
+			}
+			cfg, err = settings.NewStore(path).Load()
+			if err != nil || cfg.SpnkrAutoSyncEnabled {
+				t.Fatalf("sans la capacité : coupé attendu (err=%v)", err)
+			}
+		})
+	}
+	coupe := writeSettings(t, map[string]any{"spnkr_auto_sync_enabled": false})
+	before, _ := os.ReadFile(coupe)
+	cfg, err := settings.NewStore(coupe).WithAutoSyncDefault(true).Load()
+	if err != nil || cfg.SpnkrAutoSyncEnabled {
+		t.Fatalf("valeur écrite false : elle gagne (err=%v)", err)
+	}
+	if after, _ := os.ReadFile(coupe); string(after) != string(before) {
+		t.Error("le chargement ne doit pas réécrire le fichier")
+	}
+}

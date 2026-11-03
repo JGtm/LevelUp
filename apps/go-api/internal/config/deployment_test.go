@@ -73,7 +73,7 @@ func TestDeployment_TableDesCombinaisonsActuelles(t *testing.T) {
 						t.Errorf("capacités figées en démo seulement : %+v pour demo=%v", c, wantDemo)
 					}
 					if c.CompactChrome || c.AdoptSystemLocale || c.FrequentCheckpoint || c.LoginViaBrowser ||
-						c.GameProcessWatch || c.ShellIntegration || c.ScheduledRefresh {
+						c.GameProcessWatch || c.ShellIntegration || c.ScheduledRefresh || c.AutoSyncByDefault {
 						t.Errorf("hors desktop : chrome de bureau ou langue du système offerts : %+v", c)
 					}
 					if c.UpdateApp || !c.OfferWindowsDownload {
@@ -109,7 +109,7 @@ func TestDeployment_CapacitesParProfil(t *testing.T) {
 			UseOutboundNetwork: true, UpdateApp: true, EditSettings: true, UploadMedia: true,
 			ShellEntryGate: true, PoolGrantedToLocalUser: true, WakeSequence: true, TokenVault: true,
 			CompactChrome: true, AdoptSystemLocale: true, FrequentCheckpoint: true, LoginViaBrowser: true,
-			GameProcessWatch: true, ShellIntegration: true, ScheduledRefresh: true}},
+			GameProcessWatch: true, ShellIntegration: true, ScheduledRefresh: true, AutoSyncByDefault: true}},
 	}
 	for _, c := range cas {
 		t.Run(string(c.profil), func(t *testing.T) {

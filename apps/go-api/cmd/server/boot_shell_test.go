@@ -12,6 +12,7 @@ import (
 
 	"levelup/go-api/internal/notifications"
 	"levelup/go-api/internal/notifications/native"
+	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/scheduler"
 )
@@ -198,4 +199,39 @@ func TestManualSync_UnCycleManuelALaFoisEtSuiviParLeGroupeDAttente(t *testing.T)
 		t.Fatalf("un cycle a été lancé pendant l'arrêt : %d", n)
 	}
 	st.schedulerWG.Wait()
+}
+
+// fakeTokenLoader : un magasin de jetons en mémoire.
+type fakeTokenLoader struct {
+	tokens map[string]*auth.UserTokens
+	err    error
+}
+
+func (f fakeTokenLoader) Load(xuid string) (*auth.UserTokens, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	if t, ok := f.tokens[xuid]; ok {
+		return t, nil
+	}
+	return nil, auth.ErrUserTokensNotFound
+}
+
+// TestLocalPlayerFilter : le joueur local est celui dont le magasin porte un jeton de rafraîchissement ;
+// un profil suivi sans jeton (un ami) ne l'est pas, et un magasin illisible ne rend personne local.
+func TestLocalPlayerFilter(t *testing.T) {
+	store := fakeTokenLoader{tokens: map[string]*auth.UserTokens{
+		"1": {OAuthRefreshToken: "rt"},
+		"2": {}, // fichier sans jeton de rafraîchissement
+	}}
+	f := localPlayerFilter(store)
+	if !f("1") {
+		t.Error("un compte connecté (jeton de rafraîchissement) est local")
+	}
+	if f("2") || f("3") {
+		t.Error("un profil sans jeton n'est pas local")
+	}
+	if localPlayerFilter(fakeTokenLoader{err: errors.New("illisible")})("1") {
+		t.Error("un magasin illisible ne rend personne local")
+	}
 }

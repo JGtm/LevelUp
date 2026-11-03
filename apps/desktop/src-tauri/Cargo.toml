@@ -47,6 +47,10 @@ rfd = { version = "0.15", default-features = false, features = ["common-controls
 tauri-plugin-notification = "2.4"
 tauri-plugin-autostart = "2"
 
+# Lecture de l'entree de demarrage (presence et approbation) : le plugin d'autostart ne les distingue pas.
+[target.'cfg(windows)'.dependencies]
+winreg = "0.56"
+
 [profile.release]
 # Binaire plus petit : la coquille ne calcule rien, elle attend.
 opt-level = "s"

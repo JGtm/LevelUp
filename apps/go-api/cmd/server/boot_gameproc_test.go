@@ -3,6 +3,9 @@ package main
 import (
 	"context"
 	"errors"
+	"levelup/go-api/internal/config"
+	"os"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/domain/title"
@@ -32,6 +35,7 @@ func lister(names ...string) gameproc.Lister {
 // exécutables que déclarent les titres, et la fermeture du jeu demande un rattrapage de synchro.
 func TestGameWatcher_NomsDesTitresEtSynchroALaFermeture(t *testing.T) {
 	cfg := settings.Defaults()
+	cfg.SpnkrAutoSyncEnabled = true
 	sync := &fakeSync{}
 	mode := gameproc.NewMode()
 	// L'exécutable du titre built-in vient du registre, pas d'une constante du serveur.
@@ -85,5 +89,63 @@ func TestGameWatcher_SansOrdonnanceur(t *testing.T) {
 	w := newGameWatcher(fakeSettings{cfg: settings.Defaults()}, lister(), gameproc.NewMode(), nil)
 	if w.OnGameClosed != nil {
 		t.Fatal("sans ordonnanceur, aucune demande de synchronisation n'est câblée")
+	}
+}
+
+// TestArmGameWatch_PremierReleveAvantLesTachesLourdes : l'ordre du démarrage est le contrat. La
+// détection du jeu fait son premier relevé avant le lancement du cœur des tâches, des ordonnanceurs
+// et des crons du catalogue ; sans quoi leur premier cycle partirait en pleine partie.
+func TestArmGameWatch_PremierReleveAvantLesTachesLourdes(t *testing.T) {
+	raw, err := os.ReadFile("main.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(raw)
+	arm := strings.Index(src, "\tarmGameWatch(st)")
+	if arm < 0 {
+		t.Fatal("main : armGameWatch absent")
+	}
+	for _, later := range []string{"launchCoreTasks", "launchSchedulers", "launchCatalogCrons", "launchSpartanCron", "launchWorldLeaderboardCron"} {
+		at := strings.Index(src, "\t"+later+"(st)")
+		if at < 0 || at < arm {
+			t.Errorf("main : %s doit venir APRES armGameWatch", later)
+		}
+	}
+}
+
+// TestArmGameWatch_ArmeLaPorteEtFaitLeReleve : sous la capacité, le mode du processus est relevé
+// avant le retour ; sans elle, rien n'est armé.
+func TestArmGameWatch_ArmeLaPorteEtFaitLeReleve(t *testing.T) {
+	prev := gameproc.SetDefault(gameproc.NewMode())
+	t.Cleanup(func() { gameproc.SetDefault(prev) })
+
+	st := &bootState{cfg: &config.AppConfig{}, settingsStore: nil}
+	armGameWatch(st)
+	if st.gameWatcher != nil || !gameproc.Default().HeavyWorkAllowed() {
+		t.Fatal("sans capacité : aucune détection armée, aucune attente")
+	}
+}
+
+// TestGameWatcher_AutoSyncCoupeeNeDemandeRien : la fermeture du jeu ne demande pas de rattrapage quand
+// l'auto-sync est coupée (il serait ignoré par la boucle), et le dit : issue SyncDisabled.
+func TestGameWatcher_AutoSyncCoupeeNeDemandeRien(t *testing.T) {
+	cfg := settings.Defaults()
+	cfg.SpnkrAutoSyncEnabled = false
+	for name, tc := range map[string]struct {
+		enabled bool
+		want    gameproc.SyncOutcome
+	}{"coupée": {false, gameproc.SyncDisabled}, "active": {true, gameproc.SyncRequested}} {
+		t.Run(name, func(t *testing.T) {
+			c := *cfg
+			c.SpnkrAutoSyncEnabled = tc.enabled
+			sync := &fakeSync{}
+			w := newGameWatcher(fakeSettings{cfg: &c}, lister(), gameproc.NewMode(), sync)
+			if got := w.OnGameClosed(gameproc.ReasonGameClosed); got != tc.want {
+				t.Fatalf("issue = %v, attendu %v", got, tc.want)
+			}
+			if wantCalls := map[bool]int{false: 0, true: 1}[tc.enabled]; len(sync.reasons) != wantCalls {
+				t.Fatalf("demandes de rattrapage = %d, attendu %d", len(sync.reasons), wantCalls)
+			}
+		})
 	}
 }

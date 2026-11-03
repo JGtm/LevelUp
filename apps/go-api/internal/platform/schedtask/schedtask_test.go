@@ -5,6 +5,7 @@ import (
 	"encoding/xml"
 	"errors"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -51,12 +52,19 @@ func (f *fakeRunner) commands() []string {
 	return out
 }
 
+// testRoot : un dossier absolu sur l'OS courant (la validation du paquet est celle de l'OS : `C:\...` n'est
+// pas absolu sous Linux), avec un espace dans le nom comme un profil Windows.
+var testRoot = filepath.Join(os.TempDir(), "Test User")
+
 var testSpec = Spec{
-	ExePath:       `C:\Users\Test User\AppData\Local\Programs\LevelUp\levelup-server.exe`,
-	DataRoot:      `C:\Users\Test User\AppData\Local\LevelUp`,
-	ResourcesRoot: `C:\Users\Test User\AppData\Local\Programs\LevelUp`,
-	LogsRoot:      `C:\Users\Test User\AppData\Local\LevelUp\logs`,
+	ExePath:       filepath.Join(testRoot, "Programs", "LevelUp", "levelup-server.exe"),
+	DataRoot:      filepath.Join(testRoot, "AppData", "Local", "LevelUp"),
+	ResourcesRoot: filepath.Join(testRoot, "Programs", "LevelUp"),
+	LogsRoot:      filepath.Join(testRoot, "AppData", "Local", "LevelUp", "logs"),
 }
+
+// testTaskName : le nom de la tâche du gestionnaire de test (empreinte de testSpec.DataRoot).
+var testTaskName = TaskNameFor(testSpec.DataRoot)
 
 var fixedNow = func() time.Time { return time.Date(2026, 11, 3, 8, 30, 0, 0, time.Local) }
 
@@ -64,13 +72,15 @@ func newManager(r Runner) *Manager {
 	return &Manager{Runner: r, Spec: testSpec, Now: fixedNow, TempDir: os.TempDir()}
 }
 
-const listingWithTask = `"\Microsoft\Windows\Defrag\ScheduledDefrag","N/A","Ready"
-"\LevelUp\Refresh","11/3/2026 2:30:00 PM","Ready"
+var listingWithTask = `"\Microsoft\Windows\Defrag\ScheduledDefrag","N/A","Ready"
+"\` + testTaskName + `","11/3/2026 2:30:00 PM","Ready"
 "\Autre","N/A","Ready"
 `
 
-const listingWithout = `"\Microsoft\Windows\Defrag\ScheduledDefrag","N/A","Ready"
+// listingWithout : sans la tâche de cette racine, mais avec celle d'une autre racine (l'application) : elle ne compte pas.
+var listingWithout = `"\Microsoft\Windows\Defrag\ScheduledDefrag","N/A","Ready"
 "\LevelUp\Autre","N/A","Ready"
+"\` + TaskNameFor(filepath.Join(testRoot, "autre-racine")) + `","N/A","Ready"
 `
 
 // decodeUTF16 rend le texte d'un fichier UTF-16 petit-boutiste avec BOM.
@@ -115,8 +125,8 @@ func TestEnsure_ArgumentsExactsEtDefinitionDeLaTache(t *testing.T) {
 		t.Fatalf("%d appels, attendu 1 (/Create seul)", len(r.calls))
 	}
 	args := r.calls[0].args
-	if len(args) != 6 || args[0] != "/Create" || args[1] != "/TN" || args[2] != `LevelUp\Refresh` || args[3] != "/XML" || args[5] != "/F" {
-		t.Fatalf("arguments = %v, attendu /Create /TN LevelUp\\Refresh /XML <fichier> /F", args)
+	if len(args) != 6 || args[0] != "/Create" || args[1] != "/TN" || args[2] != testTaskName || args[3] != "/XML" || args[5] != "/F" {
+		t.Fatalf("arguments = %v, attendu /Create /TN %s /XML <fichier> /F", args, testTaskName)
 	}
 	if _, err := os.Stat(args[4]); !errors.Is(err, os.ErrNotExist) {
 		t.Errorf("le fichier de définition doit être supprimé après l'appel : %v", err)
@@ -221,7 +231,7 @@ func TestRemove_AbsenteRienNEstSupprime_PresenteUnDeleteExact(t *testing.T) {
 	if err := m.Remove(context.Background()); err != nil {
 		t.Fatalf("Remove (présente) : %v", err)
 	}
-	if got := r.calls[1].args; !reflect.DeepEqual(got, []string{"/Delete", "/TN", `LevelUp\Refresh`, "/F"}) {
+	if got := r.calls[1].args; !reflect.DeepEqual(got, []string{"/Delete", "/TN", testTaskName, "/F"}) {
 		t.Fatalf("suppression = %v", got)
 	}
 
@@ -236,24 +246,37 @@ func TestRemove_AbsenteRienNEstSupprime_PresenteUnDeleteExact(t *testing.T) {
 }
 
 func TestEnsure_CheminsRefusesAvantToutAppel(t *testing.T) {
-	cas := map[string]func(*Spec){
-		"exécutable vide":          func(s *Spec) { s.ExePath = "" },
-		"racine relative":          func(s *Spec) { s.DataRoot = `donnees` },
-		"guillemet":                func(s *Spec) { s.LogsRoot = `C:\a"b` },
-		"pourcentage":              func(s *Spec) { s.DataRoot = `C:\%TEMP%` },
-		"esperluette":              func(s *Spec) { s.ResourcesRoot = `C:\a&b` },
-		"point d'exclamation":      func(s *Spec) { s.ExePath = `C:\a!b\levelup-server.exe` },
-		"retour à la ligne":        func(s *Spec) { s.LogsRoot = "C:\\a\nb" },
-		"redirection":              func(s *Spec) { s.DataRoot = `C:\a>b` },
-		"accent circonflexe":       func(s *Spec) { s.DataRoot = `C:\a^b` },
-		"barre verticale":          func(s *Spec) { s.DataRoot = `C:\a|b` },
-		"racine des ressources":    func(s *Spec) { s.ResourcesRoot = "" },
-		"racine des journaux vide": func(s *Spec) { s.LogsRoot = "  " },
+	// Chaque cas réservé part d'un chemin ABSOLU sur l'OS courant et y ajoute le caractère interdit : le refus
+	// vient bien du caractère, pas d'un chemin devenu relatif.
+	avec := func(c string) string { return filepath.Join(testRoot, "a"+c+"b") }
+	cas := map[string]struct {
+		mutate  func(*Spec)
+		absolus bool // les quatre chemins restent absolus : seul le caractère réservé peut refuser
+	}{
+		"exécutable vide":          {func(s *Spec) { s.ExePath = "" }, false},
+		"racine relative":          {func(s *Spec) { s.DataRoot = `donnees` }, false},
+		"guillemet":                {func(s *Spec) { s.LogsRoot = avec(`"`) }, true},
+		"pourcentage":              {func(s *Spec) { s.DataRoot = filepath.Join(testRoot, `%TEMP%`) }, true},
+		"esperluette":              {func(s *Spec) { s.ResourcesRoot = avec(`&`) }, true},
+		"point d'exclamation":      {func(s *Spec) { s.ExePath = filepath.Join(avec(`!`), "levelup-server.exe") }, true},
+		"retour à la ligne":        {func(s *Spec) { s.LogsRoot = avec("\n") }, true},
+		"redirection":              {func(s *Spec) { s.DataRoot = avec(`>`) }, true},
+		"accent circonflexe":       {func(s *Spec) { s.DataRoot = avec(`^`) }, true},
+		"barre verticale":          {func(s *Spec) { s.DataRoot = avec(`|`) }, true},
+		"racine des ressources":    {func(s *Spec) { s.ResourcesRoot = "" }, false},
+		"racine des journaux vide": {func(s *Spec) { s.LogsRoot = "  " }, false},
 	}
-	for nom, mutate := range cas {
+	for nom, c := range cas {
 		t.Run(nom, func(t *testing.T) {
 			spec := testSpec
-			mutate(&spec)
+			c.mutate(&spec)
+			if c.absolus {
+				for _, p := range []string{spec.ExePath, spec.DataRoot, spec.ResourcesRoot, spec.LogsRoot} {
+					if !filepath.IsAbs(p) {
+						t.Fatalf("précondition : %q doit être absolu sur cet OS", p)
+					}
+				}
+			}
 			r := &fakeRunner{}
 			m := &Manager{Runner: r, Spec: spec, Now: fixedNow}
 			if err := m.Ensure(context.Background()); !errors.Is(err, ErrUnsupportedPath) {
@@ -266,19 +289,54 @@ func TestEnsure_CheminsRefusesAvantToutAppel(t *testing.T) {
 	}
 }
 
+// TestTaskNameFor : le nom porte l'empreinte de la racine des données, stable pour une même racine (chemin
+// nettoyé, casse ignorée) et distinct d'une racine à l'autre ; jamais le nom nu des anciennes versions.
+func TestTaskNameFor(t *testing.T) {
+	a := TaskNameFor(testSpec.DataRoot)
+	if !strings.HasPrefix(a, TaskNamePrefix+"-") || len(a) != len(TaskNamePrefix)+1+8 {
+		t.Fatalf("nom = %q, attendu %s-<8 hex>", a, TaskNamePrefix)
+	}
+	if got := TaskNameFor(strings.ToUpper(testSpec.DataRoot) + string(filepath.Separator)); got != a {
+		t.Errorf("même racine (casse, séparateur final) : %q, attendu %q", got, a)
+	}
+	if b := TaskNameFor(filepath.Join(testRoot, "autre-racine")); b == a {
+		t.Errorf("deux racines distinctes portent le même nom %q", a)
+	}
+}
+
+// TestManager_NeTouchePasLaTacheDUneAutreRacine : la suppression ne vise que le nom de SA racine ; la tâche
+// d'une autre racine (l'application de l'utilisateur) listée au même moment n'est ni vue ni supprimée.
+func TestManager_NeTouchePasLaTacheDUneAutreRacine(t *testing.T) {
+	autre := TaskNameFor(filepath.Join(testRoot, "autre-racine"))
+	r := &fakeRunner{listing: `"\` + autre + `","N/A","Ready"` + "\n"}
+	m := newManager(r)
+	if state, err := m.Query(context.Background()); err != nil || state != StateAbsent {
+		t.Fatalf("Query = %q, %v ; la tâche d'une autre racine ne compte pas", state, err)
+	}
+	if err := m.Remove(context.Background()); err != nil {
+		t.Fatalf("Remove : %v", err)
+	}
+	if got := r.commands(); !reflect.DeepEqual(got, []string{"/Query", "/Query"}) {
+		t.Fatalf("appels = %v, attendu aucune suppression", got)
+	}
+	if m.TaskName() != testTaskName {
+		t.Errorf("TaskName = %q, attendu %q", m.TaskName(), testTaskName)
+	}
+}
+
 func TestTaskListed(t *testing.T) {
 	for _, c := range []struct {
 		csv  string
 		name string
 		want bool
 	}{
-		{listingWithTask, TaskName, true},
-		{listingWithTask, `\LevelUp\Refresh`, true},
-		{`"\levelup\refresh","N/A","Ready"`, TaskName, true}, // casse ignorée
-		{listingWithout, TaskName, false},
-		{`"\LevelUp\Refresh2","N/A","Ready"`, TaskName, false},
-		{"", TaskName, false},
-		{"INFO: aucune tâche", TaskName, false},
+		{listingWithTask, testTaskName, true},
+		{listingWithTask, `\` + testTaskName, true},
+		{strings.ToLower(listingWithTask), testTaskName, true}, // casse ignorée
+		{listingWithout, testTaskName, false},
+		{`"\` + testTaskName + `2","N/A","Ready"`, testTaskName, false},
+		{"", testTaskName, false},
+		{"INFO: aucune tâche", testTaskName, false},
 	} {
 		if got := taskListed([]byte(c.csv), c.name); got != c.want {
 			t.Errorf("taskListed(%q, %q) = %v, attendu %v", c.csv, c.name, got, c.want)

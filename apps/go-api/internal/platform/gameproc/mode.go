@@ -15,8 +15,10 @@ const (
 	// MetricEnter et MetricLeave : passages « jeu lancé » et « jeu fermé » observés.
 	MetricEnter = "game_mode_enter_total"
 	MetricLeave = "game_mode_leave_total"
-	// MetricSyncTriggered : synchronisations demandées à la fermeture du jeu.
+	// MetricSyncTriggered : synchronisations réellement demandées à la fermeture du jeu.
 	MetricSyncTriggered = "game_mode_sync_triggered_total"
+	// MetricSyncSkipped : fermetures du jeu sans synchronisation parce que l'auto-sync est désactivée.
+	MetricSyncSkipped = "game_mode_sync_skipped_total"
 	// MetricSyncDebounced : fermetures dont la synchronisation a été absorbée par l'anti-rebond.
 	MetricSyncDebounced = "game_mode_sync_debounced_total"
 	// MetricPollErrors : énumérations de processus échouées.
@@ -32,6 +34,9 @@ const HeavyRetryEvery = 30 * time.Second
 // jamais actif : tout est permis (hôte sans détection, tests).
 type Mode struct {
 	running atomic.Bool
+	// awaiting : la détection est armée mais n'a encore fait aucun relevé ; tant qu'il dure, on ne
+	// sait pas si le jeu tourne, et la porte du travail lourd répond « non » (voir [Mode.ExpectFirstPoll]).
+	awaiting atomic.Bool
 	// retryEvery : intervalle de [Mode.WaitHeavyAllowed] ; zéro = [HeavyRetryEvery].
 	retryEvery time.Duration
 }
@@ -46,10 +51,25 @@ func NewModeRetrying(every time.Duration) *Mode { return &Mode{retryEvery: every
 // Running dit si le jeu tourne.
 func (m *Mode) Running() bool { return m != nil && m.running.Load() }
 
+// ExpectFirstPoll arme la porte : jusqu'au premier relevé du sondeur ([Watcher.Poll], quelle qu'en
+// soit l'issue), le travail lourd n'est pas permis. À poser au démarrage, avant le lancement de la
+// première tâche lourde, quand la détection du jeu est active : un jeu déjà ouvert à l'ouverture de
+// l'application ne doit pas voir un audit ou un rafraîchissement partir avant que le sondeur le sache.
+func (m *Mode) ExpectFirstPoll() {
+	if m != nil {
+		m.awaiting.Store(true)
+	}
+}
+
+// markObserved lève l'attente du premier relevé.
+func (m *Mode) markObserved() { m.awaiting.Store(false) }
+
 // HeavyWorkAllowed dit si une tâche lourde (cuisson de rejeu, recalcul, balayage) peut démarrer
-// maintenant : faux tant que le jeu tourne. Elle se consulte AVANT chaque lancement ; une tâche
-// déjà lancée n'est jamais interrompue.
-func (m *Mode) HeavyWorkAllowed() bool { return !m.Running() }
+// maintenant : faux tant que le jeu tourne, et faux tant que la détection armée n'a fait aucun relevé.
+// Elle se consulte AVANT chaque lancement ; une tâche déjà lancée n'est jamais interrompue.
+func (m *Mode) HeavyWorkAllowed() bool {
+	return m == nil || (!m.running.Load() && !m.awaiting.Load())
+}
 
 // set pose l'état et la jauge ; rend vrai si l'état a changé.
 func (m *Mode) set(running bool) bool {

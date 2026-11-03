@@ -32,6 +32,20 @@ pub fn initial_window(minimized: bool) -> InitialWindow {
     }
 }
 
+/// La memoire de fenetre restaure-t-elle l'etat MAXIMISE au lancement ? Non quand la fenetre demarre cachee :
+/// maximiser une fenetre cachee l'affiche (`SW_MAXIMIZE`), ce qui annule le demarrage reduit. L'etat maximise
+/// est alors restaure au moment ou la fenetre est montree pour la premiere fois
+/// ([`restores_maximized_when_first_shown`]).
+pub fn restores_maximized_at_start(initial: InitialWindow) -> bool {
+    initial == InitialWindow::Visible
+}
+
+/// L'etat maximise reste-t-il a restaurer a la premiere fois que la fenetre est montree ? Oui apres un demarrage
+/// cache : la memoire de fenetre ne l'a pas restaure au lancement.
+pub fn restores_maximized_when_first_shown(initial: InitialWindow) -> bool {
+    !restores_maximized_at_start(initial)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -47,6 +61,19 @@ mod tests {
         assert!(!started_minimized(["levelup.exe"]));
         assert!(!started_minimized(Vec::<String>::new()));
         assert_eq!(initial_window(false), InitialWindow::Visible);
+    }
+
+    #[test]
+    fn un_demarrage_cache_ne_restaure_pas_l_etat_maximise_au_lancement() {
+        // Sinon `maximize()` montre la fenetre cachee : le demarrage reduit ne l'est plus.
+        assert!(!restores_maximized_at_start(initial_window(true)));
+        assert!(restores_maximized_at_start(initial_window(false)));
+    }
+
+    #[test]
+    fn un_demarrage_cache_restaure_l_etat_maximise_a_la_premiere_montre() {
+        assert!(restores_maximized_when_first_shown(initial_window(true)));
+        assert!(!restores_maximized_when_first_shown(initial_window(false)));
     }
 
     #[test]

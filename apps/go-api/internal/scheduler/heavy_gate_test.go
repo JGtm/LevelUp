@@ -123,3 +123,29 @@ func TestGardeRail_LesBouclesLourdesPassentParRunHeavy(t *testing.T) {
 		}
 	}
 }
+
+// TestRunHeavy_AvantLePremierReleveLeCycleAttend : un audit ou un rafraîchissement dont le premier
+// cycle part dès le démarrage attend le premier relevé du sondeur du jeu : si Halo tourne déjà, le
+// cycle ne part jamais pendant la partie.
+func TestRunHeavy_AvantLePremierReleveLeCycleAttend(t *testing.T) {
+	m := pendingGame(t)
+	m.ExpectFirstPoll()
+	started := make(chan struct{})
+	go runHeavy(context.Background(), "test", func(context.Context) { close(started) })
+	select {
+	case <-started:
+		t.Fatal("le cycle ne doit pas démarrer avant le premier relevé")
+	case <-time.After(150 * time.Millisecond):
+	}
+	w := &gameproc.Watcher{
+		Lister: gameproc.ListerFunc(func() ([]string, error) { return []string{"explorer.exe"}, nil }),
+		Mode:   m,
+		Names:  func() []string { return []string{"HaloInfinite.exe"} },
+	}
+	w.Poll(context.Background())
+	select {
+	case <-started:
+	case <-time.After(2 * time.Second):
+		t.Fatal("le premier relevé (jeu absent) doit libérer le cycle")
+	}
+}

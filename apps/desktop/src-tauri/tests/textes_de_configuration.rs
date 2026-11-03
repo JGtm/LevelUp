@@ -115,9 +115,24 @@ fn l_entree_de_demarrage_n_est_ecrite_que_par_le_reglage() {
     );
     // Le plugin de memoire de fenetre ne restaure pas la visibilite : il remontrerait au lancement la
     // fenetre qu'un demarrage reduit vient de cacher.
+    let shell_source = lire("src/shell_tauri.rs");
+    let code = [lignes_de_code(&main).concat(), lignes_de_code(&shell_source).concat()].concat();
     assert!(
-        lignes_de_code(&main).concat().contains("!StateFlags::VISIBLE"),
+        code.contains("!StateFlags::VISIBLE"),
         "le plugin window-state doit exclure StateFlags::VISIBLE"
+    );
+    // Restaurer l'etat maximise d'une fenetre cachee l'affiche (SW_MAXIMIZE) : en demarrage reduit il est
+    // exclu au lancement (decision `launch::restores_maximized_at_start`) puis restaure a la premiere montre.
+    assert!(
+        code.contains("!StateFlags::MAXIMIZED") && code.contains("launch::restores_maximized_at_start(initial)"),
+        "le plugin window-state ne doit pas restaurer MAXIMIZED d'une fenetre cachee au lancement"
+    );
+    assert!(
+        code.contains("StateFlags::MAXIMIZED)")
+            && lignes_de_code(&main)
+                .concat()
+                .contains("restore_maximized_if_pending(app, &window)"),
+        "l'etat maximise est restaure a la premiere montre apres un demarrage cache"
     );
     let shell = lire("src/shell_tauri.rs");
     assert!(

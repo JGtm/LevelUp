@@ -19,7 +19,6 @@ import (
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability"
-	"levelup/go-api/internal/platform/gameproc"
 	"levelup/go-api/internal/replaybuild"
 
 	"github.com/JGtm/LevelUp/libs/film/filmcache"
@@ -307,16 +306,7 @@ func buildAll(ctx context.Context, d Deps, work []buildWork) bilanCuisson {
 				"traites", b.traites())
 			break
 		}
-		// MODE JEU : tant que Halo tourne, aucune cuisson ne DÉMARRE (le décodage d'un film pèse sur le
-		// processeur et la mémoire que la partie utilise). Le film est déjà persisté, le rattrapage
-		// construira l'artefact après la partie. Jamais un kill : la porte se consulte avant chaque
-		// lancement, une cuisson commencée va à son terme.
-		if d.BuildOne != nil && !gameproc.Default().HeavyWorkAllowed() {
-			if b.reportesModeJeu == 0 {
-				slog.InfoContext(ctx, "game_mode: cuisson des rejeux différée jusqu'à la fin de la partie",
-					"gamertag", d.Gamertag, "titleSlug", d.TitleSlug)
-			}
-			b.reportesModeJeu++
+		if reporterEnModeJeu(ctx, d, &b) {
 			continue
 		}
 		cuireUnMatch(ctx, d, w, &b, solde)

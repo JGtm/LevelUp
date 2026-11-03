@@ -145,6 +145,11 @@ type DeploymentCapabilities struct {
 	// ScheduledRefresh : le serveur peut poser une tâche planifiée Windows qui lance `-mode refresh-only`
 	// pour garder les jetons vivants quand l'application est fermée (réglage `scheduled_refresh`).
 	ScheduledRefresh bool
+	// AutoSyncByDefault : la synchronisation automatique (`spnkr_auto_sync_enabled`) est ACTIVE tant que
+	// l'utilisateur n'a rien écrit : l'application de bureau suit un compte et doit se tenir à jour sans
+	// réglage préalable. Défaut des clés absentes d'app_settings.json (settings.Store.WithAutoSyncDefault) ;
+	// une valeur écrite gagne toujours. Faux sur un serveur, où l'administrateur l'active.
+	AutoSyncByDefault bool
 }
 
 // DeploymentProfile est embarqué dans AppConfig : le profil résolu et ses capacités.
@@ -247,6 +252,7 @@ func capabilitiesOf(cfg *AppConfig) DeploymentCapabilities {
 		GameProcessWatch:       desktop,
 		ShellIntegration:       desktop,
 		ScheduledRefresh:       desktop,
+		AutoSyncByDefault:      desktop,
 	}
 }
 

@@ -327,7 +327,11 @@ fn les_reglages_hors_application_ouverte_sont_ignores() {
 #[test]
 fn la_synchronisation_demandee_part_vers_le_serveur_pret_seulement() {
     let mut m = machine();
-    assert!(m.step(Input::SyncRequested).is_empty(), "avant ready");
+    assert_eq!(
+        m.step(Input::SyncRequested),
+        vec![Action::SyncSkipped { phase: "starting" }],
+        "avant ready : abandonnee, et journalisee"
+    );
     m.step(ready(8123));
     assert_eq!(m.step(Input::SyncRequested), vec![Action::SendSync]);
     assert_eq!(
@@ -339,10 +343,55 @@ fn la_synchronisation_demandee_part_vers_le_serveur_pret_seulement() {
     let mut closing = machine();
     closing.step(ready(8123));
     closing.step(Input::CloseRequested);
-    assert!(closing.step(Input::SyncRequested).is_empty(), "pendant la fermeture");
+    assert_eq!(
+        closing.step(Input::SyncRequested),
+        vec![Action::SyncSkipped { phase: "closing" }],
+        "pendant la fermeture"
+    );
 
     let mut dead = machine();
     dead.step(ready(8123));
     dead.step(Input::Exited);
-    assert!(dead.step(Input::SyncRequested).is_empty(), "serveur sorti");
+    assert_eq!(
+        dead.step(Input::SyncRequested),
+        vec![Action::SyncSkipped { phase: "dead" }],
+        "serveur sorti"
+    );
+}
+
+#[test]
+fn un_serveur_mort_montre_la_fenetre_avant_l_ecran_arrete() {
+    // Fenetre cachee dans la zone de notification : l'ecran terminal ne s'affiche jamais sur une fenetre invisible.
+    for ready_first in [false, true] {
+        let mut m = machine();
+        if ready_first {
+            m.step(ready(8123));
+        }
+        let actions = m.step(Input::Exited);
+        let reveal = actions
+            .iter()
+            .position(|a| *a == Action::RevealWindow)
+            .expect("fenetre montree");
+        let screen = actions
+            .iter()
+            .position(|a| *a == Action::ShowScreen(Screen::Stopped))
+            .expect("ecran arrete");
+        assert!(reveal < screen, "la fenetre est montree AVANT l'ecran : {actions:?}");
+    }
+}
+
+#[test]
+fn un_serveur_mort_apres_un_echec_montre_aussi_la_fenetre() {
+    let mut m = machine();
+    m.step(listening(8123));
+    m.step(failed("locked"));
+    assert!(m.step(Input::Exited).contains(&Action::RevealWindow));
+}
+
+#[test]
+fn la_fermeture_ordonnee_ne_montre_pas_la_fenetre() {
+    let mut m = machine();
+    m.step(ready(8123));
+    m.step(Input::CloseRequested);
+    assert!(!m.step(Input::Exited).contains(&Action::RevealWindow));
 }

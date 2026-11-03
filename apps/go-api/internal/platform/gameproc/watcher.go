@@ -28,8 +28,10 @@ type Watcher struct {
 	// coupé : le mode retombe à « pas de jeu » sans déclencher de synchronisation.
 	Enabled func() bool
 	// OnGameClosed est appelé à la fermeture du jeu, hors anti-rebond : il demande une
-	// synchronisation et ne bloque pas. reason alimente le journal de la synchronisation.
-	OnGameClosed func(reason string)
+	// synchronisation et ne bloque pas. reason alimente le journal de la synchronisation. Il dit ce
+	// qu'il en est advenu ([SyncOutcome]) : le watcher n'annonce et ne compte « déclenchée » que
+	// si une synchronisation va réellement avoir lieu.
+	OnGameClosed func(reason string) SyncOutcome
 	// Interval : période des sondages ; zéro = [DefaultInterval].
 	Interval time.Duration
 	// Debounce : anti-rebond de la synchronisation ; zéro = [DefaultDebounce].
@@ -45,6 +47,18 @@ type Watcher struct {
 
 // ReasonGameClosed : la raison transmise à [Watcher.OnGameClosed].
 const ReasonGameClosed = "jeu fermé"
+
+// SyncOutcome : ce qu'est devenue la demande de synchronisation de fin de partie.
+type SyncOutcome int
+
+const (
+	// SyncRequested : une synchronisation va avoir lieu (demande déposée).
+	SyncRequested SyncOutcome = iota
+	// SyncCovered : une demande attendait déjà, la synchronisation à venir couvre celle-ci.
+	SyncCovered
+	// SyncDisabled : l'auto-sync est coupée dans les réglages, aucune synchronisation n'aura lieu.
+	SyncDisabled
+)
 
 // Run sonde une première fois puis à chaque tic, jusqu'à l'annulation de ctx. Bloquant : à lancer
 // dans une goroutine suivie.
@@ -70,8 +84,12 @@ func (w *Watcher) Run(ctx context.Context) {
 	}
 }
 
-// Poll fait un sondage : relit le réglage, énumère les processus et applique la transition.
+// Poll fait un sondage : relit le réglage, énumère les processus et applique la transition. Quelle
+// qu'en soit l'issue (réglage coupé, énumération en panne comprise, journalisée), il lève l'attente
+// armée par [Mode.ExpectFirstPoll] : une panne du sondeur ne doit pas suspendre le travail lourd
+// pour toujours.
 func (w *Watcher) Poll(ctx context.Context) {
+	defer w.Mode.markObserved()
 	if w.Enabled != nil && !w.Enabled() {
 		if w.Mode.set(false) {
 			slog.InfoContext(ctx, "game_mode: leave", "raison", "détection désactivée dans les réglages")
@@ -131,8 +149,17 @@ func (w *Watcher) requestSync(ctx context.Context) {
 			"depuis", now.Sub(w.lastSync).Round(time.Second), "anti_rebond", debounce)
 		return
 	}
-	w.lastSync = now
-	observability.IncCounter(MetricSyncTriggered)
-	slog.InfoContext(ctx, "game_mode: synchronisation de fin de partie demandée")
-	w.OnGameClosed(ReasonGameClosed)
+	outcome := w.OnGameClosed(ReasonGameClosed)
+	switch outcome {
+	case SyncDisabled:
+		observability.IncCounter(MetricSyncSkipped)
+		slog.InfoContext(ctx, "game_mode: fin de partie : auto-sync désactivée, rien à faire")
+	case SyncCovered:
+		w.lastSync = now
+		slog.InfoContext(ctx, "game_mode: une demande de synchronisation attend déjà, celle de fin de partie est couverte")
+	default:
+		w.lastSync = now
+		observability.IncCounter(MetricSyncTriggered)
+		slog.InfoContext(ctx, "game_mode: synchronisation de fin de partie demandée")
+	}
 }

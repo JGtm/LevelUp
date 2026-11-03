@@ -22,10 +22,13 @@ type syncRequester interface {
 	RequestCatchUp(reason string) bool
 }
 
-// launchGameWatch lance la détection du jeu si le profil l'offre (capacité GameProcessWatch, vraie en
-// desktop seulement). Elle tourne sous le contexte des tâches de fond et dans leur groupe d'attente :
-// l'arrêt l'annule puis l'attend avant la fermeture des bases.
-func launchGameWatch(st *bootState) {
+// armGameWatch construit le sondeur du jeu et fait son premier relevé, SYNCHRONE, avant le lancement
+// de toute tâche lourde (audit de santé, rafraîchissement du catalogue, balayages) : ces tâches
+// consultent la porte du mode jeu dès leur premier cycle, et un jeu déjà ouvert à l'ouverture de
+// l'application (démarrage réduit avec Windows, cas ordinaire) doit être connu à ce moment. La porte
+// reste fermée ([gameproc.Mode.ExpectFirstPoll]) jusqu'à ce relevé. Sans la capacité GameProcessWatch
+// (vraie en desktop seulement), rien n'est armé et le travail lourd n'attend jamais.
+func armGameWatch(st *bootState) {
 	if !st.cfg.Capabilities.GameProcessWatch {
 		return
 	}
@@ -33,7 +36,21 @@ func launchGameWatch(st *bootState) {
 	if st.autoScheduler != nil { // un *AutoSyncScheduler nil ne doit pas devenir une interface non nil
 		sync = st.autoScheduler
 	}
-	w := newGameWatcher(st.settingsStore, gameproc.NewSystemLister(), gameproc.Default(), sync)
+	mode := gameproc.Default()
+	mode.ExpectFirstPoll()
+	w := newGameWatcher(st.settingsStore, gameproc.NewSystemLister(), mode, sync)
+	w.Poll(st.schedulerCtx)
+	st.gameWatcher = w
+}
+
+// launchGameWatch lance la boucle de détection du jeu armée par armGameWatch. Elle tourne sous le
+// contexte des tâches de fond et dans leur groupe d'attente : l'arrêt l'annule puis l'attend avant la
+// fermeture des bases.
+func launchGameWatch(st *bootState) {
+	w := st.gameWatcher
+	if w == nil {
+		return
+	}
 	ctx := st.schedulerCtx
 	st.schedulerWG.Add(1)
 	go func() {
@@ -63,10 +80,18 @@ func newGameWatcher(store settingsLoader, lister gameproc.Lister, mode *gameproc
 		},
 	}
 	if sync != nil {
-		w.OnGameClosed = func(reason string) {
-			if !sync.RequestCatchUp(reason) {
-				slog.Info("game_mode: une demande de synchronisation attend déjà, celle-ci est couverte")
+		w.OnGameClosed = func(reason string) gameproc.SyncOutcome {
+			// L'auto-sync coupée (réglage `spnkr_auto_sync_enabled`) ignore tout tick : la demande
+			// ne produirait aucune synchronisation, et ne doit pas être annoncée comme telle.
+			if cfg, err := store.Load(); err != nil {
+				slog.Warn("game_mode: réglages illisibles, synchronisation de fin de partie demandée quand même", "err", err)
+			} else if !cfg.SpnkrAutoSyncEnabled {
+				return gameproc.SyncDisabled
 			}
+			if !sync.RequestCatchUp(reason) {
+				return gameproc.SyncCovered
+			}
+			return gameproc.SyncRequested
 		}
 	}
 	return w
