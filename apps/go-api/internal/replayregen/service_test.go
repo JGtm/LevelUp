@@ -73,12 +73,16 @@ type fixture struct {
 	deps    Deps
 	films   map[string]bool
 	heavy   atomic.Bool
-	calls   atomic.Int32
-	inFly   atomic.Int32
-	maxFly  atomic.Int32
-	rebuild func(ctx context.Context, slug, id string) error
-	cancel  context.CancelFunc
-	wg      sync.WaitGroup
+	syncing atomic.Bool
+	// filmHook : appelé à chaque FilmPresent (nil = rien) ; sert à tenir un décompte en vol.
+	filmHook func(id string)
+	presentN atomic.Int32
+	calls    atomic.Int32
+	inFly    atomic.Int32
+	maxFly   atomic.Int32
+	rebuild  func(ctx context.Context, slug, id string) error
+	cancel   context.CancelFunc
+	wg       sync.WaitGroup
 }
 
 // newFixture relie un service sur une racine temporaire. Par défaut la reconstruction réécrit l'artefact à jour.
@@ -94,6 +98,10 @@ func newFixture(t *testing.T) *fixture {
 		Paths:  f.paths,
 		Titles: func() []string { return []string{testSlug} },
 		FilmPresent: func(_, id string) bool {
+			f.presentN.Add(1)
+			if f.filmHook != nil {
+				f.filmHook(id)
+			}
 			return f.films[id]
 		},
 		Rebuild: func(ctx context.Context, slug, id string) error {
@@ -114,7 +122,7 @@ func newFixture(t *testing.T) *fixture {
 		GateEvery:      10 * time.Millisecond,
 		BusyRetryEvery: 5 * time.Millisecond,
 		BusyRetries:    3,
-		RescanEvery:    time.Hour,
+		SyncRunning:    f.syncing.Load,
 	}
 	f.svc = New()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -183,11 +191,14 @@ func TestScan_ArtefactPlusRecentQueLeBinaireNEstPasEnRetard(t *testing.T) {
 	}
 }
 
-func TestStatus_LeDecompteSeFaitEnArriereEtNeLancePasLaFile(t *testing.T) {
+func TestRescan_LeDecompteSeFaitEnArriereEtNeLancePasLaFile(t *testing.T) {
 	f := newFixture(t)
 	f.seed(t, 3)
 	if st := f.svc.Status(); st.Running || st.Checked {
 		t.Fatalf("premier état : %+v (décompte pas encore fait, file jamais lancée)", st)
+	}
+	if _, err := f.svc.Rescan(); err != nil {
+		t.Fatal(err)
 	}
 	waitFor(t, "décompte", func() bool { return f.svc.Status().Checked })
 	st := f.svc.Status()

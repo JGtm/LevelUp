@@ -506,7 +506,7 @@ func publierBilan(ctx context.Context, d Deps, b bilanCuisson, selectionnes int)
 	slog.InfoContext(ctx, "post-sync: rejeu 2D",
 		"gamertag", d.Gamertag, "built", b.construits, "films_persisted", b.filmsSauves,
 		"deja_a_jour", b.dejaAJour, "sans_film", b.sansFilm, "reportes_non_finalises", b.reportes,
-		"reportes_mode_jeu", b.reportesModeJeu, "echecs", b.echecs,
+		"reportes_mode_jeu", b.reportesModeJeu, "reportes_verrou", b.reportesVerrou, "echecs", b.echecs,
 		"ecartes", b.ecartes,
 		"budget_epuise", b.budgetEpuise, "selected", selectionnes)
 }

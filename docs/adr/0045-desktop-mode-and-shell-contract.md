@@ -546,22 +546,40 @@ replays already built behind: they stay readable, but do not carry what the new 
 rebuilds them **on the user's request only**.
 
 - **Capability `ReplayRegen`** (`can_regenerate_replays`, desktop only). Without it, no route is mounted and the web client shows nothing.
-- **What is counted.** `internal/replayregen` reads each built replay of the titles that declare `film.replay_artifact` (the digest the
-  guards already use, `replaybuild.ArtifactDigest`): a replay is *behind* when it is not up to date (schema or layer revisions) and its schema is
-  not newer than the binary's (a replay written by a later version is not redone: the storage guard would refuse the result). A replay whose film
-  is no longer in the archive is not counted: there is nothing to replay it from. The count reads every file, so it runs in the background, is
-  cached for 10 minutes, and `checked=false` says it is not known yet.
+- **What is counted.** `internal/replayregen` reads the header of each built replay of the titles that declare `film.replay_artifact`
+  (`replaybuild.ArtifactHeader`): a replay is *behind* when it is not up to date (schema or layer revisions), its schema is not newer than the
+  binary's (the storage guard would refuse the result), and it was not produced by an application version newer than the binary's (a rollback to an
+  earlier version must not redo recent replays with the older decoder; semver comparison on `major.minor.patch`, an absent or unreadable version is
+  admissible). A replay whose film is no longer in the archive is not counted: there is nothing to replay it from. The film test and the file
+  size come before any read.
+- **The header file.** A replay artifact weighs 1 to 2 MB and its JSON cannot be read partially, so the count never opens it: the artifact writer
+  (`writeArtifactBytes`) writes `<short8>.meta` beside it (schema version, layer revisions, artifact size, producing application version,
+  `replaybuild.SetAppVersion` at boot), and the count reads only these small files. A `.meta` is trusted when it exists, is not older than the
+  artifact and declares the artifact's size; otherwise the artifact is read once and the `.meta` (re)written (old replays: once, at the first count).
+  Purges remove it with the artifact. Measured by test: 2 000 synthetic 16 KB artifacts, first count 33 MB read, second count 108 KB.
+- **When the count runs.** At server start (in the background, behind the game-mode gate), at the end of the queue, and on an explicit
+  `POST .../rescan`. `GET` never starts a count. During the final count `checked` is false (the interface never shows "finished" with the old
+  count); a count started before a newer one finished is dropped (sequence number).
 - **Routes** (under the shell cookie): `GET /api/v1/desktop/replay-regen` returns `{checked, stale, running, done, total, paused, waiting_for_game, failed}`;
-  `POST .../start`, `.../pause`, `.../resume` drive the queue. Nothing starts without the `POST start`.
+  `POST .../start`, `.../pause`, `.../resume` drive the queue (`resume` on a finished queue is a 409), `POST .../rescan` recounts in the background.
+  Nothing starts without the `POST start`.
 - **The queue.** One film at a time, never two in parallel, in the server process. Each film goes through the existing recipe, never a second one:
   `ServiceRegistry.RunReplayBuild` (the admin action: bounded child process under the solo lock, `StoreArtifact` with its regression guard) then the
   artifact's derivations (`deriverArtefactRange`). Before each film the queue re-reads that replay's state (a replay already redone when opened, or by a
-  sync cycle, is skipped: idempotent), then waits for the game-mode gate (`gameproc.HeavyWorkAllowed`, checked before launching and never during): while the
-  game runs the status says `waiting_for_game`. A decode already running on the machine (`ErrDecodeBusy`, `ErrActionBusy`) is waited out (20 s, up to 30
-  tries) and the same film is retried. The refusals the cooking already names (game mode not handled, map outside the catalogue, unknown film key,
+  sync cycle, is skipped: idempotent), then waits for its turn: no pause, the game-mode gate (`gameproc.HeavyWorkAllowed`, checked before launching and never during; while the
+  game runs the status says `waiting_for_game`), and no synchronization cycle in progress (`Coordinator.SyncRunning`: the queue yields to the sync). A decode
+  already running on the machine (`ErrDecodeBusy`, `ErrActionBusy`) is waited out (20 s, up to 30 tries) and the same film is retried, **through the
+  same wait for its turn at every retry** (gate, pause, sync).
+- **One decode at a time, whoever asks.** The machine-wide solo lock (`filmproc.AcquireSolo`) bounds every film decode. The queue's child, the
+  post-sync replay cooking, the admin action and the post-sync kill-source step (the only decode that runs inside the server process, taken by
+  `RunPostSync` before `CollectMatches`) all take it in immediate refusal. A busy lock **defers** the kill-source pass and the cooking to the next
+  cycle (one INFO line, counters `killsource_postsync_reportee_verrou_decodage`, `reportes_verrou` in the cycle summary): never a failure, never a
+  warning per film. The offline `levelup backfill-killsource` is a separate process the operator runs with the server stopped. The refusals the cooking already names (game mode not handled, map outside the catalogue, unknown film key,
   film not finalized) set the film aside for the rest of the process and do not count as failures; anything else counts in `failed`.
 - **Pause and resume.** *Pause* lets the film in progress finish and keeps the next one from starting. `replay_regen_pending` in `app_settings.json`
-  (not a user setting: never served by `GET /settings`, never written by `PATCH`) is set while the queue is active and cleared when it ends or is paused;
+  (not a user setting: never served by `GET /settings`, never written by `PATCH`; every server writer of the file goes through `Store.Update`, one
+  write lock, so a PATCH never overwrites the flag) is set while the queue is active and cleared when it ends or is paused; the queue is *finished*
+  (not running, not paused, flag cleared) before its final count, and the flag is written under the same lock as the state;
   a server stop leaves it set, so the queue **resumes at the next opening** (`ResumeIfPending` at boot), the only way it starts without a click, and only
   because the user had started it. A paused queue does not resume by itself.
 - **Journal and expvar.** `replay_regen: ...` lines (start, end, interruption, skipped and failed films), counters `replay_regen_started_total`,
@@ -824,8 +842,11 @@ maintainer on a clean machine. A lot without a test at its level is not closed.
   badge of `SettingsPage` ("Saved" 2 s, "Save failed" 4 s). It is now one shared module (`features/settings/saveFeedbackStore.ts` + `SaveStatusBadge.tsx`)
   that `SettingsPage` and the Application tab cards both call; the "Saved." text under the forms is gone. A refusal shows the failure badge and keeps the
   worded cause under the field.
-- **Guard-rails created**: `internal/replayregen/service_test.go` (count, one film at a time under `-race`, pause, game-mode wait, resume after a restart,
-  stop keeps the flag, idempotence, benign refusals, busy retry), `internal/platform/settings/replay_regen_test.go` (flag persisted, never served),
+- **Guard-rails created**: `internal/replayregen/service_test.go` and `service_revue_test.go` (count, one film at a time under `-race`, pause, game-mode wait, resume after a restart,
+  stop keeps the flag, idempotence, benign refusals, busy retry through the gate and the pause, finished queue before its count, stale count dropped, yield to
+  the sync, header-only count measured, newer-version artifacts), `internal/replaybuild/artifact_meta_test.go`, `internal/sync/killcollector/postsync_verrou_decodage*_test.go`
+  and `internal/sync/replayartifacts/cuisson_verrou_test.go` (one decode at a time), `internal/platform/settings/store_update*_test.go` (one write lock),
+  `cmd/server/boot_replayregen_test.go`, `apps/web/src/components/replay-regen/bannerPlacement.guard.test.ts` (the banner is mounted by the replay page only), `internal/platform/settings/replay_regen_test.go` (flag persisted, never served),
   `internal/api/desktop_replay_regen_mount_test.go` (routes under the capability only), `internal/api/handlers/desktop_replay_regen_test.go`,
   `apps/web/src/components/replay-regen/replayRegen.test.tsx`. The shared UI lives in `components/` (two features use it: the replay route and
   Settings), which keeps the cross-feature import ceiling (P8.5) where it was.

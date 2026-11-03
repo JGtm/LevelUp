@@ -252,18 +252,19 @@ func (h *WatcherHandler) handlePatchSubscriptions(ctx context.Context, in *watch
 		}
 	}
 
-	cfg, err := h.settingsStore.Load()
-	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "settings_error", "impossible de lire les settings")
-	}
-
 	players := req.SubscribedPlayers
 	if len(players) == 0 {
 		players = []string{"all"}
 	}
-	cfg.WatcherSubscribedPlayers = players
-
-	if err := h.settingsStore.Save(cfg); err != nil {
+	lectureOK := false
+	if _, err := h.settingsStore.Update(func(cfg *settings_platform.AppSettings) error {
+		lectureOK = true
+		cfg.WatcherSubscribedPlayers = players
+		return nil
+	}); err != nil {
+		if !lectureOK {
+			return nil, humacore.NewError(http.StatusInternalServerError, "settings_error", "impossible de lire les settings")
+		}
 		return nil, humacore.NewError(http.StatusInternalServerError, "settings_save_error", "impossible de sauvegarder les settings")
 	}
 

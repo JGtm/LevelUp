@@ -18,15 +18,12 @@ func (s *Store) ReplayRegenPending() (bool, error) {
 
 // SetReplayRegenPending écrit le drapeau, sans toucher aux autres clés. Une valeur inchangée n'écrit rien.
 func (s *Store) SetReplayRegenPending(pending bool) error {
-	s.writeMu.Lock()
-	defer s.writeMu.Unlock()
-	cfg, err := s.Load()
-	if err != nil {
-		return err
-	}
-	if cfg.ReplayRegenPending == pending {
+	_, err := s.Update(func(cfg *AppSettings) error {
+		if cfg.ReplayRegenPending == pending {
+			return ErrNoChange
+		}
+		cfg.ReplayRegenPending = pending
 		return nil
-	}
-	cfg.ReplayRegenPending = pending
-	return s.Save(cfg)
+	})
+	return err
 }

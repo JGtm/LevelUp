@@ -114,7 +114,13 @@ rebuilds them by itself.
 - **If you close LevelUp while it runs**, it picks up again at the next opening. A paused queue does not.
 - **A replay that cannot be rebuilt** (map outside the catalogue, unfinished film) is set aside and not counted again until the next launch; others
   that fail are counted ("N replays could not be regenerated") and can be offered again.
-- **Journal** (`logs`): lines starting with `replay_regen:`; counters `replay_regen_*` in `/debug/vars`.
+- **It gives way to a synchronization**: between two films it waits for a running sync cycle to end, and a sync (kill-source step, replay cooking) that
+  finds a film being decoded postpones its decode to the next cycle (one `INFO` line, never an error). Two films are never decoded at once.
+- **The count is cheap.** Each built replay has a small `<match>.meta` file beside it (versions only); the count reads those, not the replays. At the
+  first count after an update from an older version the replays are read once to write them (a few seconds per thousand, behind the game gate). The
+  count runs at startup, at the end of the queue, and on `POST /api/v1/desktop/replay-regen/rescan`; opening a page never starts it.
+- **Going back to an earlier version**: replays built by a newer version are not offered for regeneration (the older decoder would redo them).
+- **Journal** (`logs`): lines starting with `replay_regen:`; counters `replay_regen_*`, `replay_artifact_header_*` in `/debug/vars`.
 
 ## Signing in (Microsoft account)
 

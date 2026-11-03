@@ -286,21 +286,30 @@ func (h *SettingsHandler) handlePatchSettings(ctx context.Context, in *settingsB
 		perTitleOverlay = extractPerTitleOverlay(&req)
 	}
 
-	cfg, err := h.settingsStore.Load()
-	if err != nil {
+	// Lecture, validation et écriture sous le verrou d'écriture du fichier (Store.Update) : un autre écrivain du
+	// serveur (drapeau de la file de régénération, abonnements du watcher) ne peut pas s'intercaler entre la
+	// lecture et l'écriture, et voir sa clé réécrite par ce PATCH.
+	var (
+		prev      settings_platform.AppSettings
+		refus     error // refus de validation (4xx) : rien n'est écrit
+		lectureOK bool
+	)
+	cfg, err := h.settingsStore.Update(func(cfg *settings_platform.AppSettings) error {
+		lectureOK = true
+		prev = *cfg
+		settings_platform.Apply(cfg, &req)
+		if refus = h.validateFilmArchive(ctx, &req, &prev, cfg); refus != nil {
+			return refus
+		}
+		refus = h.validateData(ctx, &req, cfg)
+		return refus
+	})
+	switch {
+	case refus != nil:
+		return nil, refus
+	case err != nil && !lectureOK:
 		return nil, humacore.NewError(http.StatusInternalServerError, "settings_load_error", "Impossible de charger la configuration.")
-	}
-
-	prev := *cfg
-	settings_platform.Apply(cfg, &req)
-	if err := h.validateFilmArchive(ctx, &req, &prev, cfg); err != nil {
-		return nil, err
-	}
-	if err := h.validateData(ctx, &req, cfg); err != nil {
-		return nil, err
-	}
-
-	if err := h.settingsStore.Save(cfg); err != nil {
+	case err != nil:
 		return nil, humacore.NewError(http.StatusInternalServerError, "settings_save_error", "Impossible de sauvegarder la configuration.")
 	}
 	h.applyDataRuntime(ctx, &req, cfg)

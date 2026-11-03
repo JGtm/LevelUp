@@ -1,6 +1,6 @@
 // Package handlers — desktop_replay_regen.go : la régénération des rejeux en retard après une mise à jour de
 // l'application de bureau (ADR 0045) : GET /api/v1/desktop/replay-regen rend le décompte et l'état de la file,
-// POST .../start, .../pause et .../resume la pilotent.
+// POST .../start, .../pause, .../resume et .../rescan la pilotent.
 //
 // Les routes ne sont montées que sous la capacité ReplayRegen et exigent le cookie de la coquille (garde racine).
 // Rien ne part sans le POST de l'utilisateur : le serveur ne lance jamais la file de lui-même.
@@ -31,6 +31,7 @@ type ReplayRegenService interface {
 	Start() (domain.ReplayRegenStatus, error)
 	Pause() (domain.ReplayRegenStatus, error)
 	Resume() (domain.ReplayRegenStatus, error)
+	Rescan() (domain.ReplayRegenStatus, error)
 }
 
 // DesktopReplayRegenHandler sert les routes de la régénération des rejeux.
@@ -43,7 +44,7 @@ func NewDesktopReplayRegenHandler(svc ReplayRegenService) *DesktopReplayRegenHan
 	return &DesktopReplayRegenHandler{svc: svc}
 }
 
-// Mount enregistre les quatre routes au point de montage de l'appelant.
+// Mount enregistre les cinq routes au point de montage de l'appelant.
 func (h *DesktopReplayRegenHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
 	huma.Get(api, "/desktop/replay-regen", h.handleStatus,
@@ -55,6 +56,9 @@ func (h *DesktopReplayRegenHandler) Mount(r chi.Router, opts ...humacore.MountOp
 		humacore.Op("postDesktopReplayRegenPause", "Pause the replay regeneration queue (desktop app)", "desktop"))
 	huma.Post(api, "/desktop/replay-regen/resume", h.handleResume,
 		humacore.Op("postDesktopReplayRegenResume", "Resume the replay regeneration queue (desktop app)", "desktop"))
+	huma.Post(api, "/desktop/replay-regen/rescan", h.handleRescan,
+		humacore.Op("postDesktopReplayRegenRescan", "Recount the replays behind the app version, in the background (desktop app)", "desktop"),
+		humacore.DefaultStatus(http.StatusAccepted))
 }
 
 type replayRegenOutput struct {
@@ -76,6 +80,12 @@ func (h *DesktopReplayRegenHandler) handlePause(ctx context.Context, _ *struct{}
 
 func (h *DesktopReplayRegenHandler) handleResume(ctx context.Context, _ *struct{}) (*replayRegenOutput, error) {
 	return h.command(ctx, h.svc.Resume)
+}
+
+// handleRescan relance le décompte en arrière-plan (jamais lancé par la lecture de l'état) ; la réponse porte
+// `checked: false` jusqu'à sa fin.
+func (h *DesktopReplayRegenHandler) handleRescan(ctx context.Context, _ *struct{}) (*replayRegenOutput, error) {
+	return h.command(ctx, h.svc.Rescan)
 }
 
 // command exécute une commande de la file et traduit ses refus : file absente (409 pour pause/reprise sans file),

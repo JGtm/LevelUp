@@ -4,6 +4,7 @@ package settings
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -136,8 +137,10 @@ type AppSettings struct {
 // Store gère la lecture/écriture de app_settings.json.
 type Store struct {
 	mu sync.RWMutex
-	// writeMu sérialise les lectures-modifications-écritures du serveur lui-même (SetReplayRegenPending) : le
-	// couple Load puis Save ne tient pas mu entre ses deux temps.
+	// writeMu : LE verrou d'écriture de app_settings.json, partagé par tous les écrivains du serveur (PATCH
+	// /settings, abonnements du watcher, drapeau de la file de régénération) par [Store.Update] : le couple Load
+	// puis Save ne tient pas mu entre ses deux temps, et deux lectures-modifications-écritures entrelacées
+	// perdraient la première écriture.
 	writeMu sync.Mutex
 	path    string
 	// absent : défauts des clés absentes du fichier (WithEnforcedDefaults, WithSystemDefaults).
@@ -272,6 +275,36 @@ func (s *Store) SaveTitleOverlay(overlayPath string, fields map[string]json.RawM
 		return fmt.Errorf("settings.SaveTitleOverlay write: %w", err)
 	}
 	return nil
+}
+
+// ErrNoChange : rendue par la fonction de [Store.Update] quand rien n'est à écrire ; le fichier reste intact.
+var ErrNoChange = errors.New("settings: aucun changement")
+
+// Update est la SEULE façon, pour un écrivain du serveur, de modifier app_settings.json : il tient le verrou
+// d'écriture du fichier pendant tout le cycle Load, fn, Save. fn reçoit les réglages lus et les modifie en
+// place ; une erreur de fn n'écrit rien et remonte telle quelle. Rend les réglages écrits.
+//
+// POURQUOI : un PATCH qui lit, valide puis écrit sans ce verrou réécrit par-dessus une clé qu'un autre
+// écrivain a posée entre-temps (le drapeau de la file de régénération perdu, ou ressuscité). Save reste exporté
+// pour les outils à processus unique (CLI, tests) ; un écrivain du serveur ne l'appelle jamais directement
+// (garde-rail : store_update_guard_test.go).
+func (s *Store) Update(fn func(cfg *AppSettings) error) (*AppSettings, error) {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
+	cfg, err := s.Load()
+	if err != nil {
+		return nil, fmt.Errorf("settings.Update load: %w", err)
+	}
+	if err := fn(cfg); err != nil {
+		if errors.Is(err, ErrNoChange) {
+			return cfg, nil
+		}
+		return nil, err
+	}
+	if err := s.Save(cfg); err != nil {
+		return nil, err
+	}
+	return cfg, nil
 }
 
 // Save persiste app_settings.json en préservant les champs inconnus.

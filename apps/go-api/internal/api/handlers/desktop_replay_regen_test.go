@@ -17,6 +17,7 @@ import (
 type fakeRegen struct {
 	status  domain.ReplayRegenStatus
 	started int
+	rescans int
 	err     error
 }
 
@@ -39,6 +40,12 @@ func (f *fakeRegen) Resume() (domain.ReplayRegenStatus, error) {
 	}
 	f.status.Paused = false
 	return f.status, nil
+}
+
+func (f *fakeRegen) Rescan() (domain.ReplayRegenStatus, error) {
+	f.rescans++
+	f.status.Checked = false
+	return f.status, f.err
 }
 
 func regenRouter(svc handlers.ReplayRegenService) http.Handler {
@@ -90,5 +97,26 @@ func TestDesktopReplayRegen_Refus(t *testing.T) {
 	w = regenCall(t, h, http.MethodPost, "/desktop/replay-regen/start")
 	if w.Code != http.StatusServiceUnavailable || dataErrCode(t, w.Body.String()) != "replay_regen_unavailable" {
 		t.Fatalf("start sans liaison = %d %s", w.Code, w.Body.String())
+	}
+}
+
+// TestDesktopReplayRegen_RescanEtReprendreUneFileFinie : le décompte ne se lance que sur le POST explicite (jamais par la
+// lecture de l'état) ; reprendre une file finie est un 409.
+func TestDesktopReplayRegen_RescanEtReprendreUneFileFinie(t *testing.T) {
+	svc := &fakeRegen{status: domain.ReplayRegenStatus{Checked: true, Stale: 3}}
+	h := regenRouter(svc)
+	regenCall(t, h, http.MethodGet, "/desktop/replay-regen")
+	if svc.rescans != 0 {
+		t.Fatal("lire l'état ne lance aucun décompte")
+	}
+	w := regenCall(t, h, http.MethodPost, "/desktop/replay-regen/rescan")
+	var st domain.ReplayRegenStatus
+	if w.Code != http.StatusAccepted || svc.rescans != 1 || json.Unmarshal(w.Body.Bytes(), &st) != nil || st.Checked {
+		t.Fatalf("rescan = %d %s (décomptes lancés : %d)", w.Code, w.Body.String(), svc.rescans)
+	}
+	svc.err = replayregen.ErrNotRunning
+	w = regenCall(t, h, http.MethodPost, "/desktop/replay-regen/resume")
+	if w.Code != http.StatusConflict || dataErrCode(t, w.Body.String()) != "replay_regen_not_running" {
+		t.Fatalf("reprise d'une file finie = %d %s", w.Code, w.Body.String())
 	}
 }

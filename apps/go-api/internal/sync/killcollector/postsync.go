@@ -320,6 +320,12 @@ func RunPostSync(ctx context.Context, h *PostSyncHook, d PostSyncDeps, insertedI
 	if len(travail) == 0 {
 		return 0
 	}
+	// LE VERROU SOLO AVANT TOUT DECODAGE (postsync_verrou_decodage.go) : occupe = la passe se reporte au cycle suivant.
+	liberer, ok := h.prendreLeVerrouDeDecodage(ctx, d)
+	if !ok {
+		return 0
+	}
+	defer liberer()
 	sum := col.CollectMatches(ctx, travail)
 	observability.AddInt(CompteurPostSyncTraites, int64(sum.Written))
 

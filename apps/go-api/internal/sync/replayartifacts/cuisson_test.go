@@ -326,13 +326,12 @@ func TestBuildAll_BudgetEpuise_NePrechargePlus(t *testing.T) {
 	verifierAucuneGoroutineSurvivante(t, avant)
 }
 
-// TestBuildAll_VerrouTenuAilleurs_CompteEnEchec — item 5.7, vu du cycle.
+// TestBuildAll_VerrouTenuAilleurs_ReporteSansEchec — item 5.7, vu du cycle.
 //
-// Le refus du verrou de decodage remonte comme n'importe quel echec de cuisson : le film compte
-// en ECHEC, le cycle CONTINUE, et rien n'est ecrit. C'est ce qui permet au post-sync de refuser
-// tout de suite (le match revient au cycle suivant) plutot que d'attendre son tour derriere un
-// decodage qui ne lui appartient pas.
-func TestBuildAll_VerrouTenuAilleurs_CompteEnEchec(t *testing.T) {
+// Le refus du verrou de decodage (un autre decodage de film tient la machine : file de regeneration des rejeux, action
+// admin) REPORTE le match au cycle suivant : le cycle CONTINUE, rien n'est ecrit, et le film n'est ni un echec compte
+// ni un avertissement (cf. cuisson_verrou_test.go pour le chemin de production).
+func TestBuildAll_VerrouTenuAilleurs_ReporteSansEchec(t *testing.T) {
 	d := Deps{
 		RepoRoot: t.TempDir(), TitleSlug: titlePkg.DefaultSlug, FilmRoot: t.TempDir(),
 		Fetcher: &fetcherFilms{}, Budget: time.Minute,
@@ -341,9 +340,9 @@ func TestBuildAll_VerrouTenuAilleurs_CompteEnEchec(t *testing.T) {
 		},
 	}
 	b := buildAll(context.Background(), d, []buildWork{{matchID: "0000a001"}, {matchID: "0000a002"}})
-	if b.echecs != 2 || b.construits != 0 {
-		t.Errorf("bilan = %+v, attendu 2 echecs et 0 construit — un verrou tenu n'est ni un "+
-			"succes ni un arret de cycle", b)
+	if b.reportesVerrou != 2 || b.echecs != 0 || b.construits != 0 {
+		t.Errorf("bilan = %+v, attendu 2 reportes (verrou) et ni echec ni construit — un verrou tenu n'est "+
+			"ni un succes, ni un echec, ni un arret de cycle", b)
 	}
 }
 

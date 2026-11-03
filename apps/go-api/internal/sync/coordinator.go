@@ -466,6 +466,10 @@ func (c *Coordinator) GateSnapshot() GateSnapshotData {
 	return snap
 }
 
+// SyncRunning dit si un cycle de synchronisation est en cours (watcher, auto ou HTTP : tout claim en vol). La file de
+// regeneration des rejeux de l'application de bureau l'interroge entre deux films pour ceder la place.
+func (c *Coordinator) SyncRunning() bool { return c.InFlightCount() > 0 }
+
 // InFlightCount retourne le nombre de syncs en cours (watcher + auto/HTTP).
 func (c *Coordinator) InFlightCount() int {
 	c.inFlightMu.Lock()

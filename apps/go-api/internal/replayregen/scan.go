@@ -33,18 +33,22 @@ type Candidate struct {
 	modTime time.Time
 }
 
-// isStale dit si un artefact lu est en retard sur le binaire : pas à jour (schéma ou révisions de couche) ET pas
-// plus récent que lui. Un artefact d'un schéma plus récent (retour à une version antérieure de l'application) n'est
-// pas à refaire : le garde anti-régression du rangement refuserait le résultat.
-func isStale(d replaybuild.Digest) bool {
-	return !d.UpToDate() && d.SchemaVersion <= replay.SchemaVersion
+// isStale dit si un artefact est en retard sur le binaire : pas à jour (schéma ou révisions de couche) ET ni plus
+// récent que lui par son schéma (retour à une version antérieure : le garde anti-régression du rangement refuserait le
+// résultat) ni produit par une version de l'application PLUS RÉCENTE que ce binaire (même schéma, autres révisions de
+// couche : l'ancien décodeur refairait un rejeu récent). Une version de producteur absente ou illisible est admissible :
+// l'artefact est jugé sur ses seules marques.
+func isStale(h replaybuild.Header) bool {
+	return !h.UpToDate() && h.SchemaVersion <= replay.SchemaVersion &&
+		!h.ProduitParUneVersionPlusRecente(replaybuild.AppVersion())
 }
 
-// artifactStale lit UN artefact et dit s'il est en retard ; faux quand il a disparu ou n'est pas lisible (rien à
-// régénérer d'un fichier absent ; un fichier illisible se réécrit à l'ouverture, comportement inchangé).
-func artifactStale(path string) bool {
-	d, ok := replaybuild.ArtifactDigest(path)
-	return ok && isStale(d)
+// artifactStale lit l'EN-TETE d'UN artefact (replaybuild.ArtifactHeader : le petit fichier voisin, l'artefact entier une
+// seule fois s'il manque) et dit s'il est en retard ; faux quand il a disparu ou n'est pas lisible (rien à régénérer
+// d'un fichier absent ; un fichier illisible se réécrit à l'ouverture, comportement inchangé).
+func artifactStale(ctx context.Context, path string) bool {
+	h, ok := replaybuild.ArtifactHeader(ctx, path)
+	return ok && isStale(h)
 }
 
 // scanTitle liste les rejeux en retard d'un titre dont le film est encore dans l'archive, du plus récemment
@@ -68,7 +72,8 @@ func scanTitle(ctx context.Context, dir, slug string, filmPresent func(slug, mat
 			continue
 		}
 		short := strings.TrimSuffix(name, ".json")
-		if blocked(slug, short) || !artifactStale(filepath.Join(dir, name)) || !filmPresent(slug, short) {
+		// LE MOINS CHER D'ABORD : le registre des refus, puis le film (un test d'existence), puis l'en-tête de l'artefact.
+		if blocked(slug, short) || !filmPresent(slug, short) || !artifactStale(ctx, filepath.Join(dir, name)) {
 			continue
 		}
 		c := Candidate{TitleSlug: slug, MatchID: short}
