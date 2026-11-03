@@ -1,7 +1,7 @@
 /**
  * TanStack Query — régénération des rejeux en retard après une mise à jour (application de bureau,
  * capacité `can_regenerate_replays`) : décompte et état de la file (GET /desktop/replay-regen), démarrage,
- * pause et reprise (POST .../start, .../pause, .../resume).
+ * pause, reprise et recomptage (POST .../start, .../pause, .../resume, .../rescan).
  *
  * L'état se relit toutes les 3 s tant que la file tourne, et toutes les 4 s tant que le serveur n'a pas fini de
  * compter (le décompte lit chaque rejeu rangé, en arrière-plan). Rien ne démarre sans le clic de l'utilisateur.
@@ -51,7 +51,7 @@ export function useReplayRegenStatus(enabled: boolean) {
   })
 }
 
-export type ReplayRegenCommand = 'start' | 'pause' | 'resume'
+export type ReplayRegenCommand = 'start' | 'pause' | 'resume' | 'rescan'
 
 /** Envoie une commande à la file ; la réponse porte déjà le nouvel état, posé dans le cache. */
 export function useReplayRegenCommand() {

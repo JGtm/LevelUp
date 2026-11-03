@@ -28,6 +28,8 @@ export interface ReplayRegenText {
   cardTitle: string
   cardIntro: string
   progressLabel: string
+  /** Bouton secondaire de la carte : refait le décompte des rejeux en retard. */
+  recount: string
 }
 
 export const REPLAY_REGEN_TEXT: Record<Locale, ReplayRegenText> = {
@@ -52,6 +54,7 @@ export const REPLAY_REGEN_TEXT: Record<Locale, ReplayRegenText> = {
     cardIntro:
       'Après une mise à jour, les rejeux déjà construits peuvent être refaits avec la nouvelle version. Rien ne démarre sans votre accord.',
     progressLabel: 'Progression de la régénération',
+    recount: 'Recompter',
   },
   en: {
     staleOne: '1 replay to regenerate after the update.',
@@ -74,5 +77,6 @@ export const REPLAY_REGEN_TEXT: Record<Locale, ReplayRegenText> = {
     cardIntro:
       'After an update, replays already built can be redone with the new version. Nothing starts without your consent.',
     progressLabel: 'Regeneration progress',
+    recount: 'Recount',
   },
 }

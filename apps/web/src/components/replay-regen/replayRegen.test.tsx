@@ -3,7 +3,7 @@
  * pause et reprise) et carte des Paramètres (même composant que le bandeau).
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { screen, fireEvent, waitFor } from '@testing-library/react'
+import { screen, fireEvent, waitFor, cleanup } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { renderWithProviders } from '@/test/render-utils'
 import { desktopCapabilities, testCapabilities } from '@/test/capabilities'
@@ -33,7 +33,8 @@ function serveur(initial: Partial<ReplayRegenStatus>) {
       if (command === 'start') state = { ...state, running: true, total: 4, done: 1, stale: 3 }
       if (command === 'pause') state = { ...state, paused: true }
       if (command === 'resume') state = { ...state, paused: false }
-      return HttpResponse.json(state, { status: command === 'start' ? 202 : 200 })
+      if (command === 'rescan') state = { ...state, checked: false }
+      return HttpResponse.json(state, { status: command === 'start' || command === 'rescan' ? 202 : 200 })
     }),
   )
   return { commands, set: (s: Partial<ReplayRegenStatus>) => (state = { ...state, ...s }) }
@@ -166,6 +167,36 @@ describe('ReplayRegenCard (Paramètres)', () => {
     serveur({ stale: 0 })
     renderWithProviders(<ReplayRegenCard />)
     expect(await screen.findByText('Tous les rejeux sont à jour.')).toBeInTheDocument()
+  })
+
+  it('« Recompter » appelle la route de recomptage', async () => {
+    const s = serveur({ stale: 2 })
+    renderWithProviders(<ReplayRegenCard />)
+    await screen.findByText('2 rejeux à régénérer après la mise à jour.')
+    const button = screen.getByRole('button', { name: 'Recompter' })
+    expect(button).toBeEnabled()
+    fireEvent.click(button)
+    await waitFor(() => expect(s.commands).toEqual(['rescan']))
+    expect(await screen.findByText('Vérification des rejeux…')).toBeInTheDocument()
+  })
+
+  it('« Recompter » est désactivé pendant une file et tant que le décompte n’est pas fait', async () => {
+    const s = serveur({ running: true, total: 4, done: 1, stale: 3 })
+    renderWithProviders(<ReplayRegenCard />)
+    expect(await screen.findByRole('button', { name: 'Recompter' })).toBeDisabled()
+    s.set({ running: false, checked: false })
+    cleanup()
+    renderWithProviders(<ReplayRegenCard />)
+    expect(await screen.findByRole('button', { name: 'Recompter' })).toBeDisabled()
+    expect(s.commands).toEqual([])
+  })
+
+  it('le bandeau ne propose pas « Recompter »', async () => {
+    useRegenDismissedStore.setState({ dismissed: false })
+    serveur({ stale: 3 })
+    renderWithProviders(<ReplayRegenBanner />)
+    await screen.findByRole('button', { name: 'Régénérer' })
+    expect(screen.queryByRole('button', { name: 'Recompter' })).not.toBeInTheDocument()
   })
 
   it('n’existe pas sans la capacité', () => {
