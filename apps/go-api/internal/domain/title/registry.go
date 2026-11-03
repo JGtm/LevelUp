@@ -282,6 +282,9 @@ func (t *TitleDescriptor) IsActive() bool {
 type Registry struct {
 	mu     sync.RWMutex
 	titles map[string]*TitleDescriptor
+	// order : les slugs dans l'ordre de leur premier enregistrement (built-in d'abord, puis les manifestes) ; une map Go
+	// ne donne aucun ordre, et les listes qui en dépendent (GameProcessNames) doivent être déterministes.
+	order []string
 }
 
 // DefaultSlug est le slug du titre par défaut (Halo Infinite).
@@ -421,6 +424,9 @@ func NewRegistry() *Registry {
 func (r *Registry) Register(desc *TitleDescriptor) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if _, known := r.titles[desc.Slug]; !known {
+		r.order = append(r.order, desc.Slug)
+	}
 	r.titles[desc.Slug] = desc
 }
 
@@ -521,7 +527,9 @@ func (r *Registry) GameProcessNames() []string {
 	defer r.mu.RUnlock()
 	seen := make(map[string]struct{})
 	var out []string
-	for _, t := range r.titles {
+	// Ordre d'enregistrement : le PREMIER nom déclaré gagne un doublon de casse, quel que soit l'ordre d'itération de la map.
+	for _, slug := range r.order {
+		t := r.titles[slug]
 		for _, n := range t.ProcessNames {
 			key := strings.ToLower(n)
 			if _, ok := seen[key]; ok {
@@ -531,7 +539,7 @@ func (r *Registry) GameProcessNames() []string {
 			out = append(out, n)
 		}
 	}
-	sort.Strings(out)
+	sort.SliceStable(out, func(i, j int) bool { return strings.ToLower(out[i]) < strings.ToLower(out[j]) })
 	return out
 }
 
