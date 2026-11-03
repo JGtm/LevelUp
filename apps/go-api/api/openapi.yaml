@@ -7049,6 +7049,25 @@ paths:
       summary: Statut du scheduler de sauvegarde
       tags:
         - settings
+  /settings/desktop:
+    get:
+      operationId: getDesktopStatus
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DesktopStatus'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Etat vivant de l'integration au poste (application de bureau)
+      tags:
+        - settings
   /settings/film-archive:
     get:
       operationId: getFilmArchive
@@ -10598,6 +10617,9 @@ components:
         can_edit_settings:
           description: Réglages de l'instance modifiables (figés en démo).
           type: boolean
+        can_integrate_shell:
+          description: 'Intégration de la coquille avec le poste : notifications Windows, zone de notification, démarrage avec Windows.'
+          type: boolean
         can_login_via_browser:
           description: Connexion Microsoft dans le navigateur par défaut, sans code à recopier (application de bureau).
           type: boolean
@@ -10616,6 +10638,9 @@ components:
         can_reset_media_index:
           type: boolean
         can_run_sync:
+          type: boolean
+        can_schedule_refresh:
+          description: Tâche planifiée Windows qui rafraîchit les jetons quand l'application est fermée.
           type: boolean
         can_self_provision:
           type: boolean
@@ -10658,6 +10683,9 @@ components:
           type: boolean
         can_view_media:
           type: boolean
+        can_watch_game_process:
+          description: 'Détection du jeu en cours (mode jeu : cuisson et tâches lourdes suspendues pendant la partie, synchronisation à sa fermeture).'
+          type: boolean
         deployment:
           description: Profil de déploiement (affichage et diagnostic ; ne jamais brancher dessus).
           enum:
@@ -10692,6 +10720,9 @@ components:
         - can_use_compact_chrome
         - can_login_via_browser
         - can_compare_accounts
+        - can_watch_game_process
+        - can_integrate_shell
+        - can_schedule_refresh
         - deployment
       type: object
     CareerCSRRank:
@@ -13099,6 +13130,18 @@ components:
         - killsourceRev
         - objectivesRev
         - build
+      type: object
+    DesktopStatus:
+      additionalProperties: false
+      properties:
+        game_running:
+          description: 'Le jeu tourne en ce moment : la cuisson des rejeux et les tâches lourdes sont suspendues.'
+          type: boolean
+        scheduled_refresh:
+          $ref: '#/components/schemas/ScheduledRefreshStatus'
+          description: État de la tâche planifiée de rafraîchissement des jetons (absent hors de l'application de bureau).
+      required:
+        - game_running
       type: object
     DetectionPatchInputBody:
       additionalProperties: false
@@ -24720,6 +24763,23 @@ components:
         - skipped
         - failed
         - duration_ns
+      type: object
+    ScheduledRefreshStatus:
+      additionalProperties: false
+      properties:
+        error_code:
+          description: Code de l'erreur quand l'état est error.
+          type: string
+        state:
+          description: Tâche présente, absente, en erreur, ou pas encore vérifiée.
+          enum:
+            - present
+            - absent
+            - error
+            - unknown
+          type: string
+      required:
+        - state
       type: object
     SchedulerSnapshot:
       additionalProperties: false

@@ -61,6 +61,11 @@ var goosSuffixAllowed = map[string]string{
 		"CryptUnprotectData (DPAPI, Win32), ajoute le 2026-11-02 (L13b, ADR 0045 D-11 ; motif d'instancelock_windows.go)",
 	"apps/go-api/internal/platform/syslocale/syslocale_windows.go": "fuseau et langue du systeme : registre " +
 		"(TimeZoneKeyName) et GetUserPreferredUILanguages (Win32), ajoute le 2026-11-02 (L20.b ; motif de diskfree_windows.go)",
+	"apps/go-api/internal/platform/gameproc/lister_windows.go": "liste des processus du poste : " +
+		"CreateToolhelp32Snapshot/Process32First (Win32, noms d'executables seuls), ajoute le 2026-11-02 " +
+		"(L21.a ; motif de diskfree_windows.go)",
+	"apps/go-api/internal/platform/gameproc/lister_windows_test.go": "test de l'enumeration reelle des " +
+		"processus (Win32), ajoute le 2026-11-02 (L21.a)",
 	"apps/go-api/internal/platform/session/store_purge_windows_test.go": "purge de sessions : comportement " +
 		"de suppression propre a Windows",
 }

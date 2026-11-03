@@ -4,7 +4,7 @@
  * Centralisé ici (plutôt que dans routes/settings.tsx) pour être partagé par la
  * route ET SettingsPage sans créer de cycle d'import.
  */
-const SETTINGS_TABS = ['appearance', 'titles', 'analyse', 'notifications', 'data', 'account'] as const
+const SETTINGS_TABS = ['appearance', 'titles', 'analyse', 'notifications', 'data', 'account', 'desktop'] as const
 export type SettingsTab = (typeof SETTINGS_TABS)[number]
 
 /**

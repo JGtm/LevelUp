@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"crypto/subtle"
 	"encoding/json"
 	"fmt"
@@ -50,6 +51,8 @@ type options struct {
 	resourcesDir string
 	logsDir      string
 	secret       string
+	// afterReady : lignes JSON ecrites telles quelles sur stdout juste apres `ready` (variante ok).
+	afterReady []string
 }
 
 // readOptions lit l'environnement ; une valeur illisible est une erreur (jamais un defaut muet).
@@ -89,6 +92,14 @@ func readOptions(getenv func(string) string) (options, error) {
 		o.stopUnclean = true
 	default:
 		return o, fmt.Errorf("FAKE_STOP_CLEAN %q n'est ni true ni false", getenv("FAKE_STOP_CLEAN"))
+	}
+	if raw := getenv("FAKE_EVENTS_AFTER_READY"); raw != "" {
+		for _, line := range strings.Split(raw, "|") {
+			if !json.Valid([]byte(line)) {
+				return o, fmt.Errorf("FAKE_EVENTS_AFTER_READY : %q n'est pas du JSON", line)
+			}
+			o.afterReady = append(o.afterReady, line)
+		}
 	}
 	var err error
 	o.chattyBytes, err = intEnv(getenv, "FAKE_CHATTY_BYTES")
@@ -133,6 +144,32 @@ func (e *emitter) stopped(clean bool) {
 	e.emit(map[string]any{"event": "stopped", "clean": clean})
 }
 
+// commandsFile : fichier de la racine de donnees ou le faux serveur ajoute chaque commande recue sur stdin
+// (une par ligne), pour que les tests prouvent qu'une commande de la coquille est arrivee.
+const commandsFile = "fake-sidecar-commands.txt"
+
+// recordCommand ajoute une commande recue sur stdin a commandsFile.
+func recordCommand(dataDir, command string, stderr io.Writer) {
+	fmt.Fprintf(stderr, "fake: commande recue %q\n", command)
+	if dataDir == "" {
+		return
+	}
+	f, err := os.OpenFile(filepath.Join(dataDir, commandsFile), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
+	if err != nil {
+		fmt.Fprintf(stderr, "fake: fichier des commandes : %v\n", err)
+		return
+	}
+	defer f.Close()
+	fmt.Fprintln(f, command)
+}
+
+// raw ecrit une ligne JSON deja formee, d'un seul Write, sous verrou.
+func (e *emitter) raw(line string) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	_, _ = e.w.Write(append([]byte(line), '\n'))
+}
+
 // chatter ecrit n octets de lignes non JSON : un tube qui n'est pas vide en continu bloque ce
 // processus, comme un serveur reel dont la coquille ne lirait plus la sortie.
 func (e *emitter) chatter(n int) {
@@ -161,7 +198,12 @@ func run(args []string, getenv func(string) string, cwd string, stdin io.Reader,
 	out := &emitter{w: stdout}
 	eof := make(chan struct{})
 	go func() {
-		_, _ = io.Copy(io.Discard, stdin) // lit jusqu'a l'EOF : fermeture du tube = ordre d'arret
+		// Lit jusqu'a l'EOF : la fermeture du tube est l'ordre d'arret ; les lignes lues avant sont des
+		// commandes de la coquille, enregistrees pour que les tests les voient.
+		sc := bufio.NewScanner(stdin)
+		for sc.Scan() {
+			recordCommand(opts.dataDir, sc.Text(), stderr)
+		}
 		close(eof)
 	}()
 
@@ -210,6 +252,9 @@ func serve(opts options, out *emitter, port int, srv *http.Server, eof <-chan st
 		return exitCrash
 	default:
 		out.ready(port)
+		for _, line := range opts.afterReady {
+			out.raw(line)
+		}
 	}
 	<-eof
 	return stop(opts, out, srv, stderr)

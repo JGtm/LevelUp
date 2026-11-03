@@ -88,6 +88,9 @@ type titleManifestSection struct {
 	// MediaFilenamePrefixes : préfixes de nom de fichier de capture appartenant au
 	// titre (routage de l'indexeur média, DEC-8 — cf. TitleDescriptor).
 	MediaFilenamePrefixes []string `toml:"media_filename_prefixes"`
+	// ProcessNames : noms d'exécutables du client PC du titre (détection du jeu en cours, cf.
+	// TitleDescriptor.ProcessNames). Vide ou absent : le titre n'a pas de client PC.
+	ProcessNames []string `toml:"process_names"`
 }
 
 // LoadTitleManifest charge le descripteur d'un titre depuis
@@ -141,6 +144,11 @@ func LoadTitleManifestFromBytes(path, slug string, raw []byte) (*TitleDescriptor
 	for _, p := range doc.Title.MediaFilenamePrefixes {
 		if trimmed := strings.TrimSpace(p); trimmed != "" {
 			desc.MediaFilenamePrefixes = append(desc.MediaFilenamePrefixes, trimmed)
+		}
+	}
+	for _, p := range doc.Title.ProcessNames {
+		if trimmed := strings.TrimSpace(p); trimmed != "" {
+			desc.ProcessNames = append(desc.ProcessNames, trimmed)
 		}
 	}
 	if desc.Name == "" {

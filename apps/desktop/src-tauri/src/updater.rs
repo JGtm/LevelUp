@@ -26,8 +26,10 @@ use std::sync::{Arc, Condvar, Mutex};
 use std::time::{Duration, Instant};
 
 use crate::catalogue;
+use crate::events::Toast;
 use crate::logfile::{LogSink, Source};
 use crate::screen::Screen;
+use crate::shell_settings::ShellSettings;
 use crate::supervisor::{Closer, Host, Outcome};
 
 /// Longueur maximale des notes montrees dans la boite de dialogue (en caracteres).
@@ -446,6 +448,18 @@ impl<H: Host> Host for UpdateHost<H> {
             self.install_if_allowed(install, outcome);
         }
         self.inner.exit_app(outcome);
+    }
+
+    fn notify(&mut self, toast: &Toast) {
+        self.inner.notify(toast);
+    }
+
+    fn apply_shell_settings(&mut self, settings: &ShellSettings) {
+        self.inner.apply_shell_settings(settings);
+    }
+
+    fn reveal_window_if_hidden(&mut self) {
+        self.inner.reveal_window_if_hidden();
     }
 }
 

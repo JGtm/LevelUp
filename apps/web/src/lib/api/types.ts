@@ -447,6 +447,14 @@ export interface SettingsResponse {
   // Dossier de l'archive (chemin absolu) ; '' = emplacement par défaut. Pris en compte au
   // redémarrage. L'occupation se lit par GET /settings/film-archive.
   film_archive_dir: string
+  // --- Intégration au poste de l'application de bureau (lot L21) ---
+  // Détecter le jeu en cours (défaut vrai), notifications Windows, croix vers la zone de
+  // notification, démarrage avec Windows, tâche planifiée de rafraîchissement (défaut faux).
+  game_process_watch: boolean
+  native_notifications: boolean
+  close_to_tray: boolean
+  start_with_windows: boolean
+  scheduled_refresh: boolean
 }
 
 export type UpdateSettingsRequest = Partial<

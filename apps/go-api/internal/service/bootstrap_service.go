@@ -441,6 +441,9 @@ func buildCapabilities(cfg *config.AppConfig, settings map[string]interface{}) d
 		CanUseCompactChrome:     dc.CompactChrome,
 		CanLoginViaBrowser:      dc.LoginViaBrowser,
 		CanCompareAccounts:      dc.CompareAccounts,
+		CanWatchGameProcess:     dc.GameProcessWatch,
+		CanIntegrateShell:       dc.ShellIntegration,
+		CanScheduleRefresh:      dc.ScheduledRefresh,
 		Deployment:              string(cfg.Deployment),
 	}
 }

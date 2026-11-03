@@ -64,6 +64,7 @@ func main() {
 	initAccountsPool(st)
 	initScheduler(st)
 	openPersistQueue(st)
+	armGameWatch(st) // AVANT toute tâche lourde : premier relevé du jeu synchrone
 	launchCoreTasks(st)
 	startWatcher(st)
 	launchSchedulers(st)
@@ -77,6 +78,9 @@ func main() {
 	wireTitleHooks(st)
 	openRouterAndHeartbeat(st)
 	launchWakeSequence(st)
+	launchGameWatch(st)
+	launchShellIntegration(st)
+	launchScheduledRefresh(st)
 	awaitShutdown(st)
 }
 

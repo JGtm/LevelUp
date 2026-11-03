@@ -120,3 +120,69 @@ en = "Sign-in failed"
 [desktop.browser_login.error_body]
 fr = "Fermez cet onglet, puis réessayez depuis LevelUp. Code d'erreur : {code}"
 en = "Close this tab, then try again from LevelUp. Error code: {code}"
+
+# Notifications Windows relayées depuis la cloche (réglage native_notifications, application de bureau).
+# Le serveur compose le texte dans la langue du joueur (internal/notifications/native) : la coquille
+# l'affiche tel quel et n'en connaît aucun. Un titre et un corps par type de notification.
+[desktop.notify.sync_title]
+fr = "Synchronisation terminée"
+en = "Sync complete"
+
+[desktop.notify.sync_body]
+fr = "Tes dernières parties sont à jour."
+en = "Your latest matches are up to date."
+
+[desktop.notify.sync_error_title]
+fr = "Synchronisation en échec"
+en = "Sync failed"
+
+[desktop.notify.sync_error_body]
+fr = "Ouvre LevelUp pour en voir la cause."
+en = "Open LevelUp to see why."
+
+[desktop.notify.challenge_title]
+fr = "Défi mis à jour"
+en = "Challenge update"
+
+[desktop.notify.challenge_body]
+fr = "Un défi a avancé ou vient d'être relevé."
+en = "A challenge moved forward or was just completed."
+
+[desktop.notify.streak_title]
+fr = "Nouvelle série"
+en = "New streak"
+
+[desktop.notify.streak_body]
+fr = "Tu viens d'atteindre une série."
+en = "You just reached a streak."
+
+[desktop.notify.record_title]
+fr = "Nouveau record"
+en = "New record"
+
+[desktop.notify.record_body]
+fr = "Un record personnel vient d'être battu."
+en = "A personal record was just broken."
+
+[desktop.notify.rank_title]
+fr = "Nouveau rang"
+en = "New rank"
+
+[desktop.notify.rank_body]
+fr = "Ton rang ou ton niveau vient de changer."
+en = "Your rank or tier just changed."
+
+# Menu de l'icône de la zone de notification (réglage close_to_tray). La coquille affiche ces libellés
+# depuis son catalogue de repli compilé, dans la langue que le serveur lui annonce (événement shell_settings) ;
+# ils sont aussi servis par GET /api/v1/desktop/strings.
+[desktop.tray.open]
+fr = "Ouvrir LevelUp"
+en = "Open LevelUp"
+
+[desktop.tray.sync]
+fr = "Synchroniser maintenant"
+en = "Sync now"
+
+[desktop.tray.quit]
+fr = "Quitter"
+en = "Quit"

@@ -27,6 +27,7 @@ export const FR_TEXT = {
   tabData: 'Données & Médias',
   tabAccount: 'Compte',
   tabNotifications: 'Notifications',
+  tabDesktop: 'Application',
 
   groupsCardTitle: 'Amis et groupes',
   groupsCardDescription:

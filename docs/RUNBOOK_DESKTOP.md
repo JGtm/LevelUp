@@ -36,6 +36,35 @@ clean machine (plan item L17.7) follows these five steps and records witnesses (
 - **Media without H.264.** On a Windows N or KN edition (no Media Foundation) the Media page says that clips the browser cannot
   play as they are cannot be converted, and links Microsoft's Media Feature Pack; installing it and restarting LevelUp fixes it.
 
+## Living with the game (Settings > Application)
+
+Everything below is in the "Application" tab of the settings, absent on the site. Nothing touches Windows until it is turned on.
+
+- **Detect the running game** (on by default). LevelUp reads the list of Windows processes every 15 s (program names only, never the
+  game's memory). While `HaloInfinite.exe` runs ("game mode"), replay building and the heavy background tasks wait for the match to
+  end (including the film decoding that follows a sync), and a sync starts when the game closes (at most one per minute) provided
+  automatic sync is on, which it is by default in the desktop application. A game already open when LevelUp starts is taken into account
+  before any heavy task starts. The journal says `game_mode: enter` and `game_mode: leave`;
+  the tab says whether the game is running.
+- **Windows notifications** (off). The bell notifications (sync done, sync error, challenge, streak, record, rank) also show as Windows
+  notifications when the window is minimized, hidden or behind another application, never while LevelUp is in front, and only for the
+  account you signed in with (a followed friend never triggers one). A click on one brings the window back.
+- **Minimize to the notification area when closing** (off). The cross hides LevelUp in the notification area and the server keeps
+  running; the icon menu offers Open, Sync now and Quit (the same clean stop as the cross without the icon). The icon exists only while
+  this is on. If the icon cannot be created, the cross quits instead of hiding the window.
+- **Start with Windows** (off). Adds a per-user startup entry (`LevelUp` in the `Run` key of the current user, never machine-wide) that
+  starts LevelUp minimized in the notification area (`--minimized`); turning it off deletes the entry. If you disabled the entry yourself in the
+  Windows task manager (Startup apps), LevelUp respects it and does not turn it back on (the journal says `left_disabled`).
+- **Keep the sign-in alive while the application is closed** (off). Creates the per-user scheduled task `LevelUp\Refresh-<8 hex>` (the suffix is a fingerprint of the data folder, so a test or a second
+  installation on other folders never touches yours; every 6 hours,
+  no administrator rights, hidden) that runs `levelup-server.exe -mode refresh-only` to rotate the Microsoft tokens; with the application
+  open it exits at once (the instance lock). The tab shows whether the task is present, absent or in error. To inspect it by hand:
+  `schtasks /Query /FO LIST | findstr /i "LevelUp\Refresh"` to read its exact name, then `schtasks /Query /TN "<name>" /V /FO LIST`; to remove it
+  without LevelUp: `schtasks /Delete /TN "<name>" /F`. At each start with the setting on, the task is rewritten (a reinstall in another
+  folder never leaves it pointing to the old one).
+- **Uninstalling.** The uninstaller does not remove the startup entry nor the scheduled task: turn both settings off first (or run the two
+  commands above and delete the `LevelUp` value of `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`).
+
 ## Signing in (Microsoft account)
 
 The setup assistant's first step opens **the default browser** on the Microsoft sign-in page ("Sign in with Microsoft"); after

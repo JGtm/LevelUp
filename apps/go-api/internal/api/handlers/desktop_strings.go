@@ -33,7 +33,7 @@ func (h *DesktopStringsHandler) Mount(r chi.Router, opts ...humacore.MountOption
 type desktopStringsOutput struct {
 	Body struct {
 		Locale  string            `json:"locale" doc:"Language the labels are written in."`
-		Strings map[string]string `json:"strings" doc:"Label by identifier (starting, failed_*, stopping, stopped, update_*); update_available and update_none keep the {version} placeholder."`
+		Strings map[string]string `json:"strings" doc:"Label by identifier (starting, failed_*, stopping, stopped, update_*, tray_*); update_available and update_none keep the {version} placeholder."`
 	}
 }
 
@@ -65,6 +65,10 @@ func (h *DesktopStringsHandler) handle(ctx context.Context, _ *struct{}) (*deskt
 		"update_check_failed":      i18n.Msg(loc, "desktop.update_check_failed", nil),
 		"update_unavailable_debug": i18n.Msg(loc, "desktop.update_unavailable_debug", nil),
 		"update_busy":              i18n.Msg(loc, "desktop.update_busy", nil),
+		// Menu de l'icône de la zone de notification : la coquille les tire de son catalogue de repli.
+		"tray_open": i18n.Msg(loc, "desktop.tray.open", nil),
+		"tray_sync": i18n.Msg(loc, "desktop.tray.sync", nil),
+		"tray_quit": i18n.Msg(loc, "desktop.tray.quit", nil),
 	}
 	return out, nil
 }

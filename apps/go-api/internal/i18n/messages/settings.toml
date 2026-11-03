@@ -21,3 +21,8 @@ en = "The target folder is not empty: {dir}. Choose an empty or non-existent fol
 [settings.film_archive.move_required]
 fr = "L'archive actuelle contient {films} films : les déplacer avec la commande « levelup film archive-move --to <dossier> » (serveur arrêté), qui enregistre ensuite le nouveau dossier."
 en = "The current archive holds {films} films: move them with the \"levelup film archive-move --to <folder>\" command (server stopped), which then saves the new folder."
+
+# Réglage d'intégration au poste (application de bureau) refusé : ce profil de déploiement ne l'offre pas.
+[settings.desktop.not_offered]
+fr = "Ce réglage n'existe que dans l'application de bureau."
+en = "This setting only exists in the desktop application."

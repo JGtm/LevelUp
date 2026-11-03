@@ -16,13 +16,15 @@
 //!     ecran "fermeture", stdin ferme, minuterie 40 s + 5 s
 //!     -> processus sorti : sortie de l'application
 //!     -> minuterie : kill, puis sortie apres un delai de grace
-//!  processus sorti hors fermeture : ecran "arrete" (ou l'echec annonce)
+//!  processus sorti hors fermeture : fenetre montree si elle etait cachee, puis ecran "arrete"
+//!                                    (ou l'echec annonce)
 //! ```
 
 use std::time::Duration;
 
-use crate::events::SidecarEvent;
+use crate::events::{SidecarEvent, Toast};
 use crate::screen::{FailureKind, Screen};
+use crate::shell_settings::ShellSettings;
 
 /// Delai accorde au serveur pour annoncer `ready` (plan, section 6).
 pub const STARTUP_TIMEOUT: Duration = Duration::from_secs(120);
@@ -64,6 +66,8 @@ pub enum Input {
     Exited,
     /// L'utilisateur (ou le systeme) demande la fermeture.
     CloseRequested,
+    /// « Synchroniser maintenant » du menu de la zone de notification.
+    SyncRequested,
     TimerFired(Timer),
 }
 
@@ -89,6 +93,20 @@ pub enum Action {
     Arm(Timer, Duration),
     Disarm(Timer),
     ExitApp,
+    /// Montrer une notification systeme relayee depuis la cloche (L21.b).
+    Notify(Toast),
+    /// Appliquer les reglages annonces par le serveur : icone de la zone de notification, croix (L21.c).
+    ApplyShellSettings(ShellSettings),
+    /// Ecrire la commande `sync` sur la stdin du serveur : un cycle de synchronisation immediat (L21.c).
+    SendSync,
+    /// La synchronisation demandee n'est pas ecrite : le serveur n'est pas pret ; `phase` nomme la phase
+    /// courante pour le journal (jamais un abandon sans trace).
+    SyncSkipped {
+        phase: &'static str,
+    },
+    /// Montrer la fenetre si elle est cachee (zone de notification) : un ecran terminal ne doit pas
+    /// s'afficher sur une fenetre invisible, personne ne le verrait.
+    RevealWindow,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -104,6 +122,21 @@ enum Phase {
     Dead,
     /// La sortie de l'application a ete ordonnee.
     Done,
+}
+
+impl Phase {
+    /// Le nom de la phase pour le journal.
+    fn name(self) -> &'static str {
+        match self {
+            Self::Starting => "starting",
+            Self::Listening => "listening",
+            Self::Ready => "ready",
+            Self::Failed => "failed",
+            Self::Closing => "closing",
+            Self::Dead => "dead",
+            Self::Done => "done",
+        }
+    }
 }
 
 pub struct Lifecycle {
@@ -164,6 +197,7 @@ impl Lifecycle {
             Input::Event(event) => self.on_event(event),
             Input::Exited => self.on_exited(),
             Input::CloseRequested => self.on_close_requested(),
+            Input::SyncRequested => self.on_sync_requested(),
             Input::TimerFired(timer) => self.on_timer(timer),
         }
     }
@@ -191,6 +225,13 @@ impl Lifecycle {
             SidecarEvent::Stopping if matches!(self.phase, Phase::Ready | Phase::Listening | Phase::Starting) => {
                 // Arret decide par le serveur lui-meme (signal, route d'arret) : meme ecran que la fermeture.
                 vec![Action::ShowScreen(Screen::Stopping)]
+            }
+            // Une notification n'a de sens que pour une application ouverte : avant `ready` il n'y a rien a
+            // montrer, pendant la fermeture ou apres un echec non plus.
+            SidecarEvent::Notification(toast) if self.phase == Phase::Ready => vec![Action::Notify(toast)],
+            // Les reglages n'ont de sens que pour une application ouverte, et ne retiennent rien a la fermeture.
+            SidecarEvent::ShellSettings(settings) if self.phase == Phase::Ready => {
+                vec![Action::ApplyShellSettings(settings)]
             }
             SidecarEvent::Stopped { clean } => {
                 self.stopped_clean = Some(clean);
@@ -236,6 +277,7 @@ impl Lifecycle {
             }
             Phase::Failed => {
                 self.phase = Phase::Dead;
+                actions.push(Action::RevealWindow);
                 // La page du serveur n'existe plus : l'ecran embarque prend le relais, sauf s'il est deja la.
                 let screen = self.failure_shown.unwrap_or_else(|| self.failure_screen());
                 if self.failure_shown != Some(screen) {
@@ -244,11 +286,24 @@ impl Lifecycle {
             }
             Phase::Starting | Phase::Listening | Phase::Ready => {
                 self.phase = Phase::Dead;
+                actions.push(Action::RevealWindow);
                 actions.push(Action::ShowScreen(Screen::Stopped));
             }
             Phase::Dead | Phase::Done => {}
         }
         actions
+    }
+
+    /// La commande de synchronisation n'est ecrite que pour un serveur pret : avant `ready`, pendant la
+    /// fermeture ou apres un echec, personne ne l'executerait ; la demande abandonnee se journalise.
+    fn on_sync_requested(&mut self) -> Vec<Action> {
+        if self.phase == Phase::Ready && self.process_alive {
+            vec![Action::SendSync]
+        } else {
+            vec![Action::SyncSkipped {
+                phase: self.phase.name(),
+            }]
+        }
     }
 
     fn on_close_requested(&mut self) -> Vec<Action> {

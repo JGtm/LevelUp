@@ -125,7 +125,11 @@ type bilanCuisson struct {
 	// — ni archivés ni cuits, repris au cycle suivant. SÉPARÉS DE `sansFilm`, qui dit « absent ou
 	// expiré » : un film reporté existe, et il sera complet dans une minute.
 	reportes int
-	echecs   int
+	// reportesModeJeu : matchs dont la cuisson n'a pas démarré parce que le jeu tournait (mode jeu,
+	// [gameproc.Mode.HeavyWorkAllowed]). Leur film est persisté ; l'artefact se construit au rattrapage
+	// qui suit la partie. Comptés avec les reportés dans `traites`.
+	reportesModeJeu int
+	echecs          int
 	// ecartes : films MIS DE COTE, jamais comptes en echec : cle ecrite absente de la table de
 	// profil (lot 3.1.1, `replaybuild.ErrUnknownFilmKey`), ou film au cache que la cuisson refuse
 	// comme NON FINALISE (lot L3, `finalise.ErrFilmNonFinalise`). SEPARE DES ECHECS, et ce n est
@@ -176,7 +180,7 @@ func signalerCartesHorsCatalogue(ctx context.Context, d Deps, parCarte map[strin
 // traites : les matchs que la boucle a examinés et décidés (construits, à jour, sans film,
 // reportés, en échec) — la ligne « traites » des journaux de budget.
 func (b bilanCuisson) traites() int {
-	return b.construits + b.dejaAJour + b.sansFilm + b.reportes + b.echecs
+	return b.construits + b.dejaAJour + b.sansFilm + b.reportes + b.reportesModeJeu + b.echecs
 }
 
 // DeadlineParFilm : la borne DURE de la cuisson d'UN film, quand le budget du cycle en laisse
@@ -301,6 +305,9 @@ func buildAll(ctx context.Context, d Deps, work []buildWork) bilanCuisson {
 				"plancher", PlancherCuisson,
 				"traites", b.traites())
 			break
+		}
+		if reporterEnModeJeu(ctx, d, &b) {
+			continue
 		}
 		cuireUnMatch(ctx, d, w, &b, solde)
 	}

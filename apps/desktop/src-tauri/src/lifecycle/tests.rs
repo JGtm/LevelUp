@@ -253,3 +253,145 @@ fn l_entree_n_est_chargee_qu_une_fois_meme_si_ready_est_repete() {
     assert_eq!(m.step(ready(9000)), vec![]);
     assert_eq!(m.step(listening(8123)), vec![Action::AnnouncePort { port: 8123 }]);
 }
+
+fn notification() -> Input {
+    Input::Event(SidecarEvent::Notification(Toast {
+        title: "Synchronisation terminee".into(),
+        body: "Tes dernieres parties sont a jour.".into(),
+        kind: "sync".into(),
+    }))
+}
+
+#[test]
+fn une_notification_du_serveur_pret_est_montree_telle_quelle() {
+    let mut m = machine();
+    m.step(ready(8123));
+    let expected = Toast {
+        title: "Synchronisation terminee".into(),
+        body: "Tes dernieres parties sont a jour.".into(),
+        kind: "sync".into(),
+    };
+    assert_eq!(m.step(notification()), vec![Action::Notify(expected)]);
+}
+
+#[test]
+fn une_notification_hors_application_ouverte_est_ignoree() {
+    // Avant `ready` : rien a montrer.
+    let mut m = machine();
+    assert!(m.step(notification()).is_empty());
+    m.step(listening(8123));
+    assert!(m.step(notification()).is_empty());
+    // Apres un echec, et pendant la fermeture.
+    let mut failed_machine = machine();
+    failed_machine.step(failed("locked"));
+    assert!(failed_machine.step(notification()).is_empty());
+    let mut closing = machine();
+    closing.step(ready(8123));
+    closing.step(Input::CloseRequested);
+    assert!(closing.step(notification()).is_empty());
+}
+
+fn shell_settings(close_to_tray: bool) -> ShellSettings {
+    ShellSettings {
+        close_to_tray,
+        locale: "fr".into(),
+        ..ShellSettings::default()
+    }
+}
+
+#[test]
+fn les_reglages_du_serveur_pret_sont_appliques_tels_quels() {
+    let mut m = machine();
+    m.step(ready(8123));
+    let wanted = shell_settings(true);
+    assert_eq!(
+        m.step(Input::Event(SidecarEvent::ShellSettings(wanted.clone()))),
+        vec![Action::ApplyShellSettings(wanted)]
+    );
+}
+
+#[test]
+fn les_reglages_hors_application_ouverte_sont_ignores() {
+    let event = || Input::Event(SidecarEvent::ShellSettings(shell_settings(true)));
+    let mut m = machine();
+    assert!(m.step(event()).is_empty(), "avant ready");
+    let mut failed_machine = machine();
+    failed_machine.step(failed("locked"));
+    assert!(failed_machine.step(event()).is_empty(), "apres un echec");
+    let mut closing = machine();
+    closing.step(ready(8123));
+    closing.step(Input::CloseRequested);
+    assert!(closing.step(event()).is_empty(), "pendant la fermeture");
+}
+
+#[test]
+fn la_synchronisation_demandee_part_vers_le_serveur_pret_seulement() {
+    let mut m = machine();
+    assert_eq!(
+        m.step(Input::SyncRequested),
+        vec![Action::SyncSkipped { phase: "starting" }],
+        "avant ready : abandonnee, et journalisee"
+    );
+    m.step(ready(8123));
+    assert_eq!(m.step(Input::SyncRequested), vec![Action::SendSync]);
+    assert_eq!(
+        m.step(Input::SyncRequested),
+        vec![Action::SendSync],
+        "autant de fois qu'on la demande"
+    );
+
+    let mut closing = machine();
+    closing.step(ready(8123));
+    closing.step(Input::CloseRequested);
+    assert_eq!(
+        closing.step(Input::SyncRequested),
+        vec![Action::SyncSkipped { phase: "closing" }],
+        "pendant la fermeture"
+    );
+
+    let mut dead = machine();
+    dead.step(ready(8123));
+    dead.step(Input::Exited);
+    assert_eq!(
+        dead.step(Input::SyncRequested),
+        vec![Action::SyncSkipped { phase: "dead" }],
+        "serveur sorti"
+    );
+}
+
+#[test]
+fn un_serveur_mort_montre_la_fenetre_avant_l_ecran_arrete() {
+    // Fenetre cachee dans la zone de notification : l'ecran terminal ne s'affiche jamais sur une fenetre invisible.
+    for ready_first in [false, true] {
+        let mut m = machine();
+        if ready_first {
+            m.step(ready(8123));
+        }
+        let actions = m.step(Input::Exited);
+        let reveal = actions
+            .iter()
+            .position(|a| *a == Action::RevealWindow)
+            .expect("fenetre montree");
+        let screen = actions
+            .iter()
+            .position(|a| *a == Action::ShowScreen(Screen::Stopped))
+            .expect("ecran arrete");
+        assert!(reveal < screen, "la fenetre est montree AVANT l'ecran : {actions:?}");
+    }
+}
+
+#[test]
+fn un_serveur_mort_apres_un_echec_montre_aussi_la_fenetre() {
+    let mut m = machine();
+    m.step(listening(8123));
+    m.step(failed("locked"));
+    assert!(m.step(Input::Exited).contains(&Action::RevealWindow));
+}
+
+#[test]
+fn la_fermeture_ordonnee_ne_montre_pas_la_fenetre() {
+    let mut m = machine();
+    m.step(ready(8123));
+    m.step(Input::CloseRequested);
+    assert!(!m.step(Input::Exited).contains(&Action::RevealWindow));
+}

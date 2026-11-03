@@ -104,6 +104,7 @@ func (h *SettingsHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 		humacore.DefaultStatus(http.StatusAccepted))
 	huma.Post(api, "/settings/sessions/recalculate", h.handlePostRecalculateSessions, humacore.Op("postSettingsSessionsRecalculate", "Recalcule les sessions à partir de la base actuelle", "settings"),
 		humacore.DefaultStatus(http.StatusAccepted))
+	huma.Get(api, "/settings/desktop", h.handleGetDesktopStatus, humacore.Op("getDesktopStatus", "Etat vivant de l'integration au poste (application de bureau)", "settings"))
 	huma.Get(api, "/settings/film-archive", h.handleGetFilmArchive, humacore.Op("getFilmArchive", "Occupation et emplacement de l'archive des films", "settings"))
 	huma.Get(api, "/settings/backup/status", h.handleGetBackupStatus, humacore.Op("getBackupStatus", "Statut du scheduler de sauvegarde", "settings"))
 	huma.Post(api, "/settings/backup/run", h.handlePostBackupRun, humacore.Op("postBackupRun", "Déclenche un cycle de sauvegarde immédiat", "settings"))
@@ -241,6 +242,9 @@ func (h *SettingsHandler) handlePatchSettings(ctx context.Context, in *settingsB
 			"replay_retention_months doit être ≥ 0 (0 = illimité).")
 	}
 	if err := h.validateReplayBuildLocation(ctx, req.ReplayBuildLocation); err != nil {
+		return nil, err
+	}
+	if err := h.validateDesktop(ctx, &req); err != nil {
 		return nil, err
 	}
 	if req.SessionTeamChangeMode != nil {

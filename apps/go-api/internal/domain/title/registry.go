@@ -8,6 +8,8 @@ package title
 import (
 	"fmt"
 	"path/filepath"
+	"sort"
+	"strings"
 	"sync"
 )
 
@@ -243,6 +245,13 @@ type TitleDescriptor struct {
 	// indexés par tous, comportement historique).
 	MediaFilenamePrefixes []string `json:"media_filename_prefixes"`
 
+	// ProcessNames : noms d'exécutables (nom de fichier, sans chemin) du client PC du titre, que la
+	// détection du jeu en cours cherche dans la liste des processus (internal/platform/gameproc,
+	// capacité GameProcessWatch). Déclaré par `process_names` du title.toml ; pour le titre built-in
+	// (dont le title.toml est ignoré, ADR 0025) il est posé dans NewRegistry. Vide = le titre n'a
+	// pas de client PC (Halo 5) : il n'est jamais « en cours ».
+	ProcessNames []string `json:"-"`
+
 	// ModeSource déclare où le registre du titre porte le mode de ses matchs (cf. ModeSource).
 	// Zéro = ModeSourcePair (Halo Infinite). Interne à la lecture : non exposé à l'API.
 	ModeSource ModeSource `json:"-"`
@@ -403,6 +412,7 @@ func NewRegistry() *Registry {
 		XboxTitleID:      "2043073184",
 		SteamAppID:       "1336960",
 		PlacementMatches: 5, // défaut Halo Infinite depuis Season 3 (table par-saison prime)
+		ProcessNames:     []string{"HaloInfinite.exe"},
 	})
 	return r
 }
@@ -501,6 +511,28 @@ func (r *Registry) All() []*TitleDescriptor {
 // Default retourne le titre par défaut (halo_infinite).
 func (r *Registry) Default() *TitleDescriptor {
 	return r.Get(DefaultSlug)
+}
+
+// GameProcessNames rend, sans doublon, les noms d'exécutables que déclarent les titres du registre
+// (tous statuts : un titre « bientôt » dont le jeu tourne est un jeu qui tourne). Data-driven : les
+// noms viennent des descripteurs, jamais d'un slug.
+func (r *Registry) GameProcessNames() []string {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	seen := make(map[string]struct{})
+	var out []string
+	for _, t := range r.titles {
+		for _, n := range t.ProcessNames {
+			key := strings.ToLower(n)
+			if _, ok := seen[key]; ok {
+				continue
+			}
+			seen[key] = struct{}{}
+			out = append(out, n)
+		}
+	}
+	sort.Strings(out)
+	return out
 }
 
 // ForeignMediaFilenamePrefixes retourne les préfixes de nom de fichier de capture

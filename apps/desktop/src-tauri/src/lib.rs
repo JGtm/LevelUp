@@ -10,6 +10,9 @@
 //! - [`supervisor`]: la boucle qui relie la machine au processus, aux minuteries et a l'hote.
 //! - [`sidecar`]   : lancement du serveur, environnement, tubes (D-1, A14).
 //! - [`screen`], [`catalogue`], [`render`] : les ecrans embarques et leurs libelles (A4).
+//! - [`autostart`] : le demarrage avec Windows (L21.d), decision pure derriere un trait ; [`launch`] : l'argument `--minimized`.
+//! - [`native_notice`] : les notifications Windows relayees depuis la cloche (L21.b), decisions pures.
+//! - [`shell_settings`] : les reglages annonces par le serveur et la machine d'etats de la zone de notification (L21.c).
 //! - [`updater`]   : la mise a jour proposee, jamais imposee, installee apres l'arret du serveur (D-16).
 //! - [`update_manual`] : la meme verification, demandee par l'utilisateur depuis « A propos ».
 //! - [`download_watch`] : l'echeance d'inactivite du telechargement de l'installeur.
@@ -17,17 +20,21 @@
 //! - `updater_decision` : l'arret propre qui autorise l'installation et les messages d'apres-arret (re-exportes par [`updater`]).
 //! - [`roots`], [`secret`], [`logfile`], [`linereader`], [`navigation`] : petits outils.
 
+pub mod autostart;
 pub mod catalogue;
 pub mod download_watch;
 pub mod events;
+pub mod launch;
 pub mod lifecycle;
 pub mod linereader;
 pub mod logfile;
+pub mod native_notice;
 pub mod navigation;
 pub mod render;
 pub mod roots;
 pub mod screen;
 pub mod secret;
+pub mod shell_settings;
 pub mod sidecar;
 pub mod supervisor;
 pub mod update_manual;

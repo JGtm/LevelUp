@@ -19,6 +19,10 @@
 //	FAKE_CHATTY_BYTES      octets de lignes non JSON ecrites sur stdout avant `ready` (bavard)
 //	FAKE_LISTEN_DELAY_MS, FAKE_READY_DELAY_MS, FAKE_STOP_DELAY_MS, FAKE_CRASH_AFTER_MS
 //	FAKE_FAILED_STATE      etat de l'evenement `failed` (defaut migration_failed)
+//	(stdin)                chaque ligne recue avant l'EOF est une commande de la coquille : elle est ajoutee a
+//	                       <racine de donnees>/fake-sidecar-commands.txt
+//	FAKE_EVENTS_AFTER_READY  lignes JSON separees par `|`, ecrites telles quelles sur stdout apres `ready`
+//	                       (variante ok) : `notification`, `shell_settings`
 //	FAKE_STOP_CLEAN        true (defaut) | false : `clean` du `stopped` final (false : pas de marqueur d'arret)
 package main
 

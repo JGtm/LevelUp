@@ -21,6 +21,8 @@ type absentDefaults struct {
 	enforced bool
 	// system : fuseau et langue du système, posés sous le profil desktop (WithSystemDefaults).
 	system config.SystemLocale
+	// autoSync : la synchronisation automatique est active tant que rien n'est écrit (WithAutoSyncDefault).
+	autoSync bool
 }
 
 // WithEnforcedDefaults déclare que l'instance applique la propriété des joueurs
@@ -53,6 +55,15 @@ func (s *Store) WithSystemDefaults(sys config.SystemLocale) *Store {
 	return s
 }
 
+// WithAutoSyncDefault déclare la synchronisation automatique ACTIVE par défaut : la clé
+// `spnkr_auto_sync_enabled` ABSENTE d'app_settings.json vaut alors true (profil desktop, capacité
+// AutoSyncByDefault). Une valeur explicite du fichier, true ou false, gagne toujours : l'utilisateur
+// qui l'a coupée la garde coupée. Aucune réécriture du fichier.
+func (s *Store) WithAutoSyncDefault(on bool) *Store {
+	s.absent.autoSync = on
+	return s
+}
+
 // applyAbsentDefaults réapplique les défauts « clé absente → true » sur un
 // AppSettings dérivé de la map raw donnée (rétrocompatibilité fichiers existants).
 // Partagé entre Load et ResolveForTitle pour garder une seule source de vérité.
@@ -69,6 +80,9 @@ func applyAbsentDefaults(cfg *AppSettings, raw map[string]json.RawMessage, d abs
 	}
 	if !declaredString(raw, "user_timezone") {
 		cfg.UserTimezone = d.system.TimezoneOr(defaultTimezone)
+	}
+	if _, ok := raw["spnkr_auto_sync_enabled"]; !ok && d.autoSync {
+		cfg.SpnkrAutoSyncEnabled = true
 	}
 	if _, ok := raw["instance_locked"]; !ok && enforced {
 		cfg.InstanceLocked = true
@@ -87,6 +101,9 @@ func applyAbsentDefaults(cfg *AppSettings, raw map[string]json.RawMessage, d abs
 	}
 	if _, ok := raw["archive_films"]; !ok {
 		cfg.ArchiveFilms = true // D-5 : archiver par défaut (un film expire côté serveur Halo)
+	}
+	if _, ok := raw["game_process_watch"]; !ok {
+		cfg.GameProcessWatch = true // L21 : la détection seule est sans effet visible, défaut ON
 	}
 	if _, ok := raw["replay_sound_variation_percent"]; !ok {
 		// 100 = les fourchettes du jeu telles quelles. 0 est un réglage LÉGITIME
@@ -145,5 +162,6 @@ func defaultSettings() *AppSettings {
 		ReplaySoundVariationPercent: 100,
 		ReplaySoundDistancePercent:  0,
 		FilmArchiveSettings:         domain.FilmArchiveSettings{ArchiveFilms: true},
+		DesktopSettings:             domain.DesktopSettings{GameProcessWatch: true},
 	}
 }

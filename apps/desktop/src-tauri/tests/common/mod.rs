@@ -11,11 +11,13 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, Condvar, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
+use levelup_desktop::events::Toast;
 use levelup_desktop::lifecycle::Timeouts;
 use levelup_desktop::logfile::{LogSink, MAX_LOG_BYTES};
 use levelup_desktop::roots::{self, Roots};
 use levelup_desktop::screen::Screen;
 use levelup_desktop::secret::Secret;
+use levelup_desktop::shell_settings::ShellSettings;
 use levelup_desktop::sidecar::SidecarSpec;
 use levelup_desktop::supervisor::{self, Host, Outcome, ShellConfig, ShellHandle};
 
@@ -59,6 +61,12 @@ pub enum Call {
     LoadEntry(String),
     Port(u16),
     Exit,
+    /// Une notification que la machine a demande de montrer (L21.b).
+    Notify(Toast),
+    /// Les reglages que le serveur a annonces (L21.c).
+    Settings(ShellSettings),
+    /// La machine a demande de montrer la fenetre si elle est cachee (serveur mort).
+    Reveal,
 }
 
 impl Call {
@@ -142,6 +150,15 @@ impl Host for Recorder {
     }
     fn exit_app(&mut self, _outcome: Outcome) {
         self.push(Call::Exit);
+    }
+    fn notify(&mut self, notice: &Toast) {
+        self.push(Call::Notify(notice.clone()));
+    }
+    fn apply_shell_settings(&mut self, settings: &ShellSettings) {
+        self.push(Call::Settings(settings.clone()));
+    }
+    fn reveal_window_if_hidden(&mut self) {
+        self.push(Call::Reveal);
     }
 }
 

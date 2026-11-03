@@ -54,7 +54,7 @@ the 503 `server_start_failed`, `retryable:false` answer of the startup gate (`bo
 `cmd/server/boot_failure.go`). The stdout writer (`cmd/server/desktop_events.go`, active in `-mode desktop` only) and
 every event are delivered by L12; `failed` also carries the state `port` when no port can be bound (nothing serves the
 gate then, the event is the only witness). The console log handler writes to stderr in every mode, so stdout carries
-events only. `stopped` is written last, after the journals are closed, the token pool is closed and the instance lock is
+events only. Two more events (`notification`, `shell_settings`) and the commands the shell writes on stdin are defined by D-23 (L21b). `stopped` is written last, after the journals are closed, the token pool is closed and the instance lock is
 released, so a relaunch triggered by `stopped` finds the lock free. The shell drains stdout continuously (a full pipe
 blocks the server) and relays stderr to `<LogsRoot>/desktop.log`.
 
@@ -338,6 +338,102 @@ sign-in (`desktop.toml`, `desktop.browser_login.*`), carries only a fixed error 
 `state` nor the verifier is ever logged. The device code stays the fallback ("Can't open the browser? Use a code instead"); the
 hosted site keeps its own `/auth/xbox/login` redirect flow in mode `xbox`, untouched.
 
+### Living with the game (L21b)
+
+**D-23 - The desktop server watches the game, the shell lives in the notification area (L21.a to L21.e, 2026-11-02).**
+Decisions of the user, 2026-11-02: the settings of items (b) to (e) are **off by default**, the game is detected by **process
+enumeration only** (never a memory read), nothing is imposed. Four capabilities, all true in `desktop` only (D-4 of ADR 0044):
+`GameProcessWatch` (`can_watch_game_process`), `ShellIntegration` (`can_integrate_shell`), `ScheduledRefresh`
+(`can_schedule_refresh`) and `AutoSyncByDefault` (server side only, see "Game mode"); the settings are `game_process_watch` (default **on**: the detection alone has no visible effect), and
+`native_notifications`, `close_to_tray`, `start_with_windows`, `scheduled_refresh` (default off), grouped in
+`domain.DesktopSettings`. A PATCH of a key whose capability is absent is a 400 `desktop_setting_not_offered`. The "Application"
+tab of the settings page exists under any of the three capabilities.
+
+**Game mode (L21.a).** `internal/platform/gameproc`: a snapshot of the process list (`CreateToolhelp32Snapshot`, file names only,
+nothing opened, nothing read), every 15 s, compared (case-insensitive) with the executable names the titles declare (`process_names`
+of `title.toml`, `[]` for Halo 5 which has no PC client; the built-in Halo Infinite descriptor, whose `title.toml` is ignored by
+ADR 0025, carries `HaloInfinite.exe` in `NewRegistry`; `Registry.GameProcessNames` is the union, no `slug ==`). `Mode` holds the
+state (gauge `game_mode_running`, counters `game_mode_*`, `GET /settings/desktop` answers `game_running`) and the **gate**:
+`HeavyWorkAllowed()` is consulted **before** each launch, never during one, so no task is ever killed. The cooking loop of the replay
+artifacts (`replayartifacts.buildAll`) persists the films (they expire server side) and postpones the cook to the next catch-up
+while the game runs; `scheduler.runHeavy` waits (it re-reads the state every 30 s) in front of the four heavy loops (`data_health`,
+`asset_name_sweep`, `catalog_refresh`, `world_leaderboard`; the guard `heavy_gate_test.go` forbids a bare cycle call there). The
+auto-sync cycle itself is not suspended: its network calls and short inserts go on. What it does that is heavy goes through the same
+gate: the post-sync **kill source** step (1.57) decodes films inside the process, so while the game runs it is postponed like the
+cooking (`runKillSource` answers 0 and counts `game_mode_heavy_deferred_total`; the backlog is read again from the database at every
+cycle, so the first cycle outside a match catches it up). **The first reading is synchronous**: `armGameWatch` builds the watcher and
+polls once BEFORE the first heavy task is launched, and until a reading has been made `HeavyWorkAllowed()` answers no
+(`Mode.ExpectFirstPoll`, lifted by any poll, whatever its outcome), so a game already open at launch (reduced start, the ordinary case)
+never sees an audit or a catalog refresh start in the middle of the match. The transition "game running to game closed" asks the
+auto-sync scheduler for a catch-up (`RequestCatchUp`, the path of the wake-up sequence, D-10) with a 60 s debounce, **only if the auto-sync
+is on**: `spnkr_auto_sync_enabled` is **on by default in `desktop`** (capability `AutoSyncByDefault`, a decision of the pilot, 2026-11-03:
+`settings.Store.WithAutoSyncDefault`, absent key only, a written value, `true` or `false`, always wins and the file is never rewritten),
+because the auto-sync loop ignores every tick while it is off. When it is off the closing logs "fin de partie : auto-sync désactivée,
+rien à faire" and counts `game_mode_sync_skipped_total`; `game_mode_sync_triggered_total` and the "requested" line only say so when a
+synchronization really is requested. The existing presence trigger (live match poller) acts per match while the game is open, this one
+acts at the closing, so the two do not duplicate. Turning the setting off drops the mode without a sync; an enumeration that fails keeps
+the previous state and is logged once.
+
+**Events and commands (L21.b, L21.c).** Two events join D-2, **one line each, same single writer**:
+`{"event":"notification","title","body","kind"}` and
+`{"event":"shell_settings","native_notifications","close_to_tray","start_with_windows","locale"}` (written once the server is ready, then
+at every change read every 5 s from the settings, whatever wrote them). The shell cannot call the server's HTTP API (its cookie is
+`HttpOnly`, no command is exposed to the page), so both directions use the private pipes: server to shell by stdout events, shell to
+server by **commands on stdin**, one per line, executed before the EOF, which stays the stop order (D-4): `sync` runs
+`AutoSyncScheduler.RunOnceTrigger("manual")`, one cycle at a time, counted by the background wait group (`cmd/server/stdin_commands.go`).
+An unknown command is logged and ignored.
+
+**Native notifications (L21.b).** `internal/notifications/native` is a second `ExternalForwarder` (combined with the Discord relay by
+`notifications.Fanout`), dormant until the desktop boot installs its sink. It retains the bell categories `match_synced`, `sync_error`,
+`challenge_added|completed`, `objective_completed`, `streak_milestone`, `personal_record`, `career_rank`, `skill_tier`, composes the text
+in the player's language from the message catalogue (`desktop.notify.*`, one title and one body per kind, complete in every language) and
+re-reads the setting at each notification. It is limited to the **local player**: the notification service of every tracked profile is
+wired to it (`Relay.ForPlayer(xuid)`), but a profile is local only when the token store carries a refresh token for its xuid (the account the
+user signed in with, `OwnerFilter`, read at each notification); a followed friend who changes tier never becomes a Windows notification
+(`notifications_native_foreign_total`), and without the filter nothing is relayed. The shell shows it with `tauri-plugin-notification` only when the window is hidden, minimized
+or not focused (`native_notice`, pure); the journal carries the kind, never the text. The plugin queues the notification and discards the error of the underlying library, so
+`outcome=requested` says the request left, never that Windows displayed it (`failed` remains only for the errors that prepare the
+request). Known limit: the plugin has no click callback on the
+desktop; a click on a toast re-launches the executable and the single-instance plugin calls `focus_main`, which shows, restores and focuses
+the window (to be observed at gate 21.y).
+
+**Notification area (L21.c, L21.d).** `shell_settings.rs` (pure) decides: the icon exists while `close_to_tray` is on, or while the window
+hidden by a minimized start has not been shown; the cross hides the window **only if the setting is on and the icon really exists** (a
+failed creation makes the cross quit: never a hidden window without its way back); **every creation, replacement or removal of the icon runs
+on the main thread** (`shell_tauri::dispatch_tray_change`, `run_on_main_thread`): the hidden window of `tray-icon` belongs to the creating
+thread and its destruction fails elsewhere, so a supervisor-thread destruction leaked it and left a ghost icon after an Explorer restart;
+the language compared is the RESOLVED catalogue language (`ShellState::tray_locale`: the one the server announces, else the system's), so a
+`--minimized` start whose icon already carries the right language is not recreated; the click handler of the menu is global to the
+application and registered once (`RegisterOnce`), not at each creation; the menu is Open, Sync now (the `sync` command), Quit
+(the same clean stop as the cross without an icon); the labels come from the catalogue compiled from `desktop.toml` (`desktop.tray.*`, also
+served by `/desktop/strings`) in the language the server announces. `--minimized` (added by the startup entry) creates the window hidden
+and the icon at once; showing the window removes the icon again if `close_to_tray` is off. The window-state plugin no longer saves the
+visibility (it would show the hidden window), and under `--minimized` it does not restore the maximized state either (`maximize()` shows the
+hidden window): that state is restored once, just before the window is first shown (`launch::restores_maximized_*`). A server that dies
+while the window is hidden shows the window before the "stopped" screen (`Action::RevealWindow`), and a "Sync now" request that cannot
+leave (server not ready) logs `sync_skipped phase=<phase>`. The startup entry (`tauri-plugin-autostart`, value `LevelUp` of the user's `Run` key, never
+`HKLM`) is written only by `autostart::reconcile`, which reads first and writes only to change something: an off setting with no entry
+writes nothing. It tells "present" (the `Run` value) from "approved" (`Explorer\StartupApproved\Run`, first byte even = enabled, odd = disabled by
+the user in the Windows task manager, read with `winreg`): an on setting never rewrites an entry the user disabled (`left_disabled` in the journal),
+an off setting deletes the entry whatever its approval state. A guard (`tests/textes_de_configuration.rs`) forbids any other file from calling `enable` or `disable`.
+
+**Scheduled task (L21.e).** `internal/platform/schedtask`: when `scheduled_refresh` turns on, the server creates the per-user task
+`LevelUp\Refresh-<8 hex>` (the suffix is a fingerprint of the data root: a server started on other roots, a test or a development run, never queries,
+overwrites or deletes the user's task; every 6 hours, `LeastPrivilege`, hidden, `StartWhenAvailable`, no battery condition, 15 minutes at most) running
+`cmd.exe /d /s /c "set LEVELUP_DATA_DIR=... && set LEVELUP_RESOURCES_DIR=... && set LEVELUP_LOGS_DIR=... && levelup-server.exe -mode refresh-only"`,
+and deletes it when it turns off. Deviation from the plan text (`schtasks /Create /SC ... /TR ...`): the definition goes through an XML
+file (`/XML`, UTF-16 LE), because `/TR` is limited to 261 characters, which three root paths exceed, and because only the XML carries the
+resume-after-sleep and battery settings. `schtasks.exe` (System32 path, never the PATH) is launched by `childproc.Command` behind the
+`Runner` interface; a path with `"`, `%`, `&`, `^`, `!`, `<`, `>`, `|` or a line break is refused (`unsupported_path`) rather than badly
+quoted. The existence test lists the tasks (`/Query /FO CSV /NH`) instead of `/Query /TN`, whose exit code does not tell "absent" from a refusal and
+whose message is localized. At start-up the loop **reconciles** (setting on: the task is always rewritten with `/F`, one call, so a reinstall in
+another folder or a changed root never leaves a stale task shown as "present"; setting off and a task left over: delete it; otherwise nothing); afterwards each **change** creates or deletes. A failure is logged, exposed as a fixed code (`schtasks_failed`,
+`unsupported_path`) by `GET /settings/desktop` (`scheduled_refresh.state` = `present|absent|error|unknown`) and not retried at every tick.
+`-mode refresh-only` takes the instance lock before anything and exits 0 without an exchange when the application runs (D-10, tests
+`refresh_only_test.go` and `e2e_refresh_only_test.go`). Limits: the task runs a console program, so Windows may flash a console window for
+a moment (to be seen at gate 21.y); the uninstaller does not remove the task nor the startup entry (a NSIS hook could not be tested here:
+turn the settings off before uninstalling, or delete them by hand).
+
 ### Tests
 
 **D-21 — Strategy (plan section 7).** Each side of the contract is tested against a double of the other: a **fake
@@ -510,6 +606,15 @@ maintainer on a clean machine. A lot without a test at its level is not closed.
   `internal/api/desktop_browser_login_cgo_test.go` and `TestBareRoutesRatchet_DesktopEntryRoutes` (the two routes exist under
   the capability only), `internal/platform/auth/attempt_browser_test.go`, `apps/web/src/features/setup/BrowserLoginPanel.test.tsx`,
   `apps/web/e2e/desktop-sidebar.spec.ts` (Playwright on `vite preview`, mocked server).
+- Created by L21b: `internal/platform/gameproc/gameproc_test.go` and `lister_windows_test.go` (the real enumeration sees the test process),
+  `internal/scheduler/heavy_gate_test.go` (the four heavy loops go through `runHeavy`), `replayartifacts/cuisson_mode_jeu_test.go`,
+  `cmd/server/boot_gameproc_test.go`, `boot_shell_test.go`, `stdin_commands_test.go`, `boot_schedtask_test.go`,
+  `internal/notifications/native/relay_test.go`, `internal/platform/schedtask/schedtask_test.go` (exact `schtasks` arguments and task XML,
+  idempotence, refused paths) and `schedtask_realschtasks_test.go` (tag `e2e_windows`: the real `schtasks.exe` accepts the definition, on a task
+  named `LevelUp-test-<random>` that never fires and is deleted at the end), `internal/api/handlers/settings_desktop_test.go`,
+  `apps/desktop/src-tauri/src/{shell_settings,native_notice,autostart,launch}.rs` tests, `tests/contract.rs` (notification, shell settings,
+  `sync` on stdin, nothing before `ready`), `tests/textes_de_configuration.rs` (only `reconcile` writes the startup entry), the fake sidecar
+  (`FAKE_EVENTS_AFTER_READY`, commands recorded), `apps/web/src/features/settings/DesktopIntegrationCard.test.tsx`.
 - To create: `cargo audit` in CI.
 
 ## Implementation notes (L20, 2026-11-02)

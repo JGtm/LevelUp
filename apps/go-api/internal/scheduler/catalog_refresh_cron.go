@@ -108,7 +108,7 @@ func (c *CatalogRefreshCron) Run(ctx context.Context) {
 	}
 	c.log.InfoContext(ctx, "catalog_refresh_cron: started", "interval", c.interval)
 
-	c.RunOnce(ctx)
+	runHeavy(ctx, "catalog_refresh", c.RunOnce)
 
 	ticker := time.NewTicker(c.interval)
 	defer ticker.Stop()
@@ -118,7 +118,7 @@ func (c *CatalogRefreshCron) Run(ctx context.Context) {
 			c.log.InfoContext(ctx, "catalog_refresh_cron: stopped (ctx done)")
 			return
 		case <-ticker.C:
-			c.RunOnce(ctx)
+			runHeavy(ctx, "catalog_refresh", c.RunOnce)
 		}
 	}
 }

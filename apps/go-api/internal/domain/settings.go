@@ -11,6 +11,8 @@ import "errors"
 type SettingsResponse struct {
 	// FilmArchiveSettings : archive des films (lot L14), clés aplaties.
 	FilmArchiveSettings
+	// DesktopSettings : intégration au poste de l'application de bureau (lot L21), clés aplaties.
+	DesktopSettings
 	Lang                 string `json:"lang" enum:"fr,en"`
 	DiscordLang          string `json:"discord_lang" enum:"fr,en"`
 	UserTimezone         string `json:"user_timezone"`
@@ -103,6 +105,8 @@ type SettingsResponse struct {
 type UpdateSettingsRequest struct {
 	// FilmArchiveUpdate : archive des films (lot L14), clés aplaties.
 	FilmArchiveUpdate
+	// DesktopUpdate : intégration au poste de l'application de bureau (lot L21), clés aplaties.
+	DesktopUpdate
 	Lang                 *string `json:"lang,omitempty"`
 	DiscordLang          *string `json:"discord_lang,omitempty"`
 	UserTimezone         *string `json:"user_timezone,omitempty"`

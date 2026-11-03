@@ -6,6 +6,10 @@
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod autostart_tauri;
+mod shell_tauri;
+mod toast_tauri;
+mod tray_tauri;
 mod update_setup;
 mod update_tauri;
 
@@ -13,14 +17,19 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU16, Ordering};
 use std::sync::{Arc, Mutex};
 
+use levelup_desktop::autostart;
 use levelup_desktop::catalogue;
+use levelup_desktop::events::Toast;
+use levelup_desktop::launch::{self, InitialWindow, MINIMIZED_ARG};
 use levelup_desktop::lifecycle::Timeouts;
 use levelup_desktop::logfile::{LogSink, MAX_LOG_BYTES, Source};
+use levelup_desktop::native_notice;
 use levelup_desktop::navigation::{self, ExternalOpen, Navigation, NewWindowDecision, OPEN_EXTERNAL_ENV};
 use levelup_desktop::render::{self, SCHEME};
 use levelup_desktop::roots::{self, Roots};
 use levelup_desktop::screen::Screen;
 use levelup_desktop::secret::Secret;
+use levelup_desktop::shell_settings::{CloseAction, ShellSettings, ShellState};
 use levelup_desktop::sidecar::SidecarSpec;
 use levelup_desktop::supervisor::{self, Closer, Host, Outcome, ShellConfig};
 use levelup_desktop::updater::UpdateHost;
@@ -28,6 +37,7 @@ use tauri::webview::{DownloadEvent, NewWindowResponse};
 use tauri::window::Color;
 use tauri::{AppHandle, Manager, RunEvent, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent};
 use tauri_plugin_opener::OpenerExt;
+use toast_tauri::{PluginNotifier, window_state};
 use update_setup::{UpdateWiring, request_update_check, spawn_update_check};
 use update_tauri::DialogNotifier;
 use url::Url;
@@ -47,14 +57,44 @@ struct Shell {
     exiting: Arc<AtomicBool>,
     /// Journal, pour les ecrans montres avant que le superviseur existe.
     log: Mutex<Option<Arc<LogSink>>>,
+    /// L'etat maximise de la fenetre n'a pas ete restaure au lancement (demarrage cache) : il l'est a la premiere
+    /// montre de la fenetre (`launch::restores_maximized_when_first_shown`).
+    restore_maximized_on_show: AtomicBool,
+    /// Les reglages annonces par le serveur et l'icone de la zone de notification : ce qui decide ce que
+    /// fait la croix (`levelup_desktop::shell_settings`).
+    shell: Mutex<ShellState>,
 }
 
 fn main() {
     let locale = catalogue::resolve_locale(&sys_locale::get_locale().unwrap_or_default());
+    // Demarrage avec Windows (L21.d) : l'entree de demarrage ajoute `--minimized`, la fenetre reste cachee.
+    let initial = launch::initial_window(launch::started_minimized(std::env::args()));
     let app = tauri::Builder::default()
-        // Premier plugin : une seconde ouverture est detectee avant tout autre travail.
-        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| focus_main(app)))
-        .plugin(tauri_plugin_window_state::Builder::default().build())
+        // Premier plugin : une seconde ouverture est detectee avant tout autre travail. Une seconde ouverture
+        // reduite (l'entree de demarrage alors que l'application tourne deja) ne montre rien.
+        .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+            if !launch::started_minimized(&args) {
+                focus_main(app);
+            }
+        }))
+        // La visibilite est decidee par la coquille (zone de notification, demarrage reduit) : le plugin
+        // ne la memorise ni ne la restaure, sinon il remontrerait une fenetre cachee au lancement.
+        .plugin(
+            tauri_plugin_window_state::Builder::default()
+                .with_state_flags(shell_tauri::window_state_flags(initial))
+                .build(),
+        )
+        // Entree de demarrage avec Windows (L21.d) : par utilisateur, jamais ecrite tant que le reglage
+        // `start_with_windows` n'est pas actif (`autostart::reconcile`).
+        .plugin(
+            tauri_plugin_autostart::Builder::new()
+                .app_name(autostart::ENTRY_NAME)
+                .arg(MINIMIZED_ARG)
+                .build(),
+        )
+        // Notifications Windows relayees depuis la cloche (L21.b) : montrees depuis Rust seulement, la page
+        // du serveur n'a aucune commande a appeler.
+        .plugin(tauri_plugin_notification::init())
         // Le script que le plugin injecte par defaut attrape les clics sur `target="_blank"` et appelle la commande
         // `open_url` par le pont IPC, que la page du serveur n'a pas le droit d'appeler (aucune capacite) : le clic
         // etait avale sans rien ouvrir. Sans lui, le clic arrive au moteur, qui demande une nouvelle fenetre :
@@ -76,7 +116,7 @@ fn main() {
                 .expect("reponse du protocole embarque")
         })
         .setup(move |app| {
-            setup(app.handle());
+            setup(app.handle(), initial);
             Ok(())
         })
         .build(tauri::generate_context!())
@@ -90,7 +130,10 @@ fn main() {
             ..
         } if label == MAIN_WINDOW && !exiting(app) => {
             api.prevent_close();
-            begin_close(app);
+            match shell_tauri::close_action(app) {
+                CloseAction::HideToTray => shell_tauri::hide_main(app),
+                CloseAction::Quit => begin_close(app),
+            }
         }
         // Une sortie demandee sans fenetre (fin de session) : meme chemin ; `exit(0)` du superviseur passe.
         RunEvent::ExitRequested { api, code, .. } if code.is_none() && !exiting(app) => {
@@ -126,8 +169,11 @@ fn focus_main(app: &AppHandle) {
     if let Some(window) = app.get_webview_window(MAIN_WINDOW) {
         // Mettre au premier plan est un effort : une fenetre deja la ne signale rien.
         let _ = window.unminimize();
+        shell_tauri::restore_maximized_if_pending(app, &window);
         let _ = window.show();
         let _ = window.set_focus();
+        // Apres un demarrage reduit, montrer la fenetre peut retirer l'icone de la zone de notification.
+        shell_tauri::window_shown(app);
     }
 }
 
@@ -162,7 +208,7 @@ fn prepare(app: &AppHandle) -> Result<Prepared, String> {
     })
 }
 
-fn setup(app: &AppHandle) {
+fn setup(app: &AppHandle, initial: InitialWindow) {
     let port = Arc::new(AtomicU16::new(0));
     let exiting_flag = Arc::new(AtomicBool::new(false));
     let prepared = prepare(app);
@@ -170,19 +216,29 @@ fn setup(app: &AppHandle) {
     app.manage(Shell {
         closer: Mutex::new(None),
         exiting: exiting_flag.clone(),
+        restore_maximized_on_show: AtomicBool::new(launch::restores_maximized_when_first_shown(initial)),
         log: Mutex::new(log.clone()),
+        shell: Mutex::new(ShellState::with_system_locale(
+            sys_locale::get_locale().unwrap_or_default(),
+        )),
     });
 
-    if let Err(e) = create_window(app, port.clone(), log.clone()) {
+    if let Err(e) = create_window(app, port.clone(), log.clone(), initial) {
         report(log.as_deref(), &format!("event=window_failed err={e}"));
         app.exit(1);
         return;
+    }
+    // Demarrage reduit : la fenetre est cachee, l'icone de la zone de notification existe des maintenant.
+    if initial == InitialWindow::HiddenInTray {
+        shell_tauri::start_minimized(app);
     }
     let (update, updater_enabled) = update_setup::install(app, log.clone());
 
     let started = prepared.and_then(|p| start_server(app, p, port, exiting_flag, update, updater_enabled));
     if let Err(e) = started {
         report(log.as_deref(), &format!("event=start_failed err={e}"));
+        // Demarrage reduit : la fenetre est cachee, l'ecran d'arret doit etre vu.
+        shell_tauri::reveal_if_hidden(app);
         show(app, Screen::Stopped);
     }
 }
@@ -231,7 +287,12 @@ fn start_server(
     Ok(())
 }
 
-fn create_window(app: &AppHandle, port: Arc<AtomicU16>, log: Option<Arc<LogSink>>) -> tauri::Result<WebviewWindow> {
+fn create_window(
+    app: &AppHandle,
+    port: Arc<AtomicU16>,
+    log: Option<Arc<LogSink>>,
+    initial: InitialWindow,
+) -> tauri::Result<WebviewWindow> {
     let nav_app = app.clone();
     let nav_log = log.clone();
     let nav_port = port.clone();
@@ -244,6 +305,7 @@ fn create_window(app: &AppHandle, port: Arc<AtomicU16>, log: Option<Arc<LogSink>
         .min_inner_size(1024.0, 640.0)
         .center()
         .background_color(WINDOW_BACKGROUND)
+        .visible(initial == InitialWindow::Visible)
         .on_navigation(move |url| match navigation::decide(url, current_port(&nav_port)) {
             Navigation::Allow => true,
             Navigation::OpenExternally => {
@@ -365,6 +427,20 @@ impl Host for TauriHost {
     fn exit_app(&mut self, _outcome: Outcome) {
         self.exiting.store(true, Ordering::SeqCst);
         self.app.exit(0);
+    }
+
+    fn notify(&mut self, toast: &Toast) {
+        let window = window_state(&self.app, &self.log);
+        let mut notifier = PluginNotifier { app: self.app.clone() };
+        native_notice::deliver(window, toast, &mut notifier, &self.log);
+    }
+
+    fn apply_shell_settings(&mut self, settings: &ShellSettings) {
+        shell_tauri::apply_shell_settings(&self.app, settings);
+    }
+
+    fn reveal_window_if_hidden(&mut self) {
+        shell_tauri::reveal_if_hidden(&self.app);
     }
 }
 

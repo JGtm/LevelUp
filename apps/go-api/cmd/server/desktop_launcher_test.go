@@ -352,6 +352,20 @@ func assertNoWAL(t *testing.T, r launcherRoots) {
 	}
 }
 
+// assertShellSettingsDefaults : l'événement `shell_settings` d'un profil neuf porte les trois réglages
+// d'intégration au poste coupés et une langue.
+func assertShellSettingsDefaults(t *testing.T, ev map[string]any) {
+	t.Helper()
+	for _, key := range []string{"native_notifications", "close_to_tray", "start_with_windows"} {
+		if v, ok := ev[key].(bool); !ok || v {
+			t.Errorf("shell_settings.%s = %v, attendu false (coupé par défaut) : %v", key, ev[key], ev)
+		}
+	}
+	if loc, _ := ev["locale"].(string); loc == "" {
+		t.Errorf("shell_settings sans langue : %v", ev)
+	}
+}
+
 // TestE2ELanceurDesktop : la séquence complète du contrat, deux instances, un relancement.
 func TestE2ELanceurDesktop(t *testing.T) {
 	bin := e2eBuildServer(t)
@@ -365,6 +379,9 @@ func TestE2ELanceurDesktop(t *testing.T) {
 		t.Errorf("ready sur le port %d, listening annonçait %d", portOf(t, ready), port)
 	}
 	t.Logf("ready après %s", time.Since(first.started).Round(time.Millisecond))
+	// Le serveur prêt annonce les réglages de la coquille (D-23) : tout est coupé par défaut (décision du
+	// 2026-11-02), seule la détection du jeu, sans effet visible, est active côté serveur.
+	assertShellSettingsDefaults(t, first.expect(t, "shell_settings", launcherEventTimeout))
 	if got := readPortFile(t, roots); got != port {
 		t.Errorf("fichier de port = %d, attendu le port annoncé %d", got, port)
 	}
@@ -431,6 +448,7 @@ func TestE2ELanceurDesktop(t *testing.T) {
 	if got := portOf(t, again.expect(t, "ready", launcherReadyTimeout)); got != port {
 		t.Errorf("relancement : ready sur le port %d, attendu %d", got, port)
 	}
+	assertShellSettingsDefaults(t, again.expect(t, "shell_settings", launcherEventTimeout))
 	if err := again.stdin.Close(); err != nil {
 		t.Fatalf("fermeture du stdin : %v", err)
 	}

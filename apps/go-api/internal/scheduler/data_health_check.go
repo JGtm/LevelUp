@@ -157,18 +157,21 @@ func (s *HealthScheduler) Run(ctx context.Context) {
 
 	// Premier tick immédiat (sans attendre le 1er interval) pour catch les
 	// régressions au boot.
-	s.runCycle(ctx)
+	runHeavy(ctx, "data_health", s.cycle)
 
 	for {
 		select {
 		case <-ticker.C:
-			s.runCycle(ctx)
+			runHeavy(ctx, "data_health", s.cycle)
 		case <-ctx.Done():
 			slog.InfoContext(ctx, "data_health: arrêt scheduler")
 			return
 		}
 	}
 }
+
+// cycle est runCycle sans son résultat : la forme qu'attend la porte du mode jeu (runHeavy).
+func (s *HealthScheduler) cycle(ctx context.Context) { s.runCycle(ctx) }
 
 // RunOnce exécute un cycle d'audit unique (utilisable manuellement / tests).
 func (s *HealthScheduler) RunOnce(ctx context.Context) *DataHealthCheckResult {

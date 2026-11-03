@@ -181,7 +181,7 @@ func (c *WorldLeaderboardCron) Run(ctx context.Context) {
 	case <-ctx.Done():
 		return
 	case <-time.After(c.bootDelay):
-		c.RunOnce(ctx)
+		runHeavy(ctx, "world_leaderboard", c.RunOnce)
 	}
 
 	ticker := time.NewTicker(c.interval)
@@ -193,7 +193,7 @@ func (c *WorldLeaderboardCron) Run(ctx context.Context) {
 				"module", logging.ModuleLeaderboard)
 			return
 		case <-ticker.C:
-			c.RunOnce(ctx)
+			runHeavy(ctx, "world_leaderboard", c.RunOnce)
 		}
 	}
 }

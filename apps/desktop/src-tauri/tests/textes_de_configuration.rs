@@ -85,3 +85,58 @@ fn la_closure_on_new_window_refuse_toute_nouvelle_fenetre() {
         );
     }
 }
+
+/// L21.d : l'entree de demarrage avec Windows ne s'ecrit QUE par `autostart::reconcile` (qui lit d'abord et
+/// ne touche a rien quand le reglage est coupe). Aucun autre fichier ne cree ni ne supprime l'entree : un
+/// `.enable()` dans `main.rs` ou ailleurs ferait un demarrage impose, que la decision de l'utilisateur
+/// (reglage coupe par defaut) interdit. Le plugin lance l'application avec `--minimized`.
+#[test]
+fn l_entree_de_demarrage_n_est_ecrite_que_par_le_reglage() {
+    for fichier in [
+        "src/main.rs",
+        "src/shell_tauri.rs",
+        "src/tray_tauri.rs",
+        "src/toast_tauri.rs",
+        "src/update_setup.rs",
+        "src/update_tauri.rs",
+    ] {
+        let source = lire(fichier);
+        let code = lignes_de_code(&source).concat();
+        assert!(
+            !code.contains(".enable()") && !code.contains(".disable()"),
+            "{fichier} ne doit pas ecrire l'entree de demarrage : seul `autostart_tauri.rs`, derriere `reconcile`, le fait"
+        );
+    }
+    let main = lire("src/main.rs");
+    let init = entre(&main, "tauri_plugin_autostart::Builder::new()", ".build()");
+    assert!(
+        init.contains("MINIMIZED_ARG"),
+        "le plugin d'autostart doit lancer l'application avec l'argument `--minimized` : {init}"
+    );
+    // Le plugin de memoire de fenetre ne restaure pas la visibilite : il remontrerait au lancement la
+    // fenetre qu'un demarrage reduit vient de cacher.
+    let shell_source = lire("src/shell_tauri.rs");
+    let code = [lignes_de_code(&main).concat(), lignes_de_code(&shell_source).concat()].concat();
+    assert!(
+        code.contains("!StateFlags::VISIBLE"),
+        "le plugin window-state doit exclure StateFlags::VISIBLE"
+    );
+    // Restaurer l'etat maximise d'une fenetre cachee l'affiche (SW_MAXIMIZE) : en demarrage reduit il est
+    // exclu au lancement (decision `launch::restores_maximized_at_start`) puis restaure a la premiere montre.
+    assert!(
+        code.contains("!StateFlags::MAXIMIZED") && code.contains("launch::restores_maximized_at_start(initial)"),
+        "le plugin window-state ne doit pas restaurer MAXIMIZED d'une fenetre cachee au lancement"
+    );
+    assert!(
+        code.contains("StateFlags::MAXIMIZED)")
+            && lignes_de_code(&main)
+                .concat()
+                .contains("restore_maximized_if_pending(app, &window)"),
+        "l'etat maximise est restaure a la premiere montre apres un demarrage cache"
+    );
+    let shell = lire("src/shell_tauri.rs");
+    assert!(
+        shell.contains("autostart::reconcile(wanted,"),
+        "shell_tauri.rs doit appliquer le reglage par `autostart::reconcile`"
+    );
+}

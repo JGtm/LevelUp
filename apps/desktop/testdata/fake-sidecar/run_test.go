@@ -364,3 +364,56 @@ func TestArretNonPropre(t *testing.T) {
 		t.Errorf("code %d, attendu %d", code, exitOK)
 	}
 }
+
+// TestEvenementsApresReady : FAKE_EVENTS_AFTER_READY ecrit ses lignes JSON telles quelles, dans
+// l'ordre, juste apres `ready` ; une ligne qui n'est pas du JSON refuse le lancement.
+func TestEvenementsApresReady(t *testing.T) {
+	lines := `{"event":"notification","title":"t","body":"b","kind":"sync"}|{"event":"shell_settings","close_to_tray":true}`
+	r := launch(t, contractArgs, baseEnv(t, map[string]string{"FAKE_EVENTS_AFTER_READY": lines}))
+	r.waitEvent(t, "shell_settings")
+	events, noise := r.stdout.events(t)
+	if got := strings.Join(names(events), ","); got != "listening,ready,notification,shell_settings" || noise != 0 {
+		t.Errorf("evenements %s (bruit %d)", got, noise)
+	}
+	_ = r.stdin.Close()
+	r.wait(t)
+
+	if code := run(contractArgs, func(k string) string {
+		return map[string]string{
+			"LEVELUP_DESKTOP_SECRET": testSecret, "FAKE_EVENTS_AFTER_READY": "pas du json",
+		}[k]
+	}, "/", strings.NewReader(""), &bytes.Buffer{}, &bytes.Buffer{}); code != exitSetup {
+		t.Errorf("code %d, attendu %d pour une ligne qui n'est pas du JSON", code, exitSetup)
+	}
+}
+
+// TestCommandesDeLaCoquille : une ligne ecrite sur stdin avant la fermeture est une commande, ajoutee au
+// fichier des commandes ; elle n'arrete pas le serveur (seul l'EOF le fait).
+func TestCommandesDeLaCoquille(t *testing.T) {
+	env := baseEnv(t, nil)
+	r := launch(t, contractArgs, env)
+	r.waitEvent(t, "ready")
+	if _, err := io.WriteString(r.stdin, "sync\n"); err != nil {
+		t.Fatal(err)
+	}
+	file := filepath.Join(env["LEVELUP_DATA_DIR"], commandsFile)
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		if raw, err := os.ReadFile(file); err == nil && strings.TrimSpace(string(raw)) == "sync" {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("la commande sync n'est jamais arrivee dans %s", file)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	select {
+	case code := <-r.code:
+		t.Fatalf("une commande ne doit pas arreter le serveur (code %d)", code)
+	case <-time.After(100 * time.Millisecond):
+	}
+	_ = r.stdin.Close()
+	if code := r.wait(t); code != exitOK {
+		t.Errorf("code %d, attendu 0", code)
+	}
+}

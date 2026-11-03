@@ -131,4 +131,13 @@ describe('SettingsPage', () => {
       expect(select).toBeInTheDocument()
     })
   })
+
+  it("l'onglet « Application » n'existe que là où une intégration au poste est offerte", async () => {
+    renderWithProviders(<SettingsPage />)
+    await screen.findByRole('tab', { name: 'Compte' })
+    expect(screen.queryByRole('tab', { name: 'Application' })).not.toBeInTheDocument()
+
+    useAppShellStore.setState({ capabilities: testCapabilities({ can_watch_game_process: true }) })
+    expect(await screen.findByRole('tab', { name: 'Application' })).toBeInTheDocument()
+  })
 })
