@@ -15,11 +15,21 @@ const TOKEN = 'jeton-' + 'e9'.repeat(14)
 
 describe('ExportForDesktopCard', () => {
   beforeEach(() => {
-    useAppShellStore.setState({ locale: 'fr', capabilities: testCapabilities({ can_export_for_desktop: true }) })
+    useAppShellStore.setState({
+      locale: 'fr',
+      capabilities: testCapabilities({ can_export_for_desktop: true }),
+      linkedHaloIdentity: { gamertag: 'SpartanB', xuid: '2533274800000001' } as never,
+    })
   })
   afterEach(() => {
     vi.unstubAllGlobals()
-    useAppShellStore.setState({ locale: 'fr', capabilities: null })
+    useAppShellStore.setState({ locale: 'fr', capabilities: null, linkedHaloIdentity: null })
+  })
+
+  it('un compte sans identité Xbox liée ne voit pas la carte : le serveur lui refuserait le jeton (401 halo_auth_required)', () => {
+    useAppShellStore.setState({ linkedHaloIdentity: null })
+    const { container } = renderWithProviders(<ExportForDesktopCard />)
+    expect(container).toBeEmptyDOMElement()
   })
 
   it('sans la capacité d’export (application de bureau), rien n’est rendu', () => {
@@ -71,23 +81,7 @@ describe('ExportForDesktopCard', () => {
     expect(screen.queryByText(TOKEN)).not.toBeInTheDocument()
   })
 
-  it('la limite d’un export par heure (429) est écrite depuis son code', async () => {
-    server.use(
-      http.post(`${API}/export/desktop/token`, () =>
-        HttpResponse.json(
-          { status: 429, code: 'export_rate_limited', message: 'MESSAGE DU SERVEUR' },
-          { status: 429 },
-        ),
-      ),
-    )
-    renderWithProviders(<ExportForDesktopCard />)
-    fireEvent.click(screen.getByRole('button', { name: "Générer un jeton d'export" }))
-    expect(await screen.findByRole('alert')).toHaveTextContent('Un export par heure.')
-    expect(screen.queryByText('MESSAGE DU SERVEUR')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('export-token')).not.toBeInTheDocument()
-  })
-
-  it('une autre erreur donne le texte générique', async () => {
+  it('une erreur du serveur donne le texte générique', async () => {
     server.use(
       http.post(`${API}/export/desktop/token`, () =>
         HttpResponse.json({ status: 500, code: 'internal_error', message: 'x' }, { status: 500 }),

@@ -6,6 +6,7 @@ import (
 	"archive/zip"
 	"context"
 	"database/sql"
+	"encoding/json"
 	"io"
 	"os"
 	"path/filepath"
@@ -161,5 +162,67 @@ func TestWrite_JournalTronqueAuxDerniersOctets(t *testing.T) {
 	got := readZip(t, path)["logs/server.log"]
 	if len(got) > 300 || !strings.HasSuffix(strings.TrimSpace(got), "DERNIERE") || !strings.HasPrefix(got, "ligne numero") {
 		t.Fatalf("la fin du journal, à ligne entière, bornée à 300 octets, était attendue : %d octets\n%q", len(got), got)
+	}
+}
+
+// TestWrite_OpaqueValuesBehindSensitiveKeysNeverLeave (T3) : une valeur SANS forme de jeton connue, derrière une clé
+// sensible, ne sort ni du journal d'un module (format JSON), ni du relais stderr de la coquille (texte), ni des
+// réglages, ni d'un document de profils joint. Seul le filtre par clé peut la retirer : retirer ce filtre fait rougir
+// ce test, alors que le sentinelle ci-dessus, dont chaque faux secret a aussi une forme connue, resterait vert.
+// Les clés d'état (scheduled_refresh, TokenVault) restent, elles, dans le rapport (T1).
+func TestWrite_OpaqueValuesBehindSensitiveKeysNeverLeave(t *testing.T) {
+	root := t.TempDir()
+	pr := title.NewPathResolverRoots(title.Roots{Resources: root, Data: filepath.Join(root, "data"),
+		Logs: filepath.Join(root, "logs"), DataSet: true})
+	logs := pr.LogsRoot()
+	const opaque = "valeur-opaque-8127"
+	writeFile(t, filepath.Join(logs, "auth.log"),
+		`{"time":"2026-11-03T09:30:00Z","level":"WARN","msg":"refresh-only: terminé","players_with_token":3,"xsts_refreshed":2,"oauth_refresh_token":"`+opaque+`"}`+"\n")
+	writeFile(t, filepath.Join(logs, "desktop.log"),
+		"2026-11-03T09:30:01Z shell stderr: level=ERROR msg=\"auth failed\" password="+opaque+" retries=2\n")
+	settings := filepath.Join(root, "app_settings.json")
+	writeFile(t, settings, `{"discord_webhook_url":"`+opaque+`","discord_webhook_url_present":true,"desktop_secret":"`+opaque+`","scheduled_refresh":true,"backup_keep":7}`)
+	var profiles any
+	if err := json.Unmarshal([]byte(`{"version":"3.0","profiles":{"halo_infinite":{"SpartanB":{"xuid":"2533274800000001","auth_token":"`+opaque+`","sync_enabled":true}}}}`), &profiles); err != nil {
+		t.Fatal(err)
+	}
+
+	path, err := Write(context.Background(), Input{
+		Paths: pr, LogsRoot: logs, AppVersion: "9.9.9-test", Deployment: "desktop",
+		Capabilities: map[string]bool{"TokenVault": true, "PoolTokens": false, "ScheduledRefresh": true},
+		SettingsFile: settings, Extras: map[string]any{"db_profiles": profiles},
+	})
+	if err != nil {
+		t.Fatalf("Write : %v", err)
+	}
+	entries := readZip(t, path)
+	for name, content := range entries {
+		if strings.Contains(content, opaque) {
+			t.Errorf("%s : une valeur opaque derrière une clé sensible est sortie", name)
+		}
+	}
+	if !json.Valid([]byte(strings.TrimSpace(entries["logs/auth.log"]))) {
+		t.Errorf("la ligne JSON du journal d'un module n'est plus du JSON : %s", entries["logs/auth.log"])
+	}
+	for _, want := range []string{`"players_with_token":3`, `"xsts_refreshed":2`, `refresh-only: terminé`} {
+		if !strings.Contains(entries["logs/auth.log"], want) {
+			t.Errorf("logs/auth.log a perdu %s : %s", want, entries["logs/auth.log"])
+		}
+	}
+	if !strings.Contains(entries["logs/desktop.log"], "retries=2") || !strings.Contains(entries["logs/desktop.log"], `msg="auth failed"`) {
+		t.Errorf("logs/desktop.log a perdu des informations non sensibles : %s", entries["logs/desktop.log"])
+	}
+	for _, want := range []string{"scheduled_refresh", "discord_webhook_url_present", "backup_keep"} {
+		if !strings.Contains(entries["settings.json"], want) {
+			t.Errorf("settings.json a perdu la clé d'état %s :\n%s", want, entries["settings.json"])
+		}
+	}
+	for _, want := range []string{"TokenVault", "PoolTokens", "ScheduledRefresh"} {
+		if !strings.Contains(entries["app_info.json"], want) {
+			t.Errorf("app_info.json a perdu la capacité %s :\n%s", want, entries["app_info.json"])
+		}
+	}
+	if !strings.Contains(entries["db_profiles.json"], "SpartanB") || !strings.Contains(entries["db_profiles.json"], "sync_enabled") {
+		t.Errorf("db_profiles.json a perdu des champs non sensibles :\n%s", entries["db_profiles.json"])
 	}
 }

@@ -7,6 +7,7 @@
  */
 import type { Locale } from '@/lib/i18n/locale'
 import { intlLocale } from '@/lib/formatters'
+import { substitute } from '@/lib/i18n/template'
 
 /**
  * Substitue les placeholders `{key}` par la valeur correspondante.
@@ -16,7 +17,7 @@ export function interpolate(
   template: string,
   params: Record<string, string | number>,
 ): string {
-  return template.replace(/\{(\w+)\}/g, (_, key) => {
+  return substitute(template, (key) => {
     if (key === 'plural') {
       const n = typeof params.n === 'number' ? params.n : Number(params.count ?? 0)
       return n > 1 ? 's' : ''

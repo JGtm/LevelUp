@@ -378,11 +378,18 @@ go run ./cmd/levelup backup  --gamertag X [--output-dir D] [--compression-level 
 go run ./cmd/levelup restore --gamertag X --backup-dir D [--replace] [--dry-run] [--tables T1,T2]
 go run ./cmd/levelup restore-csr --gamertag X --backup PATH [--dry-run]
 go run ./cmd/levelup backup restore --from D:\Sauvegardes\levelup-20261103-0930 --to D:\DonneesLevelUp [--dry-run] [--force]
+levelup-server.exe -mode restore --from D:\Sauvegardes\levelup-20261103-0930 --to "%LOCALAPPDATA%\LevelUp" [--dry-run] [--force]
 ```
 
 `backup restore` restaure un jeu écrit par la sauvegarde périodique en Parquet de l'application de bureau (Réglages > Application,
-`backup_dir` ; voir `docs/RUNBOOK_DESKTOP.md`). **Serveur arrêté** : la commande prend le verrou d'instance de la racine de données cible
-(`--to`, le dossier qui contient `titles/` et `auth/`) et refuse tant qu'il est tenu. Elle vérifie d'abord chaque somme SHA-256 du manifeste, recrée
+`backup_dir` ; voir `docs/RUNBOOK_DESKTOP.md`). **`levelup-server.exe -mode restore` est la même commande** (mêmes drapeaux, même fonction) :
+l'installeur livre `levelup-server.exe` et non `levelup.exe`, un PC neuf restaure donc avec le serveur qu'il a déjà (aucune configuration chargée,
+aucun port lié, aucune base ouverte hors de la restauration) ; `levelup backup restore` en est l'alias depuis un dépôt. **Serveur arrêté** : la
+commande prend le verrou d'instance de la racine de données cible (`--to`, le dossier qui contient `titles/` et `auth/`) et refuse tant qu'il est
+tenu ; **tout serveur, quel que soit son profil, le tient pendant qu'il tourne, et `--force` ne le contourne jamais** (il autorise seulement le
+remplacement de bases qui existent). Un `<base>.wal` résiduel dans la cible est refusé sans `--force` (lancer l'application une fois pour un arrêt
+propre, ou supprimer le WAL si perdre les dernières écritures est acceptable) ; un jeu dont le dossier `db/` contient un fichier que le manifeste
+ne déclare pas est refusé. Elle vérifie d'abord chaque somme SHA-256 du manifeste, recrée
 chaque base depuis ses Parquet dans l'état de son époque (le démarrage suivant applique les migrations manquantes), puis remet en place les
 fichiers de configuration et d'authentification. Une cible qui contient déjà une base du jeu est refusée sans `--force` ; `--dry-run` vérifie le jeu
 et liste ce qui serait restauré, sans rien écrire. Les films archivés ne font pas partie d'un jeu.

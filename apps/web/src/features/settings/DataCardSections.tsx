@@ -12,14 +12,15 @@ import type { DataBackupStatus, MemoryStatus } from './dataQueries'
 import { useRunDataBackup } from './dataQueries'
 import {
   attemptFailureText,
-  BACKUP_INTERVALS,
   BACKUP_KEEP_MAX,
   BACKUP_KEEP_MIN,
   errorText,
-  knownInterval,
+  intervalLabel,
+  intervalOptions,
+  intervalSetting,
   lastBackupSummary,
 } from './dataLogic'
-import { fill } from './fillTemplate'
+import { fillTemplate } from '@/lib/i18n/template'
 import type { DataText } from './dataText'
 import type { DataSettingsForm } from './useDataSettings'
 
@@ -51,8 +52,21 @@ interface SectionProps {
   form: DataSettingsForm
 }
 
-/** Dernier jeu de sauvegarde, et dernier passage s'il a échoué. */
-function LastBackup({ t, locale, backup }: { t: DataText; locale: Locale; backup: DataBackupStatus | undefined }) {
+/** L'état de la lecture de GET /settings/data : arrivé, en cours, ou échoué (on ne sait alors rien des sauvegardes). */
+export type StatusState = 'ready' | 'loading' | 'error'
+
+/** Dernier jeu de sauvegarde, et dernier passage s'il a échoué. « Aucune sauvegarde » ne se dit que de l'état lu. */
+function LastBackup({
+  t,
+  locale,
+  backup,
+  state,
+}: {
+  t: DataText
+  locale: Locale
+  backup: DataBackupStatus | undefined
+  state: StatusState
+}) {
   const last = backup?.last
   const attempt = backup?.last_attempt
   return (
@@ -63,7 +77,9 @@ function LastBackup({ t, locale, backup }: { t: DataText; locale: Locale; backup
           {lastBackupSummary(t, locale, last)}
         </p>
       ) : (
-        <p className="text-foreground">{t.lastNone}</p>
+        <p className="text-foreground" data-testid="data-last-none">
+          {state === 'ready' ? t.lastNone : state === 'loading' ? t.lastLoading : t.lastUnavailable}
+        </p>
       )}
       {last?.partial && (
         <p role="status" className="text-xs text-warning">
@@ -72,7 +88,7 @@ function LastBackup({ t, locale, backup }: { t: DataText; locale: Locale; backup
       )}
       {attempt && !attempt.ok && (
         <p role="alert" className="text-xs text-destructive">
-          {fill(t.lastAttemptFailed, {
+          {fillTemplate(t.lastAttemptFailed, {
             date: formatDateTime(attempt.at, intlLocale(locale)),
             reason: attemptFailureText(t, attempt.error_code),
           })}
@@ -84,6 +100,8 @@ function LastBackup({ t, locale, backup }: { t: DataText; locale: Locale; backup
 
 interface BackupSectionProps extends SectionProps {
   backup: DataBackupStatus | undefined
+  /** Où en est la lecture de l'état : sans lui « aucune sauvegarde » se dirait aussi d'un état pas encore lu. */
+  state: StatusState
   /** Dossier enregistré : sert tant que l'état du serveur n'est pas arrivé. */
   savedDir: string
 }
@@ -122,17 +140,18 @@ function BackupDirField({ t, form, same }: { t: DataText; form: DataSettingsForm
 }
 
 function IntervalField({ t, form }: { t: DataText; form: DataSettingsForm }) {
+  const current = intervalSetting(form.value('backup_interval'))
   return (
     <Field id="data-backup-interval" label={t.intervalLabel}>
       <select
         id="data-backup-interval"
         className={INPUT_CLASS}
-        value={knownInterval(form.value('backup_interval'))}
+        value={current}
         onChange={(e) => form.commit('backup_interval', e.target.value)}
       >
-        {BACKUP_INTERVALS.map((interval) => (
+        {intervalOptions(current).map((interval) => (
           <option key={interval} value={interval}>
-            {t.intervals[interval]}
+            {intervalLabel(t, interval)}
           </option>
         ))}
       </select>
@@ -161,7 +180,7 @@ function KeepField({ t, form }: { t: DataText; form: DataSettingsForm }) {
   )
 }
 
-export function BackupSection({ t, locale, form, backup, savedDir }: BackupSectionProps) {
+export function BackupSection({ t, locale, form, backup, state, savedDir }: BackupSectionProps) {
   const run = useRunDataBackup()
   const enabled = backup ? backup.enabled : savedDir !== ''
   const running = backup?.running === true
@@ -190,7 +209,7 @@ export function BackupSection({ t, locale, form, backup, savedDir }: BackupSecti
         )}
       </div>
       <FieldError message={form.errors.general} />
-      <LastBackup t={t} locale={locale} backup={backup} />
+      <LastBackup t={t} locale={locale} backup={backup} state={state} />
     </section>
   )
 }
@@ -206,7 +225,7 @@ export function MemorySection({ t, locale, form, memory }: MemorySectionProps) {
       {memory && (
         <p className="text-sm text-foreground" data-testid="data-memory-current">
           {memory.rss_mb > 0
-            ? fill(t.memoryCurrent, { value: memory.rss_mb.toLocaleString(intlLocale(locale)) })
+            ? fillTemplate(t.memoryCurrent, { value: memory.rss_mb.toLocaleString(intlLocale(locale)) })
             : t.memoryUnavailable}
         </p>
       )}
@@ -226,7 +245,7 @@ export function MemorySection({ t, locale, form, memory }: MemorySectionProps) {
       </Field>
       {memory?.effective_limit && (
         <p className="text-xs text-muted-foreground" data-testid="data-memory-effective">
-          {fill(t.memoryEffective, { limit: memory.effective_limit })}
+          {fillTemplate(t.memoryEffective, { limit: memory.effective_limit })}
         </p>
       )}
     </section>

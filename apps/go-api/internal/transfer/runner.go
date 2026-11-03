@@ -24,16 +24,19 @@ const (
 
 // Codes fixes de l'échec d'un import, rendus à l'API (le texte de l'erreur va au journal).
 const (
-	CodeBadURL         = "site_url_invalid"
-	CodeTokenInvalid   = "site_token_invalid"
-	CodeRateLimited    = "site_rate_limited"
-	CodeSiteRefused    = "site_refused"
-	CodeSiteTooBig     = "site_archive_too_big"
-	CodeBadArchive     = "archive_invalid"
-	CodeXuidMismatch   = "archive_other_player"
-	CodeUnknownTable   = "archive_unknown_table"
-	CodeFormatTooNewer = "archive_format_unsupported"
-	CodeFailed         = "import_failed"
+	CodeBadURL          = "site_url_invalid"
+	CodeTokenInvalid    = "site_token_invalid"
+	CodeRateLimited     = "site_rate_limited"
+	CodeSiteRefused     = "site_refused"
+	CodeSiteTooBig      = "site_archive_too_big"
+	CodeSiteUnreachable = "site_unreachable"
+	CodeSiteTLS         = "site_tls"
+	CodeSiteNotFound    = "site_not_found"
+	CodeBadArchive      = "archive_invalid"
+	CodeXuidMismatch    = "archive_other_player"
+	CodeUnknownTable    = "archive_unknown_table"
+	CodeFormatTooNewer  = "archive_format_unsupported"
+	CodeFailed          = "import_failed"
 )
 
 // ErrImportRunning : un import est déjà en cours.
@@ -50,6 +53,12 @@ func CodeOf(err error) string {
 		return CodeRateLimited
 	case errors.Is(err, ErrSiteRefused):
 		return CodeSiteRefused
+	case errors.Is(err, ErrSiteUnreachable):
+		return CodeSiteUnreachable
+	case errors.Is(err, ErrSiteTLS):
+		return CodeSiteTLS
+	case errors.Is(err, ErrSiteNotFound):
+		return CodeSiteNotFound
 	case errors.Is(err, ErrSiteTooBig), errors.Is(err, ErrTooLarge):
 		return CodeSiteTooBig
 	case errors.Is(err, ErrXuidMismatch):
@@ -79,6 +88,9 @@ type RunInput struct {
 	Import ImportInput
 	// WorkDir : où l'archive est téléchargée (vide = dossier temporaire du système).
 	WorkDir string
+	// AfterImport : appelé une fois l'import ÉCRIT (pas sur un échec), avant que l'état passe à « terminé » : c'est là que
+	// l'application invalide ses caches de lecture, périmés par les lignes importées. Nil : rien.
+	AfterImport func(ctx context.Context)
 }
 
 // Runner exécute un import à la fois et en tient l'état. Un *Runner sert une route de démarrage et une route
@@ -155,6 +167,9 @@ func (r *Runner) run(ctx context.Context, in RunInput) {
 		slog.WarnContext(ctx, "import depuis le site: import échoué", "err", err)
 		r.set(PhaseFailed, CodeOf(err), nil)
 		return
+	}
+	if in.AfterImport != nil {
+		in.AfterImport(ctx)
 	}
 	r.set(PhaseDone, "", res.Inserted)
 }

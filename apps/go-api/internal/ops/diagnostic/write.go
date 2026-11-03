@@ -277,7 +277,7 @@ func addLogs(ctx context.Context, zw *zip.Writer, in Input) error {
 			slog.WarnContext(ctx, "diagnostic: journal non lu", "file", p, "err", err)
 			data = []byte("journal non lu : " + Scrub(err.Error(), nil))
 		}
-		if err := writeEntry(zw, "logs/"+filepath.Base(p), []byte(Scrub(string(data), in.Secrets))); err != nil {
+		if err := writeEntry(zw, "logs/"+filepath.Base(p), []byte(ScrubLog(string(data), in.Secrets))); err != nil {
 			return err
 		}
 	}

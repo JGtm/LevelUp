@@ -23,6 +23,12 @@ import (
 // vite ; l'export est demandé par un joueur qui attend).
 const exportLeaseWait = 15 * time.Second
 
+// exportedScope : une base exportée, son chemin et ses tables.
+type exportedScope struct {
+	scope, path string
+	specs       []tableSpec
+}
+
 // ExportInput décrit un export.
 type ExportInput struct {
 	// Paths : le résolveur de chemins de l'instance qui exporte.
@@ -31,6 +37,10 @@ type ExportInput struct {
 	Slug string
 	// Xuid et Gamertag : le joueur CONNECTÉ (jamais lu d'une requête libre : de sa session).
 	Xuid, Gamertag string
+	// PlayerGamertag : le gamertag du profil suivi qui porte CE xuid, trouvé par le xuid (ADR 0035) ; il
+	// désigne la base joueur exportée. Vide : aucun profil suivi pour ce xuid, la portée joueur est sautée
+	// (jamais la base d'un autre profil choisie par un gamertag de session).
+	PlayerGamertag string
 	AppVersion     string
 	// Dest : le fichier zip à écrire.
 	Dest string
@@ -56,12 +66,11 @@ func Export(ctx context.Context, in ExportInput) (*Manifest, error) {
 	}
 	m := &Manifest{Format: FormatVersion, Title: in.Slug, Xuid: xuid, Gamertag: in.Gamertag,
 		CreatedAt: now().UTC(), AppVersion: in.AppVersion}
-	scopes := []struct {
-		scope, path string
-		specs       []tableSpec
-	}{
-		{ScopeShared, in.Paths.SharedDBPath(in.Slug), sharedTables},
-		{ScopePlayer, in.Paths.PlayerDBPath(in.Slug, in.Gamertag), playerTables},
+	scopes := []exportedScope{{ScopeShared, in.Paths.SharedDBPath(in.Slug), sharedTables}}
+	if in.PlayerGamertag != "" {
+		scopes = append(scopes, exportedScope{ScopePlayer, in.Paths.PlayerDBPath(in.Slug, in.PlayerGamertag), playerTables})
+	} else {
+		slog.WarnContext(ctx, "transfer: aucun profil suivi pour ce xuid, base joueur non exportée", "xuid", xuid)
 	}
 	for _, s := range scopes {
 		if _, err := os.Stat(s.path); err != nil {
@@ -97,8 +106,8 @@ func exportScope(ctx context.Context, db *sql.DB, scope string, specs []tableSpe
 		}
 		rel := scope + "/" + s.Name + ".parquet"
 		where := ""
-		if s.Filter != "" {
-			where = " WHERE " + fmt.Sprintf(s.Filter, "'"+xuid+"'")
+		if scope == ScopeShared {
+			where = " WHERE " + fmt.Sprintf(matchScopeFilter, "'"+xuid+"'")
 		}
 		q := fmt.Sprintf(`COPY (SELECT * FROM %q%s) TO '%s' (FORMAT PARQUET, COMPRESSION 'zstd')`,
 			s.Name, where, strings.ReplaceAll(filepath.Join(work, filepath.FromSlash(rel)), "'", "''"))

@@ -126,6 +126,23 @@ describe('StepInitialSync — import facultatif depuis le site (capacité can_im
     await waitFor(() => expect(screen.queryByRole('button', { name: TOGGLE })).not.toBeInTheDocument())
   })
 
+  it('un import en cours bloque le bouton de synchronisation, avec un message, sans démonter le panneau', async () => {
+    server.use(http.get('*/import/site', () => HttpResponse.json({ phase: 'importing', matches: 0 })))
+    renderWithProviders(<StepInitialSync playerSlug="test-player" />)
+    const lancer = await screen.findByRole('button', { name: 'Lancer la synchronisation' })
+    await waitFor(() => expect(lancer).toBeDisabled())
+    expect(screen.getByText(/Un import est en cours : la synchronisation pourra être lancée/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: TOGGLE })).toBeInTheDocument()
+  })
+
+  it('l’import terminé ou absent ne bloque pas la synchronisation', async () => {
+    server.use(http.get('*/import/site', () => HttpResponse.json({ phase: 'done', matches: 3 })))
+    renderWithProviders(<StepInitialSync playerSlug="test-player" />)
+    const lancer = await screen.findByRole('button', { name: 'Lancer la synchronisation' })
+    expect(lancer).toBeEnabled()
+    expect(screen.queryByText(/Un import est en cours/)).not.toBeInTheDocument()
+  })
+
   it('sans la capacité d’import (site hébergé), le bloc n’existe pas', async () => {
     useAppShellStore.setState({ capabilities: testCapabilities() })
     renderWithProviders(<StepInitialSync playerSlug="test-player" />)

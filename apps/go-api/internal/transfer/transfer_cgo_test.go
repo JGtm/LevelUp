@@ -6,6 +6,7 @@ import (
 	"archive/zip"
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -28,7 +29,7 @@ const (
 var sharedDDL = []string{
 	`CREATE TABLE match_registry (match_id VARCHAR PRIMARY KEY, map_name VARCHAR NOT NULL, team_0_score INTEGER)`,
 	`CREATE TABLE match_participants (match_id VARCHAR, xuid VARCHAR, gamertag VARCHAR, kills INTEGER, PRIMARY KEY (match_id, xuid))`,
-	`CREATE TABLE medals_earned (match_id VARCHAR, xuid VARCHAR, medal_id BIGINT, count INTEGER)`,
+	`CREATE TABLE medals_earned (match_id VARCHAR, xuid VARCHAR, medal_name_id BIGINT, count INTEGER)`,
 	`CREATE TABLE highlight_events (match_id VARCHAR, xuid VARCHAR, event_type VARCHAR, details_json VARCHAR)`,
 }
 
@@ -86,7 +87,7 @@ func hostedFixture(t *testing.T) *title.PathResolver {
 func exportFor(t *testing.T, pr *title.PathResolver, xuid, tag string) (string, *Manifest) {
 	t.Helper()
 	dest := filepath.Join(t.TempDir(), "export.zip")
-	m, err := Export(context.Background(), ExportInput{Paths: pr, Slug: slug, Xuid: xuid, Gamertag: tag, AppVersion: "9.9.9-test", Dest: dest})
+	m, err := Export(context.Background(), ExportInput{Paths: pr, Slug: slug, Xuid: xuid, Gamertag: tag, PlayerGamertag: tag, AppVersion: "9.9.9-test", Dest: dest})
 	if err != nil {
 		t.Fatalf("Export : %v", err)
 	}
@@ -109,12 +110,12 @@ func TestExportThenImport_EndToEnd(t *testing.T) {
 	hosted := hostedFixture(t)
 	zipPath, m := exportFor(t, hosted, meXuid, meTag)
 
-	// Le périmètre : les lignes du joueur et ses matchs, jamais celles de l'autre joueur.
+	// Le périmètre : les matchs du joueur, COMPLETS (m2 porte aussi la ligne de l'autre joueur), jamais m3.
 	rows := map[string]int64{}
 	for _, tb := range m.Tables {
 		rows[tb.Scope+"/"+tb.Name] = tb.Rows
 	}
-	want := map[string]int64{"shared/match_registry": 2, "shared/match_participants": 2, "shared/medals_earned": 2,
+	want := map[string]int64{"shared/match_registry": 2, "shared/match_participants": 3, "shared/medals_earned": 3,
 		"shared/highlight_events": 1, "player/player_match_enrichment": 2}
 	for k, v := range want {
 		if rows[k] != v {
@@ -135,8 +136,8 @@ func TestExportThenImport_EndToEnd(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Import : %v", err)
 	}
-	if res.Inserted["shared/match_registry"] != 1 || res.Inserted["shared/match_participants"] != 1 {
-		t.Errorf("m1 est déjà là, seul m2 s'ajoute : %v", res.Inserted)
+	if res.Inserted["shared/match_registry"] != 1 || res.Inserted["shared/match_participants"] != 2 {
+		t.Errorf("m1 est déjà là, seul m2 s'ajoute (avec ses deux participants) : %v", res.Inserted)
 	}
 	if got := count(t, local.SharedDBPath(slug), `SELECT count(*) FROM match_registry`); got != 2 {
 		t.Errorf("registre local = %d matchs, attendu 2 (m1 sans doublon, m2 ajouté)", got)
@@ -144,8 +145,8 @@ func TestExportThenImport_EndToEnd(t *testing.T) {
 	if got := count(t, local.SharedDBPath(slug), `SELECT count(*) FROM match_registry WHERE match_id = 'm3'`); got != 0 {
 		t.Error("m3 est un match de l'autre joueur : il ne doit pas être importé")
 	}
-	if got := count(t, local.SharedDBPath(slug), `SELECT count(*) FROM match_participants WHERE xuid = '`+herXuid+`'`); got != 0 {
-		t.Error("aucune ligne de l'autre joueur ne doit être importée")
+	if got := count(t, local.SharedDBPath(slug), `SELECT count(*) FROM match_participants WHERE xuid = '`+herXuid+`'`); got != 1 {
+		t.Errorf("m2 doit porter ses deux participants : %d ligne(s) de l'autre joueur, attendu 1 (celle de m2, pas celle de m3)", got)
 	}
 	if got := count(t, local.PlayerDBPath(slug, meTag), `SELECT count(*) FROM player_match_enrichment`); got != 2 {
 		t.Errorf("enrichissements joueur = %d, attendu 2", got)
@@ -267,8 +268,10 @@ func TestFetchThenImport_ThroughHTTP(t *testing.T) {
 	mustExec(t, local.SharedDBPath(slug), sharedDDL...)
 	mustExec(t, local.PlayerDBPath(slug, meTag), playerDDL...)
 	runner := NewRunner()
+	after := 0
 	input := RunInput{
-		Fetch: FetchInput{BaseURL: srv.URL, Token: token, Client: srv.Client()},
+		AfterImport: func(context.Context) { after++ },
+		Fetch:       FetchInput{BaseURL: srv.URL, Token: token, Client: srv.Client()},
 		Import: ImportInput{ExpectXuid: meXuid,
 			AcquireShared: acquire(local.SharedDBPath(slug)), AcquirePlayer: acquire(local.PlayerDBPath(slug, meTag))},
 		WorkDir: t.TempDir(),
@@ -277,6 +280,9 @@ func TestFetchThenImport_ThroughHTTP(t *testing.T) {
 		t.Fatal(err)
 	}
 	waitFor(t, runner, PhaseDone)
+	if after != 1 {
+		t.Errorf("AfterImport (invalidation des caches de lecture) appelé %d fois après un import réussi, attendu 1", after)
+	}
 	if got := count(t, local.SharedDBPath(slug), `SELECT count(*) FROM match_registry`); got != 2 {
 		t.Errorf("registre local = %d, attendu 2", got)
 	}
@@ -288,6 +294,9 @@ func TestFetchThenImport_ThroughHTTP(t *testing.T) {
 	st := waitFor(t, runner, PhaseFailed)
 	if st.ErrorCode != CodeTokenInvalid {
 		t.Errorf("jeton rejoué : code %q, attendu %q", st.ErrorCode, CodeTokenInvalid)
+	}
+	if after != 1 {
+		t.Errorf("AfterImport appelé après un import échoué : %d appels, attendu 1 (celui de l'import réussi)", after)
 	}
 }
 
@@ -304,4 +313,66 @@ func waitFor(t *testing.T, r *Runner, want Phase) Status {
 	}
 	t.Fatalf("délai dépassé en attendant %s (phase %s)", want, r.Status().Phase)
 	return Status{}
+}
+
+// TestImport_KeepsOnlyTheMatchesOfThePlayer : une archive dont les tables portent un match où le joueur attendu ne
+// figure pas (ici l'archive d'une autre joueuse dont le manifeste est falsifié) n'écrit que les matchs du joueur
+// (S6c) : m3 est celui de l'autre joueuse seule.
+func TestImport_KeepsOnlyTheMatchesOfThePlayer(t *testing.T) {
+	zipPath, _ := exportFor(t, hostedFixture(t), herXuid, "Her")
+	forged := rewriteZip(t, zipPath, func(name string, data []byte) (string, []byte) {
+		if name == ManifestFile {
+			return name, []byte(strings.ReplaceAll(string(data), herXuid, meXuid))
+		}
+		return name, data
+	})
+	local := roots(t)
+	mustExec(t, local.SharedDBPath(slug), sharedDDL...)
+	if _, err := Import(context.Background(), ImportInput{ZipPath: forged, ExpectXuid: meXuid,
+		AcquireShared: acquire(local.SharedDBPath(slug))}); err != nil {
+		t.Fatalf("Import : %v", err)
+	}
+	if got := count(t, local.SharedDBPath(slug), `SELECT count(*) FROM match_registry WHERE match_id = 'm3'`); got != 0 {
+		t.Error("m3 ne compte aucune ligne du joueur attendu : il ne doit pas entrer")
+	}
+	if got := count(t, local.SharedDBPath(slug), `SELECT count(*) FROM match_registry WHERE match_id = 'm2'`); got != 1 {
+		t.Error("m2 compte le joueur attendu parmi ses participants : il doit entrer")
+	}
+	if got := count(t, local.SharedDBPath(slug), `SELECT count(*) FROM match_participants WHERE match_id = 'm3'`); got != 0 {
+		t.Error("aucun participant de m3 ne doit entrer")
+	}
+}
+
+// TestImport_RefusesMatchTablesWithoutParticipants : sans la table des participants, rien ne désigne les matchs
+// du joueur : l'archive est refusée plutôt que reçue en bloc.
+func TestImport_RefusesMatchTablesWithoutParticipants(t *testing.T) {
+	zipPath, _ := exportFor(t, hostedFixture(t), meXuid, meTag)
+	// Le manifeste est réécrit sans la ligne des participants, le fichier reste dans le zip.
+	noParticipants := rewriteZip(t, zipPath, func(name string, data []byte) (string, []byte) {
+		if name != ManifestFile {
+			return name, data
+		}
+		var m Manifest
+		if err := json.Unmarshal(data, &m); err != nil {
+			t.Fatal(err)
+		}
+		kept := m.Tables[:0]
+		for _, tb := range m.Tables {
+			if tb.Name != participantsTable {
+				kept = append(kept, tb)
+			}
+		}
+		m.Tables = kept
+		out, _ := json.Marshal(m)
+		return name, out
+	})
+	local := roots(t)
+	mustExec(t, local.SharedDBPath(slug), sharedDDL...)
+	_, err := Import(context.Background(), ImportInput{ZipPath: noParticipants, ExpectXuid: meXuid, AcquireShared: acquire(local.SharedDBPath(slug))})
+	if !errors.Is(err, ErrBadArchive) {
+		t.Fatalf("tables de match sans participants : %v, attendu ErrBadArchive", err)
+	}
+	if got := count(t, local.SharedDBPath(slug), `SELECT count(*) FROM match_registry`); got != 0 {
+		t.Fatalf("rien ne doit être écrit : %d match(s)", got)
+	}
 }

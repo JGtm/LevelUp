@@ -2,8 +2,7 @@
  * Textes de la carte « Exporter vers l'application de bureau » (lot L22, site hébergé) — FR et EN.
  *
  * Dictionnaire de feature : chaque langue de `config/locales.toml` figure ici (parité par typage :
- * `Record<Locale, ExportForDesktopText>`). Un refus arrive avec un `code` fixe ; le texte est écrit
- * ici, jamais lu dans le message de l'erreur.
+ * `Record<Locale, ExportForDesktopText>`).
  */
 import type { Locale } from '@/lib/i18n/locale'
 
@@ -21,8 +20,6 @@ export interface ExportForDesktopText {
   instruction: string
   shownOnce: string
   unknownError: string
-  /** Refus du serveur, par code. */
-  errors: Record<string, string>
 }
 
 const FR: ExportForDesktopText = {
@@ -39,9 +36,6 @@ const FR: ExportForDesktopText = {
   instruction: "Collez-le dans l'application de bureau, Réglages > Application > Importer depuis le site.",
   shownOnce: 'Ce jeton ne sera plus affiché une fois masqué ou la page quittée.',
   unknownError: "Le jeton n'a pas pu être généré.",
-  errors: {
-    export_rate_limited: 'Un export par heure.',
-  },
 }
 
 const EN: ExportForDesktopText = {
@@ -58,9 +52,6 @@ const EN: ExportForDesktopText = {
   instruction: 'Paste it into the desktop application, Settings > Application > Import from the site.',
   shownOnce: 'This token will not be shown again once hidden or after leaving the page.',
   unknownError: 'The token could not be generated.',
-  errors: {
-    export_rate_limited: 'One export per hour.',
-  },
 }
 
 const TEXT: Record<Locale, ExportForDesktopText> = { fr: FR, en: EN }

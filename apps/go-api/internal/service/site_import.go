@@ -16,6 +16,7 @@ import (
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/dblease"
+	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	syncpkg "levelup/go-api/internal/sync"
 	"levelup/go-api/internal/transfer"
 )
@@ -82,6 +83,9 @@ func (s *SiteImport) Start(req SiteImportRequest) error {
 			AcquirePlayer: acquirePlayer(cfg, slug, player.Gamertag),
 		},
 		WorkDir: cfg.PathResolver().CacheRootDir(),
+		// Les lectures du joueur déjà en cache (liste des matchs, filtres) ignorent les lignes importées : même
+		// invalidation qu'en fin de synchronisation.
+		AfterImport: func(ctx context.Context) { duckdbpkg.InvalidatePlayerReadCaches(ctx, player.XUID, slug) },
 	}
 	return s.runner.Start(ctx, wg, in)
 }

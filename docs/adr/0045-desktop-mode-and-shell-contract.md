@@ -164,6 +164,9 @@ instance that runs.
 **D-10 — Instance lock and wake-up (A16, A10, A24).** A kernel lock `<DataRoot>/levelup.lock`
 (`internal/platform/instancelock`, the pattern of `libs/film/internal/filelock`, which is not importable) is taken at
 start in `desktop` and `refresh-only`; a second holder fails with `ErrInstanceDejaLancee` and `failed{state:"locked"}`.
+**Amended 2026-11-03 (L22, review S2): EVERY server profile (hosted, dev, demo, desktop) takes the lock at boot** (`bindBootListener`, before the
+port): there is never more than one server per data root, and `-mode restore` (D-24) must find the lock held by whatever server runs on the root it
+replaces databases in, otherwise a `--force` restore would rename live databases. A second server on the same root is refused (`locked`).
 The single-instance plugin of the shell protects neither the scheduled task nor a `go run`. `-mode refresh-only` is a
 mode of the same binary: it takes the lock, opens no database, rotates the tokens and exits; if the lock is held it
 exits 0 without doing anything (one rotation at a time, ADR 0023). Wake-up sequence, under the `desktop` capability only
@@ -446,10 +449,14 @@ authentication files as they are (`db_profiles.json`, `app_settings.json`, `user
 system vault when the profile has one) and a `manifest.json` (application version, tables, rows, duration, SHA-256 of every file, and
 `excluded: ["film_archive"]`: the archived films are not copied, they weigh tens of GB and have their own archive). A set is built in a
 `.partial-*` folder renamed at the end: a `levelup-*` folder always carries its manifest. Rotation keeps `backup_keep` sets and only
-deletes direct children of the chosen folder whose name is a set name (never anything else). **Read-only by construction**: a database is read through
+deletes direct children of the chosen folder whose name is a set name (never anything else), **and always keeps the latest COMPLETE (non-partial)
+set**: a run of partial sets never evicts the last one that restores entirely. **Read-only by construction**: a database is read through
 `duckdb.WithHeldRead`, which takes the database write lease with the same bounded wait as the periodic CHECKPOINT (a database whose lease
 is held is skipped, then retried once with a longer wait at the end of the pass; a database still busy makes the set `partial`, said by
-the manifest and by Settings), lends the process-wide cache handle (read-write included, `OpenReadForQuery`) and never opens read-only
+the manifest and by Settings). **The lease is taken and released PER TABLE** (`duckdbbackup.ExportTargetTablesHeld`), not held for a whole
+database: the writers with a short wait (sync metadata 5 s, the persist sink) never wait longer than one table, and a handle opened only for the
+export is closed between two tables. Each table has its own deadline (2 minutes): a table over it is left out and the set is `partial`; a lease
+that cannot be taken in the middle of a database drops that database for the pass (retried whole with the longer wait), lends the process-wide cache handle (read-write included, `OpenReadForQuery`) and never opens read-only
 by force; the package contains no write statement (guard `readonly_guard_test.go`). Settings: `backup_dir` (empty = off),
 `backup_interval` (whole hours, `1h` to `168h`, empty = `24h`), `backup_keep` (1 to 60, default 7). The folder is validated by the
 server (absolute, existing, writable, **not under the data root**; the same volume is accepted and flagged with a warning). The
@@ -458,10 +465,16 @@ keys a PATCH writes, the read never rewrites the value. The periodic loop (`cmd/
 L21 loops, not in `taskPolicies`) wakes every minute, asks the heavy-work gate (`gameproc.Mode.WaitHeavyAllowed`: no backup during a game) and
 writes a set when one is due; "Back up now" is `POST /settings/data/backup/run` (202), the state is `GET /settings/data`
 (`backup.last` is read from the folder, so it survives a restart). Counters: expvar `levelup.backup.parquet` (`ok`, `partial`,
-`failed`), `levelup.backup.parquet_last_duration_ms`, `levelup.backup.parquet_last_bytes`. **Restore**: `levelup backup restore --from <set> --to
-<data root> [--dry-run] [--force]`, server stopped (the command takes the instance lock of the target root and refuses while it is held),
-verifies every checksum first, recreates each database from its Parquet through the existing importer, puts the configuration back, and refuses
-a target that already holds one of the databases without `--force`; the migrations of the next start bring the databases up to date.
+`failed`), `levelup.backup.parquet_last_duration_ms`, `levelup.backup.parquet_last_bytes`. **Restore**: `levelup-server.exe -mode restore --from <set> --to
+<data root> [--dry-run] [--force]` (the server the installer ships: it does not ship `levelup.exe`; `levelup backup restore` is an alias that calls
+the same function, `parquetbackup.RunRestoreCommand`, flags included: no copy). The command takes the instance lock of the target root and refuses
+while it is held; **`--force` never bypasses the lock, only the existence of databases** (every server profile holds that lock since L22, D-10 amended).
+It verifies every checksum first and **refuses a set whose `db/` folder holds a file the manifest does not list** (the importer takes the newest
+Parquet of each table: an added file would be imported with no checksum), recreates each database from its Parquet through the existing importer,
+puts the configuration back, and refuses a target that already holds one of the databases without `--force`. A leftover `<base>.wal` in the target root
+is refused without `--force` (killed application: start it once for a clean stop, or delete the WAL if losing the last writes is acceptable); under
+`--force` the WAL is set aside WITH its base and put back with it on failure, never replayed by the new database. The migrations of the next start
+bring the databases up to date.
 Tokens of another machine do not decrypt (system vault): the player signs in again. No native folder picker: the web page cannot open one
 and the shell has no command channel from the page (the cookie is `HttpOnly`, D-23), so the folder is a text field validated by the
 server; a `pick_dir` command and a `dir_picked` event would have been a new contract between shell and server for a field typed once.
@@ -470,18 +483,32 @@ server; a `pick_dir` command and a `dir_picked` event would have been a new cont
 Hosted side, capability `ExportForDesktop` (`can_export_for_desktop`: every profile but desktop and demo): `POST /export/desktop/token`
 (signed-in player only) returns a random 256-bit token valid 15 minutes and usable **once** (only its SHA-256 is kept, in memory;
 asking for a new one invalidates the previous), `GET /export/desktop` serves the archive to the owner of the token (header
-`Authorization: Bearer`, from the application, which has no session) or of the session. **The player is always the one the token or the session designates**
-(ownership, ADR 0029): no request names a player. One export per hour and per player (429 afterwards, logged). The archive
-(`internal/transfer`, a zip of uncompressed entries) is a **closed list**: `match_registry` of the matches the player took part in, his rows
-of `match_participants`, `medals_earned`, `highlight_events`, and `player_match_enrichment` of his player database; no token, no account, no
-other player's row (the lobby rows of the other players are completed by the application's own sync), no reference table. Desktop side
+`Authorization: Bearer`, from the application, which has no session) or of the session (which must send an `X-Requested-With` header: a cross-site
+GET link cannot, so it never triggers an export unseen). **The player is always the one the token or the session designates**
+(ownership, ADR 0029): no request names a player, and the player database is found by the player's **xuid** (the tracked profile that carries it, ADR 0035),
+never by the gamertag of a session. One SUCCESSFUL export per hour and per player (429 afterwards, logged): the quota is taken after the export
+succeeds (a failed export does not spend it), and only one export per player runs at a time. The archive
+(`internal/transfer`, a zip of uncompressed entries) is a **closed list**, and **a match is exported WHOLE**: for every match where the player's xuid is among
+the participants, ALL the rows of ALL the match tables (`match_registry`, `match_participants` of every participant, `medals_earned`, `weapon_accuracy`,
+`highlight_events`, `killer_victim_pairs`, the kill journal `match_kill_events` with its summaries `match_kill_heads` / `match_kill_pairs` /
+`match_assist_pairs`, `kill_positions`, `match_csrs`, `match_commendations`, `match_objective_stats`), plus `player_match_enrichment` of his player database.
+A match imported by halves would stay incomplete for ever (the sync rule `knownset` counts it as known, `SharedPersister` skips a match whose
+registry row exists, `events_loaded` would say the events are there): hence the whole match. "Never the other players" means never their OWN data (their
+enrichments, their player database, a profile tracked on the same instance), not the other participants' rows of the player's matches. No token, no
+account, no session, no reference table, no film-derived table (lives, usage, shots...: they are recomputed from the film the application loads itself);
+`weapon_kills` is not in the list (Halo Infinite's schema no longer carries it; there is no Halo 5 export). Desktop side
 (`ImportFromSite`, `can_import_from_site`): Settings > Application and an optional block of the first-run assistant take the site address
 and the token (`POST /import/site`, 202, state by `GET /import/site`). The download refuses any scheme but https (http only to the
 loopback), follows no redirect (the token only goes to the address typed), bounds the size and the time; the archive is verified before any write
 (format, entry names matched against `^(shared|player)/[a-z0-9_]+\.parquet$` and the closed list, so no path traversal, total size, SHA-256 of every
-table, and **the archive's xuid must be the tracked player's**). The write is `persist.ImportPersister`: INSERT only, no UPSERT, UPDATE or DELETE,
+table, and **the archive's xuid must be the tracked player's**). Only the matches the tracked xuid takes part in (read from the archive's own
+`match_participants`) enter, and a player-table row only for his xuid; an archive of match tables without participants is refused. The write is `persist.ImportPersister`: INSERT only, no UPSERT, UPDATE or DELETE,
 one transaction per database, a row whose key already exists locally is never rewritten (replaying an import inserts nothing), the common
-columns of the file and of the local table only, a missing mandatory column refuses the table. It goes through the application's existing write paths
+columns of the file and of the local table only (an `id` the local table fills itself is not imported: the local sequence is not the origin's, and the `_latest`
+views order passes by `(written_at, id)`; the file's order is kept), a missing mandatory column refuses the table. A table with no natural key is keyed
+by `match_id`: a match is completed whole or not at all. After the import the application drops its player read caches (`InvalidatePlayerReadCaches`, as at the
+end of a sync) and the page reloads the filter resolution of every tracked player. A failed connection gives a distinct code (`site_unreachable`,
+`site_tls`, `site_not_found`), not a single `import_failed`. It goes through the application's existing write paths
 (`sync.AcquireSharedWriterStandalone` with the `SharedProvider`, then the player lease and `OpenPlayerDB`). Limit: the default title only (the shared database
 provider exists for it alone, as for the OpenSpartan import); the manifest carries the title so another one is a data change. The
 OpenSpartan import recipe was not reused as is: it is typed (one Go struct per table) and reads a SQLite file; a Parquet table of another deployment, whose
@@ -492,15 +519,23 @@ schema may have drifted, needed the column intersection and the anti-join, in th
 (`desktop.log`, the shell journal, included: it carries the updater's state), `app_info.json` (version, profile, roots, capabilities, process and DuckDB
 memory), `settings.json`, `scheduled_tasks.json`, `updater.json`, and for each database a schema diagnostic read through the server's read door
 (`ops.DiagnoseHandle`; `DiagnoseDB` opens read-only by force and fails on a database the process holds). **Two barriers apply to everything that enters the
-archive**: structured documents lose the value of any key matching the forbidden list (`token`, `secret`, `password`, `webhook`, `cookie`,
-`authorization`, `refresh`, a bare `code`, ...), and log text goes through `Scrub` (authorization headers, JWT and Microsoft refresh-token shapes, sensitive
-`key=value` pairs, sensitive URL parameters, the exact values of the process secrets). The sentinel test sows a fake token, launcher secret, webhook and
-authorization code in logs, settings and attached documents and searches every entry. The reply carries the path (button "Copy the path" in the About window).
+archive**: structured documents lose the value of any key whose WHOLE NAME is a secret name (`refresh_token`, `oauth_refresh_token`, `access_token`, `xsts_token`,
+`spartan_token`, `authorization`, `cookie`, `webhook_url`, `webhook`, a bare `code`, anything containing `secret` or `password`, case and separators
+normalised: `OAuthRefreshToken` is `oauth_refresh_token`), never a word inside a longer name (`players_with_token`, `scheduled_refresh`,
+`spnkr_refresh_*`, `TokenVault`, `xsts_refreshed`, `discord_webhook_url_present` stay: they are counters, settings and capabilities the diagnosis needs), and log text goes
+through `ScrubLog`: a line that is one JSON document (the per-module logs) is read as JSON, only the values of forbidden keys and the text of strings are
+replaced, the key order is kept and the line stays valid JSON; any other line goes through `Scrub` (authorization headers, JWT and Microsoft refresh-token shapes, `key=value`
+pairs whose KEY is forbidden by the same rule, the value bounded at its quote, sensitive URL parameters, the exact values of the process secrets). The sentinel test sows a fake token, launcher secret, webhook and
+authorization code in logs, settings and attached documents and searches every entry; a second test sows a value with NO known token shape behind a
+sensitive key (per-module JSON log, shell stderr relay, settings, a profiles document), so only the by-key filter can remove it, and unit tests exercise
+each `Scrub` filter alone (mutation checked: inverting any filter turns a test red). The reply carries the path (button "Copy the path" in the About window).
 
 **D-27 - The memory ceiling acts on DuckDB, not on the process (L22.d, 2026-11-03).** Setting `memory_limit_mb` (0 or 1024 to 32768, capability
 `MemoryLimit`): DuckDB is what consumes the memory, so the lever is its `memory_limit`, applied at every connection open (`applyDuckSessionInit`),
 at start-up before the first database opens, and live to the already open databases (`SET memory_limit`) when the setting changes. 0 means "the
 server default" (`LEVELUP_DUCKDB_MEMORY_LIMIT`, else 512 MB), not "unlimited": the shipped default is already a ceiling. The value is in MiB (4096 = 4.0 GiB).
+**The ceiling is PER OPEN DATABASE, not for the process**: every DuckDB file is a database instance of its own with its own memory, so N databases open at
+once may use up to N times the ceiling. Settings ("Memory limit per open database"), `CONFIGURATION.md` and the field help say so.
 No kill and no OS limit. The resident memory of the process (`GetProcessMemoryInfo` working set) is read at each `/debug/vars` read as
 `levelup.process.rss_mb` and shown in Settings ("current memory: N MB").
 

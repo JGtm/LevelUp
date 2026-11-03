@@ -73,6 +73,43 @@ describe('DataCard', () => {
     expect(await screen.findByText('Aucune sauvegarde pour le moment.')).toBeInTheDocument()
   })
 
+  it('pendant la lecture de l’état, ne dit pas « Aucune sauvegarde » : l’état n’est pas encore connu', async () => {
+    server.use(http.get(`${API}/settings/data`, async () => {
+      await new Promise((resolve) => setTimeout(resolve, 200))
+      return HttpResponse.json(dataStatusFixture)
+    }))
+    renderWithProviders(<DataCard />)
+    expect(await screen.findByText("Lecture de l'état…")).toBeInTheDocument()
+    expect(screen.queryByText('Aucune sauvegarde pour le moment.')).not.toBeInTheDocument()
+    expect(await screen.findByText('Aucune sauvegarde pour le moment.')).toBeInTheDocument()
+  })
+
+  it('quand l’état est indisponible, ne dit pas « Aucune sauvegarde » : on ne sait pas s’il en existe une', async () => {
+    server.use(http.get(`${API}/settings/data`, () => HttpResponse.json({ status: 500, code: 'internal_error' }, { status: 500 })))
+    renderWithProviders(<DataCard />)
+    await waitFor(() => expect(screen.getByTestId('data-last-none')).toHaveTextContent(/indisponible/))
+    expect(screen.queryByText('Aucune sauvegarde pour le moment.')).not.toBeInTheDocument()
+  })
+
+  it('une fréquence hors de la liste (48 h posée à la main) s’affiche telle quelle, pas « Tous les jours »', async () => {
+    server.use(
+      http.get(`${API}/settings`, () =>
+        HttpResponse.json({ backup_dir: 'D:\\Sauvegardes', backup_interval: '48h', backup_keep: 7, memory_limit_mb: 0 }),
+      ),
+    )
+    renderWithProviders(<DataCard />)
+    const liste = (await screen.findByLabelText('Fréquence de la sauvegarde')) as HTMLSelectElement
+    await waitFor(() => expect(liste.value).toBe('48h'))
+    expect(screen.getByRole('option', { name: 'Toutes les 48 h' })).toBeInTheDocument()
+    expect(liste.selectedOptions[0]).toHaveTextContent('Toutes les 48 h')
+  })
+
+  it('le plafond mémoire est dit « par base ouverte », avec son explication', async () => {
+    renderWithProviders(<DataCard />)
+    expect(await screen.findByLabelText('Plafond mémoire par base ouverte (Mo)')).toBeInTheDocument()
+    expect(screen.getByText(/vaut pour CHAQUE base ouverte/)).toBeInTheDocument()
+  })
+
   it('un jeu incomplet et un dernier passage en échec sont dits', async () => {
     serveurEtat({
       ...dataStatusFixture,
@@ -202,7 +239,7 @@ describe('DataCard', () => {
   it("une saisie qui n'est pas un entier ne part pas : le refus du champ s'affiche tout de suite", async () => {
     serveurPatch()
     renderWithProviders(<DataCard />)
-    const champ = await screen.findByLabelText('Plafond mémoire des bases (Mo)')
+    const champ = await screen.findByLabelText('Plafond mémoire par base ouverte (Mo)')
     fireEvent.change(champ, { target: { value: '12,5' } })
     fireEvent.blur(champ)
     expect(await screen.findByRole('alert')).toHaveTextContent('0 (défaut)')
@@ -258,7 +295,7 @@ describe('DataCard', () => {
   it('montre la mémoire actuelle et le plafond effectif', async () => {
     renderWithProviders(<DataCard />)
     expect(await screen.findByTestId('data-memory-current')).toHaveTextContent('Mémoire actuelle : 812 Mo')
-    expect(screen.getByTestId('data-memory-effective')).toHaveTextContent('Plafond effectif : 4096MiB')
+    expect(screen.getByTestId('data-memory-effective')).toHaveTextContent('Plafond effectif par base : 4096MiB')
   })
 
   it('une mesure de mémoire indisponible (0) est dite', async () => {
@@ -270,7 +307,7 @@ describe('DataCard', () => {
   it('régler le plafond mémoire envoie le PATCH en entier', async () => {
     serveurPatch()
     renderWithProviders(<DataCard />)
-    const champ = await screen.findByLabelText('Plafond mémoire des bases (Mo)')
+    const champ = await screen.findByLabelText('Plafond mémoire par base ouverte (Mo)')
     expect(champ).toHaveValue(0)
     fireEvent.change(champ, { target: { value: '2048' } })
     fireEvent.blur(champ)
@@ -280,7 +317,7 @@ describe('DataCard', () => {
   it('un plafond refusé par le serveur est écrit depuis son code, sous son champ', async () => {
     serveurPatch({ status: 400, code: 'memory_limit_invalid' })
     renderWithProviders(<DataCard />)
-    const champ = await screen.findByLabelText('Plafond mémoire des bases (Mo)')
+    const champ = await screen.findByLabelText('Plafond mémoire par base ouverte (Mo)')
     fireEvent.change(champ, { target: { value: '512' } })
     fireEvent.blur(champ)
     expect(await screen.findByRole('alert')).toHaveTextContent('entre 1 024 et 32 768 Mo')
@@ -289,7 +326,7 @@ describe('DataCard', () => {
   it('sans la capacité de sauvegarde, la section de sauvegarde n’est pas offerte', async () => {
     useAppShellStore.setState({ capabilities: testCapabilities({ can_limit_memory: true }) })
     renderWithProviders(<DataCard />)
-    await screen.findByLabelText('Plafond mémoire des bases (Mo)')
+    await screen.findByLabelText('Plafond mémoire par base ouverte (Mo)')
     expect(screen.queryByLabelText('Dossier de sauvegarde')).not.toBeInTheDocument()
   })
 
@@ -297,7 +334,7 @@ describe('DataCard', () => {
     useAppShellStore.setState({ capabilities: testCapabilities({ can_backup_to_folder: true }) })
     renderWithProviders(<DataCard />)
     await screen.findByLabelText('Dossier de sauvegarde')
-    expect(screen.queryByLabelText('Plafond mémoire des bases (Mo)')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Plafond mémoire par base ouverte (Mo)')).not.toBeInTheDocument()
   })
 
   it('sur le site (aucune de ces capacités), la carte n’existe pas', () => {

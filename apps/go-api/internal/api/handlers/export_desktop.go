@@ -6,8 +6,13 @@
 //     depuis l'application de bureau, qui n'a pas de session) ou sur la session du joueur connecté.
 //
 // Le joueur exporté est TOUJOURS celui que le jeton ou la session désigne (ownership, ADR 0029) : aucune
-// requête ne nomme un joueur. Jamais un jeton d'authentification Xbox, jamais un compte, jamais un autre joueur
-// (périmètre fermé d'internal/transfer). Un export par heure et par joueur, journalisé.
+// requête ne nomme un joueur, et sa base joueur se trouve par son XUID (le profil suivi qui le porte, ADR 0035),
+// jamais par le gamertag d'une session. Jamais un jeton d'authentification Xbox, jamais un compte, jamais la donnée
+// propre d'un autre profil (périmètre fermé d'internal/transfer). Un export RÉUSSI par heure et par joueur (un
+// échec ne consomme pas le quota), un seul export à la fois par joueur, journalisé.
+//
+// L'export par SESSION exige l'en-tête X-Requested-With : une requête GET inter-sites (lien, image) ne peut pas le
+// poser, elle ne déclenche donc pas un export à l'insu du joueur.
 package handlers
 
 import (
@@ -84,6 +89,9 @@ func (h *ExportDesktopHandler) Export(w http.ResponseWriter, r *http.Request) {
 		writeErrorFrom(ctx, w, status, code, err)
 		return
 	}
+	// Le quota d'un export par heure ne se consomme qu'APRÈS un export réussi ; l'export en cours se libère toujours.
+	exported := false
+	defer func() { h.store.Finish(grant.Xuid, exported, h.now()) }()
 	dir := filepath.Join(h.cfg.PathResolver().CacheRootDir(), "exports")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		writeErrorFrom(ctx, w, http.StatusInternalServerError, "export_failed", err)
@@ -102,11 +110,13 @@ func (h *ExportDesktopHandler) Export(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 	m, err := transfer.Export(ctx, transfer.ExportInput{Paths: h.cfg.PathResolver(), Slug: title.DefaultSlug,
-		Xuid: grant.Xuid, Gamertag: grant.Gamertag, AppVersion: h.cfg.AppVersion, Dest: dest})
+		Xuid: grant.Xuid, Gamertag: grant.Gamertag, PlayerGamertag: h.trackedGamertag(ctx, grant.Xuid),
+		AppVersion: h.cfg.AppVersion, Dest: dest})
 	if err != nil {
 		writeErrorFrom(ctx, w, http.StatusInternalServerError, "export_failed", err)
 		return
 	}
+	exported = true
 	out, err := os.Open(dest) //nolint:gosec // fichier créé ci-dessus
 	if err != nil {
 		writeErrorFrom(ctx, w, http.StatusInternalServerError, "export_failed", err)
@@ -137,9 +147,32 @@ func (h *ExportDesktopHandler) authenticate(r *http.Request) (transfer.Grant, in
 	if sess == nil || sess.LinkedHaloIdentity == nil || sess.LinkedHaloIdentity.XUID == "" {
 		return transfer.Grant{}, http.StatusUnauthorized, "auth_required", transfer.ErrTokenInvalid
 	}
+	if r.Header.Get(exportSessionHeader) == "" {
+		return transfer.Grant{}, http.StatusForbidden, "export_header_required", transfer.ErrTokenInvalid
+	}
 	g := transfer.Grant{Xuid: sess.LinkedHaloIdentity.XUID, Gamertag: sess.LinkedHaloIdentity.Gamertag}
 	if !h.store.AllowSession(g.Xuid, h.now()) {
 		return transfer.Grant{}, http.StatusTooManyRequests, "export_rate_limited", transfer.ErrRateLimited
 	}
 	return g, 0, "", nil
+}
+
+// exportSessionHeader : l'en-tête qu'une requête d'export par SESSION doit porter (valeur libre, non vide). Une
+// requête inter-sites simple ne peut pas le poser : il écarte l'export déclenché par un lien tiers.
+const exportSessionHeader = "X-Requested-With"
+
+// trackedGamertag rend le gamertag du profil suivi qui porte CE xuid (la base joueur exportée est la sienne), ou
+// "" quand aucun profil suivi ne le porte : le gamertag d'une session n'est jamais lu pour choisir une base.
+func (h *ExportDesktopHandler) trackedGamertag(ctx context.Context, xuid string) string {
+	players, err := h.cfg.LoadPlayers(title.DefaultSlug)
+	if err != nil {
+		slog.WarnContext(ctx, "export: profiles unreadable, player database not exported", "xuid", xuid, "err", err)
+		return ""
+	}
+	for _, p := range players {
+		if p.XUID == xuid {
+			return p.Gamertag
+		}
+	}
+	return ""
 }

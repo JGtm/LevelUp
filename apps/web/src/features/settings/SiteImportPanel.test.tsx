@@ -1,10 +1,12 @@
 /**
  * Tests composant — SiteImportPanel (import des données depuis le site, lot L22).
  */
-import { describe, it, expect, afterEach, beforeEach } from 'vitest'
-import { screen, fireEvent, waitFor } from '@testing-library/react'
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { renderWithProviders } from '@/test/render-utils'
+import { createTestQueryClient, renderWithProviders } from '@/test/render-utils'
+import { queryKeys } from '@/lib/query/keys'
 import { desktopCapabilities, testCapabilities } from '@/test/capabilities'
 import { server } from '@/test/setup'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -121,6 +123,30 @@ describe('SiteImportPanel', () => {
     expect(await screen.findByText('42 matchs ajoutés.', {}, { timeout: 6000 })).toBeInTheDocument()
   }, 10_000)
 
+  it('un import terminé relit aussi la résolution des filtres de chaque joueur suivi', async () => {
+    useAppShellStore.setState({
+      availablePlayers: [
+        { player_slug: 'spartan-b', gamertag: 'SpartanB' },
+        { player_slug: 'her', gamertag: 'Her' },
+      ] as unknown as ReturnType<typeof useAppShellStore.getState>['availablePlayers'],
+    })
+    statut = { phase: 'done', matches: 3 }
+    serveurImport()
+    const qc = createTestQueryClient()
+    const invalidate = vi.spyOn(qc, 'invalidateQueries')
+    render(
+      <QueryClientProvider client={qc}>
+        <SiteImportPanel />
+      </QueryClientProvider>,
+    )
+    expect(await screen.findByText('3 matchs ajoutés.')).toBeInTheDocument()
+    const keys = invalidate.mock.calls.map((c) => JSON.stringify((c[0] as { queryKey: unknown }).queryKey))
+    expect(keys).toContain(JSON.stringify(queryKeys.filtersResolveAll('spartan-b')))
+    expect(keys).toContain(JSON.stringify(queryKeys.filtersResolveAll('her')))
+    expect(keys).toContain(JSON.stringify(queryKeys.bootstrap))
+    useAppShellStore.setState({ availablePlayers: [] })
+  })
+
   it('dit le bilan d’un import terminé, au singulier pour un match', async () => {
     statut = { phase: 'done', matches: 1 }
     serveurImport()
@@ -203,6 +229,9 @@ describe('SiteImportPanel', () => {
       'site_token_invalid',
       'site_rate_limited',
       'site_refused',
+      'site_unreachable',
+      'site_tls',
+      'site_not_found',
       'site_archive_too_big',
       'archive_invalid',
       'archive_other_player',

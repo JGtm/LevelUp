@@ -19,6 +19,8 @@ export interface DataText {
   sameVolumeWarning: string
   intervalLabel: string
   intervals: Record<BackupInterval, string>
+  /** Gabarit d'une fréquence que la liste n'offre pas : {hours} (nombre d'heures). */
+  intervalEvery: string
   keepLabel: string
   keepHint: string
   runNow: string
@@ -26,6 +28,10 @@ export interface DataText {
   runStarted: string
   lastLabel: string
   lastNone: string
+  /** L'état n'est pas arrivé (lecture en cours). */
+  lastLoading: string
+  /** La lecture de l'état a échoué : on ne sait pas s'il existe une sauvegarde. */
+  lastUnavailable: string
   /** Gabarit : {date}, {size}, {count} (nombre de bases), {duration}. */
   lastSummary: string
   databasesOne: string
@@ -70,6 +76,7 @@ const FR: DataText = {
     '72h': 'Tous les 3 jours',
     '168h': 'Toutes les semaines',
   },
+  intervalEvery: 'Toutes les {hours} h',
   keepLabel: 'Jeux de sauvegarde conservés',
   keepHint: 'De 1 à 60. Les plus anciens sont supprimés au fur et à mesure.',
   runNow: 'Sauvegarder maintenant',
@@ -77,6 +84,8 @@ const FR: DataText = {
   runStarted: 'Sauvegarde lancée.',
   lastLabel: 'Dernière sauvegarde',
   lastNone: 'Aucune sauvegarde pour le moment.',
+  lastLoading: "Lecture de l'état…",
+  lastUnavailable: "L'état des sauvegardes est indisponible : on ne sait pas si une sauvegarde existe.",
   lastSummary: '{date} · {size} · {count} · {duration}',
   databasesOne: 'base',
   databasesMany: 'bases',
@@ -89,10 +98,10 @@ const FR: DataText = {
   memoryHeading: 'Mémoire',
   memoryCurrent: 'Mémoire actuelle : {value} Mo',
   memoryUnavailable: 'Mémoire actuelle : mesure indisponible.',
-  memoryLimitLabel: 'Plafond mémoire des bases (Mo)',
+  memoryLimitLabel: 'Plafond mémoire par base ouverte (Mo)',
   memoryLimitHint:
-    '0 = valeur par défaut du serveur ; sinon de 1 024 à 32 768 Mo. Un plafond plus bas laisse plus de mémoire au jeu, au prix de requêtes plus lentes.',
-  memoryEffective: 'Plafond effectif : {limit}',
+    "0 = valeur par défaut du serveur ; sinon de 1 024 à 32 768 Mo. Le plafond vaut pour CHAQUE base ouverte : plusieurs bases ouvertes en même temps peuvent donc consommer davantage au total. Un plafond plus bas laisse plus de mémoire au jeu, au prix de requêtes plus lentes.",
+  memoryEffective: 'Plafond effectif par base : {limit}',
   saved: 'Enregistré.',
   saveFailed: "Le réglage n'a pas pu être enregistré.",
   loadFailed: "L'état des données est indisponible pour le moment.",
@@ -131,6 +140,7 @@ const EN: DataText = {
     '72h': 'Every 3 days',
     '168h': 'Every week',
   },
+  intervalEvery: 'Every {hours} h',
   keepLabel: 'Backup sets kept',
   keepHint: 'From 1 to 60. The oldest ones are deleted as new ones are written.',
   runNow: 'Back up now',
@@ -138,6 +148,8 @@ const EN: DataText = {
   runStarted: 'Backup started.',
   lastLabel: 'Last backup',
   lastNone: 'No backup yet.',
+  lastLoading: 'Reading the status…',
+  lastUnavailable: 'The backup status is unavailable: it is not known whether a backup exists.',
   lastSummary: '{date} · {size} · {count} · {duration}',
   databasesOne: 'database',
   databasesMany: 'databases',
@@ -150,10 +162,10 @@ const EN: DataText = {
   memoryHeading: 'Memory',
   memoryCurrent: 'Current memory: {value} MB',
   memoryUnavailable: 'Current memory: measurement unavailable.',
-  memoryLimitLabel: 'Database memory limit (MB)',
+  memoryLimitLabel: 'Memory limit per open database (MB)',
   memoryLimitHint:
-    '0 = the server default; otherwise 1,024 to 32,768 MB. A lower limit leaves more memory to the game, at the cost of slower queries.',
-  memoryEffective: 'Effective limit: {limit}',
+    '0 = the server default; otherwise 1,024 to 32,768 MB. The limit applies to EACH open database: several databases open at once can therefore use more in total. A lower limit leaves more memory to the game, at the cost of slower queries.',
+  memoryEffective: 'Effective limit per database: {limit}',
   saved: 'Saved.',
   saveFailed: 'The setting could not be saved.',
   loadFailed: 'The data status is unavailable right now.',

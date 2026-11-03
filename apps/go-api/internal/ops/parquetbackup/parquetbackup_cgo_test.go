@@ -354,3 +354,119 @@ func TestValidateDest(t *testing.T) {
 		t.Errorf("sous-dossier des données : %v, want ErrDestInsideData", err)
 	}
 }
+
+// seedSet pose un jeu factice (dossier + manifeste) dans dest.
+func seedSet(t *testing.T, dest, name string, partial bool) {
+	t.Helper()
+	dir := filepath.Join(dest, name)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := writeManifest(dir, &Manifest{Format: ManifestFormat, Name: name, Partial: partial}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// TestRotate_KeepsTheLastFullSetEvenWhenNewerOnesArePartial : une suite de jeux partiels ne chasse jamais le
+// dernier jeu complet (S6.b) ; dès qu'un jeu complet plus récent est gardé, l'ancien peut partir.
+func TestRotate_KeepsTheLastFullSetEvenWhenNewerOnesArePartial(t *testing.T) {
+	dest := t.TempDir()
+	seedSet(t, dest, "levelup-20261103-0700", true)
+	seedSet(t, dest, "levelup-20261103-0800", false) // le dernier complet
+	seedSet(t, dest, "levelup-20261103-0900", true)
+	seedSet(t, dest, "levelup-20261103-1000", true)
+	if removed := rotate(context.Background(), dest, 2); removed != 1 {
+		t.Fatalf("jeux supprimés = %d, attendu 1 (le partiel de 07:00 ; le complet de 08:00 est gardé)", removed)
+	}
+	sets, _ := SetDirs(dest)
+	var names []string
+	for _, s := range sets {
+		names = append(names, filepath.Base(s))
+	}
+	want := []string{"levelup-20261103-1000", "levelup-20261103-0900", "levelup-20261103-0800"}
+	if len(names) != len(want) {
+		t.Fatalf("jeux gardés %v, attendu %v", names, want)
+	}
+	for i := range want {
+		if names[i] != want[i] {
+			t.Fatalf("jeux gardés %v, attendu %v", names, want)
+		}
+	}
+	// Un jeu complet plus récent arrive : l'ancien complet n'est plus protégé.
+	seedSet(t, dest, "levelup-20261103-1100", false)
+	rotate(context.Background(), dest, 2)
+	sets, _ = SetDirs(dest)
+	if len(sets) != 2 || filepath.Base(sets[0]) != "levelup-20261103-1100" {
+		t.Fatalf("avec un complet récent, deux jeux gardés attendus : %v", sets)
+	}
+}
+
+// emptyTarget : une racine cible vierge.
+func emptyTarget(t *testing.T) (*title.PathResolver, string) {
+	t.Helper()
+	root := t.TempDir()
+	pr := title.NewPathResolverRoots(title.Roots{Resources: root, Data: filepath.Join(root, "data"), DataSet: true})
+	return pr, filepath.Join(pr.DataRoot(), "auth")
+}
+
+// TestRestore_RefusesAFileTheManifestDoesNotList : un Parquet ajouté au jeu après coup n'a aucune somme ; il ne
+// s'importe pas (S4.A), même quand il porterait l'horodatage le plus récent d'une table.
+func TestRestore_RefusesAFileTheManifestDoesNotList(t *testing.T) {
+	ctx := context.Background()
+	pr, authDir := seedRoot(t)
+	dest := t.TempDir()
+	m, err := Run(ctx, newOptions(pr, authDir, dest))
+	if err != nil {
+		t.Fatal(err)
+	}
+	setDir := filepath.Join(dest, m.Name)
+	listed := m.Databases[0].Tables[0].File
+	stranger := filepath.Join(setDir, filepath.FromSlash(filepath.ToSlash(filepath.Dir(listed))), "match_registry_29990101_000000.parquet")
+	writeText(t, stranger, "pas du parquet")
+	target, targetAuth := emptyTarget(t)
+	_, err = Restore(ctx, RestoreOptions{From: setDir, Paths: target, AuthDir: targetAuth})
+	if !errors.Is(err, ErrUnlistedFile) {
+		t.Fatalf("fichier hors manifeste : %v, attendu ErrUnlistedFile", err)
+	}
+	if _, serr := os.Stat(target.SharedDBPath(testSlug)); serr == nil {
+		t.Fatal("rien ne doit être écrit quand le jeu est refusé")
+	}
+}
+
+// TestRestore_ResidualWALIsRefusedThenMovedWithItsBaseUnderForce : un WAL résiduel de la racine cible fait refuser
+// la restauration sans --force ; avec --force il est écarté AVEC sa base (jamais rejoué par la base neuve, S4.B).
+func TestRestore_ResidualWALIsRefusedThenMovedWithItsBaseUnderForce(t *testing.T) {
+	ctx := context.Background()
+	pr, authDir := seedRoot(t)
+	dest := t.TempDir()
+	m, err := Run(ctx, newOptions(pr, authDir, dest))
+	if err != nil {
+		t.Fatal(err)
+	}
+	setDir := filepath.Join(dest, m.Name)
+	target, targetAuth := emptyTarget(t)
+	seedDB(t, target.SharedDBPath(testSlug), `CREATE TABLE old_only (x INTEGER)`)
+	wal := target.SharedDBPath(testSlug) + ".wal"
+	writeText(t, wal, "journal d'une application tuée")
+
+	_, err = Restore(ctx, RestoreOptions{From: setDir, Paths: target, AuthDir: targetAuth})
+	if !errors.Is(err, ErrResidualWAL) {
+		t.Fatalf("WAL résiduel sans --force : %v, attendu ErrResidualWAL", err)
+	}
+	if !strings.Contains(err.Error(), "WAL") {
+		t.Errorf("le message doit dire quoi faire : %v", err)
+	}
+	if _, serr := os.Stat(wal); serr != nil {
+		t.Fatal("le refus ne doit pas toucher au WAL")
+	}
+
+	if _, err := Restore(ctx, RestoreOptions{From: setDir, Paths: target, AuthDir: targetAuth, Force: true}); err != nil {
+		t.Fatalf("Restore --force : %v", err)
+	}
+	if _, serr := os.Stat(wal); serr == nil {
+		t.Fatal("le WAL de l'ancienne base doit avoir été écarté avec elle : la base neuve l'aurait rejoué")
+	}
+	if got := countRows(t, target.SharedDBPath(testSlug), "match_registry"); got != 3 {
+		t.Fatalf("lignes restaurées = %d, attendu 3", got)
+	}
+}

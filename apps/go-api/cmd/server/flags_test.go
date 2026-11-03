@@ -7,6 +7,8 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+
+	"levelup/go-api/internal/ops/parquetbackup"
 )
 
 func TestParseServerFlags(t *testing.T) {
@@ -27,6 +29,13 @@ func TestParseServerFlags(t *testing.T) {
 		{name: "desktop avec arret sur stdin", args: []string{"-mode", "desktop", "-arret-sur-stdin"},
 			want: serverFlags{Mode: serverModeDesktop, StopOnStdin: true}},
 		{name: "mode refresh-only", args: []string{"-mode=refresh-only"}, want: serverFlags{Mode: serverModeRefreshOnly}},
+		{name: "mode restore", args: []string{"-mode", "restore", "--from", "jeu", "--to", "racine", "--dry-run"},
+			want: serverFlags{Mode: serverModeRestore, Restore: parquetbackup.RestoreCommand{From: "jeu", To: "racine", DryRun: true}}},
+		{name: "restore avec force", args: []string{"-mode=restore", "-from", "jeu", "-to", "racine", "-force"},
+			want: serverFlags{Mode: serverModeRestore, Restore: parquetbackup.RestoreCommand{From: "jeu", To: "racine", Force: true}}},
+		{name: "restore sans dossiers", args: []string{"-mode", "restore"}, wantErr: "usage"},
+		{name: "restore sans racine cible", args: []string{"-mode", "restore", "--from", "jeu"}, wantErr: "usage"},
+		{name: "drapeaux de restauration hors du mode", args: []string{"--from", "jeu"}, wantErr: "n'existent qu'avec -mode restore"},
 		{name: "mode inconnu", args: []string{"-mode", "wat"}, wantErr: `-mode "wat" inconnu`},
 		{name: "drapeau inconnu", args: []string{"-nope"}, wantErr: "not defined"},
 		{name: "argument positionnel", args: []string{"extra"}, wantErr: `argument inattendu "extra"`},

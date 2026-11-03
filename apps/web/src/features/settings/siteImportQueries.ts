@@ -5,8 +5,9 @@
  * Le jeton d'export ne sert qu'au corps de la requête : il n'entre dans aucune clé de requête, aucune
  * URL, aucun stockage du navigateur. La progression se relit toutes les 2 s tant que l'import tourne.
  *
- * Types écrits à la main : `generated.ts` ne porte pas encore les schémas SiteImportStatus et
- * SiteImportRequest ; à remplacer par ces ré-exports du contrat dès la régénération des types.
+ * Types écrits à la main : `openapi-gen` décrit le routeur du profil démo, qui ne monte aucune route sous capacité ;
+ * ces types n'entreront dans `generated.ts` qu'une fois le routeur de contrat séparé de celui de démonstration (liste
+ * MANUAL_CAPABILITY_TYPES de lib/api/response-types.guard.test.ts, qui le rappelle dès qu'ils y entrent).
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api/client'

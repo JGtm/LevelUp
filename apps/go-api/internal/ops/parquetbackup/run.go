@@ -24,6 +24,9 @@ const (
 	defaultLeaseWait = 2 * time.Second
 	// defaultRetryWait : second passage, sur les seules bases sautées, une fois les autres exportées.
 	defaultRetryWait = 60 * time.Second
+	// defaultTableTimeout : échéance d'UNE table (le bail n'est tenu que le temps d'une table ; au-delà, la table
+	// est écartée et le jeu est partiel). Une table de l'ordre du Gio s'exporte en quelques secondes.
+	defaultTableTimeout = 2 * time.Minute
 )
 
 // Codes des raisons de saut d'une base dans le manifeste.
@@ -51,6 +54,8 @@ type Options struct {
 	Now func() time.Time
 	// LeaseWait et RetryWait : attentes du bail (zéro = valeurs par défaut).
 	LeaseWait, RetryWait time.Duration
+	// TableTimeout : échéance d'une table, bail compris (zéro = [defaultTableTimeout]).
+	TableTimeout time.Duration
 }
 
 func (o *Options) now() time.Time {
@@ -65,6 +70,13 @@ func (o *Options) leaseWait() time.Duration {
 		return o.LeaseWait
 	}
 	return defaultLeaseWait
+}
+
+func (o *Options) tableTimeout() time.Duration {
+	if o.TableTimeout > 0 {
+		return o.TableTimeout
+	}
+	return defaultTableTimeout
 }
 
 func (o *Options) retryWait() time.Duration {
@@ -174,34 +186,32 @@ func exportAll(ctx context.Context, opts Options, dbs []ops.BackupDB, partial st
 	entries := make(map[string]*DatabaseEntry, len(dbs))
 	var busy []ops.BackupDB
 	for _, db := range dbs {
-		e, err := exportOne(ctx, db, partial, opts.leaseWait())
+		e, err := exportOne(ctx, db, partial, opts.leaseWait(), opts.tableTimeout())
 		if errors.Is(err, duckdb.ErrBaseOccupee) {
 			busy = append(busy, db)
 		}
 		entries[db.Key] = e
 	}
 	for _, db := range busy {
-		entries[db.Key], _ = exportOne(ctx, db, partial, opts.retryWait())
+		entries[db.Key], _ = exportOne(ctx, db, partial, opts.retryWait(), opts.tableTimeout())
 	}
 	return entries
 }
 
 // exportOne exporte une base dans <partial>/db/<clé>. Une base occupée rend [duckdb.ErrBaseOccupee] (et
-// une entrée « sautée ») ; tout autre échec est journalisé et rend une entrée « sautée » sans erreur :
-// une base défaillante ne fait pas perdre les autres.
-func exportOne(ctx context.Context, db ops.BackupDB, partial string, wait time.Duration) (*DatabaseEntry, error) {
+// une entrée « sautée », la base entière est alors reprise plus tard) ; tout autre échec est journalisé et rend
+// une entrée « sautée » sans erreur : une base défaillante ne fait pas perdre les autres.
+func exportOne(ctx context.Context, db ops.BackupDB, partial string, wait, tableTimeout time.Duration) (*DatabaseEntry, error) {
 	rel := dbDirName + "/" + strings.ReplaceAll(db.Key, ":", "/")
 	outDir := filepath.Join(partial, filepath.FromSlash(rel))
 	entry := &DatabaseEntry{Key: db.Key}
-	var exports []duckdbbackup.TableExport
-	var failedTables []string
-	err := duckdb.WithHeldRead(ctx, db.Path, wait, func(h *sql.DB) error {
-		t := duckdbbackup.Target{Key: db.Key, Path: db.Path,
-			OpenDB: func(context.Context) (*sql.DB, func(), error) { return h, func() {}, nil }}
-		var err error
-		exports, failedTables, err = duckdbbackup.ExportTargetTables(ctx, t, outDir, compressionLevel)
-		return err
-	})
+	// Le bail est pris et rendu PAR TABLE (et la lecture n'est pas laissée ouverte entre deux tables) : un écrivain à
+	// attente courte n'attend jamais le temps d'une base entière.
+	run := func(ctx context.Context, fn func(*sql.DB) error) error {
+		return duckdb.WithHeldRead(ctx, db.Path, wait, fn)
+	}
+	exports, failedTables, err := duckdbbackup.ExportTargetTablesHeld(ctx, run,
+		duckdbbackup.HeldExport{Key: db.Key, OutputDir: outDir, Level: compressionLevel, TableTimeout: tableTimeout})
 	switch {
 	case errors.Is(err, duckdb.ErrBaseOccupee):
 		slog.WarnContext(ctx, "backup parquet: base occupée, sautée", "key", db.Key, "attente", wait)

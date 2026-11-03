@@ -4,22 +4,25 @@
  * unique (15 minutes) que l'on colle dans l'application de bureau, Réglages > Application.
  *
  * Le jeton s'affiche une fois, avec « Copier » et son échéance ; « Masquer » l'efface de l'écran.
- * Un refus (un export par heure) dit sa cause par son code, écrite dans chaque langue.
+ * Masquée pour un compte sans identité Xbox liée (comme PoolSharingCard) : le serveur ne délivre de jeton qu'à un
+ * joueur relié à Xbox (401 `halo_auth_required` sinon), la carte n'offre donc pas un bouton qui ne peut qu'échouer.
+ * Le jeton se délivre sans limite de débit : le quota d'un export par heure se tient au téléchargement, côté
+ * application de bureau, pas ici.
  */
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { apiErrorCode } from '@/lib/api/client'
 import { useCopyToClipboard } from '@/lib/clipboard/useCopyToClipboard'
 import { formatDateTime, intlLocale } from '@/lib/formatters'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useDeploymentCapability } from '@/stores/useDeploymentCapability'
-import { fill } from './fillTemplate'
+import { fillTemplate } from '@/lib/i18n/template'
 import { useGenerateExportToken } from './exportForDesktopQueries'
 import { getExportForDesktopText } from './exportForDesktopText'
 
 export function ExportForDesktopCard() {
   const canExport = useDeploymentCapability('can_export_for_desktop')
-  return canExport ? <ExportForDesktopBody /> : null
+  const linkedToXbox = useAppShellStore((s) => s.linkedHaloIdentity !== null)
+  return canExport && linkedToXbox ? <ExportForDesktopBody /> : null
 }
 
 function ExportForDesktopBody() {
@@ -28,8 +31,7 @@ function ExportForDesktopBody() {
   const generate = useGenerateExportToken()
   const { copy, copied } = useCopyToClipboard()
   const issued = generate.data
-  const errorCode = generate.isError ? apiErrorCode(generate.error) : undefined
-  const errorText = generate.isError ? ((errorCode && t.errors[errorCode]) ?? t.unknownError) : undefined
+  const errorText = generate.isError ? t.unknownError : undefined
 
   return (
     <Card>
@@ -66,7 +68,7 @@ function ExportForDesktopBody() {
               </Button>
             </div>
             <p className="text-xs text-foreground">
-              {fill(t.expiry, { time: formatDateTime(issued.expires_at, intlLocale(locale)) })}
+              {fillTemplate(t.expiry, { time: formatDateTime(issued.expires_at, intlLocale(locale)) })}
             </p>
             <p className="text-xs text-muted-foreground">{t.instruction}</p>
             <p className="text-xs text-muted-foreground">{t.shownOnce}</p>

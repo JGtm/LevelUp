@@ -146,45 +146,69 @@ func (im *importer) importLeaf(ctx context.Context, key, parquetDir string) erro
 }
 
 // importKeyDB imports all Parquet files from parquetDir into a fresh DuckDB at dbPath.
-// The existing file (if any) is renamed to .bak; removed on success, restored on failure.
+//
+// La base existante ET son WAL résiduel (`<base>.wal`) sont écartés ENSEMBLE (`.bak`, `.wal.bak`), supprimés au
+// succès, remis en place ensemble à l'échec : un WAL laissé à sa place serait rejoué par la base neuve (il
+// désigne des pages de l'ancienne), et l'échec de la restauration ne doit jamais le supprimer.
 func (im *importer) importKeyDB(ctx context.Context, key, parquetDir, dbPath string) error {
 	if err := os.MkdirAll(filepath.Dir(dbPath), 0o755); err != nil {
 		return fmt.Errorf("mkdir: %w", err)
 	}
 
-	bakPath := dbPath + ".bak"
-	hasBak := false
-	if _, err := os.Stat(dbPath); err == nil {
-		if err := os.Rename(dbPath, bakPath); err != nil {
-			return fmt.Errorf("sauvegarde existant: %w", err)
-		}
-		hasBak = true
-	}
-
-	if err := im.doImport(ctx, key, parquetDir, dbPath); err != nil {
-		if hasBak {
-			im.restoreBackup(ctx, dbPath, bakPath)
-		}
+	moved, err := setAside(dbPath)
+	if err != nil {
 		return err
 	}
-
-	if hasBak {
-		if err := os.Remove(bakPath); err != nil {
-			slog.WarnContext(ctx, "restore: ancienne base (.bak) non supprimée", "path", bakPath, "err", err)
+	if err := im.doImport(ctx, key, parquetDir, dbPath); err != nil {
+		im.restoreBackup(ctx, dbPath, moved)
+		return err
+	}
+	for _, bak := range moved {
+		if err := os.Remove(bak.to); err != nil {
+			slog.WarnContext(ctx, "restore: ancienne base (.bak) non supprimée", "path", bak.to, "err", err)
 		}
 	}
 	return nil
 }
 
-// restoreBackup remet en place la base d'avant l'import après un échec.
-func (im *importer) restoreBackup(ctx context.Context, dbPath, bakPath string) {
+// asideFile : un fichier de la base d'avant l'import et l'endroit où il a été écarté.
+type asideFile struct{ from, to string }
+
+// setAside écarte la base de dbPath et son WAL (ceux qui existent) vers `<fichier>.bak` / `<base>.wal.bak`.
+// Si un renommage échoue, ceux déjà écartés sont remis en place.
+func setAside(dbPath string) ([]asideFile, error) {
+	var moved []asideFile
+	for _, p := range []string{dbPath, dbPath + ".wal"} {
+		if _, err := os.Stat(p); err != nil {
+			continue
+		}
+		bak := p + ".bak"
+		if err := os.Rename(p, bak); err != nil {
+			for _, m := range moved {
+				_ = os.Rename(m.to, m.from)
+			}
+			return nil, fmt.Errorf("sauvegarde existant: %w", err)
+		}
+		moved = append(moved, asideFile{from: p, to: bak})
+	}
+	return moved, nil
+}
+
+// restoreBackup remet en place la base d'avant l'import (et son WAL) après un échec, et supprime les fichiers
+// de la base partielle que l'import avait commencée.
+func (im *importer) restoreBackup(ctx context.Context, dbPath string, moved []asideFile) {
+	if len(moved) == 0 {
+		return
+	}
 	for _, p := range []string{dbPath, dbPath + ".wal"} {
 		if err := os.Remove(p); err != nil && !errors.Is(err, fs.ErrNotExist) {
 			slog.ErrorContext(ctx, "restore: base partielle non supprimée", "path", p, "err", err)
 		}
 	}
-	if err := os.Rename(bakPath, dbPath); err != nil {
-		slog.ErrorContext(ctx, "restore: ancienne base NON remise en place", "bak", bakPath, "db", dbPath, "err", err)
+	for _, m := range moved {
+		if err := os.Rename(m.to, m.from); err != nil {
+			slog.ErrorContext(ctx, "restore: ancienne base NON remise en place", "bak", m.to, "db", m.from, "err", err)
+		}
 	}
 }
 

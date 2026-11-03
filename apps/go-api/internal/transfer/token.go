@@ -14,7 +14,7 @@ import (
 const (
 	// TokenTTL : durée de vie d'un jeton d'export (délivré dans les réglages du site, collé dans l'application).
 	TokenTTL = 15 * time.Minute
-	// ExportInterval : un joueur n'obtient qu'un export par heure.
+	// ExportInterval : un joueur n'obtient qu'un export RÉUSSI par heure.
 	ExportInterval = time.Hour
 	// maxPendingTokens borne la mémoire du magasin (jetons non échus).
 	maxPendingTokens = 1000
@@ -40,14 +40,15 @@ type pending struct {
 // est en mémoire : un redémarrage du serveur invalide les jetons en attente (le joueur en redemande un).
 // Seule l'empreinte SHA-256 d'un jeton est gardée, jamais le jeton.
 type TokenStore struct {
-	mu      sync.Mutex
-	tokens  map[string]pending
-	lastRun map[string]time.Time
+	mu       sync.Mutex
+	tokens   map[string]pending
+	lastRun  map[string]time.Time
+	inFlight map[string]bool
 }
 
 // NewTokenStore crée un magasin vide.
 func NewTokenStore() *TokenStore {
-	return &TokenStore{tokens: map[string]pending{}, lastRun: map[string]time.Time{}}
+	return &TokenStore{tokens: map[string]pending{}, lastRun: map[string]time.Time{}, inFlight: map[string]bool{}}
 }
 
 func fingerprint(token string) string {
@@ -79,8 +80,10 @@ func (s *TokenStore) Issue(g Grant, now time.Time) (token string, expires time.T
 	return token, expires, nil
 }
 
-// Redeem consomme un jeton : il n'est valable qu'une fois et avant son échéance. La limite d'un export par
-// heure s'applique à la consommation (ErrRateLimited, le jeton reste alors valable). Journalisé.
+// Redeem consomme un jeton : il n'est valable qu'une fois et avant son échéance. Le joueur est alors EN COURS
+// d'export ; l'appelant rend la main par [TokenStore.Finish], qui seul fait entrer l'export dans la limite d'un
+// par heure (un export qui échoue ne consomme pas le quota). ErrRateLimited : un export réussi date de moins
+// d'une heure ou un export du joueur est en cours (le jeton reste alors valable). Journalisé.
 func (s *TokenStore) Redeem(token string, now time.Time) (Grant, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -90,27 +93,49 @@ func (s *TokenStore) Redeem(token string, now time.Time) (Grant, error) {
 	if !ok {
 		return Grant{}, ErrTokenInvalid
 	}
-	if last, ran := s.lastRun[p.grant.Xuid]; ran && now.Sub(last) < ExportInterval {
-		slog.Warn("transfer: export refusé, limite d'un par heure", "xuid", p.grant.Xuid, "dernier", last)
+	if !s.begin(p.grant.Xuid, now) {
 		return Grant{}, ErrRateLimited
 	}
 	delete(s.tokens, fp)
-	s.lastRun[p.grant.Xuid] = now
 	slog.Info("transfer: jeton d'export consommé", "xuid", p.grant.Xuid)
 	return p.grant, nil
 }
 
-// AllowSession applique la limite d'un export par heure à un export demandé par la session connectée
-// (sans jeton) ; true et le compte est tenu.
+// AllowSession ouvre un export demandé par la session connectée (sans jeton) : true si le joueur n'a pas
+// d'export réussi dans l'heure ni d'export en cours ; l'appelant le termine par [TokenStore.Finish].
 func (s *TokenStore) AllowSession(xuid string, now time.Time) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if !s.begin(xuid, now) {
+		return false
+	}
+	slog.Info("transfer: export de la session", "xuid", xuid)
+	return true
+}
+
+// Finish termine l'export du joueur ouvert par Redeem ou AllowSession. ok : l'export a abouti, la limite d'un
+// par heure part de now ; sinon le joueur peut redemander tout de suite.
+func (s *TokenStore) Finish(xuid string, ok bool, now time.Time) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.inFlight, xuid)
+	if ok {
+		s.lastRun[xuid] = now
+	}
+}
+
+// begin marque l'export du joueur en cours, ou refuse (verrou tenu) : un export réussi de moins d'une heure ou un
+// export déjà en cours.
+func (s *TokenStore) begin(xuid string, now time.Time) bool {
 	if last, ran := s.lastRun[xuid]; ran && now.Sub(last) < ExportInterval {
 		slog.Warn("transfer: export refusé, limite d'un par heure", "xuid", xuid, "dernier", last)
 		return false
 	}
-	s.lastRun[xuid] = now
-	slog.Info("transfer: export de la session", "xuid", xuid)
+	if s.inFlight[xuid] {
+		slog.Warn("transfer: export refusé, un export du joueur est en cours", "xuid", xuid)
+		return false
+	}
+	s.inFlight[xuid] = true
 	return true
 }
 

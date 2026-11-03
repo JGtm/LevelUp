@@ -10,11 +10,13 @@ import {
   dataStatusRefetchMs,
   errorText,
   fieldOfCode,
-  knownInterval,
+  intervalLabel,
+  intervalOptions,
+  intervalSetting,
   parseWholeNumber,
 } from './dataLogic'
 import { getDataText } from './dataText'
-import { fill } from './fillTemplate'
+import { fillTemplate } from '@/lib/i18n/template'
 
 /** Tous les codes de refus que le serveur peut renvoyer pour les réglages de données et la sauvegarde. */
 const SERVER_CODES = [
@@ -42,11 +44,21 @@ describe('dataLogic', () => {
     expect(dataStatusRefetchMs(undefined)).toBe(DATA_STATUS_SLOW_MS)
   })
 
-  it('offre les six fréquences, 24h par défaut ; une valeur inconnue retombe sur le défaut', () => {
+  it('offre les six fréquences, 24h par défaut ; seule une valeur vide ou illisible retombe sur le défaut', () => {
     expect([...BACKUP_INTERVALS].sort()).toEqual(['12h', '168h', '1h', '24h', '6h', '72h'])
-    expect(knownInterval('6h')).toBe('6h')
-    expect(knownInterval('5h')).toBe(DEFAULT_BACKUP_INTERVAL)
-    expect(knownInterval(undefined)).toBe('24h')
+    expect(intervalSetting('6h')).toBe('6h')
+    expect(intervalSetting(undefined)).toBe(DEFAULT_BACKUP_INTERVAL)
+    expect(intervalSetting('')).toBe(DEFAULT_BACKUP_INTERVAL)
+    expect(intervalSetting('souvent')).toBe(DEFAULT_BACKUP_INTERVAL)
+  })
+
+  it('une fréquence valide hors de la liste reste affichée telle quelle, jamais déguisée en « Tous les jours »', () => {
+    expect(intervalSetting('48h')).toBe('48h')
+    expect(intervalOptions('48h')).toEqual([...BACKUP_INTERVALS, '48h'])
+    expect(intervalOptions('24h')).toEqual([...BACKUP_INTERVALS])
+    expect(intervalLabel(getDataText('fr'), '48h')).toBe('Toutes les 48 h')
+    expect(intervalLabel(getDataText('en'), '48h')).toBe('Every 48 h')
+    expect(intervalLabel(getDataText('fr'), '24h')).toBe('Tous les jours')
   })
 
   it('lit un entier, refuse le reste', () => {
@@ -74,7 +86,7 @@ describe('dataLogic', () => {
   })
 
   it('remplit un gabarit et laisse tel quel un nom absent', () => {
-    expect(fill('{a} et {b}', { a: 1, b: 'deux' })).toBe('1 et deux')
-    expect(fill('{a} {x}', { a: 1 })).toBe('1 {x}')
+    expect(fillTemplate('{a} et {b}', { a: 1, b: 'deux' })).toBe('1 et deux')
+    expect(fillTemplate('{a} {x}', { a: 1 })).toBe('1 {x}')
   })
 })

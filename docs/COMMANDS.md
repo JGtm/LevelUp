@@ -365,11 +365,17 @@ go run ./cmd/levelup backup  --gamertag X [--output-dir D] [--compression-level 
 go run ./cmd/levelup restore --gamertag X --backup-dir D [--replace] [--dry-run] [--tables T1,T2]
 go run ./cmd/levelup restore-csr --gamertag X --backup PATH [--dry-run]
 go run ./cmd/levelup backup restore --from D:\Backups\levelup-20261103-0930 --to D:\LevelUpData [--dry-run] [--force]
+levelup-server.exe -mode restore --from D:\Backups\levelup-20261103-0930 --to "%LOCALAPPDATA%\LevelUp" [--dry-run] [--force]
 ```
 
 `backup restore` restores a set written by the desktop application's periodic Parquet backup (Settings > Application, `backup_dir`;
-see `docs/RUNBOOK_DESKTOP.md`). **Server stopped**: the command takes the instance lock of the target data root (`--to`, the folder that
-holds `titles/` and `auth/`) and refuses while it is held. It first checks every SHA-256 sum of the manifest, recreates each database from its
+see `docs/RUNBOOK_DESKTOP.md`). **`levelup-server.exe -mode restore` is the same command** (same flags, same function): the installer ships
+`levelup-server.exe` and not `levelup.exe`, so a new PC restores with the server it already has (no configuration is loaded, no port is bound,
+no database is opened beyond the restore); `levelup backup restore` is the alias for a checkout. **Server stopped**: the command takes the
+instance lock of the target data root (`--to`, the folder that holds `titles/` and `auth/`) and refuses while it is held; **every server profile
+holds that lock while it runs, and `--force` never bypasses it** (it only allows replacing databases that exist). A leftover `<base>.wal` in the target
+is refused without `--force` (start the application once for a clean stop, or delete the WAL if losing the last writes is acceptable); a set whose
+`db/` folder holds a file the manifest does not list is refused. It first checks every SHA-256 sum of the manifest, recreates each database from its
 Parquet files in the state of its epoch (the next start applies the missing migrations), then puts the configuration and authentication
 files back. A target that already holds one of the set's databases is refused without `--force`; `--dry-run` checks the set and lists what
 would be restored, writing nothing. The archived films are not part of a set.

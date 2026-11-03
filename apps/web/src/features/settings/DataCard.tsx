@@ -12,9 +12,9 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { useDeploymentCapability } from '@/stores/useDeploymentCapability'
 import { useSettings } from './queries'
 import { useDataStatus } from './dataQueries'
-import { DEFAULT_BACKUP_KEEP, knownInterval } from './dataLogic'
+import { DEFAULT_BACKUP_KEEP, intervalSetting } from './dataLogic'
 import { getDataText } from './dataText'
-import { BackupSection, MemorySection } from './DataCardSections'
+import { BackupSection, MemorySection, type StatusState } from './DataCardSections'
 import { useDataSettings, type SavedDataSettings } from './useDataSettings'
 
 export function DataCard() {
@@ -28,11 +28,12 @@ export function DataCard() {
 
   const saved: SavedDataSettings = {
     backup_dir: settings?.backup_dir ?? '',
-    backup_interval: knownInterval(settings?.backup_interval),
+    backup_interval: intervalSetting(settings?.backup_interval),
     backup_keep: String(settings?.backup_keep ?? DEFAULT_BACKUP_KEEP),
     memory_limit_mb: String(settings?.memory_limit_mb ?? 0),
   }
   const form = useDataSettings(t, saved)
+  const statusState: StatusState = status ? 'ready' : isError ? 'error' : 'loading'
 
   // Une section absente de la réponse = capacité absente du serveur : on ne la montre pas.
   const showBackup = canBackup && (!status || status.backup !== undefined)
@@ -53,6 +54,7 @@ export function DataCard() {
               locale={locale}
               form={form}
               backup={status?.backup}
+              state={statusState}
               savedDir={saved.backup_dir}
             />
           )}

@@ -164,7 +164,10 @@ describe('SettingsPage', () => {
   })
 
   it("l'onglet « Compte » du site porte l'export vers l'application de bureau", async () => {
-    useAppShellStore.setState({ capabilities: testCapabilities({ can_export_for_desktop: true }) })
+    useAppShellStore.setState({
+      capabilities: testCapabilities({ can_export_for_desktop: true }),
+      linkedHaloIdentity: { gamertag: "SpartanB", xuid: "2533274800000001" } as never,
+    })
     vi.mocked(useRouterState).mockReturnValue({
       location: { pathname: '/settings', search: '?tab=account' },
     } as ReturnType<typeof useRouterState>)

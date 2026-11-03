@@ -3,12 +3,15 @@
  *
  * Le jeton d'export vit dans l'état du composant, le temps de la saisie : il est vidé dès l'envoi et
  * n'entre dans aucune clé de requête, aucune URL, aucun stockage du navigateur, aucun journal. À la
- * fin d'un import réussi, les données de l'application sont relues (amorçage, joueurs).
+ * fin d'un import réussi, les données de l'application sont relues (amorçage, joueurs) et la résolution des filtres
+ * de chaque joueur suivi aussi : sans elle, la période et les sessions restent celles d'avant les matchs importés
+ * (même invalidation que la fin d'une synchronisation).
  */
 import { useEffect, useState, type FormEvent } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { apiErrorCode } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
+import { useAppShellStore } from '@/stores/appShellStore'
 import { isImportRunning, useSiteImportStatus, useStartSiteImport } from './siteImportQueries'
 import type { SiteImportRequest } from './siteImportQueries'
 import type { SiteImportText } from './siteImportText'
@@ -35,6 +38,11 @@ export function useSiteImportForm(t: SiteImportText) {
     if (phase !== 'done') return
     void qc.invalidateQueries({ queryKey: queryKeys.bootstrap })
     void qc.invalidateQueries({ queryKey: queryKeys.players })
+    // Les joueurs se lisent dans le store au moment de la fin, pas en dépendance : relire l'amorçage les renouvelle,
+    // et l'effet se relancerait à chaque relecture.
+    for (const p of useAppShellStore.getState().availablePlayers) {
+      void qc.invalidateQueries({ queryKey: queryKeys.filtersResolveAll(p.player_slug) })
+    }
   }, [phase, qc])
 
   function submit(e: FormEvent) {

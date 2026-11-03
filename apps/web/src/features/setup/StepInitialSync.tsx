@@ -10,6 +10,9 @@ import { Button } from '@/components/ui/button'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useSetupFlowStore } from '@/stores/setupFlowStore'
 import { SiteImportPanel } from '@/features/settings/SiteImportPanel'
+import { isImportRunning, useSiteImportStatus } from '@/features/settings/siteImportQueries'
+import { getSiteImportText } from '@/features/settings/siteImportText'
+import { useDeploymentCapability } from '@/stores/useDeploymentCapability'
 import { queryKeys } from '@/lib/query/keys'
 import { useStartInitialSync, useJobStatus } from './queries'
 import { apiErrorCode } from '@/lib/api/client'
@@ -31,6 +34,12 @@ export function StepInitialSync({ playerSlug }: StepInitialSyncProps) {
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: CommonManifestKey, vars?: Record<string, string | number>) =>
     formatMessage(commonManifest, key, locale, vars)
+
+  // Un import depuis le site en cours écrit dans les bases : la synchronisation attend sa fin (sinon elle démonterait
+  // le panneau d'import, qui porte la progression, et les deux écrivains se disputeraient les bases).
+  const canImport = useDeploymentCapability('can_import_from_site')
+  const { data: importStatus } = useSiteImportStatus(canImport)
+  const importRunning = canImport && isImportRunning(importStatus?.phase)
 
   // Titres à synchroniser : la sélection d'onboarding, sinon le titre courant.
   // La sync est SÉQUENTIELLE (un titre à la fois) car la garde back
@@ -117,9 +126,14 @@ export function StepInitialSync({ playerSlug }: StepInitialSyncProps) {
       {!resolvedJobId && <SiteImportPanel variant="optional" />}
 
       {!resolvedJobId && (
-        <Button onClick={handleStart} disabled={startSync.isPending}>
+        <Button onClick={handleStart} disabled={startSync.isPending || importRunning}>
           {startSync.isPending ? t('common.initial_sync.starting') : t('common.initial_sync.start_action')}
         </Button>
+      )}
+      {!resolvedJobId && importRunning && (
+        <p role="status" className="text-xs text-muted-foreground">
+          {getSiteImportText(locale).blocksSync}
+        </p>
       )}
 
       {/* Refus du lancement (ex. session sans jetons Halo, 403) : le dire, sans quitter la page. */}

@@ -18,6 +18,8 @@ export interface SiteImportText {
   tokenHint: string
   gamertagLabel: string
   importButton: string
+  /** L'assistant : la synchronisation attend la fin d'un import en cours. */
+  blocksSync: string
   starting: string
   downloading: string
   importing: string
@@ -40,6 +42,7 @@ const FR: SiteImportText = {
   tokenHint: "Le jeton est à usage unique et valable 15 minutes. Il n'est jamais conservé.",
   gamertagLabel: 'Joueur suivi (gamertag)',
   importButton: 'Importer',
+  blocksSync: "Un import est en cours : la synchronisation pourra être lancée une fois qu'il sera terminé.",
   starting: 'Démarrage…',
   downloading: "Téléchargement de l'archive…",
   importing: 'Écriture des données…',
@@ -52,6 +55,9 @@ const FR: SiteImportText = {
       'Le jeton est refusé : il est expiré, déjà utilisé ou incorrect. Générez-en un nouveau sur le site.',
     site_rate_limited: 'Le site limite les exports : réessayez plus tard.',
     site_refused: 'Le site a refusé la demande.',
+    site_unreachable: "Le site ne répond pas : vérifiez votre connexion et l'adresse, puis réessayez.",
+    site_tls: "La connexion sécurisée au site est refusée (certificat invalide ou expiré) : vérifiez l'adresse.",
+    site_not_found: "Cette adresse n'existe pas : vérifiez l'écriture du nom du site.",
     site_archive_too_big: "L'archive est trop volumineuse pour être importée.",
     archive_invalid: "L'archive reçue est corrompue ou incomplète.",
     archive_other_player: 'Cette archive appartient à un autre joueur que celui suivi ici.',
@@ -76,6 +82,7 @@ const EN: SiteImportText = {
   tokenHint: 'The token is single-use and valid for 15 minutes. It is never kept.',
   gamertagLabel: 'Tracked player (gamertag)',
   importButton: 'Import',
+  blocksSync: 'An import is in progress: the synchronisation can be started once it has finished.',
   starting: 'Starting…',
   downloading: 'Downloading the archive…',
   importing: 'Writing the data…',
@@ -87,6 +94,9 @@ const EN: SiteImportText = {
     site_token_invalid: 'The token was refused: it is expired, already used or incorrect. Generate a new one on the site.',
     site_rate_limited: 'The site limits exports: try again later.',
     site_refused: 'The site refused the request.',
+    site_unreachable: 'The site does not answer: check your connection and the address, then try again.',
+    site_tls: 'The secure connection to the site was refused (invalid or expired certificate): check the address.',
+    site_not_found: 'This address does not exist: check how the site name is spelled.',
     site_archive_too_big: 'The archive is too large to import.',
     archive_invalid: 'The received archive is corrupted or incomplete.',
     archive_other_player: 'This archive belongs to a different player than the one tracked here.',

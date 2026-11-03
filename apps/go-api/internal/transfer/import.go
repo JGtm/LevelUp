@@ -69,11 +69,12 @@ func Import(ctx context.Context, in ImportInput) (*ImportResult, error) {
 		return nil, ErrXuidMismatch
 	}
 	res := &ImportResult{Manifest: m, Inserted: map[string]int64{}}
+	run := importRun{m: m, work: work, expect: expect, res: res}
 	for _, scope := range []struct {
 		name string
 		acq  Acquire
 	}{{ScopeShared, in.AcquireShared}, {ScopePlayer, in.AcquirePlayer}} {
-		if err := importScope(ctx, scope.name, scope.acq, m, work, res); err != nil {
+		if err := run.scope(ctx, scope.name, scope.acq); err != nil {
 			return res, err
 		}
 	}
@@ -81,8 +82,18 @@ func Import(ctx context.Context, in ImportInput) (*ImportResult, error) {
 	return res, nil
 }
 
-// importScope écrit les tables d'une base dans une seule transaction.
-func importScope(ctx context.Context, scope string, acq Acquire, m *Manifest, work string, res *ImportResult) error {
+// importRun : ce qu'un import partage entre ses deux bases : le manifeste vérifié, le dossier extrait, le xuid attendu et
+// le bilan.
+type importRun struct {
+	m      *Manifest
+	work   string
+	expect string
+	res    *ImportResult
+}
+
+// scope écrit les tables d'une base dans une seule transaction.
+func (r importRun) scope(ctx context.Context, scope string, acq Acquire) error {
+	m, work, expect, res := r.m, r.work, r.expect, r.res
 	var tables []persist.ImportTable
 	for _, t := range m.Tables {
 		if t.Scope != scope {
@@ -96,6 +107,9 @@ func importScope(ctx context.Context, scope string, acq Acquire, m *Manifest, wo
 	}
 	if len(tables) == 0 {
 		return nil
+	}
+	if err := restrictToPlayer(scope, tables, m, work, expect); err != nil {
+		return err
 	}
 	if acq == nil {
 		slog.WarnContext(ctx, "transfer: base non branchée, tables sautées", "scope", scope, "tables", len(tables))
@@ -221,6 +235,35 @@ func extractFile(zf *zip.File, dst string, t Table, limit int64) error {
 	}
 	if sum != t.SHA256 || size != t.Bytes {
 		return fmt.Errorf("%w : somme de %s", ErrBadArchive, t.File)
+	}
+	return nil
+}
+
+// restrictToPlayer pose sur chaque table l'étendue de ce que l'archive peut écrire : pour une table de match,
+// seules les lignes des matchs où le xuid attendu figure parmi les participants DE L'ARCHIVE (les lignes des
+// autres participants de ces matchs y sont admises, jamais celles d'un match étranger) ; pour une table du
+// joueur, seules les lignes de son xuid quand elle en porte un. Une archive qui porte des tables de match sans
+// ses participants est refusée : rien n'y désigne les matchs du joueur.
+func restrictToPlayer(scope string, tables []persist.ImportTable, m *Manifest, work, expect string) error {
+	if scope != ScopeShared {
+		for i := range tables {
+			tables[i].OwnerCol, tables[i].OwnerValue = colXuid, expect
+		}
+		return nil
+	}
+	participants := ""
+	for _, t := range m.Tables {
+		if t.Scope == ScopeShared && t.Name == participantsTable {
+			participants = filepath.Join(work, filepath.FromSlash(t.File))
+		}
+	}
+	if participants == "" {
+		return fmt.Errorf("%w : participants absents, matchs du joueur indéterminables", ErrBadArchive)
+	}
+	where := fmt.Sprintf("s.%s IN (SELECT p.%s FROM read_parquet('%s') p WHERE CAST(p.%s AS VARCHAR) = '%s')",
+		colMatchID, colMatchID, persist.SQLLiteral(participants), colXuid, persist.SQLLiteral(expect))
+	for i := range tables {
+		tables[i].Where = where
 	}
 	return nil
 }

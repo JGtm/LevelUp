@@ -5,7 +5,7 @@
 import { formatBytes } from '@/lib/formatters/bytes'
 import { formatDateTime, intlLocale } from '@/lib/formatters'
 import type { Locale } from '@/lib/i18n/locale'
-import { fill } from './fillTemplate'
+import { fillTemplate } from '@/lib/i18n/template'
 import type { DataBackupSummary, DataStatus } from './dataQueries'
 import type { DataText } from './dataText'
 
@@ -64,17 +64,34 @@ export function parseWholeNumber(raw: string): number | null {
   return /^-?\d+$/.test(trimmed) ? Number(trimmed) : null
 }
 
-/** La fréquence réglée, ramenée à une valeur offerte (une valeur inconnue retombe sur le défaut). */
-export function knownInterval(value: string | undefined): BackupInterval {
-  return (BACKUP_INTERVALS as readonly string[]).includes(value ?? '')
-    ? (value as BackupInterval)
-    : DEFAULT_BACKUP_INTERVAL
+/** Une fréquence valide du serveur : un nombre entier d'heures, « 48h » par exemple. */
+const INTERVAL_PATTERN = /^\d+h$/
+
+/**
+ * La fréquence réglée telle que le serveur la tient. Seule une valeur vide ou illisible retombe sur le défaut (24 h,
+ * comme le serveur) : une valeur valide que la liste n'offre pas (« 48h », posée à la main) reste affichée telle quelle,
+ * jamais déguisée en « Tous les jours ».
+ */
+export function intervalSetting(value: string | undefined): string {
+  const v = (value ?? '').trim()
+  return INTERVAL_PATTERN.test(v) ? v : DEFAULT_BACKUP_INTERVAL
+}
+
+/** Les fréquences de la liste : celles qu'on offre, plus la valeur réglée si elle n'en fait pas partie. */
+export function intervalOptions(current: string): string[] {
+  return (BACKUP_INTERVALS as readonly string[]).includes(current) ? [...BACKUP_INTERVALS] : [...BACKUP_INTERVALS, current]
+}
+
+/** Le libellé d'une fréquence : celui de la liste, sinon « Toutes les N h » avec la valeur réelle. */
+export function intervalLabel(t: DataText, value: string): string {
+  const known = (t.intervals as Record<string, string>)[value]
+  return known ?? fillTemplate(t.intervalEvery, { hours: value.replace(/h$/, '') })
 }
 
 /** La ligne de résumé du dernier jeu de sauvegarde : date, taille, nombre de bases, durée. */
 export function lastBackupSummary(t: DataText, locale: Locale, last: DataBackupSummary): string {
   const databases = `${last.databases} ${last.databases === 1 ? t.databasesOne : t.databasesMany}`
-  return fill(t.lastSummary, {
+  return fillTemplate(t.lastSummary, {
     date: formatDateTime(last.created_at, intlLocale(locale)),
     size: formatBytes(last.bytes, locale),
     count: databases,

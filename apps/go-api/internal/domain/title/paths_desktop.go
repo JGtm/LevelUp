@@ -13,8 +13,8 @@ func (p *PathResolver) DesktopPortPath() string {
 }
 
 // InstanceLockPath retourne le fichier du verrou d'instance (internal/platform/instancelock) :
-// une seule instance du serveur par racine de données en mode desktop et refresh-only (ADR 0045
-// D-10). Le fichier reste en place, vide, entre deux lancements ; seul le verrou noyau compte.
+// une seule instance du serveur par racine de données, tous profils confondus (ADR 0045 D-10). Le
+// fichier reste en place, vide, entre deux lancements ; seul le verrou noyau compte.
 //
 // Ex: data/levelup.lock
 func (p *PathResolver) InstanceLockPath() string {

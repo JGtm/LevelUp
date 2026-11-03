@@ -16,7 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useDeploymentCapability } from '@/stores/useDeploymentCapability'
-import { fill } from './fillTemplate'
+import { fillTemplate } from '@/lib/i18n/template'
 import { getSiteImportText, type SiteImportText } from './siteImportText'
 import { useSiteImportForm } from './useSiteImportForm'
 
@@ -63,7 +63,7 @@ function ImportOutcome({
   if (phase === 'done') {
     return (
       <p role="status" className="text-sm text-success">
-        {fill(new Intl.PluralRules(intlLocale(locale)).select(matches) === 'one' ? t.addedOne : t.addedMany, {
+        {fillTemplate(new Intl.PluralRules(intlLocale(locale)).select(matches) === 'one' ? t.addedOne : t.addedMany, {
           count: matches.toLocaleString(intlLocale(locale)),
         })}
       </p>

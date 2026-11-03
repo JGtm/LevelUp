@@ -94,8 +94,7 @@ func exitAfterRefusal(st *bootState, state bootFailureState, err error) {
 // refuseIfInstanceLockFailed refuse le démarrage si le verrou d'instance n'a pas été pris : une
 // autre instance le tient (state locked, comme un verrou de base : la coquille ne distingue pas les
 // deux), ou la racine de données n'a pu le recevoir (state migration_failed : la préparation du
-// démarrage a échoué). Sans effet quand le verrou est tenu par ce processus ou n'est pas demandé
-// (hors -mode desktop).
+// démarrage a échoué). Sans effet quand le verrou est tenu par ce processus.
 func refuseIfInstanceLockFailed(st *bootState) {
 	if st.instanceLockErr == nil {
 		return

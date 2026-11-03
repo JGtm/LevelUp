@@ -2,6 +2,8 @@ package transfer
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"io"
@@ -30,6 +32,12 @@ var (
 	ErrBadURL      = errors.New("transfer: adresse de l'instance invalide (https attendu)")
 	ErrSiteRefused = errors.New("transfer: l'instance a refusé la demande")
 	ErrSiteTooBig  = errors.New("transfer: l'archive dépasse la taille maximale")
+	// ErrSiteUnreachable : la connexion n'aboutit pas (réseau coupé, délai, port fermé).
+	ErrSiteUnreachable = errors.New("transfer: instance injoignable")
+	// ErrSiteTLS : la connexion sécurisée est refusée (certificat invalide, expiré, d'un autre nom).
+	ErrSiteTLS = errors.New("transfer: certificat de l'instance refusé")
+	// ErrSiteNotFound : le nom de l'adresse n'existe pas (faute de frappe).
+	ErrSiteNotFound = errors.New("transfer: nom de l'instance introuvable")
 )
 
 // FetchInput décrit un téléchargement.
@@ -94,7 +102,7 @@ func Fetch(ctx context.Context, in FetchInput) error {
 	}
 	resp, err := client.Do(req) //nolint:bodyclose // fermé ci-dessous
 	if err != nil {
-		return fmt.Errorf("transfer: instance injoignable : %w", err)
+		return classifyDoError(err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 	switch {
@@ -133,4 +141,24 @@ func writeLimited(dest string, body io.Reader, limit int64) error {
 		return err
 	}
 	return nil
+}
+
+// classifyDoError range l'échec de la connexion à l'instance dans l'une des trois causes que le joueur peut
+// corriger : une adresse dont le nom n'existe pas, un certificat refusé, ou une instance qui ne répond pas. Le
+// détail de l'erreur d'origine reste dans la chaîne (journal) ; seul le code d'API est fixe.
+func classifyDoError(err error) error {
+	var dns *net.DNSError
+	var unknownAuth x509.UnknownAuthorityError
+	var hostname x509.HostnameError
+	var invalid x509.CertificateInvalidError
+	var verify *tls.CertificateVerificationError
+	var record tls.RecordHeaderError
+	switch {
+	case errors.As(err, &dns) && dns.IsNotFound:
+		return fmt.Errorf("%w : %w", ErrSiteNotFound, err)
+	case errors.As(err, &unknownAuth), errors.As(err, &hostname), errors.As(err, &invalid),
+		errors.As(err, &verify), errors.As(err, &record):
+		return fmt.Errorf("%w : %w", ErrSiteTLS, err)
+	}
+	return fmt.Errorf("%w : %w", ErrSiteUnreachable, err)
 }

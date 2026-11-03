@@ -19,6 +19,7 @@ func TestTokenStore_UsageUniqueEcheanceEtLimite(t *testing.T) {
 	if err != nil || got != g {
 		t.Fatalf("Redeem : %+v %v", got, err)
 	}
+	s.Finish(g.Xuid, true, now.Add(time.Minute))
 	if _, err := s.Redeem(tok, now.Add(2*time.Minute)); !errors.Is(err, ErrTokenInvalid) {
 		t.Fatalf("un jeton ne sert qu'une fois : %v", err)
 	}
@@ -36,6 +37,7 @@ func TestTokenStore_UsageUniqueEcheanceEtLimite(t *testing.T) {
 	if _, err := s.Redeem(tok3, now.Add(time.Hour+4*time.Minute)); err != nil {
 		t.Fatalf("après l'heure un jeton neuf passe : %v", err)
 	}
+	s.Finish(g.Xuid, true, now.Add(time.Hour+5*time.Minute))
 }
 
 func TestTokenStore_EcheanceEtJetonRemplace(t *testing.T) {
@@ -58,8 +60,15 @@ func TestTokenStore_EcheanceEtJetonRemplace(t *testing.T) {
 func TestTokenStore_SessionLimiteUnParHeure(t *testing.T) {
 	s := NewTokenStore()
 	now := time.Now()
-	if !s.AllowSession("1234567", now) || s.AllowSession("1234567", now.Add(time.Minute)) || !s.AllowSession("1234567", now.Add(61*time.Minute)) {
+	if !s.AllowSession("1234567", now) {
+		t.Fatal("le premier export de session passe")
+	}
+	s.Finish("1234567", true, now)
+	if s.AllowSession("1234567", now.Add(time.Minute)) {
 		t.Fatal("un export de session par heure et par joueur")
+	}
+	if !s.AllowSession("1234567", now.Add(61*time.Minute)) {
+		t.Fatal("l'heure passée, la session peut exporter")
 	}
 }
 
@@ -92,5 +101,35 @@ func TestExportURL(t *testing.T) {
 		if _, err := exportURL(bad); !errors.Is(err, ErrBadURL) {
 			t.Errorf("%q devait être refusée : %v", bad, err)
 		}
+	}
+}
+
+// TestTokenStore_FailedExportDoesNotConsumeQuota : le quota d'un export par heure n'est tenu qu'APRÈS un export
+// réussi (S5) ; pendant un export, un second est refusé quel que soit le chemin (jeton ou session).
+func TestTokenStore_FailedExportDoesNotConsumeQuota(t *testing.T) {
+	s := NewTokenStore()
+	now := time.Date(2026, 11, 3, 9, 0, 0, 0, time.UTC)
+	g := Grant{Xuid: "2533274800000001", Gamertag: "SpartanB"}
+
+	tok, _, _ := s.Issue(g, now)
+	if _, err := s.Redeem(tok, now); err != nil {
+		t.Fatal(err)
+	}
+	s.Finish(g.Xuid, false, now) // l'export a échoué (bail de la base partagée refusé, par exemple)
+	tok2, _, _ := s.Issue(g, now.Add(time.Minute))
+	if _, err := s.Redeem(tok2, now.Add(time.Minute)); err != nil {
+		t.Fatalf("après un export échoué, un nouveau jeton passe tout de suite : %v", err)
+	}
+	// Export en cours : la session ne passe pas, et un jeton reste valable pour plus tard.
+	if s.AllowSession(g.Xuid, now.Add(2*time.Minute)) {
+		t.Fatal("un export est en cours : la session ne doit pas en ouvrir un second")
+	}
+	s.Finish(g.Xuid, false, now.Add(2*time.Minute))
+	if !s.AllowSession(g.Xuid, now.Add(3*time.Minute)) {
+		t.Fatal("après la fin de l'export échoué, la session peut en ouvrir un")
+	}
+	s.Finish(g.Xuid, true, now.Add(3*time.Minute))
+	if s.AllowSession(g.Xuid, now.Add(4*time.Minute)) {
+		t.Fatal("un export réussi dans l'heure ferme la session aussi")
 	}
 }

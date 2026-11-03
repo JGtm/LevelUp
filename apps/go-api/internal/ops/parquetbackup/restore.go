@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,6 +16,13 @@ import (
 
 // ErrTargetNotEmpty : la racine cible porte déjà une des bases du jeu ; sans Force, rien n'est écrasé.
 var ErrTargetNotEmpty = errors.New("parquetbackup: la racine cible contient déjà des bases du jeu")
+
+// ErrUnlistedFile : le jeu porte un fichier que son manifeste ne déclare pas (donc sans somme de contrôle) : il n'est
+// jamais importé.
+var ErrUnlistedFile = errors.New("parquetbackup: le jeu contient un fichier absent du manifeste")
+
+// ErrResidualWAL : un journal d'écriture (WAL) résiduel d'une base du jeu est présent dans la racine cible.
+var ErrResidualWAL = errors.New("parquetbackup: un journal d'écriture (WAL) résiduel est présent dans la racine cible")
 
 // RestoreOptions configure la restauration d'un jeu.
 type RestoreOptions struct {
@@ -52,7 +60,14 @@ func Restore(ctx context.Context, opts RestoreOptions) (*RestoreResult, error) {
 	if err := m.Verify(opts.From); err != nil {
 		return nil, fmt.Errorf("jeu de sauvegarde altéré : %w", err)
 	}
+	if err := rejectUnlistedFiles(opts.From, m); err != nil {
+		return nil, err
+	}
 	if !opts.Force && !opts.DryRun {
+		if wals := residualWALs(opts.Paths, m); len(wals) > 0 {
+			return nil, fmt.Errorf("%w : %s (application tuée : la relancer une fois pour un arrêt propre, ou supprimer le WAL si vous acceptez de perdre les dernières écritures ; sous --force le WAL est écarté avec sa base)",
+				ErrResidualWAL, strings.Join(wals, ", "))
+		}
 		if existing := existingTargets(opts.Paths, m); len(existing) > 0 {
 			return nil, fmt.Errorf("%w : %s (relancer avec --force pour les remplacer)",
 				ErrTargetNotEmpty, strings.Join(existing, ", "))
@@ -109,4 +124,48 @@ func restoreConfigFile(src, dst string, force bool) error {
 		}
 	}
 	return copyFile(src, dst)
+}
+
+// rejectUnlistedFiles refuse un jeu dont le dossier des bases porte un fichier que le manifeste ne déclare pas :
+// l'import prend le Parquet le plus récent de chaque table dans le dossier, un fichier ajouté après coup serait
+// donc importé SANS somme de contrôle. Seuls les fichiers du manifeste sont admis.
+func rejectUnlistedFiles(setDir string, m *Manifest) error {
+	listed := make(map[string]bool)
+	for _, f := range m.allFiles() {
+		listed[f.File] = true
+	}
+	root := filepath.Join(setDir, dbDirName)
+	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+		rel, rerr := filepath.Rel(setDir, path)
+		if rerr != nil {
+			return rerr
+		}
+		if rel = filepath.ToSlash(rel); !listed[rel] {
+			return fmt.Errorf("%w : %s", ErrUnlistedFile, rel)
+		}
+		return nil
+	})
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil // aucun dossier de bases : rien à importer, rien d'étranger
+	}
+	return err
+}
+
+// residualWALs liste les bases du jeu dont un WAL (`<base>.wal`) existe dans la racine cible.
+func residualWALs(paths *title.PathResolver, m *Manifest) []string {
+	var out []string
+	for _, d := range m.Databases {
+		if d.Skipped {
+			continue
+		}
+		if p := ops.BackupDBPath(paths, d.Key); p != "" {
+			if _, err := os.Stat(p + ".wal"); err == nil {
+				out = append(out, d.Key)
+			}
+		}
+	}
+	return out
 }

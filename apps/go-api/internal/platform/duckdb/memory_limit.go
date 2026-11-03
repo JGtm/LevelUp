@@ -4,6 +4,10 @@ package duckdb
 // desktop, lot L22). C'est DuckDB qui consomme la mémoire du processus : le levier est le `memory_limit` de
 // chaque base, pas une limite du système (aucun arrêt forcé, aucun Job object).
 //
+// LE PLAFOND S'APPLIQUE PAR BASE OUVERTE, non au processus : chaque fichier DuckDB est une instance de base à lui,
+// avec sa propre mémoire. N bases ouvertes en même temps peuvent donc consommer jusqu'à N fois le plafond ; le
+// réglage borne la gourmandise d'une base, pas le total (ADR 0045 D-27).
+//
 // Le plafond s'applique à CHAQUE ouverture de connexion (applyDuckSessionInit lit [duckMemoryLimit]) et,
 // quand le réglage change à chaud, aux bases déjà ouvertes ([ApplyMemoryLimitToOpen]). Zéro = pas de
 // plafond posé par le réglage : la valeur par défaut du serveur (LEVELUP_DUCKDB_MEMORY_LIMIT, sinon 512MB)
