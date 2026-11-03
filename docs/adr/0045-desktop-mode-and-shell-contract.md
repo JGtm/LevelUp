@@ -434,6 +434,76 @@ another folder or a changed root never leaves a stale task shown as "present"; s
 a moment (to be seen at gate 21.y); the uninstaller does not remove the task nor the startup entry (a NSIS hook could not be tested here:
 turn the settings off before uninstalling, or delete them by hand).
 
+### Data and diagnostics (L22)
+
+**D-24 - The desktop backup is a set of Parquet files in a folder the user chooses; restic stays on the hosted server (L22.a, 2026-11-03).**
+Under the capability `ParquetBackup` (`can_backup_to_folder`, desktop only; it replaces the restic cycle that `UseResticBackup` already
+cuts in this profile) `internal/ops/parquetbackup` writes `<backup_dir>/levelup-<YYYYMMDD-HHMM>/`: one zstd Parquet per table of every
+database `ops.BackupDatabases` lists (the four warehouse databases of each title, one database per player, the global aliases when the
+file exists; keys and paths only through `PathResolver`), the schema of each database taken at the same instant
+(`_ddl_<stamp>.json`, the format `duckdbbackup.ImportFromStaging` already restores "in the state of its epoch"), the configuration and
+authentication files as they are (`db_profiles.json`, `app_settings.json`, `users.json`, `groups.json`, the token files, sealed by the
+system vault when the profile has one) and a `manifest.json` (application version, tables, rows, duration, SHA-256 of every file, and
+`excluded: ["film_archive"]`: the archived films are not copied, they weigh tens of GB and have their own archive). A set is built in a
+`.partial-*` folder renamed at the end: a `levelup-*` folder always carries its manifest. Rotation keeps `backup_keep` sets and only
+deletes direct children of the chosen folder whose name is a set name (never anything else). **Read-only by construction**: a database is read through
+`duckdb.WithHeldRead`, which takes the database write lease with the same bounded wait as the periodic CHECKPOINT (a database whose lease
+is held is skipped, then retried once with a longer wait at the end of the pass; a database still busy makes the set `partial`, said by
+the manifest and by Settings), lends the process-wide cache handle (read-write included, `OpenReadForQuery`) and never opens read-only
+by force; the package contains no write statement (guard `readonly_guard_test.go`). Settings: `backup_dir` (empty = off),
+`backup_interval` (whole hours, `1h` to `168h`, empty = `24h`), `backup_keep` (1 to 60, default 7). The folder is validated by the
+server (absolute, existing, writable, **not under the data root**; the same volume is accepted and flagged with a warning). The
+`backup_interval` key is shared with the hosted restic planner (a Go duration such as `6h`): the desktop validation applies to the
+keys a PATCH writes, the read never rewrites the value. The periodic loop (`cmd/server/boot_parquetbackup.go`, declared by capability like the
+L21 loops, not in `taskPolicies`) wakes every minute, asks the heavy-work gate (`gameproc.Mode.WaitHeavyAllowed`: no backup during a game) and
+writes a set when one is due; "Back up now" is `POST /settings/data/backup/run` (202), the state is `GET /settings/data`
+(`backup.last` is read from the folder, so it survives a restart). Counters: expvar `levelup.backup.parquet` (`ok`, `partial`,
+`failed`), `levelup.backup.parquet_last_duration_ms`, `levelup.backup.parquet_last_bytes`. **Restore**: `levelup backup restore --from <set> --to
+<data root> [--dry-run] [--force]`, server stopped (the command takes the instance lock of the target root and refuses while it is held),
+verifies every checksum first, recreates each database from its Parquet through the existing importer, puts the configuration back, and refuses
+a target that already holds one of the databases without `--force`; the migrations of the next start bring the databases up to date.
+Tokens of another machine do not decrypt (system vault): the player signs in again. No native folder picker: the web page cannot open one
+and the shell has no command channel from the page (the cookie is `HttpOnly`, D-23), so the folder is a text field validated by the
+server; a `pick_dir` command and a `dir_picked` event would have been a new contract between shell and server for a field typed once.
+
+**D-25 - Moving from the site to the application: an export by one-shot token, an import through `persist` (L22.b, 2026-11-03).**
+Hosted side, capability `ExportForDesktop` (`can_export_for_desktop`: every profile but desktop and demo): `POST /export/desktop/token`
+(signed-in player only) returns a random 256-bit token valid 15 minutes and usable **once** (only its SHA-256 is kept, in memory;
+asking for a new one invalidates the previous), `GET /export/desktop` serves the archive to the owner of the token (header
+`Authorization: Bearer`, from the application, which has no session) or of the session. **The player is always the one the token or the session designates**
+(ownership, ADR 0029): no request names a player. One export per hour and per player (429 afterwards, logged). The archive
+(`internal/transfer`, a zip of uncompressed entries) is a **closed list**: `match_registry` of the matches the player took part in, his rows
+of `match_participants`, `medals_earned`, `highlight_events`, and `player_match_enrichment` of his player database; no token, no account, no
+other player's row (the lobby rows of the other players are completed by the application's own sync), no reference table. Desktop side
+(`ImportFromSite`, `can_import_from_site`): Settings > Application and an optional block of the first-run assistant take the site address
+and the token (`POST /import/site`, 202, state by `GET /import/site`). The download refuses any scheme but https (http only to the
+loopback), follows no redirect (the token only goes to the address typed), bounds the size and the time; the archive is verified before any write
+(format, entry names matched against `^(shared|player)/[a-z0-9_]+\.parquet$` and the closed list, so no path traversal, total size, SHA-256 of every
+table, and **the archive's xuid must be the tracked player's**). The write is `persist.ImportPersister`: INSERT only, no UPSERT, UPDATE or DELETE,
+one transaction per database, a row whose key already exists locally is never rewritten (replaying an import inserts nothing), the common
+columns of the file and of the local table only, a missing mandatory column refuses the table. It goes through the application's existing write paths
+(`sync.AcquireSharedWriterStandalone` with the `SharedProvider`, then the player lease and `OpenPlayerDB`). Limit: the default title only (the shared database
+provider exists for it alone, as for the OpenSpartan import); the manifest carries the title so another one is a data change. The
+OpenSpartan import recipe was not reused as is: it is typed (one Go struct per table) and reads a SQLite file; a Parquet table of another deployment, whose
+schema may have drifted, needed the column intersection and the anti-join, in the same package and under the same rules.
+
+**D-26 - The diagnostic report is a zip with no secret (L22.c, 2026-11-03).** Under `DiagnosticReport` (`can_report_diagnostic`),
+`POST /api/v1/desktop/diagnostic` writes `<DataRoot>/diagnostics/levelup-diag-<YYYYMMDD-HHMM>.zip` (`internal/ops/diagnostic`): the end (5 MB) of every `*.log` of the logs root
+(`desktop.log`, the shell journal, included: it carries the updater's state), `app_info.json` (version, profile, roots, capabilities, process and DuckDB
+memory), `settings.json`, `scheduled_tasks.json`, `updater.json`, and for each database a schema diagnostic read through the server's read door
+(`ops.DiagnoseHandle`; `DiagnoseDB` opens read-only by force and fails on a database the process holds). **Two barriers apply to everything that enters the
+archive**: structured documents lose the value of any key matching the forbidden list (`token`, `secret`, `password`, `webhook`, `cookie`,
+`authorization`, `refresh`, a bare `code`, ...), and log text goes through `Scrub` (authorization headers, JWT and Microsoft refresh-token shapes, sensitive
+`key=value` pairs, sensitive URL parameters, the exact values of the process secrets). The sentinel test sows a fake token, launcher secret, webhook and
+authorization code in logs, settings and attached documents and searches every entry. The reply carries the path (button "Copy the path" in the About window).
+
+**D-27 - The memory ceiling acts on DuckDB, not on the process (L22.d, 2026-11-03).** Setting `memory_limit_mb` (0 or 1024 to 32768, capability
+`MemoryLimit`): DuckDB is what consumes the memory, so the lever is its `memory_limit`, applied at every connection open (`applyDuckSessionInit`),
+at start-up before the first database opens, and live to the already open databases (`SET memory_limit`) when the setting changes. 0 means "the
+server default" (`LEVELUP_DUCKDB_MEMORY_LIMIT`, else 512 MB), not "unlimited": the shipped default is already a ceiling. The value is in MiB (4096 = 4.0 GiB).
+No kill and no OS limit. The resident memory of the process (`GetProcessMemoryInfo` working set) is read at each `/debug/vars` read as
+`levelup.process.rss_mb` and shown in Settings ("current memory: N MB").
+
 ### Tests
 
 **D-21 — Strategy (plan section 7).** Each side of the contract is tested against a double of the other: a **fake
@@ -669,6 +739,17 @@ maintainer on a clean machine. A lot without a test at its level is not closed.
   `/admin/health`; the Media page explains the Windows N and KN editions without Media Foundation and links Microsoft's
   Media Feature Pack. Known limit: a verdict reached later than the start-up probe (a transcode that finds no encoder) is not
   published until the next start.
+
+## Implementation notes (L22, 2026-11-03)
+
+- **Guard-rails created**: `internal/ops/parquetbackup/readonly_guard_test.go` (no write statement, no hand-built `data` path),
+  `internal/ops/diagnostic/diagnostic_cgo_test.go` (no secret in the archive), `internal/transfer/transfer_cgo_test.go` (export, import,
+  idempotence, other player's archive, tampered archive, path traversal, size bound, one-shot token over HTTP),
+  `internal/platform/duckdb/memory_limit_test.go` (`current_setting('memory_limit')` read on a temporary database).
+- **Found and left**: the `backup_interval` key is shared with the hosted restic planner (see D-24); `app_settings.json` of a hosted
+  instance gains the key `backup_keep` and the three others on its next save (zero or default values, no effect without the capability).
+  `ops.DiagnoseDB` still opens read-only by force (used by the CLI, server stopped).
+- **No native folder picker, no download resume, no Halo 5 export**: see D-24 and D-25.
 
 ## Alternatives rejected
 

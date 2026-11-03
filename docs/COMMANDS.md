@@ -364,7 +364,15 @@ go run ./cmd/levelup backfill-match-summaries --title halo_5
 go run ./cmd/levelup backup  --gamertag X [--output-dir D] [--compression-level 9]
 go run ./cmd/levelup restore --gamertag X --backup-dir D [--replace] [--dry-run] [--tables T1,T2]
 go run ./cmd/levelup restore-csr --gamertag X --backup PATH [--dry-run]
+go run ./cmd/levelup backup restore --from D:\Backups\levelup-20261103-0930 --to D:\LevelUpData [--dry-run] [--force]
 ```
+
+`backup restore` restores a set written by the desktop application's periodic Parquet backup (Settings > Application, `backup_dir`;
+see `docs/RUNBOOK_DESKTOP.md`). **Server stopped**: the command takes the instance lock of the target data root (`--to`, the folder that
+holds `titles/` and `auth/`) and refuses while it is held. It first checks every SHA-256 sum of the manifest, recreates each database from its
+Parquet files in the state of its epoch (the next start applies the missing migrations), then puts the configuration and authentication
+files back. A target that already holds one of the set's databases is refused without `--force`; `--dry-run` checks the set and lists what
+would be restored, writing nothing. The archived films are not part of a set.
 
 ### Player identities (directory and purge — ADR 0035)
 

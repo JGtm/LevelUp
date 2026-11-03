@@ -377,7 +377,15 @@ go run ./cmd/levelup backfill-match-summaries --title halo_5
 go run ./cmd/levelup backup  --gamertag X [--output-dir D] [--compression-level 9]
 go run ./cmd/levelup restore --gamertag X --backup-dir D [--replace] [--dry-run] [--tables T1,T2]
 go run ./cmd/levelup restore-csr --gamertag X --backup PATH [--dry-run]
+go run ./cmd/levelup backup restore --from D:\Sauvegardes\levelup-20261103-0930 --to D:\DonneesLevelUp [--dry-run] [--force]
 ```
+
+`backup restore` restaure un jeu écrit par la sauvegarde périodique en Parquet de l'application de bureau (Réglages > Application,
+`backup_dir` ; voir `docs/RUNBOOK_DESKTOP.md`). **Serveur arrêté** : la commande prend le verrou d'instance de la racine de données cible
+(`--to`, le dossier qui contient `titles/` et `auth/`) et refuse tant qu'il est tenu. Elle vérifie d'abord chaque somme SHA-256 du manifeste, recrée
+chaque base depuis ses Parquet dans l'état de son époque (le démarrage suivant applique les migrations manquantes), puis remet en place les
+fichiers de configuration et d'authentification. Une cible qui contient déjà une base du jeu est refusée sans `--force` ; `--dry-run` vérifie le jeu
+et liste ce qui serait restauré, sans rien écrire. Les films archivés ne font pas partie d'un jeu.
 
 ### Identités joueur (annuaire et purge — ADR 0035)
 

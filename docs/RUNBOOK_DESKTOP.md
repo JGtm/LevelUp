@@ -65,6 +65,40 @@ Everything below is in the "Application" tab of the settings, absent on the site
 - **Uninstalling.** The uninstaller does not remove the startup entry nor the scheduled task: turn both settings off first (or run the two
   commands above and delete the `LevelUp` value of `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`).
 
+## Your data: backup, restore, move from the site, diagnostic (Settings > Application)
+
+- **Backup to a folder.** "Backup" in Settings > Application: type the absolute path of a folder (the page cannot open a folder
+  picker; the server checks that it exists, is writable and is **not inside the application data folder**). The same disk as the
+  data is accepted with a warning: a disk failure would take both. The application writes a **set** every `backup_interval` (default
+  24 h, 1 h to 7 days) and keeps the last `backup_keep` (default 7): `<folder>\levelup-<YYYYMMDD-HHMM>\` holds one compressed Parquet
+  file per table of every database (`db\`), the configuration, accounts and token files (`config\`) and `manifest.json` (version,
+  tables, rows, SHA-256 of each file). The archived **films are not copied** (they weigh tens of GB): copy `film_archive_dir` yourself.
+  "Back up now" starts a set at once. No set starts while the game runs (it waits for the end of the game). A set marked *partial*
+  means a database stayed busy until the end of the pass (the next pass retries). Only `levelup-*` folders of the chosen folder are ever deleted.
+- **Disk dead, new PC.** 1. Install LevelUp on the new PC and close it without signing in. 2. Plug the disk (or copy the latest
+  `levelup-*` set). 3. In a console, with the application closed:
+  the installer ships `levelup-server.exe` only, **not** the `levelup` command-line tool: build or run it from a checkout of the
+  repository (Go and a C compiler needed, see `docs/COMMANDS.md`):
+  `go run ./apps/go-api/cmd/levelup backup restore --from D:\Backups\levelup-20261103-0930 --to "%LOCALAPPDATA%\LevelUp"`
+  (add `--dry-run` first to check the set; `--force` replaces databases already there). The command verifies every checksum, refuses while
+  the application runs (instance lock), recreates the databases and puts the configuration back. 4. Start LevelUp: the migrations bring
+  the databases up to date. 5. **Sign in again**: the token files are sealed by the Windows vault of the *old* account and machine and
+  cannot be read on another one. 6. Films: copy the archive folder back and set `film_archive_dir` if it moved.
+- **Import from the site.** On the hosted site, Settings > Account > "Export to the desktop application" gives a **one-shot token valid
+  15 minutes** (one export per hour). In the application: Settings > Application > "Import from the site" (or the optional block of the
+  first-run assistant, once the account is tracked): the site address (https) and the token. The application downloads the archive,
+  checks it (manifest, sums, and that it is **your** account's), then adds the matches it does not have (a match already present is never
+  duplicated; replaying the import adds nothing). It carries your matches, your medals and highlights and your player enrichments; not tokens, not other
+  players. Default title only for now.
+- **Diagnostic report.** About window > "Diagnostic report": writes `<data folder>\diagnostics\levelup-diag-<YYYYMMDD-HHMM>.zip`
+  (the end of each log, versions, settings, scheduled task, schema of each database) and shows its path with a "Copy the path" button;
+  attach the zip to a report. **No token, secret or authorization code goes into it** (forbidden keys removed, log text scrubbed; a test
+  checks it). Look inside before sending if in doubt.
+- **Memory ceiling.** Settings > Application > "Memory": the ceiling of each DuckDB database in MiB (`0` = the server default, 512 MB;
+  otherwise 1,024 to 32,768), applied at once to the open databases. It acts on DuckDB, which is what uses the memory: a heavy page or a
+  recompute spills to disk beyond it instead of growing. "Current memory" shows the process working set (also `levelup.process.rss_mb`
+  in `/debug/vars`).
+
 ## Signing in (Microsoft account)
 
 The setup assistant's first step opens **the default browser** on the Microsoft sign-in page ("Sign in with Microsoft"); after
