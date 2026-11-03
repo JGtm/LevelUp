@@ -16,6 +16,7 @@ import (
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/platform/gameproc"
 	"levelup/go-api/internal/platform/jobs"
+	"levelup/go-api/internal/platform/schedtask"
 	settings_platform "levelup/go-api/internal/platform/settings"
 )
 
@@ -164,5 +165,49 @@ func TestDesktopStatus_LeJeuTourne(t *testing.T) {
 	w.Poll(t.Context())
 	if !get() {
 		t.Fatal("jeu lancé : game_running doit être vrai")
+	}
+}
+
+// TestDesktopStatus_TachePlanifiee : l'état de la tâche planifiée n'est exposé que sous sa capacité ; avant
+// toute vérification il vaut unknown, ensuite ce que la boucle du boot a observé, avec un code fixe d'erreur.
+func TestDesktopStatus_TachePlanifiee(t *testing.T) {
+	obs := schedtask.DefaultObserved()
+	t.Cleanup(func() { obs.Set("", "") })
+
+	get := func(f desktopFixture) map[string]any {
+		req := httptest.NewRequest(http.MethodGet, "/settings/desktop", nil)
+		w := httptest.NewRecorder()
+		f.r.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("GET = %d : %s", w.Code, w.Body.String())
+		}
+		var body map[string]any
+		if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+			t.Fatalf("réponse : %v", err)
+		}
+		return body
+	}
+	taskOf := func(body map[string]any) map[string]any {
+		task, _ := body["scheduled_refresh"].(map[string]any)
+		return task
+	}
+
+	f := newDesktopFixture(t, desktopCaps)
+	obs.Set("", "")
+	if task := taskOf(get(f)); task["state"] != "unknown" {
+		t.Fatalf("avant toute vérification : %v, attendu unknown", task)
+	}
+	obs.Set(schedtask.StatePresent, "")
+	if task := taskOf(get(f)); task["state"] != "present" || task["error_code"] != nil {
+		t.Fatalf("tâche présente : %v", task)
+	}
+	obs.Set(schedtask.StateError, schedtask.ErrorCodeSchtasks)
+	if task := taskOf(get(f)); task["state"] != "error" || task["error_code"] != "schtasks_failed" {
+		t.Fatalf("erreur : %v, attendu le code fixe schtasks_failed", task)
+	}
+
+	noTask := newDesktopFixture(t, config.DeploymentCapabilities{GameProcessWatch: true})
+	if _, present := get(noTask)["scheduled_refresh"]; present {
+		t.Fatal("sans la capacité ScheduledRefresh, l'état de la tâche n'est pas exposé")
 	}
 }

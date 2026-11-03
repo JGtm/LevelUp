@@ -13,7 +13,11 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/platform/gameproc"
+	"levelup/go-api/internal/platform/schedtask"
 )
+
+// unknownTaskState : l'état de la tâche planifiée tant que la vérification du démarrage n'a rien observé.
+const unknownTaskState schedtask.State = "unknown"
 
 // codeDesktopNotOffered : le code du refus d'un réglage d'intégration au poste hors du profil desktop.
 const codeDesktopNotOffered = "desktop_setting_not_offered"
@@ -45,10 +49,17 @@ type desktopStatusOutput struct {
 	Body *domain.DesktopStatus
 }
 
-// handleGetDesktopStatus expose l'état vivant de l'intégration au poste : le jeu tourne-t-il.
+// handleGetDesktopStatus expose l'état vivant de l'intégration au poste : le jeu tourne-t-il, et la tâche
+// planifiée de rafraîchissement est-elle présente.
 // GET /settings/desktop
 func (h *SettingsHandler) handleGetDesktopStatus(_ context.Context, _ *struct{}) (*desktopStatusOutput, error) {
-	return &desktopStatusOutput{Body: &domain.DesktopStatus{
-		GameRunning: gameproc.Default().Running(),
-	}}, nil
+	out := &domain.DesktopStatus{GameRunning: gameproc.Default().Running()}
+	if h.cfg.Capabilities.ScheduledRefresh {
+		state, code := schedtask.DefaultObserved().Get()
+		if state == "" {
+			state = unknownTaskState
+		}
+		out.ScheduledRefresh = &domain.ScheduledRefreshStatus{State: string(state), ErrorCode: code}
+	}
+	return &desktopStatusOutput{Body: out}, nil
 }

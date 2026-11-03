@@ -85,6 +85,34 @@ describe('DesktopIntegrationCard', () => {
     await waitFor(() => expect(patches).toEqual([{ start_with_windows: true }]))
   })
 
+  it('activer la tâche planifiée envoie le PATCH et dit son état (désactivée par défaut)', async () => {
+    serveurPatch()
+    server.use(
+      http.get(`${API}/settings/desktop`, () =>
+        HttpResponse.json({ game_running: false, scheduled_refresh: { state: 'absent' } }),
+      ),
+    )
+    renderWithProviders(<DesktopIntegrationCard />)
+    expect(await screen.findByText('Tâche planifiée : absente.')).toBeInTheDocument()
+    fireEvent.click(screen.getAllByRole('button')[4])
+    await waitFor(() => expect(patches).toEqual([{ scheduled_refresh: true }]))
+  })
+
+  it.each([
+    ['present', undefined, 'Tâche planifiée : présente.'],
+    ['unknown', undefined, 'Tâche planifiée : pas encore vérifiée.'],
+    ['error', 'schtasks_failed', /Le planificateur de Windows n'a pas répondu/],
+    ['error', 'unsupported_path', /ne sait pas protéger/],
+  ])("l'état %s de la tâche planifiée (%s) est dit en français", async (state, code, text) => {
+    server.use(
+      http.get(`${API}/settings/desktop`, () =>
+        HttpResponse.json({ game_running: false, scheduled_refresh: { state, error_code: code } }),
+      ),
+    )
+    renderWithProviders(<DesktopIntegrationCard />)
+    expect(await screen.findByText(text)).toBeInTheDocument()
+  })
+
   it('sans la capacité de la coquille, les notifications Windows ne sont pas offertes', async () => {
     useAppShellStore.setState({ capabilities: testCapabilities({ can_watch_game_process: true }) })
     renderWithProviders(<DesktopIntegrationCard />)

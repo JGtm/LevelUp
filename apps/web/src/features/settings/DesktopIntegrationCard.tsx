@@ -16,8 +16,22 @@ import { useDeploymentCapability } from '@/stores/useDeploymentCapability'
 import type { UpdateSettingsRequest } from '@/lib/api/types'
 import { useSettings, useUpdateSettings } from './queries'
 import { useDesktopStatus } from './desktopIntegrationQueries'
-import { getDesktopIntegrationText } from './desktopIntegrationText'
+import { getDesktopIntegrationText, type DesktopIntegrationText } from './desktopIntegrationText'
 import { ToggleRow } from './_settingsShared'
+
+/** Le texte de l'état de la tâche planifiée ; l'erreur dit sa cause par le code fixe du serveur. */
+function taskStatusText(t: DesktopIntegrationText, task: { state: string; error_code?: string }): string {
+  switch (task.state) {
+    case 'present':
+      return t.taskPresent
+    case 'absent':
+      return t.taskAbsent
+    case 'error':
+      return task.error_code === 'unsupported_path' ? t.taskErrorPath : t.taskError
+    default:
+      return t.taskUnknown
+  }
+}
 
 export function DesktopIntegrationCard() {
   const locale = useAppShellStore((s) => s.locale)
@@ -25,9 +39,10 @@ export function DesktopIntegrationCard() {
   const frozen = !useDeploymentCapability('can_edit_settings')
   const canWatchGame = useDeploymentCapability('can_watch_game_process')
   const canIntegrateShell = useDeploymentCapability('can_integrate_shell')
+  const canScheduleRefresh = useDeploymentCapability('can_schedule_refresh')
   const qc = useQueryClient()
   const { data: settings } = useSettings()
-  const { data: status } = useDesktopStatus(canWatchGame)
+  const { data: status } = useDesktopStatus(canWatchGame || canScheduleRefresh)
   const update = useUpdateSettings()
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)
 
@@ -46,6 +61,8 @@ export function DesktopIntegrationCard() {
   const nativeNotifications = settings?.native_notifications ?? false
   const closeToTray = settings?.close_to_tray ?? false
   const startWithWindows = settings?.start_with_windows ?? false
+  const scheduledRefresh = settings?.scheduled_refresh ?? false
+  const task = status?.scheduled_refresh
 
   return (
     <Card>
@@ -98,6 +115,24 @@ export function DesktopIntegrationCard() {
                 onChange={(v) => save({ start_with_windows: v })}
               />
               <p className="text-xs text-muted-foreground">{t.startWithWindowsHint}</p>
+            </div>
+          )}
+          {canScheduleRefresh && (
+            <div>
+              <ToggleRow
+                label={t.scheduledRefreshLabel}
+                value={scheduledRefresh}
+                onChange={(v) => save({ scheduled_refresh: v })}
+              />
+              <p className="text-xs text-muted-foreground">{t.scheduledRefreshHint}</p>
+              {task && (
+                <p
+                  className={`mt-1 text-xs ${task.state === 'error' ? 'text-destructive' : 'text-foreground'}`}
+                  role={task.state === 'error' ? 'alert' : 'status'}
+                >
+                  {taskStatusText(t, task)}
+                </p>
+              )}
             </div>
           )}
         </fieldset>

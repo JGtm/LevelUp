@@ -13137,6 +13137,9 @@ components:
         game_running:
           description: 'Le jeu tourne en ce moment : la cuisson des rejeux et les tâches lourdes sont suspendues.'
           type: boolean
+        scheduled_refresh:
+          $ref: '#/components/schemas/ScheduledRefreshStatus'
+          description: État de la tâche planifiée de rafraîchissement des jetons (absent hors de l'application de bureau).
       required:
         - game_running
       type: object
@@ -24760,6 +24763,23 @@ components:
         - skipped
         - failed
         - duration_ns
+      type: object
+    ScheduledRefreshStatus:
+      additionalProperties: false
+      properties:
+        error_code:
+          description: Code de l'erreur quand l'état est error.
+          type: string
+        state:
+          description: Tâche présente, absente, en erreur, ou pas encore vérifiée.
+          enum:
+            - present
+            - absent
+            - error
+            - unknown
+          type: string
+      required:
+        - state
       type: object
     SchedulerSnapshot:
       additionalProperties: false

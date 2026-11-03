@@ -20,6 +20,13 @@ export interface DesktopIntegrationText {
   closeToTrayHint: string
   startWithWindowsLabel: string
   startWithWindowsHint: string
+  scheduledRefreshLabel: string
+  scheduledRefreshHint: string
+  taskPresent: string
+  taskAbsent: string
+  taskError: string
+  taskUnknown: string
+  taskErrorPath: string
   saved: string
   saveFailed: string
 }
@@ -42,6 +49,15 @@ const FR: DesktopIntegrationText = {
   startWithWindowsLabel: 'Démarrer avec Windows',
   startWithWindowsHint:
     "LevelUp se lance, réduit dans la zone de notification, à l'ouverture de ta session Windows. L'entrée de démarrage est la tienne seulement (jamais pour toute la machine) ; la désactiver la supprime.",
+  scheduledRefreshLabel: 'Garder la connexion vivante application fermée',
+  scheduledRefreshHint:
+    "Une tâche planifiée Windows (la tienne seulement, sans droits d'administrateur) lance LevelUp toutes les 6 heures pour rafraîchir ta connexion Microsoft quand l'application est fermée. Application ouverte, elle ne fait rien. La désactiver supprime la tâche.",
+  taskPresent: 'Tâche planifiée : présente.',
+  taskAbsent: 'Tâche planifiée : absente.',
+  taskError: "Tâche planifiée : erreur. Le planificateur de Windows n'a pas répondu ; le détail est dans les journaux.",
+  taskUnknown: 'Tâche planifiée : pas encore vérifiée.',
+  taskErrorPath:
+    "Tâche planifiée : erreur. Un dossier de LevelUp contient un caractère que la tâche ne sait pas protéger (guillemet, %, &, ^, !).",
   saved: 'Enregistré.',
   saveFailed: "Le réglage n'a pas pu être enregistré.",
 }
@@ -64,6 +80,15 @@ const EN: DesktopIntegrationText = {
   startWithWindowsLabel: 'Start with Windows',
   startWithWindowsHint:
     'LevelUp starts, minimized in the notification area, when your Windows session opens. The startup entry is yours only (never machine-wide); turning this off deletes it.',
+  scheduledRefreshLabel: 'Keep the sign-in alive while the application is closed',
+  scheduledRefreshHint:
+    'A Windows scheduled task (yours only, no administrator rights) starts LevelUp every 6 hours to refresh your Microsoft sign-in while the application is closed. With the application open, it does nothing. Turning this off deletes the task.',
+  taskPresent: 'Scheduled task: present.',
+  taskAbsent: 'Scheduled task: absent.',
+  taskError: 'Scheduled task: error. The Windows task scheduler did not answer; the details are in the logs.',
+  taskUnknown: 'Scheduled task: not checked yet.',
+  taskErrorPath:
+    'Scheduled task: error. A LevelUp folder contains a character the task cannot protect (quote, %, &, ^, !).',
   saved: 'Saved.',
   saveFailed: 'The setting could not be saved.',
 }

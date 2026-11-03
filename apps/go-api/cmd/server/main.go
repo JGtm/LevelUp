@@ -79,6 +79,7 @@ func main() {
 	launchWakeSequence(st)
 	launchGameWatch(st)
 	launchShellIntegration(st)
+	launchScheduledRefresh(st)
 	awaitShutdown(st)
 }
 

@@ -6462,6 +6462,8 @@ export interface components {
         DesktopStatus: {
             /** @description Le jeu tourne en ce moment : la cuisson des rejeux et les tâches lourdes sont suspendues. */
             game_running: boolean;
+            /** @description État de la tâche planifiée de rafraîchissement des jetons (absent hors de l'application de bureau). */
+            scheduled_refresh?: components["schemas"]["ScheduledRefreshStatus"];
         };
         DetectionPatchInputBody: {
             note?: string;
@@ -11355,6 +11357,15 @@ export interface components {
             synced: number;
             /** Format: int64 */
             total: number;
+        };
+        ScheduledRefreshStatus: {
+            /** @description Code de l'erreur quand l'état est error. */
+            error_code?: string;
+            /**
+             * @description Tâche présente, absente, en erreur, ou pas encore vérifiée.
+             * @enum {string}
+             */
+            state: "present" | "absent" | "error" | "unknown";
         };
         SchedulerSnapshot: {
             gate: components["schemas"]["GateSnapshotData"];

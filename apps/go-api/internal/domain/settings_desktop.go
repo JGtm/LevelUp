@@ -41,4 +41,15 @@ type DesktopStatus struct {
 	// GameRunning : le jeu tourne en ce moment (mode jeu actif : cuisson des rejeux et tâches lourdes
 	// suspendues).
 	GameRunning bool `json:"game_running" doc:"Le jeu tourne en ce moment : la cuisson des rejeux et les tâches lourdes sont suspendues."`
+	// ScheduledRefresh : l'état de la tâche planifiée refresh-only ; absent quand le profil ne l'offre pas.
+	ScheduledRefresh *ScheduledRefreshStatus `json:"scheduled_refresh,omitempty" doc:"État de la tâche planifiée de rafraîchissement des jetons (absent hors de l'application de bureau)."`
+}
+
+// ScheduledRefreshStatus : ce que la dernière vérification de la tâche planifiée a trouvé.
+type ScheduledRefreshStatus struct {
+	// State : present (la tâche existe), absent, error (le planificateur n'a pas répondu ou a refusé), unknown
+	// (rien n'a encore été vérifié).
+	State string `json:"state" enum:"present,absent,error,unknown" doc:"Tâche présente, absente, en erreur, ou pas encore vérifiée."`
+	// ErrorCode : le code fixe de l'erreur (schtasks_failed, unsupported_path), jamais le texte du système.
+	ErrorCode string `json:"error_code,omitempty" doc:"Code de l'erreur quand l'état est error."`
 }
