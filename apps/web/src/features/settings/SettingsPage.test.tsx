@@ -11,7 +11,7 @@ import { createTestQueryClient, renderWithProviders } from '@/test/render-utils'
 import { queryKeys } from '@/lib/query/keys'
 import type { SettingsResponse } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
-import { testCapabilities } from '@/test/capabilities'
+import { desktopCapabilities, testCapabilities } from '@/test/capabilities'
 import { useRouterState } from '@tanstack/react-router'
 import { SettingsPage } from './SettingsPage'
 
@@ -139,5 +139,45 @@ describe('SettingsPage', () => {
 
     useAppShellStore.setState({ capabilities: testCapabilities({ can_watch_game_process: true }) })
     expect(await screen.findByRole('tab', { name: 'Application' })).toBeInTheDocument()
+  })
+
+  it("l'onglet « Application » porte l'intégration au poste, les données et l'import depuis le site", async () => {
+    useAppShellStore.setState({ capabilities: testCapabilities(desktopCapabilities()) })
+    vi.mocked(useRouterState).mockReturnValue({
+      location: { pathname: '/settings', search: '?tab=desktop' },
+    } as ReturnType<typeof useRouterState>)
+    renderWithProviders(<SettingsPage />)
+    expect(await screen.findByText('Intégration au poste')).toBeInTheDocument()
+    expect(await screen.findByText('Données et sauvegarde')).toBeInTheDocument()
+    expect(await screen.findByText('Importer depuis le site')).toBeInTheDocument()
+  })
+
+  it("l'onglet « Application » existe pour les seules données, sans l'intégration au poste", async () => {
+    useAppShellStore.setState({ capabilities: testCapabilities({ can_backup_to_folder: true }) })
+    vi.mocked(useRouterState).mockReturnValue({
+      location: { pathname: '/settings', search: '?tab=desktop' },
+    } as ReturnType<typeof useRouterState>)
+    renderWithProviders(<SettingsPage />)
+    expect(await screen.findByRole('tab', { name: 'Application' })).toBeInTheDocument()
+    expect(await screen.findByText('Données et sauvegarde')).toBeInTheDocument()
+    expect(screen.queryByText('Intégration au poste')).not.toBeInTheDocument()
+  })
+
+  it("l'onglet « Compte » du site porte l'export vers l'application de bureau", async () => {
+    useAppShellStore.setState({ capabilities: testCapabilities({ can_export_for_desktop: true }) })
+    vi.mocked(useRouterState).mockReturnValue({
+      location: { pathname: '/settings', search: '?tab=account' },
+    } as ReturnType<typeof useRouterState>)
+    renderWithProviders(<SettingsPage />)
+    expect(await screen.findByText("Exporter vers l'application de bureau")).toBeInTheDocument()
+  })
+
+  it("sans la capacité d'export, l'onglet « Compte » ne propose pas l'export", async () => {
+    vi.mocked(useRouterState).mockReturnValue({
+      location: { pathname: '/settings', search: '?tab=account' },
+    } as ReturnType<typeof useRouterState>)
+    renderWithProviders(<SettingsPage />)
+    await screen.findByRole('tab', { name: 'Compte' })
+    expect(screen.queryByText("Exporter vers l'application de bureau")).not.toBeInTheDocument()
   })
 })

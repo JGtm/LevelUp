@@ -47,6 +47,10 @@ export const queryKeys = {
   filmArchive: ['film-archive'] as const,
   // État vivant de l'intégration au poste (GET /settings/desktop) : le jeu tourne-t-il.
   desktopStatus: ['desktop-status'] as const,
+  // État de la sauvegarde périodique et de la mémoire (GET /settings/data) : codes seulement, pas de libellé localisé.
+  dataStatus: ['data-status'] as const,
+  // Progression de l'import depuis le site (GET /import/site) : le jeton d'export n'entre jamais dans une clé.
+  siteImport: ['site-import'] as const,
   // Groupes/familles (accès mutuel) — gestion end-user
   groups: ['groups'] as const,
   // Amis d'un joueur (liste par profil, pas un réglage d'instance).

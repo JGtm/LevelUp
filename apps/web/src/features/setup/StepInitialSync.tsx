@@ -9,6 +9,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useSetupFlowStore } from '@/stores/setupFlowStore'
+import { SiteImportPanel } from '@/features/settings/SiteImportPanel'
 import { queryKeys } from '@/lib/query/keys'
 import { useStartInitialSync, useJobStatus } from './queries'
 import { apiErrorCode } from '@/lib/api/client'
@@ -110,6 +111,10 @@ export function StepInitialSync({ playerSlug }: StepInitialSyncProps) {
           {t('common.setup.syncing_game_progress', { current: titleIndex + 1, total: titlesToSync.length })}
         </p>
       )}
+
+      {/* Facultatif, replié : reprendre des données déjà analysées par le site avant la première
+          synchronisation. Le profil existe à ce stade (l'import en a besoin) ; l'ignorer ne bloque rien. */}
+      {!resolvedJobId && <SiteImportPanel variant="optional" />}
 
       {!resolvedJobId && (
         <Button onClick={handleStart} disabled={startSync.isPending}>
