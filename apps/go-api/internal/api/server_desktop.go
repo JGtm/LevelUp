@@ -53,6 +53,14 @@ func mountDesktopStrings(r chi.Router, cfg *config.AppConfig, opts ...humacore.M
 	}
 }
 
+// mountDesktopDiagnostic monte POST /api/v1/desktop/diagnostic sous la capacité DiagnosticReport ; le cookie de
+// la coquille est exigé par le garde racine.
+func mountDesktopDiagnostic(r chi.Router, cfg *config.AppConfig, opts ...humacore.MountOption) {
+	if cfg.Capabilities.DiagnosticReport {
+		handlers.NewDesktopDiagnosticHandler(cfg).Mount(r, opts...)
+	}
+}
+
 // newBrowserLogin construit le handler de la connexion par le navigateur sous la capacité
 // LoginViaBrowser (nil sinon : aucune route montée). Le port est celui que le serveur a lié : c'est
 // lui que porte l'adresse de retour déclarée à Microsoft.

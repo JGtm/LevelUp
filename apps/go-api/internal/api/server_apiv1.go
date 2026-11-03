@@ -552,6 +552,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 
 	// Libellés de la coquille desktop (profil desktop seulement), cf. server_desktop.go.
 	mountDesktopStrings(r, cfg, apiOpt)
+	mountDesktopDiagnostic(r, cfg, apiOpt)
 
 	// Diagnostic — loopback (127.0.0.1) uniquement, ET admin (S5, lot S :
 	// défense en profondeur). /probe résout des tokens (sensibles) → n'est plus
