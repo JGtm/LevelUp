@@ -13,6 +13,8 @@ import (
 	"levelup/go-api/internal/config"
 	auth_platform "levelup/go-api/internal/platform/auth"
 	session_platform "levelup/go-api/internal/platform/session"
+	"levelup/go-api/internal/service"
+	"levelup/go-api/internal/transfer"
 )
 
 // desktopGateFor construit l'entrée de la coquille du port lié de cfg (SetBoundPort a déjà posé le
@@ -89,4 +91,24 @@ func mountBrowserLoginCallback(r chi.Router, h *handlers.BrowserLoginHandler) {
 	if h != nil {
 		r.With(middleware.NoStore, middleware.LoopbackOnly).Get(handlers.BrowserLoginCallbackPath, h.Callback)
 	}
+}
+
+// mountSiteImport monte l'import des données depuis une instance hébergée (POST et GET /import/site) sous la
+// capacité ImportFromSite ; le cookie de la coquille est exigé par le garde racine.
+func mountSiteImport(r chi.Router, cfg *config.AppConfig, opts ...humacore.MountOption) {
+	if cfg.Capabilities.ImportFromSite {
+		handlers.NewSiteImportHandler(service.DefaultSiteImport()).Mount(r, opts...)
+	}
+}
+
+// mountExportDesktop monte l'export des données du joueur pour l'application de bureau sous la capacité
+// ExportForDesktop (instance hébergée) : la route du jeton lit l'identité Xbox liée à la session et refuse
+// (401) sans elle, l'archive s'authentifie par jeton ou par session (handlers/export_desktop.go).
+func mountExportDesktop(r chi.Router, cfg *config.AppConfig, opts ...humacore.MountOption) {
+	if !cfg.Capabilities.ExportForDesktop {
+		return
+	}
+	h := handlers.NewExportDesktopHandler(cfg, transfer.NewTokenStore())
+	h.MountToken(r.With(middleware.NoStore), opts...)
+	h.MountExport(r)
 }

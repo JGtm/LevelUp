@@ -82,6 +82,7 @@ func main() {
 	launchShellIntegration(st)
 	launchScheduledRefresh(st)
 	launchParquetBackup(st)
+	bindSiteImport(st)
 	awaitShutdown(st)
 }
 
