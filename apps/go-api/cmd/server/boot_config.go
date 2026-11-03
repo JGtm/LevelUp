@@ -106,6 +106,7 @@ func bootConfigure(st *bootState) {
 	setupLogging(st)
 	loadBootConfig(st)
 	applyBootGuards(st.cfg)
+	applyBootMemoryLimit(st.cfg)
 	openBootGate(st)
 	refuseIfInstanceLockFailed(st)
 	initToolingAndRegistry(st.cfg)

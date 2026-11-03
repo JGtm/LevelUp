@@ -52,6 +52,11 @@ type CapabilityMap struct {
 	CanWatchGameProcess     bool `json:"can_watch_game_process" doc:"Détection du jeu en cours (mode jeu : cuisson et tâches lourdes suspendues pendant la partie, synchronisation à sa fermeture)."`
 	CanIntegrateShell       bool `json:"can_integrate_shell" doc:"Intégration de la coquille avec le poste : notifications Windows, zone de notification, démarrage avec Windows."`
 	CanScheduleRefresh      bool `json:"can_schedule_refresh" doc:"Tâche planifiée Windows qui rafraîchit les jetons quand l'application est fermée."`
+	CanBackupToFolder       bool `json:"can_backup_to_folder" doc:"Sauvegarde périodique des données en Parquet vers un dossier choisi, et restauration."`
+	CanImportFromSite       bool `json:"can_import_from_site" doc:"Import des données d'un joueur depuis une instance hébergée (jeton d'export à usage unique)."`
+	CanExportForDesktop     bool `json:"can_export_for_desktop" doc:"L'instance livre au joueur connecté ses données pour l'application de bureau."`
+	CanReportDiagnostic     bool `json:"can_report_diagnostic" doc:"Rapport de diagnostic (archive de journaux et d'état, sans secret) à joindre à un signalement."`
+	CanLimitMemory          bool `json:"can_limit_memory" doc:"Plafond mémoire des bases réglable, mémoire du processus affichée."`
 
 	// Deployment : nom du profil de déploiement, pour l'affichage et le diagnostic SEULEMENT.
 	Deployment string `json:"deployment" enum:"hosted,desktop,demo,dev" doc:"Profil de déploiement (affichage et diagnostic ; ne jamais brancher dessus)."`

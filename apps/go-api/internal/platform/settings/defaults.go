@@ -163,5 +163,6 @@ func defaultSettings() *AppSettings {
 		ReplaySoundDistancePercent:  0,
 		FilmArchiveSettings:         domain.FilmArchiveSettings{ArchiveFilms: true},
 		DesktopSettings:             domain.DesktopSettings{GameProcessWatch: true},
+		DataSettings:                domain.DataSettings{BackupKeep: DefaultBackupKeep},
 	}
 }

@@ -145,6 +145,23 @@ type DeploymentCapabilities struct {
 	// ScheduledRefresh : le serveur peut poser une tâche planifiée Windows qui lance `-mode refresh-only`
 	// pour garder les jetons vivants quand l'application est fermée (réglage `scheduled_refresh`).
 	ScheduledRefresh bool
+	// ParquetBackup : le serveur sauvegarde périodiquement les bases en Parquet vers un dossier choisi par
+	// l'utilisateur (réglages `backup_dir`, `backup_interval`, `backup_keep`) et sait les restaurer. Faux sur un
+	// serveur hébergé, qui a sa propre sauvegarde (restic) ; la démo n'a rien à protéger.
+	ParquetBackup bool
+	// ImportFromSite : le serveur peut importer les données d'un joueur depuis une instance hébergée
+	// (jeton d'export à usage unique, archive Parquet vérifiée, écriture par les chemins d'écriture existants).
+	ImportFromSite bool
+	// ExportForDesktop : l'instance livre au joueur CONNECTÉ ses données pour une application de bureau
+	// (GET /export/desktop). Vraie sur un serveur hébergé ; l'application de bureau, qui n'a qu'un compte, et la
+	// démo, qui n'en a aucun de réel, ne l'offrent pas.
+	ExportForDesktop bool
+	// DiagnosticReport : le serveur produit un rapport de diagnostic (archive de journaux, versions et état,
+	// sans secret) que l'utilisateur joint à un signalement.
+	DiagnosticReport bool
+	// MemoryLimit : le plafond mémoire des bases DuckDB se règle (`memory_limit_mb`) et la mémoire du
+	// processus se mesure.
+	MemoryLimit bool
 	// AutoSyncByDefault : la synchronisation automatique (`spnkr_auto_sync_enabled`) est ACTIVE tant que
 	// l'utilisateur n'a rien écrit : l'application de bureau suit un compte et doit se tenir à jour sans
 	// réglage préalable. Défaut des clés absentes d'app_settings.json (settings.Store.WithAutoSyncDefault) ;
@@ -253,6 +270,11 @@ func capabilitiesOf(cfg *AppConfig) DeploymentCapabilities {
 		ShellIntegration:       desktop,
 		ScheduledRefresh:       desktop,
 		AutoSyncByDefault:      desktop,
+		ParquetBackup:          desktop,
+		ImportFromSite:         desktop,
+		ExportForDesktop:       !desktop && !demo,
+		DiagnosticReport:       desktop,
+		MemoryLimit:            desktop,
 	}
 }
 

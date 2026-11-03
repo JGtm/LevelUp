@@ -26,3 +26,36 @@ en = "The current archive holds {films} films: move them with the \"levelup film
 [settings.desktop.not_offered]
 fr = "Ce réglage n'existe que dans l'application de bureau."
 en = "This setting only exists in the desktop application."
+
+# Réglages des données de l'application de bureau (lot L22) : sauvegarde en dossier et plafond mémoire.
+[settings.data.not_offered]
+fr = "Ce réglage n'existe que dans l'application de bureau."
+en = "This setting only exists in the desktop application."
+
+[settings.data.interval_invalid]
+fr = "L'intervalle de sauvegarde doit être un nombre entier d'heures, de 1 h à 168 h (par exemple « 24h »)."
+en = "The backup interval must be a whole number of hours, from 1h to 168h (for example \"24h\")."
+
+[settings.data.keep_invalid]
+fr = "Le nombre de sauvegardes conservées doit être compris entre 1 et 60."
+en = "The number of backups to keep must be between 1 and 60."
+
+[settings.data.memory_invalid]
+fr = "Le plafond mémoire doit valoir 0 (valeur par défaut) ou être compris entre 1 024 et 32 768 Mo."
+en = "The memory limit must be 0 (default) or between 1,024 and 32,768 MB."
+
+[settings.data.dir_not_absolute]
+fr = "Le dossier de sauvegarde doit être un chemin absolu."
+en = "The backup folder must be an absolute path."
+
+[settings.data.dir_missing]
+fr = "Le dossier de sauvegarde n'existe pas : {dir}."
+en = "The backup folder does not exist: {dir}."
+
+[settings.data.dir_not_writable]
+fr = "Le dossier de sauvegarde n'est pas accessible en écriture : {dir}."
+en = "The backup folder is not writable: {dir}."
+
+[settings.data.dir_inside_data]
+fr = "Le dossier de sauvegarde ne peut pas se trouver dans le dossier des données de l'application : une sauvegarde placée là ne protège de rien."
+en = "The backup folder cannot be inside the application data folder: a backup stored there protects nothing."

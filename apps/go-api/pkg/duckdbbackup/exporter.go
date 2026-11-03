@@ -67,6 +67,14 @@ func CheckIntegrity(ctx context.Context, t Target) IntegrityResult {
 	return res
 }
 
+// TableExport décrit une table exportée : son nom, son fichier Parquet et le nombre de lignes
+// que le COPY a écrites.
+type TableExport struct {
+	Table string
+	File  string // chemin du Parquet
+	Rows  int64
+}
+
 // ExportTarget exports all BASE TABLE tables from t to outputDir as Parquet+zstd.
 //
 // Si t.OpenDB est défini, réutilise la connexion fournie — requis pour les
@@ -77,33 +85,43 @@ func CheckIntegrity(ctx context.Context, t Target) IntegrityResult {
 //
 // Returns the number of tables exported.
 func ExportTarget(ctx context.Context, t Target, outputDir string, compressionLevel int) (int, error) {
+	exports, _, err := ExportTargetTables(ctx, t, outputDir, compressionLevel)
+	return len(exports), err
+}
+
+// ExportTargetTables fait le travail d'ExportTarget et rend, table par table, le fichier écrit et
+// son nombre de lignes, plus le nom des tables dont l'export a échoué (journalisées et ignorées : seule
+// l'absence totale d'export est une erreur ; l'appelant qui garantit une sauvegarde complète lit la
+// seconde liste). Le schéma (_ddl_<horodatage>.json) est écrit à côté.
+func ExportTargetTables(ctx context.Context, t Target, outputDir string, compressionLevel int) ([]TableExport, []string, error) {
 	if compressionLevel <= 0 {
 		compressionLevel = 9
 	}
 	if err := os.MkdirAll(outputDir, 0o755); err != nil {
-		return 0, fmt.Errorf("mkdir %s: %w", outputDir, err)
+		return nil, nil, fmt.Errorf("mkdir %s: %w", outputDir, err)
 	}
 
 	db, release, err := openTarget(ctx, t)
 	if err != nil {
-		return 0, fmt.Errorf("open %s: %w", t.Path, err)
+		return nil, nil, fmt.Errorf("open %s: %w", t.Path, err)
 	}
 	defer release()
 
 	tables, err := listTables(ctx, db)
 	if err != nil {
-		return 0, fmt.Errorf("list tables %s: %w", t.Key, err)
+		return nil, nil, fmt.Errorf("list tables %s: %w", t.Key, err)
 	}
 
 	slog.DebugContext(ctx, "backup: export démarré", "key", t.Key, "tables", len(tables))
 	start := time.Now()
 	ts := start.UTC().Format("20060102_150405")
 	writeSchemaDDL(ctx, db, t.Key, filepath.Join(outputDir, ddlFilePrefix+ts+ddlFileSuffix))
-	exported := 0
+	var exported []TableExport
 	var failed []string
 	for _, table := range tables {
 		outPath := filepath.Join(outputDir, fmt.Sprintf("%s_%s.parquet", table, ts))
-		if err := exportTable(ctx, db, table, outPath, compressionLevel); err != nil {
+		rows, err := exportTable(ctx, db, table, outPath, compressionLevel)
+		if err != nil {
 			// Échec d'une table : on WARN et on continue. Un objet résiduel ou
 			// corrompu (ex: vue legacy, table d'un catalogue attaché qui a
 			// échappé au filtre listTables) ne doit jamais faire perdre tout le
@@ -113,20 +131,20 @@ func ExportTarget(ctx context.Context, t Target, outputDir string, compressionLe
 			failed = append(failed, table)
 			continue
 		}
-		exported++
+		exported = append(exported, TableExport{Table: table, File: outPath, Rows: rows})
 	}
 	slog.InfoContext(ctx, "backup: export terminé",
 		"key", t.Key,
-		"tables_ok", exported,
+		"tables_ok", len(exported),
 		"tables_failed", len(failed),
 		"duration", time.Since(start).Round(time.Millisecond))
 	// On ne remonte une erreur dure que si AUCUNE table n'a pu être exportée
 	// (signal d'un problème global : conn morte, dossier non writable...).
-	if exported == 0 && len(failed) > 0 {
-		return 0, fmt.Errorf("export %s: aucune des %d tables exportée (ex: %s)",
+	if len(exported) == 0 && len(failed) > 0 {
+		return nil, failed, fmt.Errorf("export %s: aucune des %d tables exportée (ex: %s)",
 			t.Key, len(failed), failed[0])
 	}
-	return exported, nil
+	return exported, failed, nil
 }
 
 // openTarget retourne une connexion sur t et la fonction de libération
@@ -179,11 +197,16 @@ func listTables(ctx context.Context, db *sql.DB) ([]string, error) {
 	return tables, rows.Err()
 }
 
-func exportTable(ctx context.Context, db *sql.DB, table, outPath string, compressionLevel int) error {
+// exportTable écrit table dans outPath et rend le nombre de lignes du COPY. Le chemin est un
+// littéral SQL : une apostrophe (dossier utilisateur « O'Brien ») y est doublée.
+func exportTable(ctx context.Context, db *sql.DB, table, outPath string, compressionLevel int) (int64, error) {
 	q := fmt.Sprintf(
 		`COPY %q TO '%s' (FORMAT PARQUET, COMPRESSION 'zstd', COMPRESSION_LEVEL %d)`,
-		table, outPath, compressionLevel,
+		table, strings.ReplaceAll(outPath, "'", "''"), compressionLevel,
 	)
-	_, err := db.ExecContext(ctx, q)
-	return err
+	var rows int64
+	if err := db.QueryRowContext(ctx, q).Scan(&rows); err != nil {
+		return 0, err
+	}
+	return rows, nil
 }

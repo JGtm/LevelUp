@@ -7049,6 +7049,44 @@ paths:
       summary: Statut du scheduler de sauvegarde
       tags:
         - settings
+  /settings/data:
+    get:
+      operationId: getDataStatus
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataStatus'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Etat des sauvegardes et de la memoire (application de bureau)
+      tags:
+        - settings
+  /settings/data/backup/run:
+    post:
+      operationId: postDataBackupRun
+      responses:
+        "202":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataBackupRunResponse'
+          description: Accepted
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Lance une sauvegarde en dossier maintenant (application de bureau)
+      tags:
+        - settings
   /settings/desktop:
     get:
       operationId: getDesktopStatus
@@ -10611,14 +10649,26 @@ components:
     CapabilityMap:
       additionalProperties: false
       properties:
+        can_backup_to_folder:
+          description: Sauvegarde périodique des données en Parquet vers un dossier choisi, et restauration.
+          type: boolean
         can_compare_accounts:
           description: 'L''instance suit plusieurs comptes : les pages qui les confrontent (classements de la communauté) sont offertes.'
           type: boolean
         can_edit_settings:
           description: Réglages de l'instance modifiables (figés en démo).
           type: boolean
+        can_export_for_desktop:
+          description: L'instance livre au joueur connecté ses données pour l'application de bureau.
+          type: boolean
+        can_import_from_site:
+          description: Import des données d'un joueur depuis une instance hébergée (jeton d'export à usage unique).
+          type: boolean
         can_integrate_shell:
           description: 'Intégration de la coquille avec le poste : notifications Windows, zone de notification, démarrage avec Windows.'
+          type: boolean
+        can_limit_memory:
+          description: Plafond mémoire des bases réglable, mémoire du processus affichée.
           type: boolean
         can_login_via_browser:
           description: Connexion Microsoft dans le navigateur par défaut, sans code à recopier (application de bureau).
@@ -10634,6 +10684,9 @@ components:
           description: Mise en commun des jetons proposée à l'utilisateur.
           type: boolean
         can_read_local_data:
+          type: boolean
+        can_report_diagnostic:
+          description: Rapport de diagnostic (archive de journaux et d'état, sans secret) à joindre à un signalement.
           type: boolean
         can_reset_media_index:
           type: boolean
@@ -10723,6 +10776,11 @@ components:
         - can_watch_game_process
         - can_integrate_shell
         - can_schedule_refresh
+        - can_backup_to_folder
+        - can_import_from_site
+        - can_export_for_desktop
+        - can_report_diagnostic
+        - can_limit_memory
         - deployment
       type: object
     CareerCSRRank:
@@ -13049,6 +13107,92 @@ components:
         - watchdog_fired
         - holders
       type: object
+    DataBackupAttempt:
+      additionalProperties: false
+      properties:
+        at:
+          description: Instant du passage.
+          format: date-time
+          type: string
+        error_code:
+          description: Code fixe de l'échec (nothing_exported, backup_failed).
+          type: string
+        ok:
+          description: Le passage a réussi.
+          type: boolean
+      required:
+        - at
+        - ok
+      type: object
+    DataBackupRunResponse:
+      additionalProperties: false
+      properties:
+        started:
+          description: La sauvegarde a été lancée.
+          type: boolean
+      required:
+        - started
+      type: object
+    DataBackupStatus:
+      additionalProperties: false
+      properties:
+        enabled:
+          description: Un dossier de sauvegarde est choisi.
+          type: boolean
+        last:
+          $ref: '#/components/schemas/DataBackupSummary'
+          description: Jeu de sauvegarde complet le plus récent du dossier choisi.
+        last_attempt:
+          $ref: '#/components/schemas/DataBackupAttempt'
+          description: Dernier passage depuis le démarrage de l'application.
+        running:
+          description: Une sauvegarde est en cours d'écriture.
+          type: boolean
+        same_volume:
+          description: Le dossier choisi est sur le même volume que les données.
+          type: boolean
+      required:
+        - enabled
+        - running
+        - same_volume
+      type: object
+    DataBackupSummary:
+      additionalProperties: false
+      properties:
+        app_version:
+          description: Version de l'application qui a écrit le jeu.
+          type: string
+        bytes:
+          description: Taille du jeu, en octets.
+          format: int64
+          type: integer
+        created_at:
+          description: Instant de la sauvegarde.
+          format: date-time
+          type: string
+        databases:
+          description: Nombre de bases du jeu.
+          format: int64
+          type: integer
+        duration_ms:
+          description: Durée de la sauvegarde, en millisecondes.
+          format: int64
+          type: integer
+        name:
+          description: Nom du dossier du jeu.
+          type: string
+        partial:
+          description: 'Vrai quand une base est restée occupée ou a échoué : le jeu est incomplet.'
+          type: boolean
+      required:
+        - name
+        - created_at
+        - bytes
+        - databases
+        - duration_ms
+        - partial
+        - app_version
+      type: object
     DataIssue:
       additionalProperties: false
       properties:
@@ -13058,6 +13202,16 @@ components:
           type: string
       required:
         - code
+      type: object
+    DataStatus:
+      additionalProperties: false
+      properties:
+        backup:
+          $ref: '#/components/schemas/DataBackupStatus'
+          description: État de la sauvegarde périodique en Parquet (absent hors de l'application de bureau).
+        memory:
+          $ref: '#/components/schemas/MemoryStatus'
+          description: Mémoire du processus et plafond effectif des bases (absent hors de l'application de bureau).
       type: object
     DatabaseStatus:
       additionalProperties: false
@@ -21163,6 +21317,25 @@ components:
         - ffmpeg
         - ffprobe
         - h264_encoder_missing
+      type: object
+    MemoryStatus:
+      additionalProperties: false
+      properties:
+        effective_limit:
+          description: Plafond mémoire effectivement appliqué à chaque base (par exemple 4096MiB).
+          type: string
+        limit_mb:
+          description: Plafond réglé pour chaque base, en Mo (0 = valeur par défaut du serveur).
+          format: int64
+          type: integer
+        rss_mb:
+          description: Mémoire résidente du processus, en Mo (0 quand la mesure est indisponible).
+          format: int64
+          type: integer
+      required:
+        - rss_mb
+        - limit_mb
+        - effective_limit
       type: object
     MilestoneDTO:
       additionalProperties: false

@@ -216,7 +216,8 @@ Usage:
   levelup <commande> [options]
 
 Commandes:
-  backup          Sauvegarder une DB joueur en Parquet Zstd
+  backup          Sauvegarder une DB joueur en Parquet Zstd ; « backup restore --from <jeu> --to <racine> » restaure un jeu de
+                  sauvegarde periodique de l application de bureau (--dry-run, --force, serveur arrete)
   restore         Restaurer une DB joueur depuis un backup Parquet
   healthcheck     Diagnostic d'integrite des bases DuckDB
   diagnose        Inspecter le schema d'une DB DuckDB

@@ -23,6 +23,9 @@ import (
 // ─────────────────────────────────────────────────────────────────────────────
 
 func runBackup(cfg *config.AppConfig, args []string) error {
+	if len(args) > 0 && args[0] == subcmdBackupRestore {
+		return runBackupRestore(cfg, args[1:], os.Stdout)
+	}
 	fs := flag.NewFlagSet("backup", flag.ExitOnError)
 	gamertag := fs.String("gamertag", "", "Gamertag du joueur (obligatoire)")
 	titleSlug := fs.String("title", title.DefaultSlug, "Slug du titre (ex: halo_infinite)")

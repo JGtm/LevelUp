@@ -81,6 +81,7 @@ func main() {
 	launchGameWatch(st)
 	launchShellIntegration(st)
 	launchScheduledRefresh(st)
+	launchParquetBackup(st)
 	awaitShutdown(st)
 }
 
