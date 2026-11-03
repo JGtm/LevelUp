@@ -35,6 +35,11 @@ export const DEPLOYMENT_CAPABILITY_DEFAULTS = {
   can_watch_game_process: false,
   can_integrate_shell: false,
   can_schedule_refresh: false,
+  can_backup_to_folder: false,
+  can_import_from_site: false,
+  can_export_for_desktop: false,
+  can_report_diagnostic: false,
+  can_limit_memory: false,
 } as const satisfies Partial<CapabilityMap>
 
 /** Clé d'une capacité de profil de déploiement (booléen de `capabilities`). */

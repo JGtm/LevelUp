@@ -331,3 +331,38 @@ func TestImport_TableDUnCycleAnterieurRepli(t *testing.T) {
 		t.Fatal("la table du dernier cycle doit garder son schéma")
 	}
 }
+
+// TestImport_LeWALAccompagneSaBase : le WAL de l'ancienne base est écarté avec elle (la base neuve ne le rejoue
+// pas) et, si l'import échoue, remis en place avec elle : il n'est jamais supprimé (S4.B).
+func TestImport_LeWALAccompagneSaBase(t *testing.T) {
+	staging := exportDB(t, "db1", `CREATE TABLE t (v INTEGER); INSERT INTO t VALUES (1);`)
+	target := filepath.Join(t.TempDir(), "db1.duckdb")
+	wal := target + ".wal"
+	for p, content := range map[string]string{target: "ancienne", wal: "journal"} {
+		if err := os.WriteFile(p, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	_, err := ImportFromStaging(context.Background(), staging, func(string) string { return target },
+		func(context.Context, string, *sql.DB) error { return errors.New("boom") }, false)
+	if err == nil {
+		t.Fatal("une finalisation en échec doit faire échouer l'import")
+	}
+	if got, rerr := os.ReadFile(wal); rerr != nil || string(got) != "journal" {
+		t.Fatalf("WAL d'origine non remis en place après l'échec : %q (err=%v)", got, rerr)
+	}
+	if got, rerr := os.ReadFile(target); rerr != nil || string(got) != "ancienne" {
+		t.Fatalf("base d'origine non remise en place : %q (err=%v)", got, rerr)
+	}
+
+	// Réussite : ni l'ancien WAL ni les .bak ne restent, la base neuve s'ouvre sans lui.
+	importTo(t, staging, target, nil)
+	for _, p := range []string{wal, target + ".bak", wal + ".bak"} {
+		if _, serr := os.Stat(p); serr == nil {
+			t.Errorf("%s doit avoir disparu après une restauration réussie", p)
+		}
+	}
+	if got := scalar(t, openRestored(t, target), `SELECT count(*) FROM t`); got != 1 {
+		t.Fatalf("lignes restaurées = %d, attendu 1", got)
+	}
+}

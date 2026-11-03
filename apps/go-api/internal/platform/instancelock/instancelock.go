@@ -1,5 +1,6 @@
-// Package instancelock : le verrou d'instance du serveur, une seule instance par racine de données
-// en mode desktop et refresh-only (ADR 0045 D-10).
+// Package instancelock : le verrou d'instance du serveur, une seule instance par racine de données, tous
+// profils confondus (hébergé, développement, démo, desktop, refresh-only : ADR 0045 D-10). Une restauration de
+// sauvegarde (`-mode restore`) le consulte avant de remplacer des bases.
 //
 // Le plugin « instance unique » de la coquille ne protège ni la tâche planifiée de rafraîchissement
 // ni un `go run` lancé à la main : le verrou est donc tenu par le serveur lui-même.

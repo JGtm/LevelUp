@@ -6,12 +6,16 @@
  * par Microsoft. Modale accessible : rôle `dialog`, focus renvoyé au déclencheur à la fermeture,
  * Tab bouclé dans la fenêtre (et ramené dedans quand le focus en sort), Échap et clic sur le fond ferment.
  *
+ * Sous la capacité `can_report_diagnostic`, le rapport de diagnostic (DiagnosticReportSection) crée l'archive
+ * à joindre à un signalement.
+ *
  * Les liens externes viennent de `lib/appLinks` (garde-rail `appLinks.guard.test.ts`) et se posent
  * SANS `target="_blank"` : la coquille ouvre tout lien web dans le navigateur par défaut et laisse
  * la fenêtre où elle est (navigation.rs).
  */
 import { Link } from '@tanstack/react-router'
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { DiagnosticReportSection } from '@/components/shell/DiagnosticReportSection'
 import { MicrosoftNotice } from '@/components/shell/MicrosoftNotice'
 import { useFeedbackDrawerStore } from '@/features/feedback-drawer/feedbackDrawer.store'
 import { APP_NAME } from '@/lib/appBrand'
@@ -172,6 +176,8 @@ function AboutDialogBody({ onClose }: { onClose: () => void }) {
             {updateHint}
           </p>
         </div>
+
+        <DiagnosticReportSection />
 
         <div className="grid gap-4 text-sm sm:grid-cols-3">
           <Column heading={t('common.footer.project_heading')}>

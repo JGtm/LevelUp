@@ -3897,6 +3897,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/settings/data": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Etat des sauvegardes et de la memoire (application de bureau) */
+        get: operations["getDataStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/data/backup/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Lance une sauvegarde en dossier maintenant (application de bureau) */
+        post: operations["postDataBackupRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/settings/desktop": {
         parameters: {
             query?: never;
@@ -5411,12 +5445,20 @@ export interface components {
             Severity: string;
         };
         CapabilityMap: {
+            /** @description Sauvegarde périodique des données en Parquet vers un dossier choisi, et restauration. */
+            can_backup_to_folder: boolean;
             /** @description L'instance suit plusieurs comptes : les pages qui les confrontent (classements de la communauté) sont offertes. */
             can_compare_accounts: boolean;
             /** @description Réglages de l'instance modifiables (figés en démo). */
             can_edit_settings: boolean;
+            /** @description L'instance livre au joueur connecté ses données pour l'application de bureau. */
+            can_export_for_desktop: boolean;
+            /** @description Import des données d'un joueur depuis une instance hébergée (jeton d'export à usage unique). */
+            can_import_from_site: boolean;
             /** @description Intégration de la coquille avec le poste : notifications Windows, zone de notification, démarrage avec Windows. */
             can_integrate_shell: boolean;
+            /** @description Plafond mémoire des bases réglable, mémoire du processus affichée. */
+            can_limit_memory: boolean;
             /** @description Connexion Microsoft dans le navigateur par défaut, sans code à recopier (application de bureau). */
             can_login_via_browser: boolean;
             can_manage_instance: boolean;
@@ -5426,6 +5468,8 @@ export interface components {
             /** @description Mise en commun des jetons proposée à l'utilisateur. */
             can_pool_tokens: boolean;
             can_read_local_data: boolean;
+            /** @description Rapport de diagnostic (archive de journaux et d'état, sans secret) à joindre à un signalement. */
+            can_report_diagnostic: boolean;
             can_reset_media_index: boolean;
             can_run_sync: boolean;
             /** @description Tâche planifiée Windows qui rafraîchit les jetons quand l'application est fermée. */
@@ -6428,9 +6472,70 @@ export interface components {
             /** Format: int64 */
             watchdog_fired: number;
         };
+        DataBackupAttempt: {
+            /**
+             * Format: date-time
+             * @description Instant du passage.
+             */
+            at: string;
+            /** @description Code fixe de l'échec (nothing_exported, backup_failed). */
+            error_code?: string;
+            /** @description Le passage a réussi. */
+            ok: boolean;
+        };
+        DataBackupRunResponse: {
+            /** @description La sauvegarde a été lancée. */
+            started: boolean;
+        };
+        DataBackupStatus: {
+            /** @description Un dossier de sauvegarde est choisi. */
+            enabled: boolean;
+            /** @description Jeu de sauvegarde complet le plus récent du dossier choisi. */
+            last?: components["schemas"]["DataBackupSummary"];
+            /** @description Dernier passage depuis le démarrage de l'application. */
+            last_attempt?: components["schemas"]["DataBackupAttempt"];
+            /** @description Une sauvegarde est en cours d'écriture. */
+            running: boolean;
+            /** @description Le dossier choisi est sur le même volume que les données. */
+            same_volume: boolean;
+        };
+        DataBackupSummary: {
+            /** @description Version de l'application qui a écrit le jeu. */
+            app_version: string;
+            /**
+             * Format: int64
+             * @description Taille du jeu, en octets.
+             */
+            bytes: number;
+            /**
+             * Format: date-time
+             * @description Instant de la sauvegarde.
+             */
+            created_at: string;
+            /**
+             * Format: int64
+             * @description Nombre de bases du jeu.
+             */
+            databases: number;
+            /**
+             * Format: int64
+             * @description Durée de la sauvegarde, en millisecondes.
+             */
+            duration_ms: number;
+            /** @description Nom du dossier du jeu. */
+            name: string;
+            /** @description Vrai quand une base est restée occupée ou a échoué : le jeu est incomplet. */
+            partial: boolean;
+        };
         DataIssue: {
             code: string;
             detail?: string;
+        };
+        DataStatus: {
+            /** @description État de la sauvegarde périodique en Parquet (absent hors de l'application de bureau). */
+            backup?: components["schemas"]["DataBackupStatus"];
+            /** @description Mémoire du processus et plafond effectif des bases (absent hors de l'application de bureau). */
+            memory?: components["schemas"]["MemoryStatus"];
         };
         DatabaseStatus: {
             error?: string;
@@ -9907,6 +10012,20 @@ export interface components {
             ffmpeg_version?: string;
             ffprobe: boolean;
             h264_encoder_missing: boolean;
+        };
+        MemoryStatus: {
+            /** @description Plafond mémoire effectivement appliqué à chaque base (par exemple 4096MiB). */
+            effective_limit: string;
+            /**
+             * Format: int64
+             * @description Plafond réglé pour chaque base, en Mo (0 = valeur par défaut du serveur).
+             */
+            limit_mb: number;
+            /**
+             * Format: int64
+             * @description Mémoire résidente du processus, en Mo (0 quand la mesure est indisponible).
+             */
+            rss_mb: number;
         };
         MilestoneDTO: {
             condition?: string;
@@ -22770,6 +22889,64 @@ export interface operations {
                 };
             };
             500: components["responses"]["InternalError"];
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getDataStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataStatus"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    postDataBackupRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataBackupRunResponse"];
+                };
+            };
             /** @description Error */
             default: {
                 headers: {

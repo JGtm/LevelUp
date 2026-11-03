@@ -59,12 +59,22 @@ func bootHandler(cfg *config.AppConfig, gate *bootGate) http.Handler {
 	return gate
 }
 
-// bindBootListener lie le port du serveur. Hors -mode desktop : le port configuré (addr), qui doit
-// être libre, sinon sortie immédiate. En -mode desktop : le verrou d'instance d'abord (une autre
-// instance ne doit pas toucher au fichier de port de celle qui tourne), puis le port stable
-// (desktop_port.go) ; l'échec d'écoute y est annoncé `failed{state:"port"}` avant la sortie.
+// bindBootListener prend le verrou d'instance de la racine de données, puis lie le port du serveur. LE VERROU EST
+// PRIS PAR TOUS LES PROFILS (hébergé, développement, démo, desktop) : il n'y a jamais qu'un serveur par racine, et
+// c'est ce verrou que `levelup-server -mode restore` consulte avant de remplacer des bases. Une autre instance qui
+// le tient fait refuser le démarrage (refuseIfInstanceLockFailed, état `locked`) ; une racine qui ne peut pas le
+// recevoir est refusée de même.
+//
+// Hors -mode desktop : le port configuré (addr), qui doit être libre, sinon sortie immédiate. En -mode desktop : le
+// verrou avant le fichier de port (une autre instance ne doit pas toucher au fichier de port de celle qui tourne),
+// puis le port stable (desktop_port.go) ; l'échec d'écoute y est annoncé `failed{state:"port"}` avant la sortie.
 func bindBootListener(st *bootState, addr string) net.Listener {
 	ctx := context.Background()
+	pr := st.cfg.PathResolver()
+	st.instanceLock, st.instanceLockErr = instancelock.Acquire(pr.InstanceLockPath())
+	if st.instanceLockErr != nil {
+		slog.ErrorContext(ctx, "démarrage : verrou d'instance non pris", "path", pr.InstanceLockPath(), "err", st.instanceLockErr)
+	}
 	if st.flags.Mode != serverModeDesktop {
 		ln, err := bindConfiguredPort(ctx, addr)
 		if err != nil {
@@ -73,11 +83,6 @@ func bindBootListener(st *bootState, addr string) net.Listener {
 			os.Exit(1)
 		}
 		return ln
-	}
-	pr := st.cfg.PathResolver()
-	st.instanceLock, st.instanceLockErr = instancelock.Acquire(pr.InstanceLockPath())
-	if st.instanceLockErr != nil {
-		slog.ErrorContext(ctx, "démarrage : verrou d'instance non pris", "path", pr.InstanceLockPath(), "err", st.instanceLockErr)
 	}
 	ln, err := bindDesktopPort(ctx, st.cfg.APIHost, pr.DesktopPortPath(), st.instanceLockErr == nil)
 	if err != nil {

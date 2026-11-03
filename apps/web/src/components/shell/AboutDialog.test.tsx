@@ -4,7 +4,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useState, type ComponentPropsWithoutRef } from 'react'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { http, HttpResponse } from 'msw'
 import { renderWithProviders } from '@/test/render-utils'
+import { testCapabilities } from '@/test/capabilities'
+import { server } from '@/test/setup'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useFeedbackDrawerStore } from '@/features/feedback-drawer/feedbackDrawer.store'
 import {
@@ -267,5 +270,87 @@ describe('AboutDialog', () => {
     expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument()
     expect(screen.getByTestId('about-version')).toHaveTextContent('Version 8.1.0')
     expect(screen.getByRole('button', { name: 'Copy' })).toBeInTheDocument()
+  })
+
+  describe('rapport de diagnostic (can_report_diagnostic)', () => {
+    const REPORT_PATH = 'C:\\Users\\Test\\AppData\\Local\\LevelUp\\diagnostics\\levelup-diagnostic.zip'
+
+    afterEach(() => {
+      useAppShellStore.setState({ capabilities: null })
+    })
+
+    it('sans la capacité, le bouton n’est pas offert', () => {
+      renderWithProviders(<Harness />)
+      expect(screen.queryByRole('button', { name: 'Rapport de diagnostic' })).not.toBeInTheDocument()
+    })
+
+    it('crée le rapport, montre le chemin du zip et la consigne de signalement', async () => {
+      useAppShellStore.setState({ capabilities: testCapabilities({ can_report_diagnostic: true }) })
+      renderWithProviders(<Harness />)
+      fireEvent.click(screen.getByRole('button', { name: 'Rapport de diagnostic' }))
+
+      expect(await screen.findByTestId('about-diagnostic-path')).toHaveTextContent(REPORT_PATH)
+      expect(screen.getByText('Joignez ce fichier à votre signalement.')).toBeInTheDocument()
+    })
+
+    it('« Copier le chemin » met le chemin dans le presse-papier et le confirme', async () => {
+      const writeText = vi.fn().mockResolvedValue(undefined)
+      vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } })
+      useAppShellStore.setState({ capabilities: testCapabilities({ can_report_diagnostic: true }) })
+      renderWithProviders(<Harness />)
+      fireEvent.click(screen.getByRole('button', { name: 'Rapport de diagnostic' }))
+      await screen.findByTestId('about-diagnostic-path')
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Copier le chemin' }))
+      })
+
+      expect(writeText).toHaveBeenCalledWith(REPORT_PATH)
+      expect(await screen.findByRole('button', { name: 'Chemin copié' })).toBeInTheDocument()
+    })
+
+    it('presse-papier indisponible : le chemin reste affiché, sans fausse confirmation', async () => {
+      vi.stubGlobal('navigator', { ...navigator, clipboard: undefined })
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      useAppShellStore.setState({ capabilities: testCapabilities({ can_report_diagnostic: true }) })
+      renderWithProviders(<Harness />)
+      fireEvent.click(screen.getByRole('button', { name: 'Rapport de diagnostic' }))
+      await screen.findByTestId('about-diagnostic-path')
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Copier le chemin' }))
+      })
+
+      expect(screen.getByTestId('about-diagnostic-path')).toHaveTextContent(REPORT_PATH)
+      expect(screen.queryByRole('button', { name: 'Chemin copié' })).not.toBeInTheDocument()
+    })
+
+    it('un rapport déjà en cours (409) est dit depuis son code', async () => {
+      server.use(
+        http.post('/api/v1/desktop/diagnostic', () =>
+          HttpResponse.json(
+            { status: 409, code: 'diagnostic_already_running', message: 'MESSAGE DU SERVEUR' },
+            { status: 409 },
+          ),
+        ),
+      )
+      useAppShellStore.setState({ capabilities: testCapabilities({ can_report_diagnostic: true }) })
+      renderWithProviders(<Harness />)
+      fireEvent.click(screen.getByRole('button', { name: 'Rapport de diagnostic' }))
+      expect(await screen.findByRole('alert')).toHaveTextContent('Un rapport est déjà en cours de création.')
+      expect(screen.queryByText('MESSAGE DU SERVEUR')).not.toBeInTheDocument()
+    })
+
+    it('un échec est dit, en anglais quand la langue est en', async () => {
+      server.use(
+        http.post('/api/v1/desktop/diagnostic', () =>
+          HttpResponse.json({ status: 500, code: 'internal_error', message: 'x' }, { status: 500 }),
+        ),
+      )
+      useAppShellStore.setState({ locale: 'en', capabilities: testCapabilities({ can_report_diagnostic: true }) })
+      renderWithProviders(<Harness />)
+      fireEvent.click(screen.getByRole('button', { name: 'Diagnostic report' }))
+      expect(await screen.findByRole('alert')).toHaveTextContent('The report could not be created.')
+    })
   })
 })

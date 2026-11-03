@@ -58,7 +58,14 @@ func DiagnoseDB(ctx context.Context, opts DiagnoseOptions) (DiagnoseReport, erro
 		return DiagnoseReport{}, fmt.Errorf("ouverture: %w", err)
 	}
 	defer db.Close()
+	return DiagnoseHandle(ctx, db, opts)
+}
 
+// DiagnoseHandle inspecte le schéma d'une base DÉJÀ ouverte (opts.DBPath ne sert qu'à nommer le rapport) : le
+// serveur en marche prête le handle du cache process-wide (duckdb.OpenReadForQuery), une ouverture
+// forcée en lecture seule échouerait sur une base qu'il tient en lecture-écriture.
+func DiagnoseHandle(ctx context.Context, db *sql.DB, opts DiagnoseOptions) (DiagnoseReport, error) {
+	var err error
 	report := DiagnoseReport{DBPath: opts.DBPath}
 
 	if report.Tables, err = describeAllTables(ctx, db, opts.Verbose); err != nil {

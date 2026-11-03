@@ -59,8 +59,8 @@ type bootState struct {
 	bootSrv      *bootServer
 	// events : les événements du contrat coquille <-> serveur ; nil hors -mode desktop.
 	events *desktopEvents
-	// instanceLock : le verrou d'instance tenu par ce processus (nil hors -mode desktop, ou si une
-	// autre instance le tient : instanceLockErr). Rendu à l'arrêt (releaseInstanceLock).
+	// instanceLock : le verrou d'instance tenu par ce processus, tous profils confondus (nil si une autre
+	// instance le tient : instanceLockErr). Rendu à l'arrêt (releaseInstanceLock).
 	instanceLock    *instancelock.Lock
 	instanceLockErr error
 	pr              *title.PathResolver
@@ -106,6 +106,7 @@ func bootConfigure(st *bootState) {
 	setupLogging(st)
 	loadBootConfig(st)
 	applyBootGuards(st.cfg)
+	applyBootMemoryLimit(st.cfg)
 	openBootGate(st)
 	refuseIfInstanceLockFailed(st)
 	initToolingAndRegistry(st.cfg)

@@ -54,6 +54,9 @@ func main() {
 	if st.flags.Mode == serverModeRefreshOnly {
 		os.Exit(runRefreshOnly(st)) // rafraîchit les jetons puis sort : ni base, ni port, ni événements
 	}
+	if st.flags.Mode == serverModeRestore {
+		os.Exit(runRestoreMode(st.ctx, st.flags)) // restaure un jeu de sauvegarde puis sort : ni configuration serveur, ni port
+	}
 	bootConfigure(st)
 	bootMigrate(st)
 	bootOpenDatabases(st)
@@ -81,6 +84,8 @@ func main() {
 	launchGameWatch(st)
 	launchShellIntegration(st)
 	launchScheduledRefresh(st)
+	launchParquetBackup(st)
+	bindSiteImport(st)
 	awaitShutdown(st)
 }
 

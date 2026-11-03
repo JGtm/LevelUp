@@ -5,7 +5,7 @@
  * 401 `auth_required`, que la coquille traiterait comme une session expirée).
  */
 import type { ReactNode } from 'react'
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { afterEach, describe, it, expect, beforeEach, vi } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
@@ -13,6 +13,7 @@ import { renderWithProviders } from '@/test/render-utils'
 import { server } from '@/test/setup'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useSetupFlowStore } from '@/stores/setupFlowStore'
+import { desktopCapabilities, testCapabilities } from '@/test/capabilities'
 import { StepInitialSync } from './StepInitialSync'
 
 // Link sans contexte routeur : un ancre suffit au rendu de l'étape.
@@ -84,4 +85,68 @@ describe('StepInitialSync — échec du job', () => {
     expect(await screen.findByText('Erreur inattendue. Veuillez réessayer.', {}, { timeout: 8000 })).toBeInTheDocument()
     expect(screen.queryByText(/SELECT/)).not.toBeInTheDocument()
   }, 15_000)
+})
+
+describe('StepInitialSync — import facultatif depuis le site (capacité can_import_from_site)', () => {
+  const TOGGLE = 'Vous avez déjà un compte sur le site ? Importer vos données'
+
+  beforeEach(() => {
+    useSetupFlowStore.getState().reset()
+    useAppShellStore.setState({ activeSyncJobId: null, locale: 'fr', capabilities: testCapabilities(desktopCapabilities()) })
+  })
+
+  afterEach(() => {
+    useAppShellStore.setState({ capabilities: null })
+  })
+
+  it('propose un bloc replié avant la première synchronisation, sans retirer le bouton de lancement', async () => {
+    renderWithProviders(<StepInitialSync playerSlug="test-player" />)
+    const bloc = await screen.findByRole('button', { name: TOGGLE })
+    expect(bloc).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByLabelText('Adresse du site')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Lancer la synchronisation' })).toBeInTheDocument()
+  })
+
+  it('l’ignorer ne bloque rien : la synchronisation démarre sans l’avoir ouvert', async () => {
+    let lancees = 0
+    server.use(
+      http.post('*/sync/initial', () => {
+        lancees++
+        return HttpResponse.json({ job_id: 'j-1', job_type: 'initial_sync', status: 'running' }, { status: 202 })
+      }),
+      http.get('*/jobs/:jobId', () =>
+        HttpResponse.json({ job_id: 'j-1', job_type: 'initial_sync', status: 'running', warnings: [] }),
+      ),
+    )
+    renderWithProviders(<StepInitialSync playerSlug="test-player" />)
+    await screen.findByRole('button', { name: TOGGLE })
+    await userEvent.click(screen.getByRole('button', { name: 'Lancer la synchronisation' }))
+    await waitFor(() => expect(lancees).toBe(1))
+    // Une fois la synchronisation lancée, le bloc d'import disparaît.
+    await waitFor(() => expect(screen.queryByRole('button', { name: TOGGLE })).not.toBeInTheDocument())
+  })
+
+  it('un import en cours bloque le bouton de synchronisation, avec un message, sans démonter le panneau', async () => {
+    server.use(http.get('*/import/site', () => HttpResponse.json({ phase: 'importing', matches: 0 })))
+    renderWithProviders(<StepInitialSync playerSlug="test-player" />)
+    const lancer = await screen.findByRole('button', { name: 'Lancer la synchronisation' })
+    await waitFor(() => expect(lancer).toBeDisabled())
+    expect(screen.getByText(/Un import est en cours : la synchronisation pourra être lancée/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: TOGGLE })).toBeInTheDocument()
+  })
+
+  it('l’import terminé ou absent ne bloque pas la synchronisation', async () => {
+    server.use(http.get('*/import/site', () => HttpResponse.json({ phase: 'done', matches: 3 })))
+    renderWithProviders(<StepInitialSync playerSlug="test-player" />)
+    const lancer = await screen.findByRole('button', { name: 'Lancer la synchronisation' })
+    expect(lancer).toBeEnabled()
+    expect(screen.queryByText(/Un import est en cours/)).not.toBeInTheDocument()
+  })
+
+  it('sans la capacité d’import (site hébergé), le bloc n’existe pas', async () => {
+    useAppShellStore.setState({ capabilities: testCapabilities() })
+    renderWithProviders(<StepInitialSync playerSlug="test-player" />)
+    await screen.findByRole('button', { name: 'Lancer la synchronisation' })
+    expect(screen.queryByRole('button', { name: TOGGLE })).not.toBeInTheDocument()
+  })
 })

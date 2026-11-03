@@ -22,6 +22,8 @@ type AppSettings struct {
 	domain.FilmArchiveSettings
 	// DesktopSettings : intégration au poste de l'application de bureau (lot L21).
 	domain.DesktopSettings
+	// DataSettings : sauvegarde et plafond mémoire de l'application de bureau (lot L22).
+	domain.DataSettings
 	Lang                 string `json:"lang"`
 	DiscordLang          string `json:"discord_lang"`
 	UserTimezone         string `json:"user_timezone"`
@@ -172,6 +174,7 @@ func (s *Store) Load() (*AppSettings, error) {
 	cfg.raw = raw
 	applyAbsentDefaults(cfg, raw, s.absent)
 	enforceFilmArchiveInvariant(cfg)
+	normalizeData(cfg)
 	return cfg, nil
 }
 
@@ -447,6 +450,7 @@ func Apply(cfg *AppSettings, req *domain.UpdateSettingsRequest) {
 	}
 	applyFilmArchive(cfg, &req.FilmArchiveUpdate)
 	applyDesktop(cfg, &req.DesktopUpdate)
+	applyData(cfg, &req.DataUpdate)
 }
 
 // ToResponse convertit AppSettings en SettingsResponse (sans discord_webhook_url).
@@ -454,6 +458,7 @@ func ToResponse(cfg *AppSettings) *domain.SettingsResponse {
 	return &domain.SettingsResponse{
 		FilmArchiveSettings:  cfg.FilmArchiveSettings,
 		DesktopSettings:      cfg.DesktopSettings,
+		DataSettings:         cfg.DataSettings,
 		Lang:                 cfg.Lang,
 		DiscordLang:          cfg.DiscordLang,
 		UserTimezone:         cfg.UserTimezone,

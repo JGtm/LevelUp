@@ -105,6 +105,9 @@ func (h *SettingsHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	huma.Post(api, "/settings/sessions/recalculate", h.handlePostRecalculateSessions, humacore.Op("postSettingsSessionsRecalculate", "Recalcule les sessions à partir de la base actuelle", "settings"),
 		humacore.DefaultStatus(http.StatusAccepted))
 	huma.Get(api, "/settings/desktop", h.handleGetDesktopStatus, humacore.Op("getDesktopStatus", "Etat vivant de l'integration au poste (application de bureau)", "settings"))
+	huma.Get(api, "/settings/data", h.handleGetDataStatus, humacore.Op("getDataStatus", "Etat des sauvegardes et de la memoire (application de bureau)", "settings"))
+	huma.Post(api, "/settings/data/backup/run", h.handlePostDataBackupRun, humacore.Op("postDataBackupRun", "Lance une sauvegarde en dossier maintenant (application de bureau)", "settings"),
+		humacore.DefaultStatus(http.StatusAccepted))
 	huma.Get(api, "/settings/film-archive", h.handleGetFilmArchive, humacore.Op("getFilmArchive", "Occupation et emplacement de l'archive des films", "settings"))
 	huma.Get(api, "/settings/backup/status", h.handleGetBackupStatus, humacore.Op("getBackupStatus", "Statut du scheduler de sauvegarde", "settings"))
 	huma.Post(api, "/settings/backup/run", h.handlePostBackupRun, humacore.Op("postBackupRun", "Déclenche un cycle de sauvegarde immédiat", "settings"))
@@ -293,10 +296,14 @@ func (h *SettingsHandler) handlePatchSettings(ctx context.Context, in *settingsB
 	if err := h.validateFilmArchive(ctx, &req, &prev, cfg); err != nil {
 		return nil, err
 	}
+	if err := h.validateData(ctx, &req, cfg); err != nil {
+		return nil, err
+	}
 
 	if err := h.settingsStore.Save(cfg); err != nil {
 		return nil, humacore.NewError(http.StatusInternalServerError, "settings_save_error", "Impossible de sauvegarder la configuration.")
 	}
+	h.applyDataRuntime(ctx, &req, cfg)
 	if cfg.FilmArchiveDir != prev.FilmArchiveDir {
 		// Archive vide (sinon la validation a refusé) : le nouveau dossier sert tout de suite.
 		titlePkg.SetFilmArchiveRuntime(cfg.FilmArchiveDir)

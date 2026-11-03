@@ -20,7 +20,8 @@
 # `go test -tags=integration ./...` depuis ce module — et refuse (code 1, message sur stderr) toute
 # définition qui perdrait ou dupliquerait un paquet ou des tests :
 #   - un motif qui ne désigne aucun paquet de son module (lot périmé) ;
-#   - un paquet dans deux lots, hors paire complémentaire `run:L` / `skip:L` ;
+#   - un paquet dans plusieurs lots, hors partition complémentaire (`run:L1`, ..., `run:Ln` et un
+#     seul `skip:L1,...,Ln`, complément de l'UNION des listes nommées, listes deux à deux disjointes) ;
 #   - un paquet filtré sans son complément (des tests ne tourneraient nulle part) ;
 #   - un module sans complément (`@reste`), un complément vide, ou qui n'est pas le dernier lot de
 #     son module.
@@ -197,7 +198,8 @@ awk -v mode="$MODE" -v defmod="$MODULE_PAR_DEFAUT" '
     }
     for (m in rest) if (nrest[m] == 0) die("le complément (@reste) du module " m " est vide : tout est déjà listé explicitement")
 
-    # 3. Un paquet : un lot sans filtre, ou la paire complémentaire run:L / skip:L.
+    # 3. Un paquet : un lot sans filtre, ou une partition complémentaire : n lots `run:L1` ... `run:Ln`
+    # (n >= 1, listes distinctes et sans test commun) et UN lot `skip:L1,...,Ln` (la même union).
     for (i = 1; i <= np; i++) {
       n = nown[i]
       if (n == 1) {
@@ -205,21 +207,44 @@ awk -v mode="$MODE" -v defmod="$MODULE_PAR_DEFAUT" '
         if (lfilter[l] != "-") die("paquet " pk[i] " : le lot " lname[l] " le filtre (" lfilter[l] ") sans lot complémentaire, des tests ne tourneraient nulle part")
         continue
       }
-      if (n != 2) die("paquet " pk[i] " : présent dans " n " lots")
-      a = own[i, 1]; b = own[i, 2]
-      fa = lfilter[a]; fb = lfilter[b]
-      ok = 0
-      if (index(fa, "run:") == 1 && index(fb, "skip:") == 1 && substr(fa, 5) == substr(fb, 6)) ok = 1
-      if (index(fb, "run:") == 1 && index(fa, "skip:") == 1 && substr(fb, 5) == substr(fa, 6)) ok = 1
-      if (!ok) die("paquet " pk[i] " : présent dans les lots " lname[a] " et " lname[b] " sans être la paire complémentaire run:/skip:")
+      nrun = 0; nskip = 0; split("", runseen); split("", tseen)
+      for (k = 1; k <= n; k++) {
+        l = own[i, k]; f = lfilter[l]
+        if (index(f, "run:") == 1) {
+          nm = substr(f, 5)
+          if (nm in runseen) die("paquet " pk[i] " : les lots " runseen[nm] " et " lname[l] " jouent la même liste " nm)
+          runseen[nm] = lname[l]; nrun++
+        } else if (index(f, "skip:") == 1) {
+          nskip++; skipl = l
+        } else {
+          die("paquet " pk[i] " : présent dans les lots " lname[own[i, 1]] " et " lname[own[i, 2]] " sans être une partition complémentaire run:/skip: (le lot " lname[l] " n a pas de filtre)")
+        }
+      }
+      if (nskip != 1 || nrun < 1) die("paquet " pk[i] " : présent dans " n " lots sans être une partition complémentaire run:/skip: (il faut un ou plusieurs lots run: et exactement un lot skip:)")
+      ns = split(substr(lfilter[skipl], 6), snames, ",")
+      split("", sseen)
+      for (j = 1; j <= ns; j++) {
+        if ((snames[j] in sseen) || !(snames[j] in runseen)) die("paquet " pk[i] " : le skip: du lot " lname[skipl] " (" lfilter[skipl] ") n est pas le complément exact des lots run: (" nrun " liste(s))")
+        sseen[snames[j]] = 1
+      }
+      if (ns != nrun) die("paquet " pk[i] " : le skip: du lot " lname[skipl] " (" lfilter[skipl] ") n est pas le complément exact des lots run: (" nrun " liste(s))")
+      for (nm in runseen) {
+        if (!(nm in heavy)) continue
+        nt = split(heavy[nm], ts, "|")
+        for (x = 1; x <= nt; x++) {
+          if (ts[x] in tseen) die("paquet " pk[i] " : le test " ts[x] " est dans les listes " tseen[ts[x]] " et " nm " : il tournerait deux fois")
+          tseen[ts[x]] = nm
+        }
+      }
     }
 
     # 4. Filtres : la liste nommée existe.
     for (l = 1; l <= nl; l++) {
       f = lfilter[l]
       if (f == "-") continue
-      name = substr(f, index(f, ":") + 1)
-      if (!(name in heavy)) die("lot " lname[l] " : liste " name " non déclarée par heavy")
+      nn = split(substr(f, index(f, ":") + 1), names, ",")
+      if (index(f, "run:") == 1 && nn != 1) die("lot " lname[l] " : run: attend une seule liste (" f ")")
+      for (j = 1; j <= nn; j++) if (!(names[j] in heavy)) die("lot " lname[l] " : liste " names[j] " non déclarée par heavy")
     }
 
     # 5. Sortie.
@@ -262,7 +287,10 @@ awk -v mode="$MODE" -v defmod="$MODULE_PAR_DEFAUT" '
     if (f != "-") {
       kind = substr(f, 1, index(f, ":") - 1)
       print "-" kind
-      print "^(" heavy[substr(f, index(f, ":") + 1)] ")$"
+      nn = split(substr(f, index(f, ":") + 1), names, ",")
+      motif = ""
+      for (j = 1; j <= nn; j++) motif = motif (j > 1 ? "|" : "") heavy[names[j]]
+      print "^(" motif ")$"
     }
     for (i = 1; i <= np; i++) if (in_lot[target, i]) print (pk[i] == "." ? "." : "./" pk[i])
   }

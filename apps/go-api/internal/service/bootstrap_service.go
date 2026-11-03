@@ -444,6 +444,11 @@ func buildCapabilities(cfg *config.AppConfig, settings map[string]interface{}) d
 		CanWatchGameProcess:     dc.GameProcessWatch,
 		CanIntegrateShell:       dc.ShellIntegration,
 		CanScheduleRefresh:      dc.ScheduledRefresh,
+		CanBackupToFolder:       dc.ParquetBackup,
+		CanImportFromSite:       dc.ImportFromSite,
+		CanExportForDesktop:     dc.ExportForDesktop,
+		CanReportDiagnostic:     dc.DiagnosticReport,
+		CanLimitMemory:          dc.MemoryLimit,
 		Deployment:              string(cfg.Deployment),
 	}
 }

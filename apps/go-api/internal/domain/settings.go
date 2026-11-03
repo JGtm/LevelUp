@@ -13,6 +13,8 @@ type SettingsResponse struct {
 	FilmArchiveSettings
 	// DesktopSettings : intégration au poste de l'application de bureau (lot L21), clés aplaties.
 	DesktopSettings
+	// DataSettings : sauvegarde et plafond mémoire de l'application de bureau (lot L22), clés aplaties.
+	DataSettings
 	Lang                 string `json:"lang" enum:"fr,en"`
 	DiscordLang          string `json:"discord_lang" enum:"fr,en"`
 	UserTimezone         string `json:"user_timezone"`
@@ -107,6 +109,8 @@ type UpdateSettingsRequest struct {
 	FilmArchiveUpdate
 	// DesktopUpdate : intégration au poste de l'application de bureau (lot L21), clés aplaties.
 	DesktopUpdate
+	// DataUpdate : sauvegarde et plafond mémoire de l'application de bureau (lot L22), clés aplaties.
+	DataUpdate
 	Lang                 *string `json:"lang,omitempty"`
 	DiscordLang          *string `json:"discord_lang,omitempty"`
 	UserTimezone         *string `json:"user_timezone,omitempty"`

@@ -2754,6 +2754,42 @@ en = "ffmpeg and ffprobe are shipped under the LGPL licence."
 fr = "Sons du jeu retirés sur simple demande."
 en = "Game sounds removed on simple request."
 
+[common.about.diagnostic_button]
+fr = "Rapport de diagnostic"
+en = "Diagnostic report"
+
+[common.about.diagnostic_hint]
+fr = "Crée une archive des journaux et de l'état de l'application, sans mot de passe ni jeton."
+en = "Creates an archive of the logs and application state, with no password or token."
+
+[common.about.diagnostic_running]
+fr = "Création du rapport…"
+en = "Creating the report…"
+
+[common.about.diagnostic_done]
+fr = "Rapport créé."
+en = "Report created."
+
+[common.about.diagnostic_attach]
+fr = "Joignez ce fichier à votre signalement."
+en = "Attach this file to your report."
+
+[common.about.diagnostic_copy_path]
+fr = "Copier le chemin"
+en = "Copy the path"
+
+[common.about.diagnostic_copied_path]
+fr = "Chemin copié"
+en = "Path copied"
+
+[common.about.diagnostic_already_running]
+fr = "Un rapport est déjà en cours de création."
+en = "A report is already being created."
+
+[common.about.diagnostic_failed]
+fr = "Le rapport n'a pas pu être créé."
+en = "The report could not be created."
+
 # ── Amis d'un joueur (liste par profil, remplace l'ancien réglage d'instance) ──
 [common.friends.page_title]
 fr = "Amis et groupes"

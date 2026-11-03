@@ -20,9 +20,12 @@ import { NotificationsSettingsTab } from '@/features/notifications/Notifications
 import type { SettingsResponse } from '@/lib/api/types'
 import { useServerDraft } from '@/lib/hooks/useServerDraft'
 import { AnalyseTab } from './AnalyseTab'
+import { DataCard } from './DataCard'
 import { DesktopIntegrationCard } from './DesktopIntegrationCard'
+import { ExportForDesktopCard } from './ExportForDesktopCard'
 import { FilmArchivePanel } from './FilmArchivePanel'
 import { PoolSharingCard } from './PoolSharingCard'
+import { SiteImportPanel } from './SiteImportPanel'
 import { TitlesTab } from './TitlesTab'
 import { InterfaceCard, DiscordCard, MediaCard } from './_settingsCards'
 import { resolveSettingsTab, type SettingsTab } from './tabs'
@@ -38,8 +41,12 @@ export function SettingsPage() {
   const watchGame = useDeploymentCapability('can_watch_game_process')
   const integrateShell = useDeploymentCapability('can_integrate_shell')
   const scheduleRefresh = useDeploymentCapability('can_schedule_refresh')
+  const backupToFolder = useDeploymentCapability('can_backup_to_folder')
+  const limitMemory = useDeploymentCapability('can_limit_memory')
+  const importFromSite = useDeploymentCapability('can_import_from_site')
   // L'onglet « Application » n'existe que là où une intégration au poste est offerte (bureau).
-  const hasDesktopTab = watchGame || integrateShell || scheduleRefresh
+  const hasDesktopIntegration = watchGame || integrateShell || scheduleRefresh
+  const hasDesktopTab = hasDesktopIntegration || backupToFolder || limitMemory || importFromSite
   const locale = useAppShellStore((s) => s.locale)
   const t = getSettingsText(locale)
   const tc = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
@@ -168,7 +175,13 @@ export function SettingsPage() {
             <FilmArchivePanel />
           </>
         )}
-        {activeTab === 'desktop' && hasDesktopTab && <DesktopIntegrationCard />}
+        {activeTab === 'desktop' && hasDesktopTab && (
+          <>
+            {hasDesktopIntegration && <DesktopIntegrationCard />}
+            <DataCard />
+            <SiteImportPanel />
+          </>
+        )}
         {/* Compte — mise en commun du jeton (accord et retrait, lieu promis par /privacy
             et /terms), mot de passe opt-in (re-login rapide sans Microsoft) +
             accès à la gestion des groupes/familles (page /groups, auparavant
@@ -177,6 +190,7 @@ export function SettingsPage() {
           <>
             <PoolSharingCard />
             <SetPasswordCard />
+            <ExportForDesktopCard />
             <div className="rounded-lg border border-border bg-card p-4">
               <h3 className="text-sm font-semibold text-foreground">{t.groupsCardTitle}</h3>
               <p className="mt-1 text-xs text-muted-foreground">{t.groupsCardDescription}</p>

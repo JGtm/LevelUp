@@ -166,12 +166,25 @@ const settingsFixture = {
   close_to_tray: false,
   start_with_windows: false,
   scheduled_refresh: false,
+  backup_dir: '',
+  backup_interval: '24h',
+  backup_keep: 7,
+  memory_limit_mb: 0,
 }
 
 /** État vivant de l'intégration au poste (GET /settings/desktop) : le jeu ne tourne pas. */
 export const desktopStatusFixture = {
   game_running: false,
 }
+
+/** État des données du bureau (GET /settings/data) : aucune sauvegarde choisie, mémoire mesurée. */
+export const dataStatusFixture = {
+  backup: { enabled: false, running: false, same_volume: false },
+  memory: { rss_mb: 812, limit_mb: 0, effective_limit: '4096MiB' },
+}
+
+/** Import depuis le site au repos (GET /import/site). */
+export const siteImportIdleFixture = { phase: 'idle', matches: 0 }
 
 /** Archive des films : vide, emplacement par défaut (GET /settings/film-archive). */
 export const filmArchiveFixture = {
@@ -323,6 +336,24 @@ export const handlers = [
 
   http.get(p('/settings/film-archive'), () => HttpResponse.json(filmArchiveFixture)),
   http.get(p('/settings/desktop'), () => HttpResponse.json(desktopStatusFixture)),
+  http.get(p('/settings/data'), () => HttpResponse.json(dataStatusFixture)),
+  http.post(p('/settings/data/backup/run'), () => HttpResponse.json({ started: true }, { status: 202 })),
+
+  // Import depuis le site, rapport de diagnostic et jeton d'export (lot L22)
+  http.get(p('/import/site'), () => HttpResponse.json(siteImportIdleFixture)),
+  http.post(p('/import/site'), () =>
+    HttpResponse.json({ phase: 'downloading', matches: 0 }, { status: 202 }),
+  ),
+  http.post(p('/desktop/diagnostic'), () =>
+    HttpResponse.json({
+      path: 'C:\\Users\\Test\\AppData\\Local\\LevelUp\\diagnostics\\levelup-diagnostic.zip',
+      file_name: 'levelup-diagnostic.zip',
+      bytes: 48_213,
+    }),
+  ),
+  http.post(p('/export/desktop/token'), () =>
+    HttpResponse.json({ token: 'jeton-' + 'e9'.repeat(14), expires_at: '2026-11-03T10:15:00Z' }),
+  ),
 
   // Career
   http.get(p(`/players/${SLUG}/pages/career`), () => HttpResponse.json(careerFixture)),

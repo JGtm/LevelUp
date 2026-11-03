@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 # FORME DU WORKFLOW (chantier b1016, étape E1) — durée visée : 15 à 20 minutes, bornée par le
-# plus long lot Go (les deux moitiés du paquet `grammar`) plus la fusion ; le résumé du job
+# plus long lot Go (le tiers le plus long du paquet `grammar`) plus la fusion ; le résumé du job
 # `go-coverage-merge` donne la durée de chaque lot, c'est la mesure qui sert à rééquilibrer.
 #   - la suite Go tourne en LOTS parallèles (job `go-coverage`, matrice), chacun sur sa machine
 #     en `-p 1` (contrainte DuckDB mono-process, M2 2026-07-05) ; la définition des lots vit
@@ -1025,7 +1025,7 @@ jobs:
       # lot rouge est une information de plus, pas du bruit.
       fail-fast: false
       matrix:
-        lot: [persist-ops, platform, sync, reste, film-grammar-lourd, film-grammar-reste, film, haloapi]
+        lot: [persist-ops, platform, sync, reste, film-grammar-lourd, film-grammar-moyen, film-grammar-reste, film, haloapi]
     defaults:
       run:
         working-directory: apps/go-api

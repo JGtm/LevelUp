@@ -455,6 +455,14 @@ export interface SettingsResponse {
   close_to_tray: boolean
   start_with_windows: boolean
   scheduled_refresh: boolean
+  // --- Données de l'application de bureau (lot L22) ---
+  // Sauvegarde périodique en Parquet : dossier (chemin absolu, '' = désactivée), fréquence
+  // ('1h' à '168h'), nombre de jeux conservés (1 à 60) ; plafond mémoire de chaque base en Mo
+  // (0 = valeur par défaut du serveur, sinon 1024 à 32768).
+  backup_dir: string
+  backup_interval: string
+  backup_keep: number
+  memory_limit_mb: number
 }
 
 export type UpdateSettingsRequest = Partial<
