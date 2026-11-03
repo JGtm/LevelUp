@@ -10,6 +10,8 @@ import { dataStatusFixture } from '@/test/handlers'
 import { server } from '@/test/setup'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { DataCard } from './DataCard'
+import { SaveStatusBadge } from './SaveStatusBadge'
+import { useSaveFeedbackStore } from './saveFeedbackStore'
 
 const API = '/api/v1'
 const SERVER_MESSAGE = 'MESSAGE DU SERVEUR : ne jamais afficher'
@@ -53,6 +55,7 @@ describe('DataCard', () => {
     useAppShellStore.setState({ locale: 'fr', capabilities: testCapabilities(desktopCapabilities()) })
   })
   afterEach(() => {
+    useSaveFeedbackStore.getState().clear()
     useAppShellStore.setState({ locale: 'fr', capabilities: null })
   })
 
@@ -151,14 +154,20 @@ describe('DataCard', () => {
     expect(screen.queryByTestId('data-same-volume')).not.toBeInTheDocument()
   })
 
-  it('saisir un dossier puis quitter le champ envoie le PATCH et confirme', async () => {
+  it('saisir un dossier puis quitter le champ envoie le PATCH et confirme par le badge de la page', async () => {
     serveurPatch()
-    renderWithProviders(<DataCard />)
+    renderWithProviders(
+      <>
+        <DataCard />
+        <SaveStatusBadge />
+      </>,
+    )
     const champ = await screen.findByLabelText('Dossier de sauvegarde')
     fireEvent.change(champ, { target: { value: '  D:\\Sauvegardes  ' } })
     fireEvent.blur(champ)
     await waitFor(() => expect(patches).toEqual([{ backup_dir: 'D:\\Sauvegardes' }]))
-    expect(await screen.findByText('Enregistré.')).toBeInTheDocument()
+    expect(await screen.findByText('✓ Enregistré')).toBeInTheDocument()
+    expect(screen.queryByText('Enregistré.')).not.toBeInTheDocument()
   })
 
   it('le bouton « Enregistrer » envoie le dossier ; inactif tant que rien ne change', async () => {
@@ -191,6 +200,21 @@ describe('DataCard', () => {
     const alerte = await screen.findByRole('alert')
     expect(alerte).toHaveTextContent("Ce dossier n'existe pas.")
     expect(screen.queryByText(SERVER_MESSAGE)).not.toBeInTheDocument()
+  })
+
+  it("un refus du serveur montre aussi le badge d'échec de la page", async () => {
+    serveurPatch({ status: 400, code: 'backup_dir_missing' })
+    renderWithProviders(
+      <>
+        <DataCard />
+        <SaveStatusBadge />
+      </>,
+    )
+    const champ = await screen.findByLabelText('Dossier de sauvegarde')
+    fireEvent.change(champ, { target: { value: 'D:\\Nulle part' } })
+    fireEvent.blur(champ)
+    expect(await screen.findByText('✗ Erreur lors de la sauvegarde')).toBeInTheDocument()
+    expect(screen.getByText("Ce dossier n'existe pas.")).toBeInTheDocument()
   })
 
   it('le même refus est écrit en anglais quand la langue est en', async () => {

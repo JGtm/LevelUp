@@ -101,6 +101,27 @@ Everything below is in the "Application" tab of the settings, absent on the site
   recompute spills to disk beyond it instead of growing. "Current memory" shows the process working set (also `levelup.process.rss_mb`
   in `/debug/vars`).
 
+## Replays after an update (Settings > Application)
+
+After an update, replays already built may be behind the new version: they stay readable, but do not carry what the update adds. LevelUp never
+rebuilds them by itself.
+
+- **The banner.** On a replay page, a banner says "N replays to regenerate after the update" with **Regenerate** and **Later** (Later hides it for the
+  session). It appears only when some are behind; replays whose film is no longer in the film archive are not counted (nothing to rebuild them from).
+- **The same line in Settings > Application** ("Replays" card): the count, or "All replays are up to date", with the same buttons.
+- **While it runs**, the banner shows `done of total` with **Pause** / **Resume**. One film at a time, in the background. It never starts a film
+  while the game runs (the line says it is waiting for the game to end). **Pause** lets the film in progress finish.
+- **If you close LevelUp while it runs**, it picks up again at the next opening. A paused queue does not.
+- **A replay that cannot be rebuilt** (map outside the catalogue, unfinished film) is set aside and not counted again until the next launch; others
+  that fail are counted ("N replays could not be regenerated") and can be offered again.
+- **It gives way to a synchronization**: between two films it waits for a running sync cycle to end, and a sync (kill-source step, replay cooking) that
+  finds a film being decoded postpones its decode to the next cycle (one `INFO` line, never an error). Two films are never decoded at once.
+- **The count is cheap.** Each built replay has a small `<match>.meta` file beside it (versions only); the count reads those, not the replays. At the
+  first count after an update from an older version the replays are read once to write them (a few seconds per thousand, behind the game gate). The
+  count runs at startup, at the end of the queue, and on `POST /api/v1/desktop/replay-regen/rescan`; opening a page never starts it.
+- **Going back to an earlier version**: replays built by a newer version are not offered for regeneration (the older decoder would redo them).
+- **Journal** (`logs`): lines starting with `replay_regen:`; counters `replay_regen_*`, `replay_artifact_header_*` in `/debug/vars`.
+
 ## Signing in (Microsoft account)
 
 The setup assistant's first step opens **the default browser** on the Microsoft sign-in page ("Sign in with Microsoft"); after

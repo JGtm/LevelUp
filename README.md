@@ -14,47 +14,50 @@
 
 ## What's new
 
-**v8.0 — 2D replay, the Theater film decoded & a Tactics tab**
+**v8.1 — LevelUp for Windows**
 
-The biggest release so far. Halo Infinite records a film of every match; until now no one really managed to decode it. LevelUp does now — a match can be watched again from above, second by second, with everything the film knows written around it: who killed whom with what, at what range, who held the flag, who took the power weapon, who wasted the equipment they were carrying when they died.
+LevelUp now installs on your PC like any other application. Your statistics, the 2D replay and the films of your matches, with no server to set up and nothing to host.
 
-**2D replay**
-- **Every match, watched again from above** — all the players move on the real map background, under their own names, with a playback bar, four timeline tracks (You, Allies, Dominance, Media), speed control and 10-second jumps
-- **A kill feed that follows the cursor** — killer, weapon, victim, medal and assist with its damage share
-- **Layers you switch on and off** — aim cone, trails, shot and kill effects, heat map, weapon spots, weapons on the ground, deployed equipment, vehicles, named zones, and the live objectives (flag, skull, hill, strongholds, bomb, VIP crown)
-- **The game's own sound**, muted by default and filtered by category, plus a PNG capture and a video recording of the replay with its soundtrack
+**An application for Windows**
+- **A normal installer** — no administrator rights needed. Everything stays on your computer: your data, your sign-in, your films
+- **Updates offered, never forced** — the app tells you when a new version is out and installs it only when you say so. Your data is never touched
+- **Sign in with Microsoft in your browser** — one click, no code to copy. The app moves on by itself once you are signed in
+- **A sidebar you can fold to icons** — button or `Ctrl+B`; it also folds by itself on a narrow window. An "About" window gives the version, the licences and a button to check for updates
+- **References beside the page** — the maps, weapons and medals open in a pane next to what you are reading, and stay open from page to page
+- **Your language and your time zone** are taken from Windows the first time you start it
 
-**What the film knows, and the API never said**
-- **The weapon behind every elimination**, including the deaths with no firearm at all (repulsor, fall, the environment), and where on the map people kill and die
-- **Engagement range** — low (p10), median and high (p90) per weapon, with the signed height difference
-- **Weapon levels** — pad pickups split into starting, map and power weapons; what a spot is worth comes from the map, never from the weapon's name
-- **Flag grabs**, Assault bomb statistics, and equipment read as used, kept or dropped on death
-- **Rounds counted as rounds** — on modes decided by rounds the score shown is the rounds won and lost, because the API's point score can hand the advantage to the side that lost
+**Living with the game**
+- **Game mode** — while Halo Infinite is running, LevelUp does nothing heavy in the background. Your matches are synced as soon as you close the game
+- **Windows notifications** — new matches, challenges, records and rank-ups, when the window is hidden or behind another one
+- **A notification-area icon** — closing the window can keep LevelUp running there, with a menu: Open, Sync now, Quit
+- **Start with Windows**, already tucked away in the notification area
+- **Keep your sign-in alive while the app is closed**, so the next start is up to date
 
-**Tactics tab**
-- **One cockpit screen**: the maps you play with their record, the map plan with seven readings (where you die, where you kill, your kills − deaths balance, where wins and losses part ways, where you spend your time, your routes after respawning, where you die alone), and the zone you pick, named as in the game, with mini-tiles that open the replay at the exact second
+All of these are in Settings, Application tab, and off by default (game detection is on).
 
-**Squad, sessions and match view**
-- **"The shapes you keep"** — six ways of reading a squad across nineteen cards, plus the equipment used / kept / wasted block on the Squad and the Sessions
-- **Per-match cadence** everywhere, distance per weapon, frag distribution in two levels, and a score-over-time curve that respects the mode
+**Your data stays yours**
+- **An automatic backup to a folder you choose** — in an open format (Parquet files), the last copies are kept, and restoring on a new PC is documented
+- **Move from the site to the app** — export your account from the site, import it in the app, and your matches come with you
+- **A diagnostic report in one click** from the "About" window, to attach to a bug report. No token or password goes into it
 
-**Maps, media and repairs**
-- **109 map backgrounds** with Forge zones named 100 %, official callouts
+**On the site too**
+- **A "Download LevelUp for Windows" page**, which also explains the Windows warning described below
+- **The same header on every section but the home**, on the site and in the app: a title, a short lead, the tabs of the section
+- **The Microsoft notice** required by the Halo content rules, in the page footer
 
-**A faster debrief**
-- **The match you just played is analysed first** — it goes ahead of the history; "Analysis in progress" says which part is being worked on, and a block with nothing to show now says why
-- **Four new commendations**, three read from the film — "Tick Tick Boom", "First Strike", "Wonderful Toys" and "Almost Doesn't Count" (a kill on an enemy with no shield left, survived)
+**Good to know**
+- **Windows 10 or 11, 64-bit, and nothing else for now**
+- **The installer is not signed with a paid certificate**: Windows SmartScreen shows a warning at each installation ("More info", then "Run anyway"). This is not a virus detection, and the download page walks you through it. Updates are checked against the project's own signing key
+- **ffmpeg comes with the app** (video capture, clips): nothing to install. On a Windows N or KN edition, the Media page tells you what is missing
 
-**Tactics and replay, refined**
-- **Tactics**: set the selected zone aside with a click or Escape, see the state of every death and watch its sequence play by itself; the tab opens with far fewer requests
-- **Replay**: the first VIPs from the first second with a redrawn crown, carried equipment read further, starting weapons dropped on the ground hidden by default, and named zones on 78 more maps
-- **A richer demo** — a replay for every mode and a 4v4 with several vehicles, kept from one release to the next
+**Also in this version**
+- **Performance by map and by mode** — a curve of your average performance score over the Summary's result bars
+- **Map variants counted with their base map** — "Solitude - Ranked" and "Heavies" count under their map everywhere
+- **An Explorer briefing that keeps its cards**, even on a narrow filter or a small sample
+- **Halo 5 modes** in the Summary, and **names, ranks and exports in your language** on every page
+- **Replay**: the threat sensor, threat seeker, shroud screen and repair field are drawn again, and the drop wall and shroud screen last as long as the film says
 
-**Your tokens, your choice, and a free licence**
-- **Token pooling is opt-in, player by player** — your sign-in serves the other players of the instance only if you agree, and you can withdraw at any time; terms of use and a corrected privacy text
-- **GNU AGPL-3.0 for the code, CC BY 4.0 for the documentation**, and a security audit that closed 29 findings
-
-Everything read from a film is Halo Infinite only — Halo 5 keeps its own pages and never borrows another title's data.
+Everything in earlier versions (2D replay, Tactics tab, film-derived measurements, opt-in token pooling) is described in the [changelog](docs/CHANGELOG.md).
 
 ## Features
 
@@ -286,6 +289,8 @@ Everything read from a film is Halo Infinite only — Halo 5 keeps its own pages
 ---
 
 ## Quick start
+
+**Windows app**: download the installer (`LevelUp_X.Y.Z_x64-setup.exe`) from the [GitHub releases page](https://github.com/JGtm/LevelUp/releases/latest) or from the "Download LevelUp for Windows" page of the hosted site, then run it. The installer is not code-signed, so Windows SmartScreen warns once ("More info", then "Run anyway"). Your data lives in `%LOCALAPPDATA%\LevelUp` and stays there after an uninstall. Details: [docs/RUNBOOK_DESKTOP.md](docs/RUNBOOK_DESKTOP.md). The rest of this section is for running LevelUp from the source.
 
 **Prerequisites**: Go 1.26+, Node.js + npm, GNU Make, Air for Go hot reload, and a **C toolchain** — the DuckDB driver is CGO, and on Windows a `gcc` missing from the `PATH` makes Air silently serve a stale binary (MinGW/UCRT64; see [docs/INSTALL.md](docs/INSTALL.md)).
 

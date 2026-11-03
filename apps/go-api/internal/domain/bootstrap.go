@@ -57,6 +57,7 @@ type CapabilityMap struct {
 	CanExportForDesktop     bool `json:"can_export_for_desktop" doc:"L'instance livre au joueur connecté ses données pour l'application de bureau."`
 	CanReportDiagnostic     bool `json:"can_report_diagnostic" doc:"Rapport de diagnostic (archive de journaux et d'état, sans secret) à joindre à un signalement."`
 	CanLimitMemory          bool `json:"can_limit_memory" doc:"Plafond mémoire des bases réglable, mémoire du processus affichée."`
+	CanRegenerateReplays    bool `json:"can_regenerate_replays" doc:"Régénération des rejeux en retard sur la version de l'application, sur demande (file de fond, un film à la fois)."`
 
 	// Deployment : nom du profil de déploiement, pour l'affichage et le diagnostic SEULEMENT.
 	Deployment string `json:"deployment" enum:"hosted,desktop,demo,dev" doc:"Profil de déploiement (affichage et diagnostic ; ne jamais brancher dessus)."`

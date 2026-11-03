@@ -180,6 +180,9 @@ func (d *Daemon) SyncGate() syncpkg.SyncGate {
 	return d.coordinator
 }
 
+// SyncRunning dit si un cycle de synchronisation est en cours (cf. Coordinator.SyncRunning).
+func (d *Daemon) SyncRunning() bool { return d.coordinator.SyncRunning() }
+
 // Start démarre le daemon. Non bloquant — lance des goroutines internes.
 func (d *Daemon) Start(ctx context.Context, authHeader string, playerList []domain.PlayerSummary) {
 	// Garde double-Start : sans elle, un 2e Start écraserait d.cancel et leakerait

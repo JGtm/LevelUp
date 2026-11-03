@@ -10685,6 +10685,9 @@ components:
           type: boolean
         can_read_local_data:
           type: boolean
+        can_regenerate_replays:
+          description: Régénération des rejeux en retard sur la version de l'application, sur demande (file de fond, un film à la fois).
+          type: boolean
         can_report_diagnostic:
           description: Rapport de diagnostic (archive de journaux et d'état, sans secret) à joindre à un signalement.
           type: boolean
@@ -10781,6 +10784,7 @@ components:
         - can_export_for_desktop
         - can_report_diagnostic
         - can_limit_memory
+        - can_regenerate_replays
         - deployment
       type: object
     CareerCSRRank:

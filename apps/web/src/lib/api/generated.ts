@@ -5468,6 +5468,8 @@ export interface components {
             /** @description Mise en commun des jetons proposée à l'utilisateur. */
             can_pool_tokens: boolean;
             can_read_local_data: boolean;
+            /** @description Régénération des rejeux en retard sur la version de l'application, sur demande (file de fond, un film à la fois). */
+            can_regenerate_replays: boolean;
             /** @description Rapport de diagnostic (archive de journaux et d'état, sans secret) à joindre à un signalement. */
             can_report_diagnostic: boolean;
             can_reset_media_index: boolean;

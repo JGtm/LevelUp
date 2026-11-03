@@ -162,6 +162,10 @@ type DeploymentCapabilities struct {
 	// MemoryLimit : le plafond mémoire des bases DuckDB se règle (`memory_limit_mb`) et la mémoire du
 	// processus se mesure.
 	MemoryLimit bool
+	// ReplayRegen : le serveur compte les rejeux rangés en retard sur la version de l'application et les
+	// régénère, un film à la fois, sur demande de l'utilisateur (file de fond, mode jeu respecté ; ADR 0045).
+	// Faux sur un serveur hébergé, dont les rejeux se cuisent au fil de la synchronisation ou par un ouvrier.
+	ReplayRegen bool
 	// AutoSyncByDefault : la synchronisation automatique (`spnkr_auto_sync_enabled`) est ACTIVE tant que
 	// l'utilisateur n'a rien écrit : l'application de bureau suit un compte et doit se tenir à jour sans
 	// réglage préalable. Défaut des clés absentes d'app_settings.json (settings.Store.WithAutoSyncDefault) ;
@@ -275,6 +279,7 @@ func capabilitiesOf(cfg *AppConfig) DeploymentCapabilities {
 		ExportForDesktop:       !desktop && !demo,
 		DiagnosticReport:       desktop,
 		MemoryLimit:            desktop,
+		ReplayRegen:            desktop,
 	}
 }
 

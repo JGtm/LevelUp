@@ -41,6 +41,7 @@ import (
 	"levelup/go-api/internal/platform/netguard"
 	"levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/platform/userstore"
+	"levelup/go-api/internal/replaybuild"
 	"levelup/go-api/internal/scheduler"
 	"levelup/go-api/internal/service"
 	"levelup/go-api/internal/watcher"
@@ -356,6 +357,8 @@ func loadBootConfig(st *bootState) {
 	if cfg.AppVersion == "dev" && version != "dev" {
 		cfg.AppVersion = version
 	}
+	// Les fichiers d'en-tete d'artefact de rejeu portent la version qui les a ecrits (replaybuild/artifact_meta.go).
+	replaybuild.SetAppVersion(cfg.AppVersion)
 	slog.Debug("config chargée",
 		"resources_root", cfg.RepoRoot,
 		"data_root", cfg.Roots().Data,

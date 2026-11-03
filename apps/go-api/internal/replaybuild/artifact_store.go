@@ -231,6 +231,9 @@ func writeArtifactBytes(ctx context.Context, outPath, titleSlug, matchID string,
 		return Digest{}, err
 	}
 	ecrit, _ := digestFromBytes(blob)
+	// L'en-tete voisin, APRES l'artefact : un fichier .meta plus recent que l'artefact fait foi (cf. artifact_meta.go),
+	// un .meta absent ou plus ancien (arret entre les deux ecritures) fait relire l'artefact.
+	ecrireEntete(ctx, outPath, ecrit, AppVersion())
 	publishArtifactStored(ctx, ArtifactStored{
 		TitleSlug: titleSlug, MatchID: matchID, Path: outPath,
 		Bytes: ecrit.Bytes, Tracks: ecrit.Tracks, SchemaVersion: ecrit.SchemaVersion,

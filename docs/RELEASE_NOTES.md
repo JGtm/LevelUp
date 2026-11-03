@@ -1,7 +1,18 @@
 ## What's new
 
-**v8.1 — Performance by map and by mode, map variants counted together**
+**v8.1 — LevelUp for Windows, performance by map and by mode, map variants counted together**
 
+**LevelUp for Windows**
+- **An application you install** — Windows 10 or 11, 64-bit, no administrator rights. Your data, your sign-in and your films stay on your computer; updates are offered, never forced. The installer is not signed with a paid certificate, so Windows SmartScreen warns once at installation ("More info", then "Run anyway"); the download page explains it
+- **Sign in with Microsoft in your browser** — one click, no code to copy; the app moves on by itself
+- **A sidebar you can fold to icons** (`Ctrl+B`), an "About" window with the version, the licences and a button to check for updates, and the maps, weapons and medals open in a pane beside the page
+- **Game mode** — while Halo Infinite is running, nothing heavy runs in the background; your matches are synced when you close the game
+- **Windows notifications, a notification-area icon, start with Windows and a task that keeps your sign-in alive** — in Settings, Application tab, all off by default
+- **An automatic backup to a folder you choose, the move from the site to the app, and a diagnostic report** in one click, with no token or password inside
+- **Your language and your time zone** are taken from Windows at the first start
+- **The same header on every section but the home**, on the site as in the app, a "Download LevelUp for Windows" page and the Microsoft notice in the footer
+
+**Also in this version**
 - **Performance score by map and by mode** — on the Summary, the "By map" and "By mode" charts carry a curve of your average performance score (0 to 100, right-hand axis) over the result bars; each point takes the colour of its tier
 - **Map variants counted with their base map** — "- Ranked" and "Heavies" variants now count under their base map in every per-map statistic: Tactics, Explorer, Summary, Squad, Time series and the home page. The replay and the match view keep the name of the variant actually played
 - **The map filter brings back the variants** — on the Summary, the Squad and Teammates, as it already did in the Explorer

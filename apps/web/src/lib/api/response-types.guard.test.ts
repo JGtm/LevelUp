@@ -94,6 +94,7 @@ const MANUAL_CAPABILITY_TYPES = [
   { name: 'SiteImportStatus', file: 'features/settings/siteImportQueries.ts', route: 'GET et POST /import/site' },
   { name: 'SiteImportRequest', file: 'features/settings/siteImportQueries.ts', route: 'POST /import/site' },
   { name: 'DiagnosticReport', file: 'components/shell/diagnosticReportQueries.ts', route: 'POST /desktop/diagnostic' },
+  { name: 'ReplayRegenStatus', file: 'components/replay-regen/queries.ts', route: 'GET /desktop/replay-regen et POST .../start|pause|resume' },
 ] as const
 
 // Réponses CRITIQUES (V72-01 H7) : pages à fort trafic + endpoints d'amorçage. Elles

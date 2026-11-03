@@ -5,7 +5,8 @@
  * n'existe pas.
  *
  * Chaque changement part en PATCH /settings (champ texte : à la perte du focus ou par « Enregistrer »).
- * Le refus du serveur arrive avec un code ; le texte, écrit dans chaque langue, se pose sous le champ.
+ * Chaque enregistrement se confirme par le badge d'enregistrement de la page. Le refus du serveur arrive
+ * avec un code ; le texte, écrit dans chaque langue, se pose sous le champ.
  */
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -60,11 +61,6 @@ export function DataCard() {
           )}
           {showMemory && <MemorySection t={t} locale={locale} form={form} memory={status?.memory} />}
         </fieldset>
-        {form.saved && (
-          <p role="status" className="text-xs text-success">
-            {t.saved}
-          </p>
-        )}
         {isError && (
           <p role="status" className="text-xs text-muted-foreground">
             {t.loadFailed}

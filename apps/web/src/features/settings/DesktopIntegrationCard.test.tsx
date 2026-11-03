@@ -9,6 +9,8 @@ import { desktopCapabilities, testCapabilities } from '@/test/capabilities'
 import { server } from '@/test/setup'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { DesktopIntegrationCard } from './DesktopIntegrationCard'
+import { SaveStatusBadge } from './SaveStatusBadge'
+import { useSaveFeedbackStore } from './saveFeedbackStore'
 
 const API = '/api/v1'
 
@@ -37,6 +39,7 @@ describe('DesktopIntegrationCard', () => {
     useAppShellStore.setState({ locale: 'fr', capabilities: testCapabilities(desktopCapabilities()) })
   })
   afterEach(() => {
+    useSaveFeedbackStore.getState().clear()
     useAppShellStore.setState({ locale: 'fr', capabilities: null })
   })
 
@@ -52,13 +55,19 @@ describe('DesktopIntegrationCard', () => {
     expect(await screen.findByText(/Le jeu tourne/)).toBeInTheDocument()
   })
 
-  it('désactiver la détection envoie le PATCH et confirme', async () => {
+  it('désactiver la détection envoie le PATCH et confirme par le badge de la page', async () => {
     serveurPatch()
-    renderWithProviders(<DesktopIntegrationCard />)
+    renderWithProviders(
+      <>
+        <DesktopIntegrationCard />
+        <SaveStatusBadge />
+      </>,
+    )
     await screen.findByText('Détecter le jeu en cours')
     fireEvent.click(screen.getAllByRole('button')[0])
     await waitFor(() => expect(patches).toEqual([{ game_process_watch: false }]))
-    expect(await screen.findByText('Enregistré.')).toBeInTheDocument()
+    expect(await screen.findByText('✓ Enregistré')).toBeInTheDocument()
+    expect(screen.queryByText('Enregistré.')).not.toBeInTheDocument()
   })
 
   it('activer les notifications Windows envoie le PATCH (désactivées par défaut)', async () => {
@@ -120,12 +129,18 @@ describe('DesktopIntegrationCard', () => {
     expect(screen.queryByText('Notifications Windows')).not.toBeInTheDocument()
   })
 
-  it('affiche tel quel un refus du serveur', async () => {
+  it("affiche tel quel un refus du serveur, avec le badge d'échec de la page", async () => {
     serveurPatch({ status: 400, message: 'Ce réglage n’existe que dans l’application de bureau.' })
-    renderWithProviders(<DesktopIntegrationCard />)
+    renderWithProviders(
+      <>
+        <DesktopIntegrationCard />
+        <SaveStatusBadge />
+      </>,
+    )
     await screen.findByText('Détecter le jeu en cours')
     fireEvent.click(screen.getAllByRole('button')[0])
-    expect(await screen.findByRole('alert')).toHaveTextContent('Ce réglage n’existe que dans l’application de bureau.')
+    expect(await screen.findByText('✗ Erreur lors de la sauvegarde')).toBeInTheDocument()
+    expect(screen.getByText('Ce réglage n’existe que dans l’application de bureau.')).toBeInTheDocument()
   })
 
   it('sans la capacité, la ligne de détection du jeu n’est pas offerte', async () => {

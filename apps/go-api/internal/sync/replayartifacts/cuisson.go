@@ -22,6 +22,7 @@ import (
 	"levelup/go-api/internal/replaybuild"
 
 	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/LevelUp/libs/film/filmproc"
 	"github.com/JGtm/LevelUp/libs/film/finalise"
 )
 
@@ -129,7 +130,11 @@ type bilanCuisson struct {
 	// [gameproc.Mode.HeavyWorkAllowed]). Leur film est persisté ; l'artefact se construit au rattrapage
 	// qui suit la partie. Comptés avec les reportés dans `traites`.
 	reportesModeJeu int
-	echecs          int
+	// reportesVerrou : matchs dont la cuisson n'a pas demarre parce qu'un autre decodage de film tenait le verrou solo de la
+	// machine (file de regeneration des rejeux, action admin). Leur film est persiste ; l'artefact se construit au cycle
+	// suivant. Ni un echec ni un avertissement par film.
+	reportesVerrou int
+	echecs         int
 	// ecartes : films MIS DE COTE, jamais comptes en echec : cle ecrite absente de la table de
 	// profil (lot 3.1.1, `replaybuild.ErrUnknownFilmKey`), ou film au cache que la cuisson refuse
 	// comme NON FINALISE (lot L3, `finalise.ErrFilmNonFinalise`). SEPARE DES ECHECS, et ce n est
@@ -180,7 +185,7 @@ func signalerCartesHorsCatalogue(ctx context.Context, d Deps, parCarte map[strin
 // traites : les matchs que la boucle a examinés et décidés (construits, à jour, sans film,
 // reportés, en échec) — la ligne « traites » des journaux de budget.
 func (b bilanCuisson) traites() int {
-	return b.construits + b.dejaAJour + b.sansFilm + b.reportes + b.reportesModeJeu + b.echecs
+	return b.construits + b.dejaAJour + b.sansFilm + b.reportes + b.reportesModeJeu + b.reportesVerrou + b.echecs
 }
 
 // DeadlineParFilm : la borne DURE de la cuisson d'UN film, quand le budget du cycle en laisse
@@ -353,6 +358,10 @@ func cuireUnMatch(ctx context.Context, d Deps, w buildWork, b *bilanCuisson, res
 	cctx, annuler := context.WithTimeout(ctx, deadlineDuFilm(d, restant))
 	defer annuler()
 	out, berr := buildAndStoreOne(cctx, d, w, filmcache.ChunkDir(d.FilmRoot, short))
+	if errors.Is(berr, filmproc.ErrDecodeBusy) {
+		reporterVerrouTenu(ctx, d, b, berr)
+		return
+	}
 	if berr != nil {
 		classerRefus(ctx, d, w, b, berr)
 		return

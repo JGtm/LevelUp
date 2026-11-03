@@ -13,6 +13,7 @@ import (
 	"levelup/go-api/internal/config"
 	auth_platform "levelup/go-api/internal/platform/auth"
 	session_platform "levelup/go-api/internal/platform/session"
+	"levelup/go-api/internal/replayregen"
 	"levelup/go-api/internal/service"
 	"levelup/go-api/internal/transfer"
 )
@@ -111,4 +112,12 @@ func mountExportDesktop(r chi.Router, cfg *config.AppConfig, opts ...humacore.Mo
 	h := handlers.NewExportDesktopHandler(cfg, transfer.NewTokenStore())
 	h.MountToken(r.With(middleware.NoStore), opts...)
 	h.MountExport(r)
+}
+
+// mountDesktopReplayRegen monte les routes de la régénération des rejeux (GET, POST start|pause|resume sous
+// /api/v1/desktop/replay-regen) sous la capacité ReplayRegen ; le cookie de la coquille est exigé par le garde racine.
+func mountDesktopReplayRegen(r chi.Router, cfg *config.AppConfig, opts ...humacore.MountOption) {
+	if cfg.Capabilities.ReplayRegen {
+		handlers.NewDesktopReplayRegenHandler(replayregen.Default()).Mount(r, opts...)
+	}
 }

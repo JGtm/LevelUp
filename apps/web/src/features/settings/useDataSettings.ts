@@ -13,6 +13,7 @@ import type { UpdateSettingsRequest } from '@/lib/api/types'
 import { useUpdateSettings } from './queries'
 import { errorText, fieldOfCode, parseWholeNumber, type DataField, type DataSettingKey } from './dataLogic'
 import type { DataText } from './dataText'
+import { flashSaveStatus } from './saveFeedbackStore'
 
 type Errors = Partial<Record<DataField, string>>
 type Drafts = Partial<Record<DataSettingKey, string>>
@@ -45,7 +46,6 @@ export interface DataSettingsForm {
   /** Pose un refus hors champ ; `undefined` l'efface. */
   setGeneralError: (message: string | undefined) => void
   errors: Errors
-  saved: boolean
   saving: boolean
 }
 
@@ -54,7 +54,6 @@ export function useDataSettings(t: DataText, current: SavedDataSettings): DataSe
   const update = useUpdateSettings()
   const [drafts, setDrafts] = useState<Drafts>({})
   const [errors, setErrors] = useState<Errors>({})
-  const [saved, setSaved] = useState(false)
 
   const setDraft = (key: DataSettingKey, raw: string | undefined) =>
     setDrafts((prev) => ({ ...prev, [key]: raw }))
@@ -70,15 +69,15 @@ export function useDataSettings(t: DataText, current: SavedDataSettings): DataSe
     if (draft.trim() === current[key]) return setDraft(key, undefined)
     const req = requestOf(key, draft)
     setError(key, undefined)
-    setSaved(false)
     if (req === null) return setError(key, errorText(t, NOT_A_NUMBER_CODE[key]) ?? t.saveFailed)
     update.mutate(req, {
       onSuccess: () => {
-        setSaved(true)
+        flashSaveStatus('saved')
         setDraft(key, undefined)
         void qc.invalidateQueries({ queryKey: queryKeys.dataStatus })
       },
       onError: (err) => {
+        flashSaveStatus('error')
         const code = apiErrorCode(err)
         setError(fieldOfCode(code) ?? key, errorText(t, code) ?? t.saveFailed)
       },
@@ -92,7 +91,6 @@ export function useDataSettings(t: DataText, current: SavedDataSettings): DataSe
     commit,
     setGeneralError: (message) => setError('general', message),
     errors,
-    saved,
     saving: update.isPending,
   }
 }

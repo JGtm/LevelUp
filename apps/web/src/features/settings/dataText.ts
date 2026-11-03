@@ -48,7 +48,6 @@ export interface DataText {
   memoryLimitHint: string
   /** Gabarit : {limit} (valeur du serveur, par exemple « 4096MiB »). */
   memoryEffective: string
-  saved: string
   saveFailed: string
   loadFailed: string
   /** Refus du serveur, par code. */
@@ -102,7 +101,6 @@ const FR: DataText = {
   memoryLimitHint:
     "0 = valeur par défaut du serveur ; sinon de 1 024 à 32 768 Mo. Le plafond vaut pour CHAQUE base ouverte : plusieurs bases ouvertes en même temps peuvent donc consommer davantage au total. Un plafond plus bas laisse plus de mémoire au jeu, au prix de requêtes plus lentes.",
   memoryEffective: 'Plafond effectif par base : {limit}',
-  saved: 'Enregistré.',
   saveFailed: "Le réglage n'a pas pu être enregistré.",
   loadFailed: "L'état des données est indisponible pour le moment.",
   errors: {
@@ -166,7 +164,6 @@ const EN: DataText = {
   memoryLimitHint:
     '0 = the server default; otherwise 1,024 to 32,768 MB. The limit applies to EACH open database: several databases open at once can therefore use more in total. A lower limit leaves more memory to the game, at the cost of slower queries.',
   memoryEffective: 'Effective limit per database: {limit}',
-  saved: 'Saved.',
   saveFailed: 'The setting could not be saved.',
   loadFailed: 'The data status is unavailable right now.',
   errors: {

@@ -214,6 +214,11 @@ func purgeReplayArtifactsForTitle(
 			slog.WarnContext(ctx, "replay_purge_cron: marque de dérivation non supprimée",
 				"artifact", name, "err", rmErr)
 		}
+		// SON EN-TETE AUSSI (artifact_meta.go) : un .meta sans artefact ne serait jamais relu ni collecte.
+		if rmErr := replaybuild.RemoveMeta(chemin); rmErr != nil {
+			slog.WarnContext(ctx, "replay_purge_cron: en-tete d'artefact non supprime",
+				"artifact", name, "err", rmErr)
+		}
 		purged++
 	}
 	return purged, kept, unknown, nil

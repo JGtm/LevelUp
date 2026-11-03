@@ -24,3 +24,14 @@ func reporterEnModeJeu(ctx context.Context, d Deps, b *bilanCuisson) bool {
 	b.reportesModeJeu++
 	return true
 }
+
+// reporterVerrouTenu range une cuisson dont le verrou solo de decodage est tenu par un autre decodage de la machine (la
+// file de regeneration des rejeux, l'action admin) : le match est REPORTE au cycle suivant, jamais compte en echec, et
+// jamais un avertissement par film — une seule ligne INFO par cycle, le bilan donne le nombre.
+func reporterVerrouTenu(ctx context.Context, d Deps, b *bilanCuisson, busy error) {
+	if b.reportesVerrou == 0 {
+		slog.InfoContext(ctx, "post-sync: cuisson des rejeux reportee — un autre decodage de film tient la machine, "+
+			"reprise au cycle suivant", "gamertag", d.Gamertag, "titleSlug", d.TitleSlug, "detenteur", busy)
+	}
+	b.reportesVerrou++
+}

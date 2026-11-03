@@ -11,7 +11,8 @@ import (
 // ReporteeEnModeJeu dit si l'étape kill source du post-sync est reportée parce que Halo tourne, et le compte.
 //
 // MODE JEU : cette étape DÉCODE des films dans le processus (kill-feed, positions, tirs), le travail
-// lourd que la cuisson des rejeux refuse de démarrer pendant la partie. Elle est donc reportée de même :
+// lourd que la cuisson des rejeux refuse de démarrer pendant la partie. Elle est donc reportée de même, et elle
+// prend le verrou solo de décodage de la machine (postsync_verrou_decodage.go) :
 // rien n'est perdu, le backlog se relit en base à chaque cycle et le premier cycle hors partie le
 // rattrape. Les inserts courts et le réseau du reste du cycle ne sont pas touchés.
 func ReporteeEnModeJeu(ctx context.Context, gamertag string, matchsInseres int) bool {

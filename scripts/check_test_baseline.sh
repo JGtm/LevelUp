@@ -31,6 +31,12 @@
 # ou renommer un test de ces packages fait désormais rougir le gate : c'est voulu, et
 # le remède est d'ajouter les nouvelles entrées dans le même commit.
 #
+# RENOMMAGE DU 2026-11-03 (lot Desktop L22b, revue U1) : `sync/replayartifacts` :
+# `TestBuildAll_VerrouTenuAilleurs_CompteEnEchec` devient `TestBuildAll_VerrouTenuAilleurs_ReporteSansEchec`,
+# parce que le contrat a changé : un verrou de décodage tenu ailleurs REPORTE le match au cycle suivant
+# au lieu de le compter en échec (un seul décodage de film à la fois sur la machine). Une seule paire
+# d'entrées a bougé.
+#
 # RETRAIT DU 2026-09-13 (lot B.2 des finitions v7.5) : 23 tests ont été RETIRÉS de la
 # baseline — 17 de `internal/platform/auth` (TestMigrateLegacyTokens_*,
 # TestEnvRefreshTokenForGamertag_*) et 6 de `cmd/server`

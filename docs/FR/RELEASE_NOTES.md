@@ -1,7 +1,18 @@
 ## Dernières nouveautés
 
-**v8.1 — La performance par carte et par mode, les variantes de carte comptées ensemble**
+**v8.1 — LevelUp pour Windows, la performance par carte et par mode, les variantes de carte comptées ensemble**
 
+**LevelUp pour Windows**
+- **Une application qui s'installe** — Windows 10 ou 11, 64 bits, sans droits d'administrateur. Tes données, ta connexion et tes films restent sur ton ordinateur ; les mises à jour sont proposées, jamais imposées. L'installeur n'est pas signé par un certificat payant : Windows SmartScreen avertit une fois à l'installation (« Informations complémentaires », puis « Exécuter quand même ») ; la page de téléchargement l'explique
+- **Connexion Microsoft dans ton navigateur** — un clic, aucun code à recopier ; l'application passe seule à la suite
+- **Une barre latérale repliable en icônes** (`Ctrl+B`), une fenêtre « À propos » avec la version, les licences et un bouton de recherche de mise à jour, et les cartes, armes et médailles qui s'ouvrent dans un volet à côté de la page
+- **Mode jeu** — tant que Halo Infinite tourne, rien de lourd ne s'exécute en arrière-plan ; tes matchs sont synchronisés à la fermeture du jeu
+- **Notifications Windows, icône de la zone de notification, démarrage avec Windows et tâche qui garde ta connexion vivante** — dans Paramètres, onglet Application, tout désactivé par défaut
+- **Une sauvegarde automatique vers un dossier de ton choix, le passage du site à l'application, et un rapport de diagnostic** en un clic, sans jeton ni mot de passe dedans
+- **Ta langue et ton fuseau horaire** sont repris de Windows au premier lancement
+- **Le même en-tête sur toutes les sections hors accueil**, sur le site comme dans l'application, une page « Télécharger LevelUp pour Windows » et la mention Microsoft dans le pied de page
+
+**Aussi dans cette version**
 - **Score de performance par carte et par mode** — dans la Synthèse, les graphiques « Par carte » et « Par mode » portent une courbe de ton score de performance moyen (de 0 à 100, axe de droite) au-dessus des barres de résultats ; chaque point prend la couleur de son palier
 - **Les variantes de carte comptées avec leur carte de base** — les variantes « - Ranked » et « Heavies » comptent désormais sous leur carte de base dans toutes les statistiques par carte : Tactique, Explorateur, Synthèse, Escouade, Séries temporelles et page d'accueil. Le rejeu et la vue du match gardent le nom de la variante réellement jouée
 - **Le filtre de cartes ramène les variantes** — dans la Synthèse, l'Escouade et Coéquipiers, comme il le faisait déjà dans l'Explorateur
