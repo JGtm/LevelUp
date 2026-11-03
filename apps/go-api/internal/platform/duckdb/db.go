@@ -40,8 +40,15 @@ import (
 // Pas de sync.Once : aucun code ne les modifie en cours de process (et t.Setenv les teste).
 // Knob permanent (pas de date de retrait) ; critère : memory_limit doit rester
 // < (RAM - baseline conteneur - marge démo/OS).
-func duckMemoryLimit() string { return envOr("LEVELUP_DUCKDB_MEMORY_LIMIT", "512MB") }
-func duckThreads() int        { return envIntOr("LEVELUP_DUCKDB_THREADS", 2) }
+// duckMemoryLimit : le plafond posé par le réglage `memory_limit_mb` (SetMemoryLimitMB) quand il est non nul,
+// sinon la variable d'environnement, sinon 512MB.
+func duckMemoryLimit() string {
+	if mb := memoryLimitMB.Load(); mb > 0 {
+		return strconv.FormatInt(mb, 10) + "MiB"
+	}
+	return envOr("LEVELUP_DUCKDB_MEMORY_LIMIT", "512MB")
+}
+func duckThreads() int { return envIntOr("LEVELUP_DUCKDB_THREADS", 2) }
 
 // BudgetsSnapshot expose les bornes ressources DuckDB (J2) pour l'observabilité —
 // publiées sous /debug/vars levelup/duckdb_budgets, à côté de duckdb_pool_stats (J1).
