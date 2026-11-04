@@ -22,8 +22,11 @@
          encore avec sa sentinelle (le desinstalleur ne la supprime jamais), comme la racine jetable ;
          le desinstalleur a lance `levelup-server.exe -mode uninstall-cleanup` (crochet NSIS, ADR 0045
          D-28) : le serveur ecrit son bilan dans le fichier temoin LEVELUP_UNINSTALL_WITNESS (racine
-         jetable, dossier du programme, sortie 0). Le test ne pose aucune entree de demarrage ni tache
-         planifiee (trop risque sur le poste) : le bilan attendu est "absent".
+         jetable, dossier du programme, `exit=0`, `ok=true`, tache de la racine jetable nommee et absente).
+         Le test ne pose aucune entree de demarrage ni tache planifiee (trop risque sur le poste) : le
+         bilan attendu est `demarrage=absent` (ou `foreign` : une entree d'un autre dossier sur le poste) et
+         `tache=absent`, jamais `removed`. La branche du desinstalleur "LEVELUP_DATA_DIR absente" n'est PAS
+         jouee (elle viserait la vraie racine de donnees) : elle est tenue par le garde de texte Rust.
 
     Verifications prealables, AVANT tout lancement et sans aucun nettoyage : le script refuse (code 1)
     si LevelUp est deja installe (dossier du programme, cle de registre NSIS du produit ou de
@@ -75,6 +78,16 @@ $Installer = (Resolve-Path $Installer).Path
 
 function Step([string]$text) { Write-Host ('[e2e] ' + $text) }
 function Fail([string]$text) { throw ('ECHEC : ' + $text) }
+
+# Nom de la tache planifiee d'une racine de donnees : schedtask.TaskNameFor (prefixe, puis 4 octets de SHA-256 du
+# chemin nettoye en minuscules, en hexadecimal).
+function Get-ExpectedTaskName([string]$Root) {
+    # Pas de GetFullPath : il developpe les noms courts 8.3 (GUILLA~1), que filepath.Clean de Go laisse tels quels.
+    $clean = $Root.Replace('/', '\').TrimEnd('\').ToLowerInvariant()
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    $bytes = $sha.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($clean))
+    return 'LevelUp\Refresh-' + (($bytes[0..3] | ForEach-Object { $_.ToString('x2') }) -join '')
+}
 
 function Wait-Until {
     param([scriptblock]$Condition, [string]$What, [int]$Seconds = $TimeoutSec)
@@ -259,7 +272,13 @@ try {
     if (-not (Test-Path $Witness)) { Fail "le desinstalleur n'a pas lance -mode uninstall-cleanup : aucun fichier temoin $Witness" }
     $report = (Get-Content -Path $Witness -Raw -Encoding UTF8).Replace('\\', '\')
     if ($report -notmatch '^uninstall-cleanup:') { Fail "temoin inattendu : $report" }
-    if ($report -notmatch 'demarrage=absent' -or $report -notmatch 'ok=true') { Fail "le nettoyage n'a pas rendu le bilan attendu (demarrage=absent, ok=true) : $report" }
+    # Le bilan COMPLET : code de sortie du mode, entree de demarrage (absente, ou d'un autre dossier : jamais retiree,
+    # l'installation du test n'en a pose aucune), tache de la racine jetable (absente), ok.
+    if ($report -notmatch ' exit=0\s*$') { Fail "le nettoyage n'a pas rendu le code de sortie 0 : $report" }
+    if ($report -notmatch ' ok=true ') { Fail "le nettoyage n'a pas rendu ok=true : $report" }
+    if ($report -notmatch 'demarrage=(absent|foreign) ') { Fail "bilan de l'entree de demarrage inattendu (absent ou foreign attendu, jamais removed) : $report" }
+    if ($report -notmatch ' tache=absent ') { Fail "bilan de la tache inattendu (tache=absent attendu : la racine jetable n'en a pas) : $report" }
+    if (-not $report.Contains('nom_tache="' + (Get-ExpectedTaskName $DataDir) + '"')) { Fail "la tache visee n'est pas celle de la racine $DataDir : $report" }
     if (-not $report.Contains('data_root="' + $DataDir + '"')) { Fail "le nettoyage a vise une autre racine de donnees que $DataDir : $report" }
     if (-not $report.Contains('install_dir="' + $InstallDir + '"')) { Fail "le nettoyage a vise un autre dossier de programme que $InstallDir : $report" }
     Step ('desinstalleur : nettoyage lance (-mode uninstall-cleanup) : ' + $report.Trim())

@@ -20,8 +20,9 @@ import (
 	"github.com/JGtm/LevelUp/libs/film/filmproc"
 )
 
-// CodeSortieVerrouTenu : le code de sortie d'une commande refusee parce qu'un autre decodage de film tient la machine.
-const CodeSortieVerrouTenu = 2
+// CodeSortieVerrouTenu : le code de sortie d'une commande refusee parce qu'un autre decodage de film tient la machine. Ce
+// n'est PAS 2 : c'est le code de `flag.ExitOnError` (ligne de commande refusee), qu'un script doit pouvoir distinguer d'un verrou tenu.
+const CodeSortieVerrouTenu = 3
 
 // outilBackfillKillSource : le nom sous lequel `backfill-killsource` se declare dans le verrou (un operateur qui se
 // voit refuser le verrou lit QUI decode).

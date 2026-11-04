@@ -171,10 +171,13 @@ go run ./cmd/backfill-team-rounds --gamertag X --apply [--all] [--limit N] [--ma
 **100 % offline** (films from the local cache: no network, no tokens, no CDN), **server
 stopped** (it holds the shared database in write mode — single writer, ADR 0013). It runs two
 passes in this order: FILMS (decoding), then CREDIT (a SQL → SQL transform, a few minutes).
-A run that decodes (neither `--dry-run` nor `--credit-only`) takes the machine-wide solo decode lock
-in immediate refusal, before opening the database: when another decode holds the machine (a server
+A run that decodes (neither `--dry-run` nor `--credit-only`) takes the solo decode lock of its data root
+in immediate refusal, before opening the database: when another decode holds that root (a server
 cooking a replay, the replay regeneration queue, another pass), it names the holder and exits with
-code **2**.
+code **3** (2 stays the code of a refused command line). The lock is the file
+`<data root>/cache/film_decode.lock`, so it is per data root, not per machine: a command run from the
+repository (`data/` of the checkout) and the installed application (`%LOCALAPPDATA%\LevelUp`, or
+`LEVELUP_DATA_DIR`) hold two different locks and do not see each other; point `LEVELUP_DATA_DIR` at the same root to share one.
 
 ```bash
 go run ./cmd/levelup backfill-killsource --dry-run      # summary: total, already fresh, chunks, ETA
@@ -390,10 +393,16 @@ levelup-server.exe -mode uninstall-cleanup      # called by the uninstaller; no 
 
 `-mode uninstall-cleanup` removes what the application put OUTSIDE its folder, then exits: the per-user startup entry (the `LevelUp` value of
 `HKCU\...\Run` and its `StartupApproved` value, only when its command points into the folder of the program being uninstalled) and the scheduled
-task `LevelUp\Refresh-<8 hex>` of the data root in `LEVELUP_DATA_DIR`. It opens no database, binds no port, takes no lock, and never touches
-the data root. Exit 0 when nothing existed, 1 when a read or a deletion failed (the NSIS hook ignores the code: uninstalling never depends on it);
-the report goes to stderr. Set `LEVELUP_UNINSTALL_WITNESS` to a path to also get the report line in a file (what `e2e-install.ps1` checks). The
-installer's `NSIS_HOOK_PREUNINSTALL` runs it before the files are deleted, not during an update (`/UPDATE`).
+task `LevelUp\Refresh-<8 hex>` of the data root in `LEVELUP_DATA_DIR` (only when its action runs the server of that same folder: two installations of
+one user share the default data root, hence the task name, and the other one's task is left, `tache=foreign`). It opens no database, binds no port, takes
+no lock, and never touches the data root. Exit 0 when nothing existed or was foreign, 1 when a read or a deletion failed (the NSIS hook ignores the code:
+uninstalling never depends on it); the report goes to stderr (`demarrage=… tache=… ok=… exit=…`). Set `LEVELUP_UNINSTALL_WITNESS` to a path to also get
+the report line in a file (what `e2e-install.ps1` checks, exit code included). The installer's `NSIS_HOOK_PREUNINSTALL` first checks that the application
+is not running (Cancel at "LevelUp is running" removes nothing), then runs it before the files are deleted. It does not run in the updater's flow
+(`/UPDATE`: the updater never calls the old uninstaller), but a MANUAL update (installer launched by hand, "uninstall before" ticked by default) or a
+passive reinstall (`/P`) calls the old uninstaller without `/UPDATE`: the entry and the task are then removed, and put back at the next launch if the
+setting is on. After the cleanup the template of Tauri deletes the `Run` value of the product without looking at it; the hook reads it first and writes
+it back when it did not point into the uninstalled folder.
 
 ### Player identities (directory and purge — ADR 0035)
 

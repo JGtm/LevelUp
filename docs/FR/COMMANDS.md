@@ -178,9 +178,12 @@ go run ./cmd/backfill-team-rounds --gamertag X --apply [--all] [--limit N] [--ma
 **100 % hors ligne** (films du cache local : ni réseau, ni jetons, ni CDN), **serveur arrêté**
 (elle tient la base partagée en écriture — un seul writer, ADR 0013). Elle joue deux passes dans
 cet ordre : les FILMS (décodage), puis le CRÉDIT (transformation SQL → SQL, quelques minutes).
-Une exécution qui décode (ni `--dry-run` ni `--credit-only`) prend le verrou solo de décodage de la machine en refus
-immédiat, avant d'ouvrir la base : quand un autre décodage tient la machine (un serveur qui cuit un rejeu, la file de
-régénération des rejeux, une autre passe), elle nomme le détenteur et sort avec le code **2**.
+Une exécution qui décode (ni `--dry-run` ni `--credit-only`) prend le verrou solo de décodage de sa racine de données en refus
+immédiat, avant d'ouvrir la base : quand un autre décodage tient cette racine (un serveur qui cuit un rejeu, la file de
+régénération des rejeux, une autre passe), elle nomme le détenteur et sort avec le code **3** (2 reste le code d'une ligne de
+commande refusée). Le verrou est le fichier `<racine de données>/cache/film_decode.lock` : il est par racine de données, pas par
+machine. Une commande lancée depuis le dépôt (`data/` de la copie de travail) et l'application installée (`%LOCALAPPDATA%\LevelUp`, ou
+`LEVELUP_DATA_DIR`) tiennent deux verrous différents et ne se voient pas ; pointer `LEVELUP_DATA_DIR` sur la même racine pour n'en partager qu'un.
 
 ```bash
 go run ./cmd/levelup backfill-killsource --dry-run      # bilan : total, déjà à jour, chunks, ETA
@@ -403,11 +406,17 @@ levelup-server.exe -mode uninstall-cleanup      # appelé par le désinstalleur 
 
 `-mode uninstall-cleanup` retire ce que l'application a posé HORS de son dossier, puis sort : l'entrée de démarrage de l'utilisateur (la valeur `LevelUp` de
 `HKCU\...\Run` et sa valeur `StartupApproved`, seulement si sa commande vise le dossier du programme désinstallé) et la tâche planifiée
-`LevelUp\Refresh-<8 hex>` de la racine de données de `LEVELUP_DATA_DIR`. Il n'ouvre aucune base, ne lie aucun port, ne prend aucun verrou et ne touche
-jamais à la racine de données. Sortie 0 quand rien n'existait, 1 quand une lecture ou une suppression a échoué (le crochet NSIS ignore le code : la
-désinstallation n'en dépend jamais) ; le bilan va sur stderr. `LEVELUP_UNINSTALL_WITNESS` posée à un chemin écrit aussi la ligne de bilan dans un fichier
-(ce que vérifie `e2e-install.ps1`). Le `NSIS_HOOK_PREUNINSTALL` de l'installeur le lance avant l'effacement des fichiers, jamais pendant une mise à jour
-(`/UPDATE`).
+`LevelUp\Refresh-<8 hex>` de la racine de données de `LEVELUP_DATA_DIR` (seulement si son action lance le serveur de ce même dossier : deux installations
+d'un même utilisateur partagent la racine par défaut, donc le nom de la tâche, et la tâche de l'autre reste en place, `tache=foreign`). Il n'ouvre aucune
+base, ne lie aucun port, ne prend aucun verrou et ne touche jamais à la racine de données. Sortie 0 quand rien n'existait ou que tout était étranger, 1 quand
+une lecture ou une suppression a échoué (le crochet NSIS ignore le code : la désinstallation n'en dépend jamais) ; le bilan va sur stderr
+(`demarrage=… tache=… ok=… exit=…`). `LEVELUP_UNINSTALL_WITNESS` posée à un chemin écrit aussi la ligne de bilan dans un fichier (ce que vérifie
+`e2e-install.ps1`, code de sortie compris). Le `NSIS_HOOK_PREUNINSTALL` de l'installeur vérifie d'abord que l'application ne tourne pas (« Annuler » à
+« LevelUp est en cours d'exécution » ne retire rien), puis le lance avant l'effacement des fichiers. Il ne tourne pas dans le flux de l'updater
+(`/UPDATE` : l'updater n'appelle jamais l'ancien désinstalleur), mais une mise à jour MANUELLE (installeur lancé à la main, case « désinstaller avant »
+cochée par défaut) ou une réinstallation passive (`/P`) appelle l'ancien désinstalleur sans `/UPDATE` : l'entrée et la tâche sont alors retirées, puis
+reposées au prochain lancement si le réglage est actif. Après le nettoyage, le modèle de Tauri supprime la valeur `Run` du produit sans la regarder ; le
+crochet la lit avant et la réécrit quand elle ne visait pas le dossier désinstallé.
 
 ### Identités joueur (annuaire et purge — ADR 0035)
 

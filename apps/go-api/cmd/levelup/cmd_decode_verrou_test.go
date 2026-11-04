@@ -77,7 +77,7 @@ func TestDecodageEnProcessus_PrendLeVerrouSolo(t *testing.T) {
 		for _, d := range decodeurs {
 			if usesInCode(string(src), d) && !permis[f] {
 				t.Errorf("%s decode en processus (%s) sans etre inscrit : prendre prendreLeVerrouDeDecodage "+
-					"(refus immediat, sortie 2) et l'inscrire dans ce test", f, d)
+					"(refus immediat, sortie 3) et l'inscrire dans ce test", f, d)
 			}
 		}
 	}
@@ -122,5 +122,19 @@ func TestVerrouDeLaPasse_SeulLeDecodageLePrend(t *testing.T) {
 	}
 	if _, err := verrouDeLaPasse(cfg, killsourceOptions{online: true}); !errors.Is(err, filmproc.ErrDecodeBusy) {
 		t.Fatalf("la passe en ligne decode aussi : %v", err)
+	}
+}
+
+// Revue V9 : 2 est le code de `flag.ExitOnError` (ligne de commande refusee, rendu par le paquet flag avant toute
+// commande) ; « verrou tenu » doit s'en distinguer, comme de l'echec ordinaire (1) et de l'interruption (130).
+func TestCodeSortieVerrouTenu_DistinctDesAutresCodes(t *testing.T) {
+	const codeFlagExitOnError = 2
+	if CodeSortieVerrouTenu != 3 {
+		t.Fatalf("CodeSortieVerrouTenu = %d, documente a 3 (docs/COMMANDS.md)", CodeSortieVerrouTenu)
+	}
+	for _, autre := range []int{0, 1, codeFlagExitOnError, CodeSortieInterrompue} {
+		if CodeSortieVerrouTenu == autre {
+			t.Fatalf("CodeSortieVerrouTenu = %d se confond avec un autre code de sortie", autre)
+		}
 	}
 }

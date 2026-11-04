@@ -7,14 +7,17 @@
 //   - l'entrée « démarrer avec Windows » de l'utilisateur (valeur `LevelUp` de HKCU Run et son approbation), si elle
 //     vise le dossier de CE programme (internal/platform/startupentry) ;
 //   - la tâche planifiée `LevelUp\Refresh-<empreinte>` de la racine de données de l'environnement
-//     (internal/platform/schedtask), le nom étant propre à la racine.
+//     (internal/platform/schedtask), le nom étant propre à la racine, si son action lance le serveur de CE dossier :
+//     deux installations d'un même utilisateur partagent la racine par défaut, donc le nom de la tâche, et la tâche
+//     de l'autre (`tache=foreign`) n'est pas retirée.
 //
 // La racine de données n'est JAMAIS touchée (ADR 0045, A22). Le bilan va sur stderr (stdout est réservé aux
-// événements de la coquille). Une entrée absente est un succès (sortie 0) ; un échec de lecture ou de suppression
-// donne la sortie 1, que le crochet NSIS ignore : la désinstallation ne dépend jamais de ce nettoyage.
+// événements de la coquille). Une entrée absente ou étrangère est un succès (sortie 0) ; un échec de lecture ou de
+// suppression donne la sortie 1, que le crochet NSIS ignore : la désinstallation ne dépend jamais de ce nettoyage.
 //
-// Si la variable LEVELUP_UNINSTALL_WITNESS porte un chemin, le bilan y est aussi écrit : le test de bout en bout
-// de l'installeur (apps/desktop/scripts/e2e-install.ps1) prouve ainsi que le désinstalleur a bien lancé le mode.
+// Si la variable LEVELUP_UNINSTALL_WITNESS porte un chemin, le bilan (entrées, tâche, racine, dossier, `ok` et le code
+// de sortie `exit`) y est aussi écrit : le test de bout en bout de l'installeur (apps/desktop/scripts/e2e-install.ps1)
+// prouve ainsi que le désinstalleur a bien lancé le mode, et ce qu'il a rendu.
 package main
 
 import (
@@ -26,6 +29,7 @@ import (
 	"path/filepath"
 
 	"levelup/go-api/internal/config"
+	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/schedtask"
 	"levelup/go-api/internal/platform/startupentry"
 )
@@ -43,7 +47,7 @@ type uninstallCleanupDeps struct {
 	// Tasks : la tâche planifiée de la racine de données ; nil quand la racine est inconnue.
 	Tasks interface {
 		TaskName() string
-		Remove(ctx context.Context) error
+		RemoveIfTargets(ctx context.Context, installDir string) (schedtask.RemoveOutcome, error)
 	}
 	// InstallDir : le dossier du programme désinstallé (celui du serveur en cours).
 	InstallDir string
@@ -68,20 +72,23 @@ func runUninstallCleanupMode(ctx context.Context) int {
 		fmt.Fprintf(os.Stderr, "uninstall-cleanup : exécutable introuvable : %v\n", err)
 		return uninstallCleanupFailure
 	}
-	deps := uninstallCleanupDeps{
-		Startup:    startupentry.NewRegistryStore(),
-		InstallDir: filepath.Dir(exe),
-		Out:        os.Stderr,
-		Witness:    os.Getenv(envUninstallWitness),
-	}
-	if roots := config.ResolveRoots(); roots.DataSet {
+	deps := newUninstallCleanupDeps(exe, config.ResolveRoots(), startupentry.NewRegistryStore(), schedtask.ExecRunner{})
+	deps.Out, deps.Witness = os.Stderr, os.Getenv(envUninstallWitness)
+	return uninstallCleanup(ctx, deps)
+}
+
+// newUninstallCleanupDeps câble le nettoyage : le dossier du programme est celui de l'exécutable en cours, et la
+// tâche (si la racine de données est connue) est celle de roots.Data, que le serveur de cet exécutable aurait posée.
+func newUninstallCleanupDeps(exe string, roots title.Roots, startup startupentry.Store, runner schedtask.Runner) uninstallCleanupDeps {
+	deps := uninstallCleanupDeps{Startup: startup, InstallDir: filepath.Dir(exe)}
+	if roots.DataSet {
 		deps.DataRoot = roots.Data
 		deps.Tasks = &schedtask.Manager{
-			Runner: schedtask.ExecRunner{},
+			Runner: runner,
 			Spec:   schedtask.Spec{ExePath: exe, DataRoot: roots.Data, ResourcesRoot: roots.Resources, LogsRoot: roots.Logs},
 		}
 	}
-	return uninstallCleanup(ctx, deps)
+	return deps
 }
 
 // uninstallCleanup retire l'entrée de démarrage puis la tâche planifiée ; les deux sont tentées même si la
@@ -97,18 +104,22 @@ func uninstallCleanup(ctx context.Context, d uninstallCleanupDeps) int {
 	task := "racine-inconnue"
 	if d.Tasks != nil {
 		task = "erreur"
-		if err := d.Tasks.Remove(ctx); err != nil {
+		if outcome, err := d.Tasks.RemoveIfTargets(ctx, d.InstallDir); err != nil {
 			failures = append(failures, err)
 		} else {
-			task = "retiree-ou-absente"
+			task = string(outcome)
 		}
 	}
 	taskName := ""
 	if d.Tasks != nil {
 		taskName = d.Tasks.TaskName()
 	}
-	report := fmt.Sprintf("uninstall-cleanup: demarrage=%s tache=%s nom_tache=%q data_root=%q install_dir=%q ok=%t",
-		startup, task, taskName, d.DataRoot, d.InstallDir, len(failures) == 0)
+	code := 0
+	if len(failures) > 0 {
+		code = uninstallCleanupFailure
+	}
+	report := fmt.Sprintf("uninstall-cleanup: demarrage=%s tache=%s nom_tache=%q data_root=%q install_dir=%q ok=%t exit=%d",
+		startup, task, taskName, d.DataRoot, d.InstallDir, code == 0, code)
 	d.say("%s", report)
 	if err := errors.Join(failures...); err != nil {
 		d.say("uninstall-cleanup : %v", err)
@@ -118,8 +129,5 @@ func uninstallCleanup(ctx context.Context, d uninstallCleanupDeps) int {
 			d.say("uninstall-cleanup : fichier témoin %s non écrit : %v", d.Witness, err)
 		}
 	}
-	if len(failures) > 0 {
-		return uninstallCleanupFailure
-	}
-	return 0
+	return code
 }

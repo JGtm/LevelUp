@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/schedtask"
 	"levelup/go-api/internal/platform/startupentry"
 )
@@ -34,17 +35,27 @@ func (r *cleanupRegistry) DeleteApprovedValue(string) error {
 	return nil
 }
 
-// cleanupRunner : un schtasks simulé (liste CSV de /Query) qui note ses commandes.
+// cleanupRunner : un schtasks simulé (liste CSV de /Query, définition XML de /Query /XML) qui note ses commandes.
 type cleanupRunner struct {
 	listing string
+	xml     string
 	calls   [][]string
 	failOn  string
+}
+
+// taskDefinition : la définition XML d'une tâche de rafraîchissement dont l'action lance le serveur exe.
+func taskDefinition(exe string) string {
+	return `<Task><Actions><Exec><Command>cmd.exe</Command><Arguments>/d /s /c &quot;set &quot;LEVELUP_DATA_DIR=C:\d&quot; ` +
+		`&amp;&amp; &quot;` + exe + `&quot; -mode refresh-only&quot;</Arguments></Exec></Actions></Task>`
 }
 
 func (r *cleanupRunner) Run(_ context.Context, args ...string) ([]byte, error) {
 	r.calls = append(r.calls, append([]string(nil), args...))
 	if r.failOn != "" && args[0] == r.failOn {
 		return nil, errors.New("accès refusé")
+	}
+	if args[0] == "/Query" && len(args) > 3 && args[3] == "/XML" {
+		return []byte(r.xml), nil
 	}
 	if args[0] == "/Query" {
 		return []byte(r.listing), nil
@@ -70,6 +81,7 @@ func TestUninstallCleanup_RemovesStartupEntryAndTaskOfThisRoot(t *testing.T) {
 	run := &cleanupRunner{}
 	deps, out := newCleanup(t, reg, run)
 	run.listing = `"\` + deps.Tasks.TaskName() + `","N/A","Prêt"` + "\n"
+	run.xml = taskDefinition(deps.InstallDir + `\levelup-server.exe`)
 	witness := filepath.Join(t.TempDir(), "temoin.txt")
 	deps.Witness = witness
 
@@ -83,14 +95,73 @@ func TestUninstallCleanup_RemovesStartupEntryAndTaskOfThisRoot(t *testing.T) {
 	if strings.Join(last, " ") != "/Delete /TN "+deps.Tasks.TaskName()+" /F" {
 		t.Fatalf("dernier appel de schtasks = %v", last)
 	}
-	for _, want := range []string{"demarrage=removed", "tache=retiree-ou-absente", "ok=true"} {
+	for _, want := range []string{"demarrage=removed", "tache=removed", "ok=true", "exit=0"} {
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("bilan sans %q : %s", want, out)
 		}
 	}
 	got, err := os.ReadFile(witness)
-	if err != nil || !strings.Contains(string(got), "uninstall-cleanup:") {
+	if err != nil || !strings.Contains(string(got), "uninstall-cleanup:") || !strings.Contains(string(got), "exit=0") ||
+		!strings.Contains(string(got), "tache=removed") {
 		t.Fatalf("fichier témoin : %q, %v", got, err)
+	}
+}
+
+// Revue V4 : deux installations du même utilisateur partagent la racine de données par défaut, donc le nom de la
+// tâche ; désinstaller A ne retire pas la tâche dont l'action lance le serveur de B.
+func TestUninstallCleanup_TaskOfAnotherInstallationIsKept(t *testing.T) {
+	reg := &cleanupRegistry{}
+	run := &cleanupRunner{}
+	deps, out := newCleanup(t, reg, run)
+	run.listing = `"\` + deps.Tasks.TaskName() + `","N/A","Prêt"` + "\n"
+	run.xml = taskDefinition(`D:\autre\LevelUp\levelup-server.exe`)
+	if code := uninstallCleanup(context.Background(), deps); code != 0 {
+		t.Fatalf("code = %d, sortie : %s", code, out)
+	}
+	for _, c := range run.calls {
+		if c[0] == "/Delete" {
+			t.Fatalf("la tâche d'une autre installation a été supprimée : %v", run.calls)
+		}
+	}
+	if !strings.Contains(out.String(), "tache=foreign") || !strings.Contains(out.String(), "exit=0") {
+		t.Errorf("bilan : %s", out)
+	}
+}
+
+// Revue V7 : le câblage du mode. La tâche visée est celle de la racine de données de l'environnement (son nom),
+// le dossier du programme est celui de l'exécutable, et l'exécuteur et le registre injectés sont les seuls touchés.
+func TestNewUninstallCleanupDeps_WiresRootAndExecutable(t *testing.T) {
+	programs := filepath.Join(t.TempDir(), "Programs", "LevelUp")
+	exe := filepath.Join(programs, "levelup-server.exe")
+	roots := title.Roots{
+		Resources: programs,
+		Data:      filepath.Join(t.TempDir(), "LevelUp"),
+		Logs:      filepath.Join(t.TempDir(), "logs"),
+		DataSet:   true,
+	}
+	reg := &cleanupRegistry{present: true, command: `"` + exe + `" --minimized`}
+	run := &cleanupRunner{}
+	deps := newUninstallCleanupDeps(exe, roots, reg, run)
+	out := &bytes.Buffer{}
+	deps.Out = out
+
+	want := schedtask.TaskNameFor(roots.Data)
+	if deps.InstallDir != programs || deps.DataRoot != roots.Data || deps.Tasks == nil || deps.Tasks.TaskName() != want {
+		t.Fatalf("câblage : dossier %q, racine %q, tâche %v (attendu %q)", deps.InstallDir, deps.DataRoot, deps.Tasks, want)
+	}
+	run.listing = `"\` + want + `","N/A","Prêt"` + "\n"
+	run.xml = taskDefinition(exe)
+	if code := uninstallCleanup(context.Background(), deps); code != 0 {
+		t.Fatalf("code = %d, sortie : %s", code, out)
+	}
+	last := run.calls[len(run.calls)-1]
+	if strings.Join(last, " ") != "/Delete /TN "+want+" /F" || strings.Join(reg.deleted, ",") != "run,approved" {
+		t.Fatalf("dernier appel %v, registre %v, sortie : %s", last, reg.deleted, out)
+	}
+
+	roots.DataSet = false
+	if unset := newUninstallCleanupDeps(exe, roots, reg, run); unset.Tasks != nil || unset.DataRoot != "" || unset.InstallDir != programs {
+		t.Fatalf("racine inconnue : la tâche ne doit pas être visée : %+v", unset)
 	}
 }
 
