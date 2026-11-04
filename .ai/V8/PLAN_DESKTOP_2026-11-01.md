@@ -870,7 +870,7 @@ Décisions de l'exécutant (2026-11-04, dans le cadre de la demande) : le nettoy
 - [x] 22c.4 `levelup backfill-killsource` prend le verrou solo en refus immédiat. FAIT 2026-11-04 : `cmd/levelup/cmd_decode_verrou.go` (`prendreLeVerrouDeDecodage`, `verrouDeLaPasse`, `CodeSortieVerrouTenu = 3` (2 = `flag.ExitOnError`, revue V9), `sortirSur`), pris avant l'ouverture de la base sauf `--dry-run` et `--credit-only` (aucun décodage). Le grep `decfilm.Decode|Load` sous `cmd/` ne trouve en processus que cette passe dans `cmd/levelup` (`cmd/killsource` est un outil de diagnostic hors ligne sans base, voir §10) ; `TestDecodageEnProcessus_PrendLeVerrouSolo` tient la liste. Tests : refus immédiat avec détenteur nommé et sortie 2, libération, `--dry-run`/`--credit-only` non refusés, `--online` refusé. ADR 0045 D-29.
 - [x] 22c.5 `filmArchiveText.saved` supprimé, le panneau d'archive passe au badge partagé. FAIT 2026-11-04 : `FilmArchivePanel.tsx` (`flashSaveStatus`, l'assistant monte son propre `SaveStatusBadge`), clé `saved` retirée du type et des deux langues, `FilmArchivePanel.test.tsx` (badge de succès, badge d'échec, refus rédigé gardé).
 - [x] 22c.6 Rejeux Firefight d'avant le 2026-10-15 écartés d'emblée du décompte. FAIT 2026-11-04 : `replayregen.Deps.RefusedByRule` (`service.go`, `skipFor`), branché dans `wire/registry_replay_regen.go` (`unmanagedModeMatches` : `analysis.SQLModeNonGere`, le prédicat de la cuisson, forme courte). Tests : `TestScan_LesRefusParRegleSontEcartesDEmblee`, `TestScan_RefusParRegleIllisiblesRetombentSurLAncienComportement`, `TestQueryUnmanagedModeMatches_MemePredicatQueLaCuisson`.
-- [ ] 22c.z (U) Gate utilisateur : désinstallation avec démarrage Windows et tâche planifiée actifs (l'entrée et la tâche doivent disparaître, les données rester), puis un tag. À l'utilisateur.
+- [x] 22c.z (U) PASSÉ le 2026-11-04 — Gate utilisateur : désinstallation avec démarrage Windows et tâche planifiée actifs (l'entrée et la tâche doivent disparaître, les données rester), puis un tag. À l'utilisateur.
 
 ## 10. Découvertes (notées, non traitées)
 
@@ -1235,8 +1235,7 @@ Décisions de l'exécutant (2026-11-04, dans le cadre de la demande) : le nettoy
 
 ## 12. Clôture du chantier (2026-11-04)
 
-**État** : P0, P1 et P2 livrés et fusionnés dans `release/v8.1.0` (L0 à L22c, PR #125 à #145 ; dernier commit `1da5888487`). Tous les gates
-utilisateur sont passés sauf **22c.z** (désinstallation avec démarrage Windows et tâche planifiée actifs, sur l'installeur du run
+**État** : P0, P1 et P2 livrés et fusionnés dans `release/v8.1.0` (L0 à L22c, PR #125 à #145 ; dernier commit `1da5888487`). Tous les gates utilisateur sont passés (22c.z le 2026-11-04, désinstallation avec démarrage Windows et tâche planifiée actifs, installeur du run
 Release `41816350092`). Toutes les revues adversariales (2r, 3r, 4r, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V) sont consignées en §10,
 tous leurs P0/P1 corrigés. Le workflow Release est vert sur chaque push de la release (build de l'installeur + installation/désinstallation sur
 runner vierge) ; le run **signé sur tag** reste à jouer : c'est le tag `v8.1.0`, geste de l'utilisateur, **reporté** par lui le 2026-11-04 le temps
