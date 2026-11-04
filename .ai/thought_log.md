@@ -120021,3 +120021,11 @@ publication des briques, citations `.ai/` du code) ; 75 lignes antérieures à 2
 `.ai/archive/BACKLOG_COMPLETE_avant_2026-07.md` ; chemins `.ai/` périmés réalignés sur l'archive (0 lien mort).
 
 **Conclusion / prochaine étape.** Rien à exécuter ; commit au choix du user.
+
+## [2026-11-04] Citation Prise du crâne : visuel chevrons + crâne gris — Complété (branche `feat/citation-prise-du-crane-v2`, non commité)
+
+**Décision technique principale** : `HI_citation_Prise_du_crane.png` remplacé par le visuel final de l'utilisateur (trois chevrons blancs qui rognent un crâne gris clair, ombre douce, découpe parallèle au chevron). Même chemin d'image : aucun changement de code ni de seed, pas de re-seed nécessaire.
+
+**Résultats observés** : contrôle visuel de l'image sur fond gris et blanc ; branche créée depuis `origin/release/v8.1.0` dans un worktree dédié.
+
+**Conclusion / prochaine étape** : commit et PR vers `release/v8.1.0` sur accord.
