@@ -718,8 +718,8 @@ jobs:
 
   # Coquille desktop (ADR 0045 D-18, lot L16) : le contrat coquille <-> serveur joue contre le faux
   # serveur Go (`cargo test` le compile par `go build`, GOWORK=off), clippy sans avertissement et
-  # format. Sans fenetre : un runner n'a pas d'ecran. `cargo audit`, l'installeur NSIS et l'updater
-  # signe sont le job `desktop-build` du lot L17.
+  # format. Sans fenetre : un runner n'a pas d'ecran. L'installeur NSIS et l'updater
+  # signe sont le job `desktop-build` du lot L17 ; `cargo audit` est le job `desktop-audit`.
   desktop-test:
     name: Coquille desktop (cargo test, clippy, format)
     needs: changes
@@ -766,6 +766,44 @@ jobs:
         env:
           GOWORK: "off"
         run: go vet ./... && go test -count=1 ./...
+
+  # Audit des dependances de la coquille desktop (ADR 0045 D-18 ; item A23 du plan Desktop). `cargo audit`
+  # lit apps/desktop/src-tauri/Cargo.lock contre la base RustSec : une VULNERABILITE connue rougit le job
+  # (code de sortie non nul par defaut de cargo-audit), les avis « unmaintained », « unsound » et « yanked »
+  # restent des avertissements (une dizaine, tous dans l'arbre transitif de tauri/wry/gtk : aucune
+  # correction n'est a la portee de LevelUp). NE PAS ajouter `--deny warnings` : le job rougirait sur des avis
+  # que seul l'amont peut lever ; critere de revision : le premier avis « unmaintained » sur une dependance
+  # DIRECTE de Cargo.toml. Aucun avis n'est ignore (pas de `--ignore`, pas de audit.toml). Le Cargo.lock est
+  # independant de la plateforme : un runner Linux suffit (moins cher que windows-latest). cargo-audit est
+  # installe a une version exacte (`--locked`) et son binaire mis en cache sur cette version.
+  desktop-audit:
+    name: Coquille desktop (cargo audit)
+    needs: changes
+    if: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/') || needs.changes.outputs.desktop == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CARGO_AUDIT_VERSION: "0.22.2"
+    steps:
+      - uses: actions/checkout@v6.1.0
+
+      - name: Set up Rust
+        run: rustup toolchain install stable --profile minimal
+
+      - name: Cache cargo-audit
+        id: cache_audit
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/cargo-audit
+          key: cargo-audit-${{ runner.os }}-${{ env.CARGO_AUDIT_VERSION }}
+
+      - name: Installer cargo-audit
+        if: steps.cache_audit.outputs.cache-hit != 'true'
+        run: cargo install cargo-audit --locked --version "$CARGO_AUDIT_VERSION"
+
+      - name: cargo audit (vulnérabilités bloquantes, avis d'entretien en avertissement)
+        working-directory: apps/desktop/src-tauri
+        run: cargo audit --file Cargo.lock
 
   go-lint:
     name: Go Lint (golangci-lint)
