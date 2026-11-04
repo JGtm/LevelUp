@@ -30,6 +30,10 @@ const (
 	// serverModeRestore : restauration d'un jeu de sauvegarde dans une racine de données, puis sortie
 	// (restore_mode.go). Ce n'est pas un profil de déploiement : aucune configuration serveur n'est chargée.
 	serverModeRestore = "restore"
+	// serverModeUninstallCleanup : retrait de l'entrée de démarrage et de la tâche planifiée, appelé par le
+	// désinstalleur (uninstall_cleanup_mode.go). Pas un profil de déploiement : aucune configuration serveur
+	// n'est chargée.
+	serverModeUninstallCleanup = "uninstall-cleanup"
 )
 
 // flagsExitCode : code de sortie d'une ligne de commande refusée (convention du paquet flag).
@@ -37,6 +41,7 @@ const flagsExitCode = 2
 
 // serverUsage : rappel affiché avec toute erreur de ligne de commande.
 const serverUsage = "usage : server [-health-check] [-arret-sur-stdin] [-mode desktop|refresh-only]\n" +
+	"        server -mode uninstall-cleanup\n" +
 	"        server -mode restore --from <dossier du jeu> --to <racine de données> [--dry-run] [--force]"
 
 // serverFlags : les arguments du serveur, validés.
@@ -45,7 +50,7 @@ type serverFlags struct {
 	HealthCheck bool
 	// StopOnStdin : arrêt propre à la fermeture de stdin (lanceur parent qui meurt ou ferme).
 	StopOnStdin bool // sans effet en refresh-only : ce mode ne sert rien et sort seul
-	// Mode : serverModeDefault, serverModeDesktop, serverModeRefreshOnly ou serverModeRestore.
+	// Mode : serverModeDefault, serverModeDesktop, serverModeRefreshOnly, serverModeRestore ou serverModeUninstallCleanup.
 	Mode string
 	// Restore : les arguments de -mode restore (--from, --to, --dry-run, --force), validés dans ce seul mode.
 	Restore parquetbackup.RestoreCommand
@@ -60,7 +65,7 @@ func parseServerFlags(args []string) (serverFlags, error) {
 	fs.SetOutput(io.Discard)
 	fs.BoolVar(&f.HealthCheck, "health-check", false, "interroge /health puis sort")
 	fs.BoolVar(&f.StopOnStdin, "arret-sur-stdin", false, "arrêt propre à la fermeture de stdin")
-	fs.StringVar(&f.Mode, "mode", serverModeDefault, "mode de lancement : desktop, refresh-only ou restore")
+	fs.StringVar(&f.Mode, "mode", serverModeDefault, "mode de lancement : desktop, refresh-only, restore ou uninstall-cleanup")
 	restore := parquetbackup.RegisterRestoreFlags(fs)
 	if err := fs.Parse(args); err != nil {
 		return serverFlags{}, err
@@ -69,7 +74,7 @@ func parseServerFlags(args []string) (serverFlags, error) {
 		return serverFlags{}, fmt.Errorf("argument inattendu %q", fs.Arg(0))
 	}
 	switch f.Mode {
-	case serverModeDefault, serverModeDesktop, serverModeRefreshOnly:
+	case serverModeDefault, serverModeDesktop, serverModeRefreshOnly, serverModeUninstallCleanup:
 		if *restore != (parquetbackup.RestoreCommand{}) {
 			return serverFlags{}, fmt.Errorf("--from, --to, --dry-run et --force n'existent qu'avec -mode %s", serverModeRestore)
 		}
@@ -79,8 +84,8 @@ func parseServerFlags(args []string) (serverFlags, error) {
 		}
 		f.Restore = *restore
 	default:
-		return serverFlags{}, fmt.Errorf("-mode %q inconnu (valeurs admises : %s, %s, %s)",
-			f.Mode, serverModeDesktop, serverModeRefreshOnly, serverModeRestore)
+		return serverFlags{}, fmt.Errorf("-mode %q inconnu (valeurs admises : %s, %s, %s, %s)",
+			f.Mode, serverModeDesktop, serverModeRefreshOnly, serverModeRestore, serverModeUninstallCleanup)
 	}
 	return f, nil
 }

@@ -452,3 +452,47 @@ func TestOccupe_BorneEpuiseeCompteUnEchec(t *testing.T) {
 		t.Fatalf("état = %+v, appels = %d (1 essai + 3 reprises)", st, f.calls.Load())
 	}
 }
+
+// Un rejeu que la cuisson refuse par règle (mode non géré) n'est jamais compté « en retard » : le décompte l'écarte
+// d'emblée, sans chercher son film ni lire son en-tête.
+func TestScan_LesRefusParRegleSontEcartesDEmblee(t *testing.T) {
+	f := newFixture(t)
+	ids := f.seed(t, 3)
+	f.deps.RefusedByRule = func(_ context.Context, slug string) (map[string]struct{}, error) {
+		if slug != testSlug {
+			t.Errorf("titre interrogé = %q", slug)
+		}
+		return map[string]struct{}{ids[1]: {}}, nil
+	}
+	f.svc.Bind(context.Background(), &f.wg, f.deps)
+	cands, err := f.svc.scan(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cands) != 2 {
+		t.Fatalf("candidats = %+v, attendu 2 (le refus par règle est écarté)", cands)
+	}
+	for _, c := range cands {
+		if c.MatchID == ids[1] {
+			t.Fatalf("le match refusé par règle est compté : %+v", cands)
+		}
+	}
+	if n := f.presentN.Load(); n != 2 {
+		t.Fatalf("FilmPresent appelé %d fois, attendu 2 : un refus par règle ne coûte pas un test de film", n)
+	}
+}
+
+// Le registre illisible ne casse pas le décompte : il est journalisé et le comportement d'avant s'applique (le refus
+// se constate au premier essai de cuisson).
+func TestScan_RefusParRegleIllisiblesRetombentSurLAncienComportement(t *testing.T) {
+	f := newFixture(t)
+	f.seed(t, 2)
+	f.deps.RefusedByRule = func(context.Context, string) (map[string]struct{}, error) {
+		return nil, errors.New("registre illisible")
+	}
+	f.svc.Bind(context.Background(), &f.wg, f.deps)
+	cands, err := f.svc.scan(context.Background())
+	if err != nil || len(cands) != 2 {
+		t.Fatalf("candidats = %d, err = %v : le décompte doit tenir sans le registre", len(cands), err)
+	}
+}

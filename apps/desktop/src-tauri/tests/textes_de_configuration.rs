@@ -140,3 +140,159 @@ fn l_entree_de_demarrage_n_est_ecrite_que_par_le_reglage() {
         "shell_tauri.rs doit appliquer le reglage par `autostart::reconcile`"
     );
 }
+
+/// Position de la premiere ligne de `code` qui commence par `debut`.
+fn position(code: &[&str], debut: &str) -> Option<usize> {
+    code.iter().position(|l| l.starts_with(debut))
+}
+
+/// L22c.1 : la desinstallation retire l'entree de demarrage et la tache planifiee par le serveur livre. Le
+/// crochet NSIS doit appeler le mode `-mode uninstall-cleanup` du serveur installe, hors flux de mise a jour
+/// (l'utilisateur qui met a jour garde son entree), sans jamais supprimer de dossier de donnees. Revue V7 :
+/// l'appel est A L'INTERIEUR du bloc `${If} $UpdateMode <> 1` (ordre des lignes), pas seulement dans le crochet.
+#[test]
+fn le_crochet_de_desinstallation_appelle_le_nettoyage_du_serveur() {
+    let hooks = lire("windows/hooks.nsh");
+    let corps = entre(&hooks, "!macro NSIS_HOOK_PREUNINSTALL", "!macroend");
+    let code = lignes_de_code(corps);
+    let appel = position(&code, "nsExec::ExecToLog").unwrap_or_else(|| panic!("aucun nsExec::ExecToLog:\n{corps}"));
+    assert!(
+        code[appel].contains(r#""$INSTDIR\levelup-server.exe" -mode uninstall-cleanup"#),
+        "NSIS_HOOK_PREUNINSTALL doit lancer `$INSTDIR/levelup-server.exe -mode uninstall-cleanup` par nsExec::ExecToLog:\n{corps}"
+    );
+    let garde = code
+        .iter()
+        .position(|l| *l == "${If} $UpdateMode <> 1")
+        .unwrap_or_else(|| panic!("le nettoyage doit etre garde par `${{If}} $UpdateMode <> 1`:\n{corps}"));
+    let fin_garde = code
+        .iter()
+        .rposition(|l| *l == "${EndIf}")
+        .expect("le bloc garde par $UpdateMode doit se refermer");
+    assert!(
+        garde < appel && appel < fin_garde,
+        "nsExec doit etre DANS le bloc `${{If}} $UpdateMode <> 1` (lignes {garde} < {appel} < {fin_garde}):\n{corps}"
+    );
+    assert!(
+        code[appel].contains("/TIMEOUT="),
+        "l'appel doit etre borne par /TIMEOUT : un nettoyage pendu bloquerait la desinstallation:\n{corps}"
+    );
+    for ligne in &code {
+        assert!(
+            !ligne.starts_with("RMDir") && !ligne.starts_with("Delete"),
+            "le crochet de desinstallation ne supprime rien lui-meme (jamais la racine de donnees): {ligne}"
+        );
+    }
+    assert!(
+        corps.contains(r"$LOCALAPPDATA\${PRODUCTNAME}"),
+        "a defaut de LEVELUP_DATA_DIR, la racine de donnees est %LOCALAPPDATA%/LevelUp, comme celle de la coquille"
+    );
+}
+
+/// Revue V5 : la branche « LEVELUP_DATA_DIR absente » du desinstalleur n'est jouee par aucun essai (l'essai de bout
+/// en bout pose la variable, et la jouer viserait la vraie racine de donnees du poste). Le texte tient sa forme : le
+/// crochet pose la variable par `SetEnvironmentVariable` sur la racine par defaut, et ce SEULEMENT quand elle est vide.
+#[test]
+fn le_crochet_pose_la_racine_par_defaut_quand_la_variable_est_absente() {
+    let hooks = lire("windows/hooks.nsh");
+    let code = lignes_de_code(entre(&hooks, "!macro NSIS_HOOK_PREUNINSTALL", "!macroend"));
+    let lecture = position(&code, "ReadEnvStr $0 LEVELUP_DATA_DIR").expect("lecture de LEVELUP_DATA_DIR");
+    let test = code
+        .iter()
+        .position(|l| *l == r#"${If} $0 == """#)
+        .expect("condition `variable vide`");
+    let pose = position(&code, "System::Call 'Kernel32::SetEnvironmentVariable(t, t)i(")
+        .expect("pose de la variable par SetEnvironmentVariable");
+    assert!(
+        code[pose].contains(r#"("LEVELUP_DATA_DIR", "$LOCALAPPDATA\${PRODUCTNAME}").r0'"#),
+        "la racine par defaut posee est %LOCALAPPDATA%\\LevelUp (celle de la coquille) : {}",
+        code[pose]
+    );
+    let appel = position(&code, "nsExec::ExecToLog").unwrap();
+    assert!(
+        lecture < test && test < pose && pose < appel && code[pose + 1] == "${EndIf}",
+        "ordre attendu : lecture, condition `vide`, pose, fin de condition, puis l'appel du mode"
+    );
+}
+
+/// Revue V2 : le crochet tourne avant la verification de l'application en cours du modele de Tauri ; « Annuler » a
+/// « LevelUp est en cours d'execution » ne doit rien retirer. Le crochet fait donc la verification EN TETE, avant le
+/// nettoyage du serveur livre.
+#[test]
+fn le_crochet_verifie_que_l_application_ne_tourne_pas_avant_de_nettoyer() {
+    let hooks = lire("windows/hooks.nsh");
+    let code = lignes_de_code(entre(&hooks, "!macro NSIS_HOOK_PREUNINSTALL", "!macroend"));
+    assert_eq!(
+        code.first().copied(),
+        Some(r#"!insertmacro CheckIfAppIsRunning "$INSTDIR\${MAINBINARYNAME}.exe" "${PRODUCTNAME}""#),
+        "le crochet commence par la verification de l'application en cours"
+    );
+    let verif = position(&code, "!insertmacro CheckIfAppIsRunning").unwrap();
+    let appel = position(&code, "nsExec::ExecToLog").unwrap();
+    assert!(verif < appel, "CheckIfAppIsRunning doit preceder nsExec");
+}
+
+/// Revue V1 : apres le crochet, le modele de Tauri supprime la valeur Run du produit sans regarder ce qu'elle lance.
+/// Le crochet de fin la REECRIT quand elle ne visait pas le dossier desinstalle : la valeur est lue AVANT le nettoyage
+/// (le serveur retire la sienne), gardee dans une variable, comparee au debut de `$INSTDIR\` apres retrait du
+/// guillemet initial, et reposee sinon.
+#[test]
+fn le_crochet_rend_l_entree_de_demarrage_d_une_autre_copie() {
+    let hooks = lire("windows/hooks.nsh");
+    let avant = lignes_de_code(entre(&hooks, "!macro NSIS_HOOK_PREUNINSTALL", "!macroend"));
+    let apres_texte = entre(&hooks, "!macro NSIS_HOOK_POSTUNINSTALL", "!macroend");
+    let apres = lignes_de_code(apres_texte);
+    let cle = r#"HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "${PRODUCTNAME}""#;
+    assert!(
+        hooks.contains("Var LevelUpRunValue"),
+        "la valeur lue est gardee dans une variable globale"
+    );
+    let lecture = position(&avant, "ReadRegStr $LevelUpRunValue").expect("lecture de la valeur Run avant le nettoyage");
+    assert!(
+        avant[lecture].ends_with(cle),
+        "la valeur lue est Run\\${{PRODUCTNAME}} : {}",
+        avant[lecture]
+    );
+    assert!(
+        lecture < position(&avant, "nsExec::ExecToLog").unwrap(),
+        "la valeur Run est lue AVANT que le serveur ne retire la sienne"
+    );
+    assert!(
+        apres.contains(&"${If} $UpdateMode <> 1"),
+        "la reecriture suit le modele : hors mise a jour seulement:\n{apres_texte}"
+    );
+    let retrait = apres
+        .iter()
+        .position(|l| l.starts_with(r#"StrCpy $0 $LevelUpRunValue "" 1"#))
+        .expect("retrait du guillemet initial");
+    assert!(
+        apres.contains(&r#"StrLen $1 "$INSTDIR\""#),
+        "longueur de `$INSTDIR` plus l'antislash:\n{apres_texte}"
+    );
+    let prefixe = position(&apres, "StrCpy $2 $0 $1").expect("debut de la commande, a la longueur du dossier");
+    let comparaison = apres
+        .iter()
+        .position(|l| *l == r#"${If} $2 != "$INSTDIR\""#)
+        .expect("comparaison au dossier desinstalle");
+    let ecriture = position(&apres, "WriteRegStr").expect("reecriture de la valeur");
+    assert!(
+        apres[ecriture].ends_with(&format!("{cle} $LevelUpRunValue")),
+        "la valeur reecrite est celle qui a ete lue : {}",
+        apres[ecriture]
+    );
+    assert!(
+        retrait < prefixe && prefixe < comparaison && comparaison < ecriture && apres[ecriture + 1] == "${EndIf}",
+        "ordre attendu : retrait du guillemet, debut de chaine, comparaison, ecriture DANS la condition:\n{apres_texte}"
+    );
+}
+
+/// L22c.1 : le nom de l'entree de demarrage que la coquille pose (`autostart::ENTRY_NAME`) et celui que le
+/// serveur retire (`startupentry.EntryName`) sont la meme chaine : deux copies, un seul nom.
+#[test]
+fn le_serveur_retire_l_entree_de_demarrage_sous_le_nom_que_la_coquille_pose() {
+    let go = lire("../../go-api/internal/platform/startupentry/startupentry.go");
+    let nom = levelup_desktop::autostart::ENTRY_NAME;
+    assert!(
+        go.contains(&format!("const EntryName = \"{nom}\"")),
+        "startupentry.EntryName doit valoir \"{nom}\", le nom pose par autostart::ENTRY_NAME"
+    );
+}

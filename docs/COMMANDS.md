@@ -171,6 +171,13 @@ go run ./cmd/backfill-team-rounds --gamertag X --apply [--all] [--limit N] [--ma
 **100 % offline** (films from the local cache: no network, no tokens, no CDN), **server
 stopped** (it holds the shared database in write mode — single writer, ADR 0013). It runs two
 passes in this order: FILMS (decoding), then CREDIT (a SQL → SQL transform, a few minutes).
+A run that decodes (neither `--dry-run` nor `--credit-only`) takes the solo decode lock of its data root
+in immediate refusal, before opening the database: when another decode holds that root (a server
+cooking a replay, the replay regeneration queue, another pass), it names the holder and exits with
+code **3** (2 stays the code of a refused command line). The lock is the file
+`<data root>/cache/film_decode.lock`, so it is per data root, not per machine: a command run from the
+repository (`data/` of the checkout) and the installed application (`%LOCALAPPDATA%\LevelUp`, or
+`LEVELUP_DATA_DIR`) hold two different locks and do not see each other; point `LEVELUP_DATA_DIR` at the same root to share one.
 
 ```bash
 go run ./cmd/levelup backfill-killsource --dry-run      # summary: total, already fresh, chunks, ETA
@@ -379,6 +386,23 @@ is refused without `--force` (start the application once for a clean stop, or de
 Parquet files in the state of its epoch (the next start applies the missing migrations), then puts the configuration and authentication
 files back. A target that already holds one of the set's databases is refused without `--force`; `--dry-run` checks the set and lists what
 would be restored, writing nothing. The archived films are not part of a set.
+
+```bash
+levelup-server.exe -mode uninstall-cleanup      # called by the uninstaller; no flag
+```
+
+`-mode uninstall-cleanup` removes what the application put OUTSIDE its folder, then exits: the per-user startup entry (the `LevelUp` value of
+`HKCU\...\Run` and its `StartupApproved` value, only when its command points into the folder of the program being uninstalled) and the scheduled
+task `LevelUp\Refresh-<8 hex>` of the data root in `LEVELUP_DATA_DIR` (only when its action runs the server of that same folder: two installations of
+one user share the default data root, hence the task name, and the other one's task is left, `tache=foreign`). It opens no database, binds no port, takes
+no lock, and never touches the data root. Exit 0 when nothing existed or was foreign, 1 when a read or a deletion failed (the NSIS hook ignores the code:
+uninstalling never depends on it); the report goes to stderr (`demarrage=… tache=… ok=… exit=…`). Set `LEVELUP_UNINSTALL_WITNESS` to a path to also get
+the report line in a file (what `e2e-install.ps1` checks, exit code included). The installer's `NSIS_HOOK_PREUNINSTALL` first checks that the application
+is not running (Cancel at "LevelUp is running" removes nothing), then runs it before the files are deleted. It does not run in the updater's flow
+(`/UPDATE`: the updater never calls the old uninstaller), but a MANUAL update (installer launched by hand, "uninstall before" ticked by default) or a
+passive reinstall (`/P`) calls the old uninstaller without `/UPDATE`: the entry and the task are then removed, and put back at the next launch if the
+setting is on. After the cleanup the template of Tauri deletes the `Run` value of the product without looking at it; the hook reads it first and writes
+it back when it did not point into the uninstalled folder.
 
 ### Player identities (directory and purge — ADR 0035)
 
@@ -1148,6 +1172,10 @@ make desktop-installer  # NSIS installer (front, server, LGPL ffmpeg, resources)
 make desktop-e2e        # install, launch, close, relaunch and uninstall that installer on a throwaway data root
 ```
 
+CI: the `desktop-test` job (Windows) plays the shell tests, clippy and the format; the `desktop-audit` job (Linux) runs `cargo audit` on
+`apps/desktop/src-tauri/Cargo.lock` with a pinned `cargo-audit`: a known **vulnerability** fails it, the unmaintained / unsound / yanked advisories of
+the transitive tree stay warnings. Both follow the `desktop` path filter.
+
 `desktop-dev` uses `%LOCALAPPDATA%\LevelUp-dev` as data root (`-DataDir` to change it), never the root of
 the installed application. The shell reads three optional overrides from its own environment,
 `LEVELUP_RESOURCES_DIR`, `LEVELUP_DATA_DIR` and `LEVELUP_WEB_DIST` (absolute paths; the last one is the
@@ -1567,8 +1595,8 @@ runner provides gcc, no MinGW action). It builds `./cmd/server` (DuckDB linked),
 `./internal/filelock/` from `libs/film`, and `./himodule/` from `libs/gamefiles`: the packages that carry the
 `*_windows.go` / `*_win.go` files (clean shutdown, file locks, free disk space, process priority, memory-mapped
 module projection). No test behind the `gamefiles` or `research` tags is played: the game is not installed on the
-runner. It triggers on `release/**` pushes, on pull requests to `main` (the only pull requests this workflow receives) and, while the Desktop project lasts, on pushes of `feat/desktop-*` branches (Windows runners are expensive:
-working branches and `main` pushes skip it), with a 15-minute budget. It is the authoritative gate for
+runner. It triggers on `release/**` pushes, on pull requests to `main` (the only pull requests this workflow receives). Windows runners are expensive:
+working branches and `main` pushes skip it. The budget is 15 minutes. It is the authoritative gate for
 Windows-only behaviour; the Linux jobs never compile these files. To replay it locally (PowerShell, from
 `apps/go-api`, gcc on the `PATH`): `go build ./cmd/server`, then the three `go test -count=1` calls above.
 

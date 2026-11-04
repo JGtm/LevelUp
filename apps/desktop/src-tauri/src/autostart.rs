@@ -15,8 +15,8 @@
 //! Le plugin est derriere [`AutostartControl`] : les tests branchent un faux, aucune entree reelle n'est creee.
 
 /// Le nom de l'entree de demarrage (valeur de la cle `Run` de l'utilisateur courant). Pose explicitement : le
-/// plugin prendrait sinon le nom du paquet Cargo, et une entree qu'on veut retrouver (a la main, ou par un
-/// futur crochet de desinstallation) doit porter un nom connu.
+/// plugin prendrait sinon le nom du paquet Cargo, et une entree qu'on veut retrouver (a la main, ou par le serveur
+/// a la desinstallation : `startupentry.EntryName`, test de texte `textes_de_configuration`) doit porter un nom connu.
 pub const ENTRY_NAME: &str = "LevelUp";
 
 /// L'etat de l'entree de demarrage de l'utilisateur courant.

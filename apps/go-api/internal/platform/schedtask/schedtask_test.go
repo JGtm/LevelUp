@@ -364,3 +364,91 @@ func TestObservedEtLastLine(t *testing.T) {
 		t.Errorf("lastLine vide = %q", got)
 	}
 }
+
+// taskXMLOutput : ce que `schtasks /Query /TN <nom> /XML` rend pour la tâche posée par Ensure avec spec.
+func taskXMLOutput(t *testing.T, spec Spec) []byte {
+	t.Helper()
+	raw, err := taskXML(spec, fixedNow())
+	if err != nil {
+		t.Fatalf("taskXML : %v", err)
+	}
+	return raw
+}
+
+// xmlRunner : un schtasks simulé qui rend la liste puis la définition XML, et note ses appels.
+type xmlRunner struct {
+	fakeRunner
+	xmlOut []byte
+}
+
+func (x *xmlRunner) Run(ctx context.Context, args ...string) ([]byte, error) {
+	if args[0] == "/Query" && len(args) > 3 && args[3] == "/XML" {
+		x.calls = append(x.calls, call{args: append([]string(nil), args...)})
+		return x.xmlOut, nil
+	}
+	return x.fakeRunner.Run(ctx, args...)
+}
+
+func TestRemoveIfTargets(t *testing.T) {
+	installDir := filepath.Join(testRoot, "Programs", "LevelUp")
+	autre := testSpec
+	autre.ExePath = filepath.Join(testRoot, "dev", "LevelUp", "levelup-server.exe")
+	// La même sortie, telle que la rend une page de code : sans BOM, guillemets en entités XML.
+	ansi := []byte(`<Task><Actions><Exec><Arguments>/d /s /c &quot;set &quot;LEVELUP_DATA_DIR=` + testSpec.DataRoot +
+		`&quot; &amp;&amp; &quot;` + testSpec.ExePath + `&quot; -mode refresh-only&quot;</Arguments></Exec></Actions></Task>`)
+
+	cases := []struct {
+		name    string
+		listing string
+		xml     []byte
+		want    RemoveOutcome
+		deleted bool
+	}{
+		{"absente", listingWithout, nil, RemoveAbsent, false},
+		{"de ce dossier (UTF-16)", listingWithTask, taskXMLOutput(t, testSpec), RemoveRemoved, true},
+		{"de ce dossier (page de code)", listingWithTask, ansi, RemoveRemoved, true},
+		{"d'un autre dossier", listingWithTask, taskXMLOutput(t, autre), RemoveForeign, false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			r := &xmlRunner{fakeRunner: fakeRunner{listing: c.listing}, xmlOut: c.xml}
+			got, err := newManager(r).RemoveIfTargets(context.Background(), installDir)
+			if err != nil || got != c.want {
+				t.Fatalf("issue = %q, %v ; attendu %q", got, err, c.want)
+			}
+			var deleted bool
+			for _, cl := range r.calls {
+				if cl.args[0] == "/Delete" {
+					deleted = true
+					if !reflect.DeepEqual(cl.args, []string{"/Delete", "/TN", testTaskName, "/F"}) {
+						t.Errorf("suppression = %v", cl.args)
+					}
+				}
+			}
+			if deleted != c.deleted {
+				t.Errorf("suppression = %t, attendu %t (appels %v)", deleted, c.deleted, r.commands())
+			}
+		})
+	}
+}
+
+// Une définition qu'on ne sait pas lire n'est pas supprimée à l'aveugle ; un /Query ou un /Delete refusé est rendu.
+func TestRemoveIfTargets_ErreursRendues(t *testing.T) {
+	installDir := filepath.Join(testRoot, "Programs", "LevelUp")
+	r := &xmlRunner{fakeRunner: fakeRunner{listing: listingWithTask}, xmlOut: []byte("<Task></Task>")}
+	if _, err := newManager(r).RemoveIfTargets(context.Background(), installDir); !errors.Is(err, ErrActionUnreadable) {
+		t.Fatalf("définition illisible : %v", err)
+	}
+	for _, c := range r.calls {
+		if c.args[0] == "/Delete" {
+			t.Fatalf("suppression à l'aveugle : %v", r.calls)
+		}
+	}
+	r = &xmlRunner{fakeRunner: fakeRunner{listing: listingWithTask, failOn: "/Delete"}, xmlOut: taskXMLOutput(t, testSpec)}
+	if _, err := newManager(r).RemoveIfTargets(context.Background(), installDir); err == nil || !strings.Contains(err.Error(), "schtasks /Delete") {
+		t.Fatalf("échec de suppression : %v", err)
+	}
+	if _, err := newManager(&fakeRunner{failOn: "/Query"}).RemoveIfTargets(context.Background(), installDir); err == nil {
+		t.Fatal("liste illisible : l'erreur est rendue")
+	}
+}

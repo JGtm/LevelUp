@@ -52,7 +52,8 @@ func artifactStale(ctx context.Context, path string) bool {
 }
 
 // scanTitle liste les rejeux en retard d'un titre dont le film est encore dans l'archive, du plus récemment
-// rangé au plus ancien. blocked écarte ceux qu'une régénération a déjà refusés dans ce processus.
+// rangé au plus ancien. blocked écarte ceux qu'une régénération a déjà refusés dans ce processus et ceux que la cuisson
+// refuse par règle (mode non géré : Deps.RefusedByRule).
 func scanTitle(ctx context.Context, dir, slug string, filmPresent func(slug, matchID string) bool,
 	blocked func(slug, matchID string) bool) ([]Candidate, error) {
 	entries, err := os.ReadDir(dir)
