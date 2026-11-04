@@ -24,6 +24,11 @@ describe('ReplaySpeedMenu — le déclencheur dit où l’on en est', () => {
     expect(trigger.textContent).toContain('0.5×')
   })
 
+  it('affiche 1.5× avec sa décimale, sans l’arrondir à 2×', () => {
+    const { trigger } = renderMenu(1.5)
+    expect(trigger.textContent).toContain('1.5×')
+  })
+
   it('fermé, il ne rend AUCUNE option : le menu ne coûte rien tant qu’il dort', () => {
     const { trigger } = renderMenu(1)
     expect(trigger).toHaveAttribute('aria-expanded', 'false')

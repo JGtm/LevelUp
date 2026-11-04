@@ -74,7 +74,7 @@ export const AUTOPLAY_KEY = 'replay-autoplay'
 export const AUTOPLAY_DEFAULT = false
 
 /** Multiplicateurs de vitesse proposés (repris du POC, réglés à l'écran). */
-export const SPEED_MULTIPLIERS: readonly number[] = [0.5, 1, 2, 4]
+export const SPEED_MULTIPLIERS: readonly number[] = [0.5, 1, 1.5, 2, 4]
 
 const SPEED_DEFAULT = 1
 
