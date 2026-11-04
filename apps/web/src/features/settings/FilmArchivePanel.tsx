@@ -6,7 +6,8 @@
  * Chaque changement part tout de suite en PATCH /settings, comme le reste des Réglages. Les refus
  * du serveur — combinaison « sans archive + rétention finie », dossier non vide, archive qui
  * contient déjà des films — arrivent rédigés dans la langue de la requête et s'affichent tels
- * quels : la carte ne les reformule pas.
+ * quels : la carte ne les reformule pas. Le succès passe par le badge flottant partagé des Réglages
+ * (`saveFeedbackStore`, monté par `SettingsPage`) ; l'assistant, qui n'a pas cette page, monte le sien.
  */
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
@@ -21,6 +22,8 @@ import { useSettings, useUpdateSettings } from './queries'
 import { useFilmArchiveStatus, type FilmArchiveStatus } from './filmArchiveQueries'
 import { getFilmArchiveText, type FilmArchiveText } from './filmArchiveText'
 import { ToggleRow } from './_settingsShared'
+import { flashSaveStatus } from './saveFeedbackStore'
+import { SaveStatusBadge } from './SaveStatusBadge'
 import type { UpdateSettingsRequest } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
 
@@ -37,25 +40,29 @@ export function FilmArchivePanel({ variant = 'card' }: FilmArchivePanelProps) {
   const { data: status, isError } = useFilmArchiveStatus()
   const update = useUpdateSettings()
   const [dirDraft, setDirDraft] = useState<string | null>(null)
-  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   const archiveFilms = settings?.archive_films ?? true
   const dir = dirDraft ?? settings?.film_archive_dir ?? ''
 
   function save(req: UpdateSettingsRequest) {
-    setMessage(null)
+    setError(null)
     update.mutate(req, {
       onSuccess: () => {
-        setMessage({ ok: true, text: t.saved })
+        flashSaveStatus('saved')
         setDirDraft(null)
         void qc.invalidateQueries({ queryKey: queryKeys.filmArchive })
       },
-      onError: (err) => setMessage({ ok: false, text: apiErrorMessage(err) ?? t.saveFailed }),
+      onError: (err) => {
+        flashSaveStatus('error')
+        setError(apiErrorMessage(err) ?? t.saveFailed)
+      },
     })
   }
 
   const body = (
-    <div className="space-y-3">
+    <div className={variant === 'wizard' ? 'relative space-y-3' : 'space-y-3'}>
+      {variant === 'wizard' && <SaveStatusBadge />}
       {variant === 'wizard' && <p className="text-sm text-muted-foreground">{t.wizardIntro}</p>}
       <fieldset disabled={frozen} className="m-0 min-w-0 space-y-3 border-0 p-0">
         <div>
@@ -78,12 +85,9 @@ export function FilmArchivePanel({ variant = 'card' }: FilmArchivePanelProps) {
           saving={update.isPending}
         />
       </fieldset>
-      {message && (
-        <p
-          role={message.ok ? 'status' : 'alert'}
-          className={`text-xs ${message.ok ? 'text-success' : 'text-destructive'}`}
-        >
-          {message.text}
+      {error && (
+        <p role="alert" className="text-xs text-destructive">
+          {error}
         </p>
       )}
       {variant === 'card' && <Occupancy t={t} locale={locale} status={status} failed={isError} />}

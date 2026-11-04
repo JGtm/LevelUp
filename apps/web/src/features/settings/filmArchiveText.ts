@@ -32,7 +32,6 @@ export interface FilmArchiveText {
   partial: string
   loading: string
   unavailable: string
-  saved: string
   saveFailed: string
 }
 
@@ -63,7 +62,6 @@ const FR: FilmArchiveText = {
   partial: 'Mesure interrompue : les totaux sont des minimums.',
   loading: "Mesure de l'archive…",
   unavailable: "L'occupation de l'archive est indisponible.",
-  saved: 'Enregistré.',
   saveFailed: "Le réglage n'a pas pu être enregistré.",
 }
 
@@ -94,7 +92,6 @@ const EN: FilmArchiveText = {
   partial: 'Measurement interrupted: totals are lower bounds.',
   loading: 'Measuring the archive…',
   unavailable: 'Archive usage is unavailable.',
-  saved: 'Saved.',
   saveFailed: 'The setting could not be saved.',
 }
 
