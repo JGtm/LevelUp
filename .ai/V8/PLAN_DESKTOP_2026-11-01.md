@@ -875,8 +875,9 @@ Décisions de l'exécutant (2026-11-04, dans le cadre de la demande) : le nettoy
 ### 9.26 L23 — poids des mises à jour (2026-11-04 ; rapport [`L23_POIDS_MISES_A_JOUR_2026-11-04.md`](L23_POIDS_MISES_A_JOUR_2026-11-04.md))
 
 - [x] 23.1 Mesure. FAIT 2026-11-04 : composition de l'installeur par famille (non compressé et part compressée, méthode 7z LZMA d=8m mise à l'échelle du flux NSIS), diff SHA-256 de quatre installeurs successifs (runs 41586437921, 41722766811, 41816350092, 41825436589), relevé des composants ffmpeg requis, options (a) à (g) chiffrées, build `-ldflags "-s -w"` du serveur mesuré (-11 Mo). `cargo audit` en CI de la ligne L23 : déjà livré (22c.2).
-- [ ] 23.2 (U) Décision : (f) serveur sans symboles avant le tag ; (e) recompression des images Halo 5 et qualité ; maintien ou réouverture de D-9 (options (a)/(c)) ; (g) bootstrapper téléchargé. Voir §8 du rapport. À l'utilisateur.
-- [ ] 23.3 Mise en oeuvre des options retenues en 23.2.
+- [x] 23.2 (U) Décision. PRISE le 2026-11-04 par l'utilisateur : (f) serveur sans symboles OUI ; (e) images Halo 5 en WebP qualité 85 OUI sous réserve d'un gate visuel ; (a), (b), (c) NON (D-9 maintenue : ffmpeg et ressources livrés, mises à jour complètes) ; (g) bootstrapper téléchargé NON.
+- [ ] 23.3 Mise en oeuvre des options retenues en 23.2 (sous-items f et e ci-dessous ; clôture quand les deux sont `[x]` ou `[!]`).
+  - [x] 23.3-f Serveur sans symboles. FAIT 2026-11-04 : `-s -w` ajouté aux `-ldflags` (avec `-X main.version` conservé) de `release.yml` (job `build-go`, tous OS, et job `desktop-build`) et de `build-installer.ps1` ; `Makefile` (`go-api-build`, Linux) et `scripts/desktop-dev.ps1` (binaire de développement) gardent leurs symboles : ce ne sont pas des builds de release. Témoins : serveur 163 138 322 octets (155,6 Mo) vers 98 608 640 (94,0 Mo), `check-version.sh` vert sur le binaire `-s -w` (et rouge sur une mauvaise version) ; panic d'un binaire `-s -w` : noms de fonctions, fichiers et lignes intacts (contrat écrit dans le commentaire du workflow). `TestE2E` compile maintenant avec `-ldflags "-s -w"` (sans `-X main.version`, hors contrat testé) : vert.
 
 ## 10. Découvertes (notées, non traitées)
 

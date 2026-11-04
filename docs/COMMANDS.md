@@ -1202,7 +1202,7 @@ powershell -File apps/desktop/scripts/e2e-install.ps1 -Installer <LevelUp_X.Y.Z_
 bash apps/desktop/scripts/check-version.sh <X.Y.Z> [<server.exe>]
 ```
 
-- `build-installer.ps1` builds the front, the server (`-ldflags "-X main.version=<Cargo.toml version>"`), downloads
+- `build-installer.ps1` builds the front, the server (`-ldflags "-s -w -X main.version=<Cargo.toml version>"`: no symbol table nor DWARF, panic traces kept), downloads
   the pinned LGPL ffmpeg build (`fetch-ffmpeg.ps1`: URL and SHA-256 are constants of the script, a different sum
   stops everything), assembles the resources (`stage-bundle.ps1` into `src-tauri/bundle-staging`, git-ignored) and runs
   `npx tauri build --config src-tauri/tauri.bundle.conf.json`. The result is

@@ -1,3 +1,13 @@
+## [2026-11-04] Desktop - L23.3 : mise en oeuvre des options retenues (f serveur sans symboles, e images Halo 5 en WebP) - En cours (f complété)
+
+**Décision technique principale** : décisions de l'utilisateur du 2026-11-04 : (f) OUI, (e) WebP qualité 85 OUI sous gate visuel, (a)(b)(c) NON (D-9 maintenue), (g) NON.
+(f) : `-s -w` ajouté aux `-ldflags` de `release.yml` (jobs `build-go` et `desktop-build`) et de `build-installer.ps1`, `-X main.version` conservé ; `Makefile` et `desktop-dev.ps1` (builds de développement) gardent leurs symboles.
+
+**Résultats observés** : serveur 163 138 322 octets vers 98 608 640 (-39 %). `check-version.sh` vert sur le binaire sans symboles (et rouge sur une mauvaise version). Un panic d'un binaire `-s -w` garde noms de
+fonctions, fichiers et lignes (pclntab) : le contrat est écrit dans le commentaire du workflow. `TestE2E` (`e2e_windows`) vert avec le serveur compilé en `-s -w`.
+
+**Conclusion / prochaine étape** : (e) à suivre dans le second commit (entrée complétée à ce moment).
+
 ## [2026-11-04] Desktop - L23 : mesure du poids des mises à jour et options - Complété (23.1) ; décision 23.2 à l'utilisateur
 
 **Décision technique principale** : aucune décision produit ; mesure et propositions seulement. Composition de l'installeur par famille mesurée sur

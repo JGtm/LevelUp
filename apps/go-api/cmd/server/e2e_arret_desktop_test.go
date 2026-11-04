@@ -81,7 +81,9 @@ func e2eBuildServer(t *testing.T) string {
 	t.Helper()
 	bin := filepath.Join(t.TempDir(), "levelup-server.exe")
 	start := time.Now()
-	cmd := exec.Command("go", "build", "-o", bin, ".") // cwd du test = cmd/server
+	// Mêmes options de symboles que la release (`-s -w`, sans `-X main.version` : la version n'entre pas
+	// dans le contrat testé) : le test joue le binaire tel que l'installeur le livre.
+	cmd := exec.Command("go", "build", "-ldflags", "-s -w", "-o", bin, ".") // cwd du test = cmd/server
 	cmd.Env = append(os.Environ(), "CGO_ENABLED=1")
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("go build ./cmd/server a échoué : %v\n%s", err, out)

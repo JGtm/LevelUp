@@ -5,7 +5,7 @@
 
 .DESCRIPTION
     1. front compile (apps/web, sauf -SkipWeb) ;
-    2. serveur Go (CGO, DuckDB lie) pose sous le nom du sidecar, version dans -ldflags ;
+    2. serveur Go (CGO, DuckDB lie) pose sous le nom du sidecar, version dans -ldflags, sans symboles (-s -w : traces de panique intactes) ;
     3. ffmpeg et ffprobe LGPL (fetch-ffmpeg.ps1 : archive epinglee, somme de controle verifiee) ;
     4. ressources assemblees (stage-bundle.ps1) ;
     5. `npx tauri build` avec tauri.bundle.conf.json.
@@ -71,7 +71,7 @@ $binaries = Join-Path $tauri 'binaries'
 New-Item -ItemType Directory -Force -Path $binaries | Out-Null
 $server = Join-Path $binaries "levelup-server-$triple.exe"
 Push-Location (Join-Path $repo 'apps\go-api')
-try { Invoke-Native 'go build du serveur' { go build -ldflags "-X main.version=$version" -o $server ./cmd/server } }
+try { Invoke-Native 'go build du serveur' { go build -ldflags "-s -w -X main.version=$version" -o $server ./cmd/server } }
 finally { Pop-Location }
 
 $ffmpeg = Join-Path $env:TEMP 'levelup-ffmpeg-out'
