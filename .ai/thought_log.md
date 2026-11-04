@@ -1,12 +1,17 @@
-## [2026-11-04] Desktop - L23.3 : mise en oeuvre des options retenues (f serveur sans symboles, e images Halo 5 en WebP) - En cours (f complété)
+## [2026-11-04] Desktop - L23.3 : mise en oeuvre des options retenues (f serveur sans symboles, e images Halo 5 en WebP) - Complété (gate visuel de (e) à l'utilisateur)
 
 **Décision technique principale** : décisions de l'utilisateur du 2026-11-04 : (f) OUI, (e) WebP qualité 85 OUI sous gate visuel, (a)(b)(c) NON (D-9 maintenue), (g) NON.
-(f) : `-s -w` ajouté aux `-ldflags` de `release.yml` (jobs `build-go` et `desktop-build`) et de `build-installer.ps1`, `-X main.version` conservé ; `Makefile` et `desktop-dev.ps1` (builds de développement) gardent leurs symboles.
+(f) : `-s -w` ajouté aux `-ldflags` de `release.yml` (jobs `build-go` et `desktop-build`) et de `build-installer.ps1`, `-X main.version` conservé ; `Makefile` et `desktop-dev.ps1`
+(builds de développement) gardent leurs symboles. (e) : `scripts/convert-halo5-images.mjs` (ffmpeg libwebp), 1 257 PNG remplacés par des WebP ; ECART à la décision, justifié par mesure : seules les plaques
+(308) et le fond sont en qualité 85 ; les emblèmes et les vignettes sont SANS PERTE, car `recolor.ts` lit R, V, B comme trois zones de couleur et le sous-échantillonnage des chrominances d'un WebP avec perte les fait baver
+(pixels écartés de plus de 16 niveaux après recoloration : plaques 2,0 % en moyenne et 13,5 % la pire, emblèmes 3,5 %, vignettes d'emblème 16 %, sans perte 0 %). `teams/` reste en PNG (chemin partagé avec Halo Infinite).
 
-**Résultats observés** : serveur 163 138 322 octets vers 98 608 640 (-39 %). `check-version.sh` vert sur le binaire sans symboles (et rouge sur une mauvaise version). Un panic d'un binaire `-s -w` garde noms de
-fonctions, fichiers et lignes (pclntab) : le contrat est écrit dans le commentaire du workflow. `TestE2E` (`e2e_windows`) vert avec le serveur compilé en `-s -w`.
+**Résultats observés** : serveur 163 138 322 octets vers 98 608 640 ; images 39,67 Mo vers 8,97 Mo ; installeur 202 663 134 octets (193,3 Mo) vers 159 348 542 octets (152,0 Mo), -21 %. `check-version.sh` vert sur le
+binaire sans symboles (et rouge sur une mauvaise version) ; un panic d'un binaire `-s -w` garde noms, fichiers et lignes (pclntab). `TestE2E` (`e2e_windows`) vert avec le serveur en `-s -w` ; `e2e-install.ps1` code 0
+(installation, deux lancements, arrêt propre, désinstallation). Web : typecheck 0, lint 0 erreur, vitest 1063 fichiers passés ; garde-rail `halo5Images.guard.test.ts` et test Go `TestSPAHandler_ImagesWebPDeLaPage` (image/webp).
+Aucun navigateur ni application lancés hors du test d'installation prescrit : le rendu réel des WebP dans le canvas n'a été vérifié que par décodage libwebp et par les tests.
 
-**Conclusion / prochaine étape** : (e) à suivre dans le second commit (entrée complétée à ce moment).
+**Conclusion / prochaine étape** : gate visuel de l'utilisateur sur `C:\Users\Guillaume\Downloads\webp-halo5-avant-apres\comparer.html` (douze paires, brut et recolorié) ; s'il refuse, retirer le commit des images (le commit de (f) reste ; repli = plaques sans perte, environ 22 Mo au lieu de 4). Rapport : `.ai/V8/L23_POIDS_MISES_A_JOUR_2026-11-04.md` §11. Non traité, noté au plan §10 : PNG de `halo_infinite/` (6,6 Mo), logos `teams/`.
 
 ## [2026-11-04] Desktop - L23 : mesure du poids des mises à jour et options - Complété (23.1) ; décision 23.2 à l'utilisateur
 

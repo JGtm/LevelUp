@@ -1,6 +1,6 @@
 # L23 - Poids des mises à jour : mesure et options (2026-11-04)
 
-Statut : MESURE faite (23.1), décision attendue de l'utilisateur (23.2), mise en oeuvre non commencée (23.3).
+Statut : MESURE faite (23.1), décision prise le 2026-11-04 (23.2), mise en oeuvre faite (23.3, voir « Résultat » en fin de rapport) ; gate visuel de (e) à l'utilisateur.
 Plan : `.ai/V8/PLAN_DESKTOP_2026-11-01.md` §9.19 (ligne L23) et §9.26. ADR 0045 D-17 (ffmpeg livré).
 
 Unité : « Mo » = Mio (1 048 576 octets), comme les « 193 Mo » du plan. L'installeur fait 202 663 134 octets = 193,3 Mo.
@@ -191,3 +191,23 @@ Note : la ligne L23 du plan citait aussi « `cargo audit` en CI » : c'est fait 
 Extractions, empreintes et archives de test dans le répertoire temporaire de session (`...\scratchpad\l23\`, non versionné) : `hashes.json` (SHA-256 des fichiers des quatre installeurs),
 `comp/*.7z` (compressions par famille), `srv_sw.exe` (build `-s -w` du serveur, non lancé). Commande type de la compression :
 `7z a -t7z -m0=lzma:d=8m:fb=64 -mx=9 -ms=on <famille>.7z <fichiers>`.
+
+## 11. Résultat (23.3, 2026-11-04)
+
+Décisions de l'utilisateur du 2026-11-04 : (f) OUI ; (e) WebP qualité 85 OUI sous gate visuel ; (a), (b), (c) NON (D-9 maintenue) ; (g) NON.
+
+| Pièce | Avant | Après | Témoin |
+|---|---:|---:|---|
+| `levelup-server.exe` (`-s -w`) | 163 138 322 octets (155,6 Mo) | 98 608 640 octets (94,0 Mo) | `go build` local, mêmes `-X main.version=8.1.0` ; `check-version.sh` vert sur le binaire sans symboles et rouge sur une autre version |
+| Images Halo 5 du front (1 257 fichiers) | 39,67 Mo | 8,97 Mo | `node scripts/convert-halo5-images.mjs` |
+| **Installeur** | **202 663 134 octets (193,3 Mo)** | **159 348 542 octets (152,0 Mo)** | `build-installer.ps1 -SkipWeb` après `npm run build` ; `e2e-install.ps1` code 0 (installation, deux lancements avec arrêt propre, désinstallation) |
+
+Gain total -41,3 Mo (-21 %) : un peu plus que les 155 Mo prévus au §6 pour (f) + (e), parce que les emblèmes et les vignettes ont aussi été comptés (-2,9 Mo) et que les plaques sont tombées à 4,3 Mo (-87 %).
+
+Traces de panique : un binaire d'essai compilé en `-s -w` panique avec noms de fonctions, fichiers et lignes complets (la table `pclntab` de `runtime` est conservée) ; le contrat est écrit dans le commentaire de `release.yml`. `TestE2E` (`-tags=e2e_windows`) compile désormais le serveur en `-s -w` et reste vert.
+
+Écart à la décision (e), justifié par mesure : les masques du personnalisateur Spartan (emblèmes, vignettes) sont codés par canaux (R = primaire, V = secondaire, B = tertiaire) ; un WebP avec perte les salit (4:2:0). Mesure sur la recoloration, part des pixels écartés de plus de 16 niveaux sur 255 : plaques 2,0 % en moyenne (13,5 % la pire, n° 101), emblèmes 3,5 %, vignettes d'emblème 16 % (échantillons de 6), sans perte 0 %. Les plaques (grandes, 87 % de gain) restent en qualité 85 ; emblèmes et vignettes sont sans perte (-37 % et -23 %).
+
+Gate visuel : `C:\Users\Guillaume\Downloads\webp-halo5-avant-apres\comparer.html` (douze paires : quatre emblèmes à transparence, quatre plaques dont la pire des 308, le fond et trois vignettes ; les PNG et WebP bruts, plus leur recoloration avec une palette bleu, gris, or, et le poids de chaque fichier). Si l'utilisateur refuse, le commit des images est retiré.
+
+Non fait : lancer l'application avec la nouvelle interface (aucun navigateur ni coquille lancés, par consigne) ; le rendu réel des WebP dans le canvas de recoloration n'a donc été vérifié que par décodage libwebp (Pillow) et par les tests vitest, pas dans le moteur du navigateur.

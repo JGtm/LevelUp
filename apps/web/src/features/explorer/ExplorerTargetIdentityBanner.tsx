@@ -83,7 +83,7 @@ export function ExplorerTargetIdentityBanner({
         <div className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
           <div className="relative overflow-hidden">
             <RecoloredMask
-              src={`/titles/${currentTitleSlug}/spartan/nameplates/${spartanNameplateId}.png`}
+              src={`/titles/${currentTitleSlug}/spartan/nameplates/${spartanNameplateId}.webp`}
               colors={spartanApp.nameplateColors}
               alt=""
               className="pointer-events-none absolute inset-0 h-full w-full object-cover"
@@ -94,7 +94,7 @@ export function ExplorerTargetIdentityBanner({
             />
             <div className="relative z-[2] flex min-h-[7rem] items-center gap-4 px-5 py-5">
               <RecoloredMask
-                src={`/titles/${currentTitleSlug}/spartan/emblems/${spartanEmblemId}.png`}
+                src={`/titles/${currentTitleSlug}/spartan/emblems/${spartanEmblemId}.webp`}
                 colors={spartanApp.emblemColors}
                 alt=""
                 className="h-16 w-16 shrink-0 object-contain drop-shadow-[0_2px_6px_rgba(8,15,28,0.5)] sm:h-20 sm:w-20"
@@ -156,7 +156,7 @@ export function ExplorerTargetIdentityBanner({
           {synthesizeBanner && (
             <>
               <RecoloredMask
-                src={`/titles/${currentTitleSlug}/spartan/nameplates/${spartanNameplateId}.png`}
+                src={`/titles/${currentTitleSlug}/spartan/nameplates/${spartanNameplateId}.webp`}
                 colors={spartanApp.nameplateColors}
                 alt=""
                 className="pointer-events-none absolute inset-0 h-full w-full object-cover"
@@ -202,7 +202,7 @@ export function ExplorerTargetIdentityBanner({
             <div className="relative z-[2] flex-shrink-0">
               {synthesizeBanner ? (
                 <RecoloredMask
-                  src={`/titles/${currentTitleSlug}/spartan/emblems/${spartanEmblemId}.png`}
+                  src={`/titles/${currentTitleSlug}/spartan/emblems/${spartanEmblemId}.webp`}
                   colors={spartanApp.emblemColors}
                   alt=""
                   className="h-16 w-16 object-contain drop-shadow-[0_2px_6px_rgba(8,15,28,0.5)] sm:h-20 sm:w-20"

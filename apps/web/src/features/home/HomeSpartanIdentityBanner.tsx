@@ -128,7 +128,7 @@ export function HomeSpartanIdentityBanner({
             // + un scrim sémantique à gauche pour la lisibilité du gamertag/rang par-dessus.
             <>
               <RecoloredMask
-                src={`/titles/${currentTitleSlug}/spartan/nameplates/${spartanNameplateId}.png`}
+                src={`/titles/${currentTitleSlug}/spartan/nameplates/${spartanNameplateId}.webp`}
                 colors={spartanApp.nameplateColors}
                 alt=""
                 className="pointer-events-none absolute inset-0 h-full w-full object-cover"
@@ -169,7 +169,7 @@ export function HomeSpartanIdentityBanner({
                 // Halo 5 : emblème carré recolorisé (forme d'origine, PAS rond), collé
                 // visuellement au nameplate de fond.
                 <RecoloredMask
-                  src={`/titles/${currentTitleSlug}/spartan/emblems/${spartanEmblemId}.png`}
+                  src={`/titles/${currentTitleSlug}/spartan/emblems/${spartanEmblemId}.webp`}
                   colors={spartanApp.emblemColors}
                   alt={formatMessage(homeManifest, 'home.spartan_customizer.emblem_alt', locale, { name: playerName })}
                   className="h-20 w-20 shrink-0 object-contain drop-shadow-[0_2px_6px_rgba(8,15,28,0.5)] sm:h-24 sm:w-24"

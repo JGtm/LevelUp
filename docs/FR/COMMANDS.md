@@ -1617,6 +1617,19 @@ npm run test:coverage
 npm run lint
 ```
 
+Les images Halo 5 (`apps/web/public/titles/halo_5`) sont en WebP. Pour en ajouter ou en rafraîchir une à partir d'un PNG
+(ffmpeg avec `libwebp` dans le `PATH`, ou `LEVELUP_FFMPEG_DIR`) :
+
+```bash
+node scripts/convert-halo5-images.mjs [--keep] [--dir <racine>] [--jobs <n>]
+```
+
+Le script convertit par famille (plaques et fond : avec perte, qualité 85 ; emblèmes et vignettes : sans perte, car le
+personnalisateur Spartan lit leurs canaux R/V/B comme des zones de couleur et le sous-échantillonnage des chrominances
+d'un codage avec perte fait baver une zone sur la suivante), supprime chaque PNG converti (`--keep` les garde), est idempotent
+et affiche le poids avant et après. `teams/` et tout `halo_infinite/` restent en PNG. Un garde-rail vitest
+(`halo5Images.guard.test.ts`) échoue si un PNG revient.
+
 ### Gate local avant merge (`gate-push`)
 
 ```bash
