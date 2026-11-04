@@ -784,7 +784,7 @@ arrêt propre, désinstallation avec données conservées, vérifiés dans les j
       Tests : `FeedbackDrawer.test.tsx` (lien cliqué, formulaire refermé, mini-onglet masqué en bureau), `openInNewTab.test.ts`,
       `SidebarNav.test.tsx`.
 
-- [ ] 19.5 **(U)** Gate visuel sur l'installeur issu de la fusion. À l'utilisateur (clic réel de la page d'extraction de l'installeur, volet des référentiels, lien de connexion, signalement).
+- [x] 19.5 **(U)** PASSÉ (couvert par les gates utilisateur du 2026-11-03 sur les installeurs suivants : page d'extraction, lien de connexion, volet des référentiels, signalement) — À l'utilisateur (clic réel de la page d'extraction de l'installeur, volet des référentiels, lien de connexion, signalement).
 - Gate : web `typecheck + lint + test`, Rust `fmt + clippy + test`, `e2e-install.ps1` sur l'installeur local.
 
 ### 9.18 P2 — à planifier à la clôture de P1 (liste fermée des sujets)
@@ -1232,6 +1232,23 @@ Décisions de l'exécutant (2026-11-04, dans le cadre de la demande) : le nettoy
 - **Revue adversariale L22c (2026-11-04, un relecteur Opus) : 3 P1 + 6 P2 + 1 P1 doc, tous corrigés.**
   (V1 P1) le désinstalleur de Tauri efface `Run\LevelUp` sans regarder ce qu'elle lance : `NSIS_HOOK_PREUNINSTALL` lit la valeur AVANT le nettoyage (`$LevelUpRunValue`), `NSIS_HOOK_POSTUNINSTALL` la réécrit quand elle ne visait pas `$INSTDIR\` (même règle que `CommandTargets`) ; (V2 P1) `CheckIfAppIsRunning` en tête du crochet : « Annuler » ne retire plus rien ; (V3 P1 doc) la garde `$UpdateMode` ne couvre que l'updater, une mise à jour manuelle ou `/P` retire puis repose au prochain lancement : ADR D-28, runbook, `COMMANDS` EN+FR ; (V4 P2) `schedtask.Manager.RemoveIfTargets` : la tâche n'est retirée que si son action (`/Query /XML`) lance le serveur de CE dossier, sinon `tache=foreign` ; (V5 P2) le témoin porte `exit=` et le bilan complet, `e2e-install.ps1` les asserte (dont le nom de la tâche de la racine jetable) ; la branche NSIS `SetEnvironmentVariable` (racine par défaut) n'est pas jouée sur le poste, tenue par un garde de texte, dit au runbook ; (V6 P2) `./internal/platform/startupentry/...` ajouté au job Windows CGO ; (V7 P2) garde Rust : `nsExec` DANS le bloc `$UpdateMode <> 1`, test Go du câblage (`newUninstallCleanupDeps`) ; (V8 P2 doc) le verrou solo est par racine de données (`<racine>/cache/film_decode.lock`), pas par machine ; (V9 P2) `CodeSortieVerrouTenu = 3` (2 = `flag.ExitOnError`) ; (V10 P1) `replayregen/service.go` 579 -> 476 lignes, décompte et ensemble des matchs écartés extraits dans `count.go`, sans changement de comportement.
 - **Aléas de temps en CI (2026-11-02, L19 fusion et L20)** : run de la release `4d66a8fe58` rouge sur `TestE2ELanceurDesktop` (« aucun événement en 3m0s » après `listening`, le même commit passant le build et le test d'installation du workflow Release) ; run L20 `c76817d909` rouge sur le lot `film-grammar-reste` (600 s dépassées, ~170 s d'habitude, aucun fichier du décodeur touché). Les deux relances sont vertes : runners lents, pas le code. Budgets NON élargis (doctrine de `go-shards.txt` : rééquilibrer, pas allonger) ; à surveiller : deux occurrences de plus = rééquilibrer `grammar` ou isoler la migration du boot dans le test de lancement.
+
+## 12. Clôture du chantier (2026-11-04)
+
+**État** : P0, P1 et P2 livrés et fusionnés dans `release/v8.1.0` (L0 à L22c, PR #125 à #145 ; dernier commit `1da5888487`). Tous les gates
+utilisateur sont passés sauf **22c.z** (désinstallation avec démarrage Windows et tâche planifiée actifs, sur l'installeur du run
+Release `41816350092`). Toutes les revues adversariales (2r, 3r, 4r, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V) sont consignées en §10,
+tous leurs P0/P1 corrigés. Le workflow Release est vert sur chaque push de la release (build de l'installeur + installation/désinstallation sur
+runner vierge) ; le run **signé sur tag** reste à jouer : c'est le tag `v8.1.0`, geste de l'utilisateur, **reporté** par lui le 2026-11-04 le temps
+d'un autre chantier.
+
+**Reste après le tag** : L23 (poids des mises à jour, après deux releases publiées) ; les reports et dettes du chantier sont au
+`.ai/REGISTRE_REPORTS.md` (section « Chantier Desktop », 2026-11-04) et en §10.
+
+**Marche à suivre du tag** (quand l'utilisateur le décide) : `docs/CHANGELOG.md` et `docs/FR/CHANGELOG.md` : poser la date sur `## [8.1.0]` ;
+vérifier `Cargo.toml`, `tauri.conf.json` et le tag (`8.1.0`) ; `git tag v8.1.0` sur `release/v8.1.0` puis `git push origin v8.1.0` ; le workflow
+Release construit, signe (`TAURI_SIGNING_PRIVATE_KEY`), vérifie la signature, publie l'installeur et `latest.json` ; puis fusion de la release dans
+`main` (déploiement prod automatique : prévenir).
 
 ## 11. Protocole de reprise de session
 
