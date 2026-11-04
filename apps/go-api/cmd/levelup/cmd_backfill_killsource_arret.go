@@ -123,6 +123,11 @@ func sortirSur(err error) int {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		return CodeSortieInterrompue
 	}
+	var tenu *verrouDeDecodageTenu
+	if errors.As(err, &tenu) {
+		fmt.Fprintf(os.Stderr, "refus: %v\n", err)
+		return CodeSortieVerrouTenu
+	}
 	fmt.Fprintf(os.Stderr, "erreur: %v\n", err)
 	return 1
 }
