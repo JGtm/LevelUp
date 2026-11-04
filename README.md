@@ -16,48 +16,19 @@
 
 **v8.1 — LevelUp for Windows**
 
-LevelUp now installs on your PC like any other application. Your statistics, the 2D replay and the films of your matches, with no server to set up and nothing to host.
+LevelUp now installs on your PC like any other app: your stats, the 2D replay and your match films, with nothing to set up or host.
 
-**An application for Windows**
-- **A normal installer** — no administrator rights needed. Everything stays on your computer: your data, your sign-in, your films
-- **Updates offered, never forced** — the app tells you when a new version is out and installs it only when you say so. Your data is never touched
-- **Sign in with Microsoft in your browser** — one click, no code to copy. The app moves on by itself once you are signed in
-- **A sidebar you can fold to icons** — button or `Ctrl+B`; it also folds by itself on a narrow window. An "About" window gives the version, the licences and a button to check for updates
-- **References beside the page** — the maps, weapons and medals open in a pane next to what you are reading, and stay open from page to page
-- **Your language and your time zone** are taken from Windows the first time you start it
+- **Install and go** — a normal installer, sign in with Microsoft in your browser, and your matches load. Updates are offered, never forced.
+- **Plays nice with Halo** — nothing heavy runs while you play, and your matches sync as soon as you close the game.
+- **Feels like a desktop app** — a sidebar you can fold, maps and weapons at hand beside the page, Windows notifications and a tray icon if you want them.
+- **Your data stays yours** — automatic backups to a folder you choose, and you can bring your account over from the website.
+- **Replays stay up to date** — after an update, LevelUp offers to rebuild your older replays in the background.
 
-**Living with the game**
-- **Game mode** — while Halo Infinite is running, LevelUp does nothing heavy in the background. Your matches are synced as soon as you close the game
-- **Windows notifications** — new matches, challenges, records and rank-ups, when the window is hidden or behind another one
-- **A notification-area icon** — closing the window can keep LevelUp running there, with a menu: Open, Sync now, Quit
-- **Start with Windows**, already tucked away in the notification area
-- **Keep your sign-in alive while the app is closed**, so the next start is up to date
+**Also new, on the site and in the app**: the same clean header on every section, performance by map and by mode in the Summary, Halo 5 modes, and replay fixes.
 
-All of these are in Settings, Application tab, and off by default (game detection is on).
+**Good to know**: Windows 10 or 11 (64-bit) only. The installer isn't signed with a paid certificate, so Windows shows a warning when you install ("More info", then "Run anyway"); the download page explains it.
 
-**Your data stays yours**
-- **An automatic backup to a folder you choose** — in an open format (Parquet files), the last copies are kept, and restoring on a new PC is documented
-- **Move from the site to the app** — export your account from the site, import it in the app, and your matches come with you
-- **A diagnostic report in one click** from the "About" window, to attach to a bug report. No token or password goes into it
-
-**On the site too**
-- **A "Download LevelUp for Windows" page**, which also explains the Windows warning described below
-- **The same header on every section but the home**, on the site and in the app: a title, a short lead, the tabs of the section
-- **The Microsoft notice** required by the Halo content rules, in the page footer
-
-**Good to know**
-- **Windows 10 or 11, 64-bit, and nothing else for now**
-- **The installer is not signed with a paid certificate**: Windows SmartScreen shows a warning at each installation ("More info", then "Run anyway"). This is not a virus detection, and the download page walks you through it. Updates are checked against the project's own signing key
-- **ffmpeg comes with the app** (video capture, clips): nothing to install. On a Windows N or KN edition, the Media page tells you what is missing
-
-**Also in this version**
-- **Performance by map and by mode** — a curve of your average performance score over the Summary's result bars
-- **Map variants counted with their base map** — "Solitude - Ranked" and "Heavies" count under their map everywhere
-- **An Explorer briefing that keeps its cards**, even on a narrow filter or a small sample
-- **Halo 5 modes** in the Summary, and **names, ranks and exports in your language** on every page
-- **Replay**: the threat sensor, threat seeker, shroud screen and repair field are drawn again, and the drop wall and shroud screen last as long as the film says
-
-Everything in earlier versions (2D replay, Tactics tab, film-derived measurements, opt-in token pooling) is described in the [changelog](docs/CHANGELOG.md).
+Full details in the [changelog](docs/CHANGELOG.md).
 
 ## Features
 
