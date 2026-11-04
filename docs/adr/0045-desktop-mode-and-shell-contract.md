@@ -574,7 +574,7 @@ rebuilds them **on the user's request only**.
   post-sync replay cooking, the admin action and the post-sync kill-source step (the only decode that runs inside the server process, taken by
   `RunPostSync` before `CollectMatches`) all take it in immediate refusal. A busy lock **defers** the kill-source pass and the cooking to the next
   cycle (one INFO line, counters `killsource_postsync_reportee_verrou_decodage`, `reportes_verrou` in the cycle summary): never a failure, never a
-  warning per film. The offline `levelup backfill-killsource` is a separate process the operator runs with the server stopped. The refusals the cooking already names (game mode not handled, map outside the catalogue, unknown film key,
+  warning per film. The offline `levelup backfill-killsource` is a separate process the operator runs with the server stopped; it takes the same lock in immediate refusal (D-29, exit code 2). The refusals the cooking already names (game mode not handled, map outside the catalogue, unknown film key,
   film not finalized) set the film aside for the rest of the process and do not count as failures; anything else counts in `failed`.
 - **Pause and resume.** *Pause* lets the film in progress finish and keeps the next one from starting. `replay_regen_pending` in `app_settings.json`
   (not a user setting: never served by `GET /settings`, never written by `PATCH`; every server writer of the file goes through `Store.Update`, one
@@ -588,6 +588,51 @@ rebuilds them **on the user's request only**.
   session; progress with Pause and Resume while the queue runs) and the Replays card of Settings > Application (which also says "all replays are up to
   date"). A replay opened while its artifact is behind is shown as before, and rebuilt on opening if unreadable: the banner changes nothing there.
 - **Not done, on purpose.** No automatic start after an update, no banner on the Media page (user decision 2026-11-03), no parallel decoding.
+
+### Uninstalling and finishing touches (L22c)
+
+**D-28 - The uninstaller removes the startup entry and the scheduled task through the shipped server (L22c.1, 2026-11-04).** The Tauri
+uninstaller only deletes the files listed at install time; the per-user startup entry (the `LevelUp` value of `HKCU\...\Run`, written by the shell's
+autostart plugin) and the scheduled task `LevelUp\Refresh-<8 hex>` (written by the server, one per data root, D-10) live outside the program folder and used
+to survive an uninstall when their settings were on. The NSIS hook `NSIS_HOOK_PREUNINSTALL` (`windows/hooks.nsh`) now runs
+`"$INSTDIR\levelup-server.exe" -mode uninstall-cleanup` (`nsExec::ExecToLog`, 60 s timeout) before the files are deleted, because the uninstaller has
+nothing else under hand: the cleanup is Go (`internal/platform/startupentry`, registry behind a `Store` interface; `internal/platform/schedtask`, `schtasks`
+behind its `Runner`), not the shell's.
+- **The mode** (`cmd/server/uninstall_cleanup_mode.go`, `flags.go`) loads no server configuration, opens no database, binds no port and takes no lock; the report goes to
+  stderr. Exit 0 when nothing existed, 1 when a read or deletion failed (the hook ignores the code: uninstalling never depends on the cleanup). It never
+  touches the data root (A22).
+- **A startup entry is removed only if its command points into the folder of the program being uninstalled** (the folder of the running server): the entry of a
+  development checkout or a portable copy is left alone (`foreign`). The `StartupApproved` value goes with the `Run` value.
+- **The task is the one of the data root in `LEVELUP_DATA_DIR`**, else the default root `%LOCALAPPDATA%\LevelUp` (the hook sets the variable when the uninstaller's
+  environment has none, as the shell does): the task name carries a fingerprint of the root, so a test or a second installation never loses its task to another's
+  uninstall. No root known (the mode run by hand without the variable) skips the task and says so.
+- **Not in the update flow.** The Tauri template replays the previous version's uninstaller with `/UPDATE`: the hook is guarded by `$UpdateMode <> 1`, so a user who
+  updates keeps the entry and the task (and the shell and the server re-assert both at their next start anyway).
+- **Proof.** `startupentry_test.go` and `registry_windows_test.go` (the real registry, on a private random key under `HKCU\Software`, never the real `Run` key),
+  `uninstall_cleanup_mode_test.go` (fake registry and fake `schtasks`: removal, nothing to remove, foreign entry kept, unknown root, failures reported while the other step
+  still runs), `flags_test.go`, the Rust text guard `le_crochet_de_desinstallation_appelle_le_nettoyage_du_serveur` (the hook calls the mode, outside `/UPDATE`, bounded, deleting
+  nothing itself) and `le_serveur_retire_l_entree_de_demarrage_sous_le_nom_que_la_coquille_pose` (one name on both sides). `e2e-install.ps1` proves the uninstaller called
+  the mode (witness file named by `LEVELUP_UNINSTALL_WITNESS`, which the mode writes only when set) and that the data roots survive; it creates no real entry or task: too
+  risky on a workstation.
+
+**D-29 - A CLI that decodes a film in its own process takes the solo lock, in immediate refusal (L22c.4, 2026-11-04).** The rule "never two film decodes at once on the
+machine" already bound the server, the cooking child and the post-sync kill-source step. `levelup backfill-killsource` (offline and `--online`) decodes inside its own
+process and did not take the lock: run next to a server cooking a replay it doubled the memory peak. It now takes `filmproc.AcquireSolo` before opening the database
+(`cmd/levelup/cmd_decode_verrou.go`), except for `--dry-run` and `--credit-only`, which decode nothing; a held lock names the holder and exits with code 2
+(`CodeSortieVerrouTenu`). `TestDecodageEnProcessus_PrendLeVerrouSolo` lists the files of `cmd/levelup` that build an in-process decoder, so a new one must take the lock.
+`backfill-replay` is unchanged (its child waits for its turn).
+
+**The regeneration count skips what the cooking refuses by rule (L22c.6, 2026-11-04).** `Deps.RefusedByRule` returns, per title, the matches whose mode the replay does
+not handle, read from the registry with the same predicate as the cooking's refusal (`analysis.SQLModeNonGere`, `replaybuild.ErrModeNonGere`); the count drops them before
+the film test and the header read, so the Firefight replays built before the 2026-10-15 decision no longer count as "behind" until their first refused rebuild. An unreadable
+registry is logged and the count falls back to the previous behaviour.
+
+**The film-archive panel uses the shared save badge (L22c.5, 2026-11-04).** Its own "Saved." text is gone; the success goes through `saveFeedbackStore` like the rest of the
+settings (the wizard, which has no Settings page, mounts the badge itself), the refusal keeps its worded cause under the field and also flashes the failure badge.
+
+**CI (L22c.2, L22c.3).** The `desktop-audit` job (`ci.yml`, Linux, `desktop` path filter) runs a pinned `cargo audit` on `apps/desktop/src-tauri/Cargo.lock`: a known vulnerability
+fails it, the unmaintained / unsound / yanked advisories of the transitive tree stay warnings (about ten, none within LevelUp's reach). The `feat/desktop-*` push condition of the
+Windows CGO lane (D-7 of the plan, dated 2026-11-01 "until the end of P1") is removed: the lane runs on `release/**` and pull requests to `main` only.
 
 ### Tests
 
@@ -850,8 +895,8 @@ maintainer on a clean machine. A lot without a test at its level is not closed.
   `internal/api/desktop_replay_regen_mount_test.go` (routes under the capability only), `internal/api/handlers/desktop_replay_regen_test.go`,
   `apps/web/src/components/replay-regen/replayRegen.test.tsx`. The shared UI lives in `components/` (two features use it: the replay route and
   Settings), which keeps the cross-feature import ceiling (P8.5) where it was.
-- **Found and left**: Firefight replays built before the 2026-10-15 decision are counted until their first (refused) rebuild; `levelup backfill-replay
-  --purge-non-geres` removes them. The Data tab's film-archive panel still shows its own "Saved." text (outside the Application tab).
+- **Found and left** (both settled in L22c): Firefight replays built before the 2026-10-15 decision were counted until their first (refused) rebuild (the count now skips them by
+  rule, see "Uninstalling and finishing touches"); the Data tab's film-archive panel kept its own "Saved." text (it now uses the shared badge).
 
 ## Alternatives rejected
 

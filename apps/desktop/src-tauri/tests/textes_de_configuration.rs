@@ -140,3 +140,49 @@ fn l_entree_de_demarrage_n_est_ecrite_que_par_le_reglage() {
         "shell_tauri.rs doit appliquer le reglage par `autostart::reconcile`"
     );
 }
+
+/// L22c.1 : la desinstallation retire l'entree de demarrage et la tache planifiee par le serveur livre. Le
+/// crochet NSIS doit appeler le mode `-mode uninstall-cleanup` du serveur installe, hors flux de mise a jour
+/// (l'utilisateur qui met a jour garde son entree), sans jamais supprimer de dossier de donnees.
+#[test]
+fn le_crochet_de_desinstallation_appelle_le_nettoyage_du_serveur() {
+    let hooks = lire("windows/hooks.nsh");
+    let corps = entre(&hooks, "!macro NSIS_HOOK_PREUNINSTALL", "!macroend");
+    let code = lignes_de_code(corps);
+    assert!(
+        code.iter().any(|l| l.starts_with("nsExec::ExecToLog")
+            && l.contains(r#""$INSTDIR\levelup-server.exe" -mode uninstall-cleanup"#)),
+        "NSIS_HOOK_PREUNINSTALL doit lancer `$INSTDIR/levelup-server.exe -mode uninstall-cleanup` par nsExec::ExecToLog:\n{corps}"
+    );
+    assert!(
+        code.contains(&"${If} $UpdateMode <> 1"),
+        "le nettoyage ne doit pas tourner dans le flux de mise a jour (/UPDATE):\n{corps}"
+    );
+    assert!(
+        code.iter()
+            .any(|l| l.starts_with("nsExec::ExecToLog") && l.contains("/TIMEOUT=")),
+        "l'appel doit etre borne par /TIMEOUT : un nettoyage pendu bloquerait la desinstallation:\n{corps}"
+    );
+    for ligne in &code {
+        assert!(
+            !ligne.starts_with("RMDir") && !ligne.starts_with("Delete"),
+            "le crochet de desinstallation ne supprime rien lui-meme (jamais la racine de donnees): {ligne}"
+        );
+    }
+    assert!(
+        corps.contains(r"$LOCALAPPDATA\${PRODUCTNAME}"),
+        "a defaut de LEVELUP_DATA_DIR, la racine de donnees est %LOCALAPPDATA%/LevelUp, comme celle de la coquille"
+    );
+}
+
+/// L22c.1 : le nom de l'entree de demarrage que la coquille pose (`autostart::ENTRY_NAME`) et celui que le
+/// serveur retire (`startupentry.EntryName`) sont la meme chaine : deux copies, un seul nom.
+#[test]
+fn le_serveur_retire_l_entree_de_demarrage_sous_le_nom_que_la_coquille_pose() {
+    let go = lire("../../go-api/internal/platform/startupentry/startupentry.go");
+    let nom = levelup_desktop::autostart::ENTRY_NAME;
+    assert!(
+        go.contains(&format!("const EntryName = \"{nom}\"")),
+        "startupentry.EntryName doit valoir \"{nom}\", le nom pose par autostart::ENTRY_NAME"
+    );
+}

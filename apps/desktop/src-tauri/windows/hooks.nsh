@@ -30,3 +30,29 @@
 !macro NSIS_HOOK_POSTINSTALL
   SetAutoClose true
 !macroend
+
+; Desinstallation (ADR 0045 D-28) : le desinstalleur ne retire que les fichiers listes a l'installation. L'entree de
+; demarrage avec Windows (cle Run de l'utilisateur) et la tache planifiee `LevelUp\Refresh-<empreinte>` vivent HORS
+; du dossier du programme : le serveur livre les retire (`-mode uninstall-cleanup`), AVANT l'effacement de ses
+; fichiers. Le mode n'ouvre aucune base et ne touche JAMAIS a la racine de donnees ; son code de sortie est ignore
+; (la desinstallation ne depend pas de ce nettoyage), et le delai le borne.
+;
+; Pas dans le flux de mise a jour : le modele de Tauri rejoue le desinstalleur de l'ancienne version avec /UPDATE,
+; et l'utilisateur qui met a jour garde son entree et sa tache.
+;
+; La racine de donnees (qui nomme la tache) est celle de l'environnement du desinstalleur, a defaut la racine par
+; defaut %LOCALAPPDATA%\LevelUp, comme la coquille.
+!macro NSIS_HOOK_PREUNINSTALL
+  ${If} $UpdateMode <> 1
+    Push $0
+    ReadEnvStr $0 LEVELUP_DATA_DIR
+    ${If} $0 == ""
+      System::Call 'Kernel32::SetEnvironmentVariable(t, t)i("LEVELUP_DATA_DIR", "$LOCALAPPDATA\${PRODUCTNAME}").r0'
+    ${EndIf}
+    ${If} ${FileExists} "$INSTDIR\levelup-server.exe"
+      nsExec::ExecToLog /TIMEOUT=60000 '"$INSTDIR\levelup-server.exe" -mode uninstall-cleanup'
+      Pop $0
+    ${EndIf}
+    Pop $0
+  ${EndIf}
+!macroend

@@ -178,6 +178,9 @@ go run ./cmd/backfill-team-rounds --gamertag X --apply [--all] [--limit N] [--ma
 **100 % hors ligne** (films du cache local : ni réseau, ni jetons, ni CDN), **serveur arrêté**
 (elle tient la base partagée en écriture — un seul writer, ADR 0013). Elle joue deux passes dans
 cet ordre : les FILMS (décodage), puis le CRÉDIT (transformation SQL → SQL, quelques minutes).
+Une exécution qui décode (ni `--dry-run` ni `--credit-only`) prend le verrou solo de décodage de la machine en refus
+immédiat, avant d'ouvrir la base : quand un autre décodage tient la machine (un serveur qui cuit un rejeu, la file de
+régénération des rejeux, une autre passe), elle nomme le détenteur et sort avec le code **2**.
 
 ```bash
 go run ./cmd/levelup backfill-killsource --dry-run      # bilan : total, déjà à jour, chunks, ETA
@@ -393,6 +396,18 @@ ne déclare pas est refusé. Elle vérifie d'abord chaque somme SHA-256 du manif
 chaque base depuis ses Parquet dans l'état de son époque (le démarrage suivant applique les migrations manquantes), puis remet en place les
 fichiers de configuration et d'authentification. Une cible qui contient déjà une base du jeu est refusée sans `--force` ; `--dry-run` vérifie le jeu
 et liste ce qui serait restauré, sans rien écrire. Les films archivés ne font pas partie d'un jeu.
+
+```bash
+levelup-server.exe -mode uninstall-cleanup      # appelé par le désinstalleur ; aucun drapeau
+```
+
+`-mode uninstall-cleanup` retire ce que l'application a posé HORS de son dossier, puis sort : l'entrée de démarrage de l'utilisateur (la valeur `LevelUp` de
+`HKCU\...\Run` et sa valeur `StartupApproved`, seulement si sa commande vise le dossier du programme désinstallé) et la tâche planifiée
+`LevelUp\Refresh-<8 hex>` de la racine de données de `LEVELUP_DATA_DIR`. Il n'ouvre aucune base, ne lie aucun port, ne prend aucun verrou et ne touche
+jamais à la racine de données. Sortie 0 quand rien n'existait, 1 quand une lecture ou une suppression a échoué (le crochet NSIS ignore le code : la
+désinstallation n'en dépend jamais) ; le bilan va sur stderr. `LEVELUP_UNINSTALL_WITNESS` posée à un chemin écrit aussi la ligne de bilan dans un fichier
+(ce que vérifie `e2e-install.ps1`). Le `NSIS_HOOK_PREUNINSTALL` de l'installeur le lance avant l'effacement des fichiers, jamais pendant une mise à jour
+(`/UPDATE`).
 
 ### Identités joueur (annuaire et purge — ADR 0035)
 
@@ -1204,6 +1219,10 @@ make desktop-installer  # installeur NSIS (front, serveur, ffmpeg LGPL, ressourc
 make desktop-e2e        # installe, lance, ferme, relance et désinstalle cet installeur sur une racine de données jetable
 ```
 
+CI : le job `desktop-test` (Windows) joue les tests de la coquille, clippy et le format ; le job `desktop-audit` (Linux) lance `cargo audit` sur
+`apps/desktop/src-tauri/Cargo.lock` avec un `cargo-audit` épinglé : une **vulnérabilité** connue le rougit, les avis « non maintenu », « unsound » et « yanked »
+de l'arbre transitif restent des avertissements. Les deux suivent le filtre de chemins `desktop`.
+
 `desktop-dev` prend `%LOCALAPPDATA%\LevelUp-dev` pour racine de données (`-DataDir` pour la changer), jamais
 celle de l'application installée. La coquille lit trois surcharges facultatives dans son propre environnement,
 `LEVELUP_RESOURCES_DIR`, `LEVELUP_DATA_DIR` et `LEVELUP_WEB_DIST` (chemins absolus ; le dernier est le front
@@ -1632,8 +1651,8 @@ fournit gcc, pas d'action MinGW). Il compile `./cmd/server` (DuckDB lié), puis 
 depuis `libs/film`, et `./himodule/` depuis `libs/gamefiles` : les paquets qui portent les fichiers `*_windows.go` /
 `*_win.go` (arrêt propre, verrous de fichiers, espace disque libre, priorité de processus, projection mémoire des
 modules). Aucun test sous les tags `gamefiles` ou `research` n'y est joué : le jeu n'est pas installé sur le runner.
-Il se déclenche sur les pushs `release/**`, les pull requests vers `main` (les seules que ce workflow reçoit) et, le temps du chantier Desktop, les pushs des branches `feat/desktop-*` (les runners Windows coûtent
-cher : les branches de travail et les pushs sur `main` le sautent), avec un budget de 15 minutes. C'est le gate
+Il se déclenche sur les pushs `release/**`, les pull requests vers `main` (les seules que ce workflow reçoit). Les runners Windows coûtent
+cher : les branches de travail et les pushs sur `main` le sautent. Le budget est de 15 minutes. C'est le gate
 d'autorité des comportements propres à Windows ; les jobs Linux ne compilent jamais ces fichiers. Pour le rejouer en
 local (PowerShell, depuis `apps/go-api`, gcc dans le `PATH`) : `go build ./cmd/server`, puis les trois appels
 `go test -count=1` ci-dessus.

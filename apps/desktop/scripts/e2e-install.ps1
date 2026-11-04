@@ -19,7 +19,11 @@
       4. relancement (meme port memorise, /health 200) puis nouvelle fermeture propre ;
       5. desinstallation silencieuse : le programme disparait ; la racine de donnees par defaut
          (%LOCALAPPDATA%\LevelUp), ou le script a pose une sentinelle avant l'installation, existe
-         encore avec sa sentinelle (le desinstalleur ne la supprime jamais), comme la racine jetable.
+         encore avec sa sentinelle (le desinstalleur ne la supprime jamais), comme la racine jetable ;
+         le desinstalleur a lance `levelup-server.exe -mode uninstall-cleanup` (crochet NSIS, ADR 0045
+         D-28) : le serveur ecrit son bilan dans le fichier temoin LEVELUP_UNINSTALL_WITNESS (racine
+         jetable, dossier du programme, sortie 0). Le test ne pose aucune entree de demarrage ni tache
+         planifiee (trop risque sur le poste) : le bilan attendu est "absent".
 
     Verifications prealables, AVANT tout lancement et sans aucun nettoyage : le script refuse (code 1)
     si LevelUp est deja installe (dossier du programme, cle de registre NSIS du produit ou de
@@ -62,6 +66,8 @@ $MainExe = Join-Path $InstallDir 'levelup-desktop.exe'
 # Ligne de journal du serveur a l'arret, construite sans caracteres non ASCII dans ce fichier.
 $StopMessage = 'arr' + [char]0xEA + 't: termin' + [char]0xE9
 $CloseBudgetSec = 90
+# Fichier temoin du nettoyage de desinstallation (LEVELUP_UNINSTALL_WITNESS), nom aleatoire sous %TEMP%.
+$Witness = Join-Path $env:TEMP ('levelup-e2e-uninstall-' + [Guid]::NewGuid().ToString('N') + '.txt')
 
 if (-not $DataDir) { $DataDir = Join-Path $env:TEMP ('levelup-e2e-data-' + [Guid]::NewGuid().ToString('N')) }
 if (-not $ArtifactsDir) { $ArtifactsDir = Join-Path $env:TEMP 'levelup-e2e-artifacts' }
@@ -241,12 +247,22 @@ try {
 
     Step 'desinstallation silencieuse'
     $marker = Join-Path $DataDir 'desktop\port'
+    $env:LEVELUP_UNINSTALL_WITNESS = $Witness
     $uninstaller = Start-Process -FilePath (Join-Path $InstallDir 'uninstall.exe') -ArgumentList '/S' -Wait -PassThru
     if ($uninstaller.ExitCode -ne 0) { Fail "le desinstalleur a rendu le code $($uninstaller.ExitCode)" }
     $uninstalledByScript = $true
     # Le desinstalleur NSIS se recopie et rend la main avant la fin : on attend la disparition du programme.
     Wait-Until { -not (Test-Path $MainExe) } "la disparition de $MainExe" 120 | Out-Null
     Wait-Until { -not (Test-Path $InstallDir) } "la disparition de $InstallDir" 60 | Out-Null
+    # Le crochet de desinstallation a lance le nettoyage du serveur livre : son temoin porte le bilan (les
+    # chemins y sont ecrits entre guillemets Go, antislash doubles).
+    if (-not (Test-Path $Witness)) { Fail "le desinstalleur n'a pas lance -mode uninstall-cleanup : aucun fichier temoin $Witness" }
+    $report = (Get-Content -Path $Witness -Raw -Encoding UTF8).Replace('\\', '\')
+    if ($report -notmatch '^uninstall-cleanup:') { Fail "temoin inattendu : $report" }
+    if ($report -notmatch 'demarrage=absent' -or $report -notmatch 'ok=true') { Fail "le nettoyage n'a pas rendu le bilan attendu (demarrage=absent, ok=true) : $report" }
+    if (-not $report.Contains('data_root="' + $DataDir + '"')) { Fail "le nettoyage a vise une autre racine de donnees que $DataDir : $report" }
+    if (-not $report.Contains('install_dir="' + $InstallDir + '"')) { Fail "le nettoyage a vise un autre dossier de programme que $InstallDir : $report" }
+    Step ('desinstalleur : nettoyage lance (-mode uninstall-cleanup) : ' + $report.Trim())
     # L'invariant reel : le desinstalleur ne supprime JAMAIS la racine de donnees par defaut de l'utilisateur.
     if (-not (Test-Path $Sentinel)) { Fail "le desinstalleur a supprime la sentinelle de $DefaultDataRoot : la racine de donnees par defaut n'est pas conservee" }
     if (-not (Test-Path $marker)) { Fail "la racine de donnees $DataDir a perdu $marker a la desinstallation" }
@@ -275,5 +291,6 @@ finally {
         Write-Host '[e2e] installation du test retiree apres l''echec'
     }
     Remove-Sentinel
+    Remove-Item -Path $Witness -Force -ErrorAction SilentlyContinue
 }
 exit $exitCode

@@ -62,8 +62,11 @@ Everything below is in the "Application" tab of the settings, absent on the site
   `schtasks /Query /FO LIST | findstr /i "LevelUp\Refresh"` to read its exact name, then `schtasks /Query /TN "<name>" /V /FO LIST`; to remove it
   without LevelUp: `schtasks /Delete /TN "<name>" /F`. At each start with the setting on, the task is rewritten (a reinstall in another
   folder never leaves it pointing to the old one).
-- **Uninstalling.** The uninstaller does not remove the startup entry nor the scheduled task: turn both settings off first (or run the two
-  commands above and delete the `LevelUp` value of `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`).
+- **Uninstalling.** The uninstaller removes both by itself: before deleting the program files it runs `levelup-server.exe -mode uninstall-cleanup`, which
+  deletes the `LevelUp` value of `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` (and its `StartupApproved` value; only when it points into the
+  folder being uninstalled) and the scheduled task of the data root. It never touches the data folder, and an update does not run it (your startup entry
+  and your task survive an update). Nothing to turn off first. If the cleanup could not run (the program files were already damaged), remove them
+  by hand with the commands above and by deleting the `LevelUp` value of the `Run` key.
 
 ## Your data: backup, restore, move from the site, diagnostic (Settings > Application)
 
@@ -136,7 +139,8 @@ tokens to "repair" a sign-in (ADR 0023). The `code` and the `state` never reach 
 ## Automated proof
 
 `powershell -File apps/desktop/scripts/e2e-install.ps1 -Installer <setup.exe>` plays steps 1 to 5 on a throwaway data
-root (silent install, two launches, close by `WM_CLOSE`, clean stop, silent uninstall, data kept). It refuses to run
+root (silent install, two launches, close by `WM_CLOSE`, clean stop, silent uninstall, data kept, and the uninstaller's cleanup
+call proven by a witness file: `LEVELUP_UNINSTALL_WITNESS`). It creates no startup entry and no scheduled task. It refuses to run
 when LevelUp is already installed. The `desktop-e2e` job of `.github/workflows/release.yml` runs the same script.
 
 ## Releasing (maintainer)
