@@ -16,48 +16,19 @@
 
 **v8.1 — LevelUp pour Windows**
 
-LevelUp s'installe désormais sur ton PC comme n'importe quelle application. Tes statistiques, le rejeu 2D et les films de tes matchs, sans serveur à monter ni rien à héberger.
+LevelUp s'installe désormais sur ton PC comme n'importe quelle application : tes statistiques, le rejeu 2D et les films de tes matchs, sans rien à monter ni à héberger.
 
-**Une application pour Windows**
-- **Un installeur ordinaire** — aucun droit d'administrateur nécessaire. Tout reste sur ton ordinateur : tes données, ta connexion, tes films
-- **Des mises à jour proposées, jamais imposées** — l'application te prévient qu'une nouvelle version existe et ne l'installe que si tu le décides. Tes données ne sont jamais touchées
-- **Connexion Microsoft dans ton navigateur** — un clic, aucun code à recopier. L'application passe seule à la suite une fois la connexion faite
-- **Une barre latérale repliable en icônes** — bouton ou `Ctrl+B` ; elle se replie aussi toute seule sur une fenêtre étroite. Une fenêtre « À propos » donne la version, les licences et un bouton pour rechercher une mise à jour
-- **Les référentiels à côté de la page** — les cartes, les armes et les médailles s'ouvrent dans un volet près de ce que tu lis, et restent ouverts d'une page à l'autre
-- **Ta langue et ton fuseau horaire** sont repris de Windows au premier lancement
+- **Installe et joue** — un installeur ordinaire, la connexion Microsoft dans ton navigateur, et tes matchs se chargent. Les mises à jour sont proposées, jamais imposées.
+- **Respecte ta partie** — rien de lourd ne tourne pendant que tu joues, et tes matchs se synchronisent dès que tu quittes le jeu.
+- **Une vraie application de bureau** — une barre latérale repliable, les cartes et les armes à portée de main à côté de la page, des notifications Windows et une icône près de l'horloge si tu le souhaites.
+- **Tes données restent à toi** — des sauvegardes automatiques dans le dossier de ton choix, et tu peux rapatrier ton compte depuis le site.
+- **Des rejeux toujours à jour** — après une mise à jour, LevelUp te propose de régénérer tes anciens rejeux en arrière-plan.
 
-**Vivre avec le jeu**
-- **Mode jeu** — tant que Halo Infinite tourne, LevelUp ne lance rien de lourd en arrière-plan. Tes matchs sont synchronisés dès que tu fermes le jeu
-- **Notifications Windows** — nouveaux matchs, défis, records et montées de rang, quand la fenêtre est masquée ou derrière une autre
-- **Une icône dans la zone de notification** — fermer la fenêtre peut laisser LevelUp tourner là, avec un menu : Ouvrir, Synchroniser maintenant, Quitter
-- **Démarrage avec Windows**, déjà rangé dans la zone de notification
-- **Garder ta connexion vivante application fermée**, pour que le prochain lancement soit à jour
+**Aussi nouveau, sur le site comme dans l'application** : le même en-tête clair sur toutes les sections, la performance par carte et par mode dans la Synthèse, les modes de Halo 5 et des corrections du rejeu.
 
-Tout cela se règle dans Paramètres, onglet Application, et reste désactivé par défaut (la détection du jeu, elle, est active).
+**À savoir** : Windows 10 ou 11 (64 bits) uniquement. L'installeur n'est pas signé par un certificat payant : Windows affiche un avertissement à l'installation (« Informations complémentaires », puis « Exécuter quand même ») ; la page de téléchargement t'explique tout.
 
-**Tes données restent à toi**
-- **Une sauvegarde automatique vers un dossier de ton choix** — dans un format ouvert (fichiers Parquet), les dernières copies sont conservées, et la restauration sur un nouveau PC est documentée
-- **Passer du site à l'application** — exporte ton compte depuis le site, importe-le dans l'application, et tes matchs te suivent
-- **Un rapport de diagnostic en un clic** depuis la fenêtre « À propos », à joindre à un signalement. Aucun jeton ni mot de passe n'y entre
-
-**Sur le site aussi**
-- **Une page « Télécharger LevelUp pour Windows »**, qui explique aussi l'avertissement de Windows décrit plus bas
-- **Le même en-tête sur toutes les sections hors accueil**, sur le site comme dans l'application : un titre, un court chapeau, les onglets de la section
-- **La mention Microsoft** exigée par les règles d'usage du contenu Halo, dans le pied de page
-
-**À savoir**
-- **Windows 10 ou 11, 64 bits, et rien d'autre pour l'instant**
-- **L'installeur n'est pas signé par un certificat payant** : Windows SmartScreen affiche un avertissement à chaque installation (« Informations complémentaires », puis « Exécuter quand même »). Ce n'est pas la détection d'un virus, et la page de téléchargement t'accompagne pas à pas. Les mises à jour, elles, sont vérifiées par la clé de signature du projet
-- **ffmpeg est livré avec l'application** (capture vidéo, clips) : rien à installer. Sur une édition Windows N ou KN, la page Médias dit ce qui manque
-
-**Aussi dans cette version**
-- **Performance par carte et par mode** — une courbe de ton score de performance moyen au-dessus des barres de résultats de la Synthèse
-- **Variantes de carte comptées avec leur carte de base** — « Solitude - Classé » et « Du lourd » comptent partout sous leur carte
-- **Un briefing de l'Explorateur qui garde ses cartes**, même sur un filtre étroit ou un petit échantillon
-- **Les modes de Halo 5** dans la Synthèse, et **les noms, les rangs et les exports dans ta langue** sur toutes les pages
-- **Rejeu** : le capteur de menaces, le traqueur de menaces, l'écran occultant et le champ de réparation se dessinent de nouveau, et le mur de protection et l'écran occultant durent autant que le film le dit
-
-Tout ce qui figure dans les versions précédentes (rejeu 2D, onglet Tactique, mesures lues dans le film, mise en commun des jetons sur consentement) est décrit dans le [journal des modifications](CHANGELOG.md).
+Tous les détails dans le [journal des modifications](CHANGELOG.md).
 
 ## Fonctionnalités
 
