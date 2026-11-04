@@ -165,3 +165,34 @@ func TestServeStaticFile_ImmutableSurvives304(t *testing.T) {
 		t.Errorf("304 : Cache-Control = %q, attendu %q", cc, immutableAssetCacheControl)
 	}
 }
+
+// TestSPAHandler_ImagesWebPDeLaPage : les images Halo 5 du front sont des WebP sous
+// /titles/{slug}/ (masques du personnalisateur Spartan, plaques, fond). Le serveur les rend en
+// `image/webp` (jamais `application/octet-stream`, que le navigateur refuserait de dessiner dans
+// le canvas de recoloration) avec le cache d'un fichier public non hashé.
+func TestSPAHandler_ImagesWebPDeLaPage(t *testing.T) {
+	dist := t.TempDir()
+	writeFile(t, filepath.Join(dist, "index.html"), "<!doctype html><html></html>")
+	webp := filepath.Join(dist, "titles", "halo_5", "spartan", "emblems")
+	if err := os.MkdirAll(webp, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, filepath.Join(webp, "001.webp"), "RIFF\x04\x00\x00\x00WEBP")
+	h, ok := newSPAHandler(dist, func(http.ResponseWriter, *http.Request, string) {
+		t.Error("une image du dist ne doit pas retomber sur index.html")
+	})
+	if !ok {
+		t.Fatal("newSPAHandler : dist sans page")
+	}
+	rec := httptest.NewRecorder()
+	h(rec, httptest.NewRequest(http.MethodGet, "/titles/halo_5/spartan/emblems/001.webp", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("statut = %d, attendu 200", rec.Code)
+	}
+	if ct := rec.Header().Get("Content-Type"); ct != "image/webp" {
+		t.Errorf("Content-Type = %q, attendu image/webp", ct)
+	}
+	if cc := rec.Header().Get("Cache-Control"); cc != publicAssetCacheControl {
+		t.Errorf("Cache-Control = %q, attendu %q", cc, publicAssetCacheControl)
+	}
+}

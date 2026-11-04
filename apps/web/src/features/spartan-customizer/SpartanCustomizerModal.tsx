@@ -190,7 +190,7 @@ export function SpartanCustomizerModal({
         <div className="flex flex-wrap items-center justify-center gap-8 border-b border-border bg-muted/30 px-5 py-5">
           {draft.emblemId && (
             <RecoloredMask
-              src={`${base}/emblems/${draft.emblemId}.png`}
+              src={`${base}/emblems/${draft.emblemId}.webp`}
               colors={draft.emblemColors}
               alt={t('home.spartan_customizer.emblem_preview')}
               className="h-28 w-28 object-contain"
@@ -198,7 +198,7 @@ export function SpartanCustomizerModal({
           )}
           {draft.nameplateId && (
             <RecoloredMask
-              src={`${base}/nameplates/${draft.nameplateId}.png`}
+              src={`${base}/nameplates/${draft.nameplateId}.webp`}
               colors={draft.nameplateColors}
               alt={t('home.spartan_customizer.nameplate_preview')}
               className="h-28 w-auto max-w-full object-contain"
@@ -278,7 +278,7 @@ export function SpartanCustomizerModal({
                     ].join(' ')}
                   >
                     <RecoloredMask
-                      src={`${base}/${rawThumbDir}/${id}.png`}
+                      src={`${base}/${rawThumbDir}/${id}.webp`}
                       colors={activeColors}
                       alt={`#${id}`}
                       className="h-full w-full object-contain"

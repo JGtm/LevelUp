@@ -1202,7 +1202,7 @@ powershell -File apps/desktop/scripts/e2e-install.ps1 -Installer <LevelUp_X.Y.Z_
 bash apps/desktop/scripts/check-version.sh <X.Y.Z> [<server.exe>]
 ```
 
-- `build-installer.ps1` builds the front, the server (`-ldflags "-X main.version=<Cargo.toml version>"`), downloads
+- `build-installer.ps1` builds the front, the server (`-ldflags "-s -w -X main.version=<Cargo.toml version>"`: no symbol table nor DWARF, panic traces kept), downloads
   the pinned LGPL ffmpeg build (`fetch-ffmpeg.ps1`: URL and SHA-256 are constants of the script, a different sum
   stops everything), assembles the resources (`stage-bundle.ps1` into `src-tauri/bundle-staging`, git-ignored) and runs
   `npx tauri build --config src-tauri/tauri.bundle.conf.json`. The result is
@@ -1552,6 +1552,19 @@ npm run test:run
 npm run test:coverage
 npm run lint
 ```
+
+Halo 5 images (`apps/web/public/titles/halo_5`) are WebP. To add or refresh one from a PNG
+(ffmpeg with `libwebp` on the `PATH`, or `LEVELUP_FFMPEG_DIR`):
+
+```bash
+node scripts/convert-halo5-images.mjs [--keep] [--dir <root>] [--jobs <n>]
+```
+
+The script converts by family (plates and the wallpaper: lossy quality 85; emblems and thumbnails: lossless, because
+the Spartan customizer reads their R/G/B channels as colour zones and lossy chroma subsampling bleeds one zone into
+the next), removes each converted PNG (`--keep` keeps them), is idempotent, and prints the weight before and after.
+`teams/` and everything under `halo_infinite/` stay PNG. A vitest guard
+(`halo5Images.guard.test.ts`) fails if a PNG comes back.
 
 ### Local merge gate (`gate-push`)
 

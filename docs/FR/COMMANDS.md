@@ -1258,7 +1258,7 @@ powershell -File apps/desktop/scripts/e2e-install.ps1 -Installer <LevelUp_X.Y.Z_
 bash apps/desktop/scripts/check-version.sh <X.Y.Z> [<serveur.exe>]
 ```
 
-- `build-installer.ps1` compile le front, le serveur (`-ldflags "-X main.version=<version de Cargo.toml>"`), télécharge
+- `build-installer.ps1` compile le front, le serveur (`-ldflags "-s -w -X main.version=<version de Cargo.toml>"` : ni table des symboles ni DWARF, traces de panique conservées), télécharge
   le ffmpeg LGPL épinglé (`fetch-ffmpeg.ps1` : l'URL et la somme SHA-256 sont des constantes du script, une somme
   différente arrête tout), assemble les ressources (`stage-bundle.ps1` vers `src-tauri/bundle-staging`, ignoré par git)
   et lance `npx tauri build --config src-tauri/tauri.bundle.conf.json`. Le résultat est
@@ -1616,6 +1616,19 @@ npm run test:run
 npm run test:coverage
 npm run lint
 ```
+
+Les images Halo 5 (`apps/web/public/titles/halo_5`) sont en WebP. Pour en ajouter ou en rafraîchir une à partir d'un PNG
+(ffmpeg avec `libwebp` dans le `PATH`, ou `LEVELUP_FFMPEG_DIR`) :
+
+```bash
+node scripts/convert-halo5-images.mjs [--keep] [--dir <racine>] [--jobs <n>]
+```
+
+Le script convertit par famille (plaques et fond : avec perte, qualité 85 ; emblèmes et vignettes : sans perte, car le
+personnalisateur Spartan lit leurs canaux R/V/B comme des zones de couleur et le sous-échantillonnage des chrominances
+d'un codage avec perte fait baver une zone sur la suivante), supprime chaque PNG converti (`--keep` les garde), est idempotent
+et affiche le poids avant et après. `teams/` et tout `halo_infinite/` restent en PNG. Un garde-rail vitest
+(`halo5Images.guard.test.ts`) échoue si un PNG revient.
 
 ### Gate local avant merge (`gate-push`)
 
