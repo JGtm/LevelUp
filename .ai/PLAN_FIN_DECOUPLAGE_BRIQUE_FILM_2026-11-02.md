@@ -744,6 +744,12 @@ décodeur qui importent `filmcache` / `filmproc` suivent les nouveaux noms (ré�
       `internal/depottest` pour les six copies de `racineDepot(t)` + homonyme d'`objectives` en `Skip`, garde-rail
       règle 6) ; `cmd/replay-equiv` (go-api) importe `digest` : relever et décider sur pièces (copie dans go-api
       avec test d'identité, comme `atomicfile`, ou le harnais entier part dans go-api).
+- [ ] 2.3b Registre des replis (D-L1-2, item 1.3 `[!]`) : le registre de la brique ne nomme QUE des sites de la
+      brique, `Site.Fichier` relatif au module `libs/film` ; les sites et `Appelants` de LevelUp (32 lignes de
+      production au relevé du lot 1) passent dans un registre de l'hôte (`apps/go-api/internal/...`, un paquet) qui
+      embarque celui de la brique ; les six gardes de go-api (`no_unregistered_fallback_test.go`,
+      `no_unregistered_fallback_sites_test.go`, `fallback_versement_test.go`, `service/replay_vehicle_scenery_*_test.go`)
+      ouvrent chaque site avec la racine de SON registre. Aucun nom de repli ni compteur ne change (T4 identique).
 - [ ] 2.4 `filmshell` : les 15 variables deviennent non exportées derrière des accesseurs en lecture (copie ou vue
       non modifiable) ; lecteurs migrés (`games/weapons`, `platform/duckdb`, `sync/killcollector`, décodeur) ;
       `catalogueArmesHorsRatchet` retiré dans le même commit. Révisions INCHANGÉES ; si un golden de périmètre
