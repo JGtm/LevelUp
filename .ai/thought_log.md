@@ -1,3 +1,17 @@
+## [2026-11-04] Desktop - L23 : mesure du poids des mises à jour et options - Complété (23.1) ; décision 23.2 à l'utilisateur
+
+**Décision technique principale** : aucune décision produit ; mesure et propositions seulement. Composition de l'installeur par famille mesurée sur
+l'installeur du run 41816350092 (extraction 7-Zip, recompression par famille en LZMA dictionnaire 8 Mo mise à l'échelle du flux NSIS solide), diff SHA-256 de
+quatre installeurs 8.1.0 successifs de la CI (runs 41586437921, 41722766811, 41816350092, 41825436589), build réel du serveur avec `-ldflags "-s -w"` (non lancé).
+
+**Résultats observés** : installeur 193,3 Mo (443 Mo décompressés). ffmpeg pèse 47 Mo compressés (158 décompressés), pas 80 ; les images Halo 5 du front 41 Mo (21 %), le serveur Go
+33 Mo (17 %, dont 39 Mo de DWARF décompressés), les fonds de carte 29 Mo. D'une version à l'autre seuls changent le serveur, la coquille et `web/assets` (35 Mo, 18 %) ;
+82 % du téléchargement sont identiques à l'octet près (un commit de documentation seul change quand même serveur et coquille). Le plugin d'updater 2.12.0 ne connaît aucun delta.
+Gains mesurés : serveur `-s -w` -11 Mo ; plaques Halo 5 en WebP qualité 85 -27 Mo (échantillon de 21) ; ffmpeg à côté -47 Mo (contredit D-9). Ffmpeg réduit (-30 à -40 Mo) non mesuré.
+
+**Conclusion / prochaine étape** : rapport `.ai/V8/L23_POIDS_MISES_A_JOUR_2026-11-04.md`. Recommandation : (f) `-s -w` avant le tag, (e) recompression des images si le rendu
+convient, pas de ffmpeg réduit, (a)/(c) seulement après un retour réel et une réouverture de D-9 par l'utilisateur. 23.2 (U) et 23.3 restent ouverts. `cargo audit` déjà livré (22c.2).
+
 ## [2026-11-04] Desktop - L22c : revue adversariale V (3 P1 + 6 P2 + 1 P1 doc) - Complété côté code (22c.z gate de l'utilisateur)
 
 **Décision technique principale** : (V1) le modèle NSIS de Tauri exécute `DeleteRegValue HKCU ...\Run "${PRODUCTNAME}"` hors mise à jour sans regarder la commande : le crochet de début lit la valeur dans `$LevelUpRunValue` avant d'appeler le serveur, le crochet de fin la réécrit si elle ne visait pas `$INSTDIR\` (début de chaîne, guillemet initial retiré, casse ignorée : la règle de `startupentry.CommandTargets`). (V2) `CheckIfAppIsRunning` passe en tête du crochet (le second appel du modèle ne trouve plus rien à fermer). (V3) la garde `$UpdateMode` ne couvre que le flux de l'updater : une mise à jour manuelle ou `/P` retire puis repose au prochain lancement, documenté (ADR D-28, runbook, COMMANDS EN+FR), garde conservée. (V4) `schedtask.Manager.RemoveIfTargets` lit la définition (`/Query /TN /XML`, UTF-16 ou page de code, entités XML) et n'agit que si l'action lance le serveur du dossier désinstallé, sinon `tache=foreign` ; définition illisible = erreur, jamais de suppression à l'aveugle. (V5) le témoin porte `exit=` ; l'e2e asserte `exit=0`, `ok=true`, `demarrage=absent|foreign`, `tache=absent` et le nom de la tâche de la racine jetable ; la branche `SetEnvironmentVariable` n'est pas jouée (vraie racine de données), tenue par un garde de texte. (V6) `startupentry` ajouté au job Windows CGO. (V7) garde Rust sur l'ordre des lignes, test Go du câblage (`newUninstallCleanupDeps`). (V8) le verrou solo est par racine de données, pas par machine : documenté avec sa limite. (V9) `CodeSortieVerrouTenu = 3`. (V10) `replayregen/service.go` 579 -> 476 lignes par extraction du décompte vers `count.go`.
