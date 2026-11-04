@@ -884,11 +884,19 @@ commité à part (témoins sous `temoins_film/lot2/`) :
 
 ## Lot 4 — Publication de la brique
 
-- [ ] 4.0 Identités des fixtures (D-7, décision du 2026-11-04) : selon la mesure 1.6 et le retour du user sur le
-      coût, soit réécriture à longueur constante des identités dans les films de test + régénération des témoins
-      dérivés (révisions inchangées, chronique), soit remplacement des films par des matchs joués par des comptes
-      du user (geste du user : jouer, synchroniser ; puis recapture des fixtures par le même outil que celles
-      d'origine). Sans retour du user : `[!]` et le lot 4 continue, le tag attend.
+- [ ] 4.0 Identités des fixtures (D-7) — **OPTION A choisie par le user le 2026-11-04** (sur la mesure 1.6) :
+      l'outil `anonymise-gamertags` (go-api, celui de la v8.0.2) est étendu aux xuids : réécriture à longueur
+      constante (64 bits LE à décalage de bit quelconque dans les paquets d'identité et les temps forts, MSB dans
+      la table du registre), faux xuids tirés dans `[0x0009000000000000, 0x000A000000000000[` (D-L1-8), table de
+      correspondance déterministe (même entrée → même sortie) ; les 3 gamertags restants (`JGtm`, `Chocoboflor`,
+      `Madina97294`) remplacés aussi ; appliqué aux 10 dossiers de films de test de `libs/film` ; les 20
+      `facts.json` et 8 `assembly_*.golden` régénérés par leurs tests, la table inverse de `replay-equiv` mise à
+      jour ; les 32 fichiers de test et 11 commentaires de production qui portent des xuids réels réécrits avec la
+      même table. Preuve : T1 (mêmes tests, mêmes verdicts), T2 (révisions inchangées, les goldens de révision
+      intacts : `testdata/` hors des empreintes), T3 (20 identiques après re-figement des références AVEC chronique
+      écrite : les digests changent par construction, les xuids étant dedans), grep des 133 xuids d'origine dans
+      `libs/film` = 0. Témoin avant/après : pour chaque film, (index, temps, nombre de joueurs, nombre de morts)
+      identiques au mapping près. Exécutant : Sonnet.
 - [ ] 4.1 `libs/film/go.mod` : `require` de `libs/gamefiles` et `libs/himap` à leur tag (ordre ADR 0043 D-2) ;
       `go.work` résout toujours la copie locale ; `TestBriquesImports` vert.
 - [ ] 4.2 README EN (modèle ADR 0043 D-3) : ce que c'est (film Theater Halo Infinite → faits → document de rejeu
