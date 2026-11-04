@@ -880,6 +880,57 @@ Décisions de l'exécutant (2026-11-04, dans le cadre de la demande) : le nettoy
   - [x] 23.3-f Serveur sans symboles. FAIT 2026-11-04 : `-s -w` ajouté aux `-ldflags` (avec `-X main.version` conservé) de `release.yml` (job `build-go`, tous OS, et job `desktop-build`) et de `build-installer.ps1` ; `Makefile` (`go-api-build`, Linux) et `scripts/desktop-dev.ps1` (binaire de développement) gardent leurs symboles : ce ne sont pas des builds de release. Témoins : serveur 163 138 322 octets (155,6 Mo) vers 98 608 640 (94,0 Mo), `check-version.sh` vert sur le binaire `-s -w` (et rouge sur une mauvaise version) ; panic d'un binaire `-s -w` : noms de fonctions, fichiers et lignes intacts (contrat écrit dans le commentaire du workflow). `TestE2E` compile maintenant avec `-ldflags "-s -w"` (sans `-X main.version`, hors contrat testé) : vert.
   - [x] 23.3-e Images Halo 5 en WebP. FAIT 2026-11-04 (gate visuel de l'utilisateur en attente) : `scripts/convert-halo5-images.mjs` (ffmpeg `libwebp`, idempotent, retire les PNG ; `docs/COMMANDS.md` et FR), 1 257 PNG remplacés, 39,7 Mo vers 9,0 Mo (-30,7 Mo) ; références mises à jour (`SpartanCustomizerModal`, `HomeSpartanIdentityBanner`, `ExplorerTargetIdentityBanner`, `HomeHeroBanner`), garde-rail vitest `halo5Images.guard.test.ts`, test Go `TestSPAHandler_ImagesWebPDeLaPage` (`image/webp`). ÉCART À LA DÉCISION, justifié par mesure : seules les plaques (308, 32,0 Mo vers 4,3 Mo) et le fond (1) sont en qualité 85 ; les emblèmes (320, RGBA) et les vignettes (628) sont SANS PERTE, parce que `recolor.ts` lit R, V et B comme trois zones de couleur et que le sous-échantillonnage des chrominances d'un WebP avec perte fait baver une zone sur l'autre (après recoloration, pixels écartés de plus de 16 niveaux sur 255 : plaques 2,0 % en moyenne et 13,5 % pour la pire, emblèmes 3,5 %, vignettes d'emblème 16 %, contre 0 % sans perte). `teams/` reste en PNG (chemin `/titles/{slug}/teams/{id}.png` partagé avec Halo Infinite). Hors périmètre, non touchés : `libs/himap`, `mapcatalog`, fonds de carte du rejeu, PNG de `halo_infinite/`.
 
+### 9.27 L24 — moteur et paquet de ressources séparés (décision utilisateur du 2026-11-04 ; à exécuter le dimanche 2026-11-08, AVANT le tag `v8.1.0`)
+
+**Objectif.** Qu'une mise à jour ne retélécharge que ce qui change. Mesure L23 : sur 152 Mo d'installeur (après 23.3), le moteur
+(serveur, coquille, front compilé) change à chaque version, le reste (ffmpeg, images, sons, référentiel, fonds de carte) presque jamais.
+Cible : mise à jour courante ≈ 40 Mo (moteur seul) ; première installation inchangée (tout embarqué, D-9 tenue, application prête à l'emploi).
+
+**Décisions déjà prises (utilisateur, 2026-11-04).**
+- D-L24-1 : deux unités versionnées : le **moteur** (livré par l'updater Tauri, installeur NSIS) et le **paquet de ressources**
+  (archive signée + manifeste : `ffmpeg/`, `static/`, `web/titles/`, `data/.../reference/`, `metadata-prebuilt.zip`, `config/`).
+- D-L24-2 : **hébergé = paquet embarqué dans l'image Docker, JAMAIS téléchargé** ; le serveur hébergé vérifie le manifeste au démarrage et
+  refuse de démarrer si la version du paquet est hors de la plage exigée par le moteur (même discipline qu'une migration fatale).
+- D-L24-3 : **une seule racine de ressources** (`ResourcesRoot`, ADR 0008 amendée) et **un seul manifeste** pour les deux profils ;
+  aucun code de page ne sait d'où viennent les ressources.
+- D-L24-4 : le **Dockerfile** profite du découpage par ses couches : ressources copiées dans des couches basses (avant les binaires),
+  moteur en dernier ; le VPS ne retire que les couches du moteur à chaque déploiement.
+- D-L24-5 : en profil bureau, le paquet n'est retéléchargé QUE si son empreinte change, en arrière-plan, jamais pendant une partie
+  (porte du mode jeu), vérifié par signature (même clé que l'updater) et somme SHA-256 avant d'être activé ; l'ancien paquet reste
+  actif tant que le nouveau n'est pas complet et vérifié (bascule atomique de dossier), et un échec n'empêche jamais l'application de démarrer.
+
+**Items.**
+- [ ] 24.1 Manifeste du paquet : `resources.manifest.json` (version sémantique du paquet, empreinte par fichier, taille, version minimale
+      et maximale du moteur compatible) ; lu par `internal/config` au démarrage (profil-agnostique, capacité `ResourcePack`) ; refus de
+      démarrer hors plage (événement `failed{state: resources_incompatible}` en bureau, erreur fatale journalisée en hébergé) ; tests.
+- [ ] 24.2 Version de ressources exigée par le moteur : constante générée au build (comme `main.version`), contrôlée par
+      `check-version.sh` ; ratchet : une modification d'un fichier du paquet sans bump de version du paquet fait échouer la CI.
+- [ ] 24.3 CI et release : `release.yml` produit DEUX artefacts : l'installeur complet (première installation, inchangé) et
+      `levelup-resources-<version>.zip` + `.sig` ; `latest.json` porte, en plus de l'installeur du moteur, l'URL, l'empreinte et la
+      signature du paquet ; l'installeur NSIS de MISE À JOUR (`/UPDATE`) n'embarque que le moteur (deux configurations Tauri :
+      `tauri.bundle.conf.json` complet pour la première installation, une variante moteur seul pour l'updater) — **point à vérifier en
+      premier** : l'updater Tauri 2.12 ne connaît qu'un seul installeur par plateforme ; si deux installeurs sont impossibles à servir
+      proprement, repli : l'installeur de l'updater reste unique mais n'embarque plus les ressources, et le premier lancement après
+      installation neuve télécharge le paquet (contredit D-9 pour la seule première installation : à faire valider par l'utilisateur
+      AVANT de coder).
+- [ ] 24.4 Côté bureau : vérification de l'empreinte du paquet au démarrage et après chaque mise à jour du moteur ; téléchargement en
+      arrière-plan sous la porte du mode jeu, vérification signature + SHA-256, bascule atomique (`resources-<version>/` puis pointeur),
+      purge de l'ancien après succès ; progression et erreurs fr/en dans Paramètres > Application ; tests (faux serveur de paquets,
+      téléchargement interrompu, signature invalide, version incompatible).
+- [ ] 24.5 Dockerfile : réordonner les `COPY` de l'étage d'exécution : `config/`, `static/`, référentiel, `web/titles/` AVANT
+      `levelup-server`, `levelup`, `web/dist` ; paquet embarqué tel quel (même manifeste) ; mesure : taille des couches tirées par le VPS
+      entre deux déploiements avant/après (témoin `docker history`).
+- [ ] 24.6 ADR 0045 (amendement : paquet de ressources, D-9 précisé) et ADR 0008 (une racine, un manifeste) ; runbook ; `COMMANDS.md`
+      EN + FR ; plan §10.
+- [ ] 24.7 Revue adversariale (deux relecteurs Opus : chaîne de livraison et signature ; démarrage et compatibilité hébergé/bureau).
+- [ ] 24.z (U) Gate : installation neuve, puis mise à jour simulée (deux builds locaux de versions différentes) qui ne retélécharge pas
+      le paquet ; puis paquet modifié qui est retéléchargé et activé ; déploiement Docker de la release sur une copie (taille tirée).
+
+**Gates.** `go test` (config, cmd/server, sync), `-tags=e2e_windows`, `cargo test`, vitest, `check-version.sh`, build installeur complet +
+moteur seul, `e2e-install.ps1` étendu (mise à jour sans paquet), `docker build` local + `docker history`, CI verte, revue.
+
+**Hors périmètre.** Différentiel binaire du moteur (l'updater Tauri n'en a pas) ; ffmpeg réduit (option b de L23, écartée) ; macOS/Linux.
+
 ## 10. Découvertes (notées, non traitées)
 
 - **L23.3 (2026-11-04) — relevé, non traité** :
@@ -1255,7 +1306,7 @@ tous leurs P0/P1 corrigés. Le workflow Release est vert sur chaque push de la r
 runner vierge) ; le run **signé sur tag** reste à jouer : c'est le tag `v8.1.0`, geste de l'utilisateur, **reporté** par lui le 2026-11-04 le temps
 d'un autre chantier.
 
-**Reste après le tag** : L23 (poids des mises à jour, après deux releases publiées) ; les reports et dettes du chantier sont au
+**Reste après le tag** : L23 mesuré et 23.3 livré (installeur 193 → 152 Mo, 2026-11-04) ; **L24 (moteur / paquet de ressources, §9.27) AVANT le tag, dimanche 2026-11-08** ; les reports et dettes du chantier sont au
 `.ai/REGISTRE_REPORTS.md` (section « Chantier Desktop », 2026-11-04) et en §10.
 
 **Marche à suivre du tag** (quand l'utilisateur le décide) : `docs/CHANGELOG.md` et `docs/FR/CHANGELOG.md` : poser la date sur `## [8.1.0]` ;
