@@ -665,19 +665,17 @@ jobs:
   # suite rapide ; ce job est le gate d'autorité des comportements propres à Windows.
   #
   # Pas de `needs: changes` : la voie est bornée (budget des runners Windows) à `release/**`, aux pull
-  # requests (le workflow ne les reçoit que vers `main`, cf. `on.pull_request.branches`) et, le temps du
-  # chantier Desktop, aux pushs des branches `feat/desktop-*` : une PR vers une branche de release ne
-  # déclenche aucun run, le verdict d'une branche de travail vient de son push. `release/**` et les PR
-  # sont exactement les contextes où le filtre de chemins est contourné (archlint/ci_paths_filter_test.go),
-  # il ne pourrait donc jamais sauter la voie ; `main` n'y figure pas (la PR vers `main` a déjà rendu son
-  # verdict). Condition `feat/desktop-*` posée le 2026-11-01 ; retrait prévu à la clôture de P1 du plan
-  # Desktop (critère : la voie devient un job ordinaire ou le chantier est fusionné).
+  # requests (le workflow ne les reçoit que vers `main`, cf. `on.pull_request.branches`) : une PR vers une
+  # branche de release ne déclenche aucun run, le verdict Windows d'une branche de travail vient donc du
+  # push de `release/**` après la fusion. `release/**` et les PR sont exactement les contextes où le filtre
+  # de chemins est contourné (archlint/ci_paths_filter_test.go), il ne pourrait donc jamais sauter la voie ;
+  # `main` n'y figure pas (la PR vers `main` a déjà rendu son verdict).
   #
   # gcc : fourni par l'image `windows-latest` (MinGW) ; aucune action mingw. Aucun test sous tag
   # `gamefiles` / `research` n'est joué (le jeu n'est pas installé sur le runner).
   go-test-windows-cgo:
     name: Go Windows + CGO (build, arrêt propre, verrous)
-    if: ${{ github.event_name == 'pull_request' || startsWith(github.ref, 'refs/heads/release/') || startsWith(github.ref, 'refs/heads/feat/desktop-') }}
+    if: ${{ github.event_name == 'pull_request' || startsWith(github.ref, 'refs/heads/release/') }}
     runs-on: windows-latest
     timeout-minutes: 15
     env:
