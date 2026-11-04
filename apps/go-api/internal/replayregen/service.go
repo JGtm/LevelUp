@@ -50,6 +50,11 @@ type Deps struct {
 	Titles func() []string
 	// FilmPresent : le film du match est dans l'archive locale ; sans lui il n'y a rien à rejouer.
 	FilmPresent func(titleSlug, matchID string) bool
+	// RefusedByRule rend, pour un titre, l'ensemble des matchs (forme courte, celle du nom du fichier) que la cuisson
+	// refuse PAR RÈGLE : un mode que le rejeu ne gère pas (replaybuild.ErrModeNonGere, lu au registre par le même
+	// prédicat que la cuisson). Le décompte les écarte d'emblée au lieu d'attendre leur premier refus de cuisson ; une
+	// erreur est journalisée et le décompte retombe sur le comportement d'avant (refus au premier essai). nil = aucun.
+	RefusedByRule func(ctx context.Context, titleSlug string) (map[string]struct{}, error)
 	// Rebuild reconstruit et range le rejeu d'UN match, hors du processus (même chemin que l'action admin). Il
 	// enveloppe ErrBusy quand un autre décodage tient la machine.
 	Rebuild func(ctx context.Context, titleSlug, matchID string) error
@@ -234,7 +239,8 @@ func (s *Service) scan(ctx context.Context) ([]Candidate, error) {
 	s.mu.Unlock()
 	var all []Candidate
 	for _, slug := range d.Titles() {
-		c, err := scanTitle(ctx, d.Paths.ReplayArtifactsDir(slug), slug, d.FilmPresent, s.isBlocked)
+		skip := s.skipFor(ctx, d, slug)
+		c, err := scanTitle(ctx, d.Paths.ReplayArtifactsDir(slug), slug, d.FilmPresent, skip)
 		if err != nil {
 			return nil, err
 		}
@@ -242,6 +248,26 @@ func (s *Service) scan(ctx context.Context) ([]Candidate, error) {
 	}
 	sortRecentFirst(all)
 	return all, nil
+}
+
+// skipFor rend le test « ce match n'est pas à régénérer » d'un titre : refusé dans ce processus (isBlocked) ou refusé par
+// règle de cuisson (Deps.RefusedByRule, lu UNE fois par décompte et par titre).
+func (s *Service) skipFor(ctx context.Context, d Deps, slug string) func(slug, matchID string) bool {
+	var refused map[string]struct{}
+	if d.RefusedByRule != nil {
+		var err error
+		if refused, err = d.RefusedByRule(ctx, slug); err != nil {
+			slog.WarnContext(ctx, "replay_regen: refus par règle illisibles, ils seront écartés au premier essai",
+				"titleSlug", slug, "err", err)
+			refused = nil
+		}
+	}
+	return func(slug, matchID string) bool {
+		if _, no := refused[matchID]; no {
+			return true
+		}
+		return s.isBlocked(slug, matchID)
+	}
 }
 
 func blockKey(slug, matchID string) string { return slug + "/" + matchID }
