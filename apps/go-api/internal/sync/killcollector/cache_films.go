@@ -35,7 +35,7 @@ import (
 // des temps forts (lot L3, 2026-09-23, cf. `film/finalise/finalise.go`). Depuis ce lot le writer ne
 // valide plus de tel manifeste : le compteur ne voit donc que ceux ecrits AVANT lui (un seul au
 // parc du 2026-09-23, `ab526724`, repare le soir meme). Au-dessus de zero en exploitation, un
-// autre chemin d'ecriture contourne `filmcache.Write`.
+// autre chemin d'ecriture contourne `filmarchive.Write`.
 const CompteurCacheNonFinalise = "killsource_cache_manifestes_non_finalises"
 
 // LocalCacheFilms : les films du cache disque, servis comme le ferait le client HTTP.

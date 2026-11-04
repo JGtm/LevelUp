@@ -110,7 +110,7 @@ type SyncEngine struct {
 	sessionOptions SessionOptionsLoader
 	// replayArtifacts (lot 6 v7.5) — fil de l'eau des artefacts de rejeu 2D : après
 	// l étape 1.57, les matchs insérés (fenêtre replay_retention_months) voient leur
-	// film persisté au cache disque (filmcache.Write) puis leur artefact construit
+	// film persisté au cache disque (filmarchive.Write) puis leur artefact construit
 	// (replaybuild), ou mis en file pour l'ouvrier. Nil = étape absente (le wiring
 	// l'installe toujours ; le lieu de construction se décide par cycle, cf. WithReplayArtifacts).
 	replayArtifacts *replayartifacts.Hook

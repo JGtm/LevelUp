@@ -32,7 +32,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // b4jCompte : ce que le juge dit d une variante.
@@ -134,7 +134,7 @@ func TestCampagneBis4JugePositions(t *testing.T) {
 	}
 	vs := b2pVariantes()
 	for _, id := range films {
-		garde := filmproc.Arm("campagne/bis4-juge-positions", 4, func(pic uint64) {
+		garde := memguard.Arm("campagne/bis4-juge-positions", 4, func(pic uint64) {
 			fmt.Fprintf(os.Stderr, "%s : plafond memoire franchi (%d octets)\n", id, pic)
 			os.Exit(3)
 		})

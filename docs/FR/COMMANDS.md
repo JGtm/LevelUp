@@ -1515,7 +1515,7 @@ jour) :
 | `--allow-missing` | `false` | tolérer un témoin ABSENT (avertissement seul) au lieu de sortir en code 4 |
 | `--manifest` | `<source-root>/config/replay_corpus.toml` | chemin du manifeste |
 | `--temoins` | (aucun) | rejouer les SEULS témoins nommés (ids séparés par des virgules) — le manifeste versionné reste le corpus, aucun manifeste réduit à écrire. Un id inconnu est une erreur (code 2), jamais une exécution tronquée en silence. |
-| `--mem-gib` | `4` | plafond mémoire souple (Gio) armé sur CHAQUE cuisson enfant, HEAD et base (`0` désarme). Le défaut du gate est volontairement AU-DESSUS de celui de production (`filmproc.DefaultLimitGiB` = 3) : D6 a mesuré deux témoins BTB à 3,779 et 3,807 Gio côté base, soit juste au-dessus du plafond dur de 3,75 Gio — ils échouaient au hasard d'un run à l'autre. |
+| `--mem-gib` | `4` | plafond mémoire souple (Gio) armé sur CHAQUE cuisson enfant, HEAD et base (`0` désarme). Le défaut du gate est volontairement AU-DESSUS de celui de production (`memguard.DefaultLimitGiB` = 3) : D6 a mesuré deux témoins BTB à 3,779 et 3,807 Gio côté base, soit juste au-dessus du plafond dur de 3,75 Gio — ils échouaient au hasard d'un run à l'autre. |
 | `--source-root` | `git rev-parse --show-toplevel` | dépôt dont le code/la config AU HEAD est testé — **pas** basé sur `db_profiles.json` : fonctionne depuis n'importe quel worktree, y compris un sans copie locale de ce fichier |
 | `--parc-root` | `source-root` s'il porte déjà la base partagée du titre, sinon auto-détecté via le `.git` commun | le parc de développement (chunks de film, artefacts `--reference=parc`) |
 | `--lock-root` | `CacheRootDir()` du parc | où vit le verrou de décodage partagé |
@@ -1628,7 +1628,7 @@ powershell -File scripts/gate-push.ps1
 
 Le job CI `go-test-windows-cgo` (`.github/workflows/ci.yml`) tourne sur `windows-latest` avec `CGO_ENABLED=1` (le runner
 fournit gcc, pas d'action MinGW). Il compile `./cmd/server` (DuckDB lié), puis joue `./cmd/server/...`,
-`./internal/platform/diskfree/...` et `./cmd/levelup/...` depuis `apps/go-api`, `./filmproc/` et `./internal/filelock/`
+`./internal/platform/diskfree/...`, `./internal/platform/filelock/...`, `./internal/filmrun/...` et `./cmd/levelup/...` depuis `apps/go-api`, `./internal/decodelock/` et `./internal/filelock/`
 depuis `libs/film`, et `./himodule/` depuis `libs/gamefiles` : les paquets qui portent les fichiers `*_windows.go` /
 `*_win.go` (arrêt propre, verrous de fichiers, espace disque libre, priorité de processus, projection mémoire des
 modules). Aucun test sous les tags `gamefiles` ou `research` n'y est joué : le jeu n'est pas installé sur le runner.

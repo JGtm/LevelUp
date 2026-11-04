@@ -26,6 +26,7 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
+	"levelup/go-api/internal/filmarchive"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/sync/filmfetch"
 	"levelup/go-api/internal/sync/matchflags"
@@ -140,7 +141,7 @@ func TestRunPostSync_PrepareLeCacheEtArchiveAuMemeEndroit(t *testing.T) {
 	// backlog en (a), et une passe sans travail sort AVANT de resoudre sa racine de cache.
 	inscrireMatch(t, db, "m2", time.Date(2026, 3, 2, 12, 0, 0, 0, time.UTC), 0)
 	autre := t.TempDir()
-	if err := filmcache.EnsureDirs(autre); err != nil {
+	if err := filmarchive.EnsureDirs(autre); err != nil {
 		t.Fatal(err)
 	}
 	h2 := NewPostSyncHook(depot, 1)

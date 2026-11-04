@@ -19,6 +19,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/JGtm/LevelUp/libs/film/internal/depottest"
+
 	"github.com/JGtm/LevelUp/libs/film/internal/profile"
 	"github.com/JGtm/LevelUp/libs/film/internal/source"
 	"github.com/JGtm/LevelUp/libs/film/types"
@@ -38,7 +40,7 @@ func TestCanauxDelta_AucunCorpsLuAvantSaCreation(t *testing.T) {
 	if cache == "" {
 		t.Skip("REPLAY_FILM_CACHE absent : gate local des canaux dates (lot R2-bis) saute")
 	}
-	racine := racineDepot(t)
+	racine := depottest.Racine(t)
 	cat, err := profile.LoadMapQuantCatalog(filepath.Join(racine, "data", "titles", "halo_infinite",
 		"reference", "map_quant_bounds.json"))
 	if err != nil {

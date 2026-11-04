@@ -39,7 +39,7 @@ package archlint
 // # PERIMETRE
 //
 // La PRODUCTION de `film/**` (hors `film/research/` et hors fichiers `//go:build research`),
-// `replaybuild`, `filmproc` et `sync/killcollector`. Les tests en sont exclus : un tri de test ne
+// `replaybuild`, `filmrun` et `sync/killcollector`. Les tests en sont exclus : un tri de test ne
 // publie rien. `sort.Stable` est compte avec `sort.Sort` (meme forme, zero appel le 2026-09-27).
 
 import (
@@ -55,6 +55,7 @@ import (
 // racinesTriTotal : le perimetre du cliquet, relatif a apps/go-api.
 var racinesTriTotal = []string{
 	"libs/film",
+	"internal/filmrun",
 	"internal/replaybuild",
 	"internal/sync/killcollector",
 }

@@ -21,6 +21,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/JGtm/LevelUp/libs/film/internal/depottest"
 )
 
 // familleConnueDuResume dit si la famille est couverte par UNE décision écrite du
@@ -52,7 +54,7 @@ func famillesEcritesDuResume() map[string]bool {
 
 func TestUsageFamiliesMatchManifestValidator(t *testing.T) {
 	// Le valideur vit chez l'hote (son paquet `mappings`).
-	loaderPath := filepath.Join(racineDepot(t), "apps", "go-api", "internal", "games", "mappings",
+	loaderPath := filepath.Join(depottest.Racine(t), "apps", "go-api", "internal", "games", "mappings",
 		"loader_replay_labels_equipment.go")
 	raw, err := os.ReadFile(loaderPath)
 	if err != nil {
@@ -219,7 +221,7 @@ func TestPanneauxDuMurMatchManifest(t *testing.T) {
 // lireManifesteRejeu rend les octets de `replay_labels.toml` du titre.
 func lireManifesteRejeu(t *testing.T) []byte {
 	t.Helper()
-	path := filepath.Join(racineDepot(t), "config", "titles", "halo_infinite", "mappings",
+	path := filepath.Join(depottest.Racine(t), "config", "titles", "halo_infinite", "mappings",
 		"replay_labels.toml")
 	raw, err := os.ReadFile(path) //nolint:gosec // chemin construit depuis la racine du depot
 	if err != nil {

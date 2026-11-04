@@ -268,7 +268,7 @@ func optionsDeBalayageDesPositions(
 // `archlint/film_pont_identite_test.go`).
 //
 // AUCUN VERROU DE DECODAGE DANS LE DECODEUR (lot 2.3) : chaque balayage porte son profil et son
-// observation, donc son propre etat. LE VERROU INTER-PROCESSUS `filmproc.AcquireSolo` BORNE LA MEMOIRE DE LA
+// observation, donc son propre etat. LE VERROU INTER-PROCESSUS `filmrun.AcquireSolo` BORNE LA MEMOIRE DE LA
 // MACHINE ET EST PRIS PAR L APPELANT DE LA PASSE, jamais ici : l etape 1.57 du serveur le prend en refus
 // immediat avant `CollectMatches` et se reporte au cycle suivant s il est tenu (postsync_verrou_decodage.go) ;
 // le backfill hors ligne est un processus a part qu un operateur lance serveur arrete.

@@ -11,7 +11,7 @@ package main
 // La source est l ARTEFACT de rejeu deja range (`data/cache/replays/{slug}/{short8}.json`),
 // dont le calque `flagCarries` porte la chronologie de portage depuis le SCHEMA 14. Aucune
 // recuisson n est necessaire — et aucune n est declenchee : cuire des artefacts en lot est
-// INTERDIT (bombe RAM, verrou `filmproc.AcquireSolo`). Cette passe ne fait que LIRE et ECRIRE,
+// INTERDIT (bombe RAM, verrou `filmrun.AcquireSolo`). Cette passe ne fait que LIRE et ECRIRE,
 // un artefact a la fois ; rien ne survit d un match a l autre que les compteurs du bilan.
 //
 // C EST LA DIFFERENCE AVEC `backfill-bomb-stats`, qui exige d avoir re-cuit le parc avant

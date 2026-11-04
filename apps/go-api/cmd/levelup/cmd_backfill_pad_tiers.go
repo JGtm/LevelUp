@@ -11,7 +11,7 @@ package main
 // La source est l ARTEFACT de rejeu deja range (`data/cache/replays/{slug}/{short8}.json`),
 // dont les socles (`weaponPads`, `padPickups`) et les equipements de depart (`loadouts`) sont
 // publies depuis le schema 30. Aucune recuisson n est necessaire — et aucune n est declenchee :
-// cuire des artefacts en lot est INTERDIT (bombe RAM, verrou `filmproc.AcquireSolo`). Cette
+// cuire des artefacts en lot est INTERDIT (bombe RAM, verrou `filmrun.AcquireSolo`). Cette
 // passe ne fait que LIRE et ECRIRE, un artefact a la fois.
 //
 // C EST LE MEME MOTIF QUE `backfill-flag-grabs-net`, et pour la meme raison : la mesure se

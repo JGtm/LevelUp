@@ -1,6 +1,6 @@
 package main
 
-// parent.go — LE PARENT : orchestre un enfant filmproc par film, capte son dump, puis aligne et
+// parent.go — LE PARENT : orchestre un enfant filmrun par film, capte son dump, puis aligne et
 // confronte. Aucune sentinelle ici (le parent ne decode rien) ; aucune base (le gamertag vient du
 // film). L'oracle vient d'un JSON fige, releve de `match_objective_stats_latest`.
 
@@ -15,8 +15,9 @@ import (
 	"strconv"
 	"strings"
 
+	"levelup/go-api/internal/filmrun"
+
 	"github.com/JGtm/LevelUp/libs/film/filmcache"
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
 )
 
 // terrainFilm : le film calibrant (verite terrain).
@@ -75,7 +76,7 @@ func runParent(repoRoot, cache, outDir, oraclePath string) error {
 	runner := &runnerHolder{repoRoot: repoRoot}
 	ctx := context.Background()
 
-	// 1) Decoder tout le corpus (un enfant filmproc par film), garder les dumps.
+	// 1) Decoder tout le corpus (un enfant filmrun par film), garder les dumps.
 	dumps := map[string]*filmDump{}
 	for _, id := range films {
 		d, err := runner.decode(ctx, cache, id)
@@ -149,15 +150,15 @@ type runnerHolder struct {
 	repoRoot string
 }
 
-// decode lance l'enfant filmproc sur -id, capte sa sortie et la parse.
+// decode lance l'enfant filmrun sur -id, capte sa sortie et la parse.
 func (h *runnerHolder) decode(ctx context.Context, cache, id string) (*filmDump, error) {
 	var buf bytes.Buffer
-	r, err := filmproc.NewRunner(h.repoRoot, &buf)
+	r, err := filmrun.NewRunner(h.repoRoot, &buf)
 	if err != nil {
 		return nil, err
 	}
 	res := r.Run(ctx, []string{"-child", "-match", id, "-cache", cache})
-	if res.Issue != filmproc.IssueOK {
+	if res.Issue != filmrun.IssueOK {
 		return nil, fmt.Errorf("enfant %s : issue=%s code=%d", id, res.Issue, res.Code)
 	}
 	d := parseDump(id, buf.String())

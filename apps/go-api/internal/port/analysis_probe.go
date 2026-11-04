@@ -28,7 +28,7 @@ type AnalysisProbeRepository interface {
 }
 
 // FilmDecodeObserver dit quel match un décodage de film est en train de traiter sur la machine.
-// Implémenté par filmproc.DecodeObserver (lecture de la description du détenteur du verrou
+// Implémenté par filmrun.DecodeObserver (lecture de la description du détenteur du verrou
 // machine, sans jamais prendre le verrou).
 type FilmDecodeObserver interface {
 	// DecodingMatchID rend l'identifiant du match que décode un processus vivant, ou "" quand

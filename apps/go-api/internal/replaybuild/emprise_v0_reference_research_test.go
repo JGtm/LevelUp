@@ -48,7 +48,7 @@ import (
 
 	"github.com/JGtm/LevelUp/libs/film/decfilm"
 	"github.com/JGtm/LevelUp/libs/film/filmcache"
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
@@ -107,7 +107,7 @@ func TestEmpriseV0Reference(t *testing.T) {
 	}
 	// LA SENTINELLE DU DEPOT : une cuisson BTB monte a plusieurs Gio ; au-dela du plafond dur, le
 	// processus s'arrete plutot que de faire suffoquer la machine de travail.
-	garde := filmproc.Arm("emprise-v0-reference", 8, func(pic uint64) {
+	garde := memguard.Arm("emprise-v0-reference", 8, func(pic uint64) {
 		fmt.Fprintf(os.Stderr, "EMPRISE V0 : empreinte %.2f Gio > plafond — arret\n", float64(pic)/(1<<30))
 		os.Exit(3)
 	})

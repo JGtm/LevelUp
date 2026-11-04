@@ -33,8 +33,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
 	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // rvPre : ce que la marche lit avant la boucle de composants (FUN_142e2bfd0, FUN_1410a5a74).
@@ -270,7 +270,7 @@ func rvRecords(f *cmFilm, physique map[uint32]int, rappel func(r *rvRecord)) {
 
 // rvOuvrir ouvre un film sous la sentinelle et installe son decoupage MPP.
 func rvOuvrir(t *testing.T, racine, id, nom string) (*cmFilm, func()) {
-	garde := filmproc.Arm(nom, 4, func(pic uint64) {
+	garde := memguard.Arm(nom, 4, func(pic uint64) {
 		fmt.Fprintf(os.Stderr, "%s : plafond memoire franchi (%d octets)\n", id, pic)
 		os.Exit(3)
 	})

@@ -36,9 +36,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
 	"github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
 	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // lireLaTeteDeMarche lit la vue A d un payload a la position du lecteur `br` par la lecture unique
@@ -114,7 +114,7 @@ func TestVAV1Tete(t *testing.T) {
 	out := []string{"film\tbuild\tclasse\tpaquets\tvue_a\ttete_ecarts\troute_ecarts\tlistes\tpasse_trames\tpasse_ecarts"}
 	for _, id := range films {
 		func() {
-			garde := filmproc.Arm("campagne/va-v1", 4, func(pic uint64) {
+			garde := memguard.Arm("campagne/va-v1", 4, func(pic uint64) {
 				fmt.Fprintf(os.Stderr, "%s : plafond memoire franchi (%d octets)\n", id, pic)
 				os.Exit(3)
 			})
@@ -282,7 +282,7 @@ func TestVAV1FinDeVueA(t *testing.T) {
 	lignes := []string{"film\tbuild\tchunk\tpaquet\tclasse\tlocalisation\tS\tE\tarret\tgenres\tverdict"}
 	for _, id := range films {
 		func() {
-			garde := filmproc.Arm("campagne/va-v1", 4, func(pic uint64) {
+			garde := memguard.Arm("campagne/va-v1", 4, func(pic uint64) {
 				fmt.Fprintf(os.Stderr, "%s : plafond memoire franchi (%d octets)\n", id, pic)
 				os.Exit(3)
 			})

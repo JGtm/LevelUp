@@ -20,6 +20,8 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"levelup/go-api/internal/filmarchive"
+
 	"github.com/JGtm/LevelUp/libs/film/filmcache"
 	"github.com/JGtm/LevelUp/libs/film/finalise"
 )
@@ -120,7 +122,7 @@ func TestGetFilmChunkURLs_ManifesteNonFinalise_ErreurTypee(t *testing.T) {
 func TestGetFilmChunks_ManifesteLocalPartiel_RepliSurLAPI(t *testing.T) {
 	racine := t.TempDir()
 	court := testFilmMatchUUID[:8]
-	if err := filmcache.EnsureDirs(racine); err != nil {
+	if err := filmarchive.EnsureDirs(racine); err != nil {
 		t.Fatal(err)
 	}
 	dossier := filmcache.ChunkDir(racine, court)

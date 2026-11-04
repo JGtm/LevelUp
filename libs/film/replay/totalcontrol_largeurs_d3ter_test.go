@@ -37,9 +37,9 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
 	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
 	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 const (
@@ -72,7 +72,7 @@ func (r d3tReleve) String() string {
 func TestTotalControlLargeursMPP(t *testing.T) {
 	dir := p2aRequireFilm(t)
 	short := filepath.Base(dir)
-	g := filmproc.Arm("d3ter-largeurs", filmproc.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm("d3ter-largeurs", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE %s : %.2f Gio — sonde interrompue", short,
 			float64(peak)/(1<<30))
 	})

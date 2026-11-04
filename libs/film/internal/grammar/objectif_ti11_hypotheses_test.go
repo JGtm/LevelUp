@@ -15,7 +15,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // TestObjectifTi11DeltaGarde — LE COUT PAR COMPOSANT, TESTE LA OU IL S'APPLIQUE.
@@ -46,7 +46,7 @@ func TestObjectifTi11DeltaGarde(t *testing.T) {
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
-	g := filmproc.Arm("TestObjectifTi11DeltaGarde", filmproc.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm("TestObjectifTi11DeltaGarde", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — mesure interrompue", float64(peak)/(1<<30))
 	})
 	defer func() { g.Disarm() }()
@@ -140,7 +140,7 @@ func TestObjectifTi11DeltaTemoin(t *testing.T) {
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
-	g := filmproc.Arm("TestObjectifTi11DeltaTemoin", filmproc.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm("TestObjectifTi11DeltaTemoin", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — mesure interrompue", float64(peak)/(1<<30))
 	})
 	defer func() { g.Disarm() }()
@@ -256,7 +256,7 @@ func TestObjectifTi11DeltaPresence(t *testing.T) {
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
-	g := filmproc.Arm("TestObjectifTi11DeltaPresence", filmproc.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm("TestObjectifTi11DeltaPresence", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — mesure interrompue", float64(peak)/(1<<30))
 	})
 	defer func() { g.Disarm() }()

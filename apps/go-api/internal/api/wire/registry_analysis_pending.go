@@ -9,12 +9,11 @@ package wire
 // `film.replay_artifact`. Jamais de `slug ==` : tout vient de la CapabilityMap du titre.
 
 import (
+	"levelup/go-api/internal/filmrun"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service"
-
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
 )
 
 // newAnalysisPendingResolver applique la porte : nil si le titre ne déclare pas
@@ -30,9 +29,9 @@ func newAnalysisPendingResolver(caps games.CapabilityMap, repo port.AnalysisProb
 // analysisPendingFor est le point d'appel du wire : la CapabilityMap du titre du joueur et le
 // dépôt réel.
 func (r *ServiceRegistry) analysisPendingFor(pdb *duckdb.PlayerDB) *service.AnalysisPendingResolver {
-	// Le verrou machine de décodage vit sous la racine du cache film (filmproc.AcquireSolo) ;
+	// Le verrou machine de décodage vit sous la racine du cache film (filmrun.AcquireSolo) ;
 	// l'observateur n'existe que là où le résolveur existe (nil-sûr).
 	cacheRoot := r.cfg.PathResolver().CacheRootDir()
 	return newAnalysisPendingResolver(r.capabilitiesForPDB(pdb), duckdb.NewAnalysisProbeRepo(pdb)).
-		WithDecodeObserver(filmproc.NewDecodeObserver(cacheRoot))
+		WithDecodeObserver(filmrun.NewDecodeObserver(cacheRoot))
 }

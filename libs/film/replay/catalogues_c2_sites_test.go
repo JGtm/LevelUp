@@ -47,8 +47,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
 	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 const (
@@ -94,7 +94,7 @@ func TestCataloguesC2SitesControle(t *testing.T) {
 	if sitesPath == "" {
 		t.Skipf("mesure non demandee : C2_SITES vide (sites candidats figes)")
 	}
-	g := filmproc.Arm("c2-sites", filmproc.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm("c2-sites", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE %s : %.2f Gio — ce film ne compte NI POUR NI CONTRE",
 			id, float64(peak)/(1<<30))
 	})

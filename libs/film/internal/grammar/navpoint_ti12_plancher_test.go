@@ -47,7 +47,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // tpFilms : les cinq films Neutral Bomb reels et leurs explosions (copie gardee par
@@ -266,7 +266,7 @@ func tpMedCV(xs []float64) (float64, float64) {
 // tpSentinelle arme le plafond memoire de mesure et rend le desarmement.
 func tpSentinelle(t *testing.T) func() {
 	t.Helper()
-	g := filmproc.Arm("TestNavpointTi12Plancher", filmproc.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm("TestNavpointTi12Plancher", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — plancher interrompu", float64(peak)/(1<<30))
 	})
 	return func() { g.Disarm() }

@@ -28,7 +28,7 @@ package archlint
 //
 // # CE QUI N EST PAS VISE, ET NE DOIT PAS L ETRE
 //
-// `filmproc.AcquireSolo` est le verrou INTER-PROCESSUS de la machine : il borne le poste a un
+// `filmrun.AcquireSolo` est le verrou INTER-PROCESSUS de la machine : il borne le poste a un
 // decodage a la fois pour une raison de MEMOIRE, pas de correction. Il reste, et ce ratchet ne le
 // regarde pas. De meme, un `sync.Mutex` qui protege autre chose qu un etat de decodage (un cache,
 // un compteur de service) n est pas concerne : la regle ne parle que des trois noms ci-dessus.
@@ -114,7 +114,7 @@ func TestAucunVerrouDeDecodageDePaquet(t *testing.T) {
 		"ecrite (ratchet `filmdec_package_vars_test.go`) : deux films peuvent se decoder en\n"+
 		"parallele, et un verrou de paquet ne ferait que les serialiser. Ce qu il faut a la\n"+
 		"place : passer le profil et l observateur par `filmdec.ContexteDeLecture`.\n\n"+
-		"Le verrou INTER-PROCESSUS de la machine (`filmproc.AcquireSolo`) n est PAS vise : il\n"+
+		"Le verrou INTER-PROCESSUS de la machine (`filmrun.AcquireSolo` chez l hote) n est PAS vise : il\n"+
 		"borne la memoire du poste, pas la correction du decodage.",
 		len(fautes), strings.Join(fautes, "\n  "))
 }

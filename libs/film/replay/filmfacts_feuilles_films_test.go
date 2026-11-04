@@ -15,7 +15,7 @@ package replay
 // # IL SAUTE EN CI, ET C EST UN GATE LOCAL OBLIGATOIRE DU CODEC
 //
 // Comme `TestGoldenInputsFidelite` : il exige le cache de films. Il prend le VERROU DE DECODAGE de
-// ce cache (`filmproc.AcquireSoloWait`, a cote des chunks) — un decodage de film a la fois sur la
+// ce cache (`decodelock.PrendreEnAttendant`, a cote des chunks) — un decodage de film a la fois sur la
 // machine.
 //
 //	REPLAY_FILM_CACHE=<repo>/data/cache/film_chunks \
@@ -31,7 +31,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
+	"github.com/JGtm/LevelUp/libs/film/internal/decodelock"
 )
 
 // attenteVerrouFeuilles borne l attente du verrou de decodage : au-dela, un autre decodage tient la
@@ -45,12 +45,8 @@ func TestCodecFeuilleAFeuilleSurLesFilms(t *testing.T) {
 			"comprise). CE SKIP N EST PAS UNE PERMISSION : tout lot qui touche au codec des faits le "+
 			"JOUE localement sur les huit builds.", miniFilmCacheEnv)
 	}
-	lock, err := filmproc.AcquireSoloWait(context.Background(), filepath.Dir(cache),
+	decodelock.PrendreEnAttendant(context.Background(), t, filepath.Dir(cache),
 		"replay-test-feuilles", "huit builds", attenteVerrouFeuilles)
-	if err != nil {
-		t.Fatalf("verrou de decodage : %v", err)
-	}
-	defer lock.Release()
 	exercees := map[string][]string{}
 	for _, b := range goldenBuilds() {
 		t.Run(b.Build+"/"+b.Short8, func(t *testing.T) {

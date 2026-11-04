@@ -35,8 +35,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
 	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 	"github.com/JGtm/LevelUp/libs/film/types"
 )
 
@@ -324,7 +324,7 @@ func v0Inter(a, b []v0Iv) int64 {
 	return n
 }
 
-// v0Echantillon : le pic d'empreinte d'une phase (`filmproc.Footprint`, 10 ms) ; au-dela de
+// v0Echantillon : le pic d'empreinte d'une phase (`memguard.Footprint`, 10 ms) ; au-dela de
 // 10 Gio le processus s'arrete pour proteger la machine de travail.
 type v0Echantillon struct {
 	pic        atomic.Uint64
@@ -335,7 +335,7 @@ func v0Echantillonner() *v0Echantillon {
 	runtime.GC()
 	debug.FreeOSMemory()
 	s := &v0Echantillon{stop: make(chan struct{}), fini: make(chan struct{})}
-	s.noter(filmproc.Footprint())
+	s.noter(memguard.Footprint())
 	go func() {
 		defer close(s.fini)
 		tk := time.NewTicker(10 * time.Millisecond)
@@ -345,7 +345,7 @@ func v0Echantillonner() *v0Echantillon {
 			case <-s.stop:
 				return
 			case <-tk.C:
-				v := filmproc.Footprint()
+				v := memguard.Footprint()
 				s.noter(v)
 				if v > 10<<30 {
 					fmt.Fprintf(os.Stderr, "EMPRISE V0 : empreinte %.2f Gio > plafond — arret\n", v0G(v))
@@ -367,7 +367,7 @@ func (s *v0Echantillon) noter(v uint64) {
 }
 
 func (s *v0Echantillon) arreter() uint64 {
-	s.noter(filmproc.Footprint())
+	s.noter(memguard.Footprint())
 	close(s.stop)
 	<-s.fini
 	return s.pic.Load()

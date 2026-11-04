@@ -52,8 +52,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
 	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // paCorpus : les neuf films d'Assaut, le temoin Oddball, et trois temoins de modes a pied connu.
@@ -88,7 +88,7 @@ func TestAssautPiedAncre(t *testing.T) {
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
-	g := filmproc.Arm("TestAssautPiedAncre", filmproc.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm("TestAssautPiedAncre", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — releve interrompu", float64(peak)/(1<<30))
 	})
 	defer func() { g.Disarm() }()
@@ -238,7 +238,7 @@ func TestAssautPiedFamilles(t *testing.T) {
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
-	g := filmproc.Arm("TestAssautPiedFamilles", filmproc.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm("TestAssautPiedFamilles", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — releve interrompu", float64(peak)/(1<<30))
 	})
 	defer func() { g.Disarm() }()
@@ -397,7 +397,7 @@ func TestAssautPiedExplosion(t *testing.T) {
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
-	g := filmproc.Arm("TestAssautPiedExplosion", filmproc.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm("TestAssautPiedExplosion", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — releve interrompu", float64(peak)/(1<<30))
 	})
 	defer func() { g.Disarm() }()
@@ -496,7 +496,7 @@ func TestAssautPiedPose(t *testing.T) {
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
-	g := filmproc.Arm("TestAssautPiedPose", filmproc.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm("TestAssautPiedPose", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — releve interrompu", float64(peak)/(1<<30))
 	})
 	defer func() { g.Disarm() }()

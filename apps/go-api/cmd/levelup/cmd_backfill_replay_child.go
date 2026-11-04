@@ -24,16 +24,17 @@ import (
 
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/filmrun"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replaybuild"
 
 	"github.com/JGtm/LevelUp/libs/film/filmcache"
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // outilBackfillReplay : le nom sous lequel l'enfant de la passe tient le verrou de decodage.
-// C'est ce mot que lira l'operateur a qui le verrou est refuse (cf. internal/games/halo_infinite/film/filmproc/solo.go).
+// C'est ce mot que lira l'operateur a qui le verrou est refuse (cf. internal/filmrun/solo.go).
 const outilBackfillReplay = "backfill-replay"
 
 // attenteVerrouPasse : combien de temps l'enfant d'une PASSE attend son tour avant de renoncer.
@@ -49,7 +50,7 @@ const attenteVerrouPasse = 10 * time.Minute
 // IL NE REND JAMAIS D'ERREUR A `main` : le code de sortie EST le canal de retour. Une erreur
 // rendue a main sortirait en 1, que le protocole reserve aux morts hors categorie.
 func runBackfillReplayUn(cfg *config.AppConfig, o replayBackfillOptions, cacheRoot string) int {
-	// SENTINELLE CANONIQUE (internal/games/halo_infinite/film/filmproc.Arm) : memes deux plafonds qu'avant (souple +
+	// SENTINELLE CANONIQUE (libs/film/memguard.Arm) : memes deux plafonds qu'avant (souple +
 	// 25 % dur, echantillonnage 250 ms) — le calcul vit desormais dans un seul endroit
 	// (memguard.go). onExceeded applique LA DOCTRINE DE CET ENFANT : emettre le pic sur le
 	// protocole stdout puis mourir avec le code memoire, comme avant la centralisation.
@@ -58,18 +59,18 @@ func runBackfillReplayUn(cfg *config.AppConfig, o replayBackfillOptions, cacheRo
 	// R1) : le texte d'armement est impose a la sentinelle canonique, et la ligne fatale
 	// porte de nouveau le PLAFOND FRANCHI a cote de l'empreinte atteinte — sans lui, le
 	// journal disait jusqu'ou on etait monte mais plus ce qu'on avait depasse.
-	plafondDur := filmproc.HardLimitFor(o.memLimitGiB)
-	g := filmproc.Arm(outilBackfillReplay, o.memLimitGiB, func(peak uint64) {
+	plafondDur := memguard.HardLimitFor(o.memLimitGiB)
+	g := memguard.Arm(outilBackfillReplay, o.memLimitGiB, func(peak uint64) {
 		slog.Error("backfill-replay (enfant): PLAFOND MEMOIRE DEPASSE — arret du processus",
 			"empreinte_octets", peak, "plafond_dur_octets", plafondDur, "match_id", o.one)
-		filmproc.EmitPeak(peak)
-		os.Exit(filmproc.CodeMemory)
-	}, filmproc.WithArmMessage("plafond memoire arme"))
+		filmrun.EmitPeak(peak)
+		os.Exit(filmrun.CodeMemory)
+	}, memguard.WithArmMessage("plafond memoire arme"))
 	// Le pic part sur TOUTES les sorties ordinaires. La sortie par la sentinelle, elle,
 	// l'emet elle-meme : `os.Exit` ne joue pas les differes.
 	defer func() {
 		g.Disarm()
-		filmproc.EmitPeak(g.Peak())
+		filmrun.EmitPeak(g.Peak())
 	}()
 
 	ctx := context.Background()
@@ -78,11 +79,11 @@ func runBackfillReplayUn(cfg *config.AppConfig, o replayBackfillOptions, cacheRo
 	// moment) transformerait un partage de machine en echec de film, et le recap accuserait le
 	// decodage. Elle attend donc son tour jusqu'a [attenteVerrouPasse], puis renonce
 	// proprement — detenteur nomme, code de PREPARATION, la passe continue avec le film suivant.
-	lock, verr := filmproc.AcquireSoloWait(ctx, cacheRoot, outilBackfillReplay, o.one, attenteVerrouPasse)
+	lock, verr := filmrun.AcquireSoloWait(ctx, cacheRoot, outilBackfillReplay, o.one, attenteVerrouPasse)
 	if verr != nil {
 		slog.ErrorContext(ctx, "backfill-replay (enfant): decodage refuse — un autre decodage tient la machine",
 			"err", verr, "match_id", o.one, "attente_max", attenteVerrouPasse)
-		return filmproc.CodePreparation
+		return filmrun.CodePreparation
 	}
 	defer lock.Release()
 
@@ -90,7 +91,7 @@ func runBackfillReplayUn(cfg *config.AppConfig, o replayBackfillOptions, cacheRo
 	if err != nil {
 		slog.ErrorContext(ctx, "backfill-replay (enfant): builder indisponible",
 			"err", err, "match_id", o.one, "title", o.titleSlug)
-		return filmproc.CodePreparation
+		return filmrun.CodePreparation
 	}
 
 	pr := cfg.PathResolver()
@@ -109,20 +110,20 @@ func runBackfillReplayUn(cfg *config.AppConfig, o replayBackfillOptions, cacheRo
 	switch {
 	case berr == nil:
 		fmt.Printf("  %s : %d tracks, %d octets (%s)\n", o.one, out.Tracks, out.Bytes, out.Module)
-		return filmproc.CodeOK
+		return filmrun.CodeOK
 	case errors.Is(berr, replaybuild.ErrMapNotInCatalog):
 		fmt.Printf("  %s : carte hors catalogue (%v) — echec voulu\n", o.one, mapNames)
-		return filmproc.CodeSkipped
+		return filmrun.CodeSkipped
 	case errors.Is(berr, replaybuild.ErrUnknownFilmKey):
 		// FILM MIS DE COTE (lot 3.1.1) : la cle ecrite est absente de la table de profil. Refus
 		// VOULU — ajouter la ligne (docs/RUNBOOK_FILM_PROFILES.md), pas diagnostiquer une panne.
 		fmt.Printf("  %s : cle du film absente de la table de profil — film ecarte (%v)\n", o.one, berr)
-		return filmproc.CodeSkipped
+		return filmrun.CodeSkipped
 	default:
 		slog.ErrorContext(ctx, "backfill-replay (enfant): decodage en echec",
 			"err", berr, "match_id", o.one)
 		fmt.Printf("  %s : ERREUR %v\n", o.one, berr)
-		return filmproc.CodeFailed
+		return filmrun.CodeFailed
 	}
 }
 

@@ -69,6 +69,8 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/JGtm/LevelUp/libs/film/internal/depottest"
+
 	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
 	"github.com/JGtm/LevelUp/libs/film/types"
 )
@@ -99,7 +101,7 @@ func oriPads(t *testing.T) []MapWeaponPadSpot {
 	if mapID == "" {
 		t.Skip("ORIGINE_MAPID absent : instrument de mesure sauté")
 	}
-	path := filepath.Join(racineDepot(t), "data", "titles", "halo_infinite",
+	path := filepath.Join(depottest.Racine(t), "data", "titles", "halo_infinite",
 		"reference", "map_weapon_pads.json")
 	cat, err := LoadMapWeaponPads(path)
 	if err != nil {

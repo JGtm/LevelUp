@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/filmarchive"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/sync/filmfetch"
 
@@ -157,12 +158,12 @@ func TestRemoteFilms_EchecArchivageNonFatal_MaisCOMPTE(t *testing.T) {
 func TestRemoteFilms_ChunkTronqueSurDisqueRetelecharge(t *testing.T) {
 	racine := cacheVide(t)
 	court := titlePkg.FilmShortMatchID(matchRemote)
-	var aEcrire []filmcache.WriteChunk
+	var aEcrire []filmarchive.WriteChunk
 	for _, c := range chunksTemoins() {
-		aEcrire = append(aEcrire, filmcache.WriteChunk{Index: c.Index, ChunkType: c.ChunkType,
+		aEcrire = append(aEcrire, filmarchive.WriteChunk{Index: c.Index, ChunkType: c.ChunkType,
 			StartMS: c.StartMS, DurationMS: c.DurationMS, Data: c.Data})
 	}
-	if err := filmcache.Write(t.Context(), racine, court, aEcrire); err != nil {
+	if err := filmarchive.Write(t.Context(), racine, court, aEcrire); err != nil {
 		t.Fatal(err)
 	}
 	// Le nom des fichiers de chunks n est declare que dans `filmcache` : deuxieme entree du

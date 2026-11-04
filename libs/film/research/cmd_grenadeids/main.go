@@ -12,7 +12,7 @@
 //	  -racine <parc>/data/cache/film_chunks \
 //	  -films 111fa685,e5adf7b2,60ae07c4,a349fea8,fb1a1a72
 //
-// Le verrou de decodage de `filmproc` n est PAS pris : il ecrirait un fichier sous la
+// Le verrou de decodage (`internal/decodelock`) n est PAS pris : il ecrirait un fichier sous la
 // racine du cache, et le cadre de ce lot interdit toute ecriture sous `data/`. La sentinelle
 // memoire, elle, est armee — elle ne fait qu abaisser un plafond dans ce processus.
 package main
@@ -25,7 +25,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 	"github.com/JGtm/LevelUp/libs/film/research/grenadeids"
 )
 
@@ -58,7 +58,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
-	garde := filmproc.Arm("film_re/grenadeids", *plafond, func(pic uint64) {
+	garde := memguard.Arm("film_re/grenadeids", *plafond, func(pic uint64) {
 		fmt.Fprintf(os.Stderr, "plafond memoire franchi (%d octets) — arret\n", pic)
 		os.Exit(3)
 	})

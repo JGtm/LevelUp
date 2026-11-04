@@ -3,7 +3,7 @@
 package grammar
 
 // r_comb2_configs_research_test.go — R-COMB-2 (cf. r_comb2_research_test.go) : le pilote. Par film
-// (un a la fois, sentinelle `filmproc` 4 Gio) : la reference, la combinaison complete, chaque
+// (un a la fois, sentinelle `memguard` 4 Gio) : la reference, la combinaison complete, chaque
 // levier seul, les variantes de verification, puis la combinaison privee d UN levier a la fois.
 // L oracle L9 se derive de la marche qui porte les memes autres leviers (marche « base », avec le
 // diagnostic [b3Diag]). Chaque paquet ferme passe au juge des invariants de l ecrivain
@@ -22,8 +22,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
 	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // rc2Res : une configuration mesuree sur un film.
@@ -210,7 +210,7 @@ func TestRComb2(t *testing.T) {
 // rc2UnFilm mesure un film.
 func rc2UnFilm(t *testing.T, racine, id, carte string, cat *profile.MapQuantCatalog, utiles UsagesProduit,
 	out map[string][]string) {
-	garde := filmproc.Arm("campagne/r-comb2", 4, func(pic uint64) {
+	garde := memguard.Arm("campagne/r-comb2", 4, func(pic uint64) {
 		fmt.Fprintf(os.Stderr, "%s : plafond memoire franchi (%d octets)\n", id, pic)
 		os.Exit(3)
 	})

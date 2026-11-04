@@ -34,9 +34,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
 	"github.com/JGtm/LevelUp/libs/film/internal/profile"
 	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // b2pVariante : une configuration de la surcouche.
@@ -191,7 +191,7 @@ func TestCampagneBis2Positions(t *testing.T) {
 	utiles := cmUtiles(t)
 	lignes := []string{b2pEntete}
 	for _, id := range films {
-		garde := filmproc.Arm("campagne/bis2-positions", 4, func(pic uint64) {
+		garde := memguard.Arm("campagne/bis2-positions", 4, func(pic uint64) {
 			fmt.Fprintf(os.Stderr, "%s : plafond memoire franchi (%d octets)\n", id, pic)
 			os.Exit(3)
 		})
@@ -293,7 +293,7 @@ func TestCampagneBis2PositionsProduction(t *testing.T) {
 			t.Logf("%s : carte %q hors catalogue (%v) — film ignore", id, cartes[id], err)
 			continue
 		}
-		garde := filmproc.Arm("campagne/bis2-positions-prod", 4, func(pic uint64) {
+		garde := memguard.Arm("campagne/bis2-positions-prod", 4, func(pic uint64) {
 			fmt.Fprintf(os.Stderr, "%s : plafond memoire franchi (%d octets)\n", id, pic)
 			os.Exit(3)
 		})

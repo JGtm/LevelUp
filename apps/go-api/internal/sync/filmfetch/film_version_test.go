@@ -20,6 +20,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"levelup/go-api/internal/filmarchive"
+
 	"github.com/JGtm/LevelUp/libs/film/filmcache"
 )
 
@@ -31,7 +33,7 @@ func cacheAvecRegistre(t *testing.T, version uint32, avecRegistre bool) string {
 	t.Helper()
 	racine := t.TempDir()
 	court := matchIDDeTest[:8]
-	if err := filmcache.EnsureDirs(racine); err != nil {
+	if err := filmarchive.EnsureDirs(racine); err != nil {
 		t.Fatalf("EnsureDirs: %v", err)
 	}
 	dossierChunks := filmcache.ChunkDir(racine, court)

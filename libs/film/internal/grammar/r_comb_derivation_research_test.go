@@ -24,8 +24,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
 	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // rcdDiff : la difference de deux oracles, liaison par liaison (cle de paquet, eid).
@@ -93,7 +93,7 @@ func TestRCombDerivation(t *testing.T) {
 	detail := []string{"film\tbuild\tcomposants\tliaison"}
 	defer rcLever()
 	for _, id := range films {
-		garde := filmproc.Arm("campagne/r-comb-derivation", 4, func(pic uint64) {
+		garde := memguard.Arm("campagne/r-comb-derivation", 4, func(pic uint64) {
 			fmt.Fprintf(os.Stderr, "%s : plafond memoire franchi (%d octets)\n", id, pic)
 			os.Exit(3)
 		})

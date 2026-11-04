@@ -69,6 +69,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/JGtm/LevelUp/libs/film/internal/depottest"
 )
 
 // contractFixturesEnv : la seconde condition explicite de la regeneration (cf. en-tete).
@@ -214,7 +216,7 @@ type contractManifest struct {
 // Go parce que c'est le producteur qui sait ce que le document contient.
 func contractFixturesDir(t *testing.T) string {
 	t.Helper()
-	root := racineDepot(t)
+	root := depottest.Racine(t)
 	return filepath.Join(root, "apps", "web", "src", "features", "match-replay",
 		"test", "fixtures", "go")
 }

@@ -37,7 +37,7 @@ package replay
 // la fenêtre jugée.
 //
 // RÉGIME : garde `ASSAUT_CACHE`. Aucune base, aucun réseau, sentinelle mémoire armée, UN
-// SEUL décodage à la fois sur la machine (verrou INTER-PROCESSUS `filmproc.AcquireSolo`). Jamais `cmd/replay-build` :
+// SEUL décodage à la fois sur la machine (verrou INTER-PROCESSUS `decodelock.Prendre`). Jamais `cmd/replay-build` :
 // l'extraction est en processus.
 //
 //	$env:ASSAUT_CACHE="C:/.../data/cache"

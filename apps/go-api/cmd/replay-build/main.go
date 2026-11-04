@@ -40,12 +40,13 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/filmrun"
 	"levelup/go-api/internal/observability/logging"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replaybuild"
 
 	"github.com/JGtm/LevelUp/libs/film/filmcache"
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // outilNom : le nom que ce binaire porte dans le journal des protections (verrou, sentinelle,
@@ -61,7 +62,7 @@ func main() {
 		"répertoire des props Forge d'une carte, imposé pour toutes (défaut : "+
 			"PathResolver.MapGeometryDir du titre ET du module de la carte)")
 	mapName := flag.String("map", "", "nom de carte du match (obligatoire : porte les bornes de déquantification)")
-	memGiB := flag.Int("mem-gib", filmproc.DefaultLimitGiB,
+	memGiB := flag.Int("mem-gib", memguard.DefaultLimitGiB,
 		"plafond memoire souple de la cuisson, en gibioctets (0 = desarme, echappatoire de l'operateur)")
 	factsPath := flag.String("facts", "",
 		"fichier JSON des faits du match (lignes de match, scores des deux camps, nom de variante) ; "+
@@ -139,11 +140,11 @@ func main() {
 // pire, deux boucles en parallèle dont une en arrière-plan, ont saturé la machine de travail de
 // l'utilisateur. Le corpus connaît un film à 3,3 Go (`1b1e380f`, tué par une surveillance
 // EXTERNE le 2026-08-18) ; quatre sinistres mémoire ont suivi, le dernier le 2026-08-31.
-// Voir `internal/games/halo_infinite/film/filmproc/solo.go` pour le récit complet.
+// Voir `internal/filmrun/solo.go` pour le récit complet.
 //
 // Ordre d'armement : le VERROU d'abord (un refus doit coûter zéro décodage), puis la priorité,
 // puis la sentinelle. Aucune base n'est ouverte ici, donc la sentinelle a le droit de tuer
-// (cf. l'en-tête de `filmproc`). `--mem-gib 0` la désarme : c'est l'échappatoire documentée de
+// (cf. l'en-tête de `libs/film/memguard`). `--mem-gib 0` la désarme : c'est l'échappatoire documentée de
 // l'opérateur qui sait ce qu'il fait, et elle est explicite au lieu d'être le défaut.
 //
 // La relâche suit l'ordre INVERSE, celui que les `defer` tenaient avant l'extraction : la
@@ -153,18 +154,18 @@ func main() {
 // tranche : `os.Exit` ne joue aucun `defer`, et un fichier de profil non fermé est illisible —
 // c'est précisément sur un film qui explose qu'on veut pouvoir le lire.
 func armerProtections(ctx context.Context, cacheRoot, matchID string, memGiB int, arreterProfil func()) func() {
-	lock, err := filmproc.AcquireSolo(cacheRoot, outilNom, matchID)
+	lock, err := filmrun.AcquireSolo(cacheRoot, outilNom, matchID)
 	if err != nil {
 		slog.ErrorContext(ctx, "décodage refusé", "err", err)
-		os.Exit(filmproc.CodePreparation)
+		os.Exit(filmrun.CodePreparation)
 	}
-	filmproc.LowerOwnPriority(outilNom)
-	g := filmproc.Arm(outilNom, memGiB, func(peak uint64) {
+	filmrun.LowerOwnPriority(outilNom)
+	g := memguard.Arm(outilNom, memGiB, func(peak uint64) {
 		slog.ErrorContext(ctx, "plafond memoire depasse — cuisson abandonnee",
 			"pic_octets", peak, "pic_gio", float64(peak)/(1<<30), "match", matchID)
 		arreterProfil()
 		lock.Release()
-		os.Exit(filmproc.CodeMemory)
+		os.Exit(filmrun.CodeMemory)
 	})
 	return func() {
 		g.Disarm()

@@ -122,7 +122,7 @@ package grammar
 //     une mesure dont ce serait le critere ECRIT D'AVANCE, jamais en relisant celle-ci.
 //
 // REGIME : garde `ASSAUT_CACHE`. Aucune base, aucun reseau, sentinelle memoire armee, UN SEUL
-// decodage a la fois sur la machine (verrou INTER-PROCESSUS `filmproc.AcquireSolo`). Aucun chemin de production n'est modifie.
+// decodage a la fois sur la machine (verrou INTER-PROCESSUS `decodelock.Prendre`). Aucun chemin de production n'est modifie.
 //
 //	$env:ASSAUT_CACHE="C:/.../data/cache"
 //	go test ./internal/grammar/ -run ObjectifTi11Bruit -v -timeout 60m
@@ -134,7 +134,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // Les trois champs interroges. i12 et i13 sont R(32) bruts, i14 est R(3).
@@ -213,13 +213,13 @@ func TestObjectifTi11Bruit(t *testing.T) {
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
-	g := filmproc.Arm("TestObjectifTi11Bruit", filmproc.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm("TestObjectifTi11Bruit", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — mesure interrompue", float64(peak)/(1<<30))
 	})
 	defer func() {
 		g.Disarm()
 		t.Logf("pic memoire observe : %.2f Gio (plafond souple %d Gio)",
-			float64(g.Peak())/(1<<30), filmproc.MeasureLimitGiB)
+			float64(g.Peak())/(1<<30), memguard.MeasureLimitGiB)
 	}()
 
 	var assauts, temoins []*btFilmBilan

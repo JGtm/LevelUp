@@ -6,7 +6,7 @@ package grammar
 // R-L1 (a), (b), (d) et R-P6. Un
 // instrument de recherche : aucun fichier de production n est touche, aucune sortie ne change.
 //
-// Par film (un a la fois, sentinelle `filmproc` 4 Gio) :
+// Par film (un a la fois, sentinelle `memguard` 4 Gio) :
 //
 //	passe 1    marche de reference + [rnP1] (occurrences, paquets a rejet, pieds, scores) + juge ;
 //	passe 2    la meme marche, et, AVANT chaque paquet qui porte une occurrence en region non lue,
@@ -29,7 +29,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // rnSeuilScore : part des NEW propres (paquets sans liste d evenements) que l allocateur a cinq
@@ -63,7 +63,7 @@ type rnVar struct {
 }
 
 func rnUnFilm(t *testing.T, racine, id string, utiles UsagesProduit, out map[string][]string) {
-	garde := filmproc.Arm("r_nais/mesures", 4, func(pic uint64) {
+	garde := memguard.Arm("r_nais/mesures", 4, func(pic uint64) {
 		fmt.Fprintf(os.Stderr, "%s : plafond memoire franchi (%d octets)\n", id, pic)
 		os.Exit(3)
 	})

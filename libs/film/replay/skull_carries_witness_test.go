@@ -21,9 +21,9 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
 	"github.com/JGtm/LevelUp/libs/film/internal/facts/objectives"
 	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 	"github.com/JGtm/LevelUp/libs/film/types"
 )
 
@@ -62,7 +62,7 @@ func TestSkullCarrierWitness(t *testing.T) {
 	}
 	oracle := loadSkullOracle(t, id)
 
-	g := filmproc.Arm("skull-carrier-witness", filmproc.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm("skull-carrier-witness", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE %s : %.2f Gio — NI POUR NI CONTRE", id, float64(peak)/(1<<30))
 	})
 	defer func() {

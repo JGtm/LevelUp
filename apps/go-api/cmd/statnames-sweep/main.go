@@ -9,7 +9,7 @@
 //
 // # Trois modes, un seul decodage borne
 //
-//	-films a,b,c            PARENT : un processus enfant PAR FILM via internal/games/halo_infinite/film/filmproc
+//	-films a,b,c            PARENT : un processus enfant PAR FILM via internal/filmrun
 //	                        (plafond de mesure 2 Gio, priorite basse, codes de protocole).
 //	-child -match a         ENFANT : balaye UN film sous la sentinelle et imprime le TSV.
 //	-confront ...           CONFRONTATION : aucune lecture de film — parse un TSV de
@@ -24,7 +24,7 @@
 // `SlotIdentityByDeaths` est le pont que la garde de mode du calque CTF refuse de payer
 // hors CTF (19-22 Go avant le correctif). Le correctif reel est le plafond
 // `objectives.maxDeathsPerSlot`, qui borne le deroulage SUR TOUT FILM ; les
-// instruments D4-D9 l'appellent deja sur Oddball sous filmproc. Ce CLI fait de meme :
+// instruments D4-D9 l'appellent deja sur Oddball sous filmrun. Ce CLI fait de meme :
 // enfant borne + plafond de deroulage — les deux moities de la correction.
 //
 // Usage (depuis apps/go-api, binaire compile — jamais `go run` en boucle) :

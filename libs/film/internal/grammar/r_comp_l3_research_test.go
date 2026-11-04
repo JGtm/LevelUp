@@ -36,7 +36,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // rl3Variante decrit un portage mesure.
@@ -187,7 +187,7 @@ func TestRCompL3Delta(t *testing.T) {
 	tabs := []string{"film\tbuild\tvariante\ttable\tcle\tn"}
 	defer func() { bis2Intercepteur = nil; rl3Masques = nil }()
 	for _, id := range films {
-		garde := filmproc.Arm("campagne/r_comp-l3", 4, func(pic uint64) {
+		garde := memguard.Arm("campagne/r_comp-l3", 4, func(pic uint64) {
 			fmt.Fprintf(os.Stderr, "%s : plafond memoire franchi (%d octets)\n", id, pic)
 			os.Exit(3)
 		})

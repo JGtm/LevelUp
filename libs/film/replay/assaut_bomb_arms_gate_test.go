@@ -45,7 +45,7 @@ package replay
 // trois quarts. Ni l'un ni l'autre n'est au gate.
 //
 // RÉGIME : garde `ASSAUT_CACHE`. Aucune base, aucun réseau, sentinelle mémoire armée, UN SEUL
-// décodage à la fois sur la machine (verrou INTER-PROCESSUS `filmproc.AcquireSolo`). Jamais `cmd/replay-build`.
+// décodage à la fois sur la machine (verrou INTER-PROCESSUS `decodelock.Prendre`). Jamais `cmd/replay-build`.
 //
 //	$env:ASSAUT_CACHE="C:/.../data/cache"
 //	go test ./replay/ -run AssautBombArmsGate -v -timeout 60m

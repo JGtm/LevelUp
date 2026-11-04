@@ -702,12 +702,12 @@ jobs:
       - name: Build du serveur (CGO, DuckDB lié)
         run: go build ./cmd/server
 
-      - name: Tests apps/go-api (serveur, lanceur de dev, espace disque, CLI)
-        run: go test -count=1 ./cmd/server/... ./cmd/devlaunch/... ./internal/platform/diskfree/... ./cmd/levelup/...
+      - name: Tests apps/go-api (serveur, lanceur de dev, espace disque, lanceur de films, verrou de fichier, CLI)
+        run: go test -count=1 ./cmd/server/... ./cmd/devlaunch/... ./internal/platform/diskfree/... ./internal/platform/filelock/... ./internal/filmrun/... ./cmd/levelup/...
 
-      - name: Tests libs/film (processus fils, verrou de fichier)
+      - name: Tests libs/film (verrou de fichier, priorite des instruments)
         working-directory: libs/film
-        run: go test -count=1 ./filmproc/ ./internal/filelock/
+        run: go test -count=1 ./internal/filelock/ ./internal/decodelock/
 
       - name: Tests libs/gamefiles (projection mémoire des modules)
         working-directory: libs/gamefiles

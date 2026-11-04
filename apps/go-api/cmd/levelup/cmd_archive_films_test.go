@@ -17,6 +17,7 @@ import (
 
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/filmarchive"
 
 	"github.com/JGtm/LevelUp/libs/film/filmcache"
 	"github.com/JGtm/LevelUp/libs/film/finalise"
@@ -55,12 +56,12 @@ func TestArchiveFilms_DryRunNExigeAucunToken(t *testing.T) {
 
 // TestFilmDejaEnCache : LE MANIFESTE fait foi, pas les chunks.
 //
-// `filmcache.Write` ecrit les chunks d abord et le manifeste EN DERNIER, precisement pour que
+// `filmarchive.Write` ecrit les chunks d abord et le manifeste EN DERNIER, precisement pour que
 // le manifeste soit le marqueur de commit. Juger la presence sur un dossier de chunks ferait
 // donc passer un film INTERROMPU pour archive, et il ne serait jamais recupere.
 func TestFilmDejaEnCache(t *testing.T) {
 	racine := t.TempDir()
-	if err := filmcache.EnsureDirs(racine); err != nil {
+	if err := filmarchive.EnsureDirs(racine); err != nil {
 		t.Fatal(err)
 	}
 	const match = "aabbccdd-1111-2222-3333-444455556666"
@@ -85,7 +86,7 @@ func TestFilmDejaEnCache(t *testing.T) {
 
 	// Manifeste ecrit : le film est archive. Un film FINALISE (lot L3, 2026-09-23) : le writer
 	// refuse une liste sans morceau des temps forts.
-	if err := filmcache.Write(t.Context(), racine, court, []filmcache.WriteChunk{
+	if err := filmarchive.Write(t.Context(), racine, court, []filmarchive.WriteChunk{
 		{Index: 0, ChunkType: 1, Data: []byte("entete")},
 		{Index: 1, ChunkType: finalise.ChunkTypeTempsForts, Data: []byte("temps forts")},
 	}); err != nil {
@@ -102,7 +103,7 @@ func TestFilmDejaEnCache(t *testing.T) {
 // archiver (le writer completera le manifeste partiel).
 func TestFilmDejaEnCache_ManifestePartielNestPasComplet(t *testing.T) {
 	racine := t.TempDir()
-	if err := filmcache.EnsureDirs(racine); err != nil {
+	if err := filmarchive.EnsureDirs(racine); err != nil {
 		t.Fatal(err)
 	}
 	const match = "aabbccdd-2222-2222-3333-444455556666"
@@ -120,12 +121,12 @@ func TestFilmDejaEnCache_ManifestePartielNestPasComplet(t *testing.T) {
 // le chunk tronque).
 func TestFilmDejaEnCache_ChunkTronqueNestPasComplet(t *testing.T) {
 	racine := t.TempDir()
-	if err := filmcache.EnsureDirs(racine); err != nil {
+	if err := filmarchive.EnsureDirs(racine); err != nil {
 		t.Fatal(err)
 	}
 	const match = "aabbccdd-3333-2222-3333-444455556666"
 	court := titlePkg.FilmShortMatchID(match)
-	if err := filmcache.Write(t.Context(), racine, court, []filmcache.WriteChunk{
+	if err := filmarchive.Write(t.Context(), racine, court, []filmarchive.WriteChunk{
 		{Index: 0, ChunkType: 1, Data: []byte("entete")},
 		{Index: 1, ChunkType: finalise.ChunkTypeTempsForts, Data: []byte("temps forts")},
 	}); err != nil {

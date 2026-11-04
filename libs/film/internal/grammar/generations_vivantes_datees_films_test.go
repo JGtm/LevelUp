@@ -18,6 +18,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/JGtm/LevelUp/libs/film/internal/depottest"
+
 	"github.com/JGtm/LevelUp/libs/film/internal/profile"
 	"github.com/JGtm/LevelUp/libs/film/internal/source"
 )
@@ -39,7 +41,7 @@ func TestPointsAberrantsC2(t *testing.T) {
 	if cache == "" {
 		t.Skip("REPLAY_FILM_CACHE absent : gate local des points aberrants C2 saute")
 	}
-	racine := racineDepot(t)
+	racine := depottest.Racine(t)
 	cat, err := profile.LoadMapQuantCatalog(filepath.Join(racine, "data", "titles", "halo_infinite",
 		"reference", "map_quant_bounds.json"))
 	if err != nil {

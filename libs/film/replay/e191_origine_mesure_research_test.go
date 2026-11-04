@@ -55,6 +55,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/JGtm/LevelUp/libs/film/internal/depottest"
+
 	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
 	"github.com/JGtm/LevelUp/libs/film/internal/source"
 	"github.com/JGtm/LevelUp/libs/film/types"
@@ -309,7 +311,7 @@ func e191ViesDuRegistre(g *FilmFacts, sorted []grammar.BipedPosition) []lifeSpan
 // — les APPAREILS PORTES, ceux dont l origine est la question du point 3 du lot.
 func e191ObjetsPortes(t *testing.T) map[string]bool {
 	t.Helper()
-	raw, err := os.ReadFile(filepath.Join(racineDepot(t), "config", "titles",
+	raw, err := os.ReadFile(filepath.Join(depottest.Racine(t), "config", "titles",
 		"halo_infinite", "mappings", "replay_labels.toml"))
 	if err != nil {
 		t.Fatalf("manifeste des libelles de rejeu : %v", err)

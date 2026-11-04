@@ -727,33 +727,118 @@ elle ne décide ni QUAND on décode, ni OÙ on stocke, ni avec QUELLE PRIORITÉ.
 Aucune des couches hachées n'est touchée : révisions INCHANGÉES, aucune recuisson. Les 96 fichiers de test du
 décodeur qui importent `filmcache` / `filmproc` suivent les nouveaux noms (réécriture d'import, pas de logique).
 
-- [ ] 2.1 `filmproc` coupé en deux : la sentinelle mémoire (`Arm`, `MeasureLimitGiB`, `Footprint`, `EmitPeak`,
+- [x] 2.1 `filmproc` coupé en deux : la sentinelle mémoire (`Arm`, `MeasureLimitGiB`, `Footprint`, `EmitPeak`,
       plafonds) reste dans la brique sous `libs/film/memguard` (nom à confirmer sur pièces : le paquet actuel
       `memguard.go`) ; le lanceur parent/enfant (`NewRunner`, codes de sortie, `Issue*`, `AcquireSolo*`,
       priorité, console cachée, `Roots` et les quatre `Env*` `LEVELUP_*`) part dans `apps/go-api/internal/filmrun`
       (nom libre, un seul paquet). Test : environnement et arguments de l'enfant identiques octet pour octet
       avant/après (témoin capturé AVANT le déplacement). `LEVELUP_*` ne reste dans la brique que dans
       `revision/porte.go`.
+      — FAIT (2026-11-04). `libs/film/memguard` : `memguard.go`, `doc.go` (contrat réécrit : la sentinelle ne
+      décide ni l'arrêt, ni quand, ni la priorité), `memguard_bytes_test.go`, `memguard_message_test.go` (`git mv`)
+      et `memguard_test.go` (les 5 tests de la sentinelle extraits de `filmproc_test.go`). `EmitPeak` est une ligne
+      du protocole parent/enfant : il part avec le lanceur. `apps/go-api/internal/filmrun` (`git mv` de 18 fichiers :
+      `runner.go`, `solo*.go`, `alive_*`, `priority_*`, `selfpriority_*` et leurs tests, `filmproc_test.go` ->
+      `filmrun_test.go` ; `doc.go` neuf). Le lanceur passe par `platform/childproc.Command` : les copies
+      `hideconsole_win.go` / `hideconsole_other.go` et leur garde de source `sansfenetre_source_test.go` sont
+      supprimées (leur sujet est tenu par `archlint/childproc_single_spawn_test.go`, dont l'allowlist se vide),
+      `TestSansFenetreSousWindows` réécrit sur `Runner.command`. Le verrou noyau de `solo.go` vient de
+      `platform/filelock`, COPIE JUMELLE neuve de `libs/film/internal/filelock` (tenue par
+      `copies_identiques_test.go`). Les tests et instruments de la brique qui prennent le verrou de décodage
+      (`replay/filmfacts_feuilles_films_test.go`, quatre `*_research_test.go`) passent par
+      `libs/film/internal/decodelock` (même fichier, même description du détenteur, sans journal), parité du
+      protocole tenue par `archlint/film_verrou_decodage_parite_test.go` (mutation jouée : `film_decode2.lock` et
+      `json:"pid2"` -> rouge, restauré -> vert, `temoins_film/lot2/2.1_mutation_parite_*.txt`). Témoin : crochet
+      `Runner.command` + `runner_commande_test.go`, capturé dans `filmproc` AVANT tout `git mv` puis dans `filmrun` :
+      341 lignes, IDENTIQUES à deux variables du harnais près (`FILMRUN_TEMOIN_COMMANDE`, le fichier du témoin, et
+      `PWD`, posé par `go test` au dossier du paquet) ; normalisées, MD5 `b9e8aae550c19f1a2a2f627024760609` des deux
+      côtés (`temoins_film/lot2/2.1_commande_*`). 71 fichiers de `libs/film` et 37 de `apps/go-api` réécrits
+      (imports, puis commentaires qui nommaient `filmproc`). Garde-rails suivis : `no_accidental_goos_suffix`,
+      `film_layers_deps`, `film_slog_contexte` (exclusion renommée `memguard`, son retrait est l'item 2.5),
+      `no_unbounded_film_loop`, `decode_lock_interdit`, `no_cuisson_depuis_tactique`, `no_error_text_classification`,
+      `film_tri_total` (racine `internal/filmrun` ajoutée : le lanceur était balayé sous `libs/film`), voie CI Windows
+      (`ci.yml`, `docs/COMMANDS.md` EN et FR). `grep -rn LEVELUP_ libs/film --include=*.go | grep -v _test.go` :
+      `revision/porte.go` seul.
 - [ ] 2.2 `filmcache` réduit à la lecture d'un film depuis un dossier (manifeste + chunks, formes brut/zlib/zstd :
       `LoadFilm`, `LoadFilmDir`, `Open`, `Source`, chemins) ; déplacement d'archive, recompression, écriture à la
       réception (`deplacement.go`, `recompress.go`, `write.go` et leurs tests) partent dans
       `apps/go-api/internal/sync/filmfetch` ou un paquet frère (relever les appelants AVANT : `sync/filmfetch`,
       `cmd/levelup film recompress`, `film archive-move`, desktop 14.3/14.5). Garde-rail de disposition
       `filmcache` (desktop 14.4) reste vert.
+      — FAIT (2026-11-04). Appelants relevés AVANT (`temoins_film/lot2/2.2_appelants_avant.txt` : symboles par
+      fréquence, 26 fichiers appelants de l'écriture, 37 importeurs). Paquet de l'hôte `apps/go-api/internal/filmarchive`
+      (un paquet, l'archive côté écriture ; `filmfetch` ne porte que le téléchargement) : `git mv` de `write.go`,
+      `deplacement.go`, `recompress.go`, `write_test.go`, `write_finalise_test.go`, `write_robustesse_test.go`,
+      `reprise_test.go`, `stockage_test.go` ; le témoin `filmcache/testdata/manifeste_partiel_34.json` reste dans la brique
+      (`replay/fil_des_morts_faits_test.go` le lit aussi), l'hôte le relit par `testutil.CheminBriqueFilm` ;
+      `Supprimer` sort d'`archive.go` (qui ne garde que `MesurerOccupation`, une lecture) vers `retrait.go` ; `doc.go`
+      neuf. L'écriture garde la disposition et le format de la brique : chemins par `filmcache.ManifestPath` /
+      `ChunkDir` / `CheminDuChunk` / `ChunksRoot` / `ManifestsRoot`, forme zstd par les fonctions exportées de
+      `filmcache/stockage.go` ; la règle « zstd-3 quand c'est plus court » (`octetsAEcrire`) est une décision de
+      stockage, elle part avec l'écrivain. Restent en lecture dans la brique : `filmcache.go`, `chunk.go`,
+      `stockage.go`, `archive.go`, `filmcache_test.go`, `chunk_test.go` (les deux tests de lecture qui se préparaient
+      par `Write` posent désormais leurs fichiers eux-mêmes, `poserFilm` ; `TestChunkZstdTronqueEstDetecte` revient
+      de `stockage_test.go` dans `chunk_test.go`, même paquet). 26 fichiers de go-api réécrits (`filmcache.Write` ->
+      `filmarchive.Write`, etc.). `no_auto_film_recompress_test.go` suit le paquet (`pkg.Name == "filmarchive"`) ;
+      `no_hardcoded_film_cache_dirs_test.go` (disposition) vert sans changement. `atomicfile` : l'écrivain prend
+      l'original `platform/atomicfile`.
 - [ ] 2.3 `digest` et les helpers de test partagés passent sous `libs/film/internal/` (`internal/digest`,
       `internal/depottest` pour les six copies de `racineDepot(t)` + homonyme d'`objectives` en `Skip`, garde-rail
       règle 6) ; `cmd/replay-equiv` (go-api) importe `digest` : relever et décider sur pièces (copie dans go-api
       avec test d'identité, comme `atomicfile`, ou le harnais entier part dans go-api).
-- [ ] 2.3b Registre des replis (D-L1-2, item 1.3 `[!]`) : le registre de la brique ne nomme QUE des sites de la
+      — FAIT (2026-11-04). `git mv libs/film/digest libs/film/internal/digest`. Importeurs relevés : la brique
+      (`replay/equivalence_minifilm_test.go`, qui fige `equivalence/minifilm.tsv`) ET le harnais de l'hôte
+      (`cmd/replay-equiv/{child,parent,parent_test}.go`). DÉCIDÉ : copie jumelle dans go-api,
+      `apps/go-api/internal/analysis/digest` (son emplacement d'avant D2), tenue identique par
+      `copies_identiques_test.go`. Pourquoi pas « le harnais entier dans go-api » : il y est déjà ; c'est la brique
+      elle-même qui hache sa mini-bobine avec la même grammaire, et les deux rendus doivent rester les mêmes octets.
+      `libs/film/internal/depottest` : `Racine(t)` remplace les six copies de `racineDepot` (quatre `depot_test.go`
+      supprimés, deux réduits à leurs chemins) et l'homonyme d'`objectives` (qui cherchait `apps/web` et échouait par
+      `t.Fatalf` : il saute désormais hors dépôt hôte, comme les autres) ; 31 fichiers d'appel réécrits. Garde-rail
+      règle 6 : `archlint/film_racine_depot_unique_test.go` (aucun `"go.work"` ni `func racineDepot(` hors
+      `internal/depottest/depottest.go`, tests et `research` compris ; mutation jouée : une remontée ajoutée dans un
+      `_test.go` de `replay` -> rouge, retirée -> vert, `temoins_film/lot2/2.3_mutation_racine_*.txt`).
+      `film_layers_deps` : `internal/digest` et `internal/depottest` hors couche.
+- [x] 2.3b Registre des replis (D-L1-2, item 1.3 `[!]`) : le registre de la brique ne nomme QUE des sites de la
       brique, `Site.Fichier` relatif au module `libs/film` ; les sites et `Appelants` de LevelUp (32 lignes de
       production au relevé du lot 1) passent dans un registre de l'hôte (`apps/go-api/internal/...`, un paquet) qui
       embarque celui de la brique ; les six gardes de go-api (`no_unregistered_fallback_test.go`,
       `no_unregistered_fallback_sites_test.go`, `fallback_versement_test.go`, `service/replay_vehicle_scenery_*_test.go`)
       ouvrent chaque site avec la racine de SON registre. Aucun nom de repli ni compteur ne change (T4 identique).
-- [ ] 2.4 `filmshell` : les 15 variables deviennent non exportées derrière des accesseurs en lecture (copie ou vue
+      — FAIT (2026-11-04), dans la lettre de l'item : ce sont les SITES et les APPELANTS de l'hôte qui partent, pas
+      les entrées. Raison sur pièces : les noms des replis de l'hôte se comptent sur le `Compteur` de la brique (que
+      l'hôte crée par `decfilm.NouveauCompteur` et que la brique remplit), lequel signale en `ERROR` tout nom absent
+      de SON registre (`compteur.go`, `DiagRepliHorsRegistre`) ; déplacer les entrées changerait ce contrat et la
+      façade (12 constantes `decfilm.Nom*`), ce que l'item exclut (« aucun nom ni compteur ne change »). Fait :
+      `Site.Fichier` de la brique relatif au module (`replay/...`, `internal/...`) ; 33 sites de l'hôte (18 entrées :
+      15 sans site dans la brique, 3 mixtes) et les appelants de l'outil `cmd/diag_weapons_v3` retirés de la brique
+      par un outil AST jetable (`scratchpad/lot2_outils/sitesHote`) ; champ neuf `Repli.CompleteeParLHote` (marque
+      les 19 entrées que l'hôte complète ; `VerifierRegistre` admet alors une entrée sans site de la brique ou un
+      outil sans appelant de la brique). Registre de l'hôte : `apps/go-api/internal/filmreplis` (`sites.go` : la
+      table des sites et des appelants, relatifs à `apps/go-api` ; `filmreplis.go` : `Sites`, `Appelants`, qui rendent
+      chaque chemin depuis la racine du dépôt en préfixant la racine de SON registre, et `Verifier`). Les six gardes
+      lisent `filmreplis.Sites` / `filmreplis.Appelants` ; `TestRegistreDesReplisEstValide` rejoue aussi
+      `filmreplis.Verifier`. Témoin AVANT/APRÈS : description complète du registre (125 entrées, tous champs, 292 sites
+      triés, appelants) par `decfilm.Table()` avant, par la vue fusionnée après : IDENTIQUES (`diff` vide,
+      `temoins_film/lot2/2.3b_registre_{avant,apres}.txt`). Mutation : retrait d'une entrée de `sites.go` -> rouge
+      (`filmreplis` et `service`), restauré -> vert. `internal/facts/fallback` n'entre dans aucun périmètre haché
+      (grep des cinq `*_perimetre.golden`) : T2 inchangé.
+- [!] 2.4 `filmshell` : les 15 variables deviennent non exportées derrière des accesseurs en lecture (copie ou vue
       non modifiable) ; lecteurs migrés (`games/weapons`, `platform/duckdb`, `sync/killcollector`, décodeur) ;
       `catalogueArmesHorsRatchet` retiré dans le même commit. Révisions INCHANGÉES ; si un golden de périmètre
       bouge, régénération UNE fois par la porte à deux verrous, une entrée de chronique par couche.
+      — NON TRAITÉ, ARRÊT DU LOT SUR CET ITEM (2026-11-04), décision du pilote attendue. Preuve : `filmshell` est un
+      `paquet` du périmètre de `grammar` « haché par ses octets (jetons) » (`internal/grammar/testdata/grammar_perimetre.golden:17`),
+      et la grammaire lit six des quinze variables par 19 références (`WeaponIDToName` ×10, `CommonWeaponSuffix` ×3,
+      `WeaponBytesMap` ×2, `WeaponFusionMap` ×2, `WeaponIDs`, `AllFormulaASuffixes`). Mesure jetable, annulée aussitôt
+      (`git diff -- libs/film/filmshell` vide après) : une fonction non exportée de deux lignes ajoutée à
+      `filmshell/catalogue.go` fait rougir `TestGrammarRevSuitLaGrammaire` (« REGENERER le golden ... »,
+      `temoins_film/lot2/2.4_mesure_empreinte.txt`). L'item ne peut donc pas se faire sans réécrire la ligne
+      d'empreinte de `internal/grammar/testdata/grammar_rev.golden`, un golden de RÉVISION ; la liste des paquets du
+      périmètre (`grammar_perimetre.golden`), elle, ne bougerait pas (`filmshell` reste un paquet). L'invariant du lot
+      n'admet qu'un golden de PÉRIMÈTRE régénéré au 2.4. À trancher : régénérer l'empreinte de `grammar` à révision
+      constante (porte `LEVELUP_UPDATE_GRAMMAR_REV`, entrée de chronique, comme D2 2.12 l'a fait pour les goldens de
+      révision ET de périmètre), ou garder les variables exportées.
 - [ ] 2.5 `ctx` sur les 12 appels `slog` de la sentinelle mémoire restante et d'`internal/atomicfile`
       (`slog.*Context`), signatures mises à jour, appelants migrés ; exclusion `horsPerimetreDeJournal` retirée.
 - [ ] 2.6 `git rm` des 21 fichiers `research && campagne_overlay` (liste fermée par
@@ -769,6 +854,21 @@ décodeur qui importent `filmcache` / `filmproc` suivent les nouveaux noms (ré�
       lint des cinq modules à 0 issue (`golangci-lint run --config ../../apps/go-api/.golangci.yml ./...`) ;
       `make desktop-test` si `filmproc` était cité par la coquille (vérifier : `grep -r filmproc apps/desktop`).
       Commit « lot 2 ».
+
+### Arrêt du lot 2 sur l'item 2.4 (2026-11-04)
+
+Items 2.5 à 2.9 NON COMMENCÉS : le lot s'arrête sur 2.4 (`[!]`, décision du pilote) comme le contrat d'exécution
+du lot le prescrit pour un invariant qui casse. Les items faits (2.1 à 2.3b) sont vérifiés par un gate partiel,
+commité à part (témoins sous `temoins_film/lot2/`) :
+
+| Témoin | Résultat |
+|---|---|
+| T1 | 21 580 lignes (paquet, test, verdict) : 21 200 `pass`, 0 `fail`, 380 `skip` (380 au lot 0), 0 verdict changé (`go-api` hors archlint, archlint seul `-timeout 40m`, quatre briques ; MD5 `b3d602573eaaacc274b0f817ac4d04e2`). 97 lignes du lot 0 absentes, toutes des trois paquets déplacés et retrouvées NOM POUR NOM à leur nouvelle adresse (`libs/film/digest` 15 -> `libs/film/internal/digest` ; `libs/film/filmcache` 37 -> `apps/go-api/internal/filmarchive` ; `libs/film/filmproc` 45 -> `internal/filmrun` 36 + `libs/film/memguard` 9), sauf UN nom supprimé avec son sujet : `TestChaqueEnfantDuPaquetPasseParSansFenetre` (la copie `sansFenetre` disparaît, l'appel par `childproc.Command` est tenu par `archlint/childproc_single_spawn_test.go`). 121 lignes neuves : les 96 déplacées, `TestCommandeDeLEnfantDecriteOctetPourOctet` (témoin 2.1), `analysis/digest` 15 (copie jumelle), `platform/filelock` 3 (copie jumelle), `internal/decodelock` 2, `filmreplis` 2, archlint 2 (`TestLeVerrouDeDecodageParleLeMemeProtocoleDesDeuxCotes`, `TestLaBriqueRemonteVersLeDepotParUneSeuleAide`). Liste du lot 0 comparée après décodage des échappements JSON (`\\` -> `\` dans 20 noms de sous-tests). Deux corrections pendant le gate : le témoin `filmcache/testdata/manifeste_partiel_34.json` remis dans la brique (lu aussi par `replay/fil_des_morts_faits_test.go`) ; `killicon_test.go` ramené à 610 lignes (plafond figé). `TestGetMatchFilm_ParallelDownloadFasterThanSequential` a rougi une fois sous charge (531 ms > 500 ms, code non touché), vert 3 fois sur 3 seul et rejoué en JSON (D-L2-7) |
+| T2 | cinq `Rev` inchangées ; SHA-256 des 34 `*.golden` identiques au lot 0 ; `go test ./revision/... ./internal/... -run 'Rev|Empreinte|Perimetre'` vert |
+| T3 | `replay-equiv` : 20 identiques, 0 différent, MD5 des 20 digests identiques au lot 0 et octet-identiques aux références `replay/testdata/equivalence/*.tsv` (732 s) |
+| T4 | `replay-corpus-gate --allow-missing --base 421107998f` : 18 `ok`, 1 absent (`f75e7053`), 0 gain, 0 perte, 0 changement, `couverture_incomplete=false`, code 0 (574 s) ; rapport JSON identique à celui du lot 0 (`T4b_rapport.json`) hors `dureeMs` et `baseDuCache` (la base est relue de son cache) |
+| T5 | `levelup/go-api` = 0 dans `libs/film` (278 paquets), `gamefiles` (149), `haloapi` (233), `himap` (154) |
+| Lint | `libs/film` : 0 issue ; `apps/go-api` `--new-from-merge-base=origin/main` : 3 `goconst` dans `filmreplis/sites.go`, corrigés (constantes de fichier), puis 0 issue sur les cinq paquets neufs ; relancé après les corrections du gate : `apps/go-api` (`--new-from-merge-base=origin/main`) et `libs/film` à 0 issue |
 
 ## Lot 3 — Ratchets de la brique
 
@@ -906,3 +1006,35 @@ Lot 1 (2026-11-04), notées, non traitées :
 - **D-L1-8** Un faux xuid doit rester dans `[0x0009000000000000, 0x000A000000000000[` pour que le repérage de la table des
   joueurs le trouve (`player_table.go:129-130`) : contrainte à écrire dans l'outil de pseudonymisation des xuids si l'option A
   de l'item 1.6 est retenue (item 4.0).
+
+Lot 2 (2026-11-04), notées, non traitées :
+
+- **D-L2-1** `apps/go-api/internal/platform/instancelock` est une recopie à la main du verrou noyau de
+  `libs/film/internal/filelock` (son en-tête le dit). Depuis l'item 2.1, go-api porte la copie jumelle
+  `platform/filelock` (tenue par `copies_identiques_test.go`) : le motif existe en trois exemplaires dans l'espace de
+  travail, dont deux dans go-api ; `instancelock` pourrait reposer sur `platform/filelock`.
+- **D-L2-2** Les messages d'erreur du verrou de décodage disent `filmrun: ...` depuis 2.1 (ils disaient `filmproc: ...`) ;
+  les drapeaux internes des tests d'enfant gardent leur nom (`-filmproc-aide-code`, `-filmproc-aide-dort`,
+  `-filmproc-aide-raison`) et le test `TestAideEnfantFilmproc` le sien, pour ne pas faire disparaître de nom de T1.
+- **D-L2-3** Les 19 entrées du registre de la brique marquées `CompleteeParLHote` décrivent en prose (`Fait`,
+  `Mecanisme`, `CibleRetrait`) des mécanismes de l'hôte (collecteur des morts, constructeur de rejeu, règle du décor),
+  et la façade exporte leurs 12 constantes `Nom*`. Une séparation complète (entrées et noms chez l'hôte) demande que le
+  `Compteur` de la brique admette les noms d'un registre de l'hôte (aujourd'hui `DiagRepliHorsRegistre` en `ERROR`) et
+  fait baisser `plafondSurfaceFacade` : décision à part.
+- **D-L2-4** Le commentaire de `horsPerimetreDeJournal` (`archlint/film_slog_contexte_test.go:58-63`) décrit encore
+  `internal/filmproc` et les signatures de `AcquireSolo`, `Release`, `LowerOwnPriority` (parties chez l'hôte) : à
+  réécrire avec l'item 2.5, qui retire l'exclusion.
+- **D-L2-5** `docs/adr/0034-film-decoder-profile-and-layers.md:346` cite `filmproc.AcquireSolo` (état courant) : à
+  reprendre avec l'amendement de l'item 2.8. Les ADR 0008 et 0045, `docs/SYNC_GUIDE.md` (EN, FR),
+  `docs/RUNBOOK_FILM_PROFILES.md` et `docs/COMMANDS.md` (EN, FR) ont été suivis par 2.1 et 2.2 ; les chroniques
+  (`rev_chronique_archive.go:402`, `docs/CHANGELOG.md`, `0034-annex-history.md`) gardent l'ancien nom, c'est leur date.
+- **D-L2-6** Les en-têtes des `registre_*.go` de la brique et plusieurs commentaires de `libs/film` nomment encore des
+  paquets de l'hôte sans préfixe (`internal/replaybuild/`, `internal/sync/killcollector/`) : même famille que D-L1-1.
+- **D-L2-7** `internal/sync/filmfetch/film_parallel_test.go:127` (`TestGetMatchFilm_ParallelDownloadFasterThanSequential`)
+  mesure une durée murale (< 500 ms pour 10 × 100 ms) : sous la charge de `go test ./...` il a rendu 531 ms une fois
+  (lot 2, premier passage de T1 après correction), vert 3 fois sur 3 seul. Code non touché par le lot.
+- **D-L2-8** `archlint/server_stdout_internal_test.go` (ligne « oui » de l'inventaire 0.5, périmètre du lot 3.2) porte
+  désormais une entrée datée pour `internal/filmrun/runner.go` : le sujet (le protocole de l'enfant écrit sur sa sortie
+  standard, `EmitPeak`, `EmitRaison`, défaut `out = os.Stdout`) est entré dans la racine du garde-rail avec le lanceur.
+  Retrait possible le jour où le protocole passe par un descripteur dédié ; le lot 3.2 n'a plus de racine à étendre pour
+  cette ligne.

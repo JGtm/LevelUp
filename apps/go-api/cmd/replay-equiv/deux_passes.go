@@ -48,9 +48,9 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/filmrun"
 	"levelup/go-api/internal/replaybuild"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
 	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
@@ -81,7 +81,7 @@ func parentDeuxPasses(ctx context.Context, o options) int {
 		fmt.Println("corpus illisible :", err)
 		return 1
 	}
-	runner, err := filmproc.NewRunner(o.repoRoot, os.Stdout)
+	runner, err := filmrun.NewRunner(o.repoRoot, os.Stdout)
 	if err != nil {
 		fmt.Println("lanceur :", err)
 		return 1
@@ -111,7 +111,7 @@ func parentDeuxPasses(ctx context.Context, o options) int {
 }
 
 // jouerLesDeuxPasses lance les deux enfants d un film et compare leurs digests.
-func jouerLesDeuxPasses(ctx context.Context, o options, runner *filmproc.Runner, tmp, film string,
+func jouerLesDeuxPasses(ctx context.Context, o options, runner *filmrun.Runner, tmp, film string,
 	b *bilanDeuxPasses,
 ) {
 	fmt.Printf("===== %s =====\n", film)
@@ -124,11 +124,11 @@ func jouerLesDeuxPasses(ctx context.Context, o options, runner *filmproc.Runner,
 		fmt.Printf("  passe %-5s %-12s %9s  pic %5.2f Gio\n",
 			nom, res.Issue, res.Dur.Round(time.Millisecond), gio(res.Peak))
 		switch res.Issue {
-		case filmproc.IssueSkipped:
+		case filmrun.IssueSkipped:
 			b.ecartes++
 			fmt.Printf("  %s ECARTE (carte hors catalogue de bornes) — aucune comparaison\n", film)
 			return
-		case filmproc.IssueOK:
+		case filmrun.IssueOK:
 			sorties[nom] = sortie
 		default:
 			b.echecs++

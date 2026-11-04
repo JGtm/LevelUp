@@ -5,7 +5,7 @@ package replay
 // kill_positions_cout_vehicules_research_test.go — E8.1 (c) : COMBIEN COUTERAIT, DANS LA PASSE DES
 // POSITIONS DU COLLECTEUR, LA LECTURE DES VEHICULES ET DE L'OCCUPATION ?
 //
-// UN film, decode sous `filmproc.AcquireSolo` et le plafond memoire, rien d'ecrit. Chaque lecture est
+// UN film, decode sous `decodelock.Prendre` et le plafond memoire, rien d'ecrit. Chaque lecture est
 // chronometree sur un contexte NEUF (aucun cache de contexte partage entre deux mesures), sur la
 // carte du film (`NewFilmContextForMap` + `PoserLaCarteEtLeDecoupage`, comme la cuisson).
 //
@@ -22,10 +22,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
+	"github.com/JGtm/LevelUp/libs/film/internal/decodelock"
 	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
 	"github.com/JGtm/LevelUp/libs/film/internal/profile"
 	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 func TestCoutDesLecturesVehicules(t *testing.T) {
@@ -34,13 +35,9 @@ func TestCoutDesLecturesVehicules(t *testing.T) {
 	if films == "" || faits == "" || catalogue == "" || id == "" || verrou == "" {
 		t.Skip("KPC_* absent : instrument saute")
 	}
-	lock, err := filmproc.AcquireSolo(verrou, "kp-cout-vehicules", id)
-	if err != nil {
-		t.Fatalf("verrou : %v", err)
-	}
-	defer lock.Release()
-	filmproc.LowerOwnPriority("kp-cout-vehicules")
-	garde := filmproc.Arm("kp-cout-vehicules", 3, func(pic uint64) { panic(fmt.Sprintf("plafond memoire franchi : %d", pic)) })
+	decodelock.Prendre(t, verrou, "kp-cout-vehicules", id)
+	decodelock.BaisserLaPriorite(t, "kp-cout-vehicules")
+	garde := memguard.Arm("kp-cout-vehicules", 3, func(pic uint64) { panic(fmt.Sprintf("plafond memoire franchi : %d", pic)) })
 	defer garde.Disarm()
 
 	blob, err := os.ReadFile(filepath.Join(faits, id+".filmfacts.bin")) //nolint:gosec // mesure

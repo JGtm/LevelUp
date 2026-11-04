@@ -40,6 +40,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/JGtm/LevelUp/libs/film/internal/depottest"
+
 	"github.com/JGtm/LevelUp/libs/film/internal/profile"
 	"github.com/JGtm/LevelUp/libs/film/internal/source"
 )
@@ -93,7 +95,7 @@ func TestLiveFirePositionsParPlage(t *testing.T) {
 // entreeLiveFire : l entree de catalogue commise de Live Fire.
 func entreeLiveFire(t *testing.T) profile.MapQuantEntry {
 	t.Helper()
-	racine := racineDepot(t)
+	racine := depottest.Racine(t)
 	cat, err := profile.LoadMapQuantCatalog(filepath.Join(racine, "data", "titles",
 		"halo_infinite", "reference", "map_quant_bounds.json"))
 	if err != nil {

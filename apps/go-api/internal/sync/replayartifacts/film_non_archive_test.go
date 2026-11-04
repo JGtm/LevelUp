@@ -6,13 +6,15 @@ package replayartifacts
 import (
 	"testing"
 
+	"levelup/go-api/internal/filmarchive"
+
 	"github.com/JGtm/LevelUp/libs/film/filmcache"
 	"github.com/JGtm/LevelUp/libs/film/finalise"
 )
 
 func ecrireFilmDeTest(t *testing.T, racine, court string) {
 	t.Helper()
-	err := filmcache.Write(t.Context(), racine, court, []filmcache.WriteChunk{
+	err := filmarchive.Write(t.Context(), racine, court, []filmarchive.WriteChunk{
 		{Index: 0, ChunkType: 1, Data: []byte("registre")},
 		{Index: 1, ChunkType: finalise.ChunkTypeTempsForts, Data: []byte("temps forts")},
 	})

@@ -26,9 +26,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
+	"github.com/JGtm/LevelUp/libs/film/internal/decodelock"
 	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
 	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // rjeOracle : un bot du TSV, son equipe par entite (-2 : inconnue).
@@ -74,13 +75,9 @@ func TestRJELectureDeLEquipeDesBots(t *testing.T) {
 	if tsv == "" || chunks == "" || verrou == "" {
 		t.Skip("RJE_BOTS, RJE_CHUNKS ou RJE_VERROU absent : instrument saute")
 	}
-	lock, err := filmproc.AcquireSolo(verrou, "rje-equipe-bots", "parc")
-	if err != nil {
-		t.Fatalf("verrou : %v", err)
-	}
-	defer lock.Release()
-	filmproc.LowerOwnPriority("rje-equipe-bots")
-	garde := filmproc.Arm("rje-equipe-bots", 3, func(pic uint64) { panic(fmt.Sprintf("plafond memoire franchi : %d", pic)) })
+	decodelock.Prendre(t, verrou, "rje-equipe-bots", "parc")
+	decodelock.BaisserLaPriorite(t, "rje-equipe-bots")
+	garde := memguard.Arm("rje-equipe-bots", 3, func(pic uint64) { panic(fmt.Sprintf("plafond memoire franchi : %d", pic)) })
 	defer garde.Disarm()
 	oracle := rjeLireOracle(t, tsv)
 	films := make([]string, 0, len(oracle))

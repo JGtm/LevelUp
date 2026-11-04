@@ -7,14 +7,19 @@ package archlint
 // porte sur internal/ : aucun code non-test n'y reference os.Stdout ni n'appelle fmt.Print*. Le cas
 // qui l'a motive : le lanceur d'enfants de cuisson (internal/replaychild) relayait la sortie de
 // l'enfant sur os.Stdout du serveur. Un compte rendu va sur stderr (fmt.Fprint*(os.Stderr, ...)) ou
-// dans le journal. Allowlist : "fichier" -> justification datee ; VIDE.
+// dans le journal. Allowlist : "fichier" -> justification datee.
 
 import (
 	"go/ast"
 	"testing"
 )
 
-var serverStdoutAllowlist = map[string]string{}
+var serverStdoutAllowlist = map[string]string{
+	"internal/filmrun/runner.go": "2026-11-04 (lanceur de films venu de libs/film/filmproc) : EmitPeak et EmitRaison " +
+		"sont appeles par l'ENFANT, dont la sortie standard est le tube que le parent lit et ne relaie pas ; " +
+		"le defaut out=os.Stdout ne sert qu'aux outils de cmd/, le serveur passe os.Stderr (replaychild.go). " +
+		"Retrait : le jour ou le protocole parent/enfant passe par un descripteur dedie.",
+}
 
 func TestInternalNEcritJamaisSurLaSortieStandard(t *testing.T) {
 	for _, s := range goSourcesUnder(t, "internal") {

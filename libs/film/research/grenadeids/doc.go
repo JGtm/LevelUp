@@ -50,7 +50,7 @@
 //	  -racine <parc>/data/cache/film_chunks \
 //	  -films 111fa685,e5adf7b2,60ae07c4,a349fea8,fb1a1a72
 //
-// LE VERROU DE DECODAGE N EST PAS PRIS, ET C EST DELIBERE : `filmproc.AcquireSolo` ecrit un
+// LE VERROU DE DECODAGE N EST PAS PRIS, ET C EST DELIBERE : le verrou de decodage ecrit un
 // fichier de verrou sous la racine du cache, ce que le cadre de ce lot interdit (rien d ecrit
 // sous `data/`). La serialisation est donc celle de l operateur — la « voie libre » du pilote.
 // La sentinelle memoire, elle, est armee par le binaire : elle n ecrit rien.

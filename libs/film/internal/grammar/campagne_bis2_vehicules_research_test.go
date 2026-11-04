@@ -25,7 +25,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // --- T6-C2 : images-cles ti=40 ------------------------------------------------------------------
@@ -89,7 +89,7 @@ func TestCampagneBis2ImagesClesTi40(t *testing.T) {
 	arrets := []string{"film\tbuild\tvariante\tarret\trecords"}
 	defer func() { bis2Intercepteur = nil }()
 	for _, id := range films {
-		garde := filmproc.Arm("campagne/bis2-ti40", 4, func(pic uint64) {
+		garde := memguard.Arm("campagne/bis2-ti40", 4, func(pic uint64) {
 			fmt.Fprintf(os.Stderr, "%s : plafond memoire franchi (%d octets)\n", id, pic)
 			os.Exit(3)
 		})
@@ -352,7 +352,7 @@ func TestCampagneBis2Dispositifs(t *testing.T) {
 	causes := []string{"film\tbuild\tvariante\tcause\tpaquets"}
 	defer func() { bis2Intercepteur = nil }()
 	for _, id := range films {
-		garde := filmproc.Arm("campagne/bis2-ti43", 4, func(pic uint64) {
+		garde := memguard.Arm("campagne/bis2-ti43", 4, func(pic uint64) {
 			fmt.Fprintf(os.Stderr, "%s : plafond memoire franchi (%d octets)\n", id, pic)
 			os.Exit(3)
 		})

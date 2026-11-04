@@ -32,7 +32,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/digest"
+	"github.com/JGtm/LevelUp/libs/film/internal/digest"
 	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
 	"github.com/JGtm/LevelUp/libs/film/internal/profile"
 )

@@ -37,7 +37,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // TestAssautA3Ti13 — le diagnostic A3.1 sur UN film.
@@ -47,14 +47,14 @@ func TestAssautA3Ti13(t *testing.T) {
 	if id == "" {
 		t.Skipf("mesure non demandee : %s vide (identifiant court du film Assaut)", a0FilmEnv)
 	}
-	g := filmproc.Arm("a3-assaut", filmproc.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm("a3-assaut", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE %s : %.2f Gio — diagnostic interrompu, ce film sort "+
 			"avec sa raison", id, float64(peak)/(1<<30))
 	})
 	defer func() {
 		g.Disarm()
 		t.Logf("%s : pic memoire observe %.2f Gio (plafond souple %d Gio)",
-			id, float64(g.Peak())/(1<<30), filmproc.MeasureLimitGiB)
+			id, float64(g.Peak())/(1<<30), memguard.MeasureLimitGiB)
 	}()
 
 	src, ok := objOpenFilm(t, root, id)

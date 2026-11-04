@@ -38,8 +38,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
 	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // b3LireBasseFrequence porte FUN_142ed4aec.
@@ -138,7 +138,7 @@ func TestCampagneBis3Ti3(t *testing.T) {
 		lf, hf26 bool
 	}{{"reference", false, false}, {"ti3-i0", true, false}, {"ti3-i0+i1-26", true, true}, {"ti3-i1-26", false, true}, {"ti4-i0-26 (temoin)", false, false}}
 	for _, id := range films {
-		garde := filmproc.Arm("campagne/bis3-ti3", 4, func(pic uint64) {
+		garde := memguard.Arm("campagne/bis3-ti3", 4, func(pic uint64) {
 			fmt.Fprintf(os.Stderr, "%s : plafond memoire franchi (%d octets)\n", id, pic)
 			os.Exit(3)
 		})
@@ -215,7 +215,7 @@ func TestCampagneBis3Sites(t *testing.T) {
 	tabs := []string{"film\tbuild\tvariante\ttable\tcle\tn\tpaquets\thors_cadre\tfermes\ten_jeu"}
 	defer b2pVariante{}.poser()
 	for _, id := range films {
-		garde := filmproc.Arm("campagne/bis3-sites", 4, func(pic uint64) {
+		garde := memguard.Arm("campagne/bis3-sites", 4, func(pic uint64) {
 			fmt.Fprintf(os.Stderr, "%s : plafond memoire franchi (%d octets)\n", id, pic)
 			os.Exit(3)
 		})

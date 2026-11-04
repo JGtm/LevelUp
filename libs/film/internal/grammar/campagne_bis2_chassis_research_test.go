@@ -24,8 +24,8 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
 	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // b2cCle : un chassis et ses deux noms.
@@ -40,7 +40,7 @@ func TestCampagneBis2IdentiteChassis(t *testing.T) {
 	utiles := cmUtiles(t)
 	lignes := []string{"film\tbuild\tsource\tchassis\tvariant_name\ttail_name\tcreations\tz_min\tz_max"}
 	for _, id := range films {
-		garde := filmproc.Arm("campagne/bis2-chassis", 4, func(pic uint64) {
+		garde := memguard.Arm("campagne/bis2-chassis", 4, func(pic uint64) {
 			fmt.Fprintf(os.Stderr, "%s : plafond memoire franchi (%d octets)\n", id, pic)
 			os.Exit(3)
 		})

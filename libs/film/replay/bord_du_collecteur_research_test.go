@@ -9,7 +9,7 @@ package replay
 // CUISSON (`Vehicles.Occupancy`, `Vehicles.Positions`). La passe des positions du collecteur les lit
 // autrement : l'occupation du decodage killsource (`Result.Occupation`) et le nuage
 // ([PositionsDesVehicules]) sur un contexte ouvert comme le sien (carte, sans pose du decoupage).
-// UN film, decode sous `filmproc.AcquireSolo` et le plafond memoire, rien d'ecrit : les deux lectures
+// UN film, decode sous `decodelock.Prendre` et le plafond memoire, rien d'ecrit : les deux lectures
 // sont comparees a celles de ses faits.
 //
 //	BDC_FILMS=<repo>/data/cache/film_chunks BDC_FAITS=<repo>/data/cache/film_facts/halo_infinite \
@@ -25,11 +25,12 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
+	"github.com/JGtm/LevelUp/libs/film/internal/decodelock"
 	"github.com/JGtm/LevelUp/libs/film/internal/facts/killsource"
 	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
 	"github.com/JGtm/LevelUp/libs/film/internal/profile"
 	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 func TestBordDuCollecteurEgaleLesFaits(t *testing.T) {
@@ -38,13 +39,9 @@ func TestBordDuCollecteurEgaleLesFaits(t *testing.T) {
 	if films == "" || faits == "" || catalogue == "" || id == "" || verrou == "" {
 		t.Skip("BDC_* absent : instrument saute")
 	}
-	lock, err := filmproc.AcquireSolo(verrou, "bord-du-collecteur", id)
-	if err != nil {
-		t.Fatalf("verrou : %v", err)
-	}
-	defer lock.Release()
-	filmproc.LowerOwnPriority("bord-du-collecteur")
-	garde := filmproc.Arm("bord-du-collecteur", 3, func(pic uint64) { panic(fmt.Sprintf("plafond memoire franchi : %d", pic)) })
+	decodelock.Prendre(t, verrou, "bord-du-collecteur", id)
+	decodelock.BaisserLaPriorite(t, "bord-du-collecteur")
+	garde := memguard.Arm("bord-du-collecteur", 3, func(pic uint64) { panic(fmt.Sprintf("plafond memoire franchi : %d", pic)) })
 	defer garde.Disarm()
 
 	blob, err := os.ReadFile(filepath.Join(faits, id+".filmfacts.bin")) //nolint:gosec // mesure

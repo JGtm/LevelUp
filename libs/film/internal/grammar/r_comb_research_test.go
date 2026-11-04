@@ -37,8 +37,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
 	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // rcComps : les leviers de composant d une marche.
@@ -248,7 +248,7 @@ const rcEntete = "film\tbuild\tcontexte\tconfig\tleviers\trejoue\tliaisons_l1\tl
 
 // rcUnFilm mesure un film : toutes les configurations, dans l ordre des derivations.
 func rcUnFilm(t *testing.T, racine, id, carte string, cat *profile.MapQuantCatalog, utiles UsagesProduit) []string {
-	garde := filmproc.Arm("campagne/r-comb", 4, func(pic uint64) {
+	garde := memguard.Arm("campagne/r-comb", 4, func(pic uint64) {
 		fmt.Fprintf(os.Stderr, "%s : plafond memoire franchi (%d octets)\n", id, pic)
 		os.Exit(3)
 	})

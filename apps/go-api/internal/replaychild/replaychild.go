@@ -15,7 +15,7 @@
 // le peuvent : `port.MatchFacts` porte ses etiquettes JSON par construction, et pese au plus
 // quelques kilo-octets (les lignes des joueurs, deux scores, deux chaines).
 //
-// POURQUOI LES OCTETS PASSENT PAR UN FICHIER ET NON PAR LE TUBE : le tube de `filmproc` relaie
+// POURQUOI LES OCTETS PASSENT PAR UN FICHIER ET NON PAR LE TUBE : le tube de `filmrun` relaie
 // le JOURNAL de l'enfant, ligne a ligne, et sert deja au protocole du pic memoire. Y faire
 // transiter plusieurs mega-octets de JSON melangerait la donnee et la trace, et obligerait a
 // distinguer les deux au caractere pres. Un fichier temporaire, supprime par le parent, est
@@ -23,7 +23,7 @@
 //
 // # LE BINAIRE EST LE MEME DES DEUX COTES
 //
-// `filmproc.NewRunner` re-execute `os.Executable()` : le parent relance SON PROPRE binaire avec
+// `filmrun.NewRunner` re-execute `os.Executable()` : le parent relance SON PROPRE binaire avec
 // un drapeau. C'est ce qui evite d'exiger qu'un second binaire (`levelup`) soit present sur
 // l'hote — contrainte qui aurait fait tomber toute la piste.
 package replaychild
@@ -38,10 +38,11 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/filmrun"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replaybuild"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // Flag : le drapeau qui fait d'un processus l'enfant de cuisson. Il n'est pas destine a la main
@@ -49,7 +50,7 @@ import (
 const Flag = "-film-child"
 
 // outilPostSync : le nom que le verrou de decodage porte quand c'est le post-sync qui le tient.
-// Un operateur a qui l'on refuse le verrou doit lire QUI travaille (cf. filmproc/solo.go) ; ce
+// Un operateur a qui l'on refuse le verrou doit lire QUI travaille (cf. filmrun/solo.go) ; ce
 // nom est donc du texte d'interface, pas un detail.
 const outilPostSync = "post-sync"
 
@@ -65,7 +66,7 @@ type Request struct {
 	// qui le supprime — l'enfant n'a pas a nettoyer ce qu'il n'a pas cree.
 	OutPath string `json:"outPath"`
 	// SoftLimitBytes : plafond memoire souple de l'enfant en octets ; 0 = le defaut
-	// (`filmproc.DefaultLimitGiB`). La recuisson de la demo le fixe pour son hote.
+	// (`memguard.DefaultLimitGiB`). La recuisson de la demo le fixe pour son hote.
 	SoftLimitBytes uint64 `json:"softLimitBytes,omitempty"`
 	// SansEcritureDesFaits : l'enfant n'ecrit pas les faits de film sous RepoRoot (cf.
 	// `replaybuild.Builder.SansEcritureDesFaits`).
@@ -94,40 +95,40 @@ func RunChild(ctx context.Context, args []string) int {
 	reqPath := valueOf(args, Flag)
 	if reqPath == "" {
 		fmt.Fprintf(os.Stderr, "enfant de cuisson : %s attend un chemin de requete\n", Flag)
-		return filmproc.CodePreparation
+		return filmrun.CodePreparation
 	}
 	var req Request
 	raw, err := os.ReadFile(reqPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "enfant de cuisson : requete illisible : %v\n", err)
-		return filmproc.CodePreparation
+		return filmrun.CodePreparation
 	}
 	if err := json.Unmarshal(raw, &req); err != nil {
 		fmt.Fprintf(os.Stderr, "enfant de cuisson : requete invalide : %v\n", err)
-		return filmproc.CodePreparation
+		return filmrun.CodePreparation
 	}
 
 	onExceeded := func(peak uint64) {
 		// LE PIC PART AVANT LA MORT : `os.Exit` ne joue pas les differes.
-		filmproc.EmitPeak(peak)
+		filmrun.EmitPeak(peak)
 		fmt.Fprintf(os.Stderr, "enfant de cuisson : plafond memoire depasse (%d octets) — film abandonne\n", peak)
-		os.Exit(filmproc.CodeMemory)
+		os.Exit(filmrun.CodeMemory)
 	}
-	var g *filmproc.Guard
+	var g *memguard.Guard
 	if req.SoftLimitBytes > 0 {
-		g = filmproc.ArmBytes(outilPostSync, req.SoftLimitBytes, onExceeded)
+		g = memguard.ArmBytes(outilPostSync, req.SoftLimitBytes, onExceeded)
 	} else {
-		g = filmproc.Arm(outilPostSync, filmproc.DefaultLimitGiB, onExceeded)
+		g = memguard.Arm(outilPostSync, memguard.DefaultLimitGiB, onExceeded)
 	}
 	defer func() {
 		g.Disarm()
-		filmproc.EmitPeak(g.Peak())
+		filmrun.EmitPeak(g.Peak())
 	}()
 
 	builder, err := replaybuild.NewBuilder(ctx, req.RepoRoot, req.TitleSlug)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "enfant de cuisson : builder indisponible : %v\n", err)
-		return filmproc.CodePreparation
+		return filmrun.CodePreparation
 	}
 	if req.SansEcritureDesFaits {
 		builder = builder.SansEcritureDesFaits()
@@ -138,22 +139,22 @@ func RunChild(ctx context.Context, args []string) int {
 		// `CodeSkipped` AVEC SA RAISON, classee par `errors.Is` (cf. raison.go) : `CodeFailed`
 		// ferait chercher une panne la ou il faut une ligne de table ou un film complet.
 		if jeton := raisonDuRefus(err); jeton != "" {
-			filmproc.EmitRaison(jeton)
+			filmrun.EmitRaison(jeton)
 			fmt.Fprintf(os.Stderr, "enfant de cuisson : film ecarte (%s, cartes %v) : %v\n", jeton, req.MapNames, err)
-			return filmproc.CodeSkipped
+			return filmrun.CodeSkipped
 		}
 		fmt.Fprintf(os.Stderr, "enfant de cuisson : construction en echec : %v\n", err)
-		return filmproc.CodeFailed
+		return filmrun.CodeFailed
 	}
 	if err := os.WriteFile(req.OutPath, built.Blob, 0o600); err != nil {
 		fmt.Fprintf(os.Stderr, "enfant de cuisson : depot des octets impossible : %v\n", err)
-		return filmproc.CodeFailed
+		return filmrun.CodeFailed
 	}
 	// Sur stderr comme le reste du compte rendu de l'enfant : le parent le relaie tel quel, et la sortie
 	// standard du serveur est reservee aux evenements du contrat desktop.
 	fmt.Fprintf(os.Stderr, "  %s : %d tracks, %d octets (%s)\n",
 		req.MatchID, built.Tracks, len(built.Blob), built.Module)
-	return filmproc.CodeOK
+	return filmrun.CodeOK
 }
 
 // valueOf rend la valeur qui suit un drapeau, ou "" — un mini-lecteur d'arguments plutot que
@@ -174,7 +175,7 @@ func valueOf(args []string, flag string) string {
 // Result : ce que la cuisson d'UN film rend au parent — les octets ET LA MESURE.
 //
 // POURQUOI LA MESURE VOYAGE AVEC LES OCTETS (PLAN_CUISSON_PERF §3 D5). Le lanceur mesure deja
-// les deux (`filmproc.Result.Dur` et `.Peak`, ce dernier par le protocole du tube), et `Spawn`
+// les deux (`filmrun.Result.Dur` et `.Peak`, ce dernier par le protocole du tube), et `Spawn`
 // les jetait : le log de succes du post-sync ne pouvait donc rien dire du temps ni de la memoire
 // de la cuisson qu'il venait de payer. Les rendre ici est le SEUL chemin par lequel ces deux
 // chiffres atteignent l'orchestrateur — un `slog` pose dans l'enfant finirait dans le tube du
@@ -211,9 +212,9 @@ func Spawn(ctx context.Context, req Request) (Result, error) {
 	// n'ont pas de cycle suivant.
 	//
 	// Le refus remonte comme une erreur de cuisson : le film compte en ECHEC du cycle, avec le
-	// detenteur nomme dans le message (cf. `filmproc.soloBusyError`).
+	// detenteur nomme dans le message (cf. `filmrun.soloBusyError`).
 	cacheRoot := title.NewPathResolver(req.RepoRoot).CacheRootDir()
-	lock, err := filmproc.AcquireSolo(cacheRoot, outilPostSync, req.MatchID)
+	lock, err := filmrun.AcquireSolo(cacheRoot, outilPostSync, req.MatchID)
 	if err != nil {
 		return Result{}, fmt.Errorf("cuisson non lancee : %w", err)
 	}
@@ -222,11 +223,11 @@ func Spawn(ctx context.Context, req Request) (Result, error) {
 }
 
 // SpawnWaiting est [Spawn] pour une PASSE qui n'a pas de cycle suivant (le seed de la démo) :
-// elle ATTEND jusqu'a `maxWait` que le verrou solo se libere (`filmproc.AcquireSoloWait`), au
+// elle ATTEND jusqu'a `maxWait` que le verrou solo se libere (`filmrun.AcquireSoloWait`), au
 // lieu de renoncer. `lockCacheRoot` est la racine de cache qui porte le verrou de la machine
 // (celle du depot dont viennent les films) ; `tool` nomme le detenteur pour qui attend.
 func SpawnWaiting(ctx context.Context, req Request, lockCacheRoot, tool string, maxWait time.Duration) (Result, error) {
-	lock, err := filmproc.AcquireSoloWait(ctx, lockCacheRoot, tool, req.MatchID, maxWait)
+	lock, err := filmrun.AcquireSoloWait(ctx, lockCacheRoot, tool, req.MatchID, maxWait)
 	if err != nil {
 		return Result{}, fmt.Errorf("cuisson non lancee : %w", err)
 	}
@@ -261,12 +262,12 @@ func spawnLocked(ctx context.Context, req Request) (Result, error) {
 	}
 	res := runner.Run(ctx, []string{Flag, reqPath})
 	switch res.Issue {
-	case filmproc.IssueOK:
-	case filmproc.IssueSkipped:
+	case filmrun.IssueOK:
+	case filmrun.IssueSkipped:
 		// LA RAISON VIENT DE L'ENFANT (jeton de protocole), jamais d'une supposition : tout refus
 		// n'est pas une carte hors catalogue.
 		return Result{}, fmt.Errorf("%w (candidats: %v)", erreurDuRefus(res.Raison, req.MatchID), req.MapNames)
-	case filmproc.IssueMemory:
+	case filmrun.IssueMemory:
 		return Result{}, fmt.Errorf("cuisson abandonnee : plafond memoire depasse (pic %d octets)", res.Peak)
 	default:
 		// MORT SUBITE COMPRISE : un enfant tue par l'OS ne doit jamais passer pour un succes.

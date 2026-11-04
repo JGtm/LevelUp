@@ -5,7 +5,7 @@ package replay
 // equipe_arrivee_bot_research_test.go — E8.4 (D-18) : D'OU VIENT L'EQUIPE LUE SUR LE CORPS D'UN BOT
 // QUI ARRIVE SUR UN INDEX DEJA TENU AVANT LUI ?
 //
-// UN film, decode sous `filmproc.AcquireSolo` et le plafond memoire, rien d'ecrit, sur la carte du
+// UN film, decode sous `decodelock.Prendre` et le plafond memoire, rien d'ecrit, sur la carte du
 // film (`NewFilmContextForMap` + `PoserLaCarteEtLeDecoupage`, comme la cuisson). L'instrument imprime,
 // pour l'index de participant EAR_INDEX : les paquets BOT_METADATA qui le declarent (instant, bot,
 // equipe ecrite), les entites `ti=9` de cet index (slot, equipe, premiere et derniere image-cle
@@ -23,10 +23,11 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
+	"github.com/JGtm/LevelUp/libs/film/internal/decodelock"
 	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
 	"github.com/JGtm/LevelUp/libs/film/internal/profile"
 	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 func TestEquipeALArriveeDUnBot(t *testing.T) {
@@ -36,13 +37,9 @@ func TestEquipeALArriveeDUnBot(t *testing.T) {
 	if films == "" || catalogue == "" || module == "" || id == "" || verrou == "" || errIdx != nil {
 		t.Skip("EAR_* absent : instrument saute")
 	}
-	lock, err := filmproc.AcquireSolo(verrou, "equipe-arrivee-bot", id)
-	if err != nil {
-		t.Fatalf("verrou : %v", err)
-	}
-	defer lock.Release()
-	filmproc.LowerOwnPriority("equipe-arrivee-bot")
-	garde := filmproc.Arm("equipe-arrivee-bot", 3, func(pic uint64) { panic(fmt.Sprintf("plafond memoire franchi : %d", pic)) })
+	decodelock.Prendre(t, verrou, "equipe-arrivee-bot", id)
+	decodelock.BaisserLaPriorite(t, "equipe-arrivee-bot")
+	garde := memguard.Arm("equipe-arrivee-bot", 3, func(pic uint64) { panic(fmt.Sprintf("plafond memoire franchi : %d", pic)) })
 	defer garde.Disarm()
 
 	cat, err := profile.LoadMapQuantCatalog(catalogue)

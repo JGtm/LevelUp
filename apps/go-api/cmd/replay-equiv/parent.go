@@ -18,10 +18,10 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/analysis/digest"
+	"levelup/go-api/internal/filmrun"
 	"levelup/go-api/internal/replaybuild"
 
-	"github.com/JGtm/LevelUp/libs/film/digest"
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
 	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
@@ -57,7 +57,7 @@ func parentEquivalence(ctx context.Context, o options) int {
 		fmt.Println("corpus illisible :", err)
 		return 1
 	}
-	runner, err := filmproc.NewRunner(o.repoRoot, os.Stdout)
+	runner, err := filmrun.NewRunner(o.repoRoot, os.Stdout)
 	if err != nil {
 		fmt.Println("lanceur :", err)
 		return 1
@@ -118,13 +118,13 @@ func dossierDesDigests(outDir string) (string, func(), error) {
 //
 // UN FILM ECARTE N'EST PAS FATAL : une carte hors catalogue de bornes est un refus VOULU du
 // constructeur, pas une regression du decodeur. Il est rapporte et compte a part.
-func compterIssue(b *bilan, p passe, res filmproc.Result, film, sortie string) {
+func compterIssue(b *bilan, p passe, res filmrun.Result, film, sortie string) {
 	switch res.Issue {
-	case filmproc.IssueSkipped:
+	case filmrun.IssueSkipped:
 		b.ecartes++
 		fmt.Printf("  %s ECARTE (carte hors catalogue de bornes) — aucune comparaison\n", film)
 		return
-	case filmproc.IssueOK:
+	case filmrun.IssueOK:
 	default:
 		b.echecs++
 		fmt.Printf("  %s ECHEC (code %d)", film, res.Code)

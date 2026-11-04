@@ -30,8 +30,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
 	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // rvdVariante : une marche de la carte.
@@ -63,7 +63,7 @@ func TestRVehDeltaTi40(t *testing.T) {
 		"paquets_gagnes\tpaquets_perdus\tutiles_gagnes\tfermes_contredits\tgagnes_contredits\tcause_ti40_paquets"}
 	defer func() { bis2Intercepteur, b2vPorte, rvehPorteeNeuf = nil, false, false }()
 	for _, id := range films {
-		garde := filmproc.Arm("campagne/r-veh-delta", 4, func(pic uint64) {
+		garde := memguard.Arm("campagne/r-veh-delta", 4, func(pic uint64) {
 			fmt.Fprintf(os.Stderr, "%s : plafond memoire franchi (%d octets)\n", id, pic)
 			os.Exit(3)
 		})

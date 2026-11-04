@@ -64,7 +64,7 @@ type fichierDuPerimetreFilm struct {
 // importeurs) : un lot a part, hors D2. Une exclusion DATEE et nommee par dossier, pas une
 // allowlist par ligne ; elle tombe avec ce lot. Chaque entree porte sa raison.
 var horsPerimetreDeJournal = map[string]string{
-	"libs/film/filmproc": "garde-fou processus (memguard, solo, priorites) : " +
+	"libs/film/memguard": "sentinelle memoire : " +
 		"slog sans ctx depuis l'origine, API publique sans contexte",
 	"libs/film/internal/atomicfile": "copie jumelle de platform/atomicfile " +
 		"(slog.Warn sans ctx) : la signature de WriteFile est celle de onze fichiers importeurs",

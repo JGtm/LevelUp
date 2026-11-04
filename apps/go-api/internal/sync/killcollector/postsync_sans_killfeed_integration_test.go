@@ -20,12 +20,12 @@ import (
 	"testing"
 	"time"
 
+	"levelup/go-api/internal/filmarchive"
 	"levelup/go-api/internal/sync/filmfetch"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
 	"github.com/JGtm/LevelUp/libs/film/decfilm"
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
 	"github.com/JGtm/LevelUp/libs/film/finalise"
 )
 
@@ -71,7 +71,7 @@ func (f *filmsServis) GetFilmChunks(_ context.Context, matchID string) ([]filmfe
 func depsSansKill(t *testing.T, db *sql.DB, films *filmsServis) PostSyncDeps {
 	t.Helper()
 	racine := t.TempDir()
-	if err := filmcache.EnsureDirs(racine); err != nil {
+	if err := filmarchive.EnsureDirs(racine); err != nil {
 		t.Fatalf("cache temporaire : %v", err)
 	}
 	oublierLesMatchsSansCarte()

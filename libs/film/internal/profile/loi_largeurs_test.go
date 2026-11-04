@@ -29,12 +29,14 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/JGtm/LevelUp/libs/film/internal/depottest"
+
 	"github.com/JGtm/LevelUp/libs/film/internal/profile"
 )
 
 func chargerCatalogueDesCartes(t *testing.T) *profile.MapQuantCatalog {
 	t.Helper()
-	racine := racineDepot(t)
+	racine := depottest.Racine(t)
 	chemin := filepath.Join(racine, "data", "titles", "halo_infinite", "reference", "map_quant_bounds.json")
 	cat, err := profile.LoadMapQuantCatalog(chemin)
 	if err != nil {

@@ -1,7 +1,7 @@
 package filmcache
 
-// archive.go — L'ARCHIVE DES FILMS COMME UN TOUT : combien elle pese, comment on retire un film,
-// comment on la deplace (lot L14, plan Desktop).
+// archive.go — L'ARCHIVE DES FILMS COMME UN TOUT : combien elle pese. La retirer, la deplacer ou
+// la recompresser est l'affaire de l'hote.
 //
 // L'UNITE DE L'ARCHIVE EST LE FILM : `film_chunks/<short8>/` ET `film_manifests/<short8>.json`
 // voyagent ensemble, sous une meme racine (la racine que prend chaque fonction de ce paquet).
@@ -13,7 +13,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"os"
 	"path/filepath"
 )
 
@@ -69,16 +68,4 @@ func MesurerOccupation(ctx context.Context, root string) (Occupation, error) {
 		}
 	}
 	return occ, nil
-}
-
-// Supprimer retire un film de l'archive : son manifeste D'ABORD (c'est le marqueur de commit, le
-// film cesse d'etre lisible d'un coup), puis ses chunks. Un film absent n'est pas une erreur.
-func Supprimer(root, shortID string) error {
-	if err := os.Remove(ManifestPath(root, shortID)); err != nil && !errors.Is(err, fs.ErrNotExist) {
-		return fmt.Errorf("filmcache: retrait du manifeste de %s : %w", shortID, err)
-	}
-	if err := os.RemoveAll(ChunkDir(root, shortID)); err != nil {
-		return fmt.Errorf("filmcache: retrait des chunks de %s : %w", shortID, err)
-	}
-	return nil
 }

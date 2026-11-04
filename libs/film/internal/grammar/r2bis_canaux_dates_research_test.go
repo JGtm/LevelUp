@@ -26,6 +26,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/JGtm/LevelUp/libs/film/internal/depottest"
+
 	"github.com/JGtm/LevelUp/libs/film/internal/profile"
 	"github.com/JGtm/LevelUp/libs/film/internal/source"
 )
@@ -102,7 +104,7 @@ func TestR2bisCanauxDates(t *testing.T) {
 // r2bisContexte charge le film et son contexte sur la carte nommee, comme la cuisson.
 func r2bisContexte(t *testing.T, dir, carte string) (*FilmContext, profile.Vec3Range) {
 	t.Helper()
-	racine := racineDepot(t)
+	racine := depottest.Racine(t)
 	cat, err := profile.LoadMapQuantCatalog(filepath.Join(racine, "data", "titles", "halo_infinite",
 		"reference", "map_quant_bounds.json"))
 	if err != nil {

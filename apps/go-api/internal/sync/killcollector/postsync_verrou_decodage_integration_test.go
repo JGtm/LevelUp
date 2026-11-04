@@ -9,7 +9,7 @@ import (
 
 	titlePkg "levelup/go-api/internal/domain/title"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
+	"levelup/go-api/internal/filmrun"
 )
 
 // TestRunPostSync_VerrouTenu_ReporteSansDecoder : la file de regeneration des rejeux decode dans son enfant et tient le
@@ -21,7 +21,7 @@ func TestRunPostSync_VerrouTenu_ReporteSansDecoder(t *testing.T) {
 	depot := racineDepot(t)
 	h := NewPostSyncHook(depot, 3)
 
-	tenu, err := filmproc.AcquireSolo(titlePkg.NewPathResolver(depot).CacheRootDir(), "file de regeneration", "00000001")
+	tenu, err := filmrun.AcquireSolo(titlePkg.NewPathResolver(depot).CacheRootDir(), "file de regeneration", "00000001")
 	if err != nil {
 		t.Fatal(err)
 	}

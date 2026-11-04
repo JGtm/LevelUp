@@ -21,6 +21,8 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/JGtm/LevelUp/libs/film/internal/depottest"
+
 	"github.com/JGtm/LevelUp/libs/film/internal/profile"
 	"github.com/JGtm/LevelUp/libs/film/internal/source"
 )
@@ -35,7 +37,7 @@ func TestR2PositionsAberrantes(t *testing.T) {
 	origineMS, _ := strconv.ParseInt(os.Getenv("R2_ORIGIN_MS"), 10, 64)
 	fenetre := int64(40_000_000)
 	slot := uint32(slot64)
-	racine := racineDepot(t)
+	racine := depottest.Racine(t)
 	cat, err := profile.LoadMapQuantCatalog(filepath.Join(racine, "data", "titles", "halo_infinite",
 		"reference", "map_quant_bounds.json"))
 	if err != nil {
@@ -122,7 +124,7 @@ func TestR2BilanDesCorps(t *testing.T) {
 	if dir == "" || carte == "" {
 		t.Skip("R2_FILM / R2_MAP absents : instrument du lot R2 saute")
 	}
-	racine := racineDepot(t)
+	racine := depottest.Racine(t)
 	cat, err := profile.LoadMapQuantCatalog(filepath.Join(racine, "data", "titles", "halo_infinite",
 		"reference", "map_quant_bounds.json"))
 	if err != nil {

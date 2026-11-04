@@ -227,7 +227,7 @@ func (b *Builder) ResolveMapEntry(mapNames []string) (decfilm.MapQuantEntry, err
 // BuildBytes décode le film de filmDir et rend l'artefact SÉRIALISÉ — il n'écrit RIEN.
 // mapNames sont les identités de carte candidates (cf. ResolveMapEntry). Aucun verrou de paquet
 // ne sérialise le décodage (retiré au lot 2.3) : la borne d un décodage à la fois par machine est
-// inter-processus et mémoire (`filmproc.AcquireSolo`, pris par les appelants).
+// inter-processus et mémoire (`filmrun.AcquireSolo`, pris par les appelants).
 //
 // C'EST LA MOITIÉ QUI EXPLOSE, ET C'EST POURQUOI ELLE EST SÉPARABLE (lot BUILDALL,
 // 2026-08-26). Le décodage est un amplificateur mémoire (7,9 Go en 2,6 s sur `51101d1d`) ;

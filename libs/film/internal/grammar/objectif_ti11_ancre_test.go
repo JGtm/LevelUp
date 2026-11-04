@@ -75,8 +75,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
 	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // ti11AncreCand est une grammaire d'en-tete candidate.
@@ -103,7 +103,7 @@ func TestObjectifTi11Ancre(t *testing.T) {
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
-	g := filmproc.Arm("TestObjectifTi11Ancre", filmproc.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm("TestObjectifTi11Ancre", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — balayage interrompu", float64(peak)/(1<<30))
 	})
 	defer func() { g.Disarm() }()

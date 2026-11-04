@@ -170,8 +170,9 @@ const (
 // 2026-09-13 ; huit jours et neuf lots plus tard, une bonne part avait déjà dérivé. Un registre
 // dont les références pourrissent ne se relit plus, donc ne se maintient plus.
 type Site struct {
-	// Fichier : chemin RELATIF à la racine du dépôt hôte, séparateurs `/` (`libs/film/...` pour un
-	// site de la brique, `apps/go-api/...` pour un site de LevelUp).
+	// Fichier : chemin RELATIF à la racine du module de la brique, séparateurs `/`
+	// (`replay/film_scan.go`). Un site qui vit chez l'hôte n'est pas ici : l'hôte le déclare dans
+	// son propre registre ([Repli.CompleteeParLHote]).
 	Fichier string
 	// Ancre : sous-chaîne EXACTE présente dans le fichier, choisie pour être distinctive
 	// (signature de fonction, littéral de la décision, commentaire de la branche).
@@ -214,9 +215,16 @@ type Repli struct {
 	Condition Condition
 	// Ordre : sa place par rapport à la lecture (D14 b).
 	Ordre Ordre
-	// Sites : où il s'exécute. Au moins un ; plusieurs quand la même décision se prend à
-	// plusieurs endroits qui se convertiront ensemble.
+	// Sites : où il s'exécute DANS LA BRIQUE. Au moins un, sauf pour une entrée
+	// [Repli.CompleteeParLHote] dont tous les sites vivent chez l'hôte ; plusieurs quand la même
+	// décision se prend à plusieurs endroits qui se convertiront ensemble.
 	Sites []Site
+	// CompleteeParLHote : une partie de l'entrée — des sites, ou les appelants d'un outil hors
+	// production — vit chez l'hôte, qui la déclare dans son propre registre. La brique déclare le
+	// repli (nom, fait, mécanisme, critère de retrait, compteur) parce que ce nom se compte sur ses
+	// compteurs et se publie dans son document ; elle ne nomme aucun fichier de l'hôte. L'hôte
+	// vérifie qu'il complète exactement les entrées ainsi marquées.
+	CompleteeParLHote bool
 	// DatePose : date d'ENTRÉE AU REGISTRE, `AAAA-MM-JJ`.
 	//
 	// CE N'EST PAS LA DATE DE NAISSANCE DU CODE, et le dire autrement serait faux : les 62
@@ -258,7 +266,8 @@ type OutilHorsProduction struct {
 	// Symbole : le symbole exporte qui porte le repli (`Extract`) ; ses appels se cherchent sous
 	// `decfilm.<Symbole>` et `objectives.<Symbole>` dans tout le module, tests exclus.
 	Symbole string
-	// Appelants : les SEULS repertoires (relatifs a la racine du depot hote) ou un appel est admis.
+	// Appelants : les SEULS repertoires de la brique (relatifs a la racine de son module) ou un
+	// appel est admis ; ceux de l'hote sont declares par l'hote ([Repli.CompleteeParLHote]).
 	Appelants []string
 }
 
@@ -367,7 +376,7 @@ func verifierUneEntree(r Repli, vus map[Nom]bool) []string { //nolint:gocyclo //
 	if !ordresConnus[r.Ordre] {
 		add("ordre inconnu %q", r.Ordre)
 	}
-	if len(r.Sites) == 0 {
+	if len(r.Sites) == 0 && !r.CompleteeParLHote {
 		add("aucun site : une entree sans site ne se verifie pas et ne se retire jamais")
 	}
 	for i, s := range r.Sites {
@@ -391,7 +400,8 @@ func verifierUneEntree(r Repli, vus map[Nom]bool) []string { //nolint:gocyclo //
 		switch {
 		case r.CompteurBranche:
 			add("outil hors production ET compteur branche : l un exclut l autre")
-		case !dateConforme(h.Date) || strings.TrimSpace(h.Raison) == "" || strings.TrimSpace(h.Symbole) == "" || len(h.Appelants) == 0:
+		case !dateConforme(h.Date) || strings.TrimSpace(h.Raison) == "" || strings.TrimSpace(h.Symbole) == "" ||
+			(len(h.Appelants) == 0 && !r.CompleteeParLHote):
 			add("outil hors production incomplet (date, raison, symbole et appelants obligatoires)")
 		}
 	}

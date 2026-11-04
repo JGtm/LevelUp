@@ -86,7 +86,7 @@ func TestReapparition37Collation(t *testing.T) {
 
 func reap37Catalogue(t *testing.T) *profile.MapQuantCatalog {
 	t.Helper()
-	// La racine se deduit de l emplacement du fichier source (`racineDepot`), jamais du cwd ni
+	// La racine se deduit de l emplacement du fichier source (`depottest.Racine`), jamais du cwd ni
 	// d une variable d environnement : un catalogue versionne absent est une anomalie d arbre.
 	cat, err := profile.LoadMapQuantCatalog(bornesDeCartes(t))
 	if err != nil {

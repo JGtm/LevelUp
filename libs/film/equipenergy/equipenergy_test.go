@@ -6,12 +6,14 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/JGtm/LevelUp/libs/film/internal/depottest"
 )
 
 // cheminDuCatalogue : le catalogue versionne, depuis la racine du depot hote.
 func cheminDuCatalogue(t *testing.T) string {
 	t.Helper()
-	return filepath.Join(racineDepot(t), "data", "titles", "halo_infinite", "reference", "equipment_energy.json")
+	return filepath.Join(depottest.Racine(t), "data", "titles", "halo_infinite", "reference", "equipment_energy.json")
 }
 
 // TestUsagesRestantsSuitLeHUD : la regle de `FUN_1407e9384` sur les energies que le film ecrit

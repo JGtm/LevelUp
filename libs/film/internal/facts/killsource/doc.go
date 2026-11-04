@@ -218,6 +218,6 @@
 // verrou a ete retire au lot 2.3 du PLAN_DECODEUR_FILM (`archlint/decode_lock_interdit_test.go`
 // interdit son retour, `archlint/filmdec_package_vars_test.go` mesure zero variable de paquet
 // ecrite). Deux [Decode] concurrents sont independants ; la borne d un decodage a la fois par
-// poste est MEMOIRE, pas correction, et elle vit hors d ici (`filmproc.AcquireSolo`). Cout mesure
+// poste est MEMOIRE, pas correction, et elle vit chez l hote (son verrou de decodage). Cout mesure
 // d un decodage : 8 a 30 secondes par film sur les quatre films de reference.
 package killsource

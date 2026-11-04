@@ -115,6 +115,16 @@ func (s *Source) Meta() []types.ChunkMeta { return s.chunks }
 // NumChunks implemente [source.Source] : le nombre d'entrees du manifeste.
 func (s *Source) NumChunks() int { return len(s.chunks) }
 
+// TailleDeclaree rend la taille logique que le manifeste declare pour le chunk d'indice `i`
+// (position dans le manifeste, comme [Source.Meta]) ; 0 quand le manifeste ne la porte pas
+// (manifeste historique) ou quand `i` est hors bornes.
+func (s *Source) TailleDeclaree(i int) int64 {
+	if i < 0 || i >= len(s.tailles) {
+		return 0
+	}
+	return s.tailles[i]
+}
+
 // Chunk implemente [source.Source] : les octets (zlib ou clairs ; la forme de stockage zstd est
 // decodee ici, cf. stockage.go) du chunk d'INDICE `i`,
 // lu au fichier que le manifeste lui donne. Un chunk manquant au cache est une ERREUR ici —
@@ -214,9 +224,9 @@ func ListShortIDs(root string) ([]string, error) {
 
 func chunkName(index int) string { return fmt.Sprintf("chunk_%02d.bin", index) }
 
-// numeroDuFichier est la réciproque de [chunkName] : le numéro d'un nom de fichier que le cache
+// NumeroDuChunk est la réciproque de [CheminDuChunk] : le numéro d'un nom de fichier que le cache
 // écrit, et faux pour tout autre nom (un temporaire, une image de recherche rangée dans le dossier).
-func numeroDuFichier(nom string) (int, bool) {
+func NumeroDuChunk(nom string) (int, bool) {
 	var n int
 	if _, err := fmt.Sscanf(nom, "chunk_%d.bin", &n); err != nil || chunkName(n) != nom {
 		return 0, false

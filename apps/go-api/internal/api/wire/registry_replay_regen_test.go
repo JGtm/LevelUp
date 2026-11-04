@@ -6,10 +6,9 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/filmrun"
 	"levelup/go-api/internal/replayregen"
 	"levelup/go-api/internal/testutil"
-
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
 )
 
 // TestTitlesWithReplay_LesTitresQuiDeclarentLaCapacite : sur la configuration réelle du dépôt, la file de
@@ -30,7 +29,7 @@ func TestTitlesWithReplay_LesTitresQuiDeclarentLaCapacite(t *testing.T) {
 // TestRegenerateReplay_UnDecodageEnCoursSeRendEnErrBusy : l'action admin déjà en vol et le verrou solo tenu par un
 // autre décodage sont des attentes, pas des échecs : la file recommence le même film.
 func TestRegenerateReplay_UnDecodageEnCoursSeRendEnErrBusy(t *testing.T) {
-	for _, cause := range []error{ErrActionBusy, filmproc.ErrDecodeBusy} {
+	for _, cause := range []error{ErrActionBusy, filmrun.ErrDecodeBusy} {
 		err := busyOr(cause)
 		if !errors.Is(err, replayregen.ErrBusy) || !errors.Is(err, cause) {
 			t.Fatalf("%v : %v ne s'enveloppe pas en ErrBusy", cause, err)

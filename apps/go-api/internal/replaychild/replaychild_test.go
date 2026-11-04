@@ -4,7 +4,7 @@ package replaychild
 //
 // CE QUE CES CAS TIENNENT. Le post-sync vit DANS le serveur : il ne peut ni attendre son tour
 // (la synchronisation entiere attendrait derriere lui) ni decoder en parallele d'un autre
-// processus (c'est le mecanisme des quatre sinistres RAM, cf. internal/games/halo_infinite/film/filmproc/solo.go). Son
+// processus (c'est le mecanisme des quatre sinistres RAM, cf. internal/filmrun/solo.go). Son
 // regime est donc le REFUS IMMEDIAT, pris par le PARENT — avant meme de faire naitre l'enfant,
 // pour qu'un refus ne coute pas un lancement de processus et une lecture de catalogue.
 //
@@ -19,8 +19,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain/title"
-
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
+	"levelup/go-api/internal/filmrun"
 )
 
 func TestSpawn_VerrouTenuAilleurs_RefusImmediat(t *testing.T) {
@@ -28,7 +27,7 @@ func TestSpawn_VerrouTenuAilleurs_RefusImmediat(t *testing.T) {
 	cacheRoot := title.NewPathResolver(repoRoot).CacheRootDir()
 
 	// UN AUTRE OUTIL TIENT LA MACHINE (une passe de backfill, un ouvrier, `replay-build`).
-	autre, err := filmproc.AcquireSolo(cacheRoot, "backfill-replay", "un-autre-film")
+	autre, err := filmrun.AcquireSolo(cacheRoot, "backfill-replay", "un-autre-film")
 	if err != nil {
 		t.Fatalf("le verrou temoin n'a pas pu etre pris : %v", err)
 	}
@@ -39,16 +38,16 @@ func TestSpawn_VerrouTenuAilleurs_RefusImmediat(t *testing.T) {
 		RepoRoot: repoRoot, TitleSlug: title.DefaultSlug,
 		MatchID: "64e8adfa-0000-0000-0000-000000000000", MapNames: []string{"Catalyst"},
 	})
-	if !errors.Is(err, filmproc.ErrDecodeBusy) {
+	if !errors.Is(err, filmrun.ErrDecodeBusy) {
 		t.Fatalf("err = %v, attendu un refus %v — le post-sync ne doit ni attendre ni decoder "+
-			"en parallele", err, filmproc.ErrDecodeBusy)
+			"en parallele", err, filmrun.ErrDecodeBusy)
 	}
 	// IMMEDIAT, PAS BORNE : un refus qui prendrait des secondes serait une attente deguisee.
 	if ecoule := time.Since(debut); ecoule > 2*time.Second {
 		t.Errorf("le refus a pris %v : le post-sync attend au lieu de refuser", ecoule)
 	}
 	// LE MESSAGE NOMME LE DETENTEUR : sans lui, l'operateur ne sait pas quoi attendre ni quoi
-	// arreter (cf. filmproc.soloBusyError).
+	// arreter (cf. filmrun.soloBusyError).
 	if !strings.Contains(err.Error(), "backfill-replay") {
 		t.Errorf("message = %q : il ne nomme pas le detenteur du verrou", err)
 	}
@@ -60,16 +59,16 @@ func TestSpawn_VerrouRendu_LaVoieEstLibre(t *testing.T) {
 	repoRoot := t.TempDir()
 	cacheRoot := title.NewPathResolver(repoRoot).CacheRootDir()
 
-	autre, err := filmproc.AcquireSolo(cacheRoot, "replay-worker", "un-autre-film")
+	autre, err := filmrun.AcquireSolo(cacheRoot, "replay-worker", "un-autre-film")
 	if err != nil {
 		t.Fatalf("verrou temoin : %v", err)
 	}
-	if _, err := Spawn(context.Background(), Request{RepoRoot: repoRoot, MatchID: "m"}); !errors.Is(err, filmproc.ErrDecodeBusy) {
+	if _, err := Spawn(context.Background(), Request{RepoRoot: repoRoot, MatchID: "m"}); !errors.Is(err, filmrun.ErrDecodeBusy) {
 		t.Fatalf("err = %v, attendu un refus", err)
 	}
 	autre.Release()
 
-	repris, err := filmproc.AcquireSolo(cacheRoot, "post-sync", "m")
+	repris, err := filmrun.AcquireSolo(cacheRoot, "post-sync", "m")
 	if err != nil {
 		t.Fatalf("apres liberation, le verrou reste pris : %v", err)
 	}

@@ -34,9 +34,9 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
 	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
 	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 	"github.com/JGtm/LevelUp/libs/film/types"
 )
 
@@ -105,7 +105,7 @@ func TestOddballPortageProximite(t *testing.T) {
 	if !ok {
 		return
 	}
-	g := filmproc.Arm("d6-portage", filmproc.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm("d6-portage", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE %s : %.2f Gio", id, float64(peak)/(1<<30))
 	})
 	defer func() {

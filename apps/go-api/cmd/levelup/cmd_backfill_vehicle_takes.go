@@ -13,7 +13,7 @@ package main
 // le calque vehicules (`vehicles[].rides[]`) est publie depuis le schema 67. Un artefact plus
 // ancien donne une passe « non mesure » (D8) — jamais zero : c est l etat de tout le parc tant
 // qu il n est pas recuit, et la commande l ecrit pour que l onglet le dise. Cuire des artefacts
-// en lot est INTERDIT (bombe RAM, verrou `filmproc.AcquireSolo`).
+// en lot est INTERDIT (bombe RAM, verrou `filmrun.AcquireSolo`).
 //
 // # UNE LECTURE EN BASE, ET ELLE EST CELLE DU FIL DE L EAU
 //

@@ -102,17 +102,18 @@ var registreReplayIdentites = []Repli{
 		Mecanisme: "ni visible ni en attente : « hors de vue » par defaut de fin de fonction — indistinct de « canal non lu »",
 		Condition: CondNonResolu,
 		Ordre:     OrdreApresLecture,
-		Sites: []Site{{Fichier: pkgKillcollector + "positions_entrees.go", Ancre: "Fallbacks: ids.replis, OrigineDuFilmUS"}, {
+		Sites: []Site{{
 			Fichier: pkgReplay + "death_context.go",
 			Ancre:   "return EtatHorsDeVue",
 		}, {
 			Fichier: pkgReplay + "death_context.go",
 			Ancre:   "e.Fallbacks.Declenche(fallback.NomCoequipierHorsDeVueParDefaut)",
 		}},
-		DatePose:        dateAudit0E,
-		CibleRetrait:    "la conversion du contexte d isolement (l etat du coequipier lu dans le film) ; a defaut, " + retraitRegle4,
-		CritereRetrait:  "un quatrieme etat NOMME « non lu » separe l'ignorance de la mesure, et son compte tombe a 0",
-		CompteurBranche: true,
+		CompleteeParLHote: true,
+		DatePose:          dateAudit0E,
+		CibleRetrait:      "la conversion du contexte d isolement (l etat du coequipier lu dans le film) ; a defaut, " + retraitRegle4,
+		CritereRetrait:    "un quatrieme etat NOMME « non lu » separe l'ignorance de la mesure, et son compte tombe a 0",
+		CompteurBranche:   true,
 	},
 	// RETIRE LE 2026-09-16 (lot 1.9.10) : `repli_fin_de_vie_vehicule_par_recensement`. La fin de
 	// vie d'un véhicule se LIT au composant `object-dead-state` de `ti=40`

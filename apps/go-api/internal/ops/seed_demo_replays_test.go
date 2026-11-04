@@ -2,7 +2,7 @@ package ops
 
 // seed_demo_replays_test.go — rejeux figés de la démo : choix d'un match par famille de mode,
 // installation des artefacts (copie, conservation, périmé, absent), films embarqués, index et
-// élagage. La recuisson elle-même (enfant borné) est couverte par replaychild/filmproc ; ici
+// élagage. La recuisson elle-même (enfant borné) est couverte par replaychild/filmrun ; ici
 // aucun film n'est décodé.
 
 import (

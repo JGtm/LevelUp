@@ -23,6 +23,7 @@ import (
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/authz"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/filmarchive"
 	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/ops"
 	settings_platform "levelup/go-api/internal/platform/settings"
@@ -124,7 +125,7 @@ func (h *SettingsHandler) validateFilmArchiveMove(ctx context.Context, target st
 		return filmArchiveRefus(codeFilmArchiveMove,
 			i18n.Msg(i18n.FromContext(ctx), "settings.film_archive.move_required", i18n.Params{"films": len(films)}))
 	}
-	if err := filmcache.ValiderCible(resolved, target == ""); err != nil {
+	if err := filmarchive.ValiderCible(resolved, target == ""); err != nil {
 		return filmArchiveRefus(codeFilmArchiveTarget,
 			i18n.Msg(i18n.FromContext(ctx), "settings.film_archive.target_not_empty", i18n.Params{"dir": resolved}))
 	}

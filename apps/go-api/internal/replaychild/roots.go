@@ -4,8 +4,7 @@ import (
 	"io"
 
 	"levelup/go-api/internal/domain/title"
-
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
+	"levelup/go-api/internal/filmrun"
 )
 
 // NewRunner prepare le lanceur d'enfants d'un parent enraciné en repoRoot : l'enfant recoit les
@@ -13,11 +12,11 @@ import (
 // les memes chemins quel que soit son repertoire de travail (ADR 0008, amendement « two roots »,
 // A-6). La racine de donnees n'est imposee que si le parent l'a posee explicitement : sinon
 // l'enfant la deduit de la racine de ressources, comme lui.
-func NewRunner(repoRoot string, out io.Writer) (*filmproc.Runner, error) {
+func NewRunner(repoRoot string, out io.Writer) (*filmrun.Runner, error) {
 	r := title.NewPathResolver(repoRoot).Roots()
-	roots := filmproc.Roots{Resources: r.Resources, Logs: r.Logs}
+	roots := filmrun.Roots{Resources: r.Resources, Logs: r.Logs}
 	if r.DataSet {
 		roots.Data = r.Data
 	}
-	return filmproc.NewRunnerRoots(roots, out)
+	return filmrun.NewRunnerRoots(roots, out)
 }

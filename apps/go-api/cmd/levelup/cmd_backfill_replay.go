@@ -23,7 +23,7 @@ package main
 //     jamais un lecteur pendant un decodage.
 //   - « un exec perdrait le verrou process filmdec » : ce verrou de paquet n'existe plus
 //     (retire au lot 2.3 du PLAN_DECODEUR_FILM, avec les globaux de decodage qu'il protegeait).
-//     Le verrou qui reste (`filmproc.AcquireSolo`) est INTER-PROCESSUS : il borne la machine a
+//     Le verrou qui reste (`filmrun.AcquireSolo`) est INTER-PROCESSUS : il borne la machine a
 //     un decodage a la fois, et l'enfant le prend lui-meme. Un film par processus reste une
 //     isolation memoire stricte.
 //
@@ -125,7 +125,7 @@ import (
 	"levelup/go-api/internal/replaybuild"
 
 	"github.com/JGtm/LevelUp/libs/film/filmcache"
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // replayCandidat : un film du cache joint a son match du registre.
@@ -254,7 +254,7 @@ func parserOptionsReplay(args []string) (replayBackfillOptions, error) {
 		"quelle que soit leur date ; s ajoute a --since")
 	fs.StringVar(&o.one, "one", "", "INTERNE : cuire CE seul match dans ce processus (forme appelee par le parent)")
 	fs.Var(&o.mapNames, "map-name", "INTERNE : identite de carte candidate (repetable, du plus fiable au moins fiable)")
-	fs.IntVar(&o.memLimitGiB, "mem-limit-gib", filmproc.DefaultLimitGiB,
+	fs.IntVar(&o.memLimitGiB, "mem-limit-gib", memguard.DefaultLimitGiB,
 		"plafond memoire de chaque enfant, en GiB (0 = desarme)")
 	if err := fs.Parse(args); err != nil {
 		return o, err

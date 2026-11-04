@@ -36,7 +36,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // rlocVariantes : l ordre des marches ; `ref` d abord (elle fixe les paquets de reference).
@@ -299,7 +299,7 @@ func TestRLocLocalisateur(t *testing.T) {
 
 // rlocUnFilm joue les variantes sur un film.
 func rlocUnFilm(t *testing.T, racine, id string, utiles UsagesProduit, controle int, tables map[string][]string) {
-	garde := filmproc.Arm("campagne/r_loc", 4, func(pic uint64) {
+	garde := memguard.Arm("campagne/r_loc", 4, func(pic uint64) {
 		fmt.Fprintf(os.Stderr, "%s : plafond memoire franchi (%d octets)\n", id, pic)
 		os.Exit(3)
 	})

@@ -4,7 +4,7 @@ package main
 //
 // LE FAIT MESURE : `bake.go` construisait les arguments EN DUR (`--map`, `--title`, `--facts`,
 // matchID). Aucun plafond memoire n'etait transmis, l'enfant gardait donc toujours
-// `filmproc.DefaultLimitGiB` = 3 Gio souple / 3,75 Gio dur — et les deux plus gros temoins BTB
+// `memguard.DefaultLimitGiB` = 3 Gio souple / 3,75 Gio dur — et les deux plus gros temoins BTB
 // ont ete mesures juste au-dessus : `e5adf7b2` a 3,779 Gio, `4f77afc1` a 3,807 Gio COTE BASE.
 // Ils tombaient donc au hasard de la pression memoire, d'un run a l'autre.
 //
@@ -15,7 +15,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // TestArgsCuissonTransmetLePlafondMemoire — LE COMPORTEMENT DEMANDE : `--mem-gib` figure dans
@@ -69,12 +69,12 @@ func TestArgsCuissonTransmetLeDesarmement(t *testing.T) {
 // reproduit au prochain run.
 func TestPlafondMemoireGateCouvreLesDeuxTemoinsBTB(t *testing.T) {
 	const picMesureMax = 3.807 // Gio, `4f77afc1` cote base, 2026-09-16
-	if plafondMemoireGate <= filmproc.DefaultLimitGiB {
-		t.Fatalf("plafondMemoireGate = %d, strictement au-dessus de filmproc.DefaultLimitGiB (%d) "+
+	if plafondMemoireGate <= memguard.DefaultLimitGiB {
+		t.Fatalf("plafondMemoireGate = %d, strictement au-dessus de memguard.DefaultLimitGiB (%d) "+
 			"attendu : sinon les deux temoins BTB retombent au hasard de la pression memoire",
-			plafondMemoireGate, filmproc.DefaultLimitGiB)
+			plafondMemoireGate, memguard.DefaultLimitGiB)
 	}
-	dur := float64(filmproc.HardLimitFor(plafondMemoireGate)) / (1 << 30)
+	dur := float64(memguard.HardLimitFor(plafondMemoireGate)) / (1 << 30)
 	if dur <= picMesureMax {
 		t.Errorf("plafond DUR = %.3f Gio pour un souple de %d, au-dessus de %.3f Gio attendu "+
 			"(pic mesure de `4f77afc1` cote base)", dur, plafondMemoireGate, picMesureMax)

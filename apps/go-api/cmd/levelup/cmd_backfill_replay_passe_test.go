@@ -11,9 +11,9 @@ import (
 	"testing"
 
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/filmrun"
 	"levelup/go-api/internal/replaybuild"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
 	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
@@ -217,24 +217,24 @@ func TestTraiterResultatEnfant_Ventilation(t *testing.T) {
 		code int
 		lire func(replayBackfillReport) int
 	}{
-		{"construit", filmproc.CodeOK, func(r replayBackfillReport) int { return r.construits }},
-		{"hors catalogue", filmproc.CodeSkipped, func(r replayBackfillReport) int { return r.horsCatalogue }},
-		{"erreur de decodage", filmproc.CodeFailed, func(r replayBackfillReport) int { return r.erreurs }},
-		{"preparation", filmproc.CodePreparation, func(r replayBackfillReport) int { return r.preparation }},
-		{"mort memoire", filmproc.CodeMemory, func(r replayBackfillReport) int { return r.mortsMemoire }},
+		{"construit", filmrun.CodeOK, func(r replayBackfillReport) int { return r.construits }},
+		{"hors catalogue", filmrun.CodeSkipped, func(r replayBackfillReport) int { return r.horsCatalogue }},
+		{"erreur de decodage", filmrun.CodeFailed, func(r replayBackfillReport) int { return r.erreurs }},
+		{"preparation", filmrun.CodePreparation, func(r replayBackfillReport) int { return r.preparation }},
+		{"mort memoire", filmrun.CodeMemory, func(r replayBackfillReport) int { return r.mortsMemoire }},
 		{"mort subite (fatal error)", 2, func(r replayBackfillReport) int { return r.mortsSubites }},
 		{"mort subite (tue par l OS)", -1, func(r replayBackfillReport) int { return r.mortsSubites }},
 	}
 	for _, c := range cas {
 		t.Run(c.nom, func(t *testing.T) {
 			var r replayBackfillReport
-			res := filmproc.Result{Code: c.code, Issue: filmproc.IssueForCode(c.code)}
+			res := filmrun.Result{Code: c.code, Issue: filmrun.IssueForCode(c.code)}
 			traiterResultatEnfant(&r, res, replayCandidat{matchID: idMoyen}, 1, 1)
 
 			if got := c.lire(r); got != 1 {
 				t.Fatalf("code %d : la ligne de recap attendue vaut %d, veut 1", c.code, got)
 			}
-			if c.code != filmproc.CodeOK && r.construits != 0 {
+			if c.code != filmrun.CodeOK && r.construits != 0 {
 				t.Fatalf("code %d compte a tort une construction", c.code)
 			}
 		})
@@ -242,7 +242,7 @@ func TestTraiterResultatEnfant_Ventilation(t *testing.T) {
 }
 
 // TestLibellePlafond et TestLibelleOctets — deplaces depuis backfill_memlimit_test.go (lot
-// v2 G.1, 2026-09-05) : la sentinelle memoire elle-meme est desormais internal/games/halo_infinite/film/filmproc.Arm,
+// v2 G.1, 2026-09-05) : la sentinelle memoire elle-meme est desormais libs/film/memguard.Arm,
 // mais ces deux fonctions d'AFFICHAGE du recap restent locales a cmd/levelup.
 
 func TestLibellePlafond(t *testing.T) {
@@ -296,7 +296,7 @@ func TestVentilationRepubliesRedecodes(t *testing.T) {
 	for _, c := range cas {
 		t.Run(c.nom, func(t *testing.T) {
 			var r replayBackfillReport
-			res := filmproc.Result{Code: filmproc.CodeOK, Issue: filmproc.IssueForCode(filmproc.CodeOK)}
+			res := filmrun.Result{Code: filmrun.CodeOK, Issue: filmrun.IssueForCode(filmrun.CodeOK)}
 			traiterResultatEnfant(&r, res, replayCandidat{matchID: idMoyen, verdict: c.verdict}, 1, 1)
 			if r.construits != 1 {
 				t.Fatalf("construits = %d, attendu 1", r.construits)
@@ -311,9 +311,9 @@ func TestVentilationRepubliesRedecodes(t *testing.T) {
 
 // TestVentilationNeCompteQueLesSucces : un echec ne republie ni ne redecode rien.
 func TestVentilationNeCompteQueLesSucces(t *testing.T) {
-	for _, code := range []int{filmproc.CodeMemory, 2, -1} {
+	for _, code := range []int{filmrun.CodeMemory, 2, -1} {
 		var r replayBackfillReport
-		res := filmproc.Result{Code: code, Issue: filmproc.IssueForCode(code)}
+		res := filmrun.Result{Code: code, Issue: filmrun.IssueForCode(code)}
 		traiterResultatEnfant(&r, res, replayCandidat{matchID: idMoyen, verdict: replaybuild.VerdictRepublier}, 1, 1)
 		if r.republies != 0 || r.redecodes != 0 {
 			t.Errorf("code %d : republies/redecodes = %d/%d, attendu 0/0 — un echec ne publie rien",

@@ -24,7 +24,7 @@ import (
 
 // ErrChunkTronque : le fichier d'un chunk n'a pas la taille que son manifeste declare. Un
 // lecteur en ligne le traite comme un chunk ABSENT du disque (reseau, puis reecriture par
-// [Write], qui remplace un chunk de taille fausse).
+// l'ecrivain de l'hote, qui remplace un chunk de taille fausse).
 type ErrChunkTronque struct {
 	Index   int   // numero de fichier du chunk
 	Attendu int64 // taille declaree au manifeste (`size_bytes`)
@@ -95,7 +95,7 @@ func (s *Source) tailleDuNumero(numero int) int64 {
 // FilmComplet dit si un film du cache est COMPLET : manifeste FINALISE ([Finalise]), chaque chunk
 // declare present sur disque, et a la taille declaree quand le manifeste la porte. « Present »
 // n'est pas « complet » : un manifeste partiel ou un chunk tronque laissent le film a archiver
-// (et [Write] le repare). Manifeste absent : false. Une erreur d'E/S ou un manifeste illisible
+// (et l'ecrivain de l'hote le repare). Manifeste absent : false. Une erreur d'E/S ou un manifeste illisible
 // remontent.
 func FilmComplet(root, shortID string) (bool, error) {
 	src, ok, err := Open(root, shortID)
@@ -130,11 +130,11 @@ func (s *Source) controlerFichiers() (manquant bool, err error) {
 		if s.tailles[i] <= 0 {
 			continue
 		}
-		lu, err := tailleLogiqueFichier(CheminDuChunk(dir, c.Index), info.Size())
+		lu, err := TailleLogique(CheminDuChunk(dir, c.Index), info.Size())
 		if err != nil {
 			return manquant, fmt.Errorf("filmcache: taille du chunk %d de %s : %w", c.Index, s.short, err)
 		}
-		if lu != tailleLogiqueInconnue && lu != s.tailles[i] {
+		if lu != TailleLogiqueInconnue && lu != s.tailles[i] {
 			return manquant, &ErrChunkTronque{Index: c.Index, Attendu: s.tailles[i], Lu: lu}
 		}
 	}

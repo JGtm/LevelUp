@@ -30,8 +30,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
 	"github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // lpBloc : la table de datums d un bloc de type 1, nil quand il n y en a pas de lisible.
@@ -59,7 +59,7 @@ func (b lpBloc) entree(slot int) string {
 
 // lpContexte ouvre un film sous le plafond memoire de la campagne.
 func lpContexte(t *testing.T, racine, id string) (*FilmContext, func()) {
-	garde := filmproc.Arm("campagne/lp", 4, func(pic uint64) {
+	garde := memguard.Arm("campagne/lp", 4, func(pic uint64) {
 		fmt.Fprintf(os.Stderr, "%s : plafond memoire franchi (%d octets)\n", id, pic)
 		os.Exit(3)
 	})

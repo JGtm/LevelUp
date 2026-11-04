@@ -36,8 +36,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
 	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // l9Sorties : les lignes des trois tables.
@@ -64,7 +64,7 @@ type l9Compte struct{ entrees, presents, declarees, declareesPresentes int }
 
 // l9UnFilm ajoute les lignes d'un film.
 func l9UnFilm(t *testing.T, racine, id string, s *l9Sorties) {
-	garde := filmproc.Arm("campagne/l9", 4, func(pic uint64) {
+	garde := memguard.Arm("campagne/l9", 4, func(pic uint64) {
 		fmt.Fprintf(os.Stderr, "%s : plafond memoire franchi (%d octets)\n", id, pic)
 		os.Exit(3)
 	})

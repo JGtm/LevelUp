@@ -17,6 +17,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/JGtm/LevelUp/libs/film/internal/depottest"
 )
 
 // TestParseHighlightEvents_JGtmFullMatch_HighlightChunk : parse le chunk
@@ -210,7 +212,7 @@ const (
 // dossierJGtm : le fixture, dans le depot hote.
 func dossierJGtm(t *testing.T) string {
 	t.Helper()
-	return filepath.Join(racineDepot(t), "apps", "go-api", "internal", "sync", "testdata", "jgtm_full_match")
+	return filepath.Join(depottest.Racine(t), "apps", "go-api", "internal", "sync", "testdata", "jgtm_full_match")
 }
 
 // jgtmDisponible dit si le fixture (gitignore, 6 Mo) est present : manifeste et chunk 0.

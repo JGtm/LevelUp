@@ -18,11 +18,12 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/filmarchive"
+	"levelup/go-api/internal/filmrun"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/replaybuild"
 
 	"github.com/JGtm/LevelUp/libs/film/filmcache"
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
 	"github.com/JGtm/LevelUp/libs/film/finalise"
 )
 
@@ -358,7 +359,7 @@ func cuireUnMatch(ctx context.Context, d Deps, w buildWork, b *bilanCuisson, res
 	cctx, annuler := context.WithTimeout(ctx, deadlineDuFilm(d, restant))
 	defer annuler()
 	out, berr := buildAndStoreOne(cctx, d, w, filmcache.ChunkDir(d.FilmRoot, short))
-	if errors.Is(berr, filmproc.ErrDecodeBusy) {
+	if errors.Is(berr, filmrun.ErrDecodeBusy) {
 		reporterVerrouTenu(ctx, d, b, berr)
 		return
 	}
@@ -392,7 +393,7 @@ func retirerFilmNonArchive(ctx context.Context, d Deps, short string) {
 	if !d.SansArchive {
 		return
 	}
-	if err := filmcache.Supprimer(d.FilmRoot, short); err != nil {
+	if err := filmarchive.Supprimer(d.FilmRoot, short); err != nil {
 		slog.WarnContext(ctx, "post-sync: film cuit non retiré (archive désactivée)",
 			"gamertag", d.Gamertag, "short_id", short, "err", err)
 		return
@@ -409,7 +410,7 @@ func classerRefus(ctx context.Context, d Deps, w buildWork, b *bilanCuisson, ber
 	//
 	// LE CLASSEMENT PORTE SUR LE TYPE, JAMAIS SUR LE TEXTE (lot J2.12, décision DT-5) :
 	// l'erreur traverse une frontière de processus, mais la RAISON du refus la traverse
-	// aussi, en jeton de protocole (`filmproc.EmitRaison`), et `replaychild` rend l'erreur
+	// aussi, en jeton de protocole (`filmrun.EmitRaison`), et `replaychild` rend l'erreur
 	// typée enveloppée — `errors.Is` a donc de quoi mordre.
 	if errors.Is(berr, replaybuild.ErrUnknownFilmKey) {
 		slog.WarnContext(ctx, "post-sync: artefact rejeu ECARTE — clé du film absente de la "+
@@ -476,14 +477,14 @@ func persistFilmToCache(ctx context.Context, d Deps, matchID string) resultatFil
 			"match_id", matchID)
 		return resultatFilm{}
 	}
-	wc := make([]filmcache.WriteChunk, 0, len(chunks))
+	wc := make([]filmarchive.WriteChunk, 0, len(chunks))
 	for _, c := range chunks {
-		wc = append(wc, filmcache.WriteChunk{
+		wc = append(wc, filmarchive.WriteChunk{
 			Index: c.Index, ChunkType: c.ChunkType, StartMS: c.StartMS,
 			DurationMS: c.DurationMS, Data: c.Data,
 		})
 	}
-	if err := filmcache.Write(ctx, d.FilmRoot, titlePkg.FilmShortMatchID(matchID), wc); err != nil {
+	if err := filmarchive.Write(ctx, d.FilmRoot, titlePkg.FilmShortMatchID(matchID), wc); err != nil {
 		// Un client qui n'aurait pas vérifié la finalisation : le writer la vérifie, et c'est le
 		// même report.
 		if reporterNonFinalise(ctx, d, matchID, err) {

@@ -29,6 +29,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/JGtm/LevelUp/libs/film/internal/depottest"
+
 	"github.com/JGtm/LevelUp/libs/film/filmcache"
 	"github.com/JGtm/LevelUp/libs/film/internal/facts/objectives"
 	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
@@ -239,7 +241,7 @@ func p2aStartMS(film *source.Film) map[int]int {
 // p2aRefDir rend le repertoire des donnees de reference versionnees du titre.
 func p2aRefDir(t *testing.T) string {
 	t.Helper()
-	return filepath.Join(racineDepot(t), "data", "titles", titreDeReference, "reference")
+	return filepath.Join(depottest.Racine(t), "data", "titles", titreDeReference, "reference")
 }
 
 // p2aQuant rend l'entree de bornes de quantification de la carte. Sans elle, les positions

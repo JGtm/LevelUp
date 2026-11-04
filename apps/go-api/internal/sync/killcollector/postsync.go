@@ -48,13 +48,12 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/filmarchive"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/sync/filmfetch"
-
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
 )
 
 // DefaultPostSyncPerCycle borne le nombre de films decodes par cycle.
@@ -214,7 +213,7 @@ func (h *PostSyncHook) racineDuCache(ctx context.Context, duMoteur *filmfetch.Lo
 		slog.WarnContext(ctx, "post-sync: killsource sans racine de cache — aucun film ne sera archive")
 		return "", nil
 	}
-	if err := filmcache.EnsureDirs(h.cacheRacine); err != nil {
+	if err := filmarchive.EnsureDirs(h.cacheRacine); err != nil {
 		slog.WarnContext(ctx, "post-sync: killsource cache film non preparable",
 			"racine", h.cacheRacine, "err", err)
 		h.cacheRacine = ""

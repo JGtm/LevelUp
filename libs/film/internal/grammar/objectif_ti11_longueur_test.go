@@ -73,7 +73,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // ti11SommeLargeurs est la somme des largeurs portees de l'archetype, `i2`, `i9` et `i4` EXCLUS
@@ -128,7 +128,7 @@ func TestObjectifTi11Longueur(t *testing.T) {
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
-	g := filmproc.Arm("TestObjectifTi11Longueur", filmproc.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm("TestObjectifTi11Longueur", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — mesure interrompue", float64(peak)/(1<<30))
 	})
 	defer func() { g.Disarm() }()
@@ -281,7 +281,7 @@ func TestObjectifTi11Residu(t *testing.T) {
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
-	g := filmproc.Arm("TestObjectifTi11Residu", filmproc.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm("TestObjectifTi11Residu", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — mesure interrompue", float64(peak)/(1<<30))
 	})
 	defer func() { g.Disarm() }()

@@ -31,16 +31,13 @@ var registreKillsourceCarte = []Repli{
 	// et les instruments de recherche le DECLARENT (`Options.RechercheSansCarte`, interdit en
 	// production par `archlint/killsource_recherche_sans_carte_test.go`).
 	{
-		Nom:       "repli_distances_de_touche_desactivees",
-		Fait:      "la distance tireur -> victime de chaque touche",
-		Mecanisme: "carte hors catalogue, ou positions de bipedes indisponibles : les distances sont desactivees, les touches restent comptees",
-		Condition: CondSectionAbsente,
-		Ordre:     OrdreApresLecture,
-		Sites: []Site{{Fichier: pkgKillcollector + "hits.go", Ancre: "replisDeLaPasse(ctx).Declenche(decfilm.NomDistancesDeToucheDesactivees)"}, {
-			Fichier: pkgKillcollector + "hits.go",
-			Ancre:   "carte hors catalogue de bornes, distances desactivees",
-		}},
-		DatePose: dateAudit0E,
+		Nom:               "repli_distances_de_touche_desactivees",
+		Fait:              "la distance tireur -> victime de chaque touche",
+		Mecanisme:         "carte hors catalogue, ou positions de bipedes indisponibles : les distances sont desactivees, les touches restent comptees",
+		Condition:         CondSectionAbsente,
+		Ordre:             OrdreApresLecture,
+		CompleteeParLHote: true,
+		DatePose:          dateAudit0E,
 		// LE LOT 1.9.4 (2026-09-15) A TENU SA PART, ET L'ENTREE NE SORT PAS POUR AUTANT.
 		//
 		// Ce qu'il a ferme : la carte ne se DEVINE plus par une signature de largeurs d'axe, elle
@@ -77,11 +74,8 @@ var registreKillsourceCarte = []Repli{
 		// dans `positions.go` et la passe des TOUCHES en avait une seconde, par signature de
 		// largeurs d'axe. Les deux passes partagent desormais cette fonction : une seule regle
 		// pour une seule question, donc un seul site a convertir le jour ou l'arbitrage existera.
-		Sites: []Site{{Fichier: pkgKillcollector + "map_identity.go", Ancre: "replisDeLaPasse(ctx).Declenche(decfilm.NomCartePremierNomResolu)"}, {Fichier: pkgKillcollector + "hits.go", Ancre: "premierNomSansArbitrage(ctx, noms, err)"}, {
-			Fichier: pkgKillcollector + "map_identity.go",
-			Ancre:   "if entry, err := c.mapBounds.Lookup(name); err == nil {",
-		}},
-		DatePose: dateAudit0E,
+		CompleteeParLHote: true,
+		DatePose:          dateAudit0E,
 		// POURQUOI LE LOT 1.9.4 NE LE RETIRE PAS, ALORS QU'IL EN ETAIT LA CIBLE.
 		//
 		// La cible ecrite au lot 1.9.0 disait « le nom de carte est resolu une fois et passe en

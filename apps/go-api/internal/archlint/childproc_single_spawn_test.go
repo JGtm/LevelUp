@@ -27,10 +27,7 @@ const childprocPackageDir = "internal/platform/childproc/"
 var childprocSpawnRoots = []string{"internal", "libs/film", "libs/gamefiles", "libs/haloapi", "libs/himap"}
 
 // childprocSpawnAllowlist : fichiers tolérés, avec la raison. Entrée = « fichier : raison, date ».
-var childprocSpawnAllowlist = map[string]string{
-	"libs/film/filmproc/runner.go": "module libs/film : une brique n'importe pas go-api (ADR 0041) ; " +
-		"le lanceur pose lui-même sansFenetre (hideconsole_win.go), 2026-11-02",
-}
+var childprocSpawnAllowlist = map[string]string{}
 
 // execSpawnSites rend « fichier:ligne » de chaque appel exec.Command / exec.CommandContext.
 func execSpawnSites(src goSource) []string {

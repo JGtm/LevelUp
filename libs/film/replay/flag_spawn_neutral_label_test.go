@@ -4,6 +4,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/JGtm/LevelUp/libs/film/internal/depottest"
+
 	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 )
 
@@ -173,7 +175,7 @@ const dbb2SoclesSansEquipeSansLabel = 9
 // la mesure qui fonde la correction ; s'il bouge, la correction se re-instruit plutot qu'elle
 // ne se suppose.
 func TestCatalogueRecensementDesSoclesNeutres(t *testing.T) {
-	root := racineDepot(t)
+	root := depottest.Racine(t)
 	cat, err := LoadMapObjectives(filepath.Join(root,
 		"data", "titles", "halo_infinite", "reference", "map_objectives.json"))
 	if err != nil {

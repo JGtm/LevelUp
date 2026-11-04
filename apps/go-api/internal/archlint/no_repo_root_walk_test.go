@@ -152,7 +152,7 @@ func TestNoAdHocRepoRootLadderInTests(t *testing.T) {
 // condition de reprise — une allowlist sans date se perime en silence.
 var repoRootInTestsAllowlist = map[string]bool{
 	// (2026-10-29, plan D2 item 2.11) `film/replay/ctf_research_test.go` a quitte cette liste : il
-	// situe la racine par `racineDepot` (helper de test du paquet, remontee jusqu'au `go.work` du
+	// situe la racine par `depottest.Racine` (aide de test de la brique, remontee jusqu'au `go.work` du
 	// depot), plus par le helper de production.
 	// Lit data/cache/replays/halo_infinite/000d5950.json — un CACHE, NON versionne
 	// (git ls-files vide au 2026-08-19). Ici le skip est le comportement JUSTE : le fichier

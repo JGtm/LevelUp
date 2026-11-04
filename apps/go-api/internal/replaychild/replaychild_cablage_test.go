@@ -70,6 +70,6 @@ func TestRunChild_CableLesReglagesDeLaRequete(t *testing.T) {
 		t.Error("RunChild n'appelle pas Builder.SansEcritureDesFaits() sous `if req.SansEcritureDesFaits`")
 	}
 	if !plafondPasse {
-		t.Error("RunChild ne passe pas req.SoftLimitBytes à filmproc.ArmBytes")
+		t.Error("RunChild ne passe pas req.SoftLimitBytes à memguard.ArmBytes")
 	}
 }
