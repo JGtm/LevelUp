@@ -148,6 +148,23 @@ bouge depuis le 2026-11-02.
 | D-11 | PUB-2.5-e : le jeton Spartan réémis vers `image.halocdn.com` sur 302 | **Le `Doer` de LevelUp retire `Authorization` / en-têtes Spartan sur changement d'hôte** ; T2 amendé de ce seul point | Garder le comportement, l'écrire dans le README de `haloapi` |
 | D-12 | Calendrier vis-à-vis du desktop (L21 en cours, il touche `filmproc`, `filmcache`, `source`) | **Lots 0 et 1 maintenant** (worktree dédié, aucun fichier commun avec L21) ; **lots 2 à 4 après la fusion du dernier lot desktop qui touche `libs/film`** ; **phase C après la clôture du desktop ET le passage `release/v8.1.0` → `main`** | Tout après le desktop (décision du 2026-11-01 telle quelle) |
 
+### Décisions TRANCHÉES le 2026-11-04 (message du user, après reformulation en cinq questions) — FONT FOI
+
+- **Réorganisation protocole / exploitation AVANT le tag : VALIDÉE** (remplace D-1 « tel quel » ; la réduction
+  de la façade du 18/09 reste NON retenue : le document de rejeu est la sortie, ses types restent publics). Grille
+  de l'ADR 0042 appliquée à la brique : elle ne décide ni quand on décode, ni où on stocke, ni avec quelle
+  priorité. Détail au lot 2.
+- D-2 publier : oui (demande du 2026-11-01). D-3 : réglé par la réorganisation (le lanceur de processus et ses
+  variables `LEVELUP_*` partent dans LevelUp ; `revision/porte.go` garde `LEVELUP_UPDATE_*`). D-4 : reco. D-5
+  (21 fichiers `campagne_overlay`) : **supprimer**. D-6 : reco (laisser). D-8 : **`JGtm/halo-infinite-film-decoder`**,
+  les quatre ensemble. D-9, D-10 : reco. D-11 : **corriger** (lot 5.1). D-12 : **continuer maintenant**, lots 1 à 4
+  sans attendre le desktop (au 2026-11-04 : L21, L22, L22b fusionnés, `libs/film` inchangé depuis le 02/11, plan
+  desktop réduit à deux gates du user) ; phase C après le desktop et `main`.
+- **D-7 : les identifiants Xbox réels des fixtures sont À REMPLACER par des faux** (contre la reco). Les identités
+  sont dans les octets des films de test, pas seulement dans les goldens : l'item 1.6 MESURE le coût (positions
+  connues de la grammaire, témoins à régénérer) ; le pilote revient vers le user avec le coût avant tout
+  remplacement (item 4.0). Si hors de prix : seule autre option propre, d'autres films joués par des comptes du user.
+
 ## Pilotage
 
 Le pilote (Opus, session principale) ne code pas : il lance les exécutants, vérifie chaque compte rendu sur pièces
@@ -532,28 +549,64 @@ Ne sont pas listés : les ~50 tests hors archlint qui lisent les `.go` de leur p
       1 sous `apps/go-api/internal/replaybuild`) : chemin reçu par variable ou drapeau de l'instrument côté brique,
       `PathResolver` côté go-api.
 - [ ] 1.5 Haiku : `docs/CONFIGURATION.md:150` (`halo.` → `tokencache.InvalidateCachedPlayerTokens`, PUB-4-c).
-- [ ] 1.6 Gate : `go vet ./...` et `go vet -tags research ./...` dans `libs/film` ; T1, T2 (empreintes insensibles
+- [ ] 1.6 MESURE (D-7, décision du 2026-11-04 : remplacer les identités réelles), sans rien modifier : pour chaque
+      fixture de film de `libs/film` (8 minifilms de `replay/testdata`, `testdata/`, `internal/grammar/testdata`,
+      `internal/source/testdata`, `internal/profile/testdata`) : (a) nombre de xuids et de gamertags distincts
+      lus par le décodeur (par `decfilm`, pas par grep) ; (b) les champs de la grammaire qui les portent (table
+      d'identité, BOT_METADATA, journal des morts, chat ?) et leur forme (entier 64 bits, UTF-16, longueur
+      fixe ou variable) : une réécriture à longueur constante est-elle possible sans toucher aucune autre
+      structure ? (c) les fichiers de résultat attendu (goldens, `.json`, `.tsv`, `.bin.gz` dérivés) qui portent
+      ces identités, par nombre ; (d) les goldens de révision qui changeraient (si les octets des films entrent
+      dans une empreinte). Tableau versé au plan sous « Mesure des identités (1.6) » + une estimation en heures
+      des deux options (réécriture à longueur constante vs nouveaux films joués par des comptes du user).
+- [ ] 1.7 Gate : `go vet ./...` et `go vet -tags research ./...` dans `libs/film` ; T1, T2 (empreintes insensibles
       aux commentaires : 0 golden changé), T5 ;
       `grep -rlE 'internal/games/halo_infinite/film|C:\\\\Users' libs/film --include=*.go | grep -v _test.go` vide.
       Commit « lot 1 ».
 
-## Lot 2 — API de la brique avant le tag (après fusion du dernier lot desktop qui touche `libs/film`, D-12)
+## Lot 2 — Réorganisation protocole / exploitation et API avant le tag (VALIDÉ le 2026-11-04 ; Opus)
 
-- [ ] 2.1 **Opus.** `filmshell` : les 15 variables deviennent non exportées derrière des accesseurs en lecture
-      (copie ou vue non modifiable) ; lecteurs migrés (`games/weapons`, `platform/duckdb`, `sync/killcollector`,
-      décodeur) ; `catalogueArmesHorsRatchet` retiré dans le même commit. Révisions INCHANGÉES ; les goldens de
-      périmètre touchés sont régénérés UNE fois par la porte à deux verrous, une entrée de chronique par couche.
-- [ ] 2.2 `filmproc` et `internal/atomicfile` : `ctx` sur les 12 appels `slog` (`slog.*Context`), signatures
-      publiques mises à jour, appelants migrés ; exclusion `horsPerimetreDeJournal` retirée.
-- [ ] 2.3 `filmproc.Roots` porte les noms des variables (D-3) ; `EnvRepoRoot`, `EnvResourcesDir`, `EnvDataDir`,
-      `EnvLogsDir` passent dans go-api ; test : environnement de l'enfant identique octet pour octet avant/après.
-- [ ] 2.4 `racineDepot(t)` : un paquet `libs/film/internal/depottest`, six copies migrées, homonyme
-      d'`objectives` en `Skip` ; garde-rail qui refuse une nouvelle copie (règle 6).
-- [ ] 2.5 Haiku (si D-5 = supprimer) : `git rm` des 21 fichiers `research && campagne_overlay` (liste fermée par
-      `grep -rlE '^//go:build research && campagne_overlay' libs/film`) ; ligne du registre soldée.
-- [ ] 2.6 Gate : T1 (disparitions = les 21 fichiers seulement), T2 (seuls les goldens régénérés en 2.1 diffèrent,
-      chronique écrite), T3, T4, T7 ; lint des cinq modules à 0 issue
-      (`golangci-lint run --config ../../apps/go-api/.golangci.yml ./...`). Commit « lot 2 ».
+Règle (à écrire dans l'ADR au 2.8) : la brique décode un film et publie ses faits et son document de rejeu ;
+elle ne décide ni QUAND on décode, ni OÙ on stocke, ni avec QUELLE PRIORITÉ. Ce qui décide part dans LevelUp.
+Aucune des couches hachées n'est touchée : révisions INCHANGÉES, aucune recuisson. Les 96 fichiers de test du
+décodeur qui importent `filmcache` / `filmproc` suivent les nouveaux noms (réécriture d'import, pas de logique).
+
+- [ ] 2.1 `filmproc` coupé en deux : la sentinelle mémoire (`Arm`, `MeasureLimitGiB`, `Footprint`, `EmitPeak`,
+      plafonds) reste dans la brique sous `libs/film/memguard` (nom à confirmer sur pièces : le paquet actuel
+      `memguard.go`) ; le lanceur parent/enfant (`NewRunner`, codes de sortie, `Issue*`, `AcquireSolo*`,
+      priorité, console cachée, `Roots` et les quatre `Env*` `LEVELUP_*`) part dans `apps/go-api/internal/filmrun`
+      (nom libre, un seul paquet). Test : environnement et arguments de l'enfant identiques octet pour octet
+      avant/après (témoin capturé AVANT le déplacement). `LEVELUP_*` ne reste dans la brique que dans
+      `revision/porte.go`.
+- [ ] 2.2 `filmcache` réduit à la lecture d'un film depuis un dossier (manifeste + chunks, formes brut/zlib/zstd :
+      `LoadFilm`, `LoadFilmDir`, `Open`, `Source`, chemins) ; déplacement d'archive, recompression, écriture à la
+      réception (`deplacement.go`, `recompress.go`, `write.go` et leurs tests) partent dans
+      `apps/go-api/internal/sync/filmfetch` ou un paquet frère (relever les appelants AVANT : `sync/filmfetch`,
+      `cmd/levelup film recompress`, `film archive-move`, desktop 14.3/14.5). Garde-rail de disposition
+      `filmcache` (desktop 14.4) reste vert.
+- [ ] 2.3 `digest` et les helpers de test partagés passent sous `libs/film/internal/` (`internal/digest`,
+      `internal/depottest` pour les six copies de `racineDepot(t)` + homonyme d'`objectives` en `Skip`, garde-rail
+      règle 6) ; `cmd/replay-equiv` (go-api) importe `digest` : relever et décider sur pièces (copie dans go-api
+      avec test d'identité, comme `atomicfile`, ou le harnais entier part dans go-api).
+- [ ] 2.4 `filmshell` : les 15 variables deviennent non exportées derrière des accesseurs en lecture (copie ou vue
+      non modifiable) ; lecteurs migrés (`games/weapons`, `platform/duckdb`, `sync/killcollector`, décodeur) ;
+      `catalogueArmesHorsRatchet` retiré dans le même commit. Révisions INCHANGÉES ; si un golden de périmètre
+      bouge, régénération UNE fois par la porte à deux verrous, une entrée de chronique par couche.
+- [ ] 2.5 `ctx` sur les 12 appels `slog` de la sentinelle mémoire restante et d'`internal/atomicfile`
+      (`slog.*Context`), signatures mises à jour, appelants migrés ; exclusion `horsPerimetreDeJournal` retirée.
+- [ ] 2.6 `git rm` des 21 fichiers `research && campagne_overlay` (liste fermée par
+      `grep -rlE '^//go:build research && campagne_overlay' libs/film`) ; ligne D2-L0-b du registre soldée.
+- [ ] 2.7 `research` : reste derrière son tag ; chaque instrument qui importait le lanceur ou le cache déplacé
+      prend le nouveau chemin ou son équivalent côté brique ; `go vet -tags research ./...` vert.
+- [ ] 2.8 Garde-rails et ADR : ratchet `film_sans_exploitation` (aucun `os/exec`, aucun `os.Getenv` hors
+      `revision/porte.go`, aucune écriture de fichier hors `internal/` et des écritures de goldens sous porte) ;
+      ADR 0034 amendée d'un paragraphe « ce que la brique ne décide pas » (règle ci-dessus) ; ADR 0041 : table des
+      paquets de la brique mise à jour.
+- [ ] 2.9 Gate : T1 (disparitions = les 21 fichiers + les tests déplacés, nommés un à un, 0 nom disparu sinon),
+      T2 (0 golden changé, ou seuls ceux régénérés en 2.4 avec chronique), T3, T4 (`--base 421107998f`), T5, T7 ;
+      lint des cinq modules à 0 issue (`golangci-lint run --config ../../apps/go-api/.golangci.yml ./...`) ;
+      `make desktop-test` si `filmproc` était cité par la coquille (vérifier : `grep -r filmproc apps/desktop`).
+      Commit « lot 2 ».
 
 ## Lot 3 — Ratchets de la brique
 
@@ -569,6 +622,11 @@ Ne sont pas listés : les ~50 tests hors archlint qui lisent les `.go` de leur p
 
 ## Lot 4 — Publication de la brique
 
+- [ ] 4.0 Identités des fixtures (D-7, décision du 2026-11-04) : selon la mesure 1.6 et le retour du user sur le
+      coût, soit réécriture à longueur constante des identités dans les films de test + régénération des témoins
+      dérivés (révisions inchangées, chronique), soit remplacement des films par des matchs joués par des comptes
+      du user (geste du user : jouer, synchroniser ; puis recapture des fixtures par le même outil que celles
+      d'origine). Sans retour du user : `[!]` et le lot 4 continue, le tag attend.
 - [ ] 4.1 `libs/film/go.mod` : `require` de `libs/gamefiles` et `libs/himap` à leur tag (ordre ADR 0043 D-2) ;
       `go.work` résout toujours la copie locale ; `TestBriquesImports` vert.
 - [ ] 4.2 README EN (modèle ADR 0043 D-3) : ce que c'est (film Theater Halo Infinite → faits → document de rejeu
