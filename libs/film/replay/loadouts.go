@@ -46,7 +46,7 @@ import (
 )
 
 // loadoutFamilies est le catalogue de familles interrogé par le balayage : la table de
-// production dérivée de l'enum d'armes (weaponv3, elle-même dérivée de filmshell.WeaponIDToName).
+// production dérivée de l'enum d'armes (weaponv3, elle-même dérivée de filmshell.NomDArme).
 // C'est la SEULE source de vérité sur ce qu'est une arme ici — pas de liste parallèle.
 func loadoutFamilies() map[uint32]bool { return weaponv3.FamillesConnues() }
 

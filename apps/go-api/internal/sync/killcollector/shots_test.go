@@ -67,8 +67,8 @@ func ecrireFireEvent(b *bitBuf, playerIndex int, weaponID uint64) {
 // passerait alors pour de mauvaises raisons.
 func deuxArmes(t *testing.T) (uint64, uint64) {
 	t.Helper()
-	ids := make([]uint64, 0, len(filmshell.WeaponIDs))
-	for id := range filmshell.WeaponIDs {
+	ids := make([]uint64, 0, filmshell.NombreDArmes())
+	for id := range filmshell.Armes() {
 		ids = append(ids, id)
 	}
 	if len(ids) < 2 {
@@ -143,7 +143,7 @@ func TestVentilationLitLIndiceSurCinqBits(t *testing.T) {
 func TestVentilationRefuseLesSentinelles(t *testing.T) {
 	a1, _ := deuxArmes(t)
 	var b bitBuf
-	for id := range filmshell.SentinelIDs {
+	for id := range filmshell.Sentinelles() {
 		ecrireFireEvent(&b, 5, id)
 	}
 	ecrireFireEvent(&b, 5, a1)
@@ -152,7 +152,7 @@ func TestVentilationRefuseLesSentinelles(t *testing.T) {
 
 	for _, p := range batch.Players {
 		for _, w := range p.Weapons {
-			if filmshell.SentinelIDs[w.WeaponID] {
+			if filmshell.EstSentinelle(w.WeaponID) {
 				t.Errorf("sentinelle %d ecrite — elle fabriquerait une jointure fausse avec "+
 					"metadata.weapon_labels", w.WeaponID)
 			}

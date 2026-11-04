@@ -128,7 +128,7 @@ func bitsAt(d []byte, bp, n int) uint64 {
 }
 
 func knownHigh32(v uint32) (string, bool) {
-	for id, n := range filmshell.WeaponIDToName {
+	for id, n := range filmshell.Armes() {
 		if uint32(id>>32) == v {
 			return n, true
 		}

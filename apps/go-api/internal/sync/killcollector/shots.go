@@ -96,7 +96,7 @@ func BuildWeaponShotsBatch(
 			// `metadata.weapon_labels`. Le persister les refuse — mais il refuse la PASSE
 			// ENTIERE, alors qu ici une sentinelle isolee ne doit couter que sa propre ligne.
 			// On lit la liste chez son proprietaire plutot que d en recopier la borne.
-			if filmshell.SentinelIDs[id] {
+			if filmshell.EstSentinelle(id) {
 				continue
 			}
 			if counts[pi] == nil {

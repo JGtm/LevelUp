@@ -36,7 +36,7 @@ func upstreamScan(chunkIdx int) {
 				continue
 			}
 			lo := uint32(bitsAt(p.payload, bp+32, 32))
-			if _, ok := filmshell.WeaponIDToName[(uint64(hi)<<32)|uint64(lo)]; !ok {
+			if _, ok := filmshell.NomDArme((uint64(hi) << 32) | uint64(lo)); !ok {
 				continue
 			}
 			totalWST++
@@ -128,7 +128,7 @@ func litPlayer(chunkIdx int) {
 				continue
 			}
 			lo := uint32(bitsAt(p.payload, b+32, 32))
-			if nm, ok := filmshell.WeaponIDToName[(uint64(hi)<<32)|uint64(lo)]; ok {
+			if nm, ok := filmshell.NomDArme((uint64(hi) << 32) | uint64(lo)); ok {
 				hits = append(hits, hit{pktIdx, p.ts, slot, bipedSlot[slot], nm, b})
 			}
 		}
@@ -196,7 +196,7 @@ func litPattern(chunks []int) {
 					continue
 				}
 				lo := uint32(bitsAt(p.payload, bp+32, 32))
-				if _, ok := filmshell.WeaponIDToName[(uint64(hi)<<32)|uint64(lo)]; ok {
+				if _, ok := filmshell.NomDArme((uint64(hi) << 32) | uint64(lo)); ok {
 					lits = append(lits, bp)
 				}
 			}

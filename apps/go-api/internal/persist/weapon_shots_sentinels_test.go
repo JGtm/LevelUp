@@ -17,9 +17,11 @@ import (
 )
 
 func TestSentinellesArmesAlignees(t *testing.T) {
-	for id := range filmshell.SentinelIDs {
+	n := 0
+	for id := range filmshell.Sentinelles() {
+		n++
 		if id > weaponSentinelMax {
-			t.Errorf("filmshell.SentinelIDs contient %d, au-dela de weaponSentinelMax=%d — "+
+			t.Errorf("filmshell.Sentinelles() contient %d, au-dela de weaponSentinelMax=%d — "+
 				"le persister laisserait passer cette sentinelle et fabriquerait une jointure "+
 				"fausse avec metadata.weapon_labels. Relever la constante ICI, dans le meme "+
 				"commit qui ajoute la sentinelle la-bas.", id, weaponSentinelMax)
@@ -27,9 +29,9 @@ func TestSentinellesArmesAlignees(t *testing.T) {
 	}
 	// Le sens inverse compte aussi : si `analysis` RETIRAIT une sentinelle, la constante
 	// deviendrait trop haute et le persister refuserait des identifiants filmshell legitimes.
-	if len(filmshell.SentinelIDs) != weaponSentinelMax+1 {
-		t.Errorf("filmshell.SentinelIDs a %d entrees pour weaponSentinelMax=%d (attendu %d) — "+
+	if n != weaponSentinelMax+1 {
+		t.Errorf("filmshell.Sentinelles() a %d entrees pour weaponSentinelMax=%d (attendu %d) — "+
 			"les deux ont divergé, le persister refuse ou laisse passer les mauvais identifiants",
-			len(filmshell.SentinelIDs), weaponSentinelMax, weaponSentinelMax+1)
+			n, weaponSentinelMax, weaponSentinelMax+1)
 	}
 }

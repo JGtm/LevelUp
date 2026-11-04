@@ -823,7 +823,7 @@ décodeur qui importent `filmcache` / `filmproc` suivent les nouveaux noms (ré�
       `temoins_film/lot2/2.3b_registre_{avant,apres}.txt`). Mutation : retrait d'une entrée de `sites.go` -> rouge
       (`filmreplis` et `service`), restauré -> vert. `internal/facts/fallback` n'entre dans aucun périmètre haché
       (grep des cinq `*_perimetre.golden`) : T2 inchangé.
-- [!] 2.4 `filmshell` : les 15 variables deviennent non exportées derrière des accesseurs en lecture (copie ou vue
+- [x] 2.4 `filmshell` : les 15 variables deviennent non exportées derrière des accesseurs en lecture (copie ou vue
       non modifiable) ; lecteurs migrés (`games/weapons`, `platform/duckdb`, `sync/killcollector`, décodeur) ;
       `catalogueArmesHorsRatchet` retiré dans le même commit. Révisions INCHANGÉES ; si un golden de périmètre
       bouge, régénération UNE fois par la porte à deux verrous, une entrée de chronique par couche.
@@ -839,6 +839,23 @@ décodeur qui importent `filmcache` / `filmproc` suivent les nouveaux noms (ré�
       n'admet qu'un golden de PÉRIMÈTRE régénéré au 2.4. À trancher : régénérer l'empreinte de `grammar` à révision
       constante (porte `LEVELUP_UPDATE_GRAMMAR_REV`, entrée de chronique, comme D2 2.12 l'a fait pour les goldens de
       révision ET de périmètre), ou garder les variables exportées.
+      — FAIT (2026-11-04) après la décision du pilote du même jour (régénérer l'empreinte de `grammar` à
+      révision constante). Témoin des VALEURS capturé AVANT (`temoins_film/lot2/2.4_tables_avant.txt`, 311 lignes
+      triées des quinze tables) puis relu APRÈS par les accesseurs : identique (259 lignes ; les 52 autres sont les
+      trois tables sans aucun lecteur, retirées : `MeleeMedals`, `GrenadeMedals`, `WeaponBytesToInt`). Les douze
+      autres deviennent non exportées ; lecture par `filmshell/accesseurs.go` (consultation ou itérateur `iter.Seq`
+      qui parcourt la table sans la livrer) : `NomDArme`, `NombreDArmes`, `Armes`, `EstUneArme`, `EstOctetsDArme`,
+      `OctetsDesArmes`, `SuffixeCommun`, `SuffixesFormuleA`, `NomCanonique`, `IDCanonique`, `EstSentinelle`,
+      `Sentinelles` (`GetTiming` inchangé). Lecteurs migrés : grammaire (`weaponscan/scanner.go`, `weaponv3/canon.go`,
+      3 tests, 4 fichiers `research`), `replay`, go-api (`platform/duckdb/match_view_repo_weapons.go`,
+      `sync/killcollector/shots.go` et son test, `persist/weapon_shots_sentinels_test.go`, `cmd/diag_film`).
+      `catalogueArmesHorsRatchet` retiré : `TestAucuneVarExporteeModifiableDansLeDecodeur` vert sur `filmshell`.
+      Golden régénéré UNE fois par la porte (`-update-grammar-rev` + `LEVELUP_UPDATE_GRAMMAR_REV=1`) :
+      `internal/grammar/testdata/grammar_rev.golden`, ligne `grammar-2026-10-28`, empreinte `d47f789c…` ->
+      `375f3f47…`, seule ligne changée ; entrée de chronique « COMPLÉMENT DU 2026-11-04 » dans
+      `internal/grammar/rev_chronique.go`. `filmshell` n'est que dans `grammar_perimetre.golden` (grep des cinq
+      `*_perimetre.golden`) : `killsource` et `objectives` ne bougent pas ; golden de périmètre inchangé. Cinq `Rev`
+      inchangées, gates de révision verts.
 - [ ] 2.5 `ctx` sur les 12 appels `slog` de la sentinelle mémoire restante et d'`internal/atomicfile`
       (`slog.*Context`), signatures mises à jour, appelants migrés ; exclusion `horsPerimetreDeJournal` retirée.
 - [ ] 2.6 `git rm` des 21 fichiers `research && campagne_overlay` (liste fermée par

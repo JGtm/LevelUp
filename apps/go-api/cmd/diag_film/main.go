@@ -165,7 +165,7 @@ func main() {
 			for i := 0; i < n; i++ {
 				r := faResults[i]
 				wid := filmshell.IDFromBytes(r.WeaponBytes)
-				name := filmshell.WeaponIDToName[wid]
+				name, _ := filmshell.NomDArme(wid)
 				if name == "" {
 					name = "INCONNU"
 				}

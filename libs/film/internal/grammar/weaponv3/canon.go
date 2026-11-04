@@ -16,7 +16,7 @@ package weaponv3
 // Valider le high-32 contre ce set est la défense anti-bruit du parser FormulaA
 // (cf. REFERENCE §"VÉRIFIÉ workflows v3" : 137 ids junk = high-32 aléatoires).
 //
-// SOURCE UNIQUE (DRY) : le set est DÉRIVÉ de l'enum d'armes v2 (filmshell.WeaponIDToName,
+// SOURCE UNIQUE (DRY) : le set est DÉRIVÉ de l'enum d'armes v2 (filmshell.NomDArme,
 // liste maitre `film/filmshell`), PAS d'une hand-list qui dérive. Toute arme ajoutée à
 // l'enum v2 (sandbox/Fiesta/grenades) est ainsi automatiquement connue du canon.
 
@@ -53,15 +53,15 @@ func KnownWeaponHigh32Lookup(high uint32) (string, bool) {
 	return nom, ok
 }
 
-// buildKnownWeaponHigh32 dérive le set high-32 → nom depuis filmshell.WeaponIDToName.
+// buildKnownWeaponHigh32 dérive le set high-32 → nom depuis filmshell.NomDArme.
 // Le fold par high-32 est DÉTERMINISTE (indépendant de l'ordre d'itération de la map) :
 // toutes les variantes partageant un high-32 (Energy Sword/Duelist/Bloodblade ;
 // Gravity Hammer/Diminisher/Rushdown) résolvent vers le MÊME nom canonique via
-// filmshell.WeaponFusionMap, donc l'écriture est identique quel que soit l'ordre.
+// filmshell.NomCanonique, donc l'écriture est identique quel que soit l'ordre.
 func buildKnownWeaponHigh32() map[uint32]string {
-	m := make(map[uint32]string, len(filmshell.WeaponIDToName))
-	for id, name := range filmshell.WeaponIDToName {
-		if canon, ok := filmshell.WeaponFusionMap[name]; ok {
+	m := make(map[uint32]string, filmshell.NombreDArmes())
+	for id, name := range filmshell.Armes() {
+		if canon, ok := filmshell.NomCanonique(name); ok {
 			name = canon // fold variante → tête de famille
 		}
 		m[uint32(id>>32)] = name
@@ -70,7 +70,7 @@ func buildKnownWeaponHigh32() map[uint32]string {
 }
 
 // commonWeaponSuffix — low-32 partagé par la majorité des weapon-ids réels
-// (cf. filmshell.CommonWeaponSuffix {0x42,0xc9,0x67,0x9f}, journal §C/§L). C'est LE
+// (cf. filmshell.SuffixeCommun() {0x42,0xc9,0x67,0x9f}, journal §C/§L). C'est LE
 // tag d'identité weapon-id : un id qui le porte est une VRAIE arme, même si son
 // high-32 est absent de l'enum v2.
 const commonWeaponSuffix uint32 = 0x42c9679f

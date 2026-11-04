@@ -63,7 +63,7 @@ func geoIsDirect(name string) bool {
 
 // geoWeaponName : nom d'arme par WeaponID (table statique) ou l'hexa.
 func geoWeaponName(wid uint64) string {
-	if nm, ok := filmshell.WeaponIDToName[wid]; ok {
+	if nm, ok := filmshell.NomDArme(wid); ok {
 		return nm
 	}
 	return attribWeaponName(wid)
@@ -276,7 +276,7 @@ func geoRawDamageInChunk(pks []FilmPacket, data []byte, w *World, out []geoRawDm
 
 // attribWeaponName nomme une arme par son WeaponID (metadata weapon_labels) ; a defaut, l'hexa.
 func attribWeaponName(wid uint64) string {
-	if n, ok := filmshell.WeaponIDToName[wid]; ok {
+	if n, ok := filmshell.NomDArme(wid); ok {
 		return n
 	}
 	return fmt.Sprintf("wid#%016x", wid)

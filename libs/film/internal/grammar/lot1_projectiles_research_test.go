@@ -313,7 +313,7 @@ func projVariantWeapons(t *testing.T, evs []projEvt, fireVar map[uint64]uint64) 
 
 // projWeaponLabel nomme une arme par WeaponID, ou l'hexa a defaut.
 func projWeaponLabel(wid uint64) string {
-	if n, ok := filmshell.WeaponIDToName[wid]; ok {
+	if n, ok := filmshell.NomDArme(wid); ok {
 		return n
 	}
 	return attribWeaponName(wid)
