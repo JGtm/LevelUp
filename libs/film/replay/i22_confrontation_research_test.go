@@ -15,10 +15,10 @@ package replay
 //
 // LECTURE SEULE, gate par I22_FILM. Un seul decodage filmdec par process.
 //
-// USAGE (depuis apps/go-api, apres la sonde filmdec) :
+// USAGE (depuis libs/film, apres la sonde filmdec) :
 //
 //	CGO_ENABLED=0 I22_FILM=<film> I22_DELTA_JSON=<sortie de la sonde filmdec> \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run '^TestI22Confrontation$' -timeout 30m -v
+//	  go test ./replay/ -run '^TestI22Confrontation$' -timeout 30m -v
 
 import (
 	"encoding/json"

@@ -25,7 +25,7 @@ package grammar
 // LECTURE SEULE, UN FILM PAR INVOCATION, sortie TSV dans C2_OUT (hors depot) :
 //
 //	C2_FILM=<data>/cache/film_chunks/f0220a96 C2_CARTE=starboard C2_OUT=<scratch>/f0220a96.tsv \
-//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ \
+//	  go test -tags=research ./internal/grammar/ \
 //	  -run '^TestC2DecorTi40$' -v -timeout 60m
 
 import (

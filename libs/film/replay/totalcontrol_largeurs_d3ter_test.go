@@ -29,7 +29,7 @@ package replay
 // AUCUNE base.
 //
 //	$env:ZONE_FILM="<cache>/film_chunks/66aa5f0b"
-//	go test ./internal/games/halo_infinite/film/replay/ -run TotalControlLargeurs -v
+//	go test ./replay/ -run TotalControlLargeurs -v
 
 import (
 	"fmt"

@@ -46,10 +46,10 @@ package grammar
 // LECTURE SEULE, gardé par I59T1_FILM, sauté partout ailleurs (CI comprise). UN SEUL
 // décodage filmdec par process. AUCUNE ligne de production n'est touchée par cette phase.
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 I59T1_FILM=<repo>/data/cache/film_chunks/000d5950 \
-//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestI59Tag1Confirm$' -timeout 60m -v
+//	  go test ./internal/grammar/ -run '^TestI59Tag1Confirm$' -timeout 60m -v
 
 import (
 	"fmt"

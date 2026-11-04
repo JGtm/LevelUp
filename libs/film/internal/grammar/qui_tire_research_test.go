@@ -13,7 +13,7 @@ package grammar
 // USAGE (lecture seule) :
 //
 //	QUITIRE_FILMS=<racine data/cache> QUITIRE_ID=3d58eb37 \
-//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar -run TestQuiTire -v
+//	  go test -tags=research ./internal/grammar -run TestQuiTire -v
 
 import (
 	"encoding/json"

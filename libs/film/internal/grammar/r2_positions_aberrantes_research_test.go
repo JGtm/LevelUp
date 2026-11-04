@@ -12,7 +12,7 @@ package grammar
 // balayage de production rend. Saute sans les variables d environnement ; jamais en CI.
 //
 //	R2_FILM=<parc>/data/cache/film_chunks/a349fea8 R2_MAP="Fragmentation Heavies" R2_SLOT=532 \
-//	  R2_ORIGIN_MS=11122 R2_FRAME=5134 go test ./internal/games/halo_infinite/film/internal/grammar/ \
+//	  R2_ORIGIN_MS=11122 R2_FRAME=5134 go test ./internal/grammar/ \
 //	  -run R2PositionsAberrantes -v
 
 import (

@@ -15,7 +15,7 @@ package grammar
 // Memes variables que `TestRComb`.
 //
 //	go test -tags=research,campagne_overlay -overlay=<json> -count=1 -timeout 240m \
-//	  -run '^TestRCombDerivation$' ./internal/games/halo_infinite/film/internal/grammar/
+//	  -run '^TestRCombDerivation$' ./internal/grammar/
 
 import (
 	"fmt"

@@ -78,7 +78,7 @@ package grammar
 // DEPLACEMENT PUR, SORTIE IDENTIQUE.
 //
 // `internal/analysis/objectiveevents` descend sous
-// `internal/games/halo_infinite/film/internal/facts/objectives` : c est la couche `facts` de l ADR 0034
+// `internal/facts/objectives` : c est la couche `facts` de l ADR 0034
 // D-1 qui rentre DANS le decodeur. Le paquet change de nom (`objectiveevents` -> `objectives`)
 // et de chemin, RIEN D AUTRE — aucune ligne de corps n est ajoutee ni retiree, seuls la clause
 // `package`, les imports et les mentions du nom en commentaire bougent (`git diff -M` ne montre
@@ -104,8 +104,8 @@ package grammar
 // ENTREE `grammar-2026-09-15.31` (2026-09-16, lot 2.5.c — RANG PROVISOIRE) : `.30` -> `.31`.
 // DEPLACEMENT PUR, SORTIE IDENTIQUE.
 //
-// LA COUCHE `grammar` PREND SON NOM. `internal/games/halo_infinite/film/filmdec` devient
-// `internal/games/halo_infinite/film/internal/grammar` (554 fichiers, dont 142 de production), et
+// LA COUCHE `grammar` PREND SON NOM. `filmdec` devient
+// `internal/grammar` (554 fichiers, dont 142 de production), et
 // `internal/analysis/weaponv3` descend sous `film/grammar/weaponv3` (7 fichiers). Le paquet
 // change de nom (`filmdec` -> `grammar`) et de chemin, RIEN D AUTRE : aucune ligne de corps n est
 // ajoutee ni retiree.
@@ -135,7 +135,7 @@ package grammar
 // DEPLACEMENT PUR, SORTIE IDENTIQUE.
 //
 // LA COUCHE `source` RENTRE DANS LE DECODEUR. `internal/analysis/filmsource` devient
-// `internal/games/halo_infinite/film/internal/source` : le paquet change de nom (`filmsource` ->
+// `internal/source` : le paquet change de nom (`filmsource` ->
 // `source`) et de chemin, RIEN D AUTRE. Il reste ce qu il etait — une FEUILLE sans aucun import
 // du depot, tenue par `archlint/filmsource_leaf_test.go`, dont la constante suit le chemin.
 //
@@ -291,7 +291,7 @@ package grammar
 //
 // C EST LE GESTE DU PRINCIPE 11 DE L ADR 0034 (« la compilation seule garantit la frontiere ») :
 // `source`, `profile`, `grammar` et `facts` vivent desormais sous
-// `internal/games/halo_infinite/film/internal/`, ou le COMPILATEUR — et non un ratchet — refuse
+// `internal/`, ou le COMPILATEUR — et non un ratchet — refuse
 // tout import venu de l exterieur du decodeur. Les 94 fichiers consommateurs passent par la
 // facade `film/decfilm` (lot 2.5.e-b). `film/replay` reste EXPORTEE : c est la couche de
 // publication, et le document de rejeu est le contrat public.

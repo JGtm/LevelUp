@@ -38,7 +38,7 @@ package grammar
 //
 //	TOUR55_EXE="<chemin local de HaloInfinite.exe>" \
 //	  go test -tags=research -count=1 -v -timeout 20m \
-//	    -run '^TestTourelle55Ecrivain$' ./internal/games/halo_infinite/film/internal/grammar/
+//	    -run '^TestTourelle55Ecrivain$' ./internal/grammar/
 //
 // Hors ligne, LECTURE SEULE sur l executable, AUCUN film ouvert, AUCUNE base DuckDB. Sans
 // `TOUR55_EXE`, le test SKIP.

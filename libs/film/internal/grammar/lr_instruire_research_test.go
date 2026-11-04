@@ -13,7 +13,7 @@ package grammar
 //
 //	LR_RACINE=<film_chunks> LR_SORTIE=<dir hors data> LR_PERDUS=<fichier> [LR_MPP_DECLARE=1] \
 //	  go test -tags=research -count=1 -timeout 120m -run '^TestLRInstruire$' \
-//	  ./internal/games/halo_infinite/film/internal/grammar/
+//	  ./internal/grammar/
 
 import (
 	"fmt"

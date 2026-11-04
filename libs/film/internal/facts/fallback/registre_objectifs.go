@@ -1,7 +1,7 @@
 package fallback
 
 // registre_objectifs.go — les replis du lecteur d'ACTIONS D'OBJECTIF
-// (`internal/games/halo_infinite/film/internal/facts/objectives/`) et du CONSTRUCTEUR d'artefacts
+// (`internal/facts/objectives/`) et du CONSTRUCTEUR d'artefacts
 // (`internal/replaybuild/`).
 //
 // NOTE D'ARCHITECTURE : `internal/analysis/` n'importe JAMAIS `internal/games/{slug}/`

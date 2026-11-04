@@ -19,7 +19,7 @@ package replay
 //
 //	CGO_ENABLED=0 FILM_CACHE_ROOT=<mainrepo>/data/cache CTF_RESEARCH_OUT=<dir> \
 //	  CTF_CLOSURE_FILMS="64e8adfa:Catalyst,..." \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run CTFExclusionClosure -timeout 90m
+//	  go test ./replay/ -run CTFExclusionClosure -timeout 90m
 
 import (
 	"fmt"

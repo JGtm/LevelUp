@@ -29,7 +29,7 @@ package grammar
 //	appartient a `ti=3` n est pas lu statiquement : les deux formes sont mesurees.
 //
 //	go test -tags=research,campagne_overlay -overlay=<json> -count=1 -timeout 120m \
-//	  -run '^TestCampagneBis3Ti3$' ./internal/games/halo_infinite/film/internal/grammar/
+//	  -run '^TestCampagneBis3Ti3$' ./internal/grammar/
 
 import (
 	"fmt"

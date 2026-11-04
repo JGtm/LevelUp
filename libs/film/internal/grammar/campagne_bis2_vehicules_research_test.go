@@ -14,7 +14,7 @@ package grammar
 //
 //	go test -tags=research,campagne_overlay -overlay=<json> -count=1 -timeout 120m \
 //	  -run '^TestCampagneBis2ImagesClesTi40$|^TestCampagneBis2Dispositifs$' \
-//	  ./internal/games/halo_infinite/film/internal/grammar/
+//	  ./internal/grammar/
 
 import (
 	"fmt"

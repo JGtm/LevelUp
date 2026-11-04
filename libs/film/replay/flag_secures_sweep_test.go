@@ -39,7 +39,7 @@ package replay
 // AUCUNE base ouverte.
 //
 //	$env:ZONE_FILM="<cache>/film_chunks/64e8adfa"
-//	go test ./internal/games/halo_infinite/film/replay/ -run FlagSecuresSweep -v
+//	go test ./replay/ -run FlagSecuresSweep -v
 
 import (
 	"fmt"

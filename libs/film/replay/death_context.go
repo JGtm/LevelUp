@@ -10,7 +10,7 @@ package replay
 // TRANCHER — il ne connaît ni base, ni fichier, ni carte : on lui passe les quatre, il rend un
 // état par coéquipier.
 //
-// Il vit dans `games/halo_infinite/film/replay` parce que c'est le paquet qui tient déjà les positions et le
+// Il vit dans `replay` parce que c'est le paquet qui tient déjà les positions et le
 // pont slot->xuid. Le collecteur, lui, se contente de lui passer ce qu'il a déjà lu.
 //
 // # LES TROIS ÉTATS APPLIQUÉS EN V1, ET LEUR ORDRE

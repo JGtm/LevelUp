@@ -12,7 +12,7 @@ package replay
 //
 //	$env:ATT_FILM="<repo>"; $env:ODDBALL_FILM="d9781168"
 //	$env:SKULL_ORACLE="<dossier de mesures>/D10_oracle_objective_stats.json"
-//	go test ./internal/games/halo_infinite/film/replay/ -run SkullCarrierWitness -v
+//	go test ./replay/ -run SkullCarrierWitness -v
 
 import (
 	"encoding/json"

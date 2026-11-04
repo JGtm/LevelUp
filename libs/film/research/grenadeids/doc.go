@@ -44,9 +44,9 @@
 //
 // COMMENT S EN SERVIR (lecture seule, un film a la fois, aucune ecriture) :
 //
-//	cd apps/go-api
-//	go vet -tags=research ./internal/games/halo_infinite/film/research/...
-//	go run -tags=research ./internal/games/halo_infinite/film/research/cmd_grenadeids \
+//	cd libs/film
+//	go vet -tags=research ./research/...
+//	go run -tags=research ./research/cmd_grenadeids \
 //	  -racine <parc>/data/cache/film_chunks \
 //	  -films 111fa685,e5adf7b2,60ae07c4,a349fea8,fb1a1a72
 //

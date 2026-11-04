@@ -33,7 +33,7 @@ package replay
 // REGENERATION (jamais d edition a la main) :
 //
 //	REPLAY_FILM_CACHE=<repo>/data/cache/film_chunks \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run MiniFilmBuildsRegenerate -update
+//	  go test ./replay/ -run MiniFilmBuildsRegenerate -update
 
 import (
 	"fmt"

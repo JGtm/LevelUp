@@ -45,11 +45,11 @@ package replay
 //
 // SOUS GARDE D'ENVIRONNEMENT (ADS_SWEEP_DIR), donc saute partout ailleurs, CI comprise.
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 ADS_SWEEP_DIR=<repo>/data/cache/film_chunks \
 //	  ADS_TSV=<dossier de mesures> \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run TestViseeLunetteBalayage -v -timeout 240m
+//	  go test ./replay/ -run TestViseeLunetteBalayage -v -timeout 240m
 
 import (
 	"os"

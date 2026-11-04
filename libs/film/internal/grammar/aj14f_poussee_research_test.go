@@ -19,7 +19,7 @@ package grammar
 // bornes du depot. Lecture seule, aucune ecriture, `CGO_ENABLED=0`.
 //
 //	CGO_ENABLED=0 AJ14F_FILMS=<repo>/data/cache/film_chunks AJ14F_IDS='0d9a9af9=e8d56863-...' \
-//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ \
+//	  go test -tags=research ./internal/grammar/ \
 //	  -run '^TestAj14fMessagesDEquipement$' -count=1 -timeout 60m -v
 
 import (

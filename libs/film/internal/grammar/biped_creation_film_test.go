@@ -18,7 +18,7 @@ package grammar
 // n'en a aucun. Usage :
 //
 //	BIPED_CREATION_FILM=<cache>/film_chunks/d9781168 \
-//	  go test -count=1 -run TestCreationBipedeSurFilm -v ./internal/games/halo_infinite/film/internal/grammar/
+//	  go test -count=1 -run TestCreationBipedeSurFilm -v ./internal/grammar/
 
 import (
 	"os"

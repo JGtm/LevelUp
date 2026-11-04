@@ -16,7 +16,7 @@ package main
 //	BIS2_MODULE=<deploy>/ds/levels/multi/sgh_interlock/sgh_interlock-rtx-new.module \
 //	BIS2_GLOBALS=<deploy>/ds/globals \
 //	  go test -tags=research -count=1 -v -run '^TestBis2RegionsDeLaCarte$' \
-//	  ./internal/games/halo_infinite/film/research/cmd_fermeture/
+//	  ./research/cmd_fermeture/
 
 import (
 	"os"

@@ -32,7 +32,7 @@ package replay
 // REGIME : garde `ASSAUT_CACHE`. Aucune base, aucun reseau.
 //
 //	$env:ASSAUT_CACHE="C:/.../data/cache"
-//	go test ./internal/games/halo_infinite/film/replay/ -run AssautA5Explosions -v -timeout 30m
+//	go test ./replay/ -run AssautA5Explosions -v -timeout 30m
 
 import (
 	"os"

@@ -15,7 +15,7 @@ package replay
 //
 //	RJE_FAITS=<data>/cache/film_facts/halo_infinite RJE_ARTEFACTS=<data>/cache/replays/halo_infinite \
 //	RJE_CATALOGUE=<repo>/data/titles/halo_infinite/reference/map_quant_bounds.json RJE_FILMS=43716616,... \
-//	  go test -tags research -count=1 -run '^TestRJEDiagnosticDesEntreesIndex$' -v ./internal/games/halo_infinite/film/replay/
+//	  go test -tags research -count=1 -run '^TestRJEDiagnosticDesEntreesIndex$' -v ./replay/
 
 import (
 	"encoding/json"
@@ -314,7 +314,7 @@ func TestRJEDiagnosticDesEntreesIndex(t *testing.T) {
 // qu'une correlation aux octets des paquets BOT_METADATA, instrument de la couche des faits, consomme.
 //
 //	RJE_FAITS=... RJE_ARTEFACTS=... RJE_CATALOGUE=... RJE_SORTIE=<fichier tsv> \
-//	  go test -tags research -count=1 -run '^TestRJEEquipesDesBotsParLeurEntite$' -v ./internal/games/halo_infinite/film/replay/
+//	  go test -tags research -count=1 -run '^TestRJEEquipesDesBotsParLeurEntite$' -v ./replay/
 func TestRJEEquipesDesBotsParLeurEntite(t *testing.T) {
 	faitsDir, artDir := rjeEnv(t, "RJE_FAITS"), rjeEnv(t, "RJE_ARTEFACTS")
 	catalogue, sortie := rjeEnv(t, "RJE_CATALOGUE"), rjeEnv(t, "RJE_SORTIE")

@@ -1,7 +1,7 @@
 package fallback
 
 // registre_replay_equipement.go — les replis du calque ÉQUIPEMENT, ARMES AU SOL, CAPACITÉS et
-// INVENTAIRE (`internal/games/halo_infinite/film/replay/`).
+// INVENTAIRE (`replay/`).
 
 const pkgReplay = "libs/film/replay/"
 

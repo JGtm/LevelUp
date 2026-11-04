@@ -34,7 +34,7 @@ package replay
 //
 //	REAP_FILM_ROOT=<repo>/data/cache/film_chunks \
 //	REAP_COLLATION="bcb6d393:Cliffhanger,fb1a1a72:Banished Narrows" \
-//	  go test -tags=research ./internal/games/halo_infinite/film/replay/ \
+//	  go test -tags=research ./replay/ \
 //	    -run Reapparition37Collation -v -timeout 90m
 //
 // La carte est donnee EN DONNEE (le catalogue de bornes se cherche par son nom) : ce paquet ne

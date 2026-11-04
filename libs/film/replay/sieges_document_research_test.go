@@ -17,7 +17,7 @@ package replay
 // (`testdata/inputs_*.bin.gz`), qui viennent des films ENTIERS — donc sans la coupe des bobines
 // et sans le cache. C'est la seule voie qui donne, ici, les arrivees TARDIVES.
 //
-//	go test -tags research ./internal/games/halo_infinite/film/replay/ \
+//	go test -tags research ./replay/ \
 //	  -run TestSiegesDuDocument -v
 
 import (

@@ -13,7 +13,7 @@ package grammar
 // CAMPAGNE_CARTES, CAMPAGNE_BORNES_<module> : le nombre de plages = 1 + bornes fournies).
 //
 //	go test -tags=research,campagne_overlay -overlay=<json> -count=1 -timeout 120m \
-//	  -run '^TestRVehIndexImpossibles$' ./internal/games/halo_infinite/film/internal/grammar/
+//	  -run '^TestRVehIndexImpossibles$' ./internal/grammar/
 
 import (
 	"fmt"

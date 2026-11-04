@@ -126,7 +126,7 @@
 // # OFFLINE PUR — ET C EST PROUVE, PAS AFFIRME
 //
 // Le catalogue des 468 ids `jpt!` et la table de nommage sont EMBARQUES par `go:embed` dans
-// `internal/games/halo_infinite/film/damagetag` (63 Ko). Preuve faite en renommant sur le disque
+// `damagetag` (63 Ko). Preuve faite en renommant sur le disque
 // les deux racines du jeu (`Content/deploy`, `Content/Sound`) : sorties identiques au bit, meme
 // SHA-256 (RE_LOG 7ter.68). Le serveur de production n a pas Halo installe, et n en a pas besoin.
 //

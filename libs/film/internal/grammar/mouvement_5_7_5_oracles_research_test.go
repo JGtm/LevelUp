@@ -49,7 +49,7 @@ package grammar
 //
 //	MOUV57_FILM=<dir> MOUV57_CARTE=<carte> MOUV57_BORNES=<catalogue> \
 //	  go test -tags=research -count=1 -v -timeout 60m \
-//	  -run '^TestMouvement575Oracles$' ./internal/games/halo_infinite/film/internal/grammar/
+//	  -run '^TestMouvement575Oracles$' ./internal/grammar/
 
 import (
 	"fmt"

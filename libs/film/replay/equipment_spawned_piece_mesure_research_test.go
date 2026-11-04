@@ -16,7 +16,7 @@ package replay
 // test se skippe : la CI n'a pas de parc.
 //
 //	CGO_ENABLED=0 H2_ARTS=<depot>/data/cache/replays/halo_infinite \
-//	  go test ./internal/games/halo_infinite/film/replay/ \
+//	  go test ./replay/ \
 //	  -run '^TestH2MesurePiecesEngendrees$' -count=1 -v
 
 import (

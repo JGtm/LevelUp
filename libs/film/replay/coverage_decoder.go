@@ -77,7 +77,7 @@ type DecoderCoverage struct {
 //
 // # TROIS STATUTS DEPUIS LE LOT 3.1.1, ET LA RAISON DU TROISIÈME EST MESURÉE
 //
-// Le catalogue `games/halo_infinite/filmprofile` porte une TABLE d'empreintes par clé écrite du
+// Le catalogue `internal/profile` porte une TABLE d'empreintes par clé écrite du
 // film. Le décodeur NE PEUT PAS la lire : ce serait un import d'un paquet de catalogue depuis un
 // calque, ce que le sens unique interdit (ADR 0034, D-1). La table du PROFIL
 // (`film/internal/profile/registre_empreintes.go`) la RECOPIE donc, et

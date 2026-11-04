@@ -15,7 +15,7 @@ package grammar
 //	MOUV511_FILM=<dir> MOUV511_BORNES=<catalogue> MOUV511_CARTE=<carte> \
 //	  go test -tags=research -count=1 -v -timeout 60m \
 //	  -run '^TestTrou515Dernier$' \
-//	  ./internal/games/halo_infinite/film/internal/grammar/
+//	  ./internal/grammar/
 
 import (
 	"fmt"

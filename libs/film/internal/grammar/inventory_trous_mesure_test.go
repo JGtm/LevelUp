@@ -33,13 +33,13 @@ package grammar
 //
 // LECTURE SEULE : aucune base, aucun document, aucun fichier du depot ecrit hors INV_OUT.
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	INV_CACHE=<repo>/data/cache/film_chunks INV_SAMPLE=20 INV_DIG=5 \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run '^TestInventaireTrousMesure$' -timeout 120m -v
+//	  go test ./replay/ -run '^TestInventaireTrousMesure$' -timeout 120m -v
 //
 //	INV_FILMS=<repo>/data/cache/film_chunks/000d5950 INV_DIG=8 \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run '^TestInventaireTrousMesure$' -timeout 30m -v
+//	  go test ./replay/ -run '^TestInventaireTrousMesure$' -timeout 30m -v
 //
 // INV_I48=0 coupe le controle croise i48 (couteux : il redecode les paquets delta).
 

@@ -44,7 +44,7 @@ const (
 	prefixeRevisionSource = "source"
 	// commandeRegenerationSourceRev : la commande complete, telle qu on la tape.
 	commandeRegenerationSourceRev = "LEVELUP_UPDATE_SOURCE_REV=1 go test " +
-		"./internal/games/halo_infinite/film/internal/source/ -run TestSourceRevSuitLaCoucheSource " +
+		"./internal/source/ -run TestSourceRevSuitLaCoucheSource " +
 		"-update-source-rev"
 )
 

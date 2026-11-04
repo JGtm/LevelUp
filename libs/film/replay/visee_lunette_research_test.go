@@ -55,10 +55,10 @@ package replay
 // D'ENVIRONNEMENT (ADS_FILM), donc saute partout ailleurs, CI comprise. UN SEUL FILM PAR
 // PROCESSUS (le verrou de decodage du paquet filmdec est repris deux fois).
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 ADS_FILM=<repo>/data/cache/film_chunks/000d5950 \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run TestViseeLunette -v -timeout 60m
+//	  go test ./replay/ -run TestViseeLunette -v -timeout 60m
 
 import (
 	"context"

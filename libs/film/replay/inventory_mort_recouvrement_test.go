@@ -148,7 +148,7 @@ func invMortReport(film string, vide, plein *invMortStat, own IdentityRegistry) 
 // decode des films entiers, ce qui n'a pas sa place dans la suite ordinaire.
 //
 //	INV_MORT_FILMS=<repo>/data/cache/film_chunks/000d5950,<...> \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run RecordVideCorpus -v
+//	  go test ./replay/ -run RecordVideCorpus -v
 func TestInventaireRecordVideCorpus(t *testing.T) {
 	raw := os.Getenv("INV_MORT_FILMS")
 	if raw == "" {

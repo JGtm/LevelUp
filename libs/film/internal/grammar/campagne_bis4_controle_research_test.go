@@ -32,7 +32,7 @@ package grammar
 //
 //	CAMPAGNE_RACINE=<film_chunks> CAMPAGNE_FILMS=<id,id> CAMPAGNE_SORTIE=<dir hors data> \
 //	  go test -tags=research -count=1 -timeout 120m -run '^TestCampagneBis4Controle$' \
-//	  ./internal/games/halo_infinite/film/internal/grammar/
+//	  ./internal/grammar/
 
 import (
 	"fmt"

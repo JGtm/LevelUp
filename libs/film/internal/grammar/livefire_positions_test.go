@@ -32,7 +32,7 @@ package grammar
 // ailleurs, CI comprise. Aucune ecriture, aucun artefact cuit.
 //
 //	LIVEFIRE_POS_FILMS='<repo>/data/cache/film_chunks/60ae07c4;<repo>/data/cache/film_chunks/0797ce72' \
-//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestLiveFirePositionsParPlage$' -v
+//	  go test ./internal/grammar/ -run '^TestLiveFirePositionsParPlage$' -v
 
 import (
 	"os"

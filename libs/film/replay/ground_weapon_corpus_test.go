@@ -19,10 +19,10 @@ package replay
 //
 // LECTURE SEULE, aucune base, aucune écriture. SOUS GARDE D'ENVIRONNEMENT (GW_CORPUS).
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 GW_CORPUS=<repo>/data/cache/film_chunks/000d5950,<repo>/data/cache/film_chunks/... \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run GroundWeaponCorpus -timeout 60m -v
+//	  go test ./replay/ -run GroundWeaponCorpus -timeout 60m -v
 
 import (
 	"os"

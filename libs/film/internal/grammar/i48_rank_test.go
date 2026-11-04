@@ -33,10 +33,10 @@ package grammar
 // LECTURE SEULE, gardé par I48_FILM, sauté partout ailleurs (CI comprise). UN SEUL décodage
 // filmdec par process (globaux de paquet).
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 I48_FILM=<repo>/data/cache/film_chunks/000d5950 \
-//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestI48PaletteRank$' -timeout 20m -v
+//	  go test ./internal/grammar/ -run '^TestI48PaletteRank$' -timeout 20m -v
 
 import (
 	"fmt"

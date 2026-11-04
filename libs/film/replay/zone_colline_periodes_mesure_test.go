@@ -18,7 +18,7 @@ package replay
 //	$env:CGO_ENABLED=0
 //	$env:HILL_FILM="C:/.../data/cache/film_chunks/0d9a9af9"
 //	$env:HILL_MAP_ID="e8d56863-9ad4-4efe-9059-81270884589c"; $env:HILL_CARTE="Forest"
-//	go test -count=1 -run TestCollinePeriodesMesure -v ./internal/games/halo_infinite/film/replay/
+//	go test -count=1 -run TestCollinePeriodesMesure -v ./replay/
 
 import (
 	"encoding/json"

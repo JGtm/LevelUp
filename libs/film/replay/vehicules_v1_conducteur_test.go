@@ -36,7 +36,7 @@ package replay
 //
 //	CGO_ENABLED=0 ATT_FILM=<depot>/data/cache \
 //	  V0_FILMS="0d76e8f1:behemoth,4898d586:behemoth" \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run TestV1Conducteur -v -timeout 120m
+//	  go test ./replay/ -run TestV1Conducteur -v -timeout 120m
 
 import (
 	"sort"

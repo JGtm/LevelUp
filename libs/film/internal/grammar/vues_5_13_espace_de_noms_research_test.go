@@ -57,7 +57,7 @@ package grammar
 //
 //	MOUV511_FILM=<dir> MOUV511_CARTE=<carte> MOUV511_BORNES=<catalogue> \
 //	  go test -tags=research -count=1 -v -run '^TestVues513EspaceDeNoms$' \
-//	  ./internal/games/halo_infinite/film/internal/grammar/
+//	  ./internal/grammar/
 
 import (
 	"fmt"

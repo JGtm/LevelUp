@@ -33,10 +33,10 @@ package replay
 //
 // SOUS GARDE (CHRONO_FILM, qui doit pointer 00162144 — la chronologie est celle de CE film).
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 CHRONO_FILM=<repo>/data/cache/film_chunks/00162144 \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run TestViseeChronologie -v -timeout 30m
+//	  go test ./replay/ -run TestViseeChronologie -v -timeout 30m
 
 import (
 	"fmt"

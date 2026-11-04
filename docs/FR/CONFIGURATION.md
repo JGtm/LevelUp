@@ -148,7 +148,7 @@ avant `token-capture` / `token-import` — sans le XUID, le store ne peut pas
 adresser l'entrée.
 
 > Après une rotation externe injectant un nouveau RT, le cache process des tokens
-> Halo (~50 min) est invalidé pour ce XUID (`halo.InvalidateCachedPlayerTokens`),
+> Halo (~50 min) est invalidé pour ce XUID (`tokencache.InvalidateCachedPlayerTokens`),
 > pour que le serveur re-dérive les Spartan tokens depuis la chaîne fraîche.
 > `token-capture` et `token-import` le font automatiquement.
 

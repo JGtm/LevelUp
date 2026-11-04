@@ -7,7 +7,7 @@ package main
 // TSV de la carte v2 sont ecrits. Puis les classements purs : vue C, reste, et la naissance d un
 // eid rejete contre deux blocs de type 1 synthetiques.
 //
-//	go test -tags=research ./internal/games/halo_infinite/film/research/cmd_fermeture/
+//	go test -tags=research ./research/cmd_fermeture/
 
 import (
 	"os"

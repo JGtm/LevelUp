@@ -27,7 +27,7 @@ package replay
 // apparu. Au coup d'envoi (presence des la frame 0) ou en cours de match.
 //
 //	RJE_FAITS=... RJE_ARTEFACTS=... RJE_CATALOGUE=... RJE_CHAMP=<g2c_botmeta.txt> RJE_SORTIE=<tsv> \
-//	  go test -tags research -count=1 -run '^TestRJEHypotheseBoucheTrou$' -v ./internal/games/halo_infinite/film/replay/
+//	  go test -tags research -count=1 -run '^TestRJEHypotheseBoucheTrou$' -v ./replay/
 
 import (
 	"cmp"

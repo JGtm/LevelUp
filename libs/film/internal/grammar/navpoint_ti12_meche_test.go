@@ -54,7 +54,7 @@ package grammar
 //
 // REGIME : garde ASSAUT_CACHE. Aucune base, aucun reseau, sentinelle memoire armee, un seul
 //
-//	go test ./internal/games/halo_infinite/film/internal/grammar/ -run NavpointTi12Meche -v -timeout 60m
+//	go test ./internal/grammar/ -run NavpointTi12Meche -v -timeout 60m
 
 import (
 	"fmt"
@@ -75,7 +75,7 @@ import (
 const mpCVSeuilTemoin = 0.02
 
 // mpSansPorteur : les deux explosions SANS slot de joueur porteur, recopiees de a5SansPorteur
-// (games/halo_infinite/film/replay/assaut_a5_explosions_test.go, mesure du 2026-08-31, anterieure a ce lot —
+// (replay/assaut_a5_explosions_test.go, mesure du 2026-08-31, anterieure a ce lot —
 // l'import direct ferait un cycle). Le point de mode n'y existe que sur le slot d'EQUIPE.
 var mpSansPorteur = map[string]int32{"df8fcbef": 778033, "c75f33b8": 395724}
 

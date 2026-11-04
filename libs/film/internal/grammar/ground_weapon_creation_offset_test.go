@@ -36,10 +36,10 @@ package grammar
 //
 // LECTURE SEULE, gardee par GW_CREATION_FILM. UN SEUL decodage filmdec par process.
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 GW_CREATION_FILM=<repo>/data/cache/film_chunks/000d5950 \
-//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestGroundWeaponCreationOffset$' -timeout 60m -v
+//	  go test ./internal/grammar/ -run '^TestGroundWeaponCreationOffset$' -timeout 60m -v
 
 import (
 	"fmt"

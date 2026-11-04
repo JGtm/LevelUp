@@ -27,7 +27,7 @@ package replay
 // AUCUNE base.
 //
 //	$env:ATT_FILM="<repo>/data/cache"; $env:ASSAUT_FILM="35b75a31"
-//	go test ./internal/games/halo_infinite/film/replay/ -run AssautA3Ti13 -v
+//	go test ./replay/ -run AssautA3Ti13 -v
 
 import (
 	"fmt"

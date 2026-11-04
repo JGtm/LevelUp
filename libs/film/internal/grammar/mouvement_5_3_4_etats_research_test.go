@@ -24,7 +24,7 @@ package grammar
 //
 //	MOUV534_FILM=<dir> MOUV534_CARTE=snowbound MOUV534_BORNES=<catalogue> \
 //	  go test -tags=research -count=1 -v -timeout 60m \
-//	  -run '^TestMouvement534Etats$' ./internal/games/halo_infinite/film/internal/grammar/
+//	  -run '^TestMouvement534Etats$' ./internal/grammar/
 
 import (
 	"fmt"

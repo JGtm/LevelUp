@@ -22,10 +22,10 @@ package replay
 // CE QU'IL N'EST PAS : un test de CI. Il exige les films (des gigaoctets hors dépôt) et il est
 // gardé par INV_DELTA_FILMS.
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 INV_DELTA_FILMS=<repo>/data/cache/film_chunks INV_DELTA_MAX=25 \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run '^TestInventoryDeltaConfrontationCorpus$' -timeout 120m -v
+//	  go test ./replay/ -run '^TestInventoryDeltaConfrontationCorpus$' -timeout 120m -v
 
 import (
 	"fmt"

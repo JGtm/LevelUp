@@ -19,7 +19,7 @@ package grammar
 //	CAMPAGNE_RACINE=<film_chunks> CAMPAGNE_FILMS=<id,id> CAMPAGNE_SORTIE=<dir hors data> \
 //	VA_PERDUS=<fichier> \
 //	  go test -tags=research -count=1 -timeout 120m -run '^TestVAV2Pertes$' \
-//	  ./internal/games/halo_infinite/film/internal/grammar/
+//	  ./internal/grammar/
 
 import (
 	"bufio"

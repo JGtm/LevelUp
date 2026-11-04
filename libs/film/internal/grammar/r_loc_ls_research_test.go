@@ -24,7 +24,7 @@ package grammar
 //
 //	RLOC_RACINE=<film_chunks> RLOC_FILMS=<id,id> RLOC_SORTIE=<dir> [RLOC_CONTROLE=300] \
 //	  go test -tags=research -count=1 -timeout 240m -run '^TestRLocLocalisateur$' \
-//	  ./internal/games/halo_infinite/film/internal/grammar/
+//	  ./internal/grammar/
 
 import (
 	"fmt"

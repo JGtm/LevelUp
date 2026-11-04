@@ -58,7 +58,7 @@ package objectives
 // decodage de paquet FRAME (le pied est un chunk a part) — sentinelle memoire armee.
 //
 //	$env:ASSAUT_CACHE="C:/.../data/cache"
-//	go test ./internal/games/halo_infinite/film/internal/facts/objectives/ -run AssautPiedArmement -v -timeout 30m
+//	go test ./internal/facts/objectives/ -run AssautPiedArmement -v -timeout 30m
 
 import (
 	"fmt"

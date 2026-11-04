@@ -15,7 +15,7 @@ package replay
 //	BDC_FILMS=<repo>/data/cache/film_chunks BDC_FAITS=<repo>/data/cache/film_facts/halo_infinite \
 //	  BDC_CATALOGUE=<repo>/data/titles/halo_infinite/reference/map_quant_bounds.json BDC_ID=4f77afc1 \
 //	  BDC_VERROU=<repo>/data/cache go test -tags research -count=1 -run '^TestBordDuCollecteurEgaleLesFaits$' \
-//	  -v ./internal/games/halo_infinite/film/replay/
+//	  -v ./replay/
 
 import (
 	"context"

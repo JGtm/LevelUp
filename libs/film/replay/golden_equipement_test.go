@@ -20,7 +20,7 @@ package replay
 // PROCESSUS :
 //
 //	REPLAY_FILM_CACHE=<repo>/data/cache/film_chunks \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run 'TestGoldenEquipementRegenerate/<short8>' -update
+//	  go test ./replay/ -run 'TestGoldenEquipementRegenerate/<short8>' -update
 //
 // Elle echoue TOUJOURS en nommant ce qu'elle a ecrit ; on relance sans les drapeaux pour verifier.
 

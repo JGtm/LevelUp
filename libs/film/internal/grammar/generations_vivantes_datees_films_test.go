@@ -5,7 +5,7 @@ package grammar
 // pas de films) :
 //
 //	REPLAY_FILM_CACHE=<parc>/data/cache/film_chunks \
-//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run PointsAberrantsC2 -v
+//	  go test ./internal/grammar/ -run PointsAberrantsC2 -v
 //
 // Pieces (instrument `r2_positions_aberrantes_research_test.go`) : chaque point est un en-tete de
 // generation 2 ancre AVANT le record de creation de son corps — `a349fea8` slot 532 a

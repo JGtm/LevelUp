@@ -32,14 +32,14 @@ package grammar
 // documentee nulle part (DuckDB interdit), elle est IDENTIFIEE par calibration : l'entree du
 // catalogue qui valide le plus d'evenements gagne (methode R3 par.0.4).
 //
-// LECTURE SEULE, skip par defaut, CGO_ENABLED=0. USAGE (depuis apps/go-api) :
+// LECTURE SEULE, skip par defaut, CGO_ENABLED=0. USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 \
 //	  R6_ROOT=<repo>/data/cache/film_chunks \
 //	  R6_ARTS=<repo>/data/cache/replays/halo_infinite \
 //	  R6_CAT=<repo>/data/titles/halo_infinite/reference/map_quant_bounds.json \
 //	  R6_IDS=1b2d9e08,a0c36016,4577fcc4,f2966f08,faff9935 \
-//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestR6Layout117$' -timeout 20m -v
+//	  go test -tags=research ./internal/grammar/ -run '^TestR6Layout117$' -timeout 20m -v
 
 import (
 	"encoding/json"

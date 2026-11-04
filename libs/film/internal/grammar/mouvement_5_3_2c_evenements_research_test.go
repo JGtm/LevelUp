@@ -40,7 +40,7 @@ package grammar
 // question posee — « quels instants ce film porte-t-il ? » — et sa reserve est ecrite.
 //
 //	MOUV532C_FILM=<repertoire de chunks> \
-//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ \
+//	  go test -tags=research ./internal/grammar/ \
 //	    -run '^TestMouvement532Evenements$' -count=1 -v -timeout 60m
 
 import (

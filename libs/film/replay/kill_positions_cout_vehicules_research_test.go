@@ -12,7 +12,7 @@ package replay
 //	KPC_FILMS=<repo>/data/cache/film_chunks KPC_FAITS=<repo>/data/cache/film_facts/halo_infinite \
 //	  KPC_CATALOGUE=<repo>/data/titles/halo_infinite/reference/map_quant_bounds.json KPC_ID=4f77afc1 \
 //	  KPC_VERROU=<repo>/data/cache go test -tags research -count=1 -run '^TestCoutDesLecturesVehicules$' \
-//	  -v ./internal/games/halo_infinite/film/replay/
+//	  -v ./replay/
 
 import (
 	"fmt"

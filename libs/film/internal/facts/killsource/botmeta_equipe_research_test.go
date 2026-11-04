@@ -14,7 +14,7 @@ package killsource
 //
 //	RJE_BOTS=<tsv> RJE_CHUNKS=<data>/cache/film_chunks RJE_VERROU=<racine de cache du verrou solo> \
 //	  go test -tags research -count=1 -run '^TestRJELectureDeLEquipeDesBots$' -v \
-//	  ./internal/games/halo_infinite/film/internal/facts/killsource/
+//	  ./internal/facts/killsource/
 
 import (
 	"fmt"

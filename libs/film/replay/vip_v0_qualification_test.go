@@ -18,7 +18,7 @@ package replay
 // PROCESSUS, lecture seule, AUCUNE base.
 //
 //	$env:ATT_FILM="<repo>/data/cache"; $env:VIP_FILM="00761d27"
-//	go test ./internal/games/halo_infinite/film/replay/ -run VIPV0Qualification -v
+//	go test ./replay/ -run VIPV0Qualification -v
 
 import (
 	"math"

@@ -27,11 +27,11 @@ package grammar
 // declare i6..i10. Ce test mesure d'abord COMBIEN de records `ti=40` declarent i11 et ce que
 // leur masque porte AVANT lui — c'est-a-dire le cout exact du portage a faire.
 //
-// USAGE (depuis apps/go-api, cache Go ISOLE) :
+// USAGE (depuis libs/film, cache Go ISOLE) :
 //
 //	CGO_ENABLED=0 V10_FILM_ROOT=<repo>/data/cache V10_FILMS="0d76e8f1:behemoth" \
 //	  V10_BOUNDS=<repo>/data/titles/halo_infinite/reference/map_quant_bounds.json \
-//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestV10MasqueDeadState$' -v -timeout 90m
+//	  go test ./internal/grammar/ -run '^TestV10MasqueDeadState$' -v -timeout 90m
 
 import (
 	"fmt"

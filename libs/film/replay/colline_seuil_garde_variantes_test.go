@@ -13,7 +13,7 @@ package replay
 //	$env:HOLD_FILM="C:/.../data/cache/film_chunks/e449a696"
 //	$env:HOLD_LINES="xuid:camp:frags:morts:assistances;..."   (lignes de match, relevees en base)
 //	$env:HOLD_SCORES="180:79"                                  (facultatif : scores finaux du registre)
-//	go test -count=1 -run TestCollineSeuilGardeVariantes -v ./internal/games/halo_infinite/film/replay/
+//	go test -count=1 -run TestCollineSeuilGardeVariantes -v ./replay/
 
 import (
 	"fmt"

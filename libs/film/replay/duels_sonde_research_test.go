@@ -39,7 +39,7 @@ package replay
 // USAGE (un film par process, verrou de decodage pris) :
 //
 //	CGO_ENABLED=0 DUELS_FILM=<repo>/data/cache/film_chunks/000d5950 DUELS_MAP=Cliffhanger \
-//	  go test ./internal/games/halo_infinite/film/replay -run TestSondeDuels -v -timeout 900s
+//	  go test ./replay -run TestSondeDuels -v -timeout 900s
 
 import (
 	"os"

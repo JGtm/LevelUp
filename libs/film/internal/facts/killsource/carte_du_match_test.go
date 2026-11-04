@@ -114,7 +114,7 @@ func calibrationDeLaBobine(t *testing.T, src *source.Film, carte *profile.MapQua
 // LECTURE SEULE d UN film, garde par deux variables — saute partout ailleurs, CI comprise :
 //
 //	KS_CARTE_FILM=<repo>/data/cache/film_chunks/e5adf7b2 KS_CARTE_NOM=Fragmentation \
-//	  go test ./internal/games/halo_infinite/film/internal/facts/killsource/ \
+//	  go test ./internal/facts/killsource/ \
 //	  -run '^TestCarteReelleLueParLaMarche$' -v
 func TestCarteReelleLueParLaMarche(t *testing.T) {
 	dir, nom := os.Getenv(ksCarteFilmEnv), os.Getenv(ksCarteNomEnv)

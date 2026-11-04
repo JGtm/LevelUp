@@ -32,10 +32,10 @@ package grammar
 //	            sur un film ou personne n'en porte.
 //
 // GARDES : `R12_FILMS`, `R12_IDS`, `R12_CORPUS=1` (mode corpus, resume par film seulement).
-// Aucune ecriture, aucune DuckDB, `CGO_ENABLED=0`. USAGE (depuis apps/go-api) :
+// Aucune ecriture, aucune DuckDB, `CGO_ENABLED=0`. USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 R12_FILMS=<repo>/data/cache/film_chunks R12_IDS=215e7022 \
-//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestR12Knockback$' -count=1 -timeout 60m -v
+//	  go test -tags=research ./internal/grammar/ -run '^TestR12Knockback$' -count=1 -timeout 60m -v
 
 import (
 	"fmt"

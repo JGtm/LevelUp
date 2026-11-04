@@ -19,7 +19,7 @@ package grammar
 // des types de physique (CAMPAGNE_PHYSIQUE) et egal au chassis d image-cle du meme slot.
 //
 //	go test -tags=research -count=1 -run '^TestRVehChassisNeufs$' \
-//	  ./internal/games/halo_infinite/film/internal/grammar/
+//	  ./internal/grammar/
 
 import (
 	"fmt"

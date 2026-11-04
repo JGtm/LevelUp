@@ -45,7 +45,7 @@ package replay
 //	CGO_ENABLED=0 \
 //	GRENADE_ECART_PARC=<racine portant data/> \
 //	GRENADE_ECART_FILMS='000d5950=Cliffhanger,0797ce72=Live Fire,21ece4d8=Live Fire' \
-//	  go test ./internal/games/halo_infinite/film/replay -run TestBancEcartLancerLanceur -v -timeout 1800s
+//	  go test ./replay -run TestBancEcartLancerLanceur -v -timeout 1800s
 
 import (
 	"context"

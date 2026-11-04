@@ -5,7 +5,7 @@ package grammar
 // CI n a pas de films) :
 //
 //	REPLAY_FILM_CACHE=<parc>/data/cache/film_chunks \
-//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run CanauxDelta -v
+//	  go test ./internal/grammar/ -run CanauxDelta -v
 //
 // Pieces (instrument `r2bis_canaux_dates_research_test.go`, 2026-09-29) : avant le lot, le marcheur
 // des huit canaux (`walkDeltaBipedRecords`) rendait sur `084a804d` 32 records de generation 2 dont le

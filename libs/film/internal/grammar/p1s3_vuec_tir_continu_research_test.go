@@ -56,7 +56,7 @@ package grammar
 //	MOUV511_CARTE=isolation S3_ORIGINE_US=451125221 S3_INDEX=2 \
 //	S3_EPISODES=311-1088,2064-2869 S3_FRAGS=395,623,650,2159,2228,2402 \
 //	  go test -tags=research -count=1 -v -timeout 60m -run '^TestP1S3VueCTirContinu$' \
-//	  ./internal/games/halo_infinite/film/internal/grammar/
+//	  ./internal/grammar/
 
 import (
 	"fmt"

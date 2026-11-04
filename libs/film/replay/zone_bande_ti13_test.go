@@ -31,7 +31,7 @@ package replay
 // dont il reprend le corpus, les entrees et les assembleurs :
 //
 //	$env:ZONE_FILM="<cache>/film_chunks/7f1bbf06"
-//	go test -count=1 -run TestZoneBandeTi13Consommateur -v -timeout 30m ./internal/games/halo_infinite/film/replay/
+//	go test -count=1 -run TestZoneBandeTi13Consommateur -v -timeout 30m ./replay/
 //
 // # LE PERIMETRE DE PRODUCTION EST PLUS ETROIT QUE LE CORPUS
 //

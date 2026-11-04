@@ -7,7 +7,7 @@ package replay
 // colles au journal du lot, avec le verdict chiffre de chaque seuil. Il se saute sans
 // `EMPRISE_V0_DIR`.
 //
-//	EMPRISE_V0_DIR=<scratch> go test ./internal/games/halo_infinite/film/replay/ \
+//	EMPRISE_V0_DIR=<scratch> go test ./replay/ \
 //	  -run '^TestEmpriseV0Rapport$' -v -count=1
 
 import (

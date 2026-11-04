@@ -22,11 +22,11 @@ package replay
 // relue par `indexerParXUID(...).visibleA`, toujours en production pour les coequipiers. Le
 // registre est celui de l'assemblage (memes entrees que `BuildFromPositions`).
 //
-// Les faits viennent des fixtures versionnes (huit builds) et, avec L1_DEPOT, du cache de faits
-// du poste (`data/cache/film_facts/halo_infinite`). AUCUN OCTET DE FILM n'est lu.
+// Les faits viennent des fixtures versionnes (huit builds) et, avec L1_FAITS et L1_BORNES, du cache de faits
+// du poste. AUCUN OCTET DE FILM n'est lu.
 //
-//	L1_DEPOT=<checkout qui porte data/cache> \
-//	  go test -tags research -count=1 -run '^TestLieuUniqueDesMorts$' -v ./internal/games/halo_infinite/film/replay/
+//	L1_FAITS=<dossier des faits de film> L1_BORNES=<map_quant_bounds.json> \
+//	  go test -tags research -count=1 -run '^TestLieuUniqueDesMorts$' -v ./replay/
 
 import (
 	"fmt"
@@ -178,8 +178,8 @@ func TestLieuUniqueDesMorts(t *testing.T) {
 		tous = append(tous, mesurerLieuUnique(b.Short8+" (fixture "+b.Build+")", g))
 	}
 	fixtures := len(tous)
-	if depot := os.Getenv("L1_DEPOT"); depot != "" {
-		tous = append(tous, mesurerFaitsLocaux(t, depot)...)
+	if faits := os.Getenv(envMesureFaits); faits != "" {
+		tous = append(tous, mesurerFaitsLocaux(t, faits)...)
 	}
 	rendre := func(titre string, ms []lieuMesure) {
 		tot := lieuMesure{causes: map[string]int{}}
@@ -242,13 +242,12 @@ func TestLieuUniqueDesMorts(t *testing.T) {
 }
 
 // mesurerFaitsLocaux relit, un par un, les fichiers de faits du cache du poste.
-func mesurerFaitsLocaux(t *testing.T, depot string) []lieuMesure {
+func mesurerFaitsLocaux(t *testing.T, dir string) []lieuMesure {
 	t.Helper()
-	cat, err := profile.LoadMapQuantCatalog(filepath.Join(depot, "data", "titles", "halo_infinite", "reference", "map_quant_bounds.json"))
+	cat, err := profile.LoadMapQuantCatalog(cheminMesureRequis(t, envMesureBornes))
 	if err != nil {
 		t.Fatalf("catalogue de bornes : %v", err)
 	}
-	dir := filepath.Join(depot, "data", "cache", "film_facts", "halo_infinite")
 	entrees, err := os.ReadDir(dir)
 	if err != nil {
 		t.Fatalf("cache de faits %s : %v", dir, err)

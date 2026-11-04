@@ -37,7 +37,7 @@ import (
 )
 
 // plancherChampsRacine : 59 balises `json:` a la racine du document au 2026-09-17 (le meme
-// compte que `wantReplayDocumentFields`, `apps/go-api/contracttest/replay_contract_test.go`). Un
+// compte que `wantReplayDocumentFields`, dans le test de contrat de l'hote). Un
 // balayage qui en rend nettement moins n a pas trouve le type.
 const plancherChampsRacine = 50
 

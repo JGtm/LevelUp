@@ -42,7 +42,7 @@ package objectives
 // REGIME : garde `ASSAUT_CACHE`. Aucune base, aucun reseau, sentinelle memoire armee.
 //
 //	$env:ASSAUT_CACHE="C:/.../data/cache"
-//	go test ./internal/games/halo_infinite/film/internal/facts/objectives/ -run AssautPiedClassement -v -timeout 30m
+//	go test ./internal/facts/objectives/ -run AssautPiedClassement -v -timeout 30m
 
 import (
 	"fmt"
@@ -239,7 +239,7 @@ var _ = absPc
 // des fenetres d'explosion, en marquant la position du XUID (l'ancre de production) s'il s'y
 // trouve : la region entre le XUID et le gamertag est la candidate naturelle du type.
 //
-//	go test ./internal/games/halo_infinite/film/internal/facts/objectives/ -run AssautPiedEtendu -v -timeout 30m
+//	go test ./internal/facts/objectives/ -run AssautPiedEtendu -v -timeout 30m
 func TestAssautPiedEtendu(t *testing.T) {
 	cache := os.Getenv("ASSAUT_CACHE")
 	if cache == "" {
@@ -321,7 +321,7 @@ func pcMarqueurs(data []byte) []pcMarqueur {
 // est une. Cet instrument imprime CHAQUE bloc de valeur >= 150 des neuf films, avec le delai a
 // l'explosion la plus proche (avant ET apres) — c'est le tableau qui nomme.
 //
-//	go test ./internal/games/halo_infinite/film/internal/facts/objectives/ -run AssautPiedRares -v -timeout 30m
+//	go test ./internal/facts/objectives/ -run AssautPiedRares -v -timeout 30m
 func TestAssautPiedRares(t *testing.T) {
 	cache := os.Getenv("ASSAUT_CACHE")
 	if cache == "" {
@@ -391,7 +391,7 @@ func pcContexte(t int, exps []int) string {
 // slot->XUID, resolu par les morts. Si le bloc porte le gamertag EN CLAIR, l'attribution
 // devient directe — pour tous les modes, sans pont.
 //
-//	go test ./internal/games/halo_infinite/film/internal/facts/objectives/ -run AssautPiedTemoinsTags -v -timeout 30m
+//	go test ./internal/facts/objectives/ -run AssautPiedTemoinsTags -v -timeout 30m
 func TestAssautPiedTemoinsTags(t *testing.T) {
 	cache := os.Getenv("ASSAUT_CACHE")
 	if cache == "" {

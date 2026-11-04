@@ -35,10 +35,10 @@ package grammar
 // du film par `r12Prepare` et restaure en sortie.
 //
 // GARDES : `R12_FILMS`, `R12_IDS`, `R12_FENETRE_MS` (defaut 1500). Aucune ecriture, aucune
-// DuckDB, `CGO_ENABLED=0`. USAGE (depuis apps/go-api) :
+// DuckDB, `CGO_ENABLED=0`. USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 R12_FILMS=<repo>/data/cache/film_chunks R12_IDS=215e7022 \
-//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestR12Fenetres$' -count=1 -timeout 60m -v
+//	  go test -tags=research ./internal/grammar/ -run '^TestR12Fenetres$' -count=1 -timeout 60m -v
 
 import (
 	"fmt"

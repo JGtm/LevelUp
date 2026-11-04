@@ -14,14 +14,14 @@ import (
 // `KILLSOURCE_FIXTURES` : les films ne sont pas versionnés (107 Mo), donc les tests de
 // vérité terrain se skippent proprement quand ils ne sont pas là.
 //
-// ELLE REMPLACE UN CHEMIN ÉCRIT EN DUR (2026-08-05, R3). Le chemin visait
-// `c:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache`, un poste qui
+// ELLE REMPLACE UN CHEMIN ÉCRIT EN DUR (2026-08-05, R3). Le chemin visait le dossier `data/cache`
+// d'un ancien dossier de travail du poste de développement, un poste qui
 // n'existe plus : les tests adossés au cache — dont l'oracle à HUIT joueurs, celui qui
 // garde les noms `flag_grabs`/`zone_secures` — se skippaient donc EN PERMANENCE, sur
 // toutes les machines, et rien ne le disait sinon un message citant un chemin mort. Un
 // chemin absolu en dur ne casse pas : il se tait.
 //
-//	FILM_CACHE_ROOT=<repo>/data/cache go test ./internal/games/halo_infinite/film/internal/facts/objectives/
+//	FILM_CACHE_ROOT=<repo>/data/cache go test ./internal/facts/objectives/
 const filmCacheEnv = "FILM_CACHE_ROOT"
 
 // cacheRoot rend la racine du cache film, ou "" si la variable n'est pas posée.

@@ -26,7 +26,7 @@ package replay
 // LECTURE SEULE. Garde `OBJ_FILM` (racine du cache film) + `OBJ_FILM_ART`.
 //
 //	CGO_ENABLED=0 OBJ_FILM=<depot>/data/cache \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run '^TestPowerupSocleArchetypes$' -timeout 60m -v
+//	  go test ./replay/ -run '^TestPowerupSocleArchetypes$' -timeout 60m -v
 
 import (
 	"fmt"

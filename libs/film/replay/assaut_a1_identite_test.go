@@ -19,7 +19,7 @@ package replay
 // base.
 //
 //	$env:ATT_FILM="<repo>/data/cache"; $env:ASSAUT_FILM="35b75a31"
-//	go test ./internal/games/halo_infinite/film/replay/ -run AssautA1Identite -v
+//	go test ./replay/ -run AssautA1Identite -v
 
 import (
 	"fmt"

@@ -13,18 +13,18 @@ package grammar
 // fuzz qui affirmerait un resultat testerait le hasard.
 //
 // LES GRAINES sont des payloads REELS extraits de la mini-bobine (cf.
-// internal/games/halo_infinite/film/replay/testdata/minifilm_000d5950). Elles vivent sous
+// replay/testdata/minifilm_000d5950). Elles vivent sous
 // testdata/fuzz/FuzzFilmRecordReaders/ au format de corpus natif de Go, donc `go test` les
 // rejoue TOUTES a chaque execution, meme sans `-fuzz`. C est le regime nominal de ce fichier :
 // le fuzz long est une campagne qu on lance a la main, la non-regression est le corpus.
 //
 // CAMPAGNE (a la main, jamais en CI) :
 //
-//	go test ./internal/games/halo_infinite/film/internal/grammar/ -run FuzzFilmRecordReaders -fuzz FuzzFilmRecordReaders -fuzztime 60s
+//	go test ./internal/grammar/ -run FuzzFilmRecordReaders -fuzz FuzzFilmRecordReaders -fuzztime 60s
 //
 // REGENERATION DES GRAINES :
 //
-//	go test ./internal/games/halo_infinite/film/internal/grammar/ -run FuzzSeedsRegenerate -update
+//	go test ./internal/grammar/ -run FuzzSeedsRegenerate -update
 
 import (
 	"flag"
@@ -42,7 +42,7 @@ import (
 //
 // IL A PILOTE DEUX SORTIES, ET C'ETAIT UN DEFAUT (correction C5 de la revue E-R1, 2026-09-06).
 // Sous le nom `updateGoldens`, ce drapeau ouvrait AUSSI la reecriture du golden des familles
-// (`golden_minibobine_test.go`) : `go test ./internal/games/halo_infinite/film/internal/grammar/ -update` SANS `-run`
+// (`golden_minibobine_test.go`) : `go test ./internal/grammar/ -update` SANS `-run`
 // reecrivait le golden avec ce que le decodeur rendait a cet instant, et le paquet repondait
 // `ok`. Mesure : avec `br.Skip(2)` -> `br.Skip(3)` dans `readZoomRef`, la commande rendait
 // `ok` et le golden partait avec la valeur derivee. Une porte de regeneration doit nommer CE

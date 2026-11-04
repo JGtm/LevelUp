@@ -9,7 +9,7 @@ package grammar
 //
 //	CGO_ENABLED=0 EQUIPPORTE_FILMS=<repo>/data/cache/film_chunks EQUIPPORTE_ID=1ea71def \
 //	  EQUIPPORTE_CARTE=Deadlock EQUIPPORTE_OUT=<scratchpad>/lien go test -tags=research \
-//	  ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestLienDuMur$' -count=1 -v
+//	  ./internal/grammar/ -run '^TestLienDuMur$' -count=1 -v
 
 import (
 	"fmt"

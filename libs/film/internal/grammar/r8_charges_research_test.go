@@ -23,11 +23,11 @@ package grammar
 // l observateur du harnais est pose sur les lecteurs : les crochets ne sont plus des globaux
 // de paquet.
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 R8_FILMS=<repo>/data/cache/film_chunks \
 //	  R8_ARTIFACTS=<repo>/data/cache/replays/halo_infinite R8_IDS=00ba2e1c \
-//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestR8ChargesIdentite$' -timeout 60m -v
+//	  go test -tags=research ./internal/grammar/ -run '^TestR8ChargesIdentite$' -timeout 60m -v
 
 import (
 	"os"

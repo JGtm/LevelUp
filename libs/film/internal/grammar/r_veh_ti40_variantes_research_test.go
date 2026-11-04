@@ -13,7 +13,7 @@ package grammar
 // (un record saute par le balayeur d ancres, pas une largeur fausse). Par classe de chassis.
 //
 //	go test -tags=research,campagne_overlay -overlay=<json> -count=1 -timeout 120m \
-//	  -run '^TestRVehTi40Variantes$' ./internal/games/halo_infinite/film/internal/grammar/
+//	  -run '^TestRVehTi40Variantes$' ./internal/grammar/
 
 import (
 	"fmt"

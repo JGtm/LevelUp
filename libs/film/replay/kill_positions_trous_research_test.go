@@ -6,7 +6,7 @@ package replay
 //
 // Enquete du 2026-10-17 (question du user : « le joueur est mort, on a sa position, pareil pour le
 // tueur, non ? »). Instrument de LECTURE : il relit les faits deja cuits (fixtures versionnes et,
-// avec L1_DEPOT, le cache de faits du poste), AUCUN octet de film n'est decode, rien n'est ecrit.
+// avec L1_FAITS et L1_BORNES, le cache de faits du poste), AUCUN octet de film n'est decode, rien n'est ecrit.
 //
 // Il place chaque mort exactement comme `kill_positions` (`siegesDe` + `positionOf`, instant
 // `TempsMS*1000 + FilmClockOriginUS`, tolerance ± 120 ms) et, quand un cote n'est pas place, dit
@@ -21,8 +21,8 @@ package replay
 // comme `killcollector.entreeDuRegistre` (sans table du film, tirs ni horloge). KP_DUMP_KS=<films>
 // journalise les noms du fil des morts du film (`ff.Kills`).
 //
-//	L1_DEPOT=<checkout qui porte data/cache> KP_KILLS=<tsv film,time_ms,killer,victim> \
-//	  go test -tags research -count=1 -run '^TestTrousDesPositionsDeMort$' -v ./internal/games/halo_infinite/film/replay/
+//	L1_FAITS=<dossier des faits de film> L1_BORNES=<map_quant_bounds.json> KP_KILLS=<tsv film,time_ms,killer,victim> \
+//	  go test -tags research -count=1 -run '^TestTrousDesPositionsDeMort$' -v ./replay/
 
 import (
 	"bufio"
@@ -369,16 +369,15 @@ func TestTrousDesPositionsDeMort(t *testing.T) {
 		fix.mesurerFilm(t, c, kills[b.Short8])
 	}
 	rendreBilan(t, "CORPUS VERSIONNE", fix)
-	depot := os.Getenv("L1_DEPOT")
-	if depot == "" {
+	dir := os.Getenv(envMesureFaits)
+	if dir == "" {
 		return
 	}
 	loc := nouveauBilan()
-	cat, err := profile.LoadMapQuantCatalog(filepath.Join(depot, "data", "titles", "halo_infinite", "reference", "map_quant_bounds.json"))
+	cat, err := profile.LoadMapQuantCatalog(cheminMesureRequis(t, envMesureBornes))
 	if err != nil {
 		t.Fatalf("catalogue : %v", err)
 	}
-	dir := filepath.Join(depot, "data", "cache", "film_facts", "halo_infinite")
 	entrees, err := os.ReadDir(dir)
 	if err != nil {
 		t.Fatalf("cache de faits : %v", err)

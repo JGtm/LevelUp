@@ -9,7 +9,7 @@ package grammar
 //
 //	CAMPAGNE_RACINE=<film_chunks> CAMPAGNE_SORTIE=<dossier hors data> \
 //	CAMPAGNE_PAQUETS='fb1a1a72:7:92;1c4c63c2:24:510' \
-//	go test -tags=research -run '^TestCampagneL8Paquets$' ./internal/games/halo_infinite/film/internal/grammar/
+//	go test -tags=research -run '^TestCampagneL8Paquets$' ./internal/grammar/
 
 import (
 	"fmt"

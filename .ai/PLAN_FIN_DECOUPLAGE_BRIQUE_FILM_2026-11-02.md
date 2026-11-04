@@ -537,19 +537,76 @@ Ne sont pas listés : les ~50 tests hors archlint qui lisent les `.go` de leur p
 
 ## Lot 1 — Couplages à l'hôte, sans changement de comportement
 
-- [ ] 1.1 Commentaires et chaînes de `libs/film` : `internal/games/halo_infinite/film/...` → chemin relatif au
+- [x] 1.1 Commentaires et chaînes de `libs/film` : `internal/games/halo_infinite/film/...` → chemin relatif au
       module ; commandes `go test ./internal/games/halo_infinite/film/...` → `go test ./...` depuis `libs/film` ;
       un fichier de LevelUp cité en commentaire → son rôle (« l'hôte », « le constructeur de rejeu de l'hôte »).
       Script déterministe versé au scratchpad, liste des fichiers touchés dans le compte rendu. Goldens exclus (D-6).
-- [ ] 1.2 Les 7 chemins absolus (`C:\Users`, `Projects\LevelUp`) : résolus par `racineDepot(t)` ou retirés.
-- [ ] 1.3 Registre des replis : `Site.Fichier` relatif au module, `Appelants` nommés par rôle (D2-L3-f). Avant :
+      — FAIT (2026-11-04). Script `reecriture` (Go, deux passes, annexe `scratchpad/lot1_outils/reecriture/main.go`) :
+      il ne touche QUE les lignes de commentaire `//` des `.go` de `libs/film`, hors `testdata/` (D-6) et hors
+      `revision/` (le chemin historique y est la clé du cadre de hachage : `cadre.go:37`, `couches.go:17`). Règles :
+      `./internal/games/halo_infinite/film/` → `./` ; `[apps/go-api/]internal/games/halo_infinite/film/` et
+      `games/halo_infinite/film/` → chemin relatif au module ; `games/halo_infinite/filmprofile` → `internal/profile` ;
+      `depuis apps/go-api` et `cd apps/go-api` → `depuis libs/film` / `cd libs/film`. Résultat : 561 fichiers, 796
+      lignes par le script (liste : `temoins_film/lot1/1.1_fichiers_touches*.tsv`), plus 11 fichiers à la main
+      (`temoins_film/lot1/lot1_tous_fichiers_modifies.txt` = les 572 fichiers de `libs/film` modifiés par le lot,
+      tous items confondus) : les 5 `rev_test.go` et `types/shapes_test.go` (commande de régénération passée dans un
+      message d'échec, jamais écrite dans un golden : vérifié), `filmshell/catalogue_test.go`,
+      `highlight_events_jgtm_test.go`, `weaponv3/pi_resolver_test.go`, `replay/layers_test.go`,
+      `usage_summary_families_guard_test.go` (un fichier de LevelUp cité → son rôle). Commandes mixtes (un `go run`
+      de l'hôte suivi d'un `go test` de la brique) : précisées à la main (`damagetag.go`, `e191_origine_mesure…`,
+      `vehicle_end_acceptation_test.go`). Dix fichiers relus à la main (tirés tous les 55) : sens conservé. Contrôle :
+      les 53 chemins distincts réécrits existent sous `libs/film` sauf trois références DÉJÀ mortes avant le lot
+      (`filmdec`, `internal/facts/killsource/world.go`, `replay/i56_capacity_episodes_research_test.go`, voir D-L1-4).
+      Résidu voulu : `revision/` (3 fichiers de production, 4 de test), 8 littéraux de test que des tests ÉCRIVENT dans
+      un golden ou un `PROVENANCE.txt` (`golden_render_test.go:28`, `minibobine_test.go:156`,
+      `frame_closure_ratchet_test.go:204`, `keyframe_closure_cuisson_ratchet_test.go:81`,
+      `keyframe_closure_ratchet_test.go:182`, `marche_fermeture_test.go:36`, `minifilm_builds_test.go:261`,
+      `minifilm_test.go:148` : les changer = régénérer, D-6, voir D-L1-3), et les noms de paquets de l'hôte cités sans
+      préfixe `apps/go-api` (voir D-L1-1). Preuve : T2, 0 golden changé et cinq `Rev` inchangées.
+- [x] 1.2 Les 7 chemins absolus (`C:\Users`, `Projects\LevelUp`) : résolus par `racineDepot(t)` ou retirés.
+      — FAIT. `objectives/extract_test.go:18` (prose seule, le chemin mort retiré) ; `grammar/vehicules_v13_deadstate_test.go:565`
+      (le repli sur un chemin de poste est retiré : sans `V13_FILM_ROOT` la mesure se saute en le disant ; le fichier
+      reste à 580 lignes, plafond du ratchet de taille) ; `vehicules_chassis_inventaire_test.go:32`, `zone_colline_nom_temoin_test.go:21`,
+      `zone_etat_initial_temoin_test.go:19`, `zone_proprietaire_nom_temoin_test.go:17` (exemples d'usage en `<depot>/…`) ;
+      `research/cmd_rdata_weapon_scan/main.go:44` (constante remplacée par `RDATA_SCAN_CACHE`, arrêt explicite si absente,
+      documentée dans l'en-tête). Preuve : `grep -rnE '[A-Za-z]:.{1,3}Users|Projects.{1,3}LevelUp' libs/film --include=*.go` vide.
+- [!] 1.3 Registre des replis : `Site.Fichier` relatif au module, `Appelants` nommés par rôle (D2-L3-f). Avant :
       lister les lecteurs du registre (route admin, test) et prouver que la sortie servie ne change pas, ou écrire
       le changement.
-- [ ] 1.4 Les 9 instruments `research` du backlog (`filepath.Join(depot, "data", ...)`, 8 sous `libs/film/replay`,
+      — NON TRAITÉ, justification écrite. Lecteurs (grep `decfilm.Table()` / `decfilm.Lire(` / `.Sites` / `.Fichier` /
+      `.Appelants`) : AUCUNE route admin ni document publié (le document de rejeu ne porte que `Name`/`Hits`,
+      `fallbacks_publication.go:55-61`) ; mais six GARDES de `apps/go-api` OUVRENT `racine/Site.Fichier` et comparent
+      l'ancre : `archlint/no_unregistered_fallback_test.go:190-206` et `:238-243`,
+      `no_unregistered_fallback_sites_test.go:106` et `:183-188`, `fallback_versement_test.go:134-140` ;
+      `fallback_versement_test.go:211-218` compare `Appelants` à des chemins relatifs au dépôt (`appelantAdmis(rel, …)`) ;
+      `service/replay_vehicle_scenery_{aloft,rule}_test.go:143,193` testent `HasSuffix(Sites[0].Fichier,
+      "service/replay_vehicle_scenery_rule.go")` ; `cmd/replay-verite/main.go:137` ne lit que `CompteurBranche`.
+      `Site.Fichier` est donc un chemin relatif à la racine du dépôt HÔTE (`libs/film/…` pour les 9 sites de la brique,
+      déjà dans la forme que les gardes ouvrent) : le passer « relatif au module » ou le nommer « par rôle » casse six
+      gardes, et un rôle ne se résout pas en fichier. 32 lignes de production nomment des fichiers de l'hôte
+      (`pkgKillcollector`, `pkgReplaybuild`, `siteDecorM7`, `diag_weapons_v3`, `derivations_backlog.go`). La séparation propre
+      (les sites de l'hôte déclarés par l'hôte, le registre de la brique ne gardant que les siens) est un changement de
+      contrat de la façade : D-L1-2, à décider avec le lot 2. Seule la partie sans effet est faite : les commentaires
+      d'en-tête des `registre_*.go` (1.1). `repli.go:174` décrit le contrat réel et reste.
+- [x] 1.4 Les 9 instruments `research` du backlog (`filepath.Join(depot, "data", ...)`, 8 sous `libs/film/replay`,
       1 sous `apps/go-api/internal/replaybuild`) : chemin reçu par variable ou drapeau de l'instrument côté brique,
       `PathResolver` côté go-api.
-- [ ] 1.5 Haiku : `docs/CONFIGURATION.md:150` (`halo.` → `tokencache.InvalidateCachedPlayerTokens`, PUB-4-c).
-- [ ] 1.6 MESURE (D-7, décision du 2026-11-04 : remplacer les identités réelles), sans rien modifier : pour chaque
+      — FAIT. Les 9 fichiers sont tous sous `//go:build research` (instruments, jamais production). Côté brique :
+      `replay/mesure_chemins_research_test.go` (neuf) pose trois variables PROPRES aux mesures, sans préfixe `LEVELUP_` :
+      `L1_BORNES` (le fichier `map_quant_bounds.json`), `L1_FAITS` (dossier des `<id>.filmfacts.bin`), `L1_ARTEFACTS`
+      (dossier des `<id>.json` de rejeu) ; une mesure qui en a besoin et ne la trouve pas s'arrête en la nommant
+      (`cheminMesureRequis`) ; l'artefact facultatif de `score_koth_emissions` garde son caractère facultatif
+      (`lireArtefactMesure`). `L1_DEPOT` disparaît des huit en-têtes, qui documentent les nouvelles variables ; les
+      tests restent sautés par défaut. Côté go-api : `drapeau_bases_film_parc_research_test.go` passe par
+      `title.NewPathResolver(L1_DEPOT).ReplayArtifactPath` et `.FilmFactsPath`. Preuve : `go vet -tags research ./...`
+      (libs/film) et `go vet -tags research ./internal/replaybuild/` (go-api) verts ;
+      `grep -rnE 'Join\(depot, "data"' libs/film apps/go-api/internal/replaybuild` vide. Restent 36 fichiers de
+      `libs/film` avec un autre `filepath.Join(…, "data", …)` : hors des 9 du backlog, D-L1-5.
+- [x] 1.5 Haiku : `docs/CONFIGURATION.md:150` (`halo.` → `tokencache.InvalidateCachedPlayerTokens`, PUB-4-c).
+      — FAIT. Nom vérifié : `func InvalidateCachedPlayerTokens` à `apps/go-api/internal/platform/auth/tokencache/player_token_cache.go:144`.
+      Corrigé en `docs/CONFIGURATION.md:150` et dans la copie FR `docs/FR/CONFIGURATION.md:151`. Les ADR 0023 (`:130`) sont
+      de l'historique EN et ne sont pas réécrites.
+- [x] 1.6 MESURE (D-7, décision du 2026-11-04 : remplacer les identités réelles), sans rien modifier : pour chaque
       fixture de film de `libs/film` (8 minifilms de `replay/testdata`, `testdata/`, `internal/grammar/testdata`,
       `internal/source/testdata`, `internal/profile/testdata`) : (a) nombre de xuids et de gamertags distincts
       lus par le décodeur (par `decfilm`, pas par grep) ; (b) les champs de la grammaire qui les portent (table
@@ -559,10 +616,109 @@ Ne sont pas listés : les ~50 tests hors archlint qui lisent les `.go` de leur p
       ces identités, par nombre ; (d) les goldens de révision qui changeraient (si les octets des films entrent
       dans une empreinte). Tableau versé au plan sous « Mesure des identités (1.6) » + une estimation en heures
       des deux options (réécriture à longueur constante vs nouveaux films joués par des comptes du user).
-- [ ] 1.7 Gate : `go vet ./...` et `go vet -tags research ./...` dans `libs/film` ; T1, T2 (empreintes insensibles
+      — FAIT, tableau ci-dessous. Aucune fixture modifiée (`git status` : aucun fichier sous `testdata/` touché).
+- [x] 1.7 Gate : `go vet ./...` et `go vet -tags research ./...` dans `libs/film` ; T1, T2 (empreintes insensibles
       aux commentaires : 0 golden changé), T5 ;
       `grep -rlE 'internal/games/halo_infinite/film|C:\\\\Users' libs/film --include=*.go | grep -v _test.go` vide.
       Commit « lot 1 ».
+      — FAIT. `go vet ./...` et `go vet -tags research ./...` (libs/film) verts, `go build ./...` (apps/go-api) vert,
+      `gofmt -l` vide. T1 : 21 556 lignes (paquet, test, verdict), IDENTIQUES au lot 0 (MD5 de la liste triée
+      `f1f0ed84c7592b8a14f75a6b067a4aed`, 21 176 pass, 0 fail, 380 skip, 0 disparition, 0 ajout) ; 349 paquets de go-api.
+      T2 : cinq `Rev` inchangées, SHA-256 des 34 `*.golden` identiques (`diff` vide), `go test ./revision/…` et
+      `./internal/… -run 'Rev|Empreinte|Perimetre'` verts. T5 : `levelup/go-api` = 0 dans les quatre briques (274, 149,
+      233, 154 paquets, listes identiques au lot 0). Lint : `golangci-lint run --config ../../apps/go-api/.golangci.yml ./...`
+      depuis `libs/film` = 0 issue. Grep final non-test : vide hors `revision/cadre.go`, `couches.go` et `perimetre.go`
+      (clé et prose du cadre de hachage historique, exclus par décision de l'item 1.1). Premier passage de T1 : le
+      ratchet `TestTailleDesFichiersDuFilmNeCroitPas` a rougi (583 lignes pour un plafond de 580 sur
+      `vehicules_v13_deadstate_test.go`), puis `TestPlafondsDeTailleNeSontPasPerimes` (576 < 580) : le fichier a été
+      ramené à 580 lignes exactement ; `archlint` rejoué seul (`-timeout 20m`, 487 tests verts, 200 s) et `libs/film`
+      rejoué entier (119 s). T3 et T4 ne sont pas rejoués : le lot ne change ni le code de production ni les
+      fixtures (comparaison T2 à l'appui).
+
+### Mesure des identités (1.6)
+
+Mesure du 2026-11-04 (HEAD `5d0a239f89` plus le lot 1), aucune fixture modifiée. Outil jetable, NON commité (annexe
+`scratchpad/lot1_outils/zz_mesure_identites_jetable_test.go.txt`) : un test de `internal/grammar` ouvre chaque dossier de
+film par `source.LoadDir`, lit la table des joueurs (`ScanFilmPlayerTable`) et le fil des morts (`ScanDeaths`), puis
+cherche chaque xuid (8 octets, ordre LE et ordre MSB) et chaque gamertag (UTF-16 LE et BE) à CHACUN des huit alignements de
+bit, chunk par chunk. Sorties dans `temoins_film/lot1/1.6_*.txt` (mesure brute, faisabilité, xuids par fichier, binaires
+dérivés).
+
+**(a) Identités lues par le décodeur** (table des joueurs + fil des morts ; « occ. » = occurrences de xuid trouvées dans
+les octets des chunks : LE = paquets d'identité, évènements, clé de jointure ; MSB = xuid de la table du registre).
+
+| Fixture | Chunks | xuids | gamertags | occ. LE | occ. MSB |
+|---|---|---|---|---|---|
+| `replay/testdata/minifilm_000d5950` (sans registre) | 3 | 8 | 8 | 262 | 0 |
+| `minifilm_111fa685` (build HI_1_10_0) | 3 | 25 | 25 | 496 | 24 |
+| `minifilm_11de8353` (HI_1_9_0) | 3 | 27 | 27 | 417 | 24 |
+| `minifilm_60ae07c4` (HI_1_8_0) | 3 | 8 | 8 | 498 | 8 |
+| `minifilm_a521164d` (HI_1_4_1) | 3 | 27 | 27 | 297 | 24 |
+| `minifilm_bcb6d393` (HI_1_12_0) | 3 | 11 | 11 | 144 | 8 |
+| `minifilm_e5adf7b2` (HI_1_11_0) | 3 | 27 | 27 | 514 | 23 |
+| `minifilm_fb1a1a72` (HI_1_13_0) | 3 | 8 | 8 | 396 | 8 |
+| `internal/facts/killsource/testdata/minibobine_000d5950` | 7 | 8 | 8 | 334 | 8 |
+| `…/minibobine_e5adf7b2` | 3 | 27 | 27 | 652 | 23 |
+| `testdata/corpus_objectifs/minibobine_objectifs/{koth_0a247154,strongholds_7344d24f}` | 8 + 8 | 0 | 0 | 0 | 0 |
+| `internal/grammar/testdata/v41_chunk_he.bin` (chunk des temps forts, zlib) | 1 | 3 (parmi les 289 connus) | 242 occ. | 113 | 0 |
+| `internal/grammar/signaux/testdata/pied_bloc_53ce4390.bin` | 1 | 1 | 1 occ. | 1 | 0 |
+
+Union : **133 xuids pour 133 gamertags** (un gamertag par xuid) dans les octets de film. **130 gamertags sur 133 sont déjà
+des pseudonymes** de même longueur (`Joueur000…`, `J000…`, outil `apps/go-api/cmd/anonymise-gamertags`, v8.0.2) ; trois
+restent réels, les comptes consentants ou du propriétaire : `JGtm`, `Chocoboflor`, `Madina97294`. Aucune occurrence dans les
+24 `entites_`/`equipement_`/`inputs_*.bin.gz` (décompressés), `vue_a_bcb6d393_1_204.bin` et les 15 graines de fuzz.
+
+**(b) Où et sous quelle forme la grammaire porte l'identité**
+
+| Où | Champ | Forme | Réécriture à longueur constante |
+|---|---|---|---|
+| registre `chunk_00`, table des joueurs (`player_table*.go`) | XUID du siège | entier 64 bits lu MSB d'abord, à un décalage de bit quelconque (85 bits d'en-tête avant) ; le repérage des sièges exige `0x0009000000000000 <= xuid < 0x000A000000000000` (`player_table.go:129-130`, `balayerCandidats`) | oui, À CONDITION que le faux xuid reste dans cette plage (2 533 274 790 395 904 à 2 814 749 767 106 559) ; hors plage la table n'est plus trouvée (« aucune table de 32 slots », constaté sur un premier essai) |
+| idem | clé de jointure `sub+0xcb8` | le même xuid, 8 octets dans l'ordre du flux (1 par siège, retrouvé comme motif LE) | oui |
+| idem | gamertag | unités UTF-16 de 16 bits MSB d'abord, 16 unités au plus, terminateur nul sauf chaîne pleine ; le nombre d'unités entre dans la longueur prédite de l'enregistrement (`longueurPredite`) ; 2 copies par siège mesurées (une lue par `lireGamertag`, l'autre non attribuée à un champ nommé) | oui à nombre d'unités égal (déjà fait par l'outil de la v8.0.2) |
+| chunks de réplication, paquets d'identité (`player_index.go`, `weaponv3.ResolveXuidToPI`) et entrées de roster de type 8 (`roster_type8.go`) | xuid, gamertag | xuid : 8 octets LE à un décalage de bit quelconque, précédés de 5 bits d'index de joueur (type 8 : dans l'ordre d'octets du flux) ; gamertag : UTF-16 | oui |
+| chunk des temps forts / pied (`highlight_events.go`) | xuid et gamertag de chaque évènement | xuid : 8 octets LE à décalage quelconque, filtré sur `[2e15, 3e15]` (`minXUID`/`maxXUID`) ; bloc de 60 octets dont gamertag UTF-16LE sur 32 octets FIXES (16 unités, bourrage nul) ; 93 à 491 évènements par fixture | oui, largeur fixe |
+| `BOT_METADATA` (type 12) | noms de bots | pas une identité de personne | sans objet |
+| chat | aucun lecteur ni motif dans la grammaire | — | — |
+
+Essai en mémoire, rien d'écrit : tous les motifs de xuid et de gamertag remplacés à longueur égale dans les chunks
+décompressés de 10 dossiers (xuids factices dans la plage), puis relecture. Résultat : xuids, temps, index de joueur et
+nombre de sièges **identiques au mapping près sur 10 dossiers sur 10** ; la table des joueurs et le fil des morts sont
+identiques sur 8 sur 10 pour les gamertags, les deux écarts étant des collisions de préfixe entre PSEUDONYMES
+(`Joueur000101` remplacé à l'intérieur de `Joueur0001010…`), que la table de correspondance de l'outil existant évite.
+La longueur constante est donc possible sans toucher une autre structure ; elle demande de recompresser (zlib au niveau
+déclaré par l'en-tête de chaque chunk, déjà géré par l'outil de la v8.0.2).
+
+**(c) Fichiers de résultat attendu qui portent des xuids** (grep `25\d{14}` sur tout `libs/film`, plus les octets)
+
+| Fichier | Nombre | xuids | Remarque |
+|---|---|---|---|
+| `replay/testdata/equivalence/<id>.facts.json` | 20 | 311 occ. (8 à 29 par fichier) | entrées du harnais `replay-equiv`, extraites du parc réel : 156 des xuids du texte viennent de films SANS fixture binaire |
+| `replay/testdata/assembly_<id>.golden` | 8 | 143 occ. | goldens à régénérer (`-update`) |
+| `internal/grammar/signaux/testdata/pied_bloc_53ce4390.PROVENANCE.txt` | 1 | 2 | prose |
+| `_test.go` de `libs/film` | 32 | 188 valeurs distinctes (343 occ.) | littéraux de test et commentaires |
+| `.go` de production (prose de commentaire) | 11 | 14 | `objectives/{helpers,rev,slotidentity_*}.go`, `grammar/rev_chronique.go`, `replay/{document_chronicle,flag_carries_home,flag_objects,identity_registry_pont,vehicle_tracks}.go` |
+| `bots_<id>.json` (8), `entites_`/`equipement_`/`inputs_*.bin.gz` (24), `fuzz` (15), goldens killsource (4) | — | 0 | les goldens killsource portent des gamertags (déjà pseudonymes), pas de xuid |
+| `equivalence/*.tsv` (21) | 21 | 0 en clair | digests SHA-256 de calques : bougent si le calque cite un xuid, non mesuré |
+
+Total : 420 xuids distincts dans les fichiers de `libs/film` (texte et code), dont 133 dans les octets de film.
+
+**(d) Révisions.** Les octets des films n'entrent dans AUCUNE empreinte : `revision/empreinte.go:127` et
+`revision/perimetre.go:195` écartent tout ce qui vit sous `testdata/` et les `_test.go`, et les périmètres hachent des
+SOURCES de production (jetons, fichiers embarqués de `damagetag`/`killicon`). Les cinq `Rev` et les 10 goldens de
+révision et de périmètre ne bougent donc pas (chiffre confirmé au lot 1 par T2). Ce qui bougerait : les 8
+`assembly_*.golden`, `equivalence/minifilm.tsv` et l'empreinte des temps forts v41 (déjà bougée par la v8.0.2), plus les
+20 couples `facts.json`/`tsv` du corpus. Point de fond : ces 20 couples servent à `replay-equiv` (T3), qui compare des
+films RÉELS du parc à leurs références ; des références à xuids factices ne se comparent plus au parc sans une table
+de correspondance inverse dans le harnais.
+
+**Estimation.**
+
+| Option | Contenu | Heures d'agent |
+|---|---|---|
+| A. Réécriture à longueur constante (étend `cmd/anonymise-gamertags`) | formes xuid binaires LE et MSB aux 8 décalages et décimale à 16 chiffres : 2 h ; table de correspondance hors dépôt et application aux 11 dossiers, `v41`, `pied_bloc`, 20 `facts.json`, 8 `assembly`, `PROVENANCE` : 1,5 h ; preuve par les balayages du décodeur : 2 h ; régénération des goldens et digests dérivés avec chronique : 1,5 h ; littéraux des 32 tests (188 valeurs) et prose des 11 fichiers de production : 2 h ; table inverse dans `replay-equiv` pour que les 20 références restent comparables au parc : 2 à 3 h ; gates T1, T3, T4 : 1 h d'attente | 12 à 14 h (1,5 à 2 jours), aucune partie à jouer, révisions inchangées, aucune recuisson |
+| B. Nouveaux films joués par des comptes de l'utilisateur | reconstruire les 10 dossiers, `v41`, `pied_bloc` et les 20 références du corpus ; régénérer tous les goldens qui en dépendent | 25 à 40 h plus 3 à 6 h de parties ; perd la couverture de 7 builds anciens (HI_1_4_1 à HI_1_13_0 : seul le build courant se joue) et des rosters de 8 à 27 identités (un compte remplit un siège) |
+
+Recommandation du lot : A. B ne tient que si la couverture par build est abandonnée.
 
 ## Lot 2 — Réorganisation protocole / exploitation et API avant le tag (VALIDÉ le 2026-11-04 ; Opus)
 
@@ -706,3 +862,41 @@ Lot 0 (2026-11-04), notées, non traitées :
   (+1 à +3 sur quatre paquets). Sans effet sur un lot.
 - **D-L0-6** `libs/himap` porte 9 variables exportées modifiables, 3 fichiers de production > 500 L et 1 fonction
   > 80 L, hors des racines de `film_exported_vars`, `film_file_size` et `film_function_length`.
+
+Lot 1 (2026-11-04), notées, non traitées :
+
+- **D-L1-1** Les noms de paquets de l'hôte cités SANS préfixe `apps/go-api` dans les commentaires de `libs/film` ne sont pas
+  couverts par la règle chiffrée du lot (qui mesurait `apps/go-api` et l'ancien chemin) : `replaybuild` dans 96 fichiers
+  (67 de production), `killcollector` 50 (39), `replayartifacts` 8, `cmd/levelup` 5, `filmfetch` 4, `internal/sync/` 6,
+  `internal/service/` 7, `cmd/replay-*` 25 (instruments d'usage `go run ./cmd/replay-equiv`, informatifs). Les nommer « par
+  rôle » demande un jugement fichier par fichier ; à statuer avant le lot 4 (README) : lesquels expliquent un contrat et se
+  gardent en prose, lesquels disparaissent.
+- **D-L1-2** Registre des replis (item 1.3, `[!]`) : `Site.Fichier` et `Appelants` sont des chemins relatifs au dépôt hôte
+  lus par six gardes de go-api ; 32 lignes nomment des fichiers de l'hôte. La séparation propre (chaque dépôt déclare ses
+  sites, la façade `decfilm.Table()` ne rend que ceux de la brique, les gardes de l'hôte ajoutent les leurs) change le
+  contrat de la façade (`Site`, `Table`, `Lire` dans `decfilm.go:98-125`) : décision à prendre au lot 2 (qui réorganise
+  déjà la façade) ou à reporter, avant le tag.
+- **D-L1-3** Huit littéraux de test écrits dans des goldens ou des `PROVENANCE.txt` citent encore
+  `./internal/games/halo_infinite/film/…` (`golden_render_test.go:28`, `minibobine_test.go:156`,
+  `frame_closure_ratchet_test.go:204`, `keyframe_closure_cuisson_ratchet_test.go:81`, `keyframe_closure_ratchet_test.go:182`,
+  `marche_fermeture_test.go:36`, `minifilm_builds_test.go:261`, `minifilm_test.go:148`), plus les en-têtes des goldens (D-6) :
+  à changer ensemble à la prochaine régénération volontaire de chacun.
+- **D-L1-4** Références périmées DÉJÀ présentes avant le lot, laissées : commandes `go test ./internal/analysis/filmdec/`
+  (3 fichiers `mesure_entete_ti9*_test.go`), `./...grammar/`, `./...profile/`, `./...source/` (7 fichiers de test et prose de
+  `rev_test.go`, `revision/porte.go:8`, formes tronquées), `go run ./cmd/tmp_tagname` (`damagetag.go`, commande
+  absente de l'hôte), fichiers cités mais absents (`internal/facts/killsource/world.go` dans `grammar/registry.go:315`,
+  `replay/i56_capacity_episodes_research_test.go`), package nommé `filmdec` (disparu). Aucune ne casse un test.
+- **D-L1-5** Hors des 9 instruments du backlog, 36 fichiers de `libs/film` portent encore un `filepath.Join(…, "data", …)` ou
+  un `../../../data/titles/…` (par exemple `equipment_changes_film_research_test.go:28`, `duels_sonde_research_test.go:135`,
+  `cle_du_film_recensement_research_test.go:53`) : même défaut que l'item 1.4, périmètre différent.
+- **D-L1-6** Quatre tests de la brique lisent des fichiers de l'hôte par un chemin éclaté que le grep des chaînes ne voit pas :
+  `internal/grammar/highlight_events_jgtm_test.go:213` (`apps/go-api/internal/sync/testdata/jgtm_full_match`),
+  `replay/usage_summary_families_guard_test.go:55` (`apps/go-api/internal/games/mappings/loader_replay_labels_equipment.go`,
+  `t.Fatalf` si absent), `internal/facts/objectives/families_parite_ts_test.go:52` et `replay/contract_fixtures_test.go:218`
+  (`apps/web/…`). Ils se sautent hors du dépôt hôte (`racineDepot`), mais la brique en dépend : à trancher au lot 3 ou 4.
+- **D-L1-7** Le ratchet `film_file_size_test.go` fige `vehicules_v13_deadstate_test.go` à 580 lignes ET refuse un plafond périmé
+  (`TestPlafondsDeTailleNeSontPasPerimes`) : toute retouche de ce fichier doit se faire à nombre de lignes constant (leçon du
+  premier passage de T1 du lot 1).
+- **D-L1-8** Un faux xuid doit rester dans `[0x0009000000000000, 0x000A000000000000[` pour que le repérage de la table des
+  joueurs le trouve (`player_table.go:129-130`) : contrainte à écrire dans l'outil de pseudonymisation des xuids si l'option A
+  de l'item 1.6 est retenue (item 4.0).

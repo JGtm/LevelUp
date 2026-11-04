@@ -45,10 +45,10 @@ package replay
 // LECTURE SEULE, aucune base, aucun decodage de film : l'instrument relit les ARTEFACTS JSON
 // deja cuits (`ReplayDocument`) et ne touche a rien.
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	PADS_PROX_CORPUS=<repo>/data/cache/replays/halo_infinite \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run '^TestPadsProximity$' -v -count=1
+//	  go test ./replay/ -run '^TestPadsProximity$' -v -count=1
 
 import (
 	"encoding/json"

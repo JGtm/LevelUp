@@ -67,10 +67,10 @@ package replay
 // SOUS GARDE (ONDE_FILM, qui doit pointer 00162144 — la chronologie est celle de CE film).
 // Lecture de paquets pure : aucun Scan*, aucun etat global touche.
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 ONDE_FILM=<repo>/data/cache/film_chunks/00162144 \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run TestViseeOndeCarree -v -timeout 60m
+//	  go test ./replay/ -run TestViseeOndeCarree -v -timeout 60m
 
 import (
 	"math/bits"

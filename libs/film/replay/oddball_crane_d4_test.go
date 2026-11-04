@@ -41,7 +41,7 @@ package replay
 // PAR PROCESSUS, lecture seule, AUCUNE base.
 //
 //	$env:ATT_FILM="<repo>/data/cache"; $env:ODDBALL_FILM="43716616"
-//	go test ./internal/games/halo_infinite/film/replay/ -run EtatVivantOddballIdentite -v
+//	go test ./replay/ -run EtatVivantOddballIdentite -v
 
 import (
 	"fmt"

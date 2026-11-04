@@ -13,9 +13,9 @@ package replay
 // tourne en une fraction de seconde et se rejoue sans re-payer le balayage. Il se saute
 // proprement tant que les deux mesures ne sont pas sur le disque.
 //
-// USAGE (depuis apps/go-api, apres avoir mesure les deux Strongholds) :
+// USAGE (depuis libs/film, apres avoir mesure les deux Strongholds) :
 //
-//	go test -count=1 -run TestZoneEtatPhase2aStabilite -v ./internal/games/halo_infinite/film/replay/
+//	go test -count=1 -run TestZoneEtatPhase2aStabilite -v ./replay/
 
 import (
 	"os"

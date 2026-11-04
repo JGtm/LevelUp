@@ -35,7 +35,7 @@ package grammar
 //
 //	HGREN_ROOT=<parc>/data/cache/film_chunks \
 //	HGREN_IDS=111fa685,b81f6415,60ae07c4,0797ce72 \
-//	  go test ./internal/games/halo_infinite/film/internal/grammar -run TestVersionGrenadeTags -v -timeout 3600s
+//	  go test ./internal/grammar -run TestVersionGrenadeTags -v -timeout 3600s
 //
 // Reglage : HGREN_TOP (nombre d'identifiants detailles par film, defaut 8).
 

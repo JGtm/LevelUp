@@ -11,7 +11,7 @@ package replay
 // LECTURE SEULE de trois fichiers de faits (aucun film, aucune ecriture), sous la voie film :
 //
 //	M1_FAITS=<depot>/data/cache/film_facts/halo_infinite \
-//	  go test -tags research -count=1 -run '^TestPortePositionsTemoins$' -v ./internal/games/halo_infinite/film/replay/
+//	  go test -tags research -count=1 -run '^TestPortePositionsTemoins$' -v ./replay/
 
 import (
 	"context"

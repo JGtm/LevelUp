@@ -29,7 +29,7 @@ package grammar
 //	X   film fmt ti cle compte                                          agregats tous archetypes
 //
 //	RI27C_FILMS=<id,...> RI27C_RACINE=<film_chunks> RI27C_OUT=<dossier> RI27C_CARTES=<id=Carte;...> \
-//	  go test -tags=research -count=1 -run '^TestEcart108$' ./internal/games/halo_infinite/film/internal/grammar/
+//	  go test -tags=research -count=1 -run '^TestEcart108$' ./internal/grammar/
 
 import (
 	"fmt"

@@ -27,10 +27,10 @@ package grammar
 // nomme UN chemin, jamais une liste. LECTURE SEULE, aucune ecriture disque. Le verrou de
 // process est pris : la marche ecrit des globaux de paquet.
 //
-// USAGE (depuis apps/go-api, un film a la fois, en avant-plan) :
+// USAGE (depuis libs/film, un film a la fois, en avant-plan) :
 //
 //	CGO_ENABLED=0 DELTA_WITNESS_FILM=<depot>/data/cache/film_chunks/000d5950 \
-//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run TestDeltaWalkWitness -v
+//	  go test ./internal/grammar/ -run TestDeltaWalkWitness -v
 
 import (
 	"fmt"

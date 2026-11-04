@@ -24,7 +24,7 @@ package grammar
 //
 //	LT_RACINE=<film_chunks> LT_FILMS=<id,id> LT_SORTIE=<dir hors data> LT_VARIANTES=<v,v> \
 //	  go test -tags=research -count=1 -timeout 120m -run '^TestLT' \
-//	  ./internal/games/halo_infinite/film/internal/grammar/
+//	  ./internal/grammar/
 
 import (
 	"fmt"

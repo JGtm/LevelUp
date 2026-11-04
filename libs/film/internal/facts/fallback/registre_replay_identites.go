@@ -1,7 +1,7 @@
 package fallback
 
 // registre_replay_identites.go — les replis des calques IDENTITÉ, VIES et VÉHICULE
-// (`internal/games/halo_infinite/film/replay/`). Les replis des PLACES et des PRÉSENCES du roster
+// (`replay/`). Les replis des PLACES et des PRÉSENCES du roster
 // vivent dans `registre_replay_places.go` depuis le lot M2.3 ; ceux des calques DRAPEAU, ZONE,
 // CRÂNE et BOMBE dans `registre_replay_objectifs.go` depuis le lot J5.5 (2026-09-27).
 

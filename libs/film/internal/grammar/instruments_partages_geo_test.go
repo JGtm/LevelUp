@@ -289,7 +289,7 @@ const lot1chReferenceBase = 512
 
 // sondePosTolUS : tolerance temporelle evenement<->position. MEME valeur que
 // replay/shots.go shotPosToleranceUS (120 ms) ; recopiee ici pour rester DANS filmdec
-// (pas d'import de internal/games/halo_infinite/film/replay depuis un instrument de filmdec).
+// (pas d'import de replay depuis un instrument de filmdec).
 const sondePosTolUS = uint64(120_000)
 
 // geoResolveBip rend vrai si (base+idx) est un bipede lie dans le monde w.

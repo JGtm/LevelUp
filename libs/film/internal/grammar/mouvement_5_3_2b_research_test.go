@@ -32,7 +32,7 @@ package grammar
 // doit le montrer plutot que le cacher.
 //
 //	MOUV532B_FILM=<repertoire de chunks> [MOUV532B_FENETRE_MS=500] \
-//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ \
+//	  go test -tags=research ./internal/grammar/ \
 //	    -run '^TestMouvement532Porteurs$' -count=1 -v -timeout 60m
 
 import (

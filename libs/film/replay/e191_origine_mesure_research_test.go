@@ -35,15 +35,16 @@ package replay
 // LECTURE SEULE, skip par defaut.
 //
 //	CGO_ENABLED=0 E191_ROOT=<depot>/data/cache/film_chunks \
-//	  go test ./internal/games/halo_infinite/film/replay/ \
+//	  go test ./replay/ \
 //	  -run '^TestE191OrigineMesure$' -count=1 -timeout 180m -v
 //
 // DEUX FILMS DE LA TABLE N ONT PAS DE FEUILLE VERSIONNEE : `0797ce72` et `4f77afc1` ne sont pas
 // au corpus d equivalence, donc `testdata/equivalence/<id>.facts.json` n existe pas pour eux et
 // `decodeFilmInputsForEntry` les ecarte en le DISANT (« hors mesure »). Les exporter avant la
-// mesure, et les retirer apres — ce sont des donnees de parc, pas des references :
+// mesure, et les retirer apres — ce sont des donnees de parc, pas des references (commande de l hote,
+// lancee depuis son module) :
 //
-//	CGO_ENABLED=1 LEVELUP_REPO_ROOT=<parc> go run ./cmd/levelup replay-facts-export //	  --out internal/games/halo_infinite/film/replay/testdata/equivalence 0797ce72 4f77afc1
+//	CGO_ENABLED=1 LEVELUP_REPO_ROOT=<parc> go run ./cmd/levelup replay-facts-export //	  --out <depot>/libs/film/replay/testdata/equivalence 0797ce72 4f77afc1
 
 import (
 	"context"

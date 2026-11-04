@@ -29,11 +29,11 @@ package replay
 //
 // SOUS GARDE D'ENVIRONNEMENT (ADS_FILMS_DIR), donc saute partout ailleurs, CI comprise.
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 ADS_FILMS_DIR=<repo>/data/cache/film_chunks \
 //	  ADS_TSV=<dossier de mesures> \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run TestViseeMedaillesRecensement -v -timeout 120m
+//	  go test ./replay/ -run TestViseeMedaillesRecensement -v -timeout 120m
 
 import (
 	"fmt"
@@ -250,7 +250,7 @@ func adsJoinInts(v []int) string {
 // Il ne mesure rien et ne conclut rien : il fabrique une liste de rendez-vous.
 //
 //	CGO_ENABLED=0 ADS_FILMS_DIR=<repo>/data/cache/film_chunks \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run TestViseeMedaillesScenes -v
+//	  go test ./replay/ -run TestViseeMedaillesScenes -v
 func TestViseeMedaillesScenes(t *testing.T) {
 	root := os.Getenv(adsFilmsDirEnv)
 	if root == "" {

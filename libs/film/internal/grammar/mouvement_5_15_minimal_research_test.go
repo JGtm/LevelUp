@@ -15,7 +15,7 @@ package grammar
 //
 // Rejouable :
 //
-//	MOUV511_FILM=<dir> MOUV511_BORNES=<catalogue> MOUV511_CARTE=<carte> \n//	  go test -tags=research -count=1 -v -timeout 20m \n//	  -run '^TestTrou515Minimalx27 \n//	  ./internal/games/halo_infinite/film/internal/grammar/
+//	MOUV511_FILM=<dir> MOUV511_BORNES=<catalogue> MOUV511_CARTE=<carte> \n//	  go test -tags=research -count=1 -v -timeout 20m \n//	  -run '^TestTrou515Minimalx27 \n//	  ./internal/grammar/
 
 import "testing"
 

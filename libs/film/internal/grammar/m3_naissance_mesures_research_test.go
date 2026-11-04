@@ -20,7 +20,7 @@ package grammar
 //
 //	MOUV511_FILM=<dir> MOUV511_BORNES=<catalogue> MOUV511_CARTE=<carte> M3_N2=1 \
 //	  go test -tags=research -count=1 -v -run '^TestM3ImageCleN2$' \
-//	  ./internal/games/halo_infinite/film/internal/grammar/
+//	  ./internal/grammar/
 
 import (
 	"os"
@@ -139,7 +139,7 @@ func m3Principales(h map[uint64]int, k int) map[uint64]int {
 //
 //	MOUV511_FILM=<dir> MOUV511_BORNES=<catalogue> MOUV511_CARTE=<carte> M3_DOC=<document> \
 //	  go test -tags=research -count=1 -v -run '^TestM3NaissancesProduction$' \
-//	  ./internal/games/halo_infinite/film/internal/grammar/
+//	  ./internal/grammar/
 func TestM3NaissancesProduction(t *testing.T) {
 	doc := os.Getenv("M3_DOC")
 	if doc == "" {
@@ -194,7 +194,7 @@ func TestM3NaissancesProduction(t *testing.T) {
 // echange contre une arme identique, pour ses munitions).
 //
 //	MOUV511_FILM=<dir> MOUV511_BORNES=<catalogue> MOUV511_CARTE=<carte> M3_PREM=1 \
-//	  go test -tags=research -count=1 -v -run '^TestM3PremieresEmissionsContreNaissance$' ./internal/games/halo_infinite/film/internal/grammar/
+//	  go test -tags=research -count=1 -v -run '^TestM3PremieresEmissionsContreNaissance$' ./internal/grammar/
 func TestM3PremieresEmissionsContreNaissance(t *testing.T) {
 	if os.Getenv("M3_PREM") == "" {
 		t.Skip("M3_PREM absent")

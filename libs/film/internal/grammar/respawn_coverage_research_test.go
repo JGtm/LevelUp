@@ -21,16 +21,16 @@ package grammar
 // CONTESTÉ, on s'abstient (la règle des fermetures du pont).
 //
 // LES MORTS ET LEUR CALAGE D'HORLOGE SONT DES COPIES D'INSTRUMENT du canon de
-// `games/halo_infinite/film/replay` (deaths_source.go, lives.go) : ce paquet ne peut pas l'importer
+// `replay` (deaths_source.go, lives.go) : ce paquet ne peut pas l'importer
 // (cycle), et une sonde ne fait pas production — le canon reste là-bas, cette copie meurt
 // avec la sonde au portage.
 //
 // LECTURE SEULE, UN SEUL FILM par processus (D17), gardé par GAME_FILM — sauté en CI.
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	GAME_FILM=C:/.../data/cache/film_chunks/00162144 \
-//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestRespawnCoveragePhase1$' -timeout 30m -v
+//	  go test -tags=research ./internal/grammar/ -run '^TestRespawnCoveragePhase1$' -timeout 30m -v
 
 import (
 	"fmt"

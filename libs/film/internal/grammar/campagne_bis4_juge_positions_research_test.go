@@ -21,7 +21,7 @@ package grammar
 //
 //	CAMPAGNE_RACINE=<film_chunks> CAMPAGNE_FILMS=<id,id> CAMPAGNE_SORTIE=<dir hors data> \
 //	  go test -tags=research,campagne_overlay -overlay=<json> -count=1 -timeout 180m \
-//	  -run '^TestCampagneBis4JugePositions$' ./internal/games/halo_infinite/film/internal/grammar/
+//	  -run '^TestCampagneBis4JugePositions$' ./internal/grammar/
 
 import (
 	"fmt"

@@ -14,7 +14,7 @@ package replay
 // REGIME : gardes `ATT_FILM` + `ODDBALL_FILM` + `ODDBALL_ORACLE`, UN FILM PAR PROCESSUS, lecture
 // seule, AUCUNE base ouverte.
 //
-//	go test ./internal/games/halo_infinite/film/replay/ -run OddballSondeDiagnostique -v
+//	go test ./replay/ -run OddballSondeDiagnostique -v
 
 import (
 	"encoding/json"

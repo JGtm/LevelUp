@@ -7,7 +7,7 @@ package grammar
 // n'en a aucun). Usage :
 //
 //	ATTESTATION_FILM=<cache>/film_chunks/4898d586 \
-//	  go test -count=1 -run TestAttestationSurFilm -v ./internal/games/halo_infinite/film/internal/grammar/
+//	  go test -count=1 -run TestAttestationSurFilm -v ./internal/grammar/
 
 import (
 	"os"

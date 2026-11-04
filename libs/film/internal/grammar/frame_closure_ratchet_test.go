@@ -39,7 +39,7 @@ package grammar
 //
 // REGENERATION (jamais d edition a la main) :
 //
-//	go test ./internal/games/halo_infinite/film/internal/grammar/ -run FrameClosureRatchet -update-frame-closure
+//	go test ./internal/grammar/ -run FrameClosureRatchet -update-frame-closure
 
 import (
 	"flag"

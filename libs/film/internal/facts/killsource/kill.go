@@ -330,7 +330,7 @@ type Result struct {
 	// Coverage : les denominateurs.
 	Coverage Coverage
 	// Health : la metrique de sante, prete pour `expvar` via `Health.ExpvarPairs()`.
-	// Le type est PUR (zero dependance interne) et vit dans `internal/games/halo_infinite/film/internal/grammar`.
+	// Le type est PUR (zero dependance interne) et vit dans `internal/grammar`.
 	Health grammar.KillSourceHealth
 	// Stats : ce qu il faut pour PONDERER et pour VERIFIER que l hybride est bien une
 	// preference et non un arbitrage.

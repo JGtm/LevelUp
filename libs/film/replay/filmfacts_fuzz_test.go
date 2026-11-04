@@ -15,7 +15,7 @@ package replay
 //
 // CAMPAGNE (a la main, jamais en CI) :
 //
-//	go test ./internal/games/halo_infinite/film/replay/ -run '^$' -fuzz FuzzDecodeFilmFactsFile -fuzztime 30s -fuzzminimizetime 0s
+//	go test ./replay/ -run '^$' -fuzz FuzzDecodeFilmFactsFile -fuzztime 30s -fuzzminimizetime 0s
 //
 // `-fuzzminimizetime 0s` N EST PAS UN CONFORT : une graine fait plusieurs Ko et le moteur passe
 // sinon la campagne a MINIMISER sa premiere trouvaille — le compteur d executions reste fige a
@@ -23,7 +23,7 @@ package replay
 //
 // REGENERATION DES GRAINES (porte dediee, qui ne regenere RIEN d autre) :
 //
-//	go test ./internal/games/halo_infinite/film/replay/ -run TestFuzzFilmFactsSeedsRegenerate -update-graines-faits
+//	go test ./replay/ -run TestFuzzFilmFactsSeedsRegenerate -update-graines-faits
 
 import (
 	"flag"

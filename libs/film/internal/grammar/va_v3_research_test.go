@@ -8,7 +8,7 @@ package grammar
 // seule ; CAMPAGNE_FILMS=TOUS : tout le cache) :
 //
 //	CAMPAGNE_RACINE=<film_chunks> CAMPAGNE_FILMS=<id,id|TOUS> [V3_SORTIE=<fichier hors data>] \
-//	  go test -tags=research -count=1 -run ^TestVAV3Corps$ ./internal/games/halo_infinite/film/internal/grammar/
+//	  go test -tags=research -count=1 -run ^TestVAV3Corps$ ./internal/grammar/
 
 import (
 	"fmt"

@@ -17,7 +17,7 @@ package replay
 //
 //	SOCLE_FAITS=<repo>/data/cache/film_facts/halo_infinite/5c38f581.filmfacts.bin \
 //	SOCLE_CARTE=prism SOCLE_FAMILLE=b533957e \
-//	  go test -tags research ./internal/games/halo_infinite/film/replay/ \
+//	  go test -tags research ./replay/ \
 //	  -run '^TestSocleHorsCarte$' -v -count=1
 
 import (
@@ -104,7 +104,7 @@ func positionLaPlusProche(pos []grammar.BipedPosition, slot uint32, tUS uint64) 
 // les memes faits, les memes catalogues, seul le code d assemblage change.
 //
 //	SOCLES_FAITS=<repo>/data/cache/film_facts/halo_infinite SOCLES_CARTES=<court8 TAB carte, par ligne>
-//	SOCLES_SORTIE=<dossier> go test -tags research ./internal/games/halo_infinite/film/replay/ \
+//	SOCLES_SORTIE=<dossier> go test -tags research ./replay/ \
 //	  -run '^TestSoclesDepuisLesFaits$' -v -count=1
 func TestSoclesDepuisLesFaits(t *testing.T) {
 	faits, cartes, sortie := os.Getenv("SOCLES_FAITS"), os.Getenv("SOCLES_CARTES"), os.Getenv("SOCLES_SORTIE")

@@ -48,7 +48,7 @@ package replay
 // REGENERATION (jamais d'edition a la main) — DEUX conditions explicites, comme
 // TestGoldenInputsRegenerate :
 //
-//	REPLAY_CONTRACT_UPDATE=1 go test ./internal/games/halo_infinite/film/replay/ \
+//	REPLAY_CONTRACT_UPDATE=1 go test ./replay/ \
 //	  -run ContractFixtures -update
 //
 // La seconde condition n'est pas une ceinture de plus : `-update` seul est la porte du golden

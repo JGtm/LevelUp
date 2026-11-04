@@ -18,7 +18,7 @@ package replay
 //
 //	CGO_ENABLED=0 ATT_FILM=<depot>/data/cache \
 //	  V0_FILMS=8a049c50:behemoth,fccc61cd:launch site \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run TestV0Cadrage -v -timeout 60m
+//	  go test ./replay/ -run TestV0Cadrage -v -timeout 60m
 //
 // V0_DELTA=1 ajoute le balayage DELTA (lourd : tout le film, bit a bit) et son temoin fantome.
 

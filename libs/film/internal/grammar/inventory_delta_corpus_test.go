@@ -12,10 +12,10 @@ package grammar
 // est gardé par INV_DELTA_FILMS. Les garde-rails qui valent en CI sont dans
 // inventory_delta_test.go.
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 INV_DELTA_FILMS=<repo>/data/cache/film_chunks INV_DELTA_MAX=15 \
-//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestInventoryDeltaCorpus$' -timeout 120m -v
+//	  go test ./internal/grammar/ -run '^TestInventoryDeltaCorpus$' -timeout 120m -v
 
 import (
 	"fmt"

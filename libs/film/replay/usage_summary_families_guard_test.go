@@ -51,7 +51,7 @@ func famillesEcritesDuResume() map[string]bool {
 }
 
 func TestUsageFamiliesMatchManifestValidator(t *testing.T) {
-	// Le valideur vit dans le depot hote (`apps/go-api/internal/games/mappings`).
+	// Le valideur vit chez l'hote (son paquet `mappings`).
 	loaderPath := filepath.Join(racineDepot(t), "apps", "go-api", "internal", "games", "mappings",
 		"loader_replay_labels_equipment.go")
 	raw, err := os.ReadFile(loaderPath)

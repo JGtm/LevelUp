@@ -22,7 +22,7 @@ package grammar
 //     (temoin : la colonne des d opposes et le compte par d voisin).
 //
 //	go test -tags=research,campagne_overlay -overlay=<json> -count=1 -timeout 120m \
-//	  -run '^TestRVehTi40' ./internal/games/halo_infinite/film/internal/grammar/
+//	  -run '^TestRVehTi40' ./internal/grammar/
 
 import (
 	"fmt"

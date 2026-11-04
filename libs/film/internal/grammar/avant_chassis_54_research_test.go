@@ -17,11 +17,11 @@ package grammar
 //
 // DEUX PORTES, ET UNE SEULE LIT LE CACHE :
 //
-//	go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ \
+//	go test -tags=research ./internal/grammar/ \
 //	  -run TestAvantChassisMiniBobines -v -count=1                      (aucun film du cache)
 //
 //	AVANT_FILM=<abs>/data/cache/film_chunks/4f77afc1 AVANT_CARTE="Flood Gulch" \
-//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ \
+//	  go test -tags=research ./internal/grammar/ \
 //	  -run TestAvantChassisFilm -v -count=1 -timeout 60m                (UN film a la fois)
 //
 // LECTURE SEULE : aucun fichier ecrit, AUCUNE base DuckDB ouverte — l instrument ne lit que les

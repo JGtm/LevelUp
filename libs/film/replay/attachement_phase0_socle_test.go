@@ -27,7 +27,7 @@ package replay
 // les films ne sont pas versionnés, rien de ceci ne peut tourner en CI.
 //
 //	CGO_ENABLED=0 ATT_FILM=<depot>/data/cache \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run Attachement -v -timeout 60m
+//	  go test ./replay/ -run Attachement -v -timeout 60m
 //
 // LECTURE SEULE : aucun de ces fichiers n'écrit quoi que ce soit, n'ouvre aucune base et ne
 // touche à aucun chemin de production. La seule modification de production de la phase 0 est

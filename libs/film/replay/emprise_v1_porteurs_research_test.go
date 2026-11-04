@@ -20,7 +20,7 @@ package replay
 // versionnes) :
 //
 //	EMPRISE_V0_FILMS=<9 match_id> EMPRISE_V0_DIR=<scratch du V0> EMPRISE_V0_CACHE=<racine data/cache> \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run '^TestEmpriseV1Porteurs$' -v -count=1
+//	  go test ./replay/ -run '^TestEmpriseV1Porteurs$' -v -count=1
 
 import (
 	"context"

@@ -25,7 +25,7 @@ package replay
 // JSON, film -> xuid -> colonnes VipStats), UN FILM PAR PROCESSUS, lecture seule, AUCUNE base.
 //
 //	$env:ATT_FILM="<cache>"; $env:VIP_FILM="00761d27"; $env:VIP_ORACLE="<V_oracle_vipstats.json>"
-//	go test ./internal/games/halo_infinite/film/replay/ -run VIPPeriodes -v
+//	go test ./replay/ -run VIPPeriodes -v
 
 import (
 	"encoding/json"

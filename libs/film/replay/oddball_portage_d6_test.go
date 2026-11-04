@@ -23,7 +23,7 @@ package replay
 // UN FILM PAR PROCESSUS, lecture seule, AUCUNE base ouverte par ce test.
 //
 //	$env:ATT_FILM="<cache>"; $env:ODDBALL_FILM="43716616"; $env:ODDBALL_ORACLE="<oracle.json>"
-//	go test ./internal/games/halo_infinite/film/replay/ -run OddballPortageProximite -v
+//	go test ./replay/ -run OddballPortageProximite -v
 
 import (
 	"encoding/json"

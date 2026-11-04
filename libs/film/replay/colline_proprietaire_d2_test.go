@@ -39,7 +39,7 @@ package replay
 // SOUS GARDE `ZONE_FILM` (le harnais `ctCharge` du lot C-ter, reutilise plutot que recopie), UN
 // film par processus, lecture seule, AUCUNE base ouverte, AUCUN changement de production.
 //
-//	$env:ZONE_FILM="<cache>/film_chunks/01e1f945"; go test ./internal/games/halo_infinite/film/replay/ -run CollineProprietaireD2 -v
+//	$env:ZONE_FILM="<cache>/film_chunks/01e1f945"; go test ./replay/ -run CollineProprietaireD2 -v
 
 import (
 	"fmt"

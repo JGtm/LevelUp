@@ -114,7 +114,7 @@ func TestUneValeurNonDiscrimineeNEstJamaisEcriteAuProfil(t *testing.T) {
 //
 //	KS_POIGNEE_FILMS='<cache>/a521164d;<cache>/64e8adfa' \
 //	KS_POIGNEE_CARTES='Fragmentation Heavies;Catalyst' \
-//	  go test ./internal/games/halo_infinite/film/internal/facts/killsource/ \
+//	  go test ./internal/facts/killsource/ \
 //	    -run '^TestMotDePoigneeDeterministeSurFilm$' -v
 func TestMotDePoigneeDeterministeSurFilm(t *testing.T) {
 	dirs := strings.Split(os.Getenv("KS_POIGNEE_FILMS"), ";")

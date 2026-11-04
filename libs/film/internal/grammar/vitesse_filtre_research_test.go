@@ -46,12 +46,12 @@ package grammar
 //
 // LECTURE SEULE, gardé par VITESSE_FILM, CGO_ENABLED=0, un seul décodage par process.
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 VITESSE_FILM=<repo>/data/cache/film_chunks/1b2d9e08 \
 //	  VITESSE_CATALOGUE=<repo>/data/titles/halo_infinite/reference/map_quant_bounds.json \
 //	  VITESSE_ARTEFACT=<repo>/data/cache/replays/halo_infinite/1b2d9e08.json \
-//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestVitesseFiltre$' -timeout 30m -v
+//	  go test ./internal/grammar/ -run '^TestVitesseFiltre$' -timeout 30m -v
 //
 // Témoin SANS translocateur (option A prouvée par le recensement ; option B mesurée sur une
 // fenêtre bornée par VITESSE_CHUNKS ; la carte doit être donnée, l'identification par
@@ -60,7 +60,7 @@ package grammar
 //	CGO_ENABLED=0 VITESSE_FILM=<repo>/data/cache/film_chunks/696a9d7c \
 //	  VITESSE_CATALOGUE=<...>/map_quant_bounds.json VITESSE_CARTE=vagabond \
 //	  VITESSE_CHUNKS=8,9,10 \
-//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestVitesseFiltre$' -timeout 30m -v
+//	  go test ./internal/grammar/ -run '^TestVitesseFiltre$' -timeout 30m -v
 
 import (
 	"fmt"

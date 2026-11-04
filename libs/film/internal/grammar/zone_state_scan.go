@@ -45,7 +45,7 @@ package grammar
 //
 // La SEMANTIQUE des tags. Ce balayage rend des couples (tag, quantum) bruts ; ce que le tag 3
 // (jauge de capture), le tag 4 (proprietaire) ou le tag 5 (cle de nommage) veulent dire a ete
-// etabli ailleurs, par la mesure, et c'est `games/halo_infinite/film/replay` qui l'exploite. Un decodeur qui
+// etabli ailleurs, par la mesure, et c'est `replay` qui l'exploite. Un decodeur qui
 // nommerait ses propres canaux figerait une interpretation dans le decodage.
 //
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requete.
@@ -164,7 +164,7 @@ type ManagedPropertyScan struct {
 //	                   balayage n'a pas lieu).
 //
 // LE CONSOMMATEUR NE PERD RIEN, ET C'EST LA MESURE QUI DECIDE : sur les SIX films du corpus qui
-// s'assemblent (4 KOTH, 2 Bastion), `games/halo_infinite/film/replay` publie des etats de zone IDENTIQUES —
+// s'assemblent (4 KOTH, 2 Bastion), `replay` publie des etats de zone IDENTIQUES —
 // memes zones, memes intervalles, memes proprietaires, meme designateur de colline, meme nombre
 // de frames actives — pour 28 a 42 % de lectures en moins sur les KOTH et 0 sur les Bastion
 // (ou la bande comblee n'ajoutait aucun slot). Voir `replay.TestZoneBandeTi13Consommateur`.

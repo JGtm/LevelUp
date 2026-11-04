@@ -38,10 +38,10 @@ package replay
 // LECTURE SEULE, AUCUN CODE DE PRODUCTION : l'instrument relit les artefacts JSON deja cuits et
 // les `.wav` deja livres. Il ne cuit rien, ne regenere aucun asset, n'ecrit nulle part.
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	WEAPON_CADENCE_CORPUS=<repo>/data/cache/replays/halo_infinite \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run '^TestWeaponBurstResearch$' -v -count=1
+//	  go test ./replay/ -run '^TestWeaponBurstResearch$' -v -count=1
 
 import (
 	"encoding/json"

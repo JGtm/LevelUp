@@ -1,7 +1,7 @@
 package fallback
 
 // registre_replay_vehicules.go — les replis du calque des VEHICULES poses par les retours du rejeu
-// du 2026-09-23 (`internal/games/halo_infinite/film/replay/`, et le DECOR DE CARTE decide a la
+// du 2026-09-23 (`replay/`, et le DECOR DE CARTE decide a la
 // requete par `internal/service/replay_vehicle_scenery*.go`, lot M7). Un fichier a part parce que
 // `registre_replay_identites.go`, qui porte les replis vehicules plus anciens, est a trois lignes
 // du seuil de 500 du depot.

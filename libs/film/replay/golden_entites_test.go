@@ -31,7 +31,7 @@ package replay
 // par build, un film a la fois, sous le verrou de la voie film) :
 //
 //	REPLAY_ENTITES_FAITS=<dossier des .filmfacts.bin> \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run 'TestGoldenEntitesRegenerate/<short8>' -update
+//	  go test ./replay/ -run 'TestGoldenEntitesRegenerate/<short8>' -update
 //
 // Elle echoue TOUJOURS en nommant ce qu'elle a ecrit (lecon C1 du lot 0.A) ; on relance sans les
 // drapeaux pour verifier.

@@ -16,7 +16,7 @@ package grammar
 //
 //	(memes variables que TestP1S3VueCTirContinu) S3_JOUEURS=8 \
 //	  go test -tags=research -count=1 -v -timeout 60m -run '^TestP1S3VueCBalayage$' \
-//	  ./internal/games/halo_infinite/film/internal/grammar/
+//	  ./internal/grammar/
 
 import (
 	"os"

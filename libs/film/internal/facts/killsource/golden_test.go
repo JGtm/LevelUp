@@ -23,7 +23,7 @@ package killsource
 //
 // REGENERATION :
 //
-//	KILLSOURCE_FIXTURES=<dir> go test ./internal/games/halo_infinite/film/internal/facts/killsource/ \
+//	KILLSOURCE_FIXTURES=<dir> go test ./internal/facts/killsource/ \
 //	    -run Golden -update
 //
 // LES GAMERTAGS DES JOUEURS TIERS SONT ANONYMISES dans les golden (pseudonymes de meme longueur,

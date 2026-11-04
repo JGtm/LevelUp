@@ -43,7 +43,7 @@ package grammar
 // Total Control Heavies ; `111fa685`, `11de8353`, `e5adf7b2` BTB). C'est le corpus du ratchet de
 // fermeture 0.A.3, deja sous garde.
 //
-//	go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ \
+//	go test -tags=research ./internal/grammar/ \
 //	  -run Reapparition37 -v
 
 import (

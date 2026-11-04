@@ -217,7 +217,7 @@ func presentRounds(recs []types.StatRecord) map[int]bool {
 //
 // DIX pour cent se pose au milieu de ce vide : 1,7 fois au-dessus du plus gros ancrage observe,
 // 2,1 fois sous la plus maigre manche reelle. Instrument et controle :
-// `games/halo_infinite/film/replay/assaut_manches_research_test.go`, qui REFUSE toute manche du corpus libre
+// `replay/assaut_manches_research_test.go`, qui REFUSE toute manche du corpus libre
 // dans la bande 7 %..15 %.
 const statMinRoundRecordShare = 10
 

@@ -22,7 +22,7 @@ package replay
 //
 //	P4_FAITS=<data>/cache/film_facts/halo_infinite/b1ad85eb.filmfacts.bin \
 //	P4_CATALOGUE=<data>/titles/halo_infinite/reference/map_quant_bounds.json \
-//	  go test -tags research -count=1 -run '^TestP4EquipesFaits$' -v ./internal/games/halo_infinite/film/replay/
+//	  go test -tags research -count=1 -run '^TestP4EquipesFaits$' -v ./replay/
 
 import (
 	"fmt"

@@ -39,7 +39,7 @@ package replay
 //
 //	$env:ATT_FILM="<repo>/data/cache"; $env:ATT_REF="<worktree>/data/titles/halo_infinite/reference"
 //	$env:C2_FILM="35b75a31"; $env:C2_SITES="<dossier de mesures>/C2_sites_candidats.json"
-//	go test ./internal/games/halo_infinite/film/replay/ -run CataloguesC2Sites -v
+//	go test ./replay/ -run CataloguesC2Sites -v
 
 import (
 	"encoding/json"

@@ -30,13 +30,13 @@ package grammar
 //
 // LECTURE SEULE, garde par EQUIP_EVENTS_ROOT/ARTS/IDS, skip par defaut, CGO_ENABLED=0.
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 \
 //	  EQUIP_EVENTS_ROOT=<repo>/data/cache/film_chunks \
 //	  EQUIP_EVENTS_ARTS=<repo>/data/cache/replays/halo_infinite \
 //	  EQUIP_EVENTS_IDS=000d5950,06dfe6d9,084a804d,4f77afc1,8a485699,1b2d9e08,a0c36016 \
-//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestEquipementsEvenements$' -timeout 30m -v
+//	  go test -tags=research ./internal/grammar/ -run '^TestEquipementsEvenements$' -timeout 30m -v
 
 import (
 	"encoding/json"

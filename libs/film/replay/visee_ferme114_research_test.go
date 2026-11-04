@@ -39,10 +39,10 @@ package replay
 //
 // SOUS GARDE (FERME114_FILMS).
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 FERME114_FILMS=<repo>/data/cache/film_chunks/00162144,<repo>/data/cache/film_chunks/00ba2e1c,<repo>/data/cache/film_chunks/03ccbe42 \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run TestViseeFermeture114 -v -timeout 30m
+//	  go test ./replay/ -run TestViseeFermeture114 -v -timeout 30m
 
 import (
 	"fmt"

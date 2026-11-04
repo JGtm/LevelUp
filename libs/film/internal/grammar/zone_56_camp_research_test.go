@@ -54,7 +54,7 @@ package grammar
 //
 //	ZONE56_FILM=<abs>/data/cache/film_chunks/396cfc92 ZONE56_CARTE=Illusion \
 //	  go test -tags=research -count=1 -v -timeout 60m \
-//	    -run '^TestZone56MasqueTi23$' ./internal/games/halo_infinite/film/internal/grammar/
+//	    -run '^TestZone56MasqueTi23$' ./internal/grammar/
 //
 // UN SEUL FILM PAR INVOCATION, aucune base DuckDB, aucun artefact ecrit.
 

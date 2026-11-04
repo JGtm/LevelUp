@@ -15,7 +15,7 @@ package killsource
 //
 //	P4_FILM=<data>/cache/film_chunks/b1ad85eb P4_ORIGIN_US=<origine> \
 //	  go test -tags research -count=1 -run '^TestP4BotMetaHorodatage$' -v \
-//	  ./internal/games/halo_infinite/film/internal/facts/killsource/
+//	  ./internal/facts/killsource/
 
 import (
 	"fmt"

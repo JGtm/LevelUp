@@ -14,10 +14,10 @@ package grammar
 // LECTURE SEULE, gate par I22_FILM, sautee partout ailleurs (CI comprise). Un seul decodage
 // filmdec par process : le verrou est pris.
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 I22_FILM=<repo>/data/cache/film_chunks/000d5950 \
-//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestI22DeltaResearch$' -timeout 30m -v
+//	  go test -tags=research ./internal/grammar/ -run '^TestI22DeltaResearch$' -timeout 30m -v
 
 import (
 	"encoding/json"

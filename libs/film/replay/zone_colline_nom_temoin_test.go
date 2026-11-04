@@ -18,8 +18,8 @@ package replay
 // SOUS GARDE D'ENVIRONNEMENT (`ZONE_FILM`), un film par processus, avant-plan :
 //
 //	$env:CGO_ENABLED=0
-//	$env:ZONE_FILM="C:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/film_chunks/01e1f945"
-//	go test -count=1 -run TestCollineProprietaireNomTemoin -v -timeout 30m ./internal/games/halo_infinite/film/replay/
+//	$env:ZONE_FILM="<depot>/data/cache/film_chunks/01e1f945"
+//	go test -count=1 -run TestCollineProprietaireNomTemoin -v -timeout 30m ./replay/
 
 import (
 	"reflect"

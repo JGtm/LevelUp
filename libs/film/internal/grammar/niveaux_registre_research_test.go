@@ -29,7 +29,7 @@ package grammar
 // LECTURE SEULE, sans decodage de paquet (chunk 0 seulement) :
 //
 //	NIV_FILMS='<abs>/film_chunks/084a804d;<abs>/film_chunks/a349fea8' \
-//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ \
+//	  go test -tags=research ./internal/grammar/ \
 //	  -run '^TestNiveauxDuRegistre$' -v
 
 import (

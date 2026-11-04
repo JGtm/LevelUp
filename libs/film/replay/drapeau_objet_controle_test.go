@@ -27,7 +27,7 @@ package replay
 // phase 1 des objectifs vivants. Lecture seule, aucune base.
 //
 //	CGO_ENABLED=0 OBJ_FILM=<depot>/data/cache OBJ_REPO=<depot> \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run DrapeauObjetControle -v -timeout 60m
+//	  go test ./replay/ -run DrapeauObjetControle -v -timeout 60m
 
 import (
 	"math"

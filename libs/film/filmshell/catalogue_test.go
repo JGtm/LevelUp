@@ -3,7 +3,7 @@ package filmshell
 import "testing"
 
 // NOTE F12 : GetTiming (et la table WeaponTiming*) sont RELOCALISABLES vers
-// games/halo_infinite/film au chantier K (F12). Ce test suit la fonction —
+// la brique film au chantier K (F12). Ce test suit la fonction —
 // déplacer avec elle le cas échéant.
 
 func TestGetTiming_KnownReturnsTableEntry(t *testing.T) {

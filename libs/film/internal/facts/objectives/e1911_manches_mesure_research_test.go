@@ -49,7 +49,7 @@ package objectives
 //
 //	FILM_CACHE_ROOT=C:/.../LevelUp-go-migration/data/cache \
 //	E1911_CORPUS=C:/.../corpus_manches.tsv \
-//	  go test -tags research ./internal/games/halo_infinite/film/internal/facts/objectives/ -run E1911 -v -timeout 60m
+//	  go test -tags research ./internal/facts/objectives/ -run E1911 -v -timeout 60m
 //
 // Aucun code de production n'est touche : l'instrument appelle les memes fonctions que
 // [RealRounds] et [contiguousRounds].

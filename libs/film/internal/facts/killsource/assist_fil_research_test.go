@@ -10,7 +10,7 @@ package killsource
 // LECTURE SEULE, gardee par deux variables — sautee partout ailleurs, CI comprise :
 //
 //	KS_FIL_FILM=<repo>/data/cache/film_chunks/0a08d2f2 KS_FIL_CARTE="banished narrows" \
-//	  go test -tags research ./internal/games/halo_infinite/film/internal/facts/killsource/ \
+//	  go test -tags research ./internal/facts/killsource/ \
 //	  -run '^TestAssistantAuFil$' -v -count=1
 
 import (

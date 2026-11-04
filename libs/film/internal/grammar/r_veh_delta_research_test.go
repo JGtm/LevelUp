@@ -22,7 +22,7 @@ package grammar
 //	mpp8/3+ti40-composants+portee-neuf
 //
 //	go test -tags=research,campagne_overlay -overlay=<json> -count=1 -timeout 180m \
-//	  -run '^TestRVehDeltaTi40$' ./internal/games/halo_infinite/film/internal/grammar/
+//	  -run '^TestRVehDeltaTi40$' ./internal/grammar/
 
 import (
 	"fmt"

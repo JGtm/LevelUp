@@ -20,7 +20,7 @@ package replay
 // DE MAILLAGE internes du tag `vehi` (`V4_RAPPORT_SPRITES_2026-08-31.md` § 4 : `warthog_p_rf_ma`,
 // `ghost_b_f`, `scorpion_frt_bf`...), qui identifie le chassis DANS son propre tag. La seconde
 // est la table de nommage des tags de degat du depot
-// (`internal/games/halo_infinite/film/damagetag/data/labels.tsv`), qui nomme la BANQUE DE SONS du
+// (`damagetag/data/labels.tsv`), qui nomme la BANQUE DE SONS du
 // porteur (`sb_010_veh_cv_ghost`, `sb_010_veh_cv_banshee`, `sb_010_veh_bt_chopper`...). Les deux
 // s accordent sur les cinq chassis ou elles se croisent — c est ce recoupement qui autorise a
 // completer l une par l autre.

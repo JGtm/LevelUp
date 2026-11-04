@@ -20,10 +20,10 @@ package grammar
 // LECTURE SEULE, garde par KF_GRAM_FILM, saute partout ailleurs (CI comprise). UN SEUL
 // decodage filmdec par process (globaux de paquet) : le verrou est pris pour tout le test.
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 KF_GRAM_FILM=<repo>/data/cache/film_chunks/000d5950 \
-//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestKFGram' -timeout 30m -v
+//	  go test ./internal/grammar/ -run '^TestKFGram' -timeout 30m -v
 
 import (
 	"fmt"

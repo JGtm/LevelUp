@@ -18,12 +18,12 @@ package grammar
 // avec le NIVEAU DU HASARD — la lecon du lot C, dont le temoin a 20 % etait inatteignable pour un
 // canal qui produit 50 rampes par match.
 //
-// USAGE (depuis apps/go-api, UN film par processus, avant-plan) :
+// USAGE (depuis libs/film, UN film par processus, avant-plan) :
 //
 //	$env:CGO_ENABLED=0
 //	$env:ZONE_FILM="<depot>/data/cache/film_chunks/7344d24f"
 //	$env:ZONE_OBJTYPE="zone"   # zone | flag | none
-//	go test -count=1 -run TestTi13EtatLotCbis -v ./internal/games/halo_infinite/film/internal/grammar/
+//	go test -count=1 -run TestTi13EtatLotCbis -v ./internal/grammar/
 
 import (
 	"fmt"
@@ -205,7 +205,7 @@ func ti13EtatPayload(pay []byte, b zcBands, reg *Registry, col *ti13Col,
 // CE QUE CE VOLET FAIT, ET CE QU'IL NE FAIT PAS. Il etablit la CLE d'appariement : un slot
 // ti=13 porte-t-il UN identifiant de chaine, stable sur tout le match ? L'appariement de cette
 // cle a une zone du CATALOGUE (`replay.AttributeZones`) n'est PAS fait ici, et pour une raison
-// dure : `internal/games/halo_infinite/film/replay` importe `filmdec`, donc `filmdec` ne peut pas importer
+// dure : `replay` importe `filmdec`, donc `filmdec` ne peut pas importer
 // `replay` — le pont geometrique appartient au paquet `replay`, c'est-a-dire a la phase 2.
 func ti13RapportIdentifiants(t *testing.T, sb *strings.Builder, short string, col *ti13Col) {
 	t.Helper()

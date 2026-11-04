@@ -59,7 +59,7 @@ package objectives
 // Pic mesure : sous le plafond de 2 Gio, 6,5 s pour les neuf films.
 //
 //	$env:ASSAUT_CACHE="C:/.../data/cache"
-//	go test ./internal/games/halo_infinite/film/internal/facts/objectives/ -run AssautStatborgArmement -v -timeout 60m
+//	go test ./internal/facts/objectives/ -run AssautStatborgArmement -v -timeout 60m
 
 import (
 	"fmt"

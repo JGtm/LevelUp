@@ -23,10 +23,10 @@ package grammar
 // LECTURE SEULE, garde par GAME_FILM, saute partout ailleurs (CI comprise). UN SEUL film par
 // processus (D17 : la machine de l'utilisateur a deja plante sur un balayage de corpus).
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 GAME_FILM=C:/.../data/cache/film_chunks/000d5950 \
-//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestGameEntitiesPhase0$' -timeout 30m -v
+//	  go test ./internal/grammar/ -run '^TestGameEntitiesPhase0$' -timeout 30m -v
 
 import (
 	"errors"

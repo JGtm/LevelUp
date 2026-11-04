@@ -24,7 +24,7 @@ package killsource
 // LECTURE SEULE, garde par deux variables — saute partout ailleurs, CI comprise :
 //
 //	KS_ROSTER_FILM=<repo>/data/cache/film_chunks/b1ad85eb KS_ROSTER_CARTE=Domicile \
-//	  go test ./internal/games/halo_infinite/film/internal/facts/killsource/ \
+//	  go test ./internal/facts/killsource/ \
 //	  -run '^TestRosterEtRemplacements$' -v -count=1
 
 import (

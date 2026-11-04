@@ -27,10 +27,10 @@ package grammar
 // LECTURE SEULE, gardé par EQUIP_CREATION_FILM, sauté partout ailleurs (CI comprise). UN SEUL
 // décodage filmdec par process (globaux de paquet) : le verrou est pris pour tout le test.
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 EQUIP_CREATION_FILM=<repo>/data/cache/film_chunks/000d5950 \
-//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestEquipmentCreationRecord$' -timeout 60m -v
+//	  go test ./internal/grammar/ -run '^TestEquipmentCreationRecord$' -timeout 60m -v
 //
 // `EQUIP_MPP_LEAD=<n>` force la largeur du PREMIER champ du bloc MPP au lieu de calibrer les
 // deux. Il ne sert plus qu'à rejouer une hypothèse à la main : depuis le 2026-08-18 la

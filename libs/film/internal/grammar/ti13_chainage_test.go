@@ -21,11 +21,11 @@ package grammar
 //
 // AUCUN PORT : rien n'est ajoute a `traverse.go`, aucun hook, aucune ligne de table ECS.
 //
-// USAGE (depuis apps/go-api, UN film par processus, avant-plan) :
+// USAGE (depuis libs/film, UN film par processus, avant-plan) :
 //
 //	$env:CGO_ENABLED=0
 //	$env:ZONE_FILM="<depot>/data/cache/film_chunks/7344d24f"
-//	go test -count=1 -run TestTi13ChainageLotCbis -v ./internal/games/halo_infinite/film/internal/grammar/
+//	go test -count=1 -run TestTi13ChainageLotCbis -v ./internal/grammar/
 
 import (
 	"fmt"

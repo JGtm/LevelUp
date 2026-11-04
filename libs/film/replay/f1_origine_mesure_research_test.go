@@ -31,7 +31,7 @@ package replay
 //	  F1_ROOT=<depot>/data/cache/film_chunks F1_ARTS=<depot>/data/cache/replays/halo_infinite \
 //	  F1_CAT=<worktree>/data/titles/halo_infinite/reference/map_quant_bounds.json \
 //	  F1_IDS=a,b,c \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run '^TestF1OrigineAvantApres$' \
+//	  go test ./replay/ -run '^TestF1OrigineAvantApres$' \
 //	  -count=1 -timeout 90m -v
 
 import (

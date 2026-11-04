@@ -26,11 +26,11 @@ package grammar
 // concordent, la largeur est etablie ; quand ils divergent, c est le second qui tranche, parce
 // qu il porte sur les records reellement recenses.
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	$env:CGO_ENABLED=0
 //	$env:ZONE_FILM="<depot>/data/cache/film_chunks/7344d24f"
-//	go test -count=1 -run TestZoneWidthLotC1a -v ./internal/games/halo_infinite/film/internal/grammar/
+//	go test -count=1 -run TestZoneWidthLotC1a -v ./internal/grammar/
 
 import (
 	"fmt"

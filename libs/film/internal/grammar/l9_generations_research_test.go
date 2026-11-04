@@ -24,7 +24,7 @@ package grammar
 //
 //	CAMPAGNE_RACINE=<film_chunks> CAMPAGNE_FILMS=<id,id> CAMPAGNE_SORTIE=<dir hors data> \
 //	  go test -tags=research -count=1 -timeout 120m -run '^TestL9Generations$' \
-//	  ./internal/games/halo_infinite/film/internal/grammar/
+//	  ./internal/grammar/
 //
 // TestL9Slots (L9_SLOTS="film:chunk:slot,...") instruit des slots nommes : l'entree du bloc et les
 // en-tetes candidats du slot que [TableDeDatums] voit.

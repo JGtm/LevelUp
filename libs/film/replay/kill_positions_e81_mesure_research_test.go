@@ -4,7 +4,7 @@ package replay
 
 // kill_positions_e81_mesure_research_test.go — E8.1 (f) : MESURE AVANT / APRES DE `kill_positions`.
 //
-// Instrument de LECTURE : faits cuits (8 fixtures versionnes et, avec L1_DEPOT, le cache de faits du
+// Instrument de LECTURE : faits cuits (8 fixtures versionnes et, avec L1_FAITS et L1_BORNES, le cache de faits du
 // poste), couples du JOURNAL exportes d'une copie a froid de la base (KP_KILLS, TSV film, time_ms,
 // tueur, victime) et lignes `kill_positions_latest` de la meme copie (KP_BASE, TSV film, killer_xuid,
 // time_ms, killer_x/y/z, victim_x/y/z). AUCUN octet de film n'est decode, rien n'est ecrit.
@@ -17,8 +17,8 @@ package replay
 // Un cote PERDU est un cote place par la reference et nil apres ; l instrument les compte contre la
 // base et contre apres_a (ce dernier doit etre nul par construction).
 //
-//	L1_DEPOT=<checkout> KP_KILLS=<tsv> KP_BASE=<tsv> REG_COLLECTEUR=1 \
-//	  go test -tags research -count=1 -run '^TestMesureE81KillPositions$' -v ./internal/games/halo_infinite/film/replay/
+//	L1_FAITS=<dossier des faits de film> L1_BORNES=<map_quant_bounds.json> KP_KILLS=<tsv> KP_BASE=<tsv> REG_COLLECTEUR=1 \
+//	  go test -tags research -count=1 -run '^TestMesureE81KillPositions$' -v ./replay/
 
 import (
 	"bufio"
@@ -234,16 +234,15 @@ func TestMesureE81KillPositions(t *testing.T) {
 		fix.mesurer(c, kills[b.Short8], base, b.Short8)
 	}
 	fix.rendre(t, "CORPUS VERSIONNE")
-	depot := os.Getenv("L1_DEPOT")
-	if depot == "" {
+	dir := os.Getenv(envMesureFaits)
+	if dir == "" {
 		return
 	}
 	loc := nouveau()
-	cat, err := profile.LoadMapQuantCatalog(filepath.Join(depot, "data", "titles", "halo_infinite", "reference", "map_quant_bounds.json"))
+	cat, err := profile.LoadMapQuantCatalog(cheminMesureRequis(t, envMesureBornes))
 	if err != nil {
 		t.Fatalf("catalogue : %v", err)
 	}
-	dir := filepath.Join(depot, "data", "cache", "film_facts", "halo_infinite")
 	entrees, err := os.ReadDir(dir)
 	if err != nil {
 		t.Fatalf("cache de faits : %v", err)

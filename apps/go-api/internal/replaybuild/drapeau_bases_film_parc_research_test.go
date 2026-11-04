@@ -63,6 +63,9 @@ func TestDrapeauBasesDuFilmAvantApres(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Le parc lu est celui du checkout `L1_DEPOT` (qui peut differer du depot de la cuisson) : ses chemins
+	// viennent du PathResolver, pas d une disposition ecrite ici.
+	parc := title.NewPathResolver(depot)
 	modules := l1ModulesDuCatalogue(t, repoRoot)
 	objectifs, err := replay.LoadMapObjectives(title.NewPathResolver(repoRoot).MapObjectivesPath(title.DefaultSlug))
 	if err != nil {
@@ -70,13 +73,12 @@ func TestDrapeauBasesDuFilmAvantApres(t *testing.T) {
 	}
 	for _, id := range l1ParcFilms {
 		t.Run(id, func(t *testing.T) {
-			artefact := filepath.Join(depot, "data", "cache", "replays", "halo_infinite", id+".json")
+			artefact := parc.ReplayArtifactPath(title.DefaultSlug, id)
 			avant := l1LireArtefact(t, artefact)
 			mapID := l1CarteDesSocles(objectifs, avant)
 			facts := l1FeuilleDeLArtefact(t, artefact)
 			facts.MapID = mapID
-			apres, mode := l1Reconstruire(t, b, modules, filepath.Join(depot, "data", "cache", "film_facts",
-				"halo_infinite", id+".filmfacts.bin"), avant.MatchID, facts)
+			apres, mode := l1Reconstruire(t, b, modules, parc.FilmFactsPath(title.DefaultSlug, id), avant.MatchID, facts)
 			t.Logf("%s carte=%q (%s)", id, mapID, mode)
 			t.Logf("   AVANT %s", l1Resume(avant))
 			t.Logf("   APRES %s", l1Resume(apres))

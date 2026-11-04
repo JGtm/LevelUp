@@ -75,7 +75,7 @@ package replay
 //
 //	CGO_ENABLED=0 V3_DESTR_ROOT=<depot>/data/cache \
 //	  V3_DESTR_FILMS="0d76e8f1:behemoth,fccc61cd:launch site" \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run '^TestV3DestructionDatee$' -v -timeout 180m
+//	  go test ./replay/ -run '^TestV3DestructionDatee$' -v -timeout 180m
 
 import (
 	"os"

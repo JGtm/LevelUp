@@ -10,7 +10,7 @@ package killsource
 // payait donc une lecture disque et une decompression du film ENTIER rien que pour ce decodeur,
 // en plus de celles des balayages.
 //
-// Tout cela vit desormais dans `internal/games/halo_infinite/film/internal/source`, paquet FEUILLE : l appelant charge
+// Tout cela vit desormais dans `internal/source`, paquet FEUILLE : l appelant charge
 // le film UNE fois et le passe a [Decode]. Ce fichier ne fait plus que poser l origine des instants
 // du film et la version de son kill-feed : killsource ne lit aucun octet de paquet, la marche des
 // trames, les balayages et le kill-feed passent par la grammaire.

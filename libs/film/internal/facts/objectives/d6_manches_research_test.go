@@ -32,7 +32,7 @@ package objectives
 // USAGE (garde par environnement, saute sans elle) :
 //
 //	FILM_CACHE_ROOT=C:/.../LevelUp-go-migration/data/cache D6_FILMS=fb1a1a72,64e8adfa \
-//	  go test ./internal/games/halo_infinite/film/internal/facts/objectives/ -run D6MatiereDesManches -v
+//	  go test ./internal/facts/objectives/ -run D6MatiereDesManches -v
 
 import (
 	"os"

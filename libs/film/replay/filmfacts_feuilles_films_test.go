@@ -19,7 +19,7 @@ package replay
 // machine.
 //
 //	REPLAY_FILM_CACHE=<repo>/data/cache/film_chunks \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run CodecFeuilleAFeuilleSurLesFilms -v
+//	  go test ./replay/ -run CodecFeuilleAFeuilleSurLesFilms -v
 
 import (
 	"context"

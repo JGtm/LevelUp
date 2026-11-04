@@ -16,11 +16,11 @@ package replay
 // ou deux clauses de gate se sont averees vides par construction (un temoin sous la moitie du
 // reel quand le hasard seul valait 57-61 % ; une fenetre couvrant 93-97 % du match).
 //
-// USAGE (depuis apps/go-api, UN film par processus, avant-plan) :
+// USAGE (depuis libs/film, UN film par processus, avant-plan) :
 //
 //	$env:CGO_ENABLED=0
 //	$env:ZONE_FILM="<depot>/data/cache/film_chunks/7344d24f"
-//	go test -count=1 -run TestZoneEtatPhase2a -v -timeout 30m ./internal/games/halo_infinite/film/replay/
+//	go test -count=1 -run TestZoneEtatPhase2a -v -timeout 30m ./replay/
 
 import (
 	"fmt"

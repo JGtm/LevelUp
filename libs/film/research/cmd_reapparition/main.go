@@ -3,7 +3,7 @@
 // Commande cmd_reapparition — la passe du lot 3.7 sur `HaloInfinite.exe`, en LECTURE SEULE.
 //
 //	REAP_EXE="<bibliotheque>/<jeux>/common/Halo Infinite/HaloInfinite.exe" \
-//	  go run -tags=research ./internal/games/halo_infinite/film/research/cmd_reapparition
+//	  go run -tags=research ./research/cmd_reapparition
 //
 // Sans `REAP_EXE`, la commande ne fait rien et le dit : un instrument de recherche ne devine
 // jamais le chemin d'une installation de jeu.

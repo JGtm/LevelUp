@@ -24,7 +24,7 @@ package replay
 // PAR PROCESSUS, lecture seule, AUCUNE base.
 //
 //	$env:ATT_FILM="<repo>/data/cache"; $env:ASSAUT_FILM="35b75a31"
-//	go test ./internal/games/halo_infinite/film/replay/ -run AssautA0Qualification -v
+//	go test ./replay/ -run AssautA0Qualification -v
 
 import (
 	"math"

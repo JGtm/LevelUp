@@ -6,10 +6,10 @@ package replay
 // KOTH, SLOT D'EQUIPE PAR SLOT D'EQUIPE, avant et apres les filtres de serie.
 //
 // LECTURE SEULE : les enregistrements viennent de la section statborg du fichier de FAITS
-// (`data/cache/film_facts`), aucun octet de film n'est decode.
+// (le dossier L1_FAITS), aucun octet de film n'est decode.
 //
-//	L1_DEPOT=<checkout qui porte data/cache> SCORE_FILMS=26602661,7de0b91d \
-//	  go test -tags research -count=1 -run '^TestScoreKothEmissions$' -v ./internal/games/halo_infinite/film/replay/
+//	L1_FAITS=<dossier des faits de film> L1_BORNES=<map_quant_bounds.json> SCORE_FILMS=26602661,7de0b91d \
+//	  go test -tags research -count=1 -run '^TestScoreKothEmissions$' -v ./replay/
 
 import (
 	"encoding/json"
@@ -28,13 +28,13 @@ import (
 )
 
 // chargerStatborgDesFaits lit la section statborg d'un film depuis le cache de faits du poste.
-func chargerStatborgDesFaits(t *testing.T, depot, film string) *FilmFactsFile {
+func chargerStatborgDesFaits(t *testing.T, film string) *FilmFactsFile {
 	t.Helper()
-	cat, err := profile.LoadMapQuantCatalog(filepath.Join(depot, "data", "titles", "halo_infinite", "reference", "map_quant_bounds.json"))
+	cat, err := profile.LoadMapQuantCatalog(cheminMesureRequis(t, envMesureBornes))
 	if err != nil {
 		t.Fatalf("catalogue de bornes : %v", err)
 	}
-	blob, err := os.ReadFile(filepath.Join(depot, "data", "cache", "film_facts", "halo_infinite", film+".filmfacts.bin")) //nolint:gosec // mesure
+	blob, err := os.ReadFile(filepath.Join(cheminMesureRequis(t, envMesureFaits), film+".filmfacts.bin")) //nolint:gosec // mesure
 	if err != nil {
 		t.Fatalf("faits de %s : %v", film, err)
 	}
@@ -57,13 +57,13 @@ func chargerStatborgDesFaits(t *testing.T, depot, film string) *FilmFactsFile {
 }
 
 func TestScoreKothEmissions(t *testing.T) {
-	depot := os.Getenv("L1_DEPOT")
+	faits := os.Getenv(envMesureFaits)
 	films := os.Getenv("SCORE_FILMS")
-	if depot == "" || films == "" {
-		t.Skip("L1_DEPOT et SCORE_FILMS requis")
+	if faits == "" || films == "" {
+		t.Skip("L1_FAITS et SCORE_FILMS requis")
 	}
 	for _, film := range strings.Split(films, ",") {
-		ff := chargerStatborgDesFaits(t, depot, film)
+		ff := chargerStatborgDesFaits(t, film)
 		recs := ff.Statborg.Records
 		t.Logf("== %s : %d enregistrements ; manches reelles %v ; ecrites %v ; bornes posees=%v",
 			film, len(recs), objectives.RealRounds(recs), objectives.ResolveRounds(recs).Written,
@@ -127,11 +127,11 @@ func TestScoreKothEmissions(t *testing.T) {
 //
 // Parcourt, un par un et sans decoder de film, les faits du cache du poste.
 func TestScoreKothPopulationB(t *testing.T) {
-	depot := os.Getenv("L1_DEPOT")
-	if depot == "" {
-		t.Skip("L1_DEPOT requis")
+	faits := os.Getenv(envMesureFaits)
+	if faits == "" {
+		t.Skip("L1_FAITS requis")
 	}
-	dir := filepath.Join(depot, "data", "cache", "film_facts", "halo_infinite")
+	dir := faits
 	entrees, err := os.ReadDir(dir)
 	if err != nil {
 		t.Fatalf("cache de faits : %v", err)
@@ -150,7 +150,7 @@ func TestScoreKothPopulationB(t *testing.T) {
 		if _, err := DecodeFilmFactsEntete(blob); err != nil {
 			continue
 		}
-		ff := chargerStatborgDesFaits(t, depot, film)
+		ff := chargerStatborgDesFaits(t, film)
 		films++
 		nB := 0
 		for _, r := range ff.Statborg.Records {
@@ -183,9 +183,9 @@ func TestScoreKothPopulationB(t *testing.T) {
 // Sans decoder de film : la section statborg des faits suffit. SCORE_REGISTRE (TSV
 // `film t0 t1 variante ...`) ajoute le score du registre, la verite terrain de l'affichage.
 func TestScoreKothParc(t *testing.T) {
-	depot, sortie := os.Getenv("L1_DEPOT"), os.Getenv("SCORE_SORTIE")
-	if depot == "" || sortie == "" {
-		t.Skip("L1_DEPOT et SCORE_SORTIE requis")
+	faits, sortie := os.Getenv(envMesureFaits), os.Getenv("SCORE_SORTIE")
+	if faits == "" || sortie == "" {
+		t.Skip("L1_FAITS et SCORE_SORTIE requis")
 	}
 	registre := map[string][]string{}
 	if f := os.Getenv("SCORE_REGISTRE"); f != "" {
@@ -199,7 +199,7 @@ func TestScoreKothParc(t *testing.T) {
 			}
 		}
 	}
-	dir := filepath.Join(depot, "data", "cache", "film_facts", "halo_infinite")
+	dir := faits
 	entrees, err := os.ReadDir(dir)
 	if err != nil {
 		t.Fatalf("cache de faits : %v", err)
@@ -217,7 +217,7 @@ func TestScoreKothParc(t *testing.T) {
 		if _, err := DecodeFilmFactsEntete(blob); err != nil {
 			continue
 		}
-		recs := chargerStatborgDesFaits(t, depot, film).Statborg.Records
+		recs := chargerStatborgDesFaits(t, film).Statborg.Records
 		nB := 0
 		for _, r := range recs {
 			if v, ok := r.Comps[0]; ok && objectives.IsTeamSlot(r.Slot) && v.B != 0 {
@@ -265,9 +265,9 @@ func TestScoreKothParc(t *testing.T) {
 // l'artefact deja cuit quand il existe (`originMs`, `frameCount`), sinon d'une grille a origine
 // nulle. Rien n'est ecrit hors de SCORE_SORTIE.
 func TestScoreKothSeuil(t *testing.T) {
-	depot, sortie, joueurs := os.Getenv("L1_DEPOT"), os.Getenv("SCORE_SORTIE"), os.Getenv("SCORE_JOUEURS")
-	if depot == "" || sortie == "" || joueurs == "" {
-		t.Skip("L1_DEPOT, SCORE_SORTIE et SCORE_JOUEURS requis")
+	faits, sortie, joueurs := os.Getenv(envMesureFaits), os.Getenv("SCORE_SORTIE"), os.Getenv("SCORE_JOUEURS")
+	if faits == "" || sortie == "" || joueurs == "" {
+		t.Skip("L1_FAITS, SCORE_SORTIE et SCORE_JOUEURS requis")
 	}
 	type fiche struct {
 		lines    []types.PlayerLine
@@ -307,10 +307,10 @@ func TestScoreKothSeuil(t *testing.T) {
 	sort.Strings(films)
 	var sb strings.Builder
 	for _, film := range films {
-		if _, err := os.Stat(filepath.Join(depot, "data", "cache", "film_facts", "halo_infinite", film+".filmfacts.bin")); err != nil {
+		if _, err := os.Stat(filepath.Join(faits, film+".filmfacts.bin")); err != nil {
 			continue
 		}
-		blobF, err := os.ReadFile(filepath.Join(depot, "data", "cache", "film_facts", "halo_infinite", film+".filmfacts.bin")) //nolint:gosec // mesure
+		blobF, err := os.ReadFile(filepath.Join(faits, film+".filmfacts.bin")) //nolint:gosec // mesure
 		if err != nil {
 			continue
 		}
@@ -319,9 +319,9 @@ func TestScoreKothSeuil(t *testing.T) {
 			continue
 		}
 		f := fiches[film]
-		recs := chargerStatborgDesFaits(t, depot, film).Statborg.Records
+		recs := chargerStatborgDesFaits(t, film).Statborg.Records
 		origine, frames := 0, 200000
-		if art, err := os.ReadFile(filepath.Join(depot, "data", "cache", "replays", "halo_infinite", film+".json")); err == nil { //nolint:gosec // mesure
+		if art, err := lireArtefactMesure(film + ".json"); err == nil {
 			var h struct {
 				OriginMs   int `json:"originMs"`
 				FrameCount int `json:"frameCount"`
@@ -378,9 +378,9 @@ func TestScoreKothSeuil(t *testing.T) {
 // camp autour de chaque point : image du point, gain, premier et dernier tic de l'intervalle, et
 // ses ecarts anormaux (> 11 images entre deux tics, un tic attendu par seconde).
 func TestScoreKothDetailGarde(t *testing.T) {
-	depot, joueurs, film := os.Getenv("L1_DEPOT"), os.Getenv("SCORE_JOUEURS"), os.Getenv("SCORE_DETAIL")
-	if depot == "" || joueurs == "" || film == "" {
-		t.Skip("L1_DEPOT, SCORE_JOUEURS et SCORE_DETAIL requis")
+	faits, joueurs, film := os.Getenv(envMesureFaits), os.Getenv("SCORE_JOUEURS"), os.Getenv("SCORE_DETAIL")
+	if faits == "" || joueurs == "" || film == "" {
+		t.Skip("L1_FAITS, SCORE_JOUEURS et SCORE_DETAIL requis")
 	}
 	lines, teams := []types.PlayerLine{}, map[string]int{}
 	t0, t1 := 0, 0
@@ -402,9 +402,9 @@ func TestScoreKothDetailGarde(t *testing.T) {
 		lines = append(lines, types.PlayerLine{XUID: c[1], Kills: k, Deaths: d, Assists: a})
 		teams[c[1]] = team
 	}
-	recs := chargerStatborgDesFaits(t, depot, film).Statborg.Records
+	recs := chargerStatborgDesFaits(t, film).Statborg.Records
 	origine, frames := 0, 200000
-	if art, err := os.ReadFile(filepath.Join(depot, "data", "cache", "replays", "halo_infinite", film+".json")); err == nil { //nolint:gosec // mesure
+	if art, err := lireArtefactMesure(film + ".json"); err == nil {
 		var h struct {
 			OriginMs   int `json:"originMs"`
 			FrameCount int `json:"frameCount"`

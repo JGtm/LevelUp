@@ -24,7 +24,7 @@ package grammar
 // Rejouable (un film a la fois, plafond 4 Gio) :
 //
 //	go test -tags=research,campagne_overlay -overlay=<json> -count=1 -timeout 180m \
-//	  -run '^TestCampagneBis2Positions$' ./internal/games/halo_infinite/film/internal/grammar/
+//	  -run '^TestCampagneBis2Positions$' ./internal/grammar/
 
 import (
 	"fmt"

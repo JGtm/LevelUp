@@ -4,7 +4,7 @@ package grammar
 // (la CI n a pas de films) :
 //
 //	REPLAY_FILM_CACHE=<parc>/data/cache/film_chunks \
-//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run PousseesDesTemoins -v
+//	  go test ./internal/grammar/ -run PousseesDesTemoins -v
 //
 // Chaque poussee attendue est (instant en ms de film, slot pousse, slot de l auteur). Les instants
 // sont controles a la trajectoire (le slot pousse accelere dans les 300 ms) ; 215e7022 porte le kill

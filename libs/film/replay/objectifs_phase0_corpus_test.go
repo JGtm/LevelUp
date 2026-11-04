@@ -35,7 +35,7 @@ package replay
 // proprement — ils ne peuvent pas tourner en CI, les films ne sont pas versionnes.
 //
 //	CGO_ENABLED=0 OBJ_FILM=<depot>/data/cache \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run Objectifs -v -timeout 30m
+//	  go test ./replay/ -run Objectifs -v -timeout 30m
 
 import (
 	"fmt"

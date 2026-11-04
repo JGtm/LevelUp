@@ -11,8 +11,8 @@ package replay
 // joueur couvre l'instant (episode non ferme par la lecture suivante du meme objet ni par le retour
 // du bipede au flux de positions), et si le vehicule parent a un echantillon a l'instant.
 //
-//	L1_DEPOT=<checkout qui porte data/cache> KP_KILLS=<tsv> \
-//	  go test -tags research -count=1 -run '^TestOccupationDesSilences$' -v ./internal/games/halo_infinite/film/replay/
+//	L1_FAITS=<dossier des faits de film> L1_BORNES=<map_quant_bounds.json> KP_KILLS=<tsv> \
+//	  go test -tags research -count=1 -run '^TestOccupationDesSilences$' -v ./replay/
 
 import (
 	"fmt"
@@ -160,16 +160,15 @@ func TestOccupationDesSilences(t *testing.T) {
 		fix.mesurer(c, kills[b.Short8])
 	}
 	fix.rendre(t, "CORPUS VERSIONNE")
-	depot := os.Getenv("L1_DEPOT")
-	if depot == "" {
+	dir := os.Getenv(envMesureFaits)
+	if dir == "" {
 		return
 	}
 	loc := &occBilan{}
-	cat, err := profile.LoadMapQuantCatalog(filepath.Join(depot, "data", "titles", "halo_infinite", "reference", "map_quant_bounds.json"))
+	cat, err := profile.LoadMapQuantCatalog(cheminMesureRequis(t, envMesureBornes))
 	if err != nil {
 		t.Fatalf("catalogue : %v", err)
 	}
-	dir := filepath.Join(depot, "data", "cache", "film_facts", "halo_infinite")
 	entrees, err := os.ReadDir(dir)
 	if err != nil {
 		t.Fatalf("cache de faits : %v", err)

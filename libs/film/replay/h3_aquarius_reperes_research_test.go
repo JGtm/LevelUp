@@ -62,7 +62,7 @@ package replay
 //	  F1_ROOT=<depot>/data/cache/film_chunks F1_ARTS=<depot>/data/cache/replays/halo_infinite \
 //	  F1_CAT=<worktree>/data/titles/halo_infinite/reference/map_quant_bounds.json \
 //	  H3_IDS=0797ce72,c88ec007 H3_REF=aquarius \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run '^TestH3AquariusReperes$' \
+//	  go test ./replay/ -run '^TestH3AquariusReperes$' \
 //	  -count=1 -timeout 90m -v
 
 import (

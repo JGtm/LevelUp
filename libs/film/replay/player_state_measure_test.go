@@ -23,10 +23,10 @@ package replay
 // LECTURE SEULE, garde par PLAYER_FILM, saute partout ailleurs (CI comprise). UN SEUL film par
 // processus (D17).
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 PLAYER_FILM=C:/.../data/cache/film_chunks/000d5950 \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run '^TestPlayerBridgePhase0$' -timeout 30m -v
+//	  go test ./replay/ -run '^TestPlayerBridgePhase0$' -timeout 30m -v
 
 import (
 	"os"

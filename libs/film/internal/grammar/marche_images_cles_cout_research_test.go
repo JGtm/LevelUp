@@ -16,7 +16,7 @@ package grammar
 // que les corps qu un canal lit (decision 3 du lot 2.2 de l etape 2).
 //
 //	FILM_CACHE_ROOT=<depot>/data/cache COUT_IMAGES_CLES_FILMS=000d5950,084a804d \
-//	  go test -tags research ./internal/games/halo_infinite/film/internal/grammar/ -run CoutDesImagesCles -v
+//	  go test -tags research ./internal/grammar/ -run CoutDesImagesCles -v
 
 import (
 	"os"

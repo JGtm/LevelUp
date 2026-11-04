@@ -40,7 +40,7 @@ package replay
 // Aucune base, aucune ecriture hors du repertoire du lot. SANS LES VARIABLES, IL SE SAUTE :
 //
 //	EMPRISE_V0_FILMS=<match_id,...> EMPRISE_V0_DIR=<scratch> EMPRISE_V0_CACHE=<racine data/cache> \
-//	[EMPRISE_V0_TOURS=3] go test ./internal/games/halo_infinite/film/replay/ \
+//	[EMPRISE_V0_TOURS=3] go test ./replay/ \
 //	  -run '^TestEmpriseV0Porteurs$' -v -count=1
 
 import (

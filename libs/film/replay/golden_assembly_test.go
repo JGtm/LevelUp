@@ -13,7 +13,7 @@ package replay
 //
 // REGENERATION (jamais d edition a la main) :
 //
-//	go test ./internal/games/halo_infinite/film/replay/ -run GoldenAssembly -update
+//	go test ./replay/ -run GoldenAssembly -update
 
 import (
 	"fmt"

@@ -27,7 +27,7 @@ package grammar
 //
 // LECTURE SEULE, sans garde d environnement (bobines versionnees).
 //
-//	go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestE191cPremierBitFaux$' -v -count=1
+//	go test -tags=research ./internal/grammar/ -run '^TestE191cPremierBitFaux$' -v -count=1
 
 import (
 	"fmt"

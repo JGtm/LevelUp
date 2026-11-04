@@ -9,7 +9,7 @@ package grammar
 //
 //	CAMPAGNE_RCOMB=<r_comb_configs.tsv> CAMPAGNE_TSV=<campagne_grammaire_2026-10-01> \
 //	CAMPAGNE_HORS_CORPUS=81c02726 CAMPAGNE_SORTIE=<dir hors data> \
-//	  go test -tags=research -count=1 -run '^TestRCombAgregats$' ./internal/games/halo_infinite/film/internal/grammar/
+//	  go test -tags=research -count=1 -run '^TestRCombAgregats$' ./internal/grammar/
 //
 // Denominateurs (PLAN §6.0 « Pourcentages ») :
 //

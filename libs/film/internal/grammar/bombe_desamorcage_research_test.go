@@ -42,7 +42,7 @@ package grammar
 // process (un seul decodage a la fois).
 //
 //	$env:ASSAUT_CACHE="C:/.../data/cache"
-//	go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run BombeDesamorcage -v -timeout 60m
+//	go test -tags=research ./internal/grammar/ -run BombeDesamorcage -v -timeout 60m
 
 import (
 	"os"

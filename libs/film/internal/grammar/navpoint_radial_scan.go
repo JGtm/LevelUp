@@ -16,7 +16,7 @@ package grammar
 //
 // Husky Raid confirme (4/4, mediane 5,1 s, CV 0,016, 0/1000) : la meche est du MOTEUR, le hold
 // est un reglage de mode. One Bomb NE TIENT PAS (CV 0,725, 87/1000) : ne pas generaliser a
-// cette variante — la garde est chez l'appelant (`games/halo_infinite/film/replay`).
+// cette variante — la garde est chez l'appelant (`replay`).
 //
 // # LA MEME REGLE QUE `objective_scan.go`
 //
@@ -48,7 +48,7 @@ package grammar
 //
 // QUI arme : le navpoint est un marqueur d'ecran, pas un acteur. Et les navpoints vont PAR
 // PAIRES (+12 d'ecart de slot, un par camp) qui repliquent le MEME anneau : la deduplication
-// est le travail de l'interpretation (`games/halo_infinite/film/replay`), pas du decodeur.
+// est le travail de l'interpretation (`replay`), pas du decodeur.
 //
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requete.
 

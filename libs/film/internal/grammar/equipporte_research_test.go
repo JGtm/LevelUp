@@ -14,7 +14,7 @@ package grammar
 //
 //	CGO_ENABLED=0 EQUIPPORTE_FILMS=<repo>/data/cache/film_chunks EQUIPPORTE_ID=1cd3848a \
 //	  EQUIPPORTE_OUT=<scratchpad>/g1 go test -tags=research \
-//	  ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestEquipPorteG1$' -count=1 -v
+//	  ./internal/grammar/ -run '^TestEquipPorteG1$' -count=1 -v
 
 import (
 	"fmt"

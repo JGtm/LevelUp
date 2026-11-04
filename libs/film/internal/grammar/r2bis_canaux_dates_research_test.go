@@ -13,7 +13,7 @@ package grammar
 // record de creation), par generation. Saute sans les variables d environnement ; jamais en CI.
 //
 //	R2BIS_FILM=<parc>/data/cache/film_chunks/084a804d R2BIS_MAP="Fortitude Heavies" \
-//	  R2BIS_OUT=<fichier hors data> go test ./internal/games/halo_infinite/film/internal/grammar/ \
+//	  R2BIS_OUT=<fichier hors data> go test ./internal/grammar/ \
 //	  -run R2bisCanauxDates -count=1 -v
 
 import (

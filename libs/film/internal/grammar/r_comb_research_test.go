@@ -28,7 +28,7 @@ package grammar
 //	CAMPAGNE_CATALOGUE=<map_quant_bounds.json> CAMPAGNE_CARTES="0797ce72=Live Fire;..." \
 //	CAMPAGNE_BORNES_sgh_interlock="0:...;2:...;3:..." \
 //	  go test -tags=research,campagne_overlay -overlay=<json> -count=1 -timeout 240m \
-//	  -run '^TestRComb$' ./internal/games/halo_infinite/film/internal/grammar/
+//	  -run '^TestRComb$' ./internal/grammar/
 
 import (
 	"fmt"

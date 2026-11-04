@@ -51,10 +51,10 @@ package replay
 //
 //	# les fixtures d entrees : re-decode les films, EXIGE le cache
 //	REPLAY_FILM_CACHE=<repo>/data/cache/film_chunks \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run GoldenBuildsRegenerate -update
+//	  go test ./replay/ -run GoldenBuildsRegenerate -update
 //
 //	# les goldens d assemblage : DEPUIS les fixtures figes, aucun film lu
-//	go test ./internal/games/halo_infinite/film/replay/ \
+//	go test ./replay/ \
 //	  -run GoldenBuildsAssemblyRegenerate -update-golden-builds-assembly
 
 import (

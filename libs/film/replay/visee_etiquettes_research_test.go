@@ -108,10 +108,10 @@ package replay
 //
 // SOUS GARDE D'ENVIRONNEMENT (`ZOOMLBL_FILM`). Lecture seule ; AUCUN code de production modifie.
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 ZOOMLBL_FILM=<repo>/data/cache/film_chunks/00162144 \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run TestViseeEtiquettes -v -timeout 90m
+//	  go test ./replay/ -run TestViseeEtiquettes -v -timeout 90m
 
 import (
 	"fmt"

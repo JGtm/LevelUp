@@ -42,7 +42,7 @@ package killsource
 // ENTREE `killsource-2026-09-16.4` (2026-09-17, lot 2.5.e-c) : LA COUCHE DEMENAGE SOUS
 // `film/internal/`, LA SORTIE NE BOUGE PAS.
 //
-// Les quatre couches passent sous `internal/games/halo_infinite/film/internal/` (ADR 0034
+// Les quatre couches passent sous `internal/` (ADR 0034
 // principe 11 : le compilateur, et non un ratchet, refuse desormais tout import venu de
 // l exterieur du decodeur). L empreinte monte par DEUX canaux, tous deux de forme : les fichiers
 // de `facts/` qui importaient `film/source`, `film/profile` ou `film/grammar` citent maintenant
@@ -81,7 +81,7 @@ package killsource
 // s appelait `KillSourceDecoderRev` et vivait dans `sync/killcollector`. Elle n a pas ete
 // reecrite : une chronique reecrite ne dit plus ce qui s est passe.
 // 2026-09-05 : `killsource-2026-07-31` -> `killsource-2026-09-05`. LE CONTRAT CI-DESSUS N AVAIT
-// PAS ETE TENU : 14 commits ont touche `games/halo_infinite/film/internal/facts/killsource/` depuis v7.3.0 sans
+// PAS ETE TENU : 14 commits ont touche `internal/facts/killsource/` depuis v7.3.0 sans
 // un seul bump (le seul commit qui touchait cette ligne etait un deplacement de paquet). Les
 // lignes deja en base portaient donc la revision courante et etaient exclues A VIE du backlog
 // (`conditionBacklog`, postsync.go) — source du degat, categorie et assistant servis avec le

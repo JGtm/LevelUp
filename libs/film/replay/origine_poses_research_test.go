@@ -27,11 +27,11 @@ package replay
 //
 // LECTURE SEULE. Aucune base, aucun artefact ecrit. UN SEUL decodage filmdec par process
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 ORIGINE_FILM=<repo>/data/cache/film_chunks/000d5950 \
 //	  ORIGINE_MAP=Cliffhanger \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run '^TestOriginePosesDistribution$' -timeout 60m -v
+//	  go test ./replay/ -run '^TestOriginePosesDistribution$' -timeout 60m -v
 
 import (
 	"fmt"

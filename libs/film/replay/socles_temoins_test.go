@@ -15,10 +15,10 @@ package replay
 // SOUS GARDE : les artefacts de rejeu ne sont pas versionnés (data/cache/replays/). Sans la
 // variable, le test SKIPPE — un test qui se déclare vert sans avoir rien lu ne garde rien.
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	SOCLES_TEMOINS=<depot>/data/cache/replays/halo_infinite \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run '^TestSoclesTemoins' -v
+//	  go test ./replay/ -run '^TestSoclesTemoins' -v
 
 import (
 	"encoding/json"

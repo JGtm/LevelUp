@@ -39,7 +39,7 @@ package replay
 // REGENERATION (jamais d edition a la main) :
 //
 //	REPLAY_FILM_DIR=<repo>/data/cache/film_chunks/000d5950 \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run MiniFilmRegenerate -update
+//	  go test ./replay/ -run MiniFilmRegenerate -update
 
 import (
 	"bytes"

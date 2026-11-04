@@ -33,7 +33,7 @@ package replay
 // REGIME : garde `ASSAUT_CACHE` (racine du cache film). Aucune base, aucun reseau.
 //
 //	$env:ASSAUT_CACHE="C:/.../LevelUp-go-migration/data/cache"
-//	go test ./internal/games/halo_infinite/film/replay/ -run AssautManchesRecherche -v -timeout 30m
+//	go test ./replay/ -run AssautManchesRecherche -v -timeout 30m
 
 import (
 	"fmt"
@@ -284,7 +284,7 @@ func amTriRetenues(m map[int]bool) []int {
 // Strongholds et les variantes communautaires — des modes que le corpus d'Assaut n'a pas.
 //
 //	$env:ASSAUT_CACHE="C:/.../data/cache" ; $env:ASSAUT_FILMS_LIBRES="6d07c363,a12f267b,..."
-//	go test ./internal/games/halo_infinite/film/replay/ -run AssautManchesControle -v -timeout 60m
+//	go test ./replay/ -run AssautManchesControle -v -timeout 60m
 func TestAssautManchesControleHorsEchantillon(t *testing.T) {
 	cache := os.Getenv("ASSAUT_CACHE")
 	libres := os.Getenv("ASSAUT_FILMS_LIBRES")
@@ -363,7 +363,7 @@ func amEnrJoueurParManche(recs []types.StatRecord) map[int]int {
 // manche par manche, sur les films d'Assaut. Sert a confronter les evenements nommes publies
 // aux explosions datees du releve A0.3.
 //
-//	$env:ASSAUT_CACHE="C:/.../data/cache" ; go test ./internal/games/halo_infinite/film/replay/ -run AssautPointsDeMode -v
+//	$env:ASSAUT_CACHE="C:/.../data/cache" ; go test ./replay/ -run AssautPointsDeMode -v
 func TestAssautPointsDeModeParJoueur(t *testing.T) {
 	cache := os.Getenv("ASSAUT_CACHE")
 	if cache == "" {

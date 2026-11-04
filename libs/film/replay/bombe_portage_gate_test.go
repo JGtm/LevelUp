@@ -41,7 +41,7 @@ package replay
 // l'extraction est en processus.
 //
 //	$env:ASSAUT_CACHE="C:/.../data/cache"
-//	go test ./internal/games/halo_infinite/film/replay/ -run BombePortageGate -v -timeout 30m
+//	go test ./replay/ -run BombePortageGate -v -timeout 30m
 
 import (
 	"context"

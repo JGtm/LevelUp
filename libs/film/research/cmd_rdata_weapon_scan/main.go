@@ -21,7 +21,7 @@
 // `internal/games` et refuse tout litteral accentue neuf ; `cmd/` n y etait pas soumis. Aucune
 // logique ne change : seul le texte affiche perd ses diacritiques.
 //
-// Lancer : go run -tags=research ./internal/games/halo_infinite/film/research/cmd_rdata_weapon_scan
+// Lancer : RDATA_SCAN_CACHE=<depot>/data/cache go run -tags=research ./research/cmd_rdata_weapon_scan
 package main
 
 import (
@@ -41,11 +41,24 @@ import (
 )
 
 // Le film etudie, lu par `filmcache.LireChunk` (J2.3, 2026-09-26) : la disposition n'est plus recopiee.
-const racineCache, filmEtudie = `c:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache`, "000d5950"
+const filmEtudie = "000d5950"
+
+// envRacineCache : la variable PROPRE a cet instrument qui porte la racine du cache film (le dossier
+// qui contient `film_chunks/`) ; sans elle l outil s arrete, il ne devine aucun chemin.
+const envRacineCache = "RDATA_SCAN_CACHE"
+
+// racineCache rend la racine du cache film lue dans [envRacineCache] ; absente, l outil s arrete.
+func racineCache() string {
+	r := os.Getenv(envRacineCache)
+	if r == "" {
+		panic(envRacineCache + " absente : poser la racine du cache film (le dossier qui contient film_chunks/)")
+	}
+	return r
+}
 
 // chunk rend le chunk `numero` du film etudie, decompresse ; un chunk illisible arrete l'outil.
 func chunk(numero int) []byte {
-	raw, err := filmcache.LireChunk(racineCache, filmEtudie, numero)
+	raw, err := filmcache.LireChunk(racineCache(), filmEtudie, numero)
 	if err != nil {
 		panic(err)
 	}
@@ -53,7 +66,7 @@ func chunk(numero int) []byte {
 }
 
 func worldDumpPath() string {
-	return filepath.Join(filmcache.ChunkDir(racineCache, filmEtudie), "world_dump.txt")
+	return filepath.Join(filmcache.ChunkDir(racineCache(), filmEtudie), "world_dump.txt")
 }
 
 // loadWorld parses world_dump.txt -> slot:typeIndex map and typeIndex->slots.

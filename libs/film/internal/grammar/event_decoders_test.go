@@ -5,7 +5,7 @@ package grammar
 // CE QUE CE FICHIER TESTE, ET CE QU IL LAISSE A D AUTRES. Il teste la GRAMMAIRE : les offsets,
 // les largeurs, les portes et les rejets de chaque record, sur des flux construits bit a bit ou
 // l on sait ce qui doit etre lu. Les memes decodeurs sont eprouves sur du BINAIRE REEL par la
-// mini-bobine (internal/games/halo_infinite/film/replay/minifilm_test.go) — les deux repondent a deux questions
+// mini-bobine (replay/minifilm_test.go) — les deux repondent a deux questions
 // distinctes : « la grammaire est-elle celle qu on a ecrite » ici, « le film la porte-t-il
 // toujours » la-bas. Aucune des deux ne remplace l autre.
 //
