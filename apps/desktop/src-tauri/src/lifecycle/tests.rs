@@ -74,6 +74,7 @@ fn un_echec_sans_port_montre_l_ecran_embarque_de_sa_cause() {
         ("migration_failed", FailureKind::MigrationFailed),
         ("schema_newer", FailureKind::SchemaNewer),
         ("port", FailureKind::Port),
+        ("resources_incompatible", FailureKind::ResourcesIncompatible),
     ] {
         let mut m = machine();
         assert_eq!(
@@ -394,4 +395,49 @@ fn la_fermeture_ordonnee_ne_montre_pas_la_fenetre() {
     m.step(ready(8123));
     m.step(Input::CloseRequested);
     assert!(!m.step(Input::Exited).contains(&Action::RevealWindow));
+}
+
+#[test]
+fn la_preparation_du_paquet_part_vers_le_serveur_pret_seulement() {
+    let command = || Input::ResourcesRequested("resources {\"fingerprint\":\"f\"}".to_string());
+    let mut m = machine();
+    assert_eq!(
+        m.step(command()),
+        vec![Action::ResourcesSkipped { phase: "starting" }],
+        "avant ready : abandonnee, et journalisee (l'attente de la mise a jour est reveillee)"
+    );
+    m.step(ready(8123));
+    assert_eq!(
+        m.step(command()),
+        vec![Action::SendResources("resources {\"fingerprint\":\"f\"}".to_string())]
+    );
+
+    let mut closing = machine();
+    closing.step(ready(8123));
+    closing.step(Input::CloseRequested);
+    assert_eq!(
+        closing.step(command()),
+        vec![Action::ResourcesSkipped { phase: "closing" }]
+    );
+
+    let mut dead = machine();
+    dead.step(ready(8123));
+    dead.step(Input::Exited);
+    assert_eq!(dead.step(command()), vec![Action::ResourcesSkipped { phase: "dead" }]);
+}
+
+#[test]
+fn l_evenement_resources_ne_change_aucun_ecran() {
+    let mut m = machine();
+    m.step(ready(8123));
+    let event = SidecarEvent::Resources(levelup_desktop_resources_event());
+    assert!(m.step(Input::Event(event)).is_empty());
+}
+
+fn levelup_desktop_resources_event() -> crate::resources::ResourcesEvent {
+    crate::resources::ResourcesEvent {
+        phase: "downloading".into(),
+        fingerprint: "f".into(),
+        code: String::new(),
+    }
 }

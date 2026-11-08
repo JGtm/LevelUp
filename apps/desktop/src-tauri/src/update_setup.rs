@@ -72,7 +72,7 @@ pub fn spawn_update_check(app: AppHandle, update: UpdateWiring, log: Arc<LogSink
         let spawned = spawn_check_thread("update", move || {
             run_launch_check(&busy, || {
                 run_update(
-                    PluginSource::new(app, locale),
+                    PluginSource::new(app, locale, closer.clone()),
                     DialogPrompt,
                     locale,
                     &gate,
@@ -118,7 +118,7 @@ pub fn request_update_check(app: AppHandle) {
             log: &thread_log,
         };
         run_manual_check(
-            PluginSource::new(app, locale),
+            PluginSource::new(app, locale, closer.clone()),
             DialogPrompt,
             &mut notifier,
             &busy,

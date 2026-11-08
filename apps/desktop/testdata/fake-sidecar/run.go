@@ -53,6 +53,8 @@ type options struct {
 	secret       string
 	// afterReady : lignes JSON ecrites telles quelles sur stdout juste apres `ready` (variante ok).
 	afterReady []string
+	// resourcesReply : lignes JSON ecrites sur stdout a chaque commande `resources <json>` recue.
+	resourcesReply []string
 }
 
 // readOptions lit l'environnement ; une valeur illisible est une erreur (jamais un defaut muet).
@@ -99,6 +101,14 @@ func readOptions(getenv func(string) string) (options, error) {
 				return o, fmt.Errorf("FAKE_EVENTS_AFTER_READY : %q n'est pas du JSON", line)
 			}
 			o.afterReady = append(o.afterReady, line)
+		}
+	}
+	if raw := getenv("FAKE_RESOURCES_REPLY"); raw != "" {
+		for _, line := range strings.Split(raw, "|") {
+			if !json.Valid([]byte(line)) {
+				return o, fmt.Errorf("FAKE_RESOURCES_REPLY : %q n'est pas du JSON", line)
+			}
+			o.resourcesReply = append(o.resourcesReply, line)
 		}
 	}
 	var err error
@@ -203,6 +213,11 @@ func run(args []string, getenv func(string) string, cwd string, stdin io.Reader,
 		sc := bufio.NewScanner(stdin)
 		for sc.Scan() {
 			recordCommand(opts.dataDir, sc.Text(), stderr)
+			if strings.HasPrefix(sc.Text(), "resources ") {
+				for _, line := range opts.resourcesReply {
+					out.raw(line)
+				}
+			}
 		}
 		close(eof)
 	}()

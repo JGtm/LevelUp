@@ -13,6 +13,7 @@ use common::{Call, Recorder, Run, fresh_roots, launch_with_host, short_timeouts}
 use levelup_desktop::catalogue;
 use levelup_desktop::lifecycle::Timeouts;
 use levelup_desktop::logfile::{LogSink, MAX_LOG_BYTES};
+use levelup_desktop::resources::ResourcePack;
 use levelup_desktop::roots;
 use levelup_desktop::screen::Screen;
 use levelup_desktop::supervisor::Outcome;
@@ -50,6 +51,8 @@ struct Scenario {
     decision: Decision,
     download_ok: bool,
     install_ok: bool,
+    /// Le paquet de ressources que la release publie (bloc `resources` de `latest.json`).
+    pack: Option<ResourcePack>,
 }
 
 impl Scenario {
@@ -62,6 +65,17 @@ impl Scenario {
             decision: Decision::Install,
             download_ok: true,
             install_ok: true,
+            pack: None,
+        }
+    }
+
+    fn with_pack(fingerprint: &str) -> Self {
+        Self {
+            pack: Some(ResourcePack {
+                fingerprint: fingerprint.into(),
+                json: format!(r#"{{"fingerprint":"{fingerprint}","url":"https://github.com/x","signature":"c2ln"}}"#),
+            }),
+            ..Self::accepted()
         }
     }
 }
@@ -71,6 +85,7 @@ struct FakeSource {
     events: Events,
     recorder: Recorder,
     stopped_marker: std::path::PathBuf,
+    closer: CloserSlot,
 }
 
 impl UpdateSource for FakeSource {
@@ -78,6 +93,15 @@ impl UpdateSource for FakeSource {
         let ready = self.recorder.calls().iter().any(|c| matches!(c, Call::LoadEntry(_)));
         push(&self.events, format!("check ready={ready}"));
         Ok(self.scenario.offer.clone())
+    }
+
+    fn prepare_resources(&mut self, _offer: &Offer) -> Result<(), String> {
+        let Some(pack) = self.scenario.pack.clone() else {
+            return Ok(());
+        };
+        push(&self.events, format!("prepare {}", pack.fingerprint));
+        let closer = self.closer.wait(Duration::from_secs(5)).ok_or("serveur indisponible")?;
+        closer.prepare_resources(&pack)
     }
 
     fn download(&mut self, offer: &Offer) -> Result<Installer, String> {
@@ -158,6 +182,7 @@ impl Harness {
             events: events.clone(),
             recorder: recorder.clone(),
             stopped_marker: roots.data.join("fake-sidecar-stopped.txt"),
+            closer: slot.clone(),
         };
         let prompt = FakePrompt {
             decision: scenario.decision,
@@ -411,4 +436,88 @@ fn un_serveur_qui_ne_sort_pas_dans_le_budget_est_tue_et_rien_ne_s_installe() {
     assert!(log.contains("event=update_skipped_unclean_stop reason=killed"), "{log}");
     assert!(!log.contains("event=update_install"), "{log}");
     assert_eq!(*h.notices.lock().unwrap(), vec![Notice::SkippedUnclean]);
+}
+
+const PACK_READY: &str = r#"{"event":"resources","phase":"downloading","fingerprint":"F1","percent":40}|{"event":"resources","phase":"ready","fingerprint":"F1","restart_needed":true}"#;
+const PACK_FAILED: &str = r#"{"event":"resources","phase":"downloading","fingerprint":"F1"}|{"event":"resources","phase":"failed","fingerprint":"F1","code":"resources_signature_invalid"}"#;
+
+/// L24 : le paquet de ressources est pret AVANT le telechargement de l'installeur du moteur qui l'exige, puis le
+/// moteur s'installe comme d'habitude. La commande `resources <json>` est arrivee sur la stdin du serveur.
+#[test]
+fn le_paquet_de_ressources_est_pret_avant_le_telechargement_de_l_installeur() {
+    let mut h = Harness::start(
+        "maj-paquet-pret",
+        Scenario::with_pack("F1"),
+        &[("FAKE_RESOURCES_REPLY", PACK_READY)],
+    );
+    let events = wait_event(&h.events, "install");
+    h.run.recorder.wait_exit();
+    let outcome = h.run.finish();
+    assert_eq!(
+        events[..4],
+        [
+            "check ready=true".to_string(),
+            "prompt".to_string(),
+            "prepare F1".to_string(),
+            "download 9.9.9".to_string()
+        ],
+        "le paquet precede l'installeur : {events:?}"
+    );
+    assert_eq!(outcome.stopped_clean, Some(true));
+    let commands = std::fs::read_to_string(h.run.roots.data.join("fake-sidecar-commands.txt")).unwrap_or_default();
+    assert!(
+        commands
+            .lines()
+            .any(|l| l.starts_with("resources {") && l.contains("\"fingerprint\":\"F1\"")),
+        "la commande resources est arrivee : {commands:?}"
+    );
+    let log = h.run.log();
+    assert!(log.contains("event=resources_requested"), "{log}");
+    assert!(log.contains("kind=resources phase=ready fingerprint=F1"), "{log}");
+    assert!(log.contains("event=update_install"), "{log}");
+}
+
+/// Un paquet qui n'a pas pu etre prepare (signature refusee) : l'installeur n'est jamais telecharge et le moteur
+/// qui l'exige n'est pas installe ; l'application reste ouverte et la raison est journalisee.
+#[test]
+fn un_paquet_en_echec_empeche_l_installation_du_moteur() {
+    let mut h = Harness::start(
+        "maj-paquet-echec",
+        Scenario::with_pack("F1"),
+        &[("FAKE_RESOURCES_REPLY", PACK_FAILED)],
+    );
+    h.run.wait_log("event=update_download_failed");
+    let events = snapshot(&h.events);
+    assert!(
+        !events
+            .iter()
+            .any(|e| e.starts_with("download") || e.starts_with("install")),
+        "{events:?}"
+    );
+    assert!(!h.gate.is_armed());
+    assert!(
+        !h.run.recorder.has_screen(Screen::Stopping),
+        "l'application reste ouverte"
+    );
+    let log = h.run.log();
+    assert!(
+        log.contains("resources_failed code=resources_signature_invalid"),
+        "{log}"
+    );
+    let outcome = h.close_and_finish();
+    assert_eq!(outcome.stopped_clean, Some(true));
+    assert!(!h.run.log().contains("event=update_install"));
+}
+
+/// Un serveur qui s'arrete pendant la preparation reveille l'attente avec la raison, sans attendre le delai.
+#[test]
+fn un_serveur_arrete_pendant_la_preparation_n_installe_rien() {
+    let mut h = Harness::start("maj-paquet-serveur-mort", Scenario::with_pack("F1"), &[]);
+    h.run.wait_log("event=resources_requested");
+    h.run.request_close();
+    h.run.recorder.wait_exit();
+    h.run.finish();
+    let events = snapshot(&h.events);
+    assert!(!events.iter().any(|e| e.starts_with("download")), "{events:?}");
+    assert!(!h.run.log().contains("event=update_install"));
 }

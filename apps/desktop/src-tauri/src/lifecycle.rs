@@ -68,6 +68,8 @@ pub enum Input {
     CloseRequested,
     /// « Synchroniser maintenant » du menu de la zone de notification.
     SyncRequested,
+    /// La mise a jour demande au serveur de preparer un paquet de ressources (la ligne `resources <json>`, L24).
+    ResourcesRequested(String),
     TimerFired(Timer),
 }
 
@@ -99,6 +101,12 @@ pub enum Action {
     ApplyShellSettings(ShellSettings),
     /// Ecrire la commande `sync` sur la stdin du serveur : un cycle de synchronisation immediat (L21.c).
     SendSync,
+    /// Ecrire la commande `resources <json>` sur la stdin du serveur : preparer un paquet de ressources (L24).
+    SendResources(String),
+    /// La preparation demandee n'est pas ecrite : le serveur n'est pas pret ; `phase` nomme la phase courante.
+    ResourcesSkipped {
+        phase: &'static str,
+    },
     /// La synchronisation demandee n'est pas ecrite : le serveur n'est pas pret ; `phase` nomme la phase
     /// courante pour le journal (jamais un abandon sans trace).
     SyncSkipped {
@@ -198,6 +206,7 @@ impl Lifecycle {
             Input::Exited => self.on_exited(),
             Input::CloseRequested => self.on_close_requested(),
             Input::SyncRequested => self.on_sync_requested(),
+            Input::ResourcesRequested(command) => self.on_resources_requested(command),
             Input::TimerFired(timer) => self.on_timer(timer),
         }
     }
@@ -301,6 +310,17 @@ impl Lifecycle {
             vec![Action::SendSync]
         } else {
             vec![Action::SyncSkipped {
+                phase: self.phase.name(),
+            }]
+        }
+    }
+
+    /// Comme la synchronisation : la commande n'est ecrite que pour un serveur pret.
+    fn on_resources_requested(&mut self, command: String) -> Vec<Action> {
+        if self.phase == Phase::Ready && self.process_alive {
+            vec![Action::SendResources(command)]
+        } else {
+            vec![Action::ResourcesSkipped {
                 phase: self.phase.name(),
             }]
         }

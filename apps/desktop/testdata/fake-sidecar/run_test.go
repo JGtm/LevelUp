@@ -417,3 +417,34 @@ func TestCommandesDeLaCoquille(t *testing.T) {
 		t.Errorf("code %d, attendu 0", code)
 	}
 }
+
+// TestReponseALaCommandeResources : FAKE_RESOURCES_REPLY ecrit ses lignes JSON a chaque commande
+// `resources <json>`, jamais pour une autre commande ; une ligne qui n'est pas du JSON refuse le lancement.
+func TestReponseALaCommandeResources(t *testing.T) {
+	reply := `{"event":"resources","phase":"downloading","fingerprint":"f"}|{"event":"resources","phase":"ready","fingerprint":"f"}`
+	r := launch(t, contractArgs, baseEnv(t, map[string]string{"FAKE_RESOURCES_REPLY": reply}))
+	r.waitEvent(t, "ready")
+	_, _ = io.WriteString(r.stdin, "sync\n")
+	_, _ = io.WriteString(r.stdin, `resources {"fingerprint":"f"}`+"\n")
+	r.waitEvent(t, "resources")
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		events, _ := r.stdout.events(t)
+		if got := strings.Join(names(events), ","); got == "listening,ready,resources,resources" {
+			break
+		}
+		if time.Now().After(deadline) {
+			events, _ := r.stdout.events(t)
+			t.Fatalf("evenements %s : deux `resources` attendus, une seule fois (la commande sync n'en provoque aucun)", strings.Join(names(events), ","))
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	_ = r.stdin.Close()
+	r.wait(t)
+
+	if code := run(contractArgs, func(k string) string {
+		return map[string]string{"LEVELUP_DESKTOP_SECRET": testSecret, "FAKE_RESOURCES_REPLY": "pas du json"}[k]
+	}, "/", strings.NewReader(""), &bytes.Buffer{}, &bytes.Buffer{}); code != exitSetup {
+		t.Errorf("code %d, attendu %d pour une ligne qui n'est pas du JSON", code, exitSetup)
+	}
+}

@@ -17,6 +17,7 @@ use crate::events::{ParseError, SidecarEvent, Toast, parse_line};
 use crate::lifecycle::{Action, Input, Lifecycle, Timeouts, Timer};
 use crate::linereader::read_line_bounded;
 use crate::logfile::{LogSink, Source};
+use crate::resources::{self, PREPARE_TIMEOUT, ResourcePack, ResourcesBoard};
 use crate::screen::Screen;
 use crate::secret::Secret;
 use crate::shell_settings::ShellSettings;
@@ -79,20 +80,40 @@ pub struct Outcome {
 /// Poignee de demande de fermeture, copiable entre fils (l'etat de l'application, les gestionnaires
 /// de fenetre).
 #[derive(Clone)]
-pub struct Closer(Sender<Input>);
+pub struct Closer {
+    tx: Sender<Input>,
+    board: ResourcesBoard,
+}
 
 impl Closer {
     /// Demande la fermeture : ecran, fermeture de stdin, attente de `stopped`, kill si besoin.
     pub fn request_close(&self) {
         // Un superviseur deja termine n'a plus rien a fermer.
-        let _ = self.0.send(Input::CloseRequested);
+        let _ = self.tx.send(Input::CloseRequested);
     }
 
     /// Demande un cycle de synchronisation immediat (menu de la zone de notification) : la commande `sync`
     /// part sur la stdin du serveur s'il est pret, sinon rien.
     pub fn request_sync(&self) {
         // Un superviseur deja termine n'a plus rien a synchroniser.
-        let _ = self.0.send(Input::SyncRequested);
+        let _ = self.tx.send(Input::SyncRequested);
+    }
+
+    /// Demande au serveur de preparer le paquet de ressources de `pack` (commande `resources <json>`) et attend
+    /// qu'il le dise pret : telechargement, signature, somme et rangement sont les siens. Bloquant, a appeler
+    /// depuis un fil de mise a jour, jamais depuis celui de l'interface. L'erreur dit pourquoi le paquet n'est
+    /// pas pret (echec annonce, serveur arrete, commande perdue, delai).
+    pub fn prepare_resources(&self, pack: &ResourcePack) -> Result<(), String> {
+        self.board.reset();
+        self.tx
+            .send(Input::ResourcesRequested(resources::command_line(pack)))
+            .map_err(|_| "supervisor_stopped".to_string())?;
+        self.board.wait_ready(&pack.fingerprint, PREPARE_TIMEOUT)
+    }
+
+    /// Le tableau des evenements `resources` du serveur (diagnostic et tests).
+    pub fn resources_board(&self) -> &ResourcesBoard {
+        &self.board
     }
 }
 
@@ -133,27 +154,39 @@ pub fn start(config: ShellConfig, host: impl Host) -> io::Result<ShellHandle> {
 
     let (tx, rx) = mpsc::channel::<Input>();
     let (drained_tx, drained_rx) = mpsc::channel::<()>();
+    let board = ResourcesBoard::default();
     {
-        let (tx, log) = (tx.clone(), log.clone());
-        thread::spawn(move || pump_stdout(stdout, &tx, &log, &drained_tx));
+        let (tx, log, board) = (tx.clone(), log.clone(), board.clone());
+        thread::spawn(move || pump_stdout(stdout, &tx, &log, &drained_tx, &board));
     }
     {
         let log = log.clone();
         thread::spawn(move || pump_stderr(stderr, &log));
     }
     {
-        let (tx, log, sidecar) = (tx.clone(), log.clone(), sidecar.clone());
-        thread::spawn(move || watch_exit(&sidecar, &tx, &drained_rx, &log));
+        let (tx, log, sidecar, board) = (tx.clone(), log.clone(), sidecar.clone(), board.clone());
+        thread::spawn(move || watch_exit(&sidecar, &tx, &drained_rx, &log, &board));
     }
 
     let (machine, initial) = Lifecycle::start(timeouts);
-    let secret = spec.secret.clone();
-    let run_log = log.clone();
-    let join = thread::spawn(move || run(rx, machine, initial, &sidecar, Box::new(host), &secret, &run_log));
+    let wiring = Wiring {
+        secret: spec.secret.clone(),
+        log: log.clone(),
+        board: board.clone(),
+    };
+    let join = thread::spawn(move || run(rx, machine, initial, &sidecar, Box::new(host), &wiring));
     Ok(ShellHandle {
-        closer: Closer(tx),
+        closer: Closer { tx, board },
         join,
     })
+}
+
+/// Ce que la boucle du superviseur tient en plus du serveur et de la fenetre : le secret d'entree, le journal
+/// et le tableau des evenements `resources`.
+struct Wiring {
+    secret: Secret,
+    log: Arc<LogSink>,
+    board: ResourcesBoard,
 }
 
 /// La boucle du superviseur : applique les actions, attend la prochaine entree ou minuterie.
@@ -163,14 +196,15 @@ fn run(
     initial: Vec<Action>,
     sidecar: &Sidecar,
     host: Box<dyn Host>,
-    secret: &Secret,
-    log: &LogSink,
+    wiring: &Wiring,
 ) -> Outcome {
+    let log: &LogSink = &wiring.log;
     let mut effects = Effects {
         sidecar,
         host,
-        secret,
+        secret: &wiring.secret,
         log,
+        board: &wiring.board,
         timers: Vec::new(),
         kill_failed: false,
     };
@@ -221,6 +255,7 @@ struct Effects<'a> {
     host: Box<dyn Host>,
     secret: &'a Secret,
     log: &'a LogSink,
+    board: &'a ResourcesBoard,
     timers: Vec<(Timer, Instant)>,
     kill_failed: bool,
 }
@@ -232,6 +267,13 @@ impl Effects<'_> {
             killed: machine.was_killed(),
             kill_failed: self.kill_failed,
         }
+    }
+
+    /// La demande de paquet n'est pas partie : le fil de mise a jour qui l'attend est reveille tout de suite,
+    /// avec la raison, au lieu d'attendre son delai.
+    fn resources_not_sent(&self, reason: &str) {
+        log_shell(self.log, &format!("event=resources_not_sent reason={reason}"));
+        self.board.fail(reason);
     }
 
     fn apply(&mut self, action: Action, machine: &Lifecycle) {
@@ -293,6 +335,12 @@ impl Effects<'_> {
                 Ok(false) => log_shell(log, "event=sync_skipped reason=stdin_closed"),
                 Err(e) => log_shell(log, &format!("event=sync_failed err={e}")),
             },
+            Action::SendResources(command) => match self.sidecar.send_command(&command) {
+                Ok(true) => log_shell(log, "event=resources_requested"),
+                Ok(false) => self.resources_not_sent("stdin_closed"),
+                Err(e) => self.resources_not_sent(&format!("write_failed err={e}")),
+            },
+            Action::ResourcesSkipped { phase } => self.resources_not_sent(&format!("phase={phase}")),
             Action::ExitApp => {
                 log_shell(log, "event=exit_app");
                 let outcome = self.outcome(machine);
@@ -304,7 +352,13 @@ impl Effects<'_> {
 
 /// Vide stdout : decode chaque ligne en evenement, journalise ce qui n'en est pas un (borne),
 /// et continue de lire meme si le superviseur n'ecoute plus (le serveur ne doit jamais bloquer).
-fn pump_stdout(stdout: std::process::ChildStdout, tx: &Sender<Input>, log: &LogSink, drained: &Sender<()>) {
+fn pump_stdout(
+    stdout: std::process::ChildStdout,
+    tx: &Sender<Input>,
+    log: &LogSink,
+    drained: &Sender<()>,
+    board: &ResourcesBoard,
+) {
     let mut reader = BufReader::new(stdout);
     let mut ignored: u64 = 0;
     loop {
@@ -312,6 +366,10 @@ fn pump_stdout(stdout: std::process::ChildStdout, tx: &Sender<Input>, log: &LogS
             Ok(Some(line)) => match parse_line(&line.text) {
                 // Un superviseur termine n'ecoute plus : on continue de vider le tube.
                 Ok(event) => {
+                    // L'avancement d'un paquet est lu par le fil de mise a jour, pas par la machine d'etats.
+                    if let SidecarEvent::Resources(resources) = &event {
+                        board.publish(resources.clone());
+                    }
                     let _ = tx.send(Input::Event(event));
                 }
                 Err(reason) => {
@@ -359,7 +417,13 @@ fn pump_stderr(stderr: std::process::ChildStderr, log: &LogSink) {
 }
 
 /// Surveille la sortie du processus, laisse stdout se vider, puis annonce `Exited`.
-fn watch_exit(sidecar: &Sidecar, tx: &Sender<Input>, drained: &mpsc::Receiver<()>, log: &LogSink) {
+fn watch_exit(
+    sidecar: &Sidecar,
+    tx: &Sender<Input>,
+    drained: &mpsc::Receiver<()>,
+    log: &LogSink,
+    board: &ResourcesBoard,
+) {
     let status: Option<ExitStatus> = loop {
         match sidecar.try_wait() {
             Ok(Some(status)) => break Some(status),
@@ -377,6 +441,8 @@ fn watch_exit(sidecar: &Sidecar, tx: &Sender<Input>, drained: &mpsc::Receiver<()
     if drained.recv_timeout(STDOUT_DRAIN_GRACE).is_err() {
         log_shell(log, "event=stdout_drain_timeout");
     }
+    // Plus aucun evenement ne viendra : une mise a jour qui attendait un paquet apprend l'arret.
+    board.close();
     // Un superviseur termine n'a plus besoin de cette annonce.
     let _ = tx.send(Input::Exited);
 }
@@ -404,5 +470,9 @@ fn describe(event: &SidecarEvent) -> String {
         // Jamais le texte : seulement le type.
         SidecarEvent::Notification(notice) => format!("kind=notification toast_kind={}", notice.kind),
         SidecarEvent::ShellSettings(_) => "kind=shell_settings".into(),
+        SidecarEvent::Resources(r) => format!(
+            "kind=resources phase={} fingerprint={} code={}",
+            r.phase, r.fingerprint, r.code
+        ),
     }
 }

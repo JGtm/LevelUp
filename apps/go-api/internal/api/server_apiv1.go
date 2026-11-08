@@ -554,6 +554,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	mountDesktopStrings(r, cfg, apiOpt)
 	mountDesktopDiagnostic(r, cfg, apiOpt)
 	mountDesktopReplayRegen(r, cfg, apiOpt)
+	mountDesktopResources(r, cfg, apiOpt)
 	mountSiteImport(r, cfg, apiOpt)
 	mountExportDesktop(r, cfg, apiOpt)
 

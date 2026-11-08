@@ -23,6 +23,8 @@
 //	                       <racine de donnees>/fake-sidecar-commands.txt
 //	FAKE_EVENTS_AFTER_READY  lignes JSON separees par `|`, ecrites telles quelles sur stdout apres `ready`
 //	                       (variante ok) : `notification`, `shell_settings`
+//	FAKE_RESOURCES_REPLY   lignes JSON separees par `|`, ecrites sur stdout a chaque commande `resources <json>` recue
+//	                       (evenements `resources`)
 //	FAKE_STOP_CLEAN        true (defaut) | false : `clean` du `stopped` final (false : pas de marqueur d'arret)
 package main
 

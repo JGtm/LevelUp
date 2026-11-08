@@ -26,6 +26,7 @@ use levelup_desktop::logfile::{LogSink, MAX_LOG_BYTES, Source};
 use levelup_desktop::native_notice;
 use levelup_desktop::navigation::{self, ExternalOpen, Navigation, NewWindowDecision, OPEN_EXTERNAL_ENV};
 use levelup_desktop::render::{self, SCHEME};
+use levelup_desktop::resources;
 use levelup_desktop::roots::{self, Roots};
 use levelup_desktop::screen::Screen;
 use levelup_desktop::secret::Secret;
@@ -243,6 +244,17 @@ fn setup(app: &AppHandle, initial: InitialWindow) {
     }
 }
 
+/// La cle publique de mise a jour de la configuration de l'application (`plugins.updater.pubkey`).
+fn updater_pubkey(app: &AppHandle) -> Option<String> {
+    app.config()
+        .plugins
+        .0
+        .get("updater")
+        .and_then(|conf| conf.get("pubkey"))
+        .and_then(|key| key.as_str())
+        .map(str::to_string)
+}
+
 fn start_server(
     app: &AppHandle,
     prepared: Prepared,
@@ -262,7 +274,7 @@ fn start_server(
             exe,
             roots,
             secret,
-            extra_env: Vec::new(),
+            extra_env: resources::pubkey_env(updater_pubkey(app).as_deref()),
         },
         timeouts: Timeouts::default(),
         log: log.clone(),

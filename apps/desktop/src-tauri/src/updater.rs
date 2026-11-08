@@ -12,8 +12,10 @@
 //!     |-- pas de mise a jour, ou erreur (journalisee)      --> rien
 //!     `-- mise a jour proposee --> boite de dialogue
 //!            |-- « Plus tard »   --> rien (une seule proposition par lancement)
-//!            `-- « Installer »   --> telechargement (le serveur tourne toujours)
-//!                  |-- echec     --> rien (journalise)
+//!            `-- « Installer »   --> paquet de ressources pret (si la release en porte un : le serveur le
+//!                  |                   telecharge et le verifie, la coquille attend), PUIS telechargement de
+//!                  |                   l'installeur du moteur (le serveur tourne toujours)
+//!                  |-- echec     --> rien (journalise ; le moteur qui exige ce paquet n'est pas installe)
 //!                  `-- termine   --> porte armee, demande de fermeture propre
 //!                        ... fermeture : stdin ferme, `stopped`, sortie du serveur ...
 //!                        --> `exit_app` : l'installeur se lance si l'arret a ete propre (`stopped`
@@ -104,6 +106,12 @@ pub type Installer = Box<dyn FnOnce() -> Result<(), String> + Send>;
 pub trait UpdateSource: Send + 'static {
     /// Interroge le serveur de mises a jour : `None` si la version installee est la derniere.
     fn check(&mut self) -> Result<Option<Offer>, String>;
+    /// Prepare le paquet de ressources que la mise a jour proposee exige, AVANT le telechargement de son
+    /// installeur : une mise a jour dont le paquet n'est pas pret n'est pas installee. Sans paquet a preparer
+    /// (release sans bloc `resources`, paquet deja installe), rend `Ok`.
+    fn prepare_resources(&mut self, _offer: &Offer) -> Result<(), String> {
+        Ok(())
+    }
     /// Telecharge la mise a jour proposee ; rend l'installation a lancer plus tard.
     fn download(&mut self, offer: &Offer) -> Result<Installer, String>;
 }
@@ -334,13 +342,15 @@ pub(crate) fn run_flow(
                 log_shell(log, &format!("event=update_offered version={}", offer.version));
                 flow.step(UpdateInput::Decided(prompt.ask(&prompt_text(locale, &offer))))
             }
-            UpdateAction::Download(offer) => match source.download(&offer) {
-                Ok(ready) => {
-                    installer = Some(ready);
-                    flow.step(UpdateInput::Downloaded(Ok(())))
+            UpdateAction::Download(offer) => {
+                match source.prepare_resources(&offer).and_then(|()| source.download(&offer)) {
+                    Ok(ready) => {
+                        installer = Some(ready);
+                        flow.step(UpdateInput::Downloaded(Ok(())))
+                    }
+                    Err(e) => flow.step(UpdateInput::Downloaded(Err(e))),
                 }
-                Err(e) => flow.step(UpdateInput::Downloaded(Err(e))),
-            },
+            }
             UpdateAction::ArmAndClose => {
                 if let Some(ready) = installer.take() {
                     gate.arm(ready);
