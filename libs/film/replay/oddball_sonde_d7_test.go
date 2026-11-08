@@ -56,7 +56,7 @@ func TestOddballSondeDiagnostique(t *testing.T) {
 	if !ok {
 		return
 	}
-	g := memguard.Arm("d7-sonde", memguard.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm(t.Context(), "d7-sonde", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE %s : %.2f Gio", id, float64(peak)/(1<<30))
 	})
 	defer func() {

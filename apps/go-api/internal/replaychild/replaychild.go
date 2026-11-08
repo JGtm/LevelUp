@@ -116,9 +116,9 @@ func RunChild(ctx context.Context, args []string) int {
 	}
 	var g *memguard.Guard
 	if req.SoftLimitBytes > 0 {
-		g = memguard.ArmBytes(outilPostSync, req.SoftLimitBytes, onExceeded)
+		g = memguard.ArmBytes(ctx, outilPostSync, req.SoftLimitBytes, onExceeded)
 	} else {
-		g = memguard.Arm(outilPostSync, memguard.DefaultLimitGiB, onExceeded)
+		g = memguard.Arm(ctx, outilPostSync, memguard.DefaultLimitGiB, onExceeded)
 	}
 	defer func() {
 		g.Disarm()

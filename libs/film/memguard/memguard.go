@@ -16,6 +16,7 @@ package memguard
 // s'arrete. Les deux doctrines divergent legitimement ; la mesure de tas, elle, est la meme.
 
 import (
+	"context"
 	"log/slog"
 	"runtime/debug"
 	"runtime/metrics"
@@ -136,7 +137,7 @@ func WithArmMessage(message string) ArmOption {
 //
 // LE NOM DE L'OUTIL VOYAGE DANS LE JOURNAL parce que huit binaires arment desormais cette
 // sentinelle : sans lui, une ligne « plafond memoire arme » ne dirait pas qui l'a armee.
-func Arm(tool string, giB int, onExceeded func(peakBytes uint64), opts ...ArmOption) *Guard {
+func Arm(ctx context.Context, tool string, giB int, onExceeded func(peakBytes uint64), opts ...ArmOption) *Guard {
 	cfg := armConfig{message: messageArmementParDefaut}
 	for _, o := range opts {
 		o(&cfg)
@@ -144,7 +145,7 @@ func Arm(tool string, giB int, onExceeded func(peakBytes uint64), opts ...ArmOpt
 	hard := HardLimitFor(giB)
 	if giB > 0 {
 		debug.SetMemoryLimit(int64(uint64(giB) * octetsParGiB))
-		slog.Info(cfg.message, "outil", tool, "souple_gib", giB, "dur_octets", hard)
+		slog.InfoContext(ctx, cfg.message, "outil", tool, "souple_gib", giB, "dur_octets", hard)
 	}
 	return newGuard(hard, samplePeriod, onExceeded)
 }
@@ -152,7 +153,7 @@ func Arm(tool string, giB int, onExceeded func(peakBytes uint64), opts ...ArmOpt
 // ArmBytes est [Arm] avec un plafond souple en OCTETS, pour un appelant qui doit descendre
 // sous le gibioctet (la recuisson de la demo sur un hote de 2 Go). `softBytes == 0` desarme les
 // deux plafonds. Le plafond dur garde la meme marge que [Arm].
-func ArmBytes(tool string, softBytes uint64, onExceeded func(peakBytes uint64), opts ...ArmOption) *Guard {
+func ArmBytes(ctx context.Context, tool string, softBytes uint64, onExceeded func(peakBytes uint64), opts ...ArmOption) *Guard {
 	cfg := armConfig{message: messageArmementParDefaut}
 	for _, o := range opts {
 		o(&cfg)
@@ -161,7 +162,7 @@ func ArmBytes(tool string, softBytes uint64, onExceeded func(peakBytes uint64), 
 	if softBytes > 0 {
 		hard = hardMargin(softBytes)
 		debug.SetMemoryLimit(int64(softBytes))
-		slog.Info(cfg.message, "outil", tool, "souple_octets", softBytes, "dur_octets", hard)
+		slog.InfoContext(ctx, cfg.message, "outil", tool, "souple_octets", softBytes, "dur_octets", hard)
 	}
 	return newGuard(hard, samplePeriod, onExceeded)
 }

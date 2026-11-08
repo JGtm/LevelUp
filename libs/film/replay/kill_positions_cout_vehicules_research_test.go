@@ -37,7 +37,7 @@ func TestCoutDesLecturesVehicules(t *testing.T) {
 	}
 	decodelock.Prendre(t, verrou, "kp-cout-vehicules", id)
 	decodelock.BaisserLaPriorite(t, "kp-cout-vehicules")
-	garde := memguard.Arm("kp-cout-vehicules", 3, func(pic uint64) { panic(fmt.Sprintf("plafond memoire franchi : %d", pic)) })
+	garde := memguard.Arm(t.Context(), "kp-cout-vehicules", 3, func(pic uint64) { panic(fmt.Sprintf("plafond memoire franchi : %d", pic)) })
 	defer garde.Disarm()
 
 	blob, err := os.ReadFile(filepath.Join(faits, id+".filmfacts.bin")) //nolint:gosec // mesure

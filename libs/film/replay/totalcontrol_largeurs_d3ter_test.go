@@ -72,7 +72,7 @@ func (r d3tReleve) String() string {
 func TestTotalControlLargeursMPP(t *testing.T) {
 	dir := p2aRequireFilm(t)
 	short := filepath.Base(dir)
-	g := memguard.Arm("d3ter-largeurs", memguard.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm(t.Context(), "d3ter-largeurs", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE %s : %.2f Gio — sonde interrompue", short,
 			float64(peak)/(1<<30))
 	})

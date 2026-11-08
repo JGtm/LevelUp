@@ -12,7 +12,7 @@ import (
 func TestArmBytes_PlafondSousLeGibioctet(t *testing.T) {
 	t.Cleanup(func() { debug.SetMemoryLimit(math.MaxInt64) })
 	const soft = 768 << 20
-	g := ArmBytes("test", soft, func(uint64) {})
+	g := ArmBytes(t.Context(), "test", soft, func(uint64) {})
 	defer g.Disarm()
 	if g.hardLimit != hardMargin(soft) {
 		t.Errorf("plafond dur %d, attendu %d", g.hardLimit, hardMargin(soft))
@@ -20,7 +20,7 @@ func TestArmBytes_PlafondSousLeGibioctet(t *testing.T) {
 	if got := debug.SetMemoryLimit(-1); got != soft {
 		t.Errorf("plafond souple du runtime %d, attendu %d", got, soft)
 	}
-	g0 := ArmBytes("test", 0, func(uint64) {})
+	g0 := ArmBytes(t.Context(), "test", 0, func(uint64) {})
 	defer g0.Disarm()
 	if g0.hardLimit != 0 {
 		t.Errorf("zéro doit désarmer, plafond dur %d", g0.hardLimit)

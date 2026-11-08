@@ -73,7 +73,7 @@ func TestAssautPiedClassement(t *testing.T) {
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
-	g := memguard.Arm("TestAssautPiedClassement", memguard.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm(t.Context(), "TestAssautPiedClassement", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — classement interrompu", float64(peak)/(1<<30))
 	})
 	defer func() { g.Disarm() }()
@@ -245,7 +245,7 @@ func TestAssautPiedEtendu(t *testing.T) {
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
-	g := memguard.Arm("TestAssautPiedEtendu", memguard.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm(t.Context(), "TestAssautPiedEtendu", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — releve interrompu", float64(peak)/(1<<30))
 	})
 	defer func() { g.Disarm() }()
@@ -327,7 +327,7 @@ func TestAssautPiedRares(t *testing.T) {
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
-	g := memguard.Arm("TestAssautPiedRares", memguard.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm(t.Context(), "TestAssautPiedRares", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — releve interrompu", float64(peak)/(1<<30))
 	})
 	defer func() { g.Disarm() }()
@@ -397,7 +397,7 @@ func TestAssautPiedTemoinsTags(t *testing.T) {
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
-	g := memguard.Arm("TestAssautPiedTemoinsTags", memguard.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm(t.Context(), "TestAssautPiedTemoinsTags", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — releve interrompu", float64(peak)/(1<<30))
 	})
 	defer func() { g.Disarm() }()

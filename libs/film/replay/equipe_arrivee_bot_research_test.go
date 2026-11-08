@@ -39,7 +39,7 @@ func TestEquipeALArriveeDUnBot(t *testing.T) {
 	}
 	decodelock.Prendre(t, verrou, "equipe-arrivee-bot", id)
 	decodelock.BaisserLaPriorite(t, "equipe-arrivee-bot")
-	garde := memguard.Arm("equipe-arrivee-bot", 3, func(pic uint64) { panic(fmt.Sprintf("plafond memoire franchi : %d", pic)) })
+	garde := memguard.Arm(t.Context(), "equipe-arrivee-bot", 3, func(pic uint64) { panic(fmt.Sprintf("plafond memoire franchi : %d", pic)) })
 	defer garde.Disarm()
 
 	cat, err := profile.LoadMapQuantCatalog(catalogue)

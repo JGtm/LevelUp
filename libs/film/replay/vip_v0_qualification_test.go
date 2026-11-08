@@ -39,7 +39,7 @@ func TestVIPV0Qualification(t *testing.T) {
 	if id == "" {
 		t.Skipf("mesure non demandee : %s vide (identifiant court du film VIP)", vipFilmEnv)
 	}
-	g := memguard.Arm("vip-v0", memguard.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm(t.Context(), "vip-v0", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE %s : %.2f Gio — qualification interrompue, ce film "+
 			"sort NON QUALIFIE", id, float64(peak)/(1<<30))
 	})

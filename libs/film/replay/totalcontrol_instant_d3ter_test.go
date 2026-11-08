@@ -80,7 +80,7 @@ type d3iPoint struct {
 func TestTotalControlInstantCardinal(t *testing.T) {
 	dir := p2aRequireFilm(t)
 	short := filepath.Base(dir)
-	g := memguard.Arm("d3ter-instant", memguard.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm(t.Context(), "d3ter-instant", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE %s : %.2f Gio — mesure interrompue, ce film ne compte "+
 			"NI POUR NI CONTRE", short, float64(peak)/(1<<30))
 	})

@@ -759,7 +759,7 @@ décodeur qui importent `filmcache` / `filmproc` suivent les nouveaux noms (ré�
       `film_tri_total` (racine `internal/filmrun` ajoutée : le lanceur était balayé sous `libs/film`), voie CI Windows
       (`ci.yml`, `docs/COMMANDS.md` EN et FR). `grep -rn LEVELUP_ libs/film --include=*.go | grep -v _test.go` :
       `revision/porte.go` seul.
-- [ ] 2.2 `filmcache` réduit à la lecture d'un film depuis un dossier (manifeste + chunks, formes brut/zlib/zstd :
+- [x] 2.2 `filmcache` réduit à la lecture d'un film depuis un dossier (manifeste + chunks, formes brut/zlib/zstd :
       `LoadFilm`, `LoadFilmDir`, `Open`, `Source`, chemins) ; déplacement d'archive, recompression, écriture à la
       réception (`deplacement.go`, `recompress.go`, `write.go` et leurs tests) partent dans
       `apps/go-api/internal/sync/filmfetch` ou un paquet frère (relever les appelants AVANT : `sync/filmfetch`,
@@ -782,7 +782,11 @@ décodeur qui importent `filmcache` / `filmproc` suivent les nouveaux noms (ré�
       `filmarchive.Write`, etc.). `no_auto_film_recompress_test.go` suit le paquet (`pkg.Name == "filmarchive"`) ;
       `no_hardcoded_film_cache_dirs_test.go` (disposition) vert sans changement. `atomicfile` : l'écrivain prend
       l'original `platform/atomicfile`.
-- [ ] 2.3 `digest` et les helpers de test partagés passent sous `libs/film/internal/` (`internal/digest`,
+      — VÉRIFIÉ SUR PIÈCES à la reprise (2026-11-08) : `libs/film/filmcache` ne garde que `archive.go`, `chunk.go`,
+      `filmcache.go`, `stockage.go` ; `apps/go-api/internal/filmarchive` porte `write.go`, `deplacement.go`, `recompress.go`,
+      `retrait.go` ; `go test ./filmcache/ ./internal/digest/` (libs/film) et `./internal/filmarchive/ ./internal/analysis/digest/
+      ./internal/filmrun/` (go-api) verts ; `TestRecompressionEtDeplacementDeLArchiveSontManuels`, `TestNoHardcodedFilmCacheDirs` verts.
+- [x] 2.3 `digest` et les helpers de test partagés passent sous `libs/film/internal/` (`internal/digest`,
       `internal/depottest` pour les six copies de `racineDepot(t)` + homonyme d'`objectives` en `Skip`, garde-rail
       règle 6) ; `cmd/replay-equiv` (go-api) importe `digest` : relever et décider sur pièces (copie dans go-api
       avec test d'identité, comme `atomicfile`, ou le harnais entier part dans go-api).
@@ -799,6 +803,9 @@ décodeur qui importent `filmcache` / `filmproc` suivent les nouveaux noms (ré�
       `internal/depottest/depottest.go`, tests et `research` compris ; mutation jouée : une remontée ajoutée dans un
       `_test.go` de `replay` -> rouge, retirée -> vert, `temoins_film/lot2/2.3_mutation_racine_*.txt`).
       `film_layers_deps` : `internal/digest` et `internal/depottest` hors couche.
+      — VÉRIFIÉ SUR PIÈCES à la reprise (2026-11-08) : `libs/film/internal/digest`, `libs/film/internal/depottest`,
+      `apps/go-api/internal/analysis/digest` existent ; `TestLesCopiesJumellesSontIdentiques`,
+      `TestLaBriqueRemonteVersLeDepotParUneSeuleAide` et `TestCouchesDuDecodeur*` verts ; `libs/film/filmproc` et `libs/film/digest` absents.
 - [x] 2.3b Registre des replis (D-L1-2, item 1.3 `[!]`) : le registre de la brique ne nomme QUE des sites de la
       brique, `Site.Fichier` relatif au module `libs/film` ; les sites et `Appelants` de LevelUp (32 lignes de
       production au relevé du lot 1) passent dans un registre de l'hôte (`apps/go-api/internal/...`, un paquet) qui
@@ -856,8 +863,21 @@ décodeur qui importent `filmcache` / `filmproc` suivent les nouveaux noms (ré�
       `internal/grammar/rev_chronique.go`. `filmshell` n'est que dans `grammar_perimetre.golden` (grep des cinq
       `*_perimetre.golden`) : `killsource` et `objectives` ne bougent pas ; golden de périmètre inchangé. Cinq `Rev`
       inchangées, gates de révision verts.
-- [ ] 2.5 `ctx` sur les 12 appels `slog` de la sentinelle mémoire restante et d'`internal/atomicfile`
+- [x] 2.5 `ctx` sur les 12 appels `slog` de la sentinelle mémoire restante et d'`internal/atomicfile`
       (`slog.*Context`), signatures mises à jour, appelants migrés ; exclusion `horsPerimetreDeJournal` retirée.
+      — FAIT (2026-11-08, reprise après coupure de quota). `memguard.Arm` et `ArmBytes` prennent `ctx` en premier
+      paramètre (`slog.InfoContext`) ; `atomicfile.WriteFile(ctx, ...)` dans `libs/film/internal/atomicfile` ET dans sa
+      copie jumelle `apps/go-api/internal/platform/atomicfile` (`slog.WarnContext`), `TestLesCopiesJumellesSontIdentiques`
+      vert. Appelants migrés : 8 `cmd/*` (le `ctx` de leur `main` ou de leur fonction, `context.Background()` seulement
+      là où la signature n'en porte pas), `replaybuild`, `replaychild`, `filmarchive`, `settings`, `dbprofiles`,
+      `notify`, `ops`, `sync/replayartifacts`, deux outils `research`. Le décompte « 12 appels » du plan est en réalité
+      6 appels de production (2 `memguard`, 2 `atomicfile` de la brique, 2 de la copie jumelle). `horsPerimetreDeJournal`
+      retirée de `film_slog_contexte_test.go` (le commentaire périmé de D-L2-4 part avec elle). Mutation : un
+      `slog.Info("mutation")` dans `memguard.go` -> ROUGE (`libs/film/memguard/memguard.go:146: slog.Info sans contexte`),
+      retiré -> vert (`temoins_film/lot2/2.5_mutation_slog_{rouge,vert}.txt`). Reprise : un remplacement de masse avait
+      aussi réécrit `sentinelleTokens` et un message de `no_unbounded_film_loop_test.go` (`memguard.Arm(t.Context(), `) :
+      remis à `memguard.Arm(` / `memguard.Arm(ctx, ...)`. Les 11 fichiers `research && campagne_overlay` modifiés par le
+      premier passage sont restaurés (ils sont supprimés au 2.6). `go build` et `go vet` des deux modules verts.
 - [ ] 2.6 `git rm` des 21 fichiers `research && campagne_overlay` (liste fermée par
       `grep -rlE '^//go:build research && campagne_overlay' libs/film`) ; ligne D2-L0-b du registre soldée.
 - [ ] 2.7 `research` : reste derrière son tag ; chaque instrument qui importait le lanceur ou le cache déplacé

@@ -192,7 +192,7 @@ func TestVAV2Pertes(t *testing.T) {
 			continue
 		}
 		func() {
-			garde := memguard.Arm("campagne/va-v2", 4, func(pic uint64) {
+			garde := memguard.Arm(t.Context(), "campagne/va-v2", 4, func(pic uint64) {
 				fmt.Fprintf(os.Stderr, "%s : plafond memoire franchi (%d octets)\n", id, pic)
 				os.Exit(3)
 			})

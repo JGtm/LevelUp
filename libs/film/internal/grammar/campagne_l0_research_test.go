@@ -161,7 +161,7 @@ func TestCampagneL0Mesures(t *testing.T) {
 	detail := []string{"film\tbuild\tchunk\tpaquet\tetat\treste_apres_entete\teid_rejete\tclasse_au_bloc\tdernier_lu\trecords\tentrees_vue_c"}
 	for _, id := range films {
 		func() {
-			garde := memguard.Arm("campagne/l0", 4, func(pic uint64) {
+			garde := memguard.Arm(t.Context(), "campagne/l0", 4, func(pic uint64) {
 				fmt.Fprintf(os.Stderr, "%s : plafond memoire franchi (%d octets)\n", id, pic)
 				os.Exit(3)
 			})

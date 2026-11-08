@@ -38,6 +38,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -177,7 +178,7 @@ func lireModes(v string) (modes, error) {
 // mesurerUnFilm ouvre UN film, le mesure sous sa propre sentinelle dans chacun des modes
 // demandes, ecrit ses lignes, et le laisse partir avant le suivant.
 func mesurerUnFilm(racine, id string, plafondGiB int, rap *rapport, jm *journalMPP) error {
-	garde := memguard.Arm(nomOutil, plafondGiB, func(pic uint64) {
+	garde := memguard.Arm(context.Background(), nomOutil, plafondGiB, func(pic uint64) {
 		fmt.Fprintf(os.Stderr, "%s : plafond memoire franchi (%d octets) — arret\n", id, pic)
 		os.Exit(3)
 	})

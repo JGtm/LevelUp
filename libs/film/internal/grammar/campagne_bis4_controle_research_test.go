@@ -294,7 +294,7 @@ func TestCampagneBis4Controle(t *testing.T) {
 	parFilm := []string{"film\tbuild\tmesure\tvaleur"}
 	parBuild := map[string]*b4Mesure{}
 	for _, id := range films {
-		garde := memguard.Arm("campagne/bis4-controle", 4, func(pic uint64) {
+		garde := memguard.Arm(t.Context(), "campagne/bis4-controle", 4, func(pic uint64) {
 			fmt.Fprintf(os.Stderr, "%s : plafond memoire franchi (%d octets)\n", id, pic)
 			os.Exit(3)
 		})

@@ -59,7 +59,7 @@ func (b lpBloc) entree(slot int) string {
 
 // lpContexte ouvre un film sous le plafond memoire de la campagne.
 func lpContexte(t *testing.T, racine, id string) (*FilmContext, func()) {
-	garde := memguard.Arm("campagne/lp", 4, func(pic uint64) {
+	garde := memguard.Arm(t.Context(), "campagne/lp", 4, func(pic uint64) {
 		fmt.Fprintf(os.Stderr, "%s : plafond memoire franchi (%d octets)\n", id, pic)
 		os.Exit(3)
 	})

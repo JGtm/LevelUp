@@ -27,7 +27,7 @@ func TestWriteFile_AtomicPath_WritesContentAndLeavesNoTemp(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "app_settings.json")
 
-	if err := WriteFile(path, []byte(`{"a":1}`), 0o644); err != nil {
+	if err := WriteFile(t.Context(), path, []byte(`{"a":1}`), 0o644); err != nil {
 		t.Fatalf("WriteFile: %v", err)
 	}
 	got, err := os.ReadFile(path)
@@ -67,7 +67,7 @@ func TestWriteFile_RenameEBUSY_FallsBackInPlace(t *testing.T) {
 	})
 
 	want := `{"last_notified_version":"7.3.0"}`
-	if err := WriteFile(path, []byte(want), 0o644); err != nil {
+	if err := WriteFile(t.Context(), path, []byte(want), 0o644); err != nil {
 		t.Fatalf("WriteFile (repli attendu) : %v", err)
 	}
 	if renameCalls != 1 {
@@ -109,7 +109,7 @@ func TestWriteFile_RenameOtherError_IsReported(t *testing.T) {
 		return &os.LinkError{Op: "rename", Err: syscall.ENOSPC}
 	})
 
-	if err := WriteFile(path, []byte(`{"v":2}`), 0o644); err == nil {
+	if err := WriteFile(t.Context(), path, []byte(`{"v":2}`), 0o644); err == nil {
 		t.Fatal("erreur attendue (ENOSPC ne doit pas déclencher le repli)")
 	}
 	got, err := os.ReadFile(path)
@@ -141,7 +141,7 @@ func TestWriteFile_TempCreationImpossible_FallsBackInPlace(t *testing.T) {
 	})
 
 	want := `{"v":2}`
-	if err := WriteFile(path, []byte(want), 0o644); err != nil {
+	if err := WriteFile(t.Context(), path, []byte(want), 0o644); err != nil {
 		t.Fatalf("WriteFile (repli attendu) : %v", err)
 	}
 	got, err := os.ReadFile(path)
@@ -166,7 +166,7 @@ func TestWriteFile_InPlace_TruncatesLongerContent(t *testing.T) {
 	})
 
 	want := `{"a":1}`
-	if err := WriteFile(path, []byte(want), 0o644); err != nil {
+	if err := WriteFile(t.Context(), path, []byte(want), 0o644); err != nil {
 		t.Fatalf("WriteFile: %v", err)
 	}
 	got, err := os.ReadFile(path)
@@ -187,7 +187,7 @@ func TestWriteFile_CreatesMissingTarget(t *testing.T) {
 		return &os.LinkError{Op: "rename", Err: syscall.EBUSY}
 	})
 
-	if err := WriteFile(path, []byte(`{}`), 0o644); err != nil {
+	if err := WriteFile(t.Context(), path, []byte(`{}`), 0o644); err != nil {
 		t.Fatalf("WriteFile: %v", err)
 	}
 	if got, err := os.ReadFile(path); err != nil || string(got) != `{}` {

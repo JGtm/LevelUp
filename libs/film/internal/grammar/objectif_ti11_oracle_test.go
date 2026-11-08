@@ -48,7 +48,7 @@ func TestObjectifTi11Oracle(t *testing.T) {
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
-	g := memguard.Arm("TestObjectifTi11Oracle", memguard.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm(t.Context(), "TestObjectifTi11Oracle", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — oracle interrompu", float64(peak)/(1<<30))
 	})
 	defer func() { g.Disarm() }()
@@ -168,7 +168,7 @@ func TestObjectifTi11Calibration(t *testing.T) {
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
-	g := memguard.Arm("TestObjectifTi11Calibration", memguard.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm(t.Context(), "TestObjectifTi11Calibration", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — calibration interrompue", float64(peak)/(1<<30))
 	})
 	defer func() { g.Disarm() }()

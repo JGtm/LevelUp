@@ -114,7 +114,7 @@ func TestVAV1Tete(t *testing.T) {
 	out := []string{"film\tbuild\tclasse\tpaquets\tvue_a\ttete_ecarts\troute_ecarts\tlistes\tpasse_trames\tpasse_ecarts"}
 	for _, id := range films {
 		func() {
-			garde := memguard.Arm("campagne/va-v1", 4, func(pic uint64) {
+			garde := memguard.Arm(t.Context(), "campagne/va-v1", 4, func(pic uint64) {
 				fmt.Fprintf(os.Stderr, "%s : plafond memoire franchi (%d octets)\n", id, pic)
 				os.Exit(3)
 			})
@@ -282,7 +282,7 @@ func TestVAV1FinDeVueA(t *testing.T) {
 	lignes := []string{"film\tbuild\tchunk\tpaquet\tclasse\tlocalisation\tS\tE\tarret\tgenres\tverdict"}
 	for _, id := range films {
 		func() {
-			garde := memguard.Arm("campagne/va-v1", 4, func(pic uint64) {
+			garde := memguard.Arm(t.Context(), "campagne/va-v1", 4, func(pic uint64) {
 				fmt.Fprintf(os.Stderr, "%s : plafond memoire franchi (%d octets)\n", id, pic)
 				os.Exit(3)
 			})

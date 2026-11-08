@@ -18,6 +18,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -58,7 +59,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
-	garde := memguard.Arm("film_re/grenadeids", *plafond, func(pic uint64) {
+	garde := memguard.Arm(context.Background(), "film_re/grenadeids", *plafond, func(pic uint64) {
 		fmt.Fprintf(os.Stderr, "plafond memoire franchi (%d octets) — arret\n", pic)
 		os.Exit(3)
 	})

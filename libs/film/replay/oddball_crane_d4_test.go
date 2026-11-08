@@ -103,7 +103,7 @@ func TestEtatVivantOddballIdentite(t *testing.T) {
 	// quelques secondes (3,17 Gio en 3,6 s sur `a349fea8`), et « un film par processus » sans
 	// plafond n'a pas suffi a preserver le poste de travail. `t.Fatal` depuis la goroutine de
 	// la sentinelle serait illegal : on RAPPORTE, et le plafond souple fait le reste.
-	g := memguard.Arm("d4-oddball", memguard.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm(t.Context(), "d4-oddball", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE %s : %.2f Gio — mesure interrompue, ce film ne compte "+
 			"NI POUR NI CONTRE", id, float64(peak)/(1<<30))
 	})

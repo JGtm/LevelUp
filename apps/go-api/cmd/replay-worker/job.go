@@ -116,7 +116,7 @@ func (w *worker) processJob(ctx context.Context, job *domain.BuildQueueJob) {
 	// LE TEXTE DE LA LIGNE D'ARMEMENT EST CELUI D'AVANT LA CENTRALISATION, mot pour mot
 	// (constat C5 de la revue R1) : un filtre de journal cale sur « replay-worker: plafond
 	// memoire arme pour ce job » ne matchait plus le libelle unifie.
-	guard := memguard.Arm(outilOuvrier, w.memLimitGiB, func(peakBytes uint64) {
+	guard := memguard.Arm(ctx, outilOuvrier, w.memLimitGiB, func(peakBytes uint64) {
 		w.reportMemoryExceeded(ctx, job, peakBytes)
 	}, memguard.WithArmMessage("replay-worker: plafond memoire arme pour ce job"))
 	result, err := w.buildAndSend(ctx, job)

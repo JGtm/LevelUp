@@ -107,7 +107,7 @@ func TestEmpriseV0Reference(t *testing.T) {
 	}
 	// LA SENTINELLE DU DEPOT : une cuisson BTB monte a plusieurs Gio ; au-dela du plafond dur, le
 	// processus s'arrete plutot que de faire suffoquer la machine de travail.
-	garde := memguard.Arm("emprise-v0-reference", 8, func(pic uint64) {
+	garde := memguard.Arm(t.Context(), "emprise-v0-reference", 8, func(pic uint64) {
 		fmt.Fprintf(os.Stderr, "EMPRISE V0 : empreinte %.2f Gio > plafond — arret\n", float64(pic)/(1<<30))
 		os.Exit(3)
 	})

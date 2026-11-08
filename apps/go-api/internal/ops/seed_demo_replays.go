@@ -181,7 +181,7 @@ func copyArtifact(src, dst string) error {
 	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
 		return err
 	}
-	return atomicfile.WriteFile(dst, raw, 0o644)
+	return atomicfile.WriteFile(context.Background(), dst, raw, 0o644)
 }
 
 // embedDemoFilm copie le film `short` du cache source vers le magasin persistant des films de

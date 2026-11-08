@@ -64,7 +64,7 @@ type l9Compte struct{ entrees, presents, declarees, declareesPresentes int }
 
 // l9UnFilm ajoute les lignes d'un film.
 func l9UnFilm(t *testing.T, racine, id string, s *l9Sorties) {
-	garde := memguard.Arm("campagne/l9", 4, func(pic uint64) {
+	garde := memguard.Arm(t.Context(), "campagne/l9", 4, func(pic uint64) {
 		fmt.Fprintf(os.Stderr, "%s : plafond memoire franchi (%d octets)\n", id, pic)
 		os.Exit(3)
 	})

@@ -45,6 +45,7 @@
 package atomicfile
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -96,7 +97,7 @@ func WriteFileStrict(path string, data []byte, perm os.FileMode) error {
 //
 // `perm` ne s'applique qu'à la CRÉATION en repli : sur un fichier existant (cas du
 // bind-mount) le mode d'origine est conservé — on ne chmod jamais l'inode monté.
-func WriteFile(path string, data []byte, perm os.FileMode) error {
+func WriteFile(ctx context.Context, path string, data []byte, perm os.FileMode) error {
 	err := WriteFileStrict(path, data, perm)
 	switch {
 	case err == nil:
@@ -104,10 +105,10 @@ func WriteFile(path string, data []byte, perm os.FileMode) error {
 	case errors.Is(err, errTemporaireImpossible):
 		// Répertoire parent non inscriptible : le temporaire est impossible, mais
 		// l'inode cible peut rester ouvrable en écriture (bind-mount fichier).
-		slog.Warn("atomicfile: temporaire impossible, repli in-place NON ATOMIQUE",
+		slog.WarnContext(ctx, "atomicfile: temporaire impossible, repli in-place NON ATOMIQUE",
 			"path", path, "err", err)
 	case isBusy(err):
-		slog.Warn("atomicfile: rename EBUSY (cible bind-montée fichier), repli in-place NON ATOMIQUE",
+		slog.WarnContext(ctx, "atomicfile: rename EBUSY (cible bind-montée fichier), repli in-place NON ATOMIQUE",
 			"path", path, "err", err)
 	default:
 		return err

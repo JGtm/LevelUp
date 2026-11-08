@@ -344,7 +344,7 @@ func TestPasDeSentinelleBruteHorsFilmproc(t *testing.T) {
 			"Un `debug.SetMemoryLimit(` brut est le premier geste d'une TROISIEME copie de la "+
 			"sentinelle : il ne mesure rien, ne tient aucun pic, n'a aucune doctrine d'arret, "+
 			"et il fait mentir le pic emis par la vraie sentinelle en changeant le regime du GC "+
-			"sous elle.\nPasser par `memguard.Arm(outil, giB, onExceeded)` — cf. "+
+			"sous elle.\nPasser par `memguard.Arm(ctx, outil, giB, onExceeded)` — cf. "+
 			"cmd/replay-build/main.go :\n  %s",
 			sentinellePaquetCanonique, len(violations), strings.Join(violations, "\n  "))
 	}

@@ -227,7 +227,7 @@ func writeArtifactBytes(ctx context.Context, outPath, titleSlug, matchID string,
 	if err := os.MkdirAll(filepath.Dir(outPath), 0o755); err != nil {
 		return Digest{}, err
 	}
-	if err := atomicfile.WriteFile(outPath, blob, 0o644); err != nil {
+	if err := atomicfile.WriteFile(ctx, outPath, blob, 0o644); err != nil {
 		return Digest{}, err
 	}
 	ecrit, _ := digestFromBytes(blob)

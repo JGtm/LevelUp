@@ -171,7 +171,7 @@ func TestAssautStatborgArmementFenetre(t *testing.T) {
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
-	g := memguard.Arm("TestAssautStatborgArmementFenetre", memguard.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm(t.Context(), "TestAssautStatborgArmementFenetre", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — balayage interrompu", float64(peak)/(1<<30))
 	})
 	defer func() { g.Disarm() }()

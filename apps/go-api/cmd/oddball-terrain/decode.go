@@ -37,7 +37,7 @@ func runChild(cache, id string) int {
 		fmt.Fprintln(os.Stderr, "enfant : -match obligatoire")
 		return filmrun.CodePreparation
 	}
-	g := memguard.Arm("oddball-terrain", memguard.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm(context.Background(), "oddball-terrain", memguard.MeasureLimitGiB, func(peak uint64) {
 		filmrun.EmitPeak(peak)
 		fmt.Fprintf(os.Stderr, "enfant : plafond memoire depasse (%d octets) — film abandonne\n", peak)
 		os.Exit(filmrun.CodeMemory)

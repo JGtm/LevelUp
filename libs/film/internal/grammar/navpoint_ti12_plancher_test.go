@@ -266,7 +266,7 @@ func tpMedCV(xs []float64) (float64, float64) {
 // tpSentinelle arme le plafond memoire de mesure et rend le desarmement.
 func tpSentinelle(t *testing.T) func() {
 	t.Helper()
-	g := memguard.Arm("TestNavpointTi12Plancher", memguard.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm(t.Context(), "TestNavpointTi12Plancher", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — plancher interrompu", float64(peak)/(1<<30))
 	})
 	return func() { g.Disarm() }

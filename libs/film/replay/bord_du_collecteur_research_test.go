@@ -41,7 +41,7 @@ func TestBordDuCollecteurEgaleLesFaits(t *testing.T) {
 	}
 	decodelock.Prendre(t, verrou, "bord-du-collecteur", id)
 	decodelock.BaisserLaPriorite(t, "bord-du-collecteur")
-	garde := memguard.Arm("bord-du-collecteur", 3, func(pic uint64) { panic(fmt.Sprintf("plafond memoire franchi : %d", pic)) })
+	garde := memguard.Arm(t.Context(), "bord-du-collecteur", 3, func(pic uint64) { panic(fmt.Sprintf("plafond memoire franchi : %d", pic)) })
 	defer garde.Disarm()
 
 	blob, err := os.ReadFile(filepath.Join(faits, id+".filmfacts.bin")) //nolint:gosec // mesure

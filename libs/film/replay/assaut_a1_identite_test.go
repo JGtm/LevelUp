@@ -70,7 +70,7 @@ func TestAssautA1Identite(t *testing.T) {
 	if id == "" {
 		t.Skipf("mesure non demandee : %s vide (identifiant court du film Assaut)", a0FilmEnv)
 	}
-	g := memguard.Arm("a1-assaut", memguard.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm(t.Context(), "a1-assaut", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE %s : %.2f Gio — mesure interrompue, ce film ne compte "+
 			"NI POUR NI CONTRE", id, float64(peak)/(1<<30))
 	})

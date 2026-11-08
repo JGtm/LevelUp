@@ -62,7 +62,7 @@ func TestSkullCarrierWitness(t *testing.T) {
 	}
 	oracle := loadSkullOracle(t, id)
 
-	g := memguard.Arm("skull-carrier-witness", memguard.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm(t.Context(), "skull-carrier-witness", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE %s : %.2f Gio — NI POUR NI CONTRE", id, float64(peak)/(1<<30))
 	})
 	defer func() {

@@ -93,7 +93,7 @@ func enfantEquivalence(ctx context.Context, o options) int {
 		return filmrun.CodePreparation
 	}
 	defer lock.Release()
-	g := memguard.Arm(outilNom, o.memGiB, func(peak uint64) {
+	g := memguard.Arm(ctx, outilNom, o.memGiB, func(peak uint64) {
 		slog.ErrorContext(ctx, "plafond memoire depasse — equivalence abandonnee",
 			"pic_octets", peak, "pic_gio", gio(peak), "film", o.film)
 		filmrun.EmitPeak(peak)

@@ -53,7 +53,7 @@ func TestAssautA0Qualification(t *testing.T) {
 	if id == "" {
 		t.Skipf("mesure non demandee : %s vide (identifiant court du film Assaut)", a0FilmEnv)
 	}
-	g := memguard.Arm("a0-assaut", memguard.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm(t.Context(), "a0-assaut", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE %s : %.2f Gio — qualification interrompue, ce film "+
 			"sort NON QUALIFIE", id, float64(peak)/(1<<30))
 	})

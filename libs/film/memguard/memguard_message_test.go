@@ -41,7 +41,7 @@ func armerSousCapteur(t *testing.T, opts ...ArmOption) slog.Record {
 	c := &capteurSlog{}
 	slog.SetDefault(slog.New(c))
 
-	Arm("outil-de-test", 64, nil, opts...).Disarm()
+	Arm(t.Context(), "outil-de-test", 64, nil, opts...).Disarm()
 	if len(c.enregs) != 1 {
 		t.Fatalf("%d ligne(s) journalisee(s) a l'armement, attendu 1", len(c.enregs))
 	}

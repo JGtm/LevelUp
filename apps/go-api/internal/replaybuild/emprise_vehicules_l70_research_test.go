@@ -104,7 +104,7 @@ func TestEmpriseL70(t *testing.T) {
 		t.Fatalf("racine du depot : %v", err)
 	}
 	// LA SENTINELLE DU DEPOT (comme `TestEmpriseV0Reference`) : une cuisson BTB monte a plusieurs Gio.
-	garde := memguard.Arm("emprise-l70", 8, func(pic uint64) {
+	garde := memguard.Arm(t.Context(), "emprise-l70", 8, func(pic uint64) {
 		fmt.Fprintf(os.Stderr, "EMPRISE L70 : empreinte %.2f Gio > plafond — arret\n", float64(pic)/(1<<30))
 		os.Exit(3)
 	})

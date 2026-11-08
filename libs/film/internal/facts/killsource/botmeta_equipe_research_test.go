@@ -77,7 +77,7 @@ func TestRJELectureDeLEquipeDesBots(t *testing.T) {
 	}
 	decodelock.Prendre(t, verrou, "rje-equipe-bots", "parc")
 	decodelock.BaisserLaPriorite(t, "rje-equipe-bots")
-	garde := memguard.Arm("rje-equipe-bots", 3, func(pic uint64) { panic(fmt.Sprintf("plafond memoire franchi : %d", pic)) })
+	garde := memguard.Arm(t.Context(), "rje-equipe-bots", 3, func(pic uint64) { panic(fmt.Sprintf("plafond memoire franchi : %d", pic)) })
 	defer garde.Disarm()
 	oracle := rjeLireOracle(t, tsv)
 	films := make([]string, 0, len(oracle))

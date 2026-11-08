@@ -105,7 +105,7 @@ func TestOddballPortageProximite(t *testing.T) {
 	if !ok {
 		return
 	}
-	g := memguard.Arm("d6-portage", memguard.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm(t.Context(), "d6-portage", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE %s : %.2f Gio", id, float64(peak)/(1<<30))
 	})
 	defer func() {

@@ -84,7 +84,7 @@ func TestObjectifTi11Carte(t *testing.T) {
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
-	g := memguard.Arm("TestObjectifTi11Carte", memguard.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm(t.Context(), "TestObjectifTi11Carte", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — carte interrompue", float64(peak)/(1<<30))
 	})
 	defer func() { g.Disarm() }()

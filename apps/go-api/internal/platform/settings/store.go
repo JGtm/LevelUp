@@ -3,6 +3,7 @@
 package settings
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -271,7 +272,7 @@ func (s *Store) SaveTitleOverlay(overlayPath string, fields map[string]json.RawM
 	if err := os.MkdirAll(filepath.Dir(overlayPath), 0o755); err != nil {
 		return fmt.Errorf("settings.SaveTitleOverlay mkdir: %w", err)
 	}
-	if err := atomicfile.WriteFile(overlayPath, out, 0o644); err != nil {
+	if err := atomicfile.WriteFile(context.Background(), overlayPath, out, 0o644); err != nil {
 		return fmt.Errorf("settings.SaveTitleOverlay write: %w", err)
 	}
 	return nil
@@ -342,7 +343,7 @@ func (s *Store) Save(cfg *AppSettings) error {
 		return fmt.Errorf("settings.Save indent: %w", err)
 	}
 
-	if err := atomicfile.WriteFile(s.path, data, 0o644); err != nil {
+	if err := atomicfile.WriteFile(context.Background(), s.path, data, 0o644); err != nil {
 		return fmt.Errorf("settings.Save write: %w", err)
 	}
 	return nil

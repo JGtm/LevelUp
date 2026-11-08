@@ -140,7 +140,7 @@ func TestRNaisPiedResync(t *testing.T) {
 	out := []string{"film\tbuild\ttable\tcle\tn"}
 	for _, id := range films {
 		func() {
-			garde := memguard.Arm("r_nais/pied2", 4, func(pic uint64) {
+			garde := memguard.Arm(t.Context(), "r_nais/pied2", 4, func(pic uint64) {
 				fmt.Fprintf(os.Stderr, "%s : plafond memoire franchi (%d octets)\n", id, pic)
 				os.Exit(3)
 			})

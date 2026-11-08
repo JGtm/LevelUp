@@ -49,7 +49,7 @@ func TestOddballSommeilD8(t *testing.T) {
 	if id == "" {
 		t.Skipf("mesure non demandee : %s vide", d4FilmEnv)
 	}
-	g := memguard.Arm("d8-sommeil", memguard.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm(t.Context(), "d8-sommeil", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE %s : %.2f Gio", id, float64(peak)/(1<<30))
 	})
 	defer func() {

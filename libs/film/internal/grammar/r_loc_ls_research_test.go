@@ -299,7 +299,7 @@ func TestRLocLocalisateur(t *testing.T) {
 
 // rlocUnFilm joue les variantes sur un film.
 func rlocUnFilm(t *testing.T, racine, id string, utiles UsagesProduit, controle int, tables map[string][]string) {
-	garde := memguard.Arm("campagne/r_loc", 4, func(pic uint64) {
+	garde := memguard.Arm(t.Context(), "campagne/r_loc", 4, func(pic uint64) {
 		fmt.Fprintf(os.Stderr, "%s : plafond memoire franchi (%d octets)\n", id, pic)
 		os.Exit(3)
 	})

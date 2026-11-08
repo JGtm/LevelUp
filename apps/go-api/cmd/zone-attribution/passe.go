@@ -51,7 +51,7 @@ func runChild(ctx context.Context, r *runner, eligible []eligible, tune runTunin
 			"(le parent passe -match)\n", len(eligible))
 		return filmrun.CodePreparation
 	}
-	g := memguard.Arm("zone-attribution", memguard.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm(ctx, "zone-attribution", memguard.MeasureLimitGiB, func(peak uint64) {
 		// LE PIC PART AVANT LA MORT : `os.Exit` ne joue pas les differes, et sans cette ligne
 		// le parent ne saurait pas a quelle hauteur l'enfant a ete coupe.
 		filmrun.EmitPeak(peak)

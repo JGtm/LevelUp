@@ -146,7 +146,7 @@ func Write(ctx context.Context, root, shortID string, chunks []WriteChunk) error
 	if sortMf == manifesteAConserver {
 		return nil
 	}
-	if err := ecrireManifeste(manifestPath, shortID, chunks); err != nil {
+	if err := ecrireManifeste(ctx, manifestPath, shortID, chunks); err != nil {
 		return err
 	}
 	if sortMf == manifesteAReparer {
@@ -237,7 +237,7 @@ func manifesteAEcrire(ctx context.Context, manifestPath string, chunks []WriteCh
 // ecrireManifeste pose le marqueur de commit, ATOMIQUEMENT : il peut desormais REMPLACER un
 // manifeste partiel ou illisible, et une ecriture interrompue ne doit laisser ni l'ancien
 // tronque ni un nouveau illisible.
-func ecrireManifeste(manifestPath, shortID string, chunks []WriteChunk) error {
+func ecrireManifeste(ctx context.Context, manifestPath, shortID string, chunks []WriteChunk) error {
 	if err := os.MkdirAll(filepath.Dir(manifestPath), 0o755); err != nil {
 		return fmt.Errorf("filmcache: creation du dossier de manifestes : %w", err)
 	}
@@ -252,7 +252,7 @@ func ecrireManifeste(manifestPath, shortID string, chunks []WriteChunk) error {
 	if err != nil {
 		return fmt.Errorf("filmcache: serialisation du manifeste %s : %w", shortID, err)
 	}
-	if err := atomicfile.WriteFile(manifestPath, blob, 0o644); err != nil {
+	if err := atomicfile.WriteFile(ctx, manifestPath, blob, 0o644); err != nil {
 		return fmt.Errorf("filmcache: ecriture du manifeste %s : %w", shortID, err)
 	}
 	return nil

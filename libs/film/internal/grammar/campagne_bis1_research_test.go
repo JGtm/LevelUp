@@ -261,7 +261,7 @@ func TestCampagneMesuresBis1(t *testing.T) {
 
 // cmBis1UnFilm mesure un film.
 func cmBis1UnFilm(t *testing.T, racine, id string, utiles UsagesProduit, tables map[string][]string) {
-	garde := memguard.Arm("campagne/bis1", 4, func(pic uint64) {
+	garde := memguard.Arm(t.Context(), "campagne/bis1", 4, func(pic uint64) {
 		fmt.Fprintf(os.Stderr, "%s : plafond memoire franchi (%d octets)\n", id, pic)
 		os.Exit(3)
 	})

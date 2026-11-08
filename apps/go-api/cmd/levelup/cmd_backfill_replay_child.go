@@ -60,7 +60,7 @@ func runBackfillReplayUn(cfg *config.AppConfig, o replayBackfillOptions, cacheRo
 	// porte de nouveau le PLAFOND FRANCHI a cote de l'empreinte atteinte — sans lui, le
 	// journal disait jusqu'ou on etait monte mais plus ce qu'on avait depasse.
 	plafondDur := memguard.HardLimitFor(o.memLimitGiB)
-	g := memguard.Arm(outilBackfillReplay, o.memLimitGiB, func(peak uint64) {
+	g := memguard.Arm(context.Background(), outilBackfillReplay, o.memLimitGiB, func(peak uint64) {
 		slog.Error("backfill-replay (enfant): PLAFOND MEMOIRE DEPASSE — arret du processus",
 			"empreinte_octets", peak, "plafond_dur_octets", plafondDur, "match_id", o.one)
 		filmrun.EmitPeak(peak)

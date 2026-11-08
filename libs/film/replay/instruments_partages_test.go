@@ -30,7 +30,7 @@ import (
 // tout processus qui enchaine des films arme sa sentinelle (cf. `memguard`).
 func amArmeSentinelle(t *testing.T, nom string) func() {
 	t.Helper()
-	g := memguard.Arm(nom, memguard.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm(t.Context(), nom, memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — balayage interrompu pour proteger la machine",
 			float64(peak)/(1<<30))
 	})

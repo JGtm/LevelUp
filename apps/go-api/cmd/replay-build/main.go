@@ -160,7 +160,7 @@ func armerProtections(ctx context.Context, cacheRoot, matchID string, memGiB int
 		os.Exit(filmrun.CodePreparation)
 	}
 	filmrun.LowerOwnPriority(outilNom)
-	g := memguard.Arm(outilNom, memGiB, func(peak uint64) {
+	g := memguard.Arm(ctx, outilNom, memGiB, func(peak uint64) {
 		slog.ErrorContext(ctx, "plafond memoire depasse — cuisson abandonnee",
 			"pic_octets", peak, "pic_gio", float64(peak)/(1<<30), "match", matchID)
 		arreterProfil()

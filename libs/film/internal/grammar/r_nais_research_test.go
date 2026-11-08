@@ -63,7 +63,7 @@ type rnVar struct {
 }
 
 func rnUnFilm(t *testing.T, racine, id string, utiles UsagesProduit, out map[string][]string) {
-	garde := memguard.Arm("r_nais/mesures", 4, func(pic uint64) {
+	garde := memguard.Arm(t.Context(), "r_nais/mesures", 4, func(pic uint64) {
 		fmt.Fprintf(os.Stderr, "%s : plafond memoire franchi (%d octets)\n", id, pic)
 		os.Exit(3)
 	})

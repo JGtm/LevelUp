@@ -301,7 +301,7 @@ func TestCampagneBis2BlocBC(t *testing.T) {
 		"blocs_flags2\tfermes_exclusifs\tfermes_apres_terminateur\tfermes_apres_rejet\tpaquets_fermes_ref\tpaquets"}
 	detail := []string{"film\tbuild\tchunk\tpaquet\tsortie_vue_b\tutiles_en_jeu\tr96\te420\tr95\tr97\tblocs_r96\tblocs_e420"}
 	for _, id := range films {
-		garde := memguard.Arm("campagne/bis2-bc", 4, func(pic uint64) {
+		garde := memguard.Arm(t.Context(), "campagne/bis2-bc", 4, func(pic uint64) {
 			fmt.Fprintf(os.Stderr, "%s : plafond memoire franchi (%d octets)\n", id, pic)
 			os.Exit(3)
 		})
