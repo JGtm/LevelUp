@@ -120383,3 +120383,11 @@ version restent après chaque mise à jour NSIS (antérieur à L24).
 **Résultats observés.** Aucun défaut sur les écritures DuckDB, la rotation des jetons, le multi-titre ou la propagation LUSR ; 25 conditions vérifiées. Pas de ronde 2, aucun P0.
 
 **Conclusion / prochaine étape.** Gates finaux, mesure du rejeu après la recuisson.
+
+## [2026-11-08] Backlog : clôture du plan, mesure du rejeu — Complété
+
+**Décision technique principale.** Aucune correction du rejeu. La mesure, en lecture seule sur les rejeux recuits, reste consignée au backlog avec sa date.
+
+**Résultats observés.** Lot fusionné dans `release/v8.1.0` (`c93e210968`, PR #160). Vies sans nom : 8 sur 2 films, un 3e film sans données. Châssis neutre `b857fb95` : 117 films, 455 vies. Second corps non mesurable tant que le code lu n'accepte pas les faits au schéma 19 ; entame et parent non véhicule en attente d'une copie froide de la base partagée.
+
+**Conclusion / prochaine étape.** Après la fusion de `fix/rejeu-vies-equipement`, relancer la mesure du second corps. Contrôle visuel du user sur Citations et sur l'exclusion d'un match.
