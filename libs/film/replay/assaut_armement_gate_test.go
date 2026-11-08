@@ -47,6 +47,7 @@ import (
 	"testing"
 
 	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/LevelUp/libs/film/internal/decodelock"
 	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
 	"github.com/JGtm/LevelUp/libs/film/internal/source"
 	"github.com/JGtm/LevelUp/libs/film/types"
@@ -101,6 +102,7 @@ func TestAssautArmementGate(t *testing.T) {
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
+	decodelock.Prendre(t, cache, "TestAssautArmementGate", "parc")
 	defer amArmeSentinelle(t, "TestAssautArmementGate")()
 
 	// (a) + (b) — LES TÉMOINS. Toute dérive ici est une régression, pas un effet de bord.

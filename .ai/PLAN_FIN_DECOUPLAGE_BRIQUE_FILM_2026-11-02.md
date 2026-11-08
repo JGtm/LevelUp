@@ -1111,7 +1111,8 @@ modifiés ou neufs dans `archlint`, `libs/film/revision/ordre_imports_test.go`, 
       par la mesure ; (B) D-L4-10, `decfilm.ErrUnknownBuild` et `decfilm.ErrUnknownFormat` exposés par la façade, test depuis
       un paquet externe, ratchet de surface 179 -> 181 (T6 « sauf décision écrite »). Exécutant : Sonnet.
 - [ ] 4.7 Revue adversariale (skill `adversarial-review`) : deux relecteurs Sonnet aveugles sur le diff des lots 1
-      à 4 ; corrections avec test vu rouge ; pas de seconde ronde sauf P0.
+      à 4 ; corrections avec test vu rouge ; pas de seconde ronde sauf P0. Ronde 1 corrigée le 2026-11-08 (C1 à C4, voir
+      « Résultat de l'item 4.7 ») ; case laissée au pilote, qui la coche après relecture des corrections.
 - [ ] 4.8 Haiku : backlog (entrée « Décodeur » → récemment complété), registre (items soldés barrés avec date),
       `.ai/project_map.md` ; contrôle par grep des chemins cités.
 - [ ] 4.9 PR vers `release/v8.1.0`, CI verte, squash. Commande de tag préparée pour le user :
@@ -1337,6 +1338,24 @@ vert, cinq `Rev` inchangées, aucun `*.golden` modifié.
 **Gate (2026-11-08).** `go vet ./...` et `go test ./... -count=1` dans `libs/film` : 0 échec (29 paquets, `replay` 50 s, `grammar` 112 s) ; `go test ./internal/archlint/ -timeout 40m -count=1`
 (`apps/go-api`, seul) : `ok`, 241 s ; `go test ./cmd/anonymise-gamertags/...` : `ok` (`TestLesXuidsDesFixturesSontFictifs` joué, vert) ; `golangci-lint` : 0 issue (`libs/film ./decfilm/...` avec la config d'`apps/go-api`, et `./internal/archlint/...`).
 
+### Résultat de l'item 4.7 (2026-11-08)
+
+Ronde 1 : 2 relecteurs, 4 constats recevables (1 P1, 3 P2), 0 jeté ; 25 conditions vérifiées qui tiennent. Pas de seconde
+ronde (aucun P0).
+
+| Constat | Gravité | Où | Correction | Test : rouge, puis vert |
+|---|---|---|---|---|
+| C1 | P1 | `libs/film/replay/testdata/fuzz/FuzzDecodeFilmFactsFile/seed_01` | La graine « mini-bobine » portait 8 xuids réels (entiers variables du codec, invisibles au balayage de texte). Les quatre graines sont régénérées depuis la fixture fictive par `TestFuzzFilmFactsSeedsRegenerate -update-graines-faits`. Nouveau garde-rail `TestGrainesDeFaitsPortentDesXuidsFictifs` (`replay/graines_faits_identites_test.go`) : chaque graine est décodée par le codec, chaque xuid doit être dans `[0x0009000000000000, 0x000A000000000000[` ET au registre ; une graine illisible doit être le début d'une graine lisible. Côté hôte, `TestLesBinairesDeLaBriqueSontCouverts` (`cmd/anonymise-gamertags/binaires_couverts_test.go`) : tout fichier de `libs/film` ni texte ni listé dans une liste fermée et datée (graines, `inputs_*.bin.gz`, `entites_*`/`equipement_*`, `*.bin`) rougit ; une ligne de la liste qui ne couvre plus rien rougit aussi | Rouge avant : la graine à schéma 5 est illisible (le binaire lit le schéma 18) et le test la nomme, donc les 8 xuids n'étaient pas lisibles par le codec ; leur présence est établie par un balayage binaire hors dépôt des 420 originaux (décodage des graines, LE/BE aux huit décalages, entiers variables) : 8 xuids dans `seed_01`, 0 ailleurs sous `libs`. `TestLeGardeRailDesGrainesVoitUnXuidReel` prouve la détection sur un fichier de faits à xuid réel. Rouge de la liste fermée : un `.dat` et un fichier sans extension déposés sous `testdata` rougissent en étant nommés, puis retirés. Vert après : les 4 graines régénérées, balayage binaire 0, `grep` des 8 décimaux dans `libs/film` 0, `go test -run FuzzDecodeFilmFactsFile -fuzz='^$'` vert sur les graines |
+| C2 | P2 | `apps/go-api/cmd/anonymise-gamertags/registre_test.go:37` et `:92` | Le ratchet lisait les seuls nombres à 16 chiffres décimaux. Il lit aussi les suites de 16 chiffres hexadécimaux (avec ou sans `0x`, casse indifférente) et la forme à octets inverses, valeur dans la plage et absente du registre (`xuidsHorsRegistreDuTexte`) ; `.mod` et `.sum` rejoignent les extensions de texte | `TestLeGardeRailVoitUnXuidHorsRegistre` étendu (hexa minuscules avec `0x`, majuscules, sans préfixe, octets inversés, plus les cas qui ne doivent pas lever : fictif au registre dans les deux formes, `deadbeefdeadbeef`, suite de 17 chiffres). Rouge avant : avec les deux appels hexadécimaux neutralisés, `attendu [0009000000000001 0009000000000002 0009000000000003 0400000000000900 2533274790395904], lu [2533274790395904]`. Vert après ; `TestLesXuidsDesFixturesSontFictifs` vert sur tout `libs/film` : aucun faux positif, aucune exclusion nécessaire |
+| C3 | P2 | `replay/assaut_armement_gate_test.go:36`, `replay/assaut_bomb_arms_gate_test.go:48`, `replay/bombe_portage_gate_test.go:40`, `internal/grammar/objectif_ti11_bruit_test.go:125` | Les quatre commentaires promettaient le verrou de décodage sans le prendre : chaque test prend maintenant `decodelock.Prendre(t, cache, "<Test>", "parc")` après son saut (`internal/decodelock` est importable par `grammar`, aucun cycle), libération par le test. La phrase est donc vraie, aucune phrase retirée | `go vet ./...` vert. Preuve d'exécution : `TestBombePortageGate` avec `ASSAUT_CACHE` pointé sur un dossier vide : AVANT (ligne retirée) aucun `film_decode.lock` n'apparaît ; APRÈS le fichier `film_decode.lock` est créé sous la racine donnée (le test échoue ensuite, faute de films, ce qui est normal) |
+| C4 | P2 | `packaging/systemd/levelup-worker.service:95` | `internal/games/halo_infinite/film/filmproc` remplacé par `apps/go-api/internal/filmrun` (où vit le verrou : `solo.go`, `doc.go`). Autres restes du motif `halo_infinite/film/filmproc` ou `libs/film/filmproc` hors `.ai/` et annexes d'ADR : un seul, `internal/archlint/server_stdout_internal_test.go:18`, une raison datée d'allowlist qui dit d'où vient le lanceur (historique, laissée) ; les mentions nues de `filmproc` (`filmrun/doc.go`, commentaires de tests de `filmrun`, `rev_chronique_archive.go`, CHANGELOG) sont des chroniques ou des noms de drapeaux de test, hors motif, non touchées | `git grep -n "halo_infinite/film/filmproc\|libs/film/filmproc"` : 1 ligne de production avant, 0 après (hors la raison d'allowlist historique) |
+
+Écarts au texte de la consigne : (1) la preuve rouge de C1 ne nomme pas les 8 xuids, la graine périmée (schéma 5 contre 18)
+n'étant plus décodable ; elle nomme la graine, et les 8 xuids sont établis par le balayage binaire local. (2) La liste
+fermée reçoit aussi les `entites_*` / `equipement_*` (`.bin.gz` du codec, sans champ xuid, mesure du jour : 0 des 420) et
+les graines `FuzzFilmRecordReaders` (payloads de records, mesure du jour : 0). Fichiers : voir le commit ; aucun `*.golden`
+de révision modifié (`go test ./revision/...` vert). Gates : `go vet ./...` des deux modules ; `go test ./replay/... ./internal/grammar/...` (libs/film) ok ; `go test ./cmd/anonymise-gamertags/...` ok ; `go test ./internal/archlint/ -timeout 40m -count=1` ok en 325 s ; `golangci-lint` (config de go-api) 0 issue sur les fichiers touchés.
+
 ## Lot 5 — Préalables aux dépôts dédiés (après la clôture du desktop)
 
 - [ ] 5.1 D-11 : `netguard.Doer` retire les en-têtes d'authentification quand une redirection change d'hôte ; test
@@ -1549,3 +1568,8 @@ Lot 4 (2026-11-08), notées, non traitées :
   en-têtes (`killsource/golden_render_test.go`, `minibobine_test.go`, `frame_closure_ratchet_test.go`,
   `keyframe_closure*_ratchet_test.go`, `marche_fermeture_test.go`, `revision/messages_test.go`, `perimetre_test.go`) : corriger
   l'un sans l'autre fait diverger le golden de son générateur ; D-6 (laisser jusqu'à la prochaine régénération) tient.
+- **D-L4-14** (2026-11-08, revue 4.7) Les graines de `FuzzDecodeFilmFactsFile` étaient au schéma de faits 5 alors que le
+  binaire lit le 18 : depuis la montée de schéma, le fuzz ne rejouait que le refus de version et n'exerçait aucune section.
+  Régénérées par C1, et `TestGrainesDeFaitsPortentDesXuidsFictifs` rougit désormais toute graine devenue illisible : une
+  montée de `SchemaDesFaits` oblige à régénérer les graines (`-update-graines-faits`). Règle à confirmer par le pilote ;
+  non traitée au-delà de C1.

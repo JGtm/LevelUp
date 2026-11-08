@@ -51,6 +51,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/JGtm/LevelUp/libs/film/internal/decodelock"
 	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
 )
 
@@ -69,6 +70,7 @@ func TestBombePortageGate(t *testing.T) {
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
+	decodelock.Prendre(t, cache, "TestBombePortageGate", "parc")
 	defer amArmeSentinelle(t, "TestBombePortageGate")()
 
 	for _, f := range bpFilms {

@@ -134,6 +134,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/JGtm/LevelUp/libs/film/internal/decodelock"
 	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
@@ -213,6 +214,7 @@ func TestObjectifTi11Bruit(t *testing.T) {
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
+	decodelock.Prendre(t, cache, "TestObjectifTi11Bruit", "parc")
 	g := memguard.Arm(t.Context(), "TestObjectifTi11Bruit", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — mesure interrompue", float64(peak)/(1<<30))
 	})
