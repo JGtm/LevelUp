@@ -1,3 +1,9 @@
+## [2026-11-08] Fin du découplage — lot 4 clos, PR #155 fusionnée dans release/v8.1.0 — Complété
+
+**Décision** : squash de la PR #155 (`5842e16cad`) après fusion de la release dans la branche (deux conflits : CI union, ADR 0045 ; fichier `cmd_decode_verrou.go` de la release rebranché de `filmproc` sur `filmrun`) et CI verte (28 jobs). Montée `klauspost/compress` 1.20.2 pour Govulncheck (avis GO-2026-6865 du 2026-11-05).
+**Résultats** : lots 0 à 4 clos, 4.0 à 4.9 `[x]` ; revue adversariale 2 rondes (4 constats corrigés, ronde 2 vide) ; caches du lot purgés (4,73 Go).
+**Prochaine étape** : tag `libs/film/v0.1.0` posé par le user (recommandé : quand la release est sur `main`) ; lot 5 (jeton Spartan sur redirection, NOTICE gamefiles) après la clôture du bureau ; lot 6 (quatre dépôts dédiés) après `main`.
+
 ## [2026-11-08] Fin du découplage — 4.9 : montée klauspost/compress 1.20.2 (govulncheck) — Complété
 
 **Décision technique principale** : le job CI Govulncheck de la PR échouait sur GO-2026-6865 (`klauspost/compress` 1.19.0, corrigé en 1.20.2, atteint par `compressResponseWriter.Flush` de `internal/api/middleware/session.go`) ; avis du 2026-11-05, indépendant de la branche. Montée de version dans `libs/film` (`go get` puis `go mod tidy`, seule ligne `require` changée) et dans `apps/go-api` (`go get`, sans `go mod tidy`) ; `libs/himap`, `libs/gamefiles` et `libs/haloapi` ne portent pas ce module.
