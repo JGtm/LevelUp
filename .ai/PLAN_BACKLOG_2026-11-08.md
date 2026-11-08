@@ -283,7 +283,7 @@ Dans `.ai/BACKLOG.md`, sur la branche du plan. La branche film modifie aussi la 
 résout ce conflit au rebase. Les deux lignes non commitées du dossier principal (entrée « Décodeur de film ») ne sont pas
 reprises ici.
 
-- [ ] 8.1 Section « [dette/backlog-2026-10-16] », puce par puce, selon le statut final de son item (un `[!]` garde sa puce
+- [x] 8.1 Section « [dette/backlog-2026-10-16] », puce par puce, selon le statut final de son item (un `[!]` garde sa puce
   avec sa raison) :
 
 | Groupe | Puce | Action si close |
@@ -310,15 +310,15 @@ reprises ici.
 | Divers | `continue` de `weapon_resolver` | Retirer (§0) |
 | Divers | `match_bomb_stats` | Retirer (§0) |
 | Divers | `/tactical/maps` | Retirer (§0) |
-| Divers | Instruments `research` | **Garder** jusqu'à la fusion de la branche film |
+| Divers | Instruments `research` | Retirer (branche film fusionnée dans la release, 5842e16cad) |
 
-- [ ] 8.2 Entrée « [ops/h5] weapon_labels » : la supprimer (rien à retirer, conservation portée par 1.6).
-- [ ] 8.3 Entrée « [auth] Rafraîchissement OAuth » : la supprimer si E5 est close ; marquer traitée la ligne D3-L1-f de
+- [x] 8.2 Entrée « [ops/h5] weapon_labels » : la supprimer (rien à retirer, conservation portée par 1.6).
+- [x] 8.3 Entrée « [auth] Rafraîchissement OAuth » : la supprimer si E5 est close ; marquer traitée la ligne D3-L1-f de
   `.ai/REGISTRE_REPORTS.md`, en renvoyant à ce plan.
-- [ ] 8.4 Selon D-3, retirer « overlay Discord par titre » et « exposition des catégories forwardées » de la section
+- [x] 8.4 Selon D-3, retirer « overlay Discord par titre » et « exposition des catégories forwardées » de la section
   Coach, garder le funnel, et ajouter : « Réglages Discord sans interrupteur web : coach, rejeu, reconnexion, disque ».
 - [ ] 8.5 (Pilote, pas Haiku) Entrées rejeu : y écrire le résultat daté d'E6 ; ne retirer que ce qui est mesuré réglé.
-- [ ] 8.6 « Récemment complété » : une ligne datée (branche, plan, faits, clos sur preuve, renvoi au §0).
+- [x] 8.6 « Récemment complété » : une ligne datée (branche, plan, faits, clos sur preuve, renvoi au §0).
 - [ ] 8.7 `.ai/thought_log.md` : entrée finale. Plan déplacé sous `.ai/V8/` une fois la PR fusionnée.
 - [ ] 8.8 `powershell -File scripts/disk-hygiene.ps1 -Lot backlog1108 -Apply`, worktree retiré après fusion.
 
@@ -362,3 +362,4 @@ les puces gardées en `[!]` ; relecture du diff par le pilote.
 - 2026-11-08 E5 close : rafraîchissement OAuth par le dernier client gagnant, en mémoire. Relecture Sonnet : 1 constat recevable (P1), 11 conditions tenues. Compte reconnecté en web + natif en erreur de configuration = échec en boucle ; corrigé : seul un échec transitoire du natif est rendu sans Azure, test rouge puis vert. Gate vert.
 - 2026-11-08 ordre : E6 dépend de la fin de la recuisson (dépendance externe, `levelup-cf`) ; E7.1, sans lien avec elle, passe devant E6.
 - 2026-11-08 E7.1 close : relecture Opus sur toute la branche, 4 constats recevables, tous corrigés avec test rouge puis vert (cache du graphe après exclusion, copie de la lecture des exclus, plancher daté, chemins d'échec), 25 conditions tenues. Aucun P0 : pas de ronde 2.
+- 2026-11-08 E8 : section dette, entrées `weapon_labels` et OAuth retirées, section Coach réduite, référence ajoutée, registre et CHANGELOG 8.1.0 (EN et FR) à jour. Reste 8.5, 8.7, 8.8 après E6.
