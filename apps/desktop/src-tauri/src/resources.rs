@@ -67,12 +67,20 @@ pub struct ResourcesEvent {
     pub fingerprint: String,
     /// Code d'erreur fixe de la phase `failed`.
     pub code: String,
+    /// Avancement du telechargement, 0 a 100 (0 quand le serveur n'en annonce pas).
+    pub percent: u8,
 }
 
 impl ResourcesEvent {
     /// Le paquet est utilisable par le moteur qui l'exige : installe (`current`) ou range (`ready`).
     pub fn is_ready(&self) -> bool {
         self.phase == "ready" || self.phase == "current"
+    }
+
+    /// Une preparation qui travaille : telechargement ou verification. `waiting_game` n'en est pas une (rien
+    /// n'avance), ni les phases terminales.
+    pub fn is_working(&self) -> bool {
+        self.phase == "downloading" || self.phase == "verifying"
     }
 
     pub fn is_failed(&self) -> bool {
@@ -165,6 +173,7 @@ mod tests {
             phase: phase.into(),
             fingerprint: fingerprint.into(),
             code: code.into(),
+            percent: 0,
         }
     }
 

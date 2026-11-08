@@ -439,5 +439,42 @@ fn levelup_desktop_resources_event() -> crate::resources::ResourcesEvent {
         phase: "downloading".into(),
         fingerprint: "f".into(),
         code: String::new(),
+        percent: 0,
     }
+}
+
+fn resources_progress(phase: &str, percent: u8) -> Input {
+    Input::Event(SidecarEvent::Resources(crate::resources::ResourcesEvent {
+        phase: phase.into(),
+        fingerprint: "f".into(),
+        code: String::new(),
+        percent,
+    }))
+}
+
+#[test]
+fn un_telechargement_qui_progresse_rearme_le_delai_de_demarrage() {
+    let mut m = machine();
+    m.step(listening(8123));
+    let rearm = vec![Action::Arm(Timer::Startup, T.startup)];
+    assert_eq!(m.step(resources_progress("downloading", 0)), rearm);
+    assert_eq!(m.step(resources_progress("downloading", 7)), rearm);
+    // Le meme avancement repete n'est pas un progres : un telechargement bloque ne tient pas le delai en vie.
+    assert_eq!(m.step(resources_progress("downloading", 7)), vec![]);
+    assert_eq!(m.step(resources_progress("downloading", 8)), rearm);
+    assert_eq!(m.step(resources_progress("verifying", 99)), rearm);
+    // Les autres phases n'engagent rien : seule une preparation en cours retient le delai.
+    for phase in ["idle", "ready", "current", "failed"] {
+        assert_eq!(m.step(resources_progress(phase, 100)), vec![], "{phase}");
+    }
+}
+
+#[test]
+fn l_avancement_du_paquet_apres_ready_ou_un_echec_ne_rearme_rien() {
+    let mut ready_machine = machine();
+    ready_machine.step(ready(8123));
+    assert_eq!(ready_machine.step(resources_progress("downloading", 50)), vec![]);
+    let mut failed_machine = machine();
+    failed_machine.step(failed("migration_failed"));
+    assert_eq!(failed_machine.step(resources_progress("downloading", 50)), vec![]);
 }

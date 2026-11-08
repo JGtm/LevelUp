@@ -143,7 +143,10 @@ works offline; an ordinary update downloads the engine only (about 30 MB instead
   file against its manifest), still on the old one; only then does it download and install the engine that requires it. If the pack cannot be prepared nothing is
   installed and the application stays open; the update is offered again at the next launch. Nothing is downloaded during a match (the download waits for it).
 - **At the next start** the new pack becomes the active one (renamed into place before any file is opened). If the computer stops in the middle, the next start undoes
-  the half-done swap and retries.
+  the half-done swap and retries; once every folder is swapped the swap is final, and a stop or a locked file during the cleanup only leaves the cleanup to the
+  next start (`resources: ménage de la bascule incomplet`, a warning, not a failure).
+- **A pack that must be downloaded before the window opens** (first launch without pack) may take longer than 2 minutes: as long as the percentage moves, the shell
+  waits; a download that makes no progress for 2 minutes is stopped and the screen says the start timed out.
 - **A pack that does not match the engine** (an interrupted update, files deleted by hand): LevelUp starts anyway on what is installed, logs a warning
   (`resources: paquet différent de celui du moteur`) and downloads the right pack in the background. A pack that is **missing** altogether is downloaded before the
   window opens; if that fails the screen says the resources are missing or incompatible: check the connection and start LevelUp again to retry.

@@ -121,6 +121,10 @@ pub fn parse_line(line: &str) -> Result<SidecarEvent, ParseError> {
             phase: text_of(object, "phase")?,
             fingerprint: optional_text(object, "fingerprint"),
             code: optional_text(object, "code"),
+            percent: object
+                .get("percent")
+                .and_then(Value::as_u64)
+                .map_or(0, |p| u8::try_from(p.min(100)).unwrap_or(100)),
         })),
         other => Err(ParseError::UnknownEvent(other.to_string())),
     }
@@ -206,6 +210,7 @@ mod tests {
                 phase: "failed".into(),
                 fingerprint: "ab".into(),
                 code: "resources_checksum_mismatch".into(),
+                percent: 12,
             }))
         );
         // Empreinte et code sont facultatifs ; la phase ne l'est pas.
@@ -215,6 +220,7 @@ mod tests {
                 phase: "idle".into(),
                 fingerprint: String::new(),
                 code: String::new(),
+                percent: 0,
             }))
         );
         assert_eq!(

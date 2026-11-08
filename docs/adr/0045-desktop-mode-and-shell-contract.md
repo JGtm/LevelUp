@@ -682,6 +682,12 @@ Capability `ResourcePackFatal` (hosted and demo: the image carries engine and pa
 failed migration (`failed{state: resources_incompatible}`, 503 `server_start_failed`, logged). Capability `UpdateApp` (desktop): a different pack
 starts anyway on the pack present, logs a WARN and downloads the right one in the background; an **absent** pack is downloaded before serving, and a
 failure refuses to start with the same state. Development, demo without manifest and tests embed no fingerprint: nothing is checked.
+After the activation the manager reads the installed pack again (`Manager.Settle`), so the published state (`active`, `restart_needed`) names the pack
+really in place, never the one read when the manager was created. **The download before `ready` does not consume the 120 s startup delay of D-3** as long as
+it progresses: the shell re-arms the startup timer on every `resources` event of phase `downloading` or `verifying` whose phase or `percent` moved forward
+since the previous one (a repeated value is not progress), and only before `ready`. A download that stops emitting progress ends by the usual delay (server
+killed, `Failed(timeout)` screen) 120 s after its last advance. The server emits those events during `PrepareNow` (every 500 ms at most, from the first
+byte read).
 The hosted pack is what the image carries (`static/` and `apps/web/dist/titles`); the reference lives in the `./data` volume of production, never
 in the image, so the hosted and desktop packs have different contents and fingerprints (one format, one generator, one reader, two sets).
 
@@ -707,9 +713,19 @@ and its `.sig`, no `latest.json` needed) when a start finds the pack missing or 
 
 *Activation.* A staged pack becomes the active one at the **next start**, when nothing holds a file: `Activate` renames unit by unit (`static`,
 `web/titles`, each `data/titles/<slug>/reference`, each isolated file, the manifest last) the installed content to `.pack/old` and the staged one to its
-place, with a journal; a failure undoes what was done, a hard stop is undone by `Recover` at the next start. The old pack stays active until then. The
+place, with a journal; a failure undoes what was done (each error of the undo is logged, and an incomplete undo keeps the journal so that `Recover` finishes it).
+The journal carries a `committed` state, written whole and flushed to disk after the last unit moved and before anything is deleted: a hard stop before it is
+undone by `Recover` at the next start; **from it on nothing undoes the swap**, a stop or a failed deletion (old pack, extracted folder, marker, journal) only
+leaves the cleanup to `Recover`, which finishes it forward, and `Activate` reports success. `Settle` activates nothing when `Recover` failed. Every extracted file,
+the manifest, the ready marker and the journal are flushed to disk (`Sync`) before they count as written. The old pack stays active until then. The
 files keep their usual relative paths under `ResourcesRoot`, so no reader of `ResourcesRoot` (about 300) learns where resources come from; on disk `web/` is
 the engine's `assets` and `index.html` plus the pack's `titles`.
+
+*One request at a time, every request answered.* The manager prepares one pack at a time. A `resources` command (or a retry) for the pack being prepared is a
+no-op (its events follow). A command for ANOTHER pack (the accepted update needs a pack other than the one being prepared) cancels the running preparation (it
+announces `failed` for its own fingerprint) and queues the request, launched behind it: every request ends with `ready`, `current` or `failed` for its own
+fingerprint, so the shell never waits 6 h for a pack nobody prepares. `Start` reserves the preparation and sets its phase before returning, so the state read
+right after (retry button, `POST /desktop/resources/retry`) is the preparation's, and a second request gets 409.
 
 *Uninstall.* The uninstaller written by the engine-only installer does not know the pack's files: `-mode uninstall-cleanup` (D-28) also removes the installed
 pack (`resourcepack.Remove`: the files the manifest lists, `.pack`, the empty directories, nothing else) before the program folder is deleted. Nothing is

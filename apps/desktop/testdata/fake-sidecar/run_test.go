@@ -448,3 +448,32 @@ func TestReponseALaCommandeResources(t *testing.T) {
 		t.Errorf("code %d, attendu %d pour une ligne qui n'est pas du JSON", code, exitSetup)
 	}
 }
+
+// TestProgressionDuPaquetAvantReady : FAKE_PROGRESS_FOR_MS joue un telechargement du paquet AVANT `ready` : des
+// evenements `resources` `downloading` a l'avancement croissant, puis `ready`.
+func TestProgressionDuPaquetAvantReady(t *testing.T) {
+	r := launch(t, contractArgs, baseEnv(t, map[string]string{"FAKE_PROGRESS_FOR_MS": "350", "FAKE_PROGRESS_EVERY_MS": "50"}))
+	r.waitEvent(t, "ready")
+	events, _ := r.stdout.events(t)
+	if events[0]["event"] != "listening" || events[len(events)-1]["event"] != "ready" {
+		t.Fatalf("evenements %v : listening, des `resources`, puis ready", names(events))
+	}
+	last := 0.0
+	count := 0
+	for _, ev := range events[1 : len(events)-1] {
+		if ev["event"] != "resources" || ev["phase"] != "downloading" {
+			t.Fatalf("evenement inattendu avant ready : %v", ev)
+		}
+		percent, _ := ev["percent"].(float64)
+		if percent <= last {
+			t.Errorf("avancement %v apres %v : il doit croitre", percent, last)
+		}
+		last = percent
+		count++
+	}
+	if count < 3 {
+		t.Errorf("%d evenements d'avancement, au moins 3 attendus", count)
+	}
+	_ = r.stdin.Close()
+	r.wait(t)
+}

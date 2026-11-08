@@ -55,6 +55,9 @@ type options struct {
 	afterReady []string
 	// resourcesReply : lignes JSON ecrites sur stdout a chaque commande `resources <json>` recue.
 	resourcesReply []string
+	// progressFor, progressEvery : le telechargement du paquet de ressources AVANT `ready` : pendant progressFor,
+	// un evenement `resources` `downloading` (avancement croissant) toutes les progressEvery.
+	progressFor, progressEvery time.Duration
 }
 
 // readOptions lit l'environnement ; une valeur illisible est une erreur (jamais un defaut muet).
@@ -81,6 +84,7 @@ func readOptions(getenv func(string) string) (options, error) {
 	for name, dst := range map[string]*time.Duration{
 		"FAKE_LISTEN_DELAY_MS": &o.listenDelay, "FAKE_READY_DELAY_MS": &o.readyDelay,
 		"FAKE_STOP_DELAY_MS": &o.stopDelay, "FAKE_CRASH_AFTER_MS": &o.crashAfter,
+		"FAKE_PROGRESS_FOR_MS": &o.progressFor, "FAKE_PROGRESS_EVERY_MS": &o.progressEvery,
 	} {
 		ms, err := intEnv(getenv, name)
 		if err != nil {
@@ -111,10 +115,16 @@ func readOptions(getenv func(string) string) (options, error) {
 			o.resourcesReply = append(o.resourcesReply, line)
 		}
 	}
+	if o.progressFor > 0 && o.progressEvery <= 0 {
+		o.progressEvery = defaultProgressEvery
+	}
 	var err error
 	o.chattyBytes, err = intEnv(getenv, "FAKE_CHATTY_BYTES")
 	return o, err
 }
+
+// defaultProgressEvery : cadence de l'avancement quand FAKE_PROGRESS_EVERY_MS n'est pas donne.
+const defaultProgressEvery = 100 * time.Millisecond
 
 func intEnv(getenv func(string) string, name string) (int, error) {
 	raw := getenv(name)
@@ -178,6 +188,19 @@ func (e *emitter) raw(line string) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	_, _ = e.w.Write(append([]byte(line), '\n'))
+}
+
+// downloadProgress joue le telechargement du paquet avant `ready` : un evenement `resources` `downloading` a
+// l'avancement croissant (1, 2, ... 99) toutes les `every`, pendant `total`.
+func (e *emitter) downloadProgress(total, every time.Duration) {
+	if total <= 0 {
+		return
+	}
+	deadline := time.Now().Add(total)
+	for percent := 1; time.Now().Before(deadline); percent = min(percent+1, 99) {
+		e.emit(map[string]any{"event": "resources", "phase": "downloading", "fingerprint": "fake-pack", "percent": percent})
+		time.Sleep(every)
+	}
 }
 
 // chatter ecrit n octets de lignes non JSON : un tube qui n'est pas vide en continu bloque ce
@@ -246,6 +269,7 @@ func run(args []string, getenv func(string) string, cwd string, stdin io.Reader,
 	time.Sleep(opts.listenDelay)
 	out.listening(port)
 	out.chatter(opts.chattyBytes)
+	out.downloadProgress(opts.progressFor, opts.progressEvery)
 	time.Sleep(opts.readyDelay)
 	return serve(opts, out, port, srv, eof, stderr)
 }

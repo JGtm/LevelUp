@@ -25,6 +25,9 @@
 //	                       (variante ok) : `notification`, `shell_settings`
 //	FAKE_RESOURCES_REPLY   lignes JSON separees par `|`, ecrites sur stdout a chaque commande `resources <json>` recue
 //	                       (evenements `resources`)
+//	FAKE_PROGRESS_FOR_MS, FAKE_PROGRESS_EVERY_MS   avant `ready`, pendant la premiere duree, un evenement
+//	                       `resources` `downloading` (avancement croissant) a chaque seconde duree (defaut 100 ms) :
+//	                       le telechargement du paquet de ressources, plus long que le delai de demarrage de la coquille
 //	FAKE_STOP_CLEAN        true (defaut) | false : `clean` du `stopped` final (false : pas de marqueur d'arret)
 package main
 
