@@ -12,6 +12,7 @@ import (
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/schedtask"
 	"levelup/go-api/internal/platform/startupentry"
+	"levelup/go-api/internal/resourcepack"
 )
 
 // cleanupRegistry : un registre de démarrage simulé (une valeur Run) qui note ses suppressions.
@@ -231,5 +232,41 @@ func TestUninstallCleanup_FailureIsReportedAndTheOtherStepStillRuns(t *testing.T
 	}
 	if len(run2.calls) == 0 {
 		t.Errorf("la tâche n'a pas été tentée malgré l'échec du registre : %s", out2)
+	}
+}
+
+// TestUninstallCleanup_RemovesTheResourcePackOfTheInstallDir : le paquet de ressources installé sous le dossier du
+// programme est retiré (l'installeur « moteur seul » d'une mise à jour ne le liste pas), les fichiers du moteur
+// restent à l'installeur, et le bilan le dit.
+func TestUninstallCleanup_RemovesTheResourcePackOfTheInstallDir(t *testing.T) {
+	dir := t.TempDir()
+	for rel, content := range map[string]string{"static/a.png": "A", "ffmpeg.exe": "F", "web/titles/x/b.png": "B"} {
+		p := filepath.Join(dir, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	m, err := resourcepack.Build(dir, "")
+	if err != nil || resourcepack.WriteManifest(dir, m) != nil {
+		t.Fatalf("manifeste : %v", err)
+	}
+	engine := filepath.Join(dir, "levelup-server.exe")
+	if err := os.WriteFile(engine, []byte("E"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	deps, out := newCleanup(t, &cleanupRegistry{}, &cleanupRunner{})
+	deps.InstallDir = dir
+	if code := uninstallCleanup(context.Background(), deps); code != 0 {
+		t.Fatalf("code %d : %s", code, out)
+	}
+	if !strings.Contains(out.String(), "ressources=3-fichiers") {
+		t.Fatalf("bilan sans le paquet : %s", out)
+	}
+	entries, _ := os.ReadDir(dir)
+	if len(entries) != 1 || entries[0].Name() != "levelup-server.exe" {
+		t.Fatalf("seul le moteur doit rester : %v", entries)
 	}
 }

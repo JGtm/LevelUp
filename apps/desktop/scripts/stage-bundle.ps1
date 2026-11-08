@@ -1,21 +1,33 @@
 <#
 .SYNOPSIS
-    Prepare le dossier des ressources que l'installeur depose a cote de l'application.
+    Prepare les deux arbres de ressources de l'installeur : le MOTEUR et le PAQUET DE RESSOURCES.
 
 .DESCRIPTION
     Sous Windows, le dossier des ressources de Tauri EST le dossier d'installation : il devient la
-    racine de ressources du serveur (LEVELUP_RESOURCES_DIR, ADR 0008 amendee). Ce script en
-    assemble le contenu dans apps/desktop/src-tauri/bundle-staging (ignore par git), que
-    tauri.bundle.conf.json designe :
+    racine de ressources du serveur (LEVELUP_RESOURCES_DIR, ADR 0008 amendee). Deux unites sont
+    livrees a part (ADR 0045, amendement L24) :
 
-      web/                    le front compile (LEVELUP_WEB_DIST par defaut en desktop)
-      config/                 les manifestes de titre et les mappings
+    LE MOTEUR, change a chaque version, dans apps/desktop/src-tauri/bundle-staging (ignore par git) :
+
+      web/                    le front compile SANS titles/ (LEVELUP_WEB_DIST par defaut en desktop)
+      config/                 les manifestes de titre et les mappings (couples au code)
+      THIRD_PARTY_NOTICES.md, THIRD_PARTY_CARGO.md, NOTICE, LICENSE
+
+    LE PAQUET, qui change rarement, dans apps/desktop/src-tauri/pack-staging (ignore par git) :
+
       static/                 images et sons
+      web/titles/             les images des titres (plaques, embleme, equipes)
       data/titles/...         le referentiel versionne (cartes, profils de film, base metadata
                               pre-construite) : UNIQUEMENT les fichiers suivis par git, jamais
                               les donnees locales du poste
       ffmpeg.exe, ffprobe.exe, *.dll, LICENSE.LGPL   (fetch-ffmpeg.ps1)
-      THIRD_PARTY_NOTICES.md, THIRD_PARTY_CARGO.md, NOTICE, LICENSE
+      resources.manifest.json le manifeste, dont l'empreinte est l'identite du paquet
+
+    L'empreinte (SHA-256 du manifeste trie) est ecrite dans pack-staging.fingerprint, a cote : le
+    serveur la recoit a la compilation (-X main.resourcesFingerprint=<empreinte>), il doit donc etre
+    compile APRES ce script. Avec -ArchiveDir, l'archive levelup-resources-<empreinte>.zip est aussi
+    produite. L'installeur COMPLET embarque les deux arbres ; l'installeur "moteur seul" de
+    l'updater n'embarque que bundle-staging.
 
     Le dossier data/cache/career-rank-image n'est PAS livre : le serveur les cherche sous la racine
     de DONNEES, que l'installeur ne remplit pas, et les retelecharge a la demande ; 17 Mo de plus
@@ -28,19 +40,32 @@
     La sortie de fetch-ffmpeg.ps1.
 
 .PARAMETER Out
-    Dossier de sortie (defaut : apps/desktop/src-tauri/bundle-staging), recree a chaque appel.
+    Dossier du moteur (defaut : apps/desktop/src-tauri/bundle-staging), recree a chaque appel.
+
+.PARAMETER PackOut
+    Dossier du paquet (defaut : apps/desktop/src-tauri/pack-staging), recree a chaque appel.
+
+.PARAMETER ArchiveDir
+    Si donne, y ecrit levelup-resources-<empreinte>.zip (cree le dossier).
+
+.PARAMETER Version
+    Version documentaire inscrite au manifeste (jamais comparee).
 #>
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)][string]$WebDist,
     [Parameter(Mandatory = $true)][string]$FfmpegDir,
-    [string]$Out = ''
+    [string]$Out = '',
+    [string]$PackOut = '',
+    [string]$ArchiveDir = '',
+    [string]$Version = ''
 )
 
 $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
 $tauri = Join-Path $repo 'apps\desktop\src-tauri'
 if (-not $Out) { $Out = Join-Path $tauri 'bundle-staging' }
+if (-not $PackOut) { $PackOut = Join-Path $tauri 'pack-staging' }
 
 foreach ($required in @(
         (Join-Path $WebDist 'index.html'),
@@ -49,8 +74,10 @@ foreach ($required in @(
     if (-not (Test-Path $required)) { throw "Entree absente : $required" }
 }
 
-if (Test-Path $Out) { Remove-Item -Recurse -Force $Out }
-New-Item -ItemType Directory -Force -Path $Out | Out-Null
+foreach ($dir in $Out, $PackOut) {
+    if (Test-Path $dir) { Remove-Item -Recurse -Force $dir }
+    New-Item -ItemType Directory -Force -Path $dir | Out-Null
+}
 
 function Copy-Tree {
     param([string]$From, [string]$To)
@@ -60,7 +87,12 @@ function Copy-Tree {
 
 Copy-Tree $WebDist (Join-Path $Out 'web')
 Copy-Tree (Join-Path $repo 'config') (Join-Path $Out 'config')
-Copy-Tree (Join-Path $repo 'static') (Join-Path $Out 'static')
+Copy-Tree (Join-Path $repo 'static') (Join-Path $PackOut 'static')
+# Les images des titres sortent du front : elles appartiennent au paquet, pas au moteur.
+$titles = Join-Path $Out 'web\titles'
+if (-not (Test-Path $titles)) { throw "web/titles absent du front compile : $titles" }
+New-Item -ItemType Directory -Force -Path (Join-Path $PackOut 'web') | Out-Null
+Move-Item -Path $titles -Destination (Join-Path $PackOut 'web\titles')
 
 # Referentiel versionne : la liste vient de git, pas du disque (le poste de dev porte des Go de donnees).
 Push-Location $repo
@@ -72,12 +104,12 @@ finally { Pop-Location }
 $tracked = ($files -join '') -split "`0" | Where-Object { $_ }
 if (-not $tracked) { throw 'Aucun fichier de referentiel suivi par git' }
 foreach ($rel in $tracked) {
-    $dest = Join-Path $Out ($rel -replace '/', '\')
+    $dest = Join-Path $PackOut ($rel -replace '/', '\')
     New-Item -ItemType Directory -Force -Path (Split-Path $dest) | Out-Null
     Copy-Item -Path (Join-Path $repo ($rel -replace '/', '\')) -Destination $dest
 }
 
-Copy-Item -Path (Join-Path $FfmpegDir '*') -Destination $Out -Recurse -Force
+Copy-Item -Path (Join-Path $FfmpegDir '*') -Destination $PackOut -Recurse -Force
 
 foreach ($doc in 'NOTICE', 'LICENSE') {
     Copy-Item -Path (Join-Path $repo $doc) -Destination (Join-Path $Out $doc)
@@ -106,5 +138,32 @@ $meta.packages | Where-Object { -not $workspace.Contains($_.id) } | Sort-Object 
 }
 [System.IO.File]::WriteAllLines((Join-Path $Out 'THIRD_PARTY_CARGO.md'), $lines, (New-Object System.Text.UTF8Encoding($false)))
 
-$size = (Get-ChildItem -Recurse -File $Out | Measure-Object Length -Sum).Sum
-Write-Host ("Ressources assemblees dans {0} ({1:N1} Mo)" -f $Out, ($size / 1MB))
+# Le manifeste du paquet : un seul generateur (cmd/resources-manifest), le meme que celui du Dockerfile.
+$tool = Join-Path ([System.IO.Path]::GetTempPath()) ('resources-manifest-' + [Guid]::NewGuid().ToString('N') + '.exe')
+Push-Location (Join-Path $repo 'apps\go-api')
+try {
+    $env:CGO_ENABLED = '0'
+    & go build -o $tool ./cmd/resources-manifest
+    if ($LASTEXITCODE -ne 0) { throw 'go build de resources-manifest a echoue' }
+}
+finally { Pop-Location }
+$toolArgs = @('-dir', $PackOut)
+if ($Version) { $toolArgs += @('-version', $Version) }
+if ($ArchiveDir) {
+    New-Item -ItemType Directory -Force -Path $ArchiveDir | Out-Null
+    $archiveTmp = Join-Path $ArchiveDir 'levelup-resources.zip.tmp'
+    $toolArgs += @('-zip', $archiveTmp)
+}
+$fingerprint = ((& $tool @toolArgs) | Select-Object -Last 1).Trim()
+if ($LASTEXITCODE -ne 0 -or $fingerprint -notmatch '^[0-9a-f]{64}$') { throw "resources-manifest a echoue (sortie : $fingerprint)" }
+Remove-Item -Force $tool
+if ($ArchiveDir) {
+    Move-Item -Force -Path $archiveTmp -Destination (Join-Path $ArchiveDir "levelup-resources-$fingerprint.zip")
+}
+$fingerprintFile = ($PackOut.TrimEnd('\', '/')) + '.fingerprint'
+[System.IO.File]::WriteAllText($fingerprintFile, $fingerprint, (New-Object System.Text.UTF8Encoding($false)))
+
+$engineSize = (Get-ChildItem -Recurse -File $Out | Measure-Object Length -Sum).Sum
+$packSize = (Get-ChildItem -Recurse -File $PackOut | Measure-Object Length -Sum).Sum
+Write-Host ("Moteur assemble dans {0} ({1:N1} Mo)" -f $Out, ($engineSize / 1MB))
+Write-Host ("Paquet de ressources assemble dans {0} ({1:N1} Mo), empreinte {2}" -f $PackOut, ($packSize / 1MB), $fingerprint)

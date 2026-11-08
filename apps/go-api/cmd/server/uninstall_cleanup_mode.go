@@ -9,7 +9,10 @@
 //   - la tâche planifiée `LevelUp\Refresh-<empreinte>` de la racine de données de l'environnement
 //     (internal/platform/schedtask), le nom étant propre à la racine, si son action lance le serveur de CE dossier :
 //     deux installations d'un même utilisateur partagent la racine par défaut, donc le nom de la tâche, et la tâche
-//     de l'autre (`tache=foreign`) n'est pas retirée.
+//     de l'autre (`tache=foreign`) n'est pas retirée ;
+//   - le paquet de ressources installé sous le dossier du programme (internal/resourcepack.Remove : les fichiers que son
+//     manifeste liste, rien d'autre) : l'installeur « moteur seul » d'une mise à jour ne les liste pas, le désinstalleur
+//     NSIS ne les connaît donc plus après une mise à jour courante.
 //
 // La racine de données n'est JAMAIS touchée (ADR 0045, A22). Le bilan va sur stderr (stdout est réservé aux
 // événements de la coquille). Une entrée absente ou étrangère est un succès (sortie 0) ; un échec de lecture ou de
@@ -32,6 +35,7 @@ import (
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/schedtask"
 	"levelup/go-api/internal/platform/startupentry"
+	"levelup/go-api/internal/resourcepack"
 )
 
 // uninstallCleanupFailure : code de sortie quand une lecture ou une suppression a échoué.
@@ -110,6 +114,12 @@ func uninstallCleanup(ctx context.Context, d uninstallCleanupDeps) int {
 			task = string(outcome)
 		}
 	}
+	pack := "erreur"
+	if n, err := resourcepack.Remove(d.InstallDir); err != nil {
+		failures = append(failures, err)
+	} else {
+		pack = fmt.Sprintf("%d-fichiers", n)
+	}
 	taskName := ""
 	if d.Tasks != nil {
 		taskName = d.Tasks.TaskName()
@@ -118,8 +128,8 @@ func uninstallCleanup(ctx context.Context, d uninstallCleanupDeps) int {
 	if len(failures) > 0 {
 		code = uninstallCleanupFailure
 	}
-	report := fmt.Sprintf("uninstall-cleanup: demarrage=%s tache=%s nom_tache=%q data_root=%q install_dir=%q ok=%t exit=%d",
-		startup, task, taskName, d.DataRoot, d.InstallDir, code == 0, code)
+	report := fmt.Sprintf("uninstall-cleanup: demarrage=%s tache=%s ressources=%s nom_tache=%q data_root=%q install_dir=%q ok=%t exit=%d",
+		startup, task, pack, taskName, d.DataRoot, d.InstallDir, code == 0, code)
 	d.say("%s", report)
 	if err := errors.Join(failures...); err != nil {
 		d.say("uninstall-cleanup : %v", err)
