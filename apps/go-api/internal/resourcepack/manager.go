@@ -84,9 +84,15 @@ type Config struct {
 type Manager struct {
 	cfg Config
 
-	mu      sync.Mutex
-	status  Status
+	mu     sync.Mutex
+	status Status
+	// running : une préparation est réservée (avant même que sa goroutine tourne) ; runFP : son paquet ; cancel
+	// l'annule.
 	running bool
+	runFP   string
+	cancel  context.CancelFunc
+	// pending : les demandes arrivées pendant la préparation d'un AUTRE paquet, lancées à sa suite dans l'ordre.
+	pending []Descriptor
 	// ctx et goFn : voir [Manager.Bind].
 	ctx  context.Context
 	goFn func(fn func())
@@ -105,6 +111,27 @@ func (m *Manager) Bind(ctx context.Context, run func(fn func())) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.ctx, m.goFn = ctx, run
+}
+
+// Settle est [Settle] sur la racine du gestionnaire, suivie de la relecture du paquet installé : l'étape de démarrage
+// qui active un paquet prêt change ce que le gestionnaire a lu à sa création, et l'état publié doit dire le paquet
+// réellement en place.
+func (m *Manager) Settle(ctx context.Context) Outcome {
+	out := Settle(ctx, m.cfg.Root, m.cfg.Expected)
+	m.refreshActive()
+	return out
+}
+
+// refreshActive relit le paquet installé. Un paquet annoncé « prêt, redémarrage nécessaire » qui est devenu le
+// paquet installé est « courant » : plus aucun redémarrage n'est demandé.
+func (m *Manager) refreshActive() {
+	active := ActiveFingerprint(m.cfg.Root)
+	m.set(func(s *Status) {
+		s.Active = active
+		if s.Phase == PhaseReady && active != "" && s.Fingerprint == active {
+			s.Phase, s.Percent, s.RestartNeeded = PhaseCurrent, 100, false
+		}
+	})
 }
 
 // ActiveFingerprint rend l'empreinte du paquet installé sous root, "" s'il n'y en a pas de lisible.
@@ -144,21 +171,36 @@ func (m *Manager) OwnDescriptor() Descriptor {
 // ErrBusy : une préparation est déjà en cours.
 var ErrBusy = errors.New("resourcepack: une préparation est déjà en cours")
 
-// Start lance Prepare en tâche de fond (contexte et suivi de la configuration). Rend ErrBusy, sans rien lancer,
-// quand une préparation tourne déjà.
+// Start lance Prepare en tâche de fond (contexte et suivi de la configuration). La phase de la préparation est posée
+// avant le retour : l'état lu juste après est celui de la préparation, jamais celui qui précédait.
+//
+// Une préparation déjà en cours pour CE paquet rend [ErrBusy] sans rien lancer (ses événements arrivent). Pour un
+// AUTRE paquet (une mise à jour exige un autre paquet que celui qu'on prépare), la préparation en cours est annulée
+// (elle annonce son échec) et la demande est lancée à sa suite : toute demande aboutit à un événement terminal de
+// son paquet.
 func (m *Manager) Start(desc Descriptor) error {
-	if m.Status().Phase.busy() {
-		return ErrBusy
-	}
 	m.mu.Lock()
-	ctx, goFn := m.ctx, m.goFn
-	m.mu.Unlock()
-	if ctx == nil {
-		ctx = context.Background()
+	base, goFn := m.ctx, m.goFn
+	if base == nil {
+		base = context.Background()
 	}
+	if m.running {
+		if m.runFP == desc.Fingerprint {
+			m.mu.Unlock()
+			return ErrBusy
+		}
+		m.queue(desc)
+		cancel := m.cancel
+		m.mu.Unlock()
+		cancel()
+		return nil
+	}
+	runCtx, st := m.claimLocked(base, desc)
+	m.mu.Unlock()
+	m.publish(st)
 	run := func() {
-		if err := m.Prepare(ctx, desc); err != nil && !errors.Is(err, ErrBusy) {
-			slog.WarnContext(ctx, "resources: préparation en tâche de fond échouée", "err", err)
+		if err := m.execute(runCtx, desc, true); err != nil {
+			slog.WarnContext(runCtx, "resources: préparation en tâche de fond échouée", "err", err)
 		}
 	}
 	if goFn != nil {
@@ -167,6 +209,31 @@ func (m *Manager) Start(desc Descriptor) error {
 		go run()
 	}
 	return nil
+}
+
+// queue met desc en attente de la fin de la préparation en cours, une seule fois par paquet. Verrou tenu.
+func (m *Manager) queue(desc Descriptor) {
+	for _, p := range m.pending {
+		if p.Fingerprint == desc.Fingerprint {
+			return
+		}
+	}
+	m.pending = append(m.pending, desc)
+}
+
+// claimLocked réserve la préparation de desc et pose son état de départ. Verrou tenu, aucune préparation en cours.
+func (m *Manager) claimLocked(base context.Context, desc Descriptor) (context.Context, Status) {
+	runCtx, cancel := context.WithCancel(base)
+	m.running, m.runFP, m.cancel = true, desc.Fingerprint, cancel
+	m.status = Status{Phase: PhaseDownloading, Fingerprint: desc.Fingerprint, Expected: m.cfg.Expected,
+		Active: ActiveFingerprint(m.cfg.Root)}
+	return runCtx, m.status
+}
+
+func (m *Manager) publish(st Status) {
+	if m.cfg.OnStatus != nil {
+		m.cfg.OnStatus(st)
+	}
 }
 
 // busy dit si la phase est celle d'une préparation en cours.
@@ -192,22 +259,47 @@ func (m *Manager) run(ctx context.Context, desc Descriptor, gated bool) error {
 		m.mu.Unlock()
 		return ErrBusy
 	}
-	m.running = true
+	runCtx, st := m.claimLocked(ctx, desc)
 	m.mu.Unlock()
-	defer func() {
-		m.mu.Lock()
-		m.running = false
-		m.mu.Unlock()
-	}()
-	m.set(func(s *Status) {
-		*s = Status{Phase: PhaseIdle, Fingerprint: desc.Fingerprint, Expected: m.cfg.Expected, Active: ActiveFingerprint(m.cfg.Root)}
-	})
+	m.publish(st)
+	return m.execute(runCtx, desc, gated)
+}
+
+// execute fait la préparation réservée par claimLocked, puis libère la réservation et lance la demande suivante.
+func (m *Manager) execute(ctx context.Context, desc Descriptor, gated bool) error {
+	defer m.release(ctx)
 	err := m.prepare(ctx, desc, gated)
-	if err != nil {
+	switch {
+	case err == nil:
+	case errors.Is(err, context.Canceled):
+		slog.InfoContext(ctx, "resources: préparation du paquet annulée", "fingerprint", desc.Fingerprint)
+	default:
 		slog.ErrorContext(ctx, "resources: préparation du paquet échouée", "err", err,
 			"fingerprint", desc.Fingerprint, "code", m.Status().Code)
 	}
 	return err
+}
+
+// release libère la réservation et lance, si le serveur tourne encore, la demande en attente.
+func (m *Manager) release(ctx context.Context) {
+	m.mu.Lock()
+	m.cancel()
+	m.running, m.runFP, m.cancel = false, "", nil
+	var next Descriptor
+	launch := false
+	switch {
+	case m.ctx != nil && m.ctx.Err() != nil:
+		m.pending = nil // le serveur s'arrête : plus de préparation
+	case len(m.pending) > 0:
+		next, m.pending, launch = m.pending[0], m.pending[1:], true
+	}
+	m.mu.Unlock()
+	if !launch {
+		return
+	}
+	if err := m.Start(next); err != nil && !errors.Is(err, ErrBusy) {
+		slog.ErrorContext(ctx, "resources: demande en attente non lancée", "err", err, "fingerprint", next.Fingerprint)
+	}
 }
 
 func (m *Manager) fail(code string, err error) error {

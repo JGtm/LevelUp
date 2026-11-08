@@ -369,3 +369,88 @@ func TestPrepareNowNAttendPasLaFinDeLaPartie(t *testing.T) {
 		t.Fatal("paquet prêt attendu")
 	}
 }
+
+// TestRetryPoseLaPhaseAvantDeRendre : la réponse du nouvel essai porte déjà l'étape en cours (jamais l'échec qu'on
+// réessaie), et un second essai tout de suite est refusé : l'interface ne reste pas sur l'échec sans progression.
+func TestRetryPoseLaPhaseAvantDeRendre(t *testing.T) {
+	released := make(chan struct{})
+	gate := func(ctx context.Context, onWait func()) error {
+		onWait()
+		select {
+		case <-released:
+			return errors.New("fin du test")
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+	m, _, _ := newTestManager(t, newTestKey(t), gate)
+	var launched sync.WaitGroup
+	m.Bind(t.Context(), func(fn func()) {
+		launched.Add(1)
+		go func() { defer launched.Done(); fn() }()
+	})
+	m.set(func(s *Status) { s.Phase, s.Code = PhaseFailed, CodeDownload })
+
+	st, err := m.Retry()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !st.Phase.busy() || st.Code != "" || st.Fingerprint != m.cfg.Expected {
+		t.Fatalf("la réponse de Retry doit porter la préparation lancée, pas l'échec : %+v", st)
+	}
+	if _, err := m.Retry(); !errors.Is(err, ErrBusy) {
+		t.Fatalf("second essai : %v", err)
+	}
+	close(released)
+	launched.Wait()
+}
+
+// TestStartPourUnAutrePaquetRemplaceLaPreparationEnCours : une demande pour le paquet B pendant la préparation du
+// paquet A aboutit toujours à un événement terminal pour B : A est annulée (événement d'échec pour A), B est
+// lancée à sa suite.
+func TestStartPourUnAutrePaquetRemplaceLaPreparationEnCours(t *testing.T) {
+	key := newTestKey(t)
+	var calls atomic.Int32
+	gate := func(ctx context.Context, onWait func()) error {
+		if calls.Add(1) > 1 {
+			return nil
+		}
+		onWait()
+		<-ctx.Done() // la préparation de A attend la fin d'une partie, jusqu'à ce qu'on l'annule
+		return ctx.Err()
+	}
+	m, root, seen := newTestManager(t, key, gate)
+	var launched sync.WaitGroup
+	m.Bind(t.Context(), func(fn func()) {
+		launched.Add(1)
+		go func() { defer launched.Done(); fn() }()
+	})
+	a := Descriptor{Fingerprint: strings.Repeat("a", 64), URL: "https://github.com/x/a.zip", Signature: "x"}
+	pack, pm := buildPack(t, newPackFiles())
+	zipPath := zipPack(t, pack, nil)
+	ps := newPackServer(t, zipPath, "", true)
+	b := newDescriptor(t, key, ps, pm, zipPath)
+
+	if err := m.Start(a); err != nil {
+		t.Fatal(err)
+	}
+	for m.Status().Phase != PhaseWaiting {
+	}
+	if err := m.Start(b); err != nil {
+		t.Fatalf("une demande pour un autre paquet doit être acceptée : %v", err)
+	}
+	launched.Wait()
+
+	if !Staged(root, pm.Fingerprint) {
+		t.Fatalf("le paquet B devait être préparé : %+v", m.Status())
+	}
+	terminal := map[string]Phase{}
+	for _, s := range *seen {
+		if s.Phase == PhaseReady || s.Phase == PhaseFailed || s.Phase == PhaseCurrent {
+			terminal[s.Fingerprint] = s.Phase
+		}
+	}
+	if terminal[a.Fingerprint] != PhaseFailed || terminal[pm.Fingerprint] != PhaseReady {
+		t.Fatalf("événements terminaux par paquet : %v", terminal)
+	}
+}

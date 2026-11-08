@@ -85,20 +85,31 @@ describe('ResourcePackCard', () => {
     expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '42')
   })
 
-  it('dit l’échec en français et propose de réessayer ; le clic relance le téléchargement', async () => {
-    serve(status({ phase: 'failed', code: 'resources_signature_invalid' }))
+  it('dit l’échec en français et propose de réessayer ; le clic relance, la réponse porte déjà la progression', async () => {
+    // Le mock répond ce que répond le vrai serveur : la phase est posée AVANT la réponse de Retry (jamais l'échec
+    // qu'on réessaie), et une seconde demande pendant la préparation reçoit 409.
+    let current = status({ phase: 'failed', code: 'resources_signature_invalid', fingerprint: 'f', expected: 'f' })
     let retried = 0
+    let refused = 0
     server.use(
+      http.get(`${API}/desktop/resources`, () => HttpResponse.json(current)),
       http.post(`${API}/desktop/resources/retry`, () => {
         retried += 1
-        return HttpResponse.json(status({ phase: 'downloading', percent: 1 }), { status: 202 })
+        if (current.phase === 'downloading') {
+          refused += 1
+          return HttpResponse.json({ status: 409, code: 'resources_busy', message: 'x' }, { status: 409 })
+        }
+        current = status({ phase: 'downloading', percent: 0, fingerprint: 'f', expected: 'f' })
+        return HttpResponse.json(current, { status: 202 })
       }),
     )
     renderWithProviders(<ResourcePackCard />)
     expect(await screen.findByText(/La signature des ressources téléchargées est invalide/)).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Réessayer' }))
     await waitFor(() => expect(retried).toBe(1))
-    expect(await screen.findByText('Téléchargement des ressources : 1 %.')).toBeInTheDocument()
+    expect(await screen.findByText('Téléchargement des ressources : 0 %.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Réessayer' })).toBeNull()
+    expect(refused).toBe(0)
   })
 
   it('parle anglais quand la langue est l’anglais', async () => {

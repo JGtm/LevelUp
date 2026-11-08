@@ -57,7 +57,7 @@ func bootResourcePack(st *bootState) {
 		resourcepack.SetDefault(st.resources)
 	}
 	root := st.cfg.Roots().Resources
-	out := resourcepack.Settle(st.ctx, root, expected)
+	out := settleResources(st, root, expected)
 	err := verdictError(out.Verdict)
 	switch resourceActionFor(caps, out.Verdict) {
 	case resourceOK:
@@ -74,6 +74,15 @@ func bootResourcePack(st *bootState) {
 		slog.WarnContext(st.ctx, "resources: paquet différent de celui du moteur (aucun refus hors hébergé et desktop)",
 			"err", err)
 	}
+}
+
+// settleResources fait l'étape de démarrage du paquet ; avec un gestionnaire, il relit le paquet installé après
+// l'activation (l'état publié dit alors le paquet en place).
+func settleResources(st *bootState, root, expected string) resourcepack.Outcome {
+	if st.resources != nil {
+		return st.resources.Settle(st.ctx)
+	}
+	return resourcepack.Settle(st.ctx, root, expected)
 }
 
 // resourceAction : ce que le démarrage fait d'un verdict de contrôle.
@@ -115,7 +124,7 @@ func downloadMissingPack(st *bootState, v resourcepack.Verdict, cause error) {
 	if err := st.resources.PrepareNow(st.ctx, st.resources.OwnDescriptor()); err != nil {
 		exitAfterRefusal(st, bootFailureResourcesIncompatible, err)
 	}
-	out := resourcepack.Settle(st.ctx, st.cfg.Roots().Resources, v.Expected)
+	out := settleResources(st, st.cfg.Roots().Resources, v.Expected)
 	if out.Verdict.State != resourcepack.StateMatch {
 		exitAfterRefusal(st, bootFailureResourcesIncompatible, verdictError(out.Verdict))
 	}
@@ -143,7 +152,7 @@ func newResourceManager(st *bootState, expected string) *resourcepack.Manager {
 		Expected:    expected,
 		Version:     st.cfg.AppVersion,
 		ReleaseBase: resourcesReleaseBase,
-		Downloader:  resourcepack.Downloader{Doer: netguard.Doer{Surface: resourcesSurface, Next: newResourcesClient()}},
+		Downloader:  newResourcesDownloader(),
 		Gate: func(ctx context.Context, onWait func()) error {
 			return gameproc.Default().WaitHeavyAllowed(ctx, onWait)
 		},
@@ -156,6 +165,12 @@ func newResourceManager(st *bootState, expected string) *resourcepack.Manager {
 			"err", err)
 	}
 	return resourcepack.NewManager(cfg)
+}
+
+// newResourcesDownloader rend le téléchargeur du paquet : une sortie gardée par netguard, hôtes de publication
+// seulement. Variable pour que les tests de démarrage servent le paquet depuis un serveur local.
+var newResourcesDownloader = func() resourcepack.Downloader {
+	return resourcepack.Downloader{Doer: netguard.Doer{Surface: resourcesSurface, Next: newResourcesClient()}}
 }
 
 // newResourcesClient rend le client des téléchargements : pas de délai global (une archive de plusieurs
@@ -218,7 +233,12 @@ func startResourcesFromCommand(ctx context.Context, m *resourcepack.Manager, arg
 		slog.ErrorContext(ctx, "resources: commande avec un descripteur invalide", "err", err)
 		return
 	}
-	if err := m.Start(desc); err != nil {
+	switch err := m.Start(desc); {
+	case err == nil:
+		slog.InfoContext(ctx, "resources: préparation demandée", "fingerprint", desc.Fingerprint)
+	case errors.Is(err, resourcepack.ErrBusy):
+		slog.InfoContext(ctx, "resources: ce paquet est déjà en préparation, ses événements suivront", "fingerprint", desc.Fingerprint)
+	default:
 		slog.WarnContext(ctx, "resources: préparation non lancée", "err", err, "fingerprint", desc.Fingerprint)
 	}
 }
