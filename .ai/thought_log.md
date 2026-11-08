@@ -1,8 +1,14 @@
+## [2026-11-08] Fin du découplage — tag `libs/film/v0.1.0` délégué à l'agent (ADR 0043) — En cours
+
+**Décision** : le user a donné le go pour le tag (« ok pour le tag », puis « coordonne-toi avec les autres, pas besoin de moi »). L'ADR 0043 D-2 réservait le geste au mainteneur : note de délégation datée ajoutée sous D-2 de l'amendement film (un seul geste, la règle reste). Le tag ne sera pas posé sur le commit de la release (fusion en squash = hors historique de `main`) mais sur le commit de `main` qui la porte, après `go get` depuis un module jetable hors dépôt (`GOWORK=off`), au signal de la session qui pilote la release (sha de `main`).
+**Résultats** : `main` au 08/11 soir = v8.0.7 (`413971bcc4`), release pas encore fusionnée ; tags `libs/gamefiles`, `libs/himap`, `libs/haloapi` v0.1.0 présents (ordre D-2 respecté).
+**Prochaine étape** : poser et pousser le tag à la réception du sha ; puis lot 5 (bureau clos) et lot 6 (quatre dépôts dédiés ensemble, après `main`).
+
 ## [2026-11-08] Fin du découplage — lot 4 clos, PR #155 fusionnée dans release/v8.1.0 — Complété
 
 **Décision** : squash de la PR #155 (`5842e16cad`) après fusion de la release dans la branche (deux conflits : CI union, ADR 0045 ; fichier `cmd_decode_verrou.go` de la release rebranché de `filmproc` sur `filmrun`) et CI verte (28 jobs). Montée `klauspost/compress` 1.20.2 pour Govulncheck (avis GO-2026-6865 du 2026-11-05).
 **Résultats** : lots 0 à 4 clos, 4.0 à 4.9 `[x]` ; revue adversariale 2 rondes (4 constats corrigés, ronde 2 vide) ; caches du lot purgés (4,73 Go).
-**Prochaine étape** : tag `libs/film/v0.1.0` posé par le user (recommandé : quand la release est sur `main`) ; lot 5 (jeton Spartan sur redirection, NOTICE gamefiles) après la clôture du bureau ; lot 6 (quatre dépôts dédiés) après `main`.
+**Prochaine étape** : tag `libs/film/v0.1.0` (délégué à l'agent le 08/11, voir entrée suivante) ; lot 5 (jeton Spartan sur redirection, NOTICE gamefiles) après la clôture du bureau ; lot 6 (quatre dépôts dédiés) après `main`.
 
 ## [2026-11-08] Fin du découplage — 4.9 : montée klauspost/compress 1.20.2 (govulncheck) — Complété
 
