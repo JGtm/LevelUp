@@ -56,7 +56,7 @@ const (
 	r9IDsEnv       = "R9_IDS"
 	// r9JGXUID : le xuid de l'utilisateur. Le Theater du jeu ne montre QUE les matchs ou il a
 	// joue — un creneau pris dans un film ou il est absent serait inutilisable.
-	r9JGXUID = "2533274823110022"
+	r9JGXUID = "2603225103667623"
 )
 
 // --- Artefact de rejeu : la vue minimale qui porte l'IDENTITE ---

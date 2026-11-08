@@ -63,27 +63,39 @@ func ecrireOctetsAuBit(tampon []byte, bit0 int, motif []byte) {
 	}
 }
 
-// remplacer substitue dans `tampon`, EN PLACE, chaque original par son pseudonyme, sous les trois
-// encodages et aux huit decalages. Rend le nombre d occurrences remplacees par original.
+// remplacer substitue dans `tampon`, EN PLACE, chaque original du jeu par son remplacant : les noms
+// sous les trois encodages et aux huit decalages, les xuids sous leurs formes binaires (huit
+// decalages) et textuelles (alignees, a bornes nettes). Rend le nombre d occurrences remplacees :
+// par original pour un nom, par FORME pour un xuid (cles `xuid-le`, `xuid-msb`, ...).
 //
 // Une occurrence remplacee n est plus un original : elle ne se recompte pas sous une autre forme
 // (une chaine UTF-16LE precedee d un octet nul se lit aussi en UTF-16BE un octet plus tot).
-func remplacer(tampon []byte, ps []paire) map[string]int {
+func remplacer(tampon []byte, j *jeu) map[string]int {
 	compte := map[string]int{}
+	motifs := j.motifsXuid()
 	for d := range 8 {
 		vue := tampon
 		if d > 0 {
 			vue = vueDecalee(tampon, d)
 		}
-		for _, p := range ps {
+		for _, p := range j.noms {
 			for _, e := range encodages {
 				if e.aligneSeul && d > 0 {
 					continue
 				}
-				n := remplacerDansVue(tampon, vue, d, e.coder(p.origine), e.coder(p.pseudonyme))
+				n := remplacerDansVue(tampon, vue, d, e.coder(p.origine), e.coder(p.pseudonyme), nil)
 				if n > 0 {
 					compte[p.origine] += n
 				}
+			}
+		}
+		for _, m := range motifs {
+			if m.texte && d > 0 {
+				continue
+			}
+			if n := remplacerDansVue(tampon, vue, d, m.avant, m.apres, m.borne); n > 0 {
+				compte[m.forme] += n
+				j.vus[m.reel] = true
 			}
 		}
 	}
@@ -91,8 +103,9 @@ func remplacer(tampon []byte, ps []paire) map[string]int {
 }
 
 // remplacerDansVue remplace chaque occurrence de `avant` dans la vue decalee de `d` bits, dans la
-// vue (pour les recherches suivantes) et dans le tampon.
-func remplacerDansVue(tampon, vue []byte, d int, avant, apres []byte) int {
+// vue (pour les recherches suivantes) et dans le tampon. `borne`, s il est donne, refuse une
+// occurrence collee a un caractere du meme alphabet (un nombre dans un nombre plus long).
+func remplacerDansVue(tampon, vue []byte, d int, avant, apres []byte, borne func(vue []byte, pos, n int) bool) int {
 	n := 0
 	for debut := 0; ; {
 		k := bytes.Index(vue[debut:], avant)
@@ -100,6 +113,10 @@ func remplacerDansVue(tampon, vue []byte, d int, avant, apres []byte) int {
 			return n
 		}
 		pos := debut + k
+		if borne != nil && !borne(vue, pos, len(avant)) {
+			debut = pos + 1
+			continue
+		}
 		if d == 0 {
 			copy(tampon[pos:], apres) // la vue EST le tampon
 		} else {

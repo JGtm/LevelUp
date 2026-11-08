@@ -123,12 +123,12 @@ func TestActionsSansTrajectoirePubliéeSontQuandMemePubliees(t *testing.T) {
 // sont verrouillees ici, un renommage silencieux casserait le rendu.
 func TestObjectiveActionJSONShape(t *testing.T) {
 	raw, err := json.Marshal(ObjectiveAction{
-		T: 3, XUID: "2533274823110022", Stat: objectives.StatFlagGrabs, TimeMS: 350,
+		T: 3, XUID: "2603225103667623", Stat: objectives.StatFlagGrabs, TimeMS: 350,
 	})
 	if err != nil {
 		t.Fatalf("marshal : %v", err)
 	}
-	want := `{"t":3,"xuid":"2533274823110022","stat":"flag_grabs","timeMs":350}`
+	want := `{"t":3,"xuid":"2603225103667623","stat":"flag_grabs","timeMs":350}`
 	if string(raw) != want {
 		t.Errorf("JSON = %s\nattendu %s", raw, want)
 	}

@@ -339,7 +339,7 @@ var vehicleFamillesNonPilotables = map[string]bool{
 // qui, sous l ancienne regle, ne pouvaient plus porter aucun occupant.
 //
 // CE QUE CELA COUTAIT, NOMME : sur `11de8353`, l episode de l occupant `585` dans le Warthog
-// `773/1` (frames 1 987..2 043, xuid 2533274898781893, siege 0) disparaissait, et avec lui les
+// `773/1` (frames 1 987..2 043, xuid 2661816997026755, siege 0) disparaissait, et avec lui les
 // SEPT tirs qu il portait (frames 2 005 a 2 039, `shots.v = 773`) — `shots/n` 1 690 -> 1 683 et
 // `coverage.shots.noSlot` 278 -> 285 au corpus gate. La vie `773/1` etait pourtant publiee a
 // l identique des deux cotes, famille `warthog` comprise : c est le rattachement geometrique qui,

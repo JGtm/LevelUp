@@ -76,7 +76,7 @@ package objectives
 // resolue quand elle n est pas nommee). `AtRound` et la courbe de score ne bougent pas, sauf
 // qu aucune completion de manche entiere (triplet, elimination, residu) ne donne plus un occupant de
 // siege recycle a un second slot. Mesure : 7 temoins objectifs + 11de8353 + 4f77afc1, seuls les films
-// a siege recycle bougent, et seulement sur ces deux sorties. `bcb6d393` : le frag de 70 706 ms revient a son auteur (2535460750735339) au lieu du
+// a siege recycle bougent, et seulement sur ces deux sorties. `bcb6d393` : le frag de 70 706 ms revient a son auteur (2701236422544437) au lieu du
 // remplacant arrive 2 min 30 plus tard.
 //
 // COMPLEMENT DU 2026-10-02 (retrait des replis nuls, decision DU-7, REVISION CONSTANTE) : deux replis

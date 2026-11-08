@@ -2,12 +2,12 @@
 
 package grammar
 
-// mouvement_5_22_ancres_research_test.go — LES ANCRES DU TEMOIN Madina97294 (lot 5.22).
+// mouvement_5_22_ancres_research_test.go — LES ANCRES DU TEMOIN Joueur90002 (lot 5.22).
 //
 // Le lot 5.11 a mesure le saut sur `dad793c7`, un film ou le bipede etait MUET avant le saut :
 // sa fenetre ne separait pas « le saut commence » de « la replication commence » (D6 du lot
 // 5.13). `bfecd02b` porte un temoin que l utilisateur a VERIFIE dans Theater le 2026-09-22 :
-// Madina97294 (xuid 2533274858283686, slot 523) court en continu entre 1:19 et 1:41 de barre et
+// Joueur90002 (xuid 2623439693412443, slot 523) court en continu entre 1:19 et 1:41 de barre et
 // y saute SEPT fois.
 //
 // Cet instrument pose les ancres de ce temoin SUR L HORLOGE DU FILM (`TimestampUS` des paquets),
@@ -27,7 +27,7 @@ import (
 	"testing"
 )
 
-// m522SlotTemoin est le slot du temoin par defaut : Madina97294 sur `bfecd02b`.
+// m522SlotTemoin est le slot du temoin par defaut : Joueur90002 sur `bfecd02b`.
 const m522SlotTemoin = 523
 
 // m522OrigineMSDefaut est le decalage entre l horloge relative du film et la barre Theater.

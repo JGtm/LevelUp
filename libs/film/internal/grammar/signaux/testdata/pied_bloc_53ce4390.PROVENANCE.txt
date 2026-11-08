@@ -31,7 +31,7 @@ D OU
 
 CE QU ELLE PORTE — UN SEUL evenement th=10, et il SEPARE LES CHAMPS
   t             133033 ms (horloge du match, octets 48 a 51 du bloc, gros-boutiste)
-  xuid          2535430195856593
+  xuid          2804128349823266
   octet 36      2   le « slot » : 0..3, stable par xuid, PAS le player_index
   octet 37      1   L EQUIPE — ce que la production lit depuis 25f327d52 (2026-09-14)
   octet 38      1   doublon EXACT de l octet 37, NON LU
@@ -45,7 +45,7 @@ octet 55, quatre lectures en accord parfait sur cent quatre-vingts essayees. Mes
 du 2026-09-13 : 665/665 sur quatorze films.
 
 POURQUOI CE BLOC-LA, ET PAS LE PREMIER VENU. La premiere version de cette fixture (bloc
-t=61155, xuid 2533274823110022) portait 1 aux octets 36, 37 ET 38 : elle ne discriminait que
+t=61155, xuid 2603225103667623) portait 1 aux octets 36, 37 ET 38 : elle ne discriminait que
 contre l octet 55, et la revue R1 a montre que `footerByteTeam = 36` — le SLOT, declare la
 ligne au-dessus dans le meme bloc de constantes — laissait les tests VERTS. Le bloc actuel a
 slot 2 et equipe 1 : les substitutions plausibles se comportent ainsi, et la mutation a ete

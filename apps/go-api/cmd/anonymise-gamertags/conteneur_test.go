@@ -110,12 +110,12 @@ func refermer(c contenu) ([]byte, error) {
 // anonymiserOctets rend le fichier reecrit et les occurrences remplacees. Un fichier sans
 // occurrence est rendu TEL QUEL (pas de recompression qui changerait ses octets pour rien), et un
 // fichier reecrit est RELU pour verifier que son contenu clair est bien celui qu on a produit.
-func anonymiserOctets(brut []byte, ps []paire) ([]byte, map[string]int, forme, error) {
+func anonymiserOctets(brut []byte, j *jeu) ([]byte, map[string]int, forme, error) {
 	c, err := ouvrir(brut)
 	if err != nil {
 		return nil, nil, "", err
 	}
-	compte := remplacer(c.clair, ps)
+	compte := remplacer(c.clair, j)
 	if len(compte) == 0 {
 		return brut, compte, c.forme, nil
 	}

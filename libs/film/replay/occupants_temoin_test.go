@@ -77,8 +77,8 @@ func temoinB1ad85eb() ([]RosterEntry, []Track, entreesDesOccupants, entreesDesPl
 	humains := []struct {
 		nom string
 		idx int
-	}{{"MONEY x BUTTER", 0}, {"FairyNectar5788", 1}, {"Madina97294", 2}, {"Namikidori", 3},
-		{"Chocoboflor", 4}, {"WNBA Fan A5", 5}, {"DRghie", 6}, {"JGtm", 7}, {"Hanover Cat", 9},
+	}{{"MONEY x BUTTER", 0}, {"FairyNectar5788", 1}, {"Joueur90002", 2}, {"Namikidori", 3},
+		{"Joueur90001", 4}, {"WNBA Fan A5", 5}, {"DRghie", 6}, {"Jf01", 7}, {"Hanover Cat", 9},
 		{"Claudors", 10}}
 	var roster []RosterEntry
 	for k, h := range humains {
@@ -187,7 +187,7 @@ func TestTemoinB1ad85ebPlacesEtPresences(t *testing.T) {
 	instants := map[int]map[int][]string{
 		227:  {0: {"343 Hundy [bot]", "DRghie", "MONEY x BUTTER", "Namikidori"}},
 		1567: {0: {"Claudors", "DRghie", "MONEY x BUTTER", "Namikidori"}},
-		4067: {1: {"343 Brew Dog [bot]", "Chocoboflor", "JGtm", "Madina97294"}},
+		4067: {1: {"343 Brew Dog [bot]", "Jf01", "Joueur90001", "Joueur90002"}},
 	}
 	for f, attendu := range instants {
 		got := affichesA(roster, f)

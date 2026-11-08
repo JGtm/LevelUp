@@ -11,7 +11,7 @@ package replay
 //
 //	Nilton410    0:41 -> frag a 0:46 ; 0:49 -> ~0:52 ; bref a ~1:01 ; bref vers ~1:08 ;
 //	             ~1:11 -> ~1:13 ; encore a ~1:25.
-//	Madina97294  0:45 -> sa mort a 0:46.
+//	Joueur90002  0:45 -> sa mort a 0:46.
 //
 // Et une observation NEGATIVE precieuse : en TROISIEME personne, rien ne change — la question de
 // l'epaulement etait donc mal posee ; le signal est du cote de la vue, pas de la pose du bipede.
@@ -56,7 +56,7 @@ const (
 	chronoCouvMin   = 8    // transitions couvertes minimales (sur 12)
 	chronoEnrichMin = 3.0  // densite fenetre / debit de fond
 	chronoGT        = "Nilton410"
-	chronoGTVictime = "Madina97294"
+	chronoGTVictime = "Joueur90002"
 )
 
 // chronoEpisodeMadina : la periode unique de la victime.

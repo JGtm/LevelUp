@@ -16,10 +16,10 @@ import (
 // joueur entre dans la partie apres lui.
 
 const (
-	premierOccupant = "2535460750735339"
-	remplacant      = "2535468064146356"
-	voisin          = "2533274858283686"
-	furtif          = "2535418713587213"
+	premierOccupant = "2701236422544437"
+	remplacant      = "2544014377305993"
+	voisin          = "2623439693412443"
+	furtif          = "2671702200150518"
 )
 
 // siegeRecycle : une manche, le slot 12 tenu par `premierOccupant` (1 frag, 4 morts) puis, apres la

@@ -61,9 +61,9 @@ func TestSlotIdentityMatchesKnownOwners(t *testing.T) {
 	got := SlotIdentityFrom(StatRecords(bobine), linesOf("1bc77d2e"), nil)
 	// slotOwners (named_test.go) donne slot 18 = JGtm, dont le xuid est etabli en §16.2.
 	for slot, want := range map[int]string{
-		18: "2533274823110022", // JGtm
-		24: "2535469190789936", // Chocoboflor
-		16: "2533274858283686", // Madina97294
+		18: "2603225103667623", // JGtm
+		24: "2547408409520575", // Joueur90001
+		16: "2623439693412443", // Joueur90002
 	} {
 		if got[slot] != want {
 			t.Errorf("slot %d -> %q, attendu %q", slot, got[slot], want)
@@ -175,7 +175,7 @@ func TestIdentifyNamedEventsOnRealFilm(t *testing.T) {
 	// JGtm doit porter ses 4 vols de drapeau, sous son xuid.
 	steals := 0
 	for _, e := range got {
-		if e.XUID == "2533274823110022" && e.Stat == StatFlagSteals {
+		if e.XUID == "2603225103667623" && e.Stat == StatFlagSteals {
 			steals++
 		}
 	}

@@ -260,9 +260,9 @@ func etapesParNom(chemin string) (map[string]string, error) {
 
 // argsEnfantPasse construit la ligne de commande d un enfant de passe S8.
 func argsEnfantPasse(o options, film, nom, sortie string) []string {
-	return []string{
+	return avecOriginaux(o, []string{
 		"-child", "-film", film, "-out", sortie, "-passe", nom,
 		"-repo-root", o.repoRoot, "-title", o.titleSlug,
 		"-mem-gib", strconv.Itoa(o.memGiB),
-	}
+	})
 }

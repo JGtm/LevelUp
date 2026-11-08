@@ -13,7 +13,7 @@ import (
 //
 // CE QUI EST EN JEU. Sur `43716616` (Oddball, deux manches), la manche 0 laisse QUATRE slots
 // muets pour CINQ xuids libres : l'elimination, qui exige l'unicite, s'abstient. Le plus gros
-// porteur du match (2533274978052136, 62,3 s a l'oracle API) tombait dans ce trou et le calque
+// porteur du match (2733226566552357, 62,3 s a l'oracle API) tombait dans ce trou et le calque
 // le montrait a 0 (rapport 6.2 §6, decouverte 1).
 //
 // CE TEST FIGE LE CABLAGE, pas la regle : la regle et ses quatre gardes sont testees a leur

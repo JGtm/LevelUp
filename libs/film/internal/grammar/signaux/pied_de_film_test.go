@@ -36,7 +36,7 @@ package signaux
 //
 // # POURQUOI LA VALEUR ATTENDUE N'EST PAS CIRCULAIRE
 //
-// L'équipe 1 de `2535430195856593` sur ce match est ÉTABLIE AILLEURS QUE DANS CE BLOC, par la
+// L'équipe 1 de `2804128349823266` sur ce match est ÉTABLIE AILLEURS QUE DANS CE BLOC, par la
 // trame d'état du film (rang de la table des slots de `chunk_00` -> xuid, i-ème entité ti=9 ->
 // désignateur d'équipe). C'est ce que publie l'oracle corpus
 // `grammar.TestResidusPiedOctetEquipe`, qui reste la mesure de référence — 665/665 sur quatorze
@@ -77,7 +77,7 @@ const (
 	piedAttenduTime = 133033
 	piedAttenduSlot = 2
 	piedAttenduTeam = 1
-	piedAttenduXUID = uint64(2535430195856593)
+	piedAttenduXUID = uint64(2804128349823266)
 	// Ce que rendraient les substitutions plausibles de `footerByteTeam` sur ce bloc.
 	piedOctet38 = 1 // doublon exact de l'octet 37 : 190 blocs sur 190 (4 films, 2 builds)
 	piedOctet55 = 0 // ce que la production lisait avant le 2026-09-14

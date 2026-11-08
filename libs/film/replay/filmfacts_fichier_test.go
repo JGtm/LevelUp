@@ -45,7 +45,7 @@ func fichierTemoin(t *testing.T) *FilmFactsFile {
 		},
 		// Les gardes de l appelant (lot J3.4) : l en-tete les porte depuis le codec 2.
 		Gardes: GardesDeCuisson{Drapeau: true, Zones: true,
-			Roster: empreinteDuRoster([]uint64{2533274819954312})},
+			Roster: empreinteDuRoster([]uint64{2533491259474651})},
 		// L empreinte de l entree du film de reference (lot J3.5) : les tests relisent avec elle.
 		EmpreinteDeCle: EmpreinteDeCle(goldenEntryPourTest(t)),
 		Facts:          *facts,

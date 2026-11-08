@@ -230,7 +230,7 @@ package killsource
 //     l un apres l autre, celui que BOT_METADATA declare a cet instant (`hybrid_bots.go`).
 // PREUVE (2026-10-08, `cmd/killsource json`, binaire de `2761162de` contre binaire du lot) : sur
 // `0a08d2f2`, 119 -> 124 lignes, +4 morts de bot (trois de SuSpec7c0br4, une de JGtm, dont une par
-// la source du bot) et +1 mort infligee par un bot (Madina97294) ; `ca684191` 79 -> 80 (une mort
+// la source du bot) et +1 mort infligee par un bot (Joueur90002) ; `ca684191` 79 -> 80 (une mort
 // infligee par un bot que le recollage prenait) ; `760fb768` une victime renommee a l instant
 // (343 Cliffton -> 343 Chilies) ; `b1ad85eb`, `4f77afc1`, `50f16538` identiques. Aucune ligne
 // existante ne change de tueur ni de source. Les lignes de `match_kill_events` deviennent candidates

@@ -85,6 +85,9 @@ type options struct {
 	// temporaire efface a la sortie.
 	outDir string
 	memGiB int
+	// originaux : chemin de la liste des xuids d'origine (hors depot), qui permet de retraduire
+	// les xuids FICTIFS des faits figes en ceux du parc (cf. identites.go). Vide : faits reels.
+	originaux string
 	// deuxPasses : LE MODE S8 (item 4.1.3) — deux passes du MEME commit par film, decodage
 	// contre rejeu depuis les faits, aucune reference lue ni ecrite.
 	deuxPasses bool
@@ -143,6 +146,9 @@ func lireDrapeaux() (options, error) {
 	flag.StringVar(&o.outDir, "out-dir", "",
 		"conserver les digests produits par les enfants dans CE dossier (vide : dossier temporaire efface a la sortie) — "+
 			"utile pour instruire une divergence sans re-decoder le film")
+	flag.StringVar(&o.originaux, "originaux", os.Getenv(envIdentitesOriginales),
+		"liste des xuids d'origine, un par ligne (HORS depot) : les faits figes portent des xuids FICTIFS que le "+
+			"harnais retraduit en ceux du parc (defaut : "+envIdentitesOriginales+")")
 	flag.IntVar(&o.memGiB, "mem-gib", memguard.DefaultLimitGiB,
 		"plafond memoire de chaque enfant, en gibioctets (0 = desarme)")
 	flag.BoolVar(&o.deuxPasses, "deux-passes", false,

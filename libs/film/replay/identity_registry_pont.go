@@ -232,7 +232,7 @@ func (r OwnerReport) pontAplatiMuet(slot uint32) bool {
 // occupant nommé d'un slot que deux joueurs se partagent : c'est un choix par l'ORDRE DES VIES.
 // `xuidAt` et `bridgeOfSlot` s'en abstiennent déjà, mais le helper partagé `xuidOfPublishedTrack`
 // ne le pouvait pas — il ne reçoit qu'une map. Résultat mesuré sur `084a804d` slot 734 : la passe
-// de nommage REFUSE (`contested = 1`) et le helper servait quand même `2535430265968559`, si bien
+// de nommage REFUSE (`contested = 1`) et le helper servait quand même `2683317851328856`, si bien
 // que `samplesByXUID` indexait les positions de la piste contestée sous le premier occupant —
 // une capture de zone pouvait être géolocalisée sur la trajectoire d'un AUTRE joueur.
 //

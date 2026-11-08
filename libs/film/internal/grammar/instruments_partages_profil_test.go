@@ -130,8 +130,8 @@ func profilRosterBalaye(d []byte, c profilRosterCrit) []s3rTouche {
 // LA CORRECTION TIENT EN UNE LIGNE, ET ELLE EST JUSTIFIEE PAR LA SONDE : le champ de 2 bits de
 // `slot+0x08` N'EST PAS constant. `FUN_1407ecb08` l'ecrit comme un octet SIGNE sur 2 bits — son
 // domaine est donc -2..1, pas {0} — et la sonde `TestProfilRosterXuidIntrouvable` l'a mesure a
-// **1** sur deux enregistrements bien reels (`1c4c63c2` xuid 2535450607961405 au bit 11 137 668,
-// `111fa685` xuid 2535454874175468 au bit 10 812 405), tous deux avec `b=1/0/0`, `u32=0` et un
+// **1** sur deux enregistrements bien reels (`1c4c63c2` xuid 2604240265332618 au bit 11 137 668,
+// `111fa685` xuid 2713822861981385 au bit 10 812 405), tous deux avec `b=1/0/0`, `u32=0` et un
 // jeton non nul. Exiger ce champ nul rendait ces slots INVISIBLES, et leur absence doublait
 // l'ecart au voisin, ce qui faisait perdre a `s3rGrappe` TOUTE LA TETE de la table
 // (`1c4c63c2` : 11 enregistrements lus au lieu de 24).

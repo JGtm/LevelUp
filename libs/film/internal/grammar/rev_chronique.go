@@ -318,7 +318,7 @@ package grammar
 // les deux retombaient sur le meme bloc de 60 octets et le meme marqueur, et chaque evenement sortait
 // deux fois sous deux xuid. Il garde desormais le candidat le plus proche du marqueur
 // (`retenirLePlusProche`). Aucun bit n est lu autrement ; ce qui change est QUELS xuid sortent.
-// MESURE : 34db6b33 (fiche de Partycz, faux 2252025040223036 a 5 067 bits du vrai 2535472452512509)
+// MESURE : 34db6b33 (fiche de Partycz, faux 2252025040223036 a 5 067 bits du vrai 2685077870825706)
 // 28 groupes d evenements sous deux xuid avant, 0 apres ; parc local de 2 677 films : 1 film touche
 // avant, 0 apres.
 //

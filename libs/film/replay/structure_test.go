@@ -850,7 +850,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   l'assertion d'en-tête laisse passer en porte une quelconque. La découpe la croyait sur
 	//   parole ; la plus longue sous-suite non décroissante ne pouvait pas l'écarter, une valeur
 	//   mal lue mais PLUS GRANDE prolongeant la suite au lieu de la rompre.
-	//   Mesuré : `51ebbc0f` publiait 63 assistances (feuille : 5) pour `2535439712156981` à cause
+	//   Mesuré : `51ebbc0f` publiait 63 assistances (feuille : 5) pour `2572790178344426` à cause
 	//   d'un enregistrement daté 57 s après le début de la manche 1 et déclarant la manche 0 avec
 	//   `comp 3 A = 60` ; frags 0 -> 1 au passage. Le MÊME enregistrement sur `d9781168` : 69 -> 11
 	//   assistances, exactement la feuille. Vols de drapeau fantômes sur deux films d'Oddball :

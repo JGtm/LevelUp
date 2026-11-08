@@ -161,7 +161,7 @@ func TestGoldenLigneDiscriminante(t *testing.T) {
 			"la MARCHE sert cette ligne que le test de magnitude est inerte aujourd hui", film)
 	}
 	// La meme mort, cote table des divergences : le CREDIT doit y figurer.
-	if !strings.Contains(g, "01:25  JGtm  acd1cff4") {
+	if !strings.Contains(g, "01:25  Jf01  acd1cff4") {
 		t.Errorf("%s 01:25 : la ligne n apparait plus dans la table des morts a source-victime "+
 			"avec sa victime et son tag", film)
 	}
@@ -332,9 +332,9 @@ func TestGoldenMortsParUnBotAvecTagEtCategorie(t *testing.T) {
 		"000d5950": nil,
 		"78919882": nil,
 		"9b191a7f": {
-			`05:46  Madina97294  343 Aloysius [bot]  1f11df6b  "VK78 Commando"  Headshot  marche  assistant=Joueur0209`,
-			`08:03  JGtm  343 Aloysius [bot]  ec919da5  "Needler"  None  marche  assistant=Joueur00155`,
-			`08:24  Chocoboflor  343 Aloysius [bot]  0000d57f  "Needler"  AttachedDamage  marche  assistant=AUCUN (mesure)`,
+			`05:46  Joueur90002  343 Aloysius [bot]  1f11df6b  "VK78 Commando"  Headshot  marche  assistant=Joueur0209`,
+			`08:03  Jf01  343 Aloysius [bot]  ec919da5  "Needler"  None  marche  assistant=Joueur00155`,
+			`08:24  Joueur90001  343 Aloysius [bot]  0000d57f  "Needler"  AttachedDamage  marche  assistant=AUCUN (mesure)`,
 		},
 		"fccc61cd": {
 			`08:49  Joueur0000082  343 PardonMy [bot]  0ff7b934  "Shock Rifle"  Headshot  marche  assistant=AUCUN (mesure)`,

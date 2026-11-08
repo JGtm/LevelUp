@@ -131,6 +131,10 @@ func digestsDuFilm(ctx context.Context, o options, archiveRoot string) ([]string
 	if err != nil {
 		return nil, err
 	}
+	nXuids, err := retraduireLesFaits(&faits, o)
+	if err != nil {
+		return nil, err
+	}
 	b, err := replaybuild.NewBuilder(ctx, o.repoRoot, o.titleSlug)
 	if err != nil {
 		return nil, fmt.Errorf("preparation du builder (titre %s) : %w", o.titleSlug, err)
@@ -154,8 +158,8 @@ func digestsDuFilm(ctx context.Context, o options, archiveRoot string) ([]string
 		b.SansFaitsPersistes()
 	}
 	slog.InfoContext(ctx, "cuisson d equivalence", "film", o.film, "match", faits.MatchID,
-		"cartes", faits.MapNames, "joueurs", len(faits.Players), "variante", faits.GameVariantName,
-		"passe", o.passe)
+		"cartes", faits.MapNames, "joueurs", len(faits.Players), "xuids_retraduits", nXuids,
+		"variante", faits.GameVariantName, "passe", o.passe)
 	if _, err := b.BuildBytes(ctx, faits.MatchID, faits.MapNames,
 		filmcache.ChunkDir(archiveRoot, o.film), faits.MatchFacts); err != nil {
 		return nil, err

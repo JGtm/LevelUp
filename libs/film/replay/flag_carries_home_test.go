@@ -5,7 +5,7 @@ package replay
 // CE QUE CES TESTS FERMENT. Un joueur qui lache puis REPREND le meme drapeau produit deux prises
 // du meme slot ; la seconde borne la premiere, mais le lacher entre les deux n'est date par rien
 // quand aucune vie libre ne nait a ses pieds. Tout le sejour AU SOL etait alors publie comme du
-// portage — `16ea3668` / 2535417044536883 : 55,1 s pour 0,9 s a l'oracle.
+// portage — `16ea3668` / 2659168014067630 : 55,1 s pour 0,9 s a l'oracle.
 //
 // LE DRAPEAU EST RENTRE ENTRE-TEMPS, ET DEUX CHAINES LE DATENT : le RETOUR CREDITE, que l'equipe
 // de son auteur nomme, et la RENTREE DE L'OBJET, que le socle nomme. Un drapeau chez lui n'est

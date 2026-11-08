@@ -117,8 +117,8 @@ const (
 //	7ter.79  la 3e issue est FERMEE, pas deplacee : ces 3 morts sont publiees
 //	         ([OriginBotKiller]) et leurs 2 assistants avec. Plafond INCHANGE.           ecart 3
 //
-// L ECART DE 3 NE VIENT PLUS D UNE POPULATION EXCLUE, il se LOCALISE : Chocoboflor 6 pour 9,
-// Madina97294 3 pour 5, Joueur00000048 2 pour 3 — LES ISSUES (a) ET (b) RESTENT ENTIERES. Et il ne
+// L ECART DE 3 NE VIENT PLUS D UNE POPULATION EXCLUE, il se LOCALISE : Joueur90001 6 pour 9,
+// Joueur90002 3 pour 5, Joueur00000048 2 pour 3 — LES ISSUES (a) ET (b) RESTENT ENTIERES. Et il ne
 // se generalise pas : sur les DEUX films ou TOUTES les morts sont attachees, le decodage reproduit
 // le total de l API A L UNITE (17/17 et 29/29). Sur `fccc61cd`, 7ter.79 n a rien comble — la mort
 // infligee par `bid(7.0)` NE NOMME AUCUN assistant.

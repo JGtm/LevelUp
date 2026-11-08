@@ -1078,7 +1078,7 @@ modifiés ou neufs dans `archlint`, `libs/film/revision/ordre_imports_test.go`, 
 
 ## Lot 4 — Publication de la brique
 
-- [ ] 4.0 Identités des fixtures (D-7) — **OPTION A choisie par le user le 2026-11-04** (sur la mesure 1.6) :
+- [x] 4.0 Identités des fixtures (D-7) — **OPTION A choisie par le user le 2026-11-04** (sur la mesure 1.6) — FAIT le 2026-11-08, voir « Résultat de l'item 4.0 » :
       l'outil `anonymise-gamertags` (go-api, celui de la v8.0.2) est étendu aux xuids : réécriture à longueur
       constante (64 bits LE à décalage de bit quelconque dans les paquets d'identité et les temps forts, MSB dans
       la table du registre), faux xuids tirés dans `[0x0009000000000000, 0x000A000000000000[` (D-L1-8), table de
@@ -1111,6 +1111,60 @@ modifiés ou neufs dans `archlint`, `libs/film/revision/ordre_imports_test.go`, 
       `.ai/project_map.md` ; contrôle par grep des chemins cités.
 - [ ] 4.9 PR vers `release/v8.1.0`, CI verte, squash. Commande de tag préparée pour le user :
       `git tag libs/film/v0.1.0 <sha> && git push origin libs/film/v0.1.0` (geste du user, ADR 0043 D-2).
+
+### Résultat de l'item 4.0 (2026-11-08)
+
+Fait, avec quatre écarts au texte de l'item (D-L4-1 à D-L4-4) : les fixtures encodées par le codec des faits se
+réécrivent par décodage et réencodage (le motif binaire ne les voit pas) ; la liste des xuids d'origine reste HORS dépôt
+(le registre versionné ne porte que les fictifs) ; les 20 références de `replay-equiv` n'ont PAS bougé ; le registre
+versionné est un ratchet.
+
+**Ce qui est en place.** `apps/go-api/internal/identitefictive` : le fictif d'un xuid est `0x0009000000000000 + (8 premiers
+octets de SHA-256(graine publique || xuid sur 8 octets) masqués sur 48 bits)`, donc dans la plage de D-L1-8, même entrée
+même sortie, injectivité vérifiée par l'outil sur l'ensemble traité. `apps/go-api/cmd/anonymise-gamertags` (étendu) : le
+xuid se cherche en 64 bits petit-boutiste et en 64 bits gros-boutiste (MSB) aux huit décalages de bit, puis en texte
+(décimal, hexadécimal, hexadécimal à octets inversés) à bornes nettes ; un nom marqué `donnees` dans la table ne se remplace
+que sous `testdata` ; mode inventaire par défaut (écriture sous `GAMERTAGS_ECRIRE=1`) avec comptes par forme, par dossier et
+par fichier. `libs/film/testdata/IDENTITES.tsv` : registre des 420 fictifs, plus la borne de plage et les sept xuids inventés
+des tests (inchangés), avec la règle d'origine en en-tête ; son garde-rail `TestLesXuidsDesFixturesSontFictifs`
+(cmd/anonymise-gamertags) refuse tout xuid de la plage hors registre dans un fichier texte de `libs/film`.
+`libs/film/replay/golden_inputs_identites_test.go` : garde-rail des 8 `inputs_*.bin.gz` (chaque xuid décodé est au registre)
+et porte de réécriture par le codec (`REPLAY_IDENTITES_TABLE`, table `original<TAB>fictif` écrite par l'outil sous
+`XUIDS_TABLE_SORTIE`). `cmd/replay-equiv/identites.go` : les faits figés portent des xuids fictifs, le harnais les
+RETRADUIT en ceux du parc avant de cuire (`-originaux` / `LEVELUP_IDENTITES_ORIGINALES`) ; sans la liste, des faits fictifs
+sont refusés.
+
+**Occurrences remplacées** (outil, `libs/film`, 2 451 fichiers parcourus, 119 touchés au premier passage plus 1 au second) :
+64 bits petit-boutiste 4 128, gros-boutiste 150, décimal 822, hexadécimal 2 (`roster_type8.go`, deux formes), noms 715 ;
+plus 1 379 xuids réécrits par le codec dans les 8 `inputs_*.bin.gz`. Par film (petit-boutiste / gros-boutiste / noms) :
+`minifilm_000d5950` 262 / 0 / 30 ; `111fa685` 496 / 24 / 30 ; `11de8353` 417 / 24 / 8 ; `60ae07c4` 498 / 8 / 62 ;
+`a521164d` 301 / 24 / 16 ; `bcb6d393` 144 / 8 / 67 ; `e5adf7b2` 514 / 23 / 25 ; `fb1a1a72` 396 / 8 / 113 ;
+`minibobine_000d5950` 334 / 8 / 40 ; `minibobine_e5adf7b2` 652 / 23 / 31 ; `v41_chunk_he.bin` 113 / 0 / 113 ;
+`pied_bloc_53ce4390.bin` 1 / 0 / 0. Les petit-boutiste et gros-boutiste sont ceux de la mesure 1.6 colonne pour colonne
+(4 124 et 150) sauf `a521164d` (+4) : un xuid présent dans les octets qui n'est ni siège ni victime ; la mesure 1.6 en
+annonçait 133 distincts, l'outil en trouve 135 (ce xuid et celui du pied de film).
+
+**Témoins 4.0** (scratchpad `temoins_film/lot4/`) :
+
+| Témoin | Avant | Après |
+|---|---|---|
+| Identités lues par le décodeur dans les 10 dossiers (table des joueurs, fil des morts : index, temps, xuid, gamertag) | 150 sièges, 1 402 morts, 133 xuids distincts, 10 films | mêmes 150 sièges et 1 402 morts, mêmes index et mêmes temps ligne à ligne ; les 133 xuids sont les 133 fictifs prévus par la dérivation, les gamertags identiques sauf les 155 occurrences des trois noms ; 0 écart (`avant_identites.txt`, `apres_identites.txt`, comparés par `compare_identites.py`), tous au registre |
+| T1 `libs/film` (paquet, test, verdict) | 3 813 lignes, 0 fail | 3 823 lignes, 0 fail : les 3 813 anciennes lignes à l'identique, plus 10 neuves (`TestGoldenInputsPorteDesXuidsFictifs` x9, `TestGoldenInputsReecrireIdentites` ignoré) |
+| T1 go-api (15 jeux de paquets qui lisent les fixtures de `libs/film`) | 6 102 lignes, 3 fail (`haloadapter.TestPolitiqueParChemin`, avant tout changement) | 6 113 lignes, 0 fail ; seules différences : 11 tests neufs et `TestPolitiqueParChemin` passé au vert (échec avant le lot, sans rapport, non rejoué) |
+| T2 | cinq `Rev` : `source-2026-09-16.2`, `profile-2026-10-16`, `grammar-2026-10-28`, `killsource-2026-10-18`, `objectives-2026-10-17` ; 14 tests de `revision` verts ; SHA-256 des 10 `*_rev.golden` et `*_perimetre.golden` | identiques ; 14 tests verts avec les mêmes noms ; les 10 goldens de révision et de périmètre identiques à l'octet (17 sources de production modifiées par une seule chose : un xuid ou un nom dans un commentaire, empreinte insensible aux commentaires vérifiée) |
+| T3 `replay-equiv` (20 films du parc) | 20 identiques, MD5 de la liste `e35052a1baa65ea8519fa373d8e51271` | 20 identiques, 0 différent, MD5 de la liste IDENTIQUE, les 20 fichiers octet-identiques aux références ; 1 209 s ; `xuids_retraduits` figure à chaque cuisson |
+| Goldens régénérés par leurs tests | 8 `assembly_*.golden`, `minifilm.tsv`, 8 fixtures de contrat web | les 8 `assembly_*.golden` régénérés par `-update` sont identiques à l'octet à ceux que l'outil avait réécrits ; `minifilm.tsv` : `deaths` et `playerIndices` (les seules étapes qui citent un xuid) ; `highlight_event_golden.txt` : la ligne `sha256` ; 8 fixtures web et leur manifeste régénérés par `REPLAY_CONTRACT_UPDATE=1 go test -run ContractFixtures -update` |
+| Recherche des originaux | 420 xuids d'origine en texte (dont 1 en hexadécimal seul) ; 3 gamertags | l'outil en inventaire sur tout `libs/film` : 0 occurrence des 420 sous les cinq formes et des 3 noms sous `testdata` ; `git grep -F` : 0 xuid d'origine, 0 `Chocoboflor`, 0 `Madina97294` ; `JGtm` : 0 sous `testdata`, 66 lignes de prose, de noms de tests et de commentaires restent (c'est le nom du mainteneur, aussi dans le chemin de module de chaque fichier) |
+| `go test ./internal/archlint/ -timeout 40m -count=1` | vert | `ok`, 340 s |
+
+Aucune `Rev` ni aucun golden de révision n'a bougé : rien à régénérer, aucune chronique de couche à écrire. Les références
+de `replay-equiv` n'ont pas été re-figées (D-L4-3) : pas de chronique de re-figement, un paragraphe dans
+`replay/testdata/equivalence/CORPUS.txt` dit pourquoi.
+
+Fichiers hors dépôt, à garder : `scratchpad/hors_depot4/xuids_originaux.txt` (liste des 420), `noms_trois.txt` (table des
+trois noms), `xuids_synthetiques.txt`. Ils se reconstruisent depuis `git show bb15d7d950` (grep des nombres à seize chiffres de
+la plage, plus `2535406167016809` cité en hexadécimal). Sans eux, `replay-equiv` refuse les faits figés et une régénération de
+fixture depuis le cache remet des identités réelles (à rejouer : l'outil, puis `REPLAY_IDENTITES_TABLE`).
 
 ## Lot 5 — Préalables aux dépôts dédiés (après la clôture du desktop)
 
@@ -1265,3 +1319,38 @@ Lot 3 (2026-11-08), notées, non traitées :
 - **D-L3-6** Les planchers de balayage de `film_file_size` (1 200 fichiers) et `film_function_length` (2 300 fonctions) datent du
   2026-09-16 ; les mesures du 2026-11-08 sont 2 677 fichiers et 5 319 fonctions : un balayage à moitié muet passerait. Non relevés
   (hors lot) ; le lot 3.2 a seulement ajouté une garde « racine non vide » par racine.
+
+Lot 4 (2026-11-08), notées, non traitées :
+
+- **D-L4-1** La mesure 1.6 était incomplète sur trois points : son grep `25\d{14}` ignorait les xuids de préfixe 26 à 28 (9 de
+  plus dans les textes) ; elle annonçait « 0 occurrence » dans les `inputs_*.bin.gz` alors que ces fixtures portent les
+  identités en entiers variables du codec (1 379 xuids, invisibles au motif binaire, et table des index écrite triée par
+  xuid : réécriture par décodage et réencodage) ; elle ne voyait pas les xuids qu'un commentaire cite en hexadécimal seul
+  (`roster_type8.go`). Corrigés dans l'item.
+- **D-L4-2** Sept xuids de tests (`2533274800000000` à `…33`, inventés) et la borne `0x0009000000000000` ne sont l'identifiant
+  de personne : les remplacer aurait changé l'ordre dont des tests dépendent, et la borne comme motif binaire de 64 bits (sept
+  octets presque nuls) donnait 1 546 faux positifs gros-boutiste sur un seul film. Laissés tels quels, listés au registre.
+- **D-L4-3** Écart au texte de l'item : les digests de `replay-equiv` ne changent pas par construction. Le harnais retraduit les
+  faits fictifs en xuids du parc avant de cuire, la cuisson voit les mêmes entrées qu'avant, les 20 références restent valables
+  (MD5 identique) ; une comparaison à des références FICTIVES aurait demandé de traduire chaque valeur de chaque étape, et
+  l'ordre des cuissons (tri par xuid) ne se conserve pas par traduction.
+- **D-L4-4** Écart au texte de l'item : la table de correspondance n'est PAS versionnée. Original contre fictif donnerait les
+  xuids réels dans le dépôt, ce que l'item vise à retirer (et le grep de contrôle exige 0). Le registre versionné ne porte que
+  les fictifs ; la dérivation est publique (graine incluse) : elle empêche de LIRE un xuid d'origine dans le dépôt, pas de
+  vérifier un candidat connu. Si la graine doit être secrète, elle passe en paramètre de l'outil et de `replay-equiv` (un
+  changement de trois fichiers) ; décision à part.
+- **D-L4-5** Deux tests de la brique lisent le cache de films du parc et se SAUTENT sans lui :
+  `weaponv3.TestResolveXuidToPI_GroundTruth` et `TestResolveXuidToPIStrings_IgnoresBots`. Leurs littéraux sont désormais
+  fictifs ; avec le parc monté ils échouent (le cache porte les xuids réels). Même doctrine que `TestGoldenFilms` de killsource
+  et `TestGoldenInputsFidelite` depuis la v8.0.2 : ces gates locaux se jouent sur une copie traduite des films.
+- **D-L4-6** Hors périmètre, notés : des xuids d'origine restent dans `apps/go-api` (104 fichiers, 57 xuids distincts, dont
+  `cmd/replay-corpus-gate/testdata/gcorpus_j11_2026-09-28.json`, `internal/replayverite/testdata/bcb6d393.*`,
+  `internal/replaydiff/testdata/paire_bcb6d393_54_60.json`, `internal/api/wire/testdata/film_e2e/c0a82e88/fixture.json`),
+  `apps/web` (5 fichiers, 3 xuids : `replayContract.test.ts:603`, `scoreTimeline.test.ts`), `docs` (5), `config/demo/JGtm`
+  (2) et `libs/haloapi` (1). Les 8 fixtures web `apps/web/src/features/match-replay/test/fixtures/go/*.json.gz` et leur
+  manifeste sont, eux, régénérés par le lot (`TestContractFixturesMatchCommitted`, test de `libs/film`) ; `vitest` n'a pas
+  été joué (pas de `node_modules` dans le worktree).
+- **D-L4-7** Complétude : un balayage de toutes les valeurs de 64 bits de la plage dans les octets ne discrimine rien (19 864
+  valeurs hors registre, jusqu'à 4 151 occurrences : des structures répétitives). Que plus aucun xuid réel ne reste dans les
+  octets ne se prouve donc que par ce que le décodeur lit (tout xuid des sièges, des morts et des 8 fixtures d'entrées est
+  au registre) et par l'égalité des comptes avec la mesure 1.6, non par une exclusion.

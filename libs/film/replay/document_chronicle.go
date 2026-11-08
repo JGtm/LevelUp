@@ -782,7 +782,7 @@ package replay
 //
 // MESURE, TROIS FILMS MONO-MANCHE ET UN MULTI-MANCHE (2026-09-06) :
 //
-//	c0a82e88  3 prises, 0 portage -> 1 portage. Le porteur publié est 2535463878425995
+//	c0a82e88  3 prises, 0 portage -> 1 portage. Le porteur publié est 2569104772637498
 //	          (7 frags, 2 morts) — le MÊME xuid, aux MÊMES instants, que les deux actions
 //	          `flag_steals` / `flag_captures` du calque `objectives`, par une chaîne
 //	          indépendante. Le marqueur de portage des images-clés le confirme (1/1). Les
@@ -1981,7 +1981,7 @@ package replay
 // tenait faute d oracle. L oracle est arrive : l utilisateur a ouvert Theater sur `bfecd02b` et
 // confronte neuf intervalles de ce genre, pris sur ce film. **Les neuf sont des escalades
 // de rebord, 9 verdicts sur 9, aucun contre-exemple** ; le plus net est celui du temoin du
-// lot 5.22 (Madina97294, slot 523), un saut date a 96,962 s qui se termine en prise sur un
+// lot 5.22 (Joueur90002, slot 523), un saut date a 96,962 s qui se termine en prise sur un
 // element du decor, ou `i54` s allume de 97,096 a 97,63 s et d ou le Spartan redescend ensuite.
 //
 // LE VOCABULAIRE DU JEU CORROBORE SANS PROUVER : `_action_hoist`, `_action_vault`,
@@ -2051,7 +2051,7 @@ package replay
 // CE QUI NE BOUGE PAS : l origine (`originMs`, `frameCount`) reste lue sur TOUS les paquets de
 // position — ecarter un point ne decale aucun calque ; `layers` ; les revisions de decodage. Les
 // deux replis tombent avec la porte grammaticale au decodage (option 2 du rapport), dont ils sont
-// le critere de retrait. Temoins : 81c02726 (Mongoose 770, Madina97294), ab526724, 879a4dba.
+// le critere de retrait. Temoins : 81c02726 (Mongoose 770, Joueur90002), ab526724, 879a4dba.
 //
 // v69, PARTIE M5 (2026-09-23) :
 // LE MATCH A SENS UNIQUE A UN CAMP — `coverage.score.teamIdentity` GAGNE LA VALEUR `a0`.

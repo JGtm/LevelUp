@@ -276,8 +276,8 @@ func TestViseeOndeCarree(t *testing.T) {
 	ondes := []ondeCarree{
 		ondeConstruit("Nilton410", chronoEpisodes, ondeGardeMS),
 		ondeConstruit("Nilton410 garde 0,5 s", chronoEpisodes, ondeGardeBrefMS),
-		ondeConstruit("Madina97294", [][2]float64{chronoEpisodeMadina}, ondeGardeMS),
-		ondeConstruit("Madina97294 garde 0,5 s", [][2]float64{chronoEpisodeMadina}, ondeGardeBrefMS),
+		ondeConstruit("Joueur90002", [][2]float64{chronoEpisodeMadina}, ondeGardeMS),
+		ondeConstruit("Joueur90002 garde 0,5 s", [][2]float64{chronoEpisodeMadina}, ondeGardeBrefMS),
 	}
 	for _, o := range ondes {
 		ondeDimensionne(t, o)

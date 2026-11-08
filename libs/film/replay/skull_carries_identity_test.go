@@ -15,7 +15,7 @@ import (
 // train de tics part en `noBridge` et AUCUN intervalle n'est publie pour lui.
 //
 // LA MESURE QUI FONDE CE CABLAGE (2026-09-10, quatre films Oddball du parc cuits hors ligne) :
-// `43716616` perd 62,3 s de portage sur son PLUS GROS porteur (2533274978052136, oracle API
+// `43716616` perd 62,3 s de portage sur son PLUS GROS porteur (2733226566552357, oracle API
 // `time_as_skull_carrier_seconds`), `c88ec007` 25,8 s, `d9781168` 1 train. Le pont COMPLETE que
 // l'appelant resout deja pour les actions d'objectif et le drapeau ferme ce trou.
 //

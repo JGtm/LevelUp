@@ -12,8 +12,8 @@ import (
 
 // piverifyXuids — roster ground-truth du match 000d5950 (cf. piverify/main.go).
 var piverifyXuids = []uint64{
-	2533274826120416, 2533274823110022, 2533274980284321, 2535467794760703, // team0
-	2533274882097883, 2533274815845110, 2535444178793711, 2535437947245250, // team1
+	2633090228607708, 2603225103667623, 2543372234349153, 2667725237021739, // team0
+	2603004317949713, 2742063072864889, 2812089420052706, 2709083604009238, // team1
 }
 
 // filmCacheRoot retourne le répertoire data/cache/film_chunks en testant
@@ -118,8 +118,8 @@ func TestResolveXuidToPI_GroundTruth(t *testing.T) {
 		t.Fatalf("aucun pi résolu sur chunk_01")
 	}
 
-	// Ground truth : 2533274823110022 → pi 2 (suffixe …0022).
-	const gt = uint64(2533274823110022)
+	// Ground truth : 2603225103667623 → pi 2 (suffixe …0022).
+	const gt = uint64(2603225103667623)
 	if pi, ok := pis[gt]; !ok {
 		t.Fatalf("xuid %d non résolu", gt)
 	} else if pi != 2 {
@@ -148,13 +148,13 @@ func TestResolveXuidToPIStrings_IgnoresBots(t *testing.T) {
 	}
 
 	roster := []string{
-		"2533274823110022", // ground truth pi 2
+		"2603225103667623", // ground truth pi 2
 		"bid(1)",           // bot — ignoré
 		"not-a-number",     // ignoré
 	}
 	pis := ResolveXuidToPIStrings(roster, chunk)
-	if pi, ok := pis["2533274823110022"]; !ok || pi != 2 {
-		t.Fatalf("attendu pi==2 pour 2533274823110022, obtenu %d (ok=%v)", pi, ok)
+	if pi, ok := pis["2603225103667623"]; !ok || pi != 2 {
+		t.Fatalf("attendu pi==2 pour 2603225103667623, obtenu %d (ok=%v)", pi, ok)
 	}
 	if _, ok := pis["bid(1)"]; ok {
 		t.Fatalf("le bot bid(1) ne devrait pas être résolu")

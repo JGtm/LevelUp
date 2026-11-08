@@ -6,7 +6,7 @@ package grammar
 //
 // Ce que le lot 5.11 ne pouvait pas faire et que ce temoin permet : comparer, SUR LA MEME VIE et
 // SUR L HORLOGE DU FILM, ce qui se replique AU DECOLLAGE et ce qui se replique le reste du temps.
-// Madina97294 (slot 523) est repliquee a chaque tick de 80,0 s a 160,0 s ; ses sept sauts sont
+// Joueur90002 (slot 523) est repliquee a chaque tick de 80,0 s a 160,0 s ; ses sept sauts sont
 // dates par la mesure (`TestMouvement522Ancres`) et verifies dans Theater par l utilisateur.
 //
 // LA FENETRE EST UNE FENETRE DE DECOLLAGE, pas de vol : l entree precede la physique, donc

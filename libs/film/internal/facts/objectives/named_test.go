@@ -55,28 +55,28 @@ var oracle8 = map[string][]playerStat{
 	},
 	// 1bc77d2e — CTF, avec les vrais xuid.
 	"1bc77d2e": {
-		{types.PlayerLine{XUID: "2533274823110022", Kills: 24, Deaths: 13, Assists: 2}, map[string]int{ // JGtm
+		{types.PlayerLine{XUID: "2603225103667623", Kills: 24, Deaths: 13, Assists: 2}, map[string]int{ // JGtm
 			StatFlagCaptures: 1, StatFlagReturns: 2, StatFlagSteals: 4,
 			StatFlagCaptureAssists: 0, StatFlagCarriersKilled: 2, StatFlagGrabs: 3}},
-		{types.PlayerLine{XUID: "2535433601851512", Kills: 20, Deaths: 15, Assists: 7}, map[string]int{
+		{types.PlayerLine{XUID: "2743346341622055", Kills: 20, Deaths: 15, Assists: 7}, map[string]int{
 			StatFlagCaptures: 1, StatFlagReturns: 1, StatFlagSteals: 2,
 			StatFlagCaptureAssists: 1, StatFlagCarriersKilled: 3, StatFlagGrabs: 3}},
-		{types.PlayerLine{XUID: "2535421262359392", Kills: 16, Deaths: 13, Assists: 5}, map[string]int{
+		{types.PlayerLine{XUID: "2713070985861697", Kills: 16, Deaths: 13, Assists: 5}, map[string]int{
 			StatFlagCaptures: 1, StatFlagReturns: 1, StatFlagSteals: 0,
 			StatFlagCaptureAssists: 1, StatFlagCarriersKilled: 3, StatFlagGrabs: 13}},
-		{types.PlayerLine{XUID: "2535469190789936", Kills: 16, Deaths: 15, Assists: 7}, map[string]int{ // Chocoboflor
+		{types.PlayerLine{XUID: "2547408409520575", Kills: 16, Deaths: 15, Assists: 7}, map[string]int{ // Joueur90001
 			StatFlagCaptures: 1, StatFlagReturns: 1, StatFlagSteals: 0,
 			StatFlagCaptureAssists: 2, StatFlagCarriersKilled: 1, StatFlagGrabs: 6}},
-		{types.PlayerLine{XUID: "2535415145546162", Kills: 11, Deaths: 11, Assists: 2}, map[string]int{
+		{types.PlayerLine{XUID: "2644565703521323", Kills: 11, Deaths: 11, Assists: 2}, map[string]int{
 			StatFlagCaptures: 0, StatFlagReturns: 3, StatFlagSteals: 1,
 			StatFlagCaptureAssists: 1, StatFlagCarriersKilled: 2, StatFlagGrabs: 2}},
-		{types.PlayerLine{XUID: "2533274858283686", Kills: 11, Deaths: 12, Assists: 13}, map[string]int{ // Madina97294
+		{types.PlayerLine{XUID: "2623439693412443", Kills: 11, Deaths: 12, Assists: 13}, map[string]int{ // Joueur90002
 			StatFlagCaptures: 0, StatFlagReturns: 0, StatFlagSteals: 2,
 			StatFlagCaptureAssists: 2, StatFlagCarriersKilled: 1, StatFlagGrabs: 16}},
-		{types.PlayerLine{XUID: "2535436340554308", Kills: 10, Deaths: 18, Assists: 5}, map[string]int{
+		{types.PlayerLine{XUID: "2535676564474216", Kills: 10, Deaths: 18, Assists: 5}, map[string]int{
 			StatFlagCaptures: 0, StatFlagReturns: 1, StatFlagSteals: 3,
 			StatFlagCaptureAssists: 1, StatFlagCarriersKilled: 1, StatFlagGrabs: 1}},
-		{types.PlayerLine{XUID: "2535456897775421", Kills: 6, Deaths: 17, Assists: 4}, map[string]int{
+		{types.PlayerLine{XUID: "2678025997824377", Kills: 6, Deaths: 17, Assists: 4}, map[string]int{
 			StatFlagCaptures: 1, StatFlagReturns: 0, StatFlagSteals: 2,
 			StatFlagCaptureAssists: 1, StatFlagCarriersKilled: 0, StatFlagGrabs: 2}},
 	},
@@ -139,7 +139,7 @@ func TestNamedEventsZoneAgainstEightPlayers(t *testing.T) {
 // C'est le test qui ferme l'ambiguite « l'un de trois noms » : `flag_returns`,
 // `flag_steals` et `flag_carriers_killed` valent tous 25 points et se separent ici
 // parfaitement. Et c'est lui qui garde le nom corrige — `flag_grabs`, pas `flag_taken` :
-// 16 pour Madina97294 la ou la RECOMPENSE `flag_taken` dit 4.
+// 16 pour Joueur90002 la ou la RECOMPENSE `flag_taken` dit 4.
 func TestNamedEventsCTFAgainstEightPlayers(t *testing.T) {
 	checkAgainstOracle8(t, "1bc77d2e", ObjectiveTypeFlag)
 }

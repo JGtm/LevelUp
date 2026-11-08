@@ -9,7 +9,7 @@ package replay
 // meme suite de bits revient au meme decalage sur des cartes aux quantifications differentes. Au
 // parc du 2026-09-23 : 33 documents sur 111 portent de telles positions ; cote joueurs, 9 premiers
 // points de vie, 22 vies d un seul point hors carte, une excursion et 3 derniers points. Le client
-// les interpolait sur des silences de plusieurs secondes : Madina97294 « volait » depuis 440 m sous
+// les interpolait sur des silences de plusieurs secondes : Joueur90002 « volait » depuis 440 m sous
 // la carte jusqu au point d apparition (81c02726).
 //
 // # CE QUE LE FILM DIT, ET QUE CETTE PORTE APPLIQUE : AUCUNE POSITION DE CORPS AVANT SA CREATION

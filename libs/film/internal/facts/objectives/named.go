@@ -171,7 +171,7 @@ var namedStatSlots = map[string]map[statSlotKey]statSlot{
 //
 // **`comp 22 A` l'a demasquee.** Nomme `flag_taken`, il comptait systematiquement plus que
 // la recompense — jamais moins. L'oracle a 8 joueurs (`match_objective_stats_latest`) donne
-// la reponse : ses valeurs sont EXACTEMENT `flag_grabs`, slot par slot (16 pour Madina97294
+// la reponse : ses valeurs sont EXACTEMENT `flag_grabs`, slot par slot (16 pour Joueur90002
 // la ou la recompense `flag_taken` dit 4). Le binaire disait la meme chose depuis le debut
 // avec `CtfStats_FlagGrabs`. Ramasser le drapeau au sol se COMPTE a chaque fois, mais ne se
 // RECOMPENSE pas a chaque fois.

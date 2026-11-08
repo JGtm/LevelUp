@@ -159,11 +159,11 @@ func compterIssue(b *bilan, p passe, res filmrun.Result, film, sortie string) {
 // etait `-walkers`, retire au lot 6. Un parametre qu'un seul appelant renseigne a `nil` ne
 // documente plus rien — il se supprime avec le mode.
 func argsEnfant(o options, film, sortie string) []string {
-	return []string{
+	return avecOriginaux(o, []string{
 		"-child", "-film", film, "-out", sortie,
 		"-repo-root", o.repoRoot, "-title", o.titleSlug,
 		"-mem-gib", strconv.Itoa(o.memGiB),
-	}
+	})
 }
 
 // etapesAttendues : toutes les etapes de BuildBytes et de BuildFromFilm, DANS L'ORDRE.

@@ -8,7 +8,7 @@ package replay
 // La seconde borne la premiere (`nextOpeningOfSlot`), mais le lacher qui les separe n'est date
 // par rien quand aucune vie libre ne nait aux pieds du porteur : tout le sejour AU SOL entre les
 // deux est alors publie comme du portage. Cas mesure au lot 6.7-B1 et reste ouvert :
-// `16ea3668` / 2535417044536883, un unique span de 55,1 s pour 0,9 s a l'oracle — il vole le
+// `16ea3668` / 2659168014067630, un unique span de 55,1 s pour 0,9 s a l'oracle — il vole le
 // drapeau, le lache aussitot, et le RE-VOLE 55 s plus tard.
 //
 // # LE CANAL QUI LES DATE : LE DRAPEAU EST RENTRE ENTRE-TEMPS

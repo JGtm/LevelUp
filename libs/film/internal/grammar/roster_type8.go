@@ -61,7 +61,7 @@ package grammar
 //
 // ET LA CLE DE JOINTURE `sub+0xcb8` EST LE MEME XUID, dans le meme ordre d octets que
 // `entree+0x08` : mesure du 5.17 sur les huit joueurs de `bfecd02b`
-// (`cle 0x6945f23ff0010900` <-> `XUID 0x000901f03ff24569`, octet pour octet). Le champ que la
+// (`cle 0x73950fab47c60900` <-> `XUID 0x0009c647ab0f9573`, octet pour octet). Le champ que la
 // table de `chunk_00` publie en [types.PlayerSlotShorts.Q64] sans le nommer est donc, lui aussi,
 // le XUID vu par `FUN_1406d676c` — ce qui explique que le jeu apparie sur lui.
 //

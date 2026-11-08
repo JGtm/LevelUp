@@ -14,6 +14,9 @@ import (
 
 var tablePourTest = []paire{{origine: "Alpha Bravo7", pseudonyme: "Joueur000001"}, {origine: "Tango9", pseudonyme: "J00002"}}
 
+// jeuDeNoms : un jeu sans xuid.
+func jeuDeNoms(ps []paire) *jeu { return nouveauJeu(ps, nil) }
+
 // bruitDeterministe : un tampon pseudo-aleatoire a graine fixe.
 func bruitDeterministe(n int, graine uint64) []byte {
 	r := rand.New(rand.NewPCG(graine, graine^0x9e3779b97f4a7c15))
@@ -34,7 +37,7 @@ func TestRemplacerAChaqueDecalage(t *testing.T) {
 			pos := 8*8 + bit
 			ecrireOctetsAuBit(base, pos, e.coder("Alpha Bravo7"))
 			ecrireOctetsAuBit(attendu, pos, e.coder("Joueur000001"))
-			compte := remplacer(base, tablePourTest)
+			compte := remplacer(base, jeuDeNoms(tablePourTest))
 			if compte["Alpha Bravo7"] < 1 {
 				t.Fatalf("%s bit %d : occurrence non trouvee", e.nom, bit)
 			}
@@ -49,14 +52,14 @@ func TestRemplacerAChaqueDecalage(t *testing.T) {
 // et un motif de 8 bits par caractere a un decalage arbitraire est du bruit).
 func TestUTF8SeulementAligne(t *testing.T) {
 	texte := []byte(`{"name":"Tango9","x":"Tango9x"}`)
-	compte := remplacer(texte, tablePourTest)
+	compte := remplacer(texte, jeuDeNoms(tablePourTest))
 	if got := string(texte); got != `{"name":"J00002","x":"J00002x"}` || compte["Tango9"] != 2 {
 		t.Fatalf("texte : %q (%v)", got, compte)
 	}
 	decale := make([]byte, 16)
 	ecrireOctetsAuBit(decale, 3, []byte("Tango9"))
 	avant := append([]byte(nil), decale...)
-	if c := remplacer(decale, tablePourTest); len(c) != 0 || !bytes.Equal(decale, avant) {
+	if c := remplacer(decale, jeuDeNoms(tablePourTest)); len(c) != 0 || !bytes.Equal(decale, avant) {
 		t.Fatalf("UTF-8 decale remplace : %v", c)
 	}
 }
@@ -78,7 +81,7 @@ func TestFormesDeFichier(t *testing.T) {
 		octets []byte
 		forme  forme
 	}{{"zlib", z.Bytes(), formeZlib}, {"gzip", g.Bytes(), formeGzip}, {"brut", brut, formeBrute}} {
-		sortie, compte, frm, err := anonymiserOctets(cas.octets, tablePourTest)
+		sortie, compte, frm, err := anonymiserOctets(cas.octets, jeuDeNoms(tablePourTest))
 		if err != nil || frm != cas.forme || compte["Tango9"] != 1 {
 			t.Fatalf("%s : forme %s, compte %v, err %v", cas.nom, frm, compte, err)
 		}
@@ -101,7 +104,7 @@ func TestFichierSansOccurrenceIntact(t *testing.T) {
 	zw := zlib.NewWriter(&z)
 	_, _ = zw.Write(bruitDeterministe(200, 3))
 	_ = zw.Close()
-	sortie, compte, _, err := anonymiserOctets(z.Bytes(), tablePourTest)
+	sortie, compte, _, err := anonymiserOctets(z.Bytes(), jeuDeNoms(tablePourTest))
 	if err != nil || len(compte) != 0 || !bytes.Equal(sortie, z.Bytes()) {
 		t.Fatalf("fichier sans occurrence modifie (compte %v, err %v)", compte, err)
 	}
@@ -112,7 +115,7 @@ func TestZlibTronqueRefuse(t *testing.T) {
 	zw := zlib.NewWriter(&z)
 	_, _ = zw.Write(bruitDeterministe(5000, 4))
 	_ = zw.Close()
-	if _, _, _, err := anonymiserOctets(z.Bytes()[:z.Len()/2], tablePourTest); err == nil {
+	if _, _, _, err := anonymiserOctets(z.Bytes()[:z.Len()/2], jeuDeNoms(tablePourTest)); err == nil {
 		t.Fatal("un flux zlib tronque doit etre refuse")
 	}
 }

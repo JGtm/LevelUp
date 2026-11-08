@@ -21,7 +21,7 @@ func timeOrNeg(p *int) int {
 }
 
 // formatXUID rend la représentation décimale d'un xuid film (uint64) telle que
-// stockée dans match_participants.xuid (VARCHAR décimal, ex. "2535462641971683").
+// stockée dans match_participants.xuid (VARCHAR décimal, ex. "2665861628137585").
 func formatXUID(x uint64) string {
 	return strconv.FormatUint(x, 10)
 }
