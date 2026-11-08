@@ -19,6 +19,11 @@
  *   n'a été consommé — jamais un « 1/0 ». La famille se reconnaît dans
  *   `model/handCellHint.ts` (`isChargeWeapon`), partagé avec l'infobulle compacte.
  *
+ * LES GRENADES PORTÉES se lisent comme la capacité : la vignette du type, et son stock en
+ * chiffre en surimpression sur son coin bas droit (`ReplayIconCount`, partagé avec les charges
+ * de la capacité) — pas de « × » ni de texte à côté, la boîte garde sa largeur. La puce vit dans
+ * `ReplayGrenadeChip.tsx`.
+ *
  * SEULE L'ARME EN MAIN garde ses munitions (règle de la fiche compacte, devenue LA fiche) :
  * les munitions d'une arme rangée ne se lisent que pour préparer une permutation, ce qui
  * n'est pas ce qu'on regarde dans un rejeu.
@@ -46,7 +51,6 @@
 import { WeaponIcon } from '@/components/ui/WeaponIcon'
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 
-import type { CatalogLabel } from '../i18n/catalogLabel'
 import type { CardGabarit } from '../model/cardGabarit'
 import type { EquippedReading } from '../model/equippedLogic'
 import { isChargeWeapon } from '../model/handCellHint'
@@ -63,6 +67,8 @@ import {
   selectedGrenadeFrom,
 } from '../model/inventoryReading'
 import { ReplayAbilityCell, StateMark } from './ReplayAbilityCell'
+import { grenadeMaskOf } from './grenadeMask'
+import { GrenadeChip } from './ReplayGrenadeChip'
 import { formatSeconds, frameToMs, freshness, READING_FADE } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 
@@ -276,24 +282,6 @@ export function ReplayInventoryRow({
   )
 }
 
-/** Ce que la puce a besoin de savoir pour peindre la vignette : l'URL, et son mode. */
-interface GrenadeIconRef {
-  url: string
-  /** Vrai = masque à teindre (currentColor) ; faux = image finie. */
-  tinted: boolean
-}
-
-/**
- * grenadeMaskOf — la vignette d'un rang : le MASQUE DE HUD cuit dans l'artefact, la
- * version PLEINE de la maquette (option 2a du handoff 2026-08-27 — elle remplace l'image
- * versionnée de la planche du 16/08, dont le module `grenadeIcon.ts` est parti avec elle).
- * Teint par currentColor, le masque suit le thème ET l'encre `warning` du type équipé.
- * Sans vignette : null — l'appelant garde le libellé, jamais l'image d'un autre type.
- */
-function grenadeMaskOf(label: CatalogLabel | undefined): GrenadeIconRef | null {
-  return label?.img ? { url: label.img, tinted: !!label.tinted } : null
-}
-
 /**
  * GrenadeSelectedCell — la cellule FIXE de la tuile compacte : la vignette du SEUL type qui
  * partira au prochain lancer, à l'encre `warning` du type équipé, sans compteur ni anneau (la
@@ -349,64 +337,6 @@ function GrenadeSelectedCell({
         ) : (
           <span className="truncate">{chosen.name}</span>
         ))}
-    </span>
-  )
-}
-
-/**
- * GrenadeChip — UN type de grenade porté : sa vignette, son compteur, et la marque du type
- * ÉQUIPÉ quand c'est lui qui partira au prochain lancer.
- *
- * LA VIGNETTE PORTE L'IDENTITÉ, LE NOM PASSE EN INFOBULLE (planche du 16/08 : « pas de
- * texte sauf pour le compteur »). Sans AUCUNE image, le libellé revient : mieux vaut un mot
- * qu'un trou.
- */
-function GrenadeChip({
-  carried,
-  icon,
-  iconPx,
-  selected,
-  t,
-}: {
-  carried: { rank: number; name: string; count: number }
-  icon: GrenadeIconRef | null
-  /** Côté de la vignette, du gabarit de la fiche. */
-  iconPx: number
-  /** Non nul = c'est CE type qui est équipé ; `read` dit si la lecture ou la déduction l'établit. */
-  selected: { rank: number; read: boolean } | null
-  t: ReplayText
-}) {
-  return (
-    <span
-      className={`inline-flex shrink-0 items-center gap-0.5 ${selected ? 'rounded-sm px-0.5 font-semibold' : ''}`}
-      // SANS BORDURE (demande utilisateur du 2026-10-07) : l'encre `warning` et le fond teinté
-      // suffisent à désigner le type équipé ; le liseré encadrait la case pour rien.
-      style={
-        selected
-          ? {
-              color: tokenCssVar('warning'),
-              background: `color-mix(in srgb, ${tokenCssVar('warning')} 13%, transparent)`,
-            }
-          : undefined
-      }
-      title={
-        selected
-          ? `${carried.name} — ${selected.read ? t.grenadeSelectedRead : t.grenadeSelected}`
-          : carried.name
-      }
-    >
-      {icon ? (
-        <WeaponIcon
-          imageUrl={icon.url}
-          tinted={icon.tinted}
-          label={carried.name}
-          width={iconPx}
-          height={iconPx}
-        />
-      ) : (
-        carried.name
-      )}
-      <span className="tabular-nums">×{carried.count}</span>
     </span>
   )
 }

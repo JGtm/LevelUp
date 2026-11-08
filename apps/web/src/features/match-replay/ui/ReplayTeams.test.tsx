@@ -47,6 +47,12 @@ function sbRow(xuid: string, gamertag: string, side: string | null): MatchScoreb
   }
 }
 
+/** Les deux types de grenade avec vignette : le stock s'écrit alors en surimpression sur la vignette. */
+const LABELS_IMG = [
+  { en: 'Frag', fr: 'Fragmentation', img: '/static/weapons-assets/halo_infinite/hud/Frag.png', tinted: true },
+  { en: 'Plasma', fr: 'Plasma', img: '/static/weapons-assets/halo_infinite/hud/Plasma.png', tinted: true },
+]
+
 /** Une vie vivante sur [0,100] pour le slot 512, rattachée au joueur A. */
 const TRACK = {
   slot: 512,
@@ -105,13 +111,32 @@ describe('ReplayTeams — grenades portées', () => {
     { en: 'Plasma', fr: 'Plasma' },
   ]
 
-  it('rend chaque type porté avec son compte, nommé par rang', () => {
+  it('sans vignette : le libellé du type porté, suivi de son compte à plat — jamais de « × »', () => {
     renderTeams({
       grenadeLabels: LABELS,
       inventory: [{ t: 0, slot: 512, g: [1, 2] }],
     })
-    expect(screen.getByTitle('Fragmentation').textContent).toContain('×1')
-    expect(screen.getByTitle('Plasma').textContent).toContain('×2')
+    expect(screen.getByTitle('Fragmentation').textContent).toBe('Fragmentation1')
+    expect(screen.getByTitle('Plasma').textContent).toBe('Plasma2')
+  })
+
+  it('avec vignette : le stock est le chiffre en surimpression de SA vignette, sans « × », sans texte à côté', () => {
+    renderTeams({
+      grenadeLabels: LABELS_IMG,
+      inventory: [{ t: 0, slot: 512, g: [1, 2] }],
+    })
+    for (const [name, count] of [['Fragmentation', '1'], ['Plasma', '2']] as const) {
+      const puce = screen.getByTitle(name)
+      const chiffre = within(puce).getByText(count)
+      // Le chiffre vit dans la boîte de la vignette (le repère de sa surimpression)…
+      expect(within(chiffre.parentElement as HTMLElement).getByRole('img', { name })).toBeTruthy()
+      // … le même rendu que le compte de charges de la capacité : coin bas droit, hors du flux.
+      expect(chiffre.className).toContain('absolute')
+      expect(chiffre.className).toContain('bottom-0')
+      expect(chiffre.className).toContain('right-0')
+      // La puce n'écrit rien d'autre que ce chiffre.
+      expect(puce.textContent).toBe(count)
+    }
   })
 
   it('rend la VIGNETTE du HUD quand le document en sert une, le nom restant en infobulle', () => {
@@ -153,6 +178,23 @@ describe('ReplayTeams — grenade SÉLECTIONNÉE', () => {
     expect(screen.getByTitle(/^Plasma — .*LU dans le film/)).toBeTruthy()
     // L'autre type porté n'est pas marqué.
     expect(screen.getByTitle('Fragmentation')).toBeTruthy()
+  })
+
+  it('le type équipé se désigne par la SEULE encre warning : aucun fond teinté, le chiffre garde son rendu', () => {
+    renderTeams({
+      grenadeLabels: LABELS_IMG,
+      inventory: [{ t: 0, slot: 512, g: [1, 2], gs: 1 }],
+    })
+    const equipee = screen.getByTitle(/^Plasma — .*LU dans le film/)
+    expect(equipee.style.color).toContain('warning')
+    expect(equipee.style.background).toBe('')
+    expect(equipee.className).not.toContain('px-0.5')
+    // Le chiffre ne prend pas l'encre de la puce : même classes que sur une puce non équipée.
+    const chiffre = within(equipee).getByText('2')
+    expect(chiffre.className).toContain('text-foreground')
+    expect(chiffre.className).toBe(within(screen.getByTitle('Fragmentation')).getByText('1').className)
+    // Le type non équipé garde l'encre du texte.
+    expect(screen.getByTitle('Fragmentation').style.color).toBe('')
   })
 
   it('un seul type porté sans lecture : sélection DÉDUITE, dite déduite', () => {
@@ -201,7 +243,7 @@ describe('ReplayTeams — boîte de grenades : quelle lecture, et de quel âge',
     // l'inventaire, dont l'image-clé est trois fois plus vieille ici.
     renderTeams(
       {
-        grenadeLabels: LABELS,
+        grenadeLabels: LABELS_IMG,
         inventory: [{ t: 0, slot: 512, g: [2, 0] }],
         grenadeReads: [
           { t: 0, slot: 512, g: [2, 0], src: 'kf' },
@@ -211,8 +253,8 @@ describe('ReplayTeams — boîte de grenades : quelle lecture, et de quel âge',
       90,
     )
     const box = screen.getByTitle(/Grenades lues il y a 0\.5 s/)
-    expect(box.textContent, 'les compteurs delta, pas ceux de l’image-clé').toContain('×3')
-    expect(box.textContent).not.toContain('Fragmentation')
+    expect(box.textContent, 'les compteurs delta, pas ceux de l’image-clé').toBe('3')
+    expect(within(box).queryByRole('img', { name: 'Fragmentation' })).toBeNull()
     // L'ESTOMPAGE EST CELUI DE LA CELLULE, PAS CELUI DE LA RANGÉE (ronde 2 de la revue :
     // les deux mutations — réintroduire l'opacité du conteneur, retirer celle de la boîte —
     // laissaient 1119 tests verts). La boîte porte sa propre opacité, calculée sur SON âge ;
@@ -241,8 +283,8 @@ describe('ReplayTeams — boîte de grenades : quelle lecture, et de quel âge',
     const box = screen.getByTitle(/Grenades lues il y a 1\.0 s/)
     expect(within(box).getByTitle('Fragmentation')).toBeTruthy()
     expect(within(box).getByTitle('Plasma')).toBeTruthy()
-    expect(box.textContent).toContain('×1')
-    expect(box.textContent).toContain('×2')
+    expect(within(box).getByTitle('Fragmentation').textContent).toBe('Fragmentation1')
+    expect(within(box).getByTitle('Plasma').textContent).toBe('Plasma2')
   })
 
   it('lecture de grenades À VENIR : l’information PASSÉE de l’inventaire prime', () => {
@@ -264,8 +306,8 @@ describe('ReplayTeams — boîte de grenades : quelle lecture, et de quel âge',
       within(box).getByTitle(/^Fragmentation/),
       'les compteurs de l’inventaire passé',
     ).toBeTruthy()
-    expect(box.textContent).toContain('×2')
-    expect(box.textContent, 'jamais la lecture à venir').not.toContain('×5')
+    expect(within(box).getByTitle(/^Fragmentation/).textContent).toBe('Fragmentation2')
+    expect(box.textContent, 'jamais la lecture à venir').not.toContain('5')
     expect(within(box).queryByTitle(/^Plasma/)).toBeNull()
   })
 
@@ -280,7 +322,7 @@ describe('ReplayTeams — boîte de grenades : quelle lecture, et de quel âge',
       30,
     )
     const box = screen.getByTitle(/Grenades lues dans 1\.0 s/)
-    expect(box.textContent).toContain('×5')
+    expect(box.textContent).toBe('Plasma5')
     expect(screen.queryByTitle(/Grenades lues il y a/)).toBeNull()
   })
 })
@@ -1124,7 +1166,7 @@ describe('ReplayTeams — lecture d’inventaire VIDE (schéma 19)', () => {
       },
       60,
     )
-    expect(screen.getByTitle('Fragmentation').textContent).toContain('×2')
+    expect(screen.getByTitle('Fragmentation').textContent).toBe('Fragmentation2')
     expect(screen.getByText('Mort')).toBeTruthy()
   })
 

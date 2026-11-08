@@ -20,8 +20,8 @@
  *
  * LA CELLULE GARDE SA LARGEUR FIXE ET N'EN AJOUTE AUCUNE : la rangée n'a pas d'espace souple
  * après ses cellules fixes (elle rogne ce qui déborde), donc un compte posé à côté de la
- * vignette serait coupé. Le chiffre se pose DANS la boîte de la vignette (`iconAbilityPx`), hors
- * du flux : la grille ne bouge pas d'un pixel. Il pâlit avec l'âge de SA lecture (la doctrine
+ * vignette serait coupé. Le chiffre (`ReplayIconCount`, rendu partagé avec les grenades) se pose DANS la boîte de la
+ * vignette (`iconAbilityPx`), hors du flux : la grille ne bouge pas d'un pixel. Il pâlit avec l'âge de SA lecture (la doctrine
  * de la rangée), indépendamment de la vignette, qui pâlit avec celle de la capacité. La tuile
  * compacte (`showInventoryMarks: false`) n'écrit rien : tout passe par l'infobulle.
  */
@@ -37,6 +37,7 @@ import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import { formatSeconds, frameToMs, freshness, READING_FADE } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { abilityAt } from '../../../lib/replay/rosterLogic'
+import { ReplayIconCount } from './ReplayIconCount'
 
 // LA BOÎTE DE LA VIGNETTE DE CAPACITÉ (16 px, la hauteur de la ligne) VIENT DU GABARIT de la
 // fiche (`model/cardGabarit.ts`, `iconAbilityPx`, 2026-09-06) — aucune cote locale ici.
@@ -110,7 +111,7 @@ export function ReplayAbilityCell({
       ) : null /* AUCUNE LECTURE DANS LA VIE EN COURS : rien n'est rendu, ni glyphe ni texte — jamais
            la capacité d'une vie précédente du slot (correctif P0-2), jamais une lacune écrite. */}
       {ability && abilityRead && charge?.kind === 'count' && gabarit.showInventoryMarks && (
-        <AbilityChargeDigit charges={charge.charges} age={charge.age} readingFull={readingFull} />
+        <ReplayIconCount count={charge.charges} fade={freshness(charge.age, readingFull, READING_FADE)} />
       )}
     </span>
   )
@@ -124,36 +125,6 @@ export function ReplayAbilityCell({
 function chargeTitle(charge: AbilityChargeDisplay, doc: ReplayDocumentReady, t: ReplayText): string {
   if (charge.kind === 'full') return t.abilityChargesFullHint
   return `${t.abilityChargesCount(charge.charges)} · ${t.abilityChargesAge} ${formatSeconds(frameToMs(charge.age, doc))}`
-}
-
-/**
- * AbilityChargeDigit — le chiffre du compte de charges, en surimpression sur le coin bas droit
- * de la vignette.
- *
- * Posé hors du flux (`absolute`, dans la boîte `relative` de la cellule) : il n'ajoute aucune
- * largeur à la rangée. Une pastille de fond tient le chiffre lisible sur n'importe quelle
- * vignette, en thème clair comme sombre (jetons `background` et `foreground`, qui basculent
- * ensemble). Il laisse passer le pointeur : l'infobulle est celle de la vignette dessous. Il
- * pâlit avec l'âge de SA lecture.
- */
-function AbilityChargeDigit({
-  charges,
-  age,
-  readingFull,
-}: {
-  charges: number
-  age: number
-  readingFull: number
-}) {
-  return (
-    <span
-      aria-hidden="true"
-      className="pointer-events-none absolute bottom-0 right-0 rounded-sm bg-background/75 px-[2px] font-mono text-[9px] font-semibold leading-none tabular-nums text-foreground"
-      style={{ opacity: freshness(age, readingFull, READING_FADE) }}
-    >
-      {charges}
-    </span>
-  )
 }
 
 /**
