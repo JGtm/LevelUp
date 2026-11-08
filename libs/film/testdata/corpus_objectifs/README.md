@@ -33,6 +33,11 @@ n'est reecrit.** La troncature etait licite parce que le decodeur d'origine etai
 d'un chunk a l'autre ; la recette de fabrication refusait d'ecrire si le prefixe ne decodait
 pas exactement comme le chunk entier.
 
+**Aucun identifiant de joueur** : chaque chunk ne contient que deux paquets, un paquet de type 1 puis le premier
+paquet TYPE_2 (image-cle), et s'arrete avant le premier paquet de population de session (type 8), celui qui porte les
+xuids et les gamertags dans un chunk de replication ; aucun xuid ni gamertag ne se lit dans ces octets (mesure du
+2026-11-08), et ceux des autres films de la brique sont fictifs (`../IDENTITES.tsv`).
+
 Les mini-bobines portent les **8 DERNIERS** chunks ancres de leur film, pas les 8 premiers :
 mesure faite a l'epoque, sur les 8 premiers de `0a247154` le score KOTH vaut encore 0-0 — une
 bobine qui fige des zeros ne distingue pas un decodeur juste d'un decodeur muet.

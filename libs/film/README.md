@@ -118,6 +118,12 @@ build: the decoder returns an error that names the build (`ErrUnknownBuild`, wra
 (`decfilm.UnknownBuildExpvarPairs`) and leaves the film aside. Supporting a new build means adding a
 measured line to the profile table, with its proof.
 
+Both typed errors are exported by the facade, `decfilm.ErrUnknownBuild` and `decfilm.ErrUnknownFormat`
+(a chunk format the table does not list), so a caller tests them with `errors.Is`. `replay.CleDuFilm` (or
+`replay.CleDeChunk0`, from the bytes of `chunk_00`) returns the key a film writes and, in its `Err` field,
+the error the table opposes to it; `decfilm/erreurs_typees_test.go` plays it on a build and a format that
+the table does not know.
+
 ## License
 
 AGPL-3.0, the repository license (`LICENSE`, `NOTICE` at the repository root). The module itself imports

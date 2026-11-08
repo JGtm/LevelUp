@@ -206,7 +206,7 @@ la fois, sauf la revue (deux relecteurs en parallèle, lecture seule). Un worktr
 | T3 rejeu | `make replay-equiv` : MD5 des 20 fichiers de digests | identiques |
 | T4 parc | `make replay-corpus-gate` (`-allow-missing` tant que `f75e7053` manque) | 18/19 identiques, 0 perte, 0 gain |
 | T5 autonomie | `go list -deps -test ./...` par brique | aucun `levelup/go-api` |
-| T6 surface | `plafondSurfaceFacade`, `plafondSurfaceReplay` | 179 et 316 (sauf décision écrite) |
+| T6 surface | `plafondSurfaceFacade`, `plafondSurfaceReplay` | 179 et 316 (sauf décision écrite : la façade passe à 181 le 2026-11-08, décision du pilote, item 4.6b) |
 | T7 intégration | `go test -tags=integration -p 1 ./internal/sync/... ./internal/persist/...` | code 0 |
 
 
@@ -1105,6 +1105,11 @@ modifiés ou neufs dans `archlint`, `libs/film/revision/ordre_imports_test.go`, 
 - [x] 4.6 ADR 0043 amendée (quatre briques publiables, D-1 réécrit, licence, particularités des révisions) ; ADR
       0041 et 0034 : renvoi ; `CLAUDE.md` (table, ADR 0043) ; `ARCHITECTURE_V6` EN et FR si la brique y est
       décrite.
+- [x] 4.6b (ajouté le 2026-11-08, décision du pilote) FAIT le 2026-11-08, voir « Résultat de l'item 4.6b » : (A) D-L4-12, le
+      corpus `testdata/corpus_objectifs/minibobine_objectifs/` passé à l'outil `anonymise-gamertags` : mesure faite, AUCUN
+      identifiant de joueur dans ces octets (chunks coupés avant le premier paquet de type 8), rien à réécrire, statut `[x]`
+      par la mesure ; (B) D-L4-10, `decfilm.ErrUnknownBuild` et `decfilm.ErrUnknownFormat` exposés par la façade, test depuis
+      un paquet externe, ratchet de surface 179 -> 181 (T6 « sauf décision écrite »). Exécutant : Sonnet.
 - [ ] 4.7 Revue adversariale (skill `adversarial-review`) : deux relecteurs Sonnet aveugles sur le diff des lots 1
       à 4 ; corrections avec test vu rouge ; pas de seconde ronde sauf P0.
 - [ ] 4.8 Haiku : backlog (entrée « Décodeur » → récemment complété), registre (items soldés barrés avec date),
@@ -1276,6 +1281,61 @@ publiée » : une phrase corrigée dans chacun (D-L4-9, hors liste de l'item mai
 `golangci-lint run` (config d'`apps/go-api`) sur `./decfilm/...` et `./replay/` : 0 issue. `make libs-test` (vet des quatre jeux de
 balises, tests, absence de `levelup/go-api` dans les dépendances) sur les quatre modules : code 0, 245 s, 39 paquets `ok`.
 Le 4.5 (`go get` hors dépôt) a été joué sur le sha poussé de ce commit (voir ci-dessus).
+
+### Résultat de l'item 4.6b (2026-11-08)
+
+**A. D-L4-12, corpus des objectifs : mesure, aucune réécriture.** Le décodeur lit ces chunks (zlib, 8 + 8), mais ils ne
+portent aucun identifiant de joueur. Mesures :
+
+- Structure : chacun des 16 chunks décompressés (506 à 512 Ko) contient exactement deux paquets, un de type 1 puis un de
+  type 2 (`grammar.WalkPackets`, 16 sur 16), aucun paquet de type 8 (population de session), aucun `chunk_00` (pas de table
+  des joueurs). La recette de fabrication coupait « juste après le premier paquet TYPE_2 complet » : elle coupe donc AVANT le
+  paquet de type 8 qui suit le type 2 dans un chunk de réplication.
+- Témoin positif sur des chunks entiers : dans la bobine `killsource/minibobine_000d5950` (chunks 01 à 05, 640 à 860 Ko,
+  même forme : paquets de type 1 et 2, puis des types 6, 8, 12...), les xuids fictifs des huit sièges (96 occurrences sur les
+  cinq chunks, balayage 64 bits petit-boutiste aux huit décalages) et les gamertags (quatre noms essayés, 3 à 6 occurrences
+  par chunk, UTF-16 aux huit décalages) n'apparaissent QU'à partir du premier paquet de type 8 (xuids : octet 481 431 du
+  chunk 01, 485 786 du 02, 486 322 du 03, 487 911 du 04, 488 557 du 05 ; premier paquet de type 8 du chunk 01 : octet 481 427),
+  jamais dans les paquets de type 1 et 2 qui le précèdent.
+- Chaînes : aucune chaîne UTF-16 (petit ou gros-boutiste, aux huit décalages de bit) de quatre caractères alphanumériques ou
+  plus, petit-boutiste, dans les chunks 00 à 03 de `koth_0a247154` et de `strongholds_7344d24f` (zéro occurrence, contre 16 à
+  32 dans les chunks 01 et 03 de la bobine témoin) ; en gros-boutiste, 5 à 8 occurrences de quatre espaces suivis d'un chiffre,
+  du bruit ; les chaînes UTF-8 de six caractères ou plus sont du bruit binaire (`UUUUUUUU`, `ZPpZP8`).
+- Outil : `GAMERTAGS_CORRESPONDANCE=<noms_trois.txt> XUIDS_ORIGINAUX=<xuids_originaux.txt> GAMERTAGS_CHEMINS=libs/film/testdata/corpus_objectifs
+  go test ./cmd/anonymise-gamertags/ -run TestAnonymiserFixtures` (inventaire, rien d'écrit) : 23 fichiers parcourus, 0
+  occurrence, 0 xuid sur les 420 de la liste, 0 nom sur les trois. Un balayage 64 bits petit-boutiste aux huit décalages, sur
+  la plage `0x0009...`, donne des milliers de candidats par film, dont une cinquantaine communs aux huit chunks : de la
+  structure répétée (compteurs, tables, valeurs quantifiées, souvent à bits nuls en queue), les trois ou quatre
+  candidats de la fin de chunk (après 85 %, la zone où la bobine témoin porte ses xuids) ne sont présents que dans 2 à 6 chunks
+  sur 8 et l'un est `0x9fcffffffffff`, un motif de remplissage, là où les xuids de la bobine témoin sont dans tous les chunks ; l'outil ne peut pas
+  chercher un xuid qu'il ne connaît pas, c'est la structure du film (type 8 absent) qui le dit.
+- `minibobine_objectifs.golden` et `films_reels.golden` : texte, aucun xuid, aucun gamertag (`grep -E '[0-9]{15,}|0x0009|xuid|gamertag'` vide,
+  hors identifiants courts de films `7344d24f` etc., qui sont des préfixes de match, pas de joueur) : rien à réécrire.
+- Témoin avant/après : aucun octet du corpus ne bouge (`git status` : aucun fichier du dossier modifié hors `README.md`), donc
+  index, temps, nombre de joueurs et de morts identiques par construction ; la liste locale (`xuids_originaux.txt`,
+  `table_xuids.tsv`) et le registre `IDENTITES.tsv` n'ont reçu aucune ligne. `git grep -F -f <les 420 originaux> -- libs/film` : 0.
+- Docs : `testdata/corpus_objectifs/README.md` dit en une phrase qu'aucun identifiant de joueur ne s'y trouve (renvoi à
+  `../IDENTITES.tsv` pour les autres films) ; `NOTICE.md` du module réécrit sur ce point (il parlait de « paquets d'image-clé
+  (type 2) » et de « gamertag lisible » : la mesure est plus précise).
+
+Écart au texte de l'item : pas de réécriture ni de ligne ajoutée aux listes, parce qu'il n'y a rien à remplacer. Statut `[x]`
+(objectif atteint, par mesure) ; le conserver tel quel ne laisse AUCUN identifiant réel dans la brique pour ce corpus.
+Limite de la preuve : une absence ne se prouve pas par balayage ; elle se prouve ici par la structure (les identifiants d'un
+chunk de réplication vivent dans le type 8, et ces chunks s'arrêtent avant lui).
+
+**B. D-L4-10, sentinelles typées de la façade.** `libs/film/decfilm/decfilm.go` : `const ErrUnknownBuild = profile.ErrUnknownBuild`
+et `const ErrUnknownFormat = profile.ErrUnknownFormat` (constantes plutôt que variables : un consommateur ne peut pas les
+réaffecter ; même valeur, `errors.Is` vrai ; aucun équivalent n'existait dans la façade ni dans `types`). `decfilm/erreurs_typees_test.go`
+(paquet `decfilm_test`, API publique seule) : un `chunk_00` de la fixture `bcb6d393` dont le build est patché en `HI_9_99_9`
+puis dont la version de format est patchée à `0x7f7f`, lus par `replay.CleDeChunk0` : `errors.Is(c.Err, decfilm.ErrUnknownBuild)`
+vrai pour le build (et faux pour `ErrUnknownFormat`, l'erreur nomme le build), `errors.Is(c.Err, decfilm.ErrUnknownFormat)` vrai pour le
+format (et faux pour `ErrUnknownBuild`), clé connue : aucune erreur. README : deux phrases dans « Layer revisions and unknown builds ».
+Ratchet : `plafondSurfaceFacade` 179 -> 181 avec ligne datée (décision du pilote du 2026-11-08), et `plafondsParFamilleFacade["profile"]`
+8 -> 10 (la famille qui porte les deux renvois). `decfilm` n'est dans aucune fermeture d'imports hachée : `go test ./revision/...`
+vert, cinq `Rev` inchangées, aucun `*.golden` modifié.
+
+**Gate (2026-11-08).** `go vet ./...` et `go test ./... -count=1` dans `libs/film` : 0 échec (29 paquets, `replay` 50 s, `grammar` 112 s) ; `go test ./internal/archlint/ -timeout 40m -count=1`
+(`apps/go-api`, seul) : `ok`, 241 s ; `go test ./cmd/anonymise-gamertags/...` : `ok` (`TestLesXuidsDesFixturesSontFictifs` joué, vert) ; `golangci-lint` : 0 issue (`libs/film ./decfilm/...` avec la config d'`apps/go-api`, et `./internal/archlint/...`).
 
 ## Lot 5 — Préalables aux dépôts dédiés (après la clôture du desktop)
 
@@ -1471,7 +1531,7 @@ Lot 4 (2026-11-08), notées, non traitées :
   avec les dépôts dédiés (lot 6), où chaque module a sa racine.
 - **D-L4-9** Corrigé dans le lot parce que c'est la même affirmation que l'item 4.6 : l'entrée 8.1.0 « non publiée » des deux
   `CHANGELOG` disait « `film` n'est pas publiée ». Les entrées de versions déjà sorties ne sont pas touchées.
-- **D-L4-10** `profile.ErrUnknownBuild` et `ErrUnknownFormat` vivent sous `internal/` et la façade `decfilm` ne les ré-exporte
+- **D-L4-10** SOLDÉE le 2026-11-08 (item 4.6b : `decfilm.ErrUnknownBuild` et `decfilm.ErrUnknownFormat`, ratchet 179 -> 181). `profile.ErrUnknownBuild` et `ErrUnknownFormat` vivent sous `internal/` et la façade `decfilm` ne les ré-exporte
   pas (elle expose `UnknownBuildExpvarPairs`, `ErrUnknownMapBounds`, `ErrCarteAbsente`) : un consommateur externe reçoit l'erreur
   typée enveloppée mais ne peut pas écrire `errors.Is(err, ...)`. Le README décrit le comportement sans promettre le test.
   Un ré-export ajoute un symbole à une façade tenue par ratchet (`film_facade_surface_test.go`) : décision à part.
@@ -1479,7 +1539,7 @@ Lot 4 (2026-11-08), notées, non traitées :
   (champ `Preuve` d'une ligne de la table de profil, source HACHÉE : la changer bouge `profile.Rev`) et
   `internal/facts/fallback/registre_replay_equipement.go:187`. Non touchées (une révision de couche n'est pas un lot de prose).
   La citation du `README` de `testdata/corpus_objectifs` (non hachée) a été retirée par 4.2.
-- **D-L4-12** `testdata/corpus_objectifs/minibobine_objectifs/` (16 chunks, environ 8 Mo, deux films du compte du mainteneur) n'est
+- **D-L4-12** SOLDÉE le 2026-11-08 (item 4.6b : mesure, ces chunks sont coupés avant le premier paquet de type 8 et ne portent aucun identifiant de joueur ; corpus conservé, rien à réécrire). `testdata/corpus_objectifs/minibobine_objectifs/` (16 chunks, environ 8 Mo, deux films du compte du mainteneur) n'est
   lu par aucun test (aucun `.go` ne cite le dossier) et n'a pas été traité par 4.0. Mesures du 2026-11-08 : aucun des 420
   xuids d'origine en 64 bits aux huit décalages, aucune chaîne UTF-16 de six caractères ou plus (donc pas de gamertag lisible).
   Cela ne PROUVE pas l'absence de xuids : les joueurs de ces deux films ne figurent pas dans la liste des 420. `NOTICE.md` le
