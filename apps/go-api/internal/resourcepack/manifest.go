@@ -204,7 +204,7 @@ func WriteManifest(dir string, m Manifest) error {
 		return err
 	}
 	raw = append(raw, '\n')
-	return os.WriteFile(filepath.Join(dir, ManifestFileName), raw, 0o644)
+	return writeFileSync(filepath.Join(dir, ManifestFileName), raw, 0o644)
 }
 
 // ErrNoManifest : la racine ne porte aucun manifeste.

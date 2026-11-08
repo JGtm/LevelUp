@@ -270,7 +270,7 @@ func TestPrepareNeRetelechargeNiLeCourantNiLePret(t *testing.T) {
 	if err := m.Prepare(t.Context(), desc); err != nil || ps.hits.Load() != 1 {
 		t.Fatalf("paquet déjà prêt : %v, %d requêtes", err, ps.hits.Load())
 	}
-	if err := Activate(root, pm.Fingerprint); err != nil {
+	if err := Activate(t.Context(), root, pm.Fingerprint); err != nil {
 		t.Fatal(err)
 	}
 	if err := m.Prepare(t.Context(), desc); err != nil || ps.hits.Load() != 1 || m.Status().Phase != PhaseCurrent {

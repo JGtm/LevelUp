@@ -95,6 +95,9 @@ func extractEntry(entry *zip.File, destDir string, want File) error {
 	}
 	h := sha256.New()
 	n, copyErr := io.Copy(io.MultiWriter(out, h), io.LimitReader(rc, want.Size+maxEntryOvershoot))
+	if copyErr == nil {
+		copyErr = syncFile(out) // forcé sur le disque : une coupure de courant ne laisse pas un fichier de contenu nul
+	}
 	closeErr := out.Close()
 	if err := errors.Join(copyErr, closeErr); err != nil {
 		return fmt.Errorf("resourcepack: écriture de %s: %w", entry.Name, err)

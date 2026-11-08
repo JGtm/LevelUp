@@ -14,6 +14,8 @@ type Outcome struct {
 	Activated bool
 	// ActivateErr : la bascule d'un paquet prêt a échoué (l'ancien paquet reste actif).
 	ActivateErr error
+	// RecoverErr : la reprise d'une bascule interrompue n'a pas abouti ; rien n'est activé sur un état incertain.
+	RecoverErr error
 }
 
 // Settle est l'étape de démarrage du paquet, avant que le serveur n'ouvre un seul fichier de
@@ -26,17 +28,21 @@ func Settle(ctx context.Context, root, expected string) Outcome {
 		out.Verdict = Check(root, expected)
 		return out
 	}
-	recovered, err := Recover(root)
+	recovered, err := Recover(ctx, root)
 	if err != nil {
-		slog.ErrorContext(ctx, "resources: reprise d'une bascule interrompue échouée", "err", err)
+		out.RecoverErr = err
+		slog.ErrorContext(ctx, "resources: reprise d'une bascule interrompue échouée, rien n'est activé", "err", err)
 	}
-	out.Recovered = recovered
-	if recovered {
+	switch recovered {
+	case RecoveryUndone:
+		out.Recovered = true
 		slog.WarnContext(ctx, "resources: bascule interrompue défaite, ancien paquet rétabli")
+	case RecoveryFinished:
+		slog.InfoContext(ctx, "resources: bascule validée avant l'arrêt, ménage terminé")
 	}
 	out.Verdict = Check(root, expected)
-	if out.Verdict.State != StateMatch && Staged(root, expected) {
-		if err := Activate(root, expected); err != nil {
+	if out.RecoverErr == nil && out.Verdict.State != StateMatch && Staged(root, expected) {
+		if err := Activate(ctx, root, expected); err != nil {
 			out.ActivateErr = err
 			slog.ErrorContext(ctx, "resources: activation du paquet prêt échouée, ancien paquet conservé",
 				"err", err, "fingerprint", expected)

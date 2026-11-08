@@ -85,7 +85,7 @@ func TestActivateBasculeLeLotEtLaisseLeMoteur(t *testing.T) {
 	if !Staged(root, m.Fingerprint) {
 		t.Fatal("le paquet devrait être prêt")
 	}
-	if err := Activate(root, m.Fingerprint); err != nil {
+	if err := Activate(t.Context(), root, m.Fingerprint); err != nil {
 		t.Fatal(err)
 	}
 	want := map[string]string{
@@ -121,21 +121,19 @@ func TestRecoverDefaitUneBasculeInterrompue(t *testing.T) {
 	unitsOf(next, all)
 	unitsOf(oldM, all)
 	j := journal{To: m.Fingerprint, Units: append(sortedKeys(all), ManifestFileName), New: append(sortedKeys(in), ManifestFileName)}
-	if err := writeJournal(root, j); err != nil {
+	if err := writeJournal(osOps, root, j); err != nil {
 		t.Fatal(err)
 	}
-	stage := incomingDir(root, m.Fingerprint)
-	old := filepath.Join(WorkDir(root), oldDirName)
 	for _, u := range j.Units[:2] {
-		if err := swapUnit(root, stage, old, u); err != nil {
+		if err := newActivation(t.Context(), osOps, root, m.Fingerprint).swapUnit(u); err != nil {
 			t.Fatal(err)
 		}
 	}
 	if reflect.DeepEqual(readTree(t, root), before) {
 		t.Fatal("la bascule partielle devrait avoir changé l'arbre")
 	}
-	recovered, err := Recover(root)
-	if err != nil || !recovered {
+	recovered, err := Recover(t.Context(), root)
+	if err != nil || recovered != RecoveryUndone {
 		t.Fatalf("Recover : %v %v", recovered, err)
 	}
 	if got := readTree(t, root); !reflect.DeepEqual(got, before) {
@@ -145,7 +143,7 @@ func TestRecoverDefaitUneBasculeInterrompue(t *testing.T) {
 		t.Fatalf("l'ancien paquet doit être actif : %+v", v)
 	}
 	// Le paquet prêt est intact : l'activation complète fonctionne ensuite.
-	if err := Activate(root, m.Fingerprint); err != nil {
+	if err := Activate(t.Context(), root, m.Fingerprint); err != nil {
 		t.Fatalf("activation après reprise : %v", err)
 	}
 	if v := Check(root, m.Fingerprint); v.State != StateMatch {
@@ -155,10 +153,10 @@ func TestRecoverDefaitUneBasculeInterrompue(t *testing.T) {
 
 func TestActivateSansPaquetPretEtRecoverSansJournal(t *testing.T) {
 	root := installedRoot(t)
-	if err := Activate(root, strings.Repeat("a", 64)); err == nil {
+	if err := Activate(t.Context(), root, strings.Repeat("a", 64)); err == nil {
 		t.Fatal("aucun paquet prêt : l'activation doit refuser")
 	}
-	if ok, err := Recover(root); ok || err != nil {
+	if ok, err := Recover(t.Context(), root); ok != RecoveryNone || err != nil {
 		t.Fatalf("sans journal : %v %v", ok, err)
 	}
 }
@@ -226,7 +224,7 @@ func TestSettleActiveLePaquetPretSeulementSiCEstLePaquetDuMoteur(t *testing.T) {
 func TestRemoveRetireLePaquetEtLuiSeul(t *testing.T) {
 	root := installedRoot(t)
 	m := stagedNew(t, root)
-	if err := Activate(root, m.Fingerprint); err != nil {
+	if err := Activate(t.Context(), root, m.Fingerprint); err != nil {
 		t.Fatal(err)
 	}
 	// Un fichier posé par l'utilisateur dans un dossier du paquet empêche seulement la suppression de ce dossier.
