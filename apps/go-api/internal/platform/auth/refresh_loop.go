@@ -179,7 +179,8 @@ func (r *RefreshLoop) refreshOAuth(ctx context.Context, tokens *StoredTokens, re
 	// refresh_token à CHAQUE usage ; l'ancienne ExchangeRefreshToken (sans rotation)
 	// jetait le RT rotaté → l'ancien RT stocké finissait par devenir invalide
 	// (classe incident invalid_grant, ADR 0023). On propage le RT rotaté au store.
-	accessToken, rotatedRT, _, err := ExchangeRefreshTokenWithRotation(ctx, refreshToken)
+	accessToken, rotatedRT, _, err := ExchangeRefreshTokenWithRotation(
+		WithRefreshXUID(ctx, tokens.XSTSXUID), refreshToken)
 	if err != nil {
 		return err
 	}

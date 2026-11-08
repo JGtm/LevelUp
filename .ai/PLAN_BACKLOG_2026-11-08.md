@@ -214,22 +214,22 @@ Gate :
 Résultat visible : plus d'appel refusé ni de ligne de journal à chaque rafraîchissement d'un compte du client natif.
 Comportement inchangé pour les comptes Azure et au premier rafraîchissement après un démarrage.
 
-- [ ] 5.1 Brique, `libs/haloapi/xblauth/oauth_refresh.go` : ajouter à `OAuth` le champ `NatifDabord bool`. Quand il est vrai,
+- [x] 5.1 Brique, `libs/haloapi/xblauth/oauth_refresh.go` : ajouter à `OAuth` le champ `NatifDabord bool`. Quand il est vrai,
   `RefreshWithRotation` essaie `postMSATokenExchange` en premier. Succès : `Famille = FamilleXboxNative`. Échec de classe
-  `AuthErrorRevoked` : dérouler le chemin Azure actuel, sans nouveau repli natif, et propager son erreur. **Autre échec
-  (réseau, 429, 5xx) : le rendre tel quel, sans essayer Azure**, dont le refus serait lu à tort comme un jeton révoqué.
+  `AuthErrorRevoked` ou Config : dérouler le chemin Azure actuel, sans nouveau repli natif, et propager son erreur. **Échec
+  transitoire (réseau, 429, 5xx) : le rendre tel quel, sans essayer Azure**, dont le refus serait lu à tort comme un jeton révoqué.
   Faux : code actuel strictement inchangé. Tests `httptest` dans `oauth_refresh_test.go` : ordre natif puis arrêt ; natif
   révoqué puis Azure ; natif en 500 sans appel Azure ; champ à faux, ordre Azure puis natif.
-- [ ] 5.2 Application, nouveau fichier `apps/go-api/internal/platform/auth/refresh_client_memory.go` : table
+- [x] 5.2 Application, nouveau fichier `apps/go-api/internal/platform/auth/refresh_client_memory.go` : table
   xuid -> dernier client ayant réussi, protégée par un verrou, plus un porteur de contexte
   `WithRefreshXUID(ctx, xuid)`. `ExchangeRefreshTokenWithRotation` (`xbl_oauth.go`) lit le xuid du contexte, pose
   `NatifDabord` si le dernier client connu est `TokenFamilyXboxNative`, et retient `out.Famille` après un succès. xuid
   absent : aucun changement. La brique reste sans état (ADR 0042).
-- [ ] 5.3 Poser `WithRefreshXUID` aux sites de production : `refresh_user_xsts.go:99`, `refresh_loop.go:182`,
+- [x] 5.3 Poser `WithRefreshXUID` aux sites de production : `refresh_user_xsts.go:99`, `refresh_loop.go:182`,
   `sisu_provider.go:188` via l'appelant `pool/resolver.go:384`. Aucun jeton dans un journal ni dans la table.
-- [ ] 5.4 Test applicatif : deux rafraîchissements successifs du même xuid sur un faux serveur, le second ne sollicite
+- [x] 5.4 Test applicatif : deux rafraîchissements successifs du même xuid sur un faux serveur, le second ne sollicite
   pas Azure ; un redémarrage (table vide) reprend l'ordre actuel ; un RT redevenu Azure bascule et la table suit.
-- [ ] 5.5 Relecteur Sonnet (`adversarial-review`, axe rotation et classification des erreurs, ADR 0023) ; constats statués.
+- [x] 5.5 Relecteur Sonnet (`adversarial-review`, axe rotation et classification des erreurs, ADR 0023) ; constats statués.
 
 Gate :
 `cd libs/haloapi; go test ./xblauth/`
@@ -343,6 +343,8 @@ les puces gardées en `[!]` ; relecture du diff par le pilote.
 
 - E4 (Sonnet), 2026-11-08 : clés de manifest déjà inutilisées (`citations.section.distribution`, `section.medals_summary`, `distribution.*`, `commendations.*`, `medals.*`, `kpi.*`) ; `POST /pages/citations` accepte encore un `category` qu'aucun client n'envoie. Non traités.
 
+- E5 (Sonnet), 2026-11-08 : `RefreshHaloTokensViaStoreFirst` (`registry_catalog_drain.go`, `registry_appearance_diag.go`) garde l'ordre Azure d'abord, chemins rares. `ResolveMSAccessTokenStoreFirst` pose le xuid aussi pour ses appelants CLI, sans effet observable. Non traités.
+
 ## 4. Journal
 
 - 2026-11-08 : plan rédigé, sources vérifiées sur `origin/release/v8.1.0`. Revue indépendante (Sonnet, une ronde) : 3 P0,
@@ -355,3 +357,5 @@ les puces gardées en `[!]` ; relecture du diff par le pilote.
 - 2026-11-08 E3 close : trois items faits, tests rouges puis verts, gate vert (intégration `./internal/sync/...` sous `-p 1`), diff relu par le pilote. Chemin réel de l'exclusion : `MatchRecomputer.recompute`, l'échec alimente `RecomputePending`.
 - 2026-11-08 E4 close : barre de filtres retirée, réconciliation des citations au démarrage (écrit seulement ce qui diffère, échec non bloquant), tests rouges puis verts par mutation, gate vert ; e2e non lancé. Pilote : `docs/COMMENDATIONS.md` aligné (guide EN seul) ; une édition manuelle de `citation_mappings.enabled` est désormais écrasée au démarrage, documenté.
 - 2026-11-08 coordination `levelup-cf` : fusion en 2e position, vers 21 h, rebase à ce tour. E6 attend la fin de la recuisson en cours (vers 20 h 30) et mesure donc les artefacts recuits : F-2 s'interprète ainsi.
+- 2026-11-08 E5 close : rafraîchissement OAuth par le dernier client gagnant, en mémoire. Relecture Sonnet : 1 constat recevable (P1), 11 conditions tenues. Compte reconnecté en web + natif en erreur de configuration = échec en boucle ; corrigé : seul un échec transitoire du natif est rendu sans Azure, test rouge puis vert. Gate vert.
+- 2026-11-08 ordre : E6 dépend de la fin de la recuisson (dépendance externe, `levelup-cf`) ; E7.1, sans lien avec elle, passe devant E6.

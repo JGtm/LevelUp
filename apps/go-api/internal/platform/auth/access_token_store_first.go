@@ -76,7 +76,8 @@ func ResolveMSAccessTokenStoreFirst(
 		return "", nil
 	}
 
-	at, rotatedRT, rerr := provider.TryOAuthRefreshWithRotation(ctx, user.OAuthRefreshToken)
+	at, rotatedRT, rerr := provider.TryOAuthRefreshWithRotation(
+		WithRefreshXUID(ctx, xuid), user.OAuthRefreshToken)
 	if rerr != nil {
 		return "", fmt.Errorf("auth: aucun access_token frais pour xuid(%s): %w", xuid, rerr)
 	}

@@ -120367,3 +120367,11 @@ version restent après chaque mise à jour NSIS (antérieur à L24).
 **Résultats observés.** Tests rouges puis verts par cinq mutations ; second passage à zéro écriture ; gate vert ; le ratchet d'ouverture DuckDB a imposé de garder le seul `sql.Open` dans le CLI.
 
 **Conclusion / prochaine étape.** E5 rafraîchissement OAuth.
+
+## [2026-11-08] Backlog E5 : rafraîchissement OAuth — Complété
+
+**Décision technique principale.** Le rafraîchissement commence par le dernier client ayant réussi pour ce joueur (table en mémoire du processus, champ `NatifDabord` dans la brique, sans état). Un échec transitoire du natif est rendu sans interroger Azure ; révoqué ou configuration déroulent le chemin Azure.
+
+**Résultats observés.** Relecture Sonnet : 1 P1 recevable (compte reconnecté en web bloqué sur une erreur de configuration), corrigé avec test rouge puis vert ; 11 conditions tenues, dont la persistance de la rotation. Gate vert.
+
+**Conclusion / prochaine étape.** Relecture finale Opus, mesure du rejeu après la recuisson.

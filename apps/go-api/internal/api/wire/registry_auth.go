@@ -316,7 +316,7 @@ func (r *ServiceRegistry) tryRefreshFromAuthStore(ctx context.Context, xuid stri
 	// avalée) mais N'entraîne PAS de marquage reauth_required : le chemin serveur
 	// haute-fréquence conserve sa politique historique (clear-on-success uniquement ;
 	// c'est le chemin CLI de cli_refresh.go qui marque un RT révoqué).
-	result, refreshErr := auth.RefreshFromStoreEntry(ctx, r.provider, r.authStore, xuid, user)
+	result, refreshErr := auth.RefreshFromStoreEntry(auth.WithRefreshXUID(ctx, xuid), r.provider, r.authStore, xuid, user)
 	if refreshErr != nil {
 		slog.WarnContext(ctx, "halo_auth: refresh store échoué", "xuid", xuid, "err", refreshErr)
 	}

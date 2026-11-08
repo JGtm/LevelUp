@@ -94,6 +94,9 @@ func ExchangeRefreshToken(ctx context.Context, refreshToken string) (string, err
 // si le fallback MSA natif (client Xbox/SISU) a réussi, "" si aucun (échec). Le caller
 // la persiste sur UserTokens pour un préfixe RpsTicket déterministe au prochain échange.
 //
+// Si le contexte porte le xuid du joueur (WithRefreshXUID), le client qui a réussi son dernier
+// rafraîchissement dans ce processus répond en premier (refresh_client_memory.go).
+//
 // Retourne ("", "", "", nil) si refreshToken est vide (aucun appel, aucun compteur).
 // Retourne ("", "", "", err) si l'appel HTTP ou Microsoft retourne une erreur.
 // Retourne (accessToken, "", family, nil) si Microsoft ne renvoie pas de rotation
@@ -110,8 +113,15 @@ func ExchangeRefreshTokenWithRotation(ctx context.Context, refreshToken string) 
 	ctx, _ = logging.WithEvent(ctx, "auth.oauth_exchange")
 
 	doer := netguardDoer{surface: "microsoft_oauth.refresh", next: &http.Client{Timeout: oauthTimeout}}
-	out, err := oauthClient(doer).RefreshWithRotation(ctx, refreshToken)
+	// Le joueur est connu (WithRefreshXUID) : le client qui a réussi la dernière fois répond en
+	// premier, et celui qui réussit cette fois est retenu pour la suivante. Sans xuid, ordre par
+	// défaut et rien de retenu.
+	xuid := RefreshXUIDFromContext(ctx)
+	client := oauthClient(doer)
+	client.NatifDabord = refreshClients.natifDabord(xuid)
+	out, err := client.RefreshWithRotation(ctx, refreshToken)
 	recordOAuthRefreshIssue(out, err)
+	refreshClients.retenir(xuid, out.Famille)
 	return out.AccessToken, out.RotatedRefreshToken, out.Famille, err
 }
 

@@ -96,7 +96,8 @@ func RefreshUserXSTS(ctx context.Context, store *MultiUserTokenStore, xuid strin
 // rotation reste alors écrite en mémoire (tokens) pour un Upsert ultérieur.
 func refreshAccessTokenForUser(ctx context.Context, store *MultiUserTokenStore, tokens *UserTokens) string {
 	if tokens.OAuthRefreshToken != "" {
-		token, rotatedRT, family, err := ExchangeRefreshTokenWithRotation(ctx, tokens.OAuthRefreshToken)
+		token, rotatedRT, family, err := ExchangeRefreshTokenWithRotation(
+			WithRefreshXUID(ctx, tokens.XUID), tokens.OAuthRefreshToken)
 		if err != nil {
 			slog.WarnContext(ctx, "refresh_user_xsts: refresh OAuth erreur",
 				"xuid", tokens.XUID, "err", err)
