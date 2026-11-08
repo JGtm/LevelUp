@@ -25,6 +25,7 @@ parasites hors plage des bipèdes, slots 36 et 292). Règle du user : aucune vie
 mesure par film des enregistrements de création qui nomment ces pistes ; arrêt si aucune lecture n'en
 sort. Hors périmètre, déjà décidé : les 5 films de build inconnu (abandonnés par le user le
 2026-10-15) et les 2 films Firefight. **Effort : S.**
+**Mesure du 2026-11-08** (lecture seule, rejeux recuits au schéma 107 par la branche `fix/rejeu-vies-equipement`) : `5da6fd30` garde 6 vies sans nom et `7aa132d1` 2 ; `72c48587` n'est plus mesurable, ni artefact ni faits sur le poste. Les 5 films de build inconnu restent sans roster. Les 495 films qui déclarent des bots ne sont pas jugés par cette mesure : une piste sans `xuid` y est normale pour un bot, une vie anonyme y resterait invisible. Sur `5da6fd30`, trois pions manquent environ 22 s à l'écran.
 
 ---
 
@@ -37,6 +38,7 @@ reste sans position alors que la tenue le placerait ; `siegesDe` donne un second
 parent qui n'est ni un véhicule échantillonné ni un bipède (`5676a9ba`) ; le châssis de véhicule
 `b857fb95` (`e449a696`, `99b8ba5c`) n'est pas dans la table des familles (marqueur neutre). **Effort : S
 chacune, à instruire une par une.**
+**Mesure du 2026-11-08** (lecture seule, rejeux recuits au schéma 107) : le châssis `b857fb95` reste sans famille sur 117 films et 455 vies, publiées en marqueur neutre immobile (453 sans échantillon de position, 265 avec occupant) ; sa nature reste à établir. Second corps de `4f77afc1` : non mesurable tant que le code lu ne lit pas les faits au schéma 19, à relancer après la fusion de cette branche (`TestLieuUniqueDesMorts` avec `L1_FAITS` et `L1_BORNES`, `L1_DEPOT` seul ne mesure que les fixtures). Entame sans position et parent non véhicule : non mesurés, il faut une copie à froid de la base partagée.
 
 ---
 

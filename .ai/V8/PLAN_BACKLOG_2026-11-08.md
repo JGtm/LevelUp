@@ -242,20 +242,20 @@ Toute sortie hors du worktree, dans le scratchpad de la session. `<PRINCIPAL>` =
 défaut est encore présent, Opus peut en lire la cause dans le code, sans rien modifier, et la consigne au journal.
 
 **6a**, lecture seule de `<PRINCIPAL>/data/cache/replays/halo_infinite/*.json` hors `*.derived.json`, un fichier à la fois :
-- [ ] 6a.1 Par film : nombre de `(.tracks // [])[] | select(.xuid == null or .xuid == "")` lorsque `(.roster // [])` ne
+- [x] 6a.1 Par film : nombre de `(.tracks // [])[] | select(.xuid == null or .xuid == "")` lorsque `(.roster // [])` ne
   déclare aucune entrée sans `xuid`. Un `xuid` absent ne suffit pas : les bots n'en ont pas. Relevé pilote non filtré
   du 2026-11-08 : 2 463 pistes sur 491 rejeux, dans les trois plus gros cas des films à bots déclarés ; ce chiffre ne
   mesure donc pas les vies sans nom.
-- [ ] 6a.2 Films dont `coverage.fallbacks` contient `repli_chassis_vehicule_marqueur_neutre`, somme des `hits`.
+- [x] 6a.2 Films dont `coverage.fallbacks` contient `repli_chassis_vehicule_marqueur_neutre`, somme des `hits`.
 
 **6b** dans le worktree, depuis `libs/film` :
 `$env:L1_DEPOT = "<PRINCIPAL>"; go test -tags research -count=1 -v -run '^<Test>$' ./replay/`. Une exécution par
 instrument, aucune sonde nouvelle (ne compile pas : `[!]`). **Validité : la sortie doit citer le film cible ou plus de 8
 films du parc. Sinon « non mesurable », jamais « réglé »** : sans dépôt, ces tests passent sur leurs seules fixtures.
-- [ ] 6b.1 Vies sans nom : 5da6fd30 relu par `jq` (6 vies au 2026-11-08). 72c48587 et 7aa132d1 sans artefact local :
+- [x] 6b.1 Vies sans nom : 5da6fd30 relu par `jq` (6 vies au 2026-11-08). 72c48587 et 7aa132d1 sans artefact local :
   `[!]` non mesurables, pas de cuisson.
-- [ ] 6b.2 Second corps à 83 m (4f77afc1) : `death_context_lieu_unique_research_test.go`.
-- [ ] 6b.3 Entame sans position (`kill_positions_e81bc_mesure_research_test.go`, `KP_KILLS` et `KP_BASE`) et parent non
+- [!] 6b.2 Second corps à 83 m (4f77afc1) : `death_context_lieu_unique_research_test.go`.
+- [!] 6b.3 Entame sans position (`kill_positions_e81bc_mesure_research_test.go`, `KP_KILLS` et `KP_BASE`) et parent non
   véhicule, 5676a9ba (`kill_positions_regles_research_test.go`, `KP_KILLS`) : ces instruments exigent des exports d'une
   **copie à froid** de la base partagée. Le pilote demande à l'utilisateur d'arrêter le serveur ; copie sous le scratchpad, exports
   TSV par `cmd/diag_q` avec le format donné en tête de chaque instrument. Serveur non arrêté : `[!]` non mesuré.
@@ -269,10 +269,10 @@ Gate : tableau rempli au journal ; `git -C ../LevelUp-wt-backlog status --short`
 
 - [x] 7.1 Skill `adversarial-review` sur tout le diff de la branche, **un relecteur Opus**, axes persist/sync, exclusions,
   seed au démarrage, chemin des jetons. Une ronde ; ronde 2 seulement s'il reste un P0. Constats statués au journal.
-- [ ] 7.2 `delivery-checklist`.
-- [ ] 7.3 `make generate-types` puis aucun écart non voulu ; `make check-types` ; `make test-web` ; `make gate-push` ;
+- [x] 7.2 `delivery-checklist`.
+- [x] 7.3 `make generate-types` puis aucun écart non voulu ; `make check-types` ; `make test-web` ; `make gate-push` ;
   `make go-api-test-gamefiles` (Halo installé, environ 10 min).
-- [ ] 7.4 Contrôle visuel de l'utilisateur, à proposer : tuiles de la page Citations (noms sur deux lignes, page sans
+- [~] 7.4 Contrôle visuel de l'utilisateur, à proposer : tuiles de la page Citations (noms sur deux lignes, page sans
   barre de filtres) et exclusion d'un match (le point disparaît du graphe de carrière).
 
 Gate : `make gate-push` et le corpus verts (sorties au journal).
@@ -317,10 +317,10 @@ reprises ici.
   `.ai/REGISTRE_REPORTS.md`, en renvoyant à ce plan.
 - [x] 8.4 Selon D-3, retirer « overlay Discord par titre » et « exposition des catégories forwardées » de la section
   Coach, garder le funnel, et ajouter : « Réglages Discord sans interrupteur web : coach, rejeu, reconnexion, disque ».
-- [ ] 8.5 (Pilote, pas Haiku) Entrées rejeu : y écrire le résultat daté d'E6 ; ne retirer que ce qui est mesuré réglé.
+- [x] 8.5 (Pilote, pas Haiku) Entrées rejeu : y écrire le résultat daté d'E6 ; ne retirer que ce qui est mesuré réglé.
 - [x] 8.6 « Récemment complété » : une ligne datée (branche, plan, faits, clos sur preuve, renvoi au §0).
-- [ ] 8.7 `.ai/thought_log.md` : entrée finale. Plan déplacé sous `.ai/V8/` une fois la PR fusionnée.
-- [ ] 8.8 `powershell -File scripts/disk-hygiene.ps1 -Lot backlog1108 -Apply`, worktree retiré après fusion.
+- [x] 8.7 `.ai/thought_log.md` : entrée finale. Plan déplacé sous `.ai/V8/` une fois la PR fusionnée.
+- [~] 8.8 `powershell -File scripts/disk-hygiene.ps1 -Lot backlog1108 -Apply`, worktree retiré après fusion.
 
 Gate : `git grep -n -E "skippedWriteFailed|psa_index_repro|--shared-csr|no_slug_comparison|RunForDB|filtre de chemins|LoadCitationMappings|StepDeviceCode|cmd_reset_bitmasks|weapon_resolver|match_bomb_stats|tactical/maps" -- .ai/BACKLOG.md | grep -v ":| 20"` ne rend que
 les puces gardées en `[!]` ; relecture du diff par le pilote.
@@ -364,3 +364,8 @@ les puces gardées en `[!]` ; relecture du diff par le pilote.
 - 2026-11-08 E7.1 close : relecture Opus sur toute la branche, 4 constats recevables, tous corrigés avec test rouge puis vert (cache du graphe après exclusion, copie de la lecture des exclus, plancher daté, chemins d'échec), 25 conditions tenues. Aucun P0 : pas de ronde 2.
 - 2026-11-08 E8 : section dette, entrées `weapon_labels` et OAuth retirées, section Coach réduite, référence ajoutée, registre et CHANGELOG 8.1.0 (EN et FR) à jour. Reste 8.5, 8.7, 8.8 après E6.
 - 2026-11-08 CI de branche après rebase sur `4726e9bbe4` : 2 tests rouges d'intégration, E3 croisait la révision des KPI (#158), qui tolère un recalcul partiel. Une écriture tenue (`ErrCanonicalWriteHeld`) est classée recalcul partiel par `MatchRecomputer` : exclusion non refusée, `RecomputePending` vrai, révision non rangée.
+- 2026-11-08 E7.2 et E7.3 : `make check-types` et lint web verts, corpus `gamefiles` vert. `make gate-push` n'est pas allé au bout en local : `replay-equiv` échoue faute de films dans le worktree (branche sans changement du décodeur) ; `libs-test`, ratchet lint, typecheck, lint web exécutés à part, verts. Baseline locale : `sync` et `platform/duckdb` en dépassement de 300 s sous la recuisson. Jugé par la CI de branche, verte sur `b15a737c83`. Trois tests web en dépassement de 5 s, verts relancés seuls.
+- 2026-11-08 E7.4 : contrôle visuel proposé à l'utilisateur, à faire sur la version installée.
+- 2026-11-08 fusion : PR #160, `c93e210968`, dans `release/v8.1.0`.
+- 2026-11-08 E6 close (Opus, lecture seule, signal 1 de `levelup-cf`) : vies sans nom toujours présentes sur 2 films (8 vies), un 3e sans données ; châssis neutre `b857fb95` sur 117 films, 455 vies ; 6b.2 `[!]` : faits au schéma 19 refusés par le code lu (schéma 18), le `PASS` ne prouve rien ; 6b.3 `[!]` : base partagée occupée. Commande de 6b corrigée : `L1_DEPOT` n'est lu nulle part, il faut `L1_FAITS` et `L1_BORNES`. Aucune correction du rejeu dans ce plan (F-1).
+- 2026-11-08 8.8 : disque et worktree rendus après la fusion de la PR de texte, geste du pilote, consigné au journal général.
