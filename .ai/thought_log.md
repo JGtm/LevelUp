@@ -120320,3 +120320,18 @@ téléchargement contre les vrais hôtes GitHub (gate 24.z).
 **Conclusion / prochaine étape.** Reste : revue adversariale 24.7 et gate utilisateur 24.z (hors de cette tâche) ; `[!]` bouton de réessai de
 l'écran `resources_incompatible` de la coquille (relance de la coquille non testable sans la lancer) ; découverte : les `web/assets/*-<hash>.js` d'une
 version restent après chaque mise à jour NSIS (antérieur à L24).
+## [2026-11-08] Plan du backlog exécutable — En cours (aucun code modifié)
+
+**Décision technique principale.** Plan `.ai/PLAN_BACKLOG_2026-11-08.md` : entrées du backlog vérifiées une à une sur `origin/release/v8.1.0`, exécution Haiku / Sonnet, aucun correctif de rejeu (mesure en lecture seule), nettoyage du backlog en dernière étape.
+
+**Résultats observés.** Douze entrées closes sans code, dont trois déjà faites. Prémisse fausse sur le rafraîchissement OAuth : la famille enregistrée vient du ticket XBL (`azure` pour JGtm), pas du client qui rafraîchit. Corpus `gamefiles` joué : un seul échec, un instrument de recherche sans son dépôt. Revue indépendante Sonnet, une ronde : 3 P0 (dont un faux défaut, `cmd/levelup` déjà câblé par `titleseams.RegisterAll`) et 11 P1, intégrés après vérification.
+
+**Conclusion / prochaine étape.** Attend le go du user et ses réponses sur la barre de filtres des citations, la réconciliation des citations au démarrage et les deux réglages Discord.
+
+## [2026-11-08] Plan du backlog : réponses du user, rafraîchissement OAuth ajouté — En cours (aucun code modifié)
+
+**Décision technique principale.** Barre de filtres des citations retirée, citations réconciliées au démarrage, deux réglages Discord abandonnés. Le rafraîchissement OAuth entre dans le plan : retenir en mémoire du processus le client qui a réussi, sans toucher aux fichiers de jetons. Rejeu et relecture finale confiés à Opus.
+
+**Résultats observés.** Le client gagnant est déjà rendu par l'échange ; la famille enregistrée ne le donne pas. Essai du client natif en tête : un échec réseau n'interroge plus Azure, dont le refus serait lu comme un jeton révoqué.
+
+**Conclusion / prochaine étape.** Attend le go du user.
