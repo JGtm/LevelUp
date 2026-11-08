@@ -27,7 +27,7 @@ MISE A JOUR : la table se corrige a la main, ligne par ligne — SAUF la colonne
 une donnee du film et se regenere par une porte nommee :
 
     ECS_TABLE_FILM=../facts/killsource/testdata/minibobine_000d5950 \
-      go test ./internal/games/halo_infinite/film/filmdec/ -run G2 -update-ecs-table-level
+      go test ./internal/grammar/ -run G2 -update-ecs-table-level
 
 (elle reecrit puis ECHOUE : relancer sans le drapeau pour verifier). Porter un composant =
 editer sa ligne (`status`, `deser_addr`, `code_source`) dans le meme commit que le code — les

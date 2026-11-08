@@ -255,10 +255,10 @@ func (b buildMiniFilm) provenance(kf keyframeSelection, z0, z1, z2, brut0, brut2
 	}
 	return fmt.Sprintf(`MINI-BOBINE PAR BUILD — film %s (%s, %s, version %d, build %s)
 
-CE FICHIER DIT D OU VIENT CHAQUE OCTET. Elle se REGENERE, elle ne s edite pas :
+CE FICHIER DIT D OU VIENT CHAQUE OCTET. Elle se REGENERE (depuis libs/film), elle ne s edite pas :
 
     %s=<repo>/data/cache/film_chunks \
-      go test ./internal/games/halo_infinite/film/replay/ -run MiniFilmBuildsRegenerate -update
+      go test ./replay/ -run MiniFilmBuildsRegenerate -update
 
 chunk_00.bin  %d octets (zlib) — LE CHUNK DE REGISTRE du film (type 1), %d octets une fois
               decompresse, OCTET POUR OCTET. Il porte l identite, le registre des composants, la

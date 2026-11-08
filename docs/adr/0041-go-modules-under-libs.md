@@ -204,3 +204,4 @@ Plan: `.ai/V8/PLAN_PUBLICATION_BRIQUES_2026-10-30.md` (lots 3 and 4).
   another brick (`himap` imports `gamefiles`) gains a `require` on the tag of the brick below before its own tag, which
   is then tagged first. The workspace keeps resolving the local copy. `libs/film` is not published (ADR 0043 D-1).
   Licences of the published modules are in ADR 0043 D-4 (D5's GPL note on `ooz` is unchanged).
+- **Amendment of 2026-11-08 (ADR 0043).** `libs/film` is published as the fourth brick (README, compiled example, `NOTICE.md`, `require` on the tags of `libs/gamefiles` and `libs/himap`, repository `JGtm/halo-infinite-film-decoder`); the sentence above, "`libs/film` is not published", is superseded.

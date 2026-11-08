@@ -17,7 +17,7 @@
 # dans le budget ; la dispersion de la base etait de 22 %, celle-ci de 1 %), TraverseEntity -3,8 %,
 # KeyframeClosure -5,0 % (informatif). Le paquet mesure est desormais film/internal/grammar.
 #
-# Regeneration : go test -bench . -run '^$' -count 10 ./internal/games/halo_infinite/film/internal/grammar/
+# Regeneration : go test -bench . -run '^$' -count 10 ./internal/grammar/ (depuis libs/film)
 goos: windows
 goarch: amd64
 pkg: levelup/go-api/internal/games/halo_infinite/film/internal/grammar

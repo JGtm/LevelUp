@@ -13,7 +13,7 @@
 |---|---|---|
 | API + sync + analyse | **Go** (chi + Huma, slog, DuckDB) | `apps/go-api/` |
 | Frontend | **React/TypeScript** (Vite, TanStack Router/Query/Table, ECharts) | `apps/web/` |
-| Briques Go (modules séparés, ADR 0041 ; publication, ADR 0043) | **Go**, reliées à `apps/go-api` par `go.work` (racine) | `libs/<brique>/` (`libs/gamefiles` : lecteurs de fichiers du jeu ; `libs/himap` : images de carte ; `libs/film` : décodeur de film ; `libs/haloapi` : API Halo) |
+| Briques Go (modules séparés, ADR 0041 ; publication, ADR 0043) | **Go**, reliées à `apps/go-api` par `go.work` (racine) | `libs/<brique>/` (`libs/gamefiles` : lecteurs de fichiers du jeu ; `libs/himap` : images de carte ; `libs/film` : décodeur de film, publiable depuis 2026-11-08 ; `libs/haloapi` : API Halo) |
 | API Halo (protocole, ADR 0042) | **Go**, paquets sans état ni politique | `libs/haloapi/` (`xblauth` : chaîne d'échange ; `infinite` : services Halo Infinite ; `halo5` : services Halo 5 ; `xboxlive` : succès Xbox ; services UGC cartes et fichiers GameCMS dans `infinite` ; `haloapitest` : enregistreur de tests, public) ; l'exploitation reste dans `platform/auth`, `games/halo_infinite/haloadapter`, `games/halo_5`, `sync/filmfetch` |
 | Coquille Windows (ADR 0045) | **Rust / Tauri 2** : fenêtre, sidecar Go, updater ; aucune logique métier | `apps/desktop/` |
 | Stockage | **DuckDB** par titre + Parquet (archives) | `data/titles/{slug}/` |
@@ -424,12 +424,12 @@ git commit -m "refactor(phase2): ..."
   ligne `haloapi` de `archlint/briques_imports_test.go` (module `libs/haloapi` depuis le 2026-11-01, avec
   `halo5`, `xboxlive`, et les services UGC cartes et fichiers GameCMS dans `infinite`) ; amende 0031 D-1,
   précise 0023) ·
-  `0043` **publication des briques** (trois modules publiables, `libs/gamefiles`, `libs/himap` et `libs/haloapi`,
-  depuis le dépôt unique ; `libs/film` non publié ; tags `libs/<brique>/vX.Y.Z` posés par l'utilisateur seul,
+  `0043` **publication des briques** (quatre modules publiables, `libs/gamefiles`, `libs/himap`, `libs/film` et `libs/haloapi`,
+  depuis le dépôt unique, `libs/film` ajouté par l'amendement du 2026-11-08 (README, exemple compilé, `NOTICE.md`, `require` sur les tags de `gamefiles` et `himap`) ; tags `libs/<brique>/vX.Y.Z` posés par l'utilisateur seul,
   `v0.x` sans promesse de stabilité, un numéro par module ; un README modèle unique par brique, exemple compilé
-  par `example_test.go` ; licences : `gamefiles` GPL-3.0 à cause de `ooz`, `himap` et `haloapi` AGPL-3.0 ;
+  par `example_test.go` ; licences : `gamefiles` GPL-3.0 à cause de `ooz`, `himap`, `film` et `haloapi` AGPL-3.0 ;
   critère de séparation en dépôt : contributeur externe, ou cadence indépendante, ou CI qui pèse, décision finale de
-  l'utilisateur exécutée ensemble ; `haloapitest` public ; l'exploitation reste dans LevelUp ; amende 0041 et 0042) ·
+  l'utilisateur exécutée ensemble pour les quatre (dépôt du décodeur : `JGtm/halo-infinite-film-decoder`) ; `haloapitest` public ; l'exploitation reste dans LevelUp ; amende 0041 et 0042) ·
   `0044` **profil de déploiement** (un seul concept `Deployment` : `hosted`, `desktop`, `demo`, `dev`, résolu UNE fois
   dans `internal/config` ; `AuthMode`, hôte d'écoute et capacités fines DÉRIVÉS, jamais posés à la main ; consommateurs
   branchés sur les capacités de `/bootstrap`, jamais sur le profil ; tâches de fond déclarées par profil ; ratchet :

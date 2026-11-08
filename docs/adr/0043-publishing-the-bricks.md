@@ -8,11 +8,13 @@ Amends: ADR 0041 (a fourth module, `libs/haloapi`; tags and the `require` order)
 Xbox Live achievements, UGC map assets and GameCMS files, and is a module).
 Relates to: ADR 0023 and 0038 (tokens stay in LevelUp), ADR 0031 (data-source boundary), ADR 0012 (title adapters
 under `games/<slug>/`).
+Amended: 2026-11-08 (D-1, D-2, D-4, D-5): the film decoder `libs/film` becomes the fourth publishable brick; see the
+amendment before the references.
 
 ## Vocabulary
 
 - **Publishable brick**: a module under `libs/` that carries a README and is meant to be fetched by `go get` from
-  another repository. Three: `libs/gamefiles`, `libs/himap`, `libs/haloapi`.
+  another repository. Three at the time of writing: `libs/gamefiles`, `libs/himap`, `libs/haloapi`; four since the amendment of 2026-11-08, which adds `libs/film`.
 - **Tag**: a git tag `libs/<brick>/vX.Y.Z`, Go's form for a module in a subdirectory (ADR 0041 D4). Pushing it is the
   act of publication: the module proxy serves that version from then on.
 - **Exploitation layer**: what decides who calls a service, when, with whose token, where the result is kept and
@@ -56,7 +58,7 @@ differences are those of D-8.
 
 ## Decision
 
-**D-1 — Three publishable modules, from the monorepo, no split now.** `libs/gamefiles` (`himodule`, `ooz`, `hinavmesh`,
+**D-1 — Three publishable modules, from the monorepo, no split now.** *(Rewritten on 2026-11-08: four, with `libs/film`; see the amendment below. The text that follows is the original.)* `libs/gamefiles` (`himodule`, `ooz`, `hinavmesh`,
 `mapvar`), `libs/himap` (`himap`, the map-image generator) and `libs/haloapi` (the root package `haloapi`: `Doer`,
 `Garde`, `ErrDefinitif`, `Retry`, `Limiter`, `ParseRetryAfter`, `Masque`; and `xblauth`, `infinite`, `halo5`,
 `xboxlive`, `haloapitest`). They are published as they sit, from this repository, in this workspace. `libs/film`
@@ -121,7 +123,7 @@ Licences as in D-1 and the READMEs: GPL-3.0 for the files reader (because of `oo
 
 The film decoder (`libs/film`, D-1) is not part of this split. The maintainer asked on 2026-11-01 that it follow the
 same path later (README, compiled example, tag, then its own repository), as a separate piece of work once its
-facade is frozen; tracked in `.ai/BACKLOG.md`.
+facade is frozen. *(Superseded on 2026-11-08: the decoder is published and joins the split, see the amendment.)*
 
 **D-6 — What stays in LevelUp.** The bricks hold the protocol; LevelUp keeps:
 
@@ -218,6 +220,69 @@ In `apps/go-api/internal/archlint/` unless a path says otherwise.
 - `platform/netguard/netguard_coverage_test.go` (`TestOutboundCallsAreNetguarded`): a file of go-api's own code that
   sends a request must name the guard; the brick is outside its walk, and the guard reaches it through the `Doer` that
   `haloapi_doer_garde_test.go` requires.
+
+## Amendment of 2026-11-08 — the film decoder is the fourth publishable brick
+
+Source: decision of the maintainer of 2026-11-01 (the decoder follows the same path "later: README, compiled
+example, tag, then its own repository"), confirmed on 2026-11-04 (publish the decoder, reorganise protocol and
+operation before the tag, replace the real player identifiers of the fixtures by invented ones, split into
+four repositories together). Amends D-1, D-2, D-4 and D-5; the other decisions hold.
+
+**D-1 (rewritten) — Four publishable modules, from the monorepo, no split now.** `libs/gamefiles`, `libs/himap`,
+`libs/film` and `libs/haloapi`. `libs/film` (ADR 0034) is published as it stands: its public packages are
+`decfilm` (the facade), `replay` (the publication layer and the `ReplayDocument`), `types`, `filmcache`,
+`revision`, `memguard`, `filmobs`, `damagetag`, `killicon`, `medalname`, `filmshell`, `equipenergy`,
+`highlightevent`, `objectiveevent`, `playerposition`, `identity` and `finalise`; the four lower layers stay under
+`internal/`, closed by the compiler. `v0.x`, no promise of API stability: the size of the facade is held by the
+dated ratchet `archlint/film_facade_surface_test.go` (no reduction, ADR 0034), not by a promise to consumers.
+The packages under `research/` and the files tagged `research` are the maintainer's instruments on a local corpus
+of films; they are not an API. What the brick decides stays what ADR 0034 (amendment of 2026-11-08) says: it
+decodes and publishes, it does not decide when a film is decoded, where anything is stored or at what priority;
+the launcher, the single-decode lock, the archive and the host's registry of fallback sites stay in LevelUp.
+
+**D-2 (completed) — Order of the tags.** `libs/film` imports `libs/himap` (in tests only) and `libs/gamefiles` (`mapvar`, in production); its `go.mod` carries a `require` on
+`libs/gamefiles v0.1.0` and `libs/himap v0.1.0`, the tags of the two bricks below, and the workspace keeps
+resolving the local copies. The order of publication is `gamefiles`, `himap`, `film`; `haloapi` has no
+constraint. The tag `libs/film/v0.1.0` is set by the maintainer alone, after `go get` of the module has been
+checked from a throwaway module outside the repository (`GOWORK=off`), as for the other bricks.
+
+**D-3 (applied) — README, example, notice.** `libs/film/README.md` follows the template of D-3. Its example is
+`decfilm/example_test.go`: compiled and run by `go test`, with a checked output, on a minimal film of the module's
+tests; `decfilm/readme_test.go` fails if the code block of the README stops being the body of that example. The
+module also carries `NOTICE.md`, which says where the three embedded tables (`damagetag/data/jpt_ids.txt`,
+`damagetag/data/labels.tsv`, `killicon/data/rules.tsv`) and the film fixtures come from.
+
+**D-4 (completed) — Licence.** `libs/film`: **AGPL-3.0-only**, the licence of the repository. No production
+package of the module imports `libs/gamefiles/ooz`; a few tests import `libs/himap`, which does, so a binary
+linking those tests is GPL-3.0-compatible only, as for `himap` (`libs/gamefiles/ooz/NOTICE.md`). The module needs no
+cgo to build or to use.
+
+**Particularities of this brick, to keep in mind when reading D-1 to D-4.**
+
+- *Layer revisions.* The five layers carry a revision, the fingerprint of their production sources (ADR 0034 D-6).
+  The path of the module is not grammar: the fingerprints hash their sources under a historical frame
+  (`revision/cadre.go`, ADR 0041), which translates the current module path into the historical one, so moving
+  or splitting the module changes no revision.
+- *Unknown build.* A film of a build or format the profile table does not list is refused with a typed error that
+  names it, counted and set aside, never read as the nearest build (ADR 0034 D-4). The README says so.
+- *Fictitious identifiers.* The fixtures that come from real films carry invented player identifiers (XUIDs and
+  gamertags replaced by a deterministic rule, listed in `testdata/IDENTITES.tsv`, guarded by a test), so that the
+  module published from this repository holds the identifier of no player. `NOTICE.md` states the rule.
+- *Catalogues.* The map-bounds catalogue and the map data come from the caller; the module embeds only the name
+  tables listed above.
+
+**D-5 (amended) — The split covers four bricks.** The maintainer's approval of 2026-11-01 for the three bricks
+together now covers the four, executed together after the desktop application and the release on `main`, never one
+brick alone. Repository added to the table of D-5:
+
+| Brick | Repository | Title | Description (GitHub, one line) |
+|---|---|---|---|
+| `libs/film` | `JGtm/halo-infinite-film-decoder` | Halo Infinite Film Decoder | Decoder for Halo Infinite Theater films: reads the chunks of a film and assembles the facts (players, kill feed, weapons, objectives, positions) into a 2D replay document. No download, no storage, no rendering. |
+
+The module path changes at the split (`github.com/JGtm/<repository>`), `v0.1.0` in each repository, and the old
+path keeps a `v0.1.1` tag whose `go.mod` says `// Deprecated: moved to ...`, set before the code leaves LevelUp.
+LevelUp then requires the tags and `go.work` leaves the repository (a `go.work` outside it, through `GOWORK`, serves
+work on a brick and LevelUp together).
 
 ## References
 

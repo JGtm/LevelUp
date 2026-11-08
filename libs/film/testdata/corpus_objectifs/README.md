@@ -13,8 +13,8 @@ les axes — per-joueur, a la milliseconde, sans calibration.
 
 Le corpus, lui, ne meurt pas avec lui, et c'est le point : **ces octets ne decrivent pas un
 decodeur, ils decrivent un format**. Le jour ou la source evenementielle peuplera reellement
-la courbe de score des modes a zones et KOTH (chantier de pipeline film, cf. `.ai/HANDOFF_MODE_SCORE_CHAINE_2026-08-01.md`
-§6), il faudra des octets reels dates, sourcés et versionnes pour la contraindre. Les
+la courbe de score des modes a zones et KOTH (chantier de pipeline film),
+il faudra des octets reels dates, sourcés et versionnes pour la contraindre. Les
 reprelever couterait un acces au cache film d'un poste precis et a des matchs precis ; les
 garder coute 400 Ko.
 

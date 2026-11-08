@@ -1091,18 +1091,18 @@ modifiés ou neufs dans `archlint`, `libs/film/revision/ordre_imports_test.go`, 
       écrite : les digests changent par construction, les xuids étant dedans), grep des 133 xuids d'origine dans
       `libs/film` = 0. Témoin avant/après : pour chaque film, (index, temps, nombre de joueurs, nombre de morts)
       identiques au mapping près. Exécutant : Sonnet.
-- [ ] 4.1 `libs/film/go.mod` : `require` de `libs/gamefiles` et `libs/himap` à leur tag (ordre ADR 0043 D-2) ;
+- [x] 4.1 `libs/film/go.mod` : `require` de `libs/gamefiles` et `libs/himap` à leur tag (ordre ADR 0043 D-2) ;
       `go.work` résout toujours la copie locale ; `TestBriquesImports` vert.
-- [ ] 4.2 README EN (modèle ADR 0043 D-3) : ce que c'est (film Theater Halo Infinite → faits → document de rejeu
+- [x] 4.2 README EN (modèle ADR 0043 D-3) : ce que c'est (film Theater Halo Infinite → faits → document de rejeu
       2D), ce que ce n'est pas (ni téléchargement, ni stockage d'application, ni rendu), installation, exemple,
       prérequis (Go, pas de CGO, catalogues fournis par l'appelant, D-4 ; instruments `research` = corpus local du
       mainteneur), révisions de couche et build inconnu = erreur typée, licence AGPL-3.0, contribuer,
       non-affiliation à Microsoft, 343 Industries, Halo Studios.
-- [ ] 4.3 `example_test.go` compilé, sur un minifilm de `replay/testdata` (aucun fichier hors du module).
-- [ ] 4.4 `NOTICE.md` du module : origine de `jpt_ids.txt`, `labels.tsv`, `rules.tsv` et des fixtures (D-4, D-7).
+- [x] 4.3 `example_test.go` compilé, sur un minifilm de `replay/testdata` (aucun fichier hors du module).
+- [x] 4.4 `NOTICE.md` du module : origine de `jpt_ids.txt`, `labels.tsv`, `rules.tsv` et des fixtures (D-4, D-7).
 - [ ] 4.5 Vérification `go get` hors dépôt (`GOWORK=off GOPROXY=direct GONOSUMDB=github.com/JGtm/LevelUp`, module
       jetable du scratchpad, sha de la branche poussée) : `go build` de l'exemple. Consignée.
-- [ ] 4.6 ADR 0043 amendée (quatre briques publiables, D-1 réécrit, licence, particularités des révisions) ; ADR
+- [x] 4.6 ADR 0043 amendée (quatre briques publiables, D-1 réécrit, licence, particularités des révisions) ; ADR
       0041 et 0034 : renvoi ; `CLAUDE.md` (table, ADR 0043) ; `ARCHITECTURE_V6` EN et FR si la brique y est
       décrite.
 - [ ] 4.7 Revue adversariale (skill `adversarial-review`) : deux relecteurs Sonnet aveugles sur le diff des lots 1
@@ -1195,6 +1195,70 @@ issue (`cmd/replay-equiv`, `weaponv3`) ; `vitest run` sous `apps/web` : 1 062 fi
 passés, 23 sautés, 0 échec (les 8 fixtures régénérées lues par `match-replay` : aucun littéral à corriger, aucun xuid réel attendu).
 `go run ./cmd/replay-equiv -out-dir <scratchpad>` depuis le worktree, SANS `-originaux` ni variable (dossier monté par jonction) :
 BILAN 20 identiques, 0 différent, 0 écarté, 0 échec, 590 s ; `xuids_retraduits` renseigné à chaque cuisson (la liste est donc trouvée par défaut).
+
+### Résultat des items 4.1 à 4.6 (2026-11-08)
+
+**4.1 `go.mod` aux tags.** `libs/film/go.mod` : `require github.com/JGtm/LevelUp/libs/gamefiles v0.1.0` et
+`.../libs/himap v0.1.0` ; `go.sum` complété par `GOWORK=off GOFLAGS=-mod=mod GOPROXY=direct
+GONOSUMDB=github.com/JGtm/LevelUp go mod tidy` (4 lignes ajoutées, aucune autre ne bouge). Tags vérifiés sur `origin`
+(`git ls-remote --tags origin 'libs/*'`) : `libs/gamefiles/v0.1.0` (`e2c449b3`) et `libs/himap/v0.1.0` (`5c37ca56`).
+Preuves : `go build ./...` dans `libs/film` depuis l'espace de travail code 0 et `go list -f '{{.Dir}}'` sur
+`libs/gamefiles/mapvar` rend le dossier du worktree (la copie locale est résolue) ; `GOWORK=off ... go build ./...` code 0
+(les tags se résolvent) ; `go test ./internal/archlint/ -run Briques -count=1` ok (5 tests). Rien lancé dans `apps/go-api`
+qui touche son `go.mod`.
+
+**4.2 README.** `libs/film/README.md` (EN, modèle des trois autres : statut, ce que c'est avec le tableau des cinq couches et
+les paquets publics, ce que ce n'est pas, installation, exemple, prérequis, révisions de couche et build inconnu, licence,
+contribuer, non-affiliation). Commandes citées, toutes jouées : `go get ...@v0.1.0` (4.5), `CGO_ENABLED=0 go build ./...` et
+`CGO_ENABLED=0 go vet ./...` codes 0 (aucune production ne lie du C : `go list -deps ./...` ne contient ni `ooz` ni
+`himodule` ; `libs/himap` n'est importé que par des tests), `go vet ./... && go test ./...` (gate), `go test ./revision/`
+ok. Pas de fichier `LICENSE` par module : aucune des trois autres briques n'en porte, le README renvoie à `LICENSE` et
+`NOTICE` de la racine comme `himap` (D-L4-8). **D-L3-5 reprise** : prose périmée corrigée dans les fichiers ni hachés
+ni comparés (vérifié par grep de leurs lecteurs : aucun test ne lit ces textes) : les 8 `PROVENANCE.txt` de
+`replay/testdata/minifilm_*` (et les deux générateurs `replay/minifilm_test.go`, `replay/minifilm_builds_test.go` qui
+réécrivent ce texte à la régénération : sans eux, la prochaine régénération aurait remis l'ancienne commande), la
+`PROVENANCE.txt` de `pied_bloc_53ce4390` (le test est sous `internal/grammar/signaux/`, pas `internal/grammar/`), celle de
+`vue_a_bcb6d393_1_204`, `ecs_table.README.md` (le test `G2` est sous `internal/grammar/`), la ligne « Regeneration » de
+`bench_baseline.txt` (les lignes `pkg:` et `ok` sont la sortie réelle d'un banc : laissées), et la citation d'un fichier de
+`.ai/` dans `testdata/corpus_objectifs/README.md`. Commande de forme : `go test ./replay/ -run ...` « depuis libs/film ».
+Laissés : les 33 en-têtes de goldens et les `*_perimetre.golden` (D-6 : leur correction est une régénération), les lignes
+193 et 282 de `CORPUS.txt` (la première cite une mesure datée, la seconde est juste : commande depuis `apps/go-api`), les
+lignes 78-79 de `corpus_objectifs/README.md` (historique git d'un paquet supprimé, valides). Aucun `*.golden` modifié :
+`git status --short | grep golden` vide.
+
+**4.3 Exemple.** `libs/film/decfilm/example_test.go`, `ExampleScanDeaths` : `decfilm.LoadDir` sur
+`../replay/testdata/minifilm_000d5950` (chemin relatif au paquet, dans le module), `ScanDeaths`, sortie vérifiée
+`93 deaths, 8 distinct victims` (93 = ligne `deaths` de `replay/testdata/equivalence/minifilm.tsv`). Il n'y avait pas de test
+de fraîcheur README <-> exemple pour les autres briques (leurs README sont recopiés à la main) : ajout de
+`decfilm/readme_test.go` (`TestLeReadmeCiteLExempleCompile`) qui exige que le bloc de code de la section « Example » soit le
+corps de l'exemple, à l'octet. Mutation : `94` à la place de `93` dans le README -> test rouge avec le diff ; remis -> vert.
+`golangci-lint` 0 issue sur `./decfilm/...` et `./replay/`.
+
+**4.4 NOTICE.** `libs/film/NOTICE.md` (EN, même forme que `libs/gamefiles/ooz/NOTICE.md`) : les trois tables embarquées
+avec leurs comptes mesurés (468 identifiants et 468 lignes d'étiquettes, 58 règles `killicon` : le plan et mon premier jet
+disaient 158, le fichier compte 58 lignes de règle), leur origine (en-têtes de 126 archives `.module`, identifiants
+seulement, tables précalculées par le mainteneur), les films de test (octets de films de matchs du compte du mainteneur,
+coupes courtes, PROVENANCE par dossier), la règle des identifiants fictifs (graine publique, 48 bits, plage, registre
+`testdata/IDENTITES.tsv`, test de garde, anciens identifiants hors dépôt), les fixtures dérivées, les notes de désassemblage
+(`ecs_table.tsv`), les dépendances.
+
+**4.6 ADR et docs.** ADR 0043 : en-tête « Amended », D-1 original marqué réécrit, ligne du vocabulaire, renvoi au bout du
+paragraphe « le décodeur n'est pas dans la scission », et une section « Amendment of 2026-11-08 — the film decoder is the
+fourth publishable brick » (D-1 réécrit, D-2 ordre des tags et `require`, D-3 exemple et fraîcheur, D-4 AGPL-3.0, particularités :
+révisions de couche et cadre historique, build inconnu, identifiants fictifs, catalogues ; D-5 quatre dépôts, ligne
+`JGtm/halo-infinite-film-decoder` / « Halo Infinite Film Decoder » et description). ADR 0041 : renvoi d'une ligne en fin de
+section ; ADR 0034 : renvoi d'une ligne après l'amendement du 2026-11-08. `CLAUDE.md` : ligne « Briques Go » du tableau
+(film publiable depuis 2026-11-08) et résumé de l'ADR 0043 (quatre modules, `film` AGPL-3.0, dépôt du décodeur).
+`docs/ARCHITECTURE_V6.md` EN et FR : `grep -in 'non publi\|not publish'` vide, la brique film n'y est pas décrite comme non
+publiée : rien à changer. `docs/CHANGELOG.md` et `docs/FR/CHANGELOG.md` (entrée 8.1.0 non publiée) disaient « film n'est pas
+publiée » : une phrase corrigée dans chacun (D-L4-9, hors liste de l'item mais la même affirmation).
+
+**Gate (2026-11-08).** `go vet ./...` code 0 et `go test ./... -count=1 -timeout 30m` dans `libs/film` : 29 paquets `ok`, 0 FAIL,
+85 s ; aucun `*.golden` modifié (`git status --short | grep golden` vide). `go test ./internal/archlint/ -timeout 40m -count=1`
+(`apps/go-api`, seul) : `ok`, 604 s (`commentaires_references`, `briques_imports`, `film_sans_hote`, `film_file_size` compris).
+`golangci-lint run` (config d'`apps/go-api`) sur `./decfilm/...` et `./replay/` : 0 issue. `make libs-test` (vet des quatre jeux de
+balises, tests, absence de `levelup/go-api` dans les dépendances) sur les quatre modules : code 0, 245 s, 39 paquets `ok`.
+Le 4.5 (`go get` hors dépôt) suit, sur le sha poussé de ce commit.
 
 ## Lot 5 — Préalables aux dépôts dédiés (après la clôture du desktop)
 
@@ -1384,3 +1448,27 @@ Lot 4 (2026-11-08), notées, non traitées :
   valeurs hors registre, jusqu'à 4 151 occurrences : des structures répétitives). Que plus aucun xuid réel ne reste dans les
   octets ne se prouve donc que par ce que le décodeur lit (tout xuid des sièges, des morts et des 8 fixtures d'entrées est
   au registre) et par l'égalité des comptes avec la mesure 1.6, non par une exclusion.
+- **D-L4-8** Aucune des quatre briques ne porte un fichier `LICENSE` dans son dossier de module (les README renvoient à
+  `LICENSE` et `NOTICE` de la racine). Le proxy de modules ne zippe que le dossier du module : un outil qui détecte la licence
+  d'après le module (pkg.go.dev) n'en verra pas. Hors du périmètre de 4.2 (le modèle `himap` n'en a pas non plus) ; à trancher
+  avec les dépôts dédiés (lot 6), où chaque module a sa racine.
+- **D-L4-9** Corrigé dans le lot parce que c'est la même affirmation que l'item 4.6 : l'entrée 8.1.0 « non publiée » des deux
+  `CHANGELOG` disait « `film` n'est pas publiée ». Les entrées de versions déjà sorties ne sont pas touchées.
+- **D-L4-10** `profile.ErrUnknownBuild` et `ErrUnknownFormat` vivent sous `internal/` et la façade `decfilm` ne les ré-exporte
+  pas (elle expose `UnknownBuildExpvarPairs`, `ErrUnknownMapBounds`, `ErrCarteAbsente`) : un consommateur externe reçoit l'erreur
+  typée enveloppée mais ne peut pas écrire `errors.Is(err, ...)`. Le README décrit le comportement sans promettre le test.
+  Un ré-export ajoute un symbole à une façade tenue par ratchet (`film_facade_surface_test.go`) : décision à part.
+- **D-L4-11** Deux citations de `.ai/` restent dans des chaînes de production de `libs/film` : `internal/profile/profile_table.go:354`
+  (champ `Preuve` d'une ligne de la table de profil, source HACHÉE : la changer bouge `profile.Rev`) et
+  `internal/facts/fallback/registre_replay_equipement.go:187`. Non touchées (une révision de couche n'est pas un lot de prose).
+  La citation du `README` de `testdata/corpus_objectifs` (non hachée) a été retirée par 4.2.
+- **D-L4-12** `testdata/corpus_objectifs/minibobine_objectifs/` (16 chunks, environ 8 Mo, deux films du compte du mainteneur) n'est
+  lu par aucun test (aucun `.go` ne cite le dossier) et n'a pas été traité par 4.0. Mesures du 2026-11-08 : aucun des 420
+  xuids d'origine en 64 bits aux huit décalages, aucune chaîne UTF-16 de six caractères ou plus (donc pas de gamertag lisible).
+  Cela ne PROUVE pas l'absence de xuids : les joueurs de ces deux films ne figurent pas dans la liste des 420. `NOTICE.md` le
+  dit (octets d'origine, aucun gamertag lisible, aucun test). Choix à faire : les supprimer (règle 7 : corpus sans lecteur), ou les
+  faire passer par l'outil après mesure des joueurs de ces deux films.
+- **D-L4-13** Des commandes de régénération périmées demeurent dans les en-têtes de goldens et dans les GÉNÉRATEURS de ces
+  en-têtes (`killsource/golden_render_test.go`, `minibobine_test.go`, `frame_closure_ratchet_test.go`,
+  `keyframe_closure*_ratchet_test.go`, `marche_fermeture_test.go`, `revision/messages_test.go`, `perimetre_test.go`) : corriger
+  l'un sans l'autre fait diverger le golden de son générateur ; D-6 (laisser jusqu'à la prochaine régénération) tient.

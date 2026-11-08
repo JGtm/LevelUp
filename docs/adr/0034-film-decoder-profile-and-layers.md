@@ -628,6 +628,8 @@ files) no import of `os/exec`, no `os.Getenv` / `os.LookupEnv` / `os.Environ` ou
 `revision/porte.go`, and no file write outside `libs/film/internal/` and `libs/film/revision/` (the
 latter writes the revision and perimeter goldens, under the gate).
 
+Publication: the decoder is published as the fourth brick by the amendment of 2026-11-08 of [ADR 0043](0043-publishing-the-bricks.md) (README, compiled example, `NOTICE.md`, AGPL-3.0).
+
 ## Non-goals
 
 - **Not a rewrite.** Every grammar acquired by reverse engineering stays as it is; only its

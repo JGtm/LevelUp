@@ -1,10 +1,10 @@
 BLOC DE PIED DE FILM — un evenement th=10 reel, pose le 2026-09-14, RE-CHOISI le meme jour a la revue R1 (constat R1-1).
 
 CE FICHIER DIT D OU VIENT CHAQUE OCTET. Une fixture binaire sans provenance ecrite est un fait
-sans source ; celle-ci se REGENERE, elle ne s edite pas :
+sans source ; celle-ci se REGENERE (depuis libs/film), elle ne s edite pas :
 
     PIED_FILM_DIR=<cache>/film_chunks/53ce4390 PIED_BLOC_UPDATE=1 \
-      go test ./internal/games/halo_infinite/film/internal/grammar/ -run PiedBlocProvenance
+      go test ./internal/grammar/signaux/ -run PiedBlocProvenance
 
 Sans `PIED_BLOC_UPDATE`, la meme commande RECOUPE la tranche sur le film et la compare octet
 pour octet. Sans `PIED_FILM_DIR`, elle est sautee : le cache de films ne vit pas dans le depot.
