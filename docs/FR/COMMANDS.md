@@ -178,6 +178,12 @@ go run ./cmd/backfill-team-rounds --gamertag X --apply [--all] [--limit N] [--ma
 **100 % hors ligne** (films du cache local : ni réseau, ni jetons, ni CDN), **serveur arrêté**
 (elle tient la base partagée en écriture — un seul writer, ADR 0013). Elle joue deux passes dans
 cet ordre : les FILMS (décodage), puis le CRÉDIT (transformation SQL → SQL, quelques minutes).
+Une exécution qui décode (ni `--dry-run` ni `--credit-only`) prend le verrou solo de décodage de sa racine de données en refus
+immédiat, avant d'ouvrir la base : quand un autre décodage tient cette racine (un serveur qui cuit un rejeu, la file de
+régénération des rejeux, une autre passe), elle nomme le détenteur et sort avec le code **3** (2 reste le code d'une ligne de
+commande refusée). Le verrou est le fichier `<racine de données>/cache/film_decode.lock` : il est par racine de données, pas par
+machine. Une commande lancée depuis le dépôt (`data/` de la copie de travail) et l'application installée (`%LOCALAPPDATA%\LevelUp`, ou
+`LEVELUP_DATA_DIR`) tiennent deux verrous différents et ne se voient pas ; pointer `LEVELUP_DATA_DIR` sur la même racine pour n'en partager qu'un.
 
 ```bash
 go run ./cmd/levelup backfill-killsource --dry-run      # bilan : total, déjà à jour, chunks, ETA
@@ -393,6 +399,24 @@ ne déclare pas est refusé. Elle vérifie d'abord chaque somme SHA-256 du manif
 chaque base depuis ses Parquet dans l'état de son époque (le démarrage suivant applique les migrations manquantes), puis remet en place les
 fichiers de configuration et d'authentification. Une cible qui contient déjà une base du jeu est refusée sans `--force` ; `--dry-run` vérifie le jeu
 et liste ce qui serait restauré, sans rien écrire. Les films archivés ne font pas partie d'un jeu.
+
+```bash
+levelup-server.exe -mode uninstall-cleanup      # appelé par le désinstalleur ; aucun drapeau
+```
+
+`-mode uninstall-cleanup` retire ce que l'application a posé HORS de son dossier, puis sort : l'entrée de démarrage de l'utilisateur (la valeur `LevelUp` de
+`HKCU\...\Run` et sa valeur `StartupApproved`, seulement si sa commande vise le dossier du programme désinstallé) et la tâche planifiée
+`LevelUp\Refresh-<8 hex>` de la racine de données de `LEVELUP_DATA_DIR` (seulement si son action lance le serveur de ce même dossier : deux installations
+d'un même utilisateur partagent la racine par défaut, donc le nom de la tâche, et la tâche de l'autre reste en place, `tache=foreign`). Il n'ouvre aucune
+base, ne lie aucun port, ne prend aucun verrou et ne touche jamais à la racine de données. Sortie 0 quand rien n'existait ou que tout était étranger, 1 quand
+une lecture ou une suppression a échoué (le crochet NSIS ignore le code : la désinstallation n'en dépend jamais) ; le bilan va sur stderr
+(`demarrage=… tache=… ok=… exit=…`). `LEVELUP_UNINSTALL_WITNESS` posée à un chemin écrit aussi la ligne de bilan dans un fichier (ce que vérifie
+`e2e-install.ps1`, code de sortie compris). Le `NSIS_HOOK_PREUNINSTALL` de l'installeur vérifie d'abord que l'application ne tourne pas (« Annuler » à
+« LevelUp est en cours d'exécution » ne retire rien), puis le lance avant l'effacement des fichiers. Il ne tourne pas dans le flux de l'updater
+(`/UPDATE` : l'updater n'appelle jamais l'ancien désinstalleur), mais une mise à jour MANUELLE (installeur lancé à la main, case « désinstaller avant »
+cochée par défaut) ou une réinstallation passive (`/P`) appelle l'ancien désinstalleur sans `/UPDATE` : l'entrée et la tâche sont alors retirées, puis
+reposées au prochain lancement si le réglage est actif. Après le nettoyage, le modèle de Tauri supprime la valeur `Run` du produit sans la regarder ; le
+crochet la lit avant et la réécrit quand elle ne visait pas le dossier désinstallé.
 
 ### Identités joueur (annuaire et purge — ADR 0035)
 
@@ -1204,6 +1228,10 @@ make desktop-installer  # installeur NSIS (front, serveur, ffmpeg LGPL, ressourc
 make desktop-e2e        # installe, lance, ferme, relance et désinstalle cet installeur sur une racine de données jetable
 ```
 
+CI : le job `desktop-test` (Windows) joue les tests de la coquille, clippy et le format ; le job `desktop-audit` (Linux) lance `cargo audit` sur
+`apps/desktop/src-tauri/Cargo.lock` avec un `cargo-audit` épinglé : une **vulnérabilité** connue le rougit, les avis « non maintenu », « unsound » et « yanked »
+de l'arbre transitif restent des avertissements. Les deux suivent le filtre de chemins `desktop`.
+
 `desktop-dev` prend `%LOCALAPPDATA%\LevelUp-dev` pour racine de données (`-DataDir` pour la changer), jamais
 celle de l'application installée. La coquille lit trois surcharges facultatives dans son propre environnement,
 `LEVELUP_RESOURCES_DIR`, `LEVELUP_DATA_DIR` et `LEVELUP_WEB_DIST` (chemins absolus ; le dernier est le front
@@ -1230,7 +1258,7 @@ powershell -File apps/desktop/scripts/e2e-install.ps1 -Installer <LevelUp_X.Y.Z_
 bash apps/desktop/scripts/check-version.sh <X.Y.Z> [<serveur.exe>]
 ```
 
-- `build-installer.ps1` compile le front, le serveur (`-ldflags "-X main.version=<version de Cargo.toml>"`), télécharge
+- `build-installer.ps1` compile le front, le serveur (`-ldflags "-s -w -X main.version=<version de Cargo.toml>"` : ni table des symboles ni DWARF, traces de panique conservées), télécharge
   le ffmpeg LGPL épinglé (`fetch-ffmpeg.ps1` : l'URL et la somme SHA-256 sont des constantes du script, une somme
   différente arrête tout), assemble les ressources (`stage-bundle.ps1` vers `src-tauri/bundle-staging`, ignoré par git)
   et lance `npx tauri build --config src-tauri/tauri.bundle.conf.json`. Le résultat est
@@ -1589,6 +1617,19 @@ npm run test:coverage
 npm run lint
 ```
 
+Les images Halo 5 (`apps/web/public/titles/halo_5`) sont en WebP. Pour en ajouter ou en rafraîchir une à partir d'un PNG
+(ffmpeg avec `libwebp` dans le `PATH`, ou `LEVELUP_FFMPEG_DIR`) :
+
+```bash
+node scripts/convert-halo5-images.mjs [--keep] [--dir <racine>] [--jobs <n>]
+```
+
+Le script convertit par famille (plaques et fond : avec perte, qualité 85 ; emblèmes et vignettes : sans perte, car le
+personnalisateur Spartan lit leurs canaux R/V/B comme des zones de couleur et le sous-échantillonnage des chrominances
+d'un codage avec perte fait baver une zone sur la suivante), supprime chaque PNG converti (`--keep` les garde), est idempotent
+et affiche le poids avant et après. `teams/` et tout `halo_infinite/` restent en PNG. Un garde-rail vitest
+(`halo5Images.guard.test.ts`) échoue si un PNG revient.
+
 ### Gate local avant merge (`gate-push`)
 
 ```bash
@@ -1632,8 +1673,8 @@ fournit gcc, pas d'action MinGW). Il compile `./cmd/server` (DuckDB lié), puis 
 depuis `libs/film`, et `./himodule/` depuis `libs/gamefiles` : les paquets qui portent les fichiers `*_windows.go` /
 `*_win.go` (arrêt propre, verrous de fichiers, espace disque libre, priorité de processus, projection mémoire des
 modules). Aucun test sous les tags `gamefiles` ou `research` n'y est joué : le jeu n'est pas installé sur le runner.
-Il se déclenche sur les pushs `release/**`, les pull requests vers `main` (les seules que ce workflow reçoit) et, le temps du chantier Desktop, les pushs des branches `feat/desktop-*` (les runners Windows coûtent
-cher : les branches de travail et les pushs sur `main` le sautent), avec un budget de 15 minutes. C'est le gate
+Il se déclenche sur les pushs `release/**`, les pull requests vers `main` (les seules que ce workflow reçoit). Les runners Windows coûtent
+cher : les branches de travail et les pushs sur `main` le sautent. Le budget est de 15 minutes. C'est le gate
 d'autorité des comportements propres à Windows ; les jobs Linux ne compilent jamais ces fichiers. Pour le rejouer en
 local (PowerShell, depuis `apps/go-api`, gcc dans le `PATH`) : `go build ./cmd/server`, puis les trois appels
 `go test -count=1` ci-dessus.

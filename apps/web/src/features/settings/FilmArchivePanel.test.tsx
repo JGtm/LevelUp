@@ -9,6 +9,7 @@ import { filmArchiveFixture } from '@/test/handlers'
 import { server } from '@/test/setup'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { FilmArchivePanel } from './FilmArchivePanel'
+import { useSaveFeedbackStore } from './saveFeedbackStore'
 
 const API = '/api/v1'
 
@@ -37,6 +38,7 @@ describe('FilmArchivePanel', () => {
     useAppShellStore.setState({ locale: 'fr' })
   })
   afterEach(() => {
+    useSaveFeedbackStore.getState().clear()
     useAppShellStore.setState({ locale: 'fr' })
   })
 
@@ -77,6 +79,23 @@ describe('FilmArchivePanel', () => {
     await waitFor(() => expect(patches).toEqual([{ archive_films: false }]))
   })
 
+  it('un enregistrement réussi passe par le badge partagé, sans texte sous la carte', async () => {
+    serveurPatch()
+    renderWithProviders(<FilmArchivePanel />)
+    await screen.findByText(/Conserver les films/)
+    fireEvent.click(screen.getByRole('button', { name: '' }))
+    await waitFor(() => expect(useSaveFeedbackStore.getState().status).toBe('saved'))
+    expect(screen.queryByText('Enregistré.')).not.toBeInTheDocument()
+  })
+
+  it('dans l’assistant, le badge partagé est monté par la carte et montre l’enregistrement', async () => {
+    serveurPatch()
+    renderWithProviders(<FilmArchivePanel variant="wizard" />)
+    await screen.findByText(/Conserver les films/)
+    fireEvent.click(screen.getByRole('button', { name: '' }))
+    expect(await screen.findByText('✓ Enregistré')).toBeInTheDocument()
+  })
+
   it('affiche tel quel le refus du serveur (rétention finie)', async () => {
     const refus = 'Sans archive des films, la rétention des rejeux doit rester illimitée (0).'
     serveurPatch({ status: 400, message: refus })
@@ -84,6 +103,7 @@ describe('FilmArchivePanel', () => {
     await screen.findByText(/Conserver les films/)
     fireEvent.click(screen.getByRole('button', { name: '' }))
     expect(await screen.findByRole('alert')).toHaveTextContent(refus)
+    expect(useSaveFeedbackStore.getState().status).toBe('error')
   })
 
   it('enregistre le dossier saisi, et seulement s’il a changé', async () => {

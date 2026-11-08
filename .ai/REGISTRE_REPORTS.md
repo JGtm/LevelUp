@@ -320,3 +320,22 @@ Plan : `.ai/V8/PLAN_SUITES_DECOUPLAGE_2026-10-30.md` (aucun `[!]` ni `[~]` ; dé
 | **Mise à jour réelle jamais jouée de bout en bout** (téléchargement signé, arrêt du serveur, installeur, relance) et boîte de dialogue non vue à l'écran | L17 (2026-11-02) | Exige deux releases publiées ; les tests couvrent la séquence contre le faux serveur et un double du plugin | 17.6 : après la première release publiée, publier la suivante et jouer la mise à jour sur une machine vierge (témoins) |
 | **Clé de l'updater du gate = mot de passe vide, générée dans le scratchpad** | L17 (2026-11-02) | Le gate n'avait besoin que d'une paire valide ; une clé de production se protège par mot de passe | 17.6 : générer la clé de production (mot de passe), deux sauvegardes hors dépôt, la poser en secret du dépôt, remplacer la clé publique de `tauri.conf.json` et `.gitleaks.toml` AVANT la première release publique |
 | **Notes de mise à jour affichées en français seulement** (champ `notes` de `latest.json` = section FR du changelog) | L17 (2026-11-02) | Le champ est une chaîne unique | Notes par langue (deux sections jointes ou lien vers la page « Nouveautés ») si des utilisateurs anglophones s'installent |
+
+## Reports du chantier Desktop (2026-11-04, pilote de `.ai/V8/PLAN_DESKTOP_2026-11-01.md`)
+
+Plan clos côté code (L0 à L22c fusionnés, PR #125 à #145). Aucun item `[!]` ni `[~]` ; les items `(U)` sont passés sauf 22c.z. Reports
+avec condition de reprise (le détail de chacun est en §10 du plan) :
+
+| Item | Origine | Pourquoi reporté | Condition de reprise |
+|---|---|---|---|
+| **Tag `v8.1.0` et run Release signé** (17.6 final, publication de `latest.json`) | L17 | Décision utilisateur du 2026-11-04 : finir un autre chantier d'abord | Geste de l'utilisateur ; marche à suivre en §12 du plan |
+| **L23 poids des mises à jour** (installeur complet de 193 Mo dont ~80 Mo de ffmpeg retéléchargé à chaque version) | §9.19 | Ne se mesure qu'avec deux releases publiées | Après la seconde release publiée |
+| **Mise à jour réelle jamais jouée de bout en bout** (téléchargement signé, arrêt, installeur, relance) | L17, L20 | Exige deux releases publiées | Première mise à jour réelle = gate utilisateur à consigner |
+| **Routes sous capacité hors du contrat OpenAPI** (`/desktop/*`, `/export/desktop*`, `/import/site`, types manuels listés dans `response-types.guard`) | L22 T5 | Faire entrer ces routes exige de séparer le routeur de contrat du routeur de démonstration | Quand un lot touche `openapi-gen` ; la liste datée `MANUAL_CAPABILITY_TYPES` signale le jour où c'est possible |
+| **`wouldDowngrade` n'empêche pas l'écrasement d'un artefact produit par une version plus récente** (seule la file de régénération l'écarte) | L22b U6 | Le refuser ferait recuire à vide les films concernés à chaque cycle | Si un retour de version réel est constaté |
+| **`cmd/killsource` (outil de diagnostic) décode sans verrou solo** ; le verrou est par racine de données, pas par machine | L22c V8 | Outil hors « commande de `levelup` », racines distinctes = verrous distincts | Si un double décodage est observé sur un poste de dev |
+| **Crochet NSIS : la comparaison de l'entrée `Run` ne normalise pas les `/`** (la coquille écrit la forme Windows) | L22c | Cas théorique | Si une entrée avec `/` est observée |
+| **Désinstallation lors d'une mise à jour MANUELLE ou d'une réinstallation `/P`** : tâche et entrée retirées puis reposées au lancement suivant (documenté) | L22c V3 | Comportement du modèle NSIS de Tauri | Si une plainte utilisateur |
+| **Windows N sans Media Foundation** : message livré ; aucun test sur une édition N réelle | L20, L21a | Pas de poste N | Premier retour utilisateur sur édition N |
+| **`TestE2ELanceurDesktop` et lot `film-grammar-*`** : aléas de temps observés (budgets non élargis, grammaire en trois lots) | L20, L22 | Doctrine « rééquilibrer, pas allonger » | Deux dépassements de plus = rééquilibrer encore |
+| **Ménage des worktrees et branches** (`LevelUp-wt-desktop*`, `feat/desktop-p0`, branches locales de l'utilisateur) | pilotage | Demandé par l'utilisateur après la clôture | À faire ensemble ; `LevelUp-wt-desktop-l22c` reste sur disque (suppression refusée par Windows, déjà retiré de git) |

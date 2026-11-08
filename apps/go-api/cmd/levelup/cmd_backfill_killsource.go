@@ -224,6 +224,14 @@ func runBackfillKillSource(cfg *config.AppConfig, args []string) error {
 	if err := validerLesOptions(o); err != nil {
 		return err
 	}
+	// LE VERROU SOLO DE DECODAGE, EN REFUS IMMEDIAT, AVANT D OUVRIR LA BASE (cmd_decode_verrou.go) : cette passe
+	// decode des films dans CE processus, et un serveur qui cuit un rejeu (ou une file de regeneration) tient
+	// deja la machine. `--dry-run` et `--credit-only` ne decodent rien : ils n en ont pas besoin.
+	relacher, err := verrouDeLaPasse(cfg, o)
+	if err != nil {
+		return err
+	}
+	defer relacher()
 
 	sharedPath := pr.SharedDBPath(o.titleSlug)
 	if _, err := os.Stat(sharedPath); err != nil {

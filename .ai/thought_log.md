@@ -87,6 +87,53 @@
 **Résultats observés** : T1 21 556 lignes (paquet, test, verdict), 0 fail, 380 skip (le paquet `archlint` dépasse `-timeout 10m` dans le `./...` complet de go-api, rejoué seul : 487 tests verts en 286 s). T2 : cinq `Rev` inchangées, 34 goldens copiés avec SHA-256. T3 : `replay-equiv` 20 identiques, digests octet-identiques aux références. T4 : gate avec base = HEAD 18 identiques, 0 gain, 0 perte, `f75e7053` absent ; avec la base par défaut `origin/main` (v8.0.7), 13 témoins sur 18 en PERTE ou FAUX (dérive de couverture entre deux versions, pas un écart du lot). T5 : 0 `levelup/go-api` dans les quatre briques. T6 : façade 179, `replay.X` 316. T7 : intégration sync et persist, code 0, 2 321 tests, 0 fail. Relevé 0.2 : aucune dérive des surfaces et des révisions ; écarts de comptage mineurs (importeurs, goldens à l'ancien chemin 21 au lieu de 33, xuids non reproductibles). Inventaire 0.5 : 3 lignes « oui » à racine go-api seul (`decode_lock_interdit`, `no_discarded_remove`, `server_stdout_internal`), 3 « racine partielle » (`film_exported_vars`, `film_file_size`, `film_function_length` : sujet aussi dans `libs/himap`). 0.6 : `go build`, `go vet` et `go vet -tags research` verts avec `gamefiles` et `himap` `v0.1.0` : aucun tag `v0.1.1` à demander. Registre : D2-L0-a soldé, 21e `.tsv` = référence de `equivalence_minifilm_test.go`, D2-L5-b toujours absent.
 
 **Conclusion / prochaine étape** : lot 0 clos, six découvertes notées au plan (D-L0-1 à D-L0-6), aucune traitée. Les gates suivants rejouent T1 (archlint à part), T2, T3, T4 avec `--base` sur le commit du lot 0, T5, T6 (T7 au lot 2).
+## [2026-11-04] Desktop - L23.3 : mise en oeuvre des options retenues (f serveur sans symboles, e images Halo 5 en WebP) - Complété (gate visuel de (e) à l'utilisateur)
+
+**Décision technique principale** : décisions de l'utilisateur du 2026-11-04 : (f) OUI, (e) WebP qualité 85 OUI sous gate visuel, (a)(b)(c) NON (D-9 maintenue), (g) NON.
+(f) : `-s -w` ajouté aux `-ldflags` de `release.yml` (jobs `build-go` et `desktop-build`) et de `build-installer.ps1`, `-X main.version` conservé ; `Makefile` et `desktop-dev.ps1`
+(builds de développement) gardent leurs symboles. (e) : `scripts/convert-halo5-images.mjs` (ffmpeg libwebp), 1 257 PNG remplacés par des WebP ; ECART à la décision, justifié par mesure : seules les plaques
+(308) et le fond sont en qualité 85 ; les emblèmes et les vignettes sont SANS PERTE, car `recolor.ts` lit R, V, B comme trois zones de couleur et le sous-échantillonnage des chrominances d'un WebP avec perte les fait baver
+(pixels écartés de plus de 16 niveaux après recoloration : plaques 2,0 % en moyenne et 13,5 % la pire, emblèmes 3,5 %, vignettes d'emblème 16 %, sans perte 0 %). `teams/` reste en PNG (chemin partagé avec Halo Infinite).
+
+**Résultats observés** : serveur 163 138 322 octets vers 98 608 640 ; images 39,67 Mo vers 8,97 Mo ; installeur 202 663 134 octets (193,3 Mo) vers 159 348 542 octets (152,0 Mo), -21 %. `check-version.sh` vert sur le
+binaire sans symboles (et rouge sur une mauvaise version) ; un panic d'un binaire `-s -w` garde noms, fichiers et lignes (pclntab). `TestE2E` (`e2e_windows`) vert avec le serveur en `-s -w` ; `e2e-install.ps1` code 0
+(installation, deux lancements, arrêt propre, désinstallation). Web : typecheck 0, lint 0 erreur, vitest 1063 fichiers passés ; garde-rail `halo5Images.guard.test.ts` et test Go `TestSPAHandler_ImagesWebPDeLaPage` (image/webp).
+Aucun navigateur ni application lancés hors du test d'installation prescrit : le rendu réel des WebP dans le canvas n'a été vérifié que par décodage libwebp et par les tests.
+
+**Conclusion / prochaine étape** : gate visuel de l'utilisateur sur `C:\Users\Guillaume\Downloads\webp-halo5-avant-apres\comparer.html` (douze paires, brut et recolorié) ; s'il refuse, retirer le commit des images (le commit de (f) reste ; repli = plaques sans perte, environ 22 Mo au lieu de 4). Rapport : `.ai/V8/L23_POIDS_MISES_A_JOUR_2026-11-04.md` §11. Non traité, noté au plan §10 : PNG de `halo_infinite/` (6,6 Mo), logos `teams/`.
+
+## [2026-11-04] Desktop - L23 : mesure du poids des mises à jour et options - Complété (23.1) ; décision 23.2 à l'utilisateur
+
+**Décision technique principale** : aucune décision produit ; mesure et propositions seulement. Composition de l'installeur par famille mesurée sur
+l'installeur du run 41816350092 (extraction 7-Zip, recompression par famille en LZMA dictionnaire 8 Mo mise à l'échelle du flux NSIS solide), diff SHA-256 de
+quatre installeurs 8.1.0 successifs de la CI (runs 41586437921, 41722766811, 41816350092, 41825436589), build réel du serveur avec `-ldflags "-s -w"` (non lancé).
+
+**Résultats observés** : installeur 193,3 Mo (443 Mo décompressés). ffmpeg pèse 47 Mo compressés (158 décompressés), pas 80 ; les images Halo 5 du front 41 Mo (21 %), le serveur Go
+33 Mo (17 %, dont 39 Mo de DWARF décompressés), les fonds de carte 29 Mo. D'une version à l'autre seuls changent le serveur, la coquille et `web/assets` (35 Mo, 18 %) ;
+82 % du téléchargement sont identiques à l'octet près (un commit de documentation seul change quand même serveur et coquille). Le plugin d'updater 2.12.0 ne connaît aucun delta.
+Gains mesurés : serveur `-s -w` -11 Mo ; plaques Halo 5 en WebP qualité 85 -27 Mo (échantillon de 21) ; ffmpeg à côté -47 Mo (contredit D-9). Ffmpeg réduit (-30 à -40 Mo) non mesuré.
+
+**Conclusion / prochaine étape** : rapport `.ai/V8/L23_POIDS_MISES_A_JOUR_2026-11-04.md`. Recommandation : (f) `-s -w` avant le tag, (e) recompression des images si le rendu
+convient, pas de ffmpeg réduit, (a)/(c) seulement après un retour réel et une réouverture de D-9 par l'utilisateur. 23.2 (U) et 23.3 restent ouverts. `cargo audit` déjà livré (22c.2).
+
+## [2026-11-04] Desktop - L22c : revue adversariale V (3 P1 + 6 P2 + 1 P1 doc) - Complété côté code (22c.z gate de l'utilisateur)
+
+**Décision technique principale** : (V1) le modèle NSIS de Tauri exécute `DeleteRegValue HKCU ...\Run "${PRODUCTNAME}"` hors mise à jour sans regarder la commande : le crochet de début lit la valeur dans `$LevelUpRunValue` avant d'appeler le serveur, le crochet de fin la réécrit si elle ne visait pas `$INSTDIR\` (début de chaîne, guillemet initial retiré, casse ignorée : la règle de `startupentry.CommandTargets`). (V2) `CheckIfAppIsRunning` passe en tête du crochet (le second appel du modèle ne trouve plus rien à fermer). (V3) la garde `$UpdateMode` ne couvre que le flux de l'updater : une mise à jour manuelle ou `/P` retire puis repose au prochain lancement, documenté (ADR D-28, runbook, COMMANDS EN+FR), garde conservée. (V4) `schedtask.Manager.RemoveIfTargets` lit la définition (`/Query /TN /XML`, UTF-16 ou page de code, entités XML) et n'agit que si l'action lance le serveur du dossier désinstallé, sinon `tache=foreign` ; définition illisible = erreur, jamais de suppression à l'aveugle. (V5) le témoin porte `exit=` ; l'e2e asserte `exit=0`, `ok=true`, `demarrage=absent|foreign`, `tache=absent` et le nom de la tâche de la racine jetable ; la branche `SetEnvironmentVariable` n'est pas jouée (vraie racine de données), tenue par un garde de texte. (V6) `startupentry` ajouté au job Windows CGO. (V7) garde Rust sur l'ordre des lignes, test Go du câblage (`newUninstallCleanupDeps`). (V8) le verrou solo est par racine de données, pas par machine : documenté avec sa limite. (V9) `CodeSortieVerrouTenu = 3`. (V10) `replayregen/service.go` 579 -> 476 lignes par extraction du décompte vers `count.go`.
+
+**Résultats observés** : voir le rapport de clôture (gates Go, Rust, installeur et e2e avec exit codes). `archlint` avec `-race` dépasse le délai de 10 minutes (le test `TestNoLocalPorteeComparison` seul y passe plus d'une minute) : joué sans `-race`, délai de 30 minutes. L'essai de bout en bout ne joue ni la branche « `LEVELUP_DATA_DIR` absente » du désinstalleur ni la réécriture d'une valeur `Run` étrangère (vraie racine de données, vraie clé `Run`).
+
+**Conclusion / prochaine étape** : 22c.1 à 22c.6 restent `[x]` ; 22c.z (désinstallation réelle avec démarrage Windows et tâche planifiée actifs, y compris une entrée d'une autre copie qui doit survivre) à l'utilisateur, puis le tag. Non traité, noté : les barres obliques de la commande `Run` ne sont pas normalisées côté NSIS (la coquille écrit la forme Windows).
+
+## [2026-11-04] Desktop - L22c : finitions avant le tag (désinstallation propre, cargo audit, verrou solo du CLI, décompte des refus par règle) - Complété côté code (22c.z gate de l'utilisateur)
+
+**Décision technique principale** : (22c.1) le nettoyage de désinstallation est un mode du serveur livré, `levelup-server.exe -mode uninstall-cleanup`, en Go : le désinstalleur NSIS n'a sous la main que cet exécutable. Il retire l'entrée de démarrage de l'utilisateur (`HKCU\...\Run` et `StartupApproved`, nouveau paquet `internal/platform/startupentry` derrière une interface) seulement si sa commande vise le dossier du programme désinstallé, et la tâche planifiée de la racine de données (`schedtask`, nom par racine) ; il n'ouvre aucune base, ne prend aucun verrou, ne touche jamais à la racine de données. Le crochet `NSIS_HOOK_PREUNINSTALL` l'appelle (`nsExec::ExecToLog`, délai 60 s) hors du flux de mise à jour (`$UpdateMode <> 1`) ; la preuve de bout en bout est un fichier témoin (`LEVELUP_UNINSTALL_WITNESS`), l'e2e ne pose aucune entrée ni tâche réelle. (22c.2) job `desktop-audit` (Linux, `cargo-audit` 0.22.2 épinglé, vulnérabilités bloquantes, avis d'entretien en avertissement). (22c.4) `backfill-killsource` prend le verrou solo en refus immédiat (sortie 3, détenteur nommé), sauf `--dry-run` et `--credit-only`. (22c.5) le panneau d'archive des films passe au badge partagé. (22c.6) le décompte de régénération écarte d'emblée les matchs que la cuisson refuse par règle (`Deps.RefusedByRule`, prédicat `analysis.SQLModeNonGere`). (22c.3) la condition `feat/desktop-*` du job Windows CGO est retirée (commit en dernier).
+## [2026-11-04] Desktop - L22c : finitions avant le tag (désinstallation propre, cargo audit, verrou solo du CLI, décompte des refus par règle) - Complété côté code (22c.z gate de l'utilisateur)
+
+**Décision technique principale** : (22c.1) le nettoyage de désinstallation est un mode du serveur livré, `levelup-server.exe -mode uninstall-cleanup`, en Go : le désinstalleur NSIS n'a sous la main que cet exécutable. Il retire l'entrée de démarrage de l'utilisateur (`HKCU\...\Run` et `StartupApproved`, nouveau paquet `internal/platform/startupentry` derrière une interface) seulement si sa commande vise le dossier du programme désinstallé, et la tâche planifiée de la racine de données (`schedtask`, nom par racine) ; il n'ouvre aucune base, ne prend aucun verrou, ne touche jamais à la racine de données. Le crochet `NSIS_HOOK_PREUNINSTALL` l'appelle (`nsExec::ExecToLog`, délai 60 s) hors du flux de mise à jour (`$UpdateMode <> 1`) ; la preuve de bout en bout est un fichier témoin (`LEVELUP_UNINSTALL_WITNESS`), l'e2e ne pose aucune entrée ni tâche réelle. (22c.2) job `desktop-audit` (Linux, `cargo-audit` 0.22.2 épinglé, vulnérabilités bloquantes, avis d'entretien en avertissement). (22c.4) `backfill-killsource` prend le verrou solo en refus immédiat (sortie 2, détenteur nommé), sauf `--dry-run` et `--credit-only`. (22c.5) le panneau d'archive des films passe au badge partagé. (22c.6) le décompte de régénération écarte d'emblée les matchs que la cuisson refuse par règle (`Deps.RefusedByRule`, prédicat `analysis.SQLModeNonGere`). (22c.3) la condition `feat/desktop-*` du job Windows CGO est retirée (commit en dernier).
+
+**Résultats observés** : voir le rapport de clôture (gates Go, Rust, web, installeur et e2e avec exit codes). `cargo audit` local : 0 vulnérabilité, 11 avertissements (arbre transitif tauri), sortie 0. Le registre est exercé sur une clé privée aléatoire de HKCU, jamais la vraie clé Run.
+
+**Conclusion / prochaine étape** : 22c.1 à 22c.6 `[x]` ; 22c.z (désinstallation réelle avec démarrage Windows et tâche planifiée actifs) à l'utilisateur, puis le tag. Non traité, noté au plan §10 : `cmd/killsource` (outil de diagnostic) sans verrou solo ; flux de mise à jour réel du désinstalleur non joué ; désinstallation non jouée contre un vrai registre `Run` / un vrai planificateur.
 
 ## [2026-11-03] Desktop - L22b : revue adversariale U (1 P0 + 1 P1 + 6 P2) - Complété côté code (22b.z gate de l'utilisateur)
 
@@ -159,6 +206,13 @@
 **Résultats observés** : flux complet joué en Go avec un Azure simulé qui vérifie le PKCE et l'adresse de retour (state faux, rejoué, expiré, refus Microsoft, échec d'échange, point d'arrivée appelé une fois, jeton écrit pour le profil suivi) ; garde de la coquille testé méthode par méthode et chemin par chemin ; Playwright headless sur `vite preview` (12 tests, témoins `scratchpad/l21a/temoins/`) ; le gate web complet a trouvé un garde-rail que les tests ciblés ne voyaient pas (types de réponse écrits à la main : entrée datée ajoutée, la route étant hors du document généré).
 
 **Conclusion / prochaine étape** : 21.00, 21.0, 21.0b et 21.0d `[x]` ; 21.z (flux Azure réel, barre repliée, classements, message média) à l'utilisateur. Risque principal au gate : l'échange du code sans secret client (voir §10 du plan). Les items (a) à (e) de L21 restent à l'autre session.
+## [2026-11-02] Rejeu — vitesse 1.5× au menu de vitesse — Complété
+
+**Décision technique principale** : `SPEED_MULTIPLIERS` passe à `[0.5, 1, 1.5, 2, 4]` ; le format du déclencheur garde une décimale seulement pour les vitesses non entières (l ancien format arrondissait 1.5 à « 2× »). Le son reste actif à 1.5× (borne `SOUND_MAX_SPEED` = 2).
+
+**Résultats observés** : tests du menu et des réglages verts (33/33), dont un test qui affiche « 1.5× ». Pas de vérification visuelle.
+
+**Conclusion / prochaine étape** : aucune ; une vitesse 1.5× déjà stockée dans le navigateur est désormais acceptée.
 
 ## [2026-11-02] Desktop — L20 : revue adversariale M (DuckDB, configuration, release) et N (web, encodeur) — Complété (commit local, pas de push)
 
@@ -120056,3 +120110,11 @@ publication des briques, citations `.ai/` du code) ; 75 lignes antérieures à 2
 `.ai/archive/BACKLOG_COMPLETE_avant_2026-07.md` ; chemins `.ai/` périmés réalignés sur l'archive (0 lien mort).
 
 **Conclusion / prochaine étape.** Rien à exécuter ; commit au choix du user.
+
+## [2026-11-04] Citation Prise du crâne : visuel chevrons + crâne gris — Complété (branche `feat/citation-prise-du-crane-v2`, non commité)
+
+**Décision technique principale** : `HI_citation_Prise_du_crane.png` remplacé par le visuel final de l'utilisateur (trois chevrons blancs qui rognent un crâne gris clair, ombre douce, découpe parallèle au chevron). Même chemin d'image : aucun changement de code ni de seed, pas de re-seed nécessaire.
+
+**Résultats observés** : contrôle visuel de l'image sur fond gris et blanc ; branche créée depuis `origin/release/v8.1.0` dans un worktree dédié.
+
+**Conclusion / prochaine étape** : commit et PR vers `release/v8.1.0` sur accord.

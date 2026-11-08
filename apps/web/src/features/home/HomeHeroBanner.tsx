@@ -16,7 +16,7 @@ const HEADER_IMAGES_BY_TITLE: Record<string, string[]> = {
     '/titles/halo_infinite/halo-infinite-dlc-combined-arms.png',
     '/titles/halo_infinite/infinite_fractures_tenrai.png',
   ],
-  halo_5: ['/titles/halo_5/wallpaper_halo_5_guardians_01.png'],
+  halo_5: ['/titles/halo_5/wallpaper_halo_5_guardians_01.webp'],
 }
 
 const ROTATION_INTERVAL_MS = 45_000

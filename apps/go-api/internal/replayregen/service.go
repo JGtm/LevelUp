@@ -50,6 +50,11 @@ type Deps struct {
 	Titles func() []string
 	// FilmPresent : le film du match est dans l'archive locale ; sans lui il n'y a rien à rejouer.
 	FilmPresent func(titleSlug, matchID string) bool
+	// RefusedByRule rend, pour un titre, l'ensemble des matchs (forme courte, celle du nom du fichier) que la cuisson
+	// refuse PAR RÈGLE : un mode que le rejeu ne gère pas (replaybuild.ErrModeNonGere, lu au registre par le même
+	// prédicat que la cuisson). Le décompte les écarte d'emblée au lieu d'attendre leur premier refus de cuisson ; une
+	// erreur est journalisée et le décompte retombe sur le comportement d'avant (refus au premier essai). nil = aucun.
+	RefusedByRule func(ctx context.Context, titleSlug string) (map[string]struct{}, error)
 	// Rebuild reconstruit et range le rejeu d'UN match, hors du processus (même chemin que l'action admin). Il
 	// enveloppe ErrBusy quand un autre décodage tient la machine.
 	Rebuild func(ctx context.Context, titleSlug, matchID string) error
@@ -175,88 +180,6 @@ func (s *Service) statusLocked() domain.ReplayRegenStatus {
 		Checked: s.checked || s.running, Stale: stale, Running: s.running, Done: s.done, Total: s.total,
 		Paused: s.running && s.userPaused, WaitingForGame: s.running && s.waitingGame, Failed: s.failed,
 	}
-}
-
-func (s *Service) backgroundScan(seq int64) {
-	defer s.wg.Done()
-	cands, err := s.scanUnderGate(s.ctx)
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.scanning = false
-	if err != nil {
-		slog.WarnContext(s.ctx, "replay_regen: décompte des rejeux en retard interrompu", "err", err)
-		return
-	}
-	s.publishCountLocked(seq, len(cands))
-}
-
-// scanUnderGate : le décompte sous la porte du mode jeu.
-func (s *Service) scanUnderGate(ctx context.Context) ([]Candidate, error) {
-	if !s.waitHeavy(ctx) {
-		return nil, ctx.Err()
-	}
-	return s.scan(ctx)
-}
-
-// publishCountLocked publie un décompte, sauf s'il est plus ancien que le dernier publié.
-func (s *Service) publishCountLocked(seq int64, n int) {
-	if seq < s.countApplied {
-		slog.Debug("replay_regen: décompte périmé jeté", "seq", seq, "publie", s.countApplied)
-		return
-	}
-	s.countApplied = seq
-	s.checked, s.stale = true, n
-	observability.SetInt(MetricStale, int64(n))
-}
-
-// waitHeavy attend la porte du mode jeu (ni la pause ni la synchronisation : un décompte ne décode rien). Rend
-// faux si ctx est annulé en attendant.
-func (s *Service) waitHeavy(ctx context.Context) bool {
-	for {
-		if ctx.Err() != nil {
-			return false
-		}
-		if s.deps.HeavyAllowed == nil || s.deps.HeavyAllowed() {
-			return true
-		}
-		select {
-		case <-ctx.Done():
-			return false
-		case <-time.After(s.deps.gateEvery()):
-		}
-	}
-}
-
-// scan liste les rejeux régénérables de tous les titres, le plus récent d'abord.
-func (s *Service) scan(ctx context.Context) ([]Candidate, error) {
-	s.mu.Lock()
-	d := s.deps
-	s.mu.Unlock()
-	var all []Candidate
-	for _, slug := range d.Titles() {
-		c, err := scanTitle(ctx, d.Paths.ReplayArtifactsDir(slug), slug, d.FilmPresent, s.isBlocked)
-		if err != nil {
-			return nil, err
-		}
-		all = append(all, c...)
-	}
-	sortRecentFirst(all)
-	return all, nil
-}
-
-func blockKey(slug, matchID string) string { return slug + "/" + matchID }
-
-func (s *Service) isBlocked(slug, matchID string) bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	_, ok := s.blocked[blockKey(slug, matchID)]
-	return ok
-}
-
-func (s *Service) block(slug, matchID string) {
-	s.mu.Lock()
-	s.blocked[blockKey(slug, matchID)] = struct{}{}
-	s.mu.Unlock()
 }
 
 // Start lance la file à la demande de l'utilisateur. Idempotent : une file déjà active n'est pas relancée.

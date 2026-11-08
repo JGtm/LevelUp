@@ -70,6 +70,10 @@ var goosSuffixAllowed = map[string]string{
 		"(L21.a ; motif de diskfree_windows.go)",
 	"apps/go-api/internal/platform/gameproc/lister_windows_test.go": "test de l'enumeration reelle des " +
 		"processus (Win32), ajoute le 2026-11-02 (L21.a)",
+	"apps/go-api/internal/platform/startupentry/registry_windows.go": "entree de demarrage de l utilisateur : registre " +
+		"(HKCU Run et StartupApproved), ajoute le 2026-11-04 (L22c.1 ; motif de syslocale_windows.go)",
+	"apps/go-api/internal/platform/startupentry/registry_windows_test.go": "test du registre sur une cle privee a nom " +
+		"aleatoire (HKCU), ajoute le 2026-11-04 (L22c.1)",
 	"apps/go-api/internal/platform/session/store_purge_windows_test.go": "purge de sessions : comportement " +
 		"de suppression propre a Windows",
 }

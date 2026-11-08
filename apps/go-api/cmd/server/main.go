@@ -57,6 +57,9 @@ func main() {
 	if st.flags.Mode == serverModeRestore {
 		os.Exit(runRestoreMode(st.ctx, st.flags)) // restaure un jeu de sauvegarde puis sort : ni configuration serveur, ni port
 	}
+	if st.flags.Mode == serverModeUninstallCleanup {
+		os.Exit(runUninstallCleanupMode(st.ctx)) // retire l'entrée de démarrage et la tâche planifiée puis sort : ni base, ni port, ni verrou
+	}
 	bootConfigure(st)
 	bootMigrate(st)
 	bootOpenDatabases(st)

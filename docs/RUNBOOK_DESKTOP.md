@@ -62,8 +62,16 @@ Everything below is in the "Application" tab of the settings, absent on the site
   `schtasks /Query /FO LIST | findstr /i "LevelUp\Refresh"` to read its exact name, then `schtasks /Query /TN "<name>" /V /FO LIST`; to remove it
   without LevelUp: `schtasks /Delete /TN "<name>" /F`. At each start with the setting on, the task is rewritten (a reinstall in another
   folder never leaves it pointing to the old one).
-- **Uninstalling.** The uninstaller does not remove the startup entry nor the scheduled task: turn both settings off first (or run the two
-  commands above and delete the `LevelUp` value of `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`).
+- **Uninstalling.** The uninstaller removes both by itself: before deleting the program files it runs `levelup-server.exe -mode uninstall-cleanup`, which
+  deletes the `LevelUp` value of `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` (and its `StartupApproved` value; only when it points into the
+  folder being uninstalled) and the scheduled task of the data root (only when its action runs the server of that folder: two installations of the same
+  user share the default data root, so the other one's task stays). It never touches the data folder. Nothing to turn off first. If you cancel at "LevelUp
+  is running", nothing has been removed yet. The entry of ANOTHER copy (a development build, another folder) is left alone: the template of Tauri deletes
+  the `Run` value without looking, so the uninstaller reads it first and writes it back when it did not point into the uninstalled folder.
+  **Updates.** The automatic update (the updater) never calls the old uninstaller: your entry and your task survive. A MANUAL update (the installer
+  launched by hand with "uninstall before" ticked, which is the default) or a passive reinstall (`/P`) does call it: the entry and the task are removed,
+  then put back at the next launch of the application if the setting is on. If the cleanup could not run (the program files were already damaged), remove
+  them by hand with the commands above and by deleting the `LevelUp` value of the `Run` key.
 
 ## Your data: backup, restore, move from the site, diagnostic (Settings > Application)
 
@@ -136,8 +144,13 @@ tokens to "repair" a sign-in (ADR 0023). The `code` and the `state` never reach 
 ## Automated proof
 
 `powershell -File apps/desktop/scripts/e2e-install.ps1 -Installer <setup.exe>` plays steps 1 to 5 on a throwaway data
-root (silent install, two launches, close by `WM_CLOSE`, clean stop, silent uninstall, data kept). It refuses to run
-when LevelUp is already installed. The `desktop-e2e` job of `.github/workflows/release.yml` runs the same script.
+root (silent install, two launches, close by `WM_CLOSE`, clean stop, silent uninstall, data kept, and the uninstaller's cleanup
+call proven by a witness file: `LEVELUP_UNINSTALL_WITNESS`, whose line must carry the full report: `exit=0`, `ok=true`, `demarrage=absent` or
+`foreign` (never `removed`), `tache=absent`, the task name of the throwaway root, the root and the program folder). It creates no startup entry and no
+scheduled task. It refuses to run when LevelUp is already installed. The `desktop-e2e` job of `.github/workflows/release.yml` runs the same script.
+**Not played by the script**: the uninstaller's branch "`LEVELUP_DATA_DIR` absent" (it sets `LEVELUP_DATA_DIR` itself to the default
+`%LOCALAPPDATA%\LevelUp`; playing it would aim the cleanup at the real data root of the machine), nor the rewrite of a foreign `Run` value. Both are held
+by the text guards of `apps/desktop/src-tauri/tests/textes_de_configuration.rs` (presence, form and order of the lines of the hooks).
 
 ## Releasing (maintainer)
 
