@@ -554,9 +554,8 @@ jobs:
         env:
           CGO_ENABLED: "0"
 
-      # Même brique, Linux et CGo : les instruments `research` (compilation seule, jamais exécutés ;
-      # le jeu de balises `research campagne_overlay` ne compile pas, recouvrement de campagne non
-      # versionné, découverte D2-L0-b du plan D2 : il n'est pas joué ici) et l'autonomie du module —
+      # Même brique, Linux et CGo : les instruments `research` (compilation seule, jamais exécutés)
+      # et l'autonomie du module —
       # `go list -deps -test` ne doit montrer aucun paquet `levelup/go-api`, doublée par
       # archlint/briques_imports_test.go.
       - name: go vet research + autonomie (brique film — module libs/film)

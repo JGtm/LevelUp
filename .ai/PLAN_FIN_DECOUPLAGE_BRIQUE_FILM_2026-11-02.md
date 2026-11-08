@@ -878,8 +878,14 @@ décodeur qui importent `filmcache` / `filmproc` suivent les nouveaux noms (ré�
       aussi réécrit `sentinelleTokens` et un message de `no_unbounded_film_loop_test.go` (`memguard.Arm(t.Context(), `) :
       remis à `memguard.Arm(` / `memguard.Arm(ctx, ...)`. Les 11 fichiers `research && campagne_overlay` modifiés par le
       premier passage sont restaurés (ils sont supprimés au 2.6). `go build` et `go vet` des deux modules verts.
-- [ ] 2.6 `git rm` des 21 fichiers `research && campagne_overlay` (liste fermée par
+- [x] 2.6 `git rm` des 21 fichiers `research && campagne_overlay` (liste fermée par
       `grep -rlE '^//go:build research && campagne_overlay' libs/film`) ; ligne D2-L0-b du registre soldée.
+      — FAIT (2026-11-08). `grep -rlE '^//go:build research && campagne_overlay' libs/film` : 21 fichiers (tous sous
+      `libs/film/internal/grammar`, liste dans `temoins_film/lot2/2.6_fichiers_supprimes.txt`), `git rm` des 21 ; le grep
+      rend 0 ensuite. Ligne D2-L0-b de `.ai/REGISTRE_REPORTS.md` barrée et soldée (« SOLDÉ le 2026-11-08 »). Le commentaire
+      de `.github/workflows/ci.yml` qui disait « le jeu de balises `research campagne_overlay` ne compile pas » n'a plus
+      d'objet : réduit aux deux faits vrais (instruments `research` compilés, autonomie du module). Aucun autre
+      renvoi à `campagne_overlay` hors archives et plans clos.
 - [ ] 2.7 `research` : reste derrière son tag ; chaque instrument qui importait le lanceur ou le cache déplacé
       prend le nouveau chemin ou son équivalent côté brique ; `go vet -tags research ./...` vert.
 - [ ] 2.8 Garde-rails et ADR : ratchet `film_sans_exploitation` (aucun `os/exec`, aucun `os.Getenv` hors
