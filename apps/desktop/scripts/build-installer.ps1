@@ -111,14 +111,17 @@ try {
     Build-Installer 'complet' @('tauri.bundle.conf.json') "LevelUp_${version}_x64-setup.exe"
     $engineConfigs = @('tauri.engine.conf.json')
     if ($SigningKey) {
-        $env:TAURI_SIGNING_PRIVATE_KEY = (Resolve-Path $SigningKey).Path
+        # UNE seule voie, celle de la CI (release.yml) : le CONTENU de la cle dans TAURI_SIGNING_PRIVATE_KEY, lu par
+        # `tauri build` ET par `tauri signer sign`. Passer aussi `-f <chemin>` a `signer sign` est refuse (la variable
+        # d'environnement est deja `--private-key` : « --private-key-path cannot be used with --private-key »).
+        $env:TAURI_SIGNING_PRIVATE_KEY = (Get-Content -Raw -Path (Resolve-Path $SigningKey).Path)
         $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = $SigningPassword
         $engineConfigs += 'tauri.updater.conf.json'
     }
     Build-Installer 'moteur seul' $engineConfigs "LevelUp_${version}_x64-engine-setup.exe"
     if ($SigningKey) {
         $pack = Join-Path $OutDir "levelup-resources-$fingerprint.zip"
-        Invoke-Native 'signature du paquet' { npx tauri signer sign -f $env:TAURI_SIGNING_PRIVATE_KEY -p $SigningPassword $pack }
+        Invoke-Native 'signature du paquet' { npx tauri signer sign $pack }
     }
 }
 finally { Pop-Location }
