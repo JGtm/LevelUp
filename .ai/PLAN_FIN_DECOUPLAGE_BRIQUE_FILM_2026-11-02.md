@@ -886,12 +886,37 @@ décodeur qui importent `filmcache` / `filmproc` suivent les nouveaux noms (ré�
       de `.github/workflows/ci.yml` qui disait « le jeu de balises `research campagne_overlay` ne compile pas » n'a plus
       d'objet : réduit aux deux faits vrais (instruments `research` compilés, autonomie du module). Aucun autre
       renvoi à `campagne_overlay` hors archives et plans clos.
-- [ ] 2.7 `research` : reste derrière son tag ; chaque instrument qui importait le lanceur ou le cache déplacé
+- [x] 2.7 `research` : reste derrière son tag ; chaque instrument qui importait le lanceur ou le cache déplacé
       prend le nouveau chemin ou son équivalent côté brique ; `go vet -tags research ./...` vert.
-- [ ] 2.8 Garde-rails et ADR : ratchet `film_sans_exploitation` (aucun `os/exec`, aucun `os.Getenv` hors
+      — FAIT (2026-11-08). `go vet -tags research ./...` : code 0 dans `libs/film` ET dans `apps/go-api` (CGO, gcc
+      de msys64 ucrt64 en tête du PATH), sorties dans `temoins_film/lot2/2.7_vet_research_{film,api}.txt`. Les instruments
+      qui armaient `memguard.Arm` ou écrivaient par `atomicfile` suivent la nouvelle signature (`cmd_fermeture`,
+      `cmd_grenadeids`, `emprise_*_research_test.go`, les `*_research_test.go` de `replay`/`killsource`/`objectives`/
+      `grammar` hors les 21 supprimés au 2.6) ; ceux qui prenaient le verrou de décodage passent par
+      `libs/film/internal/decodelock` (2.1) ; aucun n'importait `filmcache` en écriture.
+
+- [x] 2.8 Garde-rails et ADR : ratchet `film_sans_exploitation` (aucun `os/exec`, aucun `os.Getenv` hors
       `revision/porte.go`, aucune écriture de fichier hors `internal/` et des écritures de goldens sous porte) ;
       ADR 0034 amendée d'un paragraphe « ce que la brique ne décide pas » (règle ci-dessus) ; ADR 0041 : table des
       paquets de la brique mise à jour.
+      — FAIT (2026-11-08). Ratchet `apps/go-api/internal/archlint/film_sans_exploitation_test.go`
+      (`TestLaBriqueNeFaitPasDExploitation`), balayage AST de la production de `libs/film` (hors `research/`, hors
+      `_test.go`, hors fichiers sous tag `research`) : aucun import `os/exec` ; aucun `os.Getenv` / `LookupEnv` /
+      `Environ` hors `libs/film/revision/porte.go` ; aucune écriture (`WriteFile`, `Create`, `CreateTemp`, `Rename`,
+      `Mkdir*`, `Remove*`, `OpenFile` ouvert en écriture ou à drapeau illisible) hors `libs/film/internal/` et
+      `libs/film/revision/`. Allowlist : aucune. Vert d'emblée (relevé du 2026-11-08 : `os.Getenv` nulle part dans la
+      brique, écritures seulement sous `internal/` et `revision/`). Mutations jouées dans `libs/film/replay` (fichier
+      jetable retiré ensuite) : `os.Getenv("X")` -> ROUGE `zz_mutation.go:5: os.Getenv hors de revision/porte.go` ;
+      `os.WriteFile` -> ROUGE ; `os.OpenFile(..., os.O_WRONLY, ...)` -> ROUGE ; `os.OpenFile` à drapeau variable ->
+      ROUGE ; import de `os/exec` -> ROUGE ; `os.OpenFile(..., os.O_RDONLY, 0)` -> vert (lecture admise) ; fichier retiré
+      -> vert (`temoins_film/lot2/2.8_mutations.txt`). Première version : `os.O_RDONLY` rougissait à tort (le nom du
+      sélecteur était lu comme une variable) ; corrigé avant la mutation finale. ADR 0034 : amendement du 2026-11-08
+      « what the brick does not decide » (la règle, les trois paquets de l'hôte `filmrun` / `filmarchive` /
+      `filmreplis`, le ratchet) et ligne 346 corrigée (`filmproc.AcquireSolo` -> `filmrun.AcquireSolo`, D-L2-5). ADR 0041 :
+      la phrase des paquets de la brique `film` mise à jour (`memguard`, `filmcache` en lecture, auxiliaires fermés
+      `digest`/`atomicfile`/`filelock`/`decodelock`/`depottest`, copies jumelles, renvoi à l'ADR 0034). Les ADR sont
+      EN-only (règle 15) : pas de traduction.
+
 - [ ] 2.9 Gate : T1 (disparitions = les 21 fichiers + les tests déplacés, nommés un à un, 0 nom disparu sinon),
       T2 (0 golden changé, ou seuls ceux régénérés en 2.4 avec chronique), T3, T4 (`--base 421107998f`), T5, T7 ;
       lint des cinq modules à 0 issue (`golangci-lint run --config ../../apps/go-api/.golangci.yml ./...`) ;
