@@ -100,6 +100,8 @@ const titleScopedInvocations: Record<string, () => readonly unknown[]> = {
   mediaRail: () => queryKeys.mediaRail(P, T, 5, 'fr'),
   mediaAuthors: () => queryKeys.mediaAuthors(P, T),
   mediaAudioConfig: () => queryKeys.mediaAudioConfig(P, T),
+  mediaMissing: () => queryKeys.mediaMissing(P, T),
+  mediaMergeCandidates: () => queryKeys.mediaMergeCandidates(P, T, null),
   mediaMatchCandidates: () => queryKeys.mediaMatchCandidates(P, T, null, 5, 'fr'),
   // Citations / médailles / commendations / timeseries.
   citations: () => queryKeys.citations(P, T, 'h', 'fr'),

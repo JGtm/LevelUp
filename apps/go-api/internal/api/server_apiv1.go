@@ -973,7 +973,12 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		// P6.3 : guard de capability — media routes nécessitent CapMedia.
 		media := handlers.NewMediaHandler(reg.Media, reg.MediaUpload, cfg.RepoRoot).
 			WithSettingsStore(settingsStore).
-			WithProduction(cfg.IsProduction()).
+			WithMediaDeleteSource(cfg.MediaDeleteSource).
+			// Confirmation d'une disparition massive : la passe d'indexation du joueur est relancée
+			// sur les réglages vivants, comme après une synchronisation.
+			WithMediaRescan(func(ctx context.Context, gamertag string) {
+				service.NewLiveMediaScanHook(cfg, settingsStore, gamertag)(ctx)
+			}).
 			// Multi-user authentifié : un like sans joueur courant en session est
 			// refusé (401) au lieu d'être écrit comme like anonyme non attribuable.
 			WithAuthEnforced(authz.Enforced(cfg.DemoMode, cfg.AuthMode)).

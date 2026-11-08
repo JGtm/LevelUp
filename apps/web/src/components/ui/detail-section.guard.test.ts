@@ -60,7 +60,7 @@ const ALLOWLIST: Record<string, number> = {
   '/src/features/legal/LegalDocument.tsx': 1, // rendu commun confidentialité + conditions (ex-PrivacyPage, même compte)
   '/src/features/match-view/MatchNarrativeSection.tsx': 1,
   '/src/features/media/MediaAudioConfigButton.tsx': 1,
-  '/src/features/media/MediaMatchPicker.tsx': 1,
+  '/src/features/media/MediaPickerDialog.tsx': 1, // coquille extraite de MediaMatchPicker, même compte
   '/src/features/palmares/RelationsMomentsSection.tsx': 2,
   '/src/features/palmares/SeasonPassPage.tsx': 2,
   '/src/features/prestige/components/MomentCard.tsx': 1,

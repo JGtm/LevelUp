@@ -35,7 +35,7 @@ type MediaIndexer interface {
 	// la regex est skip → capture_start_utc=NULL → 0 associations match).
 	// Rapporte la progression via jobStore pour le job jobID.
 	// deleteSource : politique de rétention du source après transcodage HLS (résolue
-	// par l'appelant via config.ResolveMediaDeleteSource), propagée au sweep post-reindex.
+	// par l'appelant via config.AppConfig.MediaDeleteSource), propagée au sweep post-reindex.
 	ResetAndReindex(ctx context.Context, repoRoot string, capturesBaseDir string, timezone string, reindexAfter bool, deleteSource bool, jobStore *jobs.Store, jobID string) error
 
 	// ScanAllMedia indexe les médias de tous les joueurs sans supprimer les entrées
@@ -66,7 +66,7 @@ func (d *DirMediaIndexer) ResetAndReindex(
 ) error {
 	pr := titlePkg.NewPathResolver(repoRoot)
 	titleSlug := ctxkeys.TitleSlug(ctx) // titre courant (sync/admin) ; repli halo_infinite si absent
-	capturesBaseDir = effectiveMediaBase(ctx, pr, capturesBaseDir)
+	capturesBaseDir, policy := resolveMediaBase(ctx, pr, capturesBaseDir)
 	playersDir := pr.PlayersRootDir(titleSlug)
 
 	entries, err := os.ReadDir(playersDir)
@@ -108,7 +108,9 @@ func (d *DirMediaIndexer) ResetAndReindex(
 		// (append-only) depuis drop_media_from_player_db (K1m, ex-resetPlayerMediaIndex no-op).
 		if reindexAfter {
 			capturesDir := pr.ResolveCapturesDir(titleSlug, gamertag, capturesBaseDir)
-			if _, err := os.Stat(capturesDir); err == nil {
+			if _, err := os.Stat(capturesDir); err != nil {
+				noteRootUnavailable(policy, titleSlug, gamertag)
+			} else {
 				reindexPct := (i * 100) / total
 				reindexStep := fmt.Sprintf("Réindexation : %s (%d/%d)", gamertag, i+1, total)
 				jobStore.Update(jobID, func(j *domain.AsyncJobStatus) {
@@ -126,6 +128,8 @@ func (d *DirMediaIndexer) ResetAndReindex(
 					Gamertag:            gamertag,
 					Timezone:            timezone,
 					TitleSlug:           titleSlug,
+					MissingPolicy:       policy,
+					SkipFreshFiles:      true,
 				}); err != nil {
 					jobStore.Update(jobID, func(j *domain.AsyncJobStatus) {
 						w := fmt.Sprintf("WARN reindex %s: %v", gamertag, err)
@@ -157,7 +161,7 @@ func (d *DirMediaIndexer) ScanAllMedia(
 ) error {
 	pr := titlePkg.NewPathResolver(repoRoot)
 	titleSlug := ctxkeys.TitleSlug(ctx) // titre courant (sync/admin) ; repli halo_infinite si absent
-	capturesBaseDir = effectiveMediaBase(ctx, pr, capturesBaseDir)
+	capturesBaseDir, policy := resolveMediaBase(ctx, pr, capturesBaseDir)
 	playersDir := pr.PlayersRootDir(titleSlug)
 
 	entries, err := os.ReadDir(playersDir)
@@ -195,6 +199,7 @@ func (d *DirMediaIndexer) ScanAllMedia(
 		capturesDir := pr.ResolveCapturesDir(titleSlug, gamertag, capturesBaseDir)
 
 		if _, err := os.Stat(capturesDir); err != nil {
+			noteRootUnavailable(policy, titleSlug, gamertag)
 			continue // dossier absent, on passe
 		}
 
@@ -215,6 +220,8 @@ func (d *DirMediaIndexer) ScanAllMedia(
 			Gamertag:            gamertag,
 			Timezone:            timezone,
 			TitleSlug:           titleSlug,
+			MissingPolicy:       policy,
+			SkipFreshFiles:      true,
 		}); err != nil {
 			jobStore.Update(jobID, func(j *domain.AsyncJobStatus) {
 				w := fmt.Sprintf("WARN scan %s: %v", gamertag, err)
@@ -255,7 +262,7 @@ func (d *DirMediaIndexer) ScanAllMedia(
 //	engine.WithMediaScanHook(hook)
 //
 // deleteSourceFn est un chargeur paresseux de la politique de rétention du source
-// après transcodage HLS (résolue live via config.ResolveMediaDeleteSource par
+// après transcodage HLS (résolue live via config.AppConfig.MediaDeleteSource par
 // l'appelant, qui a accès au store + isProd). nil ⇒ false (défaut sûr : conserver).
 func BuildMediaScanHook(repoRoot, gamertag string, capturesBaseDirFn, timezoneFn func() string, deleteSourceFn func() bool) func(ctx context.Context) {
 	return func(ctx context.Context) {
@@ -273,9 +280,10 @@ func BuildMediaScanHook(repoRoot, gamertag string, capturesBaseDirFn, timezoneFn
 		}
 		pr := titlePkg.NewPathResolver(repoRoot)
 		titleSlug := ctxkeys.TitleSlug(ctx) // titre courant (sync/admin) ; repli halo_infinite si absent
-		capturesBaseDir = effectiveMediaBase(ctx, pr, capturesBaseDir)
+		capturesBaseDir, policy := resolveMediaBase(ctx, pr, capturesBaseDir)
 		capturesDir := pr.ResolveCapturesDir(titleSlug, gamertag, capturesBaseDir)
 		if _, err := os.Stat(capturesDir); err != nil {
+			noteRootUnavailable(policy, titleSlug, gamertag)
 			return // répertoire absent → rien à indexer
 		}
 		if _, err := ops.IndexMedia(ctx, ops.MediaIndexOptions{
@@ -288,6 +296,8 @@ func BuildMediaScanHook(repoRoot, gamertag string, capturesBaseDirFn, timezoneFn
 			Gamertag:            gamertag,
 			Timezone:            timezone,
 			TitleSlug:           titleSlug,
+			MissingPolicy:       policy,
+			SkipFreshFiles:      true,
 		}); err != nil {
 			slog.WarnContext(ctx, "post-sync: media scan échoué (non-fatal)", "gamertag", gamertag, "err", err)
 		}
@@ -297,29 +307,42 @@ func BuildMediaScanHook(repoRoot, gamertag string, capturesBaseDirFn, timezoneFn
 	}
 }
 
-// effectiveMediaBase résout la base média effective pour l'indexation/scan/HLS :
-// retourne `configured` (settings.MediaCapturesBaseDir) s'il existe sur disque ;
-// sinon retombe sur la base interne canonique pr.MediaDataDir() ({root}/data/media)
-// si elle existe ; sinon "" (comportement interne PlayerCapturesDir inchangé).
-// Logge un WARN quand le fallback s'active.
+// resolveMediaBase résout la base média effective pour l'indexation/scan/HLS et dit
+// ce que la passe peut faire d'un média dont le fichier a disparu :
+//   - dossier configuré (settings.MediaCapturesBaseDir) présent : il est rendu, la
+//     racine est fiable (ops.MissingMark) ;
+//   - aucun dossier configuré : base "" (dossier interne de PlayerCapturesDir,
+//     ops.MissingMark) ;
+//   - dossier configuré absent : repli sur la base interne canonique pr.MediaDataDir()
+//     ({root}/data/media) si elle existe, sinon "" ; dans les deux cas la racine n'est
+//     pas celle que l'utilisateur a choisie, rien ne doit être marqué introuvable
+//     (ops.MissingRootUnavailable). Un WARN est logué quand le repli s'active.
 //
 // Garde-fou anti-régression (incident prod 2026-06-13) : un media_captures_base_dir
 // invalide — ex: chemin Windows recopié sur le VPS Linux — ne doit plus rendre
 // scan/HLS/thumbnails inopérants ni rediriger les écritures vers un dossier fantôme.
-func effectiveMediaBase(ctx context.Context, pr *titlePkg.PathResolver, configured string) string {
+func resolveMediaBase(ctx context.Context, pr *titlePkg.PathResolver, configured string) (base string, policy ops.MissingPolicy) {
 	if configured == "" {
-		return ""
+		return "", ops.MissingMark
 	}
 	if fi, err := os.Stat(configured); err == nil && fi.IsDir() {
-		return configured
+		return configured, ops.MissingMark
 	}
 	fallback := pr.MediaDataDir()
 	if fi, err := os.Stat(fallback); err == nil && fi.IsDir() {
 		slog.WarnContext(ctx, "media: media_captures_base_dir introuvable, fallback data/media",
 			"configured", configured, "effective", fallback)
-		return fallback
+		return fallback, ops.MissingRootUnavailable
 	}
-	return ""
+	return "", ops.MissingRootUnavailable
+}
+
+// noteRootUnavailable enregistre, pour le bandeau des fichiers introuvables, que le
+// dossier du joueur n'a pas pu être lu alors que la racine n'était pas fiable.
+func noteRootUnavailable(policy ops.MissingPolicy, titleSlug, gamertag string) {
+	if policy == ops.MissingRootUnavailable {
+		ops.RecordRootState(titleSlug, gamertag, ops.RootState{Unavailable: true})
+	}
 }
 
 // triggerHLSSweep lance EN ARRIÈRE-PLAN (détaché du ctx scan/sync, qui peut être

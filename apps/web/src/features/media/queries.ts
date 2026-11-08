@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { api, apiErrorMessage } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useDeploymentCapability } from '@/stores/useDeploymentCapability'
 import { getMediaText } from './i18n'
 import { getMediaModalsText } from './i18n-modals'
 import type {
@@ -338,13 +339,18 @@ export function useAssociateMediaToMatch(playerSlug: string) {
 export function useDeleteMedia(playerSlug: string) {
   const queryClient = useQueryClient()
   const locale = useAppShellStore((s) => s.locale)
+  const onDesktop = useDeploymentCapability('can_trash_media_sources')
   return useMutation({
     mutationFn: (filePath: string) =>
       api.delete<MediaDeleteResponse>(
         `/players/${playerSlug}/media?file_path=${encodeURIComponent(filePath)}`,
       ),
-    onSuccess: () => {
-      toast.success(getMediaModalsText(locale).coverFlow.deleteSuccess)
+    onSuccess: (response) => {
+      const text = getMediaModalsText(locale).coverFlow
+      // Sur le bureau, un original qui n'est pas dans la Corbeille (disque sans Corbeille) est
+      // supprimé définitivement : le toast le dit.
+      const permanent = onDesktop ? text.deleteSuccessPermanent : text.deleteSuccess
+      toast.success(response.trashed ? text.deleteSuccessTrash : permanent)
       queryClient.invalidateQueries({ queryKey: queryKeys.mediaBase(playerSlug) })
     },
     onError: (error) => {

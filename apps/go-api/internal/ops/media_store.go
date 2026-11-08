@@ -47,6 +47,13 @@ var mediaFilesAddedColumns = []mediaFilesColumn{
 	// ne PAS réutiliser `status` (sémantique 'active' déjà filtrée par le rail home).
 	{"hls_path", colTypeVarchar},
 	{"transcode_status", colTypeVarchar},
+	// Original déposé par l'utilisateur : source_path = chemin stocké (NULL = aucun
+	// original attendu), source_size / source_mtime_ns = taille et date de
+	// modification vues au dernier passage, qui évitent de relire un fichier
+	// inchangé. Non indexées et modifiables : ne jamais y poser d'index.
+	{"source_path", colTypeVarchar},
+	{"source_size", "BIGINT"},
+	{"source_mtime_ns", "BIGINT"},
 	// transcode_started_at : horodatage (UTC) du passage à 'processing', posé par
 	// MarkTranscodeProcessing (upload ET balayage). Sert la récupération d'orphelins
 	// de crash — un 'processing' plus vieux que transcodeStaleAfter redevient
@@ -257,11 +264,13 @@ func dropLegacyMediaFilesIfNeeded(ctx context.Context, db *sql.DB) error {
 // dossier captures est le geste par lequel l'utilisateur annule sa suppression.
 // Garder leur hash ici le rendrait définitivement non ré-indexable, donc
 // invisible pour toujours malgré un ré-upload explicite (insertMediaFile
-// ressuscite alors la ligne au lieu d'en créer une seconde).
+// ressuscite alors la ligne au lieu d'en créer une seconde). Les médias
+// INTROUVABLES en font partie : leur empreinte est connue, un fichier identique
+// n'est pas un nouveau média.
 func loadKnownHashes(ctx context.Context, db *sql.DB) (map[string]bool, error) {
 	rows, err := db.QueryContext(ctx,
 		"SELECT file_hash FROM media_files WHERE file_hash IS NOT NULL AND "+
-			platform_duckdb.MediaVisiblePredicate(""))
+			platform_duckdb.MediaNotDeletedPredicate(""))
 	if err != nil {
 		return nil, err
 	}

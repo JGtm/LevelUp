@@ -24,7 +24,6 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/domain/title"
 	mediapkg "levelup/go-api/internal/media"
 	platform_duckdb "levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/verrous"
@@ -77,6 +76,13 @@ type MediaIndexOptions struct {
 	// ForeignFilenamePrefixes : override des préfixes étrangers (tests). nil = résolus
 	// depuis TitleSlug via title.DefaultRegistry().
 	ForeignFilenamePrefixes []string
+	// MissingPolicy : ce que l'indexation fait d'une fiche dont plus aucun fichier
+	// n'existe (MissingIgnore par défaut : envoi, CLI, qui ne voient qu'une partie du
+	// dossier).
+	MissingPolicy MissingPolicy
+	// SkipFreshFiles : laisser au passage suivant les fichiers modifiés depuis moins
+	// d'une minute (un clip en cours d'écriture changerait d'empreinte).
+	SkipFreshFiles bool
 }
 
 // MediaIndexResult résume le résultat de l'indexation.
@@ -204,11 +210,6 @@ func IndexMedia(ctx context.Context, opts MediaIndexOptions) (MediaIndexResult, 
 		return MediaIndexResult{}, err
 	}
 
-	known, err := loadKnownHashes(ctx, db)
-	if err != nil {
-		return MediaIndexResult{}, err
-	}
-
 	result := MediaIndexResult{}
 	// Fenêtres des médias indexés avant la règle par source : corrigées AVANT l'association,
 	// qui lit capture_start_utc (media_capture_recalc.go). Idempotent ; un échec n'empêche pas
@@ -227,36 +228,21 @@ func IndexMedia(ctx context.Context, opts MediaIndexOptions) (MediaIndexResult, 
 	// stables pour stockage DB. Mode legacy si CapturesBase vide.
 	store := MediaPathStore{CapturesBase: opts.CapturesBase}
 
-	// Réconciliation des orphelins : détecte les entrées DB dont le fichier
-	// disque a changé d'extension sans rescan (typique d'une conversion locale
-	// .mp4 → .mkv avec préservation du stem). Idempotent — exécuté en best-effort
-	// avant le walk pour limiter les inserts redondants en aval.
-	if reconciled, err := ReconcileOrphanedMediaFiles(ctx, db, opts.Gamertag, store); err != nil {
-		slog.WarnContext(ctx, "IndexMedia: réconciliation orphelins échouée",
-			"player", opts.Gamertag, "err", err)
-	} else if reconciled > 0 {
-		slog.InfoContext(ctx, "IndexMedia: orphelins resynced",
-			"player", opts.Gamertag, "count", reconciled)
+	// Les fiches suivent le disque d'abord (renommage, déplacement, conversion,
+	// disparition) : un fichier déplacé n'est pas un nouveau média.
+	scan, err := reconcileIndexedFiles(ctx, db, opts, store, mediaFiles)
+	if err != nil {
+		return result, fmt.Errorf("réconciliation avec le disque: %w", err)
+	}
+	known, err := loadKnownHashes(ctx, db)
+	if err != nil {
+		return result, err
 	}
 
-	foreignPrefixes := opts.ForeignFilenamePrefixes
-	if foreignPrefixes == nil && opts.TitleSlug != "" {
-		foreignPrefixes = title.DefaultRegistry().ForeignMediaFilenamePrefixes(opts.TitleSlug)
-	}
-	skippedForeign := 0
-	for _, path := range mediaFiles {
-		// Routage titre (DEC-8) : un fichier revendiqué par un AUTRE titre (préfixe
-		// déclaré dans son title.toml) n'est pas indexé ici — sinon chaque titre
-		// indexe tous les clips du dossier captures partagé et les clips étrangers
-		// restent « Sans match » à perpétuité.
-		if matchesForeignPrefix(filepath.Base(path), foreignPrefixes) {
-			skippedForeign++
-			continue
-		}
-		hash, err := HashFile(path)
-		if err != nil {
-			result.Errors = append(result.Errors, fmt.Sprintf("%s: hash: %v", path, err))
-			continue
+	for _, path := range scan.files {
+		hash, ok := scan.rec.Hashes[pathKey(path)]
+		if !ok {
+			continue // fichier trop récent, ou illisible (déjà journalisé par la passe)
 		}
 		if !opts.ForceRescan && known[hash] {
 			continue
@@ -274,7 +260,7 @@ func IndexMedia(ctx context.Context, opts MediaIndexOptions) (MediaIndexResult, 
 
 	slog.Debug("IndexMedia: scan terminé",
 		"scanned", result.Scanned, "new_files", result.NewFiles,
-		"skipped_foreign_title", skippedForeign)
+		"skipped_foreign_title", scan.skippedForeign)
 
 	// Association avec les matchs
 	assoc, err := AssociateMediaWithMatches(ctx, db, opts.SharedMatchesDBPath, opts.BufferMin, opts.Timezone)
@@ -289,21 +275,12 @@ func IndexMedia(ctx context.Context, opts MediaIndexOptions) (MediaIndexResult, 
 		result.Associated = assoc
 	}
 
-	// Générer les miniatures WebP manquantes via ffmpeg, puis lier en DB.
-	// Couvre tous les chemins d'indexation : upload, scan, reindex.
-	thumbsDir := filepath.Join(opts.CapturesDir, "thumbs")
-	if thumbN, thumbErrs := GenerateThumbnails(ctx, opts.CapturesDir, thumbsDir); thumbN > 0 || len(thumbErrs) > 0 {
-		result.Thumbnails += thumbN
-		for _, e := range thumbErrs {
-			result.Errors = append(result.Errors, "generate_thumbnail: "+e)
-		}
-	}
-
-	// Lier les miniatures présentes sur disque aux enregistrements dont thumbnail_path est NULL.
-	if n, backfillErr := BackfillThumbnailPaths(ctx, db, opts.CapturesDir, thumbsDir, opts.Gamertag, store); backfillErr != nil {
-		result.Errors = append(result.Errors, fmt.Sprintf("backfill_thumbnails: %v", backfillErr))
-	} else {
-		result.Thumbnails += n
+	// Miniatures manquantes : générées ou liées pour chaque vidéo visible, quel que soit
+	// son dossier. Couvre tous les chemins d'indexation : upload, scan, reindex.
+	thumbN, thumbErrs := EnsureVideoThumbnails(ctx, db, opts, store)
+	result.Thumbnails += thumbN
+	for _, e := range thumbErrs {
+		result.Errors = append(result.Errors, "generate_thumbnail: "+e)
 	}
 
 	// CHECKPOINT explicite : vide le WAL DuckDB sur disque immédiatement
@@ -455,18 +432,21 @@ func insertMediaFile(ctx context.Context, db *sql.DB, path, hash, playerSlug str
 	}
 	win := captureWindow(kind, inst, duration, durationKnown)
 
-	// Dédup extension-agnostique : cherche une entrée existante avec le même stem.
-	// Si trouvée et ancien fichier encore sur disque → SKIP (les deux coexistent).
-	// Si trouvée mais ancien fichier parti → UPDATE (conversion terminée).
-	// Sinon → INSERT.
-	var existingID string
-	var existingPath string
-	err := db.QueryRowContext(ctx, `
-		SELECT id, file_path FROM media_files
-		WHERE player_slug = ? AND file_stem = ?
-	`, playerSlug, stem).Scan(&existingID, &existingPath)
+	// Dédup extension-agnostique : cherche la fiche de même nom et de même dossier
+	// (findSameNameRow). Si trouvée et ancien fichier encore sur disque → SKIP (les
+	// deux coexistent). Si trouvée mais ancien fichier parti → UPDATE (conversion
+	// terminée). Sinon → INSERT. L'original (chemin, taille, date) est celui du
+	// fichier indexé.
+	srcSize, srcMtime := sourceStat(ctx, path)
+	same, found, err := findSameNameRow(ctx, db, sameNameQuery{
+		player: playerSlug, stem: stem, abs: path, stored: storedPath, store: store,
+	})
+	if err != nil {
+		return err
+	}
 
-	if err == nil && existingID != "" {
+	if found {
+		existingID, existingPath := same.id, same.filePath
 		// Entrée trouvée : vérifier si l'ancien fichier existe encore.
 		// existingPath peut être relatif (post-migration) ou absolu (legacy) —
 		// store.ToAbs gère les deux cas.
@@ -477,27 +457,14 @@ func insertMediaFile(ctx context.Context, db *sql.DB, path, hash, playerSlug str
 			return nil
 		}
 
-		// Ancien fichier parti → UPDATE l'entrée existante (conversion complétée).
-		// La durée suit le nouveau fichier (re-encodage), sauf valeur NULL (COALESCE).
-		// La fenêtre de capture n'est réécrite que si son heure vient du NOM : il est le
-		// même avant et après conversion, alors que la date de modification du fichier
-		// converti est celle de la conversion, pas de la capture (conversionTimes).
-		// RÉSURRECTION (item 3.1) : si la ligne visée avait été supprimée, le
-		// fichier vient d'être re-déposé — la suppression est annulée en remettant
-		// status à NULL. Le CASE est indispensable : écrire NULL inconditionnellement
-		// dégraderait une ligne 'active' (valeur exigée par le rail home).
+		// Ancien fichier parti → UPDATE l'entrée existante (conversion complétée), ses
+		// likes suivent le changement de file_path (updateConvertedRow).
 		upStart, upEnd, upSource := conversionTimes(inst, kind, win)
-		_, err := db.ExecContext(ctx, `
-			UPDATE media_files
-			SET file_path = ?, file_name = ?, file_ext = ?, file_hash = ?, kind = ?,
-				duration_seconds = COALESCE(?, duration_seconds),
-				capture_start_utc = COALESCE(?, capture_start_utc),
-				capture_end_utc = COALESCE(?, capture_end_utc),
-				capture_time_source = COALESCE(?, capture_time_source),
-				status = CASE WHEN COALESCE(status, '') = ? THEN NULL ELSE status END
-			WHERE id = ?
-		`, storedPath, baseName, ext, hash, kind, win.DurationSec, upStart, upEnd, upSource,
-			domain.MediaStatusDeleted, existingID)
+		err := updateConvertedRow(ctx, db, conversionUpdate{
+			id: existingID, oldPath: existingPath, storedPath: storedPath, baseName: baseName,
+			ext: ext, hash: hash, kind: kind, win: win, start: upStart, end: upEnd, source: upSource,
+			srcSize: srcSize, srcMtime: srcMtime,
+		})
 		if err != nil {
 			slog.ErrorContext(ctx, "insertMediaFile: UPDATE failed for format conversion",
 				"err", err, "player", playerSlug, "stem", stem, "id", existingID)
@@ -522,12 +489,13 @@ func insertMediaFile(ctx context.Context, db *sql.DB, path, hash, playerSlug str
 	var dupID int64
 	var dupStatus sql.NullString
 	switch err := db.QueryRowContext(ctx,
-		`SELECT id, status FROM media_files WHERE file_path = ? LIMIT 1`,
-		storedPath).Scan(&dupID, &dupStatus); err {
+		`SELECT id, status FROM media_files WHERE file_path = ? OR source_path = ? ORDER BY id LIMIT 1`,
+		storedPath, storedPath).Scan(&dupID, &dupStatus); err {
 	case nil:
 		if dupStatus.Valid && dupStatus.String == domain.MediaStatusDeleted {
-			if _, err := db.ExecContext(ctx,
-				`UPDATE media_files SET status = NULL WHERE id = ?`, dupID); err != nil {
+			if err := reviveDeletedMedia(ctx, db, store, revival{
+				id: dupID, storedPath: storedPath, srcSize: srcSize, srcMtime: srcMtime,
+			}); err != nil {
 				slog.ErrorContext(ctx, "insertMediaFile: résurrection du média supprimé échouée",
 					"err", err, "player", playerSlug, "file_path", storedPath, "id", dupID)
 				return err
@@ -547,10 +515,12 @@ func insertMediaFile(ctx context.Context, db *sql.DB, path, hash, playerSlug str
 	_, err = db.ExecContext(ctx, `
 		INSERT INTO media_files (
 			player_slug, file_path, file_name, file_stem, file_ext, file_hash, kind,
-			capture_start_utc, capture_end_utc, duration_seconds, capture_time_source
+			capture_start_utc, capture_end_utc, duration_seconds, capture_time_source,
+			source_path, source_size, source_mtime_ns
 		)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, playerSlug, storedPath, baseName, stem, ext, hash, kind, win.Start, win.End, win.DurationSec, sourceKey)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, playerSlug, storedPath, baseName, stem, ext, hash, kind, win.Start, win.End, win.DurationSec, sourceKey,
+		storedPath, srcSize, srcMtime)
 	return err
 }
 

@@ -21,7 +21,7 @@ import (
 )
 
 // launchMonitoring ouvre le store monitoring puis lance les boucles de détection, de surveillance
-// disque, de notification des rejeux et de relance des citations.
+// disque, de notification des rejeux, de relance des citations, d'alignement des médias et de rejeu des KPI.
 func launchMonitoring(st *bootState) {
 	ctx, cfg, pr, boot, schedulerCtx, reg := st.ctx, st.cfg, st.pr, st.boot, st.schedulerCtx, st.reg
 
@@ -64,6 +64,12 @@ func launchMonitoring(st *bootState) {
 	boot.launch(loopTask(taskReplayNotify, true, schedulerCtx, reg.RunReplayNotifyLoop))
 	// Citations du film recalculées dès la livraison d'un rejeu (délai du débrief).
 	boot.launch(citationsRelanceTask(schedulerCtx, reg.NewCitationsRelance()))
+	// Alignement des médias sur le dossier des captures : une passe, joueur par joueur, pour ce que
+	// l'explorateur a changé pendant que l'application était éteinte.
+	boot.launch(mediaReconcileTask(schedulerCtx, cfg, st.settingsStore))
+	// Rejeu des KPI quand une formule a changé depuis le dernier démarrage : une passe, joueur par
+	// joueur, sans effet quand la révision rangée est celle du binaire.
+	boot.launch(scoringRevisionTask(schedulerCtx, reg.NewScoringRevision()))
 }
 
 // launchCatalogCrons lance le cron catalogue hebdomadaire et le balayage des noms d'assets.

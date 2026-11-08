@@ -352,30 +352,7 @@ func buildSyncEngineFactoryParityComplete(deps SyncV2WiringDeps) syncv2.SyncEngi
 
 		// 5. MediaScanHook (indexation captures post-sync)
 		if deps.Settings != nil {
-			engine.WithMediaScanHook(service.BuildMediaScanHook(deps.Cfg.RepoRoot, p.Gamertag,
-				func() string {
-					cfg, _ := deps.Settings.Load()
-					if cfg != nil {
-						return cfg.MediaCapturesBaseDir
-					}
-					return ""
-				},
-				func() string {
-					cfg, _ := deps.Settings.Load()
-					if cfg != nil {
-						return cfg.UserTimezone
-					}
-					return ""
-				},
-				func() bool {
-					var v *bool
-					if cfg, _ := deps.Settings.Load(); cfg != nil {
-						v = cfg.MediaDeleteSourceAfterTranscode
-					}
-					return config.ResolveMediaDeleteSource(
-						os.Getenv(config.EnvMediaDeleteSource), v, deps.Cfg.IsProduction())
-				},
-			))
+			engine.WithMediaScanHook(service.NewLiveMediaScanHook(deps.Cfg, deps.Settings, p.Gamertag))
 		}
 
 		// 6. BatchQueue async (Phase 4.9 — INSERT-only via WAL + worker). Le batch

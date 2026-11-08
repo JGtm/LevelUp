@@ -4124,6 +4124,161 @@ paths:
       summary: Candidats de match pour associer un média
       tags:
         - media
+  /players/{player_slug}/media/missing:
+    get:
+      operationId: getMissingMedia
+      parameters:
+        - in: path
+          name: player_slug
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MediaMissingResponse'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Media whose file is missing from disk
+      tags:
+        - media
+  /players/{player_slug}/media/missing/candidates:
+    get:
+      operationId: getMissingMediaCandidates
+      parameters:
+        - in: path
+          name: player_slug
+          required: true
+          schema:
+            type: string
+        - explode: false
+          in: query
+          name: file_path
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MediaMergeCandidatesResponse'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Entries a missing media can be merged into
+      tags:
+        - media
+  /players/{player_slug}/media/missing/confirm-bulk:
+    post:
+      operationId: postMissingMediaConfirmBulk
+      parameters:
+        - in: path
+          name: player_slug
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MediaConfirmBulkResponse'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Confirms a bulk disappearance of media
+      tags:
+        - media
+  /players/{player_slug}/media/missing/forget:
+    post:
+      operationId: postMissingMediaForget
+      parameters:
+        - in: path
+          name: player_slug
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MediaForgetResponse'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Forgets a missing media
+      tags:
+        - media
+  /players/{player_slug}/media/missing/merge:
+    post:
+      operationId: postMissingMediaMerge
+      parameters:
+        - in: path
+          name: player_slug
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MediaMergeResponse'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Merges a missing media into another entry
+      tags:
+        - media
+  /players/{player_slug}/media/reveal:
+    post:
+      operationId: postMediaReveal
+      parameters:
+        - in: path
+          name: player_slug
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MediaRevealResponse'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Opens the file explorer on a media file
+      tags:
+        - media
   /players/{player_slug}/media/upload:
     parameters:
       - $ref: '#/components/parameters/PlayerSlug'
@@ -10667,6 +10822,9 @@ components:
         can_integrate_shell:
           description: 'Intégration de la coquille avec le poste : notifications Windows, zone de notification, démarrage avec Windows.'
           type: boolean
+        can_keep_media_sources:
+          description: L'original d'une vidéo convertie n'est jamais supprimé par l'application (réglage de rétention masqué).
+          type: boolean
         can_limit_memory:
           description: Plafond mémoire des bases réglable, mémoire du processus affichée.
           type: boolean
@@ -10693,6 +10851,9 @@ components:
           type: boolean
         can_reset_media_index:
           type: boolean
+        can_reveal_files_in_explorer:
+          description: Ouverture de l'explorateur de fichiers du système sur un média.
+          type: boolean
         can_run_sync:
           type: boolean
         can_schedule_refresh:
@@ -10704,6 +10865,9 @@ components:
           description: Connexion par le SSO Xbox (mode xbox).
           type: boolean
         can_start_initial_sync:
+          type: boolean
+        can_trash_media_sources:
+          description: 'Suppression d''un média : l''original part à la Corbeille du système quand le support en a une.'
           type: boolean
         can_update_app:
           description: Mise à jour de l'application par la coquille desktop.
@@ -10785,6 +10949,9 @@ components:
         - can_report_diagnostic
         - can_limit_memory
         - can_regenerate_replays
+        - can_keep_media_sources
+        - can_reveal_files_in_explorer
+        - can_trash_media_sources
         - deployment
       type: object
     CareerCSRRank:
@@ -20979,6 +21146,18 @@ components:
       required:
         - authors
       type: object
+    MediaConfirmBulkResponse:
+      additionalProperties: false
+      properties:
+        bulk_missing_pending:
+          format: int64
+          type: integer
+        confirmed:
+          type: boolean
+      required:
+        - confirmed
+        - bulk_missing_pending
+      type: object
     MediaDeleteResponse:
       additionalProperties: false
       properties:
@@ -20989,10 +21168,14 @@ components:
         files_removed:
           format: int64
           type: integer
+        trashed:
+          description: Au moins un original est parti à la Corbeille du système.
+          type: boolean
       required:
         - file_path
         - deleted
         - files_removed
+        - trashed
       type: object
     MediaFilterOptions:
       additionalProperties: false
@@ -21019,6 +21202,21 @@ components:
         - playlists
         - maps
         - modes
+      type: object
+    MediaForgetResponse:
+      additionalProperties: false
+      properties:
+        file_path:
+          type: string
+        files_removed:
+          format: int64
+          type: integer
+        forgotten:
+          type: boolean
+      required:
+        - file_path
+        - forgotten
+        - files_removed
       type: object
     MediaItem:
       additionalProperties: false
@@ -21248,6 +21446,104 @@ components:
         - is_self
         - is_bot
       type: object
+    MediaMergeCandidate:
+      additionalProperties: false
+      properties:
+        basename:
+          type: string
+        capture_end_utc:
+          format: date-time
+          type: string
+        delta_seconds:
+          format: int64
+          type: integer
+        file_path:
+          type: string
+        kind:
+          type: string
+        thumbnail_path:
+          type: string
+      required:
+        - file_path
+        - basename
+        - kind
+      type: object
+    MediaMergeCandidatesResponse:
+      additionalProperties: false
+      properties:
+        candidates:
+          items:
+            $ref: '#/components/schemas/MediaMergeCandidate'
+          type:
+            - array
+            - "null"
+        capture_utc:
+          format: date-time
+          type: string
+        file_path:
+          type: string
+      required:
+        - file_path
+        - candidates
+      type: object
+    MediaMergeResponse:
+      additionalProperties: false
+      properties:
+        file_path:
+          type: string
+        files_removed:
+          format: int64
+          type: integer
+        merged:
+          type: boolean
+        target_file_path:
+          type: string
+      required:
+        - file_path
+        - target_file_path
+        - merged
+        - files_removed
+      type: object
+    MediaMissingItem:
+      additionalProperties: false
+      properties:
+        basename:
+          type: string
+        capture_end_utc:
+          format: date-time
+          type: string
+        file_path:
+          type: string
+        kind:
+          type: string
+        match_id:
+          type: string
+        thumbnail_path:
+          type: string
+      required:
+        - file_path
+        - basename
+        - kind
+      type: object
+    MediaMissingResponse:
+      additionalProperties: false
+      properties:
+        bulk_missing_pending:
+          format: int64
+          type: integer
+        items:
+          items:
+            $ref: '#/components/schemas/MediaMissingItem'
+          type:
+            - array
+            - "null"
+        root_unavailable:
+          type: boolean
+      required:
+        - items
+        - root_unavailable
+        - bulk_missing_pending
+      type: object
     MediaPageRequest:
       properties:
         group_by:
@@ -21305,6 +21601,14 @@ components:
         - total_teammates
         - total_unassigned
         - available_filters
+      type: object
+    MediaRevealResponse:
+      additionalProperties: false
+      properties:
+        revealed:
+          type: boolean
+      required:
+        - revealed
       type: object
     MediaToolingStatus:
       additionalProperties: false

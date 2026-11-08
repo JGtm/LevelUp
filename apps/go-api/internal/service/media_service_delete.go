@@ -23,17 +23,32 @@ func WithMediaFileRemover(remover port.MediaFileRemover) MediaOption {
 	return func(s *MediaService) { s.fileRemover = remover }
 }
 
-// DeleteMedia supprime définitivement un média : autorisation, masquage
-// transactionnel durable, puis retrait des fichiers.
+// WithMediaFileTrasher injecte le port de la Corbeille du système. Avec lui, DeleteMedia envoie
+// l'original déposé par l'utilisateur à la Corbeille (restaurable) au lieu de l'effacer ; la
+// miniature et la version convertie, créées par l'application, restent effacées définitivement.
+// Sans lui, tout est effacé définitivement (instance hébergée).
+func WithMediaFileTrasher(trasher port.MediaFileTrasher) MediaOption {
+	return func(s *MediaService) { s.fileTrasher = trasher }
+}
+
+// DeleteMedia supprime un média : autorisation, envoi des originaux à la Corbeille (bureau),
+// masquage transactionnel durable, puis retrait des fichiers.
 //
-// ORDRE DES OPÉRATIONS — base d'abord, disque ensuite. C'est l'ordre qui a le
-// pire cas le moins grave :
+// ORDRE DES OPÉRATIONS. Sans Corbeille (instance hébergée), base d'abord, disque ensuite, l'ordre
+// qui a le pire cas le moins grave :
 //   - base puis disque : un échec disque laisse un média invisible dont le
 //     fichier subsiste. L'erreur est remontée (500) et tracée, l'utilisateur
 //     peut réessayer, et l'opération est idempotente.
 //   - disque puis base : un échec base laisse un média TOUJOURS LISTÉ dont le
 //     fichier n'existe plus — vignettes cassées, lecture impossible, et aucun
 //     moyen de revenir en arrière puisque le fichier est perdu.
+//
+// Avec une Corbeille, les originaux y partent AVANT le masquage : un échec de la Corbeille rend
+// une erreur sans aucune écriture en base ni autre retrait, donc rejouer la suppression fonctionne.
+// Cet envoi est récupérable, le pire cas est donc bénin : si le masquage échoue ensuite, l'original
+// est dans la Corbeille et la fiche reste visible, et la passe d'alignement suivante la répare
+// (fiche introuvable, ou retrouvée par empreinte si l'original est restauré). Seuls les fichiers de
+// l'application et les originaux sans Corbeille sont effacés définitivement, après le masquage.
 func (s *MediaService) DeleteMedia(
 	ctx context.Context,
 	req domain.MediaDeleteRequest,
@@ -67,14 +82,25 @@ func (s *MediaService) DeleteMedia(
 		return nil, domain.ErrForbidden("Seul le propriétaire de ce média ou un administrateur peut le supprimer.")
 	}
 
-	// 3. Masquage durable.
-	if err := s.markMediaDeleted(ctx, deleter, req.FilePath); err != nil {
+	// 3. Corbeille : sans effet sans trasher. Un échec arrête tout, rien n'est écrit.
+	disposal, err := s.trashFirst(ctx, target)
+	if err != nil {
+		slog.ErrorContext(ctx, "media_delete: Corbeille échouée, ni masquage ni retrait",
+			"err", err, "file_path", req.FilePath, "trashed", disposal.trashedCount)
 		return nil, err
 	}
 
-	// 4. Retrait disque — c'est lui qui rend la suppression irréversible et qui
-	//    garantit que l'URL directe ne sert plus rien.
-	removed, err := s.fileRemover.RemoveMediaFiles(ctx, target.StoredPaths())
+	// 4. Masquage durable.
+	if err := s.markMediaDeleted(ctx, deleter, req.FilePath); err != nil {
+		if disposal.trashedCount > 0 {
+			slog.WarnContext(ctx, "media_delete: originaux dans la Corbeille, média non masqué",
+				"err", err, "file_path", req.FilePath, "trashed", disposal.trashedCount)
+		}
+		return nil, err
+	}
+
+	// 5. Retrait disque : il garantit que l'URL directe ne sert plus rien.
+	removed, trashed, err := s.removeRemaining(ctx, target, disposal)
 	if err != nil {
 		slog.ErrorContext(ctx, "media_delete: média masqué mais fichiers non retirés",
 			"err", err, "file_path", req.FilePath, "files_removed", removed)
@@ -84,13 +110,65 @@ func (s *MediaService) DeleteMedia(
 	slog.InfoContext(ctx, "media_delete: média supprimé",
 		"file_path", req.FilePath, "owner", target.OwnerSlug,
 		"requester", req.RequesterSlug, "is_admin", req.RequesterIsAdmin,
-		"files_removed", removed)
+		"files_removed", removed, "trashed", trashed)
 
 	return &domain.MediaDeleteResponse{
 		FilePath:     req.FilePath,
 		Deleted:      true,
 		FilesRemoved: removed,
+		Trashed:      trashed,
 	}, nil
+}
+
+// mediaDisposal : ce que l'envoi à la Corbeille a décidé des originaux.
+type mediaDisposal struct {
+	// permanent : originaux sans Corbeille (support amovible ou réseau, chemin non résolvable),
+	// à effacer définitivement après le masquage.
+	permanent    []string
+	trashedCount int
+	// viaTrash : un trasher était configuré ; sinon removeRemaining retire tous les chemins stockés.
+	viaTrash bool
+}
+
+// trashFirst envoie chaque original à la Corbeille, avant toute écriture en base. Sans trasher, rend
+// un état vide. La première erreur arrête la boucle : les originaux suivants ne sont pas touchés, et
+// l'état rendu avec elle porte ceux déjà partis.
+func (s *MediaService) trashFirst(ctx context.Context, target domain.MediaDeletionTarget) (mediaDisposal, error) {
+	if s.fileTrasher == nil {
+		return mediaDisposal{}, nil
+	}
+	d := mediaDisposal{viaTrash: true}
+	for _, p := range target.OriginalPaths() {
+		ok, err := s.fileTrasher.TrashMediaFile(ctx, p)
+		if err != nil {
+			slog.ErrorContext(ctx, "media_delete: envoi à la Corbeille échoué, original laissé en place",
+				"err", err, "stored", p)
+			return d, fmt.Errorf("media_delete trash original: %w", err)
+		}
+		if ok {
+			d.trashedCount++
+			continue
+		}
+		d.permanent = append(d.permanent, p)
+	}
+	return d, nil
+}
+
+// removeRemaining retire de leur dossier les fichiers que la Corbeille n'a pas pris. Sans trasher :
+// tous les chemins stockés, définitivement. Avec trasher : les originaux sans Corbeille, la miniature
+// et la version convertie. Rend le nombre de fichiers retirés (Corbeille comprise) et si au moins un
+// original est dans la Corbeille.
+func (s *MediaService) removeRemaining(
+	ctx context.Context,
+	target domain.MediaDeletionTarget,
+	d mediaDisposal,
+) (removed int, trashed bool, err error) {
+	if !d.viaTrash {
+		removed, err = s.fileRemover.RemoveMediaFiles(ctx, target.StoredPaths())
+		return removed, false, err
+	}
+	removed, err = s.fileRemover.RemoveMediaFiles(ctx, append(d.permanent, target.ForgetPaths()...))
+	return removed + d.trashedCount, d.trashedCount > 0, err
 }
 
 // markMediaDeleted exécute le soft-delete sous LeasedWriter, puis commite avec

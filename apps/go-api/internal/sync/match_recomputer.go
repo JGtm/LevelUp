@@ -33,14 +33,18 @@ package sync
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
+	"sync/atomic"
 	"time"
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/platform/coalesce"
 	"levelup/go-api/internal/platform/dblease"
+	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
+	"levelup/go-api/internal/sync/skill"
 )
 
 // MatchRecomputer recalcule performance_score + LUSR pour un joueur après une
@@ -59,6 +63,9 @@ type MatchRecomputer struct {
 	// titleSlug : titre des bases du joueur (profil), posé sur le ctx des lectures de sync
 	// qui excluent la Campagne. Vide : le ctx entrant décide (repli title-agnostique si absent).
 	titleSlug string
+	// invalidateReadCaches retire des caches de lectures les entrées du joueur après un rejeu de
+	// révision (duckdb.InvalidatePlayerReadCaches ; remplacé par un témoin dans les tests).
+	invalidateReadCaches func(ctx context.Context, xuid, titleSlug string)
 }
 
 // NewMatchRecomputer construit un MatchRecomputer pour un joueur donné.
@@ -75,6 +82,8 @@ func NewMatchRecomputer(
 		xuid:           xuid,
 		gamertag:       gamertag,
 		sharedProvider: provider,
+
+		invalidateReadCaches: duckdbpkg.InvalidatePlayerReadCaches,
 	}
 }
 
@@ -98,10 +107,24 @@ func (r *MatchRecomputer) titledCtx(ctx context.Context) context.Context {
 // simultanées pour le même joueur sont absorbées : jamais deux recalculs en parallèle. Le titre
 // des lectures est celui du profil (titledCtx), pas celui de la requête.
 func (r *MatchRecomputer) RecomputeAfterExclusion(ctx context.Context, matchID string) error {
-	return exclusionRecomputes.Do(ctx, r.playerDBPath, func(ctx context.Context) error {
+	err := exclusionRecomputes.Do(ctx, r.playerDBPath, func(ctx context.Context) error {
 		return r.recompute(ctx, matchID)
 	})
+	if errors.Is(err, ErrPartialRecompute) {
+		// Le drapeau d'exclusion est écrit et le rejeu a couvert les autres matchs : l'exclusion
+		// n'échoue pas pour l'utilisateur. Le recalcul reste marqué échoué (RecomputePending), une
+		// demande répétée recalcule.
+		slog.WarnContext(ctx, "MatchRecomputer: recalcul partiel après exclusion, demande répétée à recalculer",
+			"match_id", matchID, "gamertag", r.gamertag, "err", err)
+		return nil
+	}
+	return err
 }
+
+// ErrPartialRecompute : le rejeu s'est terminé mais au moins un match n'a pas été recalculé (échec
+// journalisé match par match). Le recalcul n'est pas un succès : la révision de formule n'est pas
+// rangée, et l'exclusion d'un match le tolère (RecomputeAfterExclusion).
+var ErrPartialRecompute = errors.New("recalcul partiel")
 
 // RecomputePending dit si le dernier recalcul de ce joueur a échoué : une demande
 // d'exclusion identique à l'état déjà persisté doit alors recalculer quand même.
@@ -152,10 +175,16 @@ func (r *MatchRecomputer) recompute(ctx context.Context, matchID string) error {
 		return err
 	}
 
+	// Le rejeu journalise un match en échec sans s'arrêter : le compteur dit que le recalcul est
+	// incomplet, donc pas un succès (ni pour l'exclusion, ni pour la révision de formule).
+	var failedMatches atomic.Int64
 	updatedLUSR, err := RecomputeLUSRCanonicalWithAccess(ctx, playerSQL, shared, r.xuid,
-		MedalExploitOption(r.metadataDBPath, r.xuid))
+		MedalExploitOption(r.metadataDBPath, r.xuid), skill.WithMatchFailureCounter(&failedMatches))
 	if err != nil {
 		return fmt.Errorf("MatchRecomputer.RecomputeAfterExclusion lusr: %w", err)
+	}
+	if n := failedMatches.Load(); n > 0 {
+		return fmt.Errorf("MatchRecomputer.RecomputeAfterExclusion lusr: %d match(s) en échec: %w", n, ErrPartialRecompute)
 	}
 
 	slog.InfoContext(ctx, "MatchRecomputer: terminé",
@@ -185,4 +214,68 @@ func (r *MatchRecomputer) recomputePerformance(ctx context.Context, playerSQL *s
 		return 0, fmt.Errorf("MatchRecomputer.RecomputeAfterExclusion perf: %w", err)
 	}
 	return updated, nil
+}
+
+// ApplyScoringRevision rejoue notes de performance et LUSR du joueur quand la révision de formule
+// stockée dans sync_meta diffère de rev, puis range rev. Rend true quand un recalcul a eu lieu.
+//
+// La révision n'est écrite qu'après le succès du recalcul : un échec (écriture des notes, rejeu
+// LUSR, écrivain refusé) laisse l'ancienne valeur et le prochain démarrage retente. Le recalcul
+// passe par la même coalescence que l'exclusion d'un match : jamais deux en parallèle sur la base
+// du joueur, et une exclusion en cours est attendue, pas doublée.
+func (r *MatchRecomputer) ApplyScoringRevision(ctx context.Context, rev string) (bool, error) {
+	ctx = r.titledCtx(ctx)
+	stored, err := r.storedScoringRevision(ctx)
+	if err != nil {
+		return false, err
+	}
+	if stored == rev {
+		return false, nil
+	}
+	slog.InfoContext(ctx, "MatchRecomputer: révision des formules changée, recalcul complet",
+		"gamertag", r.gamertag, "xuid", r.xuid, "stored", stored, "revision", rev)
+	err = exclusionRecomputes.Do(ctx, r.playerDBPath, func(ctx context.Context) error {
+		return r.recompute(ctx, "scoring_revision")
+	})
+	if err != nil {
+		return false, fmt.Errorf("MatchRecomputer.ApplyScoringRevision recalcul: %w", err)
+	}
+	if err := r.storeScoringRevision(ctx, rev); err != nil {
+		return false, err
+	}
+	r.invalidateReadCaches(ctx, r.xuid, r.titleSlug)
+	return true, nil
+}
+
+// storedScoringRevision lit la révision de formule rangée pour ce joueur ("" si aucune).
+func (r *MatchRecomputer) storedScoringRevision(ctx context.Context) (string, error) {
+	db, release, err := duckdbpkg.OpenReadForQuery(r.playerDBPath)
+	if err != nil {
+		return "", fmt.Errorf("MatchRecomputer.ApplyScoringRevision lecture: %w", err)
+	}
+	defer release()
+	var v sql.NullString
+	err = db.QueryRowContext(ctx, `SELECT value FROM sync_meta WHERE key = ?`, skill.SyncMetaScoringRevision).Scan(&v)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return "", fmt.Errorf("MatchRecomputer.ApplyScoringRevision lecture sync_meta: %w", err)
+	}
+	return v.String, nil
+}
+
+// storeScoringRevision range rev sous le lease d'écriture de la base joueur.
+func (r *MatchRecomputer) storeScoringRevision(ctx context.Context, rev string) error {
+	writer, err := dblease.AcquireWriterCtx(ctx, nil, r.playerDBPath, dblease.KindPlayer)
+	if err != nil {
+		return fmt.Errorf("MatchRecomputer.ApplyScoringRevision lease player: %w", err)
+	}
+	defer writer.Release()
+	handle, err := OpenPlayerDB(r.playerDBPath)
+	if err != nil {
+		return fmt.Errorf("MatchRecomputer.ApplyScoringRevision OpenPlayerDB: %w", err)
+	}
+	defer handle.Close()
+	if err := SetSyncMeta(ctx, handle.SQLDb(), skill.SyncMetaScoringRevision, rev); err != nil {
+		return fmt.Errorf("MatchRecomputer.ApplyScoringRevision: %w", err)
+	}
+	return nil
 }

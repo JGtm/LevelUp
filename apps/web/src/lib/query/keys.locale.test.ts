@@ -316,6 +316,8 @@ const nePasDependreDeLaLangue: Record<string, string> = {
   tacticalSequence: "séquence d'une mort (trajectoires, joueurs)",
   mediaAuthors: 'auteurs des médias (gamertags)',
   mediaAudioConfig: 'réglage audio',
+  mediaMissing: 'médias introuvables (noms de fichier, dates, état du dossier)',
+  mediaMergeCandidates: 'fiches candidates à la fusion (noms de fichier, dates, écarts)',
   leaderboard: 'classement : identifiants de saison et de playlist, scores',
   notificationsUnreadCount: 'compteur',
   notificationsPreferences: 'préférences (clés techniques)',

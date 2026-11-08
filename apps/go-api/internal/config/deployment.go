@@ -171,6 +171,18 @@ type DeploymentCapabilities struct {
 	// réglage préalable. Défaut des clés absentes d'app_settings.json (settings.Store.WithAutoSyncDefault) ;
 	// une valeur écrite gagne toujours. Faux sur un serveur, où l'administrateur l'active.
 	AutoSyncByDefault bool
+	// KeepMediaSources : l'original d'une vidéo convertie n'est jamais supprimé par l'application. Sur un
+	// poste, le dossier des captures appartient à l'utilisateur et l'explorateur y fait foi : la
+	// suppression de l'original après conversion est interdite, le réglage correspondant est masqué et
+	// LEVELUP_MEDIA_DELETE_SOURCE est ignorée ([AppConfig.MediaDeleteSource]).
+	KeepMediaSources bool
+	// RevealFilesInExplorer : l'application peut ouvrir l'explorateur de fichiers du système sur un
+	// média (elle tourne sur le poste de l'utilisateur, pas sur un serveur distant).
+	RevealFilesInExplorer bool
+	// TrashMediaSources : supprimer un média depuis l'application envoie son original à la Corbeille du
+	// système quand le support en a une, au lieu de l'effacer définitivement. Faux sur un serveur : la
+	// suppression y est définitive.
+	TrashMediaSources bool
 }
 
 // DeploymentProfile est embarqué dans AppConfig : le profil résolu et ses capacités.
@@ -280,6 +292,9 @@ func capabilitiesOf(cfg *AppConfig) DeploymentCapabilities {
 		DiagnosticReport:       desktop,
 		MemoryLimit:            desktop,
 		ReplayRegen:            desktop,
+		KeepMediaSources:       desktop,
+		RevealFilesInExplorer:  desktop,
+		TrashMediaSources:      desktop,
 	}
 }
 

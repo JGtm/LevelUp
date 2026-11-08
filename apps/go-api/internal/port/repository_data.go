@@ -284,6 +284,22 @@ type MediaFileRemover interface {
 	RemoveMediaFiles(ctx context.Context, storedPaths []string) (int, error)
 }
 
+// MediaFileTrasher envoie l'original d'un média à la Corbeille du système plutôt que de
+// l'effacer.
+//
+// Port distinct de MediaFileRemover : l'envoi à la Corbeille est réversible, la suppression non, et
+// seul le profil desktop en dispose. Un échec n'est JAMAIS rattrapé par une suppression
+// définitive côté implémentation : c'est le service qui décide de ce qui suit.
+//
+// Implémenté par ops.OSMediaFileTrasher.
+type MediaFileTrasher interface {
+	// TrashMediaFile envoie le fichier désigné par le chemin STOCKÉ à la Corbeille. Rend true quand
+	// il y est parti. Rend false, nil quand il n'y a rien à envoyer : fichier absent, chemin non
+	// résolvable, ou support sans Corbeille (clé USB, disque réseau). Une erreur dit que
+	// l'envoi a échoué et que le fichier est resté en place.
+	TrashMediaFile(ctx context.Context, storedPath string) (bool, error)
+}
+
 // SocialRepository gère les données sociales (favoris) dans shared_social.duckdb.
 // Implémenté par platform/duckdb.SocialRepo.
 type SocialRepository interface {

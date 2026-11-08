@@ -36,6 +36,9 @@ type MediaService struct {
 	jobStore      *jobs.Store                           // optionnel : si nil, pas de transcoding HLS
 	feedBump      func()                                // optionnel : notifie la galerie (BumpMediaFeedVersion)
 	fileRemover   port.MediaFileRemover                 // optionnel : si nil, DeleteMedia refuse d'agir
+	fileTrasher   port.MediaFileTrasher                 // optionnel : l'original part à la Corbeille (desktop) au lieu d'être effacé
+	fileRevealer  port.MediaFileRevealer                // optionnel : ouvre l'explorateur (desktop) ; si nil, RevealMedia répond 404
+	capturesBase  func() string                         // dossier des captures relu à chaque appel (RevealMedia)
 }
 
 // MediaOption configure un MediaService à la construction.

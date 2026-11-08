@@ -24,7 +24,7 @@ type SettingsResponse struct {
 	MediaCapturesBaseDir string `json:"media_captures_base_dir"`
 	// MediaDeleteSourceAfterTranscode : valeur EFFECTIVE résolue (bool, pas un
 	// pointeur) de la politique de suppression du source après transcodage HLS.
-	// Résolue par le handler via config.ResolveMediaDeleteSource (env > store > isProd).
+	// Résolue par le handler via config.AppConfig.MediaDeleteSource (env > store > isProd).
 	MediaDeleteSourceAfterTranscode    bool     `json:"media_delete_source_after_transcode" doc:"Supprimer le fichier source après transcodage HLS. GET renvoie la valeur effective (env > réglage > défaut prod)."`
 	MediaToleranceMinutes              int      `json:"media_tolerance_minutes"`
 	MediaWatcherEnabled                bool     `json:"media_watcher_enabled"`

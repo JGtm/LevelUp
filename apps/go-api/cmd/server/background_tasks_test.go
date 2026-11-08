@@ -116,7 +116,8 @@ func tachesDeTest(ctx context.Context, cfg *config.AppConfig, doublures map[stri
 		heartbeatTask(ctx, time.Now()),
 	}
 	for _, nom := range []string{taskAutoSync, taskDetectionFlush, taskDiskWatch, taskReplayNotify, taskCitationsRelance,
-		taskCatalogCron, taskAssetNameSweep, taskSpartanCron, taskWorldLeaderbd, taskAppRelease} {
+		taskMediaReconcile, taskScoringRevision, taskCatalogCron, taskAssetNameSweep, taskSpartanCron, taskWorldLeaderbd,
+		taskAppRelease} {
 		d := &doublure{}
 		doublures[nom] = d
 		taches = append(taches, loopTask(nom, true, ctx, d.run))
@@ -242,8 +243,8 @@ func TestBackgroundTasks_HostedEtDev_ToutLance(t *testing.T) {
 // absent de taskPolicies l'est).
 var nomsDeclares = []string{
 	taskJanitor, taskWALRecovery, taskSocialCkpt, taskPeriodicCkpt, taskPoolRescan, taskAutoSync, taskDataHealth,
-	taskDetectionFlush, taskDiskWatch, taskReplayNotify, taskCitationsRelance, taskCatalogCron,
-	taskAssetNameSweep, taskSpartanCron, taskWorldLeaderbd, taskReplayPurge, taskAppRelease, taskHeartbeat,
+	taskDetectionFlush, taskDiskWatch, taskReplayNotify, taskCitationsRelance, taskMediaReconcile, taskScoringRevision,
+	taskCatalogCron, taskAssetNameSweep, taskSpartanCron, taskWorldLeaderbd, taskReplayPurge, taskAppRelease, taskHeartbeat,
 	stepFriendsMigr, stepGroupMigr, stepTokenPool, stepPersistQueue, stepWatcher,
 }
 

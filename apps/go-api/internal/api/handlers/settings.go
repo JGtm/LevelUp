@@ -19,7 +19,6 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
-	"os"
 	"strings"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -166,16 +165,13 @@ func (h *SettingsHandler) handleGetSettings(ctx context.Context, _ *struct{}) (*
 
 // settingsResponse construit la réponse GET/PATCH à partir d'un AppSettings, en
 // écrasant media_delete_source_after_transcode par sa valeur EFFECTIVE résolue
-// (config.ResolveMediaDeleteSource : env > store > isProd). Le *bool brut du store
-// (nil = auto) n'est jamais exposé tel quel — le toggle UI reflète la réalité du
-// runtime même quand le champ n'est pas défini.
+// (config.AppConfig.MediaDeleteSource : capacité, env, store, défaut de
+// l'environnement). Le *bool brut du store (nil = auto) n'est jamais exposé
+// tel quel : le toggle UI reflète la réalité du runtime même quand le champ
+// n'est pas défini.
 func (h *SettingsHandler) settingsResponse(cfg *settings_platform.AppSettings) *domain.SettingsResponse {
 	resp := settings_platform.ToResponse(cfg)
-	resp.MediaDeleteSourceAfterTranscode = config.ResolveMediaDeleteSource(
-		os.Getenv(config.EnvMediaDeleteSource),
-		cfg.MediaDeleteSourceAfterTranscode,
-		h.cfg.IsProduction(),
-	)
+	resp.MediaDeleteSourceAfterTranscode = h.cfg.MediaDeleteSource(cfg.MediaDeleteSourceAfterTranscode)
 	// Présence webhook Discord : résolue dans settings_platform.ToResponse (env > store,
 	// source unique alignée sur l'envoi réel). Ne pas la ré-évaluer ici.
 	return resp
@@ -410,8 +406,7 @@ func (h *SettingsHandler) handlePostMediaResetIndex(ctx context.Context, in *set
 	}
 	// Politique de rétention du source résolue LIVE (env > store > isProd) : un
 	// toggle UI prend effet sans redémarrage (le store est relu à chaque déclenchement).
-	deleteSource := config.ResolveMediaDeleteSource(
-		os.Getenv(config.EnvMediaDeleteSource), deleteSourceVal, h.cfg.IsProduction())
+	deleteSource := h.cfg.MediaDeleteSource(deleteSourceVal)
 
 	// Le titre courant (X-LevelUp-Title / session) vit dans le ctx de la REQUÊTE,
 	// mais le job tourne en async sur context.Background() → on capture le slug ICI
@@ -475,8 +470,7 @@ func (h *SettingsHandler) handlePostMediaScan(ctx context.Context, _ *struct{}) 
 		}
 	}
 	// Politique de rétention résolue LIVE (env > store > isProd), cf. handlePostMediaResetIndex.
-	deleteSource := config.ResolveMediaDeleteSource(
-		os.Getenv(config.EnvMediaDeleteSource), deleteSourceVal, h.cfg.IsProduction())
+	deleteSource := h.cfg.MediaDeleteSource(deleteSourceVal)
 
 	// Cf. handlePostMediaResetIndex : ré-injecter le titre courant dans le job async
 	// (sinon halo_infinite par défaut → médias des autres titres jamais scannés).

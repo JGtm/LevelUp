@@ -212,6 +212,129 @@ convient, pas de ffmpeg réduit, (a)/(c) seulement après un retour réel et une
 **Résultats observés** : flux complet joué en Go avec un Azure simulé qui vérifie le PKCE et l'adresse de retour (state faux, rejoué, expiré, refus Microsoft, échec d'échange, point d'arrivée appelé une fois, jeton écrit pour le profil suivi) ; garde de la coquille testé méthode par méthode et chemin par chemin ; Playwright headless sur `vite preview` (12 tests, témoins `scratchpad/l21a/temoins/`) ; le gate web complet a trouvé un garde-rail que les tests ciblés ne voyaient pas (types de réponse écrits à la main : entrée datée ajoutée, la route étant hors du document généré).
 
 **Conclusion / prochaine étape** : 21.00, 21.0, 21.0b et 21.0d `[x]` ; 21.z (flux Azure réel, barre repliée, classements, message média) à l'utilisateur. Risque principal au gate : l'échange du code sans secret client (voir §10 du plan). Les items (a) à (e) de L21 restent à l'autre session.
+## [2026-11-08] Plan médias et KPI : clôture de l'implémentation — En cours (fusion à venir)
+
+**Décision technique principale** : les étapes M0 à M8 et K1 à K3 sont closes sur `feat/replay-vitesse-1-5`. Deux revues indépendantes de la partie médias (9 constats, 8 corrigés, 1 consigné) et une de la partie KPI (2 constats corrigés).
+
+**Résultats observés** : lint, tests de briques, types, 10 810 tests web, 202 paquets Go et 204 en intégration verts. `make gate-push` rouge sur `replay-equiv`, film `11de8353` : écart identique reproduit sur le commit d'avant le chantier, aucun fichier de rejeu modifié.
+
+**Conclusion / prochaine étape** : vérification visuelle de l'utilisateur (après la recuisson locale en cours), accord de fusion, tour donné par la session de coordination, rebase sur `origin/release/v8.1.0`, CHANGELOG, CI, PR.
+
+## [2026-11-08] Plan médias K2 (revue) : un match en échec empêche de noter la révision — Complété
+
+**Décision technique principale** : revue de la partie K, 2 constats recevables, tous corrigés. P1 : le rejeu LUSR journalise un match en échec sans le rendre ; `skill.WithMatchFailureCounter` le compte, `recompute` rend `ErrPartialRecompute` (via `Do`, à tous les demandeurs) et `ApplyScoringRevision` ne note alors rien. Arbitrage de l'utilisateur : l'exclusion d'un match ne doit pas échouer pour l'utilisateur, `RecomputeAfterExclusion` journalise l'erreur partielle et rend `nil` (`RecomputePending` reste vrai, une demande répétée recalcule). P2 : tests du saut d'un profil sans base joueur et de l'invalidation des caches de lecture.
+
+**Résultats observés** : trois mutations vérifiées (erreur sur compteur non nul, invalidation des caches, filtrage de `ErrPartialRecompute`), chacune fait échouer son test. `skill_v2_shadow.go` +7 lignes. Gate rendu à l'utilisateur dans le message de clôture.
+
+**Conclusion / prochaine étape** : K3 (ADR 0047, discipline de révision dans la checklist de livraison ; la case K3.4 reste à statuer par le pilote).
+
+## [2026-11-08] Plan médias K2 : recalcul automatique des KPI au démarrage — Complété
+
+**Décision technique principale** : `MatchRecomputer.ApplyScoringRevision` (dans `match_recomputer.go`) compare la révision rangée dans `sync_meta` à `skill.ScoringRevision()`, rejoue notes de performance et LUSR par la coalescence des exclusions, et ne range la révision qu'après succès, sous lease d'écriture (D14). Service `scoringrevision` (port `ScoringRevisionApplier`, titres portant `CapLUSR`, profils `AuthOnly` ignorés, une erreur ne retient pas les autres joueurs), câblage `NewScoringRevision`, tâche de démarrage `exceptDemo` suivie. K2.0 : `batchComputePerformanceScores` rend l'erreur d'écriture des notes après nettoyage et résumé ; aucun appelant (post-sync, backfill, import, outil) ne devient bloquant.
+
+**Résultats observés** : gate passé (sorties dans le message de clôture). Mutation vérifiée : retirer l'erreur de K2.0 fait échouer les deux tests d'écriture des notes. Écarts : un profil sans fichier de base joueur est sauté sans création de base ; l'échec d'écriture est simulé par un changement de type de colonne (renommer ou retirer une colonne est réparé à l'ouverture de la base). Un profil sans xuid recalcule à vide, noté en section 8.
+
+**Conclusion / prochaine étape** : K3 (ADR 0047, discipline de révision dans la checklist de livraison, revue adversariale de la partie K).
+
+## [2026-11-08] Plan médias K1 : révisions des formules et garde-rail — Complété
+
+**Décision technique principale** : deux constantes de révision (`PerformanceScoreRev`, `LUSRRev`) composées par `ScoringRevision()` (D14), placées dans `internal/sync/skill/scoring_revision.go` (le ratchet `TestSyncRootPackageFrozen` interdit un nouveau fichier à la racine de `sync/` ; K2.1 s'écrira dans `match_recomputer.go`). Garde-rail `TestScoringParametersMatchRevision`, resté dans `sync` pour lire `perfWindowSize` : deux empreintes SHA-256, une par révision, chacune comparée à sa table `{révision -> empreinte}`. Périmètre ouvert au-delà de `skill_config.go` : `perfWindowSize` et `perfFallbackDurationSeconds` (littéral 600 promu en constante), `QuitSecondaryFactor`, `games.DefaultEffectiveHpToKill`, valeurs par défaut exportées de `skill_v2` et du solveur `ep`.
+
+**Résultats observés** : gate passé (sorties dans le message de clôture). K1.3 : trois mutations temporaires (poids KPM du score relatif, poids du score composite, `perfWindowSize`), chacune fait échouer le bon sous-test et lui seul, toutes annulées. Limite assumée, consignée en section 8 du plan : les littéraux en ligne illisibles hors du paquet `skill` et les changements de logique sans changement de nombre ne sont pas détectés ; la révision se change alors à la main.
+
+**Conclusion / prochaine étape** : K2 (recalcul automatique au démarrage) ; K3.2 documente la discipline de révision.
+
+## [2026-11-08] Plan médias M8.2 et M8.3 : ADR 0046 et schéma des médias — Complété
+
+**Décision technique principale** : ADR 0046 (anglais, court) couvre D1 à D13, D16 et D17 tels qu'écrits dans le plan (D4 et D9 suivent le tableau). Ligne `0046` ajoutée à la liste des ADR de `CLAUDE.md`. Skill `db-schema` : section `media_files` (identité, `source_*`, `status` `missing`/`deleted`, `file_stem` figé).
+
+**Résultats observés** : gate passé, sorties réelles : `make go-api-lint` sortie 0, « 0 issues » pour chaque module ; `make libs-test` sortie 0 ; `go test ./... -count=1` sortie 0 ; `go test -tags=integration ./internal/persist/... ./internal/sync/... -count=1` sortie 0, aucun FAIL. Aucune correction du code.
+
+**Conclusion / prochaine étape** : partie M documentée ; reste M7.11 (gate visuel utilisateur), puis la partie K.
+
+## [2026-11-08] Plan médias M8.1 : corrections de la revue adversariale — Complété
+
+**Décision technique principale** : 2 relecteurs Sonnet, une ronde, 9 constats recevables : 8 corrigés (C1 à C8), 1 consigné. Une fiche `missing` n'est plus retenue par la recherche du même nom, et la reprise d'une fiche par un fichier d'un autre format transfère ses likes dans la même transaction. La résurrection d'une fiche supprimée dont la version convertie manque la remet en lecture directe (D17). Supprimer depuis l'app avec une Corbeille envoie les originaux AVANT le masquage : un échec de la Corbeille n'écrit rien en base, rejouer fonctionne. La fusion reprend le rattachement courant de la fiche introuvable (manuel ou automatique) en manuel, sauf si la cible en a déjà un. Textes et toast du bureau (« Envoyer à la Corbeille », « Média supprimé définitivement »).
+
+**Résultats observés** : un test par correction, mutation vérifiée sur C1 (garde `missing`, transfert des likes), C2, C3 (chacun des sept gardes de la passe sur une fiche supprimée), C4 et C7. Gate rendu à l'utilisateur dans le message de clôture. Écarts : le second de deux fichiers de même nom reste écarté par la règle des fichiers de même nom qui coexistent (comportement d'avant, section 8) ; trois tests de conversion reçoivent les tables de likes ; le test « un rattachement automatique ne se reprend pas » est remplacé (C7 change ce comportement).
+
+**Conclusion / prochaine étape** : reste ouvert : renommage suivi d'une suppression depuis l'app avant toute passe (section 8, non traité), M7.11 (gate visuel utilisateur), M8.2 (ADR 0046) et M8.3 (skill db-schema), puis K1 à K3 et Z.
+
+## [2026-11-08] Plan médias M7 : écran des fichiers introuvables, Corbeille et explorateur — Complété (gate visuel M7.11 à l'utilisateur)
+
+**Décision technique principale** : la fenêtre « Fichiers introuvables » (`MediaMissingDialog`) n'a aucune coquille propre : elle monte les quatre briques de `MediaPickerDialog` (liste, vue des fiches candidates, pieds de confirmation en deux temps pour la fusion et l'oubli). Logique pure dans `mediaMissing.logic.ts`, hooks dans `missingQueries.ts` (`queries.ts` aurait passé 500 L), bandeau du dossier dans `MediaFolderNotice` qui porte sa mutation. Sur le bureau : réglage des originaux masqué (`can_keep_media_sources`), bouton « Afficher dans l'explorateur » (`can_reveal_files_in_explorer`), confirmation et toast de suppression propres à la Corbeille (`can_trash_media_sources`).
+
+**Résultats observés** : gate vert (vitest `features/media`, `features/settings` et `lib/capabilities` : 32 fichiers, 314 tests ; `npm run typecheck` sans erreur ; eslint 0 erreur, le seul avertissement est celui, antérieur, de `MediaAudioConfigButton.tsx`). Suite web complète : les deux garde-rails de clés de requête (`keys.title-slug.guard`, `keys.locale`) exigeaient de classer les deux clés neuves, fait ; reste un échec antérieur à M7 (`detail-section.guard.test.ts`, titre passé dans `MediaPickerDialog.tsx` par M6), consigné en section 8 sans correction. Écarts consignés au plan : prop optionnelle `action` sur `MediaPickerRow` (bouton par ligne hors du bouton de sélection, rendu inchangé sans elle, snapshot de M0.3 intact), pas de toast de succès pour la confirmation d'un retrait massif (aucune clé prévue).
+
+**Conclusion / prochaine étape** : M7.11 (gate visuel) est `[!]` jusqu'à la réponse de l'utilisateur ; les témoins sont listés dans le plan. Prochaine étape : M8 (revue adversariale, ADR 0046, skill db-schema).
+
+## [2026-11-08] Plan médias M6 : coquille réutilisable de la fenêtre de réassociation — Complété
+
+**Décision technique principale** : `MediaPickerDialog.tsx` porte quatre briques sans logique (coquille, état de liste, ligne, barre de confirmation) avec les classes d'origine ; `MediaMatchPicker.tsx` est réécrit dessus sans changer ses props ni sa logique. `subtitle` et `detail` sont des `ReactNode` pour que les nœuds texte du DOM restent identiques.
+
+**Résultats observés** : vitest `src/features/media/` vert (13 fichiers, 124 tests), `npm run typecheck` sortie 0, eslint sans erreur (un avertissement antérieur sur `MediaAudioConfigButton.tsx`, consigné en section 8). Le snapshot témoin de M0.3 passe sans régénération ; aucun fichier `.snap` modifié.
+
+**Conclusion / prochaine étape** : coquille prête pour l'écran « Fichiers introuvables ». Prochaine étape : M7.
+
+## [2026-11-08] Plan médias M5 : API des fichiers introuvables — Complété
+
+**Décision technique principale** : six routes sous `/players/{player_slug}` (liste, candidats, fusion, oubli, confirmation d'une disparition massive, ouverture de l'explorateur). La fusion ne manipule que des fiches en base : likes transférés par `TransferMediaLikes`, rattachement manuel repris par INSERT, fiche introuvable masquée (`status='deleted'`), jamais de DELETE. Oubli et fusion ne retirent que la miniature et la version convertie, jamais l'original. Le handler détecte `port.MediaMissingService` par type-assertion (aucune doublure de `port.MediaService` à toucher) ; `resolveMediaWriteRequester` est la seule copie de la résolution du demandeur. Qui atteint les routes : en propriété appliquée le middleware refuse déjà le co-membre sur toute écriture (le like est la seule action du visiteur) mais le laisse lire le profil ; le service (`CanModifyMedia`) refuse donc aussi les deux GET au co-membre.
+
+**Résultats observés** : gate du plan vert (service, api, platform/duckdb avec `Media|OpenAPI`, vet ops, archlint, `make check-types`). Tests : refus sans écriture ni retrait de fichier, WAL vide après fusion et oubli, original intact, fichiers de la cible conservés, 403 du co-membre sur merge, forget, confirm-bulk et reveal avant le handler, 403 du service sur les GET, 404 de reveal sans capacité. Écarts consignés au plan (M5.5 `HideWindow` remis à faux pour la fenêtre de l'explorateur, M5.6 autorisation des GET, état du dossier lu par le service, confirmation sans objet = rien d'enregistré, 401 de suppression sans session en anglais). `openapi.yaml` et `generated.ts` régénérés ; les trois capacités de M4 ajoutées à `DEPLOYMENT_CAPABILITY_DEFAULTS` (seule table qui bloquait `tsc`), ce qui couvre M7.6 sur ce point. Plafond du ratchet des littéraux accentués abaissé pour `media_delete.go`.
+
+**Conclusion / prochaine étape** : l'API est complète et générée, aucun écran ne l'appelle encore. Prochaine étape : M6 (extraction de la coquille du picker, sans changement visuel).
+
+## [2026-11-08] Plan médias M4 : tâche de démarrage, règles du bureau, Corbeille — Complété
+
+**Décision technique principale** : trois capacités de profil (`KeepMediaSources`, `RevealFilesInExplorer`, `TrashMediaSources`, desktop seul) publiées au bootstrap. `AppConfig.MediaDeleteSource` est le seul chemin de résolution de la rétention de l'original (faux sous `KeepMediaSources`, variable d'environnement ignorée) ; `NewLiveMediaScanHook` remplace les trois blocs recopiés. Une tâche de démarrage (hors démo) lance une passe d'indexation par joueur de chaque titre média. Suppression depuis l'app : `OSMediaFileTrasher` (`SHFileOperationW`, lecteur fixe seulement) envoie l'original à la Corbeille ; un échec arrête tout et ne devient jamais une suppression définitive, un support sans Corbeille rejoint la suppression définitive annoncée par `Trashed`.
+
+**Résultats observés** : gate du plan vert (build, config, service, cmd/server, handlers, archlint). Aucun test n'envoie de fichier réel à la Corbeille (appels système injectés, Corbeille factice qui déplace dans un dossier de test). Écarts : `MediaDeleteSource` dans `config_media.go` (config.go dépasse 500 lignes) ; ratchet `RepoRoot` abaissé de 2 à 1 pour trois fichiers migrés. Risque consigné en section 8 : `SHFileOperationW` avec `FOF_NOCONFIRMATION` supprime sans question un fichier trop gros pour la Corbeille ; à valider à la main avant livraison.
+
+**Conclusion / prochaine étape** : le comportement du bureau est en place côté serveur ; `openapi.yaml` et `generated.ts` ne sont pas régénérés (M5.8). Prochaine étape : M5 (API des fichiers introuvables).
+
+## [2026-11-08] Plan médias M3 : indexation alignée sur le disque — Complété
+
+**Décision technique principale** : `IndexMedia` aligne d'abord les fiches sur le disque (`ReconcileMediaWithDisk`, erreur fatale pour l'indexation) puis insère avec les empreintes déjà lues, sans second hachage. `MissingPolicy` et `SkipFreshFiles` viennent des trois appelants du service (`resolveMediaBase` : racine fiable = marquage, repli ou dossier absent = rien n'est marqué). L'état de la racine (indisponible, disparition massive en attente) et la confirmation sont tenus en mémoire par (titre, joueur). Miniatures par `EnsureVideoThumbnails` (une par fiche, jamais partagée, régénérée si absente, miniature historique reliée), dossier HLS distinct par sous-dossier, original détaché de la fiche avant sa suppression par la conversion.
+
+**Résultats observés** : gate du plan vert (ops, service, platform/duckdb, archlint ; `media.go` à 547 lignes). Nouveaux tests : renommage sans doublon ni perte de miniature, deux sous-dossiers de même nom, `ForceRescan`, garde-fou massif et confirmation, racine indisponible, échec de la passe fatal, cycle `DeleteMedia` puis `IndexMedia` d'une vidéo convertie (retour avec likes et miniature). Écart au plan : la recherche du « même nom » écarte la fiche qui désigne déjà le fichier, sinon un média supprimé remis au même endroit ne revenait jamais (mutation vérifiée). Fixture à table manuelle de `media_hls_integration_test.go` complétée des colonnes d'original.
+
+**Conclusion / prochaine étape** : l'indexation suit le disque ; aucun écran ne change encore. Prochaine étape : M4 (tâche de démarrage et règle du bureau).
+
+## [2026-11-08] Plan médias M2 : passe de réconciliation avec le disque — Complété
+
+**Décision technique principale** : `ReconcileMediaWithDisk` remplace `ReconcileOrphanedMediaFiles` selon l'algorithme du plan (inventaire, lignes, empreintes réutilisées sans relecture, présence, relocalisation par empreinte puis par changement de format, original perdu, complément, garde-fou de disparition massive, écritures en une transaction sans écriture quand rien ne change). Transfert de likes par INSERT dans `duckdb.TransferMediaLikes`, qui ne fait rien pour des chemins identiques. `IndexMedia` branché au minimum sur `MissingIgnore` ; M3 fait le reste.
+
+**Résultats observés** : gate du plan vert (R1 à R25 avec R12b, R12c, R15b, R15c, six cas migrés, `pathKey` ; garde-rails `media_files` de platform/duckdb). Retirer le garde « ligne non supprimée » de la relocalisation fait échouer R25. Découvertes consignées en section 8 du plan (fichier référencé par une ligne supprimée, tables de likes requises).
+
+**Conclusion / prochaine étape** : le noyau est en place, aucun écran ne change encore. Prochaine étape : M3 (branchement complet dans l'indexation).
+
+## [2026-11-08] Plan médias M1 : colonnes, état « introuvable », prédicats — Complété
+
+**Décision technique principale** : étape M1 seule. `domain.MediaStatusMissing`, `MediaDeletionTarget.SourcePath`, `ForgetPaths()` (miniature + HLS, jamais l'original) et `OriginalPaths()`. Colonnes non indexées `source_path`, `source_size`, `source_mtime_ns` ajoutées à `mediaFilesAddedColumns`. `MediaVisiblePredicate` exclut désormais `deleted` et `missing` ; `MediaNotDeletedPredicate` (ancienne forme) remplace l'ancien prédicat uniquement dans `loadKnownHashes`, `LoadMediaForDeletion` et `MarkMediaDeleted`. `source_path` est chargé par `loadMediaSourcePath`, requête séparée où seul « Binder Error » (colonne absente) donne une chaîne vide, toute autre erreur fait échouer la suppression.
+
+**Résultats observés** : gate du plan vert (domain, platform/duckdb, ops, service avec le filtre `Media|StoredPaths|ForgetPaths|LoadKnownHashes`, puis archlint). Nouveaux tests : formes des deux prédicats (dont `'missing'`), `ForgetPaths`, `OriginalPaths`, cas élargis de `StoredPaths`, chargement de `source_path` (colonne absente, présente, erreur autre), visibilité d'une ligne `missing` ou `deleted` à la suppression. Aucun écart au plan.
+
+**Conclusion / prochaine étape** : socle posé, aucune lecture écran ne change pour l'instant (aucune ligne n'est encore `missing`). Prochaine étape : M2 (passe de réconciliation avec le disque).
+
+## [2026-11-08] Plan médias M0 : témoins avant modification — Complété
+
+**Décision technique principale** : étape M0 du plan médias exécutée seule, sans toucher au code de production. Témoin Go = sortie brute de `go test` sur les paquets ops, platform/duckdb, service, api/handlers (filtre `Media|Reconcile`), capturée dans `.ai/temoins_medias_avant.txt` (non commité). Témoin web = test `toMatchSnapshot()` du `MediaMatchPicker` avec un candidat sélectionné (barre de confirmation visible), `start_time` et `capture_utc` à null.
+
+**Résultats observés** : Go, 4 paquets `ok`, `EXIT=0`, aucun échec. Web, `MediaMatchPicker.test.tsx` 6 tests verts, snapshot écrit une fois puis stable à la relance. Le test clique le candidat par son texte « 2 - 1 » et vérifie le bouton « Confirmer ».
+
+**Conclusion / prochaine étape** : témoins posés, rien de cassé avant modification. Prochaine étape : M1 (colonnes, état « introuvable », prédicats), après validation du point d'étape.
+
+
+**Décision technique principale** : plan `.ai/PLAN_MEDIAS_DISQUE_ET_REVISION_KPI_2026-11-08.md`, écrit pour des exécutants Sonnet et Haiku. Médias : identité par empreinte de contenu, chemin de l'original dans de nouvelles colonnes non indexées, état `status='missing'` (aucune colonne lue hors de l'indexation), passe unique de réconciliation, écran « Fichiers introuvables » construit sur la coquille extraite de `MediaMatchPicker`. KPI : révision en constantes, valeur notée par joueur dans `sync_meta` seulement après un recalcul réussi, passage au démarrage réutilisant `MatchRecomputer`.
+
+**Résultats observés** (lecture du code, rien d'exécuté) : `file_stem` appartient à un index, il ne doit jamais être réécrit ; les likes sont indexés par `file_path`, tout changement de chemin doit les transférer ; une vidéo convertie supprimée depuis l'app revient au scan suivant quand l'original est conservé ; `GenerateThumbnails` ne descend pas dans les sous-dossiers ; l'indicateur « Analyse en cours » est par match et ne convient pas au recalcul des KPI.
+
+**Relecture indépendante** : deux relecteurs Sonnet aveugles, une ronde. 19 constats recevables et 3 précisions, vérifiés sur le code ; aucun constat jeté, un seul consigné sans correction (clips partagés entre titres). Changements principaux : la recherche manuelle devient une fusion de fiches (un scan indexe déjà tout fichier inconnu), garde-fou corrigé (les lignes déjà introuvables le faisaient rester actif à tort) et doté d'une confirmation, dossier de conversion distinct pour les sous-dossiers, capacité inversée en `KeepMediaSources`, échec d'écriture des notes de performance désormais rendu en erreur avant de noter la révision.
+
+**Décisions de l'utilisateur (2026-11-08)** : une vidéo convertie dont l'original manque reste visible, ne garder qu'un des deux formats étant un nettoyage légitime ; suppression depuis l'app avec message explicite et envoi de l'original à la Corbeille de Windows si le disque en a une.
+
+**Conclusion / prochaine étape** : go de l'utilisateur, puis lancement de l'étape M0 dans le worktree `../LevelUp-wt-medias`.
+
 ## [2026-11-02] Rejeu — vitesse 1.5× au menu de vitesse — Complété
 
 **Décision technique principale** : `SPEED_MULTIPLIERS` passe à `[0.5, 1, 1.5, 2, 4]` ; le format du déclencheur garde une décimale seulement pour les vitesses non entières (l ancien format arrondissait 1.5 à « 2× »). Le son reste actif à 1.5× (borne `SOUND_MAX_SPEED` = 2).
@@ -120124,3 +120247,46 @@ publication des briques, citations `.ai/` du code) ; 75 lignes antérieures à 2
 **Résultats observés** : contrôle visuel de l'image sur fond gris et blanc ; branche créée depuis `origin/release/v8.1.0` dans un worktree dédié.
 
 **Conclusion / prochaine étape** : commit et PR vers `release/v8.1.0` sur accord.
+## [2026-11-02] Plan « Fin du découplage : brique décodeur publiée, dépôts dédiés des quatre briques » — En cours (proposé, attend le go)
+
+**Décision.** Plan sur preuves `.ai/PLAN_FIN_DECOUPLAGE_BRIQUE_FILM_2026-11-02.md` : phase A (couplages à l'hôte,
+dette d'API avant tag, ratchets), phase B (README, exemple, `require`, tag `libs/film/v0.1.0`), phase C (quatre dépôts
+dédiés ensemble). Pilotage : Sonnet par défaut, Opus pour `filmshell` en accesseurs (sources hachées) et le changement
+de chemin de module du décodeur, Haiku pour quatre micro-tâches contrôlées par grep ; deux relecteurs Sonnet, une ronde,
+en fin de phase B et C.
+
+**Résultats observés (mesures du 2026-11-02, `792d2a0ee9`).** Révisions inchangées depuis D2 (grammaire 2026-10-28) ;
+façade 179 et compagnon 316 = plafonds ; `libs/film` sans `require` de `gamefiles` (28 fichiers) ni `himap` (2) ;
+`filmproc` nomme quatre `LEVELUP_*` (trois ajoutées par le desktop) ; ancien chemin cité dans 559 fichiers (24 de
+production) ; 15 variables exportées modifiables dans `filmshell`, 12 `slog` sans contexte ; 21 fichiers
+`campagne_overlay` morts ; dépôt public, fixtures à 202 xuids déjà publiées. Le desktop (L21) touche encore
+`filmproc` / `filmcache` : lots 2 à 4 après sa fusion.
+
+**Conclusion / prochaine étape.** Douze décisions (D-1 à D-12) à trancher par le user, puis go.
+
+## [2026-11-08] Rejeu : mort sans icône, compteur d'usages rogné, capteur de réapparition invisible — diagnostic En cours (aucun code modifié)
+
+**Décision technique principale.** Diagnostic seul, sur artefacts (schéma 106) et faits de film locaux, sonde `research` injectée par `-overlay` (rien dans le dépôt).
+1. `20c703a7`, ligne sans icône à 6:09 : la piste de Like15Ninjaz s'arrête à la frame 3920 (`EndFrame` = dernier point, immobile depuis ~3908), son kill réel (M41 SPNKr, Pwr opps) est 3,8 s plus tard, au-delà de `KILL_MATCH_TOL_MS` : `alignFeedByOrigin` produit une mort neutre à 6:09 EN PLUS du kill à 6:13.
+2. Fiche normale : 213 px utiles, 204 px de cellules fixes + 5 de gap = 4 px pour « ×N » (~12 px) ou « plein » ; la rangée clippe. Indépendant de la longueur des icônes (cellule fixe 40 px). Calcul sur les cotes, non mesuré au navigateur.
+3. `bc4bde17`, JGtm : rang 22 = détecteur de menaces (pas traqueur), kit de réapparition, 4 activations (frames 75, 323, 552, 755), 4 objets situés. Écarté par `rangDe` : création avant l'origine (première vie) et `AmbiguousRank` (la réapparition crée DEUX ti=37 attachés dans le paquet). Publication absente = ni dessin ni son ni compte.
+
+**Résultats observés.** Parc local, 1 339 films de faits : 45 137 paquets à deux objets, 12 821 avec un seul objet actif, le DERNIER créé dans 12 817 cas (4 contraires, 2 paquets à deux actifs) ; 12 771 objets actifs perdus (rang 22 : 6 730, rang 19 : 5 332), 20 265 activations. Rang 12 (traqueur) absent des pertes. Vies dont le kill suit la fin de piste au-delà de 2 s et avant la vie suivante : 1 218 sur 121 416.
+
+**Conclusion / prochaine étape.** Proposé au user, attend son accord : (1) un kill consomme la dernière fin de vie de sa victime tant que la vie suivante n'a pas commencé ; (2) compte sur la vignette de capacité, sans mot ; (3) publier le dernier objet créé du paquet et borner à 0 les créations d'avant l'origine, témoins famille × origine sur faits réels, puis réassemblage demandé au user (pas de relecture des films).
+
+## [2026-11-08] Rejeu : les deux causes reprises à la racine après relecture du user — diagnostic En cours (aucun code modifié)
+
+**Décision technique principale.** Deux propositions du diagnostic précédent retirées, sur remarque du user. (1) Fin de vie : `EndFrame` = dernier point écrit ; la règle pérenne est qu'une vie s'arrête à la mort que le film écrit (le dernier point seulement faute de mort), `trackWindow` lisant déjà `endFrame`. (3) « Dernier objet créé » abandonné : chaque objet ti=37 créé porte son propre identifiant `eqip` (mot 32 bits du bloc MPP de l'état par défaut), lisible sur 100 % des objets attachés ; le catalogue `equipment_energy.json` (carried -> pickup) puis le manifeste donnent la famille. Plus aucune jointure par l'annonce i48 du paquet, donc plus aucune différence ramassé / réapparition.
+
+**Résultats observés.** Sonde sur 11 films (Super Fiesta et Arena) : 0 objet sans identifiant. Les huit identifiants d'objets actifs absents du manifeste se résolvent tous par le catalogue (détecteur, mur, translocateur, répulseur, écran, camouflage, surbouclier). L'objet voisin toujours inactif est `0xa53cd143`, absent du catalogue, ou une grenade.
+
+**Conclusion / prochaine étape.** Attend le go du user. L'identifiant n'est pas dans les faits persistés : ajout au canal et aux faits, révision de la grammaire, recuisson depuis les films à demander au user.
+
+## [2026-11-08] Rejeu : joueurs dont la position cesse sans mort, croisés avec les départs API — diagnostic En cours (aucun code modifié)
+
+**Décision technique principale.** Mesure seule, sur 1 331 artefacts, la participation API et les faits de film ; « a quitté » se lit sur `left_in_progress`, pas sur l'arrêt des positions. Décision du user : un joueur présent reste affiché, figé si besoin.
+
+**Résultats observés.** Vies finales arrêtées au moins 5 s avant la fin, sans kill lu ensuite : 667 départs selon l'API (637 avec un autre joueur sur la même place, aucun bot ; 15 immobiles depuis au moins 20 s), dépôt API 35 s en médiane après le dernier point (p10 4 s, p90 63 s, après retrait du décalage horaire entier). 1 124 joueurs présents à la fin selon l'API, dont 132 arrêtés au moins 15 s avant la fin : 25 ont une mort écrite après le dernier point (couverts par la fin de vie à la mort), 107 n'en ont aucune, et aucun des 132 n'était immobile depuis 20 s.
+
+**Conclusion / prochaine étape.** Proposer au user de garder affichés jusqu'à la fin ces 107 joueurs présents sans mort écrite ; la cause de l'arrêt des positions reste inconnue. À traiter après l'identification des objets portés.

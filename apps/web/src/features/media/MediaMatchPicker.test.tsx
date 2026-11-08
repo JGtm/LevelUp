@@ -5,7 +5,7 @@
  * clé leaderboard. Ces tests comparent les deux locales sur le chemin touché.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { renderWithProviders } from '@/test/render-utils'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { MediaMatchPicker } from './MediaMatchPicker'
@@ -90,5 +90,39 @@ describe('MediaMatchPicker — i18n EN (GH2-B7)', () => {
       />,
     )
     expect(screen.getByText('Associate this media')).toBeInTheDocument()
+  })
+})
+
+// Instantané du picker avec un candidat sélectionné (barre de confirmation
+// visible). start_time et capture_utc sont null pour que l'instantané ne
+// dépende pas du fuseau du poste.
+describe('MediaMatchPicker — instantané de la barre de confirmation', () => {
+  it('instantané avec un candidat sélectionné et la barre de confirmation', () => {
+    useAppShellStore.setState({ locale: 'fr' })
+    mockQueryState({
+      data: {
+        capture_utc: null,
+        candidates: [
+          {
+            match_id: 'm-1',
+            own_score: 2,
+            enemy_score: 1,
+            map_name: null,
+            mode_name: null,
+            map_image_url: null,
+            outcome: 2,
+            start_time: null,
+            delta_seconds: 120,
+            playlist_name: null,
+            lobby: [],
+            is_current: false,
+          },
+        ],
+      },
+    })
+    const { baseElement } = renderPicker()
+    fireEvent.click(screen.getByText('2 - 1').closest('button') as HTMLButtonElement)
+    expect(screen.getByRole('button', { name: 'Confirmer' })).toBeInTheDocument()
+    expect(baseElement).toMatchSnapshot()
   })
 })

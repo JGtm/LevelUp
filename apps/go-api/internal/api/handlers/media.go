@@ -58,6 +58,7 @@ func (h *MediaHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	huma.Delete(api, "/media", h.handleDeleteMedia, humacore.Op("deleteMedia", "Supprime définitivement un média (propriétaire ou admin)", "media"))
 	huma.Get(api, "/media/audio-config", h.handleGetMediaAudioConfig, humacore.Op("getMediaAudioConfig", "Réglage des pistes audio des médias du joueur", "media"))
 	huma.Put(api, "/media/audio-config", h.handlePutMediaAudioConfig, humacore.Op("putMediaAudioConfig", "Définit le réglage des pistes audio des médias du joueur", "media"))
+	h.mountMissingRoutes(api)
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
@@ -145,7 +146,7 @@ type MediaHandler struct {
 	settingsStore     *settings.Store
 	notifierFor       NotificationsEmitterFactory // optionnel : émission media_added
 	recipientResolver MediaRecipientResolver      // optionnel : fan-out aux autres joueurs
-	isProduction      bool                        // défaut de rétention source (env LEVELUP_ENV=production)
+	deleteSource      func(*bool) bool            // politique de rétention de l'original (config.AppConfig.MediaDeleteSource) ; nil : défaut sans capacité
 	authEnforced      bool                        // true = multi-user authentifié (like sans session refusé)
 	requester         RequesterSlugResolver       // joueur possédé par l'utilisateur de la session (media_requester.go)
 	users             authz.UserLookup            // relecture du rôle admin (media_requester.go)
@@ -153,6 +154,7 @@ type MediaHandler struct {
 	uploadSlotWait    time.Duration               // attente maximale d'une place d'envoi
 	uploadReadBudget  time.Duration               // délai de lecture du corps une fois la place obtenue
 	audience          MediaAudienceResolver       // auteurs visibles (nil : joueur de la page seul)
+	rescan            MediaRescan                 // passe lancée après la confirmation d'une disparition massive (media_missing.go)
 }
 
 // NewMediaHandler crée un MediaHandler.
@@ -171,11 +173,12 @@ func (h *MediaHandler) WithSettingsStore(store *settings.Store) *MediaHandler {
 	return h
 }
 
-// WithProduction fournit le défaut de résolution de la politique de rétention du
-// source après transcodage HLS (config.ResolveMediaDeleteSource : env > store >
-// isProd). Sans appel : false (conserver le source — défaut sûr hors prod).
-func (h *MediaHandler) WithProduction(isProd bool) *MediaHandler {
-	h.isProduction = isProd
+// WithMediaDeleteSource fournit la résolution de la politique de rétention de
+// l'original après transcodage HLS : le réglage du store (nil = absent) rend la
+// valeur effective (config.AppConfig.MediaDeleteSource). Sans appel, la
+// résolution est celle d'une configuration sans capacité de déploiement.
+func (h *MediaHandler) WithMediaDeleteSource(f func(*bool) bool) *MediaHandler {
+	h.deleteSource = f
 	return h
 }
 

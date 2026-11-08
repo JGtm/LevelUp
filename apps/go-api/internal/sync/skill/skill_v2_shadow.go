@@ -14,6 +14,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"sync/atomic"
 	"time"
 
 	"levelup/go-api/internal/analysis"
@@ -121,6 +122,7 @@ func runLUSRV2Shadow(ctx context.Context, playerDB *sql.DB, shared SharedAccesso
 	// rafale, dans ce même cycle.
 	base := newShadowRunContext(playerDB, xuid, canonical, cfg.ownerOnly)
 	base.excluded = excluded
+	base.matchFailures = cfg.matchFailures
 	base.components.medals = work.medals
 	bursts, err := runWriterBursts(ctx, shared, base, work, &s)
 	logShadowBurstDone(ctx, xuid, work, s, bursts)
@@ -193,7 +195,8 @@ type shadowRunContext struct {
 	excluded map[string]bool
 	// components : calcul des 8 composantes de performance des matchs notés (référence
 	// partagée : les fenêtres glissantes survivent aux copies par valeur du contexte).
-	components *componentTracker
+	components    *componentTracker
+	matchFailures *atomic.Int64 // WithMatchFailureCounter ; nil sans l'option
 }
 
 // shadowRunStats compte les buckets de skip pour le log de fin de run.
@@ -245,6 +248,7 @@ func processOneShadowMatch(ctx context.Context, c shadowRunContext, m shadowMatc
 	if err != nil {
 		slog.WarnContext(ctx, "LUSR v2 shadow: LoadState échoué",
 			"xuid", c.xuid, "group", group, "err", err)
+		c.noteMatchFailure()
 		return
 	}
 	if st != nil && lusrWatermarkCovers(st.LastMatchAt, m.startTime) {
@@ -282,6 +286,7 @@ func processOneShadowMatch(ctx context.Context, c shadowRunContext, m shadowMatc
 		slog.WarnContext(ctx, "LUSR v2 shadow: compute échoué",
 			"match_id", m.matchID, "group", group, "err", err,
 			"team_a_size", len(teamA), "team_b_size", len(teamB))
+		c.noteMatchFailure()
 		return
 	}
 
@@ -326,11 +331,13 @@ func processOneShadowMatch(ctx context.Context, c shadowRunContext, m shadowMatc
 		// Écriture canonical durable échouée → watermark tenu (groupe marqué par
 		// le helper), retry au prochain cycle.
 		canonicalWriteHeldWatermark.Add(1)
+		c.noteMatchFailure()
 		s.skippedWriteFailed++
 		slog.WarnContext(ctx, "LUSR v2 canonical: write match_skill_rank échoué — watermark tenu (groupe), retry au prochain cycle",
 			"match_id", m.matchID, "group", group, "xuid", c.xuid, "err", outcome.Err)
 	case outcome.Err != nil:
 		// Avance du watermark échouée APRÈS écriture durable OK → retry idempotent.
+		c.noteMatchFailure()
 		slog.WarnContext(ctx, "LUSR v2 shadow: persist état échoué — watermark non avancé",
 			"match_id", m.matchID, "group", group, "err", outcome.Err)
 	}

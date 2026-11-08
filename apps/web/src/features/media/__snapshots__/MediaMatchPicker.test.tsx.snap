@@ -1,0 +1,157 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`MediaMatchPicker — instantané de la barre de confirmation > instantané avec un candidat sélectionné et la barre de confirmation 1`] = `
+<body>
+  <div>
+    <div
+      class="fixed inset-0 z-[60] flex items-center justify-center bg-background/70"
+    >
+      <div
+        class="mx-4 flex max-h-[85vh] w-full max-w-3xl flex-col rounded-lg bg-background shadow-xl"
+      >
+        <header
+          class="flex items-center justify-between border-b border-border px-5 py-3"
+        >
+          <div>
+            <h2
+              class="text-base font-semibold"
+            >
+              Réassocier ce média
+            </h2>
+          </div>
+          <button
+            aria-label="Fermer"
+            class="rounded p-1 text-sm text-muted-foreground hover:bg-accent"
+            type="button"
+          >
+            ✕
+          </button>
+        </header>
+        <div
+          class="flex items-center gap-2 border-b border-border px-5 py-2 text-xs"
+        >
+          <span
+            class="text-muted-foreground"
+          >
+            Fenêtre :
+          </span>
+          <button
+            class="rounded px-2 py-1 transition-colors bg-primary text-primary-foreground"
+            type="button"
+          >
+            ±15 min
+          </button>
+          <button
+            class="rounded px-2 py-1 transition-colors hover:bg-accent"
+            type="button"
+          >
+            ±60 min
+          </button>
+          <button
+            class="rounded px-2 py-1 transition-colors hover:bg-accent"
+            type="button"
+          >
+            ±180 min
+          </button>
+          <span
+            class="ml-auto text-muted-foreground"
+          >
+            1 match trouvé
+          </span>
+        </div>
+        <div
+          class="flex-1 overflow-y-auto px-3 py-2"
+        >
+          <ul
+            class="flex flex-col gap-2"
+          >
+            <li>
+              <button
+                class="flex w-full gap-3 rounded-md border px-3 py-2 text-left transition-colors border-primary/80 bg-primary/10 ring-2 ring-primary/40"
+                type="button"
+              >
+                <div
+                  class="h-16 w-24 shrink-0 rounded bg-muted"
+                />
+                <div
+                  class="flex min-w-0 flex-1 flex-col gap-1"
+                >
+                  <div
+                    class="flex items-center justify-between gap-2 text-sm"
+                  >
+                    <span
+                      class="truncate font-medium"
+                    >
+                      2 - 1
+                    </span>
+                    <div
+                      class="flex shrink-0 items-center gap-2"
+                    >
+                      <span
+                        class="rounded border px-1.5 py-0.5 text-2xs font-semibold bg-success/15 text-success border-success/40"
+                      >
+                        —
+                      </span>
+                    </div>
+                  </div>
+                  <div
+                    class="flex items-center gap-3 text-3xs text-muted-foreground"
+                  >
+                    <span>
+                      —
+                    </span>
+                    <span
+                      class="opacity-60"
+                    >
+                      ±2 min
+                    </span>
+                  </div>
+                  <p
+                    class="text-3xs italic text-muted-foreground"
+                  >
+                    Lobby indisponible
+                  </p>
+                </div>
+              </button>
+            </li>
+          </ul>
+        </div>
+        <footer
+          class="flex items-center justify-between gap-3 border-t border-border bg-muted/40 px-5 py-3 text-sm"
+        >
+          <div>
+            <p
+              class="font-medium"
+            >
+              Confirmer la réassociation ?
+            </p>
+            <p
+              class="text-xs text-muted-foreground"
+            >
+              2 - 1
+               · 
+              —
+            </p>
+          </div>
+          <div
+            class="flex gap-2"
+          >
+            <button
+              class="rounded border border-border px-3 py-1.5 text-xs hover:bg-accent"
+              type="button"
+            >
+              Annuler
+            </button>
+            <button
+              class="rounded bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
+              type="button"
+            >
+              Confirmer
+            </button>
+          </div>
+        </footer>
+      </div>
+    </div>
+  </div>
+</body>
+`;

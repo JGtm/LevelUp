@@ -36,7 +36,7 @@ type AppSettings struct {
 	// MediaDeleteSourceAfterTranscode pilote la suppression du fichier source
 	// (.mkv/.avi…) après un transcodage HLS réussi. *bool : nil = « auto » (défaut
 	// résolu par environnement — supprime en prod, conserve en local). La résolution
-	// effective se fait au déclenchement via config.ResolveMediaDeleteSource
+	// effective se fait au déclenchement via config.AppConfig.MediaDeleteSource
 	// (env > store > isProd), jamais figée ici.
 	MediaDeleteSourceAfterTranscode    *bool    `json:"media_delete_source_after_transcode,omitempty"`
 	MediaBufferMinutes                 int      `json:"media_buffer_minutes"`
@@ -508,7 +508,7 @@ func ToResponse(cfg *AppSettings) *domain.SettingsResponse {
 		RefreshClearsCaches:  cfg.RefreshClearsCaches,
 		MediaCapturesBaseDir: cfg.MediaCapturesBaseDir,
 		// Placeholder : nil (*bool auto) → false ici ; le handler GET /settings écrase
-		// ce champ par la valeur RÉSOLUE (config.ResolveMediaDeleteSource). Le *bool
+		// ce champ par la valeur RÉSOLUE (config.AppConfig.MediaDeleteSource). Le *bool
 		// brut du store n'est JAMAIS exposé tel quel dans la réponse (cf. handleGetSettings).
 		MediaDeleteSourceAfterTranscode: cfg.MediaDeleteSourceAfterTranscode != nil && *cfg.MediaDeleteSourceAfterTranscode,
 		MediaToleranceMinutes:           cfg.MediaBufferMinutes,

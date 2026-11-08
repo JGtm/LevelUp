@@ -33,31 +33,34 @@ type CapabilityMap struct {
 	// Capacités du profil de déploiement (ADR 0044, config.DeploymentCapabilities) : ce que
 	// l'instance OFFRE, décidé une fois au chargement de la configuration. Le client branche
 	// dessus, jamais sur Deployment.
-	CanUseAccounts          bool `json:"can_use_accounts" doc:"Comptes et inscriptions (authentification password ou xbox)."`
-	CanSignInWithXbox       bool `json:"can_sign_in_with_xbox" doc:"Connexion par le SSO Xbox (mode xbox)."`
-	CanUseInvitations       bool `json:"can_use_invitations" doc:"Codes d'invitation entre comptes et groupes."`
-	CanUseGroups            bool `json:"can_use_groups" doc:"Groupes (accès mutuel entre comptes)."`
-	CanPoolTokens           bool `json:"can_pool_tokens" doc:"Mise en commun des jetons proposée à l'utilisateur."`
-	CanUseAdmin             bool `json:"can_use_admin" doc:"Espace d'administration de l'instance."`
-	CanUseRestic            bool `json:"can_use_restic" doc:"Sauvegarde restic des bases."`
-	CanUseDiscord           bool `json:"can_use_discord" doc:"Relais d'alertes Discord."`
-	CanUseOutboundNetwork   bool `json:"can_use_outbound_network" doc:"Sortie du serveur vers les services tiers (API Halo, Microsoft)."`
-	CanUpdateApp            bool `json:"can_update_app" doc:"Mise à jour de l'application par la coquille desktop."`
-	CanOfferWindowsDownload bool `json:"can_offer_windows_download" doc:"Téléchargement de l'application Windows proposé."`
-	CanEditSettings         bool `json:"can_edit_settings" doc:"Réglages de l'instance modifiables (figés en démo)."`
-	CanUploadMedia          bool `json:"can_upload_media" doc:"Dépôt de captures (refusé en démo)."`
-	CanUseCompactChrome     bool `json:"can_use_compact_chrome" doc:"Chrome d'application de bureau : barre latérale, fenêtre À propos, accueil sans image de couverture."`
-	CanLoginViaBrowser      bool `json:"can_login_via_browser" doc:"Connexion Microsoft dans le navigateur par défaut, sans code à recopier (application de bureau)."`
-	CanCompareAccounts      bool `json:"can_compare_accounts" doc:"L'instance suit plusieurs comptes : les pages qui les confrontent (classements de la communauté) sont offertes."`
-	CanWatchGameProcess     bool `json:"can_watch_game_process" doc:"Détection du jeu en cours (mode jeu : cuisson et tâches lourdes suspendues pendant la partie, synchronisation à sa fermeture)."`
-	CanIntegrateShell       bool `json:"can_integrate_shell" doc:"Intégration de la coquille avec le poste : notifications Windows, zone de notification, démarrage avec Windows."`
-	CanScheduleRefresh      bool `json:"can_schedule_refresh" doc:"Tâche planifiée Windows qui rafraîchit les jetons quand l'application est fermée."`
-	CanBackupToFolder       bool `json:"can_backup_to_folder" doc:"Sauvegarde périodique des données en Parquet vers un dossier choisi, et restauration."`
-	CanImportFromSite       bool `json:"can_import_from_site" doc:"Import des données d'un joueur depuis une instance hébergée (jeton d'export à usage unique)."`
-	CanExportForDesktop     bool `json:"can_export_for_desktop" doc:"L'instance livre au joueur connecté ses données pour l'application de bureau."`
-	CanReportDiagnostic     bool `json:"can_report_diagnostic" doc:"Rapport de diagnostic (archive de journaux et d'état, sans secret) à joindre à un signalement."`
-	CanLimitMemory          bool `json:"can_limit_memory" doc:"Plafond mémoire des bases réglable, mémoire du processus affichée."`
-	CanRegenerateReplays    bool `json:"can_regenerate_replays" doc:"Régénération des rejeux en retard sur la version de l'application, sur demande (file de fond, un film à la fois)."`
+	CanUseAccounts           bool `json:"can_use_accounts" doc:"Comptes et inscriptions (authentification password ou xbox)."`
+	CanSignInWithXbox        bool `json:"can_sign_in_with_xbox" doc:"Connexion par le SSO Xbox (mode xbox)."`
+	CanUseInvitations        bool `json:"can_use_invitations" doc:"Codes d'invitation entre comptes et groupes."`
+	CanUseGroups             bool `json:"can_use_groups" doc:"Groupes (accès mutuel entre comptes)."`
+	CanPoolTokens            bool `json:"can_pool_tokens" doc:"Mise en commun des jetons proposée à l'utilisateur."`
+	CanUseAdmin              bool `json:"can_use_admin" doc:"Espace d'administration de l'instance."`
+	CanUseRestic             bool `json:"can_use_restic" doc:"Sauvegarde restic des bases."`
+	CanUseDiscord            bool `json:"can_use_discord" doc:"Relais d'alertes Discord."`
+	CanUseOutboundNetwork    bool `json:"can_use_outbound_network" doc:"Sortie du serveur vers les services tiers (API Halo, Microsoft)."`
+	CanUpdateApp             bool `json:"can_update_app" doc:"Mise à jour de l'application par la coquille desktop."`
+	CanOfferWindowsDownload  bool `json:"can_offer_windows_download" doc:"Téléchargement de l'application Windows proposé."`
+	CanEditSettings          bool `json:"can_edit_settings" doc:"Réglages de l'instance modifiables (figés en démo)."`
+	CanUploadMedia           bool `json:"can_upload_media" doc:"Dépôt de captures (refusé en démo)."`
+	CanUseCompactChrome      bool `json:"can_use_compact_chrome" doc:"Chrome d'application de bureau : barre latérale, fenêtre À propos, accueil sans image de couverture."`
+	CanLoginViaBrowser       bool `json:"can_login_via_browser" doc:"Connexion Microsoft dans le navigateur par défaut, sans code à recopier (application de bureau)."`
+	CanCompareAccounts       bool `json:"can_compare_accounts" doc:"L'instance suit plusieurs comptes : les pages qui les confrontent (classements de la communauté) sont offertes."`
+	CanWatchGameProcess      bool `json:"can_watch_game_process" doc:"Détection du jeu en cours (mode jeu : cuisson et tâches lourdes suspendues pendant la partie, synchronisation à sa fermeture)."`
+	CanIntegrateShell        bool `json:"can_integrate_shell" doc:"Intégration de la coquille avec le poste : notifications Windows, zone de notification, démarrage avec Windows."`
+	CanScheduleRefresh       bool `json:"can_schedule_refresh" doc:"Tâche planifiée Windows qui rafraîchit les jetons quand l'application est fermée."`
+	CanBackupToFolder        bool `json:"can_backup_to_folder" doc:"Sauvegarde périodique des données en Parquet vers un dossier choisi, et restauration."`
+	CanImportFromSite        bool `json:"can_import_from_site" doc:"Import des données d'un joueur depuis une instance hébergée (jeton d'export à usage unique)."`
+	CanExportForDesktop      bool `json:"can_export_for_desktop" doc:"L'instance livre au joueur connecté ses données pour l'application de bureau."`
+	CanReportDiagnostic      bool `json:"can_report_diagnostic" doc:"Rapport de diagnostic (archive de journaux et d'état, sans secret) à joindre à un signalement."`
+	CanLimitMemory           bool `json:"can_limit_memory" doc:"Plafond mémoire des bases réglable, mémoire du processus affichée."`
+	CanRegenerateReplays     bool `json:"can_regenerate_replays" doc:"Régénération des rejeux en retard sur la version de l'application, sur demande (file de fond, un film à la fois)."`
+	CanKeepMediaSources      bool `json:"can_keep_media_sources" doc:"L'original d'une vidéo convertie n'est jamais supprimé par l'application (réglage de rétention masqué)."`
+	CanRevealFilesInExplorer bool `json:"can_reveal_files_in_explorer" doc:"Ouverture de l'explorateur de fichiers du système sur un média."`
+	CanTrashMediaSources     bool `json:"can_trash_media_sources" doc:"Suppression d'un média : l'original part à la Corbeille du système quand le support en a une."`
 
 	// Deployment : nom du profil de déploiement, pour l'affichage et le diagnostic SEULEMENT.
 	Deployment string `json:"deployment" enum:"hosted,desktop,demo,dev" doc:"Profil de déploiement (affichage et diagnostic ; ne jamais brancher dessus)."`

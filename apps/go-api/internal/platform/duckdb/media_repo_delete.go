@@ -17,31 +17,46 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/port"
 )
 
-// MediaVisiblePredicate retourne le fragment SQL excluant les médias supprimés,
-// pour l'alias de table donné (vide = colonnes non qualifiées).
+// mediaStatusColumn rend la colonne status qualifiée par l'alias (vide = nue).
+func mediaStatusColumn(alias string) string {
+	if alias != "" {
+		return alias + ".status"
+	}
+	return "status"
+}
+
+// MediaVisiblePredicate retourne le fragment SQL excluant les médias supprimés
+// et introuvables, pour l'alias de table donné (vide = colonnes non qualifiées).
 //
-// UNIQUE source de ce prédicat (règle CLAUDE.md n°6 : à la 3e copie on
-// centralise + garde-rail). Le garde-rail associé est
+// Source de ce prédicat avec MediaNotDeletedPredicate (règle CLAUDE.md n°6 : à
+// la 3e copie on centralise + garde-rail). Le garde-rail associé est
 // TestAllMediaFilesReadsFilterDeleted (media_repo_delete_guard_test.go) : il
-// refuse tout nouveau `FROM media_files` qui ne porterait pas ce filtre — sans
-// lui, un média supprimé réapparaîtrait sur la surface oubliée (galerie, rail
-// home, onglet match, auteurs, candidats d'association).
+// refuse tout nouveau `FROM media_files` qui ne porterait pas l'un des deux
+// filtres — sans lui, un média supprimé réapparaîtrait sur la surface oubliée
+// (galerie, rail home, onglet match, auteurs, candidats d'association).
 //
 // COALESCE indispensable : la colonne `status` vaut NULL sur la majorité des
 // lignes historiques et 'active' sur celles écrites par le rail home ; un
-// `status <> 'deleted'` nu éliminerait silencieusement toutes les lignes NULL.
+// `status NOT IN (...)` nu éliminerait silencieusement toutes les lignes NULL.
 func MediaVisiblePredicate(alias string) string {
-	col := "status"
-	if alias != "" {
-		col = alias + ".status"
-	}
-	return "COALESCE(" + col + ", '') <> '" + domain.MediaStatusDeleted + "'"
+	return "COALESCE(" + mediaStatusColumn(alias) + ", '') NOT IN ('" +
+		domain.MediaStatusDeleted + "', '" + domain.MediaStatusMissing + "')"
+}
+
+// MediaNotDeletedPredicate retourne le fragment SQL excluant les seuls médias
+// supprimés : les médias introuvables restent lus. Réservé aux lectures qui
+// doivent voir une ligne introuvable (suppression d'un média introuvable,
+// empreintes connues à l'indexation, passe de réconciliation avec le disque).
+// Toute lecture servie à l'écran garde MediaVisiblePredicate.
+func MediaNotDeletedPredicate(alias string) string {
+	return "COALESCE(" + mediaStatusColumn(alias) + ", '') <> '" + domain.MediaStatusDeleted + "'"
 }
 
 // LoadMediaForDeletion charge le propriétaire et les chemins physiques d'un
@@ -61,7 +76,7 @@ func (r *MediaRepo) LoadMediaForDeletion(ctx context.Context, filePath string) (
 	err := r.socialDB().QueryRow(ctx, `
 		SELECT id, player_slug, file_path, thumbnail_path
 		FROM media_files
-		WHERE file_path = ? AND `+MediaVisiblePredicate("")+`
+		WHERE file_path = ? AND `+MediaNotDeletedPredicate("")+`
 		LIMIT 1
 	`, filePath).Scan(&target.ID, &ownerSlug, &target.FilePath, &thumbnail)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -77,7 +92,36 @@ func (r *MediaRepo) LoadMediaForDeletion(ctx context.Context, filePath string) (
 		target.ThumbnailPath = thumbnail.String
 	}
 	target.HLSPath = r.loadMediaHLSPath(ctx, target.ID)
+	target.SourcePath, err = r.loadMediaSourcePath(ctx, target.ID)
+	if err != nil {
+		return domain.MediaDeletionTarget{}, err
+	}
 	return target, nil
+}
+
+// loadMediaSourcePath lit source_path en requête séparée, pour la même raison
+// que hls_path (colonne ajoutée à l'exécution par ensureMediaTables), mais SANS
+// tolérance générale : seule l'absence de la colonne (Binder Error, base jamais
+// indexée) donne une chaîne vide. Toute autre erreur est rendue et fait échouer
+// la suppression, sinon l'original resterait sur le disque et le média
+// reviendrait au prochain passage.
+func (r *MediaRepo) loadMediaSourcePath(ctx context.Context, mediaID int64) (string, error) {
+	var src sql.NullString
+	err := r.socialDB().QueryRow(ctx,
+		`SELECT source_path FROM media_files WHERE id = ? LIMIT 1`, mediaID,
+	).Scan(&src)
+	if err != nil {
+		if strings.Contains(err.Error(), "Binder Error") {
+			slog.DebugContext(ctx, "media_delete: source_path indisponible",
+				"err", err, "media_id", mediaID)
+			return "", nil
+		}
+		return "", fmt.Errorf("LoadMediaForDeletion source_path: %w", err)
+	}
+	if !src.Valid {
+		return "", nil
+	}
+	return src.String, nil
 }
 
 // loadMediaHLSPath lit hls_path en requête SÉPARÉE et TOLÉRANTE.
@@ -118,7 +162,7 @@ func (r *MediaRepo) MarkMediaDeleted(ctx context.Context, exec port.DBExecutor, 
 	res, err := exec.ExecContext(ctx, `
 		UPDATE media_files
 		SET status = ?, updated_at = CURRENT_TIMESTAMP
-		WHERE file_path = ? AND `+MediaVisiblePredicate(""), domain.MediaStatusDeleted, filePath)
+		WHERE file_path = ? AND `+MediaNotDeletedPredicate(""), domain.MediaStatusDeleted, filePath)
 	if err != nil {
 		return false, fmt.Errorf("MarkMediaDeleted: %w", err)
 	}

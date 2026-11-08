@@ -100,6 +100,19 @@ func TestMediaDeletionTarget_StoredPaths(t *testing.T) {
 			target: MediaDeletionTarget{FilePath: "a/hls/x/master.m3u8", HLSPath: "a/hls/x/master.m3u8"},
 			want:   []string{"a/hls/x/master.m3u8"},
 		},
+		{
+			name: "original déposé juste après file_path, avant miniature et hls",
+			target: MediaDeletionTarget{
+				FilePath: "a/hls/x/master.m3u8", SourcePath: "a/clip.mkv",
+				ThumbnailPath: "a/t.webp", HLSPath: "a/hls/x/master.m3u8",
+			},
+			want: []string{"a/hls/x/master.m3u8", "a/clip.mkv", "a/t.webp"},
+		},
+		{
+			name:   "source_path == file_path → une seule entrée",
+			target: MediaDeletionTarget{FilePath: "a/clip.mp4", SourcePath: "a/clip.mp4", ThumbnailPath: "a/t.webp"},
+			want:   []string{"a/clip.mp4", "a/t.webp"},
+		},
 	}
 
 	for _, tc := range cases {
@@ -113,6 +126,118 @@ func TestMediaDeletionTarget_StoredPaths(t *testing.T) {
 					t.Errorf("StoredPaths()[%d] = %q, want %q", i, got[i], tc.want[i])
 				}
 			}
+		})
+	}
+}
+
+func assertPaths(t *testing.T, name string, got, want []string) {
+	t.Helper()
+	if len(got) != len(want) {
+		t.Fatalf("%s = %v, want %v", name, got, want)
+	}
+	for i := range got {
+		if got[i] != want[i] {
+			t.Errorf("%s[%d] = %q, want %q", name, i, got[i], want[i])
+		}
+	}
+}
+
+// TestMediaDeletionTarget_ForgetPaths : oublier ne retire que ce que l'app a
+// créé ; l'original déposé par l'utilisateur n'y figure jamais.
+func TestMediaDeletionTarget_ForgetPaths(t *testing.T) {
+	cases := []struct {
+		name   string
+		target MediaDeletionTarget
+		want   []string
+	}{
+		{
+			name:   "média direct avec miniature : l'original n'est pas rendu",
+			target: MediaDeletionTarget{FilePath: "a/clip.mp4", SourcePath: "a/clip.mp4", ThumbnailPath: "a/t.webp"},
+			want:   []string{"a/t.webp"},
+		},
+		{
+			name:   "sans miniature ni hls : rien",
+			target: MediaDeletionTarget{FilePath: "a/clip.mp4"},
+			want:   []string{},
+		},
+		{
+			name: "vidéo convertie : miniature et hls, jamais l'original",
+			target: MediaDeletionTarget{
+				FilePath: "a/hls/x/master.m3u8", SourcePath: "a/clip.mkv",
+				ThumbnailPath: "a/t.webp", HLSPath: "a/hls/x/master.m3u8",
+			},
+			want: []string{"a/t.webp", "a/hls/x/master.m3u8"},
+		},
+		{
+			name: "file_path == hls_path sans source : une seule entrée hls",
+			target: MediaDeletionTarget{
+				FilePath: "a/hls/x/master.m3u8", HLSPath: "a/hls/x/master.m3u8",
+			},
+			want: []string{"a/hls/x/master.m3u8"},
+		},
+		{
+			name: "file_path différent du hls : file_path n'est pas rendu",
+			target: MediaDeletionTarget{
+				FilePath: "a/clip.mp4", HLSPath: "a/hls/x/master.m3u8", ThumbnailPath: "a/t.webp",
+			},
+			want: []string{"a/t.webp", "a/hls/x/master.m3u8"},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assertPaths(t, "ForgetPaths()", tc.target.ForgetPaths(), tc.want)
+		})
+	}
+}
+
+// TestMediaDeletionTarget_OriginalPaths : les fichiers déposés par l'utilisateur
+// seulement, source d'abord, sans doublon ni valeur vide.
+func TestMediaDeletionTarget_OriginalPaths(t *testing.T) {
+	cases := []struct {
+		name   string
+		target MediaDeletionTarget
+		want   []string
+	}{
+		{
+			name:   "média direct sans source_path : file_path",
+			target: MediaDeletionTarget{FilePath: "a/clip.mp4", ThumbnailPath: "a/t.webp"},
+			want:   []string{"a/clip.mp4"},
+		},
+		{
+			name:   "média direct, source_path == file_path : une entrée",
+			target: MediaDeletionTarget{FilePath: "a/clip.mp4", SourcePath: "a/clip.mp4"},
+			want:   []string{"a/clip.mp4"},
+		},
+		{
+			name: "vidéo convertie avec original : source_path seul",
+			target: MediaDeletionTarget{
+				FilePath: "a/hls/x/master.m3u8", HLSPath: "a/hls/x/master.m3u8", SourcePath: "a/clip.mkv",
+			},
+			want: []string{"a/clip.mkv"},
+		},
+		{
+			name: "vidéo convertie sans original : rien",
+			target: MediaDeletionTarget{
+				FilePath: "a/hls/x/master.m3u8", HLSPath: "a/hls/x/master.m3u8",
+			},
+			want: []string{},
+		},
+		{
+			name: "file_path différent du hls et source_path distinct : les deux, source d'abord",
+			target: MediaDeletionTarget{
+				FilePath: "a/clip.mp4", HLSPath: "a/hls/x/master.m3u8", SourcePath: "a/orig.mkv",
+			},
+			want: []string{"a/orig.mkv", "a/clip.mp4"},
+		},
+		{
+			name:   "cible vide : rien",
+			target: MediaDeletionTarget{},
+			want:   []string{},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assertPaths(t, "OriginalPaths()", tc.target.OriginalPaths(), tc.want)
 		})
 	}
 }
