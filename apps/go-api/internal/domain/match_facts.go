@@ -35,9 +35,17 @@ type MatchPlayerFact struct {
 	// hérite des vies anonymes qui suivent son arrivée. Nil = colonnes absentes (matchs
 	// anciens) — aucune fermeture par relais, jamais une devinette.
 	JoinedInProgress bool   `json:"joinedInProgress,omitempty"`
-	LeftInProgress   bool   `json:"leftInProgress,omitempty"`
 	JoinMatchMS      *int64 `json:"joinMatchMs,omitempty"`
 	LeaveMatchMS     *int64 `json:"leaveMatchMs,omitempty"`
+	// LeftInProgress et PresentAtCompletion : la presence du participant a la FIN du match, telle que
+	// l API la declare. TRI-ETAT : nil = colonne NULL (matchs anciens), ni « present » ni « parti ».
+	// Elles decident si la derniere vie d un joueur reste affichee jusqu au bout du film
+	// (replay.Participant).
+	LeftInProgress      *bool `json:"leftInProgress,omitempty"`
+	PresentAtCompletion *bool `json:"presentAtCompletion,omitempty"`
+	// DeathsDeclared dit que `match_participants.deaths` est non NULL : `Deaths` vaut zero quand
+	// la colonne est NULL, et ce zero n affirme rien.
+	DeathsDeclared bool `json:"deathsDeclared,omitempty"`
 }
 
 // MatchFacts est CE QUE LA BASE SAIT DU MATCH ET QUE LE FILM NE DIT PAS.

@@ -4,10 +4,17 @@ package replay
 // la faille du translocateur, lus dans le film (schéma 95).
 //
 // CE QUE LE FILM ÉCRIT (grammar/equipement_porte.go). Quand un joueur prend un équipement, le jeu
-// crée un objet ti=37 attaché à lui, dans le MÊME paquet que l'annonce i48 du porteur (`taken` ou la
-// réapparition) : le rang de cette annonce nomme la famille de l'objet, par la palette du film. Tant
-// qu'il est porté, l'objet écrit son ÉNERGIE (i24) quand elle change, une ACTIVATION (i21) à chaque
-// usage, et sa suppression clôt le port.
+// crée un objet ti=37 attaché à lui. L'IDENTITÉ de l'objet est écrite à sa création (le GlobalID de son
+// tag `eqip`) : sa famille et son coût par usage se lisent sur lui (`document_equipement_porte_identite.go`),
+// quelle que soit la façon dont le joueur l'a obtenu — ramassé, équipement de réapparition ou de départ de
+// match. Aucune annonce du porteur ne nomme l'objet. Tant qu'il est porté, l'objet écrit son ÉNERGIE (i24)
+// quand elle change, une ACTIVATION (i21) à chaque usage, et sa suppression clôt le port.
+//
+// UN OBJET CRÉÉ AVANT L'ORIGINE du film (l'équipement de départ) est publié, sa prise à la frame 0 : l'axe
+// publié commence à l'origine, et rien n'est lu à une frame négative. Ses lectures antérieures à l'origine ne
+// se publient pas (l'énergie qu'il porte à la frame 0 est la dernière lue avant elle ; une activation, une pose
+// ou un objet engendré d'avant l'origine n'ont pas d'instant sur l'axe) et se comptent
+// (`readsBeforeOrigin`).
 //
 // LES USAGES RESTANTS SONT LA RÈGLE DU JEU (`FUN_1407e9384`), appliquée à l'énergie lue :
 // trunc((énergie + 1e-4) / coût), le coût étant la capacité de l'objet porté, lue dans les tags du
@@ -50,9 +57,13 @@ const familleDuTranslocateur = "translocator_beacon"
 
 // CarriedEquipment est UN objet d'équipement porté, de sa prise à sa fin.
 type CarriedEquipment struct {
-	// Slot désigne la Track du porteur ; R le rang de palette de l'équipement (AbilityLabels).
-	Slot uint32 `json:"slot"`
-	R    int    `json:"r"`
+	// Slot désigne la Track du porteur. Family est la famille de l'objet, lue sur son identité (`wall`,
+	// `sensor`, `powerup_camo`...), dans le vocabulaire du manifeste ; R, le rang de palette de cette famille
+	// (AbilityLabels), ou -1 quand la palette du film n'en nomme aucun. Un artefact antérieur au schéma 107 n'a
+	// pas de famille : sa famille est celle de son rang.
+	Slot   uint32 `json:"slot"`
+	R      int    `json:"r"`
+	Family string `json:"family,omitempty"`
 	// T0 est la frame de la prise ; T1 celle de la fin de l'objet, absente quand le film ne la dit pas.
 	T0 int  `json:"t0"`
 	T1 *int `json:"t1,omitempty"`
@@ -106,18 +117,25 @@ type CarriedEquipmentCoverage struct {
 	// Created, Attached : objets ti=37 créés, et ceux créés attachés à un bipède (lus).
 	Created  int `json:"created"`
 	Attached int `json:"attached"`
-	// Published : objets publiés. NoIdentity : porteur sans piste publiée ; BeforeOrigin : pris
-	// avant la première frame ; WithoutRank : aucune annonce i48 du porteur dans le paquet ;
-	// AmbiguousRank : plusieurs objets créés pour le même porteur dans le paquet ; Unnamed : rang
-	// sans famille dans la palette du film.
-	Published     int `json:"published"`
-	NoIdentity    int `json:"noIdentity"`
-	BeforeOrigin  int `json:"beforeOrigin"`
-	WithoutRank   int `json:"withoutRank"`
-	AmbiguousRank int `json:"ambiguousRank"`
-	Unnamed       int `json:"unnamed"`
-	// WithCost : objets publiés dont le coût par usage est établi ; NoCatalog : famille absente du
-	// catalogue ; AmbiguousCost : fiches de la famille en désaccord sur le coût.
+	// Published : objets publiés. NoIdentity : porteur sans piste publiée ; BeforeOrigin : objets publiés
+	// créés avant la première frame (prise posée à la frame 0) ; EndedBeforeOrigin : objets supprimés avant
+	// elle, non publiés ; ReadsBeforeOrigin : lectures d'activation, de pose ou d'objet engendré antérieures à
+	// l'origine, non publiées.
+	Published         int `json:"published"`
+	NoIdentity        int `json:"noIdentity"`
+	BeforeOrigin      int `json:"beforeOrigin"`
+	EndedBeforeOrigin int `json:"endedBeforeOrigin"`
+	ReadsBeforeOrigin int `json:"readsBeforeOrigin"`
+	// Identité de l'objet, non publiés : NoGlobalID : le record de création ne livre pas l'identifiant ;
+	// Grenades : grenade attachée, jamais un équipement ; Unresolved : identifiant que ni le catalogue de
+	// l'énergie ni le manifeste ne résolvent (jamais deviné) ; Conflicting : les sources nomment des familles
+	// différentes.
+	NoGlobalID  int `json:"noGlobalId"`
+	Grenades    int `json:"grenades"`
+	Unresolved  int `json:"unresolved"`
+	Conflicting int `json:"conflicting"`
+	// WithCost : objets publiés dont le coût par usage est établi ; NoCatalog : objet porté absent du
+	// catalogue ; AmbiguousCost : fiches du même objet porté en désaccord sur le coût.
 	WithCost      int `json:"withCost"`
 	NoCatalog     int `json:"noCatalog"`
 	AmbiguousCost int `json:"ambiguousCost"`
@@ -152,74 +170,12 @@ type CarriedEquipmentCoverage struct {
 	RiftEndsUnread int `json:"riftEndsUnread"`
 }
 
-// coutDeFamille : le coût par usage d'une fiche du catalogue, l'énergie initiale de son objet porté
-// et celle de son objet ramassable.
-type coutDeFamille struct {
-	seuil, variation, energiePorte, energieRamassable float32
-}
-
-// coutsParFamille indexe les fiches DISTINCTES du catalogue par famille (par l'objet ramassable que
-// le manifeste nomme).
-func coutsParFamille(cat *equipenergy.Catalog, familles map[uint32]string) map[string][]coutDeFamille {
-	out := map[string][]coutDeFamille{}
-	if cat == nil {
-		return out
-	}
-	for _, e := range cat.Entries {
-		id, ok := e.PickupID()
-		if !ok {
-			continue
-		}
-		f, ok := familles[id]
-		if !ok {
-			continue
-		}
-		c := coutDeFamille{seuil: e.Threshold, variation: e.Delta, energiePorte: e.CarriedEnergy,
-			energieRamassable: e.PickupEnergy}
-		if !slices.Contains(out[f], c) {
-			out[f] = append(out[f], c)
-		}
-	}
-	return out
-}
-
-// pasDEnergie est le pas de la quantification de l'énergie (i24, 14 bits aux extrémités exactes).
-const pasDEnergie = 1.0 / 16382
-
-// choisirLeCout rend la fiche d'une famille : la seule, ou, quand la famille en a plusieurs, celle
-// dont l'énergie de l'objet ramassable est l'énergie écrite à la prise (au pas de quantification près).
-//
-// UNE CRÉATION SANS ÉNERGIE ÉCRITE NE CHOISIT RIEN. Elle garde l'énergie par défaut de l'objet PORTÉ,
-// pas celle du ramassable : sur `5676a9ba`, les répulseurs (ramassable 0,6) et les champs de
-// réparation (ramassable 0,5) créés sans énergie lisent 0,8 et 0,5 à leur premier usage, soit 1 au
-// départ. Les deux fiches du mur ont la même énergie portée (1) : rien ne les sépare.
-func choisirLeCout(cands []coutDeFamille, creation types.CarriedEquipmentRead) (coutDeFamille, bool) {
-	if len(cands) == 1 {
-		return cands[0], true
-	}
-	if !creation.HasEnergy {
-		return coutDeFamille{}, false
-	}
-	e := float64(grammar.EnergieDEquipement(creation.Energy))
-	var pris []coutDeFamille
-	for _, c := range cands {
-		if math.Abs(float64(c.energieRamassable)-e) <= pasDEnergie {
-			pris = append(pris, c)
-		}
-	}
-	if len(pris) != 1 {
-		return coutDeFamille{}, false
-	}
-	return pris[0], true
-}
-
 // entreeDEquipementPorte : ce que l'assemblage du calque reçoit.
 type entreeDEquipementPorte struct {
 	reads        []types.CarriedEquipmentRead
 	st           types.CarriedEquipmentStats
-	changes      []types.EquipmentChange
 	palette      *AbilityPalette
-	couts        map[string][]coutDeFamille
+	refs         *referenceDesObjetsPortes
 	tracks       []Track
 	projectiles  []types.ProjectileTrack
 	origin, step uint64
@@ -227,11 +183,14 @@ type entreeDEquipementPorte struct {
 
 // objetLu : un objet porté pendant l'assemblage.
 type objetLu struct {
-	pub      CarriedEquipment
-	famille  string
-	cout     coutDeFamille
-	coutOK   bool
-	lectures []types.CarriedEquipmentRead
+	pub        CarriedEquipment
+	famille    string
+	cout       coutDObjetPorte
+	coutStatut statutDuCout
+	// energieAvantOrigine : la dernière lecture d'énergie publiée porte l'état d'avant l'origine (posée à la
+	// frame 0) ; une lecture d'avant l'origine la remplace au lieu de s'y ajouter.
+	energieAvantOrigine bool
+	lectures            []types.CarriedEquipmentRead
 	// suivis : l'indice, dans pub.Tracked, de chaque objet engendré nommé par la pile i28.
 	suivis map[types.LifeKey]int
 	// effets : les candidates a l objet d effet, par vie suivie ; finsDEffet : la suppression lue de chaque vie d effet.
@@ -245,31 +204,16 @@ func buildCarriedEquipment(in entreeDEquipementPorte) ([]CarriedEquipment, []Rif
 	if in.step == 0 {
 		return nil, nil, cov
 	}
-	idx := indexDesRangs{rangs: rangsParPaquet(in.changes), nouveaux: nouveauxParPaquet(in.reads),
-		published: publishedSlots(in.tracks)}
+	publiees := publishedSlots(in.tracks)
 	var out []CarriedEquipment
 	var poses []RiftPose
 	repos := reposParVie(in.projectiles, in.origin, in.step)
 	fins := finsDEffetLues(in.reads, in)
 	for _, o := range regrouperParObjet(in.reads) {
 		o.finsDEffet = fins
-		creation := o.lectures[0]
-		rang, ok := idx.rangDe(creation, in.origin, in.palette, &cov)
-		if !ok {
+		if !o.identifier(in, publiees, &cov) {
 			continue
 		}
-		o.famille = in.palette.FamilyOf(rang)
-		cands := in.couts[o.famille]
-		o.cout, o.coutOK = choisirLeCout(cands, creation)
-		switch {
-		case len(cands) == 0:
-			cov.NoCatalog++
-		case !o.coutOK:
-			cov.AmbiguousCost++
-		default:
-			cov.WithCost++
-		}
-		o.pub = CarriedEquipment{Slot: creation.Carrier, R: rang, T0: in.frame(creation.TimestampUS)}
 		poses = append(poses, o.projeter(in, &cov)...)
 		o.situerLesObjetsEngendres(repos, &cov)
 		o.situerLesEffets(&cov)
@@ -296,7 +240,8 @@ func buildCarriedEquipment(in entreeDEquipementPorte) ([]CarriedEquipment, []Rif
 	return out, poses, cov
 }
 
-// projeter publie les lectures d'un objet sur l'axe de frames, et rend ses poses de faille.
+// projeter publie les lectures d'un objet sur l'axe de frames, et rend ses poses de faille. Une lecture
+// d'avant l'origine (hors la création) n'a pas d'instant sur l'axe : [objetLu.lireAvantLOrigine].
 func (o *objetLu) projeter(in entreeDEquipementPorte, cov *CarriedEquipmentCoverage) []RiftPose { //nolint:gocyclo // une passe sur les lectures d un objet, un test par sorte de lecture (energie initiale, suppression, effet, activation, energie, pose du translocateur, signal sans pose) : la complexite compte les sortes de lecture, pas des chemins imbriques
 	translocateur := o.famille == familleDuTranslocateur
 	var poses []RiftPose
@@ -305,8 +250,13 @@ func (o *objetLu) projeter(in entreeDEquipementPorte, cov *CarriedEquipmentCover
 	poseLue := false
 	for i, l := range o.lectures {
 		t := in.frame(l.TimestampUS)
-		if i == 0 && !l.HasEnergy && o.coutOK {
-			o.ajouterEnergie(t, o.cout.energiePorte, true, cov)
+		avant := in.avantLOrigine(l.TimestampUS)
+		if i == 0 && !l.HasEnergy && o.coutStatut == coutEtabli {
+			o.ajouterEnergie(t, o.cout.energiePorte, true, avant, cov)
+		}
+		if i > 0 && avant {
+			o.lireAvantLOrigine(l, cov)
+			continue
 		}
 		if l.Kind == types.CarriedDel {
 			o.pub.T1 = &t
@@ -324,7 +274,7 @@ func (o *objetLu) projeter(in entreeDEquipementPorte, cov *CarriedEquipmentCover
 		}
 		if l.HasEnergy {
 			e := grammar.EnergieDEquipement(l.Energy)
-			o.ajouterEnergie(t, e, false, cov)
+			o.ajouterEnergie(t, e, false, avant, cov)
 			if translocateur && l.Energy == 0 && i > 0 {
 				poses = append(poses, RiftPose{T: t, A: activation, Slot: o.pub.Slot})
 				instants = append(instants, l.TimestampUS)
@@ -339,15 +289,39 @@ func (o *objetLu) projeter(in entreeDEquipementPorte, cov *CarriedEquipmentCover
 	return poses
 }
 
-// ajouterEnergie publie une lecture d'énergie, avec les usages restants quand le coût est établi.
-func (o *objetLu) ajouterEnergie(t int, e float32, tag bool, cov *CarriedEquipmentCoverage) {
+// lireAvantLOrigine traite une lecture, autre que la création, que le film date avant la première frame. Son
+// énergie est l'état de l'objet à la frame 0 : elle remplace la lecture d'avant l'origine déjà publiée. Une
+// activation, une pile d'objets engendrés ou une fin d'objet engendré n'ont aucun instant sur l'axe : elles ne
+// se publient pas et se comptent.
+func (o *objetLu) lireAvantLOrigine(l types.CarriedEquipmentRead, cov *CarriedEquipmentCoverage) {
+	if l.HasEnergy {
+		o.ajouterEnergie(0, grammar.EnergieDEquipement(l.Energy), false, true, cov)
+	}
+	if l.HasActivation || len(l.Tracked) > 0 || l.Kind == grammar.CarriedEffectBirth || l.Kind == grammar.CarriedEffectEnd {
+		cov.ReadsBeforeOrigin++
+	}
+}
+
+// ajouterEnergie publie une lecture d'énergie, avec les usages restants quand le coût est établi. Une lecture
+// d'avant l'origine (`avant`, publiée à la frame 0) remplace la précédente quand celle-ci date aussi d'avant
+// l'origine : à la frame 0, l'objet n'a qu'un état, le dernier lu.
+func (o *objetLu) ajouterEnergie(t int, e float32, tag, avant bool, cov *CarriedEquipmentCoverage) {
 	r := CarriedEnergy{T: t, E: float32(math.Round(float64(e)*1e4) / 1e4), Tag: tag}
-	if o.coutOK {
+	if o.coutStatut == coutEtabli {
 		if n, ok := equipenergy.UsagesRestants(e, o.cout.seuil, o.cout.variation); ok {
 			r.N = &n
 		}
 	}
+	if avant && o.energieAvantOrigine && len(o.pub.Energy) > 0 {
+		dernier := &o.pub.Energy[len(o.pub.Energy)-1]
+		if dernier.Tag && !tag {
+			cov.EnergyReads++
+		}
+		*dernier = r
+		return
+	}
 	o.pub.Energy = append(o.pub.Energy, r)
+	o.energieAvantOrigine = avant
 	if !tag {
 		cov.EnergyReads++
 	}
@@ -394,8 +368,10 @@ func trierLesPoses(p []RiftPose) {
 func logCarriedEquipmentCoverage(ctx context.Context, cov CarriedEquipmentCoverage) {
 	slog.InfoContext(ctx, "rejeu : equipement porte",
 		"crees", cov.Created, "attaches", cov.Attached, "publies", cov.Published, "sansIdentite", cov.NoIdentity,
-		"avantOrigine", cov.BeforeOrigin, "sansRang", cov.WithoutRank, "rangAmbigu", cov.AmbiguousRank,
-		"nonNommes", cov.Unnamed, "avecCout", cov.WithCost, "horsCatalogue", cov.NoCatalog,
+		"avantOrigine", cov.BeforeOrigin, "finisAvantOrigine", cov.EndedBeforeOrigin,
+		"lecturesAvantOrigine", cov.ReadsBeforeOrigin, "sansIdentifiant", cov.NoGlobalID, "grenades", cov.Grenades,
+		"nonResolus", cov.Unresolved, "enDesaccord", cov.Conflicting,
+		"avecCout", cov.WithCost, "horsCatalogue", cov.NoCatalog,
 		"coutAmbigu", cov.AmbiguousCost, "lecturesEnergie", cov.EnergyReads, "usages", cov.Uses,
 		"posesDeFaille", cov.RiftPoses, "situeesParLObjet", cov.PositionedByObject,
 		"situeesParLePorteur", cov.PositionedByCarrier, "sansPosition", cov.Unpositioned,
@@ -407,12 +383,12 @@ func logCarriedEquipmentCoverage(ctx context.Context, cov CarriedEquipmentCovera
 		"effetsAmbigus", cov.TrackedEffectsAmbiguous, "effetsSansLien", cov.TrackedEffectsUnlinked)
 }
 
-// poserLEquipementPorte publie l'équipement porté et les poses de faille, nommés par la palette classée
-// et comptés par le catalogue de l'énergie des équipements.
+// poserLEquipementPorte publie l'équipement porté et les poses de faille : la famille de chaque objet se lit sur
+// son identité, son rang dans la palette classée du film, son coût dans le catalogue de l'énergie des équipements.
 func (a *assemblage) poserLEquipementPorte() {
 	carried, poses, cov := buildCarriedEquipment(entreeDEquipementPorte{
-		reads: a.opt.CarriedEquipment, st: a.opt.CarriedEquipmentStats, changes: a.opt.EquipmentChanges,
-		palette: a.palette, couts: coutsParFamille(a.opt.EquipmentEnergy, a.opt.Labels.EquipmentFamilies),
+		reads: a.opt.CarriedEquipment, st: a.opt.CarriedEquipmentStats, palette: a.palette,
+		refs:   nouvelleReferenceDesObjetsPortes(a.opt.EquipmentEnergy, a.opt.Labels.EquipmentFamilies),
 		tracks: a.doc.Tracks, projectiles: a.opt.Projectiles, origin: a.origin, step: a.step,
 	})
 	a.doc.CarriedEquipment, a.doc.RiftPoses = carried, poses

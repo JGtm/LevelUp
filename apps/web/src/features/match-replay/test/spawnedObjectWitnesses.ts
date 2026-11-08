@@ -116,3 +116,56 @@ export const SPAWNED_WITNESSES = {
 
 /** Les familles qui ont un témoin réel. */
 export type SpawnedWitnessFamily = keyof typeof SPAWNED_WITNESSES
+
+/**
+ * UN OBJET DE RÉAPPARITION, RELEVÉ RÉEL FIGÉ (schéma 107) : le détecteur de menaces de `bc4bde17` (Bazaar, Super
+ * Fiesta), porteur slot 518. Le jeu le crée 22,3 s AVANT la première frame (équipement de départ) ; il est activé
+ * quatre fois (images 76, 324, 552, 755) et engendre quatre capteurs situés. La jointure par le rang de l'annonce du
+ * porteur ne le publiait pas : ni dessin, ni son, ni compte. Le document le publie depuis la lecture de son identité,
+ * `family: 'sensor'`, `r: 22` (le rang de la palette du film pour cette famille), prise à l'image 0. Tiré sans
+ * modification d'un document cuit le 2026-11-08 par le code Go du schéma 107, en mémoire, un film à la fois.
+ */
+export const RESPAWN_WITNESSES = {
+  sensor: () =>
+    testReplayDoc({
+      frameCount: 5497,
+      frameIntervalMs: 100,
+      abilityLabels: { '22': { en: 'Threat Sensor', fr: 'detecteur de menaces', family: 'sensor' } },
+      carriedEquipment: [
+        {
+          slot: 518,
+          r: 22,
+          family: 'sensor',
+          t0: 0,
+          t1: 758,
+          energy: [
+            { t: 0, e: 1, n: 4, tag: true },
+            { t: 76, e: 0.75, n: 3 },
+            { t: 324, e: 0.5, n: 2 },
+            { t: 552, e: 0.25, n: 1 },
+            { t: 678, e: 1, n: 4 },
+            { t: 755, e: 0.75, n: 3 },
+          ],
+          uses: [76, 324, 552, 755],
+          tracked: [
+            { t0: 77, t1: 298, land: 96, x: 25.02, y: -0.81, z: 3.99 },
+            { t0: 325, t1: 530, land: 328, x: 4.13, y: -2.99, z: 2.81 },
+            { t0: 554, t1: 757, land: 572, x: 24.13, y: -1.36, z: 3.67 },
+            { t0: 757, t1: 966, land: 764, x: 4.8, y: 2.24, z: 1.31 },
+          ],
+        },
+      ],
+    }),
+} as const
+
+/** Le même document tel qu'un artefact ANTÉRIEUR au schéma 107 le publie : aucun objet porté n'a de `family`. */
+export function sansFamillePubliee(doc: ReturnType<(typeof RESPAWN_WITNESSES)['sensor']>) {
+  return {
+    ...doc,
+    carriedEquipment: doc.carriedEquipment.map((c) => {
+      const ancien = { ...c }
+      delete ancien.family
+      return ancien
+    }),
+  }
+}

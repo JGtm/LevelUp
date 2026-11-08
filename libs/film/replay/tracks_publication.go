@@ -63,6 +63,9 @@ type decoupeDesTraces struct {
 	vies []lifeSpan
 	// fb : le compteur de replis de la cuisson (nil-safe).
 	fb *fallback.Compteur
+	// fin : les morts ecrites, pour finir une vie a la sienne quand elle suit le dernier point
+	// (cf. tracks_fin_de_vie.go). Zero = chaque vie finit a son dernier point.
+	fin clotureParMort
 }
 
 // decimateTracks projette les positions sur la grille de frames (un point par slot et par
@@ -94,7 +97,7 @@ func decimateTracks(sorted []grammar.BipedPosition, in decoupeDesTraces) ([]Trac
 	origin, step := in.origin, in.step
 	bornes := bornesDesVies(sorted, in)
 	type acc struct {
-		done      [][]Point // les vies CLOSES de ce slot, dans l'ordre
+		done      []vieDecimee // les vies CLOSES de ce slot, dans l'ordre
 		pts       []Point
 		lastFrame int
 		lastUS    uint64
@@ -119,7 +122,7 @@ func decimateTracks(sorted []grammar.BipedPosition, in decoupeDesTraces) ([]Trac
 		switch {
 		case len(a.pts) > 0 && vie != a.vie:
 			// FIN DE VIE ÉCRITE : la track courante se clôt, la suivante s'ouvre.
-			a.done = append(a.done, a.pts)
+			a.done = append(a.done, vieDecimee{a.pts, a.vie})
 			a.pts, a.lastFrame = nil, -1
 		case len(a.pts) > 0 && int64(p.TimestampUS)-int64(a.lastUS) > lifeGapUS:
 			// LACUNE : la réplication s'est tue au-delà du seuil SANS que le film ferme la vie.
@@ -141,29 +144,53 @@ func decimateTracks(sorted []grammar.BipedPosition, in decoupeDesTraces) ([]Trac
 	tracks := make([]Track, 0, len(order))
 	for _, slot := range order {
 		a := accs[slot]
-		for _, pts := range append(a.done, a.pts) {
-			if len(pts) < in.minPoints {
+		for _, v := range append(a.done, vieDecimee{a.pts, a.vie}) {
+			if len(v.pts) < in.minPoints {
 				// LE REFUS SE COMPTE, ET IL NE SE DÉCLENCHE PLUS AU SEUIL PAR DÉFAUT : celui-ci
 				// vaut 1 depuis le lot 1.6.5 (« si le film le dit, on publie »), donc ce compteur
 				// est à 0 sur toute cuisson qui ne règle pas `Options.MinPoints`. Il reste pour
 				// l'appelant qui le règle, et parce qu'un compteur à 0 qui pourrait monter est ce
 				// qui rend un retour en arrière visible.
 				cov.RefusedMinPoints++
-				cov.RefusedPoints += len(pts)
+				cov.RefusedPoints += len(v.pts)
 				continue
 			}
 			tracks = append(tracks, Track{
 				Slot:       slot,
 				Team:       -1,
-				Points:     pts,
-				StartFrame: pts[0].T,
-				EndFrame:   pts[len(pts)-1].T,
+				Points:     v.pts,
+				StartFrame: v.pts[0].T,
+				EndFrame:   in.finDeLaVie(bornes[slot], v),
 			})
 			cov.Published++
-			cov.PublishedPoints += len(pts)
+			cov.PublishedPoints += len(v.pts)
 		}
 	}
 	return tracks, cov
+}
+
+// vieDecimee est une vie du slot telle que la decimation l a close : ses points et son indice
+// dans `bornes[slot]`.
+type vieDecimee struct {
+	pts []Point
+	vie int
+}
+
+// finDeLaVie rend la frame de fin de la vie decimee : celle de sa mort ecrite quand elle suit
+// son dernier point, le bout du film pour un joueur que l API declare present, sinon ce dernier
+// point (cf. tracks_fin_de_vie.go et tracks_fin_de_vie_presence.go). Les replis se comptent ici :
+// celui du calage, une fois par vie nommee qu il laisse au dernier point, et le motif de la fin.
+func (in decoupeDesTraces) finDeLaVie(spans []lifeSpan, v vieDecimee) int {
+	derniere := v.pts[len(v.pts)-1].T
+	if v.vie < 0 || v.vie >= len(spans) {
+		return derniere
+	}
+	if spans[v.vie].xuid != 0 {
+		in.fin.compterLeSilenceDeCalage(in.fb)
+	}
+	f, motif := in.fin.fin(spans[v.vie], derniere)
+	motif.compter(in.fb)
+	return f
 }
 
 // bornesDesVies groupe par slot la DÉCOUPE que le registre a établie, triée chronologiquement.

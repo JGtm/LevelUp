@@ -11,6 +11,7 @@ import {
 import { project } from '../layers/placementShapes'
 import { SHROUD_DURATION_MS } from '../layers/placementShroud'
 import { VIEW } from '../test/placementFixtures'
+import { RESPAWN_WITNESSES, sansFamillePubliee } from '../test/spawnedObjectWitnesses'
 import { testReplayDoc } from '../test/testDoc'
 import { zonePresenceAt } from './equipmentZones'
 import { placementAt } from './placementHitTest'
@@ -340,5 +341,45 @@ describe('écran occultant — la bulle lue dans le film (`tracked[].effect`, sc
   it('le compte des déploiements ne change pas : un objet engendré = un déploiement, bulle lue ou non', () => {
     const avec = shroud([{ ...tracked(100, 105), effect: effect() }, tracked(300, 305)])
     expect(spawnedObjectDeployments(avec).map((d) => d.t0)).toEqual([100, 300])
+  })
+})
+
+describe('un objet de réapparition (témoin réel bc4bde17, slot 518) — la famille se lit sur l objet', () => {
+  it('fabrique une pose par capteur situé, au repos lu, sans table de rang : la famille est celle du document', () => {
+    const doc = RESPAWN_WITNESSES.sensor()
+    const poses = spawnedObjectPlacements(doc)
+    expect(poses.map((p) => [p.family, p.owner, p.t0, p.x, p.y])).toEqual([
+      ['sensor', 518, 96, 25.02, -0.81],
+      ['sensor', 518, 328, 4.13, -2.99],
+      ['sensor', 518, 572, 24.13, -1.36],
+      ['sensor', 518, 764, 4.8, 2.24],
+    ])
+    expect(poses.every((p) => p.origin === 'deployed' && p.endRead === true)).toBe(true)
+    // Le calque dessine ces quatre poses (drawablePlacements) : la révélation, le survol et les zones les lisent.
+    expect(drawablePlacements(doc)).toHaveLength(4 + doc.equipmentPlacements.length)
+  })
+
+  it('compte quatre déploiements, un par objet engendré, au lancer', () => {
+    expect(spawnedObjectDeployments(RESPAWN_WITNESSES.sensor()).map((d) => [d.family, d.owner, d.t0])).toEqual([
+      ['sensor', 518, 77],
+      ['sensor', 518, 325],
+      ['sensor', 518, 554],
+      ['sensor', 518, 757],
+    ])
+  })
+
+  it("lit la famille publiée même quand la table des capacités du document ne nomme pas le rang", () => {
+    const doc = RESPAWN_WITNESSES.sensor()
+    const sansTable = { ...doc, abilityLabels: undefined }
+    expect(spawnedObjectPlacements(sansTable)).toHaveLength(4)
+    const rangInconnu = { ...doc, carriedEquipment: doc.carriedEquipment.map((c) => ({ ...c, r: -1 })) }
+    expect(spawnedObjectPlacements(rangInconnu)).toHaveLength(4)
+  })
+
+  it('un artefact antérieur, sans famille publiée, garde sa famille par le rang', () => {
+    const doc = RESPAWN_WITNESSES.sensor()
+    const ancien = sansFamillePubliee(doc)
+    expect(spawnedObjectPlacements(ancien)).toHaveLength(4)
+    expect(spawnedObjectPlacements({ ...ancien, abilityLabels: undefined })).toEqual([])
   })
 })

@@ -398,3 +398,10 @@ package killsource
 // prouvee par les digests `replay-equiv` des 20 films de reference (egaux au temoin d avant le lot) et par
 // la liste des tests (memes noms, memes verdicts). Aucune ligne `match_kill_events` ne devient candidate au
 // redecodage. Golden de revision et golden de perimetre regeneres une seule fois.
+//
+// A REVISION CONSTANTE (equipement porte, identite lue sur l objet, 2026-11-08) : la VALEUR de `grammar.Rev` monte a
+// `grammar-2026-11-08` (le canal de l equipement porte rend le GlobalID de chaque objet attache) et `film/types` gagne deux
+// champs de la lecture de l equipement porte. Aucune source de cette couche ne change et aucune de ses lectures
+// n appelle ce canal (il ne lit que les records ti=37 attaches, jamais par la marche de killsource ni par
+// `sync/killcollector`). Golden regenere a revision constante : aucune ligne `match_kill_events` ne devient candidate
+// au redecodage.

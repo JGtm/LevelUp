@@ -237,6 +237,21 @@ func (p *AbilityPalette) FamilyOf(rank int) string {
 	return p.Families[rank]
 }
 
+// RankOf rend le rang de cette palette dont la famille est `family` (le plus petit s'il y en a plusieurs), ou
+// faux quand aucun rang ne la porte. Nil-safe : une palette non classée ne nomme aucune famille.
+func (p *AbilityPalette) RankOf(family string) (int, bool) {
+	if p == nil || family == "" {
+		return 0, false
+	}
+	best, found := 0, false
+	for rank, f := range p.Families {
+		if f == family && (!found || rank < best) {
+			best, found = rank, true
+		}
+	}
+	return best, found
+}
+
 // LE CLASSEMENT DE PALETTE — la règle, et les chiffres qui la fondent.
 //
 // POURQUOI UNE RÈGLE STATISTIQUE ET NON UNE LECTURE. On a d'abord cherché une DÉSIGNATION

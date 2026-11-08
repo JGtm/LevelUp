@@ -152,6 +152,10 @@ type Track struct {
 	Points []Point `json:"points"`
 	// StartFrame / EndFrame (optionnels) bornent la vie de la track sur l'axe de temps :
 	// le client peut masquer l'entité hors de cette fenêtre au lieu de la figer.
+	//
+	// EndFrame est la frame de la mort que le film ÉCRIT pour le joueur de cette vie quand elle suit
+	// le dernier point (tracks_fin_de_vie.go), sinon le dernier point. Entre les deux, aucun point
+	// n'existe : la vie est en cours et le client tient la dernière position.
 	StartFrame int `json:"startFrame,omitempty"`
 	EndFrame   int `json:"endFrame,omitempty"`
 }

@@ -44,12 +44,14 @@
 import type { ReplayEquipmentPlacement } from '@/lib/api/types'
 
 import { PLACEMENT_ORIGIN_DEPLOYED, placementIsDeployedObject } from '../layers/equipmentPlacementsLayer'
+import { carriedFamilyOf } from './carriedFamily'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import type { WindowedPlacement } from './placementWindow'
 
 /**
  * LES QUATRE FAMILLES dont l'objet engendré se dessine par cette source. Identifiants STABLES du
- * document (`abilityLabels[rang].family`), jamais des libellés.
+ * document (`carriedEquipment[].family`, ou `abilityLabels[rang].family` pour un artefact antérieur au
+ * schéma 107), jamais des libellés.
  */
 export const SPAWNED_OBJECT_FAMILIES = [
   'sensor',
@@ -86,12 +88,12 @@ function isSituated(t: Tracked): t is SituatedTracked {
   )
 }
 
-/** La famille de l'objet porté de ce rang, si c'est l'une des quatre ; null sinon. */
+/** La famille de l'objet porté, si c'est l'une des quatre ; null sinon. */
 function spawnedFamilyOf(
   labels: ReplayDocumentReady['abilityLabels'],
-  rank: number,
+  carried: CarriedObject,
 ): SpawnedObjectFamily | null {
-  const family = labels?.[String(rank)]?.family
+  const family = carriedFamilyOf(labels, carried)
   return (SPAWNED_OBJECT_FAMILIES as readonly (string | undefined)[]).includes(family)
     ? (family as SpawnedObjectFamily)
     : null
@@ -102,7 +104,7 @@ function* spawnedObjects(
   doc: SpawnedSource,
 ): Generator<{ family: SpawnedObjectFamily; slot: number; tracked: Tracked }> {
   for (const carried of doc.carriedEquipment) {
-    const family = spawnedFamilyOf(doc.abilityLabels, carried.r)
+    const family = spawnedFamilyOf(doc.abilityLabels, carried)
     if (family === null) continue
     for (const tracked of carried.tracked) yield { family, slot: carried.slot, tracked }
   }

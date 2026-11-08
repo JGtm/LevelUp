@@ -282,6 +282,11 @@ func TestGoldenBuildsInputsRoundTrip(t *testing.T) {
 			// Les entites voyagent HORS du blob (complement de section 1) : leur aller-retour est
 			// `TestFaitsTransportentLesEntitesDesJoueurs`. Ici elles suivent les entrees relues.
 			again.PlayerEntities = g.PlayerEntities
+			// LES POUSSEES ET L EQUIPEMENT PORTE voyagent hors du blob aussi (golden_equipement_test.go) : ils
+			// suivent les entrees relues, sans quoi les objets qu ils publient (repli de l effet d ecran, par
+			// exemple) manqueraient a l assemblage relu.
+			again.Knockbacks, again.KnockbackStats = g.Knockbacks, g.KnockbackStats
+			again.CarriedEquipment, again.CarriedEquipmentStats = g.CarriedEquipment, g.CarriedEquipmentStats
 			a := renderAssembly(assemblerGoldenBuild(t, b, g, entry))
 			c := renderAssembly(assemblerGoldenBuild(t, b, again, entry))
 			if a != c {

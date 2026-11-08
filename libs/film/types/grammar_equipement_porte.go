@@ -20,6 +20,12 @@ type CarriedEquipmentRead struct {
 	Carrier uint32
 	// Kind : "new", "delta" ou "del".
 	Kind CarriedReadKind
+	// GlobalID est l identifiant du tag `eqip` de l objet : le mot de 32 bits inconditionnel du bloc
+	// `object-multiplayer-properties` de son etat par defaut, ecrit dans son record de CREATION. Il
+	// nomme l objet quelle que soit la facon dont le joueur l a obtenu (ramasse, reapparition, depart de
+	// match). Pose a la creation seulement ; HasGlobalID est faux quand le record ne le livre pas.
+	HasGlobalID bool
+	GlobalID    uint32
 	// Energy est la valeur brute de l energie (i24, R(14) sur [0, 1]).
 	HasEnergy bool
 	Energy    uint32

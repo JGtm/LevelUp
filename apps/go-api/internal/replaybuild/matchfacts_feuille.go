@@ -24,6 +24,11 @@ import (
 // sans `first_joined_time` ne departage aucun siege : la porter avec un zero fabriquerait une
 // arrivee au coup d'envoi, ce qui donnerait TOUTES les vies du siege a l'humain.
 //
+// LA PRESENCE A LA FIN VOYAGE TELLE QUE LA BASE LA PORTE : `PresentAtCompletion` et `LeftInProgress`
+// restent nil quand la colonne est NULL, et `Deaths` n entre que si la colonne est declaree. Un
+// drapeau absent n est ni « present » ni « parti » : la fin de la derniere vie du joueur reste alors
+// son dernier point, et le repli se compte (replay/tracks_fin_de_vie_presence.go).
+//
 // UNE LIGNE SANS XUID N'ENTRE PAS : le tableau nomme par xuid, et rien ne le remplace.
 func participantsDuTableau(facts port.MatchFacts) []replay.Participant {
 	out := make([]replay.Participant, 0, len(facts.Players))
@@ -31,9 +36,15 @@ func participantsDuTableau(facts port.MatchFacts) []replay.Participant {
 		if p.XUID == "" {
 			continue
 		}
-		out = append(out, replay.Participant{
+		l := replay.Participant{
 			ID: p.XUID, JoinedInProgress: p.JoinedInProgress, JoinMatchMS: p.JoinMatchMS,
-		})
+			PresentAtCompletion: p.PresentAtCompletion, LeftInProgress: p.LeftInProgress,
+		}
+		if p.DeathsDeclared {
+			morts := p.Deaths
+			l.Deaths = &morts
+		}
+		out = append(out, l)
 	}
 	if len(out) == 0 {
 		return nil

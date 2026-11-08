@@ -334,7 +334,6 @@ export const FR_TEXT = {
   abilityUnidentified: (rank) => `capacité non identifiée (rang ${rank})`,
   abilityAge: 'Capacité lue il y a',
   abilityAhead: 'Capacité lue dans',
-  abilityChargesFull: 'plein',
   abilityChargesFullHint:
     'Charges pleines — le film ne transmet une lecture qu’après le premier usage.',
   abilityChargesCount: (n) => `Charges restantes : ${n}`,

@@ -11417,6 +11417,8 @@ components:
           type:
             - array
             - "null"
+        family:
+          type: string
         r:
           format: int64
           type: integer
@@ -11454,22 +11456,31 @@ components:
         ambiguousCost:
           format: int64
           type: integer
-        ambiguousRank:
-          format: int64
-          type: integer
         attached:
           format: int64
           type: integer
         beforeOrigin:
           format: int64
           type: integer
+        conflicting:
+          format: int64
+          type: integer
         created:
+          format: int64
+          type: integer
+        endedBeforeOrigin:
           format: int64
           type: integer
         energyReads:
           format: int64
           type: integer
+        grenades:
+          format: int64
+          type: integer
         noCatalog:
+          format: int64
+          type: integer
+        noGlobalId:
           format: int64
           type: integer
         noIdentity:
@@ -11482,6 +11493,9 @@ components:
           format: int64
           type: integer
         published:
+          format: int64
+          type: integer
+        readsBeforeOrigin:
           format: int64
           type: integer
         riftEndsRead:
@@ -11520,10 +11534,10 @@ components:
         trackedUnpositioned:
           format: int64
           type: integer
-        unnamed:
+        unpositioned:
           format: int64
           type: integer
-        unpositioned:
+        unresolved:
           format: int64
           type: integer
         uses:
@@ -11532,18 +11546,18 @@ components:
         withCost:
           format: int64
           type: integer
-        withoutRank:
-          format: int64
-          type: integer
       required:
         - created
         - attached
         - published
         - noIdentity
         - beforeOrigin
-        - withoutRank
-        - ambiguousRank
-        - unnamed
+        - endedBeforeOrigin
+        - readsBeforeOrigin
+        - noGlobalId
+        - grenades
+        - unresolved
+        - conflicting
         - withCost
         - noCatalog
         - ambiguousCost
@@ -19961,6 +19975,8 @@ components:
         deaths:
           format: int64
           type: integer
+        deathsDeclared:
+          type: boolean
         joinMatchMs:
           format: int64
           type: integer
@@ -19973,6 +19989,8 @@ components:
           format: int64
           type: integer
         leftInProgress:
+          type: boolean
+        presentAtCompletion:
           type: boolean
         teamId:
           format: int64

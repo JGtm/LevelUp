@@ -56,6 +56,27 @@ func TestLaFeuilleDeMatchEcarteLesLignesSansIdentite(t *testing.T) {
 	}
 }
 
+// TestLaPresenceALaFinVoyageTelleQueLaBaseLaPorte : un drapeau NULL reste nil, un nombre de morts non
+// declare n entre pas — ni vrai, ni faux, ni zero. Un tableau complet voyage intact.
+func TestLaPresenceALaFinVoyageTelleQueLaBaseLaPorte(t *testing.T) {
+	vrai, faux := true, false
+	facts := port.MatchFacts{Players: []port.MatchPlayerFact{
+		{XUID: "1", PresentAtCompletion: &vrai, LeftInProgress: &faux, Deaths: 4, DeathsDeclared: true},
+		{XUID: "2", Deaths: 0},
+	}}
+	got := participantsDuTableau(facts)
+	if len(got) != 2 {
+		t.Fatalf("participants : %d, attendu 2", len(got))
+	}
+	if got[0].PresentAtCompletion == nil || !*got[0].PresentAtCompletion || got[0].LeftInProgress == nil ||
+		*got[0].LeftInProgress || got[0].Deaths == nil || *got[0].Deaths != 4 {
+		t.Errorf("ligne declaree alteree : %+v", got[0])
+	}
+	if got[1].PresentAtCompletion != nil || got[1].LeftInProgress != nil || got[1].Deaths != nil {
+		t.Errorf("ligne non declaree : %+v — attendu aucun drapeau et aucun nombre de morts", got[1])
+	}
+}
+
 // TestUnTitreSansTableDObjectifsCompteSonRepliAChaqueCuisson : sans table de roles, le rejeu sort
 // sans etat de zone, et le repli se compte a chaque cuisson (la table memorisee ne l efface pas).
 func TestUnTitreSansTableDObjectifsCompteSonRepliAChaqueCuisson(t *testing.T) {

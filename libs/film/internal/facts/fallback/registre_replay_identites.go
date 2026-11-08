@@ -97,6 +97,55 @@ var registreReplayIdentites = []Repli{
 		CompteurBranche: true,
 	},
 	{
+		Nom:       "repli_fin_de_vie_au_dernier_point",
+		Fait:      "ou finit une vie de joueur dont le film ecrit la mort apres sa derniere position repliquee",
+		Mecanisme: "le calage du fil des morts sur l'horloge du film n'est pas resolu : aucune mort ne se place sur l'axe des frames, la vie finit a son dernier point publie",
+		Condition: CondNonResolu,
+		Ordre:     OrdreApresLecture,
+		Sites: []Site{{
+			Fichier: pkgReplay + "tracks_fin_de_vie.go",
+			Ancre:   "fb.Declenche(fallback.NomFinDeVieAuDernierPoint)",
+		}},
+		DatePose:        "2026-11-08",
+		CibleRetrait:    "un calage du fil des morts resolu sur tout film dont le fil porte des morts ; a defaut, " + retraitRegle4,
+		CritereRetrait:  "0 vie nommee laissee au dernier point faute de calage sur les films a fil des morts non vide du corpus gate",
+		CompteurBranche: true,
+	},
+	{
+		Nom:  "repli_fin_de_vie_sans_tableau_api",
+		Fait: "ou finit la derniere vie d'un joueur que le film cesse de repliquer avant la fin sans ecrire sa mort : au bout du film s'il est present a la fin, a son dernier point sinon",
+		Mecanisme: "le tableau de l'API ne dit pas : participant introuvable, `present_at_completion`, `left_in_progress` ou `deaths` non declare " +
+			"(NULL), ou vie sans xuid que le film laisse courir jusqu'au bout ; la vie finit a son dernier point publie, jamais au bout du film par defaut",
+		Condition: CondNonResolu,
+		Ordre:     OrdreApresLecture,
+		Sites: []Site{{
+			Fichier: pkgReplay + "tracks_fin_de_vie_presence.go",
+			Ancre:   "fb.Declenche(fallback.NomFinDeVieSansTableauAPI)",
+		}},
+		DatePose:        "2026-11-08",
+		CibleRetrait:    "le tableau de l'API declare sur tout participant humain du corpus (rattrapage des matchs anciens) ; a defaut, " + retraitRegle4,
+		CritereRetrait:  "0 vie laissee au dernier point faute de tableau sur les humains des films du corpus gate",
+		CompteurBranche: true,
+	},
+	{
+		Nom:  "repli_fin_de_vie_mort_manquante",
+		Fait: "ou finit la derniere vie d'un joueur que l'API declare present a la fin et dont le film n'ecrit pas toutes les morts",
+		Mecanisme: "`match_participants.deaths` depasse le nombre de morts que le film ecrit pour ce joueur : une mort manque, rien ne dit que cette vie " +
+			"n'est pas celle qu'elle clot ; la vie finit a son dernier point publie, sans tolerance",
+		// CONTRADICTION : le film et l'API comptent deux nombres de morts differents pour le meme joueur ;
+		// on ne tranche pas, on compte.
+		Condition: CondContradiction,
+		Ordre:     OrdreApresLecture,
+		Sites: []Site{{
+			Fichier: pkgReplay + "tracks_fin_de_vie_presence.go",
+			Ancre:   "fb.Declenche(fallback.NomFinDeVieMortManquante)",
+		}},
+		DatePose:        "2026-11-08",
+		CibleRetrait:    "la lecture de toutes les morts du fil (suicides, chutes) ; a defaut, " + retraitRegle4,
+		CritereRetrait:  "0 vie laissee au dernier point faute de mort ecrite sur les joueurs presents a la fin du corpus gate",
+		CompteurBranche: true,
+	},
+	{
 		Nom:       "repli_coequipier_hors_de_vue_par_defaut",
 		Fait:      "l'etat d'un coequipier a l'instant d'une mort",
 		Mecanisme: "ni visible ni en attente : « hors de vue » par defaut de fin de fonction — indistinct de « canal non lu »",

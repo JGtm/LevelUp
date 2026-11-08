@@ -73,6 +73,14 @@ type Participant struct {
 	// JoinMatchMS est l'instant de cette arrivee sur l'axe du MATCH (le meme que
 	// `Death.TimeMS`). Nil = la base ne le porte pas : la fenetre n'est pas exprimable.
 	JoinMatchMS *int64
+	// PresentAtCompletion et LeftInProgress : ce que l API declare de la presence du participant a la
+	// FIN du match (`present_at_completion`, `left_in_progress`). TRI-ETAT : nil = la base ne le
+	// declare pas (matchs anciens, colonne NULL), ce qui n est ni « present » ni « parti ». Ils
+	// servent la fin de la derniere vie d un joueur (tracks_fin_de_vie_presence.go), pas le nommage.
+	PresentAtCompletion *bool
+	LeftInProgress      *bool
+	// Deaths est le nombre de morts que l API compte pour ce participant. Nil = non declare.
+	Deaths *int
 }
 
 // scoreboardReport compte ce que le tableau a nomme et ce qu'il a refuse. Les refus sont

@@ -64,6 +64,17 @@ func decodeFilmInputs(film, dir string) (*FilmFacts, error) {
 // fixture d entrees par build, donc une carte par build). `decodeFilmInputs` en est le cas
 // particulier de Cliffhanger, et le seul chemin qui change est la LECTURE DU CATALOGUE.
 func decodeFilmInputsForEntry(film, dir string, entry profile.MapQuantEntry) (*FilmFacts, error) {
+	roster, err := rosterDeLaFeuille(film)
+	if err != nil {
+		return nil, err
+	}
+	return decodeFilmInputsAvecRoster(film, dir, entry, roster)
+}
+
+// decodeFilmInputsAvecRoster est ce decodage pour un roster donne. Un film dont la feuille de match n est pas au
+// corpus d equivalence le passe NUL : les lectures qui ne dependent pas du roster (l equipement porte) sont celles de
+// la production, et l index d un joueur sans mort manque a la table d identite.
+func decodeFilmInputsAvecRoster(film, dir string, entry profile.MapQuantEntry, roster []uint64) (*FilmFacts, error) {
 	// LE FILM SE CHARGE UNE FOIS, comme en production (`replaybuild.BuildBytes`) : c est ce
 	// chargement-la que l etage de balayage consomme, et c est lui aussi qui porte la version
 	// majeure du film.
@@ -75,10 +86,6 @@ func decodeFilmInputsForEntry(film, dir string, entry profile.MapQuantEntry) (*F
 	// verrou de decodage, puis les largeurs d axe du chemin world-object installees DEPUIS
 	// L ENTREE DE CATALOGUE — largeurs, largeur d index de region ET region, que seule
 	// `MapQuantEntry.Layout()` porte toutes les trois.
-	roster, err := rosterDeLaFeuille(film)
-	if err != nil {
-		return nil, err
-	}
 	// L ORDRE EST CELUI DE `BuildFromFilm` DEPUIS LE LOT 2.1 : le contexte du film (donc son
 	// PROFIL, resolu a la construction) s ouvre AVANT l installation des largeurs, et c est le
 	// profil que l installateur lit. Un fixture qui garderait l ancien ordre ne mesurerait plus

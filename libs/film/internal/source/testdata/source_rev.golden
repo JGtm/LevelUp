@@ -104,5 +104,11 @@
 #               sortie est identique a l octet ; un chunk zstd decompresse vers les memes octets que
 #               l entree d ou il vient (preuve : `replay-equiv` identique avant et apres la
 #               recompression d un film). Aucun match deja decode n est candidat a quoi que ce soit.
+#
+#   2026-11-08  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (equipement porte, identite lue sur l objet).
+#               AUCUNE SOURCE DE LA COUCHE NE CHANGE : `film/types`, que la fermeture rencontre par ses
+#               jetons, gagne deux champs sur la lecture de l equipement porte (`HasGlobalID`, `GlobalID` : le
+#               GlobalID du tag `eqip` de l objet, ecrit dans son record de creation). Aucune lecture d octets
+#               ne change.
 source-2026-09-16	4d8427e406555c7cca2bbe0e94c3658a639cb394c4be305a08d7e413ab998913
-source-2026-09-16.2	1110e2ab8d490f020878d5ac1bacfcb4deaaad4027aa208a9eb9eedcb2804415
+source-2026-09-16.2	2783311f299c5725a6127a1dcbdbfcb358ad63872c1d821cdfa7d494ed64234f

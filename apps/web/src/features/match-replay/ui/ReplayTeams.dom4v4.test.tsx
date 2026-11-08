@@ -47,6 +47,11 @@
  * mot « dégainée ? » du sélecteur d'arme lacunaire devient un tiret, le mot passant en `title`
  * (1 occurrence en 4v4, 1 en 6v6) ; aucun autre caractère du HTML.
  *
+ * SIXIEME MISE A JOUR, 2026-11-08 (le compte de charges passe en surimpression sur la vignette) :
+ * SEULE la classe `relative` s'ajoute à la cellule de capacité (`<span class="relative inline-flex
+ * shrink-0 items-center" style="width: 16px;">`, 7 occurrences en 4v4, 11 en 6v6), qui devient le
+ * repère du chiffre ; aucune largeur, aucun nœud ni `title` ne bouge, vérifié balise par balise.
+ *
  * LE GABARIT NORMAL VA JUSQU'À SIX SIÈGES PAR CAMP (la densité se lit sur la catégorie de
  * mode, jamais sur les effectifs — décision D1) : la même fixation à 6 sièges
  * (`__fixtures__/replayTeams.6v6.html`) a été prise à l'étape 2 du plan, AVANT le premier code
