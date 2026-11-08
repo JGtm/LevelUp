@@ -10,6 +10,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"slices"
 	"strings"
 
 	"levelup/go-api/internal/sync/skill"
@@ -42,6 +43,9 @@ func RecomputeLUSRCanonicalForPlayer(ctx context.Context, playerDB, sharedDB *sq
 // LUSR : le chemin live incrémental les sauterait (watermark déjà avancé).
 // RunLUSRV2ShadowOwnerOnly écrit la ligne canonique rating_type='LUSR' lue par l'UI
 // (Stratégie C). Pur local, aucun appel API. Retourne le nombre de matchs traités.
+//
+// Si une écriture canonical échoue, le rejeu rend le nombre de matchs traités ET une erreur
+// qui enveloppe skill.ErrCanonicalWriteHeld : des matchs restent sans note.
 func RecomputeLUSRCanonicalWithAccess(ctx context.Context, playerDB *sql.DB, shared *SharedAccess, xuid string,
 	opts ...skill.ShadowOption) (int, error) {
 	if shared == nil || playerDB == nil {
@@ -53,7 +57,10 @@ func RecomputeLUSRCanonicalWithAccess(ctx context.Context, playerDB *sql.DB, sha
 	if err := resetLUSRWatermark(ctx, shared, xuid); err != nil {
 		return 0, err
 	}
-	n, err := RunLUSRV2ShadowOwnerOnly(ctx, playerDB, shared, xuid, opts...)
+	// Le rejeu complet n'a pas de cycle suivant : une écriture tenue doit remonter
+	// (skill.ErrCanonicalWriteHeld), pas laisser croire à un rejeu complet.
+	replayOpts := append(slices.Clone(opts), skill.WithErrorOnHeldWrites())
+	n, err := RunLUSRV2ShadowOwnerOnly(ctx, playerDB, shared, xuid, replayOpts...)
 	if err != nil {
 		return n, fmt.Errorf("RecomputeLUSRCanonicalWithAccess replay: %w", err)
 	}

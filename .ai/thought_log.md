@@ -120351,3 +120351,11 @@ version restent après chaque mise à jour NSIS (antérieur à L24).
 **Résultats observés.** Tests rouges puis verts ; gate vert, intégration `sync`, `scheduler`, `api/wire` sous `-p 1`. Une seule comparaison dans `cmd/`, allowlistée : validation de saisie.
 
 **Conclusion / prochaine étape.** E3 LUSR.
+
+## [2026-11-08] Backlog E3 : LUSR et matchs exclus — Complété
+
+**Décision technique principale.** Un match exclu sort du graphe de carrière (avant le calcul des écarts) et de la moyenne des composantes, par liste de paramètres lue d'abord (ADR 0036). Le rejeu complet rend `ErrCanonicalWriteHeld` si une écriture échoue, option posée par le seul rejeu : le post-sync garde son retry au cycle suivant.
+
+**Résultats observés.** Tests rouges puis verts ; gate vert. Une exclusion dont l'écriture échoue n'est plus annoncée comme terminée et se recalcule à la demande suivante.
+
+**Conclusion / prochaine étape.** E4 citations.

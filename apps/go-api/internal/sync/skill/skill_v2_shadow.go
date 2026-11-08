@@ -129,7 +129,7 @@ func runLUSRV2Shadow(ctx context.Context, playerDB *sql.DB, shared SharedAccesso
 	if err != nil {
 		return s.processed, fmt.Errorf("RunLUSRV2Shadow: %w", err)
 	}
-	return s.processed, nil
+	return s.processed, heldWritesError(cfg, s)
 }
 
 // loadShadowExclusions rend les matchs is_excluded du joueur. Sans base joueur (replay

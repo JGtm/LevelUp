@@ -6,8 +6,15 @@ package skill
 import (
 	"context"
 	"database/sql"
+	"errors"
+	"fmt"
 	"sync/atomic"
 )
+
+// ErrCanonicalWriteHeld signale qu'au moins une écriture canonical (match_skill_rank) a
+// échoué pendant un cycle : le filigrane de son groupe est tenu, le match n'a pas de note
+// et ne sera retenté qu'au cycle suivant. Rendu seulement avec WithErrorOnHeldWrites.
+var ErrCanonicalWriteHeld = errors.New("écriture LUSR canonical tenue")
 
 // MedalExploitLoader rend le score brut d'exploit médailles par match_id du joueur traité,
 // lu sur un handle de LECTURE shared. Il vit dans internal/sync (metadata DB, difficulté des
@@ -24,6 +31,27 @@ type shadowOptions struct {
 	medalExploit MedalExploitLoader
 	// matchFailures : compte les matchs dont le calcul ou l'écriture a échoué (nil : pas de comptage).
 	matchFailures *atomic.Int64
+	// errorOnHeldWrites : un cycle qui a tenu au moins une écriture canonical rend
+	// ErrCanonicalWriteHeld au lieu de nil.
+	errorOnHeldWrites bool
+}
+
+// WithErrorOnHeldWrites fait rendre ErrCanonicalWriteHeld (avec le nombre de matchs traités)
+// à un cycle dont au moins une écriture canonical a échoué. Pour les appelants qui n'ont
+// pas de cycle suivant (rejeu complet, import, CLI) : sans elle, ces matchs restent sans
+// note et l'appelant croit le rejeu complet. Le post-sync ne la pose pas : son prochain
+// cycle retente.
+func WithErrorOnHeldWrites() ShadowOption {
+	return func(o *shadowOptions) { o.errorOnHeldWrites = true }
+}
+
+// heldWritesError rend l'erreur de fin de cycle demandée par WithErrorOnHeldWrites, ou nil.
+func heldWritesError(cfg shadowOptions, s shadowRunStats) error {
+	if !cfg.errorOnHeldWrites || s.skippedWriteFailed == 0 {
+		return nil
+	}
+	return fmt.Errorf("RunLUSRV2Shadow: %d écriture(s) canonical tenue(s), %d match(s) traité(s): %w",
+		s.skippedWriteFailed, s.processed, ErrCanonicalWriteHeld)
 }
 
 // WithMedalExploit fournit le chargeur du score d'exploit médailles, 6e composante des 8

@@ -48,6 +48,12 @@ func (r *CareerRepo) GetLUSRHistory(ctx context.Context) ([]domain.LUSRCheckpoin
 	if err != nil {
 		return nil, err
 	}
+	// Les matchs exclus sortent du graphe avant la phase B et avant les deltas :
+	// l'écart d'un point se calcule entre matchs retenus.
+	playerRows, matchIDs, err = r.dropExcludedLUSRRows(ctx, playerRows, matchIDs)
+	if err != nil {
+		return nil, err
+	}
 	if len(playerRows) == 0 {
 		return nil, nil
 	}
@@ -88,6 +94,34 @@ func (r *CareerRepo) loadLUSRPlayerRows(ctx context.Context) ([]lusrPlayerRow, [
 		return nil, nil, err
 	}
 	return playerRows, matchIDs, nil
+}
+
+// dropExcludedLUSRRows retire les lignes des matchs exclus (is_excluded de
+// player_match_enrichment_latest) et rend les lignes retenues avec leurs
+// identifiants de match distincts. Une erreur de lecture est remontée : servir un
+// graphe qui garde un match exclu serait une réponse fausse, pas dégradée.
+func (r *CareerRepo) dropExcludedLUSRRows(ctx context.Context, rows []lusrPlayerRow, matchIDs []string) ([]lusrPlayerRow, []string, error) {
+	if len(rows) == 0 {
+		return nil, nil, nil
+	}
+	enrichments, err := LoadPlayerMatchEnrichments(ctx, r.pdb.Player, dedupliquer(matchIDs))
+	if err != nil {
+		return nil, nil, fmt.Errorf("CareerRepo.GetLUSRHistory: exclusions: %w", err)
+	}
+	kept := make([]lusrPlayerRow, 0, len(rows))
+	keptIDs := make([]string, 0, len(rows))
+	seen := make(map[string]struct{}, len(rows))
+	for _, p := range rows {
+		if enrichments[p.MatchID].IsExcluded {
+			continue
+		}
+		kept = append(kept, p)
+		if _, ok := seen[p.MatchID]; !ok {
+			seen[p.MatchID] = struct{}{}
+			keptIDs = append(keptIDs, p.MatchID)
+		}
+	}
+	return kept, keptIDs, nil
 }
 
 // loadLUSRRegistryInfo enrichit match_registry (phase B) via SharedReader.

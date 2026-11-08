@@ -383,6 +383,10 @@ type componentRow struct {
 // LUSR v2 (sync/skill, componentTracker) et, au rattrapage, par son rejeu complet
 // (RecomputeLUSRCanonicalForPlayer).
 //
+// Les matchs exclus (is_excluded) ne pèsent pas : leurs identifiants sont lus d'abord
+// (loadExcludedMatchIDs), puis écartés par paramètres constants (lusrComponentsQuery).
+// Une erreur de lecture des exclusions est remontée.
+//
 // Une seule query CTE batchée groupe AVG / QUANTILE / trend pour les 8
 // composantes (V2 §1 polish — évite les 8 round-trips initiaux). Si la table
 // est vide ou la query échoue, retourne map vide silencieusement (UI dégrade
@@ -392,26 +396,12 @@ func (s *Service) loadLUSRComponentsBreakdown(ctx context.Context, _userID strin
 	defer cancel()
 
 	out := make(map[string]componentRow, 8)
-	rows, err := s.db.Query(ctx, `
-		WITH ranked AS (
-			SELECT
-				component_name,
-				value,
-				ROW_NUMBER() OVER (PARTITION BY component_name ORDER BY computed_at DESC) AS rk_desc,
-				ROW_NUMBER() OVER (PARTITION BY component_name ORDER BY computed_at ASC)  AS rk_asc,
-				COUNT(*)    OVER (PARTITION BY component_name)                            AS n
-			FROM lusr_component_history_latest
-		)
-		SELECT
-			component_name,
-			AVG(value)                                         AS current_avg,
-			QUANTILE_CONT(value, 0.8)                          AS top20,
-			AVG(CASE WHEN n >= 20 AND rk_desc <= 10 THEN value END) AS last_avg,
-			AVG(CASE WHEN n >= 20 AND rk_asc  <= 10 THEN value END) AS first_avg,
-			MAX(n)                                             AS n
-		FROM ranked
-		GROUP BY component_name
-	`)
+	excluded, err := s.loadExcludedMatchIDs(ctx)
+	if err != nil {
+		return out, err
+	}
+	query, args := lusrComponentsQuery(excluded)
+	rows, err := s.db.Query(ctx, query, args...)
 	if err != nil {
 		return out, nil
 	}

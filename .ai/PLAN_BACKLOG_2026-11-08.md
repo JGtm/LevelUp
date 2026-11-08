@@ -160,17 +160,17 @@ de moteur peut ne casser que sous ce tag).
 
 ### E3 — LUSR (Sonnet, un agent)
 
-- [ ] 3.1 Graphe de carrière, `apps/go-api/internal/platform/duckdb/career_repo_lusr.go` : écarter les matchs exclus
+- [x] 3.1 Graphe de carrière, `apps/go-api/internal/platform/duckdb/career_repo_lusr.go` : écarter les matchs exclus
   **avant** la phase B, `assembleLUSRResults` et `computeLUSRRatingDeltas` (l'écart se calcule entre matchs retenus). Lire
   l'exclusion par `LoadPlayerMatchEnrichments` (`shared_query_helpers.go`) sur les identifiants de la phase A. Si plus
   aucune ligne après filtre : retour anticipé `nil, nil` (`Placeholders(0)` rend un `IN ()` invalide). Échec de lecture :
   erreur remontée. Test sur base réelle : 3 matchs notés, 1 exclu, 2 points, écart entre les 2 restants.
-- [ ] 3.2 `apps/go-api/internal/progression/profile/queries.go:~396` : lire d'abord les identifiants exclus
+- [x] 3.2 `apps/go-api/internal/progression/profile/queries.go:~396` : lire d'abord les identifiants exclus
   (`SELECT match_id FROM player_match_enrichment_latest WHERE COALESCE(is_excluded, FALSE)`, modèle
   `sync/skill/exclusion_filter.go:27-30`), puis les passer en paramètres constants `AND match_id NOT IN (?, ...)` dans
   `ranked` ; aucune clause si la liste est vide. Pas de sous-requête (ADR 0036 I2). Test : une composante d'un match exclu
   ne pèse plus.
-- [ ] 3.3 Écriture tenue : `apps/go-api/internal/sync/skill/skill_v2_options.go`, ajouter une `ShadowOption`
+- [x] 3.3 Écriture tenue : `apps/go-api/internal/sync/skill/skill_v2_options.go`, ajouter une `ShadowOption`
   `WithErrorOnHeldWrites` ; à la fin de `runLUSRV2Shadow` (`skill_v2_shadow.go`, après `logShadowBurstDone` et son test
   d'erreur), si l'option est posée et `s.skippedWriteFailed > 0`, rendre `s.processed` et une erreur enveloppant un
   sentinel exporté `ErrCanonicalWriteHeld`. `RecomputeLUSRCanonicalWithAccess` (`internal/sync/lusr_full_recompute.go`)
@@ -339,6 +339,8 @@ les puces gardées en `[!]` ; relecture du diff par le pilote.
 
 - E1 (Haiku), 2026-11-08 : `previewReset` de `cmd_reset_bitmasks.go` ignore ses erreurs de lecture (`_ =`, lignes 75, 84, 96, 107), hors périmètre. Non traité.
 
+- E3 (Sonnet), 2026-11-08 : `loadLUSRComponentsBreakdown` avale l'erreur de sa requête principale (dégradation annoncée) ; doc-comment de `GetLUSRHistory` placé au-dessus du type `lusrPlayerRow` ; `LUSRRecomputed` reste à 0 sur erreur partielle à l'import OpenSpartan ; `cmd/recompute_perfnote` s'arrête à la première erreur. Non traités.
+
 ## 4. Journal
 
 - 2026-11-08 : plan rédigé, sources vérifiées sur `origin/release/v8.1.0`. Revue indépendante (Sonnet, une ronde) : 3 P0,
@@ -348,3 +350,4 @@ les puces gardées en `[!]` ; relecture du diff par le pilote.
   En attente du go.
 - 2026-11-08 E1 close : six items faits, gate vert rejoué par l'exécutant, diff relu par le pilote. Relance du flux prouvée rouge (4 démarrages) puis verte (1).
 - 2026-11-08 E2 close : quatre items faits, tests rouges puis verts, gate vert (intégration sous `-p 1`), diff relu par le pilote. Accesseur `SharedProviderForTest` ajouté pour prouver quel provider sert le moteur.
+- 2026-11-08 E3 close : trois items faits, tests rouges puis verts, gate vert (intégration `./internal/sync/...` sous `-p 1`), diff relu par le pilote. Chemin réel de l'exclusion : `MatchRecomputer.recompute`, l'échec alimente `RecomputePending`.
