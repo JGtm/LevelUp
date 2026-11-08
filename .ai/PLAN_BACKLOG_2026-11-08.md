@@ -267,7 +267,7 @@ Gate : tableau rempli au journal ; `git -C ../LevelUp-wt-backlog status --short`
 
 ### E7 — Relecture adversariale finale et gates finaux
 
-- [ ] 7.1 Skill `adversarial-review` sur tout le diff de la branche, **un relecteur Opus**, axes persist/sync, exclusions,
+- [x] 7.1 Skill `adversarial-review` sur tout le diff de la branche, **un relecteur Opus**, axes persist/sync, exclusions,
   seed au démarrage, chemin des jetons. Une ronde ; ronde 2 seulement s'il reste un P0. Constats statués au journal.
 - [ ] 7.2 `delivery-checklist`.
 - [ ] 7.3 `make generate-types` puis aucun écart non voulu ; `make check-types` ; `make test-web` ; `make gate-push` ;
@@ -345,6 +345,8 @@ les puces gardées en `[!]` ; relecture du diff par le pilote.
 
 - E5 (Sonnet), 2026-11-08 : `RefreshHaloTokensViaStoreFirst` (`registry_catalog_drain.go`, `registry_appearance_diag.go`) garde l'ordre Azure d'abord, chemins rares. `ResolveMSAccessTokenStoreFirst` pose le xuid aussi pour ses appelants CLI, sans effet observable. Non traités.
 
+- Revue Opus, 2026-11-08 : `cmd/diag_perfsim/load.go` garde une copie déclarée de `LoadExcludedMatchIDs` (2e copie, seuil de la règle 6 non atteint) ; cette lecture passe par `SQLDb()` sans reprise sur handle invalidé. Non traités.
+
 ## 4. Journal
 
 - 2026-11-08 : plan rédigé, sources vérifiées sur `origin/release/v8.1.0`. Revue indépendante (Sonnet, une ronde) : 3 P0,
@@ -359,3 +361,4 @@ les puces gardées en `[!]` ; relecture du diff par le pilote.
 - 2026-11-08 coordination `levelup-cf` : fusion en 2e position, vers 21 h, rebase à ce tour. E6 attend la fin de la recuisson en cours (vers 20 h 30) et mesure donc les artefacts recuits : F-2 s'interprète ainsi.
 - 2026-11-08 E5 close : rafraîchissement OAuth par le dernier client gagnant, en mémoire. Relecture Sonnet : 1 constat recevable (P1), 11 conditions tenues. Compte reconnecté en web + natif en erreur de configuration = échec en boucle ; corrigé : seul un échec transitoire du natif est rendu sans Azure, test rouge puis vert. Gate vert.
 - 2026-11-08 ordre : E6 dépend de la fin de la recuisson (dépendance externe, `levelup-cf`) ; E7.1, sans lien avec elle, passe devant E6.
+- 2026-11-08 E7.1 close : relecture Opus sur toute la branche, 4 constats recevables, tous corrigés avec test rouge puis vert (cache du graphe après exclusion, copie de la lecture des exclus, plancher daté, chemins d'échec), 25 conditions tenues. Aucun P0 : pas de ronde 2.

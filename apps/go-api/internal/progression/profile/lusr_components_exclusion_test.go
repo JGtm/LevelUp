@@ -109,3 +109,64 @@ func TestLusrComponentsQuery_ClauseOnlyWhenExcluded(t *testing.T) {
 		t.Errorf("deux exclus : args=%v, want 2 paramètres et `match_id NOT IN (?, ?)`\n%s", args, q)
 	}
 }
+
+// breakExclusionRead remplace la vue des enrichissements par une vue dont la lecture échoue
+// à l'exécution (conversion impossible), sans message de schéma absent : la lecture des
+// exclusions échoue alors que la table des composantes reste lisible.
+func breakExclusionRead(t *testing.T, db *duckdb.DB) {
+	t.Helper()
+	ctx := context.Background()
+	for _, stmt := range []string{
+		`CREATE TABLE exclusion_boom (v VARCHAR)`,
+		`INSERT INTO exclusion_boom VALUES ('x')`,
+		`CREATE OR REPLACE VIEW player_match_enrichment_latest AS
+		 SELECT CAST(v AS INTEGER)::VARCHAR AS match_id, TRUE AS is_excluded FROM exclusion_boom`,
+	} {
+		if _, err := db.Exec(ctx, stmt); err != nil {
+			t.Fatalf("%s: %v", stmt, err)
+		}
+	}
+}
+
+// Une lecture des exclusions en échec remonte une erreur : servir les composantes en
+// laissant peser un match exclu serait une réponse fausse, pas dégradée.
+func TestLoadLUSRComponentsBreakdown_ExclusionReadFailureIsReturned(t *testing.T) {
+	db := newExclusionPlayerDB(t)
+	day := time.Date(2026, 6, 1, 20, 0, 0, 0, time.UTC)
+	seedComponentValue(t, db, "m1", 0.2, day)
+	seedComponentValue(t, db, "m2", 0.4, day.Add(24*time.Hour))
+	seedComponentValue(t, db, "m3", 0.9, day.Add(48*time.Hour))
+	seedExclusion(t, db, "m3")
+	breakExclusionRead(t, db)
+
+	rows, err := NewService(db).loadLUSRComponentsBreakdown(context.Background(), "u")
+	if err == nil {
+		t.Fatalf("erreur nil, want l'échec de lecture des exclusions ; composantes servies : %v", rows)
+	}
+	if !strings.Contains(err.Error(), "lecture des matchs exclus") {
+		t.Errorf("erreur = %v, want le contexte « lecture des matchs exclus »", err)
+	}
+	if len(rows) != 0 {
+		t.Errorf("composantes servies malgré l'échec : %v", rows)
+	}
+}
+
+// Une base sans la vue des enrichissements ne porte aucune exclusion : le calcul continue
+// sur tous les matchs (contrat de skill.LoadExcludedMatchIDs).
+func TestLoadLUSRComponentsBreakdown_MissingEnrichmentViewMeansNoExclusion(t *testing.T) {
+	db := newExclusionPlayerDB(t)
+	day := time.Date(2026, 6, 1, 20, 0, 0, 0, time.UTC)
+	seedComponentValue(t, db, "m1", 0.2, day)
+	seedComponentValue(t, db, "m2", 0.4, day.Add(24*time.Hour))
+	if _, err := db.Exec(context.Background(), `DROP VIEW player_match_enrichment_latest`); err != nil {
+		t.Fatalf("drop view: %v", err)
+	}
+
+	rows, err := NewService(db).loadLUSRComponentsBreakdown(context.Background(), "u")
+	if err != nil {
+		t.Fatalf("loadLUSRComponentsBreakdown: %v", err)
+	}
+	if got := rows[exclusionComponent].currentAvg; math.Abs(got-0.3) > 1e-9 {
+		t.Errorf("moyenne = %v, want 0.3 (aucune exclusion lisible)", got)
+	}
+}

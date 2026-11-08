@@ -120375,3 +120375,11 @@ version restent après chaque mise à jour NSIS (antérieur à L24).
 **Résultats observés.** Relecture Sonnet : 1 P1 recevable (compte reconnecté en web bloqué sur une erreur de configuration), corrigé avec test rouge puis vert ; 11 conditions tenues, dont la persistance de la rotation. Gate vert.
 
 **Conclusion / prochaine étape.** Relecture finale Opus, mesure du rejeu après la recuisson.
+
+## [2026-11-08] Backlog E7.1 : relecture adversariale Opus — Complété
+
+**Décision technique principale.** Quatre constats corrigés plutôt que consignés : invalidation du cache de carrière et de profil après une exclusion, lecture des exclus réutilisée, plancher du corpus daté, tests des chemins d'échec.
+
+**Résultats observés.** Aucun défaut sur les écritures DuckDB, la rotation des jetons, le multi-titre ou la propagation LUSR ; 25 conditions vérifiées. Pas de ronde 2, aucun P0.
+
+**Conclusion / prochaine étape.** Gates finaux, mesure du rejeu après la recuisson.

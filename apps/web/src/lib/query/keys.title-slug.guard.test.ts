@@ -244,6 +244,7 @@ const agnosticKeys = new Set<string>([
   'squad.challengesAll', // préfixe large (squadId)
   'squad.orientation', // clé par squadId (identité)
   'playerProfile.campaignAll', // préfixe large (playerSlug)
+  'playerProfile.profileAll', // préfixe large (playerSlug)
   'watcher.status',
   'watcher.authPoll',
 ])

@@ -110,3 +110,52 @@ func TestCareerRepo_GetLUSRHistory_AllMatchesExcluded(t *testing.T) {
 		t.Fatalf("historique = %+v, want nil quand plus aucun match n'est retenu", got)
 	}
 }
+
+// Une lecture des exclusions en échec remonte une erreur : servir un graphe qui garde un
+// match exclu serait une réponse fausse, pas dégradée. La vue est remplacée par une vue
+// dont la lecture échoue à l'exécution ; les lignes de match_skill_rank restent lisibles.
+func TestCareerRepo_DropExcludedLUSRRows_ReadFailureIsReturned(t *testing.T) {
+	pdb := newLUSRCareerPlayerDB(t)
+	day := time.Date(2026, 6, 1, 20, 0, 0, 0, time.UTC)
+	seedLUSRCareerMatch(t, pdb, "m1", 1000, day)
+	seedLUSRCareerMatch(t, pdb, "m2", 1100, day.Add(24*time.Hour))
+	markExcluded(t, pdb, "m2")
+	ctx := context.Background()
+	for _, stmt := range []string{
+		`CREATE TABLE exclusion_boom (v VARCHAR)`,
+		`INSERT INTO exclusion_boom VALUES ('x')`,
+		`CREATE OR REPLACE VIEW player_match_enrichment_latest AS
+		 SELECT CAST(v AS INTEGER)::VARCHAR AS match_id, NULL::VARCHAR AS session_id,
+		        NULL::VARCHAR AS session_label, FALSE AS is_with_friends, TRUE AS is_excluded,
+		        NULL::DOUBLE AS performance_score, 0 AS dominance_flag, FALSE AS had_bot_teammate,
+		        NULL::DOUBLE AS engagement_score_brut, NULL::DOUBLE AS engagement_pace_player,
+		        NULL::DOUBLE AS engagement_pace_lobby
+		 FROM exclusion_boom`,
+	} {
+		if _, err := pdb.Player.Exec(ctx, stmt); err != nil {
+			t.Fatalf("%s: %v", stmt, err)
+		}
+	}
+	repo := NewCareerRepo(pdb)
+
+	playerRows, matchIDs, err := repo.loadLUSRPlayerRows(ctx)
+	if err != nil || len(playerRows) != 2 {
+		t.Fatalf("phase A : %d lignes, err=%v ; want 2 lignes lisibles", len(playerRows), err)
+	}
+
+	kept, keptIDs, err := repo.dropExcludedLUSRRows(ctx, playerRows, matchIDs)
+	if err == nil {
+		t.Fatalf("erreur nil, want l'échec de lecture des exclusions ; lignes servies : %+v", kept)
+	}
+	if kept != nil || keptIDs != nil {
+		t.Errorf("lignes servies malgré l'échec : %+v %v", kept, keptIDs)
+	}
+
+	got, err := repo.GetLUSRHistory(ctx)
+	if err == nil {
+		t.Fatalf("GetLUSRHistory : erreur nil, want l'échec ; points servis : %+v", got)
+	}
+	if got != nil {
+		t.Errorf("GetLUSRHistory a servi %+v malgré l'échec", got)
+	}
+}

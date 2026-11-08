@@ -3,8 +3,11 @@ package profile
 import (
 	"context"
 	"fmt"
+	"maps"
+	"slices"
 
 	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/sync/skill"
 )
 
 // lusrComponentsBaseSQL agrège les composantes LUSR ; %s reçoit le filtre des matchs exclus
@@ -43,25 +46,14 @@ func lusrComponentsQuery(excluded []string) (string, []any) {
 	return fmt.Sprintf(lusrComponentsBaseSQL, clause), duckdb.ToAnySlice(excluded)
 }
 
-// loadExcludedMatchIDs lit les identifiants des matchs exclus du joueur. Une erreur est
-// remontée avec son contexte : continuer sans elle ferait peser des matchs exclus.
+// loadExcludedMatchIDs rend, triés, les identifiants des matchs exclus du joueur. La lecture
+// est celle de skill.LoadExcludedMatchIDs (source unique, vue _latest) : une base sans la vue
+// ne porte aucune exclusion, toute autre erreur est remontée avec son contexte, car continuer
+// sans elle ferait peser des matchs exclus.
 func (s *Service) loadExcludedMatchIDs(ctx context.Context) ([]string, error) {
-	rows, err := s.db.Query(ctx,
-		`SELECT match_id FROM player_match_enrichment_latest WHERE COALESCE(is_excluded, FALSE)`)
+	set, err := skill.LoadExcludedMatchIDs(ctx, s.db.SQLDb())
 	if err != nil {
 		return nil, fmt.Errorf("profile: lecture des matchs exclus: %w", err)
 	}
-	defer rows.Close()
-	var ids []string
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			return nil, fmt.Errorf("profile: lecture des matchs exclus (scan): %w", err)
-		}
-		ids = append(ids, id)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("profile: lecture des matchs exclus (lignes): %w", err)
-	}
-	return ids, nil
+	return slices.Sorted(maps.Keys(set)), nil
 }

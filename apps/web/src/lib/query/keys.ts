@@ -558,6 +558,9 @@ export const queryKeys = {
     /** Le profil porte des libellés servis dans la langue de la requête : locale dans la clé. */
     profile: (playerSlug: string, titleSlug: string, locale: string, windowDays: number) =>
       ['playerProfile', playerSlug, titleSlug, locale, windowDays] as const,
+    /** Préfixe broad — tous les `profile(playerSlug, ...)` du joueur (titres, langues et
+     *  fenêtres confondus). Ne couvre pas les clés `campaign`, qui ont leur propre préfixe. */
+    profileAll: (playerSlug: string) => ['playerProfile', playerSlug] as const,
     activeCampaign: (playerSlug: string, titleSlug: string) =>
       ['playerProfile', 'campaign', 'active', playerSlug, titleSlug] as const,
     campaign: (playerSlug: string, titleSlug: string, id: string) =>

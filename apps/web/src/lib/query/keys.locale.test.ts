@@ -295,6 +295,7 @@ const nePasDependreDeLaLangue: Record<string, string> = {
   'prestige.meAll': PREFIXE_LARGE,
   'squad.challengesAll': PREFIXE_LARGE,
   'playerProfile.campaignAll': PREFIXE_LARGE,
+  'playerProfile.profileAll': PREFIXE_LARGE,
   'arc.listAll': PREFIXE_LARGE,
   'challenge.listAll': PREFIXE_LARGE,
   // Carrière, match, tactique, médias : identifiants, scores, mesures.
