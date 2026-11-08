@@ -917,11 +917,42 @@ décodeur qui importent `filmcache` / `filmproc` suivent les nouveaux noms (ré�
       `digest`/`atomicfile`/`filelock`/`decodelock`/`depottest`, copies jumelles, renvoi à l'ADR 0034). Les ADR sont
       EN-only (règle 15) : pas de traduction.
 
-- [ ] 2.9 Gate : T1 (disparitions = les 21 fichiers + les tests déplacés, nommés un à un, 0 nom disparu sinon),
+- [x] 2.9 Gate : T1 (disparitions = les 21 fichiers + les tests déplacés, nommés un à un, 0 nom disparu sinon),
       T2 (0 golden changé, ou seuls ceux régénérés en 2.4 avec chronique), T3, T4 (`--base 421107998f`), T5, T7 ;
       lint des cinq modules à 0 issue (`golangci-lint run --config ../../apps/go-api/.golangci.yml ./...`) ;
       `make desktop-test` si `filmproc` était cité par la coquille (vérifier : `grep -r filmproc apps/desktop`).
       Commit « lot 2 ».
+      — FAIT (2026-11-08, HEAD `12896aaa9f`, tous témoins rejoués dans cet ordre, un seul gros processus à la fois ;
+      sorties sous `temoins_film/lot2/2.9_*`). Tableau « Gate 2.9 » ci-dessous. Lot 2 CLOS : items 2.1 à 2.9 `[x]`.
+
+#### Gate 2.9 (2026-11-08)
+
+| Témoin | Attendu (lot 0) | Obtenu | Identique | Durée |
+|---|---|---|---|---|
+| build / vet | vert | `go build`, `go vet`, `go vet -tags research` verts dans `apps/go-api` et `libs/film` | oui | 155 s |
+| T1 tests | 0 fail ; disparitions justifiées | 21 581 lignes (paquet, test, verdict) : 21 206 `pass`, 0 `fail`, 375 `skip` (lot 0 : 21 556, 21 176, 0, 380) ; MD5 `f91c2acd2bea6ce736f5f54957bb6dbe` ; `go-api` hors archlint 16 914, archlint seul 490 (`-timeout 40m`, comme `outils/run_t1.sh`), `libs/film` 3 803, `gamefiles` 85, `haloapi` 216, `himap` 73 ; six codes de sortie 0 | oui, voir ci-dessous | 536 s |
+| T2 révisions | cinq `Rev` inchangées ; goldens identiques hors `grammar_rev.golden` | `source-2026-09-16.2`, `profile-2026-10-16`, `grammar-2026-10-28`, `killsource-2026-10-18`, `objectives-2026-10-17` ; 35 `*.golden` comparés par SHA-256 au commit `421107998f` (`git show`) : 34 identiques, UN changé : `libs/film/internal/grammar/testdata/grammar_rev.golden` (ligne `grammar-2026-10-28`, `d47f789c...` -> `375f3f47...`, seule ligne du diff), régénéré au 2.4 par la porte à deux verrous, entrée de chronique « COMPLÉMENT DU 2026-11-04 » dans `internal/grammar/rev_chronique.go:403` ; `go test ./revision/... -count=1` vert | oui (écart nommé par 2.4) | 4 s |
+| T3 rejeu | 20 identiques, MD5 des 20 digests = lot 0 | `replay-equiv` : 20 identiques, 0 différent, 0 écarté, 0 échec, 0 illisible ; MD5 de la liste des 20 `e35052a1baa65ea8519fa373d8e51271` = lot 0 ; les 20 fichiers octet-identiques à `libs/film/replay/testdata/equivalence/*.tsv` (`cmp`) | oui | 1 275 s |
+| T4 parc | 18 identiques, 0 gain, 0 perte, 0 changement, 1 absent, code 0 | `replay-corpus-gate --base 421107998f --allow-missing` : 18 `ok` (schéma 106 -> 106), `f75e7053` ABSENT, 0 gain, 0 perte, 0 changement, `couverture_incomplete=false`, code 0 ; jonctions retirées après (`rmdir`, cibles intactes) | oui | 599 s |
+| T5 autonomie | `levelup/go-api` = 0 | `libs/film` (278 paquets), `gamefiles` (149), `himap` (154), `haloapi` (233) : 0 | oui | 10 s |
+| T6 surface | 179 et 316 | `plafondSurfaceFacade` et `plafondSurfaceReplay` tenus par `TestSurfaceDeLaFacadeDuDecodeur` / `TestSurfaceDeReplayCiteeHorsDuDecodeur`, verts dans le T1 archlint | oui | (dans T1) |
+| T7 intégration | code 0, 16 paquets, 2 321 tests (2 289 pass, 32 skip) | code 0, 16 paquets `pass`, 2 321 tests : 2 289 `pass`, 0 `fail`, 32 `skip` | oui | 829 s |
+| Lint | 0 issue | `libs/film` (config de go-api) : 0 issue ; `apps/go-api` `--new-from-merge-base=origin/release/v8.1.0` : 0 issue (aucun `//nolint` ajouté) | oui | 86 s + 167 s |
+| `filmproc` dans `apps/desktop` | vide ou `make desktop-test` | `grep -r filmproc apps/desktop` : vide, `make desktop-test` sans objet | oui | - |
+| Ratchet du lot | vert | `TestLaBriqueNeFaitPasDExploitation`, `TestLeDecodeurJournaliseSousLeContexteDeLAppelant`, `TestLaBriqueRemonteVersLeDepotParUneSeuleAide`, `TestLeVerrouDeDecodageParleLeMemeProtocoleDesDeuxCotes`, `TestLesCopiesJumellesSontIdentiques`, `TestCopiesIdentiques_AutoPreuve` verts. Le motif `SansExploitation\|SlogContexte\|RacineDepotUnique\|VerrouDecodageParite\|CopiesIdentiques` du gate ne retient que `TestCopiesIdentiques_AutoPreuve` (les autres noms de tests ne portent pas ces mots) : rejoué avec les noms réels | oui | 6 s |
+
+T1, détail : 97 lignes du lot 0 absentes, 96 retrouvées NOM POUR NOM, verdict égal, à leur nouvelle adresse (`libs/film/digest` 15 ->
+`libs/film/internal/digest` + `apps/go-api/internal/analysis/digest` ; `libs/film/filmcache` 37 -> `internal/filmarchive` ;
+`libs/film/filmproc` 35 -> `internal/filmrun` et 9 -> `libs/film/memguard`) ; la 97e, `TestChaqueEnfantDuPaquetPasseParSansFenetre`,
+est le seul nom supprimé (la copie `sansFenetre` part avec son sujet ; l'appel par `childproc.Command` est tenu par
+`archlint/childproc_single_spawn_test.go`). Les 21 fichiers `research && campagne_overlay` du 2.6 (commit `a415ceb791`) ne
+portaient aucun test dans T1 (tag `research` + `campagne_overlay`). 122 lignes neuves, dont 11 sans homologue disparu :
+`decodelock` 2, `filmreplis` 2, `platform/filelock` 3, `filmrun` `TestCommandeDeLEnfantDecriteOctetPourOctet`, archlint 3
+(`TestLaBriqueNeFaitPasDExploitation`, `TestLaBriqueRemonteVersLeDepotParUneSeuleAide`, `TestLeVerrouDeDecodageParleLeMemeProtocoleDesDeuxCotes`).
+0 fail. Cinq verdicts passent de `skip` à `pass` (lot 0 : 380 skip, maintenant 375) : `positions/TestDecodeKeyframePositions_Ref`
+et quatre tests de `weaponv3` ; cause : ils sautent quand le film `000d5950` est absent du cache (« cache film 000d5950 absent »,
+sortie du lot 0) et les jonctions du parc étaient montées pendant ce T1 (jonctions du 2026-11-08 11:11 vers le checkout principal) ;
+amélioration de couverture due au poste, pas à un changement de code. Aucun verdict ne passe à `fail` ou de `pass` à `skip`.
 
 ### Arrêt du lot 2 sur l'item 2.4 (2026-11-04)
 
