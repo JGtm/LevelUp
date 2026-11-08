@@ -1112,7 +1112,7 @@ modifiés ou neufs dans `archlint`, `libs/film/revision/ordre_imports_test.go`, 
       un paquet externe, ratchet de surface 179 -> 181 (T6 « sauf décision écrite »). Exécutant : Sonnet.
 - [x] 4.7 Revue adversariale (skill `adversarial-review`) : deux relecteurs Sonnet aveugles sur le diff des lots 1
       à 4 ; corrections avec test vu rouge ; pas de seconde ronde sauf P0. Ronde 1 corrigée le 2026-11-08 (C1 à C4, voir
-      « Résultat de l'item 4.7 ») ; case laissée au pilote, qui la coche après relecture des corrections.
+      « Résultat de l'item 4.7 ») ; cochée par le pilote le 2026-11-08 après la ronde 2 (aucun constat recevable).
 - [x] 4.8 fait le 2026-11-08 (Haiku) : backlog, registre, project_map ; contrôle grep des chemins cités.
 - [ ] 4.9 PR vers `release/v8.1.0`, CI verte, squash. Commande de tag préparée pour le user :
       `git tag libs/film/v0.1.0 <sha> && git push origin libs/film/v0.1.0` (geste du user, ADR 0043 D-2).
