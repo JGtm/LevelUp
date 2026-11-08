@@ -11,7 +11,7 @@
 > anciennes URLs redirigent via un splat). Ne pas s'appuyer
 > sur les sections ci-dessous sans re-vérifier dans le code.
 >
-> **Dernière mise à jour : 2026-10-27** — îlot « i18n à N langues » ajouté (ci-dessous) ; section « Documentation IA
+> **Dernière mise à jour : 2026-11-08** — îlot « i18n à N langues » ajouté (ci-dessous) ; section « Documentation IA
 > (.ai/) » réécrite le 2026-09-23 sur l'état final de la racine après le lot d'archivage (îlot du décodeur de film :
 > 2026-09-18).
 
@@ -78,6 +78,19 @@ Chemins sous `apps/go-api/` sauf mention contraire.
 `KillSourceDecoderRev` (devenue `facts.Rev`), `GrammarRev` (devenue `grammar.Rev`),
 `LockProcessDecode` et `decode_gate.go` (supprimés, et leur retour est interdit par un ratchet).
 `internal/analysis/` n'importe plus AUCUN paquet de titre, production et test comprises.
+
+## Décodeur de film : brique et exploitation (2026-11-08)
+
+Chemins depuis la racine du dépôt. Complète la cartographie ci-dessus, dont les chemins
+sous `internal/games/halo_infinite/film/` ont été déplacés vers `libs/film/`.
+
+| Rôle | Chemin |
+|---|---|
+| Brique publiable : module (README, NOTICE, exemple ; façade `decfilm` ; `memguard` ; `filmcache` en lecture seule) | `libs/film/` (`decfilm/`, `memguard/`, `filmcache/`) |
+| Lanceur de décodage enfant et priorité | `apps/go-api/internal/filmrun/` |
+| Archive, recompression et déplacement des films | `apps/go-api/internal/filmarchive/` |
+| Replis complétés par l'hôte | `apps/go-api/internal/filmreplis/` |
+| Verrou de fichier : copie jumelle de `libs/film/internal/filelock` (tenue identique par `archlint/copies_identiques_test.go`) | `apps/go-api/internal/platform/filelock/` |
 
 ## ⚠️ Limitations Connues
 

@@ -1,10 +1,12 @@
-## [2026-11-08] Fin du découplage — 4.7 revue adversariale, ronde 1 corrigée — En cours
+## [2026-11-08] Fin du découplage — 4.7 revue adversariale, ronde 1 corrigée — Complété
 
 **Décision technique principale** : ronde 1 de la revue adversariale (2 relecteurs, 4 constats recevables : 1 P1, 3 P2, 0 jeté ; 25 conditions vérifiées qui tiennent), corrigée sans autre changement. C1 (P1) : la graine de fuzz `seed_01` du fichier de faits portait 8 xuids réels en entiers variables du codec, invisibles au balayage de texte ; les quatre graines sont régénérées depuis la fixture fictive, un test de la brique les décode et exige plage fictive ET registre, et le ratchet de l'hôte refuse tout fichier de `libs/film` ni texte ni listé dans une liste fermée de binaires couverts. C2 : le ratchet lit aussi l'hexadécimal à 16 chiffres (avec ou sans `0x`, octets inversés). C3 : les quatre tests du parc qui promettaient le verrou de décodage le prennent. C4 : référence `filmproc` périmée du service systemd corrigée.
 
 **Résultats observés** : C1 : la graine à schéma 5 était illisible (le binaire lit le 18) donc le fuzz ne rejouait que le refus de version ; balayage binaire local des 420 originaux : 8 xuids dans `seed_01`, 0 ailleurs sous `libs` ; après régénération 0, graines lues par le codec, fuzz vert. C2 : test rouge avec les appels hexadécimaux neutralisés, vert après, aucun faux positif sur `libs/film`. C3 : sans la ligne, aucun `film_decode.lock` ne se crée sous la racine donnée, avec elle il se crée. C4 : grep du motif 1 ligne puis 0. Gates : `go vet` des deux modules, `replay` et `grammar` (libs/film), `revision`, `cmd/anonymise-gamertags`, `golangci-lint` (config go-api) 0 issue sur les fichiers touchés, archlint seul ok en 325 s.
 
 **Conclusion / prochaine étape** : 4.7 corrigé, case laissée au pilote. Découverte D-L4-14 : une montée de `SchemaDesFaits` oblige désormais à régénérer les graines (règle à confirmer). Restent 4.8 (backlog, registre, carte du projet) et 4.9 (PR vers `release/v8.1.0`).
+
+**Ronde 2** : aucun constat recevable, 14 conditions tiennent ; 4.8 fait ; prochaine étape 4.9 PR vers `release/v8.1.0` puis tag par le user.
 
 ## [2026-11-08] Fin du découplage — 4.6b (corpus objectifs fictif, erreurs typées de la façade) — Complété
 

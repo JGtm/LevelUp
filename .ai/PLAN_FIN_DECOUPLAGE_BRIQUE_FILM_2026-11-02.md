@@ -1110,11 +1110,10 @@ modifiés ou neufs dans `archlint`, `libs/film/revision/ordre_imports_test.go`, 
       identifiant de joueur dans ces octets (chunks coupés avant le premier paquet de type 8), rien à réécrire, statut `[x]`
       par la mesure ; (B) D-L4-10, `decfilm.ErrUnknownBuild` et `decfilm.ErrUnknownFormat` exposés par la façade, test depuis
       un paquet externe, ratchet de surface 179 -> 181 (T6 « sauf décision écrite »). Exécutant : Sonnet.
-- [ ] 4.7 Revue adversariale (skill `adversarial-review`) : deux relecteurs Sonnet aveugles sur le diff des lots 1
+- [x] 4.7 Revue adversariale (skill `adversarial-review`) : deux relecteurs Sonnet aveugles sur le diff des lots 1
       à 4 ; corrections avec test vu rouge ; pas de seconde ronde sauf P0. Ronde 1 corrigée le 2026-11-08 (C1 à C4, voir
       « Résultat de l'item 4.7 ») ; case laissée au pilote, qui la coche après relecture des corrections.
-- [ ] 4.8 Haiku : backlog (entrée « Décodeur » → récemment complété), registre (items soldés barrés avec date),
-      `.ai/project_map.md` ; contrôle par grep des chemins cités.
+- [x] 4.8 fait le 2026-11-08 (Haiku) : backlog, registre, project_map ; contrôle grep des chemins cités.
 - [ ] 4.9 PR vers `release/v8.1.0`, CI verte, squash. Commande de tag préparée pour le user :
       `git tag libs/film/v0.1.0 <sha> && git push origin libs/film/v0.1.0` (geste du user, ADR 0043 D-2).
 
@@ -1356,6 +1355,8 @@ fermée reçoit aussi les `entites_*` / `equipement_*` (`.bin.gz` du codec, sans
 les graines `FuzzFilmRecordReaders` (payloads de records, mesure du jour : 0). Fichiers : voir le commit ; aucun `*.golden`
 de révision modifié (`go test ./revision/...` vert). Gates : `go vet ./...` des deux modules ; `go test ./replay/... ./internal/grammar/...` (libs/film) ok ; `go test ./cmd/anonymise-gamertags/...` ok ; `go test ./internal/archlint/ -timeout 40m -count=1` ok en 325 s ; `golangci-lint` (config de go-api) 0 issue sur les fichiers touchés.
 
+Ronde 2 (2026-11-08, un relecteur frais sur le seul commit `7aa5d4a6ec`) : aucun défaut recevable, 14 conditions vérifiées qui tiennent (glob des graines, plage ET registre, trois sites de xuid du codec, clause préfixe sans trou, liste fermée des binaires avec entrée périmée signalée, fuzz vert au schéma courant, 0 faux positif hexadécimal sur le dépôt, verrou pris après le skip et libéré en Cleanup, racine du cache correcte, 0 CRLF, aucun xuid réel ajouté). P0+P1 : 1 → 0, boucle close.
+
 ## Lot 5 — Préalables aux dépôts dédiés (après la clôture du desktop)
 
 - [ ] 5.1 D-11 : `netguard.Doer` retire les en-têtes d'authentification quand une redirection change d'hôte ; test
@@ -1573,3 +1574,4 @@ Lot 4 (2026-11-08), notées, non traitées :
   Régénérées par C1, et `TestGrainesDeFaitsPortentDesXuidsFictifs` rougit désormais toute graine devenue illisible : une
   montée de `SchemaDesFaits` oblige à régénérer les graines (`-update-graines-faits`). Règle à confirmer par le pilote ;
   non traitée au-delà de C1.
+- **D-L4-15** Le motif `\.bin$` de `binairesCouverts` (`apps/go-api/cmd/anonymise-gamertags/binaires_couverts_test.go`) accepte tout `.bin` neuf de `libs/film` sans inscription : un film de test ajouté avec un xuid réel ne rougit que par l'outil d'anonymisation (item 4.0), pas par ce ratchet. Remède possible : liste nominative des dossiers de films. Non traité.
