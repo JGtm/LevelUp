@@ -28,9 +28,14 @@
  *    sert qu'au dessin, à la révélation, aux zones et au survol.
  *
  * LA FENÊTRE DE CHAQUE POSE (décision du 2026-10-28, mesurée sur sept films témoins) :
- *  - capteur et champ de réparation : de `land` à `t1` LU (`endRead`) — la suppression de l'objet
- *    est écrite par le film, la durée officielle ne la prolonge pas. Sans `t1`, la règle existante
- *    de la famille (15 s pour le capteur, fin du rejeu pour le champ) ;
+ *  - champ de réparation : de `land` à `t1` LU (`endRead`) — la suppression de l'objet est écrite par
+ *    le film, la durée officielle ne la prolonge pas. Sans `t1`, la règle existante (fin du rejeu) ;
+ *  - capteur : de `land` à `t1` LU, avec deux bornes sur cette fin. (1) UN SEUL CAPTEUR ACTIF PAR JOUEUR,
+ *    y compris après une mort : le lancer suivant du même joueur met fin au précédent, la fin vaut au plus
+ *    l'image où l'objet suivant apparaît. (2) La fin lue ne dépasse jamais `land` + `SENSOR_READ_END_MAX_MS`
+ *    (la clé de l'objet se réutilise, une suppression lue tardive peut être celle d'un objet ultérieur).
+ *    Sans `t1`, la règle de repli (15 s), que le lancer suivant coupe aussi. `endRead` dit alors que la fin
+ *    est AFFIRMÉE (lue, plafonnée ou coupée par le lancer suivant) ;
  *  - traqueur : une impulsion unique ancrée à `land` (règle existante de la famille). Son `t1` est
  *    la fin du PROJECTILE (2 images médianes), jamais celle de l'effet : il n'est pas lu ;
  *  - écran occultant : sa BULLE est un objet à part (`tracked[].effect`, schéma 106 : la vie que le film crée à
@@ -46,7 +51,9 @@ import type { ReplayEquipmentPlacement } from '@/lib/api/types'
 import { PLACEMENT_ORIGIN_DEPLOYED, placementIsDeployedObject } from '../layers/equipmentPlacementsLayer'
 import { carriedFamilyOf } from './carriedFamily'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
+import { buildLivesBySlot, lifeOfSlotAt } from './livesPosition'
 import type { WindowedPlacement } from './placementWindow'
+import { SENSOR_DURATION_MS, SENSOR_READ_END_MAX_MS } from './threatSensor'
 
 /**
  * LES QUATRE FAMILLES dont l'objet engendré se dessine par cette source. Identifiants STABLES du
@@ -77,7 +84,10 @@ export const SPAWNED_OBJECT_ID = 'spawned'
 type CarriedObject = ReplayDocumentReady['carriedEquipment'][number]
 type Tracked = CarriedObject['tracked'][number]
 /** Ce que ce module lit du document. */
-type SpawnedSource = Pick<ReplayDocumentReady, 'carriedEquipment' | 'abilityLabels'>
+type SpawnedSource = Pick<
+  ReplayDocumentReady,
+  'carriedEquipment' | 'abilityLabels' | 'tracks' | 'frameIntervalMs'
+>
 
 /** Un objet engendré dont la position de repos est lue en entier (les quatre champs sont solidaires). */
 type SituatedTracked = Tracked & { land: number; x: number; y: number; z: number }
@@ -101,13 +111,69 @@ function spawnedFamilyOf(
 
 /** Chaque objet engendré de chaque objet porté d'une des quatre familles, dans l'ordre du document. */
 function* spawnedObjects(
-  doc: SpawnedSource,
+  doc: Pick<SpawnedSource, 'carriedEquipment' | 'abilityLabels'>,
 ): Generator<{ family: SpawnedObjectFamily; slot: number; tracked: Tracked }> {
   for (const carried of doc.carriedEquipment) {
     const family = spawnedFamilyOf(doc.abilityLabels, carried)
     if (family === null) continue
     for (const tracked of carried.tracked) yield { family, slot: carried.slot, tracked }
   }
+}
+
+/**
+ * Le joueur qui occupe `slot` à l'image `frame` : la vie du slot dont la fenêtre couvre l'image. Un joueur
+ * change de slot à chaque vie et un slot peut être réattribué : seule la vie dit qui lance. Clé `xuid` quand
+ * la vie en porte un ; sinon (ou sans vie qui couvre l'image) le slot, dans un espace de clés distinct, qui ne
+ * se confond jamais avec un joueur identifié.
+ */
+function playerResolver(tracks: SpawnedSource['tracks']): (slot: number, frame: number) => string {
+  const bySlot = buildLivesBySlot(tracks)
+  return (slot, frame) => {
+    const life = lifeOfSlotAt(bySlot, slot, frame)
+    return life?.xuid ? `xuid:${life.xuid}` : `slot:${slot}`
+  }
+}
+
+/**
+ * Pour chaque capteur (situé ou non : le geste a eu lieu), l'image où le même joueur lance le suivant ; absent
+ * quand il n'y en a pas. Tous les capteurs du joueur comptent, de n'importe quel objet porté. Deux lancers à la
+ * même image ne se coupent pas l'un l'autre.
+ */
+function nextSensorThrows(doc: SpawnedSource): Map<Tracked, number> {
+  const playerOf = playerResolver(doc.tracks)
+  const byPlayer = new Map<string, Tracked[]>()
+  for (const { family, slot, tracked } of spawnedObjects(doc)) {
+    if (family !== SENSOR_FAMILY) continue
+    const key = playerOf(slot, tracked.t0)
+    const own = byPlayer.get(key)
+    if (own) own.push(tracked)
+    else byPlayer.set(key, [tracked])
+  }
+  const next = new Map<Tracked, number>()
+  for (const throws of byPlayer.values()) {
+    throws.sort((a, b) => a.t0 - b.t0)
+    throws.forEach((t, i) => {
+      const following = throws.slice(i + 1).find((n) => n.t0 > t.t0)
+      if (following) next.set(t, following.t0)
+    })
+  }
+  return next
+}
+
+/**
+ * La fin AFFIRMÉE d'un capteur situé, ou undefined quand rien ne la dit : la fin lue plafonnée à
+ * `land` + `SENSOR_READ_END_MAX_MS`, coupée au lancer suivant du joueur ; sans fin lue, la durée de repli
+ * (15 s) coupée de même. Sans pas de temps dans le document, aucun plafond ne se calcule.
+ */
+function sensorEnd(tracked: SituatedTracked, nextThrow: number | undefined, frameMs: number | undefined): number | undefined {
+  const framesOf = (ms: number) => (frameMs !== undefined && frameMs > 0 ? ms / frameMs : undefined)
+  const cap = framesOf(SENSOR_READ_END_MAX_MS)
+  const fallback = framesOf(SENSOR_DURATION_MS)
+  let end = tracked.t1
+  if (end !== undefined && cap !== undefined) end = Math.min(end, tracked.land + Math.floor(cap))
+  if (nextThrow === undefined) return end
+  if (end === undefined && fallback !== undefined) end = tracked.land + Math.round(fallback)
+  return end === undefined ? nextThrow : Math.min(end, nextThrow)
 }
 
 /**
@@ -118,6 +184,7 @@ function* spawnedObjects(
  */
 export function spawnedObjectPlacements(doc: SpawnedSource): WindowedPlacement[] {
   const out: WindowedPlacement[] = []
+  const nextThrows = nextSensorThrows(doc)
   for (const { family, slot, tracked } of spawnedObjects(doc)) {
     const effect = family === SHROUD_FAMILY ? effectPlacement(slot, tracked) : null
     if (effect) {
@@ -125,7 +192,12 @@ export function spawnedObjectPlacements(doc: SpawnedSource): WindowedPlacement[]
       continue
     }
     if (!isSituated(tracked)) continue
-    const end = END_READ_FAMILIES.has(family) ? tracked.t1 : undefined
+    const end =
+      family === SENSOR_FAMILY
+        ? sensorEnd(tracked, nextThrows.get(tracked), doc.frameIntervalMs)
+        : END_READ_FAMILIES.has(family)
+          ? tracked.t1
+          : undefined
     out.push({
       family,
       id: SPAWNED_OBJECT_ID,
@@ -141,6 +213,9 @@ export function spawnedObjectPlacements(doc: SpawnedSource): WindowedPlacement[]
   }
   return out
 }
+
+/** La famille du détecteur de menaces : un seul actif par joueur. */
+const SENSOR_FAMILY: SpawnedObjectFamily = 'sensor'
 
 /** La famille dont la bulle est un objet à part : l'écran occultant. */
 const SHROUD_FAMILY: SpawnedObjectFamily = 'shroud_screen'
@@ -175,6 +250,9 @@ function effectPlacement(slot: number, tracked: Tracked): WindowedPlacement | nu
 /** Les tableaux de dessin, calculés une fois par document (le calque les relit à chaque image). */
 const DRAWABLE_BY_DOC = new WeakMap<object, readonly ReplayEquipmentPlacement[]>()
 
+/** Ce que `drawablePlacements` lit du document : les poses du document et la source des poses fabriquées. */
+type DrawableSource = SpawnedSource & Pick<ReplayDocumentReady, 'equipmentPlacements'>
+
 /**
  * drawablePlacements — TOUT CE QUE LE CALQUE DES POSES A À DESSINER : les poses du document
  * d'abord, dans leur ordre, puis les poses fabriquées. Sans objet engendré situé, c'est le tableau
@@ -183,9 +261,7 @@ const DRAWABLE_BY_DOC = new WeakMap<object, readonly ReplayEquipmentPlacement[]>
  * SEUL le dessin, la révélation du capteur, les zones et le survol lisent ce tableau. Les sons
  * continuent de lire `doc.equipmentPlacements`, que cette fonction ne modifie jamais.
  */
-export function drawablePlacements(
-  doc: Pick<ReplayDocumentReady, 'equipmentPlacements' | 'carriedEquipment' | 'abilityLabels'>,
-): readonly ReplayEquipmentPlacement[] {
+export function drawablePlacements(doc: DrawableSource): readonly ReplayEquipmentPlacement[] {
   const cached = DRAWABLE_BY_DOC.get(doc)
   if (cached) return cached
   const spawned = spawnedObjectPlacements(doc)
