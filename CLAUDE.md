@@ -440,7 +440,15 @@ git commit -m "refactor(phase2): ..."
   `/desktop/enter?secret=` pose le cookie suffixé par le port, `/health` seule route ouverte ; port stable mémorisé,
   verrou d'instance, jetons chiffrés DPAPI derrière le port `TokenCipher` (amende 0023), archive des films par défaut,
   updater signé par sa propre clé sans signature de code, ffmpeg livré, Rust limité à `apps/desktop` ; amende 0008 :
-  trois racines `ResourcesRoot` / `DataRoot` / `LogsRoot`).
+  trois racines `ResourcesRoot` / `DataRoot` / `LogsRoot`) ·
+  `0046` **identité des médias et réconciliation avec le disque** (identité = empreinte du contenu, chemin = attribut ;
+  `status='missing'` et `deleted` distincts ; relocalisation par empreinte ou changement de format seulement ; likes
+  transférés par INSERT ; garde-fous de marquage en masse ; suppression depuis l'app avec Corbeille, jamais de suppression
+  définitive sur échec de la Corbeille ; `file_stem` figé ; capacité `KeepMediaSources` sur le bureau) ·
+  `0047` **révision des formules de notation et rejeu au démarrage** (deux constantes de révision dans `sync/skill` ;
+  une valeur par joueur dans `sync_meta`, comparée sur « différent » ; rien n'est noté avant un recalcul réussi ; rejeu
+  au démarrage joueur par joueur ; garde-rail par empreinte des paramètres, qui ne voit pas un changement de logique sans
+  changement de nombre : la révision se change alors à la main ; échec partiel = pas de révision rangée).
 
 READMEs catalogues : `apps/go-api/internal/analysis/{temporal,breakdown,narrative}/README.md`,
 `apps/web/src/components/charts/README.md` (wrappers ECharts).

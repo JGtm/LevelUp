@@ -195,7 +195,6 @@ var frenchLabelAllowlist = map[string]int{
 	"api/handlers/match_view.go":                  3,
 	"api/handlers/medals.go":                      1,
 	"api/handlers/media.go":                       9,
-	"api/handlers/media_delete.go":                1,
 	"api/handlers/media_paths.go":                 1,
 	"api/handlers/media_upload.go":                2,
 	"api/handlers/notifications.go":               3,

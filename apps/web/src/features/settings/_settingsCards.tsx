@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select } from '@/components/ui/select'
 import { useScanMedia } from '@/features/settings/queries'
 import { useSettingsDraftStore } from '@/stores/settingsDraftStore'
+import { useDeploymentCapability } from '@/stores/useDeploymentCapability'
 import { DEFAULT_LOCALE } from '@/lib/i18n/locale'
 import { ToggleRow, type TabProps } from './_settingsShared'
 
@@ -107,6 +108,8 @@ export function DiscordCard({ merged, handleChange, t, frozen }: TabProps) {
 
 export function MediaCard({ merged, handleChange, t, frozen }: TabProps) {
   const scanMedia = useScanMedia()
+  // Sur le bureau l'original d'une vidéo convertie n'est jamais supprimé : le réglage n'existe pas.
+  const keepsSources = useDeploymentCapability('can_keep_media_sources')
   return (
     <>
       <Card>
@@ -127,15 +130,17 @@ export function MediaCard({ merged, handleChange, t, frozen }: TabProps) {
             />
             <span className="text-xs text-muted-foreground">{t.mediaBaseDirHint}</span>
           </div>
-          <div>
-            <ToggleRow
-              label={t.mediaDeleteSource}
-              value={merged.media_delete_source_after_transcode ?? false}
-              onChange={(v) => handleChange('media_delete_source_after_transcode', v)}
-              disabled={frozen}
-            />
-            <span className="block pb-2 text-xs text-muted-foreground">{t.mediaDeleteSourceHint}</span>
-          </div>
+          {!keepsSources && (
+            <div>
+              <ToggleRow
+                label={t.mediaDeleteSource}
+                value={merged.media_delete_source_after_transcode ?? false}
+                onChange={(v) => handleChange('media_delete_source_after_transcode', v)}
+                disabled={frozen}
+              />
+              <span className="block pb-2 text-xs text-muted-foreground">{t.mediaDeleteSourceHint}</span>
+            </div>
+          )}
           <div className="flex items-center justify-between py-2">
             <span className="text-sm text-foreground">{t.mediaToleranceLabel}</span>
             <input

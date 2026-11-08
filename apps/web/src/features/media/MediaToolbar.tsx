@@ -4,6 +4,8 @@ import { Select } from '@/components/ui/select'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import type { MediaText } from './i18n'
 import { MediaAudioConfigButton } from './MediaAudioConfigButton'
+import { getMediaModalsText } from './i18n-modals'
+import { useAppShellStore } from '@/stores/appShellStore'
 
 interface MediaToolbarProps {
   text: MediaText
@@ -19,6 +21,9 @@ interface MediaToolbarProps {
   likedOnly: boolean
   unassignedOnly: boolean
   totalUnassigned: number
+  /** Médias dont le fichier est introuvable ; le bouton n'existe qu'au-dessus de zéro. */
+  missingCount: number
+  onOpenMissing: () => void
   playlistOptions: LabelValue[]
   mapOptions: LabelValue[]
   modeOptions: LabelValue[]
@@ -243,6 +248,8 @@ export function MediaToolbar({
   likedOnly,
   unassignedOnly,
   totalUnassigned,
+  missingCount,
+  onOpenMissing,
   playlistOptions,
   mapOptions,
   modeOptions,
@@ -283,6 +290,7 @@ export function MediaToolbar({
   // pour préserver l'UX quand le titre ne déclare pas la catégorie (cas réel :
   // halo_5 n'a aucune section [assets.mode], cf. note G9 de son assets.toml).
   const { data: fieldMappings } = useFieldMappings()
+  const locale = useAppShellStore((state) => state.locale)
   const resolveCategoryLabel = (value: string): string => {
     const fromTOML = fieldMappings?.assets?.mode?.[value]?.label
     if (fromTOML) return fromTOML
@@ -291,6 +299,7 @@ export function MediaToolbar({
     )
   }
 
+  const missingLabel = getMediaModalsText(locale).missing.toolbarAriaLabel
   const compactSelectClass = 'h-8 w-auto px-2 pr-6 text-xs'
 
   return (
@@ -379,6 +388,18 @@ export function MediaToolbar({
           {!unassignedOnly && totalUnassigned > 0 && (
             <span className="tabular-nums">{totalUnassigned}</span>
           )}
+        </button>
+      )}
+      {missingCount > 0 && (
+        <button
+          type="button"
+          aria-label={missingLabel}
+          title={missingLabel}
+          onClick={onOpenMissing}
+          className="flex h-8 items-center justify-center gap-1 rounded-md border border-warning/60 bg-warning/10 px-2 text-xs leading-none text-warning transition-colors hover:bg-warning/20"
+        >
+          <span aria-hidden="true">!</span>
+          <span className="tabular-nums">{missingCount}</span>
         </button>
       )}
 

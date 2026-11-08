@@ -235,7 +235,7 @@ type UploadRequest struct {
 	Tolerance           int    // buffer association match (minutes, défaut 2)
 	TitleSlug           string // titre de l'upload — routage de l'indexeur média (DEC-8)
 	// DeleteSource : politique de rétention du source après transcodage HLS, résolue
-	// par le handler (config.ResolveMediaDeleteSource : env > store > isProd). Propagée
+	// par le handler (config.AppConfig.MediaDeleteSource : env > store > isProd). Propagée
 	// à HLSTranscodeParams.DeleteSource. false = conserver (défaut sûr en local).
 	DeleteSource bool
 	// ManualAudioRoles : rôles de piste audio manuels du joueur (voix/jeu/autres),

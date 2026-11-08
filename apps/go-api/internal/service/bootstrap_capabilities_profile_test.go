@@ -71,7 +71,10 @@ func TestBuildCapabilities_CombinaisonsActuellesInchangees(t *testing.T) {
 					c := cfg.Capabilities
 					if caps.CanUseAccounts != c.UseAccounts || caps.CanSignInWithXbox != c.SignInWithXbox ||
 						caps.CanPoolTokens != c.PoolTokens || caps.CanEditSettings != c.EditSettings ||
-						caps.CanUploadMedia != c.UploadMedia || caps.CanUseRestic != c.UseResticBackup {
+						caps.CanUploadMedia != c.UploadMedia || caps.CanUseRestic != c.UseResticBackup ||
+						caps.CanKeepMediaSources != c.KeepMediaSources ||
+						caps.CanRevealFilesInExplorer != c.RevealFilesInExplorer ||
+						caps.CanTrashMediaSources != c.TrashMediaSources {
 						t.Errorf("capacités du profil non recopiées : %+v pour %+v", caps, c)
 					}
 				})
@@ -90,7 +93,8 @@ func TestBuildCapabilities_Desktop(t *testing.T) {
 		t.Errorf("neuf capacités en desktop :\n got %+v\nwant %+v", got, want)
 	}
 	if caps.Deployment != "desktop" || caps.CanUseAccounts || caps.CanPoolTokens || caps.CanUseRestic ||
-		caps.CanUseDiscord || !caps.CanUpdateApp || caps.CanOfferWindowsDownload || !caps.CanUseCompactChrome {
+		caps.CanUseDiscord || !caps.CanUpdateApp || caps.CanOfferWindowsDownload || !caps.CanUseCompactChrome ||
+		!caps.CanKeepMediaSources || !caps.CanRevealFilesInExplorer || !caps.CanTrashMediaSources {
 		t.Errorf("capacités desktop inattendues : %+v", caps)
 	}
 }
@@ -195,6 +199,33 @@ func TestBuildCapabilities_IntegrationDuPoste(t *testing.T) {
 			if caps.CanWatchGameProcess != c.want || caps.CanIntegrateShell != c.want || caps.CanScheduleRefresh != c.want {
 				t.Errorf("can_watch_game_process = %v, can_integrate_shell = %v, can_schedule_refresh = %v ; attendu %v",
 					caps.CanWatchGameProcess, caps.CanIntegrateShell, caps.CanScheduleRefresh, c.want)
+			}
+		})
+	}
+}
+
+// TestBuildCapabilities_CapacitesMediaSeulementEnDesktop : conserver les originaux, ouvrir
+// l'explorateur et utiliser la Corbeille ne s'offrent que sur le profil desktop.
+func TestBuildCapabilities_CapacitesMediaSeulementEnDesktop(t *testing.T) {
+	cas := []struct {
+		nom    string
+		launch string
+		env    string
+		demo   string
+		want   bool
+	}{
+		{"hosted", config.LaunchModeDefault, "production", "", false},
+		{"dev", config.LaunchModeDefault, "", "", false},
+		{"demo", config.LaunchModeDefault, "", "true", false},
+		{"desktop", config.LaunchModeDesktop, "", "", true},
+	}
+	for _, c := range cas {
+		t.Run(c.nom, func(t *testing.T) {
+			caps := buildCapabilities(chargerPourBootstrap(t, c.launch, c.env, c.demo, ""), map[string]interface{}{})
+			if caps.CanKeepMediaSources != c.want || caps.CanRevealFilesInExplorer != c.want ||
+				caps.CanTrashMediaSources != c.want {
+				t.Errorf("capacités média = keep:%v reveal:%v trash:%v, attendu %v partout",
+					caps.CanKeepMediaSources, caps.CanRevealFilesInExplorer, caps.CanTrashMediaSources, c.want)
 			}
 		})
 	}

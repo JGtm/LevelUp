@@ -6,9 +6,7 @@ package scheduler
 
 import (
 	"context"
-	"os"
 
-	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
@@ -85,30 +83,7 @@ func (s *AutoSyncScheduler) BuildEngine(ctx context.Context, gamertag, xuid stri
 	// Sans timezone, captureInstantFromName retourne nil → 0 associations
 	// (bug observé 2026-05-25, cf. thought_log).
 	if s.settings != nil {
-		engine.WithMediaScanHook(service.BuildMediaScanHook(s.cfg.RepoRoot, gamertag,
-			func() string {
-				cfg, _ := s.settings.Load()
-				if cfg != nil {
-					return cfg.MediaCapturesBaseDir
-				}
-				return ""
-			},
-			func() string {
-				cfg, _ := s.settings.Load()
-				if cfg != nil {
-					return cfg.UserTimezone
-				}
-				return ""
-			},
-			func() bool {
-				var v *bool
-				if cfg, _ := s.settings.Load(); cfg != nil {
-					v = cfg.MediaDeleteSourceAfterTranscode
-				}
-				return config.ResolveMediaDeleteSource(
-					os.Getenv(config.EnvMediaDeleteSource), v, s.cfg.IsProduction())
-			},
-		))
+		engine.WithMediaScanHook(service.NewLiveMediaScanHook(s.cfg, s.settings, gamertag))
 	}
 	// Le batch INSERT-only est le seul chemin d'écriture depuis D1b. Phase 4.9 :
 	// le layer async reste optionnel. Set LEVELUP_PERSIST_BATCH_ASYNC=0 pour un

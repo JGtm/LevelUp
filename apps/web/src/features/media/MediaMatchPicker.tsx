@@ -23,6 +23,12 @@ import { resolveTeamNameFromID } from '@/lib/halo/teamNames'
 import { outcomeCodeToValue } from '@/lib/outcome'
 import { tokenCssVar } from '@/lib/accessibility'
 import { getMediaModalsText, type MatchPickerText } from './i18n-modals'
+import {
+  MediaPickerConfirmBar,
+  MediaPickerDialog,
+  MediaPickerListStatus,
+  MediaPickerRow,
+} from './MediaPickerDialog'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { intlLocale } from '@/lib/formatters'
 import { stripBotSuffix } from '@/lib/players/displayName'
@@ -204,34 +210,19 @@ export function MediaMatchPicker({ playerSlug, filePath, onClose, hasCurrentMatc
   }
 
   return (
-    <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-background/70"
-      onClick={onClose}
-    >
-      <div
-        className="mx-4 flex max-h-[85vh] w-full max-w-3xl flex-col rounded-lg bg-background shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <header className="flex items-center justify-between border-b border-border px-5 py-3">
-          <div>
-            <h2 className="text-base font-semibold">{hasCurrentMatch ? mp.title : mp.titleAssociate}</h2>
-            {data?.capture_utc && (
-              <p className="text-xs text-muted-foreground">
-                {mp.capturePrefix} {formatLocalTime(data.capture_utc, locale)}
-              </p>
-            )}
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded p-1 text-sm text-muted-foreground hover:bg-accent"
-            aria-label={mp.closeAriaLabel}
-          >
-            ✕
-          </button>
-        </header>
-
-        <div className="flex items-center gap-2 border-b border-border px-5 py-2 text-xs">
+    <MediaPickerDialog
+      title={hasCurrentMatch ? mp.title : mp.titleAssociate}
+      subtitle={
+        data?.capture_utc ? (
+          <>
+            {mp.capturePrefix} {formatLocalTime(data.capture_utc, locale)}
+          </>
+        ) : undefined
+      }
+      closeLabel={mp.closeAriaLabel}
+      onClose={onClose}
+      toolbar={
+        <>
           <span className="text-muted-foreground">{mp.windowLabel}</span>
           {WINDOW_OPTIONS.map((w) => (
             <button
@@ -252,103 +243,85 @@ export function MediaMatchPicker({ playerSlug, filePath, onClose, hasCurrentMatc
               {mp.matchesFound(candidates.length)}
             </span>
           )}
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-3 py-2">
-          {isLoading && <p className="p-4 text-center text-sm text-muted-foreground">{mp.loading}</p>}
-          {isError && <p className="p-4 text-center text-sm text-destructive">{mp.error}</p>}
-          {!isLoading && !isError && candidates.length === 0 && (
-            <p className="p-4 text-center text-sm text-muted-foreground">
-              {mp.noMatchesFound}
-            </p>
-          )}
-          <ul className="flex flex-col gap-2">
-            {candidates.map((c) => {
-              const isCurrent = c.is_current
-              const isPending = c.match_id === pendingMatchID
-              const out = outcomeLabel(c.outcome)
-              return (
-                <li key={c.match_id}>
-                  <button
-                    type="button"
-                    disabled={isCurrent}
-                    onClick={() => setPendingMatchID(isPending ? null : c.match_id)}
-                    className={`flex w-full gap-3 rounded-md border px-3 py-2 text-left transition-colors ${
-                      isCurrent
-                        ? 'border-primary/60 bg-primary/5 cursor-default'
-                        : isPending
-                        ? 'border-primary/80 bg-primary/10 ring-2 ring-primary/40'
-                        : 'border-border hover:border-primary/50 hover:bg-accent'
-                    }`}
-                  >
-                    {c.map_image_url ? (
-                      <img
-                        src={c.map_image_url}
-                        alt={c.map_name ?? 'Map'}
-                        className="h-16 w-24 shrink-0 rounded object-cover"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className="h-16 w-24 shrink-0 rounded bg-muted" />
-                    )}
-                    <div className="flex min-w-0 flex-1 flex-col gap-1">
-                      <div className="flex items-center justify-between gap-2 text-sm">
-                        <span className="truncate font-medium">
-                          <CandidateHeading candidate={c} />
-                        </span>
-                        <div className="flex shrink-0 items-center gap-2">
-                          <span className={`rounded border px-1.5 py-0.5 text-2xs font-semibold ${out.cls}`}>
-                            {out.text}
-                          </span>
-                          {isCurrent && (
-                            <span className="rounded bg-primary px-1.5 py-0.5 text-2xs font-semibold text-primary-foreground">
-                              {mp.currentBadge}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3 text-3xs text-muted-foreground">
-                        <span>{formatLocalTime(c.start_time, locale)}</span>
-                        <span className="opacity-60">{formatDelta(c.delta_seconds, mp)}</span>
-                        {c.playlist_name && <span className="ml-auto truncate">{c.playlist_name}</span>}
-                      </div>
-                      <LobbyTeams lobby={c.lobby} mp={mp} />
-                    </div>
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
-        </div>
-
-        {pending && (
-          <footer className="flex items-center justify-between gap-3 border-t border-border bg-muted/40 px-5 py-3 text-sm">
-            <div>
-              <p className="font-medium">{hasCurrentMatch ? mp.confirmTitle : mp.confirmTitleAssociate}</p>
-              <p className="text-xs text-muted-foreground">
+        </>
+      }
+      footer={
+        pending && (
+          <MediaPickerConfirmBar
+            title={hasCurrentMatch ? mp.confirmTitle : mp.confirmTitleAssociate}
+            detail={
+              <>
                 <CandidateHeading candidate={pending} /> · {formatLocalTime(pending.start_time, locale)}
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setPendingMatchID(null)}
-                className="rounded border border-border px-3 py-1.5 text-xs hover:bg-accent"
-              >
-                {mp.cancel}
-              </button>
-              <button
-                type="button"
-                disabled={associate.isPending}
-                onClick={handleConfirm}
-                className="rounded bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
-              >
-                {associate.isPending ? mp.applying : mp.confirm}
-              </button>
-            </div>
-          </footer>
-        )}
-      </div>
-    </div>
+              </>
+            }
+            cancelLabel={mp.cancel}
+            confirmLabel={mp.confirm}
+            busyLabel={mp.applying}
+            busy={associate.isPending}
+            onCancel={() => setPendingMatchID(null)}
+            onConfirm={handleConfirm}
+          />
+        )
+      }
+    >
+      <MediaPickerListStatus
+        isLoading={isLoading}
+        isError={isError}
+        isEmpty={candidates.length === 0}
+        loadingLabel={mp.loading}
+        errorLabel={mp.error}
+        emptyLabel={mp.noMatchesFound}
+      />
+      <ul className="flex flex-col gap-2">
+        {candidates.map((c) => {
+          const isPending = c.match_id === pendingMatchID
+          const out = outcomeLabel(c.outcome)
+          return (
+            <MediaPickerRow
+              key={c.match_id}
+              selected={isPending}
+              current={c.is_current}
+              onSelect={() => setPendingMatchID(isPending ? null : c.match_id)}
+              leading={
+                c.map_image_url ? (
+                  <img
+                    src={c.map_image_url}
+                    alt={c.map_name ?? 'Map'}
+                    className="h-16 w-24 shrink-0 rounded object-cover"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="h-16 w-24 shrink-0 rounded bg-muted" />
+                )
+              }
+            >
+              <div className="flex min-w-0 flex-1 flex-col gap-1">
+                <div className="flex items-center justify-between gap-2 text-sm">
+                  <span className="truncate font-medium">
+                    <CandidateHeading candidate={c} />
+                  </span>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <span className={`rounded border px-1.5 py-0.5 text-2xs font-semibold ${out.cls}`}>
+                      {out.text}
+                    </span>
+                    {c.is_current && (
+                      <span className="rounded bg-primary px-1.5 py-0.5 text-2xs font-semibold text-primary-foreground">
+                        {mp.currentBadge}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 text-3xs text-muted-foreground">
+                  <span>{formatLocalTime(c.start_time, locale)}</span>
+                  <span className="opacity-60">{formatDelta(c.delta_seconds, mp)}</span>
+                  {c.playlist_name && <span className="ml-auto truncate">{c.playlist_name}</span>}
+                </div>
+                <LobbyTeams lobby={c.lobby} mp={mp} />
+              </div>
+            </MediaPickerRow>
+          )
+        })}
+      </ul>
+    </MediaPickerDialog>
   )
 }

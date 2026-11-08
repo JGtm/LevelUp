@@ -34,6 +34,7 @@ import (
 	"levelup/go-api/internal/platform/groupstore"
 	"levelup/go-api/internal/scheduler"
 	"levelup/go-api/internal/service/citationsrelance"
+	"levelup/go-api/internal/service/scoringrevision"
 	syncpkg "levelup/go-api/internal/sync"
 	"levelup/go-api/internal/sync/replayartifacts"
 )
@@ -62,6 +63,8 @@ const (
 	taskDiskWatch        = "surveillance disque"
 	taskReplayNotify     = "notification des rejeux prêts"
 	taskCitationsRelance = "relance des citations du film"
+	taskMediaReconcile   = "alignement des médias sur le disque"
+	taskScoringRevision  = "recalcul des KPI après changement de formule"
 	taskCatalogCron      = "cron catalogue"
 	taskAssetNameSweep   = "balayage des noms d'assets"
 	taskSpartanCron      = "cron Spartan"
@@ -122,6 +125,8 @@ var taskPolicies = map[string]profilePolicies{
 	taskDiskWatch:        exceptDemo,
 	taskReplayNotify:     exceptDemo,
 	taskCitationsRelance: exceptDemo,
+	taskMediaReconcile:   exceptDemo,
+	taskScoringRevision:  exceptDemo,
 	taskCatalogCron:      exceptDemo,
 	taskAssetNameSweep:   exceptDemo,
 	taskSpartanCron:      exceptDemo,
@@ -233,6 +238,13 @@ func citationsRelanceTask(ctx context.Context, relance *citationsrelance.Service
 		defer replayartifacts.SetNotifieurDerivations(nil)
 		relance.Run(ctx)
 	}}
+}
+
+// scoringRevisionTask : le rejeu des KPI de chaque joueur dont la révision de formule rangée diffère
+// de celle du binaire, un passage unique au démarrage. Suivie : elle écrit les bases joueurs et
+// partagée, le scheduler l'attend avant de les fermer. Coupée en démo : elle écrit les bases joueurs.
+func scoringRevisionTask(ctx context.Context, rejeu *scoringrevision.Service) backgroundTask {
+	return backgroundTask{name: taskScoringRevision, tracked: true, run: func() { rejeu.Run(ctx) }}
 }
 
 // janitorTask : purge 1× / 24 h `data/sync_cache` > 7 jours et les WAL ACKés > 7 jours,

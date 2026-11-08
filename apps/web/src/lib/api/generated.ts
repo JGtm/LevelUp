@@ -2372,6 +2372,108 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/players/{player_slug}/media/missing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Media whose file is missing from disk */
+        get: operations["getMissingMedia"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/media/missing/candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Entries a missing media can be merged into */
+        get: operations["getMissingMediaCandidates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/media/missing/confirm-bulk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirms a bulk disappearance of media */
+        post: operations["postMissingMediaConfirmBulk"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/media/missing/forget": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Forgets a missing media */
+        post: operations["postMissingMediaForget"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/media/missing/merge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Merges a missing media into another entry */
+        post: operations["postMissingMediaMerge"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/media/reveal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Opens the file explorer on a media file */
+        post: operations["postMediaReveal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/players/{player_slug}/media/upload": {
         parameters: {
             query?: never;
@@ -5457,6 +5559,8 @@ export interface components {
             can_import_from_site: boolean;
             /** @description Intégration de la coquille avec le poste : notifications Windows, zone de notification, démarrage avec Windows. */
             can_integrate_shell: boolean;
+            /** @description L'original d'une vidéo convertie n'est jamais supprimé par l'application (réglage de rétention masqué). */
+            can_keep_media_sources: boolean;
             /** @description Plafond mémoire des bases réglable, mémoire du processus affichée. */
             can_limit_memory: boolean;
             /** @description Connexion Microsoft dans le navigateur par défaut, sans code à recopier (application de bureau). */
@@ -5473,6 +5577,8 @@ export interface components {
             /** @description Rapport de diagnostic (archive de journaux et d'état, sans secret) à joindre à un signalement. */
             can_report_diagnostic: boolean;
             can_reset_media_index: boolean;
+            /** @description Ouverture de l'explorateur de fichiers du système sur un média. */
+            can_reveal_files_in_explorer: boolean;
             can_run_sync: boolean;
             /** @description Tâche planifiée Windows qui rafraîchit les jetons quand l'application est fermée. */
             can_schedule_refresh: boolean;
@@ -5480,6 +5586,8 @@ export interface components {
             /** @description Connexion par le SSO Xbox (mode xbox). */
             can_sign_in_with_xbox: boolean;
             can_start_initial_sync: boolean;
+            /** @description Suppression d'un média : l'original part à la Corbeille du système quand le support en a une. */
+            can_trash_media_sources: boolean;
             /** @description Mise à jour de l'application par la coquille desktop. */
             can_update_app: boolean;
             /** @description Dépôt de captures (refusé en démo). */
@@ -9882,16 +9990,29 @@ export interface components {
         MediaAuthorsResponse: {
             authors: components["schemas"]["MediaAuthor"][] | null;
         };
+        MediaConfirmBulkResponse: {
+            /** Format: int64 */
+            bulk_missing_pending: number;
+            confirmed: boolean;
+        };
         MediaDeleteResponse: {
             deleted: boolean;
             file_path: string;
             /** Format: int64 */
             files_removed: number;
+            /** @description Au moins un original est parti à la Corbeille du système. */
+            trashed: boolean;
         };
         MediaFilterOptions: {
             maps: components["schemas"]["LabelValue"][] | null;
             modes: components["schemas"]["LabelValue"][] | null;
             playlists: components["schemas"]["LabelValue"][] | null;
+        };
+        MediaForgetResponse: {
+            file_path: string;
+            /** Format: int64 */
+            files_removed: number;
+            forgotten: boolean;
         };
         MediaItem: {
             basename: string;
@@ -9985,6 +10106,44 @@ export interface components {
             /** Format: int64 */
             team_id?: number;
         };
+        MediaMergeCandidate: {
+            basename: string;
+            /** Format: date-time */
+            capture_end_utc?: string;
+            /** Format: int64 */
+            delta_seconds?: number;
+            file_path: string;
+            kind: string;
+            thumbnail_path?: string;
+        };
+        MediaMergeCandidatesResponse: {
+            candidates: components["schemas"]["MediaMergeCandidate"][] | null;
+            /** Format: date-time */
+            capture_utc?: string;
+            file_path: string;
+        };
+        MediaMergeResponse: {
+            file_path: string;
+            /** Format: int64 */
+            files_removed: number;
+            merged: boolean;
+            target_file_path: string;
+        };
+        MediaMissingItem: {
+            basename: string;
+            /** Format: date-time */
+            capture_end_utc?: string;
+            file_path: string;
+            kind: string;
+            match_id?: string;
+            thumbnail_path?: string;
+        };
+        MediaMissingResponse: {
+            /** Format: int64 */
+            bulk_missing_pending: number;
+            items: components["schemas"]["MediaMissingItem"][] | null;
+            root_unavailable: boolean;
+        };
         MediaPageRequest: {
             group_by?: string | null;
             kind?: string | null;
@@ -10008,6 +10167,9 @@ export interface components {
             total_teammates: number;
             /** Format: int64 */
             total_unassigned: number;
+        };
+        MediaRevealResponse: {
+            revealed: boolean;
         };
         MediaToolingStatus: {
             ffmpeg: boolean;
@@ -19824,6 +19986,194 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MediaMatchCandidatesResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getMissingMedia: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaMissingResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getMissingMediaCandidates: {
+        parameters: {
+            query?: {
+                file_path?: string;
+            };
+            header?: never;
+            path: {
+                player_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaMergeCandidatesResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    postMissingMediaConfirmBulk: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaConfirmBulkResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    postMissingMediaForget: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaForgetResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    postMissingMediaMerge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaMergeResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    postMediaReveal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaRevealResponse"];
                 };
             };
             /** @description Error */

@@ -834,6 +834,9 @@ func TestIndexMedia_E2E_BugRepro_PreFixWouldFail(t *testing.T) {
 // l'entrée existante est mise à jour (id préservé → associations préservées).
 func TestInsertMediaFile_StemDedup_OldFileGone(t *testing.T) {
 	db, dir := openInsertTestDB(t)
+	if _, err := db.Exec(reconcileLikesDDL); err != nil {
+		t.Fatal(err)
+	}
 
 	// 1. Indexer video.mp4
 	oldPath := filepath.Join(dir, "capture.mp4")

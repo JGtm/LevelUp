@@ -61,6 +61,12 @@ type historyRow struct {
 	Chain string
 }
 
+// Paramètres de calcul : toute modification impose de changer skill.PerformanceScoreRev.
+const (
+	perfWindowSize              = 50    // derniers matchs de la chaîne qui servent de référence
+	perfFallbackDurationSeconds = 600.0 // durée supposée d'un match sans temps joué
+)
+
 // matchMetrics contient les métriques per-minute d'un match unique.
 type matchMetrics struct {
 	KPM                 float64
@@ -87,7 +93,7 @@ type matchMetrics struct {
 func extractMatchMetrics(row *historyRow) *matchMetrics {
 	duration := row.TimePlayedSeconds
 	if duration <= 0 {
-		duration = 600.0
+		duration = perfFallbackDurationSeconds
 	}
 	minutes := duration / 60.0
 
@@ -361,8 +367,6 @@ func batchComputePerformanceScores(ctx context.Context, playerDB, sharedDB *sql.
 	// chaque run, force compris.
 	existingChain := loadScoredPerfChains(ctx, playerDB, xuid)
 
-	const windowSize = 50
-
 	// Historique cumulé par chaîne (chronologique ASC). Pour chaque match, le
 	// percentile est calculé sur la fenêtre des 50 derniers entrées de sa chaîne.
 	chainHistory := make(map[string][]historyRow)
@@ -382,8 +386,9 @@ func batchComputePerformanceScores(ctx context.Context, playerDB, sharedDB *sql.
 	var (
 		updated        int
 		execErrors     int
-		skippedBelow   int // matchs ignorés car len(history) < MinMatchesPerChainForRelative
-		skippedExist   int // matchs déjà scorés avec la bonne chaîne (mode !force)
+		flushErr       error // échec d'écriture des notes, rendu après nettoyage et résumé
+		skippedBelow   int   // matchs ignorés car len(history) < MinMatchesPerChainForRelative
+		skippedExist   int   // matchs déjà scorés avec la bonne chaîne (mode !force)
 		updatedByChain = make(map[string]int)
 		totalByChain   = make(map[string]int)
 		// Ensembles de la passe de nettoyage (D-D/D-E) : les matchs qui qualifient
@@ -422,7 +427,7 @@ func batchComputePerformanceScores(ctx context.Context, playerDB, sharedDB *sql.
 			belowMatches[match.MatchID] = struct{}{}
 		default:
 			// On ne calcule un score qu'après MinMatchesPerChainForRelative matchs dans la chaîne.
-			start := len(history) - windowSize
+			start := len(history) - perfWindowSize
 			if start < 0 {
 				start = 0
 			}
@@ -463,10 +468,10 @@ func batchComputePerformanceScores(ctx context.Context, playerDB, sharedDB *sql.
 		}
 		p := persist.NewPostSyncEnrichmentPersister(playerDB)
 		if _, err := p.BatchUpdateMulti(ctx, rows); err != nil {
-			slog.ErrorContext(ctx, "batchComputePerformanceScores: BatchUpdateMulti échoué",
-				"batch_size", len(rows), "err", err)
+			slog.ErrorContext(ctx, "batchComputePerformanceScores: BatchUpdateMulti échoué", "batch_size", len(rows), "err", err)
 			execErrors += len(rows)
 			updated = 0
+			flushErr = fmt.Errorf("batchComputePerformanceScores: écriture des notes: %w", err)
 		}
 	}
 
@@ -490,5 +495,5 @@ func batchComputePerformanceScores(ctx context.Context, playerDB, sharedDB *sql.
 			"exec_errors", execErrors,
 			"min_per_chain_threshold", MinMatchesPerChainForRelative)
 	}
-	return updated, nil
+	return updated, flushErr
 }

@@ -23,11 +23,14 @@ import (
 var reFromMediaFiles = regexp.MustCompile(`(?i)\bFROM\s+media_files\b(?:__)?`)
 
 // coveredByVisiblePredicate : formes acceptées comme filtrage des supprimés.
-//   - MediaVisiblePredicate : l'helper canonique ;
+//   - MediaVisiblePredicate : l'helper canonique (exclut supprimés et introuvables) ;
+//   - MediaNotDeletedPredicate : variante qui laisse voir les introuvables, pour
+//     les lectures de maintenance et de suppression ;
 //   - `status = 'active'` : filtre PRÉEXISTANT (rail d'accueil, citations) qui
 //     exclut 'deleted' par construction — plus restrictif encore.
 var coveredByVisiblePredicate = []string{
 	"MediaVisiblePredicate",
+	"MediaNotDeletedPredicate",
 	"status = 'active'",
 }
 
@@ -41,8 +44,16 @@ var allowlistMediaFilesRawRead = map[string]string{
 		"applicative file_path à l'INSERT (remplace l'ex-contrainte UNIQUE retirée pour " +
 		"cause de bug ART) : une ligne supprimée doit rester détectée comme doublon, " +
 		"sinon deux lignes du même file_path coexisteraient.",
-	"internal/ops/media_reconcile.go": "ReconcileOrphanedMediaFiles — réconciliation " +
-		"chemins DB↔disque, opère sur l'index complet (maintenance, ne sert rien à l'écran).",
+	"internal/ops/media_reconcile.go": "ReconcileMediaWithDisk — réconciliation " +
+		"chemins DB↔disque (MediaNotDeletedPredicate : voit les introuvables pour les " +
+		"retrouver, jamais les supprimés), opère sur l'index complet du joueur " +
+		"(maintenance, ne sert rien à l'écran).",
+	"internal/ops/media_insert_lookup.go": "findSameNameRow — recherche d'INDEXATION de la fiche " +
+		"de même nom (2026-11-08) : doit voir les lignes supprimées pour les ressusciter " +
+		"quand le fichier est re-déposé, comme insertMediaFile.",
+	"internal/ops/media_insert_convert.go": "reviveDeletedMedia — lecture par id de la fiche " +
+		"SUPPRIMÉE que l'indexation ressuscite (2026-11-08) : doit la voir pour décider de son " +
+		"retour en lecture directe et du transfert de ses likes, comme insertMediaFile.",
 	"internal/ops/media_hls.go": "finalizeMediaHLS + comptage de transcodage — plomberie " +
 		"d'indexation par id, jamais une liste servie à l'utilisateur.",
 	"internal/ops/seed_demo_media.go":    "seed du mode démo (base neuve, aucun média supprimé).",
@@ -159,6 +170,30 @@ func TestMediaVisiblePredicate_Forms(t *testing.T) {
 	for _, p := range []string{withAlias, noAlias} {
 		if !strings.Contains(p, "'deleted'") {
 			t.Errorf("prédicat %q ne référence pas la valeur 'deleted'", p)
+		}
+		if !strings.Contains(p, "'missing'") {
+			t.Errorf("prédicat %q ne référence pas la valeur 'missing'", p)
+		}
+	}
+}
+
+// TestMediaNotDeletedPredicate_Forms : variante qui ne masque que les supprimés
+// (les introuvables restent lus), avec le même COALESCE obligatoire.
+func TestMediaNotDeletedPredicate_Forms(t *testing.T) {
+	withAlias := MediaNotDeletedPredicate("mf")
+	if !strings.Contains(withAlias, "COALESCE(mf.status") {
+		t.Errorf("prédicat avec alias = %q, want un COALESCE sur mf.status", withAlias)
+	}
+	noAlias := MediaNotDeletedPredicate("")
+	if !strings.Contains(noAlias, "COALESCE(status") {
+		t.Errorf("prédicat sans alias = %q, want un COALESCE sur status", noAlias)
+	}
+	for _, p := range []string{withAlias, noAlias} {
+		if !strings.Contains(p, "<> 'deleted'") {
+			t.Errorf("prédicat %q doit être de la forme <> 'deleted'", p)
+		}
+		if strings.Contains(p, "'missing'") {
+			t.Errorf("prédicat %q ne doit pas exclure 'missing'", p)
 		}
 	}
 }

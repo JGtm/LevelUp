@@ -18,6 +18,9 @@ import { createElement } from 'react'
 import { toast } from 'sonner'
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
+import { useAppShellStore } from '@/stores/appShellStore'
+import { testCapabilities } from '@/test/capabilities'
+import { getMediaModalsText } from './i18n-modals'
 import { useDeleteMedia } from './queries'
 
 vi.mock('sonner', () => ({
@@ -36,6 +39,7 @@ function wrapperFor(client: QueryClient) {
 }
 
 afterEach(() => {
+  useAppShellStore.setState({ locale: 'fr', capabilities: null })
   vi.restoreAllMocks()
   vi.mocked(toast.error).mockClear()
   vi.mocked(toast.success).mockClear()
@@ -49,6 +53,7 @@ describe('useDeleteMedia', () => {
       file_path: FILE_URL,
       deleted: true,
       files_removed: 2,
+      trashed: false,
     })
 
     const { result } = renderHook(() => useDeleteMedia('JGtm'), {
@@ -68,6 +73,7 @@ describe('useDeleteMedia', () => {
       file_path: FILE_URL,
       deleted: true,
       files_removed: 1,
+      trashed: false,
     })
     const client = makeClient()
     const invalidate = vi.spyOn(client, 'invalidateQueries')
@@ -98,5 +104,90 @@ describe('useDeleteMedia', () => {
     const [message] = vi.mocked(toast.error).mock.calls[0] ?? []
     expect(String(message)).toMatch(/supprimer/i)
     expect(toast.success).not.toHaveBeenCalled()
+  })
+})
+
+describe('useDeleteMedia — toast de succès selon la Corbeille', () => {
+  it.each(['fr', 'en'] as const)(
+    'original envoyé à la Corbeille (%s) : le toast le dit',
+    async (locale) => {
+      useAppShellStore.setState({ locale })
+      vi.spyOn(api, 'delete').mockResolvedValue({
+        file_path: FILE_URL,
+        deleted: true,
+        files_removed: 2,
+        trashed: true,
+      })
+      const { result } = renderHook(() => useDeleteMedia('JGtm'), {
+        wrapper: wrapperFor(makeClient()),
+      })
+      result.current.mutate(FILE_URL)
+
+      await waitFor(() => expect(result.current.isSuccess).toBe(true), { timeout: 2000 })
+      const text = getMediaModalsText(locale).coverFlow
+      expect(toast.success).toHaveBeenCalledWith(text.deleteSuccessTrash)
+      expect(text.deleteSuccessTrash).not.toBe(text.deleteSuccess)
+    },
+  )
+
+  it.each(['fr', 'en'] as const)(
+    'suppression définitive (%s) : le toast habituel',
+    async (locale) => {
+      useAppShellStore.setState({ locale })
+      vi.spyOn(api, 'delete').mockResolvedValue({
+        file_path: FILE_URL,
+        deleted: true,
+        files_removed: 1,
+        trashed: false,
+      })
+      const { result } = renderHook(() => useDeleteMedia('JGtm'), {
+        wrapper: wrapperFor(makeClient()),
+      })
+      result.current.mutate(FILE_URL)
+
+      await waitFor(() => expect(result.current.isSuccess).toBe(true), { timeout: 2000 })
+      expect(toast.success).toHaveBeenCalledWith(getMediaModalsText(locale).coverFlow.deleteSuccess)
+    },
+  )
+})
+
+describe('useDeleteMedia — toast de suppression sur le bureau sans Corbeille', () => {
+  it.each(['fr', 'en'] as const)(
+    'bureau, original supprimé définitivement (%s) : le toast le dit',
+    async (locale) => {
+      useAppShellStore.setState({ locale, capabilities: testCapabilities({ can_trash_media_sources: true }) })
+      vi.spyOn(api, 'delete').mockResolvedValue({
+        file_path: FILE_URL,
+        deleted: true,
+        files_removed: 1,
+        trashed: false,
+      })
+      const { result } = renderHook(() => useDeleteMedia('JGtm'), {
+        wrapper: wrapperFor(makeClient()),
+      })
+      result.current.mutate(FILE_URL)
+
+      await waitFor(() => expect(result.current.isSuccess).toBe(true), { timeout: 2000 })
+      const text = getMediaModalsText(locale).coverFlow
+      expect(toast.success).toHaveBeenCalledWith(text.deleteSuccessPermanent)
+      expect(text.deleteSuccessPermanent).not.toBe(text.deleteSuccess)
+    },
+  )
+
+  it('bureau, original à la Corbeille : le toast de la Corbeille prime', async () => {
+    useAppShellStore.setState({ locale: 'fr', capabilities: testCapabilities({ can_trash_media_sources: true }) })
+    vi.spyOn(api, 'delete').mockResolvedValue({
+      file_path: FILE_URL,
+      deleted: true,
+      files_removed: 2,
+      trashed: true,
+    })
+    const { result } = renderHook(() => useDeleteMedia('JGtm'), {
+      wrapper: wrapperFor(makeClient()),
+    })
+    result.current.mutate(FILE_URL)
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true), { timeout: 2000 })
+    expect(toast.success).toHaveBeenCalledWith(getMediaModalsText('fr').coverFlow.deleteSuccessTrash)
   })
 })

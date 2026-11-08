@@ -45,6 +45,12 @@ import "strings"
 // tout prédicat de visibilité (cf. duckdb.MediaVisiblePredicate).
 const MediaStatusDeleted = "deleted"
 
+// MediaStatusMissing est la valeur de media_files.status d'un média dont aucun
+// fichier n'existe plus sur le disque (original et version convertie). La ligne
+// garde ses likes et ses rattachements ; elle est masquée de la galerie, listée
+// dans les fichiers introuvables, et repasse à NULL quand un fichier revient.
+const MediaStatusMissing = "missing"
+
 // MediaDeleteRequest décrit une demande de suppression définitive de média.
 //
 // L'identité du demandeur est résolue par le handler (frontière HTTP) puis
@@ -77,6 +83,9 @@ type MediaDeleteResponse struct {
 	// FilesRemoved compte les fichiers effectivement retirés du disque
 	// (source + miniature + playlist HLS) — 0 si tous étaient déjà absents.
 	FilesRemoved int `json:"files_removed"`
+	// Trashed vaut true quand au moins un original a été envoyé à la Corbeille du système (donc
+	// restaurable) ; false quand la suppression est définitive ou qu'aucun original n'existait.
+	Trashed bool `json:"trashed" doc:"Au moins un original est parti à la Corbeille du système."`
 }
 
 // MediaDeletionTarget porte les chemins physiques et le propriétaire d'un média
@@ -88,15 +97,17 @@ type MediaDeletionTarget struct {
 	FilePath      string
 	ThumbnailPath string
 	HLSPath       string
+	// SourcePath est le chemin stocké de l'original déposé par l'utilisateur
+	// (vide = aucun original attendu). Distinct de FilePath pour une vidéo
+	// convertie, dont FilePath désigne la version de l'app.
+	SourcePath string
 }
 
-// StoredPaths retourne les chemins stockés à retirer du disque, sans doublon ni
-// valeur vide. La source vient toujours en premier (c'est elle qui porte la
-// garantie « plus servi »).
-func (t MediaDeletionTarget) StoredPaths() []string {
-	out := make([]string, 0, 3)
-	seen := make(map[string]struct{}, 3)
-	for _, p := range []string{t.FilePath, t.ThumbnailPath, t.HLSPath} {
+// dedupPaths rend les chemins non vides dans l'ordre reçu, sans doublon.
+func dedupPaths(paths ...string) []string {
+	out := make([]string, 0, len(paths))
+	seen := make(map[string]struct{}, len(paths))
+	for _, p := range paths {
 		if p == "" {
 			continue
 		}
@@ -107,6 +118,38 @@ func (t MediaDeletionTarget) StoredPaths() []string {
 		out = append(out, p)
 	}
 	return out
+}
+
+// StoredPaths retourne les chemins stockés à retirer du disque, sans doublon ni
+// valeur vide. La source vient toujours en premier (c'est elle qui porte la
+// garantie « plus servi »), suivie de l'original déposé, de la miniature et de
+// la version convertie.
+func (t MediaDeletionTarget) StoredPaths() []string {
+	return dedupPaths(t.FilePath, t.SourcePath, t.ThumbnailPath, t.HLSPath)
+}
+
+// ForgetPaths retourne les chemins que l'app a créés et peut retirer quand elle
+// oublie un média : miniature et version convertie. FilePath n'en fait partie
+// que s'il est lui-même la version convertie. L'original déposé par
+// l'utilisateur (SourcePath, ou FilePath d'un média non converti) n'y figure
+// jamais : oublier ne touche pas à ses fichiers.
+func (t MediaDeletionTarget) ForgetPaths() []string {
+	paths := []string{t.ThumbnailPath, t.HLSPath}
+	if t.FilePath != "" && t.FilePath == t.HLSPath {
+		paths = append(paths, t.FilePath)
+	}
+	return dedupPaths(paths...)
+}
+
+// OriginalPaths retourne les chemins des fichiers déposés par l'utilisateur :
+// SourcePath, et FilePath quand il n'est pas la version convertie. Sans doublon
+// ni valeur vide.
+func (t MediaDeletionTarget) OriginalPaths() []string {
+	paths := []string{t.SourcePath}
+	if t.FilePath != t.HLSPath {
+		paths = append(paths, t.FilePath)
+	}
+	return dedupPaths(paths...)
 }
 
 // CanDeleteMedia est la RÈGLE MÉTIER d'autorisation de suppression — fonction

@@ -41,6 +41,9 @@ export const DEPLOYMENT_CAPABILITY_DEFAULTS = {
   can_report_diagnostic: false,
   can_limit_memory: false,
   can_regenerate_replays: false,
+  can_keep_media_sources: false,
+  can_reveal_files_in_explorer: false,
+  can_trash_media_sources: false,
 } as const satisfies Partial<CapabilityMap>
 
 /** Clé d'une capacité de profil de déploiement (booléen de `capabilities`). */

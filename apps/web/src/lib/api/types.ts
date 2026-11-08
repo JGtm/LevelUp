@@ -1757,6 +1757,25 @@ export type MediaAuthorsResponse = components['schemas']['MediaAuthorsResponse']
 /** Suppression définitive d'un média (item 3.1) — dérivé du contrat. */
 export type MediaDeleteResponse = components['schemas']['MediaDeleteResponse']
 
+/** Médias dont le fichier est introuvable : fusion, oubli, confirmation, explorateur — dérivés du contrat. */
+export type MediaMissingItem = components['schemas']['MediaMissingItem']
+export type MediaMissingResponse = components['schemas']['MediaMissingResponse']
+export type MediaMergeCandidate = components['schemas']['MediaMergeCandidate']
+export type MediaMergeCandidatesResponse = components['schemas']['MediaMergeCandidatesResponse']
+export type MediaMergeResponse = components['schemas']['MediaMergeResponse']
+export type MediaForgetResponse = components['schemas']['MediaForgetResponse']
+export type MediaConfirmBulkResponse = components['schemas']['MediaConfirmBulkResponse']
+export type MediaRevealResponse = components['schemas']['MediaRevealResponse']
+
+/** Corps des écritures sur un média introuvable (écrits à la main : les routes lisent un corps brut). */
+export interface MediaMergeRequest {
+  file_path: string
+  target_file_path: string
+}
+export interface MediaFilePathRequest {
+  file_path: string
+}
+
 /**
  * PATCH /media/likes — dérivés du contrat (2026-08-03). Les versions écrites à
  * la main divergeaient du serveur sur deux points : `total_likers` y était

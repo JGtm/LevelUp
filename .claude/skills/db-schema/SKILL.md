@@ -191,6 +191,13 @@ Stats par joueur par match Firefight : `match_id`, `xuid`, `waves`, `boss_kills`
 | `mv_player_matches` | Vue matérialisée matchs joueur |
 | `mv_map_stats` | Vue matérialisée stats par map |
 
+### media_files — identité et état (ADR 0046)
+
+- Identité = `file_hash` ; `file_path` est l'emplacement courant (change au renommage). Les likes (`media_likes_history`) suivent `file_path` : toute reprise de chemin les transfère par INSERT.
+- `source_path VARCHAR`, `source_size BIGINT`, `source_mtime_ns BIGINT` : chemin stocké de l'original, taille et date de modification au dernier relevé. `source_path` NULL = aucun original attendu. Colonnes non indexées.
+- `status` : NULL = présent ; `'missing'` = fichier absent du disque à la dernière passe (réversible, retour du fichier = NULL) ; `'deleted'` = masqué par l'app (retiré de la galerie). Lire uniquement via `MediaVisiblePredicate` ou `MediaNotDeletedPredicate`.
+- `file_stem` est figé à l'insertion : jamais d'`UPDATE`, ni sur `file_stem`, `player_slug`, `created_at`. Aucune suppression physique de ligne ; `media_likes_history` en INSERT seul.
+
 ## Requête type — stats coéquipier
 
 ```sql

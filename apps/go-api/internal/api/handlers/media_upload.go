@@ -118,9 +118,8 @@ func (h *MediaHandler) PostUploadMedia(w http.ResponseWriter, r *http.Request) {
 			deleteSourceVal = cfg.MediaDeleteSourceAfterTranscode
 		}
 	}
-	// Politique de rétention du source résolue LIVE (env > store > isProd).
-	deleteSource := config.ResolveMediaDeleteSource(
-		os.Getenv(config.EnvMediaDeleteSource), deleteSourceVal, h.isProduction)
+	// Politique de rétention de l'original résolue LIVE (capacité, env, store, défaut).
+	deleteSource := h.resolveDeleteSource(deleteSourceVal)
 	slog.InfoContext(r.Context(), "upload: requête reçue",
 		"player", gamertag, "files", len(files), "captures_dir", capturesDir)
 
@@ -283,4 +282,14 @@ func checkUploadedContent(fh *multipart.FileHeader, ext string) error {
 		return fmt.Errorf("%w : %q", errUploadContentMismatch, fh.Filename)
 	}
 	return nil
+}
+
+// resolveDeleteSource rend la politique effective de suppression de l'original après
+// conversion. Sans fonction injectée (WithMediaDeleteSource), c'est celle d'une configuration
+// sans capacité de déploiement : variable d'environnement, puis réglage, puis conserver.
+func (h *MediaHandler) resolveDeleteSource(store *bool) bool {
+	if h.deleteSource != nil {
+		return h.deleteSource(store)
+	}
+	return (&config.AppConfig{}).MediaDeleteSource(store)
 }

@@ -13,7 +13,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"os"
 	gosync "sync"
 	"time"
 
@@ -212,30 +211,7 @@ func (h *SyncHandler) newEngineFor(titleSlug, gamertag, xuid string, tokens *dom
 	// Media scan post-sync : cohérent avec AutoSyncScheduler.defaultRunnerFactory.
 	// timezone REQUISE pour captureInstantFromName (cf. media_index_service).
 	if h.settingsStore != nil {
-		engine = engine.WithMediaScanHook(service.BuildMediaScanHook(h.cfg.RepoRoot, gamertag,
-			func() string {
-				s, _ := h.settingsStore.Load()
-				if s != nil {
-					return s.MediaCapturesBaseDir
-				}
-				return ""
-			},
-			func() string {
-				s, _ := h.settingsStore.Load()
-				if s != nil {
-					return s.UserTimezone
-				}
-				return ""
-			},
-			func() bool {
-				var v *bool
-				if s, _ := h.settingsStore.Load(); s != nil {
-					v = s.MediaDeleteSourceAfterTranscode
-				}
-				return config.ResolveMediaDeleteSource(
-					os.Getenv(config.EnvMediaDeleteSource), v, h.cfg.IsProduction())
-			},
-		))
+		engine = engine.WithMediaScanHook(service.NewLiveMediaScanHook(h.cfg, h.settingsStore, gamertag))
 	}
 	// Hook Prestige post-sync (best-effort). Fire à engine.run() après le pipeline
 	// post-sync, pendant que le lease player/shared est encore tenu (instance directe

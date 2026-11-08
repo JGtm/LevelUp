@@ -13,6 +13,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { MediaItemRow } from '@/lib/api/types'
 import { useHlsVideo, type HlsAudioTrack } from '@/lib/media/useHlsVideo'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useDeploymentCapability } from '@/stores/useDeploymentCapability'
 import { intlLocale } from '@/lib/formatters'
 import { playerScopedHref, useTitleSlug } from '@/lib/title-routing'
 import type { ManifestLocale } from '@/lib/i18n/format'
@@ -34,6 +35,8 @@ interface CoverFlowModalProps {
   /** Callback ouvrant le picker d'(ré)association. Le label affiché passe
    *  automatiquement de "Associer" à "Réassocier" selon `item.match_id`. */
   onReassociate?: (item: MediaItemRow) => void
+  /** Callback ouvrant l'explorateur de fichiers sur le média. Non fourni = bouton absent. */
+  onReveal?: (item: MediaItemRow) => void
   /** Gamertag du joueur actif — masque le bouton (ré)association sur les médias
    *  qui ne lui appartiennent pas. */
   currentPlayerGamertag?: string
@@ -371,6 +374,7 @@ export function CoverFlowModal({
   globalIndexOffset = 0,
   globalTotal,
   onReassociate,
+  onReveal,
   currentPlayerGamertag,
   playerSlug,
   currentMatchId,
@@ -384,6 +388,7 @@ export function CoverFlowModal({
   const isAdmin = useAppShellStore((s) => s.isAdmin)
   const titleSlug = useTitleSlug()
   const text = getMediaModalsText(locale)
+  const trashesOriginals = useDeploymentCapability('can_trash_media_sources')
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
   // L'identité de l'item courant est suivie via son file_path (stable),
   // pas via un index (qui peut changer si l'array items est réordonné).
@@ -668,6 +673,19 @@ export function CoverFlowModal({
                 {reassociateLabel}
               </button>
             )}
+            {onReveal && (isAdmin || ownsCurrentMedia) && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onReveal(currentItem)
+                }}
+                className="shrink-0 rounded border border-border px-2 py-0.5 text-xs text-foreground/80 hover:border-foreground/50 hover:text-foreground whitespace-nowrap"
+                title={text.missing.revealTitle}
+              >
+                {text.missing.revealButton}
+              </button>
+            )}
           </div>
           <div className="flex items-center gap-3 shrink-0">
             <div onClick={(e) => e.stopPropagation()}>
@@ -691,8 +709,8 @@ export function CoverFlowModal({
                   e.stopPropagation()
                   setConfirmDeleteOpen(true)
                 }}
-                title={text.coverFlow.deleteTitle}
-                aria-label={text.coverFlow.deleteTitle}
+                title={trashesOriginals ? text.coverFlow.deleteTitleTrash : text.coverFlow.deleteTitle}
+                aria-label={trashesOriginals ? text.coverFlow.deleteTitleTrash : text.coverFlow.deleteTitle}
                 className="flex shrink-0 items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-xs text-foreground/70 transition-colors hover:border-destructive/60 hover:text-destructive"
               >
                 <svg
@@ -922,8 +940,8 @@ export function CoverFlowModal({
             open={confirmDeleteOpen}
             onOpenChange={setConfirmDeleteOpen}
             title={text.coverFlow.deleteConfirmTitle}
-            description={text.coverFlow.deleteConfirmBody}
-            confirmLabel={text.coverFlow.deleteConfirmLabel}
+            description={trashesOriginals ? text.coverFlow.deleteConfirmBodyTrash : text.coverFlow.deleteConfirmBody}
+            confirmLabel={trashesOriginals ? text.coverFlow.deleteConfirmLabelTrash : text.coverFlow.deleteConfirmLabel}
             cancelLabel={text.coverFlow.deleteCancelLabel}
             destructive
             busy={deleteBusy}

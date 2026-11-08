@@ -322,6 +322,10 @@ export const queryKeys = {
     ['media', playerSlug, titleSlug, 'authors'] as const,
   mediaAudioConfig: (playerSlug: string, titleSlug: string) =>
     ['media', playerSlug, titleSlug, 'audio-config'] as const,
+  mediaMissing: (playerSlug: string, titleSlug: string) =>
+    ['media', playerSlug, titleSlug, 'missing'] as const,
+  mediaMergeCandidates: (playerSlug: string, titleSlug: string, filePath: string | null) =>
+    ['media', playerSlug, titleSlug, 'merge-candidates', filePath] as const,
   feedVersion: ['media', 'feed-version'] as const,
 
   // Citations (Slice 2B) — locale dans la clé : le backend bake les libellés de

@@ -372,6 +372,11 @@
 # lot `reste` sans y être inscrits). `.ai/baselines/tests_libs_haloapi.jsonl` est créée depuis un run
 # `go test -json ./... -count=1` du module (216 événements terminaux `pass`/`skip` de test, 6 paquets).
 #
+# RETRAIT DU 2026-11-08 (ADR 0046, médias alignés sur le disque) : 21 lignes de
+# `internal/service::TestEffectiveMediaBase` (5 tests). `effectiveMediaBase` est devenue `resolveMediaBase`,
+# qui rend aussi la politique de marquage ; ses cas sont repris, avec cette politique, par
+# `TestResolveMediaBase` (`internal/service/media_index_base_test.go`).
+#
 # TROIS BASELINES, UNE PAR MODULE DES LOTS CI (ADR 0041) : `tests_pre_migration.jsonl` pour `apps/go-api`
 # (défaut), `tests_libs_film.jsonl` pour `libs/film` (`--baseline .ai/baselines/tests_libs_film.jsonl`),
 # `tests_libs_haloapi.jsonl` pour `libs/haloapi`. `./...` ne franchit pas la frontière d'un module : chaque

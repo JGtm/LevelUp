@@ -46,21 +46,42 @@ func (h *MediaHandler) requesterIsAdmin(ctx context.Context) bool {
 	return authz.IsAdmin(middleware.GetSession(ctx), h.users)
 }
 
-// resolveAssociateRequester pose l'identité du demandeur d'une association média ->
-// match. Comme pour la suppression, la règle propriétaire/admin vit dans
-// domain.CanModifyMedia (appliquée par le service) ; seul le cas « aucune identité
-// opposable » est tranché ici, en 401.
-func (h *MediaHandler) resolveAssociateRequester(ctx context.Context, req *domain.MediaAssociateRequest) error {
-	req.AuthEnforced = h.authEnforced
-	req.RequesterSlug = h.requesterSlug(ctx)
-	req.RequesterIsAdmin = h.requesterIsAdmin(ctx)
-	if !req.AuthEnforced || req.RequesterIsAdmin || req.RequesterSlug != "" {
-		return nil
+// resolveMediaWriteRequester traduit la session HTTP en identité du demandeur d'une écriture de
+// média (suppression, association, fusion, oubli...) : le profil possédé par l'utilisateur de la
+// session, le rôle admin de son compte, et si l'authentification est appliquée.
+//
+// Traduction, pas décision : la règle propriétaire/admin vit dans domain.CanModifyMedia, appliquée
+// par le service. Seul le cas « aucune identité opposable » est tranché ici, en 401
+// `<opName>_requires_session` : en multi-utilisateur authentifié, un refus 403 enverrait l'utilisateur
+// chercher une permission alors qu'il lui manque une session. Hors authentification appliquée
+// (mono-utilisateur, démo) il n'y a aucune identité à exiger.
+func (h *MediaHandler) resolveMediaWriteRequester(
+	ctx context.Context,
+	opName string,
+) (slug string, isAdmin, enforced bool, err error) {
+	enforced = h.authEnforced
+	slug = h.requesterSlug(ctx)
+	isAdmin = h.requesterIsAdmin(ctx)
+	if !enforced || isAdmin || slug != "" {
+		return slug, isAdmin, enforced, nil
 	}
-	slog.WarnContext(ctx, "media_associate refusé: aucun profil possédé par la session",
-		"file_path", req.FilePath)
-	return humacore.NewError(http.StatusUnauthorized, "associate_requires_session",
-		"No owned player profile in session: cannot associate this media.")
+	slog.WarnContext(ctx, "media: écriture refusée, aucun profil possédé par la session", "op", opName)
+	return slug, isAdmin, enforced, humacore.NewError(http.StatusUnauthorized, opName+"_requires_session",
+		"No owned player profile in session: cannot "+opName+" this media.")
+}
+
+// resolveMediaRequester rend l'identité du demandeur sous la forme que portent les requêtes du
+// domaine (resolveMediaWriteRequester).
+func (h *MediaHandler) resolveMediaRequester(ctx context.Context, opName string) (domain.MediaRequester, error) {
+	slug, isAdmin, enforced, err := h.resolveMediaWriteRequester(ctx, opName)
+	return domain.MediaRequester{RequesterSlug: slug, RequesterIsAdmin: isAdmin, AuthEnforced: enforced}, err
+}
+
+// resolveAssociateRequester pose l'identité du demandeur d'une association média -> match.
+func (h *MediaHandler) resolveAssociateRequester(ctx context.Context, req *domain.MediaAssociateRequest) error {
+	slug, isAdmin, enforced, err := h.resolveMediaWriteRequester(ctx, "associate")
+	req.RequesterSlug, req.RequesterIsAdmin, req.AuthEnforced = slug, isAdmin, enforced
+	return err
 }
 
 // mediaAssociateError traduit une erreur du service d'association en erreur HTTP.

@@ -56,6 +56,9 @@ export function desktopCapabilities(): Partial<CapabilityMap> {
     can_use_admin: false,
     can_use_groups: false,
     can_pool_tokens: false,
+    can_keep_media_sources: true,
+    can_reveal_files_in_explorer: true,
+    can_trash_media_sources: true,
     deployment: 'desktop',
   }
 }

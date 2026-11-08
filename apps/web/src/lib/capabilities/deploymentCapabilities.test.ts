@@ -4,7 +4,12 @@ import {
   deploymentCapabilityOf,
   passwordOnlyAccounts,
 } from './deploymentCapabilities'
-import { accountsCapabilities, demoCapabilities, testCapabilities } from '@/test/capabilities'
+import {
+  accountsCapabilities,
+  demoCapabilities,
+  desktopCapabilities,
+  testCapabilities,
+} from '@/test/capabilities'
 
 describe('deploymentCapabilityOf', () => {
   it('avant hydratation (null) ou sans capacités : les anciens défauts — aucun compte, rien de figé', () => {
@@ -29,6 +34,21 @@ describe('deploymentCapabilityOf', () => {
     for (const key of Object.keys(DEPLOYMENT_CAPABILITY_DEFAULTS)) {
       expect(key in published).toBe(true)
     }
+  })
+})
+
+describe('capacités médias du bureau', () => {
+  const keys = ['can_keep_media_sources', 'can_reveal_files_in_explorer', 'can_trash_media_sources'] as const
+
+  it('avant hydratation et sans capacités : fausses (rien ne change hors du bureau)', () => {
+    for (const caps of [null, undefined, {}]) {
+      for (const key of keys) expect(deploymentCapabilityOf(caps, key)).toBe(false)
+    }
+  })
+
+  it('le profil bureau les publie vraies', () => {
+    const desktop = testCapabilities(desktopCapabilities())
+    for (const key of keys) expect(deploymentCapabilityOf(desktop, key)).toBe(true)
   })
 })
 
