@@ -102,13 +102,13 @@ func TestDeployment_CapacitesParProfil(t *testing.T) {
 		{DeploymentHosted, "production", "", LaunchModeDefault, DeploymentCapabilities{
 			UseGroups: true, PoolTokens: true, UseAdmin: true, UseResticBackup: true, UseDiscord: true,
 			UseOutboundNetwork: true, OfferWindowsDownload: true, EditSettings: true, UploadMedia: true, CompareAccounts: true,
-			ExportForDesktop: true}},
+			ExportForDesktop: true, ResourcePackFatal: true}},
 		{DeploymentDev, "", "", LaunchModeDefault, DeploymentCapabilities{
 			UseGroups: true, PoolTokens: true, UseAdmin: true, UseResticBackup: true, UseDiscord: true,
 			UseOutboundNetwork: true, OfferWindowsDownload: true, EditSettings: true, UploadMedia: true, CompareAccounts: true,
 			ExportForDesktop: true}},
 		{DeploymentDemo, "", "true", LaunchModeDefault, DeploymentCapabilities{
-			UseAdmin: true, OfferWindowsDownload: true, CompareAccounts: true}},
+			UseAdmin: true, OfferWindowsDownload: true, CompareAccounts: true, ResourcePackFatal: true}},
 		{DeploymentDesktop, "", "", LaunchModeDesktop, DeploymentCapabilities{
 			UseOutboundNetwork: true, UpdateApp: true, EditSettings: true, UploadMedia: true,
 			ShellEntryGate: true, PoolGrantedToLocalUser: true, WakeSequence: true, TokenVault: true,

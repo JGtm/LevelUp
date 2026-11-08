@@ -18,6 +18,7 @@
 //! - [`download_watch`] : l'echeance d'inactivite du telechargement de l'installeur.
 //! - [`update_notes`] : les notes de mise a jour dans la langue de la coquille (`notes`, `notes_<code>` de `latest.json`).
 //! - `updater_decision` : l'arret propre qui autorise l'installation et les messages d'apres-arret (re-exportes par [`updater`]).
+//! - [`resources`] : le paquet de ressources livre a part du moteur (L24) : le bloc de `latest.json` et l'attente de sa preparation par le serveur.
 //! - [`roots`], [`secret`], [`logfile`], [`linereader`], [`navigation`] : petits outils.
 
 pub mod autostart;
@@ -31,6 +32,7 @@ pub mod logfile;
 pub mod native_notice;
 pub mod navigation;
 pub mod render;
+pub mod resources;
 pub mod roots;
 pub mod screen;
 pub mod secret;

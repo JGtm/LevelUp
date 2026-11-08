@@ -69,7 +69,7 @@ describe('démarrage échoué (503 server_start_failed, non réessayable)', () =
   })
 
   it('chaque état : un libellé présent en FR et en EN', () => {
-    for (const state of ['locked', 'migration_failed', 'schema_newer']) {
+    for (const state of ['locked', 'migration_failed', 'schema_newer', 'resources_incompatible']) {
       const failure = serverStartFailure(failed(state))
       expect(failure?.stateKey, `état « ${state} » sans libellé`).toBe(`common.root.server_failed.${state}`)
       expect(commonManifest[failure!.stateKey!].fr).not.toBe('')

@@ -163,6 +163,14 @@ environment, so that a child resolves the same paths as its parent, whatever its
 **A-7 — Docker.** The image sets the three variables explicitly, the dead `LEVELUP_ROOT` and `LEVELUP_DATA` are removed
 from the Dockerfile and the compose files, and the resources are mounted read-only. The data volume stays `./data`.
 
+**A-8 — One resources root, one manifest (L24, 2026-11-08).** The resources are shipped as a **pack** (ADR 0045 D-30) described by one manifest,
+`resources.manifest.json`, at the top of `ResourcesRoot`, whatever the profile: hosted and demo read the pack their image carries, desktop the one the
+installer or a download placed. There is still exactly one resources root and no second lookup path: the pack's files keep their usual relative
+paths under it (`static/`, `web/titles/`, `data/titles/{slug}/reference/`, `data/titles/{slug}/warehouse/metadata-prebuilt.zip`, ffmpeg next to the server),
+so no reader learns where a resource came from. A downloaded pack is staged under `<ResourcesRoot>/.pack/` (never under `DataRoot`: the uninstaller removes
+it and never touches the data root, A22) and swapped in at the next start. The pack is read-only by convention like the rest of `ResourcesRoot` (A-1);
+the manifest, not the folder name, says which pack is installed.
+
 **Implementation notes (L11, 2026-11-01).**
 
 - *Generated overlays are data.* `data/titles/{slug}/reference/generated/` (map weapon pads and callouts caught up by

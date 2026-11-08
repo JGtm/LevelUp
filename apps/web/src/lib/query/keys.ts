@@ -51,6 +51,8 @@ export const queryKeys = {
   dataStatus: ['data-status'] as const,
   // Décompte et état de la file de régénération des rejeux (GET /desktop/replay-regen) : codes et nombres seulement.
   replayRegen: ['replay-regen'] as const,
+  // État du paquet de ressources de l'application de bureau (GET /desktop/resources) : phase, pourcentage et code d'erreur seulement.
+  desktopResources: ['desktop-resources'] as const,
   // Progression de l'import depuis le site (GET /import/site) : le jeton d'export n'entre jamais dans une clé.
   siteImport: ['site-import'] as const,
   // Groupes/familles (accès mutuel) — gestion end-user

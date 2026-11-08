@@ -656,6 +656,89 @@ settings (the wizard, which has no Settings page, mounts the badge itself), the 
 fails it, the unmaintained / unsound / yanked advisories of the transitive tree stay warnings (about ten, none within LevelUp's reach). The `feat/desktop-*` push condition of the
 Windows CGO lane (D-7 of the plan, dated 2026-11-01 "until the end of P1") is removed: the lane runs on `release/**` and pull requests to `main` only.
 
+### Engine and resource pack (L24)
+
+**D-30 - Two units: the engine and the resource pack (L24, 2026-11-08; decisions of the user 2026-11-04 and 2026-11-08, plan section 9.27).**
+Measured on four successive installers (L23): of 152 MB, what changes from one version to the next is the engine (server, shell,
+compiled front, 35 MB); the rest (ffmpeg, images, sounds, reference data, map backgrounds) is identical byte for byte. The
+installation is therefore cut in two units, **without reopening D-17** (ffmpeg is shipped, the first installation is complete and
+ready to use, offline):
+
+- **The engine**: shell, server, compiled front without `web/titles`, `config/` (coupled to the code), notices. It changes at every release and is
+  what the updater installs.
+- **The resource pack**: `static/`, `web/titles/`, the replay reference (`data/titles/*/reference`), `metadata-prebuilt.zip`, ffmpeg and
+  its notice. It is downloaded again only when its fingerprint changes.
+
+*Identity = fingerprint, computed at build.* The manifest `resources.manifest.json` (format 1) lists every file of the pack (path, size,
+SHA-256); the **fingerprint** is the SHA-256 of its sorted lines `path TAB size TAB sum LF`. No version is maintained by hand, so there is
+no "bump forgotten" to ratchet; a `version` field is informative only and never compared. One generator, `cmd/resources-manifest` (also writes the
+archive, byte-stable), one reader, `internal/resourcepack`. The engine embeds the fingerprint of ITS pack (`-ldflags -X main.resourcesFingerprint=`,
+like `main.version`; `apps/desktop/scripts/check-version.sh <version> <server.exe> <fingerprint>` reads it back from the binary, the Dockerfile does
+the same with `grep` at build). Empty (local `go build`, tests): no check at all, behaviour unchanged.
+
+*Startup rule, by capability and never by profile name (ADR 0044 D-4).* `resourcepack.Settle` runs after the instance lock and before the
+tooling and the title registry: it undoes an interrupted activation, activates a downloaded pack if it is the engine's, then compares.
+Capability `ResourcePackFatal` (hosted and demo: the image carries engine and pack together): a different or missing pack **refuses to start**, like a
+failed migration (`failed{state: resources_incompatible}`, 503 `server_start_failed`, logged). Capability `UpdateApp` (desktop): a different pack
+starts anyway on the pack present, logs a WARN and downloads the right one in the background; an **absent** pack is downloaded before serving, and a
+failure refuses to start with the same state. Development, demo without manifest and tests embed no fingerprint: nothing is checked.
+After the activation the manager reads the installed pack again (`Manager.Settle`), so the published state (`active`, `restart_needed`) names the pack
+really in place, never the one read when the manager was created. **The download before `ready` does not consume the 120 s startup delay of D-3** as long as
+it progresses: the shell re-arms the startup timer on every `resources` event of phase `downloading` or `verifying` whose phase or `percent` moved forward
+since the previous one (a repeated value is not progress), and only before `ready`. A download that stops emitting progress ends by the usual delay (server
+killed, `Failed(timeout)` screen) 120 s after its last advance. The server emits those events during `PrepareNow` (every 500 ms at most, from the first
+byte read).
+The hosted pack is what the image carries (`static/` and `apps/web/dist/titles`); the reference lives in the `./data` volume of production, never
+in the image, so the hosted and desktop packs have different contents and fingerprints (one format, one generator, one reader, two sets).
+
+*Release.* `release.yml` produces the **full installer** (first installation and download page, never offered to the updater), the **engine-only
+installer** signed for the updater (`tauri.engine.conf.json`; `latest.json` points at it: the Tauri updater knows one installer per platform, and it is
+ours), and `levelup-resources-<fingerprint>.zip` + `.sig` (same key as the installer, minisign). `latest.json` carries an extra top-level block
+`resources` (fingerprint, url, sha256, size, signature), read back by the shell through `Update::raw_json`. In update mode (`/UPDATE`) the NSIS template
+neither replays the old uninstaller nor deletes anything: an installer that does not embed the resources leaves the installed ones untouched
+(proved by `e2e-install.ps1 -EngineInstaller`).
+
+*Who downloads: the server.* Rust stays free of network and business logic (D-18). After the user accepts an update the shell writes
+`resources <json>` on the server's stdin (D-4 commands; the line limit goes from 256 to 4096 bytes, a signature is longer than 256), the server
+downloads, verifies and stages, and answers with the event `resources` (`phase`: `idle|current|waiting_game|downloading|verifying|ready|failed`,
+`fingerprint`, `expected`, `active`, `percent`, `code`, `restart_needed`). **The pack is ready before the installer of the engine that requires
+it**: the shell waits for `ready` (or `current`) and only then downloads and arms the engine installer; `failed`, a stopped server or the 6 h
+limit means nothing is installed, the reason is logged, the application stays open. The download sits behind `netguard` (surface `resources_pack`),
+accepts only https and the publication hosts (`github.com` and its asset hosts, also for redirects), waits for the end of a match (`HeavyWorkAllowed`,
+before the first byte, never during), resumes a cut transfer (`Range`), checks the SHA-256, then the minisign signature (prehashed form `ED` only, the
+one `tauri signer sign` writes; key from `LEVELUP_UPDATE_PUBKEY`, set by the shell from `plugins.updater.pubkey`), then extracts into
+`<ResourcesRoot>/.pack/incoming-<fingerprint>` verifying every file against the archive manifest (zip-slip refused, no extra file, no missing file, size and sum) and
+that the manifest fingerprint is the expected one. The same machinery downloads the engine's own pack (`releases/download/v<version>/levelup-resources-<fingerprint>.zip`
+and its `.sig`, no `latest.json` needed) when a start finds the pack missing or different.
+
+*Activation.* A staged pack becomes the active one at the **next start**, when nothing holds a file: `Activate` renames unit by unit (`static`,
+`web/titles`, each `data/titles/<slug>/reference`, each isolated file, the manifest last) the installed content to `.pack/old` and the staged one to its
+place, with a journal; a failure undoes what was done (each error of the undo is logged, and an incomplete undo keeps the journal so that `Recover` finishes it).
+The journal carries a `committed` state, written whole and flushed to disk after the last unit moved and before anything is deleted: a hard stop before it is
+undone by `Recover` at the next start; **from it on nothing undoes the swap**, a stop or a failed deletion (old pack, extracted folder, marker, journal) only
+leaves the cleanup to `Recover`, which finishes it forward, and `Activate` reports success. `Settle` activates nothing when `Recover` failed. Every extracted file,
+the manifest, the ready marker and the journal are flushed to disk (`Sync`) before they count as written. The old pack stays active until then. The
+files keep their usual relative paths under `ResourcesRoot`, so no reader of `ResourcesRoot` (about 300) learns where resources come from; on disk `web/` is
+the engine's `assets` and `index.html` plus the pack's `titles`.
+
+*One request at a time, every request answered.* The manager prepares one pack at a time. A `resources` command (or a retry) for the pack being prepared is a
+no-op (its events follow). A command for ANOTHER pack (the accepted update needs a pack other than the one being prepared) cancels the running preparation (it
+announces `failed` for its own fingerprint) and queues the request, launched behind it: every request ends with `ready`, `current` or `failed` for its own
+fingerprint, so the shell never waits 6 h for a pack nobody prepares. `Start` reserves the preparation and sets its phase before returning, so the state read
+right after (retry button, `POST /desktop/resources/retry`) is the preparation's, and a second request gets 409.
+
+*Uninstall.* The uninstaller written by the engine-only installer does not know the pack's files: `-mode uninstall-cleanup` (D-28) also removes the installed
+pack (`resourcepack.Remove`: the files the manifest lists, `.pack`, the empty directories, nothing else) before the program folder is deleted. Nothing is
+ever written under the data root (A22).
+
+*Known limits.* The shell screen of `resources_incompatible` tells the user to start LevelUp again (the start retries the download); a retry **button** is not
+built (it needs the shell to restart itself, which cannot be tested without launching it). Old `web/assets/*` files of a previous version stay after an
+update (the NSIS update mode never deletes: true since L17). The download is exercised against a local server in tests; the real publication hosts are
+first met at gate 24.z.
+
+Amends D-17 (the 80 MB are paid at the first installation and when the pack changes, no longer at every update), D-2 and D-4 (event `resources`, state
+`resources_incompatible`, command `resources`), D-15 (two installers), D-16 (the pack is signed by the same key as the installer, verified by the server in Go).
+
 ### Tests
 
 **D-21 — Strategy (plan section 7).** Each side of the contract is tested against a double of the other: a **fake
@@ -787,8 +870,8 @@ maintainer on a clean machine. A lot without a test at its level is not closed.
 - Every stop path ends in one sequence, so the contract is the same for air, the shell, the end-to-end tests and a
   terminal Ctrl+C.
 - The shell is small enough to be replaced; the contract (D-1 to D-6) is what a replacement must satisfy.
-- Cost: a Windows CI lane with CGO, a second toolchain (Rust 1.97, Node 24), 80 MB more per update (ffmpeg), and a key to
-  keep safe.
+- Cost: a Windows CI lane with CGO, a second toolchain (Rust 1.97, Node 24), an extra 80 MB (ffmpeg, in the resource pack) at the first
+  installation and each time the pack changes (D-30), and a key to keep safe.
 
 ## Guard-rails
 

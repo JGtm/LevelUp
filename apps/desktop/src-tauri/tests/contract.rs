@@ -178,6 +178,70 @@ fn jamais_ready_dans_le_delai_montre_le_delai_et_tue_le_serveur() {
     assert!(!run.stopped_marker());
 }
 
+/// Le paquet de ressources absent se telecharge AVANT `ready` : tant que le telechargement progresse, la
+/// coquille ne tue pas le serveur, meme quand il dure plus que le delai de demarrage.
+#[test]
+fn un_telechargement_qui_progresse_plus_longtemps_que_le_delai_ne_tue_pas_le_serveur() {
+    let roots = fresh_roots("telechargement");
+    let timeouts = Timeouts {
+        startup: Duration::from_secs(2),
+        ..short_timeouts()
+    };
+    let started = Instant::now();
+    let mut run = launch(
+        &roots,
+        &[("FAKE_PROGRESS_FOR_MS", "4500"), ("FAKE_PROGRESS_EVERY_MS", "300")],
+        timeouts,
+    );
+    run.recorder.wait_url();
+    assert!(
+        started.elapsed() > Duration::from_millis(4000),
+        "l'entree ne vient qu'apres le telechargement : {:?}",
+        started.elapsed()
+    );
+    assert!(
+        !run.recorder.has_screen(Screen::Failed(FailureKind::Timeout)),
+        "le telechargement progressait : pas de delai"
+    );
+    let outcome = close_and_finish(&mut run);
+    assert!(!outcome.killed);
+    assert_eq!(outcome.stopped_clean, Some(true));
+    let log = run.log();
+    assert!(log.contains("kind=resources phase=downloading"), "{log}");
+    assert!(!log.contains("event=kill"), "{log}");
+}
+
+/// Un telechargement qui s'arrete (plus aucun avancement) finit quand meme par le delai de demarrage : le
+/// serveur est tue et l'ecran du delai s'affiche.
+#[test]
+fn un_telechargement_bloque_finit_par_le_delai_de_demarrage() {
+    let roots = fresh_roots("telechargement_bloque");
+    let timeouts = Timeouts {
+        startup: Duration::from_secs(2),
+        ..short_timeouts()
+    };
+    let started = Instant::now();
+    let mut run = launch(
+        &roots,
+        &[
+            ("FAKE_VARIANT", "never_ready"),
+            ("FAKE_PROGRESS_FOR_MS", "1000"),
+            ("FAKE_PROGRESS_EVERY_MS", "250"),
+        ],
+        timeouts,
+    );
+    run.recorder.wait_screen(Screen::Failed(FailureKind::Timeout));
+    assert!(
+        started.elapsed() > Duration::from_millis(2500),
+        "le delai court depuis le DERNIER avancement, pas depuis le lancement : {:?}",
+        started.elapsed()
+    );
+    let log = run.wait_log("event=sidecar_exited");
+    assert!(log.contains("event=kill"), "{log}");
+    let outcome = close_and_finish(&mut run);
+    assert!(outcome.killed);
+}
+
 #[test]
 fn un_echec_avec_port_charge_la_page_du_serveur() {
     let roots = fresh_roots("echec");
@@ -209,6 +273,7 @@ fn un_echec_sans_port_montre_l_ecran_embarque_de_sa_cause() {
         ("locked", FailureKind::Locked),
         ("schema_newer", FailureKind::SchemaNewer),
         ("migration_failed", FailureKind::MigrationFailed),
+        ("resources_incompatible", FailureKind::ResourcesIncompatible),
     ] {
         let roots = fresh_roots("echec-sans-port");
         let env = [("FAKE_VARIANT", "failed_no_port"), ("FAKE_FAILED_STATE", state)];

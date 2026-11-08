@@ -3,6 +3,13 @@
 **Décision** : squash de la PR #155 (`5842e16cad`) après fusion de la release dans la branche (deux conflits : CI union, ADR 0045 ; fichier `cmd_decode_verrou.go` de la release rebranché de `filmproc` sur `filmrun`) et CI verte (28 jobs). Montée `klauspost/compress` 1.20.2 pour Govulncheck (avis GO-2026-6865 du 2026-11-05).
 **Résultats** : lots 0 à 4 clos, 4.0 à 4.9 `[x]` ; revue adversariale 2 rondes (4 constats corrigés, ronde 2 vide) ; caches du lot purgés (4,73 Go).
 **Prochaine étape** : tag `libs/film/v0.1.0` posé par le user (recommandé : quand la release est sur `main`) ; lot 5 (jeton Spartan sur redirection, NOTICE gamefiles) après la clôture du bureau ; lot 6 (quatre dépôts dédiés) après `main`.
+## [2026-11-08] Desktop L24.7 : corrections de la revue adversariale (moteur / paquet de ressources) - Complété
+
+**Décision technique principale** : 17 constats recevables sur 17 (A1-A4 bascule, B1-B4 démarrage et état, C1-C3 outillage, D six contrôles de sécurité sans test), aucun jeté ; A à C reproduits avant correction (test vu rouge, puis vert), D prouvés par mutation du contrôle. Bascule : le journal porte un état `committed` écrit d'un bloc et forcé sur le disque entre la dernière unité basculée et la première suppression ; `Recover` finit en avant une bascule validée, ne défait que l'autre ; un ménage en échec après validation est un WARN repris au démarrage suivant ; un retour arrière incomplet garde le journal et bloque toute nouvelle bascule ; `Sync` de chaque fichier écrit. Démarrage : `Manager.Settle` relit le paquet installé après l'activation ; `Start` réserve et pose la phase avant de rendre la main ; une demande pour un autre paquet annule la préparation en cours et se lance à sa suite ; la coquille réarme la minuterie de démarrage (120 s) sur chaque événement `resources` dont la phase ou le pourcentage avance (avant `ready` seulement). Outillage : une seule voie de clé dans `build-installer.ps1`, `cat |` retiré, le job docker-build exige une copie de l'empreinte hors des paramètres de compilation.
+
+**Résultats observés** : A1 vu rouge sur la coupure avant l'opération 15 (arbre mélangé, paquet « absent » alors qu'un paquet complet était sur le disque), vert sur toute la séquence ; B1 vu rouge dans l'ordre réel du démarrage (`active` = ancien paquet ; `active` vide avec `restart_needed`), vert ; B2 vu rouge au niveau de la machine d'états puis en contrat avec le faux serveur (4,5 s de téléchargement pour 2 s de délai : le serveur n'est plus tué ; un téléchargement qui s'arrête finit par le délai) ; C1 : `tauri signer sign -f` avec la variable d'environnement refusé comme annoncé, la forme corrigée signe ; C2 : SC2002 1 avant, 0 après. D : chaque test vu échouer avec son contrôle retiré (mutation temporaire restaurée : somme, fichier absent, commentaire de confiance, retour arrière, hôtes de redirection, appel de `bootResourcePack`). Gates (sorties dans le scratchpad `l24/gates2`) : voir le compte rendu du lot.
+
+**Conclusion / prochaine étape** : 24.7 coché. Reste ouvert : C3 partiel `[!]` (le binaire ne relit pas sa valeur : il faudrait un mode serveur qui affiche l'empreinte, hors périmètre) ; `e2e-install.ps1`, l'installeur complet et le job docker non rejoués ici ; découvertes (a) à (f) au plan §10 (dont : `check-version.sh` a la même faiblesse que l'ancien `grep`, `Downloader` sans délai d'inactivité sur le corps). Suite : 24.z (gate utilisateur) puis tag `v8.1.0` par l'utilisateur.
 
 ## [2026-11-08] Fin du découplage — 4.9 : montée klauspost/compress 1.20.2 (govulncheck) — Complété
 
@@ -120290,3 +120297,26 @@ production) ; 15 variables exportées modifiables dans `filmshell`, 12 `slog` sa
 **Résultats observés.** Vies finales arrêtées au moins 5 s avant la fin, sans kill lu ensuite : 667 départs selon l'API (637 avec un autre joueur sur la même place, aucun bot ; 15 immobiles depuis au moins 20 s), dépôt API 35 s en médiane après le dernier point (p10 4 s, p90 63 s, après retrait du décalage horaire entier). 1 124 joueurs présents à la fin selon l'API, dont 132 arrêtés au moins 15 s avant la fin : 25 ont une mort écrite après le dernier point (couverts par la fin de vie à la mort), 107 n'en ont aucune, et aucun des 132 n'était immobile depuis 20 s.
 
 **Conclusion / prochaine étape.** Proposer au user de garder affichés jusqu'à la fin ces 107 joueurs présents sans mort écrite ; la cause de l'arrêt des positions reste inconnue. À traiter après l'identification des objets portés.
+
+## [2026-11-08] Desktop L24 : moteur et paquet de ressources séparés — Complété côté code (branche `feat/desktop-p0`, non poussé)
+
+**Décision technique principale.** Deux unités : le moteur (coquille, serveur, front compilé sans `web/titles`, `config/`) et le paquet de
+ressources (`static`, `web/titles`, référentiel, `metadata-prebuilt.zip`, ffmpeg), identifié par l'EMPREINTE de son manifeste (SHA-256 trié,
+calculée au build, embarquée dans le serveur par `-X main.resourcesFingerprint`, relue par `check-version.sh`) : aucune version à incrémenter.
+Point à vérifier 24.3 tranché sur le modèle NSIS réel : en `/UPDATE` un installeur sans ressources laisse les installées intactes (pas de
+désinstallation rejouée), donc deux installeurs, D-9 tenue, pas de téléchargement au premier lancement. Le désinstalleur réécrit par l'installeur
+moteur seul oublie le paquet : `-mode uninstall-cleanup` le retire (`resourcepack.Remove`). Le SERVEUR télécharge (hôtes GitHub, mode jeu, reprise,
+SHA-256, minisign `ED` relu en Go, extraction vérifiée), la coquille Rust lit `resources` de `latest.json` (`Update::raw_json`), le demande par la
+stdin et attend `ready` AVANT d'armer l'installeur du moteur. Activation au démarrage suivant par renommage journalisé (écart au `resources-<v>/` + pointeur :
+295 lecteurs de `RepoRoot` auraient dû apprendre une seconde racine). Hébergé : démarrage refusé si l'empreinte diffère (`resources_incompatible`) ;
+bureau : démarre sur le paquet présent et télécharge le bon.
+
+**Résultats observés.** Installeur complet 159 512 252 o (152,1 Mo), moteur seul 31 675 133 o (30,2 Mo), paquet 152 545 053 o (145,5 Mo).
+`e2e-install.ps1 -EngineInstaller` code 0 : paquet conforme (2 526 fichiers), 3 lancements à arrêt propre, mise à jour moteur seul qui rend le fichier
+du moteur et pas celui du paquet, désinstallation qui retire 2 525 fichiers du paquet et tout le dossier du programme. Signature réelle de
+`tauri signer sign` vérifiée par le code Go. Gates : voir le rapport de clôture. Non jouables ici : Docker (job CI `test-deploy-precheck`), le
+téléchargement contre les vrais hôtes GitHub (gate 24.z).
+
+**Conclusion / prochaine étape.** Reste : revue adversariale 24.7 et gate utilisateur 24.z (hors de cette tâche) ; `[!]` bouton de réessai de
+l'écran `resources_incompatible` de la coquille (relance de la coquille non testable sans la lancer) ; découverte : les `web/assets/*-<hash>.js` d'une
+version restent après chaque mise à jour NSIS (antérieur à L24).

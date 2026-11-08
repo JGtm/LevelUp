@@ -18,6 +18,10 @@
 //	                                          les réglages que la coquille applique (zone de notification,
 //	                                          démarrage avec Windows) et la langue de ses libellés ; écrit une
 //	                                          fois le serveur prêt puis à chaque changement
+//	{"event":"resources","phase":"downloading","fingerprint":"…","expected":"…","active":"…","percent":42,
+//	 "code":"","restart_needed":false}
+//	                                          l'avancement de la préparation du paquet de ressources (resourcepack.Status) :
+//	                                          la coquille attend `ready` ou `failed` avant d'installer le moteur qui l'exige
 //
 // L'écrivain est unique et tient un verrou : deux goroutines (démarrage, signal d'arrêt) ne
 // mélangent jamais leurs octets. Un *desktopEvents nil est un écrivain désactivé : hors du mode
@@ -30,6 +34,8 @@ import (
 	"io"
 	"log/slog"
 	"sync"
+
+	"levelup/go-api/internal/resourcepack"
 )
 
 // Noms des événements (valeur du champ "event").
@@ -43,6 +49,8 @@ const (
 	eventNotification = "notification"
 	// eventShellSettings : voir l'en-tête (L21.c).
 	eventShellSettings = "shell_settings"
+	// eventResources : voir l'en-tête (L24).
+	eventResources = "resources"
 )
 
 // desktopEvents écrit les événements du contrat sur w, une ligne chacun, sous un verrou.
@@ -77,6 +85,10 @@ type (
 	eventShellSettingsBody struct {
 		Event string `json:"event"`
 		shellSettings
+	}
+	eventResourcesBody struct {
+		Event string `json:"event"`
+		resourcepack.Status
 	}
 	eventNotificationBody struct {
 		Event string `json:"event"`
@@ -114,6 +126,11 @@ func (e *desktopEvents) Notification(title, body, kind string) {
 // ShellSettings annonce les réglages que la coquille applique.
 func (e *desktopEvents) ShellSettings(s shellSettings) {
 	e.emit(eventShellSettingsBody{Event: eventShellSettings, shellSettings: s})
+}
+
+// Resources annonce l'avancement de la préparation du paquet de ressources.
+func (e *desktopEvents) Resources(s resourcepack.Status) {
+	e.emit(eventResourcesBody{Event: eventResources, Status: s})
 }
 
 // emit écrit v en une ligne JSON, d'un seul Write. Un événement perdu (sortie fermée par la

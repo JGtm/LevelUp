@@ -42,6 +42,7 @@ import (
 	"levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/platform/userstore"
 	"levelup/go-api/internal/replaybuild"
+	"levelup/go-api/internal/resourcepack"
 	"levelup/go-api/internal/scheduler"
 	"levelup/go-api/internal/service"
 	"levelup/go-api/internal/watcher"
@@ -97,6 +98,11 @@ type bootState struct {
 	backupSched     *duckdbbackup.Scheduler
 	reg             *wire.ServiceRegistry // nil jusqu'à la construction du routeur
 	router          http.Handler
+
+	// resources : le gestionnaire du paquet de ressources (profil desktop seulement, nil sinon) ; resourcesCatchUp :
+	// le démarrage a eu lieu sur un paquet différent de celui du moteur, le bon est à télécharger (launchResources).
+	resources        *resourcepack.Manager
+	resourcesCatchUp bool
 }
 
 // bootConfigure enchaîne les étapes du démarrage qui précèdent l'accès aux bases : crochets
@@ -110,6 +116,7 @@ func bootConfigure(st *bootState) {
 	applyBootMemoryLimit(st.cfg)
 	openBootGate(st)
 	refuseIfInstanceLockFailed(st)
+	bootResourcePack(st)
 	initToolingAndRegistry(st.cfg)
 }
 

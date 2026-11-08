@@ -17,12 +17,22 @@
          ne reste sous la racine de donnees (hors backups) : l'observable d'un arret propre
          (contrat coquille/serveur, plan section 6, point 5) ;
       4. relancement (meme port memorise, /health 200) puis nouvelle fermeture propre ;
+      4b. (avec -EngineInstaller) MISE A JOUR MOTEUR SEUL (ADR 0045, amendement L24) : l'installeur du moteur
+         est lance par-dessus l'installation complete avec /S /UPDATE, comme le fait l'updater. Deux fichiers
+         sont supprimes avant : un fichier du MOTEUR (config\locales.toml), qui doit revenir, et un fichier du
+         PAQUET (LICENSE.LGPL, livre avec ffmpeg), qui ne doit PAS revenir : preuve que l'installeur moteur seul
+         ne reinstalle pas les ressources, alors que le complet l'aurait fait. Tous les autres fichiers du paquet
+         (manifeste compris) gardent leur somme SHA-256 ; l'application demarre et ferme proprement une
+         troisieme fois (le serveur y verifie l'empreinte de son paquet contre le manifeste) ;
       5. desinstallation silencieuse : le programme disparait ; la racine de donnees par defaut
          (%LOCALAPPDATA%\LevelUp), ou le script a pose une sentinelle avant l'installation, existe
          encore avec sa sentinelle (le desinstalleur ne la supprime jamais), comme la racine jetable ;
          le desinstalleur a lance `levelup-server.exe -mode uninstall-cleanup` (crochet NSIS, ADR 0045
          D-28) : le serveur ecrit son bilan dans le fichier temoin LEVELUP_UNINSTALL_WITNESS (racine
-         jetable, dossier du programme, `exit=0`, `ok=true`, tache de la racine jetable nommee et absente).
+         jetable, dossier du programme, `exit=0`, `ok=true`, tache de la racine jetable nommee et absente,
+         paquet de ressources retire : `ressources=<n>-fichiers`). Apres une mise a jour moteur seul, le
+         desinstalleur ne connait plus les fichiers du paquet : c'est ce nettoyage qui les retire, et le dossier
+         du programme doit disparaitre ENTIEREMENT.
          Le test ne pose aucune entree de demarrage ni tache planifiee (trop risque sur le poste) : le
          bilan attendu est `demarrage=absent` (ou `foreign` : une entree d'un autre dossier sur le poste) et
          `tache=absent`, jamais `removed`. La branche du desinstalleur "LEVELUP_DATA_DIR absente" n'est PAS
@@ -35,7 +45,10 @@
     main avec le code 0 ou 1 ; en cas d'echec il copie les journaux sous -ArtifactsDir.
 
 .PARAMETER Installer
-    L'installeur NSIS (LevelUp_X.Y.Z_x64-setup.exe).
+    L'installeur NSIS COMPLET (LevelUp_X.Y.Z_x64-setup.exe).
+
+.PARAMETER EngineInstaller
+    L'installeur NSIS MOTEUR SEUL (LevelUp_X.Y.Z_x64-engine-setup.exe) : active l'etape de mise a jour (4b).
 
 .PARAMETER DataDir
     Racine de donnees jetable (defaut : un dossier neuf sous %TEMP%).
@@ -53,6 +66,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)][string]$Installer,
+    [string]$EngineInstaller = '',
     [string]$DataDir = '',
     [string]$ArtifactsDir = '',
     [int]$TimeoutSec = 240
@@ -75,6 +89,7 @@ $Witness = Join-Path $env:TEMP ('levelup-e2e-uninstall-' + [Guid]::NewGuid().ToS
 if (-not $DataDir) { $DataDir = Join-Path $env:TEMP ('levelup-e2e-data-' + [Guid]::NewGuid().ToString('N')) }
 if (-not $ArtifactsDir) { $ArtifactsDir = Join-Path $env:TEMP 'levelup-e2e-artifacts' }
 $Installer = (Resolve-Path $Installer).Path
+if ($EngineInstaller) { $EngineInstaller = (Resolve-Path $EngineInstaller).Path }
 
 function Step([string]$text) { Write-Host ('[e2e] ' + $text) }
 function Fail([string]$text) { throw ('ECHEC : ' + $text) }
@@ -158,6 +173,24 @@ function Invoke-Run([int]$Number) {
     if ($last -notmatch '"clean"\s*:\s*true') { Fail "arret non propre : $last" }
     Assert-NoWal
     Step "arret propre ($StopMessage, clean=true), aucun *.wal"
+}
+
+# Les fichiers du paquet et leur somme SHA-256, lus dans le manifeste INSTALLE (le serveur n'est pas lance).
+function Get-PackFiles {
+    $manifest = Join-Path $InstallDir 'resources.manifest.json'
+    if (-not (Test-Path $manifest)) { Fail "resources.manifest.json absent de $InstallDir" }
+    return @((Get-Content -Raw -Encoding UTF8 $manifest | ConvertFrom-Json).files)
+}
+
+function Assert-PackIntact([string[]]$Except) {
+    $bad = @()
+    foreach ($file in Get-PackFiles) {
+        if ($Except -contains $file.path) { continue }
+        $path = Join-Path $InstallDir ($file.path -replace '/', '\')
+        if (-not (Test-Path $path)) { $bad += "$($file.path) (absent)"; continue }
+        if ((Get-FileHash -Algorithm SHA256 -Path $path).Hash.ToLowerInvariant() -ne $file.sha256) { $bad += "$($file.path) (somme differente)" }
+    }
+    if ($bad.Count -gt 0) { Fail ('fichiers du paquet alteres : ' + (($bad | Select-Object -First 5) -join ', ')) }
 }
 
 function Copy-Failure {
@@ -255,8 +288,31 @@ try {
     if (Test-Path (Join-Path $DefaultDataRoot 'levelup-desktop.exe')) { Fail "le programme est installe dans la racine de donnees par defaut $DefaultDataRoot" }
     Step "installe sous $InstallDir"
 
+    $manifestPath = Join-Path $InstallDir 'resources.manifest.json'
+    if (-not (Test-Path (Join-Path $InstallDir 'web\titles'))) { Fail 'web\titles (paquet) absent de l''installation complete' }
+    $packCount = @(Get-PackFiles).Count
+    Assert-PackIntact @()
+    Step "paquet de ressources installe : $packCount fichiers, sommes conformes au manifeste"
+
     Invoke-Run 1
     Invoke-Run 2
+
+    if ($EngineInstaller) {
+        Step 'mise a jour moteur seul : un fichier du moteur et un fichier du paquet sont supprimes avant'
+        $engineProbe = Join-Path $InstallDir 'config\locales.toml'
+        $packProbe = Join-Path $InstallDir 'LICENSE.LGPL'
+        foreach ($probe in $engineProbe, $packProbe) { if (-not (Test-Path $probe)) { Fail "$probe absent avant la mise a jour" } }
+        $manifestBefore = (Get-FileHash -Algorithm SHA256 -Path $manifestPath).Hash
+        Remove-Item -Force $engineProbe, $packProbe
+        $update = Start-Process -FilePath $EngineInstaller -ArgumentList '/S', '/UPDATE' -Wait -PassThru
+        if ($update.ExitCode -ne 0) { Fail "l'installeur moteur seul a rendu le code $($update.ExitCode)" }
+        if (-not (Test-Path $engineProbe)) { Fail 'le fichier du moteur supprime n''a pas ete reinstalle par l''installeur moteur seul' }
+        if (Test-Path $packProbe) { Fail 'l''installeur moteur seul a reinstalle un fichier du PAQUET : il ne devrait embarquer que le moteur' }
+        if ((Get-FileHash -Algorithm SHA256 -Path $manifestPath).Hash -ne $manifestBefore) { Fail 'le manifeste du paquet a change pendant une mise a jour moteur seul' }
+        Assert-PackIntact @('LICENSE.LGPL')
+        Step 'moteur reinstalle, paquet conserve (fichier supprime non reinstalle, autres sommes intactes)'
+        Invoke-Run 3
+    }
 
     Step 'desinstallation silencieuse'
     $marker = Join-Path $DataDir 'desktop\port'
@@ -277,6 +333,8 @@ try {
     if ($report -notmatch ' exit=0\s*$') { Fail "le nettoyage n'a pas rendu le code de sortie 0 : $report" }
     if ($report -notmatch ' ok=true ') { Fail "le nettoyage n'a pas rendu ok=true : $report" }
     if ($report -notmatch 'demarrage=(absent|foreign) ') { Fail "bilan de l'entree de demarrage inattendu (absent ou foreign attendu, jamais removed) : $report" }
+    if ($report -notmatch ' ressources=\d+-fichiers ') { Fail "le nettoyage n'a pas retire le paquet de ressources (ressources=<n>-fichiers attendu) : $report" }
+    if ($EngineInstaller -and $report -match ' ressources=0-fichiers ') { Fail "apres une mise a jour moteur seul, le nettoyage doit retirer les fichiers du paquet : $report" }
     if ($report -notmatch ' tache=absent ') { Fail "bilan de la tache inattendu (tache=absent attendu : la racine jetable n'en a pas) : $report" }
     if (-not $report.Contains('nom_tache="' + (Get-ExpectedTaskName $DataDir) + '"')) { Fail "la tache visee n'est pas celle de la racine $DataDir : $report" }
     if (-not $report.Contains('data_root="' + $DataDir + '"')) { Fail "le nettoyage a vise une autre racine de donnees que $DataDir : $report" }

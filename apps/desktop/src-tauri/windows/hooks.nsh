@@ -41,8 +41,14 @@
 ; Le crochet fait la meme verification EN TETE : « Annuler » a « LevelUp est en cours d'execution » arrete la
 ; desinstallation avant tout retrait (le second appel du modele ne trouve plus rien a fermer).
 ;
-; Pas dans le flux de mise a jour de l'updater : il rejoue l'ancien desinstalleur avec /UPDATE, et
-; l'utilisateur qui met a jour garde son entree et sa tache. Une mise a jour MANUELLE (installeur lance a la main,
+; Le serveur livre retire aussi le PAQUET DE RESSOURCES installe sous le dossier du programme (ffmpeg, static, web/titles,
+; referentiel : les fichiers que resources.manifest.json liste, rien d'autre) : l'installeur « moteur seul » d'une mise
+; a jour ne les liste pas, le desinstalleur qu'il reecrit ne les connait donc plus, alors que l'installeur complet les
+; avait poses (ADR 0045, amendement L24). Sans ce nettoyage ils resteraient dans le dossier du programme.
+;
+; Pas dans le flux de mise a jour de l'updater : l'installeur lance avec /UPDATE ecrase les fichiers sur place et
+; N'APPELLE PAS l'ancien desinstalleur (le modele de Tauri saute la desinstallation en mode mise a jour, sauf migration
+; depuis un MSI) ; l'utilisateur qui met a jour garde son entree et sa tache. Une mise a jour MANUELLE (installeur lance a la main,
 ; case « desinstaller avant » cochee par defaut) ou une reinstallation passive /P appelle l'ancien desinstalleur SANS
 ; /UPDATE : l'entree et la tache sont alors retirees, et reposees au prochain lancement si le reglage est actif.
 ;

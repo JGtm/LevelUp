@@ -13,6 +13,9 @@
 //!                                         les reglages que la coquille applique (zone de notification,
 //!                                         demarrage avec Windows) et la langue de ses libelles ; ecrit une
 //!                                         fois le serveur pret, puis a chaque changement
+//! {"event":"resources","phase":"..","fingerprint":"..","code":"..",...}
+//!                                         ou en est la preparation du paquet de ressources demandee par la
+//!                                         commande `resources` (L24) ; la coquille attend `ready` ou `failed`
 //! ```
 //!
 //! Une ligne qui n'est pas un evenement (journal egare, etat futur inconnu) n'est jamais fatale :
@@ -20,6 +23,7 @@
 
 use serde_json::{Map, Value};
 
+use crate::resources::ResourcesEvent;
 use crate::shell_settings::ShellSettings;
 
 /// Un evenement du contrat.
@@ -43,6 +47,8 @@ pub enum SidecarEvent {
     Notification(Toast),
     /// Les reglages que la coquille applique (L21.c).
     ShellSettings(ShellSettings),
+    /// L'avancement de la preparation d'un paquet de ressources (L24).
+    Resources(ResourcesEvent),
 }
 
 /// Une notification a montrer : titre et corps sont ceux que le serveur a composes dans la langue du
@@ -111,8 +117,26 @@ pub fn parse_line(line: &str) -> Result<SidecarEvent, ParseError> {
                 .trim()
                 .to_string(),
         })),
+        "resources" => Ok(SidecarEvent::Resources(ResourcesEvent {
+            phase: text_of(object, "phase")?,
+            fingerprint: optional_text(object, "fingerprint"),
+            code: optional_text(object, "code"),
+            percent: object
+                .get("percent")
+                .and_then(Value::as_u64)
+                .map_or(0, |p| u8::try_from(p.min(100)).unwrap_or(100)),
+        })),
         other => Err(ParseError::UnknownEvent(other.to_string())),
     }
+}
+
+/// Un champ texte facultatif : absent ou d'un autre type, il vaut le texte vide.
+fn optional_text(object: &Map<String, Value>, field: &str) -> String {
+    object
+        .get(field)
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_string()
 }
 
 /// Un champ booleen obligatoire.
@@ -173,6 +197,35 @@ mod tests {
                 body: "A jour.".into(),
                 kind: "sync".into(),
             }))
+        );
+    }
+
+    #[test]
+    fn decode_l_avancement_du_paquet_de_ressources() {
+        assert_eq!(
+            parse_line(
+                r#"{"event":"resources","phase":"failed","fingerprint":"ab","expected":"cd","percent":12,"code":"resources_checksum_mismatch","restart_needed":false}"#
+            ),
+            Ok(SidecarEvent::Resources(ResourcesEvent {
+                phase: "failed".into(),
+                fingerprint: "ab".into(),
+                code: "resources_checksum_mismatch".into(),
+                percent: 12,
+            }))
+        );
+        // Empreinte et code sont facultatifs ; la phase ne l'est pas.
+        assert_eq!(
+            parse_line(r#"{"event":"resources","phase":"idle"}"#),
+            Ok(SidecarEvent::Resources(ResourcesEvent {
+                phase: "idle".into(),
+                fingerprint: String::new(),
+                code: String::new(),
+                percent: 0,
+            }))
+        );
+        assert_eq!(
+            parse_line(r#"{"event":"resources","fingerprint":"ab"}"#),
+            Err(ParseError::BadField("phase"))
         );
     }
 

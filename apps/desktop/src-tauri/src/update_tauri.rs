@@ -3,9 +3,11 @@
 //! `levelup_desktop::updater`), aucun libelle (ils viennent du catalogue).
 
 use levelup_desktop::download_watch::{POLL_INTERVAL, Progress, Slot, watch_download};
+use levelup_desktop::resources::{ResourcePack, pack_from_raw_json};
 use levelup_desktop::update_notes::notes_for_locale;
 use levelup_desktop::updater::{
-    CHECK_TIMEOUT, Decision, Installer, Notice, Notifier, Offer, Prompt, PromptText, UpdateSource, notice_text,
+    CHECK_TIMEOUT, CLOSER_WAIT, CloserSlot, Decision, Installer, Notice, Notifier, Offer, Prompt, PromptText,
+    UpdateSource, notice_text,
 };
 use tauri::AppHandle;
 use tauri_plugin_updater::{Update, UpdaterExt};
@@ -16,15 +18,21 @@ pub struct PluginSource {
     app: AppHandle,
     locale: &'static str,
     found: Option<Update>,
+    /// Le paquet de ressources que la release trouvee publie (bloc `resources` de `latest.json`).
+    pack: Option<ResourcePack>,
+    /// La poignee du superviseur : c'est par elle que le serveur recoit la demande de preparer le paquet.
+    closer: CloserSlot,
 }
 
 impl PluginSource {
     /// `locale` : la langue de la coquille, qui choisit les notes montrees (`notes_for_locale`).
-    pub fn new(app: AppHandle, locale: &'static str) -> Self {
+    pub fn new(app: AppHandle, locale: &'static str, closer: CloserSlot) -> Self {
         Self {
             app,
             locale,
             found: None,
+            pack: None,
+            closer,
         }
     }
 }
@@ -44,8 +52,19 @@ impl UpdateSource for PluginSource {
             // `body` est la cle `notes` : le repli quand le document n'en porte aucune pour la langue.
             notes: notes_for_locale(self.locale, &update.raw_json).or_else(|| update.body.clone()),
         });
+        self.pack = found.as_ref().and_then(|update| pack_from_raw_json(&update.raw_json));
         self.found = found;
         Ok(offer)
+    }
+
+    fn prepare_resources(&mut self, offer: &Offer) -> Result<(), String> {
+        let Some(pack) = self.pack.clone() else {
+            return Ok(());
+        };
+        let closer = self.closer.wait(CLOSER_WAIT).ok_or("serveur indisponible")?;
+        closer
+            .prepare_resources(&pack)
+            .map_err(|e| format!("paquet de ressources de la version {} non pret : {e}", offer.version))
     }
 
     fn download(&mut self, offer: &Offer) -> Result<Installer, String> {

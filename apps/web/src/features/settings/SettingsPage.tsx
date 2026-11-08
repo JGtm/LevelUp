@@ -26,6 +26,7 @@ import { ExportForDesktopCard } from './ExportForDesktopCard'
 import { FilmArchivePanel } from './FilmArchivePanel'
 import { PoolSharingCard } from './PoolSharingCard'
 import { ReplayRegenCard } from '@/components/replay-regen/ReplayRegenCard'
+import { ResourcePackCard } from './ResourcePackCard'
 import { SiteImportPanel } from './SiteImportPanel'
 import { TitlesTab } from './TitlesTab'
 import { InterfaceCard, DiscordCard, MediaCard } from './_settingsCards'
@@ -48,9 +49,10 @@ export function SettingsPage() {
   const limitMemory = useDeploymentCapability('can_limit_memory')
   const importFromSite = useDeploymentCapability('can_import_from_site')
   const regenReplays = useDeploymentCapability('can_regenerate_replays')
+  const updateApp = useDeploymentCapability('can_update_app')
   // L'onglet « Application » n'existe que là où une intégration au poste est offerte (bureau).
   const hasDesktopIntegration = watchGame || integrateShell || scheduleRefresh
-  const hasDesktopTab = hasDesktopIntegration || backupToFolder || limitMemory || importFromSite || regenReplays
+  const hasDesktopTab = hasDesktopIntegration || backupToFolder || limitMemory || importFromSite || regenReplays || updateApp
   const locale = useAppShellStore((s) => s.locale)
   const t = getSettingsText(locale)
   const tc = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
@@ -159,6 +161,7 @@ export function SettingsPage() {
             {hasDesktopIntegration && <DesktopIntegrationCard />}
             <DataCard />
             <ReplayRegenCard />
+            <ResourcePackCard />
             <SiteImportPanel />
           </>
         )}

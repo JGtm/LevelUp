@@ -1054,6 +1054,10 @@ en = "The databases were upgraded by a newer version of LevelUp. Install that ve
 fr = "Aucun port local n'a pu être ouvert. Vérifiez qu'aucun logiciel de sécurité ne le bloque, puis relancez."
 en = "No local port could be opened. Check that no security software is blocking it, then start again."
 
+[common.root.server_failed.resources_incompatible]
+fr = "Les ressources de LevelUp (images, sons, données de référence) ne correspondent pas à ce moteur. Sur un serveur hébergé, l'image est mal assemblée : reconstruisez-la. Sur l'application de bureau, relancez LevelUp pour télécharger les ressources."
+en = "LevelUp's resources (images, sounds, reference data) do not match this engine. On a hosted server the image is badly assembled: rebuild it. On the desktop app, start LevelUp again to download the resources."
+
 # Application desktop : la requête n'a pas (ou plus) le cookie d'entrée posé par la coquille
 # (401 desktop_unauthorized, ADR 0045 D-3). Seule la coquille le repose, en rouvrant l'application.
 [common.root.desktop_entry_required.title]

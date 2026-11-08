@@ -166,6 +166,12 @@ type DeploymentCapabilities struct {
 	// régénère, un film à la fois, sur demande de l'utilisateur (file de fond, mode jeu respecté ; ADR 0045).
 	// Faux sur un serveur hébergé, dont les rejeux se cuisent au fil de la synchronisation ou par un ouvrier.
 	ReplayRegen bool
+	// ResourcePackFatal : le paquet de ressources installé DOIT être celui du moteur : l'empreinte du manifeste est
+	// comparée à celle que le binaire embarque au démarrage, et une différence refuse le démarrage (même discipline
+	// qu'une migration fatale). Vraie sur un serveur hébergé et sur la démo, dont l'image embarque moteur et paquet
+	// ensemble ; fausse sur desktop, qui démarre sur le paquet présent et télécharge le bon (capacité UpdateApp),
+	// et en développement, qui n'embarque aucune empreinte.
+	ResourcePackFatal bool
 	// AutoSyncByDefault : la synchronisation automatique (`spnkr_auto_sync_enabled`) est ACTIVE tant que
 	// l'utilisateur n'a rien écrit : l'application de bureau suit un compte et doit se tenir à jour sans
 	// réglage préalable. Défaut des clés absentes d'app_settings.json (settings.Store.WithAutoSyncDefault) ;
@@ -286,6 +292,7 @@ func capabilitiesOf(cfg *AppConfig) DeploymentCapabilities {
 		ShellIntegration:       desktop,
 		ScheduledRefresh:       desktop,
 		AutoSyncByDefault:      desktop,
+		ResourcePackFatal:      !desktop && cfg.Deployment != DeploymentDev,
 		ParquetBackup:          desktop,
 		ImportFromSite:         desktop,
 		ExportForDesktop:       !desktop && !demo,

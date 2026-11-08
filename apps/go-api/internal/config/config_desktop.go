@@ -28,6 +28,10 @@ type DesktopConfig struct {
 	// TitleReadyNotifier, avant celle du routeur ; nil en CLI/tests, où la route d'arrêt
 	// répond 404.
 	ShutdownRequester func(reason string)
+	// UpdatePublicKey : la clé publique de mise à jour (le champ `pubkey` de tauri.conf.json), posée par la
+	// coquille dans LEVELUP_UPDATE_PUBKEY : elle vérifie la signature du paquet de ressources, la même que celle de
+	// l'installeur. Vide : aucun paquet ne peut être téléchargé.
+	UpdatePublicKey string
 	// SystemLocale : fuseau et langue du système, lus sous la capacité AdoptSystemLocale
 	// (valeur zéro sinon). Défaut des clés absentes d'app_settings.json (settings.Store.WithSystemDefaults).
 	SystemLocale SystemLocale
@@ -39,6 +43,7 @@ type DesktopConfig struct {
 // withDesktopConfig lit les réglages desktop de l'environnement dans cfg et le rend.
 func withDesktopConfig(cfg *AppConfig) *AppConfig {
 	cfg.DesktopSecret = strings.TrimSpace(getEnvOrDefault("LEVELUP_DESKTOP_SECRET", ""))
+	cfg.UpdatePublicKey = strings.TrimSpace(getEnvOrDefault("LEVELUP_UPDATE_PUBKEY", ""))
 	return cfg
 }
 

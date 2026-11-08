@@ -337,6 +337,7 @@ export const handlers = [
   http.get(p('/settings/film-archive'), () => HttpResponse.json(filmArchiveFixture)),
   http.get(p('/settings/desktop'), () => HttpResponse.json(desktopStatusFixture)),
   http.get(p('/settings/data'), () => HttpResponse.json(dataStatusFixture)),
+  http.get(p('/desktop/resources'), () => HttpResponse.json({ phase: 'idle', percent: 0, restart_needed: false })),
   http.post(p('/settings/data/backup/run'), () => HttpResponse.json({ started: true }, { status: 202 })),
 
   // Import depuis le site, rapport de diagnostic et jeton d'export (lot L22)

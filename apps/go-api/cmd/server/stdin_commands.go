@@ -4,6 +4,10 @@
 //
 //	sync    demande un cycle de synchronisation immédiat (« Synchroniser maintenant » du menu de la zone de
 //	        notification)
+//	resources <json>
+//	        demande de préparer le paquet de ressources que décrit le JSON (mise à jour de l'application : le paquet
+//	        est téléchargé et vérifié AVANT l'installation du moteur qui l'exige) ; l'avancement revient par
+//	        l'événement `resources`
 //
 // stdin est le tube privé que le parent tient : seul le processus qui a lancé le serveur peut y écrire, sans
 // cookie ni secret. Une commande inconnue est journalisée et ignorée, jamais fatale.
@@ -23,7 +27,7 @@ import (
 const stdinCommandSync = "sync"
 
 // maxStdinLine borne une ligne de commande : le tampon ne grossit jamais pour une ligne sans fin.
-const maxStdinLine = 256
+const maxStdinLine = 4096
 
 // maxLoggedStdinLine borne ce qu'une ligne inconnue ajoute au journal.
 const maxLoggedStdinLine = 40
@@ -32,6 +36,8 @@ const maxLoggedStdinLine = 40
 type stdinCommands struct {
 	mu       sync.RWMutex
 	handlers map[string]func()
+	// argHandlers : les commandes qui portent un argument (le reste de la ligne après le nom).
+	argHandlers map[string]func(arg string)
 }
 
 // Handle branche fn sur la commande name (un second appel remplace le premier).
@@ -44,15 +50,33 @@ func (c *stdinCommands) Handle(name string, fn func()) {
 	c.handlers[name] = fn
 }
 
+// HandleArg branche fn sur la commande name suivie d'un argument (le reste de la ligne, espaces de bord retirés).
+func (c *stdinCommands) HandleArg(name string, fn func(arg string)) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.argHandlers == nil {
+		c.argHandlers = make(map[string]func(string))
+	}
+	c.argHandlers[name] = fn
+}
+
 // dispatch exécute la commande d'une ligne ; fn ne bloque pas (elle lance son travail à part).
 func (c *stdinCommands) dispatch(ctx context.Context, line string) {
 	name := strings.TrimSpace(line)
 	if name == "" {
 		return
 	}
+	word, arg, hasArg := strings.Cut(name, " ")
 	c.mu.RLock()
 	fn := c.handlers[name]
+	argFn := c.argHandlers[word]
 	c.mu.RUnlock()
+	if fn == nil && hasArg && argFn != nil {
+		// Le journal porte le nom de la commande, jamais son argument.
+		slog.InfoContext(ctx, "stdin: commande reçue de la coquille", "commande", word)
+		argFn(strings.TrimSpace(arg))
+		return
+	}
 	if fn == nil {
 		if len(name) > maxLoggedStdinLine {
 			name = name[:maxLoggedStdinLine] + "…"

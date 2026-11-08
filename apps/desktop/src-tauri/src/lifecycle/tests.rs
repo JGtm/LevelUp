@@ -74,6 +74,7 @@ fn un_echec_sans_port_montre_l_ecran_embarque_de_sa_cause() {
         ("migration_failed", FailureKind::MigrationFailed),
         ("schema_newer", FailureKind::SchemaNewer),
         ("port", FailureKind::Port),
+        ("resources_incompatible", FailureKind::ResourcesIncompatible),
     ] {
         let mut m = machine();
         assert_eq!(
@@ -394,4 +395,86 @@ fn la_fermeture_ordonnee_ne_montre_pas_la_fenetre() {
     m.step(ready(8123));
     m.step(Input::CloseRequested);
     assert!(!m.step(Input::Exited).contains(&Action::RevealWindow));
+}
+
+#[test]
+fn la_preparation_du_paquet_part_vers_le_serveur_pret_seulement() {
+    let command = || Input::ResourcesRequested("resources {\"fingerprint\":\"f\"}".to_string());
+    let mut m = machine();
+    assert_eq!(
+        m.step(command()),
+        vec![Action::ResourcesSkipped { phase: "starting" }],
+        "avant ready : abandonnee, et journalisee (l'attente de la mise a jour est reveillee)"
+    );
+    m.step(ready(8123));
+    assert_eq!(
+        m.step(command()),
+        vec![Action::SendResources("resources {\"fingerprint\":\"f\"}".to_string())]
+    );
+
+    let mut closing = machine();
+    closing.step(ready(8123));
+    closing.step(Input::CloseRequested);
+    assert_eq!(
+        closing.step(command()),
+        vec![Action::ResourcesSkipped { phase: "closing" }]
+    );
+
+    let mut dead = machine();
+    dead.step(ready(8123));
+    dead.step(Input::Exited);
+    assert_eq!(dead.step(command()), vec![Action::ResourcesSkipped { phase: "dead" }]);
+}
+
+#[test]
+fn l_evenement_resources_ne_change_aucun_ecran() {
+    let mut m = machine();
+    m.step(ready(8123));
+    let event = SidecarEvent::Resources(levelup_desktop_resources_event());
+    assert!(m.step(Input::Event(event)).is_empty());
+}
+
+fn levelup_desktop_resources_event() -> crate::resources::ResourcesEvent {
+    crate::resources::ResourcesEvent {
+        phase: "downloading".into(),
+        fingerprint: "f".into(),
+        code: String::new(),
+        percent: 0,
+    }
+}
+
+fn resources_progress(phase: &str, percent: u8) -> Input {
+    Input::Event(SidecarEvent::Resources(crate::resources::ResourcesEvent {
+        phase: phase.into(),
+        fingerprint: "f".into(),
+        code: String::new(),
+        percent,
+    }))
+}
+
+#[test]
+fn un_telechargement_qui_progresse_rearme_le_delai_de_demarrage() {
+    let mut m = machine();
+    m.step(listening(8123));
+    let rearm = vec![Action::Arm(Timer::Startup, T.startup)];
+    assert_eq!(m.step(resources_progress("downloading", 0)), rearm);
+    assert_eq!(m.step(resources_progress("downloading", 7)), rearm);
+    // Le meme avancement repete n'est pas un progres : un telechargement bloque ne tient pas le delai en vie.
+    assert_eq!(m.step(resources_progress("downloading", 7)), vec![]);
+    assert_eq!(m.step(resources_progress("downloading", 8)), rearm);
+    assert_eq!(m.step(resources_progress("verifying", 99)), rearm);
+    // Les autres phases n'engagent rien : seule une preparation en cours retient le delai.
+    for phase in ["idle", "ready", "current", "failed"] {
+        assert_eq!(m.step(resources_progress(phase, 100)), vec![], "{phase}");
+    }
+}
+
+#[test]
+fn l_avancement_du_paquet_apres_ready_ou_un_echec_ne_rearme_rien() {
+    let mut ready_machine = machine();
+    ready_machine.step(ready(8123));
+    assert_eq!(ready_machine.step(resources_progress("downloading", 50)), vec![]);
+    let mut failed_machine = machine();
+    failed_machine.step(failed("migration_failed"));
+    assert_eq!(failed_machine.step(resources_progress("downloading", 50)), vec![]);
 }

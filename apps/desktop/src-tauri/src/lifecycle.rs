@@ -12,6 +12,10 @@
 //!     |             |                               |
 //!     +--120 s------+--> Failed(delai) + kill        |
 //!                                                    |
+//!  paquet de ressources absent : le serveur le telecharge AVANT `ready`. Chaque evenement `resources` qui
+//!  PROGRESSE (autre phase, ou avancement plus grand) rearme la minuterie de demarrage ; un telechargement
+//!  bloque n'en emet plus et finit par le delai.
+//!
 //!  fermeture demandee (toute phase, processus vivant) :
 //!     ecran "fermeture", stdin ferme, minuterie 40 s + 5 s
 //!     -> processus sorti : sortie de l'application
@@ -68,6 +72,8 @@ pub enum Input {
     CloseRequested,
     /// « Synchroniser maintenant » du menu de la zone de notification.
     SyncRequested,
+    /// La mise a jour demande au serveur de preparer un paquet de ressources (la ligne `resources <json>`, L24).
+    ResourcesRequested(String),
     TimerFired(Timer),
 }
 
@@ -99,6 +105,12 @@ pub enum Action {
     ApplyShellSettings(ShellSettings),
     /// Ecrire la commande `sync` sur la stdin du serveur : un cycle de synchronisation immediat (L21.c).
     SendSync,
+    /// Ecrire la commande `resources <json>` sur la stdin du serveur : preparer un paquet de ressources (L24).
+    SendResources(String),
+    /// La preparation demandee n'est pas ecrite : le serveur n'est pas pret ; `phase` nomme la phase courante.
+    ResourcesSkipped {
+        phase: &'static str,
+    },
     /// La synchronisation demandee n'est pas ecrite : le serveur n'est pas pret ; `phase` nomme la phase
     /// courante pour le journal (jamais un abandon sans trace).
     SyncSkipped {
@@ -150,6 +162,8 @@ pub struct Lifecycle {
     failure: Option<FailureKind>,
     stopped_clean: Option<bool>,
     killed: bool,
+    /// Dernier avancement du paquet de ressources vu avant `ready` (phase, pourcentage).
+    last_progress: Option<(String, u8)>,
 }
 
 impl Lifecycle {
@@ -164,6 +178,7 @@ impl Lifecycle {
             failure: None,
             stopped_clean: None,
             killed: false,
+            last_progress: None,
         };
         (
             machine,
@@ -198,6 +213,7 @@ impl Lifecycle {
             Input::Exited => self.on_exited(),
             Input::CloseRequested => self.on_close_requested(),
             Input::SyncRequested => self.on_sync_requested(),
+            Input::ResourcesRequested(command) => self.on_resources_requested(command),
             Input::TimerFired(timer) => self.on_timer(timer),
         }
     }
@@ -226,6 +242,14 @@ impl Lifecycle {
                 // Arret decide par le serveur lui-meme (signal, route d'arret) : meme ecran que la fermeture.
                 vec![Action::ShowScreen(Screen::Stopping)]
             }
+            // Le paquet absent se telecharge avant `ready` : tant qu'il progresse, le serveur n'est pas bloque.
+            SidecarEvent::Resources(resources) if booting && resources.is_working() => {
+                if self.note_progress(&resources.phase, resources.percent) {
+                    vec![Action::Arm(Timer::Startup, self.timeouts.startup)]
+                } else {
+                    Vec::new()
+                }
+            }
             // Une notification n'a de sens que pour une application ouverte : avant `ready` il n'y a rien a
             // montrer, pendant la fermeture ou apres un echec non plus.
             SidecarEvent::Notification(toast) if self.phase == Phase::Ready => vec![Action::Notify(toast)],
@@ -244,6 +268,18 @@ impl Lifecycle {
             // `ready` ou `failed` hors du demarrage, `stopping` pendant une fermeture ou un echec : rien a faire.
             _ => Vec::new(),
         }
+    }
+
+    /// Retient l'avancement du paquet ; vrai quand il a progresse (autre phase, ou pourcentage plus grand).
+    fn note_progress(&mut self, phase: &str, percent: u8) -> bool {
+        let advanced = match &self.last_progress {
+            Some((last_phase, last_percent)) => last_phase != phase || percent > *last_percent,
+            None => true,
+        };
+        if advanced {
+            self.last_progress = Some((phase.to_string(), percent));
+        }
+        advanced
     }
 
     fn on_failed(&mut self, state: &str) -> Vec<Action> {
@@ -301,6 +337,17 @@ impl Lifecycle {
             vec![Action::SendSync]
         } else {
             vec![Action::SyncSkipped {
+                phase: self.phase.name(),
+            }]
+        }
+    }
+
+    /// Comme la synchronisation : la commande n'est ecrite que pour un serveur pret.
+    fn on_resources_requested(&mut self, command: String) -> Vec<Action> {
+        if self.phase == Phase::Ready && self.process_alive {
+            vec![Action::SendResources(command)]
+        } else {
+            vec![Action::ResourcesSkipped {
                 phase: self.phase.name(),
             }]
         }
