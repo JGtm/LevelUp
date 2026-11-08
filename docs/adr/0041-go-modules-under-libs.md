@@ -42,9 +42,14 @@ sit at the first level of the module (`libs/gamefiles/himodule`, never `libs/gam
 keeps `levelup/go-api`. The first module is `libs/gamefiles` (`himodule`, `ooz`, `hinavmesh`,
 `mapvar`); the second is `libs/himap` (package `himap`, the map-image brick: `github.com/JGtm/LevelUp/libs/himap`);
 the third is `libs/film` (the film decoder, `github.com/JGtm/LevelUp/libs/film`: the facade `decfilm`, the
-publication layer `replay`, its catalogues and output types at the first level, and the closed layers of
-ADR 0034 D-1 under `libs/film/internal/` — the `internal/` rule now closes them to LevelUp at the module
-boundary, which is what D-1 asks); the fourth is `libs/haloapi` (the Halo API,
+publication layer `replay`, its catalogues and output types at the first level, the memory sentinel
+`memguard`, the read side of the film archive `filmcache` (writing, recompression and moving the archive,
+the process launcher and the decode lock are LevelUp's: `internal/filmarchive`, `internal/filmrun`), and the
+closed layers of ADR 0034 D-1 under `libs/film/internal/`, together with the module-closed helpers
+(`digest`, `atomicfile`, `filelock`, `decodelock`, `depottest`) — the `internal/` rule now closes them to
+LevelUp at the module boundary, which is what D-1 asks; `digest`, `atomicfile` and `filelock` have twin copies in
+`apps/go-api` held identical by `archlint/copies_identiques_test.go`; what the brick does not decide is ADR
+0034, amendment of 2026-11-08); the fourth is `libs/haloapi` (the Halo API,
 `github.com/JGtm/LevelUp/libs/haloapi`: the root package `haloapi` and the sub-packages `xblauth`, `infinite`,
 `halo5`, `xboxlive`, `haloapitest`; ADR 0042, ADR 0043).
 
