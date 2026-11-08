@@ -8,9 +8,8 @@
  *     et `levelup-squad-filter-v1`) après navigation sur les 2 sections.
  *  2. Isolation Squad ↔ Stats : un filtre cascade posé sur Squad ne pollue pas
  *     Stats Solo et vice versa (vérifié via les payloads réseau).
- *  3. Scope local des pages annexes : Citations / SessionDetail / SessionCompare
- *     ont leur barre filtres propre (cf. présence du dropdown Expérience local)
- *     et n'envoient PAS le filterContext du store solo dans leurs requêtes.
+ *  3. Scope local des pages annexes : elles ont leur barre filtres propre et
+ *     n'envoient PAS le filterContext du store solo dans leurs requêtes.
  */
 import { test, expect } from '@playwright/test'
 import { skipIfNoDemoData } from './_helpers/demoData'
@@ -133,57 +132,6 @@ test.describe('Split stores filtres — architecture solo/squad isolée', () => 
     const experienceTypes =
       body.cascade?.experience_types ?? body.filters?.cascade?.experience_types ?? []
     expect(experienceTypes, 'cascade experience Squad doit être vide').toEqual([])
-  })
-
-  test('3a. CitationsPage a sa propre barre filtres locale (Expérience visible)', async ({ page }) => {
-    await skipIfNoDemoData()
-    await page.goto(playerPath(PLAYER, 'citations'))
-    await page.waitForLoadState('networkidle')
-
-    // La barre locale (useLocalFilterBar) rend le dropdown Expérience avec
-    // le placeholder "Expérience" (manifest citations.filters.experience).
-    await expect(
-      page.getByRole('button', { name: /Expérience\s*:/ }),
-      'dropdown Expérience local doit être présent',
-    ).toBeVisible()
-  })
-
-  test('3b. CitationsPage envoie un filterContext local (pas hérité du store solo)', async ({ page }) => {
-    await skipIfNoDemoData()
-    // Pollue le store solo avec une cascade
-    await page.goto(playerPath(PLAYER, 'home'))
-    await page.evaluate(() => {
-      const raw = JSON.parse(localStorage.getItem('levelup-solo-filter-v1') ?? '{}')
-      raw.state = raw.state ?? {}
-      raw.state.filterContext = {
-        filter_mode: 'period',
-        period: { start_date: null, end_date: null },
-        sessions: { picked_sessions: [], gap_minutes: 120 },
-        cascade: {
-          experience_types: ['PVP classé'],
-          playlists: [],
-          modes: [],
-          maps: [],
-        },
-      }
-      raw.state.filterContextHash = 'pollute-solo-hash'
-      localStorage.setItem('levelup-solo-filter-v1', JSON.stringify(raw))
-    })
-
-    const citationsReq = page.waitForRequest(
-      (req) => req.url().includes('/pages/citations') && req.method() === 'POST',
-    )
-    await page.goto(playerPath(PLAYER, 'citations'))
-    const req = await citationsReq
-    const body = req.postDataJSON() as {
-      filters?: { cascade?: { experience_types?: string[] } }
-    }
-
-    // Citations doit ignorer la pollution solo
-    expect(
-      body.filters?.cascade?.experience_types ?? [],
-      'CitationsPage doit envoyer cascade locale vide',
-    ).toEqual([])
   })
 
   test('3c. ExplorerPage envoie un filterContext local par défaut', async ({ page }) => {

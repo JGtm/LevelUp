@@ -104,7 +104,7 @@ const titleScopedInvocations: Record<string, () => readonly unknown[]> = {
   mediaMergeCandidates: () => queryKeys.mediaMergeCandidates(P, T, null),
   mediaMatchCandidates: () => queryKeys.mediaMatchCandidates(P, T, null, 5, 'fr'),
   // Citations / médailles / commendations / timeseries.
-  citations: () => queryKeys.citations(P, T, 'h', 'fr'),
+  citations: () => queryKeys.citations(P, T, 'fr'),
   medals: () => queryKeys.medals(P, T, 'fr'),
   commendationTotals: () => queryKeys.commendationTotals(P, T, 'fr'),
   timeseries: () => queryKeys.timeseries(P, T, 'h', 'fr'),

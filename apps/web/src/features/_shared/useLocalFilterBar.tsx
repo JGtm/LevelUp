@@ -5,10 +5,9 @@
  * cascade locale (expérience, playlists, modes), barre période/saison, et
  * useFiltersPreview pour les counts cascade-aware.
  *
- * Consommé par `UnifiedCitationsPage` (features/citations), `PalmaresRelationsPage`
- * (features/palmares) et `TacticalPage` (features/tactical) — liste vérifiée le
- * 2026-09-06 ; celle d'avant nommait trois pages qui ne l'appellent pas. Chaque page
- * consomme le hook, l'utilise pour ses requêtes et rend `bar` au sommet de son layout.
+ * Consommé par `PalmaresRelationsPage` (features/palmares) et `TacticalFilterBar`
+ * (features/tactical). Chaque page consomme le hook, l'utilise pour ses requêtes et
+ * rend `bar` au sommet de son layout.
  *
  * Le hook n'écrit dans AUCUN store global — l'état reste 100% local à la page,
  * cohérent avec le pattern « 1 page = 1 scope de filtres ».

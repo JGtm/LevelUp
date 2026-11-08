@@ -186,7 +186,7 @@ Gate :
 
 ### E4 — Citations (Sonnet, un agent)
 
-- [ ] 4.1 Selon D-1, retirer la barre. Dans `apps/web/` : `src/features/citations/UnifiedCitationsPage.tsx`
+- [x] 4.1 Selon D-1, retirer la barre. Dans `apps/web/` : `src/features/citations/UnifiedCitationsPage.tsx`
   (`useLocalFilterBar`, `bar`, `committedHash`), `CitationsView.tsx` (prop `filterBar`), `queries.ts` (`request`,
   `filterHash`), `src/lib/query/keys.ts` (`queryKeys.citations`) et ses tests `keys.locale.test.ts:228`,
   `keys.title-slug.guard.test.ts:105`, `src/features/home/HomeCitationsNearCompletion.tsx:60-64` et son test,
@@ -195,7 +195,7 @@ Gate :
   `src/lib/i18n/manifests/citations.toml` puis `node scripts/build_i18n_manifests.mjs`, tests 3a et 3b de
   `e2e/filter-stores-split.spec.ts:138-182`. Ne pas toucher la source Halo 5 ni `useLocalFilterBar`. Si D-1 change :
   `[!]` et retour au pilote.
-- [ ] 4.2 Selon D-2. Dans `apps/go-api/internal/ops/` : extraire de `SeedCitationMappings` un cœur
+- [x] 4.2 Selon D-2. Dans `apps/go-api/internal/ops/` : extraire de `SeedCitationMappings` un cœur
   `seedCitationMappingsOn(ctx, db)` sans `sql.Open`, exposé par `ReconcileCitationMappings(ctx, db)`. Aujourd'hui le seed
   fait un `UPDATE` inconditionnel (`seed.go:416-454`) et `UpsertAssetTexts` idem : le cœur lit les 13 colonnes et les textes
   existants, compare, et **n'écrit que ce qui diffère** (index ART). `SeedResult` gagne un compteur `Updated`.
@@ -341,6 +341,8 @@ les puces gardées en `[!]` ; relecture du diff par le pilote.
 
 - E3 (Sonnet), 2026-11-08 : `loadLUSRComponentsBreakdown` avale l'erreur de sa requête principale (dégradation annoncée) ; doc-comment de `GetLUSRHistory` placé au-dessus du type `lusrPlayerRow` ; `LUSRRecomputed` reste à 0 sur erreur partielle à l'import OpenSpartan ; `cmd/recompute_perfnote` s'arrête à la première erreur. Non traités.
 
+- E4 (Sonnet), 2026-11-08 : clés de manifest déjà inutilisées (`citations.section.distribution`, `section.medals_summary`, `distribution.*`, `commendations.*`, `medals.*`, `kpi.*`) ; `POST /pages/citations` accepte encore un `category` qu'aucun client n'envoie. Non traités.
+
 ## 4. Journal
 
 - 2026-11-08 : plan rédigé, sources vérifiées sur `origin/release/v8.1.0`. Revue indépendante (Sonnet, une ronde) : 3 P0,
@@ -351,3 +353,5 @@ les puces gardées en `[!]` ; relecture du diff par le pilote.
 - 2026-11-08 E1 close : six items faits, gate vert rejoué par l'exécutant, diff relu par le pilote. Relance du flux prouvée rouge (4 démarrages) puis verte (1).
 - 2026-11-08 E2 close : quatre items faits, tests rouges puis verts, gate vert (intégration sous `-p 1`), diff relu par le pilote. Accesseur `SharedProviderForTest` ajouté pour prouver quel provider sert le moteur.
 - 2026-11-08 E3 close : trois items faits, tests rouges puis verts, gate vert (intégration `./internal/sync/...` sous `-p 1`), diff relu par le pilote. Chemin réel de l'exclusion : `MatchRecomputer.recompute`, l'échec alimente `RecomputePending`.
+- 2026-11-08 E4 close : barre de filtres retirée, réconciliation des citations au démarrage (écrit seulement ce qui diffère, échec non bloquant), tests rouges puis verts par mutation, gate vert ; e2e non lancé. Pilote : `docs/COMMENDATIONS.md` aligné (guide EN seul) ; une édition manuelle de `citation_mappings.enabled` est désormais écrasée au démarrage, documenté.
+- 2026-11-08 coordination `levelup-cf` : fusion en 2e position, vers 21 h, rebase à ce tour. E6 attend la fin de la recuisson en cours (vers 20 h 30) et mesure donc les artefacts recuits : F-2 s'interprète ainsi.

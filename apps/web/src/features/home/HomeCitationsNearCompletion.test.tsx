@@ -63,7 +63,8 @@ describe('HomeCitationsNearCompletion : choix de la source', () => {
     setTitle('halo_infinite', ['career', 'citations'])
     renderWithProviders(<HomeCitationsNearCompletion playerSlug="p" />)
 
-    expect(useCitationsPage).toHaveBeenCalled()
+    // Totaux de carrière : le hook ne reçoit que le joueur, aucun filtre ni empreinte de filtre.
+    expect(useCitationsPage).toHaveBeenCalledWith('p')
     expect(useCommendationTotals).not.toHaveBeenCalled()
   })
 

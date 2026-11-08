@@ -67,7 +67,6 @@ export function normalizeInfinitePage(resp: CitationsPageResponse): CitationsVie
     masteredTotal: categories.reduce((acc, c) => acc + c.completed, 0),
     itemsTotal: (resp.citations ?? []).length,
     source: 'infinite',
-    hasFilters: true,
   }
 }
 
@@ -89,6 +88,5 @@ export function normalizeNativeTotals(
     masteredTotal: categories.reduce((acc, c) => acc + c.completed, 0),
     itemsTotal: resp.total_count,
     source: 'native',
-    hasFilters: false,
   }
 }

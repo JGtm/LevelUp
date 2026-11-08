@@ -15,20 +15,6 @@ en = "Distribution"
 fr = "Médailles"
 en = "Medals"
 
-# ─── KPIs Deltas ───────────────────────────────────────────────────────────
-
-[citations.deltas.filtered_total]
-fr = "Total filtré"
-en = "Filtered total"
-
-[citations.deltas.unfiltered_total]
-fr = "Total complet"
-en = "Full total"
-
-[citations.deltas.delta]
-fr = "Delta"
-en = "Delta"
-
 # ─── Distribution chart ───────────────────────────────────────────────────
 
 [citations.distribution.title]
@@ -96,36 +82,6 @@ en = "Failed to load citations"
 [citations.errors.retry]
 fr = "Réessayer"
 en = "Retry"
-
-# ─── Filtres locaux (barre sticky) ────────────────────────────────────────
-
-[citations.filters.experience]
-fr = "Expérience"
-en = "Experience"
-
-[citations.filters.experience_all]
-fr = "Toutes"
-en = "All"
-
-[citations.filters.experience_ranked]
-fr = "Classé"
-en = "Ranked"
-
-[citations.filters.experience_unranked]
-fr = "Non classé"
-en = "Unranked"
-
-[citations.filters.playlists]
-fr = "Sélections"
-en = "Playlists"
-
-[citations.filters.modes]
-fr = "Modes"
-en = "Modes"
-
-[citations.filters.reset]
-fr = "Réinitialiser"
-en = "Reset"
 
 # ─── Titre section Citations ────────────────────────────────────────────────
 

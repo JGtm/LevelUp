@@ -120359,3 +120359,11 @@ version restent après chaque mise à jour NSIS (antérieur à L24).
 **Résultats observés.** Tests rouges puis verts ; gate vert. Une exclusion dont l'écriture échoue n'est plus annoncée comme terminée et se recalcule à la demande suivante.
 
 **Conclusion / prochaine étape.** E4 citations.
+
+## [2026-11-08] Backlog E4 : citations — Complété
+
+**Décision technique principale.** Barre de filtres de la page Citations retirée avec ses clés, types et tests. Réconciliation des citations à chaque démarrage sur le handle de metadata : comparaison colonne par colonne, écriture des seules différences, échec journalisé et démarrage poursuivi.
+
+**Résultats observés.** Tests rouges puis verts par cinq mutations ; second passage à zéro écriture ; gate vert ; le ratchet d'ouverture DuckDB a imposé de garder le seul `sql.Open` dans le CLI.
+
+**Conclusion / prochaine étape.** E5 rafraîchissement OAuth.

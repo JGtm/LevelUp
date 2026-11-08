@@ -225,7 +225,7 @@ const dependDeLaLangue: Record<string, () => readonly unknown[]> = {
   media: () => queryKeys.media(PL, TI, 'h', L),
   mediaRail: () => queryKeys.mediaRail(PL, TI, 5, L),
   mediaMatchCandidates: () => queryKeys.mediaMatchCandidates(PL, TI, null, 5, L),
-  citations: () => queryKeys.citations(PL, TI, 'h', L),
+  citations: () => queryKeys.citations(PL, TI, L),
   medals: () => queryKeys.medals(PL, TI, L),
   commendationTotals: () => queryKeys.commendationTotals(PL, TI, L),
   timeseries: () => queryKeys.timeseries(PL, TI, 'h', L),

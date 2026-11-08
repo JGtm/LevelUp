@@ -334,8 +334,8 @@ export const queryKeys = {
   // citations localisés (X-LevelUp-Locale) dans le payload. Sans elle, un fetch
   // background survivant à la bascule de langue reste dans l'ancienne langue —
   // cf. commentaire `home` ci-dessus (même motif).
-  citations: (playerSlug: string, titleSlug: string, filterHash: string, locale: string) =>
-    ['citations', playerSlug, titleSlug, filterHash, locale] as const,
+  citations: (playerSlug: string, titleSlug: string, locale: string) =>
+    ['citations', playerSlug, titleSlug, locale] as const,
 
   // Médailles (sous-page Carrière) — locale dans la clé : le backend bake les
   // libellés/descriptions de médailles localisés (X-LevelUp-Locale). Pas de
