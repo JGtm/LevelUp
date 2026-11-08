@@ -1197,30 +1197,40 @@ server binary.
 `.github/workflows/release.yml`):
 
 ```powershell
-powershell -File apps/desktop/scripts/build-installer.ps1 [-SkipWeb] [-SigningKey <file> [-SigningPassword <pw>]]
-powershell -File apps/desktop/scripts/e2e-install.ps1 -Installer <LevelUp_X.Y.Z_x64-setup.exe>
-bash apps/desktop/scripts/check-version.sh <X.Y.Z> [<server.exe>]
+powershell -File apps/desktop/scripts/build-installer.ps1 [-SkipWeb] [-SigningKey <file> [-SigningPassword <pw>]] [-OutDir <dir>]
+powershell -File apps/desktop/scripts/stage-bundle.ps1 -WebDist <apps/web/dist> -FfmpegDir <dir> [-ArchiveDir <dir>] [-Version <X.Y.Z>]
+powershell -File apps/desktop/scripts/e2e-install.ps1 -Installer <LevelUp_X.Y.Z_x64-setup.exe> [-EngineInstaller <LevelUp_X.Y.Z_x64-engine-setup.exe>]
+bash apps/desktop/scripts/check-version.sh <X.Y.Z> [<server.exe> [<pack fingerprint>]]
+cd apps/go-api && go run ./cmd/resources-manifest -dir <pack dir> [-version <X.Y.Z>] [-zip <archive.zip>]
 ```
 
-- `build-installer.ps1` builds the front, the server (`-ldflags "-s -w -X main.version=<Cargo.toml version>"`: no symbol table nor DWARF, panic traces kept), downloads
-  the pinned LGPL ffmpeg build (`fetch-ffmpeg.ps1`: URL and SHA-256 are constants of the script, a different sum
-  stops everything), assembles the resources (`stage-bundle.ps1` into `src-tauri/bundle-staging`, git-ignored) and runs
-  `npx tauri build --config src-tauri/tauri.bundle.conf.json`. The result is
-  `src-tauri/target/release/bundle/nsis/LevelUp_<version>_x64-setup.exe`. Without `-SigningKey` no secret is needed
-  (`createUpdaterArtifacts` stays false); with it the installer is also signed for the updater (`.sig` file). The
-  installer is per user: program under `%LOCALAPPDATA%ProgramsLevelUp`, data under `%LOCALAPPDATA%LevelUp`, never
+- The installation is two units (ADR 0045 D-30): the **engine** (shell, server, compiled front without `web/titles`, `config/`) and the **resource
+  pack** (`static/`, `web/titles/`, replay reference, ffmpeg, `resources.manifest.json`), identified by its **fingerprint** (SHA-256 of the sorted manifest, computed at
+  build, no version to bump). `stage-bundle.ps1` assembles both (`src-tauri/bundle-staging` and `src-tauri/pack-staging`, git-ignored), runs
+  `cmd/resources-manifest` (the only manifest generator, also used by the Dockerfile), writes the fingerprint to `pack-staging.fingerprint` and, with
+  `-ArchiveDir`, the archive `levelup-resources-<fingerprint>.zip`.
+- `build-installer.ps1` builds the front, downloads the pinned LGPL ffmpeg build (`fetch-ffmpeg.ps1`: URL and SHA-256 are constants of the script, a different sum
+  stops everything), stages engine and pack, builds the server (`-ldflags "-s -w -X main.version=<Cargo.toml version> -X main.resourcesFingerprint=<fingerprint>"`: no
+  symbol table nor DWARF, panic traces kept, and the fingerprint of ITS pack) and runs `npx tauri build` twice: `tauri.bundle.conf.json` (engine + pack) and
+  `tauri.engine.conf.json` (engine only). Three files come out under `-OutDir` (default `src-tauri/target/release/installers`):
+  `LevelUp_<version>_x64-setup.exe` (**full** installer: first installation and download page), `LevelUp_<version>_x64-engine-setup.exe` (**engine only**: the one
+  `latest.json` points the updater at) and `levelup-resources-<fingerprint>.zip`. Without `-SigningKey` no secret is needed (`createUpdaterArtifacts` stays
+  false); with it the engine installer and the pack are also signed (`.sig` files, same key). The installer is per user: program under `%LOCALAPPDATA%ProgramsLevelUp`, data under `%LOCALAPPDATA%LevelUp`, never
   removed by the uninstaller.
-- `e2e-install.ps1` refuses to run if LevelUp is already installed. It installs silently (`/S`), starts the
+- `e2e-install.ps1` refuses to run if LevelUp is already installed. It installs silently (`/S`), checks the installed pack against its manifest, starts the
   application with a throwaway `LEVELUP_DATA_DIR`, waits for `<data>desktopport` and `GET /health` = 200, closes it
   with `WM_CLOSE`, checks the log line `arrêt: terminé` with `clean=true` and no `*.wal` file, relaunches (same port),
-  closes again, uninstalls silently and checks that the data root is still there. Exit code 0 or 1; the logs are copied
+  closes again. With `-EngineInstaller` it then plays an **engine-only update** (`/S /UPDATE`) after deleting one engine file and one pack file (the engine one comes back,
+  the pack one must not, every other pack file keeps its SHA-256) and starts the application a third time; it finally uninstalls silently, checks that the program
+  folder disappears entirely (the shipped server removes the pack, which the rewritten uninstaller no longer knows) and that the data root is still there. Exit code 0 or 1; the logs are copied
   under `-ArtifactsDir` on failure.
 - `check-version.sh` refuses any difference between the expected version (the git tag without `v`), `Cargo.toml`,
-  `tauri.conf.json` and the `-ldflags` embedded in the server binary (`go version -m`).
+  `tauri.conf.json` and the `-ldflags` embedded in the server binary (`go version -m`); with a third argument it also refuses a server that does not embed
+  `-X main.resourcesFingerprint=<that fingerprint>`.
 - Release workflow: a `vX.Y.Z` tag builds and signs the installer (secrets `TAURI_SIGNING_PRIVATE_KEY` and, if the key
   has a password, `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`; without the key the job fails before compiling), plays the
-  end-to-end test, then publishes the installer, its signature and `latest.json` (the file the updater reads) with the
-  release. A push on `release/**` builds the installer unsigned and plays the end-to-end test only.
+  end-to-end test, then publishes the full installer, the engine installer, the pack (`levelup-resources-<fingerprint>.zip`), their signatures and `latest.json` (the file
+  the updater reads: it points at the engine installer and carries a `resources` block with the fingerprint, URL, SHA-256, size and signature of the pack) with the release. A push on `release/**` builds the installer unsigned and plays the end-to-end test only.
 
 ---
 

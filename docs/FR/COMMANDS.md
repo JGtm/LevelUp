@@ -1253,30 +1253,40 @@ un binaire serveur absent.
 `.github/workflows/release.yml`) :
 
 ```powershell
-powershell -File apps/desktop/scripts/build-installer.ps1 [-SkipWeb] [-SigningKey <fichier> [-SigningPassword <mdp>]]
-powershell -File apps/desktop/scripts/e2e-install.ps1 -Installer <LevelUp_X.Y.Z_x64-setup.exe>
-bash apps/desktop/scripts/check-version.sh <X.Y.Z> [<serveur.exe>]
+powershell -File apps/desktop/scripts/build-installer.ps1 [-SkipWeb] [-SigningKey <fichier> [-SigningPassword <mdp>]] [-OutDir <dossier>]
+powershell -File apps/desktop/scripts/stage-bundle.ps1 -WebDist <apps/web/dist> -FfmpegDir <dossier> [-ArchiveDir <dossier>] [-Version <X.Y.Z>]
+powershell -File apps/desktop/scripts/e2e-install.ps1 -Installer <LevelUp_X.Y.Z_x64-setup.exe> [-EngineInstaller <LevelUp_X.Y.Z_x64-engine-setup.exe>]
+bash apps/desktop/scripts/check-version.sh <X.Y.Z> [<serveur.exe> [<empreinte du paquet>]]
+cd apps/go-api && go run ./cmd/resources-manifest -dir <dossier du paquet> [-version <X.Y.Z>] [-zip <archive.zip>]
 ```
 
-- `build-installer.ps1` compile le front, le serveur (`-ldflags "-s -w -X main.version=<version de Cargo.toml>"` : ni table des symboles ni DWARF, traces de panique conservées), télécharge
-  le ffmpeg LGPL épinglé (`fetch-ffmpeg.ps1` : l'URL et la somme SHA-256 sont des constantes du script, une somme
-  différente arrête tout), assemble les ressources (`stage-bundle.ps1` vers `src-tauri/bundle-staging`, ignoré par git)
-  et lance `npx tauri build --config src-tauri/tauri.bundle.conf.json`. Le résultat est
-  `src-tauri/target/release/bundle/nsis/LevelUp_<version>_x64-setup.exe`. Sans `-SigningKey` aucun secret n'est
-  nécessaire (`createUpdaterArtifacts` reste faux) ; avec, l'installeur est aussi signé pour l'updater (fichier
-  `.sig`). L'installation est par utilisateur : programme sous `%LOCALAPPDATA%ProgramsLevelUp`, données sous
+- L'installation est faite de deux unités (ADR 0045 D-30) : le **moteur** (coquille, serveur, front compilé sans `web/titles`, `config/`) et le **paquet de
+  ressources** (`static/`, `web/titles/`, référentiel du rejeu, ffmpeg, `resources.manifest.json`), identifié par son **empreinte** (SHA-256 du manifeste trié, calculée au build, aucune
+  version à incrémenter). `stage-bundle.ps1` assemble les deux (`src-tauri/bundle-staging` et `src-tauri/pack-staging`, ignorés par git), lance
+  `cmd/resources-manifest` (le seul générateur de manifeste, aussi utilisé par le Dockerfile), écrit l'empreinte dans `pack-staging.fingerprint` et, avec
+  `-ArchiveDir`, l'archive `levelup-resources-<empreinte>.zip`.
+- `build-installer.ps1` compile le front, télécharge le ffmpeg LGPL épinglé (`fetch-ffmpeg.ps1` : l'URL et la somme SHA-256 sont des constantes du script, une somme
+  différente arrête tout), assemble moteur et paquet, compile le serveur (`-ldflags "-s -w -X main.version=<version de Cargo.toml> -X main.resourcesFingerprint=<empreinte>"` : ni table des
+  symboles ni DWARF, traces de panique conservées, et l'empreinte de SON paquet) et lance `npx tauri build` deux fois : `tauri.bundle.conf.json` (moteur + paquet) puis
+  `tauri.engine.conf.json` (moteur seul). Trois fichiers sortent sous `-OutDir` (défaut `src-tauri/target/release/installers`) :
+  `LevelUp_<version>_x64-setup.exe` (installeur **complet** : première installation et page de téléchargement), `LevelUp_<version>_x64-engine-setup.exe` (**moteur seul** : celui que
+  `latest.json` désigne à l'updater) et `levelup-resources-<empreinte>.zip`. Sans `-SigningKey` aucun secret n'est nécessaire (`createUpdaterArtifacts` reste
+  faux) ; avec, l'installeur moteur seul et le paquet sont aussi signés (fichiers `.sig`, même clé). L'installation est par utilisateur : programme sous `%LOCALAPPDATA%ProgramsLevelUp`, données sous
   `%LOCALAPPDATA%LevelUp`, jamais supprimées par le désinstalleur.
-- `e2e-install.ps1` refuse de s'exécuter si LevelUp est déjà installé. Il installe en silencieux (`/S`), lance
+- `e2e-install.ps1` refuse de s'exécuter si LevelUp est déjà installé. Il installe en silencieux (`/S`), vérifie le paquet installé contre son manifeste, lance
   l'application avec un `LEVELUP_DATA_DIR` jetable, attend `<données>desktopport` et `GET /health` = 200, la ferme
   par `WM_CLOSE`, vérifie la ligne de journal `arrêt: terminé` avec `clean=true` et l'absence de fichier `*.wal`,
-  relance (même port), ferme de nouveau, désinstalle en silencieux et vérifie que la racine de données existe encore.
+  relance (même port), ferme de nouveau. Avec `-EngineInstaller` il joue ensuite une **mise à jour moteur seul** (`/S /UPDATE`) après avoir supprimé un fichier du moteur et un fichier du
+  paquet (celui du moteur revient, celui du paquet ne doit pas revenir, tous les autres fichiers du paquet gardent leur SHA-256) et lance l'application une troisième fois ; il désinstalle enfin en silencieux, vérifie
+  que le dossier du programme disparaît entièrement (le serveur livré retire le paquet, que le désinstalleur réécrit ne connaît plus) et que la racine de données existe encore.
   Code de sortie 0 ou 1 ; en cas d'échec les journaux sont copiés sous `-ArtifactsDir`.
 - `check-version.sh` refuse tout écart entre la version attendue (le tag git sans `v`), `Cargo.toml`,
-  `tauri.conf.json` et les `-ldflags` embarqués dans le binaire serveur (`go version -m`).
+  `tauri.conf.json` et les `-ldflags` embarqués dans le binaire serveur (`go version -m`) ; avec un troisième argument il refuse aussi un serveur qui n'embarque pas
+  `-X main.resourcesFingerprint=<cette empreinte>`.
 - Workflow de release : un tag `vX.Y.Z` compile et signe l'installeur (secrets `TAURI_SIGNING_PRIVATE_KEY` et, si la
   clé a un mot de passe, `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` ; sans la clé le job échoue avant de compiler), joue le
-  test de bout en bout, puis publie l'installeur, sa signature et `latest.json` (le fichier que lit l'updater) avec la
-  release. Un push sur `release/**` compile l'installeur sans signature et ne joue que le test de bout en bout.
+  test de bout en bout, puis publie l'installeur complet, l'installeur moteur, le paquet (`levelup-resources-<empreinte>.zip`), leurs signatures et `latest.json` (le fichier que lit l'updater : il
+  désigne l'installeur moteur et porte un bloc `resources` avec l'empreinte, l'URL, la somme SHA-256, la taille et la signature du paquet) avec la release. Un push sur `release/**` compile l'installeur sans signature et ne joue que le test de bout en bout.
 
 ---
 

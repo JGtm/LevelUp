@@ -130,6 +130,31 @@ rebuilds them by itself.
 - **Going back to an earlier version**: replays built by a newer version are not offered for regeneration (the older decoder would redo them).
 - **Journal** (`logs`): lines starting with `replay_regen:`; counters `replay_regen_*`, `replay_artifact_header_*` in `/debug/vars`.
 
+## Resource pack (images, sounds, reference data, ffmpeg)
+
+The installation is two units (ADR 0045 D-30). The **engine** (application, server, compiled front, `config/`) changes at every release and is what an
+update installs. The **resource pack** (`static/`, `web/titles/`, the replay reference, `metadata-prebuilt.zip`, ffmpeg) changes rarely and is identified by its
+**fingerprint** (SHA-256 of `resources.manifest.json`, computed at build; there is no version number to maintain). The first installation is complete and
+works offline; an ordinary update downloads the engine only (about 30 MB instead of 152).
+
+- **Settings > Application > Resources** shows the state: up to date, waiting for the end of a match, downloading (percent), checking, ready (applied at the next
+  start of LevelUp) or failed, with a **Try again** button when the pack does not match this version or a download failed.
+- **When an update changes the pack**: after you accept the update, the application downloads and verifies the new pack **first** (signature, SHA-256, every
+  file against its manifest), still on the old one; only then does it download and install the engine that requires it. If the pack cannot be prepared nothing is
+  installed and the application stays open; the update is offered again at the next launch. Nothing is downloaded during a match (the download waits for it).
+- **At the next start** the new pack becomes the active one (renamed into place before any file is opened). If the computer stops in the middle, the next start undoes
+  the half-done swap and retries.
+- **A pack that does not match the engine** (an interrupted update, files deleted by hand): LevelUp starts anyway on what is installed, logs a warning
+  (`resources: paquet différent de celui du moteur`) and downloads the right pack in the background. A pack that is **missing** altogether is downloaded before the
+  window opens; if that fails the screen says the resources are missing or incompatible: check the connection and start LevelUp again to retry.
+- **The data root is never involved**: the downloaded pack is staged in the program folder (`.pack`), and the uninstaller removes the pack (through
+  `-mode uninstall-cleanup`) without touching `%LOCALAPPDATA%\LevelUp`.
+- **Hosted server**: the pack is inside the Docker image, never downloaded; a pack different from the engine's refuses to start (`resources_incompatible`, state in
+  the 503 of the start page and in the log). The `Deploy Pre-Check` workflow proves that the manifest and the binary carry the same fingerprint and that the pack layers
+  sit below the engine layers (`docker history`).
+- **Journal** (`logs`): lines starting with `resources:`; the shell logs `event=resources_requested`, `event=server_event kind=resources ...`,
+  `event=update_download_failed err=... resources_failed code=...` when a pack refuses an update.
+
 ## Signing in (Microsoft account)
 
 The setup assistant's first step opens **the default browser** on the Microsoft sign-in page ("Sign in with Microsoft"); after
@@ -143,9 +168,9 @@ tokens to "repair" a sign-in (ADR 0023). The `code` and the `state` never reach 
 
 ## Automated proof
 
-`powershell -File apps/desktop/scripts/e2e-install.ps1 -Installer <setup.exe>` plays steps 1 to 5 on a throwaway data
-root (silent install, two launches, close by `WM_CLOSE`, clean stop, silent uninstall, data kept, and the uninstaller's cleanup
-call proven by a witness file: `LEVELUP_UNINSTALL_WITNESS`, whose line must carry the full report: `exit=0`, `ok=true`, `demarrage=absent` or
+`powershell -File apps/desktop/scripts/e2e-install.ps1 -Installer <setup.exe> [-EngineInstaller <engine-setup.exe>]` plays steps 1 to 5 on a throwaway data
+root (silent install, pack checked against its manifest, two launches, with `-EngineInstaller` an engine-only update that must keep the pack and a third launch, close by `WM_CLOSE`, clean stop, silent uninstall, data kept, and the uninstaller's cleanup
+call proven by a witness file: `LEVELUP_UNINSTALL_WITNESS`, whose line must carry the full report: `exit=0`, `ok=true`, `ressources=<n>-fichiers`, `demarrage=absent` or
 `foreign` (never `removed`), `tache=absent`, the task name of the throwaway root, the root and the program folder). It creates no startup entry and no
 scheduled task. It refuses to run when LevelUp is already installed. The `desktop-e2e` job of `.github/workflows/release.yml` runs the same script.
 **Not played by the script**: the uninstaller's branch "`LEVELUP_DATA_DIR` absent" (it sets `LEVELUP_DATA_DIR` itself to the default
@@ -154,8 +179,10 @@ by the text guards of `apps/desktop/src-tauri/tests/textes_de_configuration.rs` 
 
 ## Releasing (maintainer)
 
-- A `vX.Y.Z` tag runs `release.yml`: version check (tag, `Cargo.toml`, `tauri.conf.json`, server `-ldflags`), signed
-  installer, end-to-end test, then the GitHub release with `latest.json`. The repository secret
+- A `vX.Y.Z` tag runs `release.yml`: version check (tag, `Cargo.toml`, `tauri.conf.json`, server `-ldflags` including the pack fingerprint), the pack
+  (manifest, fingerprint, archive), the **full** installer (first installation, download page) and the **engine-only** installer (what the updater installs), the
+  signatures (engine installer and pack, same key), end-to-end test (full installation, then an engine-only update), then the GitHub release with `latest.json`
+  (points at the engine installer, carries the `resources` block of the pack). The repository secret
   `TAURI_SIGNING_PRIVATE_KEY` (and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` when the key has a password) must exist: without
   it the job fails before compiling. Key backup and rotation: ADR 0045, "Implementation notes (L17)".
 - A push on `release/**` builds the installer unsigned and plays the end-to-end test only.

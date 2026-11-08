@@ -120290,3 +120290,26 @@ production) ; 15 variables exportées modifiables dans `filmshell`, 12 `slog` sa
 **Résultats observés.** Vies finales arrêtées au moins 5 s avant la fin, sans kill lu ensuite : 667 départs selon l'API (637 avec un autre joueur sur la même place, aucun bot ; 15 immobiles depuis au moins 20 s), dépôt API 35 s en médiane après le dernier point (p10 4 s, p90 63 s, après retrait du décalage horaire entier). 1 124 joueurs présents à la fin selon l'API, dont 132 arrêtés au moins 15 s avant la fin : 25 ont une mort écrite après le dernier point (couverts par la fin de vie à la mort), 107 n'en ont aucune, et aucun des 132 n'était immobile depuis 20 s.
 
 **Conclusion / prochaine étape.** Proposer au user de garder affichés jusqu'à la fin ces 107 joueurs présents sans mort écrite ; la cause de l'arrêt des positions reste inconnue. À traiter après l'identification des objets portés.
+
+## [2026-11-08] Desktop L24 : moteur et paquet de ressources séparés — Complété côté code (branche `feat/desktop-p0`, non poussé)
+
+**Décision technique principale.** Deux unités : le moteur (coquille, serveur, front compilé sans `web/titles`, `config/`) et le paquet de
+ressources (`static`, `web/titles`, référentiel, `metadata-prebuilt.zip`, ffmpeg), identifié par l'EMPREINTE de son manifeste (SHA-256 trié,
+calculée au build, embarquée dans le serveur par `-X main.resourcesFingerprint`, relue par `check-version.sh`) : aucune version à incrémenter.
+Point à vérifier 24.3 tranché sur le modèle NSIS réel : en `/UPDATE` un installeur sans ressources laisse les installées intactes (pas de
+désinstallation rejouée), donc deux installeurs, D-9 tenue, pas de téléchargement au premier lancement. Le désinstalleur réécrit par l'installeur
+moteur seul oublie le paquet : `-mode uninstall-cleanup` le retire (`resourcepack.Remove`). Le SERVEUR télécharge (hôtes GitHub, mode jeu, reprise,
+SHA-256, minisign `ED` relu en Go, extraction vérifiée), la coquille Rust lit `resources` de `latest.json` (`Update::raw_json`), le demande par la
+stdin et attend `ready` AVANT d'armer l'installeur du moteur. Activation au démarrage suivant par renommage journalisé (écart au `resources-<v>/` + pointeur :
+295 lecteurs de `RepoRoot` auraient dû apprendre une seconde racine). Hébergé : démarrage refusé si l'empreinte diffère (`resources_incompatible`) ;
+bureau : démarre sur le paquet présent et télécharge le bon.
+
+**Résultats observés.** Installeur complet 159 512 252 o (152,1 Mo), moteur seul 31 675 133 o (30,2 Mo), paquet 152 545 053 o (145,5 Mo).
+`e2e-install.ps1 -EngineInstaller` code 0 : paquet conforme (2 526 fichiers), 3 lancements à arrêt propre, mise à jour moteur seul qui rend le fichier
+du moteur et pas celui du paquet, désinstallation qui retire 2 525 fichiers du paquet et tout le dossier du programme. Signature réelle de
+`tauri signer sign` vérifiée par le code Go. Gates : voir le rapport de clôture. Non jouables ici : Docker (job CI `test-deploy-precheck`), le
+téléchargement contre les vrais hôtes GitHub (gate 24.z).
+
+**Conclusion / prochaine étape.** Reste : revue adversariale 24.7 et gate utilisateur 24.z (hors de cette tâche) ; `[!]` bouton de réessai de
+l'écran `resources_incompatible` de la coquille (relance de la coquille non testable sans la lancer) ; découverte : les `web/assets/*-<hash>.js` d'une
+version restent après chaque mise à jour NSIS (antérieur à L24).
