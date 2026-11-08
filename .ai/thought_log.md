@@ -1,3 +1,11 @@
+## [2026-11-08] Fin du découplage — 4.9 : montée klauspost/compress 1.20.2 (govulncheck) — Complété
+
+**Décision technique principale** : le job CI Govulncheck de la PR échouait sur GO-2026-6865 (`klauspost/compress` 1.19.0, corrigé en 1.20.2, atteint par `compressResponseWriter.Flush` de `internal/api/middleware/session.go`) ; avis du 2026-11-05, indépendant de la branche. Montée de version dans `libs/film` (`go get` puis `go mod tidy`, seule ligne `require` changée) et dans `apps/go-api` (`go get`, sans `go mod tidy`) ; `libs/himap`, `libs/gamefiles` et `libs/haloapi` ne portent pas ce module.
+
+**Résultats observés** : `govulncheck ./...` dans `apps/go-api` et `libs/film` : 0 vulnérabilité atteinte ; `go build` et `go vet` verts dans les deux modules ; tests de `libs/film`, du middleware, de `filmarchive` et de `filmrun` verts, aucun golden modifié.
+
+**Conclusion / prochaine étape** : CI à relancer sur la PR ; 4.9 reste à squash-merger puis tag par le user.
+
 ## [2026-11-08] Fin du découplage — 4.7 revue adversariale, ronde 1 corrigée — Complété
 
 **Décision technique principale** : ronde 1 de la revue adversariale (2 relecteurs, 4 constats recevables : 1 P1, 3 P2, 0 jeté ; 25 conditions vérifiées qui tiennent), corrigée sans autre changement. C1 (P1) : la graine de fuzz `seed_01` du fichier de faits portait 8 xuids réels en entiers variables du codec, invisibles au balayage de texte ; les quatre graines sont régénérées depuis la fixture fictive, un test de la brique les décode et exige plage fictive ET registre, et le ratchet de l'hôte refuse tout fichier de `libs/film` ni texte ni listé dans une liste fermée de binaires couverts. C2 : le ratchet lit aussi l'hexadécimal à 16 chiffres (avec ou sans `0x`, octets inversés). C3 : les quatre tests du parc qui promettaient le verrou de décodage le prennent. C4 : référence `filmproc` périmée du service systemd corrigée.

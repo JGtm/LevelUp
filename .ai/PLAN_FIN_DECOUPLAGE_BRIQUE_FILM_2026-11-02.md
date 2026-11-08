@@ -1116,6 +1116,7 @@ modifiés ou neufs dans `archlint`, `libs/film/revision/ordre_imports_test.go`, 
 - [x] 4.8 fait le 2026-11-08 (Haiku) : backlog, registre, project_map ; contrôle grep des chemins cités.
 - [ ] 4.9 PR vers `release/v8.1.0`, CI verte, squash. Commande de tag préparée pour le user :
       `git tag libs/film/v0.1.0 <sha> && git push origin libs/film/v0.1.0` (geste du user, ADR 0043 D-2).
+      2026-11-08 : CI rouge sur Govulncheck (GO-2026-6865, `klauspost/compress` 1.19.0 -> 1.20.2, avis du 2026-11-05 indépendant de la branche) : montée de version dans `libs/film` et `apps/go-api`, tests verts, govulncheck 0.
 
 ### Résultat de l'item 4.0 (2026-11-08)
 
