@@ -45,6 +45,41 @@ RUN npm run build
 # 2026-07-26).
 RUN node scripts/verify-public-in-dist.mjs
 
+# Le front compilé se coupe en deux (ADR 0045, amendement L24) : les images des titres (dist/titles, identiques
+# à public/titles, garde ci-dessus) font partie du PAQUET DE RESSOURCES (stage pack-builder) ; le reste (JS, CSS,
+# index.html : couplé au code) est celui du MOTEUR. Le paquet se copie dans l'image AVANT le moteur : un
+# déploiement qui ne change que le moteur ne retire que les couches du moteur.
+RUN mkdir -p /build/engine-web \
+ && cp -a dist/. /build/engine-web/ \
+ && rm -rf /build/engine-web/titles
+
+# ============================================================================
+# Stage 1b — Paquet de ressources : manifeste et empreinte (ADR 0045, amendement L24)
+# ============================================================================
+# Le paquet hébergé = ce que l'image embarque et que les mises à jour du moteur ne changent presque jamais :
+# static/ et les images des titres. Le référentiel du rejeu (data/titles/*/reference) vit dans le volume ./data
+# de la prod, pas dans l'image. Un seul générateur de manifeste (cmd/resources-manifest, le même que celui de
+# l'installeur Windows) ; le stage ne dépend QUE du paquet et de ce générateur : changer le moteur ne le
+# recompile ni ne le recalcule. Son empreinte entre dans le binaire serveur (stage go-builder) et le démarrage
+# la compare au manifeste de l'image : une image mal assemblée refuse de démarrer.
+FROM golang:1.26.10-bookworm AS pack-builder
+
+WORKDIR /build/apps/go-api
+COPY apps/go-api/go.mod apps/go-api/go.sum ./
+COPY apps/go-api/cmd/resources-manifest/ ./cmd/resources-manifest/
+COPY apps/go-api/internal/resourcepack/ ./internal/resourcepack/
+
+# Chemins de l'image : /app (racine de ressources), front sous apps/web/dist.
+COPY static /pack/static
+COPY apps/web/public/titles /pack/apps/web/dist/titles
+
+# GOWORK=off : ce stage ne copie que le module apps/go-api, sans go.work ni briques ; le générateur n'importe
+# que la bibliothèque standard et golang.org/x/crypto.
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    GOWORK=off CGO_ENABLED=0 go run ./cmd/resources-manifest -dir /pack > /pack-fingerprint \
+ && test "$(wc -c < /pack-fingerprint)" -eq 65
+
 # ============================================================================
 # Stage 2 — Build Go (CGo activé pour DuckDB bindings)
 # ============================================================================
@@ -128,12 +163,6 @@ WORKDIR /build/apps/go-api
 # aurait besoin du DWARF), et aucun outillage du dépôt ne symbolise ces binaires : ni
 # delve, ni profilage pprof exposé sur l'image de prod. Les binaires publiés par
 # release.yml ont leurs propres ldflags, indépendants de ce Dockerfile.
-RUN --mount=type=cache,target=/go/pkg/mod \
-    --mount=type=cache,target=/root/.cache/go-build \
-    CGO_ENABLED=1 GOOS=linux go build \
-    -ldflags "-s -w -extldflags '-static'" \
-    -o /build/levelup-server \
-    ./cmd/server/
 
 # CLI levelup (seed, seed-demo, backfill…) — requis par le job deploy-demo de
 # la CI (docker compose run levelup `levelup` seed-demo). Sans ce binaire, la
@@ -167,6 +196,18 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     -o /build/backfill_milestone_dates \
     ./cmd/backfill_milestone_dates/
 
+# Serveur : construit EN DERNIER, parce qu'il est le seul binaire à embarquer l'empreinte du paquet de ressources
+# (`-X main.resourcesFingerprint`) : un changement du paquet ne rejoue que cette compilation (le cache de
+# compilation est monté), jamais celle des CLI ci-dessus. Mêmes cache mounts et mêmes `-s -w` que ci-dessus.
+# Une empreinte vide (build local sans paquet) désactive le contrôle de démarrage.
+COPY --from=pack-builder /pack-fingerprint /build/pack-fingerprint
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=1 GOOS=linux go build \
+    -ldflags "-s -w -X main.resourcesFingerprint=$(cat /build/pack-fingerprint) -extldflags '-static'" \
+    -o /build/levelup-server \
+    ./cmd/server/
+
 # ============================================================================
 # Stage 3 — Runtime minimal (Debian slim)
 # ============================================================================
@@ -187,30 +228,25 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# Binaire Go + assets web
-COPY --from=go-builder /build/levelup-server /app/levelup-server
-# CLI levelup dans le PATH (seed/seed-demo/backfill via `levelup <cmd>`).
-COPY --from=go-builder /build/levelup        /usr/local/bin/levelup
-# Backfill objectifs (ops post-deploy v7.2, serveur arrêté pendant l'opération).
-COPY --from=go-builder /build/backfill_objective_stats /usr/local/bin/backfill_objective_stats
-# Dates des jalons (ops post-deploy v7.5, serveur arrêté pendant l'opération).
-COPY --from=go-builder /build/backfill_milestone_dates /usr/local/bin/backfill_milestone_dates
-COPY --from=web-builder /build/web/dist       /app/apps/web/dist
+# ----------------------------------------------------------------------------
+# 1. PAQUET DE RESSOURCES (couches basses : elles ne changent presque jamais, le VPS ne les retire pas à
+#    chaque déploiement). Assets statiques UI servis sous /static/ (maps, ranks, medals, commendations,
+#    prestige, ~23 MB ; sans eux 404 sur tout /static/*, prod + demo), images des titres du front, et le
+#    manifeste dont l'empreinte est comparée à celle du binaire au démarrage.
+# ----------------------------------------------------------------------------
+COPY --from=pack-builder /pack/static /app/static
+COPY --from=pack-builder /pack/apps/web/dist/titles /app/apps/web/dist/titles
+COPY --from=pack-builder /pack/resources.manifest.json /app/resources.manifest.json
 
-# Scripts d'exploitation (backfill, seed, etc.)
-COPY scripts /app/scripts
-
+# ----------------------------------------------------------------------------
+# 2. MOTEUR (couches hautes : changent à chaque version)
+# ----------------------------------------------------------------------------
 # Config title-aware (mappings/fields.toml, assets, outcomes, capabilities).
 # Lue au boot par fieldMappingsRegistry.LoadFromConfigDir + RankCatalog. Sans ce
 # COPY, config/titles/ n'existe pas dans le conteneur → field_mappings_load_warning,
 # semantic adapter + RankCatalog jamais chargés → rangs carrière en EN (prod+demo)
 # et libellés métier non title-aware. ~117 KB.
 COPY config /app/config
-
-# Assets statiques UI servis sous /static/ par le serveur Go (maps, ranks,
-# medals, commendations, prestige). ~23 MB. Sans ce COPY, /app/static n'existe
-# pas dans le conteneur → 404 sur tout /static/* (prod + demo).
-COPY static /app/static
 
 # Docs (RELEASE_NOTES.md, CHANGELOG.md, FR/) — lus au runtime par
 # release_notes_service.go (docs/FR/RELEASE_NOTES.md) et changelog.go
@@ -221,6 +257,27 @@ COPY static /app/static
 # racine du contexte de build, il ne traverse pas les sous-dossiers ; cf.
 # .dockerignore). Source globale à l'app (pas par-titre).
 COPY docs /app/docs
+
+# Front compilé du moteur (sans titles/, qui sont déjà en place dans le paquet ci-dessus).
+COPY --from=web-builder /build/engine-web /app/apps/web/dist
+
+# Scripts d'exploitation (backfill, seed, etc.)
+COPY scripts /app/scripts
+
+# Binaire Go + CLI : le serveur en dernier, c'est lui qui change à chaque déploiement.
+# CLI levelup dans le PATH (seed/seed-demo/backfill via `levelup <cmd>`).
+COPY --from=go-builder /build/levelup        /usr/local/bin/levelup
+# Backfill objectifs (ops post-deploy v7.2, serveur arrêté pendant l'opération).
+COPY --from=go-builder /build/backfill_objective_stats /usr/local/bin/backfill_objective_stats
+# Dates des jalons (ops post-deploy v7.5, serveur arrêté pendant l'opération).
+COPY --from=go-builder /build/backfill_milestone_dates /usr/local/bin/backfill_milestone_dates
+COPY --from=go-builder /build/levelup-server /app/levelup-server
+
+# Garde de construction : le manifeste de l'image et le binaire doivent porter la MÊME empreinte (le serveur le
+# vérifie aussi au démarrage, mais un échec ici coûte une construction, pas un déploiement).
+RUN fp="$(sed -n 's/.*"fingerprint": *"\([0-9a-f]*\)".*/\1/p' /app/resources.manifest.json | head -n 1)" \
+ && test -n "$fp" \
+ && grep -a -q "main.resourcesFingerprint=$fp" /app/levelup-server
 
 # Stubs de config — écrasés au runtime par les volumes bind-mount
 RUN echo '{"version":"2.1","warehouse_path":"data/warehouse","profiles":{}}' > /app/db_profiles.json \
