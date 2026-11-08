@@ -8,8 +8,20 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/config"
+	"levelup/go-api/internal/platform/netguard"
 	"levelup/go-api/internal/resourcepack"
 )
+
+// TestNewResourcesDownloaderPasseParLaGarde : le téléchargeur du paquet sort par netguard, sous sa surface nommée.
+func TestNewResourcesDownloaderPasseParLaGarde(t *testing.T) {
+	guarded, ok := newResourcesDownloader().Doer.(netguard.Doer)
+	if !ok {
+		t.Fatalf("Doer du téléchargeur = %T, attendu netguard.Doer", newResourcesDownloader().Doer)
+	}
+	if guarded.Surface != resourcesSurface {
+		t.Errorf("surface = %q, attendu %q", guarded.Surface, resourcesSurface)
+	}
+}
 
 // TestResourceActionFor : ce que chaque profil fait de chaque verdict (ADR 0045, amendement L24).
 func TestResourceActionFor(t *testing.T) {

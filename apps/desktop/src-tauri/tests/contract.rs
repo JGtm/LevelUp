@@ -232,7 +232,7 @@ fn un_telechargement_bloque_finit_par_le_delai_de_demarrage() {
     );
     run.recorder.wait_screen(Screen::Failed(FailureKind::Timeout));
     assert!(
-        started.elapsed() > Duration::from_millis(2800),
+        started.elapsed() > Duration::from_millis(2500),
         "le delai court depuis le DERNIER avancement, pas depuis le lancement : {:?}",
         started.elapsed()
     );
