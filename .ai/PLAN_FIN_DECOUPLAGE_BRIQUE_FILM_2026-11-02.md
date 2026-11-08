@@ -1100,7 +1100,7 @@ modifiés ou neufs dans `archlint`, `libs/film/revision/ordre_imports_test.go`, 
       non-affiliation à Microsoft, 343 Industries, Halo Studios.
 - [x] 4.3 `example_test.go` compilé, sur un minifilm de `replay/testdata` (aucun fichier hors du module).
 - [x] 4.4 `NOTICE.md` du module : origine de `jpt_ids.txt`, `labels.tsv`, `rules.tsv` et des fixtures (D-4, D-7).
-- [ ] 4.5 Vérification `go get` hors dépôt (`GOWORK=off GOPROXY=direct GONOSUMDB=github.com/JGtm/LevelUp`, module
+- [x] 4.5 Vérification `go get` hors dépôt (`GOWORK=off GOPROXY=direct GONOSUMDB=github.com/JGtm/LevelUp`, module
       jetable du scratchpad, sha de la branche poussée) : `go build` de l'exemple. Consignée.
 - [x] 4.6 ADR 0043 amendée (quatre briques publiables, D-1 réécrit, licence, particularités des révisions) ; ADR
       0041 et 0034 : renvoi ; `CLAUDE.md` (table, ADR 0043) ; `ARCHITECTURE_V6` EN et FR si la brique y est
@@ -1242,6 +1242,23 @@ coupes courtes, PROVENANCE par dossier), la règle des identifiants fictifs (gra
 `testdata/IDENTITES.tsv`, test de garde, anciens identifiants hors dépôt), les fixtures dérivées, les notes de désassemblage
 (`ecs_table.tsv`), les dépendances.
 
+**4.5 `go get` hors dépôt.** Branche poussée sur `origin` (`git push -u origin refactor/brique-film-publication`, seul push,
+ni `main` ni tag) : sha `cf133667f72827f8b9d8710eb444c8ce08ec1b12` (`git ls-remote` le confirme). Module jetable
+`scratchpad/goget_film/` (`go 1.26.10`), environnement `GOWORK=off GOPROXY=direct GONOSUMDB=github.com/JGtm/LevelUp
+GOFLAGS=-mod=mod`. Le dépôt est lisible sans authentification (aucun `GOPRIVATE` ni `url.ssh` nécessaire).
+
+- `go get github.com/JGtm/LevelUp/libs/film@cf133667f72827f8b9d8710eb444c8ce08ec1b12` : `added
+  github.com/JGtm/LevelUp/libs/film v0.0.0-20261108145005-cf133667f728`.
+- `main.go` : le corps de l'exemple de 4.3, le dossier du minifilm lu en argument (`go list -m -f '{{.Dir}}'` rend le cache de
+  module `...\pkg\mod\github.com\!j!gtm\!level!up\libs\film@v0.0.0-20261108145005-cf133667f728`, le film vient de
+  `replay/testdata/minifilm_000d5950` DANS ce module). `go mod tidy` puis `go build ./...` : code 0.
+- `go run . <cache>/replay/testdata/minifilm_000d5950` : `93 deaths, 8 distinct victims` (identique à la sortie vérifiée de
+  l'exemple du module).
+- `go list -m all` : `libs/gamefiles v0.1.0` et `libs/himap v0.1.0` (les TAGS, pas les copies locales), `klauspost/compress
+  v1.19.0`, `go-toml/v2 v2.4.3`, `x/sys v0.49.0`.
+- `go build github.com/JGtm/LevelUp/libs/film/...` : code 0 (tous les paquets du module) ; `CGO_ENABLED=0 go build .` :
+  code 0 (le README dit : pas de cgo pour construire et utiliser).
+
 **4.6 ADR et docs.** ADR 0043 : en-tête « Amended », D-1 original marqué réécrit, ligne du vocabulaire, renvoi au bout du
 paragraphe « le décodeur n'est pas dans la scission », et une section « Amendment of 2026-11-08 — the film decoder is the
 fourth publishable brick » (D-1 réécrit, D-2 ordre des tags et `require`, D-3 exemple et fraîcheur, D-4 AGPL-3.0, particularités :
@@ -1258,7 +1275,7 @@ publiée » : une phrase corrigée dans chacun (D-L4-9, hors liste de l'item mai
 (`apps/go-api`, seul) : `ok`, 604 s (`commentaires_references`, `briques_imports`, `film_sans_hote`, `film_file_size` compris).
 `golangci-lint run` (config d'`apps/go-api`) sur `./decfilm/...` et `./replay/` : 0 issue. `make libs-test` (vet des quatre jeux de
 balises, tests, absence de `levelup/go-api` dans les dépendances) sur les quatre modules : code 0, 245 s, 39 paquets `ok`.
-Le 4.5 (`go get` hors dépôt) suit, sur le sha poussé de ce commit.
+Le 4.5 (`go get` hors dépôt) a été joué sur le sha poussé de ce commit (voir ci-dessus).
 
 ## Lot 5 — Préalables aux dépôts dédiés (après la clôture du desktop)
 
