@@ -2173,10 +2173,6 @@ export type CitationItem = components['schemas']['CitationItem']
 /** Groupe de citations par catégorie. */
 export type CitationCategoryGroup = components['schemas']['CitationCategoryGroup']
 
-export interface CitationsQueryRequest {
-  filters: FilterContextInput
-}
-
 export type CitationsPageResponse = components['schemas']['CitationsPageResponse']
 
 // Totaux à vie des commendations natives (Halo 5, AXE B).

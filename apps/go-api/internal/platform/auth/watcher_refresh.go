@@ -106,7 +106,8 @@ func EnsureWatcherAccessToken(
 	}
 
 	// 3. Echange refresh_token → access_token (avec rotation).
-	newAccessToken, rotatedRT, err := provider.TryOAuthRefreshWithRotation(ctx, refreshToken)
+	newAccessToken, rotatedRT, err := provider.TryOAuthRefreshWithRotation(
+		WithRefreshXUID(ctx, xuid), refreshToken)
 	if err != nil {
 		slog.WarnContext(ctx, "watcher_refresh: TryOAuthRefreshWithRotation erreur",
 			"source", source, "gamertag", gamertag, "err", err,

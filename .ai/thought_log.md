@@ -120320,3 +120320,66 @@ téléchargement contre les vrais hôtes GitHub (gate 24.z).
 **Conclusion / prochaine étape.** Reste : revue adversariale 24.7 et gate utilisateur 24.z (hors de cette tâche) ; `[!]` bouton de réessai de
 l'écran `resources_incompatible` de la coquille (relance de la coquille non testable sans la lancer) ; découverte : les `web/assets/*-<hash>.js` d'une
 version restent après chaque mise à jour NSIS (antérieur à L24).
+## [2026-11-08] Plan du backlog exécutable — En cours (aucun code modifié)
+
+**Décision technique principale.** Plan `.ai/PLAN_BACKLOG_2026-11-08.md` : entrées du backlog vérifiées une à une sur `origin/release/v8.1.0`, exécution Haiku / Sonnet, aucun correctif de rejeu (mesure en lecture seule), nettoyage du backlog en dernière étape.
+
+**Résultats observés.** Douze entrées closes sans code, dont trois déjà faites. Prémisse fausse sur le rafraîchissement OAuth : la famille enregistrée vient du ticket XBL (`azure` pour JGtm), pas du client qui rafraîchit. Corpus `gamefiles` joué : un seul échec, un instrument de recherche sans son dépôt. Revue indépendante Sonnet, une ronde : 3 P0 (dont un faux défaut, `cmd/levelup` déjà câblé par `titleseams.RegisterAll`) et 11 P1, intégrés après vérification.
+
+**Conclusion / prochaine étape.** Attend le go du user et ses réponses sur la barre de filtres des citations, la réconciliation des citations au démarrage et les deux réglages Discord.
+
+## [2026-11-08] Plan du backlog : réponses du user, rafraîchissement OAuth ajouté — En cours (aucun code modifié)
+
+**Décision technique principale.** Barre de filtres des citations retirée, citations réconciliées au démarrage, deux réglages Discord abandonnés. Le rafraîchissement OAuth entre dans le plan : retenir en mémoire du processus le client qui a réussi, sans toucher aux fichiers de jetons. Rejeu et relecture finale confiés à Opus.
+
+**Résultats observés.** Le client gagnant est déjà rendu par l'échange ; la famille enregistrée ne le donne pas. Essai du client natif en tête : un échec réseau n'interroge plus Azure, dont le refus serait lu comme un jeton révoqué.
+
+**Conclusion / prochaine étape.** Attend le go du user.
+
+## [2026-11-08] Backlog E1 : micro-corrections — Complété
+
+**Décision technique principale.** Constantes recopiées de `reset-bitmasks` remplacées par les sources, relance de connexion gardée après succès, erreur de règles de citations remontée, noms de tuiles sur deux lignes, deux instruments de recherche sortis du corpus `gamefiles`.
+
+**Résultats observés.** Gate E1 vert ; relance prouvée rouge puis verte par test ; plancher du corpus à 60.
+
+**Conclusion / prochaine étape.** E2 multi-titre.
+
+## [2026-11-08] Backlog E2 : multi-titre — Complété
+
+**Décision technique principale.** Le moteur reçoit le provider de son titre (`SharedProviderForTitle`) sur les chemins du planificateur et du handler ; le recalcul des sessions écarte les profils `auth_only` ; le ratchet de comparaison de slug couvre `cmd/`.
+
+**Résultats observés.** Tests rouges puis verts ; gate vert, intégration `sync`, `scheduler`, `api/wire` sous `-p 1`. Une seule comparaison dans `cmd/`, allowlistée : validation de saisie.
+
+**Conclusion / prochaine étape.** E3 LUSR.
+
+## [2026-11-08] Backlog E3 : LUSR et matchs exclus — Complété
+
+**Décision technique principale.** Un match exclu sort du graphe de carrière (avant le calcul des écarts) et de la moyenne des composantes, par liste de paramètres lue d'abord (ADR 0036). Le rejeu complet rend `ErrCanonicalWriteHeld` si une écriture échoue, option posée par le seul rejeu : le post-sync garde son retry au cycle suivant.
+
+**Résultats observés.** Tests rouges puis verts ; gate vert. Une exclusion dont l'écriture échoue n'est plus annoncée comme terminée et se recalcule à la demande suivante.
+
+**Conclusion / prochaine étape.** E4 citations.
+
+## [2026-11-08] Backlog E4 : citations — Complété
+
+**Décision technique principale.** Barre de filtres de la page Citations retirée avec ses clés, types et tests. Réconciliation des citations à chaque démarrage sur le handle de metadata : comparaison colonne par colonne, écriture des seules différences, échec journalisé et démarrage poursuivi.
+
+**Résultats observés.** Tests rouges puis verts par cinq mutations ; second passage à zéro écriture ; gate vert ; le ratchet d'ouverture DuckDB a imposé de garder le seul `sql.Open` dans le CLI.
+
+**Conclusion / prochaine étape.** E5 rafraîchissement OAuth.
+
+## [2026-11-08] Backlog E5 : rafraîchissement OAuth — Complété
+
+**Décision technique principale.** Le rafraîchissement commence par le dernier client ayant réussi pour ce joueur (table en mémoire du processus, champ `NatifDabord` dans la brique, sans état). Un échec transitoire du natif est rendu sans interroger Azure ; révoqué ou configuration déroulent le chemin Azure.
+
+**Résultats observés.** Relecture Sonnet : 1 P1 recevable (compte reconnecté en web bloqué sur une erreur de configuration), corrigé avec test rouge puis vert ; 11 conditions tenues, dont la persistance de la rotation. Gate vert.
+
+**Conclusion / prochaine étape.** Relecture finale Opus, mesure du rejeu après la recuisson.
+
+## [2026-11-08] Backlog E7.1 : relecture adversariale Opus — Complété
+
+**Décision technique principale.** Quatre constats corrigés plutôt que consignés : invalidation du cache de carrière et de profil après une exclusion, lecture des exclus réutilisée, plancher du corpus daté, tests des chemins d'échec.
+
+**Résultats observés.** Aucun défaut sur les écritures DuckDB, la rotation des jetons, le multi-titre ou la propagation LUSR ; 25 conditions vérifiées. Pas de ronde 2, aucun P0.
+
+**Conclusion / prochaine étape.** Gates finaux, mesure du rejeu après la recuisson.

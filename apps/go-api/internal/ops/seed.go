@@ -30,9 +30,13 @@ type SeedOptions struct {
 }
 
 // SeedResult résume le résultat d'un seed.
+//
+// Pour citation_mappings : Inserted = citations nouvelles, Skipped = citations déjà présentes,
+// Updated = citations déjà présentes dont une colonne ou un texte différait et a été réécrit.
 type SeedResult struct {
 	Component string
 	Inserted  int
+	Updated   int
 	Skipped   int
 	Message   string
 }
@@ -317,154 +321,21 @@ type CitationMapping struct {
 	Subcategory       string // "" = NULL
 }
 
-// SeedCitationMappings insère/met à jour les règles citation_mappings et leurs textes par langue.
-// UPSERT sur citation_name_norm (PK depuis migration add_citation_mappings_pk), donc relancer le
-// seed met à jour les colonnes ajoutées par la migration v2. Les noms et descriptions de chaque
-// langue (citation_texts.toml, validé : toutes les langues `required`) sont écrits dans
-// asset_translations (type citation, ADR 0040 D-15) : le seed n'a plus de colonne de texte ni de
-// texte en Go.
-//
-// Compte distinctement Inserted (nouvelles citations) et Skipped (citations
-// déjà présentes — leurs colonnes sont quand même rafraîchies via DO UPDATE).
+// SeedCitationMappings insère ou met à jour les règles citation_mappings et leurs textes par
+// langue dans la base MetaDBPath (commande `levelup seed citation-mappings`). Les noms et
+// descriptions de chaque langue viennent de citation_texts.toml (validé : toutes les langues
+// `required`) : le seed n'a ni colonne de texte ni texte en Go.
 func SeedCitationMappings(ctx context.Context, opts SeedOptions) (SeedResult, error) {
-	// Les textes sont validés AVANT toute écriture : un fichier incomplet ne laisse pas une base à moitié seedée.
-	if _, err := loadedCitationTexts(); err != nil {
-		return SeedResult{Component: componentCitationMappings}, fmt.Errorf("textes des citations: %w", err)
+	// Validé AVANT l'ouverture : un fichier incomplet ne crée pas la base.
+	if err := validateCitationTexts(); err != nil {
+		return SeedResult{Component: componentCitationMappings}, err
 	}
 	db, err := sql.Open("duckdb", opts.MetaDBPath)
 	if err != nil {
 		return SeedResult{Component: componentCitationMappings}, fmt.Errorf("ouverture metadata: %w", err)
 	}
 	defer db.Close()
-
-	var hasTranslations int
-	if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'asset_translations'`).Scan(&hasTranslations); err != nil {
-		return SeedResult{Component: componentCitationMappings}, fmt.Errorf("vérification asset_translations: %w", err)
-	}
-	if hasTranslations == 0 {
-		return SeedResult{Component: componentCitationMappings}, errors.New("asset_translations absente : lancer d'abord les migrations (les textes des citations y sont écrits)")
-	}
-
-	// Schéma v2 complet : compatible migrations add_citation_mappings +
-	// add_citation_mappings_pk + add_citation_mappings_v2_fields.
-	if _, err := db.ExecContext(ctx, `
-		CREATE TABLE IF NOT EXISTS citation_mappings (
-			citation_name_norm    VARCHAR PRIMARY KEY,
-			mapping_type          VARCHAR NOT NULL DEFAULT 'medal',
-			medal_id              UBIGINT,
-			medal_ids             VARCHAR,
-			stat_name             VARCHAR,
-			award_name            VARCHAR,
-			award_category        VARCHAR,
-			custom_function       VARCHAR,
-			composite_children    VARCHAR,
-			enabled               BOOLEAN NOT NULL DEFAULT TRUE,
-			image_path            VARCHAR,
-			category              VARCHAR,
-			tier_targets          VARCHAR,
-			subcategory           VARCHAR
-		);
-		-- PAS d'index sur medal_id/mapping_type : mutés par SeedCitationMappings
-		-- (SELECT-then-write) → surface ART. Drop DBs existantes : drop_metadata_art_surface_indexes_v4.
-		CREATE INDEX IF NOT EXISTS idx_citation_mappings_norm ON citation_mappings(citation_name_norm);
-	`); err != nil {
-		return SeedResult{Component: componentCitationMappings}, fmt.Errorf("create schema: %w", err)
-	}
-	// Une base restée à l'ancienne forme (colonnes de texte revenues, base préconstruite) est portée
-	// à la nouvelle avant l'écriture : sinon l'INSERT échouerait sur une colonne `NOT NULL`.
-	if err := migration.MigrateCuratedTexts(db); err != nil {
-		return SeedResult{Component: componentCitationMappings}, fmt.Errorf("textes de citations: %w", err)
-	}
-
-	existing := make(map[string]struct{})
-	rows, err := db.QueryContext(ctx, `SELECT citation_name_norm FROM citation_mappings`)
-	if err != nil {
-		return SeedResult{Component: componentCitationMappings}, fmt.Errorf("scan existing: %w", err)
-	}
-	for rows.Next() {
-		var n string
-		if err := rows.Scan(&n); err != nil {
-			rows.Close()
-			return SeedResult{Component: componentCitationMappings}, err
-		}
-		existing[n] = struct{}{}
-	}
-	rows.Close()
-
-	// ART-safe : SELECT-then-INSERT-or-UPDATE (pas d'ON CONFLICT, qui réécrit via les
-	// index ART). La map `existing` (déjà construite ci-dessus) donne la décision
-	// insert/update sans SELECT par ligne. L'UPDATE mute medal_id/mapping_type, indexés
-	// (idx_citation_mappings_medal/type) → ces index sont droppés par
-	// drop_metadata_art_surface_indexes_v4. metadata.duckdb = blast-radius MAX même au seed.
-	const insertQ = `
-		INSERT INTO citation_mappings (
-			citation_name_norm, mapping_type,
-			medal_id, medal_ids, stat_name, award_name, award_category,
-			custom_function, composite_children, enabled,
-			image_path, category, tier_targets, subcategory
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-	const updateQ = `
-		UPDATE citation_mappings SET
-			mapping_type = ?, medal_id = ?, medal_ids = ?,
-			stat_name = ?, award_name = ?, award_category = ?, custom_function = ?,
-			composite_children = ?, enabled = ?, image_path = ?, category = ?,
-			tier_targets = ?, subcategory = ?
-		WHERE citation_name_norm = ?`
-
-	mappings := defaultCitationMappings()
-	inserted, skipped := 0, 0
-	for _, m := range mappings {
-		var medalArg interface{}
-		if m.MedalID > 0 {
-			medalArg = uint64(m.MedalID) //nolint:gosec
-		}
-		_, present := existing[m.Norm]
-		var execErr error
-		if present {
-			_, execErr = db.ExecContext(ctx, updateQ,
-				m.MappingType, medalArg, nullStr(m.MedalIDs),
-				nullStr(m.StatName), nullStr(m.AwardName), nullStr(m.AwardCategory),
-				nullStr(m.CustomFunction), nullStr(m.CompositeChildren), m.Enabled,
-				nullStr(m.ImagePath), m.Category,
-				nullStr(m.TierTargets), nullStr(m.Subcategory), m.Norm)
-		} else {
-			_, execErr = db.ExecContext(ctx, insertQ,
-				m.Norm, m.MappingType,
-				medalArg, nullStr(m.MedalIDs), nullStr(m.StatName),
-				nullStr(m.AwardName), nullStr(m.AwardCategory),
-				nullStr(m.CustomFunction), nullStr(m.CompositeChildren), m.Enabled,
-				nullStr(m.ImagePath), m.Category,
-				nullStr(m.TierTargets), nullStr(m.Subcategory))
-		}
-		if execErr != nil {
-			return SeedResult{Component: componentCitationMappings}, fmt.Errorf("upsert %s: %w", m.Norm, execErr)
-		}
-		names, descriptions, err := citationTextsFor(m.Norm)
-		if err != nil {
-			return SeedResult{Component: componentCitationMappings}, err
-		}
-		if err := UpsertAssetTexts(ctx, db, migration.AssetTypeCitation, m.Norm, names, descriptions); err != nil {
-			return SeedResult{Component: componentCitationMappings}, fmt.Errorf("textes de %s: %w", m.Norm, err)
-		}
-		if present {
-			skipped++
-		} else {
-			inserted++
-		}
-	}
-	return SeedResult{
-		Component: componentCitationMappings,
-		Inserted:  inserted,
-		Skipped:   skipped,
-		Message:   fmt.Sprintf("%d insérées, %d mises à jour", inserted, skipped),
-	}, nil
-}
-
-func nullStr(s string) interface{} {
-	if s == "" {
-		return nil
-	}
-	return s
+	return seedCitationMappingsOn(ctx, db)
 }
 
 // SeedMedalDefinitions ne peuple PLUS rien : medal_definitions est désormais

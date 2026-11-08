@@ -3,7 +3,7 @@
  * réellement posé par le serveur sur la tentative (`error_code`), en FR et en EN.
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { renderWithProviders } from '@/test/render-utils'
 import { server } from '@/test/setup'
@@ -50,5 +50,47 @@ describe('StepDeviceCode — échec du device-flow', () => {
     failWith(code)
     renderWithProviders(<StepDeviceCode />)
     expect(await screen.findByText(message, {}, { timeout: 4000 })).toBeInTheDocument()
+  })
+})
+
+describe('StepDeviceCode — succès puis 404 tardif', () => {
+  beforeEach(() => {
+    useSetupFlowStore.getState().reset()
+    useAppShellStore.setState({ locale: 'fr' })
+  })
+  afterEach(() => {
+    useSetupFlowStore.getState().reset()
+  })
+
+  it('une fois autorisé : un retour de focus ne relance ni start ni flow sur un 404 attempt_not_found', async () => {
+    // Le serveur fait tourner la session au succès : un retour de focus refait la requête de
+    // statut sur l'ancienne tentative, qui répond 404. Sans garde, l'effet de récupération
+    // relançait `start` (jusqu'à 3 fois).
+    let startCount = 0
+    let pollCount = 0
+    server.use(
+      http.post('/api/v1/auth/device-flow/start', () => {
+        startCount += 1
+        return HttpResponse.json({ attempt_id: `att-${startCount}`, user_code: 'ABCD-1234', verification_uri: 'https://microsoft.com/devicelogin', expires_in: 900, poll_interval_sec: 5 })
+      }),
+      http.get('/api/v1/auth/device-flow/:attemptId', () => {
+        pollCount += 1
+        if (pollCount === 1) {
+          return HttpResponse.json({ attempt_id: 'att-1', status: 'authorized', gamertag: 'TestPlayer', xuid: '0000000000000001', error: null })
+        }
+        return HttpResponse.json({ code: 'attempt_not_found', message: 'tentative introuvable', retryable: false }, { status: 404 })
+      }),
+    )
+
+    renderWithProviders(<StepDeviceCode />)
+    expect(await screen.findByText('✓ Authentification réussie !', {}, { timeout: 4000 })).toBeInTheDocument()
+
+    // Retour de focus (TanStack Query écoute visibilitychange sur window).
+    window.dispatchEvent(new Event('visibilitychange'))
+    await waitFor(() => expect(pollCount).toBeGreaterThanOrEqual(2), { timeout: 4000 })
+    // Laisse le temps à l'effet de récupération de réagir au 404.
+    await new Promise((resolve) => setTimeout(resolve, 200))
+
+    expect(startCount).toBe(1)
   })
 })

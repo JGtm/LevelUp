@@ -37,6 +37,11 @@
 # au lieu de le compter en échec (un seul décodage de film à la fois sur la machine). Une seule paire
 # d'entrées a bougé.
 #
+# RENOMMAGE DU 2026-11-08 (backlog E1.3) : `service` :
+# `TestCitationsService_GetCitationsPage_MappingsError_Graceful` devient `..._MappingsError_Remonte`, parce que le
+# contrat a changé : un échec de lecture des règles de citations remonte au lieu de rendre une page vide. Une seule
+# entrée a bougé.
+#
 # RETRAIT DU 2026-09-13 (lot B.2 des finitions v7.5) : 23 tests ont été RETIRÉS de la
 # baseline — 17 de `internal/platform/auth` (TestMigrateLegacyTokens_*,
 # TestEnvRefreshTokenForGamertag_*) et 6 de `cmd/server`

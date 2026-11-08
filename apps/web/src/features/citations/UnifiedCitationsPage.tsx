@@ -1,8 +1,8 @@
 /**
  * UnifiedCitationsPage — page Citations UNIQUE pour tous les titres. La `source` est
  * fixée par la ROUTE (`/citations` → infinite, `/commendations` → native), pas par une
- * détection de slug interne : les routes/nav restent inchangées et la source native ne
- * monte jamais la barre de filtres (zéro fetch inutile). Les deux sources normalisent
+ * détection de slug interne : les routes/nav restent inchangées. Une citation est un
+ * total de carrière : la page n'a aucun filtre. Les deux sources normalisent
  * leurs données vers le même view-model et rendent la même CitationsView — UI identique,
  * seuls le calcul/les données/les images diffèrent (objectif title-agnostic).
  */
@@ -11,7 +11,6 @@ import { Card, CardContent } from '@/components/ui/card'
 import { EmptyStateCard } from '@/components/ui/empty-state'
 import { useCitationsPage } from './queries'
 import { useCommendationTotals } from '@/features/commendations/queries'
-import { useLocalFilterBar } from '@/features/_shared/useLocalFilterBar'
 import { CitationsView } from './CitationsView'
 import { citationCategoryLabel } from './labels'
 import { formatMessage, type ManifestLocale } from '@/lib/i18n/format'
@@ -37,39 +36,21 @@ function masteryHeader(vm: CitationsViewModel, locale: ManifestLocale): string {
   })
 }
 
-// ─── Source Infinite (moteur de citations dérivé + barre de filtres) ──────────
+// ─── Source Infinite (moteur de citations dérivé, totaux de carrière) ─────────
 
 function CitationsInfiniteSource() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: CitationsManifestKey) => formatMessage(citationsManifest, key, locale)
 
-  const { committedFilterContext, committedHash, bar } = useLocalFilterBar({
-    playerSlug,
-    labels: {
-      experience: t('citations.filters.experience'),
-      experienceAll: t('citations.filters.experience_all'),
-      experienceRanked: t('citations.filters.experience_ranked'),
-      experienceUnranked: t('citations.filters.experience_unranked'),
-      playlists: t('citations.filters.playlists'),
-      modes: t('citations.filters.modes'),
-      reset: t('citations.filters.reset'),
-    },
-  })
-
-  const { data, isLoading, isError, refetch } = useCitationsPage(
-    playerSlug,
-    { filters: committedFilterContext },
-    committedHash,
-  )
+  const { data, isLoading, isError, refetch } = useCitationsPage(playerSlug)
 
   if (isLoading) {
-    return <div className="flex flex-col gap-6">{bar}</div>
+    return null
   }
   if (isError) {
     return (
       <div className="flex flex-col gap-6">
-        {bar}
         <div className="px-6">
           <Card>
             <CardContent className="py-8 text-center">
@@ -86,7 +67,6 @@ function CitationsInfiniteSource() {
   if (!data) {
     return (
       <div className="flex flex-col gap-6">
-        {bar}
         <div className="px-6">
           <EmptyStateCard
             title={t('citations.empty.no_data')}
@@ -104,7 +84,6 @@ function CitationsInfiniteSource() {
     <CitationsView
       vm={vm}
       locale={locale}
-      filterBar={bar}
       headerTitle={masteryHeader(vm, locale)}
       completedSuffix={t('citations.category.completed_suffix')}
       categoryLabel={(key) => citationCategoryLabel(key, locale)}
@@ -114,7 +93,7 @@ function CitationsInfiniteSource() {
   )
 }
 
-// ─── Source native (commendations Halo 5, totaux à vie, sans filtres) ─────────
+// ─── Source native (commendations Halo 5, totaux à vie) ───────────────────────
 
 function CitationsNativeSource() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
@@ -131,7 +110,7 @@ function CitationsNativeSource() {
   // comme un titre sans commendations natives).
   const vm: CitationsViewModel = data
     ? normalizeNativeTotals(data)
-    : { categories: [], masteredTotal: 0, itemsTotal: 0, source: 'native', hasFilters: false }
+    : { categories: [], masteredTotal: 0, itemsTotal: 0, source: 'native' }
 
   return (
     <CitationsView

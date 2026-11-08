@@ -34,7 +34,8 @@ interface MatchFavoriteResponse {
  *   - 422 `ranked_not_excludable` → match classé non excluable
  *   - 404 `match_not_found`        → match absent du registre
  *
- * Invalide matchHistory (préfixe joueur) + matchView (match courant) pour
+ * Invalide matchHistory (préfixe joueur), matchView (match courant), la carrière (préfixe
+ * joueur : graphe LUSR) et le profil du joueur (préfixe joueur : composantes LUSR) pour
  * refléter immédiatement les nouveaux scores et l'état du flag.
  */
 export function useSetMatchExclusion(playerSlug: string) {
@@ -54,6 +55,11 @@ export function useSetMatchExclusion(playerSlug: string) {
           matchId,
           useAppShellStore.getState().locale,
         ),
+      })
+      // Le match exclu sort aussi du graphe de carrière (LUSR) et des composantes du profil.
+      void queryClient.invalidateQueries({ queryKey: queryKeys.careerAll(playerSlug) })
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.playerProfile.profileAll(playerSlug),
       })
     },
   })

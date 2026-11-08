@@ -60,11 +60,16 @@ import (
 // tagGamefiles : la ligne exacte attendue en tête de chaque fichier du corpus.
 const tagGamefiles = "//go:build gamefiles"
 
-// corpusGamefilesPlancher : le corpus mesuré le 2026-09-06, APRÈS cet item (60 dans
-// `internal/himap`, 1 dans `cmd/mapstruct-build`, 1 dans `cmd/mapfond-build`). Un balayage qui
-// rend moins que ça ne garde plus rien — le balayage s'est cassé, ou le corpus a été renommé
-// sans que personne ne le dise.
-const corpusGamefilesPlancher = 62
+// corpusGamefilesPlancher : nombre de fichiers `*_gamefiles_test.go` attendus dans le balayage.
+// Les instruments de recherche (`*_research_test.go`, tag `gamefiles && research`) n'entrent pas
+// dans ce compte : ils sont hors du corpus de non-régression. Un balayage qui rend moins que ça
+// ne garde plus rien — le balayage s'est cassé, ou le corpus a été renommé sans que personne ne
+// le dise.
+//
+// Valeur mesurée le 2026-11-08 : 60, après le reclassement de deux instruments de recherche
+// (`depot_variantes` et `rendu_forge`, de `*_gamefiles_test.go` à `*_research_test.go`), qui a
+// ramené le compte de 62 à 60.
+const corpusGamefilesPlancher = 60
 
 // appelsInstallation : les portes d'entrée vers l'installation de Halo Infinite. Un test qui en
 // appelle une lit le disque du jeu, donc coûte des minutes dès que le jeu est là. Les trois
@@ -129,7 +134,7 @@ func TestCorpusGamefilesEstTague(t *testing.T) {
 		}
 	})
 	if vus < corpusGamefilesPlancher {
-		t.Errorf("%d fichier(s) *_gamefiles_test.go balayé(s), plancher %d (mesure du 2026-09-05) "+
+		t.Errorf("%d fichier(s) *_gamefiles_test.go balayé(s), plancher %d (corpus mesuré le 2026-11-08) "+
 			"— le garde-rail ne garde plus le corpus entier", vus, corpusGamefilesPlancher)
 	}
 }

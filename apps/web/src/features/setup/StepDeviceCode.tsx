@@ -13,7 +13,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { useSetupFlowStore } from '@/stores/setupFlowStore'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { queryKeys } from '@/lib/query/keys'
-import { useStartDeviceFlow, useDeviceFlowStatus } from './queries'
+import { useStartDeviceFlow, useDeviceFlowStatus, isDeviceFlowSucceeded } from './queries'
 import { apiErrorCode, type ApiError } from '@/lib/api/client'
 import { verificationLinkLabel } from '@/lib/formatters'
 import { formatMessage } from '@/lib/i18n/format'
@@ -129,6 +129,9 @@ function DeviceCodePanel() {
   // rester bloqué jusqu'à l'expiration du compte à rebours.
   useEffect(() => {
     if (!currentAttemptId || apiErrorCode(error) !== 'attempt_not_found') return
+    // Jamais une fois la tentative aboutie : la rotation de session au succès rend l'ancienne
+    // tentative introuvable, et chaque relance consommerait une tentative simultanée autorisée.
+    if (isDeviceFlowSucceeded(status?.status)) return
     if (recoveryCountRef.current >= MAX_AUTO_RECOVERY) {
       setRecoveryExhausted(true)
       return
@@ -136,7 +139,7 @@ function DeviceCodePanel() {
     recoveryCountRef.current += 1
     setCurrentAttemptId(null)
     startDeviceFlow()
-  }, [error, currentAttemptId]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [error, currentAttemptId, status?.status]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Quand le flow réussit : invalider le bootstrap pour que setupState avance
   useEffect(() => {

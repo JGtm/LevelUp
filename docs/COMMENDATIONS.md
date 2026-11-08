@@ -121,7 +121,7 @@ The rule registry is seeded from `internal/ops/seed_citation_data.go` (`defaultC
 levelup seed citation-mappings
 ```
 
-The seed is idempotent: existing rows are UPDATEd (refreshing `image_path`, `tier_targets`, `description`, …), new ones INSERTed.
+The seed is idempotent: only rows that differ are written, new ones are INSERTed. The server applies the same reconciliation at every start, so the command is only needed while the server is stopped, or to see the counts.
 
 ## Backfill the computed values
 
@@ -153,13 +153,13 @@ levelup backfill --gamertag YourGamertag --composite-only
    - `composite` → set `CompositeChildren` (JSON array of child norm-keys).
    - Always set `Category`, `TierTargets`, `ImagePath`, `Enabled`.
    - Add the name and the description in **every language** of `config/locales.toml` to `internal/ops/citation_texts.toml` (`[citations.<norm>]`, `name = { en = "...", fr = "..." }`, same for `description`). The file is validated at load time (a missing language fails the seed and the guard-rail test).
-2. Re-seed: `levelup seed citation-mappings`.
+2. Restart the server (it reconciles the seed), or run `levelup seed citation-mappings` while it is stopped.
 3. Recompute: `levelup backfill --all --citations-recompute-all`.
-4. Enable/disable later by flipping `Enabled` in the seed (or `citation_mappings.enabled`) and re-seeding.
+4. Enable/disable later by flipping `Enabled` in the seed. A manual edit of `citation_mappings.enabled` is overwritten at the next start.
 
 ## FAQ
 
-**How do I change an existing rule?** Edit the literal in `seed_citation_data.go`, re-run `levelup seed citation-mappings`, then `levelup backfill --citations-recompute-all`.
+**How do I change an existing rule?** Edit the literal in `seed_citation_data.go`, restart the server (or run `levelup seed citation-mappings` while it is stopped), then `levelup backfill --citations-recompute-all`.
 
 **Disk impact?** Roughly one row per active commendation (value > 0) per match, plus one sentinel for matches with no active citation. Old generations are retained (append-only) until compaction.
 

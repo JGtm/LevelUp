@@ -5,6 +5,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log/slog"
 	"os"
@@ -17,6 +18,7 @@ import (
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
 	"levelup/go-api/internal/games/weapons"
 	"levelup/go-api/internal/migration"
+	"levelup/go-api/internal/ops"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/friendstore"
 	"levelup/go-api/internal/platform/groupstore"
@@ -210,7 +212,7 @@ func runMigrations(metaPath, sharedPath, sharedSocialPath, pvePath, prestigeConf
 }
 
 // migrateMetadataDB migre metadata.duckdb puis réconcilie ses seeds (traductions, registre
-// d'armes, noms d'armes).
+// d'armes, noms d'armes, citations).
 func migrateMetadataDB(metaPath, prestigeConfigDir string) error {
 	// 1. metadata.duckdb
 	metaDB, err := duckdb.OpenReadWrite(metaPath)
@@ -246,8 +248,31 @@ func migrateMetadataDB(metaPath, prestigeConfigDir string) error {
 		metaDB.Close()
 		return fmt.Errorf("metadata weapon name labels reconcile: %w", err)
 	}
+	// Les citations ajoutées par une mise à jour atteignent une base déjà installée : le seed
+	// n'est joué qu'à l'installation ou à la main (`levelup seed citation-mappings`), et
+	// l'application de bureau n'a pas de ligne de commande. Une citation manquante ne casse
+	// aucune lecture : l'échec est journalisé et le démarrage se poursuit.
+	reconcileCitationsAtBoot(context.Background(), metaDB.SQLDb())
 	metaDB.Close()
 	return nil
+}
+
+// reconcileCitationMappings est la réconciliation des citations ; variable pour que les tests
+// y substituent un échec.
+var reconcileCitationMappings = ops.ReconcileCitationMappings
+
+// reconcileCitationsAtBoot réconcilie les citations sur le handle de l'écrivain de metadata.duckdb.
+// Jamais fatale : l'erreur est journalisée.
+func reconcileCitationsAtBoot(ctx context.Context, db *sql.DB) {
+	res, err := reconcileCitationMappings(ctx, db)
+	if err != nil {
+		slog.ErrorContext(ctx, "citations: réconciliation au démarrage échouée, démarrage poursuivi", "err", err)
+		return
+	}
+	if res.Inserted > 0 || res.Updated > 0 {
+		slog.InfoContext(ctx, "citations réconciliées au démarrage",
+			"inserted", res.Inserted, "updated", res.Updated, "unchanged", res.Skipped-res.Updated)
+	}
 }
 
 // migrateSharedDB migre shared_matches_v2.duckdb.

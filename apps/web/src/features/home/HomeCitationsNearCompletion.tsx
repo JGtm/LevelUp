@@ -13,8 +13,7 @@
  * un data-hook → règles des hooks respectées.
  *
  * Frontière front-only : aucune plomberie backend (les deux endpoints existaient
- * déjà). La période du filtre Infinite est laissée à vie (DEFAULT_FILTER_CONTEXT,
- * bornes nulles + cascade vide) → totaux cumulés, cohérent avec « bientôt terminée ».
+ * déjà). Les deux sources servent des totaux de carrière, cohérent avec « bientôt terminée ».
  *
  * Dégradation gracieuse : tant que la requête charge, ou si aucune citation ne
  * franchit le seuil de proximité, la section ne rend RIEN (pas de carte vide).
@@ -32,16 +31,11 @@ import {
   selectNearCompletion,
   type NearCompletionItem,
 } from '@/lib/citations/nearCompletion'
-import { DEFAULT_FILTER_CONTEXT } from '@/stores/createFilterStore'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import { intlLocale } from '@/lib/formatters'
 import { formatMessage, type ManifestLocale } from '@/lib/i18n/format'
 import { homeManifest, type HomeManifestKey } from '@/lib/i18n/generated/home'
-
-// Hash de cache STABLE et dédié à la home (contexte à vie). Distinct du hash de la
-// page Citations → entrée react-query propre, sans collision avec ses filtres.
-const HOME_NEAR_COMPLETION_HASH = 'home-near-completion'
 
 export function HomeCitationsNearCompletion({ playerSlug }: { playerSlug: string }) {
   const hasComputedCitations = useCapability('citations')
@@ -57,11 +51,7 @@ export function HomeCitationsNearCompletion({ playerSlug }: { playerSlug: string
 function InfiniteNearCompletion({ playerSlug }: { playerSlug: string }) {
   const navigate = useNavigate()
   const titleSlug = useTitleSlug()
-  const { data, isLoading } = useCitationsPage(
-    playerSlug,
-    { filters: DEFAULT_FILTER_CONTEXT },
-    HOME_NEAR_COMPLETION_HASH,
-  )
+  const { data, isLoading } = useCitationsPage(playerSlug)
   if (isLoading || !data) return null
   const items = normalizeInfinitePage(data).categories.flatMap((c) => c.items)
   const near = selectNearCompletion(items)

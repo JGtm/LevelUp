@@ -56,3 +56,42 @@ func TestPostRecalculateSessions_EchecDUnJoueurFaitEchouerLeJob(t *testing.T) {
 		t.Errorf("résultat %v, attendu 1 joueur dont 1 en échec", j.Result)
 	}
 }
+
+// TestPostRecalculateSessions_ProfilAuthOnlyEcarte : un profil auth_only n'a pas de base joueur
+// (il ne sert qu'à porter un jeton) : le recalcul ne le compte pas et ne l'ouvre pas. Ici un
+// dossier occupe le chemin de sa base joueur, de sorte qu'une ouverture ferait échouer le job.
+func TestPostRecalculateSessions_ProfilAuthOnlyEcarte(t *testing.T) {
+	root := t.TempDir()
+	profilesPath := filepath.Join(root, "db_profiles.json")
+	profiles := `{"version":"3.0","admin":"TokenOnly","profiles":{"halo_5":{"TokenOnly":{"xuid":"2002","auth_only":true}}}}`
+	if err := os.WriteFile(profilesPath, []byte(profiles), 0o600); err != nil {
+		t.Fatalf("db_profiles: %v", err)
+	}
+	cfg := &config.AppConfig{RepoRoot: root, DBProfilesPath: profilesPath}
+	playerDB := titlePkg.NewPathResolver(root).PlayerDBPath("halo_5", "TokenOnly")
+	if err := os.MkdirAll(playerDB, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	store := jobs.NewStore(filepath.Join(t.TempDir(), "jobs.json"))
+	h := NewSettingsHandler(cfg, settings_platform.NewStore(filepath.Join(root, "app_settings.json")), store)
+
+	out, err := h.handlePostRecalculateSessions(context.Background(), nil)
+	if err != nil {
+		t.Fatalf("handlePostRecalculateSessions: %v", err)
+	}
+	var j *domain.AsyncJobStatus
+	for deadline := time.Now().Add(30 * time.Second); time.Now().Before(deadline); time.Sleep(20 * time.Millisecond) {
+		if j = store.Get(out.Body.JobID); j != nil && j.IsTerminal() {
+			break
+		}
+	}
+	if j == nil || !j.IsTerminal() {
+		t.Fatalf("job non terminé: %+v", j)
+	}
+	if j.Status != domain.JobStatusSucceeded {
+		t.Fatalf("statut %q (erreur %+v), attendu %q : le profil auth_only ne doit pas être ouvert", j.Status, j.Error, domain.JobStatusSucceeded)
+	}
+	if j.Result["players"] != 0 || j.Result["players_failed"] != 0 {
+		t.Errorf("résultat %v, attendu 0 joueur compté et 0 en échec", j.Result)
+	}
+}

@@ -40,35 +40,6 @@ chacune, à instruire une par une.**
 
 ---
 
-### [dette/backlog-2026-10-16] Découvertes non traitées du plan du 2026-10-16
-
-Section « Découvertes » de `.ai/archive/V7.5/PLAN_BACKLOG_2026-10-16.md` (détail, `fichier:ligne` et origine par
-étape). Les principales, à trier :
-- **LUSR** : un match exclu reste tracé dans le graphe de carrière avec sa note d'avant (Q8
-  `queries_career.go`, `profile/queries.go` sans filtre `is_excluded`) ; `skippedWriteFailed` laisse
-  `RunLUSRV2Shadow` rendre `nil` (une exclusion dont une écriture canonique échoue répond « terminé ») ;
-  la lecture du précédent par la vue coûte ~5 ms de plus par match noté (index en mémoire possible) ;
-  la fixture `psa_index_repro_msr_fixture_test.go` recopie les anciennes requêtes. **S chacune.**
-- **Multi-titre** : `auto_sync_engine.go` et `sync_handler.go` passent le provider d'Infinite aux moteurs
-  d'autres titres ; passes `--csr`/`--shared-csr` aux chemins fixés sur le titre par défaut (le titre
-  de test `synthetic_title_b` déclare la capability) ; ratchet `no_slug_comparison_test.go` sans `cmd/` ;
-  `cmd/levelup` n'installe pas les étapes de migration par titre ; `RunForDB` reste dans 3 outils ;
-  la route des sessions parcourt les profils `auth_only`. **S à M.**
-- **CI / outillage** : le filtre de chemins ne voit pas tous les tests Go qui lisent `apps/web/src` (rattrapé
-  par la CI complète de la branche de release) ; le corpus
-  `-tags=gamefiles` n'est pas vert sur le poste (dépôt `.ai/re_dump/mapvar` absent, banc Cliffhanger
-  64,4 % contre 64,7 %). **S.**
-- **Citations** : échec de `LoadCitationMappings` avalé (page vide) ; la barre de filtres de la page est
-  sans effet (corps ignoré) ; noms de tuiles tronqués (« Maîtrise de la … » indiscernables) ; le serveur
-  ne rejoue jamais le seed des citations sur une metadata existante. **S chacune.**
-- **Divers** : `StepDeviceCode.tsx` garde l'effet de récupération sans garde (sondage déjà arrêté) ;
-  premières vérifications de participation soumises au budget de lecture ; `cmd_reset_bitmasks.go`
-  recopie d'autres constantes ; deux `continue` silencieux dans `weapon_resolver.go` ; démo sans
-  `match_bomb_stats` ; coût de `/tactical/maps` (une résolution de fond par carte) à mesurer ;
-  instruments `research` en `filepath.Join(depot, "data", ...)` (motif ancien ; 9 fichiers au 2026-11-02 :
-  8 sous `libs/film/replay/`, 1 sous `internal/replaybuild/`). **S.**
-
----
 
 ### [replay/sons] Fins de partie multi-équipes par couleur — écran + annonceur — BLOQUÉS faute de donnée
 
@@ -125,53 +96,7 @@ manque de donnée, établi sur payloads réels (P0, 10 matchs interrogés) :
 Le patron existe alors en triple exemplaire — **effort : S par bloc**. Interdiction
 explicite d'inventer le schéma par analogie.
 
-### [ops/h5] `weapon_labels` / `cmd/h5-metadata-fetch` — VERDICT : à CONSERVER (seuls porteurs des icônes)
 
-Audit fait le 2026-07-26. Il répond à la question posée par la version précédente de cette
-entrée (« la couverture du registre est-elle totale ? ») et en déplace la conclusion.
-
-**Ce qui est établi** :
-- **Couverture du registre : 100 %.** Les 66 `weapon_id` H5 connus ont désormais un
-  `weapon_key` (`weaponRegistryH5Stock` étendu dans
-  `internal/games/halo_infinite/migrations/weapon_registry.go`, noms via
-  `config/titles/halo_5/mappings/weapon_names.toml`). Le critère de retrait posé le
-  2026-07-25 est donc **atteint pour les NOMS**.
-- **Mais la table `weapon_labels` et le CLI `cmd/h5-metadata-fetch` restent VIVANTS**, pour
-  une raison qui n'était pas dans le périmètre initial : ils sont les **seuls porteurs des
-  `icon_url` d'armes H5** (consommées par `internal/games/halo_5/adapter_asset_urls.go`, qui
-  indexe l'URL d'icône par `name_en` officiel) **et du catalogue admin d'assets**
-  (`internal/platform/duckdb/metadata_repo_assets_list.go`). Retirer le CLI, c'est perdre les
-  icônes d'armes H5, pas seulement un repli de nom.
-
-**Ce qui resterait supprimable, et sous quelle preuve** : uniquement le **3e maillon du
-COALESCE de NOM** dans `internal/platform/duckdb/weapon_resolver.go`
-(`… NULLIF(wl.name_fr,''), NULLIF(wl.name_en,'') …`), probablement mort depuis que le
-registre couvre 100 % des ids. **Preuve exigée avant retrait** : un relevé LIVE de
-`GET /admin/monitoring/weapon-coverage?title=halo_5` (session admin requise) montrant
-**0 identifiant non résolu par `weapon_name_labels`**. Tant que ce relevé n'est pas produit,
-ne rien toucher : le maillon coûte une clause SQL, son retrait à l'aveugle coûterait des noms
-d'armes vides en production.
-
-**Hors périmètre du retrait, dans tous les cas** : la colonne `weapon_labels.name_en` sert
-AUSSI de clé de résolution d'image (`COALESCE(wl.name_en,'') AS name_en` dans le même
-resolver) — elle ne suit pas le sort du maillon de nom. **Effort : S** (le relevé live).
-
----
-
-### [auth] Rafraîchissement OAuth : essayer d'abord la famille de jeton enregistrée
-
-**Noté le** : 2026-10-30 (lot « suites du découplage », plan `.ai/V8/PLAN_SUITES_DECOUPLAGE_2026-10-30.md`)
-
-Constat (D3-L1-f, registre `.ai/REGISTRE_REPORTS.md`, section D3) : chaque rafraîchissement de JGtm
-essaie d'abord l'application Azure, qui refuse le jeton (« jeton étranger », `invalid_grant`), puis
-réussit par le client Xbox natif. Coût : un appel HTTPS perdu et une ligne de journal toutes les
-50 minutes par joueur ; aucun effet fonctionnel. Le magasin de jetons connaît la famille du jeton
-(`azure` / `xbox_native`, `multi_user_token_store.go`). Piste : dans `platform/auth` (la politique,
-pas la brique `haloapi`), lire la famille enregistrée et tenter d'abord le client correspondant,
-l'autre en repli ; revue à deux relecteurs (ADR 0023) ; test `httptest` des deux ordres.
-**Décision du user du 2026-10-30 : reporté, pas prioritaire.** **Effort (estimation) : S.**
-
----
 
 ### [archi] Dépôts dédiés des trois briques publiées — APRÈS le chantier application de bureau
 
@@ -199,9 +124,8 @@ Référence : ADR 0020 — Coach proactif : pont vers Prestige. ADR 0021 — Syn
 **Arcs multi-titres** : clos le 2026-07-25 (v7.2.1, Option A, retrait `arc_titles`) — plan archivé
 [.ai/archive/V7.2/PLAN_CROSS_TITLE_ARCS_2026-07.md](.ai/archive/V7.2/PLAN_CROSS_TITLE_ARCS_2026-07.md).
 
-Enrichissements possibles (non planifiés) : funnel `coach_proposal.status` dans l'analyseur de
-tuning, overlay Discord par titre (`LoadNotifyConfigForTitle`), exposition des catégories
-forwardées via settings.
+Enrichissements possibles (non planifiés) : funnel `coach_proposal.status` dans l'analyseur de tuning.
+Réglages Discord sans interrupteur web : relais du coach, rejeu prêt, reconnexion requise, disque.
 
 ---
 
@@ -213,6 +137,7 @@ forwardées via settings.
 | Date | Item |
 |------|------|
 | 2026-11-08 | **[archi] Décodeur de film : brique `libs/film` publiable** (plan `.ai/PLAN_FIN_DECOUPLAGE_BRIQUE_FILM_2026-11-02.md`) : réorganisation protocole/exploitation, identifiants fictifs dans les fixtures, README/NOTICE/exemple, ADR 0043 amendée, revue adversariale close (branche `refactor/brique-film-publication`, PR vers `release/v8.1.0`). Reste : tag `libs/film/v0.1.0` (geste du user), lot 5 (jeton Spartan sur redirection, NOTICE gamefiles) et lot 6 (quatre dépôts dédiés) après le bureau et `main`. |
+| 2026-11-08 | **[backlog] Lot du 2026-11-08** (plan `.ai/V8/PLAN_BACKLOG_2026-11-08.md`, branche `chore/backlog-2026-11-08`) : matchs exclus retirés du graphe de carrière et des composantes LUSR, rejeu LUSR complet en échec visible si une écriture est tenue ; moteurs servis par le provider de leur titre, profils `auth_only` écartés du recalcul de sessions, ratchet des slugs étendu à `cmd/` ; page Citations sans barre de filtres, noms sur deux lignes, erreur de règles remontée, citations réconciliées à chaque démarrage ; rafraîchissement OAuth par le dernier client ayant réussi (mémoire du processus) ; `reset-bitmasks` sur les constantes canoniques, relance de connexion gardée après succès, deux instruments sortis du corpus `gamefiles`. Clos sur preuve sans code, détail au §0 du plan : `weapon_resolver`, `match_bomb_stats`, `cmd/levelup` et étapes par titre, maillon de nom Halo 5, fixture `psa_index_repro`, lecture du précédent LUSR, filtre CI, `RunForDB`, passes CSR, première vérification de participation, `/tactical/maps`, banc Cliffhanger ; instruments `research` traités par la brique film. Revue indépendante du plan, relecture dédiée de l'authentification, relecture finale Opus. |
 | 2026-11-02 | **[qol] Citations `.ai/` retirées des commentaires de code** (PR #134, entrée de backlog ouverte par la PR #127) : nettoyage fait, ratchet à plafond 0. Même PR : moteur des véhicules au mouvement dans le rejeu, tuile seule des sessions récentes. |
 | 2026-11-01 | **[archi] Publication des briques : modules, README, tags** (plan `.ai/V8/PLAN_PUBLICATION_BRIQUES_2026-10-30.md`, PR #118 et #119 dans `release/v8.1.0`) : module `libs/haloapi` multi-jeu (`xblauth`, `infinite`, `halo5`, `xboxlive`, `haloapitest` ; clients Halo 5, UGC cartes, GameCMS et succès Xbox coupés en protocole / exploitation sans changement observable), README EN des trois briques, `example_test.go`, ADR 0043 ; tags `libs/{gamefiles,himap,haloapi}/v0.1.0` posés sur validation du user, `go get` vérifié hors dépôt. Reste : dépôts dédiés (entrée du backlog ci-dessus). |
 | 2026-10-29 | **[archi] Découplage des briques D1, D2, D3** (audit `.ai/V8/AUDIT_DECOUPLAGE_BRIQUES_2026-10-27.md`, ADR 0041 et 0042) : `libs/gamefiles` + `libs/himap` reliés par `go.work` (PR #111), décodeur de film en module `libs/film` (PR #113), API Halo séparée en protocole et exploitation (PR #114) ; suites (gates locaux, ratchets, robustesse `haloapi`) en PR #117. |

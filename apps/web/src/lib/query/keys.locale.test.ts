@@ -225,7 +225,7 @@ const dependDeLaLangue: Record<string, () => readonly unknown[]> = {
   media: () => queryKeys.media(PL, TI, 'h', L),
   mediaRail: () => queryKeys.mediaRail(PL, TI, 5, L),
   mediaMatchCandidates: () => queryKeys.mediaMatchCandidates(PL, TI, null, 5, L),
-  citations: () => queryKeys.citations(PL, TI, 'h', L),
+  citations: () => queryKeys.citations(PL, TI, L),
   medals: () => queryKeys.medals(PL, TI, L),
   commendationTotals: () => queryKeys.commendationTotals(PL, TI, L),
   timeseries: () => queryKeys.timeseries(PL, TI, 'h', L),
@@ -295,6 +295,7 @@ const nePasDependreDeLaLangue: Record<string, string> = {
   'prestige.meAll': PREFIXE_LARGE,
   'squad.challengesAll': PREFIXE_LARGE,
   'playerProfile.campaignAll': PREFIXE_LARGE,
+  'playerProfile.profileAll': PREFIXE_LARGE,
   'arc.listAll': PREFIXE_LARGE,
   'challenge.listAll': PREFIXE_LARGE,
   // Carrière, match, tactique, médias : identifiants, scores, mesures.

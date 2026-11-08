@@ -1,7 +1,7 @@
 // oauth_refresh.go : échange d'un OAuth v2 refresh_token contre un access_token Microsoft.
 //
 //	refresh_token -> POST /oauth2/v2.0/token (app Azure) -> access_token
-//	                 (repli : POST login.live.com, client Xbox natif)
+//	                 (repli : POST login.live.com, client Xbox natif ; ou natif d'abord, voir OAuth.NatifDabord)
 //	                                        |
 //	                              ExchangeAccessToken -> jetons Halo
 //
@@ -37,6 +37,15 @@ type OAuth struct {
 	// URLNatif : endpoint /token du client Xbox natif (en production [URLTokenMSA]), pour le
 	// repli du rafraîchissement.
 	URLNatif string
+	// NatifDabord : le client Xbox natif répond en premier au lieu de l'application Azure, quand
+	// l'appelant sait que ce refresh_token vient de lui. Toute erreur OAuth du natif que le serveur
+	// a prononcée (classe [AuthErrorRevoked] ou [AuthErrorConfig]) déroule ensuite le chemin Azure,
+	// sans nouveau repli natif : Azure qui réussit fait foi, Azure qui échoue rend son erreur. Seul
+	// un échec transitoire (erreur sans classe OAuth : réseau, refus du Doer ; ou classe
+	// [AuthErrorTransient] : 429, 5xx) est rendu tel quel sans toucher à Azure, dont le refus
+	// serait lu à tort comme un jeton révoqué. Faux (défaut) : Azure d'abord, repli natif sur
+	// invalid_grant.
+	NatifDabord bool
 }
 
 // RefreshOutcome : l'issue d'un rafraîchissement, que l'appelant persiste et compte.
@@ -97,6 +106,41 @@ func (o OAuth) RefreshWithRotation(ctx context.Context, refreshToken string) (ou
 		}
 	}()
 
+	if o.NatifDabord {
+		var fini bool
+		if out, fini, err = o.refreshNatifEnTete(ctx, refreshToken); fini {
+			return out, err
+		}
+		// Natif révoqué : Azure répond, sans second essai natif.
+		return o.refreshAzure(ctx, refreshToken, false)
+	}
+	return o.refreshAzure(ctx, refreshToken, true)
+}
+
+// refreshNatifEnTete essaie le client Xbox natif en premier. fini dit que l'issue est définitive :
+// succès (famille natif), ou échec transitoire (erreur sans classe OAuth, ou classe Transient),
+// rendu tel quel et jamais relu par Azure. Sinon (erreur OAuth de classe Revoked ou Config, ou
+// réponse sans access_token ni erreur, qui est un jeton révoqué sans code), le natif ne reconnaît
+// pas ce jeton : l'appelant déroule le chemin Azure ; l'issue rendue est alors vide. Un essai
+// natif en tête n'est jamais le repli : RetenteNatif reste faux.
+func (o OAuth) refreshNatifEnTete(ctx context.Context, refreshToken string) (out RefreshOutcome, fini bool, err error) {
+	at, rt, err := o.postMSATokenExchange(ctx, refreshToken)
+	if err == nil && at != "" {
+		return RefreshOutcome{AccessToken: at, RotatedRefreshToken: rt, Famille: FamilleXboxNative}, true, nil
+	}
+	if err != nil {
+		var oerr *OAuthExchangeError
+		if !errors.As(err, &oerr) || oerr.Class() == AuthErrorTransient {
+			return RefreshOutcome{}, true, err
+		}
+	}
+	slog.DebugContext(ctx, "oauth_refresh: client Xbox natif en tête sans jeton — essai Azure", "err", err)
+	return RefreshOutcome{}, false, nil
+}
+
+// refreshAzure échange le refresh_token auprès de l'application Azure, avec le repli MSA natif
+// sur invalid_grant quand repliNatif est vrai.
+func (o OAuth) refreshAzure(ctx context.Context, refreshToken string, repliNatif bool) (out RefreshOutcome, err error) {
 	// 1re tentative avec le secret confidentiel s'il est fourni : les RT émis par le flux web
 	// confidentiel en ont besoin. Si Azure répond AADSTS90023 (RT émis par un flux client
 	// PUBLIC — ex. device code — le secret est alors interdit), retenter UNE fois sans secret.
@@ -120,7 +164,7 @@ func (o OAuth) RefreshWithRotation(ctx context.Context, refreshToken string) (ou
 	// AADSTS70000). On retente alors UNE fois sur login.live.com avec le client Xbox et le scope
 	// MSA d'origine. Si le repli échoue aussi, on propage l'erreur Azure INITIALE (classification
 	// intacte pour le pool/resolver).
-	if err != nil {
+	if err != nil && repliNatif {
 		var tente bool
 		if at, rt, ferr := o.tryMSANativeFallback(ctx, refreshToken, err, &tente); ferr == nil {
 			out.AccessToken, out.RotatedRefreshToken, out.Famille, err = at, rt, FamilleXboxNative, nil

@@ -180,10 +180,11 @@ func (r *MatchRecomputer) recompute(ctx context.Context, matchID string) error {
 	var failedMatches atomic.Int64
 	updatedLUSR, err := RecomputeLUSRCanonicalWithAccess(ctx, playerSQL, shared, r.xuid,
 		MedalExploitOption(r.metadataDBPath, r.xuid), skill.WithMatchFailureCounter(&failedMatches))
-	if err != nil {
+	if err != nil && !errors.Is(err, skill.ErrCanonicalWriteHeld) {
 		return fmt.Errorf("MatchRecomputer.RecomputeAfterExclusion lusr: %w", err)
 	}
-	if n := failedMatches.Load(); n > 0 {
+	// Une écriture de note tenue est un match en échec du rejeu : recalcul partiel, pas une panne.
+	if n := failedMatches.Load(); n > 0 || err != nil {
 		return fmt.Errorf("MatchRecomputer.RecomputeAfterExclusion lusr: %d match(s) en échec: %w", n, ErrPartialRecompute)
 	}
 
