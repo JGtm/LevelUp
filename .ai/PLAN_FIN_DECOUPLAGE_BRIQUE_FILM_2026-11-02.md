@@ -1166,6 +1166,36 @@ trois noms), `xuids_synthetiques.txt`. Ils se reconstruisent depuis `git show bb
 la plage, plus `2535406167016809` cité en hexadécimal). Sans eux, `replay-equiv` refuse les faits figés et une régénération de
 fixture depuis le cache remet des identités réelles (à rejouer : l'outil, puis `REPLAY_IDENTITES_TABLE`).
 
+#### Complément de l'item 4.0 (2026-11-08) : liste locale, tests de la brique, fixtures web
+
+Trois défauts de livraison du commit précédent, corrigés sans autre changement.
+
+1. **La liste des identifiants d'origine vit dans un dossier local stable.** `replay-equiv` lit la liste par `-originaux`,
+   sinon `LEVELUP_IDENTITES_ORIGINALES`, sinon `data/film_identites/xuids_originaux.txt` sous la racine du dépôt
+   (`originauxEffectifs`, `cmd/replay-equiv/identites.go`, testé). Le parc de films (`data/cache/film_chunks`,
+   `film_manifests`) se trouve déjà par la racine du dépôt ; un worktree le monte par des jonctions NTFS vers le dépôt
+   principal (gate 2.9) : le dossier `data/film_identites` se monte de la même façon, solution déjà en place, aucune
+   nouvelle variable. `.gitignore` : `data/film_identites/` (identifiants réels, jamais versionnés) ; `git ls-files
+   data/film_identites` : 0 fichier. Le message de refus des faits fictifs nomme le chemin par défaut ; le commentaire de tête
+   d'`identites.go`, l'aide du drapeau, l'en-tête de la cible `make replay-equiv` et le paragraphe de `CORPUS.txt` disent
+   l'emplacement local par défaut, sans chemin absolu. Les huit fichiers du dossier (liste des 420, table original/fictif,
+   trois noms, etc.) restent à garder : ils remplacent `scratchpad/hors_depot4/` cité plus haut.
+2. **Les deux tests de la brique qui rougissaient avec le parc travaillent sur la fixture** (option a).
+   `TestResolveXuidToPI_GroundTruth`, `TestResolveXuidToPIStrings_IgnoresBots`, et aussi `TestResolveBest_MergesChunks`
+   (qui ne rougissait pas mais devenait vide de sens : xuids fictifs contre un cache réel, rien de résolu) lisent
+   `chunk_01.bin` et `chunk_02.bin` de `replay/testdata/minifilm_000d5950` (zlib, fictifs) par `fixtureChunk` ; plus de saut,
+   plus de dépendance au parc. `TestUSEstimator_CacheMonotone` (aucun xuid) garde le cache du parc.
+3. **Fixtures web vérifiées** : `npm ci` dans le worktree (512 paquets, 13 s), puis `vitest run` complet.
+
+Preuves : `go vet ./...` `libs/film` et `apps/go-api` verts ; `go test ./internal/grammar/weaponv3/... ./replay/...`
+(`libs/film`) AVEC le parc monté : `weaponv3` ok 0,4 s, `replay` ok 43 s, `TestUSEstimator_CacheMonotone` joué ; SANS parc : mêmes
+paquets `ok`, les quatre tests de résolution passent sans saut, seul `TestUSEstimator_CacheMonotone` se saute ;
+`go test ./cmd/replay-equiv/...` ok ; `go test ./internal/archlint/ -timeout 40m -count=1` ok en 244 s ; `golangci-lint` 0
+issue (`cmd/replay-equiv`, `weaponv3`) ; `vitest run` sous `apps/web` : 1 062 fichiers passés, 5 sautés, 10 942 tests
+passés, 23 sautés, 0 échec (les 8 fixtures régénérées lues par `match-replay` : aucun littéral à corriger, aucun xuid réel attendu).
+`go run ./cmd/replay-equiv -out-dir <scratchpad>` depuis le worktree, SANS `-originaux` ni variable (dossier monté par jonction) :
+BILAN 20 identiques, 0 différent, 0 écarté, 0 échec, 590 s ; `xuids_retraduits` renseigné à chaque cuisson (la liste est donc trouvée par défaut).
+
 ## Lot 5 — Préalables aux dépôts dédiés (après la clôture du desktop)
 
 - [ ] 5.1 D-11 : `netguard.Doer` retire les en-têtes d'authentification quand une redirection change d'hôte ; test
@@ -1339,7 +1369,7 @@ Lot 4 (2026-11-08), notées, non traitées :
   les fictifs ; la dérivation est publique (graine incluse) : elle empêche de LIRE un xuid d'origine dans le dépôt, pas de
   vérifier un candidat connu. Si la graine doit être secrète, elle passe en paramètre de l'outil et de `replay-equiv` (un
   changement de trois fichiers) ; décision à part.
-- **D-L4-5** Deux tests de la brique lisent le cache de films du parc et se SAUTENT sans lui :
+- **D-L4-5** SOLDÉE le 2026-11-08 (complément de 4.0 : les tests lisent la fixture versionnée). Deux tests de la brique lisaient le cache de films du parc et se SAUTAIENT sans lui :
   `weaponv3.TestResolveXuidToPI_GroundTruth` et `TestResolveXuidToPIStrings_IgnoresBots`. Leurs littéraux sont désormais
   fictifs ; avec le parc monté ils échouent (le cache porte les xuids réels). Même doctrine que `TestGoldenFilms` de killsource
   et `TestGoldenInputsFidelite` depuis la v8.0.2 : ces gates locaux se jouent sur une copie traduite des films.
@@ -1348,8 +1378,8 @@ Lot 4 (2026-11-08), notées, non traitées :
   `internal/replaydiff/testdata/paire_bcb6d393_54_60.json`, `internal/api/wire/testdata/film_e2e/c0a82e88/fixture.json`),
   `apps/web` (5 fichiers, 3 xuids : `replayContract.test.ts:603`, `scoreTimeline.test.ts`), `docs` (5), `config/demo/JGtm`
   (2) et `libs/haloapi` (1). Les 8 fixtures web `apps/web/src/features/match-replay/test/fixtures/go/*.json.gz` et leur
-  manifeste sont, eux, régénérés par le lot (`TestContractFixturesMatchCommitted`, test de `libs/film`) ; `vitest` n'a pas
-  été joué (pas de `node_modules` dans le worktree).
+  manifeste sont, eux, régénérés par le lot (`TestContractFixturesMatchCommitted`, test de `libs/film`) ; `vitest` a été joué au
+  complément du 2026-11-08 : vert (voir « Complément de l'item 4.0 »).
 - **D-L4-7** Complétude : un balayage de toutes les valeurs de 64 bits de la plage dans les octets ne discrimine rien (19 864
   valeurs hors registre, jusqu'à 4 151 occurrences : des structures répétitives). Que plus aucun xuid réel ne reste dans les
   octets ne se prouve donc que par ce que le décodeur lit (tout xuid des sièges, des morts et des 8 fixtures d'entrées est

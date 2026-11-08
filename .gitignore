@@ -112,6 +112,8 @@ data/refresh*.json
 data/*.db
 data/*.db-journal
 data/investigation/
+# Identifiants Xbox reels des films de test (liste d'origine du harnais replay-equiv) : jamais versionnes.
+data/film_identites/
 data/cache/*
 # Exception : images de rang carrière bundlées au repo pour éviter
 # 272 appels Halo upstream à chaque déploiement (cf. populate-career-rank-images CLI).

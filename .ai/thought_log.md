@@ -1,3 +1,11 @@
+## [2026-11-08] Fin du découplage — 4.0 complément (liste locale des identifiants, tests weaponv3, fixtures web) — Complété
+
+**Décision technique principale** : la liste des xuids d'origine se lit par défaut dans `data/film_identites/xuids_originaux.txt` sous la racine du dépôt (dossier ignoré par git, à côté du parc de films ; un worktree le monte par jonction comme `film_chunks`), `-originaux` et `LEVELUP_IDENTITES_ORIGINALES` restant prioritaires ; les trois tests de résolution de `weaponv3` lisent la mini-bobine fictive versionnée au lieu du cache du parc (la brique ne lit aucune variable de l'hôte).
+
+**Résultats observés** : avec le parc monté, `weaponv3` et `replay` verts ; sans parc, mêmes paquets verts, les tests de résolution ne se sautent plus ; `go vet` des deux modules, `cmd/replay-equiv`, `archlint` (244 s) verts, `golangci-lint` 0 issue ; `vitest run` complet sous `apps/web` : 1 062 fichiers, 10 942 tests passés, 0 échec, aucun littéral à corriger ; `replay-equiv` sans option : 20 identiques en 590 s, liste trouvée par défaut.
+
+**Conclusion / prochaine étape** : D-L4-5 soldée, `vitest` joué (D-L4-6). 4.1 (`go.mod` aux tags) suivant. Dossier `data/film_identites/` à garder (remplace `hors_depot4`).
+
 ## [2026-11-08] Fin du découplage — 4.0 identités fictives des fixtures — Complété
 
 **Décision technique principale** : les films de test de `libs/film` ne portent plus aucun xuid réel (420 xuids, option A du 2026-11-04) ni les trois gamertags restants. Le xuid fictif se tire par une fonction pure (`internal/identitefictive`, SHA-256 d'une graine publique et du xuid, 48 bits ajoutés à `0x0009000000000000` : la plage que le décodeur exige, D-L1-8), `cmd/anonymise-gamertags` est étendu aux xuids (64 bits petit- et gros-boutiste à chaque décalage de bit, décimal, hexadécimal), et les fixtures encodées par le codec des faits (`inputs_*.bin.gz`, que la mesure 1.6 croyait vides) se réécrivent par décodage et réencodage. La table originaux-fictifs n'est pas versionnée (elle remettrait les xuids réels dans le dépôt) : le registre versionné `libs/film/testdata/IDENTITES.tsv` ne porte que les fictifs et son garde-rail refuse tout xuid de la plage hors registre. `replay-equiv` retraduit les faits figés (fictifs) en xuids du parc avant de cuire.

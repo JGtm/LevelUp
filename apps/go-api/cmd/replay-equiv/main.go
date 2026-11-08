@@ -148,7 +148,8 @@ func lireDrapeaux() (options, error) {
 			"utile pour instruire une divergence sans re-decoder le film")
 	flag.StringVar(&o.originaux, "originaux", os.Getenv(envIdentitesOriginales),
 		"liste des xuids d'origine, un par ligne (HORS depot) : les faits figes portent des xuids FICTIFS que le "+
-			"harnais retraduit en ceux du parc (defaut : "+envIdentitesOriginales+")")
+			"harnais retraduit en ceux du parc (defaut : "+envIdentitesOriginales+", sinon "+cheminOriginauxParDefaut+
+			" sous la racine du depot)")
 	flag.IntVar(&o.memGiB, "mem-gib", memguard.DefaultLimitGiB,
 		"plafond memoire de chaque enfant, en gibioctets (0 = desarme)")
 	flag.BoolVar(&o.deuxPasses, "deux-passes", false,
@@ -168,6 +169,7 @@ func lireDrapeaux() (options, error) {
 		}
 		o.repoRoot = root
 	}
+	o.originaux = originauxEffectifs(o.originaux, o.repoRoot)
 	if o.corpus == "" {
 		o.corpus = filepath.Join(dossierEquivalence(o.repoRoot), "CORPUS.txt")
 	}

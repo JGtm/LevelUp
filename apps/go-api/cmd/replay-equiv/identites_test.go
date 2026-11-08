@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -63,5 +65,27 @@ func TestLireRetraducteurRefus(t *testing.T) {
 		if _, err := lireRetraducteur(strings.NewReader(liste)); err == nil {
 			t.Errorf("%s : liste acceptee", nom)
 		}
+	}
+}
+
+// TestOriginauxEffectifs : le drapeau (ou la variable) l'emporte ; sans eux, le fichier par defaut
+// sous la racine du depot est pris s'il existe ; sinon la liste reste vide.
+func TestOriginauxEffectifs(t *testing.T) {
+	racine := t.TempDir()
+	if got := originauxEffectifs("", racine); got != "" {
+		t.Fatalf("sans fichier par defaut : %q, attendu vide", got)
+	}
+	defaut := filepath.Join(racine, filepath.FromSlash(cheminOriginauxParDefaut))
+	if err := os.MkdirAll(filepath.Dir(defaut), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(defaut, []byte("2533274790395905\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if got := originauxEffectifs("", racine); got != defaut {
+		t.Fatalf("fichier par defaut present : %q, attendu %q", got, defaut)
+	}
+	if got := originauxEffectifs("autre.txt", racine); got != "autre.txt" {
+		t.Fatalf("le chemin donne doit l'emporter : %q", got)
 	}
 }

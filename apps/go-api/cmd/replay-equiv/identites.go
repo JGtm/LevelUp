@@ -10,8 +10,11 @@ package main
 //
 // Le harnais RETRADUIT donc les faits avant de cuire : chaque xuid fictif redevient l'original que
 // la liste des originaux lui donne. Cette liste vit HORS du depot (elle annulerait l'objectif des
-// fictifs) ; le format est celui de `cmd/anonymise-gamertags` (un xuid decimal par ligne), et elle
-// se donne par `-originaux` ou `LEVELUP_IDENTITES_ORIGINALES`. La retraduction ne change aucun
+// fictifs) ; le format est celui de `cmd/anonymise-gamertags` (un xuid decimal par ligne). Elle se
+// donne par `-originaux`, sinon `LEVELUP_IDENTITES_ORIGINALES`, sinon a l'emplacement local par
+// defaut `data/film_identites/xuids_originaux.txt` sous la racine du depot : dossier de donnees
+// ignore par git, a cote du parc de films (local lui aussi). Un worktree le monte par une jonction
+// vers le depot principal, comme il monte `data/cache/film_chunks`. La retraduction ne change aucun
 // octet de film : les references restent celles de la cuisson des films reels.
 //
 // Sans liste, des faits fictifs sont REFUSES (message nommant le remede) plutot que cuits : le
@@ -33,6 +36,23 @@ import (
 
 // envIdentitesOriginales est la variable qui porte le chemin de la liste des xuids d'origine.
 const envIdentitesOriginales = "LEVELUP_IDENTITES_ORIGINALES"
+
+// cheminOriginauxParDefaut est l'emplacement local de la liste, relatif a la racine du depot : lu
+// quand ni `-originaux` ni la variable ne la donnent, et s'il existe.
+const cheminOriginauxParDefaut = "data/film_identites/xuids_originaux.txt"
+
+// originauxEffectifs rend la liste a lire : celle que l'operateur a donnee (drapeau ou variable),
+// sinon l'emplacement par defaut sous la racine du depot quand le fichier y est, sinon vide.
+func originauxEffectifs(donne, repoRoot string) string {
+	if donne != "" {
+		return donne
+	}
+	defaut := filepath.Join(repoRoot, filepath.FromSlash(cheminOriginauxParDefaut))
+	if info, err := os.Stat(defaut); err == nil && !info.IsDir() {
+		return defaut
+	}
+	return ""
+}
 
 // retraducteur donne, pour un xuid fictif, l'original dont il tient lieu.
 type retraducteur map[uint64]uint64

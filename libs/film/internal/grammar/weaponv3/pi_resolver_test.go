@@ -78,6 +78,24 @@ func mainTreeRootFromWorktree(wd string) string {
 	return filepath.FromSlash(before)
 }
 
+// inflateChunk décompresse un chunk zlib (magic 0x78) ; un chunk brut est rendu tel quel.
+func inflateChunk(t *testing.T, label string, raw []byte) []byte {
+	t.Helper()
+	if len(raw) >= 2 && raw[0] == 0x78 {
+		zr, err := zlib.NewReader(bytes.NewReader(raw))
+		if err != nil {
+			t.Fatalf("zlib NewReader %s: %v", label, err)
+		}
+		defer func() { _ = zr.Close() }()
+		inf, err := io.ReadAll(zr)
+		if err != nil {
+			t.Fatalf("zlib read %s: %v", label, err)
+		}
+		return inf
+	}
+	return raw
+}
+
 // loadCachedChunk lit un chunk de cache et le décompresse (zlib, magic 0x78).
 // Renvoie nil si le fichier est absent (le caller décide de skipper).
 func loadCachedChunk(t *testing.T, short8, name string) []byte {
@@ -90,28 +108,27 @@ func loadCachedChunk(t *testing.T, short8, name string) []byte {
 	if err != nil {
 		return nil
 	}
-	if len(raw) >= 2 && raw[0] == 0x78 {
-		zr, err := zlib.NewReader(bytes.NewReader(raw))
-		if err != nil {
-			t.Fatalf("zlib NewReader %s/%s: %v", short8, name, err)
-		}
-		defer zr.Close()
-		inf, err := io.ReadAll(zr)
-		if err != nil {
-			t.Fatalf("zlib read %s/%s: %v", short8, name, err)
-		}
-		return inf
-	}
-	return raw
+	return inflateChunk(t, short8+"/"+name, raw)
 }
 
-// TestResolveXuidToPI_GroundTruth — sur le chunk_01 de 000d5950, les pi résolus
+// fixtureChunk lit un chunk de la mini-bobine versionnée de 000d5950 et le décompresse. Ses
+// identifiants sont les fictifs du registre : c'est la seule source qui s'accorde aux littéraux de
+// piverifyXuids, avec ou sans le cache du parc (dont les films portent les identifiants réels).
+// Une bobine absente ou illisible est une erreur, pas un saut : elle est versionnée.
+func fixtureChunk(t *testing.T, name string) []byte {
+	t.Helper()
+	chemin := filepath.Join("..", "..", "..", "replay", "testdata", "minifilm_000d5950", name)
+	raw, err := os.ReadFile(chemin)
+	if err != nil {
+		t.Fatalf("fixture %s : %v", chemin, err)
+	}
+	return inflateChunk(t, chemin, raw)
+}
+
+// TestResolveXuidToPI_GroundTruth — sur le chunk_01 de la mini-bobine 000d5950, les pi résolus
 // doivent être DISTINCTS et l'xuid …0022 doit tomber sur pi==2.
 func TestResolveXuidToPI_GroundTruth(t *testing.T) {
-	chunk := loadCachedChunk(t, "000d5950", "chunk_01.bin")
-	if chunk == nil {
-		t.Skip("cache film 000d5950/chunk_01.bin absent — skip ground-truth pi")
-	}
+	chunk := fixtureChunk(t, "chunk_01.bin")
 
 	pis := ResolveXuidToPI(piverifyXuids, chunk)
 	if len(pis) == 0 {
@@ -142,10 +159,7 @@ func TestResolveXuidToPI_GroundTruth(t *testing.T) {
 // TestResolveXuidToPIStrings_IgnoresBots — les xuids string décimaux sont
 // résolus, les bots (préfixe "bid") et chaînes non numériques sont ignorés.
 func TestResolveXuidToPIStrings_IgnoresBots(t *testing.T) {
-	chunk := loadCachedChunk(t, "000d5950", "chunk_01.bin")
-	if chunk == nil {
-		t.Skip("cache film 000d5950/chunk_01.bin absent — skip variante strings")
-	}
+	chunk := fixtureChunk(t, "chunk_01.bin")
 
 	roster := []string{
 		"2603225103667623", // ground truth pi 2
@@ -167,11 +181,8 @@ func TestResolveXuidToPIStrings_IgnoresBots(t *testing.T) {
 // TestResolveBest_MergesChunks — la fusion couvre au moins autant de xuids que
 // le meilleur chunk seul (premier chunk qui trouve un xuid gagne).
 func TestResolveBest_MergesChunks(t *testing.T) {
-	c1 := loadCachedChunk(t, "000d5950", "chunk_01.bin")
-	if c1 == nil {
-		t.Skip("cache film 000d5950 absent — skip ResolveBest")
-	}
-	c2 := loadCachedChunk(t, "000d5950", "chunk_02.bin")
+	c1 := fixtureChunk(t, "chunk_01.bin")
+	c2 := fixtureChunk(t, "chunk_02.bin")
 
 	single := ResolveXuidToPI(piverifyXuids, c1)
 	merged := ResolveBest(piverifyXuids, [][]byte{c1, c2})
