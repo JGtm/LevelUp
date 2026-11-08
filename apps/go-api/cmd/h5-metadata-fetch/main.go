@@ -5,6 +5,9 @@
 // LEVELUP_HALOAPI_KEY — JAMAIS committée. Données Halo 5 figées → seed one-shot
 // idempotent (INSERT OR REPLACE).
 //
+// Cet outil et la table weapon_labels (icon_url, weapon_type) sont les seuls porteurs des icônes
+// d'armes de Halo 5 : ne pas les retirer sans reprendre cette source.
+//
 // Usage : LEVELUP_HALOAPI_KEY=<clé> LEVELUP_REPO_ROOT=<repo> go run ./cmd/h5-metadata-fetch
 package main
 

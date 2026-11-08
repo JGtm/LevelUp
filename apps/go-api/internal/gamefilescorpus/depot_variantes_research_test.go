@@ -1,8 +1,8 @@
-//go:build gamefiles
+//go:build gamefiles && research
 
 package gamefilescorpus
 
-// depot_variantes_gamefiles_test.go — la lecture du DEPOT DE VARIANTES (`DepotVariantesCarte`)
+// depot_variantes_research_test.go — la lecture du DEPOT DE VARIANTES (`DepotVariantesCarte`)
 // par les preuves du corpus gamefiles.
 //
 // Sous ce tag, l'installation du jeu est la seule absence toleree (les tests la sautent avec sa

@@ -21,6 +21,7 @@ import (
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
+	go_sync "levelup/go-api/internal/sync"
 	"levelup/go-api/internal/sync/matchflags"
 
 	"database/sql"
@@ -76,7 +77,7 @@ func previewReset(db *sql.DB, pvePath string) error {
 		SELECT COUNT(*) FROM match_participants
 		WHERE team_mmr IS NOT NULL
 		  AND (COALESCE(backfill_bits, 0) & ?) != ?
-	`, skillBitsForReset, skillBitsForReset).Scan(&skillParts)
+	`, go_sync.PBitSkill, go_sync.PBitSkill).Scan(&skillParts)
 	fmt.Printf("[skill]        match_participants à updater (PBit skill) : %d\n", skillParts)
 
 	// Skill — registry
@@ -88,7 +89,7 @@ func previewReset(db *sql.DB, pvePath string) error {
 		    WHERE mp.match_id = mr.match_id AND mp.team_mmr IS NOT NULL
 		)
 		AND (COALESCE(mr.backfill_completed, 0) & ?) = 0
-	`, backfillFlagSkillForReset).Scan(&skillReg)
+	`, go_sync.BackfillFlags[go_sync.BackfillTypeSkill]).Scan(&skillReg)
 	fmt.Printf("[skill]        match_registry  à updater (BackfillFlags[skill]) : %d\n", skillReg)
 
 	// Participants
@@ -111,7 +112,7 @@ func previewReset(db *sql.DB, pvePath string) error {
 			    SELECT 1 FROM pve_db.pve_match_stats WHERE match_id = mr.match_id
 			  )
 			  AND (COALESCE(mr.backfill_completed, 0) & ?) = 0
-		`, mBitPVEStatsForReset).Scan(&pveReg)
+		`, matchflags.MBitPVEStats).Scan(&pveReg)
 		_, _ = db.Exec(`DETACH pve_db`)
 	}
 	fmt.Printf("[pve]          match_registry à updater (MBitPVEStats) : %d\n", pveReg)
@@ -128,7 +129,7 @@ func applyReset(db *sql.DB, pvePath string) error {
 		SET backfill_bits = COALESCE(backfill_bits, 0) | ?
 		WHERE team_mmr IS NOT NULL
 		  AND (COALESCE(backfill_bits, 0) & ?) != ?
-	`, skillBitsForReset, skillBitsForReset, skillBitsForReset)
+	`, go_sync.PBitSkill, go_sync.PBitSkill, go_sync.PBitSkill)
 	if err != nil {
 		return fmt.Errorf("UPDATE skill participants: %w", err)
 	}
@@ -144,7 +145,7 @@ func applyReset(db *sql.DB, pvePath string) error {
 		    WHERE mp.match_id = match_registry.match_id AND mp.team_mmr IS NOT NULL
 		)
 		AND (COALESCE(backfill_completed, 0) & ?) = 0
-	`, backfillFlagSkillForReset, backfillFlagSkillForReset)
+	`, go_sync.BackfillFlags[go_sync.BackfillTypeSkill], go_sync.BackfillFlags[go_sync.BackfillTypeSkill])
 	if err != nil {
 		return fmt.Errorf("UPDATE skill registry: %w", err)
 	}
@@ -175,7 +176,7 @@ func applyReset(db *sql.DB, pvePath string) error {
 			    SELECT 1 FROM pve_db.pve_match_stats WHERE match_id = match_registry.match_id
 			  )
 			  AND (COALESCE(backfill_completed, 0) & ?) = 0
-		`, mBitPVEStatsForReset, mBitPVEStatsForReset)
+		`, matchflags.MBitPVEStats, matchflags.MBitPVEStats)
 		if err != nil {
 			return fmt.Errorf("UPDATE pve registry: %w", err)
 		}
@@ -189,15 +190,3 @@ func applyReset(db *sql.DB, pvePath string) error {
 	fmt.Println("\nReset terminé. Idempotent — ré-exécution sans dommage.")
 	return nil
 }
-
-// Constantes locales (dupliquées depuis internal/sync — évite l'import lourd
-// pour un one-shot CLI).
-const (
-	pBitTeamMMR               = 1 << 0
-	pBitEnemyMMR              = 1 << 1
-	pBitKillsExp              = 1 << 2
-	pBitDeathsExp             = 1 << 3
-	skillBitsForReset         = pBitTeamMMR | pBitEnemyMMR | pBitKillsExp | pBitDeathsExp
-	backfillFlagSkillForReset = 1 << 2  // 4
-	mBitPVEStatsForReset      = 1 << 20 // 1048576
-)

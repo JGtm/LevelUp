@@ -94,7 +94,7 @@ func TestCitationsService_GetCitationsPage_TotalsError(t *testing.T) {
 	}
 }
 
-func TestCitationsService_GetCitationsPage_MappingsError_Graceful(t *testing.T) {
+func TestCitationsService_GetCitationsPage_MappingsError_Remonte(t *testing.T) {
 	repo := &mockCitationsRepo{
 		totals:      []domain.CitationTotalRow{{NameNorm: "kills", Total: 1}},
 		mappingsErr: errors.New("mappings fail"),
@@ -102,11 +102,14 @@ func TestCitationsService_GetCitationsPage_MappingsError_Graceful(t *testing.T) 
 	svc := NewCitationsService(repo)
 
 	resp, err := svc.GetCitationsPage(context.Background())
-	if err != nil {
-		t.Fatalf("expected graceful handling, got error: %v", err)
+	if err == nil {
+		t.Fatal("expected mappings error to propagate")
 	}
-	if resp == nil {
-		t.Fatal("expected non-nil response despite mappings error")
+	if resp != nil {
+		t.Fatalf("expected nil response on mappings error, got %+v", resp)
+	}
+	if !errors.Is(err, repo.mappingsErr) {
+		t.Fatalf("expected wrapped mappings error, got %v", err)
 	}
 }
 

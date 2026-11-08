@@ -109,29 +109,29 @@ Gate : `git -C ../LevelUp-wt-backlog branch --show-current` rend `chore/backlog-
 
 ### E1 — Micro-tâches (Haiku, un agent)
 
-- [ ] 1.1 `apps/go-api/cmd/levelup/cmd_reset_bitmasks.go` : importer `go_sync "levelup/go-api/internal/sync"`. Supprimer
+- [x] 1.1 `apps/go-api/cmd/levelup/cmd_reset_bitmasks.go` : importer `go_sync "levelup/go-api/internal/sync"`. Supprimer
   les constantes des lignes 196-202. Remplacer **à chaque site** : `skillBitsForReset` par `go_sync.PBitSkill` ;
   `backfillFlagSkillForReset` par `go_sync.BackfillFlags[go_sync.BackfillTypeSkill]` (aucune variable intermédiaire) ;
   `mBitPVEStatsForReset` par `matchflags.MBitPVEStats`. Aucune valeur ne change (`backfill_flags.go:27-30, 59, 135`).
-- [ ] 1.2 `apps/web/src/features/setup/StepDeviceCode.tsx`, effet de récupération (:130-139) : importer
+- [x] 1.2 `apps/web/src/features/setup/StepDeviceCode.tsx`, effet de récupération (:130-139) : importer
   `isDeviceFlowSucceeded` depuis `./queries` et sortir de l'effet si `isDeviceFlowSucceeded(status?.status)`, en ajoutant
   `status?.status` aux dépendances. Motif : `XboxLoginPage.tsx:239`. Un retour de focus peut refaire la requête après le
   succès et recevoir un 404. Test dans `StepDeviceCode.test.tsx` : tentative autorisée puis `attempt_not_found`, aucun
   nouveau `start`, rouge avant le correctif.
-- [ ] 1.3 `apps/go-api/internal/service/citations_service.go:29-33` : remplacer la dégradation muette par
+- [x] 1.3 `apps/go-api/internal/service/citations_service.go:29-33` : remplacer la dégradation muette par
   `return nil, fmt.Errorf("citations: chargement des règles: %w", err)`, retirer le commentaire, ajouter l'import `fmt`.
   Dans `citations_service_test.go:97`, inverser `TestCitationsService_GetCitationsPage_MappingsError_Graceful` : une
   erreur remonte, test renommé `..._MappingsError_Remonte`. Ne pas toucher `GetCommendationsPage`. La page affiche son
   état d'erreur avec « réessayer ».
-- [ ] 1.4 `apps/web/src/features/citations/CitationCard.tsx:48` : remplacer `truncate` par `line-clamp-2` sur le nom de
+- [x] 1.4 `apps/web/src/features/citations/CitationCard.tsx:48` : remplacer `truncate` par `line-clamp-2` sur le nom de
   la tuile (motif de `asset-drawer/AssetCard.tsx:74`). Aucune couleur touchée.
-- [ ] 1.5 Corpus `gamefiles` (exécuté le 2026-11-08 : tout vert sauf `TestRenduForgeVagabond`, qui exige
+- [x] 1.5 Corpus `gamefiles` (exécuté le 2026-11-08 : tout vert sauf `TestRenduForgeVagabond`, qui exige
   `.ai/re_dump/mapvar`, absent de tout checkout). Dans `apps/go-api/internal/gamefilescorpus/` :
   `git mv rendu_forge_gamefiles_test.go rendu_forge_research_test.go` et
   `git mv depot_variantes_gamefiles_test.go depot_variantes_research_test.go` ; en-tête des deux :
   `//go:build gamefiles && research`. Dans `archlint/gamefiles_tag_test.go`, `corpusGamefilesPlancher` passe de 62 à 60,
   avec la raison au commentaire (deux instruments reclassés).
-- [ ] 1.6 `apps/go-api/cmd/h5-metadata-fetch/main.go`, commentaire d'en-tête : ajouter que cet outil et la table
+- [x] 1.6 `apps/go-api/cmd/h5-metadata-fetch/main.go`, commentaire d'en-tête : ajouter que cet outil et la table
   `weapon_labels` sont les seuls porteurs des icônes d'armes de Halo 5, donc à conserver.
 
 Gate :
@@ -337,6 +337,8 @@ les puces gardées en `[!]` ; relecture du diff par le pilote.
   `deps.TitleSlug` ; ce pipeline est mono-titre (Infinite). Un garde-rail contre le `WithSharedProvider` nu resterait à
   poser le jour où il cessera de l'être. Non traité.
 
+- E1 (Haiku), 2026-11-08 : `previewReset` de `cmd_reset_bitmasks.go` ignore ses erreurs de lecture (`_ =`, lignes 75, 84, 96, 107), hors périmètre. Non traité.
+
 ## 4. Journal
 
 - 2026-11-08 : plan rédigé, sources vérifiées sur `origin/release/v8.1.0`. Revue indépendante (Sonnet, une ronde) : 3 P0,
@@ -344,3 +346,4 @@ les puces gardées en `[!]` ; relecture du diff par le pilote.
 - 2026-11-08 : réponses de l'utilisateur : D-1 retirer la barre, D-2 réconcilier au démarrage, D-3 retirer les deux réglages.
   Demandes : traiter aussi le rafraîchissement OAuth (E5 ajoutée), relecture finale par Opus, rejeu confié à Opus.
   En attente du go.
+- 2026-11-08 E1 close : six items faits, gate vert rejoué par l'exécutant, diff relu par le pilote. Relance du flux prouvée rouge (4 démarrages) puis verte (1).

@@ -45,7 +45,7 @@ export function CitationCard({ item, locale }: { item: CitationDisplayItem; loca
           </span>
         </div>
       )}
-      <span className="w-full truncate text-center text-[12px] leading-tight text-muted-foreground">
+      <span className="w-full line-clamp-2 text-center text-[12px] leading-tight text-muted-foreground">
         {item.name}
       </span>
       {hasTiers && (

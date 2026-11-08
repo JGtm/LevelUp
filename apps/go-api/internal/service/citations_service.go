@@ -3,6 +3,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
@@ -28,8 +29,7 @@ func (s *CitationsService) GetCitationsPage(ctx context.Context) (*domain.Citati
 
 	mappings, err := s.repo.LoadCitationMappings(ctx)
 	if err != nil {
-		// Métadonnées non critiques — continuer sans enrichissement.
-		mappings = nil
+		return nil, fmt.Errorf("citations: chargement des règles: %w", err)
 	}
 
 	totals = analysis.OverrideCompositeTotals(totals, mappings)

@@ -60,11 +60,12 @@ import (
 // tagGamefiles : la ligne exacte attendue en tête de chaque fichier du corpus.
 const tagGamefiles = "//go:build gamefiles"
 
-// corpusGamefilesPlancher : le corpus mesuré le 2026-09-06, APRÈS cet item (60 dans
-// `internal/himap`, 1 dans `cmd/mapstruct-build`, 1 dans `cmd/mapfond-build`). Un balayage qui
-// rend moins que ça ne garde plus rien — le balayage s'est cassé, ou le corpus a été renommé
-// sans que personne ne le dise.
-const corpusGamefilesPlancher = 62
+// corpusGamefilesPlancher : nombre de fichiers `*_gamefiles_test.go` attendus dans le balayage.
+// Les instruments de recherche (`*_research_test.go`, tag `gamefiles && research`) n'entrent pas
+// dans ce compte : ils sont hors du corpus de non-régression. Un balayage qui rend moins que ça
+// ne garde plus rien — le balayage s'est cassé, ou le corpus a été renommé sans que personne ne
+// le dise.
+const corpusGamefilesPlancher = 60
 
 // appelsInstallation : les portes d'entrée vers l'installation de Halo Infinite. Un test qui en
 // appelle une lit le disque du jeu, donc coûte des minutes dès que le jeu est là. Les trois

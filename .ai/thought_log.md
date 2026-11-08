@@ -120335,3 +120335,11 @@ version restent après chaque mise à jour NSIS (antérieur à L24).
 **Résultats observés.** Le client gagnant est déjà rendu par l'échange ; la famille enregistrée ne le donne pas. Essai du client natif en tête : un échec réseau n'interroge plus Azure, dont le refus serait lu comme un jeton révoqué.
 
 **Conclusion / prochaine étape.** Attend le go du user.
+
+## [2026-11-08] Backlog E1 : micro-corrections — Complété
+
+**Décision technique principale.** Constantes recopiées de `reset-bitmasks` remplacées par les sources, relance de connexion gardée après succès, erreur de règles de citations remontée, noms de tuiles sur deux lignes, deux instruments de recherche sortis du corpus `gamefiles`.
+
+**Résultats observés.** Gate E1 vert ; relance prouvée rouge puis verte par test ; plancher du corpus à 60.
+
+**Conclusion / prochaine étape.** E2 multi-titre.
