@@ -132,7 +132,7 @@ jobs:
         run: |
           fp="$(docker run --rm --entrypoint sh levelup-test:ci -c "sed -n 's/.*\"fingerprint\": *\"\([0-9a-f]*\)\".*/\1/p' /app/resources.manifest.json | head -n 1")"
           if ! printf '%s' "$fp" | grep -E -q '^[0-9a-f]{64}$'; then
-            echo "  ❌ empreinte illisible dans /app/resources.manifest.json : '$fp'"
+            echo "  ERREUR : empreinte illisible dans /app/resources.manifest.json : '$fp'"
             exit 1
           fi
           # `-X main.resourcesFingerprint=<fp>` est consigné dans les informations de build (paramètres de compilation) que
@@ -161,14 +161,14 @@ jobs:
           engine="$(line '/app/levelup-server')"
           for v in "$static" "$manifest" "$config" "$engine"; do
             if [ -z "$v" ]; then
-              echo "  ❌ une couche attendue est absente de docker history"
+              echo "  ERREUR : une couche attendue est absente de docker history"
               exit 1
             fi
           done
           if [ "$static" -lt "$config" ] && [ "$manifest" -lt "$config" ] && [ "$config" -lt "$engine" ]; then
-            echo "  ✅ ordre des couches : ressources ($static, $manifest) < config ($config) < serveur ($engine)"
+            echo "  OK : ordre des couches : ressources ($static, $manifest) < config ($config) < serveur ($engine)"
           else
-            echo "  ❌ ordre des couches inattendu : static=$static manifeste=$manifest config=$config serveur=$engine (ressources attendues avant le moteur)"
+            echo "  ERREUR : ordre des couches inattendu : static=$static manifeste=$manifest config=$config serveur=$engine (ressources attendues avant le moteur)"
             exit 1
           fi
 
