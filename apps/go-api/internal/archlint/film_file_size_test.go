@@ -46,8 +46,11 @@ import (
 // seuilLignesParFichier : le seuil du depot (CLAUDE.md regle 5).
 const seuilLignesParFichier = 500
 
-// racinesSurveilleesTaille : les arborescences que ce ratchet couvre, relatives a `apps/go-api`.
-// Ce sont celles du chantier du decodeur de film — le perimetre du lot 2.7.
+// racinesSurveilleesTaille : les arborescences que ce ratchet couvre, au double repere de
+// [surDisque] (go-api, puis les briques sous `libs/`). Ce sont celles du chantier du decodeur de
+// film — le perimetre du lot 2.7 — et, depuis le 2026-11-08 (ADR 0041 D7), les trois autres
+// briques : le seuil est celui du depot, la regle ne s arrete pas au dossier d un module. Le
+// ratchet `film_function_length_test.go` lit la meme liste.
 //
 // LA QUATRIEME RACINE A DISPARU LE 2026-09-16 (lot 2.5.d.2) : `internal/analysis/objectiveevents`
 // est descendu sous `libs/film/internal/facts/objectives`, donc SOUS la premiere
@@ -57,10 +60,13 @@ var racinesSurveilleesTaille = []string{
 	racineBriqueFilm,
 	"internal/replaybuild",
 	"internal/sync/killcollector",
+	"libs/gamefiles",
+	"libs/haloapi",
+	"libs/himap",
 }
 
 // plancherFichiersBalayesTaille : LE PLANCHER CONTRE UN BALAYAGE MUET. 1 298 fichiers `.go`
-// mesures le 2026-09-16 dans les racines ci-dessus ; un balayage qui en rend nettement
+// mesures le 2026-09-16 dans les trois premieres racines ci-dessus ; un balayage qui en rend nettement
 // moins n a pas trouve l arborescence (racine renommee, chemin relatif casse) et ne garde plus
 // rien. Il doit ECHOUER bruyamment, pas rendre vert sur du vide.
 const plancherFichiersBalayesTaille = 1200
@@ -476,6 +482,18 @@ var plafondsParFichier = map[string]int{
 	"libs/film/internal/grammar/vehicules_v2_items_test.go":               533,
 	"libs/film/replay/attachement_phase0_bord_test.go":                    522,
 	"internal/sync/killcollector/collector_test.go":                       524,
+
+	// --- BRIQUES VOISINES, ENTREES EN TABLE LE 2026-11-08 (lot 3.2 de la fin du decouplage, ADR 0041
+	// D7) : la racine du ratchet est passee a l espace de travail, ces six fichiers etaient deja au-dela
+	// du seuil dans `himap` et `gamefiles`. Taille du jour, qui ne peut que descendre ; aucune autre
+	// entree ne s ajoute (la regle de la table, ecrite plus haut, vaut pour elles). Retrait : la
+	// scission du fichier, ou la sortie du fichier de recherche du depot.
+	"libs/himap/himap/cuisson_forge.go":                      1048,
+	"libs/himap/himap/cartes_forge.go":                       719,
+	"libs/himap/himap/cuisson.go":                            619,
+	"libs/himap/himap/sonde_locs_research_test.go":           818,
+	"libs/himap/himap/physique_sonde_gamefiles_test.go":      530,
+	"libs/gamefiles/mapvar/noms_lieux_hunt_research_test.go": 622,
 }
 
 // TestTailleDesFichiersDuFilmNeCroitPas : aucun fichier des racines surveillees ne depasse son
@@ -503,7 +521,7 @@ func TestTailleDesFichiersDuFilmNeCroitPas(t *testing.T) {
 			continue
 		}
 		if fige {
-			t.Errorf("%s : %d lignes, plafond fige a %d (2026-09-16, lot 2.7).\n"+
+			t.Errorf("%s : %d lignes, plafond fige a %d (date de la table : voir plafondsParFichier).\n"+
 				"UN PLAFOND NE MONTE PAS. Sortir autant de lignes ailleurs dans le fichier, "+
 				"ou le scinder par deplacement pur avec sa preuve d equivalence.\n"+
 				"Seule exception ecrite, et elle couvre DEUX fichiers (cf. l en-tete de "+
@@ -559,6 +577,7 @@ func balayerTaillesFilm(t *testing.T) map[string]int {
 	out := map[string]int{}
 	for _, racine := range racinesSurveilleesTaille {
 		base := surDisque(t, racine)
+		avant := len(out)
 		err := filepath.WalkDir(base, func(chemin string, d fs.DirEntry, err error) error {
 			if err != nil {
 				return err
@@ -585,6 +604,10 @@ func balayerTaillesFilm(t *testing.T) map[string]int {
 		})
 		if err != nil {
 			t.Fatalf("balayage de %s : %v", base, err)
+		}
+		if len(out) == avant {
+			t.Fatalf("aucun fichier .go sous %s : le plancher global ne voit pas une racine qui se vide, "+
+				"ce ratchet ne la garderait plus", racine)
 		}
 	}
 	if len(out) == 0 {

@@ -971,15 +971,110 @@ commité à part (témoins sous `temoins_film/lot2/`) :
 
 ## Lot 3 — Ratchets de la brique
 
-- [ ] 3.1 Ordre des imports des sources hachées (D2-L3-a) : test dans `revision` qui compare l'ordre des imports
+- [x] 3.1 Ordre des imports des sources hachées (D2-L3-a) : test dans `revision` qui compare l'ordre des imports
       de chaque fichier des périmètres à celui figé, message qui nomme la cause. Preuve : un `goimports` simulé
       rougit avec ce message.
-- [ ] 3.2 Pour chaque ligne « oui » de l'inventaire 0.5 : racine étendue à l'espace de travail (règle ADR 0041
+      — FAIT (2026-11-08). `libs/film/revision/ordre_imports_test.go` (`TestOrdreDesImportsDesSourcesHachees`).
+      MESURE d'abord : les sources hachées sont les 398 fichiers de production de la fermeture des cinq couches
+      (arbre de chaque couche + paquets importés). Règle réellement suivie : (a) GOFMT-STABLE, vrai des 398 : chaque
+      groupe d'imports (bloc séparé par une ligne vide) est trié ; (b) ORDRE STANDARD (bibliothèque standard triée,
+      puis le reste trié) pour 383 d'entre elles ; (c) QUINZE sources, et non quatorze, gardent un ordre historique
+      en groupes séparés : les 14 qui portent la ligne « L ordre de ces imports entre dans l empreinte » ET
+      `internal/grammar/deaths_source.go`, qui ne la porte pas (D-L3-1). Les quinze n'obéissent pas à une même règle
+      de tri (les 14 marquées sont « un bloc unique trié sous l'ancien chemin de module », `deaths_source.go` met `highlightevent`
+      avant `finalise`) : le test fige donc leur suite EXACTE dans la table `ordresFiges` (chemins de la brique
+      écrits `@/...`, indépendants du chemin du module), sans toucher aux sources. Règle du test : groupes triés
+      pour toutes ; les 383 autres = ordre standard ; les quinze = leur suite figée, et une suite devenue standard
+      est une erreur (un outil les a regroupées). Le message nomme le fichier, l'import mal placé, sa place, et
+      dit que remettre l'ordre en place évite une régénération d'empreinte, sinon que l'empreinte se régénère par
+      la porte à deux verrous. Garde contre l'entrée périmée de la table (fichier qui n'est plus haché).
+      Preuves : 7 cas synthétiques (échange dans un groupe, source figée regroupée, import changé de groupe, import
+      ajouté, fichier neuf à mise en page historique, intactes) et 4 mutations sur fichiers réels (tableau
+      « Mutations du lot 3 », M1 à M4).
+- [x] 3.2 Pour chaque ligne « oui » de l'inventaire 0.5 : racine étendue à l'espace de travail (règle ADR 0041
       D7), mutation jouée (rouge puis vert) ; une ligne « non » reste telle quelle, statuée.
-- [ ] 3.3 Ratchet `film_sans_hote` : aucun littéral `LEVELUP_`, `apps/go-api`, `internal/games/halo_infinite/film`
+      — FAIT (2026-11-08), six lignes, vérifiées sur pièces (le lot 2 a déplacé les paquets) :
+      * `decode_lock_interdit_test.go` : `[x]`. Sujet vérifié : les trois noms interdits (`LockProcessDecode`,
+        `processDecodeMu`, `decode_gate.go`) n'existent plus nulle part (grep : seulement des chroniques en
+        commentaire) ; ils reviendraient dans `libs/film/internal/grammar`, hors de l'ancienne racine
+        (`internal`, `cmd`). Racine = `workspaceGoSources(t, racinesEspaceDeTravail...)` (aide existante, pas de
+        3e copie). Mutations M5, M6.
+      * `no_discarded_remove_test.go` : `[x]` borné. Recompte par grep : les 6 sites de `filmcache/deplacement.go`
+        sont partis dans `internal/filmarchive` (hors racines), les 2 de `libs/film/internal/atomicfile/atomicfile.go`
+        sont restés ; les trois autres briques n'en ont aucun. Le garde-rail est un garde-rail de chemins de
+        requête (`internal/api`, `internal/service`) : étendre à tout l'espace de travail ajouterait 49 sites de
+        go-api (cmd/, assets, media, ops, persist, platform, transfer...) à une allowlist de ~35 fichiers, ce qui
+        change le sens de la règle (D-L3-4). Racines étendues aux quatre briques de `libs/` seulement ; allowlist
+        datée 2026-11-08 pour `atomicfile.go` (2 sites : nettoyage après l'erreur d'écriture déjà rendue à
+        l'appelant ; jumeau de `platform/atomicfile`), critère de retrait écrit. Mutations M7.
+      * `server_stdout_internal_test.go` : `[~]` D-L2-8. Vérifié : la racine `internal` couvre
+        `internal/filmrun/runner.go`, qui porte l'entrée datée (`EmitPeak`, `EmitRaison`, défaut `os.Stdout`) ; aucune
+        référence à `os.Stdout` ni `fmt.Print*` dans la production des quatre briques hors `libs/film/research/`
+        (outils en ligne de commande, jamais liés au serveur). Aucune racine à étendre.
+      * `film_exported_vars_test.go` (racine partielle) : `[x]`. Mesure de l'extension à `libs/gamefiles`,
+        `libs/haloapi`, `libs/himap` : 9 variables exportées modifiables, toutes dans `libs/himap/himap`
+        (`CartesForge`, `TypesVolumesDeMort`, `ModulesDesEquipements`, `StylesFond`, `LumiereRendu`,
+        `NiveauHautNavmesh`, `MargeSolVuDuDessousCarte`, `SeuilSubstitution`, `SeuilCouvertureCarte`) ; 0 ailleurs.
+        Extension faite avec une baseline nommée par variable (`varsExporteesAdmises`, datée 2026-11-08, fermée,
+        critère de retrait écrit) et un test d'entrée périmée ; aucune production touchée. Mutations M8, M9.
+      * `film_file_size_test.go` (racine partielle) : `[x]`. Mesure : 6 fichiers au-delà de 500 lignes (himap :
+        `cuisson_forge.go` 1 048, `cartes_forge.go` 719, `cuisson.go` 619, `sonde_locs_research_test.go` 818,
+        `physique_sonde_gamefiles_test.go` 530 ; gamefiles : `noms_lieux_hunt_research_test.go` 622 ; haloapi : 0).
+        Racines étendues, 6 plafonds gelés à la taille du jour (bloc daté 2026-11-08). Garde par racine non vide
+        ajouté (les planchers globaux sont trop bas, D-L3-6). Mutations M10, M11.
+      * `film_function_length_test.go` (racine partielle) : `[x]`. Mesure : 1 fonction de production au-delà de
+        80 lignes (`CuitCarteForge`, 84, himap) ; gamefiles et haloapi : 0. Racines partagées avec la taille
+        des fichiers (par référence), 1 plafond gelé. Mutations M12, M13.
+- [x] 3.3 Ratchet `film_sans_hote` : aucun littéral `LEVELUP_`, `apps/go-api`, `internal/games/halo_infinite/film`
       ni chemin absolu dans la production de `libs/film` ; allowlist datée = `revision/porte.go` seul (D-3).
       Mutation jouée.
-- [ ] 3.4 Gate : archlint vert, mutations consignées, T1. Commit « lot 3 ».
+      — FAIT (2026-11-08), avec un ÉCART À L'ALLOWLIST DU PLAN. `apps/go-api/internal/archlint/film_sans_hote_test.go`
+      (`TestLaBriqueNeConnaitPasSonHote`), balayage texte, commentaires compris, de la production de `libs/film`
+      (719 fichiers, hors `research/`, hors tag `research`, via `balayerLaProductionHorsResearch`). Relevé : `LEVELUP_`
+      seulement dans `revision/porte.go` (D-3, comme prévu) ; mais `internal/games/halo_infinite/film` et `apps/go-api`
+      figurent aussi dans `revision/cadre.go` (constante `dossierHistoriqueDeLaBrique` et commentaire), `couches.go`
+      (constante `racineDesCouches`) et `perimetre.go` (commentaire) : c'est le CADRE HISTORIQUE du hachage (ADR 0041 D8),
+      le contrat des empreintes, que le lot 1 ne pouvait pas réécrire. Allowlist : par fichier ET par littéral
+      (porte.go : `LEVELUP_` ; cadre.go : les deux chemins ; couches.go et perimetre.go : l'ancienne adresse), datée
+      2026-11-08 avec critère de retrait, plus un test d'entrée périmée. Aucun autre site (0 chemin absolu). Message :
+      fichier, ligne, littéral, remède. Mutations M14, M15, M16.
+- [x] 3.4 Gate : archlint vert, mutations consignées, T1. Commit « lot 3 ».
+      — FAIT (2026-11-08) : voir « Gate du lot 3 » ci-dessous.
+
+### Mutations du lot 3
+
+Chaque mutation est jouée sur un fichier réel ou jetable (sauvegarde puis remise en place, `git status` propre
+ensuite), le test vu ROUGE avec le message cité, puis VERT après retrait.
+
+| # | Test | Mutation | Message observé (extrait) | Retour au vert |
+|---|---|---|---|---|
+| M1 | `TestOrdreDesImportsDesSourcesHachees` | `goimports` simulé : `internal/facts/killsource/hybrid.go` regroupé (`cmp`, `slices`, puis le module) | `hybrid.go : figure dans ordresFiges, mais ses imports sont en ordre standard : un outil (goimports...) les a regroupes. [...] remettre l'ordre en place evite une regeneration d'empreinte [...] porte a deux verrous` | oui |
+| M2 | idem | permutation `errors` / `fmt` dans `internal/grammar/deaths_source.go` | `dans le groupe d'imports 1, l'import "errors" est place apres "fmt", que gofmt rangerait apres lui. [...]` | oui |
+| M3 | idem | `klauspost/compress/zstd` rangé dans le bloc standard de `internal/source/zstd.go` | `l'import "github.com/klauspost/compress/zstd" est a la place 4, goimports le mettrait avant "sync" [...] ordresFiges` | oui |
+| M4 | idem | fichier neuf `internal/grammar/zz_mutation_ordre.go` en mise en page historique | `l'import ".../types" est a la place 2, goimports le mettrait avant "slices" [...] l'ajouter a ordresFiges` | oui (fichier retiré) |
+| M5 | `TestAucunVerrouDeDecodageDePaquet` | `func LockProcessDecode()` dans `libs/film/internal/grammar/zz_mutation_verrou.go` | `LE VERROU DE DECODAGE DE PAQUET EST DE RETOUR (1) : libs/film/internal/grammar/zz_mutation_verrou.go : declare ou appelle LockProcessDecode` | oui |
+| M6 | idem | `var processDecodeMu int` dans `libs/film/internal/decodelock` | idem, `...decodelock/zz_mutation.go : declare ou appelle processDecodeMu` | oui |
+| M7 | `TestNoDiscardedRemoveOnRequestPaths` | `_ = os.Remove(p)` dans `libs/film/decfilm` et `defer os.RemoveAll(p)` dans `libs/himap/himap` | `os.Remove / os.RemoveAll dont l'erreur est écartée : tester le résultat et journaliser l'échec : libs/film/decfilm/zz_mutation_remove.go:5, libs/himap/himap/zz_mutation_remove.go:5` | oui |
+| M8 | `TestAucuneVarExporteeModifiableDansLeDecodeur` | `var TableMutable` dans `libs/gamefiles/mapvar`, `var ReglageMutable` dans `libs/haloapi` | `libs/gamefiles/mapvar.TableMutable`, `libs/haloapi.ReglageMutable` [...] baseline datee et fermee au 2026-11-08 | oui |
+| M9 | `TestVarsExporteesAdmisesNeSontPasPerimees` | entrée fantôme `himap.VarInexistante` | `est dans varsExporteesAdmises mais n est plus une variable exportee modifiable : retirer l entree` | oui |
+| M10 | `TestTailleDesFichiersDuFilmNeCroitPas` | `libs/himap/himap/cartes_forge.go` +1 ligne | `720 lignes, plafond fige a 719 [...] UN PLAFOND NE MONTE PAS` | oui |
+| M11 | idem | fichier neuf de 521 lignes dans `libs/haloapi` | `libs/haloapi/zz_gros.go : 521 lignes, seuil 500 (CLAUDE.md regle 5)` | oui |
+| M12 | `TestLongueurDesFonctionsDuFilmNeCroitPas` | fonction neuve de 89 lignes dans `libs/gamefiles/mapvar` | `ZzLongue : 89 lignes physiques, seuil 80` | oui |
+| M13 | idem | une ligne de plus dans `CuitCarteForge` | `CuitCarteForge : 85 lignes physiques, plafond fige a 84` | oui |
+| M14 | `TestLaBriqueNeConnaitPasSonHote` | `os.Getenv("LEVELUP_FAUX")`, commentaire `apps/go-api/cmd`, chaîne `/home/guillaume` dans `libs/film/replay/zz_mut_hote.go` | `la production de la brique nomme son hote (3) : zz_mut_hote.go:5 : "LEVELUP_" ; :7 : "apps/go-api" ; :8 : "/home/"` + remède | oui |
+| M15 | idem | `// LEVELUP_X` ajouté à `revision/cadre.go` (littéral admis ailleurs, pas ici) | `libs/film/revision/cadre.go:132 : "LEVELUP_"` | oui |
+| M16 | `TestHoteAdmisNEstPasPerime` | entrée fantôme `/opt/` pour `revision/couches.go` | `entree(s) de hoteAdmis sans objet, a retirer : libs/film/revision/couches.go : "/opt/"` | oui |
+
+### Gate du lot 3 (2026-11-08)
+
+Commandes jouées dans cet ordre, un seul gros processus à la fois (`GOCACHE=go-build-film`, `CGO_ENABLED=1`) :
+`go vet ./...` dans `libs/film` et `apps/go-api` : vert. `go test ./revision/...` (libs/film) : vert. `golangci-lint run ./revision/...`
+(libs/film) et `./internal/archlint/...` (apps/go-api) : 0 issue, aucun `//nolint` dans les fichiers neufs. `go test ./internal/archlint/ -timeout 40m -count=1`
+(apps/go-api, seul) : `ok` en 299 s, 0 fail. T1 allégé : `go test ./... -timeout 30m -count=1` dans `libs/film` : 28 paquets `ok`, 0 fail ;
+`go test ./internal/filmrun/... ./internal/filmarchive/... ./internal/platform/filelock/...` (apps/go-api) : 3 `ok`, 0 fail (archlint compté
+ci-dessus). T2 : les cinq `Rev` inchangées (les tests d'équivalence et de golden de `revision` verts), `git status` ne montre aucun `*.golden`
+modifié ni aucun fichier de production modifié : le lot ne touche que des tests, ce plan, le registre et le journal. Fichiers du commit : 6 tests
+modifiés ou neufs dans `archlint`, `libs/film/revision/ordre_imports_test.go`, plan, registre, journal.
 
 ## Lot 4 — Publication de la brique
 
@@ -1145,3 +1240,28 @@ Lot 2 (2026-11-04), notées, non traitées :
   standard, `EmitPeak`, `EmitRaison`, défaut `out = os.Stdout`) est entré dans la racine du garde-rail avec le lanceur.
   Retrait possible le jour où le protocole passe par un descripteur dédié ; le lot 3.2 n'a plus de racine à étendre pour
   cette ligne.
+
+Lot 3 (2026-11-08), notées, non traitées :
+
+- **D-L3-1** `libs/film/internal/grammar/deaths_source.go` est la QUINZIÈME source hachée en ordre historique et la seule
+  sans la ligne de commentaire « L ordre de ces imports entre dans l empreinte » que `revision/cadre.go` promet aux sources
+  concernées (14 sur 15 la portent) ; sa mise en page ne suit pas non plus la règle des autres (`highlightevent` avant
+  `finalise`). Le test de 3.1 la fige dans `ordresFiges`. Source hachée, non touchée.
+- **D-L3-2** `libs/himap/himap.CuitCarteForge` pose cinq variables de paquet exportées (`SeuilSubstitution`,
+  `SeuilCouvertureCarte`, `NiveauHautNavmesh`, `MargeSolVuDuDessousCarte`) puis les rend par `defer` : deux cuissons
+  concurrentes d'un même processus se marcheraient dessus. Sujet de la baseline de `film_exported_vars` ; correctif =
+  passer les réglages en paramètre de la cuisson (production de `himap`, hors lot).
+- **D-L3-3** Les six fichiers au-delà de 500 lignes de `himap`/`gamefiles` et `CuitCarteForge` (84 lignes) sont gelés à leur
+  taille du jour dans les tables datées de `film_file_size` et `film_function_length` ; leur scission est une décision de lot.
+- **D-L3-4** `no_discarded_remove` ne garde que `internal/api`, `internal/service` et les briques : 49 sites `_ = os.Remove*`
+  restent dans go-api hors de ces racines (`cmd/`, `assets`, `media`, `migration`, `ops`, `persist`, `platform/*`, `transfer`,
+  `replaychild`, `mapcatalog`, `filmarchive` (6), `pkg/duckdbbackup`), plus `libs/film/internal/atomicfile` (2, admis) et sa
+  copie `platform/atomicfile` (2). Les étendre est une décision sur le sens du garde-rail (chemins de fond), pas sur la brique.
+- **D-L3-5** Hors du périmètre `.go` de `film_sans_hote` : les commentaires de prose des `*.golden`, `bench_baseline.txt`,
+  `ecs_table.README.md`, `PROVENANCE.txt`, `replay/testdata/equivalence/CORPUS.txt` et `testdata/corpus_objectifs/README.md`
+  de `libs/film` citent encore `LEVELUP_UPDATE_*`, `go test ./internal/games/halo_infinite/film/...` et `apps/go-api` (commandes
+  de regénération périmées). Les `*_perimetre.golden` portent aussi l'ancien nom dans leurs lignes de données (voulu : cadre
+  historique). À reprendre avec le README de la brique (lot 4).
+- **D-L3-6** Les planchers de balayage de `film_file_size` (1 200 fichiers) et `film_function_length` (2 300 fonctions) datent du
+  2026-09-16 ; les mesures du 2026-11-08 sont 2 677 fichiers et 5 319 fonctions : un balayage à moitié muet passerait. Non relevés
+  (hors lot) ; le lot 3.2 a seulement ajouté une garde « racine non vide » par racine.

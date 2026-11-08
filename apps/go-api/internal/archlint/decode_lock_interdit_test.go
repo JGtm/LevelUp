@@ -19,8 +19,10 @@ package archlint
 //
 // # LA REGLE, EXACTEMENT
 //
-// Aucun fichier du module (production ou test) ne declare ni n appelle un verrou de decodage de
-// PAQUET. Trois noms sont interdits, et ce sont ceux qui ont existe :
+// Aucun fichier de l espace de travail Go (go-api et les briques de `libs/`, production ou test) ne
+// declare ni n appelle un verrou de decodage de PAQUET. La racine est l espace de travail (ADR 0041
+// D7) : le verrou reviendrait dans `libs/film/internal/grammar`, la ou il a vecu, pas dans go-api.
+// Trois noms sont interdits, et ce sont ceux qui ont existe :
 //
 //	LockProcessDecode   la porte publique du verrou de paquet ;
 //	processDecodeMu     le mutex lui-meme ;
@@ -49,7 +51,6 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"io/fs"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -65,46 +66,32 @@ const fichierDeVerrouDeDecodage = "decode_gate.go"
 
 // TestAucunVerrouDeDecodageDePaquet — LE RATCHET INVERSE.
 func TestAucunVerrouDeDecodageDePaquet(t *testing.T) {
-	racine := apiRootDepuisIci(t)
 	var fautes []string
-	for _, sous := range []string{"internal", "cmd"} {
-		err := filepath.WalkDir(filepath.Join(racine, sous), func(p string, d fs.DirEntry, err error) error {
-			if err != nil {
-				return err
-			}
-			if d.IsDir() || !strings.HasSuffix(d.Name(), ".go") {
-				return nil
-			}
-			rel, _ := filepath.Rel(racine, p)
-			rel = filepath.ToSlash(rel)
-			// CE FICHIER-CI EST LE SEUL A CITER LES NOMS INTERDITS, et c est sa raison d etre.
-			if strings.HasSuffix(rel, "archlint/decode_lock_interdit_test.go") {
-				return nil
-			}
-			if d.Name() == fichierDeVerrouDeDecodage {
-				fautes = append(fautes, rel+" : le fichier du verrou de decodage est de retour")
-				return nil
-			}
-			// PARSE SANS COMMENTAIRES : seuls les identifiants comptent (cf. l en-tete).
-			f, err := parser.ParseFile(token.NewFileSet(), p, nil, parser.SkipObjectResolution)
-			if err != nil {
-				// Un fichier qui ne parse pas (build tag exotique, source generee) n est pas
-				// une faute de ce ratchet — d autres gates le disent.
-				return nil //nolint:nilerr // parse impossible = hors perimetre de ce ratchet
-			}
-			ast.Inspect(f, func(n ast.Node) bool {
-				id, ok := n.(*ast.Ident)
-				if !ok || !nomsDeVerrouDeDecodage[id.Name] {
-					return true
-				}
-				fautes = append(fautes, rel+" : declare ou appelle "+id.Name)
-				return false
-			})
-			return nil
-		})
-		if err != nil {
-			t.Fatalf("balayage de %s : %v", sous, err)
+	for _, fichier := range workspaceGoSources(t, racinesEspaceDeTravail...) {
+		rel, p := fichier.Rel, fichier.Chemin
+		// CE FICHIER-CI EST LE SEUL A CITER LES NOMS INTERDITS, et c est sa raison d etre.
+		if strings.HasSuffix(rel, "archlint/decode_lock_interdit_test.go") {
+			continue
 		}
+		if filepath.Base(p) == fichierDeVerrouDeDecodage {
+			fautes = append(fautes, rel+" : le fichier du verrou de decodage est de retour")
+			continue
+		}
+		// PARSE SANS COMMENTAIRES : seuls les identifiants comptent (cf. l en-tete).
+		f, err := parser.ParseFile(token.NewFileSet(), p, nil, parser.SkipObjectResolution)
+		if err != nil {
+			// Un fichier qui ne parse pas (build tag exotique, source generee) n est pas une faute
+			// de ce ratchet : d autres gates le disent.
+			continue
+		}
+		ast.Inspect(f, func(n ast.Node) bool {
+			id, ok := n.(*ast.Ident)
+			if !ok || !nomsDeVerrouDeDecodage[id.Name] {
+				return true
+			}
+			fautes = append(fautes, rel+" : declare ou appelle "+id.Name)
+			return false
+		})
 	}
 	if len(fautes) == 0 {
 		return
