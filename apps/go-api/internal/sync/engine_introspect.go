@@ -17,12 +17,19 @@ import (
 	"context"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 )
 
 // HasSharedProvider retourne true si .WithSharedProvider a été appelé avec
 // une instance non-nil. Test-only.
 func (e *SyncEngine) HasSharedProvider() bool {
 	return e.sharedProvider != nil
+}
+
+// SharedProviderForTest retourne le provider câblé par .WithSharedProvider (nil si
+// aucun). Test-only : prouve QUEL provider sert le moteur, pas seulement qu'il y en a un.
+func (e *SyncEngine) SharedProviderForTest() sharedprovider.Provider {
+	return e.sharedProvider
 }
 
 // HasFriendsLoader retourne true si .WithFriendsLoader a été appelé avec

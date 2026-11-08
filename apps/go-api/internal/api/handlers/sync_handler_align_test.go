@@ -8,10 +8,13 @@ package handlers
 
 import (
 	"context"
+	"database/sql"
 	"testing"
 	"time"
 
 	"levelup/go-api/internal/config"
+	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 	go_sync "levelup/go-api/internal/sync"
 )
 
@@ -105,5 +108,27 @@ func TestNewEngineFor_NoPrestigeHookWhenNotWired(t *testing.T) {
 	}
 	if engine.HasPrestigeHook() {
 		t.Error("PrestigeHook câblé alors que WithPrestigeHook pas appelé — fuite")
+	}
+}
+
+// TestNewEngineFor_SharedProviderIsTitleScoped : le titre par défaut reçoit le provider du
+// boot ; un autre titre n'en reçoit JAMAIS le provider du boot, et reste sans provider quand
+// aucun Manager ne peut le servir.
+func TestNewEngineFor_SharedProviderIsTitleScoped(t *testing.T) {
+	boot := sharedprovider.FromInMemoryDB((*sql.DB)(nil), ":memory:")
+	h := NewSyncHandler(&config.AppConfig{RepoRoot: t.TempDir(), SharedProvider: boot}, nil, nil, nil)
+
+	for _, slug := range []string{"", title.DefaultSlug} {
+		if got := h.newEngineFor(slug, "DemoPlayer", "xuid-1", nil).SharedProviderForTest(); got != boot {
+			t.Errorf("titre %q : attendu le provider du boot, got %v", slug, got)
+		}
+	}
+
+	eOther := h.newEngineFor("synthetic_test_title", "DemoPlayer", "xuid-1", nil)
+	if got := eOther.SharedProviderForTest(); got == boot {
+		t.Fatal("autre titre : le provider du boot (titre par défaut) a été câblé sur le moteur")
+	}
+	if eOther.HasSharedProvider() {
+		t.Error("autre titre sans Manager : le moteur doit rester sans provider (mode legacy)")
 	}
 }

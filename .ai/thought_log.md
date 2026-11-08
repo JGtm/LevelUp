@@ -120343,3 +120343,11 @@ version restent après chaque mise à jour NSIS (antérieur à L24).
 **Résultats observés.** Gate E1 vert ; relance prouvée rouge puis verte par test ; plancher du corpus à 60.
 
 **Conclusion / prochaine étape.** E2 multi-titre.
+
+## [2026-11-08] Backlog E2 : multi-titre — Complété
+
+**Décision technique principale.** Le moteur reçoit le provider de son titre (`SharedProviderForTitle`) sur les chemins du planificateur et du handler ; le recalcul des sessions écarte les profils `auth_only` ; le ratchet de comparaison de slug couvre `cmd/`.
+
+**Résultats observés.** Tests rouges puis verts ; gate vert, intégration `sync`, `scheduler`, `api/wire` sous `-p 1`. Une seule comparaison dans `cmd/`, allowlistée : validation de saisie.
+
+**Conclusion / prochaine étape.** E3 LUSR.

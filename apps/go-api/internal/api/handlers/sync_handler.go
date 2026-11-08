@@ -198,8 +198,9 @@ func (h *SyncHandler) newEngineFor(titleSlug, gamertag, xuid string, tokens *dom
 	// (OpenSharedDB direct RW) qui court-circuite la coordination Provider ↔ pool
 	// joueur. Résultat : Catalog Error / "different configuration" pour les
 	// readers HTTP pendant cette fenêtre. Wire identique à scheduler/auto_sync.go.
-	if h.cfg.SharedProvider != nil {
-		engine = engine.WithSharedProvider(h.cfg.SharedProvider)
+	// Le provider est celui du titre du moteur (SharedProviderForTitle) ; nil = mode legacy.
+	if p := h.cfg.SharedProviderForTitle(titleSlug); p != nil {
+		engine = engine.WithSharedProvider(p)
 	}
 	// Fil de l'eau des artefacts de rejeu 2D (lot 6 v7.5). Le hook s'installe toujours ;
 	// c'est lui qui décide (replay_build_location, relu à chaque cycle). Parité

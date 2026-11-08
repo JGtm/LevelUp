@@ -50,8 +50,10 @@ func (s *AutoSyncScheduler) BuildEngine(ctx context.Context, gamertag, xuid stri
 	// Commit 8i : en mode B-swap (LEVELUP_USE_SHARED_PROVIDER=1), router les
 	// ouvertures RW de shared via Provider.AcquireWriter au lieu d'OpenSharedDB
 	// direct (le provider arbitre seul lectures et écriture, ADR 0016).
-	if s.cfg.SharedProvider != nil {
-		engine.WithSharedProvider(s.cfg.SharedProvider)
+	// Le provider est celui du titre du moteur (SharedProviderForTitle) : le provider du
+	// boot ne sert que le titre par défaut. nil = moteur sans provider (mode legacy).
+	if p := s.cfg.SharedProviderForTitle(titleSlug); p != nil {
+		engine.WithSharedProvider(p)
 	}
 	// Amis DU JOUEUR synchronisé (fermeture sur son xuid) : la liste n'est plus
 	// celle de l'instance, donc deux joueurs auto-syncés n'héritent plus des amis

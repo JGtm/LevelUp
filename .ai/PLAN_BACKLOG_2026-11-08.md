@@ -141,15 +141,15 @@ Gate :
 
 ### E2 — Multi-titre (Sonnet, un agent)
 
-- [ ] 2.1 `apps/go-api/internal/scheduler/auto_sync_engine.go:55-57` (`BuildEngine`) : passer
+- [x] 2.1 `apps/go-api/internal/scheduler/auto_sync_engine.go:55-57` (`BuildEngine`) : passer
   `s.cfg.SharedProviderForTitle(titleSlug)` à `WithSharedProvider`, garde nil conservée. Titre par défaut inchangé par
   construction (`config/shared_provider_title.go`). Test unitaire : titre par défaut = `cfg.SharedProvider` ; autre titre
   = jamais `cfg.SharedProvider`.
-- [ ] 2.2 `apps/go-api/internal/api/handlers/sync_handler.go:202-204` (`newEngineFor`) : même remplacement, même test.
-- [ ] 2.3 `apps/go-api/internal/api/handlers/settings_sessions_recalc.go` : écarter les profils `p.AuthOnly` de la
+- [x] 2.2 `apps/go-api/internal/api/handlers/sync_handler.go:202-204` (`newEngineFor`) : même remplacement, même test.
+- [x] 2.3 `apps/go-api/internal/api/handlers/settings_sessions_recalc.go` : écarter les profils `p.AuthOnly` de la
   boucle de `handlePostRecalculateSessions` (prédicat de `api/wire/notifications_boot.go:90`) ; ils ne sont ni comptés
   ni ouverts, donc leur base n'est plus créée. Test dans `settings_sessions_recalc_job_test.go`.
-- [ ] 2.4 `apps/go-api/internal/archlint/no_slug_comparison_test.go` : balayer aussi `cmd/` (chemins relatifs préfixés
+- [x] 2.4 `apps/go-api/internal/archlint/no_slug_comparison_test.go` : balayer aussi `cmd/` (chemins relatifs préfixés
   `cmd/`). `cmd/levelup/cmd_title.go:42`, seule occurrence attendue, entre dans l'allowlist avec sa raison et la date du
   2026-11-08.
 
@@ -347,3 +347,4 @@ les puces gardées en `[!]` ; relecture du diff par le pilote.
   Demandes : traiter aussi le rafraîchissement OAuth (E5 ajoutée), relecture finale par Opus, rejeu confié à Opus.
   En attente du go.
 - 2026-11-08 E1 close : six items faits, gate vert rejoué par l'exécutant, diff relu par le pilote. Relance du flux prouvée rouge (4 démarrages) puis verte (1).
+- 2026-11-08 E2 close : quatre items faits, tests rouges puis verts, gate vert (intégration sous `-p 1`), diff relu par le pilote. Accesseur `SharedProviderForTest` ajouté pour prouver quel provider sert le moteur.
