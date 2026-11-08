@@ -143,14 +143,14 @@ jobs:
           tagged="$(docker run --rm --entrypoint grep levelup-test:ci -a -o "main.resourcesFingerprint=$fp" /app/levelup-server | wc -l)"
           total="$(docker run --rm --entrypoint grep levelup-test:ci -a -o "$fp" /app/levelup-server | wc -l)"
           if [ "$tagged" -lt 1 ]; then
-            echo "  ❌ le binaire serveur ne porte pas -X main.resourcesFingerprint=$fp dans ses paramètres de compilation"
+            echo "  ERREUR : le binaire serveur ne porte pas -X main.resourcesFingerprint=$fp dans ses paramètres de compilation"
             exit 1
           fi
           if [ "$total" -le "$tagged" ]; then
-            echo "  ❌ l'empreinte du manifeste est dans les paramètres du binaire mais pas dans ses données : la variable main.resourcesFingerprint n'existe plus (renommée ?) et le drapeau -X est ignoré en silence ($total occurrences au total, $tagged avec le drapeau)"
+            echo "  ERREUR : l'empreinte du manifeste est dans les paramètres du binaire mais pas dans ses données : la variable main.resourcesFingerprint n'existe plus (renommée ?) et le drapeau -X est ignoré en silence ($total occurrences au total, $tagged avec le drapeau)"
             exit 1
           fi
-          echo "  ✅ manifeste et binaire portent la même empreinte, et la variable en porte la valeur : $fp"
+          echo "  OK : manifeste et binaire portent la même empreinte, et la variable en porte la valeur : $fp"
 
           docker history --no-trunc --format '{{.Size}}\t{{.CreatedBy}}' levelup-test:ci | tac > "$RUNNER_TEMP/layers.txt"
           cut -c1-200 < "$RUNNER_TEMP/layers.txt"
