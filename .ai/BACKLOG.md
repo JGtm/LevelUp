@@ -25,7 +25,7 @@ parasites hors plage des bipèdes, slots 36 et 292). Règle du user : aucune vie
 mesure par film des enregistrements de création qui nomment ces pistes ; arrêt si aucune lecture n'en
 sort. Hors périmètre, déjà décidé : les 5 films de build inconnu (abandonnés par le user le
 2026-10-15) et les 2 films Firefight. **Effort : S.**
-**Mesure du 2026-11-08** (lecture seule, rejeux recuits au schéma 107 par la branche `fix/rejeu-vies-equipement`) : `5da6fd30` garde 6 vies sans nom et `7aa132d1` 2 ; `72c48587` n'est plus mesurable, ni artefact ni faits sur le poste. Aucun autre film à vies sans nom hors bots déclarés et films de build inconnu. Sur `5da6fd30`, trois pions manquent environ 22 s à l'écran.
+**Mesure du 2026-11-08** (lecture seule, rejeux recuits au schéma 107 par la branche `fix/rejeu-vies-equipement`) : `5da6fd30` garde 6 vies sans nom et `7aa132d1` 2 ; `72c48587` n'est plus mesurable, ni artefact ni faits sur le poste. Les 5 films de build inconnu restent sans roster. Les 495 films qui déclarent des bots ne sont pas jugés par cette mesure : une piste sans `xuid` y est normale pour un bot, une vie anonyme y resterait invisible. Sur `5da6fd30`, trois pions manquent environ 22 s à l'écran.
 
 ---
 
