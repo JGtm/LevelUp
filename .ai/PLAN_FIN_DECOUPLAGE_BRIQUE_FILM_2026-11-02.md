@@ -1114,7 +1114,7 @@ modifiés ou neufs dans `archlint`, `libs/film/revision/ordre_imports_test.go`, 
       à 4 ; corrections avec test vu rouge ; pas de seconde ronde sauf P0. Ronde 1 corrigée le 2026-11-08 (C1 à C4, voir
       « Résultat de l'item 4.7 ») ; cochée par le pilote le 2026-11-08 après la ronde 2 (aucun constat recevable).
 - [x] 4.8 fait le 2026-11-08 (Haiku) : backlog, registre, project_map ; contrôle grep des chemins cités.
-- [ ] 4.9 PR vers `release/v8.1.0`, CI verte, squash. Commande de tag préparée pour le user :
+- [x] 4.9 PR vers `release/v8.1.0`, CI verte, squash. — FAIT le 2026-11-08 : PR #155, CI verte (28 jobs) après la fusion de la release (10 commits : `cmd_decode_verrou` rebranché sur `filmrun`, CI union, ADR 0045), squash `5842e16cad` sur `release/v8.1.0`. Caches `go-build-film` et `golangci-film` purgés (4,73 Go). Tag : geste du user. Commande de tag préparée pour le user :
       `git tag libs/film/v0.1.0 <sha> && git push origin libs/film/v0.1.0` (geste du user, ADR 0043 D-2).
       2026-11-08 : CI rouge sur Govulncheck (GO-2026-6865, `klauspost/compress` 1.19.0 -> 1.20.2, avis du 2026-11-05 indépendant de la branche) : montée de version dans `libs/film` et `apps/go-api`, tests verts, govulncheck 0.
 
