@@ -29,6 +29,12 @@ en = "Your data comes from a newer version of LevelUp. Install the latest versio
 fr = "LevelUp n'a pas pu ouvrir de port local. Vérifiez qu'aucun logiciel de sécurité ne le bloque, puis relancez."
 en = "LevelUp could not open a local port. Check that no security software is blocking it, then start again."
 
+# Le paquet de ressources (images, sons, référentiel, ffmpeg) n'est pas celui de ce moteur ou manque, et son
+# téléchargement a échoué. Relancer l'application réessaie le téléchargement.
+[desktop.failed.resources_incompatible]
+fr = "Les ressources de LevelUp (images, sons, données de référence) manquent ou ne correspondent pas à cette version, et n'ont pas pu être téléchargées. Vérifiez votre connexion, puis relancez LevelUp pour réessayer."
+en = "LevelUp's resources (images, sounds, reference data) are missing or do not match this version, and could not be downloaded. Check your connection, then start LevelUp again to retry."
+
 # Le serveur n'a pas annoncé qu'il était prêt dans le délai de la coquille : il est arrêté.
 [desktop.failed.timeout]
 fr = "LevelUp a mis trop de temps à démarrer et a été arrêté. Relancez l'application ; si cela se reproduit, les journaux du dossier des données en donnent la cause."

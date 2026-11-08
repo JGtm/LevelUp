@@ -209,6 +209,7 @@ fn un_echec_sans_port_montre_l_ecran_embarque_de_sa_cause() {
         ("locked", FailureKind::Locked),
         ("schema_newer", FailureKind::SchemaNewer),
         ("migration_failed", FailureKind::MigrationFailed),
+        ("resources_incompatible", FailureKind::ResourcesIncompatible),
     ] {
         let roots = fresh_roots("echec-sans-port");
         let env = [("FAKE_VARIANT", "failed_no_port"), ("FAKE_FAILED_STATE", state)];

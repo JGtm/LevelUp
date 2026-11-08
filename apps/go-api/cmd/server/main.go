@@ -33,6 +33,11 @@ import (
 // version est injectée au build via -ldflags "-X main.version=X.Y.Z".
 var version = "dev"
 
+// resourcesFingerprint est l'empreinte du paquet de ressources de CE moteur, injectée au build par
+// -ldflags "-X main.resourcesFingerprint=<empreinte>" (apps/desktop/scripts, Dockerfile, release.yml) ; scripts/check-version.sh
+// la relit dans le binaire. Vide (go build local, tests) : aucun contrôle du paquet n'a lieu.
+var resourcesFingerprint = ""
+
 // serverWriteTimeout borne l'écriture d'une réponse HTTP (http.Server.WriteTimeout).
 //
 // 2026-09-23 : 30 s -> 120 s. Cause : les pages lourdes (Escouade, 25 à 55 s de calcul
@@ -84,6 +89,7 @@ func main() {
 	wireTitleHooks(st)
 	openRouterAndHeartbeat(st)
 	launchWakeSequence(st)
+	launchResources(st)
 	launchGameWatch(st)
 	launchShellIntegration(st)
 	launchScheduledRefresh(st)

@@ -66,3 +66,27 @@ func TestLoad_DesktopWebDistParDefaut(t *testing.T) {
 		}
 	})
 }
+
+// LEVELUP_UPDATE_PUBKEY (posée par la coquille depuis plugins.updater.pubkey) alimente UpdatePublicKey, espaces
+// de bord retirés ; absente, elle reste vide : aucun paquet de ressources ne peut alors être téléchargé.
+func TestLoad_UpdatePublicKey(t *testing.T) {
+	t.Setenv("LEVELUP_REPO_ROOT", t.TempDir())
+
+	t.Setenv("LEVELUP_UPDATE_PUBKEY", "")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() : %v", err)
+	}
+	if cfg.UpdatePublicKey != "" {
+		t.Errorf("UpdatePublicKey = %q sans variable, attendu vide", cfg.UpdatePublicKey)
+	}
+
+	t.Setenv("LEVELUP_UPDATE_PUBKEY", "  dW50cnVzdGVk \n")
+	cfg, err = Load()
+	if err != nil {
+		t.Fatalf("Load() : %v", err)
+	}
+	if cfg.UpdatePublicKey != "dW50cnVzdGVk" {
+		t.Errorf("UpdatePublicKey = %q, attendu la valeur sans espaces de bord", cfg.UpdatePublicKey)
+	}
+}

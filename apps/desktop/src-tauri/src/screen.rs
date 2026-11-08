@@ -8,17 +8,20 @@ pub enum FailureKind {
     MigrationFailed,
     SchemaNewer,
     Port,
+    /// Le paquet de ressources manque ou n'est pas celui du moteur, et son telechargement a echoue (L24).
+    ResourcesIncompatible,
     /// Pas de `ready` dans le delai : decide par la coquille, jamais annonce par le serveur.
     Timeout,
 }
 
 impl FailureKind {
     /// Tous les cas, dans l'ordre du catalogue.
-    pub const ALL: [FailureKind; 5] = [
+    pub const ALL: [FailureKind; 6] = [
         Self::Locked,
         Self::MigrationFailed,
         Self::SchemaNewer,
         Self::Port,
+        Self::ResourcesIncompatible,
         Self::Timeout,
     ];
 
@@ -30,6 +33,7 @@ impl FailureKind {
             "migration_failed" => Some(Self::MigrationFailed),
             "schema_newer" => Some(Self::SchemaNewer),
             "port" => Some(Self::Port),
+            "resources_incompatible" => Some(Self::ResourcesIncompatible),
             _ => None,
         }
     }
@@ -41,6 +45,7 @@ impl FailureKind {
             Self::MigrationFailed => "failed_migration_failed",
             Self::SchemaNewer => "failed_schema_newer",
             Self::Port => "failed_port",
+            Self::ResourcesIncompatible => "failed_resources_incompatible",
             Self::Timeout => "failed_timeout",
         }
     }
@@ -128,6 +133,10 @@ mod tests {
         );
         assert_eq!(FailureKind::from_wire("schema_newer"), Some(FailureKind::SchemaNewer));
         assert_eq!(FailureKind::from_wire("port"), Some(FailureKind::Port));
+        assert_eq!(
+            FailureKind::from_wire("resources_incompatible"),
+            Some(FailureKind::ResourcesIncompatible)
+        );
         assert_eq!(FailureKind::from_wire("timeout"), None);
         assert_eq!(FailureKind::from_wire("etat_futur"), None);
     }

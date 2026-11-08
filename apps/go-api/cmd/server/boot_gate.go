@@ -74,6 +74,9 @@ const (
 	// bootFailurePort : le mode desktop n'a pu lier aucun port. Aucune porte n'est debout pour le
 	// servir : l'événement stdout `failed` est son seul témoin (desktop_events.go).
 	bootFailurePort bootFailureState = "port"
+	// bootFailureResourcesIncompatible : le paquet de ressources installé n'est pas celui du moteur (hébergé : image mal
+	// assemblée) ou est absent et n'a pu être téléchargé (desktop). La cause est dans le journal des ressources.
+	bootFailureResourcesIncompatible bootFailureState = "resources_incompatible"
 )
 
 // serverStartFailedCode : code d'erreur de la réponse 503 servie après un échec de démarrage.

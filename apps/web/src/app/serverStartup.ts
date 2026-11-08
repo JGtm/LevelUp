@@ -74,6 +74,7 @@ const FAILURE_STATE_KEYS: Readonly<Record<string, CommonManifestKey>> = {
   migration_failed: 'common.root.server_failed.migration_failed',
   schema_newer: 'common.root.server_failed.schema_newer',
   port: 'common.root.server_failed.port',
+  resources_incompatible: 'common.root.server_failed.resources_incompatible',
 }
 
 interface ErrorShape {
