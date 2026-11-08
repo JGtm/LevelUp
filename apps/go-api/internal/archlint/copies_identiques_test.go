@@ -36,6 +36,14 @@ var copiesIdentiques = []coupleJumeau{
 		original: "apps/go-api/internal/platform/atomicfile",
 		copie:    racineBriqueFilm + "/internal/atomicfile",
 	},
+	{
+		original: "apps/go-api/internal/analysis/digest",
+		copie:    racineBriqueFilm + "/internal/digest",
+	},
+	{
+		original: "apps/go-api/internal/platform/filelock",
+		copie:    racineBriqueFilm + "/internal/filelock",
+	},
 }
 
 func TestLesCopiesJumellesSontIdentiques(t *testing.T) {

@@ -16,7 +16,7 @@ package grammar
 // jauge lue) — 8 au plus par bobine. Deux invariants independants du golden sont tenus en plus : le masque d i47 egale la bitmap
 // des compteurs (T2) et une selection publiee designe un type du masque.
 //
-// REGENERATION : `go test ./internal/games/halo_infinite/film/internal/grammar/ -run
+// REGENERATION : `go test ./internal/grammar/ -run
 // TestLesValeursDeLEtatCompletDesBobines -update-etat-complet-bobines` (ligne d historique ci-dessous).
 //
 // HISTORIQUE : 2026-10-09, creation (revue D1.4.6). Mutations jouees le 2026-10-09, chacune rouge

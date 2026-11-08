@@ -33,10 +33,10 @@ package replay
 // LECTURE SEULE, aucune base.
 // largeurs d'axe restaurees (`installWorldObjectPrecision`).
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 GW_PICKUP=<repo>/data/cache/film_chunks/01e1f945 GW_PICKUP_MAP=Catalyst \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run '^TestGroundWeaponPickups$' -timeout 30m -v
+//	  go test ./replay/ -run '^TestGroundWeaponPickups$' -timeout 30m -v
 
 import (
 	"math/rand"

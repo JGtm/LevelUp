@@ -33,11 +33,11 @@ package replay
 // millisecondes du manifeste, pas la conversion en frames (couverte par les tests unitaires).
 //
 // RÉGIME : garde `ASSAUT_CACHE`. Aucune base, aucun réseau, sentinelle mémoire armée, UN SEUL
-// décodage à la fois sur la machine (verrou INTER-PROCESSUS `filmproc.AcquireSolo`). Jamais `cmd/replay-build` : l'extraction
+// décodage à la fois sur la machine (verrou INTER-PROCESSUS `decodelock.Prendre`). Jamais `cmd/replay-build` : l'extraction
 // est en processus.
 //
 //	$env:ASSAUT_CACHE="C:/.../data/cache"
-//	go test ./internal/games/halo_infinite/film/replay/ -run AssautArmementGate -v -timeout 60m
+//	go test ./replay/ -run AssautArmementGate -v -timeout 60m
 
 import (
 	"context"
@@ -47,6 +47,7 @@ import (
 	"testing"
 
 	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/LevelUp/libs/film/internal/decodelock"
 	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
 	"github.com/JGtm/LevelUp/libs/film/internal/source"
 	"github.com/JGtm/LevelUp/libs/film/types"
@@ -101,6 +102,7 @@ func TestAssautArmementGate(t *testing.T) {
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
+	decodelock.Prendre(t, cache, "TestAssautArmementGate", "parc")
 	defer amArmeSentinelle(t, "TestAssautArmementGate")()
 
 	// (a) + (b) — LES TÉMOINS. Toute dérive ici est une régression, pas un effet de bord.

@@ -43,7 +43,7 @@ package replay
 // aucune base.
 //
 //	CGO_ENABLED=0 OBJ_FILM=<depot>/data/cache OBJ_REPO=<depot> \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run DrapeauLancerControle -v -timeout 60m
+//	  go test ./replay/ -run DrapeauLancerControle -v -timeout 60m
 //
 // ────────────────────────────────────────────────────────────────────────────────────────────
 // CE QUE LA MESURE A DONNE (2026-08-18, trois films CTF : 197 vies libres, 950 armes) —

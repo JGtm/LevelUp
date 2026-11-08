@@ -17,7 +17,7 @@ import (
 // perdues, toutes celles du slot 536 apres sa mort a la frame 2736 — la vie suivante du meme
 // slot est publiee sans nom, alors que le PONT canonique la nomme.
 func TestFlagCarriesVieAnonymeNEstPasUneAbsence(t *testing.T) {
-	const porteur = "2535429985869093"
+	const porteur = "2669605393856835"
 	tracks := []Track{
 		flagTestTrack(536, porteur, 0, 40, 30, 40), // vie NOMMEE, terminee avant la prise
 		flagTestTrack(536, "", 60, 99, 30, 40),     // vie ANONYME : elle seule couvre la prise
@@ -32,7 +32,7 @@ func TestFlagCarriesVieAnonymeNEstPasUneAbsence(t *testing.T) {
 		Spawns:   []FlagSpawn{{Team: 0, X: 0, Y: 0}, {Team: 1, X: 100, Y: 100}},
 	}
 	ctx := flagTestCtx(tracks, nil, 100)
-	ctx.slotXUID = map[uint32]uint64{536: 2535429985869093}
+	ctx.slotXUID = map[uint32]uint64{536: 2669605393856835}
 
 	got, cov := buildFlagCarries(scan, ctx)
 	if cov.NoTrack != 0 || cov.Carries != 1 {
@@ -55,7 +55,7 @@ func TestFlagCarriesVieAnonymeNEstPasUneAbsence(t *testing.T) {
 // (`ResolveSlotXUID`), jamais d'une deduction locale. Un slot que le pont ne nomme pas, ou qu'il
 // nomme un AUTRE joueur, ne prete pas sa position — la prise reste comptee `NoTrack`.
 func TestFlagCarriesVieAnonymeSansPontResteEcartee(t *testing.T) {
-	const porteur = "2535429985869093"
+	const porteur = "2669605393856835"
 	tracks := []Track{flagTestTrack(536, "", 60, 99, 30, 40)}
 	scan := FlagCarryScan{
 		Scanned: true, Signals: flagTestSignals(),
@@ -68,8 +68,8 @@ func TestFlagCarriesVieAnonymeSansPontResteEcartee(t *testing.T) {
 	}
 	for nom, pont := range map[string]map[uint32]uint64{
 		"pont muet":              nil,
-		"pont sur un autre slot": {512: 2535429985869093},
-		"pont sur un autre nom":  {536: 2533274823110022},
+		"pont sur un autre slot": {512: 2669605393856835},
+		"pont sur un autre nom":  {536: 2603225103667623},
 	} {
 		t.Run(nom, func(t *testing.T) {
 			ctx := flagTestCtx(tracks, nil, 100)
@@ -92,7 +92,7 @@ func TestFlagCarriesVieAnonymeSansPontResteEcartee(t *testing.T) {
 // Declenchement mesure au parc : `084a804d` slot 734 — `[5872..6981]` nommee A, `[7123..7158]`
 // ANONYME, `[7457..7591]` nommee B ; 9 artefacts sur 106 portent au moins un slot en collision.
 func TestFlagCarriesSlotPartageRefuseLeRepli(t *testing.T) {
-	const porteur, autre = "2535429985869093", "2533274823110022"
+	const porteur, autre = "2669605393856835", "2603225103667623"
 	// Le slot 536 est partage : A, puis une vie ANONYME, puis B. Le pont nomme A.
 	tracks := []Track{
 		flagTestTrack(536, porteur, 0, 40, 30, 40),
@@ -109,7 +109,7 @@ func TestFlagCarriesSlotPartageRefuseLeRepli(t *testing.T) {
 		Spawns:   []FlagSpawn{{Team: 0, X: 0, Y: 0}, {Team: 1, X: 100, Y: 100}},
 	}
 	ctx := flagTestCtx(tracks, nil, 130)
-	ctx.slotXUID = map[uint32]uint64{536: 2535429985869093}
+	ctx.slotXUID = map[uint32]uint64{536: 2669605393856835}
 
 	_, cov := buildFlagCarries(scan, ctx)
 	if cov.Carries != 0 || cov.NoTrack != 1 {
@@ -126,7 +126,7 @@ func TestFlagCarriesSlotPartageRefuseLeRepli(t *testing.T) {
 // TestFlagCarriesSlotNonPartageAccepteEtNeCompteRien — la CONTRE-EPREUVE de la garde ci-dessus :
 // le meme slot avec UN SEUL occupant nomme prete bien sa vie anonyme, et ne compte aucun refus.
 func TestFlagCarriesSlotNonPartageAccepteEtNeCompteRien(t *testing.T) {
-	const porteur = "2535429985869093"
+	const porteur = "2669605393856835"
 	tracks := []Track{
 		flagTestTrack(536, porteur, 0, 40, 30, 40),
 		flagTestTrack(536, "", 60, 99, 30, 40),
@@ -141,7 +141,7 @@ func TestFlagCarriesSlotNonPartageAccepteEtNeCompteRien(t *testing.T) {
 		Spawns:   []FlagSpawn{{Team: 0, X: 0, Y: 0}, {Team: 1, X: 100, Y: 100}},
 	}
 	ctx := flagTestCtx(tracks, nil, 130)
-	ctx.slotXUID = map[uint32]uint64{536: 2535429985869093}
+	ctx.slotXUID = map[uint32]uint64{536: 2669605393856835}
 
 	_, cov := buildFlagCarries(scan, ctx)
 	if cov.Carries != 1 || cov.NoTrack != 0 || cov.AmbiguousSlot != 0 {
@@ -174,7 +174,7 @@ func TestFlagCarriesSlotNonPartageAccepteEtNeCompteRien(t *testing.T) {
 // MUTATION : retirer la branche `slotAmbiguous[slot]` de `replierRefuse` rougit — 0 portage
 // (le pont epure ne nomme rien) mais `ambiguousSlot = 0`, le refus devenu muet.
 func TestFlagCarriesSlotEpureDuPontComptEncoreLeRefus(t *testing.T) {
-	const porteur = "2535429985869093"
+	const porteur = "2669605393856835"
 	// Une seule vie NOMMEE publiee : `slotAmbigu` ne voit aucune contradiction. La collision a
 	// ete constatee en amont, sur une vie que `minPoints` n'a pas publiee.
 	tracks := []Track{

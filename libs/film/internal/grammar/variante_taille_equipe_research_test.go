@@ -15,7 +15,7 @@ package grammar
 // USAGE (lecture seule, aucun film = saut propre) :
 //
 //	VARTEAM_FILMS=<racine data/cache> VARTEAM_IDS='bcb6d393=4,4f77afc1=12' \
-//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar -run TestVarianteTailleEquipe -v
+//	  go test -tags=research ./internal/grammar -run TestVarianteTailleEquipe -v
 
 import (
 	"fmt"

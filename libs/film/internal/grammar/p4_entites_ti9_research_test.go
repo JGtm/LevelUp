@@ -23,7 +23,7 @@ package grammar
 // Lecture seule, un film, sous la voie film :
 //
 //	P4_FILM=<data>/cache/film_chunks/b1ad85eb P4_ORIGIN_US=<origine> \
-//	  go test -tags research -count=1 -run '^TestP4EntitesTi9$' -v ./internal/games/halo_infinite/film/internal/grammar/
+//	  go test -tags research -count=1 -run '^TestP4EntitesTi9$' -v ./internal/grammar/
 
 import (
 	"fmt"

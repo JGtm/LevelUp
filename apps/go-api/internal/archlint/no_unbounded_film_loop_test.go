@@ -11,7 +11,7 @@
 // priorite basse.
 //
 // La lecon tient en une phrase : **la construction d'artefact est un amplificateur, et tout
-// appelant qui l'enchaine doit passer par `libs/film/filmproc`** — un processus par film, un
+// appelant qui l'enchaine doit passer par `internal/filmrun` et `libs/film/memguard`** — un processus par film, un
 // plafond DUR par processus, une priorite CPU basse.
 //
 // # CE QUE CE RATCHET COMPTE, ET CE QU'IL NE PEUT PAS COMPTER
@@ -54,7 +54,7 @@ var filmBuildAllowedCallers = map[string]string{
 		"appelle BuildFromFilm, elle ne boucle sur rien",
 	"cmd/levelup/cmd_backfill_replay_child.go": "2026-08-26 — ENFANT de la passe bornee : un " +
 		"film par processus, sentinelle armee, le parent compte les issues. REGIME PRECISE LE " +
-		"2026-09-03 (PLAN_CUISSON_PERF 5.4/5.7) : le parent est desormais `libs/film/filmproc` " +
+		"2026-09-03 (PLAN_CUISSON_PERF 5.4/5.7) : le parent est desormais `internal/filmrun` et `libs/film/memguard` " +
 		"(priorite CPU basse comprise, elle manquait), et cet enfant prend le VERROU SOLO EN " +
 		"ATTENTE BORNEE (10 min) — une passe n'a pas de cycle suivant, elle attend son tour " +
 		"plutot que d'echouer sur un chevauchement",
@@ -62,15 +62,15 @@ var filmBuildAllowedCallers = map[string]string{
 		"processus meurt ensuite. ARME LES TROIS PROTECTIONS (verrou solo, priorite basse, " +
 		"sentinelle a MeasureLimitGiB) — la justification du 2026-08-26 s'arretait a « aucune " +
 		"boucle DANS le processus », ce qui n'a pas empeche un operateur d'en lancer deux en " +
-		"parallele et de saturer la machine (cf. libs/film/filmproc/solo.go)",
+		"parallele et de saturer la machine (cf. internal/filmrun/solo.go)",
 	"cmd/replay-worker/job.go": "2026-08-26 — ouvrier : un job a la fois, sentinelle armee PAR " +
-		"JOB (filmproc.Arm, processJob) et desarmee entre deux. Processus long-vivant, jamais " +
+		"JOB (memguard.Arm, processJob) et desarmee entre deux. Processus long-vivant, jamais " +
 		"deux films en vol. REGIME COMPLETE LE 2026-09-03 (PLAN_CUISSON_PERF 5.7) : « un film a la fois DANS " +
 		"ce processus » ne disait rien des AUTRES processus de la machine (serveur post-sync, " +
 		"passe backfill, second ouvrier) — il prend donc le VERROU SOLO EN ATTENTE BORNEE " +
 		"(10 min) autour du seul decodage, rendu avant l'envoi",
 	"cmd/zone-attribution/measure.go": "2026-08-26 — ENFANT de la passe bornee (passe.go) : " +
-		"un film par processus, plafond de MESURE (2 Gio) et priorite basse via libs/film/filmproc",
+		"un film par processus, plafond de MESURE (2 Gio) et priorite basse via internal/filmrun",
 	"libs/film/replay/build_from_film.go": "2026-08-26 — la DEFINITION de " +
 		"BuildFromFilm ; elle ne boucle sur rien. Fichier renomme au lot 1 de PLAN_CUISSON_PERF " +
 		"(2026-09-02) : le decodage a quitte `build.go`, qui garde l'assemblage",
@@ -138,7 +138,7 @@ func TestNoUnboundedFilmLoop(t *testing.T) {
 		t.Errorf("site(s) de construction d'artefact NON DECLARE(S) (%d).\n"+
 			"La construction d'artefact est un AMPLIFICATEUR memoire : elle a sature la machine "+
 			"trois fois (2026-08-20, 08-24, 08-26).\n"+
-			"Si ce site enchaine des films, il DOIT passer par libs/film/filmproc (un processus "+
+			"Si ce site enchaine des films, il DOIT passer par internal/filmrun (un processus "+
 			"par film, plafond dur, priorite basse) — cf. cmd/zone-attribution/passe.go.\n"+
 			"S'il ne decode qu'un film, declare-le dans filmBuildAllowedCallers avec sa "+
 			"justification DATEE :\n  %s",
@@ -157,16 +157,16 @@ func TestNoUnboundedFilmLoop(t *testing.T) {
 
 // sentinelleTokens : la marque d'une sentinelle memoire armee dans un paquet.
 //
-// UNE SEULE FORME LEGITIME DEPUIS LE LOT v2 G.1 (2026-09-05) : `filmproc.Arm`, la sentinelle
-// canonique (`libs/film/filmproc/memguard.go`). Les deux `main` qui portaient chacun leur
+// UNE SEULE FORME LEGITIME DEPUIS LE LOT v2 G.1 (2026-09-05) : `memguard.Arm`, la sentinelle
+// canonique (`libs/film/memguard/memguard.go`). Les deux `main` qui portaient chacun leur
 // propre copie (`cmd/levelup/backfill_memlimit.go`, `cmd/replay-worker/memlimit.go`)
-// l'appelaient DEJA — `filmproc` n'a aucun cout de dependance (pas d'import projet
+// l'appelaient DEJA — `memguard` n'a aucun cout de dependance (pas d'import projet
 // non-stdlib) et son callback `onExceeded` porte precisement les deux doctrines d'arret qui
 // divergent legitimement (code de sortie enfant vs rapport au serveur). Un plafond souple pose
-// en direct hors de `libs/film/filmproc` serait une TROISIEME copie qui rouvrirait le meme
+// en direct hors de `internal/filmrun` et `libs/film/memguard` serait une TROISIEME copie qui rouvrirait le meme
 // defaut : c'est [TestPasDeSentinelleBruteHorsFilmproc], plus bas, qui le rejette — retirer le
 // jeton d'ICI ne faisait que l'empecher de COMPTER comme preuve de sentinelle, pas de passer.
-var sentinelleTokens = []string{"filmproc.Arm("}
+var sentinelleTokens = []string{"memguard.Arm("}
 
 // TestPointsDEntreeDeDecodageArmentUneSentinelle — LE RATCHET NE DE LA BOMBE RAM DU 2026-08-31.
 //
@@ -189,7 +189,7 @@ var sentinelleTokens = []string{"filmproc.Arm("}
 // Les sites `internal/` sont soit des DEFINITIONS (elles ne decodent que si on les appelle),
 // soit des chemins qui vivent DANS LE SERVEUR — et la, la sentinelle est INTERDITE : elle mene a
 // un arret de processus, et le serveur tient des bases en ecriture (cf. l'en-tete de
-// `filmproc`). Leur protection est d'une autre nature (l'enfant borne de `replaychild`), et ce
+// `memguard`). Leur protection est d'une autre nature (l'enfant borne de `replaychild`), et ce
 // ratchet n'a pas a la confondre avec celle-ci.
 func TestPointsDEntreeDeDecodageArmentUneSentinelle(t *testing.T) {
 	_, thisFile, _, ok := runtime.Caller(0)
@@ -207,7 +207,7 @@ func TestPointsDEntreeDeDecodageArmentUneSentinelle(t *testing.T) {
 		pkgDir := filepath.Join(apiRoot, filepath.FromSlash(filepath.Dir(rel)))
 		if !sentinelleDansPaquet(t, pkgDir) {
 			t.Errorf("point d'entree %q decode un film SANS sentinelle memoire.\n"+
-				"Un processus d'operateur qui decode doit armer filmproc.Arm AVANT tout "+
+				"Un processus d'operateur qui decode doit armer memguard.Arm AVANT tout "+
 				"decodage : « un film par invocation » ne dit rien du nombre d'invocations, "+
 				"et c'est ce qui a sature la machine le 2026-08-31. "+
 				"Modele : cmd/replay-build/main.go.", rel)
@@ -258,12 +258,12 @@ func sentinelleDansPaquet(t *testing.T, dir string) bool {
 const sentinelleBrute = "debug.SetMemoryLimit("
 
 // sentinellePaquetCanonique : le SEUL emplacement ou l'appel brut est legitime.
-const sentinellePaquetCanonique = racineBriqueFilm + "/filmproc/"
+const sentinellePaquetCanonique = racineBriqueFilm + "/memguard/"
 
 // sentinelleBruteAllowlist : les exceptions, chemin relatif a apps/go-api.
 //
 // ELLE EST VIDE, ET C'EST TOUT L'INTERET. Toute entree future doit porter sa justification
-// DATEE et sa date de retrait — un plafond souple pose hors de `libs/film/filmproc` est une
+// DATEE et sa date de retrait — un plafond souple pose hors de `internal/filmrun` et `libs/film/memguard` est une
 // sentinelle qui ne dit pas son nom : elle ne mesure rien, ne tient aucun pic, n'a aucune
 // doctrine d'arret, et elle FAIT MENTIR le pic emis par la vraie sentinelle en changeant le
 // regime du GC sous elle.
@@ -271,7 +271,7 @@ var sentinelleBruteAllowlist = map[string]string{}
 
 // TestPasDeSentinelleBruteHorsFilmproc — LE RATCHET QUE LE JOURNAL DU LOT v2 G PROMETTAIT.
 //
-// Le journal annoncait qu'« un `debug.SetMemoryLimit(` brut hors `libs/film/filmproc` est
+// Le journal annoncait qu'« un `debug.SetMemoryLimit(` brut hors `internal/filmrun` et `libs/film/memguard` est
 // desormais une violation du ratchet ». C'etait faux : retirer ce jeton de [sentinelleTokens]
 // l'a seulement empeche de COMPTER comme preuve de sentinelle dans
 // [TestPointsDEntreeDeDecodageArmentUneSentinelle] — aucune regle ne le rejetait, et un
@@ -344,7 +344,7 @@ func TestPasDeSentinelleBruteHorsFilmproc(t *testing.T) {
 			"Un `debug.SetMemoryLimit(` brut est le premier geste d'une TROISIEME copie de la "+
 			"sentinelle : il ne mesure rien, ne tient aucun pic, n'a aucune doctrine d'arret, "+
 			"et il fait mentir le pic emis par la vraie sentinelle en changeant le regime du GC "+
-			"sous elle.\nPasser par `filmproc.Arm(outil, giB, onExceeded)` — cf. "+
+			"sous elle.\nPasser par `memguard.Arm(ctx, outil, giB, onExceeded)` — cf. "+
 			"cmd/replay-build/main.go :\n  %s",
 			sentinellePaquetCanonique, len(violations), strings.Join(violations, "\n  "))
 	}
@@ -384,10 +384,10 @@ func TestBoucleDeCuissonDuGateEstProtegee(t *testing.T) {
 	}
 	src := string(data)
 
-	idxLock := strings.Index(src, "filmproc.AcquireSolo")
+	idxLock := strings.Index(src, "filmrun.AcquireSolo")
 	idxCuisson := strings.Index(src, "cuireUneCarte(")
 	if idxLock == -1 {
-		t.Fatal("bake.go n'appelle plus filmproc.AcquireSolo(Wait) — le verrou partage a disparu " +
+		t.Fatal("bake.go n'appelle plus filmrun.AcquireSolo(Wait) — le verrou partage a disparu " +
 			"(CORPUS-R1 C5/C10) : la boucle de cuisson du gate n'est plus protegee contre un " +
 			"decodage concurrent (worker, post-sync, backfill)")
 	}
@@ -396,13 +396,13 @@ func TestBoucleDeCuissonDuGateEstProtegee(t *testing.T) {
 			"(reecrire ou retirer TestBoucleDeCuissonDuGateEstProtegee)")
 	}
 	if idxLock > idxCuisson {
-		t.Error("bake.go: le verrou partage (filmproc.AcquireSolo) est pris APRES le premier " +
+		t.Error("bake.go: le verrou partage (filmrun.AcquireSolo) est pris APRES le premier " +
 			"appel a cuireUneCarte — la cuisson n'est plus protegee contre un decodage " +
 			"concurrent (CORPUS-R1 C5)")
 	}
 
 	if !strings.Contains(src, "LowerOwnPriority(") {
-		t.Error("bake.go n'appelle plus filmproc.LowerOwnPriority — la cuisson du gate " +
+		t.Error("bake.go n'appelle plus filmrun.LowerOwnPriority — la cuisson du gate " +
 			"reprendrait la priorite CPU normale, cf. les sinistres RAM de aout 2026 " +
 			"(CORPUS-R1 C5)")
 	}

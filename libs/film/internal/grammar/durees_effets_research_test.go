@@ -21,7 +21,7 @@ package grammar
 //
 //	CGO_ENABLED=0 EQUIPPORTE_FILMS=<repo>/data/cache/film_chunks EQUIPPORTE_ID=f59c9332 \
 //	  EQUIPPORTE_CARTE=Catalyst EQUIPPORTE_OUT=<scratchpad>/durees_effets go test -tags=research \
-//	  ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestDureesEffets$' -count=1 -v
+//	  ./internal/grammar/ -run '^TestDureesEffets$' -count=1 -v
 //
 // EQUIPPORTE_ARTEFACT (facultatif) : l artefact du rejeu, par defaut
 // <EQUIPPORTE_FILMS>/../replays/halo_infinite/<id>.json (palette des familles, positions de repos).

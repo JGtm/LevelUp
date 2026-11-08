@@ -39,7 +39,7 @@ package replay
 // REGENERATION (jamais d edition a la main) :
 //
 //	REPLAY_FILM_DIR=<repo>/data/cache/film_chunks/000d5950 \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run MiniFilmRegenerate -update
+//	  go test ./replay/ -run MiniFilmRegenerate -update
 
 import (
 	"bytes"
@@ -142,10 +142,10 @@ func (s miniSelection) provenance(chunk1, chunk2, chunk3 int) string {
 	return fmt.Sprintf(`MINI-BOBINE — film %s (Cliffhanger, Fiesta, 8 joueurs)
 
 CE FICHIER DIT D OU VIENT CHAQUE OCTET. Une fixture binaire sans provenance ecrite est un fait
-sans source ; celle-ci se REGENERE, elle ne s edite pas :
+sans source ; celle-ci se REGENERE (depuis libs/film), elle ne s edite pas :
 
     REPLAY_FILM_DIR=<repo>/data/cache/film_chunks/%s \
-      go test ./internal/games/halo_infinite/film/replay/ -run MiniFilmRegenerate -update
+      go test ./replay/ -run MiniFilmRegenerate -update
 
 chunk_01.bin  %d octets (zlib) — %d paquets REELS, %d octets une fois decompresses, extraits
               des chunks de replication %v du film :

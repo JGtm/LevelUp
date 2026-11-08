@@ -36,6 +36,8 @@ import (
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/filmreplis"
+
 	"github.com/JGtm/LevelUp/libs/film/decfilm"
 )
 
@@ -215,7 +217,7 @@ func TestLesReplisHorsProductionNOntQueLeursOutilsPourAppelants(t *testing.T) {
 		}
 		for _, sous := range []string{"apps/go-api/internal", "apps/go-api/cmd", racineBriqueFilm} {
 			parcourirGoProduction(t, filepath.Join(racine, sous), func(rel string, f *ast.File) {
-				if appelantAdmis(rel, h.Appelants) {
+				if appelantAdmis(rel, filmreplis.Appelants(r.Nom, h.Appelants)) {
 					return
 				}
 				ast.Inspect(f, func(n ast.Node) bool {

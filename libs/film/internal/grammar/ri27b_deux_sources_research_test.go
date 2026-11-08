@@ -8,7 +8,7 @@ package grammar
 // trame vue : elle rend alors tous les records ancres, comme les lecteurs les marchaient.
 //
 //	RI27B_FILMS=000d5950 RI27B_RACINE=<film_chunks> go test -tags=research -count=1 \
-//	  -run '^TestRI27bDeuxSources$' -v ./internal/games/halo_infinite/film/internal/grammar/
+//	  -run '^TestRI27bDeuxSources$' -v ./internal/grammar/
 
 import (
 	"fmt"

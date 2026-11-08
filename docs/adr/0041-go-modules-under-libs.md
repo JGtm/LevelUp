@@ -42,9 +42,14 @@ sit at the first level of the module (`libs/gamefiles/himodule`, never `libs/gam
 keeps `levelup/go-api`. The first module is `libs/gamefiles` (`himodule`, `ooz`, `hinavmesh`,
 `mapvar`); the second is `libs/himap` (package `himap`, the map-image brick: `github.com/JGtm/LevelUp/libs/himap`);
 the third is `libs/film` (the film decoder, `github.com/JGtm/LevelUp/libs/film`: the facade `decfilm`, the
-publication layer `replay`, its catalogues and output types at the first level, and the closed layers of
-ADR 0034 D-1 under `libs/film/internal/` — the `internal/` rule now closes them to LevelUp at the module
-boundary, which is what D-1 asks); the fourth is `libs/haloapi` (the Halo API,
+publication layer `replay`, its catalogues and output types at the first level, the memory sentinel
+`memguard`, the read side of the film archive `filmcache` (writing, recompression and moving the archive,
+the process launcher and the decode lock are LevelUp's: `internal/filmarchive`, `internal/filmrun`), and the
+closed layers of ADR 0034 D-1 under `libs/film/internal/`, together with the module-closed helpers
+(`digest`, `atomicfile`, `filelock`, `decodelock`, `depottest`) — the `internal/` rule now closes them to
+LevelUp at the module boundary, which is what D-1 asks; `digest`, `atomicfile` and `filelock` have twin copies in
+`apps/go-api` held identical by `archlint/copies_identiques_test.go`; what the brick does not decide is ADR
+0034, amendment of 2026-11-08); the fourth is `libs/haloapi` (the Halo API,
 `github.com/JGtm/LevelUp/libs/haloapi`: the root package `haloapi` and the sub-packages `xblauth`, `infinite`,
 `halo5`, `xboxlive`, `haloapitest`; ADR 0042, ADR 0043).
 
@@ -199,3 +204,4 @@ Plan: `.ai/V8/PLAN_PUBLICATION_BRIQUES_2026-10-30.md` (lots 3 and 4).
   another brick (`himap` imports `gamefiles`) gains a `require` on the tag of the brick below before its own tag, which
   is then tagged first. The workspace keeps resolving the local copy. `libs/film` is not published (ADR 0043 D-1).
   Licences of the published modules are in ADR 0043 D-4 (D5's GPL note on `ooz` is unchanged).
+- **Amendment of 2026-11-08 (ADR 0043).** `libs/film` is published as the fourth brick (README, compiled example, `NOTICE.md`, `require` on the tags of `libs/gamefiles` and `libs/himap`, repository `JGtm/halo-infinite-film-decoder`); the sentence above, "`libs/film` is not published", is superseded.

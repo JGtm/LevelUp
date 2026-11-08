@@ -11,7 +11,7 @@ package grammar
 // balayage de PRODUCTION, sans second lecteur.
 //
 //	ZPROP_FILM=<abs>/data/cache/film_chunks/114b0040 [ZPROP_DETAIL=1] \
-//	  go test -tags=research -count=1 -v -run '^TestZoneProprietaireNoms$' ./internal/games/halo_infinite/film/internal/grammar/
+//	  go test -tags=research -count=1 -v -run '^TestZoneProprietaireNoms$' ./internal/grammar/
 //
 // UN SEUL FILM PAR INVOCATION, aucune base, aucun artefact ecrit.
 

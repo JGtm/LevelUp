@@ -16,9 +16,11 @@ import (
 	"strconv"
 	"strings"
 
+	"levelup/go-api/internal/filmrun"
+
 	"github.com/JGtm/LevelUp/libs/film/decfilm"
 	"github.com/JGtm/LevelUp/libs/film/filmcache"
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 	"github.com/JGtm/LevelUp/libs/film/replay"
 	"github.com/JGtm/LevelUp/libs/film/types"
 )
@@ -29,26 +31,26 @@ const sweepMaxComp = 27
 // emitCap borne le nombre d'instants imprimes pour une serie (au-dela, seul le total sort).
 const emitCap = 600
 
-// runChild decode le film -id sous la sentinelle memoire et rend le code de protocole filmproc.
+// runChild decode le film -id sous la sentinelle memoire et rend le code de protocole filmrun.
 func runChild(cache, id string) int {
 	if id == "" {
 		fmt.Fprintln(os.Stderr, "enfant : -match obligatoire")
-		return filmproc.CodePreparation
+		return filmrun.CodePreparation
 	}
-	g := filmproc.Arm("oddball-terrain", filmproc.MeasureLimitGiB, func(peak uint64) {
-		filmproc.EmitPeak(peak)
+	g := memguard.Arm(context.Background(), "oddball-terrain", memguard.MeasureLimitGiB, func(peak uint64) {
+		filmrun.EmitPeak(peak)
 		fmt.Fprintf(os.Stderr, "enfant : plafond memoire depasse (%d octets) — film abandonne\n", peak)
-		os.Exit(filmproc.CodeMemory)
+		os.Exit(filmrun.CodeMemory)
 	})
 	defer func() {
 		g.Disarm()
-		filmproc.EmitPeak(g.Peak())
+		filmrun.EmitPeak(g.Peak())
 	}()
 	if err := decodeFilm(cache, id); err != nil {
 		fmt.Fprintf(os.Stderr, "enfant %s : %v\n", id, err)
-		return filmproc.CodeFailed
+		return filmrun.CodeFailed
 	}
-	return filmproc.CodeOK
+	return filmrun.CodeOK
 }
 
 // decodeFilm decode le statborg et le fil des morts, resout l'identite, et emet le dump.

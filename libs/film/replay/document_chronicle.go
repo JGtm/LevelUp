@@ -612,7 +612,7 @@ package replay
 // 12 films / 8 gates) : la DESTRUCTION datée. Zéro occupant à bord à la fin serrée du flux, mort
 // à bord ANTI-corrélée (3,8 % contre 21,3 % au témoin), véhicule qui réplique encore 13 à 36 s
 // après avoir été quitté. `VehicleTrack.End` vaut `unknown`, et la disparition du sprite ne dit
-// PAS que le véhicule a explosé. Détail : internal/games/halo_infinite/film/replay/document_vehicles.go.
+// PAS que le véhicule a explosé. Détail : replay/document_vehicles.go.
 //
 // (2) LES TIRS DES JOUEURS EMBARQUÉS. Un occupant attaché cesse de répliquer la position de son
 // bipède (primitive V1a.4) : la porte des tirs, qui pose chaque tir sur la position du BIPÈDE à
@@ -654,7 +654,7 @@ package replay
 // `i31` (auto-turret-aiming-vector), `i41` et `i42` (seats-override pitch/yaw) de `ti=40` ne sont
 // pas seulement non portés : ils ne sont JAMAIS émis. Le cône de l'artilleur ne vient donc pas de
 // la tourelle, il vient de L'HOMME qui la tient — et c'est la même mesure que celle du
-// conducteur. Détail : internal/games/halo_infinite/film/replay/vehicle_rides_aim.go.
+// conducteur. Détail : replay/vehicle_rides_aim.go.
 //
 // (4) L'ARMEMENT DE LA BOMBE EN ONE BOMB. Aucun champ neuf : ce qui change est le CONTENU d'un
 // calque existant (`bombArmings`), et cela suffit à imposer la montée pour la raison exacte des
@@ -691,7 +691,7 @@ package replay
 // et `replaybuild.killRefs` la résout désormais dans la MÊME passe. Le champ voyage par
 // `Options.MatchKills` ; `Read=false` (source non lue) le laisse absent chez TOUS les joueurs —
 // « on n'a pas regardé », jamais un zéro qui se lirait comme une mesure.
-// Détail : internal/games/halo_infinite/film/replay/bomb_stats.go et bomb_stats_document.go.
+// Détail : replay/bomb_stats.go et bomb_stats_document.go.
 //
 // v40 (2026-09-06) : LE PONT D'IDENTITÉ EST COMPLÉTÉ PAR LE TRIPLET, et la version monte pour
 // la SEULE raison qui fait monter une version dans ce fichier — la reprise du backfill se lit
@@ -716,7 +716,7 @@ package replay
 // s'applique, et non l'exception du lot P5 (schéma 38 maintenu), qui ne valait que parce
 // qu'AUCUN artefact 38 n'existait alors hors témoins de gate. Ici la reprise doit re-cuire tout
 // artefact < 40.
-// Détail : internal/games/halo_infinite/film/internal/facts/objectives/slotidentity_rounds.go (CompletedByLines).
+// Détail : internal/facts/objectives/slotidentity_rounds.go (CompletedByLines).
 //
 // v41 (2026-09-06) : TROIS CALQUES RATTRAPENT « UNE TRACK = UNE VIE ». Aucun champ n'est
 // ajouté, aucune forme ne change : trois calques publient de nouveau ce qu'ils publiaient
@@ -751,7 +751,7 @@ package replay
 // position précédente, celui-là même qui donnait au document des bornes de scène fausses
 // (minX -227,27 -> -18,57). L'assainissement des trajectoires l'a supprimé : c'est un gain,
 // il n'est pas revenu, il ne doit pas revenir.
-// Détail : internal/games/halo_infinite/film/replay/{closures.go, closures_respawn.go, owners.go,
+// Détail : replay/{closures.go, closures_respawn.go, owners.go,
 // grapple_lines.go, equipment_episodes.go}.
 //
 // v42 (2026-09-06) : LE DRAPEAU A ENFIN DES PORTEURS. Aucun champ n'est ajouté, aucune clé ne
@@ -767,7 +767,7 @@ package replay
 // drapeau. Leurs prises étaient comptées `coverage.flagCarries.noBridge` et AUCUN intervalle
 // n'était publié pour elles : le drapeau restait dessiné à sa base pendant qu'un joueur le
 // portait. Le pont par TRIPLET, lui, les nomme — il apparie les totaux (frags, morts,
-// assistances) du statborg aux lignes de match — mais il exige la base, que `games/halo_infinite/film/replay`
+// assistances) du statborg aux lignes de match — mais il exige la base, que `replay`
 // n'ouvre pas.
 //
 // LA CORRECTION EST UN CÂBLAGE, PAS UNE RÈGLE NEUVE. Le pont COMPLÉTÉ
@@ -775,14 +775,14 @@ package replay
 // deux fois) existait déjà depuis le schéma 40 : il servait les ACTIONS d'objectif, résolu dans
 // `replaybuild` — la couche qui reçoit les faits du match. Il descend désormais jusqu'au calque
 // du drapeau par `replay.FlagInput.Identity`, et les deux calques partagent LE MÊME pont, résolu
-// une seule fois par cuisson. `games/halo_infinite/film/replay` ne voit toujours AUCUN fait de match : il reçoit
+// une seule fois par cuisson. `replay` ne voit toujours AUCUN fait de match : il reçoit
 // une table slot -> xuid. Sans lignes de match (CLI hors ligne, ouvrier distant), le champ reste
 // à zéro, le paquet résout comme avant, et l'artefact est identique — la propriété « publiable
 // hors ligne » est intacte.
 //
 // MESURE, TROIS FILMS MONO-MANCHE ET UN MULTI-MANCHE (2026-09-06) :
 //
-//	c0a82e88  3 prises, 0 portage -> 1 portage. Le porteur publié est 2535463878425995
+//	c0a82e88  3 prises, 0 portage -> 1 portage. Le porteur publié est 2569104772637498
 //	          (7 frags, 2 morts) — le MÊME xuid, aux MÊMES instants, que les deux actions
 //	          `flag_steals` / `flag_captures` du calque `objectives`, par une chaîne
 //	          indépendante. Le marqueur de portage des images-clés le confirme (1/1). Les
@@ -799,9 +799,9 @@ package replay
 // « au sol » uniquement parce que le portage qui les tenait n'était pas publié. La règle de
 // retour du mode (`flagReturnZone`), elle, APPARAÎT sur les matchs qui ne publiaient aucun
 // portage : elle n'est servie que s'il y a un drapeau à entourer.
-// Détail : internal/games/halo_infinite/film/replay/build_objectives_live.go (`FlagInput.Identity`,
+// Détail : replay/build_objectives_live.go (`FlagInput.Identity`,
 // `flagIdentityOf`), internal/replaybuild/matchfacts.go (`pontParManche`),
-// internal/games/halo_infinite/film/internal/facts/objectives/slotidentity_rounds.go (`CompletedByLines`).
+// internal/facts/objectives/slotidentity_rounds.go (`CompletedByLines`).
 //
 // v43 (2026-09-06) : UNE VIE ANONYME N'EST PAS UNE ABSENCE. Aucun champ n'est ajouté ; c'est le
 // CONTENU de `skullCarries` — et, latent, de `bombCarries` — qui change. Le gate de présence
@@ -826,7 +826,7 @@ package replay
 //
 // La version monte pour la raison des montées v39/v40/v41/v42 : un artefact 23 à 42 est appauvri
 // sans que sa forme le dise, et `backfill-replay` saute un artefact à la version courante.
-// Détail : internal/games/halo_infinite/film/replay/skull_carries.go (carrierPresence.gate).
+// Détail : replay/skull_carries.go (carrierPresence.gate).
 //
 // v44 (2026-09-06) : LA MANCHE DÉCLARÉE D'UN ENREGISTREMENT EST CONFRONTÉE AU TEMPS. Aucun champ
 // n'est ajouté ; c'est le CONTENU de `scoreTimeline` (les quatre compteurs par joueur et les
@@ -853,7 +853,7 @@ package replay
 // La version monte pour la raison des montées v39 à v43 : un artefact 1 à 43 d'un film
 // multi-manche porte des compteurs gonflés sans que sa forme le dise, et `backfill-replay` saute
 // un artefact à la version courante. Détail :
-// internal/games/halo_infinite/film/internal/facts/objectives/round_bounds.go.
+// internal/facts/objectives/round_bounds.go.
 //
 // v45 (2026-09-06) : UN TROU DE RÉPLICATION N'AMPUTE PLUS UNE DURÉE MESURÉE. Aucun champ n'est
 // ajouté ; c'est le CONTENU d'`equipmentEpisodes` et de `flagCarries` qui change. Même cause
@@ -873,7 +873,7 @@ package replay
 //	          jamais d'une déduction locale.
 //
 // La version monte pour la raison des montées v39 à v44 : un artefact 36 à 44 est appauvri sans
-// que sa forme le dise. Détail : internal/games/halo_infinite/film/replay/{equipment_episodes.go, flag_carries.go}.
+// que sa forme le dise. Détail : replay/{equipment_episodes.go, flag_carries.go}.
 //
 // v46 (2026-09-06) : UN JOUEUR NE PORTE PLUS SON PROPRE DRAPEAU. Aucun champ n'est ajouté ;
 // c'est le CONTENU de `flagCarries` qui change — l'attribution d'un portage à l'un des deux
@@ -895,7 +895,7 @@ package replay
 // le drapeau adverse (une y était publiée sur le drapeau du camp qui marquait). La version monte
 // pour la raison des montées v39 à v45 : un artefact 45 attribue un portage — et sa capture — au
 // mauvais drapeau sans que sa forme le dise, et `backfill-replay` saute un artefact à la version
-// courante. Détail : internal/games/halo_infinite/film/replay/flag_assign.go.
+// courante. Détail : replay/flag_assign.go.
 //
 // v47 (2026-09-07) : AUCUNE VIE PUBLIEE NE RESTE SANS NOM, ET LES LECTEURS LISENT LA PISTE SOUS
 // L'IDENTITE RESOLUE DE SON SLOT. NEUF champs de couverture s'ajoutent — cinq au pont
@@ -1981,7 +1981,7 @@ package replay
 // tenait faute d oracle. L oracle est arrive : l utilisateur a ouvert Theater sur `bfecd02b` et
 // confronte neuf intervalles de ce genre, pris sur ce film. **Les neuf sont des escalades
 // de rebord, 9 verdicts sur 9, aucun contre-exemple** ; le plus net est celui du temoin du
-// lot 5.22 (Madina97294, slot 523), un saut date a 96,962 s qui se termine en prise sur un
+// lot 5.22 (Joueur90002, slot 523), un saut date a 96,962 s qui se termine en prise sur un
 // element du decor, ou `i54` s allume de 97,096 a 97,63 s et d ou le Spartan redescend ensuite.
 //
 // LE VOCABULAIRE DU JEU CORROBORE SANS PROUVER : `_action_hoist`, `_action_vault`,
@@ -2051,7 +2051,7 @@ package replay
 // CE QUI NE BOUGE PAS : l origine (`originMs`, `frameCount`) reste lue sur TOUS les paquets de
 // position — ecarter un point ne decale aucun calque ; `layers` ; les revisions de decodage. Les
 // deux replis tombent avec la porte grammaticale au decodage (option 2 du rapport), dont ils sont
-// le critere de retrait. Temoins : 81c02726 (Mongoose 770, Madina97294), ab526724, 879a4dba.
+// le critere de retrait. Temoins : 81c02726 (Mongoose 770, Joueur90002), ab526724, 879a4dba.
 //
 // v69, PARTIE M5 (2026-09-23) :
 // LE MATCH A SENS UNIQUE A UN CAMP — `coverage.score.teamIdentity` GAGNE LA VALEUR `a0`.

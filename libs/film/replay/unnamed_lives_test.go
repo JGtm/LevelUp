@@ -143,11 +143,11 @@ func TestUneVieDejaNommeeNEstJamaisReecrite(t *testing.T) {
 func TestUneFrontiereEntreDeuxOccupantsNeSeTranchePasAuHASARD(t *testing.T) {
 	tracks := []Track{{Slot: 734, StartFrame: 7123, EndFrame: 7158}}
 	lives := []lifeSpan{
-		{slot: 734, from: 587_200_000, to: 698_100_000, xuid: 2535430265968559},
-		{slot: 734, from: 745_700_000, to: 759_100_000, xuid: 2535456423427614},
+		{slot: 734, from: 587_200_000, to: 698_100_000, xuid: 2683317851328856},
+		{slot: 734, from: 745_700_000, to: 759_100_000, xuid: 2661813924332111},
 	}
 	// Le pont garde le PREMIER occupant : il ne doit servir de repli sur AUCUN slot ambigu.
-	rep := nameRemainingLives(tracks, regDeTest(lives, map[uint32]uint64{734: 2535430265968559}, map[uint32]bool{734: true}), 0, 100_000)
+	rep := nameRemainingLives(tracks, regDeTest(lives, map[uint32]uint64{734: 2683317851328856}, map[uint32]bool{734: true}), 0, 100_000)
 
 	if tracks[0].XUID != "" {
 		t.Fatalf("la vie de la frontière a été nommée %q sans preuve — « l'occupant précédent » "+

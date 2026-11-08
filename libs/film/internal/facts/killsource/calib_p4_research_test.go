@@ -12,7 +12,7 @@ package killsource
 // LECTURE SEULE, UN FILM PAR INVOCATION :
 //
 //	CALIB_FILM=<abs>/film_chunks/084a804d CALIB_CARTE="Fortitude Heavies" \
-//	  go test -tags=research ./internal/games/halo_infinite/film/internal/facts/killsource/ \
+//	  go test -tags=research ./internal/facts/killsource/ \
 //	  -run '^TestCalibrationP4$' -v -timeout 60m
 
 import (

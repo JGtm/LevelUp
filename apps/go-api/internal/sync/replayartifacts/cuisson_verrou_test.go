@@ -9,7 +9,7 @@ import (
 
 	titlePkg "levelup/go-api/internal/domain/title"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
+	"levelup/go-api/internal/filmrun"
 )
 
 // TestBuildAll_VerrouTenuParLaFile_ReporteSansEchec : la file de regeneration des rejeux (ou l'action admin) decode et
@@ -21,7 +21,7 @@ import (
 func TestBuildAll_VerrouTenuParLaFile_ReporteSansEchec(t *testing.T) {
 	repoRoot := t.TempDir()
 	racineVerrou := titlePkg.NewPathResolver(repoRoot).CacheRootDir()
-	lock, err := filmproc.AcquireSolo(racineVerrou, "file de regeneration", "00000001")
+	lock, err := filmrun.AcquireSolo(racineVerrou, "file de regeneration", "00000001")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,7 +43,7 @@ func TestBuildAll_VerrouTenuParLaFile_ReporteSansEchec(t *testing.T) {
 	lock.Release()
 	var appels, enVol, maxEnVol int
 	d.BuildOne = func(_ context.Context, req BuildOneRequest) (BuildOneResult, error) {
-		l, aerr := filmproc.AcquireSolo(racineVerrou, "post-sync", req.MatchID)
+		l, aerr := filmrun.AcquireSolo(racineVerrou, "post-sync", req.MatchID)
 		if aerr != nil {
 			return BuildOneResult{}, fmt.Errorf("cuisson non lancee : %w", aerr)
 		}

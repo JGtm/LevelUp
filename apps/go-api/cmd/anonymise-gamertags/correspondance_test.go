@@ -11,11 +11,17 @@ import (
 	"unicode/utf16"
 )
 
-// paire : un gamertag reel et son pseudonyme, de meme longueur.
+// paire : un gamertag reel et son pseudonyme, de meme longueur. `donneesSeules` reserve la
+// substitution aux fichiers sous un dossier `testdata` : le nom est aussi un chemin de module, un
+// identifiant ou de la prose dans le code, `go.mod` et les docs, ou il ne doit pas etre touche.
 type paire struct {
-	origine    string
-	pseudonyme string
+	origine       string
+	pseudonyme    string
+	donneesSeules bool
 }
+
+// colonneDonnees est la troisieme colonne facultative d une ligne de la table.
+const colonneDonnees = "donnees"
 
 // lireCorrespondance lit la table et la valide. L ordre rendu place les originaux les plus LONGS
 // d abord : un original qui en contiendrait un autre est remplace avant lui.
@@ -30,10 +36,10 @@ func lireCorrespondance(r io.Reader) ([]paire, error) {
 			continue
 		}
 		champs := strings.Split(l, "\t")
-		if len(champs) != 2 {
-			return nil, fmt.Errorf("ligne %d : attendu original<TAB>pseudonyme, lu %q", ligne, l)
+		if len(champs) < 2 || len(champs) > 3 || (len(champs) == 3 && champs[2] != colonneDonnees) {
+			return nil, fmt.Errorf("ligne %d : attendu original<TAB>pseudonyme[<TAB>%s], lu %q", ligne, colonneDonnees, l)
 		}
-		out = append(out, paire{origine: champs[0], pseudonyme: champs[1]})
+		out = append(out, paire{origine: champs[0], pseudonyme: champs[1], donneesSeules: len(champs) == 3})
 	}
 	if err := sc.Err(); err != nil {
 		return nil, fmt.Errorf("lecture de la table : %w", err)

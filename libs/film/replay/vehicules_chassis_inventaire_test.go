@@ -26,11 +26,11 @@ package replay
 // colonne `detail`, motif `vehi <chassis>`) : c est la seconde source de nommage de
 // `vehicle_families.go`, celle qui a nomme le Ghost, la Banshee et le Chopper.
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 \
-//	PARC_ARTEFACTS=C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run TestInventaireChassisDesArtefacts -count=1 -v
+//	PARC_ARTEFACTS=<depot>/data/cache/replays/halo_infinite \
+//	  go test ./replay/ -run TestInventaireChassisDesArtefacts -count=1 -v
 //
 // `PARC_IDS` (short8 separes par des virgules) borne la lecture a ces artefacts et DECLARE ceux
 // qui manquent. Sans `PARC_ARTEFACTS`, le test est saute : il n a pas de donnee a lire.

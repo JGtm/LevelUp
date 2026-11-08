@@ -25,7 +25,7 @@ package replay
 //
 //	CGO_ENABLED=0 ATT_FILM=<depot>/data/cache \
 //	  V0_FILMS="0d76e8f1:behemoth,fccc61cd:launch site" \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run TestV1a -v -timeout 120m
+//	  go test ./replay/ -run TestV1a -v -timeout 120m
 
 import (
 	"math"

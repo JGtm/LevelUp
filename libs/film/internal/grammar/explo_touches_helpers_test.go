@@ -73,7 +73,7 @@ func exploResolve(w *World, base, idx int) (bool, int) {
 
 // exploWeaponName : nom d'arme par WeaponID (table statique) ou l'hexa.
 func exploWeaponName(wid uint64) string {
-	if nm, ok := filmshell.WeaponIDToName[wid]; ok {
+	if nm, ok := filmshell.NomDArme(wid); ok {
 		return nm
 	}
 	return attribWeaponName(wid)

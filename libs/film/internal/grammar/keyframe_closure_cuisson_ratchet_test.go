@@ -23,7 +23,7 @@ package grammar
 //
 // REGENERATION (jamais d edition a la main) :
 //
-//	go test ./internal/games/halo_infinite/film/internal/grammar/ -run KeyframeClosureCuissonRatchet -update-keyframe-closure-cuisson
+//	go test ./internal/grammar/ -run KeyframeClosureCuissonRatchet -update-keyframe-closure-cuisson
 
 import (
 	"encoding/json"

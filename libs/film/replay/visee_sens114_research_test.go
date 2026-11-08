@@ -33,10 +33,10 @@ package replay
 //
 // SOUS GARDE (SENS114_FILM, qui doit pointer 00162144).
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 SENS114_FILM=<repo>/data/cache/film_chunks/00162144 \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run TestViseeSens114 -v -timeout 30m
+//	  go test ./replay/ -run TestViseeSens114 -v -timeout 30m
 
 import (
 	"os"

@@ -4,10 +4,7 @@ package fallback
 // collecteur qui l'écrit en base (`internal/sync/killcollector/`) vivent dans
 // `registre_killsource_collecteur.go` depuis le lot J8.7 (2026-09-27, scission de taille).
 
-const (
-	pkgKillsource    = "libs/film/internal/facts/killsource/"
-	pkgKillcollector = "apps/go-api/internal/sync/killcollector/"
-)
+const pkgKillsource = "internal/facts/killsource/"
 
 var registreKillsource = []Repli{
 	{

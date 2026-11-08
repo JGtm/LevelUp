@@ -151,6 +151,11 @@ var plafondsParFonction = map[string]int{
 	"libs/film/internal/grammar/frame_infer.go:decodeInferLoop":                             109,
 	"libs/film/internal/grammar/dispatch_biped.go:consumeCaptureAndBipedComponent":          111,
 	"libs/film/internal/profile/profile_table.go:tableProfilInvariants":                     87,
+
+	// 2026-11-08 (lot 3.2 de la fin du decouplage, ADR 0041 D7) : la racine du ratchet est passee a
+	// l espace de travail ; la seule fonction de production de `himap`, `gamefiles` et `haloapi` au-dela
+	// du seuil. Longueur du jour, qui ne peut que descendre ; aucune autre entree ne s ajoute.
+	"libs/himap/himap/cuisson_forge.go:CuitCarteForge": 84,
 }
 
 // TestLongueurDesFonctionsDuFilmNeCroitPas : aucune fonction des racines surveillees ne depasse
@@ -178,7 +183,7 @@ func TestLongueurDesFonctionsDuFilmNeCroitPas(t *testing.T) {
 			continue
 		}
 		if fige {
-			t.Errorf("%s : %d lignes physiques, plafond fige a %d (2026-09-16, item 2.10.5).\n"+
+			t.Errorf("%s : %d lignes physiques, plafond fige a %d (date de la table : voir plafondsParFonction).\n"+
 				"UN PLAFOND NE MONTE PAS. Sortir autant de lignes ailleurs dans la fonction, "+
 				"ou l extraire — la scission d un aiguillage se fait dans un lot qui porte sa "+
 				"preuve d equivalence, pas au fil de l eau.", cle, n, plafond)
@@ -264,6 +269,7 @@ func balayerLongueursFonctionsFilm(t *testing.T) map[string]int {
 	out := map[string]int{}
 	for _, racine := range racinesSurveilleesTaille {
 		base := surDisque(t, racine)
+		avant := len(out)
 		err := filepath.WalkDir(base, func(chemin string, d fs.DirEntry, err error) error {
 			if err != nil {
 				return err
@@ -282,6 +288,10 @@ func balayerLongueursFonctionsFilm(t *testing.T) map[string]int {
 		})
 		if err != nil {
 			t.Fatalf("balayage de %s : %v", base, err)
+		}
+		if len(out) == avant {
+			t.Fatalf("aucune fonction de production sous %s : le plancher global ne voit pas une racine "+
+				"qui se vide, ce ratchet ne la garderait plus", racine)
 		}
 	}
 	return out

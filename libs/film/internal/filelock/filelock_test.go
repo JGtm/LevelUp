@@ -3,7 +3,7 @@ package filelock
 // filelock_test.go — LE VERROU EST CELUI DU NOYAU : exclusif entre detenteurs, rendu a la mort
 // du detenteur, sans battement de coeur ni reprise de verrou perime.
 //
-// LE BINAIRE DE TEST EST SON PROPRE ENFANT (modele `filmproc/runner_child_test.go`) : quand la
+// LE BINAIRE DE TEST EST SON PROPRE ENFANT (modele du test d enfant du lanceur de films) : quand la
 // variable [envEnfant] porte un chemin, [TestMain] ne lance aucun test — le processus prend le
 // verrou, l'annonce sur sa sortie standard et attend d'etre tue. Aucun binaire externe.
 

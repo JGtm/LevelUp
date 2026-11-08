@@ -106,10 +106,10 @@ package replay
 // SOUS GARDE D'ENVIRONNEMENT (COMPOSANT_FILM, qui doit pointer 00162144 : la chronologie est
 // celle de CE film). Lecture seule, aucun code de production modifie.
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 COMPOSANT_FILM=<repo>/data/cache/film_chunks/00162144 \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run TestViseeComposant -v -timeout 90m
+//	  go test ./replay/ -run TestViseeComposant -v -timeout 90m
 
 import (
 	"fmt"

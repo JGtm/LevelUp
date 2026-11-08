@@ -35,7 +35,7 @@ package replay
 //
 //	$env:MANCHES_CACHE="C:/.../LevelUp-go-migration/data/cache"
 //	$env:MANCHES_FILMS="51ebbc0f,d9781168,24dbb67d,a4083bd2,fb1a1a72"
-//	go test ./internal/games/halo_infinite/film/replay/ -run ManchesBornes -v -timeout 60m
+//	go test ./replay/ -run ManchesBornes -v -timeout 60m
 
 import (
 	"os"

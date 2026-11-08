@@ -126,7 +126,7 @@
 // # OFFLINE PUR — ET C EST PROUVE, PAS AFFIRME
 //
 // Le catalogue des 468 ids `jpt!` et la table de nommage sont EMBARQUES par `go:embed` dans
-// `internal/games/halo_infinite/film/damagetag` (63 Ko). Preuve faite en renommant sur le disque
+// `damagetag` (63 Ko). Preuve faite en renommant sur le disque
 // les deux racines du jeu (`Content/deploy`, `Content/Sound`) : sorties identiques au bit, meme
 // SHA-256 (RE_LOG 7ter.68). Le serveur de production n a pas Halo installe, et n en a pas besoin.
 //
@@ -218,6 +218,6 @@
 // verrou a ete retire au lot 2.3 du PLAN_DECODEUR_FILM (`archlint/decode_lock_interdit_test.go`
 // interdit son retour, `archlint/filmdec_package_vars_test.go` mesure zero variable de paquet
 // ecrite). Deux [Decode] concurrents sont independants ; la borne d un decodage a la fois par
-// poste est MEMOIRE, pas correction, et elle vit hors d ici (`filmproc.AcquireSolo`). Cout mesure
+// poste est MEMOIRE, pas correction, et elle vit chez l hote (son verrou de decodage). Cout mesure
 // d un decodage : 8 a 30 secondes par film sur les quatre films de reference.
 package killsource

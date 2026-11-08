@@ -310,7 +310,7 @@ func flagFreeAtSpawn(spawns []FlagSpawn, x, y float32) bool {
 // represente qu'UN span, tandis que 1 129,3 s de portage FAUX se cachaient dans les portages
 // FERMES — fermes par une mort, une capture ou une reprise SURVENUE APRES un lacher volontaire
 // que rien ne datait. 69 joueurs sur 95 depassaient leur propre oracle, jusqu'a 63 fois
-// (`16ea3668` / 2535417044536883 : 56,7 s publiees pour 0,9 s). Le canal etait la, lu et compte
+// (`16ea3668` / 2659168014067630 : 56,7 s publiees pour 0,9 s). Le canal etait la, lu et compte
 // (`objectLives`), et ne fermait rien : `closedByObject` valait ZERO sur les onze films.
 //
 // LE PLUS PETIT FERMOIR GAGNE, et c'est structurel plutot que compare : [flagFreeDropInside] ne

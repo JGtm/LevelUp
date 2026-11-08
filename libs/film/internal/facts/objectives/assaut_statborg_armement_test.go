@@ -59,7 +59,7 @@ package objectives
 // Pic mesure : sous le plafond de 2 Gio, 6,5 s pour les neuf films.
 //
 //	$env:ASSAUT_CACHE="C:/.../data/cache"
-//	go test ./internal/games/halo_infinite/film/internal/facts/objectives/ -run AssautStatborgArmement -v -timeout 60m
+//	go test ./internal/facts/objectives/ -run AssautStatborgArmement -v -timeout 60m
 
 import (
 	"fmt"
@@ -68,7 +68,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 	"github.com/JGtm/LevelUp/libs/film/types"
 )
 
@@ -171,7 +171,7 @@ func TestAssautStatborgArmementFenetre(t *testing.T) {
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
-	g := filmproc.Arm("TestAssautStatborgArmementFenetre", filmproc.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm(t.Context(), "TestAssautStatborgArmementFenetre", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — balayage interrompu", float64(peak)/(1<<30))
 	})
 	defer func() { g.Disarm() }()

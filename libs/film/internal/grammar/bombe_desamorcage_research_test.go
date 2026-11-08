@@ -42,7 +42,7 @@ package grammar
 // process (un seul decodage a la fois).
 //
 //	$env:ASSAUT_CACHE="C:/.../data/cache"
-//	go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run BombeDesamorcage -v -timeout 60m
+//	go test -tags=research ./internal/grammar/ -run BombeDesamorcage -v -timeout 60m
 
 import (
 	"os"
@@ -50,7 +50,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 const (
@@ -148,7 +148,7 @@ func TestBombeDesamorcage(t *testing.T) {
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
-	g := filmproc.Arm("TestBombeDesamorcage", filmproc.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm(t.Context(), "TestBombeDesamorcage", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — mesure interrompue", float64(peak)/(1<<30))
 	})
 	defer func() {

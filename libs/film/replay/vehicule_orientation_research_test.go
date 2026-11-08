@@ -36,7 +36,7 @@ package replay
 // LECTURE SEULE : aucun fichier ecrit, aucune base ouverte, un film a la fois.
 //
 //	ATT_FILM=<depot>/data/cache V0_FILMS=4f77afc1:flood gulch \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run TestOrientationChassis -v -count=1
+//	  go test ./replay/ -run TestOrientationChassis -v -count=1
 //
 // # CE QUE CET INSTRUMENT MESURE, ET CE QU IL NE MESURE PLUS (arbitrage du pilote, 2026-09-20)
 //

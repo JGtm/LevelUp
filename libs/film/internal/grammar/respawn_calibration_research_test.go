@@ -19,10 +19,10 @@ package grammar
 // LECTURE SEULE, UN SEUL FILM (D17), gardé par GAME_FILM — sauté partout ailleurs, CI
 // comprise. La chaîne séquentielle est la source : records CERTAINS uniquement.
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	GAME_FILM=C:/.../data/cache/film_chunks/000d5950 \
-//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestRespawnTimerCalibration$' -timeout 30m -v
+//	  go test -tags=research ./internal/grammar/ -run '^TestRespawnTimerCalibration$' -timeout 30m -v
 
 import (
 	"fmt"

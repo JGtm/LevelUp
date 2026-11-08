@@ -44,7 +44,7 @@ package replay
 //
 //	CGO_ENABLED=0 \
 //	  DUELS_FILM=<repo>/data/cache/film_chunks/000d5950 DUELS_MAP=Cliffhanger \
-//	  go test ./internal/games/halo_infinite/film/replay -run TestSondeDuelsOuverture -v -timeout 900s
+//	  go test ./replay -run TestSondeDuelsOuverture -v -timeout 900s
 
 import (
 	"fmt"

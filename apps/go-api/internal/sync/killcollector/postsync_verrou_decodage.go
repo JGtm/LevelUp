@@ -3,7 +3,7 @@ package killcollector
 // postsync_verrou_decodage.go — LE VERROU SOLO DE DECODAGE, PRIS PAR L ETAPE 1.57 DANS LE PROCESSUS DU SERVEUR.
 //
 // Cette etape DECODE des films dans le processus du serveur (kill-feed, tirs, positions) — c est le seul decodage de
-// film qui s y fasse : la cuisson des rejeux part dans un enfant, et son parent prend `filmproc.AcquireSolo` avant
+// film qui s y fasse : la cuisson des rejeux part dans un enfant, et son parent prend `filmrun.AcquireSolo` avant
 // de le lancer. Regle du projet : JAMAIS DEUX DECODAGES DE FILM A LA FOIS sur la machine (pic memoire cumule). Le
 // meme verrou borne donc l etape 1.57, la cuisson apres synchronisation, l action admin « construire le rejeu » et la
 // file de regeneration des rejeux de l application de bureau.
@@ -19,9 +19,8 @@ import (
 	"log/slog"
 
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/filmrun"
 	"levelup/go-api/internal/observability"
-
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
 )
 
 // CompteurPostSyncReporteeVerrou : passes reportees parce qu un autre decodage de film tenait le verrou solo.
@@ -36,11 +35,11 @@ const outilPostSync = "post-sync killsource"
 // verrou qui ne se prend pas pour une autre raison que l occupation (disque) reporte aussi — jamais de decodage sans
 // le verrou — mais se journalise en WARN.
 func (h *PostSyncHook) prendreLeVerrouDeDecodage(ctx context.Context, d PostSyncDeps) (func(), bool) {
-	lock, err := filmproc.AcquireSolo(titlePkg.NewPathResolver(h.repoRoot).CacheRootDir(), outilPostSync, "")
+	lock, err := filmrun.AcquireSolo(titlePkg.NewPathResolver(h.repoRoot).CacheRootDir(), outilPostSync, "")
 	if err == nil {
 		return lock.Release, true
 	}
-	if errors.Is(err, filmproc.ErrDecodeBusy) {
+	if errors.Is(err, filmrun.ErrDecodeBusy) {
 		observability.IncCounter(CompteurPostSyncReporteeVerrou)
 		slog.InfoContext(ctx, "post-sync: kill source reportee — un autre decodage de film tient la machine, "+
 			"reprise au cycle suivant", "title", d.TitleSlug, "gamertag", d.Gamertag, "detenteur", err)

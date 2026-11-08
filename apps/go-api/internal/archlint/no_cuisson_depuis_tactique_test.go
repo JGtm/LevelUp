@@ -4,7 +4,7 @@
 // # CE QU'IL INTERDIT, ET POURQUOI C'EST LA REGLE LA PLUS DURE DU CHANTIER
 //
 // Cuire un artefact, c'est decoder un film : des minutes de CPU, des gigaoctets de RAM, et
-// un verrou process (`filmproc.AcquireSolo`). La machine est morte trois fois pour l'avoir
+// un verrou process (`filmrun.AcquireSolo`). La machine est morte trois fois pour l'avoir
 // fait au mauvais endroit — d'ou la regle utilisateur « JAMAIS de cuisson d'artefacts en
 // lot, demander avant ». Le chantier Tactique repose entierement sur l'inverse : les
 // rasters sont calcules UNE FOIS a la cuisson, et tout le reste — la page, le service, le
@@ -42,7 +42,7 @@ import (
 //	SpawnBuildOne    le spawn de l'enfant decodeur (`replayartifacts/buildone.go`) ;
 //	replayartifacts.Run(   le cycle post-sync COMPLET, qui cuit ;
 //	replaychild      le binaire enfant de cuisson ;
-//	filmproc         le verrou process du decodage (`filmproc.AcquireSolo`).
+//	filmrun          le verrou process du decodage (`filmrun.AcquireSolo`).
 //
 // # POURQUOI LES QUATRE DERNIERS ONT ETE AJOUTES (constat C2 de la revue)
 //
@@ -51,11 +51,11 @@ import (
 // deja range. Mais ce meme paquet EXPORTE `SpawnBuildOne` et `Run`. Remplacer la branche
 // d'echec de `projeterCorpusRasters` par un `replayartifacts.SpawnBuildOne(...)` laissait
 // donc le ratchet VERT tout en faisant de la CLI une cuisson EN LOT : bombe RAM x4 et
-// verrou `filmproc.AcquireSolo` pris sur toute la passe. Le nom de paquet nu reste
+// verrou `filmrun.AcquireSolo` pris sur toute la passe. Le nom de paquet nu reste
 // autorise ; ce sont les points d'entree de cuisson qui sont fermes.
 var motifsDeCuisson = []string{
 	"replaybuild", "BuildFromFilm", "filmcache",
-	"SpawnBuildOne", "replayartifacts.Run(", "replaychild", "filmproc",
+	"SpawnBuildOne", "replayartifacts.Run(", "replaychild", "filmrun",
 }
 
 // fichiersTactiquesSansCuisson : les fichiers gardes, relatifs a apps/go-api.

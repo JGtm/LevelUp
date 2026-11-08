@@ -38,10 +38,10 @@ package replay
 // SOUS GARDE (CAM_FILM). Prend le verrou de decodage du paquet filmdec : contrairement aux
 // instruments de la phase 4, celui-ci appelle ScanFilmBipedPositions (globaux de decodage).
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 CAM_FILM=<repo>/data/cache/film_chunks/000d5950 \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run TestViseeCameraPOV -v -timeout 30m
+//	  go test ./replay/ -run TestViseeCameraPOV -v -timeout 30m
 
 import (
 	"fmt"

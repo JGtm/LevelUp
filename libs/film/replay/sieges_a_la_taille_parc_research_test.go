@@ -13,7 +13,7 @@ package replay
 // USAGE (lecture seule) :
 //
 //	TAILLE_ARTEFACTS=<dossier des artefacts> TAILLE_IDS='3d58eb37=4,4f77afc1=12' \
-//	  go test -tags=research ./internal/games/halo_infinite/film/replay -run TestTailleSurLeParc -v
+//	  go test -tags=research ./replay -run TestTailleSurLeParc -v
 
 import (
 	"encoding/json"
@@ -197,7 +197,7 @@ func tailleSimultanes(pp *poseDesPlaces) string {
 // taille. La taille n'est pas dans l'artefact : elle se deduit ici de la table du debut (sieges `lu`
 // repartis entre deux equipes, arrondis a 2, 4, 8 ou 12) — un instrument, pas la regle de production.
 //
-//	TAILLE_ARTEFACTS=<dossier> TAILLE_PARC=1 go test -tags=research ./internal/games/halo_infinite/film/replay -run TestTailleSurToutLeParc -v
+//	TAILLE_ARTEFACTS=<dossier> TAILLE_PARC=1 go test -tags=research ./replay -run TestTailleSurToutLeParc -v
 func TestTailleSurToutLeParc(t *testing.T) {
 	dir := os.Getenv("TAILLE_ARTEFACTS")
 	if dir == "" || os.Getenv("TAILLE_PARC") == "" {

@@ -422,6 +422,15 @@ func DecodeKeyframePositions(chunks []positions.ChunkInput) []playerposition.Pla
 // ---- profile ----
 var ErrUnknownMapBounds = profile.ErrUnknownMapBounds
 
+// ErrUnknownBuild et ErrUnknownFormat : les deux sentinelles typees de la table de profil, que la
+// facade rend nommables par un consommateur hors du module (D-4 d ADR 0034 : build ou format absent
+// de la table = erreur typee + film mis de cote). Ce sont les MEMES valeurs que celles de la couche
+// `profile`, enveloppees avec la cle refusee (`filmdec: ... : "HI_9_99_9"`) : `errors.Is(err,
+// decfilm.ErrUnknownBuild)` est vrai sur l erreur de `replay.CleFilm.Err`. Constantes, pas
+// variables : un consommateur ne peut pas les reaffecter.
+const ErrUnknownBuild = profile.ErrUnknownBuild
+const ErrUnknownFormat = profile.ErrUnknownFormat
+
 type I0Layout = profile.I0Layout
 
 func LoadMapQuantCatalog(path string) (*profile.MapQuantCatalog, error) {

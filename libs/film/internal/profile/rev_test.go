@@ -45,7 +45,7 @@ const (
 	prefixeRevisionProfile = "profile"
 	// commandeRegenerationProfileRev : la commande complete, telle qu on la tape.
 	commandeRegenerationProfileRev = "LEVELUP_UPDATE_PROFILE_REV=1 go test " +
-		"./internal/games/halo_infinite/film/internal/profile/ -run TestProfileRevSuitLaCoucheProfil " +
+		"./internal/profile/ -run TestProfileRevSuitLaCoucheProfil " +
 		"-update-profile-rev"
 )
 

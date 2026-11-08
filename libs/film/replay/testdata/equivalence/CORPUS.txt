@@ -390,3 +390,14 @@ fb1a1a72 | 41 / HI_1_13_0 | Banished Narrows | CTF:Arena multi-manche | 43 | 38.
 # 2.2.a, `Obs` 2.2.f), recopie par `filmdec.ObjectDeathStats.Config` dans `replay.VehicleScan` ; `digest`
 # hache les champs exportes ou non. Contenu identique (corpus gate 14/14 a 0 / 0 / 0). Regle V14 : D4 = zero
 # difference de CONTENU ; une difference de FORME se classe au champ pres et se re-fige a la fusion.
+#
+# FAITS FIGES A XUIDS FICTIFS, REFERENCES INCHANGEES (lot 4.0 de la fin du decouplage, 2026-11-08). Les
+# `<short8>.facts.json` ne portent plus les xuids reels des joueurs mais des identifiants de test fictifs
+# (registre `libs/film/testdata/IDENTITES.tsv`, derivation `internal/identitefictive`). Les films, eux,
+# restent ceux du parc : le harnais RETRADUIT les faits avant de cuire (`cmd/replay-equiv/identites.go`),
+# a partir de la liste des xuids d'origine, hors depot, donnee par `-originaux` ou
+# LEVELUP_IDENTITES_ORIGINALES, ou trouvee par defaut dans le dossier de donnees local hors depot
+# (`data/film_identites/xuids_originaux.txt` sous la racine du depot, ignore par git, a cote du parc) ; sans
+# elle, des faits fictifs sont refuses. La cuisson voit donc les
+# memes entrees qu'avant : les 20 fichiers de digests de ce dossier sont IDENTIQUES a l'octet (MD5 de la
+# liste e35052a1baa65ea8519fa373d8e51271, celui du lot 0), aucune reference n'a ete re-figee.

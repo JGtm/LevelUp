@@ -80,7 +80,7 @@ package replay
 // REGIME : garde `ASSAUT_CACHE`. Aucune base, aucun reseau, sentinelle memoire armee.
 //
 //	$env:ASSAUT_CACHE="C:/.../data/cache"
-//	go test ./internal/games/halo_infinite/film/replay/ -run AssautA10 -v -timeout 60m
+//	go test ./replay/ -run AssautA10 -v -timeout 60m
 
 import (
 	"fmt"
@@ -385,7 +385,7 @@ func a10Verdict(t *testing.T, delais map[uint32][]float64, couverts map[uint32]i
 // un meme slot au fil du temps dit A ; une valeur qui saute d'une puissance de deux a l'autre sans
 // jamais se repeter dit B.
 //
-//	go test ./internal/games/halo_infinite/film/replay/ -run AssautA10Detail -v -timeout 30m
+//	go test ./replay/ -run AssautA10Detail -v -timeout 30m
 func TestAssautA10Detail(t *testing.T) {
 	cache := os.Getenv("ASSAUT_CACHE")
 	if cache == "" {

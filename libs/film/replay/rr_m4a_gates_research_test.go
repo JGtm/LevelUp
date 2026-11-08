@@ -24,7 +24,7 @@ package replay
 //	    `TestRRM4AGatesG4`, meme variable `RR_M4A_DOCS`.
 //
 //	RR_M4A_DOCS=<dossier de documents> go test -tags research -count=1 \
-//	  -run '^TestRRM4AGates$' -v ./internal/games/halo_infinite/film/replay/
+//	  -run '^TestRRM4AGates$' -v ./replay/
 
 import (
 	"encoding/json"

@@ -25,7 +25,7 @@ package replay
 // JSON, film -> xuid -> colonnes VipStats), UN FILM PAR PROCESSUS, lecture seule, AUCUNE base.
 //
 //	$env:ATT_FILM="<cache>"; $env:VIP_FILM="00761d27"; $env:VIP_ORACLE="<V_oracle_vipstats.json>"
-//	go test ./internal/games/halo_infinite/film/replay/ -run VIPPeriodes -v
+//	go test ./replay/ -run VIPPeriodes -v
 
 import (
 	"encoding/json"
@@ -34,9 +34,9 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
 	"github.com/JGtm/LevelUp/libs/film/internal/facts/objectives"
 	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 const (
@@ -71,7 +71,7 @@ func TestVIPPeriodes(t *testing.T) {
 	if !ok {
 		return
 	}
-	g := filmproc.Arm("vip-periodes", filmproc.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm(t.Context(), "vip-periodes", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE %s : %.2f Gio", id, float64(peak)/(1<<30))
 	})
 	defer func() {

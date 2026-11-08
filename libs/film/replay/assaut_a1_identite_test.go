@@ -19,7 +19,7 @@ package replay
 // base.
 //
 //	$env:ATT_FILM="<repo>/data/cache"; $env:ASSAUT_FILM="35b75a31"
-//	go test ./internal/games/halo_infinite/film/replay/ -run AssautA1Identite -v
+//	go test ./replay/ -run AssautA1Identite -v
 
 import (
 	"fmt"
@@ -28,9 +28,9 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
 	"github.com/JGtm/LevelUp/libs/film/internal/facts/objectives"
 	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 	"github.com/JGtm/LevelUp/libs/film/types"
 
 	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
@@ -70,14 +70,14 @@ func TestAssautA1Identite(t *testing.T) {
 	if id == "" {
 		t.Skipf("mesure non demandee : %s vide (identifiant court du film Assaut)", a0FilmEnv)
 	}
-	g := filmproc.Arm("a1-assaut", filmproc.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm(t.Context(), "a1-assaut", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE %s : %.2f Gio — mesure interrompue, ce film ne compte "+
 			"NI POUR NI CONTRE", id, float64(peak)/(1<<30))
 	})
 	defer func() {
 		g.Disarm()
 		t.Logf("%s : pic memoire observe %.2f Gio (plafond souple %d Gio)",
-			id, float64(g.Peak())/(1<<30), filmproc.MeasureLimitGiB)
+			id, float64(g.Peak())/(1<<30), memguard.MeasureLimitGiB)
 	}()
 
 	src, ok := objOpenFilm(t, root, id)

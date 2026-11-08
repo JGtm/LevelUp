@@ -32,13 +32,15 @@ package grammar
 // ailleurs, CI comprise. Aucune ecriture, aucun artefact cuit.
 //
 //	LIVEFIRE_POS_FILMS='<repo>/data/cache/film_chunks/60ae07c4;<repo>/data/cache/film_chunks/0797ce72' \
-//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestLiveFirePositionsParPlage$' -v
+//	  go test ./internal/grammar/ -run '^TestLiveFirePositionsParPlage$' -v
 
 import (
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/JGtm/LevelUp/libs/film/internal/depottest"
 
 	"github.com/JGtm/LevelUp/libs/film/internal/profile"
 	"github.com/JGtm/LevelUp/libs/film/internal/source"
@@ -93,7 +95,7 @@ func TestLiveFirePositionsParPlage(t *testing.T) {
 // entreeLiveFire : l entree de catalogue commise de Live Fire.
 func entreeLiveFire(t *testing.T) profile.MapQuantEntry {
 	t.Helper()
-	racine := racineDepot(t)
+	racine := depottest.Racine(t)
 	cat, err := profile.LoadMapQuantCatalog(filepath.Join(racine, "data", "titles",
 		"halo_infinite", "reference", "map_quant_bounds.json"))
 	if err != nil {

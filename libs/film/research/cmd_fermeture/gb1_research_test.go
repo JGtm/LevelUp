@@ -8,7 +8,7 @@ package main
 // version 40 : registre, premier chunk de donnees, un chunk highlight). Rapport dans un
 // repertoire temporaire.
 //
-//	go test -tags=research ./internal/games/halo_infinite/film/research/cmd_fermeture/ -run GB1 -v
+//	go test -tags=research ./research/cmd_fermeture/ -run GB1 -v
 
 import (
 	"errors"

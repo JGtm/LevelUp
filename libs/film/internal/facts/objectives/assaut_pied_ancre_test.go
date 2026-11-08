@@ -43,7 +43,7 @@ package objectives
 // REGIME : garde `ASSAUT_CACHE`. Aucune base, aucun reseau, sentinelle memoire armee.
 //
 //	$env:ASSAUT_CACHE="C:/.../data/cache"
-//	go test ./internal/games/halo_infinite/film/internal/facts/objectives/ -run AssautPiedAncre -v -timeout 30m
+//	go test ./internal/facts/objectives/ -run AssautPiedAncre -v -timeout 30m
 
 import (
 	"fmt"
@@ -52,8 +52,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
 	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // paCorpus : les neuf films d'Assaut, le temoin Oddball, et trois temoins de modes a pied connu.
@@ -88,7 +88,7 @@ func TestAssautPiedAncre(t *testing.T) {
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
-	g := filmproc.Arm("TestAssautPiedAncre", filmproc.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm(t.Context(), "TestAssautPiedAncre", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — releve interrompu", float64(peak)/(1<<30))
 	})
 	defer func() { g.Disarm() }()
@@ -232,13 +232,13 @@ func paTh(m map[int]int) string {
 // exister, et leurs autres familles ne doivent PAS couvrir les explosions d'Assaut (elles n'en
 // ont pas) : le verdict ne porte que sur l'Assaut.
 //
-//	go test ./internal/games/halo_infinite/film/internal/facts/objectives/ -run AssautPiedFamilles -v -timeout 30m
+//	go test ./internal/facts/objectives/ -run AssautPiedFamilles -v -timeout 30m
 func TestAssautPiedFamilles(t *testing.T) {
 	cache := os.Getenv("ASSAUT_CACHE")
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
-	g := filmproc.Arm("TestAssautPiedFamilles", filmproc.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm(t.Context(), "TestAssautPiedFamilles", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — releve interrompu", float64(peak)/(1<<30))
 	})
 	defer func() { g.Disarm() }()
@@ -391,13 +391,13 @@ func paFamilles(m map[int][]int) string {
 // entier, pour DEUX films. La lecture se fait a l'oeil : l'octet qui prend la meme valeur dans
 // toutes les fenetres et une autre ailleurs est le sous-type.
 //
-//	go test ./internal/games/halo_infinite/film/internal/facts/objectives/ -run AssautPiedExplosion -v -timeout 30m
+//	go test ./internal/facts/objectives/ -run AssautPiedExplosion -v -timeout 30m
 func TestAssautPiedExplosion(t *testing.T) {
 	cache := os.Getenv("ASSAUT_CACHE")
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
-	g := filmproc.Arm("TestAssautPiedExplosion", filmproc.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm(t.Context(), "TestAssautPiedExplosion", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — releve interrompu", float64(peak)/(1<<30))
 	})
 	defer func() { g.Disarm() }()
@@ -490,13 +490,13 @@ func paHex(b []byte) string {
 // compacte (delai, valeur, gamertag) : la recompense de pose se lit comme la colonne dont le
 // delai est CONSTANT d'une explosion a l'autre.
 //
-//	go test ./internal/games/halo_infinite/film/internal/facts/objectives/ -run AssautPiedPose -v -timeout 30m
+//	go test ./internal/facts/objectives/ -run AssautPiedPose -v -timeout 30m
 func TestAssautPiedPose(t *testing.T) {
 	cache := os.Getenv("ASSAUT_CACHE")
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
-	g := filmproc.Arm("TestAssautPiedPose", filmproc.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm(t.Context(), "TestAssautPiedPose", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — releve interrompu", float64(peak)/(1<<30))
 	})
 	defer func() { g.Disarm() }()

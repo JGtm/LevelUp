@@ -32,7 +32,7 @@ package replay
 //
 //	CGO_ENABLED=0 P3_FILM=<depot>/data/cache/film_chunks/1cd3848a \
 //	  P3_BOUNDS=<depot>/data/titles/halo_infinite/reference/map_quant_bounds.json \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run '^TestP3ImpulsionsJGtm' -v -timeout 60m
+//	  go test ./replay/ -run '^TestP3ImpulsionsJGtm' -v -timeout 60m
 
 import (
 	"fmt"

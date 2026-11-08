@@ -39,7 +39,7 @@ package replay
 //
 //	$env:ATT_FILM="<repo>/data/cache"; $env:ATT_REF="<worktree>/data/titles/halo_infinite/reference"
 //	$env:C2_FILM="35b75a31"; $env:C2_SITES="<dossier de mesures>/C2_sites_candidats.json"
-//	go test ./internal/games/halo_infinite/film/replay/ -run CataloguesC2Sites -v
+//	go test ./replay/ -run CataloguesC2Sites -v
 
 import (
 	"encoding/json"
@@ -47,8 +47,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
 	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 const (
@@ -94,7 +94,7 @@ func TestCataloguesC2SitesControle(t *testing.T) {
 	if sitesPath == "" {
 		t.Skipf("mesure non demandee : C2_SITES vide (sites candidats figes)")
 	}
-	g := filmproc.Arm("c2-sites", filmproc.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm(t.Context(), "c2-sites", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE %s : %.2f Gio — ce film ne compte NI POUR NI CONTRE",
 			id, float64(peak)/(1<<30))
 	})

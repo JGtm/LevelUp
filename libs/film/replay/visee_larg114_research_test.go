@@ -46,10 +46,10 @@ package replay
 //
 // SOUS GARDE (LARG114_FILMS : repertoires separes par des virgules).
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 LARG114_FILMS=<repo>/data/cache/film_chunks/00162144,<repo>/data/cache/film_chunks/00ba2e1c \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run TestViseeLargeurs114 -v -timeout 30m
+//	  go test ./replay/ -run TestViseeLargeurs114 -v -timeout 30m
 
 import (
 	"fmt"

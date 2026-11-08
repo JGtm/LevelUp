@@ -31,10 +31,10 @@ package replay
 //
 // SOUS GARDE (SOUSENTETE_FILMS).
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 SOUSENTETE_FILMS=<repo>/data/cache/film_chunks/00162144,<repo>/data/cache/film_chunks/00ba2e1c,<repo>/data/cache/film_chunks/03ccbe42 \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run TestViseeSousEntete -v -timeout 30m
+//	  go test ./replay/ -run TestViseeSousEntete -v -timeout 30m
 
 import (
 	"fmt"

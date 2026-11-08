@@ -19,11 +19,11 @@ package replay
 // REGENERATION (la seule ; un golden ne s edite JAMAIS a la main) :
 //
 //	REPLAY_FILM_DIR=<repo>/data/cache/film_chunks/000d5950 \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run GoldenInputs -update
+//	  go test ./replay/ -run GoldenInputs -update
 //
 // puis, la sortie figee elle-meme :
 //
-//	go test ./internal/games/halo_infinite/film/replay/ -run GoldenAssembly -update
+//	go test ./replay/ -run GoldenAssembly -update
 //
 // CE QUE LE FIXTURE PORTE, ET POURQUOI PAS PLUS. Il porte exactement les champs que
 // l assemblage CONSOMME (cf. la liste par type ci-dessous). Il ne porte NI la geometrie NI la

@@ -9,7 +9,7 @@ package grammar
 // d arme portee qu ils portent.
 //
 //	RI27B_FILMS=000d5950 RI27B_RACINE=<film_chunks> go test -tags=research -count=1 \
-//	  -run '^TestRI27bGarde$' -v ./internal/games/halo_infinite/film/internal/grammar/
+//	  -run '^TestRI27bGarde$' -v ./internal/grammar/
 
 import (
 	"fmt"

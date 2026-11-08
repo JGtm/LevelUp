@@ -187,28 +187,6 @@ reports, section du 2026-11-01). Coût assumé : versions épinglées, deux PR p
 
 ---
 
-### [archi] Décodeur de film : le publier comme les trois autres briques (README, exemple, tag, dépôt)
-
-**Noté le** : 2026-11-01 (demande du user en clôture du chantier publication)
-
-`libs/film` est déjà un module Go de l'espace de travail (ADR 0041, découplage D2 du 2026-10-29) mais l'ADR 0043
-D-1 le tient hors publication : ni README, ni tag, ni promesse, « il peut changer de forme librement ». Le user veut
-qu'il suive le même chemin que `gamefiles`, `himap` et `haloapi`, en chantier à part, une fois le chantier
-application de bureau et la création des trois dépôts faits. Même recette que le plan
-`.ai/V8/PLAN_PUBLICATION_BRIQUES_2026-10-30.md` :
-1. Geler la façade `decfilm` (ADR 0034 ; 186 symboles et 277 identifiants `replay.X` hors du décodeur au 2026-09-30) :
-   décider ce qui est public, ce qui passe sous `internal/`, et ce que LevelUp garde (couches `facts` -> `replay`
-   restent dans la brique ; `filmcache`, `filmshell`, `research` à trancher).
-2. Témoins avant/après : goldens du décodeur à révision constante (`make replay-equiv`), T1 sans nom disparu.
-3. README EN (modèle des trois briques, ADR 0043 D-3), `example_test.go` compilé, `require` des versions taguées de
-   `gamefiles` et `himap` (ordre ADR 0041), tag `libs/film/v0.1.0`, `go get` vérifié hors dépôt.
-4. Dépôt dédié `JGtm/halo-infinite-film-decoder` (nom à confirmer), `git subtree split`, licence AGPL-3.0.
-Contraintes : le format Theater est le cœur de la valeur de LevelUp, le user tranche le périmètre public ; la
-grammaire bouge à chaque campagne, donc `v0.x` sans promesse tant que la façade n'est pas stable.
-**Effort : L** (gel de la façade = le gros ; README et tag = M comme pour les autres).
-
----
-
 ## 🎮 Backlog — Coach proactif × Prestige (post-V2)
 
 Référence : ADR 0020 — Coach proactif : pont vers Prestige. ADR 0021 — Synthèse dynamique de Template et Arc ad-hoc.
@@ -234,6 +212,7 @@ forwardées via settings.
 
 | Date | Item |
 |------|------|
+| 2026-11-08 | **[archi] Décodeur de film : brique `libs/film` publiable** (plan `.ai/PLAN_FIN_DECOUPLAGE_BRIQUE_FILM_2026-11-02.md`) : réorganisation protocole/exploitation, identifiants fictifs dans les fixtures, README/NOTICE/exemple, ADR 0043 amendée, revue adversariale close (branche `refactor/brique-film-publication`, PR vers `release/v8.1.0`). Reste : tag `libs/film/v0.1.0` (geste du user), lot 5 (jeton Spartan sur redirection, NOTICE gamefiles) et lot 6 (quatre dépôts dédiés) après le bureau et `main`. |
 | 2026-11-02 | **[qol] Citations `.ai/` retirées des commentaires de code** (PR #134, entrée de backlog ouverte par la PR #127) : nettoyage fait, ratchet à plafond 0. Même PR : moteur des véhicules au mouvement dans le rejeu, tuile seule des sessions récentes. |
 | 2026-11-01 | **[archi] Publication des briques : modules, README, tags** (plan `.ai/V8/PLAN_PUBLICATION_BRIQUES_2026-10-30.md`, PR #118 et #119 dans `release/v8.1.0`) : module `libs/haloapi` multi-jeu (`xblauth`, `infinite`, `halo5`, `xboxlive`, `haloapitest` ; clients Halo 5, UGC cartes, GameCMS et succès Xbox coupés en protocole / exploitation sans changement observable), README EN des trois briques, `example_test.go`, ADR 0043 ; tags `libs/{gamefiles,himap,haloapi}/v0.1.0` posés sur validation du user, `go get` vérifié hors dépôt. Reste : dépôts dédiés (entrée du backlog ci-dessus). |
 | 2026-10-29 | **[archi] Découplage des briques D1, D2, D3** (audit `.ai/V8/AUDIT_DECOUPLAGE_BRIQUES_2026-10-27.md`, ADR 0041 et 0042) : `libs/gamefiles` + `libs/himap` reliés par `go.work` (PR #111), décodeur de film en module `libs/film` (PR #113), API Halo séparée en protocole et exploitation (PR #114) ; suites (gates locaux, ratchets, robustesse `haloapi`) en PR #117. |

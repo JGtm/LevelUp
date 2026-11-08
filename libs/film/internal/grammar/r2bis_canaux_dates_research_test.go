@@ -13,7 +13,7 @@ package grammar
 // record de creation), par generation. Saute sans les variables d environnement ; jamais en CI.
 //
 //	R2BIS_FILM=<parc>/data/cache/film_chunks/084a804d R2BIS_MAP="Fortitude Heavies" \
-//	  R2BIS_OUT=<fichier hors data> go test ./internal/games/halo_infinite/film/internal/grammar/ \
+//	  R2BIS_OUT=<fichier hors data> go test ./internal/grammar/ \
 //	  -run R2bisCanauxDates -count=1 -v
 
 import (
@@ -25,6 +25,8 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	"github.com/JGtm/LevelUp/libs/film/internal/depottest"
 
 	"github.com/JGtm/LevelUp/libs/film/internal/profile"
 	"github.com/JGtm/LevelUp/libs/film/internal/source"
@@ -102,7 +104,7 @@ func TestR2bisCanauxDates(t *testing.T) {
 // r2bisContexte charge le film et son contexte sur la carte nommee, comme la cuisson.
 func r2bisContexte(t *testing.T, dir, carte string) (*FilmContext, profile.Vec3Range) {
 	t.Helper()
-	racine := racineDepot(t)
+	racine := depottest.Racine(t)
 	cat, err := profile.LoadMapQuantCatalog(filepath.Join(racine, "data", "titles", "halo_infinite",
 		"reference", "map_quant_bounds.json"))
 	if err != nil {

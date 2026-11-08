@@ -15,7 +15,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // TestObjectifTi11DeltaGarde — LE COUT PAR COMPOSANT, TESTE LA OU IL S'APPLIQUE.
@@ -40,13 +40,13 @@ import (
 // seul de l'archetype. Sur un record ou la presence vaut zero, il consomme un bit la ou les autres
 // n'en consomment aucun — exactement le bit que le garde reclamerait.
 //
-//	go test ./internal/games/halo_infinite/film/internal/grammar/ -run ObjectifTi11DeltaGarde -v -timeout 40m
+//	go test ./internal/grammar/ -run ObjectifTi11DeltaGarde -v -timeout 40m
 func TestObjectifTi11DeltaGarde(t *testing.T) {
 	cache := os.Getenv("ASSAUT_CACHE")
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
-	g := filmproc.Arm("TestObjectifTi11DeltaGarde", filmproc.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm(t.Context(), "TestObjectifTi11DeltaGarde", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — mesure interrompue", float64(peak)/(1<<30))
 	})
 	defer func() { g.Disarm() }()
@@ -134,13 +134,13 @@ func ti11TailleLigne(b *ti11DeltaBilan) string {
 // choisis pour ne coincider avec AUCUNE largeur portee de l'archetype (ni aucune somme de deux).
 // Le taux obtenu est le PLANCHER. Un chainage qui ne le depasse pas franchement ne mesure rien.
 //
-//	go test ./internal/games/halo_infinite/film/internal/grammar/ -run ObjectifTi11DeltaTemoin -v -timeout 40m
+//	go test ./internal/grammar/ -run ObjectifTi11DeltaTemoin -v -timeout 40m
 func TestObjectifTi11DeltaTemoin(t *testing.T) {
 	cache := os.Getenv("ASSAUT_CACHE")
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
-	g := filmproc.Arm("TestObjectifTi11DeltaTemoin", filmproc.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm(t.Context(), "TestObjectifTi11DeltaTemoin", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — mesure interrompue", float64(peak)/(1<<30))
 	})
 	defer func() { g.Disarm() }()
@@ -250,13 +250,13 @@ func ti11Profil(hist map[int]int, n int) []int {
 // Une lecture n'est retenue que si elle porte les records a PLUSIEURS composants nettement
 // au-dessus du plancher de 3 % — c'est eux, et eux seuls, que la configuration actuelle rate.
 //
-//	go test ./internal/games/halo_infinite/film/internal/grammar/ -run ObjectifTi11DeltaPresence -v -timeout 40m
+//	go test ./internal/grammar/ -run ObjectifTi11DeltaPresence -v -timeout 40m
 func TestObjectifTi11DeltaPresence(t *testing.T) {
 	cache := os.Getenv("ASSAUT_CACHE")
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
-	g := filmproc.Arm("TestObjectifTi11DeltaPresence", filmproc.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm(t.Context(), "TestObjectifTi11DeltaPresence", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — mesure interrompue", float64(peak)/(1<<30))
 	})
 	defer func() { g.Disarm() }()

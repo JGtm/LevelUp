@@ -19,10 +19,10 @@ package replay
 //
 // LECTURE SEULE. SOUS GARDE D'ENVIRONNEMENT (GW_PADS_AGG).
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	GW_PADS_AGG=<scratch>/pads_01e1f945.log,<scratch>/pads_75f1188f.log \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run '^TestGroundWeaponPadsAggregate$' -timeout 10m -v
+//	  go test ./replay/ -run '^TestGroundWeaponPadsAggregate$' -timeout 10m -v
 
 import (
 	"os"

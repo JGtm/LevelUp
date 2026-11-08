@@ -45,7 +45,7 @@ package replay
 // Garde d'environnement `OBJ_FILM` / `OBJ_REPO` comme toute la phase 0 — il se saute en CI.
 //
 //	CGO_ENABLED=0 OBJ_FILM=<depot>/data/cache OBJ_REPO=<depot> \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run CTFZoneRetour -v -timeout 90m
+//	  go test ./replay/ -run CTFZoneRetour -v -timeout 90m
 
 import (
 	"fmt"

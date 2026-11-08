@@ -20,13 +20,20 @@ package archlint
 // # PERIMETRE
 //
 // `libs/film/` (hors `research/`), `internal/replaybuild/`,
-// `internal/sync/killcollector/`, `cmd/replay-*`. Fichiers non-test seulement.
+// `internal/sync/killcollector/`, `cmd/replay-*`, et depuis le 2026-11-08 (ADR 0041 D7, la regle
+// est generale : une variable exportee est modifiable par tout importeur, dans n importe quelle
+// brique) `libs/gamefiles`, `libs/haloapi`, `libs/himap`. Fichiers non-test seulement.
 //
 // # ALLOWLIST
 //
-// AUCUNE. Les quatre entrees posees le 2026-09-30 (J12.4) sont retirees le meme jour : leurs
-// lecteurs `research` sont migres (accesseurs `ModeScoreComponent()`, `KnownWeaponHigh32Lookup` /
-// `KnownWeaponHigh32Copie`, `GrenadeTypeIDsByRank()` + `GrenadeRankCount`, `WeaponHitDistanceEdges()`).
+// Le decodeur n en a AUCUNE. Les quatre entrees posees le 2026-09-30 (J12.4) sont retirees le meme
+// jour : leurs lecteurs `research` sont migres (accesseurs `ModeScoreComponent()`,
+// `KnownWeaponHigh32Lookup` / `KnownWeaponHigh32Copie`, `GrenadeTypeIDsByRank()` +
+// `GrenadeRankCount`, `WeaponHitDistanceEdges()`).
+//
+// [varsExporteesAdmises] porte les NEUF variables de `libs/himap` que l extension du 2026-11-08 a
+// trouvees : une baseline gelee, datee, par nom. Elle ne s ouvre pas a une variable neuve, et une
+// entree dont la variable a disparu se retire (`TestVarsExporteesAdmisesNeSontPasPerimees`).
 //
 // # LA MUTATION QUI DOIT ROUGIR
 //
@@ -44,20 +51,78 @@ import (
 	"testing"
 )
 
-// catalogueArmesHorsRatchet : le catalogue d'armes `film/filmshell`, EXCLU de la mesure. Entre sous
-// `film/` le 2026-10-29 (plan D2, item 2.5) en portant quinze tables exportees (`WeaponIDs`,
-// `WeaponTimingByID`, ...) lues par `games/weapons`, `platform/duckdb`, `sync/killcollector` et
-// le decodeur : il n'etait pas dans le perimetre quand il vivait sous `games/weapons`, et le
-// rapatrier n'a pas change sa nature (dette ADR 0012 preexistante, hors D2). Les rendre
-// accesseurs est un lot a part ; tant qu'il n'a pas lieu, l'exclusion est ICI, datee, au lieu
-// d'une allowlist par nom, et elle disparait avec ce lot.
-const catalogueArmesHorsRatchet = racineBriqueFilm + "/filmshell"
+// varsExporteesAdmises : les variables de paquet exportees que le ratchet tolere, cle
+// `dossier.Nom` (dossier relatif a la racine du depot, en slash), valeur la raison. BASELINE DU
+// 2026-11-08 (extension aux briques voisines du decodeur) : elle ne recoit aucune entree neuve.
+//
+// Deux familles, toutes dans `libs/himap/himap`. Les TABLES (`CartesForge`, `TypesVolumesDeMort`,
+// `ModulesDesEquipements`, `StylesFond`) sont lues sans etre ecrites : des accesseurs rendant une
+// copie les remplaceraient. Les REGLAGES (`LumiereRendu`, `NiveauHautNavmesh`,
+// `MargeSolVuDuDessousCarte`, `SeuilSubstitution`, `SeuilCouvertureCarte`) sont poses puis rendus
+// par la cuisson d une carte (`CuitCarteForge`), ce qui n est pas sur entre deux cuissons
+// concurrentes d un meme processus. Retrait : le jour ou la cuisson passe ses reglages en
+// parametre (les cinq reglages) et ou les tables deviennent des accesseurs.
+var varsExporteesAdmises = map[string]string{
+	"libs/himap/himap.CartesForge":              "table de cartes, lue seule (2026-11-08)",
+	"libs/himap/himap.TypesVolumesDeMort":       "table de types de volumes, lue seule (2026-11-08)",
+	"libs/himap/himap.ModulesDesEquipements":    "liste de modules, lue seule (2026-11-08)",
+	"libs/himap/himap.StylesFond":               "liste de styles, lue seule (2026-11-08)",
+	"libs/himap/himap.LumiereRendu":             "reglage de rendu, pose par la cuisson (2026-11-08)",
+	"libs/himap/himap.NiveauHautNavmesh":        "reglage de rendu, pose par la cuisson (2026-11-08)",
+	"libs/himap/himap.MargeSolVuDuDessousCarte": "reglage de rendu, pose par la cuisson (2026-11-08)",
+	"libs/himap/himap.SeuilSubstitution":        "reglage de rendu, pose par la cuisson (2026-11-08)",
+	"libs/himap/himap.SeuilCouvertureCarte":     "reglage de rendu, pose par la cuisson (2026-11-08)",
+}
 
 func TestAucuneVarExporteeModifiableDansLeDecodeur(t *testing.T) {
-	// Chemins relatifs a la racine du depot : la brique et ses lecteurs de LevelUp.
+	trouvees, fichiers := mesurerVarsExportees(t)
+	if fichiers == 0 {
+		t.Fatal("aucun fichier balaye : le ratchet ne mesure plus rien")
+	}
+	var fautes []string
+	for cle := range trouvees {
+		if _, admise := varsExporteesAdmises[cle]; !admise {
+			fautes = append(fautes, cle)
+		}
+	}
+	if len(fautes) > 0 {
+		sort.Strings(fautes)
+		t.Fatalf("variable(s) de paquet exportee(s) modifiable(s) dans le perimetre du decodeur et des briques :\n  %s\n\n"+
+			"Une valeur exportee est une constante, une fonction (accesseur rendant une copie) ou un "+
+			"champ ; la variable est non exportee (cf. l en-tete). Mettre la variable dans "+
+			"varsExporteesAdmises N EST PAS une reponse : cette baseline est datee et fermee au "+
+			"2026-11-08.", strings.Join(fautes, "\n  "))
+	}
+}
+
+// TestVarsExporteesAdmisesNeSontPasPerimees : une entree de la baseline dont la variable n existe
+// plus (supprimee, devenue non exportee, devenue constante) se RETIRE.
+func TestVarsExporteesAdmisesNeSontPasPerimees(t *testing.T) {
+	trouvees, _ := mesurerVarsExportees(t)
+	entrees := make([]string, 0, len(varsExporteesAdmises))
+	for cle := range varsExporteesAdmises {
+		entrees = append(entrees, cle)
+	}
+	sort.Strings(entrees)
+	for _, cle := range entrees {
+		if !trouvees[cle] {
+			t.Errorf("%s est dans varsExporteesAdmises mais n est plus une variable exportee "+
+				"modifiable : retirer l entree (la variable est rentree dans la regle).", cle)
+		}
+	}
+}
+
+// mesurerVarsExportees rend les variables de paquet exportees (hors erreurs sentinelles) des
+// racines du perimetre, cle `dossier.Nom`, et le nombre de fichiers balayes.
+func mesurerVarsExportees(t *testing.T) (map[string]bool, int) {
+	t.Helper()
+	// Chemins relatifs a la racine du depot : la brique, ses lecteurs de LevelUp, les autres briques.
 	racine := workspaceRoot(t)
 	racines := []string{
 		racineBriqueFilm,
+		"libs/gamefiles",
+		"libs/haloapi",
+		"libs/himap",
 		"apps/go-api/internal/replaybuild",
 		"apps/go-api/internal/sync/killcollector",
 	}
@@ -79,7 +144,7 @@ func TestAucuneVarExporteeModifiableDansLeDecodeur(t *testing.T) {
 			rel, _ := filepath.Rel(racine, p)
 			rel = filepath.ToSlash(rel)
 			if d.IsDir() {
-				if rel == racineBriqueFilm+"/research" || rel == catalogueArmesHorsRatchet {
+				if rel == racineBriqueFilm+"/research" {
 					return filepath.SkipDir
 				}
 				return nil
@@ -114,19 +179,7 @@ func TestAucuneVarExporteeModifiableDansLeDecodeur(t *testing.T) {
 			t.Fatalf("balayage de %s : %v", r, err)
 		}
 	}
-	if fichiers == 0 {
-		t.Fatal("aucun fichier balaye : le ratchet ne mesure plus rien")
-	}
-	var fautes []string
-	for cle := range trouvees {
-		fautes = append(fautes, cle)
-	}
-	if len(fautes) > 0 {
-		sort.Strings(fautes)
-		t.Fatalf("variable(s) de paquet exportee(s) modifiable(s) dans le perimetre du decodeur :\n  %s\n\n"+
-			"Une valeur exportee est une constante, une fonction (accesseur rendant une copie) ou un "+
-			"champ ; la variable est non exportee (cf. l en-tete).", strings.Join(fautes, "\n  "))
-	}
+	return trouvees, fichiers
 }
 
 // estSentinelleDErreur : `ErrXxx = errors.New(...)` ou `fmt.Errorf(...)`.

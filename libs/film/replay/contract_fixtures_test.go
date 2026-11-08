@@ -48,7 +48,7 @@ package replay
 // REGENERATION (jamais d'edition a la main) — DEUX conditions explicites, comme
 // TestGoldenInputsRegenerate :
 //
-//	REPLAY_CONTRACT_UPDATE=1 go test ./internal/games/halo_infinite/film/replay/ \
+//	REPLAY_CONTRACT_UPDATE=1 go test ./replay/ \
 //	  -run ContractFixtures -update
 //
 // La seconde condition n'est pas une ceinture de plus : `-update` seul est la porte du golden
@@ -69,6 +69,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/JGtm/LevelUp/libs/film/internal/depottest"
 )
 
 // contractFixturesEnv : la seconde condition explicite de la regeneration (cf. en-tete).
@@ -214,7 +216,7 @@ type contractManifest struct {
 // Go parce que c'est le producteur qui sait ce que le document contient.
 func contractFixturesDir(t *testing.T) string {
 	t.Helper()
-	root := racineDepot(t)
+	root := depottest.Racine(t)
 	return filepath.Join(root, "apps", "web", "src", "features", "match-replay",
 		"test", "fixtures", "go")
 }

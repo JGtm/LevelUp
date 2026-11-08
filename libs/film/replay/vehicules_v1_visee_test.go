@@ -32,7 +32,7 @@ package replay
 //
 //	CGO_ENABLED=0 ATT_FILM=<depot>/data/cache \
 //	  V0_FILMS="0d76e8f1:behemoth,fccc61cd:launch site,4898d586:behemoth" \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run TestV1Visee -v -timeout 120m
+//	  go test ./replay/ -run TestV1Visee -v -timeout 120m
 
 import (
 	"fmt"

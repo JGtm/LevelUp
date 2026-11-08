@@ -28,7 +28,7 @@ package grammar
 // lu par image). Sinon l instrument est faux, et le rapport le DIT au lieu de publier un chiffre.
 //
 //	MOUV532D_FILM=<repertoire de chunks> \
-//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ \
+//	  go test -tags=research ./internal/grammar/ \
 //	    -run '^TestMouvement532Trame$' -count=1 -v -timeout 60m
 
 import (

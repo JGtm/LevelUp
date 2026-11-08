@@ -1,7 +1,7 @@
 package fallback
 
 // registre_objectifs.go — les replis du lecteur d'ACTIONS D'OBJECTIF
-// (`internal/games/halo_infinite/film/internal/facts/objectives/`) et du CONSTRUCTEUR d'artefacts
+// (`internal/facts/objectives/`) et du CONSTRUCTEUR d'artefacts
 // (`internal/replaybuild/`).
 //
 // NOTE D'ARCHITECTURE : `internal/analysis/` n'importe JAMAIS `internal/games/{slug}/`
@@ -17,11 +17,10 @@ package fallback
 // (`objectives.ReplisALaConsultation`), versé par la même table.
 
 const (
-	pkgObjectiveEvents = "libs/film/internal/facts/objectives/"
-	pkgReplaybuild     = "apps/go-api/internal/replaybuild/"
+	pkgObjectiveEvents = "internal/facts/objectives/"
 	// pkgSignaux : la lecture du statborg, descendue de `objectives` dans la grammaire au lot 2.6 de
 	// la representation intermediaire ; ses deux replis s y decident, `objectives` les porte.
-	pkgSignaux = "libs/film/internal/grammar/signaux/"
+	pkgSignaux = "internal/grammar/signaux/"
 )
 
 var registreObjectifsEtConstruction = []Repli{
@@ -31,14 +30,15 @@ var registreObjectifsEtConstruction = []Repli{
 		Mecanisme: "en-tete non reconnu, aucun composant decode, ou compteur hors domaine : l'enregistrement est abandonne par un `continue` muet",
 		Condition: CondNonResolu,
 		Ordre:     OrdreApresLecture,
-		Sites: []Site{{Fichier: pkgSignaux + "statborg.go", Ancre: "c.EnregistrementsAbandonnes += abandonnes"}, {Fichier: pkgObjectiveEvents + "statborg.go", Ancre: "EnregistrementsAbandonnes: l.EnregistrementsAbandonnes,"}, {Fichier: pkgReplaybuild + "matchfacts.go", Ancre: "sb.Replis.Plus(pont.Identite().ComptesDesReplis())"}, siteDeVersement("NomEnregistrementStatborgAbandonne"), {
+		Sites: []Site{{Fichier: pkgSignaux + "statborg.go", Ancre: "c.EnregistrementsAbandonnes += abandonnes"}, {Fichier: pkgObjectiveEvents + "statborg.go", Ancre: "EnregistrementsAbandonnes: l.EnregistrementsAbandonnes,"}, siteDeVersement("NomEnregistrementStatborgAbandonne"), {
 			Fichier: pkgSignaux + "statborg.go",
 			Ancre:   "if len(comps) == 0 || !statCountersInDomain(comps) {",
 		}},
-		DatePose:        dateAudit0E,
-		CibleRetrait:    "le volet statborg du registre des reports (toujours ouvert) ; a defaut, " + retraitRegle4,
-		CritereRetrait:  "abandons comptes par cause et rapportes a la population lue ; retrait quand le compte est nul",
-		CompteurBranche: true,
+		CompleteeParLHote: true,
+		DatePose:          dateAudit0E,
+		CibleRetrait:      "le volet statborg du registre des reports (toujours ouvert) ; a defaut, " + retraitRegle4,
+		CritereRetrait:    "abandons comptes par cause et rapportes a la population lue ; retrait quand le compte est nul",
+		CompteurBranche:   true,
 	},
 	{
 		Nom:       "repli_composants_statborg_arretes",
@@ -68,7 +68,7 @@ var registreObjectifsEtConstruction = []Repli{
 			// LE COMPTE est emis par le calque de score de `replay` (inversion de dependance : `analysis`
 			// rend une donnee pure, l appelant qui porte le compteur de la cuisson la compte). Site
 			// inscrit a la fusion du lot 1.9.11 (2026-09-17), le ratchet des sites l exigeait.
-			Fichier: "libs/film/replay/score_timeline.go",
+			Fichier: "replay/score_timeline.go",
 			Ancre:   "fb.Declenche(fallback.NomReplayMancheZeroDecretee)",
 		}},
 		DatePose: dateAudit0E,
@@ -199,53 +199,44 @@ var registreObjectifsEtConstruction = []Repli{
 		// cuisson nomme ses actions par `NamedEventsFrom` sur la famille de `ObjectiveTypeOf`. L entree
 		// reste inscrite (le code existe et decide dans l outil) et sort du ratchet des compteurs.
 		HorsProduction: &OutilHorsProduction{
-			Date:      date0927,
-			Raison:    "le seul appelant de objectives.Extract est l outil de diagnostic cmd/diag_weapons_v3 ; aucune cuisson ni passe de synchronisation ne l execute",
-			Symbole:   "Extract",
-			Appelants: []string{"apps/go-api/cmd/diag_weapons_v3"},
+			Date:    date0927,
+			Raison:  "le seul appelant de objectives.Extract est l outil de diagnostic cmd/diag_weapons_v3 ; aucune cuisson ni passe de synchronisation ne l execute",
+			Symbole: "Extract",
 		},
+		CompleteeParLHote: true,
 	},
 	{
-		Nom:       "repli_assistant_non_resolu_abandonne",
-		Fait:      "l'assistant d'un frag publie dans les episodes d'equipement",
-		Mecanisme: "le nom de l'assistant ne se resout pas en xuid : le champ reste vide et le frag est publie sans assistant",
-		Condition: CondNonResolu,
-		Ordre:     OrdreApresLecture,
-		Sites: []Site{{Fichier: pkgReplaybuild + "kills.go", Ancre: "r.assistantsNonResolus++"}, {Fichier: pkgReplaybuild + "kills.go", Ancre: "fb.DeclencheN(decfilm.NomAssistantNonResoluAbandonne, r.assistantsNonResolus)"}, {
-			Fichier: pkgReplaybuild + "kills.go",
-			Ancre:   "ref.AssistXUID, ref.AssistKnown = aXUID, true",
-		}},
-		DatePose:        dateAudit0E,
-		CibleRetrait:    "la table du film nomme les indices de l assistant ; a defaut, " + retraitRegle4,
-		CritereRetrait:  "0 assistant non resolu sur les 8 builds",
-		CompteurBranche: true,
+		Nom:               "repli_assistant_non_resolu_abandonne",
+		Fait:              "l'assistant d'un frag publie dans les episodes d'equipement",
+		Mecanisme:         "le nom de l'assistant ne se resout pas en xuid : le champ reste vide et le frag est publie sans assistant",
+		Condition:         CondNonResolu,
+		Ordre:             OrdreApresLecture,
+		CompleteeParLHote: true,
+		DatePose:          dateAudit0E,
+		CibleRetrait:      "la table du film nomme les indices de l assistant ; a defaut, " + retraitRegle4,
+		CritereRetrait:    "0 assistant non resolu sur les 8 builds",
+		CompteurBranche:   true,
 	},
 	{
-		Nom:       "repli_repere_neutre_generique_conserve",
-		Fait:      "l'icone d'une mort neutre",
-		Mecanisme: "nature non etablie par l'adaptateur d'assets : le fil garde son repere generique",
-		Condition: CondSectionAbsente,
-		Ordre:     OrdreApresLecture,
-		Sites: []Site{{Fichier: pkgReplaybuild + "replaybuild.go", Ancre: "fb.Declenche(decfilm.NomRepereNeutreGeneriqueConserve)"}, {
-			Fichier: pkgReplaybuild + "replaybuild.go",
-			Ancre:   "kind, img, ok := adapter.NeutralDeathIcon(d.Source.Tag)",
-		}},
-		DatePose:        dateAudit0E,
-		CibleRetrait:    "completion de la table d'assets de morts neutres",
-		CritereRetrait:  "0 mort neutre sans icone nommee sur le parc",
-		CompteurBranche: true,
+		Nom:               "repli_repere_neutre_generique_conserve",
+		Fait:              "l'icone d'une mort neutre",
+		Mecanisme:         "nature non etablie par l'adaptateur d'assets : le fil garde son repere generique",
+		Condition:         CondSectionAbsente,
+		Ordre:             OrdreApresLecture,
+		CompleteeParLHote: true,
+		DatePose:          dateAudit0E,
+		CibleRetrait:      "completion de la table d'assets de morts neutres",
+		CritereRetrait:    "0 mort neutre sans icone nommee sur le parc",
+		CompteurBranche:   true,
 	},
 	{
-		Nom:       "repli_relais_de_bot_abandonne",
-		Fait:      "quel remplacant herite des vies anonymes d'un siege",
-		Mecanisme: "le xuid n'a pas la forme bid(N.0) : le relais est abandonne (un humain est nomme par le fil des morts)",
-		Condition: CondNonResolu,
-		Ordre:     OrdreApresLecture,
-		Sites: []Site{{Fichier: pkgReplaybuild + "replaybuild.go", Ancre: "fb.Declenche(decfilm.NomRelaisDeBotAbandonne)"}, {
-			Fichier: pkgReplaybuild + "replaybuild.go",
-			Ancre:   "if _, err := fmt.Sscanf(p.XUID, \"bid(%d.0)\", &id); err != nil {",
-		}},
-		DatePose: dateAudit0E,
+		Nom:               "repli_relais_de_bot_abandonne",
+		Fait:              "quel remplacant herite des vies anonymes d'un siege",
+		Mecanisme:         "le xuid n'a pas la forme bid(N.0) : le relais est abandonne (un humain est nomme par le fil des morts)",
+		Condition:         CondNonResolu,
+		Ordre:             OrdreApresLecture,
+		CompleteeParLHote: true,
+		DatePose:          dateAudit0E,
 		// CIBLE CORRIGEE AU LOT 1.9.14 (2026-09-15) : ce lot a mesure le critere et il est TENU —
 		// sur les quatre temoins, les 95 entrees de roster ont TOUTES un siege publie, donc zero
 		// remplacant humain sans siege. Mais ce repli ne porte PAS sur le siege : il porte sur le
@@ -257,34 +248,28 @@ var registreObjectifsEtConstruction = []Repli{
 		CompteurBranche: true,
 	},
 	{
-		Nom:       "repli_catalogue_de_zones_absent",
-		Fait:      "l'etat des zones d'un match",
-		Mecanisme: "le titre n'a pas de table d'objectifs : le rejeu est publie SANS aucun etat de zone",
-		Condition: CondSectionAbsente,
-		Ordre:     OrdreApresLecture,
-		Sites: []Site{{Fichier: pkgReplaybuild + "zones.go", Ancre: "fb.Declenche(decfilm.NomCatalogueDeZonesAbsent)"}, {
-			Fichier: pkgReplaybuild + "zones.go",
-			Ancre:   "titre sans table d'objectifs",
-		}},
-		DatePose:        dateAudit0E,
-		CibleRetrait:    "aucune (degradation gracieuse multi-titre, `ErrCapabilityNotSupported`) ; le COMPTE est ce qui manque",
-		CritereRetrait:  "coverage.zones distingue « titre sans table » de « carte hors catalogue » ; retrait sans objet",
-		CompteurBranche: true,
+		Nom:               "repli_catalogue_de_zones_absent",
+		Fait:              "l'etat des zones d'un match",
+		Mecanisme:         "le titre n'a pas de table d'objectifs : le rejeu est publie SANS aucun etat de zone",
+		Condition:         CondSectionAbsente,
+		Ordre:             OrdreApresLecture,
+		CompleteeParLHote: true,
+		DatePose:          dateAudit0E,
+		CibleRetrait:      "aucune (degradation gracieuse multi-titre, `ErrCapabilityNotSupported`) ; le COMPTE est ce qui manque",
+		CritereRetrait:    "coverage.zones distingue « titre sans table » de « carte hors catalogue » ; retrait sans objet",
+		CompteurBranche:   true,
 	},
 	{
-		Nom:       "repli_fraicheur_des_derivations_par_taille",
-		Fait:      "les derivations d'un artefact sont-elles a jour",
-		Mecanisme: "comparaison de la REVISION et de la TAILLE en octets de l'artefact — compromis assume, pas une empreinte",
-		Condition: CondFilmMuet,
-		Ordre:     OrdreSansLecture,
-		Sites: []Site{{Fichier: "apps/go-api/internal/sync/replayartifacts/derivations_backlog.go", Ancre: "fb.Declenche(decfilm.NomFraicheurDesDerivationsParTaille)"}, {
-			Fichier: pkgReplaybuild + "derivations_index.go",
-			Ancre:   "return m.Rev == DerivationsRev && int64(m.ArtifactBytes) == st.Size()",
-		}},
-		DatePose:        dateAudit0E,
-		CibleRetrait:    "la recuisson selective par couche : une revision par calque remplace la taille ; a defaut, " + retraitRegle4,
-		CritereRetrait:  "la fraicheur se juge sur la revision de calque portee par le document, jamais sur une taille",
-		CompteurBranche: true,
+		Nom:               "repli_fraicheur_des_derivations_par_taille",
+		Fait:              "les derivations d'un artefact sont-elles a jour",
+		Mecanisme:         "comparaison de la REVISION et de la TAILLE en octets de l'artefact — compromis assume, pas une empreinte",
+		Condition:         CondFilmMuet,
+		Ordre:             OrdreSansLecture,
+		CompleteeParLHote: true,
+		DatePose:          dateAudit0E,
+		CibleRetrait:      "la recuisson selective par couche : une revision par calque remplace la taille ; a defaut, " + retraitRegle4,
+		CritereRetrait:    "la fraicheur se juge sur la revision de calque portee par le document, jamais sur une taille",
+		CompteurBranche:   true,
 	},
 	{
 		// POSE AU LOT L3 DES RETOURS REJEU (2026-09-23, constat L3-R8 de sa revue adverse). La regle
@@ -299,16 +284,14 @@ var registreObjectifsEtConstruction = []Repli{
 		Ordre:     OrdreApresLecture,
 		Sites: []Site{
 			{Fichier: pkgFilmdec + "deaths_source.go", Ancre: "return nums[len(nums)-1], true, nil"},
-			{Fichier: pkgReplaybuild + "filmfacts_cuisson.go", Ancre: "func jugerFilmSansManifeste("},
-			// COMPTE : le verdict rendu par la lecture et note au rapport du contexte par l etage du
-			// pont d identite — UNE lecture du fil par balayage de cuisson (lot J8.7).
 			{Fichier: pkgFilmdec + "pont_identite.go", Ancre: "fc.NoterReplis(ComptesDesReplis{TempsFortsAuDernierNumero: unSi(auDernierNumero)})"},
 			siteDeVersement("NomTempsFortsDernierNumero"),
 		},
-		DatePose:        "2026-09-23",
-		CibleRetrait:    "le refus des films sans manifeste par la cuisson (replaybuild.jugerFilmSansManifeste), le jour ou replay-build et les instruments qui chargent un repertoire nu (grammar.ScanFilmDeaths, descendue de replay au lot J4.2) lisent aussi son manifeste",
-		CritereRetrait:  "0 repertoire de morceaux sans manifeste au cache (1 625 sur 1 625 en portent un le 2026-09-23) et 0 WARN (film SANS manifeste) de la cuisson sur une republication complete du parc",
-		CompteurBranche: true,
+		CompleteeParLHote: true,
+		DatePose:          "2026-09-23",
+		CibleRetrait:      "le refus des films sans manifeste par la cuisson (replaybuild.jugerFilmSansManifeste), le jour ou replay-build et les instruments qui chargent un repertoire nu (grammar.ScanFilmDeaths, descendue de replay au lot J4.2) lisent aussi son manifeste",
+		CritereRetrait:    "0 repertoire de morceaux sans manifeste au cache (1 625 sur 1 625 en portent un le 2026-09-23) et 0 WARN (film SANS manifeste) de la cuisson sur une republication complete du parc",
+		CompteurBranche:   true,
 	},
 	{
 		// LOT J8.4 DU PLAN DE SUITE D AUDIT (2026-09-27), CONSTATS FO-1 / RA2-4 : la voie etait
@@ -325,7 +308,7 @@ var registreObjectifsEtConstruction = []Repli{
 			Fichier: pkgObjectiveEvents + "slotidentity_residue.go",
 			Ancre:   "out.origins[round][slot] = OriginRoundResidue",
 		}, {
-			Fichier: "libs/film/replay/identity_registry_section.go",
+			Fichier: "replay/identity_registry_section.go",
 			Ancre:   "fb.Declenche(fallback.NomIdentiteDeSlotParResiduDeManche)",
 		}},
 		DatePose:        date0927,

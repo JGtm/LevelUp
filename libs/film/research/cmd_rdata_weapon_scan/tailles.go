@@ -39,7 +39,7 @@ func sizesMode(chunkIdx int) {
 				continue
 			}
 			lo := uint32(bitsAt(p.payload, bp+32, 32))
-			if nm, ok := filmshell.WeaponIDToName[(uint64(hi)<<32)|uint64(lo)]; ok {
+			if nm, ok := filmshell.NomDArme((uint64(hi) << 32) | uint64(lo)); ok {
 				armes = append(armes, nm)
 			}
 		}
@@ -133,7 +133,7 @@ func litCtx(reg *grammar.Registry, chunkIdx, pktIdx int) {
 		}
 		lo := uint32(bitsAt(p.payload, bp+32, 32))
 		id64 := (uint64(hi) << 32) | uint64(lo)
-		nm, ok := filmshell.WeaponIDToName[id64]
+		nm, ok := filmshell.NomDArme(id64)
 		if !ok {
 			continue
 		}

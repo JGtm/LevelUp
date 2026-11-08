@@ -95,7 +95,7 @@ func TestLaBasculeNeTouchePasAuVerrouSolo(t *testing.T) {
 			t.Fatalf("%s : %v", chemin, err)
 		}
 		// SUR LES LIGNES DE CODE SEULEMENT : ce fichier-ci EXPLIQUE la decision en commentaire,
-		// et un balayage du texte entier mordrait sa propre documentation. `filmproc` reste
+		// et un balayage du texte entier mordrait sa propre documentation. `filmrun` reste
 		// importe par `refus_de_cuisson.go` pour le PROTOCOLE DE CODE DE SORTIE, qui n est pas le
 		// verrou — c est le nom du verrou qu on interdit, pas le paquet.
 		for i, ligne := range strings.Split(string(blob), "\n") {

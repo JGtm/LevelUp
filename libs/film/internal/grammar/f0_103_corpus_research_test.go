@@ -14,8 +14,8 @@ package grammar
 // LECTURE SEULE. Garde : `F0_ARTS` (racine des artefacts) et `F0_LABELS` (instantane du catalogue de libelles).
 //
 //	CGO_ENABLED=0 F0_ARTS=<depot>/data/cache/replays/halo_infinite \
-//	  F0_LABELS=<depot>/apps/go-api/internal/games/halo_infinite/film/replay/testdata/golden_catalogue_titre.json \
-//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestF0CorpusSpent$' -v
+//	  F0_LABELS=<depot>/libs/film/replay/testdata/golden_catalogue_titre.json \
+//	  go test -tags=research ./internal/grammar/ -run '^TestF0CorpusSpent$' -v
 
 import (
 	"encoding/json"

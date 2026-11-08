@@ -23,7 +23,7 @@ package grammar
 // LECTURE SEULE, N ASSERTE RIEN, UN SEUL FILM PAR INVOCATION, aucune base ouverte :
 //
 //	TI40D_FILM=<repo>/data/cache/film_chunks/4f77afc1 TI40D_CARTE="Flood Gulch" \
-//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ \
+//	  go test -tags=research ./internal/grammar/ \
 //	  -run '^TestTi40MarcheDesync$' -v -timeout 60m
 
 import (

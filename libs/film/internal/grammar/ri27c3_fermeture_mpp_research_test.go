@@ -14,7 +14,7 @@ package grammar
 // (2026-10-05). Il rend aussi, par archetype, la part des identites connues sous chaque decoupage.
 //
 //	RI27C3_CATALOGUE=<catalogue_tags.tsv> RI27C3_OUT=<dossier> \
-//	  go test -tags=research -count=1 -run '^TestRI27c3' ./internal/games/halo_infinite/film/internal/grammar/
+//	  go test -tags=research -count=1 -run '^TestRI27c3' ./internal/grammar/
 
 import (
 	"bufio"

@@ -47,10 +47,14 @@ var goosArchSuffixes = []string{
 // d'exploitation, ou type de donnee propre a une architecture) — pas un fichier metier dont le
 // nom tombe par hasard sur un suffixe.
 var goosSuffixAllowed = map[string]string{
-	"libs/film/filmproc/alive_windows.go": "vie d'un processus : OpenProcess/GetExitCodeProcess (Win32), " +
+	"apps/go-api/internal/filmrun/alive_windows.go": "vie d'un processus : OpenProcess/GetExitCodeProcess (Win32), " +
 		"ajoute le 2026-10-17 (lecture du detenteur du verrou de decodage)",
-	"libs/film/filmproc/priority_windows.go":                     "priorite de processus : SetPriorityClass (Win32)",
-	"libs/film/filmproc/selfpriority_windows.go":                 "priorite du processus courant : Win32",
+	"apps/go-api/internal/filmrun/priority_windows.go":     "priorite de processus : SetPriorityClass (Win32)",
+	"apps/go-api/internal/filmrun/selfpriority_windows.go": "priorite du processus courant : Win32",
+	"libs/film/internal/decodelock/priorite_windows.go": "priorite du processus d'un instrument de la brique : " +
+		"SetPriorityClass (Win32), ajoute le 2026-11-04 (lot 2.1 de la fin du decouplage)",
+	"apps/go-api/internal/platform/filelock/filelock_windows.go": "verrou de fichier entre processus : " +
+		"LockFileEx (Win32), copie jumelle de libs/film/internal/filelock, ajoute le 2026-11-04",
 	"libs/gamefiles/himodule/projection_windows.go":              "projection memoire d'un module : CreateFileMapping (Win32)",
 	"apps/go-api/internal/platform/diskfree/diskfree_windows.go": "espace disque : GetDiskFreeSpaceEx (Win32)",
 	"libs/film/internal/filelock/filelock_windows.go": "verrou de fichier entre processus : " +

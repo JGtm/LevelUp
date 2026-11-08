@@ -23,7 +23,7 @@ package grammar
 // LECTURE SEULE, N ASSERTE RIEN, UN SEUL FILM PAR INVOCATION, aucune base ouverte :
 //
 //	P4_FILM=<abs>/data/cache/film_chunks/1c4c63c2 P4_CARTE="<carte>" P4_OUT=<abs>/prefixe \
-//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ \
+//	  go test -tags=research ./internal/grammar/ \
 //	  -run '^TestParam4PreuveDesLignes$' -v -timeout 60m
 //
 // Il ecrit `<prefixe>.ranks.tsv` et `<prefixe>.inv.tsv`. Le meme fichier, joue sur l arbre de la

@@ -31,11 +31,11 @@ package grammar
 // UN SEUL FILM PAR PROCESSUS (memoire de depot `reference_statrecords_corpus_sweep_ram_bomb`,
 // deux plantages machine en aout 2026) : la garde prend UN chemin, jamais une liste.
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	$env:CGO_ENABLED=0
 //	$env:ZONE_FILM="<depot>/data/cache/film_chunks/7344d24f"
-//	go test -count=1 -run TestZoneCensusLotC -v ./internal/games/halo_infinite/film/internal/grammar/
+//	go test -count=1 -run TestZoneCensusLotC -v ./internal/grammar/
 
 import (
 	"os"
@@ -82,7 +82,7 @@ func zcOutDir(t *testing.T) string {
 	return out
 }
 
-// zcModuleRoot remonte jusqu'au go.mod (racine du module Go, apps/go-api).
+// zcModuleRoot remonte jusqu'au go.mod (racine du module Go, libs/film).
 func zcModuleRoot(t *testing.T) string {
 	t.Helper()
 	dir, err := os.Getwd()

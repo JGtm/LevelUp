@@ -26,10 +26,10 @@ package grammar
 // LECTURE SEULE, gardé par I54_FILM, sauté partout ailleurs (CI comprise). UN SEUL
 // décodage filmdec par process (globaux de paquet).
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 I54_FILM=<repo>/data/cache/film_chunks/000d5950 \
-//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestI54MobilityActionUsage$' -timeout 10m -v
+//	  go test -tags=research ./internal/grammar/ -run '^TestI54MobilityActionUsage$' -timeout 10m -v
 
 import (
 	"os"

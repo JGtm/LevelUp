@@ -19,11 +19,11 @@ package replay
 //
 // RIEN N'EST PUBLIE : aucun champ de document, aucun schema. Instrument de mesure, sous garde.
 //
-// USAGE (depuis apps/go-api, UN film par processus, avant-plan — D17) :
+// USAGE (depuis libs/film, UN film par processus, avant-plan — D17) :
 //
 //	$env:CGO_ENABLED=0
 //	$env:ZONE_FILM="<depot>/data/cache/film_chunks/01e1f945"
-//	go test -count=1 -run TestCollineProprieteTemoin -v -timeout 30m ./internal/games/halo_infinite/film/replay/
+//	go test -count=1 -run TestCollineProprieteTemoin -v -timeout 30m ./replay/
 
 import (
 	"fmt"
@@ -32,6 +32,8 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	"github.com/JGtm/LevelUp/libs/film/internal/depottest"
 
 	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
 )
@@ -184,7 +186,7 @@ func ctOutDir(t *testing.T) string {
 		p2aMkdir(t, v)
 		return v
 	}
-	out := filepath.Join(racineDepot(t), ".ai", "archive", "V7.5", "replay2d", "registre_film", ctOutDirName)
+	out := filepath.Join(depottest.Racine(t), ".ai", "archive", "V7.5", "replay2d", "registre_film", ctOutDirName)
 	p2aMkdir(t, out)
 	return out
 }

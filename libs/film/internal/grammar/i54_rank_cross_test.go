@@ -20,10 +20,10 @@ package grammar
 // LECTURE SEULE, gardé par I54X_FILM, sauté partout ailleurs (CI comprise). UN SEUL
 // décodage filmdec par process : le verrou est pris pour tout le test.
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 I54X_FILM=<repo>/data/cache/film_chunks/000d5950 \
-//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestI54CrossI48Rank$' -timeout 30m -v
+//	  go test ./internal/grammar/ -run '^TestI54CrossI48Rank$' -timeout 30m -v
 
 import (
 	"fmt"

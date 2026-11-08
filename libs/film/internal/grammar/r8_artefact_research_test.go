@@ -15,10 +15,10 @@ package grammar
 // Gardes : `R8_ARTIFACTS` (dossier des artefacts) — absent, tous les tests R8 sont sautes.
 // `R8_IDS` (liste d'identifiants a 8 hex, separes par des virgules) borne le balayage.
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 R8_ARTIFACTS=<repo>/data/cache/replays/halo_infinite \
-//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestR8' -count=1 -timeout 30m -v
+//	  go test -tags=research ./internal/grammar/ -run '^TestR8' -count=1 -timeout 30m -v
 
 import (
 	"encoding/json"

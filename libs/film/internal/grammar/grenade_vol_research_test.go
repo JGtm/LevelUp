@@ -15,7 +15,7 @@ package grammar
 // USAGE (lecture seule, aucun film = saut propre) :
 //
 //	GRENVOL_FILMS=<racine data/cache> GRENVOL_IDS='d6918972=origin;d9781168=dredge' \
-//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar -run TestGrenadeVol -v -timeout 1800s
+//	  go test -tags=research ./internal/grammar -run TestGrenadeVol -v -timeout 1800s
 
 import (
 	"os"

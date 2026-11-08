@@ -9,20 +9,20 @@ import (
 
 	"levelup/go-api/internal/config"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
+	"levelup/go-api/internal/filmrun"
 )
 
 // Un verrou tenu = refus immediat, detenteur nomme, code de sortie 2 ; rendu, la commande passe.
 func TestPrendreLeVerrouDeDecodage_RefusImmediatPuisPasse(t *testing.T) {
 	cfg := &config.AppConfig{RepoRoot: t.TempDir()}
-	tenu, err := filmproc.AcquireSolo(cfg.PathResolver().CacheRootDir(), "film-regen", "un-film")
+	tenu, err := filmrun.AcquireSolo(cfg.PathResolver().CacheRootDir(), "film-regen", "un-film")
 	if err != nil {
 		t.Fatalf("verrou temoin : %v", err)
 	}
 
 	_, err = prendreLeVerrouDeDecodage(cfg, outilBackfillKillSource)
 	var tenuErr *verrouDeDecodageTenu
-	if !errors.As(err, &tenuErr) || !errors.Is(err, filmproc.ErrDecodeBusy) {
+	if !errors.As(err, &tenuErr) || !errors.Is(err, filmrun.ErrDecodeBusy) {
 		t.Fatalf("erreur = %v, attendu un refus d'occupation (verrouDeDecodageTenu / ErrDecodeBusy)", err)
 	}
 	if !strings.Contains(err.Error(), "film-regen") || !strings.Contains(err.Error(), outilBackfillKillSource) {
@@ -41,7 +41,7 @@ func TestPrendreLeVerrouDeDecodage_RefusImmediatPuisPasse(t *testing.T) {
 		t.Fatalf("verrou libre : %v", err)
 	}
 	// Tant que la commande le tient, une seconde prise est refusee.
-	if _, err := prendreLeVerrouDeDecodage(cfg, "autre"); !errors.Is(err, filmproc.ErrDecodeBusy) {
+	if _, err := prendreLeVerrouDeDecodage(cfg, "autre"); !errors.Is(err, filmrun.ErrDecodeBusy) {
 		t.Fatalf("seconde prise = %v, attendu un refus", err)
 	}
 	release()
@@ -105,7 +105,7 @@ func usesInCode(src, motif string) bool {
 // serveur qui cuit), la passe qui decode le prend.
 func TestVerrouDeLaPasse_SeulLeDecodageLePrend(t *testing.T) {
 	cfg := &config.AppConfig{RepoRoot: t.TempDir()}
-	tenu, err := filmproc.AcquireSolo(cfg.PathResolver().CacheRootDir(), "film-regen", "un-film")
+	tenu, err := filmrun.AcquireSolo(cfg.PathResolver().CacheRootDir(), "film-regen", "un-film")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,10 +117,10 @@ func TestVerrouDeLaPasse_SeulLeDecodageLePrend(t *testing.T) {
 		}
 		relacher()
 	}
-	if _, err := verrouDeLaPasse(cfg, killsourceOptions{}); !errors.Is(err, filmproc.ErrDecodeBusy) {
+	if _, err := verrouDeLaPasse(cfg, killsourceOptions{}); !errors.Is(err, filmrun.ErrDecodeBusy) {
 		t.Fatalf("la passe qui decode doit etre refusee : %v", err)
 	}
-	if _, err := verrouDeLaPasse(cfg, killsourceOptions{online: true}); !errors.Is(err, filmproc.ErrDecodeBusy) {
+	if _, err := verrouDeLaPasse(cfg, killsourceOptions{online: true}); !errors.Is(err, filmrun.ErrDecodeBusy) {
 		t.Fatalf("la passe en ligne decode aussi : %v", err)
 	}
 }

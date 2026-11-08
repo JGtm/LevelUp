@@ -22,7 +22,7 @@ package replaybuild
 //
 // # CE QUE LA BRANCHE « RELIRE » NE CHANGE PAS
 //
-//	LE VERROU SOLO       `filmproc.AcquireSolo` est pris par les points d entree (`cmd/*`,
+//	LE VERROU SOLO       `filmrun.AcquireSolo` est pris par les points d entree (`cmd/*`,
 //	                     `internal/replaychild`), jamais par ce paquet. Un rejeu
 //	                     depuis les faits ne decompresse aucun chunk et ne le
 //	                     merite pas, mais le sortir du verrou deplacerait une garantie MEMOIRE

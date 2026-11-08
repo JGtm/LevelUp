@@ -114,7 +114,7 @@ leaderboard enricher: L12.3 and L12.6). There is **no Job object**
 Replay build children are killed by context cancellation (`exec.CommandContext`) and their kernel lock is released by the
 OS; the residual risk is an orphan child after a hard crash of the server, bounded by the film it was decoding. State:
 delivered (`shutdown_stdin.go`, `internal/api/handlers/internal_shutdown.go`, `cmd/devlaunch` for air); L12 adds the test
-that a cancelled context kills the build child (`libs/film/filmproc/runner_annulation_test.go`).
+that a cancelled context kills the build child (`apps/go-api/internal/filmrun/runner_annulation_test.go`).
 
 **D-5 — One definition of a clean stop.** The log line `arrêt: terminé` with `clean=true` **and** no `*.wal` file under
 `<DataRoot>`. In code `clean` is "every phase finished in its time, the persist queue drained without error, and the
@@ -242,7 +242,7 @@ archive, a cooked film's chunks are removed by the post-sync cook right after it
 occupancy (`GET /settings/film-archive`) is measured once and cached for ten minutes with a 20 s walk budget.
 
 **D-12b — Chunks stored in zstd-3 (plan D-18, 2026-11-01).** The single write point of film chunks is
-`filmcache.Write` (every downloader goes through it); it stores a chunk in zstd level 3 when that shortens it, raw
+`filmarchive.Write` (every downloader goes through it); it stores a chunk in zstd level 3 when that shortens it, raw
 otherwise. The manifest `size_bytes` keeps meaning "the size of what the writer received" (decoded bytes), so a
 manifest written before this change stays valid after a chunk is recompressed, and the truncation check compares the
 logical size (the size declared in the zstd frame header). The `source` layer, the only one that touches film bytes
@@ -570,7 +570,7 @@ rebuilds them **on the user's request only**.
   game runs the status says `waiting_for_game`), and no synchronization cycle in progress (`Coordinator.SyncRunning`: the queue yields to the sync). A decode
   already running on the machine (`ErrDecodeBusy`, `ErrActionBusy`) is waited out (20 s, up to 30 tries) and the same film is retried, **through the
   same wait for its turn at every retry** (gate, pause, sync).
-- **One decode at a time, whoever asks.** The solo lock of the data root (`filmproc.AcquireSolo`, per root and not per machine, D-29) bounds every film decode. The queue's child, the
+- **One decode at a time, whoever asks.** The solo lock of the data root (`filmrun.AcquireSolo`, per root and not per machine, D-29) bounds every film decode. The queue's child, the
   post-sync replay cooking, the admin action and the post-sync kill-source step (the only decode that runs inside the server process, taken by
   `RunPostSync` before `CollectMatches`) all take it in immediate refusal. A busy lock **defers** the kill-source pass and the cooking to the next
   cycle (one INFO line, counters `killsource_postsync_reportee_verrou_decodage`, `reportes_verrou` in the cycle summary): never a failure, never a

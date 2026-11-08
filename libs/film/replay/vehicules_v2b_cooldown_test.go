@@ -29,13 +29,13 @@ package replay
 // indexBySlot/slotTrack (shots.go), gwPadsCycleFromGaps + gwPadCycleMaxCV (ground_weapon_rules.go).
 //
 //
-// USAGE (depuis apps/go-api, cache Go ISOLE) :
+// USAGE (depuis libs/film, cache Go ISOLE) :
 //
 //	$env:GOCACHE='<scratch>\gocache_v2b'
 //	CGO_ENABLED=0 V2B_CD_ROOT=<repo>/data/cache \
 //	  V2B_CD_FILMS="0d76e8f1:behemoth,fccc61cd:launch site" \
 //	  V2B_CD_BOUNDS=<repo>/data/titles/halo_infinite/reference/map_quant_bounds.json \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run '^TestV2bCooldown$' -v -timeout 90m
+//	  go test ./replay/ -run '^TestV2bCooldown$' -v -timeout 90m
 
 import (
 	"os"

@@ -31,6 +31,7 @@ import (
 
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/filmarchive"
 	settings_platform "levelup/go-api/internal/platform/settings"
 )
 
@@ -127,15 +128,15 @@ func filmsARecompresser(root, liste string) ([]string, error) {
 
 // recompresserLesFilms traite les films UN A LA FOIS, journalise chacun, et rend le bilan cumule
 // et le nombre de films en erreur. Un film en erreur n'arrete pas la passe.
-func recompresserLesFilms(ctx context.Context, root string, ids []string, dryRun bool, s *sortie) (filmcache.RapportRecompression, int) {
-	var total filmcache.RapportRecompression
+func recompresserLesFilms(ctx context.Context, root string, ids []string, dryRun bool, s *sortie) (filmarchive.RapportRecompression, int) {
+	var total filmarchive.RapportRecompression
 	erreurs := 0
 	debut := time.Now()
 	for i, id := range ids {
 		if ctx.Err() != nil {
 			break
 		}
-		rap, err := filmcache.Recompresser(ctx, root, id, dryRun)
+		rap, err := filmarchive.Recompresser(ctx, root, id, dryRun)
 		total.Ajouter(rap)
 		if err != nil {
 			erreurs++
@@ -206,7 +207,7 @@ func filmArchiveMove(cfg *config.AppConfig, args []string, out io.Writer) error 
 	s := &sortie{w: out}
 	s.printf("film archive-move : %s -> %s (serveur arrete)\n", source, cible)
 	debut := time.Now()
-	n, err := filmcache.Deplacer(ctx, source, cible, filmcache.OptionsDeplacement{Reprise: o.resume, CibleParDefaut: o.toDef})
+	n, err := filmarchive.Deplacer(ctx, source, cible, filmarchive.OptionsDeplacement{Reprise: o.resume, CibleParDefaut: o.toDef})
 	if err != nil {
 		slog.ErrorContext(ctx, "film archive-move: deplacement interrompu", "source", source, "cible", cible, "deplaces", n, "err", err)
 		return fmt.Errorf("deplacement interrompu apres %d films (relancer avec --resume reprend les films restants): %w", n, err)

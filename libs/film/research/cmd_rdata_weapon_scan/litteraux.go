@@ -38,7 +38,7 @@ func litScan(chunkIdx int) {
 			}
 			lo := uint32(bitsAt(p.payload, bp+32, 32))
 			id64 := (uint64(hi) << 32) | uint64(lo)
-			if real, ok := filmshell.WeaponIDToName[id64]; ok {
+			if real, ok := filmshell.NomDArme(id64); ok {
 				hitsByType[p.typ]++
 				hitsByWeapon[real]++
 				totalLits++
@@ -124,7 +124,7 @@ func litLoc(reg *grammar.Registry, worldPath string, chunkIdx, maxPkts int) {
 			}
 			lo := uint32(bitsAt(p.payload, bp+32, 32))
 			id64 := (uint64(hi) << 32) | uint64(lo)
-			if nm, ok := filmshell.WeaponIDToName[id64]; ok {
+			if nm, ok := filmshell.NomDArme(id64); ok {
 				litBits = append(litBits, bp)
 				litNames = append(litNames, nm)
 			}

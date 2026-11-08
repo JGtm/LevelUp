@@ -28,10 +28,10 @@ package grammar
 // il est COMPTE la ou il apparait).
 //
 // GARDES : `R12_FILMS`, `R12_IDS`, `R12_FENETRE_MS`. Aucune ecriture, aucune DuckDB,
-// `CGO_ENABLED=0`. USAGE (depuis apps/go-api) :
+// `CGO_ENABLED=0`. USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 R12_FILMS=<repo>/data/cache/film_chunks R12_IDS=215e7022 \
-//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ \
+//	  go test -tags=research ./internal/grammar/ \
 //	  -run '^TestR12(Cadrage|Evenements)$' -count=1 -timeout 60m -v
 
 import (

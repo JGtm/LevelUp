@@ -44,7 +44,7 @@ package grammar
 //
 //	REAP_FILM_ROOT=<repo>/data/cache/film_chunks \
 //	REAP_FILMS="bcb6d393,fb1a1a72" \
-//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ \
+//	  go test -tags=research ./internal/grammar/ \
 //	    -run Reapparition37Bassin -v -timeout 60m
 //
 // UN SEUL DECODAGE A LA FOIS PAR PROCESS (hook global) ; un film a la fois, jamais de balayage

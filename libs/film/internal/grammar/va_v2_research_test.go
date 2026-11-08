@@ -19,7 +19,7 @@ package grammar
 //	CAMPAGNE_RACINE=<film_chunks> CAMPAGNE_FILMS=<id,id> CAMPAGNE_SORTIE=<dir hors data> \
 //	VA_PERDUS=<fichier> \
 //	  go test -tags=research -count=1 -timeout 120m -run '^TestVAV2Pertes$' \
-//	  ./internal/games/halo_infinite/film/internal/grammar/
+//	  ./internal/grammar/
 
 import (
 	"bufio"
@@ -32,9 +32,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
 	"github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
 	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // vaLocaliserSansLoi est la regle de la cuisson d AVANT le lot (`87cdfa761`, [localiserLaListe]),
@@ -192,7 +192,7 @@ func TestVAV2Pertes(t *testing.T) {
 			continue
 		}
 		func() {
-			garde := filmproc.Arm("campagne/va-v2", 4, func(pic uint64) {
+			garde := memguard.Arm(t.Context(), "campagne/va-v2", 4, func(pic uint64) {
 				fmt.Fprintf(os.Stderr, "%s : plafond memoire franchi (%d octets)\n", id, pic)
 				os.Exit(3)
 			})

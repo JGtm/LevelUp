@@ -48,11 +48,11 @@ package replay
 //
 // SOUS GARDE D'ENVIRONNEMENT (TIR_FILMS_DIR), saute partout ailleurs, CI comprise.
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 TIR_FILMS_DIR=<repo>/data/cache/film_chunks \
 //	  TIR_TSV=<dossier de mesures> \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run TestViseeTirFatal -v -timeout 120m
+//	  go test ./replay/ -run TestViseeTirFatal -v -timeout 120m
 
 import (
 	"fmt"

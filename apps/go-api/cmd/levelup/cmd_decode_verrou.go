@@ -4,7 +4,7 @@ package main
 // leur propre processus (ADR 0045 D-29 ; meme regle que l'etape 1.57 du post-sync et la file de regeneration des
 // rejeux de l'application de bureau).
 //
-// Regle du projet : JAMAIS DEUX DECODAGES DE FILM A LA FOIS sur la machine (pic memoire cumule, `filmproc.AcquireSolo`).
+// Regle du projet : JAMAIS DEUX DECODAGES DE FILM A LA FOIS sur la machine (pic memoire cumule, `filmrun.AcquireSolo`).
 // Une commande qui decode en processus (aujourd'hui `backfill-killsource`, hors ligne comme en ligne) prend le verrou
 // EN REFUS IMMEDIAT avant d'ouvrir la base : un serveur qui cuit un rejeu, une file de regeneration ou une autre passe
 // tient la machine, et la commande le dit et sort avec [CodeSortieVerrouTenu] au lieu de faire monter la memoire de
@@ -17,7 +17,7 @@ import (
 
 	"levelup/go-api/internal/config"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
+	"levelup/go-api/internal/filmrun"
 )
 
 // CodeSortieVerrouTenu : le code de sortie d'une commande refusee parce qu'un autre decodage de film tient la machine. Ce
@@ -45,11 +45,11 @@ func (e *verrouDeDecodageTenu) Unwrap() error { return e.err }
 // rend sa liberation. Un refus d'occupation rend un [*verrouDeDecodageTenu] ; toute autre erreur (disque, racine vide)
 // est rendue telle quelle : jamais de decodage sans le verrou.
 func prendreLeVerrouDeDecodage(cfg *config.AppConfig, outil string) (func(), error) {
-	lock, err := filmproc.AcquireSolo(cfg.PathResolver().CacheRootDir(), outil, "")
+	lock, err := filmrun.AcquireSolo(cfg.PathResolver().CacheRootDir(), outil, "")
 	if err == nil {
 		return lock.Release, nil
 	}
-	if errors.Is(err, filmproc.ErrDecodeBusy) {
+	if errors.Is(err, filmrun.ErrDecodeBusy) {
 		return nil, &verrouDeDecodageTenu{outil: outil, err: err}
 	}
 	return nil, fmt.Errorf("%s : verrou de decodage indisponible : %w", outil, err)

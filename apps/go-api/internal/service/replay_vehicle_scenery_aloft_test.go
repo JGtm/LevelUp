@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/filmreplis"
+
 	"github.com/JGtm/LevelUp/libs/film/decfilm"
 	"github.com/JGtm/LevelUp/libs/film/replay"
 )
@@ -140,8 +142,8 @@ func TestDecor_TenuEnLAirInscritAuRegistre(t *testing.T) {
 	if !ok {
 		t.Fatal("repli_decor_tenu_en_l_air_a_vide : absent du registre facts/fallback")
 	}
-	if len(r.Sites) != 1 || !strings.HasSuffix(r.Sites[0].Fichier, "service/replay_vehicle_scenery_rule.go") {
-		t.Errorf("site %+v, attendu la regle du decor", r.Sites)
+	if sites := filmreplis.Sites(r.Nom, r.Sites); len(sites) != 1 || !strings.HasSuffix(sites[0].Fichier, "service/replay_vehicle_scenery_rule.go") {
+		t.Errorf("site %+v, attendu la regle du decor", sites)
 	}
 	if !r.CompteurBranche || r.CritereRetrait == "" || r.DatePose != "2026-10-02" {
 		t.Errorf("compteur %v, critere %q, date %q", r.CompteurBranche, r.CritereRetrait, r.DatePose)

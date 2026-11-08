@@ -19,7 +19,7 @@
 //     forts et le mode borne (cf. v2.go). `v2` implique `fermeture`.
 //
 // Il ne compile QUE sous le tag `research`. Il lit les films EN PLACE, UN A LA FOIS, dans l ordre
-// donne, sous la sentinelle memoire de `filmproc` armee film par film ; il n ecrit que dans le
+// donne, sous la sentinelle memoire de `memguard` armee film par film ; il n ecrit que dans le
 // repertoire `-sortie`, qui doit etre HORS de `data/`.
 //
 //	cd libs/film
@@ -32,12 +32,13 @@
 //
 // La mesure de fermeture est `grammar.FrameClosure` (la marche de production, aucune lecture de
 // bits de plus) — `grammar.FrameClosureDetaillee` en mode `v2`, qui rend la meme carte — sous le contexte des instruments (`grammar.ContexteDeFilm` : largeurs d axe lues
-// dans le film, profil par defaut). Le verrou de decodage de `filmproc` n est PAS pris : il
+// dans le film, profil par defaut). Le verrou de decodage (`internal/decodelock`) n est PAS pris : il
 // ecrirait un fichier sous la racine du cache ; la serialisation des decodages sur la machine est
 // celle de l operateur, comme pour `cmd_grenadeids`.
 package main
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -48,8 +49,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
 	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // plafondParDefautGiB : le plafond memoire de l outil, par film. La marche des trames d un film
@@ -177,7 +178,7 @@ func lireModes(v string) (modes, error) {
 // mesurerUnFilm ouvre UN film, le mesure sous sa propre sentinelle dans chacun des modes
 // demandes, ecrit ses lignes, et le laisse partir avant le suivant.
 func mesurerUnFilm(racine, id string, plafondGiB int, rap *rapport, jm *journalMPP) error {
-	garde := filmproc.Arm(nomOutil, plafondGiB, func(pic uint64) {
+	garde := memguard.Arm(context.Background(), nomOutil, plafondGiB, func(pic uint64) {
 		fmt.Fprintf(os.Stderr, "%s : plafond memoire franchi (%d octets) — arret\n", id, pic)
 		os.Exit(3)
 	})
@@ -244,7 +245,7 @@ func mesurerLaCarte(fc *grammar.FilmContext, id, dir string, rap *rapport) (gram
 }
 
 // mesurerEtEcrireGB1 fait la mesure GB-1 d un film deja ouvert et l ajoute au rapport.
-func mesurerEtEcrireGB1(fc *grammar.FilmContext, id, build string, garde *filmproc.Guard, rap *rapport) error {
+func mesurerEtEcrireGB1(fc *grammar.FilmContext, id, build string, garde *memguard.Guard, rap *rapport) error {
 	debut := time.Now()
 	g, err := mesurerGB1(fc)
 	if err != nil {

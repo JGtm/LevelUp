@@ -21,7 +21,7 @@ package replay
 // de cette liste est seulement mesure et journalise.
 //
 //	FILM_CACHE_ROOT=<repo>/data/cache ORIGIN_RESEARCH_FILMS="000d5950,64e8adfa,e94163af,606d9844" \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run OriginMeasure -timeout 60m -v
+//	  go test ./replay/ -run OriginMeasure -timeout 60m -v
 
 import (
 	"os"

@@ -28,7 +28,7 @@ package replay
 // REGENERATION (jamais d'edition a la main) — memes deux conditions explicites que les
 // fixtures de contrat, et pour la meme raison (cf. contract_fixtures_test.go) :
 //
-//	REPLAY_CONTRACT_UPDATE=1 go test ./internal/games/halo_infinite/film/replay/ \
+//	REPLAY_CONTRACT_UPDATE=1 go test ./replay/ \
 //	  -run DocumentShape -update
 
 import (

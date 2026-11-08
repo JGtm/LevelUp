@@ -41,15 +41,15 @@ package grammar
 // LECTURE SEULE, gardé par WORLDPREC_FILM, sauté partout ailleurs (CI comprise). UN SEUL
 // décodage filmdec par process (globaux de paquet) : le verrou est pris pour tout le test.
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 WORLDPREC_FILM=<repo>/data/cache/film_chunks/000d5950 \
 //	  WORLDPREC_BOUNDS=<repo>/data/titles/halo_infinite/reference/map_quant_bounds.json \
 //	  WORLDPREC_MAP=Cliffhanger \
-//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestWorldObjectPrecisionImpact$' -timeout 60m -v
+//	  go test ./internal/grammar/ -run '^TestWorldObjectPrecisionImpact$' -timeout 60m -v
 //
 //	CGO_ENABLED=0 WORLDPREC_FILM=... \
-//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestWorldObjectPrecisionLayout$' -timeout 10m -v
+//	  go test ./internal/grammar/ -run '^TestWorldObjectPrecisionLayout$' -timeout 10m -v
 
 import (
 	"fmt"

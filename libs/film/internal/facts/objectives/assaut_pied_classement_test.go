@@ -42,7 +42,7 @@ package objectives
 // REGIME : garde `ASSAUT_CACHE`. Aucune base, aucun reseau, sentinelle memoire armee.
 //
 //	$env:ASSAUT_CACHE="C:/.../data/cache"
-//	go test ./internal/games/halo_infinite/film/internal/facts/objectives/ -run AssautPiedClassement -v -timeout 30m
+//	go test ./internal/facts/objectives/ -run AssautPiedClassement -v -timeout 30m
 
 import (
 	"fmt"
@@ -52,8 +52,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
 	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // pcFenetreDetonMS borne la coincidence recompense-explosion : l'oracle A0.3 date le point de
@@ -73,7 +73,7 @@ func TestAssautPiedClassement(t *testing.T) {
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
-	g := filmproc.Arm("TestAssautPiedClassement", filmproc.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm(t.Context(), "TestAssautPiedClassement", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — classement interrompu", float64(peak)/(1<<30))
 	})
 	defer func() { g.Disarm() }()
@@ -239,13 +239,13 @@ var _ = absPc
 // des fenetres d'explosion, en marquant la position du XUID (l'ancre de production) s'il s'y
 // trouve : la region entre le XUID et le gamertag est la candidate naturelle du type.
 //
-//	go test ./internal/games/halo_infinite/film/internal/facts/objectives/ -run AssautPiedEtendu -v -timeout 30m
+//	go test ./internal/facts/objectives/ -run AssautPiedEtendu -v -timeout 30m
 func TestAssautPiedEtendu(t *testing.T) {
 	cache := os.Getenv("ASSAUT_CACHE")
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
-	g := filmproc.Arm("TestAssautPiedEtendu", filmproc.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm(t.Context(), "TestAssautPiedEtendu", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — releve interrompu", float64(peak)/(1<<30))
 	})
 	defer func() { g.Disarm() }()
@@ -321,13 +321,13 @@ func pcMarqueurs(data []byte) []pcMarqueur {
 // est une. Cet instrument imprime CHAQUE bloc de valeur >= 150 des neuf films, avec le delai a
 // l'explosion la plus proche (avant ET apres) — c'est le tableau qui nomme.
 //
-//	go test ./internal/games/halo_infinite/film/internal/facts/objectives/ -run AssautPiedRares -v -timeout 30m
+//	go test ./internal/facts/objectives/ -run AssautPiedRares -v -timeout 30m
 func TestAssautPiedRares(t *testing.T) {
 	cache := os.Getenv("ASSAUT_CACHE")
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
-	g := filmproc.Arm("TestAssautPiedRares", filmproc.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm(t.Context(), "TestAssautPiedRares", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — releve interrompu", float64(peak)/(1<<30))
 	})
 	defer func() { g.Disarm() }()
@@ -391,13 +391,13 @@ func pcContexte(t int, exps []int) string {
 // slot->XUID, resolu par les morts. Si le bloc porte le gamertag EN CLAIR, l'attribution
 // devient directe — pour tous les modes, sans pont.
 //
-//	go test ./internal/games/halo_infinite/film/internal/facts/objectives/ -run AssautPiedTemoinsTags -v -timeout 30m
+//	go test ./internal/facts/objectives/ -run AssautPiedTemoinsTags -v -timeout 30m
 func TestAssautPiedTemoinsTags(t *testing.T) {
 	cache := os.Getenv("ASSAUT_CACHE")
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
-	g := filmproc.Arm("TestAssautPiedTemoinsTags", filmproc.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm(t.Context(), "TestAssautPiedTemoinsTags", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — releve interrompu", float64(peak)/(1<<30))
 	})
 	defer func() { g.Disarm() }()

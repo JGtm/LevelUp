@@ -51,7 +51,7 @@ package grammar
 //
 // # LA MESURE A/B (charge de la machine)
 //
-//	go test -c -o avant.test.exe ./internal/games/halo_infinite/film/internal/grammar/
+//	go test -c -o avant.test.exe ./internal/grammar/
 //	(apres la modification) go test -c -o apres.test.exe <meme paquet>
 //	puis, en ALTERNANCE A,B,A,B... au moins dix fois chacun, depuis le repertoire du paquet :
 //	avant.test.exe -test.run '^$' -test.bench '^BenchmarkBalayageBitABit$' -test.count 1 -test.benchtime 20x

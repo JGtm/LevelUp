@@ -43,7 +43,7 @@ package signaux
 //
 //	FILM_CACHE_ROOT=C:/.../data/cache E1911_CHAMP_FILMS=fb1a1a72,72b0a25e,64e8adfa \
 //	E1911_CHAMP_DESIG=2,2,1 \
-//	  go test -tags research ./internal/games/halo_infinite/film/internal/grammar/ -run E1911Champ -v
+//	  go test -tags research ./internal/grammar/ -run E1911Champ -v
 
 import (
 	"fmt"

@@ -21,7 +21,7 @@ package grammar
 //
 //	CAMPAGNE_RACINE=<film_chunks> CAMPAGNE_FILMS=<id,id> CAMPAGNE_SORTIE=<dir hors data> \
 //	  go test -tags=research -count=1 -timeout 120m -run '^TestRNaisPiedResync$' \
-//	  ./internal/games/halo_infinite/film/internal/grammar/
+//	  ./internal/grammar/
 
 import (
 	"fmt"
@@ -29,8 +29,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
 	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // rnVueCDepuis relit la vue C depuis `t` : ferme-t-elle le paquet, et ses index d entrees.
@@ -140,7 +140,7 @@ func TestRNaisPiedResync(t *testing.T) {
 	out := []string{"film\tbuild\ttable\tcle\tn"}
 	for _, id := range films {
 		func() {
-			garde := filmproc.Arm("r_nais/pied2", 4, func(pic uint64) {
+			garde := memguard.Arm(t.Context(), "r_nais/pied2", 4, func(pic uint64) {
 				fmt.Fprintf(os.Stderr, "%s : plafond memoire franchi (%d octets)\n", id, pic)
 				os.Exit(3)
 			})

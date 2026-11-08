@@ -28,10 +28,10 @@ package grammar
 // LECTURE SEULE. Gate par variable d'environnement, saute en CI. Meme corpus que
 // TestInventaireTrousMesure (INV_FILMS / INV_CACHE / INV_SAMPLE).
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	INV_CACHE=<repo>/data/cache/film_chunks INV_SAMPLE=24 \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run '^TestPositionI22$' -timeout 180m -v
+//	  go test ./replay/ -run '^TestPositionI22$' -timeout 180m -v
 
 import (
 	"fmt"

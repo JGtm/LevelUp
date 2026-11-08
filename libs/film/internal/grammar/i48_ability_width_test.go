@@ -26,15 +26,15 @@ package grammar
 //
 // LECTURE SEULE, gardé par ABILITY_FILM_ROOT, sauté partout ailleurs (CI comprise).
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 ABILITY_FILM_ROOT=<repo>/data/cache/film_chunks \
 //	  ABILITY_FILMS=000d5950,9e8fb31b \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run '^TestAbilityIndexWidth$' -timeout 30m -v
+//	  go test ./replay/ -run '^TestAbilityIndexWidth$' -timeout 30m -v
 //
 //	# couverture (étape 2) : balayer les N premiers films du cache
 //	CGO_ENABLED=0 ABILITY_FILM_ROOT=<repo>/data/cache/film_chunks ABILITY_FILM_LIMIT=40 \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run '^TestAbilityIndexWidth$' -timeout 60m -v
+//	  go test ./replay/ -run '^TestAbilityIndexWidth$' -timeout 60m -v
 
 import (
 	"fmt"

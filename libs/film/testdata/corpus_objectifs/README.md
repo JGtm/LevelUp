@@ -13,8 +13,8 @@ les axes — per-joueur, a la milliseconde, sans calibration.
 
 Le corpus, lui, ne meurt pas avec lui, et c'est le point : **ces octets ne decrivent pas un
 decodeur, ils decrivent un format**. Le jour ou la source evenementielle peuplera reellement
-la courbe de score des modes a zones et KOTH (chantier de pipeline film, cf. `.ai/HANDOFF_MODE_SCORE_CHAINE_2026-08-01.md`
-§6), il faudra des octets reels dates, sourcés et versionnes pour la contraindre. Les
+la courbe de score des modes a zones et KOTH (chantier de pipeline film),
+il faudra des octets reels dates, sourcés et versionnes pour la contraindre. Les
 reprelever couterait un acces au cache film d'un poste precis et a des matchs precis ; les
 garder coute 400 Ko.
 
@@ -32,6 +32,11 @@ TYPE_2 complet, range en zlib (la forme employee par le cache film lui-meme). **
 n'est reecrit.** La troncature etait licite parce que le decodeur d'origine etait sans etat
 d'un chunk a l'autre ; la recette de fabrication refusait d'ecrire si le prefixe ne decodait
 pas exactement comme le chunk entier.
+
+**Aucun identifiant de joueur** : chaque chunk ne contient que deux paquets, un paquet de type 1 puis le premier
+paquet TYPE_2 (image-cle), et s'arrete avant le premier paquet de population de session (type 8), celui qui porte les
+xuids et les gamertags dans un chunk de replication ; aucun xuid ni gamertag ne se lit dans ces octets (mesure du
+2026-11-08), et ceux des autres films de la brique sont fictifs (`../IDENTITES.tsv`).
 
 Les mini-bobines portent les **8 DERNIERS** chunks ancres de leur film, pas les 8 premiers :
 mesure faite a l'epoque, sur les 8 premiers de `0a247154` le score KOTH vaut encore 0-0 — une

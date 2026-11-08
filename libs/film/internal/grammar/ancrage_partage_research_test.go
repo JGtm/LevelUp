@@ -15,7 +15,7 @@ package grammar
 //     contexte (chunks, bande, decoupage, generations), puis l egalite des suites de records ancres.
 //
 //	FILM_CACHE_ROOT=<depot>/data/cache ANCRAGE_FILMS='084a804d=Fortitude Heavies;e5adf7b2=Fragmentation' \
-//	  [ANCRAGE_COUTS=1] go test -tags research ./internal/games/halo_infinite/film/internal/grammar/ -run AncragePartage -v
+//	  [ANCRAGE_COUTS=1] go test -tags research ./internal/grammar/ -run AncragePartage -v
 //
 // Sans ANCRAGE_COUTS, seule la troisieme question est jouee. Mesure du 2026-10-03 (lot 2.4) : sur
 // quatre films, l ancrage coute 0,6 a 1,8 s, chaque balayage ancre 0 a 140 ms de plus (les

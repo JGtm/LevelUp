@@ -47,10 +47,10 @@ package grammar
 // Le balayage est celui d'`i59_tag3_test.go` (`i59Scan`), réutilisé tel quel — deux lecteurs
 // du même champ divergeraient.
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 I59X_FILM=<repo>/data/cache/film_chunks/00ba2e1c \
-//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestI59TagsCrossI48Rank$' -timeout 60m -v
+//	  go test ./internal/grammar/ -run '^TestI59TagsCrossI48Rank$' -timeout 60m -v
 
 import (
 	"fmt"

@@ -13,7 +13,7 @@ package replayartifacts
 // # POURQUOI LA PROFONDEUR EST 1, ET PAS 2, NI « TOUT LE LOT »
 //
 // Un film pese ~24 Mo de morceaux DECOMPRESSES, tenus en memoire du serveur entre la reponse du
-// CDN et l'ecriture du cache (`filmcache.Write`). C'est le processus qui tient les bases en
+// CDN et l'ecriture du cache (`filmarchive.Write`). C'est le processus qui tient les bases en
 // ecriture : y accumuler des films est exactement la faute que le lot BUILDALL a supprimee
 // ailleurs. UN film d'avance borne cette retention a ~24 Mo, quel que soit le lot ; deux la
 // doubleraient pour un gain nul (le prochain decodage n'a besoin que du prochain film).

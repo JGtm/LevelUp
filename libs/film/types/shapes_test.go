@@ -63,7 +63,7 @@ const (
 	variableGoldenFormes = "LEVELUP_UPDATE_TYPES_SHAPES"
 	// commandeRegenerationFormes : la commande complete, telle qu on la tape.
 	commandeRegenerationFormes = variableGoldenFormes + "=1 go test " +
-		"./internal/games/halo_infinite/film/types/ -run TestFormesDesTypesEgalentLeGolden " +
+		"./types/ -run TestFormesDesTypesEgalentLeGolden " +
 		"-update-types-shapes"
 )
 

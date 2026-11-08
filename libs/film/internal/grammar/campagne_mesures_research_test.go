@@ -3,7 +3,7 @@
 package grammar
 
 // campagne_mesures_research_test.go — MESURES CIBLEES DE LA CAMPAGNE DE GRAMMAIRE (etape 4) :
-// L ENTREE. Un film a la fois, sous la sentinelle `filmproc` (4 Gio) ; quatre marches par film :
+// L ENTREE. Un film a la fois, sous la sentinelle `memguard` (4 Gio) ; quatre marches par film :
 //
 //	reference         la marche de la carte v2 (memes comptes) + toutes les sondes ;
 //	oracle            reference + les naissances retrouvees par M1, liees apres leur paquet ;
@@ -22,8 +22,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
 	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // cmLigne : une ligne de sortie.
@@ -74,7 +74,7 @@ func TestCampagneMesuresCiblees(t *testing.T) {
 
 // cmUnFilm mesure un film.
 func cmUnFilm(t *testing.T, racine, id string, utiles UsagesProduit, tables map[string][]string) {
-	garde := filmproc.Arm("campagne/mesures", 4, func(pic uint64) {
+	garde := memguard.Arm(t.Context(), "campagne/mesures", 4, func(pic uint64) {
 		fmt.Fprintf(os.Stderr, "%s : plafond memoire franchi (%d octets)\n", id, pic)
 		os.Exit(3)
 	})

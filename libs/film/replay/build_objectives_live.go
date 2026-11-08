@@ -16,7 +16,7 @@ package replay
 //	le MARQUEUR de portage         ICI, dans `BuildFromFilm`, comme les autres balayages filmdec
 //
 // POURQUOI LES TROIS PREMIERES VIENNENT DE L'APPELANT. C'est la frontiere que ce paquet tient
-// deja pour `Objectives`, `Score` et `NeutralDeaths` : `games/halo_infinite/film/replay` est title-agnostic et
+// deja pour `Objectives`, `Score` et `NeutralDeaths` : `replay` est title-agnostic et
 // ne connait ni le cache film du titre (les enregistrements d'entite se lisent par un manifeste
 // de chunks) ni le catalogue de cartes du titre. L'appelant decode une fois et fournit — deux
 // balayages du meme fait divergeraient.

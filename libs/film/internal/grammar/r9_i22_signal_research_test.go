@@ -36,11 +36,11 @@ package grammar
 //
 // GARDES : `R8_FILMS`, `R8_BOUNDS`, `R8_IDS`.
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 R8_FILMS=<repo>/data/cache/film_chunks \
 //	  R8_BOUNDS=<repo>/data/titles/halo_infinite/reference/map_quant_bounds.json \
-//	  R8_IDS=00ba2e1c go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ \
+//	  R8_IDS=00ba2e1c go test -tags=research ./internal/grammar/ \
 //	  -run '^TestR9I22Signal$' -count=1 -timeout 180m -v
 
 import (

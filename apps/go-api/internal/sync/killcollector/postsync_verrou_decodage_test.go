@@ -5,9 +5,8 @@ import (
 	"testing"
 
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/filmrun"
 	"levelup/go-api/internal/observability"
-
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
 )
 
 // TestPrendreLeVerrouDeDecodage : l'etape 1.57 decode DANS le processus du serveur ; elle prend le verrou solo de la
@@ -19,7 +18,7 @@ func TestPrendreLeVerrouDeDecodage(t *testing.T) {
 	d := PostSyncDeps{TitleSlug: "halo_infinite", Gamertag: "GT"}
 	verrou := titlePkg.NewPathResolver(racine).CacheRootDir()
 
-	tenu, err := filmproc.AcquireSolo(verrou, "file de regeneration", "00000001")
+	tenu, err := filmrun.AcquireSolo(verrou, "file de regeneration", "00000001")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -37,13 +36,13 @@ func TestPrendreLeVerrouDeDecodage(t *testing.T) {
 		t.Fatal("verrou libre : l'etape decode")
 	}
 	// Tenu par l'etape, il refuse un second decodage...
-	if second, err := filmproc.AcquireSolo(verrou, "file de regeneration", "00000002"); err == nil {
+	if second, err := filmrun.AcquireSolo(verrou, "file de regeneration", "00000002"); err == nil {
 		second.Release()
 		t.Fatal("deux decodages en meme temps : le verrou n'est pas tenu par l'etape")
 	}
 	// ... et il se rend.
 	liberer()
-	rendu, err := filmproc.AcquireSolo(verrou, "file de regeneration", "00000003")
+	rendu, err := filmrun.AcquireSolo(verrou, "file de regeneration", "00000003")
 	if err != nil {
 		t.Fatalf("verrou non rendu : %v", err)
 	}

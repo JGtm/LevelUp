@@ -133,7 +133,7 @@ func TestKeepOfPublishedTracks_ContratPreserve(t *testing.T) {
 // reprend le nom du premier occupant.
 func TestUnePisteCONTESTEEnEstJamaisIndexeeSousUnXUID(t *testing.T) {
 	// La configuration mesuree : A [5872..6981], la vie contestee [7123..7158], B [7457..7591].
-	const a, b = uint64(2535430265968559), uint64(2535456423427614)
+	const a, b = uint64(2683317851328856), uint64(2661813924332111)
 	own := regDe(OwnerReport{
 		SlotXUID:      map[uint32]uint64{734: a}, // le pont garde le PREMIER occupant
 		SlotAmbiguous: map[uint32]bool{734: true},
@@ -152,7 +152,7 @@ func TestUnePisteCONTESTEEnEstJamaisIndexeeSousUnXUID(t *testing.T) {
 	}
 	// CONTRE-EPREUVE : sur un slot NON ambigu, le repli par le pont joue toujours.
 	sain := OwnerReport{SlotXUID: map[uint32]uint64{900: b}}
-	if got := xuidOfPublishedTrack(Track{Slot: 900}, sain.NamingBridge()); got != "2535456423427614" {
+	if got := xuidOfPublishedTrack(Track{Slot: 900}, sain.NamingBridge()); got != "2661813924332111" {
 		t.Errorf("slot non ambigu : %q, attendu le repli par le pont", got)
 	}
 }

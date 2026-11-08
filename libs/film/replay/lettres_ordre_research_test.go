@@ -57,16 +57,16 @@ package replay
 //
 // MESURE SEULEMENT : aucun fichier de production n'est touche par ce fichier.
 //
-// USAGE (depuis apps/go-api, UN FILM PAR PROCESSUS, en avant-plan) :
+// USAGE (depuis libs/film, UN FILM PAR PROCESSUS, en avant-plan) :
 //
 //	$env:GOMEMLIMIT='4GiB'; $env:CGO_ENABLED='0'
 //	$env:LETTRES_OUT="<dossier de sortie>"
 //	$env:LETTRES_FILM="<mainrepo>/data/cache/film_chunks/7344d24f"
-//	go test -count=1 -run TestLettresOrdreSlots -v -timeout 10m ./internal/games/halo_infinite/film/replay/
+//	go test -count=1 -run TestLettresOrdreSlots -v -timeout 10m ./replay/
 //
 // puis, une fois les films mesures (aucun film relu, une fraction de seconde) :
 //
-//	go test -count=1 -run TestLettresOrdreStabilite -v ./internal/games/halo_infinite/film/replay/
+//	go test -count=1 -run TestLettresOrdreStabilite -v ./replay/
 
 import (
 	"context"

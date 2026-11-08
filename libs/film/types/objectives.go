@@ -11,7 +11,7 @@ package types
 
 // DeathInstant est une mort DATEE ET NOMMEE, telle que le fil des morts du film la donne.
 // L'appelant la fournit : ce paquet ne decode pas le fil des morts (il a un seul proprietaire
-// dans le depot, `games/halo_infinite/film/replay`) et n'ouvre aucune base.
+// dans le depot, `replay`) et n'ouvre aucune base.
 type DeathInstant struct {
 	// XUID de la victime, en decimal — meme ecriture que [PlayerLine.XUID].
 	XUID string

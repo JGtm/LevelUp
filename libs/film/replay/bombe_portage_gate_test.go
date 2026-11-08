@@ -37,11 +37,11 @@ package replay
 // la fenêtre jugée.
 //
 // RÉGIME : garde `ASSAUT_CACHE`. Aucune base, aucun réseau, sentinelle mémoire armée, UN
-// SEUL décodage à la fois sur la machine (verrou INTER-PROCESSUS `filmproc.AcquireSolo`). Jamais `cmd/replay-build` :
+// SEUL décodage à la fois sur la machine (verrou INTER-PROCESSUS `decodelock.Prendre`). Jamais `cmd/replay-build` :
 // l'extraction est en processus.
 //
 //	$env:ASSAUT_CACHE="C:/.../data/cache"
-//	go test ./internal/games/halo_infinite/film/replay/ -run BombePortageGate -v -timeout 30m
+//	go test ./replay/ -run BombePortageGate -v -timeout 30m
 
 import (
 	"context"
@@ -51,6 +51,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/JGtm/LevelUp/libs/film/internal/decodelock"
 	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
 )
 
@@ -69,6 +70,7 @@ func TestBombePortageGate(t *testing.T) {
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
+	decodelock.Prendre(t, cache, "TestBombePortageGate", "parc")
 	defer amArmeSentinelle(t, "TestBombePortageGate")()
 
 	for _, f := range bpFilms {

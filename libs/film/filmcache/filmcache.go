@@ -29,7 +29,7 @@
 //
 // Il rend des octets, un index et — par [LoadFilm] — un film DEJA CHARGE (`source`, une
 // decompression par film). Le decodage, lui, vit dans `film/facts/objectives` et
-// `games/halo_infinite/film/internal/grammar`.
+// `internal/grammar`.
 package filmcache
 
 import (
@@ -115,6 +115,16 @@ func (s *Source) Meta() []types.ChunkMeta { return s.chunks }
 // NumChunks implemente [source.Source] : le nombre d'entrees du manifeste.
 func (s *Source) NumChunks() int { return len(s.chunks) }
 
+// TailleDeclaree rend la taille logique que le manifeste declare pour le chunk d'indice `i`
+// (position dans le manifeste, comme [Source.Meta]) ; 0 quand le manifeste ne la porte pas
+// (manifeste historique) ou quand `i` est hors bornes.
+func (s *Source) TailleDeclaree(i int) int64 {
+	if i < 0 || i >= len(s.tailles) {
+		return 0
+	}
+	return s.tailles[i]
+}
+
 // Chunk implemente [source.Source] : les octets (zlib ou clairs ; la forme de stockage zstd est
 // decodee ici, cf. stockage.go) du chunk d'INDICE `i`,
 // lu au fichier que le manifeste lui donne. Un chunk manquant au cache est une ERREUR ici —
@@ -169,7 +179,7 @@ func LoadFilmDir(chunkDir string) (*source.Film, bool, error) {
 }
 
 // ChunkDir rend le repertoire des chunks d'un film. C'est ce chemin qu'attendent les
-// balayages hors ligne de `games/halo_infinite/film/internal/grammar` et `games/halo_infinite/film/replay`, qui lisent le dossier
+// balayages hors ligne de `internal/grammar` et `replay`, qui lisent le dossier
 // directement plutot que par l'interface.
 func ChunkDir(root, shortID string) string {
 	return filepath.Join(root, chunksDir, shortID)
@@ -214,9 +224,9 @@ func ListShortIDs(root string) ([]string, error) {
 
 func chunkName(index int) string { return fmt.Sprintf("chunk_%02d.bin", index) }
 
-// numeroDuFichier est la réciproque de [chunkName] : le numéro d'un nom de fichier que le cache
+// NumeroDuChunk est la réciproque de [CheminDuChunk] : le numéro d'un nom de fichier que le cache
 // écrit, et faux pour tout autre nom (un temporaire, une image de recherche rangée dans le dossier).
-func numeroDuFichier(nom string) (int, bool) {
+func NumeroDuChunk(nom string) (int, bool) {
 	var n int
 	if _, err := fmt.Sscanf(nom, "chunk_%d.bin", &n); err != nil || chunkName(n) != nom {
 		return 0, false
@@ -228,7 +238,7 @@ func numeroDuFichier(nom string) (int, bool) {
 //
 // POURQUOI CETTE PORTE EXISTE. Le manifeste et les chunks vivent dans deux sous-dossiers
 // FRERES (cf. l'en-tete de ce paquet) ; les balayages hors ligne, eux, recoivent un chemin de
-// chunks parce que `games/halo_infinite/film/internal/grammar` et `games/halo_infinite/film/replay` lisent le dossier directement. Le
+// chunks parce que `internal/grammar` et `replay` lisent le dossier directement. Le
 // constructeur d'artefact a besoin des deux — les chunks pour le decodage, le manifeste pour
 // le `start_ms` de chaque chunk, sans lequel les enregistrements d'entite ne sont pas datables.
 //

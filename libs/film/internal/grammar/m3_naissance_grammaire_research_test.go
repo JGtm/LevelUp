@@ -13,7 +13,7 @@ package grammar
 //	MOUV511_FILM=<depot>/data/cache/film_chunks/<id> MOUV511_BORNES=<catalogue> MOUV511_CARTE=<carte> \
 //	M3_DOC=<depot>/data/cache/replays/halo_infinite/<id>.json \
 //	  go test -tags=research -count=1 -v -run '^TestM3NaissanceGrammaire$' \
-//	  ./internal/games/halo_infinite/film/internal/grammar/
+//	  ./internal/grammar/
 
 import (
 	"encoding/json"

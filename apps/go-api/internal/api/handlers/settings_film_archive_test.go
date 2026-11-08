@@ -12,13 +12,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
 	"github.com/JGtm/LevelUp/libs/film/finalise"
 	"github.com/go-chi/chi/v5"
 
 	"levelup/go-api/internal/api/handlers"
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/filmarchive"
 	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/platform/jobs"
 	settings_platform "levelup/go-api/internal/platform/settings"
@@ -69,7 +69,7 @@ func (f archiveFixture) patchLocale(t *testing.T, body map[string]any, locale i1
 
 func ecrireFilm(t *testing.T, racine, court string) {
 	t.Helper()
-	err := filmcache.Write(t.Context(), racine, court, []filmcache.WriteChunk{
+	err := filmarchive.Write(t.Context(), racine, court, []filmarchive.WriteChunk{
 		{Index: 0, ChunkType: 1, Data: bytes.Repeat([]byte("registre"), 500)},
 		{Index: 1, ChunkType: finalise.ChunkTypeTempsForts, Data: bytes.Repeat([]byte("temps forts"), 500)},
 	})

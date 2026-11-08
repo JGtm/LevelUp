@@ -19,7 +19,7 @@ package grammar
 //
 //	CAMPAGNE_RACINE=<film_chunks> CAMPAGNE_FILMS=<id,id> CAMPAGNE_SORTIE=<dir hors data> \
 //	  go test -tags=research -count=1 -timeout 120m -run '^TestRNaisCadre$' \
-//	  ./internal/games/halo_infinite/film/internal/grammar/
+//	  ./internal/grammar/
 
 import (
 	"fmt"
@@ -27,7 +27,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // rnPredictionsUnique : le modele « pool unique » de l allocateur, next-fit sur `[0, n)` depuis
@@ -151,7 +151,7 @@ func TestRNaisCadre(t *testing.T) {
 }
 
 func rnCadreUnFilm(t *testing.T, racine, id string, utiles UsagesProduit) []string {
-	garde := filmproc.Arm("r_nais/cadre", 4, func(pic uint64) {
+	garde := memguard.Arm(t.Context(), "r_nais/cadre", 4, func(pic uint64) {
 		fmt.Fprintf(os.Stderr, "%s : plafond memoire franchi (%d octets)\n", id, pic)
 		os.Exit(3)
 	})

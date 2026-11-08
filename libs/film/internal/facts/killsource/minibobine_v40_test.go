@@ -42,7 +42,7 @@ package killsource
 // # REGENERATION DE LA BOBINE (fixture requise, jamais d edition a la main)
 //
 //	KILLSOURCE_FIXTURES=<racine des films> \
-//	  go test ./internal/games/halo_infinite/film/internal/facts/killsource/ -run TestMiniBobineV40Regenerer -update
+//	  go test ./internal/facts/killsource/ -run TestMiniBobineV40Regenerer -update
 
 import (
 	"bytes"
@@ -59,7 +59,7 @@ import (
 
 // miniBobineV40Dir : la bobine de version 40, relative au paquet.
 //
-// ELLE A DEUX LECTEURS : ce paquet, et `internal/games/halo_infinite/film/replay` dont `ScanDeaths` est le
+// ELLE A DEUX LECTEURS : ce paquet, et `replay` dont `ScanDeaths` est le
 // deuxieme des trois appelants qui passaient 0 (constat P1-2) — il la designe par un chemin
 // relatif, comme `grammar` designe deja `replay/testdata/minifilm_000d5950` dans l autre sens.
 // Un second exemplaire de 876 Kio pour la meme preuve serait de la dette.

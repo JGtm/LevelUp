@@ -26,7 +26,7 @@
 // unique à l'instant de l'insertion ne rattrape jamais rien (cf. backlog.go) :
 //
 //  1. LE PONT DISQUE — les chunks COMPLETS du film (en-tête + réplication + kill-feed)
-//     sont téléchargés et persistés au cache via filmcache.Write. C'est plus qu'un
+//     sont téléchargés et persistés au cache via filmarchive.Write. C'est plus qu'un
 //     préalable au décodage : les films EXPIRENT côté serveur Halo (~29 % du corpus déjà
 //     perdus), et un film persisté est une archive IRREMPLAÇABLE.
 //  2. L'ARTEFACT — replaybuild.BuildMatch décode le film du disque et écrit

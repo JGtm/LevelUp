@@ -35,10 +35,10 @@ package replay
 //
 // SOUS GARDE (OBS114_FILM). Balayage de paquets purs.
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 OBS114_FILM=<repo>/data/cache/film_chunks/00162144 \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run TestViseeObs114 -v -timeout 30m
+//	  go test ./replay/ -run TestViseeObs114 -v -timeout 30m
 
 import (
 	"fmt"

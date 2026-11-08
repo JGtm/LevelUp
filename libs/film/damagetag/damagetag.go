@@ -28,11 +28,11 @@
 // Jamais sur le serveur de production, qui n a pas le jeu. Il faut aussi cgo (decompression
 // Kraken) : `CGO_ENABLED=1` et le compilateur C sur le PATH.
 //
-// COMMENT (depuis `apps/go-api`) :
+// COMMENT (les `go run` depuis le module de l hote, le `go test` depuis `libs/film`) :
 //
 //	go run ./cmd/tmp_tagname pojptgame   # 1. le catalogue embarque est-il perime, et de combien ?
 //	go run ./cmd/tmp_tagname pogen       # 2. reecrit data/jpt_ids.txt et data/labels.tsv
-//	go test ./internal/games/halo_infinite/film/damagetag/...   # 3. ancres Theater + repartition
+//	go test ./damagetag/...   # 3. ancres Theater + repartition
 //	go run ./cmd/tmp_tagname poscan all  # 4. non-regression sur les 4 films de reference
 //
 // L etape 4 doit rendre, au chiffre pres : 363 apparies, 14 rejetes, gate (b) 96.3 %,

@@ -33,7 +33,7 @@ package grammar
 // REGIME : garde `ASSAUT_CACHE`. Aucune base, aucun reseau, sentinelle memoire armee.
 //
 //	$env:ASSAUT_CACHE="C:/.../data/cache"
-//	go test ./internal/games/halo_infinite/film/internal/grammar/ -run ObjectifTi11Carte -v -timeout 40m
+//	go test ./internal/grammar/ -run ObjectifTi11Carte -v -timeout 40m
 
 import (
 	"fmt"
@@ -43,8 +43,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
 	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // ti11CorpsBits est la taille du corps d'un record `ti=11` d'image-cle : 168 bits mesures moins
@@ -84,7 +84,7 @@ func TestObjectifTi11Carte(t *testing.T) {
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
-	g := filmproc.Arm("TestObjectifTi11Carte", filmproc.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm(t.Context(), "TestObjectifTi11Carte", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — carte interrompue", float64(peak)/(1<<30))
 	})
 	defer func() { g.Disarm() }()

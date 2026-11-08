@@ -11,13 +11,15 @@ package replay
 // LECTURE SEULE de trois fichiers de faits (aucun film, aucune ecriture), sous la voie film :
 //
 //	M1_FAITS=<depot>/data/cache/film_facts/halo_infinite \
-//	  go test -tags research -count=1 -run '^TestPortePositionsTemoins$' -v ./internal/games/halo_infinite/film/replay/
+//	  go test -tags research -count=1 -run '^TestPortePositionsTemoins$' -v ./replay/
 
 import (
 	"context"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/JGtm/LevelUp/libs/film/internal/depottest"
 
 	"github.com/JGtm/LevelUp/libs/film/internal/profile"
 )
@@ -27,7 +29,7 @@ func TestPortePositionsTemoins(t *testing.T) {
 	if faits == "" {
 		t.Skip("temoins sur faits reels : M1_FAITS requis")
 	}
-	root := racineDepot(t)
+	root := depottest.Racine(t)
 	cat, err := profile.LoadMapQuantCatalog(filepath.Join(root, "data", "titles", "halo_infinite",
 		"reference", "map_quant_bounds.json"))
 	if err != nil {

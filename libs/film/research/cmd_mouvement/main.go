@@ -3,7 +3,7 @@
 // Commande cmd_mouvement — la passe du lot 5.3 sur `HaloInfinite.exe`, en LECTURE SEULE.
 //
 //	MOUV_EXE="<bibliotheque>/<jeux>/common/Halo Infinite/HaloInfinite.exe" \
-//	  go run -tags=research ./internal/games/halo_infinite/film/research/cmd_mouvement
+//	  go run -tags=research ./research/cmd_mouvement
 //
 // Sans `MOUV_EXE`, la commande ne fait rien et le dit : un instrument de recherche ne devine
 // jamais le chemin d'une installation de jeu.

@@ -31,7 +31,7 @@ package grammar
 //
 //	MOUV57_FILM=<dir> MOUV57_CARTE=snowbound MOUV57_BORNES=<catalogue> \
 //	  go test -tags=research -count=1 -v -timeout 60m \
-//	  -run '^TestMouvement57Posture$' ./internal/games/halo_infinite/film/internal/grammar/
+//	  -run '^TestMouvement57Posture$' ./internal/grammar/
 
 import (
 	"fmt"

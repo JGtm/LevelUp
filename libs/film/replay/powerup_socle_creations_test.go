@@ -28,7 +28,7 @@ package replay
 // LECTURE SEULE. Garde `OBJ_FILM` + `OBJ_FILM_ART`.
 //
 //	CGO_ENABLED=0 OBJ_FILM=<depot>/data/cache \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run '^TestPowerupSocleCreations$' -timeout 90m -v
+//	  go test ./replay/ -run '^TestPowerupSocleCreations$' -timeout 90m -v
 
 import (
 	"math"

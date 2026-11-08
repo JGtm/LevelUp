@@ -33,7 +33,7 @@ package replay
 //
 //	CGO_ENABLED=0 FILM_CACHE_ROOT=<mainrepo>/data/cache CTF_RESEARCH_OUT=<dir> \
 //	  CTF_SHORTAUTHOR_FILMS="0edb8512,64e8adfa,9aeca4b3,000d5950" \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run CTFShortAuthor -timeout 60m
+//	  go test ./replay/ -run CTFShortAuthor -timeout 60m
 
 import (
 	"fmt"

@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/filmarchive"
 
 	"github.com/JGtm/LevelUp/libs/film/filmcache"
 	"github.com/JGtm/LevelUp/libs/film/finalise"
@@ -17,12 +18,12 @@ import (
 // chunk entier ses octets, un chunk absent (nil, nil).
 func TestLocalFilmCacheLoadChunk_MemeValidationQueFilmcache(t *testing.T) {
 	racine := t.TempDir()
-	if err := filmcache.EnsureDirs(racine); err != nil {
+	if err := filmarchive.EnsureDirs(racine); err != nil {
 		t.Fatal(err)
 	}
 	const match = "0bad0202-1111-2222-3333-444455556666"
 	court := title.FilmShortMatchID(match)
-	if err := filmcache.Write(t.Context(), racine, court, []filmcache.WriteChunk{
+	if err := filmarchive.Write(t.Context(), racine, court, []filmarchive.WriteChunk{
 		{Index: 0, ChunkType: 1, Data: []byte("header")},
 		{Index: 1, ChunkType: 2, Data: []byte("replication")},
 		{Index: 2, ChunkType: finalise.ChunkTypeTempsForts, Data: []byte("killfeed")},

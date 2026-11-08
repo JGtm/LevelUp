@@ -318,7 +318,7 @@ package grammar
 // les deux retombaient sur le meme bloc de 60 octets et le meme marqueur, et chaque evenement sortait
 // deux fois sous deux xuid. Il garde desormais le candidat le plus proche du marqueur
 // (`retenirLePlusProche`). Aucun bit n est lu autrement ; ce qui change est QUELS xuid sortent.
-// MESURE : 34db6b33 (fiche de Partycz, faux 2252025040223036 a 5 067 bits du vrai 2535472452512509)
+// MESURE : 34db6b33 (fiche de Partycz, faux 2252025040223036 a 5 067 bits du vrai 2685077870825706)
 // 28 groupes d evenements sous deux xuid avant, 0 apres ; parc local de 2 677 films : 1 film touche
 // avant, 0 apres.
 //
@@ -399,3 +399,13 @@ package grammar
 // perimetre changent, donc l empreinte, sans qu aucun bit soit lu autrement. SORTIE IDENTIQUE, prouvee par
 // les digests `replay-equiv` des 20 films de reference (egaux au temoin d avant le lot) et par la liste des
 // tests (memes noms, memes verdicts). Golden de revision et golden de perimetre regeneres une seule fois.
+//
+// COMPLEMENT DU 2026-11-04 (fin du decouplage, lot 2.4, REVISION CONSTANTE) : empreinte regeneree,
+// revision inchangee. Le catalogue `filmshell`, haché par ses jetons dans le perimetre de la couche,
+// passe de quinze variables exportees a des variables non exportees lues par des accesseurs
+// (`NomDArme`, `EstUneArme`, `EstOctetsDArme`, `OctetsDesArmes`, `SuffixeCommun`, `SuffixesFormuleA`,
+// `Armes`, `NombreDArmes`, `NomCanonique`) ; `weaponscan` et `weaponv3` les appellent. MEMES VALEURS
+// (temoin des tables avant / apres identique), aucun bit lu autrement. SORTIE IDENTIQUE, prouvee par les
+// digests `replay-equiv` des 20 films de reference (identiques au temoin d avant le lot) et par
+// `replay-corpus-gate` (18 temoins sur 18 identiques). Golden de revision regenere une seule fois ; le
+// golden de perimetre ne change pas (`filmshell` reste un paquet du perimetre).

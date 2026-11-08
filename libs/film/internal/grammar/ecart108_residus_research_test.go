@@ -6,7 +6,7 @@ package grammar
 // comme le jeu dans les ecarts qui ne sont pas des multiples de -108, et la queue de la table
 // (0x1fff entrees) apres le dernier record de chaque paquet.
 //
-//	RI27C_FILMS=... RI27C_RACINE=... RI27C_OUT=... RI27C_CARTES=... \n//	  go test -tags=research -count=1 -run '^TestEcart108Residus$' ./internal/games/halo_infinite/film/internal/grammar/
+//	RI27C_FILMS=... RI27C_RACINE=... RI27C_OUT=... RI27C_CARTES=... \n//	  go test -tags=research -count=1 -run '^TestEcart108Residus$' ./internal/grammar/
 
 import (
 	"fmt"

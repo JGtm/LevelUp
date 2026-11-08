@@ -52,12 +52,12 @@ package replay
 //
 // UN SEUL FILM PAR PROCESSUS (regle D17 du plan : la machine paie les decodages).
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 AIM_FILM=<repo>/data/cache/film_chunks/000d5950 AIM_MAP=Cliffhanger \
 //	  AIM_BOUNDS=<repo>/data/titles/halo_infinite/reference/map_quant_bounds.json \
 //	  AIM_TSV=<dossier de mesures> \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run TestViseeElevation -v -timeout 60m
+//	  go test ./replay/ -run TestViseeElevation -v -timeout 60m
 
 import (
 	"fmt"

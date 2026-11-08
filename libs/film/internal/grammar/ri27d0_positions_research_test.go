@@ -17,7 +17,7 @@ package grammar
 //
 //	RI27C_FILMS=<id,...> RI27C_RACINE=<film_chunks> RI27C_OUT=<dossier> [RI27C_CARTES=<id=Carte;...>] \
 //	  go test -tags=research -count=1 -run '^TestRI27d0Positions$' -timeout 120m \
-//	  ./internal/games/halo_infinite/film/internal/grammar/
+//	  ./internal/grammar/
 
 import (
 	"fmt"

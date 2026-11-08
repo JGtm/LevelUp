@@ -25,10 +25,10 @@ package grammar
 // LECTURE SEULE, garde par KF35_ROOT : saute partout ailleurs (CI comprise). UN SEUL
 // decodage filmdec par process (bascules globales) : le verrou est pris pour tout le test.
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 KF35_ROOT=<repo>/data/cache/film_chunks \
-//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestKF35' -timeout 30m -v
+//	  go test ./internal/grammar/ -run '^TestKF35' -timeout 30m -v
 
 import (
 	"fmt"

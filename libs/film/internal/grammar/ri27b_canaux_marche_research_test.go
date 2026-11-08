@@ -50,7 +50,7 @@ package grammar
 //
 //	RI27B_FILMS=084a804d,111fa685 RI27B_RACINE=<film_chunks> RI27B_OUT=<tsv> \
 //	  go test -tags=research -count=1 -run '^TestRI27bCanauxMarche$' -timeout 120m \
-//	  ./internal/games/halo_infinite/film/internal/grammar/
+//	  ./internal/grammar/
 
 import (
 	"encoding/json"

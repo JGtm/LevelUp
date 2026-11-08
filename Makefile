@@ -323,7 +323,8 @@ replay-corpus-gate:
 
 ## Harnais d equivalence du rejeu (cmd/replay-equiv) : compare les digests par etape de 20 films aux
 ## references figees (libs/film/replay/testdata/equivalence). EXIGE le parc local, ~12 min ; code 1 =
-## ecart. Apres une preuve d equivalence : `cd apps/go-api && go run ./cmd/replay-equiv -update`.
+## ecart. Liste des xuids d origine : data/film_identites/xuids_originaux.txt (local, hors depot ; sinon
+## -originaux ou LEVELUP_IDENTITES_ORIGINALES). Apres une preuve d equivalence : `cd apps/go-api && go run ./cmd/replay-equiv -update`.
 replay-equiv:
 	cd $(GO_API_DIR) && go run ./cmd/replay-equiv
 

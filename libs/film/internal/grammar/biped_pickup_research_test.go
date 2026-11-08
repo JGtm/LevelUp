@@ -27,7 +27,7 @@ package grammar
 // Sans elle tous les tests de ce fichier se sautent — les films ne sont pas versionnes.
 //
 //	CGO_ENABLED=0 BIPED_PICKUP_FILM=<depot>/data/cache/film_chunks/000d5950 \
-//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run types.BipedPickup -v -timeout 30m
+//	  go test -tags=research ./internal/grammar/ -run types.BipedPickup -v -timeout 30m
 
 import (
 	"fmt"

@@ -72,7 +72,7 @@ func BuildFromFilmAvecFaits(ctx context.Context, matchID, titleSlug string, film
 	// ecrite, et cette cuisson porte son propre etat de decodage — le profil de balayage et
 	// l'observation vivent dans le `FilmContext` construit ci-dessous, donc dans CET appel. Deux
 	// films peuvent se cuire en parallele dans le meme processus ; le verrou INTER-PROCESSUS
-	// `filmproc.AcquireSolo`, qui borne la memoire de la machine, reste a la charge des outils.
+	// de decodage, qui borne la memoire de la machine, reste a la charge de l hote.
 	// LE COMPTEUR DE REPLIS NAIT ICI, AVANT LE PREMIER BALAYAGE (lot 1.9.0, D14) : les replis du
 	// BALAYAGE (largeurs par defaut, plafond de grenades) et ceux de l'ASSEMBLAGE tombent dans le
 	// meme compte, celui de cette cuisson, publie dans `coverage.fallbacks`.

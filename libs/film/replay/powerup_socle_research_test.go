@@ -19,13 +19,13 @@ package replay
 //
 // LECTURE SEULE, aucune base, aucune ecriture. Hypotheses et seuils ECRITS AVANT la mesure.
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 OBJ_FILM_ART=<depot>/data/cache/replays/halo_infinite \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run '^TestPowerupSocleAncrage$' -v
+//	  go test ./replay/ -run '^TestPowerupSocleAncrage$' -v
 //
 //	CGO_ENABLED=0 OBJ_FILM=<depot>/data/cache/film_chunks/01e1f945 OBJ_FILM_MAP=Catalyst \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run '^TestPowerupSocle' -timeout 60m -v
+//	  go test ./replay/ -run '^TestPowerupSocle' -timeout 60m -v
 
 import (
 	"os"

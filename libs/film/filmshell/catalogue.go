@@ -1,6 +1,7 @@
 // Package filmshell PORTE LE CATALOGUE DES ARMES TEL QUE LE FILM LES NOMME : les huit octets
 // « filmshell » de chaque arme, leur nom canonique, et les tables qui s en derivent (fusions de
-// variantes, minutages, medailles de melee et de grenade, sentinelles non-arme).
+// variantes, minutages, sentinelles non-arme). Les tables ne sont pas exportees : elles se lisent
+// par les accesseurs de `accesseurs.go`.
 //
 // # POURQUOI IL VIT ICI, ET PLUS DANS `internal/analysis` (lot 2.5.e, 2026-09-16)
 //
@@ -43,8 +44,8 @@ const (
 	VehicleWeaponID uint64 = 2
 )
 
-// SentinelIDs regroupe les IDs non-arme pour filtrage.
-var SentinelIDs = map[uint64]bool{
+// sentinelIDs regroupe les IDs non-arme pour filtrage.
+var sentinelIDs = map[uint64]bool{
 	MeleeWeaponID: true, GrenadeWeaponID: true, VehicleWeaponID: true,
 }
 
@@ -91,20 +92,17 @@ type WeaponEntry struct {
 // weaponEntries — liste ordonnée, initialisée dans init().
 var weaponEntries []WeaponEntry
 
-// WeaponIDToName — map[uint64]string pour lookup rapide.
-var WeaponIDToName map[uint64]string
+// weaponIDToName — map[uint64]string pour lookup rapide.
+var weaponIDToName map[uint64]string
 
-// WeaponNameToID — reverse map[string]uint64.
-var WeaponNameToID map[string]uint64
+// weaponNameToID — reverse map[string]uint64.
+var weaponNameToID map[string]uint64
 
-// WeaponIDs — set pour validation rapide.
-var WeaponIDs map[uint64]bool
+// weaponIDs — set pour validation rapide.
+var weaponIDs map[uint64]bool
 
-// WeaponBytesMap — [8]byte → bool pour scan Formula A.
-var WeaponBytesMap map[[8]byte]bool
-
-// WeaponBytesToInt — [8]byte → uint64.
-var WeaponBytesToInt map[[8]byte]uint64
+// weaponBytesMap — [8]byte → bool pour scan Formula A.
+var weaponBytesMap map[[8]byte]bool
 
 func init() {
 	type raw struct {
@@ -158,20 +156,18 @@ func init() {
 	}
 
 	weaponEntries = make([]WeaponEntry, len(entries))
-	WeaponIDToName = make(map[uint64]string, len(entries))
-	WeaponNameToID = make(map[string]uint64, len(entries))
-	WeaponIDs = make(map[uint64]bool, len(entries))
-	WeaponBytesMap = make(map[[8]byte]bool, len(entries))
-	WeaponBytesToInt = make(map[[8]byte]uint64, len(entries))
+	weaponIDToName = make(map[uint64]string, len(entries))
+	weaponNameToID = make(map[string]uint64, len(entries))
+	weaponIDs = make(map[uint64]bool, len(entries))
+	weaponBytesMap = make(map[[8]byte]bool, len(entries))
 
 	for i, e := range entries {
 		id := hexToUint64(e.hex)
 		weaponEntries[i] = WeaponEntry{Bytes: e.hex, ID: id, Name: e.name}
-		WeaponIDToName[id] = e.name
-		WeaponNameToID[e.name] = id
-		WeaponIDs[id] = true
-		WeaponBytesMap[e.hex] = true
-		WeaponBytesToInt[e.hex] = id
+		weaponIDToName[id] = e.name
+		weaponNameToID[e.name] = id
+		weaponIDs[id] = true
+		weaponBytesMap[e.hex] = true
 	}
 }
 
@@ -210,11 +206,11 @@ type WeaponTiming struct {
 	TravelMax int
 }
 
-// DefaultTiming est utilisé quand l'arme n'est pas dans la table.
-var DefaultTiming = WeaponTiming{SwapMS: 650, TravelMax: 2000}
+// defaultTiming est utilisé quand l'arme n'est pas dans la table.
+var defaultTiming = WeaponTiming{SwapMS: 650, TravelMax: 2000}
 
-// WeaponTimingByName — par nom anglais.
-var WeaponTimingByName = map[string]WeaponTiming{
+// weaponTimingByName — par nom anglais.
+var weaponTimingByName = map[string]WeaponTiming{
 	"Mk51 Sidekick":         {400, 300},
 	"Plasma Pistol":         {450, 300},
 	"MA40 AR":               {650, 500},
@@ -253,32 +249,32 @@ var WeaponTimingByName = map[string]WeaponTiming{
 	"Dynamo Grenade":        {950, 1500},
 }
 
-// WeaponTimingByID — par weapon_id uint64. Construit dans init().
-var WeaponTimingByID map[uint64]WeaponTiming
+// weaponTimingByID — par weapon_id uint64. Construit dans init().
+var weaponTimingByID map[uint64]WeaponTiming
 
 func init() {
-	WeaponTimingByID = make(map[uint64]WeaponTiming, len(WeaponTimingByName))
-	for name, t := range WeaponTimingByName {
-		if id, ok := WeaponNameToID[name]; ok {
-			WeaponTimingByID[id] = t
+	weaponTimingByID = make(map[uint64]WeaponTiming, len(weaponTimingByName))
+	for name, t := range weaponTimingByName {
+		if id, ok := weaponNameToID[name]; ok {
+			weaponTimingByID[id] = t
 		}
 	}
 }
 
 // GetTiming retourne le timing pour un weapon_id donné.
 func GetTiming(weaponID uint64) WeaponTiming {
-	if t, ok := WeaponTimingByID[weaponID]; ok {
+	if t, ok := weaponTimingByID[weaponID]; ok {
 		return t
 	}
-	return DefaultTiming
+	return defaultTiming
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  Fusion — variantes → canonique
 // ══════════════════════════════════════════════════════════════════════════════
 
-// WeaponFusionMap — nom variante → nom canonique.
-var WeaponFusionMap = map[string]string{
+// weaponFusionMap — nom variante → nom canonique.
+var weaponFusionMap = map[string]string{
 	"M392 Bandit":           "Bandit Evo",
 	"Fuel Rod SPNKr":        "M41 SPNKr",
 	"Shock Rifle (Ranked)":  "Shock Rifle",
@@ -290,49 +286,35 @@ var WeaponFusionMap = map[string]string{
 	"Rushdown Hammer":       WeaponNameGravityHammer,
 }
 
-// WeaponFusionMapID — weapon_id variante → weapon_id canonique.
-var WeaponFusionMapID map[uint64]uint64
+// weaponFusionMapID — weapon_id variante → weapon_id canonique.
+var weaponFusionMapID map[uint64]uint64
 
 func init() {
-	WeaponFusionMapID = make(map[uint64]uint64, len(WeaponFusionMap))
-	for variant, canon := range WeaponFusionMap {
-		vID, vOK := WeaponNameToID[variant]
-		cID, cOK := WeaponNameToID[canon]
+	weaponFusionMapID = make(map[uint64]uint64, len(weaponFusionMap))
+	for variant, canon := range weaponFusionMap {
+		vID, vOK := weaponNameToID[variant]
+		cID, cOK := weaponNameToID[canon]
 		if vOK && cOK {
-			WeaponFusionMapID[vID] = cID
+			weaponFusionMapID[vID] = cID
 		}
 	}
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-//  Médailles melee / grenade
-// ══════════════════════════════════════════════════════════════════════════════
-
-var MeleeMedals = map[string]bool{
-	"Pummel": true, "Assassination": true, "Back Smack": true,
-	"Melee": true, "Quigley": true, "Ninja": true, "Pancake": true,
-}
-
-var GrenadeMedals = map[string]bool{
-	"Sticky Fingers": true, "Grenadier": true, "Boom!": true,
-	"Kong": true, "Stick": true, "Grenade Stick": true,
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  Suffixes Formula A
 // ══════════════════════════════════════════════════════════════════════════════
 
-// CommonWeaponSuffix = derniers 4 bytes de la majorité des armes.
-var CommonWeaponSuffix = [4]byte{0x42, 0xc9, 0x67, 0x9f}
+// commonWeaponSuffix = derniers 4 bytes de la majorité des armes.
+var commonWeaponSuffix = [4]byte{0x42, 0xc9, 0x67, 0x9f}
 
-// AllFormulaASuffixes — tous les suffixes 4B uniques des weapon IDs.
-var AllFormulaASuffixes map[[4]byte]bool
+// allFormulaASuffixes — tous les suffixes 4B uniques des weapon IDs.
+var allFormulaASuffixes map[[4]byte]bool
 
 func init() {
-	AllFormulaASuffixes = make(map[[4]byte]bool)
-	for b := range WeaponBytesMap {
+	allFormulaASuffixes = make(map[[4]byte]bool)
+	for b := range weaponBytesMap {
 		var suffix [4]byte
 		copy(suffix[:], b[4:])
-		AllFormulaASuffixes[suffix] = true
+		allFormulaASuffixes[suffix] = true
 	}
 }

@@ -65,7 +65,7 @@ package grammar
 // UN SEUL FILM PAR INVOCATION.
 //
 //	ZONE_FILM=<cache>/film_chunks/bcb6d393 ZONE_OBJTYPE=flag ZONE_OUT=<tmp>
-//	go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/
+//	go test -tags=research ./internal/grammar/
 //	  -run Jauge51Ti13 -v -timeout 60m
 
 import (

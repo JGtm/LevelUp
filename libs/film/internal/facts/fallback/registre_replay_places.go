@@ -1,7 +1,7 @@
 package fallback
 
 // registre_replay_places.go — les replis des PLACES et des PRÉSENCES du roster du rejeu
-// (`internal/games/halo_infinite/film/replay/sieges.go`, `successions.go`), posés par le lot M2.3
+// (`replay/sieges.go`, `successions.go`), posés par le lot M2.3
 // de la campagne « retours rejeu » (2026-09-23) sur la RÈGLE DES PLACES de l'utilisateur.
 //
 // UN FICHIER NEUF, ET C'EST LA LIMITE DE 500 LIGNES : `registre_replay_identites.go` y était à

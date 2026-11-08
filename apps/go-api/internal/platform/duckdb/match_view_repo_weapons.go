@@ -189,7 +189,7 @@ func (r *MatchViewRepo) GetMatchBulkWeaponKills(ctx context.Context, matchID str
 			return nil, fmt.Errorf("MatchViewRepo.GetMatchBulkWeaponKills scan: %w", err)
 		}
 		canonicalU := widU
-		if canon, ok := filmshell.WeaponFusionMapID[widU]; ok {
+		if canon, ok := filmshell.IDCanonique(widU); ok {
 			canonicalU = canon
 		}
 		k := key{xuid: xuid, wid: int64(canonicalU)} //nolint:gosec

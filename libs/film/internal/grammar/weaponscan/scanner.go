@@ -183,7 +183,7 @@ func ScanFormulaA(data []byte) []FormulaAResult {
 		end := min(absPos+68, len(data))
 
 		bestSX := -1
-		for suffix := range filmshell.AllFormulaASuffixes {
+		for suffix := range filmshell.SuffixesFormuleA() {
 			sxc := bytes.Index(data[absPos+4:end], suffix[:])
 			if sxc < 0 {
 				continue
@@ -193,10 +193,10 @@ func ScanFormulaA(data []byte) []FormulaAResult {
 			if wsc <= absPos+3 {
 				continue
 			}
-			if suffix != filmshell.CommonWeaponSuffix {
+			if suffix != filmshell.SuffixeCommun() {
 				var wb [8]byte
 				copy(wb[:], data[wsc:wsc+8])
-				if !filmshell.WeaponBytesMap[wb] {
+				if !filmshell.EstOctetsDArme(wb) {
 					continue
 				}
 			}
@@ -233,7 +233,7 @@ func ScanFormulaANS(data []byte) []FormulaAResult {
 	}
 
 	var results []FormulaAResult
-	for wb := range filmshell.WeaponBytesMap {
+	for wb := range filmshell.OctetsDesArmes() {
 		if len(wb) != 8 {
 			continue
 		}
@@ -321,7 +321,7 @@ func decodeFireEventAt(data []byte, bitPos, totalBits int) (FireEvent, bool) {
 	weaponInt := readBitsUint64(data, weaponStart, 64)
 	weaponBytes := filmshell.BytesFromID(weaponInt)
 
-	if !filmshell.WeaponIDs[weaponInt] && !hasSuffix(weaponBytes, filmshell.CommonWeaponSuffix) {
+	if !filmshell.EstUneArme(weaponInt) && !hasSuffix(weaponBytes, filmshell.SuffixeCommun()) {
 		return FireEvent{}, false
 	}
 
@@ -335,7 +335,7 @@ func decodeFireEventAt(data []byte, bitPos, totalBits int) (FireEvent, bool) {
 		fireCounter = int(readBitsUint8(data, eventStart+24, 8))
 	}
 
-	weaponName := filmshell.WeaponIDToName[weaponInt]
+	weaponName, _ := filmshell.NomDArme(weaponInt)
 	if weaponName == "" {
 		weaponName = "INCONNU"
 	}

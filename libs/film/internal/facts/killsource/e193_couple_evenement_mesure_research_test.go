@@ -39,7 +39,7 @@ package killsource
 // la bobine versionnee testdata/minibobine_000d5950 est mesuree SANS garde, en CI.
 //
 //	CHUNK00_FILMS=<dir1>;<dir2> CGO_ENABLED=0 \
-//	  go test ./internal/games/halo_infinite/film/internal/facts/killsource/ \
+//	  go test ./internal/facts/killsource/ \
 //	  -run TestE193CoupleEcritContreRecollage -v -count=1 -timeout 3600s
 
 import (

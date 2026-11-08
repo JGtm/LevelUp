@@ -45,10 +45,10 @@ package replay
 // trois quarts. Ni l'un ni l'autre n'est au gate.
 //
 // RÉGIME : garde `ASSAUT_CACHE`. Aucune base, aucun réseau, sentinelle mémoire armée, UN SEUL
-// décodage à la fois sur la machine (verrou INTER-PROCESSUS `filmproc.AcquireSolo`). Jamais `cmd/replay-build`.
+// décodage à la fois sur la machine (verrou INTER-PROCESSUS `decodelock.Prendre`). Jamais `cmd/replay-build`.
 //
 //	$env:ASSAUT_CACHE="C:/.../data/cache"
-//	go test ./internal/games/halo_infinite/film/replay/ -run AssautBombArmsGate -v -timeout 60m
+//	go test ./replay/ -run AssautBombArmsGate -v -timeout 60m
 
 import (
 	"context"
@@ -58,6 +58,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/JGtm/LevelUp/libs/film/internal/decodelock"
 	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
 )
 
@@ -88,6 +89,7 @@ func TestAssautBombArmsGate(t *testing.T) {
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
+	decodelock.Prendre(t, cache, "TestAssautBombArmsGate", "parc")
 	defer amArmeSentinelle(t, "TestAssautBombArmsGate")()
 
 	desaccords := 0

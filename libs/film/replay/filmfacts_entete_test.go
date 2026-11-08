@@ -81,7 +81,7 @@ func fichierAvecGardes(t *testing.T, g GardesDeCuisson) FilmFactsEntete {
 // gardesCompletes : les trois canaux gardes balayes, sous un roster de deux xuids.
 func gardesCompletes() GardesDeCuisson {
 	return GardesDeCuisson{Drapeau: true, Zones: true, Bombe: true,
-		Roster: empreinteDuRoster([]uint64{2533274819954312, 2533274800000001})}
+		Roster: empreinteDuRoster([]uint64{2533491259474651, 2533274800000001})}
 }
 
 // TestUtilisable_RefuseDesFaitsCuitsSansUneGardeDemandee : RA1-1 (P1). Des faits cuits SANS une
@@ -127,7 +127,7 @@ func TestUtilisable_RefuseUnRosterDifferent(t *testing.T) {
 	entry := goldenEntryPourTest(t)
 	e := fichierAvecGardes(t, gardesCompletes())
 	autre := gardesCompletes()
-	autre.Roster = empreinteDuRoster([]uint64{2533274819954312})
+	autre.Roster = empreinteDuRoster([]uint64{2533491259474651})
 	if err := e.Utilisable(entry, autre); !errors.Is(err, ErrFilmFactsGardes) {
 		t.Errorf("roster different : err = %v, attendu ErrFilmFactsGardes", err)
 	}

@@ -19,11 +19,11 @@ package grammar
 // L'instrument le memorise puis rejoue `scanRecordDirs` sur ces memes triplets avec chaque
 // grammaire. Un SEUL balayage de film pour N hypotheses, et aucune copie de la grammaire.
 //
-// USAGE (depuis apps/go-api, cache Go ISOLE) :
+// USAGE (depuis libs/film, cache Go ISOLE) :
 //
 //	CGO_ENABLED=0 V9_FILM_ROOT=<repo>/data/cache V9_FILMS="0d76e8f1,fccc61cd" \
 //	  V9_BOUNDS=<repo>/.../map_quant_bounds.json V9_MAPS="behemoth,launch site" \
-//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run TestV9Grammaire -v -timeout 90m
+//	  go test ./internal/grammar/ -run TestV9Grammaire -v -timeout 90m
 
 import (
 	"fmt"

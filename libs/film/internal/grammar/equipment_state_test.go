@@ -35,10 +35,10 @@ package grammar
 // LECTURE SEULE, gardé par EQUIP_FILM, sauté partout ailleurs (CI comprise). UN SEUL
 // décodage filmdec par process (globaux de paquet) : le verrou est pris pour tout le test.
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 EQUIP_FILM=<repo>/data/cache/film_chunks/000d5950 \
-//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestEquipmentEntityState$' -timeout 30m -v
+//	  go test ./internal/grammar/ -run '^TestEquipmentEntityState$' -timeout 30m -v
 
 import (
 	"fmt"

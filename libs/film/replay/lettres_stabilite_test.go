@@ -13,10 +13,10 @@ package replay
 // aussi ce qui garde chacun des deux fichiers sous le seuil du depot (500 lignes) — la scission
 // suit une frontiere reelle, elle ne decoupe pas pour decouper.
 //
-// USAGE (depuis apps/go-api, une fois les films mesures) :
+// USAGE (depuis libs/film, une fois les films mesures) :
 //
 //	$env:LETTRES_OUT="<dossier de sortie>"
-//	go test -count=1 -run TestLettresOrdreStabilite -v ./internal/games/halo_infinite/film/replay/
+//	go test -count=1 -run TestLettresOrdreStabilite -v ./replay/
 
 import (
 	"os"

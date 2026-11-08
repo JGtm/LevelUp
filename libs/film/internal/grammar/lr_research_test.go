@@ -19,7 +19,7 @@ package grammar
 //
 //	LR_RACINE=<film_chunks> LR_FILMS=<id,id> LR_SORTIE=<dir hors data> [LR_PAQUETS=...] \
 //	  [LR_SLOTS=526,3331] [LR_MPP_DECLARE=1] go test -tags=research -count=1 -timeout 120m \
-//	  -run '^TestLRSecondRang$' ./internal/games/halo_infinite/film/internal/grammar/
+//	  -run '^TestLRSecondRang$' ./internal/grammar/
 
 import (
 	"fmt"

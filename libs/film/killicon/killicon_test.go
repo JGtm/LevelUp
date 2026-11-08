@@ -10,6 +10,7 @@ import (
 	"github.com/pelletier/go-toml/v2"
 
 	"github.com/JGtm/LevelUp/libs/film/damagetag"
+	"github.com/JGtm/LevelUp/libs/film/internal/depottest"
 )
 
 // atlasPrefix : toutes les vignettes de ce pont viennent de l atlas KILL FEED. L atlas
@@ -19,14 +20,13 @@ const atlasPrefix = "killfeed-"
 
 func spritePath(t *testing.T, stem string) string {
 	t.Helper()
-	return filepath.Join(racineDepot(t),
-		"static", "weapons-assets", "halo_infinite", "jeu", stem+".png")
+	return filepath.Join(depottest.Racine(t), "static", "weapons-assets", "halo_infinite", "jeu", stem+".png")
 }
 
 // registryEN lit le registre versionne des noms d armes : weapon_key -> nom EN.
 func registryEN(t *testing.T) map[string]string {
 	t.Helper()
-	p := filepath.Join(racineDepot(t),
+	p := filepath.Join(depottest.Racine(t),
 		"config", "titles", "halo_infinite", "mappings", "weapon_names.toml")
 	raw, err := os.ReadFile(p) //nolint:gosec // chemin construit depuis la racine du depot
 	if err != nil {

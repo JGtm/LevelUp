@@ -18,7 +18,7 @@ package replay
 //
 //	CGO_ENABLED=0 FILM_CACHE_ROOT=<mainrepo>/data/cache CTF_RESEARCH_OUT=<dir> \
 //	  CTF_BRIDGE_FILMS="64e8adfa:Catalyst" \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run CTFBridge -timeout 60m
+//	  go test ./replay/ -run CTFBridge -timeout 60m
 
 import (
 	"fmt"

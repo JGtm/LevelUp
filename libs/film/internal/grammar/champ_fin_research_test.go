@@ -12,7 +12,7 @@ package grammar
 //
 //	CGO_ENABLED=0 EQUIPPORTE_FILMS=<repo>/data/cache/film_chunks EQUIPPORTE_ID=5676a9ba \
 //	  EQUIPPORTE_CARTE=Insolence EQUIPPORTE_OUT=<scratchpad>/suivis go test -tags=research \
-//	  ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestChampParc$' -count=1 -v
+//	  ./internal/grammar/ -run '^TestChampParc$' -count=1 -v
 
 import (
 	"fmt"

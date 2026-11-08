@@ -15,7 +15,7 @@ package grammar
 //
 //	CAMPAGNE_RACINE=<film_chunks> CAMPAGNE_FILMS=<id,id> CAMPAGNE_SORTIE=<dir hors data> \
 //	VA_CATALOGUE=<map_quant_bounds.json> VA_CARTES="id=Carte;..." [VA_PROFILS=<profils>] \
-//	  go test -tags=research -count=1 -run '^TestVARevueOriginesDuCanal$' ./internal/games/halo_infinite/film/internal/grammar/
+//	  go test -tags=research -count=1 -run '^TestVARevueOriginesDuCanal$' ./internal/grammar/
 
 import (
 	"path/filepath"

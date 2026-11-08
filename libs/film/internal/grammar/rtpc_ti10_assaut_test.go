@@ -90,7 +90,7 @@ package grammar
 // REGIME : garde `ASSAUT_CACHE`. Aucune base, aucun reseau, sentinelle memoire armee, UN SEUL
 //
 //	$env:ASSAUT_CACHE="C:/.../data/cache"
-//	go test ./internal/games/halo_infinite/film/internal/grammar/ -run RtpcTi10 -v -timeout 120m
+//	go test ./internal/grammar/ -run RtpcTi10 -v -timeout 120m
 
 import (
 	"os"
@@ -99,7 +99,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // ti10MonteeDiviseur fixe le seuil d'amplitude d'une montee : le SEIZIEME de l'etendue observee
@@ -169,13 +169,13 @@ func TestRtpcTi10AssautIdentifiants(t *testing.T) {
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
-	g := filmproc.Arm("TestRtpcTi10AssautIdentifiants", filmproc.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm(t.Context(), "TestRtpcTi10AssautIdentifiants", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — mesure interrompue", float64(peak)/(1<<30))
 	})
 	defer func() {
 		g.Disarm()
 		t.Logf("pic memoire observe : %.2f Gio (plafond souple %d Gio)",
-			float64(g.Peak())/(1<<30), filmproc.MeasureLimitGiB)
+			float64(g.Peak())/(1<<30), memguard.MeasureLimitGiB)
 	}()
 
 	bilans := make([]*ti10FilmBilan, 0, len(ti11Corpus))

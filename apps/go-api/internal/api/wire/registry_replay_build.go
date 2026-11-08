@@ -4,7 +4,7 @@
 // LE DÉCODAGE PART HORS DU PROCESSUS SERVEUR (lot J2.13, constat OPS-2, 2026-09-26), par le
 // chemin de l'étape 1.58 du post-sync : `replayartifacts.ConstruireEtRanger` avec la stratégie
 // `replayartifacts.SpawnBuildOne` — un ENFANT borne (sentinelle mémoire, priorité basse) qui
-// prend le verrou solo `filmproc.AcquireSolo` en refus immédiat et rend les octets, que
+// prend le verrou solo `filmrun.AcquireSolo` en refus immédiat et rend les octets, que
 // `replaybuild.StoreArtifact` range ICI (garde anti-régression, notification). L'action
 // décodait auparavant dans le serveur, hors verrou et sans plafond : le septième point
 // d'entrée du décodage, que l'ADR 0034 ne comptait pas. Les faits du match sont lus en base par

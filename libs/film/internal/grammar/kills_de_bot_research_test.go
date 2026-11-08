@@ -18,7 +18,7 @@ package grammar
 // LECTURE SEULE, gardee par une variable — sautee partout ailleurs, CI comprise :
 //
 //	KB_FILM=<repo>/data/cache/film_chunks/0a08d2f2 KB_MORTS=438625:8:1,510209:10:3,584132:3:11 \
-//	  go test -tags research ./internal/games/halo_infinite/film/internal/grammar/ \
+//	  go test -tags research ./internal/grammar/ \
 //	  -run '^TestKillsDeBotDansLeFilm$' -v -count=1
 //
 // Les couples se lisent dans le journal de `killsource.TestBotsParInstant` (dead-states a indice de

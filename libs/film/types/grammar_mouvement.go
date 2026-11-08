@@ -51,7 +51,7 @@ const (
 	// CE QUI TRANCHE N EST PAS UNE CHAINE DU BINAIRE, C EST LE JEU REGARDE. L utilisateur a
 	// ouvert Theater sur `bfecd02b` et confronte, image par image, NEUF intervalles de ce
 	// genre : les neuf sont des escalades de rebord — le temoin du lot 5.22
-	// (Madina97294, slot 523) en donne la plus nette, un saut date a 96,962 s qui se termine en
+	// (Joueur90002, slot 523) en donne la plus nette, un saut date a 96,962 s qui se termine en
 	// prise sur un element du decor, ou `i54` s allume de 97,096 a 97,63 s et ou le Spartan
 	// redescend ensuite de cet element. **9 verdicts sur 9**, aucun contre-exemple.
 	//

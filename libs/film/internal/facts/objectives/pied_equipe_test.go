@@ -28,7 +28,7 @@ const (
 	piedChunk       = 40
 	piedAttenduTime = 133033
 	piedAttenduTeam = 1
-	piedAttenduXUID = uint64(2535430195856593)
+	piedAttenduXUID = uint64(2804128349823266)
 )
 
 // TestExtractPrendLEquipeDuPied : le chemin qui CONSOMME les événements du pied voit le bloc par

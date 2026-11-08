@@ -46,7 +46,7 @@ const (
 	prefixeRevisionKillsource = "killsource"
 	// commandeRegenerationKillsourceRev : la commande complete, telle qu on la tape.
 	commandeRegenerationKillsourceRev = "LEVELUP_UPDATE_KILLSOURCE_REV=1 go test " +
-		"./internal/games/halo_infinite/film/internal/facts/killsource/ -run TestKillsourceRevSuitLaSortie " +
+		"./internal/facts/killsource/ -run TestKillsourceRevSuitLaSortie " +
 		"-update-killsource-rev"
 )
 

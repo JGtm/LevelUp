@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/JGtm/LevelUp/libs/film/internal/depottest"
 )
 
 func writeCalloutsCatalog(t *testing.T, body string) string {
@@ -99,7 +101,7 @@ func TestCalloutsLookupByID(t *testing.T) {
 // la règle « aucun découpage deviné » — une liste de cartes se serait désynchronisée à la
 // première carte ajoutée.
 func TestCatalogueCalloutsLivreEstExploitable(t *testing.T) {
-	root := racineDepot(t)
+	root := depottest.Racine(t)
 	path := filepath.Join(root, "data", "titles", "halo_infinite", "reference", "map_callouts.json")
 	cat, err := LoadMapCallouts(path)
 	if err != nil {
@@ -191,7 +193,7 @@ func fondImagePubliee(dir, module string) bool {
 //     passe Forge (un calque entièrement muet sous une bascule « Zones nommées » serait du
 //     bruit) — et à l'inverse une zone SANS libellé est légitime, sa géométrie est mesurée.
 func TestCatalogueCalloutsForgeLivreEstExploitable(t *testing.T) {
-	root := racineDepot(t)
+	root := depottest.Racine(t)
 	cat, err := LoadMapCallouts(filepath.Join(root, "data", "titles", "halo_infinite",
 		"reference", "map_callouts.json"))
 	if err != nil {

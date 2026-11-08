@@ -19,7 +19,7 @@ package grammar
 // des types de physique (CAMPAGNE_PHYSIQUE) et egal au chassis d image-cle du meme slot.
 //
 //	go test -tags=research -count=1 -run '^TestRVehChassisNeufs$' \
-//	  ./internal/games/halo_infinite/film/internal/grammar/
+//	  ./internal/grammar/
 
 import (
 	"fmt"
@@ -29,8 +29,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
 	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // rvcPhysique lit CAMPAGNE_PHYSIQUE (`chassis:type,...`), sans dependre de la surcouche.
@@ -216,7 +216,7 @@ func TestRVehChassisNeufs(t *testing.T) {
 		return "inconnu"
 	}
 	for _, id := range films {
-		garde := filmproc.Arm("campagne/r-veh-chassis", 4, func(pic uint64) {
+		garde := memguard.Arm(t.Context(), "campagne/r-veh-chassis", 4, func(pic uint64) {
 			fmt.Fprintf(os.Stderr, "%s : plafond memoire franchi (%d octets)\n", id, pic)
 			os.Exit(3)
 		})

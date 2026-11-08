@@ -2,7 +2,7 @@ package filmcache
 
 // stockage.go — LA FORME D'UN CHUNK SUR DISQUE (decision D-18, 2026-11-01).
 //
-// Un chunk du cache est brut, zlib (cache historique) ou zstd-3 (ecrit par [Write] depuis D-18) ;
+// Un chunk du cache est brut, zlib (cache historique) ou zstd-3 (ecrit par l'ecrivain de l'hote depuis D-18) ;
 // la couche `source` reconnait les trois a l'en-tete et c'est elle seule qui touche aux octets
 // (cf. `source/zstd.go`). Ce fichier porte ce qu'en deduit le cache : la TAILLE LOGIQUE d'un
 // fichier, celle qu'on compare au `size_bytes` du manifeste.
@@ -20,13 +20,13 @@ import (
 	"github.com/JGtm/LevelUp/libs/film/internal/source"
 )
 
-// tailleLogiqueInconnue : le fichier est une trame zstd qui ne declare pas sa taille (ecrite par
+// TailleLogiqueInconnue : le fichier est une trame zstd qui ne declare pas sa taille (ecrite par
 // un autre compresseur que le notre). Aucun controle de troncature n'est possible dessus.
-const tailleLogiqueInconnue int64 = -1
+const TailleLogiqueInconnue int64 = -1
 
-// tailleLogiqueFichier rend la taille logique du chunk `path`, de taille disque `tailleDisque` :
+// TailleLogique rend la taille logique du chunk `path`, de taille disque `tailleDisque` :
 // la taille declaree par l'en-tete pour une trame zstd, la taille du fichier sinon.
-func tailleLogiqueFichier(path string, tailleDisque int64) (int64, error) {
+func TailleLogique(path string, tailleDisque int64) (int64, error) {
 	if tailleDisque < 4 {
 		return tailleDisque, nil
 	}
@@ -44,7 +44,7 @@ func tailleLogiqueFichier(path string, tailleDisque int64) (int64, error) {
 	}
 	taille, err := source.TailleLogiqueZstd(debut)
 	if errors.Is(err, source.ErrZstdTailleInconnue) {
-		return tailleLogiqueInconnue, nil
+		return TailleLogiqueInconnue, nil
 	}
 	if err != nil {
 		return 0, fmt.Errorf("en-tete zstd de %s : %w", path, err)
@@ -61,15 +61,38 @@ func octetsLogiques(fichier []byte) ([]byte, error) {
 	return source.DecompresserZstd(fichier)
 }
 
-// octetsAEcrire rend la forme de stockage d'un chunk : zstd-3 quand elle est plus courte que les
-// octets, les octets tels quels sinon (un chunk vide ou incompressible). `comprime` dit laquelle.
-func octetsAEcrire(donnees []byte) (stocke []byte, comprime bool, err error) {
-	z, err := source.CompresserZstd(donnees)
-	if err != nil {
-		return donnees, false, err
+// OctetsLogiquesStricts rend les octets d'un chunk NON zstd : decompresses s'il est en zlib, tels
+// quels sinon. Un flux zlib dont l'en-tete est bon mais qui casse est une ERREUR : celui qui
+// recompresserait ces octets figerait un partiel.
+func OctetsLogiquesStricts(fichier []byte) ([]byte, error) {
+	if len(fichier) < 2 || fichier[0] != 0x78 {
+		return fichier, nil
 	}
-	if len(z) == 0 || len(z) >= len(donnees) {
-		return donnees, false, nil
+	out, err := source.Decompresser(fichier)
+	if errors.Is(err, source.ErrEnTeteZlib) {
+		return fichier, nil // 0x78 par hasard : un chunk clair
 	}
-	return z, true, nil
+	return out, err
 }
+
+// LA FORME ZSTD D'UN CHUNK, pour qui ecrit ou recompresse le cache (l'hote : la brique ne fait que
+// lire). Ce sont les fonctions de la couche `source`, qui seule touche aux octets d'un film.
+
+// TailleEnteteZstd : le nombre d'octets de tete qui suffisent a [EstZstd] et [TailleLogiqueZstd].
+const TailleEnteteZstd = source.TailleEnteteZstd
+
+// ErrZstdTailleInconnue : la trame zstd ne declare pas sa taille dans son en-tete.
+var ErrZstdTailleInconnue = source.ErrZstdTailleInconnue
+
+// EstZstd dit si les octets commencent par l'en-tete d'une trame zstd.
+func EstZstd(octets []byte) bool { return source.EstZstd(octets) }
+
+// CompresserZstd rend la trame zstd (niveau du cache) des octets.
+func CompresserZstd(octets []byte) ([]byte, error) { return source.CompresserZstd(octets) }
+
+// DecompresserZstd rend les octets d'une trame zstd entiere.
+func DecompresserZstd(trame []byte) ([]byte, error) { return source.DecompresserZstd(trame) }
+
+// TailleLogiqueZstd rend la taille que l'en-tete de la trame declare ([ErrZstdTailleInconnue] s'il
+// n'en declare pas).
+func TailleLogiqueZstd(debut []byte) (int64, error) { return source.TailleLogiqueZstd(debut) }

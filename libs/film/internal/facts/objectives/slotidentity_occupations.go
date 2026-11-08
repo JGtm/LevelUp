@@ -17,9 +17,9 @@ import (
 // compteurs de base du slot (frags, morts, assistances) RETOMBENT A ZERO au changement d'occupant :
 //
 //	slot 12  70 706 k1 d0 ... 179 114 k2 d5 | 191 979 k0 d0 | 231 170 k0 d1 ... 342 765 k1 d5
-//	         2535460750735339 (K2 D5 A0)                      2535468064146356 (K1 D5 A0)
+//	         2701236422544437 (K2 D5 A0)                      2544014377305993 (K1 D5 A0)
 //	slot 14  48 600 d1 ... 159 730 k4 d3 | 170 639 0/0/0 | 223 679 d1 | 232 705 0/0 | 274 479 k1 ...
-//	         2533274876732804 (K4 D3 A1)                    2535418713587213         2533274811363842
+//	         2713751699127665 (K4 D3 A1)                    2671702200150518         2653441341920331
 //
 // Chaque segment reproduit la ligne de match de son occupant, et les morts de chaque segment
 // coincident avec le fil des morts de cet occupant, et de lui seul. Le pont par instants de mort,

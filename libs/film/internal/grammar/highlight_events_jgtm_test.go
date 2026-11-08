@@ -4,7 +4,7 @@
 // Le fixture est gitignored — si absent localement, ces tests se skip
 // automatiquement via jgtmDisponible().
 //
-// Le fixture vit chez l'hote (`apps/go-api/internal/sync/testdata/jgtm_full_match`, produit par
+// Le fixture vit chez l'hote (le dossier `testdata/jgtm_full_match` de son paquet `sync`, produit par
 // `cmd/gen_test_fixtures`) : la brique le lit par un chargeur LOCAL de la seule partie dont elle
 // a besoin (le manifeste et les chunks), et plus par le paquet `testfixtures` de LevelUp (plan
 // D2, item 2.11). Le chargeur de l'hote lit aussi les reponses d'API, dont ces tests n'ont rien
@@ -17,6 +17,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/JGtm/LevelUp/libs/film/internal/depottest"
 )
 
 // TestParseHighlightEvents_JGtmFullMatch_HighlightChunk : parse le chunk
@@ -210,7 +212,7 @@ const (
 // dossierJGtm : le fixture, dans le depot hote.
 func dossierJGtm(t *testing.T) string {
 	t.Helper()
-	return filepath.Join(racineDepot(t), "apps", "go-api", "internal", "sync", "testdata", "jgtm_full_match")
+	return filepath.Join(depottest.Racine(t), "apps", "go-api", "internal", "sync", "testdata", "jgtm_full_match")
 }
 
 // jgtmDisponible dit si le fixture (gitignore, 6 Mo) est present : manifeste et chunk 0.

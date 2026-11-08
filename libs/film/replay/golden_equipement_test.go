@@ -20,7 +20,7 @@ package replay
 // PROCESSUS :
 //
 //	REPLAY_FILM_CACHE=<repo>/data/cache/film_chunks \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run 'TestGoldenEquipementRegenerate/<short8>' -update
+//	  go test ./replay/ -run 'TestGoldenEquipementRegenerate/<short8>' -update
 //
 // Elle echoue TOUJOURS en nommant ce qu'elle a ecrit ; on relance sans les drapeaux pour verifier.
 
@@ -30,6 +30,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/JGtm/LevelUp/libs/film/internal/depottest"
 
 	"github.com/JGtm/LevelUp/libs/film/equipenergy"
 )
@@ -69,7 +71,7 @@ func chargerEquipementDuBuild(t *testing.T, short8 string, g *FilmFacts) {
 // (`replaybuild.energieCatalog`), pour que les usages restants des goldens soient ceux du parc.
 func goldenEnergyCatalog(t *testing.T) *equipenergy.Catalog {
 	t.Helper()
-	path := filepath.Join(racineDepot(t), "data", "titles", titreDeReference, "reference", "equipment_energy.json")
+	path := filepath.Join(depottest.Racine(t), "data", "titles", titreDeReference, "reference", "equipment_energy.json")
 	cat, err := equipenergy.Load(path)
 	if err != nil {
 		t.Fatalf("catalogue de l energie des equipements %s : %v", path, err)

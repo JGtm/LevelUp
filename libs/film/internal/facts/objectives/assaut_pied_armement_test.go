@@ -58,7 +58,7 @@ package objectives
 // decodage de paquet FRAME (le pied est un chunk a part) — sentinelle memoire armee.
 //
 //	$env:ASSAUT_CACHE="C:/.../data/cache"
-//	go test ./internal/games/halo_infinite/film/internal/facts/objectives/ -run AssautPiedArmement -v -timeout 30m
+//	go test ./internal/facts/objectives/ -run AssautPiedArmement -v -timeout 30m
 
 import (
 	"fmt"
@@ -67,7 +67,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 const (
@@ -154,7 +154,7 @@ func TestAssautPiedArmementRecensement(t *testing.T) {
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
-	g := filmproc.Arm("TestAssautPiedArmementRecensement", filmproc.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm(t.Context(), "TestAssautPiedArmementRecensement", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — recensement interrompu", float64(peak)/(1<<30))
 	})
 	defer func() { g.Disarm() }()
@@ -210,7 +210,7 @@ func TestAssautPiedArmementFenetre(t *testing.T) {
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
-	g := filmproc.Arm("TestAssautPiedArmementFenetre", filmproc.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm(t.Context(), "TestAssautPiedArmementFenetre", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — mesure interrompue", float64(peak)/(1<<30))
 	})
 	defer func() { g.Disarm() }()

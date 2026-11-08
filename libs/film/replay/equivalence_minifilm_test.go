@@ -16,7 +16,7 @@ package replay
 //
 // # REGENERATION
 //
-//	go test ./internal/games/halo_infinite/film/replay/ -run TestEquivalenceMiniFilm -update
+//	go test ./replay/ -run TestEquivalenceMiniFilm -update
 //
 // Un digest qui bouge dans un lot de REFACTO PUR fait echouer le lot — il ne se regenere qu'aux
 // lots de correction declares (3 et 4b), avec le diff des comptes au journal.
@@ -32,7 +32,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/digest"
+	"github.com/JGtm/LevelUp/libs/film/internal/digest"
 	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
 	"github.com/JGtm/LevelUp/libs/film/internal/profile"
 )

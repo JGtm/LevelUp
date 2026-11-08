@@ -5,10 +5,16 @@
 // temporaires et les retirent en cas d'échec ou de refus. Un `_ = os.Remove(tmp)` avale
 // l'échec : une copie de plusieurs centaines de Mo reste sur le disque sans aucune trace.
 //
-// INTERDIT dans internal/api et internal/service (hors _test.go) : un appel à os.Remove ou
-// os.RemoveAll dont l'erreur est écartée — affectation à `_`, instruction seule, `defer` ou
-// `go` direct. Le résultat se teste et l'échec se journalise. Allowlist datée, par fichier
-// et par nombre de sites.
+// INTERDIT dans internal/api, internal/service et les quatre briques de libs/ (hors _test.go) :
+// un appel à os.Remove ou os.RemoveAll dont l'erreur est écartée — affectation à `_`, instruction
+// seule, `defer` ou `go` direct. Le résultat se teste et l'échec se journalise. Allowlist datée,
+// par fichier et par nombre de sites.
+//
+// LES BRIQUES (2026-11-08, ADR 0041 D7). Une brique n'a pas de chemin de requête, mais elle écrit
+// des fichiers temporaires pour le compte de son appelant : un retrait avalé y laisse la même
+// copie orpheline, sans trace, dans un code que l'hôte ne voit pas. Les autres paquets de go-api
+// (cmd/, assets, media, ops, platform, transfer...) restent hors racine : ce sont des chemins de
+// fond, pas des chemins de requête ; les y ajouter est une décision à part.
 package archlint
 
 import (
@@ -19,14 +25,24 @@ import (
 	"testing"
 )
 
-// discardedRemoveRoots : arborescences analysées, relatives au module.
-var discardedRemoveRoots = []string{"internal/api", "internal/service"}
+// discardedRemoveRoots : arborescences analysées, au double repère de [surDisque] (go-api, puis
+// les briques sous `libs/`).
+var discardedRemoveRoots = []string{
+	"internal/api", "internal/service",
+	"libs/film", "libs/gamefiles", "libs/haloapi", "libs/himap",
+}
 
 // discardedRemoveAllowlist : fichier -> nombre de sites tolérés. Toute entrée est datée.
 var discardedRemoveAllowlist = map[string]int{
 	// 2026-10-16 : rédaction d'un brouillon d'aide (fichier temporaire) — hors du
 	// périmètre de F-1a, consigné en découverte D-F1a-1 du plan sécurité.
 	"internal/api/handlers/help.go": 2,
+	// 2026-11-08 : nettoyage du fichier temporaire d'une écriture atomique APRÈS que l'erreur
+	// d'écriture, rendue à l'appelant, est connue : le retrait raté ne change pas ce que l'appelant
+	// apprend. Jumeau de `internal/platform/atomicfile` (même motif, hors racines). Retrait : le
+	// jour où l'aide d'écriture de la brique journalise ou rend la faute du retrait, ou quand la
+	// brique n'embarque plus sa copie.
+	"libs/film/internal/atomicfile/atomicfile.go": 2,
 }
 
 // discardedRemoveSites rend « fichier:ligne » de chaque retrait dont l'erreur est écartée.

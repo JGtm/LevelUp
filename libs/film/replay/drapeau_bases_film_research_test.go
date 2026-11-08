@@ -25,8 +25,8 @@ package replay
 // les vies libres de l'objet drapeau viennent du FICHIER DE FAITS (aucun octet de film). Les
 // socles du catalogue des temoins sont lus sur l'artefact (etat `home` publie par drapeau).
 //
-//	L1_DEPOT=<checkout qui porte data/cache> \
-//	  go test -tags research -count=1 -run '^TestDrapeauBasesDuFilm$' -v ./internal/games/halo_infinite/film/replay/
+//	L1_ARTEFACTS=<dossier des artefacts de rejeu> L1_FAITS=<dossier des faits de film> L1_BORNES=<map_quant_bounds.json> \
+//	  go test -tags research -count=1 -run '^TestDrapeauBasesDuFilm$' -v ./replay/
 
 import (
 	"encoding/json"
@@ -159,23 +159,21 @@ func l1PointA(doc *ReplayDocument, xuid string, t int) (l1Pt, int, bool) {
 }
 
 func TestDrapeauBasesDuFilm(t *testing.T) {
-	depot := os.Getenv("L1_DEPOT")
-	if depot == "" {
-		t.Skip("instrument de mesure : L1_DEPOT requis")
+	if os.Getenv(envMesureArtefacts) == "" {
+		t.Skip("instrument de mesure : L1_ARTEFACTS requis")
 	}
-	cat, err := profile.LoadMapQuantCatalog(filepath.Join(racineDepot(t), "data", "titles",
-		"halo_infinite", "reference", "map_quant_bounds.json"))
+	cat, err := profile.LoadMapQuantCatalog(cheminMesureRequis(t, envMesureBornes))
 	if err != nil {
 		t.Fatal(err)
 	}
 	labels := goldenCatalog(t)
 	for _, f := range l1Films {
-		t.Run(f.groupe+"/"+f.id, func(t *testing.T) { l1Mesurer(t, depot, f, cat, labels) })
+		t.Run(f.groupe+"/"+f.id, func(t *testing.T) { l1Mesurer(t, f, cat, labels) })
 	}
 }
 
-func l1Mesurer(t *testing.T, depot string, f l1Film, cat *profile.MapQuantCatalog, labels LabelCatalog) {
-	blob, err := os.ReadFile(filepath.Join(depot, "data", "cache", "replays", "halo_infinite", f.id+".json")) //nolint:gosec // mesure
+func l1Mesurer(t *testing.T, f l1Film, cat *profile.MapQuantCatalog, labels LabelCatalog) {
+	blob, err := os.ReadFile(filepath.Join(cheminMesureRequis(t, envMesureArtefacts), f.id+".json")) //nolint:gosec // mesure
 	if err != nil {
 		t.Skipf("artefact absent : %v", err)
 	}
@@ -200,7 +198,7 @@ func l1Mesurer(t *testing.T, depot string, f l1Film, cat *profile.MapQuantCatalo
 			captures[team] = append(captures[team], p)
 		}
 	}
-	renaissances := l1RenaissancesDesFaits(t, depot, f.id, cat, labels)
+	renaissances := l1RenaissancesDesFaits(t, f.id, cat, labels)
 	t.Logf("%s [%s] : vols localises par camp %v, sans position %d, renaissances %d points",
 		f.id, f.groupe, l1Comptes(vols), sansPos, len(renaissances))
 	centres := map[int]l1Pt{}
@@ -266,9 +264,9 @@ func l1RenaissanceProche(r map[l1Pt]int, c l1Pt) (int, float64) {
 }
 
 // l1RenaissancesDesFaits lit les vies libres de l'objet drapeau dans le fichier de faits.
-func l1RenaissancesDesFaits(t *testing.T, depot, id string, cat *profile.MapQuantCatalog,
+func l1RenaissancesDesFaits(t *testing.T, id string, cat *profile.MapQuantCatalog,
 	labels LabelCatalog) map[l1Pt]int {
-	blob, err := os.ReadFile(filepath.Join(depot, "data", "cache", "film_facts", "halo_infinite", id+".filmfacts.bin")) //nolint:gosec // mesure
+	blob, err := os.ReadFile(filepath.Join(cheminMesureRequis(t, envMesureFaits), id+".filmfacts.bin")) //nolint:gosec // mesure
 	if err != nil {
 		t.Logf("   faits absents : %v", err)
 		return nil

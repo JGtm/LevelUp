@@ -10,7 +10,7 @@ package grammar
 // perd QUELLE ancre, et de quel archetype.
 //
 //	M3_REVUE_FILM=<dossier des chunks> go test -tags=research -count=1 -v -timeout 30m \
-//	  -run '^TestM3RevueMarche$' ./internal/games/halo_infinite/film/internal/grammar/
+//	  -run '^TestM3RevueMarche$' ./internal/grammar/
 
 import (
 	"fmt"
@@ -228,7 +228,7 @@ func m3rvVoisinage(recs []KeyframeRec, bit int) string {
 //
 //	MOUV511_FILM=<dir> MOUV511_BORNES=<catalogue> MOUV511_CARTE=<carte> M3_REVUE_SLOT=<slot> \
 //	  go test -tags=research -count=1 -v -run '^TestM3RevueNaissancesDuSlot$' \
-//	  ./internal/games/halo_infinite/film/internal/grammar/
+//	  ./internal/grammar/
 func TestM3RevueNaissancesDuSlot(t *testing.T) {
 	slot, err := strconv.Atoi(os.Getenv("M3_REVUE_SLOT"))
 	if err != nil {

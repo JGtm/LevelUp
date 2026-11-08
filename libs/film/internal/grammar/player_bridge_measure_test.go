@@ -28,10 +28,10 @@ package grammar
 // LECTURE SEULE, garde par BRIDGE_FILM, saute partout ailleurs (CI comprise). UN SEUL film par
 // processus (D17).
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 BRIDGE_FILM=C:/.../data/cache/film_chunks/000d5950 \
-//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestPlayerChannelsPhase0$' -timeout 30m -v
+//	  go test ./internal/grammar/ -run '^TestPlayerChannelsPhase0$' -timeout 30m -v
 
 import (
 	"os"

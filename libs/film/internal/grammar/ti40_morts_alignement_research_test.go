@@ -28,7 +28,7 @@ package grammar
 // LECTURE SEULE, N ASSERTE RIEN, garde par `TI40_FILM` :
 //
 //	TI40_FILM=<repo>/data/cache/film_chunks/60ae07c4 \
-//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestTi40MortsAlignement$' -v
+//	  go test ./internal/grammar/ -run '^TestTi40MortsAlignement$' -v
 
 import (
 	"os"

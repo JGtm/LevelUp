@@ -10,7 +10,7 @@ package grammar
 // plus ensuite.
 //
 //	MOUV511_FILM=<dir> MOUV511_BORNES=<catalogue> MOUV511_CARTE=<carte> M3_SIG=1 \
-//	  go test -tags=research -count=1 -v -run '^TestM3SignatureDuMonde$' ./internal/games/halo_infinite/film/internal/grammar/
+//	  go test -tags=research -count=1 -v -run '^TestM3SignatureDuMonde$' ./internal/grammar/
 
 import (
 	"fmt"

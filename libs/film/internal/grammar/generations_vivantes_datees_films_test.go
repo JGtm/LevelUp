@@ -5,7 +5,7 @@ package grammar
 // pas de films) :
 //
 //	REPLAY_FILM_CACHE=<parc>/data/cache/film_chunks \
-//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run PointsAberrantsC2 -v
+//	  go test ./internal/grammar/ -run PointsAberrantsC2 -v
 //
 // Pieces (instrument `r2_positions_aberrantes_research_test.go`) : chaque point est un en-tete de
 // generation 2 ancre AVANT le record de creation de son corps — `a349fea8` slot 532 a
@@ -17,6 +17,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/JGtm/LevelUp/libs/film/internal/depottest"
 
 	"github.com/JGtm/LevelUp/libs/film/internal/profile"
 	"github.com/JGtm/LevelUp/libs/film/internal/source"
@@ -39,7 +41,7 @@ func TestPointsAberrantsC2(t *testing.T) {
 	if cache == "" {
 		t.Skip("REPLAY_FILM_CACHE absent : gate local des points aberrants C2 saute")
 	}
-	racine := racineDepot(t)
+	racine := depottest.Racine(t)
 	cat, err := profile.LoadMapQuantCatalog(filepath.Join(racine, "data", "titles", "halo_infinite",
 		"reference", "map_quant_bounds.json"))
 	if err != nil {

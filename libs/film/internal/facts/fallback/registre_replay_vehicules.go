@@ -1,7 +1,7 @@
 package fallback
 
 // registre_replay_vehicules.go — les replis du calque des VEHICULES poses par les retours du rejeu
-// du 2026-09-23 (`internal/games/halo_infinite/film/replay/`, et le DECOR DE CARTE decide a la
+// du 2026-09-23 (`replay/`, et le DECOR DE CARTE decide a la
 // requete par `internal/service/replay_vehicle_scenery*.go`, lot M7). Un fichier a part parce que
 // `registre_replay_identites.go`, qui porte les replis vehicules plus anciens, est a trois lignes
 // du seuil de 500 du depot.
@@ -16,10 +16,6 @@ const dateDecorM7 = "2026-09-24"
 // dateFalconM7b : le jour du lot M7b (le Falcon pilotable) et de sa reprise apres revue adverse
 // (constat RR-M7b-01 : la garde de la montee a bord d un artilleur reporte).
 const dateFalconM7b = "2026-09-24"
-
-// siteDecorM7 : la regle du decor, service de rejeu (hors du decodeur : le registre accepte les
-// sites hors du paquet film, comme `internal/sync/killcollector/`).
-const siteDecorM7 = "apps/go-api/internal/service/replay_vehicle_scenery_rule.go"
 
 // COMPTE DES DEUX REPLIS DU DECOR : ils vivent A LA REQUETE, pas a la cuisson, et `coverage.fallbacks`
 // est une donnee de CUISSON que la requete ne reecrit pas. Leur compte est publie dans le calque de
@@ -129,16 +125,13 @@ var registreReplayVehicules = []Repli{
 		// AUCUNE reference versionnee ne porte l altitude de la matiere : le sidecar du fond n en
 		// publie qu une par carte (`playLevelZ`), et les ancres d objectifs ne bornent pas le sol
 		// (negatif mesure : sur Banished Narrows les joueurs se tiennent 3,29 m sous la plus basse).
-		Condition: CondCarteAbsenteDuCatalogue,
-		Ordre:     OrdreSansLecture,
-		Sites: []Site{{
-			Fichier: siteDecorM7,
-			Ancre:   "case floorKnown && s.Z < floor-sceneryFloorToleranceM:",
-		}},
-		DatePose:        dateDecorM7,
-		CibleRetrait:    "le fond de carte publie porte l altitude de sa matiere (cuisson cmd/mapfond-build), lue par la regle a la place du match",
-		CritereRetrait:  "sur le parc, le test de hauteur lu dans la reference de carte masque exactement les decors que ce repli masque (Wasp de Goliath) et 0 vie en jeu ramenee a une pose seule, sans lire aucune position de joueur",
-		CompteurBranche: true,
+		Condition:         CondCarteAbsenteDuCatalogue,
+		Ordre:             OrdreSansLecture,
+		CompleteeParLHote: true,
+		DatePose:          dateDecorM7,
+		CibleRetrait:      "le fond de carte publie porte l altitude de sa matiere (cuisson cmd/mapfond-build), lue par la regle a la place du match",
+		CritereRetrait:    "sur le parc, le test de hauteur lu dans la reference de carte masque exactement les decors que ce repli masque (Wasp de Goliath) et 0 vie en jeu ramenee a une pose seule, sans lire aucune position de joueur",
+		CompteurBranche:   true,
 	},
 	{
 		Nom:  "repli_decor_carte_sans_zone_affiche",
@@ -148,16 +141,13 @@ var registreReplayVehicules = []Repli{
 		// MESURE DU 2026-09-24 : 0 candidate en zone inconnue au parc (les trois cartes qui portent
 		// une pose seule — Starboard, Goliath, Behemoth — ont un fond publie). Le repli est le choix
 		// sur de la decision utilisateur : ne jamais masquer un vehicule qu on ne sait pas situer.
-		Condition: CondCarteAbsenteDuCatalogue,
-		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
-			Fichier: siteDecorM7,
-			Ancre:   "// repli_decor_carte_sans_zone_affiche : aucune zone, rien de masque, compte.",
-		}},
-		DatePose:        dateDecorM7,
-		CibleRetrait:    "toute carte jouee a un fond publie (campagne de cuisson des fonds, cmd/mapfond-build)",
-		CritereRetrait:  "sur le parc de production, `vehicleScenery.zoneUnknown` vaut 0 sur tous les documents servis pendant un trimestre",
-		CompteurBranche: true,
+		Condition:         CondCarteAbsenteDuCatalogue,
+		Ordre:             OrdreApresLecture,
+		CompleteeParLHote: true,
+		DatePose:          dateDecorM7,
+		CibleRetrait:      "toute carte jouee a un fond publie (campagne de cuisson des fonds, cmd/mapfond-build)",
+		CritereRetrait:    "sur le parc de production, `vehicleScenery.zoneUnknown` vaut 0 sur tous les documents servis pendant un trimestre",
+		CompteurBranche:   true,
 	},
 	{
 		Nom:  "repli_decor_tenu_en_l_air_a_vide",
@@ -174,15 +164,12 @@ var registreReplayVehicules = []Repli{
 		// point) ; 0 vie occupee masquee ; les Falcon des bornes NORD de Behemoth, poses au sol,
 		// restent affiches (9 vies y sont pilotees au parc). Le film ne porte aucun champ « non
 		// pilotable » (sonde C2 du 2026-09-23) : la regle lit le mouvement publie.
-		Condition: CondFilmMuet,
-		Ordre:     OrdreSansLecture,
-		Sites: []Site{{
-			Fichier: siteDecorM7,
-			Ancre:   "// repli_decor_tenu_en_l_air_a_vide : compte dans `hidden` sous sa raison.",
-		}},
-		DatePose:        "2026-10-02",
-		CibleRetrait:    "un champ du film qui dise qu un vehicule n est pas occupable (proprietes de l objet a sa creation), lu par le decodeur",
-		CritereRetrait:  "sur le parc, le champ lu masque exactement les vies que ce repli masque, sans regarder leur mouvement",
-		CompteurBranche: true,
+		Condition:         CondFilmMuet,
+		Ordre:             OrdreSansLecture,
+		CompleteeParLHote: true,
+		DatePose:          "2026-10-02",
+		CibleRetrait:      "un champ du film qui dise qu un vehicule n est pas occupable (proprietes de l objet a sa creation), lu par le decodeur",
+		CritereRetrait:    "sur le parc, le champ lu masque exactement les vies que ce repli masque, sans regarder leur mouvement",
+		CompteurBranche:   true,
 	},
 }

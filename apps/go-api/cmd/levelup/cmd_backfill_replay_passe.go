@@ -14,10 +14,9 @@ import (
 	"strconv"
 	"time"
 
+	"levelup/go-api/internal/filmrun"
 	"levelup/go-api/internal/replaybuild"
 	"levelup/go-api/internal/replaychild"
-
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
 )
 
 // replayBackfillReport : le rapport par categories.
@@ -64,7 +63,7 @@ func executerPasseReplay(
 	ctx context.Context, repoRoot string, o replayBackfillOptions, cacheRoot string,
 	aFaire []replayCandidat, r *replayBackfillReport,
 ) error {
-	// LE LANCEUR EST CELUI DU DEPOT (`internal/games/halo_infinite/film/filmproc`, PLAN_CUISSON_PERF item 5.4) : meme
+	// LE LANCEUR EST CELUI DU DEPOT (`internal/filmrun`, PLAN_CUISSON_PERF item 5.4) : meme
 	// protocole de codes de sortie, meme interception du marqueur de pic memoire, meme relais
 	// de journal — et EN PLUS la priorite CPU basse, qui manquait a la copie locale. Cette
 	// passe tourne sur la machine de travail de l'utilisateur pendant qu'il s'en sert.
@@ -111,10 +110,10 @@ func argsEnfantReplay(o replayBackfillOptions, cacheRoot string, c replayCandida
 }
 
 // traiterResultatEnfant compte l'issue, la journalise et l'affiche.
-func traiterResultatEnfant(r *replayBackfillReport, res filmproc.Result, c replayCandidat, rang, total int) {
+func traiterResultatEnfant(r *replayBackfillReport, res filmrun.Result, c replayCandidat, rang, total int) {
 	matchID := c.matchID
 	switch res.Issue {
-	case filmproc.IssueOK:
+	case filmrun.IssueOK:
 		r.construits++
 		// LA VENTILATION NE COMPTE QUE LES SUCCES, et par le verdict que le filtre avait rendu : un
 		// echec ne republie ni ne redecode rien, et le compter ailleurs gonflerait un total qui sert
@@ -125,18 +124,18 @@ func traiterResultatEnfant(r *replayBackfillReport, res filmproc.Result, c repla
 		case replaybuild.VerdictRedecoder:
 			r.redecodes++
 		}
-	case filmproc.IssueSkipped:
+	case filmrun.IssueSkipped:
 		r.horsCatalogue++
-	case filmproc.IssueFailed:
+	case filmrun.IssueFailed:
 		r.erreurs++
-	case filmproc.IssuePreparation:
+	case filmrun.IssuePreparation:
 		r.preparation++
-	case filmproc.IssueMemory:
+	case filmrun.IssueMemory:
 		r.mortsMemoire++
 	default:
 		r.mortsSubites++
 	}
-	if res.Issue != filmproc.IssueOK && res.Issue != filmproc.IssueSkipped {
+	if res.Issue != filmrun.IssueOK && res.Issue != filmrun.IssueSkipped {
 		slog.Error("backfill-replay: enfant en echec — LA PASSE CONTINUE",
 			"match_id", matchID, "issue", libelleIssue(res.Issue),
 			"code", res.Code, "err", res.Err,
@@ -148,21 +147,21 @@ func traiterResultatEnfant(r *replayBackfillReport, res filmproc.Result, c repla
 
 // libelleIssue : le mot que lit l'operateur.
 //
-// LES MOTS SONT CEUX DE LA PASSE, PAS CEUX DU LANCEUR. `filmproc.Issue.String()` rend des
+// LES MOTS SONT CEUX DE LA PASSE, PAS CEUX DU LANCEUR. `filmrun.Issue.String()` rend des
 // libelles de journal generiques (« ecarte », « echec ») ; ici on nomme ce que la categorie veut
 // dire POUR UNE CUISSON D'ARTEFACT — « carte hors catalogue » est un echec VOULU, et l'operateur
 // qui lit le recap doit le distinguer d'une erreur de decodage sans consulter un tableau.
-func libelleIssue(i filmproc.Issue) string {
+func libelleIssue(i filmrun.Issue) string {
 	switch i {
-	case filmproc.IssueOK:
+	case filmrun.IssueOK:
 		return "construit"
-	case filmproc.IssueSkipped:
+	case filmrun.IssueSkipped:
 		return "carte hors catalogue (echec voulu)"
-	case filmproc.IssueFailed:
+	case filmrun.IssueFailed:
 		return "ERREUR de decodage"
-	case filmproc.IssuePreparation:
+	case filmrun.IssuePreparation:
 		return "ECHEC de preparation"
-	case filmproc.IssueMemory:
+	case filmrun.IssueMemory:
 		return "MORT MEMOIRE (plafond depasse)"
 	default:
 		return "MORT SUBITE (crash / tue par l'OS)"
@@ -171,7 +170,7 @@ func libelleIssue(i filmproc.Issue) string {
 
 // octetsParGiB : la conversion, nommee pour ne pas semer des 1<<30 dans le code. Sert
 // uniquement a la mise en forme humaine (libelleOctets) — la sentinelle memoire elle-meme
-// est armee par internal/games/halo_infinite/film/filmproc.Arm (cf. cmd_backfill_replay_child.go), qui porte sa
+// est armee par libs/film/memguard.Arm (cf. cmd_backfill_replay_child.go), qui porte sa
 // propre constante interne.
 const octetsParGiB = 1 << 30
 

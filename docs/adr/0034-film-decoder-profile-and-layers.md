@@ -343,7 +343,7 @@ the difference is written here; the history of how each decision was reached is 
 - **D-5, no package-level mutable state.** `archlint/filmdec_package_vars_test.go` measures zero
   written package variables; the package decode lock is gone and may not return
   (`archlint/decode_lock_interdit_test.go`). The only remaining "one decode at a time" bound is the
-  inter-process, memory-driven `filmproc.AcquireSolo`, taken by the entry points (`cmd/*`,
+  inter-process, memory-driven `filmrun.AcquireSolo` (LevelUp, `internal/filmrun`), taken by the entry points (`cmd/*`,
   `replaychild`) and never by `replaybuild` or by the HTTP layer (`archlint/no_decode_in_api_test.go`).
   **"Proven under `go test -race`" is held by the CI job `film-race`** (J12.6, 2026-09-30), which runs
   `TestDeuxFilmsEnParallele` (`film/internal/grammar/deux_films_parallele_test.go`) under `-race` on
@@ -602,6 +602,33 @@ move, so no persisted fact went stale and nothing was re-baked. The order of imp
 order outside the frame: hashed sources whose brick import sat among standard-library imports keep
 their historical order in separate import groups, with a comment above their `import`.
 
+
+## Amendment of 2026-11-08 — what the brick does not decide (end of the decoupling, lot 2)
+
+The brick decodes a film and publishes its facts and its replay document. It decides neither **when** a
+film is decoded, nor **where** anything is stored, nor **at what priority**: those are operating decisions
+and they live in LevelUp. The process launcher, the "one decode at a time" lock and the child priority are
+`internal/filmrun`; the writing, recompression, move and removal of the film archive are
+`internal/filmarchive`; the registry of the host's fallback sites and callers is `internal/filmreplis`
+(the entries and names of the brick's registry stay in the brick, because they are counted on its
+`Compteur`). What stays in the brick is what a decode needs and nothing that governs it: the memory
+sentinel `libs/film/memguard` (it measures the heap and calls the caller's callback; the stop doctrine,
+the moment and the priority are the caller's), the read side of the archive `libs/film/filmcache`
+(manifest and chunks, raw / zlib / zstd forms), and module-closed helpers under `libs/film/internal/`
+(atomic write, decode-lock protocol for the brick's own tests, shared test root). Log lines of the
+sentinel and of the atomic write carry the caller's `context.Context`.
+
+Consequences kept in force: no package-level mutable catalogue is exported from `filmshell` any more
+(accessors only; the grammar fingerprint was regenerated once, at constant revision, through the
+two-key gate, with a chronicle entry in `grammar/rev_chronique.go`; the five revisions did not move); the
+environment variable names of the child protocol are the launcher's, and `revision/porte.go` is the only
+file of the brick that names `LEVELUP_*`. The rule is held by the guard-rail
+`archlint/film_sans_exploitation_test.go`: in the brick's production code (outside `research/` and test
+files) no import of `os/exec`, no `os.Getenv` / `os.LookupEnv` / `os.Environ` outside
+`revision/porte.go`, and no file write outside `libs/film/internal/` and `libs/film/revision/` (the
+latter writes the revision and perimeter goldens, under the gate).
+
+Publication: the decoder is published as the fourth brick by the amendment of 2026-11-08 of [ADR 0043](0043-publishing-the-bricks.md) (README, compiled example, `NOTICE.md`, AGPL-3.0).
 
 ## Non-goals
 

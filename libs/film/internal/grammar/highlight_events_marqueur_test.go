@@ -19,7 +19,7 @@ func motifXUID(buf *bytes.Buffer, xuid uint64) {
 // XUID précède le vrai de quelques milliers de bits : les deux retombent sur le même bloc de
 // 60 octets et le même marqueur de fin. Seul le vrai (le plus proche du marqueur) doit sortir.
 func TestParseHighlightEvents_UnMarqueurUnEvenement(t *testing.T) {
-	const faux, vrai = uint64(2252025040223036), uint64(2535472452512509)
+	const faux, vrai = uint64(2252025040223036), uint64(2685077870825706)
 
 	var buf bytes.Buffer
 	buf.Write(make([]byte, 20))
@@ -47,7 +47,7 @@ func TestParseHighlightEvents_UnMarqueurUnEvenement(t *testing.T) {
 func TestParseHighlightEvents_DeuxMarqueursDeuxEvenements(t *testing.T) {
 	var buf bytes.Buffer
 	buf.Write(make([]byte, 20))
-	for i, xuid := range []uint64{2535472452512509, 2535472452512510} {
+	for i, xuid := range []uint64{2685077870825706, 2591081619287085} {
 		motifXUID(&buf, xuid)
 		buf.Write(make([]byte, 30))
 		buf.Write(buildEventBytes("A", typeHintKill, 1000+i*500, false, 0))

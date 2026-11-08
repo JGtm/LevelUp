@@ -41,7 +41,7 @@ package grammar
 //	MOUV511_FILM=<depot>/data/cache/film_chunks/<id> MOUV511_BORNES=<catalogue> MOUV511_CARTE=<carte> \
 //	P3_DOC=<depot>/data/cache/replays/halo_infinite/<id>.json \
 //	  go test -tags=research -count=1 -v -timeout 60m -run '^TestP3ArmesNaissance$' \
-//	  ./internal/games/halo_infinite/film/internal/grammar/
+//	  ./internal/grammar/
 
 import (
 	"encoding/json"

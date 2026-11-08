@@ -4,7 +4,7 @@ package grammar
 // (la CI n a pas de films) :
 //
 //	REPLAY_FILM_CACHE=<parc>/data/cache/film_chunks \
-//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run PousseesDesTemoins -v
+//	  go test ./internal/grammar/ -run PousseesDesTemoins -v
 //
 // Chaque poussee attendue est (instant en ms de film, slot pousse, slot de l auteur). Les instants
 // sont controles a la trajectoire (le slot pousse accelere dans les 300 ms) ; 215e7022 porte le kill
@@ -17,6 +17,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/JGtm/LevelUp/libs/film/internal/depottest"
 
 	"github.com/JGtm/LevelUp/libs/film/internal/profile"
 	"github.com/JGtm/LevelUp/libs/film/internal/source"
@@ -47,7 +49,7 @@ func TestPousseesDesTemoins(t *testing.T) {
 	if cache == "" {
 		t.Skip("REPLAY_FILM_CACHE absent : gate local des poussees saute")
 	}
-	racine := racineDepot(t)
+	racine := depottest.Racine(t)
 	cat, err := profile.LoadMapQuantCatalog(filepath.Join(racine, "data", "titles", "halo_infinite",
 		"reference", "map_quant_bounds.json"))
 	if err != nil {

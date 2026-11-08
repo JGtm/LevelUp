@@ -14,7 +14,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // TestObjectifTi11Oracle — L'ORACLE DE LARGEUR, ET IL DESIGNE LE COMPOSANT FAUTIF.
@@ -42,13 +42,13 @@ import (
 // le coupable, au lieu de laisser un taux global qu'on ne sait pas ou attribuer.
 //
 //	$env:ASSAUT_CACHE="C:/.../data/cache"
-//	go test ./internal/games/halo_infinite/film/internal/grammar/ -run ObjectifTi11Oracle -v -timeout 40m
+//	go test ./internal/grammar/ -run ObjectifTi11Oracle -v -timeout 40m
 func TestObjectifTi11Oracle(t *testing.T) {
 	cache := os.Getenv("ASSAUT_CACHE")
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
-	g := filmproc.Arm("TestObjectifTi11Oracle", filmproc.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm(t.Context(), "TestObjectifTi11Oracle", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — oracle interrompu", float64(peak)/(1<<30))
 	})
 	defer func() { g.Disarm() }()
@@ -162,13 +162,13 @@ func reg0(cache string) (Archetype, bool) {
 // COMPOSANTS — ceux-la, precisement, que la configuration actuelle rate a 100 %.
 //
 //	$env:ASSAUT_CACHE="C:/.../data/cache"
-//	go test ./internal/games/halo_infinite/film/internal/grammar/ -run ObjectifTi11Calibration -v -timeout 40m
+//	go test ./internal/grammar/ -run ObjectifTi11Calibration -v -timeout 40m
 func TestObjectifTi11Calibration(t *testing.T) {
 	cache := os.Getenv("ASSAUT_CACHE")
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
-	g := filmproc.Arm("TestObjectifTi11Calibration", filmproc.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm(t.Context(), "TestObjectifTi11Calibration", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — calibration interrompue", float64(peak)/(1<<30))
 	})
 	defer func() { g.Disarm() }()

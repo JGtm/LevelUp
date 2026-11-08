@@ -9,7 +9,7 @@ import "github.com/JGtm/LevelUp/libs/film/types"
 // [RoundIdentity.CompletedByElimination] ne nomme que le cas d'UNICITE : exactement un slot
 // muet, exactement un xuid libre. Des qu'une manche en laisse DEUX, elle s'abstient — et c'est
 // le cas de `43716616` (Oddball, 2 manches), dont la manche 0 laisse QUATRE slots muets pour
-// CINQ xuids libres. Le plus gros porteur du match (2533274978052136, 62,3 s a l'oracle API)
+// CINQ xuids libres. Le plus gros porteur du match (2733226566552357, 62,3 s a l'oracle API)
 // tombait dans ce trou : son train de tics partait en `noBridge`, le calque le montrait a 0.
 //
 // [RoundIdentity.CompletedByLines] existait pour ce trou-la aussi, mais elle est gardee
@@ -27,9 +27,9 @@ import "github.com/JGtm/LevelUp/libs/film/types"
 // Mesure d'entree sur `43716616`, manche 0 (releve du 2026-09-10, quatre slots muets) :
 //
 //	slot 12 segment (3,1,3)   residu de 2535449672349 (3,1,3)   un seul candidat
-//	slot 18 segment (4,2,2)   residu de 2533274966155425 (4,2,2)   un seul candidat
+//	slot 18 segment (4,2,2)   residu de 2562956985872201 (4,2,2)   un seul candidat
 //	slot 20 segment (0,2,0)   residu de 2535434750421 (0,2,0)   un seul candidat
-//	slot 22 segment (2,1,4)   residu de 2533274978052136 (2,1,4)   un seul candidat
+//	slot 22 segment (2,1,4)   residu de 2733226566552357 (2,1,4)   un seul candidat
 //	                          residu de 2535457270266 (0,0,0)   aucun slot
 //
 // # LES QUATRE GARDES, AUCUNE NEGOCIABLE

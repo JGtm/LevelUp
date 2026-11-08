@@ -12,7 +12,7 @@ package grammar
 // et la valeur d `equipment-activated-component` (i21). Aucune ecriture.
 //
 //	CGO_ENABLED=0 AJ14F_FILMS=<repo>/data/cache AJ14F_IDS='1b2d9e08=Dynasty' AJ14F_FENETRE=150000,190000 \
-//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ \
+//	  go test -tags=research ./internal/grammar/ \
 //	  -run '^TestAj14fRecordsTi37$' -count=1 -timeout 60m -v
 
 import (

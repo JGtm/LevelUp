@@ -25,7 +25,7 @@ package main
 //     exception intentionnelle : `lockRoot`, ci-dessous, y pose PAR DEFAUT un verrou de
 //     decodage — corrige le 2026-09-07 (CORPUS-R1 C9) apres qu'un commentaire ait affirme
 //     « ni verrou par defaut », contredit par `resolveLockRoot` trois lignes plus bas.
-//   - `lockRoot` : ou vit le verrou de decodage partage (filmproc.AcquireSolo/Wait). Par
+//   - `lockRoot` : ou vit le verrou de decodage partage (filmrun.AcquireSolo/Wait). Par
 //     defaut, CacheRootDir() du PARC — le MEME chemin que tout autre outil de cuisson de ce
 //     depot (cmd/replay-build, backfill-replay) y pose deja le sien : deux cuissons lancees
 //     depuis deux checkouts differents s'excluent donc mutuellement, comme demande. Le verrou

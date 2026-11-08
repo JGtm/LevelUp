@@ -6,12 +6,13 @@ package replay
 // publie — la fin de vie d un vehicule, sa cause et son instant. Le lire sur l artefact frais
 // fait passer le test par la chaine de cuisson ENTIERE (profil, balayages, assemblage,
 // serialisation), la ou une lecture directe du film re-plomberait ici la moitie du builder et
-// prouverait autre chose. L artefact vient du gate de corpus, joue sous « voie libre » :
+// prouverait autre chose. L artefact vient du gate de corpus, joue sous « voie libre » (le gate est
+// une commande de l hote, lancee depuis son module ; le test se lance depuis `libs/film`) :
 //
 //	go run ./cmd/replay-corpus-gate --base=<sha> --parc-root <principal> --source-root <worktree> \
 //	  --keep-work --json <rapport>
 //	LOT1910_ARTEFACT=<racine de travail>/.../bfecd02b.json go test \
-//	  ./internal/games/halo_infinite/film/replay/ -run Acceptation1910 -v -count=1
+//	  ./replay/ -run Acceptation1910 -v -count=1
 //
 // LE TEMOIN EST `bfecd02b`, DESIGNE PAR L UTILISATEUR (2026-09-14) : son `ghost` de slot 777
 // cessait d etre dessine a 287,4 s. La question que ce test tranche, et il la tranche dans les

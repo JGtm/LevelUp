@@ -15,8 +15,8 @@ package replay
 // Un cote PERDU est place par la reference et nil apres. Pour les cotes encore nil, la voie de la
 // lecture dit pourquoi (muette, a bord sans vehicule, debarque) et la classe de l'enquete precise.
 //
-//	L1_DEPOT=<checkout> KP_KILLS=<tsv> KP_BASE=<tsv> REG_COLLECTEUR=1 \
-//	  go test -tags research -count=1 -run '^TestMesureE81bcKillPositions$' -v ./internal/games/halo_infinite/film/replay/
+//	L1_FAITS=<dossier des faits de film> L1_BORNES=<map_quant_bounds.json> KP_KILLS=<tsv> KP_BASE=<tsv> REG_COLLECTEUR=1 \
+//	  go test -tags research -count=1 -run '^TestMesureE81bcKillPositions$' -v ./replay/
 
 import (
 	"os"
@@ -154,16 +154,15 @@ func TestMesureE81bcKillPositions(t *testing.T) {
 		}
 	}
 	fix.rendre(t, "CORPUS VERSIONNE")
-	depot := os.Getenv("L1_DEPOT")
-	if depot == "" {
+	dir := os.Getenv(envMesureFaits)
+	if dir == "" {
 		return
 	}
 	loc := nouveau()
-	cat, err := profile.LoadMapQuantCatalog(filepath.Join(depot, "data", "titles", "halo_infinite", "reference", "map_quant_bounds.json"))
+	cat, err := profile.LoadMapQuantCatalog(cheminMesureRequis(t, envMesureBornes))
 	if err != nil {
 		t.Fatalf("catalogue : %v", err)
 	}
-	dir := filepath.Join(depot, "data", "cache", "film_facts", "halo_infinite")
 	entrees, err := os.ReadDir(dir)
 	if err != nil {
 		t.Fatalf("cache de faits : %v", err)

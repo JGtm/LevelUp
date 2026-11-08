@@ -32,7 +32,7 @@ package replay
 // AUCUNE base ouverte — le meme que tous les instruments de ce paquet.
 //
 //	$env:ZONE_FILM="<cache>/film_chunks/606d9844"
-//	go test ./internal/games/halo_infinite/film/replay/ -run KothHoldTicks -v
+//	go test ./replay/ -run KothHoldTicks -v
 
 import (
 	"path/filepath"

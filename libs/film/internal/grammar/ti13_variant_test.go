@@ -19,11 +19,11 @@ package grammar
 // (une propriete a UN type, qui ne change pas). La meme passe tourne donc sur la bande reelle ET
 // sur la bande fantome (`zcClassVide`), et les deux distributions sont publiees cote a cote.
 //
-// USAGE (depuis apps/go-api, UN film par processus, avant-plan) :
+// USAGE (depuis libs/film, UN film par processus, avant-plan) :
 //
 //	$env:CGO_ENABLED=0
 //	$env:ZONE_FILM="<depot>/data/cache/film_chunks/7344d24f"
-//	go test -count=1 -run TestTi13VariantLotCbis -v ./internal/games/halo_infinite/film/internal/grammar/
+//	go test -count=1 -run TestTi13VariantLotCbis -v ./internal/grammar/
 
 import (
 	"fmt"

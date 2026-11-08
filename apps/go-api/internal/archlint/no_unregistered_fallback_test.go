@@ -77,6 +77,8 @@ import (
 	"testing"
 	"unicode"
 
+	"levelup/go-api/internal/filmreplis"
+
 	"github.com/JGtm/LevelUp/libs/film/decfilm"
 )
 
@@ -186,7 +188,7 @@ func TestToutSiteDuRegistreExiste(t *testing.T) {
 	racine := workspaceRoot(t)
 	cache := map[string]string{}
 	for _, r := range decfilm.Table() {
-		for _, s := range r.Sites {
+		for _, s := range filmreplis.Sites(r.Nom, r.Sites) {
 			contenu, ok := cache[s.Fichier]
 			if !ok {
 				b, err := os.ReadFile(filepath.Join(racine, filepath.FromSlash(s.Fichier))) //nolint:gosec // chemin issu du registre versionné
@@ -216,6 +218,9 @@ func TestRegistreDesReplisEstValide(t *testing.T) {
 	for _, pb := range decfilm.VerifierRegistre() {
 		t.Errorf("registre des replis : %s", pb)
 	}
+	for _, pb := range filmreplis.Verifier() {
+		t.Errorf("registre des replis, part de l'hote : %s", pb)
+	}
 }
 
 // couvertureParFichier : les identifiants que le registre NOMME, INDEXÉS PAR LE FICHIER DU SITE
@@ -234,7 +239,7 @@ func TestRegistreDesReplisEstValide(t *testing.T) {
 func couvertureParFichier() map[string]map[string]bool {
 	out := map[string]map[string]bool{}
 	for _, r := range decfilm.Table() {
-		for _, s := range r.Sites {
+		for _, s := range filmreplis.Sites(r.Nom, r.Sites) {
 			if out[s.Fichier] == nil {
 				out[s.Fichier] = map[string]bool{}
 			}

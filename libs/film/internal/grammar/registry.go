@@ -311,10 +311,10 @@ func parseRegistry(data []byte) *Registry {
 // processus — releve du 2026-09-30, `grep -rn "ParseRegistryChunk(" --include=*.go internal/ cmd/ |
 // grep -v _test.go` :
 //
-//	internal/games/halo_infinite/film/internal/grammar/film_context.go   (le contexte du film)
-//	internal/games/halo_infinite/film/internal/facts/killsource/world.go (paquet importe par
+//	internal/grammar/film_context.go   (le contexte du film)
+//	internal/facts/killsource/world.go (paquet importe par
 //	                                                                      killcollector et replaybuild)
-//	internal/games/halo_infinite/film/decfilm/decfilm.go                 (facade, re-export)
+//	decfilm/decfilm.go                 (facade, re-export)
 //
 // (`film/research/` l'appelle aussi : outils de recherche, hors production.) Reproductions et
 // non-regression : registry_tronque_test.go.

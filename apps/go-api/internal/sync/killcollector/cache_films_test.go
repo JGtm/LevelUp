@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/filmarchive"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/sync/filmfetch"
 
@@ -27,21 +28,21 @@ import (
 
 // cacheAvecManifestePartiel archive `chunksTemoins` puis REMPLACE le manifeste par ses deux
 // premieres entrees — sans temps forts —, ce qu'ecrivait le writer d'avant le lot quand l'API
-// servait un film pas encore finalise. Les fichiers passent par `filmcache.Write` : leur nom
+// servait un film pas encore finalise. Les fichiers passent par `filmarchive.Write` : leur nom
 // n'est declare que la.
 func cacheAvecManifestePartiel(t *testing.T) string {
 	t.Helper()
 	racine := cacheVide(t)
 	court := titlePkg.FilmShortMatchID(matchRemote)
-	var aEcrire []filmcache.WriteChunk
+	var aEcrire []filmarchive.WriteChunk
 	var entrees []filmfetch.CachedChunk
 	for _, c := range chunksTemoins() {
-		aEcrire = append(aEcrire, filmcache.WriteChunk{Index: c.Index, ChunkType: c.ChunkType,
+		aEcrire = append(aEcrire, filmarchive.WriteChunk{Index: c.Index, ChunkType: c.ChunkType,
 			StartMS: c.StartMS, DurationMS: c.DurationMS, Data: c.Data})
 		entrees = append(entrees, filmfetch.CachedChunk{Index: c.Index, ChunkType: c.ChunkType,
 			StartMS: c.StartMS, DurationMS: c.DurationMS})
 	}
-	if err := filmcache.Write(t.Context(), racine, court, aEcrire); err != nil {
+	if err := filmarchive.Write(t.Context(), racine, court, aEcrire); err != nil {
 		t.Fatal(err)
 	}
 	blob, err := json.Marshal(filmfetch.CachedManifest{Chunks: entrees[:2]})

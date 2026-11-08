@@ -26,7 +26,7 @@ package replay
 // +1 171 858 ms, etabli phase 6 par 91 fins de vie appariees, fige ici comme DEPENDANCE et non
 // comme mesure) : Nilton410 est a la lunette sur les intervalles feed (secondes) {41 -> 46,3},
 // {49 -> 52}, {61 -> 61,8}, {68 -> 68,8}, {71 -> 73}, {85 -> 86} et nulle part ailleurs dans
-// [35 ; 95] ; Madina97294 sur {45 -> 46,3}. Ces episodes sont lus dans `chronoEpisodes` /
+// [35 ; 95] ; Joueur90002 sur {45 -> 46,3}. Ces episodes sont lus dans `chronoEpisodes` /
 // `chronoEpisodeMadina` (source unique, partagee avec les instruments des phases 6 et A).
 //
 // LES BANDES DE GARDE, ET CE QU'ELLES COUTENT. Le relevé est precis a +/- 1 s. Toute la zone a
@@ -67,10 +67,10 @@ package replay
 // SOUS GARDE (ONDE_FILM, qui doit pointer 00162144 — la chronologie est celle de CE film).
 // Lecture de paquets pure : aucun Scan*, aucun etat global touche.
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 ONDE_FILM=<repo>/data/cache/film_chunks/00162144 \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run TestViseeOndeCarree -v -timeout 60m
+//	  go test ./replay/ -run TestViseeOndeCarree -v -timeout 60m
 
 import (
 	"math/bits"

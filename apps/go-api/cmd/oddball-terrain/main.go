@@ -8,7 +8,7 @@
 // # Deux processus, une seule sentinelle (patron cmd/statnames-sweep + cmd/zone-attribution)
 //
 //	default              PARENT : lit xuid->gamertag (OpenReadForQuery), charge l'oracle fige,
-//	                     orchestre un enfant filmproc par film, aligne, confronte, ecrit les logs.
+//	                     orchestre un enfant filmrun par film, aligne, confronte, ecrit les logs.
 //	-child -match <id>   ENFANT : sentinelle memoire armee (2 Gio), decode UN film, emet le dump
 //	                     tague. AUCUNE base ouverte.
 //

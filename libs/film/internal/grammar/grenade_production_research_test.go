@@ -17,7 +17,7 @@ package grammar
 // USAGE :
 //
 //	GRENPROD_ROOT=<parc>/data/cache/film_chunks GRENPROD_IDS=bcb6d393,e5adf7b2 \
-//	  go test ./internal/games/halo_infinite/film/internal/grammar -run TestGrenadesDeProduction -v
+//	  go test ./internal/grammar -run TestGrenadesDeProduction -v
 //
 // Sans les deux variables, il se saute proprement.
 

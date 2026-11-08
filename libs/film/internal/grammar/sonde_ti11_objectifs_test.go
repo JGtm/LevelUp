@@ -24,10 +24,10 @@ package grammar
 // aucune ecriture disque. SOUS GARDE D'ENVIRONNEMENT (TI11_FILM), donc saute partout ailleurs,
 // CI comprise — patron de replay/ground_weapon_research_test.go.
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 TI11_FILM=<repo>/data/cache/film_chunks/64e8adfa \
-//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run TI11 -v
+//	  go test ./internal/grammar/ -run TI11 -v
 
 import (
 	"fmt"

@@ -5,7 +5,7 @@ package grammar
 // CI n a pas de films) :
 //
 //	REPLAY_FILM_CACHE=<parc>/data/cache/film_chunks \
-//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run CanauxDelta -v
+//	  go test ./internal/grammar/ -run CanauxDelta -v
 //
 // Pieces (instrument `r2bis_canaux_dates_research_test.go`, 2026-09-29) : avant le lot, le marcheur
 // des huit canaux (`walkDeltaBipedRecords`) rendait sur `084a804d` 32 records de generation 2 dont le
@@ -18,6 +18,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/JGtm/LevelUp/libs/film/internal/depottest"
 
 	"github.com/JGtm/LevelUp/libs/film/internal/profile"
 	"github.com/JGtm/LevelUp/libs/film/internal/source"
@@ -38,7 +40,7 @@ func TestCanauxDelta_AucunCorpsLuAvantSaCreation(t *testing.T) {
 	if cache == "" {
 		t.Skip("REPLAY_FILM_CACHE absent : gate local des canaux dates (lot R2-bis) saute")
 	}
-	racine := racineDepot(t)
+	racine := depottest.Racine(t)
 	cat, err := profile.LoadMapQuantCatalog(filepath.Join(racine, "data", "titles", "halo_infinite",
 		"reference", "map_quant_bounds.json"))
 	if err != nil {

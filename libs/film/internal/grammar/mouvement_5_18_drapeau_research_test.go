@@ -14,9 +14,9 @@ package grammar
 // Rejouable :
 //
 //	MOUV511_FILM=<dir> go test -tags=research -count=1 -v \
-//	  -run '^TestDrapeau518Temoin$' ./internal/games/halo_infinite/film/internal/grammar/
+//	  -run '^TestDrapeau518Temoin$' ./internal/grammar/
 //	CHUNK00_CORPUS=<racine> go test -tags=research -count=1 -v -timeout 30m \
-//	  -run '^TestDrapeau518Corpus$' ./internal/games/halo_infinite/film/internal/grammar/
+//	  -run '^TestDrapeau518Corpus$' ./internal/grammar/
 
 import (
 	"errors"

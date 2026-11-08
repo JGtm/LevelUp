@@ -28,7 +28,7 @@ package replay
 //
 // REGIME : garde `ZONE_FILM`, un film par processus, lecture seule, AUCUNE base.
 //
-//	$env:ZONE_FILM="<cache>/film_chunks/0862dce4"; go test ./internal/games/halo_infinite/film/replay/ -run TotalControlDesignateur -v
+//	$env:ZONE_FILM="<cache>/film_chunks/0862dce4"; go test ./replay/ -run TotalControlDesignateur -v
 
 import (
 	"path/filepath"

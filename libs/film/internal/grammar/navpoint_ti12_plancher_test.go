@@ -37,7 +37,7 @@ package grammar
 // decodage a la fois (verrou process).
 //
 //	$env:ASSAUT_CACHE="C:/.../data/cache"
-//	go test ./internal/games/halo_infinite/film/internal/grammar/ -run NavpointTi12Plancher -v -timeout 60m
+//	go test ./internal/grammar/ -run NavpointTi12Plancher -v -timeout 60m
 
 import (
 	"math"
@@ -47,7 +47,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // tpFilms : les cinq films Neutral Bomb reels et leurs explosions (copie gardee par
@@ -266,7 +266,7 @@ func tpMedCV(xs []float64) (float64, float64) {
 // tpSentinelle arme le plafond memoire de mesure et rend le desarmement.
 func tpSentinelle(t *testing.T) func() {
 	t.Helper()
-	g := filmproc.Arm("TestNavpointTi12Plancher", filmproc.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm(t.Context(), "TestNavpointTi12Plancher", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — plancher interrompu", float64(peak)/(1<<30))
 	})
 	return func() { g.Disarm() }
@@ -285,7 +285,7 @@ func tpSentinelle(t *testing.T) func() {
 // explosions sans porteur n'ont pas d'armement replicable). Ce test-ci reste l'instrument
 // temoin de la lecture d'origine.
 //
-//	go test ./internal/games/halo_infinite/film/internal/grammar/ -run NavpointTi12PlancherVariantes -v -timeout 60m
+//	go test ./internal/grammar/ -run NavpointTi12PlancherVariantes -v -timeout 60m
 func TestNavpointTi12PlancherVariantes(t *testing.T) {
 	cache := os.Getenv("ASSAUT_CACHE")
 	if cache == "" {

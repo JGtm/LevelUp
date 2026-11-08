@@ -89,7 +89,7 @@ package grammar
 // # CE QU'IL NE DIT PAS
 //
 // La SEMANTIQUE des valeurs. Les 32 bits de la jauge sortent BRUTS ; le type d'objectif sort en
-// enumere brut ; l'etat sort en trois bits bruts. Interpreter est le travail de `games/halo_infinite/film/replay`,
+// enumere brut ; l'etat sort en trois bits bruts. Interpreter est le travail de `replay`,
 // pas celui du decodeur.
 //
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requete.

@@ -31,7 +31,7 @@ package grammar
 // USAGE (lecture seule, aucun film = saut propre) :
 //
 //	DETOPOS_FILMS=<racine data/cache> DETOPOS_IDS='d6918972=origin;d9781168=dredge;bfecd02b-9798-4407-aa55-05244f4c1fa0=snowbound;4f77afc1=flood gulch;92c950ee-9aad-4471-a076-98882738f869=catalyst' \
-//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar -run TestDetoPositionMesure -v -timeout 1800s
+//	  go test -tags=research ./internal/grammar -run TestDetoPositionMesure -v -timeout 1800s
 
 import (
 	"math"

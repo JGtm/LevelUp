@@ -7,7 +7,7 @@ package grammar
 // surbouclier (i5), et NON par croisement temporel avec `i54` (mort, décision D1).
 //
 // OÙ IL VIT, ET POURQUOI PAS OÙ LE PLAN L'ANNONÇAIT. Le plan nomme
-// `internal/games/halo_infinite/film/replay/i56_capacity_episodes_research_test.go`. Il ne peut pas y
+// `replay/i56_capacity_episodes_research_test.go`. Il ne peut pas y
 // vivre : la mesure a besoin du hook non exporté d'i56 (`observateur.AbilityEnergyHook`), du détecteur
 // de records (`matchBipedHeader`) et des désers de production (`consumeByName`), tous
 // internes à `filmdec`. Le nom retenu suit le patron du croisement voisin
@@ -27,10 +27,10 @@ package grammar
 // LECTURE SEULE, gardé par I56X_FILM, sauté partout ailleurs (CI comprise). UN SEUL
 // décodage filmdec par process : le verrou est pris pour tout le test (globaux de paquet).
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 I56X_FILM=<repo>/data/cache/film_chunks/00ba2e1c \
-//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestI56CrossI48Rank$' -timeout 30m -v
+//	  go test ./internal/grammar/ -run '^TestI56CrossI48Rank$' -timeout 30m -v
 
 import (
 	"os"

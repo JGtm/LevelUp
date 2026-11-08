@@ -24,7 +24,7 @@ package replay
 //
 //	RR_M4A_ROOT=<depot qui porte data/> RR_M4A_OUT=<dossier hors data/> \
 //	  go test -tags research -count=1 -timeout 60m -run '^TestRRM4AParcDepuisLesFaits$' \
-//	  ./internal/games/halo_infinite/film/replay/
+//	  ./replay/
 
 import (
 	"context"

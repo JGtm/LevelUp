@@ -33,11 +33,11 @@ package replay
 //
 // UN SEUL decodage filmdec par process (attScanI10 prend le verrou).
 //
-// USAGE (depuis apps/go-api, cache Go ISOLE) :
+// USAGE (depuis libs/film, cache Go ISOLE) :
 //
 //	$env:GOCACHE='<scratch>\gocache_v2b'
 //	CGO_ENABLED=0 V2B_OCC_ROOT=<repo>/data/cache V2B_OCC_FILM=0d76e8f1 \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run '^TestV2bOccupantI10$' -v -timeout 60m
+//	  go test ./replay/ -run '^TestV2bOccupantI10$' -v -timeout 60m
 
 import (
 	"os"

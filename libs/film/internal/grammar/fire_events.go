@@ -98,7 +98,7 @@ type FireEvent struct {
 	// Short et Bloc sont les deux drapeaux de tête (`estCourt`, `estBloc`).
 	Short, Bloc bool
 	// WeaponID est l'identifiant global 64 bits de l'arme : clé directe de
-	// metadata.weapon_labels.weapon_id et de filmshell.WeaponIDToName. Sa moitié haute vaut 0
+	// metadata.weapon_labels.weapon_id et de filmshell.NomDArme. Sa moitié haute vaut 0
 	// quand la garde du champ `f` est fermée.
 	WeaponID uint64
 	// HasAim indique que la visée a pu être lue (record modal, `fire_aim_modal.go`).

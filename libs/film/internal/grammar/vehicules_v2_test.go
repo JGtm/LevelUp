@@ -28,14 +28,14 @@ package grammar
 //
 // UN SEUL decodage filmdec par process : le verrou est pris pour tout le test.
 //
-// USAGE (depuis apps/go-api, cache Go ISOLE) :
+// USAGE (depuis libs/film, cache Go ISOLE) :
 //
 //	$env:GOCACHE='<scratch>\gocache_v2'
 //	CGO_ENABLED=0 V2_FILM_ROOT=<repo>/data/cache \
 //	  V2_FILMS="0d76e8f1:behemoth,fccc61cd:launch site" \
 //	  V2_BOUNDS=<repo>/data/titles/halo_infinite/reference/map_quant_bounds.json \
 //	  V2_PADS=<repo>/data/titles/halo_infinite/reference/map_weapon_pads.json \
-//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestV2SpawnsCooldowns$' -v -timeout 180m
+//	  go test ./internal/grammar/ -run '^TestV2SpawnsCooldowns$' -v -timeout 180m
 
 import (
 	"path/filepath"

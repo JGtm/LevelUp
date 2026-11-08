@@ -44,10 +44,10 @@ package replay
 // parquet du registre). Largeurs
 // d'axe restaurees (`installWorldObjectPrecision`).
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 GW_PADS=<repo>/data/cache/film_chunks/01e1f945 GW_PADS_MAP=Catalyst \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run '^TestGroundWeaponPads$' -timeout 30m -v
+//	  go test ./replay/ -run '^TestGroundWeaponPads$' -timeout 30m -v
 
 import (
 	"fmt"

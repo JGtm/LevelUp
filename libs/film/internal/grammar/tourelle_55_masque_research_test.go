@@ -33,7 +33,7 @@ package grammar
 //
 //	TOUR55_FILM=<abs>/data/cache/film_chunks/4f77afc1 TOUR55_CARTE="Flood Gulch" \
 //	  go test -tags=research -count=1 -v -timeout 60m \
-//	    -run '^TestTourelle55Masque$' ./internal/games/halo_infinite/film/internal/grammar/
+//	    -run '^TestTourelle55Masque$' ./internal/grammar/
 //
 // UN SEUL FILM PAR INVOCATION, aucune base DuckDB, aucun artefact ecrit.
 

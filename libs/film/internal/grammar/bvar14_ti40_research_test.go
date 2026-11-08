@@ -19,7 +19,7 @@ package grammar
 // LECTURE SEULE, UN FILM PAR INVOCATION, aucun paquet delta :
 //
 //	BV14_FILM=<abs>/film_chunks/4f77afc1 BV14_CARTE="Flood Gulch" \
-//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ \
+//	  go test -tags=research ./internal/grammar/ \
 //	  -run '^TestBVar14Ti40$' -v -timeout 60m
 
 import (

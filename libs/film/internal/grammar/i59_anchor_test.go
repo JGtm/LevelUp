@@ -39,10 +39,10 @@ package grammar
 // AUTO-DÉTECTÉE par la signature des largeurs d'axe du film contre le catalogue versionné
 // (I59A_MAP la force si la signature est ambiguë). UN SEUL décodage filmdec par process.
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 I59A_FILM=<repo>/data/cache/film_chunks/000d5950 \
-//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestI59Anchor' -timeout 60m -v
+//	  go test ./internal/grammar/ -run '^TestI59Anchor' -timeout 60m -v
 
 import (
 	"fmt"

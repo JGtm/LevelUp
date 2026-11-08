@@ -29,11 +29,11 @@ package grammar
 // LECTURE SEULE, garde par VEHICLE_CREATION_FILM. UN SEUL decodage filmdec par process : le verrou
 // est pris pour tout le test. Verdicts LOGGES (convention des instruments film).
 //
-// USAGE (depuis apps/go-api, cache Go ISOLE) :
+// USAGE (depuis libs/film, cache Go ISOLE) :
 //
 //	$env:GOCACHE='<scratch>\gocache_v1b'
 //	CGO_ENABLED=0 VEHICLE_CREATION_FILM=<repo>/data/cache/film_chunks/0d76e8f1 \
-//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestVehicleCreationIdentity$' -timeout 60m -v
+//	  go test ./internal/grammar/ -run '^TestVehicleCreationIdentity$' -timeout 60m -v
 
 import (
 	"os"

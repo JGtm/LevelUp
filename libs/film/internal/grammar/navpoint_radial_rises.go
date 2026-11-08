@@ -19,7 +19,7 @@ package grammar
 //	                     ~5 s en Neutral Bomb, ~0,9 s en Husky Raid — un reglage de mode) ;
 //	FIN de la montee     l'anneau se fige : la bombe est ARMEE (si la montee va au bout) ;
 //	fin + la meche       l'explosion (4,93 s, constante moteur — la meche vit chez
-//	                     l'interpretation, `games/halo_infinite/film/replay`).
+//	                     l'interpretation, `replay`).
 //
 // Ce fichier ne decide PAS ce qu'est une montee « qui va au bout » ni ne deduplique les paires
 // de navpoints : c'est le travail de l'interpretation. Il rend TOUTES les montees au sens du

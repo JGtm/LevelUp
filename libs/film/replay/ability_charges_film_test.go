@@ -21,7 +21,7 @@ package replay
 //	CGO_ENABLED=0 P5_FILM=<depot>/data/cache/film_chunks/1cd3848a \
 //	  P5_GRAPPLE_FILM=<depot>/data/cache/film_chunks/f2966f08 \
 //	  P5_BOUNDS=<depot>/data/titles/halo_infinite/reference/map_quant_bounds.json \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run '^TestP5Charges' -v -timeout 60m
+//	  go test ./replay/ -run '^TestP5Charges' -v -timeout 60m
 
 import (
 	"os"

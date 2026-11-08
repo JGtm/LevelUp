@@ -11,7 +11,7 @@ package killsource
 // `grammar/va_v2_research_test.go`) le relit pour se placer dans le contexte de la cuisson publiee.
 //
 //	VA_RACINE=<film_chunks> VA_CATALOGUE=<map_quant_bounds.json> VA_CARTES="id=Carte;..." \
-//	VA_SORTIE=<dir hors data> go test -tags=research -count=1 -run '^TestVAV2ProfilCalibre$' ./internal/games/halo_infinite/film/internal/facts/killsource/
+//	VA_SORTIE=<dir hors data> go test -tags=research -count=1 -run '^TestVAV2ProfilCalibre$' ./internal/facts/killsource/
 
 import (
 	"context"

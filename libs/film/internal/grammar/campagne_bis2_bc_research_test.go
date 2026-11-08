@@ -37,7 +37,7 @@ package grammar
 //
 //	CAMPAGNE_RACINE=<film_chunks> CAMPAGNE_FILMS=<id,id> CAMPAGNE_SORTIE=<dir hors data> \
 //	  go test -tags=research -count=1 -timeout 120m -run '^TestCampagneBis2BlocBC$' \
-//	  ./internal/games/halo_infinite/film/internal/grammar/
+//	  ./internal/grammar/
 
 import (
 	"fmt"
@@ -48,7 +48,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // b2Forme est une forme de lecture du champ `+0x74` du bloc 0xbc.
@@ -301,7 +301,7 @@ func TestCampagneBis2BlocBC(t *testing.T) {
 		"blocs_flags2\tfermes_exclusifs\tfermes_apres_terminateur\tfermes_apres_rejet\tpaquets_fermes_ref\tpaquets"}
 	detail := []string{"film\tbuild\tchunk\tpaquet\tsortie_vue_b\tutiles_en_jeu\tr96\te420\tr95\tr97\tblocs_r96\tblocs_e420"}
 	for _, id := range films {
-		garde := filmproc.Arm("campagne/bis2-bc", 4, func(pic uint64) {
+		garde := memguard.Arm(t.Context(), "campagne/bis2-bc", 4, func(pic uint64) {
 			fmt.Fprintf(os.Stderr, "%s : plafond memoire franchi (%d octets)\n", id, pic)
 			os.Exit(3)
 		})

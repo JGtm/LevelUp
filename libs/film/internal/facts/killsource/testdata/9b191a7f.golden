@@ -33,15 +33,15 @@
 ## MORTS DONT LA SOURCE APPARTIENT A LA VICTIME — 2 ligne(s)
 # le kill-feed credite un AUTRE joueur : les deux verites sont vraies et divergent
 # format : instant  victime  tag  etiquette  CREDIT DU JEU  voie  origine
-08:31  JGtm  5eaa815c  "Fuel Rod SPNKr"  credit=Joueur0209  marche  source-victime
-09:13  Madina97294  fca02b3c  "Autres"  credit=Joueur0209  marche  source-victime
+08:31  Jf01  5eaa815c  "Fuel Rod SPNKr"  credit=Joueur0209  marche  source-victime
+09:13  Joueur90002  fca02b3c  "Autres"  credit=Joueur0209  marche  source-victime
 
 ## MORTS INFLIGEES PAR UN BOT — 3 ligne(s)
 # le feed porte la MORT, pas le kill : le tueur vient du roster de replication
 # format : instant  victime  tueur  tag  etiquette  categorie  voie  assistant
-05:46  Madina97294  343 Aloysius [bot]  1f11df6b  "VK78 Commando"  Headshot  marche  assistant=Joueur0209
-08:03  JGtm  343 Aloysius [bot]  ec919da5  "Needler"  None  marche  assistant=Joueur00155
-08:24  Chocoboflor  343 Aloysius [bot]  0000d57f  "Needler"  AttachedDamage  marche  assistant=AUCUN (mesure)
+05:46  Joueur90002  343 Aloysius [bot]  1f11df6b  "VK78 Commando"  Headshot  marche  assistant=Joueur0209
+08:03  Jf01  343 Aloysius [bot]  ec919da5  "Needler"  None  marche  assistant=Joueur00155
+08:24  Joueur90001  343 Aloysius [bot]  0000d57f  "Needler"  AttachedDamage  marche  assistant=AUCUN (mesure)
 
 ## CONTROLE NEGATIF — le scan n invente pas de morts
 # population ou la cible est ABSENTE par construction : les morts sont toutes

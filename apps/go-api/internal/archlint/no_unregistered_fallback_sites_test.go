@@ -18,6 +18,8 @@ import (
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/filmreplis"
+
 	"github.com/JGtm/LevelUp/libs/film/decfilm"
 )
 
@@ -184,7 +186,7 @@ func fichiersDesSites() map[decfilm.Nom]map[string]bool {
 		if out[r.Nom] == nil {
 			out[r.Nom] = map[string]bool{}
 		}
-		for _, s := range r.Sites {
+		for _, s := range filmreplis.Sites(r.Nom, r.Sites) {
 			out[r.Nom][s.Fichier] = true
 		}
 	}

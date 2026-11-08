@@ -31,7 +31,7 @@ package grammar
 // Il rend les segments et dit de chacun s'il a la FORME d'un armement ou d'une tenue de
 // desarmement. La MECHE (le delai entre l'armement et l'explosion), la deduplication des
 // paires de navpoints et la confrontation aux explosions vivent chez l'interpretation
-// (`games/halo_infinite/film/replay/bomb_armings.go`) : ce paquet ne connait ni les explosions ni le mode.
+// (`replay/bomb_armings.go`) : ce paquet ne connait ni les explosions ni le mode.
 //
 // L'instrument de mesure et la production appellent les MEMES fonctions — c'est la condition
 // pour que le gate juge le code livre et non une copie qui derivera.
@@ -124,7 +124,7 @@ func navpointSegmentsOfSeries(slot uint32, s []types.NavpointRadialRead) []Navpo
 // (a NavpointSummitToleranceQ pres) — l'anneau est reste plein.
 //
 // Ce que la forme ne dit PAS : que l'anneau a atteint le QUANTUM PLEIN. Un hold relache haut
-// finit aussi a son sommet ; c'est l'interpretation qui exige le plein (`games/halo_infinite/film/replay`).
+// finit aussi a son sommet ; c'est l'interpretation qui exige le plein (`replay`).
 func (g NavpointSegment) EndsAtSummit() bool {
 	return g.Samples >= NavpointRiseMinSamples &&
 		int(g.QEnd) >= int(g.QMax)-NavpointSummitToleranceQ &&

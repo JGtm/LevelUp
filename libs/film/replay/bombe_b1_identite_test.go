@@ -40,7 +40,7 @@ package replay
 // process filmdec (un seul décodage à la fois).
 //
 //	$env:ASSAUT_CACHE="C:/.../data/cache"
-//	go test ./internal/games/halo_infinite/film/replay/ -run BombeB1 -v -timeout 30m
+//	go test ./replay/ -run BombeB1 -v -timeout 30m
 
 import (
 	"fmt"

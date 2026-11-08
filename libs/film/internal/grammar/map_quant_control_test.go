@@ -28,13 +28,13 @@ package grammar
 // LECTURE SEULE, gardé par MAPQUANT_CTRL_PAIRES, sauté partout ailleurs (CI comprise). UN SEUL
 // décodage filmdec par process : le verrou est pris pour toute la durée du contrôle.
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 \
 //	  MAPQUANT_CTRL_ROOT=<repo>/data/cache/film_chunks \
 //	  MAPQUANT_CTRL_BOUNDS=<repo>/data/titles/halo_infinite/reference/map_quant_bounds.json \
 //	  MAPQUANT_CTRL_PAIRES=<csv film,carte> \
-//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestControleBornesFilms$' -timeout 60m -v
+//	  go test ./internal/grammar/ -run '^TestControleBornesFilms$' -timeout 60m -v
 
 import (
 	"encoding/csv"

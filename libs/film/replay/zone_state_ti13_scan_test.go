@@ -34,6 +34,8 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/JGtm/LevelUp/libs/film/internal/depottest"
+
 	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
 	"github.com/JGtm/LevelUp/libs/film/internal/source"
 )
@@ -157,7 +159,7 @@ func p2aOutDir(t *testing.T) string {
 		p2aMkdir(t, v)
 		return v
 	}
-	out := filepath.Join(racineDepot(t), ".ai", "archive", "V7.5", "replay2d", "registre_film", "lotCbis")
+	out := filepath.Join(depottest.Racine(t), ".ai", "archive", "V7.5", "replay2d", "registre_film", "lotCbis")
 	p2aMkdir(t, out)
 	return out
 }

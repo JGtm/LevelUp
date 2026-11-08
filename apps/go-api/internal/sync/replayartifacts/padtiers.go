@@ -22,7 +22,7 @@ package replayartifacts
 //
 // Meme doctrine que `flaggrabsnet.go` : la source est l'artefact DEJA RANGE. Aucune recuisson
 // n'est necessaire — et aucune n'est declenchee : cuire des artefacts en lot est INTERDIT
-// (bombe RAM, verrou `filmproc.AcquireSolo`).
+// (bombe RAM, verrou `filmrun.AcquireSolo`).
 //
 // # LA FORME, ET LA SEULE DIFFERENCE AVEC LES PRISES NETTES
 //

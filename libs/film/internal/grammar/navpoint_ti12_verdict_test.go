@@ -13,10 +13,10 @@ import (
 )
 
 // ti12Explosions est l'oracle des instants d'explosion, RECOPIE SANS MODIFICATION de
-// `a5Explosions` (`internal/games/halo_infinite/film/replay/assaut_a5_explosions_test.go`), lui-meme recopie du
+// `a5Explosions` (`replay/assaut_a5_explosions_test.go`), lui-meme recopie du
 // releve A0.3 (`A_PROTOCOLE.md` §2, commite le 2026-08-27).
 //
-// POURQUOI UNE COPIE. `games/halo_infinite/film/replay` importe `games/halo_infinite/film/filmdec` ; l'inverse ferait un cycle,
+// POURQUOI UNE COPIE. `replay` importe `filmdec` ; l'inverse ferait un cycle,
 // et l'oracle ne peut donc pas etre importe d'ici. La copie est CONFINEE A UN FICHIER DE TEST et
 // gardee par `TestNavpointTi12OracleFige`, qui verifie le total (28 explosions, 9 films) : une
 // derive de l'oracle amont fait rougir cette garde.

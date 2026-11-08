@@ -22,9 +22,10 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/JGtm/LevelUp/libs/film/internal/depottest"
 )
 
 // cheminFamillesTS — le fichier web, relatif à la racine du dépôt.
@@ -39,31 +40,8 @@ var (
 	reChaineTS = regexp.MustCompile(`'([a-z_]+)'`)
 )
 
-// racineDepot remonte de ce paquet jusqu'à la racine du dépôt (celle qui porte
-// `apps/`), sans jamais bâtir de chemin « data/… » à la main.
-func racineDepot(t *testing.T) string {
-	t.Helper()
-	_, fichier, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller a échoué")
-	}
-	dir := filepath.Dir(fichier)
-	for range 10 {
-		if _, err := os.Stat(filepath.Join(dir, "apps", "web", "package.json")); err == nil {
-			return dir
-		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			break
-		}
-		dir = parent
-	}
-	t.Fatalf("racine du dépôt introuvable depuis %s", filepath.Dir(fichier))
-	return ""
-}
-
 func TestFamillesObjectifPariteGoTS(t *testing.T) {
-	chemin := filepath.Join(racineDepot(t), cheminFamillesTS)
+	chemin := filepath.Join(depottest.Racine(t), cheminFamillesTS)
 	source, err := os.ReadFile(chemin)
 	if err != nil {
 		t.Fatalf("lecture de %s : %v — si le fichier a été déplacé, corriger cheminFamillesTS "+
@@ -127,7 +105,7 @@ func TestFamillesObjectifPariteMordSurUnEcart(t *testing.T) {
 		}
 	}
 	// Et le contrôle positif : la liste extraite du TS réel EST la liste Go.
-	chemin := filepath.Join(racineDepot(t), cheminFamillesTS)
+	chemin := filepath.Join(depottest.Racine(t), cheminFamillesTS)
 	source, err := os.ReadFile(chemin)
 	if err != nil {
 		t.Fatalf("lecture de %s : %v", cheminFamillesTS, err)

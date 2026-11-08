@@ -15,6 +15,7 @@
 package dbprofiles
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -247,7 +248,7 @@ func (s *Store) saveLocked(f *File) error {
 // est indispensable en production, où le fichier est bind-monté FICHIER dans le
 // conteneur : rename(2) y répond EBUSY et toute création de profil échouait.
 func atomicWrite(path string, data []byte) error {
-	if err := atomicfile.WriteFile(path, data, 0o644); err != nil {
+	if err := atomicfile.WriteFile(context.Background(), path, data, 0o644); err != nil {
 		return fmt.Errorf("dbprofiles.atomicWrite: %w", err)
 	}
 	return nil

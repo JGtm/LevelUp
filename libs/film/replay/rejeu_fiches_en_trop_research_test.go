@@ -7,7 +7,7 @@ package replay
 // « Y a pas de places en trop »). Lecture seule des faits persistes et de l'artefact.
 //
 //	RJE_FAITS=<dossier des faits> RJE_ARTEFACTS=<dossier des artefacts> RJE_CATALOGUE=<map_quant_bounds.json> \
-//	  go test -tags research -count=1 -run '^TestRJEFichesEnTrop$' -v ./internal/games/halo_infinite/film/replay/
+//	  go test -tags research -count=1 -run '^TestRJEFichesEnTrop$' -v ./replay/
 
 import (
 	"fmt"

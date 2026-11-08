@@ -74,7 +74,7 @@ const (
 	plancherDesRangsGrammar = "grammar-2026-09-15.12"
 	// commandeRegenerationGrammarRev : la commande complete, telle qu on la tape.
 	commandeRegenerationGrammarRev = "LEVELUP_UPDATE_GRAMMAR_REV=1 go test " +
-		"./internal/games/halo_infinite/film/internal/grammar/ -run TestGrammarRevSuitLaGrammaire " +
+		"./internal/grammar/ -run TestGrammarRevSuitLaGrammaire " +
 		"-update-grammar-rev"
 )
 

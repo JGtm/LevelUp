@@ -7,7 +7,7 @@ package main
 // mini-bobine du rejeu (images-cles seules : zero paquet delta). Rapport dans un repertoire
 // temporaire.
 //
-//	go test -tags=research ./internal/games/halo_infinite/film/research/cmd_fermeture/
+//	go test -tags=research ./research/cmd_fermeture/
 
 import (
 	"errors"

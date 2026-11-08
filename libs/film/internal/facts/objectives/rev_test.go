@@ -37,7 +37,7 @@ const (
 	prefixeRevisionObjectives = "objectives"
 	// commandeRegenerationObjectivesRev : la commande complete, telle qu on la tape.
 	commandeRegenerationObjectivesRev = "LEVELUP_UPDATE_OBJECTIVES_REV=1 go test " +
-		"./internal/games/halo_infinite/film/internal/facts/objectives/ -run TestObjectivesRevSuitLaSortie " +
+		"./internal/facts/objectives/ -run TestObjectivesRevSuitLaSortie " +
 		"-update-objectives-rev"
 )
 

@@ -65,7 +65,7 @@ package grammar
 //
 //	NAV51_FILM_ROOT=<cache>/film_chunks NAV51_MANIFESTS=<cache>/film_manifests
 //	NAV51_FILM=bcb6d393 NAV51_OUT=<tmp>/bcb6d393.navtimers.tsv
-//	go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/
+//	go test -tags=research ./internal/grammar/
 //	  -run Navpoint51MinuteurSurFilm -v -timeout 60m
 
 import (

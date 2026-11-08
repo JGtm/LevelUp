@@ -14,14 +14,14 @@ import (
 // `KILLSOURCE_FIXTURES` : les films ne sont pas versionnés (107 Mo), donc les tests de
 // vérité terrain se skippent proprement quand ils ne sont pas là.
 //
-// ELLE REMPLACE UN CHEMIN ÉCRIT EN DUR (2026-08-05, R3). Le chemin visait
-// `c:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache`, un poste qui
+// ELLE REMPLACE UN CHEMIN ÉCRIT EN DUR (2026-08-05, R3). Le chemin visait le dossier `data/cache`
+// d'un ancien dossier de travail du poste de développement, un poste qui
 // n'existe plus : les tests adossés au cache — dont l'oracle à HUIT joueurs, celui qui
 // garde les noms `flag_grabs`/`zone_secures` — se skippaient donc EN PERMANENCE, sur
 // toutes les machines, et rien ne le disait sinon un message citant un chemin mort. Un
 // chemin absolu en dur ne casse pas : il se tait.
 //
-//	FILM_CACHE_ROOT=<repo>/data/cache go test ./internal/games/halo_infinite/film/internal/facts/objectives/
+//	FILM_CACHE_ROOT=<repo>/data/cache go test ./internal/facts/objectives/
 const filmCacheEnv = "FILM_CACHE_ROOT"
 
 // cacheRoot rend la racine du cache film, ou "" si la variable n'est pas posée.
@@ -53,18 +53,18 @@ func rosterFor(id string) MapRoster {
 	switch id {
 	case "0f9550e5":
 		return MapRoster{
-			"2533274908381477": 0, "2535421948780711": 0,
-			"2535454710220286": 0, "2535458905252558": 0,
-			"2533274823110022": 1, "2533274897656966": 1,
-			"2535416374764743": 1, "2535447374983571": 1,
-			"2535471644287443": 1, "2535472402320362": 1,
+			"2622436905953003": 0, "2675150344764424": 0,
+			"2738805970681130": 0, "2553282628257454": 0,
+			"2603225103667623": 1, "2766645195014809": 1,
+			"2628762000825129": 1, "2667653589195614": 1,
+			"2607264716047672": 1, "2584445225203476": 1,
 		}
 	case "53ce4390":
 		return MapRoster{
-			"2533274840602701": 0, "2533274860882060": 0,
-			"2535439497055986": 0, "2535462641971683": 0,
-			"2533274803754807": 1, "2533274823110022": 1,
-			"2533274830881544": 1, "2535430195856593": 1,
+			"2550255199242364": 0, "2762548761991887": 0,
+			"2596201166908532": 0, "2665861628137585": 0,
+			"2632694130775434": 1, "2603225103667623": 1,
+			"2570190122561964": 1, "2804128349823266": 1,
 		}
 	}
 	return nil

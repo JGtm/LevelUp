@@ -7,17 +7,18 @@
 // Il ne compile QUE sous le tag `research` et n ecrit aucun fichier. Il lit les films EN PLACE,
 // UN A LA FOIS, dans l ordre donne.
 //
-//	cd apps/go-api
-//	go run -tags=research ./internal/games/halo_infinite/film/research/cmd_grenadeids \
+//	cd libs/film
+//	go run -tags=research ./research/cmd_grenadeids \
 //	  -racine <parc>/data/cache/film_chunks \
 //	  -films 111fa685,e5adf7b2,60ae07c4,a349fea8,fb1a1a72
 //
-// Le verrou de decodage de `internal/games/halo_infinite/film/filmproc` n est PAS pris : il ecrirait un fichier sous la
+// Le verrou de decodage (`internal/decodelock`) n est PAS pris : il ecrirait un fichier sous la
 // racine du cache, et le cadre de ce lot interdit toute ecriture sous `data/`. La sentinelle
 // memoire, elle, est armee — elle ne fait qu abaisser un plafond dans ce processus.
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -25,7 +26,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 	"github.com/JGtm/LevelUp/libs/film/research/grenadeids"
 )
 
@@ -58,7 +59,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
-	garde := filmproc.Arm("film_re/grenadeids", *plafond, func(pic uint64) {
+	garde := memguard.Arm(context.Background(), "film_re/grenadeids", *plafond, func(pic uint64) {
 		fmt.Fprintf(os.Stderr, "plafond memoire franchi (%d octets) — arret\n", pic)
 		os.Exit(3)
 	})

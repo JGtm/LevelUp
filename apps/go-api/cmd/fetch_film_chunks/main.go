@@ -6,7 +6,7 @@
 //
 // UN SEUL ÉCRIVAIN DU CACHE (J2.3 du plan de suite de l'audit du décodeur de film, 2026-09-26).
 // L'outil écrivait ses chunks lui-même, en place, sous un nom recomposé ; il passe désormais par
-// `filmcache.Write` (écriture atomique, chunk présent adopté seulement à la bonne taille). Le
+// `filmarchive.Write` (écriture atomique, chunk présent adopté seulement à la bonne taille). Le
 // writer ne valide qu'un film FINALISÉ et COMPLET : un film incomplet est donc complété EN
 // ENTIER — chunks présents relus par `filmcache.LireChunk`, chunks manquants (ou tronqués)
 // téléchargés, quel que soit leur type — ou pas du tout (un chunk expiré au CDN laisse le film
@@ -32,6 +32,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"levelup/go-api/internal/filmarchive"
 
 	"github.com/JGtm/LevelUp/libs/film/decfilm"
 	"github.com/JGtm/LevelUp/libs/film/filmcache"
@@ -184,9 +186,9 @@ func completerTout(ctx context.Context, root string, films []filmIncomplet, work
 }
 
 // completerFilm relit les chunks présents, télécharge les manquants ou tronqués, et confie le
-// film ENTIER à `filmcache.Write`. Rend le nombre de chunks téléchargés.
+// film ENTIER à `filmarchive.Write`. Rend le nombre de chunks téléchargés.
 func completerFilm(ctx context.Context, client *http.Client, root string, f filmIncomplet) (int, error) {
-	chunks := make([]filmcache.WriteChunk, 0, len(f.manifest.Chunks))
+	chunks := make([]filmarchive.WriteChunk, 0, len(f.manifest.Chunks))
 	recus := 0
 	for _, ch := range f.manifest.Chunks {
 		data, err := filmcache.LireChunk(root, f.shortID, ch.Index)
@@ -199,10 +201,10 @@ func completerFilm(ctx context.Context, client *http.Client, root string, f film
 			}
 			recus++
 		}
-		chunks = append(chunks, filmcache.WriteChunk{Index: ch.Index, ChunkType: ch.ChunkType,
+		chunks = append(chunks, filmarchive.WriteChunk{Index: ch.Index, ChunkType: ch.ChunkType,
 			StartMS: ch.StartMS, DurationMS: ch.DurationMS, Data: data})
 	}
-	return recus, filmcache.Write(ctx, root, f.shortID, chunks)
+	return recus, filmarchive.Write(ctx, root, f.shortID, chunks)
 }
 
 // chunkARetelecharger : absent du disque, ou tronqué (taille différente du manifeste).

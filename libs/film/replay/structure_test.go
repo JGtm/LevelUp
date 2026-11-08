@@ -395,7 +395,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   13 socles sur ces cartes. TROIS RÉFUTATIONS écrites : le lien vers l'objet du monde ne
 	//   passe ni par la suppression de l'entité (1/71), ni par son attachement (1/21), ni par un
 	//   appariement par les armes (5-12 % contre 70 % exigés). Détail :
-	//   internal/games/halo_infinite/film/replay/document_weapon_changes.go.
+	//   replay/document_weapon_changes.go.
 	//
 	// v26 — LES RAMASSAGES ET LES CONSOMMATIONS D'ÉQUIPEMENT (`equipmentChanges`). La capacité
 	//   d'armure suit la règle de l'arme en main : son composant (i48) n'entre au masque du flux
@@ -415,7 +415,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   naissance c'est une réapparition équipée (83 % des vies d'un film), tardive c'est un
 	//   ramassage (médiane 16-18 s sur deux films d'arène, 0 % sous la seconde). Les
 	//   réapparitions sont ÉCARTÉES : les publier fausserait le décompte du simple au double.
-	//   Détail : internal/games/halo_infinite/film/replay/document_equipment_changes.go.
+	//   Détail : replay/document_equipment_changes.go.
 	//
 	// v27 — LES ARMES AU SOL OBSERVÉES (`groundWeapons`), ET LE RETRAIT DE LA MINUTERIE. La borne
 	//   `until` du schéma 25 était une durée de TABLE (10/20/30 s) — l'utilisateur l'a refusée :
@@ -429,7 +429,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   prouve la disparition. Les armes de socle (jamais bougé) restent au calque `weaponPads` :
 	//   deux vérités pour un même objet seraient pires qu'une. Le champ `until` de
 	//   `weaponChanges` est RETIRÉ avec sa table — un artefact 26 porte encore la convention.
-	//   Détail : internal/games/halo_infinite/film/replay/document_ground_weapon_items.go.
+	//   Détail : replay/document_ground_weapon_items.go.
 	//
 	// v28 — LA FIN OBSERVÉE DES POSES D'ÉQUIPEMENT (`until`/`untilMax`/`end` sur
 	//   `equipmentPlacements`). La mécanique de v27 appliquée au recensement `ti=37` que la
@@ -439,7 +439,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   `pickup` ici, et c'est une réfutation mesurée (mesure D du 2026-08-30) : l'équipement
 	//   tombe à la mort AVEC les grenades du mort, le lien spatial prise i48 -> pose attrape le
 	//   mauvais objet (matrice GlobalID x rang non diagonale ; à candidat unique, 0-2 paires par
-	//   film, incohérentes). Détail : internal/games/halo_infinite/film/replay/equipment_placements.go.
+	//   film, incohérentes). Détail : replay/equipment_placements.go.
 	// - v29 (2026-08-31, chantier VISÉE À LA LUNETTE) : `Point.S` — LE PALIER DE LUNETTE.
 	//   La version monte pour la raison EXACTE du schéma 13 (l'élévation de visée) : ce n'est pas
 	//   un champ de plus, c'est le SENS DU CÔNE DE VISÉE qui change une seconde fois. Jusqu'ici le
@@ -483,8 +483,8 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   borne). Les classes non-arme sont publiées SUR MESURE : 80,5 % et 72,2 % d'entre elles
 	//   n'ont aucune émission i48 du même slot à moins de 500 ms (témoin décalé 0,0 %) — elles
 	//   comblent un trou, elles ne doublonnent pas `equipmentChanges`.
-	//   Détail : internal/games/halo_infinite/film/replay/document_pickups.go, pad_pickup_dating.go,
-	//   internal/games/halo_infinite/film/internal/grammar/biped_pickups.go.
+	//   Détail : replay/document_pickups.go, pad_pickup_dating.go,
+	//   internal/grammar/biped_pickups.go.
 	// v31 — LE NOM DE L'OBJET RAMASSÉ (`pickups[].family`), ET UNE NATURE À TROIS VALEURS.
 	//   Le schéma 30 publiait un identifiant BRUT que rien ne nommait pour les classes non-arme.
 	//   LE NOM VIENT DES FICHIERS DU JEU, PAS D'UNE STATISTIQUE — et c'est la raison de la
@@ -512,7 +512,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   d'apparition d'équipement. La réfutation reste en place.
 	//   UN ARTEFACT 30 SE LIT SANS CHANGEMENT : il ne porte simplement ni `family` ni les deux
 	//   natures fines, et son `kind` vaut `item` là où un 31 dirait `grenade` ou `equipment`.
-	//   Détail : internal/games/halo_infinite/film/replay/document_pickups.go.
+	//   Détail : replay/document_pickups.go.
 	//   RISQUE DE COLLISION DE NUMÉRO, consigné comme au 29->30 : ce lot prend le 31 sur
 	//   `wt/pickup-nommage` alors que le 30 vient d'arriver sur `feat/v75`. L'arbitrage se fait
 	//   au merge, par renumérotation.
@@ -545,7 +545,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   est portee par le catalogue, elle n'entre pas dans le classement).
 	//   UN ARTEFACT 31 SE LIT SANS CHANGEMENT : ses ramassages n'ont pas de cle `origin`, ce qui
 	//   est exactement ce qu'un client doit traiter comme « non etabli ».
-	//   Detail : internal/games/halo_infinite/film/replay/pickup_origin.go.
+	//   Detail : replay/pickup_origin.go.
 	//
 	// (v33/v34 : pris 29/30 sur wt/bombe-visuel, renumerotes au merge du 2026-09-01 —
 	// les schemas 29-32 etaient pris sur feat/v75, arbitrage ecrit aux schemas 30/31.)
@@ -594,7 +594,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   dispersion à 1,3-1,5 m) ; les durées sont MESURÉES. L'occupation, elle, se compte chez le
 	//   client : l'équipe d'un joueur n'est pas dans le film. Un artefact 34 doit se lire « à
 	//   re-cuire » — ses drapeaux au sol n'ont ni retour automatique ni zone. Détail :
-	//   internal/games/halo_infinite/film/replay/flag_objects.go.
+	//   replay/flag_objects.go.
 	//   (Ce lot avait pris le 29 sur wt/ctf-zone-retour ; renumerote 35 au merge du 2026-09-02.)
 	// v36 — L'IDENTITÉ DES VIES : une track = UNE VIE (découpe `lifeGapUS`, la règle de
 	//   `buildLifeSpans`, appliquée aux tracks), nommage PAR VIE (un slot recyclé porte une
@@ -622,7 +622,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   nil, même piège omitempty qu'`originMs`), refus journalisé, raison publiée dans
 	//   `coverage.t0Film`. Et AUCUNE CONSTANTE ABSOLUE : la marge de 22 700 ms est un témoin
 	//   documentaire, jamais une valeur servie — le détecteur mesure par match.
-	//   Détail : internal/games/halo_infinite/film/replay/t0_film.go.
+	//   Détail : replay/t0_film.go.
 	//   (Ce lot avait pris le 36 sur wt/t0-film pendant que l'identité des vies prenait le 36
 	//   sur feat/v75 : renuméroté 37 au merge du 2026-09-02, arbitrage écrit aux schémas
 	//   30, 31, 33 et 35.)
@@ -700,7 +700,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   encore 13 à 36 s (médiane par lot) après avoir été quitté — la fin de trajectoire est une
 	//   MISE AU REPOS, pas une disparition. `VehicleTrack.End` vaut donc `inconnue`, et la
 	//   disparition du sprite ne dit PAS que le véhicule a explosé.
-	//   Détail : internal/games/halo_infinite/film/replay/document_vehicles.go.
+	//   Détail : replay/document_vehicles.go.
 	//
 	// v39 (2) — LES TIRS DES JOUEURS EMBARQUÉS (`shots[].v`). Un occupant attaché cesse de répliquer
 	//   la position de son bipède : la porte des tirs, qui pose chaque tir sur cette position,
@@ -721,7 +721,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   moyenne contre 23.
 	//   CE QUE LA VERSION REFUSE : les tirs AMBIGUS (deux slots du même joueur répliquant tous
 	//   deux une position) — leur signature est celle d'un joueur qui n'est PAS embarqué.
-	//   Détail : internal/games/halo_infinite/film/replay/vehicle_shots.go.
+	//   Détail : replay/vehicle_shots.go.
 	//
 	// v39 (3) — LA VISÉE DE CHAQUE OCCUPANT DE VÉHICULE (`vehicles[].rides[].aim`). Un occupant
 	//   attaché cesse de répliquer sa POSITION (primitive du « trou »), et le dépôt en concluait
@@ -745,7 +745,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   tant qu'objet. L'entité tourelle ne réplique rien (139,6 et 85,5 en-têtes par slot contre
 	//   86,3 et 194,2 au FANTÔME, formes de masque plates) et `i31`/`i41`/`i42` de `ti=40` ne sont
 	//   jamais émis. Le cône de l'artilleur vient de L'HOMME, pas de la tourelle.
-	//   Détail : internal/games/halo_infinite/film/replay/vehicle_rides_aim.go.
+	//   Détail : replay/vehicle_rides_aim.go.
 	//
 	// v39 (4) — L'ARMEMENT DE LA BOMBE EN ONE BOMB (étape E2-ter du plan d'Assaut, 2026-09-04,
 	//   arbitrage utilisateur). AUCUN CHAMP NEUF : ce qui change est le CONTENU du calque
@@ -793,7 +793,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   commentaire a porté l'inverse, au motif que la paire tueur/victime n'existait pas dans
 	//   la chaîne de cuisson — faux, seule la VICTIME n'était pas résolue. Source non lue =
 	//   champ absent chez tous les joueurs, jamais zéro.
-	//   Détail : internal/games/halo_infinite/film/replay/bomb_stats.go et bomb_stats_document.go.
+	//   Détail : replay/bomb_stats.go et bomb_stats_document.go.
 	// v40 — LE PONT D'IDENTITÉ COMPLÉTÉ PAR LE TRIPLET (2026-09-06). Aucun champ ajouté : c'est
 	//   le CONTENU de `objectives` qui change. Depuis `d173b1a8c` (2026-08-28), le calque
 	//   résolvait l'identité slot -> joueur par les seuls INSTANTS DE MORT, qui en exigent
@@ -806,7 +806,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   règle des montées v3/v4/v5/v14/v22/v25/39 (« un artefact vN doit se voir comme à
 	//   re-cuire »), pas l'exception du lot P5, qui ne valait que parce qu'aucun artefact 38
 	//   n'existait alors hors témoins de gate.
-	//   Détail : internal/games/halo_infinite/film/internal/facts/objectives/slotidentity_rounds.go (CompletedByLines).
+	//   Détail : internal/facts/objectives/slotidentity_rounds.go (CompletedByLines).
 	// v41 — TROIS CALQUES RATTRAPENT « UNE TRACK = UNE VIE » (2026-09-06). Aucun champ ajouté.
 	//   `48cf4905d` a découpé les pistes à `lifeGapUS` ; trois consommateurs supposaient encore
 	//   « un slot = une piste » et ne gardaient que la DERNIÈRE : le nommage des vies fermées
@@ -815,7 +815,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   épisodes de camo/surbouclier (`82f29378` : son unique surbouclier perdu). La version
 	//   monte pour la raison des montées v39/v40 : un artefact 36 à 40 est appauvri sans que sa
 	//   forme le dise, et `backfill-replay` saute un artefact à la version courante.
-	//   Détail : internal/games/halo_infinite/film/replay/{closures.go, grapple_lines.go, equipment_episodes.go}.
+	//   Détail : replay/{closures.go, grapple_lines.go, equipment_episodes.go}.
 	// v42 — LE DRAPEAU A ENFIN DES PORTEURS (2026-09-06). Aucun champ ajouté : c'est le CONTENU
 	//   de `flagCarries` qui change, comme aux montées v14 et v15 du même calque. Le calque
 	//   nommait son porteur par le seul pont PAR MORTS, qui exige trois instants coïncidents :
@@ -829,7 +829,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   octet pour octet — la garde mono-manche s'abstient.
 	//   POURQUOI LA VERSION MONTE : un artefact 41 est amputé de portages sans que sa forme le
 	//   dise, et `backfill-replay` saute un artefact à la version courante.
-	//   Détail : internal/games/halo_infinite/film/replay/build_objectives_live.go.
+	//   Détail : replay/build_objectives_live.go.
 	// v43 — UNE VIE ANONYME N'EST PAS UNE ABSENCE (2026-09-06). Aucun champ ajouté : c'est le
 	//   CONTENU de `skullCarries` (et, latent, de `bombCarries`) qui change. Le gate de présence
 	//   de `af89b091b` (2026-08-30) n'indexait que les vies NOMMÉES et lisait « aucune vie nommée
@@ -842,7 +842,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   Touche aussi `51ebbc0f` (7 portages sur 14) et `24dbb67d` (3 sur 20). La version monte
 	//   pour la raison des montées v39/v40/v41/v42 : un artefact 23 à 42 est appauvri sans que sa
 	//   forme le dise, et `backfill-replay` saute un artefact qui porte la version courante.
-	//   Détail : internal/games/halo_infinite/film/replay/skull_carries.go (carrierPresence.gate).
+	//   Détail : replay/skull_carries.go (carrierPresence.gate).
 	// v44 — LA MANCHE DÉCLARÉE EST CONFRONTÉE AU TEMPS (2026-09-06). Aucun champ ajouté : c'est le
 	//   CONTENU de `scoreTimeline` (les quatre compteurs par joueur, les courbes d'équipe) et des
 	//   actions d'objectif qui change, sur les films À PLUSIEURS MANCHES seulement. La manche d'un
@@ -850,7 +850,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   l'assertion d'en-tête laisse passer en porte une quelconque. La découpe la croyait sur
 	//   parole ; la plus longue sous-suite non décroissante ne pouvait pas l'écarter, une valeur
 	//   mal lue mais PLUS GRANDE prolongeant la suite au lieu de la rompre.
-	//   Mesuré : `51ebbc0f` publiait 63 assistances (feuille : 5) pour `2535439712156981` à cause
+	//   Mesuré : `51ebbc0f` publiait 63 assistances (feuille : 5) pour `2572790178344426` à cause
 	//   d'un enregistrement daté 57 s après le début de la manche 1 et déclarant la manche 0 avec
 	//   `comp 3 A = 60` ; frags 0 -> 1 au passage. Le MÊME enregistrement sur `d9781168` : 69 -> 11
 	//   assistances, exactement la feuille. Vols de drapeau fantômes sur deux films d'Oddball :
@@ -860,7 +860,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   POURQUOI LA VERSION MONTE : un artefact 1 à 43 d'un film multi-manche porte des compteurs
 	//   gonflés sans que sa forme le dise, et `backfill-replay` saute un artefact à la version
 	//   courante.
-	//   Détail : internal/games/halo_infinite/film/internal/facts/objectives/round_bounds.go.
+	//   Détail : internal/facts/objectives/round_bounds.go.
 	// v45 — UN TROU DE RÉPLICATION N'AMPUTE PLUS UNE DURÉE MESURÉE (2026-09-06). Aucun champ
 	//   ajouté : c'est le CONTENU de `equipmentEpisodes` et de `flagCarries` qui change, sur la
 	//   même cause que les montées v41 et v43 — le découpage « une track = une vie » du v36, dont
@@ -886,7 +886,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//             locale : un slot que le pont ne nomme pas reste écarté.
 	//   POURQUOI LA VERSION MONTE : un artefact 36 à 44 est amputé de durée sans que sa forme le
 	//   dise, et `backfill-replay` saute un artefact qui porte la version courante.
-	//   Détail : internal/games/halo_infinite/film/replay/{equipment_episodes.go (spanFor), flag_carries.go
+	//   Détail : replay/{equipment_episodes.go (spanFor), flag_carries.go
 	//   (tracksByXUID)}.
 	// v46 — UN JOUEUR NE PORTE PLUS SON PROPRE DRAPEAU (2026-09-06). Aucun champ ajouté : c'est
 	//   le CONTENU de `flagCarries` qui change — à quel drapeau un portage est rattaché, et donc
@@ -913,7 +913,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   les trois captures publiées sur le drapeau adverse. La version monte pour la raison des
 	//   montées v39 à v45 : un artefact 45 attribue un portage — et sa capture — au mauvais
 	//   drapeau sans que sa forme le dise, et la reprise du backfill se fait par SchemaVersion.
-	//   Détail : internal/games/halo_infinite/film/replay/flag_assign.go.
+	//   Détail : replay/flag_assign.go.
 	// v47 — AUCUNE VIE PUBLIÉE NE RESTE SANS NOM (2026-09-07). Décision produit : « les vies
 	//   anonymes n'existent pas ; une vie est un humain ou un bot, point ». Une piste sans
 	//   identité est un DÉFAUT du pont, pas une donnée : une passe finale la nomme par

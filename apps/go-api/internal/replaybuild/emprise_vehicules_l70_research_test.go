@@ -46,7 +46,7 @@ import (
 	"levelup/go-api/internal/testutil"
 
 	"github.com/JGtm/LevelUp/libs/film/filmcache"
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
@@ -104,7 +104,7 @@ func TestEmpriseL70(t *testing.T) {
 		t.Fatalf("racine du depot : %v", err)
 	}
 	// LA SENTINELLE DU DEPOT (comme `TestEmpriseV0Reference`) : une cuisson BTB monte a plusieurs Gio.
-	garde := filmproc.Arm("emprise-l70", 8, func(pic uint64) {
+	garde := memguard.Arm(t.Context(), "emprise-l70", 8, func(pic uint64) {
 		fmt.Fprintf(os.Stderr, "EMPRISE L70 : empreinte %.2f Gio > plafond — arret\n", float64(pic)/(1<<30))
 		os.Exit(3)
 	})

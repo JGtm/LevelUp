@@ -22,7 +22,7 @@ package replay
 // USAGE :
 //
 //	CGO_ENABLED=0 CLE_FILM_PARC=<racine portant data/> \
-//	  go test ./internal/games/halo_infinite/film/replay -run TestRecensementDesClefsDuParc -v
+//	  go test ./replay -run TestRecensementDesClefsDuParc -v
 
 import (
 	"fmt"

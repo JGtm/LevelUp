@@ -19,12 +19,12 @@ package grammar
 // de la bande, et purete de `ti=4` (un slot, un composant declare : toute annonce hors i0 est une
 // faute d'ancrage).
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	$env:CGO_ENABLED=0
 //	$env:ZONE_FILM="<depot>/data/cache/film_chunks/7344d24f"
 //	$env:ZONE_OBJTYPE="zone"
-//	go test -count=1 -run TestZoneStateLotC1b -v ./internal/games/halo_infinite/film/internal/grammar/
+//	go test -count=1 -run TestZoneStateLotC1b -v ./internal/grammar/
 
 import (
 	"fmt"

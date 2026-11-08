@@ -13,7 +13,7 @@ package replay
 //
 //	CGO_ENABLED=0 V4_ROOT=<depot>/data/cache \
 //	  V4_FILMS="0d76e8f1:Behemoth,fccc61cd:Launch Site" \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run TestV4 -v -timeout 120m
+//	  go test ./replay/ -run TestV4 -v -timeout 120m
 
 import (
 	"context"

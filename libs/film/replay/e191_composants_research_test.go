@@ -39,7 +39,7 @@ package replay
 // LECTURE SEULE, skip par defaut. Memes gardes que `e191_origine_mesure_research_test.go`.
 //
 //	CGO_ENABLED=0 E191_ROOT=<depot>/data/cache/film_chunks \
-//	  go test ./internal/games/halo_infinite/film/replay/ \
+//	  go test ./replay/ \
 //	  -run '^TestE191Composants$' -count=1 -timeout 180m -v
 
 import (

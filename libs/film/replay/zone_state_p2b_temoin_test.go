@@ -19,7 +19,7 @@ package replay
 //
 //	$env:CGO_ENABLED=0
 //	$env:ZONE_FILM="<depot>/data/cache/film_chunks/7344d24f"
-//	go test -count=1 -run TestZoneEtatPhase2bTemoin -v -timeout 30m ./internal/games/halo_infinite/film/replay/
+//	go test -count=1 -run TestZoneEtatPhase2bTemoin -v -timeout 30m ./replay/
 
 import (
 	"context"

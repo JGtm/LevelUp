@@ -43,7 +43,7 @@ package replay
 //
 //	ZONE56P_FILM=<abs>/data/cache/film_chunks/396cfc92 ZONE56P_CARTE=Illusion \
 //	  go test -tags=research -count=1 -v -timeout 60m \
-//	    -run '^TestZone56CampCandidats$' ./internal/games/halo_infinite/film/replay/
+//	    -run '^TestZone56CampCandidats$' ./replay/
 //
 // UN SEUL FILM PAR INVOCATION, aucune base DuckDB, aucun artefact ecrit.
 

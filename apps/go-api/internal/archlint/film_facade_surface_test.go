@@ -152,7 +152,11 @@ const exigenceDeJustificationDatee = "UNE HAUSSE EXIGE UNE JUSTIFICATION DATEE D
 // (`replaybuild`) le cree — ses propres lectures (actions nommees, signaux du drapeau, pont par manche) y
 // notent deja — et le passe aux options du rejeu : elle doit NOMMER le type. Aucune constante `Nom*` n entre
 // dans la facade (les trois noms neufs sont verses par `replay`).
-const plafondSurfaceFacade = 179 // 2026-10-02 — retrait des replis nuls (DU-7) sur 430cdd7b4 : 186 - 7 (NomGamertagPremierXuidGagne, NomMortNeutreSansXuidAbandonnee, NomParticipantSansXuidRetire, NomCampInconnuRetireDeLaTable, NomHomonymesSansXuid, NomIdentitePontParMorts, XUIDNamePrefix)
+// 181 LE 2026-11-08 (decouplage de la brique film, item 4.6b, base `7eb05c19e6` : 179) : DEUX constantes neuves,
+// `ErrUnknownBuild` et `ErrUnknownFormat` — le contrat d erreurs typees de l ADR 0034 D-4 rendu nommable
+// (`errors.Is`) par un consommateur hors du module, qui ne peut pas importer la couche `profile` ; decision
+// du pilote du 2026-11-08.
+const plafondSurfaceFacade = 181 // 2026-11-08 — item 4.6b : 179 + 2 (ErrUnknownBuild, ErrUnknownFormat) ; cf. l historique ci-dessus
 
 // plafondSurfaceReplay — identifiants `replay.<Symbole>` DISTINCTS cites hors de `film/`.
 //
@@ -436,8 +440,8 @@ var plafondsParFamilleFacade = map[string]int{
 	"killsource": 36, // 2026-09-26 — lot J3.3 : `decfilm.Rev` renvoie a `killsource.Rev` (la famille `facts` disparait avec son paquet ; total inchange) ; 2026-09-27 — carte obligatoire (J7) : +1 (`ErrCarteAbsente`) ; 2026-10-02 — retrait des replis nuls (DU-7) : -1 (`XUIDNamePrefix`)
 	"fallback":   23, // 2026-09-27 — J8.7 : +18 (noms des replis declenches par replaybuild, sync/replayartifacts et sync/killcollector) ; 2026-10-02 — retrait des replis nuls (DU-7) : -6 (noms des replis retires)
 	"types":      10,
-	"profile":    8,
-	"source":     6, // 2026-09-26 — J4.5 : -1 (Paquets)
+	"profile":    10, // 2026-11-08 — item 4.6b : +2 (ErrUnknownBuild, ErrUnknownFormat)
+	"source":     6,  // 2026-09-26 — J4.5 : -1 (Paquets)
 	"weaponscan": 5,
 	"weaponv3":   4,
 	"positions":  2,

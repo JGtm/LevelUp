@@ -272,8 +272,8 @@ func (ri RoundIdentity) At(slot, timeMS int) string {
 // INSTANTS du film — et sur ce film ils ne se contredisent nulle part : 3 slots nommes par les
 // deux, a l'identique ; 2 que seul le triplet nomme ; 2 que seul le pont par morts nomme. Mieux,
 // le CONTROLE CROISE confirme les deux slots litigieux : les progressions de mort du slot 22
-// coincident avec le fil de 2535463878425995 et de LUI SEUL (2 sur 2), celles du slot 20 avec
-// 2535465632069522 et lui seul (1 sur 1). Le pont par morts ne se tait pas parce qu'il doute :
+// coincident avec le fil de 2569104772637498 et de LUI SEUL (2 sur 2), celles du slot 20 avec
+// 2805158871119453 et lui seul (1 sur 1). Le pont par morts ne se tait pas parce qu'il doute :
 // il se tait parce qu'il n'a pas ASSEZ D'ANCRES pour que sa marge s'applique.
 //
 // # LES TROIS GARDES, ET AUCUNE N'EST NEGOCIABLE

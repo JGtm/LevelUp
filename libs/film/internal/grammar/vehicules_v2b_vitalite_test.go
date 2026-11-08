@@ -34,13 +34,13 @@ package grammar
 //
 // UN SEUL decodage filmdec par process : le verrou est pris pour tout le test.
 //
-// USAGE (depuis apps/go-api, cache Go ISOLE) :
+// USAGE (depuis libs/film, cache Go ISOLE) :
 //
 //	$env:GOCACHE='<scratch>\gocache_v2b'
 //	CGO_ENABLED=0 V2B_FILM_ROOT=<repo>/data/cache \
 //	  V2B_FILMS="0d76e8f1:behemoth,fccc61cd:launch site" \
 //	  V2B_BOUNDS=<repo>/data/titles/halo_infinite/reference/map_quant_bounds.json \
-//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestV2bVitalite$' -v -timeout 180m
+//	  go test ./internal/grammar/ -run '^TestV2bVitalite$' -v -timeout 180m
 
 import (
 	"os"

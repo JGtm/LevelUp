@@ -16,12 +16,12 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/filmrun"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/platform/gameproc"
 	"levelup/go-api/internal/replayregen"
 
 	"github.com/JGtm/LevelUp/libs/film/filmcache"
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
 )
 
 // ReplayRegenDeps assemble les dépendances de la file : rien d'autre que ce que le registre sait déjà (chemins,
@@ -111,7 +111,7 @@ func (r *ServiceRegistry) regenerateReplay(ctx context.Context, titleSlug, match
 
 // busyOr rend err, enveloppée en `replayregen.ErrBusy` quand elle dit qu'un autre décodage tient la machine.
 func busyOr(err error) error {
-	if errors.Is(err, ErrActionBusy) || errors.Is(err, filmproc.ErrDecodeBusy) {
+	if errors.Is(err, ErrActionBusy) || errors.Is(err, filmrun.ErrDecodeBusy) {
 		return fmt.Errorf("%w: %w", replayregen.ErrBusy, err)
 	}
 	return err

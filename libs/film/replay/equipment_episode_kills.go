@@ -14,7 +14,7 @@ package replay
 // identité déjà résolue (xuid) et un instant déjà daté sur l'horloge « depuis le début du
 // film » (`killsource.Kill.TimeMS`) — la résolution gamertag -> xuid vit dans
 // `internal/replaybuild` (le seul paquet du dépôt qui ouvre `killsource`, cf.
-// replaybuild/kills.go), jamais ici. `games/halo_infinite/film/replay` reste title-agnostic et pur.
+// replaybuild/kills.go), jamais ici. `replay` reste title-agnostic et pur.
 //
 // L'HORLOGE : `killsource.Kill.TimeMS` est sur l'horloge « début du film », PAS celle du fil
 // des éliminations (`event_time_ms + t0_ms`) — mesuré à 99,9 % d'exactitude sur 1 822 kills

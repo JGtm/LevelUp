@@ -23,7 +23,7 @@ package grammar
 // GARDES : `R12_FILMS`, `R12_IDS`. Aucune ecriture, aucune DuckDB, `CGO_ENABLED=0`. USAGE :
 //
 //	CGO_ENABLED=0 R12_FILMS=<repo>/data/cache/film_chunks R12_IDS=215e7022 \
-//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestR12Socles$' -count=1 -timeout 60m -v
+//	  go test -tags=research ./internal/grammar/ -run '^TestR12Socles$' -count=1 -timeout 60m -v
 
 import (
 	"sort"

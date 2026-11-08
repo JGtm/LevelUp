@@ -21,10 +21,10 @@ package grammar
 // REGLE DE LECTURE POSEE D'AVANCE : un compte faible avec une couverture faible ne conclut PAS a
 // l'absence — il conclut « toujours sous-instrumente ».
 //
-// USAGE (depuis apps/go-api, cache Go isole, UN FILM PAR PROCESS de preference) :
+// USAGE (depuis libs/film, cache Go isole, UN FILM PAR PROCESS de preference) :
 //
 //	CGO_ENABLED=0 V13_FILM_ROOT=<repo>/data/cache V13_FILMS=0d76e8f1 \
-//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestV13DeadStateMarche$' -v -timeout 120m
+//	  go test ./internal/grammar/ -run '^TestV13DeadStateMarche$' -v -timeout 120m
 
 import (
 	"fmt"
@@ -42,6 +42,9 @@ const v13MaxChunks = 16
 func TestV13DeadStateMarche(t *testing.T) {
 	films := v13ParseFilms(t)
 	root := v13Root()
+	if root == "" {
+		t.Skip("V13_FILM_ROOT absent : racine du cache film requise")
+	}
 
 	for _, short8 := range films {
 		t.Run(short8, func(t *testing.T) { v13MeasureFilm(t, root, short8) })
@@ -559,10 +562,7 @@ func v13ParseFilms(t *testing.T) []string {
 }
 
 func v13Root() string {
-	if r := os.Getenv("V13_FILM_ROOT"); r != "" {
-		return r
-	}
-	return `C:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration\data\cache`
+	return os.Getenv("V13_FILM_ROOT")
 }
 
 func v13Dir(root, short8 string) string {

@@ -19,6 +19,8 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	"github.com/JGtm/LevelUp/libs/film/internal/depottest"
 )
 
 // titreDuCatalogueDeFonds : le seul titre qui publie des fonds de carte à ce jour. Une
@@ -29,7 +31,7 @@ const titreDuCatalogueDeFonds = "halo_infinite"
 // indexDuCatalogueLivre charge l'index des fonds réellement publiés dans le dépôt.
 func indexDuCatalogueLivre(t *testing.T) *MapBackgroundIndex {
 	t.Helper()
-	root := racineDepot(t)
+	root := depottest.Racine(t)
 	dir := filepath.Join(root, "data", "titles", titreDuCatalogueDeFonds, "reference", "map_backgrounds")
 	idx, err := BuildMapBackgroundIndex(context.Background(), dir)
 	if err != nil {
@@ -70,7 +72,7 @@ func TestCatalogueDeFondsSansIdentiteAmbigue(t *testing.T) {
 // clé. Un fond que l'index ne sait pas nommer est un fond que personne n'affichera.
 func TestCatalogueDeFondsIndexeChaqueCle(t *testing.T) {
 	idx := indexDuCatalogueLivre(t)
-	root := racineDepot(t)
+	root := depottest.Racine(t)
 	dir := filepath.Join(root, "data", "titles", titreDuCatalogueDeFonds, "reference", "map_backgrounds")
 	entrees, err := os.ReadDir(dir)
 	if err != nil {

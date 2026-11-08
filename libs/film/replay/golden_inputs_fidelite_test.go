@@ -30,7 +30,7 @@ package replay
 // USAGE :
 //
 //	REPLAY_FILM_CACHE=<repo>/data/cache/film_chunks \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run GoldenInputsFidelite -v
+//	  go test ./replay/ -run GoldenInputsFidelite -v
 //
 // LES FIXTURES PORTENT DES PSEUDONYMES : les gamertags des joueurs tiers y sont anonymises
 // (`cmd/anonymise-gamertags`, table de correspondance hors depot). Contre le cache brut, chaque nom
@@ -66,7 +66,7 @@ import (
 // builds :
 //
 //	REPLAY_FILM_CACHE=<repo>/data/cache/film_chunks \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run GoldenInputsFidelite -v
+//	  go test ./replay/ -run GoldenInputsFidelite -v
 func TestGoldenInputsFidelite(t *testing.T) {
 	cache := os.Getenv(miniFilmCacheEnv)
 	if cache == "" {

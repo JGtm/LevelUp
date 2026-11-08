@@ -265,7 +265,7 @@ returns its own diagnostic.
 | `/debug/vars` per key | `filmdec_unknown_build_<build>` (`sans_section` for an empty build) and `filmdec_unknown_format_<n>` — the counters `grammar` already named |
 | `/debug/vars` per pass | `killsource_ecartes_cle_inconnue` — how many passes the policy stopped, not which key |
 | Kill-source outcome | `ecarte-cle-inconnue` (`KillSourceOutcome`), its own column in `KillSourceSummary` |
-| Cooking | `replaybuild.ErrUnknownFilmKey`; the child exits `filmproc.CodeSkipped`, the post-sync counts it under `ecartes_cle_inconnue` |
+| Cooking | `replaybuild.ErrUnknownFilmKey`; the child exits `filmrun.CodeSkipped`, the post-sync counts it under `ecartes_cle_inconnue` |
 | Match registry | **nothing.** No `MBitFilmAbsent`: that marker is terminal, and the film comes back on its own the day the table learns to read it |
 
 The match therefore stays a backlog candidate and is retried each cycle until the key is added.

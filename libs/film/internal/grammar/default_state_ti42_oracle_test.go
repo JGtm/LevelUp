@@ -22,11 +22,11 @@ package grammar
 //
 // LECTURE SEULE, aucune base, aucun film. SOUS GARDE D'ENVIRONNEMENT (TI42_CAPTURE).
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 TI42_CAPTURE=<copie hors depot>/kf_capture_sample.txt \
 //	  TI42_BUFFER=<copie hors depot>/kf_slot0_live.bin \
-//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run TI42WidthOracle -timeout 10m -v
+//	  go test ./internal/grammar/ -run TI42WidthOracle -timeout 10m -v
 
 import (
 	"os"

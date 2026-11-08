@@ -71,7 +71,7 @@ package replay
 //	$env:HILL_MVAR="C:/.../catalyst_map.mvar"   # optionnel ; sinon le catalogue, role hill
 //	$env:HILL_LABEL="-767961569"                 # optionnel avec HILL_MVAR (role)
 //	$env:HILL_INCLUDE="2133978317"               # optionnel avec HILL_MVAR (filtre de mode)
-//	go test -count=1 -run TestHillShapesMeasure -v -timeout 30m ./internal/games/halo_infinite/film/replay/
+//	go test -count=1 -run TestHillShapesMeasure -v -timeout 30m ./replay/
 //
 // LES RAPPORTS que ce test imprime (tableau des rampes, chemin de production, AVANT/APRES,
 // bilan des manques) vivent dans `hill_shapes_report_test.go` — scission de la revue ronde 1

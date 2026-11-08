@@ -17,7 +17,7 @@ package replay
 //
 //	$env:CGO_ENABLED=0
 //	$env:HILL_FILMS="C:/.../film_chunks/0d9a9af9;..."
-//	go test -count=1 -run TestCollineActivationMesure -v ./internal/games/halo_infinite/film/replay/
+//	go test -count=1 -run TestCollineActivationMesure -v ./replay/
 
 import (
 	"fmt"

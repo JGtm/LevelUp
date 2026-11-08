@@ -21,10 +21,10 @@ package grammar
 // IL NE MODIFIE RIEN : lecture seule, sous garde d'environnement (I47_FILM), sauté partout
 // ailleurs, CI comprise.
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 I47_FILM=<repo>/data/cache/film_chunks/000d5950 \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run I47Location -timeout 10m -v
+//	  go test ./replay/ -run I47Location -timeout 10m -v
 
 import (
 	"fmt"

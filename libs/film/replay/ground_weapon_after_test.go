@@ -24,12 +24,12 @@ package replay
 //
 // LECTURE SEULE, aucune base. SOUS GARDE D'ENVIRONNEMENT (GW_FILM), comme l'AVANT.
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 GW_FILM=<repo>/data/cache/film_chunks/000d5950 \
 //	  GW_BOUNDS=<repo>/data/titles/halo_infinite/reference/map_quant_bounds.json \
 //	  GW_MAP=Cliffhanger \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run GroundWeaponAfter -timeout 60m -v
+//	  go test ./replay/ -run GroundWeaponAfter -timeout 60m -v
 
 import (
 	"os"

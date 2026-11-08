@@ -139,7 +139,7 @@ func ecrireEntete(ctx context.Context, artifactPath string, d Digest, appVersion
 		Bytes: int64(d.Bytes), AppVersion: appVersion,
 	})
 	if err == nil {
-		err = atomicfile.WriteFile(MetaPath(artifactPath), blob, 0o644)
+		err = atomicfile.WriteFile(ctx, MetaPath(artifactPath), blob, 0o644)
 	}
 	if err == nil {
 		return

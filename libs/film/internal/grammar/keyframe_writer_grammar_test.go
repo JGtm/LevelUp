@@ -24,10 +24,10 @@ package grammar
 // aucun schema. LECTURE SEULE, garde par KF35_ROOT (meme garde que R7-a/R7-b) : il saute
 // partout ailleurs, CI comprise.
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 KF35_ROOT=<repo>/data/cache/film_chunks \
-//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestKF7D' -timeout 60m -v
+//	  go test ./internal/grammar/ -run '^TestKF7D' -timeout 60m -v
 
 import (
 	"fmt"

@@ -16,7 +16,7 @@ package grammar
 //	                     de reference. Sortie `diff_<film>.txt`.
 //
 //	BIT18_RACINE=<film_chunks> BIT18_OUT=<dossier> [BIT18_FILMS=<id,...>] [BIT18_REF=<id>] \
-//	  go test -tags=research -count=1 -run '^TestBit18' ./internal/games/halo_infinite/film/internal/grammar/
+//	  go test -tags=research -count=1 -run '^TestBit18' ./internal/grammar/
 
 import (
 	"fmt"

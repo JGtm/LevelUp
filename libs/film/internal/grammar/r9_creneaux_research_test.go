@@ -27,13 +27,13 @@ package grammar
 // sans lever la moindre erreur.
 //
 // GARDES : `R9_FILMS`, `R8_BOUNDS`, `R9_ARTIFACTS`, `R9_MANIFESTS`, `R9_IDS`. Aucune
-// ecriture, aucune DuckDB, `CGO_ENABLED=0`. USAGE (depuis apps/go-api) :
+// ecriture, aucune DuckDB, `CGO_ENABLED=0`. USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 R9_FILMS=<repo>/data/cache/film_chunks \
 //	  R9_MANIFESTS=<repo>/data/cache/film_manifests \
 //	  R9_ARTIFACTS=<repo>/data/cache/replays/halo_infinite \
 //	  R8_BOUNDS=<wt>/data/titles/halo_infinite/reference/map_quant_bounds.json \
-//	  R9_IDS=8a485699 go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ \
+//	  R9_IDS=8a485699 go test -tags=research ./internal/grammar/ \
 //	  -run '^TestR9(Horloge|CreneauxPropulseur)$' -count=1 -timeout 60m -v
 
 import (
@@ -56,7 +56,7 @@ const (
 	r9IDsEnv       = "R9_IDS"
 	// r9JGXUID : le xuid de l'utilisateur. Le Theater du jeu ne montre QUE les matchs ou il a
 	// joue — un creneau pris dans un film ou il est absent serait inutilisable.
-	r9JGXUID = "2533274823110022"
+	r9JGXUID = "2603225103667623"
 )
 
 // --- Artefact de rejeu : la vue minimale qui porte l'IDENTITE ---

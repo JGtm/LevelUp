@@ -23,6 +23,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/JGtm/LevelUp/libs/film/internal/depottest"
 )
 
 // lettresFilm est l'identite d'un film mesure, relue des exports geles du registre.
@@ -75,7 +77,7 @@ func lettresLitLigneMatch(t *testing.T, path, short string) (lettresFilm, bool) 
 // lettresRegistreDir rend le repertoire des exports geles du registre du film.
 func lettresRegistreDir(t *testing.T) string {
 	t.Helper()
-	return filepath.Join(racineDepot(t), ".ai", "archive", "V7.5", "replay2d", "registre_film")
+	return filepath.Join(depottest.Racine(t), ".ai", "archive", "V7.5", "replay2d", "registre_film")
 }
 
 // lettresRoster relit les lignes de match GELEES du film.

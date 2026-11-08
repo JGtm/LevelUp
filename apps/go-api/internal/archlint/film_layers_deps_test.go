@@ -199,7 +199,7 @@ var couchesDuDecodeur = map[string]coucheFilm{
 	"libs/film/research/cmd_mouvement": horsCoucheFilm,
 	// Lot J4.0 (2026-09-26, plan de suite de l audit du decodeur) : la carte de fermeture des
 	// trames delta. Meme nature que `cmd_grenadeids` : il LIT des films en place, un a la fois,
-	// sous la sentinelle de `filmproc`, et mesure par `grammar.FrameClosure` — il ne decode rien
+	// sous la sentinelle de `memguard`, et mesure par `grammar.FrameClosure` — il ne decode rien
 	// pour la production et ne publie rien. Un seul paquet (`main`), sans bibliotheque a cote.
 	"libs/film/research/cmd_fermeture": horsCoucheFilm,
 	// Lot J4.5 (2026-09-26) : l instrument de recherche du SWAP d arme, descendu de
@@ -292,19 +292,22 @@ var couchesDuDecodeur = map[string]coucheFilm{
 	// `identity` : le contrat d identite des entites (types seuls, descendus de `games/canonical` le
 	// 2026-10-29, D2 2.4) ; feuille sans import du depot, declare des formes : hors couche.
 	"libs/film/identity": horsCoucheFilm,
-	// `digest` : L'EMPREINTE D'UNE VALEUR GO (rendu stable, sans nom de type), outil du harnais
-	// d'equivalence de la cuisson (`replay-equiv`) et de la mini-bobine de `replay`. Descendu de
-	// `internal/analysis/digest` le 2026-10-29 (D2 2.11) : ses seuls utilisateurs sont le decodeur
-	// et son outil d'equivalence. Feuille de la bibliotheque standard, ne lit aucun octet de film :
-	// hors couche.
-	"libs/film/digest": horsCoucheFilm,
-	// `filmproc` : le garde-fou MEMOIRE du decodage (lanceur parent/enfant, sentinelle, verrou de
-	// decodage), descendu de `internal/filmproc` le 2026-10-29 (D2 2.6). Il ne decode rien et ne
-	// publie rien : hors couche. `atomicfile` et `filelock` sont ses deux outils (ecriture atomique,
-	// verrou du noyau), fermes sous `film/internal/` : `filelock` a ete DEPLACE (son seul importeur
-	// etait `filmproc`), `atomicfile` est une COPIE JUMELLE de `platform/atomicfile`
+	// `internal/digest` : L'EMPREINTE D'UNE VALEUR GO (rendu stable, sans nom de type), outil de la
+	// mini-bobine de `replay`, copie jumelle de celle du harnais `replay-equiv` de l'hote
+	// (`internal/analysis/digest`, `copies_identiques_test.go`). Feuille de la bibliotheque standard,
+	// ne lit aucun octet de film : hors couche.
+	"libs/film/internal/digest": horsCoucheFilm,
+	// `internal/depottest` : la racine du depot hote pour les tests de la brique qui lisent ses donnees
+	// (`film_racine_depot_unique_test.go`). Ne decode ni ne publie rien : hors couche.
+	"libs/film/internal/depottest": horsCoucheFilm,
+	// `memguard` : la sentinelle MEMOIRE d'un decodage (deux plafonds, pic). `internal/decodelock` : le
+	// verrou « un decodage a la fois » des tests et instruments de la brique (le verrou de production
+	// est celui de l'hote, `internal/filmrun`). Ils ne decodent rien et ne publient rien : hors couche.
+	// `atomicfile` et `filelock` sont les outils du verrou (ecriture atomique, verrou du noyau), fermes
+	// sous `film/internal/`, COPIES JUMELLES de `platform/atomicfile` et `platform/filelock`
 	// (`copies_identiques_test.go`).
-	"libs/film/filmproc":            horsCoucheFilm,
+	"libs/film/memguard":            horsCoucheFilm,
+	"libs/film/internal/decodelock": horsCoucheFilm,
 	"libs/film/internal/atomicfile": horsCoucheFilm,
 	"libs/film/internal/filelock":   horsCoucheFilm,
 	// `internal/flatjson` : LE CODEC « A PLAT » des libelles par langue du document (copie jumelle de

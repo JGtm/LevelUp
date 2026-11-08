@@ -29,12 +29,12 @@ import (
 	"time"
 
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/filmrun"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replaybuild"
 	"levelup/go-api/internal/sync/filmfetch"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
 	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
@@ -336,7 +336,7 @@ func TestBuildAll_VerrouTenuAilleurs_ReporteSansEchec(t *testing.T) {
 		RepoRoot: t.TempDir(), TitleSlug: titlePkg.DefaultSlug, FilmRoot: t.TempDir(),
 		Fetcher: &fetcherFilms{}, Budget: time.Minute,
 		BuildOne: func(context.Context, BuildOneRequest) (BuildOneResult, error) {
-			return BuildOneResult{}, filmproc.ErrDecodeBusy
+			return BuildOneResult{}, filmrun.ErrDecodeBusy
 		},
 	}
 	b := buildAll(context.Background(), d, []buildWork{{matchID: "0000a001"}, {matchID: "0000a002"}})

@@ -18,14 +18,14 @@ package replay
 // PROCESSUS, lecture seule, AUCUNE base.
 //
 //	$env:ATT_FILM="<repo>/data/cache"; $env:VIP_FILM="00761d27"
-//	go test ./internal/games/halo_infinite/film/replay/ -run VIPV0Qualification -v
+//	go test ./replay/ -run VIPV0Qualification -v
 
 import (
 	"math"
 	"os"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // vipFilmEnv designe LE film qualifie par ce processus — une boucle sur trois films dans un
@@ -39,14 +39,14 @@ func TestVIPV0Qualification(t *testing.T) {
 	if id == "" {
 		t.Skipf("mesure non demandee : %s vide (identifiant court du film VIP)", vipFilmEnv)
 	}
-	g := filmproc.Arm("vip-v0", filmproc.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm(t.Context(), "vip-v0", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE %s : %.2f Gio — qualification interrompue, ce film "+
 			"sort NON QUALIFIE", id, float64(peak)/(1<<30))
 	})
 	defer func() {
 		g.Disarm()
 		t.Logf("%s : pic memoire observe %.2f Gio (plafond souple %d Gio)",
-			id, float64(g.Peak())/(1<<30), filmproc.MeasureLimitGiB)
+			id, float64(g.Peak())/(1<<30), memguard.MeasureLimitGiB)
 	}()
 
 	if _, ok := objOpenFilm(t, root, id); !ok {

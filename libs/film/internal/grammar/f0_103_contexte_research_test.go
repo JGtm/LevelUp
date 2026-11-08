@@ -47,7 +47,7 @@ package grammar
 //	  F0_ARTS=<depot>/data/cache/replays/halo_infinite \
 //	  F0_CAT=<depot>/data/titles/halo_infinite/reference/map_quant_bounds.json \
 //	  F0_IDS=000d5950,1cd3848a,215e7022 F0_MAPS=000d5950=Cliffhanger,... \
-//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestF0' -count=1 -timeout 90m -v
+//	  go test -tags=research ./internal/grammar/ -run '^TestF0' -count=1 -timeout 90m -v
 
 import (
 	"fmt"

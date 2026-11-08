@@ -25,7 +25,7 @@ package grammar
 //
 //	CAMPAGNE_RACINE=<film_chunks> CAMPAGNE_FILMS=<id,id> CAMPAGNE_SORTIE=<dir hors data> \
 //	  go test -tags=research -count=1 -timeout 120m -run '^TestCampagneL0Mesures$' \
-//	  ./internal/games/halo_infinite/film/internal/grammar/
+//	  ./internal/grammar/
 
 import (
 	"fmt"
@@ -36,7 +36,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // l0Mesure ecoute la marche d un film.
@@ -161,7 +161,7 @@ func TestCampagneL0Mesures(t *testing.T) {
 	detail := []string{"film\tbuild\tchunk\tpaquet\tetat\treste_apres_entete\teid_rejete\tclasse_au_bloc\tdernier_lu\trecords\tentrees_vue_c"}
 	for _, id := range films {
 		func() {
-			garde := filmproc.Arm("campagne/l0", 4, func(pic uint64) {
+			garde := memguard.Arm(t.Context(), "campagne/l0", 4, func(pic uint64) {
 				fmt.Fprintf(os.Stderr, "%s : plafond memoire franchi (%d octets)\n", id, pic)
 				os.Exit(3)
 			})

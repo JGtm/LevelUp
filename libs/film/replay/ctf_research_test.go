@@ -18,11 +18,11 @@ package replay
 // même enchaînement que BuildFromFilm et compte à côté. Il est SOUS GARDE D'ENVIRONNEMENT
 // (CTF_RESEARCH_FILMS) et se saute partout ailleurs, CI comprise.
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 FILM_CACHE_ROOT=<mainrepo>/data/cache CTF_RESEARCH_OUT=<dir> \
 //	  CTF_RESEARCH_FILMS="64e8adfa:Catalyst,9aeca4b3:Catalyst" \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run CTFLostShots -timeout 60m -v
+//	  go test ./replay/ -run CTFLostShots -timeout 60m -v
 //
 // Le film est en LECTURE SEULE, et la sortie n'est jamais écrite dans data/.
 

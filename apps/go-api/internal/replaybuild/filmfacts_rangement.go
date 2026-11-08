@@ -63,7 +63,7 @@ func (b *Builder) ecrireLesFaits(ctx context.Context, matchID string, f *replay.
 			"path", chemin, "err", err)
 		return
 	}
-	if err := atomicfile.WriteFile(chemin, blob, 0o600); err != nil {
+	if err := atomicfile.WriteFile(ctx, chemin, blob, 0o600); err != nil {
 		slog.ErrorContext(ctx, "cuisson: faits de film non ecrits", "match_id", matchID,
 			"path", chemin, "err", err)
 		return

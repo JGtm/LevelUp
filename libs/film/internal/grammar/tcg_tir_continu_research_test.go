@@ -39,7 +39,7 @@ package grammar
 //	MOUV511_CARTE=isolation TCG_ORIGINE_US=451125221 TCG_INDEX=2 TCG_SOURCE=F712C64A \
 //	TCG_EPISODES=311-1088:514:769:2,2064-2869:541:771:2 TCG_FRAGS=395,623,650,2159,2228,2402 \
 //	  go test -tags=research -count=1 -v -timeout 60m -run '^TestTirContinuGhost$' \
-//	  ./internal/games/halo_infinite/film/internal/grammar/
+//	  ./internal/grammar/
 //
 //	MOUV511_FILM=<depot>/data/cache/film_chunks/8a485699 MOUV511_CARTE="launch site" \
 //	TCG_ORIGINE_US=2331882869 TCG_INDEX=4 TCG_SOURCE=FA4FAD21 TCG_FRAGS=401,1187 \

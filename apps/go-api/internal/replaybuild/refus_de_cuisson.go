@@ -13,7 +13,7 @@ package replaybuild
 //
 // Les trois disent la même chose sous trois causes : CE FILM NE SE CUIT PAS, et ce n'est pas une
 // panne. Les rassembler rend lisible ce que les producteurs classent en « écarté » plutôt qu'en
-// « échec » (`filmproc.CodeSkipped`, `sync/replayartifacts`).
+// « échec » (`filmrun.CodeSkipped`, `sync/replayartifacts`).
 
 import (
 	"context"
@@ -52,7 +52,7 @@ var ErrModeNonGere = errors.New("replaybuild: mode non géré par le rejeu (Fire
 // la ligne de table qui dit COMMENT le lire (`docs/RUNBOOK_FILM_PROFILES.md`). Le cuire au
 // profil du build le plus proche produirait un document plausible et faux — le seul défaut que
 // D-4 déclare inacceptable. Les producteurs le classent donc en ÉCARTÉ
-// (`filmproc.CodeSkipped`), jamais en échec de traitement : le match revient de lui-même au
+// (`filmrun.CodeSkipped`), jamais en échec de traitement : le match revient de lui-même au
 // rattrapage le jour où la ligne est écrite.
 var ErrUnknownFilmKey = errors.New("replaybuild: clé du film absente de la table de profil — film mis de côté")
 

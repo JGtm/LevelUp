@@ -38,12 +38,12 @@ package replay
 // LECTURE SEULE : aucune base, aucun artefact ecrit, aucun champ de document. UN SEUL decodage
 // film par process (D17).
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 EQ_FILM=<principal>/data/cache/film_chunks/000d5950 \
 //	  EQ_BOUNDS=<principal>/data/titles/halo_infinite/reference/map_quant_bounds.json \
 //	  EQ_OUT=<dossier de mesures> \
-//	  go test ./internal/games/halo_infinite/film/replay/ -run '^TestEquipmentUsesPhase0$' -timeout 60m -v
+//	  go test ./replay/ -run '^TestEquipmentUsesPhase0$' -timeout 60m -v
 //
 // `EQ_BOUNDS` est FACULTATIF : sans lui les positions restent en coordonnees normalisees
 // [0,1] de l'AABB (ce qui suffit a tout ce qui est mesure ici, l'appariement etant temporel),

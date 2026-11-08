@@ -157,7 +157,7 @@ never removes `DataRoot` (36 to 100 GB of films and databases on the maintainer'
 `RepoRoot` is no longer read outside `internal/config` and `PathResolver` (a dated allowlist, which only goes down, holds
 the readers not yet migrated). The existing rule stands: no `filepath.Join(..., "data", ...)` by hand.
 
-**A-6 — Child processes.** The replay build children (`replaychild`, `filmproc`) receive the three roots in their
+**A-6 — Child processes.** The replay build children (`replaychild`, `filmrun`) receive the three roots in their
 environment, so that a child resolves the same paths as its parent, whatever its working directory.
 
 **A-7 — Docker.** The image sets the three variables explicitly, the dead `LEVELUP_ROOT` and `LEVELUP_DATA` are removed
@@ -176,7 +176,7 @@ from the Dockerfile and the compose files, and the resources are mounted read-on
   the compose service keeps its host files mounted under `/app` through `LEVELUP_DB_PROFILES` and
   `LEVELUP_APP_SETTINGS`. The `reference/` directory is not mounted read-only on the production service, because
   `reference/generated/` shares it.
-- *Children.* `filmproc.NewRunnerRoots` imposes the three roots (an empty root is removed from the child environment);
+- *Children.* `filmrun.NewRunnerRoots` imposes the three roots (an empty root is removed from the child environment);
   the data root is imposed only when it was set explicitly.
 
 **Consequences.** `PathResolver` gains a second root and resource accessors; the 41 hand-built joins of `"data"` and the

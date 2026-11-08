@@ -63,7 +63,7 @@ package grammar
 // REGIME : garde `ASSAUT_CACHE`. Aucune base, aucun reseau, sentinelle memoire armee.
 //
 //	$env:ASSAUT_CACHE="C:/.../data/cache"
-//	go test ./internal/games/halo_infinite/film/internal/grammar/ -run ObjectifTi11Longueur -v -timeout 40m
+//	go test ./internal/grammar/ -run ObjectifTi11Longueur -v -timeout 40m
 
 import (
 	"fmt"
@@ -73,7 +73,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // ti11SommeLargeurs est la somme des largeurs portees de l'archetype, `i2`, `i9` et `i4` EXCLUS
@@ -128,7 +128,7 @@ func TestObjectifTi11Longueur(t *testing.T) {
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
-	g := filmproc.Arm("TestObjectifTi11Longueur", filmproc.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm(t.Context(), "TestObjectifTi11Longueur", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — mesure interrompue", float64(peak)/(1<<30))
 	})
 	defer func() { g.Disarm() }()
@@ -275,13 +275,13 @@ func ti11Verdict(t *testing.T, m map[int]int) {
 // L'ecart est donc rendu DEUX FOIS : sa distribution brute, et sa moyenne ventilee par nombre de
 // composants presents. C'est la seconde qui separe les trois lectures.
 //
-//	go test ./internal/games/halo_infinite/film/internal/grammar/ -run ObjectifTi11Residu -v -timeout 40m
+//	go test ./internal/grammar/ -run ObjectifTi11Residu -v -timeout 40m
 func TestObjectifTi11Residu(t *testing.T) {
 	cache := os.Getenv("ASSAUT_CACHE")
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
-	g := filmproc.Arm("TestObjectifTi11Residu", filmproc.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm(t.Context(), "TestObjectifTi11Residu", memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — mesure interrompue", float64(peak)/(1<<30))
 	})
 	defer func() { g.Disarm() }()

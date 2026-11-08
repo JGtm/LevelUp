@@ -15,11 +15,12 @@ import (
 
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/filmarchive"
 	settings_platform "levelup/go-api/internal/platform/settings"
 )
 
-func filmDeTest() []filmcache.WriteChunk {
-	return []filmcache.WriteChunk{
+func filmDeTest() []filmarchive.WriteChunk {
+	return []filmarchive.WriteChunk{
 		{Index: 0, ChunkType: 1, Data: bytes.Repeat([]byte("registre"), 2000)},
 		{Index: 1, ChunkType: 2, DurationMS: 20000, Data: bytes.Repeat([]byte("replication"), 4000)},
 		{Index: 2, ChunkType: finalise.ChunkTypeTempsForts, DurationMS: 20000, Data: bytes.Repeat([]byte("temps forts"), 3000)},
@@ -29,7 +30,7 @@ func filmDeTest() []filmcache.WriteChunk {
 // poserFilmBrut écrit un film comme l'ancien writer : chunks bruts, manifeste à la taille du fichier.
 func poserFilmBrut(t *testing.T, root, court string) {
 	t.Helper()
-	if err := filmcache.Write(t.Context(), root, court, filmDeTest()); err != nil {
+	if err := filmarchive.Write(t.Context(), root, court, filmDeTest()); err != nil {
 		t.Fatal(err)
 	}
 	// Réécrit chaque chunk en clair : l'état d'un cache d'avant D-18.
@@ -143,7 +144,7 @@ func TestFilmArchiveMove_RefuseUneCibleNonVideEtNeToucheRien(t *testing.T) {
 		t.Fatal(err)
 	}
 	err := runFilmTo(cfg, []string{subcmdFilmArchiveMove, "--to", plein}, &bytes.Buffer{})
-	if !errors.Is(err, filmcache.ErrCibleNonVide) {
+	if !errors.Is(err, filmarchive.ErrCibleNonVide) {
 		t.Fatalf("erreur = %v, attendu ErrCibleNonVide", err)
 	}
 	if ids, _ := filmcache.ListShortIDs(source); len(ids) != 1 {
@@ -213,7 +214,7 @@ func TestFilmArchiveMove_ResumeSansDeplacementEnCoursNEstPasUneDerogation(t *tes
 		t.Fatal(err)
 	}
 	err := runFilmTo(cfg, []string{subcmdFilmArchiveMove, "--to", plein, "--resume"}, &bytes.Buffer{})
-	if !errors.Is(err, filmcache.ErrCibleNonVide) {
+	if !errors.Is(err, filmarchive.ErrCibleNonVide) {
 		t.Fatalf("erreur = %v, attendu ErrCibleNonVide", err)
 	}
 }

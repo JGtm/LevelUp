@@ -15,7 +15,9 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
+	"github.com/JGtm/LevelUp/libs/film/internal/depottest"
+
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // amArmeSentinelle arme le plafond memoire de MESURE pour un balayage de corpus, et rend la
@@ -25,17 +27,17 @@ import (
 // enchainent jusqu'a 65 films DANS UN SEUL PROCESSUS. Le decodage du statborg est borne par
 // `statMaxRecordsPerFilm` et les pics mesures restent sous le dixieme de gibioctet — mais c'est
 // une PROPRIETE OBSERVEE, pas une garantie, et la doctrine du depot ne fait pas d'exception :
-// tout processus qui enchaine des films arme sa sentinelle (cf. `internal/games/halo_infinite/film/filmproc`).
+// tout processus qui enchaine des films arme sa sentinelle (cf. `memguard`).
 func amArmeSentinelle(t *testing.T, nom string) func() {
 	t.Helper()
-	g := filmproc.Arm(nom, filmproc.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm(t.Context(), nom, memguard.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — balayage interrompu pour proteger la machine",
 			float64(peak)/(1<<30))
 	})
 	return func() {
 		g.Disarm()
 		t.Logf("pic memoire observe : %.2f Gio (plafond souple %d Gio)",
-			float64(g.Peak())/(1<<30), filmproc.MeasureLimitGiB)
+			float64(g.Peak())/(1<<30), memguard.MeasureLimitGiB)
 	}
 }
 
@@ -97,7 +99,7 @@ func psArtDir(t *testing.T) string {
 	if v := os.Getenv(psArtEnv); v != "" {
 		return v
 	}
-	dir := filepath.Join(racineDepot(t), "data", "cache", "replays", "halo_infinite")
+	dir := filepath.Join(depottest.Racine(t), "data", "cache", "replays", "halo_infinite")
 	if _, err := os.Stat(dir); err != nil {
 		t.Skipf("%s absent et %s introuvable : instrument saute", psArtEnv, dir)
 	}

@@ -33,12 +33,12 @@ package grammar
 //
 // GARDES : `R9_FILMS`, `R9_ARTIFACTS`, `R8_BOUNDS`, `R11_IDS` (obligatoire), `R11_XUID`
 // (defaut JGtm), `R11_ALL` (1 = tous les joueurs). Aucune ecriture, aucune DuckDB,
-// `CGO_ENABLED=0`. USAGE (depuis apps/go-api) :
+// `CGO_ENABLED=0`. USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 R9_FILMS=<repo>/data/cache/film_chunks \
 //	  R9_ARTIFACTS=<repo>/data/cache/replays/halo_infinite \
 //	  R8_BOUNDS=<wt>/data/titles/halo_infinite/reference/map_quant_bounds.json \
-//	  R11_IDS=72b0a25e go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ \
+//	  R11_IDS=72b0a25e go test -tags=research ./internal/grammar/ \
 //	  -run '^TestR11Journal$' -count=1 -timeout 60m -v
 
 import (

@@ -27,7 +27,7 @@ package killcollector
 //
 // # LE PIC
 //
-// L'empreinte du processus (`filmproc.Footprint`, la mesure de la sentinelle du depot et de
+// L'empreinte du processus (`memguard.Footprint`, la mesure de la sentinelle du depot et de
 // `replay-equiv`), echantillonnee toutes les 10 ms pendant l'appel ; metrique `pic-Mio`, le plus
 // haut des tours. Elle porte aussi ce que la passe de positions tient encore en memoire : c'est le
 // niveau du collecteur au moment de l'appel.

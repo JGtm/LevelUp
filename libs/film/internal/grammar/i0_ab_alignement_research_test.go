@@ -35,7 +35,7 @@ package grammar
 // LECTURE SEULE, garde par I0AB_FILM — saute partout ailleurs, CI comprise :
 //
 //	I0AB_FILM=<repo>/data/cache/film_chunks/a521164d \
-//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestI0AlignementAB$' -v
+//	  go test ./internal/grammar/ -run '^TestI0AlignementAB$' -v
 
 import (
 	"os"

@@ -31,10 +31,10 @@ package grammar
 // IL NE MODIFIE RIEN : lecture seule du film, aucune ecriture disque. SOUS GARDE
 // D'ENVIRONNEMENT (TI11_FILM), saute partout ailleurs, CI comprise.
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 TI11_FILM=<repo>/data/cache/film_chunks/64e8adfa \
-//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run TI11Mur -v
+//	  go test ./internal/grammar/ -run TI11Mur -v
 
 import (
 	"sort"

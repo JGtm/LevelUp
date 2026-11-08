@@ -221,7 +221,7 @@ func cumulateRounds(raw map[int]map[int][]types.ScorePoint, real map[int]bool,
 //
 // L'ECART EST SIGNALE ICI, une fois, avec le slot et le premier recul : c'est un defaut, pas
 // un cas nominal, et il ne doit jamais etre avale. Le diagnostic nait dans la fonction plutot que
-// chez ses appelants pour que les DEUX cumuls (par slot ici, par joueur dans `games/halo_infinite/film/replay`)
+// chez ses appelants pour que les DEUX cumuls (par slot ici, par joueur dans `replay`)
 // le rendent de la meme facon, sans dupliquer ni le message ni la decision ; il tombe dans `diag`
 // (lot J12.3, ADR 0034 D-4) et l orchestrateur le journalise.
 func ChronologicalTotal(pts []types.ScorePoint, diag *constat.Diagnostics) []types.ScorePoint {

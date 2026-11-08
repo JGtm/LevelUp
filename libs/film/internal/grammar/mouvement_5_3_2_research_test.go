@@ -31,7 +31,7 @@ package grammar
 //	Aucune base DuckDB. Aucun artefact. UN SEUL film par execution.
 //
 //	MOUV532_FILM=<chemin du repertoire de chunks> [MOUV532_TSV=<sortie>] \
-//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ \
+//	  go test -tags=research ./internal/grammar/ \
 //	    -run '^TestMouvement532$' -count=1 -v -timeout 60m
 
 import (

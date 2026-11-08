@@ -42,11 +42,10 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/config"
+	"levelup/go-api/internal/filmarchive"
 	"levelup/go-api/internal/sync/filmfetch"
 	"levelup/go-api/internal/sync/killcollector"
 	"levelup/go-api/internal/sync/matchflags"
-
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
 )
 
 // compteursEnLigne : ce que la passe en ligne ajoute a la restitution de fin de passe.
@@ -113,7 +112,7 @@ func passeDesFilmsEnLigne(
 	// `film_manifests/` est absent, et ce nil vaut pour TOUT le process : sur une machine
 	// neuve, la passe archiverait sans jamais relire, et la passe SUIVANTE repaierait le
 	// reseau en entier. Creer les deux dossiers d abord supprime le piege.
-	if err := filmcache.EnsureDirs(cacheRoot); err != nil {
+	if err := filmarchive.EnsureDirs(cacheRoot); err != nil {
 		return nil, err
 	}
 	source := killcollector.NewRemoteFilms(

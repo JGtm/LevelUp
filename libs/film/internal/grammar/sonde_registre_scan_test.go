@@ -34,12 +34,12 @@ package grammar
 // LECTURE SEULE : aucun octet ecrit hors des TSV de sortie, aucune base, aucun artefact.
 // SOUS GARDE D'ENVIRONNEMENT (PROBE_FILM). UN SEUL FILM PAR PROCESSUS.
 //
-// USAGE (depuis apps/go-api) :
+// USAGE (depuis libs/film) :
 //
 //	CGO_ENABLED=0 PROBE_FILM=<repo>/data/cache/film_chunks/7344d24f \
 //	  PROBE_CACHE=<repo>/data/cache PROBE_SHORT=7344d24f PROBE_OBJTYPE=zone \
 //	  PROBE_TSV=<dossier de sortie> \
-//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run TestSondesRegistre -v -timeout 60m
+//	  go test ./internal/grammar/ -run TestSondesRegistre -v -timeout 60m
 
 import (
 	"os"

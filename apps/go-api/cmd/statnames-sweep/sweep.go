@@ -5,7 +5,7 @@ package main
 // LE PARENT NE DECODE RIEN : pour chaque film il re-execute son propre binaire avec
 // `-child -match <id>`, attend sa mort et compte son issue (le patron de
 // `cmd/zone-attribution/passe.go`). L'ENFANT arme la sentinelle de MESURE (2 Gio), balaye
-// le statborg, imprime le TSV et rend un code du protocole filmproc.
+// le statborg, imprime le TSV et rend un code du protocole filmrun.
 
 import (
 	"context"
@@ -14,9 +14,11 @@ import (
 	"sort"
 	"strconv"
 
+	"levelup/go-api/internal/filmrun"
+
 	"github.com/JGtm/LevelUp/libs/film/decfilm"
 	"github.com/JGtm/LevelUp/libs/film/filmcache"
-	"github.com/JGtm/LevelUp/libs/film/filmproc"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 	"github.com/JGtm/LevelUp/libs/film/replay"
 	"github.com/JGtm/LevelUp/libs/film/types"
 )
@@ -27,13 +29,13 @@ const sweepMaxComp = 27
 
 // runParent lance un enfant par film et imprime le recap de la passe.
 func runParent(ctx context.Context, repoRoot string, a runArgs) error {
-	runner, err := filmproc.NewRunner(repoRoot, os.Stdout)
+	runner, err := filmrun.NewRunner(repoRoot, os.Stdout)
 	if err != nil {
 		return err
 	}
 	fmt.Printf("mode parent/enfant : 1 processus par film, plafond %d Gio, priorite basse\n",
-		filmproc.MeasureLimitGiB)
-	recap := map[filmproc.Issue]int{}
+		memguard.MeasureLimitGiB)
+	recap := map[filmrun.Issue]int{}
 	for i, id := range a.films {
 		fmt.Printf("===== FILM %d/%d — %s =====\n", i+1, len(a.films), id)
 		res := runner.Run(ctx, []string{"-child", "-match", id, "-cache", a.cache})
@@ -45,15 +47,15 @@ func runParent(ctx context.Context, repoRoot string, a runArgs) error {
 		}
 	}
 	fmt.Printf("PASSE — %d film(s) :", len(a.films))
-	for _, i := range []filmproc.Issue{filmproc.IssueOK, filmproc.IssueSkipped,
-		filmproc.IssueFailed, filmproc.IssuePreparation, filmproc.IssueMemory,
-		filmproc.IssueSuddenDeath} {
+	for _, i := range []filmrun.Issue{filmrun.IssueOK, filmrun.IssueSkipped,
+		filmrun.IssueFailed, filmrun.IssuePreparation, filmrun.IssueMemory,
+		filmrun.IssueSuddenDeath} {
 		if n := recap[i]; n > 0 {
 			fmt.Printf(" %s=%d", i, n)
 		}
 	}
 	fmt.Println()
-	if n := recap[filmproc.IssueMemory] + recap[filmproc.IssueSuddenDeath]; n > 0 {
+	if n := recap[filmrun.IssueMemory] + recap[filmrun.IssueSuddenDeath]; n > 0 {
 		fmt.Printf("ATTENTION : %d film(s) NON balayes — le corpus de la confrontation est "+
 			"incomplet et cela se dit\n", n)
 	}
@@ -67,22 +69,22 @@ func runParent(ctx context.Context, repoRoot string, a runArgs) error {
 func runChild(cache, id string) int {
 	if id == "" {
 		fmt.Fprintln(os.Stderr, "enfant : -match obligatoire")
-		return filmproc.CodePreparation
+		return filmrun.CodePreparation
 	}
-	g := filmproc.Arm("statnames-sweep", filmproc.MeasureLimitGiB, func(peak uint64) {
-		filmproc.EmitPeak(peak)
+	g := memguard.Arm(context.Background(), "statnames-sweep", memguard.MeasureLimitGiB, func(peak uint64) {
+		filmrun.EmitPeak(peak)
 		fmt.Fprintf(os.Stderr, "enfant : plafond memoire depasse (%d octets) — film abandonne\n", peak)
-		os.Exit(filmproc.CodeMemory)
+		os.Exit(filmrun.CodeMemory)
 	})
 	defer func() {
 		g.Disarm()
-		filmproc.EmitPeak(g.Peak())
+		filmrun.EmitPeak(g.Peak())
 	}()
 	if err := sweepFilm(cache, id); err != nil {
 		fmt.Fprintf(os.Stderr, "enfant %s : %v\n", id, err)
-		return filmproc.CodeFailed
+		return filmrun.CodeFailed
 	}
-	return filmproc.CodeOK
+	return filmrun.CodeOK
 }
 
 // sweepFilm decode le statborg d'un film et imprime le TSV : identite des slots, puis la

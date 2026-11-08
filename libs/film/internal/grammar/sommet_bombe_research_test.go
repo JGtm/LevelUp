@@ -13,7 +13,7 @@ package grammar
 // LECTURE SEULE, UN FILM PAR INVOCATION, aucune cuisson :
 //
 //	SOM_FILM=<abs>/film_chunks/c75f33b8 SOM_MANIFESTE=<abs>/film_manifests/c75f33b8.json \
-//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ \
+//	  go test -tags=research ./internal/grammar/ \
 //	  -run '^TestSommetBombe$' -v -timeout 60m
 
 import (

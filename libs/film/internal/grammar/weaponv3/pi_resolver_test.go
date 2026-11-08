@@ -12,8 +12,8 @@ import (
 
 // piverifyXuids — roster ground-truth du match 000d5950 (cf. piverify/main.go).
 var piverifyXuids = []uint64{
-	2533274826120416, 2533274823110022, 2533274980284321, 2535467794760703, // team0
-	2533274882097883, 2533274815845110, 2535444178793711, 2535437947245250, // team1
+	2633090228607708, 2603225103667623, 2543372234349153, 2667725237021739, // team0
+	2603004317949713, 2742063072864889, 2812089420052706, 2709083604009238, // team1
 }
 
 // filmCacheRoot retourne le répertoire data/cache/film_chunks en testant
@@ -31,7 +31,7 @@ func filmCacheRoot(t *testing.T) string {
 	candidates := make([]string, 0, 4)
 	moduleRoot := findModuleRoot(t, wd)
 	if moduleRoot != "" {
-		// Le module est apps/go-api ; les data/ sont 2 niveaux au-dessus.
+		// Le module est libs/film ; les data/ sont 2 niveaux au-dessus.
 		candidates = append(candidates, filepath.Join(moduleRoot, "..", "..", "data", "cache", "film_chunks"))
 		// Fallback : data/ à la racine du module (cas legacy).
 		candidates = append(candidates, filepath.Join(moduleRoot, "data", "cache", "film_chunks"))
@@ -78,6 +78,24 @@ func mainTreeRootFromWorktree(wd string) string {
 	return filepath.FromSlash(before)
 }
 
+// inflateChunk décompresse un chunk zlib (magic 0x78) ; un chunk brut est rendu tel quel.
+func inflateChunk(t *testing.T, label string, raw []byte) []byte {
+	t.Helper()
+	if len(raw) >= 2 && raw[0] == 0x78 {
+		zr, err := zlib.NewReader(bytes.NewReader(raw))
+		if err != nil {
+			t.Fatalf("zlib NewReader %s: %v", label, err)
+		}
+		defer func() { _ = zr.Close() }()
+		inf, err := io.ReadAll(zr)
+		if err != nil {
+			t.Fatalf("zlib read %s: %v", label, err)
+		}
+		return inf
+	}
+	return raw
+}
+
 // loadCachedChunk lit un chunk de cache et le décompresse (zlib, magic 0x78).
 // Renvoie nil si le fichier est absent (le caller décide de skipper).
 func loadCachedChunk(t *testing.T, short8, name string) []byte {
@@ -90,36 +108,35 @@ func loadCachedChunk(t *testing.T, short8, name string) []byte {
 	if err != nil {
 		return nil
 	}
-	if len(raw) >= 2 && raw[0] == 0x78 {
-		zr, err := zlib.NewReader(bytes.NewReader(raw))
-		if err != nil {
-			t.Fatalf("zlib NewReader %s/%s: %v", short8, name, err)
-		}
-		defer zr.Close()
-		inf, err := io.ReadAll(zr)
-		if err != nil {
-			t.Fatalf("zlib read %s/%s: %v", short8, name, err)
-		}
-		return inf
-	}
-	return raw
+	return inflateChunk(t, short8+"/"+name, raw)
 }
 
-// TestResolveXuidToPI_GroundTruth — sur le chunk_01 de 000d5950, les pi résolus
+// fixtureChunk lit un chunk de la mini-bobine versionnée de 000d5950 et le décompresse. Ses
+// identifiants sont les fictifs du registre : c'est la seule source qui s'accorde aux littéraux de
+// piverifyXuids, avec ou sans le cache du parc (dont les films portent les identifiants réels).
+// Une bobine absente ou illisible est une erreur, pas un saut : elle est versionnée.
+func fixtureChunk(t *testing.T, name string) []byte {
+	t.Helper()
+	chemin := filepath.Join("..", "..", "..", "replay", "testdata", "minifilm_000d5950", name)
+	raw, err := os.ReadFile(chemin)
+	if err != nil {
+		t.Fatalf("fixture %s : %v", chemin, err)
+	}
+	return inflateChunk(t, chemin, raw)
+}
+
+// TestResolveXuidToPI_GroundTruth — sur le chunk_01 de la mini-bobine 000d5950, les pi résolus
 // doivent être DISTINCTS et l'xuid …0022 doit tomber sur pi==2.
 func TestResolveXuidToPI_GroundTruth(t *testing.T) {
-	chunk := loadCachedChunk(t, "000d5950", "chunk_01.bin")
-	if chunk == nil {
-		t.Skip("cache film 000d5950/chunk_01.bin absent — skip ground-truth pi")
-	}
+	chunk := fixtureChunk(t, "chunk_01.bin")
 
 	pis := ResolveXuidToPI(piverifyXuids, chunk)
 	if len(pis) == 0 {
 		t.Fatalf("aucun pi résolu sur chunk_01")
 	}
 
-	// Ground truth : 2533274823110022 → pi 2 (suffixe …0022).
-	const gt = uint64(2533274823110022)
+	// Ground truth : 2603225103667623 → pi 2 (suffixe …0022).
+	const gt = uint64(2603225103667623)
 	if pi, ok := pis[gt]; !ok {
 		t.Fatalf("xuid %d non résolu", gt)
 	} else if pi != 2 {
@@ -142,19 +159,16 @@ func TestResolveXuidToPI_GroundTruth(t *testing.T) {
 // TestResolveXuidToPIStrings_IgnoresBots — les xuids string décimaux sont
 // résolus, les bots (préfixe "bid") et chaînes non numériques sont ignorés.
 func TestResolveXuidToPIStrings_IgnoresBots(t *testing.T) {
-	chunk := loadCachedChunk(t, "000d5950", "chunk_01.bin")
-	if chunk == nil {
-		t.Skip("cache film 000d5950/chunk_01.bin absent — skip variante strings")
-	}
+	chunk := fixtureChunk(t, "chunk_01.bin")
 
 	roster := []string{
-		"2533274823110022", // ground truth pi 2
+		"2603225103667623", // ground truth pi 2
 		"bid(1)",           // bot — ignoré
 		"not-a-number",     // ignoré
 	}
 	pis := ResolveXuidToPIStrings(roster, chunk)
-	if pi, ok := pis["2533274823110022"]; !ok || pi != 2 {
-		t.Fatalf("attendu pi==2 pour 2533274823110022, obtenu %d (ok=%v)", pi, ok)
+	if pi, ok := pis["2603225103667623"]; !ok || pi != 2 {
+		t.Fatalf("attendu pi==2 pour 2603225103667623, obtenu %d (ok=%v)", pi, ok)
 	}
 	if _, ok := pis["bid(1)"]; ok {
 		t.Fatalf("le bot bid(1) ne devrait pas être résolu")
@@ -167,11 +181,8 @@ func TestResolveXuidToPIStrings_IgnoresBots(t *testing.T) {
 // TestResolveBest_MergesChunks — la fusion couvre au moins autant de xuids que
 // le meilleur chunk seul (premier chunk qui trouve un xuid gagne).
 func TestResolveBest_MergesChunks(t *testing.T) {
-	c1 := loadCachedChunk(t, "000d5950", "chunk_01.bin")
-	if c1 == nil {
-		t.Skip("cache film 000d5950 absent — skip ResolveBest")
-	}
-	c2 := loadCachedChunk(t, "000d5950", "chunk_02.bin")
+	c1 := fixtureChunk(t, "chunk_01.bin")
+	c2 := fixtureChunk(t, "chunk_02.bin")
 
 	single := ResolveXuidToPI(piverifyXuids, c1)
 	merged := ResolveBest(piverifyXuids, [][]byte{c1, c2})

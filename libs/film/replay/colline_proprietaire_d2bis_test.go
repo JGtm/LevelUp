@@ -22,7 +22,7 @@ package replay
 // REGIME : garde `ZONE_FILM`, un film par processus, lecture seule, AUCUNE base ouverte, AUCUN
 // changement de production.
 //
-//	$env:ZONE_FILM="<cache>/film_chunks/01e1f945"; go test ./internal/games/halo_infinite/film/replay/ -run CollineProprietaireD2Bis -v
+//	$env:ZONE_FILM="<cache>/film_chunks/01e1f945"; go test ./replay/ -run CollineProprietaireD2Bis -v
 
 import (
 	"fmt"

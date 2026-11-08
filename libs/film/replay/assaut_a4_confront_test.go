@@ -26,7 +26,7 @@ package replay
 //
 //	$env:ASSAUT_SWEEP="<dossier de mesures>/A4_statborg_sweep.tsv"
 //	$env:ASSAUT_PARTICIPANTS="<dossier de mesures>/A_oracle_participants.tsv"
-//	go test ./internal/games/halo_infinite/film/replay/ -run AssautA4Confront -v
+//	go test ./replay/ -run AssautA4Confront -v
 
 import (
 	"bufio"

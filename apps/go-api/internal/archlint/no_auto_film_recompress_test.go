@@ -8,7 +8,7 @@
 // `levelup film archive-move`. Un cron, une tâche de fond ou le démarrage du serveur qui les
 // appellerait feraient de cette décision un comportement par défaut.
 //
-// RÈGLE. `filmcache.Recompresser` et `filmcache.Deplacer` n'ont, en production, qu'un appelant :
+// RÈGLE. `filmarchive.Recompresser` et `filmarchive.Deplacer` n'ont, en production, qu'un appelant :
 // `cmd/levelup/cmd_film.go`. Le garde-rail balaie tout le module `apps/go-api` ; l'allowlist est
 // un fichier unique et n'a pas d'autre entrée à garder. Les `_test.go` sont exclus.
 package archlint
@@ -18,7 +18,7 @@ import (
 	"testing"
 )
 
-// gestesManuelsDeLArchive : les fonctions de `filmcache` réservées à l'utilisateur.
+// gestesManuelsDeLArchive : les fonctions de `filmarchive` réservées à l'utilisateur.
 var gestesManuelsDeLArchive = map[string]bool{"Recompresser": true, "Deplacer": true}
 
 // appelantsManuelsDeLArchive : les seuls fichiers de production qui les appellent.
@@ -38,7 +38,7 @@ func TestRecompressionEtDeplacementDeLArchiveSontManuels(t *testing.T) {
 				return true
 			}
 			pkg, ok := sel.X.(*ast.Ident)
-			if ok && pkg.Name == "filmcache" && gestesManuelsDeLArchive[sel.Sel.Name] {
+			if ok && pkg.Name == "filmarchive" && gestesManuelsDeLArchive[sel.Sel.Name] {
 				appels[s.Rel]++
 			}
 			return true
@@ -46,14 +46,14 @@ func TestRecompressionEtDeplacementDeLArchiveSontManuels(t *testing.T) {
 	}
 	for rel, n := range appels {
 		if !appelantsManuelsDeLArchive[rel] {
-			t.Errorf("%s appelle filmcache.Recompresser/Deplacer (%d fois) : ces gestes ne se lancent "+
+			t.Errorf("%s appelle filmarchive.Recompresser/Deplacer (%d fois) : ces gestes ne se lancent "+
 				"que par `levelup film ...`, jamais depuis un cron, une tâche de fond ou le démarrage "+
 				"(décision D-18, 2026-11-01)", rel, n)
 		}
 	}
 	for rel := range appelantsManuelsDeLArchive {
 		if appels[rel] == 0 {
-			t.Errorf("%s n'appelle plus filmcache.Recompresser/Deplacer : retirer l'entrée de ce "+
+			t.Errorf("%s n'appelle plus filmarchive.Recompresser/Deplacer : retirer l'entrée de ce "+
 				"garde-rail avec le code (CLAUDE.md règle 7)", rel)
 		}
 	}

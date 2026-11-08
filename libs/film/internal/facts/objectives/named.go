@@ -35,7 +35,7 @@ import (
 //
 // Balayage `cmd/tmp_statnames` (outil jetable de 2026-08-05, disparu du depot — reecrit
 // en CLI durable `cmd/statnames-sweep` le 2026-08-27, meme methode, execution bornee par
-// `internal/games/halo_infinite/film/filmproc`) : la valeur finale de chaque emplacement, pour un slot dont
+// la sentinelle memoire) : la valeur finale de chaque emplacement, pour un slot dont
 // l'identite est connue, est confrontee au compte de chaque recompense de
 // `personal_score_awards`, puis les candidates sont intersectees sur les films.
 // **Controle** : la table est ajustee separement sur les films de rang pair et de rang
@@ -171,7 +171,7 @@ var namedStatSlots = map[string]map[statSlotKey]statSlot{
 //
 // **`comp 22 A` l'a demasquee.** Nomme `flag_taken`, il comptait systematiquement plus que
 // la recompense — jamais moins. L'oracle a 8 joueurs (`match_objective_stats_latest`) donne
-// la reponse : ses valeurs sont EXACTEMENT `flag_grabs`, slot par slot (16 pour Madina97294
+// la reponse : ses valeurs sont EXACTEMENT `flag_grabs`, slot par slot (16 pour Joueur90002
 // la ou la recompense `flag_taken` dit 4). Le binaire disait la meme chose depuis le debut
 // avec `CtfStats_FlagGrabs`. Ramasser le drapeau au sol se COMPTE a chaque fois, mais ne se
 // RECOMPENSE pas a chaque fois.
