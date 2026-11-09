@@ -123,8 +123,9 @@ func TestURLFigees_Halo5_Encodage(t *testing.T) {
 }
 
 // TestURLFigees_Halo5_RedirectionCDN : le 302 de l'emblème vers un autre hôte est suivi par le
-// *http.Client. Faits Go figés tels quels : la seconde requête ne porte PAS `auth=st`, garde le jeton
-// Spartan, `User-Agent` et `Accept` (copiés de la première), et reçoit `Referer` de la première URL.
+// *http.Client. Faits figés : la seconde requête ne porte PAS `auth=st`, garde `User-Agent` et `Accept`
+// (copiés de la première), reçoit `Referer` de la première URL, et ne porte PAS le jeton Spartan (le
+// `netguard.Doer` le retire sur changement d'hôte).
 func TestURLFigees_Halo5_RedirectionCDN(t *testing.T) {
 	e := &haloapitest.Enregistreur{Repondre: func(n int, _ *http.Request) *http.Response {
 		if n == 1 {
@@ -138,7 +139,7 @@ func TestURLFigees_Halo5_RedirectionCDN(t *testing.T) {
 	}
 	attendu := []string{
 		"GET https://haloplayer.svc.halowaypoint.com/h5/profiles/JGtm/emblem?auth=st" + entetesBinaires,
-		"GET https://image.halocdn.com/h5/emblems/264_46_46_24?hash=sig [Accept=image/png,image/*; Referer=https://haloplayer.svc.halowaypoint.com/h5/profiles/JGtm/emblem?auth=st; User-Agent=cpprestsdk/2.4.0; X-343-Authorization-Spartan=" + figeesJeton + "]",
+		"GET https://image.halocdn.com/h5/emblems/264_46_46_24?hash=sig [Accept=image/png,image/*; Referer=https://haloplayer.svc.halowaypoint.com/h5/profiles/JGtm/emblem?auth=st; User-Agent=cpprestsdk/2.4.0]",
 	}
 	if strings.Join(e.Requetes(), "\n") != strings.Join(attendu, "\n") {
 		t.Errorf("requêtes =\n%s\nattendu\n%s", strings.Join(e.Requetes(), "\n"), strings.Join(attendu, "\n"))

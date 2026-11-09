@@ -1360,12 +1360,12 @@ Ronde 2 (2026-11-08, un relecteur frais sur le seul commit `7aa5d4a6ec`) : aucun
 
 ## Lot 5 — Préalables aux dépôts dédiés (après la clôture du desktop)
 
-- [ ] 5.1 D-11 : `netguard.Doer` retire les en-têtes d'authentification quand une redirection change d'hôte ; test
+- [x] 5.1 D-11 : `netguard.Doer` retire les en-têtes d'authentification quand une redirection change d'hôte ; test
       `httptest` (302 vers un autre hôte : en-tête absent ; même hôte : présent) ; T2 d'URL figées amendé de ce
       point seul.
-- [ ] 5.2 Haiku : PUB-4-a, origine des fixtures `libs/gamefiles/{mapvar,hinavmesh}/testdata` écrite dans le
+- [x] 5.2 Haiku : PUB-4-a, origine des fixtures `libs/gamefiles/{mapvar,hinavmesh}/testdata` écrite dans le
       `NOTICE.md` de `gamefiles` (après instruction par Sonnet si l'origine n'est pas dans l'historique git).
-- [ ] 5.3 Gate : `make libs-test`, T1. Commit « lot 5 ».
+- [x] 5.3 Gate : `make libs-test`, T1. Commit « lot 5 ». (2026-11-09 : `make libs-test` vert sur les quatre modules ; `go test` de `netguard`, `games/...`, `assets`, `mapcatalog`, `sync/filmfetch`, `archlint` : 0 échec, rejoué par le pilote. T1 complet au 6.6.)
 
 ## Lot 6 — Dépôts dédiés, les quatre ensemble (après la release sur `main`)
 
@@ -1576,3 +1576,21 @@ Lot 4 (2026-11-08), notées, non traitées :
   montée de `SchemaDesFaits` oblige à régénérer les graines (`-update-graines-faits`). Règle à confirmer par le pilote ;
   non traitée au-delà de C1.
 - **D-L4-15** Le motif `\.bin$` de `binairesCouverts` (`apps/go-api/cmd/anonymise-gamertags/binaires_couverts_test.go`) accepte tout `.bin` neuf de `libs/film` sans inscription : un film de test ajouté avec un xuid réel ne rougit que par l'outil d'anonymisation (item 4.0), pas par ce ratchet. Remède possible : liste nominative des dossiers de films. Non traité.
+
+Lot 5 (2026-11-09), notées, non traitées :
+
+- **D-L5-1** Origine des octets non établie par l'historique pour `mapvar/testdata/cliffhanger_map.mvar`,
+  `cliffhanger_ridgeline.mvar` (commit `2044b71397`, aucune source citée) et les deux `hinavmesh/testdata/*.navmesh.blob`
+  (`682ae21951`, canal UGC documenté par `cmd/mapnav-fetch` mais non relié à ces octets). Le `NOTICE.md` de `gamefiles`
+  dit « origin to be stated by the maintainer » : à compléter par le user s'il s'en souvient, sinon la mention reste.
+- **D-L5-2** Le `NOTICE` racine (section « Test fixtures », ligne 96) dit encore « Numeric account identifiers (XUID) are
+  still present » : vrai pour les fixtures sous `apps/`, faux pour `libs/film` depuis le lot 4 (identifiants fictifs,
+  `testdata/IDENTITES.tsv`). À amender au 6.8 (docs), pas avant.
+- **D-L5-3** Les fixtures de `gamefiles` (trois `.mvar`, deux `navmesh.blob`) sont du contenu de jeu détenu par Microsoft
+  (NOTICE racine : « not licensed for any other use ») et partent dans le zip du module publié (`testdata/` est inclus
+  par le proxy Go) ; `libs/gamefiles/v0.1.0` les porte déjà. Admis par ADR 0041 D5 (exception explicite) et déjà public
+  dans ce dépôt ; à redire dans le README du dépôt dédié au 6.3, aucune décision neuve.
+- **D-L5-4** `libs/haloapi/halo5/doc.go:12` dit que les redirections sont suivies par le `Doer` sans mentionner le retrait
+  des en-têtes d'identité ; la politique vit dans LevelUp (D-11), la brique n'a pas à la décrire. Non traité.
+- **D-L5-5** Le retrait des en-têtes compare l'hôte de la redirection à celui de la requête d'ORIGINE (`via[0]`) : dans
+  une chaîne A → B → A, les en-têtes sont réémis au retour sur A (hôte d'origine). Comportement voulu, noté pour mémoire.

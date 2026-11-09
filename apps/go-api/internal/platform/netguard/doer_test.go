@@ -10,6 +10,8 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"net/http/httptest"
+	"sync"
 	"testing"
 
 	"levelup/go-api/internal/platform/netguard"
@@ -93,5 +95,108 @@ func TestDoer_GardeAChaqueRequete(t *testing.T) {
 	_ = resp.Body.Close()
 	if got := e.Requetes(); len(got) != 2 {
 		t.Errorf("après retour hors mode démo : %d requête(s), attendu 2", len(got))
+	}
+}
+
+// serveurEnTetes rend un serveur qui consigne les en-têtes de la dernière requête reçue sur /fin et
+// redirige (302) toute autre requête vers `cible` (adresse absolue ou chemin).
+func serveurEnTetes(t *testing.T, cible func() string) (*httptest.Server, func() http.Header) {
+	t.Helper()
+	var mu sync.Mutex
+	var vus http.Header
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/fin" {
+			mu.Lock()
+			vus = r.Header.Clone()
+			mu.Unlock()
+			return
+		}
+		http.Redirect(w, r, cible(), http.StatusFound)
+	}))
+	t.Cleanup(srv.Close)
+	return srv, func() http.Header {
+		mu.Lock()
+		defer mu.Unlock()
+		return vus
+	}
+}
+
+// requeteAuthentifiee émet vers `url` une requête qui porte les en-têtes d'identité de la brique
+// plus un en-tête neutre (`Accept`), par un Doer gardé sur un client sans `CheckRedirect`.
+func requeteAuthentifiee(t *testing.T, url string, next *http.Client) {
+	t.Helper()
+	netguard.SetOffline(false)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Authorization", "Bearer jeton")
+	req.Header.Set("X-343-Authorization-Spartan", "spartan-jeton")
+	req.Header.Set("343-Clearance", "clearance-jeton")
+	req.Header.Set("Accept", "image/png")
+	resp, err := netguard.Doer{Surface: "doer_test.redirection", Next: next}.Do(req)
+	if err != nil {
+		t.Fatalf("Do : %v", err)
+	}
+	_ = resp.Body.Close()
+}
+
+// TestDoer_RedirectionAutreHoteRetireIdentite : un 302 vers un autre hôte (second serveur, autre
+// port) n'y réémet ni `Authorization`, ni le jeton Spartan, ni la clearance ; les en-têtes neutres
+// suivent.
+func TestDoer_RedirectionAutreHoteRetireIdentite(t *testing.T) {
+	tiers, vusTiers := serveurEnTetes(t, func() string { return "" })
+	origine, _ := serveurEnTetes(t, func() string { return tiers.URL + "/fin" })
+	if origine.Listener.Addr().String() == tiers.Listener.Addr().String() {
+		t.Fatal("les deux serveurs partagent la même adresse")
+	}
+
+	requeteAuthentifiee(t, origine.URL+"/depart", &http.Client{})
+
+	got := vusTiers()
+	if got == nil {
+		t.Fatal("le serveur tiers n'a pas reçu la requête redirigée")
+	}
+	for _, nom := range []string{"Authorization", "X-343-Authorization-Spartan", "343-Clearance"} {
+		if v := got.Get(nom); v != "" {
+			t.Errorf("hôte tiers : %s = %q, attendu absent", nom, v)
+		}
+	}
+	if got.Get("Accept") != "image/png" {
+		t.Errorf("hôte tiers : Accept = %q, attendu conservé", got.Get("Accept"))
+	}
+}
+
+// TestDoer_RedirectionMemeHoteGardeIdentite : un 302 vers le MÊME hôte conserve les en-têtes
+// d'identité.
+func TestDoer_RedirectionMemeHoteGardeIdentite(t *testing.T) {
+	origine, vus := serveurEnTetes(t, func() string { return "/fin" })
+
+	requeteAuthentifiee(t, origine.URL+"/depart", &http.Client{})
+
+	got := vus()
+	if got == nil {
+		t.Fatal("la requête redirigée n'est pas arrivée")
+	}
+	if got.Get("X-343-Authorization-Spartan") != "spartan-jeton" || got.Get("343-Clearance") != "clearance-jeton" ||
+		got.Get("Authorization") != "Bearer jeton" {
+		t.Errorf("même hôte : en-têtes d'identité = %v, attendu conservés", got)
+	}
+}
+
+// TestDoer_RedirectionRespecteLaPolitiqueDeNext : le `CheckRedirect` du client sous-jacent reste
+// appliqué (ici : ne pas suivre), et le client partagé n'est pas modifié.
+func TestDoer_RedirectionRespecteLaPolitiqueDeNext(t *testing.T) {
+	tiers, vusTiers := serveurEnTetes(t, func() string { return "" })
+	origine, _ := serveurEnTetes(t, func() string { return tiers.URL + "/fin" })
+	next := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+
+	requeteAuthentifiee(t, origine.URL+"/depart", next)
+
+	if vusTiers() != nil {
+		t.Error("la redirection a été suivie malgré le CheckRedirect de Next")
+	}
+	if next.CheckRedirect == nil {
+		t.Error("le client Next a été modifié")
 	}
 }
