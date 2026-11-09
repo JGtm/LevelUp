@@ -924,7 +924,7 @@ Cible : mise à jour courante ≈ 40 Mo (moteur seul) ; première installation i
       EN + FR ; plan §10.
 - [x] 24.7 (2026-11-08) Revue adversariale (deux relecteurs Opus : chaîne de livraison et signature ; démarrage et compatibilité hébergé/bureau) : 17 constats
       recevables (A1-A4, B1-B4, C1-C3, D x6, dont 2 graves), tous corrigés, chacun par un test vu rouge puis vert ; C3 partiel (voir ci-dessous).
-- [ ] 24.z (U) Gate : installation neuve, puis mise à jour simulée (deux builds locaux de versions différentes) qui ne retélécharge pas
+- [x] 24.z (U) (2026-11-09, validé par l'utilisateur : « j'ai testé tout est bon ») Gate : installation neuve, puis mise à jour simulée (deux builds locaux de versions différentes) qui ne retélécharge pas
       le paquet ; puis paquet modifié qui est retéléchargé et activé ; déploiement Docker de la release sur une copie (taille tirée).
 
 **Exécution (2026-11-08) — ce qui diffère du texte ci-dessus.**
