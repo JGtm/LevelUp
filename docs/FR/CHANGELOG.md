@@ -6,6 +6,19 @@ Toutes les modifications notables de ce projet sont documentées ici.
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 
+## [8.1.1] - 2026-11-09
+
+### Corrigé
+- **Révision de notation enregistrée malgré un match non convergent** (ADR 0047) — un match dont le solveur TrueSkill ne converge pas ne rend plus partiel le recalcul complet d'un joueur : la révision est enregistrée au lieu d'être retentée à chaque démarrage. Le match est compté à part (`skipped_not_converged`) et ne reçoit pas de nouvelle note ; les autres échecs rendent toujours le recalcul partiel.
+
+### Modifié
+- **Fichiers de mise à jour sortis de la page de la version** — l'installeur moteur, le paquet de ressources avec sa signature et `latest.json` passent dans une publication unique `updates`, jamais marquée comme dernière. Les applications à partir de la 8.1.1 lisent `releases/download/updates/latest.json` ; la page de la version garde une copie de `latest.json` pour les applications 8.1.0. Le `.sig` séparé de l'installeur moteur n'est plus publié, sa signature étant dans `latest.json`.
+- **Page de la version en anglais**, avec un lien vers les notes en français.
+- **Quatre dépôts dédiés publiés** pour les lecteurs de fichiers, les images de carte, le décodeur de film et l'API Halo (ADR 0043) ; LevelUp compile toujours depuis `libs/`.
+
+### Sécurité
+- **En-têtes d'identité retirés sur redirection vers un autre hôte** — le client HTTP gardé les enlève quand une redirection quitte l'hôte d'origine.
+
 ## [8.1.0] - 2026-11-09
 
 > L'application Windows. LevelUp se livre désormais aussi comme une application Windows installable, par utilisateur : une coquille Tauri 2 qui lance **le même serveur Go** en processus enfant et affiche **la même interface web** dans WebView2. Côté serveur, elle repose sur une notion nouvelle, le **profil de déploiement** (ADR 0044), et sur un contrat écrit entre la coquille et le serveur (ADR 0045). La version porte aussi l'application à N langues (ADR 0040), les briques Go sous `libs/` (ADR 0041 à 0043), le travail sur l'Explorateur et la Synthèse, et des correctifs du rejeu.

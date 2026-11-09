@@ -2049,7 +2049,7 @@ dependencies = [
 
 [[package]]
 name = "levelup-desktop"
-version = "8.1.0"
+version = "8.1.1"
 dependencies = [
  "getrandom 0.3.4",
  "rfd",
