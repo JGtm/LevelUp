@@ -108,7 +108,7 @@ test.describe('Barre latérale repliable', () => {
 
     // Infobulle d'une section sans onglets.
     await sidebar(page).getByRole('link', { name: 'Explorer' }).hover()
-    await expect(page.getByRole('tooltip')).toHaveText('Explorer')
+    await expect(page.getByRole('tooltip', { name: 'Explorer', exact: true })).toHaveText('Explorer')
 
     // Le choix manuel survit au rechargement.
     await page.reload()

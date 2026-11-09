@@ -15,6 +15,14 @@
 
 ---
 
+### [bureau/ui] Infobulle du bouton de repli restée affichée après le clic
+
+`components/ui/tooltip.tsx:47` ouvre l'infobulle au focus ; après un repli à la souris, le bouton « Déplier la barre
+latérale » garde le focus, donc son infobulle reste visible à côté de celle de la section survolée. Ouvrir au focus
+seulement quand il vient du clavier (`:focus-visible`). **Effort : S.**
+
+---
+
 ### [kpi/ascension] FDA calculée en quotient sur Solo / Escouade
 
 `platform/duckdb/patterns_repo.go:455` calcule `(frags + assistances/2) / max(1, morts)`, repris par

@@ -120479,3 +120479,11 @@ version restent après chaque mise à jour NSIS (antérieur à L24).
 **Résultats observés.** Versions concordantes (`Cargo.toml`, `tauri.conf.json` : 8.1.0).
 
 **Conclusion / prochaine étape.** Tag `v8.1.0`, fusion vers `main`, copie des rejeux, passes de résumés, puis sha de `main` transmis pour le tag `libs/film/v0.1.0`.
+
+## [2026-11-09] Release v8.1.0 : publiée, test de la barre latérale ajusté — En cours
+
+**Décision technique principale.** Le tag `v8.1.0` est publié (run 42602864404, installeurs, paquet et `latest.json`). Le job E2E, qui ne tourne que sur une PR, a échoué sur la PR vers `main` : le bouton de repli garde le focus et son infobulle coexiste avec celle de la section survolée. L'assertion vise désormais l'infobulle par son nom ; le produit publié ne change pas, le comportement part au backlog.
+
+**Résultats observés.** Un seul test rouge sur 107, sur les trois essais.
+
+**Conclusion / prochaine étape.** E2E verte sur la PR #165, puis fusion vers `main`.
