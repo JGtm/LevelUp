@@ -165,7 +165,7 @@ func releveDuFilmDeGarde(t *testing.T, film filmDeGarde) releve {
 // faitsDeGardeDuFilm decode un film (le contexte de la cuisson) et en tire les faits de garde.
 func faitsDeGardeDuFilm(t *testing.T, cache string, film filmDeGarde) faitsDeGarde {
 	t.Helper()
-	entry, err := goldenBuild{Map: film.Map}.mapQuant()
+	entry, err := goldenBuild{Map: film.Map}.mapQuant(t)
 	if err != nil {
 		t.Fatalf("carte %q : %v", film.Map, err)
 	}

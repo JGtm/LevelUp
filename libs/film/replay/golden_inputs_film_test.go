@@ -52,8 +52,8 @@ import (
 	"github.com/JGtm/LevelUp/libs/film/internal/source"
 )
 
-func decodeFilmInputs(film, dir string) (*FilmFacts, error) {
-	entry, err := goldenMapQuant()
+func decodeFilmInputs(t testing.TB, film, dir string) (*FilmFacts, error) {
+	entry, err := goldenMapQuant(t)
 	if err != nil {
 		return nil, err
 	}
@@ -179,9 +179,9 @@ func rosterDeLaFeuille(film string) ([]uint64, error) {
 // armer les bornes en oubliant les largeurs — l'erreur meme que le lot du 2026-08-15 corrige.
 //
 // Si le catalogue change, [TestGoldenAssembly] tombe et le diff dit exactement ce qui a bouge.
-func goldenMapQuant() (profile.MapQuantEntry, error) {
-	path := filepath.Join("..", "..", "..", "data", "titles", "halo_infinite",
-		"reference", "map_quant_bounds.json")
+func goldenMapQuant(t testing.TB) (profile.MapQuantEntry, error) {
+	t.Helper()
+	path := bornesDeCartes(t)
 	cat, err := profile.LoadMapQuantCatalog(path)
 	if err != nil {
 		return profile.MapQuantEntry{}, fmt.Errorf("catalogue de bornes %s : %w", path, err)
@@ -199,7 +199,7 @@ func goldenMapQuant() (profile.MapQuantEntry, error) {
 // positions y sont des quanta, et sans les bornes de la carte elles ne sont pas des coordonnees.
 func goldenEntryPourTest(t *testing.T) profile.MapQuantEntry {
 	t.Helper()
-	entry, err := goldenMapQuant()
+	entry, err := goldenMapQuant(t)
 	if err != nil {
 		t.Fatalf("entree de catalogue du film de reference : %v", err)
 	}

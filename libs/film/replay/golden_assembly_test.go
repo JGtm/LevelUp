@@ -134,7 +134,7 @@ func buildGolden(t *testing.T) ReplayDocument {
 	// L entree de catalogue de la carte (schema 8) : les tractions de grappin deQuantifient
 	// leur ancre avec elle — meme source versionnee que la regeneration des entrees
 	// (goldenMapQuant), donc le golden fige aussi ce calque.
-	entry, err := goldenMapQuant()
+	entry, err := goldenMapQuant(t)
 	if err != nil {
 		t.Fatalf("entree de catalogue de Cliffhanger illisible : %v", err)
 	}

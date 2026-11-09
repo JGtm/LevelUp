@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/JGtm/LevelUp/libs/film/internal/depottest"
 )
 
 // piverifyXuids — roster ground-truth du match 000d5950 (cf. piverify/main.go).
@@ -31,8 +33,8 @@ func filmCacheRoot(t *testing.T) string {
 	candidates := make([]string, 0, 4)
 	moduleRoot := findModuleRoot(t, wd)
 	if moduleRoot != "" {
-		// Le module est libs/film ; les data/ sont 2 niveaux au-dessus.
-		candidates = append(candidates, filepath.Join(moduleRoot, "..", "..", "data", "cache", "film_chunks"))
+		// Le parc local vit sous la racine du depot hote.
+		candidates = append(candidates, filepath.Join(depottest.Racine(t), "data", "cache", "film_chunks"))
 		// Fallback : data/ à la racine du module (cas legacy).
 		candidates = append(candidates, filepath.Join(moduleRoot, "data", "cache", "film_chunks"))
 	}

@@ -86,7 +86,7 @@ func TestGoldenInputsFidelite(t *testing.T) {
 // fideliteUnBuild compare les deux assemblages d un build et NOMME ce qui differe.
 func fideliteUnBuild(t *testing.T, b goldenBuild, dir string) {
 	t.Helper()
-	entry, err := b.mapQuant()
+	entry, err := b.mapQuant(t)
 	if err != nil {
 		t.Fatalf("carte %q hors catalogue de bornes : %v", b.Map, err)
 	}

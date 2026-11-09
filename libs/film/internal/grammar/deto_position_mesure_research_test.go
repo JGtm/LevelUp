@@ -55,7 +55,7 @@ func TestDetoPositionMesure(t *testing.T) {
 	if racine == "" || liste == "" {
 		t.Skip("DETOPOS_FILMS ou DETOPOS_IDS absent : instrument saute")
 	}
-	cat, err := profile.LoadMapQuantCatalog(e191bCatalogue())
+	cat, err := profile.LoadMapQuantCatalog(bornesDeCartes(t))
 	if err != nil {
 		t.Fatalf("catalogue : %v", err)
 	}

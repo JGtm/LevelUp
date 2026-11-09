@@ -86,7 +86,7 @@ func TestChampParc(t *testing.T) {
 	if racine == "" || id == "" || out == "" {
 		t.Skip("EQUIPPORTE_FILMS, EQUIPPORTE_ID ou EQUIPPORTE_OUT absent : instrument saute")
 	}
-	fc, err := epContexte(filepath.Join(racine, id))
+	fc, err := epContexte(t, filepath.Join(racine, id))
 	if err != nil {
 		t.Fatalf("%s : %v", id, err)
 	}
@@ -95,7 +95,7 @@ func TestChampParc(t *testing.T) {
 	if err := Distribuer(fc, cf, prod); err != nil {
 		t.Fatalf("%s : marche : %v", id, err)
 	}
-	fc2, err := epContexte(filepath.Join(racine, id))
+	fc2, err := epContexte(t, filepath.Join(racine, id))
 	if err != nil {
 		t.Fatalf("%s : %v", id, err)
 	}
@@ -182,7 +182,7 @@ func TestSuivisDetail(t *testing.T) {
 	if racine == "" || id == "" {
 		t.Skip("EQUIPPORTE_FILMS ou EQUIPPORTE_ID absent : instrument saute")
 	}
-	fc, err := epContexte(filepath.Join(racine, id))
+	fc, err := epContexte(t, filepath.Join(racine, id))
 	if err != nil {
 		t.Fatalf("%s : %v", id, err)
 	}
@@ -218,7 +218,7 @@ func TestArchetype(t *testing.T) {
 	if racine == "" || id == "" {
 		t.Skip("EQUIPPORTE_FILMS ou EQUIPPORTE_ID absent : instrument saute")
 	}
-	fc, err := epContexte(filepath.Join(racine, id))
+	fc, err := epContexte(t, filepath.Join(racine, id))
 	if err != nil {
 		t.Fatalf("%s : %v", id, err)
 	}
@@ -248,7 +248,7 @@ func TestFailleObjet(t *testing.T) {
 	if racine == "" || id == "" || out == "" {
 		t.Skip("EQUIPPORTE_FILMS, EQUIPPORTE_ID ou EQUIPPORTE_OUT absent : instrument saute")
 	}
-	fc, err := epContexte(filepath.Join(racine, id))
+	fc, err := epContexte(t, filepath.Join(racine, id))
 	if err != nil {
 		t.Fatalf("%s : %v", id, err)
 	}
@@ -303,7 +303,7 @@ func (c *cfCanal) positionALaCreation(p *lecture.Paquet, r lecture.Record) ([3]f
 
 // bornesDeLaCarte rend les bornes de la carte EQUIPPORTE_CARTE.
 func bornesDeLaCarte(t *testing.T) profile.Vec3Range {
-	cat, err := profile.LoadMapQuantCatalog(e191bCatalogue())
+	cat, err := profile.LoadMapQuantCatalog(bornesDeCartes(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -324,7 +324,7 @@ func TestNaissancesDuCanal(t *testing.T) {
 	if racine == "" || id == "" {
 		t.Skip("EQUIPPORTE_FILMS ou EQUIPPORTE_ID absent : instrument saute")
 	}
-	fc, err := epContexte(filepath.Join(racine, id))
+	fc, err := epContexte(t, filepath.Join(racine, id))
 	if err != nil {
 		t.Fatalf("%s : %v", id, err)
 	}

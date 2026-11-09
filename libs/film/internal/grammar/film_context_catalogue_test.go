@@ -25,22 +25,15 @@ package grammar
 // le meme chemin relatif que `replay/golden_inputs_test.go` : ce test tourne donc en CI.
 
 import (
-	"path/filepath"
 	"testing"
 
 	"github.com/JGtm/LevelUp/libs/film/internal/profile"
 )
 
-// cheminCatalogueBornes : le catalogue versionne, depuis `internal/grammar`.
-func cheminCatalogueBornes() string {
-	return filepath.Join("..", "..", "..", "..", "data", "titles", "halo_infinite",
-		"reference", "map_quant_bounds.json")
-}
-
 // entreeCatalogue rend l'entree VERSIONNEE d'une carte.
 func entreeCatalogue(t *testing.T, carte string) profile.MapQuantEntry {
 	t.Helper()
-	chemin := cheminCatalogueBornes()
+	chemin := bornesDeCartes(t)
 	cat, err := profile.LoadMapQuantCatalog(chemin)
 	if err != nil {
 		t.Fatalf("catalogue de bornes %s illisible : %v", chemin, err)

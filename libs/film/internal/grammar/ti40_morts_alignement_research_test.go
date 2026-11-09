@@ -52,7 +52,7 @@ func TestTi40MortsAlignement(t *testing.T) {
 		t.Fatalf("film %s : %v", dir, err)
 	}
 	nom := filepath.Base(dir)
-	cat, err := profile.LoadMapQuantCatalog(e191bCatalogue())
+	cat, err := profile.LoadMapQuantCatalog(bornesDeCartes(t))
 	if err != nil {
 		t.Fatalf("catalogue : %v", err)
 	}

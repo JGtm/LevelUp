@@ -78,7 +78,7 @@ func loadGoldenInputs(t *testing.T) *FilmFacts {
 	if _, err := buf.ReadFrom(zr); err != nil {
 		t.Fatalf("fixture d entrees : decompression : %v", err)
 	}
-	entry, err := goldenMapQuant()
+	entry, err := goldenMapQuant(t)
 	if err != nil {
 		t.Fatalf("entree de catalogue du film de reference : %v", err)
 	}
@@ -157,7 +157,7 @@ func TestGoldenInputsRegenerate(t *testing.T) {
 	case dir == "":
 		t.Skip("regeneration du fixture : REPLAY_FILM_DIR non defini")
 	}
-	g, err := decodeFilmInputs(goldenFilm, dir)
+	g, err := decodeFilmInputs(t, goldenFilm, dir)
 	if err != nil {
 		t.Fatalf("decodage du film %s : %v", dir, err)
 	}

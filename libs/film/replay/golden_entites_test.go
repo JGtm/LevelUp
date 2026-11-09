@@ -93,7 +93,7 @@ func TestGoldenEntitesRegenerate(t *testing.T) {
 	}
 	for _, b := range goldenBuilds() {
 		t.Run(b.Short8, func(t *testing.T) {
-			entry, err := b.mapQuant()
+			entry, err := b.mapQuant(t)
 			if err != nil {
 				t.Fatalf("carte %q : %v", b.Map, err)
 			}

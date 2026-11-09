@@ -161,7 +161,7 @@ func TestAj14fRecordsTi37(t *testing.T) {
 	if racine == "" || liste == "" || !ok {
 		t.Skip("AJ14F_FILMS, AJ14F_IDS ou AJ14F_FENETRE absent : instrument saute")
 	}
-	cat, err := profile.LoadMapQuantCatalog(e191bCatalogue())
+	cat, err := profile.LoadMapQuantCatalog(bornesDeCartes(t))
 	if err != nil {
 		t.Fatalf("catalogue : %v", err)
 	}
@@ -203,7 +203,7 @@ func TestAj14fPosesTi37(t *testing.T) {
 	if racine == "" || liste == "" || !ok {
 		t.Skip("AJ14F_FILMS, AJ14F_IDS ou AJ14F_FENETRE absent : instrument saute")
 	}
-	cat, err := profile.LoadMapQuantCatalog(e191bCatalogue())
+	cat, err := profile.LoadMapQuantCatalog(bornesDeCartes(t))
 	if err != nil {
 		t.Fatalf("catalogue : %v", err)
 	}
@@ -278,7 +278,7 @@ func TestAj14fEquipementDUnite(t *testing.T) {
 	if racine == "" || liste == "" {
 		t.Skip("AJ14F_FILMS ou AJ14F_IDS absent : instrument saute")
 	}
-	cat, err := profile.LoadMapQuantCatalog(e191bCatalogue())
+	cat, err := profile.LoadMapQuantCatalog(bornesDeCartes(t))
 	if err != nil {
 		t.Fatalf("catalogue : %v", err)
 	}
@@ -319,7 +319,7 @@ func TestAj14fEtatEquipement(t *testing.T) {
 		t.Skip("AJ14F_FILMS ou AJ14F_IDS absent : instrument saute")
 	}
 	id, carte, _ := strings.Cut(liste, "=")
-	cat, err := profile.LoadMapQuantCatalog(e191bCatalogue())
+	cat, err := profile.LoadMapQuantCatalog(bornesDeCartes(t))
 	if err != nil {
 		t.Fatalf("catalogue : %v", err)
 	}
@@ -403,7 +403,7 @@ func TestAj14fStructure(t *testing.T) {
 	if racine == "" || liste == "" || !ok {
 		t.Skip("instrument saute")
 	}
-	cat, _ := profile.LoadMapQuantCatalog(e191bCatalogue())
+	cat, _ := profile.LoadMapQuantCatalog(bornesDeCartes(t))
 	id, carte, _ := strings.Cut(liste, "=")
 	entree, err := cat.Lookup(carte)
 	if err != nil {

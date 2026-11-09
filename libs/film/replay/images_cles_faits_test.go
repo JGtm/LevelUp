@@ -40,7 +40,7 @@ var nomsDesReplisDesImagesCles = []fallback.Nom{fallback.NomFenetreArmesImageCle
 // les valeurs des records recuperes.
 func TestLesImagesClesSurviventALaPublicationDepuisLesFaits(t *testing.T) {
 	b := goldenBuild{"11de8353", "Thunderhead", "HI_1_9_0"}
-	entry, err := b.mapQuant()
+	entry, err := b.mapQuant(t)
 	if err != nil {
 		t.Fatalf("carte : %v", err)
 	}

@@ -1,8 +1,6 @@
 package grammar
 
 import (
-	"path/filepath"
-
 	"github.com/JGtm/LevelUp/libs/film/internal/profile"
 )
 
@@ -69,10 +67,4 @@ func e191cPayloads(fc *FilmContext) [][]byte {
 		}
 	}
 	return out
-}
-
-// e191bCatalogue est le chemin du catalogue de bornes versionne, depuis ce paquet.
-func e191bCatalogue() string {
-	return filepath.Join("..", "..", "..", "..", "data", "titles",
-		"halo_infinite", "reference", "map_quant_bounds.json")
 }

@@ -91,14 +91,14 @@ func stripComments(src string) string {
 }
 
 // repoRootLadderAllowlist : fichiers de TEST (chemin de garde-rail, [surDisque] : relatif à apps/go-api, ou au dépôt sous libs/) encore
-// autorises a ecrire l'echelle de remontee a la main. Les deux entrees sont ANTERIEURES au
-// garde-rail (relevees le 2026-08-19) et hors du perimetre de gate du lot C-ter volet 2 :
-// les migrer sans rejouer leur paquet serait un fix aveugle. Condition de reprise : au
-// prochain passage sur ces paquets, remplacer l'echelle par testutil.RepoRoot() et retirer
-// l'entree ici.
+// autorises a ecrire l'echelle de remontee a la main. L'entree est ANTERIEURE au
+// garde-rail (relevee le 2026-08-19) et hors du perimetre de gate du lot C-ter volet 2 :
+// la migrer sans rejouer son paquet serait un fix aveugle. Condition de reprise : au
+// prochain passage sur ce paquet, remplacer l'echelle par testutil.RepoRoot() et retirer
+// l'entree ici. (Les tests de `libs/film` en sont sortis : `depottest.Racine`, cf.
+// `film_sortie_par_depottest_test.go`.)
 var repoRootLadderAllowlist = map[string]bool{
-	"libs/film/internal/grammar/map_bounds_test.go": true, // echelle + Skip sur map_quant_bounds.json (versionne)
-	"internal/ops/seed_citation_assets_test.go":     true, // const citationRepoRoot, racine des image_path seedes
+	"internal/ops/seed_citation_assets_test.go": true, // const citationRepoRoot, racine des image_path seedes
 }
 
 // TestNoAdHocRepoRootLadderInTests : un test qui lit un fichier VERSIONNE localise la

@@ -112,7 +112,7 @@ func e194ClassesDeSignature(cat *profile.MapQuantCatalog) []e194Classe {
 
 // TestE194CartesJumellesDuCatalogue — MESURE (c) : les cartes qu'une signature ne distingue pas.
 func TestE194CartesJumellesDuCatalogue(t *testing.T) {
-	cat, err := profile.LoadMapQuantCatalog(e191bCatalogue())
+	cat, err := profile.LoadMapQuantCatalog(bornesDeCartes(t))
 	if err != nil {
 		t.Fatalf("catalogue de bornes : %v", err)
 	}
@@ -173,7 +173,7 @@ func (l e194Ligne) Verdict() string {
 // que le nom de match donne, film par film.
 func TestE194SignatureContreNomDeMatch(t *testing.T) {
 	dirs := chunk00Films(t, "CHUNK00_FILMS")
-	cat, err := profile.LoadMapQuantCatalog(e191bCatalogue())
+	cat, err := profile.LoadMapQuantCatalog(bornesDeCartes(t))
 	if err != nil {
 		t.Fatalf("catalogue de bornes : %v", err)
 	}

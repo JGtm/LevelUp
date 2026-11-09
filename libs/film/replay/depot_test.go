@@ -17,7 +17,7 @@ const titreDeReference = "halo_infinite"
 
 // bornesDeCartes rend le chemin du catalogue versionne des bornes de quantification
 // (`data/titles/halo_infinite/reference/map_quant_bounds.json`) dans le depot hote.
-func bornesDeCartes(t *testing.T) string {
+func bornesDeCartes(t testing.TB) string {
 	t.Helper()
 	return filepath.Join(depottest.Racine(t), "data", "titles", titreDeReference, "reference", "map_quant_bounds.json")
 }

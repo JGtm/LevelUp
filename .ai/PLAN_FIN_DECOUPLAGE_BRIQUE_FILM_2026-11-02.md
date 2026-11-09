@@ -1369,14 +1369,27 @@ Ronde 2 (2026-11-08, un relecteur frais sur le seul commit `7aa5d4a6ec`) : aucun
 
 ## Lot 6 — Dépôts dédiés, les quatre ensemble (après la release sur `main`)
 
-- [ ] 6.1 Relevé : tout ce qui nomme `libs/<brique>` dans LevelUp (archlint, CI, `go-shards.txt`, Dockerfile,
+- [x] 6.1 (2026-11-09, annexe `.ai/RELEVE_LOT6_LIBS_2026-11-09.md`, 7 catégories, 10 points durs) Relevé : tout ce qui nomme `libs/<brique>` dans LevelUp (archlint, CI, `go-shards.txt`, Dockerfile,
       Makefile, `dependabot.yml`, baselines, `go.work`, docs) ; liste fermée versée au plan.
-- [ ] 6.2 Commandes `gh repo create` préparées (noms et descriptions d'ADR 0043 D-5 + D-8) ; création = geste du
-      user (publication externe).
+- [x] 6.2 (2026-11-09) Quatre dépôts publics créés sous `JGtm/` par le pilote, noms et descriptions d'ADR 0043 D-5 + D-8, sur le go
+      du user du 09/11 relayé par la session de release (« tu donnes le go ... pour qu'elle publie les repos »).
 - [ ] 6.3 Par brique, ordre `gamefiles` → `himap` → `film`, `haloapi` à part : `git subtree split`, push, nouveau
       chemin de module et imports internes réécrits, `LICENSE`, README, CI minimale (vet, test, lint,
       govulncheck). **Film (Opus)** : prouver AVANT le push que le cadre historique de `revision` rend les
       empreintes insensibles au nouveau chemin et que 3.1 tient l'ordre ; révisions et goldens identiques.
+### Résultat de l'item 6.3 (2026-11-09, en cours)
+
+Extraction par `git subtree split` depuis `main` (`6c3fa49063`, plus `92a413bd95` pour `gamefiles`) : un commit par brique, parce que
+`main` n'a reçu `libs/` que par la fusion compactée de la v8.1.0 ; l'historique détaillé reste dans LevelUp. Un commit de publication
+par dépôt (chemin de module, LICENSE, CI vet/build/test/govulncheck, README), tag annoté `v0.1.0`, `go get` vérifié depuis un module
+jetable, CI du dépôt verte.
+
+| Dépôt | Module | Commit | Tests | Notes |
+|---|---|---|---|---|
+| `JGtm/halo-infinite-files-reader` | `github.com/JGtm/halo-infinite-files-reader` | `5434addbe4` | 73 ok, 0 fail, 12 skip (corpus, instruments, fixture `breaker_ctf_breaker.mvar` absente) | README et NOTICE passés d'AGPL à GPL-3.0-only (ooz, ADR 0043 D-1) ; auteur `2834830+JGtm.noreply.github.com` |
+| `JGtm/halo-api` | `github.com/JGtm/halo-api` | `7a9a3b692c` | 231 ok, 0 fail, 1 skip (placeholder d'origine) | le commit du split a été poussé seul avant le commit de publication (identité git absente) ; `main` en avance rapide, aucun tag sur l'état intermédiaire ; auteur `g.sit@hotmail.fr` (déjà sur 1 426 commits publics de `main`) |
+| `JGtm/halo-infinite-map-images` | `github.com/JGtm/halo-infinite-map-images` | `0c34dd563b` | 73 ok, 0 fail, 0 skip (34 fichiers `gamefiles` non exécutés) | `go.sum` du monorepo refait (hash de `files-reader` v0.1.0 différent) ; commit du split poussé avant le commit de publication, `main` en deux commits, aucun tag intermédiaire |
+
 - [ ] 6.4 Anciens chemins (D-9) : tags `libs/<brique>/v0.1.1` avec `// Deprecated` préparés ; tags `v0.1.0` des
       nouveaux dépôts préparés ; posés par le user.
 - [ ] 6.5 LevelUp : `require` des nouveaux modules, imports de go-api réécrits, `libs/` et `go.work` supprimés
@@ -1594,3 +1607,11 @@ Lot 5 (2026-11-09), notées, non traitées :
   des en-têtes d'identité ; la politique vit dans LevelUp (D-11), la brique n'a pas à la décrire. Non traité.
 - **D-L5-5** Le retrait des en-têtes compare l'hôte de la redirection à celui de la requête d'ORIGINE (`via[0]`) : dans
   une chaîne A → B → A, les en-têtes sont réémis au retour sur A (hôte d'origine). Comportement voulu, noté pour mémoire.
+- **D-L6-1** `libs/himap/himap/coupe.png` (18 Ko, suivi depuis D1 `a5bae50b44`) : aucun usage trouvé dans le code ; `sbsp.xml` (131 Ko)
+  est le plugin de disposition des tags lu par les tests `gamefiles` (origine tierce, Reclaimer, non créditée dans la brique, qui n'a pas
+  de NOTICE). Les deux partent dans `halo-infinite-map-images` v0.1.0. À trancher par le user : retirer `coupe.png`, créditer `sbsp.xml`.
+- **D-L6-2** Les commits de publication de `halo-api` et `halo-infinite-map-images` sont précédés sur `main` du commit brut du split (ancien
+  chemin de module, sans CI), poussé par erreur avant le commit de publication (identité git absente du clone). Aucun tag ne pointe dessus ;
+  un `go get` à ce sha donnerait un module au chemin `LevelUp/libs/...` qui ne correspond pas au dépôt (refusé par Go). Sans effet, noté.
+- **D-L6-3** Auteurs des commits publiés : `2834830+JGtm@users.noreply.github.com` (files-reader, film), `g.sit@hotmail.fr` (halo-api,
+  adresse déjà portée par 1 426 commits publics de `main`), `guillaume@levelup.local` (map-images). Hétérogène, sans exposition neuve.

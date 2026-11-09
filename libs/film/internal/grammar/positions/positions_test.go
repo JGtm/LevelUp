@@ -18,6 +18,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/JGtm/LevelUp/libs/film/internal/depottest"
 )
 
 // refMatchShort8 — 8 premiers chars hex de l'UUID du match de référence (§N).
@@ -137,7 +139,7 @@ func filmCacheRoot(t *testing.T) string {
 	candidates := make([]string, 0, 4)
 	if moduleRoot := findModuleRoot(wd); moduleRoot != "" {
 		candidates = append(candidates,
-			filepath.Join(moduleRoot, "..", "..", "data", "cache", "film_chunks"),
+			filepath.Join(depottest.Racine(t), "data", "cache", "film_chunks"),
 			filepath.Join(moduleRoot, "data", "cache", "film_chunks"),
 		)
 	}

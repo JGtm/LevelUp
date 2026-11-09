@@ -77,7 +77,7 @@ func ti40dContexte(t *testing.T, dir, carte string) *FilmContext {
 	if err != nil {
 		t.Fatalf("film %s : %v", dir, err)
 	}
-	cat, err := profile.LoadMapQuantCatalog(e191bCatalogue())
+	cat, err := profile.LoadMapQuantCatalog(bornesDeCartes(t))
 	if err != nil {
 		t.Fatalf("catalogue : %v", err)
 	}
