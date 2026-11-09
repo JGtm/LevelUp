@@ -654,11 +654,12 @@ func computeMatchToSkillV2(
 	if counts != nil {
 		counts.Hyperparams = countHyp
 	}
-	newEffA, newEffB, err := skillv2.UpdateTwoTeamWithCountsEP(skillv2.TwoTeamMatch{
-		TeamA:   effA,
-		TeamB:   effB,
-		ResultA: outcomeA,
-	}, counts, priors)
+	newEffA, newEffB, err := solveWithCountFallback(ctx, skillv2.UpdateTwoTeamWithCountsEP, countedMatch{
+		matchID: matchID,
+		match:   skillv2.TwoTeamMatch{TeamA: effA, TeamB: effB, ResultA: outcomeA},
+		counts:  counts,
+		priors:  priors,
+	})
 	if err != nil {
 		return shadowMatchComputed{}, fmt.Errorf("UpdateTwoTeamWithCountsEP: %w", err)
 	}

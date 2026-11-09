@@ -195,3 +195,16 @@ The v1 TrueSkill-2 cascade and its rollback are gone; this amendment supersedes 
 - Rapport Phase 0 : [.ai/V7/LUSR%20v2/lusr_v2_phase0_metrics.md](../../.ai/V7/LUSR%20v2/lusr_v2_phase0_metrics.md)
 - Rapport Phase 1d : [.ai/V7/LUSR%20v2/lusr_v2_phase1d_replay.md](../../.ai/V7/LUSR%20v2/lusr_v2_phase1d_replay.md)
 - Rapport Phase 3d : [.ai/V7/LUSR%20v2/lusr_v2_phase3d_replay.md](../../.ai/V7/LUSR%20v2/lusr_v2_phase3d_replay.md)
+
+---
+
+## Amendment 2026-11-09 — solver that does not converge: measured rate, cause, fallback (plan v8.1.2, item 2.4)
+
+This amendment supersedes limit 2 of "Limites et dette" ("~10 % of the matches do not converge ... skipped silently, retried at the next run") and the "Phase 3e damping EP" backlog line.
+
+- **Measured rate.** An in-memory replay of the whole LUSR chain on real data gives 16 non-converging matches out of 1 198 eligible (Madina97294), 12 of 1 160 (JGtm) and 7 of 587 (Chocoboflor), i.e. about 1 to 1.4 % (rosters from 4v5 to 16v16), not 10 %. A match that did not converge got no score, and the next matches advanced the watermark over it: the hole was permanent, not retried.
+- **Cause.** The kills and deaths observations (one `SumFactor` and one `PriorFactor` per player against the opposing average) diverge. Without them, 35 of the 35 non-converging matches converge, with the time-played weights and the quit penalties kept.
+- **Damping is not retained.** A fixed damping rescues 3 to 6 of the 12 to 16 matches depending on the player; no setting tried (0.1 to 0.5, 500 to 20 000 iterations) rescues more than half of them. A larger `MaxIters` has the same limit.
+- **Decision: fall back on the counts.** When `UpdateTwoTeamWithCountsEP` returns `ErrNotConverged` and the match carries kills or deaths observations, the match is computed a second time with `Kills` and `Deaths` set to nil for every player (`Weight`, `Quit` and `QuitPenaltyDelta` kept), in `sync/skill` (`solveWithCountFallback`, called by `computeMatchToSkillV2`). The fallback is logged at warning level with the match id and counted by the expvar `levelup.lusr_v2.solver_count_fallback_total`. Only `ErrNotConverged` triggers it. If the second computation fails, the error is returned wrapped, still matches `ErrNotConverged` and is classified as before (`skipped_not_converged`, ADR 0047), logged by the caller and never swallowed. The solver itself is unchanged.
+- **Revision.** The fallback is logic, not a hashed number: `LUSRRev` moves to `lusr-2026-11-09` with the same parameter fingerprint as `lusr-2026-11-08`. This is not optional: replaying the chain with the fallback changes the notes that follow a rescued match (a single rescued match changes about 170 later notes of one player), so without the revision a manual or automatic replay would produce a history different from the stored one. ADR 0047 therefore replays every player once at the first startup. Measured on the three local players, 844 of 1 182 existing notes move for Madina97294 (922 of 1 148 for JGtm, 434 of 580 for Chocoboflor), 186 by at least 5 rating points and 85 by at least 20, with a maximum of 130 points.
+- **Check after the change.** The same replay with the fallback leaves 0 match without a score for the three players (15, 13 and 7 matches fall back, 35 in all).
