@@ -12,7 +12,6 @@ package replay
 import (
 	"context"
 	"os"
-	"path/filepath"
 	"strconv"
 	"testing"
 
@@ -25,8 +24,7 @@ func TestEquipmentChangesSurFilmReel(t *testing.T) {
 	if dir == "" || mapName == "" {
 		t.Skip("PICKUP_FILM / PICKUP_MAP absents : instrument de mesure saute")
 	}
-	path := filepath.Join("..", "..", "..", "data", "titles", "halo_infinite",
-		"reference", "map_quant_bounds.json")
+	path := bornesDeCartes(t)
 	cat, err := profile.LoadMapQuantCatalog(path)
 	if err != nil {
 		t.Fatalf("catalogue de bornes : %v", err)

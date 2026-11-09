@@ -358,7 +358,7 @@ var plafondsParFichier = map[string]int{
 	// plafond ne monte pas ». `countShotsWithAim`/`countShotsWithWeapon` en sont sortis par
 	// DEPLACEMENT PUR vers `golden_assembly_counts_test.go` pour compenser.
 	"libs/film/replay/golden_assembly_test.go":      1184,
-	"libs/film/internal/grammar/i59_anchor_test.go": 1141,
+	"libs/film/internal/grammar/i59_anchor_test.go": 1138,
 	// SCHEMA 61 -> 62 (2026-09-17, lot 4.2.1-b) : 1168 -> 1183, la raison ecrite de v62 que
 	// `TestStructureIsOptionalInDocument` exige au-dessus de son epinglage dur.
 	// SCHEMA 62 -> 63 (2026-09-19, post-chantier lot 5.1) : 1183 -> 1200, la raison ECRITE de la
@@ -469,7 +469,7 @@ var plafondsParFichier = map[string]int{
 	// DEPLACE PAR LE LOT J4.2 (2026-09-26) de `replay` vers `grammar` avec la lecture d inventaire ;
 	// plafond inchange (827 -> 829 lignes : le predicat de lecture vide ecrit en clair, cf. le fichier).
 	"libs/film/internal/grammar/inventory_position_i22_test.go":           824,
-	"libs/film/replay/ground_link_research_test.go":                       813,
+	"libs/film/replay/ground_link_research_test.go":                       811,
 	"libs/film/replay/ctf_retour_zone_research_test.go":                   804,
 	"libs/film/replay/assaut_manches_research_test.go":                    633,
 	"libs/film/killicon/killicon_test.go":                                 610,

@@ -50,7 +50,7 @@ func TestCodecFeuilleAFeuilleSurLesFilms(t *testing.T) {
 	exercees := map[string][]string{}
 	for _, b := range goldenBuilds() {
 		t.Run(b.Build+"/"+b.Short8, func(t *testing.T) {
-			entry, err := b.mapQuant()
+			entry, err := b.mapQuant(t)
 			if err != nil {
 				t.Fatalf("carte %q hors catalogue de bornes : %v", b.Map, err)
 			}

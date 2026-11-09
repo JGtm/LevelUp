@@ -75,7 +75,6 @@ import (
 	"math"
 	"math/rand"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
@@ -139,8 +138,7 @@ func levGroundZ(pos map[uint32][]grammar.BipedPosition, x, y float32) (float64, 
 func levSocles(t *testing.T) ([]MapWeaponPadSpot, string) {
 	t.Helper()
 	nom := os.Getenv("PICKUP_MAP")
-	cat, err := LoadMapWeaponPads(filepath.Join("..", "..", "..", "data", "titles",
-		"halo_infinite", "reference", "map_weapon_pads.json"))
+	cat, err := LoadMapWeaponPads(cheminCatalogueLivre(t, "map_weapon_pads.json"))
 	if err != nil {
 		t.Fatalf("catalogue des socles illisible : %v", err)
 	}

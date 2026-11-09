@@ -148,7 +148,7 @@ func TestQuiTire(t *testing.T) {
 // decoupage d'i0 depend de la carte, et deux cartes de memes largeurs rendent les memes records.
 func quiTireCreations(t *testing.T, film *source.Film) ([]BipedCreation, error) {
 	t.Helper()
-	cat, err := profile.LoadMapQuantCatalog(e191bCatalogue())
+	cat, err := profile.LoadMapQuantCatalog(bornesDeCartes(t))
 	if err != nil {
 		return nil, err
 	}

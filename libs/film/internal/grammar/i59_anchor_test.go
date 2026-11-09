@@ -48,7 +48,6 @@ import (
 	"fmt"
 	"math"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
@@ -446,8 +445,7 @@ func TestI59AnchorFilmInfo(t *testing.T) {
 	}
 	t.Logf("découpage i0 : AxisW=%v (somme %d), GateBits=%d",
 		lay.AxisW, lay.AxisW[0]+lay.AxisW[1]+lay.AxisW[2], lay.GateBits)
-	path := filepath.Join("..", "..", "..", "..", "data", "titles", "halo_infinite",
-		"reference", "map_quant_bounds.json")
+	path := bornesDeCartes(t)
 	cat, err := profile.LoadMapQuantCatalog(path)
 	if err != nil {
 		t.Fatalf("catalogue de bornes illisible : %v", err)
@@ -783,8 +781,7 @@ func i59aCollect(s eaFilmSetup, idx59 int) (events []i59aEvent, read, unread int
 // partagent la signature.
 func i59aWorldRange(t *testing.T, s eaFilmSetup) profile.Vec3Range {
 	t.Helper()
-	path := filepath.Join("..", "..", "..", "..", "data", "titles", "halo_infinite",
-		"reference", "map_quant_bounds.json")
+	path := bornesDeCartes(t)
 	cat, err := profile.LoadMapQuantCatalog(path)
 	if err != nil {
 		t.Fatalf("catalogue de bornes illisible : %v", err)

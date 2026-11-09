@@ -38,7 +38,7 @@ import (
 // SURVIVENT.
 func TestRouteDuProfilCalibreJusquAuContexte(t *testing.T) {
 	film := chargerMiniBobineEnMemoire(t)
-	entry, err := goldenMapQuant()
+	entry, err := goldenMapQuant(t)
 	if err != nil {
 		t.Fatalf("entree de catalogue de Cliffhanger illisible : %v", err)
 	}

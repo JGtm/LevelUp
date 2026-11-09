@@ -9,7 +9,6 @@ package grammar
 import (
 	"math"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
@@ -163,8 +162,7 @@ func sondeWorldRange(t *testing.T, dir string) *profile.Vec3Range {
 		t.Logf("decoupage i0 illisible (%v) : distances desactivees", err)
 		return nil
 	}
-	path := filepath.Join("..", "..", "..", "..", "data", "titles", "halo_infinite",
-		"reference", "map_quant_bounds.json")
+	path := bornesDeCartes(t)
 	cat, err := profile.LoadMapQuantCatalog(path)
 	if err != nil {
 		t.Logf("catalogue de bornes illisible (%v) : distances desactivees", err)

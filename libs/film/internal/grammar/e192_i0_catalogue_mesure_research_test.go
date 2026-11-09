@@ -116,7 +116,7 @@ func (l e192Ligne) Difference() bool {
 
 func TestE192CatalogueContreDetection(t *testing.T) {
 	dirs := chunk00Films(t, "CHUNK00_FILMS")
-	cat, err := profile.LoadMapQuantCatalog(e191bCatalogue())
+	cat, err := profile.LoadMapQuantCatalog(bornesDeCartes(t))
 	if err != nil {
 		t.Fatalf("catalogue de bornes : %v", err)
 	}

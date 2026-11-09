@@ -79,15 +79,8 @@ func TestScanFilmBipedPositionsRefusesWithoutBounds(t *testing.T) {
 // déduite des bornes doit être celle stockée (donc celle mesurée dans les films). Le test
 // est ignoré si le catalogue n'est pas dans l'arbre courant (worktree sans data/).
 func TestMapQuantCatalogShipped(t *testing.T) {
-	path := ""
-	for _, up := range []string{"../../../.."} {
-		p := filepath.Join(up, "data", "titles", "halo_infinite", "reference", "map_quant_bounds.json")
-		if _, err := os.Stat(p); err == nil {
-			path = p
-			break
-		}
-	}
-	if path == "" {
+	path := bornesDeCartes(t)
+	if _, err := os.Stat(path); err != nil {
 		t.Skip("catalogue de bornes absent de cet arbre")
 	}
 	cat, err := profile.LoadMapQuantCatalog(path)

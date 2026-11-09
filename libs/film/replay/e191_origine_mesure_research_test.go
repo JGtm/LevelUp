@@ -185,7 +185,7 @@ func e191FilmsDemandes() []e191Film {
 // e191MesureUnFilm decode un film et rend ses poses annotees.
 func e191MesureUnFilm(t *testing.T, root string, f e191Film) ([]e191Pose, bool) {
 	t.Helper()
-	entry, err := (goldenBuild{Short8: f.Short8, Map: f.Carte}).mapQuant()
+	entry, err := (goldenBuild{Short8: f.Short8, Map: f.Carte}).mapQuant(t)
 	if err != nil {
 		t.Logf("film %s : carte %q hors catalogue (%v) — hors mesure", f.Short8, f.Carte, err)
 		return nil, false

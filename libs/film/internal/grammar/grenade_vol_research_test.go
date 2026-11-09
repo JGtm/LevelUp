@@ -41,7 +41,7 @@ func TestGrenadeVol(t *testing.T) {
 	if racine == "" || liste == "" {
 		t.Skip("GRENVOL_FILMS ou GRENVOL_IDS absent : instrument saute")
 	}
-	cat, err := profile.LoadMapQuantCatalog(e191bCatalogue())
+	cat, err := profile.LoadMapQuantCatalog(bornesDeCartes(t))
 	if err != nil {
 		t.Fatalf("catalogue : %v", err)
 	}

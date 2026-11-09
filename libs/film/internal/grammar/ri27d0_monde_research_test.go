@@ -207,7 +207,7 @@ func (c *ri27d0Monde) comparer(genre string, anciens, neufs map[ri27d0CleMonde]i
 
 func TestRI27d0Monde(t *testing.T) {
 	films, racine, sortie := ri27cEnv(t)
-	cat, err := profile.LoadMapQuantCatalog(e191bCatalogue())
+	cat, err := profile.LoadMapQuantCatalog(bornesDeCartes(t))
 	if err != nil {
 		t.Fatalf("catalogue : %v", err)
 	}

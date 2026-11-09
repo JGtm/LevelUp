@@ -54,7 +54,7 @@ const elementsParListe = 3
 // L entree de catalogue est celle du film de reference : c est la cle de cuisson que portent les
 // graines, donc celle qui ouvre le decodage au-dela de l en-tete.
 func FuzzDecodeFilmFactsFile(f *testing.F) {
-	entry, err := goldenMapQuant()
+	entry, err := goldenMapQuant(f)
 	if err != nil {
 		f.Fatalf("entree de catalogue du film de reference : %v", err)
 	}

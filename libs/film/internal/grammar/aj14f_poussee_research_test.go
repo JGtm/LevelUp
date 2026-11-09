@@ -58,7 +58,7 @@ func TestAj14fMessagesDEquipement(t *testing.T) {
 	if racine == "" || liste == "" {
 		t.Skip("AJ14F_FILMS ou AJ14F_IDS absent : instrument saute")
 	}
-	cat, err := profile.LoadMapQuantCatalog(e191bCatalogue())
+	cat, err := profile.LoadMapQuantCatalog(bornesDeCartes(t))
 	if err != nil {
 		t.Fatalf("catalogue : %v", err)
 	}
@@ -333,7 +333,7 @@ func TestAj14fScanKnockbacks(t *testing.T) {
 	if racine == "" || liste == "" {
 		t.Skip("instrument saute")
 	}
-	cat, _ := profile.LoadMapQuantCatalog(e191bCatalogue())
+	cat, _ := profile.LoadMapQuantCatalog(bornesDeCartes(t))
 	id, carte, _ := strings.Cut(liste, "=")
 	entree, err := cat.Lookup(carte)
 	if err != nil {
