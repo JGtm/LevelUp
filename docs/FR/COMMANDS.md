@@ -1286,7 +1286,7 @@ cd apps/go-api && go run ./cmd/resources-manifest -dir <dossier du paquet> [-ver
 - Workflow de release : un tag `vX.Y.Z` compile et signe l'installeur (secrets `TAURI_SIGNING_PRIVATE_KEY` et, si la
   clé a un mot de passe, `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` ; sans la clé le job échoue avant de compiler), joue le
   test de bout en bout, puis publie l'installeur moteur, le paquet (`levelup-resources-<empreinte>.zip`) avec sa signature et `latest.json` (le fichier que lit l'updater : il
-  désigne l'installeur moteur et porte un bloc `resources` avec l'empreinte, l'URL, la somme SHA-256, la taille et la signature du paquet) dans la publication unique `updates`. La page de la version porte l'installeur complet, les serveurs et une copie de `latest.json` pour les applications 8.1.0. Un push sur `release/**` compile l'installeur sans signature et ne joue que le test de bout en bout.
+  désigne l'installeur moteur et porte un bloc `resources` avec l'empreinte, l'URL, la somme SHA-256, la taille et la signature du paquet) dans la publication unique `updates`. La page de la version porte l'installeur complet et les serveurs. Un push sur `release/**` compile l'installeur sans signature et ne joue que le test de bout en bout.
 
 ---
 

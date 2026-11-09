@@ -1,5 +1,10 @@
 ## What's new
 
+**v8.1.1 — Scores settle after an update, and a shorter download page**
+
+- **Scores are no longer recalculated at every start** — after an update changes a score formula, a match the rating cannot resolve could restart the recalculation at each start. It now completes once. That match gets no new score.
+- **A shorter download page** — it now lists the installer and the server files. The files used by in-app updates are published separately.
+
 **v8.1 — LevelUp for Windows, performance by map and by mode, map variants counted together**
 
 **LevelUp for Windows**

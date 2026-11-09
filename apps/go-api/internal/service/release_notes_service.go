@@ -177,12 +177,18 @@ func isVersionLine(line string) bool {
 	return strings.HasPrefix(s, "**v") && len(s) > 5
 }
 
+// extractVersionKey rend la clé d'un bloc : vX.Y, ou vX.Y.Z quand la ligne nomme un correctif
+// (chaque correctif a son propre bloc). Seul le premier mot porte le numéro : un titre qui
+// commence par un chiffre n'en fait pas partie.
 func extractVersionKey(line string) string {
 	s := strings.TrimPrefix(line, "- ")
 	s = strings.TrimPrefix(s, "**")
 	s = strings.TrimPrefix(s, "v")
+	if fields := strings.Fields(s); len(fields) > 0 {
+		s = fields[0]
+	}
 	parts := strings.FieldsFunc(s, func(r rune) bool {
-		return r == '.' || r == ' ' || r == '—' || r == '-'
+		return r == '.' || r == '—' || r == '-'
 	})
 	if len(parts) < 2 {
 		if len(parts) == 1 {
@@ -190,25 +196,37 @@ func extractVersionKey(line string) string {
 		}
 		return s
 	}
+	if len(parts) >= 3 {
+		if _, err := strconv.Atoi(parts[2]); err == nil {
+			return fmt.Sprintf("v%s.%s.%s", parts[0], parts[1], parts[2])
+		}
+	}
 	return fmt.Sprintf("v%s.%s", parts[0], parts[1])
 }
 
 func compareVersionDesc(a, b string) bool {
-	aMaj, aMin := parseVerParts(a)
-	bMaj, bMin := parseVerParts(b)
+	aMaj, aMin, aPatch := parseVerParts(a)
+	bMaj, bMin, bPatch := parseVerParts(b)
 	if aMaj != bMaj {
 		return aMaj > bMaj
 	}
-	return aMin > bMin
+	if aMin != bMin {
+		return aMin > bMin
+	}
+	return aPatch > bPatch
 }
 
-func parseVerParts(v string) (int, int) {
+// parseVerParts lit vX.Y ou vX.Y.Z ; un correctif absent vaut 0.
+func parseVerParts(v string) (maj, min, patch int) {
 	v = strings.TrimPrefix(strings.TrimSpace(v), "v")
 	parts := strings.SplitN(v, ".", 3)
 	if len(parts) < 2 {
-		return 0, 0
+		return 0, 0, 0
 	}
-	maj, _ := strconv.Atoi(parts[0])
-	min, _ := strconv.Atoi(parts[1])
-	return maj, min
+	maj, _ = strconv.Atoi(parts[0])
+	min, _ = strconv.Atoi(parts[1])
+	if len(parts) == 3 {
+		patch, _ = strconv.Atoi(parts[2])
+	}
+	return maj, min, patch
 }

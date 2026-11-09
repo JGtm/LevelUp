@@ -9,6 +9,38 @@
 **Décision technique principale** : tag annoté `libs/film/v0.1.0` posé sur `6c3fa49063` (v8.1.0 sur `main`) par délégation datée du user (08/11 « ok pour le tag », confirmé le 09/11 à la session de release ; note sous D-2 de l'amendement film de l'ADR 0043), après `go get` depuis un module jetable hors dépôt (`GOWORK=off`) au sha puis à `v0.1.0` : module téléchargé par le proxy, compilé et exécuté. Lot 5 : (5.1, D-11) le `netguard.Doer` installe un `CheckRedirect` sur une copie du client qui retire `Authorization`, `X-343-Authorization-Spartan` et `343-Clearance` quand l'hôte (nom et port) de la redirection diffère de celui de la requête d'origine, puis applique la politique de `Next` ; la brique `libs/haloapi` ne change pas ; témoin T2 d'URL figées de Halo 5 (`client_url_figees_test.go`, 302 vers `image.halocdn.com`) amendé de ce seul point, il rougissait avant l'amendement. (5.2, PUB-4-a) `libs/gamefiles/NOTICE.md` créé : origine des trois `.mvar`, deux `navmesh.blob` et graines de fuzz d'après l'historique git, quatre fichiers à origine non établie dits tels quels ; phrase « No game data » du README de la brique remplacée (elle contredisait le NOTICE).
 **Résultats observés** : trois tests `httptest` du Doer (autre hôte : en-têtes absents, `Accept` conservé ; même hôte : présents ; politique de `Next` respectée) rougissent sans le retrait ; `make libs-test` vert sur les quatre modules ; `go test` des paquets appelants du Doer et `archlint` (297 s) : 0 échec.
 **Prochaine étape** : gate 5.3 puis commit « lot 5 » ; lot 6 (quatre dépôts dédiés ensemble, go du user du 09/11 relayé par la session de release).
+## [2026-11-09] v8.1.1 - un bloc de notes par correctif - Complété
+
+**Décision technique principale** : la clé d'un bloc de notes porte le correctif (`v8.1.1`), et le contrôle de `release.yml` exige ce numéro pour un correctif. Avec une clé tronquée à `vX.Y`, le bloc 8.1.1 écrasait le bloc 8.1 dans l'Aide ; le contrôle du tag aurait aussi refusé la publication.
+
+**Résultats observés** : CI rouge sur `TestReleaseNotesDocs_BlocksExtractedWithoutCollision`, qui a révélé le défaut. Le premier échec de la CI du correctif LUSR (tests de l'API absents) avait une autre cause, non établie.
+
+**Conclusion / prochaine étape** : CI, fusion dans la release, puis `main` et tag sur ce commit.
+
+## [2026-11-09] v8.1.1 - plus de copie de latest.json sur la page de la version - Complété
+
+**Décision technique principale** : proposition de l'utilisateur, retenue : la page de la version ne porte plus que l'installeur complet et les serveurs. La v8.1.0 publiée compte 1 téléchargement de l'installeur ; une 8.1.0 installée passe une fois par l'installeur complet.
+
+**Résultats observés** : la 8.1.1 ne peut plus se recevoir par mise à jour depuis une 8.1.0. Le premier essai réel du chemin `updates` sera donc le passage 8.1.1 vers la version suivante ; à la publication, contrôler les adresses de `updates`.
+
+**Conclusion / prochaine étape** : CI, fusion dans la release, puis `main` et tag sur ce commit.
+
+## [2026-11-09] v8.1.1 - la version de prod ne dépend plus de l'emplacement du tag - Complété
+
+**Décision technique principale** : `deploy.sh` lit la version dans `tauri.conf.json`, que `release.yml` confronte au tag. `git describe` ne voyait pas le tag v8.1.0, posé sur la tête de la branche de release (donc hors de l'histoire de `main` après le squash).
+
+**Résultats observés** : après le déploiement de la 8.1.0, `.env` portait `v8.0.7` et la notification annonçait v8.0.7. Les rejeux ne sont pas concernés. Prod non touchée : corrigé au déploiement de la 8.1.1.
+
+**Conclusion / prochaine étape** : CI, puis accord de l'utilisateur pour le tag et la prod.
+
+## [2026-11-09] v8.1.1 - version, notes et changelog ; purge des archives de films du serveur - Complété
+
+**Décision technique principale** : version 8.1.1 dans `Cargo.toml`, `Cargo.lock` et `tauri.conf.json` ; notes joueurs FR et EN, changelog bilingue. Purge du serveur sur accord de l'utilisateur, avec rapatriement préalable, conforme à la décision du 2026-10-26.
+
+**Résultats observés** : disque du serveur 89 % -> 64 % (28 Go libres). 660 films (19,6 Go) rapatriés sur le poste, tailles identiques sur 22 160 fichiers, 30 empreintes identiques ; 689 retirés du serveur ; 10 récents et 5 dont la copie diffère gardés. Conteneurs sains.
+
+**Conclusion / prochaine étape** : CI de la release, puis tag et mise en prod sur accord de l'utilisateur.
+
 ## [2026-11-09] v8.1.1 - fichiers de mise à jour sortis de la page de la version - Complété
 
 **Décision technique principale** : publication unique `updates` du même dépôt, jamais « latest », qui reçoit l'installeur moteur, le paquet et sa signature et `latest.json` ; elle est publiée avant la page. Le choix évite un second dépôt et son jeton. La page garde l'installeur complet, les serveurs et une copie de `latest.json`, seul fichier qu'une application 8.1.0 sait trouver ; le `.sig` de l'installeur moteur n'est plus publié (sa signature est dans `latest.json`). `resourcepack.Config.Version` retiré : le paquet se nomme par son empreinte.
