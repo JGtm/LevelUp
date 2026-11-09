@@ -10,6 +10,7 @@ import { render, renderHook, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 import type { KillEvent } from '@/features/match-view/_momentum'
+import type { MatchScoreboardRow } from '@/lib/api/types'
 import { filmAllegianceOf } from '@/lib/replay/filmAllegiance'
 
 import { useKillerZones } from '../hooks/useKillerZones'
@@ -152,6 +153,21 @@ describe('useKillerZones', () => {
     expect(fr.result.current?.('inconnue')).toBe('')
     const en = renderHook(() => useKillerZones(ENTRIES, doc, zones, 'en'))
     expect(en.result.current?.(KILL_KEY)).toBe('Horseshoe')
+  })
+
+  it('un tueur BOT a sa zone quand la feuille le relie à sa piste, pas sans elle', () => {
+    const botDoc = testReplayDoc({
+      tracks: [
+        { slot: 4, team: 1, bot: 'Spark [bot]', points: [{ t: 0, x: 5, y: 5, z: 1 }, { t: 100, x: 5, y: 5, z: 1 }], startFrame: 0, endFrame: 100 },
+      ] as never,
+    })
+    const botEntries = buildFeedEntries([kill({ tMs: 1_000, xuid: 'bid(1.0)' })], [], 0, null)
+    const key = botEntries[0].key
+    const row = { xuid: 'bid(1.0)', gamertag: 'Spark', is_bot: true } as unknown as MatchScoreboardRow
+    const avec = renderHook(() => useKillerZones(botEntries, botDoc, zones, 'fr', [row]))
+    expect(avec.result.current?.(key)).toBe('Fer à cheval')
+    const sans = renderHook(() => useKillerZones(botEntries, botDoc, zones, 'fr'))
+    expect(sans.result.current?.(key)).toBe('')
   })
 
   it('document absent : gouttière vide, jamais une erreur', () => {

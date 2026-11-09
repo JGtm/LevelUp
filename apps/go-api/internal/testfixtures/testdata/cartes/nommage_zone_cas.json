@@ -22,6 +22,8 @@
     {"nom":"repli_deux_metres_stricts_en_deca","zones":[{"name":"Salle","volume_index":1,"polygon":[[0,0],[10,0],[10,10],[0,10]],"z_bottom":0,"z_top":3}],"x":11.99,"y":5,"z":1,"attendu":"Salle","regle":"proche","distance_m":1.99},
     {"nom":"repli_deux_metres_stricts_a_la_borne","zones":[{"name":"Salle","volume_index":1,"polygon":[[0,0],[10,0],[10,10],[0,10]],"z_bottom":0,"z_top":3}],"x":12,"y":5,"z":1,"attendu":null,"regle":"","distance_m":0},
     {"nom":"zone_sans_forme_ne_nomme_rien","zones":[{"name":"SansForme","volume_index":2,"z_bottom":0,"z_top":3}],"x":50,"y":50,"z":1,"attendu":null,"regle":"","distance_m":0},
-    {"nom":"aucune_zone","zones":[],"x":5,"y":5,"z":1,"attendu":null,"regle":"","distance_m":0}
+    {"nom":"aucune_zone","zones":[],"x":5,"y":5,"z":1,"attendu":null,"regle":"","distance_m":0},
+    {"nom":"repli_egalite_de_distance_l_indice_de_volume","zones":[{"name":"Second","volume_index":7,"polygon":[[0,0],[10,0],[10,10],[0,10]],"z_bottom":0,"z_top":3},{"name":"Premier","volume_index":3,"polygon":[[0,0],[10,0],[10,10],[0,10]],"z_bottom":0,"z_top":3}],"x":11.5,"y":5,"z":1,"attendu":"Premier","regle":"proche","distance_m":1.5},
+    {"nom":"repli_egalite_de_distance_sans_z_l_indice_de_volume","zones":[{"name":"Second","volume_index":7,"polygon":[[0,0],[10,0],[10,10],[0,10]],"z_bottom":0,"z_top":3},{"name":"Premier","volume_index":3,"polygon":[[0,0],[10,0],[10,10],[0,10]],"z_bottom":5,"z_top":8}],"x":11.5,"y":5,"z":null,"attendu":"Premier","regle":"proche","distance_m":1.5}
   ]
 }

@@ -88,7 +88,7 @@ func chargeMasqueCarte(pngPath, metaPath string) (*mapdecoupe.Masque, error) {
 // decoupeSurMasque rogne les zones d'une carte et rend les polygones bruts à conserver.
 //
 // Une zone sans forme propre (volume secondaire) n'est pas touchée : elle n'a rien à
-// découper et reste interrogeable par `zoneAt`.
+// découper ; sans contour ni partie, elle ne nomme aucun point (analysis/tactical.NommerZone).
 func decoupeSurMasque(e *replay.MapCalloutsEntry, m *mapdecoupe.Masque) ([]replay.CalloutBrutZone, rapportDecoupe) {
 	rap := rapportDecoupe{}
 	opts := mapdecoupe.OptionsParDefaut()

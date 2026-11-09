@@ -296,7 +296,7 @@ export interface ReplayText {
   layers: string
   layerAim: string
   layerAimHint: string
-  /** Zones nommées (callouts officiels) : calque + libellé de la fiche. */
+  /** Libellé accessible du groupe de commandes de zoom du cadrage de la carte. */
   zoomGroup: string
   zoomIn: string
   zoomOut: string

@@ -56,8 +56,8 @@ export interface CalloutZoneReady {
 /**
  * normalizeCallouts résout la nullabilité du transport UNE fois, à l'entrée (même règle
  * que replayNormalize). TOUTES les zones sont gardées, y compris sans polygone : les
- * volumes secondaires d'un même nom portent les étages bas et rendent le nommage d'un point
- * juste — seul le DESSIN exige un contour.
+ * volumes secondaires d'un même nom restent dans la liste — seul le DESSIN exige un contour ;
+ * le nommage d'un point (`killerZone.ts`) ignore, lui, une zone sans contour ni partie.
  */
 export function normalizeCallouts(entry: ReplayMapCallouts | null | undefined): CalloutZoneReady[] {
   return normalizeCalloutZones(entry?.zones)

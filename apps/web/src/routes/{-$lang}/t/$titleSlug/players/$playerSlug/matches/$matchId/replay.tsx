@@ -171,7 +171,7 @@ function ReplayPage() {
   const model = useReplayModel(data, replayContext, modelSettings, viewpoint.xuid)
   const { scoreboard, identity: xuidMeta, marks, window: playWindow, feed: feedEntries } = model
   // LA ZONE DU TUEUR de chaque frag du fil : calculée UNE fois sur le fil aligné (instant brut).
-  const killerZoneOf = useKillerZones(feedEntries, data, callouts, locale)
+  const killerZoneOf = useKillerZones(feedEntries, data, callouts, locale, scoreboard)
   // LA PAGE PARLE D'UNE SEULE VOIX (décision D1) : sur le rejeu, les points, les titres de
   // colonnes et les noms du fil prennent les MÊMES tokens d'accessibilité — allié / adverse,
   // surchargeables par les réglages — et la MÊME allégeance, lue dans le film et vue du point de

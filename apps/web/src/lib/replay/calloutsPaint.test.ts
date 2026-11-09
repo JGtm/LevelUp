@@ -1,8 +1,8 @@
 /**
  * Tests — calloutsPaint (zones nommées : normalisation, peintre partagé).
  *
- * CE QU'ILS PROTÈGENT : la normalisation garde TOUTES les zones (y compris sans contour, qui
- * servent le nommage d'un point) et le calque écrit chaque nom UNE fois.
+ * CE QU'ILS PROTÈGENT : la normalisation garde TOUTES les zones (y compris sans contour) et le
+ * calque écrit chaque nom UNE fois.
  */
 import { describe, expect, it } from 'vitest'
 
@@ -40,7 +40,7 @@ const ENTRY: ReplayMapCallouts = {
       holes: [[[-1, -1], [0, -1], [0, 0]]],
     },
     {
-      // Volume SECONDAIRE du même nom, sans polygone : interrogeable, pas dessiné.
+      // Volume SECONDAIRE du même nom, sans polygone : gardé dans la liste, pas dessiné.
       volume_index: 26, name: 'antenna', en: 'Antenna', fr: 'Antenne',
       x: -2, y: -5, z: -4, z_bottom: -5, z_top: -3,
     },

@@ -183,3 +183,13 @@ export function buildPlayerPosAt(doc: ReplayDocumentReady): PlayerPosAt {
   const window = deathWindowFrames(doc)
   return (xuid, frame) => posOfPlayerAt(lives.get(xuid), frame, window)
 }
+
+/** L'altitude relue, telle que `altitudeOfPlayerAt` la rend (null = inconnue). */
+export type PlayerAltAt = (xuid: string, frame: number) => number | null
+
+/** buildPlayerAltAt — l'altitude du bipède, sous la même règle de vie que `buildPlayerPosAt`. */
+export function buildPlayerAltAt(doc: ReplayDocumentReady): PlayerAltAt {
+  const lives = buildLivesByXuid(doc.tracks)
+  const window = deathWindowFrames(doc)
+  return (xuid, frame) => altitudeOfPlayerAt(lives.get(xuid), frame, window)
+}

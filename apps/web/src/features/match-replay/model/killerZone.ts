@@ -14,7 +14,7 @@
  *   (b) empilée   plusieurs : la tranche la plus ÉTROITE ; à égalité parfaite, l'indice de volume ;
  *   (c) proche    aucune : la zone dont la forme est la plus proche du point, à MOINS de 2 m
  *                 (distance au bord, 0 si le point est dedans), parmi les tranches compatibles
- *                 d'abord, parmi toutes ensuite ;
+ *                 d'abord, parmi toutes ensuite ; à égalité de distance, l'indice de volume ;
  *   (d)           sinon, PAS DE NOM — jamais un nom de repli.
  *
  * LA FORME est celle que le calque dessine : contour, parties détachées et trous en règle
@@ -25,23 +25,42 @@
  * forme contient le point ; plusieurs formes empilées ne nomment RIEN — l'étage ne se devine pas ;
  * aucune : (c) sans test de tranche.
  *
- * UN FRAG, UN SEUL z. Le Go nomme une cellule du plan d'après PLUSIEURS événements (z médian,
- * majorité de tranches) ; ici la liste a zéro ou un z, et `nameZone` garde la signature et la
- * règle complètes du jumeau pour ne pas diverger de lui.
+ * LE PORT TRAITE UN z UNIQUE. Le Go nomme une cellule du plan d'après PLUSIEURS événements (z
+ * médian, majorité de tranches) ; un frag est UN événement, donc UN z (ou aucun). Avec un seul z,
+ * la médiane est ce z et toute tranche qui le contient détient la majorité : ces deux étapes du
+ * jumeau ne sont pas portées, et le jeu de cas partagé n'en exerce aucune. Le côté Go garde ses
+ * tests multi-z propres.
+ *
+ * ZONES SANS NOM : une zone dont aucune langue ne porte de libellé est écartée avant le nommage,
+ * comme `zonesNommees` côté Go — elle ne peut nommer personne, et la garder ferait d'elle la
+ * « plus proche » d'un point qu'elle laisserait sans nom. Limite : le Go retombe sur le nom de
+ * conception de la zone quand un libellé manque ; la normalisation web ne le garde pas, une zone
+ * muette dans toutes les langues est donc écartée ici même si le Go la nommerait par son nom de
+ * conception.
  *
  * L'INSTANT EST BRUT : `replayMs` du fil, AVANT `displayClockMs` (qui ne recale que l'affiché).
- * La position vient du résolveur de porteur (un tueur au volant est sur son véhicule) et le z de
- * la piste du bipède, sous la même règle de vie. Un tueur sans position à cet instant n'a pas de
+ * La position vient du résolveur de porteur (un tueur au volant est sur son véhicule). Le z suit
+ * la position : celui du véhicule quand elle en vient (null si le véhicule n'a pas d'altitude ou
+ * si sa position vient de sa naissance), jamais celui du bipède embarqué ; sinon celui de la
+ * piste du bipède, sous la même règle de vie. Un tueur sans position à cet instant n'a pas de
  * zone : la carte n'a pas d'entrée, la ligne n'écrit rien.
+ *
+ * LES BOTS comptent : un bot du fil porte un xuid de BASE (`bid(N.0)`), que la jointure de
+ * `buildPlayers` (gamertag de la feuille, nom nu) relie à ses vies. Il est lu sans véhicule : ses
+ * épisodes d'occupation n'ont pas de xuid, comme pour tous les calques du rejeu. Sans feuille
+ * pour le joindre, il n'a pas d'entrée.
  *
  * Pas de React, pas de canvas : logique pure, testée (killerZone.test.ts).
  */
+import type { MatchScoreboardRow } from '@/lib/api/types'
+
 import type { CalloutZoneReady } from '../../../lib/replay/calloutsPaint'
 import { msToFrames, type XY } from '../../../lib/replay/replayLogic'
-import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
-import { buildCarrierPosAt } from './carrierPosition'
+import type { ReplayDocumentReady, ReplayTrackReady } from '../../../lib/replay/replayNormalize'
+import { buildPlayers } from '../../../lib/replay/rosterLogic'
+import { buildCarrierAltitudeAt, buildCarrierPosAt } from './carrierPosition'
 import type { ReplayFeedEntry } from './killFeedLogic'
-import { altitudeOfPlayerAt, buildLivesByXuid, deathWindowFrames } from './livesPosition'
+import { altitudeOfPlayerAt, deathWindowFrames, posOfPlayerAt } from './livesPosition'
 
 /** Marge de tranche, en mètres : un joueur debout sur une dalle a les pieds sous son plancher déclaré. */
 export const ZONE_SLICE_MARGIN_M = 0.25
@@ -124,37 +143,17 @@ function thickness(z: CalloutZoneReady): number {
   return z.zTop - z.zBottom
 }
 
-/** Le z médian (moyenne des deux du milieu pour un nombre pair). */
-function median(v: readonly number[]): number {
-  const s = [...v].sort((a, b) => a - b)
-  const n = s.length
-  return n % 2 === 1 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2
-}
-
 /**
- * Règle (b) : plusieurs zones contiennent le point et le z médian. La majorité de tranches
- * d'abord (plus de la moitié des z), puis à défaut la plus peuplée, puis la plus étroite, puis
- * l'indice de volume. Le tri est stable, comme `sort.SliceStable` côté Go.
+ * Règle (b) : plusieurs zones contiennent le point et le z. Le z unique est dans chaque tranche :
+ * la plus étroite l'emporte, puis l'indice de volume à égalité parfaite.
  */
-function pickStacked(candidates: readonly CalloutZoneReady[], zs: readonly number[]): CalloutZoneReady {
-  const scored = candidates.map((zone) => ({ zone, count: zs.filter((h) => inSlice(zone, h)).length }))
-  const majority = (c: { count: number }) => 2 * c.count > zs.length
-  scored.sort((a, b) => {
-    const ma = majority(a)
-    const mb = majority(b)
-    if (ma !== mb) return ma ? -1 : 1
-    if (!ma && a.count !== b.count) return b.count - a.count
-    const ta = thickness(a.zone)
-    const tb = thickness(b.zone)
-    if (ta !== tb) return ta - tb
-    return a.zone.volumeIndex - b.zone.volumeIndex
-  })
-  return scored[0].zone
+function pickStacked(candidates: readonly CalloutZoneReady[]): CalloutZoneReady {
+  return [...candidates].sort((a, b) => thickness(a) - thickness(b) || a.volumeIndex - b.volumeIndex)[0]
 }
 
 /**
  * Règle (c) : à moins de 2 m, parmi les zones `compatible` d'abord (undefined = aucun premier
- * passage), parmi toutes ensuite.
+ * passage), parmi toutes ensuite ; à égalité de distance, l'indice de volume.
  */
 function nearest(
   x: number,
@@ -188,51 +187,76 @@ function nameWithoutHeight(x: number, y: number, shapes: readonly CalloutZoneRea
 }
 
 /**
- * nameZone rend la zone qui nomme le point (x, y) compte tenu des z connus (`zs`, vide =
- * inconnu), ou null : aucune zone ne le nomme.
+ * nameZone rend la zone qui nomme le point (x, y) compte tenu du z connu (`null` = inconnu), ou
+ * null : aucune zone ne le nomme.
  */
 export function nameZone(
   x: number,
   y: number,
-  zs: readonly number[],
+  z: number | null,
   zones: readonly CalloutZoneReady[],
 ): NamedZone | null {
   const shapes = zones.filter(hasShape)
-  if (zs.length === 0) return nameWithoutHeight(x, y, shapes)
-  const zm = median(zs)
-  const candidates = shapes.filter((z) => inShape(x, y, z) && inSlice(z, zm))
-  if (candidates.length === 0) return nearest(x, y, shapes, (z) => inSlice(z, zm))
+  if (z === null) return nameWithoutHeight(x, y, shapes)
+  const candidates = shapes.filter((c) => inShape(x, y, c) && inSlice(c, z))
+  if (candidates.length === 0) return nearest(x, y, shapes, (c) => inSlice(c, z))
   if (candidates.length === 1) return { zone: candidates[0], rule: 'polygone', distanceM: 0 }
-  return { zone: pickStacked(candidates, zs), rule: 'empilee', distanceM: 0 }
+  return { zone: pickStacked(candidates), rule: 'empilee', distanceM: 0 }
 }
 
 /** Aucune zone : la valeur partagée quand la carte n'en a pas ou que le document est absent. */
 const NO_ZONES: ReadonlyMap<string, CalloutZoneReady> = new Map()
 
+/** Une zone nomme-t-elle quelqu'un ? Au moins une langue porte un libellé. */
+function hasName(z: CalloutZoneReady): boolean {
+  return Object.values(z.names).some((v) => !!v)
+}
+
+/**
+ * Les vies des bots, par xuid de BASE (`bid(N.0)`) : la jointure de `buildPlayers` relie le bot du
+ * film (clé `bot:<nom>`, vies sans xuid) à sa ligne de feuille, dont le xuid est celui du fil.
+ */
+function botLivesByBaseXuid(
+  doc: ReplayDocumentReady,
+  scoreboard: readonly MatchScoreboardRow[],
+): Map<string, ReplayTrackReady[]> {
+  const out = new Map<string, ReplayTrackReady[]>()
+  if (scoreboard.length === 0) return out
+  for (const p of buildPlayers(doc, [...scoreboard])) {
+    if (p.bot && p.board?.xuid && p.lives.length > 0) out.set(p.board.xuid, p.lives)
+  }
+  return out
+}
+
 /**
  * killerZones — la zone du tueur de chaque frag du fil, PAR CLÉ DE LIGNE (`ReplayFeedEntry.key`).
  * Un frag dont le tueur n'a pas de position à son instant, ou que le nommage laisse sans nom, n'a
  * PAS d'entrée : jamais un nom deviné. Les lignes qui ne sont pas des frags n'en ont pas non plus.
+ * `scoreboard` joint les bots du fil à leurs vies (cf. l'en-tête).
  */
 export function killerZones(
   entries: readonly ReplayFeedEntry[],
   doc: ReplayDocumentReady,
   zones: readonly CalloutZoneReady[],
+  scoreboard: readonly MatchScoreboardRow[] = [],
 ): ReadonlyMap<string, CalloutZoneReady> {
-  if (zones.length === 0 || doc.tracks.length === 0) return NO_ZONES
+  const named = zones.filter(hasName)
+  if (named.length === 0 || doc.tracks.length === 0) return NO_ZONES
   const posOf = buildCarrierPosAt(doc)
-  const lives = buildLivesByXuid(doc.tracks)
+  const altOf = buildCarrierAltitudeAt(doc)
+  const bots = botLivesByBaseXuid(doc, scoreboard)
   const deathFrames = deathWindowFrames(doc)
   const out = new Map<string, CalloutZoneReady>()
   for (const e of entries) {
     const k = e.kill
     if (!k) continue
     const frame = Math.round(msToFrames(k.replayMs, doc))
-    const at = posOf(k.xuid, frame)
+    const botLives = bots.get(k.xuid)
+    const at = botLives ? posOfPlayerAt(botLives, frame, deathFrames) : posOf(k.xuid, frame)
     if (!at) continue
-    const z = altitudeOfPlayerAt(lives.get(k.xuid), frame, deathFrames)
-    const named = nameZone(at.x, at.y, z === null ? [] : [z], zones)
-    if (named) out.set(e.key, named.zone)
+    const z = botLives ? altitudeOfPlayerAt(botLives, frame, deathFrames) : altOf(k.xuid, frame)
+    const zone = nameZone(at.x, at.y, z, named)
+    if (zone) out.set(e.key, zone.zone)
   }
   return out
 }

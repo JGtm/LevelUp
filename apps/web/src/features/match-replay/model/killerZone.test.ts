@@ -14,7 +14,7 @@ import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import type { KillEvent } from '@/features/match-view/_momentum'
-import type { ReplayCalloutZone } from '@/lib/api/types'
+import type { MatchScoreboardRow, ReplayCalloutZone } from '@/lib/api/types'
 import { calloutLabel, normalizeCalloutZones, type CalloutZoneReady } from '@/lib/replay/calloutsPaint'
 
 import { racineDuDepot } from '../test/featureFiles'
@@ -49,14 +49,14 @@ const jeu = JSON.parse(readFileSync(JEU_DE_CAS, 'utf8')) as { cas: CasPartage[] 
 
 describe('nameZone — le jeu de cas partagé avec le Go', () => {
   it('le jeu n’est pas vide, et couvre les trois règles et l’absence de nom', () => {
-    expect(jeu.cas.length).toBeGreaterThanOrEqual(20)
+    expect(jeu.cas.length).toBeGreaterThanOrEqual(24)
     const regles = new Set(jeu.cas.map((c) => c.regle))
     expect(regles).toEqual(new Set(['polygone', 'empilee', 'proche', '']))
   })
 
   for (const cas of jeu.cas) {
     it(cas.nom, () => {
-      const got = nameZone(cas.x, cas.y, cas.z === null ? [] : [cas.z], zonesOf(cas))
+      const got = nameZone(cas.x, cas.y, cas.z, zonesOf(cas))
       if (cas.attendu === null) {
         expect(got === null ? null : `${calloutLabel(got.zone, 'fr')} (${got.rule})`).toBeNull()
         return
@@ -206,5 +206,82 @@ describe('killerZones — le document', () => {
     const apres = feedOf({ tMs: 1_500 })
     expect(nameOf(killerZones(avant, doc, ETAGES), avant[0].key)).toBe('Bas')
     expect(killerZones(apres, doc, ETAGES).size).toBe(0)
+  })
+})
+
+describe('killerZones — le z suit la position', () => {
+  /** Le bipède file en X à z = 0 ; le véhicule monte en Y (frame 50 -> y = 50) et de z = 0 à z = 6. */
+  function docVehicule(vehicle: Record<string, unknown>) {
+    return testReplayDoc({
+      tracks: [
+        { slot: 1, team: 0, xuid: 'A', points: [{ t: 0, x: 0, y: 0, z: 0 }, { t: 100, x: 100, y: 0, z: 0 }], startFrame: 0, endFrame: 100 },
+      ] as never,
+      vehicles: [
+        {
+          slot: 700,
+          gen: 1,
+          t0: 0,
+          t1: 100,
+          t1max: 100,
+          end: 'unknown',
+          family: 'warthog',
+          rides: [{ t0: 10, t1: 80, slot: 1, seat: 0, src: 'event', xuid: 'A' }],
+          ...vehicle,
+        },
+      ] as never,
+    })
+  }
+  /** Deux étages empilés sur la trajectoire du véhicule à mi-parcours : (0, 50). */
+  const EMPILEES = [
+    zone('Bas', 1, carre(-5, 40, 5, 60), 0, 1),
+    zone('Haut', 2, carre(-5, 40, 5, 60), 2, 8),
+  ]
+  // Frame 50 = 833 ms à la cadence de repli de 60 images par seconde.
+  const entries = feedOf({ tMs: 833 })
+
+  it('embarqué : le z est celui du véhicule (3 m à mi-trajet) -> « Haut », pas celui du bipède (0 -> « Bas »)', () => {
+    const doc = docVehicule({ samples: [{ t: 0, x: 0, y: 0, z: 0 }, { t: 100, x: 0, y: 100, z: 6 }] })
+    expect(nameOf(killerZones(entries, doc, EMPILEES), entries[0].key)).toBe('Haut')
+  })
+
+  it('embarqué sur un véhicule SANS altitude : z inconnu, des étages empilés ne nomment rien (jamais le z du bipède)', () => {
+    const doc = docVehicule({ samples: [{ t: 0, x: 0, y: 0 }, { t: 100, x: 0, y: 100 }] })
+    expect(killerZones(entries, doc, EMPILEES).size).toBe(0)
+  })
+
+  it('embarqué sur un véhicule dont la position vient de sa NAISSANCE : z inconnu, jamais celui du bipède', () => {
+    const doc = docVehicule({ samples: [], spawn: { x: 0, y: 50, z: 0 } })
+    expect(killerZones(entries, doc, EMPILEES).size).toBe(0)
+    expect(nameOf(killerZones(entries, doc, [EMPILEES[0]]), entries[0].key)).toBe('Bas')
+  })
+})
+
+describe('killerZones — zones sans nom, bots', () => {
+  const muette = normalizeCalloutZones([
+    { name: 'muette', en: '', fr: '', x: 0, y: 0, z: 0, volume_index: 9, polygon: carre(0, 0, 10, 10), z_bottom: 0, z_top: 1 },
+  ])[0]
+
+  it('une zone sans aucun nom est écartée avant le nommage : elle ne prend pas la place d’une zone nommée', () => {
+    const entries = feedOf({ tMs: 1_000 })
+    const doc = docOf(0.5)
+    // Plus étroite que « Bas » : sans l'écart, elle l'emporterait et la ligne resterait sans nom.
+    expect(nameOf(killerZones(entries, doc, [muette, ETAGES[0]]), entries[0].key)).toBe('Bas')
+    expect(killerZones(entries, doc, [muette]).size).toBe(0)
+  })
+
+  const BOT_FILM = { slot: 4, team: 1, bot: 'Spark [bot]', points: [{ t: 0, x: 5, y: 5, z: 1 }, { t: 100, x: 5, y: 5, z: 1 }], startFrame: 0, endFrame: 100 }
+  const ROW_BOT = { xuid: 'bid(1.0)', gamertag: 'Spark', is_bot: true } as unknown as MatchScoreboardRow
+
+  it('tueur BOT : le xuid de base du fil est relié à sa piste par la feuille (gamertag nu), sans table nouvelle', () => {
+    const doc = testReplayDoc({ tracks: [BOT_FILM] as never })
+    const entries = feedOf({ tMs: 1_000, xuid: 'bid(1.0)' })
+    expect(nameOf(killerZones(entries, doc, ETAGES, [ROW_BOT]), entries[0].key)).toBe('Bas')
+  })
+
+  it('tueur bot SANS ligne de feuille pour le joindre : pas d’entrée', () => {
+    const doc = testReplayDoc({ tracks: [BOT_FILM] as never })
+    const entries = feedOf({ tMs: 1_000, xuid: 'bid(1.0)' })
+    expect(killerZones(entries, doc, ETAGES).size).toBe(0)
+    expect(killerZones(entries, doc, ETAGES, [{ ...ROW_BOT, gamertag: 'Autre' } as MatchScoreboardRow]).size).toBe(0)
   })
 })

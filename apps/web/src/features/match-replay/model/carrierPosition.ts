@@ -38,8 +38,8 @@
  */
 import { useMemo } from 'react'
 
-import { buildPlayerPosAt, type PlayerPosAt } from './livesPosition'
-import type { XY } from '../../../lib/replay/replayLogic'
+import { buildPlayerAltAt, buildPlayerPosAt, type PlayerAltAt, type PlayerPosAt } from './livesPosition'
+import { altitudeAt, type XY } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady, ReplayVehicleTrackReady } from '../../../lib/replay/replayNormalize'
 import { vehicleCanEmbark, vehiclePositionAt } from './vehiclesLayer'
 
@@ -70,6 +70,19 @@ interface EmbarkedEpisode {
 export function buildEmbarkedPosAt(
   vehicles: readonly ReplayVehicleTrackReady[],
 ): EmbarkedPosAt {
+  const read = buildEmbarkedReadAt(vehicles)
+  return (xuid, frame) => read(xuid, frame)?.at ?? null
+}
+
+/** Ce que l'on lit d'un joueur EMBARQUÉ à une image : sa position, et la monture qui la donne. */
+interface EmbarkedRead {
+  at: XY
+  vehicle: ReplayVehicleTrackReady
+}
+
+function buildEmbarkedReadAt(
+  vehicles: readonly ReplayVehicleTrackReady[],
+): (xuid: string, frame: number) => EmbarkedRead | null {
   const byXuid = new Map<string, EmbarkedEpisode[]>()
   for (const vehicle of vehicles) {
     if (!vehicleCanEmbark(vehicle)) continue
@@ -88,9 +101,34 @@ export function buildEmbarkedPosAt(
     for (const episode of list) {
       if (frame < episode.t0 || frame > episode.t1) continue
       const at = vehiclePositionAt(episode.vehicle, frame)
-      if (at) return at
+      if (at) return { at, vehicle: episode.vehicle }
     }
     return null
+  }
+}
+
+/**
+ * L'altitude d'un joueur EMBARQUÉ à une image : `undefined` = il ne l'est pas (le bipède répond) ;
+ * `null` = il l'est, mais la monture n'a pas d'altitude à cet instant ; sinon le z du véhicule.
+ */
+export type EmbarkedAltAt = (xuid: string, frame: number) => number | null | undefined
+
+/**
+ * buildEmbarkedAltitudeAt — le z d'un joueur embarqué SUIT SA POSITION : même index d'épisodes,
+ * même filtre `vehicleCanEmbark`, même choix de l'épisode que `buildEmbarkedPosAt`. Le z est celui
+ * des échantillons du véhicule (`altitudeAt`) quand c'est d'eux que vient la position ; `null` quand
+ * le véhicule n'en porte aucun z, ou que sa position vient de sa naissance (`spawn`, sans z lu).
+ * JAMAIS le z du bipède : il ne réplique plus pendant l'épisode, et son altitude tenue nommerait
+ * l'étage du point d'embarquement pour un véhicule qui a monté ou descendu.
+ */
+export function buildEmbarkedAltitudeAt(vehicles: readonly ReplayVehicleTrackReady[]): EmbarkedAltAt {
+  const read = buildEmbarkedReadAt(vehicles)
+  return (xuid, frame) => {
+    const r = read(xuid, frame)
+    if (!r) return undefined
+    const samples = r.vehicle.samples
+    if (samples.length === 0 || !samples.some((p) => p.z !== undefined)) return null
+    return altitudeAt(samples, frame)
   }
 }
 
@@ -116,6 +154,20 @@ export function buildCarrierPosAt(doc: ReplayDocumentReady): PlayerPosAt {
   const embarkedAt = buildEmbarkedPosAt(doc.vehicles)
   const bipedAt = buildPlayerPosAt(doc)
   return (xuid, frame) => positionOfCarrierAt(embarkedAt, bipedAt, xuid, frame)
+}
+
+/**
+ * buildCarrierAltitudeAt — le z du porteur, sous la MÊME règle que sa position : embarqué -> celui
+ * du véhicule (ou null), sinon celui du bipède. Un z et une position qui ne viendraient pas de la
+ * même source nommeraient un étage que le point n'habite pas.
+ */
+export function buildCarrierAltitudeAt(doc: ReplayDocumentReady): PlayerAltAt {
+  const embarkedAlt = buildEmbarkedAltitudeAt(doc.vehicles)
+  const bipedAlt = buildPlayerAltAt(doc)
+  return (xuid, frame) => {
+    const onBoard = embarkedAlt(xuid, frame)
+    return onBoard !== undefined ? onBoard : bipedAlt(xuid, frame)
+  }
 }
 
 /** useCarrierPosAt — la même relecture, mémoïsée pour les hooks de calque. */
