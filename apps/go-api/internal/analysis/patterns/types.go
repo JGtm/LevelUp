@@ -21,7 +21,7 @@ type MatchRow struct {
 	IsRanked      bool
 	DurationSec   int
 	SessionID     string
-	KDA           float64
+	KDA           float64 // FDA net du match : (frags + assistances/3) - morts, jamais un quotient (ADR 0006)
 	Kills         int
 	Deaths        int
 	Assists       int
@@ -47,12 +47,16 @@ type PatternConfig struct {
 	StrengthWinRateDelta float64 // 0.12
 	WeaknessWinRateDelta float64 // 0.12
 	TiltLossRun          int     // 3
-	TiltKDADropPct       float64 // 0.25
-	EngageDeltaTilt      float64 // 0.20
-	FatigueMinSession    int     // 4
-	FatigueSessionCovPct float64 // 0.60
-	AccuracyPlateauStd   float64 // 0.02
-	AccuracyPlateauMax   float64 // 0.45
+	// Tilt : chute absolue, en points de FDA net par match, de la moyenne pendant la série de
+	// défaites sous la moyenne hors série. Absolue car le net peut être négatif ou voisin de zéro,
+	// où un rapport n'a pas de sens.
+	TiltFDADropPoints     float64 // 2.5
+	TiltFDAHighDropPoints float64 // 4.5 : sévérité haute au-delà
+	EngageDeltaTilt       float64 // 0.20
+	FatigueMinSession     int     // 4
+	FatigueSessionCovPct  float64 // 0.60
+	AccuracyPlateauStd    float64 // 0.02
+	AccuracyPlateauMax    float64 // 0.45
 	// EngagementDrop
 	EngageDropWindow        int // 10 — fenêtre de matchs récents analysés
 	EngageDropHighThreshold int // 10 — seuil dropCount pour SeverityHigh
@@ -71,7 +75,8 @@ func DefaultPatternConfig() PatternConfig {
 		StrengthWinRateDelta:       0.12,
 		WeaknessWinRateDelta:       0.12,
 		TiltLossRun:                3,
-		TiltKDADropPct:             0.25,
+		TiltFDADropPoints:          2.5,
+		TiltFDAHighDropPoints:      4.5,
 		EngageDeltaTilt:            0.20,
 		FatigueMinSession:          4,
 		FatigueSessionCovPct:       0.60,

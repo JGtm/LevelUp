@@ -90,3 +90,32 @@ func PerfTier(score float64) Tier
 - Plan d'action : `PLAN_ACTION.md` P1.2, P2.1, P2.3, P2.5, P2.6.
 - Source de vérité PerfTier : `apps/web/src/lib/accessibility/scales/instances.ts:20` + tests `apps/web/src/lib/accessibility/scales/__tests__/instances.test.ts:14-22`.
 - Formule KDA documentée : `apps/web/src/features/help/i18n.ts:326`.
+
+## Amendment 2026-11-09 — KDA is the net, never the quotient (release v8.1.2, item 2.2)
+
+**Relates to** — rule 9 of the project instructions, `analysis.AggregateKDA`, `lib/fda.ts` on the web side.
+
+The decision above wrote the KDA as the quotient `(K+A)/max(1,D)`. That formula is superseded and must not be used
+anywhere:
+
+- **Per match**, the KDA is the value the game API reports natively (`match_participants.kda`, a net). When the column is
+  NULL (part of Halo 5 matches), it is derived from the counters as `(kills + assists/3) - deaths`, which is
+  `analysis.AggregateKDA(k, a, d, 1)`.
+- **Aggregated**, it is `((kills + assists/3) - deaths) / matches`: a net average per match, possibly negative.
+- The KDR (`kills / max(1, deaths)`) is a distinct indicator and keeps its role.
+
+**What was still wrong.** The patterns pipeline (`PatternsRepo.loadShared`) computed `(kills + assists/2) / max(1,
+deaths)` per match, which is neither the quotient above nor the net. It fed the Solo / Squad card (`avg_kda`) and the
+behavioural detectors. It now reads `p.kda` with the fallback above.
+
+**Check of the native column** on a cold copy of the shared Halo Infinite database (28 993 `match_participants` rows, no
+NULL): the column is a `FLOAT` holding the net truncated to two decimals, and no row differs from
+`(kills + assists/3) - deaths` by more than 0.0067. Halo 5 (24 208 rows): 2 931 NULL, none of the others differs by more
+than 0.0067. The fallback is therefore exercised in production data, only for Halo 5.
+
+**Consequence for the tilt detector.** A relative drop `(outside - during) / outside` has no meaning on a net that can be
+negative or close to zero. The tilt is judged on an absolute drop of the mean net, in points: more than 2.5 points
+(`TiltFDADropPoints`), high severity above 4.5 (`TiltFDAHighDropPoints`). The previous relative thresholds, matched
+for the same trigger rate (2.0 and 4.0 points: 55 % of the 50-match windows with a run of three losses or more), were
+judged too frequent. The fatigue detector (negative slope of the per-match values) is scale-invariant and keeps its
+`FatigueSessionCovPct` threshold.

@@ -34,7 +34,8 @@ func analyzeBehavior(rows []MatchRow, cfg PatternConfig, loc i18n.Locale) []Beha
 	return out
 }
 
-// detectTilt détecte une suite de défaites avec chute de KDA.
+// detectTilt détecte une suite de défaites avec chute de FDA net (en points, cf.
+// PatternConfig.TiltFDADropPoints).
 func detectTilt(rows []MatchRow, cfg PatternConfig, loc i18n.Locale) (BehavioralPattern, bool) {
 	// Plus longue série de défaites consécutives + son index de départ (le start
 	// est nécessaire pour découper tiltRows / outsideRows).
@@ -54,16 +55,15 @@ func detectTilt(rows []MatchRow, cfg PatternConfig, loc i18n.Locale) (Behavioral
 		return BehavioralPattern{}, false
 	}
 	kdaOutside := meanKDA(outsideRows)
-	if kdaOutside == 0 {
-		return BehavioralPattern{}, false
-	}
-	kdaDrop := (kdaOutside - kdaDuring) / kdaOutside
-	if kdaDrop <= cfg.TiltKDADropPct {
+	// Chute en points de FDA net : la moyenne hors série peut être nulle ou négative, le rapport
+	// des deux n'aurait alors aucun sens.
+	kdaDrop := kdaOutside - kdaDuring
+	if kdaDrop <= cfg.TiltFDADropPoints {
 		return BehavioralPattern{}, false
 	}
 
 	sev := SeverityMedium
-	if kdaDrop > 0.35 {
+	if kdaDrop > cfg.TiltFDAHighDropPoints {
 		sev = SeverityHigh
 	}
 
@@ -112,7 +112,7 @@ func meanEngageDrop(tiltRows, outsideRows []MatchRow) float64 {
 	return drop
 }
 
-// meanKDA calcule la KDA moyenne sur un groupe de rows.
+// meanKDA calcule le FDA net moyen par match sur un groupe de rows.
 func meanKDA(rows []MatchRow) float64 {
 	if len(rows) == 0 {
 		return 0

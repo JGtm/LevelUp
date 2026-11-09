@@ -22,10 +22,10 @@ func makeRowWithKDA(outcome int, kda float64) MatchRow {
 // TestDetectTilt_FiveConsecutiveLosses vérifie la détection de tilt sur 5 défaites.
 func TestDetectTilt_FiveConsecutiveLosses(t *testing.T) {
 	cfg := DefaultPatternConfig()
-	// 10 victoires avec KDA 2.0, puis 5 défaites avec KDA 1.0 (chute 50% > 25%)
+	// 10 victoires à +6,0 de FDA net, puis 5 défaites à +1,0 : chute de 5 points > 4,5 (sévérité haute)
 	var rows []MatchRow
 	for i := 0; i < 10; i++ {
-		rows = append(rows, makeRowWithKDA(2, 2.0)) // WIN
+		rows = append(rows, makeRowWithKDA(2, 6.0)) // WIN
 	}
 	for i := 0; i < 5; i++ {
 		rows = append(rows, makeRowWithKDA(3, 1.0)) // LOSS
@@ -36,7 +36,7 @@ func TestDetectTilt_FiveConsecutiveLosses(t *testing.T) {
 		t.Fatal("tilt non détecté")
 	}
 	if p.Severity != SeverityHigh {
-		t.Errorf("severity = %q, want High (chute 50%% > 35%%)", p.Severity)
+		t.Errorf("severity = %q, want High (chute de 5 points > 4,5)", p.Severity)
 	}
 	if p.Type != BehaviorTilt {
 		t.Errorf("type = %q, want tilt", p.Type)
@@ -168,7 +168,7 @@ func TestDetectTilt_NotEnoughLosses(t *testing.T) {
 	cfg := DefaultPatternConfig() // TiltLossRun = 3
 	var rows []MatchRow
 	for i := 0; i < 10; i++ {
-		rows = append(rows, makeRowWithKDA(2, 2.0)) // WIN
+		rows = append(rows, makeRowWithKDA(2, 6.0)) // WIN
 	}
 	// Seulement 2 défaites consécutives (< TiltLossRun=3)
 	rows = append(rows, makeRowWithKDA(3, 0.5))
@@ -244,7 +244,7 @@ func TestDetectPerfCeiling_NotEnoughRows(t *testing.T) {
 func TestAnalyze_LocalisationDesAlertes(t *testing.T) {
 	var rows []MatchRow
 	for i := 0; i < 10; i++ {
-		rows = append(rows, makeRowWithKDA(2, 2.0)) // WIN
+		rows = append(rows, makeRowWithKDA(2, 6.0)) // WIN
 	}
 	for i := 0; i < 5; i++ {
 		rows = append(rows, makeRowWithKDA(3, 1.0)) // LOSS
@@ -265,7 +265,7 @@ func TestAnalyze_LocalisationDesAlertes(t *testing.T) {
 	if want := "5+ défaites consécutives"; fr.Trigger != want {
 		t.Errorf("fr trigger = %q, want %q", fr.Trigger, want)
 	}
-	if want := "FDA moyen 2.00 → 1.00"; fr.Evidence != want {
+	if want := "FDA moyen 6.00 → 1.00"; fr.Evidence != want {
 		t.Errorf("fr evidence = %q, want %q", fr.Evidence, want)
 	}
 
@@ -273,7 +273,7 @@ func TestAnalyze_LocalisationDesAlertes(t *testing.T) {
 	if want := "5+ consecutive losses"; en.Trigger != want {
 		t.Errorf("en trigger = %q, want %q", en.Trigger, want)
 	}
-	if want := "Average KDA 2.00 → 1.00"; en.Evidence != want {
+	if want := "Average KDA 6.00 → 1.00"; en.Evidence != want {
 		t.Errorf("en evidence = %q, want %q", en.Evidence, want)
 	}
 	for _, s := range []string{en.Trigger, en.Evidence} {
@@ -285,5 +285,50 @@ func TestAnalyze_LocalisationDesAlertes(t *testing.T) {
 	inconnue := tiltDe("xx")
 	if inconnue != fr {
 		t.Errorf("langue inconnue = %+v, want le français %+v", inconnue, fr)
+	}
+}
+
+// tiltRowsFDA compose 10 matchs hors série à l'« outside » net puis 5 défaites à l'« during » net.
+func tiltRowsFDA(outside, during float64) []MatchRow {
+	var rows []MatchRow
+	for i := 0; i < 10; i++ {
+		rows = append(rows, makeRowWithKDA(2, outside))
+	}
+	for i := 0; i < 5; i++ {
+		rows = append(rows, makeRowWithKDA(3, during))
+	}
+	return rows
+}
+
+// TestDetectTilt_AbsoluteDrop : le tilt se juge sur la chute en points de FDA net, y compris quand
+// la moyenne hors série est nulle ou négative (où un rapport n'aurait pas de sens), avec seuil
+// strict à 2,5 points et sévérité haute strictement au-delà de 4,5.
+func TestDetectTilt_AbsoluteDrop(t *testing.T) {
+	cases := []struct {
+		name            string
+		outside, during float64
+		wantOK          bool
+		wantSeverity    Severity
+	}{
+		{"hors série positive, chute moyenne", 5.0, 1.0, true, SeverityMedium},
+		{"hors série nulle", 0.0, -3.0, true, SeverityMedium},
+		{"hors série négative", -1.0, -4.0, true, SeverityMedium},
+		{"hors série négative, chute haute", -1.0, -6.0, true, SeverityHigh},
+		{"exactement 4,5 : encore moyenne", 5.5, 1.0, true, SeverityMedium},
+		{"juste au-dessus de 4,5", 5.75, 1.0, true, SeverityHigh},
+		{"sous le seuil", 1.0, -1.0, false, ""},
+		{"exactement le seuil", 3.5, 1.0, false, ""},
+		{"progression pendant la série", 1.0, 4.0, false, ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			p, ok := detectTilt(tiltRowsFDA(tc.outside, tc.during), DefaultPatternConfig(), i18n.Default)
+			if ok != tc.wantOK {
+				t.Fatalf("détecté = %v, want %v (hors %v, pendant %v)", ok, tc.wantOK, tc.outside, tc.during)
+			}
+			if ok && p.Severity != tc.wantSeverity {
+				t.Errorf("severity = %q, want %q", p.Severity, tc.wantSeverity)
+			}
+		})
 	}
 }
