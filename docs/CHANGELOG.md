@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 - **Scoring revision stored despite a non-converging match** (ADR 0047) — a match whose TrueSkill solver does not converge no longer makes a player's full recalculation partial, so the revision is stored instead of being retried at every start. The match is counted apart (`skipped_not_converged`) and gets no new score; other failures still make the recalculation partial.
+- **Version shown by the site** — the deployment now reads the version from the repository instead of the latest tag reachable from `main`. The site and its notification announced v8.0.7 after the 8.1.0 deployment, because that release's tag was not in `main`'s history.
 
 ### Changed
 - **Update files out of the version page** — the engine installer, the resource pack with its signature and `latest.json` move to a single `updates` release that is never marked latest. Applications from 8.1.1 read `releases/download/updates/latest.json`; the version page keeps a copy of `latest.json` for 8.1.0 applications. The engine installer's separate `.sig` is no longer published, its signature being in `latest.json`.

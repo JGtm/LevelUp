@@ -10,6 +10,7 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 
 ### Corrigé
 - **Révision de notation enregistrée malgré un match non convergent** (ADR 0047) — un match dont le solveur TrueSkill ne converge pas ne rend plus partiel le recalcul complet d'un joueur : la révision est enregistrée au lieu d'être retentée à chaque démarrage. Le match est compté à part (`skipped_not_converged`) et ne reçoit pas de nouvelle note ; les autres échecs rendent toujours le recalcul partiel.
+- **Version affichée par le site** — le déploiement lit désormais la version dans le dépôt au lieu du dernier tag atteignable depuis `main`. Après le déploiement de la 8.1.0, le site et sa notification annonçaient v8.0.7, car le tag de cette version n'était pas dans l'historique de `main`.
 
 ### Modifié
 - **Fichiers de mise à jour sortis de la page de la version** — l'installeur moteur, le paquet de ressources avec sa signature et `latest.json` passent dans une publication unique `updates`, jamais marquée comme dernière. Les applications à partir de la 8.1.1 lisent `releases/download/updates/latest.json` ; la page de la version garde une copie de `latest.json` pour les applications 8.1.0. Le `.sig` séparé de l'installeur moteur n'est plus publié, sa signature étant dans `latest.json`.

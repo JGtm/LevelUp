@@ -9,6 +9,14 @@
 **Décision technique principale** : tag annoté `libs/film/v0.1.0` posé sur `6c3fa49063` (v8.1.0 sur `main`) par délégation datée du user (08/11 « ok pour le tag », confirmé le 09/11 à la session de release ; note sous D-2 de l'amendement film de l'ADR 0043), après `go get` depuis un module jetable hors dépôt (`GOWORK=off`) au sha puis à `v0.1.0` : module téléchargé par le proxy, compilé et exécuté. Lot 5 : (5.1, D-11) le `netguard.Doer` installe un `CheckRedirect` sur une copie du client qui retire `Authorization`, `X-343-Authorization-Spartan` et `343-Clearance` quand l'hôte (nom et port) de la redirection diffère de celui de la requête d'origine, puis applique la politique de `Next` ; la brique `libs/haloapi` ne change pas ; témoin T2 d'URL figées de Halo 5 (`client_url_figees_test.go`, 302 vers `image.halocdn.com`) amendé de ce seul point, il rougissait avant l'amendement. (5.2, PUB-4-a) `libs/gamefiles/NOTICE.md` créé : origine des trois `.mvar`, deux `navmesh.blob` et graines de fuzz d'après l'historique git, quatre fichiers à origine non établie dits tels quels ; phrase « No game data » du README de la brique remplacée (elle contredisait le NOTICE).
 **Résultats observés** : trois tests `httptest` du Doer (autre hôte : en-têtes absents, `Accept` conservé ; même hôte : présents ; politique de `Next` respectée) rougissent sans le retrait ; `make libs-test` vert sur les quatre modules ; `go test` des paquets appelants du Doer et `archlint` (297 s) : 0 échec.
 **Prochaine étape** : gate 5.3 puis commit « lot 5 » ; lot 6 (quatre dépôts dédiés ensemble, go du user du 09/11 relayé par la session de release).
+## [2026-11-09] v8.1.1 - la version de prod ne dépend plus de l'emplacement du tag - Complété
+
+**Décision technique principale** : `deploy.sh` lit la version dans `tauri.conf.json`, que `release.yml` confronte au tag. `git describe` ne voyait pas le tag v8.1.0, posé sur la tête de la branche de release (donc hors de l'histoire de `main` après le squash).
+
+**Résultats observés** : après le déploiement de la 8.1.0, `.env` portait `v8.0.7` et la notification annonçait v8.0.7. Les rejeux ne sont pas concernés. Prod non touchée : corrigé au déploiement de la 8.1.1.
+
+**Conclusion / prochaine étape** : CI, puis accord de l'utilisateur pour le tag et la prod.
+
 ## [2026-11-09] v8.1.1 - version, notes et changelog ; purge des archives de films du serveur - Complété
 
 **Décision technique principale** : version 8.1.1 dans `Cargo.toml`, `Cargo.lock` et `tauri.conf.json` ; notes joueurs FR et EN, changelog bilingue. Purge du serveur sur accord de l'utilisateur, avec rapatriement préalable, conforme à la décision du 2026-10-26.

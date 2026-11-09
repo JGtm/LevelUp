@@ -89,12 +89,14 @@ fi
 # compose le lit pour TOUS les services et à TOUTE commande. Cf. Dockerfile.
 #
 # L'anti-spam (major/minor, last_notified_version) est géré côté Go : entre deux
-# tags, la même valeur => aucune re-notification. Fallback "dev" (dépôt sans tag)
-# => notifications gardées OFF, comportement inchangé.
-# --match 'v*.*.*' : ne retenir QUE les tags de release semver (release.yml se
-# déclenche sur ce motif) et ignorer les tags de travail (ex. "Shared-social-fixed").
-git fetch --tags --quiet origin 2>/dev/null || true
-LEVELUP_APP_VERSION="$(git describe --tags --abbrev=0 --match 'v*.*.*' 2>/dev/null || echo dev)"
+# versions, la même valeur => aucune re-notification. Fallback "dev" (version
+# illisible) => notifications gardées OFF.
+# La version vient du fichier que release.yml confronte au tag : elle suit le contenu
+# de main, alors qu'un tag posé sur la branche de release reste hors de l'histoire de
+# main après le squash.
+_app_version="$(sed -n 's/.*"version": *"\([0-9][^"]*\)".*/\1/p' apps/desktop/src-tauri/tauri.conf.json | head -1)"
+LEVELUP_APP_VERSION="${_app_version:+v$_app_version}"
+LEVELUP_APP_VERSION="${LEVELUP_APP_VERSION:-dev}"
 export LEVELUP_APP_VERSION
 echo "[deploy] LEVELUP_APP_VERSION=$LEVELUP_APP_VERSION (env runtime uniquement — plus bakée au build depuis V721-15)"
 # Persister dans .env (gitignoré, lu automatiquement par docker compose) : tout
