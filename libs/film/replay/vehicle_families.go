@@ -295,6 +295,21 @@ var vehicleFamilyByChassis = map[uint32]string{
 	// sprite n existe (`sprite = false`) : le titre la qualifie `fixed_turret` et le client la
 	// dessine par le pictogramme de tourelle, occupant compris.
 	0x3a8060e2: familleTourelleFixe,
+
+	// --- LE SECOND CHASSIS DE TOURELLE FIXE (schema 108, 2026-11-09) ---
+	//
+	// `b857fb95`, le chassis de tourelle « generique » : 455 vies sur 117 films du parc, dont 453 sans
+	// AUCUN echantillon de position, 238 nees a t=0 et reapparues aux MEMES points fixes, 265 avec un
+	// occupant. C est le profil du chassis `3a8060e2` ci-dessus, et il tombait au repli du marqueur
+	// neutre (`repli_chassis_vehicule_marqueur_neutre`). DEUX PIECES :
+	//   1. `damagetag/data/labels.tsv` classe `vehi b857fb95` avec les armes
+	//      `sb_010_tur_un_{gausscannon,machinegun,rocketturret}`, classe `turret` ;
+	//   2. la mesure du parc : un meme film rejoue les memes points (deux spawns miroir, ou deux
+	//      points repetes), jamais une trajectoire.
+	// LA PIECE QUI MANQUE, ET ELLE EST DITE : la confirmation a l oeil, dans Theater, d un film dont
+	// ce chassis est pose (points relevables dans la mesure du parc). Elle est demandee a
+	// l utilisateur avant toute fusion ; sans elle, cette ligne ne se publie pas.
+	0xb857fb95: familleTourelleFixe,
 }
 
 // vehicleFamilyOf rend la famille de chassis d un `MPPWord32`, ou la chaine VIDE quand la table

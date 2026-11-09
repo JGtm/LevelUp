@@ -38,17 +38,21 @@ func (a *assemblage) poserLesPistes() {
 	// les lectures directes (index de joueur, `bid`), le pont par morts et l'elimination sur le
 	// roster, publie la provenance de chaque lien, et expose des accesseurs qui portent DEJA
 	// leurs gardes — aucun calque ne reconstruit son propre pont (garde-rail `archlint`).
-	a.reg = BuildIdentityRegistry(a.ctx, IdentityInput{
-		Positions: a.sorted, BipedCreations: a.opt.BipedCreations,
-		Deaths: a.opt.Deaths, PlayerIndices: a.opt.PlayerIndices, FilmTable: a.opt.FilmTable,
-		Bots: a.opt.Bots, Entities: a.opt.PlayerEntities, Fire: refs, RosterXUIDs: a.opt.RosterXUIDs,
-		Participants: a.opt.Participants,
-		Statborg: StatborgIdentityInput{
-			Identity: a.opt.StatborgIdentity, Records: scoreRecordsOf(a.opt.Score)},
-		Clock:           IdentityClock{OriginUS: a.origin, StepUS: a.step, FrameCount: a.doc.FrameCount},
-		MatchID:         a.matchID,
-		Fallbacks:       a.opt.Fallbacks,
-		documentInterne: a.opt.documentInterne,
+	// UN SLOT QUE AUCUN RECORD DE CREATION N'OUVRE ET QU'AUCUNE LECTURE NE NOMME N'EST PAS UN CORPS : ses
+	// positions sortent avant le registre (cf. pistes_sans_creation.go).
+	a.reg = a.construireLeRegistre(func(fb *fallback.Compteur) IdentityInput {
+		return IdentityInput{
+			Positions: a.sorted, BipedCreations: a.opt.BipedCreations,
+			Deaths: a.opt.Deaths, PlayerIndices: a.opt.PlayerIndices, FilmTable: a.opt.FilmTable,
+			Bots: a.opt.Bots, Entities: a.opt.PlayerEntities, Fire: refs, RosterXUIDs: a.opt.RosterXUIDs,
+			Participants: a.opt.Participants,
+			Statborg: StatborgIdentityInput{
+				Identity: a.opt.StatborgIdentity, Records: scoreRecordsOf(a.opt.Score)},
+			Clock:           IdentityClock{OriginUS: a.origin, StepUS: a.step, FrameCount: a.doc.FrameCount},
+			MatchID:         a.matchID,
+			Fallbacks:       fb,
+			documentInterne: a.opt.documentInterne,
+		}
 	})
 	if !a.reg.Section.Empty() {
 		a.doc.Identity = &a.reg.Section

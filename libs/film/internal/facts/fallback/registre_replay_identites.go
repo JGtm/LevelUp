@@ -311,4 +311,26 @@ var registreReplayIdentites = []Repli{
 		CritereRetrait:  "0 corps nomme par l index des chunks hors table sur le parc, ou la voie retiree avec ses tests",
 		CompteurBranche: true,
 	},
+	{
+		Nom:  "repli_position_de_bipede_sans_creation_ecartee",
+		Fait: "si les positions replicables d un slot sans aucun record de creation de bipede sont un corps de joueur",
+		Mecanisme: "sur un film COMPLET (le morceau des temps forts est lu) dont les records de creation sont lus, les positions " +
+			"d un slot que AUCUN record n ouvre ne sont pas un corps : le registre d identite est relance sans elles quand " +
+			"TOUTES les vies de ce slot restent sans nom apres toutes ses lectures et deductions, et leurs pistes ne se publient pas ; " +
+			"un slot qu une lecture ou une deduction nomme reste entier, et un film sans record lu reste inchange",
+		// LE NEGATIF EST MESURE (2026-11-09, 1 440 films du parc) : aucune creation de bipede hors de la bande de
+		// slots du film, et des positions sans record de creation dans 2 films seulement, dont un seul publiait
+		// des pistes (deux, sans nom, a quatre echantillons). Le moteur cree l entite puis replique ses positions :
+		// un corps qui replique sans creation n est pas ecrit comme un corps.
+		Condition: CondFilmMuet,
+		Ordre:     OrdreApresLecture,
+		Sites: []Site{{
+			Fichier: pkgReplay + "pistes_sans_creation.go",
+			Ancre:   "a.opt.Fallbacks.DeclencheN(fallback.NomPositionDeBipedeSansCreationEcartee,",
+		}},
+		DatePose:        "2026-11-09",
+		CibleRetrait:    "la lecture de l identite de l objet dont la position est lue (archetype et creation du slot), qui dirait si le slot est un bipede ; a defaut, " + retraitRegle4,
+		CritereRetrait:  "0 position ecartee sur les films du corpus gate dont les chunks sont complets",
+		CompteurBranche: true,
+	},
 }

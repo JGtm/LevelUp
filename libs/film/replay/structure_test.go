@@ -1476,8 +1476,13 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   de contenu (la mort ecrite, ou la fin du film d un joueur present) et trois replis de fin de vie se comptent ;
 	//   champ neuf `carriedEquipment[].family`, `coverage.carriedEquipment` change. `grammar.Rev` et le schema des
 	//   faits montent : un v106 se lit « a redecoder ». Detail : `document_chronicle.go`.
-	if SchemaVersion != 107 {
-		t.Fatalf("SchemaVersion = %d, attendu 107 : incrémenter exige une raison écrite ci-dessus "+
+	// - 108 (2026-11-09, tourelle fixe générique ; slots sans création) : `vehicles[].family` change de contenu
+	//   (le châssis `b857fb95` entre sous `tourelle_fixe`, il tombait au marqueur neutre) et les positions d'un slot
+	//   sans record de création ni nom sortent avant le registre d'identité sur un film complet (les pistes et les
+	//   vies sans identité de ce slot ne se publient plus ; un repli se compte). Aucun champ neuf, aucune révision
+	//   de décodage ne monte : un v107 se lit « à republier ». Détail : `document_chronicle.go`.
+	if SchemaVersion != 108 {
+		t.Fatalf("SchemaVersion = %d, attendu 108 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }
