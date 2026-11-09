@@ -86,6 +86,8 @@ AGPL-3.0, the repository license (`LICENSE`, `NOTICE` at the repository root). `
 on `libs/gamefiles`, which embeds the GPLv3 `ooz` decoder, so a binary that links `himap` is
 GPL-3.0-compatible only; see `libs/gamefiles/ooz/NOTICE.md`. This is a summary, not legal advice.
 
+The origin of the data files and the rights they do not carry are in [`NOTICE.md`](NOTICE.md).
+
 ## Contributing
 
 Issues and pull requests on `github.com/JGtm/LevelUp`, with the path prefix `libs/himap/` in the
