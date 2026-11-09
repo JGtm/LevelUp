@@ -82,7 +82,7 @@ export function StartCampaignModal({
         aria-hidden="true"
         onClick={() => !muts.start.isPending && onOpenChange(false)}
         className={
-          'absolute inset-0 bg-black/60 backdrop-blur-sm' +
+          'absolute inset-0 bg-scrim/60 backdrop-blur-sm' +
           (muts.start.isPending ? ' cursor-wait' : ' cursor-pointer')
         }
       />

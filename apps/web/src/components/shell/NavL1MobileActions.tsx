@@ -107,7 +107,7 @@ export function NavL1MobileActions({ settingsTabs, pathname, isAdmin }: NavL1Mob
 
       {open && (
         <div
-          className="fixed inset-0 z-[59] bg-black/40"
+          className="fixed inset-0 z-[59] bg-scrim/40"
           onClick={() => setOpen(false)}
           aria-hidden="true"
         />

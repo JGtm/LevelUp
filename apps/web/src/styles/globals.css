@@ -66,6 +66,11 @@
   --info: oklch(0.70 0.12 220);
   --info-foreground: oklch(0.985 0 0);
 
+  /* Voile noir et texte sur voile, identiques dans les deux thèmes (plan 8.1.2, D-7) :
+     fond des modales et boutons sur image, jamais une couleur de texte du thème. */
+  --scrim: oklch(0 0 0);
+  --on-scrim: oklch(1 0 0);
+
   /* Tendance (▲ progression / ▼ régression / = stagnation) — réutilise les tokens
      sémantiques (auto-adapté dark/light via var(), résolu à l'usage). Référencé en RAW
      var(--narrative-trend-*) par LeaderboardBlock / PlayerScoreCard. */
@@ -136,6 +141,11 @@
   --info: oklch(0.62 0.12 220);
   --info-foreground: oklch(0.985 0 0);
 
+  /* Voile noir et texte sur voile, identiques dans les deux thèmes (plan 8.1.2, D-7) :
+     fond des modales et boutons sur image, jamais une couleur de texte du thème. */
+  --scrim: oklch(0 0 0);
+  --on-scrim: oklch(1 0 0);
+
   --compare-a: oklch(0.6 0.16 250);
   --compare-b: oklch(0.67 0.16 55);
 
@@ -185,6 +195,8 @@
   --color-warning-foreground: var(--warning-foreground);
   --color-info: var(--info);
   --color-info-foreground: var(--info-foreground);
+  --color-scrim: var(--scrim);
+  --color-on-scrim: var(--on-scrim);
   --color-compare-a: var(--compare-a);
   --color-compare-b: var(--compare-b);
   --color-sidebar: var(--sidebar);

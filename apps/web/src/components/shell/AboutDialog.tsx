@@ -134,7 +134,7 @@ function AboutDialogBody({ onClose }: { onClose: () => void }) {
 
   return (
     <div
-      className="fixed inset-0 z-[70] grid place-items-center bg-background/80 p-4"
+      className="fixed inset-0 z-[70] grid place-items-center bg-scrim/60 p-4"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
