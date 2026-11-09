@@ -13,7 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Version shown by the site** — the deployment now reads the version from the repository instead of the latest tag reachable from `main`. The site and its notification announced v8.0.7 after the 8.1.0 deployment, because that release's tag was not in `main`'s history.
 
 ### Changed
-- **Update files out of the version page** — the engine installer, the resource pack with its signature and `latest.json` move to a single `updates` release that is never marked latest. Applications from 8.1.1 read `releases/download/updates/latest.json`; the version page keeps a copy of `latest.json` for 8.1.0 applications. The engine installer's separate `.sig` is no longer published, its signature being in `latest.json`.
+- **Update files out of the version page** — the engine installer, the resource pack with its signature and `latest.json` move to a single `updates` release that is never marked latest. Applications from 8.1.1 read `releases/download/updates/latest.json`; an installed 8.1.0 is not offered this update and takes the full installer once. The engine installer's separate `.sig` is no longer published, its signature being in `latest.json`.
 - **Version page in English**, with a link to the French release notes.
 - **Four dedicated repositories published** for the file readers, map images, film decoder and Halo API (ADR 0043); LevelUp still builds from `libs/`.
 

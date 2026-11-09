@@ -9,6 +9,14 @@
 **Décision technique principale** : tag annoté `libs/film/v0.1.0` posé sur `6c3fa49063` (v8.1.0 sur `main`) par délégation datée du user (08/11 « ok pour le tag », confirmé le 09/11 à la session de release ; note sous D-2 de l'amendement film de l'ADR 0043), après `go get` depuis un module jetable hors dépôt (`GOWORK=off`) au sha puis à `v0.1.0` : module téléchargé par le proxy, compilé et exécuté. Lot 5 : (5.1, D-11) le `netguard.Doer` installe un `CheckRedirect` sur une copie du client qui retire `Authorization`, `X-343-Authorization-Spartan` et `343-Clearance` quand l'hôte (nom et port) de la redirection diffère de celui de la requête d'origine, puis applique la politique de `Next` ; la brique `libs/haloapi` ne change pas ; témoin T2 d'URL figées de Halo 5 (`client_url_figees_test.go`, 302 vers `image.halocdn.com`) amendé de ce seul point, il rougissait avant l'amendement. (5.2, PUB-4-a) `libs/gamefiles/NOTICE.md` créé : origine des trois `.mvar`, deux `navmesh.blob` et graines de fuzz d'après l'historique git, quatre fichiers à origine non établie dits tels quels ; phrase « No game data » du README de la brique remplacée (elle contredisait le NOTICE).
 **Résultats observés** : trois tests `httptest` du Doer (autre hôte : en-têtes absents, `Accept` conservé ; même hôte : présents ; politique de `Next` respectée) rougissent sans le retrait ; `make libs-test` vert sur les quatre modules ; `go test` des paquets appelants du Doer et `archlint` (297 s) : 0 échec.
 **Prochaine étape** : gate 5.3 puis commit « lot 5 » ; lot 6 (quatre dépôts dédiés ensemble, go du user du 09/11 relayé par la session de release).
+## [2026-11-09] v8.1.1 - plus de copie de latest.json sur la page de la version - Complété
+
+**Décision technique principale** : proposition de l'utilisateur, retenue : la page de la version ne porte plus que l'installeur complet et les serveurs. La v8.1.0 publiée compte 1 téléchargement de l'installeur ; une 8.1.0 installée passe une fois par l'installeur complet.
+
+**Résultats observés** : la 8.1.1 ne peut plus se recevoir par mise à jour depuis une 8.1.0. Le premier essai réel du chemin `updates` sera donc le passage 8.1.1 vers la version suivante ; à la publication, contrôler les adresses de `updates`.
+
+**Conclusion / prochaine étape** : CI, fusion dans la release, puis `main` et tag sur ce commit.
+
 ## [2026-11-09] v8.1.1 - la version de prod ne dépend plus de l'emplacement du tag - Complété
 
 **Décision technique principale** : `deploy.sh` lit la version dans `tauri.conf.json`, que `release.yml` confronte au tag. `git describe` ne voyait pas le tag v8.1.0, posé sur la tête de la branche de release (donc hors de l'histoire de `main` après le squash).

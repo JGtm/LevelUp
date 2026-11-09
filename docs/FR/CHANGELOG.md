@@ -13,7 +13,7 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 - **Version affichée par le site** — le déploiement lit désormais la version dans le dépôt au lieu du dernier tag atteignable depuis `main`. Après le déploiement de la 8.1.0, le site et sa notification annonçaient v8.0.7, car le tag de cette version n'était pas dans l'historique de `main`.
 
 ### Modifié
-- **Fichiers de mise à jour sortis de la page de la version** — l'installeur moteur, le paquet de ressources avec sa signature et `latest.json` passent dans une publication unique `updates`, jamais marquée comme dernière. Les applications à partir de la 8.1.1 lisent `releases/download/updates/latest.json` ; la page de la version garde une copie de `latest.json` pour les applications 8.1.0. Le `.sig` séparé de l'installeur moteur n'est plus publié, sa signature étant dans `latest.json`.
+- **Fichiers de mise à jour sortis de la page de la version** — l'installeur moteur, le paquet de ressources avec sa signature et `latest.json` passent dans une publication unique `updates`, jamais marquée comme dernière. Les applications à partir de la 8.1.1 lisent `releases/download/updates/latest.json` ; une 8.1.0 installée ne se voit pas proposer cette mise à jour et passe une fois par l'installeur complet. Le `.sig` séparé de l'installeur moteur n'est plus publié, sa signature étant dans `latest.json`.
 - **Page de la version en anglais**, avec un lien vers les notes en français.
 - **Quatre dépôts dédiés publiés** pour les lecteurs de fichiers, les images de carte, le décodeur de film et l'API Halo (ADR 0043) ; LevelUp compile toujours depuis `libs/`.
 

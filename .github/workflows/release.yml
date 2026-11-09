@@ -489,7 +489,6 @@ jobs:
             dist/levelup-resources-*.zip.sig
             dist/latest.json
 
-      # latest.json reste aussi sur la page : une application 8.1.0 l'y cherche, à l'adresse de la dernière version.
       - name: Create GitHub Release
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
@@ -500,5 +499,4 @@ jobs:
             dist/levelup-server-darwin-arm64
             dist/levelup-server-windows-amd64.exe
             dist/LevelUp_*_x64-setup.exe
-            dist/latest.json
           body_path: release_body.md
