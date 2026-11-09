@@ -5,8 +5,6 @@ import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/com
 
 interface ThemeToggleProps {
   className?: string
-  /** 'sidebar' (défaut) — tokens sidebar. 'menu' — tokens neutres pour dropdown/popover. */
-  variant?: 'sidebar' | 'menu'
 }
 
 function MoonIcon() {
@@ -41,7 +39,7 @@ function SunIcon() {
   )
 }
 
-export function ThemeToggle({ className = '', variant = 'sidebar' }: ThemeToggleProps) {
+export function ThemeToggle({ className = '' }: ThemeToggleProps) {
   const theme = useSettingsDraftStore((state) => state.localUiPrefs.theme)
   const toggleTheme = useSettingsDraftStore((state) => state.toggleTheme)
   const locale = useAppShellStore((s) => s.locale)
@@ -49,19 +47,12 @@ export function ThemeToggle({ className = '', variant = 'sidebar' }: ThemeToggle
   const isDark = theme === 'dark'
   const label = isDark ? t('common.shell.theme_toggle_to_light') : t('common.shell.theme_toggle_to_dark')
 
-  const trackClass =
-    variant === 'menu'
-      ? isDark
-        ? 'border-border bg-accent hover:bg-accent/80'
-        : 'border-border bg-muted hover:bg-muted/80'
-      : isDark
-        ? 'border-sidebar-border bg-sidebar-accent hover:bg-sidebar-accent/80'
-        : 'border-sidebar-border bg-sidebar-primary/20 hover:bg-sidebar-primary/25'
+  // Tokens neutres : le commutateur vit dans les menus déroulants de la barre haute.
+  const trackClass = isDark
+    ? 'border-border bg-accent hover:bg-accent/80'
+    : 'border-border bg-muted hover:bg-muted/80'
 
-  const thumbClass =
-    variant === 'menu'
-      ? 'bg-foreground/80 text-background shadow-md'
-      : 'bg-background text-sidebar-foreground shadow-sm'
+  const thumbClass = 'bg-foreground/80 text-background shadow-md'
 
   return (
     <button

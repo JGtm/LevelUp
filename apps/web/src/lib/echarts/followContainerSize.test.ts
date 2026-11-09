@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { beginLayoutTransition, endLayoutTransition } from '@/lib/layout/layoutSettling'
 import { followContainerSize, type ResizableChart } from './followContainerSize'
 
 let observed: (() => void) | null = null
@@ -38,6 +39,7 @@ describe('followContainerSize', () => {
     vi.stubGlobal('cancelAnimationFrame', () => {})
   })
   afterEach(() => {
+    endLayoutTransition()
     vi.unstubAllGlobals()
     observed = null
     disconnect.mockReset()
@@ -61,5 +63,35 @@ describe('followContainerSize', () => {
     const { chart } = fakeChart(610, 610)
     followContainerSize(chart)()
     expect(disconnect).toHaveBeenCalledOnce()
+  })
+
+  it("ignore les mesures pendant une transition de mise en page, puis se synchronise une fois", () => {
+    const { chart, resize } = fakeChart(610, 1246)
+    followContainerSize(chart)
+    beginLayoutTransition()
+    observed?.()
+    observed?.()
+    observed?.()
+    expect(resize).not.toHaveBeenCalled()
+    endLayoutTransition()
+    expect(resize).toHaveBeenCalledTimes(1)
+    expect(resize).toHaveBeenCalledWith({ width: 'auto', height: 'auto' })
+  })
+
+  it("une transition qui se termine sur la taille du graphe ne le redimensionne pas", () => {
+    const { chart, resize } = fakeChart(610, 610)
+    followContainerSize(chart)
+    beginLayoutTransition()
+    observed?.()
+    endLayoutTransition()
+    expect(resize).not.toHaveBeenCalled()
+  })
+
+  it("débranché, il ne se synchronise plus à la fin d une transition", () => {
+    const { chart, resize } = fakeChart(610, 1246)
+    followContainerSize(chart)()
+    beginLayoutTransition()
+    endLayoutTransition()
+    expect(resize).not.toHaveBeenCalled()
   })
 })
