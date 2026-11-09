@@ -15,12 +15,6 @@
 
 ---
 
-### [bureau/publication] Sortir les fichiers de mise à jour de la page de la version
-
-**Pour la 8.1.1 (décision de l'utilisateur, 2026-11-09).** La page de la version mêle l'installeur et les fichiers que seule l'application utilise (`x64-engine-setup.exe`, paquet de ressources, leurs `.sig`, `latest.json`), ce qui déroute. Les publier ailleurs (version ou dépôt dédié) pour ne laisser que l'installeur et les serveurs : point d'accès de l'updater dans `tauri.conf.json`, adresse de `OwnDescriptor` (`resourcepack/manager.go:168`), URL de `latest.json` et motifs de publication dans `release.yml`. La v8.1.0 interroge l'adresse actuelle : ses fichiers restent en place tant que des clients 8.1.0 existent, et la 8.1.1 doit encore y publier un `latest.json` pour qu'ils trouvent la nouvelle adresse. **Effort : M.**
-
----
-
 ### [lusr] Matchs dont le calcul ne converge pas : sans note neuve et comptés comme trous réparables
 
 Depuis la 8.1.1, un match dont le solveur ne converge pas ne bloque plus l'enregistrement de la révision de notation, mais il reste sans note neuve (18 matchs relevés en prod le 2026-11-09, équipes de 4v6 à 16v16). Le détecteur de trous (`sync/skill/lusr_gap_scan.go:116-120`) le classe en trou d'intérieur « réparable par rejeu » dès qu'un match plus récent du groupe a avancé le filigrane : le panneau d'administration l'affiche, et le rejeu retombe sur la même non-convergence. Deux suites à arbitrer : distinguer ces matchs dans le rapport, ou faire converger le solveur (amortissement, `ep/match2team.go`), ce qui change des notes et impose de monter `LUSRRev`. **Effort : S pour le rapport, M pour le solveur.**
